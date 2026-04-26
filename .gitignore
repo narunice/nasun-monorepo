@@ -62,3 +62,19 @@ apps/nasun-website/chat-server/data/
 
 # Temporary stats data
 stats/
+
+# Claude workflow artifacts
+.claude/handoffs/
+.claude/skills/*/cache/
+.claude/skills/*/drafts/
+
+# CDK synth output
+**/cdk.out/
+
+# Local backup directory (note: _backup/ is already covered above)
+backup/
+
+# Root-level data exports (subdirectory CSV fixtures/seed are unaffected)
+/*.csv
+exports/
+data-exports/
