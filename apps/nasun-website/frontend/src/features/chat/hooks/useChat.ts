@@ -276,6 +276,7 @@ export function useChat() {
 
   const onTurnstileError = useCallback(() => {
     const MAX_TURNSTILE_RETRIES = 3;
+    const RELOAD_FLAG = 'chat_turnstile_reloaded';
     turnstileRetryRef.current += 1;
     if (turnstileRetryRef.current < MAX_TURNSTILE_RETRIES) {
       // Auto-retry with remount after a short delay
@@ -285,7 +286,13 @@ export function useChat() {
       }, 500);
       return;
     }
-    // Cap exceeded — surface a clear error and stop showing "Connecting..."
+    // Cap exceeded — try a silent page reload once per session (fixes SES timing race)
+    if (!sessionStorage.getItem(RELOAD_FLAG)) {
+      sessionStorage.setItem(RELOAD_FLAG, '1');
+      window.location.reload();
+      return;
+    }
+    // Already reloaded and still failing — surface error
     useChatStore.getState().setAuthError(
       'Security check failed. Reload the page or disable tracker-blocking extensions to use chat.'
     );
