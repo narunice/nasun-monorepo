@@ -8,9 +8,10 @@ import NumberMatchPage from './pages/NumberMatchPage'
 import MinesPage from './pages/MinesPage'
 import HomePage from './pages/HomePage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
+import GameHistoryPage from './pages/GameHistoryPage'
+import { ENABLE_CRASH } from './lib/gostop-config'
 
 // Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
-const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true'
 const CrashPage = ENABLE_CRASH ? lazy(() => import('./pages/CrashPage')) : null
 
 interface NavEntry {
@@ -25,6 +26,7 @@ const NAV_ITEMS: NavEntry[] = [
   { to: '/scratch', label: 'Scratch' },
   { to: '/numbermatch', label: 'Match' },
   { to: '/mines', label: 'Mines' },
+  { to: '/games/history', label: 'History' },
 ]
 
 // Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
@@ -62,6 +64,7 @@ export default function App() {
           <Route path="/numbermatch" element={<NumberMatchPage />} />
           <Route path="/mines" element={<MinesPage />} />
           {ENABLE_CRASH && <Route path="/crash" element={<CrashRouteElement />} />}
+          <Route path="/games/history" element={<GameHistoryPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -6,6 +6,7 @@ import {
   tierForScratch,
   useForceTierDebug,
 } from '../components/celebration'
+import { useInvalidateGameHistory } from '../features/game-history'
 
 const CARD_PRICE_NUSDC = 5
 const BUY_OPTIONS = [1, 3, 5, 10]
@@ -31,6 +32,7 @@ export default function ScratchCardPage() {
   const { isWalletConnected, buy, isBuying, error, clearError } = useScratchCard()
   const { showToast } = useToast()
   const celebrate = useCelebrate()
+  const invalidateHistory = useInvalidateGameHistory()
   useForceTierDebug('Scratch')
   const [results, setResults] = useState<ScratchResult[]>([])
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
@@ -49,6 +51,9 @@ export default function ScratchCardPage() {
       `${out.length} card${out.length === 1 ? '' : 's'} purchased — tap to reveal`,
       'info',
     )
+    // Break the 5-min staleTime so /games/history reflects the new cards on
+    // next visit without forcing the user to refresh.
+    invalidateHistory()
   }
 
   // Trigger the celebration / result toast only once all cards are revealed.

@@ -161,6 +161,35 @@ export function getTicketTier(matchCount: number): 0 | 1 | 2 | 3 {
   return 0;
 }
 
+// Prize tier constants and helpers used by game-history (added in PR2).
+// `parseLotteryRoundFields` is a public alias of the internal `parseRoundFields`
+// so the history feature can multi-get rounds without re-implementing parsing.
+export const PRIZE_TIER = {
+  JACKPOT: 1,
+  SECOND: 2,
+  THIRD: 3,
+  NONE: 0,
+} as const;
+export type PrizeTier = (typeof PRIZE_TIER)[keyof typeof PRIZE_TIER];
+
+export function getTierPayout(round: LotteryRound, tier: PrizeTier): bigint {
+  switch (tier) {
+    case PRIZE_TIER.JACKPOT: return round.tier1PayoutPerWinner;
+    case PRIZE_TIER.SECOND:  return round.tier2PayoutPerWinner;
+    case PRIZE_TIER.THIRD:   return round.tier3PayoutPerWinner;
+    default: return 0n;
+  }
+}
+
+export function getTierLabel(tier: PrizeTier): string {
+  switch (tier) {
+    case PRIZE_TIER.JACKPOT: return 'Jackpot';
+    case PRIZE_TIER.SECOND:  return '2nd';
+    case PRIZE_TIER.THIRD:   return '3rd';
+    default: return '';
+  }
+}
+
 export function isClaimable(round: LotteryRound, ticket: Ticket, nowMs: number): boolean {
   if (round.status !== ROUND_STATUS.SETTLED) return false;
   if (ticket.roundId !== round.id) return false;
@@ -175,7 +204,9 @@ export function formatNusdc(amount: bigint): string {
   return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// ===== Internal =====
+// ===== Internal (with public alias for game-history) =====
+
+export { parseRoundFields as parseLotteryRoundFields };
 
 function parseRoundFields(id: string, f: Record<string, unknown>): LotteryRound {
   let drawnNumbers: number[] | null = null;

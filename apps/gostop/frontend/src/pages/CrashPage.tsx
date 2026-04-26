@@ -8,6 +8,7 @@ import {
   tierForCrash,
   useForceTierDebug,
 } from '../components/celebration'
+import { useCrashInvalidationEffect } from '../features/game-history'
 
 const NUSDC_DECIMALS = 1_000_000n
 
@@ -21,6 +22,10 @@ export default function CrashPage() {
   const crash = useCrash()
   const celebrate = useCelebrate()
   useForceTierDebug('Crash')
+  // Invalidate game-history cache when a round resolves AND user had a bet —
+  // covers both win (already invalidated by cashout effect below) and loss
+  // (which has no other invalidation trigger).
+  useCrashInvalidationEffect(crash.roundState?.state, crash.hasBetThisRound)
   const [betInput, setBetInput] = useState('5')
   const [autoInput, setAutoInput] = useState('')
   // Track our own bet amount so we can compute payout when cashout lands.

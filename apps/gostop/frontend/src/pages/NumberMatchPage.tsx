@@ -9,6 +9,7 @@ import {
   tierForNumberMatch,
   useForceTierDebug,
 } from '../components/celebration'
+import { useInvalidateGameHistory } from '../features/game-history'
 
 const MIN_NUM = 1
 const MAX_NUM = 5
@@ -31,6 +32,7 @@ export default function NumberMatchPage() {
   const { isWalletConnected, play, isPlaying, error, clearError } = useNumberMatch()
   const { showToast } = useToast()
   const celebrate = useCelebrate()
+  const invalidateHistory = useInvalidateGameHistory()
   useForceTierDebug('Number Match')
   const [picks, setPicks] = useState<number[]>([])
   const [result, setResult] = useState<NumberMatchResult | null>(null)
@@ -51,6 +53,7 @@ export default function NumberMatchPage() {
     const r = await play(picks)
     if (r) {
       setResult(r)
+      invalidateHistory()
       if (r.isWin) {
         showToast(
           `Match! Winning number ${r.winningNumber} · +${fmt(r.payout)} NUSDC`,

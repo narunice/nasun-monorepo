@@ -5,6 +5,7 @@ import {
   tierForMines,
   useForceTierDebug,
 } from '../components/celebration'
+import { useInvalidateGameHistory } from '../features/game-history'
 import {
   computeMultiplierBps,
   maxMultiplierBps,
@@ -45,6 +46,7 @@ export default function MinesPage() {
   } = useMines()
   const { showToast } = useToast()
   const celebrate = useCelebrate()
+  const invalidateHistory = useInvalidateGameHistory()
   useForceTierDebug('Mines')
 
   const [bet, setBet] = useState<number>(DEFAULT_BET_NUSDC)
@@ -52,6 +54,8 @@ export default function MinesPage() {
 
   // Fire celebration when a cashout finishes. lastFinish.kind === 'cashed_out'
   // is the only winning outcome; explosions resolve to no celebration.
+  // Either way (cashout or explosion), invalidate the history cache so the
+  // session shows up in /games/history immediately.
   const celebratedFinishRef = useRef<typeof lastFinish>(null)
   useEffect(() => {
     if (!lastFinish) {
@@ -60,6 +64,7 @@ export default function MinesPage() {
     }
     if (celebratedFinishRef.current === lastFinish) return
     celebratedFinishRef.current = lastFinish
+    invalidateHistory()
     if (lastFinish.kind !== 'cashed_out') return
     if (lastFinish.bet === 0n) return
     // Compute multiplier from on-chain payout / bet.
@@ -75,7 +80,7 @@ export default function MinesPage() {
         gameLabel: 'Mines',
       })
     }
-  }, [lastFinish, celebrate])
+  }, [lastFinish, celebrate, invalidateHistory])
 
   // Cap bet so max theoretical payout respects MINES_MAX_SINGLE_PAYOUT.
   const maxMul = maxMultiplierBps(mineCount) / 10_000
