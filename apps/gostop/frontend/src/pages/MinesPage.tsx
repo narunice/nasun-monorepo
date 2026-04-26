@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useMines } from '../features/mines/useMines'
+import minesThumb from '../assets/images/mines.webp'
 import {
   useCelebrate,
   tierForMines,
@@ -161,21 +162,29 @@ export default function MinesPage() {
 
 function Header() {
   return (
-    <header className="panel p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]">
-      <p className="text-sm uppercase tracking-[0.3em] text-gold-300 mb-3">
-        Risk Escalation
-      </p>
-      <h1 className="font-display text-4xl md:text-5xl text-gold">Mines</h1>
-      <p className="text-base text-neutral-200 mt-3 max-w-2xl leading-relaxed">
-        Set your bet, choose how many mines to hide on a 5×5 grid, and
-        reveal safe cells to grow your multiplier. Cash out anytime, but
-        one mine ends the round.
-      </p>
-      <p className="text-xs text-amber-300/80 mt-3 italic max-w-2xl">
-        Devnet prototype: mine positions are technically visible via RPC.
-        Bet caps are set low to limit exploit upside. Encrypted placement
-        will land before mainnet.
-      </p>
+    <header className="panel p-6 md:p-8 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex flex-col md:flex-row md:items-center gap-6">
+      <img
+        src={minesThumb}
+        alt=""
+        aria-hidden
+        className="w-full md:w-48 h-40 md:h-48 rounded-xl object-cover border border-gold-subtle shrink-0"
+      />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm uppercase tracking-[0.3em] text-gold-300 mb-3">
+          Risk Escalation
+        </p>
+        <h1 className="font-display text-4xl md:text-5xl text-gold">Mines</h1>
+        <p className="text-base text-neutral-200 mt-3 max-w-2xl leading-relaxed">
+          Set your bet, choose how many mines to hide on a 5×5 grid, and
+          reveal safe cells to grow your multiplier. Cash out anytime, but
+          one mine ends the round.
+        </p>
+        <p className="text-xs text-amber-300/80 mt-3 italic max-w-2xl">
+          Devnet prototype: mine positions are technically visible via RPC.
+          Bet caps are set low to limit exploit upside. Encrypted placement
+          will land before mainnet.
+        </p>
+      </div>
     </header>
   )
 }
@@ -331,7 +340,7 @@ function ActiveSession({
         })}
       </div>
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="mt-2 flex flex-col items-center gap-3">
         <p className="text-sm text-neutral-200">
           Safe reveals:{' '}
           <span className="font-mono text-gold-200">{session.safeReveals}</span>
@@ -341,13 +350,13 @@ function ActiveSession({
         <button
           onClick={onCashout}
           disabled={!canCashout}
-          className="btn-gold !py-2 !px-5 text-sm"
+          className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none"
         >
           {phase === 'cashing_out'
             ? 'Cashing out…'
             : session.safeReveals === 0
               ? 'Reveal a cell first'
-              : `Cash out ${fmt(currentPayout)} NUSDC`}
+              : `Cash Out · ${fmt(currentPayout)} NUSDC`}
         </button>
       </div>
     </section>
