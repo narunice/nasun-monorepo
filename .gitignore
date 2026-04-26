@@ -74,7 +74,6 @@ stats/
 # Local backup directory (note: _backup/ is already covered above)
 backup/
 
-# Root-level data exports (subdirectory CSV fixtures/seed are unaffected)
-/*.csv
+# Data export folders (place ad-hoc CSV/JSON exports here)
 exports/
 data-exports/
