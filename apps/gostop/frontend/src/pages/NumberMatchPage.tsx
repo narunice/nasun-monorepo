@@ -88,7 +88,7 @@ export default function NumberMatchPage() {
   const canPlay = picks.length >= 1 && isWalletConnected && !isPlaying
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-h-screen">
       <Header />
 
       {error && (
