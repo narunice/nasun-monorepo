@@ -59,6 +59,7 @@ function generateDateRange(start: string, end: string): string[] {
 const BONUS_LABELS: Record<string, string> = {
   "ecosystem-bonus-earlybird": "Early Bird",
   "ecosystem-bonus-pado": "Pado Leaderboard",
+  "ecosystem-bonus-leaderboard": "Ecosystem Leaderboard",
   "ecosystem-bonus-game": "Game Reward",
   "ecosystem-bonus-airdrop": "Airdrop",
   "ecosystem-bonus-bugreport": "Bug Report",
