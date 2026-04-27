@@ -251,6 +251,7 @@ export default function CrashPage() {
                 : (crash.roundState?.nextRoundAt ?? null)
             }
             now={now}
+            betAmount={crash.hasBetThisRound ? myBetRef.current : 0n}
           />
         )}
         {crash.error && <p className="text-red-400 text-sm text-center">{crash.error}</p>}
@@ -305,10 +306,12 @@ function WaitingPanel({
   label,
   targetAt,
   now,
+  betAmount,
 }: {
   label: string
   targetAt: number | null
   now: number
+  betAmount: bigint
 }) {
   const secsLeft = targetAt !== null ? Math.max(0, Math.ceil((targetAt - now) / 1000)) : null
   return (
@@ -317,6 +320,11 @@ function WaitingPanel({
       <p className="text-base">{label}</p>
       {secsLeft !== null && secsLeft > 0 && (
         <p className="font-mono text-lg text-gold-200">{secsLeft}s</p>
+      )}
+      {betAmount > 0n && (
+        <p className="text-sm text-gray-400">
+          Your bet: <span className="font-mono text-gold-200">{formatNusdc(betAmount)} NUSDC</span>
+        </p>
       )}
     </div>
   )
