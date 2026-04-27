@@ -2,7 +2,7 @@
  * Ecosystem Leaderboard Page
  *
  * Weekly leaderboard: on-chain activity diversity + creator posts + bonus.
- * No NFT multiplier applied to ranking. Resets every Monday 00:10 UTC.
+ * No NFT multiplier applied to ranking. Resets every Monday 00:00 UTC.
  * Score = activity + creator/5 + bugreport+feedback/2 + game/3 + 1.6*LOG2(volume_count+1)
  * volume_count = pado-lottery + pado-games + pado-scratchcard + wallet-transfer (not deduplicated)
  */
@@ -161,7 +161,7 @@ const EcosystemLeaderboardPage = () => {
 
         <div className="mb-6">
           <p className="text-base text-nasun-white/90">
-            Weekly rankings reset every Monday 00:10 UTC.
+            Weekly rankings reset every Monday 00:00 UTC.
           </p>
         </div>
 

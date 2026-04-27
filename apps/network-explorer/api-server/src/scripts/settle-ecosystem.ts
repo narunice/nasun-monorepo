@@ -115,7 +115,7 @@ function getPreviousWeekId(): string {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
-// Monday 00:10 UTC reset (matches Pado + ecosystem leaderboard API).
+// Monday 00:00 UTC reset. Settlement crons run at 00:15/00:20 UTC.
 function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
   const match = weekId.match(/^(\d{4})-W(\d{2})$/);
   if (!match) return null;
@@ -127,7 +127,7 @@ function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
   const jan4Day = jan4.getUTCDay() || 7;
   const week1Monday = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
   const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86_400_000);
-  const start = new Date(weekMonday.getTime() + 10 * 60 * 1000);
+  const start = new Date(weekMonday.getTime());
   const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
   return { start, end };
 }

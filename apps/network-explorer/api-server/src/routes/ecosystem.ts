@@ -584,7 +584,7 @@ function getPrevWeekId(weekId: string): string | null {
   return `${py}-W${String(pw).padStart(2, '0')}`;
 }
 
-// Monday 00:10 UTC is the canonical week reset boundary (matches Pado Score Leaderboard).
+// Monday 00:00 UTC is the canonical week reset boundary. Settlement crons run at 00:15/00:20 UTC.
 // Returns { start, end } as Date objects for use as SQL parameters.
 function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
   const match = weekId.match(/^(\d{4})-W(\d{2})$/);
@@ -600,8 +600,8 @@ function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
   const week1Monday = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
   const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86_400_000);
 
-  // Offset by 10 minutes to match Pado reset boundary
-  const start = new Date(weekMonday.getTime() + 10 * 60 * 1000);
+  // Week starts at Monday 00:00 UTC. Settlement crons run at 00:15/00:20 UTC.
+  const start = new Date(weekMonday.getTime());
   const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
   return { start, end };
 }
@@ -639,7 +639,7 @@ app.get('/leaderboard/weeks', async (c) => {
       const bounds = getWeekBounds(wId);
       if (!bounds || bounds.start < flooredMin) break;
 
-      const mon = new Date(bounds.start.getTime() - 10 * 60 * 1000); // strip 10min offset for label
+      const mon = new Date(bounds.start.getTime());
       const sun = new Date(mon.getTime() + 6 * 24 * 60 * 60 * 1000);
       const fmt = (d: Date) =>
         d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });

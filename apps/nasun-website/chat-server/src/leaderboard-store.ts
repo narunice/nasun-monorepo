@@ -1072,6 +1072,7 @@ export function getCompetitionResults(
 
 interface RawPnlRow {
   address: string;
+  pool_id: string;
   buy_base: number;
   buy_quote: number;
   sell_base: number;
@@ -1080,8 +1081,8 @@ interface RawPnlRow {
 }
 
 /**
- * Aggregate per-trader buy/sell totals for PnL calculation.
- * Uses weighted average cost basis: PnL = matched_qty * (avg_sell - avg_buy).
+ * Aggregate per-trader per-pool buy/sell totals for PnL calculation.
+ * Grouped by (address, pool_id) to avoid mixing base token decimals across pools.
  */
 export function aggregateTraderPnlRaw(
   cutoffMs: number,
@@ -1100,24 +1101,25 @@ export function aggregateTraderPnlRaw(
     ${wash?.cte ?? ''}
     SELECT
       address,
+      pool_id,
       SUM(CASE WHEN is_buy = 1 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as buy_base,
       SUM(CASE WHEN is_buy = 1 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as buy_quote,
       SUM(CASE WHEN is_buy = 0 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as sell_base,
       SUM(CASE WHEN is_buy = 0 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as sell_quote,
       COUNT(*) as trade_count
     FROM (
-      SELECT taker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
+      SELECT taker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
              taker_is_bid as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
       ${wash?.filterClause ?? ''}
       UNION ALL
-      SELECT maker_address as address, base_quantity as base_qty, quote_quantity as quote_qty,
+      SELECT maker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
              CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
       ${wash?.filterClause ?? ''}
     )
     WHERE 1=1 ${excludePlaceholders}
-    GROUP BY address
+    GROUP BY address, pool_id
     HAVING MIN(buy_base, sell_base) > 0
   `;
 
@@ -1130,8 +1132,9 @@ export function aggregateTraderPnlRaw(
 }
 
 /**
- * Compute realized PnL from raw buy/sell totals.
- * Returns sorted array with PnL values (highest PnL first).
+ * Compute realized PnL per pool then aggregate per trader.
+ * Per-pool isolation prevents decimal mismatch between different base tokens
+ * (e.g. NSOL raw units vs NBTC raw units) from producing phantom profit.
  */
 export function computeTraderPnl(
   cutoffMs: number,
@@ -1141,7 +1144,8 @@ export function computeTraderPnl(
 ): Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> {
   const rawRows = aggregateTraderPnlRaw(cutoffMs, excludedAddresses, washPairs);
 
-  const results: Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> = [];
+  // Accumulate per-pool PnL into per-trader totals
+  const traderMap = new Map<string, { realizedPnlRaw: number; totalCostBasis: number; tradeCount: number }>();
 
   for (const row of rawRows) {
     if (row.buy_base <= 0 || row.sell_base <= 0) continue;
@@ -1152,15 +1156,31 @@ export function computeTraderPnl(
 
     const costBasis = buyRatio * row.buy_quote;
     const revenue = sellRatio * row.sell_quote;
-    const realizedPnlRaw = revenue - costBasis;
+    const poolPnl = revenue - costBasis;
 
-    const pnlPercent = costBasis > 0 ? (realizedPnlRaw / costBasis) * 100 : 0;
+    const existing = traderMap.get(row.address);
+    if (existing) {
+      existing.realizedPnlRaw += poolPnl;
+      existing.totalCostBasis += costBasis;
+      existing.tradeCount += row.trade_count;
+    } else {
+      traderMap.set(row.address, {
+        realizedPnlRaw: poolPnl,
+        totalCostBasis: costBasis,
+        tradeCount: row.trade_count,
+      });
+    }
+  }
 
+  const results: Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> = [];
+
+  for (const [address, data] of traderMap) {
+    const pnlPercent = data.totalCostBasis > 0 ? (data.realizedPnlRaw / data.totalCostBasis) * 100 : 0;
     results.push({
-      address: row.address,
-      realizedPnlRaw: Math.round(realizedPnlRaw), // round to nearest raw unit
-      pnlPercent: Math.round(pnlPercent * 100) / 100, // 2 decimal places
-      tradeCount: row.trade_count,
+      address,
+      realizedPnlRaw: Math.round(data.realizedPnlRaw),
+      pnlPercent: Math.round(pnlPercent * 100) / 100,
+      tradeCount: data.tradeCount,
     });
   }
 
@@ -1416,7 +1436,7 @@ export function getWeekId(timestampMs: number): string {
 
 /**
  * Return the start of the current ISO week as a UTC timestamp (ms).
- * Week start = Monday 00:10 UTC (10-minute offset after snapshot window).
+ * Week start = Monday 00:00 UTC. Settlement crons run at 00:15/00:20 UTC.
  */
 export function getCurrentWeekStart(): number {
   const now = new Date();
@@ -1424,8 +1444,8 @@ export function getCurrentWeekStart(): number {
   const daysSinceMonday = day === 0 ? 6 : day - 1;
   const monday = new Date(now);
   monday.setUTCDate(now.getUTCDate() - daysSinceMonday);
-  monday.setUTCHours(0, 10, 0, 0);
-  // If we're before Monday 00:10 UTC this week, step back one more week
+  monday.setUTCHours(0, 0, 0, 0);
+  // If we're before Monday 00:00 UTC this week, step back one more week
   if (monday.getTime() > now.getTime()) {
     monday.setUTCDate(monday.getUTCDate() - 7);
   }
