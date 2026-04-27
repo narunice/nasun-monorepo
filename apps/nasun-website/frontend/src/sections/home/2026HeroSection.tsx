@@ -79,7 +79,7 @@ function Hero2026Section({
             <div className="flex flex-col items-center">
               <h1
                 className="text-white
-             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-[6px_6px_6px_rgba(0,0,0,0.8)] text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
+             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-[3px_3px_4px_rgba(0,0,0,0.5)] text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
               >
                 NASUN
               </h1>
@@ -88,7 +88,7 @@ function Hero2026Section({
                 Grow the Life You Own
               </h3>
 
-              <p className=" text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-base/snug md:text-lg/snug xl:text-xl/snug">
+              <p className=" text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] text-base/snug md:text-lg/snug xl:text-xl/snug">
                 <span className="block">
                   Nasun is infrastructure built around you.
                 </span>

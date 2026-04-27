@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -48,12 +48,22 @@ function DevNewsEventsSection() {
       ? post._embedded["wp:featuredmedia"][0].source_url
       : "";
 
+  useEffect(() => {
+    if (postCount > 1 && sliderRef.current) {
+      sliderRef.current.slickPlay();
+    }
+  }, [postCount]);
+
   const sliderSettings = {
     dots: false,
     infinite: true,
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 4000,
+    pauseOnHover: false,
+    pauseOnFocus: false,
     arrows: false,
     afterChange: (index: number) => setActiveIndex(index),
   };

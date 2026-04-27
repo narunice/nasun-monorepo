@@ -8,7 +8,7 @@ const visionVideoDesktop = "/videos/Home-Wave1-rf24.mp4";
 const visionVideoMobile = "/videos/Home-Wave1-mobile-rf28.mp4";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import visionTriangle from "../../assets/images/home-vision-triangle.png";
+import visionTriangle from "../../../assets/images/home-vision-triangle.png";
 
 interface VisionSectionV2Props {
   shouldLoadVideo?: boolean;

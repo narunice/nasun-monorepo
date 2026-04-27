@@ -9,8 +9,8 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
-import { stripHtmlTags } from "../../utils/wordpressContent";
+import usePosts, { WP_CATEGORIES } from "../../../hooks/wordpress/usePosts";
+import { stripHtmlTags } from "../../../utils/wordpressContent";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const CustomArrow = ({

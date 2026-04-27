@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
@@ -10,9 +10,9 @@ import { SectionTitle } from "@/components/ui/SectionTitle";
 import { Button } from "@/components/ui/button";
 import { TagV2 } from "@/components/ui/tag-v2";
 import { ButtonV3 } from "@/components/ui/button-v3";
-import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
-import { Post } from "../../types/post.d";
-import { stripHtmlTags } from "../../utils/wordpressContent";
+import usePosts, { WP_CATEGORIES } from "../../../hooks/wordpress/usePosts";
+import { Post } from "../../../types/post.d";
+import { stripHtmlTags } from "../../../utils/wordpressContent";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 const CustomArrow = ({
@@ -43,6 +43,14 @@ function NewsEventsSection() {
     [WP_CATEGORIES.NEWS, WP_CATEGORIES.EVENTS],
     6,
   );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const sliderRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (posts && posts.length > 0 && sliderRef.current) {
+      sliderRef.current.slickPlay();
+    }
+  }, [posts]);
 
   // WordPress 카테고리 추출 헬퍼 함수
   const getCategory = (post: Post): string => {
@@ -71,6 +79,10 @@ function NewsEventsSection() {
     speed: 500,
     slidesToShow: 1,
     slidesToScroll: 1,
+    autoplay: true,
+    autoplaySpeed: 4000,
+    pauseOnHover: false,
+    pauseOnFocus: false,
     arrows: true,
     prevArrow: <CustomArrow direction="left" />,
     nextArrow: <CustomArrow direction="right" />,
@@ -101,7 +113,7 @@ function NewsEventsSection() {
             <div className="w-full text-center py-12 text-gray-400">No news posts available.</div>
           ) : (
             <div className="w-full carousel-dots">
-              <Slider {...sliderSettings}>
+              <Slider ref={sliderRef} {...sliderSettings}>
                 {posts.map((post) => {
                   const imageUrl = post._embedded?.["wp:featuredmedia"]?.[0]?.source_url || "";
 
