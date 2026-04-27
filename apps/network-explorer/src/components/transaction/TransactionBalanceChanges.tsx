@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { SectionBox } from "../ui/SectionBox";
-import { formatTokenBalance, truncateAddress } from "../../lib/format";
+import { formatTokenBalance, truncateAddress, formatObjectType } from "../../lib/format";
 import type { BalanceChange } from "@mysten/sui/client";
 
 interface TransactionBalanceChangesProps {
@@ -65,7 +65,7 @@ export default function TransactionBalanceChanges({
               return (
                 <div key={idx} className="flex items-baseline justify-between">
                   <span className="text-xs text-muted-foreground font-mono truncate">
-                    {change.coinType}
+                    {formatObjectType(change.coinType)}
                   </span>
                   <span
                     className={`font-mono text-lg font-semibold whitespace-nowrap ${
