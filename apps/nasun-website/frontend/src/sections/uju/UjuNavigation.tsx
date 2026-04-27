@@ -1,12 +1,12 @@
-import { useNotificationStore } from './notifications/notificationStore';
+import { useNotificationStore } from "./notifications/notificationStore";
 
 const TABS = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'activity',  label: 'Activity' },
-  { id: 'profile',   label: 'Profile' },
+  { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
+  { id: "activity",  label: "Activity",  icon: ActivityIcon },
+  { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
-type TabId = typeof TABS[number]['id'];
+type TabId = typeof TABS[number]["id"];
 
 interface UjuNavigationProps {
   activeTab: TabId;
@@ -18,57 +18,108 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
 
   return (
     <>
-      {/* Desktop: sticky top bar below Navbar */}
-      <nav className="hidden md:block sticky top-[50px] z-40 bg-uju-card border-b border-uju-border">
-        <div className="max-w-5xl mx-auto px-4 flex gap-1 h-[49px]">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onTabChange(t.id)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                activeTab === t.id
-                  ? 'border-pado-3 text-pado-3'
-                  : 'border-transparent text-uju-secondary hover:text-uju-primary'
-              }`}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                {t.label}
-                {t.id === 'profile' && hasUnread && (
-                  <span className="w-2 h-2 rounded-full bg-nasun-scarlet shrink-0" aria-label="Unread notifications" />
-                )}
-              </span>
-            </button>
-          ))}
+      {/* Desktop: sticky top bar below site Navbar */}
+      <nav
+        className="hidden md:block sticky top-[50px] z-40 bg-uju-card/90 backdrop-blur border-b border-uju-border"
+        aria-label="uju sections"
+      >
+        <div className="max-w-6xl mx-auto px-4 flex gap-1 h-[52px]">
+          {TABS.map((t) => {
+            const isActive = activeTab === t.id;
+            const showDot = t.id === "profile" && hasUnread;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onTabChange(t.id)}
+                aria-current={isActive ? "page" : undefined}
+                className={`relative px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors min-h-[44px] ${
+                  isActive
+                    ? "border-pado-violet text-pado-lavender"
+                    : "border-transparent text-uju-secondary hover:text-uju-primary"
+                }`}
+              >
+                <span className="inline-flex items-center gap-2">
+                  {t.label}
+                  {showDot && (
+                    <span className="w-2 h-2 rounded-full bg-nasun-coral shrink-0" aria-label="Unread notifications" />
+                  )}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
-      {/* Mobile: fixed bottom bar */}
+      {/* Mobile: fixed bottom tab bar with icons + labels for clear targets */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-uju-card border-t border-uju-border"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-uju-card/95 backdrop-blur border-t border-uju-border"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        aria-label="uju sections"
       >
         <div className="flex">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => onTabChange(t.id)}
-              className={`flex-1 py-3 text-sm font-medium transition-colors ${
-                activeTab === t.id ? 'text-pado-3' : 'text-uju-secondary'
-              }`}
-            >
-              <span className="inline-flex items-center justify-center gap-1.5">
-                {t.label}
-                {t.id === 'profile' && hasUnread && (
-                  <span className="w-2 h-2 rounded-full bg-nasun-scarlet shrink-0" aria-label="Unread notifications" />
-                )}
-              </span>
-            </button>
-          ))}
+          {TABS.map((t) => {
+            const isActive = activeTab === t.id;
+            const Icon = t.icon;
+            const showDot = t.id === "profile" && hasUnread;
+            return (
+              <button
+                key={t.id}
+                type="button"
+                onClick={() => onTabChange(t.id)}
+                aria-current={isActive ? "page" : undefined}
+                className={`flex-1 py-2.5 min-h-[56px] flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
+                  isActive ? "text-pado-lavender" : "text-uju-secondary"
+                }`}
+              >
+                <span className="relative">
+                  <Icon active={isActive} />
+                  {showDot && (
+                    <span
+                      className="absolute -top-0.5 -right-1 w-2 h-2 rounded-full bg-nasun-coral"
+                      aria-label="Unread notifications"
+                    />
+                  )}
+                </span>
+                <span>{t.label}</span>
+              </button>
+            );
+          })}
         </div>
       </nav>
 
       {/* Mobile bottom bar spacer */}
-      <div className="md:hidden h-16" />
+      <div className="md:hidden h-[64px]" aria-hidden="true" />
     </>
+  );
+}
+
+interface IconProps { active: boolean }
+
+function DashboardIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="7" height="9" rx="1.5" />
+      <rect x="14" y="3" width="7" height="5" rx="1.5" />
+      <rect x="14" y="12" width="7" height="9" rx="1.5" />
+      <rect x="3" y="16" width="7" height="5" rx="1.5" />
+    </svg>
+  );
+}
+
+function ActivityIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 12h4l3-8 4 16 3-8h4" />
+    </svg>
+  );
+}
+
+function ProfileIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 21v-1a7 7 0 0 1 14 0v1" />
+    </svg>
   );
 }

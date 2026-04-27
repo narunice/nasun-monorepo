@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { UjuCard } from '../shared/UjuCard';
-import { MAX_PINNED, type UseAppDirectoryResult } from '../apps/useAppDirectory';
-import { CHAIN_LABEL, CHAIN_BADGE_CLASS } from '../apps/appRegistry';
-import { AppDirectoryModal } from '../apps/AppDirectoryModal';
+import { useState } from "react";
+import { UjuCard, UjuButton, UjuSectionHeader } from "../shared";
+import { MAX_PINNED, type UseAppDirectoryResult } from "../apps/useAppDirectory";
+import { CHAIN_LABEL, CHAIN_BADGE_CLASS } from "../apps/appRegistry";
+import { AppDirectoryModal } from "../apps/AppDirectoryModal";
 
-interface ActivatedAppsSectionProps extends Omit<UseAppDirectoryResult, 'pinnedIds'> {}
+interface ActivatedAppsSectionProps extends Omit<UseAppDirectoryResult, "pinnedIds"> {}
 
 export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }: ActivatedAppsSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -12,54 +12,51 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
   return (
     <>
       <UjuCard>
-        <div className="flex items-center justify-between mb-3">
-          <p className="text-sm font-medium text-uju-secondary">Activated Apps</p>
-          {pinnedApps.length > 0 && (
-            <span className="text-sm text-uju-secondary">
-              {pinnedApps.length} / {MAX_PINNED}
-            </span>
-          )}
-        </div>
+        <UjuSectionHeader
+          accent
+          title="Activated Apps"
+          trailing={
+            pinnedApps.length > 0 ? (
+              <span className="text-sm font-medium text-pado-lavender tabular-nums">
+                {pinnedApps.length} / {MAX_PINNED}
+              </span>
+            ) : null
+          }
+        />
 
         {pinnedApps.length === 0 ? (
-          <div className="py-4 text-center space-y-2">
+          <div className="py-6 text-center space-y-3">
             <p className="text-sm text-uju-secondary">No apps pinned yet.</p>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="text-sm text-pado-3 hover:underline"
-            >
+            <UjuButton variant="secondary" size="sm" onClick={() => setModalOpen(true)}>
               Browse App Directory
-            </button>
+            </UjuButton>
           </div>
         ) : (
           <>
-            <ul className="space-y-2 mb-3">
+            <ul className="space-y-2 mb-4">
               {pinnedApps.map((app) => (
-                <li key={app.id} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2">
-                    <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${CHAIN_BADGE_CLASS[app.chain]}`}>
+                <li key={app.id} className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-bg/40 border border-uju-border/60 hover:border-pado-violet/30 transition-colors">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}>
                       {CHAIN_LABEL[app.chain]}
                     </span>
-                    <span className="text-sm font-medium text-uju-primary">{app.name}</span>
+                    <span className="text-sm font-medium text-uju-primary truncate">{app.name}</span>
                   </div>
                   <a
                     href={app.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Open ${app.name}, opens in new tab`}
-                    className="text-sm text-pado-3 hover:underline"
+                    className="text-sm font-medium text-pado-3 hover:text-pado-lavender transition-colors shrink-0"
                   >
-                    Open
+                    Open ↗
                   </a>
                 </li>
               ))}
             </ul>
-            <button
-              onClick={() => setModalOpen(true)}
-              className="w-full py-2 text-sm text-uju-secondary border border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
-            >
+            <UjuButton variant="ghost" size="sm" fullWidth onClick={() => setModalOpen(true)}>
               Manage Apps
-            </button>
+            </UjuButton>
           </>
         )}
       </UjuCard>

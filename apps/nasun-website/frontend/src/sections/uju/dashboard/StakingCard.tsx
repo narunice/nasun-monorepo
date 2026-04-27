@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useWallet, useZkLogin, useStaking } from "@nasun/wallet";
-import { UjuCard } from "../shared/UjuCard";
+import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader } from "../shared";
 import { StakeModal } from "./staking/StakeModal";
 
 const SUI_VALIDATORS_URL = "https://suiscan.xyz/testnet/validators";
@@ -9,23 +9,39 @@ const MARINADE_STAKING_URL = "https://marinade.finance";
 const SUI_APY_DISPLAY = "~3.5%";
 const ETH_LIDO_APY_DISPLAY = "~3.8%";
 
-function NetworkBadge({ label }: { label: string }) {
+interface RowProps {
+  symbol: string;
+  network?: string;
+  apy?: string;
+  trailing: React.ReactNode;
+}
+
+function Row({ symbol, network, apy, trailing }: RowProps) {
   return (
-    <span className="text-xs text-uju-secondary border border-uju-border rounded px-1 py-0.5">
-      {label}
-    </span>
+    <li className="flex items-center justify-between gap-3 py-3 border-b border-uju-border/50 last:border-0">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-sm font-semibold text-uju-primary">{symbol}</span>
+        {network && <UjuBadge tone="violet">{network}</UjuBadge>}
+        {apy && (
+          <span className="text-sm text-pado-3 tabular-nums hidden sm:inline">
+            {apy}
+          </span>
+        )}
+      </div>
+      <div className="flex items-center gap-2 shrink-0">{trailing}</div>
+    </li>
   );
 }
 
-function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+function ExternalLink({ href, label }: { href: string; label: string }) {
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-sm text-pado-3 hover:underline"
+      className="text-sm font-medium text-pado-3 hover:text-pado-4 transition-colors"
     >
-      {children}
+      {label} ↗
     </a>
   );
 }
@@ -38,70 +54,50 @@ export function StakingCard() {
 
   const isNasunConnected = (status === "unlocked" && !!account) || isZkConnected;
 
+  const nasunTrailing = (
+    <>
+      {isLoading ? (
+        <span className="text-sm text-uju-secondary">…</span>
+      ) : isNasunConnected ? (
+        <span className="text-sm text-uju-primary tabular-nums">
+          {summary?.formattedTotalStaked ?? "0.0000"}
+          {summary?.formattedTotalRewards && summary.formattedTotalRewards !== "0"
+            ? ` +${summary.formattedTotalRewards}`
+            : ""}
+        </span>
+      ) : (
+        <span className="text-sm text-uju-secondary">Not connected</span>
+      )}
+      <UjuButton size="sm" onClick={() => setModalOpen(true)}>
+        Stake
+      </UjuButton>
+    </>
+  );
+
   return (
     <>
       <UjuCard>
-        <p className="text-sm font-medium text-uju-secondary mb-3">Staking</p>
+        <UjuSectionHeader accent title="Staking" subtitle="Earn rewards across networks" />
 
-        <ul className="space-y-3">
-          {/* NSN */}
-          <li className="flex items-center justify-between">
-            <span className="text-sm text-uju-secondary">NSN</span>
-            <div className="flex items-center gap-2">
-              {isLoading ? (
-                <span className="text-sm text-uju-secondary">-</span>
-              ) : isNasunConnected ? (
-                <span className="text-sm font-medium text-uju-primary tabular-nums">
-                  {summary?.formattedTotalStaked ?? "0.0000"} staked
-                  {summary?.formattedTotalRewards && summary.formattedTotalRewards !== "0"
-                    ? ` +${summary.formattedTotalRewards}`
-                    : ""}
-                </span>
-              ) : (
-                <span className="text-sm text-uju-secondary">Not connected</span>
-              )}
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="text-sm text-pado-3 hover:underline"
-              >
-                Stake
-              </button>
-            </div>
-          </li>
-
-          {/* SUI */}
-          <li className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary">SUI</span>
-              <NetworkBadge label="Testnet" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary tabular-nums">{SUI_APY_DISPLAY}</span>
-              <ExternalLink href={SUI_VALIDATORS_URL}>Open</ExternalLink>
-            </div>
-          </li>
-
-          {/* ETH */}
-          <li className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary">ETH</span>
-              <NetworkBadge label="Sepolia" />
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary tabular-nums">{ETH_LIDO_APY_DISPLAY}</span>
-              <ExternalLink href={LIDO_STAKING_URL}>Open</ExternalLink>
-            </div>
-          </li>
-
-          {/* SOL */}
-          <li className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary">SOL</span>
-              <NetworkBadge label="Devnet" />
-            </div>
-            <ExternalLink href={MARINADE_STAKING_URL}>Open</ExternalLink>
-          </li>
+        <ul className="-mt-1">
+          <Row symbol="NSN" trailing={nasunTrailing} />
+          <Row
+            symbol="SUI"
+            network="Testnet"
+            apy={SUI_APY_DISPLAY}
+            trailing={<ExternalLink href={SUI_VALIDATORS_URL} label="Open" />}
+          />
+          <Row
+            symbol="ETH"
+            network="Sepolia"
+            apy={ETH_LIDO_APY_DISPLAY}
+            trailing={<ExternalLink href={LIDO_STAKING_URL} label="Open" />}
+          />
+          <Row
+            symbol="SOL"
+            network="Devnet"
+            trailing={<ExternalLink href={MARINADE_STAKING_URL} label="Open" />}
+          />
         </ul>
       </UjuCard>
 
