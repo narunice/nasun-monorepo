@@ -37,7 +37,7 @@ export function tierToColors(tier: CelebrationTier): readonly string[] {
     case 'big':
       return CELEBRATION_COLORS.gold
     default:
-      return CELEBRATION_COLORS.emerald
+      return CELEBRATION_COLORS.goldEmerald
   }
 }
 
