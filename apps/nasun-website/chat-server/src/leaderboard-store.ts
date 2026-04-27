@@ -511,6 +511,75 @@ export function aggregateTraderVolume(
 }
 
 /**
+ * Variant of aggregateTraderVolume for weekly scoring.
+ * trade_count is capped per calendar day (UTC) using ROW_NUMBER window function,
+ * so a trader doing all their trades on day 1 earns at most dailyCap × 1 counted trades,
+ * not dailyCap × 7. Volume and unique_pools are still summed over all trades.
+ */
+export function aggregateWeeklyTraderVolume(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+  dailyCap: number,
+  limit: number = 100,
+  washPairs?: Set<string>,
+): AggregatedTrader[] {
+  const ldb = getLeaderboardDb();
+
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+  const wash = buildWashPairsCte(washPairs);
+  const cutoff = cutoffMs > 0 ? cutoffMs : 0;
+
+  // Compose CTEs: wash_pairs (if present) then all_fills with per-day ROW_NUMBER.
+  const ctePrefix = wash ? `${wash.cte},` : 'WITH';
+  const filterClause = wash?.filterClause ?? '';
+
+  const query = `
+    ${ctePrefix} all_fills AS (
+      SELECT address, pool_id, CAST(quote_volume AS INTEGER) as qv, timestamp_ms,
+             ROW_NUMBER() OVER (
+               PARTITION BY address, date(timestamp_ms / 1000, 'unixepoch')
+               ORDER BY timestamp_ms
+             ) AS day_rank
+      FROM (
+        SELECT maker_address AS address, quote_quantity AS quote_volume, pool_id, timestamp_ms,
+               maker_address, taker_address
+        FROM trade_fills WHERE timestamp_ms >= ?
+        ${filterClause}
+        UNION ALL
+        SELECT taker_address AS address, quote_quantity AS quote_volume, pool_id, timestamp_ms,
+               maker_address, taker_address
+        FROM trade_fills WHERE timestamp_ms >= ?
+        ${filterClause}
+      )
+      WHERE 1=1 ${excludePlaceholders}
+    )
+    SELECT
+      address,
+      CAST(SUM(qv) AS TEXT) AS volume_quote,
+      SUM(CASE WHEN day_rank <= ? THEN 1 ELSE 0 END) AS trade_count,
+      COUNT(DISTINCT pool_id) AS unique_pools,
+      MAX(timestamp_ms) AS last_trade_at
+    FROM all_fills
+    GROUP BY address
+    ORDER BY SUM(qv) DESC
+    LIMIT ?
+  `;
+
+  const params = [
+    ...(wash?.params ?? []),
+    cutoff, cutoff,
+    ...excludeList,
+    dailyCap,
+    limit,
+  ];
+
+  return ldb.prepare(query).all(...params) as AggregatedTrader[];
+}
+
+/**
  * Get current ranks for a period (for prev_rank tracking).
  */
 export function getCurrentRanks(period: string): Map<string, number> {

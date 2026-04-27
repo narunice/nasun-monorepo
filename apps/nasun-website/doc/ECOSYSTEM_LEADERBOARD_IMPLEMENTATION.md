@@ -1,6 +1,6 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified)
+Last updated: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified; week boundary changed Mon 00:10 UTC → 00:00 UTC; settle-ecosystem automated via cron Mon 00:20 UTC)
 
 ## Overview
 
@@ -13,8 +13,8 @@ This is distinct from two other leaderboard systems in the same product:
 
 | System                   | Data source                  | Reset                  | Scope                                       |
 | ------------------------ | ---------------------------- | ---------------------- | ------------------------------------------- |
-| Ecosystem Leaderboard    | PostgreSQL `activity_points` | Weekly (Mon 00:10 UTC) | On-chain diversity + game volume + creator posts |
-| Pado Leaderboard         | SQLite (chat-server)         | Weekly (Mon 00:10 UTC) | DEX trading volume/PnL                      |
+| Ecosystem Leaderboard    | PostgreSQL `activity_points` | Weekly (Mon 00:00 UTC) | On-chain diversity + game volume + creator posts |
+| Pado Leaderboard         | SQLite (chat-server)         | Weekly (Mon 00:00 UTC) | DEX trading volume/PnL                      |
 | Community Leaderboard V3 | DynamoDB                     | Seasonal               | X/Twitter social posts                      |
 
 ---
@@ -118,8 +118,8 @@ all env-overridable):
 
 ## Week Boundaries
 
-Reset cadence: every **Monday 00:10 UTC** (10-minute offset matches Pado Score
-Leaderboard reset).
+Reset cadence: every **Monday 00:00 UTC** (midnight, same boundary as Pado Score
+Leaderboard).
 
 ### Week ID format
 
@@ -137,18 +137,15 @@ const jan4Day = jan4.getUTCDay() || 7;           // Mon=1..Sun=7
 const week1Monday = jan4 - (jan4Day - 1) days;   // backtrack to Monday
 const weekMonday = week1Monday + (week - 1) * 7 days;
 
-// 2. Apply 10-minute offset
-const start = weekMonday + 10 minutes;
+// 2. Week starts exactly at Monday midnight UTC (no offset)
+const start = weekMonday;
 const end   = start + 7 days;
 ```
 
 ### activeDays calculation (epoch-based)
 
-Calendar `date_trunc('day', ...)` is NOT used for `active_days` because the 10-minute
-offset causes the week window to straddle two calendar days at both boundaries, allowing
-up to 8 distinct calendar days within a 7-day window.
-
-Instead, epoch-based day slots are used:
+Epoch-based day slots are used instead of calendar `date_trunc('day', ...)` to ensure
+timezone-independent, deterministic slot assignment regardless of UTC boundary alignment:
 
 ```sql
 FLOOR(
@@ -449,8 +446,8 @@ compiled correctly despite this error.
 
 **Script:** `apps/network-explorer/api-server/src/scripts/settle-ecosystem.ts`
 
-Manually run after a week ends (settles a *completed* ISO week only — refuses
-the current in-progress week).
+Automatically run via cron (Monday 00:20 UTC) after the week ends. Settles a *completed*
+ISO week only — refuses the current in-progress week. Manual invocation when needed:
 
 ```bash
 cd ~/explorer-api && set -a && source .env && set +a

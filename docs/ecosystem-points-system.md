@@ -1,7 +1,7 @@
 # Nasun Ecosystem Points System Technical Specification
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; Staking V2 티어/이원화 추가; 정산 자격에서 소셜 계정 요건 폐지)
+**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; Staking V2 티어/이원화 추가; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 → 00:00 UTC 변경; settle-pado/ecosystem cron 자동화 월요일 00:15/00:20 UTC; Pado Score 공식 개편 - PnL 풀별 독립 계산/거래 daily cap/PER_TRADE 2/PER_10PCT_RETURN 200 - 상세는 [pado-score-leaderboard.md](pado-score-leaderboard.md) 참조)
 **핵심 경로**:
 - Backend API: `apps/network-explorer/api-server/src/routes/ecosystem.ts`
 - Multiplier Config: `apps/network-explorer/api-server/src/config/ecosystem.ts`

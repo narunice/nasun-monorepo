@@ -1,7 +1,7 @@
 # Pado Score Leaderboard - Technical Reference
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지)
+**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 UTC → 00:00 UTC 변경; settle-pado cron 자동화 월요일 00:15 UTC; PnL 크로스-풀 decimal 버그 수정(풀별 독립 계산); DAILY_TRADE_CAP=24 SQL per-day 방식 도입; PER_TRADE 4→2; PER_600_PNL 100→25; PER_10PCT_RETURN 100→200)
 **관련 문서**: [ecosystem-points-system.md](ecosystem-points-system.md)
 
 ---
@@ -30,7 +30,7 @@ REST API: /api/pado/leaderboard/score/weekly/:weekId
 React: useScoreLeaderboard hook
     ↓
 UI: ScoreLeaderboardTable.tsx (Pado App)
-    ↓ (주간 종료 후 수동 실행)
+    ↓ (주간 종료 후 자동 실행, 월요일 00:15 UTC cron)
 Settlement: settle-pado.ts
     ↓
 PostgreSQL: activity_points (Ecosystem Points 지급)
@@ -45,42 +45,65 @@ PostgreSQL: activity_points (Ecosystem Points 지급)
 ```
 totalScore = tradePoints + volumePoints + diversityPoints + pnlScore
 
-tradePoints   = 100 (첫 거래 보너스, 1건 이상일 때) + trade_count * 10
-volumePoints  = floor(volume_raw / 1,000,000,000) * 5
-                (NUSDC 6 decimals 기준, 1 USD = 1e6 raw, 1K USD = 1e9 raw)
+tradePoints     = 50 (첫 거래 보너스, 1건 이상일 때)
+                + capped_trade_count * 2
+                  (capped_trade_count: SQL ROW_NUMBER() OVER (PARTITION BY address, 날짜(UTC))
+                   하루에 최초 24건만 인정. 몰아치기 불가 - 초과분은 다음날로 이월 불가)
+
+volumePoints    = floor(volume_raw / 1,000,000,000) * 5
+                  (NUSDC 6 decimals 기준, $1K = 1e9 raw)
+
 diversityPoints = unique_pools * 25
-pnlScore      = floor(realizedPnl / 1e9) * 100   (실현 수익 > 0 일 때, $1K당 100pt)
-              + floor(pnlPercent / 10) * 50      (수익률 > 0 일 때, 10%당 50pt)
-              - 20                               (pnl_percent <= -20% 일 때, 최소 0)
+
+pnlScore        = floor(realizedPnl / 6e8) * 25    (실현 수익 > 0, $600당 25pt)
+                + floor(pnlPercent / 10) * 200      (수익률 > 0, 10%당 200pt)
+                - lossPenalty                        (floor 0)
+
+lossPenalty:
+  pnlPercent <= -5%  →  5pt
+  pnlPercent <= -10% → 10pt
+  pnlPercent <= -15% → 15pt
+  pnlPercent <= -20% → 20pt
 ```
+
+**PnL 풀별 독립 계산**: PnL은 NBTC/NETH/NSOL/NASUN 각 풀에서 독립적으로 계산한 뒤 합산합니다. 풀 간 base token decimal이 다르므로(NSOL raw 단위 vs NBTC raw 단위), 풀을 섞어 집계하면 phantom profit이 발생합니다. `aggregateTraderPnlRaw()`가 `GROUP BY address, pool_id`로 풀별 집계 후 `computeTraderPnl()`에서 합산합니다.
 
 **Loss Penalty**는 주간 점수 계산에만 적용되며, 정산(Ecosystem Points) 단계로 전파되지 않습니다.
 
-**Wash-trading 필터 (Self-trade Exclusion)**: 동일한 `identityId`에 연결된 지갑 간의 maker/taker 거래는 거래량/거래수 집계와 PnL 계산에서 모두 제외됩니다. `chat-server/identity-resolver.ts`의 `buildSameIdentityPairs()`가 identity 캐시 갱신 시 양방향 페어 set을 구축하여 [aggregator.ts](apps/nasun-website/chat-server/src/aggregator.ts)의 `aggregateTraderVolume`, `computeTraderPnl` 양쪽에 전달합니다.
+**Wash-trading 필터 (Self-trade Exclusion)**: 동일한 `identityId`에 연결된 지갑 간의 maker/taker 거래는 거래량/거래수 집계와 PnL 계산에서 모두 제외됩니다. `chat-server/identity-resolver.ts`의 `buildSameIdentityPairs()`가 identity 캐시 갱신 시 양방향 페어 set을 구축하여 `aggregateWeeklyTraderVolume`, `computeTraderPnl` 양쪽에 전달합니다.
 
 POINTS 상수 정의 위치: `apps/nasun-website/chat-server/src/leaderboard-types.ts` (`POINTS` 객체).
-2026-04 기준 PnL 가중치는 상향 조정됨 (`PER_1K_PNL: 20→100`, `PER_10PCT_RETURN: 15→50`).
+
+| 상수 | 값 | 설명 |
+|------|----|------|
+| `FIRST_TRADE_BONUS` | 50 | 첫 거래 1회 보너스 |
+| `DAILY_TRADE_CAP` | 24 | 하루 인정 거래수 상한 |
+| `PER_TRADE` | 2 | 거래 1건당 pt |
+| `PER_1K_VOLUME` | 5 | $1,000 거래량당 pt |
+| `PER_UNIQUE_POOL` | 25 | 고유 풀 1개당 pt |
+| `PER_600_PNL` | 25 | $600 실현 수익당 pt |
+| `PER_10PCT_RETURN` | 200 | 수익률 10%당 pt |
 
 ---
 
 ## 4. 주간 사이클 (Week Lifecycle)
 
-- **주 시작**: 매주 월요일 00:10 UTC
+- **주 시작**: 매주 월요일 00:00 UTC
 - **주 ID 형식**: ISO 8601 (`YYYY-Www`, 예: `2026-W17`)
-- **Grace Period**: 주 시작 후 12시간 (00:10 ~ 12:10 UTC)
+- **Grace Period**: 주 시작 후 12시간 (00:00 ~ 12:00 UTC)
   - 이 기간 동안 UI는 "Week just started" 메시지와 함께 전 주 최종 순위를 표시
   - 12시간 경과 후 현재 주 실시간 데이터로 전환
 
 ```
-월요일 00:10 UTC  주 시작 + 집계 시작
+월요일 00:00 UTC  주 시작 + 집계 시작
        ↓
        (60초 간격 집계 지속)
        ↓
 일요일 23:59 UTC  주 종료 (데이터 확정)
        ↓
-다음 월요일 00:10 UTC  새 주 시작, 이전 주 frozen
-       ↓ (수동 실행)
-settle-pado.ts --week YYYY-Www  → Ecosystem Points 지급
+다음 월요일 00:00 UTC  새 주 시작, 이전 주 frozen
+       ↓ (자동 실행, 월요일 00:15 UTC cron)
+settle-pado.ts --week auto  → Ecosystem Points 지급
 ```
 
 ---
@@ -240,12 +263,13 @@ setInterval(() => {
 
 집계 단계:
 1. `trade_fills`에서 `timestamp >= weekStart` 필터링
-2. `aggregateTraderVolume(weekStart)` - 거래량/거래수/풀 다양성 집계
-3. `computeTraderPnl(weekStart)` - 주간 창(window)의 PnL 계산
-4. 점수 공식 적용 → `total_score` 산출
-5. `total_score DESC` 정렬 → `rank` 할당
-6. 이전 주(`prev_rank`) 비교 → `rankChange` 계산
-7. `replaceWeeklyTraderScores(weekId, rankedTraders)` - 덮어쓰기
+2. `aggregateWeeklyTraderVolume(weekStart, DAILY_TRADE_CAP)` - 거래량/풀 다양성 집계 + SQL ROW_NUMBER per-day cap 적용
+3. `resolveIdentityIds()` - 미등록 지갑 필터링
+4. `computeTraderPnl(weekStart)` - 풀별 독립 PnL 계산 후 합산 (cross-pool decimal 오염 방지)
+5. 점수 공식 적용 → `total_score` 산출
+6. `total_score DESC` 정렬 → `rank` 할당
+7. 이전 주(`prev_rank`) 비교 → `rankChange` 계산
+8. `replaceWeeklyTraderScores(weekId, rankedTraders)` - 덮어쓰기
 
 ---
 
@@ -253,7 +277,8 @@ setInterval(() => {
 
 **스크립트**: `apps/network-explorer/api-server/src/scripts/settle-pado.ts`
 
-**실행 방법** (수동):
+**실행**: 매주 월요일 00:15 UTC에 node-3 crontab에서 자동 실행됩니다. 수동 실행이 필요한 경우:
+
 ```bash
 # 특정 주 정산
 npx tsx src/scripts/settle-pado.ts --week 2026-W17
