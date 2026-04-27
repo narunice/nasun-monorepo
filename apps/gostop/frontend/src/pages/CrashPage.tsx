@@ -108,18 +108,18 @@ export default function CrashPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <header className="panel p-6 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex items-center gap-5">
+      <header className="panel p-4 sm:p-6 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex items-center gap-4 sm:gap-5">
         <img
           src={crashThumb}
           alt=""
           aria-hidden
-          className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover border border-gold-subtle shrink-0"
+          className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl object-cover border border-gold-subtle shrink-0"
         />
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
             Live Round
           </p>
-          <h1 className="font-display text-3xl md:text-4xl text-gold">Crash</h1>
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-gold">Crash</h1>
           <p className="text-sm text-neutral-200 mt-2 italic">
             Go or stop. One decision, one multiplier.
           </p>
@@ -134,10 +134,10 @@ export default function CrashPage() {
 
       <div className="text-center">
         {state === 'FLYING' ? (
-          <span className={`text-5xl font-bold ${multiplierColor}`}>{formatMultiplier(crash.liveMultiplierBps)}</span>
+          <span className={`text-4xl sm:text-5xl font-bold ${multiplierColor}`}>{formatMultiplier(crash.liveMultiplierBps)}</span>
         ) : state === 'CRASHED' || state === 'RESOLVED' ? (
           <div className="space-y-1">
-            <div className="text-5xl font-bold text-red-400">
+            <div className="text-4xl sm:text-5xl font-bold text-red-400">
               {/* Server omits crashPointBps from the 'crashed' event, so during CRASHED
                   recentRounds[0] still points to the previous round. Use the frozen
                   liveMultiplierBps (rAF stops at crash) until RESOLVED commits the
@@ -155,7 +155,7 @@ export default function CrashPage() {
         )}
       </div>
 
-      <div className="bg-gray-800 rounded-xl p-5 space-y-4">
+      <div className="bg-gray-800 rounded-xl p-4 sm:p-5 space-y-4">
         {!crash.isWalletConnected ? (
           <WalletConnect />
         ) : crash.hasCashedOut ? (
@@ -168,7 +168,7 @@ export default function CrashPage() {
               <button
                 onClick={handleCashOut}
                 disabled={cashOutDisabled}
-                className="w-full sm:min-w-[22rem] py-5 px-10 text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
+                className="w-full sm:min-w-[22rem] py-4 sm:py-5 px-6 sm:px-10 text-xl sm:text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
               >
                 {crash.phase === 'cashing_out'
                   ? 'Cashing out...'
@@ -517,7 +517,7 @@ function RoundHistory({ recentRounds }: { recentRounds: Array<{ roundId: number;
           const isMid = r.crashPointBps >= 15_000
           const bg = isHigh ? 'bg-green-700' : isMid ? 'bg-yellow-700' : 'bg-red-800'
           return (
-            <span key={r.roundId} className={`${bg} text-white text-xs px-2 py-1 rounded font-mono`}>
+            <span key={r.roundId} className={`${bg} text-white text-sm px-2 py-1 rounded font-mono`}>
               {formatMultiplier(r.crashPointBps)}
             </span>
           )

@@ -55,7 +55,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 max-w-6xl w-full mx-auto px-5 py-10">
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-5 py-6 sm:py-10">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/floor" element={<FloorPage />} />

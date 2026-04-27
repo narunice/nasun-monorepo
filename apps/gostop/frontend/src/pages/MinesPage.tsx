@@ -83,9 +83,12 @@ export default function MinesPage() {
     }
   }, [lastFinish, celebrate, invalidateHistory])
 
-  // Cap bet so max theoretical payout respects MINES_MAX_SINGLE_PAYOUT.
+  // Contract enforces bet_amount <= cap.max_single_payout. Payout is silently
+  // clamped at cashout, so the bet ceiling is just the raw payout cap rather
+  // than cap/maxMultiplier (which collapses to ~0 at 7+ mines).
   const maxMul = maxMultiplierBps(mineCount) / 10_000
-  const maxBetAllowed = Number(MINES_MAX_SINGLE_PAYOUT) / 1_000_000 / maxMul
+  const payoutCapNusdc = Number(MINES_MAX_SINGLE_PAYOUT) / 1_000_000
+  const maxBetAllowed = payoutCapNusdc
   const betCapped = Math.min(bet, maxBetAllowed)
   const betMist = BigInt(Math.floor(betCapped * 1_000_000))
 
@@ -138,6 +141,7 @@ export default function MinesPage() {
       {!session ? (
         <BetPanel
           bet={bet}
+          payoutCapNusdc={payoutCapNusdc}
           mineCount={mineCount}
           maxBetAllowed={maxBetAllowed}
           maxMul={maxMul}
@@ -195,6 +199,7 @@ function BetPanel({
   mineCount,
   maxBetAllowed,
   maxMul,
+  payoutCapNusdc,
   isWalletConnected,
   isCreating,
   onBetChange,
@@ -205,6 +210,7 @@ function BetPanel({
   mineCount: number
   maxBetAllowed: number
   maxMul: number
+  payoutCapNusdc: number
   isWalletConnected: boolean
   isCreating: boolean
   onBetChange: (n: number) => void
@@ -212,9 +218,11 @@ function BetPanel({
   onCreate: () => void
 }) {
   const overCap = bet > maxBetAllowed
+  const theoreticalPayout = bet * maxMul
+  const payoutWillCap = theoreticalPayout > payoutCapNusdc
   return (
-    <section className="panel p-7 space-y-6">
-      <div className="grid md:grid-cols-2 gap-6">
+    <section className="panel p-5 sm:p-7 space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
           <label className="block text-sm text-neutral-200 mb-2">Bet (NUSDC)</label>
           <input
@@ -237,8 +245,8 @@ function BetPanel({
             className="w-full mt-3 accent-gold-200"
             aria-label="Bet amount slider"
           />
-          <p className="text-xs text-neutral-200 mt-2">
-            Max for {mineCount} mines: {fmtNum(maxBetAllowed)} NUSDC
+          <p className="text-sm text-neutral-200 mt-2">
+            Max bet: {fmtNum(maxBetAllowed)} NUSDC
           </p>
         </div>
         <div>
@@ -272,14 +280,19 @@ function BetPanel({
         <div>
           <p className="text-sm text-neutral-200">Max payout</p>
           <p className="font-mono text-xl text-gold-200">
-            {fmtNum(bet * maxMul)} NUSDC
+            {fmtNum(Math.min(theoreticalPayout, payoutCapNusdc))} NUSDC
           </p>
         </div>
       </div>
       {overCap && (
         <p className="text-sm text-amber-300">
-          Bet will be capped to {fmtNum(maxBetAllowed)} NUSDC to respect the
-          per-payout limit at this mine count.
+          Bet will be capped to {fmtNum(maxBetAllowed)} NUSDC (per-payout limit).
+        </p>
+      )}
+      {payoutWillCap && !overCap && (
+        <p className="text-sm text-amber-300">
+          Payout is capped at {fmtNum(payoutCapNusdc)} NUSDC. Reveals beyond the
+          cap multiplier do not increase your win.
         </p>
       )}
       <button
@@ -311,15 +324,19 @@ function ActiveSession({
   onCashout: () => void
 }) {
   const currentMul = computeMultiplierBps(session.mineCount, session.safeReveals) / 10_000
-  const currentPayout =
+  const rawPayout =
     (session.betAmount * BigInt(Math.floor(currentMul * 10_000))) / 10_000n
+  // Mirror the contract's silent clamp so the button shows the actual payout.
+  const currentPayout =
+    rawPayout > MINES_MAX_SINGLE_PAYOUT ? MINES_MAX_SINGLE_PAYOUT : rawPayout
+  const isCapped = rawPayout > MINES_MAX_SINGLE_PAYOUT
   const nextMul =
     computeMultiplierBps(session.mineCount, session.safeReveals + 1) / 10_000
   const canCashout = session.safeReveals > 0 && phase === 'idle' && pendingCells.size === 0
 
   return (
-    <section className="panel p-7 space-y-6">
-      <div className="grid sm:grid-cols-3 gap-4">
+    <section className="panel p-5 sm:p-7 space-y-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatBox label="Bet" value={`${fmt(session.betAmount)} NUSDC`} />
         <StatBox label="Current" value={`${currentMul.toFixed(2)}×`} emphasis />
         <StatBox label="Next reveal" value={`${nextMul.toFixed(2)}×`} />
@@ -346,7 +363,7 @@ function ActiveSession({
               {revealed ? (
                 <span className="text-lg">✓</span>
               ) : (
-                <span className="text-xs text-neutral-500">{i + 1}</span>
+                <span className="text-sm text-neutral-400">{i + 1}</span>
               )}
             </button>
           )
@@ -360,6 +377,11 @@ function ActiveSession({
           {' / '}
           {MINES_GRID_SIZE - session.mineCount}
         </p>
+        {isCapped && (
+          <p className="text-sm text-amber-300">
+            Payout reached the cap. Further reveals do not increase your win.
+          </p>
+        )}
         <button
           onClick={onCashout}
           disabled={!canCashout}
@@ -387,7 +409,7 @@ function StatBox({
 }) {
   return (
     <div className="p-4 rounded-lg border border-gold-subtle/40 bg-ink-900/60">
-      <p className="text-xs text-neutral-200 uppercase tracking-wider">{label}</p>
+      <p className="text-sm text-neutral-200 uppercase tracking-wider">{label}</p>
       <p className={`font-mono mt-1 ${emphasis ? 'text-2xl text-gold-200' : 'text-xl text-neutral-100'}`}>
         {value}
       </p>

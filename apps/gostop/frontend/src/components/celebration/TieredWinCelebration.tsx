@@ -157,9 +157,9 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
       return (
         <div className="mb-3">
           {typeof multiplier === 'number' && (
-            <p className={`font-display text-7xl md:text-8xl ${colorClass} mb-3 leading-none drop-shadow-[0_0_24px_rgba(255,215,0,0.55)]`}>{multiplier}×</p>
+            <p className={`font-display text-6xl sm:text-7xl md:text-8xl ${colorClass} mb-3 leading-none drop-shadow-[0_0_24px_rgba(255,215,0,0.55)]`}>{multiplier}×</p>
           )}
-          <p className={`font-display text-4xl md:text-5xl ${colorClass}`}>
+          <p className={`font-display text-3xl sm:text-4xl md:text-5xl ${colorClass}`}>
             {labelChars.map((char, i) => (
               <span
                 key={i}
@@ -181,7 +181,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
     return (
       <div className="mb-3">
         {typeof multiplier === 'number' && (
-          <p className={`font-display text-6xl md:text-7xl ${colorClass} ${animClass} leading-none drop-shadow-[0_0_18px_rgba(255,215,0,0.4)]`}>
+          <p className={`font-display text-5xl sm:text-6xl md:text-7xl ${colorClass} ${animClass} leading-none drop-shadow-[0_0_18px_rgba(255,215,0,0.4)]`}>
             {multiplier}×
           </p>
         )}
@@ -218,7 +218,7 @@ export function TieredWinCelebration({ config, onComplete }: Props) {
       )}
 
       <div
-        className={`relative panel p-10 md:p-12 text-center overflow-hidden ${
+        className={`relative panel p-6 sm:p-10 md:p-12 text-center overflow-hidden ${
           enableLuxuryAccents
             ? 'border-gold-200/70 shadow-gold-glow-lg bg-[linear-gradient(110deg,rgba(20,20,32,0.95),rgba(11,11,16,0.98),rgba(20,20,32,0.95))] bg-[length:200%_100%] animate-gold-shimmer'
             : ''
