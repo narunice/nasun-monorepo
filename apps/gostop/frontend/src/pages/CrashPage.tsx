@@ -144,22 +144,14 @@ export default function CrashPage() {
                   definitive value. */}
               {formatMultiplier(state === 'CRASHED' ? crash.liveMultiplierBps : (crash.recentRounds[0]?.crashPointBps ?? 10_000))}
             </div>
-            {(() => {
-              const nextAt = crash.roundState?.nextRoundAt ?? null
-              const secsLeft = nextAt !== null ? Math.max(0, Math.ceil((nextAt - now) / 1000)) : null
-              return (
-                <div className="text-sm text-gray-500">
-                  {secsLeft !== null && secsLeft > 0 ? `Next round in ${secsLeft}s` : 'Starting next round...'}
-                </div>
-              )
-            })()}
+            <NextRoundIndicator nextRoundAt={crash.roundState?.nextRoundAt ?? null} now={now} />
           </div>
         ) : state === 'BETTING' ? (
           <span className="text-2xl text-gray-400">
-            Accepting bets... {crash.roundState?.bettingEndsAt ? `${Math.max(0, Math.ceil((crash.roundState.bettingEndsAt - Date.now()) / 1000))}s` : ''}
+            Accepting bets... {crash.roundState?.bettingEndsAt ? `${Math.max(0, Math.ceil((crash.roundState.bettingEndsAt - now) / 1000))}s` : ''}
           </span>
         ) : (
-          <span className="text-2xl text-gray-500">Starting next round...</span>
+          <NextRoundIndicator nextRoundAt={crash.roundState?.nextRoundAt ?? null} now={now} large />
         )}
       </div>
 
@@ -230,36 +222,12 @@ export default function CrashPage() {
               ))}
               <button
                 type="button"
-                onClick={() => {
-                  const cur = parseFloat(betInput) || 1
-                  setBetInput(String(Math.max(1, Math.floor(cur / 2))))
-                }}
-                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
-              >
-                ½
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  const cur = parseFloat(betInput) || 1
-                  const max = Number(CRASH_MAX_BET) / 1_000_000
-                  setBetInput(String(Math.min(max, Math.ceil(cur * 2))))
-                }}
-                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
-              >
-                2×
-              </button>
-              <button
-                type="button"
                 onClick={() => setBetInput(String(Number(CRASH_MAX_BET) / 1_000_000))}
                 className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
               >
                 Max
               </button>
             </div>
-            <p className="text-xs text-gray-500">
-              Min: {formatNusdc(CRASH_MIN_BET)} NUSDC · Max: {formatNusdc(CRASH_MAX_BET)} NUSDC
-            </p>
             <button
               onClick={handleBet}
               disabled={crash.phase === 'placing_bet' || bettingClosingSoon || overMax}
@@ -275,14 +243,81 @@ export default function CrashPage() {
             </button>
           </div>
         ) : (
-          <p className="text-center text-gray-400 py-4">
-            {crash.hasBetThisRound ? 'Waiting for round to start flying...' : 'Next round starts soon'}
-          </p>
+          <WaitingPanel
+            label={crash.hasBetThisRound ? 'Waiting for round to start' : 'Next round starts soon'}
+            targetAt={
+              crash.hasBetThisRound
+                ? (crash.roundState?.bettingEndsAt ?? null)
+                : (crash.roundState?.nextRoundAt ?? null)
+            }
+            now={now}
+          />
         )}
         {crash.error && <p className="text-red-400 text-sm text-center">{crash.error}</p>}
       </div>
 
       <RoundHistory recentRounds={crash.recentRounds} />
+    </div>
+  )
+}
+
+function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
+  return (
+    <svg
+      className={`${className} animate-spin`}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden
+    >
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path
+        d="M22 12a10 10 0 0 1-10 10"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function NextRoundIndicator({
+  nextRoundAt,
+  now,
+  large,
+}: {
+  nextRoundAt: number | null
+  now: number
+  large?: boolean
+}) {
+  const secsLeft = nextRoundAt !== null ? Math.max(0, Math.ceil((nextRoundAt - now) / 1000)) : null
+  const counting = secsLeft !== null && secsLeft > 0
+  const sizeText = large ? 'text-2xl' : 'text-sm'
+  const sizeIcon = large ? 'h-5 w-5' : 'h-4 w-4'
+  return (
+    <span className={`inline-flex items-center justify-center gap-2 ${sizeText} text-gray-400`}>
+      <Spinner className={sizeIcon} />
+      {counting ? `Next round in ${secsLeft}s` : 'Starting next round...'}
+    </span>
+  )
+}
+
+function WaitingPanel({
+  label,
+  targetAt,
+  now,
+}: {
+  label: string
+  targetAt: number | null
+  now: number
+}) {
+  const secsLeft = targetAt !== null ? Math.max(0, Math.ceil((targetAt - now) / 1000)) : null
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 py-4 text-gray-300">
+      <Spinner className="h-6 w-6 text-gold-300" />
+      <p className="text-base">{label}</p>
+      {secsLeft !== null && secsLeft > 0 && (
+        <p className="font-mono text-lg text-gold-200">{secsLeft}s</p>
+      )}
     </div>
   )
 }
@@ -315,6 +350,10 @@ function BetSlider({ value, onChange }: { value: string; onChange: (v: string) =
           background: `linear-gradient(to right, rgb(234 179 8) 0%, rgb(234 179 8) ${sliderVal / 10}%, rgb(55 65 81) ${sliderVal / 10}%, rgb(55 65 81) 100%)`,
         }}
       />
+      <div className="flex justify-between text-xs text-gray-500 mt-1.5 font-mono">
+        <span>{min} NUSDC</span>
+        <span>{max} NUSDC</span>
+      </div>
     </div>
   )
 }
