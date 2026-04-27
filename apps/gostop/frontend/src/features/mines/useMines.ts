@@ -4,7 +4,6 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet'
 import { getSuiClient } from '../../lib/sui-client'
 import { NUSDC_TYPE } from '../../lib/gostop-config'
 import {
-  fetchSession,
   getMyActiveSession,
   type MinesSession,
 } from './mines-client'
@@ -83,7 +82,7 @@ export function useMines(): UseMinesResult {
   }, [refresh])
 
   const signAndExecute = useCallback(
-    async (tx: Transaction) => {
+    async (tx: Transaction, opts: { awaitFullnode?: boolean } = {}) => {
       if (!walletAddress) throw new Error('Wallet not connected')
       const client = getSuiClient()
       tx.setSender(walletAddress)
@@ -110,7 +109,12 @@ export function useMines(): UseMinesResult {
       if (result.effects?.status?.status !== 'success') {
         throw new Error(result.effects?.status?.error || 'Transaction failed')
       }
-      await client.waitForTransaction({ digest: result.digest })
+      // Fullnode checkpoint sync only matters when a follow-up RPC needs to
+      // read the post-tx state. Reveals derive next state locally, so they
+      // skip this wait to halve perceived latency.
+      if (opts.awaitFullnode !== false) {
+        await client.waitForTransaction({ digest: result.digest })
+      }
       return result
     },
     [walletAddress, kind, zkSign, getKeypair, passkeyKeypair],
@@ -192,7 +196,7 @@ export function useMines(): UseMinesResult {
       setError(null)
       try {
         const tx = buildRevealCell(session.id, cellIndex)
-        const result = await signAndExecute(tx)
+        const result = await signAndExecute(tx, { awaitFullnode: false })
         // Determine outcome from events: SessionFinished => explosion.
         const finished = (result.events ?? []).find((e) =>
           e.type.endsWith('::mines::SessionFinished'),
@@ -211,9 +215,19 @@ export function useMines(): UseMinesResult {
           })
           setSession(null)
         } else {
-          // Safe reveal — refetch latest session state.
-          const next = await fetchSession(session.id)
-          if (next) setSession(next)
+          // Safe reveal — derive next state locally instead of refetching.
+          // Contract sets revealed[i]=true and increments safe_reveals by 1;
+          // mirror that here to render the green check without an RPC wait.
+          setSession((prev) => {
+            if (!prev || prev.id !== session.id) return prev
+            const nextRevealed = prev.revealed.slice()
+            nextRevealed[cellIndex] = true
+            return {
+              ...prev,
+              revealed: nextRevealed,
+              safeReveals: prev.safeReveals + 1,
+            }
+          })
         }
       } catch (e) {
         setError(humanizeMinesError(e instanceof Error ? e.message : 'Reveal failed'))
