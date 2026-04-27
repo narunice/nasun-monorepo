@@ -165,7 +165,7 @@ export async function getAvailableEcosystemWeeks(): Promise<AvailableEcosystemWe
   return json.weeks ?? [];
 }
 
-export const ECOSYSTEM_WEEK_GRACE_PERIOD_MS = 12 * 60 * 60 * 1000;
+export const ECOSYSTEM_WEEK_GRACE_PERIOD_MS = 8 * 60 * 60 * 1000;
 
 export function isEcosystemNewWeekGracePeriod(
   meta: EcosystemLeaderboardResponse["meta"] | undefined,
@@ -202,6 +202,7 @@ export interface SnapshotHistoryEntry {
   multiplier: number;
   bonusTotal: number;
   referralBonus: number;
+  stakingDeltaScaled?: number;
   ecosystemScore: number;
   isPenalized: boolean;
   rank: number | null;

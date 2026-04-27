@@ -24,8 +24,8 @@ export interface ScoreLeaderboardResponse {
   totalParticipants: number;
 }
 
-// 12-hour grace period after weekly reset before switching to live scores
-export const WEEK_GRACE_PERIOD_MS = 2 * 60 * 60 * 1000;
+// Grace period after weekly reset; banner shown while live scores are still warming up
+export const WEEK_GRACE_PERIOD_MS = 8 * 60 * 60 * 1000;
 
 // ISO 8601 week ID (Thursday-anchor algorithm). Copied from pado useLeaderboard.ts.
 function getWeekId(weeksAgo = 0): string {

@@ -5,12 +5,10 @@ import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../compon
 import { useHighlightRow } from "../../hooks/useHighlightRow";
 import {
   usePadoScoreLeaderboard,
-  usePreviousPadoScoreLeaderboard,
   useAvailableWeeks,
   getCurrentWeekId,
   isNewWeekGracePeriod,
   type ScoreLeaderboardTrader,
-  type ScoreLeaderboardResponse,
 } from "./usePadoScoreLeaderboard";
 
 const PAGE_SIZE = 50;
@@ -266,55 +264,6 @@ function LeaderboardTable({
   );
 }
 
-function PrevWeekSection({
-  data,
-  isLoading,
-}: {
-  data: ScoreLeaderboardResponse | undefined;
-  isLoading: boolean;
-}) {
-  const traders = data?.traders ?? [];
-
-  if (!isLoading && traders.length === 0) return null;
-
-  return (
-    <div className="mt-6">
-      <div className="mb-3 flex items-center gap-3">
-        <span className="text-sm font-medium text-pd3 uppercase tracking-wide">
-          Last week final standings
-        </span>
-        {data?.weekId && (
-          <span className="text-sm text-pd3">({data.weekId})</span>
-        )}
-      </div>
-      <div className="overflow-x-auto rounded-sm border border-pd2/25 bg-pd1/20">
-        <table className="w-full text-sm">
-          <TableHead />
-          <tbody>
-            {isLoading
-              ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-12 text-center">
-                      <div className="flex items-center justify-center gap-2 text-pd3">
-                        <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                        </svg>
-                        <span className="text-sm">Loading...</span>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              : traders.map((t) => (
-                  <TraderRow key={t.address} trader={t} highlightedId={null} />
-                ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
 export function PadoScoreLeaderboard() {
   const currentWeekId = getCurrentWeekId();
   const [page, setPage] = React.useState(1);
@@ -334,8 +283,6 @@ export function PadoScoreLeaderboard() {
     !isCurrentWeek &&
     !currentQuery.isLoading &&
     allTraders.length === 0;
-
-  const prevQuery = usePreviousPadoScoreLeaderboard(inGracePeriod, PAGE_SIZE, 0);
 
   const displayedCount = Math.min(allTraders.length, MAX_RANK);
   const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
@@ -479,7 +426,7 @@ export function PadoScoreLeaderboard() {
             Week just started. Leaderboard updates as traders are active.
           </p>
           <p className="text-sm text-pd3 mt-1">
-            New scores will appear within the next 12 hours.
+            New scores will appear within the next 8 hours.
           </p>
         </DashboardCard>
       )}
@@ -493,8 +440,8 @@ export function PadoScoreLeaderboard() {
         </DashboardCard>
       )}
 
-      {/* Current week table (hidden during grace period or when no data) */}
-      {!inGracePeriod && !showNoData && (
+      {/* Current week table (hidden only when past week has no data) */}
+      {!showNoData && (
         <LeaderboardTable
           traders={pagedTraders}
           isLoading={currentQuery.isLoading}
@@ -504,14 +451,6 @@ export function PadoScoreLeaderboard() {
           page={page}
           setPage={setPage}
           highlightedId={highlightedId}
-        />
-      )}
-
-      {/* Previous week snapshot (shown during grace period) */}
-      {inGracePeriod && (
-        <PrevWeekSection
-          data={prevQuery.data}
-          isLoading={prevQuery.isLoading}
         />
       )}
     </div>
