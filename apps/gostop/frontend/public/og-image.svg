@@ -42,27 +42,18 @@
     <circle cx="1040" cy="120" r="14"/>
   </g>
 
-  <g transform="translate(600 110)">
-    <circle cx="0" cy="0" r="48" fill="url(#logoGold)"/>
-    <circle cx="0" cy="0" r="48" fill="none" stroke="#fef3c2" stroke-opacity="0.45" stroke-width="2"/>
-    <text x="0" y="16" text-anchor="middle"
-          font-family="'Playfair Display', Georgia, serif"
-          font-style="italic" font-weight="700" font-size="56"
-          fill="#07070a">G</text>
-  </g>
-
-  <text x="600" y="320" text-anchor="middle"
+  <text x="600" y="260" text-anchor="middle"
         font-family="'Playfair Display', Georgia, serif"
         font-style="italic" font-weight="700" font-size="180"
         fill="url(#goldText)">GoStop</text>
 
-  <text x="600" y="400" text-anchor="middle"
+  <text x="600" y="340" text-anchor="middle"
         font-family="'Inter', system-ui, sans-serif"
         font-weight="500" font-size="34"
         fill="#e5e5e5">Onchain Casino on Nasun</text>
 
-  <g transform="translate(600 470)">
-    <rect x="-260" y="-26" width="520" height="52" rx="26"
+  <g transform="translate(600 410)">
+    <rect x="-460" y="-30" width="920" height="60" rx="30"
           fill="none" stroke="#d4af37" stroke-opacity="0.45" stroke-width="1.5"/>
     <text x="0" y="8" text-anchor="middle"
           font-family="'Inter', system-ui, sans-serif"
@@ -70,7 +61,7 @@
           fill="#e6c558">CRASH · LOTTERY · MINES · SCRATCH · MATCH</text>
   </g>
 
-  <text x="600" y="560" text-anchor="middle"
+  <text x="600" y="500" text-anchor="middle"
         font-family="'Inter', system-ui, sans-serif"
         font-weight="500" font-size="18" letter-spacing="6"
         fill="#a3a3a3">PROVABLY FAIR · SETTLED ONCHAIN</text>

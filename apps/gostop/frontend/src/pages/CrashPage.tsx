@@ -1,136 +1,154 @@
-import { useEffect, useRef, useState } from 'react'
-import { useCrash } from '../features/crash/useCrash'
-import { formatMultiplier } from '../features/crash/crash-math'
-import { CRASH_MIN_BET, CRASH_MAX_BET } from '../lib/gostop-config'
-import { WalletConnect } from '@nasun/wallet-ui'
+import { useEffect, useRef, useState } from "react";
+import { useCrash } from "../features/crash/useCrash";
+import { formatMultiplier } from "../features/crash/crash-math";
+import { CRASH_MIN_BET, CRASH_MAX_BET } from "../lib/gostop-config";
+import { WalletConnect } from "@nasun/wallet-ui";
 import {
   useCelebrate,
   tierForCrash,
   useForceTierDebug,
-} from '../components/celebration'
-import { useCrashInvalidationEffect } from '../features/game-history'
-import crashThumb from '../assets/images/crash.webp'
+} from "../components/celebration";
+import { useCrashInvalidationEffect } from "../features/game-history";
+import crashThumb from "../assets/images/crash.webp";
 
-const NUSDC_DECIMALS = 1_000_000n
+const NUSDC_DECIMALS = 1_000_000n;
 
 function formatNusdc(raw: bigint): string {
-  const whole = raw / NUSDC_DECIMALS
-  const frac = raw % NUSDC_DECIMALS
-  return `${whole}.${frac.toString().padStart(6, '0').replace(/0+$/, '') || '0'}`
+  const whole = raw / NUSDC_DECIMALS;
+  const frac = raw % NUSDC_DECIMALS;
+  return `${whole}.${frac.toString().padStart(6, "0").replace(/0+$/, "") || "0"}`;
 }
 
 export default function CrashPage() {
-  const crash = useCrash()
-  const celebrate = useCelebrate()
-  useForceTierDebug('Crash')
+  const crash = useCrash();
+  const celebrate = useCelebrate();
+  useForceTierDebug("Crash");
   // Invalidate game-history cache when a round resolves AND user had a bet —
   // covers both win (already invalidated by cashout effect below) and loss
   // (which has no other invalidation trigger).
-  useCrashInvalidationEffect(crash.roundState?.state, crash.hasBetThisRound)
-  const [betInput, setBetInput] = useState('5')
-  const [autoInput, setAutoInput] = useState('')
+  useCrashInvalidationEffect(crash.roundState?.state, crash.hasBetThisRound);
+  const [betInput, setBetInput] = useState("5");
+  const [autoInput, setAutoInput] = useState("");
   // Track our own bet amount so we can compute payout when cashout lands.
   // useCrash does not currently expose myBetAmount; tracking here is the
   // smallest non-invasive change.
-  const myBetRef = useRef<bigint>(0n)
-  const celebratedCashoutRef = useRef<number | null>(null)
+  const myBetRef = useRef<bigint>(0n);
+  const celebratedCashoutRef = useRef<number | null>(null);
   // Track which round we already fired a loss celebration for so the modal
   // shows once on the FLYING→CRASHED transition, not on every re-render.
-  const celebratedLossRoundRef = useRef<number | null>(null)
+  const celebratedLossRoundRef = useRef<number | null>(null);
 
-  const state = crash.roundState?.state ?? 'IDLE'
-  const isBetting = state === 'BETTING'
-  const isFlying = state === 'FLYING'
+  const state = crash.roundState?.state ?? "IDLE";
+  const isBetting = state === "BETTING";
+  const isFlying = state === "FLYING";
   // Lock bets shortly before the betting window closes so an in-flight tx does
   // not arrive after FLYING (which would abort with ERoundNotInBetting). Sui
   // devnet single-tx finality is typically ~500ms, so 1.5s leaves ~1s of slack
   // for sign + broadcast + checkpoint inclusion.
-  const bettingEndsAt = crash.roundState?.bettingEndsAt ?? null
-  const [now, setNow] = useState(Date.now())
+  const bettingEndsAt = crash.roundState?.bettingEndsAt ?? null;
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250)
-    return () => clearInterval(id)
-  }, [])
-  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 1700
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+  const bettingClosingSoon =
+    bettingEndsAt !== null && bettingEndsAt - now < 1700;
   // After the betting countdown hits 0s the server still needs a moment to flip
   // the round to FLYING. Treat that gap as "armed" so the cash-out button shows
   // immediately (disabled) instead of leaving the user staring at a waiting line.
-  const bettingWindowExpired = isBetting && bettingEndsAt !== null && now >= bettingEndsAt
-  const showCashOutPanel = crash.hasBetThisRound && (isFlying || bettingWindowExpired)
-  const cashOutDisabled = !isFlying || crash.phase === 'cashing_out'
+  const bettingWindowExpired =
+    isBetting && bettingEndsAt !== null && now >= bettingEndsAt;
+  const showCashOutPanel =
+    crash.hasBetThisRound && (isFlying || bettingWindowExpired);
+  const cashOutDisabled = !isFlying || crash.phase === "cashing_out";
 
   // Reset bet tracking on a new round.
   useEffect(() => {
     if (!crash.hasBetThisRound) {
-      myBetRef.current = 0n
-      celebratedCashoutRef.current = null
+      myBetRef.current = 0n;
+      celebratedCashoutRef.current = null;
     }
-  }, [crash.hasBetThisRound, crash.roundState?.roundId])
+  }, [crash.hasBetThisRound, crash.roundState?.roundId]);
 
   // Fire loss celebration when the round crashes and the user had a live bet
   // but never cashed out. Mirrors the loss UX in Number Match / Mines so the
   // bust feels like an event instead of just turning the multiplier red.
   useEffect(() => {
-    if (state !== 'CRASHED') return
-    if (!crash.hasBetThisRound) return
-    if (crash.myCashoutBps !== null) return
-    if (myBetRef.current === 0n) return
-    const roundId = crash.roundState?.roundId ?? null
-    if (roundId === null) return
-    if (celebratedLossRoundRef.current === roundId) return
-    celebratedLossRoundRef.current = roundId
+    if (state !== "CRASHED") return;
+    if (!crash.hasBetThisRound) return;
+    if (crash.myCashoutBps !== null) return;
+    if (myBetRef.current === 0n) return;
+    const roundId = crash.roundState?.roundId ?? null;
+    if (roundId === null) return;
+    if (celebratedLossRoundRef.current === roundId) return;
+    celebratedLossRoundRef.current = roundId;
     celebrate({
-      variant: 'loss',
-      tier: 'loss',
+      variant: "loss",
+      tier: "loss",
       payout: 0n,
-      gameLabel: 'Crash',
-    })
-  }, [state, crash.hasBetThisRound, crash.myCashoutBps, crash.roundState?.roundId, celebrate])
+      gameLabel: "Crash",
+    });
+  }, [
+    state,
+    crash.hasBetThisRound,
+    crash.myCashoutBps,
+    crash.roundState?.roundId,
+    celebrate,
+  ]);
 
   // Fire celebration on cashout transition.
   useEffect(() => {
-    if (crash.myCashoutBps === null) return
-    if (celebratedCashoutRef.current === crash.myCashoutBps) return
-    if (myBetRef.current === 0n) return
-    celebratedCashoutRef.current = crash.myCashoutBps
-    const multiplier = crash.myCashoutBps / 10_000
-    const payout = (myBetRef.current * BigInt(crash.myCashoutBps)) / 10_000n
-    const tier = tierForCrash(multiplier, true)
+    if (crash.myCashoutBps === null) return;
+    if (celebratedCashoutRef.current === crash.myCashoutBps) return;
+    if (myBetRef.current === 0n) return;
+    celebratedCashoutRef.current = crash.myCashoutBps;
+    const multiplier = crash.myCashoutBps / 10_000;
+    const payout = (myBetRef.current * BigInt(crash.myCashoutBps)) / 10_000n;
+    const tier = tierForCrash(multiplier, true);
     if (tier) {
       celebrate({
-        variant: 'tiered',
+        variant: "tiered",
         tier,
         payout,
         multiplier: Number(multiplier.toFixed(2)),
-        gameLabel: 'Crash',
-      })
+        gameLabel: "Crash",
+      });
     }
-  }, [crash.myCashoutBps, celebrate])
+  }, [crash.myCashoutBps, celebrate]);
 
   function handleBet() {
-    const amount = BigInt(Math.round(parseFloat(betInput) * 1_000_000))
-    myBetRef.current = amount
-    crash.placeBet(amount)
+    const amount = BigInt(Math.round(parseFloat(betInput) * 1_000_000));
+    myBetRef.current = amount;
+    crash.placeBet(amount);
   }
 
-  const betFloat = parseFloat(betInput)
-  const betAmountBig = Number.isFinite(betFloat) ? BigInt(Math.round(betFloat * 1_000_000)) : 0n
-  const overMax = betAmountBig > CRASH_MAX_BET
+  const betFloat = parseFloat(betInput);
+  const betAmountBig = Number.isFinite(betFloat)
+    ? BigInt(Math.round(betFloat * 1_000_000))
+    : 0n;
+  const overMax = betAmountBig > CRASH_MAX_BET;
 
-  function handleCashOut() { crash.cashOut() }
+  function handleCashOut() {
+    crash.cashOut();
+  }
 
   function handleAutoSet() {
-    const v = parseFloat(autoInput)
-    if (v > 1) crash.setAutoCashOutBps(Math.round(v * 10_000))
-    else crash.setAutoCashOutBps(null)
+    const v = parseFloat(autoInput);
+    if (v > 1) crash.setAutoCashOutBps(Math.round(v * 10_000));
+    else crash.setAutoCashOutBps(null);
   }
 
-  function handleAutoClear() { crash.setAutoCashOutBps(null); setAutoInput('') }
+  function handleAutoClear() {
+    crash.setAutoCashOutBps(null);
+    setAutoInput("");
+  }
 
   const multiplierColor =
-    crash.liveMultiplierBps < 15_000 ? 'text-green-400' :
-    crash.liveMultiplierBps < 25_000 ? 'text-yellow-300' :
-    'text-orange-400'
+    crash.liveMultiplierBps < 15_000
+      ? "text-green-400"
+      : crash.liveMultiplierBps < 25_000
+        ? "text-yellow-300"
+        : "text-orange-400";
 
   return (
     <div className="max-w-2xl lg:max-w-6xl mx-auto min-h-screen lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-8 lg:items-start space-y-6 lg:space-y-0">
@@ -151,7 +169,9 @@ export default function CrashPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
               Live Round
             </p>
-            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">Crash</h1>
+            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">
+              Crash
+            </h1>
             <p className="text-sm lg:text-base text-neutral-200 mt-2 italic">
               Go or stop. One decision, one multiplier.
             </p>
@@ -163,142 +183,186 @@ export default function CrashPage() {
         <CrashGraph
           state={state}
           liveMultiplierBps={crash.liveMultiplierBps}
-          crashedCrashPoint={state === 'RESOLVED' ? (crash.recentRounds[0]?.crashPointBps ?? null) : null}
+          crashedCrashPoint={
+            state === "RESOLVED"
+              ? (crash.recentRounds[0]?.crashPointBps ?? null)
+              : null
+          }
         />
 
         <div className="text-center">
-        {state === 'FLYING' ? (
-          <span className={`text-4xl sm:text-5xl font-bold ${multiplierColor}`}>{formatMultiplier(crash.liveMultiplierBps)}</span>
-        ) : state === 'CRASHED' || state === 'RESOLVED' ? (
-          <div className="space-y-1">
-            <div className="text-4xl sm:text-5xl font-bold text-red-400">
-              {/* Server omits crashPointBps from the 'crashed' event, so during CRASHED
+          {state === "FLYING" ? (
+            <span
+              className={`text-4xl sm:text-5xl font-bold ${multiplierColor}`}
+            >
+              {formatMultiplier(crash.liveMultiplierBps)}
+            </span>
+          ) : state === "CRASHED" || state === "RESOLVED" ? (
+            <div className="space-y-1">
+              <div className="text-4xl sm:text-5xl font-bold text-red-400">
+                {/* Server omits crashPointBps from the 'crashed' event, so during CRASHED
                   recentRounds[0] still points to the previous round. Use the frozen
                   liveMultiplierBps (rAF stops at crash) until RESOLVED commits the
                   definitive value. */}
-              {formatMultiplier(state === 'CRASHED' ? crash.liveMultiplierBps : (crash.recentRounds[0]?.crashPointBps ?? 10_000))}
-            </div>
-            <NextRoundIndicator nextRoundAt={crash.roundState?.nextRoundAt ?? null} now={now} />
-          </div>
-        ) : state === 'BETTING' ? (
-          <span className="text-2xl text-gray-400">
-            Accepting bets... {crash.roundState?.bettingEndsAt ? `${Math.max(0, Math.ceil((crash.roundState.bettingEndsAt - now) / 1000))}s` : ''}
-          </span>
-        ) : (
-          <NextRoundIndicator nextRoundAt={crash.roundState?.nextRoundAt ?? null} now={now} large />
-        )}
-      </div>
-
-      <div className="bg-gray-800 rounded-xl p-4 sm:p-5 space-y-4">
-        {!crash.isWalletConnected ? (
-          <WalletConnect />
-        ) : crash.hasCashedOut ? (
-          <div className="text-center text-green-400 font-semibold py-4">
-            Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}
-          </div>
-        ) : showCashOutPanel ? (
-          <div className="space-y-3">
-            <div className="flex justify-center">
-              <button
-                onClick={handleCashOut}
-                disabled={cashOutDisabled}
-                className="w-full sm:min-w-[22rem] py-4 sm:py-5 px-6 sm:px-10 text-xl sm:text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
-              >
-                {crash.phase === 'cashing_out'
-                  ? 'Cashing out...'
-                  : isFlying
-                  ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
-                  : 'Cash Out'}
-              </button>
-            </div>
-            <div className="flex gap-2 items-center">
-              <input
-                type="number"
-                placeholder="Auto cash-out (e.g. 2.00)"
-                className="flex-1 bg-gray-700 text-white px-3 py-2 rounded text-sm"
-                value={autoInput}
-                onChange={(e) => setAutoInput(e.target.value)}
+                {formatMultiplier(
+                  state === "CRASHED"
+                    ? crash.liveMultiplierBps
+                    : (crash.recentRounds[0]?.crashPointBps ?? 10_000),
+                )}
+              </div>
+              <NextRoundIndicator
+                nextRoundAt={crash.roundState?.nextRoundAt ?? null}
+                now={now}
               />
-              <button onClick={handleAutoSet} className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded">Set</button>
+            </div>
+          ) : state === "BETTING" ? (
+            <span className="text-2xl text-gray-400">
+              Accepting bets...{" "}
+              {crash.roundState?.bettingEndsAt
+                ? `${Math.max(0, Math.ceil((crash.roundState.bettingEndsAt - now) / 1000))}s`
+                : ""}
+            </span>
+          ) : (
+            <NextRoundIndicator
+              nextRoundAt={crash.roundState?.nextRoundAt ?? null}
+              now={now}
+              large
+            />
+          )}
+        </div>
+
+        <div className="bg-gray-800 rounded-xl p-4 sm:p-5 space-y-4">
+          {!crash.isWalletConnected ? (
+            <WalletConnect />
+          ) : crash.hasCashedOut ? (
+            <div className="text-center text-green-400 font-semibold py-4">
+              Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}
+            </div>
+          ) : showCashOutPanel ? (
+            <div className="space-y-3">
+              <div className="flex justify-center">
+                <button
+                  onClick={handleCashOut}
+                  disabled={cashOutDisabled}
+                  className="w-full sm:min-w-[22rem] py-4 sm:py-5 px-6 sm:px-10 text-xl sm:text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
+                >
+                  {crash.phase === "cashing_out"
+                    ? "Cashing out..."
+                    : isFlying
+                      ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
+                      : "Cash Out"}
+                </button>
+              </div>
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  placeholder="Auto cash-out (e.g. 2.00)"
+                  className="flex-1 bg-gray-700 text-white px-3 py-2 rounded text-sm"
+                  value={autoInput}
+                  onChange={(e) => setAutoInput(e.target.value)}
+                />
+                <button
+                  onClick={handleAutoSet}
+                  className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded"
+                >
+                  Set
+                </button>
+                {crash.autoCashOutBps && (
+                  <button
+                    onClick={handleAutoClear}
+                    className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
               {crash.autoCashOutBps && (
-                <button onClick={handleAutoClear} className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded">Clear</button>
+                <p className="text-xs text-gray-400 text-center">
+                  Auto: {formatMultiplier(crash.autoCashOutBps)}
+                </p>
               )}
             </div>
-            {crash.autoCashOutBps && (
-              <p className="text-xs text-gray-400 text-center">Auto: {formatMultiplier(crash.autoCashOutBps)}</p>
-            )}
-          </div>
-        ) : isBetting && !crash.hasBetThisRound ? (
-          <div className="space-y-3">
-            <div className="flex gap-2 items-center">
-              <input
-                type="number"
-                min="1"
-                step="1"
-                placeholder="Bet amount (NUSDC)"
-                className="flex-1 bg-gray-700 text-white px-3 py-2 rounded"
-                value={betInput}
-                onChange={(e) => setBetInput(e.target.value)}
-              />
-              <span className="text-gray-400 text-sm">NUSDC</span>
-            </div>
-            <BetSlider value={betInput} onChange={setBetInput} />
-            <div className="flex gap-2 text-xs">
-              {[1, 5, 25, 100].map((v) => (
+          ) : isBetting && !crash.hasBetThisRound ? (
+            <div className="space-y-3">
+              <div className="flex gap-2 items-center">
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  placeholder="Bet amount (NUSDC)"
+                  className="flex-1 bg-gray-700 text-white px-3 py-2 rounded"
+                  value={betInput}
+                  onChange={(e) => setBetInput(e.target.value)}
+                />
+                <span className="text-gray-400 text-sm">NUSDC</span>
+              </div>
+              <BetSlider value={betInput} onChange={setBetInput} />
+              <div className="flex gap-2 text-xs">
+                {[1, 5, 25, 100].map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setBetInput(String(v))}
+                    className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 font-mono"
+                  >
+                    {v}
+                  </button>
+                ))}
                 <button
-                  key={v}
                   type="button"
-                  onClick={() => setBetInput(String(v))}
-                  className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 font-mono"
+                  onClick={() =>
+                    setBetInput(String(Number(CRASH_MAX_BET) / 1_000_000))
+                  }
+                  className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
                 >
-                  {v}
+                  Max
                 </button>
-              ))}
+              </div>
               <button
-                type="button"
-                onClick={() => setBetInput(String(Number(CRASH_MAX_BET) / 1_000_000))}
-                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
+                onClick={handleBet}
+                disabled={
+                  crash.phase === "placing_bet" || bettingClosingSoon || overMax
+                }
+                className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Max
+                {crash.phase === "placing_bet"
+                  ? "Placing bet..."
+                  : bettingClosingSoon
+                    ? "Betting closing..."
+                    : overMax
+                      ? `Max ${formatNusdc(CRASH_MAX_BET)} NUSDC`
+                      : "Place Bet"}
               </button>
             </div>
-            <button
-              onClick={handleBet}
-              disabled={crash.phase === 'placing_bet' || bettingClosingSoon || overMax}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {crash.phase === 'placing_bet'
-                ? 'Placing bet...'
-                : bettingClosingSoon
-                ? 'Betting closing...'
-                : overMax
-                ? `Max ${formatNusdc(CRASH_MAX_BET)} NUSDC`
-                : 'Place Bet'}
-            </button>
-          </div>
-        ) : (
-          <WaitingPanel
-            label={crash.hasBetThisRound ? 'Waiting for round to start' : 'Next round starts soon'}
-            targetAt={
-              crash.hasBetThisRound
-                ? (crash.roundState?.bettingEndsAt ?? null)
-                : (crash.roundState?.nextRoundAt ?? null)
-            }
-            now={now}
-            betAmount={crash.hasBetThisRound ? myBetRef.current : 0n}
-            isNextRound={!crash.hasBetThisRound}
-          />
-        )}
-        {crash.error && <p className="text-red-400 text-sm text-center">{crash.error}</p>}
-      </div>
+          ) : (
+            <WaitingPanel
+              label={
+                crash.hasBetThisRound
+                  ? "Waiting for round to start"
+                  : "Next round starts soon"
+              }
+              targetAt={
+                crash.hasBetThisRound
+                  ? (crash.roundState?.bettingEndsAt ?? null)
+                  : (crash.roundState?.nextRoundAt ?? null)
+              }
+              now={now}
+              betAmount={crash.hasBetThisRound ? myBetRef.current : 0n}
+              isNextRound={!crash.hasBetThisRound}
+            />
+          )}
+          {crash.error && (
+            <p className="text-red-400 text-sm text-center">{crash.error}</p>
+          )}
+        </div>
 
         <RoundHistory recentRounds={crash.recentRounds} />
       </div>
     </div>
-  )
+  );
 }
 
-function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
+function Spinner({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg
       className={`${className} animate-spin`}
@@ -306,7 +370,14 @@ function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
       fill="none"
       aria-hidden
     >
-      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <circle
+        cx="12"
+        cy="12"
+        r="10"
+        stroke="currentColor"
+        strokeWidth="3"
+        opacity="0.25"
+      />
       <path
         d="M22 12a10 10 0 0 1-10 10"
         stroke="currentColor"
@@ -314,34 +385,38 @@ function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
         strokeLinecap="round"
       />
     </svg>
-  )
+  );
 }
 
 // Server's nextRoundAt = scheduled IDLE → BETTING transition time, but the
 // on-chain create_round tx still needs to finalize after that. This buffer
 // lets the displayed countdown roughly track the actual round-start moment.
-const CHAIN_CONFIRMATION_BUFFER_MS = 2500
+const CHAIN_CONFIRMATION_BUFFER_MS = 2500;
 
 function NextRoundIndicator({
   nextRoundAt,
   now,
   large,
 }: {
-  nextRoundAt: number | null
-  now: number
-  large?: boolean
+  nextRoundAt: number | null;
+  now: number;
+  large?: boolean;
 }) {
-  const target = nextRoundAt !== null ? nextRoundAt + CHAIN_CONFIRMATION_BUFFER_MS : null
-  const secsLeft = target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null
-  const counting = secsLeft !== null && secsLeft > 0
-  const sizeText = large ? 'text-2xl' : 'text-sm'
+  const target =
+    nextRoundAt !== null ? nextRoundAt + CHAIN_CONFIRMATION_BUFFER_MS : null;
+  const secsLeft =
+    target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null;
+  const counting = secsLeft !== null && secsLeft > 0;
+  const sizeText = large ? "text-2xl" : "text-sm";
   // No spinner here: the bet/cashout panel below carries the primary spinner
   // for this idle state, so we avoid duplicate motion in the same view.
   return (
-    <span className={`inline-flex items-center justify-center ${sizeText} text-gray-400`}>
-      {counting ? `Next round in ${secsLeft}s` : 'Confirming on chain...'}
+    <span
+      className={`inline-flex items-center justify-center ${sizeText} text-gray-400`}
+    >
+      {counting ? `Next round in ${secsLeft}s` : "Confirming on chain..."}
     </span>
-  )
+  );
 }
 
 function WaitingPanel({
@@ -351,44 +426,60 @@ function WaitingPanel({
   betAmount,
   isNextRound,
 }: {
-  label: string
-  targetAt: number | null
-  now: number
-  betAmount: bigint
-  isNextRound?: boolean
+  label: string;
+  targetAt: number | null;
+  now: number;
+  betAmount: bigint;
+  isNextRound?: boolean;
 }) {
   // Pad nextRoundAt so 0s lines up with actual on-chain round start.
   // bettingEndsAt is server-authoritative for the betting window so no padding.
   const target =
-    targetAt !== null && isNextRound ? targetAt + CHAIN_CONFIRMATION_BUFFER_MS : targetAt
-  const secsLeft = target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null
+    targetAt !== null && isNextRound
+      ? targetAt + CHAIN_CONFIRMATION_BUFFER_MS
+      : targetAt;
+  const secsLeft =
+    target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null;
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-4 text-gray-300">
       <Spinner className="h-6 w-6 text-gold-300" />
       <p className="text-base">
-        {secsLeft === 0 && isNextRound ? 'Confirming on chain...' : label}
+        {secsLeft === 0 && isNextRound ? "Confirming on chain..." : label}
       </p>
       {secsLeft !== null && secsLeft > 0 && (
         <p className="font-mono text-lg text-gold-200">{secsLeft}s</p>
       )}
       {betAmount > 0n && (
         <p className="text-sm text-gray-400">
-          Your bet: <span className="font-mono text-gold-200">{formatNusdc(betAmount)} NUSDC</span>
+          Your bet:{" "}
+          <span className="font-mono text-gold-200">
+            {formatNusdc(betAmount)} NUSDC
+          </span>
         </p>
       )}
     </div>
-  )
+  );
 }
 
-function BetSlider({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const max = Number(CRASH_MAX_BET) / 1_000_000
-  const min = Number(CRASH_MIN_BET) / 1_000_000
+function BetSlider({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const max = Number(CRASH_MAX_BET) / 1_000_000;
+  const min = Number(CRASH_MIN_BET) / 1_000_000;
   // Logarithmic mapping so low bets aren't visually crushed against the left edge
   // (1→5→25→100 should feel evenly spaced for a casino bet picker).
-  const toSlider = (v: number) => Math.round(((Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min))) * 1000)
-  const fromSlider = (s: number) => Math.exp(Math.log(min) + (s / 1000) * (Math.log(max) - Math.log(min)))
-  const num = Math.max(min, Math.min(max, parseFloat(value) || min))
-  const sliderVal = toSlider(num)
+  const toSlider = (v: number) =>
+    Math.round(
+      ((Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min))) * 1000,
+    );
+  const fromSlider = (s: number) =>
+    Math.exp(Math.log(min) + (s / 1000) * (Math.log(max) - Math.log(min)));
+  const num = Math.max(min, Math.min(max, parseFloat(value) || min));
+  const sliderVal = toSlider(num);
   return (
     <div className="px-1">
       <input
@@ -398,10 +489,15 @@ function BetSlider({ value, onChange }: { value: string; onChange: (v: string) =
         step={1}
         value={sliderVal}
         onChange={(e) => {
-          const raw = fromSlider(Number(e.target.value))
+          const raw = fromSlider(Number(e.target.value));
           // Snap to round NUSDC values so the displayed input stays clean.
-          const snapped = raw < 10 ? Math.round(raw) : raw < 100 ? Math.round(raw / 5) * 5 : Math.round(raw / 10) * 10
-          onChange(String(Math.max(min, Math.min(max, snapped))))
+          const snapped =
+            raw < 10
+              ? Math.round(raw)
+              : raw < 100
+                ? Math.round(raw / 5) * 5
+                : Math.round(raw / 10) * 10;
+          onChange(String(Math.max(min, Math.min(max, snapped))));
         }}
         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
         style={{
@@ -413,7 +509,7 @@ function BetSlider({ value, onChange }: { value: string; onChange: (v: string) =
         <span>{max} NUSDC</span>
       </div>
     </div>
-  )
+  );
 }
 
 function CrashGraph({
@@ -421,41 +517,46 @@ function CrashGraph({
   liveMultiplierBps,
   crashedCrashPoint,
 }: {
-  state: string
-  liveMultiplierBps: number
-  crashedCrashPoint: number | null
+  state: string;
+  liveMultiplierBps: number;
+  crashedCrashPoint: number | null;
 }) {
-  const W = 500
+  const W = 500;
   // H bumped from 200 -> 280 so the rocket has more vertical runway,
   // especially on the wider desktop right column. Curve math derives from H
   // and W so the geometry stays consistent.
-  const H = 280
-  const PAD = 20
+  const H = 280;
+  const PAD = 20;
 
-  const isFlying = state === 'FLYING'
-  const isCrashed = state === 'CRASHED' || state === 'RESOLVED'
-  const endBps = isCrashed ? (crashedCrashPoint ?? liveMultiplierBps) : liveMultiplierBps
+  const isFlying = state === "FLYING";
+  const isCrashed = state === "CRASHED" || state === "RESOLVED";
+  const endBps = isCrashed
+    ? (crashedCrashPoint ?? liveMultiplierBps)
+    : liveMultiplierBps;
 
   // Map multiplier to curve progress on a log scale so 1x→2x feels weighty
   // and 20x+ doesn't push the rocket off-screen. Capped at 1.0.
-  const progress = Math.max(0, Math.min(1, Math.log(Math.max(1.001, endBps / 10_000)) / Math.log(20)))
+  const progress = Math.max(
+    0,
+    Math.min(1, Math.log(Math.max(1.001, endBps / 10_000)) / Math.log(20)),
+  );
 
   // Sample the curve up to current progress so the trail grows with the rocket.
-  const steps = 48
-  const points: Array<[number, number]> = []
+  const steps = 48;
+  const points: Array<[number, number]> = [];
   for (let i = 0; i <= steps; i++) {
-    const frac = (i / steps) * progress
-    const x = PAD + frac * (W - PAD * 2)
-    const y = H - PAD - frac * frac * (H - PAD * 2)
-    points.push([x, y])
+    const frac = (i / steps) * progress;
+    const x = PAD + frac * (W - PAD * 2);
+    const y = H - PAD - frac * frac * (H - PAD * 2);
+    points.push([x, y]);
   }
-  const tip = points[points.length - 1] ?? [PAD, H - PAD]
+  const tip = points[points.length - 1] ?? [PAD, H - PAD];
   // Tangent at the tip for rocket rotation; quadratic dy/dx = 2*frac*(H-2*PAD)/(W-2*PAD)
-  const slope = 2 * progress * ((H - 2 * PAD) / (W - 2 * PAD))
-  const angleDeg = -Math.atan(slope) * (180 / Math.PI) // negative because SVG y flips
+  const slope = 2 * progress * ((H - 2 * PAD) / (W - 2 * PAD));
+  const angleDeg = -Math.atan(slope) * (180 / Math.PI); // negative because SVG y flips
 
-  const trailColor = isCrashed ? '#ef4444' : isFlying ? '#fbbf24' : '#6b7280'
-  const trailGlow = isCrashed ? '#7f1d1d' : isFlying ? '#f59e0b' : '#374151'
+  const trailColor = isCrashed ? "#ef4444" : isFlying ? "#fbbf24" : "#6b7280";
+  const trailGlow = isCrashed ? "#7f1d1d" : isFlying ? "#f59e0b" : "#374151";
 
   return (
     <div className="bg-gradient-to-b from-[#0b1023] via-[#0a0d1f] to-[#050816] rounded-xl overflow-hidden relative">
@@ -470,7 +571,9 @@ function CrashGraph({
             <stop offset="0%" stopColor={trailColor} stopOpacity="0.6" />
             <stop offset="100%" stopColor={trailColor} stopOpacity="0" />
           </radialGradient>
-          <filter id="blur"><feGaussianBlur stdDeviation="2" /></filter>
+          <filter id="blur">
+            <feGaussianBlur stdDeviation="2" />
+          </filter>
         </defs>
 
         {/* Background stars — purely decorative, twinkle while FLYING */}
@@ -482,17 +585,37 @@ function CrashGraph({
             r={s.r}
             fill="#e5e7eb"
             opacity={isFlying ? s.o : s.o * 0.4}
-            style={isFlying ? { animation: `crash-twinkle ${1.5 + (i % 3) * 0.6}s ease-in-out ${i * 0.2}s infinite` } : undefined}
+            style={
+              isFlying
+                ? {
+                    animation: `crash-twinkle ${1.5 + (i % 3) * 0.6}s ease-in-out ${i * 0.2}s infinite`,
+                  }
+                : undefined
+            }
           />
         ))}
 
         {/* Axes */}
-        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#1f2937" strokeWidth="1" />
-        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#1f2937" strokeWidth="1" />
+        <line
+          x1={PAD}
+          y1={PAD}
+          x2={PAD}
+          y2={H - PAD}
+          stroke="#1f2937"
+          strokeWidth="1"
+        />
+        <line
+          x1={PAD}
+          y1={H - PAD}
+          x2={W - PAD}
+          y2={H - PAD}
+          stroke="#1f2937"
+          strokeWidth="1"
+        />
 
         {/* Glow underlay */}
         <polyline
-          points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+          points={points.map(([x, y]) => `${x},${y}`).join(" ")}
           fill="none"
           stroke={trailColor}
           strokeWidth="8"
@@ -503,7 +626,7 @@ function CrashGraph({
 
         {/* Trail */}
         <polyline
-          points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+          points={points.map(([x, y]) => `${x},${y}`).join(" ")}
           fill="none"
           stroke="url(#trailGrad)"
           strokeWidth="3"
@@ -516,7 +639,9 @@ function CrashGraph({
           <g transform={`translate(${tip[0]}, ${tip[1]})`}>
             <circle r="18" fill="#ef4444" opacity="0.5" filter="url(#blur)" />
             <circle r="10" fill="#fbbf24" opacity="0.9" />
-            <text textAnchor="middle" dominantBaseline="middle" fontSize="22">💥</text>
+            <text textAnchor="middle" dominantBaseline="middle" fontSize="22">
+              💥
+            </text>
           </g>
         ) : (
           <g transform={`translate(${tip[0]}, ${tip[1]}) rotate(${angleDeg})`}>
@@ -530,7 +655,14 @@ function CrashGraph({
                 <circle cx="-11" cy="1" r="1.8" fill="#ef4444" opacity="0.6" />
               </g>
             )}
-            <text textAnchor="middle" dominantBaseline="middle" fontSize="20" transform="rotate(45)">🚀</text>
+            <text
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="20"
+              transform="rotate(45)"
+            >
+              🚀
+            </text>
           </g>
         )}
       </svg>
@@ -540,7 +672,7 @@ function CrashGraph({
         @keyframes crash-flame-flicker { 0% { transform: translate(-12px, 0) scaleX(1); } 100% { transform: translate(-12px, 0) scaleX(1.25); } }
       `}</style>
     </div>
-  )
+  );
 }
 
 // Pre-computed star field — fixed seed so it doesn't reshuffle on every render.
@@ -557,25 +689,38 @@ const STAR_FIELD: Array<{ x: number; y: number; r: number; o: number }> = [
   { x: 0.15, y: 0.68, r: 0.7, o: 0.5 },
   { x: 0.38, y: 0.28, r: 0.5, o: 0.4 },
   { x: 0.52, y: 0.08, r: 0.8, o: 0.6 },
-]
+];
 
-function RoundHistory({ recentRounds }: { recentRounds: Array<{ roundId: number; crashPointBps: number }> }) {
-  if (recentRounds.length === 0) return null
+function RoundHistory({
+  recentRounds,
+}: {
+  recentRounds: Array<{ roundId: number; crashPointBps: number }>;
+}) {
+  if (recentRounds.length === 0) return null;
   return (
     <div className="bg-gray-800 rounded-xl p-4">
-      <h2 className="text-gray-400 text-sm mb-3 font-semibold">Recent Rounds</h2>
+      <h2 className="text-gray-400 text-sm mb-3 font-semibold">
+        Recent Rounds
+      </h2>
       <div className="flex flex-wrap gap-2">
         {recentRounds.map((r) => {
-          const isHigh = r.crashPointBps >= 20_000
-          const isMid = r.crashPointBps >= 15_000
-          const bg = isHigh ? 'bg-green-700' : isMid ? 'bg-yellow-700' : 'bg-red-800'
+          const isHigh = r.crashPointBps >= 20_000;
+          const isMid = r.crashPointBps >= 15_000;
+          const bg = isHigh
+            ? "bg-green-700"
+            : isMid
+              ? "bg-yellow-700"
+              : "bg-red-800";
           return (
-            <span key={r.roundId} className={`${bg} text-white text-sm px-2 py-1 rounded font-mono`}>
+            <span
+              key={r.roundId}
+              className={`${bg} text-white text-sm px-2 py-1 rounded font-mono`}
+            >
               {formatMultiplier(r.crashPointBps)}
             </span>
-          )
+          );
         })}
       </div>
     </div>
-  )
+  );
 }
