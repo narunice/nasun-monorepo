@@ -2,6 +2,7 @@ import type { LeaderboardConfig, Period } from './leaderboard-types.js';
 import { PERIOD_MS, POINTS } from './leaderboard-types.js';
 import {
   aggregateTraderVolume,
+  aggregateWeeklyTraderVolume,
   getCurrentRanks,
   replaceTraderStats,
   getActiveCompetitions,
@@ -228,8 +229,9 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
 
-  // Volume stats filtered to this week (wash pairs excluded)
-  const rawTraders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
+  // Volume stats filtered to this week (wash pairs excluded).
+  // trade_count is capped per calendar day via SQL window function.
+  const rawTraders = aggregateWeeklyTraderVolume(weekStart, config.excludedAddresses, POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
   if (rawTraders.length === 0) return;
 
   // Filter out wallets not registered to nasun-website (no Cognito identityId).
@@ -249,18 +251,14 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   const prevWeekId = getWeekId(prevWeekStart);
   const baselineRanks = getWeeklyCurrentRanks(prevWeekId);
 
-  // Daily trade cap: count elapsed days since week start (minimum 1) to derive weekly ceiling.
-  const elapsedDays = Math.max(1, Math.ceil((Date.now() - weekStart) / (24 * 60 * 60 * 1000)));
-  const weeklyTradeCap = POINTS.DAILY_TRADE_CAP * elapsedDays;
-
   const scored = traders.map((t) => {
     const tradeCount = t.trade_count;
     const volumeRaw = BigInt(t.volume_quote);
     const uniquePools = t.unique_pools;
 
-    const cappedTradeCount = Math.min(tradeCount, weeklyTradeCap);
+    // trade_count already reflects per-day cap (from aggregateWeeklyTraderVolume).
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
-    const tradePoints = firstTradeBonus + cappedTradeCount * POINTS.PER_TRADE;
+    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
     const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
     const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
 
