@@ -65,15 +65,45 @@ export function useCrash(): UseCrashResult {
   const cashOutInflightRef = useRef(false)
   const roundObjectIdRef = useRef<string | null>(null)
   const currentRoundIdRef = useRef<number | null>(null)
+  // serverTime - clientNow at last WS sync. Added to Date.now() to estimate
+  // server-side wall clock, used to keep liveMultiplierBps within the 3%
+  // on-chain tolerance even when the client clock is skewed.
+  const serverSkewMsRef = useRef(0)
+  // Last computed live multiplier, mirrored from setLiveMultiplierBps so the
+  // crashed handler can capture the overshoot value without depending on
+  // closure-stale React state.
+  const liveMultiplierBpsRef = useRef(10_000)
+  // Active crash-snap tween: eases the displayed multiplier from the latency-
+  // induced overshoot down to the true crashPointBps after the 'crashed' event.
+  const crashSnapRef = useRef<{ from: number; to: number; startedAt: number } | null>(null)
+
+  // The displayed multiplier lags real elapsed time by this much so the value
+  // shown is the same value submitted on cash_out (WYSIWYG). Absorbs residual
+  // client/server clock skew and Sui clock granularity so the on-chain check
+  // mult_bps <= base * 1.03 always passes.
+  const DISPLAY_LAG_MS = 250
+  const CRASH_SNAP_MS = 250
 
   const hasCashedOut = myCashoutBps !== null
 
-  // rAF loop for live multiplier during FLYING
+  // rAF loop: drives live multiplier during FLYING and the snap-down tween
+  // after CRASHED so the displayed value resolves to the on-chain truth
+  // without the jarring overshoot caused by WS latency.
   useEffect(() => {
+    function setLive(value: number) {
+      liveMultiplierBpsRef.current = value
+      setLiveMultiplierBps(value)
+    }
     function tick() {
       if (flyingStartedAtRef.current !== null) {
-        const elapsed = Date.now() - flyingStartedAtRef.current
-        setLiveMultiplierBps(multiplierAtBps(elapsed))
+        const elapsed = Date.now() + serverSkewMsRef.current - flyingStartedAtRef.current - DISPLAY_LAG_MS
+        setLive(elapsed > 0 ? multiplierAtBps(elapsed) : 10_000)
+      } else if (crashSnapRef.current) {
+        const { from, to, startedAt } = crashSnapRef.current
+        const t = Math.min(1, (Date.now() - startedAt) / CRASH_SNAP_MS)
+        const eased = t * (2 - t) // ease-out quad
+        setLive(Math.round(from + (to - from) * eased))
+        if (t >= 1) crashSnapRef.current = null
       }
       rafRef.current = requestAnimationFrame(tick)
     }
@@ -84,6 +114,9 @@ export function useCrash(): UseCrashResult {
   // WS event handler
   useEffect(() => {
     const unsub = subscribeCrash((event) => {
+      if ('serverTime' in event && typeof event.serverTime === 'number') {
+        serverSkewMsRef.current = event.serverTime - Date.now()
+      }
       if (event.type === 'state_sync') {
         stateVersionRef.current = event.stateVersion
         flyingStartedAtRef.current = event.flyingStartedAt ?? null
@@ -116,6 +149,9 @@ export function useCrash(): UseCrashResult {
       // Resync on stateVersion gap
       if ('stateVersion' in event && event.stateVersion > stateVersionRef.current + 5) {
         fetchCurrentRound().then((s) => {
+          if (typeof s.serverTime === 'number') {
+            serverSkewMsRef.current = s.serverTime - Date.now()
+          }
           stateVersionRef.current = s.stateVersion
           flyingStartedAtRef.current = s.flyingStartedAt ?? null
           roundObjectIdRef.current = s.roundObjectId ?? null
@@ -157,7 +193,16 @@ export function useCrash(): UseCrashResult {
         flyingStartedAtRef.current = event.flyingStartedAt
         setRoundState((prev) => prev ? { ...prev, state: 'FLYING', flyingStartedAt: event.flyingStartedAt, stateVersion: event.stateVersion } : prev)
       } else if (event.type === 'crashed') {
+        // Stop the FLYING rAF branch and start a snap-down tween from the
+        // current overshoot value to the authoritative crashPointBps. Without
+        // this the display would freeze above the true crash point until the
+        // 'resolved' event arrives, then jump abruptly downward.
         flyingStartedAtRef.current = null
+        crashSnapRef.current = {
+          from: liveMultiplierBpsRef.current,
+          to: event.crashPointBps,
+          startedAt: Date.now(),
+        }
         setRoundState((prev) => prev ? { ...prev, state: 'CRASHED', crashedAlreadyFired: true, stateVersion: event.stateVersion } : prev)
       } else if (event.type === 'resolved') {
         setRecentRounds((prev) => [{ roundId: event.roundId, crashPointBps: event.crashPointBps }, ...prev.slice(0, 19)])
