@@ -254,7 +254,7 @@ const EcosystemLeaderboardPage = () => {
               Week just reset. Scores are updating...
             </p>
             <p className="text-sm text-nasun-white/60 mt-1">
-              New scores will appear within the next 12 hours.
+              New scores will appear within the next 8 hours.
             </p>
           </div>
         )}
