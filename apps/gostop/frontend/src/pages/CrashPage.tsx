@@ -216,6 +216,47 @@ export default function CrashPage() {
               />
               <span className="text-gray-400 text-sm">NUSDC</span>
             </div>
+            <BetSlider value={betInput} onChange={setBetInput} />
+            <div className="flex gap-2 text-xs">
+              {[1, 5, 25, 100].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setBetInput(String(v))}
+                  className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200 font-mono"
+                >
+                  {v}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = parseFloat(betInput) || 1
+                  setBetInput(String(Math.max(1, Math.floor(cur / 2))))
+                }}
+                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
+              >
+                ½
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const cur = parseFloat(betInput) || 1
+                  const max = Number(CRASH_MAX_BET) / 1_000_000
+                  setBetInput(String(Math.min(max, Math.ceil(cur * 2))))
+                }}
+                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
+              >
+                2×
+              </button>
+              <button
+                type="button"
+                onClick={() => setBetInput(String(Number(CRASH_MAX_BET) / 1_000_000))}
+                className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
+              >
+                Max
+              </button>
+            </div>
             <p className="text-xs text-gray-500">
               Min: {formatNusdc(CRASH_MIN_BET)} NUSDC · Max: {formatNusdc(CRASH_MAX_BET)} NUSDC
             </p>
@@ -246,6 +287,38 @@ export default function CrashPage() {
   )
 }
 
+function BetSlider({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const max = Number(CRASH_MAX_BET) / 1_000_000
+  const min = Number(CRASH_MIN_BET) / 1_000_000
+  // Logarithmic mapping so low bets aren't visually crushed against the left edge
+  // (1→5→25→100 should feel evenly spaced for a casino bet picker).
+  const toSlider = (v: number) => Math.round(((Math.log(v) - Math.log(min)) / (Math.log(max) - Math.log(min))) * 1000)
+  const fromSlider = (s: number) => Math.exp(Math.log(min) + (s / 1000) * (Math.log(max) - Math.log(min)))
+  const num = Math.max(min, Math.min(max, parseFloat(value) || min))
+  const sliderVal = toSlider(num)
+  return (
+    <div className="px-1">
+      <input
+        type="range"
+        min={0}
+        max={1000}
+        step={1}
+        value={sliderVal}
+        onChange={(e) => {
+          const raw = fromSlider(Number(e.target.value))
+          // Snap to round NUSDC values so the displayed input stays clean.
+          const snapped = raw < 10 ? Math.round(raw) : raw < 100 ? Math.round(raw / 5) * 5 : Math.round(raw / 10) * 10
+          onChange(String(Math.max(min, Math.min(max, snapped))))
+        }}
+        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500"
+        style={{
+          background: `linear-gradient(to right, rgb(234 179 8) 0%, rgb(234 179 8) ${sliderVal / 10}%, rgb(55 65 81) ${sliderVal / 10}%, rgb(55 65 81) 100%)`,
+        }}
+      />
+    </div>
+  )
+}
+
 function CrashGraph({
   state,
   liveMultiplierBps,
@@ -259,31 +332,132 @@ function CrashGraph({
   const H = 200
   const PAD = 20
 
-  // Single quadratic curve; visual only.
-  const endBps = state === 'CRASHED' || state === 'RESOLVED' ? (crashedCrashPoint ?? liveMultiplierBps) : liveMultiplierBps
-  const range = Math.max(endBps - 10_000, 1)
-  const steps = 40
-  const points: string[] = []
+  const isFlying = state === 'FLYING'
+  const isCrashed = state === 'CRASHED' || state === 'RESOLVED'
+  const endBps = isCrashed ? (crashedCrashPoint ?? liveMultiplierBps) : liveMultiplierBps
+
+  // Map multiplier to curve progress on a log scale so 1x→2x feels weighty
+  // and 20x+ doesn't push the rocket off-screen. Capped at 1.0.
+  const progress = Math.max(0, Math.min(1, Math.log(Math.max(1.001, endBps / 10_000)) / Math.log(20)))
+
+  // Sample the curve up to current progress so the trail grows with the rocket.
+  const steps = 48
+  const points: Array<[number, number]> = []
   for (let i = 0; i <= steps; i++) {
-    const frac = i / steps
+    const frac = (i / steps) * progress
     const x = PAD + frac * (W - PAD * 2)
     const y = H - PAD - frac * frac * (H - PAD * 2)
-    points.push(`${x},${y}`)
+    points.push([x, y])
   }
-  void range
+  const tip = points[points.length - 1] ?? [PAD, H - PAD]
+  // Tangent at the tip for rocket rotation; quadratic dy/dx = 2*frac*(H-2*PAD)/(W-2*PAD)
+  const slope = 2 * progress * ((H - 2 * PAD) / (W - 2 * PAD))
+  const angleDeg = -Math.atan(slope) * (180 / Math.PI) // negative because SVG y flips
 
-  const color = state === 'CRASHED' || state === 'RESOLVED' ? '#ef4444' : state === 'FLYING' ? '#22c55e' : '#6b7280'
+  const trailColor = isCrashed ? '#ef4444' : isFlying ? '#fbbf24' : '#6b7280'
+  const trailGlow = isCrashed ? '#7f1d1d' : isFlying ? '#f59e0b' : '#374151'
 
   return (
-    <div className="bg-gray-900 rounded-xl overflow-hidden">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }}>
-        <polyline points={points.join(' ')} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" />
-        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#374151" strokeWidth="1" />
-        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#374151" strokeWidth="1" />
+    <div className="bg-gradient-to-b from-[#0b1023] via-[#0a0d1f] to-[#050816] rounded-xl overflow-hidden relative">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: 200 }}>
+        <defs>
+          <linearGradient id="trailGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor={trailGlow} stopOpacity="0" />
+            <stop offset="60%" stopColor={trailColor} stopOpacity="0.7" />
+            <stop offset="100%" stopColor={trailColor} stopOpacity="1" />
+          </linearGradient>
+          <radialGradient id="rocketGlow">
+            <stop offset="0%" stopColor={trailColor} stopOpacity="0.6" />
+            <stop offset="100%" stopColor={trailColor} stopOpacity="0" />
+          </radialGradient>
+          <filter id="blur"><feGaussianBlur stdDeviation="2" /></filter>
+        </defs>
+
+        {/* Background stars — purely decorative, twinkle while FLYING */}
+        {STAR_FIELD.map((s, i) => (
+          <circle
+            key={i}
+            cx={s.x * W}
+            cy={s.y * H * 0.7}
+            r={s.r}
+            fill="#e5e7eb"
+            opacity={isFlying ? s.o : s.o * 0.4}
+            style={isFlying ? { animation: `crash-twinkle ${1.5 + (i % 3) * 0.6}s ease-in-out ${i * 0.2}s infinite` } : undefined}
+          />
+        ))}
+
+        {/* Axes */}
+        <line x1={PAD} y1={PAD} x2={PAD} y2={H - PAD} stroke="#1f2937" strokeWidth="1" />
+        <line x1={PAD} y1={H - PAD} x2={W - PAD} y2={H - PAD} stroke="#1f2937" strokeWidth="1" />
+
+        {/* Glow underlay */}
+        <polyline
+          points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+          fill="none"
+          stroke={trailColor}
+          strokeWidth="8"
+          strokeLinejoin="round"
+          opacity="0.35"
+          filter="url(#blur)"
+        />
+
+        {/* Trail */}
+        <polyline
+          points={points.map(([x, y]) => `${x},${y}`).join(' ')}
+          fill="none"
+          stroke="url(#trailGrad)"
+          strokeWidth="3"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+
+        {/* Rocket / explosion */}
+        {isCrashed ? (
+          <g transform={`translate(${tip[0]}, ${tip[1]})`}>
+            <circle r="18" fill="#ef4444" opacity="0.5" filter="url(#blur)" />
+            <circle r="10" fill="#fbbf24" opacity="0.9" />
+            <text textAnchor="middle" dominantBaseline="middle" fontSize="22">💥</text>
+          </g>
+        ) : (
+          <g transform={`translate(${tip[0]}, ${tip[1]}) rotate(${angleDeg})`}>
+            {/* Glow */}
+            <circle r="14" fill="url(#rocketGlow)" />
+            {/* Flame puffs (animated via CSS) */}
+            {isFlying && (
+              <g className="crash-flame" transform="translate(-12, 0)">
+                <circle cx="-2" cy="0" r="3.5" fill="#fbbf24" opacity="0.9" />
+                <circle cx="-7" cy="-1" r="2.5" fill="#f97316" opacity="0.8" />
+                <circle cx="-11" cy="1" r="1.8" fill="#ef4444" opacity="0.6" />
+              </g>
+            )}
+            <text textAnchor="middle" dominantBaseline="middle" fontSize="20" transform="rotate(45)">🚀</text>
+          </g>
+        )}
       </svg>
+      <style>{`
+        @keyframes crash-twinkle { 0%, 100% { opacity: var(--o, 0.6); } 50% { opacity: 0.15; } }
+        .crash-flame { animation: crash-flame-flicker 0.12s steps(2) infinite; transform-origin: 0 0; }
+        @keyframes crash-flame-flicker { 0% { transform: translate(-12px, 0) scaleX(1); } 100% { transform: translate(-12px, 0) scaleX(1.25); } }
+      `}</style>
     </div>
   )
 }
+
+// Pre-computed star field — fixed seed so it doesn't reshuffle on every render.
+const STAR_FIELD: Array<{ x: number; y: number; r: number; o: number }> = [
+  { x: 0.08, y: 0.18, r: 1.2, o: 0.7 },
+  { x: 0.22, y: 0.42, r: 0.8, o: 0.5 },
+  { x: 0.31, y: 0.12, r: 1.0, o: 0.8 },
+  { x: 0.45, y: 0.55, r: 0.6, o: 0.4 },
+  { x: 0.58, y: 0.22, r: 1.3, o: 0.9 },
+  { x: 0.67, y: 0.48, r: 0.7, o: 0.5 },
+  { x: 0.78, y: 0.15, r: 1.0, o: 0.7 },
+  { x: 0.87, y: 0.38, r: 0.9, o: 0.6 },
+  { x: 0.93, y: 0.62, r: 0.5, o: 0.4 },
+  { x: 0.15, y: 0.68, r: 0.7, o: 0.5 },
+  { x: 0.38, y: 0.28, r: 0.5, o: 0.4 },
+  { x: 0.52, y: 0.08, r: 0.8, o: 0.6 },
+]
 
 function RoundHistory({ recentRounds }: { recentRounds: Array<{ roundId: number; crashPointBps: number }> }) {
   if (recentRounds.length === 0) return null
