@@ -34,18 +34,24 @@ export default function CrashPage() {
   // smallest non-invasive change.
   const myBetRef = useRef<bigint>(0n)
   const celebratedCashoutRef = useRef<number | null>(null)
+  // Track which round we already fired a loss celebration for so the modal
+  // shows once on the FLYING→CRASHED transition, not on every re-render.
+  const celebratedLossRoundRef = useRef<number | null>(null)
 
   const state = crash.roundState?.state ?? 'IDLE'
   const isBetting = state === 'BETTING'
   const isFlying = state === 'FLYING'
-  // Disable bet 3s before betting window closes to avoid in-flight tx hitting FLYING.
+  // Lock bets shortly before the betting window closes so an in-flight tx does
+  // not arrive after FLYING (which would abort with ERoundNotInBetting). Sui
+  // devnet single-tx finality is typically ~500ms, so 1.5s leaves ~1s of slack
+  // for sign + broadcast + checkpoint inclusion.
   const bettingEndsAt = crash.roundState?.bettingEndsAt ?? null
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250)
     return () => clearInterval(id)
   }, [])
-  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 3000
+  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 1700
   // After the betting countdown hits 0s the server still needs a moment to flip
   // the round to FLYING. Treat that gap as "armed" so the cash-out button shows
   // immediately (disabled) instead of leaving the user staring at a waiting line.
@@ -60,6 +66,26 @@ export default function CrashPage() {
       celebratedCashoutRef.current = null
     }
   }, [crash.hasBetThisRound, crash.roundState?.roundId])
+
+  // Fire loss celebration when the round crashes and the user had a live bet
+  // but never cashed out. Mirrors the loss UX in Number Match / Mines so the
+  // bust feels like an event instead of just turning the multiplier red.
+  useEffect(() => {
+    if (state !== 'CRASHED') return
+    if (!crash.hasBetThisRound) return
+    if (crash.myCashoutBps !== null) return
+    if (myBetRef.current === 0n) return
+    const roundId = crash.roundState?.roundId ?? null
+    if (roundId === null) return
+    if (celebratedLossRoundRef.current === roundId) return
+    celebratedLossRoundRef.current = roundId
+    celebrate({
+      variant: 'loss',
+      tier: 'loss',
+      payout: 0n,
+      gameLabel: 'Crash',
+    })
+  }, [state, crash.hasBetThisRound, crash.myCashoutBps, crash.roundState?.roundId, celebrate])
 
   // Fire celebration on cashout transition.
   useEffect(() => {
@@ -107,7 +133,7 @@ export default function CrashPage() {
     'text-orange-400'
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 min-h-screen">
       <header className="panel p-4 sm:p-6 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex items-center gap-4 sm:gap-5">
         <img
           src={crashThumb}
@@ -252,6 +278,7 @@ export default function CrashPage() {
             }
             now={now}
             betAmount={crash.hasBetThisRound ? myBetRef.current : 0n}
+            isNextRound={!crash.hasBetThisRound}
           />
         )}
         {crash.error && <p className="text-red-400 text-sm text-center">{crash.error}</p>}
@@ -281,6 +308,11 @@ function Spinner({ className = 'h-4 w-4' }: { className?: string }) {
   )
 }
 
+// Server's nextRoundAt = scheduled IDLE → BETTING transition time, but the
+// on-chain create_round tx still needs to finalize after that. This buffer
+// lets the displayed countdown roughly track the actual round-start moment.
+const CHAIN_CONFIRMATION_BUFFER_MS = 2500
+
 function NextRoundIndicator({
   nextRoundAt,
   now,
@@ -290,14 +322,15 @@ function NextRoundIndicator({
   now: number
   large?: boolean
 }) {
-  const secsLeft = nextRoundAt !== null ? Math.max(0, Math.ceil((nextRoundAt - now) / 1000)) : null
+  const target = nextRoundAt !== null ? nextRoundAt + CHAIN_CONFIRMATION_BUFFER_MS : null
+  const secsLeft = target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null
   const counting = secsLeft !== null && secsLeft > 0
   const sizeText = large ? 'text-2xl' : 'text-sm'
-  const sizeIcon = large ? 'h-5 w-5' : 'h-4 w-4'
+  // No spinner here: the bet/cashout panel below carries the primary spinner
+  // for this idle state, so we avoid duplicate motion in the same view.
   return (
-    <span className={`inline-flex items-center justify-center gap-2 ${sizeText} text-gray-400`}>
-      <Spinner className={sizeIcon} />
-      {counting ? `Next round in ${secsLeft}s` : 'Starting next round...'}
+    <span className={`inline-flex items-center justify-center ${sizeText} text-gray-400`}>
+      {counting ? `Next round in ${secsLeft}s` : 'Confirming on chain...'}
     </span>
   )
 }
@@ -307,17 +340,25 @@ function WaitingPanel({
   targetAt,
   now,
   betAmount,
+  isNextRound,
 }: {
   label: string
   targetAt: number | null
   now: number
   betAmount: bigint
+  isNextRound?: boolean
 }) {
-  const secsLeft = targetAt !== null ? Math.max(0, Math.ceil((targetAt - now) / 1000)) : null
+  // Pad nextRoundAt so 0s lines up with actual on-chain round start.
+  // bettingEndsAt is server-authoritative for the betting window so no padding.
+  const target =
+    targetAt !== null && isNextRound ? targetAt + CHAIN_CONFIRMATION_BUFFER_MS : targetAt
+  const secsLeft = target !== null ? Math.max(0, Math.ceil((target - now) / 1000)) : null
   return (
     <div className="flex flex-col items-center justify-center gap-2 py-4 text-gray-300">
       <Spinner className="h-6 w-6 text-gold-300" />
-      <p className="text-base">{label}</p>
+      <p className="text-base">
+        {secsLeft === 0 && isNextRound ? 'Confirming on chain...' : label}
+      </p>
       {secsLeft !== null && secsLeft > 0 && (
         <p className="font-mono text-lg text-gold-200">{secsLeft}s</p>
       )}
