@@ -14,7 +14,7 @@ export function tierToPreset(tier: CelebrationTier): CelebrationPreset {
       return 'large'
     case 'big':
       return 'medium'
-    case 'normal':
+    default:
       return 'small'
   }
 }
@@ -25,7 +25,7 @@ export function tierToSound(tier: CelebrationTier): GameSound {
       return 'winJackpot'
     case 'big':
       return 'winMedium'
-    case 'normal':
+    default:
       return 'winSmall'
   }
 }
@@ -36,7 +36,7 @@ export function tierToColors(tier: CelebrationTier): readonly string[] {
       return CELEBRATION_COLORS.royal
     case 'big':
       return CELEBRATION_COLORS.gold
-    case 'normal':
+    default:
       return CELEBRATION_COLORS.emerald
   }
 }
@@ -48,7 +48,7 @@ export function defaultTierLabel(tier: CelebrationTier, multiplier?: number): st
       return 'JACKPOT'
     case 'big':
       return 'BIG WIN'
-    case 'normal':
+    default:
       return 'NICE WIN'
   }
 }
@@ -59,7 +59,7 @@ export function tierTextColorClass(tier: CelebrationTier): string {
       return 'text-gold-200'
     case 'big':
       return 'text-gold-300'
-    case 'normal':
+    default:
       return 'text-emerald-400'
   }
 }
