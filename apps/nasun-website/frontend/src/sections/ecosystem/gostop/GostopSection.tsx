@@ -14,12 +14,20 @@ import {
   Hourglass,
 } from "lucide-react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
+import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox, FadeInUp } from "@/components/ui";
 import lotteryImg from "@/assets/images/lottery.webp";
 
 const GOSTOP_URL = "https://gostop.app";
+
+// Hero stat values — update these manually or replace with API-driven data
+const HERO_STATS = [
+  { value: "5", label: "Live Games" },
+  { value: "3,347", label: "Active Gamers" },
+  { value: "8m 42s", label: "Avg. Session" },
+] as const;
 
 const liveGames: Array<{
   title: string;
@@ -64,7 +72,16 @@ function GostopSection() {
     <SectionLayout className="!max-w-6xl">
       <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
         {/* ========== HERO ========== */}
-        <FadeInUp>
+        <div className="flex flex-col items-center text-center">
+          <FadeInUp>
+            <PageTitle>GoStop</PageTitle>
+            <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
+              A luxury onchain casino. Provably fair. Settled on chain.
+            </h5>
+          </FadeInUp>
+        </div>
+
+        <FadeInUp delay="0.15s">
           <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0c0805]">
             {/* Dot grid texture */}
             <div
@@ -90,35 +107,26 @@ function GostopSection() {
                   </span>
                 </div>
 
-                {/* Massive title */}
+                {/* Card title */}
                 <div className="-ml-1">
-                  <h1
-                    className="font-rubik uppercase font-bold leading-[0.88] tracking-tight text-transparent bg-clip-text"
+                  <h2
+                    className="leading-[0.88] tracking-tight text-transparent bg-clip-text"
                     style={{
                       fontSize: "clamp(72px, 12vw, 144px)",
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontStyle: "italic",
+                      fontWeight: 500,
                       backgroundImage:
                         "linear-gradient(135deg, #fef3c7 0%, #fbbf24 45%, #d97706 100%)",
                     }}
                   >
-                    Go
-                    <br />
-                    Stop
-                  </h1>
+                    GoStop
+                  </h2>
                 </div>
-
-                {/* Tagline */}
-                <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed max-w-xs">
-                  A luxury onchain casino. Provably fair. Every payout written
-                  on chain.
-                </p>
 
                 {/* Stat strip */}
                 <div className="flex items-center gap-5 md:gap-7">
-                  {[
-                    { value: "5", label: "Live Games" },
-                    { value: "$80B+", label: "Wagered 2024" },
-                    { value: "100%", label: "On-Chain" },
-                  ].map((stat, i) => (
+                  {HERO_STATS.map((stat, i) => (
                     <React.Fragment key={stat.label}>
                       {i > 0 && (
                         <div className="w-px h-7 bg-amber-500/20 shrink-0" />
@@ -127,7 +135,7 @@ function GostopSection() {
                         <div className="text-base md:text-xl font-bold text-amber-200">
                           {stat.value}
                         </div>
-                        <div className="text-[11px] text-nasun-white/40 uppercase tracking-wider mt-0.5">
+                        <div className="text-sm text-nasun-white/40 uppercase tracking-wider mt-0.5">
                           {stat.label}
                         </div>
                       </div>
