@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b0b10"/>
+      <stop offset="100%" stop-color="#050507"/>
+    </linearGradient>
+    <radialGradient id="topGlow" cx="0.5" cy="0" r="0.7">
+      <stop offset="0%" stop-color="#d4af37" stop-opacity="0.28"/>
+      <stop offset="60%" stop-color="#d4af37" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sideGlow1" cx="0" cy="1" r="0.7">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="sideGlow2" cx="1" cy="1" r="0.7">
+      <stop offset="0%" stop-color="#d4af37" stop-opacity="0.16"/>
+      <stop offset="100%" stop-color="#d4af37" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="goldText" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff3c4"/>
+      <stop offset="50%" stop-color="#e6c558"/>
+      <stop offset="100%" stop-color="#a37c1d"/>
+    </linearGradient>
+    <linearGradient id="logoGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f5d56a"/>
+      <stop offset="55%" stop-color="#d4af37"/>
+      <stop offset="100%" stop-color="#a37c1d"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <rect width="1200" height="630" fill="url(#topGlow)"/>
+  <rect width="1200" height="630" fill="url(#sideGlow1)"/>
+  <rect width="1200" height="630" fill="url(#sideGlow2)"/>
+
+  <g opacity="0.06" stroke="#d4af37" stroke-width="1" fill="none">
+    <circle cx="160" cy="500" r="60"/>
+    <circle cx="160" cy="500" r="40"/>
+    <circle cx="160" cy="500" r="20"/>
+    <circle cx="1040" cy="120" r="50"/>
+    <circle cx="1040" cy="120" r="32"/>
+    <circle cx="1040" cy="120" r="14"/>
+  </g>
+
+  <g transform="translate(600 110)">
+    <circle cx="0" cy="0" r="48" fill="url(#logoGold)"/>
+    <circle cx="0" cy="0" r="48" fill="none" stroke="#fef3c2" stroke-opacity="0.45" stroke-width="2"/>
+    <text x="0" y="16" text-anchor="middle"
+          font-family="'Playfair Display', Georgia, serif"
+          font-style="italic" font-weight="700" font-size="56"
+          fill="#07070a">G</text>
+  </g>
+
+  <text x="600" y="320" text-anchor="middle"
+        font-family="'Playfair Display', Georgia, serif"
+        font-style="italic" font-weight="700" font-size="180"
+        fill="url(#goldText)">GoStop</text>
+
+  <text x="600" y="400" text-anchor="middle"
+        font-family="'Inter', system-ui, sans-serif"
+        font-weight="500" font-size="34"
+        fill="#e5e5e5">Onchain Casino on Nasun</text>
+
+  <g transform="translate(600 470)">
+    <rect x="-260" y="-26" width="520" height="52" rx="26"
+          fill="none" stroke="#d4af37" stroke-opacity="0.45" stroke-width="1.5"/>
+    <text x="0" y="8" text-anchor="middle"
+          font-family="'Inter', system-ui, sans-serif"
+          font-weight="600" font-size="20" letter-spacing="6"
+          fill="#e6c558">CRASH · LOTTERY · MINES · SCRATCH · MATCH</text>
+  </g>
+
+  <text x="600" y="560" text-anchor="middle"
+        font-family="'Inter', system-ui, sans-serif"
+        font-weight="500" font-size="18" letter-spacing="6"
+        fill="#a3a3a3">PROVABLY FAIR · SETTLED ONCHAIN</text>
+</svg>
