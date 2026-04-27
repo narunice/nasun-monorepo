@@ -112,7 +112,7 @@ export default function ScratchCardPage() {
   const allRevealed = hasResults && revealed.size === results.length
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-h-screen">
       <Header />
 
       {error && (

@@ -184,7 +184,7 @@ export default function LotteryPage() {
     picks.length === PICK_COUNT && isWalletConnected && isRoundOpen && !isBuying
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 min-h-screen">
       <RoundHeader
         closeMs={closeMs}
         roundNumber={round?.roundNumber ?? null}
