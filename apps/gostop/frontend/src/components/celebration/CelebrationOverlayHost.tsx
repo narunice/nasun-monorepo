@@ -43,8 +43,9 @@ export function CelebrationOverlayHost({ onComplete }: Props) {
       aria-atomic="true"
     >
       {config.variant === 'loss' ? (
-        <div key={config.key} className="pointer-events-auto panel p-10 md:p-12 w-full max-w-xl bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.2),transparent_60%)] border-red-500/40">
-          <p className="text-xs uppercase tracking-[0.3em] text-red-300/80 text-center mb-2">
+        <div key={config.key} className="pointer-events-auto panel p-10 md:p-12 w-full max-w-xl border-red-500/40 backdrop-blur-md relative overflow-hidden">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.22),transparent_60%)] pointer-events-none" />
+          <p className="relative text-xs uppercase tracking-[0.3em] text-red-300/80 text-center mb-2">
             {config.gameLabel}
           </p>
           <LossReaction onComplete={onComplete} />
