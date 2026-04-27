@@ -129,7 +129,7 @@ export default function CrashPage() {
       <CrashGraph
         state={state}
         liveMultiplierBps={crash.liveMultiplierBps}
-        crashedCrashPoint={state === 'RESOLVED' || state === 'CRASHED' ? (crash.recentRounds[0]?.crashPointBps ?? null) : null}
+        crashedCrashPoint={state === 'RESOLVED' ? (crash.recentRounds[0]?.crashPointBps ?? null) : null}
       />
 
       <div className="text-center">
@@ -138,7 +138,11 @@ export default function CrashPage() {
         ) : state === 'CRASHED' || state === 'RESOLVED' ? (
           <div className="space-y-1">
             <div className="text-5xl font-bold text-red-400">
-              {formatMultiplier(crash.recentRounds[0]?.crashPointBps ?? 10_000)}
+              {/* Server omits crashPointBps from the 'crashed' event, so during CRASHED
+                  recentRounds[0] still points to the previous round. Use the frozen
+                  liveMultiplierBps (rAF stops at crash) until RESOLVED commits the
+                  definitive value. */}
+              {formatMultiplier(state === 'CRASHED' ? crash.liveMultiplierBps : (crash.recentRounds[0]?.crashPointBps ?? 10_000))}
             </div>
             {(() => {
               const nextAt = crash.roundState?.nextRoundAt ?? null
