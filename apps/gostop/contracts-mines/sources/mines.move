@@ -24,11 +24,14 @@
 /// - `reveal_cell` and `cashout` take `session: MinesSession` by value so
 ///   the module can `object::delete` on mine hit / cashout. Safe reveals
 ///   transfer the session back to the sender.
-/// - All pre-random assertions (including bet-too-large clamp against
-///   cap.max_single_payout) happen before random consumption.
+/// - All pre-random assertions happen before random consumption.
 /// - create_session enforces a 1-session-per-address invariant via the
-///   MinesRegistry active_sessions table. No silent payout clamp on
-///   cashout: oversized bets are rejected up-front with EBetTooLarge.
+///   MinesRegistry active_sessions table.
+/// - Payout cap policy: the upfront check only ensures `bet_amount` itself
+///   does not exceed cap.max_single_payout. The theoretical max multiplier
+///   at high mine counts (e.g. C(25,7)=480700x) is so large that a
+///   bet*max_mul check would force max bet to ~0. cashout silently clamps
+///   payout to cap.max_single_payout so the pool stays bounded regardless.
 #[allow(unused_const)]
 module gostop_mines::mines {
     use sui::coin::Coin;
@@ -206,11 +209,11 @@ module gostop_mines::mines {
             ESessionAlreadyActive,
         );
 
-        // Max theoretical multiplier: reveal every safe cell.
-        let max_mul_bps = max_multiplier_bps(mine_count);
-        let max_payout = ((bet_amount as u128) * (max_mul_bps as u128) / 10000) as u64;
+        // Bet itself must fit within the pool's per-game payout cap. The
+        // potential payout (bet * multiplier) can exceed this; cashout
+        // silently clamps the actual coin transfer to cap.
         assert!(
-            max_payout <= bankroll_pool::game_cap_max_payout(cap),
+            bet_amount <= bankroll_pool::game_cap_max_payout(cap),
             EBetTooLarge,
         );
 
@@ -332,8 +335,9 @@ module gostop_mines::mines {
     }
 
     /// Cash out. By-value so the session can be destroyed after payout.
-    /// No silent clamp: max_single_payout was checked up-front in
-    /// create_session, so payout cannot exceed cap here.
+    /// Silent clamp: payout is capped at cap.max_single_payout so the pool
+    /// stays bounded even at extreme mine counts where bet * multiplier
+    /// would otherwise blow past cap.
     entry fun cashout(
         session: MinesSession,
         registry: &mut MinesRegistry,
@@ -348,7 +352,9 @@ module gostop_mines::mines {
 
         let cap = option::borrow(&registry.game_cap);
         let mul_bps = compute_multiplier_bps(session.mine_count, session.safe_reveals);
-        let payout = ((session.bet_amount as u128) * (mul_bps as u128) / 10000) as u64;
+        let raw_payout = ((session.bet_amount as u128) * (mul_bps as u128) / 10000) as u64;
+        let max_payout = bankroll_pool::game_cap_max_payout(cap);
+        let payout = if (raw_payout > max_payout) { max_payout } else { raw_payout };
 
         let coin = bankroll_pool::pay_winner(
             pool,
@@ -555,6 +561,21 @@ module gostop_mines::mines {
         let direct = compute_multiplier_bps(m, GRID_SIZE - m);
         let via_max = max_multiplier_bps(m);
         assert!(direct == via_max);
+    }
+
+    #[test]
+    fun test_payout_clamp_at_cap() {
+        // Pure clamp logic: at extreme mine counts a 1 NUSDC bet would
+        // theoretically pay millions. The cashout silent-clamp must cap
+        // payout to max_single_payout. This test mirrors the clamp formula
+        // used inside `cashout`.
+        let bet: u64 = 1_000_000;            // 1 NUSDC
+        let cap: u64 = 2_000_000_000;        // 2,000 NUSDC
+        let mul_bps = compute_multiplier_bps(7, 18);
+        let raw = ((bet as u128) * (mul_bps as u128) / 10000) as u64;
+        let clamped = if (raw > cap) { cap } else { raw };
+        assert!(raw > cap);
+        assert!(clamped == cap);
     }
 
     #[test]
