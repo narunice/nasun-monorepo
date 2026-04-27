@@ -8,16 +8,16 @@ import { useHomePageLoading } from "../../contexts/PageLoadingContext";
 import { JsonLd, NASUN_ORG_SCHEMA } from "../../utils/jsonLd";
 
 // TriptychSection: static import (first visible section, no heavy deps like framer-motion)
-import TriptychSection from "../../sections/home/TriptychSection";
+import TriptychSection from "../../sections/home/legacy/TriptychSection";
 // Preload triptych images for LCP
 import kaeboImg from "@/assets/images/Princess-Kaebo-Fixed.webp";
 import josenImg from "@/assets/images/josen.webp";
 import canyonImg from "@/assets/images/canyon.webp";
 
 // Below-fold sections
-const VisionSection = lazy(() => import("../../sections/home/VisionSection"));
-const WhatWeBuildingSection = lazy(() => import("../../sections/home/WhatWeBuildingSection"));
-const AwardsGrantsSection = lazy(() => import("../../sections/home/AwardsGrantsSection"));
+const VisionSection = lazy(() => import("../../sections/home/legacy/VisionSection"));
+const WhatWeBuildingSection = lazy(() => import("../../sections/home/legacy/WhatWeBuildingSection"));
+const AwardsGrantsSection = lazy(() => import("../../sections/home/legacy/AwardsGrantsSection"));
 
 export default function Home2026AprilPage() {
   const [isVideoReady, setIsVideoReady] = useState(false);

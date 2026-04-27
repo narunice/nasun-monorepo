@@ -82,7 +82,7 @@ const SectionChip = ({
 
 export const Hero2026StatsSection = () => {
   return (
-    <section className="relative bg-pd0 min-h-[calc(100vh-50px)] max-w-9xl mx-auto py-16 sm:py-20 lg:py-16">
+    <section className="relative bg-pd0 min-h-[calc(100vh-50px)] max-w-9xl mx-auto py-16 sm:py-20 lg:py-16 flex flex-col justify-center">
       <div className="relative z-10 w-full max-w-7xl mx-auto px-6 lg:px-12 flex flex-col gap-14 lg:gap-16">
         {/* Top: Nasun Devnet - full width */}
         <div>
@@ -309,7 +309,7 @@ export const Hero2026StatsSection = () => {
           </div>
         </div>
         {/* Footnotes */}
-        <div className="flex flex-col gap-1.5 pt-2 border-t border-nasun-white/15">
+        <div className="flex flex-col gap-1.5 pt-2 border-t border-nasun-white/15 pl-2 sm:pl-4 md:pl-16">
           <p className="text-pd4 text-sm leading-relaxed">
             <sup>1</sup> Nasun web apps are bot-filtered by Cloudflare
             Turnstile.
