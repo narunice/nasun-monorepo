@@ -252,9 +252,11 @@ export async function takeDailySnapshot(
     const referralBonus = referralMap.get(identityId) ?? 0;
     const governanceBonus = govMap.get(identityId) ?? 0;
     const stakingDelta = stakingMap.get(identityId) ?? 0;
-    // Daily delta (delta column semantics: synthetic excluded from bonus_total)
+    // Daily delta (delta column semantics: synthetic excluded from bonus_total).
+    // Includes staking-daily tier pts so the per-day total matches the live header
+    // formula in routes/ecosystem.ts (forward-only fix; past rows stay as written).
     const ecosystemScore = parseFloat(
-      (baseScore * multiplier + bonusTotal + governanceBonus + referralBonus * sf).toFixed(2),
+      (baseScore * multiplier + bonusTotal + governanceBonus + referralBonus * sf + stakingDelta * multiplier).toFixed(2),
     );
 
     // Cumulative (ledger) is computed in SQL during INSERT (see step 7) using

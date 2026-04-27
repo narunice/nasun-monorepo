@@ -335,6 +335,14 @@ async function main() {
         AND identity_id IS NOT NULL
         AND tx_timestamp >= ${bounds.start}
         AND tx_timestamp < ${bounds.end}
+        -- Intentional exclusions:
+        --   'staking-daily' (NFT tier-based daily pts) is excluded by design.
+        --     Including it would let large NFT stakers dominate the weekly
+        --     leaderboard purely by holding, drowning out actual activity.
+        --     It still accrues to all-time totals via daily-snapshot's
+        --     all_time_staking_scaled column and the live header formula.
+        --   'staking-reward' (token emission delta) is reintroduced below in
+        --     the staking_emission CTE and added to weekly_score.
         AND category NOT IN (
           'referral-bonus', 'daily-mission', 'ecosystem-passive',
           'staking-daily', 'staking', 'staking-reward'
