@@ -26,7 +26,7 @@ const PadoScoreLeaderboardPage: React.FC = () => {
           Pado DeFi Leaderboard
         </PageTitle>
         <p className="text-base text-nasun-white/80 mb-6 -mt-2">
-          Weekly rankings reset every Monday 00:10 UTC. Top traders earn Nasun
+          Weekly rankings reset every Monday 00:00 UTC. Top traders earn Nasun
           Points.
         </p>
         <PadoScoreLeaderboard />

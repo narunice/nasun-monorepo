@@ -17,7 +17,7 @@ export interface ScoreLeaderboardTrader {
 export interface ScoreLeaderboardResponse {
   scope: 'weekly' | 'alltime';
   weekId?: string;
-  weekStart?: number; // ms timestamp of week start (Monday 00:10 UTC)
+  weekStart?: number; // ms timestamp of week start (Monday 00:00 UTC)
   traders: ScoreLeaderboardTrader[];
   updatedAt: number;
   totalTraders: number;

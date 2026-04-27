@@ -650,7 +650,7 @@ async function handleInternalWeeklyScores(
   }
 
   // Safety: refuse requests for the current (in-progress) week.
-  // The week is identified by its Monday 00:10 UTC start. If weekId matches the current
+  // The week is identified by its Monday 00:00 UTC start. If weekId matches the current
   // running week, the data is not final yet.
   const currentWeekId = getWeekId(getCurrentWeekStart());
   if (weekId === currentWeekId) {
@@ -713,7 +713,7 @@ function weekIdToStartMs(weekId: string): number {
   const dayOfWeek = jan4.getUTCDay() || 7;
   const monday_w1 = new Date(jan4.getTime() - (dayOfWeek - 1) * 86400000);
   const monday = new Date(monday_w1.getTime() + (week - 1) * 7 * 86400000);
-  monday.setUTCHours(0, 10, 0, 0);
+  monday.setUTCHours(0, 0, 0, 0);
   return monday.getTime();
 }
 
