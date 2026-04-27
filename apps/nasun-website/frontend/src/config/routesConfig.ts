@@ -733,6 +733,7 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
     "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",
     "navigation.baramAi": "Baram - AI",
     "navigation.padoFinance": "Pado - Finance",
+    "navigation.gostop": "GoStop - Casino",
     "navigation.genSol": "GenSol",
     "navigation.genSolMain": "GenSol",
     "navigation.genSolPlan": "GenSol Plan",

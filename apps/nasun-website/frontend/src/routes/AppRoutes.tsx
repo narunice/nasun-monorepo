@@ -27,9 +27,9 @@ const CreatorPostsAdmin = lazy(() => import("../features/admin/pages/CreatorPost
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
 
-// uju dashboard (lazy loaded, protected) — currently WIP, exposed at /dev/uju
+// uju dashboard (lazy loaded, protected) — pre-launch path /dev/uju, primary host uju.nasun.io
 const UjuPage = lazy(() => import("../pages/uju/UjuPage"));
-// uju public coming-soon landing
+// uju public coming-soon landing — shown at nasun.io/uju from "Enter uju" button
 const UjuComingSoonPage = lazy(() => import("../pages/uju/UjuComingSoonPage"));
 
 // Dev/Showcase pages (lazy loaded)
@@ -166,14 +166,13 @@ const AppRoutes = () => {
         {/* Admin Routes */}
         {renderAdminRoutes(adminRoutes)}
 
-        {/* uju coming-soon landing (public) */}
+        {/* uju public coming-soon (any host) — "Enter uju" button target */}
         <Route path="/uju" element={
           <Suspense fallback={<PageLoading />}>
             <UjuComingSoonPage />
           </Suspense>
         } />
-
-        {/* uju dashboard WIP (protected, dev-only) */}
+        {/* uju super-app (protected, pre-launch) — uju.nasun.io rewrites here */}
         <Route path="/dev/uju" element={
           <PrivateRoute>
             <Suspense fallback={<PageLoading />}>
