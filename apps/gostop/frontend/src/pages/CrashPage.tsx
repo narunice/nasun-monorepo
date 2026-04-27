@@ -133,32 +133,40 @@ export default function CrashPage() {
     'text-orange-400'
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 min-h-screen">
-      <header className="panel p-4 sm:p-6 bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)] flex items-center gap-4 sm:gap-5">
-        <img
-          src={crashThumb}
-          alt=""
-          aria-hidden
-          className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl object-cover border border-gold-subtle shrink-0"
+    <div className="max-w-2xl lg:max-w-6xl mx-auto min-h-screen lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:gap-8 lg:items-start space-y-6 lg:space-y-0">
+      <aside className="lg:sticky lg:top-20">
+        <header
+          className="panel bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]
+            flex items-center gap-4 sm:gap-5 p-4 sm:p-6
+            lg:flex-col lg:items-stretch lg:gap-0 lg:p-0 lg:overflow-hidden"
+        >
+          <img
+            src={crashThumb}
+            alt=""
+            aria-hidden
+            className="w-20 h-20 sm:w-24 sm:h-24 md:w-32 md:h-32 rounded-xl object-cover border border-gold-subtle shrink-0
+              lg:w-full lg:h-auto lg:aspect-square lg:rounded-none lg:border-0 lg:border-b lg:shrink"
+          />
+          <div className="flex-1 min-w-0 lg:p-6">
+            <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
+              Live Round
+            </p>
+            <h1 className="font-display text-2xl sm:text-3xl md:text-4xl lg:text-5xl text-gold">Crash</h1>
+            <p className="text-sm lg:text-base text-neutral-200 mt-2 italic">
+              Go or stop. One decision, one multiplier.
+            </p>
+          </div>
+        </header>
+      </aside>
+
+      <div className="space-y-6 min-w-0">
+        <CrashGraph
+          state={state}
+          liveMultiplierBps={crash.liveMultiplierBps}
+          crashedCrashPoint={state === 'RESOLVED' ? (crash.recentRounds[0]?.crashPointBps ?? null) : null}
         />
-        <div className="flex-1 min-w-0">
-          <p className="text-xs uppercase tracking-[0.3em] text-gold-300 mb-2">
-            Live Round
-          </p>
-          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-gold">Crash</h1>
-          <p className="text-sm text-neutral-200 mt-2 italic">
-            Go or stop. One decision, one multiplier.
-          </p>
-        </div>
-      </header>
 
-      <CrashGraph
-        state={state}
-        liveMultiplierBps={crash.liveMultiplierBps}
-        crashedCrashPoint={state === 'RESOLVED' ? (crash.recentRounds[0]?.crashPointBps ?? null) : null}
-      />
-
-      <div className="text-center">
+        <div className="text-center">
         {state === 'FLYING' ? (
           <span className={`text-4xl sm:text-5xl font-bold ${multiplierColor}`}>{formatMultiplier(crash.liveMultiplierBps)}</span>
         ) : state === 'CRASHED' || state === 'RESOLVED' ? (
@@ -284,7 +292,8 @@ export default function CrashPage() {
         {crash.error && <p className="text-red-400 text-sm text-center">{crash.error}</p>}
       </div>
 
-      <RoundHistory recentRounds={crash.recentRounds} />
+        <RoundHistory recentRounds={crash.recentRounds} />
+      </div>
     </div>
   )
 }
@@ -417,7 +426,10 @@ function CrashGraph({
   crashedCrashPoint: number | null
 }) {
   const W = 500
-  const H = 200
+  // H bumped from 200 -> 280 so the rocket has more vertical runway,
+  // especially on the wider desktop right column. Curve math derives from H
+  // and W so the geometry stays consistent.
+  const H = 280
   const PAD = 20
 
   const isFlying = state === 'FLYING'
@@ -447,7 +459,7 @@ function CrashGraph({
 
   return (
     <div className="bg-gradient-to-b from-[#0b1023] via-[#0a0d1f] to-[#050816] rounded-xl overflow-hidden relative">
-      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block" style={{ height: 200 }}>
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full block">
         <defs>
           <linearGradient id="trailGrad" x1="0%" y1="100%" x2="100%" y2="0%">
             <stop offset="0%" stopColor={trailGlow} stopOpacity="0" />
