@@ -1,6 +1,6 @@
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
-import { UjuCard } from "../shared/UjuCard";
+import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader } from "../shared";
 import { Spinner } from "@/components/ui";
 
 export function TotalPointsCard() {
@@ -12,49 +12,62 @@ export function TotalPointsCard() {
   const weeklyPoints = score?.weekly.ecosystemScore ?? 0;
   const multiplier = score?.multiplier ?? 1;
 
+  const refreshLabel = isRefreshing
+    ? "Refreshing..."
+    : cooldownSeconds > 0
+    ? `Refresh in ${cooldownSeconds}s`
+    : "Refresh";
+
   return (
-    <UjuCard>
-      <p className="text-sm font-medium text-uju-secondary mb-3">Ecosystem Points</p>
+    <UjuCard variant="accent">
+      <UjuSectionHeader
+        accent
+        title="Ecosystem Points"
+        trailing={
+          <UjuBadge tone={multiplier > 1 ? "amber" : "neutral"}>
+            {multiplier.toFixed(2)}x
+          </UjuBadge>
+        }
+      />
 
       {isLoading ? (
-        <div className="flex items-center justify-center h-16">
+        <div className="flex items-center justify-center h-24">
           <Spinner size="sm" />
         </div>
       ) : (
         <>
-          <p className="text-3xl font-bold text-nasun-c3 tabular-nums">
+          <p className="text-4xl sm:text-5xl font-bold tabular-nums leading-none bg-gradient-to-r from-pado-3 to-pado-4 bg-clip-text text-transparent">
             {allTimePoints.toLocaleString()}
           </p>
-          <p className="text-sm text-uju-secondary mt-1">All-time total</p>
+          <p className="text-sm text-uju-secondary mt-2">All-time total</p>
 
-          <div className="mt-4 flex items-center justify-between">
-            <div>
-              <p className="text-base font-semibold text-uju-primary tabular-nums">
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <div className="rounded-xl bg-pado-2/10 border border-pado-2/30 p-3">
+              <p className="text-sm font-medium text-uju-secondary">This week</p>
+              <p className="text-lg font-semibold text-pado-3 tabular-nums mt-1">
                 +{weeklyPoints.toLocaleString()}
               </p>
-              <p className="text-sm text-uju-secondary">This week</p>
             </div>
-            <div className="text-right">
-              <p className="text-base font-semibold text-nasun-c1 tabular-nums">
+            <div className="rounded-xl bg-pado-4/10 border border-pado-4/30 p-3">
+              <p className="text-sm font-medium text-uju-secondary">Multiplier</p>
+              <p className="text-lg font-semibold text-pado-4 tabular-nums mt-1">
                 {multiplier.toFixed(2)}x
               </p>
-              <p className="text-sm text-uju-secondary">Multiplier</p>
             </div>
           </div>
         </>
       )}
 
-      <button
+      <UjuButton
+        variant="ghost"
+        size="sm"
+        fullWidth
         onClick={refresh}
         disabled={isRefreshing || cooldownSeconds > 0}
-        className="mt-4 w-full text-sm text-uju-secondary hover:text-uju-primary disabled:text-uju-border disabled:hover:text-uju-border disabled:cursor-not-allowed transition-colors"
+        className="mt-4"
       >
-        {isRefreshing
-          ? "Refreshing..."
-          : cooldownSeconds > 0
-          ? `Refresh in ${cooldownSeconds}s`
-          : "Refresh"}
-      </button>
+        {refreshLabel}
+      </UjuButton>
     </UjuCard>
   );
 }

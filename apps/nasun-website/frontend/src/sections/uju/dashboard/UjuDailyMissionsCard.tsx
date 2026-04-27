@@ -3,9 +3,10 @@ import { useAuth } from '@/features/auth';
 import { ClaimAllButton } from '@nasun/wallet-ui';
 import { useDailyMissions } from '@/hooks/useDailyMissions';
 import { useGovernanceMission } from '@/hooks/useGovernanceMission';
-import { useWalletRegistration } from '@/sections/myAccount/hooks/useWalletRegistration';
+import { useUjuWalletRegistration } from '../hooks/useUjuWalletRegistration';
 import { trackCrossAppNav, withCrossAppParam } from '@/lib/analytics';
 import { UjuCard } from '../shared/UjuCard';
+import { UjuAccentBar } from '../shared/UjuAccentBar';
 import type { AppEntry } from '../apps/appRegistry';
 import {
   BASE_MISSIONS,
@@ -51,7 +52,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
   const [visitedMissions, setVisitedMissions] = useState<Set<string>>(loadVisitedMissions);
   const [showAll, setShowAll] = useState(false);
 
-  const { registeredWallets } = useWalletRegistration();
+  const { registeredWallets } = useUjuWalletRegistration();
 
   const allWalletAddresses = useMemo(() => {
     const addrs = new Set<string>();
@@ -130,7 +131,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
   if (isLoading) {
     return (
       <UjuCard>
-        <p className="text-sm font-medium text-uju-secondary mb-4">Daily Missions</p>
+        <h3 className="text-base sm:text-lg font-semibold text-uju-primary mb-4">Daily Missions</h3>
         <div className="flex items-center justify-center py-10">
           <div className="w-5 h-5 border-2 border-uju-border border-t-pado-3 rounded-full animate-spin" />
         </div>
@@ -138,26 +139,30 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
     );
   }
 
+  const maxPoints = missionPool.reduce((acc, m) => acc + (m.points ?? 0), 0);
+
   return (
-    <UjuCard className="flex flex-col gap-0">
+    <UjuCard variant="accent" className="flex flex-col gap-0">
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-sm font-semibold text-uju-primary">Daily Missions</p>
-          <p className="text-sm text-uju-secondary mt-0.5">
-            {completedCount} / {missionPool.length} completed
-          </p>
+      <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start gap-3 min-w-0">
+          <UjuAccentBar />
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-semibold text-uju-primary">Daily Missions</h3>
+            <p className="text-sm text-pado-3 mt-0.5 tabular-nums">
+              {completedCount} / {missionPool.length} completed
+            </p>
+          </div>
         </div>
-        {/* Total potential points */}
-        <span className="text-sm font-mono text-uju-secondary tabular-nums">
-          +{missionPool.reduce((acc, m) => acc + (m.points ?? 0), 0)} pts max
+        <span className="text-sm font-mono text-pado-3 tabular-nums shrink-0">
+          +{maxPoints} pts max
         </span>
       </div>
 
       {/* Progress bar */}
-      <div className="w-full h-1 bg-uju-border rounded-full mb-4 overflow-hidden">
+      <div className="w-full h-2 bg-uju-border rounded-full mb-4 overflow-hidden">
         <div
-          className="h-full bg-pado-4 rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-pado-1 via-pado-3 to-pado-4 rounded-full transition-all duration-500"
           style={{ width: `${progressPct}%` }}
         />
       </div>
@@ -178,7 +183,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
             >
               {/* App badge */}
               <span
-                className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
+                className={`shrink-0 text-sm font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
                   completed ? 'bg-uju-border/30 text-uju-secondary' : `${badge.bg} ${badge.text}`
                 }`}
               >
@@ -232,12 +237,12 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                 )}
                 {/* Points badge (onchain only) or Visited badge (visit type) */}
                 {mission.completionType === 'onchain' && mission.points !== undefined && (
-                  <span className="ml-2 text-xs font-mono text-uju-secondary">
+                  <span className="ml-2 text-sm font-mono text-pado-3">
                     +{mission.points}
                   </span>
                 )}
                 {mission.completionType === 'visit' && completed && (
-                  <span className="ml-2 text-xs text-pado-4 font-medium">Visited</span>
+                  <span className="ml-2 text-sm text-pado-4 font-medium">Visited</span>
                 )}
               </div>
 

@@ -1,8 +1,8 @@
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
-import { HealthStatusBar } from "@/sections/myAccount/HealthStatusBar";
-import { UjuCard } from "../shared/UjuCard";
+import { UjuCard, UjuSectionHeader } from "../shared";
+import { UjuHealthStatus } from "./UjuHealthStatus";
 
 export function HealthGaugeCard() {
   const { user } = useAuth();
@@ -10,30 +10,24 @@ export function HealthGaugeCard() {
   const cognitoToken = user?.cognitoToken;
 
   const { score, isLoading: scoreLoading } = useEcosystemScore(identityId);
-  const { getActivation, isLoading: statusLoading } = useEcosystemStatus(
-    cognitoToken,
-    identityId,
-  );
+  const { getActivation, isLoading: statusLoading } = useEcosystemStatus(cognitoToken, identityId);
 
   const hasGenesisPass = !!getActivation("genesis-pass");
   const hasActiveNft =
-    !!getActivation("alliance") ||
-    !!getActivation("genesis-pass") ||
-    !!getActivation("battalion");
-
-  const activeDays = score?.weekly.activeDays ?? 0;
-  const isPenalized = score?.isPenalized ?? false;
-  const isLoading = scoreLoading || statusLoading;
+    !!getActivation("alliance") || !!getActivation("genesis-pass") || !!getActivation("battalion");
 
   return (
-    <UjuCard className="min-h-[200px]">
-      <HealthStatusBar
-        activeDays={activeDays}
-        isPenalized={isPenalized}
-        hasGenesisPass={hasGenesisPass}
-        hasActiveNft={hasActiveNft}
-        isLoading={isLoading}
-      />
+    <UjuCard className="min-h-[260px] flex flex-col">
+      <UjuSectionHeader accent title="Health Status" />
+      <div className="flex-1 flex items-center justify-center">
+        <UjuHealthStatus
+          activeDays={score?.weekly.activeDays ?? 0}
+          isPenalized={score?.isPenalized ?? false}
+          hasGenesisPass={hasGenesisPass}
+          hasActiveNft={hasActiveNft}
+          isLoading={scoreLoading || statusLoading}
+        />
+      </div>
     </UjuCard>
   );
 }

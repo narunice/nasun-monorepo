@@ -4,7 +4,7 @@ import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, is
 import { useBalance as useEthBalance } from "wagmi";
 import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE, SOL_DEVNET_RPC } from "@/lib/solana";
-import { UjuCard } from "../shared/UjuCard";
+import { UjuCard, UjuBadge, UjuSectionHeader } from "../shared";
 import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
 
 const SUI_TESTNET_RPC = CHAINS["sui-testnet"].rpcUrl;
@@ -22,11 +22,7 @@ function shortenAddress(addr: string): string {
 }
 
 function NetworkBadge({ label }: { label: string }) {
-  return (
-    <span className="text-xs text-uju-secondary border border-uju-border rounded px-1 py-0.5">
-      {label}
-    </span>
-  );
+  return <UjuBadge tone="violet">{label}</UjuBadge>;
 }
 
 function useSuiTestnetBalance(address: string | undefined) {
@@ -192,7 +188,7 @@ export function WalletBalanceCard() {
 
   return (
     <UjuCard>
-      <p className="text-sm font-medium text-uju-secondary mb-3">Wallet Balances</p>
+      <UjuSectionHeader accent title="Wallet Balances" subtitle="Connected addresses across networks" />
 
       <ul className="space-y-3">
         {/* NSN */}
@@ -316,7 +312,7 @@ export function WalletBalanceCard() {
                     setSolError("");
                   }}
                   placeholder="Enter Solana address"
-                  className="flex-1 text-sm bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary/60 focus:outline-none focus:border-pado-3"
+                  className="flex-1 text-sm bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
                 />
                 <button
                   onClick={handleSolSave}
