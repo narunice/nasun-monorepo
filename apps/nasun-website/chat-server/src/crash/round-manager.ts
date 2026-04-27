@@ -567,10 +567,14 @@ export class RoundManager {
     this.roundState.crashedAlreadyFired = true;
     this.roundState.stateVersion = this.bumpVersion();
 
-    // crashPointBps intentionally NOT included here (frontrun prevention).
+    // Safe to reveal crashPointBps now: state is CRASHED on-chain too, so any
+    // late cash_out attempt is rejected. Sending it here lets the client snap
+    // the displayed multiplier to the true value instead of overshooting via
+    // rAF during network latency until 'resolved' arrives.
     this.broadcast({
       type: 'crashed',
       roundId,
+      crashPointBps,
       stateVersion: this.roundState.stateVersion,
     });
 
