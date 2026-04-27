@@ -38,6 +38,11 @@ export default function ScratchCardPage() {
   useForceTierDebug('Scratch')
   const [results, setResults] = useState<ScratchResult[]>([])
   const [revealed, setRevealed] = useState<Set<number>>(new Set())
+  const [buyingCount, setBuyingCount] = useState<number | null>(null)
+  const [summaryOpen, setSummaryOpen] = useState(false)
+  // Track the batch we already opened the summary for, so closing the modal
+  // doesn't immediately re-open on the next render of the same batch.
+  const summaryShownForRef = useRef<string | null>(null)
   // Lock so we celebrate exactly once per batch, regardless of how the
   // user reveals (one-by-one or "Reveal all"). Reset on a new purchase.
   const celebratedBatchRef = useRef<string | null>(null)
@@ -46,16 +51,21 @@ export default function ScratchCardPage() {
     setResults([])
     setRevealed(new Set())
     celebratedBatchRef.current = null
-    const out = await buy(count)
-    if (!out) return
-    setResults(out)
-    showToast(
-      `${out.length} card${out.length === 1 ? '' : 's'} purchased — tap to reveal`,
-      'info',
-    )
-    // Break the 5-min staleTime so /games/history reflects the new cards on
-    // next visit without forcing the user to refresh.
-    invalidateHistory()
+    setBuyingCount(count)
+    try {
+      const out = await buy(count)
+      if (!out) return
+      setResults(out)
+      showToast(
+        `${out.length} card${out.length === 1 ? '' : 's'} purchased — tap to reveal`,
+        'info',
+      )
+      // Break the 5-min staleTime so /games/history reflects the new cards on
+      // next visit without forcing the user to refresh.
+      invalidateHistory()
+    } finally {
+      setBuyingCount(null)
+    }
   }
 
   // Trigger the celebration / result toast only once all cards are revealed.
@@ -71,10 +81,12 @@ export default function ScratchCardPage() {
 
     const totalPrize = results.reduce((s, r) => s + r.prizeAmount, 0n)
     const wins = results.filter((r) => r.multiplier > 0).length
+    const spent = BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * 1_000_000n
+    const isProfit = totalPrize > spent
 
-    if (totalPrize > 0n) {
+    if (isProfit) {
       showToast(
-        `${wins}/${results.length} won · +${formatNusdc(totalPrize)} NUSDC`,
+        `${wins}/${results.length} won · +${formatNusdc(totalPrize - spent)} net`,
         'success',
       )
       const maxMultiplier = results.reduce((m, r) => Math.max(m, r.multiplier), 0)
@@ -88,8 +100,12 @@ export default function ScratchCardPage() {
           gameLabel: 'Scratch',
         })
       }
-    } else if (results.length === 1) {
-      showToast('No luck this time. Try again!', 'info')
+    } else if (summaryShownForRef.current !== batchKey) {
+      // Not net positive (zero hits OR partial wins below stake): open the
+      // recap modal. We never celebrate a net-loss batch even if a card or
+      // two paid out, because the user is down on the round.
+      summaryShownForRef.current = batchKey
+      setSummaryOpen(true)
     }
   }, [revealed, results, celebrate, showToast])
 
@@ -135,26 +151,34 @@ export default function ScratchCardPage() {
           <p className="text-sm text-neutral-200">Max win 100× = 500 NUSDC</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {BUY_OPTIONS.map((n) => (
-            <button
-              key={n}
-              onClick={() => onBuy(n)}
-              disabled={!isWalletConnected || isBuying}
-              className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
-              title={
-                !isWalletConnected
-                  ? 'Connect a wallet'
-                  : isBuying
-                    ? 'Submitting transaction'
-                    : `Buy ${n} card${n === 1 ? '' : 's'}`
-              }
-            >
-              <span className="font-semibold">Buy {n}</span>
-              <span className="ml-2 font-mono text-gold-200">
-                {(n * CARD_PRICE_NUSDC).toFixed(2)} NUSDC
-              </span>
-            </button>
-          ))}
+          {BUY_OPTIONS.map((n) => {
+            const isThisBuying = buyingCount === n
+            return (
+              <button
+                key={n}
+                onClick={() => onBuy(n)}
+                disabled={!isWalletConnected || isBuying}
+                className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center"
+                title={
+                  !isWalletConnected
+                    ? 'Connect a wallet'
+                    : isBuying
+                      ? 'Submitting transaction'
+                      : `Buy ${n} card${n === 1 ? '' : 's'}`
+                }
+              >
+                {isThisBuying && <BuySpinner />}
+                <span className="font-semibold">
+                  {isThisBuying ? `Buying ${n}...` : `Buy ${n}`}
+                </span>
+                {!isThisBuying && (
+                  <span className="ml-2 font-mono text-gold-200">
+                    {(n * CARD_PRICE_NUSDC).toFixed(2)} NUSDC
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -190,7 +214,140 @@ export default function ScratchCardPage() {
       )}
 
       <PrizeTableSection />
+
+      {summaryOpen && (
+        <NoWinSummaryModal
+          count={results.length}
+          wins={results.filter((r) => r.multiplier > 0).length}
+          spent={BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * 1_000_000n}
+          won={results.reduce((s, r) => s + r.prizeAmount, 0n)}
+          onClose={() => setSummaryOpen(false)}
+          onPlayAgain={() => {
+            setSummaryOpen(false)
+            onBuy(results.length)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+type Headline = { emoji: string; title: string; subtitle: string }
+
+// Total bust: zero hits across the batch.
+const ZERO_WIN_HEADLINES: Headline[] = [
+  { emoji: '🌑', title: 'Cold deck',          subtitle: 'Not a single hit. The luck has to swing back eventually.' },
+  { emoji: '🧊', title: 'Frozen out',         subtitle: 'Even the dust came up empty. Reshuffle and run it back.' },
+  { emoji: '🎭', title: 'House plays a part', subtitle: 'The cards put on a show, no payout. Curtain call.' },
+  { emoji: '🪨', title: 'Stone cold',         subtitle: 'Zero matches. The bankroll thanks you for the donation.' },
+  { emoji: '🦴', title: 'Dry bones',          subtitle: 'Not even a 1x. Brutal, but the variance owes you now.' },
+  { emoji: '🌚', title: 'New moon energy',    subtitle: 'No light, no luck. Next batch the cycle resets.' },
+  { emoji: '🃏', title: 'Bluffed',            subtitle: 'Every card looked promising. None paid. Classic.' },
+  { emoji: '🛢️', title: 'Dry well',           subtitle: 'Drilled deep, found nothing. Move to the next field.' },
+]
+
+// Partial recovery: some cards hit but the round is still net negative.
+const PARTIAL_LOSS_HEADLINES: Headline[] = [
+  { emoji: '🩹', title: 'Patched up',     subtitle: 'A couple of hits softened the fall, but the round is still down.' },
+  { emoji: '🪙', title: 'Half a coin',    subtitle: 'Saved some face. Not enough to call it a win.' },
+  { emoji: '🛟',  title: 'Lifeline',       subtitle: 'You came out the other side with something. Just not profit.' },
+  { emoji: '🌫️', title: 'Brushed clouds', subtitle: 'A small hit, but the variance is still owed.' },
+  { emoji: '⚖️', title: 'Light on the scale', subtitle: 'Cards paid, math didn\'t. Net loss, but a story.' },
+  { emoji: '🍋', title: 'Lemons turned',   subtitle: 'Got something back. The next batch wants the rest.' },
+  { emoji: '🪞', title: 'Reflected loss',  subtitle: 'Wins exist, just not enough to outrun the spend.' },
+]
+
+function pickHeadline(pool: Headline[]): Headline {
+  return pool[Math.floor(Math.random() * pool.length)]
+}
+
+function NoWinSummaryModal({
+  count,
+  wins,
+  spent,
+  won,
+  onClose,
+  onPlayAgain,
+}: {
+  count: number
+  wins: number
+  spent: bigint
+  won: bigint
+  onClose: () => void
+  onPlayAgain: () => void
+}) {
+  const isPartial = won > 0n
+  const pool = isPartial ? PARTIAL_LOSS_HEADLINES : ZERO_WIN_HEADLINES
+  // Stable for this modal instance — picked once, ref-frozen.
+  const picked = useRef(pickHeadline(pool)).current
+  const net = won - spent
+  const accent = isPartial ? 'rgba(245,158,11,0.14)' : 'rgba(220,38,38,0.14)'
+  const border = isPartial ? 'border-amber-500/30' : 'border-red-500/30'
+  const eyebrowColor = isPartial ? 'text-amber-300/80' : 'text-red-300/80'
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/85 backdrop-blur-sm p-4 animate-slide-in"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className={`relative w-full max-w-md panel p-6 sm:p-8 text-center ${border}`}
+        style={{ background: `radial-gradient(circle at top, ${accent}, transparent 60%)` }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close"
+          className="absolute top-3 right-3 text-neutral-400 hover:text-neutral-100 text-2xl leading-none"
+        >
+          ×
+        </button>
+        <div className="text-6xl sm:text-7xl mb-4 animate-scratch-card-shake">{picked.emoji}</div>
+        <p className={`text-xs uppercase tracking-[0.3em] ${eyebrowColor} mb-2`}>
+          {count} card{count === 1 ? '' : 's'} revealed
+        </p>
+        <h2 className="font-display text-3xl sm:text-4xl text-neutral-100 mb-3">{picked.title}</h2>
+        <p className="text-base text-neutral-200 leading-relaxed mb-5">{picked.subtitle}</p>
+        <div className="grid grid-cols-3 gap-3 mb-6 text-sm">
+          <div className="panel p-3 bg-ink-900/60 border-neutral-700">
+            <p className="text-xs uppercase tracking-wider text-neutral-400 mb-1">Spent</p>
+            <p className="font-mono text-base text-neutral-100">{formatNusdc(spent)}</p>
+          </div>
+          <div className="panel p-3 bg-ink-900/60 border-neutral-700">
+            <p className="text-xs uppercase tracking-wider text-neutral-400 mb-1">Won</p>
+            <p className={`font-mono text-base ${isPartial ? 'text-gold-200' : 'text-neutral-400'}`}>
+              {formatNusdc(won)}
+            </p>
+          </div>
+          <div className="panel p-3 bg-ink-900/60 border-neutral-700">
+            <p className="text-xs uppercase tracking-wider text-neutral-400 mb-1">Hits</p>
+            <p className={`font-mono text-base ${isPartial ? 'text-gold-200' : 'text-neutral-400'}`}>
+              {wins}/{count}
+            </p>
+          </div>
+        </div>
+        <p className="text-sm text-neutral-300 mb-5">
+          Net: <span className="font-mono text-red-300">−{formatNusdc(-net)} NUSDC</span>
+        </p>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="btn-ghost flex-1">Close</button>
+          <button onClick={onPlayAgain} className="btn-gold flex-1">
+            Run it back
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BuySpinner() {
+  return (
+    <svg className="h-4 w-4 mr-2 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" opacity="0.25" />
+      <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
   )
 }
 
