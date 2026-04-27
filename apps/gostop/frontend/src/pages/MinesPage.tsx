@@ -179,11 +179,12 @@ function Header() {
           reveal safe cells to grow your multiplier. Cash out anytime, but
           one mine ends the round.
         </p>
-        <p className="text-xs text-amber-300/80 mt-3 italic max-w-2xl">
-          Devnet prototype: mine positions are technically visible via RPC.
-          Bet caps are set low to limit exploit upside. Encrypted placement
-          will land before mainnet.
-        </p>
+        {/*
+          Devnet prototype caveat: mine_positions is readable via getObject
+          RPC on the active MinesSession. Bet cap (GameCap.max_single_payout)
+          bounds the exploit upside. Encrypted placement (ECIES + house key)
+          lands before mainnet. Hidden from end users to keep the page clean.
+        */}
       </div>
     </header>
   )
@@ -223,6 +224,18 @@ function BetPanel({
             value={bet}
             onChange={(e) => onBetChange(Number(e.target.value) || 0)}
             className="w-full px-4 py-3 rounded-lg bg-ink-900 border border-gold-subtle text-neutral-100 font-mono focus:outline-none focus:border-gold-200/60"
+          />
+          <input
+            type="range"
+            min={MIN_BET_NUSDC}
+            max={Math.max(maxBetAllowed, MIN_BET_NUSDC)}
+            step={0.1}
+            value={Math.min(Math.max(bet, MIN_BET_NUSDC), maxBetAllowed)}
+            onChange={(e) =>
+              onBetChange(Number(Number(e.target.value).toFixed(2)))
+            }
+            className="w-full mt-3 accent-gold-200"
+            aria-label="Bet amount slider"
           />
           <p className="text-xs text-neutral-200 mt-2">
             Max for {mineCount} mines: {fmtNum(maxBetAllowed)} NUSDC
