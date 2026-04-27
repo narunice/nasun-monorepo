@@ -47,7 +47,7 @@ export function LossReaction({ onComplete }: LossReactionProps) {
 
   useEffect(() => {
     const textTimer = setTimeout(() => setShowText(true), 600)
-    const completeTimer = setTimeout(() => onComplete?.(), 3000)
+    const completeTimer = setTimeout(() => onComplete?.(), 6000)
     return () => {
       clearTimeout(textTimer)
       clearTimeout(completeTimer)
