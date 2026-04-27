@@ -425,9 +425,6 @@ export function PadoScoreLeaderboard() {
           <p className="text-sm font-medium text-nasun-white">
             Week just started. Leaderboard updates as traders are active.
           </p>
-          <p className="text-sm text-pd3 mt-1">
-            New scores will appear within the next 8 hours.
-          </p>
         </DashboardCard>
       )}
 
