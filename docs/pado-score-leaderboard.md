@@ -1,7 +1,7 @@
 # Pado Score Leaderboard - Technical Reference
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-18
+**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지)
 **관련 문서**: [ecosystem-points-system.md](ecosystem-points-system.md)
 
 ---
@@ -11,7 +11,7 @@
 Pado Score Leaderboard는 매주 DEX 트레이딩 활동을 기반으로 순위를 산정하고, 주간 종료 후 생태계 포인트(Ecosystem Points)로 환산 지급하는 경쟁 리더보드입니다.
 
 - 주 단위 리셋으로 신규 참여자에게 지속적 기회를 부여
-- 상위 500위까지 Ecosystem Points 지급 (Genesis Pass 보유자 2x)
+- 상위 2000위까지 Ecosystem Points 지급 (Genesis Pass 보유자 2x). 자격: 등록된 identityId + Alliance NFT 활성화. (소셜 계정 요건은 2026-04-27 정책 업데이트로 폐지)
 - 리더보드는 실시간(~60초)으로 갱신
 
 ---
@@ -49,12 +49,17 @@ tradePoints   = 100 (첫 거래 보너스, 1건 이상일 때) + trade_count * 1
 volumePoints  = floor(volume_raw / 1,000,000,000) * 5
                 (NUSDC 6 decimals 기준, 1 USD = 1e6 raw, 1K USD = 1e9 raw)
 diversityPoints = unique_pools * 25
-pnlScore      = floor(realizedPnl / 1e9) * 20  (수익 > 0 일 때)
-              + floor(pnlPercent / 10) * 15     (수익률 > 0 일 때)
-              - LOSS_PENALTY_PTS                (수익률 <= 손실 임계값일 때, 최소 0)
+pnlScore      = floor(realizedPnl / 1e9) * 100   (실현 수익 > 0 일 때, $1K당 100pt)
+              + floor(pnlPercent / 10) * 50      (수익률 > 0 일 때, 10%당 50pt)
+              - 20                               (pnl_percent <= -20% 일 때, 최소 0)
 ```
 
 **Loss Penalty**는 주간 점수 계산에만 적용되며, 정산(Ecosystem Points) 단계로 전파되지 않습니다.
+
+**Wash-trading 필터 (Self-trade Exclusion)**: 동일한 `identityId`에 연결된 지갑 간의 maker/taker 거래는 거래량/거래수 집계와 PnL 계산에서 모두 제외됩니다. `chat-server/identity-resolver.ts`의 `buildSameIdentityPairs()`가 identity 캐시 갱신 시 양방향 페어 set을 구축하여 [aggregator.ts](apps/nasun-website/chat-server/src/aggregator.ts)의 `aggregateTraderVolume`, `computeTraderPnl` 양쪽에 전달합니다.
+
+POINTS 상수 정의 위치: `apps/nasun-website/chat-server/src/leaderboard-types.ts` (`POINTS` 객체).
+2026-04 기준 PnL 가중치는 상향 조정됨 (`PER_1K_PNL: 20→100`, `PER_10PCT_RETURN: 15→50`).
 
 ---
 
@@ -268,8 +273,8 @@ npx tsx src/scripts/settle-pado.ts --week 2026-W17 --dry-run
 5. 트레이더별 자격 검사 (아래 조건 모두 충족해야 지급):
    - `identityId`가 null이 아님 (등록된 지갑)
    - Alliance NFT 활성화 상태 (`nftType === 'alliance'`)
-   - 소셜 계정 연결 (`hasSocialAccount === true`)
-   - 순위 500위 이내 (보상 존재)
+   - 순위 2000위 이내 (보상 존재)
+   - **(2026-04-27 폐지) ~~소셜 계정 연결~~** — `hasSocialAccount` 필터 제거됨
 6. Genesis Pass 보유자에게 2x 적용
 7. PostgreSQL `activity_points`에 `ON CONFLICT DO NOTHING`으로 멱등 삽입 + `settled = 1` 업데이트 (단일 트랜잭션)
 
@@ -278,22 +283,26 @@ npx tsx src/scripts/settle-pado.ts --week 2026-W17 --dry-run
 |--------|------|
 | `skippedUnregistered` | identityId 없음 |
 | `skippedNoAlliance` | identityId 있으나 Alliance NFT 미보유 |
-| `skippedNoSocial` | Alliance NFT 있으나 소셜 계정 미연결 |
-| `skippedNoReward` | 순위 501위 이상 |
+| `skippedNoReward` | 순위 2001위 이상 (또는 보상 테이블 외) |
+
+> ~~`skippedNoSocial`~~ 카운터는 2026-04-27 정책 변경으로 제거됨.
 
 **보상 테이블**:
 
 | 순위 | 기본 포인트 | Genesis Pass (2x) |
 |------|------------|-------------------|
 | 1위 | 50 | 100 |
-| 2위 | 40 | 80 |
-| 3위 | 30 | 60 |
-| 4-50위 | 15 | 30 |
-| 51-100위 | 10 | 20 |
-| 101-200위 | 6 | 12 |
-| 201-300위 | 5 | 10 |
-| 301-400위 | 2 | 4 |
-| 401-500위 | 1 | 2 |
+| 2위 | 45 | 90 |
+| 3위 | 40 | 80 |
+| 4-10위 | 35 | 70 |
+| 11-20위 | 30 | 60 |
+| 21-50위 | 25 | 50 |
+| 51-100위 | 20 | 40 |
+| 101-200위 | 15 | 30 |
+| 201-300위 | 10 | 20 |
+| 301-500위 | 8 | 16 |
+| 501-1000위 | 6 | 12 |
+| 1001-2000위 | 5 | 10 |
 
 **Alliance NFT 데이터 수신 흐름**:
 ```
@@ -395,8 +404,7 @@ ECOSYSTEM_ACTIVATIONS_API_KEY=...               # 위 URL의 x-api-key (선택)
 - **현재 주 거부**: 내부 API가 진행 중인 주 데이터 반환 차단 (확정성 보장)
 - **identityId 없는 트레이더 제외**: 미등록 지갑은 Ecosystem Points 미지급
 - **Alliance NFT 미보유 제외**: 활성화된 Alliance NFT가 없으면 지급 제외
-- **소셜 계정 미연결 제외**: Twitter/Google/Telegram 중 하나도 없으면 지급 제외
 - **allianceSet 비어있으면 중단**: API 이상 상황에서 전체 정산 차단 (silent skip 방지)
 - **Loss Penalty 격리**: PnL 패널티는 순위 계산에만 반영, Ecosystem Points 산출 시 제외
 - **Ecosystem Points 단조 증가**: `activity_points` 삽입만 허용, 삭제/수정 금지
-- **소셜 계정 확인 신뢰성**: DynamoDB UserProfiles BatchGetItem 직접 조회 (캐시 우회), UnprocessedKeys 지수 백오프 재시도 (최대 3회)
+- **소셜 배지 표시**: 리더보드 응답에는 닉네임, 프로필 이미지, X 핸들, Google/Telegram 연동 여부를 DynamoDB UserProfiles BatchGetItem으로 실시간 조회하여 표시용으로만 포함 (정산 자격 판단에는 사용 안 함). UnprocessedKeys 지수 백오프 재시도(최대 3회).

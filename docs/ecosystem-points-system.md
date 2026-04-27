@@ -1,11 +1,17 @@
 # Nasun Ecosystem Points System Technical Specification
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-17 (Wallet Transfer SQL 전환 및 Linked Wallet 지원 반영)
+**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; Staking V2 티어/이원화 추가; 정산 자격에서 소셜 계정 요건 폐지)
 **핵심 경로**:
 - Backend API: `apps/network-explorer/api-server/src/routes/ecosystem.ts`
-- Scanners: `apps/network-explorer/api-server/src/scanner/`
+- Multiplier Config: `apps/network-explorer/api-server/src/config/ecosystem.ts`
+- Points Config: `apps/network-explorer/api-server/src/config/points.ts`
+- Scanners: `apps/network-explorer/api-server/src/scanner/` (`points-scanner`, `wallet-transfer-scanner`, `daily-snapshot`, `rpc-reconcile`, `daily-mission`, `daily-nft-check`, `referral-bonus`, `chat-scanner`, `faucet-scanner`)
 - Frontend Hook: `apps/nasun-website/frontend/src/hooks/useDailyMissions.ts`
+
+**관련 시스템**:
+- 주간 Pado DEX 트레이딩 리더보드 → 정산 시 본 시스템의 `activity_points`에 `ecosystem-bonus-pado` 카테고리로 적립 ([pado-score-leaderboard.md](pado-score-leaderboard.md))
+- 주간 Nasun Ecosystem Leaderboard → 본 시스템의 `activity_points`를 직접 조회하여 순위 산정 (`apps/nasun-website/doc/ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md`)
 
 ---
 
@@ -49,10 +55,15 @@
 
 ### 4.1 점수 계산 공식 (Score Formula)
 - **일일 점수 (Daily Score)**: `(Base Score + Staking Score) * Multiplier + Bonus Points`
-- **배수 (Multiplier)**:
-    - 기본: 1.0x
-    - Genesis Pass 보유: **2.0x** (중첩 불가, 최고 등급 적용)
-    - Alliance NFT: 보유 시 활동 가능 (미보유 시 일부 미션 제한)
+- **배수 (Multiplier)** — `MULTIPLIER_CONFIG` (env-driven, defaults below):
+    - **Base tier (max 적용, 중첩 불가)**:
+        - 활성 NFT 없음 → 0 (포인트 적립 비활성)
+        - Alliance NFT 활성 → 1.0x (`ECO_MULT_ALLIANCE`)
+        - Genesis Pass 활성 → 2.0x (`ECO_MULT_GENESIS_PASS`)
+    - **Battalion stack (additive bonus)**: `+5.0` per unit, 최대 10 units (`ECO_MULT_BATTALION_PER_UNIT`, `ECO_MULT_BATTALION_MAX_UNITS`)
+    - **최종 공식**: `min(max(baseTier) + battalionStack, MAX_MULTIPLIER)`
+    - **글로벌 cap**: `MAX_MULTIPLIER = 20.0` (`ECO_MAX_MULTIPLIER`, range guard 1.0–100.0)
+    - 활성화 데이터는 `ecosystem-cache.ts`가 12h(`ECO_ACTIVATIONS_CACHE_MS`) 간격으로 외부 API에서 fetch (per-user sync 가능).
 
 ### 4.2 미션 카테고리 (Mission Categories)
 | 카테고리 | 활동 내용 | 점수 유형 |
@@ -63,6 +74,35 @@
 | `wallet-transfer` | 타 지갑으로 자산 전송 (Linked Wallet 포함) | Base (1pt) |
 | `governance` | 제안서 투표 (Vote) | Score (10pts) |
 | `daily-mission` | 특정 티어 달성 시 보너스 | Score (변동) |
+| `referral-bonus` | 추천인 보너스 | Score (변동) |
+| `staking-daily` | 액티브 스테이크 원금 기반 일일 티어 포인트 | Score (티어제, 아래 표 참조) |
+| `staking-reward` | 일일 staking emission delta (LOG2 사전 적용) | Score (`STAKING_EMISSION_COEFF=0.07`, cutoff 2026-04-21) |
+| `faucet`, `chat`, `baram-*` | 부수 활동 (faucet-scanner / chat-scanner 등) | Base/Score |
+| `ecosystem-bonus-creator-posts` | 관리자 부여 (X 게시물 큐레이션) | Score (1–30pts/post) |
+| `ecosystem-bonus-bugreport` / `ecosystem-bonus-feedback` | 버그/피드백 보너스 | Score (1–5pts) |
+| `ecosystem-bonus-game` | 게임 이벤트 보너스 | Score |
+| `ecosystem-bonus-pado` | 주간 Pado 트레이딩 리더보드 정산 (settle-pado.ts) | Score |
+
+---
+
+### 4.3 스테이킹 점수 이원화 (Dual Staking Categories)
+
+본 시스템은 스테이킹 활동에 대해 두 개의 독립된 카테고리를 운영합니다.
+
+| 카테고리 | 산정 방식 | 적용 대상 | 비고 |
+| :--- | :--- | :--- | :--- |
+| `staking-daily` | 원금(NSN) 기준 일일 티어 포인트 | 개인 누적 포인트만 | Ecosystem Leaderboard에서 **제외** |
+| `staking-reward` | `STAKING_EMISSION_COEFF * LOG2(daily_estimated_reward_delta_mist + 1)` | 개인 + 리더보드 | LOG2 사전 적용 (SQL은 SUM만) |
+
+**Staking V2 티어 테이블** (`STAKING_V2_TIERS`, [config/points.ts](apps/network-explorer/api-server/src/config/points.ts) cutoff 2026-04-14):
+
+| 원금 (NSN) | 일일 포인트 |
+| :--- | :--- |
+| 1 ~ 500 | 1pt |
+| 501 ~ 5,000 | 2pt |
+| 5,001 이상 | 3pt |
+
+`daily-nft-check.ts` 스캐너가 매일 1회 액티브 스테이크 원금을 계산하여 가장 높은 단일 티어를 부여합니다 (스택 불가).
 
 ---
 

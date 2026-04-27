@@ -1,6 +1,6 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-04-22 (staking emissions added; score display updated to 3 decimal places)
+Last updated: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified)
 
 ## Overview
 
@@ -90,6 +90,11 @@ but award is skipped that day to avoid inflated delta on the next run.
 
 Expected score contribution: ~0.7-2.0 pts/day depending on stake size (~5-14 pts/week).
 
+**Important**: only the LOG2-based `staking-reward` category feeds this leaderboard. The
+tier-based `staking-daily` category (1-500 NSN: 1pt, 501-5000: 2pt, 5001+: 3pt; cutoff
+2026-04-14) is **excluded** from `weekly_score` — it only contributes to the user's
+individual cumulative ecosystem points, not to ranking.
+
 Config: `apps/network-explorer/api-server/src/config/points.ts`
 - `STAKING_EMISSION_COEFF = 0.07`
 - `STAKING_EMISSION_CUTOFF_DATE = '2026-04-21'`
@@ -98,8 +103,16 @@ State table: `staking_emission_state` (`nasun_points` DB, `identity_id PK`, `las
 
 ### What multipliers do NOT affect
 
-Leaderboard score and rank. NFT multipliers (Alliance: 1.2x, Battalion: 1.5x,
-Genesis Pass: 2.0x) apply only when the Ecosystem Points payout runs at week end.
+Leaderboard score and rank. NFT multipliers apply only to per-row `final_points`
+in `activity_points` (Ecosystem Points ledger), not to the leaderboard formula.
+
+Current multiplier policy (see `apps/network-explorer/api-server/src/config/ecosystem.ts`,
+all env-overridable):
+
+- Base tier (highest wins, not additive): Alliance `1.0x`, Genesis Pass `2.0x`.
+  No active NFT → multiplier `0` (points disabled).
+- Battalion stack (additive on top of base): `+5.0` per unit, max 10 units.
+- Final = `min(baseTier + battalionStack, MAX_MULTIPLIER=20.0)`.
 
 ---
 
@@ -432,6 +445,80 @@ compiled correctly despite this error.
 
 ---
 
+## Weekly Settlement (Ecosystem Points payout)
+
+**Script:** `apps/network-explorer/api-server/src/scripts/settle-ecosystem.ts`
+
+Manually run after a week ends (settles a *completed* ISO week only — refuses
+the current in-progress week).
+
+```bash
+cd ~/explorer-api && set -a && source .env && set +a
+AWS_PROFILE=nasun-prod npx tsx src/scripts/settle-ecosystem.ts --week auto
+AWS_PROFILE=nasun-prod npx tsx src/scripts/settle-ecosystem.ts --week 2026-W17 --dry-run
+```
+
+The script reproduces the same SQL + JS tiebreaker order used by
+`GET /ecosystem/leaderboard` (weekly_score → activity_score → isTelegramMember
+→ hasGenesisPass → identity_id), assigns `rank = idx + 1`, then awards
+Ecosystem Points to top 2000.
+
+**Eligibility (all must hold):**
+- `identityId` resolvable (registered Cognito identity)
+- Active Alliance NFT (from `ECOSYSTEM_ACTIVATIONS_URL`)
+- Wallet address resolvable from `WALLET_MAPPINGS_URL` (required by
+  `activity_points.wallet_address NOT NULL`)
+- Rank ≤ 2000
+
+> **Policy update (2026-04-27)**: the social account requirement (Twitter / Google /
+> Telegram) was removed. The `hasSocialAccount` filter no longer gates settlement.
+> Profile flags are still fetched from DynamoDB `UserProfiles` BatchGet to reproduce
+> the same `isTelegramMember` JS tiebreaker the `/leaderboard` API applies, but the
+> result no longer affects payout eligibility.
+
+**Reward table (mirrors settle-pado.ts):**
+
+| Rank | Base | Genesis Pass (2x) |
+|------|------|-------------------|
+| 1 | 50 | 100 |
+| 2 | 45 | 90 |
+| 3 | 40 | 80 |
+| 4–10 | 35 | 70 |
+| 11–20 | 30 | 60 |
+| 21–50 | 25 | 50 |
+| 51–100 | 20 | 40 |
+| 101–200 | 15 | 30 |
+| 201–300 | 10 | 20 |
+| 301–500 | 8 | 16 |
+| 501–1000 | 6 | 12 |
+| 1001–2000 | 5 | 10 |
+
+**Idempotency / safety:**
+- Snapshot table `weekly_ecosystem_snapshots` (week_id, identity_id PK) records
+  rank + score at first run. Re-runs skip rows with `settled = 1`.
+- Atomic per-row PG transaction: `INSERT activity_points` + `UPDATE settled = 1`.
+- `INSERT activity_points` uses `ON CONFLICT (tx_digest, activity_type, event_seq)
+  DO NOTHING` for full re-run safety.
+- Aborts if the Alliance set is empty (suspected API outage).
+- Refuses to settle the current in-progress week.
+
+**Resulting `activity_points` row:**
+
+| Column | Value |
+|--------|-------|
+| `category` | `ecosystem-bonus-leaderboard` |
+| `activity_type` | `weekly-${weekId}` (e.g. `weekly-2026-W17`) |
+| `tx_digest` | `bonus-ecosystem-weekly:${identityId}:${weekId}` |
+| `base_points` | rank-based base |
+| `genesis_multiplier` | 2.0 if Genesis Pass holder else 1.0 |
+| `final_points` | `base_points * genesis_multiplier` |
+
+The `ecosystem-bonus-*` prefix is required so the bonus does **not** feed back
+into next week's `activity_score` (the leaderboard SQL excludes
+`category LIKE 'ecosystem-bonus-%'`).
+
+---
+
 ## Known Limitations and Open Issues
 
 ### identityId exposure in public API (GitHub Issue #1)
@@ -460,6 +547,7 @@ redirects). This is now correctly restricted to the server allowlist after the
 | File                                                                           | Purpose                                         |
 | ------------------------------------------------------------------------------ | ----------------------------------------------- |
 | `apps/network-explorer/api-server/src/routes/ecosystem.ts`                     | All leaderboard API logic                       |
+| `apps/network-explorer/api-server/src/scripts/settle-ecosystem.ts`             | Weekly Ecosystem Points settlement (top 2000)   |
 | `apps/network-explorer/api-server/src/db/ecosystem-schema.sql`                 | DB schema, indexes, matview                     |
 | `apps/nasun-website/frontend/src/services/ecosystemScoreApi.ts`                | Client API types and functions                  |
 | `apps/nasun-website/frontend/src/pages/ecosystem/EcosystemLeaderboardPage.tsx` | Public leaderboard page                         |
