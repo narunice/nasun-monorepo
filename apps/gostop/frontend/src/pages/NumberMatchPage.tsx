@@ -150,15 +150,21 @@ export default function NumberMatchPage() {
             {picks.length} × {PRICE_PER_PICK.toFixed(2)} = {cost.toFixed(2)} NUSDC
           </p>
         </div>
-        <button onClick={onPlay} disabled={!canPlay} className="btn-gold w-full sm:w-auto">
-          {isPlaying
-            ? 'Playing…'
-            : !isWalletConnected
-              ? 'Connect Wallet'
-              : picks.length === 0
-                ? 'Pick numbers first'
-                : `Play ${picks.length} pick${picks.length === 1 ? '' : 's'}`}
-        </button>
+        <div className="flex justify-center">
+          <button
+            onClick={onPlay}
+            disabled={!canPlay}
+            className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none"
+          >
+            {isPlaying
+              ? 'Playing…'
+              : !isWalletConnected
+                ? 'Connect Wallet'
+                : picks.length === 0
+                  ? 'Pick numbers first'
+                  : `Play ${picks.length} pick${picks.length === 1 ? '' : 's'}`}
+          </button>
+        </div>
       </section>
 
       {result && <ResultCard result={result} />}
