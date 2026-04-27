@@ -6,6 +6,7 @@ module.exports = {
   theme: {
     fontFamily: {
       rubik: ['"rubik"', "sans-serif"],
+      cormorant: ['"Cormorant Garamond"', "serif"],
       archivo: ['"archivo"', "sans-serif"],
       rajdhani: ['"rajdhani"', "sans-serif"],
       changeling: ['"changeling-neo"', "sans-serif"],
