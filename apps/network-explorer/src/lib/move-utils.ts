@@ -16,22 +16,40 @@ export interface MoveParam {
   Address?: boolean;
 }
 
+// Nasun branding: rewrite native Sui module/struct references for display
+function brandStruct(s: { module: string; name: string }): { module: string; name: string } {
+  let module = s.module;
+  let name = s.name;
+  if (module === 'sui') module = 'nasun';
+  if (name === 'SUI') name = 'NSN';
+  if (name === 'StakedSui') name = 'StakedNasun';
+  if (name === 'SuiSystemState') name = 'NasunSystemState';
+  return { module, name };
+}
+
 // Format Move type parameter for display
 export function formatMoveType(param: MoveParam | string): string {
   if (typeof param === 'string') return param;
 
   if (param.MutableReference) {
     const inner = param.MutableReference.Struct;
-    if (inner) return `&mut ${inner.module}::${inner.name}`;
+    if (inner) {
+      const b = brandStruct(inner);
+      return `&mut ${b.module}::${b.name}`;
+    }
     return '&mut ???';
   }
   if (param.Reference) {
     const inner = param.Reference.Struct;
-    if (inner) return `&${inner.module}::${inner.name}`;
+    if (inner) {
+      const b = brandStruct(inner);
+      return `&${b.module}::${b.name}`;
+    }
     return '&???';
   }
   if (param.Struct) {
-    return `${param.Struct.module}::${param.Struct.name}`;
+    const b = brandStruct(param.Struct);
+    return `${b.module}::${b.name}`;
   }
   if (param.TypeParameter !== undefined) return `T${param.TypeParameter}`;
   if (param.Vector) return `vector<...>`;
