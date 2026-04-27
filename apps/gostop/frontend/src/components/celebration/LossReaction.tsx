@@ -55,9 +55,9 @@ export function LossReaction({ onComplete }: LossReactionProps) {
   }, [onComplete])
 
   return (
-    <div className="relative text-center py-10 px-8 animate-scratch-drumroll">
+    <div className="relative text-center py-8 px-6 sm:py-10 sm:px-8 animate-scratch-drumroll">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(220,38,38,0.18),transparent_60%)] pointer-events-none" />
-      <div className="relative text-7xl md:text-8xl mb-4 drop-shadow-[0_0_18px_rgba(220,38,38,0.45)] animate-scratch-card-shake">
+      <div className="relative text-6xl sm:text-7xl md:text-8xl mb-4 drop-shadow-[0_0_18px_rgba(220,38,38,0.45)] animate-scratch-card-shake">
         {picked.emoji}
       </div>
       {showText && (

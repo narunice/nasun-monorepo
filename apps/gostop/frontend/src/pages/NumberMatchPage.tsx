@@ -100,7 +100,7 @@ export default function NumberMatchPage() {
         </div>
       )}
 
-      <section className="panel p-7">
+      <section className="panel p-5 sm:p-7">
         <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
           <h2 className="font-display text-2xl text-gold">Your Picks</h2>
           <button
@@ -114,7 +114,7 @@ export default function NumberMatchPage() {
             Clear
           </button>
         </div>
-        <div className="grid grid-cols-5 gap-3 justify-items-center">
+        <div className="grid grid-cols-5 gap-2 sm:gap-3 justify-items-center">
           {Array.from({ length: MAX_NUM - MIN_NUM + 1 }, (_, i) => i + MIN_NUM).map((n) => {
             const selected = picks.includes(n)
             const isWinning = result?.winningNumber === n
@@ -122,7 +122,7 @@ export default function NumberMatchPage() {
               <button
                 key={n}
                 onClick={() => togglePick(n)}
-                className={`number-ball !w-14 !h-14 !text-lg ${
+                className={`number-ball !w-12 !h-12 sm:!w-14 sm:!h-14 !text-base sm:!text-lg ${
                   selected ? 'is-selected' : ''
                 } ${isWinning ? 'ring-2 ring-emerald-400' : ''}`}
                 aria-pressed={selected}
@@ -138,7 +138,7 @@ export default function NumberMatchPage() {
         </p>
       </section>
 
-      <section className="panel p-7">
+      <section className="panel p-5 sm:p-7">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 mb-4">
           <div>
             <h2 className="font-display text-2xl text-gold">Play</h2>
@@ -232,27 +232,27 @@ function PayoutTable() {
   return (
     <section className="panel p-7">
       <h2 className="font-display text-2xl text-gold mb-5">Payouts</h2>
-      <div className="overflow-hidden rounded-lg border border-gold-subtle">
-        <table className="w-full text-base">
-          <thead className="bg-ink-800/80 text-sm uppercase tracking-widest text-neutral-200">
+      <div className="overflow-x-auto rounded-lg border border-gold-subtle">
+        <table className="w-full min-w-[28rem] text-sm sm:text-base">
+          <thead className="bg-ink-800/80 text-xs sm:text-sm uppercase tracking-widest text-neutral-200">
             <tr>
-              <th className="text-left px-4 py-3">Picks</th>
-              <th className="text-left px-4 py-3">Cost</th>
-              <th className="text-left px-4 py-3">Win</th>
-              <th className="text-left px-4 py-3">Refund</th>
-              <th className="text-right px-4 py-3">Win rate</th>
+              <th className="text-left px-3 sm:px-4 py-3">Picks</th>
+              <th className="text-left px-3 sm:px-4 py-3">Cost</th>
+              <th className="text-left px-3 sm:px-4 py-3">Win</th>
+              <th className="text-left px-3 sm:px-4 py-3">Refund</th>
+              <th className="text-right px-3 sm:px-4 py-3">Win rate</th>
             </tr>
           </thead>
           <tbody>
             {PAYOUT_TABLE.map((row) => (
               <tr key={row.picks} className="border-t border-gold-subtle/50">
-                <td className="px-4 py-3 font-display text-lg text-gold-200">{row.picks}</td>
-                <td className="px-4 py-3 font-mono text-neutral-200">
+                <td className="px-3 sm:px-4 py-3 font-display text-base sm:text-lg text-gold-200">{row.picks}</td>
+                <td className="px-3 sm:px-4 py-3 font-mono text-neutral-200">
                   {(row.picks * PRICE_PER_PICK).toFixed(2)}
                 </td>
-                <td className="px-4 py-3 font-mono text-gold-200">{row.win.toFixed(2)}</td>
-                <td className="px-4 py-3 font-mono text-neutral-200">{row.refund.toFixed(2)}</td>
-                <td className="px-4 py-3 text-right font-mono text-gold-200">{row.winRate}</td>
+                <td className="px-3 sm:px-4 py-3 font-mono text-gold-200">{row.win.toFixed(2)}</td>
+                <td className="px-3 sm:px-4 py-3 font-mono text-neutral-200">{row.refund.toFixed(2)}</td>
+                <td className="px-3 sm:px-4 py-3 text-right font-mono text-gold-200">{row.winRate}</td>
               </tr>
             ))}
           </tbody>

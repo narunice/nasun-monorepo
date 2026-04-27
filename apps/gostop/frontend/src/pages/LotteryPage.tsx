@@ -212,7 +212,7 @@ export default function LotteryPage() {
       />
       <ExpiredBanner expired={claimSummary.expired} />
 
-      <section className="grid md:grid-cols-[1.3fr_1fr] gap-6">
+      <section className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6">
         <PickPanel
           picks={picks}
           onToggle={togglePick}
@@ -295,7 +295,7 @@ function PurchaseConfirmModal({
       aria-modal="true"
     >
       <div
-        className="relative w-full max-w-md panel p-8 text-center bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.18),transparent_60%)]"
+        className="relative w-full max-w-md panel p-6 sm:p-8 text-center bg-[radial-gradient(circle_at_top,rgba(212,175,55,0.18),transparent_60%)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="w-14 h-14 mx-auto mb-4 rounded-full border border-gold-200/60 bg-gold-200/10 flex items-center justify-center text-3xl text-gold-200">
@@ -870,27 +870,27 @@ const TIERS = [
 
 function PrizeTable() {
   return (
-    <section className="panel p-7">
+    <section className="panel p-5 sm:p-7">
       <h2 className="font-display text-2xl text-gold mb-5">
         Prize Distribution
       </h2>
-      <div className="overflow-hidden rounded-lg border border-gold-subtle">
-        <table className="w-full text-base">
+      <div className="overflow-x-auto rounded-lg border border-gold-subtle">
+        <table className="w-full min-w-[18rem] text-sm sm:text-base">
           <thead className="bg-ink-800/80 text-sm uppercase tracking-widest text-neutral-200">
             <tr>
-              <th className="text-left px-4 py-3">Tier</th>
-              <th className="text-left px-4 py-3">Match</th>
-              <th className="text-right px-4 py-3">Share of Pool</th>
+              <th className="text-left px-3 sm:px-4 py-3">Tier</th>
+              <th className="text-left px-3 sm:px-4 py-3">Match</th>
+              <th className="text-right px-3 sm:px-4 py-3">Share of Pool</th>
             </tr>
           </thead>
           <tbody>
             {TIERS.map((t) => (
               <tr key={t.tier} className="border-t border-gold-subtle/50">
-                <td className={`px-4 py-3 font-display text-lg ${t.color}`}>
+                <td className={`px-3 sm:px-4 py-3 font-display text-base sm:text-lg ${t.color}`}>
                   {t.tier}
                 </td>
-                <td className="px-4 py-3 text-neutral-200">{t.match}</td>
-                <td className="px-4 py-3 text-right font-mono text-gold-200">
+                <td className="px-3 sm:px-4 py-3 text-neutral-200">{t.match}</td>
+                <td className="px-3 sm:px-4 py-3 text-right font-mono text-gold-200">
                   {t.share}
                 </td>
               </tr>

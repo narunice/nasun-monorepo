@@ -115,7 +115,7 @@ function FloorHeader() {
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         The Floor
       </div>
-      <h1 className="font-display text-4xl md:text-6xl leading-[1.05] italic">
+      <h1 className="font-display text-3xl sm:text-4xl md:text-6xl leading-[1.05] italic">
         <span className="text-gold">Pick</span>
         <span className="text-neutral-200 not-italic"> your </span>
         <span className="text-gold">table</span>
@@ -132,7 +132,7 @@ function LiveSection() {
   return (
     <section>
       <SectionHeading title="Now Open" caption={`${LIVE_GAMES.length} games live`} />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         {LIVE_GAMES.map((g) => (
           <LiveCard key={g.title} game={g} />
         ))}
@@ -145,7 +145,7 @@ function UpcomingSection() {
   return (
     <section>
       <SectionHeading title="On the Rail" caption="Coming soon" />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         {UPCOMING_GAMES.map((g) => (
           <UpcomingCard key={g.title} game={g} />
         ))}
@@ -180,7 +180,7 @@ function LiveCard({ game }: { game: LiveGame }) {
           aria-hidden
           className="absolute inset-0 bg-gradient-to-t from-ink-950/85 via-ink-950/30 to-transparent"
         />
-        <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] uppercase tracking-[0.18em] border border-emerald-400/50 bg-emerald-950/50 text-emerald-300 backdrop-blur-sm">
+        <span className="absolute top-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs uppercase tracking-[0.18em] border border-emerald-400/50 bg-emerald-950/50 text-emerald-300 backdrop-blur-sm">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" aria-hidden />
           Live
         </span>
@@ -188,7 +188,7 @@ function LiveCard({ game }: { game: LiveGame }) {
           {game.title}
         </h3>
       </div>
-      <div className="flex flex-col gap-5 p-6 md:p-7">
+      <div className="flex flex-col gap-4 sm:gap-5 p-5 sm:p-6 md:p-7">
         <p className="text-base md:text-lg text-neutral-200 leading-relaxed">
           {game.tagline}
         </p>
@@ -217,14 +217,14 @@ function UpcomingCard({ game }: { game: UpcomingGame }) {
           aria-hidden
           className="absolute inset-0 bg-gradient-to-t from-ink-950/70 via-ink-950/10 to-transparent"
         />
-        <span className="absolute top-4 left-4 inline-flex items-center px-2.5 py-1 rounded-full text-[11px] uppercase tracking-[0.18em] border border-amber-400/40 bg-amber-950/40 text-amber-300/90 backdrop-blur-sm">
+        <span className="absolute top-4 left-4 inline-flex items-center px-2.5 py-1 rounded-full text-xs uppercase tracking-[0.18em] border border-amber-400/40 bg-amber-950/40 text-amber-300/90 backdrop-blur-sm">
           {game.eta}
         </span>
         <h3 className="absolute bottom-4 left-5 right-5 font-display text-3xl md:text-4xl text-neutral-100/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
           {game.title}
         </h3>
       </div>
-      <div className="flex flex-col gap-5 p-6 md:p-7">
+      <div className="flex flex-col gap-4 sm:gap-5 p-5 sm:p-6 md:p-7">
         <p className="text-base md:text-lg text-neutral-200 leading-relaxed">
           {game.tagline}
         </p>

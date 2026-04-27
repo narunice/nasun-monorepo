@@ -43,7 +43,7 @@ function Hero() {
         <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
         Nasun Devnet
       </div>
-      <h1 className="font-display text-5xl md:text-7xl leading-[1.05] italic">
+      <h1 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[1.05] italic">
         <span className="text-gold">Go</span>
         <span className="text-neutral-200 not-italic"> or </span>
         <span className="text-gold">Stop</span>
@@ -66,7 +66,7 @@ function Hero() {
 
 function Live() {
   return (
-    <section id="live" className="panel p-8">
+    <section id="live" className="panel p-5 md:p-8">
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-2xl text-gold">The Floor</h2>
         <span className="text-sm uppercase tracking-widest text-gold-200">
@@ -152,7 +152,7 @@ function Upcoming() {
 
 function BankrollTeaser() {
   return (
-    <section className="panel p-8 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_60%)]">
+    <section className="panel p-5 md:p-8 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12),transparent_60%)]">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
         <div>
           <p className="text-sm uppercase tracking-[0.25em] text-emerald-400 mb-3">
@@ -196,7 +196,7 @@ function GameCard({
   return (
     <Link
       to={to}
-      className="group relative overflow-hidden panel px-4 py-4 flex items-center justify-between gap-5 transition hover:-translate-y-0.5 hover:shadow-gold-glow"
+      className="group relative overflow-hidden panel p-4 flex items-center justify-between gap-3 sm:gap-5 transition hover:-translate-y-0.5 hover:shadow-gold-glow"
     >
       <div
         aria-hidden
@@ -211,12 +211,12 @@ function GameCard({
           src={thumb}
           alt=""
           aria-hidden
-          className="relative shrink-0 w-28 h-28 md:w-32 md:h-32 rounded-lg object-cover border border-gold-subtle"
+          className="relative shrink-0 w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 rounded-lg object-cover border border-gold-subtle"
         />
       )}
       <div className="relative flex-1 min-w-0">
-        <h3 className="font-display text-3xl text-gold mb-2">{title}</h3>
-        <p className="text-base text-neutral-200 italic">{tagline}</p>
+        <h3 className="font-display text-xl sm:text-2xl md:text-3xl text-gold mb-1 sm:mb-2">{title}</h3>
+        <p className="text-sm sm:text-base text-neutral-200 italic">{tagline}</p>
         {badge && (
           <span
             className={`inline-flex items-center gap-1.5 mt-3 px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border ${
