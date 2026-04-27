@@ -165,7 +165,16 @@ setInterval(() => {
 }, HISTORY_RATE_SWEEP_MS).unref();
 
 function getClientIp(req: IncomingMessage): string {
-  return (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 'unknown';
+  // Trust the rightmost X-Forwarded-For hop: nginx appends the real client IP
+  // via $proxy_add_x_forwarded_for, so anything to its left is client-supplied
+  // and spoofable. Falls back to socket address for direct connections.
+  const xff = req.headers['x-forwarded-for'] as string | undefined;
+  if (xff) {
+    const parts = xff.split(',');
+    const ip = parts[parts.length - 1]?.trim();
+    if (ip) return ip;
+  }
+  return req.socket.remoteAddress ?? 'unknown';
 }
 
 // A-C1 backoff

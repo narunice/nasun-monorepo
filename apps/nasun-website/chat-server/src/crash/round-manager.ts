@@ -16,6 +16,11 @@ import { RESOLVE_RETRY_ATTEMPTS, RESOLVE_RETRY_DELAY_MS } from './constants.js';
 // Must match apps/gostop/devnet-ids.json crash.gameId.
 const CRASH_GAME_ID = 4;
 
+// Sui addresses are always 0x + 32-byte hex (64 chars) when emitted from Move
+// events. A loose {1,64} regex would let truncated/malformed values reach the
+// DB and silently break history lookups.
+const SUI_ADDRESS_RE = /^0x[0-9a-f]{64}$/;
+
 // Parse bankroll_pool::GameResult events from a resolve_round tx response into
 // JSON-safe per-player history rows. Filters by game_id to avoid sibling games
 // sharing the same pool (none today, but defensive). Caller catches any throw.
@@ -32,7 +37,7 @@ function parsePlayerResultsFromEvents(
     if (Number(d.game_id) !== CRASH_GAME_ID) continue;
 
     const player = String(d.player ?? '').toLowerCase();
-    if (!/^0x[0-9a-f]{1,64}$/.test(player)) continue;
+    if (!SUI_ADDRESS_RE.test(player)) continue;
 
     const sessionRaw = d.session_id;
     let sessionIdHex = '';
@@ -97,7 +102,7 @@ async function fetchBetTxByPlayer(
       const rid = Number(d.round_id);
       if (rid === roundId) {
         const player = String(d.player ?? '').toLowerCase();
-        if (/^0x[0-9a-f]{1,64}$/.test(player) && !out.has(player)) {
+        if (SUI_ADDRESS_RE.test(player) && !out.has(player)) {
           out.set(player, ev.id.txDigest);
           matchedThisPage++;
         }
