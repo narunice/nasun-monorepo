@@ -56,9 +56,9 @@ function Hero() {
         <Link to="/lottery" className="btn-gold">
           Enter the Lottery
         </Link>
-        <a href="#live" className="btn-ghost">
+        <Link to="/floor" className="btn-ghost">
           See the Floor
-        </a>
+        </Link>
       </div>
     </section>
   );

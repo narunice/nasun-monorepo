@@ -7,6 +7,7 @@ import ScratchCardPage from './pages/ScratchCardPage'
 import NumberMatchPage from './pages/NumberMatchPage'
 import MinesPage from './pages/MinesPage'
 import HomePage from './pages/HomePage'
+import FloorPage from './pages/FloorPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import GameHistoryPage from './pages/GameHistoryPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
@@ -20,7 +21,7 @@ interface NavEntry {
 }
 
 const NAV_ITEMS: NavEntry[] = [
-  { to: '/', label: 'Home' },
+  { to: '/floor', label: 'Floor' },
   { to: '/games/history', label: 'History' },
 ]
 
@@ -57,6 +58,7 @@ export default function App() {
       <main className="flex-1 max-w-6xl w-full mx-auto px-5 py-10">
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/floor" element={<FloorPage />} />
           <Route path="/lottery" element={<LotteryPage />} />
           <Route path="/scratch" element={<ScratchCardPage />} />
           <Route path="/numbermatch" element={<NumberMatchPage />} />
