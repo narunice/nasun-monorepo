@@ -295,7 +295,6 @@ async function main() {
   let skippedUnregistered = 0;
   let skippedNoReward = 0;
   let skippedNoAlliance = 0;
-  let skippedNoSocial = 0;
 
   console.log('\n--- Settlement Results ---\n');
 
@@ -328,15 +327,10 @@ async function main() {
       continue;
     }
 
-    if (!trader?.hasSocialAccount) {
-      skippedNoSocial++;
-      if (dryRun) {
-        console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (no social account)`);
-      }
-      continue;
-    }
+    // Social account check removed per policy update (2026-04-27).
+    // Alliance NFT remains the sole community-verification requirement.
 
-    const isGP = trader.hasGenesisPass;
+    const isGP = trader?.hasGenesisPass ?? false;
     const finalPts = isGP ? basePts * 2 : basePts;
     const digest = `bonus-pado-weekly:${identityId}:${weekId}`;
 
@@ -383,7 +377,6 @@ async function main() {
   console.log(`  Awarded: ${awarded}`);
   console.log(`  Skipped (unregistered): ${skippedUnregistered}`);
   console.log(`  Skipped (no Alliance NFT): ${skippedNoAlliance}`);
-  console.log(`  Skipped (no social account): ${skippedNoSocial}`);
   console.log(`  Skipped (rank > 2000): ${skippedNoReward}`);
 
   await pgDb.end();
