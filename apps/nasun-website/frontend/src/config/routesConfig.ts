@@ -70,6 +70,9 @@ export const Pages = {
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
+  EcosystemGostop: lazyWithRetry(
+    () => import("../pages/ecosystem/GostopPage"),
+  ),
   EcosystemLeaderboard: lazyWithRetry(
     () => import("../pages/ecosystem/EcosystemLeaderboardPage"),
   ),
@@ -222,6 +225,12 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.baramAi",
           path: "/ecosystem/baram",
           element: Pages.BaramDark,
+        },
+        {
+          name: "navigation.gostop",
+          path: "/ecosystem/gostop",
+          element: Pages.EcosystemGostop,
+          hidden: true,
         },
         {
           name: "navigation.genSol",
