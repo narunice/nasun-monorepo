@@ -262,7 +262,7 @@ export const POINTS = {
   PER_1K_VOLUME: 5,              // per $1000 NUSDC volume
   PER_UNIQUE_POOL: 25,           // per unique pool traded
   FIRST_TRADE_BONUS: 50,         // one-time bonus for first trade
-  PER_600_PNL: 100,              // per $600 realized profit (losses = 0)
+  PER_600_PNL: 25,               // per $600 realized profit (losses = 0)
   PER_10PCT_RETURN: 100,         // per 10% return rate (negative = 0)
   // Tiered loss penalty: applied to pnl score (floor 0). Highest matching tier wins.
   LOSS_PENALTY_TIERS: [
