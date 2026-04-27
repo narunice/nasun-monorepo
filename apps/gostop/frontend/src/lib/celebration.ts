@@ -19,12 +19,16 @@ const GOLD = ['#FFD700', '#FFA500', '#FFEAA7', '#d4af37', '#f2d67b']
 const EMERALD = ['#10b981', '#34d399', '#86efac', '#22c55e', '#4ade80']
 const CRIMSON = ['#dc2626', '#ef4444', '#f87171', '#fca5a5', '#fecaca']
 const ROYAL = ['#FFD700', '#d4af37', '#10b981', '#fdf6e3']
+// Default win palette: gold-dominant with emerald accents so casual wins still
+// feel on-brand (gostop = gold) without losing the green "you won" signal.
+const GOLD_EMERALD = ['#FFD700', '#d4af37', '#FFEAA7', '#10b981', '#34d399']
 
 export const CELEBRATION_COLORS = {
   gold: GOLD,
   emerald: EMERALD,
   crimson: CRIMSON,
   royal: ROYAL,
+  goldEmerald: GOLD_EMERALD,
 } as const
 
 export type CelebrationPaletteKey = keyof typeof CELEBRATION_COLORS
