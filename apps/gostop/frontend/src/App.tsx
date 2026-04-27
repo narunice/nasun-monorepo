@@ -213,12 +213,25 @@ function LogoMark() {
 function Footer() {
   return (
     <footer className="border-t border-gold-subtle">
-      <div className="max-w-6xl mx-auto px-5 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-neutral-300">
-        <span>
-          GoStop.app{' '}
-          <span className="text-neutral-200">- Nasun Devnet prototype</span>
-        </span>
-        <span className="font-mono text-sm text-neutral-200">v0.0.1</span>
+      <div className="max-w-6xl mx-auto px-5 py-6 space-y-5">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-neutral-300">
+          <span>
+            GoStop.app{' '}
+            <span className="text-neutral-200">- Nasun Devnet prototype</span>
+          </span>
+          <span className="font-mono text-sm text-neutral-200">v0.0.1</span>
+        </div>
+        <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-4 text-sm leading-relaxed text-amber-100">
+          <p>
+            <span className="font-semibold text-amber-200">Disclaimer.</span>{' '}
+            This site is a proof-of-concept prototype operating on Nasun
+            Devnet. It is provided strictly for testing and entertainment, and
+            is not a financial product. All tokens and balances shown here
+            are test assets that hold no monetary value and cannot be
+            redeemed. The devnet may be reset at any time without prior
+            notice, which will erase all balances, history, and game state.
+          </p>
+        </div>
       </div>
     </footer>
   )
