@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { ENABLE_CRASH } from "../lib/gostop-config";
 import crashThumb from "../assets/images/crash.webp";
@@ -5,6 +6,13 @@ import lotteryThumb from "../assets/images/lottery.webp";
 import scratchThumb from "../assets/images/scratchcard.webp";
 import numberMatchThumb from "../assets/images/number-match.webp";
 import minesThumb from "../assets/images/mines.webp";
+
+// Hero stat values — update manually
+const HERO_STATS = [
+  { value: "5", label: "Live Games" },
+  { value: "3,347", label: "Active Gamers" },
+  { value: "8m 42s", label: "Avg. Session" },
+] as const;
 
 const UPCOMING = [
   ...(ENABLE_CRASH
@@ -38,27 +46,127 @@ export default function HomePage() {
 
 function Hero() {
   return (
-    <section className="text-center pt-10 pb-4">
-      <div className="inline-flex items-center gap-2 mb-6 px-4 py-2 rounded-full border border-gold-subtle text-sm uppercase tracking-[0.2em] text-gold-200">
-        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-        Nasun Devnet
-      </div>
-      <h1 className="font-display text-4xl sm:text-5xl md:text-7xl leading-[1.05] italic">
-        <span className="text-gold">Go</span>
-        <span className="text-neutral-200 not-italic"> or </span>
-        <span className="text-gold">Stop</span>
-      </h1>
-      <p className="mt-6 text-lg text-neutral-200 max-w-xl mx-auto leading-relaxed">
-        An onchain casino on Nasun. Every round provably fair, every payout
-        settled on chain, every player an owner.
-      </p>
-      <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
-        <Link to="/lottery" className="btn-gold">
-          Enter the Lottery
-        </Link>
-        <Link to="/floor" className="btn-ghost">
-          See the Floor
-        </Link>
+    <section
+      className="-mt-6 sm:-mt-10"
+      style={{
+        width: "100vw",
+        marginLeft: "calc(-50vw + 50%)",
+      }}
+    >
+      <div className="relative overflow-hidden max-w-9xl mx-auto">
+        {/* Dot grid texture */}
+        <div
+          aria-hidden
+          className="absolute inset-0 opacity-[0.04] pointer-events-none"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle, #d4af37 1px, transparent 1px)",
+            backgroundSize: "28px 28px",
+          }}
+        />
+
+        {/* Ambient glow */}
+        <div
+          aria-hidden
+          className="absolute -top-40 -left-20 w-[600px] h-[600px] rounded-full blur-3xl pointer-events-none"
+          style={{ backgroundColor: "rgba(212, 175, 55, 0.1)" }}
+        />
+
+        <div className="relative flex flex-col lg:flex-row items-stretch">
+          {/* Text panel */}
+          <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-12 md:py-16 lg:py-0">
+            <div className="flex flex-col gap-6 md:gap-7 w-full max-w-md sm:max-w-lg lg:ml-auto lg:max-w-xl xl:max-w-2xl">
+              {/* Live badge */}
+              <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-gold-400/10 border border-gold-400/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="text-xs uppercase tracking-[0.15em] text-gold-200">
+                  Live on Nasun Devnet
+                </span>
+              </div>
+
+              {/* Title */}
+              <h1
+                className="font-display italic font-medium leading-[1.05] tracking-tight text-transparent bg-clip-text -ml-1 pb-2"
+                style={{
+                  fontSize: "clamp(72px, 12vw, 144px)",
+                  backgroundImage:
+                    "linear-gradient(135deg, #fdf6e3 0%, #f2d67b 45%, #b68d22 100%)",
+                }}
+              >
+                GoStop
+              </h1>
+
+              {/* Stat strip */}
+              <div className="flex items-center gap-5 md:gap-7">
+                {HERO_STATS.map((stat, i) => (
+                  <Fragment key={stat.label}>
+                    {i > 0 && (
+                      <div className="w-px h-7 bg-gold-400/20 shrink-0" />
+                    )}
+                    <div>
+                      <div className="text-base md:text-xl font-medium text-gold-200">
+                        {stat.value}
+                      </div>
+                      <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5">
+                        {stat.label}
+                      </div>
+                    </div>
+                  </Fragment>
+                ))}
+              </div>
+
+              {/* CTAs */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <Link to="/lottery" className="btn-gold">
+                  Enter the Lottery
+                </Link>
+                <Link to="/floor" className="btn-ghost">
+                  See the Floor
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Image panel */}
+          <div className="relative w-full lg:w-1/2 lg:max-w-[720px] shrink-0 overflow-hidden">
+            {/* Left fade — blends image into text panel on desktop */}
+            <div
+              aria-hidden
+              className="absolute inset-y-0 left-0 w-32 xl:w-40 z-10 pointer-events-none hidden lg:block"
+              style={{
+                backgroundImage:
+                  "linear-gradient(to right, #07070a, transparent)",
+              }}
+            />
+
+            <div className="relative aspect-square">
+              <img
+                src={lotteryThumb}
+                alt=""
+                aria-hidden
+                className="w-full h-full object-cover object-center"
+              />
+              {/* Warm overlay */}
+              <div
+                aria-hidden
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(135deg, rgba(93, 71, 16, 0.45) 0%, transparent 50%, rgba(138, 106, 24, 0.2) 100%)",
+                }}
+              />
+              {/* Bottom fade on mobile */}
+              <div
+                aria-hidden
+                className="absolute bottom-0 inset-x-0 h-24 lg:hidden pointer-events-none"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(to top, #07070a, transparent)",
+                }}
+              />
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -66,7 +174,7 @@ function Hero() {
 
 function Live() {
   return (
-    <section id="live" className="panel p-5 md:p-8">
+    <section id="live">
       <div className="flex items-center justify-between mb-6">
         <h2 className="font-display text-2xl text-gold">The Floor</h2>
         <span className="text-sm uppercase tracking-widest text-gold-200">
@@ -215,8 +323,12 @@ function GameCard({
         />
       )}
       <div className="relative flex-1 min-w-0">
-        <h3 className="font-display text-xl sm:text-2xl md:text-3xl text-gold mb-1 sm:mb-2">{title}</h3>
-        <p className="text-sm sm:text-base text-neutral-200 italic">{tagline}</p>
+        <h3 className="font-display text-xl sm:text-2xl md:text-3xl text-gold mb-1 sm:mb-2">
+          {title}
+        </h3>
+        <p className="text-sm sm:text-base text-neutral-200 italic">
+          {tagline}
+        </p>
         {badge && (
           <span
             className={`inline-flex items-center gap-1.5 mt-3 px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border ${
