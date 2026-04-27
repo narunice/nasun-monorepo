@@ -10,15 +10,17 @@
  *   node --import tsx install-gamecap-mines.ts
  *
  * Cap sizing (devnet):
- *   max_single_payout = 100 NUSDC. create_session rejects bets whose
+ *   max_single_payout = 2,000 NUSDC. create_session rejects bets whose
  *   theoretical max payout exceeds this cap, so this also acts as the
- *   effective per-mine-count bet ceiling:
- *     mine=1  (max_mul ~24.25x) -> bet <= 4.12 NUSDC
- *     mine=5  (max_mul ~24.25x) -> bet <= 4.12 NUSDC (same floor multiplier)
- *     mine=12 (max_mul ~1225x)  -> bet <= 0.08 NUSDC  (small bets only)
- *     mine=24 (max_mul ~24.25x) -> bet <= 4.12 NUSDC
- *   This keeps RPC-leak exploit upside bounded during devnet prototype.
- *   Raise cap once encrypted mine placement lands.
+ *   effective per-mine-count bet ceiling (after 3% house edge):
+ *     mine=1  (max_mul ~24.25x)   -> bet <= ~82 NUSDC
+ *     mine=12 (max_mul ~1225x)    -> bet <= ~1.6 NUSDC
+ *     mine=24 (max_mul ~24.25x)   -> bet <= ~82 NUSDC
+ *   First-time install uses 100 NUSDC; the live cap is bumped to 2000 NUSDC
+ *   via mines::update_max_payout_via_bp_admin (see devnet-ids.json).
+ *   Note: mine_positions is currently readable on-chain via getObject; cap
+ *   bounds the RPC-leak exploit upside. Encrypted placement (ECIES + house
+ *   key) lands before mainnet.
  */
 import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
@@ -51,7 +53,7 @@ const BANKROLL_ADMIN_CAP = '0x6c9c504ac631b967ff576e39f643153f3a503a16d4360c1820
 
 const GAME_ID = 5; // must match GAME_ID_SELF in mines.move
 const GAME_NAME = Array.from(new TextEncoder().encode('mines'));
-const MAX_SINGLE_PAYOUT = 100n * 1_000_000n; // 100 NUSDC
+const MAX_SINGLE_PAYOUT = 2_000n * 1_000_000n; // 2,000 NUSDC
 
 async function main() {
   const { secretKey } = decodeSuiPrivateKey(ADMIN_PRIVKEY!);
