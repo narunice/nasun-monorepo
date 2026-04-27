@@ -1178,12 +1178,29 @@ app.get('/snapshot/history/:identityId', async (c) => {
 
   const days = Math.min(Math.max(1, parseInt(c.req.query('days') ?? '30', 10)), 90);
 
+  // staking_delta_scaled (= stakingDelta * multiplier) is derived from the
+  // cumulative all_time_staking_scaled column via LAG. No schema change needed.
+  // The CTE runs LAG over the user's full history before LIMIT so the oldest
+  // row in the returned window still gets the correct previous-day baseline.
+  // Pre-v2 rows (NULL all_time_staking_scaled) yield 0, which is correct.
   const rows = await pointsDb`
+    WITH with_lag AS (
+      SELECT snapshot_date, base_score, multiplier, bonus_total,
+             COALESCE(referral_bonus, 0) AS referral_bonus,
+             ecosystem_score, is_penalized, rank,
+             GREATEST(
+               COALESCE(all_time_staking_scaled, 0)
+               - LAG(COALESCE(all_time_staking_scaled, 0))
+                 OVER (ORDER BY snapshot_date),
+               0
+             ) AS staking_delta_scaled
+      FROM ecosystem_score_snapshots
+      WHERE identity_id = ${identityId}
+    )
     SELECT snapshot_date, base_score, multiplier::numeric, bonus_total::numeric,
-           COALESCE(referral_bonus, 0)::numeric as referral_bonus,
-           ecosystem_score::numeric, is_penalized, rank
-    FROM ecosystem_score_snapshots
-    WHERE identity_id = ${identityId}
+           referral_bonus::numeric, ecosystem_score::numeric,
+           is_penalized, rank, staking_delta_scaled::numeric
+    FROM with_lag
     ORDER BY snapshot_date DESC
     LIMIT ${days}
   `;
@@ -1196,6 +1213,7 @@ app.get('/snapshot/history/:identityId', async (c) => {
       multiplier: parseFloat(r.multiplier as string),
       bonusTotal: parseFloat(r.bonus_total as string),
       referralBonus: parseFloat(r.referral_bonus as string),
+      stakingDeltaScaled: parseFloat((r.staking_delta_scaled as string) ?? '0'),
       ecosystemScore: parseFloat(r.ecosystem_score as string),
       isPenalized: r.is_penalized,
       rank: r.rank,
