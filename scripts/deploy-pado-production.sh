@@ -28,7 +28,7 @@ BOTS_REMOTE_DIR="/home/ec2-user/pado-bots"
 HEALTH_CHECK_URL="https://pado.finance"
 CLOUDFRONT_DISTRIBUTION_ID="E35SWPQEJB8HHE"
 
-TOTAL_STEPS=9
+TOTAL_STEPS=10
 START_TIME=$(date +%s)
 
 # --- 옵션 파싱 ---
@@ -131,7 +131,7 @@ if [ "$DRY_RUN" = true ]; then
   log_warning "드라이런 모드: 빌드만 수행하고 배포는 건너뜁니다."
   TOTAL_STEPS=3
 elif [ "$SKIP_BOTS" = true ]; then
-  TOTAL_STEPS=7
+  TOTAL_STEPS=8
 fi
 
 # --- Phase 1: 환경 검증 ---
@@ -245,19 +245,30 @@ log_step 7 $TOTAL_STEPS "헬스 체크"
 
 health_check "$HEALTH_CHECK_URL"
 
-# --- Phase 7.5: CloudFront 캐시 무효화 ---
-if [ -n "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
-  log_info "CloudFront 캐시 무효화 중..."
-  aws cloudfront create-invalidation --profile nasun-prod \
+# --- Phase 8: CloudFront 캐시 무효화 ---
+log_step 8 $TOTAL_STEPS "CloudFront 캐시 무효화"
+
+if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
+  log_warning "CLOUDFRONT_DISTRIBUTION_ID 미설정 — 무효화 건너뜀"
+elif ! command -v aws >/dev/null 2>&1; then
+  log_warning "aws CLI 미설치 — 무효화 건너뜀"
+else
+  log_info "Distribution ${CLOUDFRONT_DISTRIBUTION_ID} 무효화 요청 중..."
+  INVALIDATION_ID=$(aws cloudfront create-invalidation --profile nasun-prod \
     --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
-    --paths "/*" > /dev/null 2>&1 && \
-    log_success "CloudFront 캐시 무효화 요청 완료" || \
-    log_warning "CloudFront 캐시 무효화 실패 (수동 확인 필요)"
+    --paths "/*" \
+    --query "Invalidation.Id" --output text 2>&1) || {
+      log_warning "CloudFront 무효화 실패 (수동 재시도): pnpm invalidate:pado:cdn"
+      INVALIDATION_ID=""
+    }
+  if [ -n "$INVALIDATION_ID" ]; then
+    log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) — propagation 5~10분"
+  fi
 fi
 
-# --- Phase 8-9: LP 봇 배포 ---
+# --- Phase 9-10: LP 봇 배포 ---
 if [ "$SKIP_BOTS" = false ]; then
-  log_step 8 $TOTAL_STEPS "LP 봇 코드 동기화"
+  log_step 9 $TOTAL_STEPS "LP 봇 코드 동기화"
 
   log_info "원격 봇 디렉토리 생성 중..."
   ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "mkdir -p ${BOTS_REMOTE_DIR}"
@@ -275,7 +286,7 @@ if [ "$SKIP_BOTS" = false ]; then
 
   log_success "봇 코드 동기화 완료"
 
-  log_step 9 $TOTAL_STEPS "LP 봇 PM2 시작"
+  log_step 10 $TOTAL_STEPS "LP 봇 PM2 시작"
 
   log_info "봇 의존성 설치 중..."
   ssh -i "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "cd ${BOTS_REMOTE_DIR} && pnpm install --prod"
