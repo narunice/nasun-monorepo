@@ -143,6 +143,10 @@ export class ChatService {
   private currentRateLimit: NicknameRateLimit | null = null;
   private pendingTurnstileToken: string | null = null;
   private captchaRequired = false;
+  // Once a Turnstile token has been used, every subsequent reconnect needs a fresh one.
+  // Without this flag we would silently send an empty token on reconnect and only learn
+  // the token is missing after the server rejects the auth.
+  private turnstileEverUsed = false;
 
   setTurnstileToken(token: string): void {
     this.pendingTurnstileToken = token;
@@ -280,6 +284,16 @@ export class ChatService {
         }
         const turnstileToken = this.pendingTurnstileToken ?? undefined;
         this.pendingTurnstileToken = null;
+        // If Turnstile was used before but no fresh token is pending (typical on
+        // reconnect after server restart or transient drop), don't send an empty
+        // auth_response. Trigger widget remount through captcha_required instead.
+        if (this.turnstileEverUsed && !turnstileToken) {
+          this.captchaRequired = true;
+          this.emit('captcha_required', undefined);
+          this.ws?.close(4403, 'Captcha refresh');
+          break;
+        }
+        if (turnstileToken) this.turnstileEverUsed = true;
         this.signFn(msg.challenge)
           .then(({ signature, address, authMethod, ephemeralPubKey, displayName }) => {
             this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName, turnstileToken });
