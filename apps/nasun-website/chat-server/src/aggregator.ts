@@ -226,6 +226,10 @@ function runPointsAggregation(): void {
 async function runWeeklyScoreAggregation(): Promise<void> {
   if (!config) return;
 
+  if (POINTS.DAILY_TRADE_CAP < 1) {
+    throw new Error(`DAILY_TRADE_CAP must be >= 1, got ${POINTS.DAILY_TRADE_CAP}. Check leaderboard-types.ts POINTS config.`);
+  }
+
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
 
