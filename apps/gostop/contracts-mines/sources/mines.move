@@ -37,7 +37,7 @@ module gostop_mines::mines {
     use sui::random::{Self, Random};
     use sui::table::{Self, Table};
     use devnet_tokens::nusdc::NUSDC;
-    use bankroll_pool::bankroll_pool::{Self, BankrollPool, GameCap};
+    use bankroll_pool::bankroll_pool::{Self, BankrollPool, GameCap, AdminCap as BpAdminCap};
 
     // ===== Constants =====
 
@@ -160,6 +160,22 @@ module gostop_mines::mines {
             EGameCapMismatch,
         );
         option::fill(&mut registry.game_cap, cap);
+    }
+
+    /// Adjust max_single_payout on the GameCap that lives inside the registry.
+    /// Mirrors crash::update_max_payout_via_bp_admin: a single PTB holding both
+    /// the Mines AdminCap and the BankrollPool AdminCap can mut-borrow the
+    /// wrapped cap and bump its cap without uninstalling.
+    public entry fun update_max_payout_via_bp_admin(
+        _mines_admin: &AdminCap,
+        bp_admin: &BpAdminCap,
+        registry: &mut MinesRegistry,
+        new_max: u64,
+        clock: &Clock,
+    ) {
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+        let cap = option::borrow_mut(&mut registry.game_cap);
+        bankroll_pool::update_max_payout(bp_admin, cap, new_max, clock);
     }
 
     // ===== Core =====
