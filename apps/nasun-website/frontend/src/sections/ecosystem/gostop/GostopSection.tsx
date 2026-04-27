@@ -14,10 +14,10 @@ import {
   Hourglass,
 } from "lucide-react";
 import { SectionLayout } from "@/components/layout/SectionLayout";
-import { PageTitle } from "@/components/ui/PageTitle";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { OuterBox, FadeInUp } from "@/components/ui";
+import lotteryImg from "@/assets/images/lottery.webp";
 
 const GOSTOP_URL = "https://gostop.app";
 
@@ -64,41 +64,112 @@ function GostopSection() {
     <SectionLayout className="!max-w-6xl">
       <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
         {/* ========== HERO ========== */}
-        <div className="flex flex-col items-center text-center">
-          <FadeInUp>
-            <PageTitle>GoStop</PageTitle>
-            <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
-              A luxury onchain casino. Provably fair. Settled on chain.
-            </h5>
-          </FadeInUp>
+        <FadeInUp>
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0c0805]">
+            {/* Dot grid texture */}
+            <div
+              className="absolute inset-0 opacity-[0.035] pointer-events-none"
+              style={{
+                backgroundImage:
+                  "radial-gradient(circle, #f9a824 1px, transparent 1px)",
+                backgroundSize: "28px 28px",
+              }}
+            />
 
-          <FadeInUp delay="0.2s" className="mt-2 md:mt-4 lg:mt-6 w-full">
-            <div className="relative w-full overflow-hidden rounded-lg border border-amber-500/30 bg-gradient-to-br from-[#1a1408] via-[#0f0a04] to-[#0a0a0a]">
-              <div className="aspect-[1200/630] w-full">
-                <img
-                  src="/images/gostop/og-image.png"
-                  alt="GoStop — onchain casino on Nasun"
-                  className="h-full w-full object-cover"
-                />
+            {/* Ambient top-left glow */}
+            <div className="absolute -top-40 -left-20 w-[500px] h-[500px] bg-amber-500/8 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative flex flex-col lg:flex-row">
+              {/* Text panel */}
+              <div className="flex-1 flex flex-col justify-center gap-6 md:gap-7 px-8 py-12 md:px-12 md:py-16 lg:px-14 lg:py-20">
+                {/* Live badge */}
+                <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span className="text-xs uppercase tracking-[0.15em] text-amber-200/80">
+                    Live on Nasun Devnet
+                  </span>
+                </div>
+
+                {/* Massive title */}
+                <div className="-ml-1">
+                  <h1
+                    className="font-rubik uppercase font-bold leading-[0.88] tracking-tight text-transparent bg-clip-text"
+                    style={{
+                      fontSize: "clamp(72px, 12vw, 144px)",
+                      backgroundImage:
+                        "linear-gradient(135deg, #fef3c7 0%, #fbbf24 45%, #d97706 100%)",
+                    }}
+                  >
+                    Go
+                    <br />
+                    Stop
+                  </h1>
+                </div>
+
+                {/* Tagline */}
+                <p className="text-nasun-white/60 text-base md:text-lg leading-relaxed max-w-xs">
+                  A luxury onchain casino. Provably fair. Every payout written
+                  on chain.
+                </p>
+
+                {/* Stat strip */}
+                <div className="flex items-center gap-5 md:gap-7">
+                  {[
+                    { value: "5", label: "Live Games" },
+                    { value: "$80B+", label: "Wagered 2024" },
+                    { value: "100%", label: "On-Chain" },
+                  ].map((stat, i) => (
+                    <React.Fragment key={stat.label}>
+                      {i > 0 && (
+                        <div className="w-px h-7 bg-amber-500/20 shrink-0" />
+                      )}
+                      <div>
+                        <div className="text-base md:text-xl font-bold text-amber-200">
+                          {stat.value}
+                        </div>
+                        <div className="text-[11px] text-nasun-white/40 uppercase tracking-wider mt-0.5">
+                          {stat.label}
+                        </div>
+                      </div>
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                {/* CTA */}
+                <div>
+                  <a
+                    href={GOSTOP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+                  >
+                    Enter the Floor <ArrowUpRight className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+
+              {/* Image panel */}
+              <div className="relative lg:w-[420px] xl:w-[500px] shrink-0 overflow-hidden">
+                {/* Left fade mask — blends image into text panel on desktop */}
+                <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-[#0c0805] to-transparent z-10 pointer-events-none hidden lg:block" />
+
+                <div className="relative aspect-square lg:aspect-auto lg:h-full min-h-[280px] sm:min-h-[360px]">
+                  <img
+                    src={lotteryImg}
+                    alt="GoStop Lottery"
+                    className="w-full h-full object-cover object-center"
+                  />
+
+                  {/* Warm overlay to tie image into page palette */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-950/50 via-transparent to-amber-900/20 pointer-events-none" />
+
+                  {/* Bottom fade on mobile */}
+                  <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0c0805] to-transparent lg:hidden pointer-events-none" />
+                </div>
               </div>
             </div>
-            <p className="text-center text-nasun-white/60 py-2 md:py-4">
-              Crash, Lottery, Mines, Scratch Cards, and Number Match. Every
-              round salted with commit-reveal randomness, every payout written
-              on chain.
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-              <a
-                href={GOSTOP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-amber-500 text-black font-semibold text-sm md:text-base hover:bg-amber-400 transition-colors"
-              >
-                Enter the Floor <ArrowUpRight className="w-4 h-4" />
-              </a>
-            </div>
-          </FadeInUp>
-        </div>
+          </div>
+        </FadeInUp>
 
         {/* ========== WHY CRYPTO CASINOS ========== */}
         <section>
