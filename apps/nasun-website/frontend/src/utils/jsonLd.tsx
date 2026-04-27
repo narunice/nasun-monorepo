@@ -21,7 +21,7 @@ export const NASUN_ORG_SCHEMA = {
   url: "https://nasun.io",
   logo: "https://nasun.io/nasun-symbol-white.png",
   description:
-    "Layer 1 blockchain with DEX, prediction markets, AI compliance settlement, and onchain gaming. Built on a Sui fork with sub-second finality.",
+    "Layer 1 blockchain with DEX, prediction markets, AI compliance settlement, and onchain gaming. Built on Move with sub-second finality.",
   sameAs: [
     "https://x.com/Nasun_io",
     "https://t.me/nasun_official",

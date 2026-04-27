@@ -449,7 +449,7 @@ function GostopSection() {
             {[
               {
                 icon: <Cpu className="w-5 h-5" />,
-                title: "Sui-based settlement",
+                title: "Move-based settlement",
                 bullets: [
                   "Move contracts on Nasun Devnet",
                   "Object model for per-round state",
