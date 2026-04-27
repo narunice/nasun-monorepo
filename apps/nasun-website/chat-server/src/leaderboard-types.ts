@@ -258,14 +258,19 @@ export interface TraderScoreResponse {
 
 // Points formula constants
 export const POINTS = {
-  PER_TRADE: 10,
+  PER_TRADE: 4,
   PER_1K_VOLUME: 5,              // per $1000 NUSDC volume
   PER_UNIQUE_POOL: 25,           // per unique pool traded
-  FIRST_TRADE_BONUS: 100,        // one-time bonus for first trade
-  PER_1K_PNL: 100,               // per $1000 realized profit (losses = 0) [was 20]
-  PER_10PCT_RETURN: 50,          // per 10% return rate (negative = 0)     [was 15]
-  LOSS_PENALTY_THRESHOLD: -20,   // pnl_percent <= -20% triggers penalty
-  LOSS_PENALTY_PTS: 20,          // deduct 20 pts from pnl score (floor 0)
+  FIRST_TRADE_BONUS: 50,         // one-time bonus for first trade
+  PER_600_PNL: 100,              // per $600 realized profit (losses = 0)
+  PER_10PCT_RETURN: 100,         // per 10% return rate (negative = 0)
+  // Tiered loss penalty: applied to pnl score (floor 0). Highest matching tier wins.
+  LOSS_PENALTY_TIERS: [
+    { threshold: -20, penalty: 20 },
+    { threshold: -15, penalty: 15 },
+    { threshold: -10, penalty: 10 },
+    { threshold: -5,  penalty: 5  },
+  ],
 } as const;
 
 // Known bot wallet addresses - always excluded from leaderboards and points
