@@ -30,6 +30,7 @@
     "deploy:baram:prod": "./scripts/deploy-baram-production.sh",
     "deploy:gostop:staging": "./scripts/deploy-gostop-staging.sh",
     "deploy:gostop:prod": "./scripts/deploy-gostop-production.sh",
+    "deploy:gostop:bots:prod": "./scripts/deploy-gostop-bots.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",
