@@ -173,7 +173,7 @@ function runPointsAggregation(): void {
     if (pnlData) {
       // Amount: per $1K profit. realizedPnlRaw is in NUSDC raw (6 decimals)
       if (pnlData.realizedPnlRaw > 0) {
-        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 1_000_000_000) * POINTS.PER_1K_PNL;
+        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
       }
       // Return rate: per 10% profit
       if (pnlData.pnlPercent > 0) {
@@ -218,7 +218,7 @@ function runPointsAggregation(): void {
  * which covers all-time data).
  * Applies wash-trading filter: fills where maker and taker share the same Identity
  * are excluded from volume and trade count.
- * Applies loss penalty: pnl_percent <= LOSS_PENALTY_THRESHOLD deducts LOSS_PENALTY_PTS
+ * Applies tiered loss penalty (LOSS_PENALTY_TIERS): -5/-10/-15/-20% → -5/-10/-15/-20 pts
  * from pnl score (floor 0). This penalty only affects trader_points_weekly and is
  * never propagated to Ecosystem Points.
  */
@@ -229,7 +229,13 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   const weekId = getWeekId(weekStart);
 
   // Volume stats filtered to this week (wash pairs excluded)
-  const traders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
+  const rawTraders = aggregateTraderVolume(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
+  if (rawTraders.length === 0) return;
+
+  // Filter out wallets not registered to nasun-website (no Cognito identityId).
+  // Resolved once here; reused for badge lookup below to avoid duplicate DynamoDB calls.
+  const identityMap = await resolveIdentityIds(rawTraders.map((t) => t.address));
+  const traders = rawTraders.filter((t) => identityMap.has(t.address));
   if (traders.length === 0) return;
 
   // PnL for this week only (wash pairs excluded)
@@ -257,14 +263,15 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     let pnlScore = 0;
     if (pnlData) {
       if (pnlData.realizedPnlRaw > 0) {
-        pnlScore += Math.floor(pnlData.realizedPnlRaw / 1_000_000_000) * POINTS.PER_1K_PNL;
+        pnlScore += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
       }
       if (pnlData.pnlPercent > 0) {
         pnlScore += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
       }
-      // Loss penalty: deduct from pnl score only, floor at 0
-      if (pnlData.pnlPercent <= POINTS.LOSS_PENALTY_THRESHOLD) {
-        pnlScore = Math.max(0, pnlScore - POINTS.LOSS_PENALTY_PTS);
+      // Tiered loss penalty: highest matching tier wins, floor at 0
+      const tier = POINTS.LOSS_PENALTY_TIERS.find((t) => pnlData.pnlPercent <= t.threshold);
+      if (tier) {
+        pnlScore = Math.max(0, pnlScore - tier.penalty);
       }
     }
 
@@ -290,10 +297,8 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     return { ...t, rank, prevRank };
   });
 
-  // Resolve social badges (xHandle, hasGoogle, hasTelegram) at aggregation time.
-  // Background job: DynamoDB latency is acceptable here.
-  const addresses = ranked.map((t) => t.address);
-  const identityMap = await resolveIdentityIds(addresses);
+  // Resolve social badges (xHandle, hasGoogle, hasTelegram). identityMap was
+  // already resolved above when filtering unregistered wallets; reuse it.
   const identityIds = [...new Set(identityMap.values())];
   const badgesByIdentity = identityIds.length > 0
     ? await getSocialBadgesBatch(identityIds)
