@@ -82,6 +82,7 @@ interface ChartPoint {
   multiplier: number;
   bonusTotal: number;
   referralBonus: number;
+  stakingDeltaScaled: number;
   rank: number | null;
   isPenalized: boolean;
   bonusItems?: BonusHistoryItem[];
@@ -114,6 +115,14 @@ function ScoreTooltip({
             {(d.baseScore * d.multiplier).toFixed(0)}
           </span>
         </p>
+        {d.stakingDeltaScaled > 0 && (
+          <p className="text-gray-300">
+            Staking:{" "}
+            <span className="text-emerald-400 font-medium">
+              +{d.stakingDeltaScaled.toFixed(0)}
+            </span>
+          </p>
+        )}
         {d.bonusTotal > 0 && (
           <div className="text-gray-300">
             <span>
@@ -252,6 +261,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
         multiplier: entry?.multiplier ?? 0,
         bonusTotal: entry?.bonusTotal ?? 0,
         referralBonus: entry?.referralBonus ?? 0,
+        stakingDeltaScaled: entry?.stakingDeltaScaled ?? 0,
         rank: entry?.rank ?? null,
         // Grace period: suppress penalty display before enforcement date
         isPenalized:
