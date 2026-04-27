@@ -13,6 +13,7 @@ import { getMyRank } from "@/features/leaderboard-v3/services/leaderboardV3Api";
 import { registerWallet } from "@/services/suiWalletApi";
 import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
 import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
+import { fetchSsoBridgeProfile } from "../utils/ssoBridge";
 import { WALLET_IDENTITY_CHANGED_EVENT } from "@nasun/wallet";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -64,6 +65,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     clearError();
     try {
       const cachedUser = localStorage.getItem("nasun_user_profile");
+
+      // Cross-subdomain SSO bootstrap via iframe postMessage bridge.
+      // localStorage is origin-scoped, so uju.nasun.io has no cached profile on first visit.
+      // A hidden iframe loads nasun.io/sso-bridge.html which reads nasun.io's localStorage
+      // and postMessages the profile back. No credentials touch any cookie.
+      if (!cachedUser && window.location.hostname === "uju.nasun.io") {
+        try {
+          const raw = await fetchSsoBridgeProfile();
+          if (raw) {
+            const bridged = JSON.parse(raw);
+            if (bridged?.identityId && bridged?.cognitoToken && !isTokenExpired(bridged.cognitoToken)) {
+              localStorage.setItem("nasun_user_profile", raw);
+              setSessionCookie();
+              setUser(bridged);
+              // Refresh from server in background to get latest profile state
+              refreshAndSaveUserProfile(bridged.identityId, bridged.cognitoToken)
+                .catch(() => logger.debug("SSO bridge background refresh failed (non-blocking)"));
+              return;
+            }
+          }
+        } catch (e) {
+          logger.debug("SSO bridge bootstrap failed; falling back to logged-out state", e);
+        }
+      }
 
       if (cachedUser && !hasSessionCookie()) {
         // Cookie missing but localStorage has session data.

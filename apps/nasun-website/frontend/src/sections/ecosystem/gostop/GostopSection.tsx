@@ -66,9 +66,6 @@ function GostopSection() {
         {/* ========== HERO ========== */}
         <div className="flex flex-col items-center text-center">
           <FadeInUp>
-            <p className="text-xs md:text-sm uppercase tracking-[0.3em] text-amber-300/80 mb-3">
-              Nasun Ecosystem · Onchain Casino
-            </p>
             <PageTitle>GoStop</PageTitle>
             <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
               A luxury onchain casino. Provably fair. Settled on chain.
@@ -86,8 +83,9 @@ function GostopSection() {
               </div>
             </div>
             <p className="text-center text-nasun-white/60 py-2 md:py-4">
-              Crash, Lottery, Mines, Scratch Cards, and Number Match. Every round
-              salted with commit-reveal randomness, every payout written on chain.
+              Crash, Lottery, Mines, Scratch Cards, and Number Match. Every
+              round salted with commit-reveal randomness, every payout written
+              on chain.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
               <a
@@ -98,14 +96,6 @@ function GostopSection() {
               >
                 Enter the Floor <ArrowUpRight className="w-4 h-4" />
               </a>
-              <a
-                href={`${GOSTOP_URL}/floor`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-amber-500/40 text-amber-200 hover:border-amber-500/70 transition-colors text-sm md:text-base"
-              >
-                See the games
-              </a>
             </div>
           </FadeInUp>
         </div>
@@ -113,7 +103,9 @@ function GostopSection() {
         {/* ========== WHY CRYPTO CASINOS ========== */}
         <section>
           <FadeInUp>
-            <SectionTitle as="h4">A SECTOR HITTING ESCAPE VELOCITY</SectionTitle>
+            <SectionTitle as="h4">
+              A SECTOR HITTING ESCAPE VELOCITY
+            </SectionTitle>
             <h5 className="font-normal text-nasun-white/80 mb-0 md:mb-1 lg:mb-2">
               Crypto-native gambling is no longer a side bet.
             </h5>
@@ -121,15 +113,17 @@ function GostopSection() {
           <FadeInUp delay="0.1s">
             <div className="space-y-3">
               <p>
-                Onchain casinos crossed an estimated <span className="font-semibold text-amber-200">$80B+ wagered in 2024</span>{" "}
-                and are pacing higher into 2026 as regulated audiences look for venues that
-                settle on transparent rails. The shift mirrors what DeFi did to spot trading:
-                custody returns to the player, the house's edge becomes auditable, and the
-                game logic stops being a black box behind a license.
+                Onchain casinos crossed an estimated{" "}
+                <span className="font-semibold text-amber-200">
+                  $80B+ wagered in 2024
+                </span>{" "}
+                and are pacing higher into 2026 as regulated audiences look for
+                venues that settle on transparent rails. The shift mirrors what
+                DeFi did to spot trading: custody returns to the player, the
+                house's edge becomes auditable, and the game logic stops being a
+                black box behind a license.
               </p>
-              <p>
-                Three forces are pulling players in:
-              </p>
+              <p>Three forces are pulling players in:</p>
             </div>
           </FadeInUp>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
@@ -137,20 +131,17 @@ function GostopSection() {
               {
                 icon: <ShieldCheck className="w-5 h-5" />,
                 title: "Provable Fairness",
-                body:
-                  "Commit-reveal salts and onchain RNG remove the operator's ability to silently tilt the odds. Anyone can replay the math.",
+                body: "Commit-reveal salts and onchain RNG remove the operator's ability to silently tilt the odds. Anyone can replay the math.",
               },
               {
                 icon: <Wallet className="w-5 h-5" />,
                 title: "Self-Custody",
-                body:
-                  "No wallet provider holds the bankroll. Withdrawals settle as native tokens; deposits never leave the chain.",
+                body: "No wallet provider holds the bankroll. Withdrawals settle as native tokens; deposits never leave the chain.",
               },
               {
                 icon: <TrendingUp className="w-5 h-5" />,
                 title: "Open Liquidity",
-                body:
-                  "House liquidity becomes a public market. LPs become the casino, and edge becomes yield.",
+                body: "House liquidity becomes a public market. LPs become the casino, and edge becomes yield.",
               },
             ].map((card, i) => (
               <FadeInUp key={card.title} delay={`${0.15 + i * 0.05}s`}>
@@ -177,31 +168,35 @@ function GostopSection() {
           <FadeInUp delay="0.1s">
             <div className="space-y-3">
               <p>
-                The next wave of onchain casinos competes on three axes that the legacy
-                stack can't reach:
+                The next wave of onchain casinos competes on three axes that the
+                legacy stack can't reach:
               </p>
               <ul className="space-y-2">
                 {[
                   {
                     head: "Latency-sensitive games",
-                    body:
-                      "Multiplier curves, live duels, and shared-state rounds need fast finality and a chat layer that survives spikes.",
+                    body: "Multiplier curves, live duels, and shared-state rounds need fast finality and a chat layer that survives spikes.",
                   },
                   {
                     head: "Becoming the house",
-                    body:
-                      "Players want to LP into the bankroll, take edge as yield, and unwind any time. Vault primitives replace operator equity.",
+                    body: "Players want to LP into the bankroll, take edge as yield, and unwind any time. Vault primitives replace operator equity.",
                   },
                   {
                     head: "Social stakes",
-                    body:
-                      "Leaderboards, shared tables, and tournament pools turn solo grind into a social loop with persistent identity.",
+                    body: "Leaderboards, shared tables, and tournament pools turn solo grind into a social loop with persistent identity.",
                   },
                 ].map((item) => (
-                  <li key={item.head} className="flex items-start gap-3 text-nasun-white/80">
-                    <span className="text-amber-300 mt-0.5 shrink-0 text-xs">▶</span>
+                  <li
+                    key={item.head}
+                    className="flex items-start gap-3 text-nasun-white/80"
+                  >
+                    <span className="text-amber-300 mt-0.5 shrink-0 text-xs">
+                      ▶
+                    </span>
                     <span>
-                      <span className="font-semibold text-nasun-white">{item.head}.</span>{" "}
+                      <span className="font-semibold text-nasun-white">
+                        {item.head}.
+                      </span>{" "}
                       {item.body}
                     </span>
                   </li>
@@ -214,7 +209,11 @@ function GostopSection() {
         {/* ========== GOSTOP'S EDGE ========== */}
         <section>
           <FadeInUp>
-            <OuterBox color="w1" padding="lg" className="!bg-[#19130a] relative">
+            <OuterBox
+              color="w1"
+              padding="lg"
+              className="!bg-[#19130a] relative"
+            >
               <div className="flex items-center gap-2 mb-3 md:mb-0 md:absolute md:top-5 md:right-5">
                 <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-500/20 text-amber-300">
                   Onchain
@@ -233,37 +232,40 @@ function GostopSection() {
               </div>
               <div className="space-y-4">
                 <p className="text-nasun-white/90">
-                  GoStop isn't a casino bolted onto a chain. It's a casino designed for
-                  one. Five live games today; a roadmap that pushes into the formats
-                  legacy operators can't ship.
+                  GoStop isn't a casino bolted onto a chain. It's a casino
+                  designed for one. Five live games today; a roadmap that pushes
+                  into the formats legacy operators can't ship.
                 </p>
                 <ul className="space-y-2 py-2">
                   {[
                     {
                       label: "Sub-second feedback loops",
-                      body:
-                        "Crash uses a server-broadcast multiplier curve with on-chain verification. Mines reveals snap instantly with a deferred ledger commit.",
+                      body: "Crash uses a server-broadcast multiplier curve with on-chain verification. Mines reveals snap instantly with a deferred ledger commit.",
                     },
                     {
                       label: "One bankroll, every game",
-                      body:
-                        "A single shared treasury settles every payout. LP into the bankroll once and earn edge across all formats.",
+                      body: "A single shared treasury settles every payout. LP into the bankroll once and earn edge across all formats.",
                     },
                     {
                       label: "Production-grade UX",
-                      body:
-                        "Wallet flows that hide chain friction, celebration tiers tuned to actual win amounts, mobile-first layouts, and result modals that turn a bust into a moment.",
+                      body: "Wallet flows that hide chain friction, celebration tiers tuned to actual win amounts, mobile-first layouts, and result modals that turn a bust into a moment.",
                     },
                     {
                       label: "Composable identity",
-                      body:
-                        "Every player is a Nasun account. Game history, points, and Alliance NFT membership carry across the rest of the ecosystem.",
+                      body: "Every player is a Nasun account. Game history, points, and Alliance NFT membership carry across the rest of the ecosystem.",
                     },
                   ].map((item) => (
-                    <li key={item.label} className="flex items-start gap-3 text-nasun-white/80">
-                      <span className="text-amber-300 mt-0.5 shrink-0 text-xs">▶</span>
+                    <li
+                      key={item.label}
+                      className="flex items-start gap-3 text-nasun-white/80"
+                    >
+                      <span className="text-amber-300 mt-0.5 shrink-0 text-xs">
+                        ▶
+                      </span>
                       <span>
-                        <span className="font-semibold text-nasun-white">{item.label}.</span>{" "}
+                        <span className="font-semibold text-nasun-white">
+                          {item.label}.
+                        </span>{" "}
                         {item.body}
                       </span>
                     </li>
@@ -305,7 +307,9 @@ function GostopSection() {
                       </h5>
                       <ArrowUpRight className="w-4 h-4 text-amber-300/60 group-hover:text-amber-200 transition-colors" />
                     </div>
-                    <p className="text-sm text-nasun-white/70 mt-1.5">{game.tagline}</p>
+                    <p className="text-sm text-nasun-white/70 mt-1.5">
+                      {game.tagline}
+                    </p>
                   </div>
                 </a>
               </FadeInUp>
@@ -323,26 +327,22 @@ function GostopSection() {
               {
                 icon: <Sparkles className="w-5 h-5" />,
                 title: "Plinko",
-                body:
-                  "Drop a chip from the top, watch it bounce through golden pegs. Pick low, medium, or high risk to shape the payout curve.",
+                body: "Drop a chip from the top, watch it bounce through golden pegs. Pick low, medium, or high risk to shape the payout curve.",
               },
               {
                 icon: <Crown className="w-5 h-5" />,
                 title: "Roulette",
-                body:
-                  "Classic European single-zero roulette settled on chain. Numbers, splits, colors, columns — multiplayer table coming.",
+                body: "Classic European single-zero roulette settled on chain. Numbers, splits, colors, columns — multiplayer table coming.",
               },
               {
                 icon: <Trophy className="w-5 h-5" />,
                 title: "Wheel",
-                body:
-                  "A nightly community wheel. Stake to enter, spin together at the cutoff, split a pooled prize. Daily plus weekly mega rounds.",
+                body: "A nightly community wheel. Stake to enter, spin together at the cutoff, split a pooled prize. Daily plus weekly mega rounds.",
               },
               {
                 icon: <Coins className="w-5 h-5" />,
                 title: "Bankroll Vault",
-                body:
-                  "Open the casino's treasury to LPs. Deposit NUSDC, become the house, take edge as yield, withdraw any time.",
+                body: "Open the casino's treasury to LPs. Deposit NUSDC, become the house, take edge as yield, withdraw any time.",
               },
             ].map((card, i) => (
               <FadeInUp key={card.title} delay={`${0.1 + i * 0.05}s`}>
@@ -411,7 +411,9 @@ function GostopSection() {
                         key={bullet}
                         className="flex items-start gap-2 text-nasun-white/80 text-sm"
                       >
-                        <span className="text-amber-300 shrink-0 mt-0.5 text-xs">•</span>
+                        <span className="text-amber-300 shrink-0 mt-0.5 text-xs">
+                          •
+                        </span>
                         <span>{bullet}</span>
                       </li>
                     ))}
@@ -487,12 +489,12 @@ function GostopSection() {
                 Disclaimer
               </p>
               <p className="text-sm md:text-base text-amber-100/90 leading-relaxed">
-                GoStop is a proof-of-concept prototype operating on Nasun Devnet,
-                provided strictly for testing and entertainment. It is not a financial
-                product. All tokens and balances shown on the site are test assets that
-                hold no monetary value and cannot be redeemed. The devnet may be reset
-                at any time without prior notice, which will erase all balances,
-                history, and game state.
+                GoStop is a proof-of-concept prototype operating on Nasun
+                Devnet, provided strictly for testing and entertainment. It is
+                not a financial product. All tokens and balances shown on the
+                site are test assets that hold no monetary value and cannot be
+                redeemed. The devnet may be reset at any time without prior
+                notice, which will erase all balances, history, and game state.
               </p>
             </div>
           </FadeInUp>
@@ -502,9 +504,7 @@ function GostopSection() {
         <section>
           <FadeInUp>
             <div className="text-center">
-              <h5 className="font-medium mb-4">
-                Ready to take the floor?
-              </h5>
+              <h5 className="font-medium mb-4">Ready to take the floor?</h5>
               <a
                 href={GOSTOP_URL}
                 target="_blank"

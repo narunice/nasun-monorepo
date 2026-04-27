@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title></title></head>
+<body>
+<script>
+(function () {
+  var ALLOWED_ORIGINS = ["https://uju.nasun.io"];
+
+  window.addEventListener("message", function (e) {
+    if (ALLOWED_ORIGINS.indexOf(e.origin) === -1) return;
+    if (!e.data || e.data.type !== "REQUEST_SSO") return;
+
+    var profile = null;
+    try {
+      profile = localStorage.getItem("nasun_user_profile");
+    } catch (_) {}
+
+    e.source.postMessage({ type: "SSO_RESPONSE", profile: profile }, e.origin);
+  });
+})();
+</script>
+</body>
+</html>
