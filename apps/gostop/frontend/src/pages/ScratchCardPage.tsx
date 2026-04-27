@@ -286,7 +286,7 @@ function NoWinSummaryModal({
   const eyebrowColor = isPartial ? 'text-amber-300/80' : 'text-red-300/80'
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink-950/85 backdrop-blur-sm p-4 animate-slide-in"
+      className="fixed inset-0 z-[90] flex items-center justify-center bg-ink-950/65 backdrop-blur-sm p-4 animate-slide-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"

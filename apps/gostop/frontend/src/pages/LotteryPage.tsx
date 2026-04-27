@@ -289,7 +289,7 @@ function PurchaseConfirmModal({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center px-5 bg-black/70 backdrop-blur-sm animate-slide-in"
+      className="fixed inset-0 z-[90] flex items-center justify-center px-5 bg-ink-950/65 backdrop-blur-sm animate-slide-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
