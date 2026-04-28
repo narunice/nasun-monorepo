@@ -13,6 +13,7 @@ import {
   buildRevealCell,
   buildCashout,
 } from './transactions'
+import { withStaleObjectRetry } from '../../lib/sui-retry'
 
 export type MinesPhase = 'idle' | 'creating' | 'cashing_out'
 
@@ -159,14 +160,16 @@ export function useMines(): UseMinesResult {
       setError(null)
       setLastFinish(null)
       try {
-        const coins = await findNusdcCoins(betAmount)
-        if (!coins) {
-          throw new Error(
-            `Insufficient NUSDC balance (need ${(Number(betAmount) / 1_000_000).toFixed(2)} NUSDC).`,
-          )
-        }
-        const tx = buildCreateSession(coins.primary, betAmount, mineCount, coins.extra)
-        await signAndExecute(tx)
+        await withStaleObjectRetry(async () => {
+          const coins = await findNusdcCoins(betAmount)
+          if (!coins) {
+            throw new Error(
+              `Insufficient NUSDC balance (need ${(Number(betAmount) / 1_000_000).toFixed(2)} NUSDC).`,
+            )
+          }
+          const tx = buildCreateSession(coins.primary, betAmount, mineCount, coins.extra)
+          await signAndExecute(tx)
+        })
         await refresh()
         return true
       } catch (e) {
@@ -195,8 +198,10 @@ export function useMines(): UseMinesResult {
       setPendingCells((prev) => new Set(prev).add(cellIndex))
       setError(null)
       try {
-        const tx = buildRevealCell(session.id, cellIndex)
-        const result = await signAndExecute(tx, { awaitFullnode: false })
+        const result = await withStaleObjectRetry(() => {
+          const tx = buildRevealCell(session.id, cellIndex)
+          return signAndExecute(tx, { awaitFullnode: false })
+        })
         // Determine outcome from events: SessionFinished => explosion.
         const finished = (result.events ?? []).find((e) =>
           e.type.endsWith('::mines::SessionFinished'),
@@ -253,8 +258,10 @@ export function useMines(): UseMinesResult {
     setPhase('cashing_out')
     setError(null)
     try {
-      const tx = buildCashout(session.id)
-      const result = await signAndExecute(tx)
+      const result = await withStaleObjectRetry(() => {
+        const tx = buildCashout(session.id)
+        return signAndExecute(tx)
+      })
       const finished = (result.events ?? []).find((e) =>
         e.type.endsWith('::mines::SessionFinished'),
       )

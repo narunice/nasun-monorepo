@@ -8,6 +8,7 @@ import {
   NM_PLAYED_EVENT_TYPE,
 } from '../../lib/gostop-config'
 import { buildPlayGame } from './transactions'
+import { withStaleObjectRetry } from '../../lib/sui-retry'
 
 export interface NumberMatchResult {
   gameId: number
@@ -129,14 +130,16 @@ export function useNumberMatch(): UseNumberMatchResult {
       setError(null)
       try {
         const totalCost = NM_PRICE_PER_PICK * BigInt(picks.length)
-        const coins = await findNusdcCoins(totalCost)
-        if (!coins) {
-          throw new Error(
-            `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
-          )
-        }
-        const tx = buildPlayGame(coins.primary, picks, coins.extra)
-        const result = await signAndExecute(tx)
+        const result = await withStaleObjectRetry(async () => {
+          const coins = await findNusdcCoins(totalCost)
+          if (!coins) {
+            throw new Error(
+              `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
+            )
+          }
+          const tx = buildPlayGame(coins.primary, picks, coins.extra)
+          return signAndExecute(tx)
+        })
 
         const ev = (result.events ?? []).find((e) => e.type === NM_PLAYED_EVENT_TYPE)
         if (!ev) throw new Error('Result event missing from transaction')
