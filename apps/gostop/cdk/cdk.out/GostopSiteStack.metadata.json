@@ -90,12 +90,6 @@
       "data": "SiteBucket397A1860"
     }
   ],
-  "/GostopSiteStack/BasicAuthFunction/Resource": [
-    {
-      "type": "aws:cdk:logicalId",
-      "data": "BasicAuthFunction3DE306AB"
-    }
-  ],
   "/GostopSiteStack/SiteDistribution/Resource": [
     {
       "type": "aws:cdk:logicalId",

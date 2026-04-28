@@ -166,21 +166,6 @@
     "aws:cdk:path": "GostopSiteStack/SiteBucket/Policy/Resource"
    }
   },
-  "BasicAuthFunction3DE306AB": {
-   "Type": "AWS::CloudFront::Function",
-   "Properties": {
-    "AutoPublish": true,
-    "FunctionCode": "var TOKENS = [\"YWRtaW46bmFzdW4yMDI2\", \"R2VuU29sOkdlblNvbDIwMjU=\"];\nfunction handler(event) {\n  var request = event.request;\n  var headers = request.headers;\n  var auth = headers.authorization ? headers.authorization.value : '';\n  if (auth.indexOf('Basic ') === 0) {\n    var token = auth.slice(6);\n    for (var i = 0; i < TOKENS.length; i++) {\n      if (token === TOKENS[i]) { return request; }\n    }\n  }\n  return {\n    statusCode: 401,\n    statusDescription: 'Unauthorized',\n    headers: {\n      'www-authenticate': { value: 'Basic realm=\"Restricted\"' }\n    }\n  };\n}",
-    "FunctionConfig": {
-     "Comment": "GostopSiteStack-basic-auth",
-     "Runtime": "cloudfront-js-2.0"
-    },
-    "Name": "GostopSiteStack-basic-auth"
-   },
-   "Metadata": {
-    "aws:cdk:path": "GostopSiteStack/BasicAuthFunction/Resource"
-   }
-  },
   "SiteDistributionOrigin1S3OriginAccessControl7D960FE6": {
    "Type": "AWS::CloudFront::OriginAccessControl",
    "Properties": {
@@ -226,17 +211,7 @@
       ],
       "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
       "Compress": true,
-      "FunctionAssociations": [
-       {
-        "EventType": "viewer-request",
-        "FunctionARN": {
-         "Fn::GetAtt": [
-          "BasicAuthFunction3DE306AB",
-          "FunctionARN"
-         ]
-        }
-       }
-      ],
+      "FunctionAssociations": [],
       "TargetOriginId": "GostopSiteStackSiteDistributionOrigin19D16FAF5",
       "ViewerProtocolPolicy": "redirect-to-https"
      },
@@ -401,7 +376,7 @@
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {
-    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WLwWrDMAyGn6V3xysJfYAsY+wyNprbLsO1laAmlYItrwzjdx9uxprLQKD/+6S/1vVhr/c7cw2VdVM140mnXoydlLmGz+Q5ChwanV44CLgPJlDdQBtqj2DZu2LX1IOo1hizUlYWvOCA1ghcDJkRvE7d3ZXiBrMKjU6P0U4g5fSb1vXOM9rvu145KztzdINnEp2eI1lBpvL1l58wiMdTvEHfvHkckVprIYSOSTzP5f0fvS3nXMyrWRak8daJskTJitiBPoeHr7rWZXbngFj5SIIX0Md1/wA+v39dbgEAAA=="
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/3WLQWrDMBBFz5K9rAabHMB1F92UlHiXTVGksZnYmTHSqCEI3b2oLsSbwsD/7w2/1vVhr/c7cw+VdVM140WnXoydlLmHr+Q5Chwand45CLgzE6huoA21J7DsXbFr60FUa4xZKSsLXnBAawRuhswIXqfu6cpwg1mFRqfXaCeQ8vpra3zyjPbx1CtnZWeObvBMotMbBvF4iYJMqm+OHkek1loIoWMSz3PZ/6O345yL+TDLgjT+bqIsUbIidqCv4eW7rnW53TUgVj6S4A30ac0flQZEVVkBAAA="
    },
    "Metadata": {
     "aws:cdk:path": "GostopSiteStack/CDKMetadata/Default"
