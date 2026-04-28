@@ -280,9 +280,13 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
 
   child.on('message', (event: WsEvent) => {
     try {
-      // History persistence event is IPC-only — do not broadcast to ws clients.
+      // Persist to history DB AND broadcast so clients can confirm per-player
+      // payouts. Without the broadcast, the frontend would celebrate any
+      // successful cash_out tx as a win, even when the onchain resolve check
+      // (recorded_at <= crash_deadline) invalidates the cashout post-hoc.
       if (event.type === 'resolve_persisted') {
         persistResolveRows(event.roundId, event.resolveTx, event.rows);
+        broadcast(event);
         return;
       }
       applyEvent(event);
@@ -295,6 +299,16 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
   child.on('exit', (code, signal) => {
     logger.warn(`[crash-child] exited code=${code} signal=${signal}`);
     child = null;
+
+    // Tripwire: if the child died mid-round, the parent snapshot retains
+    // stale state (roundId, flyingStartedAt, etc.) until the next
+    // round_started IPC arrives from the respawned child. Reconnecting
+    // clients during that window receive stale state_sync. Log at error
+    // level so we know if/when this actually happens in prod — fix is
+    // deferred until evidence exists.
+    if (snapshot.state === 'BETTING' || snapshot.state === 'FLYING' || snapshot.state === 'CRASHED') {
+      logger.error(`[CRASH STALE-SNAPSHOT] child died mid-round, parent snapshot is now stale until next round_started: state=${snapshot.state} roundId=${snapshot.roundId} flyingStartedAt=${snapshot.flyingStartedAt}`);
+    }
 
     // Exit code 2 = boot-blocked (stale round in registry). Don't count as crash.
     // Retry every 60s until the stuck round is cleared manually.

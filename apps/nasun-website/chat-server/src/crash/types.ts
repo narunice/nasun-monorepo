@@ -30,7 +30,9 @@ export type WsEvent =
   | { type: 'crashed'; roundId: number; crashPointBps: number; stateVersion: number }
   | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
   | { type: 'disabled'; reason: 'backoff' | 'shutdown'; retryAt?: number; stateVersion: number }
-  // IPC-only: parent persists to history DB, does NOT broadcast to ws clients.
+  // Parent persists to history DB AND broadcasts to ws clients so the frontend
+  // can confirm per-player payouts (cashout valid → payout > 0; cashout invalid
+  // due to recorded_at > crash_deadline race → payout = 0).
   | { type: 'resolve_persisted'; roundId: number; resolveTx: string; rows: ResolvePlayerRow[]; stateVersion: number };
 
 export interface CrashModuleDeps {

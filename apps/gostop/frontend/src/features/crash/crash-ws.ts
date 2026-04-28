@@ -21,12 +21,23 @@ function resolveWsUrl(): string {
 
 const WS_URL = resolveWsUrl()
 
+export interface CrashResolvePlayerRow {
+  player: string
+  betAmount: string
+  payout: string
+  multiplierBps: number
+  timestampMs: number
+  sessionIdHex: string
+  betTx: string | null
+}
+
 export type CrashWsEvent =
   | { type: 'state_sync'; state: string; roundId: number | null; roundObjectId: string | null; commitHash: string | null; bettingEndsAt: number | null; flyingStartedAt: number | null; nextRoundAt: number | null; recentRounds: Array<{ roundId: number; crashPointBps: number }>; crashedAlreadyFired: boolean; stateVersion: number; serverTime: number }
   | { type: 'round_started'; roundId: number; roundObjectId: string; commitHash: string; bettingEndsAt: number; serverTime: number; stateVersion: number }
   | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; crashPointBps: number; stateVersion: number }
   | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
+  | { type: 'resolve_persisted'; roundId: number; resolveTx: string; rows: CrashResolvePlayerRow[]; stateVersion: number }
 
 type Listener = (event: CrashWsEvent) => void
 
