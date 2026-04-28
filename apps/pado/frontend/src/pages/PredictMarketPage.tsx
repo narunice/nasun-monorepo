@@ -112,11 +112,11 @@ export function PredictMarketPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Back Button */}
       <Link
         to="/predict"
-        className="inline-flex items-center gap-2 text-sm text-theme-text-secondary hover:text-theme-text-primary transition-colors"
+        className="inline-flex items-center gap-2 text-sm text-theme-text-secondary hover:text-theme-text-primary transition-colors min-h-[40px]"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -127,10 +127,10 @@ export function PredictMarketPage() {
       {/* Market Header */}
       <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} />
 
-      {/* Trading Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Orderbook - 2 columns */}
-        <div className="lg:col-span-2">
+      {/* Trading Section: on mobile show order form first (primary action), orderbook below */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* Orderbook - 2 columns on desktop, second on mobile */}
+        <div className="lg:col-span-2 order-2 lg:order-1">
           <OutcomeOrderbook
             yesOrderbook={yesOrderbook}
             noOrderbook={noOrderbook}
@@ -138,8 +138,8 @@ export function PredictMarketPage() {
           />
         </div>
 
-        {/* Order Form + Positions - 1 column */}
-        <div className="space-y-4">
+        {/* Order Form + Positions - 1 column, first on mobile */}
+        <div className="space-y-4 order-1 lg:order-2">
           <OutcomeOrderForm market={market} onSuccess={handleTradeSuccess} />
           <PositionList
             market={market}
@@ -151,10 +151,10 @@ export function PredictMarketPage() {
 
       {/* Market Info */}
       <div className="bg-theme-bg-secondary rounded-xl p-4">
-        <h3 className="text-lg font-semibold text-theme-text-primary mb-4">
+        <h3 className="text-base md:text-lg font-semibold text-theme-text-primary mb-3 md:mb-4">
           Market Info
         </h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
           <div>
             <div className="text-theme-text-muted">Market ID</div>
             <div className="font-mono text-theme-text-secondary truncate" title={market.id}>
@@ -187,7 +187,7 @@ export function PredictMarketPage() {
       {/* Admin Section - Only for resolver */}
       {isResolver && market.status !== 'resolved' && (
         <div className="bg-theme-bg-secondary rounded-xl p-4 border border-yellow-500/30">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <h3 className="text-lg font-semibold text-theme-text-primary">
                 Admin Actions
@@ -199,7 +199,7 @@ export function PredictMarketPage() {
             <button
               onClick={() => setShowResolveModal(true)}
               disabled={market.status === 'open' && now < market.closeTime}
-              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full sm:w-auto px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {market.status === 'open' && now < market.closeTime
                 ? 'Wait for Close Time'

@@ -52,18 +52,18 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
       )}
 
       {/* Probability Display */}
-      <div className="grid grid-cols-2 gap-4 mb-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
         <div className="bg-green-100 dark:bg-green-900/20 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-green-600 dark:text-green-400">
+          <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
             {yesProbability.toFixed(1)}%
           </div>
-          <div className="text-sm text-green-600 dark:text-green-400">YES</div>
+          <div className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">YES</div>
         </div>
         <div className="bg-red-100 dark:bg-red-900/20 rounded-lg p-3 text-center">
-          <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
             {noProbability.toFixed(1)}%
           </div>
-          <div className="text-sm text-red-600 dark:text-red-400">NO</div>
+          <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">NO</div>
         </div>
       </div>
 

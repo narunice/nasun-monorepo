@@ -201,8 +201,8 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
 
       {/* Sell Modal - Updated with NUSDC price input */}
       {sellModalPosition && sellingPosition && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-theme-bg-secondary rounded-xl p-6 max-w-sm w-full mx-4">
+        <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-theme-bg-secondary rounded-xl p-4 sm:p-6 max-w-sm w-full max-h-[90vh] overflow-y-auto">
             <h4 className="text-lg font-semibold text-theme-text-primary mb-4">
               Sell {sellingPosition.isYes ? 'YES' : 'NO'} Position
             </h4>
@@ -215,13 +215,14 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
               <div className="relative">
                 <input
                   type="number"
+                  inputMode="decimal"
                   value={sellPriceNusdc}
                   onChange={(e) => setSellPriceNusdc(e.target.value)}
                   placeholder="0.50"
                   min="0.01"
                   max="0.99"
                   step="0.01"
-                  className="w-full px-3 py-2 pr-20 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2"
+                  className="w-full px-3 py-2.5 pr-20 text-base bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary focus:outline-none focus:ring-2 focus:ring-pd2"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-theme-text-muted text-sm">
                   NUSDC
@@ -278,14 +279,14 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
                   setSellPriceNusdc('');
                   setError(null);
                 }}
-                className="flex-1 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary rounded-lg font-medium"
+                className="flex-1 min-h-[44px] py-2.5 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary rounded-lg font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSellConfirm}
                 disabled={isLoading}
-                className="flex-1 py-2 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium disabled:opacity-50"
+                className="flex-1 min-h-[44px] py-2.5 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium disabled:opacity-50"
               >
                 {isLoading ? 'Selling...' : 'Confirm Sell'}
               </button>
