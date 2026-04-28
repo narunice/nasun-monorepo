@@ -40,6 +40,15 @@ export function buildCashOutTx(roundObjectId: string, multiplierBps: number): Tr
       tx.object(SUI_CLOCK_ID),
     ],
   })
+  // Set explicit gas budget to skip the SDK's auto-budget dry run. The dry
+  // run reads the fullnode's checkpoint clock, which lags real time by ~500ms.
+  // Combined with the client's 250ms display lag, the gap can exceed the 3%
+  // bound margin (~100ms in time) so a perfectly valid cashout aborts at
+  // dry-run time with EMultiplierExceedsBound, even though the actual tx
+  // would pass on execution. Skipping the dry run ships the tx as-is and
+  // lets validators check against fresher state. cash_out is a few writes
+  // and one event; 50M MIST is generous.
+  tx.setGasBudget(50_000_000)
   return tx
 }
 
