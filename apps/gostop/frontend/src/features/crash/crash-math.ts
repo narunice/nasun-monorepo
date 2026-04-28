@@ -1,10 +1,10 @@
 // Quadratic multiplier: same formula as crash.move and chat-server/crash/math.ts
-// mult_bps(t_ms) = 10000 + 6*t + 36*t*t/20000
+// mult_bps(t_ms) = 10000 + 3*t + 9*t*t/20000
 
 export function multiplierAtBps(elapsedMs: number): number {
   const t = Math.floor(elapsedMs)
-  const linear = 6 * t
-  const quad = Math.floor((36 * t * t) / 20_000)
+  const linear = 3 * t
+  const quad = Math.floor((9 * t * t) / 20_000)
   return 10_000 + linear + quad
 }
 
