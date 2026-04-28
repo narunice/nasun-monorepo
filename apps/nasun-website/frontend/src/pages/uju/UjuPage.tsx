@@ -6,6 +6,7 @@ import { DashboardTab } from "../../sections/uju/dashboard/DashboardTab";
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
+import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 
 type Tab = "dashboard" | "activity" | "profile";
 const VALID_TABS = new Set<Tab>(["dashboard", "activity", "profile"]);
@@ -34,12 +35,14 @@ export default function UjuPage() {
 
   return (
     <UjuLayout>
-      <UjuNavigation activeTab={tab} onTabChange={setTab} />
-
-      <div className={isDesktop ? "flex h-[calc(100vh-99px)] overflow-hidden" : "flex min-h-[calc(100vh-99px)]"}>
+      <div className={isDesktop ? "flex h-[calc(100vh-50px)] overflow-hidden" : "flex min-h-[calc(100vh-50px)]"}>
         {/* Main content */}
         <main className={`flex-1 min-w-0${isDesktop ? " overflow-y-auto" : ""}`}>
           <div className="max-w-5xl mx-auto px-4 py-6">
+            <div className="mb-5">
+              <BannerCarousel />
+            </div>
+            <UjuNavigation activeTab={tab} onTabChange={setTab} />
             {tab === "dashboard" && <DashboardTab />}
             {tab === "activity" && <ActivityTab />}
             {tab === "profile" && <ProfileTab />}

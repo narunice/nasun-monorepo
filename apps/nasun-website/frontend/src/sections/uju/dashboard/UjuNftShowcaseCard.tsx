@@ -201,7 +201,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
       {isGenesisPassConfigured && (
         <UjuCard className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
-            <h6 className="text-uju-primary text-base font-semibold uppercase">
+            <h6 className="text-uju-primary text-lg font-semibold uppercase">
               GENESIS PASS
             </h6>
             <div
@@ -213,7 +213,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     : "bg-slate-700"
               }`}
             >
-              <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
+              <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
 
@@ -236,7 +236,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     <>
                       {ownedEdition && (
                         <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
-                          <span className="text-white text-lg font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                          <span className="text-white text-xl font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                             {ownedEdition.name}
                           </span>
                         </div>
@@ -258,7 +258,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                         </h6>
                       )}
                       {!isMintClosed && (
-                        <p className="text-nasun-white/70 text-sm mt-1">
+                        <p className="text-nasun-white/70 text-base mt-1">
                           Activate after the drop ends.
                         </p>
                       )}
@@ -324,9 +324,9 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
             {showMintedState ? (
               <div className="flex items-center justify-between mt-1">
                 {genesisIsActive ? (
-                  <span className="text-green-400 text-sm">Activated</span>
+                  <span className="text-green-400 text-base">Activated</span>
                 ) : (
-                  <span className="text-nasun-white/70 text-sm">
+                  <span className="text-nasun-white/70 text-base">
                     {isMintClosed ? "Ready to activate" : "Minted"}
                   </span>
                 )}
@@ -376,7 +376,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
       {isAllianceConfigured && (
         <UjuCard className="animate-fade-slide-up relative z-10">
           <div className="flex flex-col gap-2">
-            <h6 className="text-uju-primary text-base font-semibold uppercase">ALLIANCE</h6>
+            <h6 className="text-uju-primary text-lg font-semibold uppercase">ALLIANCE</h6>
             <div className="relative rounded-sm overflow-hidden aspect-square">
               {isAllianceLoading ? (
                 <div className="w-full h-full bg-slate-700 flex items-center justify-center">
@@ -384,10 +384,10 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                 </div>
               ) : !isAllianceMinted ? (
                 <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
-                  <span className="text-nasun-white/80 text-sm font-medium text-center px-4">
+                  <span className="text-nasun-white/80 text-base font-medium text-center px-4">
                     Mint your Alliance NFT
                   </span>
                 </div>
@@ -401,20 +401,20 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     }`}
                     loading="lazy"
                   />
-                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
                   {/* Character name overlay at belly/waist area */}
                   {allianceData && (
                     <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
-                      <span className="text-white text-lg font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                      <span className="text-white text-xl font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
                         {ALLIANCE_NAMES[allianceData.imageIndex] ?? ""}
                       </span>
                     </div>
                   )}
                   {!allianceIsActive && (
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-nasun-white/90 text-sm font-semibold bg-black/40 px-3 py-1 rounded-full">
+                      <span className="text-nasun-white/90 text-base font-semibold bg-black/40 px-3 py-1 rounded-full">
                         Activate to earn points
                       </span>
                     </div>
@@ -424,13 +424,13 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
             </div>
             <div className="flex items-center justify-between">
               {isAllianceLoading ? (
-                <span className="text-nasun-white/80 text-sm">Loading...</span>
+                <span className="text-nasun-white/80 text-base">Loading...</span>
               ) : !isAllianceMinted ? (
-                <span className="text-nasun-white/80 text-sm">Not Minted</span>
+                <span className="text-nasun-white/80 text-base">Not Minted</span>
               ) : allianceIsActive ? (
-                <span className="text-green-400 text-sm">Activated</span>
+                <span className="text-green-400 text-base">Activated</span>
               ) : (
-                <span className="text-nasun-white/70 text-sm">Minted</span>
+                <span className="text-nasun-white/70 text-base">Minted</span>
               )}
               <div className="flex gap-2">
                 {!isAllianceLoading && !isAllianceMinted && (
@@ -474,8 +474,8 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
 
       {/* === Battalion === */}
       <UjuCard className="animate-fade-slide-up">
-        <h6 className="text-uju-primary text-base font-semibold uppercase">BATTALION</h6>
-        <p className="text-nasun-white/80 text-sm mt-1">Coming Soon</p>
+        <h6 className="text-uju-primary text-lg font-semibold uppercase">BATTALION</h6>
+        <p className="text-nasun-white/80 text-base mt-1">Coming Soon</p>
       </UjuCard>
     </div>
   );
@@ -501,7 +501,7 @@ function CountdownDisplay({
 
   return (
     <div className="flex flex-col items-center mt-4 gap-2">
-      <span className="text-nasun-white/80 text-sm uppercase tracking-widest">
+      <span className="text-nasun-white/80 text-base uppercase tracking-widest">
         {label}
       </span>
       <div className="flex items-center gap-1.5">
@@ -509,7 +509,7 @@ function CountdownDisplay({
           <div key={seg.unit} className="flex items-center gap-1.5">
             <div className="flex flex-col items-center">
               <span
-                className="text-nasun-white text-2xl md:text-3xl font-bold leading-none"
+                className="text-nasun-white text-3xl md:text-4xl font-bold leading-none"
                 style={{
                   fontVariantNumeric: "tabular-nums",
                   minWidth: "2ch",
@@ -519,12 +519,12 @@ function CountdownDisplay({
               >
                 {seg.value}
               </span>
-              <span className="text-nasun-white/80 text-sm uppercase tracking-widest mt-1">
+              <span className="text-nasun-white/80 text-base uppercase tracking-widest mt-1">
                 {seg.unit}
               </span>
             </div>
             {i < segments.length - 1 && (
-              <span className="text-nasun-white/80 text-xl md:text-2xl font-light -mt-2.5">
+              <span className="text-nasun-white/80 text-2xl md:text-3xl font-light -mt-2.5">
                 :
               </span>
             )}
@@ -568,7 +568,7 @@ function ThreeDotMenu({
             <button
               onClick={onAction}
               disabled={isLoading}
-              className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-70"
+              className="w-full text-left px-3 py-2 text-base text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-70"
             >
               {isLoading ? "Deactivating..." : "Deactivate"}
             </button>

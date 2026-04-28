@@ -131,7 +131,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
   if (isLoading) {
     return (
       <UjuCard>
-        <h3 className="text-base sm:text-lg font-semibold text-uju-primary mb-4">Daily Missions</h3>
+        <h3 className="text-lg sm:text-xl font-semibold text-uju-primary mb-4">Daily Missions</h3>
         <div className="flex items-center justify-center py-10">
           <div className="w-5 h-5 border-2 border-uju-border border-t-pado-3 rounded-full animate-spin" />
         </div>
@@ -148,13 +148,13 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
         <div className="flex items-start gap-3 min-w-0">
           <UjuAccentBar />
           <div className="min-w-0">
-            <h3 className="text-base sm:text-lg font-semibold text-uju-primary">Daily Missions</h3>
-            <p className="text-sm text-pado-3 mt-0.5 tabular-nums">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Daily Missions</h3>
+            <p className="text-base text-pado-3 mt-0.5 tabular-nums">
               {completedCount} / {missionPool.length} completed
             </p>
           </div>
         </div>
-        <span className="text-sm font-mono text-pado-3 tabular-nums shrink-0">
+        <span className="text-base font-mono text-pado-3 tabular-nums shrink-0">
           +{maxPoints} pts max
         </span>
       </div>
@@ -183,7 +183,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
             >
               {/* App badge */}
               <span
-                className={`shrink-0 text-sm font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
+                className={`shrink-0 text-base font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
                   completed ? 'bg-uju-border/30 text-uju-secondary' : `${badge.bg} ${badge.text}`
                 }`}
               >
@@ -201,7 +201,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                     }
                     target={isExternal ? '_blank' : undefined}
                     rel={isExternal ? 'noopener noreferrer' : undefined}
-                    className={`text-sm font-medium inline-flex items-center gap-1 ${
+                    className={`text-base font-medium inline-flex items-center gap-1 ${
                       completed
                         ? 'text-uju-secondary line-through'
                         : 'text-uju-primary hover:text-pado-3 transition-colors'
@@ -228,7 +228,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                   </a>
                 ) : (
                   <span
-                    className={`text-sm font-medium ${
+                    className={`text-base font-medium ${
                       completed ? 'text-uju-secondary line-through' : 'text-uju-primary'
                     }`}
                   >
@@ -237,12 +237,12 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                 )}
                 {/* Points badge (onchain only) or Visited badge (visit type) */}
                 {mission.completionType === 'onchain' && mission.points !== undefined && (
-                  <span className="ml-2 text-sm font-mono text-pado-3">
+                  <span className="ml-2 text-base font-mono text-pado-3">
                     +{mission.points}
                   </span>
                 )}
                 {mission.completionType === 'visit' && completed && (
-                  <span className="ml-2 text-sm text-pado-4 font-medium">Visited</span>
+                  <span className="ml-2 text-base text-pado-4 font-medium">Visited</span>
                 )}
               </div>
 
@@ -292,7 +292,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="mt-3 w-full py-2 text-sm text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
+          className="mt-3 w-full py-2 text-base text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
         >
           {hiddenCount} more mission{hiddenCount > 1 ? 's' : ''} hidden - Show all
         </button>
@@ -301,7 +301,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
         <button
           type="button"
           onClick={() => setShowAll(false)}
-          className="mt-3 w-full py-2 text-sm text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
+          className="mt-3 w-full py-2 text-base text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
         >
           Show top {MAX_DISPLAYED} only
         </button>

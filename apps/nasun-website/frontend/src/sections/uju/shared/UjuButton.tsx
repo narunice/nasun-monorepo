@@ -21,9 +21,9 @@ const VARIANT: Record<Variant, string> = {
 };
 
 const SIZE: Record<Size, string> = {
-  sm: "px-3 py-2 text-sm min-h-[36px]",
-  md: "px-4 py-2.5 text-sm min-h-[44px]",
-  lg: "px-5 py-3 text-base min-h-[48px]",
+  sm: "px-3 py-2 text-base min-h-[36px]",
+  md: "px-4 py-2.5 text-base min-h-[44px]",
+  lg: "px-5 py-3 text-lg min-h-[48px]",
 };
 
 export const UjuButton = forwardRef<HTMLButtonElement, UjuButtonProps>(
