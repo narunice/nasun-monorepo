@@ -38,7 +38,6 @@ export interface DeepBookConfig {
 
 export interface PredictionConfig {
   packageId: ObjectId;
-  globalState: ObjectId;
   adminCap: ObjectId;
 }
 

@@ -23,10 +23,9 @@
     "adminCap": "0xe0b017bb62d572415c447e37008cea68bc8bb5bd4e47f12e672924b05ba651eb"
   },
   "prediction": {
-    "packageId": "0x6bae9d95f5f2c8c124b5400203f5e1151627e1080e3ef5aef88988f33b239ac7",
-    "globalState": "0x5b2ca9cbcd9ae517d4e4ba8b2412485bc223d6a3dbe591b6d57fe41123975be2",
-    "adminCap": "0x097ca7baeccdeed60389567bbff73c585c149a9e284daa1bae99a0bf9033b571",
-    "upgradeCap": "0x0a8e1e93cade0b9b6f5b069f540fa8cf3e223646a7ca62f5b105234d70093f77"
+    "packageId": "0xafd5b6eda4432e6910d8d8029d23ea1a16f73cbafcd9a9532fc302a2e6984afa",
+    "adminCap": "0xbead7e77b4e0d131b6090f9e28c77e082de9b85b4d69dec5146a7bfade9c9533",
+    "upgradeCap": "0x64b6d38ad37556f4269191d3d1f396c808344ae2991478ca8f24e89c6bedeba5"
   },
   "lottery": {
     "packageId": "0xaacac6314103aa2337774090d3e4a01059b2a12ccfe40442da838dc769d8debe",
