@@ -128,6 +128,9 @@ export function useCrash(): UseCrashResult {
           setHasBetThisRound(false)
           setMyCashoutBps(null)
           cashOutInflightRef.current = false
+          // Reset phase so a stuck 'cashing_out' from a hung wallet sign in the
+          // previous round does not leak into the new round.
+          setPhase('idle')
         }
         setRecentRounds(event.recentRounds)
         setRoundState({
@@ -161,6 +164,7 @@ export function useCrash(): UseCrashResult {
             setHasBetThisRound(false)
             setMyCashoutBps(null)
             cashOutInflightRef.current = false
+            setPhase('idle')
           }
           setRecentRounds(s.recentRounds)
           setRoundState(s)
@@ -175,6 +179,7 @@ export function useCrash(): UseCrashResult {
         setHasBetThisRound(false)
         setMyCashoutBps(null)
         cashOutInflightRef.current = false
+        setPhase('idle')
         setLiveMultiplierBps(10_000)
         flyingStartedAtRef.current = null
         setRoundState((prev) => ({
