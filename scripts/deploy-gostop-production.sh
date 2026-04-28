@@ -5,7 +5,7 @@
 # 대상:   gostop.app + www.gostop.app
 # 계정:   nasun-prod (466841130170), us-east-1
 # 방식:   S3 + CloudFront (CDK: GostopSiteStack)
-# 빌드:   pnpm --filter @nasun/gostop build
+# 빌드:   pnpm --filter @nasun/gostop exec vite build
 # ==============================================================================
 
 set -e
@@ -115,11 +115,10 @@ if [ "$DRY_RUN" = false ] && [ "$FORCE" = false ]; then
 fi
 
 # --- Phase 2: 프론트엔드 빌드 ---
-# tsc -b is part of the build script and aborts on type errors — no separate noEmit step needed.
 log_step 2 $TOTAL_STEPS "프론트엔드 빌드"
 
 log_info "gostop frontend 빌드 중..."
-if ! pnpm --filter @nasun/gostop build 2>&1; then
+if ! pnpm --filter @nasun/gostop exec vite build 2>&1; then
   log_error "빌드 실패!"
 fi
 
