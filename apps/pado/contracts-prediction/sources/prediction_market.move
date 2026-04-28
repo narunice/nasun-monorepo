@@ -1,629 +1,1342 @@
 /// Prediction Market Module for Pado
-/// Binary prediction markets (YES/NO outcomes)
-/// NUSDC collateral, Admin resolution
-module prediction::prediction_market {
-    use sui::coin::{Self, Coin};
-    use sui::balance::{Self, Balance};
-    use sui::table::{Self, Table};
-    use sui::clock::{Self, Clock};
-    use sui::event;
-    use std::string::String;
-    use devnet_tokens::nusdc::NUSDC;
+/// Binary prediction markets (YES/NO outcomes) with on-chain CLOB matching.
+/// NUSDC collateral; admin (multisig) resolution.
+///
+/// Design highlights (per round-6 plan):
+/// - Atomic taker matching with deferred-mutation pattern (walk loop only mutates
+///   `vector<Order>`; sorted-index updates / event emission / maker payouts are
+///   accumulated into local Vecs and applied after the walk borrow drops).
+/// - Per-maker payout batching (one Coin object per unique maker, not per fill).
+/// - Per-Market `next_order_id` (no shared GlobalState) to avoid cross-market contention.
+/// - All-paths fund recovery: STATUS_CANCELLED + STATUS_RESOLVED markets both have
+///   `claim_resting_order_refund` for resting maker orders.
+/// - Rounding favors the pool/maker (floor division), never the taker.
+module prediction::prediction_market;
 
-    // ===== Error Codes =====
-    const EMarketNotOpen: u64 = 0;
-    const EMarketNotClosed: u64 = 1;
-    const EMarketAlreadyResolved: u64 = 2;
-    const ENotResolver: u64 = 3;
-    const EMarketNotResolved: u64 = 4;
-    const EWrongOutcome: u64 = 5;
-    const EInsufficientBalance: u64 = 6;
-    const EInvalidPrice: u64 = 7;
-    const EOrderNotFound: u64 = 8;
-    const ENotOrderOwner: u64 = 9;
-    const EMarketExpired: u64 = 10;
-    const ESelfTrade: u64 = 11;
-    const EResolveDeadlinePassed: u64 = 12;
-    const EMarketNotExpired: u64 = 13;
-    const EMarketNotCancelled: u64 = 14;
-    const EMarketAlreadyCancelled: u64 = 15;
+use sui::coin::{Self, Coin};
+use sui::balance::{Self, Balance};
+use sui::table::{Self, Table};
+use sui::clock::{Self, Clock};
+use sui::event;
+use std::string::String;
+use devnet_tokens::nusdc::NUSDC;
 
-    // ===== Constants =====
-    const DECIMALS: u64 = 6; // NUSDC decimals
-    const PRICE_DECIMALS: u64 = 4; // Price in basis points (0-10000 = 0%-100%)
-    const MAX_PRICE: u64 = 10000; // 100%
+// ===== Error Codes =====
+const EMarketNotOpen: u64 = 0;
+const EMarketNotClosed: u64 = 1;
+const EMarketAlreadyResolved: u64 = 2;
+const ENotResolver: u64 = 3;
+const EMarketNotResolved: u64 = 4;
+const EWrongOutcome: u64 = 5;
+// const EInsufficientBalance: u64 = 6;            // unused
+const EInvalidPrice: u64 = 7;                       // retained for explicit price-bound checks (use EInvalidInput=17 generally)
+const ENotOrderOwner: u64 = 9;                      // reused for cancel/refund auth
+const EMarketExpired: u64 = 10;
+// const ESelfTrade: u64 = 11;                     // removed — self-trade is skip, not abort
+const EResolveDeadlinePassed: u64 = 12;
+const EMarketNotExpired: u64 = 13;
+const EMarketNotCancelled: u64 = 14;
+const EMarketAlreadyCancelled: u64 = 15;
+const ECreatorIsResolver: u64 = 16;
+const EInvalidInput: u64 = 17;
+const ECapacityExceeded: u64 = 18;
+const ENoFillsAtMarketPrice: u64 = 19;
+const EOrderNotFound: u64 = 20;
+const EWrongMarket: u64 = 21;
 
-    // Market status
-    const STATUS_OPEN: u8 = 0;
-    const STATUS_CLOSED: u8 = 1;
-    const STATUS_RESOLVED: u8 = 2;
-    const STATUS_CANCELLED: u8 = 3;
+// ===== Constants =====
+const MAX_PRICE: u64 = 10000;                       // 100% in basis points (NUSDC = 6 decimals)
 
-    // ===== Structs =====
+// Caps (round-6 plan §1.4). Sync with frontend constants.ts after gas dry-run check.
+const MAX_PAYMENT_AMOUNT: u64 = 100_000_000_000;    // 100k NUSDC at 6 decimals
+const MAX_MINT_AMOUNT: u64 = 100_000_000_000;
+const MAX_WALK_LEVELS: u64 = 10;
+const MAX_FIFO_PER_LEVEL: u64 = 20;
+const MAX_PRICE_LEVELS_PER_SIDE: u64 = 200;
 
-    /// Admin capability for creating markets
-    public struct AdminCap has key, store {
-        id: UID,
-    }
+// Market metadata length caps
+const MAX_QUESTION_LEN: u64 = 500;
+const MAX_DESCRIPTION_LEN: u64 = 2000;
+const MAX_CATEGORY_LEN: u64 = 50;
+const MAX_RESOLUTION_SOURCE_LEN: u64 = 500;
+const MAX_RESOLUTION_CRITERIA_LEN: u64 = 2000;
 
-    /// Prediction Market
-    public struct Market has key {
-        id: UID,
-        // Market info
-        question: String,
-        description: String,
-        category: String,
+// Market status
+const STATUS_OPEN: u8 = 0;
+// const STATUS_CLOSED: u8 = 1;                     // removed (round-6, never set anywhere; soft-closed via clock)
+const STATUS_RESOLVED: u8 = 2;
+const STATUS_CANCELLED: u8 = 3;
 
-        // Timing
-        created_at: u64,
-        close_time: u64,
-        resolve_deadline: u64,
+// ===== Structs =====
 
-        // Collateral pool
-        collateral_pool: Balance<NUSDC>,
+/// Admin capability for creating markets. Held by admin multisig post-deploy.
+public struct AdminCap has key, store {
+    id: UID,
+}
 
-        // Token supply tracking
-        yes_supply: u64,
-        no_supply: u64,
+/// Prediction Market — shared object.
+public struct Market has key {
+    id: UID,
 
-        // Order books (price -> orders)
-        yes_bids: Table<u64, vector<Order>>,  // Buy YES orders
-        yes_asks: Table<u64, vector<Order>>,  // Sell YES orders
-        no_bids: Table<u64, vector<Order>>,   // Buy NO orders
-        no_asks: Table<u64, vector<Order>>,   // Sell NO orders
+    // Metadata
+    question: String,
+    description: String,
+    category: String,
+    resolution_source: String,                      // round-5 W2: structured resolution metadata
+    resolution_criteria: String,
 
-        // Statistics
-        total_volume: u64,
+    // Timing
+    created_at: u64,
+    close_time: u64,
+    resolve_deadline: u64,
 
-        // Status
-        status: u8,
-        outcome: Option<bool>, // true = YES wins, false = NO wins
+    // Collateral
+    collateral_pool: Balance<NUSDC>,
 
-        // Admin
-        creator: address,
-        resolver: address,
-    }
+    // Supply tracking
+    yes_supply: u64,
+    no_supply: u64,
 
-    /// Order in the order book
-    public struct Order has store, copy, drop {
-        order_id: u64,
-        owner: address,
-        price: u64,      // In basis points (0-10000)
-        amount: u64,     // Number of shares
-        timestamp: u64,
-    }
+    // Order books: price -> FIFO vector<Order>.
+    yes_bids: Table<u64, vector<Order>>,
+    yes_asks: Table<u64, vector<Order>>,
+    no_bids: Table<u64, vector<Order>>,
+    no_asks: Table<u64, vector<Order>>,
 
-    /// Position NFT - represents YES or NO shares
-    public struct Position has key, store {
-        id: UID,
-        market_id: ID,
-        is_yes: bool,
-        shares: u64,
-        cost_basis: u64, // Total NUSDC spent
-    }
+    // Sorted price-level indices. Move Table cannot iterate; sui::priority_queue
+    // lacks remove-by-key. Sorted vector with binary insert/linear remove is
+    // simplest viable structure given MAX_PRICE_LEVELS_PER_SIDE = 200 cap.
+    yes_ask_prices: vector<u64>,                    // ascending
+    yes_bid_prices: vector<u64>,                    // descending
+    no_ask_prices: vector<u64>,                     // ascending
+    no_bid_prices: vector<u64>,                     // descending
 
-    /// Global state for order ID generation
-    public struct GlobalState has key {
-        id: UID,
-        next_order_id: u64,
-    }
+    // Statistics
+    total_volume: u64,
 
-    // ===== Events =====
+    // Lifecycle
+    status: u8,
+    outcome: Option<bool>,                          // Some(true) = YES wins
 
-    public struct MarketCreated has copy, drop {
-        market_id: ID,
-        question: String,
-        category: String,
-        close_time: u64,
-        creator: address,
-    }
+    // Admin
+    creator: address,
+    resolver: address,
 
-    public struct TokensMinted has copy, drop {
-        market_id: ID,
-        user: address,
-        amount: u64,
-    }
+    // Per-Market order ID counter (round-5 C6 fix: removes GlobalState contention).
+    next_order_id: u64,
+}
 
-    public struct OrderPlaced has copy, drop {
-        market_id: ID,
-        order_id: u64,
-        user: address,
-        is_yes: bool,
-        is_bid: bool,
-        price: u64,
-        amount: u64,
-    }
+/// Order in the book.
+public struct Order has store, copy, drop {
+    order_id: u64,
+    owner: address,
+    is_yes: bool,                                   // for cancel-side validation
+    is_bid: bool,
+    price: u64,                                     // basis points
+    amount: u64,                                    // shares
+    locked_nusdc: u64,                              // bids: NUSDC sitting in pool. Asks: 0.
+    cost_basis: u64,                                // asks: original Position basis. Bids: 0.
+    timestamp: u64,
+}
 
-    public struct OrderFilled has copy, drop {
-        market_id: ID,
-        order_id: u64,
-        maker: address,
-        taker: address,
-        is_yes: bool,
-        price: u64,
-        amount: u64,
-    }
+/// Position NFT — represents YES or NO shares. Owned object.
+public struct Position has key, store {
+    id: UID,
+    market_id: ID,
+    is_yes: bool,
+    shares: u64,
+    cost_basis: u64,
+}
 
-    public struct OrderCancelled has copy, drop {
-        market_id: ID,
-        order_id: u64,
-        user: address,
-    }
+// Local matching helpers (drop-only, no key/store).
+public struct MakerPayout has drop, copy { owner: address, amount: u64 }
+public struct MakerPositionGrant has drop, copy { owner: address, shares: u64, cost_basis: u64 }
+public struct PendingFill has drop, copy {
+    order_id: u64,
+    maker: address,
+    price: u64,
+    fill_shares: u64,
+    cost: u64,
+}
 
-    public struct MarketResolved has copy, drop {
-        market_id: ID,
-        outcome: bool,
-        resolver: address,
-    }
+// ===== Events =====
 
-    public struct WinningsClaimed has copy, drop {
-        market_id: ID,
-        user: address,
-        shares: u64,
-        payout: u64,
-    }
+public struct MarketCreated has copy, drop {
+    market_id: ID,
+    question: String,
+    category: String,
+    close_time: u64,
+    creator: address,
+    resolver: address,
+}
 
-    public struct MarketCancelled has copy, drop {
-        market_id: ID,
-        timestamp: u64,
-    }
+public struct TokensMinted has copy, drop {
+    market_id: ID,
+    user: address,
+    amount: u64,
+}
 
-    public struct CancelledRefundClaimed has copy, drop {
-        market_id: ID,
-        user: address,
-        shares: u64,
-        refund: u64,
-    }
+public struct OrderPlaced has copy, drop {
+    market_id: ID,
+    order_id: u64,
+    user: address,
+    is_yes: bool,
+    is_bid: bool,
+    price: u64,
+    amount: u64,
+    locked_nusdc: u64,
+    cost_basis: u64,
+}
 
-    // ===== Init =====
+public struct OrderFilled has copy, drop {
+    market_id: ID,
+    order_id: u64,
+    maker: address,
+    taker: address,
+    is_yes: bool,
+    is_bid: bool,                                   // is_bid of the maker side
+    price: u64,
+    fill_shares: u64,
+    cost: u64,
+}
 
-    fun init(ctx: &mut TxContext) {
-        // Create and transfer AdminCap to deployer
-        transfer::transfer(
-            AdminCap { id: object::new(ctx) },
-            tx_context::sender(ctx)
-        );
+public struct OrderCancelled has copy, drop {
+    market_id: ID,
+    order_id: u64,
+    owner: address,
+}
 
-        // Create global state
-        transfer::share_object(GlobalState {
-            id: object::new(ctx),
-            next_order_id: 1,
-        });
-    }
+public struct MarketResolved has copy, drop {
+    market_id: ID,
+    outcome: bool,
+    resolver: address,
+}
 
-    // ===== Admin Functions =====
+public struct WinningsClaimed has copy, drop {
+    market_id: ID,
+    user: address,
+    shares: u64,
+    payout: u64,
+}
 
-    /// Create a new prediction market
-    public entry fun create_market(
-        _admin: &AdminCap,
-        question: String,
-        description: String,
-        category: String,
-        close_time: u64,
-        resolve_deadline: u64,
-        resolver: address,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        let market = Market {
-            id: object::new(ctx),
-            question,
-            description,
-            category,
-            created_at: clock::timestamp_ms(clock),
-            close_time,
-            resolve_deadline,
-            collateral_pool: balance::zero(),
-            yes_supply: 0,
-            no_supply: 0,
-            yes_bids: table::new(ctx),
-            yes_asks: table::new(ctx),
-            no_bids: table::new(ctx),
-            no_asks: table::new(ctx),
-            total_volume: 0,
-            status: STATUS_OPEN,
-            outcome: option::none(),
-            creator: tx_context::sender(ctx),
-            resolver,
+public struct MarketCancelled has copy, drop {
+    market_id: ID,
+    timestamp: u64,
+}
+
+public struct CancelledRefundClaimed has copy, drop {
+    market_id: ID,
+    user: address,
+    shares: u64,
+    refund: u64,
+}
+
+public struct RestingOrderRefunded has copy, drop {
+    market_id: ID,
+    order_id: u64,
+    owner: address,
+    locked_nusdc: u64,
+    shares: u64,
+}
+
+// ===== Init =====
+
+fun init(ctx: &mut TxContext) {
+    transfer::transfer(
+        AdminCap { id: object::new(ctx) },
+        tx_context::sender(ctx),
+    );
+    // No GlobalState created (round-5 C6: per-Market next_order_id).
+}
+
+// ===== Admin: Create / Resolve =====
+
+public fun create_market(
+    _admin: &AdminCap,
+    question: String,
+    description: String,
+    category: String,
+    resolution_source: String,
+    resolution_criteria: String,
+    close_time: u64,
+    resolve_deadline: u64,
+    resolver: address,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let now = clock::timestamp_ms(clock);
+    let creator = tx_context::sender(ctx);
+
+    // Validation (round-2 audit + round-5 plan).
+    assert!(creator != resolver, ECreatorIsResolver);
+    assert!(close_time > now, EInvalidInput);
+    assert!(resolve_deadline > close_time, EInvalidInput);
+    assert!(question.length() > 0 && question.length() <= MAX_QUESTION_LEN, EInvalidInput);
+    assert!(description.length() <= MAX_DESCRIPTION_LEN, EInvalidInput);
+    assert!(category.length() > 0 && category.length() <= MAX_CATEGORY_LEN, EInvalidInput);
+    assert!(resolution_source.length() <= MAX_RESOLUTION_SOURCE_LEN, EInvalidInput);
+    assert!(resolution_criteria.length() <= MAX_RESOLUTION_CRITERIA_LEN, EInvalidInput);
+
+    let market = Market {
+        id: object::new(ctx),
+        question,
+        description,
+        category,
+        resolution_source,
+        resolution_criteria,
+        created_at: now,
+        close_time,
+        resolve_deadline,
+        collateral_pool: balance::zero(),
+        yes_supply: 0,
+        no_supply: 0,
+        yes_bids: table::new(ctx),
+        yes_asks: table::new(ctx),
+        no_bids: table::new(ctx),
+        no_asks: table::new(ctx),
+        yes_ask_prices: vector::empty(),
+        yes_bid_prices: vector::empty(),
+        no_ask_prices: vector::empty(),
+        no_bid_prices: vector::empty(),
+        total_volume: 0,
+        status: STATUS_OPEN,
+        outcome: option::none(),
+        creator,
+        resolver,
+        next_order_id: 1,
+    };
+
+    event::emit(MarketCreated {
+        market_id: object::id(&market),
+        question: market.question,
+        category: market.category,
+        close_time,
+        creator,
+        resolver,
+    });
+
+    transfer::share_object(market);
+}
+
+public fun resolve_market(
+    market: &mut Market,
+    outcome: bool,
+    clock: &Clock,
+    ctx: &TxContext,
+) {
+    assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+    assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+    assert!(tx_context::sender(ctx) == market.resolver, ENotResolver);
+    let now = clock::timestamp_ms(clock);
+    assert!(now >= market.close_time, EMarketNotClosed);
+    assert!(now <= market.resolve_deadline, EResolveDeadlinePassed);
+
+    market.status = STATUS_RESOLVED;
+    market.outcome = option::some(outcome);
+
+    event::emit(MarketResolved {
+        market_id: object::id(market),
+        outcome,
+        resolver: market.resolver,
+    });
+}
+
+// ===== User: Mint =====
+
+public fun mint_outcome_tokens(
+    market: &mut Market,
+    payment: Coin<NUSDC>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_OPEN, EMarketNotOpen);
+    assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
+
+    let amount = coin::value(&payment);
+    assert!(amount > 0 && amount <= MAX_MINT_AMOUNT, EInvalidInput);
+
+    let sender = tx_context::sender(ctx);
+    balance::join(&mut market.collateral_pool, coin::into_balance(payment));
+
+    market.yes_supply = market.yes_supply + amount;
+    market.no_supply = market.no_supply + amount;
+
+    let yes_position = Position {
+        id: object::new(ctx),
+        market_id: object::id(market),
+        is_yes: true,
+        shares: amount,
+        cost_basis: amount,
+    };
+    let no_position = Position {
+        id: object::new(ctx),
+        market_id: object::id(market),
+        is_yes: false,
+        shares: amount,
+        cost_basis: amount,
+    };
+
+    event::emit(TokensMinted { market_id: object::id(market), user: sender, amount });
+
+    transfer::transfer(yes_position, sender);
+    transfer::transfer(no_position, sender);
+}
+
+// ===== Maker: Place limit orders =====
+
+public fun place_buy_maker(
+    market: &mut Market,
+    is_yes: bool,
+    price: u64,
+    payment: Coin<NUSDC>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_OPEN, EMarketNotOpen);
+    assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
+    assert!(price > 0 && price < MAX_PRICE, EInvalidPrice);
+
+    let amount_nusdc = coin::value(&payment);
+    assert!(amount_nusdc > 0 && amount_nusdc <= MAX_PAYMENT_AMOUNT, EInvalidInput);
+
+    let shares = (((amount_nusdc as u128) * (MAX_PRICE as u128)) / (price as u128)) as u64;
+    assert!(shares > 0, EInvalidInput);
+
+    let owner = tx_context::sender(ctx);
+    let now = clock::timestamp_ms(clock);
+
+    insert_resting_bid_internal(
+        market, is_yes, price,
+        amount_nusdc, shares,
+        owner, coin::into_balance(payment),
+        now, ctx,
+    );
+}
+
+public fun place_sell_maker(
+    market: &mut Market,
+    position: Position,
+    price: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_OPEN, EMarketNotOpen);
+    assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
+    assert!(price > 0 && price < MAX_PRICE, EInvalidPrice);
+
+    let Position {
+        id, market_id: pos_market_id, is_yes,
+        shares, cost_basis,
+    } = position;
+    object::delete(id);
+    assert!(pos_market_id == object::id(market), EWrongMarket);
+    assert!(shares > 0, EInvalidInput);
+
+    let owner = tx_context::sender(ctx);
+    let now = clock::timestamp_ms(clock);
+
+    insert_resting_ask_internal(
+        market, is_yes, price,
+        shares, cost_basis,
+        owner, now, ctx,
+    );
+}
+
+// ===== Taker: Atomic matching =====
+
+public fun place_buy_taker(
+    market: &mut Market,
+    is_yes: bool,
+    max_price: u64,
+    rest_on_no_fill: bool,
+    payment: Coin<NUSDC>,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_OPEN, EMarketNotOpen);
+    assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
+    assert!(max_price > 0 && max_price < MAX_PRICE, EInvalidInput);
+
+    let amount_nusdc = coin::value(&payment);
+    assert!(amount_nusdc > 0 && amount_nusdc <= MAX_PAYMENT_AMOUNT, EInvalidInput);
+
+    let taker = tx_context::sender(ctx);
+    let mut payment_balance = coin::into_balance(payment);
+    let market_id = object::id(market);
+    let now = clock::timestamp_ms(clock);
+
+    // Snapshot price levels (vector<u64> has copy via primitive elements).
+    let price_snapshot: vector<u64> = if (is_yes) {
+        market.yes_ask_prices
+    } else {
+        market.no_ask_prices
+    };
+
+    // Local accumulators — all market-side mutations deferred until walk ends.
+    let mut total_filled_shares: u64 = 0;
+    let mut total_filled_cost: u64 = 0;
+    let mut running_filled: u64 = 0;
+    let mut maker_payouts: vector<MakerPayout> = vector::empty();
+    let mut levels_to_remove: vector<u64> = vector::empty();
+    let mut pending_fills: vector<PendingFill> = vector::empty();
+    let mut levels_walked: u64 = 0;
+
+    let snapshot_len = vector::length(&price_snapshot);
+    let mut i = 0;
+    while (i < snapshot_len) {
+        if (levels_walked >= MAX_WALK_LEVELS) break;
+        if (running_filled >= amount_nusdc) break;
+        let price = *vector::borrow(&price_snapshot, i);
+        if (price > max_price) break;
+
+        let mut non_self_orders_at_level: u64 = 0;
+        let mut level_emptied: bool = false;
+        {
+            // SCOPED BORROW: orders borrow drops at end of this block (round-5 C1 fix).
+            let asks_table = if (is_yes) { &mut market.yes_asks } else { &mut market.no_asks };
+            let orders = table::borrow_mut(asks_table, price);
+
+            let mut order_idx: u64 = 0;
+            let mut actual_fills_at_level: u64 = 0;
+
+            while (order_idx < vector::length(orders)) {
+                if (running_filled >= amount_nusdc) break;
+                if (actual_fills_at_level >= MAX_FIFO_PER_LEVEL) abort ECapacityExceeded;
+
+                let order_copy = *vector::borrow(orders, order_idx);
+
+                // Self-skip — does NOT count toward fill cap (round-5 C3 + W1).
+                if (order_copy.owner == taker) {
+                    order_idx = order_idx + 1;
+                    continue
+                };
+                non_self_orders_at_level = non_self_orders_at_level + 1;
+
+                let nusdc_avail = amount_nusdc - running_filled;
+                let max_shares = (((nusdc_avail as u128) * (MAX_PRICE as u128)) / (price as u128)) as u64;
+                let fill_shares = min_u64(order_copy.amount, max_shares);
+                if (fill_shares == 0) break;
+                let cost = (((fill_shares as u128) * (price as u128)) / (MAX_PRICE as u128)) as u64;
+
+                accumulate_payout(&mut maker_payouts, order_copy.owner, cost);
+
+                // Ask-maker fill: cost_basis from Order.cost_basis (preserved at place_sell_maker).
+                let cost_basis_portion = (((fill_shares as u128) * (order_copy.cost_basis as u128))
+                                          / (order_copy.amount as u128)) as u64;
+                let updated = Order {
+                    order_id: order_copy.order_id,
+                    owner: order_copy.owner,
+                    is_yes: order_copy.is_yes,
+                    is_bid: order_copy.is_bid,
+                    price: order_copy.price,
+                    amount: order_copy.amount - fill_shares,
+                    locked_nusdc: 0,
+                    cost_basis: order_copy.cost_basis - cost_basis_portion,
+                    timestamp: order_copy.timestamp,
+                };
+                if (updated.amount == 0) {
+                    vector::remove(orders, order_idx);
+                } else {
+                    *vector::borrow_mut(orders, order_idx) = updated;
+                    order_idx = order_idx + 1;
+                };
+
+                vector::push_back(&mut pending_fills, PendingFill {
+                    order_id: order_copy.order_id,
+                    maker: order_copy.owner,
+                    price, fill_shares, cost,
+                });
+
+                actual_fills_at_level = actual_fills_at_level + 1;
+                total_filled_shares = total_filled_shares + fill_shares;
+                total_filled_cost = total_filled_cost + cost;
+                running_filled = running_filled + cost;
+            };
+            level_emptied = vector::is_empty(orders);
+        }; // END SCOPED BORROW
+
+        if (level_emptied) {
+            vector::push_back(&mut levels_to_remove, price);
         };
-
-        event::emit(MarketCreated {
-            market_id: object::id(&market),
-            question: market.question,
-            category: market.category,
-            close_time,
-            creator: market.creator,
-        });
-
-        transfer::share_object(market);
-    }
-
-    /// Resolve the market (only resolver can call)
-    public entry fun resolve_market(
-        market: &mut Market,
-        outcome: bool,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
-        assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
-        assert!(tx_context::sender(ctx) == market.resolver, ENotResolver);
-        assert!(clock::timestamp_ms(clock) >= market.close_time, EMarketNotClosed);
-        assert!(clock::timestamp_ms(clock) <= market.resolve_deadline, EResolveDeadlinePassed);
-
-        market.status = STATUS_RESOLVED;
-        market.outcome = option::some(outcome);
-
-        event::emit(MarketResolved {
-            market_id: object::id(market),
-            outcome,
-            resolver: market.resolver,
-        });
-    }
-
-    // ===== User Functions =====
-
-    /// Mint YES and NO tokens by depositing NUSDC
-    /// 1 NUSDC = 1 YES + 1 NO (always minted in pairs)
-    public entry fun mint_outcome_tokens(
-        market: &mut Market,
-        payment: Coin<NUSDC>,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status == STATUS_OPEN, EMarketNotOpen);
-        assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
-
-        let amount = coin::value(&payment);
-        let sender = tx_context::sender(ctx);
-
-        // Add collateral to pool
-        balance::join(&mut market.collateral_pool, coin::into_balance(payment));
-
-        // Update supply
-        market.yes_supply = market.yes_supply + amount;
-        market.no_supply = market.no_supply + amount;
-
-        // Create YES position
-        let yes_position = Position {
-            id: object::new(ctx),
-            market_id: object::id(market),
-            is_yes: true,
-            shares: amount,
-            cost_basis: amount,
+        if (non_self_orders_at_level > 0) {
+            levels_walked = levels_walked + 1;
         };
+        i = i + 1;
+    };
 
-        // Create NO position
-        let no_position = Position {
-            id: object::new(ctx),
-            market_id: object::id(market),
-            is_yes: false,
-            shares: amount,
-            cost_basis: amount,
-        };
+    // === Apply deferred mutations === //
 
-        event::emit(TokensMinted {
-            market_id: object::id(market),
-            user: sender,
-            amount,
-        });
+    // 1. Remove emptied levels.
+    apply_level_removals(market, is_yes, false, &levels_to_remove);
 
-        transfer::transfer(yes_position, sender);
-        transfer::transfer(no_position, sender);
-    }
+    // 2. Dispense maker payouts (one Coin per unique maker).
+    let mut p = 0;
+    let payout_count = vector::length(&maker_payouts);
+    while (p < payout_count) {
+        let payout = *vector::borrow(&maker_payouts, p);
+        let part = balance::split(&mut payment_balance, payout.amount);
+        transfer::public_transfer(coin::from_balance(part, ctx), payout.owner);
+        p = p + 1;
+    };
 
-    /// Place a limit order to buy outcome tokens
-    public entry fun place_bid_order(
-        market: &mut Market,
-        state: &mut GlobalState,
-        is_yes: bool,
-        price: u64,  // Price in basis points (e.g., 6500 = 65%)
-        payment: Coin<NUSDC>,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status == STATUS_OPEN, EMarketNotOpen);
-        assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
-        assert!(price > 0 && price < MAX_PRICE, EInvalidPrice);
-
-        let amount = coin::value(&payment);
-        let shares = (amount * MAX_PRICE) / price; // Calculate shares from payment
-        let sender = tx_context::sender(ctx);
-
-        // Store payment in collateral pool temporarily
-        balance::join(&mut market.collateral_pool, coin::into_balance(payment));
-
-        let order = Order {
-            order_id: state.next_order_id,
-            owner: sender,
-            price,
-            amount: shares,
-            timestamp: clock::timestamp_ms(clock),
-        };
-
-        state.next_order_id = state.next_order_id + 1;
-
-        // Add to appropriate order book
-        let bids = if (is_yes) { &mut market.yes_bids } else { &mut market.no_bids };
-        if (!table::contains(bids, price)) {
-            table::add(bids, price, vector::empty());
-        };
-        let orders = table::borrow_mut(bids, price);
-        vector::push_back(orders, order);
-
-        event::emit(OrderPlaced {
-            market_id: object::id(market),
-            order_id: order.order_id,
-            user: sender,
-            is_yes,
-            is_bid: true,
-            price,
-            amount: shares,
-        });
-    }
-
-    /// Place a limit order to sell outcome tokens
-    public entry fun place_ask_order(
-        market: &mut Market,
-        state: &mut GlobalState,
-        position: Position,
-        price: u64,
-        clock: &Clock,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status == STATUS_OPEN, EMarketNotOpen);
-        assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
-        assert!(price > 0 && price < MAX_PRICE, EInvalidPrice);
-        assert!(position.market_id == object::id(market), EWrongOutcome);
-
-        let Position { id, market_id: _, is_yes, shares, cost_basis: _ } = position;
-        object::delete(id);
-
-        let sender = tx_context::sender(ctx);
-
-        let order = Order {
-            order_id: state.next_order_id,
-            owner: sender,
-            price,
-            amount: shares,
-            timestamp: clock::timestamp_ms(clock),
-        };
-
-        state.next_order_id = state.next_order_id + 1;
-
-        // Add to appropriate order book
-        let asks = if (is_yes) { &mut market.yes_asks } else { &mut market.no_asks };
-        if (!table::contains(asks, price)) {
-            table::add(asks, price, vector::empty());
-        };
-        let orders = table::borrow_mut(asks, price);
-        vector::push_back(orders, order);
-
-        event::emit(OrderPlaced {
-            market_id: object::id(market),
-            order_id: order.order_id,
-            user: sender,
+    // 3. Emit OrderFilled events.
+    let mut k = 0;
+    let fill_count = vector::length(&pending_fills);
+    while (k < fill_count) {
+        let pf = *vector::borrow(&pending_fills, k);
+        event::emit(OrderFilled {
+            market_id,
+            order_id: pf.order_id,
+            maker: pf.maker,
+            taker,
             is_yes,
             is_bid: false,
-            price,
-            amount: shares,
+            price: pf.price,
+            fill_shares: pf.fill_shares,
+            cost: pf.cost,
         });
-    }
+        k = k + 1;
+    };
 
-    /// Claim winnings after market resolution
-    public entry fun claim_winnings(
-        market: &mut Market,
-        position: Position,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status == STATUS_RESOLVED, EMarketNotResolved);
-        assert!(position.market_id == object::id(market), EWrongOutcome);
+    // 4. Mint Position for filled portion + update volume.
+    if (total_filled_shares > 0) {
+        let pos = Position {
+            id: object::new(ctx),
+            market_id,
+            is_yes,
+            shares: total_filled_shares,
+            cost_basis: total_filled_cost,
+        };
+        transfer::transfer(pos, taker);
+        market.total_volume = market.total_volume + total_filled_cost;
+    };
 
-        let winning_outcome = *option::borrow(&market.outcome);
-        assert!(position.is_yes == winning_outcome, EWrongOutcome);
+    // 5. Leftover handling — Balance must be consumed (no drop ability).
+    let nusdc_remaining = balance::value(&payment_balance);
+    if (nusdc_remaining == 0) {
+        balance::destroy_zero(payment_balance);
+    } else if (total_filled_shares == 0 && !rest_on_no_fill) {
+        // Market mode + zero fills: refund Balance to taker, then abort to roll back.
+        // Tx revert undoes the transfer, so taker's original Coin is unaffected.
+        // We must consume payment_balance before abort or it drops illegally.
+        transfer::public_transfer(coin::from_balance(payment_balance, ctx), taker);
+        abort ENoFillsAtMarketPrice
+    } else {
+        // Limit mode OR partial fill: rest leftover at max_price.
+        let leftover_shares = (((nusdc_remaining as u128) * (MAX_PRICE as u128)) / (max_price as u128)) as u64;
+        if (leftover_shares > 0) {
+            insert_resting_bid_internal(
+                market, is_yes, max_price,
+                nusdc_remaining, leftover_shares,
+                taker, payment_balance, now, ctx,
+            );
+        } else {
+            // Dust < 1 share — refund.
+            transfer::public_transfer(coin::from_balance(payment_balance, ctx), taker);
+        };
+    };
+}
 
-        let Position { id, market_id: _, is_yes: _, shares, cost_basis: _ } = position;
-        object::delete(id);
+public fun place_sell_taker(
+    market: &mut Market,
+    position: Position,
+    min_price: u64,
+    rest_on_no_fill: bool,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_OPEN, EMarketNotOpen);
+    assert!(clock::timestamp_ms(clock) < market.close_time, EMarketExpired);
+    assert!(min_price > 0 && min_price < MAX_PRICE, EInvalidInput);
 
-        let sender = tx_context::sender(ctx);
+    let Position {
+        id, market_id: pos_market_id, is_yes,
+        shares: position_shares, cost_basis: position_cost_basis,
+    } = position;
+    object::delete(id);
+    assert!(pos_market_id == object::id(market), EWrongMarket);
+    assert!(position_shares > 0, EInvalidInput);
 
-        // Each winning share = 1 NUSDC
-        let payout = shares;
-        let payout_balance = balance::split(&mut market.collateral_pool, payout);
-        let payout_coin = coin::from_balance(payout_balance, ctx);
+    let taker = tx_context::sender(ctx);
+    let market_id = object::id(market);
+    let now = clock::timestamp_ms(clock);
 
-        event::emit(WinningsClaimed {
+    let price_snapshot: vector<u64> = if (is_yes) {
+        market.yes_bid_prices
+    } else {
+        market.no_bid_prices
+    };
+
+    let mut shares_remaining: u64 = position_shares;
+    let mut total_filled_shares: u64 = 0;
+    let mut total_received_nusdc: u64 = 0;
+    let mut levels_walked: u64 = 0;
+    let mut levels_to_remove: vector<u64> = vector::empty();
+    let mut maker_grants: vector<MakerPositionGrant> = vector::empty();
+    let mut pending_fills: vector<PendingFill> = vector::empty();
+
+    let snapshot_len = vector::length(&price_snapshot);
+    let mut i = 0;
+    while (i < snapshot_len) {
+        if (levels_walked >= MAX_WALK_LEVELS) break;
+        if (shares_remaining == 0) break;
+        let price = *vector::borrow(&price_snapshot, i);
+        if (price < min_price) break;
+
+        let mut non_self_orders_at_level: u64 = 0;
+        let mut level_emptied: bool = false;
+        {
+            let bids_table = if (is_yes) { &mut market.yes_bids } else { &mut market.no_bids };
+            let orders = table::borrow_mut(bids_table, price);
+
+            let mut order_idx: u64 = 0;
+            let mut actual_fills_at_level: u64 = 0;
+
+            while (order_idx < vector::length(orders)) {
+                if (shares_remaining == 0) break;
+                if (actual_fills_at_level >= MAX_FIFO_PER_LEVEL) abort ECapacityExceeded;
+
+                let order_copy = *vector::borrow(orders, order_idx);
+
+                if (order_copy.owner == taker) {
+                    order_idx = order_idx + 1;
+                    continue
+                };
+                non_self_orders_at_level = non_self_orders_at_level + 1;
+
+                let fill_shares = min_u64(order_copy.amount, shares_remaining);
+                if (fill_shares == 0) break;
+
+                // Bid-maker fill: NUSDC paid to taker = proportional locked_nusdc (NOT cost_basis).
+                let nusdc_to_taker = (((fill_shares as u128) * (order_copy.locked_nusdc as u128))
+                                      / (order_copy.amount as u128)) as u64;
+
+                let updated = Order {
+                    order_id: order_copy.order_id,
+                    owner: order_copy.owner,
+                    is_yes: order_copy.is_yes,
+                    is_bid: order_copy.is_bid,
+                    price: order_copy.price,
+                    amount: order_copy.amount - fill_shares,
+                    locked_nusdc: order_copy.locked_nusdc - nusdc_to_taker,
+                    cost_basis: 0,
+                    timestamp: order_copy.timestamp,
+                };
+                if (updated.amount == 0) {
+                    vector::remove(orders, order_idx);
+                } else {
+                    *vector::borrow_mut(orders, order_idx) = updated;
+                    order_idx = order_idx + 1;
+                };
+
+                vector::push_back(&mut maker_grants, MakerPositionGrant {
+                    owner: order_copy.owner,
+                    shares: fill_shares,
+                    cost_basis: nusdc_to_taker,
+                });
+                vector::push_back(&mut pending_fills, PendingFill {
+                    order_id: order_copy.order_id,
+                    maker: order_copy.owner,
+                    price, fill_shares, cost: nusdc_to_taker,
+                });
+
+                actual_fills_at_level = actual_fills_at_level + 1;
+                total_filled_shares = total_filled_shares + fill_shares;
+                total_received_nusdc = total_received_nusdc + nusdc_to_taker;
+                shares_remaining = shares_remaining - fill_shares;
+            };
+            level_emptied = vector::is_empty(orders);
+        };
+
+        if (level_emptied) {
+            vector::push_back(&mut levels_to_remove, price);
+        };
+        if (non_self_orders_at_level > 0) {
+            levels_walked = levels_walked + 1;
+        };
+        i = i + 1;
+    };
+
+    // === Apply deferred mutations === //
+
+    apply_level_removals(market, is_yes, true, &levels_to_remove);
+
+    // Pay taker NUSDC from pool.
+    if (total_received_nusdc > 0) {
+        let payment = balance::split(&mut market.collateral_pool, total_received_nusdc);
+        transfer::public_transfer(coin::from_balance(payment, ctx), taker);
+        market.total_volume = market.total_volume + total_received_nusdc;
+    };
+
+    // Mint Position for each unique bid maker.
+    let mut k = 0;
+    let grant_count = vector::length(&maker_grants);
+    while (k < grant_count) {
+        let grant = *vector::borrow(&maker_grants, k);
+        let pos = Position {
+            id: object::new(ctx),
+            market_id,
+            is_yes,
+            shares: grant.shares,
+            cost_basis: grant.cost_basis,
+        };
+        transfer::transfer(pos, grant.owner);
+        k = k + 1;
+    };
+
+    // Emit fills.
+    let mut m = 0;
+    let fill_count = vector::length(&pending_fills);
+    while (m < fill_count) {
+        let pf = *vector::borrow(&pending_fills, m);
+        event::emit(OrderFilled {
+            market_id,
+            order_id: pf.order_id,
+            maker: pf.maker,
+            taker,
+            is_yes,
+            is_bid: true,
+            price: pf.price,
+            fill_shares: pf.fill_shares,
+            cost: pf.cost,
+        });
+        m = m + 1;
+    };
+
+    // Leftover handling.
+    if (shares_remaining > 0) {
+        if (total_filled_shares == 0 && !rest_on_no_fill) {
+            // Market mode + zero fills: refund Position back to taker, then abort.
+            let leftover_cost_basis = (((shares_remaining as u128) * (position_cost_basis as u128))
+                                       / (position_shares as u128)) as u64;
+            let pos = Position {
+                id: object::new(ctx),
+                market_id,
+                is_yes,
+                shares: shares_remaining,
+                cost_basis: leftover_cost_basis,
+            };
+            transfer::transfer(pos, taker);
+            abort ENoFillsAtMarketPrice
+        } else {
+            // Rest leftover at min_price.
+            let leftover_cost_basis = (((shares_remaining as u128) * (position_cost_basis as u128))
+                                       / (position_shares as u128)) as u64;
+            insert_resting_ask_internal(
+                market, is_yes, min_price,
+                shares_remaining, leftover_cost_basis,
+                taker, now, ctx,
+            );
+        };
+    };
+}
+
+// ===== Cancel / Refund =====
+
+public fun cancel_order(
+    market: &mut Market,
+    is_yes: bool,
+    is_bid: bool,
+    price: u64,
+    order_id: u64,
+    clock: &Clock,
+    ctx: &mut TxContext,
+) {
+    let _ = clock; // close_time check intentionally omitted — allow cancel at any time
+    let sender = tx_context::sender(ctx);
+    let market_id = object::id(market);
+
+    let (locked_nusdc, shares, cost_basis) = remove_order_from_book(
+        market, is_yes, is_bid, price, order_id, sender,
+    );
+
+    if (is_bid) {
+        let refund = balance::split(&mut market.collateral_pool, locked_nusdc);
+        transfer::public_transfer(coin::from_balance(refund, ctx), sender);
+    } else {
+        let pos = Position {
+            id: object::new(ctx),
+            market_id,
+            is_yes,
+            shares,
+            cost_basis,
+        };
+        transfer::transfer(pos, sender);
+    };
+
+    event::emit(OrderCancelled { market_id, order_id, owner: sender });
+}
+
+public fun claim_resting_order_refund(
+    market: &mut Market,
+    is_yes: bool,
+    is_bid: bool,
+    price: u64,
+    order_id: u64,
+    ctx: &mut TxContext,
+) {
+    assert!(
+        market.status == STATUS_CANCELLED || market.status == STATUS_RESOLVED,
+        EMarketNotOpen,
+    );
+
+    let sender = tx_context::sender(ctx);
+    let market_id = object::id(market);
+
+    let (locked_nusdc, shares, cost_basis) = remove_order_from_book(
+        market, is_yes, is_bid, price, order_id, sender,
+    );
+
+    if (is_bid) {
+        let refund = balance::split(&mut market.collateral_pool, locked_nusdc);
+        transfer::public_transfer(coin::from_balance(refund, ctx), sender);
+    } else {
+        let pos = Position {
+            id: object::new(ctx),
+            market_id,
+            is_yes,
+            shares,
+            cost_basis,
+        };
+        transfer::transfer(pos, sender);
+    };
+
+    event::emit(RestingOrderRefunded {
+        market_id, order_id, owner: sender,
+        locked_nusdc, shares,
+    });
+}
+
+// ===== Resolution Claims =====
+
+public fun claim_winnings(
+    market: &mut Market,
+    position: Position,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_RESOLVED, EMarketNotResolved);
+
+    let Position { id, market_id, is_yes, shares, cost_basis: _ } = position;
+    object::delete(id);
+
+    assert!(market_id == object::id(market), EWrongMarket);
+    let winning_outcome = *option::borrow(&market.outcome);
+    assert!(is_yes == winning_outcome, EWrongOutcome);
+
+    let sender = tx_context::sender(ctx);
+    let payout = shares; // 1 winning share = 1 NUSDC
+
+    let payout_balance = balance::split(&mut market.collateral_pool, payout);
+    let payout_coin = coin::from_balance(payout_balance, ctx);
+
+    // Decrement winning supply (round-2 C4).
+    if (is_yes) {
+        market.yes_supply = market.yes_supply - shares;
+    } else {
+        market.no_supply = market.no_supply - shares;
+    };
+
+    event::emit(WinningsClaimed {
+        market_id: object::id(market),
+        user: sender,
+        shares,
+        payout,
+    });
+
+    transfer::public_transfer(payout_coin, sender);
+}
+
+public fun burn_losing_position(
+    market: &mut Market,
+    position: Position,
+    _ctx: &TxContext,
+) {
+    assert!(market.status == STATUS_RESOLVED, EMarketNotResolved);
+
+    let Position { id, market_id, is_yes, shares, cost_basis: _ } = position;
+    object::delete(id);
+
+    assert!(market_id == object::id(market), EWrongMarket);
+    let winning_outcome = *option::borrow(&market.outcome);
+    assert!(is_yes != winning_outcome, EWrongOutcome);
+
+    // Decrement losing supply.
+    if (is_yes) {
+        market.yes_supply = market.yes_supply - shares;
+    } else {
+        market.no_supply = market.no_supply - shares;
+    };
+}
+
+// ===== Cancellation =====
+
+public fun cancel_expired_market(
+    market: &mut Market,
+    clock: &Clock,
+) {
+    assert!(clock::timestamp_ms(clock) > market.resolve_deadline, EMarketNotExpired);
+    assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+    assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+
+    market.status = STATUS_CANCELLED;
+
+    event::emit(MarketCancelled {
+        market_id: object::id(market),
+        timestamp: clock::timestamp_ms(clock),
+    });
+}
+
+public fun claim_cancelled_refund(
+    market: &mut Market,
+    position: Position,
+    ctx: &mut TxContext,
+) {
+    assert!(market.status == STATUS_CANCELLED, EMarketNotCancelled);
+
+    let Position { id, market_id, is_yes, shares, cost_basis: _ } = position;
+    object::delete(id);
+    assert!(market_id == object::id(market), EWrongMarket);
+
+    let pool_balance = balance::value(&market.collateral_pool);
+    let total_shares = market.yes_supply + market.no_supply;
+
+    let refund_amount = if (total_shares > 0) {
+        (((shares as u128) * (pool_balance as u128) / (total_shares as u128)) as u64)
+    } else {
+        0
+    };
+
+    if (is_yes) {
+        market.yes_supply = market.yes_supply - shares;
+    } else {
+        market.no_supply = market.no_supply - shares;
+    };
+
+    let sender = tx_context::sender(ctx);
+
+    if (refund_amount > 0) {
+        let refund_balance = balance::split(&mut market.collateral_pool, refund_amount);
+        let refund_coin = coin::from_balance(refund_balance, ctx);
+        event::emit(CancelledRefundClaimed {
             market_id: object::id(market),
             user: sender,
             shares,
-            payout,
+            refund: refund_amount,
         });
+        transfer::public_transfer(refund_coin, sender);
+    };
+}
 
-        transfer::public_transfer(payout_coin, sender);
-    }
+// ===== Private Helpers =====
 
-    // ===== Market Cancellation (resolve_deadline expired) =====
+fun min_u64(a: u64, b: u64): u64 { if (a < b) { a } else { b } }
 
-    /// Cancel a market that passed its resolve_deadline without resolution.
-    /// Permissionless: anyone can call after deadline expires.
-    /// After cancellation, position holders can claim pro-rata refunds.
-    public entry fun cancel_expired_market(
-        market: &mut Market,
-        clock: &Clock,
-    ) {
-        assert!(clock::timestamp_ms(clock) > market.resolve_deadline, EMarketNotExpired);
-        assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
-        assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+/// Insert price into ascending vector if absent. Linear insertion (binary search not
+/// trivially expressible without recursion / mutable indices in Move; linear is fine
+/// for MAX_PRICE_LEVELS_PER_SIDE = 200 cap).
+fun sorted_insert_asc(prices: &mut vector<u64>, p: u64) {
+    let len = vector::length(prices);
+    let mut i = 0;
+    while (i < len) {
+        let cur = *vector::borrow(prices, i);
+        if (cur == p) return;
+        if (cur > p) {
+            vector::insert(prices, p, i);
+            return
+        };
+        i = i + 1;
+    };
+    vector::push_back(prices, p);
+}
 
-        market.status = STATUS_CANCELLED;
+fun sorted_insert_desc(prices: &mut vector<u64>, p: u64) {
+    let len = vector::length(prices);
+    let mut i = 0;
+    while (i < len) {
+        let cur = *vector::borrow(prices, i);
+        if (cur == p) return;
+        if (cur < p) {
+            vector::insert(prices, p, i);
+            return
+        };
+        i = i + 1;
+    };
+    vector::push_back(prices, p);
+}
 
-        event::emit(MarketCancelled {
-            market_id: object::id(market),
-            timestamp: clock::timestamp_ms(clock),
-        });
-    }
+fun sorted_remove(prices: &mut vector<u64>, p: u64) {
+    let len = vector::length(prices);
+    let mut i = 0;
+    while (i < len) {
+        if (*vector::borrow(prices, i) == p) {
+            vector::remove(prices, i);
+            return
+        };
+        i = i + 1;
+    };
+}
 
-    /// Claim pro-rata refund from a cancelled market.
-    /// Refund is proportional to shares held relative to total outstanding supply.
-    /// Uses shares-based pro-rata (not cost_basis) to prevent pool insolvency
-    /// when positions have been traded on the secondary orderbook.
-    public entry fun claim_cancelled_refund(
-        market: &mut Market,
-        position: Position,
-        ctx: &mut TxContext
-    ) {
-        assert!(market.status == STATUS_CANCELLED, EMarketNotCancelled);
-        assert!(position.market_id == object::id(market), EWrongOutcome);
+/// Linear scan accumulator; up to MAX_FIFO_PER_LEVEL × MAX_WALK_LEVELS = 200 entries.
+fun accumulate_payout(payouts: &mut vector<MakerPayout>, owner: address, amount: u64) {
+    let len = vector::length(payouts);
+    let mut i = 0;
+    while (i < len) {
+        let entry = vector::borrow_mut(payouts, i);
+        if (entry.owner == owner) {
+            entry.amount = entry.amount + amount;
+            return
+        };
+        i = i + 1;
+    };
+    vector::push_back(payouts, MakerPayout { owner, amount });
+}
 
-        let pool_balance = balance::value(&market.collateral_pool);
-        let total_shares = market.yes_supply + market.no_supply;
-
-        let refund_amount = if (total_shares > 0) {
-            ((position.shares as u128) * (pool_balance as u128) / (total_shares as u128)) as u64
+/// Apply emptied price-level removals to both Table and sorted index. Called after
+/// walk borrow drops.
+fun apply_level_removals(
+    market: &mut Market,
+    is_yes: bool,
+    is_bid: bool,
+    levels: &vector<u64>,
+) {
+    let len = vector::length(levels);
+    let mut j = 0;
+    while (j < len) {
+        let price = *vector::borrow(levels, j);
+        if (is_yes && is_bid) {
+            table::remove(&mut market.yes_bids, price);
+            sorted_remove(&mut market.yes_bid_prices, price);
+        } else if (is_yes && !is_bid) {
+            table::remove(&mut market.yes_asks, price);
+            sorted_remove(&mut market.yes_ask_prices, price);
+        } else if (!is_yes && is_bid) {
+            table::remove(&mut market.no_bids, price);
+            sorted_remove(&mut market.no_bid_prices, price);
         } else {
-            0
+            table::remove(&mut market.no_asks, price);
+            sorted_remove(&mut market.no_ask_prices, price);
         };
+        j = j + 1;
+    };
+}
 
-        // Decrement supply tracking
-        if (position.is_yes) {
-            market.yes_supply = market.yes_supply - position.shares;
+/// Insert a resting bid order. Joins NUSDC into pool; updates sorted index.
+/// Asserts price-level cap if creating a new level.
+fun insert_resting_bid_internal(
+    market: &mut Market,
+    is_yes: bool,
+    price: u64,
+    locked_nusdc: u64,
+    shares: u64,
+    owner: address,
+    payment: Balance<NUSDC>,
+    timestamp: u64,
+    _ctx: &mut TxContext,
+) {
+    let order_id = market.next_order_id;
+    market.next_order_id = market.next_order_id + 1;
+    let market_id = object::id(market);
+
+    let order = Order {
+        order_id,
+        owner,
+        is_yes,
+        is_bid: true,
+        price,
+        amount: shares,
+        locked_nusdc,
+        cost_basis: 0,
+        timestamp,
+    };
+
+    balance::join(&mut market.collateral_pool, payment);
+
+    let prices_idx = if (is_yes) { &mut market.yes_bid_prices } else { &mut market.no_bid_prices };
+    let creating_new_level = !vector::contains(prices_idx, &price);
+    if (creating_new_level) {
+        assert!(vector::length(prices_idx) < MAX_PRICE_LEVELS_PER_SIDE, ECapacityExceeded);
+        sorted_insert_desc(prices_idx, price);
+    };
+
+    let bids_table = if (is_yes) { &mut market.yes_bids } else { &mut market.no_bids };
+    if (!table::contains(bids_table, price)) {
+        table::add(bids_table, price, vector::empty());
+    };
+    let bucket = table::borrow_mut(bids_table, price);
+    vector::push_back(bucket, order);
+
+    event::emit(OrderPlaced {
+        market_id, order_id, user: owner,
+        is_yes, is_bid: true, price, amount: shares,
+        locked_nusdc, cost_basis: 0,
+    });
+}
+
+/// Insert a resting ask order. Records cost_basis preserved from caller's Position.
+fun insert_resting_ask_internal(
+    market: &mut Market,
+    is_yes: bool,
+    price: u64,
+    shares: u64,
+    cost_basis: u64,
+    owner: address,
+    timestamp: u64,
+    _ctx: &mut TxContext,
+) {
+    let order_id = market.next_order_id;
+    market.next_order_id = market.next_order_id + 1;
+    let market_id = object::id(market);
+
+    let order = Order {
+        order_id,
+        owner,
+        is_yes,
+        is_bid: false,
+        price,
+        amount: shares,
+        locked_nusdc: 0,
+        cost_basis,
+        timestamp,
+    };
+
+    let prices_idx = if (is_yes) { &mut market.yes_ask_prices } else { &mut market.no_ask_prices };
+    let creating_new_level = !vector::contains(prices_idx, &price);
+    if (creating_new_level) {
+        assert!(vector::length(prices_idx) < MAX_PRICE_LEVELS_PER_SIDE, ECapacityExceeded);
+        sorted_insert_asc(prices_idx, price);
+    };
+
+    let asks_table = if (is_yes) { &mut market.yes_asks } else { &mut market.no_asks };
+    if (!table::contains(asks_table, price)) {
+        table::add(asks_table, price, vector::empty());
+    };
+    let bucket = table::borrow_mut(asks_table, price);
+    vector::push_back(bucket, order);
+
+    event::emit(OrderPlaced {
+        market_id, order_id, user: owner,
+        is_yes, is_bid: false, price, amount: shares,
+        locked_nusdc: 0, cost_basis,
+    });
+}
+
+/// Remove an order from the book. Validates owner. Cleans up empty level (Table +
+/// sorted index) atomically. Returns (locked_nusdc, shares, cost_basis) of removed.
+fun remove_order_from_book(
+    market: &mut Market,
+    is_yes: bool,
+    is_bid: bool,
+    price: u64,
+    order_id: u64,
+    expected_owner: address,
+): (u64, u64, u64) {
+    let level_emptied: bool;
+    let removed_locked_nusdc: u64;
+    let removed_shares: u64;
+    let removed_cost_basis: u64;
+    {
+        let table_ref = if (is_yes && is_bid) { &mut market.yes_bids }
+                       else if (is_yes && !is_bid) { &mut market.yes_asks }
+                       else if (!is_yes && is_bid) { &mut market.no_bids }
+                       else { &mut market.no_asks };
+
+        assert!(table::contains(table_ref, price), EOrderNotFound);
+        let orders = table::borrow_mut(table_ref, price);
+
+        let len = vector::length(orders);
+        let mut found_idx: u64 = len;
+        let mut k = 0;
+        while (k < len) {
+            let o = vector::borrow(orders, k);
+            if (o.order_id == order_id) {
+                assert!(o.owner == expected_owner, ENotOrderOwner);
+                found_idx = k;
+                break
+            };
+            k = k + 1;
+        };
+        assert!(found_idx < len, EOrderNotFound);
+
+        let removed = vector::remove(orders, found_idx);
+        removed_locked_nusdc = removed.locked_nusdc;
+        removed_shares = removed.amount;
+        removed_cost_basis = removed.cost_basis;
+        level_emptied = vector::is_empty(orders);
+    };
+
+    if (level_emptied) {
+        if (is_yes && is_bid) {
+            table::remove(&mut market.yes_bids, price);
+            sorted_remove(&mut market.yes_bid_prices, price);
+        } else if (is_yes && !is_bid) {
+            table::remove(&mut market.yes_asks, price);
+            sorted_remove(&mut market.yes_ask_prices, price);
+        } else if (!is_yes && is_bid) {
+            table::remove(&mut market.no_bids, price);
+            sorted_remove(&mut market.no_bid_prices, price);
         } else {
-            market.no_supply = market.no_supply - position.shares;
+            table::remove(&mut market.no_asks, price);
+            sorted_remove(&mut market.no_ask_prices, price);
         };
+    };
 
-        // Destroy position
-        let Position { id, market_id: _, is_yes: _, shares, cost_basis: _ } = position;
-        object::delete(id);
+    (removed_locked_nusdc, removed_shares, removed_cost_basis)
+}
 
-        if (refund_amount > 0) {
-            let refund_balance = balance::split(&mut market.collateral_pool, refund_amount);
-            let refund_coin = coin::from_balance(refund_balance, ctx);
-            let sender = tx_context::sender(ctx);
+// ===== View Functions =====
 
-            event::emit(CancelledRefundClaimed {
-                market_id: object::id(market),
-                user: sender,
-                shares,
-                refund: refund_amount,
-            });
+public fun get_market_status(market: &Market): u8 { market.status }
 
-            transfer::public_transfer(refund_coin, sender);
+public fun get_market_outcome(market: &Market): Option<bool> { market.outcome }
+
+public fun get_yes_supply(market: &Market): u64 { market.yes_supply }
+public fun get_no_supply(market: &Market): u64 { market.no_supply }
+
+public fun get_collateral_balance(market: &Market): u64 { balance::value(&market.collateral_pool) }
+
+public fun get_total_volume(market: &Market): u64 { market.total_volume }
+
+public fun get_position_shares(position: &Position): u64 { position.shares }
+public fun is_position_yes(position: &Position): bool { position.is_yes }
+public fun get_position_market(position: &Position): ID { position.market_id }
+public fun get_position_cost_basis(position: &Position): u64 { position.cost_basis }
+
+// ===== Test-Only =====
+
+#[test_only]
+public fun init_for_testing(ctx: &mut TxContext) {
+    init(ctx)
+}
+
+#[test_only]
+public fun compute_locked_bids(market: &Market): u64 {
+    let mut total: u64 = 0;
+    let mut sides = vector::empty<bool>();
+    vector::push_back(&mut sides, true);
+    vector::push_back(&mut sides, false);
+
+    let mut s = 0;
+    while (s < 2) {
+        let is_yes = *vector::borrow(&sides, s);
+        let prices = if (is_yes) { &market.yes_bid_prices } else { &market.no_bid_prices };
+        let table_ref = if (is_yes) { &market.yes_bids } else { &market.no_bids };
+        let plen = vector::length(prices);
+        let mut i = 0;
+        while (i < plen) {
+            let price = *vector::borrow(prices, i);
+            if (table::contains(table_ref, price)) {
+                let bucket = table::borrow(table_ref, price);
+                let blen = vector::length(bucket);
+                let mut j = 0;
+                while (j < blen) {
+                    let o = vector::borrow(bucket, j);
+                    total = total + o.locked_nusdc;
+                    j = j + 1;
+                };
+            };
+            i = i + 1;
         };
-    }
-
-    /// Burn losing positions (optional, for cleanup)
-    public entry fun burn_losing_position(
-        market: &Market,
-        position: Position,
-    ) {
-        assert!(market.status == STATUS_RESOLVED, EMarketNotResolved);
-        assert!(position.market_id == object::id(market), EWrongOutcome);
-
-        let winning_outcome = *option::borrow(&market.outcome);
-        assert!(position.is_yes != winning_outcome, EWrongOutcome); // Must be losing position
-
-        let Position { id, market_id: _, is_yes: _, shares: _, cost_basis: _ } = position;
-        object::delete(id);
-    }
-
-    // ===== View Functions =====
-
-    public fun get_market_status(market: &Market): u8 {
-        market.status
-    }
-
-    public fun get_market_outcome(market: &Market): Option<bool> {
-        market.outcome
-    }
-
-    public fun get_yes_supply(market: &Market): u64 {
-        market.yes_supply
-    }
-
-    public fun get_no_supply(market: &Market): u64 {
-        market.no_supply
-    }
-
-    public fun get_collateral_balance(market: &Market): u64 {
-        balance::value(&market.collateral_pool)
-    }
-
-    public fun get_position_shares(position: &Position): u64 {
-        position.shares
-    }
-
-    public fun is_position_yes(position: &Position): bool {
-        position.is_yes
-    }
-
-    // ===== Test Functions =====
-    #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx)
-    }
-
-    // ===== Unit Tests =====
-
-    #[test]
-    fun test_pro_rata_refund_math() {
-        // Pool = 1000 NUSDC, total_shares = 200 (100 YES + 100 NO)
-        // User has 50 shares
-        let pool_balance: u128 = 1_000_000_000; // 1000 NUSDC
-        let total_shares: u128 = 200_000_000;    // 200 shares
-        let user_shares: u128 = 50_000_000;      // 50 shares
-
-        let refund = (user_shares * pool_balance / total_shares) as u64;
-        // 50/200 * 1000 = 250 NUSDC
-        assert!(refund == 250_000_000);
-    }
-
-    #[test]
-    fun test_pro_rata_refund_preserves_total() {
-        // Verify sequential claims preserve ratio (no over/under-payment)
-        let pool: u128 = 1_000_000;
-        let total: u128 = 300;
-
-        // User A: 100 shares
-        let refund_a = (100u128 * pool / total) as u64;
-        let pool_after_a = pool - (refund_a as u128);
-        let total_after_a = total - 100;
-
-        // User B: 100 shares (from remaining)
-        let refund_b = (100u128 * pool_after_a / total_after_a) as u64;
-        let pool_after_b = pool_after_a - (refund_b as u128);
-        let total_after_b = total_after_a - 100;
-
-        // User C: 100 shares (last)
-        let refund_c = (100u128 * pool_after_b / total_after_b) as u64;
-
-        // All should get equal amounts (within 1 unit rounding tolerance)
-        // Integer division may cause last claimer to get slightly different amount
-        let max_diff = 1u64;
-        let diff_ab = if (refund_a >= refund_b) { refund_a - refund_b } else { refund_b - refund_a };
-        let diff_bc = if (refund_b >= refund_c) { refund_b - refund_c } else { refund_c - refund_b };
-        assert!(diff_ab <= max_diff);
-        assert!(diff_bc <= max_diff);
-        // Total refunds should not exceed pool
-        assert!((refund_a as u128) + (refund_b as u128) + (refund_c as u128) <= pool);
-    }
-
-    #[test]
-    fun test_pro_rata_zero_shares() {
-        let pool_balance: u128 = 1_000_000;
-        let total_shares: u128 = 100;
-        let user_shares: u128 = 0;
-
-        let refund = if (total_shares > 0) {
-            (user_shares * pool_balance / total_shares) as u64
-        } else { 0 };
-        assert!(refund == 0);
-    }
-
-    #[test]
-    fun test_status_constants() {
-        assert!(STATUS_OPEN == 0);
-        assert!(STATUS_CLOSED == 1);
-        assert!(STATUS_RESOLVED == 2);
-        assert!(STATUS_CANCELLED == 3);
-    }
+        s = s + 1;
+    };
+    total
 }
