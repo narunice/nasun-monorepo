@@ -43,7 +43,6 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
 
     // Prediction
     VITE_PREDICTION_PACKAGE: () => config.prediction.packageId,
-    VITE_PREDICTION_GLOBAL_STATE: () => config.prediction.globalState,
     VITE_PREDICTION_ADMIN_CAP: () => config.prediction.adminCap,
     VITE_PREDICTION_RESOLVER_ADDRESS: () => config.admin,
 
