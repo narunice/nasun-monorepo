@@ -69,8 +69,9 @@
 | 카테고리 | 활동 내용 | 점수 유형 |
 | :--- | :--- | :--- |
 | `pado-dex` | DEX Swap 또는 주문 생성 | Base (1pt) |
-| `pado-lottery` | 로또 티켓 구매 | Base (1pt) |
-| `pado-games` | NumberMatch 등 게임 참여 | Base (1pt) |
+| `pado-lottery` | 로또 티켓 구매 (pado + gostop 통합 카운트) | Base (1pt) |
+| `pado-scratchcard` | 스크래치 카드 구매 (pado + gostop 통합 카운트) | Base (1pt) |
+| `pado-games` | NumberMatch 등 게임 참여 (pado + gostop 통합 카운트) | Base (1pt) |
 | `wallet-transfer` | 타 지갑으로 자산 전송 (Linked Wallet 포함) | Base (1pt) |
 | `governance` | 제안서 투표 (Vote) | Score (10pts) |
 | `daily-mission` | 특정 티어 달성 시 보너스 | Score (변동) |

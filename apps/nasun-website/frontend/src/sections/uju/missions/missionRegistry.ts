@@ -62,7 +62,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Buy Lottery Ticket',
       description: 'Pick 5 numbers and try your luck',
-      externalUrl: 'https://pado.finance/games/lottery',
+      externalUrl: 'https://gostop.app/lottery',
     },
     {
       id: 'pado-scratchcard',
@@ -71,7 +71,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Play Scratch Card',
       description: 'Scratch and win instant prizes',
-      externalUrl: 'https://pado.finance/games/scratch',
+      externalUrl: 'https://gostop.app/scratch',
     },
     {
       id: 'pado-games',
@@ -80,7 +80,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Play Number Match',
       description: 'Pick numbers for a quick game',
-      externalUrl: 'https://pado.finance/games/numbermatch',
+      externalUrl: 'https://gostop.app/numbermatch',
     },
   ],
   jupiter: [
