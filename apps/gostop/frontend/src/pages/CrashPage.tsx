@@ -202,7 +202,12 @@ export default function CrashPage() {
 
       <div className="space-y-6 min-w-0">
         <CrashGraph
-          state={state}
+          // Treat BETTING-but-expired as FLYING for the graph: useCrash arms a
+          // provisional anchor at bettingEndsAt so the rocket trajectory is
+          // already animating during the gap before betting_closed arrives.
+          state={
+            state === "BETTING" && bettingWindowExpired ? "FLYING" : state
+          }
           liveMultiplierBps={crash.liveMultiplierBps}
           crashedCrashPoint={
             state === "RESOLVED"
@@ -214,7 +219,11 @@ export default function CrashPage() {
         />
 
         <div className="text-center">
-          {state === "FLYING" ? (
+          {state === "FLYING" || (state === "BETTING" && bettingWindowExpired) ? (
+            // bettingWindowExpired covers the gap between countdown=0 and the
+            // betting_closed WS event arriving (~500-1500ms). useCrash arms a
+            // provisional anchor on bettingEndsAt during this window so the
+            // rocket animates from 1.00x without a perceptible pause.
             <span
               className={`text-4xl sm:text-5xl font-bold ${multiplierColor}`}
             >
@@ -222,7 +231,16 @@ export default function CrashPage() {
             </span>
           ) : state === "CRASHED" || state === "RESOLVED" ? (
             <div className="space-y-1">
-              <div className="text-4xl sm:text-5xl font-bold text-red-400">
+              <div
+                className={`text-4xl sm:text-5xl font-bold ${
+                  // If the user already cashed out (hasCashedOut), this round
+                  // was a WIN for them regardless of where the rocket finally
+                  // crashed. Showing the crash multiplier in red would imply a
+                  // loss; switch to a neutral slate so the prominent "Cashed
+                  // out at X.XXx" banner below carries the win signal.
+                  crash.hasCashedOut ? "text-slate-400" : "text-red-400"
+                }`}
+              >
                 {/* recentRounds[0] is only prepended on RESOLVED, so during
                   CRASHED it still points to the previous round. The live
                   'crashed' event carries crashPointBps and useCrash snaps
@@ -268,8 +286,17 @@ export default function CrashPage() {
               Cashout invalidated by chain
             </div>
           ) : crash.hasCashedOut ? (
-            <div className="text-center text-green-400 font-semibold py-4">
-              Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}
+            // The crash multiplier above is rendered in slate (neutral) when
+            // the user has cashed out, so this banner is the primary win
+            // signal. Sized large + drop shadow to match the gravity of a
+            // confirmed payout.
+            <div className="text-center py-5 sm:py-6">
+              <div className="text-xs sm:text-sm uppercase tracking-[0.2em] text-green-300/80 mb-1">
+                Cashed out
+              </div>
+              <div className="text-4xl sm:text-5xl font-extrabold text-green-400 drop-shadow-[0_0_18px_rgba(74,222,128,0.45)]">
+                {formatMultiplier(crash.myCashoutBps ?? 10_000)}
+              </div>
             </div>
           ) : crash.hasBetThisRound &&
             (state === "CRASHED" || state === "RESOLVED") ? (

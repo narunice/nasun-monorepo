@@ -94,6 +94,21 @@ export function useCrash(): UseCrashResult {
   // Active crash-snap tween: eases the displayed multiplier from the latency-
   // induced overshoot down to the true crashPointBps after the 'crashed' event.
   const crashSnapRef = useRef<{ from: number; to: number; startedAt: number } | null>(null)
+  // Generic transition tween: smoothly bridges the displayed multiplier
+  // between two anchors. Used when the provisional bettingEndsAt anchor is
+  // replaced by the real on-chain flying_started_at (real is typically
+  // 500-700ms later, so the curve ticks slightly LOWER for the new anchor;
+  // the tween eases the small backstep instead of snapping the rocket).
+  const transitionTweenRef = useRef<{ from: number; startedAt: number; durationMs: number } | null>(null)
+
+  // Provisional anchor: bettingEndsAt of the current round. Used to start
+  // the rocket launch animation the instant the countdown hits 0s, so the
+  // user does not perceive a 500-1500ms dead time between countdown=0 and
+  // the betting_closed WS event arrival. Replaced by the real on-chain
+  // anchor (flyingStartedAtRef) when betting_closed arrives. Cashout
+  // submission still requires the real anchor (round must be FLYING
+  // on-chain) so this is display-only.
+  const bettingEndsAtRef = useRef<number | null>(null)
 
   // The displayed multiplier lags real elapsed time by this much so the value
   // shown is the same value submitted on cash_out (WYSIWYG). Absorbs residual
@@ -101,6 +116,7 @@ export function useCrash(): UseCrashResult {
   // mult_bps <= base * 1.03 always passes.
   const DISPLAY_LAG_MS = 250
   const CRASH_SNAP_MS = 250
+  const ANCHOR_TRANSITION_MS = 400
 
   const hasCashedOut = myCashoutBps !== null
 
@@ -113,9 +129,32 @@ export function useCrash(): UseCrashResult {
       setLiveMultiplierBps(value)
     }
     function tick() {
-      if (flyingStartedAtRef.current !== null) {
-        const elapsed = Date.now() + serverSkewMsRef.current - flyingStartedAtRef.current - DISPLAY_LAG_MS
-        setLive(elapsed > 0 ? multiplierAtBps(elapsed) : 10_000)
+      // Pick active anchor: real on-chain anchor preferred, provisional
+      // bettingEndsAt as fallback once the countdown has expired.
+      let anchor: number | null = flyingStartedAtRef.current
+      if (anchor === null) {
+        const bea = bettingEndsAtRef.current
+        const serverNow = Date.now() + serverSkewMsRef.current
+        if (bea !== null && serverNow >= bea) {
+          anchor = bea
+        }
+      }
+
+      if (anchor !== null) {
+        const elapsed = Date.now() + serverSkewMsRef.current - anchor - DISPLAY_LAG_MS
+        const trueMult = elapsed > 0 ? multiplierAtBps(elapsed) : 10_000
+        if (transitionTweenRef.current) {
+          const { from, startedAt, durationMs } = transitionTweenRef.current
+          const t = Math.min(1, (Date.now() - startedAt) / durationMs)
+          const eased = t * (2 - t) // ease-out quad
+          // Always tween toward trueMult. After the tween, the regular
+          // anchor-based curve takes over.
+          const tweened = Math.round(from + (trueMult - from) * eased)
+          setLive(tweened)
+          if (t >= 1) transitionTweenRef.current = null
+        } else {
+          setLive(trueMult)
+        }
       } else if (crashSnapRef.current) {
         const { from, to, startedAt } = crashSnapRef.current
         const t = Math.min(1, (Date.now() - startedAt) / CRASH_SNAP_MS)
@@ -144,9 +183,17 @@ export function useCrash(): UseCrashResult {
         // (e.g. "frozen 9x" while the actual round crashed at 2x).
         const isFlying = event.state === 'FLYING'
         flyingStartedAtRef.current = isFlying ? (event.flyingStartedAt ?? null) : null
+        // Capture bettingEndsAt for the provisional-anchor launch animation.
+        // Only meaningful while the round is in BETTING; for other states a
+        // stale value would let the rAF tick a phantom multiplier.
+        bettingEndsAtRef.current = event.state === 'BETTING' ? (event.bettingEndsAt ?? null) : null
         // Cancel any half-finished snap tween from a previous round so we do
         // not animate to an outdated value when joining mid-state.
         crashSnapRef.current = null
+        // No transition tween on state_sync: the user is joining mid-round
+        // and should see the rocket where it actually is rather than a
+        // synthetic catch-up.
+        transitionTweenRef.current = null
         roundObjectIdRef.current = event.roundObjectId ?? null
         const newRoundId = event.roundId
         if (currentRoundIdRef.current !== newRoundId) {
@@ -186,7 +233,9 @@ export function useCrash(): UseCrashResult {
           stateVersionRef.current = s.stateVersion
           const isFlying = s.state === 'FLYING'
           flyingStartedAtRef.current = isFlying ? (s.flyingStartedAt ?? null) : null
+          bettingEndsAtRef.current = s.state === 'BETTING' ? (s.bettingEndsAt ?? null) : null
           crashSnapRef.current = null
+          transitionTweenRef.current = null
           roundObjectIdRef.current = s.roundObjectId ?? null
           if (currentRoundIdRef.current !== s.roundId) {
             currentRoundIdRef.current = s.roundId
@@ -213,7 +262,13 @@ export function useCrash(): UseCrashResult {
         cashOutInflightRef.current = false
         setPhase('idle')
         setLiveMultiplierBps(10_000)
+        liveMultiplierBpsRef.current = 10_000
         flyingStartedAtRef.current = null
+        // New round: arm the provisional anchor so countdown=0 triggers
+        // an immediate launch animation without waiting for betting_closed.
+        bettingEndsAtRef.current = event.bettingEndsAt
+        transitionTweenRef.current = null
+        crashSnapRef.current = null
         setRoundState((prev) => ({
           ...(prev ?? {} as CrashRoundState),
           state: 'BETTING',
@@ -228,7 +283,23 @@ export function useCrash(): UseCrashResult {
           serverTime: event.serverTime,
         }))
       } else if (event.type === 'betting_closed') {
+        // Switch from provisional (bettingEndsAt) to real on-chain anchor.
+        // The real anchor is typically 500-700ms LATER than bettingEndsAt
+        // (server's +200ms wait + Sui consensus), so the curve evaluated
+        // against the new anchor returns a slightly LOWER multiplier than
+        // the provisional anchor was showing. Capture the current displayed
+        // value so the transition tween eases the small backstep instead
+        // of snapping the rocket. Once the tween completes, the rAF reads
+        // straight off the real anchor and cashout submissions reflect the
+        // exact on-chain elapsed time.
+        const previousDisplayed = liveMultiplierBpsRef.current
         flyingStartedAtRef.current = event.flyingStartedAt
+        bettingEndsAtRef.current = null
+        transitionTweenRef.current = {
+          from: previousDisplayed,
+          startedAt: Date.now(),
+          durationMs: ANCHOR_TRANSITION_MS,
+        }
         setRoundState((prev) => prev ? { ...prev, state: 'FLYING', flyingStartedAt: event.flyingStartedAt, stateVersion: event.stateVersion } : prev)
       } else if (event.type === 'crashed') {
         // Stop the FLYING rAF branch and start a snap-down tween from the
@@ -236,6 +307,8 @@ export function useCrash(): UseCrashResult {
         // this the display would freeze above the true crash point until the
         // 'resolved' event arrives, then jump abruptly downward.
         flyingStartedAtRef.current = null
+        bettingEndsAtRef.current = null
+        transitionTweenRef.current = null
         crashSnapRef.current = {
           from: liveMultiplierBpsRef.current,
           to: event.crashPointBps,
