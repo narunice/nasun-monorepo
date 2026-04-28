@@ -16,8 +16,7 @@ const LIDO_STAKING_URL = "https://stake.lido.fi";
 const MARINADE_STAKING_URL = "https://marinade.finance";
 const JITO_STAKING_URL = "https://www.jito.network/staking/";
 const SANCTUM_STAKING_URL = "https://app.sanctum.so/lsts/bsol";
-const SUI_VALIDATORS_URL = "https://suiscan.xyz/testnet/validators";
-const SUI_APY_DISPLAY = "~3.5%";
+const SUI_VALIDATORS_URL = "https://suiscan.xyz/mainnet/validators";
 
 // Plan 1C selector: prefer registered SUI-shape address, fallback to signer if SUI-shape.
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
@@ -292,8 +291,7 @@ export function StakingCard() {
           <Row symbol="NSN" trailing={nasunTrailing} />
           <Row
             symbol="SUI"
-            network="Testnet"
-            apy={SUI_APY_DISPLAY}
+            network="Mainnet"
             trailing={suiTrailing}
           />
           <Row

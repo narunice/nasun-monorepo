@@ -1,16 +1,19 @@
-// Sui testnet read-only helpers. Plan v5: portfolio aggregator (no signing in uju).
-// Transaction-related constants and parsers were removed — staking actions now
-// deep-link to suiscan / Sui Wallet.
+// SUI mainnet read-only helpers. Plan v5+: portfolio aggregator, no signing in uju.
+// File name is historical (used to be testnet); contents are now mainnet for
+// consistency with ETH/SOL mainnet read-only display. Staking actions deep-link
+// to suiscan / Sui Wallet on mainnet.
 
-import { CHAINS, getMoveClient, formatBalance } from "@nasun/wallet";
+import { getMoveClient, formatBalance } from "@nasun/wallet";
 
-export const SUI_TESTNET_CHAIN_ID = "sui-testnet";
-export const SUI_TESTNET_RPC = CHAINS[SUI_TESTNET_CHAIN_ID].rpcUrl;
-export const SUI_TESTNET_FAUCET_URL = "https://faucet.testnet.sui.io";
+export const SUI_MAINNET_RPC = "https://fullnode.mainnet.sui.io:443";
+// chainId is just a cache key for getMoveClient; we use a synthetic id here
+// because @nasun/wallet's CHAINS only ships sui-testnet (testnet was the
+// canonical Sui entry while uju supported testnet staking).
+const SUI_CHAIN_KEY = "sui-mainnet";
 export const SUI_DECIMALS = 9;
 
-export function getSuiTestnetClient() {
-  return getMoveClient(SUI_TESTNET_RPC, SUI_TESTNET_CHAIN_ID);
+export function getSuiMainnetClient() {
+  return getMoveClient(SUI_MAINNET_RPC, SUI_CHAIN_KEY);
 }
 
 export interface SuiValidator {
@@ -18,8 +21,8 @@ export interface SuiValidator {
   name: string;
   description: string;
   imageUrl: string;
-  commissionRate: number; // 0..1
-  apy: number;            // 0..1 (e.g. 0.035 = 3.5%)
+  commissionRate: number;
+  apy: number;
   stakingPoolSuiBalance: bigint;
 }
 
@@ -31,16 +34,14 @@ export interface SuiStake {
   status: "Active" | "Pending" | "Unstaked";
 }
 
-export async function fetchSuiTestnetValidators(): Promise<SuiValidator[]> {
-  const client = getSuiTestnetClient();
+export async function fetchSuiValidators(): Promise<SuiValidator[]> {
+  const client = getSuiMainnetClient();
   const [systemState, validatorsApy] = await Promise.all([
     client.getLatestSuiSystemState(),
     client.getValidatorsApy(),
   ]);
-
   const apyMap = new Map<string, number>();
   for (const a of validatorsApy.apys) apyMap.set(a.address, a.apy);
-
   return systemState.activeValidators
     .map((v) => ({
       address: v.suiAddress,
@@ -54,10 +55,9 @@ export async function fetchSuiTestnetValidators(): Promise<SuiValidator[]> {
     .sort((a, b) => b.apy - a.apy);
 }
 
-export async function fetchSuiTestnetStakes(address: string): Promise<SuiStake[]> {
-  const client = getSuiTestnetClient();
+export async function fetchSuiStakes(address: string): Promise<SuiStake[]> {
+  const client = getSuiMainnetClient();
   const groups = await client.getStakes({ owner: address });
-
   const stakes: SuiStake[] = [];
   for (const g of groups) {
     for (const s of g.stakes) {
@@ -76,8 +76,8 @@ export async function fetchSuiTestnetStakes(address: string): Promise<SuiStake[]
   return stakes;
 }
 
-export async function fetchSuiTestnetBalance(address: string): Promise<bigint> {
-  const client = getSuiTestnetClient();
+export async function fetchSuiBalance(address: string): Promise<bigint> {
+  const client = getSuiMainnetClient();
   const { totalBalance } = await client.getBalance({ owner: address });
   return BigInt(totalBalance);
 }

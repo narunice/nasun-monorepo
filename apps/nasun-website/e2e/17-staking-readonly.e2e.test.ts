@@ -2,7 +2,7 @@
  * 17 — Multichain staking read-only paths.
  *
  * Validates the actual RPC responses our Phase 2/3 hooks consume:
- *   - SUI Testnet (Mysten public RPC)        → getLatestSuiSystemState, getValidatorsApy, getStakes, getBalance
+ *   - SUI Mainnet (Mysten public RPC)        → getLatestSuiSystemState, getValidatorsApy, getStakes, getBalance
  *   - SOL Mainnet (Solana Foundation public) → getBalance, getTokenAccountsByOwner (mint filter, jsonParsed)
  *   - ETH Mainnet (PublicNode)               → erc20 balanceOf for stETH/wstETH, wstETH stEthPerToken
  *
@@ -20,7 +20,7 @@ import { apiRequest } from './helpers';
 // RPC endpoints (mirror app code constants)
 // ────────────────────────────────────────────────────────────
 
-const SUI_TESTNET_RPC = 'https://fullnode.testnet.sui.io:443';
+const SUI_MAINNET_RPC = 'https://fullnode.mainnet.sui.io:443';
 const SOL_MAINNET_READ_RPC = 'https://api.mainnet-beta.solana.com';
 const ETH_MAINNET_RPC = 'https://ethereum-rpc.publicnode.com';
 
@@ -35,7 +35,7 @@ const BSOL_MINT  = 'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1';
 
 // Public test addresses (have known historic activity → good fixtures)
 const VITALIK_ETH = '0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045';
-// A Sui testnet zero address — guaranteed to exist in system state queries.
+// Sui zero address — guaranteed to exist in system state queries on any Sui network.
 const SUI_ZERO_ADDR = '0x0000000000000000000000000000000000000000000000000000000000000000';
 // Phantom team-owned SOL mainnet address — public, has SPL accounts.
 const SOL_KNOWN_ADDR = 'CFE3CkkqXCKsZQqAMS3PQYjgZRbtN3qV7XHmcimTcQXm';
@@ -69,19 +69,19 @@ async function isReachable(url: string): Promise<boolean> {
 }
 
 // ────────────────────────────────────────────────────────────
-// SUI Testnet RPC — used by useSuiTestnetStaking + SuiStakingPositionsModal
+// SUI Mainnet RPC — used by useSui*Staking hooks + SuiStakingPositionsModal
 // ────────────────────────────────────────────────────────────
 
-describe('17 — SUI Testnet RPC (Mysten public)', () => {
+describe('17 — SUI Mainnet RPC (Mysten public)', () => {
   test('endpoint reachable', async () => {
-    const ok = await isReachable(SUI_TESTNET_RPC);
+    const ok = await isReachable(SUI_MAINNET_RPC);
     expect(ok).toBe(true);
   });
 
   test('suix_getLatestSuiSystemState returns active validators', async () => {
     const result = await jsonRpc<{
       activeValidators: Array<{ suiAddress: string; name: string; commissionRate: string }>;
-    }>(SUI_TESTNET_RPC, 'suix_getLatestSuiSystemState', []);
+    }>(SUI_MAINNET_RPC, 'suix_getLatestSuiSystemState', []);
     expect(Array.isArray(result.activeValidators)).toBe(true);
     expect(result.activeValidators.length).toBeGreaterThan(0);
     const v = result.activeValidators[0];
@@ -92,7 +92,7 @@ describe('17 — SUI Testnet RPC (Mysten public)', () => {
 
   test('suix_getValidatorsApy returns apys array', async () => {
     const result = await jsonRpc<{ apys: Array<{ address: string; apy: number }> }>(
-      SUI_TESTNET_RPC,
+      SUI_MAINNET_RPC,
       'suix_getValidatorsApy',
       [],
     );
@@ -103,20 +103,20 @@ describe('17 — SUI Testnet RPC (Mysten public)', () => {
   });
 
   test('suix_getStakes returns array (empty for zero addr is fine)', async () => {
-    const result = await jsonRpc(SUI_TESTNET_RPC, 'suix_getStakes', [SUI_ZERO_ADDR]);
+    const result = await jsonRpc(SUI_MAINNET_RPC, 'suix_getStakes', [SUI_ZERO_ADDR]);
     // Zero address may or may not have stakes; either way result is an array.
     expect(Array.isArray(result)).toBe(true);
   });
 
   test('suix_getBalance returns shape { totalBalance, coinObjectCount }', async () => {
     const result = await jsonRpc<{ totalBalance: string; coinObjectCount: number }>(
-      SUI_TESTNET_RPC,
+      SUI_MAINNET_RPC,
       'suix_getBalance',
       [SUI_ZERO_ADDR],
     );
     expect(typeof result.totalBalance).toBe('string');
     expect(typeof result.coinObjectCount).toBe('number');
-    // totalBalance must parse to BigInt without throwing (matches fetchSuiTestnetBalance)
+    // totalBalance must parse to BigInt without throwing (matches fetchSuiBalance)
     expect(() => BigInt(result.totalBalance)).not.toThrow();
   });
 });

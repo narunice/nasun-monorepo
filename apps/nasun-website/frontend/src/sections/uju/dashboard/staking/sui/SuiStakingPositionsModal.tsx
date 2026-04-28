@@ -9,13 +9,12 @@ import {
 import {
   formatSui,
   shortValidator,
-  SUI_TESTNET_FAUCET_URL,
   type SuiValidator,
 } from "./suiTestnet";
 
-const SUI_VALIDATORS_URL = "https://suiscan.xyz/testnet/validators";
-const SUI_STAKE_OBJECT_URL = "https://suiscan.xyz/testnet/object";
-const SUI_ADDRESS_URL = "https://suiscan.xyz/testnet/account";
+const SUI_VALIDATORS_URL = "https://suiscan.xyz/mainnet/validators";
+const SUI_STAKE_OBJECT_URL = "https://suiscan.xyz/mainnet/object";
+const SUI_ADDRESS_URL = "https://suiscan.xyz/mainnet/account";
 
 interface SuiStakingPositionsModalProps {
   open: boolean;
@@ -25,7 +24,7 @@ interface SuiStakingPositionsModalProps {
 }
 
 /**
- * Read-only positions modal for Sui Testnet stakes.
+ * Read-only positions modal for Sui mainnet stakes.
  * No transaction signing — staking actions deep-link to suiscan/Sui Wallet.
  * Works equally for zkLogin / mnemonic / passkey users (no signature required).
  */
@@ -57,7 +56,7 @@ export function SuiStakingPositionsModal({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="dark bg-uju-card border-uju-border overflow-y-auto max-h-[85vh] p-5 sm:p-6">
         <DialogTitle className="!text-white text-lg sm:text-xl font-semibold mb-1">
-          SUI Staking <span className="text-uju-secondary text-base font-normal">· Testnet</span>
+          SUI Staking <span className="text-uju-secondary text-base font-normal">· Mainnet</span>
         </DialogTitle>
         <p className="text-sm text-uju-secondary mb-4">
           Showing positions for{" "}
@@ -74,21 +73,11 @@ export function SuiStakingPositionsModal({
         <div className="space-y-5">
           {/* Balance + faucet */}
           <div className="rounded-xl bg-pado-2/10 border border-pado-2/30 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-uju-secondary">Available</p>
-                <p className="text-xl font-semibold text-white tabular-nums">
-                  {formatSui(balance ?? 0n)} SUI
-                </p>
-              </div>
-              <a
-                href={SUI_TESTNET_FAUCET_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-base font-medium text-pado-3 hover:text-pado-4 transition-colors"
-              >
-                Get test SUI ↗
-              </a>
+            <div>
+              <p className="text-sm text-uju-secondary">Available</p>
+              <p className="text-xl font-semibold text-white tabular-nums">
+                {formatSui(balance ?? 0n)} SUI
+              </p>
             </div>
           </div>
 
