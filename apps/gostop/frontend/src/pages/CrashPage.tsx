@@ -164,7 +164,7 @@ export default function CrashPage() {
         <header
           className="panel bg-[radial-gradient(circle_at_top_left,rgba(212,175,55,0.12),transparent_55%)]
             flex items-center gap-4 sm:gap-5 p-4 sm:p-6
-            lg:flex-col lg:items-stretch lg:gap-0 lg:p-0 lg:overflow-hidden"
+            lg:flex-col lg:items-stretch lg:gap-0 lg:p-0"
         >
           <img
             src={crashThumb}
@@ -183,6 +183,7 @@ export default function CrashPage() {
             <p className="text-sm lg:text-base text-neutral-200 mt-2 italic">
               Go or stop. One decision, one multiplier.
             </p>
+            <FeaturePreviewTag />
           </div>
         </header>
       </aside>
@@ -532,6 +533,45 @@ function BetSlider({
         <span>{min} NUSDC</span>
         <span>{max} NUSDC</span>
       </div>
+    </div>
+  );
+}
+
+function FeaturePreviewTag() {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    function onDocClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+  return (
+    <div ref={wrapRef} className="mt-3 relative inline-flex items-center gap-1.5">
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border border-amber-400/40 bg-amber-950/30 text-amber-300/90">
+        Experimental
+      </span>
+      <button
+        type="button"
+        aria-label="About this experimental feature"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="w-5 h-5 inline-flex items-center justify-center rounded-full border border-amber-400/40 text-amber-300/90 text-[11px] font-semibold leading-none hover:border-amber-300 hover:text-amber-200 transition"
+      >
+        i
+      </button>
+      {open && (
+        <div
+          role="tooltip"
+          className="absolute left-0 top-full mt-2 z-20 w-64 panel p-3 text-sm leading-relaxed text-neutral-200 shadow-xl"
+        >
+          Crash is still in active testing. You may run into rough edges, and we appreciate your patience while we polish things up.
+        </div>
+      )}
     </div>
   );
 }
