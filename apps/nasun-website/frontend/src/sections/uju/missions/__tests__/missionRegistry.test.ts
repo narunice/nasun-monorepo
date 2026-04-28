@@ -77,9 +77,9 @@ describe('APP_MISSION_MAP - pado', () => {
     expect(m.points).toBe(2);
   });
 
-  it('all pado missions have pado.finance externalUrl', () => {
+  it('pado missions point to pado.finance (DEX) or gostop.app (games)', () => {
     for (const m of padoMissions) {
-      expect(m.externalUrl).toMatch(/^https:\/\/pado\.finance/);
+      expect(m.externalUrl).toMatch(/^https:\/\/(pado\.finance|gostop\.app)/);
     }
   });
 
