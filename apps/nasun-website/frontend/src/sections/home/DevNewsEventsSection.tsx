@@ -10,6 +10,8 @@ import {
   stripHtmlTags,
   decodeHtmlEntities,
 } from "../../utils/wordpressContent";
+import NewsGoStopMobile from "../../assets/images/News-GoStop-Mobile.webp";
+import NewsLeaderboardMobile from "../../assets/images/News-Leaderboard-Mobile.webp";
 
 const CONTENT_MAX_WIDTH = "max-w-[1440px]";
 
@@ -18,6 +20,8 @@ const CONTENT_MAX_WIDTH = "max-w-[1440px]";
 const MOBILE_IMAGE_OVERRIDES: Record<string, string> = {
   "nasun-is-building-pado-prediction-markets-submit-your-ideas-now-and-earn-points":
     "/Predictions-Submit-Ideas-Taroka-Mobile.png",
+  "nasun-launches-gostop-a-standalone-crypto-gaming-platform": NewsGoStopMobile,
+  "nasun-defi-and-ecosystem-leaderboards-launch-today": NewsLeaderboardMobile,
 };
 
 function DevNewsEventsSection() {
@@ -27,7 +31,7 @@ function DevNewsEventsSection() {
 
   const { posts, loading, error, refetch } = usePosts(
     [WP_CATEGORIES.NEWS, WP_CATEGORIES.EVENTS],
-    3,
+    4,
   );
 
   const postList: Post[] = Array.isArray(posts) ? posts : [];
@@ -121,7 +125,7 @@ function DevNewsEventsSection() {
               return (
                 <div key={post.id} className="outline-none">
                   <div className="w-full flex justify-center overflow-hidden">
-                    <div className="relative w-full min-h-[50vh] md:min-h-[60vh] max-h-[65vh] aspect-[4/3] md:aspect-[2/1]">
+                    <div className="relative w-full md:min-h-[60vh] md:max-h-[65vh] aspect-square md:aspect-[2/1]">
                       {imageUrl ? (
                         <picture>
                           {mobileOverride && (
