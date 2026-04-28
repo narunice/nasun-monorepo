@@ -1,34 +1,58 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress, CHAINS } from "@nasun/wallet";
+import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress } from "@nasun/wallet";
 import { useBalance as useEthBalance } from "wagmi";
 import { mainnet } from "wagmi/chains";
 import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE } from "@/lib/solana";
 import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
-import { UjuCard, UjuBadge, UjuSectionHeader } from "../shared";
+import { UjuCard, UjuBadge, UjuButton, UjuSectionHeader } from "../shared";
 import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
 import {
   useSolAddressForIdentity,
   useSolAddressStore,
 } from "../stores/solAddressStore";
 
-const SUI_TESTNET_RPC = CHAINS["sui-testnet"].rpcUrl;
+// Plan v5+: read-only mainnet for all external chains. SUI mainnet RPC for
+// balance display (matches StakingCard's useSuiTestnetStakes which is now also
+// mainnet — file/hook names are historical, see staking/sui/suiTestnet.ts).
+const SUI_MAINNET_RPC = "https://fullnode.mainnet.sui.io:443";
 
 function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+// Map Phantom/Solflare adapter error messages to user-friendly UX. Wallet
+// extensions sometimes return raw rejection text ("User rejected", "disconnect",
+// error code 4001) that confuses users mid-flow.
+function friendlyWalletError(msg: string | null): string | null {
+  if (!msg) return null;
+  const m = msg.toLowerCase();
+  if (m.includes("reject") || m.includes("denied") || m.includes("4001")) {
+    return "Connection cancelled.";
+  }
+  if (m.includes("disconnect") || m.includes("locked")) {
+    return "Wallet is locked or disconnected. Unlock the extension and try again.";
+  }
+  if (m.includes("not installed")) {
+    return msg; // adapter already produces a clear message
+  }
+  if (m.includes("invalid")) {
+    return msg;
+  }
+  return `Connection failed: ${msg}`;
 }
 
 function NetworkBadge({ label }: { label: string }) {
   return <UjuBadge tone="violet">{label}</UjuBadge>;
 }
 
-function useSuiTestnetBalance(address: string | undefined) {
+function useSuiMainnetBalance(address: string | undefined) {
   return useQuery({
-    queryKey: ["balance", "sui-testnet", address],
+    queryKey: ["balance", "sui-mainnet", address],
     queryFn: async () => {
       if (!address || !isValidAddress(address)) throw new Error("Invalid SUI address");
-      const client = getMoveClient(SUI_TESTNET_RPC, "sui-testnet");
+      const client = getMoveClient(SUI_MAINNET_RPC, "sui-mainnet");
       const { totalBalance } = await client.getBalance({ owner: address });
       const mist = BigInt(totalBalance);
       const sui = mist / 1_000_000_000n;
@@ -37,11 +61,11 @@ function useSuiTestnetBalance(address: string | undefined) {
       return `${sui}.${dec}`;
     },
     enabled: !!address,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: 0,
+    retry: 1,
   });
 }
 
@@ -90,7 +114,7 @@ export function WalletBalanceCard() {
   const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: mainnet.id });
 
   const suiAddress = account?.address ?? zkState?.address;
-  const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiTestnetBalance(suiAddress);
+  const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiMainnetBalance(suiAddress);
 
   const identityId = user?.identityId ?? undefined;
 
@@ -191,7 +215,7 @@ export function WalletBalanceCard() {
         <li className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base text-uju-secondary">SUI</span>
-            <NetworkBadge label="Testnet" />
+            <NetworkBadge label="Mainnet" />
           </div>
           {suiAddress ? (
             <span className="text-base font-medium text-uju-primary tabular-nums">
@@ -222,7 +246,16 @@ export function WalletBalanceCard() {
                 : shortenAddress(ethAddress)}
             </span>
           ) : (
-            <span className="text-base text-uju-secondary">Not connected</span>
+            // Linking MetaMask runs through the canonical my-account flow
+            // (challenge → ecrecover → registerWallet). Re-implementing it
+            // inline would duplicate proof-of-ownership logic, so we just
+            // navigate the user there.
+            <a
+              href="/my-account"
+              className="text-base font-medium text-pado-3 hover:text-pado-4 transition-colors"
+            >
+              Connect MetaMask ↗
+            </a>
           )}
         </li>
 
@@ -240,50 +273,61 @@ export function WalletBalanceCard() {
                     {solPending
                       ? "-"
                       : solFetchError
-                        ? <span className="text-uju-secondary">Error</span>
+                        ? <span className="text-uju-secondary">RPC error</span>
                         : `${solBalance} SOL`}
                   </span>
-                  <button
-                    onClick={connectedWallet ? handleWalletDisconnect : () => setSolEditing((v) => !v)}
-                    className="text-base text-uju-secondary hover:text-pado-3 transition-colors"
-                  >
-                    {connectedWallet ? "Disconnect" : (solEditing ? "Cancel" : "Edit")}
-                  </button>
-                </>
-              ) : installed.length > 0 ? (
-                <>
-                  {installed.includes("phantom") && (
-                    <button
-                      onClick={() => handleWalletConnect("phantom")}
-                      disabled={isConnecting || !identityId}
-                      className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                  {connectedWallet ? (
+                    <UjuButton variant="ghost" size="sm" onClick={handleWalletDisconnect}>
+                      Disconnect
+                    </UjuButton>
+                  ) : (
+                    <UjuButton
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSolEditing((v) => !v)}
                     >
-                      Phantom
-                    </button>
-                  )}
-                  {installed.includes("solflare") && (
-                    <button
-                      onClick={() => handleWalletConnect("solflare")}
-                      disabled={isConnecting || !identityId}
-                      className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
-                    >
-                      Solflare
-                    </button>
+                      {solEditing ? "Cancel" : "Edit"}
+                    </UjuButton>
                   )}
                 </>
               ) : (
-                <button
-                  onClick={() => setSolEditing((v) => !v)}
-                  disabled={!identityId}
-                  className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
-                >
-                  {solEditing ? "Cancel" : "Add"}
-                </button>
+                <>
+                  {installed.includes("phantom") && (
+                    <UjuButton
+                      variant="secondary"
+                      size="sm"
+                      disabled={isConnecting || !identityId}
+                      onClick={() => handleWalletConnect("phantom")}
+                    >
+                      Phantom
+                    </UjuButton>
+                  )}
+                  {installed.includes("solflare") && (
+                    <UjuButton
+                      variant="secondary"
+                      size="sm"
+                      disabled={isConnecting || !identityId}
+                      onClick={() => handleWalletConnect("solflare")}
+                    >
+                      Solflare
+                    </UjuButton>
+                  )}
+                  <UjuButton
+                    variant="ghost"
+                    size="sm"
+                    disabled={!identityId}
+                    onClick={() => setSolEditing((v) => !v)}
+                  >
+                    {solEditing ? "Cancel" : "Paste"}
+                  </UjuButton>
+                </>
               )}
             </div>
           </div>
           {walletError && !solEditing && (
-            <p className="text-base text-nasun-scarlet mt-1">{walletError}</p>
+            <p className="text-base text-nasun-scarlet mt-1">
+              {friendlyWalletError(walletError)}
+            </p>
           )}
           {solEditing && (
             <div className="mt-2">
@@ -295,15 +339,12 @@ export function WalletBalanceCard() {
                     setSolInput(e.target.value);
                     setSolError("");
                   }}
-                  placeholder="Enter Solana address"
+                  placeholder="Paste Solana address"
                   className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
                 />
-                <button
-                  onClick={handleSolSave}
-                  className="text-base px-3 py-1.5 rounded-lg border border-uju-border text-uju-secondary hover:text-uju-primary hover:border-pado-3 transition-colors"
-                >
+                <UjuButton variant="secondary" size="sm" onClick={handleSolSave}>
                   Save
-                </button>
+                </UjuButton>
               </div>
               {solError && (
                 <p className="text-base text-nasun-scarlet mt-1">{solError}</p>
