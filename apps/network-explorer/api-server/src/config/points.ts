@@ -147,6 +147,18 @@ const PKG = {
   numbermatch: stripHex(
     '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
   ),
+  // Gostop game contracts (apps/gostop/devnet-ids.json). Same Move event
+  // names as pado equivalents — mapped to the same categories so daily caps
+  // dedup across both products.
+  gostopLottery: stripHex(
+    '0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3',
+  ),
+  gostopScratchcard: stripHex(
+    '0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e',
+  ),
+  gostopNumbermatch: stripHex(
+    '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
+  ),
   tokens: stripHex(
     '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
   ),
@@ -219,6 +231,9 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.perp,
   PKG.scratchcard,
   PKG.numbermatch,
+  PKG.gostopLottery,
+  PKG.gostopScratchcard,
+  PKG.gostopNumbermatch,
   PKG.sui, // 0x3 Sui system (staking)
 ]);
 
@@ -255,6 +270,10 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.lottery, 'lottery', 'TicketPurchased', { category: 'pado-lottery', activityType: 'buy-ticket' }],
   [PKG.lottery, 'lottery', 'PrizeClaimed', { category: 'pado-lottery', activityType: 'claim-prize' }],
 
+  // Gostop Lottery (same category — daily cap dedups pado vs gostop)
+  [PKG.gostopLottery, 'lottery', 'TicketPurchased', { category: 'pado-lottery', activityType: 'buy-ticket' }],
+  [PKG.gostopLottery, 'lottery', 'PrizeClaimed', { category: 'pado-lottery', activityType: 'claim-prize' }],
+
   // Pado Perp
   [PKG.perp, 'perp', 'PositionOpened', { category: 'pado-perp', activityType: 'open-position' }],
   [PKG.perp, 'perp', 'PositionClosed', { category: 'pado-perp', activityType: 'close-position' }],
@@ -264,8 +283,14 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // Pado Scratchcard
   [PKG.scratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
 
+  // Gostop Scratchcard
+  [PKG.gostopScratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
+
   // Pado NumberMatch (Games)
   [PKG.numbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
+
+  // Gostop NumberMatch (Games)
+  [PKG.gostopNumbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],

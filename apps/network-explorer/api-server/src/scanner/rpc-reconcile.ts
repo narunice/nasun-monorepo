@@ -45,6 +45,10 @@ const PKG = {
   perp: '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
   scratchcard: '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
   numbermatch: '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
+  // Gostop game contracts (apps/gostop/devnet-ids.json)
+  gostopLottery: '0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3',
+  gostopScratchcard: '0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e',
+  gostopNumbermatch: '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
   lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
   baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
   baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
@@ -73,6 +77,9 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   // Lottery
   { moveEventType: `${PKG.lottery}::lottery::TicketPurchased`, category: 'pado-lottery', activityType: 'buy-ticket' },
   { moveEventType: `${PKG.lottery}::lottery::PrizeClaimed`, category: 'pado-lottery', activityType: 'claim-prize' },
+  // Gostop Lottery (same category as pado — daily cap dedups)
+  { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'pado-lottery', activityType: 'buy-ticket' },
+  { moveEventType: `${PKG.gostopLottery}::lottery::PrizeClaimed`, category: 'pado-lottery', activityType: 'claim-prize' },
   // Perp
   { moveEventType: `${PKG.perp}::perp::PositionOpened`, category: 'pado-perp', activityType: 'open-position' },
   { moveEventType: `${PKG.perp}::perp::PositionClosed`, category: 'pado-perp', activityType: 'close-position' },
@@ -80,8 +87,10 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.perp}::perp::MarginRemoved`, category: 'pado-perp', activityType: 'remove-margin' },
   // Scratchcard
   { moveEventType: `${PKG.scratchcard}::scratchcard::ScratchCardPurchased`, category: 'pado-scratchcard', activityType: 'scratchcard-purchase' },
+  { moveEventType: `${PKG.gostopScratchcard}::scratchcard::ScratchCardPurchased`, category: 'pado-scratchcard', activityType: 'scratchcard-purchase' },
   // NumberMatch (Games)
   { moveEventType: `${PKG.numbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
+  { moveEventType: `${PKG.gostopNumbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
   // Lending
   { moveEventType: `${PKG.lending}::lending::DepositEvent`, category: 'pado-lending', activityType: 'deposit' },
   { moveEventType: `${PKG.lending}::lending::WithdrawEvent`, category: 'pado-lending', activityType: 'withdraw' },
