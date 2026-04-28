@@ -18,6 +18,21 @@ export function isStaleObjectError(err: unknown): boolean {
 }
 
 /**
+ * Detect the case where an input object was deleted on-chain before the
+ * tx executed. In Crash this means the GameRound was finalized between
+ * tx build and submit. Not retriable: the object is gone for good.
+ */
+export function isInputObjectDeletedError(err: unknown): boolean {
+  const msg =
+    err instanceof Error ? err.message : typeof err === 'string' ? err : '';
+  if (!msg) return false;
+  return (
+    msg.includes('InputObjectDeleted') ||
+    msg.includes('ObjectDeleted')
+  );
+}
+
+/**
  * Run an async tx pipeline (fetch coins → build → sign → execute) with a
  * single retry on stale-object errors. The pipeline must be idempotent at
  * the application layer: only stale-version rejections trigger retry, so

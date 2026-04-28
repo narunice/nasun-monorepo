@@ -8,7 +8,7 @@ import { subscribeCrash } from './crash-ws'
 import { fetchCurrentRound } from './crash-client'
 import type { CrashRoundState } from './crash-client'
 import { buildPlaceBetTx, buildCashOutTx } from './transactions'
-import { withStaleObjectRetry } from '../../lib/sui-retry'
+import { withStaleObjectRetry, isInputObjectDeletedError } from '../../lib/sui-retry'
 
 export type CrashPhase = 'idle' | 'placing_bet' | 'cashing_out'
 
@@ -267,7 +267,11 @@ export function useCrash(): UseCrashResult {
       setHasBetThisRound(true)
       return true
     } catch (e) {
-      setError((e as Error).message)
+      if (isInputObjectDeletedError(e)) {
+        setError('Round ended before your bet landed. Your NUSDC was not charged. Wait a few seconds and try the next round.')
+      } else {
+        setError((e as Error).message)
+      }
       return false
     } finally {
       setPhase('idle')
@@ -285,7 +289,11 @@ export function useCrash(): UseCrashResult {
       return true
     } catch (e) {
       cashOutInflightRef.current = false
-      setError((e as Error).message)
+      if (isInputObjectDeletedError(e)) {
+        setError('Round crashed before your cashout reached the chain. Bet lost this round, no further action needed.')
+      } else {
+        setError((e as Error).message)
+      }
       return false
     } finally {
       setPhase('idle')
