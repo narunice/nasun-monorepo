@@ -15,6 +15,10 @@ use prediction::prediction_market::{
     place_sell_maker,
     place_buy_taker,
     cancel_order,
+    cancel_expired_market,
+    claim_resting_order_refund,
+    resolve_market,
+    claim_winnings,
     get_position_shares,
     is_position_yes,
     get_position_cost_basis,
@@ -22,6 +26,7 @@ use prediction::prediction_market::{
     get_no_supply,
     get_total_volume,
     get_collateral_balance,
+    get_market_status,
 };
 
 use sui::clock::{Self, Clock};
@@ -389,6 +394,149 @@ fun test_cancel_other_user_aborts() {
         );
         clock::destroy_for_testing(clock);
         ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// P0 #8: cancel_expired_market + claim_resting_order_refund (CANCELLED branch).
+/// Bid maker recovers locked_nusdc when market expires unresolved.
+#[test]
+fun test_cancelled_market_resting_bid_refund() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _market_id = setup_market(scenario);
+
+    // U1 places buy maker for 30 NUSDC at 5000.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 30 * NUSDC_UNIT);
+        place_buy_maker(&mut market, true, 5000, payment, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // Time advances past resolve_deadline (START + 7_200_000); use 10_000_000.
+    // Anyone calls cancel_expired_market.
+    ts::next_tx(scenario, USER2);
+    {
+        let mut market = take_market(scenario);
+        let mut clock = clock::create_for_testing(ts::ctx(scenario));
+        clock::set_for_testing(&mut clock, START_TIME_MS + RESOLVE_OFFSET_MS + 1_000);
+        cancel_expired_market(&mut market, &clock);
+        assert!(get_market_status(&market) == 3, 30); // STATUS_CANCELLED
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // U1 claims their resting bid refund.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        claim_resting_order_refund(
+            &mut market,
+            true,                                 // is_yes
+            true,                                 // is_bid
+            5000,                                 // price
+            1,                                    // order_id
+            ts::ctx(scenario),
+        );
+        // Pool drained.
+        assert!(get_collateral_balance(&market) == 0, 31);
+        ts::return_shared(market);
+    };
+
+    ts::next_tx(scenario, USER1);
+    {
+        let received = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        assert!(coin::value(&received) == 30 * NUSDC_UNIT, 32);
+        ts::return_to_sender(scenario, received);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// P0 #9: resolve_market + claim_resting_order_refund (RESOLVED branch).
+/// Bid maker recovers locked_nusdc; minter claims winnings on YES Position.
+/// This is the round-2-audit Critical C7 fix verification: resolved markets must NOT
+/// trap resting maker funds.
+#[test]
+fun test_resolved_market_resting_bid_refund_and_winnings() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _market_id = setup_market(scenario);
+
+    // U1 mints 100 NUSDC (will be the eventual winner of YES outcome).
+    user_mints(scenario, USER1, 100 * NUSDC_UNIT);
+
+    // U2 places resting bid for 30 NUSDC at 5000 (never filled).
+    ts::next_tx(scenario, USER2);
+    {
+        let mut market = take_market(scenario);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 30 * NUSDC_UNIT);
+        place_buy_maker(&mut market, true, 5000, payment, &clock, ts::ctx(scenario));
+        // Pool: 100 (U1 mint) + 30 (U2 bid locked) = 130.
+        assert!(get_collateral_balance(&market) == 130 * NUSDC_UNIT, 40);
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // Time advances past close_time but before resolve_deadline. Resolver calls
+    // resolve_market with outcome=YES.
+    ts::next_tx(scenario, RESOLVER);
+    {
+        let mut market = take_market(scenario);
+        let mut clock = clock::create_for_testing(ts::ctx(scenario));
+        clock::set_for_testing(&mut clock, START_TIME_MS + CLOSE_OFFSET_MS + 1_000);
+        resolve_market(&mut market, true, &clock, ts::ctx(scenario));
+        assert!(get_market_status(&market) == 2, 41); // STATUS_RESOLVED
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // U2 claims their resting bid refund (RESOLVED branch).
+    ts::next_tx(scenario, USER2);
+    {
+        let mut market = take_market(scenario);
+        claim_resting_order_refund(
+            &mut market, true, true, 5000, 1, ts::ctx(scenario),
+        );
+        // Pool: 130 - 30 = 100 (still backing winner claims).
+        assert!(get_collateral_balance(&market) == 100 * NUSDC_UNIT, 42);
+        ts::return_shared(market);
+    };
+
+    ts::next_tx(scenario, USER2);
+    {
+        let received = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        assert!(coin::value(&received) == 30 * NUSDC_UNIT, 43);
+        ts::return_to_sender(scenario, received);
+    };
+
+    // U1 claims winnings on YES Position. NO position is left untouched (could be burned).
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let (yes_pos, no_pos) = take_yes_no_positions(scenario);
+        claim_winnings(&mut market, yes_pos, ts::ctx(scenario));
+        // Pool drained: 100 - 100 = 0.
+        assert!(get_collateral_balance(&market) == 0, 44);
+        // Winning supply decremented.
+        assert!(get_yes_supply(&market) == 0, 45);
+        // NO supply unchanged (NO position not burned yet).
+        assert!(get_no_supply(&market) == 100 * NUSDC_UNIT, 46);
+        ts::return_to_sender(scenario, no_pos);
+        ts::return_shared(market);
+    };
+
+    ts::next_tx(scenario, USER1);
+    {
+        let payout = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        assert!(coin::value(&payout) == 100 * NUSDC_UNIT, 47);
+        ts::return_to_sender(scenario, payout);
     };
 
     ts::end(scenario_val);
