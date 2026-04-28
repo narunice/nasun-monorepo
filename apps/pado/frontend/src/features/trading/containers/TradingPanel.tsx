@@ -18,6 +18,7 @@ import { TransferModal } from '../components/TransferModal';
 import { TPSLKeeperModal, isKeeperModalSeen } from '../components/TPSLKeeperModal';
 import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
+import { GAS_RESERVE_HUMAN, NATIVE_TOKEN_TYPE } from '../constants';
 
 // Stable empty array reference to avoid useMemo invalidation
 const EMPTY_LEVELS: PriceLevel[] = [];
@@ -218,8 +219,15 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Wallet balances for unified available balance
   const { data: multiBalance } = useMultiBalance();
   const walletBaseToken = baseSymbol === 'NSN' ? multiBalance?.native : multiBalance?.tokens[baseSymbol];
-  const walletBase = parseFloat(walletBaseToken?.formatted ?? '0');
-  const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
+  const walletBaseRaw = parseFloat(walletBaseToken?.formatted ?? '0');
+  const walletQuoteRaw = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
+  // Reserve gas for the native coin so Max selection cannot consume the
+  // entire wallet balance and leave the tx unable to pay its own gas.
+  // Mirrors MIN_GAS_RESERVE in transactions.ts and useAutoDeposit.ts.
+  const isBaseNative = currentPool.baseToken.type === NATIVE_TOKEN_TYPE;
+  const isQuoteNative = currentPool.quoteToken.type === NATIVE_TOKEN_TYPE;
+  const walletBase = isBaseNative ? Math.max(0, walletBaseRaw - GAS_RESERVE_HUMAN) : walletBaseRaw;
+  const walletQuote = isQuoteNative ? Math.max(0, walletQuoteRaw - GAS_RESERVE_HUMAN) : walletQuoteRaw;
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
 

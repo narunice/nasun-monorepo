@@ -22,6 +22,7 @@ import { useBalanceManagerBalance } from './useBalanceManagerBalance';
 import { useTransactionExecutor } from './useTransactionExecutor';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { DEPOSIT_BUFFER_MULTIPLIER } from '../../../lib/constants';
+import { GAS_RESERVE_HUMAN, GAS_RESERVE_RAW, NATIVE_TOKEN_TYPE } from '../constants';
 import type { PoolConfig } from '../types';
 
 export interface AutoDepositResult {
@@ -138,10 +139,17 @@ async function buildDepositTransaction(
 
   if (baseAmount > 0) {
     const rawAmount = BigInt(Math.ceil(baseAmount * Math.pow(10, pool.baseToken.decimals)));
-    const isNativeToken = pool.baseToken.type === '0x2::sui::SUI';
+    const isNativeToken = pool.baseToken.type === NATIVE_TOKEN_TYPE;
 
     if (isNativeToken) {
-      addCoinDeposit(tx, [], rawAmount, pool.baseToken.type!, bmId, true);
+      // Hard cap: never let the deposit consume the gas reserve.
+      // Mirrors the manual deposit invariant in transactions.ts:585-590.
+      const nativeCoins = await client.getCoins({ owner: walletAddress, coinType: NATIVE_TOKEN_TYPE });
+      const totalNative = nativeCoins.data.reduce((s, c) => s + BigInt(c.balance), 0n);
+      const maxDeposit = totalNative > GAS_RESERVE_RAW ? totalNative - GAS_RESERVE_RAW : 0n;
+      if (maxDeposit === 0n) return null;
+      const safeAmount = rawAmount > maxDeposit ? maxDeposit : rawAmount;
+      addCoinDeposit(tx, [], safeAmount, pool.baseToken.type!, bmId, true);
     } else {
       const baseCoins = await client.getCoins({ owner: walletAddress, coinType: pool.baseToken.type! });
       if (baseCoins.data.length === 0) return null;
@@ -208,10 +216,16 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
         owner: walletAddress,
         coinType: currentPool.quoteToken.type!,
       });
-      const walletQuoteBalance = quoteCoins.data.reduce(
+      const walletQuoteRaw = quoteCoins.data.reduce(
         (sum, coin) => sum + Number(coin.balance),
         0
       ) / Math.pow(10, currentPool.quoteToken.decimals);
+      // When the quote token IS the gas coin, reserve gas so canAffordQuote
+      // accounts for the same headroom the deposit tx will leave behind.
+      const isQuoteNative = currentPool.quoteToken.type === NATIVE_TOKEN_TYPE;
+      const walletQuoteBalance = isQuoteNative
+        ? Math.max(0, walletQuoteRaw - GAS_RESERVE_HUMAN)
+        : walletQuoteRaw;
 
       // Get wallet balance for base token (if needed)
       let walletBaseBalance = 0;
@@ -220,10 +234,14 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
           owner: walletAddress,
           coinType: currentPool.baseToken.type!,
         });
-        walletBaseBalance = baseCoins.data.reduce(
+        const walletBaseRaw = baseCoins.data.reduce(
           (sum, coin) => sum + Number(coin.balance),
           0
         ) / Math.pow(10, currentPool.baseToken.decimals);
+        const isBaseNative = currentPool.baseToken.type === NATIVE_TOKEN_TYPE;
+        walletBaseBalance = isBaseNative
+          ? Math.max(0, walletBaseRaw - GAS_RESERVE_HUMAN)
+          : walletBaseRaw;
       }
 
       // Check quote token (NUSDC) - most common case for buy orders
