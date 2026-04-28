@@ -12,6 +12,11 @@ import {
   useSolAddressForIdentity,
   useSolAddressStore,
 } from "../stores/solAddressStore";
+import {
+  useSuiAddressStore,
+  useSuiExternalAddress,
+  isValidSuiAddress,
+} from "../stores/suiAddressStore";
 
 // Plan v5+: read-only mainnet for all external chains. SUI mainnet RPC for
 // balance display (matches StakingCard's useSuiTestnetStakes which is now also
@@ -113,10 +118,24 @@ export function WalletBalanceCard() {
   // Plan v5: ETH read-only mainnet (matches StakingCard ETH row).
   const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: mainnet.id });
 
-  const suiAddress = account?.address ?? zkState?.address;
-  const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiMainnetBalance(suiAddress);
-
   const identityId = user?.identityId ?? undefined;
+
+  // SUI address resolution:
+  //   1. External typed address (suiAddressStore) — explicit user override
+  //   2. Nasun-derived (zkLogin/mnemonic keypair → Sui scheme)
+  // Display in this card is read-only across both branches; staking actions
+  // happen on suiscan/Sui Wallet externally.
+  const suiExternal = useSuiExternalAddress(identityId);
+  const suiNasunDerived = account?.address ?? zkState?.address;
+  const suiDisplayAddress = suiExternal ?? suiNasunDerived;
+  const isExternalSui = !!suiExternal;
+  const setSuiExternal = useSuiAddressStore((s) => s.setExternal);
+  const hydrateSuiStorage = useSuiAddressStore((s) => s.hydrateFromStorage);
+  const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiMainnetBalance(suiDisplayAddress);
+
+  const [suiInput, setSuiInput] = useState("");
+  const [suiInputError, setSuiInputError] = useState("");
+  const [suiEditing, setSuiEditing] = useState(false);
 
   // Plan v5 3A.2 state owners:
   //   store  : solAddress, connectedWallet (shared with StakingCard)
@@ -143,13 +162,46 @@ export function WalletBalanceCard() {
     clearError,
   } = useSolanaWalletAdapter();
 
-  // Hydrate store from localStorage when identityId changes.
+  // Hydrate stores from localStorage when identityId changes.
   useEffect(() => {
     if (identityId) {
       hydrateFromStorage(identityId);
+      hydrateSuiStorage(identityId);
     }
     clearError();
-  }, [identityId, hydrateFromStorage, clearError]);
+  }, [identityId, hydrateFromStorage, hydrateSuiStorage, clearError]);
+
+  // SUI input ↔ external store sync (one-way, !editing)
+  useEffect(() => {
+    if (!suiEditing) {
+      setSuiInput(suiExternal ?? "");
+    }
+  }, [suiExternal, suiEditing]);
+
+  function handleSuiSave() {
+    if (!identityId) return;
+    const trimmed = suiInput.trim();
+    if (!trimmed) {
+      setSuiExternal(identityId, null);
+      setSuiInputError("");
+      setSuiEditing(false);
+      return;
+    }
+    if (!isValidSuiAddress(trimmed)) {
+      setSuiInputError("Invalid SUI address");
+      return;
+    }
+    setSuiInputError("");
+    setSuiExternal(identityId, trimmed);
+    setSuiEditing(false);
+  }
+
+  function handleSuiDisconnect() {
+    if (!identityId) return;
+    setSuiExternal(identityId, null);
+    setSuiInputError("");
+    setSuiEditing(false);
+  }
 
   // Sync store solAddress → input buffer (one-way, only when not editing).
   // Mirrors prior identityId useEffect behavior, now driven by store.
@@ -212,17 +264,74 @@ export function WalletBalanceCard() {
         </li>
 
         {/* SUI */}
-        <li className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base text-uju-secondary">SUI</span>
-            <NetworkBadge label="Mainnet" />
+        <li>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base text-uju-secondary">SUI</span>
+              <NetworkBadge label="Mainnet" />
+              {isExternalSui && (
+                <span
+                  className="text-xs text-uju-secondary border border-uju-border rounded-full px-2 py-0.5"
+                  title="Address ownership not verified"
+                >
+                  unverified
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {suiDisplayAddress ? (
+                <span className="text-base font-medium text-uju-primary tabular-nums">
+                  {suiPending
+                    ? "-"
+                    : suiError
+                      ? <span className="text-uju-secondary">RPC error</span>
+                      : `${suiBalance} SUI`}
+                </span>
+              ) : (
+                <span className="text-base text-uju-secondary">Not connected</span>
+              )}
+              {isExternalSui ? (
+                <UjuButton variant="ghost" size="sm" onClick={handleSuiDisconnect}>
+                  Disconnect
+                </UjuButton>
+              ) : (
+                <UjuButton
+                  variant="ghost"
+                  size="sm"
+                  disabled={!identityId}
+                  onClick={() => setSuiEditing((v) => !v)}
+                >
+                  {suiEditing ? "Cancel" : "Paste"}
+                </UjuButton>
+              )}
+            </div>
           </div>
-          {suiAddress ? (
-            <span className="text-base font-medium text-uju-primary tabular-nums">
-              {suiPending ? "-" : suiError ? <span className="text-uju-secondary">Error</span> : `${suiBalance} SUI`}
-            </span>
-          ) : (
-            <span className="text-base text-uju-secondary">Not connected</span>
+          {suiEditing && !isExternalSui && (
+            <div className="mt-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={suiInput}
+                  onChange={(e) => {
+                    setSuiInput(e.target.value);
+                    setSuiInputError("");
+                  }}
+                  placeholder="Paste SUI address (0x... 64-hex)"
+                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
+                />
+                <UjuButton variant="secondary" size="sm" onClick={handleSuiSave}>
+                  Save
+                </UjuButton>
+              </div>
+              {suiInputError && (
+                <p className="text-base text-nasun-scarlet mt-1">{suiInputError}</p>
+              )}
+              <p className="text-sm text-uju-secondary mt-1">
+                Override your nasun-derived SUI address with an external wallet
+                (Sui Wallet, Suiet, etc.). Read-only display — we never sign on
+                your behalf.
+              </p>
+            </div>
           )}
         </li>
 
