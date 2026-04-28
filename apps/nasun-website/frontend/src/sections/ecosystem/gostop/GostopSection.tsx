@@ -149,7 +149,13 @@ function GostopSection() {
                     href={GOSTOP_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-amber-500 text-black font-semibold text-sm hover:bg-amber-400 transition-colors"
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-black font-semibold text-sm tracking-wide transition-all duration-200 hover:-translate-y-px"
+                    style={{
+                      backgroundImage:
+                        "linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #b68d22 100%)",
+                      boxShadow:
+                        "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px -5px rgba(212,175,55,0.4)",
+                    }}
                   >
                     Enter the Floor <ArrowUpRight className="w-4 h-4" />
                   </a>
