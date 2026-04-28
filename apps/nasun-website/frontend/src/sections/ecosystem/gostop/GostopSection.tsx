@@ -25,7 +25,16 @@ const GOSTOP_URL = "https://gostop.app";
 // Hero stat values — update these manually or replace with API-driven data
 const HERO_STATS = [
   { value: "5", label: "Live Games" },
-  { value: "3,347", label: "DAU with social accounts" },
+  {
+    value: "3,347",
+    label: (
+      <>
+        DAU with
+        <br />
+        social&nbsp;accounts
+      </>
+    ),
+  },
   { value: "8m 42s", label: "Avg. Session" },
 ] as const;
 
@@ -98,7 +107,7 @@ function GostopSection() {
 
             <div className="relative flex flex-col lg:flex-row">
               {/* Text panel */}
-              <div className="flex-1 flex flex-col justify-center gap-6 md:gap-7 px-8 py-12 md:px-12 md:py-16 lg:px-14 lg:py-20">
+              <div className="relative z-10 flex-1 flex flex-col justify-center gap-6 md:gap-7 px-8 py-12 md:px-12 md:py-16 lg:px-14 lg:py-20">
                 {/* Live badge */}
                 <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -143,27 +152,10 @@ function GostopSection() {
                   ))}
                 </div>
 
-                {/* CTA */}
-                <div>
-                  <a
-                    href={GOSTOP_URL}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-black font-semibold text-sm tracking-wide transition-all duration-200 hover:-translate-y-px"
-                    style={{
-                      backgroundImage:
-                        "linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #b68d22 100%)",
-                      boxShadow:
-                        "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px -5px rgba(212,175,55,0.4)",
-                    }}
-                  >
-                    Enter the Floor <ArrowUpRight className="w-4 h-4" />
-                  </a>
-                </div>
               </div>
 
-              {/* Image panel */}
-              <div className="relative lg:w-[420px] xl:w-[500px] shrink-0 overflow-hidden">
+              {/* Image panel — bleeds left over text panel on desktop to show more of the image */}
+              <div className="relative z-0 lg:w-[560px] xl:w-[640px] shrink-0 overflow-hidden lg:-ml-16 xl:-ml-20">
                 {/* Left fade mask — blends image into text panel on desktop */}
                 <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-[#0c0805] to-transparent z-10 pointer-events-none hidden lg:block" />
 
@@ -177,10 +169,28 @@ function GostopSection() {
                   {/* Warm overlay to tie image into page palette */}
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-950/50 via-transparent to-amber-900/20 pointer-events-none" />
 
-                  {/* Bottom fade on mobile */}
-                  <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0c0805] to-transparent lg:hidden pointer-events-none" />
+                  {/* Bottom fade — improves CTA legibility over image */}
+                  <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0c0805] to-transparent pointer-events-none" />
                 </div>
               </div>
+            </div>
+
+            {/* CTA pinned to card bottom-center (overlay, does not affect height) */}
+            <div className="absolute inset-x-0 bottom-6 md:bottom-8 z-20 flex justify-center pointer-events-none [&>*]:pointer-events-auto">
+              <a
+                href={GOSTOP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-black font-semibold text-sm tracking-wide transition-all duration-200 hover:-translate-y-px"
+                style={{
+                  backgroundImage:
+                    "linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #b68d22 100%)",
+                  boxShadow:
+                    "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px -5px rgba(212,175,55,0.4)",
+                }}
+              >
+                Enter the Floor <ArrowUpRight className="w-4 h-4" />
+              </a>
             </div>
           </div>
         </FadeInUp>
