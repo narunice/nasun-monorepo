@@ -10,7 +10,7 @@ import minesThumb from "../assets/images/mines.webp";
 // Hero stat values — update manually
 const HERO_STATS = [
   { value: "5", label: "Live Games" },
-  { value: "3,347", label: "Active Gamers" },
+  { value: "3,347", label: "DAU with social accounts" },
   { value: "8m 42s", label: "Avg. Session" },
 ] as const;
 
@@ -105,7 +105,7 @@ function Hero() {
                         <div className="text-base md:text-xl font-medium text-gold-200">
                           {stat.value}
                         </div>
-                        <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5">
+                        <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">
                           {stat.label}
                         </div>
                       </div>
