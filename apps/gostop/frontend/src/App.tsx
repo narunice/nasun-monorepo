@@ -51,9 +51,21 @@ function CrashDisabledPage() {
   )
 }
 
+// Reset scroll on every route change. Without this, navigating from a
+// long page (Floor) to a shorter one keeps the previous scroll offset
+// and lands the user mid-page (often staring at the footer).
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
+      <ScrollToTop />
       <Header />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-5 py-6 sm:py-10">
         <Routes>
