@@ -71,8 +71,8 @@ function Hero() {
 
         <div className="relative flex flex-col-reverse lg:flex-row items-stretch  ">
           {/* Text panel */}
-          <div className="pl-[8%] w-full lg:w-1/2 shrink-0 flex flex-col justify-center py-12 md:py-16 lg:py-0">
-            <div className="flex flex-col gap-6 md:gap-7 w-full max-w-md sm:max-w-lg mx-auto lg:max-w-xl xl:max-w-2xl">
+          <div className="w-full lg:w-1/2 shrink-0 flex flex-col justify-center py-12 md:py-16 lg:py-0">
+            <div className="lg:-mr-[12%] flex flex-col gap-6 md:gap-7 w-full max-w-md sm:max-w-lg mx-auto lg:max-w-xl xl:max-w-2xl">
               <div className="flex flex-col gap-6 px-0 sm:px-4 md:px-9 lg:px-16 items-center text-center lg:items-stretch lg:text-left">
                 {/* Live badge */}
                 <div className="inline-flex items-center gap-2 lg:self-start px-3 py-1 rounded-full bg-gold-400/10 border border-gold-400/20">
@@ -115,16 +115,10 @@ function Hero() {
 
                 {/* CTAs */}
                 <div className="flex items-center gap-3 flex-wrap">
-                  <Link
-                    to="/floor"
-                    className="btn-gold !py-2 !px-5 text-sm"
-                  >
+                  <Link to="/floor" className="btn-gold !py-2 !px-5 text-sm">
                     See the Floor
                   </Link>
-                  <Link
-                    to="/lottery"
-                    className="btn-ghost !py-2 !px-5 text-sm"
-                  >
+                  <Link to="/lottery" className="btn-ghost !py-2 !px-5 text-sm">
                     Enter the Lottery
                   </Link>
                 </div>
