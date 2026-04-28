@@ -6,58 +6,59 @@
  * activity at all (filter-independent — the parent passes `showCrashFootnote`).
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { formatNusdc } from '../../../lib/format'
-import { getExplorerTxUrl } from '../../../lib/explorer'
-import { useActiveAddress } from '../../../hooks/useActiveAddress'
-import type { GameActivity, GameType } from '../types'
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
+import { formatNusdc } from "../../../lib/format";
+import { getExplorerTxUrl } from "../../../lib/explorer";
+import { useActiveAddress } from "../../../hooks/useActiveAddress";
+import type { GameActivity, GameType } from "../types";
 
-const ITEMS_PER_PAGE = 10
+const ITEMS_PER_PAGE = 10;
 
 const GAME_BADGE: Record<GameType, { label: string; className: string }> = {
   scratch: {
-    label: 'Scratch',
-    className: 'bg-amber-900/40 text-amber-200 border border-amber-700/50',
+    label: "Scratch",
+    className: "bg-amber-900/40 text-amber-200 border border-amber-700/50",
   },
   numbermatch: {
-    label: 'Match',
-    className: 'bg-emerald-900/40 text-emerald-200 border border-emerald-700/50',
+    label: "Match",
+    className:
+      "bg-emerald-900/40 text-emerald-200 border border-emerald-700/50",
   },
   lottery: {
-    label: 'Lottery',
-    className: 'bg-purple-900/40 text-purple-200 border border-purple-700/50',
+    label: "Lottery",
+    className: "bg-purple-900/40 text-purple-200 border border-purple-700/50",
   },
   mines: {
-    label: 'Mines',
-    className: 'bg-red-900/40 text-red-200 border border-red-700/50',
+    label: "Mines",
+    className: "bg-red-900/40 text-red-200 border border-red-700/50",
   },
   crash: {
-    label: 'Crash',
-    className: 'bg-orange-900/40 text-orange-200 border border-orange-700/50',
+    label: "Crash",
+    className: "bg-orange-900/40 text-orange-200 border border-orange-700/50",
   },
-}
+};
 
 function ResultBadge({
   result,
   payout,
 }: {
-  result: GameActivity['result']
-  payout: bigint
+  result: GameActivity["result"];
+  payout: bigint;
 }) {
-  if (result === 'win') {
+  if (result === "win") {
     return (
       <span className="inline-flex items-center gap-1 text-emerald-400 font-semibold text-sm">
         <CheckIcon /> +{formatNusdc(payout)}
       </span>
-    )
+    );
   }
-  if (result === 'pending') {
+  if (result === "pending") {
     return (
       <span className="inline-flex items-center gap-1 text-amber-300 text-sm font-medium px-2 py-0.5 rounded bg-amber-900/30 border border-amber-700/40">
         <ClockIcon /> Settling
       </span>
-    )
+    );
   }
   // loss — show refund amount if any (numbermatch refunds are non-zero on loss)
   if (payout > 0n) {
@@ -65,23 +66,23 @@ function ResultBadge({
       <span className="inline-flex items-center gap-1 text-neutral-300 text-sm">
         <CrossIcon /> +{formatNusdc(payout)}
       </span>
-    )
+    );
   }
   return (
     <span className="inline-flex items-center gap-1 text-neutral-300 text-sm">
       <CrossIcon /> —
     </span>
-  )
+  );
 }
 
 function formatTime(timestampMs: number): string {
-  if (!Number.isFinite(timestampMs) || timestampMs <= 0) return '—'
-  return new Date(timestampMs).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  if (!Number.isFinite(timestampMs) || timestampMs <= 0) return "—";
+  return new Date(timestampMs).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function ExplorerLink({
@@ -90,10 +91,10 @@ function ExplorerLink({
   label,
   title,
 }: {
-  txDigest: string
-  viewer?: string | null
-  label?: string
-  title?: string
+  txDigest: string;
+  viewer?: string | null;
+  label?: string;
+  title?: string;
 }) {
   return (
     <a
@@ -102,19 +103,25 @@ function ExplorerLink({
       rel="noopener noreferrer"
       // p-2 -m-2 enlarges the touch target to ≥44px without changing layout.
       className="inline-flex items-center justify-center gap-1 p-2 -m-2 text-neutral-300 hover:text-gold-200 transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
-      title={title ?? 'View on Explorer'}
-      aria-label={title ?? 'Open transaction on explorer'}
+      title={title ?? "View on Explorer"}
+      aria-label={title ?? "Open transaction on explorer"}
     >
       {label && <span className="text-xs font-medium">{label}</span>}
       <ExternalLinkIcon />
     </a>
-  )
+  );
 }
 
 // For crash rows: shows Bet (place_bet tx) + Resolve (keeper settlement tx)
 // side by side. Other game types resolve in one tx — use ExplorerLink directly.
-function TxLinks({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
-  if (activity.gameType === 'crash' && activity.betTxDigest) {
+function TxLinks({
+  activity,
+  viewer,
+}: {
+  activity: GameActivity;
+  viewer?: string | null;
+}) {
+  if (activity.gameType === "crash" && activity.betTxDigest) {
     return (
       <span className="inline-flex items-center gap-2">
         <ExplorerLink
@@ -130,25 +137,34 @@ function TxLinks({ activity, viewer }: { activity: GameActivity; viewer?: string
           title="Open resolve transaction on explorer"
         />
       </span>
-    )
+    );
   }
-  return <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />
+  return <ExplorerLink txDigest={activity.txDigest} viewer={viewer} />;
 }
 
-
-function ActivityCard({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
-  const badge = GAME_BADGE[activity.gameType]
+function ActivityCard({
+  activity,
+  viewer,
+}: {
+  activity: GameActivity;
+  viewer?: string | null;
+}) {
+  const badge = GAME_BADGE[activity.gameType];
   return (
     <div className="p-4">
       <div className="flex justify-between items-start gap-2 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`px-2 py-0.5 rounded text-sm font-medium ${badge.className}`}>
+          <span
+            className={`px-2 py-0.5 rounded text-sm font-medium ${badge.className}`}
+          >
             {badge.label}
           </span>
           <span className="text-sm text-neutral-200">{activity.detail}</span>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <span className="text-sm text-neutral-200">{formatTime(activity.timestampMs)}</span>
+          <span className="text-sm text-neutral-200">
+            {formatTime(activity.timestampMs)}
+          </span>
           <TxLinks activity={activity} viewer={viewer} />
         </div>
       </div>
@@ -159,18 +175,26 @@ function ActivityCard({ activity, viewer }: { activity: GameActivity; viewer?: s
         <ResultBadge result={activity.result} payout={activity.payout} />
       </div>
     </div>
-  )
+  );
 }
 
-function ActivityRow({ activity, viewer }: { activity: GameActivity; viewer?: string | null }) {
-  const badge = GAME_BADGE[activity.gameType]
+function ActivityRow({
+  activity,
+  viewer,
+}: {
+  activity: GameActivity;
+  viewer?: string | null;
+}) {
+  const badge = GAME_BADGE[activity.gameType];
   return (
     <tr className="border-t border-gold-subtle/30 hover:bg-ink-800/50 transition-colors">
       <td className="py-3 px-3 text-sm text-neutral-200 whitespace-nowrap">
         {formatTime(activity.timestampMs)}
       </td>
       <td className="py-3 px-3">
-        <span className={`px-2 py-0.5 rounded text-sm font-medium ${badge.className}`}>
+        <span
+          className={`px-2 py-0.5 rounded text-sm font-medium ${badge.className}`}
+        >
           {badge.label}
         </span>
       </td>
@@ -185,14 +209,17 @@ function ActivityRow({ activity, viewer }: { activity: GameActivity; viewer?: st
         <TxLinks activity={activity} viewer={viewer} />
       </td>
     </tr>
-  )
+  );
 }
 
 function SkeletonRows() {
   return (
     <div className="panel divide-y divide-gold-subtle/30">
       {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="p-4 animate-pulse flex justify-between items-center">
+        <div
+          key={i}
+          className="p-4 animate-pulse flex justify-between items-center"
+        >
           <div className="flex items-center gap-2">
             <div className="h-5 w-14 bg-ink-700 rounded" />
             <div className="h-4 w-32 bg-ink-700 rounded" />
@@ -201,7 +228,7 @@ function SkeletonRows() {
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 function EmptyState() {
@@ -223,41 +250,46 @@ function EmptyState() {
         </Link>
       </div>
     </div>
-  )
+  );
 }
 
 interface Props {
-  activities: GameActivity[]
-  isLoading: boolean
-  error: string | null
+  activities: GameActivity[];
+  isLoading: boolean;
+  error: string | null;
   /** True iff *any* activity (filter-independent) is a crash row. */
-  showCrashFootnote: boolean
+  showCrashFootnote: boolean;
 }
 
-export function GameActivityList({ activities, isLoading, error, showCrashFootnote }: Props) {
-  const viewer = useActiveAddress()
-  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE)
+export function GameActivityList({
+  activities,
+  isLoading,
+  error,
+  showCrashFootnote,
+}: Props) {
+  const viewer = useActiveAddress();
+  const [displayCount, setDisplayCount] = useState(ITEMS_PER_PAGE);
   // Reset pagination when the parent swaps the activity list (filter change).
   useEffect(() => {
-    setDisplayCount(ITEMS_PER_PAGE)
-  }, [activities])
+    setDisplayCount(ITEMS_PER_PAGE);
+  }, [activities]);
   const visible = useMemo(
     () => activities.slice(0, displayCount),
     [activities, displayCount],
-  )
-  const hasMore = displayCount < activities.length
+  );
+  const hasMore = displayCount < activities.length;
 
-  if (isLoading) return <SkeletonRows />
+  if (isLoading) return <SkeletonRows />;
 
   if (error) {
     return (
       <div className="panel p-6 text-center border-red-500/40 bg-red-950/30">
         <p className="text-sm text-red-300">Failed to load history: {error}</p>
       </div>
-    )
+    );
   }
 
-  if (activities.length === 0) return <EmptyState />
+  if (activities.length === 0) return <EmptyState />;
 
   return (
     <div>
@@ -284,7 +316,9 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
               <th className="py-2 px-3 text-left font-medium">Detail</th>
               <th className="py-2 px-3 text-right font-medium">Spent</th>
               <th className="py-2 px-3 text-right font-medium">Payout</th>
-              <th className="py-2 px-3 text-center font-medium whitespace-nowrap">Tx</th>
+              <th className="py-2 px-3 text-center font-medium whitespace-nowrap">
+                Tx
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -310,40 +344,67 @@ export function GameActivityList({ activities, isLoading, error, showCrashFootno
       {showCrashFootnote && (
         <p className="text-sm text-neutral-200 italic mt-4 px-1">
           Crash rows expose two transactions: <strong>Bet</strong> is your
-          place_bet (USDC out) and <strong>Resolve</strong> is the keeper&apos;s
-          settlement (USDC payout, if any). On a loss the resolve tx contains no
-          balance change for you — the USDC outflow is on the bet tx.
+          place_bet (NUSDC out) and <strong>Resolve</strong> is the
+          keeper&apos;s settlement (NUSDC payout, if any). On a loss the resolve
+          tx contains no balance change for you — the NUSDC outflow is on the
+          bet tx.
         </p>
       )}
     </div>
-  )
+  );
 }
 
 // === Inline icons ===
 
 function CheckIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden>
-      <path d="M3 8.5l3 3 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden
+    >
+      <path
+        d="M3 8.5l3 3 7-7"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
-  )
+  );
 }
 
 function CrossIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden>
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden
+    >
       <path d="M4 4l8 8M12 4l-8 8" strokeWidth="2" strokeLinecap="round" />
     </svg>
-  )
+  );
 }
 
 function ClockIcon() {
   return (
-    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" aria-hidden>
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 16 16"
+      fill="none"
+      stroke="currentColor"
+      aria-hidden
+    >
       <circle cx="8" cy="8" r="6" strokeWidth="1.5" />
       <path d="M8 4.5V8l2.5 1.5" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
-  )
+  );
 }
 
 function ExternalLinkIcon() {
@@ -363,5 +424,5 @@ function ExternalLinkIcon() {
         strokeLinejoin="round"
       />
     </svg>
-  )
+  );
 }
