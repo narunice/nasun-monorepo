@@ -11,6 +11,7 @@ import {
   buildBuyScratchCard,
   buildBuyScratchCardsBulk,
 } from './transactions'
+import { withStaleObjectRetry } from '../../lib/sui-retry'
 
 export interface ScratchResult {
   cardId: number
@@ -137,17 +138,19 @@ export function useScratchCard(): UseScratchCardResult {
       setError(null)
       try {
         const totalCost = SCRATCH_CARD_PRICE * BigInt(count)
-        const coins = await findNusdcCoins(totalCost)
-        if (!coins) {
-          throw new Error(
-            `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
-          )
-        }
-        const tx =
-          count === 1
-            ? buildBuyScratchCard(coins.primary, coins.extra)
-            : buildBuyScratchCardsBulk(coins.primary, count, coins.extra)
-        const result = await signAndExecute(tx)
+        const result = await withStaleObjectRetry(async () => {
+          const coins = await findNusdcCoins(totalCost)
+          if (!coins) {
+            throw new Error(
+              `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
+            )
+          }
+          const tx =
+            count === 1
+              ? buildBuyScratchCard(coins.primary, coins.extra)
+              : buildBuyScratchCardsBulk(coins.primary, count, coins.extra)
+          return signAndExecute(tx)
+        })
 
         const events = result.events ?? []
         const results: ScratchResult[] = events

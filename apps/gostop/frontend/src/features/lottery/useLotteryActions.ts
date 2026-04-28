@@ -11,6 +11,7 @@ import {
 } from './transactions'
 import { autoPickNumbers } from './lottery-utils'
 import { humanizeLotteryError } from './errors'
+import { withStaleObjectRetry } from '../../lib/sui-retry'
 
 export interface UseLotteryActionsResult {
   walletAddress: string | undefined
@@ -151,10 +152,12 @@ export function useLotteryActions(): UseLotteryActionsResult {
 
       setIsBuying(true)
       try {
-        const coins = await findNusdcCoinsForAmount(LOTTERY_TICKET_PRICE)
-        if (!coins) throw new Error('Insufficient NUSDC balance (need 5 NUSDC).')
-        const tx = buildBuyTicket(roundId, coins.primary, numbers, coins.extra)
-        await signAndExecute(tx)
+        await withStaleObjectRetry(async () => {
+          const coins = await findNusdcCoinsForAmount(LOTTERY_TICKET_PRICE)
+          if (!coins) throw new Error('Insufficient NUSDC balance (need 5 NUSDC).')
+          const tx = buildBuyTicket(roundId, coins.primary, numbers, coins.extra)
+          await signAndExecute(tx)
+        })
         return true
       } catch (e) {
         const raw = e instanceof Error ? e.message : 'Failed to buy ticket'
@@ -183,15 +186,17 @@ export function useLotteryActions(): UseLotteryActionsResult {
       setIsBuying(true)
       try {
         const totalCost = LOTTERY_TICKET_PRICE * BigInt(count)
-        const coins = await findNusdcCoinsForAmount(totalCost)
-        if (!coins) {
-          throw new Error(
-            `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
-          )
-        }
-        const bulkPicks = Array.from({ length: count }, () => autoPickNumbers())
-        const tx = buildBuyTicketBulk(roundId, coins.primary, bulkPicks, coins.extra)
-        await signAndExecute(tx)
+        await withStaleObjectRetry(async () => {
+          const coins = await findNusdcCoinsForAmount(totalCost)
+          if (!coins) {
+            throw new Error(
+              `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
+            )
+          }
+          const bulkPicks = Array.from({ length: count }, () => autoPickNumbers())
+          const tx = buildBuyTicketBulk(roundId, coins.primary, bulkPicks, coins.extra)
+          await signAndExecute(tx)
+        })
         return true
       } catch (e) {
         const raw = e instanceof Error ? e.message : 'Failed to buy tickets'
@@ -214,7 +219,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
       if (!guard(`claim:${ticketId}`)) return false
       setIsClaiming(true)
       try {
-        await signAndExecute(buildClaimPrize(roundId, ticketId))
+        await withStaleObjectRetry(() => signAndExecute(buildClaimPrize(roundId, ticketId)))
         return true
       } catch (e) {
         setError(humanizeLotteryError(e instanceof Error ? e.message : 'Failed to claim prize'))
@@ -235,7 +240,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
       }
       if (!guard(`burn:${ticketId}`)) return false
       try {
-        await signAndExecute(buildBurnTicket(roundId, ticketId))
+        await withStaleObjectRetry(() => signAndExecute(buildBurnTicket(roundId, ticketId)))
         return true
       } catch (e) {
         setError(humanizeLotteryError(e instanceof Error ? e.message : 'Failed to burn ticket'))

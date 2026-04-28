@@ -8,6 +8,7 @@ import { subscribeCrash } from './crash-ws'
 import { fetchCurrentRound } from './crash-client'
 import type { CrashRoundState } from './crash-client'
 import { buildPlaceBetTx, buildCashOutTx } from './transactions'
+import { withStaleObjectRetry } from '../../lib/sui-retry'
 
 export type CrashPhase = 'idle' | 'placing_bet' | 'cashing_out'
 
@@ -248,12 +249,16 @@ export function useCrash(): UseCrashResult {
     setError(null)
     setPhase('placing_bet')
     try {
-      const client = getSuiClient()
-      const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
-      const enough = coins.data.find((c) => BigInt(c.balance) >= betAmount)
-      if (!enough) { setError('Insufficient NUSDC balance'); return false }
-      const tx = buildPlaceBetTx(roundObjectIdRef.current, enough.coinObjectId, betAmount)
-      await execTx(tx)
+      await withStaleObjectRetry(async () => {
+        const client = getSuiClient()
+        const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
+        const enough = coins.data.find((c) => BigInt(c.balance) >= betAmount)
+        if (!enough) throw new Error('Insufficient NUSDC balance')
+        const roundId = roundObjectIdRef.current
+        if (!roundId) throw new Error('Round unavailable')
+        const tx = buildPlaceBetTx(roundId, enough.coinObjectId, betAmount)
+        await execTx(tx)
+      })
       setHasBetThisRound(true)
       return true
     } catch (e) {
