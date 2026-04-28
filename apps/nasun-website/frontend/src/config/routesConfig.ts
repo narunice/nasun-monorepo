@@ -230,7 +230,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.gostop",
           path: "/ecosystem/gostop",
           element: Pages.EcosystemGostop,
-          hidden: true,
         },
         {
           name: "navigation.genSol",
