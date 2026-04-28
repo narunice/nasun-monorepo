@@ -595,9 +595,10 @@ export class RoundManager {
 
     // --- close_betting tx (retry on EBettingNotEnded) ---
     let closed = false;
+    let closeRes: { digest: string; events?: unknown[] } | null = null;
     for (let attempt = 0; attempt < 5 && !closed; attempt++) {
       try {
-        await this.execTx(() => {
+        closeRes = await this.execTx(() => {
           const closeTx = new Transaction();
           closeTx.moveCall({
             target: `${this.config.packageId}::crash::close_betting`,
@@ -620,9 +621,21 @@ export class RoundManager {
         throw err;
       }
     }
-    if (!closed) throw new Error('close_betting failed after retries');
+    if (!closed || !closeRes) throw new Error('close_betting failed after retries');
 
-    const flyingStartedAt = Date.now();
+    // Use the on-chain flying_started_at from BettingClosed event, NOT Date.now().
+    // The on-chain value is the Sui clock at execution; Date.now() here is later
+    // by RPC + consensus delay (observed up to 2.4s on devnet). Anchoring the
+    // broadcast + polling to the on-chain value keeps the client display, the
+    // server polling loop, and the on-chain crash_deadline in agreement so
+    // legitimate cashouts are not invalidated by recorded_at > crash_deadline.
+    const closeEvents = (closeRes.events as Array<{ type: string; parsedJson?: { flying_started_at?: string } }>) ?? [];
+    const bettingClosedEv = closeEvents.find((e) => e.type.includes('::crash::BettingClosed'));
+    const onChainFlyingStartedAt = Number(bettingClosedEv?.parsedJson?.flying_started_at ?? 0);
+    if (!onChainFlyingStartedAt) {
+      throw new Error('close_betting succeeded but no BettingClosed event found');
+    }
+    const flyingStartedAt = onChainFlyingStartedAt;
     this.roundState.state = 'FLYING';
     this.roundState.flyingStartedAt = flyingStartedAt;
     this.roundState.stateVersion = this.bumpVersion();
@@ -635,6 +648,10 @@ export class RoundManager {
     });
 
     // --- Flying: server-side timer until crash_point reached ---
+    // Use Date.now() vs on-chain flyingStartedAt: this is server wall clock vs
+    // on-chain wall clock. Sui devnet clock tracks wall time within tens of ms,
+    // so this approximation is safe. The 100ms poll cadence is the dominant
+    // error term anyway.
     while (this.running) {
       await this.sleep(100);
       const elapsed = Date.now() - flyingStartedAt;
