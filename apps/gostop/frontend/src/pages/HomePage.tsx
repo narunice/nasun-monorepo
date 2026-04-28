@@ -48,12 +48,9 @@ function Hero() {
   return (
     <section
       className="-mt-6 sm:-mt-10"
-      style={{
-        width: "100vw",
-        marginLeft: "calc(-50vw + 50%)",
-      }}
+      style={{ width: "100vw", marginLeft: "calc(-50vw + 50%)" }}
     >
-      <div className="relative overflow-hidden max-w-9xl mx-auto">
+      <div className="relative overflow-hidden max-w-[1600px] mx-auto">
         {/* Dot grid texture */}
         <div
           aria-hidden
@@ -72,89 +69,113 @@ function Hero() {
           style={{ backgroundColor: "rgba(212, 175, 55, 0.1)" }}
         />
 
-        <div className="relative flex flex-col lg:flex-row items-stretch">
+        <div className="relative flex flex-col-reverse lg:flex-row items-stretch  ">
           {/* Text panel */}
-          <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 lg:px-12 py-12 md:py-16 lg:py-0">
-            <div className="flex flex-col gap-6 md:gap-7 w-full max-w-md sm:max-w-lg lg:ml-auto lg:max-w-xl xl:max-w-2xl">
-              {/* Live badge */}
-              <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-gold-400/10 border border-gold-400/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs uppercase tracking-[0.15em] text-gold-200">
-                  Live on Nasun Devnet
-                </span>
-              </div>
+          <div className="pl-[8%] w-full lg:w-1/2 shrink-0 flex flex-col justify-center py-12 md:py-16 lg:py-0">
+            <div className="flex flex-col gap-6 md:gap-7 w-full max-w-md sm:max-w-lg mx-auto lg:max-w-xl xl:max-w-2xl">
+              <div className="flex flex-col gap-6 px-0 sm:px-4 md:px-9 lg:px-16 items-center text-center lg:items-stretch lg:text-left">
+                {/* Live badge */}
+                <div className="inline-flex items-center gap-2 lg:self-start px-3 py-1 rounded-full bg-gold-400/10 border border-gold-400/20">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-xs uppercase tracking-[0.15em] text-gold-200">
+                    Live on Nasun Devnet
+                  </span>
+                </div>
 
-              {/* Title */}
-              <h1
-                className="font-display italic font-medium leading-[1.05] tracking-tight text-transparent bg-clip-text -ml-1 pb-2"
-                style={{
-                  fontSize: "clamp(72px, 12vw, 144px)",
-                  backgroundImage:
-                    "linear-gradient(135deg, #fdf6e3 0%, #f2d67b 45%, #b68d22 100%)",
-                }}
-              >
-                GoStop
-              </h1>
+                {/* Title */}
+                <h1
+                  className="font-display italic font-medium leading-[1.05] tracking-tight text-transparent bg-clip-text -ml-1 pb-2"
+                  style={{
+                    fontSize: "clamp(64px, 8vw, 144px)",
+                    backgroundImage:
+                      "linear-gradient(135deg, #fdf6e3 0%, #f2d67b 45%, #b68d22 100%)",
+                  }}
+                >
+                  GoStop
+                </h1>
 
-              {/* Stat strip */}
-              <div className="flex items-center gap-5 md:gap-7">
-                {HERO_STATS.map((stat, i) => (
-                  <Fragment key={stat.label}>
-                    {i > 0 && (
-                      <div className="w-px h-7 bg-gold-400/20 shrink-0" />
-                    )}
-                    <div>
-                      <div className="text-base md:text-xl font-medium text-gold-200">
-                        {stat.value}
+                {/* Stat strip */}
+                <div className="flex items-center gap-5 md:gap-7">
+                  {HERO_STATS.map((stat, i) => (
+                    <Fragment key={stat.label}>
+                      {i > 0 && (
+                        <div className="w-px h-7 bg-gold-400/20 shrink-0" />
+                      )}
+                      <div>
+                        <div className="text-base md:text-xl font-medium text-gold-200">
+                          {stat.value}
+                        </div>
+                        <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5">
+                          {stat.label}
+                        </div>
                       </div>
-                      <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5">
-                        {stat.label}
-                      </div>
-                    </div>
-                  </Fragment>
-                ))}
-              </div>
+                    </Fragment>
+                  ))}
+                </div>
 
-              {/* CTAs */}
-              <div className="flex items-center gap-3 flex-wrap">
-                <Link to="/lottery" className="btn-gold">
-                  Enter the Lottery
-                </Link>
-                <Link to="/floor" className="btn-ghost">
-                  See the Floor
-                </Link>
+                {/* CTAs */}
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Link
+                    to="/floor"
+                    className="btn-gold !py-2 !px-5 text-sm"
+                  >
+                    See the Floor
+                  </Link>
+                  <Link
+                    to="/lottery"
+                    className="btn-ghost !py-2 !px-5 text-sm"
+                  >
+                    Enter the Lottery
+                  </Link>
+                </div>
               </div>
             </div>
           </div>
 
           {/* Image panel */}
-          <div className="relative w-full lg:w-1/2 lg:max-w-[720px] shrink-0 overflow-hidden">
-            {/* Left fade — blends image into text panel on desktop */}
-            <div
-              aria-hidden
-              className="absolute inset-y-0 left-0 w-32 xl:w-40 z-10 pointer-events-none hidden lg:block"
-              style={{
-                backgroundImage:
-                  "linear-gradient(to right, #07070a, transparent)",
-              }}
-            />
-
-            <div className="relative aspect-square">
-              <img
-                src={lotteryThumb}
-                alt=""
-                aria-hidden
-                className="w-full h-full object-cover object-center"
-              />
-              {/* Warm overlay */}
-              <div
-                aria-hidden
-                className="absolute inset-0 pointer-events-none"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(135deg, rgba(93, 71, 16, 0.45) 0%, transparent 50%, rgba(138, 106, 24, 0.2) 100%)",
-                }}
-              />
+          <div className="relative w-full lg:w-1/2 shrink-0 overflow-hidden ">
+            <div className="relative aspect-square md:aspect-[16/9] lg:aspect-[3/2]">
+              <div className="relative h-full w-full lg:w-auto aspect-square md:aspect-[16/9] lg:aspect-square mx-auto lg:-translate-x-[15%]">
+                <picture className="block w-full h-full">
+                  <source
+                    media="(min-width: 768px) and (max-width: 1023px)"
+                    srcSet="/lottery-wide.webp"
+                  />
+                  <img
+                    src={lotteryThumb}
+                    alt=""
+                    aria-hidden
+                    className="w-full h-full object-cover object-center"
+                  />
+                </picture>
+                {/* Left fade */}
+                <div
+                  aria-hidden
+                  className="absolute inset-y-0 left-0 w-[10%] z-10 pointer-events-none hidden lg:block"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to right, #07070a, transparent)",
+                  }}
+                />
+                {/* Right fade */}
+                <div
+                  aria-hidden
+                  className="absolute inset-y-0 right-0 w-[10%] z-10 pointer-events-none hidden lg:block"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to left, #07070a, transparent)",
+                  }}
+                />
+                {/* Warm overlay */}
+                <div
+                  aria-hidden
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(135deg, rgba(93, 71, 16, 0.45) 0%, transparent 50%, rgba(138, 106, 24, 0.2) 100%)",
+                  }}
+                />
+              </div>
               {/* Bottom fade on mobile */}
               <div
                 aria-hidden
@@ -181,7 +202,7 @@ function Live() {
           Now open
         </span>
       </div>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {ENABLE_CRASH && (
           <GameCard
             title="Crash"

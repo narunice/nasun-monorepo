@@ -55,7 +55,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-5 py-6 sm:py-10">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-5 py-6 sm:py-10">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/floor" element={<FloorPage />} />
@@ -98,7 +98,7 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-ink-950/80 border-b border-gold-subtle">
-      <div className="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
+      <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
         <NavLink to="/" className="flex items-center gap-3 group">
           <LogoMark />
           <span className="font-display text-2xl tracking-wide text-gold">GoStop</span>
@@ -213,7 +213,7 @@ function LogoMark() {
 function Footer() {
   return (
     <footer className="border-t border-gold-subtle">
-      <div className="max-w-6xl mx-auto px-5 py-6 space-y-5">
+      <div className="max-w-7xl mx-auto px-5 py-6 space-y-5">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-neutral-300">
           <span>
             GoStop.app{' '}
