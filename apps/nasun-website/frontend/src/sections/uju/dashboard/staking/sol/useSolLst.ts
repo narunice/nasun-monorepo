@@ -67,12 +67,14 @@ export function useSolLst(solAddress: string | null) {
     enabled: !!solAddress,
     queryFn: async () => {
       const owner = solAddress!;
-      // Sequential, not Promise.all: Solana Foundation public RPC rate-limits
-      // identical-method bursts ("Too many requests for a specific RPC call")
-      // from a single IP. 3 sequential calls (~200ms each) total ~600ms,
-      // acceptable for read-only display. Promise.all observed to trigger 429.
+      // Sequential with delay: Foundation public RPC rate-limits identical-method
+      // bursts per IP ("Too many requests for a specific RPC call"). Even 3
+      // sequential calls in <1s can trip the limit when many users hit staging
+      // simultaneously. 500ms gap → total ~1.5s, acceptable for portfolio.
       const out: SolLstBalance[] = [];
-      for (const lst of SOL_LSTS) {
+      for (let i = 0; i < SOL_LSTS.length; i++) {
+        if (i > 0) await new Promise((r) => setTimeout(r, 500));
+        const lst = SOL_LSTS[i];
         out.push({
           symbol: lst.symbol as SolLstSymbol,
           uiAmount: await fetchLstBalance(owner, lst.mint),
@@ -83,7 +85,7 @@ export function useSolLst(solAddress: string | null) {
     staleTime: 60_000,
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
-    retry: 2,
-    retryDelay: (i) => Math.min(1000 * 2 ** i, 30_000),
+    retry: 3,
+    retryDelay: (i) => Math.min(2000 * 2 ** i, 30_000),
   });
 }
