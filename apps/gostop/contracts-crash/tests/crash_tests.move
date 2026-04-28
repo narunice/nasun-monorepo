@@ -40,8 +40,8 @@ module gostop_crash::crash_tests {
 
     #[test]
     fun test_multiplier_at_10s() {
-        // t=10000ms: 10000 + 6*10000 + 36*10000*10000/20000 = 10000 + 60000 + 180000 = 250000
-        let expected: u64 = 10_000 + 60_000 + 180_000;
+        // t=10000ms: 10000 + 3*10000 + 9*10000*10000/20000 = 10000 + 30000 + 45000 = 85000
+        let expected: u64 = 10_000 + 30_000 + 45_000;
         assert!(multiplier_at_bps_test(10_000) == expected, 0);
     }
 
@@ -246,7 +246,7 @@ module gostop_crash::crash_tests {
         };
 
         // Player A cashes out at 2.00x (below crash 2.50x). Elapsed = 1ms (just opened).
-        // multiplier_at_bps(1) = 10006, so max_allowed = 10006 * 10300 / 10000 = 10306
+        // multiplier_at_bps(1) = 10003, so max_allowed = 10003 * 10300 / 10000 = 10303
         // Cash_out at 10000 is within bounds.
         ts::next_tx(&mut scenario, PLAYER_A);
         {

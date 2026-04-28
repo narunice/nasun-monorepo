@@ -29,21 +29,24 @@ module gostop_crash::crash {
     const MAX_PARTICIPANTS: u64 = 30;
     const MIN_BET_AMOUNT: u64 = 1_000_000;         // 1 NUSDC (6 decimals)
 
-    // Quadratic multiplier: mult_bps(t_ms) = 10000 + 6*t + 36*t*t/20000
-    // Matches e^(0.00006*t) within ~3% for t in [0, 60_000 ms].
+    // Quadratic multiplier: mult_bps(t_ms) = 10000 + 3*t + 9*t*t/20000
+    // Matches e^(0.00003*t) within ~3% for t in [0, 120_000 ms].
+    // Coefficients halved (6→3, 36→9) on 2026-04-28 to give players longer
+    // FLYING windows; the cap multiplier is preserved by doubling the
+    // inverse-search horizon below.
     const MULT_BASE: u64 = 10_000;
-    const MULT_LINEAR: u64 = 6;
-    const MULT_QUAD_NUM: u64 = 36;
+    const MULT_LINEAR: u64 = 3;
+    const MULT_QUAD_NUM: u64 = 9;
     const MULT_QUAD_DEN: u64 = 20_000;
 
     // 3% multiplicative tolerance for cash_out bound check.
     const TOLERANCE_MULT_BPS: u64 = 10_300;
 
-    // Max elapsed for binary search in inverse_multiplier_at (120 seconds).
-    // multiplier_at_bps(120_000) = 10_000 + 720_000 + 25_920_000 = 26_650_000.
-    // crash_point above this would silently saturate inverse search at 120s, breaking the
+    // Max elapsed for binary search in inverse_multiplier_at (240 seconds).
+    // multiplier_at_bps(240_000) = 10_000 + 720_000 + 25_920_000 = 26_650_000.
+    // crash_point above this would silently saturate inverse search, breaking the
     // post-crash bound. resolve_round asserts crash_point_bps <= INVERSE_SEARCH_TOP_BPS.
-    const INVERSE_SEARCH_HI: u64 = 120_000;
+    const INVERSE_SEARCH_HI: u64 = 240_000;
     const INVERSE_SEARCH_TOP_BPS: u64 = 26_650_000;
 
     // Liveness timeouts.
@@ -672,8 +675,8 @@ module gostop_crash::crash {
 
     // ===== Math =====
 
-    /// Quadratic approximation of e^(0.00006*t). Same formula as TypeScript client.
-    /// mult_bps(t_ms) = 10000 + 6*t + 36*t*t/20000
+    /// Quadratic approximation of e^(0.00003*t). Same formula as TypeScript client.
+    /// mult_bps(t_ms) = 10000 + 3*t + 9*t*t/20000
     public fun multiplier_at_bps(elapsed_ms: u64): u64 {
         let t = elapsed_ms;
         let linear = MULT_LINEAR * t;
