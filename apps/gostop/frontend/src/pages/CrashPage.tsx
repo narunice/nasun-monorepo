@@ -73,11 +73,18 @@ export default function CrashPage() {
   // Fire loss celebration when the round crashes and the user had a live bet
   // but never cashed out. Mirrors the loss UX in Number Match / Mines so the
   // bust feels like an event instead of just turning the multiplier red.
+  //
+  // The phase guard absorbs the race where 'crashed' arrives while the
+  // cashout tx is still in flight: defer firing until the tx settles
+  // (success → myCashoutBps gates this off; failure → phase returns to idle
+  // and re-runs this effect). Without it the loss modal would flash before
+  // the win modal on a successful late cashout.
   useEffect(() => {
     if (state !== "CRASHED") return;
     if (!crash.hasBetThisRound) return;
     if (crash.myCashoutBps !== null) return;
     if (myBetRef.current === 0n) return;
+    if (crash.phase === "cashing_out") return;
     const roundId = crash.roundState?.roundId ?? null;
     if (roundId === null) return;
     if (celebratedLossRoundRef.current === roundId) return;
@@ -92,6 +99,7 @@ export default function CrashPage() {
     state,
     crash.hasBetThisRound,
     crash.myCashoutBps,
+    crash.phase,
     crash.roundState?.roundId,
     celebrate,
   ]);
@@ -188,6 +196,8 @@ export default function CrashPage() {
               ? (crash.recentRounds[0]?.crashPointBps ?? null)
               : null
           }
+          hasCashedOut={crash.hasCashedOut}
+          myCashoutBps={crash.myCashoutBps}
         />
 
         <div className="text-center">
@@ -237,6 +247,20 @@ export default function CrashPage() {
           ) : crash.hasCashedOut ? (
             <div className="text-center text-green-400 font-semibold py-4">
               Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}
+            </div>
+          ) : crash.hasBetThisRound &&
+            (state === "CRASHED" || state === "RESOLVED") ? (
+            // Closes the information gap when the round crashes at a very low
+            // multiplier before the cashout panel renders. The loss modal
+            // surfaces alongside this line; both clear when the next
+            // round_started event resets hasBetThisRound.
+            <div className="text-center text-red-400 font-semibold py-4">
+              Crashed at{" "}
+              {formatMultiplier(
+                state === "CRASHED"
+                  ? crash.liveMultiplierBps
+                  : (crash.recentRounds[0]?.crashPointBps ?? 10_000),
+              )}
             </div>
           ) : showCashOutPanel ? (
             <div className="space-y-3">
@@ -516,10 +540,14 @@ function CrashGraph({
   state,
   liveMultiplierBps,
   crashedCrashPoint,
+  hasCashedOut,
+  myCashoutBps,
 }: {
   state: string;
   liveMultiplierBps: number;
   crashedCrashPoint: number | null;
+  hasCashedOut: boolean;
+  myCashoutBps: number | null;
 }) {
   const W = 500;
   // H bumped from 200 -> 280 so the rocket has more vertical runway,
@@ -530,33 +558,78 @@ function CrashGraph({
 
   const isFlying = state === "FLYING";
   const isCrashed = state === "CRASHED" || state === "RESOLVED";
+  // Show explosion only when the user did NOT cash out. Successful cashout
+  // gets a green ✓ at the cashout multiplier instead — see project memory:
+  // visual state must reflect per-player outcome, not just round state.
+  const showExplosion = isCrashed && !hasCashedOut;
+  const showSafeExit = isCrashed && hasCashedOut;
   const endBps = isCrashed
     ? (crashedCrashPoint ?? liveMultiplierBps)
     : liveMultiplierBps;
 
   // Map multiplier to curve progress on a log scale so 1x→2x feels weighty
   // and 20x+ doesn't push the rocket off-screen. Capped at 1.0.
-  const progress = Math.max(
-    0,
-    Math.min(1, Math.log(Math.max(1.001, endBps / 10_000)) / Math.log(20)),
-  );
+  function progressFor(bps: number): number {
+    return Math.max(
+      0,
+      Math.min(1, Math.log(Math.max(1.001, bps / 10_000)) / Math.log(20)),
+    );
+  }
+  function pointAt(frac: number): [number, number] {
+    const x = PAD + frac * (W - PAD * 2);
+    const y = H - PAD - frac * frac * (H - PAD * 2);
+    return [x, y];
+  }
+  const progress = progressFor(endBps);
 
   // Sample the curve up to current progress so the trail grows with the rocket.
   const steps = 48;
   const points: Array<[number, number]> = [];
   for (let i = 0; i <= steps; i++) {
-    const frac = (i / steps) * progress;
-    const x = PAD + frac * (W - PAD * 2);
-    const y = H - PAD - frac * frac * (H - PAD * 2);
-    points.push([x, y]);
+    points.push(pointAt((i / steps) * progress));
   }
   const tip = points[points.length - 1] ?? [PAD, H - PAD];
   // Tangent at the tip for rocket rotation; quadratic dy/dx = 2*frac*(H-2*PAD)/(W-2*PAD)
   const slope = 2 * progress * ((H - 2 * PAD) / (W - 2 * PAD));
   const angleDeg = -Math.atan(slope) * (180 / Math.PI); // negative because SVG y flips
 
-  const trailColor = isCrashed ? "#ef4444" : isFlying ? "#fbbf24" : "#6b7280";
-  const trailGlow = isCrashed ? "#7f1d1d" : isFlying ? "#f59e0b" : "#374151";
+  // Cashout marker position. When the user cashes out at e.g. 1.5x, the
+  // marker stays anchored at that point on the curve while the rocket
+  // continues climbing — so the user sees exactly where they got out.
+  const cashoutProgress = myCashoutBps !== null ? progressFor(myCashoutBps) : null;
+  const cashoutTip =
+    cashoutProgress !== null && cashoutProgress <= progress
+      ? pointAt(cashoutProgress)
+      : null;
+
+  // Trail split: when the user cashed out, the segment up to the cashout
+  // point shows in safe-exit green; the segment after (where the rocket kept
+  // flying without them) dims to red. Without cashout, single-color trail.
+  const SAFE_COLOR = "#4ade80"; // matches text-green-400 of the "Cashed out" banner
+  const baseTrailColor = showExplosion
+    ? "#ef4444"
+    : isFlying || showSafeExit
+      ? "#fbbf24"
+      : "#6b7280";
+  const trailGlow = showExplosion
+    ? "#7f1d1d"
+    : isFlying || showSafeExit
+      ? "#f59e0b"
+      : "#374151";
+
+  const preCashoutPoints: Array<[number, number]> = [];
+  let postCashoutPoints: Array<[number, number]> = [];
+  if (cashoutTip && cashoutProgress !== null) {
+    for (const p of points) {
+      const xFrac = (p[0] - PAD) / (W - PAD * 2);
+      if (xFrac <= cashoutProgress) preCashoutPoints.push(p);
+      else postCashoutPoints.push(p);
+    }
+    // Stitch boundary so the two polylines meet without a gap.
+    if (preCashoutPoints.length > 0) preCashoutPoints.push(cashoutTip);
+    postCashoutPoints = [cashoutTip, ...postCashoutPoints];
+  }
+  const trailColor = baseTrailColor; // referenced by gradients below
 
   return (
     <div className="bg-gradient-to-b from-[#0b1023] via-[#0a0d1f] to-[#050816] rounded-xl overflow-hidden relative">
@@ -613,29 +686,101 @@ function CrashGraph({
           strokeWidth="1"
         />
 
-        {/* Glow underlay */}
-        <polyline
-          points={points.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill="none"
-          stroke={trailColor}
-          strokeWidth="8"
-          strokeLinejoin="round"
-          opacity="0.35"
-          filter="url(#blur)"
-        />
+        {/* Trail. When the user cashed out we split into two segments:
+            green up to cashout, dim red after, so the curve itself
+            communicates "you got out here, the rocket then crashed". */}
+        {cashoutTip ? (
+          <>
+            {preCashoutPoints.length >= 2 && (
+              <>
+                <polyline
+                  points={preCashoutPoints.map(([x, y]) => `${x},${y}`).join(" ")}
+                  fill="none"
+                  stroke={SAFE_COLOR}
+                  strokeWidth="8"
+                  strokeLinejoin="round"
+                  opacity="0.35"
+                  filter="url(#blur)"
+                />
+                <polyline
+                  points={preCashoutPoints.map(([x, y]) => `${x},${y}`).join(" ")}
+                  fill="none"
+                  stroke={SAFE_COLOR}
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                />
+              </>
+            )}
+            {postCashoutPoints.length >= 2 && (
+              <>
+                <polyline
+                  points={postCashoutPoints.map(([x, y]) => `${x},${y}`).join(" ")}
+                  fill="none"
+                  stroke={showExplosion ? "#ef4444" : "#7f1d1d"}
+                  strokeWidth="8"
+                  strokeLinejoin="round"
+                  opacity="0.25"
+                  filter="url(#blur)"
+                />
+                <polyline
+                  points={postCashoutPoints.map(([x, y]) => `${x},${y}`).join(" ")}
+                  fill="none"
+                  stroke={showExplosion ? "#ef4444" : "#9ca3af"}
+                  strokeWidth="3"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  opacity="0.6"
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            <polyline
+              points={points.map(([x, y]) => `${x},${y}`).join(" ")}
+              fill="none"
+              stroke={trailColor}
+              strokeWidth="8"
+              strokeLinejoin="round"
+              opacity="0.35"
+              filter="url(#blur)"
+            />
+            <polyline
+              points={points.map(([x, y]) => `${x},${y}`).join(" ")}
+              fill="none"
+              stroke="url(#trailGrad)"
+              strokeWidth="3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </>
+        )}
 
-        {/* Trail */}
-        <polyline
-          points={points.map(([x, y]) => `${x},${y}`).join(" ")}
-          fill="none"
-          stroke="url(#trailGrad)"
-          strokeWidth="3"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        {/* Cashout marker — anchored at the cashout multiplier, persists
+            through FLYING (alongside the rocket) and through CRASHED
+            (replacing the explosion as the primary outcome cue). */}
+        {cashoutTip && (
+          <g transform={`translate(${cashoutTip[0]}, ${cashoutTip[1]})`}>
+            <circle r="16" fill={SAFE_COLOR} opacity="0.45" filter="url(#blur)" />
+            <circle r="10" fill={SAFE_COLOR} opacity="0.95" />
+            <text
+              textAnchor="middle"
+              dominantBaseline="middle"
+              fontSize="14"
+              fill="#052e16"
+              fontWeight="bold"
+            >
+              ✓
+            </text>
+          </g>
+        )}
 
-        {/* Rocket / explosion */}
-        {isCrashed ? (
+        {/* Rocket / explosion. Explosion fires only when the user did NOT
+            cash out. If they did, the green ✓ marker above is the outcome
+            cue and we either keep the rocket flying (FLYING) or drop it
+            entirely (CRASHED) so the marker can stand alone. */}
+        {showExplosion ? (
           <g transform={`translate(${tip[0]}, ${tip[1]})`}>
             <circle r="18" fill="#ef4444" opacity="0.5" filter="url(#blur)" />
             <circle r="10" fill="#fbbf24" opacity="0.9" />
@@ -643,7 +788,7 @@ function CrashGraph({
               💥
             </text>
           </g>
-        ) : (
+        ) : showSafeExit ? null : (
           <g transform={`translate(${tip[0]}, ${tip[1]}) rotate(${angleDeg})`}>
             {/* Glow */}
             <circle r="14" fill="url(#rocketGlow)" />
