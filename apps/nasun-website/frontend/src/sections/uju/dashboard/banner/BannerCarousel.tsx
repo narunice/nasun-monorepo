@@ -193,7 +193,7 @@ export function BannerCarousel() {
         >
           {/* Top: tag + nav arrows */}
           <div className="flex items-center justify-between">
-            <span className={`text-sm font-medium px-2.5 py-0.5 rounded-full ${accent.tag}`}>
+            <span className={`text-base font-medium px-2.5 py-0.5 rounded-full ${accent.tag}`}>
               {banner.tag}
             </span>
             <div className="flex items-center gap-2 text-uju-secondary">
@@ -204,7 +204,7 @@ export function BannerCarousel() {
               >
                 <ChevronLeftIcon />
               </button>
-              <span className="text-sm tabular-nums">{index + 1}/{BANNER_ITEMS.length}</span>
+              <span className="text-base tabular-nums">{index + 1}/{BANNER_ITEMS.length}</span>
               <button
                 onClick={() => dispatch({ type: 'GO', dir: 1 })}
                 aria-label="Next banner"
@@ -217,8 +217,8 @@ export function BannerCarousel() {
 
           {/* Middle: title + description */}
           <div>
-            <p className="text-base font-semibold text-uju-primary">{banner.title}</p>
-            <p className="text-sm text-uju-secondary mt-1 line-clamp-2">{banner.description}</p>
+            <p className="text-lg font-semibold text-uju-primary">{banner.title}</p>
+            <p className="text-base text-uju-secondary mt-1 line-clamp-2">{banner.description}</p>
           </div>
 
           {/* Bottom: CTA + feedback */}
@@ -230,14 +230,14 @@ export function BannerCarousel() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${banner.ctaLabel}, opens in new tab`}
-                  className={`text-sm px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
+                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
                 >
                   {banner.ctaLabel}
                 </a>
               ) : (
                 <Link
                   to={banner.ctaUrl}
-                  className={`text-sm px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
+                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
                 >
                   {banner.ctaLabel}
                 </Link>

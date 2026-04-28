@@ -58,7 +58,7 @@ export const UjuHealthStatus: FC<UjuHealthStatusProps> = ({
       <div className="flex flex-col items-center gap-3 text-center">
         <DonutRing percent={0} {...theme} />
         <UjuBadge tone="neutral">Locked</UjuBadge>
-        <p className="text-sm text-uju-secondary leading-relaxed">
+        <p className="text-base text-uju-secondary leading-relaxed">
           Activate any Nasun NFT to unlock the health system.
         </p>
       </div>
@@ -79,7 +79,7 @@ export const UjuHealthStatus: FC<UjuHealthStatusProps> = ({
       ) : (
         <UjuBadge tone="mint">Healthy</UjuBadge>
       )}
-      <p className="text-sm text-uju-secondary leading-relaxed">
+      <p className="text-base text-uju-secondary leading-relaxed">
         {hasGenesisPass
           ? "Genesis Pass holders are immune to inactivity penalties."
           : state === "weakened"
@@ -116,7 +116,7 @@ function DonutRing({ percent, strokeClass, trackClass, pulse, label }: DonutRing
       </svg>
       {label && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-base font-bold text-uju-primary tabular-nums">{label}</span>
+          <span className="text-lg font-bold text-uju-primary tabular-nums">{label}</span>
         </div>
       )}
     </div>

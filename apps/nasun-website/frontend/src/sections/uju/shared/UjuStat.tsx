@@ -37,11 +37,11 @@ export function UjuStat({
 }: UjuStatProps) {
   return (
     <div className={`flex flex-col gap-1 ${ALIGN[align]} ${className}`}>
-      <span className="text-sm font-medium text-uju-secondary">{label}</span>
-      <span className={`text-2xl sm:text-3xl font-bold tabular-nums leading-none ${VALUE_TONE[tone]}`}>
+      <span className="text-base font-medium text-uju-secondary">{label}</span>
+      <span className={`text-3xl sm:text-4xl font-bold tabular-nums leading-none ${VALUE_TONE[tone]}`}>
         {value}
       </span>
-      {helper && <span className="text-sm text-uju-secondary">{helper}</span>}
+      {helper && <span className="text-base text-uju-secondary">{helper}</span>}
     </div>
   );
 }

@@ -14,10 +14,10 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
       <UjuCard>
         <UjuSectionHeader
           accent
-          title="Activated Apps"
+          title="Activated Apps, Services, and AI"
           trailing={
             pinnedApps.length > 0 ? (
-              <span className="text-sm font-medium text-pado-lavender tabular-nums">
+              <span className="text-base font-medium text-pado-lavender tabular-nums">
                 {pinnedApps.length} / {MAX_PINNED}
               </span>
             ) : null
@@ -26,7 +26,7 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
 
         {pinnedApps.length === 0 ? (
           <div className="py-6 text-center space-y-3">
-            <p className="text-sm text-uju-secondary">No apps pinned yet.</p>
+            <p className="text-base text-uju-secondary">No apps pinned yet.</p>
             <UjuButton variant="secondary" size="sm" onClick={() => setModalOpen(true)}>
               Browse App Directory
             </UjuButton>
@@ -37,17 +37,17 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
               {pinnedApps.map((app) => (
                 <li key={app.id} className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-bg/40 border border-uju-border/60 hover:border-pado-violet/30 transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`text-sm font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}>
+                    <span className={`text-base font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}>
                       {CHAIN_LABEL[app.chain]}
                     </span>
-                    <span className="text-sm font-medium text-uju-primary truncate">{app.name}</span>
+                    <span className="text-base font-medium text-uju-primary truncate">{app.name}</span>
                   </div>
                   <a
                     href={app.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Open ${app.name}, opens in new tab`}
-                    className="text-sm font-medium text-pado-3 hover:text-pado-lavender transition-colors shrink-0"
+                    className="text-base font-medium text-pado-3 hover:text-pado-lavender transition-colors shrink-0"
                   >
                     Open ↗
                   </a>

@@ -188,44 +188,44 @@ export function WalletBalanceCard() {
 
   return (
     <UjuCard>
-      <UjuSectionHeader accent title="Wallet Balances" subtitle="Connected addresses across networks" />
+      <UjuSectionHeader accent title="Wallet Integration" subtitle="Connected addresses across networks" />
 
       <ul className="space-y-3">
         {/* NSN */}
         <li className="flex items-center justify-between">
-          <span className="text-sm text-uju-secondary">NSN</span>
+          <span className="text-base text-uju-secondary">NSN</span>
           {isNasunConnected ? (
-            <span className="text-sm font-medium text-uju-primary tabular-nums">
+            <span className="text-base font-medium text-uju-primary tabular-nums">
               {nasunBalance?.formattedBalance ?? "0"} NSN
             </span>
           ) : (
-            <span className="text-sm text-uju-secondary">Not connected</span>
+            <span className="text-base text-uju-secondary">Not connected</span>
           )}
         </li>
 
         {/* SUI */}
         <li className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-uju-secondary">SUI</span>
+            <span className="text-base text-uju-secondary">SUI</span>
             <NetworkBadge label="Testnet" />
           </div>
           {suiAddress ? (
-            <span className="text-sm font-medium text-uju-primary tabular-nums">
+            <span className="text-base font-medium text-uju-primary tabular-nums">
               {suiPending ? "-" : suiError ? <span className="text-uju-secondary">Error</span> : `${suiBalance} SUI`}
             </span>
           ) : (
-            <span className="text-sm text-uju-secondary">Not connected</span>
+            <span className="text-base text-uju-secondary">Not connected</span>
           )}
         </li>
 
         {/* ETH */}
         <li className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-uju-secondary">ETH</span>
+            <span className="text-base text-uju-secondary">ETH</span>
             <NetworkBadge label="Sepolia" />
           </div>
           {ethAddress ? (
-            <span className="text-sm font-medium text-uju-primary tabular-nums">
+            <span className="text-base font-medium text-uju-primary tabular-nums">
               {ethBalance
                 ? (() => {
                     const dec = BigInt(ethBalance.decimals);
@@ -238,7 +238,7 @@ export function WalletBalanceCard() {
                 : shortenAddress(ethAddress)}
             </span>
           ) : (
-            <span className="text-sm text-uju-secondary">Not connected</span>
+            <span className="text-base text-uju-secondary">Not connected</span>
           )}
         </li>
 
@@ -246,13 +246,13 @@ export function WalletBalanceCard() {
         <li>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-uju-secondary">SOL</span>
+              <span className="text-base text-uju-secondary">SOL</span>
               <NetworkBadge label="Devnet" />
             </div>
             <div className="flex items-center gap-2">
               {solAddress ? (
                 <>
-                  <span className="text-sm font-medium text-uju-primary tabular-nums">
+                  <span className="text-base font-medium text-uju-primary tabular-nums">
                     {solPending
                       ? "-"
                       : solFetchError
@@ -261,7 +261,7 @@ export function WalletBalanceCard() {
                   </span>
                   <button
                     onClick={connectedWallet ? handleWalletDisconnect : () => setSolEditing((v) => !v)}
-                    className="text-sm text-uju-secondary hover:text-pado-3 transition-colors"
+                    className="text-base text-uju-secondary hover:text-pado-3 transition-colors"
                   >
                     {connectedWallet ? "Disconnect" : (solEditing ? "Cancel" : "Edit")}
                   </button>
@@ -272,7 +272,7 @@ export function WalletBalanceCard() {
                     <button
                       onClick={() => handleWalletConnect("phantom")}
                       disabled={isConnecting || !identityId}
-                      className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                      className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
                     >
                       Phantom
                     </button>
@@ -281,7 +281,7 @@ export function WalletBalanceCard() {
                     <button
                       onClick={() => handleWalletConnect("solflare")}
                       disabled={isConnecting || !identityId}
-                      className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                      className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
                     >
                       Solflare
                     </button>
@@ -291,7 +291,7 @@ export function WalletBalanceCard() {
                 <button
                   onClick={() => setSolEditing((v) => !v)}
                   disabled={!identityId}
-                  className="text-sm text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
+                  className="text-base text-uju-secondary hover:text-pado-3 transition-colors disabled:text-uju-border disabled:cursor-not-allowed"
                 >
                   {solEditing ? "Cancel" : "Add"}
                 </button>
@@ -299,7 +299,7 @@ export function WalletBalanceCard() {
             </div>
           </div>
           {walletError && !solEditing && (
-            <p className="text-sm text-nasun-scarlet mt-1">{walletError}</p>
+            <p className="text-base text-nasun-scarlet mt-1">{walletError}</p>
           )}
           {solEditing && (
             <div className="mt-2">
@@ -312,17 +312,17 @@ export function WalletBalanceCard() {
                     setSolError("");
                   }}
                   placeholder="Enter Solana address"
-                  className="flex-1 text-sm bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
+                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
                 />
                 <button
                   onClick={handleSolSave}
-                  className="text-sm px-3 py-1.5 rounded-lg border border-uju-border text-uju-secondary hover:text-uju-primary hover:border-pado-3 transition-colors"
+                  className="text-base px-3 py-1.5 rounded-lg border border-uju-border text-uju-secondary hover:text-uju-primary hover:border-pado-3 transition-colors"
                 >
                   Save
                 </button>
               </div>
               {solError && (
-                <p className="text-sm text-nasun-scarlet mt-1">{solError}</p>
+                <p className="text-base text-nasun-scarlet mt-1">{solError}</p>
               )}
             </div>
           )}

@@ -18,12 +18,12 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
 
   return (
     <>
-      {/* Desktop: sticky top bar below site Navbar */}
+      {/* Desktop: pill-style centered tabs (placed inline under the banner) */}
       <nav
-        className="hidden md:block sticky top-[50px] z-40 bg-uju-card/90 backdrop-blur border-b border-uju-border"
+        className="hidden md:flex justify-center mb-5"
         aria-label="uju sections"
       >
-        <div className="max-w-6xl mx-auto px-4 flex gap-1 h-[52px]">
+        <div className="inline-flex gap-1 p-1 rounded-full bg-uju-card border border-uju-border shadow-sm">
           {TABS.map((t) => {
             const isActive = activeTab === t.id;
             const showDot = t.id === "profile" && hasUnread;
@@ -33,16 +33,19 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 type="button"
                 onClick={() => onTabChange(t.id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative px-4 py-3 text-sm font-semibold border-b-2 -mb-px transition-colors min-h-[44px] ${
+                className={`relative px-5 py-2 text-sm font-semibold rounded-full transition-colors min-h-[40px] ${
                   isActive
-                    ? "border-pado-violet text-pado-lavender"
-                    : "border-transparent text-uju-secondary hover:text-uju-primary"
+                    ? "bg-gradient-to-r from-pado-3 to-pado-4 text-uju-bg"
+                    : "text-uju-secondary hover:text-white"
                 }`}
               >
                 <span className="inline-flex items-center gap-2">
                   {t.label}
                   {showDot && (
-                    <span className="w-2 h-2 rounded-full bg-nasun-coral shrink-0" aria-label="Unread notifications" />
+                    <span
+                      className="w-2 h-2 rounded-full bg-nasun-coral shrink-0"
+                      aria-label="Unread notifications"
+                    />
                   )}
                 </span>
               </button>
@@ -69,7 +72,7 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 onClick={() => onTabChange(t.id)}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex-1 py-2.5 min-h-[56px] flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
-                  isActive ? "text-pado-lavender" : "text-uju-secondary"
+                  isActive ? "text-pado-3" : "text-uju-secondary"
                 }`}
               >
                 <span className="relative">
