@@ -42,12 +42,14 @@ export function Footer() {
         <div className="mx-auto max-w-5xl px-4 py-4 text-sm leading-relaxed text-amber-200/90">
           <p>
             <span className="font-semibold text-amber-200">Disclaimer.</span>{" "}
-            This site is a proof-of-concept prototype operating on Nasun Devnet.
-            It is provided strictly for testing and entertainment, and is not a
-            financial product. All tokens and balances shown here are test
-            assets that hold no monetary value and cannot be redeemed. The
-            devnet may be reset at any time without prior notice, which will
-            erase all balances, history, and game state.
+            Pado is a proof-of-concept prototype running on Nasun Devnet. It is
+            not a regulated financial product, an offer to sell securities, or
+            investment advice, and nothing displayed here, including prices,
+            order books, P&amp;L, or yields, should be treated as such. All
+            tokens, balances, and positions are test assets with no monetary
+            value and cannot be redeemed or withdrawn. The devnet may be reset
+            at any time without prior notice, which will erase all balances,
+            open positions, orders, and trading history.
           </p>
         </div>
       </div>
