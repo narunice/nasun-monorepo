@@ -120,7 +120,16 @@ export function useCrash(): UseCrashResult {
       }
       if (event.type === 'state_sync') {
         stateVersionRef.current = event.stateVersion
-        flyingStartedAtRef.current = event.flyingStartedAt ?? null
+        // Server snapshot retains flyingStartedAt across CRASHED/RESOLVED
+        // (it is only zeroed on the next round_started). Honoring that value
+        // outside of the FLYING state would let the rAF tick the multiplier
+        // off a stale anchor on reconnect, producing runaway display values
+        // (e.g. "frozen 9x" while the actual round crashed at 2x).
+        const isFlying = event.state === 'FLYING'
+        flyingStartedAtRef.current = isFlying ? (event.flyingStartedAt ?? null) : null
+        // Cancel any half-finished snap tween from a previous round so we do
+        // not animate to an outdated value when joining mid-state.
+        crashSnapRef.current = null
         roundObjectIdRef.current = event.roundObjectId ?? null
         const newRoundId = event.roundId
         if (currentRoundIdRef.current !== newRoundId) {
@@ -146,7 +155,7 @@ export function useCrash(): UseCrashResult {
           recentRounds: event.recentRounds,
           crashedAlreadyFired: event.crashedAlreadyFired,
         })
-        if (!event.flyingStartedAt) setLiveMultiplierBps(10_000)
+        if (!isFlying) setLiveMultiplierBps(10_000)
         return
       }
 
@@ -157,7 +166,9 @@ export function useCrash(): UseCrashResult {
             serverSkewMsRef.current = s.serverTime - Date.now()
           }
           stateVersionRef.current = s.stateVersion
-          flyingStartedAtRef.current = s.flyingStartedAt ?? null
+          const isFlying = s.state === 'FLYING'
+          flyingStartedAtRef.current = isFlying ? (s.flyingStartedAt ?? null) : null
+          crashSnapRef.current = null
           roundObjectIdRef.current = s.roundObjectId ?? null
           if (currentRoundIdRef.current !== s.roundId) {
             currentRoundIdRef.current = s.roundId
@@ -168,6 +179,7 @@ export function useCrash(): UseCrashResult {
           }
           setRecentRounds(s.recentRounds)
           setRoundState(s)
+          if (!isFlying) setLiveMultiplierBps(10_000)
         }).catch(() => {})
         return
       }

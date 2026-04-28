@@ -211,10 +211,12 @@ export default function CrashPage() {
           ) : state === "CRASHED" || state === "RESOLVED" ? (
             <div className="space-y-1">
               <div className="text-4xl sm:text-5xl font-bold text-red-400">
-                {/* Server omits crashPointBps from the 'crashed' event, so during CRASHED
-                  recentRounds[0] still points to the previous round. Use the frozen
-                  liveMultiplierBps (rAF stops at crash) until RESOLVED commits the
-                  definitive value. */}
+                {/* recentRounds[0] is only prepended on RESOLVED, so during
+                  CRASHED it still points to the previous round. The live
+                  'crashed' event carries crashPointBps and useCrash snaps
+                  liveMultiplierBps to it, so this is correct for clients that
+                  received the event live. Late-joining clients (state_sync
+                  during CRASHED) briefly see 1.00x until RESOLVED arrives. */}
                 {formatMultiplier(
                   state === "CRASHED"
                     ? crash.liveMultiplierBps
