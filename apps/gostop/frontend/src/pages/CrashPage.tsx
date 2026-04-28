@@ -70,24 +70,31 @@ export default function CrashPage() {
     }
   }, [crash.hasBetThisRound, crash.roundState?.roundId]);
 
-  // Fire loss celebration when the round crashes and the user had a live bet
-  // but never cashed out. Mirrors the loss UX in Number Match / Mines so the
-  // bust feels like an event instead of just turning the multiplier red.
+  // Fire loss celebration when (a) round crashed without the user cashing out,
+  // OR (b) the user's cash_out tx succeeded but was post-hoc invalidated by the
+  // onchain resolve check (recorded_at > crash_deadline race). Both produce a
+  // zero payout, so they share the loss modal.
   //
   // The phase guard absorbs the race where 'crashed' arrives while the
   // cashout tx is still in flight: defer firing until the tx settles
   // (success → myCashoutBps gates this off; failure → phase returns to idle
   // and re-runs this effect). Without it the loss modal would flash before
-  // the win modal on a successful late cashout.
+  // the eventual settlement of a late cashout.
   useEffect(() => {
-    if (state !== "CRASHED") return;
     if (!crash.hasBetThisRound) return;
-    if (crash.myCashoutBps !== null) return;
     if (myBetRef.current === 0n) return;
-    if (crash.phase === "cashing_out") return;
     const roundId = crash.roundState?.roundId ?? null;
     if (roundId === null) return;
     if (celebratedLossRoundRef.current === roundId) return;
+
+    const cashoutInvalidated = crash.cashoutSettlement?.status === "invalid";
+    const crashedWithoutCashout =
+      state === "CRASHED" &&
+      crash.myCashoutBps === null &&
+      crash.phase !== "cashing_out";
+
+    if (!cashoutInvalidated && !crashedWithoutCashout) return;
+
     celebratedLossRoundRef.current = roundId;
     celebrate({
       variant: "loss",
@@ -99,30 +106,35 @@ export default function CrashPage() {
     state,
     crash.hasBetThisRound,
     crash.myCashoutBps,
+    crash.cashoutSettlement,
     crash.phase,
     crash.roundState?.roundId,
     celebrate,
   ]);
 
-  // Fire celebration on cashout transition.
+  // Fire WIN celebration only after onchain confirmation: the chat-server
+  // broadcasts resolve_persisted with the player's actual payout from the
+  // bankroll_pool::GameResult event. Celebrating on cash_out tx success alone
+  // produced false BIG WIN modals when the cashout was later invalidated by
+  // the resolve recorded_at check.
   useEffect(() => {
-    if (crash.myCashoutBps === null) return;
-    if (celebratedCashoutRef.current === crash.myCashoutBps) return;
+    const settlement = crash.cashoutSettlement;
+    if (!settlement || settlement.status !== "confirmed") return;
+    if (celebratedCashoutRef.current === settlement.multiplierBps) return;
     if (myBetRef.current === 0n) return;
-    celebratedCashoutRef.current = crash.myCashoutBps;
-    const multiplier = crash.myCashoutBps / 10_000;
-    const payout = (myBetRef.current * BigInt(crash.myCashoutBps)) / 10_000n;
+    celebratedCashoutRef.current = settlement.multiplierBps;
+    const multiplier = settlement.multiplierBps / 10_000;
     const tier = tierForCrash(multiplier, true);
     if (tier) {
       celebrate({
         variant: "tiered",
         tier,
-        payout,
+        payout: settlement.payout,
         multiplier: Number(multiplier.toFixed(2)),
         gameLabel: "Crash",
       });
     }
-  }, [crash.myCashoutBps, celebrate]);
+  }, [crash.cashoutSettlement, celebrate]);
 
   function handleBet() {
     const amount = BigInt(Math.round(parseFloat(betInput) * 1_000_000));
@@ -247,6 +259,14 @@ export default function CrashPage() {
         <div className="bg-gray-800 rounded-xl p-4 sm:p-5 space-y-4">
           {!crash.isWalletConnected ? (
             <WalletConnect />
+          ) : crash.cashoutSettlement?.status === "invalid" ? (
+            // cash_out tx succeeded but onchain resolve invalidated it
+            // (recorded_at > crash_deadline race). Show the loss state in the
+            // panel so the green "Cashed out" banner doesn't conflict with
+            // the loss modal.
+            <div className="text-center text-red-400 font-semibold py-4">
+              Cashout invalidated by chain
+            </div>
           ) : crash.hasCashedOut ? (
             <div className="text-center text-green-400 font-semibold py-4">
               Cashed out at {formatMultiplier(crash.myCashoutBps ?? 10_000)}

@@ -17,6 +17,16 @@ export interface RecentRound {
   crashPointBps: number
 }
 
+// Per-player settlement broadcast by chat-server after onchain resolve.
+// status='confirmed' → cashout valid, payout > 0 (BIG WIN celebration).
+// status='invalid'   → cashout tx succeeded but resolve check rejected it
+//                      (recorded_at > crash_deadline race), payout = 0 (loss).
+export interface CashoutSettlement {
+  status: 'confirmed' | 'invalid'
+  payout: bigint
+  multiplierBps: number
+}
+
 // Phase 1 scope: track only the local player's bet/cashout state.
 // Multiplayer participants UI deferred to Phase 2 (requires on-chain event subscription).
 export interface UseCrashResult {
@@ -29,6 +39,7 @@ export interface UseCrashResult {
   hasBetThisRound: boolean
   hasCashedOut: boolean
   myCashoutBps: number | null
+  cashoutSettlement: CashoutSettlement | null
   error: string | null
   placeBet: (betAmount: bigint) => Promise<boolean>
   cashOut: () => Promise<boolean>
@@ -59,6 +70,12 @@ export function useCrash(): UseCrashResult {
   const [autoCashOutBps, setAutoCashOutBps] = useState<number | null>(null)
   const [hasBetThisRound, setHasBetThisRound] = useState(false)
   const [myCashoutBps, setMyCashoutBps] = useState<number | null>(null)
+  const [cashoutSettlement, setCashoutSettlement] = useState<CashoutSettlement | null>(null)
+
+  // Mirrored into ref so the WS subscriber (mounted once) can read the current
+  // address without re-subscribing on every wallet swap.
+  const walletAddressRef = useRef<string | undefined>(walletAddress)
+  useEffect(() => { walletAddressRef.current = walletAddress }, [walletAddress])
 
   const flyingStartedAtRef = useRef<number | null>(null)
   const stateVersionRef = useRef(0)
@@ -136,6 +153,7 @@ export function useCrash(): UseCrashResult {
           currentRoundIdRef.current = newRoundId
           setHasBetThisRound(false)
           setMyCashoutBps(null)
+          setCashoutSettlement(null)
           cashOutInflightRef.current = false
           // Reset phase so a stuck 'cashing_out' from a hung wallet sign in the
           // previous round does not leak into the new round.
@@ -174,6 +192,7 @@ export function useCrash(): UseCrashResult {
             currentRoundIdRef.current = s.roundId
             setHasBetThisRound(false)
             setMyCashoutBps(null)
+            setCashoutSettlement(null)
             cashOutInflightRef.current = false
             setPhase('idle')
           }
@@ -190,6 +209,7 @@ export function useCrash(): UseCrashResult {
         currentRoundIdRef.current = event.roundId
         setHasBetThisRound(false)
         setMyCashoutBps(null)
+        setCashoutSettlement(null)
         cashOutInflightRef.current = false
         setPhase('idle')
         setLiveMultiplierBps(10_000)
@@ -226,6 +246,35 @@ export function useCrash(): UseCrashResult {
         setRecentRounds((prev) => [{ roundId: event.roundId, crashPointBps: event.crashPointBps }, ...prev.slice(0, 19)])
         setRoundState((prev) => prev ? { ...prev, state: 'RESOLVED', nextRoundAt: event.nextRoundAt, stateVersion: event.stateVersion } : prev)
         setLiveMultiplierBps(10_000)
+      } else if (event.type === 'resolve_persisted') {
+        // Authoritative per-player payout from onchain GameResult event.
+        // Fires only for players present in the round's entries vector, so
+        // absence == this client did not bet (no celebration to gate).
+        //
+        // RoundId guard: chat-server persists rows to DB BEFORE broadcasting,
+        // so a slow DB write can deliver this event after the next round's
+        // round_started already reset cashoutSettlement. Without the guard, a
+        // stale row would fire a phantom celebration in round N+1.
+        if (event.roundId !== currentRoundIdRef.current) return
+        const me = walletAddressRef.current
+        if (!me) return
+        const meLower = me.toLowerCase()
+        const row = event.rows.find((r) => r.player.toLowerCase() === meLower)
+        if (!row) return
+        let payout: bigint
+        try {
+          payout = BigInt(row.payout)
+        } catch (err) {
+          // Malformed payout serialization shouldn't silently become a loss —
+          // skip the settlement entirely so neither WIN nor LOSS celebrates.
+          console.error('[Crash] resolve_persisted payout parse failed', { row, err })
+          return
+        }
+        setCashoutSettlement({
+          status: payout > 0n ? 'confirmed' : 'invalid',
+          payout,
+          multiplierBps: row.multiplierBps,
+        })
       }
     })
     return unsub
@@ -337,6 +386,7 @@ export function useCrash(): UseCrashResult {
     hasBetThisRound,
     hasCashedOut,
     myCashoutBps,
+    cashoutSettlement,
     error,
     placeBet,
     cashOut,
