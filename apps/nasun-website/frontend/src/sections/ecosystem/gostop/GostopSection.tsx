@@ -25,7 +25,7 @@ const GOSTOP_URL = "https://gostop.app";
 // Hero stat values — update these manually or replace with API-driven data
 const HERO_STATS = [
   { value: "5", label: "Live Games" },
-  { value: "3,347", label: "Active Gamers" },
+  { value: "3,347", label: "DAU with social accounts" },
   { value: "8m 42s", label: "Avg. Session" },
 ] as const;
 
@@ -135,7 +135,7 @@ function GostopSection() {
                         <div className="text-base md:text-xl font-bold text-amber-200">
                           {stat.value}
                         </div>
-                        <div className="text-sm text-nasun-white/40 uppercase tracking-wider mt-0.5">
+                        <div className="text-sm text-nasun-white/40 uppercase tracking-wider mt-0.5 whitespace-nowrap">
                           {stat.label}
                         </div>
                       </div>
