@@ -62,18 +62,18 @@ export function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, on
       {market.status === 'open' && (
         <>
           <p className="text-xs text-theme-text-muted mb-2">To take a position:</p>
-          <div className="flex gap-2">
+          <div className="flex flex-col sm:flex-row gap-2">
             <button
               onClick={onSellYes}
               disabled={isLoading}
-              className="flex-1 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex-1 min-h-[44px] py-2.5 px-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               Sell YES → Bet NO
             </button>
             <button
               onClick={onSellNo}
               disabled={isLoading}
-              className="flex-1 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex-1 min-h-[44px] py-2.5 px-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               Sell NO → Bet YES
             </button>

@@ -16,28 +16,28 @@ export function OutcomeOrderbook({ yesOrderbook, noOrderbook, onPriceClick }: Ou
   const [activeTab, setActiveTab] = useState<'yes' | 'no'>('yes');
 
   return (
-    <div className="bg-theme-bg-secondary rounded-xl p-4">
+    <div className="bg-theme-bg-secondary rounded-xl p-3 sm:p-4">
       {/* Tab Header */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-3 sm:mb-4">
         <button
           onClick={() => setActiveTab('yes')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+          className={`flex-1 min-h-[40px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
             activeTab === 'yes'
               ? 'bg-green-600 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          YES Orderbook
+          YES <span className="hidden sm:inline">Orderbook</span>
         </button>
         <button
           onClick={() => setActiveTab('no')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+          className={`flex-1 min-h-[40px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
             activeTab === 'no'
               ? 'bg-red-600 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          NO Orderbook
+          NO <span className="hidden sm:inline">Orderbook</span>
         </button>
       </div>
 
@@ -105,7 +105,7 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
   };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 gap-2 sm:gap-4">
       {/* Bids (Buy orders) */}
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -118,7 +118,7 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
             </span>
           )}
         </div>
-        <div className="bg-theme-bg-tertiary rounded p-2 h-64 overflow-y-auto">
+        <div className="bg-theme-bg-tertiary rounded p-2 h-48 sm:h-64 overflow-y-auto">
           <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
             <span>Price</span>
             <span>Shares</span>
@@ -163,7 +163,7 @@ function OrderbookPanel({ orderbook, isYes, onPriceClick }: OrderbookPanelProps)
             </span>
           )}
         </div>
-        <div className="bg-theme-bg-tertiary rounded p-2 h-64 overflow-y-auto">
+        <div className="bg-theme-bg-tertiary rounded p-2 h-48 sm:h-64 overflow-y-auto">
           <div className="text-xs text-theme-text-muted flex justify-between mb-2 border-b border-theme-border pb-1">
             <span>Price</span>
             <span>Shares</span>
@@ -216,7 +216,7 @@ function OrderbookRow({ level, depthPercent, isBid, color, onClick, hasRealOrder
 
   return (
     <div
-      className={`relative text-xs flex justify-between py-0.5 cursor-pointer hover:brightness-125 ${
+      className={`relative text-xs flex justify-between py-1 sm:py-0.5 cursor-pointer hover:brightness-125 active:bg-theme-bg-primary/40 ${
         color === 'green'
           ? 'text-green-600 dark:text-green-400'
           : 'text-red-600 dark:text-red-400'

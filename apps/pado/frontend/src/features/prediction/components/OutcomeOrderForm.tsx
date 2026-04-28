@@ -189,7 +189,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           <div className="flex gap-2 mb-2">
             <button
               onClick={() => setFundingSource('wallet')}
-              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors ${
+              className={`flex-1 min-h-[40px] py-2 px-3 rounded text-sm font-medium transition-colors ${
                 fundingSource === 'wallet'
                   ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
@@ -200,7 +200,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             <button
               onClick={() => setFundingSource('margin')}
               disabled={!hasMarginAccount}
-              className={`flex-1 py-1.5 px-2 rounded text-xs font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
+              className={`flex-1 min-h-[40px] py-2 px-3 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
                 fundingSource === 'margin'
                   ? 'bg-pd1 text-white'
                   : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
@@ -246,20 +246,20 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             </div>
           )}
 
-        <div className="flex justify-between items-center mt-2">
-            <div>
+        <div className="flex justify-between items-center gap-2 mt-2">
+            <div className="min-w-0 flex-1">
               <span className="text-xs text-theme-text-muted">
                 {fundingSource === 'wallet' ? 'Wallet Balance' : 'Pado Balance'}
               </span>
-              <p className="text-lg font-semibold text-theme-text-primary">
-                {availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-sm font-normal text-theme-text-muted">NUSDC</span>
+              <p className="text-base sm:text-lg font-semibold text-theme-text-primary tabular-nums truncate">
+                {availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs sm:text-sm font-normal text-theme-text-muted">NUSDC</span>
               </p>
             </div>
             {fundingSource === 'wallet' && (
               <button
                 onClick={handleNusdcFaucet}
                 disabled={isFaucetLoading}
-                className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
+                className="shrink-0 min-h-[36px] px-3 py-2 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
               >
                 {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
               </button>
@@ -272,23 +272,23 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setOutcomeType('yes')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+          className={`flex-1 min-h-[44px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
             outcomeType === 'yes'
               ? 'bg-green-600 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          YES ({yesProbability.toFixed(1)}%)
+          YES <span className="tabular-nums">({yesProbability.toFixed(1)}%)</span>
         </button>
         <button
           onClick={() => setOutcomeType('no')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-colors ${
+          className={`flex-1 min-h-[44px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
             outcomeType === 'no'
               ? 'bg-red-600 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          NO ({noProbability.toFixed(1)}%)
+          NO <span className="tabular-nums">({noProbability.toFixed(1)}%)</span>
         </button>
       </div>
 
@@ -296,7 +296,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setOrderType('buy')}
-          className={`flex-1 py-1.5 px-3 rounded font-medium text-xs transition-colors ${
+          className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
             orderType === 'buy'
               ? 'bg-pd1 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
@@ -306,7 +306,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
         </button>
         <button
           onClick={() => setOrderType('sell')}
-          className={`flex-1 py-1.5 px-3 rounded font-medium text-xs transition-colors ${
+          className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
             orderType === 'sell'
               ? 'bg-pd1 text-white'
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
@@ -357,13 +357,14 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             </label>
             <input
               type="number"
+              inputMode="decimal"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0.00"
               min="0"
               step="0.01"
               disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
+              className="w-full px-3 py-2.5 text-base bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
             />
           </div>
         )}
@@ -375,6 +376,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </label>
           <input
             type="number"
+            inputMode="decimal"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             placeholder={defaultPrice.toFixed(1)}
@@ -382,7 +384,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             max="99.99"
             step="0.01"
             disabled={isDisabled}
-            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
+            className="w-full px-3 py-2.5 text-base bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
           />
           <p className="text-xs text-theme-text-muted mt-1">
             Current: {defaultPrice.toFixed(1)}%
