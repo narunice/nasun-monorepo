@@ -1,19 +1,13 @@
-// Sui testnet staking helpers, parallel to @nasun/wallet's NSN-only staking module.
-// We can't reuse @nasun/wallet's getValidators/getStakes because they hardcode the
-// Nasun client. Transaction builders (buildStakeTransaction/buildUnstakeTransaction)
-// are chain-agnostic and reused as-is.
+// Sui testnet read-only helpers. Plan v5: portfolio aggregator (no signing in uju).
+// Transaction-related constants and parsers were removed — staking actions now
+// deep-link to suiscan / Sui Wallet.
 
 import { CHAINS, getMoveClient, formatBalance } from "@nasun/wallet";
 
 export const SUI_TESTNET_CHAIN_ID = "sui-testnet";
 export const SUI_TESTNET_RPC = CHAINS[SUI_TESTNET_CHAIN_ID].rpcUrl;
 export const SUI_TESTNET_FAUCET_URL = "https://faucet.testnet.sui.io";
-export const SUI_TESTNET_EXPLORER_TX = "https://testnet.suivision.xyz/txblock";
 export const SUI_DECIMALS = 9;
-
-// Sui's on-chain minimum stake is 1 SUI.
-export const MIN_STAKE_SUI = 1;
-export const MIN_STAKE_MIST = BigInt(MIN_STAKE_SUI) * BigInt(1_000_000_000);
 
 export function getSuiTestnetClient() {
   return getMoveClient(SUI_TESTNET_RPC, SUI_TESTNET_CHAIN_ID);
@@ -90,16 +84,6 @@ export async function fetchSuiTestnetBalance(address: string): Promise<bigint> {
 
 export function formatSui(amount: bigint | string): string {
   return formatBalance(amount.toString(), SUI_DECIMALS);
-}
-
-export function parseSuiAmount(input: string): bigint {
-  const trimmed = input.trim();
-  if (!trimmed) return 0n;
-  const [intPart = "0", fracPartRaw = ""] = trimmed.split(".");
-  const fracPart = fracPartRaw.padEnd(SUI_DECIMALS, "0").slice(0, SUI_DECIMALS);
-  const intDigits = intPart.replace(/[^0-9]/g, "") || "0";
-  const fracDigits = fracPart.replace(/[^0-9]/g, "");
-  return BigInt(intDigits + fracDigits);
 }
 
 export function shortValidator(name: string, max = 28): string {

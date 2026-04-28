@@ -6,16 +6,12 @@ import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE, SOL_DEVNET_RPC } from "@/lib/solana";
 import { UjuCard, UjuBadge, UjuSectionHeader } from "../shared";
 import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
+import {
+  useSolAddressForIdentity,
+  useSolAddressStore,
+} from "../stores/solAddressStore";
 
 const SUI_TESTNET_RPC = CHAINS["sui-testnet"].rpcUrl;
-
-function solKey(identityId: string) {
-  return `uju:sol-address:${identityId}`;
-}
-
-function solWalletKey(identityId: string) {
-  return `uju:sol-wallet:${identityId}`;
-}
 
 function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -92,11 +88,22 @@ export function WalletBalanceCard() {
   const suiAddress = account?.address ?? zkState?.address;
   const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiTestnetBalance(suiAddress);
 
+  const identityId = user?.identityId ?? undefined;
+
+  // Plan v5 3A.2 state owners:
+  //   store  : solAddress, connectedWallet (shared with StakingCard)
+  //   local  : solInput (edit buffer), solError (form UI), solEditing (mode flag)
+  const sol = useSolAddressForIdentity(identityId);
+  const setForIdentity = useSolAddressStore((s) => s.setForIdentity);
+  const hydrateFromStorage = useSolAddressStore((s) => s.hydrateFromStorage);
+
+  const solAddress = sol?.solAddress ?? null;
+  const connectedWallet: SolWalletName | null = sol?.connectedWallet ?? null;
+
   const [solInput, setSolInput] = useState("");
-  const [solAddress, setSolAddress] = useState<string | null>(null);
   const [solError, setSolError] = useState("");
   const [solEditing, setSolEditing] = useState(false);
-  const [connectedWallet, setConnectedWallet] = useState<SolWalletName | null>(null);
+
   const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolDevnetBalance(solAddress);
 
   const {
@@ -108,32 +115,21 @@ export function WalletBalanceCard() {
     clearError,
   } = useSolanaWalletAdapter();
 
-  const identityId = user?.identityId ?? undefined;
-
-  // Reload SOL state when identityId changes (also covers sign-out → identityId undefined).
+  // Hydrate store from localStorage when identityId changes.
   useEffect(() => {
-    if (!identityId) {
-      setSolAddress(null);
-      setSolInput("");
-      setConnectedWallet(null);
-      clearError();
-      return;
-    }
-    const savedAddr = localStorage.getItem(solKey(identityId));
-    const savedWallet = localStorage.getItem(solWalletKey(identityId));
-    if (savedAddr && SOL_ADDRESS_RE.test(savedAddr)) {
-      setSolAddress(savedAddr);
-      setSolInput(savedAddr);
-      setConnectedWallet(
-        savedWallet === "phantom" || savedWallet === "solflare" ? savedWallet : null,
-      );
-    } else {
-      setSolAddress(null);
-      setSolInput("");
-      setConnectedWallet(null);
+    if (identityId) {
+      hydrateFromStorage(identityId);
     }
     clearError();
-  }, [identityId, clearError]);
+  }, [identityId, hydrateFromStorage, clearError]);
+
+  // Sync store solAddress → input buffer (one-way, only when not editing).
+  // Mirrors prior identityId useEffect behavior, now driven by store.
+  useEffect(() => {
+    if (!solEditing) {
+      setSolInput(solAddress ?? "");
+    }
+  }, [solAddress, solEditing]);
 
   const isNasunConnected =
     (status === "unlocked" && !!account) || isZkConnected;
@@ -142,24 +138,14 @@ export function WalletBalanceCard() {
     if (!identityId) return;
     const addr = await adapterConnect(name);
     if (!addr) return;
-    setSolAddress(addr);
-    setSolInput(addr);
-    setConnectedWallet(name);
+    setForIdentity(identityId, addr, name);
     setSolEditing(false);
     setSolError("");
-    localStorage.setItem(solKey(identityId), addr);
-    localStorage.setItem(solWalletKey(identityId), name);
   }
 
   async function handleWalletDisconnect() {
     if (connectedWallet) await adapterDisconnect(connectedWallet);
-    if (identityId) {
-      localStorage.removeItem(solKey(identityId));
-      localStorage.removeItem(solWalletKey(identityId));
-    }
-    setSolAddress(null);
-    setSolInput("");
-    setConnectedWallet(null);
+    if (identityId) setForIdentity(identityId, null, null);
     clearError();
   }
 
@@ -167,10 +153,7 @@ export function WalletBalanceCard() {
     if (!identityId) return;
     const trimmed = solInput.trim();
     if (!trimmed) {
-      localStorage.removeItem(solKey(identityId));
-      localStorage.removeItem(solWalletKey(identityId));
-      setSolAddress(null);
-      setConnectedWallet(null);
+      setForIdentity(identityId, null, null);
       setSolError("");
       return;
     }
@@ -179,11 +162,8 @@ export function WalletBalanceCard() {
       return;
     }
     setSolError("");
-    setSolAddress(trimmed);
-    setConnectedWallet(null); // manual-entry marker
+    setForIdentity(identityId, trimmed, null); // manual-entry: no adapter
     setSolEditing(false);
-    localStorage.setItem(solKey(identityId), trimmed);
-    localStorage.removeItem(solWalletKey(identityId));
   }
 
   return (
