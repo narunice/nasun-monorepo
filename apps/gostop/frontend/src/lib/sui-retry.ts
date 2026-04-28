@@ -21,6 +21,11 @@ export function isStaleObjectError(err: unknown): boolean {
  * Detect the case where an input object was deleted on-chain before the
  * tx executed. In Crash this means the GameRound was finalized between
  * tx build and submit. Not retriable: the object is gone for good.
+ *
+ * Two surface shapes:
+ *  - SDK build-time (resolveObjectReferences): "The following input
+ *    objects are invalid: {\"code\":\"deleted\",\"object_id\":...}"
+ *  - Validator execution-time: "InputObjectDeleted" / "ObjectDeleted".
  */
 export function isInputObjectDeletedError(err: unknown): boolean {
   const msg =
@@ -28,7 +33,8 @@ export function isInputObjectDeletedError(err: unknown): boolean {
   if (!msg) return false;
   return (
     msg.includes('InputObjectDeleted') ||
-    msg.includes('ObjectDeleted')
+    msg.includes('ObjectDeleted') ||
+    (msg.includes('input objects are invalid') && msg.includes('"code":"deleted"'))
   );
 }
 
