@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress, CHAINS } from "@nasun/wallet";
 import { useBalance as useEthBalance } from "wagmi";
+import { mainnet } from "wagmi/chains";
 import { useAuth } from "@/features/auth";
-import { SOL_ADDRESS_RE, SOL_DEVNET_RPC } from "@/lib/solana";
+import { SOL_ADDRESS_RE } from "@/lib/solana";
+import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
 import { UjuCard, UjuBadge, UjuSectionHeader } from "../shared";
 import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
 import {
@@ -43,12 +45,13 @@ function useSuiTestnetBalance(address: string | undefined) {
   });
 }
 
-function useSolDevnetBalance(address: string | null) {
+// Plan v5: read-only mainnet OK. Aligned with StakingCard's useSolLst (also mainnet).
+function useSolMainnetBalance(address: string | null) {
   return useQuery({
-    queryKey: ["balance", "sol-devnet", address],
+    queryKey: ["balance", "sol-mainnet", address],
     queryFn: async () => {
       if (!address || !SOL_ADDRESS_RE.test(address)) throw new Error("Invalid Solana address");
-      const res = await fetch(SOL_DEVNET_RPC, {
+      const res = await fetch(SOL_MAINNET_READ_RPC, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -67,11 +70,11 @@ function useSolDevnetBalance(address: string | null) {
       return (json.result.value / 1e9).toFixed(4);
     },
     enabled: !!address,
-    staleTime: 30_000,
-    refetchInterval: 30_000,
+    staleTime: 60_000,
+    refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: 0,
+    retry: 1,
   });
 }
 
@@ -83,7 +86,8 @@ export function WalletBalanceCard() {
 
   const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
   const ethAddress = (registeredEthAddress ?? undefined) as `0x${string}` | undefined;
-  const { data: ethBalance } = useEthBalance({ address: ethAddress });
+  // Plan v5: ETH read-only mainnet (matches StakingCard ETH row).
+  const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: mainnet.id });
 
   const suiAddress = account?.address ?? zkState?.address;
   const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiTestnetBalance(suiAddress);
@@ -104,7 +108,7 @@ export function WalletBalanceCard() {
   const [solError, setSolError] = useState("");
   const [solEditing, setSolEditing] = useState(false);
 
-  const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolDevnetBalance(solAddress);
+  const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolMainnetBalance(solAddress);
 
   const {
     installed,
@@ -202,7 +206,7 @@ export function WalletBalanceCard() {
         <li className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-base text-uju-secondary">ETH</span>
-            <NetworkBadge label="Sepolia" />
+            <NetworkBadge label="Mainnet" />
           </div>
           {ethAddress ? (
             <span className="text-base font-medium text-uju-primary tabular-nums">
@@ -227,7 +231,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base text-uju-secondary">SOL</span>
-              <NetworkBadge label="Devnet" />
+              <NetworkBadge label="Mainnet" />
             </div>
             <div className="flex items-center gap-2">
               {solAddress ? (
