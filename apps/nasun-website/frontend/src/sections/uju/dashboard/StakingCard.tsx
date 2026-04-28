@@ -1,3 +1,10 @@
+// Base Staking & Apps Staking card.
+//
+// Connect/disconnect for external wallets (ETH/SUI/SOL) lives in
+// WalletBalanceCard ("Wallet Integration"). This card is read-only display
+// of staking positions + deep-links to canonical staking sites. NSN keeps
+// its native staking flow.
+
 import { useMemo, useState } from "react";
 import { useWallet, useZkLogin, useStaking } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
@@ -9,8 +16,8 @@ import { formatSui } from "./staking/sui/suiTestnet";
 import { useUjuWalletRegistration } from "../hooks/useUjuWalletRegistration";
 import { useEthLst, formatEthLstTotal } from "./staking/eth/useEthLst";
 import { useSolLst } from "./staking/sol/useSolLst";
-import { SolConnectModal } from "./staking/sol/SolConnectModal";
 import { useSolAddressForIdentity } from "../stores/solAddressStore";
+import { useSuiExternalAddress } from "../stores/suiAddressStore";
 
 const LIDO_STAKING_URL = "https://stake.lido.fi";
 const MARINADE_STAKING_URL = "https://marinade.finance";
@@ -18,12 +25,17 @@ const JITO_STAKING_URL = "https://www.jito.network/staking/";
 const SANCTUM_STAKING_URL = "https://app.sanctum.so/lsts/bsol";
 const SUI_VALIDATORS_URL = "https://suiscan.xyz/mainnet/validators";
 
-// Plan 1C selector: prefer registered SUI-shape address, fallback to signer if SUI-shape.
+// SUI address resolution for read-only display:
+//   1. External typed address (suiAddressStore — set in WalletBalanceCard)
+//   2. Server-registered SUI-shape address (useUjuWalletRegistration)
+//   3. Active signer (zkLogin/mnemonic keypair → nasun-derived Sui address)
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 function pickSuiAddress(
+  external: string | null,
   registered: { walletAddress: string; registeredAt: string }[],
   signerAddress: string | null,
 ): string | null {
+  if (external) return external;
   const suiRegistered = registered
     .filter((w) => SUI_ADDRESS_RE.test(w.walletAddress))
     .sort((a, b) => a.registeredAt.localeCompare(b.registeredAt));
@@ -35,13 +47,12 @@ function pickSuiAddress(
 interface RowProps {
   symbol: string;
   network?: string;
-  apy?: string;
   /** Append a small "address not verified" badge after the symbol. */
   unverified?: boolean;
   trailing: React.ReactNode;
 }
 
-function Row({ symbol, network, apy, unverified, trailing }: RowProps) {
+function Row({ symbol, network, unverified, trailing }: RowProps) {
   return (
     <li className="flex items-center justify-between gap-3 py-3 border-b border-uju-border/50 last:border-0">
       <div className="flex items-center gap-2 min-w-0">
@@ -53,11 +64,6 @@ function Row({ symbol, network, apy, unverified, trailing }: RowProps) {
             title="Address ownership not verified"
           >
             unverified
-          </span>
-        )}
-        {apy && (
-          <span className="text-base text-pado-3 tabular-nums hidden sm:inline">
-            {apy}
           </span>
         )}
       </div>
@@ -79,7 +85,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
   );
 }
 
-/** Inline horizontal links group for SOL "Manage" CTA. Avoids dropdown dep. */
+/** Inline horizontal links group. Avoids dropdown dep. */
 function ManageLinks({
   links,
 }: {
@@ -109,36 +115,30 @@ export function StakingCard() {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const { summary, isLoading } = useStaking();
-  const {
-    registeredWallets,
-    signerAddress,
-    hasSigner,
-    isRegistering,
-    error: registrationError,
-    registerCurrentWallet,
-  } = useUjuWalletRegistration();
+  const { registeredWallets, signerAddress } = useUjuWalletRegistration();
 
-  // SUI selector + read
+  // SUI: external typed > registered > signer-derived
+  const suiExternal = useSuiExternalAddress(user?.identityId);
   const suiAddress = useMemo(
-    () => pickSuiAddress(registeredWallets, signerAddress),
-    [registeredWallets, signerAddress],
+    () => pickSuiAddress(suiExternal, registeredWallets, signerAddress),
+    [suiExternal, registeredWallets, signerAddress],
   );
+  const isSuiUnverified = !!suiExternal; // typed entry has no proof-of-ownership
   const { data: suiStakes, isLoading: suiStakesLoading } = useSuiTestnetStakes(suiAddress);
 
-  // ETH read (mainnet, stETH + wstETH)
+  // ETH: read from linkedAccounts (proof-of-ownership via my-account flow)
   const ethAddress = (user?.linkedAccounts?.metamask?.walletAddress ?? undefined) as
     | `0x${string}`
     | undefined;
   const { view: ethLst, isLoading: ethLstLoading, isError: ethLstError } = useEthLst(ethAddress);
 
-  // SOL read (mainnet LSTs)
+  // SOL: read from solAddressStore (set in WalletBalanceCard)
   const sol = useSolAddressForIdentity(user?.identityId);
   const solAddress = sol?.solAddress ?? null;
   const { data: solLst, isLoading: solLstLoading, isError: solLstError } = useSolLst(solAddress);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [suiModalOpen, setSuiModalOpen] = useState(false);
-  const [solConnectOpen, setSolConnectOpen] = useState(false);
 
   const isNasunConnected = (status === "unlocked" && !!account) || isZkConnected;
 
@@ -148,27 +148,10 @@ export function StakingCard() {
     0n,
   );
 
-  const handleRegisterSui = async () => {
-    try {
-      await registerCurrentWallet();
-    } catch {
-      /* surfaced via registrationError */
-    }
-  };
-
-  // SUI row trailing
+  // SUI row: read-only. Connect/disconnect happens in Wallet Integration.
   const suiTrailing = (() => {
     if (!suiAddress) {
-      return (
-        <UjuButton
-          size="sm"
-          disabled={!hasSigner || isRegistering}
-          onClick={handleRegisterSui}
-          title={!hasSigner ? "Sign in first" : undefined}
-        >
-          {isRegistering ? "…" : "Connect"}
-        </UjuButton>
-      );
+      return <ExternalLink href={SUI_VALIDATORS_URL} label="Stake on Sui" />;
     }
     if (suiStakesLoading) {
       return <span className="text-base text-uju-secondary">…</span>;
@@ -189,7 +172,7 @@ export function StakingCard() {
     return <ExternalLink href={SUI_VALIDATORS_URL} label="Stake on Sui" />;
   })();
 
-  // ETH row trailing (Mainnet, stETH + wstETH read-only)
+  // ETH row: read-only stETH + wstETH summary (display only).
   const ethTrailing = (() => {
     if (!ethAddress) {
       return <ExternalLink href={LIDO_STAKING_URL} label="Stake on Lido" />;
@@ -198,11 +181,7 @@ export function StakingCard() {
       return <span className="text-base text-uju-secondary">…</span>;
     }
     if (ethLstError && !ethLst) {
-      return (
-        <span className="text-sm text-uju-secondary">
-          RPC unavailable
-        </span>
-      );
+      return <span className="text-sm text-uju-secondary">RPC unavailable</span>;
     }
     if (ethLst && ethLst.totalSteth > 0n) {
       return (
@@ -220,19 +199,10 @@ export function StakingCard() {
     return <ExternalLink href={LIDO_STAKING_URL} label="Stake on Lido" />;
   })();
 
-  // SOL row trailing (Mainnet LST read-only, self-display only)
+  // SOL row: read-only LST balances (mSOL/jitoSOL/bSOL).
   const solTrailing = (() => {
     if (!solAddress) {
-      return (
-        <UjuButton
-          size="sm"
-          disabled={!user?.identityId}
-          onClick={() => setSolConnectOpen(true)}
-          title={!user?.identityId ? "Sign in first" : undefined}
-        >
-          Connect
-        </UjuButton>
-      );
+      return <ExternalLink href={MARINADE_STAKING_URL} label="Stake on Marinade" />;
     }
     if (solLstLoading) {
       return <span className="text-base text-uju-secondary">…</span>;
@@ -292,6 +262,7 @@ export function StakingCard() {
           <Row
             symbol="SUI"
             network="Mainnet"
+            unverified={isSuiUnverified}
             trailing={suiTrailing}
           />
           <Row
@@ -306,10 +277,6 @@ export function StakingCard() {
             trailing={solTrailing}
           />
         </ul>
-
-        {registrationError && !suiAddress && (
-          <p className="mt-3 text-sm text-rose-400 text-center">{registrationError}</p>
-        )}
       </UjuCard>
 
       {modalOpen && <StakeModal open={modalOpen} onClose={() => setModalOpen(false)} />}
@@ -318,13 +285,6 @@ export function StakingCard() {
           open={suiModalOpen}
           onClose={() => setSuiModalOpen(false)}
           address={suiAddress}
-        />
-      )}
-      {solConnectOpen && user?.identityId && (
-        <SolConnectModal
-          open={solConnectOpen}
-          onClose={() => setSolConnectOpen(false)}
-          identityId={user.identityId}
         />
       )}
     </>
