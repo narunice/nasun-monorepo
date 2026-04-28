@@ -316,16 +316,18 @@ export class RoundManager {
   }
 
   private async operatorFinalizeEmpty(roundObjectId: string): Promise<void> {
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${this.config.packageId}::crash::operator_finalize_empty_stuck_round`,
-      arguments: [
-        tx.object(this.config.registryId),
-        tx.object(roundObjectId),
-        tx.object(SUI_CLOCK),
-      ],
-    });
-    await this.execTx(tx, 'operator_finalize_empty_stuck_round');
+    await this.execTx(() => {
+      const tx = new Transaction();
+      tx.moveCall({
+        target: `${this.config.packageId}::crash::operator_finalize_empty_stuck_round`,
+        arguments: [
+          tx.object(this.config.registryId),
+          tx.object(roundObjectId),
+          tx.object(SUI_CLOCK),
+        ],
+      });
+      return tx;
+    }, 'operator_finalize_empty_stuck_round');
   }
 
   /// `drain: true` keeps `running=true` so the in-flight `runRound()` finishes
@@ -374,19 +376,62 @@ export class RoundManager {
     return blake2b(msg, { dkLen: 32 });
   }
 
-  private async execTx(tx: Transaction, label: string): Promise<{ digest: string; objectChanges?: unknown[]; events?: unknown[] }> {
-    tx.setGasBudget(100_000_000);
-    const res = await this.client.signAndExecuteTransaction({
-      transaction: tx,
-      signer: this.kp,
-      options: { showEffects: true, showObjectChanges: true, showEvents: true },
-    });
-    if (res.effects?.status.status !== 'success') {
-      throw new Error(`Tx ${label} failed: ${JSON.stringify(res.effects?.status)}`);
+  // LockConflict ("Object ... is not available for consumption") at submit time
+  // means the SDK resolved a stale ObjectRef before the fullnode caught up to
+  // the previous tx's effects. waitForTransaction reduces but doesn't fully
+  // eliminate the race, so we rebuild the Transaction (forcing fresh ObjectRef
+  // resolution) and retry with backoff. Move aborts and other failures fall
+  // through immediately.
+  private static readonly LOCK_CONFLICT_RETRIES = 3;
+  private static readonly LOCK_CONFLICT_BACKOFF_MS = 600;
+
+  private isLockConflict(msg: string): boolean {
+    return msg.includes('is not available for consumption');
+  }
+
+  private async execTx(
+    buildTx: () => Transaction,
+    label: string,
+  ): Promise<{ digest: string; objectChanges?: unknown[]; events?: unknown[] }> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < RoundManager.LOCK_CONFLICT_RETRIES; attempt++) {
+      try {
+        const tx = buildTx();
+        tx.setGasBudget(100_000_000);
+        const res = await this.client.signAndExecuteTransaction({
+          transaction: tx,
+          signer: this.kp,
+          requestType: 'WaitForLocalExecution',
+          options: { showEffects: true, showObjectChanges: true, showEvents: true },
+        });
+        if (res.effects?.status.status !== 'success') {
+          const errStr = JSON.stringify(res.effects?.status);
+          // Execution-level LockConflict is also retriable; Move aborts are not.
+          if (this.isLockConflict(errStr) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+            console.warn(`[Crash] ${label} LockConflict at exec (attempt ${attempt + 1}); retrying`);
+            await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1));
+            continue;
+          }
+          throw new Error(`Tx ${label} failed: ${errStr}`);
+        }
+        // Belt-and-suspenders: requestType=WaitForLocalExecution already calls
+        // waitForTransaction internally, but it swallows errors. Repeat here so
+        // a propagated failure surfaces, and so the next tx's input resolution
+        // observes the new versions.
+        await this.client.waitForTransaction({ digest: res.digest });
+        return { digest: res.digest, objectChanges: res.objectChanges ?? [], events: res.events ?? [] };
+      } catch (err) {
+        lastErr = err;
+        const msg = (err as Error).message ?? String(err);
+        if (this.isLockConflict(msg) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+          console.warn(`[Crash] ${label} LockConflict at submit (attempt ${attempt + 1}): ${msg}`);
+          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1));
+          continue;
+        }
+        throw err;
+      }
     }
-    // Wait so subsequent tx sees consistent object versions (avoids LockConflict).
-    await this.client.waitForTransaction({ digest: res.digest });
-    return { digest: res.digest, objectChanges: res.objectChanges ?? [], events: res.events ?? [] };
+    throw lastErr ?? new Error(`execTx ${label}: exhausted retries`);
   }
 
   private async sleep(ms: number): Promise<void> {
@@ -406,24 +451,53 @@ export class RoundManager {
         console.log(`[Crash] Round duration: ${Date.now() - startedAt}ms`);
       } catch (err) {
         const msg = String(err);
-        // ECurrentRoundExists (abort code 13 from start_round): registry already has a round in flight.
-        // execTx throws `Tx start_round failed: <JSON.stringify(status)>`, so the function_name field
-        // arrives escaped (`Some(\"start_round\")`). Match on the throw label + abort code instead.
-        if (msg.includes('Tx start_round failed') && msg.includes('}, 13)')) {
-          console.error('[Crash] HALTED: ECurrentRoundExists — registry occupied. Clear stuck round then restart.');
-          this.running = false;
-          return;
+        const ecurrentRoundExists = msg.includes('Tx start_round failed') && msg.includes('}, 13)');
+
+        if (ecurrentRoundExists) {
+          // Registry occupied. Most likely cause: the previous round failed
+          // mid-flight (LockConflict or transient RPC error after start_round
+          // succeeded), leaving the round on-chain. Try recover() in-loop so a
+          // single transient blip doesn't force a child fork + 60s parent retry.
+          // recover() auto-finalizes empty stuck rounds, blocks on entries>0
+          // (manual cleanup needed), and blocks on RPC errors (transient).
+          console.warn('[Crash] start_round saw ECurrentRoundExists; attempting in-loop recover()');
+        } else {
+          console.error('[Crash] Round error:', err);
         }
-        console.error('[Crash] Round error:', err);
+
+        // Reset internal state before recover so any future logic sees IDLE.
         this.roundState.state = 'IDLE';
         this.roundState.roundId = null;
         this.roundState.roundObjectId = null;
         this.bumpVersion();
+
         if (this.draining) {
           console.warn('[Crash] Drain: round error during drain, exiting loop');
           this.running = false;
           return;
         }
+
+        // Best-effort cleanup: if a round was left on-chain (mid-round error or
+        // ECurrentRoundExists at boot of a new round), try to clear it. recover()
+        // is safe to call when the registry is already clean (returns 'ok' fast).
+        let verdict: 'ok' | 'block' = 'ok';
+        try {
+          verdict = await this.recover();
+        } catch (recoverErr) {
+          console.error('[Crash] In-loop recover() threw:', recoverErr);
+          verdict = 'block';
+        }
+
+        if (verdict === 'block') {
+          if (ecurrentRoundExists) {
+            console.error('[Crash] HALTED: registry still occupied after recover(); manual intervention required.');
+          } else {
+            console.error('[Crash] HALTED: post-error recover() returned block; deferring to parent retry.');
+          }
+          this.running = false;
+          return;
+        }
+
         await this.sleep(this.config.roundIntervalMs);
       }
     }
@@ -431,11 +505,13 @@ export class RoundManager {
 
   /// Tight retry around resolve_round so a transient RPC blip during drain doesn't
   /// leave a CRASHED round un-resolved. See plan v2 §Drain 설계.
-  private async execResolveWithRetry(tx: Transaction): Promise<{ digest: string; events?: unknown[] }> {
+  /// Note: execTx itself retries LockConflict; this outer loop catches
+  /// non-LockConflict transient failures (RPC timeouts, network blips, etc.).
+  private async execResolveWithRetry(buildTx: () => Transaction): Promise<{ digest: string; events?: unknown[] }> {
     let lastErr: unknown;
     for (let attempt = 0; attempt < RESOLVE_RETRY_ATTEMPTS; attempt++) {
       try {
-        return await this.execTx(tx, 'resolve_round');
+        return await this.execTx(buildTx, 'resolve_round');
       } catch (err) {
         lastErr = err;
         console.warn(`[Crash] resolve_round attempt ${attempt + 1}/${RESOLVE_RETRY_ATTEMPTS} failed:`, (err as Error).message);
@@ -453,17 +529,19 @@ export class RoundManager {
     const commitHash = Buffer.from(commitHashBytes).toString('hex');
 
     // --- start_round tx (canonical round_id comes from the on-chain event) ---
-    const startTx = new Transaction();
-    startTx.moveCall({
-      target: `${this.config.packageId}::crash::start_round`,
-      arguments: [
-        startTx.object(this.config.registryId),
-        startTx.pure.u64(this.config.bettingWindowMs),
-        startTx.pure.vector('u8', Array.from(commitHashBytes)),
-        startTx.object(SUI_CLOCK),
-      ],
-    });
-    const startRes = await this.execTx(startTx, 'start_round');
+    const startRes = await this.execTx(() => {
+      const startTx = new Transaction();
+      startTx.moveCall({
+        target: `${this.config.packageId}::crash::start_round`,
+        arguments: [
+          startTx.object(this.config.registryId),
+          startTx.pure.u64(this.config.bettingWindowMs),
+          startTx.pure.vector('u8', Array.from(commitHashBytes)),
+          startTx.object(SUI_CLOCK),
+        ],
+      });
+      return startTx;
+    }, 'start_round');
 
     // Read canonical round_id from RoundStarted event (avoids sqlite/on-chain drift).
     const events = (startRes.events as Array<{ type: string; parsedJson?: { round_id?: string } }>) ?? [];
@@ -519,16 +597,18 @@ export class RoundManager {
     let closed = false;
     for (let attempt = 0; attempt < 5 && !closed; attempt++) {
       try {
-        const closeTx = new Transaction();
-        closeTx.moveCall({
-          target: `${this.config.packageId}::crash::close_betting`,
-          arguments: [
-            closeTx.object(this.config.registryId),
-            closeTx.object(roundObjectId),
-            closeTx.object(SUI_CLOCK),
-          ],
-        });
-        await this.execTx(closeTx, 'close_betting');
+        await this.execTx(() => {
+          const closeTx = new Transaction();
+          closeTx.moveCall({
+            target: `${this.config.packageId}::crash::close_betting`,
+            arguments: [
+              closeTx.object(this.config.registryId),
+              closeTx.object(roundObjectId),
+              closeTx.object(SUI_CLOCK),
+            ],
+          });
+          return closeTx;
+        }, 'close_betting');
         closed = true;
       } catch (err) {
         const msg = (err as Error).message;
@@ -584,19 +664,21 @@ export class RoundManager {
     ).get(roundId) as { salt: Buffer; crash_point_bps: number } | undefined;
     if (!saltRow) throw new Error(`salt not found for round_id ${roundId}`);
 
-    const resolveTx = new Transaction();
-    resolveTx.moveCall({
-      target: `${this.config.packageId}::crash::resolve_round`,
-      arguments: [
-        resolveTx.object(roundObjectId),
-        resolveTx.pure.u64(saltRow.crash_point_bps),
-        resolveTx.pure.vector('u8', Array.from(saltRow.salt)),
-        resolveTx.object(this.config.registryId),
-        resolveTx.object(BANKROLL_POOL),
-        resolveTx.object(SUI_CLOCK),
-      ],
+    const resolveRes = await this.execResolveWithRetry(() => {
+      const resolveTx = new Transaction();
+      resolveTx.moveCall({
+        target: `${this.config.packageId}::crash::resolve_round`,
+        arguments: [
+          resolveTx.object(roundObjectId),
+          resolveTx.pure.u64(saltRow.crash_point_bps),
+          resolveTx.pure.vector('u8', Array.from(saltRow.salt)),
+          resolveTx.object(this.config.registryId),
+          resolveTx.object(BANKROLL_POOL),
+          resolveTx.object(SUI_CLOCK),
+        ],
+      });
+      return resolveTx;
     });
-    const resolveRes = await this.execResolveWithRetry(resolveTx);
 
     this.db.prepare('UPDATE crash_salts SET resolved = 1 WHERE round_id = ?').run(roundId);
 
