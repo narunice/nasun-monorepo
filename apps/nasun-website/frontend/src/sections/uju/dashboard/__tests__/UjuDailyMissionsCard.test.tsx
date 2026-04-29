@@ -132,18 +132,18 @@ describe('mission pool construction', () => {
     expect(buildMissionPool([PADO_APP])).toHaveLength(4);
   });
 
-  it('gostop pinned: base(3) + gostop(3) = 6 missions', () => {
-    expect(buildMissionPool([GOSTOP_APP])).toHaveLength(6);
+  it('gostop pinned: base(3) + gostop(5) = 8 missions', () => {
+    expect(buildMissionPool([GOSTOP_APP])).toHaveLength(8);
   });
 
   it('jupiter pinned: base(3) + jupiter(1) = 4 missions', () => {
     expect(buildMissionPool([JUPITER_APP])).toHaveLength(4);
   });
 
-  it('all live apps pinned: 3 + 1 + 3 + 1 + 1 + 1 = 10 missions', () => {
+  it('all live apps pinned: 3 + 1 + 5 + 1 + 1 + 1 = 12 missions', () => {
     expect(
       buildMissionPool([PADO_APP, GOSTOP_APP, JUPITER_APP, CETUS_APP, UNISWAP_APP]),
-    ).toHaveLength(10);
+    ).toHaveLength(12);
   });
 
   it('coming-soon app (baram) adds 0 missions', () => {
@@ -271,29 +271,29 @@ describe('visit mission localStorage tracking', () => {
 
 describe('overflow cap', () => {
   it('pool of 7: hiddenCount=0, all displayed', () => {
-    const pool = buildMissionPool([GOSTOP_APP, PADO_APP]); // 3+3+1=7
+    const pool = buildMissionPool([PADO_APP, JUPITER_APP, CETUS_APP, UNISWAP_APP]); // 3+1+1+1+1=7
     expect(getHiddenCount(pool)).toBe(0);
     expect(getDisplayedMissions(pool, false)).toHaveLength(7);
   });
 
   it('pool of 8: hiddenCount=1', () => {
-    const pool = buildMissionPool([GOSTOP_APP, PADO_APP, JUPITER_APP]); // 3+3+1+1=8
+    const pool = buildMissionPool([GOSTOP_APP]); // 3+5=8
     expect(getHiddenCount(pool)).toBe(1);
   });
 
   it('pool of 8 with showAll=false: only 7 displayed', () => {
-    const pool = buildMissionPool([GOSTOP_APP, PADO_APP, JUPITER_APP]);
+    const pool = buildMissionPool([GOSTOP_APP]);
     expect(getDisplayedMissions(pool, false)).toHaveLength(7);
   });
 
   it('pool of 8 with showAll=true: all 8 displayed', () => {
-    const pool = buildMissionPool([GOSTOP_APP, PADO_APP, JUPITER_APP]);
+    const pool = buildMissionPool([GOSTOP_APP]);
     expect(getDisplayedMissions(pool, true)).toHaveLength(8);
   });
 
-  it('pool of 10: hiddenCount=3', () => {
+  it('pool of 12: hiddenCount=5', () => {
     const pool = buildMissionPool([PADO_APP, GOSTOP_APP, JUPITER_APP, CETUS_APP, UNISWAP_APP]);
-    expect(getHiddenCount(pool)).toBe(3);
+    expect(getHiddenCount(pool)).toBe(5);
   });
 
   it('pool under 7: hiddenCount=0', () => {
@@ -315,8 +315,8 @@ describe('total points calculation', () => {
     expect(getTotalPoints(buildMissionPool([PADO_APP]))).toBe(5);
   });
 
-  it('gostop pinned: 6 pts (3 base + 1+1+1 gostop)', () => {
-    expect(getTotalPoints(buildMissionPool([GOSTOP_APP]))).toBe(6);
+  it('gostop pinned: 8 pts (3 base + 5 gostop missions)', () => {
+    expect(getTotalPoints(buildMissionPool([GOSTOP_APP]))).toBe(8);
   });
 
   it('jupiter pinned: 3 pts (visit missions have no points)', () => {
@@ -327,9 +327,9 @@ describe('total points calculation', () => {
     expect(getTotalPoints(buildMissionPool([CETUS_APP]))).toBe(3);
   });
 
-  it('all live apps: 8 pts (3 base + 2 pado-dex + 1+1+1 gostop, visit missions count 0)', () => {
+  it('all live apps: 10 pts (3 base + 2 pado-dex + 5 gostop, visit missions count 0)', () => {
     const pool = buildMissionPool([PADO_APP, GOSTOP_APP, JUPITER_APP, CETUS_APP, UNISWAP_APP]);
-    expect(getTotalPoints(pool)).toBe(8);
+    expect(getTotalPoints(pool)).toBe(10);
   });
 
   it('governance adds 1 pt', () => {
@@ -368,7 +368,13 @@ describe('mission ordering', () => {
   it('gostop missions follow base missions in APP_MISSION_MAP order', () => {
     const pool = buildMissionPool([GOSTOP_APP]);
     const gostopIds = pool.slice(3).map((m) => m.id);
-    expect(gostopIds).toEqual(['pado-lottery', 'pado-scratchcard', 'pado-games']);
+    expect(gostopIds).toEqual([
+      'gostop-lottery',
+      'gostop-scratchcard',
+      'gostop-numbermatch',
+      'gostop-mines',
+      'gostop-crash',
+    ]);
   });
 
   it('governance mission is appended last', () => {

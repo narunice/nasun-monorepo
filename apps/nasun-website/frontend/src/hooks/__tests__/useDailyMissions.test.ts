@@ -106,35 +106,28 @@ describe("detectEventMissions", () => {
     expect(result.has("pado-dex")).toBe(true);
   });
 
-  it("detects multiple mission categories in one page", async () => {
+  it("detects each gostop game as its own mission id", async () => {
     mockQueryEvents.mockResolvedValueOnce(
       emptyEventsPage([
         makeEvent(`${PKG_DEX}::order_info::OrderFilled`, TODAY_NOON),
         makeEvent(`${PKG_LOTTERY}::lottery::TicketPurchased`, TODAY_NOON),
         makeEvent(`${PKG_DEX}::scratchcard::ScratchCardPurchased`, TODAY_NOON),
         makeEvent(`${PKG_DEX}::numbermatch::NumberMatchPlayed`, TODAY_NOON),
+        makeEvent(`${PKG_DEX}::mines::SessionFinished`, TODAY_NOON),
+        makeEvent(`${PKG_DEX}::crash::BetPlaced`, TODAY_NOON),
       ]),
     );
 
     const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
     expect(result.has("pado-dex")).toBe(true);
-    expect(result.has("pado-lottery")).toBe(true);
-    expect(result.has("pado-scratchcard")).toBe(true);
-    expect(result.has("pado-games")).toBe(true);
+    expect(result.has("gostop-lottery")).toBe(true);
+    expect(result.has("gostop-scratchcard")).toBe(true);
+    expect(result.has("gostop-numbermatch")).toBe(true);
+    expect(result.has("gostop-mines")).toBe(true);
+    expect(result.has("gostop-crash")).toBe(true);
   });
 
-  it("detects pado-games from gostop mines SessionFinished (bust + cashout)", async () => {
-    mockQueryEvents.mockResolvedValueOnce(
-      emptyEventsPage([
-        makeEvent(`${PKG_DEX}::mines::SessionFinished`, TODAY_NOON),
-      ]),
-    );
-
-    const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
-    expect(result.has("pado-games")).toBe(true);
-  });
-
-  it("detects pado-games from gostop crash CashOutRecorded", async () => {
+  it("crash CashOutRecorded also credits gostop-crash (cap dedups bet+cashout)", async () => {
     mockQueryEvents.mockResolvedValueOnce(
       emptyEventsPage([
         makeEvent(`${PKG_DEX}::crash::CashOutRecorded`, TODAY_NOON),
@@ -142,7 +135,7 @@ describe("detectEventMissions", () => {
     );
 
     const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
-    expect(result.has("pado-games")).toBe(true);
+    expect(result.has("gostop-crash")).toBe(true);
   });
 
   it("excludes events from yesterday (stops scan on first past-today event)", async () => {
@@ -155,7 +148,7 @@ describe("detectEventMissions", () => {
 
     const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
     expect(result.has("pado-dex")).toBe(true);
-    expect(result.has("pado-lottery")).toBe(false);
+    expect(result.has("gostop-lottery")).toBe(false);
   });
 
   it("ignores unrelated event types (no false positives)", async () => {
@@ -173,9 +166,11 @@ describe("detectEventMissions", () => {
   it("skips query when all event missions already found", async () => {
     const alreadyFound = new Set([
       "pado-dex",
-      "pado-lottery",
-      "pado-scratchcard",
-      "pado-games",
+      "gostop-lottery",
+      "gostop-scratchcard",
+      "gostop-numbermatch",
+      "gostop-mines",
+      "gostop-crash",
     ] as const);
 
     const result = await detectEventMissions(
@@ -203,7 +198,7 @@ describe("detectEventMissions", () => {
 
     const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
     expect(result.has("pado-dex")).toBe(true);
-    expect(result.has("pado-lottery")).toBe(true);
+    expect(result.has("gostop-lottery")).toBe(true);
     expect(mockQueryEvents).toHaveBeenCalledTimes(2);
   });
 
@@ -412,7 +407,7 @@ describe("detectAllWallets", () => {
     );
 
     expect(result.has("pado-dex")).toBe(true);
-    expect(result.has("pado-lottery")).toBe(true);
+    expect(result.has("gostop-lottery")).toBe(true);
     expect(result.has("faucet")).toBe(true);
   });
 

@@ -14,7 +14,6 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   // Base categories (existence markers)
   'pado-dex': { 'limit-order': 1, 'market-order': 1, 'cancel-order': 1 },
   'pado-prediction': { 'mint-tokens': 1, 'place-bid': 1, 'place-ask': 1, 'claim-winnings': 1 },
-  'pado-lottery': { 'buy-ticket': 1, 'claim-prize': 1 },
   'pado-perp': { 'open-position': 1, 'close-position': 1, 'add-margin': 1, 'remove-margin': 1 },
   'pado-lending': { deposit: 1, withdraw: 1, borrow: 1, repay: 1 },
   'baram-ai': { 'create-request': 1, settle: 1, cancel: 1 },
@@ -23,33 +22,31 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   staking: { delegate: 1, unstake: 0 },
   'staking-daily': { 'staking-active': 1 },
   faucet: { claim: 1 },
-  'pado-scratchcard': { 'scratchcard-purchase': 1 },
-  'pado-games': {
-    'numbermatch-play': 1,
-    // Gostop mines: SessionFinished is emitted on every session end (bust or
-    // cashout); both count as "completed a session" for daily-mission purposes.
-    'mines-session': 1,
-    // Gostop crash: BetPlaced fires when the player bets into a round; the
-    // keeper auto-finalizes every round, so a bet is sufficient to count as
-    // a completed game even if the player never cashes out (busts). Cashout
-    // also credits the same category, but the daily 1pt cap dedups it.
-    'crash-bet': 1,
-    'crash-cashout': 1,
-  },
+  // Gostop games: each game is its own category so the 1pt/day cap applies
+  // per game, allowing up to 5pt/day across the GoStop suite. Renamed from
+  // the old shared pado-lottery/pado-scratchcard/pado-games keys.
+  'gostop-lottery': { 'buy-ticket': 1, 'claim-prize': 1 },
+  'gostop-scratchcard': { 'scratchcard-purchase': 1 },
+  'gostop-numbermatch': { 'numbermatch-play': 1 },
+  'gostop-mines': { 'mines-session': 1 },
+  'gostop-crash': { 'crash-bet': 1, 'crash-cashout': 1 },
   chat: { participation: 1 },
 
   // Score categories (final_points used in ecosystem score)
   governance: { vote: 10, delegate: 5 },
   'daily-mission': {
+    // Game first-time bonuses (lottery-first/scratchcard-first) removed when
+    // GoStop categories were split; games now only earn the 1pt/day cap per
+    // category. The remaining first-time entries are the non-game categories
+    // tracked by scanner/daily-mission.ts MISSION_MAP.
     'dex-first': 5,
     'prediction-first': 5,
-    'lottery-first': 5,
     'governance-first': 10,
     'perp-first': 5,
-    'scratchcard-first': 5,
     'baram-first': 5,
     'faucet-first': 5,
-    'tier-4': 3,
+    // Tier thresholds re-scaled for 6 qualifying categories (down from 8).
+    'tier-3': 3,
     'tier-5': 5,
     'all-clear': 10,
   },
@@ -291,13 +288,15 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.prediction, 'prediction', 'AskPlaced', { category: 'pado-prediction', activityType: 'place-ask' }],
   [PKG.prediction, 'prediction', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
 
-  // Pado Lottery
-  [PKG.lottery, 'lottery', 'TicketPurchased', { category: 'pado-lottery', activityType: 'buy-ticket' }],
-  [PKG.lottery, 'lottery', 'PrizeClaimed', { category: 'pado-lottery', activityType: 'claim-prize' }],
+  // GoStop games: split into per-game categories so each carries its own
+  // 1pt/day cap (up to 5pt/day across the suite). Pado-side lottery /
+  // scratchcard / numbermatch entries dropped: traffic was 0 (the games are
+  // hosted on gostop.app), and keeping the legacy PKG mappings would make
+  // either category resolution ambiguous if the pado packages ever re-emit.
 
-  // Gostop Lottery (same category — daily cap dedups pado vs gostop)
-  [PKG.gostopLottery, 'lottery', 'TicketPurchased', { category: 'pado-lottery', activityType: 'buy-ticket' }],
-  [PKG.gostopLottery, 'lottery', 'PrizeClaimed', { category: 'pado-lottery', activityType: 'claim-prize' }],
+  // Gostop Lottery
+  [PKG.gostopLottery, 'lottery', 'TicketPurchased', { category: 'gostop-lottery', activityType: 'buy-ticket' }],
+  [PKG.gostopLottery, 'lottery', 'PrizeClaimed', { category: 'gostop-lottery', activityType: 'claim-prize' }],
 
   // Pado Perp
   [PKG.perp, 'perp', 'PositionOpened', { category: 'pado-perp', activityType: 'open-position' }],
@@ -305,33 +304,25 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.perp, 'perp', 'MarginAdded', { category: 'pado-perp', activityType: 'add-margin' }],
   [PKG.perp, 'perp', 'MarginRemoved', { category: 'pado-perp', activityType: 'remove-margin' }],
 
-  // Pado Scratchcard
-  [PKG.scratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
-
   // Gostop Scratchcard
-  [PKG.gostopScratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'pado-scratchcard', activityType: 'scratchcard-purchase' }],
+  [PKG.gostopScratchcard, 'scratchcard', 'ScratchCardPurchased', { category: 'gostop-scratchcard', activityType: 'scratchcard-purchase' }],
 
-  // Pado NumberMatch (Games)
-  [PKG.numbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
+  // Gostop NumberMatch
+  [PKG.gostopNumbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'gostop-numbermatch', activityType: 'numbermatch-play' }],
 
-  // Gostop NumberMatch (Games)
-  [PKG.gostopNumbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
+  // Gostop Mines: SessionFinished is emitted on every session end (bust at
+  // L307, cashout at L382 in mines.move). Both count as a completed game
+  // session for daily-mission purposes; bust still represents a session
+  // played.
+  [PKG.gostopMines, 'mines', 'SessionFinished', { category: 'gostop-mines', activityType: 'mines-session' }],
 
-  // Gostop Mines: emits SessionFinished on every session end (bust at L307,
-  // cashout at L382 in mines.move). Both count as a completed game session
-  // for daily mission purposes. Bust still represents a session played.
-  // Daily 1pt cap is shared across all pado-games entries (mines, crash,
-  // numbermatch).
-  [PKG.gostopMines, 'mines', 'SessionFinished', { category: 'pado-games', activityType: 'mines-session' }],
-
-  // Gostop Crash: BetPlaced fires when a player bets into a round, and the
-  // round is always auto-finalized by the keeper, so a bet alone is enough
-  // to count the game as "completed" for daily-mission purposes (player who
-  // busts still played a full round). CashOutRecorded fires on a successful
-  // cashout. Both map to the same daily cap so a bust + cashout combo still
-  // only credits 1pt/day.
-  [PKG.gostopCrash, 'crash', 'BetPlaced', { category: 'pado-games', activityType: 'crash-bet' }],
-  [PKG.gostopCrash, 'crash', 'CashOutRecorded', { category: 'pado-games', activityType: 'crash-cashout' }],
+  // Gostop Crash: BetPlaced fires when a player bets into a round; the
+  // keeper always auto-finalizes the round, so a bet alone is enough to
+  // count the game as completed (a player who busts still played a full
+  // round). CashOutRecorded fires on a successful cashout. Both map to
+  // gostop-crash so a bet+cashout combo only credits 1pt/day.
+  [PKG.gostopCrash, 'crash', 'BetPlaced', { category: 'gostop-crash', activityType: 'crash-bet' }],
+  [PKG.gostopCrash, 'crash', 'CashOutRecorded', { category: 'gostop-crash', activityType: 'crash-cashout' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],

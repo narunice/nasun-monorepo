@@ -766,12 +766,12 @@ app.get('/leaderboard', async (c) => {
           GROUP BY identity_id
         ),
         volume_score AS (
-          -- Game plays (pado-lottery/games/scratchcard) + wallet transfers.
+          -- Game plays (gostop-{lottery,numbermatch,mines,crash,scratchcard}) + wallet transfers.
           -- wallet-transfer intentionally double-counted with activity_score to reward volume.
-          -- pado-dex excluded (covered by Pado Score Leaderboard); games excluded from pado-% pattern corrected here.
+          -- pado-dex excluded (covered by Pado Score Leaderboard).
           SELECT identity_id, COUNT(*)::int AS volume_count
           FROM activity_points
-          WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+          WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
             AND NOT flagged
             AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start}
@@ -902,7 +902,7 @@ app.get('/leaderboard', async (c) => {
         ),
         volume_score AS (
           SELECT identity_id FROM activity_points
-          WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+          WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
             AND NOT flagged AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
@@ -978,7 +978,7 @@ app.get('/leaderboard', async (c) => {
           volume_score AS (
             SELECT identity_id, COUNT(*)::int AS volume_count
             FROM activity_points
-            WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+            WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
               AND NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
             GROUP BY identity_id
@@ -1054,7 +1054,7 @@ app.get('/leaderboard', async (c) => {
             ),
             volume_score AS (
               SELECT identity_id FROM activity_points
-              WHERE category IN ('pado-lottery', 'pado-games', 'pado-scratchcard', 'wallet-transfer')
+              WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
                 AND NOT flagged AND identity_id IS NOT NULL
                 AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
               GROUP BY identity_id

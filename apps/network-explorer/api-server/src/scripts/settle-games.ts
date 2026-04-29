@@ -23,9 +23,9 @@ const WEEKLY_CAP = 600;
 const USDC_DECIMALS = 1_000_000;
 
 // Game categories whose events may contain USDC payouts
-const GAME_CATEGORIES = ['pado-lottery', 'pado-scratchcard', 'pado-games'];
+const GAME_CATEGORIES = ['gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard'];
 // Activity types that indicate a payout event
-const PAYOUT_TYPES = ['claim-prize', 'scratchcard-purchase', 'numbermatch-play'];
+const PAYOUT_TYPES = ['claim-prize', 'scratchcard-purchase', 'numbermatch-play', 'mines-session', 'crash-cashout'];
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');

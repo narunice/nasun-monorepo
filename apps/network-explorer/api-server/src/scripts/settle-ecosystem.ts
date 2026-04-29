@@ -383,7 +383,7 @@ async function main() {
     volume_score AS (
       SELECT identity_id, COUNT(*)::int AS volume_count
       FROM activity_points
-      WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','wallet-transfer')
+      WHERE category IN ('gostop-lottery','gostop-numbermatch','gostop-mines','gostop-crash','gostop-scratchcard','wallet-transfer')
         AND NOT flagged AND identity_id IS NOT NULL
         AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
       GROUP BY identity_id
