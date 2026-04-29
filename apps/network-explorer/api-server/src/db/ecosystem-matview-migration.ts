@@ -26,7 +26,12 @@
 
 import { pointsDb } from '../db.js';
 
-const MATVIEW_VERSION = 3;
+// v4 (PR3a, 2026-04-29): GoStop categories split (pado-lottery / pado-scratchcard /
+//   pado-games → gostop-{lottery,scratchcard,numbermatch,mines,crash}). distinct_cats
+//   SQL unchanged; bump forces a superuser rebuild so leaderboard reflects the new
+//   per-category dedup (a user playing 5 GoStop games on the same day now contributes
+//   5 distinct categories to base_score instead of 1).
+const MATVIEW_VERSION = 4;
 const VERSION_MARKER = `matview_version=${MATVIEW_VERSION}`;
 
 const MATVIEW_SQL = `

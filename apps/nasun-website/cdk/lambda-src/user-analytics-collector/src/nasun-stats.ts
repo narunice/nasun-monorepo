@@ -77,9 +77,11 @@ const TABLE_NAME = process.env.DEVNET_METRICS_TABLE || 'devnet-metrics';
 // Preferred ordering of individual categories in TXT output (matches skill).
 const PREFERRED_CATS = [
   'pado-dex',
-  'pado-lottery',
-  'pado-scratchcard',
-  'pado-games',
+  'gostop-lottery',
+  'gostop-scratchcard',
+  'gostop-numbermatch',
+  'gostop-mines',
+  'gostop-crash',
   'faucet',
   'wallet-transfer',
   'chat',

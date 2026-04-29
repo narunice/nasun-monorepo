@@ -21,8 +21,20 @@ import type { SuiTransactionBlockResponse } from "@mysten/sui/client";
 const POLL_INTERVAL_MS = 60_000;
 const MAX_PAGES = 10; // Cap pagination (10 * 50 = 500 results max per wallet)
 
-// Mission IDs matching DailyMissionsCard
-export type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lottery" | "pado-scratchcard" | "pado-games" | "chat";
+// Mission IDs matching DailyMissionsCard.
+// GoStop missions: each game has its own id mirroring the backend category
+// (gostop-{lottery,scratchcard,numbermatch,mines,crash}). Daily 1pt cap is per
+// game, so a user playing all five earns up to 5pt/day from GoStop.
+export type MissionId =
+  | "faucet"
+  | "wallet-transfer"
+  | "pado-dex"
+  | "gostop-lottery"
+  | "gostop-scratchcard"
+  | "gostop-numbermatch"
+  | "gostop-mines"
+  | "gostop-crash"
+  | "chat";
 
 // Event type suffixes for Sender-based event query.
 // Spot Trade: OrderPlaced fires only when order is injected into the book (maker).
@@ -36,18 +48,18 @@ export type MissionId = "faucet" | "wallet-transfer" | "pado-dex" | "pado-lotter
 const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
   { suffix: "::order_info::OrderPlaced", missionId: "pado-dex" },
   { suffix: "::order_info::OrderFilled", missionId: "pado-dex" },
-  { suffix: "::lottery::TicketPurchased", missionId: "pado-lottery" },
-  { suffix: "::scratchcard::ScratchCardPurchased", missionId: "pado-scratchcard" },
-  { suffix: "::numbermatch::NumberMatchPlayed", missionId: "pado-games" },
-  // Gostop mines/crash share the pado-games mission (and its 1pt/day cap).
+  // Each GoStop game maps to its own mission id (and its own backend category).
+  { suffix: "::lottery::TicketPurchased", missionId: "gostop-lottery" },
+  { suffix: "::scratchcard::ScratchCardPurchased", missionId: "gostop-scratchcard" },
+  { suffix: "::numbermatch::NumberMatchPlayed", missionId: "gostop-numbermatch" },
   // mines: SessionFinished fires on every session end (bust + cashout).
+  { suffix: "::mines::SessionFinished", missionId: "gostop-mines" },
   // crash: BetPlaced is the "completion" signal because the keeper always
-  //   auto-finalizes the round, so a bet alone is enough to count as a
-  //   completed game. CashOutRecorded credits the same mission for players
-  //   who do cash out; the daily cap dedups the combo.
-  { suffix: "::mines::SessionFinished", missionId: "pado-games" },
-  { suffix: "::crash::BetPlaced", missionId: "pado-games" },
-  { suffix: "::crash::CashOutRecorded", missionId: "pado-games" },
+  // auto-finalizes the round (a bet alone counts as a completed game).
+  // CashOutRecorded credits the same mission for cashout players; the daily
+  // 1pt cap dedups the combo.
+  { suffix: "::crash::BetPlaced", missionId: "gostop-crash" },
+  { suffix: "::crash::CashOutRecorded", missionId: "gostop-crash" },
 ];
 
 // Faucet modules (upgrade-safe: match by module+function, not package ID)
@@ -89,7 +101,17 @@ const CONTRACT_MODULES_EXCLUDING_TRANSFER = new Set([
 ]);
 
 // All possible mission IDs for early exit optimization
-const ALL_MISSION_IDS: Set<MissionId> = new Set(["faucet", "wallet-transfer", "pado-dex", "pado-lottery", "pado-scratchcard", "pado-games", "chat"]);
+const ALL_MISSION_IDS: Set<MissionId> = new Set([
+  "faucet",
+  "wallet-transfer",
+  "pado-dex",
+  "gostop-lottery",
+  "gostop-scratchcard",
+  "gostop-numbermatch",
+  "gostop-mines",
+  "gostop-crash",
+  "chat",
+]);
 
 function getTodayUtcStart(): number {
   const now = new Date();

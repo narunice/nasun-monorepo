@@ -17,23 +17,27 @@ import { pointsDb } from '../db.js';
 import { BASE_POINTS } from '../config/points.js';
 
 // Mission category -> daily mission type + points
+//
+// GoStop game categories (gostop-lottery / gostop-scratchcard / gostop-numbermatch /
+// gostop-mines / gostop-crash) intentionally have no first-time bonus: per the
+// product decision when they were split out, games only earn the 1pt/day cap
+// per category, with no extra reward for trying a new game for the first time.
+// QUALIFYING_CATEGORIES is therefore 6 (down from 8). TIER_BONUSES re-scaled
+// accordingly: tier-3 / tier-5 / all-clear=6.
 const MISSION_MAP: Record<string, { missionType: string; points: number }> = {
   'pado-dex':         { missionType: 'dex-first', points: 5 },
   'pado-prediction':  { missionType: 'prediction-first', points: 5 },
-  'pado-lottery':     { missionType: 'lottery-first', points: 5 },
   'governance':       { missionType: 'governance-first', points: 10 },
   'pado-perp':        { missionType: 'perp-first', points: 5 },
-  'pado-scratchcard': { missionType: 'scratchcard-first', points: 5 },
   'baram-ai':         { missionType: 'baram-first', points: 5 },
   'faucet':           { missionType: 'faucet-first', points: 5 },
 };
 
 const QUALIFYING_CATEGORIES = Object.keys(MISSION_MAP);
-const TOTAL_MISSIONS = QUALIFYING_CATEGORIES.length; // 7
 
-// Tiered bonus thresholds
+// Tiered bonus thresholds (3/5/all-clear=6).
 const TIER_BONUSES: { threshold: number; missionType: string; points: number }[] = [
-  { threshold: 4, missionType: 'tier-4', points: 3 },
+  { threshold: 3, missionType: 'tier-3', points: 3 },
   { threshold: 5, missionType: 'tier-5', points: 5 },
   { threshold: QUALIFYING_CATEGORIES.length, missionType: 'all-clear', points: 10 },
 ];

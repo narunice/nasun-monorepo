@@ -82,29 +82,25 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.prediction}::prediction::BidPlaced`, category: 'pado-prediction', activityType: 'place-bid' },
   { moveEventType: `${PKG.prediction}::prediction::AskPlaced`, category: 'pado-prediction', activityType: 'place-ask' },
   { moveEventType: `${PKG.prediction}::prediction::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
-  // Lottery
-  { moveEventType: `${PKG.lottery}::lottery::TicketPurchased`, category: 'pado-lottery', activityType: 'buy-ticket' },
-  { moveEventType: `${PKG.lottery}::lottery::PrizeClaimed`, category: 'pado-lottery', activityType: 'claim-prize' },
-  // Gostop Lottery (same category as pado — daily cap dedups)
-  { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'pado-lottery', activityType: 'buy-ticket' },
-  { moveEventType: `${PKG.gostopLottery}::lottery::PrizeClaimed`, category: 'pado-lottery', activityType: 'claim-prize' },
+  // Gostop Lottery (own category; pado-side lottery PKG kept in EXCLUDED_PACKAGES
+  // but no longer mapped to a points category since pado-side traffic is 0)
+  { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'gostop-lottery', activityType: 'buy-ticket' },
+  { moveEventType: `${PKG.gostopLottery}::lottery::PrizeClaimed`, category: 'gostop-lottery', activityType: 'claim-prize' },
   // Perp
   { moveEventType: `${PKG.perp}::perp::PositionOpened`, category: 'pado-perp', activityType: 'open-position' },
   { moveEventType: `${PKG.perp}::perp::PositionClosed`, category: 'pado-perp', activityType: 'close-position' },
   { moveEventType: `${PKG.perp}::perp::MarginAdded`, category: 'pado-perp', activityType: 'add-margin' },
   { moveEventType: `${PKG.perp}::perp::MarginRemoved`, category: 'pado-perp', activityType: 'remove-margin' },
-  // Scratchcard
-  { moveEventType: `${PKG.scratchcard}::scratchcard::ScratchCardPurchased`, category: 'pado-scratchcard', activityType: 'scratchcard-purchase' },
-  { moveEventType: `${PKG.gostopScratchcard}::scratchcard::ScratchCardPurchased`, category: 'pado-scratchcard', activityType: 'scratchcard-purchase' },
-  // NumberMatch (Games)
-  { moveEventType: `${PKG.numbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
-  { moveEventType: `${PKG.gostopNumbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
+  // Gostop Scratchcard (own category)
+  { moveEventType: `${PKG.gostopScratchcard}::scratchcard::ScratchCardPurchased`, category: 'gostop-scratchcard', activityType: 'scratchcard-purchase' },
+  // Gostop NumberMatch (own category)
+  { moveEventType: `${PKG.gostopNumbermatch}::numbermatch::NumberMatchPlayed`, category: 'gostop-numbermatch', activityType: 'numbermatch-play' },
   // Gostop Mines (all SessionFinished events count, bust + cashout)
-  { moveEventType: `${PKG.gostopMines}::mines::SessionFinished`, category: 'pado-games', activityType: 'mines-session' },
+  { moveEventType: `${PKG.gostopMines}::mines::SessionFinished`, category: 'gostop-mines', activityType: 'mines-session' },
   // Gostop Crash (BetPlaced = round entered = game completed via keeper auto-finalize;
-  // CashOutRecorded = successful cashout. Daily cap dedups bet + cashout combos.)
-  { moveEventType: `${PKG.gostopCrash}::crash::BetPlaced`, category: 'pado-games', activityType: 'crash-bet' },
-  { moveEventType: `${PKG.gostopCrash}::crash::CashOutRecorded`, category: 'pado-games', activityType: 'crash-cashout' },
+  // CashOutRecorded = successful cashout. Daily 1pt cap dedups bet + cashout combos.)
+  { moveEventType: `${PKG.gostopCrash}::crash::BetPlaced`, category: 'gostop-crash', activityType: 'crash-bet' },
+  { moveEventType: `${PKG.gostopCrash}::crash::CashOutRecorded`, category: 'gostop-crash', activityType: 'crash-cashout' },
   // Lending
   { moveEventType: `${PKG.lending}::lending::DepositEvent`, category: 'pado-lending', activityType: 'deposit' },
   { moveEventType: `${PKG.lending}::lending::WithdrawEvent`, category: 'pado-lending', activityType: 'withdraw' },

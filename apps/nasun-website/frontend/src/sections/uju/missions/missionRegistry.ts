@@ -43,15 +43,13 @@ export const BASE_MISSIONS: UjuMission[] = [
   },
 ];
 
-// Missions added when an app is pinned via App Directory
+// Missions added when an app is pinned via App Directory.
 //
-// NOTE on the mission id `pado-games`: it remains `pado-` prefixed because it
-// is used as both the frontend mission id and the backend category name.
-// Several gostop games (numbermatch, mines, crash) all credit this single
-// mission so the daily 1pt cap is shared across them. Renaming the category
-// (and matview cutover) is tracked separately as a follow-up cleanup; until
-// then keep the id stable. The visible label is product-neutral so the UX
-// reads correctly regardless.
+// GoStop missions: each game owns a separate mission id and a separate backend
+// category, so the 1pt/day cap applies per game (a user playing all five games
+// can earn 5pt/day from GoStop). Mission ids match the backend category names
+// (gostop-{lottery,scratchcard,numbermatch,mines,crash}); useDailyMissions.ts
+// EVENT_MISSION_MAP must stay in sync.
 export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
   pado: [
     {
@@ -66,7 +64,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
   ],
   gostop: [
     {
-      id: 'pado-lottery',
+      id: 'gostop-lottery',
       appId: 'gostop',
       completionType: 'onchain',
       points: 1,
@@ -75,7 +73,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       externalUrl: 'https://gostop.app/lottery',
     },
     {
-      id: 'pado-scratchcard',
+      id: 'gostop-scratchcard',
       appId: 'gostop',
       completionType: 'onchain',
       points: 1,
@@ -84,13 +82,31 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       externalUrl: 'https://gostop.app/scratch',
     },
     {
-      id: 'pado-games',
+      id: 'gostop-numbermatch',
       appId: 'gostop',
       completionType: 'onchain',
       points: 1,
-      label: 'Play a GoStop game',
-      description: 'Number match, mines, or crash. Any session counts.',
-      externalUrl: 'https://gostop.app',
+      label: 'Play Number Match',
+      description: 'Pick numbers for a quick game',
+      externalUrl: 'https://gostop.app/numbermatch',
+    },
+    {
+      id: 'gostop-mines',
+      appId: 'gostop',
+      completionType: 'onchain',
+      points: 1,
+      label: 'Play Mines',
+      description: 'Reveal cells, dodge mines, cash out before you bust',
+      externalUrl: 'https://gostop.app/mines',
+    },
+    {
+      id: 'gostop-crash',
+      appId: 'gostop',
+      completionType: 'onchain',
+      points: 1,
+      label: 'Play Crash',
+      description: 'Bet on the multiplier, cash out before the crash',
+      externalUrl: 'https://gostop.app/crash',
     },
   ],
   jupiter: [

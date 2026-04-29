@@ -29,13 +29,21 @@ const MISSION_CATEGORIES = [
   'faucet',
   'wallet-transfer',
   'pado-dex',
-  'pado-scratchcard',
-  'pado-games',
-  'pado-lottery',
+  'gostop-lottery',
+  'gostop-scratchcard',
+  'gostop-numbermatch',
+  'gostop-mines',
+  'gostop-crash',
   'chat',
 ] as const;
 
-const GAMES_CATEGORIES = ['pado-lottery', 'pado-games', 'pado-scratchcard'] as const;
+const GAMES_CATEGORIES = [
+  'gostop-lottery',
+  'gostop-numbermatch',
+  'gostop-mines',
+  'gostop-crash',
+  'gostop-scratchcard',
+] as const;
 const DEX_CATEGORIES = ['pado-dex'] as const;
 
 // Top activities ordering ignores these admin/passive categories (matches skill Step4).
