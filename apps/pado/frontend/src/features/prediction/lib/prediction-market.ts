@@ -1,50 +1,48 @@
 /**
- * Prediction Market On-chain Utilities
+ * Prediction Market On-chain Utilities (round-6 plan §2.2, §2.7)
+ *
+ * Reads the v1 CLOB market struct + orderbook tables. Each FIFO entry
+ * carries direction (isYes/isBid), locked NUSDC, and cost basis so
+ * cancellation/refund flows have full information without table scans.
  */
 
+import type { EventId } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
-import { MARKET_CREATED_EVENT, TEST_MARKETS } from '../constants';
-import type { PredictionMarket, OrderbookLevel } from '../types';
+import { MARKET_CREATED_EVENT, ORDER_FILLED_EVENT, TEST_MARKETS } from '../constants';
+import type { Order, OrderbookLevel, PredictionMarket, RecentFill } from '../types';
 import { parseMarketStatus } from '../types';
 
-/**
- * Fetch all prediction markets
- * Uses on-chain event discovery when TEST_MARKETS is empty (dynamic, survives chain resets)
- */
+const MAX_MARKETS_DISCOVERY = 1000;
+const MAX_PRICE_LEVELS_PER_SIDE = 200;
+const FETCH_CHUNK_SIZE = 50;
+
 export async function fetchMarkets(): Promise<PredictionMarket[]> {
   let marketIds: string[] = TEST_MARKETS;
   if (marketIds.length === 0) {
     marketIds = await fetchMarketsByEvents();
   }
 
-  const markets: PredictionMarket[] = [];
-  for (const marketId of marketIds) {
-    try {
-      const market = await fetchMarket(marketId);
-      if (market) {
-        markets.push(market);
+  const markets = await Promise.all(
+    marketIds.map(async (marketId) => {
+      try {
+        return await fetchMarket(marketId);
+      } catch (error) {
+        console.error(`Failed to fetch market ${marketId}:`, error);
+        return null;
       }
-    } catch (error) {
-      console.error(`Failed to fetch market ${marketId}:`, error);
-    }
-  }
+    }),
+  );
 
-  return markets;
+  return markets.filter((m): m is PredictionMarket => m !== null);
 }
 
-/**
- * Fetch a single market by ID
- */
 export async function fetchMarket(marketId: string): Promise<PredictionMarket | null> {
   const client = getSuiClient();
 
   try {
     const object = await client.getObject({
       id: marketId,
-      options: {
-        showContent: true,
-        showType: true,
-      },
+      options: { showContent: true, showType: true },
     });
 
     if (!object.data?.content || object.data.content.dataType !== 'moveObject') {
@@ -52,7 +50,6 @@ export async function fetchMarket(marketId: string): Promise<PredictionMarket | 
     }
 
     const fields = object.data.content.fields as Record<string, unknown>;
-
     return parseMarketFields(marketId, fields);
   } catch (error) {
     console.error(`Failed to fetch market ${marketId}:`, error);
@@ -60,174 +57,71 @@ export async function fetchMarket(marketId: string): Promise<PredictionMarket | 
   }
 }
 
-/**
- * Parse market fields from on-chain data
- */
-function parseMarketFields(
-  id: string,
-  fields: Record<string, unknown>
-): PredictionMarket {
+function parseMarketFields(id: string, fields: Record<string, unknown>): PredictionMarket {
   return {
     id,
-    question: String(fields.question || ''),
-    description: String(fields.description || ''),
-    category: String(fields.category || ''),
-    createdAt: Number(fields.created_at || 0),
-    closeTime: Number(fields.close_time || 0),
-    resolveDeadline: Number(fields.resolve_deadline || 0),
-    yesSupply: BigInt(String(fields.yes_supply || '0')),
-    noSupply: BigInt(String(fields.no_supply || '0')),
-    collateralBalance: parseBalanceField(fields.collateral_pool),
-    totalVolume: BigInt(String(fields.total_volume || '0')),
-    status: parseMarketStatus(Number(fields.status || 0)),
+    question: String(fields.question ?? ''),
+    description: String(fields.description ?? ''),
+    category: String(fields.category ?? ''),
+    resolutionSource: String(fields.resolution_source ?? ''),
+    resolutionCriteria: String(fields.resolution_criteria ?? ''),
+    createdAt: Number(fields.created_at ?? 0),
+    closeTime: Number(fields.close_time ?? 0),
+    resolveDeadline: Number(fields.resolve_deadline ?? 0),
+    yesSupply: BigInt(String(fields.yes_supply ?? '0')),
+    noSupply: BigInt(String(fields.no_supply ?? '0')),
+    collateralBalance: parseBalanceField(fields.collateral_pool ?? fields.collateral),
+    totalVolume: BigInt(String(fields.total_volume ?? '0')),
+    status: parseMarketStatus(Number(fields.status ?? 0)),
     outcome: parseOutcomeField(fields.outcome),
-    creator: String(fields.creator || ''),
-    resolver: String(fields.resolver || ''),
+    creator: String(fields.creator ?? ''),
+    resolver: String(fields.resolver ?? ''),
   };
 }
 
-/**
- * Parse Balance<T> field
- */
 function parseBalanceField(field: unknown): bigint {
   if (!field || typeof field !== 'object') return 0n;
   const balanceObj = field as Record<string, unknown>;
-  return BigInt(String(balanceObj.value || '0'));
+  return BigInt(String(balanceObj.value ?? '0'));
 }
 
-/**
- * Parse Option<bool> field
- */
 function parseOutcomeField(field: unknown): boolean | undefined {
   if (!field || typeof field !== 'object') return undefined;
   const optionObj = field as Record<string, unknown>;
-  if (optionObj.vec && Array.isArray(optionObj.vec) && optionObj.vec.length > 0) {
+  if (Array.isArray(optionObj.vec) && optionObj.vec.length > 0) {
     return Boolean(optionObj.vec[0]);
   }
   return undefined;
 }
 
 /**
- * Fetch market orderbook from on-chain Table data
- * Note: This fetches the asks (sell orders) which determine market price
+ * Fetch one side of the orderbook (bids OR asks for one outcome).
+ * Capped at MAX_PRICE_LEVELS_PER_SIDE; chunks dynamic-field reads in
+ * batches of FETCH_CHUNK_SIZE for parallelism (round-6 plan §2.7).
  */
 export async function fetchMarketOrderbook(
   marketId: string,
-  isYes: boolean
+  isYes: boolean,
 ): Promise<{ bids: OrderbookLevel[]; asks: OrderbookLevel[] }> {
   const client = getSuiClient();
 
   try {
-    // Fetch dynamic fields from the market's orderbook tables
-    const tableFieldName = isYes ? 'yes_asks' : 'no_asks';
-    const bidTableFieldName = isYes ? 'yes_bids' : 'no_bids';
-
-    // First, get the market object to find table IDs
-    const marketObj = await client.getObject({
-      id: marketId,
-      options: { showContent: true },
-    });
-
+    const marketObj = await client.getObject({ id: marketId, options: { showContent: true } });
     if (!marketObj.data?.content || marketObj.data.content.dataType !== 'moveObject') {
       return { bids: [], asks: [] };
     }
 
     const fields = marketObj.data.content.fields as Record<string, unknown>;
+    const asksTableId = extractTableId(fields[isYes ? 'yes_asks' : 'no_asks']);
+    const bidsTableId = extractTableId(fields[isYes ? 'yes_bids' : 'no_bids']);
 
-    // Extract table IDs
-    const asksTable = fields[tableFieldName] as { fields?: { id?: { id?: string } } } | undefined;
-    const bidsTable = fields[bidTableFieldName] as { fields?: { id?: { id?: string } } } | undefined;
+    const [asks, bids] = await Promise.all([
+      asksTableId ? fetchSide(asksTableId, false) : Promise.resolve<OrderbookLevel[]>([]),
+      bidsTableId ? fetchSide(bidsTableId, true) : Promise.resolve<OrderbookLevel[]>([]),
+    ]);
 
-    const asksTableId = asksTable?.fields?.id?.id;
-    const bidsTableId = bidsTable?.fields?.id?.id;
-
-    const asks: OrderbookLevel[] = [];
-    const bids: OrderbookLevel[] = [];
-
-    // Fetch asks (sell orders)
-    if (asksTableId) {
-      const dynamicFields = await client.getDynamicFields({
-        parentId: asksTableId,
-        limit: 50,
-      });
-
-      for (const field of dynamicFields.data) {
-        const fieldObj = await client.getDynamicFieldObject({
-          parentId: asksTableId,
-          name: field.name,
-        });
-
-        if (fieldObj.data?.content && fieldObj.data.content.dataType === 'moveObject') {
-          const value = fieldObj.data.content.fields as Record<string, unknown>;
-          const price = Number(field.name.value);
-          const orders = value.value as Array<Record<string, unknown>> | undefined;
-
-          if (orders && orders.length > 0) {
-            const totalAmount = orders.reduce(
-              (sum, order) => sum + BigInt(String(order.amount || 0)),
-              0n
-            );
-            asks.push({
-              price,
-              amount: totalAmount,
-              orders: orders.map((o) => ({
-                orderId: Number(o.order_id || 0),
-                owner: String(o.owner || ''),
-                price,
-                amount: BigInt(String(o.amount || 0)),
-                timestamp: Number(o.timestamp || 0),
-              })),
-              isSimulated: false,
-            });
-          }
-        }
-      }
-    }
-
-    // Fetch bids (buy orders)
-    if (bidsTableId) {
-      const dynamicFields = await client.getDynamicFields({
-        parentId: bidsTableId,
-        limit: 50,
-      });
-
-      for (const field of dynamicFields.data) {
-        const fieldObj = await client.getDynamicFieldObject({
-          parentId: bidsTableId,
-          name: field.name,
-        });
-
-        if (fieldObj.data?.content && fieldObj.data.content.dataType === 'moveObject') {
-          const value = fieldObj.data.content.fields as Record<string, unknown>;
-          const price = Number(field.name.value);
-          const orders = value.value as Array<Record<string, unknown>> | undefined;
-
-          if (orders && orders.length > 0) {
-            const totalAmount = orders.reduce(
-              (sum, order) => sum + BigInt(String(order.amount || 0)),
-              0n
-            );
-            bids.push({
-              price,
-              amount: totalAmount,
-              orders: orders.map((o) => ({
-                orderId: Number(o.order_id || 0),
-                owner: String(o.owner || ''),
-                price,
-                amount: BigInt(String(o.amount || 0)),
-                timestamp: Number(o.timestamp || 0),
-              })),
-              isSimulated: false,
-            });
-          }
-        }
-      }
-    }
-
-    // Sort: bids descending, asks ascending
     bids.sort((a, b) => b.price - a.price);
     asks.sort((a, b) => a.price - b.price);
-
     return { bids, asks };
   } catch (error) {
     console.error('Failed to fetch orderbook:', error);
@@ -235,19 +129,75 @@ export async function fetchMarketOrderbook(
   }
 }
 
-/**
- * Fetch all markets with their YES orderbooks
- * Used for displaying accurate probabilities in market list
- */
+function extractTableId(field: unknown): string | undefined {
+  const obj = field as { fields?: { id?: { id?: string } } } | undefined;
+  return obj?.fields?.id?.id;
+}
+
+async function fetchSide(tableId: string, isBid: boolean): Promise<OrderbookLevel[]> {
+  const client = getSuiClient();
+
+  // Cursor walk over dynamic fields with a hard cap.
+  const dynamicFieldNames: Array<{ name: { type: string; value: unknown } }> = [];
+  let cursor: string | null | undefined = null;
+  while (dynamicFieldNames.length < MAX_PRICE_LEVELS_PER_SIDE) {
+    const page = await client.getDynamicFields({ parentId: tableId, cursor, limit: FETCH_CHUNK_SIZE });
+    dynamicFieldNames.push(...page.data.map((d) => ({ name: d.name })));
+    if (!page.hasNextPage || !page.nextCursor) break;
+    cursor = page.nextCursor;
+  }
+  const truncated = dynamicFieldNames.slice(0, MAX_PRICE_LEVELS_PER_SIDE);
+
+  // Chunked parallel reads.
+  const levels: OrderbookLevel[] = [];
+  for (let i = 0; i < truncated.length; i += FETCH_CHUNK_SIZE) {
+    const chunk = truncated.slice(i, i + FETCH_CHUNK_SIZE);
+    const results = await Promise.all(
+      chunk.map(async (entry) => {
+        const fieldObj = await client.getDynamicFieldObject({ parentId: tableId, name: entry.name });
+        return parseLevel(fieldObj, entry.name.value, isBid);
+      }),
+    );
+    for (const r of results) {
+      if (r) levels.push(r);
+    }
+  }
+  return levels;
+}
+
+function parseLevel(
+  fieldObj: Awaited<ReturnType<ReturnType<typeof getSuiClient>['getDynamicFieldObject']>>,
+  priceValue: unknown,
+  isBid: boolean,
+): OrderbookLevel | null {
+  if (!fieldObj.data?.content || fieldObj.data.content.dataType !== 'moveObject') {
+    return null;
+  }
+  const value = fieldObj.data.content.fields as Record<string, unknown>;
+  const price = Number(priceValue);
+  const orders = value.value as Array<Record<string, unknown>> | undefined;
+  if (!orders || orders.length === 0) return null;
+
+  const parsedOrders: Order[] = orders.map((o) => ({
+    orderId: Number(o.order_id ?? 0),
+    owner: String(o.owner ?? ''),
+    isYes: Boolean(o.is_yes ?? false),
+    isBid,
+    price,
+    amount: BigInt(String(o.amount ?? 0)),
+    lockedNusdc: BigInt(String(o.locked_nusdc ?? 0)),
+    costBasis: BigInt(String(o.cost_basis ?? 0)),
+    timestamp: Number(o.timestamp ?? 0),
+  }));
+
+  const totalAmount = parsedOrders.reduce((sum, o) => sum + o.amount, 0n);
+  return { price, amount: totalAmount, orders: parsedOrders, isSimulated: false };
+}
+
 export async function fetchMarketsWithOrderbooks(): Promise<
-  {
-    market: PredictionMarket;
-    yesOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null;
-  }[]
+  { market: PredictionMarket; yesOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null }[]
 > {
   const markets = await fetchMarkets();
-
-  // Fetch orderbooks in parallel for all markets
   const results = await Promise.all(
     markets.map(async (market) => {
       try {
@@ -257,32 +207,82 @@ export async function fetchMarketsWithOrderbooks(): Promise<
         console.error(`Failed to fetch orderbook for ${market.id}:`, error);
         return { market, yesOrderbook: null };
       }
-    })
+    }),
   );
-
   return results;
 }
 
 /**
- * Fetch markets by querying events (for discovery)
+ * Discover markets via MarketCreated events.
+ * Cursor walk capped at MAX_MARKETS_DISCOVERY (round-6 plan §2.7).
  */
 export async function fetchMarketsByEvents(): Promise<string[]> {
   const client = getSuiClient();
 
   try {
-    const events = await client.queryEvents({
-      query: {
-        MoveEventType: MARKET_CREATED_EVENT,
-      },
-      limit: 50,
-    });
-
-    return events.data.map((event) => {
-      const parsed = event.parsedJson as { market_id?: string };
-      return parsed.market_id || '';
-    }).filter(Boolean);
+    const ids: string[] = [];
+    let cursor: EventId | null | undefined = null;
+    while (ids.length < MAX_MARKETS_DISCOVERY) {
+      const page = await client.queryEvents({
+        query: { MoveEventType: MARKET_CREATED_EVENT },
+        cursor: cursor ?? null,
+        limit: 50,
+        order: 'descending',
+      });
+      for (const event of page.data) {
+        const parsed = event.parsedJson as { market_id?: string } | undefined;
+        if (parsed?.market_id) ids.push(parsed.market_id);
+      }
+      if (!page.hasNextPage || !page.nextCursor) break;
+      cursor = page.nextCursor;
+    }
+    return ids;
   } catch (error) {
     console.error('Failed to fetch market events:', error);
-    return TEST_MARKETS; // Fallback to test markets
+    return TEST_MARKETS;
   }
+}
+
+/**
+ * Fetch the most recent fills for a market in descending order.
+ * Used as the seed for cursor-based polling.
+ */
+export async function fetchRecentFillsInitial(
+  marketId: string,
+  limit = 50,
+): Promise<{ fills: RecentFill[]; oldestEventId: EventId | null }> {
+  const client = getSuiClient();
+  const page = await client.queryEvents({
+    query: { MoveEventType: ORDER_FILLED_EVENT },
+    limit,
+    order: 'descending',
+  });
+  const fills: RecentFill[] = [];
+  let oldestEventId: EventId | null = null;
+  for (const event of page.data) {
+    const parsed = parseFillEvent(event.parsedJson, Number(event.timestampMs ?? 0));
+    if (parsed && parsed.marketId === marketId) {
+      fills.push(parsed);
+    }
+    oldestEventId = event.id;
+  }
+  return { fills, oldestEventId };
+}
+
+function parseFillEvent(parsedJson: unknown, timestampMs: number): RecentFill | null {
+  if (!parsedJson || typeof parsedJson !== 'object') return null;
+  const j = parsedJson as Record<string, unknown>;
+  if (!j.market_id) return null;
+  return {
+    marketId: String(j.market_id),
+    orderId: Number(j.order_id ?? 0),
+    taker: String(j.taker ?? ''),
+    maker: String(j.maker ?? ''),
+    isYes: Boolean(j.is_yes ?? false),
+    isBid: Boolean(j.is_bid ?? false),
+    price: Number(j.price ?? 0),
+    fillShares: BigInt(String(j.fill_shares ?? 0)),
+    cost: BigInt(String(j.cost ?? 0)),
+    timestamp: timestampMs,
+  };
 }

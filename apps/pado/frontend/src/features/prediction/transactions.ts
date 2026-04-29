@@ -34,7 +34,11 @@ function validatePriceBps(price: number): void {
 
 function validateAmountBase(amount: bigint, max: bigint, label: string): void {
   if (amount <= 0n) throw new Error(`[Security] ${label} must be positive`);
-  if (amount > max) throw new Error(`[Security] ${label} exceeds maximum allowed value`);
+  if (amount > max) {
+    throw new Error(
+      `[Security] ${label} ${amount} exceeds maximum allowed value ${max} (mirrors Move MAX_PAYMENT_AMOUNT_BASE)`,
+    );
+  }
 }
 
 function validateMarketStrings(
@@ -68,8 +72,10 @@ function validateMarketStrings(
 export function buildMintOutcomeTokens(
   tx: Transaction,
   marketId: string,
+  amountBase: bigint,
   paymentArg: TransactionArgument,
 ): void {
+  validateAmountBase(amountBase, MAX_MINT_BASE, 'Mint amount');
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::mint_outcome_tokens`,
     arguments: [
@@ -89,9 +95,11 @@ export function buildPlaceBuyMaker(
   marketId: string,
   isYes: boolean,
   priceBps: number,
+  amountBase: bigint,
   paymentArg: TransactionArgument,
 ): void {
   validatePriceBps(priceBps);
+  validateAmountBase(amountBase, MAX_PAYMENT_BASE, 'Buy maker amount');
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_buy_maker`,
     arguments: [
@@ -132,9 +140,11 @@ export function buildPlaceBuyTaker(
   isYes: boolean,
   maxPriceBps: number,
   restOnNoFill: boolean,
+  amountBase: bigint,
   paymentArg: TransactionArgument,
 ): void {
   validatePriceBps(maxPriceBps);
+  validateAmountBase(amountBase, MAX_PAYMENT_BASE, 'Buy taker amount');
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_buy_taker`,
     arguments: [

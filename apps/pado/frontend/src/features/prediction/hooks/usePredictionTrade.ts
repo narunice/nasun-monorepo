@@ -1,79 +1,157 @@
 /**
- * usePredictionTrade Hook
- * Handles prediction market trading operations
+ * usePredictionTrade Hook (round-6 plan §2.4)
+ *
+ * Wraps every taker/maker/lifecycle entry function in the v1 CLOB.
+ * Async-aware payment assembly (mergeCoins + splitCoins inside the same tx).
+ * Per-market reentrancy guard. Post-tx invalidation against the
+ * `['prediction']` query key prefix.
  */
 
-import { useState, useCallback, useRef } from 'react';
-import { Transaction } from '@mysten/sui/transactions';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import { Transaction, type TransactionArgument } from '@mysten/sui/transactions';
+import type { SuiClient } from '@mysten/sui/client';
+import { useQueryClient } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
+import { buildNusdcFaucetTx } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
-  buildMintOutcomeTokensWithAmount,
-  buildPlaceBidOrderWithAmount,
-  buildPlaceAskOrder,
+  buildMintOutcomeTokens,
+  buildPlaceBuyTaker,
+  buildPlaceSellTaker,
+  buildPlaceBuyMaker,
+  buildPlaceSellMaker,
+  buildCancelOrder,
+  buildClaimRestingOrderRefund,
+  buildCancelExpiredMarket,
+  buildClaimCancelledRefund,
   buildClaimWinnings,
+  buildBurnLosingPosition,
 } from '../transactions';
-import { buildNusdcFaucetTx } from '@nasun/wallet';
+import { useToast } from '@/components/common/Toast';
 import { NUSDC_TYPE, NUSDC_DECIMALS } from '../constants';
 
+interface TradeResult {
+  success: boolean;
+  digest?: string;
+  error?: string;
+}
+
 /**
- * Parse blockchain error into user-friendly message
+ * Round-7 R7-C1 mutex: serialize NUSDC-spending operations per wallet so that
+ * concurrent ops (different markets / two tabs in the same tab process) cannot
+ * race on the same `coins[0]` and produce LockConflict.
+ *
+ * Cross-tab is NOT covered (each tab has its own module instance). For that,
+ * parseTradeError surfaces a clear retry message on LockConflict.
+ *
+ * Sell/cancel/claim ops do not consume NUSDC and are not gated.
  */
+const nusdcSpendChain = new Map<string, Promise<unknown>>();
+
+async function withNusdcLock<T>(walletAddress: string, fn: () => Promise<T>): Promise<T> {
+  const prev = nusdcSpendChain.get(walletAddress) ?? Promise.resolve();
+  const next: Promise<T> = prev.then(fn, fn);
+  // Store the swallowed-error variant so the next caller doesn't reject prematurely.
+  const swallowed = next.catch(() => undefined);
+  nusdcSpendChain.set(walletAddress, swallowed);
+  try {
+    return await next;
+  } finally {
+    if (nusdcSpendChain.get(walletAddress) === swallowed) {
+      nusdcSpendChain.delete(walletAddress);
+    }
+  }
+}
+
+interface UsePredictionTradeResult {
+  isLoading: boolean;
+  isFaucetLoading: boolean;
+  error: string | null;
+
+  // R7-C2: replaced single `recoverResolvedFunds` with a two-step API.
+  claimRestingRefundsBatch: (
+    marketId: string,
+    restingOrders: Array<{ isYes: boolean; isBid: boolean; priceBps: number; orderId: number | bigint }>,
+  ) => Promise<TradeResult>;
+  settlePositionsBatch: (
+    marketId: string,
+    positions: Array<{ positionId: string; won: boolean }>,
+  ) => Promise<TradeResult>;
+
+  placeBuyTaker: (
+    marketId: string,
+    isYes: boolean,
+    maxPriceBps: number,
+    restOnNoFill: boolean,
+    amountUnits: bigint,
+  ) => Promise<TradeResult>;
+  placeSellTaker: (
+    marketId: string,
+    positionId: string,
+    minPriceBps: number,
+    restOnNoFill: boolean,
+  ) => Promise<TradeResult>;
+  placeBuyMaker: (
+    marketId: string,
+    isYes: boolean,
+    priceBps: number,
+    amountUnits: bigint,
+  ) => Promise<TradeResult>;
+  placeSellMaker: (
+    marketId: string,
+    positionId: string,
+    priceBps: number,
+  ) => Promise<TradeResult>;
+  mintTokens: (marketId: string, amountUnits: bigint) => Promise<TradeResult>;
+  cancelOrder: (
+    marketId: string,
+    isYes: boolean,
+    isBid: boolean,
+    priceBps: number,
+    orderId: number | bigint,
+  ) => Promise<TradeResult>;
+  claimRestingOrderRefund: (
+    marketId: string,
+    isYes: boolean,
+    isBid: boolean,
+    priceBps: number,
+    orderId: number | bigint,
+  ) => Promise<TradeResult>;
+  cancelExpiredMarket: (marketId: string) => Promise<TradeResult>;
+  claimCancelledRefund: (marketId: string, positionId: string) => Promise<TradeResult>;
+  claimWinnings: (marketId: string, positionId: string) => Promise<TradeResult>;
+  burnLosingPosition: (marketId: string, positionId: string) => Promise<TradeResult>;
+  requestNusdc: () => Promise<TradeResult>;
+}
+
 function parseTradeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
 
-  // Object deleted (already used or transferred)
   if (message.includes('"code":"deleted"') || message.includes('ObjectDeleted')) {
-    return 'This position has already been used or sold. Please refresh the page.';
+    return 'This object has already been used or transferred. Please refresh.';
   }
-
-  // Object not found
+  // R7-W: cross-tab / cross-device coin-object lock collision.
+  if (message.includes('LockConflict') || message.includes('ObjectLocked') || message.includes('ObjectVersionMismatch')) {
+    return 'Another tab or device is processing a transaction. Wait a moment and retry.';
+  }
   if (message.includes('ObjectNotFound') || message.includes('not found')) {
-    return 'Position not found. It may have been transferred or used.';
+    return 'Object not found. It may have been transferred or used.';
   }
-
-  // Insufficient gas
   if (message.includes('InsufficientGas') || message.includes('insufficient gas')) {
     return 'Not enough NSN for transaction fees. Please get some from the faucet.';
   }
-
-  // Insufficient balance
-  if (message.includes('InsufficientCoinBalance') || message.includes('Insufficient')) {
+  if (message.includes('InsufficientCoinBalance')) {
     return 'Insufficient balance. Please check your NUSDC balance.';
   }
-
-  // Insufficient margin (Pado Balance)
-  if (message.includes('EInsufficientMargin') || message.includes('Insufficient margin')) {
-    return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
+  if (message.includes('Insufficient NUSDC')) {
+    return 'Insufficient NUSDC.';
   }
 
-  // Market closed
-  if (message.includes('market_closed') || message.includes('EMarketClosed')) {
-    return 'This market is closed and no longer accepting orders.';
-  }
-
-  // Market not resolved
-  if (message.includes('not_resolved') || message.includes('EMarketNotResolved')) {
-    return 'Market has not been resolved yet. Please wait for the outcome.';
-  }
-
-  // Invalid price
-  if (message.includes('invalid_price') || message.includes('EInvalidPrice')) {
-    return 'Invalid price. Price must be between 0% and 100%.';
-  }
-
-  // Wrong outcome (trying to claim losing position)
-  if (message.includes('wrong_outcome') || message.includes('EWrongOutcome')) {
-    return 'This position did not win. Only winning positions can be claimed.';
-  }
-
-  // MoveAbort with code - parse the actual error code, not package ID digits
-  // Error format: "MoveAbort(...) in module::function, X" or "error code: X"
+  // MoveAbort error code mapping (round-6 plan §2.4 parseTradeError table)
   const errorCodeMatch = message.match(/(?:error[_\s]?code:?\s*|,\s*)(\d+)(?:\s*\)|$)/i);
   const moveAbortMatch = errorCodeMatch || message.match(/MoveAbort[^,]*,\s*(\d+)/);
   if (moveAbortMatch) {
     const code = parseInt(moveAbortMatch[1]);
-    // Map error codes from prediction_market.move
     switch (code) {
       case 0: return 'Market is not open for trading.';
       case 1: return 'Market has not closed yet.';
@@ -87,44 +165,54 @@ function parseTradeError(error: unknown): string {
       case 9: return 'You are not the owner of this order.';
       case 10: return 'Market has expired.';
       case 11: return 'Cannot trade with yourself.';
-      // Risk Engine error codes (margin_account.move)
+      case 12: return 'Market is not cancelled.';
+      case 13: return 'Position does not belong to this market.';
+      case 14: return 'Resolve deadline has not passed yet.';
+      case 15: return 'Market cannot be cancelled in its current state.';
+      case 16: return 'Creator and resolver addresses must differ.';
+      case 17: return 'Invalid input. Check amount, price, and time settings.';
+      case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
+      case 19: return 'No matching orders at market price. Try a Limit order or wait for liquidity.';
+      case 20: return 'Order not found. It may have been filled or cancelled.';
       case 100: return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
       case 101: return 'Trade value cannot be zero.';
       default: return `Transaction failed (code: ${code}). Please try again.`;
     }
   }
 
-  // Generic transaction failure
   if (message.includes('Transaction failed')) {
     return 'Transaction failed. Please try again.';
   }
-
-  // Return original if no match (but truncate if too long)
   if (message.length > 100) {
     return 'Transaction failed. Please refresh and try again.';
   }
-
   return message;
 }
 
-interface TradeResult {
-  success: boolean;
-  digest?: string;
-  error?: string;
-}
+/**
+ * Async-aware payment assembly (round-6 plan §2.4 C12).
+ * Walks owned NUSDC coins, merges fragmented balance, splits the exact required amount.
+ */
+async function assemblePaymentArg(
+  tx: Transaction,
+  amount: bigint,
+  walletAddress: string,
+  client: SuiClient,
+): Promise<TransactionArgument> {
+  const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE });
+  const total = coins.data.reduce((s, c) => s + BigInt(c.balance), 0n);
+  if (total < amount) throw new Error('Insufficient NUSDC');
 
-interface UsePredictionTradeResult {
-  // State
-  isLoading: boolean;
-  isFaucetLoading: boolean;
-  error: string | null;
+  const sufficient = coins.data.find((c) => BigInt(c.balance) >= amount);
+  if (sufficient) {
+    return tx.splitCoins(tx.object(sufficient.coinObjectId), [tx.pure.u64(amount)])[0];
+  }
 
-  // Actions
-  mintTokens: (marketId: string, amount: number) => Promise<TradeResult>;
-  placeBuyOrder: (marketId: string, isYes: boolean, price: number, amount: number) => Promise<TradeResult>;
-  placeSellOrder: (marketId: string, positionId: string, price: number) => Promise<TradeResult>;
-  claimWinnings: (marketId: string, positionId: string) => Promise<TradeResult>;
-  requestNusdc: () => Promise<TradeResult>;
+  const [primary, ...rest] = coins.data;
+  if (rest.length > 0) {
+    tx.mergeCoins(tx.object(primary.coinObjectId), rest.map((c) => tx.object(c.coinObjectId)));
+  }
+  return tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(amount)])[0];
 }
 
 export function usePredictionTrade(): UsePredictionTradeResult {
@@ -133,8 +221,9 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const passkeyKeypair = usePasskeyStore((s) => s.keypair);
   const passkeyAddress = usePasskeyStore((s) => s.address);
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const { showToast } = useToast();
+  const queryClient = useQueryClient();
 
-  // Determine active wallet (zkLogin takes priority)
   const isLocalWalletActive = status === 'unlocked' && account?.address;
   const walletAddress = isZkLoggedIn
     ? zkState?.address
@@ -149,285 +238,372 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Security: Reentrancy protection - track pending operations
-  const pendingOperationRef = useRef<string | null>(null);
+  // Per-market reentrancy lock (round-6 plan §2.4)
+  const pendingOpRef = useRef<Record<string, string>>({});
 
-  /**
-   * Sign and execute a transaction (supports both local wallet and zkLogin)
-   */
-  const signAndExecute = useCallback(async (tx: Transaction) => {
-    if (!walletAddress) {
-      throw new Error('Wallet not connected');
-    }
-
-    const client = getSuiClient();
-    tx.setSender(walletAddress);
-    const bytes = await tx.build({ client });
-
-    // Sign with appropriate method
-    let signature: string;
-    if (isZkLoggedIn && zkState) {
-      // zkLogin signing
-      signature = await zkSignTransaction(bytes);
-    } else if (isPasskeyUnlocked && passkeyKeypair) {
-      const signResult = await passkeyKeypair.signTransaction(bytes);
-      signature = signResult.signature;
-    } else {
-      // Local wallet signing
-      const keypair = getKeypair();
-      if (!keypair) {
-        throw new Error('Keypair not available');
-      }
-      const signResult = await keypair.signTransaction(bytes);
-      signature = signResult.signature;
-    }
-
-    const result = await client.executeTransactionBlock({
-      transactionBlock: bytes,
-      signature,
-      options: {
-        showEffects: true,
-      },
-    });
-
-    if (result.effects?.status?.status !== 'success') {
-      throw new Error(result.effects?.status?.error || 'Transaction failed');
-    }
-
-    return result;
-  }, [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]);
-
-  /**
-   * Get NUSDC coin with sufficient balance
-   */
-  const getNusdcCoin = useCallback(async (minAmount: bigint): Promise<string | null> => {
-    if (!walletAddress) return null;
-
-    const client = getSuiClient();
-    const coins = await client.getCoins({
-      owner: walletAddress,
-      coinType: NUSDC_TYPE,
-    });
-
-    // Find a coin with enough balance
-    for (const coin of coins.data) {
-      if (BigInt(coin.balance) >= minAmount) {
-        return coin.coinObjectId;
-      }
-    }
-
-    // Try to find total balance across all coins
-    const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
-    if (totalBalance >= minAmount && coins.data.length > 0) {
-      // Return the first coin, transaction will need to merge
-      return coins.data[0].coinObjectId;
-    }
-
-    return null;
+  // Clear locks when wallet changes.
+  useEffect(() => {
+    pendingOpRef.current = {};
   }, [walletAddress]);
 
-  /**
-   * Mint YES and NO tokens
-   */
-  const mintTokens = useCallback(async (
-    marketId: string,
-    amount: number, // In NUSDC (e.g., 100 = 100 NUSDC)
-  ): Promise<TradeResult> => {
-    if (!isWalletConnected) {
-      return { success: false, error: 'Wallet not connected' };
-    }
+  const signAndExecute = useCallback(
+    async (tx: Transaction) => {
+      if (!walletAddress) throw new Error('Wallet not connected');
 
-    // Security: Reentrancy protection
-    const operationKey = `mint:${marketId}`;
-    if (pendingOperationRef.current) {
-      return { success: false, error: 'Another transaction is in progress. Please wait.' };
-    }
-    pendingOperationRef.current = operationKey;
+      const client = getSuiClient();
+      tx.setSender(walletAddress);
+      const bytes = await tx.build({ client });
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const amountInUnits = BigInt(Math.floor(amount * Math.pow(10, NUSDC_DECIMALS)));
-
-      const coinId = await getNusdcCoin(amountInUnits);
-      if (!coinId) {
-        throw new Error('Insufficient NUSDC balance');
+      let signature: string;
+      if (isZkLoggedIn && zkState) {
+        signature = await zkSignTransaction(bytes);
+      } else if (isPasskeyUnlocked && passkeyKeypair) {
+        const signResult = await passkeyKeypair.signTransaction(bytes);
+        signature = signResult.signature;
+      } else {
+        const keypair = getKeypair();
+        if (!keypair) throw new Error('Keypair not available');
+        const signResult = await keypair.signTransaction(bytes);
+        signature = signResult.signature;
       }
 
-      const tx = buildMintOutcomeTokensWithAmount(marketId, coinId, amountInUnits, walletAddress!);
-      const result = await signAndExecute(tx);
+      const result = await client.executeTransactionBlock({
+        transactionBlock: bytes,
+        signature,
+        options: { showEffects: true },
+      });
 
-      return { success: true, digest: result.digest };
-    } catch (err) {
-      const message = parseTradeError(err);
-      setError(message);
-      return { success: false, error: message };
-    } finally {
-      pendingOperationRef.current = null;
-      setIsLoading(false);
-    }
-  }, [isWalletConnected, walletAddress, signAndExecute, getNusdcCoin]);
-
-  /**
-   * Place a buy order for YES or NO tokens
-   */
-  const placeBuyOrder = useCallback(async (
-    marketId: string,
-    isYes: boolean,
-    price: number, // In percentage (e.g., 65 = 65%)
-    amount: number, // In NUSDC
-  ): Promise<TradeResult> => {
-    if (!isWalletConnected) {
-      return { success: false, error: 'Wallet not connected' };
-    }
-
-    // Security: Reentrancy protection
-    const operationKey = `buy:${marketId}:${isYes}`;
-    if (pendingOperationRef.current) {
-      return { success: false, error: 'Another transaction is in progress. Please wait.' };
-    }
-    pendingOperationRef.current = operationKey;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Convert price to basis points (65% -> 6500)
-      const priceInBps = Math.floor(price * 100);
-      if (priceInBps <= 0 || priceInBps >= 10000) {
-        throw new Error('Price must be between 0% and 100%');
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error || 'Transaction failed');
       }
+      return result;
+    },
+    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair],
+  );
 
-      const amountInUnits = BigInt(Math.floor(amount * Math.pow(10, NUSDC_DECIMALS)));
-
-      const coinId = await getNusdcCoin(amountInUnits);
-      if (!coinId) {
-        throw new Error('Insufficient NUSDC balance');
+  /**
+   * Round-7 W: scoped invalidation. Operations invalidate only the queries that
+   * actually changed (orderbook + positions + recent fills + the single market).
+   * The list page (`['prediction', 'markets']`) is invalidated only on lifecycle
+   * ops (create / cancelExpired / resolve).
+   */
+  const invalidateMarketScoped = useCallback(
+    (marketId: string, alsoInvalidateMarketsList = false) => {
+      const addr = walletAddress;
+      queryClient.invalidateQueries({ queryKey: ['prediction', 'market', marketId] });
+      queryClient.invalidateQueries({ queryKey: ['prediction', 'orderbook', marketId, 'yes'] });
+      queryClient.invalidateQueries({ queryKey: ['prediction', 'orderbook', marketId, 'no'] });
+      queryClient.invalidateQueries({ queryKey: ['prediction', 'recent-fills', marketId] });
+      if (addr) {
+        queryClient.invalidateQueries({ queryKey: ['prediction-positions', addr, marketId] });
+        queryClient.invalidateQueries({ queryKey: ['prediction', 'my-orders', marketId, addr] });
       }
-
-      const tx = buildPlaceBidOrderWithAmount(marketId, isYes, priceInBps, coinId, amountInUnits);
-      const result = await signAndExecute(tx);
-
-      return { success: true, digest: result.digest };
-    } catch (err) {
-      const message = parseTradeError(err);
-      setError(message);
-      return { success: false, error: message };
-    } finally {
-      pendingOperationRef.current = null;
-      setIsLoading(false);
-    }
-  }, [isWalletConnected, signAndExecute, getNusdcCoin]);
-
-  /**
-   * Place a sell order using a Position NFT
-   */
-  const placeSellOrder = useCallback(async (
-    marketId: string,
-    positionId: string,
-    price: number, // In percentage
-  ): Promise<TradeResult> => {
-    if (!isWalletConnected) {
-      return { success: false, error: 'Wallet not connected' };
-    }
-
-    // Security: Reentrancy protection
-    const operationKey = `sell:${positionId}`;
-    if (pendingOperationRef.current) {
-      return { success: false, error: 'Another transaction is in progress. Please wait.' };
-    }
-    pendingOperationRef.current = operationKey;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const priceInBps = Math.floor(price * 100);
-      if (priceInBps <= 0 || priceInBps >= 10000) {
-        throw new Error('Price must be between 0% and 100%');
+      if (alsoInvalidateMarketsList) {
+        queryClient.invalidateQueries({ queryKey: ['prediction-markets-with-orderbooks'] });
       }
+    },
+    [queryClient, walletAddress],
+  );
 
-      const tx = buildPlaceAskOrder(marketId, positionId, priceInBps);
-      const result = await signAndExecute(tx);
+  const runOperation = useCallback(
+    async (
+      marketId: string,
+      opName: string,
+      build: (tx: Transaction, client: SuiClient) => Promise<void> | void,
+      successMessage: string,
+      opts: { useNusdcLock?: boolean; invalidateMarketsList?: boolean } = {},
+    ): Promise<TradeResult> => {
+      if (!isWalletConnected || !walletAddress) {
+        showToast('Please connect your wallet', 'error');
+        return { success: false, error: 'Wallet not connected' };
+      }
+      if (pendingOpRef.current[marketId]) {
+        const msg = 'Another transaction is in progress for this market.';
+        showToast(msg, 'error');
+        return { success: false, error: msg };
+      }
+      pendingOpRef.current[marketId] = opName;
+      setIsLoading(true);
+      setError(null);
 
-      return { success: true, digest: result.digest };
-    } catch (err) {
-      const message = parseTradeError(err);
-      setError(message);
-      return { success: false, error: message };
-    } finally {
-      pendingOperationRef.current = null;
-      setIsLoading(false);
-    }
-  }, [isWalletConnected, signAndExecute]);
+      const exec = async (): Promise<TradeResult> => {
+        try {
+          const tx = new Transaction();
+          const client = getSuiClient();
+          await build(tx, client);
+          const result = await signAndExecute(tx);
+          // R7-W: wait for indexer so subsequent refetch hits indexed state.
+          if (result.digest) {
+            try {
+              await client.waitForTransaction({
+                digest: result.digest,
+                options: { showEffects: true },
+                timeout: 8_000,
+              });
+            } catch {
+              // Best-effort. If wait times out, the invalidation below will eventually win.
+            }
+          }
+          const digestSuffix = result.digest ? ` — ${result.digest.slice(0, 8)}...` : '';
+          showToast(`${successMessage}${digestSuffix}`, 'success');
+          invalidateMarketScoped(marketId, opts.invalidateMarketsList);
+          return { success: true, digest: result.digest };
+        } catch (err) {
+          const message = parseTradeError(err);
+          setError(message);
+          showToast(message, 'error');
+          return { success: false, error: message };
+        }
+      };
+
+      try {
+        // R7-C1: serialize NUSDC-spending ops per wallet so concurrent calls
+        // don't race on the same coin object.
+        if (opts.useNusdcLock) {
+          return await withNusdcLock(walletAddress, exec);
+        }
+        return await exec();
+      } finally {
+        delete pendingOpRef.current[marketId];
+        setIsLoading(false);
+      }
+    },
+    [isWalletConnected, walletAddress, signAndExecute, showToast, invalidateMarketScoped],
+  );
+
+  const placeBuyTaker = useCallback(
+    (marketId: string, isYes: boolean, maxPriceBps: number, restOnNoFill: boolean, amountUnits: bigint) =>
+      runOperation(
+        marketId,
+        `buy-taker:${isYes}`,
+        async (tx, client) => {
+          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
+        },
+        restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
+        { useNusdcLock: true },
+      ),
+    [runOperation, walletAddress],
+  );
+
+  const placeSellTaker = useCallback(
+    (marketId: string, positionId: string, minPriceBps: number, restOnNoFill: boolean) =>
+      runOperation(
+        marketId,
+        `sell-taker:${positionId}`,
+        (tx) => {
+          buildPlaceSellTaker(tx, marketId, positionId, minPriceBps, restOnNoFill);
+        },
+        restOnNoFill ? 'Limit sell submitted' : 'Sell filled',
+      ),
+    [runOperation],
+  );
+
+  const placeBuyMaker = useCallback(
+    (marketId: string, isYes: boolean, priceBps: number, amountUnits: bigint) =>
+      runOperation(
+        marketId,
+        `buy-maker:${isYes}:${priceBps}`,
+        async (tx, client) => {
+          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          buildPlaceBuyMaker(tx, marketId, isYes, priceBps, amountUnits, paymentArg);
+        },
+        'Limit buy resting',
+        { useNusdcLock: true },
+      ),
+    [runOperation, walletAddress],
+  );
+
+  const placeSellMaker = useCallback(
+    (marketId: string, positionId: string, priceBps: number) =>
+      runOperation(
+        marketId,
+        `sell-maker:${positionId}:${priceBps}`,
+        (tx) => buildPlaceSellMaker(tx, marketId, positionId, priceBps),
+        'Limit sell resting',
+      ),
+    [runOperation],
+  );
+
+  const mintTokens = useCallback(
+    (marketId: string, amountUnits: bigint) =>
+      runOperation(
+        marketId,
+        'mint',
+        async (tx, client) => {
+          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          buildMintOutcomeTokens(tx, marketId, amountUnits, paymentArg);
+        },
+        'YES + NO tokens minted',
+        { useNusdcLock: true },
+      ),
+    [runOperation, walletAddress],
+  );
+
+  const cancelOrder = useCallback(
+    (marketId: string, isYes: boolean, isBid: boolean, priceBps: number, orderId: number | bigint) =>
+      runOperation(
+        marketId,
+        `cancel:${orderId}`,
+        (tx) => buildCancelOrder(tx, marketId, isYes, isBid, priceBps, orderId),
+        'Order cancelled',
+      ),
+    [runOperation],
+  );
+
+  const claimRestingOrderRefund = useCallback(
+    (marketId: string, isYes: boolean, isBid: boolean, priceBps: number, orderId: number | bigint) =>
+      runOperation(
+        marketId,
+        `claim-resting:${orderId}`,
+        (tx) => buildClaimRestingOrderRefund(tx, marketId, isYes, isBid, priceBps, orderId),
+        'Resting order refunded',
+      ),
+    [runOperation],
+  );
+
+  const cancelExpiredMarket = useCallback(
+    (marketId: string) =>
+      runOperation(
+        marketId,
+        'cancel-expired',
+        (tx) => buildCancelExpiredMarket(tx, marketId),
+        'Market cancelled — refunds now claimable',
+        { invalidateMarketsList: true },
+      ),
+    [runOperation],
+  );
+
+  const claimCancelledRefund = useCallback(
+    (marketId: string, positionId: string) =>
+      runOperation(
+        marketId,
+        `claim-cancelled:${positionId}`,
+        (tx) => buildClaimCancelledRefund(tx, marketId, positionId),
+        'Cancelled-market refund claimed',
+      ),
+    [runOperation],
+  );
+
+  const claimWinnings = useCallback(
+    (marketId: string, positionId: string) =>
+      runOperation(
+        marketId,
+        `claim-winnings:${positionId}`,
+        (tx) => buildClaimWinnings(tx, marketId, positionId),
+        'Winnings claimed',
+      ),
+    [runOperation],
+  );
+
+  const burnLosingPosition = useCallback(
+    (marketId: string, positionId: string) =>
+      runOperation(
+        marketId,
+        `burn:${positionId}`,
+        (tx) => buildBurnLosingPosition(tx, marketId, positionId),
+        'Losing position cleared',
+      ),
+    [runOperation],
+  );
 
   /**
-   * Claim winnings after market resolution
+   * Round-7 R7-C2 (Phase A): claim every resting order refund in one PTB.
+   *
+   * On a resolved market, claiming a resting *ask* order MINTS a new Position
+   * via `transfer::transfer` (Move source: prediction_market.move:870-908).
+   * That Position cannot be consumed by `claim_winnings`/`burn_losing_position`
+   * within the same PTB because PTB inputs are fixed at build time. So Phase A
+   * collects refunds + new Positions, then the caller refetches positions and
+   * runs `settlePositionsBatch` (Phase B).
+   *
+   * Bid-side resting orders only return NUSDC; they do not mint Positions.
    */
-  const claimWinnings = useCallback(async (
-    marketId: string,
-    positionId: string,
-  ): Promise<TradeResult> => {
-    if (!isWalletConnected) {
-      return { success: false, error: 'Wallet not connected' };
-    }
-
-    // Security: Reentrancy protection
-    const operationKey = `claim:${positionId}`;
-    if (pendingOperationRef.current) {
-      return { success: false, error: 'Another transaction is in progress. Please wait.' };
-    }
-    pendingOperationRef.current = operationKey;
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const tx = buildClaimWinnings(marketId, positionId);
-      const result = await signAndExecute(tx);
-
-      return { success: true, digest: result.digest };
-    } catch (err) {
-      const message = parseTradeError(err);
-      setError(message);
-      return { success: false, error: message };
-    } finally {
-      pendingOperationRef.current = null;
-      setIsLoading(false);
-    }
-  }, [isWalletConnected, signAndExecute]);
+  const claimRestingRefundsBatch = useCallback(
+    (
+      marketId: string,
+      restingOrders: Array<{ isYes: boolean; isBid: boolean; priceBps: number; orderId: number | bigint }>,
+    ) =>
+      runOperation(
+        marketId,
+        'recover:phase-a',
+        (tx) => {
+          for (const o of restingOrders) {
+            buildClaimRestingOrderRefund(tx, marketId, o.isYes, o.isBid, o.priceBps, o.orderId);
+          }
+        },
+        'Step 1/2: resting refunds claimed',
+      ),
+    [runOperation],
+  );
 
   /**
-   * Request NUSDC from faucet
+   * Round-7 R7-C2 (Phase B): settle every Position in one PTB.
+   *
+   * After Phase A indexes, the caller refetches positions (now including any
+   * freshly-minted Positions from ask-side refunds) and passes them all here.
    */
+  const settlePositionsBatch = useCallback(
+    (marketId: string, positions: Array<{ positionId: string; won: boolean }>) =>
+      runOperation(
+        marketId,
+        'recover:phase-b',
+        (tx) => {
+          for (const p of positions) {
+            if (p.won) {
+              buildClaimWinnings(tx, marketId, p.positionId);
+            } else {
+              buildBurnLosingPosition(tx, marketId, p.positionId);
+            }
+          }
+        },
+        'Step 2/2: positions settled',
+      ),
+    [runOperation],
+  );
+
   const requestNusdc = useCallback(async (): Promise<TradeResult> => {
     if (!isWalletConnected) {
+      showToast('Please connect your wallet', 'error');
       return { success: false, error: 'Wallet not connected' };
     }
-
     setIsFaucetLoading(true);
-
     try {
       const tx = buildNusdcFaucetTx();
       const result = await signAndExecute(tx);
+      showToast('100,000 NUSDC received', 'success');
       return { success: true, digest: result.digest };
     } catch (err) {
       const message = parseTradeError(err);
+      showToast(message, 'error');
       return { success: false, error: message };
     } finally {
       setIsFaucetLoading(false);
     }
-  }, [isWalletConnected, signAndExecute]);
+  }, [isWalletConnected, signAndExecute, showToast]);
 
   return {
     isLoading,
     isFaucetLoading,
     error,
+    placeBuyTaker,
+    placeSellTaker,
+    placeBuyMaker,
+    placeSellMaker,
     mintTokens,
-    placeBuyOrder,
-    placeSellOrder,
+    cancelOrder,
+    claimRestingOrderRefund,
+    cancelExpiredMarket,
+    claimCancelledRefund,
     claimWinnings,
+    burnLosingPosition,
+    claimRestingRefundsBatch,
+    settlePositionsBatch,
     requestNusdc,
   };
+}
+
+// Helper: convert human NUSDC (e.g. 100) to base units (bigint).
+export function nusdcUnits(amount: number): bigint {
+  return BigInt(Math.floor(amount * Math.pow(10, NUSDC_DECIMALS)));
 }

@@ -1,50 +1,77 @@
 /**
- * OutcomeOrderForm Component
- * Order form for buying/selling prediction market outcome tokens
+ * OutcomeOrderForm Component (round-6 plan §2.13)
+ *
+ * Tab-driven Market | Limit order form. Routes to the v1 CLOB takers/makers:
+ *  - Market buy   → placeBuyTaker(maxPrice = bestAsk + slippage, restOnNoFill=false)
+ *  - Limit  buy   → placeBuyTaker(maxPrice = user, restOnNoFill=true)
+ *  - Market sell  → placeSellTaker(minPrice = bestBid - slippage, restOnNoFill=false)
+ *  - Limit  sell  → placeSellTaker(minPrice = user, restOnNoFill=true)
+ *
+ * Click-from-orderbook flow uses an imperative useEffect keyed on `clickVersion`
+ * so user typing is not clobbered by a re-render of the parent (round-5 C14).
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
-import { usePredictionTrade } from '../hooks/usePredictionTrade';
+import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
-import { useMarginAccount, useRiskEngine } from '../../core/unified-margin';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
 import { waitForTxIndexing } from '../../../lib/tx-helpers';
-import type { PredictionMarket } from '../types';
-import { calculateProbability } from '../types';
-
-type FundingSource = 'wallet' | 'margin';
+import type { PredictionMarket, Orderbook } from '../types';
 
 interface OutcomeOrderFormProps {
   market: PredictionMarket;
+  yesOrderbook?: Orderbook;
+  noOrderbook?: Orderbook;
+  clickedPrice?: number | null;       // bps from orderbook click
+  clickedOutcome?: 'yes' | 'no' | null;
+  clickVersion?: number;
   onSuccess?: (digest?: string) => void;
 }
 
 type OutcomeType = 'yes' | 'no';
 type OrderType = 'buy' | 'sell';
+type OrderMode = 'market' | 'limit';
 
-export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
+const SLIPPAGE_BPS = 200; // 2% default slippage for market orders
+// Move's validatePriceBps requires `> 0 && < MAX_PRICE (10000)`. Strict bounds.
+const MIN_PRICE_BPS = 1;
+const MAX_PRICE_BPS = 9999;
+const MAX_NUSDC_PER_TX = 100_000; // mirrors Move MAX_PAYMENT_AMOUNT_BASE (round-7 W)
+
+export function OutcomeOrderForm({
+  market,
+  yesOrderbook,
+  noOrderbook,
+  clickedPrice,
+  clickedOutcome,
+  clickVersion = 0,
+  onSuccess,
+}: OutcomeOrderFormProps) {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const { isLoading, isFaucetLoading, placeBuyOrder, placeSellOrder, mintTokens, requestNusdc } = usePredictionTrade();
+  const {
+    isLoading,
+    isFaucetLoading,
+    placeBuyTaker,
+    placeSellTaker,
+    mintTokens,
+    requestNusdc,
+  } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
-  const { hasAccount: hasMarginAccount } = useMarginAccount();
-  const { currentMarginFormatted, canTrade, formatRequired } = useRiskEngine();
   const queryClient = useQueryClient();
 
-  // Consider wallet connected if either local wallet is unlocked OR zkLogin is active OR passkey is unlocked
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
-  // NUSDC balance from wallet
   const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
-  const [fundingSource, setFundingSource] = useState<FundingSource>('wallet');
+  const [orderMode, setOrderMode] = useState<OrderMode>('market');
   const [amount, setAmount] = useState('');
   const [price, setPrice] = useState('');
   const [selectedPositionId, setSelectedPositionId] = useState<string>('');
@@ -53,110 +80,191 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
   const { isSubmitting, guard: submitGuard } = useSubmitGuard();
   const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
-  // Get available balance based on funding source
-  const availableBalance = fundingSource === 'wallet'
-    ? parseFloat(nusdcBalance)
-    : currentMarginFormatted;
+  // Imperative sync from orderbook clicks (round-6 plan §2.13).
+  useEffect(() => {
+    if (clickVersion > 0 && clickedPrice != null && clickedOutcome != null) {
+      setPrice((clickedPrice / 100).toFixed(2));
+      setOutcomeType(clickedOutcome);
+      setOrderMode('limit');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clickVersion]);
 
-  // Filter positions by selected outcome type
-  const filteredPositions = useMemo(() => {
-    return positions.filter(p => p.isYes === (outcomeType === 'yes'));
-  }, [positions, outcomeType]);
+  const filteredPositions = useMemo(
+    () => positions.filter((p) => p.isYes === (outcomeType === 'yes')),
+    [positions, outcomeType],
+  );
 
-  // Auto-select first position when switching to sell mode or outcome type
   useEffect(() => {
     if (orderType === 'sell' && filteredPositions.length > 0) {
       setSelectedPositionId(filteredPositions[0].id);
-    } else {
+    } else if (orderType === 'buy') {
       setSelectedPositionId('');
     }
   }, [orderType, filteredPositions]);
 
-  // Calculate current probability
-  const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
-  const noProbability = 100 - yesProbability;
+  const activeBook = outcomeType === 'yes' ? yesOrderbook : noOrderbook;
+  const realAsks = activeBook?.asks.filter((l) => !l.isSimulated) ?? [];
+  const realBids = activeBook?.bids.filter((l) => !l.isSimulated) ?? [];
+  const bestAskBps = realAsks.length > 0 ? Math.min(...realAsks.map((l) => l.price)) : null;
+  const bestBidBps = realBids.length > 0 ? Math.max(...realBids.map((l) => l.price)) : null;
 
-  // Set default price based on current probability
-  const defaultPrice = outcomeType === 'yes' ? yesProbability : noProbability;
+  // Default price: probability midpoint when no real orders.
+  const totalSupply = market.yesSupply + market.noSupply;
+  const defaultPriceBps = useMemo(() => {
+    if (orderType === 'buy' && bestAskBps != null) return bestAskBps;
+    if (orderType === 'sell' && bestBidBps != null) return bestBidBps;
+    if (totalSupply === 0n) return 5000;
+    if (outcomeType === 'yes') {
+      return Number((market.yesSupply * 10000n) / totalSupply);
+    }
+    return Number((market.noSupply * 10000n) / totalSupply);
+  }, [orderType, bestAskBps, bestBidBps, totalSupply, market.yesSupply, market.noSupply, outcomeType]);
 
-  // Calculate estimated shares
+  const defaultPricePercent = defaultPriceBps / 100;
+
   const estimatedShares = useMemo(() => {
     const amountNum = parseFloat(amount) || 0;
-    const priceNum = parseFloat(price) || defaultPrice;
+    const priceNum = parseFloat(price) || defaultPricePercent;
     if (amountNum <= 0 || priceNum <= 0) return 0;
-    // shares = (amount * 100) / price
     return (amountNum * 100) / priceNum;
-  }, [amount, price, defaultPrice]);
+  }, [amount, price, defaultPricePercent]);
 
-  // Calculate potential payout
-  const potentialPayout = useMemo(() => {
-    return estimatedShares; // 1 share = 1 NUSDC if wins
-  }, [estimatedShares]);
+  const potentialPayout = estimatedShares;
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    const amountNum = parseFloat(amount);
-    const priceNum = parseFloat(price) || defaultPrice;
-
-    // Amount validation only for buy orders
-    if (orderType === 'buy' && (!amountNum || amountNum <= 0)) {
-      setError('Please enter a valid amount');
-      return;
-    }
-
-    // Validate price range: must be between 0.01% and 99.99% (matching on-chain 1-9999 basis points)
-    if (priceNum <= 0 || priceNum >= 100) {
-      setError('Price must be between 0.01% and 99.99%');
-      return;
-    }
-
-    await submitGuard(async () => {
-      if (orderType === 'buy') {
-        const result = await placeBuyOrder(market.id, outcomeType === 'yes', priceNum, amountNum);
-        if (result.success) {
-          setSuccess(`Order placed! Tx: ${result.digest?.slice(0, 8)}...`);
-          setAmount('');
-          startSync(result.digest!);
-        } else {
-          setError(result.error || 'Failed to place order');
-        }
-      } else {
-        // Sell order using Position NFT
-        if (!selectedPositionId) {
-          setError('Please select a position to sell');
-          return;
-        }
-
-        const result = await placeSellOrder(market.id, selectedPositionId, priceNum);
-        if (result.success) {
-          setSuccess(`Sell order placed! Tx: ${result.digest?.slice(0, 8)}...`);
-          setPrice('');
-          refetchPositions();
-          startSync(result.digest!);
-        } else {
-          setError(result.error || 'Failed to place sell order');
-        }
+  const validateUserInput = useCallback(
+    (priceBps: number, amountNum: number): string | null => {
+      if (orderType === 'buy' && (!amountNum || amountNum <= 0)) {
+        return 'Please enter a valid amount';
       }
-    });
-  }, [amount, price, defaultPrice, outcomeType, orderType, market.id, selectedPositionId, placeBuyOrder, placeSellOrder, refetchPositions, startSync, submitGuard]);
+      if (orderMode === 'limit' && (priceBps < MIN_PRICE_BPS || priceBps > MAX_PRICE_BPS)) {
+        return 'Price must be between 0.01% and 99.99%';
+      }
+      // Round-7 W: balance + cap pre-check before signing.
+      if (orderType === 'buy' && amountNum > MAX_NUSDC_PER_TX) {
+        return `Amount exceeds per-transaction cap of ${MAX_NUSDC_PER_TX.toLocaleString('en-US')} NUSDC`;
+      }
+      if (orderType === 'buy' && amountNum > parseFloat(nusdcBalance)) {
+        return `Insufficient NUSDC. Balance: ${parseFloat(nusdcBalance).toFixed(2)}`;
+      }
+      return null;
+    },
+    [orderType, orderMode, nusdcBalance],
+  );
+
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
+      setSuccess(null);
+
+      const amountNum = parseFloat(amount);
+      const userPricePercent = parseFloat(price);
+      const userPriceBps = Number.isFinite(userPricePercent)
+        ? Math.floor(userPricePercent * 100)
+        : defaultPriceBps;
+
+      const validationError = validateUserInput(userPriceBps, amountNum);
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+
+      const isYes = outcomeType === 'yes';
+      const restOnNoFill = orderMode === 'limit';
+
+      await submitGuard(async () => {
+        if (orderType === 'buy') {
+          // Market: clamp max-price to bestAsk + slippage so we don't blow through the book.
+          // Limit: respect user's price ceiling.
+          let maxPriceBps: number;
+          if (orderMode === 'market') {
+            if (bestAskBps == null) {
+              setError('No matching orders. Switch to Limit mode and set a price.');
+              return;
+            }
+            // Move requires strict `< MAX_PRICE`. Clamp to MAX_PRICE_BPS - 1 = 9998.
+            maxPriceBps = Math.min(MAX_PRICE_BPS - 1, bestAskBps + SLIPPAGE_BPS);
+          } else {
+            maxPriceBps = userPriceBps;
+          }
+
+          const result = await placeBuyTaker(
+            market.id,
+            isYes,
+            maxPriceBps,
+            restOnNoFill,
+            nusdcUnits(amountNum),
+          );
+          if (result.success) {
+            setSuccess(`Order placed. Tx: ${result.digest?.slice(0, 8)}...`);
+            setAmount('');
+            startSync(result.digest!);
+          } else {
+            setError(result.error || 'Failed to place order');
+          }
+        } else {
+          if (!selectedPositionId) {
+            setError('Please select a position to sell');
+            return;
+          }
+
+          let minPriceBps: number;
+          if (orderMode === 'market') {
+            if (bestBidBps == null) {
+              setError('No bids. Switch to Limit mode and set a price.');
+              return;
+            }
+            // Move requires strict `> 0`. Clamp to MIN_PRICE_BPS + 1 = 2.
+            minPriceBps = Math.max(MIN_PRICE_BPS + 1, bestBidBps - SLIPPAGE_BPS);
+          } else {
+            minPriceBps = userPriceBps;
+          }
+
+          const result = await placeSellTaker(market.id, selectedPositionId, minPriceBps, restOnNoFill);
+          if (result.success) {
+            setSuccess(`Sell order placed. Tx: ${result.digest?.slice(0, 8)}...`);
+            setPrice('');
+            refetchPositions();
+            startSync(result.digest!);
+          } else {
+            setError(result.error || 'Failed to place sell order');
+          }
+        }
+      });
+    },
+    [
+      amount,
+      price,
+      defaultPriceBps,
+      validateUserInput,
+      outcomeType,
+      orderMode,
+      orderType,
+      bestAskBps,
+      bestBidBps,
+      market.id,
+      selectedPositionId,
+      placeBuyTaker,
+      placeSellTaker,
+      refetchPositions,
+      startSync,
+      submitGuard,
+    ],
+  );
 
   const handleMintTokens = useCallback(async () => {
     setError(null);
     setSuccess(null);
-
     const amountNum = parseFloat(amount);
     if (!amountNum || amountNum <= 0) {
       setError('Please enter a valid amount');
       return;
     }
-
     await submitGuard(async () => {
-      const result = await mintTokens(market.id, amountNum);
+      const result = await mintTokens(market.id, nusdcUnits(amountNum));
       if (result.success) {
-        setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens! Tx: ${result.digest?.slice(0, 8)}...`);
+        setSuccess(`Minted ${amountNum} YES + ${amountNum} NO tokens. Tx: ${result.digest?.slice(0, 8)}...`);
         setAmount('');
         startSync(result.digest!);
       } else {
@@ -165,110 +273,75 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
     });
   }, [amount, market.id, mintTokens, startSync, submitGuard]);
 
-  // NUSDC Faucet handler
   const handleNusdcFaucet = useCallback(async () => {
     const result = await requestNusdc();
     if (result.success) {
       if (result.digest) await waitForTxIndexing(result.digest);
       queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
-      setSuccess('100,000 NUSDC received!');
+      setSuccess('100,000 NUSDC received');
     } else {
       setError(result.error || 'Failed to get NUSDC');
     }
   }, [requestNusdc, queryClient]);
 
   const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading || isSubmitting;
+  const walletBalance = parseFloat(nusdcBalance);
+
+  const pricePlaceholder = bestAskBps != null && orderType === 'buy'
+    ? `Best ask: ${(bestAskBps / 100).toFixed(2)}%`
+    : bestBidBps != null && orderType === 'sell'
+    ? `Best bid: ${(bestBidBps / 100).toFixed(2)}%`
+    : 'Enter price (1-99)';
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4">
       <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Place Order</h3>
 
-      {/* Funding Source Selector */}
       {isWalletConnected && (
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
-          <div className="flex gap-2 mb-2">
-            <button
-              onClick={() => setFundingSource('wallet')}
-              className={`flex-1 min-h-[40px] py-2 px-3 rounded text-sm font-medium transition-colors ${
-                fundingSource === 'wallet'
-                  ? 'bg-pd1 text-white'
-                  : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
-              }`}
-            >
-              Wallet
-            </button>
-            <button
-              onClick={() => setFundingSource('margin')}
-              disabled={!hasMarginAccount}
-              className={`flex-1 min-h-[40px] py-2 px-3 rounded text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                fundingSource === 'margin'
-                  ? 'bg-pd1 text-white'
-                  : 'bg-theme-bg-primary text-theme-text-secondary hover:bg-theme-bg-secondary'
-              }`}
-              title={!hasMarginAccount ? 'Enable Pado Balance in Wallet tab first' : undefined}
-            >
-              Pado {!hasMarginAccount && '🔒'}
-            </button>
-          </div>
-
-          {/* Pado Balance hint when not enabled */}
-          {!hasMarginAccount && (
-            <p className="text-xs text-theme-text-muted mt-2">
-              💡 <a href="/wallet" className="text-pd3 hover:text-pd3 underline">Enable Pado Balance</a> to use funds across all features
-            </p>
-          )}
-
-          {/* Coming Soon notice for Pado Balance */}
-          {fundingSource === 'margin' && hasMarginAccount && (
-            <div className="mt-2 p-2 bg-pd2/10 border border-pd2/30 rounded-lg">
-              <p className="text-xs text-pd3">
-                🚀 Pado Balance funding coming in v0.5!
-              </p>
-              <p className="text-xs text-theme-text-muted mt-1">
-                Wallet will be used for this transaction.
-              </p>
-              <div className="mt-2 pt-2 border-t border-pd2/20">
-                <div className="flex justify-between text-xs">
-                  <span className="text-theme-text-muted">Pado Balance:</span>
-                  <span className="text-theme-text-primary font-mono">
-                    {currentMarginFormatted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
-                  </span>
-                </div>
-                {parseFloat(amount) > 0 && (
-                  <div className="flex justify-between text-xs mt-1">
-                    <span className="text-theme-text-muted">Required (10% buffer):</span>
-                    <span className={`font-mono ${canTrade(parseFloat(amount)) ? 'text-green-400' : 'text-yellow-400'}`}>
-                      {formatRequired(parseFloat(amount))} NUSDC
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-        <div className="flex justify-between items-center gap-2 mt-2">
+          <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-xs text-theme-text-muted">
-                {fundingSource === 'wallet' ? 'Wallet Balance' : 'Pado Balance'}
-              </span>
+              <span className="text-xs text-theme-text-muted">Wallet Balance</span>
               <p className="text-base sm:text-lg font-semibold text-theme-text-primary tabular-nums truncate">
-                {availableBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-xs sm:text-sm font-normal text-theme-text-muted">NUSDC</span>
+                {walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                <span className="text-xs sm:text-sm font-normal text-theme-text-muted"> NUSDC</span>
               </p>
             </div>
-            {fundingSource === 'wallet' && (
-              <button
-                onClick={handleNusdcFaucet}
-                disabled={isFaucetLoading}
-                className="shrink-0 min-h-[36px] px-3 py-2 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
-              >
-                {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
-              </button>
-            )}
+            <button
+              onClick={handleNusdcFaucet}
+              disabled={isFaucetLoading}
+              className="shrink-0 min-h-[36px] px-3 py-2 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
+            >
+              {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
+            </button>
           </div>
         </div>
       )}
 
-      {/* Outcome Selector */}
+      {/* Mode tabs (Market | Limit) — round-3 N8 prominent. */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setOrderMode('market')}
+          className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+            orderMode === 'market'
+              ? 'bg-pd1 text-white'
+              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+          }`}
+        >
+          Market
+        </button>
+        <button
+          onClick={() => setOrderMode('limit')}
+          className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+            orderMode === 'limit'
+              ? 'bg-pd1 text-white'
+              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+          }`}
+        >
+          Limit
+        </button>
+      </div>
+
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setOutcomeType('yes')}
@@ -278,7 +351,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          YES <span className="tabular-nums">({yesProbability.toFixed(1)}%)</span>
+          YES
         </button>
         <button
           onClick={() => setOutcomeType('no')}
@@ -288,11 +361,10 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
               : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
           }`}
         >
-          NO <span className="tabular-nums">({noProbability.toFixed(1)}%)</span>
+          NO
         </button>
       </div>
 
-      {/* Order Type */}
       <div className="flex gap-2 mb-4">
         <button
           onClick={() => setOrderType('buy')}
@@ -317,16 +389,13 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Position Selector (Sell mode only) */}
         {orderType === 'sell' && (
           <div>
-            <label className="block text-sm text-theme-text-muted mb-1">
-              Select Position
-            </label>
+            <label className="block text-sm text-theme-text-muted mb-1">Select Position</label>
             {filteredPositions.length === 0 ? (
               <div className="text-sm text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
-                No {outcomeType.toUpperCase()} positions available to sell.
-                {positions.length > 0 && ' Try selecting the other outcome.'}
+                No {outcomeType.toUpperCase()} positions available.
+                {positions.length > 0 && ' Try the other outcome.'}
               </div>
             ) : (
               <select
@@ -349,12 +418,9 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
 
-        {/* Amount Input (Buy mode only) */}
         {orderType === 'buy' && (
           <div>
-            <label className="block text-sm text-theme-text-muted mb-1">
-              Amount (NUSDC)
-            </label>
+            <label className="block text-sm text-theme-text-muted mb-1">Amount (NUSDC)</label>
             <input
               type="number"
               inputMode="decimal"
@@ -369,29 +435,39 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
 
-        {/* Price Input */}
-        <div>
-          <label className="block text-sm text-theme-text-muted mb-1">
-            Price (%)
-          </label>
-          <input
-            type="number"
-            inputMode="decimal"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            placeholder={defaultPrice.toFixed(1)}
-            min="0.01"
-            max="99.99"
-            step="0.01"
-            disabled={isDisabled}
-            className="w-full px-3 py-2.5 text-base bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
-          />
-          <p className="text-xs text-theme-text-muted mt-1">
-            Current: {defaultPrice.toFixed(1)}%
-          </p>
-        </div>
+        {/* Price input only for limit; market uses bestAsk/bestBid. */}
+        {orderMode === 'limit' && (
+          <div>
+            <label className="block text-sm text-theme-text-muted mb-1">Price (%)</label>
+            <input
+              type="number"
+              inputMode="decimal"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder={pricePlaceholder}
+              min="0.01"
+              max="99.99"
+              step="0.01"
+              disabled={isDisabled}
+              className="w-full px-3 py-2.5 text-base bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
+            />
+            <p className="text-xs text-theme-text-muted mt-1">
+              Leftover unfilled shares will rest as a maker order.
+            </p>
+          </div>
+        )}
 
-        {/* Order Summary - Buy Mode */}
+        {orderMode === 'market' && (bestAskBps == null && orderType === 'buy') && (
+          <div className="text-xs text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+            No matching asks. Switch to Limit mode and set your price.
+          </div>
+        )}
+        {orderMode === 'market' && (bestBidBps == null && orderType === 'sell') && (
+          <div className="text-xs text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+            No bids. Switch to Limit mode and set your price.
+          </div>
+        )}
+
         {orderType === 'buy' && parseFloat(amount) > 0 && (
           <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1 text-sm">
             <div className="flex justify-between">
@@ -402,9 +478,7 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
             </div>
             <div className="flex justify-between">
               <span className="text-theme-text-muted">Potential Payout:</span>
-              <span className="text-green-500 font-mono">
-                {potentialPayout.toFixed(2)} NUSDC
-              </span>
+              <span className="text-green-500 font-mono">{potentialPayout.toFixed(2)} NUSDC</span>
             </div>
             <div className="flex justify-between">
               <span className="text-theme-text-muted">Potential Profit:</span>
@@ -415,96 +489,40 @@ export function OutcomeOrderForm({ market, onSuccess }: OutcomeOrderFormProps) {
           </div>
         )}
 
-        {/* Order Summary - Sell Mode (Kalshi/Polymarket style) */}
-        {orderType === 'sell' && selectedPositionId && (
-          <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-2 text-sm">
-            {(() => {
-              const selectedPos = filteredPositions.find(p => p.id === selectedPositionId);
-              if (!selectedPos) return null;
-              const priceNum = parseFloat(price) || defaultPrice;
-              const shares = Number(selectedPos.shares) / Math.pow(10, 6);
-              const expectedPayout = shares * (priceNum / 100);
-              const oppositeOutcome = outcomeType === 'yes' ? 'NO' : 'YES';
-
-              return (
-                <>
-                  <div className="flex justify-between">
-                    <span className="text-theme-text-muted">Selling:</span>
-                    <span className="text-theme-text-primary font-mono">
-                      {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} {outcomeType.toUpperCase()} shares
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-theme-text-muted">Price:</span>
-                    <span className="text-theme-text-primary font-mono">
-                      {(priceNum / 100).toFixed(2)} NUSDC per share
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-theme-text-muted">You will receive:</span>
-                    <span className="text-green-500 font-mono">
-                      {expectedPayout.toFixed(2)} NUSDC
-                    </span>
-                  </div>
-
-                  {/* Position After Trade */}
-                  <div className="border-t border-theme-border/50 pt-2 mt-1">
-                    <p className="text-xs text-theme-text-muted mb-1">Position After Trade</p>
-                    <div className="text-xs text-pd3 bg-pd2/10 rounded p-2">
-                      💡 Selling {outcomeType.toUpperCase()} = Betting on {oppositeOutcome}
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        )}
-
-        {/* Error/Success/Syncing Messages */}
-        {error && (
-          <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2">
-            {success}
-          </div>
-        )}
+        {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
+        {success && <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2">{success}</div>}
         {isSyncing && (
           <div className="text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              <path
+                className="opacity-75"
+                fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+              />
             </svg>
             Syncing with blockchain...
           </div>
         )}
 
-        {/* Submit Button */}
         <button
           type="submit"
           disabled={isDisabled}
           className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            outcomeType === 'yes'
-              ? 'bg-green-600 hover:bg-green-700'
-              : 'bg-red-600 hover:bg-red-700'
+            outcomeType === 'yes' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
           }`}
         >
           {isLoading
             ? 'Processing...'
             : !isWalletConnected
-            ? 'Connect Wallet'
-            : market.status !== 'open'
-            ? 'Market Closed'
-            : `${orderType === 'buy' ? 'Buy' : 'Sell'} ${outcomeType.toUpperCase()}`}
+              ? 'Connect Wallet'
+              : market.status !== 'open'
+                ? 'Market Closed'
+                : `${orderMode === 'market' ? 'Market' : 'Limit'} ${orderType === 'buy' ? 'Buy' : 'Sell'} ${outcomeType.toUpperCase()}`}
         </button>
 
-        {/* Mint Tokens Button */}
         <div className="border-t border-theme-border pt-4 mt-4">
-          <p className="text-xs text-theme-text-muted mb-2">
-            Or mint both YES + NO tokens at 1:1 ratio
-          </p>
+          <p className="text-xs text-theme-text-muted mb-2">Or mint both YES + NO tokens at 1:1 ratio</p>
           <button
             type="button"
             onClick={handleMintTokens}

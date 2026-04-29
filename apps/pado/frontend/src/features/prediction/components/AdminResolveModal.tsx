@@ -5,6 +5,7 @@
 
 import { useState, useCallback } from 'react';
 import { usePredictionAdmin } from '../hooks/usePredictionAdmin';
+import { useNow } from '@/hooks/useNow';
 import type { PredictionMarket } from '../types';
 
 interface AdminResolveModalProps {
@@ -24,10 +25,20 @@ export function AdminResolveModal({
   const [selectedOutcome, setSelectedOutcome] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const now = useNow();
+
+  // Round-6 plan §2.14: resolve is only valid in [closeTime, resolveDeadline].
+  const beforeClose = now < market.closeTime;
+  const pastDeadline = now > market.resolveDeadline;
+  const isGated = beforeClose || pastDeadline;
 
   const handleResolve = useCallback(async () => {
     if (selectedOutcome === null) {
       setError('Please select an outcome');
+      return;
+    }
+    if (isGated) {
+      setError(beforeClose ? 'Wait for close time to pass.' : 'Resolve deadline has expired.');
       return;
     }
 
@@ -37,7 +48,7 @@ export function AdminResolveModal({
     const result = await resolveMarket(market.id, selectedOutcome);
 
     if (result.success) {
-      setSuccess(`Market resolved! Tx: ${result.digest?.slice(0, 8)}...`);
+      setSuccess(`Market resolved. Tx: ${result.digest?.slice(0, 8)}...`);
       setTimeout(() => {
         onSuccess?.(result.digest!);
         onClose();
@@ -45,7 +56,7 @@ export function AdminResolveModal({
     } else {
       setError(result.error || 'Failed to resolve market');
     }
-  }, [market.id, selectedOutcome, resolveMarket, onSuccess, onClose]);
+  }, [market.id, selectedOutcome, resolveMarket, onSuccess, onClose, isGated, beforeClose]);
 
   if (!isOpen) return null;
 
@@ -128,8 +139,9 @@ export function AdminResolveModal({
           </button>
           <button
             onClick={handleResolve}
-            disabled={isLoading || selectedOutcome === null}
+            disabled={isLoading || selectedOutcome === null || isGated}
             className="flex-1 py-2 rounded-lg font-medium text-white bg-pd1 hover:bg-pd1/80 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title={beforeClose ? 'Wait for close time' : pastDeadline ? 'Resolve deadline expired' : undefined}
           >
             {isLoading ? 'Resolving...' : 'Resolve Market'}
           </button>
