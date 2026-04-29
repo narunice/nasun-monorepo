@@ -181,7 +181,6 @@ interface MessageListProps {
 }
 
 export default function MessageList({ messages, hasMore, onLoadMore, onToggleReaction, onMention, currentUserId }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
 
@@ -190,7 +189,11 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
 
   useEffect(() => {
     if (isNearBottomRef.current) {
-      bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+      // Scroll only the message container — never use scrollIntoView, which
+      // bubbles up and scrolls every ancestor (including the page) when the
+      // chat panel is laid out inline.
+      const el = containerRef.current;
+      if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     }
   }, [messages.length]);
 
@@ -243,7 +246,6 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
         );
       })}
 
-      <div ref={bottomRef} />
     </div>
   );
 }
