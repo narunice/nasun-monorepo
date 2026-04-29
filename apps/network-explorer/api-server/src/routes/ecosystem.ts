@@ -489,7 +489,11 @@ app.get('/score/:identityId', async (c) => {
 
   // Fetch user's active missions outside the 30s cache — changes when the user
   // toggles missions on any device and must always reflect the latest selection.
-  // Falls back to the historic 6 defaults for users without a persisted record.
+  // Falls back to the historic 6 defaults for users without a persisted record
+  // OR with an empty stored array (defensive: a stale empty record from a
+  // pre-validation client would otherwise force base = 0). Mirrors the
+  // snapshot job's `(stored && stored.size > 0) ? stored : DEFAULT_MISSION_IDS`
+  // logic so the live `/score` and the next-day snapshot agree.
   const DEFAULT_MISSION_IDS: readonly string[] = [
     'faucet', 'wallet-transfer', 'pado-dex',
     'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
@@ -500,8 +504,11 @@ app.get('/score/:identityId', async (c) => {
       SELECT missions FROM user_active_missions WHERE identity_id = ${identityId}
     `.then(r => r[0] ?? null).catch(() => null),
   ]);
+  const storedMissions = userMissionsRow?.missions as string[] | undefined;
   const activeMissions: string[] =
-    (userMissionsRow?.missions as string[] | undefined) ?? [...DEFAULT_MISSION_IDS];
+    storedMissions && storedMissions.length > 0
+      ? storedMissions
+      : [...DEFAULT_MISSION_IDS];
 
   // Filtered today base: only categories the user has activated count.
   // pado-dex weight = 2 (mirrors matview), all others = 1.
