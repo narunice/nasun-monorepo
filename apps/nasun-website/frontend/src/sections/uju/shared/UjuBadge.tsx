@@ -10,9 +10,9 @@ interface UjuBadgeProps {
 
 const TONE: Record<Tone, string> = {
   neutral:  "bg-uju-border text-uju-primary border-uju-border",
-  violet:   "bg-pado-violet/15 text-pado-lavender border-pado-violet/40",
-  lavender: "bg-pado-lavender/15 text-pado-lavender border-pado-lavender/40",
-  cyan:     "bg-pado-3/15 text-pado-3 border-pado-3/40",
+  violet:   "bg-blue-500/15 text-blue-300 border-blue-500/40",
+  lavender: "bg-pado-1/15 text-pado-2 border-pado-1/40",
+  cyan:     "bg-pado-2/15 text-pado-2 border-pado-2/40",
   mint:     "bg-pado-4/15 text-pado-4 border-pado-4/40",
   amber:    "bg-nasun-c1/15 text-nasun-c1 border-nasun-c1/40",
   coral:    "bg-nasun-coral/15 text-nasun-coral border-nasun-coral/40",

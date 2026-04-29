@@ -8,8 +8,8 @@ interface UjuCardProps {
 // accent = subtle violet wash, spotlight = lavender ring + violet glow.
 const VARIANT_CLASSES: Record<NonNullable<UjuCardProps["variant"]>, string> = {
   default:   "bg-uju-card border-uju-border",
-  accent:    "bg-gradient-to-br from-uju-card to-pado-violet/5 border-pado-violet/30",
-  spotlight: "bg-uju-card border-pado-lavender/40 ring-1 ring-pado-violet/20 shadow-[0_0_0_1px_rgba(124,92,255,0.15)]",
+  accent:    "bg-gradient-to-br from-uju-card to-pado-2/10 border-pado-2/30",
+  spotlight: "bg-uju-card border-pado-1/40 ring-1 ring-pado-2/20 shadow-[0_0_0_1px_rgba(59,185,216,0.15)]",
 };
 
 export function UjuCard({ children, className = "", variant = "default", as: Tag = "div" }: UjuCardProps) {

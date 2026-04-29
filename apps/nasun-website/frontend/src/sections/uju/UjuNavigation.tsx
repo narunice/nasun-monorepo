@@ -35,7 +35,7 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 aria-current={isActive ? "page" : undefined}
                 className={`relative px-5 py-2 text-sm font-semibold rounded-full transition-colors min-h-[40px] ${
                   isActive
-                    ? "bg-gradient-to-r from-pado-3 to-pado-4 text-uju-bg"
+                    ? "bg-gradient-to-r from-pado-2 to-pado-4 text-uju-bg"
                     : "text-uju-secondary hover:text-white"
                 }`}
               >
@@ -72,7 +72,7 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 onClick={() => onTabChange(t.id)}
                 aria-current={isActive ? "page" : undefined}
                 className={`flex-1 py-2.5 min-h-[56px] flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
-                  isActive ? "text-pado-3" : "text-uju-secondary"
+                  isActive ? "text-pado-2" : "text-uju-secondary"
                 }`}
               >
                 <span className="relative">

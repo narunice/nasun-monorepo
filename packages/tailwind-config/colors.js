@@ -109,10 +109,10 @@ module.exports = {
   // uju Dashboard Palette
   // ============================================================
   uju: {
-    bg:        '#0D1117',  // page background (deep dark)
-    card:      '#161B27',  // card background (elevated dark)
-    border:    '#252D42',  // border (subtle blue-tinted)
-    primary:   '#F1F5F9',  // primary text (bright white)
-    secondary: '#8B9CB3',  // secondary text (explicit, no opacity)
+    bg:        '#0E1C24',  // page background (deep teal-navy)
+    card:      '#1B3742',  // card background (one notch darker than prior teal lift)
+    border:    '#4A7282',  // border (teal-blue tinted)
+    primary:   '#EEF6F8',  // primary text
+    secondary: '#B0C8D2',  // secondary text (teal-light)
   },
 };

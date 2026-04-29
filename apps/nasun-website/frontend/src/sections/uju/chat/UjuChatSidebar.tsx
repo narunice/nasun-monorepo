@@ -10,7 +10,7 @@ import { SetNicknameModal } from "@/features/chat/components/SetNicknameModal";
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 const SIDEBAR_ROOM_IDS = new Set([0, 10]); // GM + General only (Pado is for Pado app)
 
-export function UjuChatSidebar() {
+export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
   const currentUserId = useUserStore((s) => s.user?.walletAddress ?? s.user?.identityId);
   const authError = useChatStore((s) => s.authError);
   const {
@@ -36,9 +36,23 @@ export function UjuChatSidebar() {
   return (
     <div className="flex flex-col h-full bg-uju-card">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-uju-border shrink-0">
+      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-uju-border shrink-0">
         <span className="text-sm font-medium text-uju-primary">Community Chat</span>
-        <span className="text-sm text-uju-secondary">{onlineCount} online</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-uju-secondary">{onlineCount} online</span>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-6 h-6 rounded-full flex items-center justify-center text-uju-secondary hover:text-uju-primary hover:bg-uju-bg/60"
+              aria-label="Close chat"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Room tabs */}
@@ -49,7 +63,7 @@ export function UjuChatSidebar() {
             onClick={() => switchRoom(room.id)}
             className={`flex-1 py-2 text-sm font-medium transition-colors
               ${activeRoomId === room.id
-                ? "text-pado-3 border-b-2 border-pado-3 -mb-px"
+                ? "text-pado-2 border-b-2 border-pado-2 -mb-px"
                 : "text-uju-secondary hover:text-uju-primary"}`}
           >
             {room.name}

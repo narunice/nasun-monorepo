@@ -17,7 +17,7 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
           title="Activated Apps, Services, and AI"
           trailing={
             pinnedApps.length > 0 ? (
-              <span className="text-base font-medium text-pado-lavender tabular-nums">
+              <span className="text-base font-medium text-pado-5 tabular-nums">
                 {pinnedApps.length} / {MAX_PINNED}
               </span>
             ) : null
@@ -35,7 +35,7 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
           <>
             <ul className="space-y-2 mb-4">
               {pinnedApps.map((app) => (
-                <li key={app.id} className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-bg/40 border border-uju-border/60 hover:border-pado-violet/30 transition-colors">
+                <li key={app.id} className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-bg/40 border border-uju-border/60 hover:border-pado-1/30 transition-colors">
                   <div className="flex items-center gap-2 min-w-0">
                     <span className={`text-base font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}>
                       {CHAIN_LABEL[app.chain]}
@@ -47,7 +47,7 @@ export function ActivatedAppsSection({ pinnedApps, isPinned, pin, unpin, atMax }
                     target="_blank"
                     rel="noopener noreferrer"
                     aria-label={`Open ${app.name}, opens in new tab`}
-                    className="text-base font-medium text-pado-3 hover:text-pado-lavender transition-colors shrink-0"
+                    className="text-base font-medium text-pado-2 hover:text-pado-5 transition-colors shrink-0"
                   >
                     Open ↗
                   </a>

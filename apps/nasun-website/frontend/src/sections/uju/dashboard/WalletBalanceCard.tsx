@@ -317,7 +317,7 @@ export function WalletBalanceCard() {
                     setSuiInputError("");
                   }}
                   placeholder="Paste SUI address (0x... 64-hex)"
-                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
+                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-2"
                 />
                 <UjuButton variant="secondary" size="sm" onClick={handleSuiSave}>
                   Save
@@ -361,7 +361,7 @@ export function WalletBalanceCard() {
             // navigate the user there.
             <a
               href="/my-account"
-              className="text-base font-medium text-pado-3 hover:text-pado-4 transition-colors"
+              className="text-base font-medium text-pado-2 hover:text-pado-4 transition-colors"
             >
               Connect MetaMask ↗
             </a>
@@ -449,7 +449,7 @@ export function WalletBalanceCard() {
                     setSolError("");
                   }}
                   placeholder="Paste Solana address"
-                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-3"
+                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-2"
                 />
                 <UjuButton variant="secondary" size="sm" onClick={handleSolSave}>
                   Save
