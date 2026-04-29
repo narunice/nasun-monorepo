@@ -248,7 +248,7 @@ export class RoundManager {
       return 'ok';
     }
 
-    let round: { roundId: number; objectId: string; state: number; entriesCount: number; bettingEndsAt: number } | null;
+    let round: Awaited<ReturnType<RoundManager['fetchRoundScalars']>>;
     try {
       round = await this.fetchRoundScalars(currentId);
     } catch (err) {
@@ -258,6 +258,13 @@ export class RoundManager {
     if (!round) {
       console.error(`[Crash] BOOT BLOCKED: registry points to non-existent round ${currentId}; manual intervention required`);
       return 'block';
+    }
+
+    // STATE_FLYING(=1): close_betting completed but resolve_round did not run
+    // (PM2 reload, OOM kill, EC2 reboot mid-round). Salt was persisted to SQLite
+    // before betting opened, so we can self-heal without manual intervention.
+    if (round.state === 1) {
+      return await this.recoverFlying(round);
     }
 
     if (round.entriesCount > 0) {
@@ -284,6 +291,80 @@ export class RoundManager {
     }
   }
 
+  /// Boot-time auto-recovery for a stuck FLYING round. Called only when on-chain
+  /// state == STATE_FLYING. SQLite holds (crash_point_bps, salt) since start_round.
+  /// 'ok' lets runLoop proceed, 'block' defers to manual ops.
+  private async recoverFlying(round: {
+    roundId: number;
+    objectId: string;
+    flyingStartedAt: number;
+    commitHash: Buffer;
+  }): Promise<'ok' | 'block'> {
+    const saltRow = this.db.prepare(
+      'SELECT salt, crash_point_bps FROM crash_salts WHERE round_id = ?'
+    ).get(round.roundId) as { salt: Buffer | Uint8Array; crash_point_bps: number } | undefined;
+
+    if (!saltRow) {
+      console.error(
+        `[Crash] BOOT BLOCKED: round ${round.roundId} FLYING but no salt in SQLite — manual emergency_refund_batch required`
+      );
+      return 'block';
+    }
+
+    const salt = Buffer.from(saltRow.salt);
+    const bps = Number(saltRow.crash_point_bps);
+
+    // commit_hash equality subsumes bps/salt sanity checks: any DB drift mutates
+    // the local hash and fails this check before spending gas on a Move abort.
+    const localHash = Buffer.from(this.computeCommitHash(bps, salt));
+    if (!localHash.equals(round.commitHash)) {
+      console.error(
+        `[Crash] BOOT BLOCKED: round ${round.roundId} commit_hash mismatch ` +
+        `(local=${localHash.toString('hex')} chain=${round.commitHash.toString('hex')}) — DB corruption suspected`
+      );
+      return 'block';
+    }
+
+    console.warn(`[Crash] Boot recovery: resolving round ${round.roundId}, bps=${bps}`);
+    let digest: string;
+    try {
+      const res = await this.execResolveWithRetry(() => {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${this.config.packageId}::crash::resolve_round`,
+          arguments: [
+            tx.object(round.objectId),
+            tx.pure.u64(bps),
+            tx.pure.vector('u8', Array.from(salt)),
+            tx.object(this.config.registryId),
+            tx.object(BANKROLL_POOL),
+            tx.object(SUI_CLOCK),
+          ],
+        });
+        return tx;
+      });
+      digest = res.digest;
+    } catch (err) {
+      // Race: another process resolved between our state read and tx submit.
+      // Use on-chain ground truth instead of error-string parsing — robust to
+      // SDK format changes.
+      const stillExists = await this.fetchRoundScalars(round.objectId).catch(() => null);
+      if (!stillExists || stillExists.state !== 1) {
+        console.warn(
+          `[Crash] Boot recovery: round ${round.roundId} already resolved on-chain (race detected) — proceeding`
+        );
+        this.db.prepare('UPDATE crash_salts SET resolved = 1 WHERE round_id = ?').run(round.roundId);
+        return 'ok';
+      }
+      console.error(`[Crash] Boot recovery: resolve_round failed for round ${round.roundId}:`, err);
+      return 'block';
+    }
+
+    this.db.prepare('UPDATE crash_salts SET resolved = 1 WHERE round_id = ?').run(round.roundId);
+    console.warn(`[Crash] Boot recovery: round ${round.roundId} resolved digest=${digest}`);
+    return 'ok';
+  }
+
   private async fetchCurrentRoundId(): Promise<string | null> {
     const reg = await this.client.getObject({
       id: this.config.registryId,
@@ -301,17 +382,31 @@ export class RoundManager {
 
   private async fetchRoundScalars(
     objectId: string,
-  ): Promise<{ roundId: number; objectId: string; state: number; entriesCount: number; bettingEndsAt: number } | null> {
+  ): Promise<{
+    roundId: number;
+    objectId: string;
+    state: number;
+    entriesCount: number;
+    bettingEndsAt: number;
+    flyingStartedAt: number;
+    commitHash: Buffer;
+  } | null> {
     const obj = await this.client.getObject({ id: objectId, options: { showContent: true } });
     const fields = (obj.data?.content as { fields?: Record<string, unknown> })?.fields;
     if (!fields) return null;
     const entries = fields.entries;
+    const commitArr = fields.commit_hash;
+    const commitHash = Array.isArray(commitArr)
+      ? Buffer.from(commitArr as number[])
+      : Buffer.alloc(0);
     return {
       roundId: Number(fields.round_id ?? 0),
       objectId,
       state: Number(fields.state ?? 0),
       entriesCount: Array.isArray(entries) ? entries.length : 0,
       bettingEndsAt: Number(fields.betting_ends_at ?? 0),
+      flyingStartedAt: Number(fields.flying_started_at ?? 0),
+      commitHash,
     };
   }
 
