@@ -7,24 +7,15 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAdminAccess } from '../features/admin';
 import { PredictionAdminPanel } from '../features/prediction/components/PredictionAdminPanel';
-import { LotteryAdminPanel } from '../features/lottery/components/LotteryAdminPanel';
-import { ScratchCardAdminPanel } from '../features/scratchcard/components/ScratchCardAdminPanel';
-import { NumberMatchAdminPanel } from '../features/numbermatch/components/NumberMatchAdminPanel';
 
-type AdminTab = 'prediction' | 'lottery' | 'scratchcard' | 'numbermatch';
+type AdminTab = 'prediction';
 
 const TABS: { id: AdminTab; label: string }[] = [
   { id: 'prediction', label: 'Prediction' },
-  { id: 'lottery', label: 'Lottery' },
-  { id: 'scratchcard', label: 'Scratch Cards' },
-  { id: 'numbermatch', label: 'Number Match' },
 ];
 
 const TAB_ACCESS_MAP: Record<AdminTab, string> = {
   prediction: 'isPredictionAdmin',
-  lottery: 'isLotteryAdmin',
-  scratchcard: 'isScratchcardAdmin',
-  numbermatch: 'isNumberMatchAdmin',
 };
 
 export function AdminPage() {
@@ -91,15 +82,6 @@ export function AdminPage() {
           {access.isPredictionAdmin && (
             <span className="px-2 py-1 bg-pd2/20 text-pd3 rounded">Prediction</span>
           )}
-          {access.isLotteryAdmin && (
-            <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded">Lottery</span>
-          )}
-          {access.isScratchcardAdmin && (
-            <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded">Scratch</span>
-          )}
-          {access.isNumberMatchAdmin && (
-            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded">Match</span>
-          )}
         </div>
       </div>
 
@@ -131,9 +113,6 @@ export function AdminPage() {
       {/* Tab Content */}
       <div>
         {activeTab === 'prediction' && access.isPredictionAdmin && <PredictionAdminPanel />}
-        {activeTab === 'lottery' && access.isLotteryAdmin && <LotteryAdminPanel />}
-        {activeTab === 'scratchcard' && access.isScratchcardAdmin && <ScratchCardAdminPanel />}
-        {activeTab === 'numbermatch' && access.isNumberMatchAdmin && <NumberMatchAdminPanel />}
 
         {/* Fallback if no access to selected tab */}
         {!getTabAccess(activeTab) && (

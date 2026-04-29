@@ -63,7 +63,7 @@ export function PerpsComingSoonPage() {
 
         {/* CTA */}
         <Link
-          to="/markets/spot"
+          to="/spot"
           className="inline-flex items-center gap-2 px-6 py-3 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors"
         >
           <svg

@@ -32,7 +32,7 @@ export function HotMarketsCard() {
         <h2 className="font-bold text-theme-text-primary">Hot Markets</h2>
         {spotEnabled ? (
           <button
-            onClick={() => navigate('/markets/spot')}
+            onClick={() => navigate('/spot')}
             className="text-xs xl:text-sm text-pd3 hover:text-pd3/80 transition-colors"
           >
             View All →
@@ -56,7 +56,7 @@ export function HotMarketsCard() {
         ) : markets.map((market) => (
           <div
             key={market.symbol}
-            onClick={spotEnabled ? () => navigate(`/markets/spot?market=${market.pool}`) : undefined}
+            onClick={spotEnabled ? () => navigate(`/spot?market=${market.pool}`) : undefined}
             className={`group flex items-center justify-between p-2 -mx-2 rounded-lg transition-colors ${
               spotEnabled
                 ? 'cursor-pointer hover:bg-theme-bg-tertiary/50'
