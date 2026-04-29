@@ -69,11 +69,14 @@ export const APP_REGISTRY: AppEntry[] = [
 
 export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
 
-// Apps auto-pinned for fresh users (no localStorage record). Preserves the
-// day-1 onboarding flow (faucet + wallet-transfer) that BASE_MISSIONS used to
-// provide. Once a user takes any directory action, their explicit state wins
-// even if it pins zero apps; we never re-seed.
-export const DEFAULT_PINNED_APPS: readonly string[] = ['nasun-devnet'];
+// Apps auto-pinned for fresh users (no localStorage record). Mirrors the
+// legacy 7-mission my-account list minus chat: nasun-devnet (faucet +
+// wallet-transfer), pado (pado-dex), gostop (3 historic games). Activate
+// per-app seed uses DEFAULT_MISSIONS_BY_APP, so total seeded = 6, leaving
+// one slot under the 7-mission cap for the user to add mines or crash.
+// Once a user takes any directory action their explicit state wins; we
+// never re-seed.
+export const DEFAULT_PINNED_APPS: readonly string[] = ['nasun-devnet', 'pado', 'gostop'];
 
 export const CHAIN_LABEL: Record<AppChain, string> = {
   nasun:    'Nasun',

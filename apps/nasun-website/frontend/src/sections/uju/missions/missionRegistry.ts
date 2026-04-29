@@ -17,6 +17,17 @@ export interface UjuMission {
 // Maximum number of daily missions a user can have selected at once.
 export const MAX_DAILY_MISSIONS = 7;
 
+// On Activate, seed only these missions (not the full APP_MISSION_MAP entry).
+// Sized to 6 by default to mirror the legacy 7-mission my-account list minus
+// chat (deprecated in PR3b). gostop ships 5 games but only 3 are seeded so the
+// migrated user sees the same historic gostop missions; mines/crash are
+// available for manual opt-in within the 7-mission cap.
+export const DEFAULT_MISSIONS_BY_APP: Record<string, readonly string[]> = {
+  'nasun-devnet': ['faucet', 'wallet-transfer'],
+  pado:           ['pado-dex'],
+  gostop:         ['gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch'],
+};
+
 // Missions added when an app is pinned via App Directory.
 //
 // nasun-devnet missions: faucet/wallet-transfer were previously BASE_MISSIONS

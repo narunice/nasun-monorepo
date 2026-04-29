@@ -96,10 +96,20 @@ describe("parseDirectoryState", () => {
 });
 
 describe("loadFromStorage migration", () => {
-  it("seeds DEFAULT_PINNED_APPS for fresh user (no key present)", () => {
+  it("seeds DEFAULT_PINNED_APPS + DEFAULT_MISSIONS_BY_APP for fresh user (no key present)", () => {
     const result = loadFromStorage(ID_A);
-    expect(result.explicitPinned).toEqual(["nasun-devnet"]);
-    expect(result.missions).toEqual({});
+    expect(result.explicitPinned).toEqual(["nasun-devnet", "pado", "gostop"]);
+    expect(result.missions).toEqual({
+      "nasun-devnet": ["faucet", "wallet-transfer"],
+      pado: ["pado-dex"],
+      gostop: ["gostop-lottery", "gostop-scratchcard", "gostop-numbermatch"],
+    });
+  });
+
+  it("seeds exactly 6 missions (under 7-cap, leaves room for mines/crash opt-in)", () => {
+    const result = loadFromStorage(ID_A);
+    const total = Object.values(result.missions).reduce((n, ids) => n + ids.length, 0);
+    expect(total).toBe(6);
   });
 
   it("does NOT persist the seed (so deactivate-then-reload stays empty)", () => {
