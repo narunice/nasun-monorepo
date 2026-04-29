@@ -579,6 +579,11 @@ export function TradePage() {
   const params = new URLSearchParams(window.location.search);
   const marketParam = params.get('market') as import('../features/trading/context').MarketKey | null;
 
+  // Onboarding signal: mark spot as visited so GettingStartedCard step ticks off.
+  if (typeof window !== 'undefined') {
+    try { localStorage.setItem('pado:spotVisited', 'true'); } catch { /* noop */ }
+  }
+
   return (
     <MarketProvider defaultMarket={marketParam ?? undefined}>
       <OrderFormProvider>

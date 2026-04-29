@@ -1,8 +1,7 @@
 /**
  * QuickActions
- * Grid of action buttons for common tasks (6 slots - 3x2 grid)
- * Row 1: Spot, Perp, Predict
- * Row 2: Games (3-split), Earn, Send
+ * Grid of action buttons for common tasks.
+ * Spot, Perp, Predict, Earn, Send
  */
 
 import { useState } from 'react';
@@ -27,7 +26,7 @@ const ACTIONS: ActionItem[] = [
     id: 'spot',
     label: 'Spot',
     description: 'Buy and sell tokens instantly',
-    path: '/markets/spot',
+    path: '/spot',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -39,9 +38,9 @@ const ACTIONS: ActionItem[] = [
   },
   {
     id: 'perp',
-    label: 'Perp',
+    label: 'Perpetuals',
     description: 'Trade with up to 20x leverage',
-    path: '/markets/perp',
+    path: '/perpetuals',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -66,7 +65,6 @@ const ACTIONS: ActionItem[] = [
     color: 'indigo',
     enabled: import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' || hasAccess('full'),
   },
-  // Games card is rendered separately via GamesCard component (slot 4)
   {
     id: 'earn',
     label: 'Earn',
@@ -92,37 +90,6 @@ const ACTIONS: ActionItem[] = [
     ),
     color: 'cyan',
     enabled: false,
-  },
-];
-
-const GAME_ITEMS = [
-  {
-    label: 'Lottery',
-    path: '/games/lottery',
-    badge: 'LIVE',
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-      </svg>
-    ),
-  },
-  {
-    label: 'Scratch',
-    path: '/games/scratch',
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-1 1m0 0l-2 2m2-2l-2-2m2 2l2 2M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14" />
-      </svg>
-    ),
-  },
-  {
-    label: 'NumMatch',
-    path: '/games/numbermatch',
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-      </svg>
-    ),
   },
 ];
 
@@ -159,39 +126,9 @@ const COLOR_CLASSES: Record<string, { bg: string; hover: string; icon: string }>
   },
 };
 
-function GamesCard() {
-  return (
-    <div className="relative bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
-      <div className="absolute top-2 right-2">
-        <span className="px-1.5 py-0.5 text-[10px] xl:text-xs font-medium bg-green-500/20 text-green-400 rounded-full">
-          LIVE
-        </span>
-      </div>
-      <div className="flex gap-2 mb-3">
-        {GAME_ITEMS.map((game) => (
-          <Link
-            key={game.label}
-            to={game.path}
-            className="w-10 h-10 bg-yellow-500/10 rounded-lg flex items-center justify-center hover:bg-yellow-500/20 transition-colors"
-            title={game.label}
-          >
-            <span className="text-yellow-500">{game.icon}</span>
-          </Link>
-        ))}
-      </div>
-      <h3 className="font-medium text-theme-text-primary">Games</h3>
-      <p className="text-xs xl:text-sm text-theme-text-muted mt-1">Lottery, Scratch & Quick Pick</p>
-    </div>
-  );
-}
-
 export function QuickActions() {
   const [hoveredDisabled, setHoveredDisabled] = useState<string | null>(null);
   const isAppAdmin = useAppAdmin();
-
-  // Split actions: first 3 (Row 1), then remaining (Row 2 after Games)
-  const row1 = ACTIONS.slice(0, 3);
-  const row2 = ACTIONS.slice(3);
 
   const renderAction = (action: ActionItem) => {
     const colors = COLOR_CLASSES[action.color];
@@ -251,9 +188,7 @@ export function QuickActions() {
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-      {row1.map(renderAction)}
-      <GamesCard />
-      {row2.map(renderAction)}
+      {ACTIONS.map(renderAction)}
     </div>
   );
 }

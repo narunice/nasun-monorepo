@@ -6,4 +6,3 @@ export { UnderlineTabs, type TabItem } from './UnderlineTabs';
 export { SkeletonBox, SkeletonRow, SkeletonTable, SkeletonCard, SkeletonMarketRow, SkeletonStatGrid } from './Skeleton';
 export { TokenIcon, getTokenHexColor } from './TokenIcon';
 export { CelebrationOverlay } from './CelebrationOverlay';
-export { GamesNav } from './GamesNav';

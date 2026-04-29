@@ -1,41 +1,29 @@
 /**
  * useAdminAccess Hook
- * Checks if the connected wallet has any AdminCap (Prediction, Lottery, Scratchcard, NumberMatch)
+ * Checks if the connected wallet has the Prediction AdminCap.
+ * (Lottery / Scratchcard / NumberMatch admin checks were retired with the games archive.)
  */
 
 import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
-import { ADMIN_CAP_TYPE as LOTTERY_ADMIN_CAP_TYPE } from '../../lottery/constants';
 import { PREDICTION_PACKAGE_ID } from '../../prediction/constants';
-import { ADMIN_CAP_TYPE as SCRATCHCARD_ADMIN_CAP_TYPE } from '../../scratchcard/constants';
-import { ADMIN_CAP_TYPE as NUMBERMATCH_ADMIN_CAP_TYPE } from '../../numbermatch/constants';
 
-// Prediction has no originalPackageId yet (no upgrade). Use packageId directly.
 const PREDICTION_ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
 
 export interface AdminCapInfo {
-  lotteryAdminCapId: string | null;
   predictionAdminCapId: string | null;
-  scratchcardAdminCapId: string | null;
-  numbermatchAdminCapId: string | null;
 }
 
 export interface UseAdminAccessResult {
   isAdmin: boolean;
-  isLotteryAdmin: boolean;
   isPredictionAdmin: boolean;
-  isScratchcardAdmin: boolean;
-  isNumberMatchAdmin: boolean;
   adminCaps: AdminCapInfo;
   isLoading: boolean;
 }
 
 const EMPTY_CAPS: AdminCapInfo = {
-  lotteryAdminCapId: null,
   predictionAdminCapId: null,
-  scratchcardAdminCapId: null,
-  numbermatchAdminCapId: null,
 };
 
 export function useAdminAccess(): UseAdminAccessResult {
@@ -69,31 +57,15 @@ export function useAdminAccess(): UseAdminAccessResult {
 
       try {
         const client = getSuiClient();
-
-        // Check all AdminCaps in parallel
-        const [lotteryCaps, predictionCaps, scratchcardCaps, numbermatchCaps] = await Promise.all([
-          client.getOwnedObjects({ owner: walletAddress, filter: { StructType: LOTTERY_ADMIN_CAP_TYPE } }),
-          client.getOwnedObjects({ owner: walletAddress, filter: { StructType: PREDICTION_ADMIN_CAP_TYPE } }),
-          client.getOwnedObjects({ owner: walletAddress, filter: { StructType: SCRATCHCARD_ADMIN_CAP_TYPE } }),
-          client.getOwnedObjects({ owner: walletAddress, filter: { StructType: NUMBERMATCH_ADMIN_CAP_TYPE } }),
-        ]);
+        const predictionCaps = await client.getOwnedObjects({
+          owner: walletAddress,
+          filter: { StructType: PREDICTION_ADMIN_CAP_TYPE },
+        });
 
         setAdminCaps({
-          lotteryAdminCapId:
-            lotteryCaps.data.length > 0
-              ? lotteryCaps.data[0].data?.objectId || null
-              : null,
           predictionAdminCapId:
             predictionCaps.data.length > 0
               ? predictionCaps.data[0].data?.objectId || null
-              : null,
-          scratchcardAdminCapId:
-            scratchcardCaps.data.length > 0
-              ? scratchcardCaps.data[0].data?.objectId || null
-              : null,
-          numbermatchAdminCapId:
-            numbermatchCaps.data.length > 0
-              ? numbermatchCaps.data[0].data?.objectId || null
               : null,
         });
       } catch (err) {
@@ -107,18 +79,12 @@ export function useAdminAccess(): UseAdminAccessResult {
     checkAdminCaps();
   }, [walletAddress]);
 
-  const isLotteryAdmin = !!adminCaps.lotteryAdminCapId;
   const isPredictionAdmin = !!adminCaps.predictionAdminCapId;
-  const isScratchcardAdmin = !!adminCaps.scratchcardAdminCapId;
-  const isNumberMatchAdmin = !!adminCaps.numbermatchAdminCapId;
-  const isAdmin = isLotteryAdmin || isPredictionAdmin || isScratchcardAdmin || isNumberMatchAdmin;
+  const isAdmin = isPredictionAdmin;
 
   return {
     isAdmin,
-    isLotteryAdmin,
     isPredictionAdmin,
-    isScratchcardAdmin,
-    isNumberMatchAdmin,
     adminCaps,
     isLoading,
   };

@@ -2,7 +2,7 @@
  * MobileBottomNav
  * 5-tab bottom navigation bar for mobile (< md breakpoint).
  *
- * Tabs: Home | Trade | Predict | Social | More
+ * Tabs: Home | Spot | Perpetuals | Social | More
  * - Fixed at bottom with safe-area padding for iOS notch
  * - Hidden on md+ (desktop uses header nav)
  * - "More" opens a bottom sheet overlay with secondary features
@@ -22,9 +22,6 @@ interface NavTab {
   enabled?: boolean;
 }
 
-// TEMPORARY: access-level gating (Remove after 2026-07-01)
-
-// Shared icon functions to avoid duplication between gated/ungated arrays
 const homeIcon = (active: boolean) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
     <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeLinecap="round" strokeLinejoin="round" />
@@ -32,7 +29,7 @@ const homeIcon = (active: boolean) => (
   </svg>
 );
 
-const tradeIcon = (active: boolean) => (
+const spotIcon = (active: boolean) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
     <polyline points="7 17 2 12 7 7" strokeLinecap="round" strokeLinejoin="round" />
     <polyline points="17 7 22 12 17 17" strokeLinecap="round" strokeLinejoin="round" />
@@ -41,9 +38,9 @@ const tradeIcon = (active: boolean) => (
   </svg>
 );
 
-const gamesIcon = (active: boolean) => (
+const perpIcon = (active: boolean) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-    <path d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -58,8 +55,8 @@ const socialIcon = (active: boolean) => (
 
 const TABS: NavTab[] = [
   { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon, enabled: true },
-  { label: 'Trade', path: '/markets/spot', matchPaths: ['/markets', '/trade'], icon: tradeIcon, enabled: hasAccess('spot') },
-  { label: 'Games', path: '/games/lottery', matchPaths: ['/games'], icon: gamesIcon, enabled: true },
+  { label: 'Spot', path: '/spot', matchPaths: ['/spot', '/markets/spot', '/trade/spot'], icon: spotIcon, enabled: hasAccess('spot') },
+  { label: 'Perpetuals', path: '/perpetuals', matchPaths: ['/perpetuals', '/markets/perp', '/trade/perp'], icon: perpIcon, enabled: hasAccess('full') },
   { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: hasAccess('spot') },
 ];
 
@@ -76,10 +73,8 @@ const IDEA_MODE = import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true';
 
 const MORE_ITEMS: MoreItem[] = [
   { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
-  { label: 'Perpetuals', path: '/markets/perp', icon: '📈', enabled: hasAccess('full') },
   { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: hasAccess('spot') },
   { label: 'Wallet', path: '/wallet', icon: '👛', enabled: hasAccess('spot') },
-  { label: 'Game History', path: '/games/history', icon: '🎲', enabled: true },
   { label: 'Predict', path: '/predict', icon: '🔮', enabled: IDEA_MODE || hasAccess('full') },
 ];
 

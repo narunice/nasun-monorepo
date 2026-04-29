@@ -2,7 +2,6 @@
  * MobileQuickActions
  * Horizontal scrolling icon strip for mobile quick actions.
  * Compact: icon + label only (no descriptions).
- * Benchmarked from Binance/Coinbase mobile action strips.
  */
 
 import { Link } from 'react-router-dom';
@@ -20,7 +19,7 @@ interface QuickAction {
 const ACTIONS: QuickAction[] = [
   {
     label: 'Spot',
-    path: '/markets/spot',
+    path: '/spot',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
@@ -31,7 +30,7 @@ const ACTIONS: QuickAction[] = [
   },
   {
     label: 'Perp',
-    path: '/markets/perp',
+    path: '/perpetuals',
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
@@ -52,39 +51,6 @@ const ACTIONS: QuickAction[] = [
     ),
     color: 'text-indigo-500',
     enabled: import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' || hasAccess('full'),
-  },
-  {
-    label: 'Lottery',
-    path: '/games/lottery',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
-      </svg>
-    ),
-    color: 'text-yellow-500',
-    enabled: true,
-  },
-  {
-    label: 'Scratch',
-    path: '/games/scratch',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5l-1 1m0 0l-2 2m2-2l-2-2m2 2l2 2M3 21h18M5 21V7a2 2 0 012-2h10a2 2 0 012 2v14" />
-      </svg>
-    ),
-    color: 'text-yellow-500',
-    enabled: true,
-  },
-  {
-    label: 'NumMatch',
-    path: '/games/numbermatch',
-    icon: (
-      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
-      </svg>
-    ),
-    color: 'text-yellow-500',
-    enabled: true,
   },
   {
     label: 'Earn',

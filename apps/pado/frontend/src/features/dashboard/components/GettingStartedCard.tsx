@@ -1,7 +1,7 @@
 /**
  * GettingStartedCard
  *
- * 3-step onboarding checklist: Create Wallet -> Get Tokens -> Buy Lottery Ticket.
+ * 3-step onboarding checklist: Create Wallet -> Get Tokens -> Trade Spot.
  * Auto-hides when all steps are complete. Manually dismissible via localStorage.
  */
 
@@ -9,9 +9,9 @@ import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useWallet, useBalance, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { ClaimAllButton } from '@nasun/wallet-ui';
-import { LOTTERY_PURCHASED_KEY, LOTTERY_PURCHASE_EVENT } from '../../lottery/hooks/useLotteryActions';
 
 const DISMISS_KEY = 'pado:gettingStartedDismissed';
+const SPOT_VISITED_KEY = 'pado:spotVisited';
 
 interface Step {
   id: string;
@@ -36,17 +36,9 @@ export function GettingStartedCard() {
     try { return localStorage.getItem(DISMISS_KEY) === 'true'; } catch { return false; }
   });
 
-  const [hasLotteryTicket, setHasLotteryTicket] = useState(() => {
-    try { return !!localStorage.getItem(LOTTERY_PURCHASED_KEY); } catch { return false; }
+  const [hasVisitedSpot] = useState(() => {
+    try { return !!localStorage.getItem(SPOT_VISITED_KEY); } catch { return false; }
   });
-
-  // Listen for lottery purchase event to update reactively
-  useEffect(() => {
-    if (hasLotteryTicket) return;
-    const handler = () => setHasLotteryTicket(true);
-    document.addEventListener(LOTTERY_PURCHASE_EVENT, handler);
-    return () => document.removeEventListener(LOTTERY_PURCHASE_EVENT, handler);
-  }, [hasLotteryTicket]);
 
   const hasBalance = !!balance && Number(balance.totalBalance) > 0;
 
@@ -65,18 +57,18 @@ export function GettingStartedCard() {
         completed: hasBalance,
       },
       {
-        id: 'lottery',
-        label: 'Buy a Lottery Ticket',
-        description: 'Pick 5 numbers and try your luck',
-        completed: hasLotteryTicket,
+        id: 'spot',
+        label: 'Try Spot Trading',
+        description: 'Open the spot market and place your first order',
+        completed: hasVisitedSpot,
         action: isWalletConnected && hasBalance
-          ? { label: 'Go to Lottery', to: '/games/lottery' }
+          ? { label: 'Go to Spot', to: '/spot' }
           : undefined,
       },
     ];
 
     return base;
-  }, [isWalletConnected, hasBalance, hasLotteryTicket]);
+  }, [isWalletConnected, hasBalance, hasVisitedSpot]);
 
   const completedCount = steps.filter((s) => s.completed).length;
   const allComplete = completedCount === steps.length;
