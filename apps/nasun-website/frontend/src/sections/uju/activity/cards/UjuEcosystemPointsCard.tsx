@@ -19,6 +19,7 @@ import {
 } from "recharts";
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
+import { useFilteredTodayScore } from "@/sections/uju/missions/useFilteredTodayScore";
 import { useSnapshotHistory } from "@/hooks/useSnapshotHistory";
 import { useQuery } from "@tanstack/react-query";
 import { Spinner } from "@/components/ui";
@@ -201,6 +202,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
   const [days, setDays] = useState<DaysOption>(30);
 
   const { score, isLoading: scoreLoading, isError: scoreError } = useEcosystemScore(identityId);
+  const { filtered: filteredScore, hasFilteredOutActivity } = useFilteredTodayScore(score);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,
@@ -354,8 +356,8 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           {/* Score Overview */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <UjuStat
-              label="Today"
-              value={(score?.daily.ecosystemScore ?? 0).toLocaleString()}
+              label={hasFilteredOutActivity ? "Today *" : "Today"}
+              value={(filteredScore?.daily.ecosystemScore ?? 0).toLocaleString()}
               tone="mint"
             />
             <UjuStat

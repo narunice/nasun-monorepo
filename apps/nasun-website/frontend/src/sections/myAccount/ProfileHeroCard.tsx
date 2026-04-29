@@ -17,6 +17,7 @@ import { ConnectedAccountsCard } from "./ConnectedAccountsCard";
 import { DailyMissionsCard } from "./DailyMissionsCard";
 import { HealthStatusBar } from "./HealthStatusBar";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
+import { useFilteredTodayScore } from "@/sections/uju/missions/useFilteredTodayScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { useProfileDisplay } from "./hooks/useProfileDisplay";
 import { updateDisplayName } from "@/services/userProfileApi";
@@ -154,11 +155,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     !!getActivation("genesis-pass") ||
     !!getActivation("battalion");
 
-  // Ecosystem score values from API (single source of truth)
-  const displayBaseScore = ecosystemScore?.daily.baseScore ?? 0;
-  const displayStakingScore = ecosystemScore?.daily.stakingScore ?? 0;
-  const displayMultiplier = ecosystemScore?.multiplier ?? 0;
-  const displayTodayScore = ecosystemScore?.daily.ecosystemScore ?? 0;
+  // Today values are filtered by the user's activated daily-mission set so
+  // categories outside the curated list (e.g. creator-posts) don't inflate
+  // today's base. All-time/weekly/multiplier come from the raw API response
+  // (full ledger). See sections/uju/missions/useFilteredTodayScore.ts.
+  const { filtered: filteredScore, hasFilteredOutActivity } = useFilteredTodayScore(ecosystemScore);
+  const displayBaseScore = filteredScore?.daily.baseScore ?? 0;
+  const displayStakingScore = filteredScore?.daily.stakingScore ?? 0;
+  const displayMultiplier = filteredScore?.multiplier ?? 0;
+  const displayTodayScore = filteredScore?.daily.ecosystemScore ?? 0;
 
   // ---- Display Name & Avatar ----
   const { displayName, avatarUrl: profileImageUrl, walletAddress, fallbackLetter } = useProfileDisplay(user);
@@ -459,8 +464,15 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
                             maximumFractionDigits: 1,
                           })}
                     </span>
-                    <span className="text-sm text-nasun-white/70">
-                      pts today
+                    <span
+                      className="text-sm text-nasun-white/70"
+                      title={
+                        hasFilteredOutActivity
+                          ? "Today reflects only activities for your activated daily missions. All-time is the full ledger."
+                          : undefined
+                      }
+                    >
+                      pts today{hasFilteredOutActivity ? " *" : ""}
                     </span>
                     <span className="text-sm text-nasun-white/80 ml-1">=</span>
                     <span className="text-sm text-nasun-white/80 ml-1">

@@ -45,6 +45,7 @@ import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
+import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 // import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
 // import { EcosystemStatusCard } from "../../sections/myAccount/EcosystemStatusCard";
 
@@ -248,6 +249,7 @@ const DevMyAccountPage = () => {
     (user?.provider === "MetaMask" ? user.walletAddress : undefined);
 
   return (
+    <UjuAppDirectoryProvider identityId={user?.identityId}>
     <PageLayout>
       <SectionLayout className="!max-w-7xl">
         {/* Notification Banner */}
@@ -503,6 +505,7 @@ const DevMyAccountPage = () => {
         </Dialog>
       </SectionLayout>
     </PageLayout>
+    </UjuAppDirectoryProvider>
   );
 };
 
