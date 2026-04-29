@@ -176,6 +176,37 @@ module.exports = {
     },
 
     // ==============================
+    // Keeper Gas Watchdog (treasury-pattern auto-refill for ALL keeper wallets)
+    // Source wallet (LP_PRIVATE_KEY_SOURCE) tops up each target to KEEPER_GAS_TARGET
+    // when its balance falls below KEEPER_GAS_THRESHOLD. Configure via .env:
+    //   KEEPER_GAS_TARGETS="crash:0x...,price-updater:0x...,tpsl:0x...,..."
+    // ==============================
+    {
+      name: 'keeper-gas-watchdog',
+      script: './node_modules/.bin/tsx',
+      args: 'scripts/keeper-gas-watchdog.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        KEEPER_GAS_INTERVAL_MS: '3600000',  // 1 hour
+        KEEPER_GAS_THRESHOLD: '1000',       // refill below 1k NASUN
+        KEEPER_GAS_TARGET: '100000',        // refill up to 100k NASUN
+        KEEPER_GAS_SOURCE_WARN: '500000',   // warn when source < 500k NASUN
+        // KEEPER_GAS_SOURCE_PRIVKEY (or LP_PRIVATE_KEY_SOURCE) and
+        // KEEPER_GAS_TARGETS loaded from .env via deploy script
+      },
+      max_restarts: 10,
+      restart_delay: 60000,  // 1min between restarts (not urgent)
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/keeper-gas-watchdog-error.log',
+      out_file: './logs/keeper-gas-watchdog-out.log',
+      merge_logs: true,
+      max_memory_restart: '200M',
+    },
+
+    // ==============================
     // TP/SL Keeper Bot
     // ==============================
     {
