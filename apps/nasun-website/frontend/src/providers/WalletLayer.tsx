@@ -25,6 +25,12 @@ const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 const saltApiUrl = import.meta.env.VITE_ZKLOGIN_SALT_API_URL;
 
 if (googleClientId && saltApiUrl) {
+  // Strip trailing slashes so the redirect_uri exactly matches the value
+  // registered in Google Cloud Console (envSchema also strips, but keep this
+  // defense-in-depth in case the schema is bypassed during HMR).
+  const callbackOrigin = (
+    import.meta.env.VITE_AUTH_CALLBACK_ORIGIN || window.location.origin
+  ).replace(/\/+$/, "");
   initZkLogin({
     saltApiUrl,
     proverUrl: import.meta.env.VITE_ZKLOGIN_PROVER_URL,
@@ -32,7 +38,7 @@ if (googleClientId && saltApiUrl) {
       google: {
         provider: "google",
         clientId: googleClientId,
-        redirectUri: `${window.location.origin}/callback`,
+        redirectUri: `${callbackOrigin}/callback`,
       },
     },
   });
