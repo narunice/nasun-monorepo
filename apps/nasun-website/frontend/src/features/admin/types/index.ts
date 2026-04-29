@@ -107,6 +107,9 @@ export interface NftCollection {
   contractAddress: string;
   chain: NFTChain;
   collectionName: string;
+  // Slug used as the activation SK prefix (e.g. "genesis-pass"). Optional in
+  // payloads to tolerate legacy rows.
+  nftTypeId?: string;
   enabled: boolean;
   featured?: boolean;
   createdAt: string;
@@ -122,11 +125,13 @@ export interface CreateNftCollectionRequest {
   contractAddress: string;
   chain: NFTChain;
   collectionName: string;
+  nftTypeId: string;
   featured?: boolean;
 }
 
 export interface UpdateNftCollectionRequest {
   collectionName?: string;
+  nftTypeId?: string;
   enabled?: boolean;
   featured?: boolean;
   contractAddress?: string;

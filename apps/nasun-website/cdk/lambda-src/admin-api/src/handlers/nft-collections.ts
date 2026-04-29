@@ -21,6 +21,9 @@ interface NftCollectionItem {
   contractAddress: string;
   chain: NFTChain;
   collectionName: string;
+  // Matches the activation SK prefix used by ownership-verifier (e.g. "genesis-pass").
+  // Optional in storage so legacy rows continue to load; new writes always set it.
+  nftTypeId?: string;
   enabled: boolean;
   featured: boolean;
   createdAt: string;
@@ -31,6 +34,9 @@ interface NftCollectionItem {
 // Valid chains for validation
 const VALID_CHAINS: NFTChain[] = ["ethereum", "polygon"];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+// nftTypeId must be lowercase slug (no spaces, no '#') so it can be safely
+// concatenated into activation SKs like `${nftTypeId}#${walletAddress}`.
+const NFT_TYPE_ID_REGEX = /^[a-z0-9][a-z0-9-]{0,63}$/;
 
 function isValidEthAddress(address: string): boolean {
   return /^0x[a-fA-F0-9]{40}$/.test(address);
@@ -38,6 +44,10 @@ function isValidEthAddress(address: string): boolean {
 
 function isValidUUID(id: string): boolean {
   return UUID_REGEX.test(id);
+}
+
+function isValidNftTypeId(id: string): boolean {
+  return NFT_TYPE_ID_REGEX.test(id);
 }
 
 /**
@@ -65,6 +75,7 @@ async function scanCollections(enabledOnly: boolean): Promise<NftCollectionItem[
           contractAddress: item.contractAddress?.S || "",
           chain: (item.chain?.S as NFTChain) || "ethereum",
           collectionName: item.collectionName?.S || "",
+          nftTypeId: item.nftTypeId?.S || undefined,
           enabled: item.enabled?.BOOL ?? true,
           featured: item.featured?.BOOL ?? false,
           createdAt: item.createdAt?.S || "",
@@ -89,6 +100,7 @@ async function createCollection(
   contractAddress: string,
   chain: NFTChain,
   collectionName: string,
+  nftTypeId: string,
   createdBy: string,
   featured = false
 ): Promise<NftCollectionItem> {
@@ -98,6 +110,7 @@ async function createCollection(
     contractAddress: contractAddress.toLowerCase(),
     chain,
     collectionName,
+    nftTypeId,
     enabled: true,
     featured,
     createdAt: now,
@@ -113,6 +126,7 @@ async function createCollection(
         contractAddress: { S: item.contractAddress },
         chain: { S: item.chain },
         collectionName: { S: item.collectionName },
+        nftTypeId: { S: nftTypeId },
         enabled: { BOOL: item.enabled },
         featured: { BOOL: item.featured },
         createdAt: { S: item.createdAt },
@@ -130,7 +144,7 @@ async function createCollection(
  */
 async function updateCollection(
   collectionId: string,
-  updates: Partial<Pick<NftCollectionItem, "collectionName" | "enabled" | "featured" | "contractAddress" | "chain">>
+  updates: Partial<Pick<NftCollectionItem, "collectionName" | "enabled" | "featured" | "contractAddress" | "chain" | "nftTypeId">>
 ): Promise<NftCollectionItem | null> {
   // Verify the item exists
   const existing = await dynamoClient.send(
@@ -177,6 +191,11 @@ async function updateCollection(
     names["#chain"] = "chain";
     values[":chain"] = { S: updates.chain };
   }
+  if (updates.nftTypeId !== undefined) {
+    expressions.push("#nftTypeId = :nftTypeId");
+    names["#nftTypeId"] = "nftTypeId";
+    values[":nftTypeId"] = { S: updates.nftTypeId };
+  }
 
   const result = await dynamoClient.send(
     new UpdateItemCommand({
@@ -197,6 +216,7 @@ async function updateCollection(
     contractAddress: attr.contractAddress?.S || "",
     chain: (attr.chain?.S as NFTChain) || "ethereum",
     collectionName: attr.collectionName?.S || "",
+    nftTypeId: attr.nftTypeId?.S || undefined,
     enabled: attr.enabled?.BOOL ?? true,
     featured: attr.featured?.BOOL ?? false,
     createdAt: attr.createdAt?.S || "",
@@ -299,30 +319,49 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } catch {
         return errorResponse(400, "Invalid JSON in request body", requestOrigin);
       }
-      const { contractAddress, chain, collectionName, featured } = body;
+      const { contractAddress, chain, collectionName, nftTypeId, featured } = body;
 
-      if (!contractAddress || !chain || !collectionName) {
-        return errorResponse(400, "Missing required fields: contractAddress, chain, collectionName", requestOrigin);
+      if (!contractAddress || !chain || !collectionName || !nftTypeId) {
+        return errorResponse(
+          400,
+          "Missing required fields: contractAddress, chain, collectionName, nftTypeId",
+          requestOrigin,
+        );
       }
 
-      if (!isValidEthAddress(contractAddress)) {
+      if (!isValidEthAddress(contractAddress as string)) {
         return errorResponse(400, "Invalid contract address format (must be 0x + 40 hex characters)", requestOrigin);
       }
 
-      if (!VALID_CHAINS.includes(chain)) {
+      if (!VALID_CHAINS.includes(chain as NFTChain)) {
         return errorResponse(400, `Invalid chain. Must be one of: ${VALID_CHAINS.join(", ")}`, requestOrigin);
       }
 
-      if (collectionName.length > 100) {
+      if ((collectionName as string).length > 100) {
         return errorResponse(400, "Collection name must be 100 characters or less", requestOrigin);
+      }
+
+      if (typeof nftTypeId !== "string" || !isValidNftTypeId(nftTypeId)) {
+        return errorResponse(
+          400,
+          "nftTypeId must be lowercase slug: a-z, 0-9, '-' (1-64 chars, must start with alphanumeric)",
+          requestOrigin,
+        );
       }
 
       if (featured !== undefined && typeof featured !== "boolean") {
         return errorResponse(400, "featured must be a boolean", requestOrigin);
       }
 
-      console.log(`Creating NFT collection: ${collectionName} (${chain}: ${contractAddress})`);
-      const collection = await createCollection(contractAddress, chain, collectionName, admin.identityId, featured ?? false);
+      console.log(`Creating NFT collection: ${collectionName} (${chain}: ${contractAddress}, nftTypeId: ${nftTypeId})`);
+      const collection = await createCollection(
+        contractAddress as string,
+        chain as NFTChain,
+        collectionName as string,
+        nftTypeId,
+        admin.identityId,
+        (featured as boolean | undefined) ?? false,
+      );
       return jsonResponse(201, { collection }, requestOrigin);
     }
 
@@ -338,24 +377,38 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } catch {
         return errorResponse(400, "Invalid JSON in request body", requestOrigin);
       }
-      const { collectionName, enabled, featured, contractAddress, chain } = body;
+      const { collectionName, enabled, featured, contractAddress, chain, nftTypeId } = body;
 
       // Validate optional fields if provided
       if (featured !== undefined && typeof featured !== "boolean") {
         return errorResponse(400, "featured must be a boolean", requestOrigin);
       }
-      if (contractAddress !== undefined && !isValidEthAddress(contractAddress)) {
+      if (contractAddress !== undefined && !isValidEthAddress(contractAddress as string)) {
         return errorResponse(400, "Invalid contract address format", requestOrigin);
       }
-      if (chain !== undefined && !VALID_CHAINS.includes(chain)) {
+      if (chain !== undefined && !VALID_CHAINS.includes(chain as NFTChain)) {
         return errorResponse(400, `Invalid chain. Must be one of: ${VALID_CHAINS.join(", ")}`, requestOrigin);
       }
-      if (collectionName !== undefined && collectionName.length > 100) {
+      if (collectionName !== undefined && (collectionName as string).length > 100) {
         return errorResponse(400, "Collection name must be 100 characters or less", requestOrigin);
+      }
+      if (nftTypeId !== undefined && (typeof nftTypeId !== "string" || !isValidNftTypeId(nftTypeId))) {
+        return errorResponse(
+          400,
+          "nftTypeId must be lowercase slug: a-z, 0-9, '-' (1-64 chars, must start with alphanumeric)",
+          requestOrigin,
+        );
       }
 
       console.log(`Updating NFT collection: ${collectionId}`);
-      const updated = await updateCollection(collectionId, { collectionName, enabled, featured, contractAddress, chain });
+      const updated = await updateCollection(collectionId, {
+        collectionName: collectionName as string | undefined,
+        enabled: enabled as boolean | undefined,
+        featured: featured as boolean | undefined,
+        contractAddress: contractAddress as string | undefined,
+        chain: chain as NFTChain | undefined,
+        nftTypeId: nftTypeId as string | undefined,
+      });
 
       if (!updated) {
         return errorResponse(404, "Collection not found", requestOrigin);

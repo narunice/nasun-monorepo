@@ -83,11 +83,26 @@ export async function handler() {
     }
   }
 
-  // Load enabled ETH collections: build both directions of mapping
+  // Load enabled ETH collections: map activation SK prefix -> contract address.
+  // Prefer the explicit nftTypeId field; fall back to a slugified collectionName
+  // for legacy rows that pre-date the nftTypeId migration.
   const collections = await getEnabledCollections();
   const nftTypeToContract = new Map<string, string>();
   for (const col of collections) {
-    const nftType = col.collectionName.toLowerCase().replace(/\s+/g, '-');
+    const nftType =
+      col.nftTypeId ||
+      (col.collectionName ? col.collectionName.toLowerCase().replace(/\s+/g, '-') : '');
+    if (!nftType) {
+      console.warn(
+        `[ownership-verifier] Skipping collection ${col.contractAddress}: missing nftTypeId and collectionName`,
+      );
+      continue;
+    }
+    if (!col.nftTypeId) {
+      console.warn(
+        `[ownership-verifier] Collection ${col.contractAddress} has no nftTypeId, derived "${nftType}" from collectionName`,
+      );
+    }
     nftTypeToContract.set(nftType, col.contractAddress.toLowerCase());
   }
 

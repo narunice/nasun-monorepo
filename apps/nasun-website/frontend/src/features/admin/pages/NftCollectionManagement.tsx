@@ -61,6 +61,7 @@ export function NftCollectionManagement() {
   const [contractAddress, setContractAddress] = useState("");
   const [chain, setChain] = useState<NFTChain>("polygon");
   const [collectionName, setCollectionName] = useState("");
+  const [nftTypeId, setNftTypeId] = useState("");
   const [featured, setFeatured] = useState(false);
   const [formError, setFormError] = useState("");
 
@@ -70,8 +71,8 @@ export function NftCollectionManagement() {
   const handleAdd = async () => {
     setFormError("");
 
-    if (!contractAddress.trim() || !collectionName.trim()) {
-      setFormError("Contract address and collection name are required.");
+    if (!contractAddress.trim() || !collectionName.trim() || !nftTypeId.trim()) {
+      setFormError("Contract address, collection name, and NFT Type ID are required.");
       return;
     }
 
@@ -80,15 +81,24 @@ export function NftCollectionManagement() {
       return;
     }
 
+    if (!/^[a-z0-9][a-z0-9-]{0,63}$/.test(nftTypeId.trim())) {
+      setFormError(
+        "NFT Type ID must be a lowercase slug (a-z, 0-9, '-'); start with alphanumeric, max 64 chars.",
+      );
+      return;
+    }
+
     try {
       await createMutation.mutateAsync({
         contractAddress: contractAddress.trim(),
         chain,
         collectionName: collectionName.trim(),
+        nftTypeId: nftTypeId.trim(),
         featured,
       });
       setContractAddress("");
       setCollectionName("");
+      setNftTypeId("");
       setFeatured(false);
     } catch (err: unknown) {
       setFormError(err instanceof Error ? err.message : "Failed to create collection");
@@ -187,6 +197,15 @@ export function NftCollectionManagement() {
                   placeholder="Collection name (e.g., Founders NFT)"
                   className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4"
                 />
+                <input
+                  type="text"
+                  value={nftTypeId}
+                  onChange={(e) => setNftTypeId(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+                  placeholder="NFT Type ID (e.g., genesis-pass)"
+                  className="flex-1 bg-gray-800/80 border border-nasun-c5/45 rounded-sm px-4 py-2.5 text-nasun-white placeholder:text-nasun-white/50 focus:outline-none focus:border-nasun-c4 font-mono text-sm"
+                  title="Slug used as the activation SK prefix (lowercase a-z, 0-9, '-')"
+                />
                 <label className="flex items-center gap-1.5 text-nasun-white/85 text-sm cursor-pointer whitespace-nowrap">
                   <input
                     type="checkbox"
@@ -228,6 +247,7 @@ export function NftCollectionManagement() {
                   <thead>
                     <tr className="border-b border-nasun-white/20 text-nasun-white/80">
                       <th className="text-left py-3 px-2 font-medium">Name</th>
+                      <th className="text-left py-3 px-2 font-medium">Type ID</th>
                       <th className="text-left py-3 px-2 font-medium">Contract</th>
                       <th className="text-left py-3 px-2 font-medium">Chain</th>
                       <th className="text-left py-3 px-2 font-medium">Status</th>
@@ -243,6 +263,20 @@ export function NftCollectionManagement() {
                           <span className="text-nasun-white font-medium">
                             {collection.collectionName}
                           </span>
+                        </td>
+                        <td className="py-3 px-2">
+                          {collection.nftTypeId ? (
+                            <span className="text-nasun-white/85 font-mono text-xs">
+                              {collection.nftTypeId}
+                            </span>
+                          ) : (
+                            <span
+                              className="text-amber-400/80 text-xs italic"
+                              title="Legacy row: ownership-verifier falls back to a slugified collectionName"
+                            >
+                              (legacy)
+                            </span>
+                          )}
                         </td>
                         <td className="py-3 px-2">
                           <a
