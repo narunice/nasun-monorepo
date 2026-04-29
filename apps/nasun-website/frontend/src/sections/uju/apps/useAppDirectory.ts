@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { APP_REGISTRY, VALID_APP_IDS, type AppEntry } from './appRegistry';
+import { APP_REGISTRY, VALID_APP_IDS, DEFAULT_PINNED_APPS, type AppEntry } from './appRegistry';
+import { APP_MISSION_MAP, MAX_DAILY_MISSIONS } from '../missions/missionRegistry';
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -15,6 +16,16 @@ function directoryKey(identityId: string | undefined): string {
 function legacyKey(identityId: string | undefined): string {
   return identityId ? `${OLD_KEY_PREFIX}:${identityId}` : `${OLD_KEY_PREFIX}:guest`;
 }
+
+// PR3b: mission ids removed from the registry. Dropped silently on parse so
+// users who selected them in earlier builds get a clean slate without a toast
+// or migration step. The list is closed (sourced from registry deletions).
+const STALE_MISSION_IDS: ReadonlySet<string> = new Set([
+  'chat',
+  'jupiter-swap',
+  'cetus-trade',
+  'uniswap-swap',
+]);
 
 // ---------------------------------------------------------------------------
 // State shape
@@ -52,10 +63,12 @@ export function parseDirectoryState(raw: unknown): AppDirectoryState {
     for (const [appId, ids] of Object.entries(r.missions as Record<string, unknown>)) {
       if (!VALID_APP_IDS.has(appId)) continue;
       if (!Array.isArray(ids)) continue;
-      // app-id filter is sufficient: stale mission ids are dropped at render
-      // time in UjuDailyMissionsCard via APP_MISSION_MAP intersection.
+      // Drop closed-set stale ids removed from the registry. Other unknown ids
+      // pass through and are intersected with APP_MISSION_MAP at render time
+      // (preserves the historical "render-time drop" contract for ids that may
+      // legitimately reappear).
       missions[appId] = (ids as unknown[]).filter(
-        (x): x is string => typeof x === 'string',
+        (x): x is string => typeof x === 'string' && !STALE_MISSION_IDS.has(x),
       );
     }
   }
@@ -84,10 +97,13 @@ function writeJson(key: string, value: unknown): void {
  * Lazy-init loader. Called from useState initializer + identityId-change effect.
  *
  * Migration path:
- *   1. New key present → parse and return.
+ *   1. New key present → parse and return (user-authored state, even if empty).
  *   2. Else, legacy `uju:pinned-apps:{id}` present → migrate to new shape,
  *      write new key, KEEP legacy key (rollback safety; cleaned in a later PR).
- *   3. Else → empty state.
+ *   3. Else (truly fresh user) → seed DEFAULT_PINNED_APPS so the day-1 faucet
+ *      and wallet-transfer onboarding survives the BASE_MISSIONS removal.
+ *      No "seeded" marker is stored; once the user takes any action the state
+ *      becomes hit (step 1) and we never re-seed.
  */
 export function loadFromStorage(identityId: string | undefined): AppDirectoryState {
   const newKey = directoryKey(identityId);
@@ -104,7 +120,11 @@ export function loadFromStorage(identityId: string | undefined): AppDirectorySta
     return migrated;
   }
 
-  return { ...EMPTY_STATE };
+  // Fresh user: seed default-pinned apps. We do not persist the seed so that
+  // a user who immediately deactivates the seeded apps isn't re-seeded next
+  // session (their first save promotes them to "hit" in step 1).
+  const seedPinned = DEFAULT_PINNED_APPS.filter((id) => VALID_APP_IDS.has(id));
+  return { explicitPinned: [...seedPinned], missions: {} };
 }
 
 // ---------------------------------------------------------------------------
@@ -123,6 +143,23 @@ export function effectivePinned(state: AppDirectoryState): string[] {
   return APP_REGISTRY.map((a) => a.id).filter((id) => merged.has(id));
 }
 
+/**
+ * Total number of mission ids selected across all apps. Counts only ids that
+ * are still defined in APP_MISSION_MAP (so registry drops don't inflate).
+ */
+export function selectedMissionCount(state: AppDirectoryState): number {
+  let count = 0;
+  for (const [appId, ids] of Object.entries(state.missions)) {
+    const valid = APP_MISSION_MAP[appId];
+    if (!valid) continue;
+    const validIds = new Set(valid.map((m) => m.id));
+    for (const id of ids) {
+      if (validIds.has(id)) count++;
+    }
+  }
+  return count;
+}
+
 // ---------------------------------------------------------------------------
 // Hook
 // ---------------------------------------------------------------------------
@@ -135,6 +172,8 @@ export interface UseAppDirectoryResult {
   deactivate: (id: string) => void;
   toggleMission: (appId: string, missionId: string) => void;
   setMissions: (appId: string, ids: string[]) => void;
+  selectedTotal: number;
+  isAtCap: boolean;
 }
 
 export function useAppDirectory(identityId: string | undefined): UseAppDirectoryResult {
@@ -151,8 +190,8 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
 
   // Sync writer: every action goes through this. No debounce — payload is tiny
   // and a debounced write window can lose changes when other tabs write
-  // concurrently. Multi-tab `storage` event listener intentionally omitted in
-  // PR1 (single-tab is the 99% case); revisit if user feedback demands it.
+  // concurrently. Multi-tab `storage` event listener intentionally omitted
+  // (single-tab is the 99% case); revisit if user feedback demands it.
   const setState = useCallback(
     (next: AppDirectoryState) => {
       setStateRaw(next);
@@ -167,6 +206,9 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     return APP_REGISTRY.filter((a) => idSet.has(a.id));
   }, [state]);
 
+  const selectedTotal = useMemo(() => selectedMissionCount(state), [state]);
+  const isAtCap = selectedTotal >= MAX_DAILY_MISSIONS;
+
   const isPinned = useCallback(
     (id: string) =>
       state.explicitPinned.includes(id) ||
@@ -178,12 +220,23 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     (id: string) => {
       if (!VALID_APP_IDS.has(id)) return;
       if (state.explicitPinned.includes(id)) return;
+      // On Activate, default-select missions up to remaining cap. Without this
+      // the user has to click each mission individually after activating, and
+      // a deactivate→reactivate cycle silently loses prior selections.
+      const appMissions = APP_MISSION_MAP[id]?.map((m) => m.id) ?? [];
+      const remaining = Math.max(0, MAX_DAILY_MISSIONS - selectedTotal);
+      const seeded = appMissions.slice(0, remaining);
+      const nextMissions = { ...state.missions };
+      // Preserve any pre-existing selection; only seed if the slot is empty.
+      if (!nextMissions[id] || nextMissions[id].length === 0) {
+        nextMissions[id] = seeded;
+      }
       setState({
-        ...state,
         explicitPinned: [...state.explicitPinned, id],
+        missions: nextMissions,
       });
     },
-    [state, setState],
+    [state, setState, selectedTotal],
   );
 
   const deactivate = useCallback(
@@ -202,26 +255,36 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     (appId: string, missionId: string) => {
       if (!VALID_APP_IDS.has(appId)) return;
       const cur = state.missions[appId] ?? [];
-      const next = cur.includes(missionId)
-        ? cur.filter((id) => id !== missionId)
-        : [...cur, missionId];
+      const adding = !cur.includes(missionId);
+      // Cap enforcement: refuse adds that would exceed MAX_DAILY_MISSIONS. The
+      // UI disables unselected checkboxes at cap so this branch is a defensive
+      // fallback (rapid double-click, programmatic call).
+      if (adding && selectedTotal >= MAX_DAILY_MISSIONS) return;
+      const next = adding
+        ? [...cur, missionId]
+        : cur.filter((id) => id !== missionId);
       setState({
         ...state,
         missions: { ...state.missions, [appId]: next },
       });
     },
-    [state, setState],
+    [state, setState, selectedTotal],
   );
 
   const setMissions = useCallback(
     (appId: string, ids: string[]) => {
       if (!VALID_APP_IDS.has(appId)) return;
+      // Cap clamp: keep prior count from this app + others ≤ cap. Truncate the
+      // input from the tail so the user's leading selections are preserved.
+      const otherTotal = selectedTotal - (state.missions[appId]?.length ?? 0);
+      const remaining = Math.max(0, MAX_DAILY_MISSIONS - otherTotal);
+      const clamped = ids.slice(0, remaining);
       setState({
         ...state,
-        missions: { ...state.missions, [appId]: ids },
+        missions: { ...state.missions, [appId]: clamped },
       });
     },
-    [state, setState],
+    [state, setState, selectedTotal],
   );
 
   return {
@@ -232,5 +295,7 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     deactivate,
     toggleMission,
     setMissions,
+    selectedTotal,
+    isAtCap,
   };
 }

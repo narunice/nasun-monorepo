@@ -7,8 +7,7 @@ import { UjuDailyMissionsCard } from "./UjuDailyMissionsCard";
 import { UjuNftShowcaseCard } from "./UjuNftShowcaseCard";
 import { NewsEventsCard } from "./NewsEventsCard";
 import { UjuSectionHeader } from "../shared";
-import { useAppDirectory } from "../apps/useAppDirectory";
-import { useAuth } from "@/features/auth";
+import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
 
 interface DashboardTabProps {
   /** When true, render only the main grid (without the NFTs Activated section). */
@@ -16,8 +15,7 @@ interface DashboardTabProps {
 }
 
 export function DashboardTab({ excludeNfts = false }: DashboardTabProps = {}) {
-  const { user } = useAuth();
-  const directory = useAppDirectory(user?.identityId);
+  const directory = useUjuAppDirectory();
   const { pinnedApps } = directory;
 
   return (

@@ -1,5 +1,5 @@
 export type AppChain = 'nasun' | 'solana' | 'sui' | 'ethereum';
-export type AppCategory = 'dex' | 'staking' | 'nft' | 'game' | 'ai' | 'analytics';
+export type AppCategory = 'dex' | 'staking' | 'nft' | 'game' | 'ai' | 'analytics' | 'utility';
 export type AppStatus = 'live' | 'coming-soon';
 
 export interface AppEntry {
@@ -15,6 +15,16 @@ export interface AppEntry {
 
 export const APP_REGISTRY: AppEntry[] = [
   // Nasun ecosystem
+  {
+    id: 'nasun-devnet',
+    name: 'Nasun Devnet',
+    description: 'Faucet and on-chain transfers on the Nasun devnet.',
+    url: 'https://faucet.devnet.nasun.io',
+    chain: 'nasun',
+    category: 'utility',
+    status: 'live',
+    isNative: true,
+  },
   {
     id: 'pado',
     name: 'Pado',
@@ -55,42 +65,15 @@ export const APP_REGISTRY: AppEntry[] = [
     status: 'coming-soon',
     isNative: true,
   },
-  // Solana ecosystem
-  {
-    id: 'jupiter',
-    name: 'Jupiter',
-    description: 'Best-in-class liquidity aggregator on Solana.',
-    url: 'https://jup.ag',
-    chain: 'solana',
-    category: 'dex',
-    status: 'live',
-    isNative: false,
-  },
-  // SUI ecosystem
-  {
-    id: 'cetus',
-    name: 'Cetus',
-    description: 'Native concentrated liquidity AMM on SUI.',
-    url: 'https://app.cetus.zone',
-    chain: 'sui',
-    category: 'dex',
-    status: 'live',
-    isNative: false,
-  },
-  // Ethereum ecosystem
-  {
-    id: 'uniswap',
-    name: 'Uniswap',
-    description: 'Leading decentralized exchange on Ethereum.',
-    url: 'https://app.uniswap.org',
-    chain: 'ethereum',
-    category: 'dex',
-    status: 'live',
-    isNative: false,
-  },
 ];
 
 export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
+
+// Apps auto-pinned for fresh users (no localStorage record). Preserves the
+// day-1 onboarding flow (faucet + wallet-transfer) that BASE_MISSIONS used to
+// provide. Once a user takes any directory action, their explicit state wins
+// even if it pins zero apps; we never re-seed.
+export const DEFAULT_PINNED_APPS: readonly string[] = ['nasun-devnet'];
 
 export const CHAIN_LABEL: Record<AppChain, string> = {
   nasun:    'Nasun',

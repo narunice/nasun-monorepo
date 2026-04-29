@@ -4,6 +4,7 @@ import { UjuEcosystemPointsCard } from "./cards/UjuEcosystemPointsCard";
 import { UjuRankHistoryCard } from "./cards/UjuRankHistoryCard";
 import { UjuCreatorPostsCard } from "./cards/UjuCreatorPostsCard";
 import { UjuGovernanceCard } from "./cards/UjuGovernanceCard";
+import { UjuAppDirectoryCard } from "./cards/UjuAppDirectoryCard";
 import { UjuAssetsCard } from "./cards/UjuAssetsCard";
 import { UjuBugReportsCard } from "./cards/UjuBugReportsCard";
 
@@ -25,10 +26,13 @@ export const ActivityTab: FC = () => {
       {/* 4. Governance overview */}
       <UjuGovernanceCard />
 
-      {/* 5. Assets (NFTs & Objects) */}
+      {/* 5. Apps, Services, and AI Directory */}
+      <UjuAppDirectoryCard />
+
+      {/* 6. Assets (NFTs & Objects) */}
       <UjuAssetsCard walletAddress={walletAddress} />
 
-      {/* 6. Bug Reports history */}
+      {/* 7. Bug Reports history */}
       <UjuBugReportsCard />
     </div>
   );

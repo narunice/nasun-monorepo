@@ -1,24 +1,23 @@
 import { FC, useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { ClaimAllButton } from '@nasun/wallet-ui';
 import { useDailyMissions } from '@/hooks/useDailyMissions';
-import { useGovernanceMission } from '@/hooks/useGovernanceMission';
 import { useUjuWalletRegistration } from '../hooks/useUjuWalletRegistration';
 import { trackCrossAppNav, withCrossAppParam } from '@/lib/analytics';
 import { UjuCard } from '../shared/UjuCard';
 import { UjuAccentBar } from '../shared/UjuAccentBar';
+import { UjuButton } from '../shared/UjuButton';
 import type { AppEntry } from '../apps/appRegistry';
 import {
-  BASE_MISSIONS,
   APP_MISSION_MAP,
-  makeGovernanceMission,
+  MAX_DAILY_MISSIONS,
   getMissionBadge,
   type UjuMission,
 } from '../missions/missionRegistry';
 import { useNotificationDetector } from '../notifications/useNotificationDetector';
 
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
-const MAX_DISPLAYED = 7;
 
 // UTC date string for localStorage keying (visit missions reset at midnight UTC)
 function getTodayUtcStr(): string {
@@ -58,6 +57,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   missionsByApp,
 }) => {
   const { user } = useAuth();
+  const [, setSearchParams] = useSearchParams();
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
   const [visitedMissions, setVisitedMissions] = useState<Set<string>>(loadVisitedMissions);
   const [showAll, setShowAll] = useState(false);
@@ -80,12 +80,13 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
     allWalletAddresses,
   );
 
-  const { hasUnvotedProposal, unvotedCount } = useGovernanceMission();
-
-  // Build mission pool: base + pinned app missions (filtered by user selection)
-  // + conditional governance. Order preserved: BASE → app → governance.
+  // PR3b: BASE_MISSIONS removed. faucet/wallet-transfer now belong to the
+  // nasun-devnet app and are shown only when the user has it activated
+  // (fresh users are auto-pinned to nasun-devnet via DEFAULT_PINNED_APPS).
+  // Governance mission is no longer surfaced here; myAccount/DailyMissionsCard
+  // keeps it as an independent surface.
   const missionPool = useMemo(() => {
-    const pool: UjuMission[] = [...BASE_MISSIONS];
+    const pool: UjuMission[] = [];
     for (const app of pinnedApps) {
       const appMissions = APP_MISSION_MAP[app.id] ?? [];
       const allowedIds = missionsByApp[app.id];
@@ -95,11 +96,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
           : appMissions.filter((m) => allowedIds.includes(m.id));
       pool.push(...filtered);
     }
-    if (hasUnvotedProposal) {
-      pool.push(makeGovernanceMission(unvotedCount));
-    }
     return pool;
-  }, [pinnedApps, missionsByApp, hasUnvotedProposal, unvotedCount]);
+  }, [pinnedApps, missionsByApp]);
 
   // Fire notification detector after missionPool is computed, before early return
   useNotificationDetector({
@@ -107,8 +105,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
     missionPool,
     completedMissions,
     missionsLoading: isLoading,
-    hasUnvotedProposal,
-    unvotedCount,
+    hasUnvotedProposal: false,
+    unvotedCount: 0,
   });
 
   const isCompleted = useCallback(
@@ -124,8 +122,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
     [missionPool, isCompleted],
   );
 
-  const displayedMissions = showAll ? missionPool : missionPool.slice(0, MAX_DISPLAYED);
-  const hiddenCount = Math.max(0, missionPool.length - MAX_DISPLAYED);
+  const displayedMissions = showAll ? missionPool : missionPool.slice(0, MAX_DAILY_MISSIONS);
+  const hiddenCount = Math.max(0, missionPool.length - MAX_DAILY_MISSIONS);
 
   const handleFaucetSuccess = useCallback(() => {
     setLocalCompleted((prev) => new Set(prev).add('faucet'));
@@ -156,6 +154,30 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   }
 
   const maxPoints = missionPool.reduce((acc, m) => acc + (m.points ?? 0), 0);
+
+  if (missionPool.length === 0) {
+    return (
+      <UjuCard variant="accent" className="flex flex-col gap-0">
+        <div className="flex items-start gap-3 mb-3">
+          <UjuAccentBar />
+          <div className="min-w-0">
+            <h3 className="text-lg sm:text-xl font-semibold text-white">Daily Missions</h3>
+            <p className="text-base text-pado-2 mt-0.5">No missions activated yet.</p>
+          </div>
+        </div>
+        <p className="text-base text-uju-secondary mb-4">
+          Activate apps in the Activity tab to add their daily missions to your dashboard.
+        </p>
+        <UjuButton
+          variant="secondary"
+          size="sm"
+          onClick={() => setSearchParams({ tab: 'activity' }, { replace: true })}
+        >
+          Activate apps in Activity tab →
+        </UjuButton>
+      </UjuCard>
+    );
+  }
 
   return (
     <UjuCard variant="accent" className="flex flex-col gap-0">
@@ -319,7 +341,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
           onClick={() => setShowAll(false)}
           className="mt-3 w-full py-2 text-base text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
         >
-          Show top {MAX_DISPLAYED} only
+          Show top {MAX_DAILY_MISSIONS} only
         </button>
       )}
     </UjuCard>

@@ -7,6 +7,8 @@ import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
+import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
+import { useAuth } from "@/features/auth";
 
 type Tab = "dashboard" | "activity" | "profile";
 const VALID_TABS = new Set<Tab>(["dashboard", "activity", "profile"]);
@@ -16,6 +18,7 @@ function parseTab(raw: string | null): Tab {
 }
 
 export default function UjuPage() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
   const setTab = (t: Tab) => setSearchParams({ tab: t }, { replace: true });
@@ -70,6 +73,7 @@ export default function UjuPage() {
   }, [showInlineChat, tab]);
 
   return (
+    <UjuAppDirectoryProvider identityId={user?.identityId}>
     <UjuLayout>
       <main className="min-h-[calc(100vh-50px)]">
         <div className="max-w-5xl mx-auto px-4 py-6">
@@ -132,5 +136,6 @@ export default function UjuPage() {
         </div>
       )}
     </UjuLayout>
+    </UjuAppDirectoryProvider>
   );
 }
