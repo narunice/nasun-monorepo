@@ -487,7 +487,30 @@ app.get('/score/:identityId', async (c) => {
     },
   );
 
-  const scores = await getData();
+  // Fetch user's active missions outside the 30s cache — changes when the user
+  // toggles missions on any device and must always reflect the latest selection.
+  // Falls back to the historic 6 defaults for users without a persisted record.
+  const DEFAULT_MISSION_IDS: readonly string[] = [
+    'faucet', 'wallet-transfer', 'pado-dex',
+    'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
+  ];
+  const [scores, userMissionsRow] = await Promise.all([
+    getData(),
+    pointsDb!`
+      SELECT missions FROM user_active_missions WHERE identity_id = ${identityId}
+    `.then(r => r[0] ?? null).catch(() => null),
+  ]);
+  const activeMissions: string[] =
+    (userMissionsRow?.missions as string[] | undefined) ?? [...DEFAULT_MISSION_IDS];
+
+  // Filtered today base: only categories the user has activated count.
+  // pado-dex weight = 2 (mirrors matview), all others = 1.
+  let todayFilteredBase = 0;
+  for (const cat of scores.todayCategories) {
+    if (activeMissions.includes(cat)) {
+      todayFilteredBase += cat === 'pado-dex' ? 2 : 1;
+    }
+  }
 
   // disabled = no active NFT at all (not penalized with alliance)
   const disabled = !scores.isPenalized && scores.multiplier === 0;
@@ -510,13 +533,15 @@ app.get('/score/:identityId', async (c) => {
     })),
     todayCategories: scores.todayCategories,
     daily: {
-      baseScore: scores.todayBaseScore,
+      baseScore: todayFilteredBase,
+      _rawBaseScore: scores.todayBaseScore,
+      hasFilteredActivity: todayFilteredBase !== scores.todayBaseScore,
       stakingScore: scores.stakingToday,
       bonusTotal: roundTo2(scores.bonusToday),
       referralBonus: roundTo2(scores.refToday),
       governancePoints: roundTo2(scores.govToday),
       ecosystemScore: roundTo2(
-        (scores.todayBaseScore + scores.stakingToday) * scores.multiplier
+        (todayFilteredBase + scores.stakingToday) * scores.multiplier
           + scores.bonusToday + scores.govToday + scores.refToday * sf,
       ),
     },
@@ -530,7 +555,7 @@ app.get('/score/:identityId', async (c) => {
       // prevents UI drift when a multiplier (e.g. Genesis Pass) is upgraded mid-week.
       ecosystemScore: roundTo2(
         scores.weeklySnapshotCumulative
-          + (scores.todayBaseScore + scores.stakingToday) * scores.multiplier
+          + (todayFilteredBase + scores.stakingToday) * scores.multiplier
           + scores.bonusWeekly + scores.govWeekly + scores.refWeekly * sf,
       ),
       activeDays: scores.weeklyActiveDays,
@@ -553,6 +578,60 @@ app.get('/score/:identityId', async (c) => {
 
   c.header('Cache-Control', 'public, max-age=30');
   return c.json({ data });
+});
+
+// GET /api/v1/ecosystem/active-missions/:identityId
+// Returns the user's persisted active mission list and the server-side
+// updated_at timestamp. The frontend uses this for multi-device sync: on
+// mount it compares the server timestamp against the localStorage sync
+// timestamp and adopts whichever side is newer.
+app.get('/active-missions/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  const row = await pointsDb`
+    SELECT missions, updated_at FROM user_active_missions
+    WHERE identity_id = ${identityId}
+  `.then(r => r[0] ?? null);
+  return c.json({
+    data: {
+      missions: (row?.missions as string[] | null) ?? null,
+      updatedAt: row ? (row.updated_at as Date).toISOString() : null,
+    },
+  });
+});
+
+// PUT /api/v1/ecosystem/active-missions/:identityId
+// Upserts the user's active mission selection. Accepts a flat string array of
+// category ids (max 10). No auth token required — same public-identityId
+// pattern as the rest of the ecosystem endpoints. The worst-case abuse is a
+// display preference change, not a points manipulation.
+app.put('/active-missions/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  const body = await c.req.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body || !Array.isArray(body.missions)) {
+    return c.json({ error: 'invalid_body' }, 400);
+  }
+  const missions = body.missions as unknown[];
+  if (missions.length === 0) return c.json({ error: 'missions_empty' }, 400);
+  if (missions.length > 10) return c.json({ error: 'too_many_missions' }, 400);
+  if (!missions.every((m) => typeof m === 'string' && m.length > 0 && m.length <= 100)) {
+    return c.json({ error: 'invalid_mission_id' }, 400);
+  }
+  await pointsDb`
+    INSERT INTO user_active_missions (identity_id, missions, updated_at)
+    VALUES (${identityId}, ${JSON.stringify(missions)}, NOW())
+    ON CONFLICT (identity_id) DO UPDATE
+      SET missions = EXCLUDED.missions,
+          updated_at = EXCLUDED.updated_at
+  `;
+  return c.json({ data: { ok: true } });
 });
 
 // --- Weekly leaderboard helpers ---

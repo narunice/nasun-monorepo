@@ -14,22 +14,68 @@ import { calculateMultiplier, type NftActivation } from '../config/ecosystem.js'
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 
+// Historic 6 default missions applied to users who have never persisted a
+// custom selection. Mirrors DEFAULT_MISSIONS_BY_APP in the frontend registry.
+const DEFAULT_MISSION_IDS: ReadonlySet<string> = new Set([
+  'faucet', 'wallet-transfer', 'pado-dex',
+  'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
+]);
+const PADO_DEX = 'pado-dex';
+
 export async function takeDailySnapshot(
   snapshotDate: string,
   activationsCache: Map<string, NftActivation[]>,
 ): Promise<void> {
   if (!pointsDb) return;
 
-  // 1. Get all users' base_score for the snapshot date from matview
-  const baseScores = await pointsDb`
-    SELECT identity_id, base_score::int as base_score
-    FROM ecosystem_daily_scores
-    WHERE day = ${snapshotDate}::date
+  // 1. Load every user's active mission selection (full table — small).
+  //    Users without a row get DEFAULT_MISSION_IDS applied at score-time.
+  const userMissionsRows = await pointsDb`
+    SELECT identity_id, missions FROM user_active_missions
+  `;
+  const userMissionsMap = new Map<string, ReadonlySet<string>>();
+  for (const row of userMissionsRows) {
+    userMissionsMap.set(
+      row.identity_id as string,
+      new Set(row.missions as string[]),
+    );
+  }
+
+  // 2. Fetch all distinct (identity_id, category) pairs for the snapshot date.
+  //    Range comparison keeps the query sargable on the tx_timestamp index.
+  const rawCatRows = await pointsDb`
+    SELECT DISTINCT identity_id, category
+    FROM activity_points
+    WHERE tx_timestamp >= ${snapshotDate}::date
+      AND tx_timestamp <  (${snapshotDate}::date + interval '1 day')
+      AND NOT flagged
+      AND base_points > 0
+      AND identity_id IS NOT NULL
+      AND category NOT IN (
+        'referral-bonus', 'daily-mission', 'ecosystem-passive',
+        'staking-daily', 'staking'
+      )
+      AND category NOT LIKE 'ecosystem-bonus-%'
   `;
 
-  // 2. Collect all identity IDs (union of matview + activationsCache)
+  // 3. Compute filtered base_score per user using their active mission set.
+  //    An empty stored set (missions=[]) falls back to DEFAULT_MISSION_IDS so
+  //    an attacker who PUTs [] cannot zero out a user's immutable snapshot score.
+  const filteredBaseMap = new Map<string, number>();
+  for (const row of rawCatRows) {
+    const identityId = row.identity_id as string;
+    const category = row.category as string;
+    const stored = userMissionsMap.get(identityId);
+    const activeMissions: ReadonlySet<string> =
+      (stored && stored.size > 0) ? stored : DEFAULT_MISSION_IDS;
+    if (!activeMissions.has(category)) continue;
+    const weight = category === PADO_DEX ? 2 : 1;
+    filteredBaseMap.set(identityId, (filteredBaseMap.get(identityId) ?? 0) + weight);
+  }
+
+  // 4. Collect all identity IDs (union of active-today + activationsCache)
   const allIds = new Set<string>();
-  for (const row of baseScores) allIds.add(row.identity_id as string);
+  for (const id of filteredBaseMap.keys()) allIds.add(id);
   for (const id of activationsCache.keys()) allIds.add(id);
 
   if (allIds.size === 0) {
@@ -37,13 +83,7 @@ export async function takeDailySnapshot(
     return;
   }
 
-  // 3. Build base_score map
-  const baseMap = new Map<string, number>();
-  for (const row of baseScores) {
-    baseMap.set(row.identity_id as string, row.base_score as number);
-  }
-
-  // 4. Batch penalty check
+  // 5. Batch penalty check
   const allIdsArr = [...allIds];
   const penalizedRows = await pointsDb`
     SELECT identity_id FROM alliance_penalties
@@ -51,7 +91,7 @@ export async function takeDailySnapshot(
   `;
   const penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
 
-  // 5. Batch bonus + referral + governance queries (date-filtered: today's delta only).
+  // 6. Batch bonus + referral + governance queries (date-filtered: today's delta only).
   // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
   // bonusCumRows INCLUDES synthetic — needed for cumulative math to match LIVE.
   // stakingRows: tier pts from post-cutoff staking-daily (v2).
@@ -142,7 +182,7 @@ export async function takeDailySnapshot(
     stakingMap.set(sr.identity_id as string, sr.staking as number);
   }
 
-  // 5b. Previous cumulative per identity (anchor propagation).
+  // 6b. Previous cumulative per identity (anchor propagation).
   // Uses the latest snapshot row that already has all_time_score filled
   // (bootstrap anchor or prior cumulative-enabled snapshot).
   // Users without a prev cumulative start fresh from 0 today.
@@ -184,7 +224,7 @@ export async function takeDailySnapshot(
     });
   }
 
-  // 6. Calculate scores and rank
+  // 7. Calculate scores and rank
   interface SnapshotRow {
     identityId: string;
     baseScore: number;
@@ -207,7 +247,7 @@ export async function takeDailySnapshot(
   // Fallback multiplier: for users with base activity but not in activationsCache,
   // use their most recent snapshot's multiplier to prevent incorrect 0-multiplier snapshots
   const cacheMissIds = allIdsArr.filter(
-    id => baseMap.has(id) && !activationsCache.has(id),
+    id => filteredBaseMap.has(id) && !activationsCache.has(id),
   );
   const lastMultiplierMap = new Map<string, number>();
   if (cacheMissIds.length > 0) {
@@ -233,7 +273,7 @@ export async function takeDailySnapshot(
   const entries: SnapshotRow[] = [];
 
   for (const identityId of allIds) {
-    const baseScore = baseMap.get(identityId) ?? 0;
+    const baseScore = filteredBaseMap.get(identityId) ?? 0;
     let activations = activationsCache.get(identityId) ?? [];
     const isPenalized = penalizedSet.has(identityId);
 
@@ -286,7 +326,7 @@ export async function takeDailySnapshot(
     }
   }
 
-  // 7. Batch INSERT — cumulative ledger columns computed in SQL (numeric, exact).
+  // 8. Batch INSERT — cumulative ledger columns computed in SQL (numeric, exact).
   // Pre-PR-1(b): prev_*_str come from postgres as numeric strings; SQL adds
   // today's delta in numeric arithmetic, eliminating JS float drift across
   // long accumulation chains. all_time_score is the row-level sum of the
