@@ -153,7 +153,10 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
     );
   }
 
-  const maxPoints = missionPool.reduce((acc, m) => acc + (m.points ?? 0), 0);
+  // Pre-multiplier base "score" (NOT points). Multiplier × score = ecosystem
+  // points; the missions themselves award score, so the header label says
+  // "score max" to keep the points/score distinction explicit in the UI.
+  const maxScore = missionPool.reduce((acc, m) => acc + (m.points ?? 0), 0);
 
   if (missionPool.length === 0) {
     return (
@@ -193,7 +196,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
           </div>
         </div>
         <span className="text-base font-mono text-pado-2 tabular-nums shrink-0">
-          +{maxPoints} pts max
+          +{maxScore} score max
         </span>
       </div>
 

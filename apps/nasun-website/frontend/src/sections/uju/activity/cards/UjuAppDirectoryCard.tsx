@@ -193,7 +193,7 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
                       </span>
                       {m.points !== undefined && m.points > 0 && (
                         <span className="text-sm font-mono text-pado-4">
-                          +{m.points}pt
+                          +{m.points} score
                         </span>
                       )}
                     </div>
