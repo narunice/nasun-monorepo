@@ -193,12 +193,14 @@ export function loadFromStorage(identityId: string | undefined): AppDirectorySta
     return merged;
   }
 
-  // Fresh user: seed defaults in-memory. Not persisted so a deactivate-then-
-  // reload cycle keeps the empty state (their first save promotes them to
-  // "hit" in step 1).
+  // Fresh user: seed defaults and persist immediately. Persisting prevents a
+  // mount-sync race that adopts an empty server response and leaves
+  // state.missions = {} (which makes UjuDailyMissionsCard show all 8 missions
+  // and todayScoring compute filteredBase = 0). The mount-sync now refuses to
+  // adopt empty server records, so a deactivate-then-reload cycle is handled
+  // correctly without relying on the in-memory-only seed trick.
   const fresh = mergeWithDefaults({ explicitPinned: [], missions: {} });
-  // Don't write the seed; do mark migrated so subsequent reloads don't
-  // attempt to re-merge (idempotent either way, but spares a write).
+  writeJson(newKey, fresh);
   markMigrated(identityId);
   return fresh;
 }
@@ -312,9 +314,16 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
 
   // Mount sync: pull-then-push for multi-device consistency.
   // On each identityId mount, fetch the server's current selection. If the
-  // server timestamp is newer than the last local sync, adopt the server state
-  // (another device may have changed missions). Otherwise push local to server
-  // so the server has the latest selection for the midnight snapshot.
+  // server timestamp is newer than the last local sync AND the server has a
+  // non-empty mission list, adopt the server state (another device may have
+  // changed missions). Otherwise push local to server so the server has the
+  // latest selection for the midnight snapshot.
+  //
+  // An empty server array is treated as "no record" (the snapshot job already
+  // falls back to DEFAULT_MISSION_IDS in that case). Adopting an empty
+  // response would wipe out the in-memory defaults seeded by mergeWithDefaults
+  // and leave state.missions = {}, which makes UjuDailyMissionsCard fall back
+  // to "show all" (8 missions) and todayScoring compute filteredBase = 0.
   useEffect(() => {
     if (!identityId) return;
     let cancelled = false;
@@ -322,12 +331,15 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
       try {
         const serverData = await getActiveMissions(identityId);
         if (cancelled) return;
+        const serverHasMissions =
+          Array.isArray(serverData?.missions) && serverData!.missions!.length > 0;
         const serverTs = serverData?.updatedAt
           ? new Date(serverData.updatedAt).getTime()
           : 0;
         const localTs = readSyncTs(identityId);
-        if (serverTs > localTs && serverData?.missions !== null) {
-          // Server is newer: adopt server missions, keep local explicitPinned.
+        if (serverHasMissions && serverTs > localTs) {
+          // Server is newer and non-empty: adopt server missions, keep local
+          // explicitPinned (so deactivated-but-no-mission apps stay hidden).
           const serverMissionsRecord = reconstructMissionsRecord(serverData!.missions!);
           setStateRaw((prev) => {
             const merged: AppDirectoryState = {
@@ -339,10 +351,16 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
             return merged;
           });
         } else {
-          // Local is newer or equal: push to server.
+          // Local is newer or server has no usable record: push local to
+          // server. This also overwrites a stale empty-array record with the
+          // user's actual defaults, healing devices that previously adopted
+          // an empty response.
           const local = loadFromStorage(identityId);
-          await putActiveMissions(identityId, getFlatMissions(local.missions));
-          writeSyncTs(identityId, Date.now());
+          const flat = getFlatMissions(local.missions);
+          if (flat.length > 0) {
+            await putActiveMissions(identityId, flat);
+            writeSyncTs(identityId, Date.now());
+          }
         }
       } catch (e) {
         console.warn('[useAppDirectory] mount sync failed:', e);
@@ -353,10 +371,14 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
 
   // Change sync: push missions to server on every selection change (debounced).
   // Ensures the midnight snapshot job sees the user's final choice for the day.
+  // Skip empty pushes — the backend rejects them (400 missions_empty), and
+  // pushing nothing avoids accidentally telegraphing a transient empty state.
   useEffect(() => {
     if (!identityId) return;
+    const flat = getFlatMissions(state.missions);
+    if (flat.length === 0) return;
     const timer = setTimeout(() => {
-      putActiveMissions(identityId, getFlatMissions(state.missions)).then(() => {
+      putActiveMissions(identityId, flat).then(() => {
         writeSyncTs(identityId, Date.now());
       }).catch((e) => console.warn('[useAppDirectory] change sync failed:', e));
     }, 500);

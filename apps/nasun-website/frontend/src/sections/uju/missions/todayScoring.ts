@@ -11,7 +11,8 @@
  *     upstream: `todayCategories` is a deduplicated list)
  *   - pado-dex weighted x2, every other category weighted x1
  */
-import { APP_MISSION_MAP } from './missionRegistry';
+import { APP_MISSION_MAP, DEFAULT_MISSIONS_BY_APP } from './missionRegistry';
+import { DEFAULT_PINNED_APPS } from '../apps/appRegistry';
 
 const PADO_DEX_WEIGHT = 2;
 
@@ -22,19 +23,34 @@ const PADO_DEX_WEIGHT = 2;
  * filter has a single, well-named entry point that can absorb future
  * id↔category divergence without touching every consumer.
  *
- * Fallback semantics (matches UjuDailyMissionsCard mission-pool logic):
- *   missions[appId] === undefined → user has never opened this app's
- *     checklist; treat as "all of the app's missions are active"
- *   missions[appId] === []        → explicitly emptied; zero missions active
+ * Fallback semantics (matches UjuDailyMissionsCard mission-pool logic and the
+ * backend `/score` endpoint):
+ *   missionsByApp === {}          → no per-app entries at all (fresh device
+ *     or empty server adoption). Seed defaults for DEFAULT_PINNED_APPS so
+ *     today's filteredBase matches the backend `/score` and snapshot fallback
+ *     (DEFAULT_MISSION_IDS for users with no record).
+ *   missions[appId] === undefined → app key not present; use
+ *     DEFAULT_MISSIONS_BY_APP[appId] for that app (curated default subset,
+ *     never "show all 8").
+ *   missions[appId] === []        → explicitly emptied for that app;
+ *     contributes 0 (user toggled everything off).
  */
 export function getActiveMissionCategories(
   missionsByApp: Record<string, string[] | undefined>,
 ): Set<string> {
   const out = new Set<string>();
+  const hasAnyEntry = Object.keys(missionsByApp).length > 0;
+  if (!hasAnyEntry) {
+    for (const appId of DEFAULT_PINNED_APPS) {
+      if (!APP_MISSION_MAP[appId]) continue;
+      const ids = DEFAULT_MISSIONS_BY_APP[appId] ?? [];
+      for (const id of ids) out.add(id);
+    }
+    return out;
+  }
   for (const [appId, selected] of Object.entries(missionsByApp)) {
-    const appMissions = APP_MISSION_MAP[appId];
-    if (!appMissions) continue;
-    const ids = selected ?? appMissions.map((m) => m.id);
+    if (!APP_MISSION_MAP[appId]) continue;
+    const ids = selected ?? DEFAULT_MISSIONS_BY_APP[appId] ?? [];
     for (const id of ids) out.add(id);
   }
   return out;

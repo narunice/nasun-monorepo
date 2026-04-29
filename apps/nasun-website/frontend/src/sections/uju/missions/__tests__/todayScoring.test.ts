@@ -6,8 +6,19 @@ import {
 } from '../todayScoring';
 
 describe('getActiveMissionCategories', () => {
-  it('returns empty set for empty missions', () => {
-    expect(getActiveMissionCategories({})).toEqual(new Set());
+  it('seeds curated defaults when missionsByApp is fully empty', () => {
+    // Empty Record means "no record / fresh state" — must match the backend
+    // /score endpoint which falls back to DEFAULT_MISSION_IDS in that case.
+    expect(getActiveMissionCategories({})).toEqual(
+      new Set([
+        'faucet',
+        'wallet-transfer',
+        'pado-dex',
+        'gostop-lottery',
+        'gostop-scratchcard',
+        'gostop-numbermatch',
+      ]),
+    );
   });
 
   it('returns the user-selected mission ids', () => {
@@ -29,15 +40,18 @@ describe('getActiveMissionCategories', () => {
     expect(result).toEqual(new Set(['pado-dex']));
   });
 
-  it('falls back to all missions for an app when missions[appId] is undefined', () => {
+  it('falls back to per-app curated defaults when missions[appId] is undefined', () => {
     const result = getActiveMissionCategories({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pado: undefined as any,
     });
-    expect(result.has('pado-dex')).toBe(true);
+    // Default for pado is just pado-dex (curated subset, not "all missions").
+    expect(result).toEqual(new Set(['pado-dex']));
   });
 
-  it('returns empty for empty array (explicitly emptied)', () => {
+  it('respects empty array as explicit zero for that app', () => {
+    // pado is the only key; defaults are NOT seeded for non-mentioned apps
+    // because the Record is non-empty (user has an explicit per-app entry).
     const result = getActiveMissionCategories({
       pado: [],
     });
