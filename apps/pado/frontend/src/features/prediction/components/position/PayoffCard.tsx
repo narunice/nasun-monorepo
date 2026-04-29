@@ -1,5 +1,11 @@
 /**
- * PayoffCard - Shows single prediction position with payoff structure
+ * PayoffCard — single-position payoff structure with status-aware action button.
+ *
+ * Action mapping:
+ *  - open       → Sell  (calls placeSellTaker via parent)
+ *  - resolved + winning  → Claim winnings
+ *  - resolved + losing   → Burn losing position
+ *  - cancelled  → Claim cancelled refund
  */
 
 import type { PredictionMarket, Position } from '../../types';
@@ -19,26 +25,23 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
   const costBasis = Number(position.costBasis) / Math.pow(10, NUSDC_DECIMALS);
   const avgPrice = position.shares > 0n ? costBasis / shares : 0;
 
-  const isWinning = market.status === 'resolved' && position.isYes === market.outcome;
-  const isLosing = market.status === 'resolved' && position.isYes !== market.outcome;
+  const isResolved = market.status === 'resolved';
+  const isCancelled = market.status === 'cancelled';
+  const isWinning = isResolved && position.isYes === market.outcome;
+  const isLosing = isResolved && position.isYes !== market.outcome;
   const outcomeLabel = position.isYes ? 'YES' : 'NO';
   const oppositeLabel = position.isYes ? 'NO' : 'YES';
 
   return (
-    <div className={`p-4 rounded-xl border ${
-      position.isYes
-        ? 'bg-green-500/10 border-green-500/30'
-        : 'bg-red-500/10 border-red-500/30'
-    }`}>
-      {/* Header */}
+    <div
+      className={`p-4 rounded-xl border ${
+        position.isYes ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+      }`}
+    >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className={`w-3 h-3 rounded-full ${
-            position.isYes ? 'bg-green-500' : 'bg-red-500'
-          }`} />
-          <span className={`font-bold ${
-            position.isYes ? 'text-green-500' : 'text-red-500'
-          }`}>
+          <span className={`w-3 h-3 rounded-full ${position.isYes ? 'bg-green-500' : 'bg-red-500'}`} />
+          <span className={`font-bold ${position.isYes ? 'text-green-500' : 'text-red-500'}`}>
             {outcomeLabel} Position
           </span>
         </div>
@@ -57,7 +60,6 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
         </a>
       </div>
 
-      {/* Position Info */}
       <div className="space-y-2 text-sm mb-3">
         <div className="flex justify-between">
           <span className="text-theme-text-muted">Shares</span>
@@ -73,7 +75,6 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
         </div>
       </div>
 
-      {/* Payoff at Resolution */}
       <div className="mt-3 pt-3 border-t border-theme-border/50">
         <p className="text-xs text-theme-text-muted mb-2">Payoff at Resolution</p>
         <div className="space-y-1 text-sm">
@@ -90,7 +91,6 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
         </div>
       </div>
 
-      {/* Action buttons */}
       <div className="mt-4">
         {market.status === 'open' && (
           <button
@@ -113,9 +113,25 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
         )}
 
         {isLosing && (
-          <div className="w-full py-2 bg-pd2/50 text-theme-text-muted rounded-lg text-sm font-medium text-center">
-            Position Lost
-          </div>
+          <button
+            onClick={() => onClaim(position.id)}
+            disabled={isLoading}
+            className="w-full py-2 bg-pd2/40 hover:bg-pd2/60 text-theme-text-primary rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isLoading ? 'Clearing...' : 'Burn losing position'}
+          </button>
+        )}
+
+        {isCancelled && (
+          <button
+            onClick={() => onClaim(position.id)}
+            disabled={isLoading}
+            className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+          >
+            {isLoading
+              ? 'Claiming...'
+              : `Claim ${(shares / 2).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC refund`}
+          </button>
         )}
       </div>
     </div>

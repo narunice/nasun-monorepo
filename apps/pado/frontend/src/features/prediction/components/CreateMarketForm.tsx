@@ -1,9 +1,16 @@
 /**
- * CreateMarketForm Component
- * Form for creating new prediction markets (Admin only)
+ * CreateMarketForm Component (round-6 plan §2.15)
+ *
+ * Resolution metadata is split into two fields:
+ *  - `resolutionSource` (URL or short text, max 500 chars)
+ *  - `resolutionCriteria` (markdown, max 2000 chars)
+ *
+ * The resolver address must differ from the creator (Move ECreatorIsResolver = 16).
+ * The form requires an explicit resolver address (no "use my address" shortcut).
  */
 
 import { useState, useCallback } from 'react';
+import { isValidSuiAddress, normalizeSuiAddress } from '@mysten/sui/utils';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { usePredictionAdmin } from '../hooks/usePredictionAdmin';
 
@@ -19,6 +26,11 @@ const CATEGORIES = [
   'Other',
 ];
 
+const MAX_QUESTION = 500;
+const MAX_DESCRIPTION = 2000;
+const MAX_RESOLUTION_SOURCE = 500;
+const MAX_RESOLUTION_CRITERIA = 2000;
+
 interface CreateMarketFormProps {
   onSuccess?: (digest: string) => void;
   onCancel?: () => void;
@@ -33,132 +45,132 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
   const [question, setQuestion] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Crypto');
+  const [resolutionSource, setResolutionSource] = useState('');
+  const [resolutionCriteria, setResolutionCriteria] = useState('');
   const [closeDate, setCloseDate] = useState('');
   const [closeTime, setCloseTime] = useState('12:00');
   const [resolveDate, setResolveDate] = useState('');
   const [resolveTime, setResolveTime] = useState('12:00');
   const [resolver, setResolver] = useState('');
-  const [useCurrentAddress, setUseCurrentAddress] = useState(true);
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
+      setSuccess(null);
 
-    // Validation
-    if (!question.trim()) {
-      setError('Please enter a question');
-      return;
-    }
-    if (!description.trim()) {
-      setError('Please enter a description');
-      return;
-    }
-    if (!closeDate) {
-      setError('Please select a close date');
-      return;
-    }
-    if (!resolveDate) {
-      setError('Please select a resolve deadline');
-      return;
-    }
+      if (!question.trim()) return setError('Please enter a question');
+      if (!description.trim()) return setError('Please enter a description');
+      if (!resolutionSource.trim()) return setError('Please enter a resolution source');
+      if (!resolutionCriteria.trim()) return setError('Please enter resolution criteria');
+      if (!closeDate) return setError('Please select a close date');
+      if (!resolveDate) return setError('Please select a resolve deadline');
+      const trimmedResolver = resolver.trim();
+      if (!trimmedResolver) return setError('Please enter a resolver address');
+      if (!isValidSuiAddress(trimmedResolver)) {
+        return setError('Resolver address is not a valid Sui address.');
+      }
+      // Normalize so 0x-prefix / leading-zero variants don't slip past the
+      // creator-vs-resolver check (Move re-checks on chain via ECreatorIsResolver).
+      if (account?.address && normalizeSuiAddress(trimmedResolver) === normalizeSuiAddress(account.address)) {
+        return setError('Resolver must differ from the creator address.');
+      }
 
-    const closeDateTime = new Date(`${closeDate}T${closeTime}`);
-    const resolveDateTime = new Date(`${resolveDate}T${resolveTime}`);
+      const closeDateTime = new Date(`${closeDate}T${closeTime}`);
+      const resolveDateTime = new Date(`${resolveDate}T${resolveTime}`);
 
-    if (closeDateTime <= new Date()) {
-      setError('Close time must be in the future');
-      return;
-    }
-    if (resolveDateTime <= closeDateTime) {
-      setError('Resolve deadline must be after close time');
-      return;
-    }
+      if (closeDateTime <= new Date()) return setError('Close time must be in the future');
+      if (resolveDateTime <= closeDateTime) return setError('Resolve deadline must be after close time');
 
-    const resolverAddress = useCurrentAddress ? undefined : resolver.trim();
-    if (!useCurrentAddress && !resolverAddress) {
-      setError('Please enter a resolver address');
-      return;
-    }
+      // Move-side length caps mirrored locally to fail fast.
+      if (question.length > MAX_QUESTION) return setError(`Question must be ≤ ${MAX_QUESTION} chars`);
+      if (description.length > MAX_DESCRIPTION) return setError(`Description must be ≤ ${MAX_DESCRIPTION} chars`);
+      if (resolutionSource.length > MAX_RESOLUTION_SOURCE) return setError(`Resolution source must be ≤ ${MAX_RESOLUTION_SOURCE} chars`);
+      if (resolutionCriteria.length > MAX_RESOLUTION_CRITERIA) return setError(`Resolution criteria must be ≤ ${MAX_RESOLUTION_CRITERIA} chars`);
 
-    const result = await createMarket(
-      question.trim(),
-      description.trim(),
+      const result = await createMarket(
+        question.trim(),
+        description.trim(),
+        category,
+        resolutionSource.trim(),
+        resolutionCriteria.trim(),
+        closeDateTime,
+        resolveDateTime,
+        trimmedResolver,
+      );
+
+      if (result.success) {
+        setSuccess(`Market created. Tx: ${result.digest?.slice(0, 8)}...`);
+        setQuestion('');
+        setDescription('');
+        setResolutionSource('');
+        setResolutionCriteria('');
+        setCloseDate('');
+        setResolveDate('');
+        setResolver('');
+        setTimeout(() => onSuccess?.(result.digest!), 2000);
+      } else {
+        setError(result.error || 'Failed to create market');
+      }
+    },
+    [
+      question,
+      description,
       category,
-      closeDateTime,
-      resolveDateTime,
-      resolverAddress
-    );
-
-    if (result.success) {
-      setSuccess(`Market created! Tx: ${result.digest?.slice(0, 8)}...`);
-      // Clear form
-      setQuestion('');
-      setDescription('');
-      setCloseDate('');
-      setResolveDate('');
-      setTimeout(() => {
-        onSuccess?.(result.digest!);
-      }, 2000);
-    } else {
-      setError(result.error || 'Failed to create market');
-    }
-  }, [question, description, category, closeDate, closeTime, resolveDate, resolveTime, resolver, useCurrentAddress, createMarket, onSuccess]);
+      resolutionSource,
+      resolutionCriteria,
+      closeDate,
+      closeTime,
+      resolveDate,
+      resolveTime,
+      resolver,
+      account?.address,
+      createMarket,
+      onSuccess,
+    ],
+  );
 
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const isDisabled = !isWalletConnected || isLoading;
-
-  // Get min dates for inputs
   const today = new Date().toISOString().split('T')[0];
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-6">
-      <h2 className="text-xl font-bold text-theme-text-primary mb-6">
-        Create New Market
-      </h2>
+      <h2 className="text-xl font-bold text-theme-text-primary mb-6">Create New Market</h2>
 
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Question */}
         <div>
-          <label className="block text-sm font-medium text-theme-text-muted mb-1">
-            Question *
-          </label>
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Question *</label>
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             placeholder="Will [event] happen by [date]?"
             disabled={isDisabled}
+            maxLength={MAX_QUESTION}
             className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
           />
-          <p className="text-xs text-theme-text-muted mt-1">
-            Frame as a yes/no question with clear resolution criteria
-          </p>
+          <p className="text-xs text-theme-text-muted mt-1">Frame as a yes/no question with a clear date.</p>
         </div>
 
-        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-theme-text-muted mb-1">
-            Description *
-          </label>
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Description *</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Detailed resolution criteria..."
+            placeholder="Short summary visible in market list."
             rows={3}
             disabled={isDisabled}
+            maxLength={MAX_DESCRIPTION}
             className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 resize-none"
           />
         </div>
 
-        {/* Category */}
         <div>
-          <label className="block text-sm font-medium text-theme-text-muted mb-1">
-            Category
-          </label>
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Category</label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -171,12 +183,36 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           </select>
         </div>
 
-        {/* Close Time */}
+        <div>
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Resolution Source *</label>
+          <input
+            type="text"
+            value={resolutionSource}
+            onChange={(e) => setResolutionSource(e.target.value)}
+            placeholder="https://example.com/feed or 'Coinbase BTC/USD spot'"
+            disabled={isDisabled}
+            maxLength={MAX_RESOLUTION_SOURCE}
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50"
+          />
+          <p className="text-xs text-theme-text-muted mt-1">URL or short identifier for the data source used to resolve.</p>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Resolution Criteria * (markdown)</label>
+          <textarea
+            value={resolutionCriteria}
+            onChange={(e) => setResolutionCriteria(e.target.value)}
+            placeholder="Detailed conditions for YES vs NO. Markdown supported."
+            rows={5}
+            disabled={isDisabled}
+            maxLength={MAX_RESOLUTION_CRITERIA}
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 resize-none"
+          />
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-theme-text-muted mb-1">
-              Close Date *
-            </label>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Close Date *</label>
             <input
               type="date"
               value={closeDate}
@@ -187,9 +223,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-theme-text-muted mb-1">
-              Close Time
-            </label>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Close Time</label>
             <input
               type="time"
               value={closeTime}
@@ -200,12 +234,9 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           </div>
         </div>
 
-        {/* Resolve Deadline */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-theme-text-muted mb-1">
-              Resolve Deadline *
-            </label>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Resolve Deadline *</label>
             <input
               type="date"
               value={resolveDate}
@@ -216,9 +247,7 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-theme-text-muted mb-1">
-              Resolve Time
-            </label>
+            <label className="block text-sm font-medium text-theme-text-muted mb-1">Resolve Time</label>
             <input
               type="time"
               value={resolveTime}
@@ -229,49 +258,24 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           </div>
         </div>
 
-        {/* Resolver */}
         <div>
-          <label className="block text-sm font-medium text-theme-text-muted mb-2">
-            Resolver Address
-          </label>
-          <div className="flex items-center gap-2 mb-2">
-            <input
-              type="checkbox"
-              id="useCurrentAddress"
-              checked={useCurrentAddress}
-              onChange={(e) => setUseCurrentAddress(e.target.checked)}
-              disabled={isDisabled}
-              className="rounded"
-            />
-            <label htmlFor="useCurrentAddress" className="text-sm text-theme-text-secondary">
-              Use my address ({account?.address?.slice(0, 8)}...{account?.address?.slice(-6)})
-            </label>
-          </div>
-          {!useCurrentAddress && (
-            <input
-              type="text"
-              value={resolver}
-              onChange={(e) => setResolver(e.target.value)}
-              placeholder="0x..."
-              disabled={isDisabled}
-              className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 font-mono text-sm"
-            />
-          )}
+          <label className="block text-sm font-medium text-theme-text-muted mb-1">Resolver Address *</label>
+          <input
+            type="text"
+            value={resolver}
+            onChange={(e) => setResolver(e.target.value)}
+            placeholder="0x... (must differ from your address)"
+            disabled={isDisabled}
+            className="w-full px-3 py-2 bg-theme-bg-tertiary border border-theme-border rounded-lg text-theme-text-primary placeholder-theme-text-muted focus:outline-none focus:ring-2 focus:ring-pd2 disabled:opacity-50 font-mono text-sm"
+          />
+          <p className="text-xs text-theme-text-muted mt-1">
+            Creator address: {account?.address?.slice(0, 8)}...{account?.address?.slice(-6)} — resolver must differ.
+          </p>
         </div>
 
-        {/* Error/Success Messages */}
-        {error && (
-          <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-3">
-            {error}
-          </div>
-        )}
-        {success && (
-          <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-3">
-            {success}
-          </div>
-        )}
+        {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-3">{error}</div>}
+        {success && <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-3">{success}</div>}
 
-        {/* Actions */}
         <div className="flex gap-3 pt-2">
           {onCancel && (
             <button
@@ -291,8 +295,8 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
             {isLoading
               ? 'Creating...'
               : !isWalletConnected
-              ? 'Connect Wallet'
-              : 'Create Market'}
+                ? 'Connect Wallet'
+                : 'Create Market'}
           </button>
         </div>
       </form>
