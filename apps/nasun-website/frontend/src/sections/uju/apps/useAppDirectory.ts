@@ -93,50 +93,113 @@ function writeJson(key: string, value: unknown): void {
   }
 }
 
+// One-time per-user migration: ensure DEFAULT_PINNED_APPS are activated and
+// DEFAULT_MISSIONS_BY_APP are present, even for users who already had a
+// localStorage entry from earlier builds. Mirrors the historic 7-mission
+// my-account list (minus chat) so users carry their familiar checklist
+// into uju without manual setup.
+const MIGRATION_FLAG_PREFIX = 'uju:app-directory:migrated-v6-defaults';
+
+function migrationFlagKey(identityId: string | undefined): string {
+  return identityId
+    ? `${MIGRATION_FLAG_PREFIX}:${identityId}`
+    : `${MIGRATION_FLAG_PREFIX}:guest`;
+}
+
+function isMigrated(identityId: string | undefined): boolean {
+  try {
+    return localStorage.getItem(migrationFlagKey(identityId)) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function markMigrated(identityId: string | undefined): void {
+  try {
+    localStorage.setItem(migrationFlagKey(identityId), '1');
+  } catch {
+    // tolerate quota/private-mode
+  }
+}
+
+/**
+ * Union the user's existing state with DEFAULT_PINNED_APPS and the per-app
+ * DEFAULT_MISSIONS_BY_APP. Existing pins/selections are preserved; new
+ * defaults are appended. The total mission count is clamped to
+ * MAX_DAILY_MISSIONS by trimming new additions from the tail (so the user's
+ * prior selections always survive even if they exceed the cap).
+ */
+function mergeWithDefaults(state: AppDirectoryState): AppDirectoryState {
+  const validDefaultApps = DEFAULT_PINNED_APPS.filter((id) => VALID_APP_IDS.has(id));
+  const explicitPinnedSet = new Set<string>(state.explicitPinned);
+  for (const id of validDefaultApps) explicitPinnedSet.add(id);
+  // Preserve registry order (matches APP_REGISTRY for determinism).
+  const explicitPinned = APP_REGISTRY
+    .map((a) => a.id)
+    .filter((id) => explicitPinnedSet.has(id));
+
+  const missions: Record<string, string[]> = { ...state.missions };
+  let total = selectedMissionCount(state);
+
+  for (const appId of validDefaultApps) {
+    const defaults = DEFAULT_MISSIONS_BY_APP[appId] ?? [];
+    const validMissionIds = new Set((APP_MISSION_MAP[appId] ?? []).map((m) => m.id));
+    const cur = missions[appId] ?? [];
+    const remaining = Math.max(0, MAX_DAILY_MISSIONS - total);
+    const toAdd = defaults
+      .filter((mid) => validMissionIds.has(mid) && !cur.includes(mid))
+      .slice(0, remaining);
+    missions[appId] = [...cur, ...toAdd];
+    total += toAdd.length;
+  }
+  return { explicitPinned, missions };
+}
+
 /**
  * Lazy-init loader. Called from useState initializer + identityId-change effect.
  *
  * Migration path:
- *   1. New key present → parse and return (user-authored state, even if empty).
- *   2. Else, legacy `uju:pinned-apps:{id}` present → migrate to new shape,
- *      write new key, KEEP legacy key (rollback safety; cleaned in a later PR).
- *   3. Else (truly fresh user) → seed DEFAULT_PINNED_APPS so the day-1 faucet
- *      and wallet-transfer onboarding survives the BASE_MISSIONS removal.
- *      No "seeded" marker is stored; once the user takes any action the state
- *      becomes hit (step 1) and we never re-seed.
+ *   1. New key present → parse, then on first load apply the v6-defaults
+ *      migration (union the user's state with DEFAULT_PINNED_APPS +
+ *      DEFAULT_MISSIONS_BY_APP, capped at MAX_DAILY_MISSIONS) and persist.
+ *      Subsequent loads return the user's state untouched.
+ *   2. Else, legacy `uju:pinned-apps:{id}` present → convert to new shape,
+ *      apply v6-defaults migration, persist new key, KEEP legacy key.
+ *   3. Else (truly fresh user) → seed defaults in-memory only (not persisted)
+ *      so a deactivate-then-reload cycle stays empty.
  */
 export function loadFromStorage(identityId: string | undefined): AppDirectoryState {
   const newKey = directoryKey(identityId);
   const fromNew = readJson(newKey);
-  if (fromNew !== null) return parseDirectoryState(fromNew);
+  if (fromNew !== null) {
+    const existing = parseDirectoryState(fromNew);
+    if (isMigrated(identityId)) return existing;
+    const merged = mergeWithDefaults(existing);
+    writeJson(newKey, merged);
+    markMigrated(identityId);
+    return merged;
+  }
 
   const legacy = readJson(legacyKey(identityId));
   if (Array.isArray(legacy)) {
     const explicitPinned = (legacy as unknown[]).filter(
       (id): id is string => typeof id === 'string' && VALID_APP_IDS.has(id),
     );
-    const migrated: AppDirectoryState = { explicitPinned, missions: {} };
-    writeJson(newKey, migrated);
-    return migrated;
+    const initial: AppDirectoryState = { explicitPinned, missions: {} };
+    const merged = isMigrated(identityId) ? initial : mergeWithDefaults(initial);
+    writeJson(newKey, merged);
+    if (!isMigrated(identityId)) markMigrated(identityId);
+    return merged;
   }
 
-  // Fresh user: seed default-pinned apps with their default mission subsets
-  // (DEFAULT_MISSIONS_BY_APP — the historic 6 to migrate from my-account).
-  // The seed is NOT persisted so a user who immediately deactivates an app
-  // is not re-seeded next session (their first save promotes them to "hit"
-  // in step 1).
-  const seedPinned = DEFAULT_PINNED_APPS.filter((id) => VALID_APP_IDS.has(id));
-  const seedMissions: Record<string, string[]> = {};
-  let seeded = 0;
-  for (const id of seedPinned) {
-    const defaults = DEFAULT_MISSIONS_BY_APP[id] ?? [];
-    const validIds = new Set((APP_MISSION_MAP[id] ?? []).map((m) => m.id));
-    const remaining = Math.max(0, MAX_DAILY_MISSIONS - seeded);
-    const picked = defaults.filter((mid) => validIds.has(mid)).slice(0, remaining);
-    seedMissions[id] = picked;
-    seeded += picked.length;
-  }
-  return { explicitPinned: [...seedPinned], missions: seedMissions };
+  // Fresh user: seed defaults in-memory. Not persisted so a deactivate-then-
+  // reload cycle keeps the empty state (their first save promotes them to
+  // "hit" in step 1).
+  const fresh = mergeWithDefaults({ explicitPinned: [], missions: {} });
+  // Don't write the seed; do mark migrated so subsequent reloads don't
+  // attempt to re-merge (idempotent either way, but spares a write).
+  markMigrated(identityId);
+  return fresh;
 }
 
 // ---------------------------------------------------------------------------
