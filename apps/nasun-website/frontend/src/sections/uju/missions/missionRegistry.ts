@@ -14,36 +14,14 @@ export interface UjuMission {
   showFaucet?: boolean;
 }
 
-// Always shown regardless of pinned apps
-export const BASE_MISSIONS: UjuMission[] = [
-  {
-    id: 'faucet',
-    appId: null,
-    completionType: 'onchain',
-    showFaucet: true,
-    points: 1,
-    label: 'Claim Tokens',
-    description: 'Use the faucet to get free test tokens',
-  },
-  {
-    id: 'wallet-transfer',
-    appId: null,
-    completionType: 'onchain',
-    points: 1,
-    label: 'Send Tokens',
-    description: 'Transfer tokens to another wallet',
-  },
-  {
-    id: 'chat',
-    appId: null,
-    completionType: 'onchain',
-    points: 1,
-    label: 'Chat',
-    description: 'Say something in the Nasun or Pado chat room',
-  },
-];
+// Maximum number of daily missions a user can have selected at once.
+export const MAX_DAILY_MISSIONS = 7;
 
 // Missions added when an app is pinned via App Directory.
+//
+// nasun-devnet missions: faucet/wallet-transfer were previously BASE_MISSIONS
+// (always shown). They now require explicit nasun-devnet activation, with
+// fresh users auto-seeded via DEFAULT_PINNED_APPS in appRegistry.
 //
 // GoStop missions: each game owns a separate mission id and a separate backend
 // category, so the 1pt/day cap applies per game (a user playing all five games
@@ -51,6 +29,25 @@ export const BASE_MISSIONS: UjuMission[] = [
 // (gostop-{lottery,scratchcard,numbermatch,mines,crash}); useDailyMissions.ts
 // EVENT_MISSION_MAP must stay in sync.
 export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
+  'nasun-devnet': [
+    {
+      id: 'faucet',
+      appId: 'nasun-devnet',
+      completionType: 'onchain',
+      showFaucet: true,
+      points: 1,
+      label: 'Claim Tokens',
+      description: 'Use the faucet to get free test tokens',
+    },
+    {
+      id: 'wallet-transfer',
+      appId: 'nasun-devnet',
+      completionType: 'onchain',
+      points: 1,
+      label: 'Send Tokens',
+      description: 'Transfer tokens to another wallet',
+    },
+  ],
   pado: [
     {
       id: 'pado-dex',
@@ -109,60 +106,15 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       externalUrl: 'https://gostop.app/crash',
     },
   ],
-  jupiter: [
-    {
-      id: 'jupiter-swap',
-      appId: 'jupiter',
-      completionType: 'visit',
-      label: 'Swap on Jupiter',
-      description: 'Trade tokens on Jupiter DEX (Solana)',
-      externalUrl: 'https://jup.ag',
-    },
-  ],
-  cetus: [
-    {
-      id: 'cetus-trade',
-      appId: 'cetus',
-      completionType: 'visit',
-      label: 'Trade on Cetus',
-      description: 'Provide liquidity or trade on Cetus (SUI)',
-      externalUrl: 'https://app.cetus.zone',
-    },
-  ],
-  uniswap: [
-    {
-      id: 'uniswap-swap',
-      appId: 'uniswap',
-      completionType: 'visit',
-      label: 'Swap on Uniswap',
-      description: 'Trade tokens on Uniswap (Ethereum)',
-      externalUrl: 'https://app.uniswap.org',
-    },
-  ],
 };
-
-export function makeGovernanceMission(unvotedCount: number): UjuMission {
-  return {
-    id: 'governance-vote',
-    appId: null,
-    completionType: 'onchain',
-    points: 1,
-    label: `Vote on Proposal${unvotedCount > 1 ? 's' : ''}`,
-    description: `${unvotedCount} active proposal${unvotedCount > 1 ? 's' : ''} awaiting your vote`,
-    externalUrl: '/network/governance',
-  };
-}
 
 // App chain badge styling per appId (for mission row left badge)
 // Full Tailwind literals required for JIT scan.
 export const APP_BADGE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
-  pado:     { bg: 'bg-pado-3/15',      text: 'text-pado-3',      label: 'Pado' },
-  gostop:   { bg: 'bg-pado-5/15',      text: 'text-pado-5',      label: 'GoStop' },
-  jupiter:  { bg: 'bg-nasun-c3/15',    text: 'text-nasun-c3',    label: 'Jupiter' },
-  cetus:    { bg: 'bg-pado-4/15',      text: 'text-pado-4',      label: 'Cetus' },
-  uniswap:  { bg: 'bg-nasun-c1/15',    text: 'text-nasun-c1',    label: 'Uniswap' },
-  // base missions: Nasun Devnet badge
-  __base__: { bg: 'bg-uju-border',     text: 'text-uju-secondary', label: 'Devnet' },
+  'nasun-devnet': { bg: 'bg-uju-border',     text: 'text-uju-secondary', label: 'Devnet' },
+  pado:           { bg: 'bg-pado-3/15',      text: 'text-pado-3',        label: 'Pado' },
+  gostop:         { bg: 'bg-pado-5/15',      text: 'text-pado-5',        label: 'GoStop' },
+  __base__:       { bg: 'bg-uju-border',     text: 'text-uju-secondary', label: 'Devnet' },
 };
 
 export function getMissionBadge(mission: UjuMission) {

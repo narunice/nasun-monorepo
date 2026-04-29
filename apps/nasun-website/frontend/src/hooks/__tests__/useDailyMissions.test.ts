@@ -358,7 +358,9 @@ describe("detectTxMissions", () => {
   });
 });
 
-// ── detectAllWallets (multi-wallet + chat API) ────────────────────
+// ── detectAllWallets (multi-wallet) ──────────────────────────────────────────
+// PR3b: chat mission removed from MissionId. Backend still credits ecosystem
+// points for chat, but the daily-mission UI no longer shows a chat checkbox.
 
 describe("detectAllWallets", () => {
   it("aggregates missions across multiple wallets", async () => {
@@ -393,12 +395,6 @@ describe("detectAllWallets", () => {
       ]),
     );
 
-    // Mock fetch for chat check (no chat)
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { todayCategories: [] } }),
-    });
-
     const result = await detectAllWallets(
       [WALLET_A, WALLET_B],
       TODAY_START,
@@ -411,54 +407,9 @@ describe("detectAllWallets", () => {
     expect(result.has("faucet")).toBe(true);
   });
 
-  it("detects chat via explorer API todayCategories", async () => {
-    mockQueryEvents.mockResolvedValue(emptyEventsPage());
-    mockQueryTransactionBlocks.mockResolvedValue(emptyTxPage());
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { todayCategories: ["chat", "pado-dex"] } }),
-    });
-
-    const result = await detectAllWallets(
-      [WALLET_A],
-      TODAY_START,
-      new Set(),
-      "identity-1",
-    );
-
-    expect(result.has("chat")).toBe(true);
-  });
-
-  it("survives chat API failure without affecting other missions", async () => {
-    mockQueryEvents.mockResolvedValueOnce(
-      emptyEventsPage([
-        makeEvent(`${PKG_DEX}::order_info::OrderFilled`, TODAY_NOON),
-      ]),
-    );
-    mockQueryTransactionBlocks.mockResolvedValueOnce(emptyTxPage());
-
-    global.fetch = vi.fn().mockRejectedValue(new Error("network down"));
-
-    const result = await detectAllWallets(
-      [WALLET_A],
-      TODAY_START,
-      new Set(),
-      "identity-1",
-    );
-
-    expect(result.has("pado-dex")).toBe(true);
-    expect(result.has("chat")).toBe(false);
-  });
-
   it("preserves existing missions passed in (union semantics)", async () => {
     mockQueryEvents.mockResolvedValueOnce(emptyEventsPage());
     mockQueryTransactionBlocks.mockResolvedValueOnce(emptyTxPage());
-
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { todayCategories: [] } }),
-    });
 
     const prior = new Set(["faucet"] as const);
     const result = await detectAllWallets(
@@ -471,18 +422,17 @@ describe("detectAllWallets", () => {
     expect(result.has("faucet")).toBe(true);
   });
 
-  it("skips chat API fetch when chat already found from prior state", async () => {
+  it("does not fetch chat from explorer API (chat mission removed in PR3b)", async () => {
     mockQueryEvents.mockResolvedValueOnce(emptyEventsPage());
     mockQueryTransactionBlocks.mockResolvedValueOnce(emptyTxPage());
 
     const fetchMock = vi.fn();
     global.fetch = fetchMock;
 
-    const prior = new Set(["chat"] as const);
     await detectAllWallets(
       [WALLET_A],
       TODAY_START,
-      prior as unknown as Set<never>,
+      new Set(),
       "identity-1",
     );
 
@@ -490,11 +440,6 @@ describe("detectAllWallets", () => {
   });
 
   it("handles empty wallet list gracefully", async () => {
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ data: { todayCategories: [] } }),
-    });
-
     const result = await detectAllWallets(
       [],
       TODAY_START,

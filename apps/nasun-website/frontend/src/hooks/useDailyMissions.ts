@@ -33,8 +33,7 @@ export type MissionId =
   | "gostop-scratchcard"
   | "gostop-numbermatch"
   | "gostop-mines"
-  | "gostop-crash"
-  | "chat";
+  | "gostop-crash";
 
 // Event type suffixes for Sender-based event query.
 // Spot Trade: OrderPlaced fires only when order is injected into the book (maker).
@@ -110,7 +109,6 @@ const ALL_MISSION_IDS: Set<MissionId> = new Set([
   "gostop-numbermatch",
   "gostop-mines",
   "gostop-crash",
-  "chat",
 ]);
 
 function getTodayUtcStart(): number {
@@ -332,24 +330,10 @@ export async function detectAllWallets(
     for (const id of txMissions) allDetected.add(id);
   }
 
-  // Chat detection via explorer API (scanner is the only source of truth
-  // for off-chain activity; client RPC can't see it). All other missions
-  // are authoritative from the client-side scan above — wallet-transfer
-  // mirrors the scanner's exclusion rule via CONTRACT_MODULES_EXCLUDING_TRANSFER
-  // so the UI and pts-today agree without a second API roundtrip.
-  if (!allDetected.has("chat") && identityId) {
-    try {
-      const res = await fetch(
-        `${import.meta.env.VITE_EXPLORER_API_URL}/ecosystem/score/${identityId}`,
-      );
-      if (res.ok) {
-        const data = await res.json();
-        if (data.data?.todayCategories?.includes("chat")) {
-          allDetected.add("chat");
-        }
-      }
-    } catch { /* non-critical: chat mission just stays unchecked */ }
-  }
+  // Chat is no longer surfaced as a daily mission in the uju UI (PR3b). The
+  // backend still credits ecosystem points for chat activity; only the
+  // checkbox/display is removed.
+  void identityId;
 
   return allDetected;
 }
