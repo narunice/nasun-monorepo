@@ -1,70 +1,35 @@
-import { EcosystemPointsCard } from "@/sections/myAccount/EcosystemPointsCard";
-import { RankHistoryCard } from "@/sections/myAccount/RankHistoryCard";
-import { CreatorPostsCard } from "@/sections/myAccount/CreatorPostsCard";
-import { GovernanceCard } from "@/sections/myAccount/GovernanceCard";
-import { AssetsCard } from "@/sections/myAccount/AssetsCard";
-import { BugReportsCard } from "@/sections/myAccount/BugReportsCard";
-import { UjuSectionHeader } from "../shared";
+import { FC } from "react";
+import { useWallet } from "@nasun/wallet";
+import { UjuEcosystemPointsCard } from "./cards/UjuEcosystemPointsCard";
+import { UjuRankHistoryCard } from "./cards/UjuRankHistoryCard";
+import { UjuCreatorPostsCard } from "./cards/UjuCreatorPostsCard";
+import { UjuGovernanceCard } from "./cards/UjuGovernanceCard";
+import { UjuAssetsCard } from "./cards/UjuAssetsCard";
+import { UjuBugReportsCard } from "./cards/UjuBugReportsCard";
 
-interface SectionProps {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}
+export const ActivityTab: FC = () => {
+  const { account } = useWallet();
+  const walletAddress = account?.address;
 
-function Section({ title, subtitle, children }: SectionProps) {
   return (
-    <section>
-      <UjuSectionHeader accent title={title} subtitle={subtitle} />
-      {children}
-    </section>
-  );
-}
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
+      {/* 1. Ecosystem Points (Highest priority) */}
+      <UjuEcosystemPointsCard />
 
-export function ActivityTab() {
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      <Section
-        title="Ecosystem Points"
-        subtitle="All-time and weekly contribution breakdown"
-      >
-        <EcosystemPointsCard />
-      </Section>
+      {/* 2. Rank History Chart */}
+      <UjuRankHistoryCard />
 
-      <Section
-        title="Rank History"
-        subtitle="Leaderboard standing over time"
-      >
-        <RankHistoryCard />
-      </Section>
+      {/* 3. Creator Posts submission */}
+      <UjuCreatorPostsCard />
 
-      <Section
-        title="Creator Posts"
-        subtitle="Posts you've published and their performance"
-      >
-        <CreatorPostsCard />
-      </Section>
+      {/* 4. Governance overview */}
+      <UjuGovernanceCard />
 
-      <Section
-        title="Governance"
-        subtitle="Proposals you've voted on or created"
-      >
-        <GovernanceCard />
-      </Section>
+      {/* 5. Assets (NFTs & Objects) */}
+      <UjuAssetsCard walletAddress={walletAddress} />
 
-      <Section
-        title="Assets"
-        subtitle="Your NFTs and on-chain holdings across networks"
-      >
-        <AssetsCard />
-      </Section>
-
-      <Section
-        title="Bug Reports"
-        subtitle="Reports you've submitted to the team"
-      >
-        <BugReportsCard />
-      </Section>
+      {/* 6. Bug Reports history */}
+      <UjuBugReportsCard />
     </div>
   );
-}
+};

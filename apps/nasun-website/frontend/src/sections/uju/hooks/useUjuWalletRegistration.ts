@@ -1,20 +1,20 @@
-import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/features/auth";
-import { useWallet, useZkLogin, useSigner, ZkLoginSigner, NsaSigner } from "@nasun/wallet";
+import { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/features/auth';
+import { useWallet, useZkLogin, useSigner, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 import {
   suiPrepareChallenge,
   suiConnectVerify,
   registerWallet,
   listRegisteredWallets,
   removeRegisteredWallet,
-} from "@/services/suiWalletApi";
-import type { RegisteredWallet } from "@/services/suiWalletApi";
+} from '@/services/suiWalletApi';
+import type { RegisteredWallet } from '@/services/suiWalletApi';
 
 export interface UseUjuWalletRegistrationResult {
   registeredWallets: RegisteredWallet[];
   isLoading: boolean;
   isRegistering: boolean;
-  isRemoving: string | null;
+  isRemoving: string | null; // walletAddress being removed
   error: string | null;
   isCurrentWalletRegistered: boolean;
   hasSigner: boolean;
@@ -24,14 +24,11 @@ export interface UseUjuWalletRegistrationResult {
   refresh: () => Promise<void>;
 }
 
-// uju-native copy of useWalletRegistration. Pure logic hook, no UI.
-// Owns its own dependency chain so uju does not import from sections/myAccount.
 export function useUjuWalletRegistration(): UseUjuWalletRegistrationResult {
   const { user } = useAuth();
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { signer: activeSigner } = useSigner();
-  void status; void isZkConnected;
 
   const [registeredWallets, setRegisteredWallets] = useState<RegisteredWallet[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -42,9 +39,8 @@ export function useUjuWalletRegistration(): UseUjuWalletRegistrationResult {
   const cognitoToken = user?.cognitoToken;
   const currentWalletAddress = account?.address ?? zkState?.address;
 
-  const isCurrentWalletRegistered =
-    !!currentWalletAddress &&
-    registeredWallets.some((w) => w.walletAddress === currentWalletAddress.toLowerCase());
+  const isCurrentWalletRegistered = !!currentWalletAddress &&
+    registeredWallets.some(w => w.walletAddress === currentWalletAddress.toLowerCase());
 
   const refresh = useCallback(async () => {
     if (!cognitoToken) return;
@@ -54,29 +50,35 @@ export function useUjuWalletRegistration(): UseUjuWalletRegistrationResult {
       const wallets = await listRegisteredWallets(cognitoToken);
       setRegisteredWallets(wallets);
     } catch (e: any) {
-      console.error("Failed to list wallets:", e);
+      console.error('Failed to list wallets:', e);
       setError(e.message);
     } finally {
       setIsLoading(false);
     }
   }, [cognitoToken]);
 
+  // Load wallets on mount when user is authenticated
   useEffect(() => {
-    if (cognitoToken) refresh();
+    if (cognitoToken) {
+      refresh();
+    }
   }, [cognitoToken, refresh]);
 
   const registerCurrentWallet = useCallback(async () => {
-    if (!cognitoToken) throw new Error("Not authenticated");
-    if (!activeSigner) throw new Error("No wallet signer available");
+    if (!cognitoToken) throw new Error('Not authenticated');
+    if (!activeSigner) throw new Error('No wallet signer available');
     setIsRegistering(true);
     setError(null);
 
     try {
+      // Step 1: Prepare challenge
       const { nonce, message } = await suiPrepareChallenge();
       const messageBytes = new TextEncoder().encode(message);
 
-      const effectiveSigner =
-        activeSigner instanceof NsaSigner ? activeSigner.getUnderlyingSigner() : activeSigner;
+      // Step 2: Sign + verify to get walletProof
+      const effectiveSigner = activeSigner instanceof NsaSigner
+        ? activeSigner.getUnderlyingSigner()
+        : activeSigner;
 
       let verifyResult;
       if (effectiveSigner instanceof ZkLoginSigner) {
@@ -91,38 +93,39 @@ export function useUjuWalletRegistration(): UseUjuWalletRegistrationResult {
         verifyResult = await suiConnectVerify(signature, nonce);
       }
 
+      // Step 3: Register with walletProof
       await registerWallet(
         verifyResult.walletAddress,
         verifyResult.walletProof,
         verifyResult.proofIssuedAt,
         cognitoToken,
       );
+
+      // Step 4: Refresh list
       await refresh();
     } catch (e: any) {
-      console.error("Registration failed:", e);
+      console.error('Registration failed:', e);
       setError(e.message);
     } finally {
       setIsRegistering(false);
     }
   }, [cognitoToken, activeSigner, refresh]);
 
-  const removeWalletByAddress = useCallback(
-    async (walletAddress: string) => {
-      if (!cognitoToken) throw new Error("Not authenticated");
-      setIsRemoving(walletAddress);
-      setError(null);
-      try {
-        await removeRegisteredWallet(walletAddress, cognitoToken);
-        await refresh();
-      } catch (e: any) {
-        console.error("Remove failed:", e);
-        setError(e.message);
-      } finally {
-        setIsRemoving(null);
-      }
-    },
-    [cognitoToken, refresh],
-  );
+  const removeWalletByAddress = useCallback(async (walletAddress: string) => {
+    if (!cognitoToken) throw new Error('Not authenticated');
+    setIsRemoving(walletAddress);
+    setError(null);
+
+    try {
+      await removeRegisteredWallet(walletAddress, cognitoToken);
+      await refresh();
+    } catch (e: any) {
+      console.error('Remove failed:', e);
+      setError(e.message);
+    } finally {
+      setIsRemoving(null);
+    }
+  }, [cognitoToken, refresh]);
 
   return {
     registeredWallets,

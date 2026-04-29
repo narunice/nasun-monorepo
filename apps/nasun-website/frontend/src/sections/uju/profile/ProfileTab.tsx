@@ -1,46 +1,19 @@
-import { ConnectedAccountsCard } from "@/sections/myAccount/ConnectedAccountsCard";
-import { DangerZoneCard } from "@/sections/myAccount/DangerZoneCard";
+import { FC } from "react";
+import { UjuConnectedAccountsCard } from "./cards/UjuConnectedAccountsCard";
+import { UjuDangerZoneCard } from "./cards/UjuDangerZoneCard";
 import { NotificationsPanel } from "./NotificationsPanel";
-import { UjuSectionHeader } from "../shared";
 
-interface SectionProps {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-}
-
-function Section({ title, subtitle, children }: SectionProps) {
+export const ProfileTab: FC = () => {
   return (
-    <section>
-      <UjuSectionHeader accent title={title} subtitle={subtitle} />
-      {children}
-    </section>
-  );
-}
+    <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
+      {/* 1. Notifications (Always first) */}
+      <NotificationsPanel />
 
-export function ProfileTab() {
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      <Section
-        title="Notifications"
-        subtitle="Recent system messages and alerts"
-      >
-        <NotificationsPanel />
-      </Section>
+      {/* 2. Connected Accounts & Socials */}
+      <UjuConnectedAccountsCard />
 
-      <Section
-        title="Connected Accounts"
-        subtitle="Wallets and social accounts linked to your identity"
-      >
-        <ConnectedAccountsCard />
-      </Section>
-
-      <Section
-        title="Danger Zone"
-        subtitle="Irreversible account actions"
-      >
-        <DangerZoneCard />
-      </Section>
+      {/* 3. Account Deletion & Irreversible Actions */}
+      <UjuDangerZoneCard />
     </div>
   );
-}
+};
