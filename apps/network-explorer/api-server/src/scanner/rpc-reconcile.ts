@@ -129,8 +129,18 @@ const RECONCILE_EXCLUDED_CATEGORIES = new Set<string>([
   'staking', // separate scoring planned
 ]);
 
+// EVENT_MAPPING keys use stripHex (no `0x` prefix) per the points.ts
+// convention, while RECONCILE_QUERIES.moveEventType keeps the `0x` prefix
+// because Sui RPC requires it on MoveEventType filters. Normalize on lookup
+// so the drift comparison works.
+function stripHexPrefix(s: string): string {
+  return s.replace(/^0x/, '');
+}
+
 (function verifyReconcileSync(): void {
-  const reconcileSet = new Set(RECONCILE_QUERIES.map((q) => q.moveEventType));
+  const reconcileSet = new Set(
+    RECONCILE_QUERIES.map((q) => stripHexPrefix(q.moveEventType)),
+  );
   const missing: string[] = [];
   for (const [eventKey, mapping] of EVENT_MAPPING.entries()) {
     if (RECONCILE_EXCLUDED_CATEGORIES.has(mapping.category)) continue;
