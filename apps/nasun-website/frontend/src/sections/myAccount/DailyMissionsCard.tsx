@@ -84,20 +84,6 @@ const MISSIONS: Mission[] = [
     externalUrl: "https://gostop.app/numbermatch",
   },
   {
-    id: "gostop-mines",
-    label: "Play Mines",
-    description: "Reveal cells, dodge mines, cash out before you bust",
-    points: 1,
-    externalUrl: "https://gostop.app/mines",
-  },
-  {
-    id: "gostop-crash",
-    label: "Play Crash",
-    description: "Bet on the multiplier, cash out before the crash",
-    points: 1,
-    externalUrl: "https://gostop.app/crash",
-  },
-  {
     id: "chat",
     label: "Chat",
     description: "Say something in Nasun or Pado chat room",
@@ -143,7 +129,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
   const isCompleted = useCallback(
     (mission: Mission) => {
       if (mission.deprecated) return false;
-      return completedMissions.has(mission.id as any) || localCompleted.has(mission.id);
+      return (
+        completedMissions.has(mission.id as any) ||
+        localCompleted.has(mission.id)
+      );
     },
     [completedMissions, localCompleted],
   );
@@ -233,7 +222,8 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
       {/* Steps */}
       <div className="space-y-3">
         {activeMissions.map((mission, i) => {
-          const completed = !mission.comingSoon && !mission.deprecated && isCompleted(mission);
+          const completed =
+            !mission.comingSoon && !mission.deprecated && isCompleted(mission);
           const muted = mission.comingSoon || mission.deprecated;
           return (
             <div
@@ -290,7 +280,11 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                       rel="noopener noreferrer"
                       className="hover:underline inline-flex items-center gap-1"
                       onClick={() => {
-                        if (mission.externalUrl?.startsWith("https://pado.finance")) {
+                        if (
+                          mission.externalUrl?.startsWith(
+                            "https://pado.finance",
+                          )
+                        ) {
                           const path = new URL(mission.externalUrl).pathname;
                           trackCrossAppNav("pado", path);
                         }
@@ -337,8 +331,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                 )}
                 {mission.deprecated && (
                   <p className="text-sm text-nasun-white/60 mt-0.5">
-                    No longer credited. Activity continues to count toward
-                    ecosystem points.
+                    No longer credited.
                   </p>
                 )}
               </div>
