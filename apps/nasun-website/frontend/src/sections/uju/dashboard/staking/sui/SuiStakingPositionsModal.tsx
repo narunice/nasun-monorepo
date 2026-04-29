@@ -64,7 +64,7 @@ export function SuiStakingPositionsModal({
             href={`${SUI_ADDRESS_URL}/${address}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-pado-3 hover:text-pado-4"
+            className="text-pado-2 hover:text-pado-4"
           >
             {shortAddr} ↗
           </a>
@@ -118,7 +118,7 @@ export function SuiStakingPositionsModal({
                           <span
                             className={
                               s.status === "Active"
-                                ? "text-pado-3"
+                                ? "text-pado-2"
                                 : s.status === "Pending"
                                 ? "text-amber-300"
                                 : "text-uju-secondary"
@@ -132,7 +132,7 @@ export function SuiStakingPositionsModal({
                         href={`${SUI_STAKE_OBJECT_URL}/${s.stakedSuiId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-medium text-pado-3 hover:text-pado-4 shrink-0"
+                        className="text-sm font-medium text-pado-2 hover:text-pado-4 shrink-0"
                       >
                         View ↗
                       </a>

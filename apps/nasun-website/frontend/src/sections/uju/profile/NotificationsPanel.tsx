@@ -26,7 +26,7 @@ function NotificationRow({ notif }: { notif: UjuNotification }) {
     <div className={`flex items-start gap-3 px-4 py-3 border-b border-uju-border last:border-0 ${notif.read ? '' : 'bg-white/[0.02]'}`}>
       {/* Unread dot */}
       <div className="shrink-0 mt-1.5 w-2 h-2">
-        {!notif.read && <span className="block w-2 h-2 rounded-full bg-pado-3" aria-label="Unread" />}
+        {!notif.read && <span className="block w-2 h-2 rounded-full bg-pado-2" aria-label="Unread" />}
       </div>
 
       {/* Content */}
@@ -45,7 +45,7 @@ function NotificationRow({ notif }: { notif: UjuNotification }) {
           <Link
             to={notif.actionUrl}
             onClick={() => markRead(notif.id)}
-            className="inline-flex items-center gap-1 mt-1.5 text-sm text-pado-3 hover:underline"
+            className="inline-flex items-center gap-1 mt-1.5 text-sm text-pado-2 hover:underline"
           >
             Go Vote
             <svg aria-hidden="true" className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -82,7 +82,7 @@ export function NotificationsPanel() {
         {notifications.length > 0 && (
           <button
             onClick={markAllRead}
-            className="text-sm text-uju-secondary hover:text-pado-3 transition-colors"
+            className="text-sm text-uju-secondary hover:text-pado-2 transition-colors"
           >
             Mark all read
           </button>

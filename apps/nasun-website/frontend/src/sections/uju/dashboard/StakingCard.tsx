@@ -78,7 +78,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="text-base font-medium text-pado-3 hover:text-pado-4 transition-colors"
+      className="text-base font-medium text-pado-2 hover:text-pado-4 transition-colors"
     >
       {label} ↗
     </a>
@@ -100,7 +100,7 @@ function ManageLinks({
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-medium text-pado-3 hover:text-pado-4 transition-colors"
+            className="text-sm font-medium text-pado-2 hover:text-pado-4 transition-colors"
           >
             {l.label} ↗
           </a>

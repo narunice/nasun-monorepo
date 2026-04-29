@@ -89,7 +89,7 @@ function AppCard({
               onClick={onPin}
               disabled={atMax}
               title={atMax ? `Max ${MAX_PINNED} apps` : undefined}
-              className="text-sm font-medium text-uju-secondary border border-uju-border rounded px-2 py-1 hover:text-pado-3 hover:border-pado-3/40 transition-colors disabled:text-uju-border disabled:border-uju-border/50 disabled:cursor-not-allowed disabled:hover:text-uju-border disabled:hover:border-uju-border/50"
+              className="text-sm font-medium text-uju-secondary border border-uju-border rounded px-2 py-1 hover:text-pado-2 hover:border-pado-2/40 transition-colors disabled:text-uju-border disabled:border-uju-border/50 disabled:cursor-not-allowed disabled:hover:text-uju-border disabled:hover:border-uju-border/50"
             >
               Pin
             </button>
@@ -99,7 +99,7 @@ function AppCard({
             target="_blank"
             rel="noopener noreferrer"
             aria-label={`Open ${app.name}, opens in new tab`}
-            className="text-sm font-medium text-pado-3 border border-pado-3/30 rounded px-2 py-1 hover:bg-pado-3/10 transition-colors"
+            className="text-sm font-medium text-pado-2 border border-pado-2/30 rounded px-2 py-1 hover:bg-pado-2/10 transition-colors"
           >
             Open
           </a>
@@ -169,7 +169,7 @@ export function AppDirectoryModal({
                 onClick={() => setActiveChain(f.value)}
                 className={`shrink-0 px-3 py-1 text-sm rounded-full border transition-colors ${
                   activeChain === f.value
-                    ? 'text-pado-3 border-pado-3/40 bg-pado-3/10'
+                    ? 'text-pado-2 border-pado-2/40 bg-pado-2/10'
                     : 'text-uju-secondary border-uju-border hover:text-uju-primary'
                 }`}
               >

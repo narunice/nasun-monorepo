@@ -96,7 +96,7 @@ function FeedbackButton({
   active: boolean;
   onClick: () => void;
 }) {
-  const activeClass = vote === 'up' ? 'text-pado-3' : 'text-nasun-scarlet';
+  const activeClass = vote === 'up' ? 'text-pado-2' : 'text-nasun-scarlet';
   return (
     <button
       onClick={onClick}

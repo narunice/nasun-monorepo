@@ -15,7 +15,7 @@ const VALUE_TONE: Record<Tone, string> = {
   default:  "text-uju-primary",
   violet:   "text-pado-violet",
   lavender: "text-pado-lavender",
-  cyan:     "text-pado-3",
+  cyan:     "text-pado-2",
   mint:     "text-pado-4",
   amber:    "text-nasun-c1",
   coral:    "text-nasun-coral",

@@ -57,7 +57,10 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
     isConfigured: isGenesisPassConfigured,
     mintType: genesisPassMintType,
     eligibleStage: serverEligibleStage,
-  } = useGenesisPassStatus(evmWalletAddress, evmWalletAddress ? null : cognitoToken);
+  } = useGenesisPassStatus(
+    evmWalletAddress,
+    evmWalletAddress ? null : cognitoToken,
+  );
 
   // Derive eligibleStage from mintType if server doesn't provide it.
   // Only use mintType for derivation; do NOT fall back to FCFS(3) just because
@@ -69,8 +72,10 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
     FCFS: 3,
   };
   const eligibleStage: number | null =
-    serverEligibleStage
-    ?? (genesisPassMintType ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3) : null);
+    serverEligibleStage ??
+    (genesisPassMintType
+      ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3)
+      : null);
 
   // Direct on-chain ownership check
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
@@ -167,8 +172,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
   const publicIsLive = currentStage >= 4;
 
   // Can the user mint right now?
-  const canMintNow =
-    (isGenesisPassRegistered && stageIsLive) || publicIsLive;
+  const canMintNow = (isGenesisPassRegistered && stageIsLive) || publicIsLive;
 
   // Countdown logic: different target and label depending on state
   let countdownTarget: Date | null = null;
@@ -196,8 +200,115 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
   const timeLeft = countdownTarget ? calcTimeLeft(countdownTarget, now) : null;
 
   return (
-    <div className={`flex flex-col gap-4 lg:gap-6 ${className}`}>
-      {/* === Genesis Pass (priority during drop) === */}
+    <div
+      className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 ${className}`}
+    >
+      {/* === Alliance === */}
+      {isAllianceConfigured && (
+        <UjuCard className="animate-fade-slide-up relative z-10">
+          <div className="flex flex-col gap-2">
+            <h6 className="text-uju-primary text-lg font-semibold uppercase">
+              ALLIANCE
+            </h6>
+            <div className="relative rounded-sm overflow-hidden aspect-square">
+              {isAllianceLoading ? (
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                  <Spinner />
+                </div>
+              ) : !isAllianceMinted ? (
+                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
+                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                    x1
+                  </span>
+                  <p className="text-nasun-white/80 text-base font-medium text-center px-6">
+                    Mint your Alliance NFT to earn Nasun points.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <img
+                    src={allianceImgSrc}
+                    alt="Alliance NFT"
+                    className={`w-full h-full object-cover transition-all ${
+                      !allianceIsActive ? "brightness-50 grayscale" : ""
+                    }`}
+                    loading="lazy"
+                  />
+                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                    x1
+                  </span>
+                  {allianceData && (
+                    <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
+                      <span className="text-white text-xl font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        {ALLIANCE_NAMES[allianceData.imageIndex] ?? ""}
+                      </span>
+                    </div>
+                  )}
+                  {!allianceIsActive && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <span className="text-nasun-white/90 text-base font-semibold bg-black/40 px-3 py-1 rounded-full">
+                        Activate to earn points
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+            <div className="flex items-center justify-between">
+              {isAllianceLoading ? (
+                <span className="text-nasun-white/80 text-base">
+                  Loading...
+                </span>
+              ) : !isAllianceMinted ? (
+                <span className="text-nasun-white/80 text-base">
+                  Not Minted
+                </span>
+              ) : allianceIsActive ? (
+                <span className="text-green-400 text-base">Activated</span>
+              ) : (
+                <span className="text-nasun-white/70 text-base">Minted</span>
+              )}
+              <div className="flex gap-2">
+                {!isAllianceLoading && !isAllianceMinted && (
+                  <Button
+                    onClick={() => navigate("/wave1/alliance-nft")}
+                    variant="filledOutlineC7"
+                    size="sm"
+                  >
+                    Mint
+                  </Button>
+                )}
+                {isAllianceMinted &&
+                  !allianceIsActive &&
+                  ecosystem.isConfigured && (
+                    <Button
+                      onClick={() => handleActivate("alliance")}
+                      variant="filledOutlineC7"
+                      size="sm"
+                      disabled={ecosystem.isActivating}
+                    >
+                      {ecosystem.isActivating ? "..." : "Activate"}
+                    </Button>
+                  )}
+                {allianceIsActive && (
+                  <ThreeDotMenu
+                    show={showAllianceMenu}
+                    onToggle={() => setShowAllianceMenu((v) => !v)}
+                    onClose={() => setShowAllianceMenu(false)}
+                    onAction={() => {
+                      setShowAllianceMenu(false);
+                      handleDeactivate("alliance");
+                    }}
+                    isLoading={ecosystem.isActivating}
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </UjuCard>
+      )}
+
+      {/* === Genesis Pass === */}
       {isGenesisPassConfigured && (
         <UjuCard className="animate-fade-slide-up">
           <div className="flex flex-col gap-2">
@@ -268,9 +379,9 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               ) : isMintClosed ? (
                 /* Mint period ended: activate guidance for secondary market */
                 <div className="flex flex-col items-center gap-2 px-4 text-center">
-                  <h6 className="text-nasun-white/70 font-medium">
-                    Activate your Genesis Pass to earn ecosystem points.
-                  </h6>
+                  <p className="text-nasun-white/80 text-base font-medium text-center px-2">
+                    Activate your Genesis Pass to earn Nasun points.
+                  </p>
                 </div>
               ) : canMintNow ? (
                 /* User can mint right now: big "Mint now." + closing countdown */
@@ -279,19 +390,29 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     Mint now.
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
-                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                    <CountdownDisplay
+                      label={countdownLabel}
+                      timeLeft={timeLeft}
+                    />
                   )}
                 </div>
               ) : isGenesisPassRegistered && mintTypeLabel && stageEnded ? (
                 /* User's allowlist stage has ended, guide to public */
                 <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
                   <h6 className="font-bold">
-                    <span className="text-nasun-white/70">{mintTypeLabel} stage ended.</span>
+                    <span className="text-nasun-white/70">
+                      {mintTypeLabel} stage ended.
+                    </span>
                     <br />
-                    <span className="text-amber-400">You can mint in public stage.</span>
+                    <span className="text-amber-400">
+                      You can mint in public stage.
+                    </span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
-                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                    <CountdownDisplay
+                      label={countdownLabel}
+                      timeLeft={timeLeft}
+                    />
                   )}
                 </div>
               ) : isGenesisPassRegistered && mintTypeLabel ? (
@@ -300,10 +421,15 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                   <h6 className="font-bold">
                     <span className="text-nasun-white">You are in</span>
                     <br />
-                    <span className="text-amber-400">{mintTypeLabel} allowlist.</span>
+                    <span className="text-amber-400">
+                      {mintTypeLabel} allowlist.
+                    </span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
-                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                    <CountdownDisplay
+                      label={countdownLabel}
+                      timeLeft={timeLeft}
+                    />
                   )}
                 </div>
               ) : (
@@ -315,7 +441,10 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     <span className="text-amber-400">public stage.</span>
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
-                    <CountdownDisplay label={countdownLabel} timeLeft={timeLeft} />
+                    <CountdownDisplay
+                      label={countdownLabel}
+                      timeLeft={timeLeft}
+                    />
                   )}
                 </div>
               )}
@@ -358,7 +487,12 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
             ) : (
               <div className="flex flex-col gap-2 mt-1">
                 <ButtonV3
-                  onClick={() => window.open("https://opensea.io/collection/0x561d4a687e9d13925ad7bef0209c9ecaec9858e1", "_blank")}
+                  onClick={() =>
+                    window.open(
+                      "https://opensea.io/collection/0x561d4a687e9d13925ad7bef0209c9ecaec9858e1",
+                      "_blank",
+                    )
+                  }
                   variant="nw2"
                   size="sm"
                   outline
@@ -372,109 +506,11 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
         </UjuCard>
       )}
 
-      {/* === Alliance === */}
-      {isAllianceConfigured && (
-        <UjuCard className="animate-fade-slide-up relative z-10">
-          <div className="flex flex-col gap-2">
-            <h6 className="text-uju-primary text-lg font-semibold uppercase">ALLIANCE</h6>
-            <div className="relative rounded-sm overflow-hidden aspect-square">
-              {isAllianceLoading ? (
-                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <Spinner />
-                </div>
-              ) : !isAllianceMinted ? (
-                <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
-                    x1
-                  </span>
-                  <span className="text-nasun-white/80 text-base font-medium text-center px-4">
-                    Mint your Alliance NFT
-                  </span>
-                </div>
-              ) : (
-                <>
-                  <img
-                    src={allianceImgSrc}
-                    alt="Alliance NFT"
-                    className={`w-full h-full object-cover transition-all ${
-                      !allianceIsActive ? "brightness-50 grayscale" : ""
-                    }`}
-                    loading="lazy"
-                  />
-                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
-                    x1
-                  </span>
-                  {/* Character name overlay at belly/waist area */}
-                  {allianceData && (
-                    <div className="absolute bottom-[10%] inset-x-0 flex justify-center pointer-events-none">
-                      <span className="text-white text-xl font-semibold uppercase tracking-wider drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
-                        {ALLIANCE_NAMES[allianceData.imageIndex] ?? ""}
-                      </span>
-                    </div>
-                  )}
-                  {!allianceIsActive && (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-nasun-white/90 text-base font-semibold bg-black/40 px-3 py-1 rounded-full">
-                        Activate to earn points
-                      </span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
-            <div className="flex items-center justify-between">
-              {isAllianceLoading ? (
-                <span className="text-nasun-white/80 text-base">Loading...</span>
-              ) : !isAllianceMinted ? (
-                <span className="text-nasun-white/80 text-base">Not Minted</span>
-              ) : allianceIsActive ? (
-                <span className="text-green-400 text-base">Activated</span>
-              ) : (
-                <span className="text-nasun-white/70 text-base">Minted</span>
-              )}
-              <div className="flex gap-2">
-                {!isAllianceLoading && !isAllianceMinted && (
-                  <Button
-                    onClick={() => navigate("/wave1/alliance-nft")}
-                    variant="filledOutlineC7"
-                    size="sm"
-                  >
-                    Mint
-                  </Button>
-                )}
-                {isAllianceMinted &&
-                  !allianceIsActive &&
-                  ecosystem.isConfigured && (
-                    <Button
-                      onClick={() => handleActivate("alliance")}
-                      variant="filledOutlineC7"
-                      size="sm"
-                      disabled={ecosystem.isActivating}
-                    >
-                      {ecosystem.isActivating ? "..." : "Activate"}
-                    </Button>
-                  )}
-                {allianceIsActive && (
-                  <ThreeDotMenu
-                    show={showAllianceMenu}
-                    onToggle={() => setShowAllianceMenu((v) => !v)}
-                    onClose={() => setShowAllianceMenu(false)}
-                    onAction={() => {
-                      setShowAllianceMenu(false);
-                      handleDeactivate("alliance");
-                    }}
-                    isLoading={ecosystem.isActivating}
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-        </UjuCard>
-      )}
-
       {/* === Battalion === */}
       <UjuCard className="animate-fade-slide-up">
-        <h6 className="text-uju-primary text-lg font-semibold uppercase">BATTALION</h6>
+        <h6 className="text-uju-primary text-lg font-semibold uppercase">
+          BATTALION
+        </h6>
         <p className="text-nasun-white/80 text-base mt-1">Coming Soon</p>
       </UjuCard>
     </div>
@@ -491,9 +527,7 @@ function CountdownDisplay({
 }) {
   const pad = (n: number) => String(n).padStart(2, "0");
   const segments = [
-    ...(timeLeft.days > 0
-      ? [{ value: String(timeLeft.days), unit: "D" }]
-      : []),
+    ...(timeLeft.days > 0 ? [{ value: String(timeLeft.days), unit: "D" }] : []),
     { value: pad(timeLeft.hours), unit: "H" },
     { value: pad(timeLeft.minutes), unit: "M" },
     { value: pad(timeLeft.seconds), unit: "S" },

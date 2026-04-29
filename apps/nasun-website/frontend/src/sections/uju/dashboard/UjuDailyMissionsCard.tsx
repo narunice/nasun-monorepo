@@ -133,7 +133,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
       <UjuCard>
         <h3 className="text-lg sm:text-xl font-semibold text-uju-primary mb-4">Daily Missions</h3>
         <div className="flex items-center justify-center py-10">
-          <div className="w-5 h-5 border-2 border-uju-border border-t-pado-3 rounded-full animate-spin" />
+          <div className="w-5 h-5 border-2 border-uju-border border-t-pado-2 rounded-full animate-spin" />
         </div>
       </UjuCard>
     );
@@ -149,12 +149,12 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
           <UjuAccentBar />
           <div className="min-w-0">
             <h3 className="text-lg sm:text-xl font-semibold text-white">Daily Missions</h3>
-            <p className="text-base text-pado-3 mt-0.5 tabular-nums">
+            <p className="text-base text-pado-2 mt-0.5 tabular-nums">
               {completedCount} / {missionPool.length} completed
             </p>
           </div>
         </div>
-        <span className="text-base font-mono text-pado-3 tabular-nums shrink-0">
+        <span className="text-base font-mono text-pado-2 tabular-nums shrink-0">
           +{maxPoints} pts max
         </span>
       </div>
@@ -162,7 +162,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
       {/* Progress bar */}
       <div className="w-full h-2 bg-uju-border rounded-full mb-4 overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-pado-1 via-pado-3 to-pado-4 rounded-full transition-all duration-500"
+          className="h-full bg-gradient-to-r from-pado-1 via-pado-2 to-pado-5 rounded-full transition-all duration-500"
           style={{ width: `${progressPct}%` }}
         />
       </div>
@@ -204,7 +204,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                     className={`text-base font-medium inline-flex items-center gap-1 ${
                       completed
                         ? 'text-uju-secondary line-through'
-                        : 'text-uju-primary hover:text-pado-3 transition-colors'
+                        : 'text-uju-primary hover:text-pado-2 transition-colors'
                     }`}
                     onClick={() => handleVisitClick(mission)}
                   >
@@ -237,7 +237,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
                 )}
                 {/* Points badge (onchain only) or Visited badge (visit type) */}
                 {mission.completionType === 'onchain' && mission.points !== undefined && (
-                  <span className="ml-2 text-base font-mono text-pado-3">
+                  <span className="ml-2 text-base font-mono text-pado-2">
                     +{mission.points}
                   </span>
                 )}

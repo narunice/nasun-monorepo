@@ -11,8 +11,8 @@ export function UjuLayout({ children }: UjuLayoutProps) {
         aria-hidden="true"
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden"
       >
-        <div className="absolute -top-40 -left-40 w-[420px] h-[420px] rounded-full bg-pado-violet/15 blur-3xl" />
-        <div className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-pado-lavender/10 blur-3xl" />
+        <div className="absolute -top-40 -left-40 w-[420px] h-[420px] rounded-full bg-blue-500/15 blur-3xl" />
+        <div className="absolute -bottom-40 -right-40 w-[480px] h-[480px] rounded-full bg-pado-1/20 blur-3xl" />
       </div>
       <div className="relative z-10">{children}</div>
     </div>
