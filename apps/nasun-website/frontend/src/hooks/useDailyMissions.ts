@@ -40,9 +40,13 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
   { suffix: "::scratchcard::ScratchCardPurchased", missionId: "pado-scratchcard" },
   { suffix: "::numbermatch::NumberMatchPlayed", missionId: "pado-games" },
   // Gostop mines/crash share the pado-games mission (and its 1pt/day cap).
-  // mines emits SessionFinished on every session end (bust + cashout); crash
-  // emits CashOutRecorded only on successful cashouts.
+  // mines: SessionFinished fires on every session end (bust + cashout).
+  // crash: BetPlaced is the "completion" signal because the keeper always
+  //   auto-finalizes the round, so a bet alone is enough to count as a
+  //   completed game. CashOutRecorded credits the same mission for players
+  //   who do cash out; the daily cap dedups the combo.
   { suffix: "::mines::SessionFinished", missionId: "pado-games" },
+  { suffix: "::crash::BetPlaced", missionId: "pado-games" },
   { suffix: "::crash::CashOutRecorded", missionId: "pado-games" },
 ];
 

@@ -101,7 +101,9 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.gostopNumbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
   // Gostop Mines (all SessionFinished events count, bust + cashout)
   { moveEventType: `${PKG.gostopMines}::mines::SessionFinished`, category: 'pado-games', activityType: 'mines-session' },
-  // Gostop Crash (CashOutRecorded fires on successful cashouts only)
+  // Gostop Crash (BetPlaced = round entered = game completed via keeper auto-finalize;
+  // CashOutRecorded = successful cashout. Daily cap dedups bet + cashout combos.)
+  { moveEventType: `${PKG.gostopCrash}::crash::BetPlaced`, category: 'pado-games', activityType: 'crash-bet' },
   { moveEventType: `${PKG.gostopCrash}::crash::CashOutRecorded`, category: 'pado-games', activityType: 'crash-cashout' },
   // Lending
   { moveEventType: `${PKG.lending}::lending::DepositEvent`, category: 'pado-lending', activityType: 'deposit' },
