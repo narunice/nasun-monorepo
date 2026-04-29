@@ -85,6 +85,10 @@ export interface NftCollection {
   contractAddress: string;
   chain: 'ethereum' | 'polygon';
   collectionName: string;
+  // Matches activation SK prefix (e.g. "genesis-pass"). Optional for legacy rows
+  // written before the field existed; ownership-verifier falls back to a
+  // slugified collectionName when missing.
+  nftTypeId?: string;
   enabled: boolean;
 }
 
