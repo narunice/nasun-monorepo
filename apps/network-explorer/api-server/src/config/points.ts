@@ -159,6 +159,16 @@ const PKG = {
   gostopNumbermatch: stripHex(
     '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
   ),
+  // Mines and crash: must use originalPackageId (event subscription identity).
+  // crash has been upgraded to v5; packageId field in devnet-ids.json reflects
+  // the current upgrade, not the origin. Using packageId here would silently
+  // drop matches.
+  gostopMines: stripHex(
+    '0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54',
+  ),
+  gostopCrash: stripHex(
+    '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
+  ),
   tokens: stripHex(
     '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
   ),
@@ -205,6 +215,8 @@ export const WALLET_TRANSFER_EXCLUDED_MODULES: readonly string[] = [
   'unified_margin',
   // Pado games
   'prediction', 'lottery', 'scratchcard', 'numbermatch',
+  // Gostop games
+  'mines', 'crash',
   // Nasun website / admin
   'alliance_nft', 'battalion_nft', 'smart_account',
   'dev_oracle',
@@ -234,6 +246,8 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.gostopLottery,
   PKG.gostopScratchcard,
   PKG.gostopNumbermatch,
+  PKG.gostopMines,
+  PKG.gostopCrash,
   PKG.sui, // 0x3 Sui system (staking)
 ]);
 
@@ -291,6 +305,18 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
 
   // Gostop NumberMatch (Games)
   [PKG.gostopNumbermatch, 'numbermatch', 'NumberMatchPlayed', { category: 'pado-games', activityType: 'numbermatch-play' }],
+
+  // Gostop Mines: emits SessionFinished on every session end (bust at L307,
+  // cashout at L382 in mines.move). Both count as a completed game session
+  // for daily mission purposes. Bust still represents a session played.
+  // Daily 1pt cap is shared across all pado-games entries (mines, crash,
+  // numbermatch).
+  [PKG.gostopMines, 'mines', 'SessionFinished', { category: 'pado-games', activityType: 'mines-session' }],
+
+  // Gostop Crash: CashOutRecorded fires only on a successful cashout (a player
+  // bailing before the round busts). Players who get caught in the bust emit
+  // no event for that participant, so this is naturally cashout-only.
+  [PKG.gostopCrash, 'crash', 'CashOutRecorded', { category: 'pado-games', activityType: 'crash-cashout' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],

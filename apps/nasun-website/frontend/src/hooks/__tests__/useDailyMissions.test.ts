@@ -123,6 +123,28 @@ describe("detectEventMissions", () => {
     expect(result.has("pado-games")).toBe(true);
   });
 
+  it("detects pado-games from gostop mines SessionFinished (bust + cashout)", async () => {
+    mockQueryEvents.mockResolvedValueOnce(
+      emptyEventsPage([
+        makeEvent(`${PKG_DEX}::mines::SessionFinished`, TODAY_NOON),
+      ]),
+    );
+
+    const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
+    expect(result.has("pado-games")).toBe(true);
+  });
+
+  it("detects pado-games from gostop crash CashOutRecorded", async () => {
+    mockQueryEvents.mockResolvedValueOnce(
+      emptyEventsPage([
+        makeEvent(`${PKG_DEX}::crash::CashOutRecorded`, TODAY_NOON),
+      ]),
+    );
+
+    const result = await detectEventMissions(WALLET_A, TODAY_START, new Set());
+    expect(result.has("pado-games")).toBe(true);
+  });
+
   it("excludes events from yesterday (stops scan on first past-today event)", async () => {
     mockQueryEvents.mockResolvedValueOnce(
       emptyEventsPage([

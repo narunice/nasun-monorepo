@@ -54,50 +54,70 @@ describe('BASE_MISSIONS', () => {
 describe('APP_MISSION_MAP - pado', () => {
   const padoMissions = APP_MISSION_MAP['pado'];
 
-  it('has exactly 4 pado missions', () => {
-    expect(padoMissions).toHaveLength(4);
+  it('has exactly 1 pado mission (pado-dex; gostop games moved to gostop card)', () => {
+    expect(padoMissions).toHaveLength(1);
   });
 
-  it('contains pado-dex, pado-lottery, pado-scratchcard, pado-games', () => {
+  it('contains pado-dex only', () => {
     const ids = padoMissions.map((m) => m.id);
-    expect(ids).toContain('pado-dex');
+    expect(ids).toEqual(['pado-dex']);
+  });
+
+  it('pado-dex is onchain completionType with points=2', () => {
+    const m = padoMissions[0];
+    expect(m.id).toBe('pado-dex');
+    expect(m.completionType).toBe('onchain');
+    expect(m.points).toBe(2);
+    expect(m.appId).toBe('pado');
+    expect(m.externalUrl).toBe('https://pado.finance/trade');
+  });
+});
+
+// ── APP_MISSION_MAP: gostop ───────────────────────────────────────────────────
+
+describe('APP_MISSION_MAP - gostop', () => {
+  const gostopMissions = APP_MISSION_MAP['gostop'];
+
+  it('has exactly 3 gostop missions', () => {
+    expect(gostopMissions).toHaveLength(3);
+  });
+
+  it('contains pado-lottery, pado-scratchcard, pado-games', () => {
+    const ids = gostopMissions.map((m) => m.id);
     expect(ids).toContain('pado-lottery');
     expect(ids).toContain('pado-scratchcard');
     expect(ids).toContain('pado-games');
   });
 
-  it('all pado missions are onchain completionType', () => {
-    for (const m of padoMissions) {
+  it('all gostop missions are onchain completionType with appId=gostop', () => {
+    for (const m of gostopMissions) {
       expect(m.completionType).toBe('onchain');
+      expect(m.appId).toBe('gostop');
     }
   });
 
-  it('pado-dex has points=2', () => {
-    const m = padoMissions.find((m) => m.id === 'pado-dex')!;
-    expect(m.points).toBe(2);
-  });
-
-  it('pado missions point to pado.finance (DEX) or gostop.app (games)', () => {
-    for (const m of padoMissions) {
-      expect(m.externalUrl).toMatch(/^https:\/\/(pado\.finance|gostop\.app)/);
+  it('all gostop missions point to gostop.app', () => {
+    for (const m of gostopMissions) {
+      expect(m.externalUrl).toMatch(/^https:\/\/gostop\.app/);
     }
   });
 
-  it('all pado missions have appId="pado"', () => {
-    for (const m of padoMissions) {
-      expect(m.appId).toBe('pado');
-    }
+  // Label is product-neutral so mines/crash events ticking pado-games do not
+  // confuse users with a numbermatch-specific label.
+  it('pado-games mission label is product-neutral (covers numbermatch + mines + crash)', () => {
+    const m = gostopMissions.find((m) => m.id === 'pado-games')!;
+    expect(m.label).toBe('Play a GoStop game');
+    expect(m.label).not.toMatch(/Number Match/i);
   });
 
   // Critical: IDs must match useDailyMissions MissionId type exactly
-  it('pado mission IDs match useDailyMissions MissionId union (sync guard)', () => {
+  it('gostop mission IDs match useDailyMissions MissionId union (sync guard)', () => {
     const allowedIds = new Set([
-      'pado-dex',
       'pado-lottery',
       'pado-scratchcard',
       'pado-games',
     ]);
-    for (const m of padoMissions) {
+    for (const m of gostopMissions) {
       expect(allowedIds.has(m.id)).toBe(true);
     }
   });
@@ -142,10 +162,6 @@ describe.each([
 describe('APP_MISSION_MAP - coming-soon apps', () => {
   it('baram has no missions (coming-soon)', () => {
     expect(APP_MISSION_MAP['baram']).toBeUndefined();
-  });
-
-  it('gostop has no missions (coming-soon)', () => {
-    expect(APP_MISSION_MAP['gostop']).toBeUndefined();
   });
 
   it('spectra has no missions (coming-soon)', () => {
@@ -199,6 +215,12 @@ describe('getMissionBadge', () => {
     const badge = getMissionBadge(m);
     expect(badge.label).toBe('Pado');
     expect(badge.text).toContain('pado-3');
+  });
+
+  it('returns gostop badge for gostop mission', () => {
+    const m = APP_MISSION_MAP['gostop'][0];
+    const badge = getMissionBadge(m);
+    expect(badge.label).toBe('GoStop');
   });
 
   it('returns jupiter badge for jupiter mission', () => {
@@ -258,27 +280,36 @@ describe('mission pool construction', () => {
     expect(pool).toHaveLength(3);
   });
 
-  it('pinning pado adds 4 missions (total 7)', () => {
+  it('pinning pado adds 1 mission (total 4)', () => {
     const pinnedAppIds = ['pado'];
     const pool = [
       ...BASE_MISSIONS,
       ...pinnedAppIds.flatMap((id) => APP_MISSION_MAP[id] ?? []),
     ];
-    expect(pool).toHaveLength(7);
+    expect(pool).toHaveLength(4);
   });
 
-  it('pinning all live apps adds correct missions (3 + 4 + 3 = 10)', () => {
-    const pinnedAppIds = ['pado', 'jupiter', 'cetus', 'uniswap'];
+  it('pinning gostop adds 3 missions (total 6)', () => {
+    const pinnedAppIds = ['gostop'];
     const pool = [
       ...BASE_MISSIONS,
       ...pinnedAppIds.flatMap((id) => APP_MISSION_MAP[id] ?? []),
     ];
-    // 3 base + 4 pado + 1 jupiter + 1 cetus + 1 uniswap = 10
+    expect(pool).toHaveLength(6);
+  });
+
+  it('pinning all live apps adds correct missions (3 + 1 + 3 + 1 + 1 + 1 = 10)', () => {
+    const pinnedAppIds = ['pado', 'gostop', 'jupiter', 'cetus', 'uniswap'];
+    const pool = [
+      ...BASE_MISSIONS,
+      ...pinnedAppIds.flatMap((id) => APP_MISSION_MAP[id] ?? []),
+    ];
+    // 3 base + 1 pado + 3 gostop + 1 jupiter + 1 cetus + 1 uniswap = 10
     expect(pool).toHaveLength(10);
   });
 
-  it('pinning coming-soon apps (baram/gostop) adds zero missions', () => {
-    const pinnedAppIds = ['baram', 'gostop', 'spectra'];
+  it('pinning coming-soon apps (baram/spectra) adds zero missions', () => {
+    const pinnedAppIds = ['baram', 'spectra'];
     const pool = [
       ...BASE_MISSIONS,
       ...pinnedAppIds.flatMap((id) => APP_MISSION_MAP[id] ?? []),
@@ -287,7 +318,7 @@ describe('mission pool construction', () => {
   });
 
   it('no duplicate mission IDs in pool with all apps pinned', () => {
-    const pinnedAppIds = ['pado', 'jupiter', 'cetus', 'uniswap'];
+    const pinnedAppIds = ['pado', 'gostop', 'jupiter', 'cetus', 'uniswap'];
     const pool = [
       ...BASE_MISSIONS,
       ...pinnedAppIds.flatMap((id) => APP_MISSION_MAP[id] ?? []),

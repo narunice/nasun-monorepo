@@ -18,7 +18,7 @@ export const APP_REGISTRY: AppEntry[] = [
   {
     id: 'pado',
     name: 'Pado',
-    description: 'DEX, prediction markets, and lottery on Nasun.',
+    description: 'Spot DEX and perp markets on Nasun.',
     url: 'https://pado.finance',
     chain: 'nasun',
     category: 'dex',
@@ -38,11 +38,11 @@ export const APP_REGISTRY: AppEntry[] = [
   {
     id: 'gostop',
     name: 'GoStop',
-    description: 'On-chain card game built on Nasun Network.',
-    url: '#',
+    description: 'On-chain casino: lottery, scratch cards, mines, crash, and more.',
+    url: 'https://gostop.app',
     chain: 'nasun',
     category: 'game',
-    status: 'coming-soon',
+    status: 'live',
     isNative: true,
   },
   {

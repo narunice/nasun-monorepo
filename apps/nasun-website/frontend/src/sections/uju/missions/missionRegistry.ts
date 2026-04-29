@@ -44,6 +44,14 @@ export const BASE_MISSIONS: UjuMission[] = [
 ];
 
 // Missions added when an app is pinned via App Directory
+//
+// NOTE on the mission id `pado-games`: it remains `pado-` prefixed because it
+// is used as both the frontend mission id and the backend category name.
+// Several gostop games (numbermatch, mines, crash) all credit this single
+// mission so the daily 1pt cap is shared across them. Renaming the category
+// (and matview cutover) is tracked separately as a follow-up cleanup; until
+// then keep the id stable. The visible label is product-neutral so the UX
+// reads correctly regardless.
 export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
   pado: [
     {
@@ -55,9 +63,11 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       description: 'Place a trade on the DEX orderbook',
       externalUrl: 'https://pado.finance/trade',
     },
+  ],
+  gostop: [
     {
       id: 'pado-lottery',
-      appId: 'pado',
+      appId: 'gostop',
       completionType: 'onchain',
       points: 1,
       label: 'Buy Lottery Ticket',
@@ -66,7 +76,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
     },
     {
       id: 'pado-scratchcard',
-      appId: 'pado',
+      appId: 'gostop',
       completionType: 'onchain',
       points: 1,
       label: 'Play Scratch Card',
@@ -75,12 +85,12 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
     },
     {
       id: 'pado-games',
-      appId: 'pado',
+      appId: 'gostop',
       completionType: 'onchain',
       points: 1,
-      label: 'Play Number Match',
-      description: 'Pick numbers for a quick game',
-      externalUrl: 'https://gostop.app/numbermatch',
+      label: 'Play a GoStop game',
+      description: 'Number match, mines, or crash. Any session counts.',
+      externalUrl: 'https://gostop.app',
     },
   ],
   jupiter: [
@@ -131,6 +141,7 @@ export function makeGovernanceMission(unvotedCount: number): UjuMission {
 // Full Tailwind literals required for JIT scan.
 export const APP_BADGE_STYLE: Record<string, { bg: string; text: string; label: string }> = {
   pado:     { bg: 'bg-pado-3/15',      text: 'text-pado-3',      label: 'Pado' },
+  gostop:   { bg: 'bg-pado-5/15',      text: 'text-pado-5',      label: 'GoStop' },
   jupiter:  { bg: 'bg-nasun-c3/15',    text: 'text-nasun-c3',    label: 'Jupiter' },
   cetus:    { bg: 'bg-pado-4/15',      text: 'text-pado-4',      label: 'Cetus' },
   uniswap:  { bg: 'bg-nasun-c1/15',    text: 'text-nasun-c1',    label: 'Uniswap' },

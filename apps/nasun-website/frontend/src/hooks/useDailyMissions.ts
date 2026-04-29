@@ -39,6 +39,11 @@ const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
   { suffix: "::lottery::TicketPurchased", missionId: "pado-lottery" },
   { suffix: "::scratchcard::ScratchCardPurchased", missionId: "pado-scratchcard" },
   { suffix: "::numbermatch::NumberMatchPlayed", missionId: "pado-games" },
+  // Gostop mines/crash share the pado-games mission (and its 1pt/day cap).
+  // mines emits SessionFinished on every session end (bust + cashout); crash
+  // emits CashOutRecorded only on successful cashouts.
+  { suffix: "::mines::SessionFinished", missionId: "pado-games" },
+  { suffix: "::crash::CashOutRecorded", missionId: "pado-games" },
 ];
 
 // Faucet modules (upgrade-safe: match by module+function, not package ID)
@@ -66,6 +71,8 @@ const CONTRACT_MODULES_EXCLUDING_TRANSFER = new Set([
   "unified_margin",
   // Pado games
   "prediction", "lottery", "scratchcard", "numbermatch",
+  // Gostop games
+  "mines", "crash",
   // Nasun website / admin
   "alliance_nft", "battalion_nft", "smart_account",
   "dev_oracle",

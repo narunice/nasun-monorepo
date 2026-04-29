@@ -23,6 +23,7 @@ import {
   getBasePoints,
   SCORE_CATEGORIES,
   GENESIS_PASS_MULTIPLIER,
+  EVENT_MAPPING,
 } from '../config/points.js';
 import {
   maybeRefreshMatview,
@@ -49,6 +50,11 @@ const PKG = {
   gostopLottery: '0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3',
   gostopScratchcard: '0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e',
   gostopNumbermatch: '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
+  // Mines and crash use originalPackageId (event subscription identity, stable
+  // across upgrades). crash has been upgraded to v5; using packageId would miss
+  // events emitted by older upgrade variants still resolved via the linker.
+  gostopMines: '0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54',
+  gostopCrash: '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
   lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
   baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
   baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
@@ -64,11 +70,13 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   // Pado DEX (DeepBook v2) - descending pagination only touches recent pages
   { moveEventType: `${PKG.deepbook}::order_info::OrderPlaced`, category: 'pado-dex', activityType: 'limit-order' },
   { moveEventType: `${PKG.deepbook}::order_info::OrderFilled`, category: 'pado-dex', activityType: 'market-order' },
+  { moveEventType: `${PKG.deepbook}::order_info::OrderFullyFilled`, category: 'pado-dex', activityType: 'market-order' },
   { moveEventType: `${PKG.deepbook}::order::OrderCanceled`, category: 'pado-dex', activityType: 'cancel-order' },
   // Governance
   { moveEventType: `${PKG.governance}::proposal::VoteRegistered`, category: 'governance', activityType: 'vote' },
   { moveEventType: `${PKG.governanceMultiChoice}::multi_choice_proposal::MultiChoiceVoteRegistered`, category: 'governance', activityType: 'vote' },
   { moveEventType: `${PKG.governance}::delegation::DelegationCreated`, category: 'governance', activityType: 'delegate' },
+  { moveEventType: `${PKG.governance}::delegation::DelegationRevoked`, category: 'governance', activityType: 'delegate' },
   // Prediction
   { moveEventType: `${PKG.prediction}::prediction::TokensMinted`, category: 'pado-prediction', activityType: 'mint-tokens' },
   { moveEventType: `${PKG.prediction}::prediction::BidPlaced`, category: 'pado-prediction', activityType: 'place-bid' },
@@ -91,6 +99,10 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   // NumberMatch (Games)
   { moveEventType: `${PKG.numbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
   { moveEventType: `${PKG.gostopNumbermatch}::numbermatch::NumberMatchPlayed`, category: 'pado-games', activityType: 'numbermatch-play' },
+  // Gostop Mines (all SessionFinished events count, bust + cashout)
+  { moveEventType: `${PKG.gostopMines}::mines::SessionFinished`, category: 'pado-games', activityType: 'mines-session' },
+  // Gostop Crash (CashOutRecorded fires on successful cashouts only)
+  { moveEventType: `${PKG.gostopCrash}::crash::CashOutRecorded`, category: 'pado-games', activityType: 'crash-cashout' },
   // Lending
   { moveEventType: `${PKG.lending}::lending::DepositEvent`, category: 'pado-lending', activityType: 'deposit' },
   { moveEventType: `${PKG.lending}::lending::WithdrawEvent`, category: 'pado-lending', activityType: 'withdraw' },
@@ -106,8 +118,34 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   // Baram Executor
   { moveEventType: `${PKG.baramExecutor}::executor::ExecutorRegistered`, category: 'baram-executor', activityType: 'register' },
   { moveEventType: `${PKG.baramExecutor}::staking::StakeAdded`, category: 'baram-executor', activityType: 'stake' },
+  { moveEventType: `${PKG.baramExecutor}::staking::StakeRemoved`, category: 'baram-executor', activityType: 'unstake' },
   { moveEventType: `${PKG.baramExecutor}::executor::ExecutorUpdated`, category: 'baram-executor', activityType: 'update' },
 ];
+
+// Categories that exist in EVENT_MAPPING but are intentionally excluded from
+// reconciliation (see file header). Anything else in EVENT_MAPPING must have a
+// matching RECONCILE_QUERIES entry, or scanner startup fails fast.
+const RECONCILE_EXCLUDED_CATEGORIES = new Set<string>([
+  'staking', // separate scoring planned
+]);
+
+(function verifyReconcileSync(): void {
+  const reconcileSet = new Set(RECONCILE_QUERIES.map((q) => q.moveEventType));
+  const missing: string[] = [];
+  for (const [eventKey, mapping] of EVENT_MAPPING.entries()) {
+    if (RECONCILE_EXCLUDED_CATEGORIES.has(mapping.category)) continue;
+    if (!reconcileSet.has(eventKey)) missing.push(eventKey);
+  }
+  if (missing.length > 0) {
+    throw new Error(
+      `[rpc-reconcile] Drift detected: ${missing.length} EVENT_MAP_ENTRIES entries ` +
+        `are missing from RECONCILE_QUERIES. Reconciliation will silently skip them, ` +
+        `causing point loss on subscription gaps. Add them to RECONCILE_QUERIES, or ` +
+        `add their category to RECONCILE_EXCLUDED_CATEGORIES if intentional. ` +
+        `Missing: ${missing.join(', ')}`,
+    );
+  }
+})();
 
 const PAGE_SIZE = 50;
 const MAX_PAGES = 200; // Safety cap per event type
