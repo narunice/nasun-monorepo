@@ -1,6 +1,6 @@
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
-import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader } from "../shared";
+import { UjuCard, UjuButton, UjuSectionHeader } from "../shared";
 import { Spinner } from "@/components/ui";
 
 export function TotalPointsCard() {
@@ -9,7 +9,6 @@ export function TotalPointsCard() {
     useEcosystemScore(user?.identityId);
 
   const allTimePoints = score?.allTime.ecosystemScore ?? 0;
-  const weeklyPoints = score?.weekly.ecosystemScore ?? 0;
   const multiplier = score?.multiplier ?? 1;
 
   const refreshLabel = isRefreshing
@@ -20,15 +19,7 @@ export function TotalPointsCard() {
 
   return (
     <UjuCard variant="accent">
-      <UjuSectionHeader
-        accent
-        title="Nasun Points"
-        trailing={
-          <UjuBadge tone={multiplier > 1 ? "amber" : "neutral"}>
-            {multiplier.toFixed(2)}x
-          </UjuBadge>
-        }
-      />
+      <UjuSectionHeader accent title="Nasun Points" />
 
       {isLoading ? (
         <div className="flex items-center justify-center h-24">
@@ -41,23 +32,11 @@ export function TotalPointsCard() {
           </p>
           <p className="text-base text-uju-secondary mt-2">All-time total</p>
 
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-pado-2/10 border border-pado-2/30 p-3">
-              <p className="text-base font-medium text-uju-secondary">
-                This week
-              </p>
-              <p className="text-xl font-semibold text-pado-2 tabular-nums mt-1">
-                +{weeklyPoints.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
-              <p className="text-base font-medium text-uju-secondary">
-                Multiplier
-              </p>
-              <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
-                {multiplier.toFixed(2)}x
-              </p>
-            </div>
+          <div className="mt-5 rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
+            <p className="text-base font-medium text-uju-secondary">Multiplier</p>
+            <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
+              {multiplier.toFixed(2)}x
+            </p>
           </div>
         </>
       )}
