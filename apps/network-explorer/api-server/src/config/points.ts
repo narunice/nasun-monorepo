@@ -24,7 +24,18 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   'staking-daily': { 'staking-active': 1 },
   faucet: { claim: 1 },
   'pado-scratchcard': { 'scratchcard-purchase': 1 },
-  'pado-games': { 'numbermatch-play': 1 },
+  'pado-games': {
+    'numbermatch-play': 1,
+    // Gostop mines: SessionFinished is emitted on every session end (bust or
+    // cashout); both count as "completed a session" for daily-mission purposes.
+    'mines-session': 1,
+    // Gostop crash: BetPlaced fires when the player bets into a round; the
+    // keeper auto-finalizes every round, so a bet is sufficient to count as
+    // a completed game even if the player never cashes out (busts). Cashout
+    // also credits the same category, but the daily 1pt cap dedups it.
+    'crash-bet': 1,
+    'crash-cashout': 1,
+  },
   chat: { participation: 1 },
 
   // Score categories (final_points used in ecosystem score)
@@ -313,9 +324,13 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // numbermatch).
   [PKG.gostopMines, 'mines', 'SessionFinished', { category: 'pado-games', activityType: 'mines-session' }],
 
-  // Gostop Crash: CashOutRecorded fires only on a successful cashout (a player
-  // bailing before the round busts). Players who get caught in the bust emit
-  // no event for that participant, so this is naturally cashout-only.
+  // Gostop Crash: BetPlaced fires when a player bets into a round, and the
+  // round is always auto-finalized by the keeper, so a bet alone is enough
+  // to count the game as "completed" for daily-mission purposes (player who
+  // busts still played a full round). CashOutRecorded fires on a successful
+  // cashout. Both map to the same daily cap so a bust + cashout combo still
+  // only credits 1pt/day.
+  [PKG.gostopCrash, 'crash', 'BetPlaced', { category: 'pado-games', activityType: 'crash-bet' }],
   [PKG.gostopCrash, 'crash', 'CashOutRecorded', { category: 'pado-games', activityType: 'crash-cashout' }],
 
   // Pado Lending
