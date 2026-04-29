@@ -117,6 +117,11 @@ export function useCrash(): UseCrashResult {
   const DISPLAY_LAG_MS = 250
   const CRASH_SNAP_MS = 250
   const ANCHOR_TRANSITION_MS = 400
+  // Mirrors Move INVERSE_SEARCH_TOP_BPS / chat-server CRASH_POINT_CAP_BPS.
+  // No legitimate round can exceed this; clamping the display prevents a
+  // runaway multiplier when the keeper stalls and `betting_closed`/`crashed`
+  // events never arrive (see 2026-04-29 incident where rocket reached 10M x).
+  const DISPLAY_CAP_BPS = 26_650_000
 
   const hasCashedOut = myCashoutBps !== null
 
@@ -142,7 +147,8 @@ export function useCrash(): UseCrashResult {
 
       if (anchor !== null) {
         const elapsed = Date.now() + serverSkewMsRef.current - anchor - DISPLAY_LAG_MS
-        const trueMult = elapsed > 0 ? multiplierAtBps(elapsed) : 10_000
+        const rawMult = elapsed > 0 ? multiplierAtBps(elapsed) : 10_000
+        const trueMult = rawMult > DISPLAY_CAP_BPS ? DISPLAY_CAP_BPS : rawMult
         if (transitionTweenRef.current) {
           const { from, startedAt, durationMs } = transitionTweenRef.current
           const t = Math.min(1, (Date.now() - startedAt) / durationMs)
