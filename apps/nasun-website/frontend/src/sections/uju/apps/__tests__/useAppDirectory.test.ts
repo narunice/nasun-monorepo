@@ -112,9 +112,16 @@ describe("loadFromStorage migration", () => {
     expect(total).toBe(6);
   });
 
-  it("does NOT persist the seed (so deactivate-then-reload stays empty)", () => {
+  it("persists the seed so a mount-sync race can't wipe in-memory defaults", () => {
     loadFromStorage(ID_A);
-    expect(store[NEW_KEY_A]).toBeUndefined();
+    expect(store[NEW_KEY_A]).toBeDefined();
+    const persisted = JSON.parse(store[NEW_KEY_A]) as AppDirectoryState;
+    expect(persisted.explicitPinned).toEqual(["nasun-devnet", "pado", "gostop"]);
+    expect(persisted.missions).toEqual({
+      "nasun-devnet": ["faucet", "wallet-transfer"],
+      pado: ["pado-dex"],
+      gostop: ["gostop-lottery", "gostop-scratchcard", "gostop-numbermatch"],
+    });
   });
 
   it("on first load, merges existing new-key state with v6 defaults and persists", () => {

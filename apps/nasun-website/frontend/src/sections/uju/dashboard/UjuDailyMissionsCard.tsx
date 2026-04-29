@@ -11,6 +11,7 @@ import { UjuButton } from '../shared/UjuButton';
 import type { AppEntry } from '../apps/appRegistry';
 import {
   APP_MISSION_MAP,
+  DEFAULT_MISSIONS_BY_APP,
   MAX_DAILY_MISSIONS,
   getMissionBadge,
   type UjuMission,
@@ -85,15 +86,23 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   // (fresh users are auto-pinned to nasun-devnet via DEFAULT_PINNED_APPS).
   // Governance mission is no longer surfaced here; myAccount/DailyMissionsCard
   // keeps it as an independent surface.
+  //
+  // Fallback for missing per-app selection: use the curated
+  // DEFAULT_MISSIONS_BY_APP subset, NOT every mission in the registry.
+  // Without this, gostop ends up showing all 5 games (8 total missions) when
+  // the per-app key is undefined, while my-account/back-end both compute
+  // against the 6-default set, breaking parity across surfaces.
   const missionPool = useMemo(() => {
     const pool: UjuMission[] = [];
     for (const app of pinnedApps) {
       const appMissions = APP_MISSION_MAP[app.id] ?? [];
       const allowedIds = missionsByApp[app.id];
-      const filtered =
-        allowedIds === undefined
-          ? appMissions // fallback: never selected → show all
-          : appMissions.filter((m) => allowedIds.includes(m.id));
+      // `undefined` for this app key → seed the curated defaults for it.
+      // `[]` → user explicitly emptied this app's missions; show 0 rows.
+      // Non-empty array → respect the user's selection verbatim.
+      const fallbackIds = DEFAULT_MISSIONS_BY_APP[app.id] ?? appMissions.map((m) => m.id);
+      const effectiveIds = allowedIds ?? fallbackIds;
+      const filtered = appMissions.filter((m) => effectiveIds.includes(m.id));
       pool.push(...filtered);
     }
     return pool;
