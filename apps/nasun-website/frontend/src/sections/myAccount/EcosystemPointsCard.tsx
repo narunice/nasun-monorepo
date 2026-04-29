@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useSnapshotHistory } from "@/hooks/useSnapshotHistory";
+import { useFilteredTodayScore } from "@/sections/uju/missions/useFilteredTodayScore";
 import { useQuery } from "@tanstack/react-query";
 import { OuterBox, Spinner } from "@/components/ui";
 import { ScoreUnavailableFallback } from "@/sections/myAccount/components/ScoreUnavailableFallback";
@@ -217,6 +218,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   const [days, setDays] = useState<DaysOption>(30);
 
   const { score, isLoading: scoreLoading, isError: scoreError } = useEcosystemScore(identityId);
+  const { filtered: filteredScore } = useFilteredTodayScore(score);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,
@@ -365,7 +367,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
             <div className="rounded-sm bg-teal-800 border border-teal-700 p-3 text-center">
               <p className="text-sm text-nasun-white">Today</p>
               <p className="text-lg font-bold text-emerald-200">
-                {(score?.daily.ecosystemScore ?? 0).toLocaleString("en-US", {
+                {(filteredScore?.daily.ecosystemScore ?? 0).toLocaleString("en-US", {
                   maximumFractionDigits: 0,
                 })}
               </p>

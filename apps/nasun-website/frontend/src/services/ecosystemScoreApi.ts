@@ -27,11 +27,16 @@ export interface EcosystemScoreData {
   referralBonus?: number;
   referralScalingFactor?: number;
   activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
+  /** Distinct on-chain categories the identity has credited today (UTC).
+   *  Used by the frontend to filter today's display by user-curated mission
+   *  set; backend matview already returns this deduped per (identity, day). */
+  todayCategories?: string[];
   daily: {
     baseScore: number;
     stakingScore?: number;
     bonusTotal?: number;
     referralBonus?: number;
+    governancePoints?: number;
     ecosystemScore: number;
   };
   weekly: {
