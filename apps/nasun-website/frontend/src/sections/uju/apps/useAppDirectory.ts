@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { APP_REGISTRY, VALID_APP_IDS, DEFAULT_PINNED_APPS, type AppEntry } from './appRegistry';
-import { APP_MISSION_MAP, MAX_DAILY_MISSIONS } from '../missions/missionRegistry';
+import { APP_MISSION_MAP, DEFAULT_MISSIONS_BY_APP, MAX_DAILY_MISSIONS } from '../missions/missionRegistry';
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -120,11 +120,23 @@ export function loadFromStorage(identityId: string | undefined): AppDirectorySta
     return migrated;
   }
 
-  // Fresh user: seed default-pinned apps. We do not persist the seed so that
-  // a user who immediately deactivates the seeded apps isn't re-seeded next
-  // session (their first save promotes them to "hit" in step 1).
+  // Fresh user: seed default-pinned apps with their default mission subsets
+  // (DEFAULT_MISSIONS_BY_APP — the historic 6 to migrate from my-account).
+  // The seed is NOT persisted so a user who immediately deactivates an app
+  // is not re-seeded next session (their first save promotes them to "hit"
+  // in step 1).
   const seedPinned = DEFAULT_PINNED_APPS.filter((id) => VALID_APP_IDS.has(id));
-  return { explicitPinned: [...seedPinned], missions: {} };
+  const seedMissions: Record<string, string[]> = {};
+  let seeded = 0;
+  for (const id of seedPinned) {
+    const defaults = DEFAULT_MISSIONS_BY_APP[id] ?? [];
+    const validIds = new Set((APP_MISSION_MAP[id] ?? []).map((m) => m.id));
+    const remaining = Math.max(0, MAX_DAILY_MISSIONS - seeded);
+    const picked = defaults.filter((mid) => validIds.has(mid)).slice(0, remaining);
+    seedMissions[id] = picked;
+    seeded += picked.length;
+  }
+  return { explicitPinned: [...seedPinned], missions: seedMissions };
 }
 
 // ---------------------------------------------------------------------------
@@ -220,12 +232,19 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     (id: string) => {
       if (!VALID_APP_IDS.has(id)) return;
       if (state.explicitPinned.includes(id)) return;
-      // On Activate, default-select missions up to remaining cap. Without this
-      // the user has to click each mission individually after activating, and
-      // a deactivate→reactivate cycle silently loses prior selections.
-      const appMissions = APP_MISSION_MAP[id]?.map((m) => m.id) ?? [];
+      // On Activate, default-select the app's curated default missions
+      // (DEFAULT_MISSIONS_BY_APP), clamped to the remaining cap. Falls back
+      // to the full mission list if no defaults are configured. Without this
+      // seed, the user has to click each mission individually after
+      // activating, and a deactivate→reactivate cycle silently loses prior
+      // selections.
+      const validMissionIds = new Set((APP_MISSION_MAP[id] ?? []).map((m) => m.id));
+      const defaults = DEFAULT_MISSIONS_BY_APP[id];
+      const candidate = defaults
+        ? defaults.filter((mid) => validMissionIds.has(mid))
+        : [...validMissionIds];
       const remaining = Math.max(0, MAX_DAILY_MISSIONS - selectedTotal);
-      const seeded = appMissions.slice(0, remaining);
+      const seeded = candidate.slice(0, remaining);
       const nextMissions = { ...state.missions };
       // Preserve any pre-existing selection; only seed if the slot is empty.
       if (!nextMissions[id] || nextMissions[id].length === 0) {

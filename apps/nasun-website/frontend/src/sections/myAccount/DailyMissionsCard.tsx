@@ -31,8 +31,16 @@ interface Mission {
   showFaucet?: boolean;
   comingSoon?: boolean;
   externalUrl?: string;
+  /** Mission no longer credited by the scanner; shown for transparency
+   *  during the my-account → uju migration window. */
+  deprecated?: boolean;
 }
 
+// Mission ids must match useDailyMissions.ts MissionId union exactly. PR3a
+// renamed pado-{lottery,scratchcard,games} → gostop-{lottery,scratchcard,
+// numbermatch} and split gostop into 5 separate categories. PR3b removed
+// chat from the daily-mission UI. This list mirrors useDailyMissions
+// detection so checkboxes track what the scanner actually credits.
 const MISSIONS: Mission[] = [
   {
     id: "faucet",
@@ -55,31 +63,46 @@ const MISSIONS: Mission[] = [
     externalUrl: "https://pado.finance/trade",
   },
   {
-    id: "pado-lottery",
+    id: "gostop-lottery",
     label: "Buy Lottery Ticket",
     description: "Pick 5 numbers and try your luck",
     points: 1,
     externalUrl: "https://gostop.app/lottery",
   },
   {
-    id: "pado-scratchcard",
+    id: "gostop-scratchcard",
     label: "Play Scratch Card",
     description: "Scratch and win instant prizes",
     points: 1,
     externalUrl: "https://gostop.app/scratch",
   },
   {
-    id: "pado-games",
+    id: "gostop-numbermatch",
     label: "Play Number Match",
     description: "Pick numbers for a quick game",
     points: 1,
     externalUrl: "https://gostop.app/numbermatch",
   },
   {
+    id: "gostop-mines",
+    label: "Play Mines",
+    description: "Reveal cells, dodge mines, cash out before you bust",
+    points: 1,
+    externalUrl: "https://gostop.app/mines",
+  },
+  {
+    id: "gostop-crash",
+    label: "Play Crash",
+    description: "Bet on the multiplier, cash out before the crash",
+    points: 1,
+    externalUrl: "https://gostop.app/crash",
+  },
+  {
     id: "chat",
     label: "Chat",
     description: "Say something in Nasun or Pado chat room",
     points: 1,
+    deprecated: true,
   },
 ];
 
@@ -118,7 +141,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
   } = useGovernanceMission();
 
   const isCompleted = useCallback(
-    (id: string) => completedMissions.has(id as any) || localCompleted.has(id),
+    (mission: Mission) => {
+      if (mission.deprecated) return false;
+      return completedMissions.has(mission.id as any) || localCompleted.has(mission.id);
+    },
     [completedMissions, localCompleted],
   );
 
@@ -137,9 +163,15 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     return base;
   }, [hasUnvotedProposal, unvotedCount]);
 
+  // Deprecated missions don't count toward completion progress.
+  const trackedMissions = useMemo(
+    () => activeMissions.filter((m) => !m.deprecated),
+    [activeMissions],
+  );
+
   const completedCount = useMemo(
-    () => activeMissions.filter((m) => isCompleted(m.id)).length,
-    [activeMissions, isCompleted],
+    () => trackedMissions.filter((m) => isCompleted(m)).length,
+    [trackedMissions, isCompleted],
   );
 
   const handleFaucetSuccess = useCallback(() => {
@@ -183,7 +215,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
             Daily Missions
           </h6>
           <p className="text-sm text-nasun-white/80 mt-0.5">
-            {completedCount}/{activeMissions.length} completed
+            {completedCount}/{trackedMissions.length} completed
           </p>
         </div>
       </div>
@@ -193,7 +225,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
         <div
           className="h-full bg-green-500 rounded-full transition-all duration-500"
           style={{
-            width: `${activeMissions.length > 0 ? (completedCount / activeMissions.length) * 100 : 0}%`,
+            width: `${trackedMissions.length > 0 ? (completedCount / trackedMissions.length) * 100 : 0}%`,
           }}
         />
       </div>
@@ -201,15 +233,19 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
       {/* Steps */}
       <div className="space-y-3">
         {activeMissions.map((mission, i) => {
-          const completed = !mission.comingSoon && isCompleted(mission.id);
+          const completed = !mission.comingSoon && !mission.deprecated && isCompleted(mission);
+          const muted = mission.comingSoon || mission.deprecated;
           return (
-            <div key={mission.id} className="flex items-start gap-3">
+            <div
+              key={mission.id}
+              className={`flex items-start gap-3 ${mission.deprecated ? "opacity-60" : ""}`}
+            >
               {/* Circle checkbox */}
               <div
                 className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
                   completed
                     ? "bg-green-500 border-green-500"
-                    : mission.comingSoon
+                    : muted
                       ? "border-nasun-white/60"
                       : "border-nasun-white/80"
                 }`}
@@ -237,13 +273,13 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                   className={`text-sm font-medium ${
                     completed
                       ? "text-nasun-white/80 line-through"
-                      : mission.comingSoon
+                      : muted
                         ? "text-nasun-white/70"
                         : "text-nasun-white"
                   }`}
                 >
                   {i + 1}.{" "}
-                  {mission.externalUrl ? (
+                  {mission.externalUrl && !mission.deprecated ? (
                     <a
                       href={
                         mission.externalUrl.startsWith("https://pado.finance")
@@ -283,13 +319,26 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                       Coming Soon
                     </span>
                   )}
-                  <span className="ml-2 text-sm font-mono text-nasun-white/80">
-                    +{mission.points}
-                  </span>
+                  {mission.deprecated && (
+                    <span className="ml-2 text-sm font-semibold px-1.5 py-0.5 rounded-full bg-nasun-c1/20 text-nasun-c1">
+                      Deprecated
+                    </span>
+                  )}
+                  {!mission.deprecated && (
+                    <span className="ml-2 text-sm font-mono text-nasun-white/80">
+                      +{mission.points}
+                    </span>
+                  )}
                 </p>
-                {!completed && !mission.comingSoon && (
+                {!completed && !mission.comingSoon && !mission.deprecated && (
                   <p className="text-sm text-nasun-white/80 mt-0.5">
                     {mission.description}
+                  </p>
+                )}
+                {mission.deprecated && (
+                  <p className="text-sm text-nasun-white/60 mt-0.5">
+                    No longer credited. Activity continues to count toward
+                    ecosystem points.
                   </p>
                 )}
               </div>
