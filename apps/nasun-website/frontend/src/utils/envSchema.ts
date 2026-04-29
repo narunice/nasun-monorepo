@@ -43,6 +43,18 @@ const BaseEnvSchema = z.object({
 
   // 7. Authentication
   VITE_GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  // Origin (no path) used to build OAuth redirect_uri. Trailing slashes are
+  // stripped so concatenating `${origin}/callback` always yields a single
+  // separator, matching what is registered in Google Cloud Console.
+  VITE_AUTH_CALLBACK_ORIGIN: z
+    .preprocess(
+      (v) => (typeof v === "string" && v !== "" ? v.replace(/\/+$/, "") : v === "" ? undefined : v),
+      z
+        .string()
+        .url()
+        .regex(/^https?:\/\/[^/]+$/, "VITE_AUTH_CALLBACK_ORIGIN must be an origin (no path)")
+        .optional(),
+    ),
   VITE_TWITTER_AUTH_API: z.string().url(),
   VITE_LINK_ACCOUNT_API: z.string().url(),
   VITE_USER_PROFILE_API: z.string().url(),
