@@ -44,9 +44,19 @@ function saveVisitedMission(id: string, current: Set<string>): Set<string> {
 
 interface UjuDailyMissionsCardProps {
   pinnedApps: AppEntry[];
+  /**
+   * Per-app user-selected mission ids.
+   *   undefined for an appId → user has never opened that app's checklist;
+   *                              fallback shows ALL of the app's missions.
+   *   []                     → explicitly emptied; show 0.
+   */
+  missionsByApp: Record<string, string[]>;
 }
 
-export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps }) => {
+export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
+  pinnedApps,
+  missionsByApp,
+}) => {
   const { user } = useAuth();
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
   const [visitedMissions, setVisitedMissions] = useState<Set<string>>(loadVisitedMissions);
@@ -72,18 +82,24 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({ pinnedApps
 
   const { hasUnvotedProposal, unvotedCount } = useGovernanceMission();
 
-  // Build mission pool: base + pinned app missions + conditional governance
+  // Build mission pool: base + pinned app missions (filtered by user selection)
+  // + conditional governance. Order preserved: BASE → app → governance.
   const missionPool = useMemo(() => {
     const pool: UjuMission[] = [...BASE_MISSIONS];
     for (const app of pinnedApps) {
       const appMissions = APP_MISSION_MAP[app.id] ?? [];
-      pool.push(...appMissions);
+      const allowedIds = missionsByApp[app.id];
+      const filtered =
+        allowedIds === undefined
+          ? appMissions // fallback: never selected → show all
+          : appMissions.filter((m) => allowedIds.includes(m.id));
+      pool.push(...filtered);
     }
     if (hasUnvotedProposal) {
       pool.push(makeGovernanceMission(unvotedCount));
     }
     return pool;
-  }, [pinnedApps, hasUnvotedProposal, unvotedCount]);
+  }, [pinnedApps, missionsByApp, hasUnvotedProposal, unvotedCount]);
 
   // Fire notification detector after missionPool is computed, before early return
   useNotificationDetector({

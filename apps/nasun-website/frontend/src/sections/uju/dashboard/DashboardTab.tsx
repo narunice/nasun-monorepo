@@ -17,43 +17,39 @@ interface DashboardTabProps {
 
 export function DashboardTab({ excludeNfts = false }: DashboardTabProps = {}) {
   const { user } = useAuth();
-  const { pinnedApps, isPinned, pin, unpin, atMax } = useAppDirectory(user?.identityId);
+  const directory = useAppDirectory(user?.identityId);
+  const { pinnedApps } = directory;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-      <div className="md:col-span-2 lg:col-span-2">
-        <TotalPointsCard />
-      </div>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+      <TotalPointsCard />
       <HealthGaugeCard />
 
-      <div className="md:col-span-2 lg:col-span-3">
+      <div className="md:col-span-2">
         <NewsEventsCard />
       </div>
 
-      <div className="md:col-span-2 lg:col-span-3" data-uju-anchor="daily-missions">
-        <UjuDailyMissionsCard pinnedApps={pinnedApps} />
-      </div>
-
-      <div className="md:col-span-2 lg:col-span-3">
-        <ActivatedAppsSection
+      <div className="md:col-span-2" data-uju-anchor="daily-missions">
+        <UjuDailyMissionsCard
           pinnedApps={pinnedApps}
-          isPinned={isPinned}
-          pin={pin}
-          unpin={unpin}
-          atMax={atMax}
+          missionsByApp={directory.state.missions}
         />
       </div>
 
-      <div className="md:col-span-2 lg:col-span-3">
+      <div className="md:col-span-2">
+        <ActivatedAppsSection directory={directory} />
+      </div>
+
+      <div className="md:col-span-2">
         <WalletBalanceCard />
       </div>
 
-      <div className="md:col-span-2 lg:col-span-3">
+      <div className="md:col-span-2">
         <StakingCard />
       </div>
 
       {!excludeNfts && (
-        <div className="md:col-span-2 lg:col-span-3">
+        <div className="md:col-span-2">
           <UjuSectionHeader accent title="NFTs Activated" />
           <UjuNftShowcaseCard />
         </div>
