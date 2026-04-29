@@ -117,44 +117,97 @@ describe("loadFromStorage migration", () => {
     expect(store[NEW_KEY_A]).toBeUndefined();
   });
 
-  it("loads new key when present (user-authored state wins, even if empty)", () => {
+  it("on first load, merges existing new-key state with v6 defaults and persists", () => {
     const state: AppDirectoryState = {
       explicitPinned: [],
       missions: {},
     };
     store[NEW_KEY_A] = JSON.stringify(state);
-    expect(loadFromStorage(ID_A)).toEqual(state);
+    const result = loadFromStorage(ID_A);
+    expect(result.explicitPinned).toEqual(["nasun-devnet", "pado", "gostop"]);
+    expect(result.missions["nasun-devnet"]).toEqual(["faucet", "wallet-transfer"]);
+    expect(result.missions.pado).toEqual(["pado-dex"]);
+    expect(result.missions.gostop).toEqual([
+      "gostop-lottery",
+      "gostop-scratchcard",
+      "gostop-numbermatch",
+    ]);
+    // Persisted to new key
+    expect(JSON.parse(store[NEW_KEY_A])).toEqual(result);
+    // Migration flag set
+    expect(store[`uju:app-directory:migrated-v6-defaults:${ID_A}`]).toBe("1");
   });
 
-  it("migrates legacy key to new shape and writes new key", () => {
+  it("on second load (already migrated), returns user-authored state untouched", () => {
+    store[NEW_KEY_A] = JSON.stringify({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-crash"] } });
+    store[`uju:app-directory:migrated-v6-defaults:${ID_A}`] = "1";
+    const result = loadFromStorage(ID_A);
+    expect(result).toEqual({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-crash"] } });
+  });
+
+  it("migration preserves user's prior selections (e.g. gostop-crash kept alongside defaults)", () => {
+    store[NEW_KEY_A] = JSON.stringify({
+      explicitPinned: ["gostop"],
+      missions: { gostop: ["gostop-crash"] },
+    });
+    const result = loadFromStorage(ID_A);
+    expect(result.missions.gostop).toEqual([
+      "gostop-crash",
+      "gostop-lottery",
+      "gostop-scratchcard",
+      "gostop-numbermatch",
+    ]);
+    // Total = 0 (nasun-devnet seeded 2) + (pado seeded 1) + (4 gostop) = 7
+    const total = Object.values(result.missions).reduce((n, ids) => n + ids.length, 0);
+    expect(total).toBe(7);
+  });
+
+  it("migration clamps to 7-cap (existing > cap unchanged, no defaults added)", () => {
+    // User had 7 gostop missions before (all 5 + something hypothetical)
+    store[NEW_KEY_A] = JSON.stringify({
+      explicitPinned: ["gostop"],
+      missions: {
+        gostop: ["gostop-lottery", "gostop-scratchcard", "gostop-numbermatch", "gostop-mines", "gostop-crash"],
+        pado: ["pado-dex"],
+        "nasun-devnet": ["faucet"],
+      },
+    });
+    const result = loadFromStorage(ID_A);
+    const total = Object.values(result.missions).reduce((n, ids) => n + ids.length, 0);
+    expect(total).toBe(7); // existing 7, no addition possible
+    // Existing selections preserved
+    expect(result.missions.gostop).toContain("gostop-crash");
+    expect(result.missions["nasun-devnet"]).toEqual(["faucet"]);
+  });
+
+  it("migrates legacy key + applies v6 defaults", () => {
     store[OLD_KEY_A] = JSON.stringify(["pado"]);
     const result = loadFromStorage(ID_A);
-    expect(result).toEqual({
-      explicitPinned: ["pado"],
-      missions: {},
-    });
-    expect(JSON.parse(store[NEW_KEY_A])).toEqual({
-      explicitPinned: ["pado"],
-      missions: {},
-    });
-    // Old key preserved (rollback safety)
+    expect(result.explicitPinned).toContain("pado");
+    expect(result.explicitPinned).toContain("nasun-devnet");
+    expect(result.explicitPinned).toContain("gostop");
+    expect(result.missions.pado).toEqual(["pado-dex"]);
+    // Old key preserved
     expect(store[OLD_KEY_A]).toBeDefined();
   });
 
-  it("prefers new key when both old and new exist", () => {
+  it("prefers new key when both old and new exist (legacy ignored)", () => {
     store[OLD_KEY_A] = JSON.stringify(["pado"]);
     store[NEW_KEY_A] = JSON.stringify({
       explicitPinned: ["gostop"],
       missions: { gostop: ["gostop-crash"] },
     });
     const result = loadFromStorage(ID_A);
-    expect(result.explicitPinned).toEqual(["gostop"]);
+    expect(result.missions.gostop).toContain("gostop-crash");
   });
 
-  it("filters legacy key entries through VALID_APP_IDS (drops removed apps)", () => {
-    store[OLD_KEY_A] = JSON.stringify(["pado", "jupiter", "ghost"]);
+  it("filters legacy key entries through VALID_APP_IDS before merge (drops removed apps)", () => {
+    store[OLD_KEY_A] = JSON.stringify(["jupiter", "ghost"]);
     const result = loadFromStorage(ID_A);
-    expect(result.explicitPinned).toEqual(["pado"]);
+    // jupiter/ghost dropped, but defaults still added
+    expect(result.explicitPinned).not.toContain("jupiter");
+    expect(result.explicitPinned).not.toContain("ghost");
+    expect(result.explicitPinned).toEqual(["nasun-devnet", "pado", "gostop"]);
   });
 });
 
