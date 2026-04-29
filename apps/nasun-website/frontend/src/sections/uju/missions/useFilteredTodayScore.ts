@@ -72,10 +72,15 @@ export function useFilteredTodayScore(
       },
     };
 
+    // Compare against _rawBaseScore (unfiltered matview value) if the server
+    // has already applied the filter to daily.baseScore. Falls back to
+    // daily.baseScore for older API responses that lack _rawBaseScore.
+    const rawBase = score.daily._rawBaseScore ?? score.daily.baseScore;
+
     return {
       filtered,
       raw: score,
-      hasFilteredOutActivity: filteredBase !== score.daily.baseScore,
+      hasFilteredOutActivity: filteredBase !== rawBase,
     };
   }, [score, directory.state.missions]);
 }
