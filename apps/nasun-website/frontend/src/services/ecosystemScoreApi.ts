@@ -28,11 +28,20 @@ export interface EcosystemScoreData {
   referralScalingFactor?: number;
   activations: Array<{ nftType: string; nftCount: number; bonus?: number }>;
   /** Distinct on-chain categories the identity has credited today (UTC).
-   *  Used by the frontend to filter today's display by user-curated mission
-   *  set; backend matview already returns this deduped per (identity, day). */
+   *  Used by the frontend filter as the optimistic layer; backend also applies
+   *  the same filter before returning daily.baseScore. */
   todayCategories?: string[];
   daily: {
+    /** Filtered base score: only categories in the user's active mission set.
+     *  Backend computes this from user_active_missions; frontend re-computes
+     *  it optimistically from localStorage for instant UI response. */
     baseScore: number;
+    /** Raw (unfiltered) matview base score. Used by the frontend to detect
+     *  hasFilteredOutActivity and show the "Today *" tooltip. */
+    _rawBaseScore?: number;
+    /** True when the user has on-chain activity outside their active mission
+     *  set today (i.e. baseScore < _rawBaseScore). */
+    hasFilteredActivity?: boolean;
     stakingScore?: number;
     bonusTotal?: number;
     referralBonus?: number;
@@ -266,6 +275,49 @@ export async function getBonusHistory(
   if (!res.ok) return [];
   const json = await res.json();
   return json.data ?? [];
+}
+
+export interface ActiveMissionsData {
+  /** Flat list of category ids the user has activated, or null if no record exists yet. */
+  missions: string[] | null;
+  /** ISO timestamp of the last server-side update, or null for no record. */
+  updatedAt: string | null;
+}
+
+/** Fetch the user's active mission selection from the server. */
+export async function getActiveMissions(
+  identityId: string,
+): Promise<ActiveMissionsData | null> {
+  if (!API_BASE) return null;
+  if (!IDENTITY_ID_RE.test(identityId)) return null;
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(`${API_BASE}/ecosystem/active-missions/${encoded}`, {
+    cache: 'no-store',
+  });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return (json.data as ActiveMissionsData) ?? null;
+}
+
+/** Persist the user's active mission selection to the server. Fire-and-forget. */
+export async function putActiveMissions(
+  identityId: string,
+  missions: string[],
+): Promise<void> {
+  if (!API_BASE) return;
+  if (!IDENTITY_ID_RE.test(identityId)) return;
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(`${API_BASE}/ecosystem/active-missions/${encoded}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ missions }),
+  });
+  if (!res.ok) {
+    throw new EcosystemScoreError(
+      `putActiveMissions failed: ${res.status}`,
+      res.status,
+    );
+  }
 }
 
 export async function getEcosystemHealth(): Promise<{

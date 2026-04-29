@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { APP_REGISTRY, VALID_APP_IDS, DEFAULT_PINNED_APPS, type AppEntry } from './appRegistry';
 import { APP_MISSION_MAP, DEFAULT_MISSIONS_BY_APP, MAX_DAILY_MISSIONS } from '../missions/missionRegistry';
+import { getActiveMissions, putActiveMissions } from '@/services/ecosystemScoreApi';
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -203,6 +204,52 @@ export function loadFromStorage(identityId: string | undefined): AppDirectorySta
 }
 
 // ---------------------------------------------------------------------------
+// Backend sync helpers
+// ---------------------------------------------------------------------------
+
+// Tracks the last time this device successfully pushed missions to the server.
+// Used on mount to decide whether local or server state is newer.
+const SYNC_TS_PREFIX = 'uju:missions-sync-ts';
+
+function syncTsKey(identityId: string | undefined): string {
+  return identityId ? `${SYNC_TS_PREFIX}:${identityId}` : `${SYNC_TS_PREFIX}:guest`;
+}
+
+function readSyncTs(identityId: string | undefined): number {
+  try { return parseInt(localStorage.getItem(syncTsKey(identityId)) ?? '0', 10) || 0; } catch { return 0; }
+}
+
+function writeSyncTs(identityId: string | undefined, ts: number): void {
+  try { localStorage.setItem(syncTsKey(identityId), String(ts)); } catch { /* tolerate */ }
+}
+
+// Inverts APP_MISSION_MAP to look up appId by category id.
+const CATEGORY_TO_APP: ReadonlyMap<string, string> = (() => {
+  const m = new Map<string, string>();
+  for (const [appId, missions] of Object.entries(APP_MISSION_MAP)) {
+    for (const mission of missions) m.set(mission.id, appId);
+  }
+  return m;
+})();
+
+/** Reconstructs a missions Record from a flat string[] returned by the server. */
+function reconstructMissionsRecord(flat: string[]): Record<string, string[]> {
+  const out: Record<string, string[]> = {};
+  for (const id of flat) {
+    const appId = CATEGORY_TO_APP.get(id);
+    if (!appId) continue;
+    if (!out[appId]) out[appId] = [];
+    out[appId].push(id);
+  }
+  return out;
+}
+
+/** Flattens the missions Record to a string[] for the server API. */
+function getFlatMissions(missions: Record<string, string[]>): string[] {
+  return Object.values(missions).flat();
+}
+
+// ---------------------------------------------------------------------------
 // Derive
 // ---------------------------------------------------------------------------
 
@@ -262,6 +309,59 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
   useEffect(() => {
     setStateRaw(loadFromStorage(identityId));
   }, [identityId]);
+
+  // Mount sync: pull-then-push for multi-device consistency.
+  // On each identityId mount, fetch the server's current selection. If the
+  // server timestamp is newer than the last local sync, adopt the server state
+  // (another device may have changed missions). Otherwise push local to server
+  // so the server has the latest selection for the midnight snapshot.
+  useEffect(() => {
+    if (!identityId) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const serverData = await getActiveMissions(identityId);
+        if (cancelled) return;
+        const serverTs = serverData?.updatedAt
+          ? new Date(serverData.updatedAt).getTime()
+          : 0;
+        const localTs = readSyncTs(identityId);
+        if (serverTs > localTs && serverData?.missions !== null) {
+          // Server is newer: adopt server missions, keep local explicitPinned.
+          const serverMissionsRecord = reconstructMissionsRecord(serverData!.missions!);
+          setStateRaw((prev) => {
+            const merged: AppDirectoryState = {
+              explicitPinned: prev.explicitPinned,
+              missions: serverMissionsRecord,
+            };
+            writeJson(directoryKey(identityId), merged);
+            writeSyncTs(identityId, serverTs);
+            return merged;
+          });
+        } else {
+          // Local is newer or equal: push to server.
+          const local = loadFromStorage(identityId);
+          await putActiveMissions(identityId, getFlatMissions(local.missions));
+          writeSyncTs(identityId, Date.now());
+        }
+      } catch (e) {
+        console.warn('[useAppDirectory] mount sync failed:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [identityId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Change sync: push missions to server on every selection change (debounced).
+  // Ensures the midnight snapshot job sees the user's final choice for the day.
+  useEffect(() => {
+    if (!identityId) return;
+    const timer = setTimeout(() => {
+      putActiveMissions(identityId, getFlatMissions(state.missions)).then(() => {
+        writeSyncTs(identityId, Date.now());
+      }).catch((e) => console.warn('[useAppDirectory] change sync failed:', e));
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [state.missions, identityId]);
 
   // Sync writer: every action goes through this. No debounce — payload is tiny
   // and a debounced write window can lose changes when other tabs write
