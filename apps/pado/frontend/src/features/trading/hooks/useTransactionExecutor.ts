@@ -50,18 +50,31 @@ export function useTransactionExecutor(): UseTransactionExecutorResult {
 
     const client = getSuiClient();
 
+    // Retryable: gas-coin race from RPC indexing lag (stale coin list).
+    // Network/RPC errors fall through to user-facing parser intentionally.
+    // Safe only when the caller has not invoked tx.setGasPayment() upstream.
+    const RETRYABLE_GAS_RE = /No valid gas coins found|InsufficientGas/i;
+
     const attemptBuild = async (): Promise<Uint8Array> => {
-      try {
-        return await tx.build({ client });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        // RPC lag: previous tx effects not yet indexed — retry once after brief delay
-        if (/No valid gas coins found|InsufficientGas/i.test(msg)) {
-          await new Promise((r) => setTimeout(r, 2000));
-          return tx.build({ client });
+      const delays = [500, 1500];
+      let lastErr: unknown;
+      for (let attempt = 0; attempt <= delays.length; attempt++) {
+        try {
+          return await tx.build({ client });
+        } catch (err) {
+          lastErr = err;
+          const msg = err instanceof Error ? err.message : String(err);
+          if (attempt < delays.length && RETRYABLE_GAS_RE.test(msg)) {
+            if (import.meta.env.DEV) {
+              console.warn('[gas-retry] attempt=', attempt, 'msg=', msg);
+            }
+            await new Promise((r) => setTimeout(r, delays[attempt]));
+            continue;
+          }
+          throw err;
         }
-        throw err;
       }
+      throw lastErr;
     };
 
     try {
