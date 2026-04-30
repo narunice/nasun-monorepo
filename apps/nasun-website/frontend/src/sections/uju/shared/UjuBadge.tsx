@@ -21,7 +21,7 @@ const TONE: Record<Tone, string> = {
 export function UjuBadge({ children, tone = "neutral", className = "" }: UjuBadgeProps) {
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-sm font-medium leading-tight ${TONE[tone]} ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-sm font-light leading-tight ${TONE[tone]} ${className}`}
     >
       {children}
     </span>

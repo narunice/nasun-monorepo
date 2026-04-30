@@ -31,7 +31,7 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
     <div className="flex flex-col h-full bg-uju-card">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-uju-border shrink-0">
-        <span className="text-sm font-medium text-uju-primary">Community Chat</span>
+        <span className="text-sm font-light text-uju-primary">Community Chat</span>
         <div className="flex items-center gap-2">
           <span className="text-sm text-uju-secondary">{onlineCount} online</span>
           {onClose && (
@@ -55,7 +55,7 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
           <button
             key={room.id}
             onClick={() => switchRoom(room.id)}
-            className={`flex-1 py-2 text-sm font-medium transition-colors
+            className={`flex-1 py-2 text-sm font-light transition-colors
               ${activeRoomId === room.id
                 ? "text-pado-2 border-b-2 border-pado-2 -mb-px"
                 : "text-uju-secondary hover:text-uju-primary"}`}

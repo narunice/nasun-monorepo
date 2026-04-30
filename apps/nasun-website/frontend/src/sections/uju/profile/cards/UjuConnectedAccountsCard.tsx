@@ -124,7 +124,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
               </button>,
             ] : showAsConnected && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading ? [
               walletReg.isRegistering ? (
-                <span key="registering" className="text-sm font-bold text-pado-2 animate-pulse">REGISTERING...</span>
+                <span key="registering" className="text-sm font-normal text-pado-2 animate-pulse">REGISTERING...</span>
               ) : (
                 <UjuButton
                   key="register"
@@ -164,7 +164,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
           
           <div className="text-sm">
             <button
-              className="flex items-center gap-1.5 text-uju-secondary hover:text-pado-2 transition-colors font-bold uppercase tracking-widest"
+              className="flex items-center gap-1.5 text-uju-secondary hover:text-pado-2 transition-colors font-normal uppercase tracking-widest"
               onClick={() => setDisclaimerExpanded((v) => !v)}
             >
               <svg
@@ -178,7 +178,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
               Devnet notice
             </button>
             {disclaimerExpanded && (
-              <ul className="mt-3 space-y-2 pl-1 text-uju-secondary/80 leading-relaxed font-medium">
+              <ul className="mt-3 space-y-2 pl-1 text-uju-secondary/80 leading-relaxed font-light">
                 <li className="flex gap-2"><span className="text-pado-2">•</span> Assets on Devnet have no monetary value.</li>
                 <li className="flex gap-2"><span className="text-pado-2">•</span> The network may be reset at any time.</li>
                 <li className="flex gap-2"><span className="text-pado-2">•</span> Your address is your permanent identity on Nasun.</li>
@@ -191,7 +191,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
         {/* Additional Wallets */}
         {user.cognitoToken && (displayAddress || walletReg.registeredWallets.length > 0) && (
           <div className="ml-5 pl-5 border-l border-uju-border/20 space-y-3">
-            <div className="text-sm font-black text-uju-secondary/80 uppercase tracking-[0.2em]">
+            <div className="text-sm font-semibold text-uju-secondary/80 uppercase tracking-[0.2em]">
               Additional Wallets {walletReg.isLoading && "— Loading..."}
             </div>
             {additionalWallets.map((w) => {
@@ -201,7 +201,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
               return (
                 <div key={addr} className="flex items-center justify-between gap-4 p-3 bg-uju-bg/20 rounded-xl border border-uju-border/10">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm text-uju-primary font-mono font-bold truncate">{short}</span>
+                    <span className="text-sm text-uju-primary font-mono font-normal truncate">{short}</span>
                     {isCurrent && <UjuConnectedBadge />}
                   </div>
                   <button
@@ -234,13 +234,13 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
               sessionStorage.getItem('nasun:dismissed-wallet') !== nasunWalletAddress.toLowerCase() && (
               <div className="flex items-center justify-between gap-4 p-3 bg-pado-2/5 rounded-xl border border-pado-2/20">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-sm text-uju-primary font-mono font-bold truncate">
+                  <span className="text-sm text-uju-primary font-mono font-normal truncate">
                     {nasunWalletAddress.slice(0, 6)}...{nasunWalletAddress.slice(-4)}
                   </span>
                   <UjuConnectedBadge />
                 </div>
                 {walletReg.isRegistering ? (
-                  <span className="text-sm font-bold text-pado-2 animate-pulse uppercase">Registering...</span>
+                  <span className="text-sm font-normal text-pado-2 animate-pulse uppercase">Registering...</span>
                 ) : (
                   <UjuButton
                     size="sm"
@@ -258,7 +258,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
             )}
             
             {walletReg.error && (
-              <p className="text-sm font-bold text-red-400 px-1">{walletReg.error}</p>
+              <p className="text-sm font-normal text-red-400 px-1">{walletReg.error}</p>
             )}
             
             <UjuButton

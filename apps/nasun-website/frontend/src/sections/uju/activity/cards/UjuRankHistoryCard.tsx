@@ -27,7 +27,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
   const { data: seasons } = useSeasons();
   const [selectedDays, setSelectedDays] = useState<DateRangeOptionV3>(7);
   const [selectedSeasonId, setSelectedSeasonId] = useState<string | undefined>(undefined);
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Initialize with active season
   useEffect(() => {
@@ -54,7 +54,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
   const headerTrailing = (
     <button
       onClick={() => setIsExpanded((prev) => !prev)}
-      className="text-uju-secondary hover:text-uju-primary transition-colors text-sm font-bold uppercase tracking-widest flex items-center gap-2"
+      className="text-uju-secondary hover:text-uju-primary transition-colors text-sm font-normal uppercase tracking-widest flex items-center gap-2"
     >
       {isExpanded ? 'Collapse' : 'Expand History'}
       <svg
@@ -72,7 +72,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
     <UjuCard className={`animate-fade-slide-up ${className}`}>
       <UjuSectionHeader
         accent
-        title="Rank History"
+        title="Creators Leaderboard History"
         subtitle="Leaderboard standing over time"
         trailing={headerTrailing}
       />
@@ -81,13 +81,13 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
         <div className="space-y-6 mt-4 animate-fade-in">
           {!isAuthenticated ? (
             <div className="flex flex-col items-center justify-center py-8 gap-4 bg-uju-bg/30 rounded-xl border border-uju-border/10">
-              <p className="text-uju-secondary font-medium text-center px-6">
+              <p className="text-uju-secondary font-light text-center px-6">
                 {t('rankHistory.loginRequired')}
               </p>
             </div>
           ) : !twitterUsername ? (
             <div className="flex flex-col items-center justify-center py-8 gap-4 bg-uju-bg/30 rounded-xl border border-uju-border/10">
-              <p className="text-uju-secondary font-medium text-center px-6">
+              <p className="text-uju-secondary font-light text-center px-6">
                 {t('rankHistory.twitterRequired')}
               </p>
               <UjuButton variant="primary" size="sm" as="a" href="/my-account?tab=profile">
@@ -99,11 +99,11 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
               {/* Selectors */}
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest">Season</span>
+                  <span className="text-sm font-normal text-uju-secondary uppercase tracking-widest">Season</span>
                   <select
                     value={selectedSeasonId || ''}
                     onChange={(e) => setSelectedSeasonId(e.target.value)}
-                    className="bg-uju-bg border border-uju-border/30 rounded-xl px-3 py-1.5 text-sm font-bold text-uju-primary focus:outline-none focus:border-pado-2 cursor-pointer transition-all"
+                    className="bg-uju-bg border border-uju-border/30 rounded-xl px-3 py-1.5 text-sm font-normal text-uju-primary focus:outline-none focus:border-pado-2 cursor-pointer transition-all"
                   >
                     {selectableSeasons.map((season) => (
                       <option key={season.seasonId} value={season.seasonId}>
@@ -118,7 +118,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                     <button
                       key={val}
                       onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
-                      className={`px-3 py-1 text-sm font-bold rounded-lg transition-all duration-200 ${
+                      className={`px-3 py-1 text-sm font-normal rounded-lg transition-all duration-200 ${
                         selectedDays === Number(val)
                           ? 'bg-pado-2 text-uju-bg shadow-sm'
                           : 'text-uju-secondary hover:text-uju-primary'
@@ -137,14 +137,14 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                 </div>
               ) : isError || !data || data.history.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-3 bg-uju-bg/30 rounded-2xl border border-uju-border/10">
-                  <p className="text-uju-secondary font-medium text-center px-6">
+                  <p className="text-uju-secondary font-light text-center px-6">
                     {isSeasonEnded
                       ? t('rankHistory.noDataEnded')
                       : t('rankHistory.noData')}
                   </p>
                   <Link
                     to="/community/creators-leaderboard"
-                    className="text-pado-2 hover:text-pado-4 font-bold text-sm transition-colors"
+                    className="text-pado-2 hover:text-pado-4 font-normal text-sm transition-colors"
                   >
                     View Leaderboard
                   </Link>
@@ -164,22 +164,22 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">
+                      <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest mb-1">
                         {isSeasonEnded ? "Final Rank" : "Current Rank"}
                       </p>
-                      <p className="text-2xl font-black text-uju-primary tabular-nums">#{data.stats.currentRank}</p>
+                      <p className="text-2xl font-semibold text-uju-primary tabular-nums">#{data.stats.currentRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">Best Rank</p>
-                      <p className="text-2xl font-black text-pado-4 tabular-nums">#{data.stats.bestRank}</p>
+                      <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest mb-1">Best Rank</p>
+                      <p className="text-2xl font-semibold text-pado-4 tabular-nums">#{data.stats.bestRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">Worst Rank</p>
-                      <p className="text-2xl font-black text-red-400/80 tabular-nums">#{data.stats.worstRank}</p>
+                      <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest mb-1">Worst Rank</p>
+                      <p className="text-2xl font-semibold text-red-400/80 tabular-nums">#{data.stats.worstRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">7D Change</p>
-                      <p className={`text-2xl font-black tabular-nums ${
+                      <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest mb-1">7D Change</p>
+                      <p className={`text-2xl font-semibold tabular-nums ${
                         data.stats.rankImprovement > 0
                           ? 'text-pado-4'
                           : data.stats.rankImprovement < 0
@@ -198,7 +198,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                   {/* Footer CTA */}
                   <Link
                     to="/community/creators-leaderboard"
-                    className="flex items-center justify-center gap-2 py-3 border-t border-uju-border/10 text-pado-2 hover:text-pado-4 font-bold transition-all text-sm group"
+                    className="flex items-center justify-center gap-2 py-3 border-t border-uju-border/10 text-pado-2 hover:text-pado-4 font-normal transition-all text-sm group"
                   >
                     View Full Leaderboard
                     <svg className="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

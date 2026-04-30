@@ -7,8 +7,8 @@ export function UjuScoreUnavailableFallback() {
         </svg>
       </div>
       <div>
-        <p className="text-base font-bold text-amber-400">Score data temporarily unavailable</p>
-        <p className="text-sm font-medium text-uju-secondary mt-1">We're working on it. Your points are safe.</p>
+        <p className="text-base font-normal text-amber-400">Score data temporarily unavailable</p>
+        <p className="text-sm font-light text-uju-secondary mt-1">We're working on it. Your points are safe.</p>
       </div>
     </div>
   );

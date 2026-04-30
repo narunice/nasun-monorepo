@@ -38,12 +38,12 @@ export const UjuAccountItem: FC<UjuAccountItemProps> = ({
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-base font-bold text-uju-primary">{UJU_LABELS[provider]}</span>
+            <span className="text-base font-normal text-uju-primary">{UJU_LABELS[provider]}</span>
             {statusBadge}
           </div>
-          <div className="text-sm font-medium text-uju-secondary truncate">{identifier || "Not linked"}</div>
+          <div className="text-sm font-light text-uju-secondary truncate">{identifier || "Not linked"}</div>
           {description && (
-            <div className="text-sm text-uju-secondary/80 font-medium mt-1">{description}</div>
+            <div className="text-sm text-uju-secondary/80 font-light mt-1">{description}</div>
           )}
         </div>
 

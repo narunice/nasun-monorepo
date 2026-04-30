@@ -68,7 +68,7 @@ export const UjuAddWalletModal: FC<UjuAddWalletModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-uju-primary font-bold text-xl">
+          <h2 className="text-uju-primary font-normal text-xl">
             Add Nasun Wallet
           </h2>
           <button
@@ -79,13 +79,13 @@ export const UjuAddWalletModal: FC<UjuAddWalletModalProps> = ({
           </button>
         </div>
 
-        <p className="text-sm text-uju-secondary font-medium mb-6 text-center leading-relaxed">
+        <p className="text-sm text-uju-secondary font-light mb-6 text-center leading-relaxed">
           Link multiple Nasun wallets to one account to consolidate your activity into a single Nasun Points balance.
         </p>
 
         {subView === "menu" ? (
           <div className="flex flex-col gap-4">
-            <p className="text-sm text-uju-secondary text-center font-bold uppercase tracking-wider mb-2">
+            <p className="text-sm text-uju-secondary text-center font-normal uppercase tracking-wider mb-2">
               Choose an option
             </p>
 
@@ -117,7 +117,7 @@ export const UjuAddWalletModal: FC<UjuAddWalletModalProps> = ({
           <div>
             <button
               onClick={() => setSubView("menu")}
-              className="flex items-center gap-1.5 text-sm font-bold text-pado-2 hover:text-pado-4 transition-colors mb-4"
+              className="flex items-center gap-1.5 text-sm font-normal text-pado-2 hover:text-pado-4 transition-colors mb-4"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />

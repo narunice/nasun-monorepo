@@ -131,7 +131,7 @@ export const UjuOwnedObjects = ({
   return (
     <div className="flex flex-col space-y-8">
       {hasNoAssets && (
-        <p className="text-uju-secondary font-medium">No objects found.</p>
+        <p className="text-uju-secondary font-light">No objects found.</p>
       )}
 
       {/* Ethereum & Polygon NFTs (non-featured) */}
@@ -154,7 +154,7 @@ export const UjuOwnedObjects = ({
             </p>
           ) : paginatedSuiObjects.length > 0 ? (
             <>
-              <h6 className="text-sm font-bold text-uju-primary uppercase tracking-wider mb-2">
+              <h6 className="text-sm font-normal text-uju-primary uppercase tracking-wider mb-2">
                 Nasun Objects ({suiObjects.length}{hasNextPage ? "+" : ""})
               </h6>
               <div className="grid gap-4">
@@ -185,7 +185,7 @@ export const UjuOwnedObjects = ({
               <button
                 key={page}
                 onClick={() => handlePageClick(page)}
-                className={`w-10 h-10 rounded-xl font-bold transition-all duration-200 ${
+                className={`w-10 h-10 rounded-xl font-normal transition-all duration-200 ${
                   currentPage === page
                     ? "bg-pado-2 text-uju-bg shadow-lg shadow-pado-2/20"
                     : "bg-uju-bg border border-uju-border/30 text-uju-secondary hover:border-pado-2/50"

@@ -40,14 +40,14 @@ export function TotalPointsCard() {
         </div>
       ) : (
         <>
-          <p className="text-5xl sm:text-6xl font-bold tabular-nums leading-none bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+          <p className="text-5xl sm:text-6xl font-normal tabular-nums leading-none bg-gradient-to-r from-cyan-400 to-emerald-400 bg-clip-text text-transparent">
             {allTimePoints.toLocaleString()}
           </p>
           <p className="text-base text-uju-secondary mt-2">All-time total</p>
 
           <div className="mt-5 rounded-xl bg-pado-2/5 border border-pado-2/20 p-3">
             <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
-              <span className="text-2xl font-bold text-amber-400 tabular-nums">
+              <span className="text-2xl font-normal text-amber-400 tabular-nums">
                 {todayScore.toLocaleString("en-US", {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 1,

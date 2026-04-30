@@ -161,7 +161,7 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
           {isBattalionRegistered && (
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-red-500/20 rounded-2xl bg-red-500/[0.04]">
               <div className="min-w-0">
-                <h6 className="font-bold text-uju-primary text-base mb-1">{t("accountManagement.withdraw.title")}</h6>
+                <h6 className="font-normal text-uju-primary text-base mb-1">{t("accountManagement.withdraw.title")}</h6>
                 <p className="text-uju-secondary text-sm leading-relaxed">{t("accountManagement.withdraw.description")}</p>
               </div>
               <UjuButton
@@ -178,7 +178,7 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
           {/* Delete Account */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-5 border border-red-500/20 rounded-2xl bg-red-500/[0.04]">
             <div className="min-w-0">
-              <h6 className="font-bold text-uju-primary text-base mb-1">{t("accountManagement.deleteAccount.title")}</h6>
+              <h6 className="font-normal text-uju-primary text-base mb-1">{t("accountManagement.deleteAccount.title")}</h6>
               <p className="text-uju-secondary text-sm leading-relaxed">{t("accountManagement.deleteAccount.description")}</p>
             </div>
             <UjuButton
@@ -197,8 +197,8 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
         <DialogContent className="bg-uju-bg border-uju-border text-uju-primary rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-uju-primary font-bold">Withdraw from Allowlist</DialogTitle>
-            <DialogDescription className="text-uju-secondary font-medium">
+            <DialogTitle className="text-uju-primary font-normal">Withdraw from Allowlist</DialogTitle>
+            <DialogDescription className="text-uju-secondary font-light">
               Are you sure you want to withdraw from the Battalion NFT Allowlist? You can
               re-register later.
             </DialogDescription>

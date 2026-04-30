@@ -217,10 +217,10 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                 </div>
               ) : !isAllianceMinted ? (
                 <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
-                  <p className="text-nasun-white/80 text-base font-medium text-center px-6">
+                  <p className="text-nasun-white/80 text-base font-light text-center px-6">
                     Mint your Alliance NFT to earn Nasun points.
                   </p>
                 </div>
@@ -234,7 +234,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     }`}
                     loading="lazy"
                   />
-                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
                   {allianceData && (
@@ -324,7 +324,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     : "bg-slate-700"
               }`}
             >
-              <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
+              <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
 
@@ -360,7 +360,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                           Confirming on chain...
                         </h6>
                       ) : (
-                        <h6 className="text-emerald-400 font-bold drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
+                        <h6 className="text-emerald-400 font-normal drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
                           Your{" "}
                           <span className="text-nasun-white">
                             {ownedEdition?.name ?? "Genesis Pass"}
@@ -379,14 +379,14 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               ) : isMintClosed ? (
                 /* Mint period ended: activate guidance for secondary market */
                 <div className="flex flex-col items-center gap-2 px-4 text-center">
-                  <p className="text-nasun-white/80 text-base font-medium text-center px-2">
+                  <p className="text-nasun-white/80 text-base font-light text-center px-2">
                     Activate your Genesis Pass to earn Nasun points.
                   </p>
                 </div>
               ) : canMintNow ? (
                 /* User can mint right now: big "Mint now." + closing countdown */
                 <div className="flex flex-col items-center gap-1 px-4 pt-4 text-center">
-                  <h6 className="text-emerald-400 font-bold animate-pulse drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
+                  <h6 className="text-emerald-400 font-normal animate-pulse drop-shadow-[0_2px_8px_rgba(52,211,153,0.4)]">
                     Mint now.
                   </h6>
                   {timeLeft && !timeLeft.isExpired && (
@@ -399,7 +399,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               ) : isGenesisPassRegistered && mintTypeLabel && stageEnded ? (
                 /* User's allowlist stage has ended, guide to public */
                 <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
-                  <h6 className="font-bold">
+                  <h6 className="font-normal">
                     <span className="text-nasun-white/70">
                       {mintTypeLabel} stage ended.
                     </span>
@@ -418,7 +418,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               ) : isGenesisPassRegistered && mintTypeLabel ? (
                 /* In allowlist, stage upcoming */
                 <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
-                  <h6 className="font-bold">
+                  <h6 className="font-normal">
                     <span className="text-nasun-white">You are in</span>
                     <br />
                     <span className="text-amber-400">
@@ -435,7 +435,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               ) : (
                 /* Not in allowlist, public not yet */
                 <div className="flex flex-col items-center gap-1 px-4 pt-6 text-center">
-                  <h6 className="font-bold">
+                  <h6 className="font-normal">
                     <span className="text-nasun-white">You can mint in</span>
                     <br />
                     <span className="text-amber-400">public stage.</span>
@@ -543,7 +543,7 @@ function CountdownDisplay({
           <div key={seg.unit} className="flex items-center gap-1.5">
             <div className="flex flex-col items-center">
               <span
-                className="text-nasun-white text-3xl md:text-4xl font-bold leading-none"
+                className="text-nasun-white text-3xl md:text-4xl font-normal leading-none"
                 style={{
                   fontVariantNumeric: "tabular-nums",
                   minWidth: "2ch",

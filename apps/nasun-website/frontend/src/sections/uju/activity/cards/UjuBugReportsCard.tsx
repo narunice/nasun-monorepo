@@ -28,11 +28,14 @@ const BugReportModal = lazy(
 
 // Uju-native status colors
 const UJU_STATUS_COLORS: Record<BugReport["status"], string> = {
-  pending: "bg-pado-2/10 text-pado-2 border border-pado-2/20",
+  new: "bg-pado-2/10 text-pado-2 border border-pado-2/20",
+  investigating: "bg-amber-400/10 text-amber-300 border border-amber-400/20",
   "in-progress": "bg-blue-400/10 text-blue-300 border border-blue-400/20",
   fixed: "bg-pado-4/10 text-pado-4 border border-pado-4/20",
-  "wont-fix": "bg-uju-secondary/10 text-uju-secondary border border-uju-secondary/20",
-  duplicate: "bg-uju-secondary/10 text-uju-secondary border border-uju-secondary/20",
+  accepted: "bg-pado-4/10 text-pado-4 border border-pado-4/20",
+  "wont-fix": "bg-rose-400/10 text-rose-300 border border-rose-400/20",
+  declined: "bg-rose-400/10 text-rose-300 border border-rose-400/20",
+  duplicate: "bg-uju-secondary/10 text-uju-primary/80 border border-uju-secondary/30",
 };
 
 interface UjuBugReportsCardProps {
@@ -65,7 +68,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
         </div>
       ) : error ? (
         <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
-          <p className="text-sm text-red-400 font-medium text-center">Failed to load reports</p>
+          <p className="text-sm text-red-400 font-light text-center">Failed to load reports</p>
         </div>
       ) : !reports || reports.length === 0 ? (
         <div className="flex flex-col items-center py-8 gap-4 bg-uju-bg/30 rounded-xl border border-uju-border/10">
@@ -100,17 +103,17 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                   className="w-full text-left p-4"
                 >
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-base font-bold text-uju-primary truncate flex-1">
+                    <span className="text-base font-normal text-uju-primary truncate flex-1">
                       {report.title}
                     </span>
                     <span
-                      className={`text-sm font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${UJU_STATUS_COLORS[report.status]}`}
+                      className={`text-sm font-normal px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${UJU_STATUS_COLORS[report.status]}`}
                     >
                       {STATUS_LABELS[report.status]}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-sm font-bold text-uju-secondary/80">
+                    <span className="text-sm font-normal text-uju-secondary/80">
                       {new Date(report.timestamp).toLocaleDateString("en-US", {
                         month: 'short',
                         day: 'numeric',
@@ -118,13 +121,13 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                       })}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-uju-border/30" />
-                    <span className="text-sm font-bold text-pado-2 uppercase tracking-wide">
+                    <span className="text-sm font-normal text-pado-2 uppercase tracking-wide">
                       {report.category}
                     </span>
                     {report.bonusPoints != null && report.bonusPoints > 0 && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-uju-border/30" />
-                        <span className="text-sm font-bold text-pado-4">
+                        <span className="text-sm font-normal text-pado-4">
                           +{report.bonusPoints} PTS
                         </span>
                       </>
@@ -135,7 +138,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                 {isExpanded && (
                   <div className="px-4 pb-4 pt-0 space-y-4 animate-fade-in">
                     <div className="pt-4 border-t border-uju-border/10">
-                      <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest block mb-2">
+                      <span className="text-sm font-normal text-uju-secondary uppercase tracking-widest block mb-2">
                         Description
                       </span>
                       <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -144,7 +147,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                     </div>
                     {report.adminNote && (
                       <div className="p-3 rounded-xl bg-pado-2/5 border border-pado-2/20">
-                        <span className="text-sm font-bold text-pado-2 uppercase tracking-widest block mb-1">
+                        <span className="text-sm font-normal text-pado-2 uppercase tracking-widest block mb-1">
                           Admin Response
                         </span>
                         <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -154,7 +157,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                     )}
                     {report.userReply && (
                       <div className="p-3 rounded-xl bg-blue-400/5 border border-blue-400/20">
-                        <span className="text-sm font-bold text-blue-300 uppercase tracking-widest block mb-1">
+                        <span className="text-sm font-normal text-blue-300 uppercase tracking-widest block mb-1">
                           Your Follow-up
                         </span>
                         <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -168,7 +171,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span className="text-sm font-bold uppercase tracking-wide">
+                          <span className="text-sm font-normal uppercase tracking-wide">
                             Rewarded: +{report.bonusPoints} ecosystem points
                           </span>
                         </div>
@@ -231,7 +234,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
 
   return (
     <div className="pt-4 border-t border-uju-border/10 space-y-3">
-      <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest block">
+      <span className="text-sm font-normal text-uju-secondary uppercase tracking-widest block">
         {report.userReply
           ? "Editing your previous reply"
           : "Still having this issue? Send a follow-up"}
@@ -244,7 +247,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
         className="w-full bg-uju-bg/80 border border-uju-border/30 rounded-xl px-4 py-3 text-sm text-uju-primary placeholder-uju-secondary/40 focus:outline-none focus:border-pado-2 focus:ring-1 focus:ring-pado-2/20 transition-all resize-none"
       />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-bold text-uju-secondary tabular-nums">
+        <span className="text-sm font-normal text-uju-secondary tabular-nums">
           {trimmed.length} / {REPLY_MAX_LENGTH}
         </span>
         <UjuButton
@@ -256,7 +259,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
           {mutation.isPending ? "Sending..." : "Send follow-up"}
         </UjuButton>
       </div>
-      {errorMsg && <p className="text-sm font-bold text-red-400 mt-1">{errorMsg}</p>}
+      {errorMsg && <p className="text-sm font-normal text-red-400 mt-1">{errorMsg}</p>}
     </div>
   );
 };

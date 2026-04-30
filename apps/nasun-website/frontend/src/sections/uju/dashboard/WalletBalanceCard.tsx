@@ -255,7 +255,7 @@ export function WalletBalanceCard() {
         <li className="flex items-center justify-between">
           <span className="text-base text-uju-secondary">NSN</span>
           {isNasunConnected ? (
-            <span className="text-base font-medium text-uju-primary tabular-nums">
+            <span className="text-base font-light text-uju-primary tabular-nums">
               {nasunBalance?.formattedBalance ?? "0"} NSN
             </span>
           ) : (
@@ -280,7 +280,7 @@ export function WalletBalanceCard() {
             </div>
             <div className="flex items-center gap-2">
               {suiDisplayAddress ? (
-                <span className="text-base font-medium text-uju-primary tabular-nums">
+                <span className="text-base font-light text-uju-primary tabular-nums">
                   {suiPending
                     ? "-"
                     : suiError
@@ -342,7 +342,7 @@ export function WalletBalanceCard() {
             <NetworkBadge label="Mainnet" />
           </div>
           {ethAddress ? (
-            <span className="text-base font-medium text-uju-primary tabular-nums">
+            <span className="text-base font-light text-uju-primary tabular-nums">
               {ethBalance
                 ? (() => {
                     const dec = BigInt(ethBalance.decimals);
@@ -361,7 +361,7 @@ export function WalletBalanceCard() {
             // navigate the user there.
             <a
               href="/my-account"
-              className="text-base font-medium text-pado-2 hover:text-pado-4 transition-colors"
+              className="text-base font-light text-pado-2 hover:text-pado-4 transition-colors"
             >
               Connect MetaMask ↗
             </a>
@@ -378,7 +378,7 @@ export function WalletBalanceCard() {
             <div className="flex items-center gap-2">
               {solAddress ? (
                 <>
-                  <span className="text-base font-medium text-uju-primary tabular-nums">
+                  <span className="text-base font-light text-uju-primary tabular-nums">
                     {solPending
                       ? "-"
                       : solFetchError

@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-type Tone = "default" | "violet" | "lavender" | "cyan" | "mint" | "amber" | "coral";
+type Tone = "default" | "violet" | "lavender" | "cyan" | "mint" | "amber" | "coral" | "pado-gradient";
 
 interface UjuStatProps {
   label: string;
@@ -19,6 +19,7 @@ const VALUE_TONE: Record<Tone, string> = {
   mint:     "text-pado-4",
   amber:    "text-nasun-c1",
   coral:    "text-nasun-coral",
+  "pado-gradient": "bg-gradient-to-r from-pado-2 via-pado-4 to-pado-5 bg-clip-text text-transparent",
 };
 
 const ALIGN: Record<NonNullable<UjuStatProps["align"]>, string> = {
@@ -37,8 +38,8 @@ export function UjuStat({
 }: UjuStatProps) {
   return (
     <div className={`flex flex-col gap-1 ${ALIGN[align]} ${className}`}>
-      <span className="text-base font-medium text-uju-secondary">{label}</span>
-      <span className={`text-3xl sm:text-4xl font-bold tabular-nums leading-none ${VALUE_TONE[tone]}`}>
+      <span className="text-base font-light text-uju-secondary">{label}</span>
+      <span className={`text-3xl sm:text-4xl font-semibold tabular-nums leading-none ${VALUE_TONE[tone]}`}>
         {value}
       </span>
       {helper && <span className="text-base text-uju-secondary">{helper}</span>}

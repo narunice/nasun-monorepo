@@ -2,6 +2,8 @@ import { FC } from "react";
 import { useWallet } from "@nasun/wallet";
 import { UjuEcosystemPointsCard } from "./cards/UjuEcosystemPointsCard";
 import { UjuRankHistoryCard } from "./cards/UjuRankHistoryCard";
+import { UjuEcosystemLeaderboardHistoryCard } from "./cards/UjuEcosystemLeaderboardHistoryCard";
+import { UjuDefiLeaderboardHistoryCard } from "./cards/UjuDefiLeaderboardHistoryCard";
 import { UjuCreatorPostsCard } from "./cards/UjuCreatorPostsCard";
 import { UjuGovernanceCard } from "./cards/UjuGovernanceCard";
 import { UjuAppDirectoryCard } from "./cards/UjuAppDirectoryCard";
@@ -17,7 +19,13 @@ export const ActivityTab: FC = () => {
       {/* 1. Ecosystem Points (Highest priority) */}
       <UjuEcosystemPointsCard />
 
-      {/* 2. Rank History Chart */}
+      {/* 2. Ecosystem Leaderboard History */}
+      <UjuEcosystemLeaderboardHistoryCard />
+
+      {/* 3. DeFi Leaderboard History (Pado) */}
+      <UjuDefiLeaderboardHistoryCard />
+
+      {/* 4. Creators Leaderboard History */}
       <UjuRankHistoryCard />
 
       {/* 3. Creator Posts submission */}
