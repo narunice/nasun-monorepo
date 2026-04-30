@@ -133,6 +133,8 @@ export default function LotteryPage() {
         picks: submitted,
         roundNumber: round.roundNumber ?? null,
       })
+      // Second refresh to cover edge cases where the first fetch still saw stale state.
+      setTimeout(refreshTickets, 2_000)
     }
   }
 
@@ -148,6 +150,7 @@ export default function LotteryPage() {
         picks: null,
         roundNumber: round.roundNumber ?? null,
       })
+      setTimeout(refreshTickets, 2_000)
     }
   }
 
