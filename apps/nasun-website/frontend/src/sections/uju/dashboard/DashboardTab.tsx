@@ -1,4 +1,5 @@
 import { TotalPointsCard } from "./TotalPointsCard";
+import { UserInfoCard } from "./UserInfoCard";
 import { HealthGaugeCard } from "./HealthGaugeCard";
 import { ActivatedAppsSection } from "./ActivatedAppsSection";
 import { WalletBalanceCard } from "./WalletBalanceCard";
@@ -20,7 +21,14 @@ export function DashboardTab({ excludeNfts = false }: DashboardTabProps = {}) {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-      <TotalPointsCard />
+      <div className="flex flex-col gap-4 sm:gap-5 min-h-[260px]">
+        <div className="flex-[1] min-h-0">
+          <UserInfoCard />
+        </div>
+        <div className="flex-[2] min-h-0">
+          <TotalPointsCard />
+        </div>
+      </div>
       <HealthGaugeCard />
 
       <div className="md:col-span-2">

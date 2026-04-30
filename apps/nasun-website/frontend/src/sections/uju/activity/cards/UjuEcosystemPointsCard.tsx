@@ -441,6 +441,77 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             />
           </div>
 
+          {/* Today breakdown formula */}
+          {(() => {
+            const todayBase = filteredScore?.daily.baseScore ?? 0;
+            const todayStaking = filteredScore?.daily.stakingScore ?? 0;
+            const todayMultiplier = filteredScore?.multiplier ?? 0;
+            const todayPts = filteredScore?.daily.ecosystemScore ?? 0;
+            const todayBonus = Math.max(
+              0,
+              todayPts - Math.round((todayBase + todayStaking) * todayMultiplier),
+            );
+            return (
+              <div className="rounded-xl bg-pado-2/5 border border-pado-2/20 p-3">
+                <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
+                  <span className="text-2xl font-normal text-amber-400 tabular-nums">
+                    {todayPts.toLocaleString("en-US", {
+                      minimumFractionDigits: 0,
+                      maximumFractionDigits: 1,
+                    })}
+                  </span>
+                  <span
+                    className="text-sm text-uju-secondary"
+                    title={
+                      hasFilteredOutActivity
+                        ? "Today reflects only activities for your activated daily missions. All-time is the full ledger."
+                        : undefined
+                    }
+                  >
+                    pts today{hasFilteredOutActivity ? " *" : ""}
+                  </span>
+                </div>
+                <div className="mt-1.5 flex items-baseline flex-wrap gap-x-1.5 text-sm text-uju-secondary">
+                  <span>=</span>
+                  {todayStaking > 0 ? (
+                    <>
+                      <span>(</span>
+                      <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
+                      <span>base</span>
+                      <span>+</span>
+                      <span
+                        className="font-mono text-pado-4 tabular-nums"
+                        title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
+                      >
+                        {todayStaking}
+                      </span>
+                      <span>staking</span>
+                      <span>)</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
+                      <span>base</span>
+                    </>
+                  )}
+                  <span>×</span>
+                  <span
+                    className={`font-mono tabular-nums ${score?.isPenalized ? "text-red-400" : "text-pado-2"}`}
+                  >
+                    {todayMultiplier.toFixed(1)}x
+                  </span>
+                  <span>mult</span>
+                  {score?.isPenalized && (
+                    <span className="text-red-400/70">(penalized)</span>
+                  )}
+                  <span>+</span>
+                  <span className="font-mono text-pado-5 tabular-nums">{todayBonus}</span>
+                  <span>bonus</span>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* All-Time Category Composition Bar */}
           {allTimeBarSegments.length > 0 && allTimeBarTotal > 0 && (
             <div className="space-y-3">
@@ -465,13 +536,13 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 {allTimeBarSegments.map((seg) => (
                   <span
                     key={seg.category}
-                    className="flex items-center gap-1.5 text-sm font-semibold text-uju-secondary"
+                    className="flex items-center gap-1.5 text-sm font-light text-uju-secondary"
                   >
                     <span
                       className={`w-2 h-2 rounded-full ${CATEGORY_COLORS[seg.category] || "bg-gray-400"}`}
                     />
                     {CATEGORY_LABELS[seg.category] || seg.category}
-                    <span className="text-uju-primary tabular-nums">
+                    <span className="text-uju-primary tabular-nums font-semibold">
                       {seg.points.toLocaleString("en-US")}
                     </span>
                   </span>
