@@ -16,6 +16,8 @@
     "@marsidev/react-turnstile": "^1.5.0",
     "@mysten/sui": "1.45.2",
     "@nasun/devnet-config": "workspace:*",
+    "@nasun/profile-core": "workspace:*",
+    "@nasun/profile-react": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@scure/bip39": "^2.0.1",

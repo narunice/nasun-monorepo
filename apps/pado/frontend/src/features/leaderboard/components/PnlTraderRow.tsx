@@ -1,10 +1,13 @@
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '@nasun/profile-react';
 import type { PnlLeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
 import { TraderAvatar } from './TraderAvatar';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { isValidXHandle, xProfileUrl } from '../lib/x-handle';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
+
+const PROFILE_API = (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | undefined) ?? '';
 
 interface PnlTraderRowProps {
   trader: PnlLeaderboardTrader;
@@ -35,7 +38,9 @@ function formatPnl(pnlUsd: string): string {
 export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
   const navigate = useNavigate();
   const { isFollowing, toggleFollow } = useFollowedTraders();
-  const displayName = trader.nickname || shortenAddress(trader.address);
+  const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
+  const displayName =
+    profile?.customDisplayName || trader.nickname || shortenAddress(trader.address);
   const pnlNum = parseFloat(trader.pnlUsd) || 0;
   const isPositive = pnlNum >= 0;
   const followed = isFollowing(trader.address);
@@ -67,7 +72,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
       </td>
       <td className="py-2.5 px-3">
         <div className="flex items-center gap-2">
-          <TraderAvatar address={trader.address} profileImageUrl={trader.profileImageUrl} size={28} />
+          <TraderAvatar walletAddress={trader.address} profileImageUrl={trader.profileImageUrl} size={31} />
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
               <span className={`text-sm font-medium ${isCurrentUser ? 'text-pd3' : 'text-theme-text-primary'}`}>
@@ -92,7 +97,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
                 </a>
               )}
             </div>
-            {trader.nickname && (
+            {(profile?.customDisplayName || trader.nickname) && (
               <span className="text-xs text-theme-text-muted font-mono">
                 {shortenAddress(trader.address)}
               </span>

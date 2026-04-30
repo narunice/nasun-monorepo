@@ -27,6 +27,11 @@ vi.mock('../hooks/useFollowedTraders', () => ({
   }),
 }));
 
+vi.mock('@nasun/profile-react', () => ({
+  useProfile: () => ({ data: null, isLoading: false, isFetched: true }),
+  resolveAvatarUrl: () => null,
+}));
+
 import { TraderProfileHeader } from './TraderProfileHeader';
 
 const ADDR = '0x' + 'a'.repeat(64);
