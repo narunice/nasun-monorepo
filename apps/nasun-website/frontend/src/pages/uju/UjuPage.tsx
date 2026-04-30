@@ -9,6 +9,9 @@ import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 import { useAuth } from "@/features/auth";
+import { useChat } from "@/features/chat";
+import { SetNicknameModal } from "@/features/chat/components/SetNicknameModal";
+import { useUserStore } from "@/store/userStore";
 
 type Tab = "dashboard" | "activity" | "profile";
 const VALID_TABS = new Set<Tab>(["dashboard", "activity", "profile"]);
@@ -22,6 +25,24 @@ export default function UjuPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = parseTab(searchParams.get("tab"));
   const setTab = (t: Tab) => setSearchParams({ tab: t }, { replace: true });
+
+  // Hoisted nickname-modal state. The chat sidebar is conditionally
+  // mounted (dashboard tab only); keeping the modal state here lets it
+  // survive tab switches so we don't re-prompt the user every time they
+  // return to dashboard. The modal is also rendered at the page root,
+  // outside the conditional sidebar, so it can be shown regardless of
+  // which tab is active.
+  const {
+    canChat: chatCanChat,
+    nickname: chatNickname,
+    needsNickname: chatNeedsNickname,
+    nicknameRateLimit: chatNicknameRateLimit,
+  } = useChat();
+  const chatUserId = useUserStore((s) => s.user?.walletAddress ?? s.user?.identityId);
+  const [nicknameModalOpen, setNicknameModalOpen] = useState(false);
+  useEffect(() => {
+    if (chatNeedsNickname) setNicknameModalOpen(true);
+  }, [chatNeedsNickname]);
 
   const [isDesktop, setIsDesktop] = useState(
     () => window.matchMedia("(min-width: 768px)").matches,
@@ -134,6 +155,18 @@ export default function UjuPage() {
         <div className="fixed inset-0 z-[55] bg-uju-bg flex flex-col">
           <UjuChatSidebar onClose={() => setChatOpen(false)} />
         </div>
+      )}
+
+      {/* Nickname modal — hoisted to the page root so tab switches
+          (which unmount the sidebar) do not reset modal state. */}
+      {nicknameModalOpen && chatCanChat && chatUserId && (
+        <SetNicknameModal
+          addressSuffix={chatUserId.slice(-4)}
+          currentNickname={chatNickname ?? undefined}
+          rateLimit={chatNicknameRateLimit ?? undefined}
+          onSuccess={() => setNicknameModalOpen(false)}
+          onClose={() => setNicknameModalOpen(false)}
+        />
       )}
     </UjuLayout>
     </UjuAppDirectoryProvider>

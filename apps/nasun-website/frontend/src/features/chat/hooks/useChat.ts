@@ -264,7 +264,13 @@ export function useChat() {
     useChatStore.getState().setActiveRoomId(roomId);
   }, []);
 
-  const needsNickname = status === 'connected' && nickname === null;
+  // The chat-server already prefers customDisplayName over the legacy
+  // chat-only nickname (storedToPayload). When customDisplayName is set, the
+  // user's chat sender name will be that value regardless of the legacy
+  // nickname. Suppress the modal in that case so the user is not prompted to
+  // pick a redundant chat-only handle.
+  const needsNickname =
+    status === 'connected' && nickname === null && !user?.customDisplayName;
 
   const setTurnstileToken = useCallback((token: string) => {
     getChatService().setTurnstileToken(token);
