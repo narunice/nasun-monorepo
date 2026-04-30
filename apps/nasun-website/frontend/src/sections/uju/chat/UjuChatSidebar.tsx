@@ -1,11 +1,10 @@
-import { useRef, useMemo, useState, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { useUserStore } from "@/store/userStore";
 import { useChatStore } from "@/store/chatStore";
 import { useChat } from "@/features/chat";
 import MessageList from "@/features/chat/components/MessageList";
 import MessageInput, { type MessageInputHandle } from "@/features/chat/components/MessageInput";
-import { SetNicknameModal } from "@/features/chat/components/SetNicknameModal";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 const SIDEBAR_ROOM_IDS = new Set([0, 10]); // GM + General only (Pado is for Pado app)
@@ -17,16 +16,11 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
     messages, displayStatus, onlineCount, hasMore,
     rooms, activeRoomId,
     sendMessage, loadMore, switchRoom, toggleReaction,
-    canChat, nickname, needsNickname, nicknameRateLimit,
+    canChat,
     setTurnstileToken, turnstileKey,
   } = useChat();
 
   const inputRef = useRef<MessageInputHandle>(null);
-  const [nicknameModalOpen, setNicknameModalOpen] = useState(false);
-
-  useEffect(() => {
-    if (needsNickname) setNicknameModalOpen(true);
-  }, [needsNickname]);
 
   const sidebarRooms = useMemo(
     () => rooms.filter((r) => SIDEBAR_ROOM_IDS.has(r.id)),
@@ -105,16 +99,8 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
         />
       )}
 
-      {/* Nickname modal */}
-      {nicknameModalOpen && canChat && currentUserId && (
-        <SetNicknameModal
-          addressSuffix={currentUserId.slice(-4)}
-          currentNickname={nickname ?? undefined}
-          rateLimit={nicknameRateLimit ?? undefined}
-          onSuccess={() => setNicknameModalOpen(false)}
-          onClose={() => setNicknameModalOpen(false)}
-        />
-      )}
+      {/* Nickname modal is hoisted to UjuPage so it survives sidebar
+          conditional unmount on tab switches. */}
 
       {/* Invisible Turnstile CAPTCHA */}
       {TURNSTILE_SITE_KEY && canChat && (
