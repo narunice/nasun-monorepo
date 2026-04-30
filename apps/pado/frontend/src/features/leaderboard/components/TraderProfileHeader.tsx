@@ -1,3 +1,4 @@
+import { useProfile } from '@nasun/profile-react';
 import { NETWORK_CONFIG } from '../../../config/network';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
@@ -13,6 +14,7 @@ import type { Period } from '../types';
 import type { TraderClassification } from '../hooks/useTraderClassification';
 
 const ACTIVE_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+const PROFILE_API = (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | undefined) ?? '';
 
 const STYLE_COLORS: Record<string, string> = {
   'scalper': 'text-red-400 bg-red-400/10',
@@ -45,7 +47,8 @@ function formatVolume(volumeStr: string): string {
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 
 export function TraderProfileHeader({ address, stats, classification, isLoading, followerCount: followerCountProp }: TraderProfileHeaderProps) {
-  const nickname = stats?.nickname;
+  const { data: profile } = useProfile(address, { endpoint: PROFILE_API });
+  const nickname = profile?.customDisplayName || stats?.nickname;
   const explorerUrl = NETWORK_CONFIG.explorerUrl;
   const { isFollowing, toggleFollow, followCount: followingCount } = useFollowedTraders();
   const followed = isFollowing(address);
@@ -58,7 +61,7 @@ export function TraderProfileHeader({ address, stats, classification, isLoading,
       {/* Identity */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3">
-          <TraderAvatar address={address} profileImageUrl={stats?.profileImageUrl} size={48} />
+          <TraderAvatar walletAddress={address} profileImageUrl={stats?.profileImageUrl} size={53} />
           <div>
             {nickname ? (
               <div>

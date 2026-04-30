@@ -1,9 +1,12 @@
 import { useNavigate } from 'react-router-dom';
+import { useProfile } from '@nasun/profile-react';
 import type { PointsLeaderboardTrader } from '../types';
 import { RankBadge } from './RankBadge';
 import { RankChangeIndicator } from './RankChangeIndicator';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
+
+const PROFILE_API = (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | undefined) ?? '';
 
 interface PointsTraderRowProps {
   trader: PointsLeaderboardTrader;
@@ -36,7 +39,9 @@ function formatVolume(volumeUsd: string): string {
 export function PointsTraderRow({ trader, isCurrentUser }: PointsTraderRowProps) {
   const navigate = useNavigate();
   const { isFollowing, toggleFollow } = useFollowedTraders();
-  const displayName = trader.nickname || shortenAddress(trader.address);
+  const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
+  const displayName =
+    profile?.customDisplayName || trader.nickname || shortenAddress(trader.address);
   const followed = isFollowing(trader.address);
 
   return (
@@ -72,7 +77,7 @@ export function PointsTraderRow({ trader, isCurrentUser }: PointsTraderRowProps)
             </span>
             {trader.hasGenesisPass && <GenesisPassBadge />}
           </div>
-          {trader.nickname && (
+          {(profile?.customDisplayName || trader.nickname) && (
             <span className="text-xs text-theme-text-muted font-mono">
               {shortenAddress(trader.address)}
             </span>

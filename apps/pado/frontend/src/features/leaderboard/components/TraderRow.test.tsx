@@ -24,6 +24,12 @@ vi.mock('../hooks/useFollowedTraders', () => ({
   }),
 }));
 
+// Mock @nasun/profile-react: bypass react-query in unit tests
+vi.mock('@nasun/profile-react', () => ({
+  useProfile: () => ({ data: null, isLoading: false, isFetched: true }),
+  resolveAvatarUrl: () => null,
+}));
+
 import { TraderRow } from './TraderRow';
 
 const ADDR_A = '0x' + 'a'.repeat(64);

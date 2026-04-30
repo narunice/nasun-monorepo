@@ -24,6 +24,11 @@ vi.mock('../hooks/useFollowedTraders', () => ({
   }),
 }));
 
+vi.mock('@nasun/profile-react', () => ({
+  useProfile: () => ({ data: null, isLoading: false, isFetched: true }),
+  resolveAvatarUrl: () => null,
+}));
+
 import { PointsTraderRow } from './PointsTraderRow';
 import { PointsLeaderboardTable } from './PointsLeaderboardTable';
 import { ModeSelector } from './ModeSelector';
