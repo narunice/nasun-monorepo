@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress } from "@nasun/wallet";
 import { useBalance as useEthBalance } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { ACTIVE_EVM_CHAIN, IS_EVM_TESTNET } from "@/config/evmChain";
 import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE } from "@/lib/solana";
 import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
@@ -115,12 +115,7 @@ export function WalletBalanceCard() {
 
   const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
   const ethAddress = (registeredEthAddress ?? undefined) as `0x${string}` | undefined;
-  // ETH balance is still queried from mainnet, but the surfaced badge says
-  // "Testnet" (per product direction). When the wagmi/RainbowKit chains
-  // config is migrated to sepolia (or another testnet), update the chainId
-  // here to keep label/data in sync. SUI/SOL row balances follow the same
-  // pattern via useSuiMainnetBalance / useSolMainnetBalance above.
-  const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: mainnet.id });
+  const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: ACTIVE_EVM_CHAIN.id });
 
   const identityId = user?.identityId ?? undefined;
 
@@ -258,7 +253,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base text-uju-secondary">ETH</span>
-              <NetworkBadge label="Testnet" />
+              <NetworkBadge label={IS_EVM_TESTNET ? "Testnet" : "Mainnet"} />
             </div>
             <div className="flex items-center gap-2">
               {ethAddress ? (
