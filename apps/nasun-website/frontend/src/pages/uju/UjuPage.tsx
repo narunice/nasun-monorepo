@@ -6,6 +6,7 @@ import { DashboardTab, DashboardTabTop, DashboardTabBottom, DashboardNftsSection
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
+import { UjuFeedCarousel } from "../../sections/uju/dashboard/feed/UjuFeedCarousel";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 import { useAuth } from "@/features/auth";
@@ -107,13 +108,18 @@ export default function UjuPage() {
                 </div>
                 <aside
                   ref={chatRef}
-                  className="shrink-0 bg-slate-900 border border-pd2 rounded-lg overflow-hidden shadow-xl flex flex-col"
+                  className="shrink-0 flex flex-col gap-3"
                   style={{
                     width: "320px",
                     height: chatHeight ? `${chatHeight}px` : "640px",
                   }}
                 >
-                  <UjuChatSidebar onClose={() => setChatOpen(false)} />
+                  <div className="flex-1 min-h-0 bg-slate-900 border border-pd2 rounded-lg overflow-hidden shadow-xl flex flex-col">
+                    <UjuChatSidebar onClose={() => setChatOpen(false)} />
+                  </div>
+                  <div className="h-[240px] shrink-0">
+                    <UjuFeedCarousel />
+                  </div>
                 </aside>
               </div>
               <div className="mt-4 sm:mt-5">
