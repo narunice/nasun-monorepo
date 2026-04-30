@@ -34,7 +34,7 @@ let config: LeaderboardConfig | null = null;
 let timer: ReturnType<typeof setInterval> | null = null;
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
-const AGGREGATION_LIMIT = 2000;
+const AGGREGATION_LIMIT = 20000;
 
 /**
  * Run aggregation for all periods.
