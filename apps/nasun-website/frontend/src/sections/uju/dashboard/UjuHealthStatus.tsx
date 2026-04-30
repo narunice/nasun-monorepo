@@ -10,12 +10,18 @@ interface UjuHealthStatusProps {
   isLoading: boolean;
 }
 
-const SIZE = 100;
-const STROKE_WIDTH = 10;
-const RADIUS = (SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+export const DONUT_SIZE = 100;
+export const DONUT_STROKE_WIDTH = 10;
+export const DONUT_RADIUS = (DONUT_SIZE - DONUT_STROKE_WIDTH) / 2;
+export const DONUT_CIRCUMFERENCE = 2 * Math.PI * DONUT_RADIUS;
 
-interface RingTheme {
+// Keep local aliases for component's own use
+const SIZE = DONUT_SIZE;
+const STROKE_WIDTH = DONUT_STROKE_WIDTH;
+const RADIUS = DONUT_RADIUS;
+const CIRCUMFERENCE = DONUT_CIRCUMFERENCE;
+
+export interface RingTheme {
   strokeClass: string;
   trackClass: string;
   pulse: boolean;
@@ -90,12 +96,12 @@ export const UjuHealthStatus: FC<UjuHealthStatusProps> = ({
   );
 };
 
-interface DonutRingProps extends RingTheme {
+export interface DonutRingProps extends RingTheme {
   percent: number;
   label?: string;
 }
 
-function DonutRing({ percent, strokeClass, trackClass, pulse, label }: DonutRingProps) {
+export function DonutRing({ percent, strokeClass, trackClass, pulse, label }: DonutRingProps) {
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
 
   return (

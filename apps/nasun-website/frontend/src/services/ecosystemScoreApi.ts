@@ -18,11 +18,23 @@ export class EcosystemScoreError extends Error {
   }
 }
 
+export interface EcosystemHealthSlot {
+  pct: number;
+  restDays: number;
+  hasNft: boolean;
+}
+
 export interface EcosystemScoreData {
   identityId: string;
   multiplier: number;
   disabled?: boolean;
+  isWeakened?: boolean;
   isPenalized?: boolean;
+  /** V2 per-NFT health data. Present only after ECO_HEALTH_V2_CUTOFF. */
+  health?: {
+    alliance:    EcosystemHealthSlot;
+    genesisPass: EcosystemHealthSlot;
+  };
   bonusTotal?: number;
   referralBonus?: number;
   referralScalingFactor?: number;

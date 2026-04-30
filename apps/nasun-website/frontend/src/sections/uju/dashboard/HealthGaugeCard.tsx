@@ -1,80 +1,64 @@
 import { useAuth } from "@/features/auth";
-import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader } from "../shared";
+import { DonutRing, type RingTheme } from "./UjuHealthStatus";
 
-// ---------------------------------------------------------------------------
-// Health donut visual (mockup)
-//
-// Pure visual structure for now. Shows two donut rings: Alliance and Genesis
-// Pass. Each is binary Active/Locked. The actual multiplier formula is being
-// reworked separately, so we deliberately avoid encoding any real percent here
-// — when the formula PR lands, swap the data source without touching layout.
-// ---------------------------------------------------------------------------
-
-const SIZE = 100;
-const STROKE_WIDTH = 10;
-const RADIUS = (SIZE - STROKE_WIDTH) / 2;
-const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
-
-type Tone = "alliance" | "genesis" | "locked";
-
-const RING_THEME: Record<Tone, { strokeClass: string; trackClass: string }> = {
-  alliance: { strokeClass: "stroke-pado-2", trackClass: "stroke-pado-2/15" },
-  genesis: { strokeClass: "stroke-pado-4", trackClass: "stroke-pado-4/15" },
-  locked: { strokeClass: "stroke-uju-border", trackClass: "stroke-uju-border" },
+// Per-NFT tone: alliance=pado-2, genesis=pado-4, locked=uju-border
+const SLOT_THEMES: Record<"alliance" | "genesis", { active: RingTheme; locked: RingTheme }> = {
+  alliance: {
+    active: { strokeClass: "stroke-pado-2", trackClass: "stroke-pado-2/15", pulse: false },
+    locked: { strokeClass: "stroke-uju-border", trackClass: "stroke-uju-border", pulse: false },
+  },
+  genesis: {
+    active: { strokeClass: "stroke-pado-4", trackClass: "stroke-pado-4/15", pulse: false },
+    locked: { strokeClass: "stroke-uju-border", trackClass: "stroke-uju-border", pulse: false },
+  },
 };
 
-interface HealthDonutProps {
-  active: boolean;
-  tone: Exclude<Tone, "locked">;
+interface HealthDonutSlotProps {
+  hasNft: boolean;
+  percent: number;
+  restDays: number;
+  tone: "alliance" | "genesis";
   title: string;
 }
 
-function HealthDonut({ active, tone, title }: HealthDonutProps) {
-  const theme = active ? RING_THEME[tone] : RING_THEME.locked;
-  const percent = active ? 100 : 0;
-  const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
+function HealthDonutSlot({ hasNft, percent, restDays, tone, title }: HealthDonutSlotProps) {
+  const theme = hasNft ? SLOT_THEMES[tone].active : SLOT_THEMES[tone].locked;
+  const label = hasNft ? `${percent}%` : "Locked";
+  const restLabel = !hasNft ? null : restDays > 0 ? `Resting: ${restDays}d` : "Active";
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative w-24 h-24">
-        <svg
-          viewBox={`0 0 ${SIZE} ${SIZE}`}
-          className="w-full h-full -rotate-90"
-          aria-hidden="true"
-        >
-          <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
-            fill="none"
-            strokeWidth={STROKE_WIDTH}
-            className={theme.trackClass}
-          />
-          <circle
-            cx={SIZE / 2}
-            cy={SIZE / 2}
-            r={RADIUS}
-            fill="none"
-            strokeWidth={STROKE_WIDTH}
-            strokeLinecap="round"
-            strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={dashOffset}
-            className={`${theme.strokeClass} transition-all duration-700 ease-out`}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span
-            className={`text-sm font-semibold tabular-nums ${
-              active ? "text-uju-primary" : "text-uju-secondary"
-            }`}
-          >
-            {active ? "Active" : "Locked"}
-          </span>
-        </div>
-      </div>
+      <DonutRing percent={hasNft ? percent : 0} {...theme} label={label} />
+      <span className="text-sm font-light text-uju-secondary">{title}</span>
+      {restLabel && (
+        <span className="text-sm text-uju-secondary/70">{restLabel}</span>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// V1 fallback: binary Active/Locked donuts (no health data from API yet)
+// ---------------------------------------------------------------------------
+
+import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
+
+function LegacyHealthDonut({
+  active,
+  tone,
+  title,
+}: {
+  active: boolean;
+  tone: "alliance" | "genesis";
+  title: string;
+}) {
+  const theme = active ? SLOT_THEMES[tone].active : SLOT_THEMES[tone].locked;
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <DonutRing percent={active ? 100 : 0} {...theme} label={active ? "Active" : "Locked"} />
       <span className="text-sm font-light text-uju-secondary">{title}</span>
     </div>
   );
@@ -86,44 +70,75 @@ function HealthDonut({ active, tone, title }: HealthDonutProps) {
 
 export function HealthGaugeCard() {
   const { user } = useAuth();
-  const { getActivation, isLoading } = useEcosystemStatus(
+  const { score, isLoading } = useEcosystemScore(user?.identityId);
+  const { getActivation, isLoading: statusLoading } = useEcosystemStatus(
     user?.cognitoToken,
     user?.identityId,
   );
-  const { score } = useEcosystemScore(user?.identityId);
 
+  const multiplier = score?.multiplier ?? null;
+
+  // V2 health data present
+  if (score?.health) {
+    const { alliance, genesisPass } = score.health;
+    return (
+      <UjuCard className="min-h-[260px] flex flex-col">
+        <UjuSectionHeader accent title="Health Status" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4">
+          <div className="flex items-start justify-center gap-6 w-full">
+            <HealthDonutSlot
+              hasNft={alliance.hasNft}
+              percent={alliance.pct}
+              restDays={alliance.restDays}
+              tone="alliance"
+              title="Alliance"
+            />
+            <HealthDonutSlot
+              hasNft={genesisPass.hasNft}
+              percent={genesisPass.pct}
+              restDays={genesisPass.restDays}
+              tone="genesis"
+              title="Genesis Pass"
+            />
+          </div>
+          <div className="w-full rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
+            <p className="text-base font-light text-uju-secondary">Multiplier</p>
+            <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
+              {(multiplier ?? 0).toFixed(2)}x
+            </p>
+          </div>
+        </div>
+      </UjuCard>
+    );
+  }
+
+  // Loading state
+  if (isLoading || statusLoading) {
+    return (
+      <UjuCard className="min-h-[260px] flex items-center justify-center">
+        <Spinner size="sm" />
+      </UjuCard>
+    );
+  }
+
+  // V1 fallback: binary display
   const hasAllianceActive = !!getActivation("alliance");
   const hasGenesisActive = !!getActivation("genesis-pass");
-  const multiplier = score?.multiplier ?? 1;
 
   return (
     <UjuCard className="min-h-[260px] flex flex-col">
       <UjuSectionHeader accent title="Health Status" />
       <div className="flex-1 flex flex-col items-center justify-center gap-4">
-        {isLoading ? (
-          <Spinner size="sm" />
-        ) : (
-          <>
-            <div className="flex items-start justify-center gap-6 w-full">
-              <HealthDonut
-                active={hasAllianceActive}
-                tone="alliance"
-                title="Alliance"
-              />
-              <HealthDonut
-                active={hasGenesisActive}
-                tone="genesis"
-                title="Genesis Pass"
-              />
-            </div>
-            <div className="w-full rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
-              <p className="text-base font-light text-uju-secondary">Multiplier</p>
-              <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
-                {multiplier.toFixed(2)}x
-              </p>
-            </div>
-          </>
-        )}
+        <div className="flex items-start justify-center gap-6 w-full">
+          <LegacyHealthDonut active={hasAllianceActive} tone="alliance" title="Alliance" />
+          <LegacyHealthDonut active={hasGenesisActive} tone="genesis" title="Genesis Pass" />
+        </div>
+        <div className="w-full rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
+          <p className="text-base font-light text-uju-secondary">Multiplier</p>
+          <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
+            {(multiplier ?? 0).toFixed(2)}x
+          </p>
+        </div>
       </div>
     </UjuCard>
   );
