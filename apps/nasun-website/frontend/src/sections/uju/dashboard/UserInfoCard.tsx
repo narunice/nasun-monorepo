@@ -31,7 +31,12 @@ function ecosystemProfileFromUserStore(
   };
 }
 
-export function UserInfoCard() {
+interface UserInfoCardProps {
+  /** Render only the body (no outer UjuCard) for use inside a combined card. */
+  bare?: boolean;
+}
+
+export function UserInfoCard({ bare = false }: UserInfoCardProps = {}) {
   const user = useUserStore((s) => s.user);
   const { data: serverProfile } = useMyProfile();
 
@@ -54,8 +59,8 @@ export function UserInfoCard() {
     setImgError(false);
   }, [avatarUrl]);
 
-  return (
-    <UjuCard className="flex items-center gap-4 h-full">
+  const body = (
+    <div className="flex items-center gap-4">
       <div className="w-16 h-16 rounded-full overflow-hidden border border-uju-border/30 shrink-0 bg-uju-bg/50">
         {avatarUrl && !imgError ? (
           <img
@@ -75,6 +80,9 @@ export function UserInfoCard() {
           {displayName || "—"}
         </p>
       </div>
-    </UjuCard>
+    </div>
   );
+
+  if (bare) return body;
+  return <UjuCard className="h-full">{body}</UjuCard>;
 }

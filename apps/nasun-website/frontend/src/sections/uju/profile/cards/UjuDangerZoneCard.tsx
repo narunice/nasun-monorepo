@@ -195,7 +195,7 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
 
       {/* Confirmation Dialogs */}
       <Dialog open={showWithdrawDialog} onOpenChange={setShowWithdrawDialog}>
-        <DialogContent className="bg-uju-bg border-uju-border text-uju-primary rounded-2xl">
+        <DialogContent className="bg-uju-bg border-uju-border text-uju-primary rounded-lg">
           <DialogHeader>
             <DialogTitle className="text-uju-primary font-normal">Withdraw from Allowlist</DialogTitle>
             <DialogDescription className="text-uju-secondary font-light">

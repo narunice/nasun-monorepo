@@ -14,7 +14,7 @@ mock-up 기준 dashboard와 Activity 탭 재구성:
    - dashboard `ActivatedAppsSection`에서 "Browse App Directory"/"Manage Apps" 버튼 + 모달 mount 제거
    - dashboard에는 read-only "Activated Apps" 섹션만 (이미 활성화된 앱 표시)
    - Activity 탭에 신규 `UjuAppDirectoryCard` (inline list, 모달 X)
-   - footer "Manage in Activity tab →" 링크
+   - footer "Manage in App Directory →" 링크
 
 2. **BASE_MISSIONS 폐기 + Nasun Devnet 신설**:
    - 기존 BASE_MISSIONS (`faucet`/`wallet-transfer`/`chat`)는 항상 표시였음
@@ -42,16 +42,16 @@ mock-up 기준 dashboard와 Activity 탭 재구성:
 
 ## Mission Catalog (PR3b 최종)
 
-| 앱 | Mission ID | Label | Backend Category | Points |
-|---|---|---|---|---|
-| **nasun-devnet** (신규) | `faucet` | Claim Tokens | `faucet` | +1 |
-| | `wallet-transfer` | Send Tokens | `wallet-transfer` | +1 |
-| **pado** | `pado-dex` | Spot Trade | `pado-dex` | +2 |
-| **gostop** | `gostop-crash` | Play Crash | `gostop-crash` | +1 |
-| | `gostop-mines` | Play Mines | `gostop-mines` | +1 |
-| | `gostop-lottery` | Buy Lottery Ticket | `gostop-lottery` | +1 |
-| | `gostop-numbermatch` | Play Number Match | `gostop-numbermatch` | +1 |
-| | `gostop-scratchcard` | Play Scratch Card | `gostop-scratchcard` | +1 |
+| 앱                      | Mission ID           | Label              | Backend Category     | Points |
+| ----------------------- | -------------------- | ------------------ | -------------------- | ------ |
+| **nasun-devnet** (신규) | `faucet`             | Claim Tokens       | `faucet`             | +1     |
+|                         | `wallet-transfer`    | Send Tokens        | `wallet-transfer`    | +1     |
+| **pado**                | `pado-dex`           | Spot Trade         | `pado-dex`           | +2     |
+| **gostop**              | `gostop-crash`       | Play Crash         | `gostop-crash`       | +1     |
+|                         | `gostop-mines`       | Play Mines         | `gostop-mines`       | +1     |
+|                         | `gostop-lottery`     | Buy Lottery Ticket | `gostop-lottery`     | +1     |
+|                         | `gostop-numbermatch` | Play Number Match  | `gostop-numbermatch` | +1     |
+|                         | `gostop-scratchcard` | Play Scratch Card  | `gostop-scratchcard` | +1     |
 
 **총 8 missions, max 7 선택**.
 
@@ -63,29 +63,29 @@ mock-up 기준 dashboard와 Activity 탭 재구성:
 
 ### Frontend
 
-| 파일 | 변경 |
-|---|---|
-| [missions/missionRegistry.ts](apps/nasun-website/frontend/src/sections/uju/missions/missionRegistry.ts) | (1) `BASE_MISSIONS` export 제거. (2) `makeGovernanceMission` 함수 제거. (3) `APP_MISSION_MAP.jupiter`/`cetus`/`uniswap` 제거. (4) 신규 `APP_MISSION_MAP['nasun-devnet']` (faucet, wallet-transfer 2 missions). (5) `APP_BADGE_STYLE`에 `nasun-devnet` 추가, jupiter/cetus/uniswap 제거. (6) `MAX_DAILY_MISSIONS = 7` 신규 export |
-| [apps/appRegistry.ts](apps/nasun-website/frontend/src/sections/uju/apps/appRegistry.ts) | 신규 `nasun-devnet` entry (`isNative: true`, `chain: 'nasun'`, `category: 'utility'` 또는 'staking'). jupiter/cetus/uniswap entry 제거. CHAIN_BADGE_CLASS 갱신 |
-| [hooks/useDailyMissions.ts](apps/nasun-website/frontend/src/hooks/useDailyMissions.ts) | `MissionId`에서 `chat` 제거. `ALL_MISSION_IDS` 갱신. chat detection 블록 (explorer-api fetch) 제거 |
-| [apps/useAppDirectory.ts](apps/nasun-website/frontend/src/sections/uju/apps/useAppDirectory.ts) | (1) **localStorage key v3**: 기존 `uju:app-directory:{id}` (v2) → 신규 `uju:app-directory:v3:{id}`. v3 first write 시 v2 키 삭제 (race 격리). (2) `parseDirectoryState` stale id drop list: `chat`/`pado-games`/`pado-lottery`/`pado-scratchcard`/`jupiter-swap`/`cetus-trade`/`uniswap-swap`/`governance-vote`. (3) `toggleMission`/`setMissions` 7-max enforcement (silent reject). (4) `MAX_DAILY_MISSIONS` re-export. (5) one-time migration toast (localStorage flag) |
-| [apps/AppDirectoryModal.tsx](apps/nasun-website/frontend/src/sections/uju/apps/AppDirectoryModal.tsx) | **삭제**. dashboard에서 모달 호출 없음 |
-| 신규 [activity/cards/UjuAppDirectoryCard.tsx](apps/nasun-website/frontend/src/sections/uju/activity/cards/UjuAppDirectoryCard.tsx) | inline list 카드. APP_REGISTRY iterate + 각 앱 row (앱 헤더 + Activate 토글 + mission checkbox 인라인). 7-max counter "Y/7 missions selected" footer. AppDirectoryRow 추출 안 함 (카드 내부 inline) |
-| [activity/ActivityTab.tsx](apps/nasun-website/frontend/src/sections/uju/activity/ActivityTab.tsx) | UjuAppDirectoryCard mount (Governance와 Assets 사이) |
-| [dashboard/ActivatedAppsSection.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/ActivatedAppsSection.tsx) | "Browse App Directory"/"Manage Apps" 버튼 + AppDirectoryModal mount + import 제거. footer "Manage in Activity tab →" 링크 |
-| [dashboard/UjuDailyMissionsCard.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/UjuDailyMissionsCard.tsx) | `useGovernanceMission`/`makeGovernanceMission` import + 호출 제거. `BASE_MISSIONS` 의존 제거. empty state CTA "Activate apps in Activity tab →" |
-| 신규 [dashboard/UjuFeaturedMissionPreview.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/UjuFeaturedMissionPreview.tsx) | 별도 sibling 카드. "Featured Mission for Bonus Points" + (Coming Soon) 뱃지 |
-| [pages/uju/UjuPage.tsx](apps/nasun-website/frontend/src/pages/uju/UjuPage.tsx) | DashboardTab에 UjuFeaturedMissionPreview 추가 |
+| 파일                                                                                                                                 | 변경                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [missions/missionRegistry.ts](apps/nasun-website/frontend/src/sections/uju/missions/missionRegistry.ts)                              | (1) `BASE_MISSIONS` export 제거. (2) `makeGovernanceMission` 함수 제거. (3) `APP_MISSION_MAP.jupiter`/`cetus`/`uniswap` 제거. (4) 신규 `APP_MISSION_MAP['nasun-devnet']` (faucet, wallet-transfer 2 missions). (5) `APP_BADGE_STYLE`에 `nasun-devnet` 추가, jupiter/cetus/uniswap 제거. (6) `MAX_DAILY_MISSIONS = 7` 신규 export                                                                                                                                           |
+| [apps/appRegistry.ts](apps/nasun-website/frontend/src/sections/uju/apps/appRegistry.ts)                                              | 신규 `nasun-devnet` entry (`isNative: true`, `chain: 'nasun'`, `category: 'utility'` 또는 'staking'). jupiter/cetus/uniswap entry 제거. CHAIN_BADGE_CLASS 갱신                                                                                                                                                                                                                                                                                                             |
+| [hooks/useDailyMissions.ts](apps/nasun-website/frontend/src/hooks/useDailyMissions.ts)                                               | `MissionId`에서 `chat` 제거. `ALL_MISSION_IDS` 갱신. chat detection 블록 (explorer-api fetch) 제거                                                                                                                                                                                                                                                                                                                                                                         |
+| [apps/useAppDirectory.ts](apps/nasun-website/frontend/src/sections/uju/apps/useAppDirectory.ts)                                      | (1) **localStorage key v3**: 기존 `uju:app-directory:{id}` (v2) → 신규 `uju:app-directory:v3:{id}`. v3 first write 시 v2 키 삭제 (race 격리). (2) `parseDirectoryState` stale id drop list: `chat`/`pado-games`/`pado-lottery`/`pado-scratchcard`/`jupiter-swap`/`cetus-trade`/`uniswap-swap`/`governance-vote`. (3) `toggleMission`/`setMissions` 7-max enforcement (silent reject). (4) `MAX_DAILY_MISSIONS` re-export. (5) one-time migration toast (localStorage flag) |
+| [apps/AppDirectoryModal.tsx](apps/nasun-website/frontend/src/sections/uju/apps/AppDirectoryModal.tsx)                                | **삭제**. dashboard에서 모달 호출 없음                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| 신규 [activity/cards/UjuAppDirectoryCard.tsx](apps/nasun-website/frontend/src/sections/uju/activity/cards/UjuAppDirectoryCard.tsx)   | inline list 카드. APP_REGISTRY iterate + 각 앱 row (앱 헤더 + Activate 토글 + mission checkbox 인라인). 7-max counter "Y/7 missions selected" footer. AppDirectoryRow 추출 안 함 (카드 내부 inline)                                                                                                                                                                                                                                                                        |
+| [activity/ActivityTab.tsx](apps/nasun-website/frontend/src/sections/uju/activity/ActivityTab.tsx)                                    | UjuAppDirectoryCard mount (Governance와 Assets 사이)                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| [dashboard/ActivatedAppsSection.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/ActivatedAppsSection.tsx)                | "Browse App Directory"/"Manage Apps" 버튼 + AppDirectoryModal mount + import 제거. footer "Manage in App Directory →" 링크                                                                                                                                                                                                                                                                                                                                                 |
+| [dashboard/UjuDailyMissionsCard.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/UjuDailyMissionsCard.tsx)                | `useGovernanceMission`/`makeGovernanceMission` import + 호출 제거. `BASE_MISSIONS` 의존 제거. empty state CTA "Activate apps in Activity tab →"                                                                                                                                                                                                                                                                                                                            |
+| 신규 [dashboard/UjuFeaturedMissionPreview.tsx](apps/nasun-website/frontend/src/sections/uju/dashboard/UjuFeaturedMissionPreview.tsx) | 별도 sibling 카드. "Featured Mission for Bonus Points" + (Coming Soon) 뱃지                                                                                                                                                                                                                                                                                                                                                                                                |
+| [pages/uju/UjuPage.tsx](apps/nasun-website/frontend/src/pages/uju/UjuPage.tsx)                                                       | DashboardTab에 UjuFeaturedMissionPreview 추가                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ### Tests
 
-| 파일 | 변경 |
-|---|---|
-| `missions/__tests__/missionRegistry.test.ts` | BASE_MISSIONS/governance/chat/jupiter/cetus/uniswap 케이스 제거. nasun-devnet 2 missions, MAX_DAILY_MISSIONS=7 검증. APP_BADGE_STYLE.nasun-devnet 검증 |
-| `hooks/__tests__/useDailyMissions.test.ts` | chat fetch 테스트 제거 |
-| `dashboard/__tests__/UjuDailyMissionsCard.test.tsx` | governance/chat assertion 제거. fresh user 빈 mission pool 검증. empty state CTA 표시 |
-| 신규 `apps/__tests__/useAppDirectory.test.ts` | (1) v3 key migration (v2 → v3 read-only + v3 write 시 v2 삭제), (2) parser drop stale ids, (3) 7-max cap (8th silent reject), (4) one-time toast flag |
-| 신규 `activity/cards/__tests__/UjuAppDirectoryCard.test.tsx` | inline row render, activate/deactivate, mission toggle, 7-max counter, jupiter/cetus/uniswap directory에서 사라짐 |
+| 파일                                                         | 변경                                                                                                                                                   |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `missions/__tests__/missionRegistry.test.ts`                 | BASE_MISSIONS/governance/chat/jupiter/cetus/uniswap 케이스 제거. nasun-devnet 2 missions, MAX_DAILY_MISSIONS=7 검증. APP_BADGE_STYLE.nasun-devnet 검증 |
+| `hooks/__tests__/useDailyMissions.test.ts`                   | chat fetch 테스트 제거                                                                                                                                 |
+| `dashboard/__tests__/UjuDailyMissionsCard.test.tsx`          | governance/chat assertion 제거. fresh user 빈 mission pool 검증. empty state CTA 표시                                                                  |
+| 신규 `apps/__tests__/useAppDirectory.test.ts`                | (1) v3 key migration (v2 → v3 read-only + v3 write 시 v2 삭제), (2) parser drop stale ids, (3) 7-max cap (8th silent reject), (4) one-time toast flag  |
+| 신규 `activity/cards/__tests__/UjuAppDirectoryCard.test.tsx` | inline row render, activate/deactivate, mission toggle, 7-max counter, jupiter/cetus/uniswap directory에서 사라짐                                      |
 
 ---
 
@@ -93,12 +93,12 @@ mock-up 기준 dashboard와 Activity 탭 재구성:
 
 frontend-only. backend 변경 0.
 
-| Step | 작업 | 검증 |
-|---|---|---|
-| 0 | `git status` 클린, `pnpm tsc --noEmit` 0건, `pnpm test` 우리 변경 영향 0 fail | — |
-| 1 | Frontend prod 빌드 | bundle에 `nasun-devnet`/`UjuAppDirectoryCard`/`MAX_DAILY_MISSIONS` 포함 검증 |
-| 2 | rsync to prod | `curl https://nasun.io/?ts=$(date +%s) | grep nasun-devnet` 확인 |
-| 3 | 사용자 시나리오 검증 | 아래 동적 검증 |
+| Step | 작업                                                                          | 검증                                                                         |
+| ---- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----------------------- |
+| 0    | `git status` 클린, `pnpm tsc --noEmit` 0건, `pnpm test` 우리 변경 영향 0 fail | —                                                                            |
+| 1    | Frontend prod 빌드                                                            | bundle에 `nasun-devnet`/`UjuAppDirectoryCard`/`MAX_DAILY_MISSIONS` 포함 검증 |
+| 2    | rsync to prod                                                                 | `curl https://nasun.io/?ts=$(date +%s)                                       | grep nasun-devnet` 확인 |
+| 3    | 사용자 시나리오 검증                                                          | 아래 동적 검증                                                               |
 
 **Race**: 두 탭 (구 v2 + 신 v3) 동시 사용 시 v3 write가 v2 키 삭제로 격리. 데이터 충돌 0.
 

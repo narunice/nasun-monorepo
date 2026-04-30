@@ -157,7 +157,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
             </UjuButton>
           </div>
           <p className="text-sm text-uju-secondary/80 font-normal uppercase tracking-widest">
-            Helpful posts earn more points. Quality matters.
+            Submit posts that contribute to Nasun's growth and the community's success.
           </p>
           {errorMsg && <p className="text-sm font-normal text-red-400 mt-2">{errorMsg}</p>}
           {successMsg && <p className="text-sm font-normal text-pado-4 mt-2">{successMsg}</p>}

@@ -73,7 +73,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
       <UjuSectionHeader
         accent
         title="Creators Leaderboard History"
-        subtitle="Leaderboard standing over time"
+        subtitle="Creators leaderboard is currently paused. Historical data is preserved below."
         trailing={headerTrailing}
       />
 

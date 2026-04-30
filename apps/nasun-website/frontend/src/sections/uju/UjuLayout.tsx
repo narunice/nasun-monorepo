@@ -4,7 +4,7 @@ interface UjuLayoutProps {
 
 export function UjuLayout({ children }: UjuLayoutProps) {
   return (
-    <div className="bg-uju-bg min-h-screen relative font-light">
+    <div className="bg-uju-bg min-h-screen relative font-light font-inter">
       {/* Subtle ambient glow: violet from top-left, lavender from bottom-right.
           Pinned to viewport so scroll content stays crisp. */}
       <div

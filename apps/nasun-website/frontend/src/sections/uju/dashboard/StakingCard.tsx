@@ -12,18 +12,11 @@ import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader } from "../shared";
 import { StakeModal } from "./staking/StakeModal";
 import { SuiStakingPositionsModal } from "./staking/sui/SuiStakingPositionsModal";
 import { useSuiTestnetStakes } from "./staking/sui/useSuiTestnetStaking";
-import { formatSui } from "./staking/sui/suiTestnet";
 import { useUjuWalletRegistration } from "../hooks/useUjuWalletRegistration";
-import { useEthLst, formatEthLstTotal } from "./staking/eth/useEthLst";
+import { useEthLst } from "./staking/eth/useEthLst";
 import { useSolLst } from "./staking/sol/useSolLst";
 import { useSolAddressForIdentity } from "../stores/solAddressStore";
 import { useSuiExternalAddress } from "../stores/suiAddressStore";
-
-const LIDO_STAKING_URL = "https://stake.lido.fi";
-const MARINADE_STAKING_URL = "https://marinade.finance";
-const JITO_STAKING_URL = "https://www.jito.network/staking/";
-const SANCTUM_STAKING_URL = "https://app.sanctum.so/lsts/bsol";
-const SUI_VALIDATORS_URL = "https://suiscan.xyz/mainnet/validators";
 
 // SUI address resolution for read-only display:
 //   1. External typed address (suiAddressStore — set in WalletBalanceCard)
@@ -72,40 +65,10 @@ function Row({ symbol, network, unverified, trailing }: RowProps) {
   );
 }
 
-function ExternalLink({ href, label }: { href: string; label: string }) {
+function ComingSoonTag() {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="text-base font-light text-pado-2 hover:text-pado-4 transition-colors"
-    >
-      {label} ↗
-    </a>
-  );
-}
-
-/** Inline horizontal links group. Avoids dropdown dep. */
-function ManageLinks({
-  links,
-}: {
-  links: Array<{ label: string; href: string }>;
-}) {
-  return (
-    <span className="flex items-center gap-2 flex-wrap justify-end">
-      {links.map((l, i) => (
-        <span key={l.href} className="flex items-center gap-2">
-          {i > 0 && <span className="text-uju-secondary">·</span>}
-          <a
-            href={l.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-light text-pado-2 hover:text-pado-4 transition-colors"
-          >
-            {l.label} ↗
-          </a>
-        </span>
-      ))}
+    <span className="text-sm text-uju-secondary border border-uju-border rounded-full px-2 py-0.5 uppercase tracking-widest">
+      Coming Soon
     </span>
   );
 }
@@ -117,120 +80,28 @@ export function StakingCard() {
   const { summary, isLoading } = useStaking();
   const { registeredWallets, signerAddress } = useUjuWalletRegistration();
 
-  // SUI: external typed > registered > signer-derived
+  // SUI/ETH/SOL staking surfaces are temporarily Coming Soon; we keep the
+  // hooks live so the data is warmed for when we re-enable the rows.
   const suiExternal = useSuiExternalAddress(user?.identityId);
   const suiAddress = useMemo(
     () => pickSuiAddress(suiExternal, registeredWallets, signerAddress),
     [suiExternal, registeredWallets, signerAddress],
   );
-  const isSuiUnverified = !!suiExternal; // typed entry has no proof-of-ownership
-  const { data: suiStakes, isLoading: suiStakesLoading } = useSuiTestnetStakes(suiAddress);
+  void useSuiTestnetStakes(suiAddress);
 
-  // ETH: read from linkedAccounts (proof-of-ownership via my-account flow)
   const ethAddress = (user?.linkedAccounts?.metamask?.walletAddress ?? undefined) as
     | `0x${string}`
     | undefined;
-  const { view: ethLst, isLoading: ethLstLoading, isError: ethLstError } = useEthLst(ethAddress);
+  void useEthLst(ethAddress);
 
-  // SOL: read from solAddressStore (set in WalletBalanceCard)
   const sol = useSolAddressForIdentity(user?.identityId);
   const solAddress = sol?.solAddress ?? null;
-  const { data: solLst, isLoading: solLstLoading, isError: solLstError } = useSolLst(solAddress);
+  void useSolLst(solAddress);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [suiModalOpen, setSuiModalOpen] = useState(false);
 
   const isNasunConnected = (status === "unlocked" && !!account) || isZkConnected;
-
-  const suiTotalStaked = (suiStakes ?? []).reduce((acc, s) => acc + s.principal, 0n);
-  const suiTotalRewards = (suiStakes ?? []).reduce(
-    (acc, s) => acc + (s.estimatedReward ?? 0n),
-    0n,
-  );
-
-  // SUI row: read-only. Connect/disconnect happens in Wallet Integration.
-  const suiTrailing = (() => {
-    if (!suiAddress) {
-      return <ExternalLink href={SUI_VALIDATORS_URL} label="Stake on Sui" />;
-    }
-    if (suiStakesLoading) {
-      return <span className="text-base text-uju-secondary">…</span>;
-    }
-    if (suiTotalStaked > 0n) {
-      return (
-        <>
-          <span className="text-base text-uju-primary tabular-nums">
-            {formatSui(suiTotalStaked)}
-            {suiTotalRewards > 0n ? ` +${formatSui(suiTotalRewards)}` : ""}
-          </span>
-          <UjuButton size="sm" onClick={() => setSuiModalOpen(true)}>
-            View
-          </UjuButton>
-        </>
-      );
-    }
-    return <ExternalLink href={SUI_VALIDATORS_URL} label="Stake on Sui" />;
-  })();
-
-  // ETH row: read-only stETH + wstETH summary (display only).
-  const ethTrailing = (() => {
-    if (!ethAddress) {
-      return <ExternalLink href={LIDO_STAKING_URL} label="Stake on Lido" />;
-    }
-    if (ethLstLoading) {
-      return <span className="text-base text-uju-secondary">…</span>;
-    }
-    if (ethLstError && !ethLst) {
-      return <span className="text-sm text-uju-secondary">RPC unavailable</span>;
-    }
-    if (ethLst && ethLst.totalSteth > 0n) {
-      return (
-        <>
-          <span
-            className="text-base text-uju-primary tabular-nums"
-            title={`stETH ${ethLst.stethBal} · wstETH ${ethLst.wstethBal} (= ${ethLst.stethFromWsteth} stETH)`}
-          >
-            {formatEthLstTotal(ethLst.totalSteth)}
-          </span>
-          <ExternalLink href={LIDO_STAKING_URL} label="Manage" />
-        </>
-      );
-    }
-    return <ExternalLink href={LIDO_STAKING_URL} label="Stake on Lido" />;
-  })();
-
-  // SOL row: read-only LST balances (mSOL/jitoSOL/bSOL).
-  const solTrailing = (() => {
-    if (!solAddress) {
-      return <ExternalLink href={MARINADE_STAKING_URL} label="Stake on Marinade" />;
-    }
-    if (solLstLoading) {
-      return <span className="text-base text-uju-secondary">…</span>;
-    }
-    if (solLstError && !solLst) {
-      return <span className="text-sm text-uju-secondary">RPC unavailable</span>;
-    }
-    const nonZero = (solLst ?? []).filter((l) => l.uiAmount > 0);
-    if (nonZero.length === 0) {
-      return <ExternalLink href={MARINADE_STAKING_URL} label="Stake on Marinade" />;
-    }
-    return (
-      <>
-        <span className="text-base text-uju-primary tabular-nums">
-          {nonZero
-            .map((l) => `${l.uiAmount.toFixed(4).replace(/0+$/, "").replace(/\.$/, "")} ${l.symbol}`)
-            .join(" · ")}
-        </span>
-        <ManageLinks
-          links={[
-            { label: "Marinade", href: MARINADE_STAKING_URL },
-            { label: "Jito", href: JITO_STAKING_URL },
-            { label: "Sanctum", href: SANCTUM_STAKING_URL },
-          ]}
-        />
-      </>
-    );
-  })();
 
   const nasunTrailing = (
     <>
@@ -259,23 +130,9 @@ export function StakingCard() {
 
         <ul className="-mt-1">
           <Row symbol="NSN" trailing={nasunTrailing} />
-          <Row
-            symbol="SUI"
-            network="Mainnet"
-            unverified={isSuiUnverified}
-            trailing={suiTrailing}
-          />
-          <Row
-            symbol="ETH"
-            network="Mainnet"
-            trailing={ethTrailing}
-          />
-          <Row
-            symbol="SOL"
-            network="Mainnet"
-            unverified={!!solAddress}
-            trailing={solTrailing}
-          />
+          <Row symbol="SUI" trailing={<ComingSoonTag />} />
+          <Row symbol="ETH" trailing={<ComingSoonTag />} />
+          <Row symbol="SOL" trailing={<ComingSoonTag />} />
         </ul>
       </UjuCard>
 

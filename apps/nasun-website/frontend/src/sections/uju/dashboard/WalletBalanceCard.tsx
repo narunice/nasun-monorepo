@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress } from "@nasun/wallet";
 import { useBalance as useEthBalance } from "wagmi";
@@ -7,6 +7,7 @@ import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE } from "@/lib/solana";
 import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
 import { UjuCard, UjuBadge, UjuButton, UjuSectionHeader } from "../shared";
+import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
 import {
   useSolAddressForIdentity,
@@ -15,7 +16,6 @@ import {
 import {
   useSuiAddressStore,
   useSuiExternalAddress,
-  isValidSuiAddress,
 } from "../stores/suiAddressStore";
 
 // Plan v5+: read-only mainnet for all external chains. SUI mainnet RPC for
@@ -133,23 +133,14 @@ export function WalletBalanceCard() {
   const hydrateSuiStorage = useSuiAddressStore((s) => s.hydrateFromStorage);
   const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiMainnetBalance(suiDisplayAddress);
 
-  const [suiInput, setSuiInput] = useState("");
-  const [suiInputError, setSuiInputError] = useState("");
-  const [suiEditing, setSuiEditing] = useState(false);
-
-  // Plan v5 3A.2 state owners:
+  // Plan v5 3A.2 state owners (paste UI removed):
   //   store  : solAddress, connectedWallet (shared with StakingCard)
-  //   local  : solInput (edit buffer), solError (form UI), solEditing (mode flag)
   const sol = useSolAddressForIdentity(identityId);
   const setForIdentity = useSolAddressStore((s) => s.setForIdentity);
   const hydrateFromStorage = useSolAddressStore((s) => s.hydrateFromStorage);
 
   const solAddress = sol?.solAddress ?? null;
   const connectedWallet: SolWalletName | null = sol?.connectedWallet ?? null;
-
-  const [solInput, setSolInput] = useState("");
-  const [solError, setSolError] = useState("");
-  const [solEditing, setSolEditing] = useState(false);
 
   const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolMainnetBalance(solAddress);
 
@@ -171,45 +162,19 @@ export function WalletBalanceCard() {
     clearError();
   }, [identityId, hydrateFromStorage, hydrateSuiStorage, clearError]);
 
-  // SUI input ↔ external store sync (one-way, !editing)
-  useEffect(() => {
-    if (!suiEditing) {
-      setSuiInput(suiExternal ?? "");
-    }
-  }, [suiExternal, suiEditing]);
-
-  function handleSuiSave() {
-    if (!identityId) return;
-    const trimmed = suiInput.trim();
-    if (!trimmed) {
-      setSuiExternal(identityId, null);
-      setSuiInputError("");
-      setSuiEditing(false);
-      return;
-    }
-    if (!isValidSuiAddress(trimmed)) {
-      setSuiInputError("Invalid SUI address");
-      return;
-    }
-    setSuiInputError("");
-    setSuiExternal(identityId, trimmed);
-    setSuiEditing(false);
-  }
-
   function handleSuiDisconnect() {
     if (!identityId) return;
     setSuiExternal(identityId, null);
-    setSuiInputError("");
-    setSuiEditing(false);
   }
 
-  // Sync store solAddress → input buffer (one-way, only when not editing).
-  // Mirrors prior identityId useEffect behavior, now driven by store.
-  useEffect(() => {
-    if (!solEditing) {
-      setSolInput(solAddress ?? "");
-    }
-  }, [solAddress, solEditing]);
+  // Inline EVM (MetaMask) link via RainbowKit + challenge/sign/verify.
+  // Reuses the same wallet auth flow as my-account so backend state stays
+  // consistent (linkedAccounts.metamask.walletAddress).
+  const {
+    connect: connectMetaMask,
+    isAuthenticating: isEthAuthenticating,
+    error: ethAuthError,
+  } = useWalletAuth({ mode: "link" });
 
   const isNasunConnected =
     (status === "unlocked" && !!account) || isZkConnected;
@@ -219,31 +184,12 @@ export function WalletBalanceCard() {
     const addr = await adapterConnect(name);
     if (!addr) return;
     setForIdentity(identityId, addr, name);
-    setSolEditing(false);
-    setSolError("");
   }
 
   async function handleWalletDisconnect() {
     if (connectedWallet) await adapterDisconnect(connectedWallet);
     if (identityId) setForIdentity(identityId, null, null);
     clearError();
-  }
-
-  function handleSolSave() {
-    if (!identityId) return;
-    const trimmed = solInput.trim();
-    if (!trimmed) {
-      setForIdentity(identityId, null, null);
-      setSolError("");
-      return;
-    }
-    if (!SOL_ADDRESS_RE.test(trimmed)) {
-      setSolError("Invalid Solana address");
-      return;
-    }
-    setSolError("");
-    setForIdentity(identityId, trimmed, null); // manual-entry: no adapter
-    setSolEditing(false);
   }
 
   return (
@@ -268,7 +214,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base text-uju-secondary">SUI</span>
-              <NetworkBadge label="Mainnet" />
+              <NetworkBadge label="Testnet" />
               {isExternalSui && (
                 <span
                   className="text-xs text-uju-secondary border border-uju-border rounded-full px-2 py-0.5"
@@ -295,76 +241,52 @@ export function WalletBalanceCard() {
                   Disconnect
                 </UjuButton>
               ) : (
-                <UjuButton
-                  variant="ghost"
-                  size="sm"
-                  disabled={!identityId}
-                  onClick={() => setSuiEditing((v) => !v)}
-                >
-                  {suiEditing ? "Cancel" : "Paste"}
-                </UjuButton>
+                <span className="text-sm text-uju-secondary border border-uju-border rounded-full px-2 py-0.5 uppercase tracking-widest">
+                  Coming Soon
+                </span>
               )}
             </div>
           </div>
-          {suiEditing && !isExternalSui && (
-            <div className="mt-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={suiInput}
-                  onChange={(e) => {
-                    setSuiInput(e.target.value);
-                    setSuiInputError("");
-                  }}
-                  placeholder="Paste SUI address (0x... 64-hex)"
-                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-2"
-                />
-                <UjuButton variant="secondary" size="sm" onClick={handleSuiSave}>
-                  Save
-                </UjuButton>
-              </div>
-              {suiInputError && (
-                <p className="text-base text-nasun-scarlet mt-1">{suiInputError}</p>
-              )}
-              <p className="text-sm text-uju-secondary mt-1">
-                Override your nasun-derived SUI address with an external wallet
-                (Sui Wallet, Suiet, etc.). Read-only display — we never sign on
-                your behalf.
-              </p>
-            </div>
-          )}
         </li>
 
         {/* ETH */}
-        <li className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-base text-uju-secondary">ETH</span>
-            <NetworkBadge label="Mainnet" />
+        <li>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-base text-uju-secondary">ETH</span>
+              <NetworkBadge label="Testnet" />
+            </div>
+            <div className="flex items-center gap-2">
+              {ethAddress ? (
+                <span className="text-base font-light text-uju-primary tabular-nums">
+                  {ethBalance
+                    ? (() => {
+                        const dec = BigInt(ethBalance.decimals);
+                        const divisor = 10n ** dec;
+                        const whole = ethBalance.value / divisor;
+                        const rem = ethBalance.value % divisor;
+                        const remStr = rem
+                          .toString()
+                          .padStart(ethBalance.decimals, "0")
+                          .slice(0, 4);
+                        return `${whole}.${remStr} ETH`;
+                      })()
+                    : shortenAddress(ethAddress)}
+                </span>
+              ) : (
+                <UjuButton
+                  variant="secondary"
+                  size="sm"
+                  onClick={connectMetaMask}
+                  disabled={isEthAuthenticating || !identityId}
+                >
+                  {isEthAuthenticating ? "Connecting…" : "Connect MetaMask"}
+                </UjuButton>
+              )}
+            </div>
           </div>
-          {ethAddress ? (
-            <span className="text-base font-light text-uju-primary tabular-nums">
-              {ethBalance
-                ? (() => {
-                    const dec = BigInt(ethBalance.decimals);
-                    const divisor = 10n ** dec;
-                    const whole = ethBalance.value / divisor;
-                    const rem = ethBalance.value % divisor;
-                    const remStr = rem.toString().padStart(ethBalance.decimals, "0").slice(0, 4);
-                    return `${whole}.${remStr} ETH`;
-                  })()
-                : shortenAddress(ethAddress)}
-            </span>
-          ) : (
-            // Linking MetaMask runs through the canonical my-account flow
-            // (challenge → ecrecover → registerWallet). Re-implementing it
-            // inline would duplicate proof-of-ownership logic, so we just
-            // navigate the user there.
-            <a
-              href="/my-account"
-              className="text-base font-light text-pado-2 hover:text-pado-4 transition-colors"
-            >
-              Connect MetaMask ↗
-            </a>
+          {ethAuthError && !ethAddress && (
+            <p className="text-base text-nasun-scarlet mt-1">{ethAuthError}</p>
           )}
         </li>
 
@@ -373,7 +295,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base text-uju-secondary">SOL</span>
-              <NetworkBadge label="Mainnet" />
+              <NetworkBadge label="Testnet" />
             </div>
             <div className="flex items-center gap-2">
               {solAddress ? (
@@ -389,15 +311,7 @@ export function WalletBalanceCard() {
                     <UjuButton variant="ghost" size="sm" onClick={handleWalletDisconnect}>
                       Disconnect
                     </UjuButton>
-                  ) : (
-                    <UjuButton
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setSolEditing((v) => !v)}
-                    >
-                      {solEditing ? "Cancel" : "Edit"}
-                    </UjuButton>
-                  )}
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -421,44 +335,19 @@ export function WalletBalanceCard() {
                       Solflare
                     </UjuButton>
                   )}
-                  <UjuButton
-                    variant="ghost"
-                    size="sm"
-                    disabled={!identityId}
-                    onClick={() => setSolEditing((v) => !v)}
-                  >
-                    {solEditing ? "Cancel" : "Paste"}
-                  </UjuButton>
+                  {installed.length === 0 && (
+                    <span className="text-sm text-uju-secondary">
+                      Install Phantom or Solflare to connect
+                    </span>
+                  )}
                 </>
               )}
             </div>
           </div>
-          {walletError && !solEditing && (
+          {walletError && (
             <p className="text-base text-nasun-scarlet mt-1">
               {friendlyWalletError(walletError)}
             </p>
-          )}
-          {solEditing && (
-            <div className="mt-2">
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={solInput}
-                  onChange={(e) => {
-                    setSolInput(e.target.value);
-                    setSolError("");
-                  }}
-                  placeholder="Paste Solana address"
-                  className="flex-1 text-base bg-uju-bg border border-uju-border rounded-lg px-3 py-1.5 text-uju-primary placeholder:text-uju-secondary focus:outline-none focus:border-pado-2"
-                />
-                <UjuButton variant="secondary" size="sm" onClick={handleSolSave}>
-                  Save
-                </UjuButton>
-              </div>
-              {solError && (
-                <p className="text-base text-nasun-scarlet mt-1">{solError}</p>
-              )}
-            </div>
           )}
         </li>
       </ul>

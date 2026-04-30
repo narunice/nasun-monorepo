@@ -1,15 +1,21 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { useWallet } from "@nasun/wallet";
+import { useAuth } from "@/features/auth";
 import {
   useAvailableWeeks,
   type ScoreLeaderboardResponse,
 } from "@/features/pado-score-leaderboard/usePadoScoreLeaderboard";
+import { useUjuWalletRegistration } from "../../hooks/useUjuWalletRegistration";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader } from "../../shared";
 
 const HISTORY_WEEKS_LIMIT = 8;
+
+// All Nasun wallet addresses are stored and compared as lowercase. This
+// invariant is enforced both here and in `useUjuWalletRegistration`.
+const shortenAddress = (addr: string) =>
+  addr ? `${addr.slice(0, 6)}…${addr.slice(-4)}` : "";
 
 function getChatHttpUrl(): string {
   return import.meta.env.VITE_NASUN_CHAT_HTTP_URL || "";
@@ -37,22 +43,119 @@ interface Props {
   className?: string;
 }
 
+interface WalletOption {
+  address: string;        // lowercase
+  label: string;
+  isPrimary: boolean;
+}
+
 export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
   className = "",
 }) => {
-  const { account } = useWallet();
-  const walletAddress = account?.address?.toLowerCase();
+  const { user } = useAuth();
+  const { registeredWallets } = useUjuWalletRegistration();
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Primary nasun wallet (matches DailyMissionsCard pattern).
+  const primaryAddress = useMemo(() => {
+    const raw =
+      user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
+      user?.walletAddress ??
+      null;
+    return raw ? raw.toLowerCase() : null;
+  }, [user]);
+
+  // Wallet list: primary first, then registered extras (deduped).
+  const walletList = useMemo<WalletOption[]>(() => {
+    const list: WalletOption[] = [];
+    if (primaryAddress) {
+      list.push({ address: primaryAddress, label: "Primary", isPrimary: true });
+    }
+    for (const w of registeredWallets) {
+      const addr = w.walletAddress.toLowerCase();
+      if (addr === primaryAddress) continue;
+      list.push({
+        address: addr,
+        label: w.label || shortenAddress(addr),
+        isPrimary: false,
+      });
+    }
+    return list;
+  }, [primaryAddress, registeredWallets]);
+
+  // Persisted selection per identityId.
+  const storageKey = user?.identityId
+    ? `uju:defi-leaderboard:selectedAddress:${user.identityId}`
+    : null;
+
+  const [selectedAddress, setSelectedAddress] = useState<string | null>(() => {
+    if (!storageKey) return null;
+    try {
+      return localStorage.getItem(storageKey);
+    } catch {
+      return null;
+    }
+  });
+
+  // Reset on identityId change (logout / account switch).
+  useEffect(() => {
+    if (!storageKey) {
+      setSelectedAddress(null);
+      return;
+    }
+    try {
+      const stored = localStorage.getItem(storageKey);
+      setSelectedAddress(stored);
+    } catch {
+      setSelectedAddress(null);
+    }
+  }, [storageKey]);
+
+  // Fallback when current selection no longer exists in walletList (e.g. user
+  // removed it from another tab) — drop back to primary.
+  useEffect(() => {
+    if (walletList.length === 0) return;
+    const stillValid =
+      selectedAddress != null &&
+      walletList.some((w) => w.address === selectedAddress);
+    if (!stillValid) {
+      const fallback = walletList[0]!.address;
+      setSelectedAddress(fallback);
+      if (storageKey) {
+        try {
+          localStorage.setItem(storageKey, fallback);
+        } catch {
+          // ignore storage errors
+        }
+      }
+    }
+  }, [walletList, selectedAddress, storageKey]);
+
+  const handleSelect = (addr: string) => {
+    setSelectedAddress(addr);
+    if (storageKey) {
+      try {
+        localStorage.setItem(storageKey, addr);
+      } catch {
+        // ignore storage errors
+      }
+    }
+  };
+
+  const activeAddress = selectedAddress;
+  const showSwitcher = walletList.length > 1;
 
   const { data: weeksResp } = useAvailableWeeks();
   const weeks = weeksResp?.weeks ?? [];
   const recentWeeks = weeks.slice(0, HISTORY_WEEKS_LIMIT);
 
   // Always fetch the current (latest) week so we can show realtime rank.
+  // Cache key is per weekId only — switching wallets does not refetch
+  // (findRank is a client-side lookup against cached data).
   const currentWeekQuery = useQuery({
     queryKey: ["uju", "defi-history", "week", recentWeeks[0]?.weekId ?? ""],
     queryFn: () => fetchWeeklyPadoLeaderboard(recentWeeks[0]!.weekId),
-    enabled: !!walletAddress && recentWeeks.length > 0,
+    enabled: !!activeAddress && recentWeeks.length > 0,
     staleTime: 30_000,
   });
 
@@ -62,14 +165,14 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
     queries: pastWeeks.map((w) => ({
       queryKey: ["uju", "defi-history", "week", w.weekId],
       queryFn: () => fetchWeeklyPadoLeaderboard(w.weekId),
-      enabled: !!walletAddress && isExpanded,
+      enabled: !!activeAddress && isExpanded,
       staleTime: 5 * 60_000,
     })),
   });
 
   function findRank(data: ScoreLeaderboardResponse | undefined) {
-    if (!data || !walletAddress) return null;
-    const t = data.traders.find((x) => x.address.toLowerCase() === walletAddress);
+    if (!data || !activeAddress) return null;
+    const t = data.traders.find((x) => x.address.toLowerCase() === activeAddress);
     return t?.rank ?? null;
   }
 
@@ -100,23 +203,62 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
     </button>
   );
 
+  // Empty-state branches:
+  // - logged-out: tell the user to sign in.
+  // - logged-in but no primary nasun wallet (mid-onboarding): tell them to register one.
+  let emptyMessage: string | null = null;
+  if (!user) {
+    emptyMessage = "Sign in to view your Pado rank history.";
+  } else if (!primaryAddress) {
+    emptyMessage = "Register a Nasun wallet to view your Pado rank history.";
+  }
+
   return (
     <UjuCard className={`animate-fade-slide-up ${className}`}>
       <UjuSectionHeader
         accent
-        title="DeFi Leaderboard History"
+        title="Pado DeFi Leaderboard History"
         subtitle="Weekly rank on the Pado trading leaderboard"
         trailing={headerTrailing}
       />
 
-      {!walletAddress ? (
+      {emptyMessage ? (
         <div className="flex flex-col items-center py-8 bg-uju-bg/30 rounded-xl border border-uju-border/10">
           <p className="text-uju-secondary font-light text-center px-6">
-            Connect a wallet to view your Pado rank history.
+            {emptyMessage}
           </p>
         </div>
       ) : (
         <div className="space-y-4 mt-2">
+          {/* Wallet selection row */}
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="text-sm font-light text-uju-secondary">
+              Viewing:{" "}
+              <span className="text-uju-primary font-normal">
+                {activeAddress ? shortenAddress(activeAddress) : "—"}
+              </span>
+              {activeAddress && activeAddress === primaryAddress && (
+                <span className="ml-2 px-1.5 py-0.5 rounded text-sm bg-pado-2/10 text-pado-2 border border-pado-2/30">
+                  Primary
+                </span>
+              )}
+            </div>
+            {showSwitcher && (
+              <select
+                value={activeAddress ?? ""}
+                onChange={(e) => handleSelect(e.target.value)}
+                className="text-sm font-normal bg-uju-bg/40 border border-uju-border/30 rounded-lg px-3 py-1.5 text-uju-primary focus:border-pado-2/50 focus:outline-none"
+                aria-label="Switch wallet"
+              >
+                {walletList.map((w) => (
+                  <option key={w.address} value={w.address}>
+                    {w.label} ({shortenAddress(w.address)})
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
           <div className="flex items-center justify-between p-4 bg-uju-bg/40 rounded-xl border border-uju-border/15">
             <div>
               <p className="text-sm font-semibold text-uju-secondary uppercase tracking-widest">

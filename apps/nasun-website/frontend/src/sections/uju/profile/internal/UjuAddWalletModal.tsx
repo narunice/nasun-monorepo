@@ -64,7 +64,7 @@ export const UjuAddWalletModal: FC<UjuAddWalletModalProps> = ({
       />
       {/* Content */}
       <div
-        className="fixed left-[50%] top-[50%] z-[10000] translate-x-[-50%] translate-y-[-50%] bg-uju-card border border-uju-border/30 p-6 sm:p-8 rounded-2xl max-w-sm w-[calc(100%-2rem)] shadow-2xl animate-in fade-in-0 zoom-in-95"
+        className="fixed left-[50%] top-[50%] z-[10000] translate-x-[-50%] translate-y-[-50%] bg-uju-card border border-uju-border/30 p-6 sm:p-8 rounded-lg max-w-sm w-[calc(100%-2rem)] shadow-2xl animate-in fade-in-0 zoom-in-95"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-6">
