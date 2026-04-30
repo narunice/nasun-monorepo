@@ -1,4 +1,6 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
+import Avatar from "boring-avatars";
+import { resolveAvatarUrl, useProfile } from "@nasun/profile-react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
 import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
@@ -14,21 +16,51 @@ import {
 const PAGE_SIZE = 50;
 const MAX_RANK = 2000;
 
-const failedAvatarUrls = new Set<string>();
+const PROFILE_API = (import.meta.env.VITE_USER_PROFILE_API as string | undefined) ?? "";
+const PUBLIC_AVATARS_BASE_URL =
+  (import.meta.env.VITE_PUBLIC_AVATARS_BASE_URL as string | undefined) ?? "";
 
-function TraderAvatar({ url }: { url: string }) {
-  const [failed, setFailed] = useState(() => failedAvatarUrls.has(url));
-  if (failed) return <div className="w-12 h-12 rounded-lg shrink-0 bg-pd1/60" />;
+/**
+ * TraderAvatar — ecosystem profile cascade matching pado/uju/my-account:
+ *   customAvatarKey > linkedAccounts.twitter > linkedAccounts.google
+ *   > leaderboard API fallback > boring-avatars beam identicon.
+ */
+function TraderAvatar({
+  walletAddress,
+  fallbackUrl,
+}: {
+  walletAddress: string;
+  fallbackUrl?: string | null;
+}) {
+  const { data: profile } = useProfile(walletAddress, {
+    endpoint: PROFILE_API,
+    refetchOnWindowFocus: true,
+  });
+  const ecosystemUrl = profile
+    ? resolveAvatarUrl(profile, { baseUrl: PUBLIC_AVATARS_BASE_URL })
+    : null;
+  const imageUrl = ecosystemUrl ?? fallbackUrl ?? null;
+
+  const [failed, setFailed] = useState(false);
+  useEffect(() => { setFailed(false); }, [imageUrl]);
+
+  if (imageUrl && !failed) {
+    return (
+      <img
+        key={`${walletAddress}|${imageUrl}`}
+        src={imageUrl}
+        alt=""
+        className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
+        referrerPolicy="no-referrer"
+        loading="lazy"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
   return (
-    <img
-      src={url}
-      alt=""
-      className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-      referrerPolicy="no-referrer"
-      crossOrigin="anonymous"
-      loading="lazy"
-      onError={() => { failedAvatarUrls.add(url); setFailed(true); }}
-    />
+    <div className="w-12 h-12 rounded-lg shrink-0 overflow-hidden">
+      <Avatar name={walletAddress || "unknown"} variant="beam" size={48} />
+    </div>
   );
 }
 
@@ -75,6 +107,10 @@ function TraderRow({
   highlightedId: string | null;
 }) {
   const isHighlighted = highlightedId === trader.address;
+  const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
+  const displayName =
+    profile?.customDisplayName || trader.nickname || abbreviateAddress(trader.address);
+  const hasName = !!(profile?.customDisplayName || trader.nickname);
   return (
     <tr
       data-address={trader.address}
@@ -87,14 +123,11 @@ function TraderRow({
       </td>
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 min-w-0">
-          {trader.profileImageUrl
-            ? <TraderAvatar url={trader.profileImageUrl} />
-            : <div className="w-12 h-12 rounded-lg shrink-0 bg-pd1/60" />
-          }
+          <TraderAvatar walletAddress={trader.address} fallbackUrl={trader.profileImageUrl} />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5 min-w-0">
-              <span className={`text-sm font-medium truncate inline-block max-w-[14ch] md:max-w-[20ch] ${trader.nickname ? "text-nasun-white" : "text-pd3"}`}>
-                {trader.nickname ?? abbreviateAddress(trader.address)}
+              <span className={`text-sm font-medium truncate inline-block max-w-[14ch] md:max-w-[20ch] ${hasName ? "text-nasun-white" : "text-pd3"}`}>
+                {displayName}
               </span>
               {trader.hasGenesisPass && <GenesisPassBadge />}
             </div>
