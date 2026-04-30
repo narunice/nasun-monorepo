@@ -17,12 +17,11 @@ export interface FetchProfileOptions {
 }
 
 export class ProfileFetchError extends Error {
-  constructor(
-    message: string,
-    public statusCode?: number,
-  ) {
+  statusCode?: number;
+  constructor(message: string, statusCode?: number) {
     super(message);
     this.name = 'ProfileFetchError';
+    this.statusCode = statusCode;
   }
 }
 
