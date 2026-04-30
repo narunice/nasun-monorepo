@@ -32,7 +32,7 @@ export const UjuButton = forwardRef<HTMLButtonElement, UjuButtonProps>(
       <button
         ref={ref}
         {...rest}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl font-medium transition-colors disabled:cursor-not-allowed ${VARIANT[variant]} ${SIZE[size]} ${fullWidth ? "w-full" : ""} ${className}`}
+        className={`inline-flex items-center justify-center gap-2 rounded-xl font-light transition-colors disabled:cursor-not-allowed ${VARIANT[variant]} ${SIZE[size]} ${fullWidth ? "w-full" : ""} ${className}`}
       />
     );
   },

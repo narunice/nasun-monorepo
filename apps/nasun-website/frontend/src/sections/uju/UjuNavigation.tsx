@@ -71,7 +71,7 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
                 type="button"
                 onClick={() => onTabChange(t.id)}
                 aria-current={isActive ? "page" : undefined}
-                className={`flex-1 py-2.5 min-h-[56px] flex flex-col items-center justify-center gap-1 text-sm font-medium transition-colors ${
+                className={`flex-1 py-2.5 min-h-[56px] flex flex-col items-center justify-center gap-1 text-sm font-light transition-colors ${
                   isActive ? "text-pado-2" : "text-uju-secondary"
                 }`}
               >

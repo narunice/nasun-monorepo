@@ -111,14 +111,14 @@ const FeaturedNftDetailModal: FC<{
 
             {edition && (
               <div className="absolute top-4 left-4">
-                <span className="text-sm font-bold tracking-wider uppercase px-3 py-1.5 rounded-lg bg-uju-bg/70 text-uju-primary backdrop-blur-sm border border-uju-border/30">
+                <span className="text-sm font-normal tracking-wider uppercase px-3 py-1.5 rounded-lg bg-uju-bg/70 text-uju-primary backdrop-blur-sm border border-uju-border/30">
                   #{tid} {edition.name}
                 </span>
               </div>
             )}
 
             <div className="absolute top-4 right-4">
-              <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-pado-4/20 text-pado-4 backdrop-blur-sm border border-pado-4/30">
+              <span className="px-2.5 py-1 rounded-lg text-sm font-normal bg-pado-4/20 text-pado-4 backdrop-blur-sm border border-pado-4/30">
                 FEATURED
               </span>
             </div>
@@ -128,10 +128,10 @@ const FeaturedNftDetailModal: FC<{
 
           <div className="p-5 -mt-8 relative space-y-4">
             <div>
-              <h3 className="text-xl font-bold text-uju-primary leading-tight">
+              <h3 className="text-xl font-normal text-uju-primary leading-tight">
                 {displayName}
               </h3>
-              <p className="text-sm text-pado-2 font-medium mt-1">{collectionName}</p>
+              <p className="text-sm text-pado-2 font-light mt-1">{collectionName}</p>
             </div>
 
             {description && (
@@ -140,16 +140,16 @@ const FeaturedNftDetailModal: FC<{
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Token ID</p>
-                <p className="text-uju-primary font-mono font-bold">{hasTid ? tid : "Pending"}</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Token ID</p>
+                <p className="text-uju-primary font-mono font-normal">{hasTid ? tid : "Pending"}</p>
               </div>
               <div className="p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Standard</p>
-                <p className="text-uju-primary font-bold">{nft.tokenType || "ERC-1155"}</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Standard</p>
+                <p className="text-uju-primary font-normal">{nft.tokenType || "ERC-1155"}</p>
               </div>
               <div className="col-span-2 p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Contract</p>
-                <p className="text-uju-primary font-mono font-bold">{shortAddress}</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Contract</p>
+                <p className="text-uju-primary font-mono font-normal">{shortAddress}</p>
               </div>
             </div>
 
@@ -158,7 +158,7 @@ const FeaturedNftDetailModal: FC<{
                 <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
                 </svg>
-                <span className="font-medium">Trading opens after the drop ends</span>
+                <span className="font-light">Trading opens after the drop ends</span>
               </div>
             )}
 
@@ -246,21 +246,21 @@ const FeaturedNftCard: FC<{
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-uju-bg/60">
-                <span className="text-uju-secondary text-sm font-medium">No preview</span>
+                <span className="text-uju-secondary text-sm font-light">No preview</span>
               </div>
             )}
           </div>
         )}
 
         <div className="p-3 h-[4.5rem] flex flex-col justify-center border-t border-uju-border/10">
-          <p className="text-sm text-uju-primary truncate font-bold group-hover:text-pado-2 transition-colors">
+          <p className="text-sm text-uju-primary truncate font-normal group-hover:text-pado-2 transition-colors">
             {displayName}
           </p>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-bold leading-none bg-pado-4/10 text-pado-4 border border-pado-4/20">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-normal leading-none bg-pado-4/10 text-pado-4 border border-pado-4/20">
               FEATURED
             </span>
-            <span className="text-sm text-uju-secondary truncate font-medium">
+            <span className="text-sm text-uju-secondary truncate font-light">
               {collectionName}
             </span>
           </div>
@@ -316,12 +316,12 @@ const AllianceDetailModal: FC<{
               className="w-full h-full object-cover"
             />
             <div className="absolute top-4 left-4">
-              <span className="text-sm font-bold uppercase px-3 py-1.5 rounded-lg bg-uju-bg/70 text-uju-primary backdrop-blur-sm border border-uju-border/30">
+              <span className="text-sm font-normal uppercase px-3 py-1.5 rounded-lg bg-uju-bg/70 text-uju-primary backdrop-blur-sm border border-uju-border/30">
                 {name}
               </span>
             </div>
             <div className="absolute top-4 right-4">
-              <span className="px-2.5 py-1 rounded-lg text-sm font-bold bg-pado-4/20 text-pado-4 backdrop-blur-sm border border-pado-4/30">
+              <span className="px-2.5 py-1 rounded-lg text-sm font-normal bg-pado-4/20 text-pado-4 backdrop-blur-sm border border-pado-4/30">
                 FEATURED
               </span>
             </div>
@@ -330,8 +330,8 @@ const AllianceDetailModal: FC<{
 
           <div className="p-5 -mt-8 relative space-y-4">
             <div>
-              <h3 className="text-xl font-bold text-uju-primary">{name}</h3>
-              <p className="text-sm text-pado-2 font-medium mt-1">Alliance NFT</p>
+              <h3 className="text-xl font-normal text-uju-primary">{name}</h3>
+              <p className="text-sm text-pado-2 font-light mt-1">Alliance NFT</p>
             </div>
             <p className="text-sm text-uju-secondary leading-relaxed">
               A unique character from the Nasun Alliance collection, minted on Nasun Devnet.
@@ -339,16 +339,16 @@ const AllianceDetailModal: FC<{
 
             <div className="grid grid-cols-2 gap-3 text-sm">
               <div className="p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Network</p>
-                <p className="text-uju-primary font-bold">Nasun Devnet</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Network</p>
+                <p className="text-uju-primary font-normal">Nasun Devnet</p>
               </div>
               <div className="p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Standard</p>
-                <p className="text-uju-primary font-bold">Nasun Object</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Standard</p>
+                <p className="text-uju-primary font-normal">Nasun Object</p>
               </div>
               <div className="col-span-2 p-3 rounded-xl bg-uju-bg/50 border border-uju-border/20">
-                <p className="text-uju-secondary text-sm font-medium uppercase tracking-wider mb-1">Object ID</p>
-                <p className="text-uju-primary font-mono font-bold">{shortObj}</p>
+                <p className="text-uju-secondary text-sm font-light uppercase tracking-wider mb-1">Object ID</p>
+                <p className="text-uju-primary font-mono font-normal">{shortObj}</p>
               </div>
             </div>
 
@@ -407,12 +407,12 @@ const AllianceNftCard: FC<{ data: AllianceData }> = ({ data }) => {
           />
         </div>
         <div className="p-3 h-[4.5rem] flex flex-col justify-center border-t border-uju-border/10">
-          <p className="text-sm text-uju-primary truncate font-bold group-hover:text-pado-2 transition-colors">{name}</p>
+          <p className="text-sm text-uju-primary truncate font-normal group-hover:text-pado-2 transition-colors">{name}</p>
           <div className="flex items-center gap-1.5 mt-1">
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-bold leading-none bg-pado-4/10 text-pado-4 border border-pado-4/20">
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-sm font-normal leading-none bg-pado-4/10 text-pado-4 border border-pado-4/20">
               FEATURED
             </span>
-            <span className="text-sm text-uju-secondary truncate font-medium">Alliance</span>
+            <span className="text-sm text-uju-secondary truncate font-light">Alliance</span>
           </div>
         </div>
       </button>
@@ -481,7 +481,7 @@ export const UjuFeaturedNftSection: FC<FeaturedNftSectionProps> = ({
       <div className="flex items-center justify-between gap-3 p-4 rounded-xl bg-pado-4/5 border border-pado-4/20 mb-6">
         <div className="flex items-center gap-3">
           <Wallet className="w-5 h-5 text-pado-4 flex-shrink-0" />
-          <p className="text-sm text-uju-secondary font-medium">
+          <p className="text-sm text-uju-secondary font-light">
             Link your EVM wallet to view Genesis Pass
           </p>
         </div>
@@ -504,7 +504,7 @@ export const UjuFeaturedNftSection: FC<FeaturedNftSectionProps> = ({
       {justMinted && nfts.length === 0 && (
         <div className="flex items-center gap-3 p-4 rounded-xl bg-pado-4/5 border border-pado-4/20 mb-4">
           <div className="w-4 h-4 border-2 border-pado-4/60 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-          <p className="text-sm text-pado-4 font-medium">
+          <p className="text-sm text-pado-4 font-light">
             Your Genesis Pass is being confirmed on the blockchain. It may take a moment to appear.
           </p>
         </div>

@@ -116,7 +116,7 @@ function DonutRing({ percent, strokeClass, trackClass, pulse, label }: DonutRing
       </svg>
       {label && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-bold text-uju-primary tabular-nums">{label}</span>
+          <span className="text-lg font-normal text-uju-primary tabular-nums">{label}</span>
         </div>
       )}
     </div>

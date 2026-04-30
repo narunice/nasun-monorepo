@@ -106,7 +106,7 @@ export function SuiStakingPositionsModal({
                       className="flex items-center justify-between gap-3 rounded-xl border border-uju-border bg-uju-bg/40 px-3 py-2.5"
                     >
                       <div className="min-w-0">
-                        <p className="text-base font-medium text-white truncate">
+                        <p className="text-base font-light text-white truncate">
                           {v ? shortValidator(v.name) : s.validatorAddress.slice(0, 10) + "…"}
                         </p>
                         <p className="text-sm text-uju-secondary tabular-nums">
@@ -132,7 +132,7 @@ export function SuiStakingPositionsModal({
                         href={`${SUI_STAKE_OBJECT_URL}/${s.stakedSuiId}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-medium text-pado-2 hover:text-pado-4 shrink-0"
+                        className="text-sm font-light text-pado-2 hover:text-pado-4 shrink-0"
                       >
                         View ↗
                       </a>

@@ -109,7 +109,7 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             <span
-              className={`text-sm font-medium px-1.5 py-0.5 rounded ${
+              className={`text-sm font-light px-1.5 py-0.5 rounded ${
                 isComingSoon
                   ? "text-uju-secondary bg-uju-border/30"
                   : CHAIN_BADGE_CLASS[app.chain]
@@ -142,14 +142,14 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
           ) : isActive ? (
             <button
               onClick={() => directory.deactivate(app.id)}
-              className="text-sm font-medium text-pado-2 border border-pado-2/30 rounded px-3 py-1.5 hover:bg-pado-2/10 transition-colors"
+              className="text-sm font-light text-pado-2 border border-pado-2/30 rounded px-3 py-1.5 hover:bg-pado-2/10 transition-colors"
             >
               Deactivate
             </button>
           ) : (
             <button
               onClick={() => directory.activate(app.id)}
-              className="text-sm font-medium text-uju-primary border border-pado-4/40 bg-pado-4/10 rounded px-3 py-1.5 hover:bg-pado-4/20 transition-colors"
+              className="text-sm font-light text-uju-primary border border-pado-4/40 bg-pado-4/10 rounded px-3 py-1.5 hover:bg-pado-4/20 transition-colors"
             >
               Activate
             </button>
@@ -188,7 +188,7 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-uju-primary">
+                      <span className="text-sm font-light text-uju-primary">
                         {m.label}
                       </span>
                       {m.points !== undefined && m.points > 0 && (

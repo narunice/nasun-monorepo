@@ -193,7 +193,7 @@ export function BannerCarousel() {
         >
           {/* Top: tag + nav arrows */}
           <div className="flex items-center justify-between">
-            <span className={`text-base font-medium px-2.5 py-0.5 rounded-full ${accent.tag}`}>
+            <span className={`text-base font-light px-2.5 py-0.5 rounded-full ${accent.tag}`}>
               {banner.tag}
             </span>
             <div className="flex items-center gap-2 text-uju-secondary">

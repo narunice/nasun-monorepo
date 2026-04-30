@@ -233,7 +233,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
             >
               {/* App badge */}
               <span
-                className={`shrink-0 text-sm font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
+                className={`shrink-0 text-sm font-light px-2 py-0.5 rounded-md whitespace-nowrap ${
                   completed ? 'bg-uju-border/30 text-uju-secondary' : `${badge.bg} ${badge.text}`
                 }`}
               >
@@ -251,7 +251,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
                     }
                     target={isExternal ? '_blank' : undefined}
                     rel={isExternal ? 'noopener noreferrer' : undefined}
-                    className={`text-base font-medium inline-flex items-center gap-1 ${
+                    className={`text-base font-light inline-flex items-center gap-1 ${
                       completed
                         ? 'text-uju-secondary line-through'
                         : 'text-uju-primary hover:text-pado-2 transition-colors'
@@ -278,7 +278,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
                   </a>
                 ) : (
                   <span
-                    className={`text-base font-medium ${
+                    className={`text-base font-light ${
                       completed ? 'text-uju-secondary line-through' : 'text-uju-primary'
                     }`}
                   >
@@ -292,7 +292,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
                   </span>
                 )}
                 {mission.completionType === 'visit' && completed && (
-                  <span className="ml-2 text-base text-pado-4 font-medium">Visited</span>
+                  <span className="ml-2 text-base text-pado-4 font-light">Visited</span>
                 )}
               </div>
 

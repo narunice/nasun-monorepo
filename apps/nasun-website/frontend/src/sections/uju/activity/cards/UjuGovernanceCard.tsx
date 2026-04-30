@@ -77,11 +77,11 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({ className = "" }
                 key={vote.proposalId}
                 className="flex items-center justify-between p-3 rounded-xl bg-uju-bg/50 border border-uju-border/30"
               >
-                <span className="truncate max-w-[200px] text-uju-primary font-medium">
+                <span className="truncate max-w-[200px] text-uju-primary font-light">
                   {vote.proposalTitle}
                 </span>
                 <span
-                  className={`px-2.5 py-1 rounded-lg text-sm font-bold ${
+                  className={`px-2.5 py-1 rounded-lg text-sm font-normal ${
                     vote.voteYes
                       ? "bg-pado-4/10 text-pado-4"
                       : "bg-red-500/10 text-red-400"
@@ -100,7 +100,7 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({ className = "" }
       {/* View All Link */}
       <Link
         to="/network/governance"
-        className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-uju-border/20 text-pado-2 hover:text-pado-4 transition-colors font-medium"
+        className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-uju-border/20 text-pado-2 hover:text-pado-4 transition-colors font-light"
       >
         View All Proposals
         <svg

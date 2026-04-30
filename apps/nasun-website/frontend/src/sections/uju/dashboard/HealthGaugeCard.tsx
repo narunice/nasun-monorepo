@@ -75,7 +75,7 @@ function HealthDonut({ active, tone, title }: HealthDonutProps) {
           </span>
         </div>
       </div>
-      <span className="text-sm font-medium text-uju-secondary">{title}</span>
+      <span className="text-sm font-light text-uju-secondary">{title}</span>
     </div>
   );
 }
@@ -117,7 +117,7 @@ export function HealthGaugeCard() {
               />
             </div>
             <div className="w-full rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
-              <p className="text-base font-medium text-uju-secondary">Multiplier</p>
+              <p className="text-base font-light text-uju-secondary">Multiplier</p>
               <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
                 {multiplier.toFixed(2)}x
               </p>

@@ -136,24 +136,24 @@ function ScoreTooltip({
   const d = payload[0].payload;
   return (
     <div className="bg-uju-bg border border-uju-border/40 rounded-xl shadow-2xl p-4 min-w-[200px] backdrop-blur-md">
-      <p className="font-bold text-uju-primary mb-3 pb-2 border-b border-uju-border/20">
+      <p className="font-normal text-uju-primary mb-3 pb-2 border-b border-uju-border/20">
         {d.date}
       </p>
-      <div className="space-y-2 text-sm font-medium">
+      <div className="space-y-2 text-sm font-light">
         <p className="text-uju-secondary flex justify-between">
           Base Score
-          <span className="text-uju-primary font-bold">{d.baseScore}</span>
+          <span className="text-uju-primary font-normal">{d.baseScore}</span>
         </p>
         <p className="text-uju-secondary flex justify-between">
           Multiplier
-          <span className="text-pado-2 font-bold">
+          <span className="text-pado-2 font-normal">
             x{d.multiplier.toFixed(1)}
           </span>
         </p>
         {d.stakingDeltaScaled > 0 && (
           <p className="text-uju-secondary flex justify-between">
             Staking
-            <span className="text-pado-4 font-bold">
+            <span className="text-pado-4 font-normal">
               +{d.stakingDeltaScaled.toFixed(0)}
             </span>
           </p>
@@ -162,7 +162,7 @@ function ScoreTooltip({
           <div className="space-y-1">
             <p className="text-uju-secondary flex justify-between">
               Bonus
-              <span className="text-pado-5 font-bold">+{d.bonusTotal}</span>
+              <span className="text-pado-5 font-normal">+{d.bonusTotal}</span>
             </p>
             {d.bonusItems && d.bonusItems.length > 0 && (
               <div className="ml-2 pl-2 border-l border-uju-border/30 space-y-1">
@@ -184,27 +184,27 @@ function ScoreTooltip({
         {d.referralBonus > 0 && (
           <p className="text-uju-secondary flex justify-between">
             Referral (x0.5)
-            <span className="text-pado-4 font-bold">+{d.referralBonus}</span>
+            <span className="text-pado-4 font-normal">+{d.referralBonus}</span>
           </p>
         )}
         <div className="pt-2 border-t border-uju-border/20 mt-2">
           <p className="flex justify-between items-center">
-            <span className="text-sm font-bold text-uju-primary">
+            <span className="text-sm font-normal text-uju-primary">
               Total Score
             </span>
-            <span className="text-lg font-black text-pado-2">
+            <span className="text-lg font-semibold text-pado-2">
               {d.ecosystemScore}
             </span>
           </p>
           {d.rank != null && (
             <p className="flex justify-between items-center mt-1">
               <span className="text-uju-secondary">Daily Rank</span>
-              <span className="font-bold text-blue-400">#{d.rank}</span>
+              <span className="font-normal text-blue-400">#{d.rank}</span>
             </p>
           )}
         </div>
         {d.isPenalized && (
-          <p className="text-red-400 text-sm font-black uppercase tracking-widest text-center pt-1 animate-pulse">
+          <p className="text-red-400 text-sm font-semibold uppercase tracking-widest text-center pt-1 animate-pulse">
             Penalized
           </p>
         )}
@@ -224,22 +224,22 @@ function RankTooltip({
   const d = payload[0].payload;
   return (
     <div className="bg-uju-bg border border-uju-border/40 rounded-xl shadow-2xl p-4 backdrop-blur-md">
-      <p className="font-bold text-uju-primary mb-2">{d.date}</p>
+      <p className="font-normal text-uju-primary mb-2">{d.date}</p>
       {d.rank != null ? (
-        <div className="space-y-1 text-sm font-medium">
+        <div className="space-y-1 text-sm font-light">
           <p className="text-uju-secondary flex items-center justify-between gap-4">
             Daily Rank{" "}
-            <span className="font-black text-blue-400 text-base">
+            <span className="font-semibold text-blue-400 text-base">
               #{d.rank}
             </span>
           </p>
           <p className="text-uju-secondary flex items-center justify-between gap-4">
             Total Score{" "}
-            <span className="font-bold text-pado-2">{d.ecosystemScore}</span>
+            <span className="font-normal text-pado-2">{d.ecosystemScore}</span>
           </p>
         </div>
       ) : (
-        <p className="text-sm text-uju-secondary font-bold italic">Unranked</p>
+        <p className="text-sm text-uju-secondary font-normal italic">Unranked</p>
       )}
     </div>
   );
@@ -363,14 +363,14 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           title={
             <div className="flex items-center gap-3">
               Ecosystem Points
-              <span className="text-sm font-black px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
+              <span className="text-sm font-semibold px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
                 Experimental
               </span>
             </div>
           }
         />
         <div className="flex flex-col items-center justify-center py-12 bg-uju-bg/30 rounded-2xl border border-uju-border/10">
-          <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest">
+          <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest">
             Sign in to view your points history
           </p>
         </div>
@@ -384,7 +384,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
         <button
           key={d}
           onClick={() => setDays(d)}
-          className={`px-2.5 py-1 text-sm font-bold rounded-lg transition-all duration-200 ${
+          className={`px-2.5 py-1 text-sm font-normal rounded-lg transition-all duration-200 ${
             days === d
               ? "bg-pado-2 text-uju-bg shadow-sm"
               : "text-uju-secondary hover:text-uju-primary"
@@ -403,7 +403,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
         title={
           <div className="flex items-center gap-3">
             Ecosystem Points
-            <span className="text-sm font-black px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
+            <span className="text-sm font-semibold px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
               Experimental
             </span>
           </div>
@@ -427,24 +427,24 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
               value={(
                 filteredScore?.daily.ecosystemScore ?? 0
               ).toLocaleString()}
-              tone="mint"
+              tone="pado-gradient"
             />
             <UjuStat
               label="This Week"
               value={(score?.weekly.ecosystemScore ?? 0).toLocaleString()}
-              tone="cyan"
+              tone="pado-gradient"
             />
             <UjuStat
               label="All Time"
               value={(score?.allTime.ecosystemScore ?? 0).toLocaleString()}
-              tone="coral"
+              tone="pado-gradient"
             />
           </div>
 
           {/* All-Time Category Composition Bar */}
           {allTimeBarSegments.length > 0 && allTimeBarTotal > 0 && (
             <div className="space-y-3">
-              <h6 className="text-sm font-black text-uju-secondary uppercase tracking-[0.2em] px-1">
+              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
                 All Time Breakdown
               </h6>
               <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
@@ -483,7 +483,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Score Trend Chart */}
             <div className="space-y-4">
-              <h6 className="text-sm font-black text-uju-secondary uppercase tracking-[0.2em] px-1">
+              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
                 Score Trend
               </h6>
               {chartData.length >= 3 ? (
@@ -491,7 +491,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -519,7 +519,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                         stroke="rgba(74, 114, 130, 0.2)"
                         tickLine={false}
                         axisLine={false}
-                        width={40}
+                        width={56}
                       />
                       <Tooltip
                         content={<ScoreTooltip />}
@@ -536,7 +536,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 </div>
               ) : (
                 <div className="h-[200px] flex items-center justify-center bg-uju-bg/20 rounded-2xl border border-uju-border/5">
-                  <p className="text-sm font-bold text-uju-secondary italic">
+                  <p className="text-sm font-normal text-uju-secondary italic">
                     Insufficient data for trend
                   </p>
                 </div>
@@ -546,18 +546,18 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             {/* Rank Chart */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <h6 className="text-sm font-black text-uju-secondary uppercase tracking-[0.2em]">
+                <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em]">
                   Ecosystem Rank
                 </h6>
                 <div className="flex gap-4">
                   {rankStats.best != null && (
-                    <span className="text-sm font-bold text-uju-secondary uppercase tracking-wider">
+                    <span className="text-sm font-normal text-uju-secondary uppercase tracking-wider">
                       Best:{" "}
                       <span className="text-pado-4">#{rankStats.best}</span>
                     </span>
                   )}
                   {rankStats.current != null && (
-                    <span className="text-sm font-bold text-uju-secondary uppercase tracking-wider">
+                    <span className="text-sm font-normal text-uju-secondary uppercase tracking-wider">
                       Now:{" "}
                       <span className="text-blue-400">
                         #{rankStats.current}
@@ -571,7 +571,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={chartData}
-                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
+                      margin={{ top: 5, right: 5, left: 0, bottom: 5 }}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
@@ -601,7 +601,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                         stroke="rgba(74, 114, 130, 0.2)"
                         tickLine={false}
                         axisLine={false}
-                        width={40}
+                        width={56}
                       />
                       <Tooltip content={<RankTooltip />} />
                       <Line
@@ -623,7 +623,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 </div>
               ) : (
                 <div className="h-[200px] flex items-center justify-center bg-uju-bg/20 rounded-2xl border border-uju-border/5">
-                  <p className="text-sm font-bold text-uju-secondary italic">
+                  <p className="text-sm font-normal text-uju-secondary italic">
                     Insufficient ranking data
                   </p>
                 </div>
@@ -634,7 +634,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           {/* Daily Log */}
           {dailyLog.length > 0 && (
             <div className="space-y-4">
-              <h6 className="text-sm font-black text-uju-secondary uppercase tracking-[0.2em] px-1">
+              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
                 Activity Log
               </h6>
               <div className="space-y-2">
@@ -660,12 +660,12 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       >
                         <div className="flex items-center justify-between">
                           {/* Date */}
-                          <span className="text-sm font-black text-uju-primary w-16 shrink-0 tabular-nums">
+                          <span className="text-sm font-semibold text-uju-primary w-16 shrink-0 tabular-nums">
                             {formatDisplayDate(entry.date)}
                           </span>
 
                           {/* Formula */}
-                          <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-sm font-bold">
+                          <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-sm font-normal">
                             {entry.multiplier === 0 ? (
                               <span className="text-amber-400/80 uppercase tracking-widest">
                                 No NFT Activated
@@ -717,7 +717,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
 
                           {/* Score & Rank */}
                           <div className="flex items-center gap-6 shrink-0">
-                            <span className="text-base font-black text-pado-2 w-16 text-right tabular-nums">
+                            <span className="text-base font-semibold text-pado-2 w-16 text-right tabular-nums">
                               {entry.ecosystemScore}
                             </span>
                             <span className="w-20 text-right shrink-0">
@@ -725,17 +725,17 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                 <span className="flex items-center justify-end gap-1.5">
                                   {entry.rankChange && (
                                     <span
-                                      className={`text-sm font-black ${entry.rankChange === "up" ? "text-pado-4" : "text-red-400"}`}
+                                      className={`text-sm font-semibold ${entry.rankChange === "up" ? "text-pado-4" : "text-red-400"}`}
                                     >
                                       {entry.rankChange === "up" ? "▲" : "▼"}
                                     </span>
                                   )}
-                                  <span className="text-sm font-black text-uju-primary tabular-nums">
+                                  <span className="text-sm font-semibold text-uju-primary tabular-nums">
                                     #{entry.rank}
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-sm font-black text-uju-secondary/80 tracking-widest">
+                                <span className="text-sm font-semibold text-uju-secondary/80 tracking-widest">
                                   NONE
                                 </span>
                               )}
@@ -799,10 +799,10 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 </svg>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest">
+                <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest">
                   No snapshot history
                 </p>
-                <p className="text-sm font-medium text-uju-secondary/80 mt-1">
+                <p className="text-sm font-light text-uju-secondary/80 mt-1">
                   Points are recorded daily. Check back tomorrow.
                 </p>
               </div>

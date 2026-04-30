@@ -125,7 +125,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
 
       {!twitterLinked ? (
         <div className="p-4 rounded-xl bg-uju-bg/40 border border-uju-border/20 text-center">
-          <p className="text-sm text-uju-secondary font-medium mb-3">
+          <p className="text-sm text-uju-secondary font-light mb-3">
             Connect your X account to submit creator posts and earn ecosystem
             points.
           </p>
@@ -135,7 +135,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
         </div>
       ) : (
         <div className="space-y-4 mb-8 bg-uju-bg/30 p-5 rounded-2xl border border-uju-border/10">
-          <p className="text-sm text-uju-secondary font-medium">
+          <p className="text-sm text-uju-secondary font-light">
             Paste an X post URL you wrote about Nasun to earn points.
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -156,16 +156,16 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
               {submitMut.isPending ? "Submitting..." : "Submit"}
             </UjuButton>
           </div>
-          <p className="text-sm text-uju-secondary/80 font-bold uppercase tracking-widest">
+          <p className="text-sm text-uju-secondary/80 font-normal uppercase tracking-widest">
             Helpful posts earn more points. Quality matters.
           </p>
-          {errorMsg && <p className="text-sm font-bold text-red-400 mt-2">{errorMsg}</p>}
-          {successMsg && <p className="text-sm font-bold text-pado-4 mt-2">{successMsg}</p>}
+          {errorMsg && <p className="text-sm font-normal text-red-400 mt-2">{errorMsg}</p>}
+          {successMsg && <p className="text-sm font-normal text-pado-4 mt-2">{successMsg}</p>}
         </div>
       )}
 
       <div className="space-y-4">
-        <h6 className="text-sm font-bold uppercase text-uju-secondary tracking-widest px-1">
+        <h6 className="text-sm font-normal uppercase text-uju-secondary tracking-widest px-1">
           Recent Submissions
         </h6>
         {listQuery.isLoading ? (
@@ -174,10 +174,10 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
           </div>
         ) : listQuery.isError ? (
           <div className="p-4 rounded-xl bg-red-500/5 border border-red-500/20">
-            <p className="text-sm text-red-400 font-medium text-center">Failed to load submissions</p>
+            <p className="text-sm text-red-400 font-light text-center">Failed to load submissions</p>
           </div>
         ) : allItems.length === 0 ? (
-          <p className="text-sm text-uju-secondary font-medium italic px-1">No submissions yet.</p>
+          <p className="text-sm text-uju-secondary font-light italic px-1">No submissions yet.</p>
         ) : (
           <div className="space-y-3">
             {allItems.slice(0, visibleCount).map((post) => {
@@ -197,30 +197,30 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
                     <button
                       type="button"
                       onClick={() => openPostUrlSafely(post.postUrl)}
-                      className="text-sm text-pado-2 hover:text-pado-4 font-medium transition-colors truncate max-w-[65%] text-left"
+                      className="text-sm text-pado-2 hover:text-pado-4 font-light transition-colors truncate max-w-[65%] text-left"
                       title={post.postUrl}
                     >
                       {post.postUrl}
                     </button>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <span
-                        className={`text-sm font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${statusColorClass}`}
+                        className={`text-sm font-normal px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${statusColorClass}`}
                       >
                         {STATUS_LABELS[displayStatus(post.status)]}
                       </span>
                       {post.status === "GRANTED" && post.scoredPoints != null && (
-                        <span className="text-sm font-bold text-pado-4 tabular-nums">
+                        <span className="text-sm font-normal text-pado-4 tabular-nums">
                           +{post.scoredPoints} PTS
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-bold text-uju-secondary/80">
+                    <span className="text-sm font-normal text-uju-secondary/80">
                       {formatDate(post.createdAt)}
                     </span>
                     {post.status === "REJECTED" && post.rejectionReason && (
-                      <span className="text-sm text-red-400 font-medium italic truncate max-w-[60%]">
+                      <span className="text-sm text-red-400 font-light italic truncate max-w-[60%]">
                         {post.rejectionReason}
                       </span>
                     )}
