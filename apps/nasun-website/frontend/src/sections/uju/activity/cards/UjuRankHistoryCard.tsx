@@ -54,7 +54,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
   const headerTrailing = (
     <button
       onClick={() => setIsExpanded((prev) => !prev)}
-      className="text-uju-secondary hover:text-uju-primary transition-colors text-xs font-bold uppercase tracking-widest flex items-center gap-2"
+      className="text-uju-secondary hover:text-uju-primary transition-colors text-sm font-bold uppercase tracking-widest flex items-center gap-2"
     >
       {isExpanded ? 'Collapse' : 'Expand History'}
       <svg
@@ -99,7 +99,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
               {/* Selectors */}
               <div className="flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
-                  <span className="text-[10px] font-bold text-uju-secondary uppercase tracking-widest">Season</span>
+                  <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest">Season</span>
                   <select
                     value={selectedSeasonId || ''}
                     onChange={(e) => setSelectedSeasonId(e.target.value)}
@@ -118,7 +118,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                     <button
                       key={val}
                       onClick={() => setSelectedDays(Number(val) as DateRangeOptionV3)}
-                      className={`px-3 py-1 text-xs font-bold rounded-lg transition-all duration-200 ${
+                      className={`px-3 py-1 text-sm font-bold rounded-lg transition-all duration-200 ${
                         selectedDays === Number(val)
                           ? 'bg-pado-2 text-uju-bg shadow-sm'
                           : 'text-uju-secondary hover:text-uju-primary'
@@ -164,21 +164,21 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                   {/* Stats Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-[10px] font-bold text-uju-secondary uppercase tracking-widest mb-1">
+                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">
                         {isSeasonEnded ? "Final Rank" : "Current Rank"}
                       </p>
                       <p className="text-2xl font-black text-uju-primary tabular-nums">#{data.stats.currentRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-[10px] font-bold text-uju-secondary uppercase tracking-widest mb-1">Best Rank</p>
+                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">Best Rank</p>
                       <p className="text-2xl font-black text-pado-4 tabular-nums">#{data.stats.bestRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-[10px] font-bold text-uju-secondary uppercase tracking-widest mb-1">Worst Rank</p>
+                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">Worst Rank</p>
                       <p className="text-2xl font-black text-red-400/80 tabular-nums">#{data.stats.worstRank}</p>
                     </div>
                     <div className="p-4 bg-uju-bg/30 border border-uju-border/20 rounded-xl">
-                      <p className="text-[10px] font-bold text-uju-secondary uppercase tracking-widest mb-1">7D Change</p>
+                      <p className="text-sm font-bold text-uju-secondary uppercase tracking-widest mb-1">7D Change</p>
                       <p className={`text-2xl font-black tabular-nums ${
                         data.stats.rankImprovement > 0
                           ? 'text-pado-4'

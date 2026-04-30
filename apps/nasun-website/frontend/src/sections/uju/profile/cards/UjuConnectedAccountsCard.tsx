@@ -124,7 +124,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
               </button>,
             ] : showAsConnected && !walletReg.isCurrentWalletRegistered && !walletReg.isLoading ? [
               walletReg.isRegistering ? (
-                <span key="registering" className="text-xs font-bold text-pado-2 animate-pulse">REGISTERING...</span>
+                <span key="registering" className="text-sm font-bold text-pado-2 animate-pulse">REGISTERING...</span>
               ) : (
                 <UjuButton
                   key="register"
@@ -162,7 +162,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
             </div>
           )}
           
-          <div className="text-xs">
+          <div className="text-sm">
             <button
               className="flex items-center gap-1.5 text-uju-secondary hover:text-pado-2 transition-colors font-bold uppercase tracking-widest"
               onClick={() => setDisclaimerExpanded((v) => !v)}
@@ -191,7 +191,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
         {/* Additional Wallets */}
         {user.cognitoToken && (displayAddress || walletReg.registeredWallets.length > 0) && (
           <div className="ml-5 pl-5 border-l border-uju-border/20 space-y-3">
-            <div className="text-[10px] font-black text-uju-secondary/50 uppercase tracking-[0.2em]">
+            <div className="text-sm font-black text-uju-secondary/80 uppercase tracking-[0.2em]">
               Additional Wallets {walletReg.isLoading && "— Loading..."}
             </div>
             {additionalWallets.map((w) => {
@@ -240,7 +240,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
                   <UjuConnectedBadge />
                 </div>
                 {walletReg.isRegistering ? (
-                  <span className="text-[10px] font-bold text-pado-2 animate-pulse uppercase">Registering...</span>
+                  <span className="text-sm font-bold text-pado-2 animate-pulse uppercase">Registering...</span>
                 ) : (
                   <UjuButton
                     size="sm"
@@ -258,7 +258,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
             )}
             
             {walletReg.error && (
-              <p className="text-xs font-bold text-red-400 px-1">{walletReg.error}</p>
+              <p className="text-sm font-bold text-red-400 px-1">{walletReg.error}</p>
             )}
             
             <UjuButton

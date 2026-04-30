@@ -188,14 +188,14 @@ export const UjuNasunVoteNfts: FC<{ children?: React.ReactNode }> = ({ children 
               </NftImageModal>
             </div>
             <div className="p-3 border-t border-uju-border/10">
-              <p className="text-[10px] text-pado-4 font-bold uppercase tracking-widest mb-1">
+              <p className="text-sm text-pado-4 font-bold uppercase tracking-widest mb-1">
                 Vote Proof
               </p>
-              <p className="text-xs text-uju-primary font-mono font-bold truncate" title={nft.id}>
+              <p className="text-sm text-uju-primary font-mono font-bold truncate" title={nft.id}>
                 {nft.id.slice(0, 6)}...{nft.id.slice(-4)}
               </p>
               {nft.name && (
-                <p className="text-xs text-uju-secondary font-medium truncate mt-1"
+                <p className="text-sm text-uju-secondary font-medium truncate mt-1"
                    title={nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}>
                   {nft.name.startsWith("NFT ") ? nft.name.slice(4) : nft.name}
                 </p>

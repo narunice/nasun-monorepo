@@ -233,7 +233,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
             >
               {/* App badge */}
               <span
-                className={`shrink-0 text-base font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
+                className={`shrink-0 text-sm font-medium px-2 py-0.5 rounded-md whitespace-nowrap ${
                   completed ? 'bg-uju-border/30 text-uju-secondary' : `${badge.bg} ${badge.text}`
                 }`}
               >

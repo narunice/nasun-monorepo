@@ -156,7 +156,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
               {submitMut.isPending ? "Submitting..." : "Submit"}
             </UjuButton>
           </div>
-          <p className="text-[10px] text-uju-secondary/60 font-bold uppercase tracking-widest">
+          <p className="text-sm text-uju-secondary/80 font-bold uppercase tracking-widest">
             Helpful posts earn more points. Quality matters.
           </p>
           {errorMsg && <p className="text-sm font-bold text-red-400 mt-2">{errorMsg}</p>}
@@ -165,7 +165,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
       )}
 
       <div className="space-y-4">
-        <h6 className="text-xs font-bold uppercase text-uju-secondary tracking-widest px-1">
+        <h6 className="text-sm font-bold uppercase text-uju-secondary tracking-widest px-1">
           Recent Submissions
         </h6>
         {listQuery.isLoading ? (
@@ -204,23 +204,23 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
                     </button>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${statusColorClass}`}
+                        className={`text-sm font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${statusColorClass}`}
                       >
                         {STATUS_LABELS[displayStatus(post.status)]}
                       </span>
                       {post.status === "GRANTED" && post.scoredPoints != null && (
-                        <span className="text-xs font-bold text-pado-4 tabular-nums">
+                        <span className="text-sm font-bold text-pado-4 tabular-nums">
                           +{post.scoredPoints} PTS
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-xs font-bold text-uju-secondary/80">
+                    <span className="text-sm font-bold text-uju-secondary/80">
                       {formatDate(post.createdAt)}
                     </span>
                     {post.status === "REJECTED" && post.rejectionReason && (
-                      <span className="text-xs text-red-400 font-medium italic truncate max-w-[60%]">
+                      <span className="text-sm text-red-400 font-medium italic truncate max-w-[60%]">
                         {post.rejectionReason}
                       </span>
                     )}

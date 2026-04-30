@@ -217,7 +217,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                 </div>
               ) : !isAllianceMinted ? (
                 <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
                   <p className="text-nasun-white/80 text-base font-medium text-center px-6">
@@ -234,7 +234,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     }`}
                     loading="lazy"
                   />
-                  <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
                     x1
                   </span>
                   {allianceData && (
@@ -324,7 +324,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     : "bg-slate-700"
               }`}
             >
-              <span className="absolute top-3 left-3 text-base font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
+              <span className="absolute top-3 left-3 text-sm font-bold px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
                 Boost x2
               </span>
 

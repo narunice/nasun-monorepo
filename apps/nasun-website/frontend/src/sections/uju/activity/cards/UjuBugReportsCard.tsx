@@ -104,13 +104,13 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                       {report.title}
                     </span>
                     <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${UJU_STATUS_COLORS[report.status]}`}
+                      className={`text-sm font-bold px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${UJU_STATUS_COLORS[report.status]}`}
                     >
                       {STATUS_LABELS[report.status]}
                     </span>
                   </div>
                   <div className="flex items-center gap-3 mt-2">
-                    <span className="text-xs font-bold text-uju-secondary/80">
+                    <span className="text-sm font-bold text-uju-secondary/80">
                       {new Date(report.timestamp).toLocaleDateString("en-US", {
                         month: 'short',
                         day: 'numeric',
@@ -118,13 +118,13 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                       })}
                     </span>
                     <span className="w-1 h-1 rounded-full bg-uju-border/30" />
-                    <span className="text-xs font-bold text-pado-2 uppercase tracking-wide">
+                    <span className="text-sm font-bold text-pado-2 uppercase tracking-wide">
                       {report.category}
                     </span>
                     {report.bonusPoints != null && report.bonusPoints > 0 && (
                       <>
                         <span className="w-1 h-1 rounded-full bg-uju-border/30" />
-                        <span className="text-xs font-bold text-pado-4">
+                        <span className="text-sm font-bold text-pado-4">
                           +{report.bonusPoints} PTS
                         </span>
                       </>
@@ -135,7 +135,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                 {isExpanded && (
                   <div className="px-4 pb-4 pt-0 space-y-4 animate-fade-in">
                     <div className="pt-4 border-t border-uju-border/10">
-                      <span className="text-xs font-bold text-uju-secondary uppercase tracking-widest block mb-2">
+                      <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest block mb-2">
                         Description
                       </span>
                       <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -144,7 +144,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                     </div>
                     {report.adminNote && (
                       <div className="p-3 rounded-xl bg-pado-2/5 border border-pado-2/20">
-                        <span className="text-xs font-bold text-pado-2 uppercase tracking-widest block mb-1">
+                        <span className="text-sm font-bold text-pado-2 uppercase tracking-widest block mb-1">
                           Admin Response
                         </span>
                         <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -154,7 +154,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                     )}
                     {report.userReply && (
                       <div className="p-3 rounded-xl bg-blue-400/5 border border-blue-400/20">
-                        <span className="text-xs font-bold text-blue-300 uppercase tracking-widest block mb-1">
+                        <span className="text-sm font-bold text-blue-300 uppercase tracking-widest block mb-1">
                           Your Follow-up
                         </span>
                         <p className="text-sm text-uju-primary leading-relaxed whitespace-pre-wrap">
@@ -168,7 +168,7 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                           </svg>
-                          <span className="text-xs font-bold uppercase tracking-wide">
+                          <span className="text-sm font-bold uppercase tracking-wide">
                             Rewarded: +{report.bonusPoints} ecosystem points
                           </span>
                         </div>
@@ -231,7 +231,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
 
   return (
     <div className="pt-4 border-t border-uju-border/10 space-y-3">
-      <span className="text-xs font-bold text-uju-secondary uppercase tracking-widest block">
+      <span className="text-sm font-bold text-uju-secondary uppercase tracking-widest block">
         {report.userReply
           ? "Editing your previous reply"
           : "Still having this issue? Send a follow-up"}
@@ -244,7 +244,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
         className="w-full bg-uju-bg/80 border border-uju-border/30 rounded-xl px-4 py-3 text-sm text-uju-primary placeholder-uju-secondary/40 focus:outline-none focus:border-pado-2 focus:ring-1 focus:ring-pado-2/20 transition-all resize-none"
       />
       <div className="flex items-center justify-between gap-3">
-        <span className="text-xs font-bold text-uju-secondary tabular-nums">
+        <span className="text-sm font-bold text-uju-secondary tabular-nums">
           {trimmed.length} / {REPLY_MAX_LENGTH}
         </span>
         <UjuButton
@@ -256,7 +256,7 @@ const ReplyComposer: FC<ReplyComposerProps> = ({ report }) => {
           {mutation.isPending ? "Sending..." : "Send follow-up"}
         </UjuButton>
       </div>
-      {errorMsg && <p className="text-xs font-bold text-red-400 mt-1">{errorMsg}</p>}
+      {errorMsg && <p className="text-sm font-bold text-red-400 mt-1">{errorMsg}</p>}
     </div>
   );
 };
