@@ -56,6 +56,15 @@ export function getActiveMissionCategories(
   return out;
 }
 
+// Migration aliases: pado-platform games map to the same mission as gostop
+// equivalents. During the migration period both platforms share the same
+// daily mission slot so activity on either counts toward the user's checklist.
+const CATEGORY_ALIASES: Record<string, string> = {
+  'pado-lottery':    'gostop-lottery',
+  'pado-scratchcard': 'gostop-scratchcard',
+  'pado-numbermatch': 'gostop-numbermatch',
+};
+
 /**
  * Compute today's base score restricted to active mission categories.
  * `todayCategories` is the deduped category list returned by the backend
@@ -66,9 +75,15 @@ export function computeFilteredTodayBase(
   activeCategories: ReadonlySet<string>,
 ): number {
   let score = 0;
+  // Track which resolved categories have been counted to avoid double-counting
+  // when both pado-lottery and gostop-lottery appear in todayCategories.
+  const counted = new Set<string>();
   for (const cat of todayCategories) {
-    if (!activeCategories.has(cat)) continue;
-    score += cat === 'pado-dex' ? PADO_DEX_WEIGHT : 1;
+    const resolved = CATEGORY_ALIASES[cat] ?? cat;
+    if (!activeCategories.has(resolved)) continue;
+    if (counted.has(resolved)) continue;
+    counted.add(resolved);
+    score += resolved === 'pado-dex' ? PADO_DEX_WEIGHT : 1;
   }
   return score;
 }
