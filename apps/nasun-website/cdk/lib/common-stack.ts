@@ -11,6 +11,7 @@ import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
@@ -172,6 +173,50 @@ export class CommonStack extends cdk.Stack {
     // 2. User Profile Lambda 함수들
     // ========================================
 
+    // 2-0. Public avatar S3 bucket (ecosystem-wide profile image storage).
+    // Stores customAvatarKey objects under prefix `profile-images/{identityId}/`.
+    // Public-readable so all Nasun apps (nasun-website, pado, gostop, explorer)
+    // can display avatars without auth. CORS allows the entire ecosystem.
+    const publicAvatarsBucket = new s3.Bucket(this, "PublicAvatarsBucket", {
+      bucketName: `nasun-public-avatars-${this.account}`,
+      blockPublicAccess: new s3.BlockPublicAccess({
+        blockPublicAcls: true,
+        blockPublicPolicy: false,
+        ignorePublicAcls: true,
+        restrictPublicBuckets: false,
+      }),
+      publicReadAccess: false,
+      cors: [
+        {
+          allowedOrigins: [
+            'https://nasun.io',
+            'https://staging.nasun.io',
+            'https://pado.finance',
+            'https://gostop.app',
+            'https://explorer.nasun.io',
+            'http://localhost:5173',
+            'http://localhost:5174',
+            'http://localhost:5175',
+            'http://localhost:5176',
+          ],
+          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.HEAD, s3.HttpMethods.POST, s3.HttpMethods.PUT],
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
+          maxAge: 3000,
+        },
+      ],
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    });
+    // Allow public GET on profile-images/* only (not the entire bucket).
+    publicAvatarsBucket.addToResourcePolicy(new iam.PolicyStatement({
+      sid: 'PublicReadProfileImages',
+      effect: iam.Effect.ALLOW,
+      principals: [new iam.AnyPrincipal()],
+      actions: ['s3:GetObject'],
+      resources: [`${publicAvatarsBucket.bucketArn}/profile-images/*`],
+    }));
+    const publicAvatarsBaseUrl = `https://${publicAvatarsBucket.bucketName}.s3.${this.region}.amazonaws.com`;
+
     // 2-1. Get User Profile
     const getUserProfileLambda = new NodejsFunction(this, "GetUserProfileLambda", {
       functionName: "nasun-common-get-user-profile",
@@ -180,6 +225,7 @@ export class CommonStack extends cdk.Stack {
       handler: 'handler',
       depsLockFilePath,
       bundling: bundlingOptions,
+      timeout: cdk.Duration.seconds(15),
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName,
@@ -190,6 +236,18 @@ export class CommonStack extends cdk.Stack {
           return poolId;
         })(),
         USER_WALLETS_TABLE: userWalletsTable.tableName,
+        // Avatar uploads
+        PUBLIC_AVATARS_BUCKET: publicAvatarsBucket.bucketName,
+        PUBLIC_AVATARS_BASE_URL: publicAvatarsBaseUrl,
+        MAX_AVATAR_SIZE_BYTES: '2097152',
+        // Display-name rate limit
+        RATE_LIMIT_WINDOW_DAYS: '30',
+        RATE_LIMIT_MAX: '15',
+        // Webhook fan-out targets (optional; empty disables).
+        CHAT_SERVER_INVALIDATE_URL: process.env.CHAT_SERVER_INVALIDATE_URL || '',
+        CHAT_SERVER_INVALIDATE_TOKEN: process.env.CHAT_SERVER_INVALIDATE_TOKEN || '',
+        EXPLORER_API_INVALIDATE_URL: process.env.EXPLORER_API_INVALIDATE_URL || '',
+        EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",
@@ -199,6 +257,10 @@ export class CommonStack extends cdk.Stack {
     this.userProfilesTable.grantReadWriteData(getUserProfileLambda);
     userIdentityMapTable.grantReadData(getUserProfileLambda);
     userWalletsTable.grantReadData(getUserProfileLambda);
+    // Avatar upload (presigned POST) requires PutObject; delete-on-replace
+    // requires DeleteObject. Limit to the avatar prefix.
+    publicAvatarsBucket.grantPut(getUserProfileLambda, 'profile-images/*');
+    publicAvatarsBucket.grantDelete(getUserProfileLambda, 'profile-images/*');
 
     const userProfileApi = new apigw.LambdaRestApi(this, "UserProfileApi", {
       handler: getUserProfileLambda,
