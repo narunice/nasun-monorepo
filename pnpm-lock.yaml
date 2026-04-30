@@ -476,6 +476,9 @@ importers:
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@nasun/profile-core':
+        specifier: workspace:*
+        version: link:../../../packages/profile-core
       '@noble/hashes':
         specifier: ^1.8.0
         version: 1.8.0
@@ -562,6 +565,12 @@ importers:
       '@nasun/devnet-config':
         specifier: workspace:*
         version: link:../../../packages/devnet-config
+      '@nasun/profile-core':
+        specifier: workspace:*
+        version: link:../../../packages/profile-core
+      '@nasun/profile-react':
+        specifier: workspace:*
+        version: link:../../../packages/profile-react
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../../../packages/wallet
@@ -1095,6 +1104,43 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/profile-core:
+    devDependencies:
+      '@nasun/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@25.3.2)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)
+
+  packages/profile-react:
+    dependencies:
+      '@nasun/profile-core':
+        specifier: workspace:*
+        version: link:../profile-core
+    devDependencies:
+      '@nasun/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      '@tanstack/react-query':
+        specifier: ^5.59.0
+        version: 5.90.21(react@19.2.3)
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      react:
+        specifier: 19.2.3
+        version: 19.2.3
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^2.1.9
+        version: 2.1.9(@types/node@25.3.2)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)
 
   packages/tailwind-config:
     dependencies:
@@ -19076,7 +19122,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 3.1.0
-      vitest: 4.0.18(@types/node@22.19.13)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 4.0.18(@types/node@25.3.2)(@vitest/ui@4.0.18)(happy-dom@20.7.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@2.0.1))(terser@5.46.0)(tsx@4.21.0)
     optional: true
 
   '@vitest/utils@2.1.9':

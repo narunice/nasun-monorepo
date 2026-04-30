@@ -1,0 +1,9 @@
+{
+  "extends": "@nasun/tsconfig/react.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
