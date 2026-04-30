@@ -10,6 +10,7 @@ import pointsRoutes from './routes/points.js';
 import ecosystemRoutes from './routes/ecosystem.js';
 import creatorsAppreciationRoutes from './routes/creators-appreciation.js';
 import nasunMetricsRoutes from './routes/nasun-metrics.js';
+import internalInvalidateRoutes from './routes/internal-invalidate.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -49,6 +50,12 @@ app.route('/api/v1/stats/nasun-metrics', nasunMetricsRoutes);
 app.route('/api/v1/points', pointsRoutes);
 app.route('/api/v1/ecosystem', ecosystemRoutes);
 app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
+
+// Internal-only routes (auth via shared secret). Used by nasun-website Lambda
+// PATCH /user-profile to invalidate the leaderboard's profile cache when a
+// display name or avatar changes. Mounted under /api/v1 so the nginx proxy
+// rule `/api/* → :3200/api/v1/*` forwards correctly.
+app.route('/api/v1/internal', internalInvalidateRoutes);
 
 // Root
 app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));
