@@ -132,11 +132,38 @@ describe('computeFilteredTodayBase', () => {
     expect(computeFilteredTodayBase(today, reactivated)).toBe(2);
   });
 
-  it('duplicate categories in todayCategories double-count (matview already dedupes upstream)', () => {
-    // todayCategoryRows is dedup'd by the matview; if upstream is correct,
-    // this case shouldn't occur. Documented to flag if backend ever changes.
+  it('duplicate categories in todayCategories count once (resolved-category dedup guard)', () => {
+    // todayCategoryRows is dedup'd by the matview upstream; the dedup guard
+    // here also prevents double-counting when both pado-* and gostop-* aliases
+    // resolve to the same mission slot.
     expect(
       computeFilteredTodayBase(['faucet', 'faucet'], ACTIVE_FAUCET_ONLY),
-    ).toBe(2);
+    ).toBe(1);
+  });
+
+  it('pado-lottery aliases to gostop-lottery (migration: either platform counts)', () => {
+    const active = new Set(['gostop-lottery']);
+    expect(computeFilteredTodayBase(['pado-lottery'], active)).toBe(1);
+  });
+
+  it('pado-scratchcard aliases to gostop-scratchcard', () => {
+    const active = new Set(['gostop-scratchcard']);
+    expect(computeFilteredTodayBase(['pado-scratchcard'], active)).toBe(1);
+  });
+
+  it('pado-numbermatch aliases to gostop-numbermatch', () => {
+    const active = new Set(['gostop-numbermatch']);
+    expect(computeFilteredTodayBase(['pado-numbermatch'], active)).toBe(1);
+  });
+
+  it('pado-lottery + gostop-lottery in same day counts once (both alias to gostop-lottery)', () => {
+    const active = new Set(['gostop-lottery']);
+    expect(computeFilteredTodayBase(['pado-lottery', 'gostop-lottery'], active)).toBe(1);
+  });
+
+  it('all pado aliases resolve correctly in a full day scenario', () => {
+    const today = ['faucet', 'pado-lottery', 'pado-scratchcard', 'pado-numbermatch'];
+    // 1 + 1 + 1 + 1 = 4
+    expect(computeFilteredTodayBase(today, ACTIVE_FULL)).toBe(4);
   });
 });
