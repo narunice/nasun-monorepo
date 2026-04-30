@@ -34,8 +34,15 @@ export interface UserData {
   walletAddress?: string;
   // Cognito OIDC token for authenticated API calls
   cognitoToken?: string;
-  // Custom display name (set by user via My Account)
+  // Custom display name (set by user via My Account or uju Profile).
+  // Ecosystem source-of-truth identity name; takes priority over X/Google.
   customDisplayName?: string;
+  // Storage key (S3 object key) of user-uploaded avatar. Resolved to URL via
+  // PUBLIC_AVATARS_BASE_URL env var + `@nasun/profile-core` resolveAvatarUrl.
+  customAvatarKey?: string;
+  customAvatarUpdatedAt?: string;
+  /** When true, custom avatar uploads are blocked by admin moderation. */
+  customAvatarBanned?: boolean;
   // Admin role (set via admin action, returned from DB)
   role?: string;
   // Linked accounts

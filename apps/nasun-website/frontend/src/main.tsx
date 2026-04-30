@@ -13,8 +13,13 @@ import { ThemeProvider } from "./providers/theme/ThemeContext";
 import { AuthProvider } from "@/features/auth/providers/AuthProvider";
 import { validateEnv } from "./utils/envValidation";
 import { queryClient } from "@/lib/queryClient";
+import { installQueryClientBroadcast } from "@/lib/queryClientBroadcast";
 import "./index.css";
 import App from "./App";
+
+// Multi-tab sync: tab A invalidating a query invalidates the same key in tab B.
+// Same-origin only; safe to call once at boot.
+installQueryClientBroadcast(queryClient);
 
 // Lazy-load wallet layer: @nasun/wallet + @nasun/wallet-ui + @mysten/dapp-kit
 // are deferred until after the app shell renders (~667KB gzip saved from initial load)

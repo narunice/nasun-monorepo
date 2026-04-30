@@ -27,6 +27,8 @@
     "@mysten/dapp-kit": "^0.19.11",
     "@mysten/sui": "^1.45.2",
     "@nasun/devnet-config": "workspace:*",
+    "@nasun/profile-core": "workspace:*",
+    "@nasun/profile-react": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.15",
