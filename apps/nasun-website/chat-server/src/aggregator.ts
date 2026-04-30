@@ -22,7 +22,7 @@ import {
   countWeeklyUniqueTraders,
   setWeeklyParticipantCount,
 } from './leaderboard-store.js';
-import { buildSameIdentityPairs, refreshIdentityCache, resolveIdentityIds, getSocialBadgesBatch } from './identity-resolver.js';
+import { buildSameIdentityPairs, refreshIdentityCache, getIdentityMap, getSocialBadgesBatch } from './identity-resolver.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
@@ -82,17 +82,32 @@ function runAggregation(): void {
   runCompetitionAggregation();
 
   // Weekly score leaderboard (async: fetches social badges from DynamoDB in background)
-  runWeeklyScoreAggregation().catch((err: unknown) => {
-    console.error('[Aggregator] Weekly score aggregation error:', (err as Error).message);
-  });
+  const weeklyStart = Date.now();
+  runWeeklyScoreAggregation()
+    .then(() => {
+      const wElapsed = Date.now() - weeklyStart;
+      if (wElapsed > 5000) {
+        console.log(`[Aggregator] Weekly score completed in ${wElapsed}ms`);
+      }
+    })
+    .catch((err: unknown) => {
+      console.error('[Aggregator] Weekly score aggregation error:', (err as Error).message);
+    });
 
   // Mark cycle completion for pado score staleness guard (settle-pado consumer).
   // Key is app-prefixed to avoid collision with future per-app aggregators.
   setIndexerState('pado_aggregator_last_run_ms', String(Date.now()));
 
+  // Sync cycle time only — async weekly path logs separately above.
   const elapsed = Date.now() - start;
   if (elapsed > 1000) {
     console.log(`[Aggregator] Completed in ${elapsed}ms`);
+  }
+  if (config && elapsed > config.aggregationIntervalMs * 0.8) {
+    console.warn(
+      `[Aggregator] Cycle elapsed ${elapsed}ms is over 80% of interval ` +
+      `${config.aggregationIntervalMs}ms — next cycle may overlap or lag.`,
+    );
   }
 }
 
@@ -239,9 +254,17 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   if (rawTraders.length === 0) return;
 
   // Filter out wallets not registered to nasun-website (no Cognito identityId).
-  // Resolved once here; reused for badge lookup below to avoid duplicate DynamoDB calls.
-  const identityMap = await resolveIdentityIds(rawTraders.map((t) => t.address));
-  const traders = rawTraders.filter((t) => identityMap.has(t.address));
+  // Uses the in-memory identity cache (WALLET_MAPPINGS_URL, refreshed hourly)
+  // instead of DynamoDB BatchGet — avoids 200+ sequential BatchGet calls per
+  // cycle when the trader count exceeds AGGREGATION_LIMIT scale (10K+).
+  const fullIdentityMap = await getIdentityMap();
+  const identityMap = new Map<string, string>();
+  for (const t of rawTraders) {
+    const addr = t.address.toLowerCase();
+    const id = fullIdentityMap.get(addr);
+    if (id) identityMap.set(addr, id);
+  }
+  const traders = rawTraders.filter((t) => identityMap.has(t.address.toLowerCase()));
   if (traders.length === 0) return;
 
   // PnL for this week only (wash pairs excluded)
