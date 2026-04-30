@@ -43,6 +43,24 @@ function resolveDisplayName(item: Record<string, unknown>): string | null {
   return null;
 }
 
+const PUBLIC_AVATARS_BASE_URL = (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
+
+// Avatar URL cascade: customAvatarKey > linked twitter image > linked google image > null.
+// Mirrors @nasun/profile-core/resolveAvatarUrl. Inlined here to avoid pulling
+// the package + dist build into the api-server build pipeline (this is a
+// stable few lines; sync if @nasun/profile-core changes).
+function resolveAvatarUrl(item: Record<string, unknown>): string | null {
+  const banned = item.customAvatarBanned === true;
+  const customAvatarKey = !banned ? (item.customAvatarKey as string | undefined) : undefined;
+  if (customAvatarKey && PUBLIC_AVATARS_BASE_URL) {
+    return `${PUBLIC_AVATARS_BASE_URL}/${customAvatarKey.replace(/^\/+/, '')}`;
+  }
+  const linked = item.linkedAccounts as Record<string, Record<string, string>> | undefined;
+  if (linked?.twitter?.profileImageUrl) return linked.twitter.profileImageUrl;
+  if (linked?.google?.profileImageUrl) return linked.google.profileImageUrl;
+  return null;
+}
+
 interface ProfileCacheEntry {
   displayName: string | null;
   xHandle: string | null;
@@ -56,6 +74,19 @@ const profileCache = {
   expiresAt: 0,
 };
 const PROFILE_CACHE_TTL = 5 * 60 * 1000;
+
+/**
+ * Force-expire the entire profile cache. Called by the internal invalidate
+ * webhook from nasun-website Lambda when any user's profile changes. The
+ * next batch fetch repopulates from DynamoDB. We expire all (rather than a
+ * single key) because the cache is keyed by identityId but the webhook
+ * supplies a walletAddress; the cost of a full repopulate is a single batched
+ * BatchGetItem on next read.
+ */
+export function invalidateAllProfileCache(): void {
+  profileCache.expiresAt = 0;
+  profileCache.data.clear();
+}
 
 // Twitter handle must be alphanumeric + underscore, 1-50 chars
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
@@ -87,7 +118,7 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
             RequestItems: {
               [USER_PROFILES_TABLE]: {
                 Keys: pendingKeys,
-                ProjectionExpression: 'identityId, customDisplayName, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm',
+                ProjectionExpression: 'identityId, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm',
                 ExpressionAttributeNames: { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' },
               },
             },
@@ -96,10 +127,15 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
             const id = item.identityId as string;
             const provider = ((item.provider as string | undefined) ?? '').toLowerCase();
             const linked = (item.linkedAccounts as Record<string, unknown> | undefined) ?? {};
+            // Avatar cascade: customAvatarKey > X > Google > legacy profileImageUrl.
+            // Falls back to legacy field if cascade has nothing — keeps existing
+            // leaderboard rows visually unchanged for users who haven't moved
+            // to the new fields yet.
+            const cascaded = resolveAvatarUrl(item as Record<string, unknown>);
             profileCache.data.set(id, {
               displayName: resolveDisplayName(item as Record<string, unknown>),
               xHandle: sanitizeXHandle(item.originalTwitterHandle ?? item.twitterHandle),
-              profileImageUrl: (item.profileImageUrl as string | undefined) ?? null,
+              profileImageUrl: cascaded ?? (item.profileImageUrl as string | undefined) ?? null,
               isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
               hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
             });
