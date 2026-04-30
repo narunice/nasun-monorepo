@@ -3,7 +3,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { WalletConnect } from "@nasun/wallet-ui";
 import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
 import { HeaderNetValue } from "./HeaderNetValue";
-import { EcoPointsBadge } from "./EcoPointsBadge";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { useGenesisPass } from "../../hooks/useGenesisPass";
 import { ThemeToggle } from "../theme/ThemeToggle";
@@ -340,7 +339,6 @@ export function Header() {
         <div className="flex items-center gap-2 md:gap-3">
           <ThemeToggle />
           {hasSpotAccess && <HeaderNetValue />}
-          <EcoPointsBadge />
           {hasGenesisPass && (
             <GenesisPassBadge className="hidden sm:inline-flex" />
           )}
