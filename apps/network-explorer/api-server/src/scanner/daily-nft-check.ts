@@ -28,29 +28,20 @@
 import { pointsDb } from '../db.js';
 import { rpcCall } from '../rpc.js';
 import type { NftActivation } from '../config/ecosystem.js';
+import { isV2CutoverActive } from '../config/ecosystem.js';
 import {
   STAKING_V2_CUTOFF_DATE,
   calcStakingTierPts,
   STAKING_EMISSION_COEFF,
   STAKING_EMISSION_CUTOFF_DATE,
 } from '../config/points.js';
-
-// Categories excluded from "real activity" checks
-const EXCLUDED_CATEGORIES = [
-  'referral-bonus',
-  'daily-mission',
-  'ecosystem-passive',
-  'staking-daily',
-  'staking-reward',
-  'ecosystem-bonus-pnl',
-  'ecosystem-bonus-rank',
-  'ecosystem-bonus-game',
-  'ecosystem-bonus-diversity',
-  'ecosystem-bonus-admin',
-  'ecosystem-bonus-bugreport',
-  'ecosystem-bonus-feedback',
-  'ecosystem-bonus-restoration',
-];
+import { EXCLUDED_CATEGORIES } from '../config/excluded-categories.js';
+import {
+  updateHealthForAllNftHolders,
+  getHealthWatermark,
+  addDays,
+  maxDate,
+} from './health-update.js';
 
 export async function runDailyNftChecks(
   activationsCache: Map<string, NftActivation[]>,
@@ -79,11 +70,46 @@ export async function runDailyNftChecks(
   let penaltiesRecovered = 0;
   let passiveAwarded = 0;
 
-  // --- Alliance Penalty Check ---
-  if (allianceOnlyIds.length > 0) {
-    const result = await checkAlliancePenalties(allianceOnlyIds);
-    penaltiesApplied = result.applied;
-    penaltiesRecovered = result.recovered;
+  // Yesterday (UTC): date string for health catch-up target
+  const nowUtc = new Date();
+  const yesterdayDate = new Date(Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() - 1));
+  const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
+
+  if (isV2CutoverActive(yesterdayStr)) {
+    // --- V2: NFT Health State Machine catch-up ---
+    // Process from (watermark+1) up to yesterday, capped at 7 days back.
+    // Idempotent: health-update's upsert guard prevents double-processing.
+    try {
+      const watermark = await getHealthWatermark();
+      const catchupStart = watermark
+        ? maxDate(addDays(yesterdayStr, -6), addDays(watermark, 1))
+        : yesterdayStr;
+
+      let allianceUpdated = 0, allianceSkipped = 0;
+      let gpUpdated = 0, gpSkipped = 0;
+      const days: string[] = [];
+      for (let d = catchupStart; d <= yesterdayStr; d = addDays(d, 1)) {
+        days.push(d);
+        const result = await updateHealthForAllNftHolders(activationsCache, d);
+        allianceUpdated += result.updated;
+        allianceSkipped += result.skipped;
+      }
+      if (days.length > 0) {
+        console.log(
+          `[DailyNftCheck] V2 health catchup: days=[${days.join(',')}] ` +
+          `updated=${allianceUpdated} skipped=${allianceSkipped}`,
+        );
+      }
+    } catch (err) {
+      console.error('[DailyNftCheck] V2 health update error (non-fatal):', err);
+    }
+  } else {
+    // --- V1: Alliance Penalty Check ---
+    if (allianceOnlyIds.length > 0) {
+      const result = await checkAlliancePenalties(allianceOnlyIds);
+      penaltiesApplied = result.applied;
+      penaltiesRecovered = result.recovered;
+    }
   }
 
   // --- Genesis Passive Points ---

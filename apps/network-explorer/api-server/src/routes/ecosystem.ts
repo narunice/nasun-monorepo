@@ -18,7 +18,7 @@ import {
   getMatviewStatus,
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
-import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
+import { getActivationBonus, calculateMultiplier, calculateMultiplierV2, isV2CutoverActive } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 
 const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
@@ -452,7 +452,7 @@ app.get('/score/:identityId', async (c) => {
         `.then(r => r[0]),
         // Sum of base contributions from the past 6 days of snapshots
         pointsDb!`
-          SELECT COALESCE(SUM(base_score * multiplier), 0)::numeric as weekly_snapshot_cumulative
+          SELECT COALESCE(SUM(base_score * COALESCE(multiplier_v2, multiplier)), 0)::numeric as weekly_snapshot_cumulative
           FROM ecosystem_score_snapshots
           WHERE identity_id = ${identityId}
             AND snapshot_date >= CURRENT_DATE - INTERVAL '6 days'
@@ -468,24 +468,54 @@ app.get('/score/:identityId', async (c) => {
           activations = synced;
         }
       }
-      const hasAlliance = activations.some(a => a.nftType === 'alliance');
-      const hasGenesis = activations.some(a => a.nftType === 'genesis-pass');
+      const hasAlliance = activations.some(a => a.nftType === 'alliance' && a.status === 'ACTIVE');
+      const hasGenesis = activations.some(a => a.nftType === 'genesis-pass' && a.status === 'ACTIVE');
+      const hasActiveNft = hasAlliance || hasGenesis;
 
+      const todayStr = new Date().toISOString().slice(0, 10);
+
+      let allianceHealth = 100, gpHealth = 100;
+      let allianceRestDays = 0, gpRestDays = 0;
       let isPenalized = false;
-      if (hasAlliance && !hasGenesis) {
-        const [penalty] = await pointsDb!`
-          SELECT 1 FROM alliance_penalties ap
-          JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
-          WHERE ap.identity_id = ${identityId}
-            AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
-        `;
-        if (penalty) isPenalized = true;
-      }
+      let multiplier: number;
 
-      const effectiveActivations = isPenalized
-        ? activations.filter(a => a.nftType !== 'alliance')
-        : activations;
-      const multiplier = calculateMultiplier(effectiveActivations);
+      if (isV2CutoverActive(todayStr)) {
+        // V2: load health state from DB (no lookahead — invalidate-on-activity updates this)
+        const healthRows = await pointsDb!`
+          SELECT nft_type, health_pct, consecutive_rest_days
+          FROM nft_health_state
+          WHERE identity_id = ${identityId}
+        `;
+        for (const r of healthRows) {
+          if (r.nft_type === 'alliance') {
+            allianceHealth = parseFloat(r.health_pct as string);
+            allianceRestDays = r.consecutive_rest_days as number;
+          }
+          if (r.nft_type === 'genesis-pass') {
+            gpHealth = parseFloat(r.health_pct as string);
+            gpRestDays = r.consecutive_rest_days as number;
+          }
+        }
+        multiplier = calculateMultiplierV2({
+          alliance:    hasAlliance ? allianceHealth : 0,
+          genesisPass: hasGenesis  ? gpHealth       : 0,
+        });
+      } else {
+        // V1: alliance penalty check
+        if (hasAlliance && !hasGenesis) {
+          const [penalty] = await pointsDb!`
+            SELECT 1 FROM alliance_penalties ap
+            JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
+            WHERE ap.identity_id = ${identityId}
+              AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
+          `;
+          if (penalty) isPenalized = true;
+        }
+        const effectiveActivations = isPenalized
+          ? activations.filter(a => a.nftType !== 'alliance')
+          : activations;
+        multiplier = calculateMultiplier(effectiveActivations);
+      }
 
       const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');
       const bonusToday = parseFloat(bonusTodayRow?.bonus_today ?? '0');
@@ -518,8 +548,16 @@ app.get('/score/:identityId', async (c) => {
       const todayBaseContribution = (todayBase + unsnapshottedBase) * multiplier;
       const totalBasePoints = baseCumulative + todayBaseContribution;
       const stakingAllTimeContribution = stakingAllTime * multiplier;
-      const allTimeCumulative = totalBasePoints + stakingAllTimeContribution
-        + bonusTotal + govTotal + refTotal * scalingFactor;
+
+      // allTimeCumulative: SUM(past snapshots) + today delta.
+      // baseCumulative already uses COALESCE(multiplier_v2, multiplier) so past rows
+      // retain their original values even after a V2 multiplier drop.
+      // stakingAllTimeContribution uses current multiplier (known approximation).
+      const allTimeCumulative = Math.max(
+        0,
+        totalBasePoints + stakingAllTimeContribution
+          + bonusTotal + govTotal + refTotal * scalingFactor,
+      );
 
       // Score breakdown for composition bar (base included, no reverse calculation)
       const nonBaseCategories = bonusCategoryRows.map((r: any) => ({
@@ -559,6 +597,13 @@ app.get('/score/:identityId', async (c) => {
         multiplier,
         activations,
         isPenalized,
+        hasActiveNft,
+        hasAlliance,
+        hasGenesis,
+        allianceHealth,
+        gpHealth,
+        allianceRestDays,
+        gpRestDays,
         todayCategories: todayCategoryRows,
         stakingToday,
         stakingWeekly,
@@ -599,17 +644,35 @@ app.get('/score/:identityId', async (c) => {
     }
   }
 
-  // disabled = no active NFT at all (not penalized with alliance)
-  const disabled = !scores.isPenalized && scores.multiplier === 0;
+  const disabled = !scores.hasActiveNft;
+  const isWeakened = scores.hasActiveNft && scores.multiplier === 0;
 
   const bt = scores.bonusTotal;
 
   const sf = scores.scalingFactor;
+  const todayStr2 = new Date().toISOString().slice(0, 10);
+  const showHealth = isV2CutoverActive(todayStr2);
+
   const data = {
     identityId,
     multiplier: roundTo2(scores.multiplier),
     disabled,
-    isPenalized: scores.isPenalized,
+    isWeakened,
+    isPenalized: showHealth ? false : scores.isPenalized,
+    ...(showHealth ? {
+      health: {
+        alliance: {
+          pct: scores.allianceHealth,
+          restDays: scores.allianceRestDays,
+          hasNft: scores.hasAlliance,
+        },
+        genesisPass: {
+          pct: scores.gpHealth,
+          restDays: scores.gpRestDays,
+          hasNft: scores.hasGenesis,
+        },
+      },
+    } : {}),
     bonusTotal: roundTo2(bt),
     referralBonus: roundTo2(scores.refTotal),
     referralScalingFactor: sf,

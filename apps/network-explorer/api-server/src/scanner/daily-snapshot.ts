@@ -10,7 +10,13 @@
  */
 
 import { pointsDb } from '../db.js';
-import { calculateMultiplier, type NftActivation } from '../config/ecosystem.js';
+import {
+  calculateMultiplier,
+  calculateMultiplierV2,
+  isV2CutoverActive,
+  type NftActivation,
+  type NftHealth,
+} from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 
@@ -83,13 +89,53 @@ export async function takeDailySnapshot(
     return;
   }
 
-  // 5. Batch penalty check
+  // 5. Batch penalty/health check
   const allIdsArr = [...allIds];
-  const penalizedRows = await pointsDb`
-    SELECT identity_id FROM alliance_penalties
-    WHERE identity_id = ANY(${allIdsArr})
-  `;
-  const penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
+  const isV2 = isV2CutoverActive(snapshotDate);
+
+  let penalizedSet = new Set<string>();
+  const healthMap = new Map<string, { alliance: number; gp: number }>();
+
+  if (isV2) {
+    // V2: load health state (<=snapshotDate for robustness against timing)
+    const healthRows = await pointsDb`
+      SELECT DISTINCT ON (identity_id, nft_type)
+        identity_id, nft_type, health_pct
+      FROM nft_health_state
+      WHERE identity_id = ANY(${allIdsArr})
+        AND last_evaluated_day <= ${snapshotDate}::date
+      ORDER BY identity_id, nft_type, last_evaluated_day DESC
+    `;
+    for (const r of healthRows) {
+      const entry = healthMap.get(r.identity_id as string) ?? { alliance: 100, gp: 100 };
+      if (r.nft_type === 'alliance')     entry.alliance = parseFloat(r.health_pct as string);
+      if (r.nft_type === 'genesis-pass') entry.gp       = parseFloat(r.health_pct as string);
+      healthMap.set(r.identity_id as string, entry);
+    }
+
+    // Fail-safe: any active NFT holder with no health row -> bail, retry next cycle
+    let missingCount = 0;
+    for (const [id, acts] of activationsCache) {
+      const hasNft = acts.some(a => a.status === 'ACTIVE' &&
+        (a.nftType === 'alliance' || a.nftType === 'genesis-pass'));
+      if (hasNft && !healthMap.has(id)) missingCount++;
+    }
+    if (missingCount > 0) {
+      console.error(
+        `[Snapshot] V2 health missing for ${missingCount} NFT holders on ${snapshotDate}. Skipping snapshot.`,
+      );
+      if (missingCount > 10) {
+        console.error('[Snapshot] ALERT: >10 missing holders, investigate health-update.');
+      }
+      return;
+    }
+  } else {
+    const penalizedRows = await pointsDb`
+      SELECT identity_id FROM alliance_penalties
+      WHERE identity_id = ANY(${allIdsArr})
+    `;
+    penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
+  }
 
   // 6. Batch bonus + referral + governance queries (date-filtered: today's delta only).
   // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
@@ -236,6 +282,9 @@ export async function takeDailySnapshot(
     stakingDelta: number;
     ecosystemScore: number;
     isPenalized: boolean;
+    isV2Row: boolean;
+    allianceHealth: number | null;
+    gpHealth: number | null;
     // Prev cumulative as raw numeric strings — passed to SQL for exact addition.
     prevBaseStr: string;
     prevBonusStr: string;
@@ -245,19 +294,29 @@ export async function takeDailySnapshot(
   }
 
   // Fallback multiplier: for users with base activity but not in activationsCache,
-  // use their most recent snapshot's multiplier to prevent incorrect 0-multiplier snapshots
+  // use their most recent snapshot's multiplier to prevent incorrect 0-multiplier snapshots.
+  // V2: fallback from multiplier_v2; V1: fallback from multiplier.
   const cacheMissIds = allIdsArr.filter(
     id => filteredBaseMap.has(id) && !activationsCache.has(id),
   );
   const lastMultiplierMap = new Map<string, number>();
   if (cacheMissIds.length > 0) {
-    const fallbackRows = await pointsDb`
-      SELECT DISTINCT ON (identity_id) identity_id, multiplier::numeric as multiplier
-      FROM ecosystem_score_snapshots
-      WHERE identity_id = ANY(${cacheMissIds})
-        AND multiplier > 0
-      ORDER BY identity_id, snapshot_date DESC
-    `;
+    const fallbackRows = isV2
+      ? await pointsDb`
+          SELECT DISTINCT ON (identity_id) identity_id,
+            COALESCE(multiplier_v2, multiplier)::numeric as multiplier
+          FROM ecosystem_score_snapshots
+          WHERE identity_id = ANY(${cacheMissIds})
+            AND COALESCE(multiplier_v2, multiplier) > 0
+          ORDER BY identity_id, snapshot_date DESC
+        `
+      : await pointsDb`
+          SELECT DISTINCT ON (identity_id) identity_id, multiplier::numeric as multiplier
+          FROM ecosystem_score_snapshots
+          WHERE identity_id = ANY(${cacheMissIds})
+            AND multiplier > 0
+          ORDER BY identity_id, snapshot_date DESC
+        `;
     for (const row of fallbackRows) {
       lastMultiplierMap.set(row.identity_id as string, parseFloat(row.multiplier as string));
     }
@@ -277,14 +336,33 @@ export async function takeDailySnapshot(
     let activations = activationsCache.get(identityId) ?? [];
     const isPenalized = penalizedSet.has(identityId);
 
-    if (isPenalized) {
-      activations = activations.filter(a => a.nftType !== 'alliance');
+    let allianceHealth: number | null = null;
+    let gpHealth: number | null = null;
+    let multiplier: number;
+
+    if (isV2) {
+      const h = healthMap.get(identityId);
+      // Holders not in healthMap: cold-start (no NFT yet) or dormant. Default 100%.
+      allianceHealth = h?.alliance ?? 100;
+      gpHealth = h?.gp ?? 100;
+      // Non-holders: health contribution is 0 (no NFT = no multiplier from that slot).
+      const hasAlliance = activations.some(a => a.status === 'ACTIVE' && a.nftType === 'alliance');
+      const hasGp = activations.some(a => a.status === 'ACTIVE' && a.nftType === 'genesis-pass');
+      multiplier = calculateMultiplierV2({
+        alliance:    hasAlliance ? allianceHealth : 0,
+        genesisPass: hasGp ? gpHealth : 0,
+      } as NftHealth);
+    } else {
+      if (isPenalized) {
+        activations = activations.filter(a => a.nftType !== 'alliance');
+      }
+      multiplier = calculateMultiplier(activations);
     }
 
-    let multiplier = calculateMultiplier(activations);
-
-    // Cache miss protection: use last known multiplier if available
-    if (activations.length === 0 && !isPenalized && lastMultiplierMap.has(identityId)) {
+    // Cache miss protection: use last known multiplier if available (V1 only; V2 uses health)
+    if (!isV2 && activations.length === 0 && !isPenalized && lastMultiplierMap.has(identityId)) {
+      multiplier = lastMultiplierMap.get(identityId)!;
+    } else if (isV2 && activations.length === 0 && lastMultiplierMap.has(identityId)) {
       multiplier = lastMultiplierMap.get(identityId)!;
     }
     const bonusTotal = bonusMap.get(identityId) ?? 0;
@@ -308,6 +386,9 @@ export async function takeDailySnapshot(
       bonusTotal, bonusTotalInclSynthetic,
       referralBonus, governanceBonus, stakingDelta,
       ecosystemScore, isPenalized,
+      isV2Row: isV2,
+      allianceHealth: isV2 ? allianceHealth : null,
+      gpHealth: isV2 ? gpHealth : null,
       prevBaseStr: prev?.baseStr ?? '0',
       prevBonusStr: prev?.bonusStr ?? '0',
       prevGovStr: prev?.govStr ?? '0',
@@ -334,30 +415,63 @@ export async function takeDailySnapshot(
   let inserted = 0;
   for (const e of entries) {
     const r = (e as SnapshotRow & { rank?: number }).rank ?? null;
-    const result = await pointsDb`
-      WITH cum AS (
+    let result;
+    if (e.isV2Row) {
+      // V2: fill _v2 columns, leave legacy multiplier/ecosystem_score NULL
+      result = await pointsDb`
+        WITH cum AS (
+          SELECT
+            ${e.prevBaseStr}::numeric    + ${e.baseScore}::numeric * ${e.multiplier}::numeric    AS atb,
+            ${e.prevBonusStr}::numeric   + ${e.bonusTotalInclSynthetic}::numeric                  AS atbo,
+            ${e.prevGovStr}::numeric     + ${e.governanceBonus}::numeric                          AS atg,
+            ${e.prevRefStr}::numeric     + ${e.referralBonus}::numeric * ${sf}::numeric           AS atr,
+            ${e.prevStakingStr}::numeric + ${e.stakingDelta}::numeric * ${e.multiplier}::numeric  AS ats
+        )
+        INSERT INTO ecosystem_score_snapshots
+          (identity_id, snapshot_date, base_score, bonus_total,
+           referral_bonus, governance_bonus, is_penalized, rank,
+           alliance_health, gp_health, multiplier_v2, ecosystem_score_v2,
+           all_time_base, all_time_bonus, all_time_gov,
+           all_time_referral_scaled, all_time_staking_scaled, all_time_score)
         SELECT
-          ${e.prevBaseStr}::numeric    + ${e.baseScore}::numeric * ${e.multiplier}::numeric    AS atb,
-          ${e.prevBonusStr}::numeric   + ${e.bonusTotalInclSynthetic}::numeric                  AS atbo,
-          ${e.prevGovStr}::numeric     + ${e.governanceBonus}::numeric                          AS atg,
-          ${e.prevRefStr}::numeric     + ${e.referralBonus}::numeric * ${sf}::numeric           AS atr,
-          ${e.prevStakingStr}::numeric + ${e.stakingDelta}::numeric * ${e.multiplier}::numeric  AS ats
-      )
-      INSERT INTO ecosystem_score_snapshots
-        (identity_id, snapshot_date, base_score, multiplier, bonus_total,
-         referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank,
-         all_time_base, all_time_bonus, all_time_gov,
-         all_time_referral_scaled, all_time_staking_scaled, all_time_score)
-      SELECT
-        ${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
-        ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
-        ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
-        ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r},
-        atb, atbo, atg, atr, ats,
-        atb + atbo + atg + atr + ats
-      FROM cum
-      ON CONFLICT (identity_id, snapshot_date) DO NOTHING
-    `;
+          ${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
+          ${e.bonusTotal.toFixed(2)},
+          ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
+          false, ${r},
+          ${e.allianceHealth?.toFixed(2) ?? null}, ${e.gpHealth?.toFixed(2) ?? null},
+          ${e.multiplier.toFixed(3)}, ${e.ecosystemScore.toFixed(3)},
+          atb, atbo, atg, atr, ats,
+          atb + atbo + atg + atr + ats
+        FROM cum
+        ON CONFLICT (identity_id, snapshot_date) DO NOTHING
+      `;
+    } else {
+      // V1: fill legacy columns
+      result = await pointsDb`
+        WITH cum AS (
+          SELECT
+            ${e.prevBaseStr}::numeric    + ${e.baseScore}::numeric * ${e.multiplier}::numeric    AS atb,
+            ${e.prevBonusStr}::numeric   + ${e.bonusTotalInclSynthetic}::numeric                  AS atbo,
+            ${e.prevGovStr}::numeric     + ${e.governanceBonus}::numeric                          AS atg,
+            ${e.prevRefStr}::numeric     + ${e.referralBonus}::numeric * ${sf}::numeric           AS atr,
+            ${e.prevStakingStr}::numeric + ${e.stakingDelta}::numeric * ${e.multiplier}::numeric  AS ats
+        )
+        INSERT INTO ecosystem_score_snapshots
+          (identity_id, snapshot_date, base_score, multiplier, bonus_total,
+           referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank,
+           all_time_base, all_time_bonus, all_time_gov,
+           all_time_referral_scaled, all_time_staking_scaled, all_time_score)
+        SELECT
+          ${e.identityId}, ${snapshotDate}::date, ${e.baseScore},
+          ${e.multiplier.toFixed(2)}, ${e.bonusTotal.toFixed(2)},
+          ${e.referralBonus.toFixed(2)}, ${e.governanceBonus.toFixed(2)},
+          ${e.ecosystemScore.toFixed(2)}, ${e.isPenalized}, ${r},
+          atb, atbo, atg, atr, ats,
+          atb + atbo + atg + atr + ats
+        FROM cum
+        ON CONFLICT (identity_id, snapshot_date) DO NOTHING
+      `;
+    }
     if (result.count > 0) inserted++;
   }
 

@@ -91,3 +91,17 @@ CREATE TABLE IF NOT EXISTS alliance_first_seen (
   identity_id TEXT PRIMARY KEY,
   first_seen DATE NOT NULL DEFAULT CURRENT_DATE
 );
+
+-- 8. V2 NFT health state: per-(identity, nft_type) health percentage.
+-- Populated by daily-nft-check.ts after ECO_HEALTH_V2_CUTOFF is set.
+-- Pre-cutover: table stays empty; V1 paths read alliance_penalties instead.
+CREATE TABLE IF NOT EXISTS nft_health_state (
+  identity_id           TEXT NOT NULL,
+  nft_type              TEXT NOT NULL,          -- 'alliance' | 'genesis-pass'
+  health_pct            NUMERIC(5,2) NOT NULL,  -- 0, 12.5, 25, 50, 100
+  consecutive_rest_days INT NOT NULL DEFAULT 0,
+  last_active_day       DATE,
+  last_evaluated_day    DATE NOT NULL,          -- most recent health update (UTC day)
+  updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (identity_id, nft_type)
+);
