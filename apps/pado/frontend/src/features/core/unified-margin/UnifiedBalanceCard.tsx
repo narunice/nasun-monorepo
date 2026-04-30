@@ -36,7 +36,7 @@ export function UnifiedBalanceCard({
   const { isConnected: isZkLoggedIn } = useZkLogin();
 
   // Progressive disclosure state
-  const [showFundDetails, setShowFundDetails] = useState(false);
+  const [showFundDetails, setShowFundDetails] = useState(true);
 
   const {
     totalValue,
