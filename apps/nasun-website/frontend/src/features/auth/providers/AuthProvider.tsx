@@ -15,6 +15,7 @@ import { handleGoogleOAuthRedirect } from "../handlers/googleOAuthHandler";
 import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
 import { fetchSsoBridgeProfile } from "../utils/ssoBridge";
 import { WALLET_IDENTITY_CHANGED_EVENT } from "@nasun/wallet";
+import { queryClient } from "@/lib/queryClient";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -38,6 +39,9 @@ function deleteSessionCookie(): void {
 // Shared cleanup for all auth state (localStorage, sessionStorage, cookie, NFT store).
 // Used by both checkAuthStatus (session/token expiry) and logout (user-initiated).
 function clearAllAuthState(): void {
+  // Drop the entire react-query cache so a different user logging in on the
+  // same browser cannot see the previous user's profile/leaderboard data.
+  queryClient.clear();
   localStorage.removeItem("nasun_user_profile");
   localStorage.removeItem("auth_provider_preference");
   deleteSessionCookie();
