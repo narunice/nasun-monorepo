@@ -24,7 +24,7 @@ export function EvmWalletLinkButton() {
         {isWalletLinking ? "Linking..." : "Link Wallet"}
       </UjuButton>
       {walletLinkError && (
-        <p className="text-xs text-red-400 mt-1">{walletLinkError}</p>
+        <p className="text-sm text-red-400 mt-1">{walletLinkError}</p>
       )}
     </div>
   );

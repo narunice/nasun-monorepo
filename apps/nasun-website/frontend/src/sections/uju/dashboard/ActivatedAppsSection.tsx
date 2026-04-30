@@ -45,7 +45,7 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className={`text-base font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}
+                    className={`text-sm font-medium px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}
                   >
                     {CHAIN_LABEL[app.chain]}
                   </span>
