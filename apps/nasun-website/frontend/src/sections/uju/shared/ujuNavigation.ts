@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import type { SetURLSearchParams } from "react-router-dom";
 
 // Cross-tab navigation with deferred scroll target. Why sessionStorage and
@@ -48,4 +49,31 @@ export function consumeScrollTarget(): string | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * Mount-time effect that scrolls to a `[data-uju-scroll-target="..."]`
+ * element when the pending sessionStorage target matches `expected`.
+ * Defers two animation frames so cards have painted before scrollIntoView
+ * fires. Only consumes the target if it matches — leaves it in place for
+ * other tabs to handle.
+ */
+export function useConsumeScrollTarget(expected: string): void {
+  useEffect(() => {
+    const target = sessionStorage.getItem(SCROLL_TARGET_KEY);
+    if (target !== expected) return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const el = document.querySelector(
+          `[data-uju-scroll-target="${target}"]`,
+        );
+        if (el) {
+          consumeScrollTarget();
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+    // expected is constant per call site; no other deps needed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 }

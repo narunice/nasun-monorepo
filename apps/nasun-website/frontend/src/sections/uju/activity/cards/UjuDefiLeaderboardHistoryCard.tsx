@@ -53,7 +53,8 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
   className = "",
 }) => {
   const { user } = useAuth();
-  const { registeredWallets } = useUjuWalletRegistration();
+  const { registeredWallets, isLoading: isWalletsLoading } =
+    useUjuWalletRegistration();
   const [isExpanded, setIsExpanded] = useState(false);
 
   // Primary nasun wallet (matches DailyMissionsCard pattern).
@@ -113,7 +114,14 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
 
   // Fallback when current selection no longer exists in walletList (e.g. user
   // removed it from another tab) — drop back to primary.
+  //
+  // Race guard: do NOT run this effect while registeredWallets is still
+  // loading. Without the guard, walletList contains only the primary on the
+  // first render, the persisted non-primary selection looks "invalid", we
+  // overwrite to primary AND persist that overwrite, silently losing the
+  // user's saved choice before the registered list arrives.
   useEffect(() => {
+    if (isWalletsLoading) return;
     if (walletList.length === 0) return;
     const stillValid =
       selectedAddress != null &&
@@ -129,7 +137,7 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
         }
       }
     }
-  }, [walletList, selectedAddress, storageKey]);
+  }, [walletList, selectedAddress, storageKey, isWalletsLoading]);
 
   const handleSelect = (addr: string) => {
     setSelectedAddress(addr);
