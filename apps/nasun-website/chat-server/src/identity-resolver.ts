@@ -338,11 +338,56 @@ function parseSocialBadges(item: Record<string, unknown>): SocialBadges {
   };
 }
 
+// Concurrency cap for parallel BatchGet waves. DynamoDB throttling is
+// handled by the per-chunk UnprocessedKeys retry loop, so this is just a
+// safety valve to avoid pegging the SDK socket pool.
+const BATCH_GET_CONCURRENCY = 8;
+
+async function fetchBadgesChunk(
+  ddb: DynamoDBDocumentClient,
+  chunk: string[],
+): Promise<Array<[string, SocialBadges]>> {
+  const out: Array<[string, SocialBadges]> = [];
+  let pendingKeys: Array<Record<string, unknown>> = chunk.map((id) => ({ identityId: id }));
+
+  for (let attempt = 0; pendingKeys.length > 0; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+    }
+    if (attempt > BATCH_GET_MAX_RETRIES) break;
+
+    const response = await ddb.send(new BatchGetCommand({
+      RequestItems: {
+        [USER_PROFILES_TABLE]: {
+          Keys: pendingKeys,
+          ProjectionExpression: 'identityId, twitterHandle, #p, isTelegramMember, telegramUserId, linkedAccounts',
+          ExpressionAttributeNames: { '#p': 'provider' },
+        },
+      },
+    }));
+
+    const items = response.Responses?.[USER_PROFILES_TABLE] ?? [];
+    for (const item of items) {
+      if (typeof item.identityId === 'string') {
+        out.push([item.identityId, parseSocialBadges(item)]);
+      }
+    }
+
+    pendingKeys = (response.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys ?? []) as Array<Record<string, unknown>>;
+  }
+
+  return out;
+}
+
 /**
  * Returns social badge data (xHandle, hasGoogle, hasTelegram) for the given identityIds.
  * Replaces getTwitterHandlesBatch — single DDB round-trip covers all badge fields.
  * On UnprocessedKeys retry exhaustion, breaks gracefully (badges omitted, not thrown).
  * linkedAccounts raw object is never returned to callers.
+ *
+ * Performance: chunks of 100 (DDB BatchGetItem hard limit) executed in
+ * parallel waves of BATCH_GET_CONCURRENCY to keep weekly-aggregation under
+ * the cycle interval as trader count scales past 10K.
  */
 export async function getSocialBadgesBatch(identityIds: string[]): Promise<Map<string, SocialBadges>> {
   if (identityIds.length === 0) return new Map();
@@ -350,34 +395,22 @@ export async function getSocialBadgesBatch(identityIds: string[]): Promise<Map<s
   const ddb = getDdbClient();
   const result = new Map<string, SocialBadges>();
 
+  // Slice into BatchGetItem-sized chunks first.
+  const chunks: string[][] = [];
   for (let i = 0; i < identityIds.length; i += BATCH_GET_LIMIT) {
-    const chunk = identityIds.slice(i, i + BATCH_GET_LIMIT);
-    let pendingKeys: Array<Record<string, unknown>> = chunk.map((id) => ({ identityId: id }));
+    chunks.push(identityIds.slice(i, i + BATCH_GET_LIMIT));
+  }
 
-    for (let attempt = 0; pendingKeys.length > 0; attempt++) {
-      if (attempt > 0) {
-        await new Promise((resolve) => setTimeout(resolve, 100 * 2 ** (attempt - 1)));
+  // Run waves of BATCH_GET_CONCURRENCY chunks in parallel.
+  for (let i = 0; i < chunks.length; i += BATCH_GET_CONCURRENCY) {
+    const wave = chunks.slice(i, i + BATCH_GET_CONCURRENCY);
+    const waveResults = await Promise.all(
+      wave.map((chunk) => fetchBadgesChunk(ddb, chunk)),
+    );
+    for (const entries of waveResults) {
+      for (const [id, badges] of entries) {
+        result.set(id, badges);
       }
-      if (attempt > BATCH_GET_MAX_RETRIES) break;
-
-      const response = await ddb.send(new BatchGetCommand({
-        RequestItems: {
-          [USER_PROFILES_TABLE]: {
-            Keys: pendingKeys,
-            ProjectionExpression: 'identityId, twitterHandle, #p, isTelegramMember, telegramUserId, linkedAccounts',
-            ExpressionAttributeNames: { '#p': 'provider' },
-          },
-        },
-      }));
-
-      const items = response.Responses?.[USER_PROFILES_TABLE] ?? [];
-      for (const item of items) {
-        if (typeof item.identityId === 'string') {
-          result.set(item.identityId, parseSocialBadges(item));
-        }
-      }
-
-      pendingKeys = (response.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys ?? []) as Array<Record<string, unknown>>;
     }
   }
 
