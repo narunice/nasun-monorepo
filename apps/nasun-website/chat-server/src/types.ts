@@ -108,6 +108,12 @@ export interface ChatMessagePayload {
   senderNickname: string | null;
   senderBadge?: string | null;
   senderProfileImageUrl?: string | null;
+  /**
+   * Wallet-suffix to disambiguate same-displayName senders. Set when two or
+   * more active addresses share the same canonical display name. Format:
+   * `0x12...ab`. Null/undefined when no collision is currently observed.
+   */
+  senderDisplaySuffix?: string | null;
   content: string;
   messageType: 'text' | 'system' | 'reply';
   replyToId: number | null;

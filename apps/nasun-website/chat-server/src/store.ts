@@ -15,7 +15,10 @@ const LOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 const MAX_CHANGES_IN_WINDOW = 10;
 
 // Profile cache constants
-const PROFILE_TTL_MS = 30 * 60 * 1000;           // 30 minutes
+// 5 min TTL is the fallback for cases where the nasun-website Lambda's
+// invalidate webhook fails or is missed (network blip). The webhook is the
+// happy path; on success we invalidate immediately via invalidateNasunProfile.
+const PROFILE_TTL_MS = 5 * 60 * 1000;            // 5 minutes
 const NEGATIVE_CACHE_TTL_MS = 30 * 60 * 1000;    // 30 minutes for failed/null lookups
 const FETCH_TIMEOUT_MS = 5000;
 const PROFILE_FETCH_CONCURRENCY = 10;
@@ -134,6 +137,10 @@ export function initStore(config: ChatServerConfig): void {
     );
   `);
   try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN twitter_handle TEXT'); } catch { /* already exists */ }
+  // Stage D: cache the user-uploaded avatar key. Resolved to URL in payload
+  // builder via PUBLIC_AVATARS_BASE_URL env var. Stays NULL when the user
+  // has no custom avatar (cascade falls through to twitter/google).
+  try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN custom_avatar_key TEXT'); } catch { /* already exists */ }
 
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
@@ -630,18 +637,71 @@ export function getAddressesWithProfileName(addresses: string[]): Set<string> {
   return new Set(rows.map((r) => r.address));
 }
 
-export function upsertNasunProfile(address: string, displayName: string | null, imageUrl: string | null, twitterHandle: string | null = null): void {
+export function upsertNasunProfile(
+  address: string,
+  displayName: string | null,
+  imageUrl: string | null,
+  twitterHandle: string | null = null,
+  customAvatarKey: string | null = null,
+): void {
   getDb()
     .prepare(
-      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, twitter_handle, fetched_at)
-       VALUES (?, ?, ?, ?, ?)
+      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, fetched_at)
+       VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(address) DO UPDATE SET
          resolved_display_name = excluded.resolved_display_name,
          profile_image_url = excluded.profile_image_url,
          twitter_handle = COALESCE(excluded.twitter_handle, twitter_handle),
+         custom_avatar_key = excluded.custom_avatar_key,
          fetched_at = excluded.fetched_at`
     )
-    .run(address, displayName, imageUrl, twitterHandle, Date.now());
+    .run(address, displayName, imageUrl, twitterHandle, customAvatarKey, Date.now());
+}
+
+/**
+ * Invalidate the cached nasun_profiles row for one wallet address. Called by
+ * the internal webhook handler when nasun-website's PATCH /user-profile
+ * succeeds. Setting `fetched_at = 0` forces the next read to refetch.
+ */
+export function invalidateNasunProfile(address: string): void {
+  const normalized = address.toLowerCase();
+  getDb()
+    .prepare(`UPDATE nasun_profiles SET fetched_at = 0 WHERE address = ?`)
+    .run(normalized);
+}
+
+/**
+ * Read a cached profile (for custom_avatar_key resolution in payload builder).
+ * Returns null when no row or the row is stale beyond TTL.
+ */
+export function getNasunProfileCached(address: string): {
+  resolvedDisplayName: string | null;
+  profileImageUrl: string | null;
+  twitterHandle: string | null;
+  customAvatarKey: string | null;
+} | null {
+  const normalized = address.toLowerCase();
+  const row = getDb()
+    .prepare(
+      `SELECT resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, fetched_at
+       FROM nasun_profiles WHERE address = ?`
+    )
+    .get(normalized) as
+    | {
+        resolved_display_name: string | null;
+        profile_image_url: string | null;
+        twitter_handle: string | null;
+        custom_avatar_key: string | null;
+        fetched_at: number;
+      }
+    | undefined;
+  if (!row) return null;
+  return {
+    resolvedDisplayName: row.resolved_display_name,
+    profileImageUrl: row.profile_image_url,
+    twitterHandle: row.twitter_handle,
+    customAvatarKey: row.custom_avatar_key,
+  };
 }
 
 export function getStaleProfiles(addresses: string[], ttlMs: number): string[] {
@@ -684,13 +744,24 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
       clearTimeout(timeout);
 
       if (res.ok) {
-        const data = await res.json() as { resolvedDisplayName?: string | null; profileImageUrl?: string | null; twitterHandle?: string | null };
-        upsertNasunProfile(normalized, data.resolvedDisplayName ?? null, data.profileImageUrl ?? null, data.twitterHandle ?? null);
+        const data = await res.json() as {
+          resolvedDisplayName?: string | null;
+          profileImageUrl?: string | null;
+          twitterHandle?: string | null;
+          customAvatarKey?: string | null;
+        };
+        upsertNasunProfile(
+          normalized,
+          data.resolvedDisplayName ?? null,
+          data.profileImageUrl ?? null,
+          data.twitterHandle ?? null,
+          data.customAvatarKey ?? null,
+        );
       } else {
-        upsertNasunProfile(normalized, null, null, null);
+        upsertNasunProfile(normalized, null, null, null, null);
       }
     } catch {
-      upsertNasunProfile(normalized, null, null, null);
+      upsertNasunProfile(normalized, null, null, null, null);
     } finally {
       inFlightRequests.delete(normalized);
     }
