@@ -278,6 +278,27 @@ ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecki
 
 - NASUN gas: >=5000=OK, 1500-4999=WARNING, <1500=CRITICAL
 
+#### 2d-i. Keeper Gas Watchdog Source Treasury
+
+```bash
+ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no \
+  ec2-user@43.200.67.52 "tail -50 /home/ec2-user/pado-bots/logs/keeper-gas-watchdog-out.log 2>/dev/null | grep 'source=' | tail -1"
+```
+
+Extract source balance from output (e.g., `source=9700000.0 | ...`):
+```bash
+# Alternative RPC query (direct balance check):
+curl -s -m 10 -X POST https://rpc.devnet.nasun.io \
+  -H "Content-Type: application/json" \
+  -d '{"jsonrpc":"2.0","id":1,"method":"sui_getBalance","params":["0x4c2c6f5b4c8f3a7e2d1c9f5b8a3c7e2d1c9f5b8a3c7e2d1c9f5b8a3c7e2d1c"]}' \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); balance=int(d.get('result',{}).get('totalBalance',0))/1e9; print(f'source_nasun={balance:.0f}')" 2>/dev/null
+```
+
+판정:
+- source >= 500k NASUN=OK
+- source 200k-499k NASUN=WARNING (approaching SOURCE_WARN threshold)
+- source < 200k NASUN=CRITICAL (SOURCE_WARN threshold breached, super-source auto-refill should trigger)
+
 ---
 
 ### 2.5단계: 로컬 백업 검증
@@ -445,6 +466,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_d
 | P10 | balance-watchdog stopped | WARNING | `pm2 restart balance-watchdog` |
 | P11 | NASUN gas <1500 | CRITICAL | `cd /home/ec2-user/pado-bots && source .env && npx tsx scripts/prefund-bot.ts` |
 | P12 | lottery-keeper stopped | WARNING | `pm2 restart lottery-keeper` |
+| P13 | keeper-gas-watchdog source <500k NASUN | WARNING | Check watchdog logs or RPC. If <200k, may indicate super-source refill failure |
+| P14 | keeper-gas-watchdog source <200k NASUN | CRITICAL | RPC check + watchdog logs. If unrefilled, manually: `curl -X POST https://rpc.devnet.nasun.io ... (faucet transfer)` |
 
 #### gostop (GS)
 | ID | 조건 | 심각도 | 조치 |
