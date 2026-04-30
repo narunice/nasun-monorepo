@@ -12,6 +12,8 @@ export interface NewsItem {
   imageUrl?: string;
   publishedAt: string;
   timestamp: number;
+  // Audience routing for tweet items. RSS items are unaudienced (default 'pado').
+  audience?: 'pado' | 'uju';
 }
 
 export interface CacheEntry<T> {

@@ -13,9 +13,27 @@ import { type NewsItem, type TwitterSearchResult } from './types';
 const X_API_BASE = 'https://api.twitter.com/2';
 const SECRET_NAME = process.env.X_API_SECRET_NAME || 'pado/x-api-bearer-token';
 
-// Tracked accounts (combined OR query to minimize API calls)
-const TRACKED_ACCOUNTS = ['CoinDesk', 'Cointelegraph', 'whale_alert'];
+// Pado-facing media outlets
+const MEDIA_ACCOUNTS = ['CoinDesk', 'Cointelegraph', 'whale_alert'];
+
+// Uju-facing KOL accounts (crypto thought leaders)
+const KOL_ACCOUNTS = [
+  'scottmelker', 'benjamincowen', 'coinbureau', 'kaiynne', 'tayvano_',
+  'hosseeb', 'tarunchitra', 'tomhschmidt', 'ramahluwalia', 'austincampbell',
+  'perkinscr97', 'kkirkbos', 'MikeIppolito_', 'JasonYanowitz', 'santiagoroel',
+  'patrick_oshag', 'Rewkang',
+];
+
+// Lowercase set for fast audience routing
+const KOL_LOOKUP = new Set(KOL_ACCOUNTS.map(a => a.toLowerCase()));
+
+// Combined OR query — single X API call serves both Pado and Uju
+const TRACKED_ACCOUNTS = [...MEDIA_ACCOUNTS, ...KOL_ACCOUNTS];
 const SEARCH_QUERY = '(' + TRACKED_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
+
+function audienceFor(username: string): 'pado' | 'uju' {
+  return KOL_LOOKUP.has(username.toLowerCase()) ? 'uju' : 'pado';
+}
 
 // Secrets Manager client (reused across invocations)
 const secretsClient = new SecretsManagerClient({ region: 'ap-northeast-2' });
@@ -66,6 +84,7 @@ function tweetToNewsItem(
     imageUrl,
     publishedAt: new Date(timestamp).toISOString(),
     timestamp,
+    audience: audienceFor(username),
   };
 }
 

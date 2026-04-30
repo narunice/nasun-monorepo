@@ -13,6 +13,7 @@ import { Handler } from 'aws-lambda';
 import { fetchRssFeeds } from './rssFetcher';
 import { fetchTweets } from './tweetFetcher';
 import {
+  ensureHydrated,
   getRssCache, setRssCache,
   getTwitterCache, setTwitterCache,
   canFetchTwitter, recordTwitterFetch,
@@ -23,7 +24,21 @@ const ALLOWED_ORIGINS = [
   'https://pado.finance',
   'https://staging.pado.finance',
   'http://localhost:5176',
+  'https://nasun.io',
+  'https://staging.nasun.io',
+  'http://localhost:5174',
 ];
+
+type Audience = 'pado' | 'uju';
+
+function filterByAudience(items: NewsItem[], audience: Audience): NewsItem[] {
+  if (audience === 'uju') {
+    // Uju feed: only KOL tweets. Drop RSS and Pado-tagged tweets.
+    return items.filter(i => i.source === 'twitter' && i.audience === 'uju');
+  }
+  // Pado feed (default): RSS + media tweets. Drop Uju-tagged tweets.
+  return items.filter(i => i.audience !== 'uju');
+}
 
 function getCorsHeaders(origin?: string): Record<string, string> {
   const allowedOrigin = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -35,30 +50,34 @@ function getCorsHeaders(origin?: string): Record<string, string> {
   };
 }
 
-async function getNewsItems(limit: number): Promise<NewsFeedResponse> {
+async function getNewsItems(limit: number, audience: Audience): Promise<NewsFeedResponse> {
+  await ensureHydrated();
+
   const sources = { rss: false, twitter: false };
   const allItems: NewsItem[] = [];
 
-  // 1. RSS feeds (5 min cache)
-  let rssItems = getRssCache();
-  if (!rssItems) {
-    rssItems = await fetchRssFeeds();
-    setRssCache(rssItems);
-    sources.rss = true;
-    console.log(`RSS: fetched ${rssItems.length} items`);
-  } else {
-    console.log(`RSS: cache hit (${rssItems.length} items)`);
+  // 1. RSS feeds (5 min cache). Skip entirely for Uju audience — KOL feed is tweet-only.
+  if (audience !== 'uju') {
+    let rssItems = getRssCache();
+    if (!rssItems) {
+      rssItems = await fetchRssFeeds();
+      await setRssCache(rssItems);
+      sources.rss = true;
+      console.log(`RSS: fetched ${rssItems.length} items`);
+    } else {
+      console.log(`RSS: cache hit (${rssItems.length} items)`);
+    }
+    allItems.push(...rssItems);
   }
-  allItems.push(...rssItems);
 
-  // 2. X API tweets (60 min cache, budget-aware)
+  // 2. X API tweets (60 min cache, budget-aware). Single search covers both audiences.
   let twitterItems = getTwitterCache();
   if (!twitterItems) {
     if (canFetchTwitter()) {
       twitterItems = await fetchTweets();
       if (twitterItems.length > 0) {
-        setTwitterCache(twitterItems);
-        recordTwitterFetch(twitterItems.length);
+        await setTwitterCache(twitterItems);
+        await recordTwitterFetch(twitterItems.length);
       }
       sources.twitter = true;
       console.log(`Twitter: fetched ${twitterItems.length} tweets`);
@@ -71,11 +90,11 @@ async function getNewsItems(limit: number): Promise<NewsFeedResponse> {
   }
   allItems.push(...twitterItems);
 
-  // Sort all items by timestamp descending, limit results
-  allItems.sort((a, b) => b.timestamp - a.timestamp);
+  const filtered = filterByAudience(allItems, audience);
+  filtered.sort((a, b) => b.timestamp - a.timestamp);
 
   return {
-    items: allItems.slice(0, limit),
+    items: filtered.slice(0, limit),
     fetchedAt: new Date().toISOString(),
     sources,
   };
@@ -100,7 +119,11 @@ export const handler: Handler = async (event) => {
     const raw = parseInt(event?.queryStringParameters?.limit || '20', 10);
     const limit = Number.isNaN(raw) ? 20 : Math.min(Math.max(1, raw), 50);
 
-    const response = await getNewsItems(limit);
+    // Audience routing: Uju gets KOL tweets only, default (Pado) gets RSS + media tweets.
+    const audienceParam = event?.queryStringParameters?.audience;
+    const audience: Audience = audienceParam === 'uju' ? 'uju' : 'pado';
+
+    const response = await getNewsItems(limit, audience);
     const elapsed = Date.now() - startTime;
 
     if (isScheduledEvent) {
