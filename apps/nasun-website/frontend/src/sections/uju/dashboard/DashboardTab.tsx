@@ -1,6 +1,4 @@
-import { TotalPointsCard } from "./TotalPointsCard";
-import { UserInfoCard } from "./UserInfoCard";
-import { HealthGaugeCard } from "./HealthGaugeCard";
+import { OverviewSummaryCard } from "./OverviewSummaryCard";
 import { ActivatedAppsSection } from "./ActivatedAppsSection";
 import { WalletBalanceCard } from "./WalletBalanceCard";
 import { StakingCard } from "./StakingCard";
@@ -10,8 +8,42 @@ import { NewsEventsCard } from "./NewsEventsCard";
 import { UjuSectionHeader } from "../shared";
 import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
 
+// Top portion: rendered inside the flex container alongside the chat panel.
+export function DashboardTabTop() {
+  return (
+    <div className="grid grid-cols-1 gap-4 sm:gap-5">
+      <OverviewSummaryCard />
+      <div data-uju-anchor="news-events">
+        <NewsEventsCard />
+      </div>
+    </div>
+  );
+}
+
+// Bottom portion: rendered at full container width, below the chat panel.
+// Single-column stack: Daily Missions → Activated Apps → Wallet Integration
+// → Base Staking. (Previously a 2-col grid; switched to stack per request.)
+export function DashboardTabBottom() {
+  const directory = useUjuAppDirectory();
+  const { pinnedApps } = directory;
+
+  return (
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <div data-uju-anchor="daily-missions">
+        <UjuDailyMissionsCard
+          pinnedApps={pinnedApps}
+          missionsByApp={directory.state.missions}
+        />
+      </div>
+      <ActivatedAppsSection directory={directory} />
+      <WalletBalanceCard />
+      <StakingCard />
+    </div>
+  );
+}
+
+// Combined: used when chat is closed (no split needed).
 interface DashboardTabProps {
-  /** When true, render only the main grid (without the NFTs Activated section). */
   excludeNfts?: boolean;
 }
 
@@ -20,42 +52,25 @@ export function DashboardTab({ excludeNfts = false }: DashboardTabProps = {}) {
   const { pinnedApps } = directory;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-      <div className="flex flex-col gap-4 sm:gap-5 min-h-[260px]">
-        <div className="flex-[1] min-h-0">
-          <UserInfoCard />
-        </div>
-        <div className="flex-[2] min-h-0">
-          <TotalPointsCard />
-        </div>
-      </div>
-      <HealthGaugeCard />
+    <div className="flex flex-col gap-4 sm:gap-5">
+      <OverviewSummaryCard />
 
-      <div className="md:col-span-2">
+      <div data-uju-anchor="news-events">
         <NewsEventsCard />
       </div>
 
-      <div className="md:col-span-2" data-uju-anchor="daily-missions">
+      <div data-uju-anchor="daily-missions">
         <UjuDailyMissionsCard
           pinnedApps={pinnedApps}
           missionsByApp={directory.state.missions}
         />
       </div>
-
-      <div className="md:col-span-2">
-        <ActivatedAppsSection directory={directory} />
-      </div>
-
-      <div className="md:col-span-2">
-        <WalletBalanceCard />
-      </div>
-
-      <div className="md:col-span-2">
-        <StakingCard />
-      </div>
+      <ActivatedAppsSection directory={directory} />
+      <WalletBalanceCard />
+      <StakingCard />
 
       {!excludeNfts && (
-        <div className="md:col-span-2">
+        <div>
           <UjuSectionHeader accent title="NFTs Activated" />
           <UjuNftShowcaseCard />
         </div>

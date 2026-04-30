@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   APP_REGISTRY,
   CHAIN_LABEL,
@@ -6,8 +7,14 @@ import {
   type AppChain,
   type AppEntry,
 } from "../../apps/appRegistry";
-import { APP_MISSION_MAP, MAX_DAILY_MISSIONS } from "../../missions/missionRegistry";
+import {
+  APP_MISSION_MAP,
+  MAX_DAILY_MISSIONS,
+} from "../../missions/missionRegistry";
 import { useUjuAppDirectory } from "../../apps/UjuAppDirectoryProvider";
+import { UjuAppDetailsModal } from "../../apps/UjuAppDetailsModal";
+import { UjuCard, UjuButton, UjuSectionHeader } from "../../shared";
+import { goToDashboardActivatedApps } from "../../shared/ujuNavigation";
 
 const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
   { value: "all", label: "All" },
@@ -16,7 +23,9 @@ const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
 
 export function UjuAppDirectoryCard() {
   const directory = useUjuAppDirectory();
+  const [, setSearchParams] = useSearchParams();
   const [activeChain, setActiveChain] = useState<AppChain | "all">("all");
+  const [detailsApp, setDetailsApp] = useState<AppEntry | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -31,74 +40,98 @@ export function UjuAppDirectoryCard() {
       ? "text-pado-5"
       : "text-uju-secondary";
 
+  const trailing = (
+    <span className={`text-base font-mono shrink-0 ${counterClass}`}>
+      {directory.selectedTotal}/{MAX_DAILY_MISSIONS}
+    </span>
+  );
+
   return (
-    <div className="bg-uju-card border border-uju-border rounded-2xl">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-uju-border">
-        <div className="min-w-0">
-          <h3 className="text-base font-semibold text-uju-primary">
-            Apps, Services, and AI Directory
-          </h3>
-          <p className="text-sm text-uju-secondary mt-0.5">
-            Activate apps to add their daily missions to your dashboard.
-          </p>
+    <UjuCard
+      className="animate-fade-slide-up"
+      // Scroll target for "Manage in App Directory" buttons.
+      // Note: data-uju-anchor is reserved for chat-height layout selectors;
+      // scroll targets use a separate attribute namespace.
+    >
+      <div data-uju-scroll-target="apps-directory">
+        <UjuSectionHeader
+          accent
+          title="Apps, Services, and AI Directory"
+          subtitle="Activate apps to add their daily missions to your dashboard."
+          trailing={trailing}
+        />
+
+        {/* Chain filter */}
+        <div className="flex gap-1 py-3 overflow-x-auto">
+          {CHAIN_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => setActiveChain(f.value)}
+              className={`shrink-0 px-3 py-1 text-sm rounded-full border transition-colors ${
+                activeChain === f.value
+                  ? "text-pado-2 border-pado-2/40 bg-pado-2/10"
+                  : "text-uju-secondary border-uju-border hover:text-uju-primary"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
-        <span className={`text-sm font-mono shrink-0 ${counterClass}`}>
-          {directory.selectedTotal}/{MAX_DAILY_MISSIONS}
-        </span>
+
+        {/* App rows */}
+        <ul className="divide-y divide-uju-border/40">
+          {filtered.map((app) => (
+            <li key={app.id}>
+              <AppDirectoryRow app={app} onShowDetails={setDetailsApp} />
+            </li>
+          ))}
+        </ul>
+
+        {/* Footer */}
+        <div className="pt-3 mt-2 border-t border-uju-border/40 space-y-3">
+          <p className={`text-sm ${counterClass}`}>
+            {directory.selectedTotal}/{MAX_DAILY_MISSIONS} missions selected
+            {directory.isAtCap && " — deselect one to add another"}
+          </p>
+          <div className="flex justify-center">
+            <UjuButton
+              variant="secondary"
+              size="sm"
+              onClick={() => goToDashboardActivatedApps(setSearchParams)}
+            >
+              Go to Activated Apps →
+            </UjuButton>
+          </div>
+        </div>
       </div>
 
-      {/* Chain filter */}
-      <div className="flex gap-1 px-5 py-3 border-b border-uju-border overflow-x-auto">
-        {CHAIN_FILTERS.map((f) => (
-          <button
-            key={f.value}
-            onClick={() => setActiveChain(f.value)}
-            className={`shrink-0 px-3 py-1 text-sm rounded-full border transition-colors ${
-              activeChain === f.value
-                ? "text-pado-2 border-pado-2/40 bg-pado-2/10"
-                : "text-uju-secondary border-uju-border hover:text-uju-primary"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {/* App rows */}
-      <ul className="divide-y divide-uju-border">
-        {filtered.map((app) => (
-          <li key={app.id}>
-            <AppDirectoryRow app={app} />
-          </li>
-        ))}
-      </ul>
-
-      {/* Footer */}
-      <div className="px-5 py-3 border-t border-uju-border">
-        <p className={`text-sm ${counterClass}`}>
-          {directory.selectedTotal}/{MAX_DAILY_MISSIONS} missions selected
-          {directory.isAtCap && " — deselect one to add another"}
-        </p>
-      </div>
-    </div>
+      <UjuAppDetailsModal
+        app={detailsApp}
+        isOpen={!!detailsApp}
+        onClose={() => setDetailsApp(null)}
+      />
+    </UjuCard>
   );
 }
 
-function AppDirectoryRow({ app }: { app: AppEntry }) {
+function AppDirectoryRow({
+  app,
+  onShowDetails,
+}: {
+  app: AppEntry;
+  onShowDetails: (app: AppEntry) => void;
+}) {
   const directory = useUjuAppDirectory();
   const isComingSoon = app.status === "coming-soon";
   const missions = APP_MISSION_MAP[app.id] ?? [];
+  const totalMissions = missions.length;
   const isActive = directory.isPinned(app.id);
-  const selectedIds = directory.state.missions[app.id];
-
-  const isMissionChecked = (id: string) => {
-    if (selectedIds === undefined) return true;
-    return selectedIds.includes(id);
-  };
+  // missions[appId] === undefined means user never opened the checklist for
+  // this app — counter shows "0 selected" until the user toggles.
+  const selectedCount = directory.state.missions[app.id]?.length ?? 0;
 
   return (
-    <div className="px-5 py-4">
+    <div className="py-4">
       <div className="flex items-start gap-3">
         <span
           aria-hidden="true"
@@ -124,6 +157,11 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
             >
               {app.name}
             </span>
+            {totalMissions > 0 && (
+              <span className="text-sm font-light text-uju-secondary tabular-nums">
+                ({selectedCount}/{totalMissions} selected)
+              </span>
+            )}
             {isComingSoon && (
               <span className="text-sm text-uju-secondary border border-uju-border rounded px-1.5 py-0.5">
                 Soon
@@ -134,7 +172,13 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
             {app.description}
           </p>
         </div>
-        <div className="shrink-0">
+        <div className="shrink-0 flex items-center gap-2">
+          <button
+            onClick={() => onShowDetails(app)}
+            className="text-sm font-light text-uju-primary border border-uju-border rounded px-3 py-1.5 hover:border-pado-2/40 hover:text-pado-2 transition-colors"
+          >
+            Details
+          </button>
           {isComingSoon ? (
             <span className="text-sm text-uju-secondary px-3 py-1.5 border border-uju-border rounded">
               Soon
@@ -156,57 +200,6 @@ function AppDirectoryRow({ app }: { app: AppEntry }) {
           )}
         </div>
       </div>
-
-      {/* Inline missions (only when active and has missions) */}
-      {isActive && missions.length > 0 && (
-        <ul className="mt-3 ml-5 space-y-1.5">
-          {missions.map((m) => {
-            const checked = isMissionChecked(m.id);
-            // Disable unchecked checkboxes when at cap so the user has a clear
-            // visual signal rather than a silent click-no-op.
-            const disabled = !checked && directory.isAtCap;
-            return (
-              <li key={m.id}>
-                <label
-                  className={`flex items-start gap-3 px-2 py-2 rounded ${
-                    disabled
-                      ? "opacity-60 cursor-not-allowed"
-                      : "hover:bg-uju-bg/30 cursor-pointer"
-                  }`}
-                  title={
-                    disabled
-                      ? `${MAX_DAILY_MISSIONS}/${MAX_DAILY_MISSIONS} — deselect one to add another`
-                      : undefined
-                  }
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={disabled}
-                    onChange={() => directory.toggleMission(app.id, m.id)}
-                    className="mt-1 shrink-0 w-4 h-4 accent-pado-2"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-light text-uju-primary">
-                        {m.label}
-                      </span>
-                      {m.points !== undefined && m.points > 0 && (
-                        <span className="text-sm font-mono text-pado-4">
-                          +{m.points} score
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-uju-secondary leading-snug">
-                      {m.description}
-                    </p>
-                  </div>
-                </label>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </div>
   );
 }

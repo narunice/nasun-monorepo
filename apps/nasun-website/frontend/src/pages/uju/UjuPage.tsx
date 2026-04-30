@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { UjuLayout } from "../../sections/uju/UjuLayout";
 import { UjuNavigation } from "../../sections/uju/UjuNavigation";
-import { DashboardTab, DashboardNftsSection } from "../../sections/uju/dashboard/DashboardTab";
+import { DashboardTab, DashboardTabTop, DashboardTabBottom, DashboardNftsSection } from "../../sections/uju/dashboard/DashboardTab";
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
@@ -63,34 +63,26 @@ export default function UjuPage() {
   const showInlineChat = chatOpen && isDesktop && tab === "dashboard";
   const showMobileChat = chatOpen && !isDesktop;
 
-  // Match chat panel bottom to Daily Missions card bottom.
+  // Chat height = from flex-1 top edge down to news-events card bottom edge.
   const chatRef = useRef<HTMLElement | null>(null);
+  const topContentRef = useRef<HTMLDivElement | null>(null);
   const [chatHeight, setChatHeight] = useState<number | null>(null);
 
   useEffect(() => {
     if (!showInlineChat) return;
 
     const compute = () => {
-      const anchor = document.querySelector<HTMLElement>(
-        '[data-uju-anchor="daily-missions"]',
-      );
-      const aside = chatRef.current;
-      if (!anchor || !aside) return;
-      const aRect = anchor.getBoundingClientRect();
-      const cRect = aside.getBoundingClientRect();
-      const h = aRect.bottom - cRect.top;
+      const topEl = topContentRef.current;
+      const newsEl = topEl?.querySelector<HTMLElement>('[data-uju-anchor="news-events"]');
+      if (!topEl || !newsEl) return;
+      const h = newsEl.getBoundingClientRect().bottom - topEl.getBoundingClientRect().top;
       if (h > 200) setChatHeight(h);
     };
 
     compute();
     const ro = new ResizeObserver(compute);
-    const anchor = document.querySelector('[data-uju-anchor="daily-missions"]');
-    if (anchor) ro.observe(anchor);
-    window.addEventListener("resize", compute);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", compute);
-    };
+    if (topContentRef.current) ro.observe(topContentRef.current);
+    return () => ro.disconnect();
   }, [showInlineChat, tab]);
 
   return (
@@ -107,26 +99,34 @@ export default function UjuPage() {
           <UjuNavigation activeTab={tab} onTabChange={setTab} />
 
           {/* Main content + chat split (chat top = grid top = Health top) */}
-          <div className={showInlineChat ? "flex gap-4 lg:gap-5 items-start" : ""}>
-            <div className={showInlineChat ? "flex-1 min-w-0" : ""}>
+          {showInlineChat && tab === "dashboard" ? (
+            <>
+              <div className="flex gap-4 lg:gap-5 items-start">
+                <div ref={topContentRef} className="flex-1 min-w-0">
+                  <DashboardTabTop />
+                </div>
+                <aside
+                  ref={chatRef}
+                  className="shrink-0 bg-slate-900 border border-pd2 rounded-lg overflow-hidden shadow-xl flex flex-col"
+                  style={{
+                    width: "320px",
+                    height: chatHeight ? `${chatHeight}px` : "640px",
+                  }}
+                >
+                  <UjuChatSidebar onClose={() => setChatOpen(false)} />
+                </aside>
+              </div>
+              <div className="mt-4 sm:mt-5">
+                <DashboardTabBottom />
+              </div>
+            </>
+          ) : (
+            <div>
               {tab === "dashboard" && <DashboardTab excludeNfts />}
               {tab === "activity" && <ActivityTab />}
               {tab === "profile" && <ProfileTab />}
             </div>
-
-            {showInlineChat && (
-              <aside
-                ref={chatRef}
-                className="shrink-0 bg-uju-card border border-uju-border rounded-2xl overflow-hidden shadow-xl flex flex-col"
-                style={{
-                  width: "320px",
-                  height: chatHeight ? `${chatHeight}px` : "640px",
-                }}
-              >
-                <UjuChatSidebar onClose={() => setChatOpen(false)} />
-              </aside>
-            )}
-          </div>
+          )}
 
           {/* NFTs Activated — full container width, below split */}
           {tab === "dashboard" && (

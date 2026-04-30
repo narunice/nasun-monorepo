@@ -68,7 +68,12 @@ function LegacyHealthDonut({
 // Card
 // ---------------------------------------------------------------------------
 
-export function HealthGaugeCard() {
+interface HealthGaugeCardProps {
+  /** Render only the body (no outer UjuCard) for use inside a combined card. */
+  bare?: boolean;
+}
+
+export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
   const { user } = useAuth();
   const { score, isLoading } = useEcosystemScore(user?.identityId);
   const { getActivation, isLoading: statusLoading } = useEcosystemStatus(
@@ -77,12 +82,16 @@ export function HealthGaugeCard() {
   );
 
   const multiplier = score?.multiplier ?? null;
+  const wrap = (body: React.ReactNode, extraClass = "") => {
+    if (bare) return <div className={`flex flex-col ${extraClass}`}>{body}</div>;
+    return <UjuCard className={`min-h-[260px] flex flex-col ${extraClass}`}>{body}</UjuCard>;
+  };
 
   // V2 health data present
   if (score?.health) {
     const { alliance, genesisPass } = score.health;
-    return (
-      <UjuCard className="min-h-[260px] flex flex-col">
+    return wrap(
+      <>
         <UjuSectionHeader accent title="Health Status" />
         <div className="flex-1 flex flex-col items-center justify-center gap-4">
           <div className="flex items-start justify-center gap-6 w-full">
@@ -108,12 +117,19 @@ export function HealthGaugeCard() {
             </p>
           </div>
         </div>
-      </UjuCard>
+      </>,
     );
   }
 
   // Loading state
   if (isLoading || statusLoading) {
+    if (bare) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Spinner size="sm" />
+        </div>
+      );
+    }
     return (
       <UjuCard className="min-h-[260px] flex items-center justify-center">
         <Spinner size="sm" />
@@ -125,8 +141,8 @@ export function HealthGaugeCard() {
   const hasAllianceActive = !!getActivation("alliance");
   const hasGenesisActive = !!getActivation("genesis-pass");
 
-  return (
-    <UjuCard className="min-h-[260px] flex flex-col">
+  return wrap(
+    <>
       <UjuSectionHeader accent title="Health Status" />
       <div className="flex-1 flex flex-col items-center justify-center gap-4">
         <div className="flex items-start justify-center gap-6 w-full">
@@ -140,6 +156,6 @@ export function HealthGaugeCard() {
           </p>
         </div>
       </div>
-    </UjuCard>
+    </>,
   );
 }

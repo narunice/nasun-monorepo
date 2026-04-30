@@ -13,6 +13,7 @@ module.exports = {
       eurostile: ['"eurostile-extended"', "sans-serif"],
       founders: ['"Founders Grotesk"', "sans-serif"],
       pirulen: ['"pirulen"', "sans-serif"],
+      inter: ['"Inter"', '"Pretendard"', "system-ui", "sans-serif"],
     },
     container: {
       center: true,

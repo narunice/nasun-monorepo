@@ -8,6 +8,7 @@ import { trackCrossAppNav, withCrossAppParam } from '@/lib/analytics';
 import { UjuCard } from '../shared/UjuCard';
 import { UjuAccentBar } from '../shared/UjuAccentBar';
 import { UjuButton } from '../shared/UjuButton';
+import { goToActivityDirectory } from '../shared/ujuNavigation';
 import type { AppEntry } from '../apps/appRegistry';
 import {
   APP_MISSION_MAP,
@@ -183,7 +184,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
         <UjuButton
           variant="secondary"
           size="sm"
-          onClick={() => setSearchParams({ tab: 'activity' }, { replace: true })}
+          onClick={() => goToActivityDirectory(setSearchParams)}
         >
           Activate apps in Activity tab →
         </UjuButton>

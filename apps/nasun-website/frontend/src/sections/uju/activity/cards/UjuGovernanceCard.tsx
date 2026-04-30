@@ -10,7 +10,9 @@ interface UjuGovernanceCardProps {
   className?: string;
 }
 
-export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({ className = "" }) => {
+export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
+  className = "",
+}) => {
   const { status, account } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const isConnected = (status === "unlocked" && account) || isZkConnected;
@@ -53,7 +55,7 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({ className = "" }
       <UjuSectionHeader
         accent
         title="Governance"
-        subtitle="Proposals you've voted on or created"
+        subtitle="Proposals you've voted on"
       />
 
       {/* Stats Row */}
@@ -63,6 +65,17 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({ className = "" }
           value={totalPower.toLocaleString()}
           tone="cyan"
         />
+        {votingPower?.breakdown && (
+          <p className="text-sm font-light text-uju-secondary mt-1 tabular-nums">
+            {`= ${votingPower.breakdown.base} (base)`}
+            {votingPower.breakdown.xLinked > 0 &&
+              ` + ${votingPower.breakdown.xLinked} (X linked)`}
+            {votingPower.breakdown.telegram > 0 &&
+              ` + ${votingPower.breakdown.telegram} (Telegram)`}
+            {votingPower.breakdown.rankBonus > 0 &&
+              ` + ${votingPower.breakdown.rankBonus} (rank bonus)`}
+          </p>
+        )}
       </div>
 
       {/* Recent Votes */}

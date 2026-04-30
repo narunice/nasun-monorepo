@@ -90,7 +90,7 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
     <UjuCard className={`animate-fade-slide-up ${className}`}>
       <UjuSectionHeader
         accent
-        title="Ecosystem Leaderboard History"
+        title="Nasun Ecosystem Leaderboard History"
         subtitle="Weekly rank on the Nasun Ecosystem leaderboard"
         trailing={headerTrailing}
       />

@@ -28,7 +28,7 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
   );
 
   return (
-    <div className="flex flex-col h-full bg-uju-card">
+    <div className="flex flex-col h-full bg-slate-900">
       {/* Header */}
       <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-uju-border shrink-0">
         <span className="text-sm font-light text-uju-primary">Community Chat</span>

@@ -1,3 +1,6 @@
+/* Inter — used by the uju section. CDN-hosted, with Pretendard/system fallbacks. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
 /* Pretendard Font Faces — Latin subset */
 @font-face {
   font-family: "Pretendard";
@@ -616,4 +619,10 @@ html.genesis-drop-theme,
 html.genesis-drop-theme body,
 html.genesis-drop-theme .bg-nasun-black {
   background-color: #000000 !important;
+}
+
+/* Uju cross-tab scroll targets: offset for sticky banner + nav height so the
+   section header isn't hidden behind sticky chrome after scrollIntoView. */
+[data-uju-scroll-target] {
+  scroll-margin-top: 96px;
 }

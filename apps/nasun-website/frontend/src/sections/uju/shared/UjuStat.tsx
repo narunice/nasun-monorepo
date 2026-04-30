@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-type Tone = "default" | "violet" | "lavender" | "cyan" | "mint" | "amber" | "coral" | "pado-gradient";
+type Tone = "default" | "violet" | "lavender" | "cyan" | "aqua" | "mint" | "amber" | "coral" | "pado-gradient";
 
 interface UjuStatProps {
   label: string;
@@ -16,6 +16,7 @@ const VALUE_TONE: Record<Tone, string> = {
   violet:   "text-pado-violet",
   lavender: "text-pado-lavender",
   cyan:     "text-pado-2",
+  aqua:     "text-pado-3",
   mint:     "text-pado-4",
   amber:    "text-nasun-c1",
   coral:    "text-nasun-coral",
