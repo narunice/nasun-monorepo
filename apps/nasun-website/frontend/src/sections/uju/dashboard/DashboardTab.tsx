@@ -42,39 +42,15 @@ export function DashboardTabBottom() {
   );
 }
 
-// Combined: used when chat is closed (no split needed).
-interface DashboardTabProps {
-  excludeNfts?: boolean;
-}
-
-export function DashboardTab({ excludeNfts = false }: DashboardTabProps = {}) {
-  const directory = useUjuAppDirectory();
-  const { pinnedApps } = directory;
-
+// Combined: used when chat is closed (no split needed). Internally just
+// stacks Top + Bottom so the section list lives in exactly one place. The
+// NFT showcase is always rendered separately by UjuPage (after the
+// dashboard body) so it's not part of either Top or Bottom.
+export function DashboardTab() {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      <OverviewSummaryCard />
-
-      <div data-uju-anchor="news-events">
-        <NewsEventsCard />
-      </div>
-
-      <div data-uju-anchor="daily-missions">
-        <UjuDailyMissionsCard
-          pinnedApps={pinnedApps}
-          missionsByApp={directory.state.missions}
-        />
-      </div>
-      <ActivatedAppsSection directory={directory} />
-      <WalletBalanceCard />
-      <StakingCard />
-
-      {!excludeNfts && (
-        <div>
-          <UjuSectionHeader accent title="NFTs Activated" />
-          <UjuNftShowcaseCard />
-        </div>
-      )}
+      <DashboardTabTop />
+      <DashboardTabBottom />
     </div>
   );
 }

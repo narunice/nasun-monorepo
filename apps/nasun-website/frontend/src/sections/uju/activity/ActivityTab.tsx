@@ -1,4 +1,4 @@
-import { FC, useEffect } from "react";
+import { FC } from "react";
 import { useWallet } from "@nasun/wallet";
 import { UjuEcosystemPointsCard } from "./cards/UjuEcosystemPointsCard";
 import { UjuRankHistoryCard } from "./cards/UjuRankHistoryCard";
@@ -9,30 +9,15 @@ import { UjuGovernanceCard } from "./cards/UjuGovernanceCard";
 import { UjuAppDirectoryCard } from "./cards/UjuAppDirectoryCard";
 import { UjuAssetsCard } from "./cards/UjuAssetsCard";
 import { UjuBugReportsCard } from "./cards/UjuBugReportsCard";
-import { consumeScrollTarget } from "../shared/ujuNavigation";
+import { useConsumeScrollTarget } from "../shared/ujuNavigation";
 
 export const ActivityTab: FC = () => {
   const { account } = useWallet();
   const walletAddress = account?.address;
 
-  // Process pending scroll-to-section requests (e.g. "Manage in App Directory"
-  // buttons on the dashboard). Only consume targets that belong to this tab —
-  // dashboard targets are handled by ActivatedAppsSection.
-  useEffect(() => {
-    const target = sessionStorage.getItem("uju:scrollTarget");
-    if (target !== "apps-directory") return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(
-          `[data-uju-scroll-target="${target}"]`,
-        );
-        if (el) {
-          consumeScrollTarget();
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    });
-  }, []);
+  // "Manage in App Directory →" buttons on the dashboard set a pending
+  // scroll target in sessionStorage; consume it on activity-tab mount.
+  useConsumeScrollTarget("apps-directory");
 
   return (
     <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">

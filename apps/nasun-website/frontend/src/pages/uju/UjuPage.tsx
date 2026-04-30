@@ -122,7 +122,7 @@ export default function UjuPage() {
             </>
           ) : (
             <div>
-              {tab === "dashboard" && <DashboardTab excludeNfts />}
+              {tab === "dashboard" && <DashboardTab />}
               {tab === "activity" && <ActivityTab />}
               {tab === "profile" && <ProfileTab />}
             </div>

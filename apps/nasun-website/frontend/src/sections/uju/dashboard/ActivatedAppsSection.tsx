@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { UjuCard, UjuButton, UjuSectionHeader } from "../shared";
-import { goToActivityDirectory, consumeScrollTarget } from "../shared/ujuNavigation";
+import { goToActivityDirectory, useConsumeScrollTarget } from "../shared/ujuNavigation";
 import type { UseAppDirectoryResult } from "../apps/useAppDirectory";
 import { CHAIN_LABEL, CHAIN_BADGE_CLASS, type AppEntry } from "../apps/appRegistry";
 import { UjuAppDetailsModal } from "../apps/UjuAppDetailsModal";
@@ -17,23 +17,9 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
 
   const goToActivity = () => goToActivityDirectory(setSearchParams);
 
-  // Receive scroll-to-section requests from the activity tab "Go to
-  // Activated Apps →" button. Only consume the target if it matches our
-  // anchor; otherwise leave it for whoever owns it.
-  useEffect(() => {
-    const target = sessionStorage.getItem("uju:scrollTarget");
-    if (target !== "activated-apps") return;
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const el = document.querySelector(`[data-uju-scroll-target="${target}"]`);
-        if (el) {
-          // Match consume-then-scroll order with ActivityTab.
-          consumeScrollTarget();
-          el.scrollIntoView({ behavior: "smooth", block: "start" });
-        }
-      });
-    });
-  }, []);
+  // "Go to Activated Apps →" on the activity tab sets a pending scroll
+  // target; consume on dashboard mount.
+  useConsumeScrollTarget("activated-apps");
 
   return (
     <UjuCard>

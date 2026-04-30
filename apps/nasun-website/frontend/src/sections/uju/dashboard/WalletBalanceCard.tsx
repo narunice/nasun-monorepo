@@ -115,7 +115,11 @@ export function WalletBalanceCard() {
 
   const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
   const ethAddress = (registeredEthAddress ?? undefined) as `0x${string}` | undefined;
-  // Plan v5: ETH read-only mainnet (matches StakingCard ETH row).
+  // ETH balance is still queried from mainnet, but the surfaced badge says
+  // "Testnet" (per product direction). When the wagmi/RainbowKit chains
+  // config is migrated to sepolia (or another testnet), update the chainId
+  // here to keep label/data in sync. SUI/SOL row balances follow the same
+  // pattern via useSuiMainnetBalance / useSolMainnetBalance above.
   const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: mainnet.id });
 
   const identityId = user?.identityId ?? undefined;
@@ -279,13 +283,14 @@ export function WalletBalanceCard() {
                   size="sm"
                   onClick={connectMetaMask}
                   disabled={isEthAuthenticating || !identityId}
+                  title={!identityId ? "Sign in to connect a wallet" : undefined}
                 >
                   {isEthAuthenticating ? "Connecting…" : "Connect MetaMask"}
                 </UjuButton>
               )}
             </div>
           </div>
-          {ethAuthError && !ethAddress && (
+          {ethAuthError && (
             <p className="text-base text-nasun-scarlet mt-1">{ethAuthError}</p>
           )}
         </li>
@@ -320,6 +325,7 @@ export function WalletBalanceCard() {
                       variant="secondary"
                       size="sm"
                       disabled={isConnecting || !identityId}
+                      title={!identityId ? "Sign in to connect a wallet" : undefined}
                       onClick={() => handleWalletConnect("phantom")}
                     >
                       Phantom
@@ -330,6 +336,7 @@ export function WalletBalanceCard() {
                       variant="secondary"
                       size="sm"
                       disabled={isConnecting || !identityId}
+                      title={!identityId ? "Sign in to connect a wallet" : undefined}
                       onClick={() => handleWalletConnect("solflare")}
                     >
                       Solflare
