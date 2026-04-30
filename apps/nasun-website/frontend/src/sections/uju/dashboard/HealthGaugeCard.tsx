@@ -1,5 +1,6 @@
 import { useAuth } from "@/features/auth";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
+import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader } from "../shared";
 
@@ -89,29 +90,39 @@ export function HealthGaugeCard() {
     user?.cognitoToken,
     user?.identityId,
   );
+  const { score } = useEcosystemScore(user?.identityId);
 
   const hasAllianceActive = !!getActivation("alliance");
   const hasGenesisActive = !!getActivation("genesis-pass");
+  const multiplier = score?.multiplier ?? 1;
 
   return (
     <UjuCard className="min-h-[260px] flex flex-col">
       <UjuSectionHeader accent title="Health Status" />
-      <div className="flex-1 flex items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center gap-4">
         {isLoading ? (
           <Spinner size="sm" />
         ) : (
-          <div className="flex items-start justify-center gap-6 w-full">
-            <HealthDonut
-              active={hasAllianceActive}
-              tone="alliance"
-              title="Alliance"
-            />
-            <HealthDonut
-              active={hasGenesisActive}
-              tone="genesis"
-              title="Genesis Pass"
-            />
-          </div>
+          <>
+            <div className="flex items-start justify-center gap-6 w-full">
+              <HealthDonut
+                active={hasAllianceActive}
+                tone="alliance"
+                title="Alliance"
+              />
+              <HealthDonut
+                active={hasGenesisActive}
+                tone="genesis"
+                title="Genesis Pass"
+              />
+            </div>
+            <div className="w-full rounded-xl bg-pado-5/10 border border-pado-5/30 p-3">
+              <p className="text-base font-medium text-uju-secondary">Multiplier</p>
+              <p className="text-xl font-semibold text-pado-5 tabular-nums mt-1">
+                {multiplier.toFixed(2)}x
+              </p>
+            </div>
+          </>
         )}
       </div>
     </UjuCard>

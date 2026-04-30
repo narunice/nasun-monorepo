@@ -505,89 +505,113 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
               <div className="space-y-2">
                 {dailyLog
                   .filter((entry) => entry.multiplier > 0)
-                  .map((entry) => (
-                    <div
-                      key={entry.date}
-                      className={`flex items-center justify-between rounded-xl px-4 py-3 border transition-all duration-200 ${
-                        entry.isPenalized
-                          ? "bg-red-500/5 border-red-500/20"
-                          : "bg-uju-bg/30 border-uju-border/10 hover:border-uju-border/30"
-                      }`}
-                    >
-                      {/* Date */}
-                      <span className="text-xs font-black text-uju-primary w-16 shrink-0 tabular-nums">
-                        {formatDisplayDate(entry.date)}
-                      </span>
-
-                      {/* Formula */}
-                      <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-[11px] font-bold">
-                        {entry.multiplier === 0 ? (
-                          <span className="text-amber-400/60 uppercase tracking-widest">
-                            No NFT Activated
+                  .map((entry) => {
+                    // Bonus breakdown drops the referral leg — it has its own
+                    // pill in the formula and shouldn't double-appear here.
+                    const bonusBreakdown =
+                      entry.bonusItems?.filter((i) => i.category !== "referral-bonus") ?? [];
+                    const showBreakdown = bonusBreakdown.length > 0 || entry.referralBonus > 0;
+                    return (
+                      <div
+                        key={entry.date}
+                        className={`rounded-xl px-4 py-3 border transition-all duration-200 ${
+                          entry.isPenalized
+                            ? "bg-red-500/5 border-red-500/20"
+                            : "bg-uju-bg/30 border-uju-border/10 hover:border-uju-border/30"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          {/* Date */}
+                          <span className="text-xs font-black text-uju-primary w-16 shrink-0 tabular-nums">
+                            {formatDisplayDate(entry.date)}
                           </span>
-                        ) : (
-                          <>
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg/50 border border-uju-border/10">
-                              <span className="text-uju-secondary/60">BASE</span>
-                              <span className="text-uju-primary">{entry.baseScore}</span>
-                            </div>
-                            <span className="text-uju-secondary/40">×</span>
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-2/5 border border-pado-2/20">
-                              <span className="text-pado-2/60">MULT</span>
-                              <span className="text-pado-2">{entry.multiplier.toFixed(1)}</span>
-                            </div>
-                            {(entry.bonusTotal > 0 || entry.referralBonus > 0) && (
-                              <span className="text-uju-secondary/40">+</span>
+
+                          {/* Formula */}
+                          <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-[11px] font-bold">
+                            {entry.multiplier === 0 ? (
+                              <span className="text-amber-400/60 uppercase tracking-widest">
+                                No NFT Activated
+                              </span>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg/50 border border-uju-border/10">
+                                  <span className="text-uju-secondary/60">BASE</span>
+                                  <span className="text-uju-primary">{entry.baseScore}</span>
+                                </div>
+                                <span className="text-uju-secondary/40">×</span>
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-2/5 border border-pado-2/20">
+                                  <span className="text-pado-2/60">MULT</span>
+                                  <span className="text-pado-2">{entry.multiplier.toFixed(1)}</span>
+                                </div>
+                                {(entry.bonusTotal > 0 || entry.referralBonus > 0) && (
+                                  <span className="text-uju-secondary/40">+</span>
+                                )}
+                                {entry.bonusTotal > 0 && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-5/5 border border-pado-5/20">
+                                    <span className="text-pado-5/60">BONUS</span>
+                                    <span className="text-pado-5">{entry.bonusTotal}</span>
+                                  </div>
+                                )}
+                                {entry.referralBonus > 0 && (
+                                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
+                                    <span className="text-pado-4/60">REF</span>
+                                    <span className="text-pado-4">{(entry.referralBonus * 0.5).toFixed(1)}</span>
+                                  </div>
+                                )}
+                              </>
                             )}
-                            {entry.bonusTotal > 0 && (
-                              <div 
-                                className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-5/5 border border-pado-5/20 cursor-help"
-                                title={
-                                  entry.bonusItems
-                                    ?.filter((i) => i.category !== "referral-bonus")
-                                    .map((i) => `${BONUS_LABELS[i.category] || i.activityType}: +${i.points}`)
-                                    .join("\n") || `Bonus: +${entry.bonusTotal}`
-                                }
+                          </div>
+
+                          {/* Score & Rank */}
+                          <div className="flex items-center gap-6 shrink-0">
+                            <span className="text-base font-black text-pado-2 w-16 text-right tabular-nums">
+                              {entry.ecosystemScore}
+                            </span>
+                            <span className="w-20 text-right shrink-0">
+                              {entry.rank != null ? (
+                                <span className="flex items-center justify-end gap-1.5">
+                                  {entry.rankChange && (
+                                    <span className={`text-[10px] font-black ${entry.rankChange === 'up' ? 'text-pado-4' : 'text-red-400'}`}>
+                                      {entry.rankChange === 'up' ? '▲' : '▼'}
+                                    </span>
+                                  )}
+                                  <span className="text-xs font-black text-uju-primary tabular-nums">#{entry.rank}</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-black text-uju-secondary/40 tracking-widest">NONE</span>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Detail breakdown row: bonus categories + referral.
+                            Indented to align under BASE pill. Hidden on mobile
+                            (mirrors the formula row), visible on sm+. */}
+                        {showBreakdown && (
+                          <div className="hidden sm:flex flex-wrap gap-1.5 mt-2 ml-[64px] text-[10px] font-semibold">
+                            {bonusBreakdown.map((item) => (
+                              <div
+                                key={item.category}
+                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pado-5/5 border border-pado-5/15 text-pado-5/90"
                               >
-                                <span className="text-pado-5/60">BONUS</span>
-                                <span className="text-pado-5">{entry.bonusTotal}</span>
+                                <span className="text-pado-5/60">
+                                  {BONUS_LABELS[item.category] || item.activityType}
+                                </span>
+                                <span className="tabular-nums">+{item.points}</span>
                               </div>
-                            )}
+                            ))}
                             {entry.referralBonus > 0 && (
-                              <div 
-                                className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20 cursor-help"
-                                title={`Referral: +${entry.referralBonus} (x0.5)`}
-                              >
-                                <span className="text-pado-4/60">REF</span>
-                                <span className="text-pado-4">{(entry.referralBonus * 0.5).toFixed(1)}</span>
+                              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pado-4/5 border border-pado-4/15 text-pado-4/90">
+                                <span className="text-pado-4/60">Referral</span>
+                                <span className="tabular-nums">+{entry.referralBonus}</span>
+                                <span className="text-pado-4/40">×0.5</span>
                               </div>
                             )}
-                          </>
+                          </div>
                         )}
                       </div>
-
-                      {/* Score & Rank */}
-                      <div className="flex items-center gap-6 shrink-0">
-                        <span className="text-base font-black text-pado-2 w-16 text-right tabular-nums">
-                          {entry.ecosystemScore}
-                        </span>
-                        <span className="w-20 text-right shrink-0">
-                          {entry.rank != null ? (
-                            <span className="flex items-center justify-end gap-1.5">
-                              {entry.rankChange && (
-                                <span className={`text-[10px] font-black ${entry.rankChange === 'up' ? 'text-pado-4' : 'text-red-400'}`}>
-                                  {entry.rankChange === 'up' ? '▲' : '▼'}
-                                </span>
-                              )}
-                              <span className="text-xs font-black text-uju-primary tabular-nums">#{entry.rank}</span>
-                            </span>
-                          ) : (
-                            <span className="text-[10px] font-black text-uju-secondary/40 tracking-widest">NONE</span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
               </div>
             </div>
           )}
