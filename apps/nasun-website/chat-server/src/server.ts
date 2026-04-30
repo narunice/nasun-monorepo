@@ -383,9 +383,17 @@ function getCorsOrigin(reqOrigin: string | undefined): string | null {
 // Timing-safe auth check for internal server-to-server endpoints.
 function checkInternalAuth(req: import('node:http').IncomingMessage, key: string): boolean {
   if (!key || key.length < 32) return false;
+  let token: string | null = null;
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return false;
-  const token = authHeader.slice(7);
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.slice(7);
+  } else {
+    const customAuth = req.headers['x-internal-auth'];
+    if (customAuth && typeof customAuth === 'string') {
+      token = customAuth;
+    }
+  }
+  if (!token) return false;
   const tokenBuf = Buffer.from(token);
   const keyBuf = Buffer.from(key);
   if (tokenBuf.length !== keyBuf.length) return false;
@@ -440,7 +448,7 @@ async function handleHttpRequest(
   //   - nasun-website Lambda PATCH /user-profile (?type=profile&walletAddress=...
   //     → invalidate the nasun_profiles row so the next read refetches via
   //     fetchAndCacheProfile)
-  if (url.pathname === '/api/internal/cache/invalidate' && req.method === 'POST') {
+  if ((url.pathname === '/api/internal/cache/invalidate' || url.pathname === '/invalidate-profile') && req.method === 'POST') {
     const apiKey = process.env.INTERNAL_API_KEY;
     if (!checkInternalAuth(req, apiKey ?? '')) {
       res.writeHead(401, corsHeaders);
