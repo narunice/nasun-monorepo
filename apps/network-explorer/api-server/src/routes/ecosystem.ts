@@ -111,37 +111,81 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
     try {
       const ddb = getDdbClient();
       const CHUNK = 100;
+      const PROJECTION =
+        'identityId, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, linkedToPrimaryId, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm';
+      const EAN = { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' };
+
+      // Pass 1: fetch missing identities directly.
+      const fetched = new Map<string, Record<string, unknown>>();
       for (let i = 0; i < missing.length; i += CHUNK) {
         let pendingKeys = missing.slice(i, i + CHUNK).map(id => ({ identityId: id }));
         while (pendingKeys.length > 0) {
           const res = await ddb.send(new BatchGetCommand({
             RequestItems: {
-              [USER_PROFILES_TABLE]: {
-                Keys: pendingKeys,
-                ProjectionExpression: 'identityId, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm',
-                ExpressionAttributeNames: { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' },
-              },
+              [USER_PROFILES_TABLE]: { Keys: pendingKeys, ProjectionExpression: PROJECTION, ExpressionAttributeNames: EAN },
             },
           }));
           for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
-            const id = item.identityId as string;
-            const provider = ((item.provider as string | undefined) ?? '').toLowerCase();
-            const linked = (item.linkedAccounts as Record<string, unknown> | undefined) ?? {};
-            // Avatar cascade: customAvatarKey > X > Google > legacy profileImageUrl.
-            // Falls back to legacy field if cascade has nothing — keeps existing
-            // leaderboard rows visually unchanged for users who haven't moved
-            // to the new fields yet.
-            const cascaded = resolveAvatarUrl(item as Record<string, unknown>);
-            profileCache.data.set(id, {
-              displayName: resolveDisplayName(item as Record<string, unknown>),
-              xHandle: sanitizeXHandle(item.originalTwitterHandle ?? item.twitterHandle),
-              profileImageUrl: cascaded ?? (item.profileImageUrl as string | undefined) ?? null,
-              isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
-              hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
-            });
+            fetched.set(item.identityId as string, item as Record<string, unknown>);
           }
           pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
         }
+      }
+
+      // Pass 2: hop into linkedToPrimaryId. Secondary identities (e.g. an X
+      // identity linked to a wallet-primary user) inherit the primary's
+      // customDisplayName / customAvatarKey so the same user shows the same
+      // name and avatar across every leaderboard surface.
+      const primaryIdsToFetch = new Set<string>();
+      for (const item of fetched.values()) {
+        const linkedTo = item.linkedToPrimaryId as string | undefined;
+        if (linkedTo && !fetched.has(linkedTo) && !profileCache.data.has(linkedTo)) {
+          primaryIdsToFetch.add(linkedTo);
+        }
+      }
+      const primaries = new Map<string, Record<string, unknown>>();
+      const primaryIds = Array.from(primaryIdsToFetch);
+      for (let i = 0; i < primaryIds.length; i += CHUNK) {
+        let pendingKeys = primaryIds.slice(i, i + CHUNK).map(id => ({ identityId: id }));
+        while (pendingKeys.length > 0) {
+          const res = await ddb.send(new BatchGetCommand({
+            RequestItems: {
+              [USER_PROFILES_TABLE]: { Keys: pendingKeys, ProjectionExpression: PROJECTION, ExpressionAttributeNames: EAN },
+            },
+          }));
+          for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
+            primaries.set(item.identityId as string, item as Record<string, unknown>);
+          }
+          pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
+        }
+      }
+
+      // Build cache entries with primary overrides applied.
+      for (const [id, item] of fetched.entries()) {
+        const linkedTo = item.linkedToPrimaryId as string | undefined;
+        const primary = linkedTo
+          ? (primaries.get(linkedTo) ?? profileCache.data.get(linkedTo) /* may carry no raw item */)
+          : null;
+        // Overlay: primary's customDisplayName / customAvatarKey / customAvatarBanned
+        // win over the secondary's. Other fields (X handle, X image, etc.)
+        // stay on the secondary because that's where the social linkage lives.
+        const merged: Record<string, unknown> = { ...item };
+        if (primary && typeof primary === 'object' && 'identityId' in (primary as object)) {
+          const p = primary as Record<string, unknown>;
+          if (p.customDisplayName) merged.customDisplayName = p.customDisplayName;
+          if (p.customAvatarKey) merged.customAvatarKey = p.customAvatarKey;
+          if (p.customAvatarBanned !== undefined) merged.customAvatarBanned = p.customAvatarBanned;
+        }
+        const provider = ((merged.provider as string | undefined) ?? '').toLowerCase();
+        const linked = (merged.linkedAccounts as Record<string, unknown> | undefined) ?? {};
+        const cascaded = resolveAvatarUrl(merged);
+        profileCache.data.set(id, {
+          displayName: resolveDisplayName(merged),
+          xHandle: sanitizeXHandle(merged.originalTwitterHandle ?? merged.twitterHandle),
+          profileImageUrl: cascaded ?? (merged.profileImageUrl as string | undefined) ?? null,
+          isTelegramMember: (merged.isTelegramMember as boolean | undefined) ?? false,
+          hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
+        });
       }
       profileCache.expiresAt = now + PROFILE_CACHE_TTL;
     } catch (err) {
