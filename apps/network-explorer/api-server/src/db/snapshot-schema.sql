@@ -26,3 +26,13 @@ CREATE INDEX IF NOT EXISTS idx_snapshot_identity_date
 
 COMMENT ON TABLE ecosystem_score_snapshots IS
   'Immutable daily snapshots. Rows must never be UPDATEd or DELETEd. Token allocation basis.';
+
+-- V2 columns (additive only — historical rows keep NULLs).
+-- Pre-cutover rows: multiplier/ecosystem_score filled, _v2 columns NULL.
+-- Post-cutover rows: multiplier_v2/ecosystem_score_v2 filled, legacy columns NULL.
+-- Downstream: COALESCE(multiplier_v2, multiplier) for cross-era compatibility.
+ALTER TABLE ecosystem_score_snapshots
+  ADD COLUMN IF NOT EXISTS alliance_health     NUMERIC(5,2),
+  ADD COLUMN IF NOT EXISTS gp_health           NUMERIC(5,2),
+  ADD COLUMN IF NOT EXISTS multiplier_v2       NUMERIC(7,3),
+  ADD COLUMN IF NOT EXISTS ecosystem_score_v2  NUMERIC(14,3);

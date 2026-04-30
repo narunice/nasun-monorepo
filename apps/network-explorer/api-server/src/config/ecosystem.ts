@@ -19,6 +19,37 @@ function safeInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
+// V2 Health System config
+export const HEALTH_CONFIG = {
+  alliance:    { graceDays: 1 },
+  genesisPass: { graceDays: 2 },
+  steps: [0, 12.5, 25, 50, 100] as const,
+} satisfies { alliance: { graceDays: number }; genesisPass: { graceDays: number }; steps: readonly number[] };
+
+let _cutoffDate: string | undefined;
+export function getHealthV2CutoffDate(): string {
+  if (_cutoffDate) return _cutoffDate;
+  const raw = process.env.ECO_HEALTH_V2_CUTOFF ?? '9999-12-31';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw) || Number.isNaN(Date.parse(raw + 'T00:00:00Z'))) {
+    throw new Error(`[Ecosystem] ECO_HEALTH_V2_CUTOFF invalid: "${raw}"`);
+  }
+  _cutoffDate = raw;
+  return _cutoffDate;
+}
+
+export function isV2CutoverActive(dateStr: string): boolean {
+  return dateStr >= getHealthV2CutoffDate();
+}
+
+export interface NftHealth {
+  alliance: number;    // 0..100
+  genesisPass: number; // 0..100
+}
+
+export function calculateMultiplierV2(h: NftHealth): number {
+  return (h.alliance / 100) + (h.genesisPass / 100);
+}
+
 // NFT Multiplier Config (V1)
 // Multiplier = max(base tier) + battalion stack, capped at MAX_MULTIPLIER.
 // No active NFTs -> 0 (disabled). Any active NFT -> at least alliance base (1x).
