@@ -4,17 +4,18 @@ Nasun is a protocol that turns repeated onchain behavior into a persistent, comp
 
 ## Products
 
-| App | Description | Status |
-|-----|-------------|--------|
-| [Nasun Website / Uju](apps/nasun-website/) | Ecosystem dashboard: ecosystem points, governance, NFT management, leaderboard | Live |
-| [Pado](apps/pado/) | DEX, prediction markets, lottery, mini-games | Live |
-| [GoStop](apps/gostop/) | Onchain gaming hub | Live |
-| [Network Explorer](apps/network-explorer/) | Block explorer + ecosystem API server | Live |
-| [Baram](apps/baram/) | AI compliance settlement layer | Active |
+| App                                        | Description                                                                    | Status |
+| ------------------------------------------ | ------------------------------------------------------------------------------ | ------ |
+| [Nasun Website / Uju](apps/nasun-website/) | Ecosystem dashboard: ecosystem points, governance, NFT management, leaderboard | Live   |
+| [Pado](apps/pado/)                         | DEX, prediction markets, lottery, mini-games                                   | Live   |
+| [GoStop](apps/gostop/)                     | Onchain gaming hub                                                             | Live   |
+| [Network Explorer](apps/network-explorer/) | Block explorer + ecosystem API server                                          | Live   |
+| [Baram](apps/baram/)                       | AI compliance settlement layer                                                 | Active |
 
 ## Links
 
 - [nasun.io](https://nasun.io) — official website
+- [explorer.nasun.io](https://explorer.nasun.io/devnet) - network explorer website
 - [pado.nasun.io](https://pado.nasun.io) — Pado app
 - [gostop.app](https://gostop.app) — GoStop gaming hub
 - [@nasun_io](https://x.com/nasun_io) — Nasun official X
@@ -24,11 +25,11 @@ Nasun is a protocol that turns repeated onchain behavior into a persistent, comp
 
 ## Network
 
-| Spec | Value |
-|------|-------|
-| Network | Nasun Devnet |
-| Chain ID | `272218f1` |
-| Native Token | NASUN |
+| Spec         | Value        |
+| ------------ | ------------ |
+| Network      | Nasun Devnet |
+| Chain ID     | `272218f1`   |
+| Native Token | NASUN        |
 
 ## Structure
 
