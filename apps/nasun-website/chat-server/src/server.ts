@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -20,6 +20,7 @@ import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
+import { canonicalizeDisplayName } from '@nasun/profile-core';
 
 // ===== State =====
 
@@ -276,12 +277,74 @@ function checkFollowRateLimit(address: string): boolean {
   return true;
 }
 
+/**
+ * Compute a wallet → wallet-suffix map for senders whose canonical display
+ * name collides with another active sender in the same batch. NFKC + casefold
+ * + ZW-strip canonicalization is shared with the Lambda's PATCH validator so
+ * homograph attacks (full-width 'a', cyrillic 'а', ZWSP injection) cannot
+ * sneak past as distinct names.
+ *
+ * Inputs:
+ *   addresses — wallets visible in the current batch
+ *   displayNameMap — wallet → resolved display name
+ *
+ * Output: only includes wallets that DO collide.
+ */
+function computeDisplaySuffixMap(
+  addresses: Iterable<string>,
+  displayNameMap: Map<string, string> | undefined,
+): Map<string, string> {
+  const out = new Map<string, string>();
+  if (!displayNameMap) return out;
+  // Group wallets by canonical display name.
+  const groups = new Map<string, string[]>();
+  for (const addr of addresses) {
+    const name = displayNameMap.get(addr);
+    if (!name) continue;
+    const canonical = canonicalizeDisplayName(name);
+    if (canonical.length === 0) continue;
+    const list = groups.get(canonical);
+    if (list) list.push(addr);
+    else groups.set(canonical, [addr]);
+  }
+  for (const wallets of groups.values()) {
+    if (wallets.length < 2) continue;
+    for (const w of wallets) out.set(w, shortenWalletForSuffix(w));
+  }
+  return out;
+}
+
 interface PayloadOptions {
   nicknameMap?: Map<string, string>;
   displayNameMap?: Map<string, string>;
   profileNameSet?: Set<string>;
   gpSet?: Set<string>;
   profileImageMap?: Map<string, string>;
+  /**
+   * Map of `wallet → '0xab...cd'` for senders whose canonical display name
+   * collides with another active sender. Caller (server route handlers)
+   * computes this from the visible-message window and passes it down.
+   */
+  displaySuffixMap?: Map<string, string>;
+}
+
+const PUBLIC_AVATARS_BASE_URL = (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
+
+function shortenWalletForSuffix(addr: string): string {
+  if (!addr || addr.length < 10) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
+
+function composeSenderAvatarUrl(address: string, twitterImage: string | null | undefined): string | null {
+  // 1. Cached customAvatarKey wins (resolved here so the wire payload contains
+  //    a fully-qualified URL — frontend never needs PUBLIC_AVATARS_BASE_URL).
+  const cached = getNasunProfileCached(address);
+  if (cached?.customAvatarKey && PUBLIC_AVATARS_BASE_URL) {
+    return `${PUBLIC_AVATARS_BASE_URL}/${cached.customAvatarKey.replace(/^\/+/, '')}`;
+  }
+  // 2. Twitter image cached in the legacy profile_image_url field.
+  if (twitterImage) return twitterImage;
+  return null;
 }
 
 function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMessagePayload {
@@ -289,6 +352,10 @@ function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMes
   // Suppress chat nickname when profile name exists (profile name takes precedence)
   const hasProfileName = opts.profileNameSet?.has(msg.sender) ?? false;
   const nickname = hasProfileName ? null : (opts.nicknameMap?.get(msg.sender) ?? null);
+  const senderAvatarUrl = composeSenderAvatarUrl(
+    msg.sender,
+    opts.profileImageMap?.get(msg.sender) ?? null,
+  );
   return {
     type: 'chat_message',
     id: msg.id,
@@ -297,7 +364,8 @@ function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMes
     senderName: resolvedName ?? msg.senderName,
     senderNickname: nickname,
     senderBadge: opts.gpSet?.has(msg.sender) ? 'GP' : null,
-    senderProfileImageUrl: opts.profileImageMap?.get(msg.sender) ?? null,
+    senderProfileImageUrl: senderAvatarUrl,
+    senderDisplaySuffix: opts.displaySuffixMap?.get(msg.sender) ?? null,
     content: msg.content,
     messageType: msg.messageType,
     replyToId: msg.replyToId,
@@ -367,7 +435,11 @@ async function handleHttpRequest(
     return;
   }
 
-  // Internal cache invalidation (called by network-explorer when a user registers a new wallet)
+  // Internal cache invalidation. Used by:
+  //   - network-explorer when a wallet is registered (no params → identity cache)
+  //   - nasun-website Lambda PATCH /user-profile (?type=profile&walletAddress=...
+  //     → invalidate the nasun_profiles row so the next read refetches via
+  //     fetchAndCacheProfile)
   if (url.pathname === '/api/internal/cache/invalidate' && req.method === 'POST') {
     const apiKey = process.env.INTERNAL_API_KEY;
     if (!checkInternalAuth(req, apiKey ?? '')) {
@@ -375,7 +447,13 @@ async function handleHttpRequest(
       res.end(JSON.stringify({ error: 'unauthorized' }));
       return;
     }
-    invalidateIdentityCache();
+    const type = url.searchParams.get('type');
+    const walletAddress = url.searchParams.get('walletAddress');
+    if (type === 'profile' && walletAddress) {
+      invalidateNasunProfile(walletAddress);
+    } else {
+      invalidateIdentityCache();
+    }
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ ok: true }));
     return;
@@ -799,7 +877,14 @@ function handleSendMessage(
     const gpSet = getGenesisPassBatch([stored.sender]);
     const profileImageMap = new Map<string, string>();
     if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
-    const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap });
+    // Single-sender broadcast: collisions are computed against currently
+    // authenticated clients so a duplicate name from another live participant
+    // gets disambiguated immediately.
+    const allAddresses = new Set<string>([stored.sender]);
+    for (const c of authenticatedClients.values()) allAddresses.add(c.address);
+    const liveDisplayNameMap = getDisplayNamesBatch([...allAddresses]);
+    const displaySuffixMap = computeDisplaySuffixMap(allAddresses, liveDisplayNameMap);
+    const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
@@ -907,12 +992,14 @@ function handleLoadHistory(
   const profileNameSet = getAddressesWithProfileName(senderAddresses);
   const gpSet = getGenesisPassBatch(senderAddresses);
   const profileImageMap = getProfileImagesBatch(senderAddresses);
+  // History batch: collisions computed across the visible message window.
+  const displaySuffixMap = computeDisplaySuffixMap(senderAddresses, displayNameMap);
 
   send(client.ws, {
     type: 'history',
     roomId,
     messages: messages.map((m) => {
-      const payload = storedToPayload(m, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap });
+      const payload = storedToPayload(m, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
       const reactionData = reactionMap.get(m.id);
       if (reactionData) {
         payload.reactions = reactionData.reactions;
@@ -930,6 +1017,20 @@ function handleSetNickname(
   client: AuthenticatedClient,
   msg: { type: 'set_nickname'; nickname: string }
 ): void {
+  // Reject set_nickname when the user already has a customDisplayName.
+  // customDisplayName takes priority server-side (storedToPayload), so a
+  // legacy chat-only nickname is unreachable for them; we should not let
+  // them allocate / change it. Frontend keeps the modal suppressed for the
+  // same reason — this is a defense-in-depth check.
+  const hasProfileName = getAddressesWithProfileName([client.address]).has(client.address);
+  if (hasProfileName) {
+    send(client.ws, {
+      type: 'nickname_result',
+      ok: false,
+      error: 'USE_PROFILE_NAME: set Display Name in Profile instead',
+    });
+    return;
+  }
   const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
   const validation = validateNickname(nickname);
   if (!validation.ok) {
