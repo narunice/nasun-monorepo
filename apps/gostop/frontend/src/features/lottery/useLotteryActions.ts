@@ -91,8 +91,10 @@ export function useLotteryActions(): UseLotteryActionsResult {
       if (result.effects?.status?.status !== 'success') {
         throw new Error(humanizeLotteryError(result.effects?.status?.error || 'Transaction failed'))
       }
-      // Wait so subsequent reads see the effect.
+      // Wait for the tx to be indexed, then give the fullnode object index
+      // a brief window to reflect the new owned objects before callers refetch.
       await client.waitForTransaction({ digest: result.digest })
+      await new Promise<void>((r) => setTimeout(r, 800))
       return result
     },
     [walletAddress, kind, zkSign, getKeypair, passkeyKeypair],
