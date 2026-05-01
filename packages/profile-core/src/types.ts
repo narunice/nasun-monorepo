@@ -43,5 +43,17 @@ export interface EcosystemProfile {
     'nasun wallet'?: LinkedAccountSummary;
   };
 
+  /**
+   * Cross-chain wallet addresses registered via paste (read-only display).
+   * These are NOT cryptographically verified — uju does not initiate on-chain
+   * transactions on these networks, so address ownership is taken on trust.
+   * Verified MetaMask remains under linkedAccounts.metamask (HMAC-signed).
+   */
+  linkedSuiAddress?: string;
+  linkedSolanaAddress?: string;
+  linkedEthereumAddress?: string;
+
+  /** ISO-8601 timestamp the user first appeared in UserProfiles. */
+  createdAt?: string;
   updatedAt?: string;
 }

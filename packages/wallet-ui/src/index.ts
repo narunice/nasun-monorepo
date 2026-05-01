@@ -93,8 +93,8 @@ export { ZKIDManager } from './social/ZKIDManager';
 export type { ZKIDManagerProps } from './social/ZKIDManager';
 
 // Badge components
-export { GenesisPassBadge } from './badges';
-export type { GenesisPassBadgeProps } from './badges';
+export { GenesisPassBadge, AllianceBadge } from './badges';
+export type { GenesisPassBadgeProps, AllianceBadgeProps } from './badges';
 
 // Network components
 export { NetworkBadge } from './network/NetworkBadge';
