@@ -35,14 +35,14 @@ export default function UjuPage() {
   const {
     canChat: chatCanChat,
     nickname: chatNickname,
-    needsNickname: chatNeedsNickname,
     nicknameRateLimit: chatNicknameRateLimit,
   } = useChat();
   const chatUserId = useUserStore((s) => s.user?.walletAddress ?? s.user?.identityId);
   const [nicknameModalOpen, setNicknameModalOpen] = useState(false);
-  useEffect(() => {
-    if (chatNeedsNickname) setNicknameModalOpen(true);
-  }, [chatNeedsNickname]);
+  // Do NOT auto-open the modal. Users without a nickname now render as
+  // `0xb649#1234` (chat-server auth fallback), so the chat UI is fully
+  // functional without forcing a name choice on first visit. The modal is
+  // still available via the chat sidebar's "Set chat nickname" action.
 
   const [isDesktop, setIsDesktop] = useState(
     () => window.matchMedia("(min-width: 768px)").matches,
