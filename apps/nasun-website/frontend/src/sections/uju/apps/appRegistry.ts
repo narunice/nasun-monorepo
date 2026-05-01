@@ -11,6 +11,10 @@ export interface AppEntry {
   category: AppCategory;
   status: AppStatus;
   isNative: boolean;
+  // Optional explicit favicon URL. Use when Google's s2/favicons service
+  // cannot resolve a domain (e.g. site hosts its favicon under a subpath
+  // like /devnet/favicon.svg with no root fallback).
+  iconUrl?: string;
 }
 
 export const APP_REGISTRY: AppEntry[] = [
@@ -24,6 +28,10 @@ export const APP_REGISTRY: AppEntry[] = [
     category: 'utility',
     status: 'live',
     isNative: true,
+    // Explorer hosts its favicon under /devnet/favicon.svg (Vite base); the
+    // root /favicon.ico is 404, so Google's s2/favicons service returns its
+    // default globe. Point at the actual deployed icon directly.
+    iconUrl: 'https://explorer.nasun.io/devnet/favicon.svg',
   },
   {
     id: 'pado',
