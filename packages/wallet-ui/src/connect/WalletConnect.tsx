@@ -51,8 +51,8 @@ interface WalletConnectProps {
 }
 
 export function WalletConnect({
-  dropdownPosition = "bottom",
-  dropdownAlign = "right",
+  dropdownPosition: _dropdownPosition = "bottom",
+  dropdownAlign: _dropdownAlign = "right",
   // Reserved for future customization
   addressStartChars: _addressStartChars,
   addressEndChars: _addressEndChars,
@@ -214,23 +214,11 @@ export function WalletConnect({
         </svg>
       </button>
 
-      {/* Connected on desktop: dropdown below button */}
-      {s.showDropdown && isAnyWalletConnected && !s.isMobile && (
-        <div
-          className={`bg-white dark:bg-zinc-800 border border-gray-200 dark:border-zinc-600 rounded-lg shadow-lg z-[9999] absolute ${s.status === "locked" ? WALLET_STYLES.dropdownCompact : WALLET_STYLES.dropdownDesktop} max-h-[90vh] overflow-y-auto overflow-x-hidden ${
-            dropdownAlign === "left"
-              ? "left-0"
-              : dropdownAlign === "center"
-                ? "left-1/2 -translate-x-1/2"
-                : "right-0"
-          } ${dropdownPosition === "top" ? "bottom-full mb-2" : "top-full mt-2"}`}
-        >
-          {dropdownContent}
-        </div>
-      )}
-
-      {/* Disconnected (any device) or connected on mobile: centered modal via portal */}
-      {s.showDropdown && (!isAnyWalletConnected || s.isMobile) &&
+      {/* Connected (any device) or disconnected: centered modal via portal.
+          Portal escapes ancestor stacking contexts (e.g. backdrop-blur cards,
+          parent wrappers with z-index) that would otherwise let later sibling
+          DOM nodes paint over the wallet UI. */}
+      {s.showDropdown &&
         createPortal(
           <>
             <div className="fixed inset-0 bg-black/50 z-[99998]" onClick={closeDropdownGuarded} />
