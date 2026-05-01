@@ -1,11 +1,11 @@
 /**
- * V2 Health Update: NFT health state machine per user per day.
+ * V3 Health Update: NFT health state machine per user per day.
  *
  * Called from runDailyNftChecks (daily-nft-check.ts) after ECO_HEALTH_V2_CUTOFF is set.
- * Computes 5-step health (0/12.5/25/50/100) based on real-activity streak.
  *
- * Alliance grace: 1 day. Genesis Pass grace: 2 days.
- * Recovery: +1 step per active day (cap 100). Decay: -1 step after grace expires.
+ * Alliance: 5-step (0/25/50/75/100). For GP holders, forced to 100% (no decay).
+ * Genesis Pass: 6-step (0/20/40/60/80/100). Stored as gp_bonus * 100.
+ * No grace days; rest day always decays one step.
  *
  * Idempotent: WHERE last_evaluated_day < EXCLUDED.last_evaluated_day on upsert.
  * Bulk: single unnest() INSERT for all holders per day.
@@ -30,31 +30,39 @@ interface NextHealthState {
   last_active_day: string | null;
 }
 
+// Find the largest step <= value. Used to clamp legacy values
+// (e.g., V2 stored 12.5 which is not in V3 step arrays) to the nearest
+// lower valid step instead of letting `indexOf=-1` cascade into a wrong
+// step index.
+function nearestStepIdx(steps: readonly number[], value: number): number {
+  for (let i = steps.length - 1; i >= 0; i--) {
+    if (steps[i] <= value) return i;
+  }
+  return 0;
+}
+
 function stepHealth(
   prev: { health_pct: number; consecutive_rest_days: number; last_active_day: string | null },
   wasActive: boolean,
-  graceDays: number,
+  steps: readonly number[],
   targetDay: string,
 ): NextHealthState {
-  const STEPS = HEALTH_CONFIG.steps as readonly number[];
+  const exact = steps.indexOf(prev.health_pct);
+  const baseIdx = exact >= 0 ? exact : nearestStepIdx(steps, prev.health_pct);
+
   if (wasActive) {
-    const i = STEPS.indexOf(prev.health_pct);
-    const nextIdx = Math.min(STEPS.length - 1, (i < 0 ? 0 : i) + 1);
+    const nextIdx = Math.min(steps.length - 1, baseIdx + 1);
     return {
-      health_pct: STEPS[nextIdx],
+      health_pct: steps[nextIdx],
       consecutive_rest_days: 0,
       last_active_day: targetDay,
     };
   }
+  // No grace: every rest day decays one step
   const restDays = (prev.consecutive_rest_days ?? 0) + 1;
-  if (restDays <= graceDays) {
-    return { health_pct: prev.health_pct, consecutive_rest_days: restDays, last_active_day: prev.last_active_day };
-  }
-  // Decay: move one step down
-  const i = STEPS.indexOf(prev.health_pct);
-  const nextIdx = Math.max(0, (i < 0 ? STEPS.length - 1 : i) - 1);
+  const nextIdx = Math.max(0, baseIdx - 1);
   return {
-    health_pct: STEPS[nextIdx],
+    health_pct: steps[nextIdx],
     consecutive_rest_days: restDays,
     last_active_day: prev.last_active_day,
   };
@@ -111,29 +119,45 @@ export async function updateHealthForAllNftHolders(
   const lastActiveDays: (string | null)[] = [];
   let skipped = 0;
 
-  for (const nftType of ['alliance', 'genesis-pass'] as const) {
-    const graceDays = nftType === 'alliance'
-      ? HEALTH_CONFIG.alliance.graceDays
-      : HEALTH_CONFIG.genesisPass.graceDays;
+  // Alliance: GP holders are locked at 100% (no decay). Others use 5-step machine.
+  for (const id of holdersByType['alliance']) {
+    const prev = stateMap.get(`${id}:alliance`);
+    if (prev && prev.last_evaluated_day >= targetDay) { skipped++; continue; }
+    const prevState = prev
+      ? { health_pct: parseFloat(prev.health_pct), consecutive_rest_days: prev.consecutive_rest_days, last_active_day: prev.last_active_day }
+      : { health_pct: 100, consecutive_rest_days: 0, last_active_day: null };
 
-    for (const id of holdersByType[nftType]) {
-      const prev = stateMap.get(`${id}:${nftType}`);
-      // Idempotency: skip if already evaluated for this day
-      if (prev && prev.last_evaluated_day >= targetDay) {
-        skipped++;
-        continue;
-      }
-      const prevState = prev
-        ? { health_pct: parseFloat(prev.health_pct), consecutive_rest_days: prev.consecutive_rest_days, last_active_day: prev.last_active_day }
-        : { health_pct: 100, consecutive_rest_days: 0, last_active_day: null };
+    const userHasGp = holdersByType['genesis-pass'].has(id);
+    const next: NextHealthState = userHasGp
+      ? {
+          // GP boost: alliance is locked at 100% regardless of activity
+          health_pct: 100,
+          consecutive_rest_days: 0,
+          last_active_day: activeIds.has(id) ? targetDay : prevState.last_active_day,
+        }
+      : stepHealth(prevState, activeIds.has(id), HEALTH_CONFIG.alliance.steps, targetDay);
 
-      const next = stepHealth(prevState, activeIds.has(id), graceDays, targetDay);
-      ids.push(id);
-      types.push(nftType);
-      healths.push(next.health_pct);
-      rests.push(next.consecutive_rest_days);
-      lastActiveDays.push(next.last_active_day);
-    }
+    ids.push(id);
+    types.push('alliance');
+    healths.push(next.health_pct);
+    rests.push(next.consecutive_rest_days);
+    lastActiveDays.push(next.last_active_day);
+  }
+
+  // GP: 6-step machine. Stored as gp_bonus * 100.
+  for (const id of holdersByType['genesis-pass']) {
+    const prev = stateMap.get(`${id}:genesis-pass`);
+    if (prev && prev.last_evaluated_day >= targetDay) { skipped++; continue; }
+    const prevState = prev
+      ? { health_pct: parseFloat(prev.health_pct), consecutive_rest_days: prev.consecutive_rest_days, last_active_day: prev.last_active_day }
+      : { health_pct: 100, consecutive_rest_days: 0, last_active_day: null };
+
+    const next = stepHealth(prevState, activeIds.has(id), HEALTH_CONFIG.genesisPass.steps, targetDay);
+    ids.push(id);
+    types.push('genesis-pass');
+    healths.push(next.health_pct);
+    rests.push(next.consecutive_rest_days);
+    lastActiveDays.push(next.last_active_day);
   }
 
   if (ids.length === 0) return { updated: 0, skipped };

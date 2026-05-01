@@ -480,7 +480,7 @@ app.get('/score/:identityId', async (c) => {
       let multiplier: number;
 
       if (isV2CutoverActive(todayStr)) {
-        // V2: load health state from DB (no lookahead — invalidate-on-activity updates this)
+        // V3: load health state from DB (no lookahead — invalidate-on-activity updates this)
         const healthRows = await pointsDb!`
           SELECT nft_type, health_pct, consecutive_rest_days
           FROM nft_health_state
@@ -496,10 +496,17 @@ app.get('/score/:identityId', async (c) => {
             gpRestDays = r.consecutive_rest_days as number;
           }
         }
-        multiplier = calculateMultiplierV2({
-          alliance:    hasAlliance ? allianceHealth : 0,
-          genesisPass: hasGenesis  ? gpHealth       : 0,
-        });
+        // GP boost: alliance is locked at 100% in V3 spec. Override DB value
+        // to keep response consistent before next daily health-update sync.
+        if (hasAlliance && hasGenesis) {
+          allianceHealth = 100;
+          allianceRestDays = 0;
+        }
+        multiplier = calculateMultiplierV2(
+          { alliance: allianceHealth, genesisPass: gpHealth },
+          hasAlliance,
+          hasGenesis,
+        );
       } else {
         // V1: alliance penalty check
         if (hasAlliance && !hasGenesis) {

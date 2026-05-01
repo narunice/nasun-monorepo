@@ -345,13 +345,13 @@ export async function takeDailySnapshot(
       // Holders not in healthMap: cold-start (no NFT yet) or dormant. Default 100%.
       allianceHealth = h?.alliance ?? 100;
       gpHealth = h?.gp ?? 100;
-      // Non-holders: health contribution is 0 (no NFT = no multiplier from that slot).
       const hasAlliance = activations.some(a => a.status === 'ACTIVE' && a.nftType === 'alliance');
       const hasGp = activations.some(a => a.status === 'ACTIVE' && a.nftType === 'genesis-pass');
-      multiplier = calculateMultiplierV2({
-        alliance:    hasAlliance ? allianceHealth : 0,
-        genesisPass: hasGp ? gpHealth : 0,
-      } as NftHealth);
+      multiplier = calculateMultiplierV2(
+        { alliance: allianceHealth, genesisPass: gpHealth } as NftHealth,
+        hasAlliance,
+        hasGp,
+      );
     } else {
       if (isPenalized) {
         activations = activations.filter(a => a.nftType !== 'alliance');

@@ -19,12 +19,17 @@ function safeInt(raw: string | undefined, fallback: number): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-// V2 Health System config
+// V3 Health System config
+// Alliance only: alliance_health is the multiplier itself (5-step).
+// Alliance + GP: alliance is locked at 1.0, gp_bonus varies (6-step).
+// No grace days.
 export const HEALTH_CONFIG = {
-  alliance:    { graceDays: 1 },
-  genesisPass: { graceDays: 2 },
-  steps: [0, 12.5, 25, 50, 100] as const,
-} satisfies { alliance: { graceDays: number }; genesisPass: { graceDays: number }; steps: readonly number[] };
+  alliance:    { steps: [0, 25, 50, 75, 100] as const },
+  genesisPass: { steps: [0, 20, 40, 60, 80, 100] as const },
+} satisfies {
+  alliance:    { steps: readonly number[] };
+  genesisPass: { steps: readonly number[] };
+};
 
 let _cutoffDate: string | undefined;
 export function getHealthV2CutoffDate(): string {
@@ -42,12 +47,27 @@ export function isV2CutoverActive(dateStr: string): boolean {
 }
 
 export interface NftHealth {
-  alliance: number;    // 0..100
-  genesisPass: number; // 0..100
+  /** Alliance health % (0..100). For GP holders this is forced to 100. */
+  alliance: number;
+  /** GP bonus * 100 (0..100). Meaningful only when hasGp. */
+  genesisPass: number;
 }
 
-export function calculateMultiplierV2(h: NftHealth): number {
-  return (h.alliance / 100) + (h.genesisPass / 100);
+/**
+ * V3 multiplier formula.
+ *   hasAlliance && !hasGp → alliance_health / 100
+ *   hasAlliance && hasGp  → 1.0 + gp_bonus / 100
+ *   !hasAlliance          → 0  (no alliance = no points)
+ * Range: [0.0, 2.0].
+ */
+export function calculateMultiplierV2(
+  h: NftHealth,
+  hasAlliance: boolean,
+  hasGp: boolean,
+): number {
+  if (!hasAlliance) return 0;
+  if (hasGp) return 1.0 + h.genesisPass / 100;
+  return h.alliance / 100;
 }
 
 // NFT Multiplier Config (V1)
