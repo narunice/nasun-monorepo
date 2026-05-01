@@ -104,7 +104,7 @@ export default function UjuPage() {
       {!chatOpen && (
         <button
           onClick={() => setChatOpen(true)}
-          className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-uju-card border border-uju-border rounded-full flex items-center justify-center text-pado-3 hover:text-pado-4 shadow-xl hover:scale-105 transition-transform"
+          className="fixed bottom-20 md:bottom-6 right-6 z-40 w-14 h-14 bg-uju-card border border-uju-border rounded-full flex items-center justify-center text-pado-3 hover:text-pado-4 shadow-xl hover:scale-105 transition-transform"
           aria-label="Open chat"
         >
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
