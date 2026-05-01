@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Avatar from 'boring-avatars';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 import type { ChatMessage } from '../../../lib/chat-service';
@@ -19,7 +20,7 @@ const ChatAvatar = memo(function ChatAvatar({ address, imageUrl, size = 24 }: {
         alt=""
         width={size}
         height={size}
-        className="rounded-full object-cover shrink-0"
+        className="rounded-md object-cover shrink-0"
         style={{ width: size, height: size }}
         referrerPolicy="no-referrer"
         crossOrigin="anonymous"
@@ -130,7 +131,7 @@ const MessageItem = memo(function MessageItem({ msg, isMine, onToggleReaction, o
           >
             {renderContent(msg.content)}
           </div>
-          {isPickerOpen && pickerPos && (
+          {isPickerOpen && pickerPos && createPortal(
             <>
               <div className="fixed inset-0 z-[55]" onClick={() => { setIsPickerOpen(false); setPickerPos(null); }} />
               <div
@@ -157,7 +158,8 @@ const MessageItem = memo(function MessageItem({ msg, isMine, onToggleReaction, o
                   </button>
                 ))}
               </div>
-            </>
+            </>,
+            document.body,
           )}
           {hasReactions && (
             <div className={`mt-0.5 ${isMine ? 'flex justify-end' : ''}`}>
@@ -219,7 +221,7 @@ export default function MessageList({ messages, hasMore, onLoadMore, onToggleRea
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      className="flex-1 overflow-y-auto px-3 py-2 space-y-1"
+      className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-2 space-y-1"
     >
       {hasMore && (
         <button
