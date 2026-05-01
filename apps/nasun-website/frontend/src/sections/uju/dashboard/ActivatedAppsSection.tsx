@@ -42,7 +42,7 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
             {pinnedApps.map((app) => (
               <li
                 key={app.id}
-                className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-bg/40 border border-uju-border/60 hover:border-pado-1/30 transition-colors"
+                className="flex items-center justify-between gap-3 py-2 px-3 rounded-xl bg-uju-card/80 border border-uju-border/50 hover:border-pado-1/30 transition-colors"
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span

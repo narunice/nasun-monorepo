@@ -86,7 +86,7 @@ export function UjuAppDirectoryCard() {
           {filtered.map((app) => (
             <li
               key={app.id}
-              className="rounded-xl border border-uju-border/50 bg-uju-card px-4"
+              className="rounded-xl border border-uju-border/50 bg-uju-card/80 px-4"
             >
               <AppDirectoryRow app={app} onShowDetails={setDetailsApp} />
             </li>
