@@ -23,11 +23,15 @@ function CrownIcon({ className }: { className?: string }) {
   );
 }
 
+// Genesis Pass tone keyed to the GP health donut (red-orange family). Kept
+// in sync with apps/nasun-website/.../HealthGaugeCard.tsx so the dashboard's
+// donut, badge, and other GP surfaces read as the same identity color.
+// `min-w-*` matches AllianceBadge so the two pills align when stacked.
 const COMPACT_CLASSES =
-  "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs font-bold leading-none bg-teal-500/15 text-teal-400 border border-teal-500/30";
+  "inline-flex items-center justify-center gap-0.5 min-w-[2.75rem] px-1.5 py-0.5 rounded-full text-xs font-bold leading-none bg-orange-600/15 text-orange-400 border border-orange-600/40";
 
 const FULL_CLASSES =
-  "inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full text-sm font-semibold bg-teal-500/15 text-teal-300 border border-teal-500/25";
+  "inline-flex items-center justify-center gap-1 min-w-[7.5rem] px-1.5 sm:px-2 py-0.5 rounded-full text-sm font-semibold bg-orange-600/15 text-orange-300 border border-orange-600/40";
 
 export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
   variant = "compact",
@@ -42,7 +46,7 @@ export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
       className={`${baseClasses} ${className}`.trim()}
       title="Genesis Pass Holder"
     >
-      <CrownIcon className={`${iconSize} flex-shrink-0 text-amber-400`} />
+      <CrownIcon className={`${iconSize} flex-shrink-0 text-orange-400`} />
       {isCompact ? "GP" : "Genesis Pass"}
     </span>
   );
