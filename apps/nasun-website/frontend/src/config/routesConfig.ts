@@ -39,7 +39,8 @@ export const Pages = {
   ProposalDetail: lazyWithRetry(
     () => import("../pages/protocol/ProposalDetailPage"),
   ),
-  MyAccountPage: lazyWithRetry(() => import("../pages/dev/DevMyAccountPage")),
+  MyAccountPage: lazyWithRetry(() => import("../pages/uju/UjuPage")),
+  ArchiveMyAccountPage: lazyWithRetry(() => import("../pages/dev/DevMyAccountPage")),
   PrivacyPolicy: lazyWithRetry(() => import("../pages/PrivacyPolicyPage")),
   TermsOfUse: lazyWithRetry(() => import("../pages/TermsOfUsePage")),
   PostDetailPage: lazyWithRetry(() => import("../pages/PostDetailPage")), // Headless WP Post Page
@@ -559,6 +560,22 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     meta: {
       title: "My Account - NASUN",
       description: "User account management",
+      requiresAuth: true,
+    },
+  },
+
+  archiveMyAccount: {
+    path: "/archive/my-account",
+    component: Pages.ArchiveMyAccountPage,
+    isProtected: true,
+    navItem: {
+      name: "navigation.archiveMyAccount",
+      path: "/archive/my-account",
+      hidden: true,
+    },
+    meta: {
+      title: "My Account (Archive) - NASUN",
+      description: "Archived account dashboard",
       requiresAuth: true,
     },
   },

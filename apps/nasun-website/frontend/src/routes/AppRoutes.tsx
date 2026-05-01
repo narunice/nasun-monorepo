@@ -27,8 +27,6 @@ const CreatorPostsAdmin = lazy(() => import("../features/admin/pages/CreatorPost
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
 
-// uju dashboard (lazy loaded, protected) — pre-launch path /dev/uju, primary host uju.nasun.io
-const UjuPage = lazy(() => import("../pages/uju/UjuPage"));
 // uju public coming-soon landing — shown at nasun.io/uju from "Enter uju" button
 const UjuComingSoonPage = lazy(() => import("../pages/uju/UjuComingSoonPage"));
 
@@ -172,14 +170,8 @@ const AppRoutes = () => {
             <UjuComingSoonPage />
           </Suspense>
         } />
-        {/* uju super-app (protected, pre-launch) — uju.nasun.io rewrites here */}
-        <Route path="/dev/uju" element={
-          <PrivateRoute>
-            <Suspense fallback={<PageLoading />}>
-              <UjuPage />
-            </Suspense>
-          </PrivateRoute>
-        } />
+        {/* Legacy uju dev path — uju app now lives at /my-account */}
+        <Route path="/dev/uju" element={<Navigate to="/my-account" replace />} />
 
         {/* Claim Route (standalone landing page, no Navbar/Footer) */}
         <Route path="/claim/:encodedData" element={
@@ -201,7 +193,7 @@ const AppRoutes = () => {
           path="/legacy/home2026april"
           element={<Pages.LegacyHome2026April />}
         />
-        <Route path="/dev/my-account" element={<Navigate to="/my-account" replace />} />
+        <Route path="/dev/my-account" element={<Navigate to="/archive/my-account" replace />} />
         <Route path="/dev/alliance-nft" element={<Navigate to="/wave1/alliance-nft" replace />} />
 
         {/* Fallback Route */}
