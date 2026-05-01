@@ -76,8 +76,8 @@ function initializeApp() {
 
 // uju.nasun.io 진입 시 루트(/) 를 실제 uju 앱으로 매핑.
 // 같은 dist 를 nasun.io 와 공유하므로 hostname 으로 분기.
-// 런칭 전 타깃 = /dev/uju (실제 앱). 런칭 후 /uju 로 이전 시 한 줄만 변경.
-const UJU_ROOT_PATH = "/dev/uju";
+// uju 앱은 /my-account 경로에서 서빙된다.
+const UJU_ROOT_PATH = "/my-account";
 function applyUjuHostRouting() {
   if (typeof window === "undefined") return;
   if (window.location.hostname !== "uju.nasun.io") return;

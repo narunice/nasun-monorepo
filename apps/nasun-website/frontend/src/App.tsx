@@ -45,7 +45,7 @@ function AppContent() {
   useCrossAppArrival();
   const isAdminPage = location.pathname.startsWith('/admin');
   const isClaimPage = location.pathname === '/claim' || location.pathname.startsWith('/claim/');
-  const isUjuPage = location.pathname === '/uju' || location.pathname.startsWith('/uju/') || location.pathname.startsWith('/dev/uju');
+  const isUjuPage = location.pathname === '/uju' || location.pathname.startsWith('/uju/') || location.pathname === '/my-account' || location.pathname.startsWith('/my-account/');
 
   // Disable browser's auto scroll restoration
   useEffect(() => {
