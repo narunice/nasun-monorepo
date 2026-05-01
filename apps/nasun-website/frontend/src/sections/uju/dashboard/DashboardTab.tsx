@@ -36,7 +36,9 @@ export function DashboardTabBottom({ chatSlot }: DashboardTabBottomProps = {}) {
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      {/* Row 1: Active Engagement + Chat */}
+      {/* Row 1: Active Engagement + Chat. Chat is absolutely positioned
+          inside its column so it takes the row's stretch height (driven by
+          Daily Missions on the left) instead of growing the row itself. */}
       <div data-uju-anchor="daily-missions" className="flex gap-4 sm:gap-5 items-stretch">
         <div className="flex-1 min-w-0">
           <UjuDailyMissionsCard
@@ -45,8 +47,10 @@ export function DashboardTabBottom({ chatSlot }: DashboardTabBottomProps = {}) {
           />
         </div>
         {chatSlot && (
-          <div className="w-[320px] shrink-0 hidden md:block">
-            {chatSlot}
+          <div className="w-[320px] shrink-0 hidden md:block relative">
+            <div className="absolute inset-0">
+              {chatSlot}
+            </div>
           </div>
         )}
       </div>
