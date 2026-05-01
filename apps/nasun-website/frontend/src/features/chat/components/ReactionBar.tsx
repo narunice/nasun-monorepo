@@ -1,19 +1,21 @@
+// Ordered by expected popularity so the most-used reactions sit on the
+// first row of the 7-column picker grid.
 export const REACTION_EMOJI: Record<string, string> = {
-  thumbsup: '\u{1F44D}',
-  fire: '\u{1F525}',
-  rocket: '\u{1F680}',
-  gem: '\u{1F48E}',
   heart: '\u{2764}\u{FE0F}',
+  thumbsup: '\u{1F44D}',
+  rocket: '\u{1F680}',
+  fire: '\u{1F525}',
+  laugh: '\u{1F602}',
+  clap: '\u{1F44F}',
+  hundred: '\u{1F4AF}',
   smile: '\u{1F642}',
   grin: '\u{1F604}',
-  laugh: '\u{1F602}',
-  sob: '\u{1F62D}',
-  clap: '\u{1F44F}',
   eyes: '\u{1F440}',
-  hundred: '\u{1F4AF}',
   thinking: '\u{1F914}',
-  whale: '\u{1F433}',
+  sob: '\u{1F62D}',
+  gem: '\u{1F48E}',
   wave: '\u{1F44B}',
+  whale: '\u{1F433}',
 };
 
 export const REACTION_CODES = Object.keys(REACTION_EMOJI);
