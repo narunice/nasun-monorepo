@@ -95,7 +95,7 @@ export function UjuFeedCarousel() {
       onMouseLeave={() => setPaused(false)}
     >
       <div className="px-3 py-2 border-b border-uju-border flex items-center justify-between shrink-0 z-10">
-        <span className="text-sm font-light text-uju-primary">Voices</span>
+        <span className="text-sm font-light text-uju-primary">Feed</span>
         <span className="text-sm text-uju-secondary">
           {displayIndex + 1} / {items.length}
         </span>

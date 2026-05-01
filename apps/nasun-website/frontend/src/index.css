@@ -626,3 +626,25 @@ html.genesis-drop-theme .bg-nasun-black {
 [data-uju-scroll-target] {
   scroll-margin-top: 96px;
 }
+
+/* Uju section: force Inter for all descendants, overriding the global Rubik
+   rules set by :lang(en) in @layer base. Placed outside @layer to win via
+   source order after all layer output. */
+.font-inter,
+.font-inter h1,
+.font-inter h2,
+.font-inter h3,
+.font-inter h4,
+.font-inter h5,
+.font-inter h6,
+.font-inter p,
+.font-inter a,
+.font-inter span,
+.font-inter button,
+.font-inter input,
+.font-inter label,
+.font-inter li,
+.font-inter td,
+.font-inter th {
+  font-family: "Inter", "Pretendard", system-ui, sans-serif;
+}
