@@ -46,7 +46,7 @@ export const GenesisPassBadge: FC<GenesisPassBadgeProps> = ({
       className={`${baseClasses} ${className}`.trim()}
       title="Genesis Pass Holder"
     >
-      <CrownIcon className={`${iconSize} flex-shrink-0 text-orange-400`} />
+      <CrownIcon className={`${iconSize} flex-shrink-0 text-amber-400`} />
       {isCompact ? "GP" : "Genesis Pass"}
     </span>
   );
