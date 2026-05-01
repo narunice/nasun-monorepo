@@ -167,7 +167,7 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
               <UjuButton
                 onClick={() => setShowWithdrawDialog(true)}
                 variant="secondary"
-                size="sm"
+                size="xs"
                 className="text-red-400 hover:text-red-300 border-red-500/30 shrink-0"
               >
                 {t("accountManagement.withdraw.button")}
@@ -184,7 +184,7 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
             <UjuButton
               onClick={handleDeleteAccount}
               variant="secondary"
-              size="sm"
+              size="xs"
               className="text-red-400 hover:text-red-300 border-red-500/30 shrink-0"
             >
               {t("accountManagement.deleteAccount.button")}

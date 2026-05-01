@@ -13,8 +13,8 @@ interface UjuStatProps {
 
 const VALUE_TONE: Record<Tone, string> = {
   default:  "text-uju-primary",
-  violet:   "text-pado-violet",
-  lavender: "text-pado-lavender",
+  violet:   "text-pado-1",
+  lavender: "text-pado-3",
   cyan:     "text-pado-2",
   aqua:     "text-pado-3",
   mint:     "text-pado-4",

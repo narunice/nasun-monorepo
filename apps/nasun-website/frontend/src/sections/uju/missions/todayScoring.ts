@@ -2,7 +2,7 @@
  * Today base-score filter
  *
  * Per user policy: today's base score reflects ONLY the on-chain categories
- * the user has activated as daily missions. Activities outside the user's
+ * the user has activated as active engagement. Activities outside the user's
  * curated set (e.g. creator-posts, pado-leaderboard) are not displayed in
  * today's base — they remain in the all-time ledger.
  *
@@ -18,7 +18,7 @@ const PADO_DEX_WEIGHT = 2;
 
 /**
  * Resolve the set of backend category names that the user currently has
- * activated as daily missions. The mission id and the backend category share
+ * activated as active engagement. The mission id and the backend category share
  * the same string (e.g. "gostop-numbermatch"); this function exists so the
  * filter has a single, well-named entry point that can absorb future
  * id↔category divergence without touching every consumer.

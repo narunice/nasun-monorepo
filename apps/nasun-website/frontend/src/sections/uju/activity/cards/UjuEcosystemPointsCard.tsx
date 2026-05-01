@@ -26,10 +26,41 @@ import { Spinner } from "@/components/ui";
 import { UjuScoreUnavailableFallback } from "../internal/UjuScoreUnavailableFallback";
 import {
   getBonusHistory,
+  getBaseHistory,
   type SnapshotHistoryEntry,
   type BonusHistoryItem,
+  type BaseHistoryItem,
 } from "@/services/ecosystemScoreApi";
+import { APP_MISSION_MAP } from "@/sections/uju/missions/missionRegistry";
 import { UjuCard, UjuSectionHeader, UjuButton, UjuStat } from "../../shared";
+
+// Lookup: activity_points.category → user-facing label. Mission ids map 1:1
+// to categories (e.g. 'pado-dex', 'gostop-crash'); a few system categories
+// (governance, mint actions) aren't in the mission registry, so add explicit
+// entries for them. Anything not found falls back to a humanized id.
+const BASE_CATEGORY_LABELS: Record<string, string> = (() => {
+  const map: Record<string, string> = {
+    governance: "Governance Vote",
+    "alliance-mint": "Alliance Mint",
+    "genesis-pass-mint": "Genesis Pass Mint",
+    "battalion-mint": "Battalion Mint",
+  };
+  for (const missions of Object.values(APP_MISSION_MAP)) {
+    for (const m of missions) map[m.id] = m.label;
+  }
+  return map;
+})();
+
+function humanizeCategory(category: string): string {
+  return category
+    .split("-")
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1))
+    .join(" ");
+}
+
+function labelForBaseCategory(category: string): string {
+  return BASE_CATEGORY_LABELS[category] ?? humanizeCategory(category);
+}
 
 interface UjuEcosystemPointsCardProps {
   className?: string;
@@ -61,7 +92,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   "referral-bonus": "bg-sky-500",
   "ecosystem-bonus-earlybird": "bg-yellow-500",
   "ecosystem-bonus-pado": "bg-lime-500",
-  "ecosystem-bonus-leaderboard": "bg-violet-500",
+  "ecosystem-bonus-leaderboard": "bg-pado-3",
   "ecosystem-bonus-game": "bg-orange-500",
   "ecosystem-bonus-airdrop": "bg-fuchsia-500",
   "ecosystem-bonus-bugreport": "bg-rose-500",
@@ -121,6 +152,7 @@ interface ChartPoint {
   rank: number | null;
   isPenalized: boolean;
   bonusItems?: BonusHistoryItem[];
+  baseItems?: BaseHistoryItem[];
 }
 
 // -- Tooltip components --
@@ -199,7 +231,7 @@ function ScoreTooltip({
           {d.rank != null && (
             <p className="flex justify-between items-center mt-1">
               <span className="text-uju-secondary">Daily Rank</span>
-              <span className="font-normal text-blue-400">#{d.rank}</span>
+              <span className="font-normal text-pado-lavender">#{d.rank}</span>
             </p>
           )}
         </div>
@@ -229,7 +261,7 @@ function RankTooltip({
         <div className="space-y-1 text-sm font-light">
           <p className="text-uju-secondary flex items-center justify-between gap-4">
             Daily Rank{" "}
-            <span className="font-semibold text-blue-400 text-base">
+            <span className="font-semibold text-pado-lavender text-base">
               #{d.rank}
             </span>
           </p>
@@ -239,7 +271,9 @@ function RankTooltip({
           </p>
         </div>
       ) : (
-        <p className="text-sm text-uju-secondary font-normal italic">Unranked</p>
+        <p className="text-sm text-uju-secondary font-normal italic">
+          Unranked
+        </p>
       )}
     </div>
   );
@@ -252,7 +286,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
 }) => {
   const { user } = useAuth();
   const identityId = user?.identityId;
-  const [days, setDays] = useState<DaysOption>(30);
+  const [days, setDays] = useState<DaysOption>(7);
 
   const {
     score,
@@ -262,8 +296,11 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     isRefreshing,
     cooldownSeconds,
   } = useEcosystemScore(identityId);
-  const { filtered: filteredScore, hasFilteredOutActivity, completedMissions } =
-    useFilteredTodayScore(score);
+  const {
+    filtered: filteredScore,
+    hasFilteredOutActivity,
+    completedMissions,
+  } = useFilteredTodayScore(score);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,
@@ -273,6 +310,15 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     queryKey: ["ecosystem", "bonus-history-uju", identityId, days],
     queryFn: () => getBonusHistory(identityId!, days),
     enabled: !!identityId,
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+
+  const cognitoToken = user?.cognitoToken;
+  const { data: baseHistory } = useQuery({
+    queryKey: ["ecosystem", "base-history-uju", identityId, days],
+    queryFn: () => getBaseHistory(identityId!, days, cognitoToken),
+    enabled: !!identityId && !!cognitoToken,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -289,6 +335,13 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     if (bonusHistory) {
       for (const day of bonusHistory) {
         bonusByDate.set(day.date, day.items);
+      }
+    }
+
+    const baseByDate = new Map<string, BaseHistoryItem[]>();
+    if (baseHistory) {
+      for (const day of baseHistory) {
+        baseByDate.set(day.date, day.items);
       }
     }
 
@@ -311,9 +364,10 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
         isPenalized:
           date < "2026-04-11" ? false : (entry?.isPenalized ?? false),
         bonusItems: bonusByDate.get(date),
+        baseItems: baseByDate.get(date),
       };
     });
-  }, [snapshots, bonusHistory]);
+  }, [snapshots, bonusHistory, baseHistory]);
 
   const rankStats = useMemo(() => {
     const ranked = chartData.filter((d) => d.rank != null);
@@ -361,17 +415,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
   if (!identityId) {
     return (
       <UjuCard className={className}>
-        <UjuSectionHeader
-          accent
-          title={
-            <div className="flex items-center gap-3">
-              Nasun Points Breakdown
-              <span className="text-sm font-semibold px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
-                Experimental
-              </span>
-            </div>
-          }
-        />
+        <UjuSectionHeader accent title="Nasun Points Breakdown" />
         <div className="flex flex-col items-center justify-center py-12 bg-uju-bg/30 rounded-2xl border border-uju-border/10">
           <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest">
             Sign in to view your points history
@@ -404,12 +448,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
       <UjuSectionHeader
         accent
         title={
-          <div className="flex items-center gap-3">
-            Nasun Points Breakdown
-            <span className="text-sm font-semibold px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase">
-              Experimental
-            </span>
-          </div>
+          <div className="flex items-center gap-3">Nasun Points Breakdown</div>
         }
         subtitle="Your daily points earned from missions and activities."
         trailing={rangeSelector}
@@ -452,123 +491,133 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             const todayPts = filteredScore?.daily.ecosystemScore ?? 0;
             const todayBonus = Math.max(
               0,
-              todayPts - Math.round((todayBase + todayStaking) * todayMultiplier),
+              todayPts -
+                Math.round((todayBase + todayStaking) * todayMultiplier),
             );
             const showAllTimeBreakdown =
               allTimeBarSegments.length > 0 && allTimeBarTotal > 0;
             return (
               <div className="rounded-xl bg-pado-2/5 border border-pado-2/20 p-3 space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                  <div className="flex items-baseline flex-wrap gap-x-2 gap-y-1">
-                    <span className="text-2xl font-normal text-amber-400 tabular-nums">
-                      {todayPts.toLocaleString("en-US", {
-                        minimumFractionDigits: 0,
-                        maximumFractionDigits: 1,
-                      })}
-                    </span>
-                    <span
-                      className="text-sm text-uju-secondary"
-                      title={
-                        hasFilteredOutActivity
-                          ? "Today reflects only activities for your activated daily missions. All-time is the full ledger."
-                          : undefined
-                      }
-                    >
-                      pts today{hasFilteredOutActivity ? " *" : ""}
-                    </span>
-                  </div>
-                  <div className="mt-1.5 flex items-baseline flex-wrap gap-x-1.5 gap-y-1 text-sm text-uju-secondary">
-                    <span>=</span>
-                    {(() => {
-                      // Parens when staking is present (formula clarity: (base+staking)×mult)
-                      // or when multiple mission pills need grouping.
-                      const needsParens =
-                        todayStaking > 0 || completedMissions.length > 1;
-                      const baseContent =
-                        completedMissions.length === 0 ? (
-                          <>
-                            <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
-                            <span>base</span>
-                          </>
-                        ) : (
-                          completedMissions.map((m, i) => (
-                            <Fragment key={m.id}>
-                              {i > 0 && <span>+</span>}
-                              <span className="font-mono text-uju-primary tabular-nums">{m.pts}</span>
-                              <span className="text-uju-primary/70">{m.label}</span>
-                            </Fragment>
-                          ))
-                        );
-                      return (
-                        <>
-                          {needsParens && <span>(</span>}
-                          {baseContent}
-                          {todayStaking > 0 && (
+                <div className="space-y-2">
+                  <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
+                    Today breakdown
+                  </h6>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0 flex items-baseline flex-wrap gap-x-1.5 gap-y-1 text-sm text-uju-secondary">
+                      <span className="font-mono text-amber-400 tabular-nums text-base">
+                        {todayPts.toLocaleString("en-US", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 1,
+                        })}
+                      </span>
+                      <span
+                        className="text-uju-secondary"
+                        title={
+                          hasFilteredOutActivity
+                            ? "Today reflects only activities for your active engagement selections. All-time is the full ledger."
+                            : undefined
+                        }
+                      >
+                        pts today{hasFilteredOutActivity ? " *" : ""}
+                      </span>
+                      <span>=</span>
+                      {(() => {
+                        // Parens when staking is present (formula clarity: (base+staking)×mult)
+                        // or when multiple mission pills need grouping.
+                        const needsParens =
+                          todayStaking > 0 || completedMissions.length > 1;
+                        const baseContent =
+                          completedMissions.length === 0 ? (
                             <>
-                              <span>+</span>
-                              <span
-                                className="font-mono text-pado-4 tabular-nums"
-                                title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
-                              >
-                                {todayStaking}
+                              <span className="font-mono text-uju-primary tabular-nums">
+                                {todayBase}
                               </span>
-                              <span>staking</span>
+                              <span>base</span>
                             </>
-                          )}
-                          {needsParens && <span>)</span>}
-                        </>
-                      );
-                    })()}
-                    <span>×</span>
-                    <span
-                      className={`font-mono tabular-nums ${score?.isPenalized ? "text-red-400" : "text-pado-2"}`}
+                          ) : (
+                            completedMissions.map((m, i) => (
+                              <Fragment key={m.id}>
+                                {i > 0 && <span>+</span>}
+                                <span className="font-mono text-uju-primary tabular-nums">
+                                  {m.pts}
+                                </span>
+                                <span className="text-uju-primary/70">
+                                  {m.label}
+                                </span>
+                              </Fragment>
+                            ))
+                          );
+                        return (
+                          <>
+                            {needsParens && <span>(</span>}
+                            {baseContent}
+                            {todayStaking > 0 && (
+                              <>
+                                <span>+</span>
+                                <span
+                                  className="font-mono text-pado-4 tabular-nums"
+                                  title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
+                                >
+                                  {todayStaking}
+                                </span>
+                                <span>staking</span>
+                              </>
+                            )}
+                            {needsParens && <span>)</span>}
+                          </>
+                        );
+                      })()}
+                      <span>×</span>
+                      <span
+                        className={`font-mono tabular-nums ${score?.isPenalized ? "text-red-400" : "text-pado-2"}`}
+                      >
+                        {todayMultiplier.toFixed(1)}x
+                      </span>
+                      <span>mult</span>
+                      {score?.isPenalized && (
+                        <span className="text-red-400/70">(penalized)</span>
+                      )}
+                      <span>+</span>
+                      <span className="font-mono text-pado-5 tabular-nums">
+                        {todayBonus}
+                      </span>
+                      <span>bonus</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={refresh}
+                      disabled={isRefreshing || cooldownSeconds > 0}
+                      title={
+                        isRefreshing
+                          ? "Refreshing..."
+                          : cooldownSeconds > 0
+                            ? `Refresh in ${cooldownSeconds}s`
+                            : "Refresh"
+                      }
+                      aria-label={
+                        isRefreshing
+                          ? "Refreshing"
+                          : cooldownSeconds > 0
+                            ? `Refresh available in ${cooldownSeconds} seconds`
+                            : "Refresh"
+                      }
+                      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-uju-border/30 text-uju-secondary hover:text-uju-primary hover:border-pado-2/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                     >
-                      {todayMultiplier.toFixed(1)}x
-                    </span>
-                    <span>mult</span>
-                    {score?.isPenalized && (
-                      <span className="text-red-400/70">(penalized)</span>
-                    )}
-                    <span>+</span>
-                    <span className="font-mono text-pado-5 tabular-nums">{todayBonus}</span>
-                    <span>bonus</span>
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                        aria-hidden="true"
+                      >
+                        <path d="M21 12a9 9 0 1 1-3-6.7" />
+                        <path d="M21 4v5h-5" />
+                      </svg>
+                    </button>
                   </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={refresh}
-                    disabled={isRefreshing || cooldownSeconds > 0}
-                    title={
-                      isRefreshing
-                        ? "Refreshing..."
-                        : cooldownSeconds > 0
-                          ? `Refresh in ${cooldownSeconds}s`
-                          : "Refresh"
-                    }
-                    aria-label={
-                      isRefreshing
-                        ? "Refreshing"
-                        : cooldownSeconds > 0
-                          ? `Refresh available in ${cooldownSeconds} seconds`
-                          : "Refresh"
-                    }
-                    className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-uju-border/30 text-uju-secondary hover:text-uju-primary hover:border-pado-2/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <svg
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
-                      aria-hidden="true"
-                    >
-                      <path d="M21 12a9 9 0 1 1-3-6.7" />
-                      <path d="M21 4v5h-5" />
-                    </svg>
-                  </button>
                 </div>
 
                 {showAllTimeBreakdown && (
@@ -691,7 +740,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                   {rankStats.current != null && (
                     <span className="text-sm font-normal text-uju-secondary uppercase tracking-wider">
                       Now:{" "}
-                      <span className="text-blue-400">
+                      <span className="text-pado-lavender">
                         #{rankStats.current}
                       </span>
                     </span>
@@ -739,15 +788,15 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       <Line
                         type="monotone"
                         dataKey="rank"
-                        stroke="#60a5fa"
-                        strokeWidth={3}
+                        stroke="#C9A7FF"
+                        strokeWidth={1.5}
                         connectNulls={false}
-                        dot={{ fill: "#60a5fa", strokeWidth: 0, r: 4 }}
+                        dot={{ fill: "#C9A7FF", strokeWidth: 0, r: 3 }}
                         activeDot={{
-                          r: 6,
+                          r: 5,
                           fill: "#fff",
-                          stroke: "#60a5fa",
-                          strokeWidth: 3,
+                          stroke: "#C9A7FF",
+                          strokeWidth: 1.5,
                         }}
                       />
                     </LineChart>
@@ -796,8 +845,10 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                             {formatDisplayDate(entry.date)}
                           </span>
 
-                          {/* Formula */}
-                          <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-base font-normal">
+                          {/* Formula — labels are intentionally one notch
+                              smaller than the surrounding row so the score and
+                              rank columns dominate at a glance. */}
+                          <div className="flex-1 hidden sm:flex items-center gap-2 flex-wrap text-sm font-normal">
                             {entry.multiplier === 0 ? (
                               <span className="text-amber-400/80 uppercase tracking-widest">
                                 No NFT Activated
@@ -805,28 +856,36 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                             ) : (
                               <>
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg/50 border border-uju-border/10">
-                                  <span className="text-uju-secondary/80">
-                                    BASE
+                                  <span className="text-uju-secondary/80 text-xs uppercase tracking-wider">
+                                    Base
                                   </span>
-                                  <span className="text-uju-primary">
+                                  <span className="text-uju-primary tabular-nums">
                                     {entry.baseScore}
                                   </span>
                                 </div>
                                 {(entry.stakingDeltaScaled ?? 0) > 0 && (
                                   <>
-                                    <span className="text-uju-secondary/80">+</span>
+                                    <span className="text-uju-secondary/80">
+                                      +
+                                    </span>
                                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
-                                      <span className="text-pado-4/80">STAKING</span>
-                                      <span className="text-pado-4">
-                                        {(entry.stakingDeltaScaled ?? 0).toFixed(0)}
+                                      <span className="text-pado-4/80 text-xs uppercase tracking-wider">
+                                        Staking
+                                      </span>
+                                      <span className="text-pado-4 tabular-nums">
+                                        {(
+                                          entry.stakingDeltaScaled ?? 0
+                                        ).toFixed(0)}
                                       </span>
                                     </div>
                                   </>
                                 )}
                                 <span className="text-uju-secondary/80">×</span>
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-2/5 border border-pado-2/20">
-                                  <span className="text-pado-2/80">MULT</span>
-                                  <span className="text-pado-2">
+                                  <span className="text-pado-2/80 text-xs uppercase tracking-wider">
+                                    Mult
+                                  </span>
+                                  <span className="text-pado-2 tabular-nums">
                                     {entry.multiplier.toFixed(1)}
                                   </span>
                                 </div>
@@ -838,18 +897,20 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                 )}
                                 {entry.bonusTotal > 0 && (
                                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-5/5 border border-pado-5/20">
-                                    <span className="text-pado-5/80">
-                                      BONUS
+                                    <span className="text-pado-5/80 text-xs uppercase tracking-wider">
+                                      Bonus
                                     </span>
-                                    <span className="text-pado-5">
+                                    <span className="text-pado-5 tabular-nums">
                                       {entry.bonusTotal}
                                     </span>
                                   </div>
                                 )}
                                 {entry.referralBonus > 0 && (
                                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
-                                    <span className="text-pado-4/80">REF</span>
-                                    <span className="text-pado-4">
+                                    <span className="text-pado-4/80 text-xs uppercase tracking-wider">
+                                      Ref
+                                    </span>
+                                    <span className="text-pado-4 tabular-nums">
                                       {(entry.referralBonus * 0.5).toFixed(1)}
                                     </span>
                                   </div>
@@ -886,36 +947,87 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                           </div>
                         </div>
 
-                        {/* Detail breakdown row: bonus categories + referral.
-                            Indented to align under BASE pill. Hidden on mobile
-                            (mirrors the formula row), visible on sm+. */}
-                        {showBreakdown && (
-                          <div className="hidden sm:flex flex-wrap gap-1.5 mt-2 ml-[64px] text-sm font-normal">
-                            {bonusBreakdown.map((item) => (
-                              <div
-                                key={item.category}
-                                className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pd1/30 border border-pd2/40 text-pd4"
-                              >
-                                <span>
-                                  {BONUS_LABELS[item.category] ||
-                                    item.activityType}
-                                </span>
-                                <span className="tabular-nums">
-                                  +{item.points}
-                                </span>
-                              </div>
-                            ))}
-                            {entry.referralBonus > 0 && (
-                              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pd1/30 border border-pd2/40 text-pd4">
-                                <span>Referral</span>
-                                <span className="tabular-nums">
-                                  +{entry.referralBonus}
-                                </span>
-                                <span>×0.5</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        {/* Detail breakdown row. Mirrors the live "Today
+                            breakdown" composition: chips list which exact
+                            activities composed the day's base, plus bonus
+                            categories. Generic text explainers (e.g.
+                            staking-tier rules) are omitted here — those
+                            belong in the formula tooltip, not the per-day log. */}
+                        {(() => {
+                          const baseItems = entry.baseItems ?? [];
+                          const hasBaseDetail =
+                            baseItems.length > 0 || entry.baseScore > 0;
+                          const hasAnyDetail = hasBaseDetail || showBreakdown;
+                          if (!hasAnyDetail) return null;
+                          return (
+                            <div className="flex flex-col gap-1.5 mt-2 sm:ml-[64px] text-xs font-normal">
+                              {hasBaseDetail && (
+                                <div className="flex flex-wrap items-center gap-1.5 leading-snug">
+                                  <span className="uppercase tracking-wider shrink-0 text-uju-secondary/80">
+                                    Base
+                                  </span>
+                                  {baseItems.length > 0 ? (
+                                    baseItems.map((item) => (
+                                      <span
+                                        key={item.category}
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg/60 border border-uju-border/30 text-uju-primary"
+                                      >
+                                        <span>
+                                          {labelForBaseCategory(item.category)}
+                                        </span>
+                                        <span className="tabular-nums text-uju-secondary">
+                                          +{item.points}
+                                        </span>
+                                      </span>
+                                    ))
+                                  ) : (
+                                    // Fallback when /ecosystem/base-history is
+                                    // unavailable (e.g. before that endpoint
+                                    // ships) or returns no rows for this day:
+                                    // show the day's aggregate base as a
+                                    // single chip so the row still has signal.
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg/60 border border-uju-border/30 text-uju-primary">
+                                      <span>Base</span>
+                                      <span className="tabular-nums text-uju-secondary">
+                                        +{entry.baseScore}
+                                      </span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                              {showBreakdown && (
+                                <div className="flex flex-wrap items-center gap-1.5 leading-snug">
+                                  <span className="uppercase tracking-wider shrink-0 text-pado-5/80">
+                                    Bonus
+                                  </span>
+                                  {bonusBreakdown.map((item) => (
+                                    <span
+                                      key={item.category}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pd1/30 border border-pd2/40 text-pd4"
+                                    >
+                                      <span>
+                                        {BONUS_LABELS[item.category] ||
+                                          item.activityType}
+                                      </span>
+                                      <span className="tabular-nums">
+                                        +{item.points}
+                                      </span>
+                                    </span>
+                                  ))}
+                                  {entry.referralBonus > 0 && (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-pd1/30 border border-pd2/40 text-pd4">
+                                      <span>Referral</span>
+                                      <span className="tabular-nums">
+                                        +{entry.referralBonus}
+                                      </span>
+                                      <span>×0.5</span>
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     );
                   })}

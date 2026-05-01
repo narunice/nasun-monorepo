@@ -120,11 +120,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     allWalletAddresses,
   );
 
-  const {
-    hasUnvotedProposal,
-    unvotedCount,
-    isLoading: isGovLoading,
-  } = useGovernanceMission();
+  const { hasUnvotedProposal, unvotedCount } = useGovernanceMission();
 
   const isCompleted = useCallback(
     (mission: Mission) => {

@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useWallet, useZkLogin, useStaking } from "@nasun/wallet";
-import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader } from "../shared";
+import { UjuCard, UjuButton, UjuBadge, UjuSectionHeader, UjuComingSoonTag } from "../shared";
 import { StakeModal } from "./staking/StakeModal";
 
 interface RowProps {
@@ -29,11 +29,7 @@ function Row({ symbol, network, trailing }: RowProps) {
 }
 
 function ComingSoonTag() {
-  return (
-    <span className="text-sm text-uju-secondary border border-uju-border rounded-full px-2 py-0.5 uppercase tracking-widest">
-      Coming Soon
-    </span>
-  );
+  return <UjuComingSoonTag />;
 }
 
 export function StakingCard() {
@@ -59,7 +55,7 @@ export function StakingCard() {
       ) : (
         <span className="text-base text-uju-secondary">Not connected</span>
       )}
-      <UjuButton size="sm" onClick={() => setModalOpen(true)}>
+      <UjuButton variant="primary" size="sm" onClick={() => setModalOpen(true)}>
         Stake
       </UjuButton>
     </>

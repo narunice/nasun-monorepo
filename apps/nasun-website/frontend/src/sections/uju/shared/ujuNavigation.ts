@@ -38,6 +38,22 @@ export function goToDashboardActivatedApps(
 }
 
 /**
+ * Switch to the profile tab and scroll to the Connected Wallets and Social
+ * Accounts section. Used by the dashboard's WalletBalanceCard "Manage..." CTA
+ * to push wallet linking into a single source of truth on the profile tab.
+ */
+export function goToProfileConnectedAccounts(
+  setSearchParams: SetURLSearchParams,
+) {
+  try {
+    sessionStorage.setItem(SCROLL_TARGET_KEY, "connected-accounts");
+  } catch {
+    // ignore storage errors
+  }
+  setSearchParams({ tab: "profile" }, { replace: true });
+}
+
+/**
  * Read and clear a pending scroll target. Returns null if no target queued.
  * Designed to be called from the ActivityTab mount effect.
  */

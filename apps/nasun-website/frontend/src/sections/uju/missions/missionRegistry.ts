@@ -3,6 +3,14 @@
 
 type CompletionType = 'onchain' | 'visit';
 
+/**
+ * Cadence the user must perform the mission at to count.
+ *   - 'daily':  resets every UTC midnight (current default for all missions)
+ *   - 'weekly': planned — one completion per ISO week
+ * Default behavior when omitted is 'daily' so legacy entries keep working.
+ */
+export type MissionCadence = 'daily' | 'weekly';
+
 export interface UjuMission {
   id: string;
   appId: string | null;
@@ -12,9 +20,10 @@ export interface UjuMission {
   completionType: CompletionType;
   externalUrl?: string;
   showFaucet?: boolean;
+  cadence?: MissionCadence;
 }
 
-// Maximum number of daily missions a user can have selected at once.
+// Maximum number of active engagement a user can have selected at once.
 export const MAX_DAILY_MISSIONS = 7;
 
 // On Activate, seed only these missions (not the full APP_MISSION_MAP entry).

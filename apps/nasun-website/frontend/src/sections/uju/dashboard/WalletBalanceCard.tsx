@@ -1,14 +1,29 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
-import { useWallet, useZkLogin, useBalance as useNasunBalance, getMoveClient, isValidAddress } from "@nasun/wallet";
+import {
+  useWallet,
+  useZkLogin,
+  useBalance as useNasunBalance,
+  getMoveClient,
+  isValidAddress,
+} from "@nasun/wallet";
+import { WalletConnect } from "@nasun/wallet-ui";
 import { useBalance as useEthBalance } from "wagmi";
+// Per-row "Open" buttons are commented out below. To re-enable, restore:
+//   import { useConnectModal, useAccountModal } from "@rainbow-me/rainbowkit";
+//   import { useSolanaWalletAdapter } from "./useSolanaWalletAdapter";
+//   import { useSuiWalletAdapter } from "./useSuiWalletAdapter";
+//   import { OpenChainWalletButton } from "./OpenChainWalletButton";
 import { ACTIVE_EVM_CHAIN, IS_EVM_TESTNET } from "@/config/evmChain";
 import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE } from "@/lib/solana";
 import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
 import { UjuCard, UjuBadge, UjuButton, UjuSectionHeader } from "../shared";
-import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
-import { useSolanaWalletAdapter, type SolWalletName } from "./useSolanaWalletAdapter";
+import { goToProfileConnectedAccounts } from "../shared/ujuNavigation";
+import { useMyProfile } from "@/features/profile/useMyProfile";
+import { useLinkedAddresses } from "../profile/hooks/useLinkedAddresses";
 import {
   useSolAddressForIdentity,
   useSolAddressStore,
@@ -17,46 +32,25 @@ import {
   useSuiAddressStore,
   useSuiExternalAddress,
 } from "../stores/suiAddressStore";
+import { linkPasteAddress } from "@/services/userProfileApi";
 
-// Plan v5+: read-only mainnet for all external chains. SUI mainnet RPC for
-// balance display (matches StakingCard's useSuiTestnetStakes which is now also
-// mainnet — file/hook names are historical, see staking/sui/suiTestnet.ts).
+// Plan v5+: read-only mainnet for all external chains.
 const SUI_MAINNET_RPC = "https://fullnode.mainnet.sui.io:443";
 
 function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-// Map Phantom/Solflare adapter error messages to user-friendly UX. Wallet
-// extensions sometimes return raw rejection text ("User rejected", "disconnect",
-// error code 4001) that confuses users mid-flow.
-function friendlyWalletError(msg: string | null): string | null {
-  if (!msg) return null;
-  const m = msg.toLowerCase();
-  if (m.includes("reject") || m.includes("denied") || m.includes("4001")) {
-    return "Connection cancelled.";
-  }
-  if (m.includes("disconnect") || m.includes("locked")) {
-    return "Wallet is locked or disconnected. Unlock the extension and try again.";
-  }
-  if (m.includes("not installed")) {
-    return msg; // adapter already produces a clear message
-  }
-  if (m.includes("invalid")) {
-    return msg;
-  }
-  return `Connection failed: ${msg}`;
-}
-
 function NetworkBadge({ label }: { label: string }) {
   return <UjuBadge tone="violet">{label}</UjuBadge>;
 }
 
-function useSuiMainnetBalance(address: string | undefined) {
+function useSuiMainnetBalance(address: string | undefined | null) {
   return useQuery({
     queryKey: ["balance", "sui-mainnet", address],
     queryFn: async () => {
-      if (!address || !isValidAddress(address)) throw new Error("Invalid SUI address");
+      if (!address || !isValidAddress(address))
+        throw new Error("Invalid SUI address");
       const client = getMoveClient(SUI_MAINNET_RPC, "sui-mainnet");
       const { totalBalance } = await client.getBalance({ owner: address });
       const mist = BigInt(totalBalance);
@@ -74,12 +68,12 @@ function useSuiMainnetBalance(address: string | undefined) {
   });
 }
 
-// Plan v5: read-only mainnet OK. Aligned with StakingCard's useSolLst (also mainnet).
 function useSolMainnetBalance(address: string | null) {
   return useQuery({
     queryKey: ["balance", "sol-mainnet", address],
     queryFn: async () => {
-      if (!address || !SOL_ADDRESS_RE.test(address)) throw new Error("Invalid Solana address");
+      if (!address || !SOL_ADDRESS_RE.test(address))
+        throw new Error("Invalid Solana address");
       const res = await fetch(SOL_MAINNET_READ_RPC, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +85,10 @@ function useSolMainnetBalance(address: string | null) {
         }),
       });
       if (!res.ok) throw new Error("SOL RPC error");
-      const json = await res.json() as { result?: { value: number }; error?: unknown };
+      const json = (await res.json()) as {
+        result?: { value: number };
+        error?: unknown;
+      };
       if (json.error) throw new Error("SOL RPC error");
       if (!json.result || typeof json.result.value !== "number") {
         throw new Error("SOL RPC: unexpected response");
@@ -107,155 +104,236 @@ function useSolMainnetBalance(address: string | null) {
   });
 }
 
+/**
+ * One-shot migration: any pre-existing localStorage SUI/SOL address that
+ * isn't yet stored on the backend is silently linked via the PATCH endpoint.
+ * Failures are swallowed — the UI still renders from localStorage.
+ */
+function useMigrateLegacyLocalStorageAddresses(args: {
+  identityId: string | undefined;
+  cognitoToken: string | undefined;
+  serverSui: string | null | undefined;
+  serverSolana: string | null | undefined;
+  legacySuiExternal: string | undefined;
+  legacySol: string | null;
+}) {
+  const {
+    identityId,
+    cognitoToken,
+    serverSui,
+    serverSolana,
+    legacySuiExternal,
+    legacySol,
+  } = args;
+
+  useEffect(() => {
+    if (!identityId || !cognitoToken) return;
+    if (legacySuiExternal && !serverSui) {
+      linkPasteAddress(cognitoToken, "sui", legacySuiExternal).catch(() => {});
+    }
+    if (legacySol && !serverSolana) {
+      linkPasteAddress(cognitoToken, "solana", legacySol).catch(() => {});
+    }
+    // Run once per identity. Subsequent renders no-op because server fields
+    // will be populated.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityId, cognitoToken]);
+}
+
 export function WalletBalanceCard() {
   const { user } = useAuth();
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
   const { data: nasunBalance } = useNasunBalance();
-
-  const registeredEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
-  const ethAddress = (registeredEthAddress ?? undefined) as `0x${string}` | undefined;
-  const { data: ethBalance } = useEthBalance({ address: ethAddress, chainId: ACTIVE_EVM_CHAIN.id });
+  const { data: serverProfile } = useMyProfile();
+  const { addresses: linked } = useLinkedAddresses();
+  const [, setSearchParams] = useSearchParams();
 
   const identityId = user?.identityId ?? undefined;
 
-  // SUI address resolution:
-  //   1. External typed address (suiAddressStore) — explicit user override
-  //   2. Nasun-derived (zkLogin/mnemonic keypair → Sui scheme)
-  // Display in this card is read-only across both branches; staking actions
-  // happen on suiscan/Sui Wallet externally.
-  const suiExternal = useSuiExternalAddress(identityId);
+  // ETH: prefer verified MetaMask flow, fall back to paste-linked address.
+  const verifiedEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
+  const pastedEthAddress = linked.ethereum ?? null;
+  const ethAddress = (verifiedEthAddress ?? pastedEthAddress ?? undefined) as
+    | `0x${string}`
+    | undefined;
+  const ethVerified = !!verifiedEthAddress;
+  const { data: ethBalance } = useEthBalance({
+    address: ethAddress,
+    chainId: ACTIVE_EVM_CHAIN.id,
+  });
+
+  // SUI: backend `linkedSuiAddress` > legacy localStorage external > Nasun-derived.
+  const legacySuiExternal = useSuiExternalAddress(identityId);
   const suiNasunDerived = account?.address ?? zkState?.address;
-  const suiDisplayAddress = suiExternal ?? suiNasunDerived;
-  const isExternalSui = !!suiExternal;
-  const setSuiExternal = useSuiAddressStore((s) => s.setExternal);
+  const suiDisplayAddress =
+    linked.sui ?? legacySuiExternal ?? suiNasunDerived ?? null;
+  const isExternalSui = !!(linked.sui || legacySuiExternal);
   const hydrateSuiStorage = useSuiAddressStore((s) => s.hydrateFromStorage);
-  const { data: suiBalance, isPending: suiPending, isError: suiError } = useSuiMainnetBalance(suiDisplayAddress);
-
-  // Plan v5 3A.2 state owners (paste UI removed):
-  //   store  : solAddress, connectedWallet (shared with StakingCard)
-  const sol = useSolAddressForIdentity(identityId);
-  const setForIdentity = useSolAddressStore((s) => s.setForIdentity);
-  const hydrateFromStorage = useSolAddressStore((s) => s.hydrateFromStorage);
-
-  const solAddress = sol?.solAddress ?? null;
-  const connectedWallet: SolWalletName | null = sol?.connectedWallet ?? null;
-
-  const { data: solBalance, isPending: solPending, isError: solFetchError } = useSolMainnetBalance(solAddress);
-
   const {
-    installed,
-    isConnecting,
-    error: walletError,
-    connect: adapterConnect,
-    disconnect: adapterDisconnect,
-    clearError,
-  } = useSolanaWalletAdapter();
+    data: suiBalance,
+    isPending: suiPending,
+    isError: suiError,
+  } = useSuiMainnetBalance(suiDisplayAddress);
 
-  // Hydrate stores from localStorage when identityId changes.
+  // SOL: backend `linkedSolanaAddress` > legacy localStorage adapter address.
+  const sol = useSolAddressForIdentity(identityId);
+  const hydrateFromStorage = useSolAddressStore((s) => s.hydrateFromStorage);
+  const legacySolAddress = sol?.solAddress ?? null;
+  const solAddress = linked.solana ?? legacySolAddress;
+  const {
+    data: solBalance,
+    isPending: solPending,
+    isError: solFetchError,
+  } = useSolMainnetBalance(solAddress);
+
+  // Hydrate legacy stores on identity change (still needed during migration).
   useEffect(() => {
     if (identityId) {
       hydrateFromStorage(identityId);
       hydrateSuiStorage(identityId);
     }
-    clearError();
-  }, [identityId, hydrateFromStorage, hydrateSuiStorage, clearError]);
+  }, [identityId, hydrateFromStorage, hydrateSuiStorage]);
 
-  function handleSuiDisconnect() {
-    if (!identityId) return;
-    setSuiExternal(identityId, null);
-  }
-
-  // Inline EVM (MetaMask) link via RainbowKit + challenge/sign/verify.
-  // Reuses the same wallet auth flow as my-account so backend state stays
-  // consistent (linkedAccounts.metamask.walletAddress).
-  const {
-    connect: connectMetaMask,
-    isAuthenticating: isEthAuthenticating,
-    error: ethAuthError,
-  } = useWalletAuth({ mode: "link" });
+  useMigrateLegacyLocalStorageAddresses({
+    identityId,
+    cognitoToken: user?.cognitoToken,
+    serverSui: serverProfile?.linkedSuiAddress,
+    serverSolana: serverProfile?.linkedSolanaAddress,
+    legacySuiExternal: legacySuiExternal ?? undefined,
+    legacySol: legacySolAddress,
+  });
 
   const isNasunConnected =
     (status === "unlocked" && !!account) || isZkConnected;
 
-  async function handleWalletConnect(name: SolWalletName) {
-    if (!identityId) return;
-    const addr = await adapterConnect(name);
-    if (!addr) return;
-    setForIdentity(identityId, addr, name);
-  }
+  // External-chain wallet opener wiring removed alongside the commented-out
+  // per-row "Open" JSX below. To re-enable: restore the imports
+  // (useConnectModal/useAccountModal from @rainbow-me/rainbowkit,
+  // useSolanaWalletAdapter, useSuiWalletAdapter, OpenChainWalletButton) plus
+  // the corresponding hook calls and `onOpenEth`/`sol2`/`sui2` bindings.
 
-  async function handleWalletDisconnect() {
-    if (connectedWallet) await adapterDisconnect(connectedWallet);
-    if (identityId) setForIdentity(identityId, null, null);
-    clearError();
-  }
+  // NSN wallet drawer is launched from the NSN row's "Open" button. The
+  // shared @nasun/wallet-ui WalletConnect component supports `embedded` mode,
+  // which renders just the wallet UI body; we wrap it in our own portal-
+  // backed modal so the panel always centers on the viewport instead of
+  // dropping below the trigger and getting clipped by the next dashboard
+  // section.
+  const [nasunModalOpen, setNasunModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!nasunModalOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNasunModalOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [nasunModalOpen]);
+
+  const goManage = () => goToProfileConnectedAccounts(setSearchParams);
+
+  // Plain "Not connected" text — the section-level Manage CTA below the list
+  // is the single linking entry point, so per-row prompts would be redundant.
+  const notConnectedHint = (
+    <span className="text-base text-uju-secondary">Not connected</span>
+  );
 
   return (
     <UjuCard>
-      <UjuSectionHeader accent title="Wallet Integration" subtitle="Connected addresses across networks" />
+      <UjuSectionHeader
+        accent
+        title="Wallet Integration"
+        subtitle="Connected addresses across networks"
+      />
 
       <ul className="space-y-3">
-        {/* NSN */}
-        <li className="flex items-center justify-between">
+        {/* NSN — Nasun-native. Click "Open" to launch the wallet UI in a
+            centered modal (so it doesn't get clipped by the cards below). */}
+        <li className="flex items-center justify-between gap-2">
           <span className="text-base text-uju-secondary">NSN</span>
-          {isNasunConnected ? (
-            <span className="text-base font-light text-uju-primary tabular-nums">
-              {nasunBalance?.formattedBalance ?? "0"} NSN
-            </span>
-          ) : (
-            <span className="text-base text-uju-secondary">Not connected</span>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {isNasunConnected ? (
+              <span className="text-base font-light text-uju-primary tabular-nums">
+                {nasunBalance?.formattedBalance ?? "0"} NSN
+              </span>
+            ) : (
+              <span className="text-base text-uju-secondary">Not connected</span>
+            )}
+            {/* Open buttons hidden per UX direction — keep wired so re-enabling
+                is a comment toggle, not a re-implementation. */}
+            {/* <UjuButton
+              variant="ghost"
+              size="xs"
+              onClick={() => setNasunModalOpen(true)}
+            >
+              Open
+            </UjuButton> */}
+          </div>
         </li>
 
         {/* SUI */}
         <li>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">SUI</span>
               <NetworkBadge label="Testnet" />
               {isExternalSui && (
-                <span
-                  className="text-xs text-uju-secondary border border-uju-border rounded-full px-2 py-0.5"
-                  title="Address ownership not verified"
-                >
-                  unverified
-                </span>
+                <UjuBadge tone="amber" className="uppercase tracking-wide">
+                  <span title="Address ownership not verified">unverified</span>
+                </UjuBadge>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {suiDisplayAddress ? (
                 <span className="text-base font-light text-uju-primary tabular-nums">
-                  {suiPending
-                    ? "-"
-                    : suiError
-                      ? <span className="text-uju-secondary">RPC error</span>
-                      : `${suiBalance} SUI`}
+                  {suiPending ? (
+                    "-"
+                  ) : suiError ? (
+                    <span className="text-uju-secondary">RPC error</span>
+                  ) : (
+                    `${suiBalance} SUI`
+                  )}
                 </span>
               ) : (
-                <span className="text-base text-uju-secondary">Not connected</span>
+                notConnectedHint
               )}
-              {isExternalSui ? (
-                <UjuButton variant="ghost" size="sm" onClick={handleSuiDisconnect}>
-                  Disconnect
-                </UjuButton>
-              ) : (
-                <span className="text-sm text-uju-secondary border border-uju-border rounded-full px-2 py-0.5 uppercase tracking-widest">
-                  Coming Soon
-                </span>
-              )}
+              {/* <OpenChainWalletButton
+                chainLabel="Sui"
+                installed={sui2.installed}
+                connectedAddress={
+                  sui2.installed.length > 0 ? suiDisplayAddress : null
+                }
+                onConnect={(name) => sui2.connect(name)}
+                onDisconnect={() => sui2.disconnect()}
+                isConnecting={sui2.isConnecting}
+                installSuggestions={[
+                  { name: "Slush", url: "https://slush.app/" },
+                  { name: "Suiet", url: "https://suiet.app/" },
+                  { name: "Sui Wallet", url: "https://suiwallet.com/" },
+                ]}
+              /> */}
             </div>
           </div>
         </li>
 
         {/* ETH */}
         <li>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">ETH</span>
               <NetworkBadge label={IS_EVM_TESTNET ? "Testnet" : "Mainnet"} />
+              {ethAddress && !ethVerified && (
+                <UjuBadge tone="amber" className="uppercase tracking-wide">
+                  <span title="Address ownership not verified">unverified</span>
+                </UjuBadge>
+              )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               {ethAddress ? (
                 <span className="text-base font-light text-uju-primary tabular-nums">
                   {ethBalance
@@ -273,86 +351,110 @@ export function WalletBalanceCard() {
                     : shortenAddress(ethAddress)}
                 </span>
               ) : (
-                <UjuButton
-                  variant="secondary"
-                  size="sm"
-                  onClick={connectMetaMask}
-                  disabled={isEthAuthenticating || !identityId}
-                  title={!identityId ? "Sign in to connect a wallet" : undefined}
-                >
-                  {isEthAuthenticating ? "Connecting…" : "Connect MetaMask"}
-                </UjuButton>
+                notConnectedHint
               )}
+              {/* <UjuButton
+                variant="ghost"
+                size="xs"
+                onClick={onOpenEth}
+                disabled={!openConnectModal && !openAccountModal}
+              >
+                Open
+              </UjuButton> */}
             </div>
           </div>
-          {ethAuthError && (
-            <p className="text-base text-nasun-scarlet mt-1">{ethAuthError}</p>
-          )}
         </li>
 
         {/* SOL */}
         <li>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">SOL</span>
               <NetworkBadge label="Testnet" />
-            </div>
-            <div className="flex items-center gap-2">
-              {solAddress ? (
-                <>
-                  <span className="text-base font-light text-uju-primary tabular-nums">
-                    {solPending
-                      ? "-"
-                      : solFetchError
-                        ? <span className="text-uju-secondary">RPC error</span>
-                        : `${solBalance} SOL`}
-                  </span>
-                  {connectedWallet ? (
-                    <UjuButton variant="ghost" size="sm" onClick={handleWalletDisconnect}>
-                      Disconnect
-                    </UjuButton>
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  {installed.includes("phantom") && (
-                    <UjuButton
-                      variant="secondary"
-                      size="sm"
-                      disabled={isConnecting || !identityId}
-                      title={!identityId ? "Sign in to connect a wallet" : undefined}
-                      onClick={() => handleWalletConnect("phantom")}
-                    >
-                      Phantom
-                    </UjuButton>
-                  )}
-                  {installed.includes("solflare") && (
-                    <UjuButton
-                      variant="secondary"
-                      size="sm"
-                      disabled={isConnecting || !identityId}
-                      title={!identityId ? "Sign in to connect a wallet" : undefined}
-                      onClick={() => handleWalletConnect("solflare")}
-                    >
-                      Solflare
-                    </UjuButton>
-                  )}
-                  {installed.length === 0 && (
-                    <span className="text-sm text-uju-secondary">
-                      Install Phantom or Solflare to connect
-                    </span>
-                  )}
-                </>
+              {solAddress && (
+                <UjuBadge tone="amber" className="uppercase tracking-wide">
+                  <span title="Address ownership not verified">unverified</span>
+                </UjuBadge>
               )}
             </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {solAddress ? (
+                <span className="text-base font-light text-uju-primary tabular-nums">
+                  {solPending ? (
+                    "-"
+                  ) : solFetchError ? (
+                    <span className="text-uju-secondary">RPC error</span>
+                  ) : (
+                    `${solBalance} SOL`
+                  )}
+                </span>
+              ) : (
+                notConnectedHint
+              )}
+              {/* <OpenChainWalletButton
+                chainLabel="Solana"
+                installed={sol2.installed}
+                connectedAddress={
+                  sol2.installed.length > 0 ? solAddress : null
+                }
+                onConnect={(name) =>
+                  sol2.connect(name as "phantom" | "solflare")
+                }
+                onDisconnect={async () => {
+                  for (const name of sol2.installed) {
+                    await sol2.disconnect(name);
+                  }
+                }}
+                isConnecting={sol2.isConnecting}
+                installSuggestions={[
+                  { name: "Phantom", url: "https://phantom.app/download" },
+                  { name: "Solflare", url: "https://solflare.com/" },
+                ]}
+              /> */}
+            </div>
           </div>
-          {walletError && (
-            <p className="text-base text-nasun-scarlet mt-1">
-              {friendlyWalletError(walletError)}
-            </p>
-          )}
         </li>
       </ul>
+
+      {/* Manage CTA — wallet linking is owned by the Profile page now. */}
+      <div className="mt-5 pt-4 border-t border-uju-border/30 flex justify-center">
+        <UjuButton
+          variant="secondary"
+          size="sm"
+          onClick={goManage}
+          trailingIcon={<span aria-hidden="true">→</span>}
+        >
+          Manage in Connected Wallets
+        </UjuButton>
+      </div>
+
+      {/* Nasun wallet centered modal. Renders into document.body so it
+          escapes any ancestor stacking contexts that would otherwise let
+          subsequent dashboard sections overlap the panel. */}
+      {nasunModalOpen &&
+        createPortal(
+          <>
+            <div
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[99998]"
+              onClick={() => setNasunModalOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Nasun Wallet"
+              className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-[99999] w-[calc(100%-2rem)] max-w-md max-h-[calc(100vh-4rem)] overflow-hidden rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <WalletConnect
+                embedded
+                defaultOpen
+                onDropdownClose={() => setNasunModalOpen(false)}
+              />
+            </div>
+          </>,
+          document.body,
+        )}
     </UjuCard>
   );
 }

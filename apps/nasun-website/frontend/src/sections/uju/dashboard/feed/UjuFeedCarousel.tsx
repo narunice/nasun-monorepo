@@ -74,7 +74,7 @@ export function UjuFeedCarousel() {
 
   if (isLoading) {
     return (
-      <div className="bg-slate-900 border border-uju-border rounded-lg h-full flex items-center justify-center">
+      <div className="bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg h-full flex items-center justify-center">
         <span className="animate-pulse text-sm text-uju-secondary">Loading feed...</span>
       </div>
     );
@@ -82,7 +82,7 @@ export function UjuFeedCarousel() {
 
   if (error || items.length === 0) {
     return (
-      <div className="bg-slate-900 border border-uju-border rounded-lg h-full flex items-center justify-center">
+      <div className="bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg h-full flex items-center justify-center">
         <span className="text-sm text-uju-secondary">No feed available</span>
       </div>
     );
@@ -90,7 +90,7 @@ export function UjuFeedCarousel() {
 
   return (
     <div
-      className="bg-slate-900 border border-uju-border rounded-lg h-full overflow-hidden relative flex flex-col"
+      className="bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg h-full overflow-hidden relative flex flex-col"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >

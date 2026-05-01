@@ -25,16 +25,17 @@ export interface RingTheme {
   strokeClass: string;
   trackClass: string;
   pulse: boolean;
+  glowColor?: string;
 }
 
 function getRingTheme(state: "healthy" | "weakened" | "locked"): RingTheme {
   if (state === "weakened") {
-    return { strokeClass: "stroke-nasun-coral", trackClass: "stroke-nasun-coral/15", pulse: true };
+    return { strokeClass: "stroke-nasun-coral", trackClass: "stroke-nasun-coral/15", pulse: true, glowColor: "rgba(255,77,77,0.5)" };
   }
   if (state === "locked") {
     return { strokeClass: "stroke-uju-border", trackClass: "stroke-uju-border", pulse: false };
   }
-  return { strokeClass: "stroke-pado-4", trackClass: "stroke-pado-4/15", pulse: false };
+  return { strokeClass: "stroke-pado-4", trackClass: "stroke-pado-4/15", pulse: false, glowColor: "rgba(210,246,162,0.6)" };
 }
 
 function hpPercent(activeDays: number, hasGenesisPass: boolean, isPenalized: boolean): number {
@@ -99,14 +100,21 @@ export const UjuHealthStatus: FC<UjuHealthStatusProps> = ({
 export interface DonutRingProps extends RingTheme {
   percent: number;
   label?: string;
+  /** Tailwind classes for the inner label text. Default: text-lg font-normal. */
+  labelClassName?: string;
 }
 
-export function DonutRing({ percent, strokeClass, trackClass, pulse, label }: DonutRingProps) {
+export function DonutRing({ percent, strokeClass, trackClass, pulse, glowColor, label, labelClassName }: DonutRingProps) {
   const dashOffset = CIRCUMFERENCE - (percent / 100) * CIRCUMFERENCE;
 
   return (
     <div className="relative w-24 h-24">
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full h-full -rotate-90" aria-hidden="true">
+      <svg
+        viewBox={`0 0 ${SIZE} ${SIZE}`}
+        className="w-full h-full -rotate-90"
+        aria-hidden="true"
+        style={glowColor ? { filter: `drop-shadow(0 0 8px ${glowColor})` } : undefined}
+      >
         <circle cx={SIZE / 2} cy={SIZE / 2} r={RADIUS} fill="none" strokeWidth={STROKE_WIDTH} className={trackClass} />
         <circle
           cx={SIZE / 2}
@@ -122,7 +130,7 @@ export function DonutRing({ percent, strokeClass, trackClass, pulse, label }: Do
       </svg>
       {label && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-lg font-normal text-uju-primary tabular-nums">{label}</span>
+          <span className={`${labelClassName ?? "text-lg font-normal"} text-uju-primary tabular-nums text-center px-1`}>{label}</span>
         </div>
       )}
     </div>

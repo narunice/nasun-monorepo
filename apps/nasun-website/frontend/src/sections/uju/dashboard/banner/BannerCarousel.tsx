@@ -170,7 +170,7 @@ export function BannerCarousel() {
     <div
       role="region"
       aria-label="Announcements"
-      className="relative bg-slate-900 border border-pd2 rounded-lg overflow-hidden min-h-[176px]"
+      className="relative bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg overflow-hidden min-h-[176px]"
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
       onTouchStart={handleTouchStart}

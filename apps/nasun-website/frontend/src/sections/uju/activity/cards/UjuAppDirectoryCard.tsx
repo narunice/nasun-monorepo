@@ -12,8 +12,11 @@ import {
   MAX_DAILY_MISSIONS,
 } from "../../missions/missionRegistry";
 import { useUjuAppDirectory } from "../../apps/UjuAppDirectoryProvider";
-import { UjuAppDetailsModal } from "../../apps/UjuAppDetailsModal";
-import { UjuCard, UjuButton, UjuSectionHeader } from "../../shared";
+import { UjuAppInfoModal } from "../../apps/UjuAppInfoModal";
+// Activity Details button shows the full app info (name + description +
+// website). The Dashboard's Missions button uses a different modal
+// (UjuAppDetailsModal) that lists active engagement only.
+import { UjuCard, UjuButton, UjuSectionHeader, UjuComingSoonTag } from "../../shared";
 import { goToDashboardActivatedApps } from "../../shared/ujuNavigation";
 
 const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
@@ -57,7 +60,7 @@ export function UjuAppDirectoryCard() {
         <UjuSectionHeader
           accent
           title="Apps, Services, and AI Directory"
-          subtitle="Activate apps to add their daily missions to your dashboard."
+          subtitle="Activate apps to add their active engagement to your dashboard."
           trailing={trailing}
         />
 
@@ -105,7 +108,7 @@ export function UjuAppDirectoryCard() {
         </div>
       </div>
 
-      <UjuAppDetailsModal
+      <UjuAppInfoModal
         app={detailsApp}
         isOpen={!!detailsApp}
         onClose={() => setDetailsApp(null)}
@@ -173,30 +176,31 @@ function AppDirectoryRow({
           </p>
         </div>
         <div className="shrink-0 flex items-center gap-2">
-          <button
+          <UjuButton
+            variant="ghost"
+            size="xs"
             onClick={() => onShowDetails(app)}
-            className="text-sm font-light text-uju-primary border border-uju-border rounded px-3 py-1.5 hover:border-pado-2/40 hover:text-pado-2 transition-colors"
           >
             Details
-          </button>
+          </UjuButton>
           {isComingSoon ? (
-            <span className="text-sm text-uju-secondary px-3 py-1.5 border border-uju-border rounded">
-              Soon
-            </span>
+            <UjuComingSoonTag />
           ) : isActive ? (
-            <button
+            <UjuButton
+              variant="secondary"
+              size="xs"
               onClick={() => directory.deactivate(app.id)}
-              className="text-sm font-light text-pado-2 border border-pado-2/30 rounded px-3 py-1.5 hover:bg-pado-2/10 transition-colors"
             >
               Deactivate
-            </button>
+            </UjuButton>
           ) : (
-            <button
+            <UjuButton
+              variant="primary"
+              size="xs"
               onClick={() => directory.activate(app.id)}
-              className="text-sm font-light text-uju-primary border border-pado-4/40 bg-pado-4/10 rounded px-3 py-1.5 hover:bg-pado-4/20 transition-colors"
             >
               Activate
-            </button>
+            </UjuButton>
           )}
         </div>
       </div>

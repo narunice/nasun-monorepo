@@ -18,12 +18,15 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
 
   return (
     <>
-      {/* Desktop: pill-style centered tabs (placed inline under the banner) */}
+      {/* Desktop: pill-style centered tabs (placed inline under the banner).
+          Centered visually via three-column flex (left spacer balances right
+          Experimental badge so the pill stays optically centered). */}
       <nav
-        className="hidden md:flex justify-center mb-5"
+        className="hidden md:grid grid-cols-[1fr_auto_1fr] items-center mb-5"
         aria-label="uju sections"
       >
-        <div className="inline-flex gap-1 p-1 rounded-full bg-uju-card border border-uju-border shadow-sm">
+        <span aria-hidden="true" />
+        <div className="inline-flex gap-1 p-1 rounded-full bg-uju-card border border-uju-border/60 shadow-sm justify-self-center">
           {TABS.map((t) => {
             const isActive = activeTab === t.id;
             const showDot = t.id === "profile" && hasUnread;
@@ -52,11 +55,19 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
             );
           })}
         </div>
+        <div className="justify-self-end">
+          <ExperimentalTag />
+        </div>
       </nav>
+
+      {/* Mobile: inline Experimental tag right-aligned above the bottom tab bar */}
+      <div className="md:hidden flex justify-end mb-3">
+        <ExperimentalTag />
+      </div>
 
       {/* Mobile: fixed bottom tab bar with icons + labels for clear targets */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-uju-card/95 backdrop-blur border-t border-uju-border"
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-uju-card/95 backdrop-blur border-t border-uju-border/60"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         aria-label="uju sections"
       >
@@ -94,6 +105,20 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
       {/* Mobile bottom bar spacer */}
       <div className="md:hidden h-[64px]" aria-hidden="true" />
     </>
+  );
+}
+
+// Whole-uju Experimental signal. Lives next to the tab bar so the message
+// applies to every uju surface, not just the points-breakdown card it used
+// to hide inside.
+function ExperimentalTag() {
+  return (
+    <span
+      className="text-sm font-semibold px-2 py-0.5 rounded bg-pado-5/20 text-pado-5 border border-pado-5/20 tracking-widest uppercase whitespace-nowrap"
+      title="The whole uju experience is in experimental preview."
+    >
+      Experimental
+    </span>
   );
 }
 

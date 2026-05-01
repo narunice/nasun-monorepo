@@ -5,13 +5,15 @@ interface UjuCardProps {
   as?: "div" | "section" | "article";
 }
 
-// All uju section surfaces share `bg-slate-900 border-pd2` for visual
-// consistency. spotlight retains its ring accent on top of the same base.
+// All uju section surfaces share a glassmorphism base (bg-uju-card/50 + backdrop-blur-sm).
+// spotlight adds a teal ring and glow on top.
 const VARIANT_CLASSES: Record<NonNullable<UjuCardProps["variant"]>, string> = {
-  default: "bg-slate-900 border-pd2",
-  accent: "bg-slate-900 border-pd2",
+  default:
+    "bg-gray-950/50 backdrop-blur-sm border-uju-border/60 shadow-[0_4px_24px_rgba(14,28,36,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]",
+  accent:
+    "bg-gray-950/50 backdrop-blur-sm border-uju-border/60 shadow-[0_4px_24px_rgba(14,28,36,0.5),inset_0_1px_0_rgba(255,255,255,0.04)]",
   spotlight:
-    "bg-slate-900 border-pd2 ring-1 ring-pado-2/20 shadow-[0_0_0_1px_rgba(59,185,216,0.15)]",
+    "bg-gray-950/50 backdrop-blur-sm border-pado-2/60 ring-1 ring-pado-2/35 shadow-[0_4px_24px_rgba(14,28,36,0.5),0_0_20px_rgba(59,185,216,0.08),inset_0_1px_0_rgba(255,255,255,0.06)]",
 };
 
 export function UjuCard({
@@ -22,7 +24,7 @@ export function UjuCard({
 }: UjuCardProps) {
   return (
     <Tag
-      className={`rounded-lg border p-5 sm:p-6 ${VARIANT_CLASSES[variant]} ${className}`}
+      className={`rounded-lg border p-6 sm:p-7 ${VARIANT_CLASSES[variant]} ${className}`}
     >
       {children}
     </Tag>
