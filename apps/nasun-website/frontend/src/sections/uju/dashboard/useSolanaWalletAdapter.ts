@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { isValidSolAddress } from '@/lib/solana';
 
 export type SolWalletName = 'phantom' | 'solflare';
@@ -33,11 +33,35 @@ export interface UseSolanaWalletAdapterResult {
 }
 
 export function useSolanaWalletAdapter(): UseSolanaWalletAdapterResult {
-  // detectInstalled runs once at mount. Late-injection (rare) requires page refresh.
-  const [installed] = useState<SolWalletName[]>(detectInstalled);
+  // Detection runs at mount and is re-checked on focus + a short post-mount
+  // retry. Some extensions (notably Phantom on slow startups) inject window
+  // hooks AFTER React first renders; without a re-check the picker would
+  // permanently report "no wallet" even when the extension is installed.
+  const [installed, setInstalled] = useState<SolWalletName[]>(detectInstalled);
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlightRef = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      if (cancelled) return;
+      const next = detectInstalled();
+      setInstalled((prev) =>
+        prev.length === next.length && prev.every((p) => next.includes(p))
+          ? prev
+          : next,
+      );
+    };
+    // Retry a few times in the first 3s after mount.
+    const timers = [200, 800, 1500, 3000].map((ms) => setTimeout(refresh, ms));
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+      window.removeEventListener("focus", refresh);
+    };
+  }, []);
 
   const connect = useCallback(async (name: SolWalletName): Promise<string | null> => {
     if (inFlightRef.current) return null; // guard double-clicks

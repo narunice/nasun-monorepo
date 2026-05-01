@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { UjuLayout } from "../../sections/uju/UjuLayout";
 import { UjuNavigation } from "../../sections/uju/UjuNavigation";
-import { DashboardTab, DashboardTabTop, DashboardTabBottom, DashboardNftsSection } from "../../sections/uju/dashboard/DashboardTab";
+import { DashboardTab, DashboardNftsSection } from "../../sections/uju/dashboard/DashboardTab";
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
@@ -63,27 +63,11 @@ export default function UjuPage() {
   const showInlineChat = chatOpen && isDesktop && tab === "dashboard";
   const showMobileChat = chatOpen && !isDesktop;
 
-  // Chat height = from flex-1 top edge down to news-events card bottom edge.
-  const chatRef = useRef<HTMLElement | null>(null);
-  const topContentRef = useRef<HTMLDivElement | null>(null);
-  const [chatHeight, setChatHeight] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!showInlineChat) return;
-
-    const compute = () => {
-      const topEl = topContentRef.current;
-      const newsEl = topEl?.querySelector<HTMLElement>('[data-uju-anchor="news-events"]');
-      if (!topEl || !newsEl) return;
-      const h = newsEl.getBoundingClientRect().bottom - topEl.getBoundingClientRect().top;
-      if (h > 200) setChatHeight(h);
-    };
-
-    compute();
-    const ro = new ResizeObserver(compute);
-    if (topContentRef.current) ro.observe(topContentRef.current);
-    return () => ro.disconnect();
-  }, [showInlineChat, tab]);
+  const inlineChatSlot = showInlineChat ? (
+    <div className="h-full bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg overflow-hidden shadow-[0_4px_24px_rgba(14,28,36,0.5)] flex flex-col">
+      <UjuChatSidebar onClose={() => setChatOpen(false)} />
+    </div>
+  ) : null;
 
   return (
     <UjuAppDirectoryProvider identityId={user?.identityId}>
@@ -98,37 +82,14 @@ export default function UjuPage() {
           {/* Navigation — full container width, centered */}
           <UjuNavigation activeTab={tab} onTabChange={setTab} />
 
-          {/* Main content + chat split (chat top = grid top = Health top) */}
-          {showInlineChat && tab === "dashboard" ? (
-            <>
-              <div className="flex gap-4 lg:gap-5 items-start">
-                <div ref={topContentRef} className="flex-1 min-w-0">
-                  <DashboardTabTop />
-                </div>
-                <aside
-                  ref={chatRef}
-                  className="shrink-0"
-                  style={{
-                    width: "320px",
-                    height: chatHeight ? `${chatHeight}px` : "640px",
-                  }}
-                >
-                  <div className="h-full bg-slate-900 border border-pd2 rounded-lg overflow-hidden shadow-xl flex flex-col">
-                    <UjuChatSidebar onClose={() => setChatOpen(false)} />
-                  </div>
-                </aside>
-              </div>
-              <div className="mt-4 sm:mt-5">
-                <DashboardTabBottom />
-              </div>
-            </>
-          ) : (
-            <div>
-              {tab === "dashboard" && <DashboardTab />}
-              {tab === "activity" && <ActivityTab />}
-              {tab === "profile" && <ProfileTab />}
-            </div>
-          )}
+          {/* Main content. The hero Overview card always renders full-width;
+              the chat panel slots to the right of Daily Missions when open
+              on desktop. */}
+          <div>
+            {tab === "dashboard" && <DashboardTab chatSlot={inlineChatSlot} />}
+            {tab === "activity" && <ActivityTab />}
+            {tab === "profile" && <ProfileTab />}
+          </div>
 
           {/* NFTs Activated — full container width, below split */}
           {tab === "dashboard" && (

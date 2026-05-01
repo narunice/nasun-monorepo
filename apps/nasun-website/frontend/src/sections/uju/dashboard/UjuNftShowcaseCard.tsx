@@ -12,9 +12,7 @@ import { useNftDropRead } from "@/hooks/useNftDrop";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
 import type { NftType } from "@/services/ecosystemApi";
 import { Spinner } from "@/components/ui";
-import { Button } from "@/components/ui/button";
-import { ButtonV3 } from "@/components/ui/button-v3";
-import { UjuCard } from "../shared";
+import { UjuCard, UjuButton, UjuComingSoonTag } from "../shared";
 import { ALLIANCE_PREVIEW_IMAGES, ALLIANCE_NAMES } from "@/constants/alliance";
 import {
   NFT_EDITIONS,
@@ -217,7 +215,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                 </div>
               ) : !isAllianceMinted ? (
                 <div className="w-full h-full bg-slate-700 flex items-center justify-center">
-                  <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-semibold px-2 py-0.5 rounded-md text-green-400 bg-green-500/15 backdrop-blur-sm">
                     x1
                   </span>
                   <p className="text-nasun-white/80 text-base font-light text-center px-6">
@@ -234,7 +232,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     }`}
                     loading="lazy"
                   />
-                  <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full border border-green-500 text-green-400 bg-black/50">
+                  <span className="absolute top-3 left-3 text-sm font-semibold px-2 py-0.5 rounded-md text-green-400 bg-green-500/15 backdrop-blur-sm">
                     x1
                   </span>
                   {allianceData && (
@@ -270,25 +268,25 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               )}
               <div className="flex gap-2">
                 {!isAllianceLoading && !isAllianceMinted && (
-                  <Button
+                  <UjuButton
+                    variant="primary"
+                    size="xs"
                     onClick={() => navigate("/wave1/alliance-nft")}
-                    variant="filledOutlineC7"
-                    size="sm"
                   >
                     Mint
-                  </Button>
+                  </UjuButton>
                 )}
                 {isAllianceMinted &&
                   !allianceIsActive &&
                   ecosystem.isConfigured && (
-                    <Button
+                    <UjuButton
+                      variant="accent"
+                      size="xs"
                       onClick={() => handleActivate("alliance")}
-                      variant="filledOutlineC7"
-                      size="sm"
                       disabled={ecosystem.isActivating}
                     >
                       {ecosystem.isActivating ? "..." : "Activate"}
-                    </Button>
+                    </UjuButton>
                   )}
                 {allianceIsActive && (
                   <ThreeDotMenu
@@ -324,7 +322,7 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                     : "bg-slate-700"
               }`}
             >
-              <span className="absolute top-3 left-3 text-sm font-normal px-2 py-0.5 rounded-full z-10 border border-green-500 text-green-400 bg-black/50">
+              <span className="absolute top-3 left-3 text-sm font-semibold px-2 py-0.5 rounded-md z-10 text-green-400 bg-green-500/15 backdrop-blur-sm">
                 Boost x2
               </span>
 
@@ -461,14 +459,14 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
                 )}
                 <div className="flex gap-2">
                   {!genesisIsActive && ecosystem.isConfigured && (
-                    <Button
+                    <UjuButton
+                      variant="accent"
+                      size="xs"
                       onClick={() => handleActivate("genesis-pass")}
-                      variant="filledOutlineC7"
-                      size="sm"
                       disabled={!isMintClosed || ecosystem.isActivating}
                     >
                       {ecosystem.isActivating ? "..." : "Activate"}
-                    </Button>
+                    </UjuButton>
                   )}
                   {genesisIsActive && (
                     <ThreeDotMenu
@@ -486,20 +484,19 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
               </div>
             ) : (
               <div className="flex flex-col gap-2 mt-1">
-                <ButtonV3
+                <UjuButton
+                  variant="secondary"
+                  size="sm"
+                  fullWidth
                   onClick={() =>
                     window.open(
                       "https://opensea.io/collection/0x561d4a687e9d13925ad7bef0209c9ecaec9858e1",
                       "_blank",
                     )
                   }
-                  variant="nw2"
-                  size="sm"
-                  outline
-                  className="w-full"
                 >
                   View on OpenSea
-                </ButtonV3>
+                </UjuButton>
               </div>
             )}
           </div>
@@ -508,10 +505,12 @@ export const UjuNftShowcaseCard: FC<UjuNftShowcaseCardProps> = ({
 
       {/* === Battalion === */}
       <UjuCard className="animate-fade-slide-up">
-        <h6 className="text-uju-primary text-lg font-semibold uppercase">
-          BATTALION
-        </h6>
-        <p className="text-nasun-white/80 text-base mt-1">Coming Soon</p>
+        <div className="flex items-center justify-between gap-3">
+          <h6 className="text-uju-primary text-lg font-semibold uppercase">
+            BATTALION
+          </h6>
+          <UjuComingSoonTag />
+        </div>
       </UjuCard>
     </div>
   );
@@ -585,24 +584,27 @@ function ThreeDotMenu({
 }) {
   return (
     <div className="relative">
-      <button
+      <UjuButton
+        variant="ghost"
+        size="xs"
+        iconOnly
         onClick={onToggle}
-        className="w-7 h-7 rounded-full flex items-center justify-center text-nasun-white/80 hover:text-nasun-white hover:bg-nasun-white/10 transition-colors"
+        aria-label="More actions"
       >
         <svg className="w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
           <circle cx="8" cy="3" r="1.5" />
           <circle cx="8" cy="8" r="1.5" />
           <circle cx="8" cy="13" r="1.5" />
         </svg>
-      </button>
+      </UjuButton>
       {show && (
         <>
           <div className="fixed inset-0 z-40" onClick={onClose} />
-          <div className="absolute right-0 top-8 z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[140px]">
+          <div className="absolute right-0 top-9 z-50 bg-gray-900/95 backdrop-blur-md border border-uju-border/60 rounded-xl shadow-[0_8px_24px_rgba(0,0,0,0.5)] py-1.5 min-w-[150px]">
             <button
               onClick={onAction}
               disabled={isLoading}
-              className="w-full text-left px-3 py-2 text-base text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-70"
+              className="w-full text-left px-4 py-2 text-base font-medium text-nasun-coral hover:bg-nasun-coral/15 transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? "Deactivating..." : "Deactivate"}
             </button>

@@ -3,9 +3,13 @@ import { UjuConnectedAccountsCard } from "./cards/UjuConnectedAccountsCard";
 import { UjuDangerZoneCard } from "./cards/UjuDangerZoneCard";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { UjuCard, UjuSectionHeader } from "../shared";
+import { useConsumeScrollTarget } from "../shared/ujuNavigation";
 import { ProfileIdentityBlock } from "@/components/profile/ProfileIdentityBlock";
 
 export const ProfileTab: FC = () => {
+  // Honor the dashboard's "Manage in Connected Wallets..." CTA: when set,
+  // scroll to the Connected Accounts card on mount.
+  useConsumeScrollTarget("connected-accounts");
   return (
     <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
       {/* 1. Profile Identity (avatar + display name + edit) */}

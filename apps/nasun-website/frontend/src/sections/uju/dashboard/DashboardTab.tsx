@@ -1,3 +1,4 @@
+import { ReactNode } from "react";
 import { OverviewSummaryCard } from "./OverviewSummaryCard";
 import { ActivatedAppsSection } from "./ActivatedAppsSection";
 import { WalletBalanceCard } from "./WalletBalanceCard";
@@ -9,26 +10,33 @@ import { UjuSectionHeader } from "../shared";
 import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
 import { UjuFeedCarousel } from "./feed/UjuFeedCarousel";
 
-// Top portion: rendered inside the flex container alongside the chat panel.
+// Top portion: rendered full-width across the dashboard. The Overview card
+// (profile + points + health) is the most important hero section and must
+// span the entire container.
 export function DashboardTabTop() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5">
       <OverviewSummaryCard />
-      <div data-uju-anchor="news-events">
-        <NewsEventsCard />
-      </div>
     </div>
   );
 }
 
-// Bottom portion: rendered at full container width, below the chat panel.
-// Daily Missions and Feed sit side-by-side on desktop; remaining cards stack below.
-export function DashboardTabBottom() {
+interface DashboardTabBottomProps {
+  /** Optional chat panel to render to the right of Active Engagement on desktop. */
+  chatSlot?: ReactNode;
+}
+
+// Bottom portion: rendered at full container width.
+//   Row 1: Active Engagement (left) + Chat panel (right, desktop only)
+//   Row 2: News/Events/Msgs (left) + Feed carousel (right, desktop only)
+//   Row 3+: Activated apps, wallet balance, staking
+export function DashboardTabBottom({ chatSlot }: DashboardTabBottomProps = {}) {
   const directory = useUjuAppDirectory();
   const { pinnedApps } = directory;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
+      {/* Row 1: Active Engagement + Chat */}
       <div data-uju-anchor="daily-missions" className="flex gap-4 sm:gap-5 items-stretch">
         <div className="flex-1 min-w-0">
           <UjuDailyMissionsCard
@@ -36,10 +44,23 @@ export function DashboardTabBottom() {
             missionsByApp={directory.state.missions}
           />
         </div>
+        {chatSlot && (
+          <div className="w-[320px] shrink-0 hidden md:block">
+            {chatSlot}
+          </div>
+        )}
+      </div>
+
+      {/* Row 2: News/Events + Feed */}
+      <div data-uju-anchor="news-events" className="flex gap-4 sm:gap-5 items-stretch">
+        <div className="flex-1 min-w-0">
+          <NewsEventsCard />
+        </div>
         <div className="w-[320px] shrink-0 hidden md:block">
           <UjuFeedCarousel />
         </div>
       </div>
+
       <ActivatedAppsSection directory={directory} />
       <WalletBalanceCard />
       <StakingCard />
@@ -47,15 +68,18 @@ export function DashboardTabBottom() {
   );
 }
 
-// Combined: used when chat is closed (no split needed). Internally just
-// stacks Top + Bottom so the section list lives in exactly one place. The
-// NFT showcase is always rendered separately by UjuPage (after the
-// dashboard body) so it's not part of either Top or Bottom.
-export function DashboardTab() {
+// Combined: stacks Top + Bottom. The NFT showcase is always rendered
+// separately by UjuPage (after the dashboard body) so it's not part of
+// either Top or Bottom.
+interface DashboardTabProps {
+  chatSlot?: ReactNode;
+}
+
+export function DashboardTab({ chatSlot }: DashboardTabProps = {}) {
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
       <DashboardTabTop />
-      <DashboardTabBottom />
+      <DashboardTabBottom chatSlot={chatSlot} />
     </div>
   );
 }

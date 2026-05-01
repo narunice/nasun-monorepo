@@ -28,7 +28,7 @@ export const UjuAccountItem: FC<UjuAccountItemProps> = ({
   children,
 }) => {
   return (
-    <div className="flex flex-col p-5 bg-uju-bg/40 rounded-2xl border border-uju-border/20 hover:border-pado-2/30 transition-all duration-200">
+    <div className="flex flex-col p-5 bg-uju-bg/40 rounded-2xl border border-uju-border/60 hover:border-pado-2/40 transition-all duration-200">
       <div className="flex items-center gap-4">
         {/* Icon */}
         <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-uju-bg/60 rounded-xl border border-uju-border/20 shadow-inner">

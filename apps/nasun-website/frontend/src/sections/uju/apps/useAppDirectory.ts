@@ -36,7 +36,7 @@ export interface AppDirectoryState {
   /**
    * Apps user explicitly Activate'd. Stays pinned even when missions[] is empty
    * (e.g. user wants the app on dashboard for non-mission features like staking,
-   * or app is between campaigns and offers no daily missions).
+   * or app is between campaigns and offers no active engagement).
    */
   explicitPinned: string[];
 

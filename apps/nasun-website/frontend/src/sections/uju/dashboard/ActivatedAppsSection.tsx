@@ -32,7 +32,7 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
       {pinnedApps.length === 0 ? (
         <div className="py-6 text-center space-y-3">
           <p className="text-base text-uju-secondary">No apps pinned yet.</p>
-          <UjuButton variant="secondary" size="sm" onClick={goToActivity}>
+          <UjuButton variant="primary" size="sm" onClick={goToActivity}>
             Manage in App Directory →
           </UjuButton>
         </div>
@@ -46,7 +46,7 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span
-                    className={`text-sm font-light px-2 py-0.5 rounded-full ${CHAIN_BADGE_CLASS[app.chain]}`}
+                    className={`text-sm font-medium px-2 py-0.5 rounded-md tracking-wide ${CHAIN_BADGE_CLASS[app.chain]}`}
                   >
                     {CHAIN_LABEL[app.chain]}
                   </span>
@@ -54,33 +54,61 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
                     {app.name}
                   </span>
                 </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <button
-                    type="button"
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Secondary action: edit which missions appear on dashboard */}
+                  <UjuButton
+                    variant="ghost"
+                    size="xs"
                     onClick={() => setMissionsApp(app)}
-                    className="text-base font-light text-uju-secondary hover:text-pado-3 transition-colors"
-                    aria-label={`Manage daily missions for ${app.name}`}
+                    aria-label={`Manage active engagement for ${app.name}`}
+                    className="!border-pado-2/60 !text-pado-2 hover:!border-pado-2 hover:!text-white hover:!bg-pado-2/10"
                   >
                     Missions
-                  </button>
+                  </UjuButton>
+                  {/* Primary row action: launch the app in a new tab */}
                   {app.url && app.url !== "#" ? (
-                    <a
+                    <UjuButton
+                      variant="accent"
+                      size="xs"
+                      as="a"
                       href={app.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label={`Open ${app.name}, opens in new tab`}
-                      className="text-base font-light text-pado-2 hover:text-pado-5 transition-colors"
+                      trailingIcon={
+                        <svg
+                          aria-hidden="true"
+                          className="w-3 h-3"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          strokeWidth={2.5}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M14 5h5m0 0v5m0-5L10 14M5 7v12a2 2 0 002 2h12"
+                          />
+                        </svg>
+                      }
                     >
-                      Open ↗
-                    </a>
+                      Open
+                    </UjuButton>
                   ) : null}
                 </div>
               </li>
             ))}
           </ul>
-          <UjuButton variant="ghost" size="sm" fullWidth onClick={goToActivity}>
-            Manage in App Directory →
-          </UjuButton>
+          <div className="flex justify-center">
+            <UjuButton
+              variant="secondary"
+              size="sm"
+              onClick={goToActivity}
+              trailingIcon={<span aria-hidden="true">→</span>}
+            >
+              Manage in App Directory
+            </UjuButton>
+          </div>
         </>
       )}
       </div>

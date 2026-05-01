@@ -4,6 +4,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { InlineLoading } from "@/components/ui/InlineLoading";
 import { ButtonV4 } from "@/components/ui/button-v4";
 import { FadeInUp } from "@/components/ui/FadeInUp";
+import { useAuth } from "@/features/auth";
 
 interface Hero2026SectionProps {
   videoSrc?: string;
@@ -17,6 +18,7 @@ function Hero2026Section({
 }: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const { isAuthenticated } = useAuth();
 
   const bgVideo = videoSrc;
 
@@ -90,31 +92,38 @@ function Hero2026Section({
 
               <p className=" text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] text-base/snug md:text-lg/snug xl:text-xl/snug">
                 <span className="block">
-                  Nasun is infrastructure built around you.
+                  Nasun brings crypto, Web3, and Web2 into one experience built
+                  around you.
                 </span>
                 <span className="block mt-2">
-                  uju (우주, universe) is the OS powered by Nasun
-                  <br className="hidden sm:block" /> that brings crypto, Web3,
-                  and Web2
-                  <br className="sm:hidden" /> into one experience on your
-                  terms.
-                </span>
-                <span className="block mt-2">
-                  One identity. Every app. <br className="sm:hidden" />
-                  Everything you do compounds.
+                  One account. Every app. Everything you do compounds.
                 </span>
               </p>
 
               <div className="relative inline-block mt-2 mb-2 md:mb-4 lg:mb-6">
-                <Link to="/uju">
+                {isAuthenticated ? (
+                  <Link to="/my-account">
+                    <ButtonV4
+                      color="pado-mint"
+                      size="lg"
+                      className="min-w-[160px] md:min-w-[200px] drop-shadow-lg font-medium text-white"
+                    >
+                      Explore Nasun
+                    </ButtonV4>
+                  </Link>
+                ) : (
                   <ButtonV4
                     color="pado-mint"
                     size="lg"
                     className="min-w-[160px] md:min-w-[200px] drop-shadow-lg font-medium text-white"
+                    onClick={() => {
+                      localStorage.setItem("auth_return_to", "/my-account");
+                      window.dispatchEvent(new Event("nasun:open-login"));
+                    }}
                   >
-                    Enter uju
+                    Enter Nasun
                   </ButtonV4>
-                </Link>
+                )}
               </div>
             </div>
           </FadeInUp>

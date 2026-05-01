@@ -28,9 +28,9 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
   );
 
   return (
-    <div className="flex flex-col h-full bg-slate-900">
+    <div className="flex flex-col h-full bg-gray-950/50 backdrop-blur-sm">
       {/* Header */}
-      <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-uju-border shrink-0">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-uju-border/60 shrink-0">
         <span className="text-sm font-light text-uju-primary">Chat</span>
         <div className="flex items-center gap-2">
           <span className="text-sm text-uju-secondary">{onlineCount} online</span>
@@ -50,7 +50,7 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
       </div>
 
       {/* Room tabs */}
-      <div className="flex border-b border-uju-border shrink-0">
+      <div className="flex border-b border-uju-border/60 shrink-0">
         {sidebarRooms.map((room) => (
           <button
             key={room.id}

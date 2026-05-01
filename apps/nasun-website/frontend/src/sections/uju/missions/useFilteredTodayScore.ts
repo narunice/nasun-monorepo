@@ -2,7 +2,7 @@
  * useFilteredTodayScore
  *
  * Today's base/ecosystem score, restricted to categories the user has
- * activated as daily missions. Wraps an EcosystemScoreData payload with the
+ * activated as active engagement. Wraps an EcosystemScoreData payload with the
  * AppDirectory state (active mission ids → backend categories) and returns
  * the same shape with `daily.baseScore` and `daily.ecosystemScore` swapped
  * for filtered values. Other fields (weekly, allTime, multiplier, bonus,

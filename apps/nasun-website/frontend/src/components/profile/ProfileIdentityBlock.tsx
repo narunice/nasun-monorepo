@@ -216,7 +216,7 @@ export function ProfileIdentityBlock({
           />
         ) : walletAddress ? (
           <div className="w-16 h-16 rounded-2xl overflow-hidden">
-            <Avatar name={walletAddress} variant="beam" size={64} />
+            <Avatar name={walletAddress} variant="pixel" size={64} square />
           </div>
         ) : (
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-nasun-c4 to-nasun-c5" />
