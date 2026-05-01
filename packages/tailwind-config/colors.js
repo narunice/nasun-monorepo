@@ -74,7 +74,7 @@ module.exports = {
   },
   // Pado custom palette (dark navy -> light gray-blue)
   pd0: "#0b1120",
-  "pd0s": "#131c2b",
+  pd0s: "#131c2b",
   pd1: "#1f3a61",
   pd2: "#3a5f78",
   pd3: "#7d9dbf",
@@ -98,7 +98,7 @@ module.exports = {
   // Network Explorer Palette (ne*)
   // ============================================================
   ne0: "#0e1219",
-  "ne0s": "#1a2332",
+  ne0s: "#1a2332",
   ne1: "#496c9c",
   ne2: "#7d9dbf",
   ne3: "#a2c5d8",
@@ -109,10 +109,10 @@ module.exports = {
   // uju Dashboard Palette
   // ============================================================
   uju: {
-    bg:        '#0E1C24',  // page background (deep teal-navy)
-    card:      '#1B3742',  // card background (one notch darker than prior teal lift)
-    border:    '#4A7282',  // border (teal-blue tinted)
-    primary:   '#FFFFFF',  // primary text (headings — pure white)
-    secondary: '#E1ECF0',  // secondary text (description — bright teal-light, just below white)
+    bg: "#0E1C24", // page background (deep teal-navy)
+    card: "#1B3742", // card background (one notch darker than prior teal lift)
+    border: "#4A7282", // border (teal-blue tinted)
+    primary: "#FFFFFF", // primary text (headings — pure white)
+    secondary: "#EDF3F6", // secondary text (description — bright teal-light, just below white)
   },
 };
