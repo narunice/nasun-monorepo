@@ -26,8 +26,12 @@ const TABLE_NAME = process.env.CACHE_TABLE_NAME;
 const CACHE_PK = '__NEWS_CACHE__';
 
 const RSS_TTL_MS = 5 * 60 * 1000;
-const TWITTER_TTL_MS = 60 * 60 * 1000;
-const TWEET_MONTHLY_LIMIT = 8000;
+// Twitter cache held long enough that EventBridge warm runs always refresh
+// before TTL expiry, so user polling stays on cache hits and never triggers
+// an extra X API call.
+const TWITTER_TTL_MS = 12 * 60 * 60 * 1000;
+// Monthly read cap — sized for $30/month worst case at $0.10/read.
+const TWEET_MONTHLY_LIMIT = 1500;
 
 let rssCache: CacheEntry<NewsItem[]> | null = null;
 let twitterCache: CacheEntry<NewsItem[]> | null = null;

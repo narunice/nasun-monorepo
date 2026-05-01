@@ -57,12 +57,12 @@ export class NewsStack extends cdk.Stack {
     xApiSecret.grantRead(this.newsFeedLambda);
     cacheTable.grantReadWriteData(this.newsFeedLambda);
 
-    // EventBridge rule: warm cache every 3 hours. Single warm covers both
-    // audiences because the underlying tweet/RSS caches are shared.
+    // EventBridge rule: warm cache every 12 hours. Sized to keep monthly
+    // X API spend under $30 — see cache.ts TWEET_MONTHLY_LIMIT comment.
     const cacheWarmRule = new events.Rule(this, 'NewsFeedWarmRule', {
       ruleName: 'pado-news-feed-warm',
-      schedule: events.Schedule.rate(cdk.Duration.hours(3)),
-      description: 'Warm news feed cache every 3 hours',
+      schedule: events.Schedule.rate(cdk.Duration.hours(12)),
+      description: 'Warm news feed cache every 12 hours',
     });
 
     cacheWarmRule.addTarget(
