@@ -80,7 +80,7 @@ export const UjuGovernanceCard: FC<UjuGovernanceCardProps> = ({
 
       {/* Recent Votes */}
       <div className="space-y-4">
-        <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-wider">
+        <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-wider">
           Recent Votes
         </h6>
         {history.length > 0 ? (

@@ -82,16 +82,19 @@ export function UjuAppDirectoryCard() {
         </div>
 
         {/* App rows */}
-        <ul className="divide-y divide-uju-border/40">
+        <ul className="space-y-2">
           {filtered.map((app) => (
-            <li key={app.id}>
+            <li
+              key={app.id}
+              className="rounded-xl border border-uju-border/50 bg-uju-card px-4"
+            >
               <AppDirectoryRow app={app} onShowDetails={setDetailsApp} />
             </li>
           ))}
         </ul>
 
         {/* Footer */}
-        <div className="pt-3 mt-2 border-t border-uju-border/40 space-y-3">
+        <div className="pt-3 mt-3 border-t border-uju-border/50 space-y-3">
           <p className={`text-sm ${counterClass}`}>
             {directory.selectedTotal}/{MAX_DAILY_MISSIONS} missions selected
             {directory.isAtCap && " — deselect one to add another"}

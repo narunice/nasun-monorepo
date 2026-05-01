@@ -112,7 +112,7 @@ module.exports = {
     bg:        '#0E1C24',  // page background (deep teal-navy)
     card:      '#1B3742',  // card background (one notch darker than prior teal lift)
     border:    '#4A7282',  // border (teal-blue tinted)
-    primary:   '#EEF6F8',  // primary text
-    secondary: '#B0C8D2',  // secondary text (teal-light)
+    primary:   '#FFFFFF',  // primary text (headings — pure white)
+    secondary: '#E1ECF0',  // secondary text (description — bright teal-light, just below white)
   },
 };

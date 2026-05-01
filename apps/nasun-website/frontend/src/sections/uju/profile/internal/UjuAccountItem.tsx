@@ -43,7 +43,7 @@ export const UjuAccountItem: FC<UjuAccountItemProps> = ({
           </div>
           <div className="text-sm font-light text-uju-secondary truncate">{identifier || "Not linked"}</div>
           {description && (
-            <div className="text-sm text-uju-secondary/80 font-light mt-1">{description}</div>
+            <div className="text-sm text-uju-secondary font-light mt-1">{description}</div>
           )}
         </div>
 
