@@ -633,10 +633,13 @@ wss.on('connection', (ws, req) => {
         authFailuresPerIp.delete(ip);
 
         // Successfully authenticated
-        // Use client-provided displayName if valid, otherwise fall back to shortened address
+        // Use client-provided displayName if valid, otherwise fall back to a
+        // wallet-shaped handle that mirrors the nickname format `name#suffix`
+        // (e.g. `0xb649#1234`). Visually consistent with `alice#1234` for
+        // nicknamed users so all chat senders share the same shape.
         const clientDisplayName = typeof data.displayName === 'string' && data.displayName.trim().length > 0
           ? stripControlChars(data.displayName).slice(0, 32).trim()
-          : verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4);
+          : verifiedAddress.slice(0, 6) + '#' + verifiedAddress.slice(-4);
         const client: AuthenticatedClient = {
           ws,
           address: verifiedAddress,
