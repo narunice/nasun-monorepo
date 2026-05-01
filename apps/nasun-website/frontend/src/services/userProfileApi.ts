@@ -51,14 +51,35 @@ export async function getMyProfile(token: string, identityId: string): Promise<E
   return res.json() as Promise<EcosystemProfile>;
 }
 
+export type LinkPasteChain = 'sui' | 'solana' | 'ethereum';
+
+export interface PatchProfileBody {
+  displayName?: string;
+  avatarKey?: string | null;
+  /**
+   * Paste-based external chain wallets. `null` clears the field.
+   * Cross-account collisions return HTTP 409 (`ADDRESS_ALREADY_LINKED`).
+   * The user must unlink the address from the other account first; the
+   * server no longer silently displaces a prior owner.
+   *
+   * NOT for verified MetaMask — that flow continues through the auth-metamask
+   * Lambda and writes to `linkedAccounts.metamask`.
+   */
+  linkedSuiAddress?: string | null;
+  linkedSolanaAddress?: string | null;
+  linkedEthereumAddress?: string | null;
+}
+
+export type PatchProfileResponse = EcosystemProfile;
+
 /**
  * PATCH the profile. Returns the unified EcosystemProfile (same shape as GET)
  * so the caller can put it into a react-query cache directly.
  */
 export async function patchProfile(
   token: string,
-  patch: { displayName?: string; avatarKey?: string | null },
-): Promise<EcosystemProfile> {
+  patch: PatchProfileBody,
+): Promise<PatchProfileResponse> {
   const endpoint = requireEndpoint();
   const res = await fetch(endpoint, {
     method: 'PATCH',
@@ -74,7 +95,22 @@ export async function patchProfile(
     const code = (body as any)?.code as string | undefined;
     throw new UserProfileApiError(msg, res.status, code);
   }
-  return body as EcosystemProfile;
+  return body as PatchProfileResponse;
+}
+
+/** Convenience wrapper: paste-link an external chain wallet. */
+export async function linkPasteAddress(
+  token: string,
+  chain: LinkPasteChain,
+  address: string | null,
+): Promise<PatchProfileResponse> {
+  const field =
+    chain === 'sui'
+      ? 'linkedSuiAddress'
+      : chain === 'solana'
+        ? 'linkedSolanaAddress'
+        : 'linkedEthereumAddress';
+  return patchProfile(token, { [field]: address });
 }
 
 /**

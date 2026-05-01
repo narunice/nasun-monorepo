@@ -20,6 +20,31 @@ import {
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier, calculateMultiplierV2, isV2CutoverActive } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
+import { verifyCognitoToken } from '../auth/cognito.js';
+import type { Context } from 'hono';
+
+/**
+ * Per-handler self-only guard for routes that expose user-private data
+ * (e.g. activity composition). Verifies Cognito JWT and confirms the path
+ * `:identityId` matches the authenticated identity. Older endpoints in this
+ * file (`/score`, `/snapshot/history`, `/bonus-history`) intentionally stay
+ * public — they predate the self-only guard and are gated only by the
+ * route-group rate limiter.
+ */
+async function requireSelf(
+  c: Context,
+  pathIdentityId: string,
+): Promise<{ ok: true } | { ok: false; status: 401 | 403; error: string }> {
+  const header = c.req.header('authorization') || c.req.header('Authorization');
+  const token = header?.replace(/^Bearer\s+/i, '');
+  if (!token) return { ok: false, status: 401, error: 'unauthorized' };
+  const auth = await verifyCognitoToken(token);
+  if (!auth) return { ok: false, status: 401, error: 'unauthorized' };
+  if (auth.identityId !== pathIdentityId) {
+    return { ok: false, status: 403, error: 'forbidden' };
+  }
+  return { ok: true };
+}
 
 const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
@@ -1507,6 +1532,255 @@ app.get('/bonus-history/:identityId', async (c) => {
       items,
     })),
   });
+});
+
+// GET /api/v1/ecosystem/base-history/:identityId?days=N
+//
+// Per-day base composition for the Activity Log. Mirrors the
+// `ecosystem_daily_scores` matview formula so the points returned here add
+// up to that day's `base_score`:
+//   - distinct categories per day, excluding referral-bonus, daily-mission,
+//     ecosystem-passive, staking-*, ecosystem-bonus-%
+//   - pado-dex counts for 2 points; everything else counts for 1
+// Used by the dashboard to show "this day's base = +1 governance, +2
+// pado-dex, ..." like the live Today breakdown does for the current day.
+app.get('/base-history/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  // Self-only: per-day activity composition is more granular than the
+  // existing /score endpoint and would let arbitrary callers profile any
+  // user's behavior, so the caller must prove they own the identityId.
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
+
+  const daysParam = parseInt(c.req.query('days') ?? '30', 10);
+  const days = Math.min(90, Math.max(1, Number.isFinite(daysParam) ? daysParam : 30));
+
+  // Mirrors `ecosystem_daily_scores` matview semantics exactly so the
+  // per-row points returned here add up to that day's `base_score`. Query
+  // shape borrowed from /bonus-history (which reliably renders) — uses
+  // `make_interval(days => $N)` for the range filter, which postgres.js
+  // parameterizes cleanly. Day is extracted on the JS side defensively so
+  // server timezone or driver type-mapping settings can't shift the bucket.
+  try {
+    const rows = await pointsDb`
+      SELECT DISTINCT
+        date_trunc('day', tx_timestamp)::date AS day,
+        category
+      FROM activity_points
+      WHERE NOT flagged
+        AND identity_id = ${identityId}
+        AND tx_timestamp >= CURRENT_DATE - make_interval(days => ${days})
+        AND category NOT IN (
+          'referral-bonus', 'daily-mission', 'ecosystem-passive',
+          'staking-daily', 'staking', 'staking-reward'
+        )
+        AND category NOT LIKE 'ecosystem-bonus-%'
+      ORDER BY day DESC, category
+    `;
+
+    if (rows.length === 0) {
+      console.warn('[base-history] no rows for', identityId, 'days=', days);
+    }
+
+    const byDay = new Map<string, Array<{ category: string; points: number }>>();
+    for (const r of rows) {
+      // Defensive: postgres.js may return Date OR string depending on the
+      // driver's date type-mapping config. Both must round-trip to YYYY-MM-DD.
+      const raw = r.day as Date | string | null | undefined;
+      let day: string;
+      if (raw instanceof Date) {
+        day = raw.toISOString().split('T')[0];
+      } else if (typeof raw === 'string') {
+        day = raw.length >= 10 ? raw.slice(0, 10) : raw;
+      } else {
+        continue;
+      }
+      const category = r.category as string;
+      const points = category === 'pado-dex' ? 2 : 1;
+      if (!byDay.has(day)) byDay.set(day, []);
+      byDay.get(day)!.push({ category, points });
+    }
+
+    c.header('Cache-Control', 'public, max-age=300');
+    return c.json({
+      data: [...byDay.entries()].map(([date, items]) => ({
+        date,
+        total: items.reduce((s, i) => s + i.points, 0),
+        items,
+      })),
+    });
+  } catch (err) {
+    // Surface the actual error so a 500 carries diagnostic info instead of
+    // collapsing to Hono's generic "internal_server_error".
+    console.error(
+      '[base-history] error for',
+      identityId,
+      'days=',
+      days,
+      err,
+    );
+    return c.json(
+      {
+        error: 'base_history_failed',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      500,
+    );
+  }
+});
+
+// --- All-time percentile (where the user stands by all-time ecosystem score) ---
+//
+// Used by the dashboard's "Top X% of users" sub-line under the All-time total.
+// Replaces the prior weekly-leaderboard-derived percentile, which silently
+// dropped to null for any user without weekly activity even though their
+// all-time total was non-zero.
+//
+// Ranking input mirrors `score.allTime.ecosystemScore` minus today's delta:
+//   SUM(base_score * COALESCE(multiplier_v2, multiplier))   -- past snapshots
+// + SUM(activity_points.final_points)                       -- bonuses, governance
+// + SUM(referral-bonus * REFERRAL_ECOSYSTEM_SCALING_FACTOR) -- scaled referrals
+// (Today's in-flight delta and staking-v2 contribution are intentionally
+//  excluded — they're per-user and would force per-request global recomputes.
+//  The omission only shifts a user by at most a fraction of their total, and
+//  the percentile is bucketed to integer % anyway.)
+//
+// Caching: a single global cache holds the latest sorted totals. TTL is 5min,
+// which keeps DB pressure low while staying responsive to bonus grants.
+
+interface AllTimeRankCache {
+  builtAt: number;
+  totals: Map<string, number>;
+  // sorted descending — used for binary-search rank lookup
+  sorted: number[];
+}
+let allTimeRankCache: AllTimeRankCache | null = null;
+let allTimeRankPending: Promise<AllTimeRankCache> | null = null;
+const ALL_TIME_RANK_TTL_MS = 5 * 60 * 1000;
+
+async function rebuildAllTimeRankCache(): Promise<AllTimeRankCache> {
+  if (!pointsDb) throw new Error('points_not_configured');
+  const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
+  const rows = await pointsDb`
+    WITH snap_totals AS (
+      SELECT identity_id,
+             COALESCE(SUM(base_score * COALESCE(multiplier_v2, multiplier)), 0)::numeric AS t
+      FROM ecosystem_score_snapshots
+      GROUP BY identity_id
+    ),
+    bonus_totals AS (
+      SELECT identity_id,
+             COALESCE(SUM(
+               CASE
+                 WHEN category = 'referral-bonus' THEN final_points * ${sf}
+                 ELSE final_points
+               END
+             ), 0)::numeric AS t
+      FROM activity_points
+      WHERE NOT flagged
+        AND (category LIKE 'ecosystem-bonus-%'
+             OR category = 'governance'
+             OR category = 'referral-bonus')
+      GROUP BY identity_id
+    ),
+    combined AS (
+      SELECT identity_id, SUM(t)::numeric AS total
+      FROM (
+        SELECT identity_id, t FROM snap_totals
+        UNION ALL
+        SELECT identity_id, t FROM bonus_totals
+      ) u
+      GROUP BY identity_id
+      HAVING SUM(t) > 0
+    )
+    SELECT identity_id, total::float8 AS total FROM combined
+  `;
+  const totals = new Map<string, number>();
+  for (const r of rows) {
+    totals.set(r.identity_id as string, Number(r.total));
+  }
+  const sorted = [...totals.values()].sort((a, b) => b - a);
+  return { builtAt: Date.now(), totals, sorted };
+}
+
+async function getAllTimeRankCache(): Promise<AllTimeRankCache> {
+  const now = Date.now();
+  if (allTimeRankCache && now - allTimeRankCache.builtAt < ALL_TIME_RANK_TTL_MS) {
+    return allTimeRankCache;
+  }
+  // Coalesce concurrent rebuilds so the heavy aggregate runs at most once
+  // per TTL window even under a thundering herd.
+  if (!allTimeRankPending) {
+    allTimeRankPending = rebuildAllTimeRankCache()
+      .then((next) => {
+        allTimeRankCache = next;
+        return next;
+      })
+      .finally(() => {
+        allTimeRankPending = null;
+      });
+  }
+  return allTimeRankPending;
+}
+
+// Number of entries with `total > target`. Sorted is descending, so we can
+// binary search the first index whose value is <= target. That index equals
+// the count of entries strictly greater.
+function countAbove(sorted: number[], target: number): number {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (sorted[mid] > target) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
+}
+
+// GET /api/v1/ecosystem/leaderboard/all-time-percentile/:identityId
+app.get('/leaderboard/all-time-percentile/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  // Self-only: rank/percentile leaks competitive standing if exposed for
+  // arbitrary identityIds. The aggregate (anonymous) leaderboard remains at
+  // /leaderboard.
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
+
+  try {
+    const cache = await getAllTimeRankCache();
+    const myTotal = cache.totals.get(identityId);
+    const total = cache.totals.size;
+
+    // Users whose all-time score is 0 (e.g., signed up but never scored) get
+    // null percentile — there's no meaningful "rank" in an empty distribution.
+    if (myTotal === undefined || myTotal <= 0) {
+      c.header('Cache-Control', 'public, max-age=60');
+      return c.json({
+        data: { rank: null, total, percentile: null, myTotal: 0 },
+      });
+    }
+
+    const above = countAbove(cache.sorted, myTotal);
+    const rank = above + 1;
+    // ceil so rank-1 reads as "Top 1%" rather than the misleading "Top 0%".
+    const percentile = Math.max(1, Math.ceil((rank / total) * 100));
+
+    c.header('Cache-Control', 'public, max-age=60');
+    return c.json({
+      data: { rank, total, percentile, myTotal },
+    });
+  } catch (err) {
+    console.error('[leaderboard] all-time percentile error:', err);
+    return c.json({ error: 'internal_error' }, 500);
+  }
 });
 
 // GET /api/v1/ecosystem/health
