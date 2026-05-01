@@ -7,6 +7,7 @@ import { UjuNftShowcaseCard } from "./UjuNftShowcaseCard";
 import { NewsEventsCard } from "./NewsEventsCard";
 import { UjuSectionHeader } from "../shared";
 import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
+import { UjuFeedCarousel } from "./feed/UjuFeedCarousel";
 
 // Top portion: rendered inside the flex container alongside the chat panel.
 export function DashboardTabTop() {
@@ -21,19 +22,23 @@ export function DashboardTabTop() {
 }
 
 // Bottom portion: rendered at full container width, below the chat panel.
-// Single-column stack: Daily Missions → Activated Apps → Wallet Integration
-// → Base Staking. (Previously a 2-col grid; switched to stack per request.)
+// Daily Missions and Feed sit side-by-side on desktop; remaining cards stack below.
 export function DashboardTabBottom() {
   const directory = useUjuAppDirectory();
   const { pinnedApps } = directory;
 
   return (
     <div className="flex flex-col gap-4 sm:gap-5">
-      <div data-uju-anchor="daily-missions">
-        <UjuDailyMissionsCard
-          pinnedApps={pinnedApps}
-          missionsByApp={directory.state.missions}
-        />
+      <div data-uju-anchor="daily-missions" className="flex gap-4 sm:gap-5 items-stretch">
+        <div className="flex-1 min-w-0">
+          <UjuDailyMissionsCard
+            pinnedApps={pinnedApps}
+            missionsByApp={directory.state.missions}
+          />
+        </div>
+        <div className="w-[320px] shrink-0 hidden md:block">
+          <UjuFeedCarousel />
+        </div>
       </div>
       <ActivatedAppsSection directory={directory} />
       <WalletBalanceCard />
