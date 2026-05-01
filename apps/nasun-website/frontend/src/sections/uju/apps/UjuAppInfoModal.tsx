@@ -113,7 +113,7 @@ export const UjuAppInfoModal: FC<UjuAppInfoModalProps> = ({
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto px-6 sm:px-7 py-5 space-y-5">
           <section>
-            <h3 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] mb-2">
+            <h3 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] mb-2">
               About
             </h3>
             <p className="text-base text-uju-primary leading-relaxed whitespace-pre-line">
@@ -123,7 +123,7 @@ export const UjuAppInfoModal: FC<UjuAppInfoModalProps> = ({
 
           {hasUrl && (
             <section>
-              <h3 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] mb-2">
+              <h3 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] mb-2">
                 Website
               </h3>
               <a

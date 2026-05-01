@@ -128,7 +128,7 @@ export const UjuAppDetailsModal: FC<UjuAppDetailsModalProps> = ({
           {missions.length > 0 ? (
             <>
               <div className="border-t border-uju-border/30 pt-4 mb-3 flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em]">
+                <h3 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em]">
                   Active Engagement
                 </h3>
                 <span className="text-sm font-mono text-uju-secondary">

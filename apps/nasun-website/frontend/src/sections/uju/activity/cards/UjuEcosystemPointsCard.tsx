@@ -87,7 +87,7 @@ function generateDateRange(start: string, end: string): string[] {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  base: "bg-pado-2",
+  base: "bg-emerald-500",
   governance: "bg-purple-500",
   "referral-bonus": "bg-sky-500",
   "ecosystem-bonus-earlybird": "bg-yellow-500",
@@ -203,7 +203,7 @@ function ScoreTooltip({
                   .map((item, i) => (
                     <p
                       key={i}
-                      className="text-sm text-uju-secondary/80 flex justify-between"
+                      className="text-sm text-uju-secondary flex justify-between"
                     >
                       {BONUS_LABELS[item.category] || item.activityType}
                       <span>+{item.points}</span>
@@ -416,7 +416,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     return (
       <UjuCard className={className}>
         <UjuSectionHeader accent title="Nasun Points Breakdown" />
-        <div className="flex flex-col items-center justify-center py-12 bg-uju-bg/30 rounded-2xl border border-uju-border/10">
+        <div className="flex flex-col items-center justify-center py-12 bg-uju-bg/50 rounded-2xl border border-uju-border/10">
           <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest">
             Sign in to view your points history
           </p>
@@ -463,24 +463,33 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
       ) : (
         <div className="space-y-8">
           {/* Score Overview */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <UjuStat
-              label={hasFilteredOutActivity ? "Today *" : "Today"}
-              value={(
-                filteredScore?.daily.ecosystemScore ?? 0
-              ).toLocaleString()}
-              tone="aqua"
-            />
-            <UjuStat
-              label="This Week"
-              value={(score?.weekly.ecosystemScore ?? 0).toLocaleString()}
-              tone="mint"
-            />
-            <UjuStat
-              label="All Time"
-              value={(score?.allTime.ecosystemScore ?? 0).toLocaleString()}
-              tone="pado-gradient"
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 sm:divide-x divide-uju-border/40">
+            <div className="px-4 py-2 sm:py-0">
+              <UjuStat
+                label={hasFilteredOutActivity ? "Today *" : "Today"}
+                value={(
+                  filteredScore?.daily.ecosystemScore ?? 0
+                ).toLocaleString()}
+                tone="aqua"
+                align="center"
+              />
+            </div>
+            <div className="px-4 py-2 sm:py-0">
+              <UjuStat
+                label="This Week"
+                value={(score?.weekly.ecosystemScore ?? 0).toLocaleString()}
+                tone="mint"
+                align="center"
+              />
+            </div>
+            <div className="px-4 py-2 sm:py-0">
+              <UjuStat
+                label="All Time"
+                value={(score?.allTime.ecosystemScore ?? 0).toLocaleString()}
+                tone="pado-gradient"
+                align="center"
+              />
+            </div>
           </div>
 
           {/* Today breakdown formula + All-time breakdown (combined card) */}
@@ -497,9 +506,9 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             const showAllTimeBreakdown =
               allTimeBarSegments.length > 0 && allTimeBarTotal > 0;
             return (
-              <div className="rounded-xl bg-pado-2/5 border border-pado-2/20 p-3 space-y-3">
+              <div className="rounded-xl bg-pado-2/5 border border-uju-border/50 p-3 space-y-3">
                 <div className="space-y-2">
-                  <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
+                  <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1">
                     Today breakdown
                   </h6>
                   <div className="flex items-start justify-between gap-2">
@@ -621,8 +630,8 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 </div>
 
                 {showAllTimeBreakdown && (
-                  <div className="border-t border-pado-2/15 pt-3 space-y-2">
-                    <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
+                  <div className="border-t border-uju-border/40 pt-3 space-y-2">
+                    <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1">
                       All-time breakdown
                     </h6>
                     <div className="flex h-2.5 rounded-full overflow-hidden gap-px">
@@ -664,11 +673,11 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Point Trend Chart */}
             <div className="space-y-4">
-              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
+              <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1">
                 Point Trend
               </h6>
               {chartData.length >= 3 ? (
-                <div className="h-[200px] p-4 bg-uju-bg/40 rounded-2xl border border-uju-border/10 shadow-inner">
+                <div className="h-[200px] p-4 bg-uju-card rounded-2xl border border-uju-border/50 shadow-inner">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                       data={chartData}
@@ -682,22 +691,22 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       <XAxis
                         dataKey="displayDate"
                         tick={{
-                          fill: "#4A7282",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fill: "#D4E4EA",
+                          fontSize: 14,
+                          fontWeight: 300,
                         }}
-                        stroke="rgba(74, 114, 130, 0.2)"
+                        stroke="rgba(212, 228, 234, 0.4)"
                         tickLine={false}
                         axisLine={false}
                         interval="preserveStartEnd"
                       />
                       <YAxis
                         tick={{
-                          fill: "#4A7282",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fill: "#D4E4EA",
+                          fontSize: 14,
+                          fontWeight: 300,
                         }}
-                        stroke="rgba(74, 114, 130, 0.2)"
+                        stroke="rgba(212, 228, 234, 0.4)"
                         tickLine={false}
                         axisLine={false}
                         width={56}
@@ -716,7 +725,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[200px] flex items-center justify-center bg-uju-bg/20 rounded-2xl border border-uju-border/5">
+                <div className="h-[200px] flex items-center justify-center bg-uju-card rounded-2xl border border-uju-border/50">
                   <p className="text-sm font-normal text-uju-secondary italic">
                     Insufficient data for trend
                   </p>
@@ -727,7 +736,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             {/* Rank Chart */}
             <div className="space-y-4">
               <div className="flex items-center justify-between px-1">
-                <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em]">
+                <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em]">
                   Points Rank
                 </h6>
                 <div className="flex gap-4">
@@ -748,7 +757,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 </div>
               </div>
               {chartData.filter((d) => d.rank != null).length >= 3 ? (
-                <div className="h-[200px] p-4 bg-uju-bg/40 rounded-2xl border border-uju-border/10 shadow-inner">
+                <div className="h-[200px] p-4 bg-uju-card rounded-2xl border border-uju-border/50 shadow-inner">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
                       data={chartData}
@@ -762,11 +771,11 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       <XAxis
                         dataKey="displayDate"
                         tick={{
-                          fill: "#4A7282",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fill: "#D4E4EA",
+                          fontSize: 14,
+                          fontWeight: 300,
                         }}
-                        stroke="rgba(74, 114, 130, 0.2)"
+                        stroke="rgba(212, 228, 234, 0.4)"
                         tickLine={false}
                         axisLine={false}
                         interval="preserveStartEnd"
@@ -775,11 +784,11 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                         reversed
                         domain={rankDomain}
                         tick={{
-                          fill: "#4A7282",
-                          fontSize: 10,
-                          fontWeight: 700,
+                          fill: "#D4E4EA",
+                          fontSize: 14,
+                          fontWeight: 300,
                         }}
-                        stroke="rgba(74, 114, 130, 0.2)"
+                        stroke="rgba(212, 228, 234, 0.4)"
                         tickLine={false}
                         axisLine={false}
                         width={56}
@@ -803,7 +812,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                   </ResponsiveContainer>
                 </div>
               ) : (
-                <div className="h-[200px] flex items-center justify-center bg-uju-bg/20 rounded-2xl border border-uju-border/5">
+                <div className="h-[200px] flex items-center justify-center bg-uju-card rounded-2xl border border-uju-border/50">
                   <p className="text-sm font-normal text-uju-secondary italic">
                     Insufficient ranking data
                   </p>
@@ -815,7 +824,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
           {/* Daily Log */}
           {dailyLog.length > 0 && (
             <div className="space-y-4">
-              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1">
+              <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1">
                 Activity Log
               </h6>
               <div className="space-y-2">
@@ -835,8 +844,8 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                         key={entry.date}
                         className={`rounded-xl px-4 py-3 border transition-all duration-200 ${
                           entry.isPenalized
-                            ? "bg-red-500/5 border-red-500/20"
-                            : "bg-uju-bg/30 border-uju-border/10 hover:border-uju-border/30"
+                            ? "bg-red-500/5 border-red-500/40"
+                            : "bg-uju-bg/50 border-uju-border/50 hover:border-uju-border/70"
                         }`}
                       >
                         <div className="flex items-center justify-between">
@@ -855,8 +864,8 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                               </span>
                             ) : (
                               <>
-                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg/50 border border-uju-border/10">
-                                  <span className="text-uju-secondary/80 text-xs uppercase tracking-wider">
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg border border-uju-border/10">
+                                  <span className="text-uju-secondary text-xs uppercase tracking-wider">
                                     Base
                                   </span>
                                   <span className="text-uju-primary tabular-nums">
@@ -865,7 +874,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                 </div>
                                 {(entry.stakingDeltaScaled ?? 0) > 0 && (
                                   <>
-                                    <span className="text-uju-secondary/80">
+                                    <span className="text-uju-secondary">
                                       +
                                     </span>
                                     <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
@@ -880,7 +889,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                     </div>
                                   </>
                                 )}
-                                <span className="text-uju-secondary/80">×</span>
+                                <span className="text-uju-secondary">×</span>
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-2/5 border border-pado-2/20">
                                   <span className="text-pado-2/80 text-xs uppercase tracking-wider">
                                     Mult
@@ -891,7 +900,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                 </div>
                                 {(entry.bonusTotal > 0 ||
                                   entry.referralBonus > 0) && (
-                                  <span className="text-uju-secondary/80">
+                                  <span className="text-uju-secondary">
                                     +
                                   </span>
                                 )}
@@ -939,7 +948,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                   </span>
                                 </span>
                               ) : (
-                                <span className="text-sm font-semibold text-uju-secondary/80 tracking-widest">
+                                <span className="text-sm font-semibold text-uju-secondary tracking-widest">
                                   NONE
                                 </span>
                               )}
@@ -963,14 +972,14 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                             <div className="flex flex-col gap-1.5 mt-2 sm:ml-[64px] text-xs font-normal">
                               {hasBaseDetail && (
                                 <div className="flex flex-wrap items-center gap-1.5 leading-snug">
-                                  <span className="uppercase tracking-wider shrink-0 text-uju-secondary/80">
+                                  <span className="uppercase tracking-wider shrink-0 text-uju-secondary">
                                     Base
                                   </span>
                                   {baseItems.length > 0 ? (
                                     baseItems.map((item) => (
                                       <span
                                         key={item.category}
-                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg/60 border border-uju-border/30 text-uju-primary"
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg border border-uju-border/30 text-uju-primary"
                                       >
                                         <span>
                                           {labelForBaseCategory(item.category)}
@@ -986,7 +995,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                     // ships) or returns no rows for this day:
                                     // show the day's aggregate base as a
                                     // single chip so the row still has signal.
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg/60 border border-uju-border/30 text-uju-primary">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-uju-bg border border-uju-border/30 text-uju-primary">
                                       <span>Base</span>
                                       <span className="tabular-nums text-uju-secondary">
                                         +{entry.baseScore}
@@ -1037,10 +1046,10 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
 
           {/* Empty state */}
           {chartData.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 gap-3 bg-uju-bg/20 rounded-2xl border border-dashed border-uju-border/20">
-              <div className="w-12 h-12 rounded-full bg-uju-bg/60 flex items-center justify-center border border-uju-border/10">
+            <div className="flex flex-col items-center justify-center py-16 gap-3 bg-uju-bg rounded-2xl border border-dashed border-uju-border/20">
+              <div className="w-12 h-12 rounded-full bg-uju-bg flex items-center justify-center border border-uju-border/10">
                 <svg
-                  className="w-6 h-6 text-uju-secondary/80"
+                  className="w-6 h-6 text-uju-secondary"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -1057,7 +1066,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                 <p className="text-sm font-normal text-uju-secondary uppercase tracking-widest">
                   No snapshot history
                 </p>
-                <p className="text-sm font-light text-uju-secondary/80 mt-1">
+                <p className="text-sm font-light text-uju-secondary mt-1">
                   Points are recorded daily. Check back tomorrow.
                 </p>
               </div>

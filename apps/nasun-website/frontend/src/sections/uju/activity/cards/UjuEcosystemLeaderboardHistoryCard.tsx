@@ -105,10 +105,10 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
         <div className="space-y-4 mt-2">
           <div className="flex items-center justify-between p-4 bg-uju-bg/40 rounded-xl border border-uju-border/15">
             <div>
-              <p className="text-sm font-semibold text-uju-secondary uppercase tracking-widest">
+              <p className="text-sm font-semibold text-uju-primary uppercase tracking-widest">
                 Current Week
               </p>
-              <p className="text-sm font-light text-uju-secondary/80 mt-0.5">
+              <p className="text-sm font-light text-uju-secondary mt-0.5">
                 {currentRow?.label ?? "—"}
               </p>
             </div>
@@ -142,7 +142,7 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
 
           {isExpanded && (
             <div className="space-y-2 animate-fade-in">
-              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1 mt-2">
+              <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1 mt-2">
                 Past Weeks
               </h6>
               <div className="space-y-1.5">
@@ -156,19 +156,19 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
                     </span>
                     <span className="text-sm font-semibold tabular-nums">
                       {row.state === "loading" ? (
-                        <span className="text-uju-secondary/60">…</span>
+                        <span className="text-uju-secondary">…</span>
                       ) : row.state === "error" ? (
                         <span className="text-rose-400/70">err</span>
                       ) : row.rank != null ? (
                         <span className="text-uju-primary">#{row.rank}</span>
                       ) : (
-                        <span className="text-uju-secondary/60">Unranked</span>
+                        <span className="text-uju-secondary">Unranked</span>
                       )}
                     </span>
                   </div>
                 ))}
                 {rows.length <= 1 && (
-                  <p className="text-sm font-light text-uju-secondary/70 text-center py-3">
+                  <p className="text-sm font-light text-uju-secondary text-center py-3">
                     No past weeks yet.
                   </p>
                 )}

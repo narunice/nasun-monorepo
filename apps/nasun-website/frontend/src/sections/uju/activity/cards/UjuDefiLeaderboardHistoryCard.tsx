@@ -231,7 +231,7 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
       />
 
       {emptyMessage ? (
-        <div className="flex flex-col items-center py-8 bg-uju-bg/30 rounded-xl border border-uju-border/10">
+        <div className="flex flex-col items-center py-8 bg-uju-bg/30 rounded-xl border border-uju-border/50">
           <p className="text-uju-secondary font-light text-center px-6">
             {emptyMessage}
           </p>
@@ -267,12 +267,12 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
             )}
           </div>
 
-          <div className="flex items-center justify-between p-4 bg-uju-bg/40 rounded-xl border border-uju-border/15">
+          <div className="flex items-center justify-between p-4 bg-uju-bg/40 rounded-xl border border-uju-border/50">
             <div>
-              <p className="text-sm font-semibold text-uju-secondary uppercase tracking-widest">
+              <p className="text-sm font-semibold text-uju-primary uppercase tracking-widest">
                 Current Week
               </p>
-              <p className="text-sm font-light text-uju-secondary/80 mt-0.5">
+              <p className="text-sm font-light text-uju-secondary mt-0.5">
                 {recentWeeks[0]?.label ?? "—"}
               </p>
             </div>
@@ -293,7 +293,7 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
 
           {isExpanded && (
             <div className="space-y-2 animate-fade-in">
-              <h6 className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] px-1 mt-2">
+              <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1 mt-2">
                 Past Weeks
               </h6>
               <div className="space-y-1.5">
@@ -303,32 +303,32 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
                   return (
                     <div
                       key={w.weekId}
-                      className="flex items-center justify-between px-4 py-2.5 bg-uju-bg/30 rounded-lg border border-uju-border/10"
+                      className="flex items-center justify-between px-4 py-2.5 bg-uju-bg/30 rounded-lg border border-uju-border/50"
                     >
                       <span className="text-sm font-light text-uju-primary">{w.label}</span>
                       <span className="text-sm font-semibold tabular-nums">
                         {q?.isLoading ? (
-                          <span className="text-uju-secondary/60">…</span>
+                          <span className="text-uju-secondary">…</span>
                         ) : q?.isError ? (
                           <span className="text-rose-400/70">err</span>
                         ) : rank != null ? (
                           <span className="text-uju-primary">#{rank}</span>
                         ) : (
-                          <span className="text-uju-secondary/60">Unranked</span>
+                          <span className="text-uju-secondary">Unranked</span>
                         )}
                       </span>
                     </div>
                   );
                 })}
                 {pastWeeks.length === 0 && (
-                  <p className="text-sm font-light text-uju-secondary/70 text-center py-3">
+                  <p className="text-sm font-light text-uju-secondary text-center py-3">
                     No past weeks yet.
                   </p>
                 )}
               </div>
               <Link
                 to="/community/pado-leaderboard"
-                className="flex items-center justify-center gap-2 py-3 mt-2 border-t border-uju-border/10 text-pado-2 hover:text-pado-4 font-semibold text-sm transition-all"
+                className="flex items-center justify-center gap-2 py-3 mt-2 border-t border-uju-border/50 text-pado-2 hover:text-pado-4 font-semibold text-sm transition-all"
               >
                 View Full Leaderboard →
               </Link>

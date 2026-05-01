@@ -233,7 +233,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({
               Devnet notice
             </button>
             {disclaimerExpanded && (
-              <ul className="mt-3 space-y-2 pl-1 text-uju-secondary/80 leading-relaxed font-light">
+              <ul className="mt-3 space-y-2 pl-1 text-uju-secondary leading-relaxed font-light">
                 <li className="flex gap-2">
                   <span className="text-pado-2">•</span> Assets on Devnet have
                   no monetary value.
@@ -259,7 +259,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({
         {user.cognitoToken &&
           (displayAddress || walletReg.registeredWallets.length > 0) && (
             <div className="ml-5 pl-5 border-l border-uju-border/20 space-y-3">
-              <div className="text-sm font-semibold text-uju-secondary/80 uppercase tracking-[0.2em]">
+              <div className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em]">
                 Additional Wallets {walletReg.isLoading && "— Loading..."}
               </div>
               {additionalWallets.map((w) => {

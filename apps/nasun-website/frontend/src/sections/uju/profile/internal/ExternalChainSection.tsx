@@ -166,10 +166,10 @@ export const ExternalChainSection: FC = () => {
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold text-uju-secondary/80 uppercase tracking-[0.2em] mt-2">
+      <div className="text-sm font-semibold text-uju-secondary uppercase tracking-[0.2em] mt-2">
         External Chain Addresses
       </div>
-      <p className="text-sm text-uju-secondary/80 leading-relaxed">
+      <p className="text-sm text-uju-secondary leading-relaxed">
         Display-only. Uju shows balances but never initiates transactions on
         these networks.
       </p>
@@ -196,7 +196,7 @@ export const ExternalChainSection: FC = () => {
                       {c.label}
                     </p>
                     {addr && source && source !== "paste" && (
-                      <span className="text-xs text-uju-secondary/80 px-1.5 py-0.5 rounded-md bg-uju-card/60 border border-uju-border/30">
+                      <span className="text-xs text-uju-secondary px-1.5 py-0.5 rounded-md bg-uju-card/60 border border-uju-border/30">
                         {SOURCE_LABEL[source]}
                       </span>
                     )}

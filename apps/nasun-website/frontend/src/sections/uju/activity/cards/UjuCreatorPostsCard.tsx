@@ -124,7 +124,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
       />
 
       {!twitterLinked ? (
-        <div className="p-4 rounded-xl bg-uju-bg/40 border border-uju-border/20 text-center">
+        <div className="p-4 rounded-xl bg-uju-bg/40 border border-uju-border/50 text-center">
           <p className="text-sm text-uju-secondary font-light mb-3">
             Connect your X account to submit creator posts and earn ecosystem
             points.
@@ -134,7 +134,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
           </UjuButton>
         </div>
       ) : (
-        <div className="space-y-4 mb-8 bg-uju-bg/30 p-5 rounded-2xl border border-uju-border/10">
+        <div className="space-y-4 mb-8 bg-uju-bg/30 p-5 rounded-2xl border border-uju-border/50">
           <p className="text-sm text-uju-secondary font-light">
             Paste an X post URL you wrote about Nasun to earn points.
           </p>
@@ -156,7 +156,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
               {submitMut.isPending ? "Submitting..." : "Submit"}
             </UjuButton>
           </div>
-          <p className="text-sm text-uju-secondary/80 font-normal uppercase tracking-widest">
+          <p className="text-sm text-uju-secondary font-normal uppercase tracking-widest">
             Submit posts that contribute to Nasun's growth and the community's success.
           </p>
           {errorMsg && <p className="text-sm font-normal text-red-400 mt-2">{errorMsg}</p>}
@@ -165,7 +165,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
       )}
 
       <div className="space-y-4">
-        <h6 className="text-sm font-normal uppercase text-uju-secondary tracking-widest px-1">
+        <h6 className="text-sm font-normal uppercase text-uju-primary tracking-widest px-1">
           Recent Submissions
         </h6>
         {listQuery.isLoading ? (
@@ -189,8 +189,8 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
                   key={post.postId}
                   className={`rounded-xl p-4 border transition-all duration-200 ${
                     post.status === "GRANTED"
-                      ? "bg-pado-4/5 border-pado-4/40 shadow-[0_0_20px_rgba(134,243,183,0.05)]"
-                      : "bg-uju-bg/40 border-uju-border/20 hover:border-pado-2/30"
+                      ? "bg-pado-4/5 border-pado-4/60 shadow-[0_0_20px_rgba(134,243,183,0.05)]"
+                      : "bg-uju-bg/40 border-uju-border/50 hover:border-pado-2/60"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3 mb-3">
@@ -216,7 +216,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm font-normal text-uju-secondary/80">
+                    <span className="text-sm font-normal text-uju-secondary">
                       {formatDate(post.createdAt)}
                     </span>
                     {post.status === "REJECTED" && post.rejectionReason && (
@@ -232,7 +232,7 @@ export const UjuCreatorPostsCard: FC<UjuCreatorPostsCardProps> = ({
             {(visibleCount < allItems.length ||
               listQuery.hasNextPage ||
               visibleCount > 3) && (
-              <div className="flex justify-center gap-3 pt-4 border-t border-uju-border/10">
+              <div className="flex justify-center gap-3 pt-4 border-t border-uju-border/50">
                 {(visibleCount < allItems.length || listQuery.hasNextPage) && (
                   <UjuButton
                     variant="secondary"

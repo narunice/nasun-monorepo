@@ -151,7 +151,7 @@ function HealthDonutSlot({
           {title}
         </p>
         {subtitle && (
-          <p className="text-xs uppercase tracking-wider text-uju-secondary/80 leading-tight mt-0.5">
+          <p className="text-xs uppercase tracking-wider text-uju-secondary leading-tight mt-0.5">
             {subtitle}
           </p>
         )}
@@ -219,7 +219,7 @@ export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
       <>
         <span className="text-emerald-300">Eternal Health</span>
         <br />
-        <span className="text-uju-secondary/70">Genesis Pass Shield</span>
+        <span className="text-uju-secondary">Genesis Pass Shield</span>
       </>
     ) : alliance.hasNft ? (
       alliancePct >= 100 ? undefined : (
@@ -294,7 +294,7 @@ export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
               <>
                 <span className="text-emerald-300">Eternal Health</span>
                 <br />
-                <span className="text-uju-secondary/70">
+                <span className="text-uju-secondary">
                   Genesis Pass Shield
                 </span>
               </>
