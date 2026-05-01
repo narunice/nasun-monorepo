@@ -104,6 +104,9 @@ export function buildArbitrageTrades(
   state: BotState,
 ): Transaction {
   const tx = new Transaction();
+  // Bounded by opportunities found per cycle; 0.5 NASUN cap is ample
+  // for typical arb sizes and refunded if unused.
+  tx.setGasBudget(500_000_000n);
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
   for (const opp of opportunities) {

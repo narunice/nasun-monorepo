@@ -45,6 +45,8 @@ export async function executeMarketOrder(
 ): Promise<ExecuteResult> {
   try {
     const tx = new Transaction();
+    // Single market_order — bounded gas, refunded if unused.
+    tx.setGasBudget(200_000_000n);
 
     // Step 1: Generate trade proof from TradeCap (delegated trader proof)
     const [tradeProof] = tx.moveCall({
@@ -85,6 +87,15 @@ export async function executeMarketOrder(
         success: false,
         error: `TX failed: ${result.effects?.status?.error || 'unknown'}`,
       };
+    }
+
+    // Wait for indexing so the next executeMarketOrder builds against the
+    // post-effects BalanceManager version (avoids "not available for
+    // consumption" on back-to-back TP/SL executions in the same tick).
+    try {
+      await client.waitForTransaction({ digest: result.digest, timeout: 10_000 });
+    } catch {
+      // Best-effort
     }
 
     return {
