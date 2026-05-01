@@ -31,8 +31,11 @@ const ChatAvatar = memo(function ChatAvatar({ address, imageUrl, size = 24 }: {
     );
   }
   return (
-    <div className="shrink-0" style={{ width: size, height: size }}>
-      <Avatar name={address} variant="beam" size={size} />
+    <div
+      className="shrink-0 overflow-hidden rounded-md"
+      style={{ width: size, height: size }}
+    >
+      <Avatar name={address} variant="pixel" size={size} square />
     </div>
   );
 });
