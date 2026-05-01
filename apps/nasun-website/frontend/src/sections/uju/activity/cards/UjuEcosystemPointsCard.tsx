@@ -5,7 +5,7 @@
  * Detached from myAccount dependencies.
  */
 
-import { FC, useMemo, useState } from "react";
+import { FC, Fragment, useMemo, useState } from "react";
 import {
   BarChart,
   Bar,
@@ -262,7 +262,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     isRefreshing,
     cooldownSeconds,
   } = useEcosystemScore(identityId);
-  const { filtered: filteredScore, hasFilteredOutActivity } =
+  const { filtered: filteredScore, hasFilteredOutActivity, completedMissions } =
     useFilteredTodayScore(score);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
@@ -478,29 +478,48 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       pts today{hasFilteredOutActivity ? " *" : ""}
                     </span>
                   </div>
-                  <div className="mt-1.5 flex items-baseline flex-wrap gap-x-1.5 text-sm text-uju-secondary">
+                  <div className="mt-1.5 flex items-baseline flex-wrap gap-x-1.5 gap-y-1 text-sm text-uju-secondary">
                     <span>=</span>
-                    {todayStaking > 0 ? (
-                      <>
-                        <span>(</span>
-                        <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
-                        <span>base</span>
-                        <span>+</span>
-                        <span
-                          className="font-mono text-pado-4 tabular-nums"
-                          title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
-                        >
-                          {todayStaking}
-                        </span>
-                        <span>staking</span>
-                        <span>)</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
-                        <span>base</span>
-                      </>
-                    )}
+                    {(() => {
+                      // Parens when staking is present (formula clarity: (base+staking)×mult)
+                      // or when multiple mission pills need grouping.
+                      const needsParens =
+                        todayStaking > 0 || completedMissions.length > 1;
+                      const baseContent =
+                        completedMissions.length === 0 ? (
+                          <>
+                            <span className="font-mono text-uju-primary tabular-nums">{todayBase}</span>
+                            <span>base</span>
+                          </>
+                        ) : (
+                          completedMissions.map((m, i) => (
+                            <Fragment key={m.id}>
+                              {i > 0 && <span>+</span>}
+                              <span className="font-mono text-uju-primary tabular-nums">{m.pts}</span>
+                              <span className="text-uju-primary/70">{m.label}</span>
+                            </Fragment>
+                          ))
+                        );
+                      return (
+                        <>
+                          {needsParens && <span>(</span>}
+                          {baseContent}
+                          {todayStaking > 0 && (
+                            <>
+                              <span>+</span>
+                              <span
+                                className="font-mono text-pado-4 tabular-nums"
+                                title="Active stake tier: 1~500 NSN = 1pt, 501~5,000 = 2pt, 5,001+ = 3pt. Updates within ~24h of delegation."
+                              >
+                                {todayStaking}
+                              </span>
+                              <span>staking</span>
+                            </>
+                          )}
+                          {needsParens && <span>)</span>}
+                        </>
+                      );
+                    })()}
                     <span>×</span>
                     <span
                       className={`font-mono tabular-nums ${score?.isPenalized ? "text-red-400" : "text-pado-2"}`}

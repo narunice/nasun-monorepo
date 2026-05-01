@@ -10,7 +10,7 @@ export const ProfileTab: FC = () => {
     <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
       {/* 1. Profile Identity (avatar + display name + edit) */}
       <UjuCard>
-        <UjuSectionHeader accent title="Profile" />
+        <UjuSectionHeader accent title="Profile" subtitle="Change your profile picture and display name" />
         <div className="pt-2">
           <ProfileIdentityBlock variant="uju" />
         </div>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useNotificationStore, type UjuNotification, type NotificationType } from '../notifications/notificationStore';
 import { UjuCard } from '../shared/UjuCard';
+import { UjuSectionHeader } from '../shared';
 
 function formatRelativeTime(timestamp: number): string {
   const diffMs = Date.now() - timestamp;
@@ -75,19 +76,21 @@ export function NotificationsPanel() {
   const clearAll = useNotificationStore((s) => s.clearAll);
 
   return (
-    <UjuCard className="p-0 overflow-hidden">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-uju-border">
-        <p className="text-sm font-semibold text-uju-primary">Notifications</p>
-        {notifications.length > 0 && (
-          <button
-            onClick={markAllRead}
-            className="text-sm text-uju-secondary hover:text-pado-2 transition-colors"
-          >
-            Mark all read
-          </button>
-        )}
-      </div>
+    <UjuCard>
+      <UjuSectionHeader
+        accent
+        title="Notifications"
+        trailing={
+          notifications.length > 0 ? (
+            <button
+              onClick={markAllRead}
+              className="text-sm text-uju-secondary hover:text-pado-2 transition-colors"
+            >
+              Mark all read
+            </button>
+          ) : undefined
+        }
+      />
 
       {notifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 px-6 text-center gap-3">

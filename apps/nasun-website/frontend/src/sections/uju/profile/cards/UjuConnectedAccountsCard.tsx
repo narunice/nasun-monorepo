@@ -70,7 +70,7 @@ export const UjuConnectedAccountsCard: FC<UjuConnectedAccountsCardProps> = ({ cl
     <div className="space-y-6">
       <UjuSectionHeader
         accent
-        title="Connected Accounts"
+        title="Connected Wallets and Social Accounts"
         subtitle="Wallets and social accounts linked to your identity"
       />
       
