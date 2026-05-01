@@ -16,13 +16,36 @@ import { UjuAppInfoModal } from "../../apps/UjuAppInfoModal";
 // Activity Details button shows the full app info (name + description +
 // website). The Dashboard's Missions button uses a different modal
 // (UjuAppDetailsModal) that lists active engagement only.
-import { UjuCard, UjuButton, UjuSectionHeader, UjuComingSoonTag } from "../../shared";
+import {
+  UjuCard,
+  UjuButton,
+  UjuSectionHeader,
+  UjuComingSoonTag,
+} from "../../shared";
 import { goToDashboardActivatedApps } from "../../shared/ujuNavigation";
 
 const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
   { value: "all", label: "All" },
   { value: "nasun", label: "Nasun" },
 ];
+
+// Resolve the icon URL for an app row. Prefers an explicit override
+// (AppEntry.iconUrl) when set — required for sites whose favicon is hosted
+// under a subpath (e.g. Vite base) and is not discoverable by Google's
+// s2/favicons service. Falls back to s2/favicons by hostname, and returns
+// null for placeholder URLs ('#') so the row renders a chain-tinted
+// initial-square fallback.
+function getFaviconUrl(app: AppEntry): string | null {
+  if (app.iconUrl) return app.iconUrl;
+  if (!app.url || app.url === "#") return null;
+  try {
+    const host = new URL(app.url).hostname;
+    if (!host) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`;
+  } catch {
+    return null;
+  }
+}
 
 export function UjuAppDirectoryCard() {
   const directory = useUjuAppDirectory();
@@ -96,7 +119,7 @@ export function UjuAppDirectoryCard() {
         {/* Footer */}
         <div className="pt-3 mt-3 border-t border-uju-border/50 space-y-3">
           <p className={`text-sm ${counterClass}`}>
-            {directory.selectedTotal}/{MAX_DAILY_MISSIONS} missions selected
+            {directory.selectedTotal}/{MAX_DAILY_MISSIONS} activities selected
             {directory.isAtCap && " — deselect one to add another"}
           </p>
           <div className="flex justify-center">
@@ -135,6 +158,7 @@ function AppDirectoryRow({
   // missions[appId] === undefined means user never opened the checklist for
   // this app — counter shows "0 selected" until the user toggles.
   const selectedCount = directory.state.missions[app.id]?.length ?? 0;
+  const favicon = getFaviconUrl(app);
 
   return (
     <div className="py-4">
@@ -156,6 +180,33 @@ function AppDirectoryRow({
             >
               {CHAIN_LABEL[app.chain]}
             </span>
+            {/* App favicon — sourced from Google's s2/favicons. For coming-
+                soon apps without a real URL, render a chain-tinted initial
+                square so layout stays steady. */}
+            {favicon ? (
+              <img
+                src={favicon}
+                alt=""
+                aria-hidden="true"
+                width={20}
+                height={20}
+                className={`w-5 h-5 rounded shrink-0 ${
+                  isComingSoon ? "opacity-50 grayscale" : ""
+                }`}
+                onError={(e) => {
+                  // Hide on 404 / referrer-blocked load — we'd rather show
+                  // just the name than a broken-image glyph.
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                className={`w-5 h-5 rounded shrink-0 flex items-center justify-center text-[10px] font-semibold uppercase ${CHAIN_BADGE_CLASS[app.chain]}`}
+              >
+                {app.name.charAt(0)}
+              </span>
+            )}
             <span
               className={`text-base font-semibold ${
                 isComingSoon ? "text-uju-secondary" : "text-uju-primary"
