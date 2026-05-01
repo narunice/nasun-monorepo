@@ -27,9 +27,12 @@ const KOL_ACCOUNTS = [
 // Lowercase set for fast audience routing
 const KOL_LOOKUP = new Set(KOL_ACCOUNTS.map(a => a.toLowerCase()));
 
-// Combined OR query — single X API call serves both Pado and Uju
-const TRACKED_ACCOUNTS = [...MEDIA_ACCOUNTS, ...KOL_ACCOUNTS];
-const SEARCH_QUERY = '(' + TRACKED_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
+// Per-audience queries. Splitting prevents the high-volume Pado media
+// outlets from crowding out KOL tweets in a single max_results=10 window
+// (which made the Uju feed swing between 0–10 items). Each search returns
+// up to 10 tweets, so each audience consistently gets ~10.
+const MEDIA_QUERY = '(' + MEDIA_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
+const KOL_QUERY = '(' + KOL_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
 
 function audienceFor(username: string): 'pado' | 'uju' {
   return KOL_LOOKUP.has(username.toLowerCase()) ? 'uju' : 'pado';
@@ -88,59 +91,68 @@ function tweetToNewsItem(
   };
 }
 
+async function searchTweets(bearerToken: string, query: string): Promise<NewsItem[]> {
+  const params = new URLSearchParams({
+    query,
+    max_results: '10',
+    'tweet.fields': 'created_at,author_id,attachments',
+    expansions: 'author_id,attachments.media_keys',
+    'user.fields': 'username,name',
+    'media.fields': 'url,preview_image_url,type',
+  });
+
+  const response = await fetch(`${X_API_BASE}/tweets/search/recent?${params}`, {
+    signal: AbortSignal.timeout(8000),
+    headers: {
+      Authorization: `Bearer ${bearerToken}`,
+      'Content-Type': 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    const errorBody = (await response.text()).slice(0, 200);
+    throw new Error(`X API error ${response.status}: ${errorBody}`);
+  }
+
+  const data: TwitterSearchResult = await response.json();
+  if (!data.data || data.data.length === 0) return [];
+
+  const userMap = new Map<string, { username: string; name: string }>();
+  if (data.includes?.users) {
+    for (const user of data.includes.users) {
+      userMap.set(user.id, { username: user.username, name: user.name });
+    }
+  }
+
+  const mediaMap = new Map<string, string>();
+  if (data.includes?.media) {
+    for (const m of data.includes.media) {
+      const imgUrl = m.url || m.preview_image_url;
+      if (imgUrl) mediaMap.set(m.media_key, imgUrl);
+    }
+  }
+
+  return data.data.map(tweet => tweetToNewsItem(tweet, userMap, mediaMap));
+}
+
 export async function fetchTweets(): Promise<NewsItem[]> {
   try {
     const bearerToken = await getBearerToken();
 
-    const params = new URLSearchParams({
-      query: SEARCH_QUERY,
-      max_results: '10',
-      'tweet.fields': 'created_at,author_id,attachments',
-      expansions: 'author_id,attachments.media_keys',
-      'user.fields': 'username,name',
-      'media.fields': 'url,preview_image_url,type',
-    });
+    // Run both searches in parallel. Each returns up to 10 tweets so the
+    // per-audience feed is stable regardless of relative posting volume.
+    const [mediaTweets, kolTweets] = await Promise.all([
+      searchTweets(bearerToken, MEDIA_QUERY).catch(err => {
+        console.error('Media tweet search failed:', err instanceof Error ? err.message : err);
+        return [] as NewsItem[];
+      }),
+      searchTweets(bearerToken, KOL_QUERY).catch(err => {
+        console.error('KOL tweet search failed:', err instanceof Error ? err.message : err);
+        return [] as NewsItem[];
+      }),
+    ]);
 
-    const response = await fetch(`${X_API_BASE}/tweets/search/recent?${params}`, {
-      signal: AbortSignal.timeout(8000),
-      headers: {
-        Authorization: `Bearer ${bearerToken}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      // Truncate error body to prevent sensitive data leakage in logs
-      const errorBody = (await response.text()).slice(0, 200);
-      throw new Error(`X API error ${response.status}: ${errorBody}`);
-    }
-
-    const data: TwitterSearchResult = await response.json();
-
-    if (!data.data || data.data.length === 0) {
-      console.log('No tweets found');
-      return [];
-    }
-
-    // Build user lookup map
-    const userMap = new Map<string, { username: string; name: string }>();
-    if (data.includes?.users) {
-      for (const user of data.includes.users) {
-        userMap.set(user.id, { username: user.username, name: user.name });
-      }
-    }
-
-    // Build media lookup map (media_key -> image URL)
-    const mediaMap = new Map<string, string>();
-    if (data.includes?.media) {
-      for (const m of data.includes.media) {
-        // Prefer url (full-size photo), fallback to preview_image_url (video thumbnail)
-        const imgUrl = m.url || m.preview_image_url;
-        if (imgUrl) mediaMap.set(m.media_key, imgUrl);
-      }
-    }
-
-    return data.data.map(tweet => tweetToNewsItem(tweet, userMap, mediaMap));
+    return [...mediaTweets, ...kolTweets];
   } catch (error) {
     console.error('Twitter fetch failed:', error);
     return [];
