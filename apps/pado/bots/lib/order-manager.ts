@@ -37,6 +37,12 @@ function generateProofAsOwner(tx: Transaction, balanceManagerId: string) {
  * Build transaction to sweep a crossing bid using an IOC (Immediate-Or-Cancel) order.
  * IOC orders fill against existing liquidity and expire immediately if no fill is possible.
  */
+// Gas budget caps (SOE, refunded if unused). Sized for worst-case PTB
+// to prevent `InsufficientGas in command N` failures during contested cycles.
+// SDK auto-budget repeatedly underestimated 170+ command PTBs in prod.
+const GAS_BUDGET_LARGE = 2_000_000_000n; // ~2 NASUN — cancel_all + ~90 place orders
+const GAS_BUDGET_SMALL = 200_000_000n;   // ~0.2 NASUN — single op or sweep
+
 function buildSweepCrossingBid(
   balanceManagerId: string,
   sweepPrice: bigint,
@@ -44,6 +50,7 @@ function buildSweepCrossingBid(
   state: BotState,
 ): Transaction {
   const tx = new Transaction();
+  tx.setGasBudget(GAS_BUDGET_SMALL);
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
   const clientOrderId = state.clientOrderIdCounter++;
 
@@ -83,6 +90,7 @@ export function buildCancelAndPlaceOrders(
   state: BotState,
 ): Transaction {
   const tx = new Transaction();
+  tx.setGasBudget(GAS_BUDGET_LARGE);
 
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
@@ -139,6 +147,7 @@ export function buildPlaceOrders(
   state: BotState,
 ): Transaction {
   const tx = new Transaction();
+  tx.setGasBudget(GAS_BUDGET_LARGE);
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
   for (const order of orders) {
@@ -177,6 +186,7 @@ export function buildPlaceOrders(
  */
 export function buildCancelAllOrders(balanceManagerId: string): Transaction {
   const tx = new Transaction();
+  tx.setGasBudget(GAS_BUDGET_SMALL);
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
   tx.moveCall({
@@ -214,6 +224,17 @@ export async function executeTransaction(
         success: false,
         error: result.effects?.status?.error || 'Unknown error',
       };
+    }
+
+    // Wait for fullnode to index effects so the next TX builds against the
+    // post-effects object versions. Without this, back-to-back TXs from the
+    // same owner can hit "is not available for consumption" because the SDK
+    // re-fetches the BalanceManager at its pre-TX version.
+    try {
+      await client.waitForTransaction({ digest: result.digest, timeout: 10_000 });
+    } catch {
+      // Best-effort: if indexing wait times out, the next TX may still succeed
+      // and our existing version-conflict retry path handles the residual case.
     }
 
     return {
