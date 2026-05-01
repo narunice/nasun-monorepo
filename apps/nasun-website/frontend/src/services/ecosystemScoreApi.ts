@@ -294,6 +294,44 @@ export async function getBonusHistory(
   return json.data ?? [];
 }
 
+export interface BaseHistoryItem {
+  category: string;
+  points: number;
+}
+
+export interface BaseHistoryDay {
+  date: string;
+  total: number;
+  items: BaseHistoryItem[];
+}
+
+/**
+ * Per-day base composition. Mirrors `ecosystem_daily_scores` matview rules
+ * so the items returned for a day sum to that day's `base_score`.
+ *
+ * Self-only endpoint — caller must pass their Cognito JWT. Without a token
+ * we short-circuit to an empty array since the server would 401.
+ */
+export async function getBaseHistory(
+  identityId: string,
+  days: number = 30,
+  token?: string,
+): Promise<BaseHistoryDay[]> {
+  if (!API_BASE) return [];
+  if (!IDENTITY_ID_RE.test(identityId)) return [];
+  if (!token) return [];
+
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(
+    `${API_BASE}/ecosystem/base-history/${encoded}?days=${days}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+
+  if (!res.ok) return [];
+  const json = await res.json();
+  return json.data ?? [];
+}
+
 export interface ActiveMissionsData {
   /** Flat list of category ids the user has activated, or null if no record exists yet. */
   missions: string[] | null;
