@@ -50,7 +50,10 @@ export function MultiplierBox({ className = "" }: { className?: string }) {
     <div
       className={`w-full rounded-xl bg-gradient-to-r from-pado-1/15 to-pado-2/15 border border-pado-2/40 shadow-[0_0_12px_rgba(59,185,216,0.15)] px-3 py-2 ${className}`}
     >
-      <div className="flex items-center justify-between">
+      {/* Label and value sit side-by-side rather than justified to opposite
+          edges — the gap is large enough to read as a deliberate pairing
+          ("Multiplier 2.00x") instead of a stat row. */}
+      <div className="flex items-baseline gap-6">
         <p className="text-base font-light text-uju-secondary">Multiplier</p>
         <p className="text-2xl font-bold text-pado-3 tabular-nums">
           {total.toFixed(2)}x
