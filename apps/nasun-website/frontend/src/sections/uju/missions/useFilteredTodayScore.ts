@@ -18,6 +18,7 @@ import type { EcosystemScoreData } from '@/services/ecosystemScoreApi';
 import { useUjuAppDirectory } from '../apps/UjuAppDirectoryProvider';
 import {
   computeFilteredTodayBase,
+  computeCompletedMissions,
   getActiveMissionCategories,
 } from './todayScoring';
 
@@ -33,6 +34,9 @@ export interface FilteredTodayScore {
    *  (i.e. the user has on-chain activity outside their active mission
    *  set). UI can surface a tooltip when this is true. */
   hasFilteredOutActivity: boolean;
+  /** Per-mission breakdown for completed missions today (pts > 0).
+   *  Inactive or not-yet-completed missions are omitted. */
+  completedMissions: { id: string; label: string; pts: number }[];
 }
 
 export function useFilteredTodayScore(
@@ -42,7 +46,7 @@ export function useFilteredTodayScore(
 
   return useMemo<FilteredTodayScore>(() => {
     if (!score) {
-      return { filtered: null, raw: null, hasFilteredOutActivity: false };
+      return { filtered: null, raw: null, hasFilteredOutActivity: false, completedMissions: [] };
     }
 
     const todayCategories = score.todayCategories ?? [];
@@ -81,6 +85,7 @@ export function useFilteredTodayScore(
       filtered,
       raw: score,
       hasFilteredOutActivity: filteredBase !== rawBase,
+      completedMissions: computeCompletedMissions(todayCategories, directory.state.missions),
     };
   }, [score, directory.state.missions]);
 }

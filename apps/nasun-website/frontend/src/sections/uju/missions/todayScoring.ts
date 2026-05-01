@@ -65,6 +65,41 @@ const CATEGORY_ALIASES: Record<string, string> = {
   'pado-numbermatch': 'gostop-numbermatch',
 };
 
+// Flat lookup of mission id → label from the registry.
+function getMissionLabel(id: string): string | undefined {
+  for (const missions of Object.values(APP_MISSION_MAP)) {
+    const m = missions.find((x) => x.id === id);
+    if (m) return m.label;
+  }
+  return undefined;
+}
+
+/**
+ * Returns per-mission breakdown for completed missions only (pts > 0).
+ * Inactive or not-yet-completed missions are omitted.
+ * Mirrors the dedup + alias logic of computeFilteredTodayBase.
+ */
+export function computeCompletedMissions(
+  todayCategories: readonly string[],
+  missionsByApp: Record<string, string[] | undefined>,
+): { id: string; label: string; pts: number }[] {
+  const activeCategories = getActiveMissionCategories(missionsByApp);
+  const result: { id: string; label: string; pts: number }[] = [];
+  const counted = new Set<string>();
+  for (const cat of todayCategories) {
+    const resolved = CATEGORY_ALIASES[cat] ?? cat;
+    if (!activeCategories.has(resolved)) continue;
+    if (counted.has(resolved)) continue;
+    counted.add(resolved);
+    result.push({
+      id: resolved,
+      label: getMissionLabel(resolved) ?? resolved,
+      pts: resolved === 'pado-dex' ? PADO_DEX_WEIGHT : 1,
+    });
+  }
+  return result;
+}
+
 /**
  * Compute today's base score restricted to active mission categories.
  * `todayCategories` is the deduped category list returned by the backend
