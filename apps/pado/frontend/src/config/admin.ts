@@ -13,4 +13,5 @@ export const ADMIN_EMAILS: readonly string[] = [
 // Wallet addresses that are treated as platform admins
 export const ADMIN_ADDRESSES: readonly string[] = [
   '0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90',
+  '0xb649203f52fddca7194cc85ed14d0bc719ccc4d958393f2f23ee3ee58bec43ed',
 ];

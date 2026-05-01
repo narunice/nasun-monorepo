@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import { PREDICTION_PACKAGE_ID } from '../../prediction/constants';
+import { ADMIN_EMAILS, ADMIN_ADDRESSES } from '../../../config/admin';
 
 const PREDICTION_ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
 
@@ -79,7 +80,14 @@ export function useAdminAccess(): UseAdminAccessResult {
     checkAdminCaps();
   }, [walletAddress]);
 
-  const isPredictionAdmin = !!adminCaps.predictionAdminCapId;
+  // Allowlist fallback: surface admin UI even when the active wallet does not
+  // own the on-chain AdminCap. Actual admin transactions still require signing
+  // from the AdminCap owner — switch wallets before executing resolve/create.
+  const isAllowlistedAdmin =
+    (isZkLoggedIn && !!zkState?.email && ADMIN_EMAILS.includes(zkState.email)) ||
+    (!!walletAddress && ADMIN_ADDRESSES.includes(walletAddress));
+
+  const isPredictionAdmin = !!adminCaps.predictionAdminCapId || isAllowlistedAdmin;
   const isAdmin = isPredictionAdmin;
 
   return {
