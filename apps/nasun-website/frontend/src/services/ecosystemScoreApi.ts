@@ -19,6 +19,11 @@ export class EcosystemScoreError extends Error {
 }
 
 export interface EcosystemHealthSlot {
+  /**
+   * V3 semantics:
+   *   - Alliance slot: alliance_health % (0..100, 25-step). For GP holders, always 100.
+   *   - GP slot: gp_bonus * 100 (0..100, 20-step).
+   */
   pct: number;
   restDays: number;
   hasNft: boolean;
