@@ -162,7 +162,7 @@ function AppDirectoryRow({
 
   return (
     <div className="py-4">
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 flex-wrap sm:flex-nowrap">
         <span
           aria-hidden="true"
           className={`shrink-0 mt-1 w-2.5 h-2.5 rounded-full ${
@@ -229,7 +229,7 @@ function AppDirectoryRow({
             {app.description}
           </p>
         </div>
-        <div className="shrink-0 flex items-center gap-2">
+        <div className="shrink-0 flex items-center gap-2 w-full sm:w-auto justify-end pl-[22px] sm:pl-0">
           <UjuButton
             variant="ghost"
             size="xs"

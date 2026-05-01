@@ -23,7 +23,7 @@ export function OverviewSummaryCard() {
 
         {/* Right: nasun points + health status share a single tinted surface
             — 3/4 width. Symmetric padding on all four sides. */}
-        <div className="md:col-span-3 rounded-xl bg-pado-1/[0.12] p-5 sm:p-6">
+        <div className="md:col-span-3 rounded-xl bg-pado-1/[0.12] p-3 sm:p-6">
           {/* 55/45 split. Inner gap (gap-6 / 24px) plus extra left-padding
               on the Health Status column give that side breathing room from
               the Nasun Points number, which dominates visually on the left. */}

@@ -31,7 +31,7 @@ function HealthInfoIcon() {
           />
           <div
             role="tooltip"
-            className="absolute right-0 top-7 z-50 w-72 rounded-xl border border-uju-border/60 bg-uju-card shadow-2xl p-3 text-sm text-uju-secondary leading-relaxed"
+            className="absolute right-0 top-7 z-50 w-[min(18rem,calc(100vw-2rem))] rounded-xl border border-uju-border/60 bg-uju-card shadow-2xl p-3 text-sm text-uju-secondary leading-relaxed"
           >
             <p className="text-uju-primary font-semibold mb-2">
               Health &amp; Boost

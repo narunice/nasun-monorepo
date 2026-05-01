@@ -35,7 +35,7 @@ export function TotalPointsCard({ bare = false }: TotalPointsCardProps = {}) {
       ) : (
         <div className="flex flex-col items-center justify-center flex-1 w-full gap-4">
           <div className="flex flex-col h-full justify-center items-center">
-            <p className="text-5xl sm:text-6xl md:text-7xl font-bold tabular-nums leading-none bg-gradient-to-r from-pado-3  to-pado-5 bg-clip-text text-transparent">
+            <p className="text-4xl sm:text-6xl md:text-7xl font-bold tabular-nums leading-none break-all bg-gradient-to-r from-pado-3  to-pado-5 bg-clip-text text-transparent">
               {allTimePoints.toLocaleString()}
             </p>
             <p className="text-base text-uju-secondary mt-2">All-time total</p>

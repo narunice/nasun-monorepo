@@ -272,7 +272,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
           return (
             <div
               key={mission.id}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${
+              className={`flex items-center gap-2 sm:gap-3 px-2 sm:px-3 py-2.5 rounded-lg transition-colors ${
                 completed ? "" : "hover:bg-white/[0.03]"
               }`}
             >
@@ -347,11 +347,16 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
                 )}
               </div>
 
-              {/* Right side: cadence pill + (faucet button or checkbox) */}
-              <div className="shrink-0 flex items-center gap-2">
-                <CadenceTag cadence={mission.cadence ?? "daily"} />
+              {/* Right side: cadence pill + (faucet button or checkbox).
+                  Cadence pill is hidden on the smallest screens to keep the
+                  row's primary action (claim/checkbox) within reach without
+                  truncating the mission label too aggressively. */}
+              <div className="shrink-0 flex items-center gap-1.5 sm:gap-2">
+                <span className="hidden sm:inline-flex">
+                  <CadenceTag cadence={mission.cadence ?? "daily"} />
+                </span>
                 {mission.showFaucet && !completed ? (
-                  <div className="w-36">
+                  <div className="w-28 sm:w-36">
                     <ClaimAllButton
                       persistent
                       onSuccess={handleFaucetSuccess}
