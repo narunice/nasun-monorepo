@@ -1,4 +1,4 @@
-import { NM_PRICE_PER_PICK_NUSDC_NUSDC } from '../constants'
+import { NM_PRICE_PER_PICK_NUSDC } from '../constants'
 
 interface NMPlayPanelProps {
   picksCount: number
