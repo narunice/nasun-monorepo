@@ -12,16 +12,16 @@ import { useAuth } from "@/features/auth";
 import { OuterBox, Spinner } from "@/components/ui";
 import { ClaimAllButton } from "@nasun/wallet-ui";
 import { useDailyMissions } from "@/hooks/useDailyMissions";
+import { useAccountWalletAddresses } from "@/hooks/useAccountWalletAddresses";
 import { useGovernanceMission } from "@/hooks/useGovernanceMission";
 import { useWalletRegistration } from "./hooks/useWalletRegistration";
+import { APP_MISSION_MAP } from "@/sections/uju/missions/missionRegistry";
 import { trackCrossAppNav, withCrossAppParam } from "@/lib/analytics";
 
 interface DailyMissionsCardProps {
   className?: string;
   bare?: boolean;
 }
-
-const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 
 interface Mission {
   id: string;
@@ -31,66 +31,53 @@ interface Mission {
   showFaucet?: boolean;
   comingSoon?: boolean;
   externalUrl?: string;
-  /** Mission no longer credited by the scanner; shown for transparency
-   *  during the my-account → uju migration window. */
-  deprecated?: boolean;
 }
 
-// Mission ids must match useDailyMissions.ts MissionId union exactly. PR3a
-// renamed pado-{lottery,scratchcard,games} → gostop-{lottery,scratchcard,
-// numbermatch} and split gostop into 5 separate categories. PR3b removed
-// chat from the daily-mission UI. This list mirrors useDailyMissions
-// detection so checkboxes track what the scanner actually credits.
-const MISSIONS: Mission[] = [
-  {
-    id: "faucet",
-    label: "Claim Tokens",
-    description: "Use the faucet to get free test tokens",
-    points: 1,
-    showFaucet: true,
-  },
-  {
-    id: "wallet-transfer",
-    label: "Send Tokens",
-    description: "Transfer tokens to another wallet",
-    points: 1,
-  },
-  {
-    id: "pado-dex",
-    label: "Spot Trade",
-    description: "Place a trade on the DEX orderbook",
-    points: 2,
-    externalUrl: "https://pado.finance/trade",
-  },
-  {
-    id: "gostop-lottery",
-    label: "Buy Lottery Ticket",
-    description: "Pick 5 numbers and try your luck",
-    points: 1,
-    externalUrl: "https://gostop.app/lottery",
-  },
-  {
-    id: "gostop-scratchcard",
-    label: "Play Scratch Card",
-    description: "Scratch and win instant prizes",
-    points: 1,
-    externalUrl: "https://gostop.app/scratch",
-  },
-  {
-    id: "gostop-numbermatch",
-    label: "Play Number Match",
-    description: "Pick numbers for a quick game",
-    points: 1,
-    externalUrl: "https://gostop.app/numbermatch",
-  },
-  {
-    id: "chat",
-    label: "Chat",
-    description: "Say something in Nasun or Pado chat room",
-    points: 1,
-    deprecated: true,
-  },
-];
+// myAccount-specific deep links that override the registry's landing-page URLs
+// (registry points pado-dex at https://pado.finance; myAccount sends users
+// straight to /trade for a tighter call to action).
+const URL_OVERRIDES: Record<string, string> = {
+  "pado-dex": "https://pado.finance/trade",
+};
+
+// Project a UjuMission entry into the myAccount Mission shape.
+function fromRegistry(id: string): Mission | null {
+  for (const list of Object.values(APP_MISSION_MAP)) {
+    const m = list.find((x) => x.id === id);
+    if (!m) continue;
+    return {
+      id: m.id,
+      label: m.label,
+      description: m.description,
+      points: m.points ?? 1,
+      showFaucet: m.showFaucet,
+      externalUrl: URL_OVERRIDES[m.id] ?? m.externalUrl,
+    };
+  }
+  return null;
+}
+
+// Mission set surfaced on the my-account checklist. Source of truth is
+// APP_MISSION_MAP in missionRegistry.ts; this list is only the curated subset
+// that the legacy my-account UI exposes (uju shows the full per-app catalog).
+//
+// SYNC INVARIANT: every onchain id here must also be present in
+// useDailyMissions.ts EVENT_MISSION_MAP / FAUCET_MODULES, AND in the backend
+// scanner (apps/network-explorer/api-server/src/config/points.ts). The
+// missionRegistry.test.ts MissionId guard already enforces the type-side of
+// this; backend drift remains a manual review item.
+const MY_ACCOUNT_MISSION_IDS = [
+  "faucet",
+  "wallet-transfer",
+  "pado-dex",
+  "gostop-lottery",
+  "gostop-scratchcard",
+  "gostop-numbermatch",
+] as const;
+
+const MISSIONS: Mission[] = MY_ACCOUNT_MISSION_IDS
+  .map(fromRegistry)
+  .filter((m): m is Mission => m !== null);
 
 export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
   className = "",
@@ -99,21 +86,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
   const { user } = useAuth();
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
   const { registeredWallets } = useWalletRegistration();
-
-  // Collect all valid wallet addresses for this account
-  const allWalletAddresses = useMemo(() => {
-    const addrs = new Set<string>();
-    // Primary nasun wallet
-    const primary =
-      user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
-      user?.walletAddress;
-    if (primary && SUI_ADDRESS_RE.test(primary)) addrs.add(primary);
-    // All registered wallets
-    for (const w of registeredWallets) {
-      if (SUI_ADDRESS_RE.test(w.walletAddress)) addrs.add(w.walletAddress);
-    }
-    return [...addrs];
-  }, [user, registeredWallets]);
+  const allWalletAddresses = useAccountWalletAddresses(registeredWallets);
 
   const { completedMissions, isLoading, refetch } = useDailyMissions(
     user?.identityId,
@@ -123,13 +96,8 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
   const { hasUnvotedProposal, unvotedCount } = useGovernanceMission();
 
   const isCompleted = useCallback(
-    (mission: Mission) => {
-      if (mission.deprecated) return false;
-      return (
-        completedMissions.has(mission.id as any) ||
-        localCompleted.has(mission.id)
-      );
-    },
+    (mission: Mission) =>
+      completedMissions.has(mission.id) || localCompleted.has(mission.id),
     [completedMissions, localCompleted],
   );
 
@@ -148,15 +116,9 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
     return base;
   }, [hasUnvotedProposal, unvotedCount]);
 
-  // Deprecated missions don't count toward completion progress.
-  const trackedMissions = useMemo(
-    () => activeMissions.filter((m) => !m.deprecated),
-    [activeMissions],
-  );
-
   const completedCount = useMemo(
-    () => trackedMissions.filter((m) => isCompleted(m)).length,
-    [trackedMissions, isCompleted],
+    () => activeMissions.filter((m) => isCompleted(m)).length,
+    [activeMissions, isCompleted],
   );
 
   const handleFaucetSuccess = useCallback(() => {
@@ -200,7 +162,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
             Daily Missions
           </h6>
           <p className="text-sm text-nasun-white/80 mt-0.5">
-            {completedCount}/{trackedMissions.length} completed
+            {completedCount}/{activeMissions.length} completed
           </p>
         </div>
       </div>
@@ -210,7 +172,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
         <div
           className="h-full bg-green-500 rounded-full transition-all duration-500"
           style={{
-            width: `${trackedMissions.length > 0 ? (completedCount / trackedMissions.length) * 100 : 0}%`,
+            width: `${activeMissions.length > 0 ? (completedCount / activeMissions.length) * 100 : 0}%`,
           }}
         />
       </div>
@@ -218,14 +180,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
       {/* Steps */}
       <div className="space-y-3">
         {activeMissions.map((mission, i) => {
-          const completed =
-            !mission.comingSoon && !mission.deprecated && isCompleted(mission);
-          const muted = mission.comingSoon || mission.deprecated;
+          const completed = !mission.comingSoon && isCompleted(mission);
+          const muted = mission.comingSoon;
           return (
-            <div
-              key={mission.id}
-              className={`flex items-start gap-3 ${mission.deprecated ? "opacity-60" : ""}`}
-            >
+            <div key={mission.id} className="flex items-start gap-3">
               {/* Circle checkbox */}
               <div
                 className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center ${
@@ -265,7 +223,7 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                   }`}
                 >
                   {i + 1}.{" "}
-                  {mission.externalUrl && !mission.deprecated ? (
+                  {mission.externalUrl ? (
                     <a
                       href={
                         mission.externalUrl.startsWith("https://pado.finance")
@@ -309,25 +267,13 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                       Coming Soon
                     </span>
                   )}
-                  {mission.deprecated && (
-                    <span className="ml-2 text-sm font-semibold px-1.5 py-0.5 rounded-full bg-nasun-c1/20 text-nasun-c1">
-                      Deprecated
-                    </span>
-                  )}
-                  {!mission.deprecated && (
-                    <span className="ml-2 text-sm font-mono text-nasun-white/80">
-                      +{mission.points}
-                    </span>
-                  )}
+                  <span className="ml-2 text-sm font-mono text-nasun-white/80">
+                    +{mission.points}
+                  </span>
                 </p>
-                {!completed && !mission.comingSoon && !mission.deprecated && (
+                {!completed && !mission.comingSoon && (
                   <p className="text-sm text-nasun-white/80 mt-0.5">
                     {mission.description}
-                  </p>
-                )}
-                {mission.deprecated && (
-                  <p className="text-sm text-nasun-white/60 mt-0.5">
-                    No longer credited.
                   </p>
                 )}
               </div>
