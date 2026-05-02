@@ -75,10 +75,6 @@ export function useCrash(): UseCrashResult {
     setAutoCashOutBps,
   } = useCrashActions(
     walletAddress,
-    kind,
-    zkSign,
-    getKeypair,
-    passkeyKeypair,
     roundObjectIdRef,
     liveMultiplierBps,
     hasBetThisRound,
