@@ -35,6 +35,8 @@ export interface PlaceLimitOrderParams {
   expireTimestamp?: bigint; // 만료 시간 (ms)
   payWithDeep?: boolean;
   clientOrderId?: bigint;
+  // Injected into the PTB before the order call (e.g. MA withdraw + BM deposit for atomic MA-first flow)
+  preSteps?: (tx: import('@mysten/sui/transactions').Transaction) => void;
 }
 
 export interface PlaceMarketOrderParams {
@@ -43,6 +45,7 @@ export interface PlaceMarketOrderParams {
   selfMatchingOption?: SelfMatchingOption;
   payWithDeep?: boolean;
   clientOrderId?: bigint;
+  preSteps?: (tx: import('@mysten/sui/transactions').Transaction) => void;
 }
 
 export interface SwapParams {

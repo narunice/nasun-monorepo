@@ -5,6 +5,7 @@
 
 import { useCallback, useState } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
+import type { Transaction } from '@mysten/sui/transactions';
 import { useTrading } from "../useTrading";
 import { useMarket } from "../context/MarketContext";
 import { useOrderForm } from "../context/OrderFormContext";
@@ -14,11 +15,14 @@ import type { TradeResult, OrderType } from "../types";
 import { ORDER_TYPE } from "../constants";
 import { useToast } from "@/components/common";
 import { playSound } from "../../../lib/sounds";
-import { quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
+import { priceToRaw, quantityToRaw, getMinQuantity, getMinPrice } from "../../../lib/deepbook";
 import { isMarginError } from "../../../lib/risk-engine";
 import { parseError } from "../utils/errorParser";
 import { RPC_SYNC_DELAY_MS, MARKET_ORDER_SLIPPAGE_BUFFER } from "../../../lib/constants";
 import { getUnifiedPrice } from "../../../lib/prices";
+import { withdrawNusdcFromMa } from "../../../lib/payment";
+import { NETWORK_CONFIG } from "../../../config/network";
+import { parseExecutionInfo } from "../lib/parseExecutionInfo";
 import type { AutoDepositResult } from "./useAutoDeposit";
 
 /**
@@ -125,6 +129,7 @@ export function useOrderActions(): UseOrderActionsResult {
     isLoading,
     isValidatingBalanceManager,
     balanceManagerId,
+    placeLimitOrder,
     placeBuyOrder,
     placeSellOrder,
     placeMarketOrder,
@@ -149,8 +154,13 @@ export function useOrderActions(): UseOrderActionsResult {
     lastDepositError: lastAutoDepositError,
   } = useAutoDeposit(balanceManagerId);
 
-  // Margin account for unified onboarding
-  const { hasAccount: hasMarginAccount, createAccount: createMarginAccount } = useMarginAccount();
+  // Margin account for unified onboarding and MA-first routing
+  const {
+    hasAccount: hasMarginAccount,
+    createAccount: createMarginAccount,
+    account: marginAccount,
+    accountId: marginAccountId,
+  } = useMarginAccount();
 
   // Convert error message to user-friendly format
   const formatUserFriendlyError = useCallback(
@@ -253,7 +263,49 @@ export function useOrderActions(): UseOrderActionsResult {
       orderType: OrderType = ORDER_TYPE.NO_RESTRICTION,
       skipRefresh = false
     ): Promise<TradeResult> => {
-      // Auto deposit if enabled
+      // MA-first: buy orders only (NUSDC quote). If MA has sufficient balance,
+      // inject MA withdraw + BM deposit as PTB pre-steps for a single atomic tx.
+      if (type === "buy" && marginAccountId && balanceManagerId && currentPool.quoteToken.type) {
+        const maBalance = marginAccount?.nusdcBalance ?? 0n;
+        // Use toFixed-based string conversion to avoid JS float precision loss
+        // (BigInt(Math.ceil(float * 10^n)) can produce off-by-one errors near integer boundaries)
+        const totalQuote = price * amount;
+        const dec = currentPool.quoteToken.decimals;
+        const [intPart, fracPart = ''] = totalQuote.toFixed(dec).split('.');
+        const rawRequired = BigInt(intPart + fracPart.padEnd(dec, '0').slice(0, dec));
+        if (rawRequired > 0n && maBalance >= rawRequired) {
+          const maId = marginAccountId;
+          const bmId = balanceManagerId;
+          const quoteType = currentPool.quoteToken.type;
+          const preSteps = (tx: Transaction) => {
+            const coinArg = withdrawNusdcFromMa(tx, maId, rawRequired);
+            tx.moveCall({
+              target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::deposit`,
+              typeArguments: [quoteType],
+              arguments: [tx.object(bmId), coinArg],
+            });
+          };
+          const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals);
+          const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
+          const result = await placeLimitOrder({ price: rawPrice, quantity: rawQuantity, isBid: true, orderType, preSteps });
+          if (result.success) {
+            playSound('orderPlaced');
+            const executionInfo = result.events
+              ? parseExecutionInfo(result.events, amount, true, currentPool.baseToken.decimals, currentPool.quoteToken.decimals) ?? undefined
+              : undefined;
+            const withExec = executionInfo ? { ...result, executionInfo } : result;
+            showToast(formatOrderResult(withExec, true, currentPool.takerFeeBps), "success");
+            if (!skipRefresh) refreshData();
+            return withExec;
+          } else {
+            playSound('error');
+            showToast(formatUserFriendlyError(result.error, { side: "buy", requiredAmount: price * amount, availableAmount: 0 }), "error");
+            return result;
+          }
+        }
+      }
+
+      // Sell side or MA insufficient: fall back to wallet auto-deposit flow
       if (autoDepositEnabled && balanceManagerId) {
         const requiredQuote = type === "buy" ? price * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
@@ -279,7 +331,7 @@ export function useOrderActions(): UseOrderActionsResult {
         const friendlyError = formatUserFriendlyError(result.error, {
           side: type,
           requiredAmount: type === "buy" ? requiredQuote : requiredBase,
-          availableAmount: 0, // Exact available is unknown at this point
+          availableAmount: 0,
         });
         showToast(friendlyError, "error");
       }
@@ -289,7 +341,10 @@ export function useOrderActions(): UseOrderActionsResult {
     [
       autoDepositEnabled,
       balanceManagerId,
+      marginAccountId,
+      marginAccount,
       depositIfNeeded,
+      placeLimitOrder,
       placeBuyOrder,
       placeSellOrder,
       showToast,
@@ -302,11 +357,13 @@ export function useOrderActions(): UseOrderActionsResult {
   // 시장가 주문 실행 (with auto deposit)
   const handleMarketOrder = useCallback(
     async (type: "buy" | "sell", amount: number): Promise<TradeResult> => {
-      // Auto deposit if enabled (use oracle price with slippage buffer for market orders)
+      // MA-first is limit-order only. Market orders use slippage-buffered estimated cost
+      // so the exact withdrawal amount is unknown; use wallet auto-deposit fallback instead.
+      const baseSymbol = currentPool.baseToken.symbol;
+      const oraclePrice = getUnifiedPrice(baseSymbol as Parameters<typeof getUnifiedPrice>[0]);
+      const estimatedPrice = oraclePrice > 0 ? oraclePrice * MARKET_ORDER_SLIPPAGE_BUFFER : 100000;
+
       if (autoDepositEnabled && balanceManagerId) {
-        const baseSymbol = currentPool.baseToken.symbol;
-        const oraclePrice = getUnifiedPrice(baseSymbol as Parameters<typeof getUnifiedPrice>[0]);
-        const estimatedPrice = oraclePrice > 0 ? oraclePrice * MARKET_ORDER_SLIPPAGE_BUFFER : 100000;
         const requiredQuote = type === "buy" ? estimatedPrice * amount : 0;
         const requiredBase = type === "sell" ? amount : 0;
         const deposit = await performAutoDeposit(depositIfNeeded, requiredQuote, requiredBase, showToast, baseSymbol);
@@ -321,7 +378,6 @@ export function useOrderActions(): UseOrderActionsResult {
 
       if (result.success) {
         playSound('orderFilled');
-        const baseSymbol = currentPool.baseToken.symbol;
         const msg = result.executionInfo
           ? formatOrderResult(result, type === "buy", currentPool.takerFeeBps)
           : `Market ${type === "buy" ? "Buy" : "Sell"} ${amount.toFixed(4)} ${baseSymbol} executed! (in Pado)`;

@@ -10,10 +10,13 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   buildOpenPositionWithAmount,
+  buildOpenPositionFromMa,
   buildClosePosition,
   buildAddCollateralWithAmount,
+  buildAddCollateralFromMa,
   buildRemoveCollateral,
 } from '../transactions';
+import { useMarginAccount } from '../../core/unified-margin/useMarginAccount';
 import { useInvalidatePositions } from './usePerpPositions';
 import {
   MIN_POSITION_SIZE,
@@ -62,6 +65,8 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const invalidatePositions = useInvalidatePositions();
   const queryClient = useQueryClient();
+
+  const { account: marginAccount, accountId: marginAccountId } = useMarginAccount();
 
   const [isOpening, setIsOpening] = useState(false);
   const [isClosing, setIsClosing] = useState(false);
@@ -196,11 +201,6 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     const requiredCollateral = requiredMargin + fee;
     const collateralUnits = toContractAmount(requiredCollateral);
 
-    const nusdcCoinId = await getNusdcCoin(collateralUnits);
-    if (!nusdcCoinId) {
-      throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
-    }
-
     const sizeUnits = toContractPrice(size / currentPrice);
 
     if (sizeUnits < BigInt(MIN_POSITION_SIZE)) {
@@ -219,7 +219,16 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     setOpenError(null);
 
     try {
-      const tx = buildOpenPositionWithAmount(openParams, nusdcCoinId);
+      // MA-first: use MarginAccount NUSDC if sufficient (single atomic tx)
+      const maBalance = marginAccount?.nusdcBalance ?? 0n;
+      const maId = marginAccountId;
+      const tx = (maId && maBalance >= collateralUnits)
+        ? buildOpenPositionFromMa(openParams, maId)
+        : await (async () => {
+            const nusdcCoinId = await getNusdcCoin(collateralUnits);
+            if (!nusdcCoinId) throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
+            return buildOpenPositionWithAmount(openParams, nusdcCoinId);
+          })();
       const result = await executeTransaction(tx);
 
       if (!result.success) {
@@ -239,7 +248,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     } finally {
       setIsOpening(false);
     }
-  }, [walletAddress, marketId, executeTransaction, getNusdcCoin, invalidatePositions, queryClient, onSuccess, onError]);
+  }, [walletAddress, marketId, executeTransaction, getNusdcCoin, marginAccount, marginAccountId, invalidatePositions, queryClient, onSuccess, onError]);
 
   // Close position
   const closePosition = useCallback(async (params: {
@@ -296,11 +305,6 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     const { positionId, amount } = params;
     const amountUnits = toContractAmount(amount);
 
-    const nusdcCoinId = await getNusdcCoin(amountUnits);
-    if (!nusdcCoinId) {
-      throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
-    }
-
     const addParams: AddCollateralParams = {
       marketId,
       positionId,
@@ -310,7 +314,16 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     setIsAddingCollateral(true);
 
     try {
-      const tx = buildAddCollateralWithAmount(addParams, nusdcCoinId);
+      // MA-first: use MarginAccount NUSDC if sufficient (single atomic tx)
+      const maBalance = marginAccount?.nusdcBalance ?? 0n;
+      const maId = marginAccountId;
+      const tx = (maId && maBalance >= amountUnits)
+        ? buildAddCollateralFromMa(addParams, maId)
+        : await (async () => {
+            const nusdcCoinId = await getNusdcCoin(amountUnits);
+            if (!nusdcCoinId) throw new Error('Not enough NUSDC in wallet. Get tokens from Faucet.');
+            return buildAddCollateralWithAmount(addParams, nusdcCoinId);
+          })();
       const result = await executeTransaction(tx);
 
       if (!result.success) {
@@ -328,7 +341,7 @@ export function usePerpOrder(options: UsePerpOrderOptions) {
     } finally {
       setIsAddingCollateral(false);
     }
-  }, [walletAddress, executeTransaction, getNusdcCoin, invalidatePositions, onSuccess, onError]);
+  }, [walletAddress, executeTransaction, getNusdcCoin, marginAccount, marginAccountId, invalidatePositions, onSuccess, onError]);
 
   // Remove collateral
   const removeCollateral = useCallback(async (params: {
