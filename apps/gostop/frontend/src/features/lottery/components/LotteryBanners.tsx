@@ -1,4 +1,4 @@
-import { formatNusdc } from "../lottery-client";
+import { formatNusdc } from "../../../lib/format";
 import type { ClaimableTicket } from "../hooks";
 
 const URGENT_DEADLINE_MS = 24 * 60 * 60 * 1000;

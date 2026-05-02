@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { countMatchingNumbers, getTicketTier, formatNusdc } from "../lottery-client";
+import { countMatchingNumbers, getTicketTier } from "../lottery-client";
+import { formatNusdc } from "../../../lib/format";
 import { ROUND_STATUS } from "../../../lib/gostop-config";
 import type { Ticket, LotteryRound } from "../lottery-client";
 
