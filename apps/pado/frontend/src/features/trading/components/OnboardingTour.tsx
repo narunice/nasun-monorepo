@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useId, useState, useRef, useCallback } from 'react';
-import { TOUR_STEPS, type OnboardingTourState } from '../hooks/useOnboardingTour';
+import { type OnboardingTourState } from '../hooks/useOnboardingTour';
 
 interface OnboardingTourProps {
   tour: OnboardingTourState;
@@ -157,7 +157,7 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
       >
         {/* Step indicator */}
         <div className="flex items-center gap-1.5 mb-2">
-          {TOUR_STEPS.map((_, i) => (
+          {Array.from({ length: tour.totalSteps }).map((_, i) => (
             <div
               key={i}
               className={`w-2 h-2 rounded-full transition-colors ${
