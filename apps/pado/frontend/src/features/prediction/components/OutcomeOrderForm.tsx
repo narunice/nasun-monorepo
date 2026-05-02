@@ -58,6 +58,8 @@ export function OutcomeOrderForm({
   const {
     isLoading,
     isFaucetLoading,
+    bmId,
+    createPadoAccount,
     placeBuyTaker,
     placeSellTaker,
     mintTokens,
@@ -70,6 +72,8 @@ export function OutcomeOrderForm({
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
   const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
+  // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
+  const [setupStep, setSetupStep] = useState<'creating-account' | 'placing-trade' | null>(null);
 
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
@@ -142,16 +146,17 @@ export function OutcomeOrderForm({
       if (orderMode === 'limit' && (priceBps < MIN_PRICE_BPS || priceBps > MAX_PRICE_BPS)) {
         return 'Price must be between 0.01% and 99.99%';
       }
-      // Round-7 W: balance + cap pre-check before signing.
+      // Round-7 W: cap pre-check.
       if (orderType === 'buy' && amountNum > MAX_NUSDC_PER_TX) {
         return `Amount exceeds per-transaction cap of ${MAX_NUSDC_PER_TX.toLocaleString('en-US')} NUSDC`;
       }
-      if (orderType === 'buy' && amountNum > parseFloat(nusdcBalance)) {
-        return `Insufficient NUSDC. Balance: ${parseFloat(nusdcBalance).toFixed(2)}`;
+      // Skip wallet balance check when BM is present: BM balance checked on-chain at trade time.
+      if (orderType === 'buy' && !bmId && amountNum > parseFloat(nusdcBalance)) {
+        return `Insufficient NUSDC. Wallet: ${parseFloat(nusdcBalance).toFixed(2)}`;
       }
       return null;
     },
-    [orderType, orderMode, nusdcBalance],
+    [orderType, orderMode, nusdcBalance, bmId],
   );
 
   const handleSubmit = useCallback(
@@ -177,11 +182,24 @@ export function OutcomeOrderForm({
 
       await submitGuard(async () => {
         if (orderType === 'buy') {
+          // Two-tx for first-time users: if no BM, create one first (tx1) then trade (tx2).
+          if (!bmId) {
+            setSetupStep('creating-account');
+            const createResult = await createPadoAccount();
+            if (!createResult.success) {
+              setSetupStep(null);
+              setError(createResult.error || 'Failed to set up Pado account');
+              return;
+            }
+            setSetupStep('placing-trade');
+          }
+
           // Market: clamp max-price to bestAsk + slippage so we don't blow through the book.
           // Limit: respect user's price ceiling.
           let maxPriceBps: number;
           if (orderMode === 'market') {
             if (bestAskBps == null) {
+              setSetupStep(null);
               setError('No matching orders. Switch to Limit mode and set a price.');
               return;
             }
@@ -198,6 +216,7 @@ export function OutcomeOrderForm({
             restOnNoFill,
             nusdcUnits(amountNum),
           );
+          setSetupStep(null);
           if (result.success) {
             setSuccess(`Order placed. Tx: ${result.digest?.slice(0, 8)}...`);
             setAmount('');
@@ -247,6 +266,8 @@ export function OutcomeOrderForm({
       bestBidBps,
       market.id,
       selectedPositionId,
+      bmId,
+      createPadoAccount,
       placeBuyTaker,
       placeSellTaker,
       refetchPositions,
@@ -308,7 +329,7 @@ export function OutcomeOrderForm({
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-xs text-theme-text-muted">Wallet Balance</span>
+              <span className="text-xs text-theme-text-muted">Available NUSDC</span>
               <p className="text-base sm:text-lg font-semibold text-theme-text-primary tabular-nums truncate">
                 {walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-xs sm:text-sm font-normal text-theme-text-muted"> NUSDC</span>
@@ -537,6 +558,17 @@ export function OutcomeOrderForm({
               />
             </svg>
             Syncing with blockchain...
+          </div>
+        )}
+        {setupStep && (
+          <div className="text-theme-text-secondary text-sm bg-theme-bg-tertiary rounded-lg p-2 flex items-center gap-2">
+            <svg className="animate-spin h-4 w-4 shrink-0" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            {setupStep === 'creating-account'
+              ? 'Setting up Pado account (1/2)...'
+              : 'Placing trade (2/2)...'}
           </div>
         )}
 

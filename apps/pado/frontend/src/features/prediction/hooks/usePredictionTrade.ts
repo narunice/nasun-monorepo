@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Transaction, type TransactionArgument } from '@mysten/sui/transactions';
+import { Transaction } from '@mysten/sui/transactions';
 import type { SuiClient } from '@mysten/sui/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
@@ -27,8 +27,12 @@ import {
   buildClaimWinnings,
   buildBurnLosingPosition,
 } from '../transactions';
+import { buildCreateBalanceManager } from '../../trading/transactions';
+import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
+import { storeBalanceManagerId } from '../../../lib/unified-margin';
+import { assembleUnifiedPaymentArg, assembleWalletPaymentArg } from '../../../lib/payment';
 import { useToast } from '@/components/common/Toast';
-import { NUSDC_TYPE, NUSDC_DECIMALS } from '../constants';
+import { NUSDC_DECIMALS } from '../constants';
 
 interface TradeResult {
   success: boolean;
@@ -67,6 +71,10 @@ interface UsePredictionTradeResult {
   isLoading: boolean;
   isFaucetLoading: boolean;
   error: string | null;
+
+  // BM state for payment routing
+  bmId: string | null;
+  createPadoAccount: () => Promise<{ success: boolean; digest?: string; error?: string; newBmId?: string }>;
 
   // R7-C2: replaced single `recoverResolvedFunds` with a two-step API.
   claimRestingRefundsBatch: (
@@ -189,32 +197,6 @@ function parseTradeError(error: unknown): string {
   return message;
 }
 
-/**
- * Async-aware payment assembly (round-6 plan §2.4 C12).
- * Walks owned NUSDC coins, merges fragmented balance, splits the exact required amount.
- */
-async function assemblePaymentArg(
-  tx: Transaction,
-  amount: bigint,
-  walletAddress: string,
-  client: SuiClient,
-): Promise<TransactionArgument> {
-  const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE });
-  const total = coins.data.reduce((s, c) => s + BigInt(c.balance), 0n);
-  if (total < amount) throw new Error('Insufficient NUSDC');
-
-  const sufficient = coins.data.find((c) => BigInt(c.balance) >= amount);
-  if (sufficient) {
-    return tx.splitCoins(tx.object(sufficient.coinObjectId), [tx.pure.u64(amount)])[0];
-  }
-
-  const [primary, ...rest] = coins.data;
-  if (rest.length > 0) {
-    tx.mergeCoins(tx.object(primary.coinObjectId), rest.map((c) => tx.object(c.coinObjectId)));
-  }
-  return tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(amount)])[0];
-}
-
 export function usePredictionTrade(): UsePredictionTradeResult {
   const { status, account, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
@@ -234,6 +216,10 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         : undefined;
   const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
+  // Shared BM store: same instance as useTrading. Prediction reads this to route payments.
+  const bmId = useBalanceManagerStore((s) => s.balanceManagerId);
+  const setBalanceManagerId = useBalanceManagerStore((s) => s.setBalanceManagerId);
+
   const [isLoading, setIsLoading] = useState(false);
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -247,7 +233,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   }, [walletAddress]);
 
   const signAndExecute = useCallback(
-    async (tx: Transaction) => {
+    async (tx: Transaction, opts: { showObjectChanges?: boolean } = {}) => {
       if (!walletAddress) throw new Error('Wallet not connected');
 
       const client = getSuiClient();
@@ -270,7 +256,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       const result = await client.executeTransactionBlock({
         transactionBlock: bytes,
         signature,
-        options: { showEffects: true },
+        options: { showEffects: true, showObjectChanges: opts.showObjectChanges },
       });
 
       if (result.effects?.status?.status !== 'success') {
@@ -377,7 +363,8 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         marketId,
         `buy-taker:${isYes}`,
         async (tx, client) => {
-          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
           buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
         },
         restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
@@ -405,7 +392,8 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         marketId,
         `buy-maker:${isYes}:${priceBps}`,
         async (tx, client) => {
-          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
           buildPlaceBuyMaker(tx, marketId, isYes, priceBps, amountUnits, paymentArg);
         },
         'Limit buy resting',
@@ -431,7 +419,8 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         marketId,
         'mint',
         async (tx, client) => {
-          const paymentArg = await assemblePaymentArg(tx, amountUnits, walletAddress!, client);
+          const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
           buildMintOutcomeTokens(tx, marketId, amountUnits, paymentArg);
         },
         'YES + NO tokens minted',
@@ -562,6 +551,39 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     [runOperation],
   );
 
+  /**
+   * Create a BalanceManager for the connected wallet (tx1 of first-trade two-tx flow).
+   * Stores the new BM ID in localStorage and the shared Zustand store so subsequent
+   * placeBuyTaker calls route through it automatically.
+   */
+  const createPadoAccount = useCallback(async (): Promise<{ success: boolean; digest?: string; error?: string; newBmId?: string }> => {
+    if (!walletAddress) return { success: false, error: 'Wallet not connected' };
+    setIsLoading(true);
+    try {
+      const tx = buildCreateBalanceManager();
+      const result = await signAndExecute(tx, { showObjectChanges: true });
+      const created = result.objectChanges?.find(
+        (c) => c.type === 'created' && 'objectType' in c &&
+          (c as { objectType?: string }).objectType?.includes('BalanceManager'),
+      );
+      const newBmId = (created && 'objectId' in created)
+        ? (created as { objectId: string }).objectId
+        : undefined;
+      if (!newBmId) {
+        return { success: false, error: 'Account created but ID not found. Please refresh.' };
+      }
+      storeBalanceManagerId(walletAddress, newBmId);
+      setBalanceManagerId(newBmId);
+      return { success: true, digest: result.digest, newBmId };
+    } catch (err) {
+      const message = parseTradeError(err);
+      showToast(message, 'error');
+      return { success: false, error: message };
+    } finally {
+      setIsLoading(false);
+    }
+  }, [walletAddress, signAndExecute, showToast, setBalanceManagerId]);
+
   const requestNusdc = useCallback(async (): Promise<TradeResult> => {
     if (!isWalletConnected) {
       showToast('Please connect your wallet', 'error');
@@ -586,6 +608,8 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     isLoading,
     isFaucetLoading,
     error,
+    bmId,
+    createPadoAccount,
     placeBuyTaker,
     placeSellTaker,
     placeBuyMaker,
