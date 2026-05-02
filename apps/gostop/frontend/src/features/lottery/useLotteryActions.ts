@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import { useWallet } from '@nasun/wallet'
-import { LOTTERY_TICKET_PRICE } from '../../lib/gostop-config'
+import { LOTTERY_TICKET_PRICE, LOTTERY_NUMBERS_COUNT, LOTTERY_MAX_NUMBER } from '../../lib/gostop-config'
+import { validateLotteryPicks } from '../../lib/validation/game-rules'
 import {
   buildBuyTicket,
   buildBuyTicketBulk,
@@ -41,6 +42,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
         async (coins) => buildBuyTicket(roundId, coins!.primary, numbers, coins!.extra),
         {
           amount: LOTTERY_TICKET_PRICE,
+          expireThisEpoch: true,
+          validate: () => validateLotteryPicks(numbers, LOTTERY_NUMBERS_COUNT, LOTTERY_MAX_NUMBER),
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
@@ -68,6 +71,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         },
         {
           amount: totalCost,
+          expireThisEpoch: true,
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )

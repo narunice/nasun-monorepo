@@ -10,6 +10,7 @@ import { useBalanceSync } from './useBalanceSync';
 import { GAME_ERRORS } from '../lib/constants/errors';
 import { NUSDC_UNIT_NUMBER } from '../lib/constants/assets';
 import { findNusdcCoins, type FoundCoins } from '../features/shared/coin-utils';
+import type { ValidationResult } from '../lib/validation/game-rules';
 
 export interface GameTxOptions {
   amount?: bigint;
@@ -23,6 +24,10 @@ export interface GameTxOptions {
   awaitFullnode?: boolean;
   /** Whether to optimistically deduct the amount from balance store. */
   optimistic?: boolean;
+  /** Custom validation logic to run before transaction building */
+  validate?: () => ValidationResult;
+  /** If true, transaction expires at the end of the current epoch (~24h max). */
+  expireThisEpoch?: boolean;
 }
 
 /**
@@ -47,6 +52,17 @@ export function useGameTransaction() {
       }
 
       if (isPending) return false;
+
+      // 1. Run Pre-validation
+      if (options.validate) {
+        const result = options.validate();
+        if (!result.isValid) {
+          const msg = result.message || 'Invalid transaction parameters';
+          showToast(msg, 'error');
+          options.onError?.(new Error(msg));
+          return false;
+        }
+      }
 
       const client = getSuiClient();
       setIsPending(true);
@@ -73,6 +89,11 @@ export function useGameTransaction() {
           
           // Ensure sender is set
           tx.setSender(address);
+
+          if (options.expireThisEpoch) {
+            const summary = await client.getLatestSuiSystemState();
+            tx.setExpiration({ Epoch: Number(summary.epoch) + 1 });
+          }
 
           const result = await signAndExecuteTransaction({
             transaction: tx,
@@ -102,7 +123,17 @@ export function useGameTransaction() {
       } catch (err: any) {
         console.error('[GameTransaction] Error:', err);
         const message = err?.message || GAME_ERRORS.TX_FAILED;
-        showToast(message, 'error');
+        
+        let userMessage: string;
+        if (message.includes('MoveAbort')) {
+          userMessage = 'Transaction rejected by smart contract.';
+        } else if (message.includes('GasBalanceTooLow')) {
+          userMessage = 'Insufficient SUI for gas fees.';
+        } else {
+          userMessage = message;
+        }
+
+        showToast(userMessage, 'error');
         options.onError?.(err instanceof Error ? err : new Error(message));
         return false;
       } finally {
