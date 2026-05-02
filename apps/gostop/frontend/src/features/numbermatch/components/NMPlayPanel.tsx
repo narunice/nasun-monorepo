@@ -1,4 +1,4 @@
-import { NM_PRICE_PER_PICK } from '../constants'
+import { NM_PRICE_PER_PICK_NUSDC_NUSDC } from '../constants'
 
 interface NMPlayPanelProps {
   picksCount: number
@@ -13,7 +13,7 @@ export function NMPlayPanel({
   isPlaying,
   onPlay,
 }: NMPlayPanelProps) {
-  const cost = picksCount * NM_PRICE_PER_PICK
+  const cost = picksCount * NM_PRICE_PER_PICK_NUSDC
   const canPlay = picksCount >= 1 && isWalletConnected && !isPlaying
 
   return (
@@ -22,11 +22,11 @@ export function NMPlayPanel({
         <div>
           <h2 className="font-display text-2xl text-gold">Play</h2>
           <p className="text-sm text-neutral-200 mt-1">
-            {NM_PRICE_PER_PICK} NUSDC per pick. 80% RTP across all pick counts.
+            {NM_PRICE_PER_PICK_NUSDC} NUSDC per pick. 80% RTP across all pick counts.
           </p>
         </div>
         <p className="text-base text-gold-200 font-mono">
-          {picksCount} × {NM_PRICE_PER_PICK.toFixed(2)} = {cost.toFixed(2)} NUSDC
+          {picksCount} × {NM_PRICE_PER_PICK_NUSDC.toFixed(2)} = {cost.toFixed(2)} NUSDC
         </p>
       </div>
       <div className="flex justify-center">
