@@ -697,9 +697,9 @@ async function processBatch(
 
 // --- Wallet cache ---
 
-async function maybeRefreshWalletCache(): Promise<void> {
+export async function maybeRefreshWalletCache(force = false): Promise<void> {
   const now = Date.now();
-  if (now - walletCacheLastRefresh < WALLET_CACHE_REFRESH_MS) return;
+  if (!force && now - walletCacheLastRefresh < WALLET_CACHE_REFRESH_MS) return;
 
   const walletMappingsUrl = process.env.WALLET_MAPPINGS_URL;
   const walletMappingsKey = process.env.WALLET_MAPPINGS_API_KEY;
@@ -771,6 +771,15 @@ function applyWalletData(data: { wallets: Record<string, string> }): void {
 /** Look up identityId by wallet address (from scanner's cache). */
 export function getIdentityByWallet(walletAddress: string): string | undefined {
   return registeredWallets.get(walletAddress.toLowerCase());
+}
+
+/** All registered wallets for a given identity (from scanner's cache). */
+export function getWalletsForIdentity(identityId: string): string[] {
+  const out: string[] = [];
+  for (const [wallet, id] of registeredWallets) {
+    if (id === identityId) out.push(wallet);
+  }
+  return out;
 }
 
 // --- Exported for health endpoint ---
