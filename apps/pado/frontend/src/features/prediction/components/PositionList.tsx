@@ -149,7 +149,9 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     return (
       <div className="bg-theme-bg-secondary rounded-xl p-4">
         <h3 className="text-lg font-semibold text-theme-text-primary mb-2">My Positions</h3>
-        <p className="text-sm text-theme-text-muted">No positions in this market</p>
+        <p className="text-sm text-theme-text-muted">
+          You have no positions in this market yet. Place your first trade to see it here.
+        </p>
       </div>
     );
   }
