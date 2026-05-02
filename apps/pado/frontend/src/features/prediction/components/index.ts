@@ -11,4 +11,5 @@ export { ResolverDisclaimerBanner } from './ResolverDisclaimerBanner';
 export { ResolutionMetaPanel } from './ResolutionMetaPanel';
 export { MyOpenOrdersList } from './MyOpenOrdersList';
 export { RecentTradesFeed } from './RecentTradesFeed';
+export { MyTradeHistory } from './MyTradeHistory';
 export { MobileTradeStickyBar } from './MobileTradeStickyBar';

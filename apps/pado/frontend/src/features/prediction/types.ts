@@ -84,6 +84,26 @@ export interface RecentFill {
   timestamp: number;
 }
 
+/**
+ * TradeHistoryRow: user-facing fill row.
+ *
+ * isBuy is normalized to the user's perspective:
+ *   - taker side: !is_bid means user BOUGHT (took an ask)
+ *   - maker side: is_bid means user BOUGHT (rested bid filled)
+ */
+export interface TradeHistoryRow {
+  marketId: string;
+  orderId: number;
+  isYes: boolean;
+  isTaker: boolean;
+  isBuy: boolean;
+  priceBps: number;
+  fillShares: bigint;
+  cost: bigint;
+  timestamp: number;
+  txDigest?: string;
+}
+
 // Convert numeric on-chain status to typed string. Move emits 0=Open, 1=Resolved, 2=Cancelled.
 export function parseMarketStatus(status: number): MarketStatus {
   switch (status) {
