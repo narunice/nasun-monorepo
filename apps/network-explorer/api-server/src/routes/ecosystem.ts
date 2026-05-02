@@ -231,7 +231,13 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
 // Grace period before alliance penalty takes effect (days after NFT first activation)
 const ALLIANCE_PENALTY_GRACE_DAYS = 7;
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
-import { getIdentityByWallet } from '../scanner/points-scanner.js';
+import {
+  getIdentityByWallet,
+  getWalletsForIdentity,
+  maybeRefreshWalletCache,
+} from '../scanner/points-scanner.js';
+import { reconcileTodayForIdentity } from '../scanner/rpc-reconcile-identity.js';
+import { invalidate } from '../cache.js';
 
 const app = new Hono();
 
@@ -1371,6 +1377,69 @@ app.get('/leaderboard', async (c) => {
       prevTotal,
       cappedAt: LEADERBOARD_TOP_N,
       updatedAt: Date.now(),
+    },
+  });
+});
+
+// POST /api/v1/ecosystem/sync
+// Authenticated TODAY-window sync for the requesting identity.
+// - Force-refreshes the scanner's wallet→identity cache
+// - Runs RPC + indexer reconcile across all the user's registered wallets
+//   for today (UTC), filling gaps that the live scanner skipped because
+//   the wallet wasn't yet in cache.
+// - Invalidates the cached score so the next /score read repulls.
+// Rate-limited to 1 call / 30s per identityId.
+const syncRateLimit = new Map<string, number>();
+const SYNC_RATE_LIMIT_MS = 30 * 1000;
+
+app.post('/sync', async (c) => {
+  const header = c.req.header('authorization') || c.req.header('Authorization');
+  const token = header?.replace(/^Bearer\s+/i, '');
+  if (!token) return c.json({ error: 'unauthorized' }, 401);
+  const auth = await verifyCognitoToken(token);
+  if (!auth) return c.json({ error: 'unauthorized' }, 401);
+
+  const identityId = auth.identityId;
+  const now = Date.now();
+  const last = syncRateLimit.get(identityId) ?? 0;
+  if (now - last < SYNC_RATE_LIMIT_MS) {
+    const retryAfter = Math.ceil((SYNC_RATE_LIMIT_MS - (now - last)) / 1000);
+    c.header('Retry-After', String(retryAfter));
+    return c.json({ error: 'rate_limited', retryAfterSec: retryAfter }, 429);
+  }
+  syncRateLimit.set(identityId, now);
+  // Opportunistic cleanup to prevent unbounded growth.
+  if (syncRateLimit.size > 5000) {
+    for (const [k, t] of syncRateLimit) {
+      if (now - t > SYNC_RATE_LIMIT_MS * 2) syncRateLimit.delete(k);
+    }
+  }
+
+  try {
+    await maybeRefreshWalletCache(true);
+  } catch (err) {
+    console.warn('[sync] cache refresh failed:', (err as Error).message);
+  }
+
+  const wallets = getWalletsForIdentity(identityId);
+  let gapsFilled = 0;
+  if (wallets.length > 0) {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      gapsFilled = await reconcileTodayForIdentity(today, identityId, wallets);
+    } catch (err) {
+      console.warn('[sync] reconcile failed:', (err as Error).message);
+    }
+  }
+
+  invalidate(`eco-score-${identityId}`);
+
+  return c.json({
+    data: {
+      identityId,
+      walletsScanned: wallets.length,
+      gapsFilled,
+      syncedAt: new Date().toISOString(),
     },
   });
 });
