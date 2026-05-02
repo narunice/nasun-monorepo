@@ -52,12 +52,36 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecute): RecoveryAda
         };
       };
 
+      const targets: Array<{ id: string; label: string }> = [];
       if (result.primaryId) {
-        items.push(await buildItem(result.primaryId, 'Primary BalanceManager'));
+        targets.push({ id: result.primaryId, label: 'Primary BalanceManager' });
       }
-      for (let i = 0; i < result.orphans.length; i++) {
-        items.push(await buildItem(result.orphans[i].id, `Orphan BalanceManager #${i + 1}`));
-      }
+      result.orphans.forEach((o, i) => {
+        targets.push({ id: o.id, label: `Orphan BalanceManager #${i + 1}` });
+      });
+
+      // Use allSettled so a single failed BM balance fetch doesn't blank the
+      // whole panel — surface failed entries as disabled placeholders so the
+      // user can see the BM exists and follow up via CLI if needed.
+      const settled = await Promise.allSettled(targets.map((t) => buildItem(t.id, t.label)));
+      settled.forEach((res, i) => {
+        if (res.status === 'fulfilled') {
+          items.push(res.value);
+        } else {
+          const reason = res.reason instanceof Error ? res.reason.message : String(res.reason);
+          items.push({
+            id: targets[i].id,
+            label: `${targets[i].label} (failed to load)`,
+            productName: 'Pado Spot / Prediction',
+            actions: [{
+              label: 'Discovery failed',
+              disabled: true,
+              disabledReason: reason,
+              execute: async () => ({ digest: '' }),
+            }],
+          });
+        }
+      });
       return items;
     },
   };

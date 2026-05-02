@@ -112,6 +112,16 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
               <span>Supply: {formatNumber(market.yesSupply + market.noSupply)}</span>
             </div>
           </div>
+          {/* Resolve deadline (only visible after closeTime has passed) */}
+          {(() => {
+            const label = getResolveDeadlineLabel(market);
+            if (!label) return null;
+            return (
+              <div className="mt-2 text-xs text-theme-text-muted">
+                {label}
+              </div>
+            );
+          })()}
         </>
       ) : (
         /* Resolved / Cancelled state — outcome takes center stage */
@@ -174,6 +184,22 @@ function ClockIcon() {
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
     </svg>
   );
+}
+
+/**
+ * Returns a static "Resolves by {date}" label when the market has passed its
+ * close time but is not yet resolved/cancelled. Static (not live-ticking)
+ * because resolveDeadline is typically days away and the live tick is
+ * unnecessary cost.
+ */
+function getResolveDeadlineLabel(market: PredictionMarket): string | null {
+  if (market.status !== 'open') return null;
+  const now = Date.now();
+  if (now < market.closeTime) return null;
+  if (market.resolveDeadline > 0 && now < market.resolveDeadline) {
+    return `Resolves by ${new Date(market.resolveDeadline).toLocaleString('en-US')}`;
+  }
+  return 'Awaiting resolution';
 }
 
 function getTimeRemaining(closeTime: number): string {

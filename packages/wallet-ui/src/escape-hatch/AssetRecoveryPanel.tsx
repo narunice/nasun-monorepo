@@ -295,9 +295,14 @@ function ConfirmDialog({
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-sm rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-medium"
+            disabled={state.simulating}
+            className={`px-4 py-2 text-sm rounded-lg font-medium ${
+              state.simulating
+                ? 'bg-amber-300 text-white cursor-wait'
+                : 'bg-amber-600 hover:bg-amber-700 text-white'
+            }`}
           >
-            Confirm
+            {state.simulating ? 'Simulating...' : 'Confirm'}
           </button>
         </div>
       </div>

@@ -61,19 +61,25 @@ export function usePredictionFilters(
     }
 
     return [...result].sort((a, b) => {
+      let primary = 0;
       switch (sortBy) {
         case 'most-liquid': {
           const aTotal = a.yesSupply + a.noSupply;
           const bTotal = b.yesSupply + b.noSupply;
-          return bTotal > aTotal ? 1 : bTotal < aTotal ? -1 : 0;
+          primary = bTotal > aTotal ? 1 : bTotal < aTotal ? -1 : 0;
+          break;
         }
         case 'newest':
-          return b.createdAt - a.createdAt;
+          primary = b.createdAt - a.createdAt;
+          break;
         case 'closing-soon':
-          return a.closeTime - b.closeTime;
-        default:
-          return 0;
+          primary = a.closeTime - b.closeTime;
+          break;
       }
+      // Stable across refetches when primary keys tie. Without this,
+      // unrelated re-renders can flicker the row order on equal supply/time.
+      if (primary !== 0) return primary;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
   }, [markets, category, sortBy, status]);
 

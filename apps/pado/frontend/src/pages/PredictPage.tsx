@@ -13,7 +13,7 @@ import {
 import { usePredictionFilters } from '../features/prediction/hooks/usePredictionFilters';
 import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
 import { OnboardingTour } from '../features/trading/components/OnboardingTour';
-import { Spinner } from '../components/common';
+import { SkeletonCard } from '../components/common';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
@@ -55,8 +55,14 @@ export function PredictPage() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Spinner size="lg" />
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2">
+          <div className="h-8 w-56 bg-theme-bg-tertiary rounded animate-pulse" />
+          <div className="h-4 w-72 bg-theme-bg-tertiary rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} lines={3} />)}
+        </div>
       </div>
     );
   }
