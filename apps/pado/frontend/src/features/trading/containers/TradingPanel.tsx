@@ -19,6 +19,7 @@ import { TPSLKeeperModal, isKeeperModalSeen } from '../components/TPSLKeeperModa
 import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
 import { GAS_RESERVE_HUMAN, NATIVE_TOKEN_TYPE } from '../constants';
+import { useMarginAccount } from '../../core/unified-margin';
 
 // Stable empty array reference to avoid useMemo invalidation
 const EMPTY_LEVELS: PriceLevel[] = [];
@@ -189,6 +190,10 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const openOrders = openOrdersData?.orders ?? [];
   const { balance: bmBalanceData } = useBalanceManagerBalance({ balanceManagerId });
   const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
+
+  // MA balance for Available display (NUSDC units → human-readable)
+  const { account: maAccount } = useMarginAccount();
+  const marginQuote = Number(maAccount?.nusdcBalance ?? 0n) / 1e6;
 
   // In-orders locked amounts (buy orders lock quote, sell orders lock base)
   const { lockedQuote, lockedBase } = calcLockedAmounts(openOrders);
@@ -576,6 +581,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
                 baseSymbol={baseSymbol}
                 tradingBase={bmBalance.base}
                 tradingQuote={bmBalance.quote}
+                marginQuote={marginQuote}
                 mode="simple"
                 onWithdraw={() => {
                   // Open withdraw for the token with larger BM balance

@@ -120,7 +120,7 @@ export function TransferModal({
           {/* Available balance */}
           <div className="flex justify-between text-sm">
             <span className="text-theme-text-secondary">
-              {isDeposit ? 'Wallet Balance' : 'Trading Balance'}
+              {isDeposit ? 'Wallet Balance' : 'Pado Balance'}
             </span>
             <span className="font-mono text-theme-text-primary">
               {availableBalance.toFixed(displayDecimals)} {tokenSymbol}

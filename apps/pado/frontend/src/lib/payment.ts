@@ -1,11 +1,11 @@
 /**
  * Unified payment assembly for prediction market trades.
  *
- * BM-first routing: when a BalanceManager has sufficient NUSDC, withdraw
- * inline (PTB composable). Falls back to wallet coins.
+ * MA-first routing: when a MarginAccount has sufficient NUSDC, withdraw
+ * inline (PTB composable, atomic). Falls back to BM, then wallet coins.
  *
- * BM.withdraw returns Coin<T> (not void), making it chainable in a PTB.
- * Confirmed in trading/transactions.ts:209 and deepbookv3 balance_manager.move.
+ * withdraw_nusdc_as_coin and BM.withdraw both return Coin<T> (not void),
+ * making them chainable in a PTB.
  */
 
 import { Transaction, type TransactionArgument } from '@mysten/sui/transactions';
@@ -13,6 +13,22 @@ import type { SuiClient } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../config/network';
 import { getSuiClient } from './sui-client';
 import { NUSDC_TYPE } from '../features/prediction/constants';
+import { UNIFIED_MARGIN_PACKAGE, MARGIN_REGISTRY_ID } from './unified-margin';
+
+/**
+ * Append a MA NUSDC withdraw call to an existing PTB.
+ * Returns Coin<NUSDC> for chaining into downstream calls (e.g. prediction buy).
+ */
+export function withdrawNusdcFromMa(
+  tx: Transaction,
+  maId: string,
+  amount: bigint,
+): TransactionArgument {
+  return tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_nusdc_as_coin`,
+    arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), tx.pure.u64(amount)],
+  });
+}
 
 /**
  * Append a BM NUSDC withdraw call to an existing PTB.
@@ -98,21 +114,34 @@ export async function assembleWalletPaymentArg(
   return tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(amount)])[0];
 }
 
+export type UnifiedPaymentOptions = {
+  /** DeepBook BalanceManager ID — falls back to wallet if null */
+  bmId: string | null;
+  /** MarginAccount object ID — checked first (cached balance, no extra RPC) */
+  maId: string | null;
+  /** Cached MA NUSDC balance (useMarginAccount().account?.nusdcBalance ?? 0n) */
+  maBalance: bigint;
+  client: SuiClient;
+};
+
 /**
- * BM-first payment dispatcher.
+ * MA-first payment dispatcher.
  *
- * When bmId is provided and the BM holds sufficient NUSDC: withdraw inline.
- * Otherwise: fall back to wallet coin assembly.
+ * Routing priority: MA (cached balance, no RPC) → BM (devInspect RPC) → wallet.
+ * When MA has sufficient balance the whole flow is one atomic PTB.
  *
- * Returns the payment arg and the source ('bm' | 'wallet') for UX signaling.
+ * Returns the payment arg and the source for UX/debugging.
  */
 export async function assembleUnifiedPaymentArg(
   tx: Transaction,
   amount: bigint,
   walletAddress: string,
-  bmId: string | null,
-  client: SuiClient,
-): Promise<{ paymentArg: TransactionArgument; source: 'bm' | 'wallet' }> {
+  options: UnifiedPaymentOptions,
+): Promise<{ paymentArg: TransactionArgument; source: 'ma' | 'bm' | 'wallet' }> {
+  const { bmId, maId, maBalance, client } = options;
+  if (maId && maBalance >= amount) {
+    return { paymentArg: withdrawNusdcFromMa(tx, maId, amount), source: 'ma' };
+  }
   if (bmId) {
     const bmBalance = await getBmNusdcBalance(bmId);
     if (bmBalance >= amount) {

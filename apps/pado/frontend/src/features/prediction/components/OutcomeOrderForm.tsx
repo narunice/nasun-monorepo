@@ -15,6 +15,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
+import { useMarginAccount } from '../../core/unified-margin';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
@@ -73,6 +74,8 @@ export function OutcomeOrderForm({
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
   const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
+  const { account: maAccount } = useMarginAccount();
+  const maBalance = Number(maAccount?.nusdcBalance ?? 0n) / 1e6;
   // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
   const [setupStep, setSetupStep] = useState<'creating-account' | 'placing-trade' | null>(null);
 
@@ -318,7 +321,8 @@ export function OutcomeOrderForm({
     isTradingFrozen ||
     isLoading ||
     isSubmitting;
-  const walletBalance = parseFloat(nusdcBalance);
+  // Total available = wallet + MA (MA-first routing means both are spendable)
+  const walletBalance = parseFloat(nusdcBalance) + maBalance;
 
   const pricePlaceholder = bestAskBps != null && orderType === 'buy'
     ? `Best ask: ${(bestAskBps / 100).toFixed(2)}%`

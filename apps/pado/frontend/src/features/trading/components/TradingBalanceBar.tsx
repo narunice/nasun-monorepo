@@ -25,6 +25,8 @@ interface TradingBalanceBarProps {
   lockedBase?: number;
   /** Locked in orders - quote token (Pro mode) */
   lockedQuote?: number;
+  /** Margin account NUSDC balance (MA-first routing source) */
+  marginQuote?: number;
   /** Display mode - affects In Orders visibility */
   mode?: 'simple' | 'pro';
   /** Callback to open withdraw modal */
@@ -37,6 +39,7 @@ export function TradingBalanceBar({
   tradingQuote = 0,
   lockedBase = 0,
   lockedQuote = 0,
+  marginQuote = 0,
   mode = 'simple',
   onWithdraw,
 }: TradingBalanceBarProps) {
@@ -55,9 +58,9 @@ export function TradingBalanceBar({
   const walletBase = parseFloat(multiBalance?.tokens[baseSymbol]?.formatted ?? '0');
   const walletQuote = parseFloat(multiBalance?.tokens['NUSDC']?.formatted ?? '0');
 
-  // Calculate unified (total available) balances
+  // Calculate unified (total available) balances — includes MA for MA-first routing
   const totalBase = walletBase + tradingBase;
-  const totalQuote = walletQuote + tradingQuote;
+  const totalQuote = walletQuote + tradingQuote + marginQuote;
 
   const isPro = mode === 'pro';
   const hasLockedFunds = lockedBase > 0 || lockedQuote > 0;
@@ -140,7 +143,7 @@ export function TradingBalanceBar({
 
           {/* Trading Row */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span className="text-theme-text-muted">Trading:</span>
+            <span className="text-theme-text-muted">In Use:</span>
             <div className="flex items-center gap-2">
               <span className="font-mono text-pd3">
                 {tradingBase.toFixed(4)} {baseSymbol}
@@ -157,6 +160,16 @@ export function TradingBalanceBar({
               )}
             </div>
           </div>
+
+          {/* Margin Row */}
+          {marginQuote > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+              <span className="text-theme-text-muted">Pado Balance:</span>
+              <span className="font-mono text-pd3">
+                {marginQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
+              </span>
+            </div>
+          )}
 
           {/* In Orders Row (Pro mode only) */}
           {isPro && hasLockedFunds && (
