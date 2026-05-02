@@ -312,7 +312,6 @@ export async function detectAllWallets(
   walletAddresses: string[],
   todayStart: number,
   existingMissions: Set<MissionId>,
-  identityId?: string,
 ): Promise<Set<MissionId>> {
   const allDetected = new Set<MissionId>(existingMissions);
 
@@ -330,16 +329,15 @@ export async function detectAllWallets(
     for (const id of txMissions) allDetected.add(id);
   }
 
-  // Chat is no longer surfaced as a daily mission in the uju UI (PR3b). The
-  // backend still credits ecosystem points for chat activity; only the
-  // checkbox/display is removed.
-  void identityId;
-
   return allDetected;
 }
 
 export interface UseDailyMissionsResult {
-  completedMissions: Set<MissionId>;
+  // Widened to Set<string> so callers (myAccount inline missions, uju
+  // visit-type missions, governance-vote item) can probe with their own ids
+  // without an `as any` cast. The backing set still only contains values
+  // from the MissionId union; widening is a typing convenience, not new data.
+  completedMissions: Set<string>;
   isLoading: boolean;
   refetch: () => Promise<void>;
 }
@@ -408,7 +406,7 @@ export function useDailyMissions(
     if (!identityId || walletAddresses.length === 0) return;
 
     const todayStart = getTodayUtcStart();
-    const detected = await detectAllWallets(walletAddresses, todayStart, new Set(), identityId);
+    const detected = await detectAllWallets(walletAddresses, todayStart, new Set());
 
     // Replace: RPC result is the source of truth for today
     setCompletedMissions(detected);

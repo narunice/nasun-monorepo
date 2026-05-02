@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useNotificationStore } from './notificationStore';
 import type { UjuMission } from '../missions/missionRegistry';
-import type { MissionId } from '@/hooks/useDailyMissions';
 
 function todayUtc(): string {
   return new Date().toISOString().slice(0, 10);
@@ -10,7 +9,7 @@ function todayUtc(): string {
 interface DetectorProps {
   identityId: string | undefined;
   missionPool: UjuMission[];
-  completedMissions: Set<MissionId>;
+  completedMissions: Set<string>;
   missionsLoading: boolean;
   hasUnvotedProposal: boolean;
   unvotedCount: number;
@@ -58,7 +57,7 @@ export function useNotificationDetector({
     // Pool grew (new app pinned): absorb any already-completed IDs from newly-added missions silently
     // Prevents stale "Mission Complete" alerts when user pins an app with pre-completed missions
     for (const id of currentOnchainIds) {
-      if (!prevPoolOnchainRef.current.has(id) && completedMissions.has(id as MissionId)) {
+      if (!prevPoolOnchainRef.current.has(id) && completedMissions.has(id)) {
         seenRef.current.add(id);
       }
     }

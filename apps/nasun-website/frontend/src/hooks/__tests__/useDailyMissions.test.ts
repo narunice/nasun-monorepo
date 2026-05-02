@@ -399,7 +399,6 @@ describe("detectAllWallets", () => {
       [WALLET_A, WALLET_B],
       TODAY_START,
       new Set(),
-      "identity-1",
     );
 
     expect(result.has("pado-dex")).toBe(true);
@@ -416,7 +415,6 @@ describe("detectAllWallets", () => {
       [WALLET_A],
       TODAY_START,
       prior as unknown as Set<never>,
-      "identity-1",
     );
 
     expect(result.has("faucet")).toBe(true);
@@ -433,7 +431,6 @@ describe("detectAllWallets", () => {
       [WALLET_A],
       TODAY_START,
       new Set(),
-      "identity-1",
     );
 
     expect(fetchMock).not.toHaveBeenCalled();
@@ -444,7 +441,6 @@ describe("detectAllWallets", () => {
       [],
       TODAY_START,
       new Set(),
-      "identity-1",
     );
 
     expect(result.size).toBe(0);

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { ClaimAllButton } from "@nasun/wallet-ui";
 import { useDailyMissions } from "@/hooks/useDailyMissions";
+import { useAccountWalletAddresses } from "@/hooks/useAccountWalletAddresses";
 import { useUjuWalletRegistration } from "../hooks/useUjuWalletRegistration";
 import { trackCrossAppNav, withCrossAppParam } from "@/lib/analytics";
 import { UjuCard } from "../shared/UjuCard";
@@ -19,8 +20,6 @@ import {
   type UjuMission,
 } from "../missions/missionRegistry";
 import { useNotificationDetector } from "../notifications/useNotificationDetector";
-
-const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{64}$/;
 
 // Cadence pill rendered to the immediate left of each mission row's
 // checkmark / claim button. Today every mission is daily; the type is
@@ -90,18 +89,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   const [showAll, setShowAll] = useState(false);
 
   const { registeredWallets } = useUjuWalletRegistration();
-
-  const allWalletAddresses = useMemo(() => {
-    const addrs = new Set<string>();
-    const primary =
-      user?.linkedAccounts?.["nasun wallet"]?.walletAddress ??
-      user?.walletAddress;
-    if (primary && SUI_ADDRESS_RE.test(primary)) addrs.add(primary);
-    for (const w of registeredWallets) {
-      if (SUI_ADDRESS_RE.test(w.walletAddress)) addrs.add(w.walletAddress);
-    }
-    return [...addrs];
-  }, [user, registeredWallets]);
+  const allWalletAddresses = useAccountWalletAddresses(registeredWallets);
 
   const { completedMissions, isLoading, refetch } = useDailyMissions(
     user?.identityId,
@@ -149,9 +137,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   const isCompleted = useCallback(
     (m: UjuMission) => {
       if (m.completionType === "visit") return visitedMissions.has(m.id);
-      return (
-        (completedMissions as Set<string>).has(m.id) || localCompleted.has(m.id)
-      );
+      return completedMissions.has(m.id) || localCompleted.has(m.id);
     },
     [completedMissions, localCompleted, visitedMissions],
   );
