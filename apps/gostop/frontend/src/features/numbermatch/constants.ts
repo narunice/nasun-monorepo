@@ -1,7 +1,7 @@
 export const NM_MIN_NUM = 1
 export const NM_MAX_NUM = 5
 export const NM_MAX_PICKS = 3
-export const NM_PRICE_PER_PICK = 5n
+export const NM_PRICE_PER_PICK_NUSDC = 5 // display value (NUSDC)
 
 export const NM_PAYOUT_TABLE = [
   { picks: 1, winRate: '20%', win: 16, refund: 1 },

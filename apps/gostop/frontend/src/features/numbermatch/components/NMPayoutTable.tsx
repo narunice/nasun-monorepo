@@ -1,4 +1,4 @@
-import { NM_PAYOUT_TABLE, NM_PRICE_PER_PICK } from '../constants'
+import { NM_PAYOUT_TABLE, NM_PRICE_PER_PICK_NUSDC } from '../constants'
 
 export function NMPayoutTable() {
   return (
@@ -20,7 +20,7 @@ export function NMPayoutTable() {
               <tr key={row.picks} className="border-t border-gold-subtle/50">
                 <td className="px-3 sm:px-4 py-3 font-display text-base sm:text-lg text-gold-200">{row.picks}</td>
                 <td className="px-3 sm:px-4 py-3 font-mono text-neutral-200">
-                  {(row.picks * NM_PRICE_PER_PICK).toFixed(2)}
+                  {(row.picks * NM_PRICE_PER_PICK_NUSDC).toFixed(2)}
                 </td>
                 <td className="px-3 sm:px-4 py-3 font-mono text-gold-200">{row.win.toFixed(2)}</td>
                 <td className="px-3 sm:px-4 py-3 font-mono text-neutral-200">{row.refund.toFixed(2)}</td>
