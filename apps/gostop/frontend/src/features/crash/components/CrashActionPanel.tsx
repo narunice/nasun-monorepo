@@ -132,7 +132,7 @@ export function CrashActionPanel({
             onChange={setBetInput}
           />
           <div className="flex gap-2 text-xs">
-            {[1, 5, 25, 100].map((v) => (
+            {[1, 5, 25, 50].map((v) => (
               <button
                 key={v}
                 type="button"
