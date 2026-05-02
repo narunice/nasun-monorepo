@@ -224,6 +224,12 @@ public struct MarketCancelled has copy, drop {
     timestamp: u64,
 }
 
+public struct ResolveDeadlineExtended has copy, drop {
+    market_id: ID,
+    old_deadline: u64,
+    new_deadline: u64,
+}
+
 public struct CancelledRefundClaimed has copy, drop {
     market_id: ID,
     user: address,
@@ -966,6 +972,45 @@ public fun burn_losing_position(
     } else {
         market.no_supply = market.no_supply - shares;
     };
+}
+
+// ===== Admin: Extend Deadline / Void Market =====
+
+public fun extend_resolve_deadline(
+    _admin: &AdminCap,
+    market: &mut Market,
+    new_deadline: u64,
+    clock: &Clock,
+) {
+    assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+    assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+    assert!(new_deadline > market.resolve_deadline, EInvalidInput);
+    assert!(new_deadline > clock::timestamp_ms(clock), EInvalidInput);
+
+    let old_deadline = market.resolve_deadline;
+    market.resolve_deadline = new_deadline;
+
+    event::emit(ResolveDeadlineExtended {
+        market_id: object::id(market),
+        old_deadline,
+        new_deadline,
+    });
+}
+
+public fun admin_cancel_market(
+    _admin: &AdminCap,
+    market: &mut Market,
+    clock: &Clock,
+) {
+    assert!(market.status != STATUS_RESOLVED, EMarketAlreadyResolved);
+    assert!(market.status != STATUS_CANCELLED, EMarketAlreadyCancelled);
+
+    market.status = STATUS_CANCELLED;
+
+    event::emit(MarketCancelled {
+        market_id: object::id(market),
+        timestamp: clock::timestamp_ms(clock),
+    });
 }
 
 // ===== Cancellation =====

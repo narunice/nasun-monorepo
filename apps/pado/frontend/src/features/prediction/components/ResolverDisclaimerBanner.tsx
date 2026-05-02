@@ -20,7 +20,6 @@ export function ResolverDisclaimerBanner() {
   return (
     <div className="bg-pd2/10 border border-pd2/30 rounded-xl p-3 flex items-start justify-between gap-3">
       <div className="text-sm text-theme-text-secondary">
-        <strong className="text-theme-text-primary">Resolution by admin multisig.</strong>{' '}
         Markets settle based on the criteria below, decided by Nasun's resolver. If the
         resolver does not settle by the deadline, anyone can cancel and every participant
         recovers their collateral.

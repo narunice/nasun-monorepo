@@ -104,14 +104,15 @@ export interface TradeHistoryRow {
   txDigest?: string;
 }
 
-// Convert numeric on-chain status to typed string. Move emits 0=Open, 1=Resolved, 2=Cancelled.
+// Convert numeric on-chain status to typed string. Move emits 0=Open, 2=Resolved, 3=Cancelled.
+// STATUS_CLOSED=1 was removed in round-6; close is enforced via clock, not a status transition.
 export function parseMarketStatus(status: number): MarketStatus {
   switch (status) {
     case 0:
       return 'open';
-    case 1:
-      return 'resolved';
     case 2:
+      return 'resolved';
+    case 3:
       return 'cancelled';
     default:
       return 'open';
