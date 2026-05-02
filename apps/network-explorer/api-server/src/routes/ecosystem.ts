@@ -228,8 +228,6 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
   return result;
 }
 
-// Grace period before alliance penalty takes effect (days after NFT first activation)
-const ALLIANCE_PENALTY_GRACE_DAYS = 7;
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 import {
   getIdentityByWallet,
@@ -539,20 +537,8 @@ app.get('/score/:identityId', async (c) => {
           hasGenesis,
         );
       } else {
-        // V1: alliance penalty check
-        if (hasAlliance && !hasGenesis) {
-          const [penalty] = await pointsDb!`
-            SELECT 1 FROM alliance_penalties ap
-            JOIN alliance_first_seen afs ON ap.identity_id = afs.identity_id
-            WHERE ap.identity_id = ${identityId}
-              AND afs.first_seen <= CURRENT_DATE - make_interval(days => ${ALLIANCE_PENALTY_GRACE_DAYS})
-          `;
-          if (penalty) isPenalized = true;
-        }
-        const effectiveActivations = isPenalized
-          ? activations.filter(a => a.nftType !== 'alliance')
-          : activations;
-        multiplier = calculateMultiplier(effectiveActivations);
+        // V1 (pre-cutover): alliance penalty branch removed (policy deprecated 2026-05-02)
+        multiplier = calculateMultiplier(activations);
       }
 
       const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');

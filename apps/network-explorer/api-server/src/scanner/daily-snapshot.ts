@@ -93,7 +93,9 @@ export async function takeDailySnapshot(
   const allIdsArr = [...allIds];
   const isV2 = isV2CutoverActive(snapshotDate);
 
-  let penalizedSet = new Set<string>();
+  // Alliance penalty branch removed (policy deprecated 2026-05-02). V1 path
+  // now leaves penalizedSet empty -> is_penalized=false, no multiplier zeroing.
+  const penalizedSet = new Set<string>();
   const healthMap = new Map<string, { alliance: number; gp: number }>();
 
   if (isV2) {
@@ -129,13 +131,8 @@ export async function takeDailySnapshot(
       }
       return;
     }
-  } else {
-    const penalizedRows = await pointsDb`
-      SELECT identity_id FROM alliance_penalties
-      WHERE identity_id = ANY(${allIdsArr})
-    `;
-    penalizedSet = new Set(penalizedRows.map(r => r.identity_id as string));
   }
+  // V1 (pre-cutover): penalizedSet stays empty; no alliance_penalties read.
 
   // 6. Batch bonus + referral + governance queries (date-filtered: today's delta only).
   // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
