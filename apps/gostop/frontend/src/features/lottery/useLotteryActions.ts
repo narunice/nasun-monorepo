@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useWallet } from '@nasun/wallet'
+import { useActiveAddress } from '../../hooks/useActiveAddress'
 import { LOTTERY_TICKET_PRICE, LOTTERY_NUMBERS_COUNT, LOTTERY_MAX_NUMBER } from '../../lib/gostop-config'
 import { validateLotteryPicks } from '../../lib/validation/game-rules'
 import {
@@ -26,7 +26,7 @@ export interface UseLotteryActionsResult {
 }
 
 export function useLotteryActions(): UseLotteryActionsResult {
-  const { address: walletAddress } = useWallet()
+  const walletAddress = useActiveAddress()
   const isWalletConnected = !!walletAddress
 
   const [localPhase, setLocalPhase] = useState<'buying' | 'claiming' | 'idle'>('idle')

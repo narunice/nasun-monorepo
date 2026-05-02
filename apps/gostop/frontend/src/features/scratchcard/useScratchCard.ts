@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useWallet } from '@nasun/wallet'
+import { useActiveAddress } from '../../hooks/useActiveAddress'
 import {
   SCRATCH_CARD_PRICE,
   SCRATCH_PURCHASED_EVENT_TYPE,
@@ -33,7 +33,7 @@ export interface UseScratchCardResult {
  * per-card reveal animations without a follow-up query.
  */
 export function useScratchCard(): UseScratchCardResult {
-  const { address: walletAddress } = useWallet()
+  const walletAddress = useActiveAddress()
   const isWalletConnected = !!walletAddress
 
   const [error, setError] = useState<string | null>(null)

@@ -1,7 +1,8 @@
 import { WalletConnect } from "@nasun/wallet-ui";
 import { formatMultiplier } from "../crash-math";
 import { formatNusdc } from "../../../lib/format";
-import { CRASH_MAX_BET } from "../../../lib/gostop-config";
+import { CRASH_MAX_BET, CRASH_MIN_BET } from "../../../lib/gostop-config";
+import { NUSDC_UNIT_NUMBER } from "../../../lib/constants/assets";
 import type { UseCrashResult } from "../useCrash";
 import { BetSlider, WaitingPanel } from "./CrashSubComponents";
 

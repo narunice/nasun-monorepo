@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useWallet } from '@nasun/wallet'
+import { useActiveAddress } from '../../hooks/useActiveAddress'
 import {
   getMyActiveSession,
   type MinesSession,
@@ -34,7 +34,7 @@ export interface UseMinesResult {
 }
 
 export function useMines(): UseMinesResult {
-  const { address: walletAddress } = useWallet()
+  const walletAddress = useActiveAddress()
   const isWalletConnected = !!walletAddress
 
   const [session, setSession] = useState<MinesSession | null>(null)
