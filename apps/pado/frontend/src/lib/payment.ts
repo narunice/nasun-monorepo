@@ -32,8 +32,9 @@ export function withdrawNusdcFromBm(
 
 /**
  * Query NUSDC balance in a BalanceManager via read-only devInspect.
+ * Exported for use by recovery adapters and portfolio aggregation.
  */
-async function getBmNusdcBalance(bmId: string): Promise<bigint> {
+export async function getBmNusdcBalance(bmId: string): Promise<bigint> {
   const client = getSuiClient();
   const tx = new Transaction();
   tx.moveCall({

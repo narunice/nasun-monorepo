@@ -30,7 +30,7 @@ import {
 import { buildCreateBalanceManager } from '../../trading/transactions';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
-import { assembleUnifiedPaymentArg, assembleWalletPaymentArg } from '../../../lib/payment';
+import { assembleUnifiedPaymentArg } from '../../../lib/payment';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
 
