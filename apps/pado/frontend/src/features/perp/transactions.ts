@@ -13,6 +13,7 @@ import {
   MIN_LEVERAGE,
   MIN_POSITION_SIZE,
 } from './constants';
+import { withdrawNusdcFromMa } from '../../lib/payment';
 import type {
   OpenPositionParams,
   ClosePositionParams,
@@ -168,6 +169,56 @@ export function buildOpenPositionWithAmount(
     ],
   });
 
+  return tx;
+}
+
+/**
+ * Build open-position transaction sourcing collateral from MarginAccount.
+ * MA withdraw is atomic with position open in the same PTB.
+ */
+export function buildOpenPositionFromMa(
+  params: OpenPositionParams,
+  maId: string,
+): Transaction {
+  validateOpenPositionParams(params);
+  const tx = new Transaction();
+  const collateralCoin = withdrawNusdcFromMa(tx, maId, params.collateralAmount);
+  tx.moveCall({
+    target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::open_position`,
+    arguments: [
+      tx.object(params.marketId),
+      tx.pure.bool(params.isLong),
+      tx.pure.u64(params.size),
+      tx.pure.u64(params.leverage),
+      collateralCoin,
+      tx.object(ORACLE_REGISTRY_ID),
+      tx.object(CLOCK_ID),
+    ],
+  });
+  return tx;
+}
+
+/**
+ * Build add-collateral transaction sourcing funds from MarginAccount.
+ * MA withdraw is atomic with the collateral add in the same PTB.
+ */
+export function buildAddCollateralFromMa(
+  params: AddCollateralParams,
+  maId: string,
+): Transaction {
+  validateCollateralAmount(params.amount);
+  const tx = new Transaction();
+  const collateralCoin = withdrawNusdcFromMa(tx, maId, params.amount);
+  tx.moveCall({
+    target: `${PERP_PACKAGE_ID}::${PERP_MODULE}::add_collateral`,
+    arguments: [
+      tx.object(params.marketId),
+      tx.object(params.positionId),
+      collateralCoin,
+      tx.object(ORACLE_REGISTRY_ID),
+      tx.object(CLOCK_ID),
+    ],
+  });
   return tx;
 }
 

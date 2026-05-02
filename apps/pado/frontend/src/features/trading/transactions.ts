@@ -247,6 +247,9 @@ export function buildPlaceLimitOrder(
 
   const tx = new Transaction();
 
+  // MA-first pre-steps (e.g. MA withdraw + BM deposit) run before order placement
+  params.preSteps?.(tx);
+
   // Generate trade proof
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
@@ -298,6 +301,9 @@ export function buildPlaceMarketOrder(
   validateMarketOrderParams(params, pool);
 
   const tx = new Transaction();
+
+  // MA-first pre-steps run before market order placement
+  params.preSteps?.(tx);
 
   // SDK auto-budget (via dryRun) was hitting InsufficientGas on real market
   // orders because orderbook state can shift between dryRun and execution,
