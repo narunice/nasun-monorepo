@@ -3,6 +3,8 @@ import type { Transaction } from '@mysten/sui/transactions'
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet'
 import { getSuiClient } from '../../lib/sui-client'
 import { LOTTERY_TICKET_PRICE, NUSDC_TYPE } from '../../lib/gostop-config'
+import { GAME_ERRORS } from '../../lib/constants/errors'
+import { NUSDC_UNIT_NUMBER } from '../../lib/constants/assets'
 import {
   buildBuyTicket,
   buildBuyTicketBulk,
@@ -192,7 +194,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
           const coins = await findNusdcCoinsForAmount(totalCost)
           if (!coins) {
             throw new Error(
-              `Insufficient NUSDC balance (need ${(Number(totalCost) / 1_000_000).toFixed(2)} NUSDC).`,
+              GAME_ERRORS.INSUFFICIENT_BALANCE((Number(totalCost) / NUSDC_UNIT_NUMBER).toFixed(2)),
             )
           }
           const bulkPicks = Array.from({ length: count }, () => autoPickNumbers())

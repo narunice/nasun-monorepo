@@ -7,16 +7,11 @@
  * (SoundOptInToast).
  */
 
-import { setNotificationPrefs } from '../lib/notification-preferences'
-import { useNotificationPrefs } from '../hooks/useNotificationPrefs'
+import { useSettingsStore } from '../store/useSettingsStore'
 
 export function HeaderSoundToggle() {
-  const prefs = useNotificationPrefs()
-  const enabled = prefs.soundEnabled
-
-  function toggle() {
-    setNotificationPrefs({ soundEnabled: !enabled })
-  }
+  const enabled = useSettingsStore((s) => s.soundEnabled)
+  const toggle = useSettingsStore((s) => s.toggleSound)
 
   return (
     <button

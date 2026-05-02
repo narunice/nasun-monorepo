@@ -1,39 +1,14 @@
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react'
+import { useEffect, type ReactNode } from 'react'
+import { useToastStore, type Toast } from '../../store/useToastStore'
 
-export type ToastType = 'success' | 'error' | 'info' | 'warning'
-
-interface Toast {
-  id: string
-  message: string
-  type: ToastType
-}
-
-interface ToastContextType {
-  showToast: (message: string, type?: ToastType) => void
-}
-
-const ToastContext = createContext<ToastContextType | null>(null)
-
-export function useToast() {
-  const context = useContext(ToastContext)
-  if (!context) throw new Error('useToast must be used within a ToastProvider')
-  return context
-}
+export { useToast } from '../../store/useToastStore'
 
 export function ToastProvider({ children }: { children: ReactNode }) {
-  const [toasts, setToasts] = useState<Toast[]>([])
-
-  const showToast = useCallback((message: string, type: ToastType = 'info') => {
-    const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`
-    setToasts((prev) => [...prev, { id, message, type }])
-  }, [])
-
-  const removeToast = useCallback((id: string) => {
-    setToasts((prev) => prev.filter((t) => t.id !== id))
-  }, [])
+  const toasts = useToastStore((s) => s.toasts)
+  const removeToast = useToastStore((s) => s.removeToast)
 
   return (
-    <ToastContext.Provider value={{ showToast }}>
+    <>
       {children}
       {toasts.length > 0 && (
         <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-[calc(100vw-2rem)]">
@@ -42,7 +17,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           ))}
         </div>
       )}
-    </ToastContext.Provider>
+    </>
   )
 }
 
