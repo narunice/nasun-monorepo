@@ -174,13 +174,17 @@ async function fetchYesBookSide(
       const arr = value.value as Array<Record<string, unknown>> | undefined;
       if (!arr) continue;
       const price = Number(priceValue);
-      for (const o of arr) {
+      for (const raw of arr) {
+        // Sui SDK wraps nested struct fields under an inner `fields` key when
+        // the struct sits inside a vector inside a Table value. Unwrap so the
+        // read works whether the SDK returns flat or wrapped shape.
+        const f = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
         orders.push({
-          orderId: Number(o.order_id ?? 0),
-          owner: String(o.owner ?? ''),
+          orderId: Number(f.order_id ?? 0),
+          owner: String(f.owner ?? ''),
           isBid,
           price,
-          amount: BigInt(String(o.amount ?? 0)),
+          amount: BigInt(String(f.amount ?? 0)),
         });
       }
     }

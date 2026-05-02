@@ -178,17 +178,23 @@ function parseLevel(
   const orders = value.value as Array<Record<string, unknown>> | undefined;
   if (!orders || orders.length === 0) return null;
 
-  const parsedOrders: Order[] = orders.map((o) => ({
-    orderId: Number(o.order_id ?? 0),
-    owner: String(o.owner ?? ''),
-    isYes: Boolean(o.is_yes ?? false),
-    isBid,
-    price,
-    amount: BigInt(String(o.amount ?? 0)),
-    lockedNusdc: BigInt(String(o.locked_nusdc ?? 0)),
-    costBasis: BigInt(String(o.cost_basis ?? 0)),
-    timestamp: Number(o.timestamp ?? 0),
-  }));
+  // Sui SDK wraps Move struct fields inside an inner `fields` object when the
+  // struct is nested (here: vector<Order> inside a Table value). Unwrap so
+  // the read is robust to either shape — flat top-level or nested fields.
+  const parsedOrders: Order[] = orders.map((raw) => {
+    const f = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
+    return {
+      orderId: Number(f.order_id ?? 0),
+      owner: String(f.owner ?? ''),
+      isYes: Boolean(f.is_yes ?? false),
+      isBid,
+      price,
+      amount: BigInt(String(f.amount ?? 0)),
+      lockedNusdc: BigInt(String(f.locked_nusdc ?? 0)),
+      costBasis: BigInt(String(f.cost_basis ?? 0)),
+      timestamp: Number(f.timestamp ?? 0),
+    };
+  });
 
   const totalAmount = parsedOrders.reduce((sum, o) => sum + o.amount, 0n);
   return { price, amount: totalAmount, orders: parsedOrders, isSimulated: false };
