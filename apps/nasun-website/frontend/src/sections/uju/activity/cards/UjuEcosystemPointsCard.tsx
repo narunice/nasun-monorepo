@@ -32,7 +32,7 @@ import {
   type BaseHistoryItem,
 } from "@/services/ecosystemScoreApi";
 import { APP_MISSION_MAP } from "@/sections/uju/missions/missionRegistry";
-import { UjuCard, UjuSectionHeader, UjuButton, UjuStat } from "../../shared";
+import { UjuCard, UjuSectionHeader, UjuStat } from "../../shared";
 
 // Lookup: activity_points.category → user-facing label. Mission ids map 1:1
 // to categories (e.g. 'pado-dex', 'gostop-crash'); a few system categories
@@ -87,10 +87,10 @@ function generateDateRange(start: string, end: string): string[] {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  base: "bg-emerald-500",
+  base: "bg-yellow-500",
   governance: "bg-purple-500",
   "referral-bonus": "bg-sky-500",
-  "ecosystem-bonus-earlybird": "bg-yellow-500",
+  "ecosystem-bonus-earlybird": "bg-violet-500",
   "ecosystem-bonus-pado": "bg-lime-500",
   "ecosystem-bonus-leaderboard": "bg-pado-3",
   "ecosystem-bonus-game": "bg-orange-500",
@@ -508,10 +508,46 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
             return (
               <div className="rounded-xl bg-pado-2/5 border border-uju-border/50 p-3 space-y-3">
                 <div className="space-y-2">
-                  <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em] px-1">
-                    Today breakdown
-                  </h6>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center justify-between px-1">
+                    <h6 className="text-sm font-semibold text-uju-primary uppercase tracking-[0.2em]">
+                      Today breakdown
+                    </h6>
+                    <button
+                      type="button"
+                      onClick={refresh}
+                      disabled={isRefreshing || cooldownSeconds > 0}
+                      title={
+                        isRefreshing
+                          ? "Refreshing..."
+                          : cooldownSeconds > 0
+                            ? `Refresh in ${cooldownSeconds}s`
+                            : "Refresh"
+                      }
+                      aria-label={
+                        isRefreshing
+                          ? "Refreshing"
+                          : cooldownSeconds > 0
+                            ? `Refresh available in ${cooldownSeconds} seconds`
+                            : "Refresh"
+                      }
+                      className="shrink-0 flex items-center justify-center text-uju-secondary hover:text-pado-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth={2}
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                        aria-hidden="true"
+                      >
+                        <path d="M21 12a9 9 0 1 1-3-6.7" />
+                        <path d="M21 4v5h-5" />
+                      </svg>
+                    </button>
+                  </div>
+                  <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0 flex items-baseline flex-wrap gap-x-1.5 gap-y-1 text-sm text-uju-secondary">
                       <span className="font-mono text-amber-400 tabular-nums text-base">
                         {todayPts.toLocaleString("en-US", {
@@ -592,40 +628,6 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       </span>
                       <span>bonus</span>
                     </div>
-                    <button
-                      type="button"
-                      onClick={refresh}
-                      disabled={isRefreshing || cooldownSeconds > 0}
-                      title={
-                        isRefreshing
-                          ? "Refreshing..."
-                          : cooldownSeconds > 0
-                            ? `Refresh in ${cooldownSeconds}s`
-                            : "Refresh"
-                      }
-                      aria-label={
-                        isRefreshing
-                          ? "Refreshing"
-                          : cooldownSeconds > 0
-                            ? `Refresh available in ${cooldownSeconds} seconds`
-                            : "Refresh"
-                      }
-                      className="shrink-0 w-8 h-8 flex items-center justify-center rounded-lg border border-uju-border/30 text-uju-secondary hover:text-uju-primary hover:border-pado-2/40 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
-                        aria-hidden="true"
-                      >
-                        <path d="M21 12a9 9 0 1 1-3-6.7" />
-                        <path d="M21 4v5h-5" />
-                      </svg>
-                    </button>
                   </div>
                 </div>
 
@@ -900,9 +902,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                 </div>
                                 {(entry.bonusTotal > 0 ||
                                   entry.referralBonus > 0) && (
-                                  <span className="text-uju-secondary">
-                                    +
-                                  </span>
+                                  <span className="text-uju-secondary">+</span>
                                 )}
                                 {entry.bonusTotal > 0 && (
                                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-5/5 border border-pado-5/20">

@@ -206,6 +206,27 @@ export function isEcosystemNewWeekGracePeriod(
 }
 
 /**
+ * Trigger TODAY-window activity sync on explorer-api.
+ * Force-refreshes the scanner's wallet→identity cache and reconciles
+ * today's RPC + indexer activity for all of the user's registered wallets.
+ * Authenticated (Bearer); identity is derived from the Cognito JWT.
+ * Returns null on rate-limit (429) or any non-OK response.
+ */
+export async function syncEcosystemTodayActivity(
+  token: string,
+): Promise<{ identityId: string; walletsScanned: number; gapsFilled: number; syncedAt: string } | null> {
+  if (!API_BASE || !token) return null;
+  const res = await fetch(`${API_BASE}/ecosystem/sync`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  if (res.status === 429) return null;
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data ?? null;
+}
+
+/**
  * Trigger per-user NFT activation cache sync on explorer-api.
  * Call after activate/deactivate or manual Refresh.
  */

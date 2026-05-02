@@ -10,11 +10,13 @@ import { useQuery } from "@tanstack/react-query";
 import {
   getEcosystemScore,
   syncEcosystemActivations,
+  syncEcosystemTodayActivity,
   type EcosystemScoreData,
 } from "@/services/ecosystemScoreApi";
 import { queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/features/auth";
 
-const RATE_LIMIT_COOLDOWN_MS = 20_000;
+const RATE_LIMIT_COOLDOWN_MS = 30_000;
 
 export const ecosystemScoreKeys = {
   all: ["ecosystem", "score"] as const,
@@ -36,10 +38,12 @@ interface UseEcosystemScoreResult {
 export function useEcosystemScore(
   identityId: string | undefined,
 ): UseEcosystemScoreResult {
+  const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
   // Cooldown timer (pure UI state)
   const [cooldownSeconds, setCooldownSeconds] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const cooldownTimer = useRef<ReturnType<typeof setInterval>>();
+  const cooldownTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
 
   // Cleanup timer on unmount
   useEffect(() => () => clearInterval(cooldownTimer.current), []);
@@ -69,6 +73,8 @@ export function useEcosystemScore(
   // Use refs to avoid stale closure in refresh
   const identityIdRef = useRef(identityId);
   identityIdRef.current = identityId;
+  const tokenRef = useRef(cognitoToken);
+  tokenRef.current = cognitoToken;
 
   const refresh = useCallback(() => {
     const id = identityIdRef.current;
@@ -77,9 +83,17 @@ export function useEcosystemScore(
     setIsRefreshing(true);
     (async () => {
       try {
-        const syncResult = await syncEcosystemActivations(id);
-        if (syncResult === null) {
-          // Rate-limited by server
+        // Run NFT activations sync (legacy) + today-window activity sync
+        // (catches events the live scanner skipped due to wallet cache miss)
+        // in parallel. Both are rate-limited server-side; either may return
+        // null without aborting the refetch.
+        const token = tokenRef.current;
+        const [activationsResult] = await Promise.all([
+          syncEcosystemActivations(id),
+          token ? syncEcosystemTodayActivity(token) : Promise.resolve(null),
+        ]);
+        if (activationsResult === null) {
+          // Rate-limited by server (activations endpoint)
           startCooldown();
           return;
         }
