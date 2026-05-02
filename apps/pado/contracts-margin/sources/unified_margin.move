@@ -201,26 +201,22 @@ module unified_margin::unified_margin {
         deposit_nusdc(account, registry, payment, ctx)
     }
 
-    /// Withdraw NUSDC from margin account
-    public fun withdraw_nusdc(
+    /// Internal helper: deduct NUSDC from account, update accounting, emit event.
+    /// Does NOT transfer — caller owns the returned Coin.
+    fun split_nusdc(
         account: &mut MarginAccount,
         registry: &mut MarginRegistry,
         amount: u64,
-        ctx: &mut TxContext
-    ) {
-        let sender = tx_context::sender(ctx);
-        assert!(account.owner == sender, ENotOwner);
+        sender: address,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
         assert!(amount > 0, EZeroAmount);
         assert!(balance::value(&account.nusdc_balance) >= amount, EInsufficientBalance);
 
-        // Withdraw from balance
-        let withdrawn = balance::split(&mut account.nusdc_balance, amount);
-        let coin = coin::from_balance(withdrawn, ctx);
-
-        // Update statistics
-        account.total_withdrawn_usd = account.total_withdrawn_usd + amount;
         registry.total_nusdc_tvl = registry.total_nusdc_tvl - amount;
+        account.total_withdrawn_usd = account.total_withdrawn_usd + amount;
 
+        let withdrawn = balance::split(&mut account.nusdc_balance, amount);
         let new_balance = balance::value(&account.nusdc_balance);
 
         event::emit(NusdcWithdrawn {
@@ -230,7 +226,33 @@ module unified_margin::unified_margin {
             new_balance,
         });
 
+        coin::from_balance(withdrawn, ctx)
+    }
+
+    /// Withdraw NUSDC from margin account
+    public fun withdraw_nusdc(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        let coin = split_nusdc(account, registry, amount, sender, ctx);
         transfer::public_transfer(coin, sender);
+    }
+
+    /// Withdraw NUSDC and return Coin for PTB composition.
+    /// Allows atomic MA-withdraw + downstream call (e.g. prediction buy) in one PTB.
+    public fun withdraw_nusdc_as_coin(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext,
+    ): Coin<NUSDC> {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        split_nusdc(account, registry, amount, sender, ctx)
     }
 
     /// Backward compatible withdraw function (NUSDC)
@@ -519,5 +541,69 @@ module unified_margin::unified_margin {
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) {
         init(ctx)
+    }
+
+    #[test]
+    fun test_withdraw_nusdc_as_coin_returns_coin_and_updates_state() {
+        use sui::test_scenario;
+        use sui::clock;
+
+        let owner = @0xABCD;
+        let mut scenario = test_scenario::begin(owner);
+
+        // Init registry
+        test_scenario::next_tx(&mut scenario, owner);
+        {
+            init_for_testing(test_scenario::ctx(&mut scenario));
+        };
+
+        // Create account
+        test_scenario::next_tx(&mut scenario, owner);
+        {
+            let mut registry = test_scenario::take_shared<MarginRegistry>(&scenario);
+            let clk = clock::create_for_testing(test_scenario::ctx(&mut scenario));
+            create_account(&mut registry, &clk, test_scenario::ctx(&mut scenario));
+            clock::destroy_for_testing(clk);
+            test_scenario::return_shared(registry);
+        };
+
+        // Deposit 100 NUSDC
+        test_scenario::next_tx(&mut scenario, owner);
+        {
+            let mut registry = test_scenario::take_shared<MarginRegistry>(&scenario);
+            let mut account = test_scenario::take_from_sender<MarginAccount>(&scenario);
+            let payment = coin::mint_for_testing<NUSDC>(100, test_scenario::ctx(&mut scenario));
+            deposit_nusdc(&mut account, &mut registry, payment, test_scenario::ctx(&mut scenario));
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, account);
+        };
+
+        // withdraw_nusdc_as_coin: withdraw 40
+        test_scenario::next_tx(&mut scenario, owner);
+        {
+            let mut registry = test_scenario::take_shared<MarginRegistry>(&scenario);
+            let mut account = test_scenario::take_from_sender<MarginAccount>(&scenario);
+
+            let coin = withdraw_nusdc_as_coin(
+                &mut account, &mut registry, 40,
+                test_scenario::ctx(&mut scenario),
+            );
+
+            // Returned coin has correct value
+            assert!(coin::value(&coin) == 40, 0);
+            // Account balance decreased
+            assert!(get_nusdc_balance(&account) == 60, 1);
+            // Registry TVL decreased
+            let (_, tvl, _) = get_registry_stats(&registry);
+            assert!(tvl == 60, 2);
+            // Accounting updated
+            assert!(get_total_withdrawn(&account) == 40, 3);
+
+            coin::burn_for_testing(coin);
+            test_scenario::return_shared(registry);
+            test_scenario::return_to_sender(&scenario, account);
+        };
+
+        test_scenario::end(scenario);
     }
 }

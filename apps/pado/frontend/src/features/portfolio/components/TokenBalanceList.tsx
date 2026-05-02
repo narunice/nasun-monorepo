@@ -84,7 +84,7 @@ function TokenRow({ token }: TokenRowProps) {
           )}
           {token.source === 'trading' && (
             <div className="text-[10px] xl:text-xs text-pd3">
-              In Trading Balance
+              In Trading
             </div>
           )}
         </div>

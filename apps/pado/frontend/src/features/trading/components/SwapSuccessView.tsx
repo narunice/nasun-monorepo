@@ -56,19 +56,12 @@ export function SwapSuccessView({
         </p>
       </div>
 
-      {/* Trading Balance Info Banner */}
-      {onWithdraw ? (
+      {onWithdraw && (
         <div className="w-full bg-pd3/10 border border-pd3/30 rounded-lg px-3 py-2 mb-4">
           <p className="text-[11px] text-pd3 text-center leading-relaxed">
-            Funds are in your Trading Balance.
+            Order filled.
             <br />
-            Withdraw to move them to your wallet.
-          </p>
-        </div>
-      ) : (
-        <div className="w-full bg-pd3/10 border border-pd3/30 rounded-lg px-3 py-2 mb-4">
-          <p className="text-[11px] text-pd3 text-center leading-relaxed">
-            Funds are in your Trading Balance.
+            Withdraw to move funds to your wallet.
           </p>
         </div>
       )}

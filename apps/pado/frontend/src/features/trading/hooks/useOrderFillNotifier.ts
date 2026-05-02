@@ -80,9 +80,9 @@ export function useOrderFillNotifier({
       const body = `${side} ${qtyStr} @ $${priceStr}`;
 
       playSound('orderFilled');
-      toastRef.current(`Order filled: ${body} (in Trading Balance)`, 'success');
+      toastRef.current(`Order filled: ${body} (in Pado)`, 'success');
       sendBrowserNotification('Order Filled', {
-        body: `${body} (in Trading Balance)`,
+        body: `${body} (in Pado)`,
         tag: `order-fill-${data.txDigest}`,
       });
 

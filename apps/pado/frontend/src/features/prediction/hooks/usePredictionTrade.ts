@@ -31,6 +31,7 @@ import { buildCreateBalanceManager } from '../../trading/transactions';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
 import { assembleUnifiedPaymentArg } from '../../../lib/payment';
+import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
 
@@ -220,6 +221,9 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const bmId = useBalanceManagerStore((s) => s.balanceManagerId);
   const setBalanceManagerId = useBalanceManagerStore((s) => s.setBalanceManagerId);
 
+  // MA: unified margin account — used as primary payment source (MA-first routing).
+  const { account: maAccount, accountId: maAccountId } = useMarginAccount();
+
   const [isLoading, setIsLoading] = useState(false);
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -297,6 +301,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
     queryClient.invalidateQueries({ queryKey: ['bm-balance-global'] });
     queryClient.invalidateQueries({ queryKey: ['balance-manager-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['margin-account'] });
   }, [queryClient]);
 
   const runOperation = useCallback(
@@ -373,13 +378,18 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         `buy-taker:${isYes}`,
         async (tx, client) => {
           const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
-          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
+            bmId: currentBmId,
+            maId: maAccountId ?? null,
+            maBalance: maAccount?.nusdcBalance ?? 0n,
+            client,
+          });
           buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
         },
         restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress],
+    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
   );
 
   const placeSellTaker = useCallback(
@@ -402,13 +412,18 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         `buy-maker:${isYes}:${priceBps}`,
         async (tx, client) => {
           const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
-          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
+            bmId: currentBmId,
+            maId: maAccountId ?? null,
+            maBalance: maAccount?.nusdcBalance ?? 0n,
+            client,
+          });
           buildPlaceBuyMaker(tx, marketId, isYes, priceBps, amountUnits, paymentArg);
         },
         'Limit buy resting',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress],
+    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
   );
 
   const placeSellMaker = useCallback(
@@ -429,13 +444,18 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         'mint',
         async (tx, client) => {
           const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
-          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, currentBmId, client);
+          const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
+            bmId: currentBmId,
+            maId: maAccountId ?? null,
+            maBalance: maAccount?.nusdcBalance ?? 0n,
+            client,
+          });
           buildMintOutcomeTokens(tx, marketId, amountUnits, paymentArg);
         },
         'YES + NO tokens minted',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress],
+    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
   );
 
   const cancelOrder = useCallback(
