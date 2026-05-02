@@ -10,3 +10,5 @@ export { CancelExpiredMarketCTA } from './CancelExpiredMarketCTA';
 export { ResolverDisclaimerBanner } from './ResolverDisclaimerBanner';
 export { ResolutionMetaPanel } from './ResolutionMetaPanel';
 export { MyOpenOrdersList } from './MyOpenOrdersList';
+export { RecentTradesFeed } from './RecentTradesFeed';
+export { MobileTradeStickyBar } from './MobileTradeStickyBar';

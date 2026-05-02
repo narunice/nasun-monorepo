@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import type { FeedActivity } from '../types';
 import { getExplorerTxUrl } from '@/lib/explorer';
+import { formatTimeAgo } from '@/lib/format';
 
 interface ActivityCardProps {
   activity: FeedActivity;
@@ -9,18 +10,6 @@ interface ActivityCardProps {
 function shortenAddress(addr: string): string {
   if (addr.length <= 12) return addr;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
-function formatTimeAgo(timestamp: number): string {
-  const diff = Date.now() - timestamp;
-  const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return `${seconds}s ago`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
 }
 
 function formatPrice(priceStr: string): string {

@@ -28,6 +28,7 @@ interface OutcomeOrderFormProps {
   clickedPrice?: number | null;       // bps from orderbook click
   clickedOutcome?: 'yes' | 'no' | null;
   clickVersion?: number;
+  isTradingFrozen?: boolean;          // closeTime passed but resolveDeadline not yet — disable trading
   onSuccess?: (digest?: string) => void;
 }
 
@@ -48,6 +49,7 @@ export function OutcomeOrderForm({
   clickedPrice,
   clickedOutcome,
   clickVersion = 0,
+  isTradingFrozen = false,
   onSuccess,
 }: OutcomeOrderFormProps) {
   const { status } = useWallet();
@@ -284,7 +286,12 @@ export function OutcomeOrderForm({
     }
   }, [requestNusdc, queryClient]);
 
-  const isDisabled = !isWalletConnected || market.status !== 'open' || isLoading || isSubmitting;
+  const isDisabled =
+    !isWalletConnected ||
+    market.status !== 'open' ||
+    isTradingFrozen ||
+    isLoading ||
+    isSubmitting;
   const walletBalance = parseFloat(nusdcBalance);
 
   const pricePlaceholder = bestAskBps != null && orderType === 'buy'
@@ -468,26 +475,54 @@ export function OutcomeOrderForm({
           </div>
         )}
 
-        {orderType === 'buy' && parseFloat(amount) > 0 && (
-          <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-theme-text-muted">Est. Shares:</span>
-              <span className="text-theme-text-primary font-mono">
-                {estimatedShares.toFixed(2)} {outcomeType.toUpperCase()}
-              </span>
+        {orderType === 'buy' && parseFloat(amount) > 0 && estimatedShares > 0 && (() => {
+          const cost = parseFloat(amount);
+          const profit = potentialPayout - cost;
+          const returnPct = cost > 0 ? (profit / cost) * 100 : 0;
+          const cappedReturn = Math.min(returnPct, 9999);
+          return (
+            <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Est. shares</span>
+                <span className="font-mono text-theme-text-primary">
+                  {estimatedShares.toFixed(2)} {outcomeType.toUpperCase()}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">If {outcomeType.toUpperCase()} wins</span>
+                <span className="font-mono">
+                  <span className="text-green-500">${potentialPayout.toFixed(2)}</span>
+                  <span className="text-green-500/70 ml-1.5 text-xs">
+                    ({returnPct >= 0 ? '+' : ''}{cappedReturn.toFixed(0)}%)
+                  </span>
+                </span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-theme-text-muted">Potential Payout:</span>
-              <span className="text-green-500 font-mono">{potentialPayout.toFixed(2)} NUSDC</span>
+          );
+        })()}
+
+        {orderType === 'sell' && selectedPositionId && (() => {
+          const pos = filteredPositions.find((p) => p.id === selectedPositionId);
+          if (!pos) return null;
+          const shares = Number(pos.shares) / 1_000_000;
+          const limitBps = Math.floor((parseFloat(price) || 0) * 100);
+          const sellBps = orderMode === 'limit' ? limitBps : (bestBidBps ?? 0);
+          if (sellBps <= 0) return null;
+          const sellNow = shares * (sellBps / 10000);
+          const winPayout = shares;
+          return (
+            <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1.5 text-sm">
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">Sell now</span>
+                <span className="font-mono text-theme-text-primary">${sellNow.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-theme-text-muted">If {outcomeType.toUpperCase()} wins</span>
+                <span className="font-mono text-theme-text-secondary">${winPayout.toFixed(2)}</span>
+              </div>
             </div>
-            <div className="flex justify-between">
-              <span className="text-theme-text-muted">Potential Profit:</span>
-              <span className="text-green-500 font-mono">
-                +{(potentialPayout - parseFloat(amount)).toFixed(2)} NUSDC
-              </span>
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
         {success && <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2">{success}</div>}
@@ -518,7 +553,9 @@ export function OutcomeOrderForm({
               ? 'Connect Wallet'
               : market.status !== 'open'
                 ? 'Market Closed'
-                : `${orderMode === 'market' ? 'Market' : 'Limit'} ${orderType === 'buy' ? 'Buy' : 'Sell'} ${outcomeType.toUpperCase()}`}
+                : isTradingFrozen
+                  ? 'Awaiting Resolution'
+                  : `${orderMode === 'market' ? 'Market' : 'Limit'} ${orderType === 'buy' ? 'Buy' : 'Sell'} ${outcomeType.toUpperCase()}`}
         </button>
 
         <div className="border-t border-theme-border pt-4 mt-4">

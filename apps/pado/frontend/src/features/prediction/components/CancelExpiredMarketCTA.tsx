@@ -1,27 +1,84 @@
 /**
- * CancelExpiredMarketCTA (round-6 plan §2.11)
+ * CancelExpiredMarketCTA — handles two adjacent timeline states:
+ *  - [closeTime, resolveDeadline)  → "Awaiting Resolution" amber banner with progress bar
+ *  - [resolveDeadline, ∞)          → permissionless cancel button (round-6 plan §2.11)
  *
- * Anyone can call `cancel_expired_market` once `now > resolveDeadline` and the
- * market is still open. Surfaces a permissionless rescue button so users can
- * unblock refunds when the resolver is unresponsive.
+ * `now` is passed in from the page so we don't double-subscribe to useNow.
  */
 
 import { useState } from 'react';
 import type { PredictionMarket } from '../types';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
-import { useNow } from '@/hooks/useNow';
 
 interface Props {
   market: PredictionMarket;
+  now: number;
   onSuccess?: () => void;
 }
 
-export function CancelExpiredMarketCTA({ market, onSuccess }: Props) {
-  const now = useNow();
+export function CancelExpiredMarketCTA({ market, now, onSuccess }: Props) {
   const { isLoading, cancelExpiredMarket } = usePredictionTrade();
   const [error, setError] = useState<string | null>(null);
 
-  if (market.status !== 'open' || now <= market.resolveDeadline) return null;
+  if (market.status !== 'open') return null;
+
+  const isAwaiting = now >= market.closeTime && now < market.resolveDeadline;
+  const isExpired = now >= market.resolveDeadline;
+
+  if (!isAwaiting && !isExpired) return null;
+
+  if (isAwaiting) {
+    const windowMs = Math.max(1, market.resolveDeadline - market.closeTime);
+    const progressPct = Math.min(100, Math.max(0, ((now - market.closeTime) / windowMs) * 100));
+    const deadlineLabel = new Date(market.resolveDeadline).toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+      timeZoneName: 'short',
+    });
+
+    return (
+      <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+        <div className="flex items-start gap-3">
+          <svg
+            className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500"
+            style={{ animation: 'spin 8s linear infinite' }}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" strokeLinecap="round" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-yellow-400">
+              Market Closed — Awaiting Resolution
+            </p>
+            <p className="mt-0.5 text-xs text-yellow-500/70 leading-relaxed">
+              The keeper bot will auto-resolve by{' '}
+              <span className="font-mono text-yellow-400">{deadlineLabel}</span>.
+              If missed, anyone can cancel to recover collateral.
+            </p>
+            <div className="mt-2.5 space-y-1">
+              <div className="h-1 w-full rounded-full bg-yellow-900/40 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-yellow-500/60 transition-all duration-1000"
+                  style={{ width: `${progressPct}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-[10px] font-mono text-yellow-600/60">
+                <span>Closed</span>
+                <span>Resolution deadline</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const handleClick = async () => {
     setError(null);
