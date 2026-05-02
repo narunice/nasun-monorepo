@@ -3,7 +3,7 @@ import { useMines } from "../useMines";
 import { useCelebrate, tierForMines } from "../../../components/celebration";
 import { useInvalidateGameHistory } from "../../game-history";
 import { useToast } from "../../../components/ui/Toast";
-import { MINES_MAX_SINGLE_PAYOUT } from "../../../lib/gostop-config";
+import { MINES_MAX_BET, MINES_MAX_SINGLE_PAYOUT } from "../../../lib/gostop-config";
 import { maxMultiplierBps, computeMultiplierBps } from "../mines-config";
 
 const DEFAULT_BET_NUSDC = 1;
@@ -57,7 +57,7 @@ export function useMinesPage(celebrate: any) {
 
   const maxMul = maxMultiplierBps(mineCount) / 10_000;
   const payoutCapNusdc = Number(MINES_MAX_SINGLE_PAYOUT) / 1_000_000;
-  const maxBetAllowed = payoutCapNusdc;
+  const maxBetAllowed = Number(MINES_MAX_BET) / 1_000_000;
   const betCapped = Math.min(bet, maxBetAllowed);
   const betMist = BigInt(Math.floor(betCapped * 1_000_000));
 

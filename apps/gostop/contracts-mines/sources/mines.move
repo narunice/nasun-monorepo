@@ -36,6 +36,7 @@
 module gostop_mines::mines {
     use sui::coin::Coin;
     use sui::clock::{Self, Clock};
+    use sui::dynamic_field;
     use sui::event;
     use sui::random::{Self, Random};
     use sui::table::{Self, Table};
@@ -73,6 +74,11 @@ module gostop_mines::mines {
     const EGameCapAlreadyInstalled: u64 = 9;
     const EGameCapNotInstalled: u64 = 10;
     const EGameCapMismatch: u64 = 11;
+
+    // ===== Dynamic Field Keys =====
+
+    /// Key for the per-game max bet limit stored on MinesRegistry.
+    public struct MaxBetKey has copy, drop, store {}
 
     // ===== Structs =====
 
@@ -165,6 +171,21 @@ module gostop_mines::mines {
         option::fill(&mut registry.game_cap, cap);
     }
 
+    /// Set the per-bet upper limit enforced in create_session.
+    /// Stored as a dynamic field so it survives package upgrades without
+    /// requiring a struct layout change on MinesRegistry.
+    public entry fun set_max_bet(
+        _admin: &AdminCap,
+        registry: &mut MinesRegistry,
+        new_max: u64,
+    ) {
+        if (dynamic_field::exists_(&registry.id, MaxBetKey {})) {
+            *dynamic_field::borrow_mut<MaxBetKey, u64>(&mut registry.id, MaxBetKey {}) = new_max;
+        } else {
+            dynamic_field::add(&mut registry.id, MaxBetKey {}, new_max);
+        }
+    }
+
     /// Adjust max_single_payout on the GameCap that lives inside the registry.
     /// Mirrors crash::update_max_payout_via_bp_admin: a single PTB holding both
     /// the Mines AdminCap and the BankrollPool AdminCap can mut-borrow the
@@ -209,13 +230,15 @@ module gostop_mines::mines {
             ESessionAlreadyActive,
         );
 
-        // Bet itself must fit within the pool's per-game payout cap. The
-        // potential payout (bet * multiplier) can exceed this; cashout
-        // silently clamps the actual coin transfer to cap.
-        assert!(
-            bet_amount <= bankroll_pool::game_cap_max_payout(cap),
-            EBetTooLarge,
-        );
+        // Bet must not exceed the admin-configured max bet. Falls back to
+        // game_cap_max_payout if set_max_bet has never been called (e.g. old
+        // registry objects before this upgrade).
+        let max_bet = if (dynamic_field::exists_(&registry.id, MaxBetKey {})) {
+            *dynamic_field::borrow<MaxBetKey, u64>(&registry.id, MaxBetKey {})
+        } else {
+            bankroll_pool::game_cap_max_payout(cap)
+        };
+        assert!(bet_amount <= max_bet, EBetTooLarge);
 
         // Collect bet.
         bankroll_pool::collect_bet(pool, cap, bet_coin, sender, clock);
