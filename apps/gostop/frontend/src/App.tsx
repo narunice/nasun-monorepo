@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { WalletConnect } from '@nasun/wallet-ui'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
+import { HeaderBalance } from './components/HeaderBalance'
 import LotteryPage from './pages/LotteryPage'
 import ScratchCardPage from './pages/ScratchCardPage'
 import NumberMatchPage from './pages/NumberMatchPage'
@@ -62,7 +63,11 @@ function ScrollToTop() {
   return null
 }
 
+import { useBalanceSync } from './hooks/useBalanceSync'
+
 export default function App() {
+  useBalanceSync() // Start background balance sync
+
   return (
     <div className="min-h-screen flex flex-col">
       <ScrollToTop />
@@ -127,6 +132,7 @@ function Header() {
         </nav>
 
         <div className="flex items-center gap-2">
+          <HeaderBalance />
           <HeaderSoundToggle />
           <div className="shrink-0">
             <WalletConnect />

@@ -5,6 +5,8 @@ import { useWallet } from '@nasun/wallet';
 import { getSuiClient } from '../lib/sui-client';
 import { withStaleObjectRetry } from '../lib/sui-retry';
 import { useToastStore } from '../store/useToastStore';
+import { useBalanceStore } from '../store/useBalanceStore';
+import { useBalanceSync } from './useBalanceSync';
 import { GAME_ERRORS } from '../lib/constants/errors';
 import { NUSDC_UNIT_NUMBER } from '../lib/constants/assets';
 import { findNusdcCoins, type FoundCoins } from '../features/shared/coin-utils';
@@ -19,6 +21,8 @@ export interface GameTxOptions {
   executionOptions?: SuiTransactionBlockResponseOptions;
   /** Whether to wait for fullnode checkpoint. Default: true. */
   awaitFullnode?: boolean;
+  /** Whether to optimistically deduct the amount from balance store. */
+  optimistic?: boolean;
 }
 
 /**
@@ -28,7 +32,9 @@ export interface GameTxOptions {
 export function useGameTransaction() {
   const { address, signAndExecuteTransaction } = useWallet();
   const showToast = useToastStore((s) => s.showToast);
+  const { addPendingBet, removePendingBet } = useBalanceStore();
   const [isPending, setIsPending] = useState(false);
+  const { refetch: refreshBalance } = useBalanceSync();
 
   const executeGameTx = useCallback(
     async (
@@ -45,6 +51,12 @@ export function useGameTransaction() {
       const client = getSuiClient();
       setIsPending(true);
 
+      // Optimistic Update
+      const isOptimistic = options.optimistic !== false && options.amount !== undefined;
+      if (isOptimistic) {
+        addPendingBet(options.amount!);
+      }
+
       try {
         const finalResult = await withStaleObjectRetry(async () => {
           let foundCoins: FoundCoins | null = null;
@@ -52,7 +64,7 @@ export function useGameTransaction() {
           if (!options.skipBalanceCheck && options.amount !== undefined) {
             foundCoins = await findNusdcCoins(client, address, options.amount);
             if (!foundCoins) {
-              const req = (options.amount / BigInt(NUSDC_UNIT_NUMBER)).toString();
+              const req = (Number(options.amount) / NUSDC_UNIT_NUMBER).toFixed(2);
               throw new Error(GAME_ERRORS.INSUFFICIENT_BALANCE(req));
             }
           }
@@ -81,6 +93,7 @@ export function useGameTransaction() {
         });
 
         // Success (outside retry loop to only trigger once)
+        refreshBalance(); // Update balance immediately after successful TX
         if (options.successMessage) {
           showToast(options.successMessage, 'success');
         }
@@ -93,10 +106,13 @@ export function useGameTransaction() {
         options.onError?.(err instanceof Error ? err : new Error(message));
         return false;
       } finally {
+        if (isOptimistic) {
+          removePendingBet(options.amount!);
+        }
         setIsPending(false);
       }
     },
-    [address, isPending, signAndExecuteTransaction, showToast]
+    [address, isPending, signAndExecuteTransaction, showToast, addPendingBet, removePendingBet, refreshBalance]
   );
 
   return { executeGameTx, isPending };
