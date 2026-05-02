@@ -60,11 +60,6 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
         </div>
       </nav>
 
-      {/* Mobile: inline Experimental tag right-aligned above the bottom tab bar */}
-      <div className="md:hidden flex justify-end mb-3">
-        <ExperimentalTag />
-      </div>
-
       {/* Mobile: fixed bottom tab bar with icons + labels for clear targets */}
       <nav
         className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-uju-card/95 backdrop-blur border-t border-uju-border/60"
@@ -102,8 +97,6 @@ export function UjuNavigation({ activeTab, onTabChange }: UjuNavigationProps) {
         </div>
       </nav>
 
-      {/* Mobile bottom bar spacer */}
-      <div className="md:hidden h-[64px]" aria-hidden="true" />
     </>
   );
 }

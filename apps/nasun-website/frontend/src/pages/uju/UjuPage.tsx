@@ -73,7 +73,7 @@ export default function UjuPage() {
     <UjuAppDirectoryProvider identityId={user?.identityId}>
     <UjuLayout>
       <main className="min-h-[calc(100vh-50px)]">
-        <div className="max-w-5xl mx-auto px-4 py-6">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-6 max-md:pb-20">
           {/* Banner — full container width */}
           <div className="mb-5">
             <BannerCarousel />
@@ -115,7 +115,7 @@ export default function UjuPage() {
 
       {/* Mobile chat: full-screen overlay */}
       {showMobileChat && (
-        <div className="fixed inset-0 z-[55] bg-uju-bg flex flex-col">
+        <div className="fixed inset-0 z-[65] bg-uju-bg flex flex-col pt-[50px]">
           <UjuChatSidebar onClose={() => setChatOpen(false)} />
         </div>
       )}
