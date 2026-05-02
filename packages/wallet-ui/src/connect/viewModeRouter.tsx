@@ -315,7 +315,7 @@ function DeleteConfirmWithPasskey({ s }: { s: WalletConnectStateReturn }) {
 function renderByWalletStatus(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
-  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void },
+  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void; onRecoverFunds?: () => void },
 ): ReactNode | null {
   // Ledger connected state (no software wallet)
   if (s.isLedgerConnected && s.ledgerAddress && s.status === "disconnected" && !s.isZkLoggedIn) {
@@ -364,6 +364,7 @@ function renderByWalletStatus(
           s.zkLogout();
           s.closeDropdown();
         }}
+        onRecoverFunds={options?.onRecoverFunds}
       />
     );
   }
@@ -396,6 +397,7 @@ function renderByWalletStatus(
           s.closeDropdown();
         }}
         onDelete={() => s.setViewMode("delete-confirm")}
+        onRecoverFunds={options?.onRecoverFunds}
       />
     );
   }
@@ -443,6 +445,7 @@ function renderByWalletStatus(
           s.closeDropdown();
         }}
         onDelete={s.handleDelete}
+        onRecoverFunds={options?.onRecoverFunds}
       />
     );
   }
@@ -456,7 +459,7 @@ function renderByWalletStatus(
 export function renderViewContent(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
-  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void },
+  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void; onRecoverFunds?: () => void },
 ): ReactNode {
   // 1. Explicit ViewMode match
   const renderer = VIEW_RENDERERS[s.viewMode];
