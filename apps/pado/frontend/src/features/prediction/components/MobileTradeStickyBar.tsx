@@ -46,15 +46,15 @@ export function MobileTradeStickyBar({
         <div className="flex gap-2">
           <button
             onClick={() => scrollToForm('yes')}
-            className="relative flex-1 h-12 rounded-lg overflow-hidden border border-green-600/40 hover:border-green-500/70 active:scale-[0.98] transition-all duration-150 group"
+            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-green-600/30 border border-green-500/60 hover:border-green-400 active:scale-[0.98] transition-all duration-150 group"
           >
             <div
-              className="absolute inset-0 bg-green-600/20 group-hover:bg-green-600/25 transition-all duration-300"
+              className="absolute inset-y-0 left-0 bg-green-500/50 group-hover:bg-green-500/60 transition-all duration-300"
               style={{ width: `${yesProbability}%` }}
             />
-            <div className="relative flex items-center justify-center gap-1.5 h-full">
-              <span className="text-xs font-bold text-green-400 tracking-wide">BUY YES</span>
-              <span className="text-sm font-mono font-black text-green-300">
+            <div className="relative flex items-center justify-center gap-2 h-full">
+              <span className="text-sm font-bold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">BUY YES</span>
+              <span className="text-base font-mono font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {yesProbability.toFixed(0)}%
               </span>
             </div>
@@ -62,15 +62,15 @@ export function MobileTradeStickyBar({
 
           <button
             onClick={() => scrollToForm('no')}
-            className="relative flex-1 h-12 rounded-lg overflow-hidden border border-red-600/40 hover:border-red-500/70 active:scale-[0.98] transition-all duration-150 group"
+            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-red-600/30 border border-red-500/60 hover:border-red-400 active:scale-[0.98] transition-all duration-150 group"
           >
             <div
-              className="absolute inset-0 bg-red-600/20 group-hover:bg-red-600/25 transition-all duration-300"
+              className="absolute inset-y-0 left-0 bg-red-500/50 group-hover:bg-red-500/60 transition-all duration-300"
               style={{ width: `${noProbability}%` }}
             />
-            <div className="relative flex items-center justify-center gap-1.5 h-full">
-              <span className="text-xs font-bold text-red-400 tracking-wide">BUY NO</span>
-              <span className="text-sm font-mono font-black text-red-300">
+            <div className="relative flex items-center justify-center gap-2 h-full">
+              <span className="text-sm font-bold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">BUY NO</span>
+              <span className="text-base font-mono font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {noProbability.toFixed(0)}%
               </span>
             </div>
