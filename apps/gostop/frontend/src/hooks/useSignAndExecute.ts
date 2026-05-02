@@ -12,6 +12,7 @@ export interface SignAndExecuteOptions {
 export interface SignAndExecuteResult {
   digest: string;
   effects?: unknown;
+  events?: unknown;
   objectChanges?: unknown;
 }
 
@@ -75,6 +76,7 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
       return {
         digest: result.digest,
         effects: result.effects,
+        events: result.events,
         objectChanges: result.objectChanges,
       };
     },
