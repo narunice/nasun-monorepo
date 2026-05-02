@@ -251,6 +251,7 @@ export function useOrderActions(): UseOrderActionsResult {
       queryClient.invalidateQueries({ queryKey: ["orderbook"] });
       queryClient.invalidateQueries({ queryKey: ["orderHistory"] });
       queryClient.invalidateQueries({ queryKey: ["sender-events"] });
+      queryClient.invalidateQueries({ queryKey: ["margin-account"] });
     }, 2000);
   }, [queryClient]);
 
@@ -298,9 +299,14 @@ export function useOrderActions(): UseOrderActionsResult {
             if (!skipRefresh) refreshData();
             return withExec;
           } else {
-            playSound('error');
-            showToast(formatUserFriendlyError(result.error, { side: "buy", requiredAmount: price * amount, availableAmount: 0 }), "error");
-            return result;
+            // UNIFIED_MARGIN-0 = EInsufficientBalance: cached MA balance was stale.
+            // Fall through to wallet auto-deposit path instead of surfacing the error.
+            const parsedMaErr = parseError(result.error);
+            if (parsedMaErr.code !== 'UNIFIED_MARGIN-0') {
+              playSound('error');
+              showToast(formatUserFriendlyError(result.error, { side: "buy", requiredAmount: price * amount, availableAmount: 0 }), "error");
+              return result;
+            }
           }
         }
       }
