@@ -7,6 +7,7 @@ import { ScratchBuyPanel } from "../features/scratchcard/components/ScratchBuyPa
 import { ScratchResultsGrid } from "../features/scratchcard/components/ScratchResultsGrid";
 import { ScratchPrizeTable } from "../features/scratchcard/components/ScratchPrizeTable";
 import { NoWinSummaryModal } from "../features/scratchcard/components/ScratchNoWinSummaryModal";
+import { NUSDC_UNIT } from "../lib/constants/assets";
 
 const CARD_PRICE_NUSDC = 5;
 
@@ -62,7 +63,7 @@ export default function ScratchCardPage() {
         <NoWinSummaryModal
           count={results.length}
           wins={results.filter((r) => r.multiplier > 0).length}
-          spent={BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * 1_000_000n}
+          spent={BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * NUSDC_UNIT}
           won={results.reduce((s, r) => s + r.prizeAmount, 0n)}
           onClose={() => setSummaryOpen(false)}
           onPlayAgain={() => {

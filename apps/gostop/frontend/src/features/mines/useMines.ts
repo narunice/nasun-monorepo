@@ -1,8 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Transaction } from '@mysten/sui/transactions'
-import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet'
-import { getSuiClient } from '../../lib/sui-client'
-import { NUSDC_TYPE } from '../../lib/gostop-config'
+import { useCallback, useEffect, useState } from 'react'
+import { useWallet } from '@nasun/wallet'
 import {
   getMyActiveSession,
   type MinesSession,
@@ -13,9 +10,9 @@ import {
   buildRevealCell,
   buildCashout,
 } from './transactions'
-import { withStaleObjectRetry } from '../../lib/sui-retry'
+import { useGameTransaction } from '../../hooks/useGameTransaction'
 
-export type MinesPhase = 'idle' | 'creating' | 'cashing_out'
+export type MinesPhase = 'idle' | 'creating' | 'cashing_out' | 'busy'
 
 export interface UseMinesResult {
   walletAddress: string | undefined
@@ -35,35 +32,16 @@ export interface UseMinesResult {
 }
 
 export function useMines(): UseMinesResult {
-  const { status, account, getKeypair } = useWallet()
-  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSign } =
-    useZkLogin()
-  const passkeyKeypair = usePasskeyStore((s) => s.keypair)
-  const passkeyAddress = usePasskeyStore((s) => s.address)
-  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked)
-
-  const isLocalActive = status === 'unlocked' && !!account?.address
-  type WalletKind = 'zk' | 'local' | 'passkey'
-  let kind: WalletKind | null = null
-  let walletAddress: string | undefined
-  if (isZkLoggedIn && zkState?.address) {
-    kind = 'zk'
-    walletAddress = zkState.address
-  } else if (isLocalActive) {
-    kind = 'local'
-    walletAddress = account?.address
-  } else if (isPasskeyUnlocked && passkeyAddress) {
-    kind = 'passkey'
-    walletAddress = passkeyAddress
-  }
+  const { address: walletAddress } = useWallet()
   const isWalletConnected = !!walletAddress
 
   const [session, setSession] = useState<MinesSession | null>(null)
-  const [phase, setPhase] = useState<MinesPhase>('idle')
   const [pendingCells, setPendingCells] = useState<Set<number>>(new Set())
   const [error, setError] = useState<string | null>(null)
   const [lastFinish, setLastFinish] = useState<UseMinesResult['lastFinish']>(null)
-  const phaseLockRef = useRef<string | null>(null)
+  const [localPhase, setLocalPhase] = useState<MinesPhase>('idle')
+
+  const { executeGameTx, isPending } = useGameTransaction()
 
   const refresh = useCallback(async () => {
     if (!walletAddress) {
@@ -82,217 +60,120 @@ export function useMines(): UseMinesResult {
     refresh()
   }, [refresh])
 
-  const signAndExecute = useCallback(
-    async (tx: Transaction, opts: { awaitFullnode?: boolean } = {}) => {
-      if (!walletAddress) throw new Error('Wallet not connected')
-      const client = getSuiClient()
-      tx.setSender(walletAddress)
-      const bytes = await tx.build({ client })
-
-      let signature: string
-      if (kind === 'zk') signature = await zkSign(bytes)
-      else if (kind === 'local') {
-        const kp = getKeypair()
-        if (!kp) throw new Error('Local keypair unavailable')
-        signature = (await kp.signTransaction(bytes)).signature
-      } else if (kind === 'passkey') {
-        if (!passkeyKeypair) throw new Error('Passkey keypair unavailable')
-        signature = (await passkeyKeypair.signTransaction(bytes)).signature
-      } else {
-        throw new Error('No active wallet to sign with')
-      }
-
-      const result = await client.executeTransactionBlock({
-        transactionBlock: bytes,
-        signature,
-        options: { showEffects: true, showEvents: true },
-      })
-      if (result.effects?.status?.status !== 'success') {
-        throw new Error(result.effects?.status?.error || 'Transaction failed')
-      }
-      // Fullnode checkpoint sync only matters when a follow-up RPC needs to
-      // read the post-tx state. Reveals derive next state locally, so they
-      // skip this wait to halve perceived latency.
-      if (opts.awaitFullnode !== false) {
-        await client.waitForTransaction({ digest: result.digest })
-      }
-      return result
-    },
-    [walletAddress, kind, zkSign, getKeypair, passkeyKeypair],
-  )
-
-  const findNusdcCoins = useCallback(
-    async (amount: bigint): Promise<{ primary: string; extra: string[] } | null> => {
-      if (!walletAddress) return null
-      const client = getSuiClient()
-      const coins = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE })
-      if (coins.data.length === 0) return null
-      const single = coins.data.find((c) => BigInt(c.balance) >= amount)
-      if (single) return { primary: single.coinObjectId, extra: [] }
-      let total = 0n
-      const ordered = [...coins.data].sort((a, b) =>
-        Number(BigInt(b.balance) - BigInt(a.balance)),
-      )
-      const used: string[] = []
-      for (const c of ordered) {
-        used.push(c.coinObjectId)
-        total += BigInt(c.balance)
-        if (total >= amount) break
-      }
-      if (total < amount) return null
-      return { primary: used[0], extra: used.slice(1) }
-    },
-    [walletAddress],
-  )
-
   const createSession = useCallback(
     async (betAmount: bigint, mineCount: number): Promise<boolean> => {
-      if (!isWalletConnected) {
-        setError('Wallet not connected')
-        return false
-      }
-      if (phaseLockRef.current) {
-        setError('Another transaction is in progress.')
-        return false
-      }
-      phaseLockRef.current = 'create'
-      setPhase('creating')
+      setLocalPhase('creating')
       setError(null)
       setLastFinish(null)
-      try {
-        await withStaleObjectRetry(async () => {
-          const coins = await findNusdcCoins(betAmount)
-          if (!coins) {
-            throw new Error(
-              `Insufficient NUSDC balance (need ${(Number(betAmount) / 1_000_000).toFixed(2)} NUSDC).`,
-            )
-          }
-          const tx = buildCreateSession(coins.primary, betAmount, mineCount, coins.extra)
-          await signAndExecute(tx)
-        })
-        await refresh()
-        return true
-      } catch (e) {
-        setError(humanizeMinesError(e instanceof Error ? e.message : 'Failed to start'))
-        return false
-      } finally {
-        phaseLockRef.current = null
-        setPhase('idle')
-      }
+
+      const success = await executeGameTx(
+        async (coins) => buildCreateSession(coins!.primary, betAmount, mineCount, coins!.extra),
+        {
+          amount: betAmount,
+          onSuccess: refresh,
+          onError: (err) => setError(humanizeMinesError(err.message)),
+        }
+      )
+
+      setLocalPhase('idle')
+      return success
     },
-    [isWalletConnected, findNusdcCoins, signAndExecute, refresh],
+    [executeGameTx, refresh]
   )
 
   const revealCell = useCallback(
     async (cellIndex: number) => {
-      if (!session || session.status !== 0) return
-      if (pendingCells.has(cellIndex)) return
-      if (phase === 'creating' || phase === 'cashing_out') return
-      // Serialize all session-mutating ops. Two reveals racing on the same
-      // owned MinesSession object would target the same object version and
-      // the second tx is rejected by validators with a version mismatch.
-      // The ref lock is synchronous, unlike `pendingCells` (state).
-      if (phaseLockRef.current) return
-      phaseLockRef.current = 'reveal'
+      if (!session || session.status !== 0 || isPending || pendingCells.has(cellIndex)) return
 
       setPendingCells((prev) => new Set(prev).add(cellIndex))
       setError(null)
-      try {
-        const result = await withStaleObjectRetry(() => {
-          const tx = buildRevealCell(session.id, cellIndex)
-          return signAndExecute(tx, { awaitFullnode: false })
-        })
-        // Determine outcome from events: SessionFinished => explosion.
-        const finished = (result.events ?? []).find((e) =>
-          e.type.endsWith('::mines::SessionFinished'),
-        )
-        if (finished) {
-          const pj = finished.parsedJson as {
-            payout: string | number
-            bet_amount: string | number
-            outcome: string | number
-          }
-          const outcome = Number(pj.outcome)
-          setLastFinish({
-            kind: outcome === 2 ? 'exploded' : 'cashed_out',
-            payout: BigInt(pj.payout),
-            bet: BigInt(pj.bet_amount),
-          })
-          setSession(null)
-        } else {
-          // Safe reveal — derive next state locally instead of refetching.
-          // Contract sets revealed[i]=true and increments safe_reveals by 1;
-          // mirror that here to render the green check without an RPC wait.
-          setSession((prev) => {
-            if (!prev || prev.id !== session.id) return prev
-            const nextRevealed = prev.revealed.slice()
-            nextRevealed[cellIndex] = true
-            return {
-              ...prev,
-              revealed: nextRevealed,
-              safeReveals: prev.safeReveals + 1,
+
+      await executeGameTx(
+        async () => buildRevealCell(session.id, cellIndex),
+        {
+          awaitFullnode: false,
+          onSuccess: (result) => {
+            const finished = (result.events ?? []).find((e: any) =>
+              e.type.endsWith('::mines::SessionFinished'),
+            )
+            if (finished) {
+              const pj = finished.parsedJson as {
+                payout: string | number
+                bet_amount: string | number
+                outcome: string | number
+              }
+              const outcome = Number(pj.outcome)
+              setLastFinish({
+                kind: outcome === 2 ? 'exploded' : 'cashed_out',
+                payout: BigInt(pj.payout),
+                bet: BigInt(pj.bet_amount),
+              })
+              setSession(null)
+            } else {
+              setSession((prev) => {
+                if (!prev || prev.id !== session.id) return prev
+                const nextRevealed = prev.revealed.slice()
+                nextRevealed[cellIndex] = true
+                return {
+                  ...prev,
+                  revealed: nextRevealed,
+                  safeReveals: prev.safeReveals + 1,
+                }
+              })
             }
-          })
+          },
+          onError: (err) => setError(humanizeMinesError(err.message)),
         }
-      } catch (e) {
-        setError(humanizeMinesError(e instanceof Error ? e.message : 'Reveal failed'))
-      } finally {
-        setPendingCells((prev) => {
-          const next = new Set(prev)
-          next.delete(cellIndex)
-          return next
-        })
-        phaseLockRef.current = null
-      }
+      )
+
+      setPendingCells((prev) => {
+        const next = new Set(prev)
+        next.delete(cellIndex)
+        return next
+      })
     },
-    [session, pendingCells, phase, signAndExecute],
+    [session, isPending, pendingCells, executeGameTx]
   )
 
   const cashout = useCallback(async (): Promise<boolean> => {
     if (!session) return false
-    if (phaseLockRef.current) {
-      setError('Another transaction is in progress.')
-      return false
-    }
-    phaseLockRef.current = 'cashout'
-    setPhase('cashing_out')
+    setLocalPhase('cashing_out')
     setError(null)
-    try {
-      const result = await withStaleObjectRetry(() => {
-        const tx = buildCashout(session.id)
-        return signAndExecute(tx)
-      })
-      const finished = (result.events ?? []).find((e) =>
-        e.type.endsWith('::mines::SessionFinished'),
-      )
-      if (finished) {
-        const pj = finished.parsedJson as {
-          payout: string | number
-          bet_amount: string | number
-          outcome: string | number
-        }
-        setLastFinish({
-          kind: Number(pj.outcome) === 2 ? 'exploded' : 'cashed_out',
-          payout: BigInt(pj.payout),
-          bet: BigInt(pj.bet_amount),
-        })
+
+    const success = await executeGameTx(
+      async () => buildCashout(session.id),
+      {
+        onSuccess: (result) => {
+          const finished = (result.events ?? []).find((e: any) =>
+            e.type.endsWith('::mines::SessionFinished'),
+          )
+          if (finished) {
+            const pj = finished.parsedJson as {
+              payout: string | number
+              bet_amount: string | number
+              outcome: string | number
+            }
+            setLastFinish({
+              kind: Number(pj.outcome) === 2 ? 'exploded' : 'cashed_out',
+              payout: BigInt(pj.payout),
+              bet: BigInt(pj.bet_amount),
+            })
+          }
+          setSession(null)
+        },
+        onError: (err) => setError(humanizeMinesError(err.message)),
       }
-      setSession(null)
-      return true
-    } catch (e) {
-      setError(humanizeMinesError(e instanceof Error ? e.message : 'Cashout failed'))
-      return false
-    } finally {
-      phaseLockRef.current = null
-      setPhase('idle')
-    }
-  }, [session, signAndExecute])
+    )
+
+    setLocalPhase('idle')
+    return success
+  }, [session, executeGameTx])
 
   return {
     walletAddress,
     isWalletConnected,
     session,
-    phase,
+    phase: isPending ? (localPhase !== 'idle' ? localPhase : 'busy') : 'idle',
     pendingCells,
     createSession,
     revealCell,
