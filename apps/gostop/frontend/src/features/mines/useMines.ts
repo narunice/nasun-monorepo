@@ -11,6 +11,8 @@ import {
   buildCashout,
 } from './transactions'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
+import { MINES_MIN_BET, MINES_MAX_BET, MINES_MIN_MINES, MINES_MAX_MINES } from '../../lib/gostop-config'
+import { validateBetAmount, validateMinesConfig } from '../../lib/validation/game-rules'
 
 export type MinesPhase = 'idle' | 'creating' | 'cashing_out' | 'busy'
 
@@ -70,6 +72,12 @@ export function useMines(): UseMinesResult {
         async (coins) => buildCreateSession(coins!.primary, betAmount, mineCount, coins!.extra),
         {
           amount: betAmount,
+          expireThisEpoch: true,
+          validate: () => {
+            const betVal = validateBetAmount(betAmount, MINES_MIN_BET, MINES_MAX_BET);
+            if (!betVal.isValid) return betVal;
+            return validateMinesConfig(mineCount, MINES_MIN_MINES, MINES_MAX_MINES);
+          },
           onSuccess: refresh,
           onError: (err) => setError(humanizeMinesError(err.message)),
         }

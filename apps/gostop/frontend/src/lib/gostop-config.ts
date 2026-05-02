@@ -70,6 +70,7 @@ export const MINES_GRID_SIZE = devnetIds.mines.gridSize;            // 25
 export const MINES_MIN_MINES = devnetIds.mines.mineCountRange[0];   // 1
 export const MINES_MAX_MINES = devnetIds.mines.mineCountRange[1];   // 24
 export const MINES_HOUSE_EDGE_BPS = devnetIds.mines.houseEdgeBps;   // 300
+export const MINES_MIN_BET = 1_000_000n; // 1 NUSDC (contract minimum)
 export const MINES_MAX_BET = BigInt(devnetIds.mines.maxBetNusdc ?? devnetIds.mines.maxSinglePayout); // 100_000_000
 export const MINES_MAX_SINGLE_PAYOUT = BigInt(devnetIds.mines.maxSinglePayout); // 2_000_000_000
 export const MINES_SESSION_TYPE = devnetIds.mines.sessionType;
