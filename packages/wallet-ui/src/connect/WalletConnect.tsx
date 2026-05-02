@@ -48,6 +48,8 @@ interface WalletConnectProps {
   lockedTitle?: string;
   /** Called when user clicks "Sign out" in the disconnected view. Only shown when provided. */
   onSignOut?: () => void;
+  /** Called when user clicks "Recover funds" in MoreMenu. Host app should navigate to its /recover route. */
+  onRecoverFunds?: () => void;
 }
 
 export function WalletConnect({
@@ -70,6 +72,7 @@ export function WalletConnect({
   embedded,
   lockedTitle,
   onSignOut,
+  onRecoverFunds,
 }: WalletConnectProps) {
   const s = useWalletConnectState(initialViewMode, defaultOpen, onDropdownClose);
 
@@ -155,7 +158,7 @@ export function WalletConnect({
     setSelectedProposalId: s.setSelectedProposalId,
   } as const;
 
-  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice, lockedTitle, onSignOut });
+  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice, lockedTitle, onSignOut, onRecoverFunds });
 
   // True when any wallet type is actively connected — s.status alone is not enough
   // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)

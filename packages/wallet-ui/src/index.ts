@@ -177,6 +177,16 @@ export {
   WCSessionDetail,
 } from './walletconnect';
 
+// Asset Recovery (escape hatch) - generic UI for cross-app fund recovery
+export { AssetRecoveryPanel } from './escape-hatch';
+export type {
+  RecoverableItem,
+  RecoveryAction,
+  RecoveryAdapter,
+  RecoveryBalance,
+  RecoverySimulation,
+} from './escape-hatch';
+
 // Shared components and design tokens
 export { Tooltip, InlineTooltip, WALLET_STYLES } from './shared';
 export type { TooltipProps, InlineTooltipProps } from './shared';

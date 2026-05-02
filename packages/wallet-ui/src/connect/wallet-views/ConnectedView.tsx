@@ -104,6 +104,9 @@ export interface ConnectedViewProps {
   onSignOut?: () => void;
   onLock?: () => void;
   onDelete?: () => void;
+
+  // External recovery navigation (host app provides /recover route)
+  onRecoverFunds?: () => void;
 }
 
 function PortfolioSummaryBar({ isTestNetwork }: { isTestNetwork: boolean }) {
@@ -179,6 +182,7 @@ export function ConnectedView(props: ConnectedViewProps) {
     onSignOut,
     onLock,
     onDelete,
+    onRecoverFunds,
   } = props;
 
   const variant = header.variant;
@@ -415,6 +419,10 @@ export function ConnectedView(props: ConnectedViewProps) {
               setViewMode("wc-main");
               setShowMoreMenu(false);
             }}
+            onRecoverFunds={onRecoverFunds ? () => {
+              onRecoverFunds();
+              setShowMoreMenu(false);
+            } : undefined}
           />
         }
       />
