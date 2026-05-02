@@ -28,6 +28,7 @@ import {
   ResolverDisclaimerBanner,
   ResolutionMetaPanel,
   MyOpenOrdersList,
+  MyTradeHistory,
   RecentTradesFeed,
   MobileTradeStickyBar,
   type PredictionMarket,
@@ -171,6 +172,7 @@ export function PredictMarketPage() {
             />
             <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
             <MyOpenOrdersList market={market} />
+            <MyTradeHistory marketId={market.id} />
           </aside>
         </div>
       ) : (
