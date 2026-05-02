@@ -305,6 +305,38 @@ export function buildResolveMarket(
   });
 }
 
+export function buildExtendResolveDeadline(
+  tx: Transaction,
+  adminCapId: string,
+  marketId: string,
+  newDeadline: bigint,
+): void {
+  tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::extend_resolve_deadline`,
+    arguments: [
+      tx.object(adminCapId),
+      tx.object(marketId),
+      tx.pure.u64(newDeadline),
+      tx.object(CLOCK_ID),
+    ],
+  });
+}
+
+export function buildAdminCancelMarket(
+  tx: Transaction,
+  adminCapId: string,
+  marketId: string,
+): void {
+  tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::admin_cancel_market`,
+    arguments: [
+      tx.object(adminCapId),
+      tx.object(marketId),
+      tx.object(CLOCK_ID),
+    ],
+  });
+}
+
 export function buildCreateMarket(
   tx: Transaction,
   adminCapId: string,
