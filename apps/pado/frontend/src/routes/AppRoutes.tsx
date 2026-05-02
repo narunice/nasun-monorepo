@@ -62,6 +62,7 @@ const CompetitionsPage = lazyWithRetry(() => import('../pages/CompetitionsPage')
 const CompetitionDetailPage = lazyWithRetry(() => import('../pages/CompetitionDetailPage').then(m => ({ default: m.CompetitionDetailPage })));
 const EarnPage = lazyWithRetry(() => import('../pages/EarnPage').then(m => ({ default: m.EarnPage })));
 const PortfolioPage = lazyWithRetry(() => import('../pages/PortfolioPage').then(m => ({ default: m.PortfolioPage })));
+const RecoverPage = lazyWithRetry(() => import('../pages/RecoverPage').then(m => ({ default: m.RecoverPage })));
 
 export function AppRoutes() {
   return (
@@ -115,6 +116,10 @@ export function AppRoutes() {
 
         {/* Portfolio */}
         <Route path="/portfolio" element={<GatedRoute requires="spot"><PortfolioPage /></GatedRoute>} />
+
+        {/* Asset Recovery (escape hatch) - no GatedRoute: must be reachable
+            even when other gates fail, since recovery should always work. */}
+        <Route path="/recover" element={<RecoverPage />} />
 
         {/* Auth (zkLogin callback) - whitelisted */}
         <Route path="/callback" element={<AuthCallbackPage />} />

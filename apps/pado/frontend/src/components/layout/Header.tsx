@@ -294,6 +294,7 @@ export function Header() {
           {hasSpotAccess ? (
             <Link
               to="/portfolio"
+              data-tour="portfolio-link"
               onClick={(e) => handleNavClick(e, "/portfolio")}
               className={`px-3 py-2 text-sm font-medium rounded-md transition-colors ${
                 isActive("/portfolio")
@@ -346,6 +347,7 @@ export function Header() {
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
               addressEndChars={3}
+              onRecoverFunds={() => navigate('/recover')}
             />
           )}
           <a
