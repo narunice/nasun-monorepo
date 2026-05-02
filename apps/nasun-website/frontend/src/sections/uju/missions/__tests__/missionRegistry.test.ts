@@ -59,7 +59,7 @@ describe('APP_MISSION_MAP - pado', () => {
     expect(m.completionType).toBe('onchain');
     expect(m.points).toBe(2);
     expect(m.appId).toBe('pado');
-    expect(m.externalUrl).toBe('https://pado.finance/trade');
+    expect(m.externalUrl).toBe('https://pado.finance');
   });
 });
 

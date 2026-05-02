@@ -76,7 +76,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 2,
       label: 'Spot Trade',
       description: 'Place a trade on the DEX orderbook',
-      externalUrl: 'https://pado.finance/trade',
+      externalUrl: 'https://pado.finance',
     },
   ],
   gostop: [
