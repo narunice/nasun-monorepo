@@ -69,10 +69,14 @@ export function createPadoPredictionPositionAdapter(
 
       if (positions.length === 0) return [];
 
-      // Fetch unique markets in parallel (de-dupe).
+      // Fetch unique markets in parallel (de-dupe). allSettled so one failed
+      // market fetch doesn't drop the whole position list — undefined falls
+      // through to the "Market data unavailable" disabled action below.
       const uniqueMarketIds = Array.from(new Set(positions.map((p) => p.marketId)));
-      const markets = await Promise.all(uniqueMarketIds.map((id) => fetchMarket(id)));
-      const marketById = new Map(uniqueMarketIds.map((id, i) => [id, markets[i]]));
+      const settled = await Promise.allSettled(uniqueMarketIds.map((id) => fetchMarket(id)));
+      const marketById = new Map(
+        uniqueMarketIds.map((id, i) => [id, settled[i].status === 'fulfilled' ? settled[i].value : null]),
+      );
 
       const items: RecoverableItem[] = positions.map((pos) => {
         const market = marketById.get(pos.marketId);

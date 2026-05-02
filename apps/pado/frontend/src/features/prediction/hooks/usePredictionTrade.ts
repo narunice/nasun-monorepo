@@ -182,7 +182,7 @@ function parseTradeError(error: unknown): string {
       case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
       case 19: return 'No matching orders at market price. Try a Limit order or wait for liquidity.';
       case 20: return 'Order not found. It may have been filled or cancelled.';
-      case 100: return 'Insufficient margin in Pado Balance. Deposit more NUSDC or reduce trade size.';
+      case 100: return 'Price moved too much during your order. Refresh the orderbook and try again.';
       case 101: return 'Trade value cannot be zero.';
       default: return `Transaction failed (code: ${code}). Please try again.`;
     }
@@ -291,6 +291,14 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     [queryClient, walletAddress],
   );
 
+  // Invalidate wallet + BM balance caches after any state-changing trade.
+  // Mirrors useOrderActions.ts:236-243 canonical pattern.
+  const invalidateBalances = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
+    queryClient.invalidateQueries({ queryKey: ['bm-balance-global'] });
+    queryClient.invalidateQueries({ queryKey: ['balance-manager-balance'] });
+  }, [queryClient]);
+
   const runOperation = useCallback(
     async (
       marketId: string,
@@ -333,6 +341,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const digestSuffix = result.digest ? ` — ${result.digest.slice(0, 8)}...` : '';
           showToast(`${successMessage}${digestSuffix}`, 'success');
           invalidateMarketScoped(marketId, opts.invalidateMarketsList);
+          invalidateBalances();
           return { success: true, digest: result.digest };
         } catch (err) {
           const message = parseTradeError(err);
@@ -354,7 +363,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         setIsLoading(false);
       }
     },
-    [isWalletConnected, walletAddress, signAndExecute, showToast, invalidateMarketScoped],
+    [isWalletConnected, walletAddress, signAndExecute, showToast, invalidateMarketScoped, invalidateBalances],
   );
 
   const placeBuyTaker = useCallback(
@@ -574,6 +583,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       }
       storeBalanceManagerId(walletAddress, newBmId);
       setBalanceManagerId(newBmId);
+      invalidateBalances();
       return { success: true, digest: result.digest, newBmId };
     } catch (err) {
       const message = parseTradeError(err);
@@ -582,7 +592,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     } finally {
       setIsLoading(false);
     }
-  }, [walletAddress, signAndExecute, showToast, setBalanceManagerId]);
+  }, [walletAddress, signAndExecute, showToast, setBalanceManagerId, invalidateBalances]);
 
   const requestNusdc = useCallback(async (): Promise<TradeResult> => {
     if (!isWalletConnected) {
@@ -594,6 +604,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       const tx = buildNusdcFaucetTx();
       const result = await signAndExecute(tx);
       showToast('100,000 NUSDC received', 'success');
+      invalidateBalances();
       return { success: true, digest: result.digest };
     } catch (err) {
       const message = parseTradeError(err);
@@ -602,7 +613,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     } finally {
       setIsFaucetLoading(false);
     }
-  }, [isWalletConnected, signAndExecute, showToast]);
+  }, [isWalletConnected, signAndExecute, showToast, invalidateBalances]);
 
   return {
     isLoading,
