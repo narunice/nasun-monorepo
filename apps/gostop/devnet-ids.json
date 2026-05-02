@@ -120,7 +120,7 @@
   },
 
   "mines": {
-    "packageId": "0x429bae234530772957130833c39056a237d2d3a900da7be30ac1d87fe0848ea9",
+    "packageId": "0xbf9150a6b95dc047909ae59988b92ce8ce99d3c32f85063c569b49bf1db8b8c6",
     "originalPackageId": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54",
     "upgradeTxDigest": "HXL34qiZ2dRSqHaXAc3hVCvqtPYtfFhenkqxDfA5XXzv",
     "registry": "0x7b0574b78206bd5141a0afb59ac4e8c33bbdb4c48f626ca81596714e3f1f8795",
@@ -133,7 +133,8 @@
     "gridSize": 25,
     "mineCountRange": [1, 24],
     "houseEdgeBps": 300,
-    "maxSinglePayout": "100000000",
+    "maxBetNusdc": "100000000",
+    "maxSinglePayout": "2000000000",
     "sessionType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::MinesSession",
     "sessionCreatedEventType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::SessionCreated",
     "cellRevealedEventType": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54::mines::CellRevealed",
@@ -144,6 +145,7 @@
   "crash": {
     "packageId": "0xaa50442c95315da31ed6d3cd1af0b6c5026f0bf03bec817241689341171e9089",
     "v3PackageId": "0xab03c5f2e8e11aa9543b506690cf3ee6650341afe14e0b567b4298758557bacc",
+    "v4PackageId": "0x0516837128eb0cbec14db43cb2db9d4821c05cc361fb9315cbf75edddd3960ee",
     "v2PackageId": "0x546f9f13280cfc70ed961553fe0cc0b5a691e21918b0be53164b16a3a78b9966",
     "originalPackageId": "0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188",
     "registry": "0x3fa421e97c705f98c1cd29300bf4b90aab09a8f2a74190ab08f12d7a6a2f8cab",

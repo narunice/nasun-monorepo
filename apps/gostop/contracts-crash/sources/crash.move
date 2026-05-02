@@ -15,6 +15,7 @@
 module gostop_crash::crash {
     use sui::coin::{Self, Coin};
     use sui::clock::{Self, Clock};
+    use sui::dynamic_field;
     use sui::hash;
     use sui::bcs;
     use sui::event;
@@ -93,6 +94,9 @@ module gostop_crash::crash {
     // ===== Structs =====
 
     public struct AdminCap has key, store { id: UID }
+
+    /// Key for the per-game max bet limit stored on CrashRegistry.
+    public struct MaxBetKey has copy, drop, store {}
 
     public struct CrashRegistry has key {
         id: UID,
@@ -215,6 +219,21 @@ module gostop_crash::crash {
         operator: address,
     ) {
         reg.operator_address = operator;
+    }
+
+    /// Set the per-bet upper limit enforced in place_bet.
+    /// Stored as a dynamic field so it survives package upgrades without
+    /// requiring a struct layout change on CrashRegistry.
+    public entry fun set_max_bet(
+        _a: &AdminCap,
+        reg: &mut CrashRegistry,
+        new_max: u64,
+    ) {
+        if (dynamic_field::exists_(&reg.id, MaxBetKey {})) {
+            *dynamic_field::borrow_mut<MaxBetKey, u64>(&mut reg.id, MaxBetKey {}) = new_max;
+        } else {
+            dynamic_field::add(&mut reg.id, MaxBetKey {}, new_max);
+        }
     }
 
     /// Adjust max_single_payout on the GameCap that lives inside the registry.
@@ -453,9 +472,14 @@ module gostop_crash::crash {
 
         assert!(option::is_some(&reg.game_cap), EGameCapNotInstalled);
         let cap = option::borrow(&reg.game_cap);
-        // Pre-check: worst-case payout must not exceed pool's max_single_payout.
-        let max_payout = ((bet_amount as u128) * (MAX_THEORETICAL_MUL_BPS as u128) / 10_000) as u64;
-        assert!(max_payout <= bankroll_pool::game_cap_max_payout(cap), EBetTooLarge);
+        // Enforce admin-configured max bet. Falls back to deriving it from
+        // max_single_payout for registries created before this upgrade.
+        let max_bet = if (dynamic_field::exists_(&reg.id, MaxBetKey {})) {
+            *dynamic_field::borrow<MaxBetKey, u64>(&reg.id, MaxBetKey {})
+        } else {
+            bankroll_pool::game_cap_max_payout(cap) * 10_000 / MAX_THEORETICAL_MUL_BPS
+        };
+        assert!(bet_amount <= max_bet, EBetTooLarge);
 
         assert!(
             vector::length(&round.entries) < MAX_PARTICIPANTS,
