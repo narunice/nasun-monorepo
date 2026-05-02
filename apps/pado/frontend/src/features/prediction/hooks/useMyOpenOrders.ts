@@ -48,6 +48,7 @@ async function fetchMyOpenOrders(marketId: string, owner: string): Promise<OpenO
   const candidates: Array<{ priceBps: number; orderId: number; isYes: boolean; isBid: boolean }> = [];
   for (const event of page.data) {
     const j = event.parsedJson as Record<string, unknown> | null;
+    if (!j) continue;
     // OrderPlaced event emits `user` (not `owner`) per the Move struct definition.
     const eventMarketId = String(j.market_id ?? '');
     const eventUser = String(j.user ?? '');

@@ -202,6 +202,21 @@ body {
   animation: fullscreen-in 0.3s ease-out;
 }
 
+@keyframes trade-row-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-trade-row-in {
+  animation: trade-row-in 0.2s ease-out;
+}
+
 
 /* Custom scrollbar - thin, themed */
 * {
