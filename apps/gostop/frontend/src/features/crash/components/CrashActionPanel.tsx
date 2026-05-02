@@ -45,7 +45,7 @@ export function CrashActionPanel({
 
   const betFloat = parseFloat(betInput);
   const betAmountBig = Number.isFinite(betFloat)
-    ? BigInt(Math.round(betFloat * 1_000_000))
+    ? BigInt(Math.round(betFloat * NUSDC_UNIT_NUMBER))
     : 0n;
   const overMax = betAmountBig > CRASH_MAX_BET;
 
@@ -127,8 +127,8 @@ export function CrashActionPanel({
           </div>
           <BetSlider
             value={betInput}
-            min={Number(CRASH_MIN_BET) / 1_000_000}
-            max={Number(CRASH_MAX_BET) / 1_000_000}
+            min={Number(CRASH_MIN_BET) / NUSDC_UNIT_NUMBER}
+            max={Number(CRASH_MAX_BET) / NUSDC_UNIT_NUMBER}
             onChange={setBetInput}
           />
           <div className="flex gap-2 text-xs">
@@ -144,7 +144,7 @@ export function CrashActionPanel({
             ))}
             <button
               type="button"
-              onClick={() => setBetInput(String(Number(CRASH_MAX_BET) / 1_000_000))}
+              onClick={() => setBetInput(String(Number(CRASH_MAX_BET) / NUSDC_UNIT_NUMBER))}
               className="flex-1 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-200"
             >
               Max

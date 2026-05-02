@@ -3,7 +3,7 @@
  * No external audio files. Respects gostop notification preferences.
  */
 
-import { getNotificationPrefs } from './notification-preferences'
+import { useSettingsStore } from '../store/useSettingsStore'
 
 export type GameSound = 'winSmall' | 'winMedium' | 'winJackpot'
 
@@ -67,8 +67,8 @@ const GAME_SOUND_DEFS: Record<GameSound, ToneParams[]> = {
 }
 
 export function playGameSound(sound: GameSound): void {
-  const prefs = getNotificationPrefs()
-  if (!prefs.soundEnabled) return
+  const { soundEnabled, soundVolume: volume } = useSettingsStore.getState()
+  if (!soundEnabled) return
 
   const ctx = getAudioContext()
   if (!ctx) return
@@ -77,7 +77,6 @@ export function playGameSound(sound: GameSound): void {
   }
 
   const tones = GAME_SOUND_DEFS[sound]
-  const volume = prefs.soundVolume
   let offset = ctx.currentTime
   for (const tone of tones) {
     playTone(ctx, tone, volume, offset)

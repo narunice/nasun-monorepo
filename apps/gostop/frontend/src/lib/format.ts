@@ -1,3 +1,5 @@
+import { NUSDC_UNIT } from './constants/assets'
+
 /**
  * Shared formatting helpers. Single source of truth replacing per-page
  * `formatNusdc` duplicates.
@@ -7,8 +9,8 @@
 export function formatNusdc(amount: bigint): string {
   const negative = amount < 0n
   const abs = negative ? -amount : amount
-  const whole = abs / 1_000_000n
-  const frac = abs % 1_000_000n
+  const whole = abs / NUSDC_UNIT
+  const frac = abs % NUSDC_UNIT
   const fracStr = frac === 0n ? '' : `.${frac.toString().padStart(6, '0').replace(/0+$/, '')}`
   return `${negative ? '-' : ''}${whole}${fracStr}`
 }
@@ -17,8 +19,8 @@ export function formatNusdc(amount: bigint): string {
 export function formatNusdcFixed(amount: bigint): string {
   const negative = amount < 0n
   const abs = negative ? -amount : amount
-  const whole = abs / 1_000_000n
-  const fracMicros = Number(abs % 1_000_000n)
-  const value = Number(whole) + fracMicros / 1_000_000
+  const whole = abs / NUSDC_UNIT
+  const fracMicros = Number(abs % NUSDC_UNIT)
+  const value = Number(whole) + fracMicros / Number(NUSDC_UNIT)
   return `${negative ? '-' : ''}${value.toFixed(2)}`
 }

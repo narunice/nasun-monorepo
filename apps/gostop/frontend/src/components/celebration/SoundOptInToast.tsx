@@ -11,7 +11,7 @@
 
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { getNotificationPrefs, setNotificationPrefs } from '../../lib/notification-preferences'
+import { useSettingsStore } from '../../store/useSettingsStore'
 
 const PROMPTED_KEY = 'gostop:sound:prompted'
 
@@ -23,18 +23,19 @@ let listeners: Array<() => void> = []
  */
 export function triggerSoundOptInPrompt(): void {
   if (typeof window === 'undefined') return
-  if (getNotificationPrefs().soundEnabled) return
+  if (useSettingsStore.getState().soundEnabled) return
   if (localStorage.getItem(PROMPTED_KEY) === '1') return
   for (const fn of listeners) fn()
 }
 
 export function SoundOptInToast() {
   const [show, setShow] = useState(false)
+  const setSoundEnabled = useSettingsStore((s) => s.setSoundEnabled)
 
   useEffect(() => {
     const onTrigger = () => {
       // Re-check at fire time in case another tab updated prefs.
-      if (getNotificationPrefs().soundEnabled) return
+      if (useSettingsStore.getState().soundEnabled) return
       if (localStorage.getItem(PROMPTED_KEY) === '1') return
       setShow(true)
     }
@@ -54,7 +55,7 @@ export function SoundOptInToast() {
   }
 
   function enable() {
-    setNotificationPrefs({ soundEnabled: true })
+    setSoundEnabled(true)
     dismiss()
   }
 

@@ -199,11 +199,6 @@ export function isClaimable(round: LotteryRound, ticket: Ticket, nowMs: number):
   return nowMs < round.drawTime + 30 * 24 * 60 * 60 * 1000;
 }
 
-export function formatNusdc(amount: bigint): string {
-  const v = Number(amount) / 1_000_000;
-  return v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
 // ===== Internal (with public alias for game-history) =====
 
 export { parseRoundFields as parseLotteryRoundFields };
