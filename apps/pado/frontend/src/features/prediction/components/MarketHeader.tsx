@@ -6,6 +6,7 @@
 import { useState, useEffect } from 'react';
 import type { PredictionMarket, Orderbook } from '../types';
 import { calculateProbabilityFromOrderbook } from '../types';
+import { useShareMarket } from '../hooks/useShareMarket';
 
 interface MarketHeaderProps {
   market: PredictionMarket;
@@ -14,6 +15,7 @@ interface MarketHeaderProps {
 }
 
 export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeaderProps) {
+  const { shareMarket } = useShareMarket();
   const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(market.closeTime));
   const { yesProbability, noProbability, hasRealOrders } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
@@ -39,10 +41,25 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
         <StatusBadge status={market.status} outcome={market.outcome} />
       </div>
 
-      {/* Question */}
-      <h1 className="text-xl md:text-2xl font-bold text-theme-text-primary mb-4">
-        {market.question}
-      </h1>
+      {/* Question + Share */}
+      <div className="flex items-start gap-2 mb-4">
+        <h1 className="flex-1 text-xl md:text-2xl font-bold text-theme-text-primary">
+          {market.question}
+        </h1>
+        <button
+          onClick={() => {
+            const askBps = yesOrderbook?.asks?.[0]?.price ?? null;
+            shareMarket(market, askBps != null ? Number(askBps) : null);
+          }}
+          aria-label="Share market on X"
+          title="Share on X"
+          className="flex-shrink-0 p-2 rounded-md text-theme-text-muted hover:text-theme-text-primary hover:bg-theme-bg-tertiary transition-colors"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </button>
+      </div>
 
       {/* Description */}
       {market.description && (

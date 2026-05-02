@@ -124,11 +124,13 @@ export function PredictMarketPage() {
 
             <CancelExpiredMarketCTA market={market} now={now} onSuccess={handleRefetch} />
 
-            <OutcomeOrderbook
-              yesOrderbook={yesOrderbook}
-              noOrderbook={noOrderbook}
-              onPriceClick={handlePriceClick}
-            />
+            <div data-tour="prediction-orderbook">
+              <OutcomeOrderbook
+                yesOrderbook={yesOrderbook}
+                noOrderbook={noOrderbook}
+                onPriceClick={handlePriceClick}
+              />
+            </div>
 
             <RecentTradesFeed marketId={market.id} />
 
@@ -160,17 +162,21 @@ export function PredictMarketPage() {
           </main>
 
           <aside id="trade-form" className="space-y-4 md:space-y-6 order-1 lg:order-2 scroll-mt-4">
-            <OutcomeOrderForm
-              market={market}
-              yesOrderbook={yesOrderbook}
-              noOrderbook={noOrderbook}
-              clickedPrice={clickedPrice}
-              clickedOutcome={clickedOutcome}
-              clickVersion={clickVersion}
-              isTradingFrozen={isTradingFrozen}
-              onSuccess={handleTradeSuccess}
-            />
-            <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
+            <div data-tour="prediction-order-form">
+              <OutcomeOrderForm
+                market={market}
+                yesOrderbook={yesOrderbook}
+                noOrderbook={noOrderbook}
+                clickedPrice={clickedPrice}
+                clickedOutcome={clickedOutcome}
+                clickVersion={clickVersion}
+                isTradingFrozen={isTradingFrozen}
+                onSuccess={handleTradeSuccess}
+              />
+            </div>
+            <div data-tour="prediction-positions">
+              <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
+            </div>
             <MyOpenOrdersList market={market} />
             <MyTradeHistory marketId={market.id} />
           </aside>

@@ -6,7 +6,7 @@
 
 import { useState, useCallback } from 'react';
 
-const STORAGE_KEY = 'pado:onboardingCompleted';
+const DEFAULT_STORAGE_KEY = 'pado:onboardingCompleted';
 
 export interface TourStep {
   target: string;
@@ -61,21 +61,30 @@ export interface OnboardingTourState {
   skip: () => void;
 }
 
-function isCompleted(): boolean {
+function isCompleted(storageKey: string = DEFAULT_STORAGE_KEY): boolean {
   try {
-    return localStorage.getItem(STORAGE_KEY) === 'true';
+    return localStorage.getItem(storageKey) === 'true';
   } catch {
     return false;
   }
 }
 
-function markCompleted(): void {
+function markCompleted(storageKey: string = DEFAULT_STORAGE_KEY): void {
   try {
-    localStorage.setItem(STORAGE_KEY, 'true');
+    localStorage.setItem(storageKey, 'true');
   } catch { /* ignore */ }
 }
 
-export function useOnboardingTour(): OnboardingTourState {
+/**
+ * Tour state hook. When called with no args, defaults to the trading tour
+ * (storage key `pado:onboardingCompleted`, steps = TOUR_STEPS) for backward
+ * compatibility. Pass `(storageKey, steps)` to drive a different tour
+ * (e.g. prediction onboarding) without copying this hook.
+ */
+export function useOnboardingTour(
+  storageKey: string = DEFAULT_STORAGE_KEY,
+  steps: TourStep[] = TOUR_STEPS,
+): OnboardingTourState {
   const [isActive, setIsActive] = useState(false);
   const [step, setStep] = useState(0);
 
@@ -87,16 +96,16 @@ export function useOnboardingTour(): OnboardingTourState {
   const complete = useCallback(() => {
     setIsActive(false);
     setStep(0);
-    markCompleted();
-  }, []);
+    markCompleted(storageKey);
+  }, [storageKey]);
 
   const next = useCallback(() => {
-    if (step >= TOUR_STEPS.length - 1) {
+    if (step >= steps.length - 1) {
       complete();
     } else {
       setStep((s) => s + 1);
     }
-  }, [step, complete]);
+  }, [step, complete, steps.length]);
 
   const prev = useCallback(() => {
     setStep((s) => Math.max(0, s - 1));
@@ -109,8 +118,8 @@ export function useOnboardingTour(): OnboardingTourState {
   return {
     isActive,
     step,
-    totalSteps: TOUR_STEPS.length,
-    currentStep: isActive ? TOUR_STEPS[step] ?? null : null,
+    totalSteps: steps.length,
+    currentStep: isActive ? steps[step] ?? null : null,
     start,
     next,
     prev,

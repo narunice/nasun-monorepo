@@ -3,13 +3,55 @@
  * Prediction Market listing page
  */
 
+import { useEffect, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarkets, MarketCard, usePredictionAdmin } from '../features/prediction';
+import {
+  usePredictionOnboardingTour,
+  isPredictionTourCompleted,
+} from '../features/prediction/hooks/usePredictionOnboardingTour';
+import { usePredictionFilters } from '../features/prediction/hooks/usePredictionFilters';
+import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
+import { OnboardingTour } from '../features/trading/components/OnboardingTour';
 import { Spinner } from '../components/common';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
   const { isResolver } = usePredictionAdmin();
+  const tour = usePredictionOnboardingTour();
+
+  const marketRecords = useMemo(() => markets.map((m) => m.market), [markets]);
+  const {
+    filtered,
+    category,
+    sortBy,
+    status,
+    setCategory,
+    setSortBy,
+    setStatus,
+  } = usePredictionFilters(marketRecords);
+  const filteredEntries = useMemo(() => {
+    const filteredIds = new Set(filtered.map((m) => m.id));
+    const order = new Map(filtered.map((m, i) => [m.id, i]));
+    return markets
+      .filter(({ market }) => filteredIds.has(market.id))
+      .sort((a, b) => (order.get(a.market.id) ?? 0) - (order.get(b.market.id) ?? 0));
+  }, [markets, filtered]);
+
+  // Auto-start the tour at most once per page mount. Using a ref guard avoids
+  // re-firing when the tour object identity changes on subsequent renders.
+  const startRef = useRef(tour.start);
+  startRef.current = tour.start;
+  const tourStartedRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || tourStartedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const force = params.get('tour') === '1';
+    if (!force && isPredictionTourCompleted()) return;
+    tourStartedRef.current = true;
+    const timer = setTimeout(() => startRef.current(), 400);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -55,20 +97,36 @@ export function PredictPage() {
         )}
       </div>
 
+      {/* Filters */}
+      {markets.length > 0 && (
+        <MarketFilterBar
+          status={status}
+          category={category}
+          sortBy={sortBy}
+          setStatus={setStatus}
+          setCategory={setCategory}
+          setSortBy={setSortBy}
+        />
+      )}
+
       {/* Market Grid */}
       {markets.length === 0 ? (
         <div className="text-center py-12 bg-theme-bg-secondary rounded-xl">
-          <p className="text-theme-text-muted">
-            No markets available yet
-          </p>
+          <p className="text-theme-text-muted">No open markets yet. Check back soon.</p>
+        </div>
+      ) : filteredEntries.length === 0 ? (
+        <div className="text-center py-12 bg-theme-bg-secondary rounded-xl">
+          <p className="text-theme-text-muted">No markets match your filters.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {markets.map(({ market, yesOrderbook }) => (
+        <div data-tour="prediction-market-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredEntries.map(({ market, yesOrderbook }) => (
             <MarketCard key={market.id} market={market} yesOrderbook={yesOrderbook} />
           ))}
         </div>
       )}
+
+      <OnboardingTour tour={tour} />
     </div>
   );
 }

@@ -1,8 +1,12 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useOnboardingTour, isTourCompleted, TOUR_STEPS } from './useOnboardingTour';
 
 describe('useOnboardingTour', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it('starts inactive with step 0', () => {
     const { result } = renderHook(() => useOnboardingTour());
     expect(result.current.isActive).toBe(false);
