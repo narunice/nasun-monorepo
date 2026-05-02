@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import type { SuiTransactionBlockResponseOptions } from '@mysten/sui/client';
-import { useWallet } from '@nasun/wallet';
+import { useSignAndExecute } from './useSignAndExecute';
 import { getSuiClient } from '../lib/sui-client';
 import { withStaleObjectRetry } from '../lib/sui-retry';
 import { useToastStore } from '../store/useToastStore';
@@ -35,7 +35,7 @@ export interface GameTxOptions {
  * Handles coin management, retries, and notifications.
  */
 export function useGameTransaction() {
-  const { address, signAndExecuteTransaction } = useWallet();
+  const { walletAddress: address, signAndExecute: signAndExecuteTransaction } = useSignAndExecute();
   const showToast = useToastStore((s) => s.showToast);
   const { addPendingBet, removePendingBet } = useBalanceStore();
   const [isPending, setIsPending] = useState(false);
@@ -95,12 +95,11 @@ export function useGameTransaction() {
             tx.setExpiration({ Epoch: Number(summary.epoch) + 1 });
           }
 
-          const result = await signAndExecuteTransaction({
-            transaction: tx,
-            options: options.executionOptions || {
-              showEffects: true,
-              showEvents: true,
-            },
+          const execOpts = options.executionOptions as { showEffects?: boolean; showEvents?: boolean; showObjectChanges?: boolean } | undefined;
+          const result = await signAndExecuteTransaction(tx, {
+            showEffects: execOpts?.showEffects ?? true,
+            showEvents: execOpts?.showEvents ?? true,
+            showObjectChanges: execOpts?.showObjectChanges ?? false,
           });
 
           if (!result) throw new Error(GAME_ERRORS.TX_FAILED);

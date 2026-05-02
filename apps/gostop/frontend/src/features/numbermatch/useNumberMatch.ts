@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react'
-import { useWallet } from '@nasun/wallet'
+import { useActiveAddress } from '../../hooks/useActiveAddress'
 import {
   NM_PRICE_PER_PICK,
   NM_PLAYED_EVENT_TYPE,
@@ -26,7 +26,7 @@ export interface UseNumberMatchResult {
 }
 
 export function useNumberMatch(): UseNumberMatchResult {
-  const { address: walletAddress } = useWallet()
+  const walletAddress = useActiveAddress()
   const isWalletConnected = !!walletAddress
 
   const [error, setError] = useState<string | null>(null)
