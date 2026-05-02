@@ -1,12 +1,10 @@
 /**
- * Daily NFT Check: Alliance Penalty + Genesis Passive Points + Staking Daily/Emissions
+ * Daily NFT Check: NFT Health Catchup + Genesis Passive + Staking Daily/Emissions
  *
  * Runs once per day from scanLoop (after daily missions).
- * Combines multiple features into a single activationsCache traversal:
  *
- * 1. Alliance Penalty: deactivate alliance bonus for users with <=5 active days in 7
- *    - Exempt if user also has genesis-pass
- *    - Recovery: 2 consecutive active days -> remove penalty
+ * 1. V2 NFT Health Catchup: bring nft_health_state up to yesterday
+ *    (legacy V1 alliance-penalty branch removed 2026-05-02).
  *
  * 2. Genesis Passive: award 1 passive point per inactive day for genesis holders
  *    - Lookback 2 days to handle PM2 downtime
@@ -50,24 +48,13 @@ export async function runDailyNftChecks(
 ): Promise<number> {
   if (!pointsDb) return 0;
 
-  // Partition users by NFT type in a single traversal
-  const allianceOnlyIds: string[] = [];
   const genesisIds: string[] = [];
-
   for (const [identityId, activations] of activationsCache) {
-    const hasAlliance = activations.some(a => a.nftType === 'alliance');
-    const hasGenesis = activations.some(a => a.nftType === 'genesis-pass');
-
-    if (hasGenesis) {
+    if (activations.some(a => a.nftType === 'genesis-pass')) {
       genesisIds.push(identityId);
-    }
-    if (hasAlliance && !hasGenesis) {
-      allianceOnlyIds.push(identityId);
     }
   }
 
-  let penaltiesApplied = 0;
-  let penaltiesRecovered = 0;
   let passiveAwarded = 0;
 
   // Yesterday (UTC): date string for health catch-up target
@@ -75,10 +62,9 @@ export async function runDailyNftChecks(
   const yesterdayDate = new Date(Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() - 1));
   const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
+  // V2 NFT health catch-up. Legacy V1 alliance-penalty branch removed
+  // (policy deprecated 2026-05-02). Pre-cutoff dates are no-ops.
   if (isV2CutoverActive(yesterdayStr)) {
-    // --- V2: NFT Health State Machine catch-up ---
-    // Process from (watermark+1) up to yesterday, capped at 7 days back.
-    // Idempotent: health-update's upsert guard prevents double-processing.
     try {
       const watermark = await getHealthWatermark();
       const catchupStart = watermark
@@ -86,7 +72,6 @@ export async function runDailyNftChecks(
         : yesterdayStr;
 
       let allianceUpdated = 0, allianceSkipped = 0;
-      let gpUpdated = 0, gpSkipped = 0;
       const days: string[] = [];
       for (let d = catchupStart; d <= yesterdayStr; d = addDays(d, 1)) {
         days.push(d);
@@ -102,13 +87,6 @@ export async function runDailyNftChecks(
       }
     } catch (err) {
       console.error('[DailyNftCheck] V2 health update error (non-fatal):', err);
-    }
-  } else {
-    // --- V1: Alliance Penalty Check ---
-    if (allianceOnlyIds.length > 0) {
-      const result = await checkAlliancePenalties(allianceOnlyIds);
-      penaltiesApplied = result.applied;
-      penaltiesRecovered = result.recovered;
     }
   }
 
@@ -143,93 +121,13 @@ export async function runDailyNftChecks(
 
   const totalInserts = passiveAwarded + stakingAwarded + emissionsAwarded;
 
-  if (penaltiesApplied > 0 || penaltiesRecovered > 0 || totalInserts > 0) {
+  if (totalInserts > 0) {
     console.log(
-      `[DailyNftCheck] penalties: ${penaltiesApplied}/${penaltiesRecovered} ` +
-      `passive: ${passiveAwarded} staking: ${stakingAwarded} emissions: ${emissionsAwarded}`,
+      `[DailyNftCheck] passive: ${passiveAwarded} staking: ${stakingAwarded} emissions: ${emissionsAwarded}`,
     );
   }
 
   return totalInserts;
-}
-
-// --- Alliance Penalty ---
-
-async function checkAlliancePenalties(
-  allianceOnlyIds: string[],
-): Promise<{ applied: number; recovered: number }> {
-  // Record first activation date for all alliance-only users.
-  // Uses ON CONFLICT DO NOTHING so the date is set once and never overwritten,
-  // even after recovery (penalty DELETE). This is the basis for grace period checks.
-  await pointsDb!`
-    INSERT INTO alliance_first_seen (identity_id, first_seen)
-    SELECT unnest(${allianceOnlyIds}::text[]), CURRENT_DATE
-    ON CONFLICT (identity_id) DO NOTHING
-  `;
-
-  // Batch query: active days in last 7 for all alliance-only users
-  const activityRows = await pointsDb!`
-    SELECT identity_id, COUNT(DISTINCT date_trunc('day', tx_timestamp)::date) as active_days
-    FROM activity_points
-    WHERE identity_id = ANY(${allianceOnlyIds}) AND NOT flagged
-      AND tx_timestamp >= CURRENT_DATE - 6
-      AND category NOT IN ${pointsDb!(EXCLUDED_CATEGORIES)}
-    GROUP BY identity_id
-  `;
-
-  const activeDaysMap = new Map<string, number>();
-  for (const row of activityRows) {
-    activeDaysMap.set(row.identity_id as string, Number(row.active_days));
-  }
-
-  // Find users who should be penalized (<=5 active days, not already penalized)
-  const shouldPenalize: string[] = [];
-  for (const id of allianceOnlyIds) {
-    const activeDays = activeDaysMap.get(id) ?? 0;
-    if (activeDays <= 5) {
-      shouldPenalize.push(id);
-    }
-  }
-
-  let applied = 0;
-  if (shouldPenalize.length > 0) {
-    const today = new Date().toISOString().slice(0, 10);
-    const result = await pointsDb!`
-      INSERT INTO alliance_penalties (identity_id, penalty_start)
-      SELECT unnest(${shouldPenalize}::text[]), ${today}::date
-      ON CONFLICT (identity_id) DO NOTHING
-    `;
-    applied = result.count;
-  }
-
-  // Recovery check: penalized users with 2 consecutive active days (yesterday + today)
-  const penalizedRows = await pointsDb!`
-    SELECT identity_id FROM alliance_penalties
-  `;
-  const penalizedIds = penalizedRows.map(r => r.identity_id as string);
-
-  let recovered = 0;
-  if (penalizedIds.length > 0) {
-    const recoveredRows = await pointsDb!`
-      SELECT identity_id FROM activity_points
-      WHERE identity_id = ANY(${penalizedIds}) AND NOT flagged
-        AND tx_timestamp >= CURRENT_DATE - 2
-        AND category NOT IN ${pointsDb!(EXCLUDED_CATEGORIES)}
-      GROUP BY identity_id
-      HAVING COUNT(DISTINCT date_trunc('day', tx_timestamp)::date) >= 2
-    `;
-
-    const recoveredIds = recoveredRows.map(r => r.identity_id as string);
-    if (recoveredIds.length > 0) {
-      const delResult = await pointsDb!`
-        DELETE FROM alliance_penalties
-        WHERE identity_id = ANY(${recoveredIds})
-      `;
-      recovered = delResult.count;
-    }
-  }
-
-  return { applied, recovered };
 }
 
 // --- Genesis Passive Points ---
