@@ -100,8 +100,21 @@ export function PredictMarketPage() {
     );
   }
 
+  const ogUrl =
+    typeof window !== 'undefined' && window.location?.origin
+      ? `${window.location.origin}/predict/${market.id}`
+      : `https://pado.nasun.io/predict/${market.id}`;
+
   return (
     <div className="space-y-4 md:space-y-6 pb-32 lg:pb-0">
+      {/* React 19 hoists these into <head> automatically. */}
+      <title>{`${market.question} — Pado Prediction Markets`}</title>
+      <meta property="og:title" content={market.question} />
+      <meta property="og:description" content="Trade YES or NO on Pado Prediction Markets" />
+      <meta property="og:url" content={ogUrl} />
+      <meta property="og:image" content="/Nasun-OG.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+
       <Link
         to="/predict"
         className="inline-flex items-center gap-2 text-sm text-theme-text-secondary hover:text-theme-text-primary transition-colors min-h-[40px]"

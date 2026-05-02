@@ -16,6 +16,7 @@ import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/
 import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
+import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
 import { waitForTxIndexing } from '../../../lib/tx-helpers';
@@ -83,6 +84,8 @@ export function OutcomeOrderForm({
   const [selectedPositionId, setSelectedPositionId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [lastBuy, setLastBuy] = useState<{ isYes: boolean; shares: number; priceBps: number } | null>(null);
+  const { shareTrade } = useShareMarket();
   const { isSubmitting, guard: submitGuard } = useSubmitGuard();
   const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
@@ -164,6 +167,7 @@ export function OutcomeOrderForm({
       e.preventDefault();
       setError(null);
       setSuccess(null);
+      setLastBuy(null);
 
       const amountNum = parseFloat(amount);
       const userPricePercent = parseFloat(price);
@@ -219,6 +223,7 @@ export function OutcomeOrderForm({
           setSetupStep(null);
           if (result.success) {
             setSuccess(`Order placed. Tx: ${result.digest?.slice(0, 8)}...`);
+            setLastBuy({ isYes, shares: estimatedShares, priceBps: maxPriceBps });
             setAmount('');
             startSync(result.digest!);
           } else {
@@ -322,7 +327,7 @@ export function OutcomeOrderForm({
     : 'Enter price (1-99)';
 
   return (
-    <div className="bg-theme-bg-secondary rounded-xl p-4">
+    <div className="bg-theme-bg-secondary rounded-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Place Order</h3>
 
       {isWalletConnected && (
@@ -546,7 +551,20 @@ export function OutcomeOrderForm({
         })()}
 
         {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
-        {success && <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2">{success}</div>}
+        {success && (
+          <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2 flex items-center justify-between gap-2">
+            <span>{success}</span>
+            {lastBuy && (
+              <button
+                type="button"
+                onClick={() => shareTrade(market, lastBuy.isYes, lastBuy.shares, lastBuy.priceBps)}
+                className="underline hover:no-underline whitespace-nowrap"
+              >
+                Share on X
+              </button>
+            )}
+          </div>
+        )}
         {isSyncing && (
           <div className="text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
@@ -575,7 +593,7 @@ export function OutcomeOrderForm({
         <button
           type="submit"
           disabled={isDisabled}
-          className={`w-full py-3 rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+          className={`w-full py-3 min-h-[48px] rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
             outcomeType === 'yes' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
           }`}
         >
@@ -596,7 +614,7 @@ export function OutcomeOrderForm({
             type="button"
             onClick={handleMintTokens}
             disabled={isDisabled || !amount}
-            className="w-full py-2 rounded-lg font-medium text-sm bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full py-2 min-h-[48px] rounded-lg font-medium text-sm bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? 'Minting...' : 'Mint YES + NO Tokens'}
           </button>
