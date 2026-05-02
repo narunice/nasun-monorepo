@@ -39,17 +39,17 @@ const DEFAULT_ADMIN_CAP = '0xbead7e77b4e0d131b6090f9e28c77e082de9b85b4d69dec5146
 // Hardcoded for the BTC $100k launch test market (handoff §T5).
 // Compressed timeline for E2E validation (~24h trade + 24h resolve window).
 const QUESTION =
-  'Will BTC/USDT price exceed $100,000 on Binance at 2026-05-03 12:00:00 UTC?';
+  'Will BTC/USDT price exceed $100,000 on Binance at 2026-05-02 04:00:00 UTC?';
 const DESCRIPTION =
   'Binary market resolved against the Binance public spot ticker for BTCUSDT at the specified UTC reading time. YES if the reported price strictly exceeds $100,000; NO otherwise. A price of exactly $100,000 resolves NO per the tie-breaking rule.';
 const CATEGORY = 'crypto';
 const RESOLUTION_SOURCE = 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT';
 const RESOLUTION_CRITERIA = `Source: https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT
-Reading time: 2026-05-03 12:00:00 UTC
+Reading time: 2026-05-02 04:00:00 UTC
 Comparison: price >= 100000
 Tie-breaking: NO if exactly equal`;
-const CLOSE_TIME_ISO = '2026-05-03T12:00:00Z';
-const RESOLVE_DEADLINE_ISO = '2026-05-04T12:00:00Z';
+const CLOSE_TIME_ISO = '2026-05-02T04:00:00Z';
+const RESOLVE_DEADLINE_ISO = '2026-05-02T05:00:00Z';
 
 const HEX_64 = /^0x[0-9a-fA-F]{64}$/;
 

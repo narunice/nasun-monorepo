@@ -51,51 +51,78 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
         </p>
       )}
 
-      {/* Probability Display */}
-      <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
-        <div className="bg-green-100 dark:bg-green-900/20 rounded-lg p-3 text-center">
-          <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
-            {yesProbability.toFixed(1)}%
+      {market.status === 'open' ? (
+        <>
+          {/* Probability Display */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
+            <div className="bg-green-100 dark:bg-green-900/20 rounded-lg p-3 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+                {yesProbability.toFixed(1)}%
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">YES</div>
+            </div>
+            <div className="bg-red-100 dark:bg-red-900/20 rounded-lg p-3 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
+                {noProbability.toFixed(1)}%
+              </div>
+              <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">NO</div>
+            </div>
           </div>
-          <div className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">YES</div>
-        </div>
-        <div className="bg-red-100 dark:bg-red-900/20 rounded-lg p-3 text-center">
-          <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
-            {noProbability.toFixed(1)}%
-          </div>
-          <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">NO</div>
-        </div>
-      </div>
 
-      {/* No orders indicator */}
-      {!hasRealOrders && (
-        <div className="text-center text-sm text-yellow-600 dark:text-yellow-400 mb-4">
-          No orders yet — showing default 50/50
-        </div>
+          {!hasRealOrders && (
+            <div className="text-center text-sm text-yellow-600 dark:text-yellow-400 mb-4">
+              No orders yet — showing default 50/50
+            </div>
+          )}
+
+          {/* Probability Bar */}
+          <div className="mb-4">
+            <div className="h-3 bg-red-500 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-green-500 transition-all duration-300"
+                style={{ width: `${yesProbability}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Timer & Stats */}
+          <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
+            <div className="flex items-center gap-2">
+              <ClockIcon />
+              <span className="text-theme-text-secondary">{timeRemaining}</span>
+            </div>
+            <div className="flex items-center gap-4 text-theme-text-muted">
+              <span>Supply: {formatNumber(market.yesSupply + market.noSupply)}</span>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Resolved / Cancelled state — outcome takes center stage */
+        <OutcomeDisplay status={market.status} outcome={market.outcome} supply={market.yesSupply + market.noSupply} />
       )}
+    </div>
+  );
+}
 
-      {/* Probability Bar */}
-      <div className="mb-4">
-        <div className="h-3 bg-red-500 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-green-500 transition-all duration-300"
-            style={{ width: `${yesProbability}%` }}
-          />
+function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?: boolean; supply: bigint }) {
+  if (status === 'resolved') {
+    const isYes = Boolean(outcome);
+    return (
+      <div className={`rounded-xl p-5 text-center ${isYes ? 'bg-green-900/25 border border-green-500/40' : 'bg-red-900/25 border border-red-500/40'}`}>
+        <div className={`text-3xl font-bold mb-1 ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+          {isYes ? 'YES' : 'NO'} Won
+        </div>
+        <div className="text-sm text-theme-text-muted">
+          Total supply: {formatNumber(supply)} shares
         </div>
       </div>
+    );
+  }
 
-      {/* Timer & Stats */}
-      <div className="flex flex-wrap items-center justify-between gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <ClockIcon />
-          <span className="text-theme-text-secondary">
-            {market.status === 'open' ? timeRemaining : 'Market Closed'}
-          </span>
-        </div>
-        <div className="flex items-center gap-4 text-theme-text-muted">
-          <span>Supply: {formatNumber(market.yesSupply + market.noSupply)}</span>
-        </div>
-      </div>
+  return (
+    <div className="rounded-xl p-5 text-center bg-yellow-900/25 border border-yellow-500/40">
+      <div className="text-2xl font-bold text-yellow-400 mb-1">Cancelled</div>
+      <div className="text-sm text-theme-text-muted">All collateral is refundable</div>
     </div>
   );
 }
