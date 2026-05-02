@@ -16,6 +16,10 @@
  *   KEEPER_PRIVATE_KEY=<keeper-hex-key>   # Required by tpsl-keeper
  *   TPSL_ALLOWED_ORIGIN=<origin-url>     # Required by tpsl-keeper (CORS, e.g. https://pado.finance)
  *   LOTTERY_ADMIN_KEY=<admin-key>        # Required by lottery-keeper (AdminCap owner)
+ *   PREDICTION_RESOLVER_KEY=<key>        # Required by prediction-keeper (market.resolver)
+ *   PREDICTION_KEEPER_MARKETS=<id,id>   # Comma-separated market ids to auto-resolve
+ *   PREDICTION_LP_PRIVATE_KEY=<key>     # Required by prediction-lp (LP wallet)
+ *   PREDICTION_LP_MARKETS=<id,id>       # Comma-separated market ids to quote
  *
  * The deploy script (scripts/deploy-pado-bots.sh) sources .env before PM2 start.
  * Non-secret config (contract addresses, RPC URLs) is set in env: blocks below.
@@ -23,6 +27,13 @@
 
 // Per-environment feature flags (set in .env, sourced before pm2 start)
 const DISABLE_PRICE_UPDATER = process.env.DISABLE_PRICE_UPDATER === 'true';
+const DISABLE_PREDICTION_KEEPER = process.env.DISABLE_PREDICTION_KEEPER === 'true';
+const DISABLE_PREDICTION_LP = process.env.DISABLE_PREDICTION_LP === 'true';
+
+// Prediction Market deployed package id (devnet). Override via .env if redeployed.
+const PREDICTION_PACKAGE_ID =
+  process.env.PREDICTION_PACKAGE_ID ||
+  '0xafd5b6eda4432e6910d8d8029d23ea1a16f73cbafcd9a9532fc302a2e6984afa';
 
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
@@ -236,6 +247,69 @@ module.exports = {
       merge_logs: true,
       max_memory_restart: '300M',
     },
+
+    // ==============================
+    // Prediction Market Keeper (auto-resolve binary markets)
+    // Single instance only. Disable on staging via DISABLE_PREDICTION_KEEPER=true.
+    // Resolver wallet must equal market.resolver on each market in
+    // PREDICTION_KEEPER_MARKETS, otherwise the bot logs once and skips.
+    // ==============================
+    ...(DISABLE_PREDICTION_KEEPER ? [] : [{
+      name: 'prediction-keeper',
+      script: './node_modules/.bin/tsx',
+      args: 'prediction-keeper.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        // PREDICTION_RESOLVER_KEY + PREDICTION_KEEPER_MARKETS loaded from .env
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        PREDICTION_PACKAGE_ID,
+        PREDICTION_KEEPER_INTERVAL_MS: '60000',
+      },
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 10000,
+      kill_timeout: 10000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/prediction-keeper-error.log',
+      out_file: './logs/prediction-keeper-out.log',
+      merge_logs: true,
+      max_memory_restart: '200M',
+    }]),
+
+    // ==============================
+    // Prediction Market LP Bot (single-level YES quoter, mvp)
+    // Single instance only. Disable on staging via DISABLE_PREDICTION_LP=true.
+    // Inventory must be seeded once per market via
+    //   node --env-file=.env --import tsx scripts/prediction-lp-bootstrap-mint.ts
+    // before this bot can place sell-maker (yes-ask) quotes.
+    // ==============================
+    ...(DISABLE_PREDICTION_LP ? [] : [{
+      name: 'prediction-lp',
+      script: './node_modules/.bin/tsx',
+      args: 'prediction-lp-bot.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        // PREDICTION_LP_PRIVATE_KEY + PREDICTION_LP_MARKETS loaded from .env
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        PREDICTION_PACKAGE_ID,
+        PREDICTION_LP_SPREAD_BPS: '200',
+        PREDICTION_LP_DEPTH_NUSDC: '100',
+        PREDICTION_LP_UPDATE_INTERVAL_MS: '10000',
+      },
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 10000,
+      kill_timeout: 10000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/prediction-lp-error.log',
+      out_file: './logs/prediction-lp-out.log',
+      merge_logs: true,
+      max_memory_restart: '300M',
+    }]),
 
     // ==============================
     // Lottery Keeper Bot (weekly cycle automation)
