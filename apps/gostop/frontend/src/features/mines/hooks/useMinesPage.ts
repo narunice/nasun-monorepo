@@ -5,6 +5,7 @@ import { useInvalidateGameHistory } from "../../game-history";
 import { useToast } from "../../../components/ui/Toast";
 import { MINES_MAX_BET, MINES_MAX_SINGLE_PAYOUT } from "../../../lib/gostop-config";
 import { maxMultiplierBps, computeMultiplierBps } from "../mines-config";
+import { NUSDC_UNIT_NUMBER } from "../../../lib/constants/assets";
 
 const DEFAULT_BET_NUSDC = 1;
 
@@ -56,10 +57,10 @@ export function useMinesPage(celebrate: any) {
   }, [lastFinish, celebrate, invalidateHistory]);
 
   const maxMul = maxMultiplierBps(mineCount) / 10_000;
-  const payoutCapNusdc = Number(MINES_MAX_SINGLE_PAYOUT) / 1_000_000;
-  const maxBetAllowed = Number(MINES_MAX_BET) / 1_000_000;
+  const payoutCapNusdc = Number(MINES_MAX_SINGLE_PAYOUT) / NUSDC_UNIT_NUMBER;
+  const maxBetAllowed = Number(MINES_MAX_BET) / NUSDC_UNIT_NUMBER;
   const betCapped = Math.min(bet, maxBetAllowed);
-  const betMist = BigInt(Math.floor(betCapped * 1_000_000));
+  const betMist = BigInt(Math.floor(betCapped * NUSDC_UNIT_NUMBER));
 
   const onCreate = useCallback(async () => {
     if (!isWalletConnected) return;

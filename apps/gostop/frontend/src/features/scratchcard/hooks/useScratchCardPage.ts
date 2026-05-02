@@ -3,6 +3,7 @@ import { useScratchCard, type ScratchResult } from "../useScratchCard";
 import { useToast } from "../../../components/ui/Toast";
 import { useCelebrate, tierForScratch } from "../../../components/celebration";
 import { useInvalidateGameHistory } from "../../game-history";
+import { NUSDC_UNIT_NUMBER, NUSDC_UNIT } from "../../../lib/constants/assets";
 
 const CARD_PRICE_NUSDC = 5;
 
@@ -45,12 +46,12 @@ export function useScratchCardPage(celebrate: any) {
 
     const totalPrize = results.reduce((s, r) => s + r.prizeAmount, 0n);
     const wins = results.filter((r) => r.multiplier > 0).length;
-    const spent = BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * 1_000_000n;
+    const spent = BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * NUSDC_UNIT;
     const isProfit = totalPrize > spent;
 
     if (isProfit) {
-      const whole = (totalPrize - spent) / 1_000_000n;
-      const frac = Number((totalPrize - spent) % 1_000_000n) / 1_000_000;
+      const whole = (totalPrize - spent) / NUSDC_UNIT;
+      const frac = Number((totalPrize - spent) % NUSDC_UNIT) / NUSDC_UNIT_NUMBER;
       const netStr = (Number(whole) + frac).toFixed(2);
       
       showToast(`${wins}/${results.length} won · +${netStr} net`, "success");
