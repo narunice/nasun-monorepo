@@ -154,11 +154,26 @@ export function PredictMarketPage() {
               <div>
                 <div className="text-theme-text-muted">Close Time</div>
                 <div className="text-theme-text-secondary">
-                  {new Date(market.closeTime).toLocaleDateString('en-US', {
+                  <div>{new Date(market.closeTime).toLocaleString('en-US', {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
-                  })}
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'UTC',
+                    timeZoneName: 'short',
+                  })}</div>
+                  <div className="text-theme-text-muted text-sm mt-0.5">
+                    <span className="text-theme-text-muted/60">Your time: </span>
+                    {new Date(market.closeTime).toLocaleString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      timeZoneName: 'short',
+                    })}
+                  </div>
                 </div>
               </div>
               <div>

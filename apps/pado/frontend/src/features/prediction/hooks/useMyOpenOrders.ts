@@ -48,7 +48,11 @@ async function fetchMyOpenOrders(marketId: string, owner: string): Promise<OpenO
   const candidates: Array<{ priceBps: number; orderId: number; isYes: boolean; isBid: boolean }> = [];
   for (const event of page.data) {
     const j = event.parsedJson as Record<string, unknown> | null;
-    if (!j || j.market_id !== marketId || j.owner !== owner) continue;
+    // OrderPlaced event emits `user` (not `owner`) per the Move struct definition.
+    const eventMarketId = String(j.market_id ?? '');
+    const eventUser = String(j.user ?? '');
+    if (eventMarketId.toLowerCase() !== marketId.toLowerCase()) continue;
+    if (eventUser.toLowerCase() !== owner.toLowerCase()) continue;
     candidates.push({
       priceBps: Number(j.price ?? 0),
       orderId: Number(j.order_id ?? 0),
@@ -100,10 +104,12 @@ async function fetchMyOpenOrders(marketId: string, owner: string): Promise<OpenO
 
       const isBid = group.side.endsWith('_bids');
       const isYes = group.side.startsWith('yes_');
-      for (const o of orders) {
+      for (const raw of orders) {
+        // Sui SDK wraps nested Move struct fields inside an inner `fields` object.
+        const o = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
         const orderId = Number(o.order_id ?? 0);
         const ownerInBook = String(o.owner ?? '');
-        if (ownerInBook !== owner) continue;
+        if (ownerInBook.toLowerCase() !== owner.toLowerCase()) continue;
         if (!group.orderIds.has(orderId)) continue;
         out.push({
           marketId,
