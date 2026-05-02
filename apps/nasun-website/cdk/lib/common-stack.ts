@@ -331,6 +331,11 @@ export class CommonStack extends cdk.Stack {
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         WALLET_PROOF_SECRET_NAME: walletProofSecretName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        // Explorer-api webhook for wallet-registration sync. Reuses the same
+        // INTERNAL_INVALIDATE_TOKEN shared secret as the user-profile webhook.
+        // Empty disables the webhook (falls back to 10-min wallet cache TTL).
+        EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
+        EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
       },
       logGroup: new logs.LogGroup(this, "WalletApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-wallet-api",

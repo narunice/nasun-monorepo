@@ -309,7 +309,40 @@ async function handleRegister(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     proofIssuedAt: body.proofIssuedAt,
   });
 
+  // Fire-and-forget webhook to explorer-api so the points scanner immediately
+  // refreshes its wallet→identity cache and reconciles today's activity for
+  // the new wallet. Webhook failure does not affect the registration response;
+  // the scanner's 10-min TTL fallback eventually catches up.
+  if (result.statusCode === 200) {
+    notifyWalletRegistered(identityId, String(body.walletAddress).toLowerCase()).catch((err) => {
+      console.warn('[registerWallet] sync webhook failed:', err);
+    });
+  }
+
   return jsonResponse(result.statusCode, result.body);
+}
+
+async function notifyWalletRegistered(identityId: string, walletAddress: string): Promise<void> {
+  const baseUrl = process.env.EXPLORER_API_URL || '';
+  const token = process.env.EXPLORER_API_INVALIDATE_TOKEN || '';
+  if (!baseUrl || !token) return;
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/internal/wallet-registered`;
+  // Lambda Node 22 has global fetch.
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Internal-Auth': token },
+      body: JSON.stringify({ identityId, walletAddress }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      console.warn(`[registerWallet] webhook ${res.status} ${res.statusText}`);
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 async function handleList(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
