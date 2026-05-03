@@ -56,7 +56,6 @@ const PerpTradePage = lazyWithRetry(() => import('../pages/PerpTradePage').then(
 const WalletPage = lazyWithRetry(() => import('../pages/WalletPage').then(m => ({ default: m.WalletPage })));
 const PredictPage = lazyWithRetry(() => import('../pages/PredictPage').then(m => ({ default: m.PredictPage })));
 const PredictMarketPage = lazyWithRetry(() => import('../pages/PredictMarketPage').then(m => ({ default: m.PredictMarketPage })));
-const IdeaSubmissionPage = lazyWithRetry(() => import('../pages/IdeaSubmissionPage').then(m => ({ default: m.IdeaSubmissionPage })));
 const AdminPage = lazyWithRetry(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
 const LeaderboardPage = lazyWithRetry(() => import('../pages/LeaderboardPage').then(m => ({ default: m.LeaderboardPage })));
 const TraderProfilePage = lazyWithRetry(() => import('../pages/TraderProfilePage').then(m => ({ default: m.TraderProfilePage })));

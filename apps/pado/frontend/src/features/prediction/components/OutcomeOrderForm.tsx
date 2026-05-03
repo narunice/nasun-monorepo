@@ -13,14 +13,12 @@
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
-import { useQueryClient } from '@tanstack/react-query';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
 import { useMarginAccount } from '../../core/unified-margin';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
-import { waitForTxIndexing } from '../../../lib/tx-helpers';
 import type { PredictionMarket, Orderbook } from '../types';
 
 interface OutcomeOrderFormProps {
@@ -66,8 +64,6 @@ export function OutcomeOrderForm({
     mintTokens,
   } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
-  const queryClient = useQueryClient();
-
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
