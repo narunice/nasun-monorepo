@@ -124,6 +124,11 @@ public struct Market has key {
 
     // Per-Market order ID counter (round-5 C6 fix: removes GlobalState contention).
     next_order_id: u64,
+
+    // Tracks NUSDC locked by open bid orders currently held in collateral_pool.
+    // claim_cancelled_refund subtracts this from pool_balance so bid-locked funds
+    // are not redistributed to position holders on market cancellation.
+    total_locked_bid_nusdc: u64,
 }
 
 /// Order in the book.
@@ -310,6 +315,7 @@ public fun create_market(
         creator,
         resolver,
         next_order_id: 1,
+        total_locked_bid_nusdc: 0,
     };
 
     event::emit(MarketCreated {
@@ -772,6 +778,7 @@ public fun place_sell_taker(
         let payment = balance::split(&mut market.collateral_pool, total_received_nusdc);
         transfer::public_transfer(coin::from_balance(payment, ctx), taker);
         market.total_volume = market.total_volume + total_received_nusdc;
+        market.total_locked_bid_nusdc = market.total_locked_bid_nusdc - total_received_nusdc;
     };
 
     // Mint Position for each unique bid maker.
@@ -1042,11 +1049,13 @@ public fun claim_cancelled_refund(
     object::delete(id);
     assert!(market_id == object::id(market), EWrongMarket);
 
-    let pool_balance = balance::value(&market.collateral_pool);
+    // Exclude bid-locked NUSDC from the refund pool so open bid orders don't
+    // subsidize position holders on cancellation.
+    let effective_pool = balance::value(&market.collateral_pool) - market.total_locked_bid_nusdc;
     let total_shares = market.yes_supply + market.no_supply;
 
     let refund_amount = if (total_shares > 0) {
-        (((shares as u128) * (pool_balance as u128) / (total_shares as u128)) as u64)
+        (((shares as u128) * (effective_pool as u128) / (total_shares as u128)) as u64)
     } else {
         0
     };
@@ -1195,6 +1204,7 @@ fun insert_resting_bid_internal(
     };
 
     balance::join(&mut market.collateral_pool, payment);
+    market.total_locked_bid_nusdc = market.total_locked_bid_nusdc + locked_nusdc;
 
     let prices_idx = if (is_yes) { &mut market.yes_bid_prices } else { &mut market.no_bid_prices };
     let creating_new_level = !vector::contains(prices_idx, &price);
@@ -1323,6 +1333,10 @@ fun remove_order_from_book(
             table::remove(&mut market.no_asks, price);
             sorted_remove(&mut market.no_ask_prices, price);
         };
+    };
+
+    if (is_bid) {
+        market.total_locked_bid_nusdc = market.total_locked_bid_nusdc - removed_locked_nusdc;
     };
 
     (removed_locked_nusdc, removed_shares, removed_cost_basis)
