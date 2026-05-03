@@ -154,4 +154,8 @@ export const BINANCE_SYMBOL_TO_COINGECKO: Record<string, string> = {
   BTCUSDT: 'bitcoin',
   ETHUSDT: 'ethereum',
   SOLUSDT: 'solana',
+  BNBUSDT: 'binancecoin',
+  XRPUSDT: 'ripple',
+  DOGEUSDT: 'dogecoin',
+  AVAXUSDT: 'avalanche-2',
 };
