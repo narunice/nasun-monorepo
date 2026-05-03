@@ -495,6 +495,49 @@ export function buildWithdrawNbtcTx(
 }
 
 /**
+ * Drain all NUSDC/NBTC from both BalanceManager and MarginAccount in one PTB.
+ * MA side uses withdraw_all (transfers to sender internally in the contract).
+ * BM side uses balance_manager::withdraw for each token with a positive balance.
+ */
+export function buildWithdrawAllPadoTx(
+  marginAccountId: string | null,
+  balanceManagerId: string | null,
+  bmNusdcRaw: bigint,
+  bmNbtcRaw: bigint,
+  recipientAddress: string,
+): Transaction {
+  const { deepbookPackage } = NETWORK_CONFIG;
+  const tx = new Transaction();
+
+  if (marginAccountId) {
+    tx.moveCall({
+      target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_all`,
+      arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID)],
+    });
+  }
+
+  if (balanceManagerId && bmNusdcRaw > 0n) {
+    const nusdcCoin = tx.moveCall({
+      target: `${deepbookPackage}::balance_manager::withdraw`,
+      typeArguments: [NUSDC_TYPE],
+      arguments: [tx.object(balanceManagerId), tx.pure.u64(bmNusdcRaw)],
+    });
+    tx.transferObjects([nusdcCoin], tx.pure.address(recipientAddress));
+  }
+
+  if (balanceManagerId && bmNbtcRaw > 0n) {
+    const nbtcCoin = tx.moveCall({
+      target: `${deepbookPackage}::balance_manager::withdraw`,
+      typeArguments: [NBTC_TYPE],
+      arguments: [tx.object(balanceManagerId), tx.pure.u64(bmNbtcRaw)],
+    });
+    tx.transferObjects([nbtcCoin], tx.pure.address(recipientAddress));
+  }
+
+  return tx;
+}
+
+/**
  * Build withdraw_all_nbtc transaction
  *
  * @param marginAccountId - User's MarginAccount object ID
