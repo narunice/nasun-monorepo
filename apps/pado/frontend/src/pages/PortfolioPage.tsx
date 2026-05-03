@@ -1,8 +1,13 @@
 /**
  * PortfolioPage
- * Portfolio dashboard showing total assets, token balances, and activity history
+ * Tabbed dashboard combining analytics (Overview / Performance / Activity)
+ * and fund management (Pocket).
  */
 
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import {
   AssetOverview,
   AllocationDonut,
@@ -12,35 +17,159 @@ import {
   MarketPerformance,
   ActivityTabs,
 } from '../features/portfolio/components';
+import { TransferHistory } from '../features/portfolio/components/TransferHistory';
+import { UnifiedBalanceCard, MarginAccountCard } from '../features/core/unified-margin';
+import { PaymentQRCode } from '../features/payments';
+import { PocketPasswordGate } from '../components/common/PocketPasswordGate';
+
+type TabId = 'overview' | 'performance' | 'activity' | 'pocket';
+
+const TABS: { id: TabId; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'performance', label: 'Performance' },
+  { id: 'activity', label: 'Activity' },
+  { id: 'pocket', label: 'Pocket' },
+];
+
+const VALID_TABS = new Set<TabId>(TABS.map((t) => t.id));
+
+function isTabId(value: string | null): value is TabId {
+  return value !== null && VALID_TABS.has(value as TabId);
+}
 
 export function PortfolioPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const activeTab: TabId = isTabId(tabParam) ? tabParam : 'overview';
+
+  const setActiveTab = (id: TabId) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === 'overview') next.delete('tab');
+    else next.set('tab', id);
+    setSearchParams(next, { replace: false });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold">Portfolio</h1>
-        <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">FEATURE PREVIEW</span>
+        <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">
+          FEATURE PREVIEW
+        </span>
       </div>
 
-      {/* Total Asset Value + Allocation Donut */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <AssetOverview />
-        <AllocationDonut />
+      {/* Top-level tab nav */}
+      <div className="flex gap-1.5 sm:gap-2 border-b border-theme-border">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+              activeTab === tab.id
+                ? 'border-pd2 text-theme-text-primary'
+                : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
-      {/* P&L Equity Curve */}
-      <PnlChart />
+      {activeTab === 'overview' && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AssetOverview />
+            <AllocationDonut />
+          </div>
+          <TokenBalanceList />
+        </>
+      )}
 
-      {/* Token Balance List */}
-      <TokenBalanceList />
+      {activeTab === 'performance' && (
+        <>
+          <PnlChart />
+          <TradeStats />
+          <MarketPerformance />
+        </>
+      )}
 
-      {/* Trading Statistics */}
-      <TradeStats />
+      {activeTab === 'activity' && <ActivityTabs />}
 
-      {/* Per-Market Performance */}
-      <MarketPerformance />
+      {activeTab === 'pocket' && (
+        <PocketPasswordGate>
+          <PocketTab />
+        </PocketPasswordGate>
+      )}
+    </div>
+  );
+}
 
-      {/* Activity History (Trades + Transfers) */}
-      <ActivityTabs />
+type PocketSubTab = 'send' | 'receive' | 'history' | 'settings';
+
+const POCKET_SUB_TABS: { id: PocketSubTab; label: string }[] = [
+  { id: 'send', label: 'Send' },
+  { id: 'receive', label: 'Receive' },
+  { id: 'history', label: 'History' },
+  { id: 'settings', label: 'Settings' },
+];
+
+function PocketTab() {
+  const { status, account } = useWallet();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
+  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
+  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
+
+  const [activeSubTab, setActiveSubTab] = useState<PocketSubTab>('send');
+
+  return (
+    <div className="max-w-2xl mx-auto">
+      <div className="mb-6">
+        <h2 className="text-lg font-bold text-theme-text-primary">Pado Pocket</h2>
+        <p className="text-sm text-theme-text-secondary mt-1">
+          Your unified funds for Spot, Predict, and Earn
+        </p>
+      </div>
+
+      <div className="mb-6">
+        <UnifiedBalanceCard showBreakdown={true} />
+      </div>
+
+      <div className="mb-6">
+        <MarginAccountCard />
+      </div>
+
+      <div className="flex gap-1.5 sm:gap-2 mb-6">
+        {POCKET_SUB_TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveSubTab(tab.id)}
+            className={`flex-1 py-2.5 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
+              activeSubTab === tab.id
+                ? 'bg-pd2 text-white'
+                : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 md:p-6">
+        {activeSubTab === 'send' && <SendTransaction />}
+        {activeSubTab === 'receive' && (
+          isConnected ? (
+            <PaymentQRCode />
+          ) : (
+            <div className="text-center py-8">
+              <p className="text-theme-text-muted">
+                Connect your wallet to view your receive address
+              </p>
+            </div>
+          )
+        )}
+        {activeSubTab === 'history' && <TransferHistory />}
+        {activeSubTab === 'settings' && <SecuritySettings />}
+      </div>
     </div>
   );
 }

@@ -11,6 +11,7 @@ import { useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
+import { useActiveAddress } from "../../../hooks/useActiveAddress";
 import { useMarginAccount } from "./useMarginAccount";
 import { usePadoAccount } from "./usePadoAccount";
 import { WithdrawAllConfirmModal } from "./WithdrawAllConfirmModal";
@@ -32,7 +33,12 @@ export function MarginAccountCard() {
   const navigate = useNavigate();
   const { status, account: walletAccount } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
-  const { data: balances } = useMultiBalance();
+  // Bind balance query to the same address that will sign the deposit, so the
+  // "Wallet" amount on this card matches the coin set we'll actually look up.
+  // Without this, useMultiBalance falls back to a stale account.address even
+  // when the user is signing via zkLogin/passkey, leading to "No NUSDC coins".
+  const activeAddress = useActiveAddress();
+  const { data: balances } = useMultiBalance({ address: activeAddress });
 
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
 
@@ -74,14 +80,14 @@ export function MarginAccountCard() {
         const { balanceManagerId: newBmId } = await enablePado();
         registerBalanceManager(newBmId);
         showToast("Pado enabled!", "success");
-        navigate('/pocket');
+        navigate('/portfolio?tab=pocket');
         return;
       }
 
       if (hasBm && !hasMa) {
         await createAccount();
         showToast("Pado enabled!", "success");
-        navigate('/pocket');
+        navigate('/portfolio?tab=pocket');
         return;
       }
 
@@ -92,7 +98,7 @@ export function MarginAccountCard() {
           return;
         }
         showToast("Pado enabled!", "success");
-        navigate('/pocket');
+        navigate('/portfolio?tab=pocket');
         return;
       }
 
