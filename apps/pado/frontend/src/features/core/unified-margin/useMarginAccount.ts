@@ -332,7 +332,22 @@ export function useMarginAccount(): UseMarginAccountResult {
       const coin = sufficient.length > 0
         ? sufficient.reduce((a, b) => BigInt(a.balance) <= BigInt(b.balance) ? a : b)
         : coins.data[0];
-      if (!coin) throw new Error('No NUSDC coins in wallet');
+      if (!coin) {
+        // Diagnostic: list all coin types this address actually holds, so we can
+        // tell whether the wallet has zero balance vs. a coin-type mismatch
+        // (e.g. user funded NUSDC from a different token package than the env
+        // is configured for).
+        const all = await client.getAllBalances({ owner: activeAddress });
+        const nonZero = all.filter(b => BigInt(b.totalBalance) > 0n);
+        console.warn('[deposit] expected NUSDC type:', NUSDC_TYPE);
+        console.warn('[deposit] address:', activeAddress);
+        console.warn('[deposit] coin types held at this address:', nonZero);
+        const short = `${activeAddress.slice(0, 6)}…${activeAddress.slice(-4)}`;
+        const hint = nonZero.length === 0
+          ? 'This address holds no coins at all on this network.'
+          : `Address holds ${nonZero.length} coin type(s) but none match the configured NUSDC type. Open the browser console for details.`;
+        throw new Error(`No NUSDC coins at ${short}. ${hint}`);
+      }
 
       const tx = buildDepositWithSplitTx(marginAccountId, coin.coinObjectId, rawAmount);
       await signAndExecute(tx);

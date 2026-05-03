@@ -3,9 +3,10 @@
  * Application route definitions with lazy-loaded pages.
  *
  * Navigation Structure:
- * Desktop: Spot | Perpetuals | Predict | Earn | Pocket | Social v (Leaderboard, Competitions) | Portfolio
- * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio, Pocket)
- * - Pocket (/pocket) - accessible via desktop nav and More sheet (mobile)
+ * Desktop: Spot | Perpetuals | Predict | Earn | Social v (Leaderboard, Competitions) | Portfolio
+ * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio)
+ * - Portfolio (/portfolio) - tabbed page: Overview | Performance | Activity | Pocket
+ *   Pocket sub-tab is password-gated (legacy /pocket and /wallet redirect here)
  * - Admin (/admin) - conditional, admin-only
  */
 
@@ -48,12 +49,10 @@ function GatedRoute({ requires, children }: { requires: AccessMode; children: Re
 import { HomePage } from '../pages/HomePage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { PredictPasswordGate } from '../components/common/PredictPasswordGate';
-import { PocketPasswordGate } from '../components/common/PocketPasswordGate';
 
 // Lazy: all other pages loaded on demand
 const TradePage = lazyWithRetry(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
 const PerpTradePage = lazyWithRetry(() => import('../pages/PerpTradePage').then(m => ({ default: m.PerpTradePage })));
-const WalletPage = lazyWithRetry(() => import('../pages/WalletPage').then(m => ({ default: m.WalletPage })));
 const PredictPage = lazyWithRetry(() => import('../pages/PredictPage').then(m => ({ default: m.PredictPage })));
 const PredictMarketPage = lazyWithRetry(() => import('../pages/PredictMarketPage').then(m => ({ default: m.PredictMarketPage })));
 const AdminPage = lazyWithRetry(() => import('../pages/AdminPage').then(m => ({ default: m.AdminPage })));
@@ -84,9 +83,9 @@ export function AppRoutes() {
         <Route path="/trade/spot" element={<Navigate to="/spot" replace />} />
         <Route path="/trade/perp" element={<Navigate to="/perpetuals" replace />} />
 
-        {/* Pado Pocket (fund management) — password-gated */}
-        <Route path="/pocket" element={<PocketPasswordGate><WalletPage /></PocketPasswordGate>} />
-        <Route path="/wallet" element={<Navigate to="/pocket" replace />} />
+        {/* Pado Pocket — merged into Portfolio as a password-gated tab */}
+        <Route path="/pocket" element={<Navigate to="/portfolio?tab=pocket" replace />} />
+        <Route path="/wallet" element={<Navigate to="/portfolio?tab=pocket" replace />} />
 
         {/* Prediction Markets — password-gated */}
         <Route path="/predict" element={<PredictPasswordGate><PredictPage /></PredictPasswordGate>} />
