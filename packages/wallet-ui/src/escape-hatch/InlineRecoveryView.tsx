@@ -31,7 +31,7 @@ export function InlineRecoveryView({ setViewMode, extraAdapters }: Props) {
   ], [signAndExecute, address, extraAdapters]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div>
       <div className="flex items-center gap-3 px-3 py-3 border-b border-gray-200 dark:border-zinc-700">
         <button
           onClick={() => setViewMode('main')}
@@ -43,7 +43,7 @@ export function InlineRecoveryView({ setViewMode, extraAdapters }: Props) {
         </button>
         <h2 className="text-base xl:text-lg font-medium text-gray-900 dark:text-white">Recover Funds</h2>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-3">
+      <div className="px-3 py-3">
         <AssetRecoveryPanel adapters={adapters} address={address} />
       </div>
     </div>
