@@ -248,6 +248,8 @@ export class CommonStack extends cdk.Stack {
         CHAT_SERVER_INVALIDATE_TOKEN: process.env.CHAT_SERVER_INVALIDATE_TOKEN || '',
         EXPLORER_API_INVALIDATE_URL: process.env.EXPLORER_API_INVALIDATE_URL || '',
         EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
+        LEADERBOARD_SYNC_URL: process.env.LEADERBOARD_SYNC_URL || '',
+        LEADERBOARD_SYNC_TOKEN: process.env.LEADERBOARD_SYNC_TOKEN || '',
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",

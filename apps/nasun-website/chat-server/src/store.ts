@@ -141,6 +141,7 @@ export function initStore(config: ChatServerConfig): void {
   // builder via PUBLIC_AVATARS_BASE_URL env var. Stays NULL when the user
   // has no custom avatar (cascade falls through to twitter/google).
   try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN custom_avatar_key TEXT'); } catch { /* already exists */ }
+  try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN custom_avatar_banned INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
@@ -643,19 +644,21 @@ export function upsertNasunProfile(
   imageUrl: string | null,
   twitterHandle: string | null = null,
   customAvatarKey: string | null = null,
+  customAvatarBanned: boolean = false,
 ): void {
   getDb()
     .prepare(
-      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, fetched_at)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO nasun_profiles (address, resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, custom_avatar_banned, fetched_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(address) DO UPDATE SET
          resolved_display_name = excluded.resolved_display_name,
          profile_image_url = excluded.profile_image_url,
          twitter_handle = COALESCE(excluded.twitter_handle, twitter_handle),
          custom_avatar_key = excluded.custom_avatar_key,
+         custom_avatar_banned = excluded.custom_avatar_banned,
          fetched_at = excluded.fetched_at`
     )
-    .run(address, displayName, imageUrl, twitterHandle, customAvatarKey, Date.now());
+    .run(address, displayName, imageUrl, twitterHandle, customAvatarKey, customAvatarBanned ? 1 : 0, Date.now());
 }
 
 /**
@@ -679,11 +682,12 @@ export function getNasunProfileCached(address: string): {
   profileImageUrl: string | null;
   twitterHandle: string | null;
   customAvatarKey: string | null;
+  customAvatarBanned: boolean;
 } | null {
   const normalized = address.toLowerCase();
   const row = getDb()
     .prepare(
-      `SELECT resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, fetched_at
+      `SELECT resolved_display_name, profile_image_url, twitter_handle, custom_avatar_key, custom_avatar_banned, fetched_at
        FROM nasun_profiles WHERE address = ?`
     )
     .get(normalized) as
@@ -692,6 +696,7 @@ export function getNasunProfileCached(address: string): {
         profile_image_url: string | null;
         twitter_handle: string | null;
         custom_avatar_key: string | null;
+        custom_avatar_banned: number;
         fetched_at: number;
       }
     | undefined;
@@ -701,6 +706,7 @@ export function getNasunProfileCached(address: string): {
     profileImageUrl: row.profile_image_url,
     twitterHandle: row.twitter_handle,
     customAvatarKey: row.custom_avatar_key,
+    customAvatarBanned: row.custom_avatar_banned === 1,
   };
 }
 
@@ -749,6 +755,7 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
           profileImageUrl?: string | null;
           twitterHandle?: string | null;
           customAvatarKey?: string | null;
+          customAvatarBanned?: boolean | null;
         };
         upsertNasunProfile(
           normalized,
@@ -756,6 +763,7 @@ export async function fetchAndCacheProfile(address: string): Promise<void> {
           data.profileImageUrl ?? null,
           data.twitterHandle ?? null,
           data.customAvatarKey ?? null,
+          data.customAvatarBanned ?? false,
         );
       } else {
         upsertNasunProfile(normalized, null, null, null, null);
