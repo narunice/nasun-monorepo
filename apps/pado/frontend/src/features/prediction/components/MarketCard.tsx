@@ -68,10 +68,18 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
       {/* Stock Ticker (finance markets) */}
       {stockTicker && (
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-10 h-10 rounded-md bg-theme-bg-tertiary flex items-center justify-center shrink-0">
-            <span className="text-xs font-bold text-theme-text-secondary">
-              {stockTicker.slice(0, 4)}
-            </span>
+          <div className="w-10 h-10 rounded-md bg-white flex items-center justify-center shrink-0 overflow-hidden shadow-sm">
+            {hasStockIcon(stockTicker) ? (
+              <img
+                src={`/stock-icons/${stockTicker}.svg`}
+                alt={stockTicker}
+                className="w-8 h-8 object-contain"
+              />
+            ) : (
+              <span className="text-xs font-bold text-gray-600">
+                {stockTicker.slice(0, 4)}
+              </span>
+            )}
           </div>
           <span className="text-2xl font-extrabold tracking-tight text-theme-text-primary">
             {stockTicker}
@@ -122,6 +130,12 @@ function extractStockTicker(question: string): string | null {
   // "Will Apple Inc. (AAPL) close..." or "Will Samsung (005930.KS) close..."
   const match = question.match(/\(([A-Z0-9.\-]{1,20})\)/);
   return match ? match[1] : null;
+}
+
+const STOCK_ICON_TICKERS = new Set(['AAPL', 'NVDA', '005930.KS']);
+
+function hasStockIcon(ticker: string): boolean {
+  return STOCK_ICON_TICKERS.has(ticker);
 }
 
 const ICON_SYMBOLS = new Set([
