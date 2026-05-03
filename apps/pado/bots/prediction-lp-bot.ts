@@ -1,32 +1,41 @@
 /**
- * Prediction Market LP Bot (dual YES+NO quotes)
+ * Prediction Market LP Bot — multi-level ladder MM
  *
- * Strategy per tick:
- *   1. Fetch market + all 4 order book sides (yes_bids, yes_asks, no_bids, no_asks).
- *   2. If status != OPEN or now >= close_time: cancel all my orders on all sides, skip.
- *   3. Auto-bootstrap: if LP has no inventory for this market, mint YES+NO positions.
- *   4. Compute YES midpoint from external YES orders (excluding my own); empty -> 5000 bps.
- *   5. Derive NO quotes from YES quotes (NO bid = MAX_PRICE - YES ask, NO ask = MAX_PRICE - YES bid).
- *      This keeps both sides arbitrage-free by construction.
- *   6. Cancel any of my existing orders that don't match desired prices.
- *   7. Place YES bid, YES ask (if holding YES position), NO bid, NO ask (if holding NO position).
+ * Per market per tick:
+ *   1. Fetch market + 4 order book sides + my YES/NO Position objects.
+ *   2. If status != OPEN or close_time passed: cancel all my orders, exit.
+ *   3. Ensure inventory: if YES or NO Position count < K, mint top-ups
+ *      (one PTB containing one mint_outcome_tokens call per missing slot).
+ *   4. Compute YES midpoint from external book; smooth via EMA across ticks;
+ *      shift via inventory skew (yes-heavy => mid down).
+ *   5. Build YES K-level ladder; mirror as NO ladder (NO_p = MAX - YES_p).
+ *   6. Diff against my live orders with min_repost_bps tolerance.
+ *      Cancel mismatched orders (one PTB per side); place missing levels
+ *      (one PTB per side: K splitCoins + K maker calls for bids;
+ *       K Position consumes for asks).
  *
- * Market discovery:
- *   If PREDICTION_LP_MARKETS is set, those IDs are pinned.
- *   Otherwise, markets are discovered from on-chain MarketCreated events and
- *   refreshed every PREDICTION_LP_DISCOVER_INTERVAL_MS (default 10 min).
- *   Newly discovered OPEN markets are auto-bootstrapped (mint YES+NO inventory).
+ * NO direct quoting is achieved by computing NO ladder as YES complement and
+ * placing NO native maker orders (same pattern as legacy single-level bot).
  *
- * Env vars:
- *   PREDICTION_LP_PRIVATE_KEY              ed25519 hex or suiprivkey.
- *   PREDICTION_LP_MARKETS                  Optional comma-separated market IDs (static pin).
- *   PREDICTION_LP_SPREAD_BPS               Total quote spread (default 200).
- *   PREDICTION_LP_DEPTH_NUSDC              Bid depth in NUSDC human units (default 100).
- *   PREDICTION_LP_BOOTSTRAP_MINT_NUSDC     Inventory mint per new market (default 200).
- *   PREDICTION_LP_UPDATE_INTERVAL_MS       Tick interval (default 10000).
- *   PREDICTION_LP_DISCOVER_INTERVAL_MS     Market list refresh interval (default 600000).
+ * Env vars (all optional, with defaults; legacy single-level vars still work):
+ *   PREDICTION_LP_PRIVATE_KEY              ed25519 hex or suiprivkey (required).
  *   PREDICTION_PACKAGE_ID                  Deployed package id (required).
- *   NASUN_RPC_URL                          RPC endpoint (default devnet).
+ *   PREDICTION_LP_MARKETS                  Comma-separated market IDs to pin.
+ *
+ *   PREDICTION_LP_LADDER_LEVELS            K, levels per side (default 5).
+ *   PREDICTION_LP_BASE_SPREAD_BPS          Half-spread to nearest level (default 100).
+ *   PREDICTION_LP_LEVEL_GAP_BPS            Gap between adjacent levels (default 50).
+ *   PREDICTION_LP_GAP_GROWTH               Geometric gap growth (default 1.6).
+ *   PREDICTION_LP_BASE_SIZE_NUSDC          Inner-most level NUSDC depth (default 25).
+ *   PREDICTION_LP_SIZE_GROWTH              Geometric size growth (default 1.7).
+ *   PREDICTION_LP_EMA_LAMBDA               Mid EMA weight (default 0.4).
+ *   PREDICTION_LP_INV_SKEW_ALPHA_BPS       Max mid shift from full inventory imbalance (default 0).
+ *   PREDICTION_LP_INV_CAP_SHARES           Inventory cap for skew normalization (default 0).
+ *   PREDICTION_LP_MIN_REPOST_BPS           Don't replace orders within this distance (default 25).
+ *
+ *   PREDICTION_LP_UPDATE_INTERVAL_MS       Tick interval (default 10000, min 2000).
+ *   PREDICTION_LP_DISCOVER_INTERVAL_MS     Market list refresh (default 600000).
+ *   NASUN_RPC_URL                          RPC endpoint.
  *
  * Usage:
  *   node --env-file=.env --import tsx prediction-lp-bot.ts
@@ -39,10 +48,16 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Transaction } from '@mysten/sui/transactions';
 import { MARKETS } from './lib/config.js';
 import {
+  applyEma,
+  applyInventorySkew,
+  complementLadder,
+  computeLadder,
   computeMidpoint,
-  computeQuotes,
   MAX_PRICE_BPS,
   type BookOrder,
+  type Ladder,
+  type LadderLevel,
+  type LadderParams,
 } from './lib/prediction-quotes.js';
 import { discoverMarketIds } from './lib/prediction-market-discovery.js';
 
@@ -52,15 +67,23 @@ import { discoverMarketIds } from './lib/prediction-market-discovery.js';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const CLOCK_ID = '0x6';
-// NUSDC type sourced from the existing LP-bot config (NBTC pool's quoteType).
 const NUSDC_TYPE = MARKETS.NBTC.quoteType;
 const NUSDC_DECIMALS = 6;
 
 const STATUS_OPEN = 0;
 
-const DEFAULT_SPREAD_BPS = 200;
-const DEFAULT_DEPTH_NUSDC = 100;
-const DEFAULT_BOOTSTRAP_MINT_NUSDC = 200;
+// Ladder defaults
+const DEFAULT_LADDER_LEVELS = 5;
+const DEFAULT_BASE_SPREAD_BPS = 100;
+const DEFAULT_LEVEL_GAP_BPS = 50;
+const DEFAULT_GAP_GROWTH = 1.6;
+const DEFAULT_BASE_SIZE_NUSDC = 25;
+const DEFAULT_SIZE_GROWTH = 1.7;
+const DEFAULT_EMA_LAMBDA = 0.4;
+const DEFAULT_INV_SKEW_ALPHA_BPS = 0;
+const DEFAULT_INV_CAP_SHARES = 0;
+const DEFAULT_MIN_REPOST_BPS = 25;
+
 const DEFAULT_INTERVAL_MS = 10_000;
 const DEFAULT_DISCOVER_INTERVAL_MS = 10 * 60_000;
 const MAX_CONSECUTIVE_ERRORS = 10;
@@ -122,12 +145,42 @@ interface MarketSnapshot {
   noAsksTableId: string | null;
 }
 
+// Track market IDs we've already warned about (stale-package mismatch) so the
+// log doesn't get spammed every tick.
+const warnedStaleMarkets = new Set<string>();
+
 async function fetchMarketSnapshot(
   client: SuiClient,
   marketId: string,
+  packageId: string,
 ): Promise<MarketSnapshot | null> {
-  const obj = await client.getObject({ id: marketId, options: { showContent: true } });
-  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') return null;
+  const obj = await client.getObject({
+    id: marketId,
+    options: { showContent: true, showType: true },
+  });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    console.warn(`[${timestamp()}] ${marketId}: object not found or not a move object`);
+    return null;
+  }
+
+  // Guard against stale-package markets: a Market object from an older deployed
+  // package will not match the current package's `cancel_order` / `place_*`
+  // signatures and would fail with `CommandArgumentError TypeMismatch arg_idx 0`.
+  // Drop these silently (one-time warn) so the bot doesn't loop on them.
+  const expectedType = `${packageId}::prediction_market::Market`;
+  const actualType = obj.data.type ?? '';
+  if (actualType !== expectedType) {
+    const key = marketId.toLowerCase();
+    if (!warnedStaleMarkets.has(key)) {
+      warnedStaleMarkets.add(key);
+      console.warn(
+        `[${timestamp()}] ${marketId}: stale-package market (type=${actualType}); skipping. ` +
+        `Remove from PREDICTION_LP_MARKETS to silence.`,
+      );
+    }
+    return null;
+  }
+
   const fields = obj.data.content.fields as Record<string, unknown>;
   return {
     status: Number(fields.status ?? 0),
@@ -149,7 +202,7 @@ interface BookSide {
   truncated: boolean;
 }
 
-async function fetchYesBookSide(
+async function fetchBookSide(
   client: SuiClient,
   tableId: string,
   isBid: boolean,
@@ -187,9 +240,6 @@ async function fetchYesBookSide(
       if (!arr) continue;
       const price = Number(priceValue);
       for (const raw of arr) {
-        // Sui SDK wraps nested struct fields under an inner `fields` key when
-        // the struct sits inside a vector inside a Table value. Unwrap so the
-        // read works whether the SDK returns flat or wrapped shape.
         const f = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
         orders.push({
           orderId: Number(f.order_id ?? 0),
@@ -205,7 +255,7 @@ async function fetchYesBookSide(
 }
 
 // ========================================
-// My inventory fetch (YES or NO Positions)
+// Inventory fetch
 // ========================================
 
 interface OutcomePosition {
@@ -213,16 +263,17 @@ interface OutcomePosition {
   shares: bigint;
 }
 
-async function fetchMyPositions(
+async function fetchAllPositions(
   client: SuiClient,
   owner: string,
   packageId: string,
   marketId: string,
-  isYes: boolean,
-): Promise<OutcomePosition[]> {
-  const positions: OutcomePosition[] = [];
-  let cursor: string | null | undefined = null;
+): Promise<{ yes: OutcomePosition[]; no: OutcomePosition[] }> {
   const positionType = `${packageId}::prediction_market::Position`;
+  const target = marketId.toLowerCase();
+  const yes: OutcomePosition[] = [];
+  const no: OutcomePosition[] = [];
+  let cursor: string | null | undefined = null;
   while (true) {
     const page = await client.getOwnedObjects({
       owner,
@@ -234,16 +285,18 @@ async function fetchMyPositions(
       if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
       const fields = item.data.content.fields as Record<string, unknown>;
       const itsMarket = String(fields.market_id ?? '').toLowerCase();
-      const posIsYes = Boolean(fields.is_yes ?? false);
+      if (itsMarket !== target) continue;
       const shares = BigInt(String(fields.shares ?? 0));
-      if (itsMarket === marketId.toLowerCase() && posIsYes === isYes && shares > 0n) {
-        positions.push({ id: item.data.objectId, shares });
-      }
+      if (shares <= 0n) continue;
+      const isYes = Boolean(fields.is_yes ?? false);
+      const entry = { id: item.data.objectId, shares };
+      if (isYes) yes.push(entry);
+      else no.push(entry);
     }
     if (!page.hasNextPage || !page.nextCursor) break;
     cursor = page.nextCursor;
   }
-  return positions;
+  return { yes, no };
 }
 
 async function fetchLargestNUSDCCoin(
@@ -268,158 +321,202 @@ async function fetchLargestNUSDCCoin(
 }
 
 // ========================================
-// Auto-bootstrap mint
+// Bootstrap / inventory top-up
 // ========================================
 
-// Track markets we've already bootstrapped this process run to avoid redundant
-// RPC checks every tick. Cleared only on restart (acceptable: cheap check on miss).
-const bootstrappedMarkets = new Set<string>();
-
-async function hasAnyInventory(
-  client: SuiClient,
-  owner: string,
-  packageId: string,
-  marketId: string,
-): Promise<boolean> {
-  // mint_outcome_tokens always creates both YES and NO together, so checking
-  // either is sufficient to determine whether bootstrap has occurred.
-  const positionType = `${packageId}::prediction_market::Position`;
-  const target = marketId.toLowerCase();
-  let cursor: string | null | undefined = null;
-  while (true) {
-    const page = await client.getOwnedObjects({
-      owner,
-      filter: { StructType: positionType },
-      options: { showContent: true },
-      cursor: cursor ?? null,
-    });
-    for (const item of page.data) {
-      if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
-      const fields = item.data.content.fields as Record<string, unknown>;
-      if (
-        String(fields.market_id ?? '').toLowerCase() === target &&
-        BigInt(String(fields.shares ?? 0)) > 0n
-      ) {
-        return true;
-      }
-    }
-    if (!page.hasNextPage || !page.nextCursor) break;
-    cursor = page.nextCursor;
+/**
+ * Mint sizes for the K Position objects we keep per market per side.
+ * Mirrors the ladder size curve so larger ladder levels can consume larger
+ * Positions. Each entry is a NUSDC amount; mint creates 1 YES + 1 NO Position
+ * each with shares == nusdc_amount.
+ */
+function targetMintSizesNusdc(params: LadderParams): number[] {
+  const sizes: number[] = [];
+  for (let i = 0; i < params.levels; i++) {
+    sizes.push(params.baseSizeNusdc * Math.pow(params.sizeGrowth, i));
   }
-  return false;
+  return sizes;
 }
 
-async function bootstrapMint(
+async function ensureInventory(
   client: SuiClient,
   keypair: Ed25519Keypair,
   packageId: string,
   marketId: string,
-  amountRaw: bigint,
-): Promise<void> {
+  ladderParams: LadderParams,
+): Promise<{ yes: OutcomePosition[]; no: OutcomePosition[] }> {
   const owner = keypair.toSuiAddress();
-  const coin = await fetchLargestNUSDCCoin(client, owner, amountRaw);
+  let positions = await fetchAllPositions(client, owner, packageId, marketId);
+  const target = ladderParams.levels;
+
+  // We mint until both sides have >= K Positions. Each mint adds one to each.
+  const shortfall = Math.max(0, target - Math.min(positions.yes.length, positions.no.length));
+  if (shortfall === 0) return positions;
+
+  const targetSizes = targetMintSizesNusdc(ladderParams);
+  // Heuristic: top up with the smallest target sizes we appear to be missing.
+  // We don't track per-Position level identity, so just mint the
+  // smallest `shortfall` sizes (cheap top-up; ladder still works).
+  const toMint = targetSizes.slice(0, shortfall);
+  const totalNusdc = toMint.reduce((s, v) => s + v, 0);
+  const totalRaw = nusdcToRaw(totalNusdc);
+  const coin = await fetchLargestNUSDCCoin(client, owner, totalRaw);
   if (!coin) {
     console.warn(
-      `[${timestamp()}] ${marketId}: bootstrap skipped — no NUSDC coin >= ${Number(amountRaw) / 10 ** NUSDC_DECIMALS} (fund LP wallet)`,
+      `[${timestamp()}] ${marketId}: inventory top-up skipped — no NUSDC coin >= ${totalNusdc} (fund LP wallet)`,
     );
-    return;
+    return positions;
   }
-  const tx = new Transaction();
-  const [payment] = tx.splitCoins(tx.object(coin.id), [tx.pure.u64(amountRaw)]);
-  tx.moveCall({
-    target: `${packageId}::prediction_market::mint_outcome_tokens`,
-    arguments: [tx.object(marketId), payment, tx.object(CLOCK_ID)],
-  });
-  const digest = await executeAndWait(client, keypair, tx, 'bootstrap_mint');
-  bootstrappedMarkets.add(marketId.toLowerCase());
-  console.log(`[${timestamp()}] ${marketId}: bootstrap minted ${Number(amountRaw) / 10 ** NUSDC_DECIMALS} NUSDC -> YES+NO positions (${digest.slice(0, 12)})`);
-}
 
-async function ensureBootstrapped(
-  client: SuiClient,
-  keypair: Ed25519Keypair,
-  packageId: string,
-  marketId: string,
-  amountRaw: bigint,
-): Promise<void> {
-  const key = marketId.toLowerCase();
-  if (bootstrappedMarkets.has(key)) return;
-  const owner = keypair.toSuiAddress();
-  const hasInventory = await hasAnyInventory(client, owner, packageId, marketId);
-  if (hasInventory) {
-    bootstrappedMarkets.add(key);
-    return;
+  const tx = new Transaction();
+  const splits = tx.splitCoins(
+    tx.object(coin.id),
+    toMint.map((amt) => tx.pure.u64(nusdcToRaw(amt))),
+  );
+  for (let i = 0; i < toMint.length; i++) {
+    tx.moveCall({
+      target: `${packageId}::prediction_market::mint_outcome_tokens`,
+      arguments: [tx.object(marketId), splits[i], tx.object(CLOCK_ID)],
+    });
   }
-  console.log(`[${timestamp()}] ${marketId}: no inventory — auto-bootstrapping YES+NO`);
-  await bootstrapMint(client, keypair, packageId, marketId, amountRaw);
+  const digest = await executeAndWait(client, keypair, tx, 'mint_outcome_tokens(batch)');
+  console.log(
+    `[${timestamp()}] ${marketId}: minted ${toMint.length} Position pair(s) (${toMint
+      .map((s) => s.toFixed(2))
+      .join('+')} NUSDC) ${digest.slice(0, 12)}`,
+  );
+
+  // Re-fetch fresh state.
+  positions = await fetchAllPositions(client, owner, packageId, marketId);
+  return positions;
 }
 
 // ========================================
-// Tx builders
+// Reconciliation diff
 // ========================================
 
-function buildCancelOrder(
+interface MyOrder {
+  orderId: number;
+  price: number;
+  isBid: boolean;
+  isYes: boolean;
+}
+
+interface SidePlan {
+  toCancel: MyOrder[];
+  toPlace: LadderLevel[];
+  /** Subset of myOrders we kept (matched to a desired level within tolerance). */
+  kept: MyOrder[];
+}
+
+/**
+ * Greedy nearest-match between my live orders and desired ladder levels.
+ *
+ * For each desired level (walked in priceBps order), claim the nearest
+ * unmatched of my orders that lies within `minRepostBps`. Unmatched levels
+ * become `toPlace`; unmatched my orders become `toCancel`.
+ */
+function planSide(
+  myOrders: MyOrder[],
+  desired: LadderLevel[],
+  minRepostBps: number,
+): SidePlan {
+  const remaining = [...myOrders];
+  const toPlace: LadderLevel[] = [];
+  const kept: MyOrder[] = [];
+
+  // Walk desired levels in stable order; each consumes at most one of mine.
+  for (const lv of desired) {
+    let bestIdx = -1;
+    let bestDist = Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const d = Math.abs(remaining[i].price - lv.priceBps);
+      if (d < bestDist && d <= minRepostBps) {
+        bestDist = d;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx >= 0) {
+      kept.push(remaining[bestIdx]);
+      remaining.splice(bestIdx, 1);
+    } else {
+      toPlace.push(lv);
+    }
+  }
+
+  return { toCancel: remaining, toPlace, kept };
+}
+
+// ========================================
+// PTB builders (batched)
+// ========================================
+
+function buildBatchedCancel(
   packageId: string,
   marketId: string,
-  isYes: boolean,
-  isBid: boolean,
-  price: number,
-  orderId: number,
+  orders: { isYes: boolean; isBid: boolean; price: number; orderId: number }[],
 ): Transaction {
   const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::prediction_market::cancel_order`,
-    arguments: [
-      tx.object(marketId),
-      tx.pure.bool(isYes),
-      tx.pure.bool(isBid),
-      tx.pure.u64(price),
-      tx.pure.u64(orderId),
-      tx.object(CLOCK_ID),
-    ],
-  });
+  for (const o of orders) {
+    tx.moveCall({
+      target: `${packageId}::prediction_market::cancel_order`,
+      arguments: [
+        tx.object(marketId),
+        tx.pure.bool(o.isYes),
+        tx.pure.bool(o.isBid),
+        tx.pure.u64(o.price),
+        tx.pure.u64(o.orderId),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  }
   return tx;
 }
 
-function buildPlaceBuyMaker(
+function buildBatchedBuyMakers(
   packageId: string,
   marketId: string,
   isYes: boolean,
-  priceBps: number,
-  paymentRaw: bigint,
-  nusdcCoinId: string,
+  levels: LadderLevel[],
+  sourceCoinId: string,
 ): Transaction {
   const tx = new Transaction();
-  const [payment] = tx.splitCoins(tx.object(nusdcCoinId), [tx.pure.u64(paymentRaw)]);
-  tx.moveCall({
-    target: `${packageId}::prediction_market::place_buy_maker`,
-    arguments: [
-      tx.object(marketId),
-      tx.pure.bool(isYes),
-      tx.pure.u64(priceBps),
-      payment,
-      tx.object(CLOCK_ID),
-    ],
-  });
+  const splits = tx.splitCoins(
+    tx.object(sourceCoinId),
+    levels.map((l) => tx.pure.u64(nusdcToRaw(l.sizeNusdc))),
+  );
+  for (let i = 0; i < levels.length; i++) {
+    tx.moveCall({
+      target: `${packageId}::prediction_market::place_buy_maker`,
+      arguments: [
+        tx.object(marketId),
+        tx.pure.bool(isYes),
+        tx.pure.u64(levels[i].priceBps),
+        splits[i],
+        tx.object(CLOCK_ID),
+      ],
+    });
+  }
   return tx;
 }
 
-function buildPlaceSellMaker(
+function buildBatchedSellMakers(
   packageId: string,
   marketId: string,
-  positionId: string,
-  priceBps: number,
+  assignments: { positionId: string; priceBps: number }[],
 ): Transaction {
   const tx = new Transaction();
-  tx.moveCall({
-    target: `${packageId}::prediction_market::place_sell_maker`,
-    arguments: [
-      tx.object(marketId),
-      tx.object(positionId),
-      tx.pure.u64(priceBps),
-      tx.object(CLOCK_ID),
-    ],
-  });
+  for (const a of assignments) {
+    tx.moveCall({
+      target: `${packageId}::prediction_market::place_sell_maker`,
+      arguments: [
+        tx.object(marketId),
+        tx.object(a.positionId),
+        tx.pure.u64(a.priceBps),
+        tx.object(CLOCK_ID),
+      ],
+    });
+  }
   return tx;
 }
 
@@ -427,9 +524,28 @@ function buildPlaceSellMaker(
 // Per-market reconcile
 // ========================================
 
-// Annotated order: which side of which book (YES vs NO).
-interface AnnotatedOrder extends BookOrder {
-  isYes: boolean;
+interface MarketState {
+  yesMidEma: number | null;
+}
+
+const marketState = new Map<string, MarketState>();
+
+function getState(marketId: string): MarketState {
+  const key = marketId.toLowerCase();
+  let st = marketState.get(key);
+  if (!st) {
+    st = { yesMidEma: null };
+    marketState.set(key, st);
+  }
+  return st;
+}
+
+interface ReconcileConfig {
+  ladder: LadderParams;
+  emaLambda: number;
+  invSkewAlphaBps: number;
+  invCapShares: bigint;
+  minRepostBps: number;
 }
 
 async function reconcileMarket(
@@ -437,201 +553,236 @@ async function reconcileMarket(
   keypair: Ed25519Keypair,
   packageId: string,
   marketId: string,
-  spreadBps: number,
-  depthNusdc: number,
-  bootstrapMintRaw: bigint,
+  cfg: ReconcileConfig,
 ): Promise<void> {
   const myAddress = keypair.toSuiAddress();
-  const market = await fetchMarketSnapshot(client, marketId);
+  const market = await fetchMarketSnapshot(client, marketId, packageId);
   if (!market) {
-    console.warn(`[${timestamp()}] ${marketId}: not found`);
+    // Either object missing or stale-package; both already log inside the helper.
     return;
   }
 
   const closing = market.status !== STATUS_OPEN || Date.now() >= market.closeTime;
 
-  if (!closing) {
-    await ensureBootstrapped(client, keypair, packageId, marketId, bootstrapMintRaw);
-  }
-
   // Fetch all 4 book sides in parallel.
   const emptySide: BookSide = { orders: [], truncated: false };
   const [yesBidSide, yesAskSide, noBidSide, noAskSide] = await Promise.all([
-    market.yesBidsTableId ? fetchYesBookSide(client, market.yesBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
-    market.yesAsksTableId ? fetchYesBookSide(client, market.yesAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
-    market.noBidsTableId ? fetchYesBookSide(client, market.noBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
-    market.noAsksTableId ? fetchYesBookSide(client, market.noAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
+    market.yesBidsTableId ? fetchBookSide(client, market.yesBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
+    market.yesAsksTableId ? fetchBookSide(client, market.yesAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
+    market.noBidsTableId ? fetchBookSide(client, market.noBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
+    market.noAsksTableId ? fetchBookSide(client, market.noAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
   ]);
 
-  const annotate = (side: BookSide, isYes: boolean): AnnotatedOrder[] =>
-    side.orders.map((o) => ({ ...o, isYes }));
+  const myYesBids: MyOrder[] = yesBidSide.orders
+    .filter((o) => o.owner === myAddress)
+    .map((o) => ({ orderId: o.orderId, price: o.price, isBid: true, isYes: true }));
+  const myYesAsks: MyOrder[] = yesAskSide.orders
+    .filter((o) => o.owner === myAddress)
+    .map((o) => ({ orderId: o.orderId, price: o.price, isBid: false, isYes: true }));
+  const myNoBids: MyOrder[] = noBidSide.orders
+    .filter((o) => o.owner === myAddress)
+    .map((o) => ({ orderId: o.orderId, price: o.price, isBid: true, isYes: false }));
+  const myNoAsks: MyOrder[] = noAskSide.orders
+    .filter((o) => o.owner === myAddress)
+    .map((o) => ({ orderId: o.orderId, price: o.price, isBid: false, isYes: false }));
 
-  const allOrders: AnnotatedOrder[] = [
-    ...annotate(yesBidSide, true),
-    ...annotate(yesAskSide, true),
-    ...annotate(noBidSide, false),
-    ...annotate(noAskSide, false),
-  ];
-  const myOrders = allOrders.filter((o) => o.owner === myAddress);
+  const allMine: MyOrder[] = [...myYesBids, ...myYesAsks, ...myNoBids, ...myNoAsks];
 
   if (closing) {
-    if (myOrders.length === 0) return;
+    if (allMine.length === 0) return;
     console.log(
-      `[${timestamp()}] ${marketId}: market closing/closed, cancelling ${myOrders.length} order(s)`,
+      `[${timestamp()}] ${marketId}: market closing/closed, cancelling ${allMine.length} order(s)`,
     );
-    for (const o of myOrders) {
-      if (shuttingDown) break;
-      try {
-        const digest = await executeAndWait(
-          client,
-          keypair,
-          buildCancelOrder(packageId, marketId, o.isYes, o.isBid, o.price, o.orderId),
-          `cancel_order`,
-        );
-        console.log(
-          `[${timestamp()}] ${marketId}: cancelled ${o.isYes ? 'yes' : 'no'}-${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
-        );
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[${timestamp()}] ${marketId}: cancel ${o.price}/${o.orderId} failed: ${msg}`);
-      }
+    try {
+      const tx = buildBatchedCancel(packageId, marketId, allMine);
+      const digest = await executeAndWait(client, keypair, tx, 'cancel_all');
+      console.log(`[${timestamp()}] ${marketId}: cancelled ${allMine.length} (${digest.slice(0, 12)})`);
+    } catch (err) {
+      console.warn(
+        `[${timestamp()}] ${marketId}: cancel-all failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
     return;
   }
 
-  // YES quotes derived from YES order book.
-  const yesMid = computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
-  const yesDesired = computeQuotes(yesMid, spreadBps);
+  // Ensure inventory before quoting (mints up to K Position pairs).
+  const positions = await ensureInventory(client, keypair, packageId, marketId, cfg.ladder);
 
-  // NO quotes are the complement of YES quotes: YES + NO = MAX_PRICE.
-  // This keeps both sides arbitrage-free by construction.
-  const noDesired = {
-    bidBps: Math.max(1, MAX_PRICE_BPS - yesDesired.askBps),
-    askBps: Math.min(MAX_PRICE_BPS - 1, MAX_PRICE_BPS - yesDesired.bidBps),
+  // Compute YES midpoint -> EMA -> inventory skew.
+  const rawMid = computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
+  const state = getState(marketId);
+  const smoothedMid = applyEma(state.yesMidEma, rawMid, cfg.emaLambda);
+  state.yesMidEma = smoothedMid;
+
+  const totalYesShares = positions.yes.reduce((s, p) => s + p.shares, 0n);
+  const totalNoShares = positions.no.reduce((s, p) => s + p.shares, 0n);
+  const deltaInv = totalYesShares - totalNoShares;
+  const skewedMid = applyInventorySkew(
+    smoothedMid,
+    deltaInv,
+    cfg.invCapShares,
+    cfg.invSkewAlphaBps,
+  );
+
+  // Build YES ladder; mirror to NO via complement.
+  const yesLadder = computeLadder(skewedMid, cfg.ladder);
+  const noLadder: Ladder = complementLadder(yesLadder);
+
+  // Plan each of 4 sides.
+  const yesBidPlan = planSide(myYesBids, yesLadder.bids, cfg.minRepostBps);
+  const yesAskPlan = planSide(myYesAsks, yesLadder.asks, cfg.minRepostBps);
+  const noBidPlan = planSide(myNoBids, noLadder.bids, cfg.minRepostBps);
+  const noAskPlan = planSide(myNoAsks, noLadder.asks, cfg.minRepostBps);
+
+  // Skip placement on truncated sides (might miss own orders => duplicate placement).
+  const truncated = {
+    yesBid: yesBidSide.truncated,
+    yesAsk: yesAskSide.truncated,
+    noBid: noBidSide.truncated,
+    noAsk: noAskSide.truncated,
   };
 
-  // Per-side placement skip flags.
-  let skipYesBid = yesBidSide.truncated || myOrders.some((o) => o.isYes && o.isBid && o.price === yesDesired.bidBps);
-  let skipYesAsk = yesAskSide.truncated || myOrders.some((o) => o.isYes && !o.isBid && o.price === yesDesired.askBps);
-  let skipNoBid  = noBidSide.truncated  || myOrders.some((o) => !o.isYes && o.isBid && o.price === noDesired.bidBps);
-  let skipNoAsk  = noAskSide.truncated  || myOrders.some((o) => !o.isYes && !o.isBid && o.price === noDesired.askBps);
+  // ===== Cancel mismatches (one PTB per side) =====
+  const cancelTasks: Array<{ orders: MyOrder[]; label: string }> = [];
+  if (yesBidPlan.toCancel.length > 0) cancelTasks.push({ orders: yesBidPlan.toCancel, label: 'yes-bid' });
+  if (yesAskPlan.toCancel.length > 0) cancelTasks.push({ orders: yesAskPlan.toCancel, label: 'yes-ask' });
+  if (noBidPlan.toCancel.length > 0) cancelTasks.push({ orders: noBidPlan.toCancel, label: 'no-bid' });
+  if (noAskPlan.toCancel.length > 0) cancelTasks.push({ orders: noAskPlan.toCancel, label: 'no-ask' });
 
-  for (const side of [yesBidSide, yesAskSide, noBidSide, noAskSide]) {
-    if (side.truncated) {
-      console.warn(`[${timestamp()}] ${marketId}: book side truncated; skipping placement on truncated side(s) this tick`);
-      break;
-    }
-  }
-
-  // Cancel stale orders (wrong price for current desired quotes).
-  const stale = myOrders.filter((o) => {
-    const desired = o.isYes ? yesDesired : noDesired;
-    return o.isBid ? o.price !== desired.bidBps : o.price !== desired.askBps;
-  });
-  for (const o of stale) {
+  for (const task of cancelTasks) {
+    if (shuttingDown) return;
     try {
-      const digest = await executeAndWait(
-        client,
-        keypair,
-        buildCancelOrder(packageId, marketId, o.isYes, o.isBid, o.price, o.orderId),
-        `cancel_order`,
+      const tx = buildBatchedCancel(
+        packageId,
+        marketId,
+        task.orders.map((o) => ({ isYes: o.isYes, isBid: o.isBid, price: o.price, orderId: o.orderId })),
       );
+      const digest = await executeAndWait(client, keypair, tx, `cancel_${task.label}`);
       console.log(
-        `[${timestamp()}] ${marketId}: cancelled stale ${o.isYes ? 'yes' : 'no'}-${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
+        `[${timestamp()}] ${marketId}: cancelled ${task.orders.length} ${task.label} (${digest.slice(0, 12)})`,
       );
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[${timestamp()}] ${marketId}: stale cancel ${o.price}/${o.orderId} failed: ${msg}`);
-      if (o.isYes && o.isBid) skipYesBid = true;
-      else if (o.isYes && !o.isBid) skipYesAsk = true;
-      else if (!o.isYes && o.isBid) skipNoBid = true;
-      else skipNoAsk = true;
+      console.warn(
+        `[${timestamp()}] ${marketId}: cancel ${task.label} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
   }
 
-  const depthRaw = nusdcToRaw(depthNusdc);
-
-  // Place YES bid.
-  if (!skipYesBid) {
-    const coin = await fetchLargestNUSDCCoin(client, myAddress, depthRaw);
-    if (!coin) {
-      console.warn(`[${timestamp()}] ${marketId}: no NUSDC coin >= ${depthNusdc} for yes-bid`);
-    } else {
-      try {
-        const digest = await executeAndWait(
-          client, keypair,
-          buildPlaceBuyMaker(packageId, marketId, true, yesDesired.bidBps, depthRaw, coin.id),
-          `place_buy_maker(yes)`,
-        );
-        console.log(`[${timestamp()}] ${marketId}: placed yes-bid @ ${yesDesired.bidBps}bps depth ${depthNusdc} (${digest.slice(0, 12)})`);
-      } catch (err) {
-        console.warn(`[${timestamp()}] ${marketId}: yes-bid failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+  // ===== Place YES bids =====
+  if (!truncated.yesBid && yesBidPlan.toPlace.length > 0) {
+    await placeBidLadder(client, keypair, packageId, marketId, true, yesBidPlan.toPlace);
+  }
+  // ===== Place NO bids =====
+  if (!truncated.noBid && noBidPlan.toPlace.length > 0) {
+    await placeBidLadder(client, keypair, packageId, marketId, false, noBidPlan.toPlace);
   }
 
-  // Place YES ask (requires YES position).
-  if (!skipYesAsk) {
-    const positions = await fetchMyPositions(client, myAddress, packageId, marketId, true);
-    if (positions.length === 0) {
-      console.warn(`[${timestamp()}] ${marketId}: no YES position for yes-ask`);
-    } else {
-      const largest = positions.reduce((a, b) => (b.shares > a.shares ? b : a));
-      try {
-        const digest = await executeAndWait(
-          client, keypair,
-          buildPlaceSellMaker(packageId, marketId, largest.id, yesDesired.askBps),
-          `place_sell_maker(yes)`,
-        );
-        console.log(`[${timestamp()}] ${marketId}: placed yes-ask @ ${yesDesired.askBps}bps shares ${largest.shares} (${digest.slice(0, 12)})`);
-      } catch (err) {
-        console.warn(`[${timestamp()}] ${marketId}: yes-ask failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
-  }
+  // Re-fetch positions in case cancels above returned new Positions to us.
+  const positionsAfterCancel = (yesAskPlan.toCancel.length > 0 || noAskPlan.toCancel.length > 0)
+    ? await fetchAllPositions(client, keypair.toSuiAddress(), packageId, marketId)
+    : positions;
 
-  // Place NO bid.
-  if (!skipNoBid) {
-    const coin = await fetchLargestNUSDCCoin(client, myAddress, depthRaw);
-    if (!coin) {
-      console.warn(`[${timestamp()}] ${marketId}: no NUSDC coin >= ${depthNusdc} for no-bid`);
-    } else {
-      try {
-        const digest = await executeAndWait(
-          client, keypair,
-          buildPlaceBuyMaker(packageId, marketId, false, noDesired.bidBps, depthRaw, coin.id),
-          `place_buy_maker(no)`,
-        );
-        console.log(`[${timestamp()}] ${marketId}: placed no-bid @ ${noDesired.bidBps}bps depth ${depthNusdc} (${digest.slice(0, 12)})`);
-      } catch (err) {
-        console.warn(`[${timestamp()}] ${marketId}: no-bid failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+  // ===== Place YES asks (consume YES Positions) =====
+  if (!truncated.yesAsk && yesAskPlan.toPlace.length > 0) {
+    await placeAskLadder(
+      client, keypair, packageId, marketId, true,
+      yesAskPlan.toPlace, positionsAfterCancel.yes,
+    );
   }
-
-  // Place NO ask (requires NO position).
-  if (!skipNoAsk) {
-    const positions = await fetchMyPositions(client, myAddress, packageId, marketId, false);
-    if (positions.length === 0) {
-      console.warn(`[${timestamp()}] ${marketId}: no NO position for no-ask`);
-    } else {
-      const largest = positions.reduce((a, b) => (b.shares > a.shares ? b : a));
-      try {
-        const digest = await executeAndWait(
-          client, keypair,
-          buildPlaceSellMaker(packageId, marketId, largest.id, noDesired.askBps),
-          `place_sell_maker(no)`,
-        );
-        console.log(`[${timestamp()}] ${marketId}: placed no-ask @ ${noDesired.askBps}bps shares ${largest.shares} (${digest.slice(0, 12)})`);
-      } catch (err) {
-        console.warn(`[${timestamp()}] ${marketId}: no-ask failed: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    }
+  // ===== Place NO asks (consume NO Positions) =====
+  if (!truncated.noAsk && noAskPlan.toPlace.length > 0) {
+    await placeAskLadder(
+      client, keypair, packageId, marketId, false,
+      noAskPlan.toPlace, positionsAfterCancel.no,
+    );
   }
 
   console.log(
-    `[${timestamp()}] ${marketId}: yes-mid=${yesMid} yes=${yesDesired.bidBps}/${yesDesired.askBps} no=${noDesired.bidBps}/${noDesired.askBps} myOrders=${myOrders.length}`,
+    `[${timestamp()}] ${marketId}: rawMid=${rawMid} ema=${smoothedMid} skew=${skewedMid} ` +
+    `yes=[${yesLadder.bids.map((l) => l.priceBps).join(',')} | ${yesLadder.asks.map((l) => l.priceBps).join(',')}] ` +
+    `mine=${allMine.length} kept=${yesBidPlan.kept.length + yesAskPlan.kept.length + noBidPlan.kept.length + noAskPlan.kept.length} ` +
+    `placed=${yesBidPlan.toPlace.length + yesAskPlan.toPlace.length + noBidPlan.toPlace.length + noAskPlan.toPlace.length} ` +
+    `cancelled=${yesBidPlan.toCancel.length + yesAskPlan.toCancel.length + noBidPlan.toCancel.length + noAskPlan.toCancel.length}`,
   );
+}
+
+async function placeBidLadder(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  packageId: string,
+  marketId: string,
+  isYes: boolean,
+  levels: LadderLevel[],
+): Promise<void> {
+  const owner = keypair.toSuiAddress();
+  const totalNusdc = levels.reduce((s, l) => s + l.sizeNusdc, 0);
+  const totalRaw = nusdcToRaw(totalNusdc);
+  const coin = await fetchLargestNUSDCCoin(client, owner, totalRaw);
+  if (!coin) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: no NUSDC coin >= ${totalNusdc} for ${isYes ? 'yes' : 'no'}-bid ladder`,
+    );
+    return;
+  }
+  try {
+    const tx = buildBatchedBuyMakers(packageId, marketId, isYes, levels, coin.id);
+    const digest = await executeAndWait(
+      client, keypair, tx,
+      `place_buy_maker_batch(${isYes ? 'yes' : 'no'})`,
+    );
+    console.log(
+      `[${timestamp()}] ${marketId}: placed ${levels.length} ${isYes ? 'yes' : 'no'}-bids ` +
+      `[${levels.map((l) => `${l.priceBps}@${l.sizeNusdc.toFixed(1)}`).join(', ')}] (${digest.slice(0, 12)})`,
+    );
+  } catch (err) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: ${isYes ? 'yes' : 'no'}-bid ladder failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+}
+
+async function placeAskLadder(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  packageId: string,
+  marketId: string,
+  isYes: boolean,
+  levels: LadderLevel[],
+  available: OutcomePosition[],
+): Promise<void> {
+  if (available.length === 0) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: no ${isYes ? 'YES' : 'NO'} Positions for ask ladder`,
+    );
+    return;
+  }
+  // Sort levels by sizeNusdc desc, positions by shares desc, zip pairs.
+  const sortedLevels = [...levels].sort((a, b) => b.sizeNusdc - a.sizeNusdc);
+  const sortedPositions = [...available].sort((a, b) => (b.shares > a.shares ? 1 : b.shares < a.shares ? -1 : 0));
+  const pairs: { positionId: string; priceBps: number }[] = [];
+  for (let i = 0; i < sortedLevels.length && i < sortedPositions.length; i++) {
+    pairs.push({ positionId: sortedPositions[i].id, priceBps: sortedLevels[i].priceBps });
+  }
+  if (pairs.length < sortedLevels.length) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: only ${pairs.length}/${sortedLevels.length} ${isYes ? 'YES' : 'NO'} Positions available for ask ladder`,
+    );
+  }
+  try {
+    const tx = buildBatchedSellMakers(packageId, marketId, pairs);
+    const digest = await executeAndWait(
+      client, keypair, tx,
+      `place_sell_maker_batch(${isYes ? 'yes' : 'no'})`,
+    );
+    console.log(
+      `[${timestamp()}] ${marketId}: placed ${pairs.length} ${isYes ? 'yes' : 'no'}-asks ` +
+      `[${pairs.map((p) => p.priceBps).join(', ')}] (${digest.slice(0, 12)})`,
+    );
+  } catch (err) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: ${isYes ? 'yes' : 'no'}-ask ladder failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 // ========================================
@@ -647,9 +798,7 @@ async function tick(
   keypair: Ed25519Keypair,
   packageId: string,
   markets: string[],
-  spreadBps: number,
-  depthNusdc: number,
-  bootstrapMintRaw: bigint,
+  cfg: ReconcileConfig,
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
@@ -657,7 +806,7 @@ async function tick(
     for (const marketId of markets) {
       if (shuttingDown) break;
       try {
-        await reconcileMarket(client, keypair, packageId, marketId, spreadBps, depthNusdc, bootstrapMintRaw);
+        await reconcileMarket(client, keypair, packageId, marketId, cfg);
         consecutiveErrors = 0;
       } catch (err) {
         consecutiveErrors++;
@@ -679,10 +828,6 @@ async function tick(
   }
 }
 
-// ========================================
-// Market list (auto-discovery)
-// ========================================
-
 async function buildMarketList(
   client: SuiClient,
   packageId: string,
@@ -694,6 +839,25 @@ async function buildMarketList(
     merged.set(id.toLowerCase(), true);
   }
   return [...merged.keys()];
+}
+
+function readNumberEnv(name: string, def: number, min?: number, max?: number): number {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return def;
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v)) {
+    console.error(`${name} must be a finite number, got: ${raw}`);
+    process.exit(1);
+  }
+  if (min !== undefined && v < min) {
+    console.error(`${name} must be >= ${min}, got: ${v}`);
+    process.exit(1);
+  }
+  if (max !== undefined && v > max) {
+    console.error(`${name} must be <= ${max}, got: ${v}`);
+    process.exit(1);
+  }
+  return v;
 }
 
 async function main(): Promise<void> {
@@ -710,30 +874,28 @@ async function main(): Promise<void> {
   }
   const packageId = packageIdRaw.toLowerCase();
 
-  // Pinned markets (optional): merged with auto-discovered list.
   const pinnedMarkets = (process.env.PREDICTION_LP_MARKETS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
-  const spreadBps = parseInt(process.env.PREDICTION_LP_SPREAD_BPS || String(DEFAULT_SPREAD_BPS), 10);
-  if (!Number.isFinite(spreadBps) || spreadBps < 10 || spreadBps > 5000) {
-    console.error('PREDICTION_LP_SPREAD_BPS must be between 10 and 5000');
-    process.exit(1);
-  }
-  const depthNusdc = parseFloat(process.env.PREDICTION_LP_DEPTH_NUSDC || String(DEFAULT_DEPTH_NUSDC));
-  if (!Number.isFinite(depthNusdc) || depthNusdc <= 0) {
-    console.error('PREDICTION_LP_DEPTH_NUSDC must be positive');
-    process.exit(1);
-  }
-  const bootstrapMintNusdc = parseFloat(
-    process.env.PREDICTION_LP_BOOTSTRAP_MINT_NUSDC || String(DEFAULT_BOOTSTRAP_MINT_NUSDC),
+  const ladder: LadderParams = {
+    levels: Math.round(readNumberEnv('PREDICTION_LP_LADDER_LEVELS', DEFAULT_LADDER_LEVELS, 1, 20)),
+    baseSpreadBps: readNumberEnv('PREDICTION_LP_BASE_SPREAD_BPS', DEFAULT_BASE_SPREAD_BPS, 1, 5000),
+    levelGapBps: readNumberEnv('PREDICTION_LP_LEVEL_GAP_BPS', DEFAULT_LEVEL_GAP_BPS, 1, 5000),
+    gapGrowth: readNumberEnv('PREDICTION_LP_GAP_GROWTH', DEFAULT_GAP_GROWTH, 1, 5),
+    baseSizeNusdc: readNumberEnv('PREDICTION_LP_BASE_SIZE_NUSDC', DEFAULT_BASE_SIZE_NUSDC, 0.000001),
+    sizeGrowth: readNumberEnv('PREDICTION_LP_SIZE_GROWTH', DEFAULT_SIZE_GROWTH, 1, 5),
+  };
+  const emaLambda = readNumberEnv('PREDICTION_LP_EMA_LAMBDA', DEFAULT_EMA_LAMBDA, 0, 1);
+  const invSkewAlphaBps = readNumberEnv(
+    'PREDICTION_LP_INV_SKEW_ALPHA_BPS', DEFAULT_INV_SKEW_ALPHA_BPS, 0, 5000,
   );
-  if (!Number.isFinite(bootstrapMintNusdc) || bootstrapMintNusdc <= 0) {
-    console.error('PREDICTION_LP_BOOTSTRAP_MINT_NUSDC must be positive');
-    process.exit(1);
-  }
-  const bootstrapMintRaw = BigInt(Math.round(bootstrapMintNusdc * 10 ** NUSDC_DECIMALS));
+  const invCapSharesNum = readNumberEnv(
+    'PREDICTION_LP_INV_CAP_SHARES', DEFAULT_INV_CAP_SHARES, 0,
+  );
+  const invCapShares = BigInt(Math.floor(invCapSharesNum * 10 ** NUSDC_DECIMALS));
+  const minRepostBps = readNumberEnv('PREDICTION_LP_MIN_REPOST_BPS', DEFAULT_MIN_REPOST_BPS, 0, 5000);
 
   const intervalMs = parseInt(
     process.env.PREDICTION_LP_UPDATE_INTERVAL_MS || String(DEFAULT_INTERVAL_MS),
@@ -748,20 +910,31 @@ async function main(): Promise<void> {
     10,
   );
 
+  const cfg: ReconcileConfig = {
+    ladder, emaLambda, invSkewAlphaBps, invCapShares, minRepostBps,
+  };
+
   const keypair = parseKeypair(keyInput);
   const lpAddress = keypair.toSuiAddress();
   const client = new SuiClient({ url: RPC_URL });
 
-  console.log(`[${timestamp()}] Prediction LP Bot starting`);
+  const totalLadderNusdc = targetMintSizesNusdc(ladder).reduce((s, v) => s + v, 0);
+
+  console.log(`[${timestamp()}] Prediction LP Bot (ladder mode) starting`);
   console.log(`[${timestamp()}] LP wallet: ${lpAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
-  console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none — auto-discover only)'}`);
   console.log(
-    `[${timestamp()}] Spread=${spreadBps}bps depth=${depthNusdc} bootstrap=${bootstrapMintNusdc} NUSDC tick=${intervalMs}ms discover=${discoverIntervalMs}ms`,
+    `[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none — auto-discover only)'}`,
+  );
+  console.log(
+    `[${timestamp()}] Ladder K=${ladder.levels} baseSpread=${ladder.baseSpreadBps}bps gap=${ladder.levelGapBps}bps×${ladder.gapGrowth} ` +
+    `size0=${ladder.baseSizeNusdc} ×${ladder.sizeGrowth} (mint pool ≈ ${totalLadderNusdc.toFixed(1)} NUSDC/side/market)`,
+  );
+  console.log(
+    `[${timestamp()}] EMA λ=${emaLambda} invSkewα=${invSkewAlphaBps}bps invCap=${invCapSharesNum} minRepost=${minRepostBps}bps tick=${intervalMs}ms`,
   );
 
-  // Initial market discovery.
   let markets = await buildMarketList(client, packageId, pinnedMarkets);
   let lastDiscoverAt = Date.now();
   console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
@@ -796,14 +969,13 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, spreadBps, depthNusdc, bootstrapMintRaw);
+  await tick(client, keypair, packageId, markets, cfg);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
     await sleep(intervalMs);
     if (shuttingDown) break;
 
-    // Periodically refresh market list.
     if (Date.now() - lastDiscoverAt >= discoverIntervalMs) {
       try {
         const fresh = await buildMarketList(client, packageId, pinnedMarkets);
@@ -819,7 +991,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await tick(client, keypair, packageId, markets, spreadBps, depthNusdc, bootstrapMintRaw);
+    await tick(client, keypair, packageId, markets, cfg);
   }
 }
 
