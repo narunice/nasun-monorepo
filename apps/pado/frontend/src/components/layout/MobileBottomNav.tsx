@@ -70,7 +70,7 @@ interface MoreItem {
 const MORE_ITEMS: MoreItem[] = [
   { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
   { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: hasAccess('spot') },
-  { label: 'Wallet', path: '/wallet', icon: '👛', enabled: hasAccess('spot') },
+  { label: 'Pocket', path: '/pocket', icon: '👛', enabled: hasAccess('spot') },
   { label: 'Predict', path: '/predict', icon: '🔮', enabled: true },
 ];
 

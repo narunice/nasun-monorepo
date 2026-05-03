@@ -3,9 +3,9 @@
  * Application route definitions with lazy-loaded pages.
  *
  * Navigation Structure:
- * Desktop: Spot | Perpetuals | Predict | Earn | Social v (Leaderboard, Competitions) | Portfolio
- * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio, Wallet)
- * - Wallet (/wallet) - accessible via header button (desktop) or More sheet (mobile)
+ * Desktop: Spot | Perpetuals | Predict | Earn | Pocket | Social v (Leaderboard, Competitions) | Portfolio
+ * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio, Pocket)
+ * - Pocket (/pocket) - accessible via desktop nav and More sheet (mobile)
  * - Admin (/admin) - conditional, admin-only
  */
 
@@ -84,8 +84,9 @@ export function AppRoutes() {
         <Route path="/trade/spot" element={<Navigate to="/spot" replace />} />
         <Route path="/trade/perp" element={<Navigate to="/perpetuals" replace />} />
 
-        {/* Wallet (Send/Receive) */}
-        <Route path="/wallet" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
+        {/* Pado Pocket (fund management) */}
+        <Route path="/pocket" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
+        <Route path="/wallet" element={<Navigate to="/pocket" replace />} />
 
         {/* Prediction Markets — password-gated */}
         <Route path="/predict" element={<PredictPasswordGate><PredictPage /></PredictPasswordGate>} />
