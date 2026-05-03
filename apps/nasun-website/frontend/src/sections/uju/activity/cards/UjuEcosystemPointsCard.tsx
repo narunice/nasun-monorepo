@@ -168,25 +168,35 @@ function ScoreTooltip({
   const d = payload[0].payload;
   return (
     <div className="bg-uju-bg border border-uju-border/40 rounded-xl shadow-2xl p-4 min-w-[200px] backdrop-blur-md">
-      <p className="font-normal text-uju-primary mb-3 pb-2 border-b border-uju-border/20">
+      <p className="font-normal text-uju-primary mb-2  border-uju-border/20">
         {d.date}
       </p>
-      <div className="space-y-2 text-sm font-light">
-        <p className="text-uju-secondary flex justify-between">
+      <div className="space-y-1.5 pb-2 mb-2 border-b border-uju-border/20 text-sm font-light">
+        <p className="flex justify-between items-center">
+          <span className="font-normal text-uju-primary">Total Points</span>
+          <span className="text-lg font-semibold text-pado-2">
+            {d.ecosystemScore}
+          </span>
+        </p>
+      </div>
+      <div className="space-y-1.5  font-light">
+        <p className="text-sm text-uju-secondary flex justify-between">
           Base Score
-          <span className="text-uju-primary font-normal">{d.baseScore}</span>
+          <span className="text-sm text-uju-primary font-normal">
+            {d.baseScore}
+          </span>
         </p>
         {d.stakingDeltaScaled > 0 && (
-          <p className="text-uju-secondary flex justify-between">
+          <p className="text-sm text-uju-secondary flex justify-between">
             Staking
-            <span className="text-pado-4 font-normal">
+            <span className="text-sm text-pado-4 font-normal">
               +{d.stakingDeltaScaled.toFixed(0)}
             </span>
           </p>
         )}
-        <p className="text-uju-secondary flex justify-between">
+        <p className="text-sm text-uju-secondary flex justify-between">
           Multiplier
-          <span className="text-pado-2 font-normal">
+          <span className="text-sm text-pado-2 font-normal">
             x{d.multiplier.toFixed(1)}
           </span>
         </p>
@@ -203,7 +213,7 @@ function ScoreTooltip({
                   .map((item, i) => (
                     <p
                       key={i}
-                      className="text-sm text-uju-secondary flex justify-between"
+                      className="text-xs text-uju-secondary flex justify-between"
                     >
                       {BONUS_LABELS[item.category] || item.activityType}
                       <span>+{item.points}</span>
@@ -219,24 +229,8 @@ function ScoreTooltip({
             <span className="text-pado-4 font-normal">+{d.referralBonus}</span>
           </p>
         )}
-        <div className="pt-2 border-t border-uju-border/20 mt-2">
-          <p className="flex justify-between items-center">
-            <span className="text-sm font-normal text-uju-primary">
-              Total Points
-            </span>
-            <span className="text-lg font-semibold text-pado-2">
-              {d.ecosystemScore}
-            </span>
-          </p>
-          {d.rank != null && (
-            <p className="flex justify-between items-center mt-1">
-              <span className="text-uju-secondary">Daily Rank</span>
-              <span className="font-normal text-pado-lavender">#{d.rank}</span>
-            </p>
-          )}
-        </div>
         {d.isPenalized && (
-          <p className="text-red-400 text-sm font-semibold uppercase tracking-widest text-center pt-1 animate-pulse">
+          <p className="text-red-400 text-xs font-semibold uppercase tracking-widest text-center pt-1 animate-pulse">
             Penalized
           </p>
         )}
