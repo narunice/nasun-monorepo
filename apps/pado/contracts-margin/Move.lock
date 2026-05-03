@@ -2,47 +2,7 @@
 # This file should be checked in.
 
 [move]
-version = 3
-manifest_digest = "80E8FB40C6238F5E755176132FFA51FBAABF0262E19F3014CD4FF0E2F9E75717"
-deps_digest = "060AD7E57DFB13104F21BE5F5C3759D03F0553FC3229247D9A7A6B45F50D03A3"
-dependencies = [
-  { id = "Sui", name = "Sui" },
-  { id = "devnet_tokens", name = "devnet_tokens" },
-  { id = "pado_oracle", name = "pado_oracle" },
-]
-
-[[move.package]]
-id = "MoveStdlib"
-source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
-
-[[move.package]]
-id = "Sui"
-source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
-
-dependencies = [
-  { id = "MoveStdlib", name = "MoveStdlib" },
-]
-
-[[move.package]]
-id = "devnet_tokens"
-source = { local = "../../../packages/devnet-tokens" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-]
-
-[[move.package]]
-id = "pado_oracle"
-source = { local = "../contracts-oracle" }
-
-dependencies = [
-  { id = "Sui", name = "Sui" },
-]
-
-[move.toolchain-version]
-compiler-version = "1.62.1"
-edition = "2024"
-flavor = "sui"
+version = 4
 
 [pinned.devnet.MoveStdlib]
 source = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/move-stdlib" }
