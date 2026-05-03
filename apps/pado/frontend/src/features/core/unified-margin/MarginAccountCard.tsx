@@ -337,7 +337,7 @@ export function MarginAccountCard() {
 
             {/* Gas Warning */}
             {showGasWarning && (
-              <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+              <div className="mb-4 p-3 bg-yellow-500/25 border border-yellow-500/50 rounded-lg">
                 <div className="flex items-start gap-2">
                   <span className="text-yellow-500 text-sm">⚠️</span>
                   <div className="flex-1">

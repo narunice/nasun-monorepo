@@ -40,7 +40,7 @@ export function CancelExpiredMarketCTA({ market, now, onSuccess }: Props) {
     });
 
     return (
-      <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4">
+      <div className="rounded-xl border border-yellow-500/50 bg-yellow-500/25 p-4">
         <div className="flex items-start gap-3">
           <svg
             className="mt-0.5 h-4 w-4 shrink-0 text-yellow-500"
@@ -88,7 +88,7 @@ export function CancelExpiredMarketCTA({ market, now, onSuccess }: Props) {
   };
 
   return (
-    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-4">
+    <div className="bg-yellow-500/25 border border-yellow-500/50 rounded-xl p-4">
       <h3 className="text-sm font-semibold text-yellow-400 mb-2">
         Resolution deadline passed
       </h3>
@@ -97,7 +97,7 @@ export function CancelExpiredMarketCTA({ market, now, onSuccess }: Props) {
         which lets every Position holder claim back half their collateral and lets
         every resting order owner reclaim their locked NUSDC.
       </p>
-      {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2 mb-3">{error}</div>}
+      {error && <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2 mb-3">{error}</div>}
       <button
         onClick={handleClick}
         disabled={isLoading}

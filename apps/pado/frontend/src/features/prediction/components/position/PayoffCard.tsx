@@ -35,7 +35,7 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
   return (
     <div
       className={`p-4 rounded-xl border ${
-        position.isYes ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'
+        position.isYes ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'
       }`}
     >
       <div className="flex items-center justify-between mb-3">

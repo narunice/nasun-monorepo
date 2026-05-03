@@ -36,7 +36,7 @@ export function InsufficientBalancePrompt({
   const displayMessage = message || defaultMessage;
 
   return (
-    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+    <div className="p-3 bg-red-500/25 border border-red-500/50 rounded-lg">
       <div className="flex items-start gap-2">
         <svg
           className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5"

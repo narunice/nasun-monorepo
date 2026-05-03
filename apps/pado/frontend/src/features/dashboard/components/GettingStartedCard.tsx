@@ -95,7 +95,7 @@ export function GettingStartedCard() {
 
   if (showingComplete) {
     return (
-      <div className="bg-green-500/10 border border-green-500/30 rounded-xl p-4 md:p-5 mb-4 md:mb-6 text-center">
+      <div className="bg-green-500/25 border border-green-500/50 rounded-xl p-4 md:p-5 mb-4 md:mb-6 text-center">
         <p className="text-sm xl:text-base font-semibold text-green-400">
           All set! You're ready to go.
         </p>

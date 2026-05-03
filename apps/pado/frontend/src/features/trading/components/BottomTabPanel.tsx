@@ -561,7 +561,7 @@ function AssetsTab() {
 
       {/* Auto Deposit Error */}
       {lastAutoDepositError && (
-        <div className="mt-3 p-2 bg-red-500/10 border border-red-500/30 rounded-lg">
+        <div className="mt-3 p-2 bg-red-500/25 border border-red-500/50 rounded-lg">
           <p className="text-xs xl:text-sm text-red-400">Auto deposit failed: {lastAutoDepositError}</p>
         </div>
       )}

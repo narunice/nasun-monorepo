@@ -141,7 +141,7 @@ export function LeverageSlider({
 
       {/* Risk warning */}
       {value >= 10 && (
-        <div className="flex items-center gap-2 p-2 text-xs bg-yellow-500/10 border border-yellow-500/20 rounded">
+        <div className="flex items-center gap-2 p-2 text-xs bg-yellow-500/25 border border-yellow-500/50 rounded">
           <span className="text-yellow-500">⚠</span>
           <span className="text-yellow-400">
             High leverage increases liquidation risk

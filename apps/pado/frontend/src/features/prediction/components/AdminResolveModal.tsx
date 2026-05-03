@@ -81,7 +81,7 @@ export function AdminResolveModal({
         </div>
 
         {/* Warning */}
-        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3 mb-4">
+        <div className="bg-yellow-500/25 border border-yellow-500/50 rounded-lg p-3 mb-4">
           <p className="text-yellow-500 text-sm">
             This action is irreversible. Once resolved, the outcome cannot be changed.
           </p>
@@ -118,12 +118,12 @@ export function AdminResolveModal({
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2 mb-4">
+          <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2 mb-4">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2 mb-4">
+          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2 mb-4">
             {success}
           </div>
         )}

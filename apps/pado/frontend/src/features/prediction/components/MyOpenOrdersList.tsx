@@ -104,7 +104,7 @@ export function MyOpenOrdersList({ market }: Props) {
         </div>
       )}
 
-      {error && <div className="mt-3 text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
+      {error && <div className="mt-3 text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>}
     </div>
   );
 }

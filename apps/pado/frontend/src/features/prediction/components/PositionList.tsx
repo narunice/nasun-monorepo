@@ -216,7 +216,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
       </div>
 
       {isSyncing && (
-        <div className="mt-4 text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
+        <div className="mt-4 text-pd3 text-sm bg-pd2/25 rounded-lg p-2 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
             <path
@@ -230,7 +230,7 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
       )}
 
       {error && (
-        <div className="mt-4 text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>
+        <div className="mt-4 text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>
       )}
 
       {sellModalPosition && sellingPosition && (

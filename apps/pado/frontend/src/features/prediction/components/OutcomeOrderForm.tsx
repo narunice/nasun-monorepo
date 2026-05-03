@@ -412,7 +412,7 @@ export function OutcomeOrderForm({
           <div>
             <label className="block text-sm text-theme-text-muted mb-1">Select Position</label>
             {filteredPositions.length === 0 ? (
-              <div className="text-sm text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+              <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
                 No {outcomeType.toUpperCase()} positions available.
                 {positions.length > 0 && ' Try the other outcome.'}
               </div>
@@ -477,12 +477,12 @@ export function OutcomeOrderForm({
         )}
 
         {orderMode === 'market' && (bestAskBps == null && orderType === 'buy') && (
-          <div className="text-xs text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+          <div className="text-xs text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
             No matching asks. Switch to Limit mode and set your price.
           </div>
         )}
         {orderMode === 'market' && (bestBidBps == null && orderType === 'sell') && (
-          <div className="text-xs text-yellow-500 bg-yellow-500/10 rounded-lg p-2">
+          <div className="text-xs text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
             No bids. Switch to Limit mode and set your price.
           </div>
         )}
@@ -494,7 +494,7 @@ export function OutcomeOrderForm({
           const cappedReturn = Math.min(returnPct, 9999);
           const isYes = outcomeType === 'yes';
           return (
-            <div className={`rounded-xl p-4 border ${isYes ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+            <div className={`rounded-xl p-4 border ${isYes ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'}`}>
               <p className="text-xs text-theme-text-muted mb-1">
                 If {outcomeType.toUpperCase()} wins
               </p>
@@ -536,9 +536,9 @@ export function OutcomeOrderForm({
           );
         })()}
 
-        {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
+        {error && <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>}
         {success && (
-          <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-2 flex items-center justify-between gap-2">
+          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2 flex items-center justify-between gap-2">
             <span>{success}</span>
             {lastBuy && (
               <button
@@ -552,7 +552,7 @@ export function OutcomeOrderForm({
           </div>
         )}
         {isSyncing && (
-          <div className="text-pd3 text-sm bg-pd2/10 rounded-lg p-2 flex items-center gap-2">
+          <div className="text-pd3 text-sm bg-pd2/25 rounded-lg p-2 flex items-center gap-2">
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
               <path

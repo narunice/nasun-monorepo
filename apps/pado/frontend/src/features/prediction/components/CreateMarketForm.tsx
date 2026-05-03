@@ -273,8 +273,8 @@ export function CreateMarketForm({ onSuccess, onCancel }: CreateMarketFormProps)
           </p>
         </div>
 
-        {error && <div className="text-red-500 text-sm bg-red-500/10 rounded-lg p-3">{error}</div>}
-        {success && <div className="text-green-500 text-sm bg-green-500/10 rounded-lg p-3">{success}</div>}
+        {error && <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-3">{error}</div>}
+        {success && <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-3">{success}</div>}
 
         <div className="flex gap-3 pt-2">
           {onCancel && (
