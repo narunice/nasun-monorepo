@@ -73,7 +73,7 @@ export default function UjuPage() {
     <UjuAppDirectoryProvider identityId={user?.identityId}>
     <UjuLayout>
       <main className="min-h-[calc(100vh-50px)]">
-        <div className="max-w-5xl mx-auto px-4 pt-6 pb-6 max-md:pb-20">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-12 max-md:pb-40">
           {/* Banner — full container width */}
           <div className="mb-5">
             <BannerCarousel />
@@ -93,7 +93,7 @@ export default function UjuPage() {
 
           {/* NFTs Activated — full container width, below split */}
           {tab === "dashboard" && (
-            <div className="mt-4 sm:mt-5">
+            <div id="nfts-activated" className="mt-4 sm:mt-5">
               <DashboardNftsSection />
             </div>
           )}

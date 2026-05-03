@@ -51,9 +51,10 @@ export default function Footer() {
   };
 
   const isHomePage = location.pathname === "/";
+  const isUjuPage = location.pathname === "/uju" || location.pathname.startsWith("/uju/") || location.pathname === "/my-account" || location.pathname.startsWith("/my-account/");
 
   return (
-    <div className={isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
+    <div className={isUjuPage ? "bg-uju-bg" : isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>

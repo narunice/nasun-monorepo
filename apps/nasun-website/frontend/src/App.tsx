@@ -68,7 +68,7 @@ function AppContent() {
       {!isClaimPage && <Navbar />}
       <main id="main-content" className={!isClaimPage ? "pt-[50px]" : ""}>
         <AppRoutes />
-        {isPageReady && !isAdminPage && !isClaimPage && !isUjuPage && <Footer />}
+        {isPageReady && !isAdminPage && !isClaimPage && <Footer />}
       </main>
       {!isClaimPage && !isUjuPage && (
         <Suspense fallback={null}>
