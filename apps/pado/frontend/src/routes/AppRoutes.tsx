@@ -47,6 +47,7 @@ function GatedRoute({ requires, children }: { requires: AccessMode; children: Re
 // Eager: landing page and auth redirect (must load immediately)
 import { HomePage } from '../pages/HomePage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
+import { PredictPasswordGate } from '../components/common/PredictPasswordGate';
 
 // Lazy: all other pages loaded on demand
 const TradePage = lazyWithRetry(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
@@ -86,12 +87,10 @@ export function AppRoutes() {
         {/* Wallet (Send/Receive) */}
         <Route path="/wallet" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
 
-        {/* Prediction Markets
-            /predict is temporarily used as an Ideas & Feedback submission form.
-            The real market listing is available at /predict/markets. */}
-        <Route path="/predict" element={<IdeaSubmissionPage />} />
-        <Route path="/predict/markets" element={<GatedRoute requires="full"><PredictPage /></GatedRoute>} />
-        <Route path="/predict/:marketId" element={<GatedRoute requires="full"><PredictMarketPage /></GatedRoute>} />
+        {/* Prediction Markets — password-gated */}
+        <Route path="/predict" element={<PredictPasswordGate><PredictPage /></PredictPasswordGate>} />
+        <Route path="/predict/markets" element={<Navigate to="/predict" replace />} />
+        <Route path="/predict/:marketId" element={<PredictPasswordGate><PredictMarketPage /></PredictPasswordGate>} />
 
         {/* Legacy /games/* — archived, redirect home */}
         <Route path="/games/*" element={<Navigate to="/" replace />} />
