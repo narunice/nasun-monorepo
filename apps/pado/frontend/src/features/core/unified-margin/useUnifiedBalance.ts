@@ -66,6 +66,8 @@ export interface UnifiedBalanceState {
   inTrading: number;
   /** In MarginAccount (Pado Balance) */
   inMargin: number;
+  /** Combined BM + MA in USD — the user-facing "single pocket" total */
+  inPado: number;
   /** Locked in open orders (estimated) */
   inOpenOrders: number;
 
@@ -265,6 +267,7 @@ export function useUnifiedBalance(): UnifiedBalanceState {
       available,
       inTrading,
       inMargin,
+      inPado: inTrading + inMargin,
       inOpenOrders,
       totalPnl24h,
       totalChange24h,

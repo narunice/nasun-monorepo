@@ -86,7 +86,7 @@ export interface UseOrderActionsResult {
   handleCreateBalanceManager: () => Promise<TradeResult>;
   handleDeposit: () => Promise<TradeResult>;
   handleWithdraw: () => Promise<TradeResult>;
-  handleWithdrawAllPado: (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => Promise<TradeResult>;
+  handleWithdrawAllPado: () => Promise<TradeResult>;
 
   // Per-token deposit/withdraw
   handleDepositToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
@@ -626,12 +626,10 @@ export function useOrderActions(): UseOrderActionsResult {
     return result;
   }, [withdrawToken, showToast, refreshData, formatUserFriendlyError]);
 
-  // Drain all funds from both BM and MA in a single PTB
-  const handleWithdrawAllPado = useCallback(async (
-    params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint },
-  ): Promise<TradeResult> => {
+  // Drain all funds from both BM and MA in a single PTB (mutation fetches fresh BM balance internally)
+  const handleWithdrawAllPado = useCallback(async (): Promise<TradeResult> => {
     try {
-      await withdrawAllPado(params);
+      await withdrawAllPado();
       showToast("All funds withdrawn to wallet", "success");
       refreshData();
       return { success: true };

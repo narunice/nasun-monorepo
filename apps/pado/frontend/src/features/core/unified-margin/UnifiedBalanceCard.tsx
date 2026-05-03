@@ -79,8 +79,8 @@ export function UnifiedBalanceCard({
   const {
     totalValue,
     available,
-    inTrading,
     inMargin,
+    inPado,
     totalPnl24h,
     totalChange24h,
     breakdown,
@@ -93,7 +93,6 @@ export function UnifiedBalanceCard({
   const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Calculate fund distribution
-  const inPado = inTrading + inMargin; // Combined BM + MA — the "single pocket"
   const inWallet = available - inMargin; // Wallet portion of available
   const allFundsInWallet = inPado === 0;
 

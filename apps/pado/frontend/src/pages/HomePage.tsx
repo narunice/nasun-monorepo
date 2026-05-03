@@ -14,7 +14,11 @@ import {
   MobileQuickActions,
   GettingStartedCard,
 } from "../features/dashboard";
-import { AssetOverview, TokenBalanceList, ActivityTabs } from "../features/portfolio";
+import {
+  AssetOverview,
+  TokenBalanceList,
+  ActivityTabs,
+} from "../features/portfolio";
 
 function MarketsGrid() {
   return (
@@ -29,7 +33,8 @@ export function HomePage() {
   const { status } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const hasNoWallet = status === "disconnected" && !isZkLoggedIn && !isPasskeyUnlocked;
+  const hasNoWallet =
+    status === "disconnected" && !isZkLoggedIn && !isPasskeyUnlocked;
 
   return (
     <div className="p-4 pt-0 md:p-6 md:pt-1 max-w-7xl mx-auto">
@@ -61,7 +66,7 @@ export function HomePage() {
           {/* Desktop: Quick Actions grid */}
           <div className="hidden md:block mb-6">
             <h2 className="text-lg font-bold text-theme-text-primary mb-4">
-              Start here
+              Start Here
             </h2>
             <QuickActions />
           </div>
@@ -71,7 +76,9 @@ export function HomePage() {
 
           {/* Activity (Trades & Transfers) */}
           <div className="mt-4">
-            <h2 className="text-sm md:text-lg font-bold text-theme-text-primary mb-3 md:mb-4">Recent Activity</h2>
+            <h2 className="text-sm md:text-lg font-bold text-theme-text-primary mb-3 md:mb-4">
+              Recent Activity
+            </h2>
             <ActivityTabs />
           </div>
         </>

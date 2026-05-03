@@ -133,13 +133,10 @@ export function MarginAccountCard() {
     }
   };
 
-  // Handle withdraw all from Pado (BM + MA combined)
+  // Handle withdraw all from Pado (BM + MA combined, mutation fetches fresh BM balance internally)
   const handleWithdrawAllPado = async () => {
     try {
-      await withdrawAllPado({
-        bmNusdcRaw: padoAccount.breakdown.bm.quoteRaw,
-        bmNbtcRaw: padoAccount.breakdown.bm.baseRaw,
-      });
+      await withdrawAllPado();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Withdraw failed");
     }
@@ -235,7 +232,7 @@ export function MarginAccountCard() {
       <div className="mb-4">
         <div className="text-sm text-theme-text-secondary mb-1">Available Balance</div>
         <div className="text-2xl font-bold text-theme-text-primary">
-          {formatNusdc(account?.nusdcBalance)}{" "}
+          {formatNusdc(padoAccount.totalNusdcRaw)}{" "}
           <span className="text-base font-normal text-theme-text-secondary">NUSDC</span>
         </div>
       </div>
