@@ -52,6 +52,8 @@ const SNAPSHOTS_TABLE =
   process.env.LEADERBOARD_V3_SNAPSHOTS_TABLE || DYNAMO_KEYS.SNAPSHOTS_TABLE;
 const USER_PROFILES_TABLE =
   process.env.USER_PROFILES_TABLE || 'UserProfiles';
+const PUBLIC_AVATARS_BASE_URL =
+  (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
 
 /**
  * Get active season
@@ -252,6 +254,9 @@ async function syncProfileFromUserProfiles(
     type ProfileRecord = {
       username?: string;
       profileImageUrl?: string;
+      customDisplayName?: string;
+      customAvatarKey?: string;
+      customAvatarBanned?: boolean;
       isTelegramMember?: boolean;
       telegramUserId?: string;
       telegramUsername?: string;
@@ -268,12 +273,17 @@ async function syncProfileFromUserProfiles(
       }
     }
 
-    // Only use profile.username as displayName if it's a real name (not a wallet address).
-    // Wallet-first users have 0x addresses as username, which must NOT overwrite existing displayNames.
-    const freshDisplayName = (profile.username && !profile.username.startsWith('0x'))
-      ? profile.username
-      : undefined;
-    const freshProfileImage = profile.profileImageUrl;
+    // Display name: customDisplayName (Uju) > Twitter username > keep existing
+    const freshDisplayName =
+      profile.customDisplayName ||
+      (profile.username && !profile.username.startsWith('0x') ? profile.username : undefined);
+
+    // Avatar: customAvatarKey (Uju, if not banned) > Twitter profile image
+    const resolvedAvatarUrl =
+      !profile.customAvatarBanned && profile.customAvatarKey && PUBLIC_AVATARS_BASE_URL
+        ? `${PUBLIC_AVATARS_BASE_URL}/${profile.customAvatarKey.replace(/^\/+/, '')}`
+        : null;
+    const freshProfileImage = resolvedAvatarUrl ?? profile.profileImageUrl;
 
     const resolvedDisplayName = freshDisplayName || account.displayName;
     const resolvedProfileImage = freshProfileImage || account.profileImageUrl;

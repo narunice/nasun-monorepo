@@ -200,6 +200,8 @@ export class LeaderboardV3Stack extends cdk.Stack {
       USER_PROFILES_TABLE: userProfilesTableName,
       ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
       NODE_OPTIONS: '--enable-source-maps',
+      PUBLIC_AVATARS_BASE_URL: process.env.PUBLIC_AVATARS_BASE_URL || '',
+      LEADERBOARD_INTERNAL_TOKEN: process.env.LEADERBOARD_INTERNAL_TOKEN || '',
     };
 
     const lambdaSrcPath = path.join(__dirname, '..', 'lambda-src', 'leaderboard-v3', 'src');
@@ -403,6 +405,21 @@ export class LeaderboardV3Stack extends cdk.Stack {
         timeout: cdk.Duration.seconds(30),
         memorySize: 256,
         description: 'Leaderboard V3: Search accounts by username',
+      }
+    );
+
+    // Internal Profile Sync Lambda (called by get-user-profile PATCH webhook)
+    const internalSyncProfileLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3InternalSyncProfileFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-internal-sync-profile`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'internal-sync-profile.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(15),
+        memorySize: 256,
+        description: 'Leaderboard V3: Sync profile (name/avatar) from UserProfiles on PATCH webhook',
       }
     );
 
@@ -657,6 +674,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(disconnectTelegramLambda);
     userProfilesTable.grantReadWriteData(disconnectTelegramLambda);
 
+    // Internal Sync Profile permissions (webhook from get-user-profile PATCH)
+    this.accountsTable.grantReadWriteData(internalSyncProfileLambda);
+    this.seasonAccountsTable.grantReadWriteData(internalSyncProfileLambda);
+    this.seasonsTable.grantReadData(internalSyncProfileLambda);
+    userProfilesTable.grantReadData(internalSyncProfileLambda);
+
     // Secrets Manager read for Telegram bot token
     verifyTelegramLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -757,6 +780,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
     disconnectTelegramResource.addMethod(
       'POST',
       new apigw.LambdaIntegration(disconnectTelegramLambda)
+    );
+
+    // POST /v3/leaderboard/internal/sync-profile (webhook from get-user-profile PATCH)
+    const internalResource = leaderboardResource.addResource('internal');
+    const internalSyncProfileResource = internalResource.addResource('sync-profile');
+    internalSyncProfileResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(internalSyncProfileLambda)
     );
 
     // GET /v3/feed/featured

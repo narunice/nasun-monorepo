@@ -339,7 +339,7 @@ function composeSenderAvatarUrl(address: string, twitterImage: string | null | u
   // 1. Cached customAvatarKey wins (resolved here so the wire payload contains
   //    a fully-qualified URL — frontend never needs PUBLIC_AVATARS_BASE_URL).
   const cached = getNasunProfileCached(address);
-  if (cached?.customAvatarKey && PUBLIC_AVATARS_BASE_URL) {
+  if (cached?.customAvatarKey && !cached.customAvatarBanned && PUBLIC_AVATARS_BASE_URL) {
     return `${PUBLIC_AVATARS_BASE_URL}/${cached.customAvatarKey.replace(/^\/+/, '')}`;
   }
   // 2. Twitter image cached in the legacy profile_image_url field.

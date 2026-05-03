@@ -1,5 +1,8 @@
 import { useMemo } from "react";
+import { resolveAvatarUrl } from "@nasun/profile-core";
 import type { UserData } from "@/store/userStore";
+
+const PUBLIC_AVATARS_BASE_URL = import.meta.env.VITE_PUBLIC_AVATARS_BASE_URL ?? '';
 
 interface LoginIdentifier {
   label: string;
@@ -67,7 +70,7 @@ export function useProfileDisplay(user: UserData | null): ProfileDisplay {
     return "User";
   }, [user]);
 
-  const avatarUrl = user?.profileImageUrl ?? null;
+  const avatarUrl = resolveAvatarUrl(user ?? undefined, { baseUrl: PUBLIC_AVATARS_BASE_URL });
   const walletAddress = user?.walletAddress ?? null;
   const fallbackLetter = displayName.charAt(0).toUpperCase();
   const loginIdentifier = useMemo(() => getLoginIdentifier(user), [user]);
