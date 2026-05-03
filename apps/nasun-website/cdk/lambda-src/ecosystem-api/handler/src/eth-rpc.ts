@@ -29,6 +29,9 @@ export async function getErc721Balance(
   if (!ALCHEMY_API_KEY) {
     throw new Error("ALCHEMY_API_KEY not configured");
   }
+  if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) {
+    throw new Error(`Invalid wallet address: ${wallet}`);
+  }
 
   const owner = wallet.toLowerCase().replace(/^0x/, "").padStart(64, "0");
   const data = `${BALANCE_OF_SELECTOR}${owner}`;
