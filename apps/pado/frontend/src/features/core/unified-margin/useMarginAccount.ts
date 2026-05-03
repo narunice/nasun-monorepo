@@ -18,11 +18,14 @@ import {
   findUserMarginAccount,
   getStoredMarginAccountId,
   storeMarginAccountId,
+  getStoredBalanceManagerId,
   buildCreateAccountTx,
   buildEnablePadoTx,
   buildDepositWithSplitTx,
   buildWithdrawTx,
   buildWithdrawAllTx,
+  buildWithdrawAllPadoTx,
+  NUSDC_TYPE,
   type MarginAccountData,
 } from '../../../lib/unified-margin';
 
@@ -37,8 +40,10 @@ interface UseMarginAccountResult {
   createAccount: () => Promise<void>;
   enablePado: () => Promise<{ balanceManagerId: string; marginAccountId: string }>;
   deposit: (nusdcCoinId: string, amount: bigint) => Promise<void>;
+  depositByAmount: (rawAmount: bigint) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
+  withdrawAllPado: (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => Promise<void>;
 
   // Action states
   isCreating: boolean;
@@ -314,6 +319,49 @@ export function useMarginAccount(): UseMarginAccountResult {
     },
   });
 
+  // Deposit by raw amount: auto-finds the NUSDC coin, handles split
+  const depositByAmountMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      if (!activeAddress) throw new Error('Wallet not connected');
+
+      const client = getSuiClient();
+      const coins = await client.getCoins({ owner: activeAddress, coinType: NUSDC_TYPE });
+      // Prefer the smallest coin with sufficient balance to minimize fragmentation
+      const sufficient = coins.data.filter(c => BigInt(c.balance) >= rawAmount);
+      const coin = sufficient.length > 0
+        ? sufficient.reduce((a, b) => BigInt(a.balance) <= BigInt(b.balance) ? a : b)
+        : coins.data[0];
+      if (!coin) throw new Error('No NUSDC coins in wallet');
+
+      const tx = buildDepositWithSplitTx(marginAccountId, coin.coinObjectId, rawAmount);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  // Drain both BM and MA in a single PTB
+  const withdrawAllPadoMutation = useMutation({
+    mutationFn: async ({ bmNusdcRaw, bmNbtcRaw }: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => {
+      if (!activeAddress) throw new Error('Wallet not connected');
+
+      const balanceManagerId = getStoredBalanceManagerId(activeAddress);
+      if (!marginAccountId && !balanceManagerId) throw new Error('Nothing to withdraw');
+
+      const tx = buildWithdrawAllPadoTx(marginAccountId, balanceManagerId, bmNusdcRaw, bmNbtcRaw, activeAddress);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['balance-manager-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['bm-balance-global'] });
+    },
+  });
+
   // Action callbacks
   const createAccount = useCallback(async () => {
     await createAccountMutation.mutateAsync();
@@ -341,6 +389,17 @@ export function useMarginAccount(): UseMarginAccountResult {
     await withdrawAllMutation.mutateAsync();
   }, [withdrawAllMutation]);
 
+  const depositByAmount = useCallback(async (rawAmount: bigint) => {
+    await depositByAmountMutation.mutateAsync(rawAmount);
+  }, [depositByAmountMutation]);
+
+  const withdrawAllPado = useCallback(
+    async (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => {
+      await withdrawAllPadoMutation.mutateAsync(params);
+    },
+    [withdrawAllPadoMutation],
+  );
+
   return {
     account: account ?? null,
     accountId: marginAccountId,
@@ -350,13 +409,15 @@ export function useMarginAccount(): UseMarginAccountResult {
     createAccount,
     enablePado,
     deposit,
+    depositByAmount,
     withdraw,
     withdrawAll,
+    withdrawAllPado,
 
     isCreating: createAccountMutation.isPending,
     isEnabling: enablePadoMutation.isPending,
-    isDepositing: depositMutation.isPending,
-    isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending,
+    isDepositing: depositMutation.isPending || depositByAmountMutation.isPending,
+    isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending || withdrawAllPadoMutation.isPending,
 
     refetch,
     // Only true if account exists AND owner matches current user

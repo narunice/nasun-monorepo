@@ -11,6 +11,7 @@ import { useMarket } from "../context/MarketContext";
 import { useOrderForm } from "../context/OrderFormContext";
 import { useAutoDeposit } from "./useAutoDeposit";
 import { useMarginAccount } from "../../core/unified-margin/useMarginAccount";
+import { floatToRaw, NUSDC_TYPE } from "../../../lib/unified-margin";
 import type { TradeResult, OrderType } from "../types";
 import { ORDER_TYPE } from "../constants";
 import { useToast } from "@/components/common";
@@ -85,6 +86,7 @@ export interface UseOrderActionsResult {
   handleCreateBalanceManager: () => Promise<TradeResult>;
   handleDeposit: () => Promise<TradeResult>;
   handleWithdraw: () => Promise<TradeResult>;
+  handleWithdrawAllPado: (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => Promise<TradeResult>;
 
   // Per-token deposit/withdraw
   handleDepositToken: (amount: number, coinType: string, decimals: number, symbol: string) => Promise<TradeResult>;
@@ -162,6 +164,8 @@ export function useOrderActions(): UseOrderActionsResult {
     enablePado,
     account: marginAccount,
     accountId: marginAccountId,
+    depositByAmount,
+    withdrawAllPado,
   } = useMarginAccount();
 
   // Convert error message to user-friendly format
@@ -566,12 +570,29 @@ export function useOrderActions(): UseOrderActionsResult {
   }, [withdrawAllTokens, showToast, refreshData, formatUserFriendlyError]);
 
   // Per-token deposit
+  // NUSDC deposits go to MA so they live under the "Pado Balance" abstraction.
+  // MA-first buy routing will move funds BM-side atomically when needed.
+  // NBTC and other tokens still deposit directly to BM (trading layer).
   const handleDepositToken = useCallback(async (
     amount: number,
     coinType: string,
     decimals: number,
     symbol: string,
   ): Promise<TradeResult> => {
+    if (coinType === NUSDC_TYPE && marginAccountId) {
+      const rawAmount = floatToRaw(amount, decimals);
+      try {
+        await depositByAmount(rawAmount);
+        showToast(`Deposited ${amount.toFixed(2)} ${symbol} to Pado Balance`, "success");
+        refreshData();
+        return { success: true };
+      } catch (err) {
+        const msg = formatUserFriendlyError(err instanceof Error ? err.message : String(err));
+        showToast(msg, "error");
+        return { success: false, error: String(err) };
+      }
+    }
+
     const result = await depositToken(amount, coinType, decimals);
 
     if (result.success) {
@@ -583,7 +604,7 @@ export function useOrderActions(): UseOrderActionsResult {
     }
 
     return result;
-  }, [depositToken, showToast, refreshData, formatUserFriendlyError]);
+  }, [depositToken, depositByAmount, marginAccountId, showToast, refreshData, formatUserFriendlyError]);
 
   // Per-token withdraw
   const handleWithdrawToken = useCallback(async (
@@ -605,6 +626,22 @@ export function useOrderActions(): UseOrderActionsResult {
     return result;
   }, [withdrawToken, showToast, refreshData, formatUserFriendlyError]);
 
+  // Drain all funds from both BM and MA in a single PTB
+  const handleWithdrawAllPado = useCallback(async (
+    params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint },
+  ): Promise<TradeResult> => {
+    try {
+      await withdrawAllPado(params);
+      showToast("All funds withdrawn to wallet", "success");
+      refreshData();
+      return { success: true };
+    } catch (err) {
+      const msg = formatUserFriendlyError(err instanceof Error ? err.message : String(err));
+      showToast(msg, "error");
+      return { success: false, error: String(err) };
+    }
+  }, [withdrawAllPado, showToast, refreshData, formatUserFriendlyError]);
+
   return {
     isLoading: isLoading || isEnabling,
     isValidatingBalanceManager,
@@ -618,6 +655,7 @@ export function useOrderActions(): UseOrderActionsResult {
     handleCreateBalanceManager,
     handleDeposit,
     handleWithdraw,
+    handleWithdrawAllPado,
     handleDepositToken,
     handleWithdrawToken,
     refreshData,

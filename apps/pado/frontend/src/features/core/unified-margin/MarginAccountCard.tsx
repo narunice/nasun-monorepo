@@ -9,12 +9,12 @@
 
 import { useState, useCallback } from "react";
 import { formatErrorMessage } from '../../trading/utils/errorParser';
-import { useQuery } from "@tanstack/react-query";
-import { useWallet, useZkLogin, useMultiBalance, getSuiClient, usePasskeyStore } from "@nasun/wallet";
+import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
 import { useMarginAccount } from "./useMarginAccount";
+import { usePadoAccount } from "./usePadoAccount";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
-import { TOKENS } from "../../../config/network";
+import { floatToRaw } from "../../../lib/unified-margin";
 
 // Format NUSDC amount (6 decimals)
 function formatNusdc(amount: bigint | undefined): string {
@@ -28,48 +28,27 @@ function formatNusdc(amount: bigint | undefined): string {
 
 export function MarginAccountCard() {
   const { status, account: walletAccount } = useWallet();
-  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
+  const { isConnected: isZkLoggedIn } = useZkLogin();
   const { data: balances } = useMultiBalance();
 
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const passkeyAddress = usePasskeyStore((s) => s.address);
-
-  // Determine active wallet address (zkLogin takes priority)
-  const activeAddress = isZkLoggedIn
-    ? zkState?.address
-    : status === "unlocked"
-      ? walletAccount?.address
-      : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
-
-  // Query NUSDC coin object
-  const { data: nusdcCoin } = useQuery({
-    queryKey: ["nusdc-coin", activeAddress],
-    queryFn: async () => {
-      if (!activeAddress) return null;
-      const client = getSuiClient();
-      const coins = await client.getCoins({
-        owner: activeAddress,
-        coinType: TOKENS.NUSDC.type,
-      });
-      return coins.data[0] || null;
-    },
-    enabled: !!activeAddress,
-    staleTime: 5000,
-  });
 
   const {
     account,
     hasAccount,
     createAccount,
     enablePado,
-    deposit,
+    depositByAmount,
     withdraw,
+    withdrawAllPado,
     isCreating,
     isEnabling,
     isDepositing,
     isWithdrawing,
     isLoading,
   } = useMarginAccount();
+
+  const padoAccount = usePadoAccount();
 
   // Trading for unified onboarding
   const { balanceManagerId, createBalanceManager, registerBalanceManager } = useTrading();
@@ -145,18 +124,24 @@ export function MarginAccountCard() {
       return;
     }
 
-    // Find NUSDC coin ID
-    if (!nusdcCoin?.coinObjectId) {
-      setError("No NUSDC coins found in wallet");
-      return;
-    }
-
     try {
-      await deposit(nusdcCoin.coinObjectId, BigInt(Math.round(amount * 1e6)));
+      await depositByAmount(floatToRaw(amount, 6));
       setShowDepositModal(false);
       setDepositAmount("");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Deposit failed");
+    }
+  };
+
+  // Handle withdraw all from Pado (BM + MA combined)
+  const handleWithdrawAllPado = async () => {
+    try {
+      await withdrawAllPado({
+        bmNusdcRaw: padoAccount.breakdown.bm.quoteRaw,
+        bmNbtcRaw: padoAccount.breakdown.bm.baseRaw,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Withdraw failed");
     }
   };
 
@@ -287,6 +272,19 @@ export function MarginAccountCard() {
           Withdraw
         </button>
       </div>
+
+      {/* Withdraw All from Pado (BM + MA combined) */}
+      {(padoAccount.breakdown.bm.quoteRaw > 0n || padoAccount.breakdown.bm.baseRaw > 0n) && (
+        <div className="mt-3">
+          <button
+            onClick={handleWithdrawAllPado}
+            disabled={isWithdrawing}
+            className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isWithdrawing ? "Withdrawing..." : "Withdraw All from Pado"}
+          </button>
+        </div>
+      )}
 
       {/* Deposit Modal */}
       {showDepositModal && (

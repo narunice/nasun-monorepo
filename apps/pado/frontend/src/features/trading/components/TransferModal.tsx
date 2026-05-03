@@ -111,7 +111,7 @@ export function TransferModal({
             {isDeposit ? 'Deposit' : 'Withdraw'} {tokenSymbol}
           </h2>
           <p className="text-sm text-theme-text-secondary mt-0.5">
-            {isDeposit ? 'Move from wallet to trading balance' : 'Move from trading balance to wallet'}
+            {isDeposit ? 'Move from wallet to Pado Balance' : 'Move from Pado Balance to wallet'}
           </p>
         </div>
 
