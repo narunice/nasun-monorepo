@@ -23,7 +23,7 @@ import { useMultiBalance, useWallet, useZkLogin, usePasskeyStore } from '@nasun/
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { useMarginAccount } from './useMarginAccount';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
-import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
+import { getStoredBalanceManagerId, floatToRaw } from '../../../lib/unified-margin';
 import { POOLS, TOKENS, getTokenBySymbol } from '../../../config/network';
 import {
   type TokenSymbol,
@@ -170,8 +170,8 @@ export function useUnifiedBalance(): UnifiedBalanceState {
     const nusdcWallet = walletBalance?.tokens?.['NUSDC']?.balance ?? 0n;
 
     // Parse trading balances (BalanceManager)
-    const nbtcTrading = BigInt(Math.round((bmBalance?.base ?? 0) * 10 ** TOKENS.NBTC.decimals));
-    const nusdcTrading = BigInt(Math.round((bmBalance?.quote ?? 0) * 10 ** TOKENS.NUSDC.decimals));
+    const nbtcTrading = floatToRaw(bmBalance?.base ?? 0, TOKENS.NBTC.decimals);
+    const nusdcTrading = floatToRaw(bmBalance?.quote ?? 0, TOKENS.NUSDC.decimals);
 
     // Parse margin balance (MarginAccount - NUSDC only)
     const nusdcMargin = marginAccount?.nusdcBalance

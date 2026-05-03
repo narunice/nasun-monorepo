@@ -26,6 +26,16 @@ export const NBTC_TYPE = import.meta.env.VITE_NBTC_TYPE || `${TOKENS_PACKAGE}::n
 // Supported collateral tokens
 export type CollateralToken = 'NUSDC' | 'NBTC';
 
+/**
+ * Convert a float to a raw bigint without IEEE-754 round-trip errors.
+ * Uses string-based parsing via toFixed to avoid cases like 0.1 * 1e6 = 99999.99999...
+ */
+export function floatToRaw(value: number, decimals: number): bigint {
+  if (!isFinite(value) || value < 0) return 0n;
+  const [int, frac = ''] = value.toFixed(decimals).split('.');
+  return BigInt(int + frac.padEnd(decimals, '0').slice(0, decimals));
+}
+
 // Types
 export interface MarginAccountData {
   id: string;
