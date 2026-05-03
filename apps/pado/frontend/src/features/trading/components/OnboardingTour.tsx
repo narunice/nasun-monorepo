@@ -89,8 +89,10 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
     const spaceBelow = viewportHeight - (targetRect.top + targetRect.height);
     const tooltipPlaceBelow = spaceBelow > 180;
 
+    const TOOLTIP_WIDTH = 320; // max-w-xs
+    const targetCenter = targetRect.left + targetRect.width / 2;
     tooltipStyle.position = 'fixed';
-    tooltipStyle.left = Math.max(16, Math.min(targetRect.left, window.innerWidth - 340));
+    tooltipStyle.left = Math.max(16, Math.min(targetCenter - TOOLTIP_WIDTH / 2, window.innerWidth - TOOLTIP_WIDTH - 16));
     tooltipStyle.zIndex = 60;
 
     if (tooltipPlaceBelow) {

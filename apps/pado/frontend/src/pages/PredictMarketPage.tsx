@@ -13,7 +13,7 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import {
   useMarket,
   useMarketOrderbook,
@@ -36,6 +36,11 @@ import {
 import { calculateProbabilityFromOrderbook } from '../features/prediction/types';
 import { useNow } from '@/hooks/useNow';
 import { Spinner } from '../components/common';
+import {
+  usePredictionOnboardingTour,
+  isPredictionTourCompleted,
+} from '../features/prediction/hooks/usePredictionOnboardingTour';
+import { OnboardingTour } from '../features/trading/components/OnboardingTour';
 
 export function PredictMarketPage() {
   const { marketId } = useParams<{ marketId: string }>();
@@ -44,6 +49,7 @@ export function PredictMarketPage() {
   const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
   const { isResolver } = usePredictionAdmin();
   const now = useNow();
+  const tour = usePredictionOnboardingTour();
 
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [clickedPrice, setClickedPrice] = useState<number | null>(null);
@@ -80,6 +86,20 @@ export function PredictMarketPage() {
     market.status === 'open' &&
     now >= market.closeTime &&
     now < market.resolveDeadline;
+
+  // Auto-start the tour once per session when user first enters a market page.
+  const startRef = useRef(tour.start);
+  startRef.current = tour.start;
+  const tourStartedRef = useRef(false);
+  useEffect(() => {
+    if (isLoading || tourStartedRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const force = params.get('tour') === '1';
+    if (!force && isPredictionTourCompleted()) return;
+    tourStartedRef.current = true;
+    const timer = setTimeout(() => startRef.current(), 600);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -220,6 +240,8 @@ export function PredictMarketPage() {
           onSelectOutcome={handleMobileOutcomeSelect}
         />
       )}
+
+      <OnboardingTour tour={tour} />
     </div>
   );
 }
