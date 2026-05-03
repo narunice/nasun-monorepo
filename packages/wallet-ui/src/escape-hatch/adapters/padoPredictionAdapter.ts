@@ -152,7 +152,7 @@ export function createPadoPredictionAdapter(signAndExecute: SignAndExecuteFn): R
 
         return {
           id: pos.id,
-          label: `${side} ${sharesDisplay} shares — ${questionShort}`,
+          label: `${side} ${sharesDisplay} shares, ${questionShort}`,
           productName: 'Pado Prediction',
           balances: [
             { token: `${side} shares`, amount: pos.shares, decimals: NUSDC_DECIMALS },

@@ -7,12 +7,7 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
-import {
-  DEEPBOOK_PACKAGE_ID,
-  NBTC_TYPE,
-  NUSDC_TYPE,
-  POOL_NBTC_NUSDC,
-} from '@nasun/devnet-config';
+import { DEEPBOOK_PACKAGE_ID, NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
 import type { RecoveryAdapter, RecoverableItem } from '../types';
 import type { SignAndExecuteFn } from '../../hooks/useSignAndExecute';
 
@@ -155,5 +150,3 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecuteFn, address: s
   };
 }
 
-// Suppress unused-import warnings: POOL_NBTC_NUSDC is referenced in pool context
-void POOL_NBTC_NUSDC;
