@@ -25,12 +25,9 @@ import {
   buildWithdrawTx,
   buildWithdrawAllTx,
   buildWithdrawAllPadoTx,
-  floatToRaw,
   NUSDC_TYPE,
   type MarginAccountData,
 } from '../../../lib/unified-margin';
-import { getBalanceManagerBalances } from '../../../lib/deepbook';
-import { POOLS } from '../../../config/network';
 
 interface UseMarginAccountResult {
   // Account state
@@ -346,8 +343,8 @@ export function useMarginAccount(): UseMarginAccountResult {
     },
   });
 
-  // Drain both BM and MA in a single PTB. Fetches fresh BM balance on-demand
-  // to avoid stale-amount on-chain abort when BM changes between polls and TX.
+  // Drain both BM and MA in a single PTB. Uses withdraw_all on the BM to avoid
+  // the TOCTOU race between balance fetch and TX submission.
   const withdrawAllPadoMutation = useMutation({
     mutationFn: async () => {
       if (!activeAddress) throw new Error('Wallet not connected');
@@ -355,15 +352,7 @@ export function useMarginAccount(): UseMarginAccountResult {
       const balanceManagerId = getStoredBalanceManagerId(activeAddress);
       if (!marginAccountId && !balanceManagerId) throw new Error('Nothing to withdraw');
 
-      let bmNusdcRaw = 0n;
-      let bmNbtcRaw = 0n;
-      if (balanceManagerId) {
-        const fresh = await getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
-        bmNusdcRaw = floatToRaw(fresh.quote, 6);
-        bmNbtcRaw = floatToRaw(fresh.base, 8);
-      }
-
-      const tx = buildWithdrawAllPadoTx(marginAccountId, balanceManagerId, bmNusdcRaw, bmNbtcRaw, activeAddress);
+      const tx = buildWithdrawAllPadoTx(marginAccountId, balanceManagerId, activeAddress);
       await signAndExecute(tx);
     },
     onSuccess: () => {
@@ -371,6 +360,7 @@ export function useMarginAccount(): UseMarginAccountResult {
       queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
       queryClient.invalidateQueries({ queryKey: ['balance-manager-balance'] });
       queryClient.invalidateQueries({ queryKey: ['bm-balance-global'] });
+      queryClient.invalidateQueries({ queryKey: ['bm-balance-pado-account'] });
     },
   });
 
