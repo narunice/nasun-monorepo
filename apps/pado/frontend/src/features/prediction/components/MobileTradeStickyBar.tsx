@@ -79,7 +79,7 @@ export function MobileTradeStickyBar({
       )}
 
       {marketStatus === 'open' && isTradingFrozen && (
-        <div className="flex items-center justify-center gap-2 h-12 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+        <div className="flex items-center justify-center gap-2 h-12 rounded-lg bg-yellow-500/25 border border-yellow-500/50">
           <svg
             className="h-3.5 w-3.5 text-yellow-500"
             style={{ animation: 'spin 8s linear infinite' }}

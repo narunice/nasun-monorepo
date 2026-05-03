@@ -105,7 +105,7 @@ export function SwapConfirmView({
 
       {/* High Price Impact Warning */}
       {requiresAck && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 shrink-0">
+        <div className="bg-red-500/25 border border-red-500/50 rounded-lg p-3 shrink-0">
           <p className="text-xs text-red-700 dark:text-red-400 font-medium mb-2">
             This order has {impactPct?.toFixed(2)}% price impact. You may receive significantly fewer tokens than expected.
           </p>

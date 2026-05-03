@@ -257,7 +257,7 @@ export function PerpOrderForm({
 
       {/* Errors */}
       {preview.errors.length > 0 && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded">
+        <div className="p-3 bg-red-500/25 border border-red-500/50 rounded">
           {preview.errors.map((error, i) => (
             <p key={i} className="text-sm text-red-400">
               {error}
@@ -268,7 +268,7 @@ export function PerpOrderForm({
 
       {/* Price Stale Warning */}
       {isPriceStale && (
-        <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded">
+        <div className="p-3 bg-yellow-500/25 border border-yellow-500/50 rounded">
           <p className="text-sm text-yellow-400">
             Oracle price is stale. Please wait for fresh price data.
           </p>

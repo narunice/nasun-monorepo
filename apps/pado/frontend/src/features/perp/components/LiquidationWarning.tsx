@@ -33,7 +33,7 @@ export function LiquidationWarning() {
   // Show critical warning first
   if (criticalPositions.length > 0) {
     return (
-      <div className="mb-4 p-4 bg-red-500/20 border border-red-500/50 rounded-lg">
+      <div className="mb-4 p-4 bg-red-500/35 border border-red-500/60 rounded-lg">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             <svg
@@ -76,7 +76,7 @@ export function LiquidationWarning() {
   // Show danger warning
   if (dangerPositions.length > 0) {
     return (
-      <div className="mb-4 p-4 bg-orange-500/20 border border-orange-500/50 rounded-lg">
+      <div className="mb-4 p-4 bg-orange-500/35 border border-orange-500/60 rounded-lg">
         <div className="flex items-start gap-3">
           <div className="flex-shrink-0">
             <svg
@@ -112,7 +112,7 @@ export function LiquidationWarning() {
   // Show warning
   if (warningPositions.length > 0) {
     return (
-      <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+      <div className="mb-4 p-3 bg-yellow-500/25 border border-yellow-500/50 rounded-lg">
         <div className="flex items-center gap-2">
           <svg
             className="w-4 h-4 text-yellow-400"
@@ -148,7 +148,7 @@ function CriticalPositionInfo({ position }: CriticalPositionInfoProps) {
   const size = Number(position.size) / 100_000_000;
 
   return (
-    <div className="flex items-center justify-between text-sm p-2 bg-red-500/10 rounded">
+    <div className="flex items-center justify-between text-sm p-2 bg-red-500/25 rounded">
       <div className="flex items-center gap-2">
         <span
           className={`px-1.5 py-0.5 text-xs font-bold rounded ${

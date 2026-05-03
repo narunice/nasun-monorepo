@@ -18,7 +18,7 @@ export function ResolverDisclaimerBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-pd2/10 border border-pd2/30 rounded-xl p-3 flex items-start justify-between gap-3">
+    <div className="bg-pd2/25 border border-pd2/50 rounded-xl p-3 flex items-start justify-between gap-3">
       <div className="text-sm text-theme-text-secondary">
         Markets settle based on the criteria below, decided by Nasun's resolver. If the
         resolver does not settle by the deadline, anyone can cancel and every participant

@@ -135,7 +135,7 @@ function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?:
   if (status === 'resolved') {
     const isYes = Boolean(outcome);
     return (
-      <div className={`rounded-xl p-5 text-center ${isYes ? 'bg-green-900/25 border border-green-500/40' : 'bg-red-900/25 border border-red-500/40'}`}>
+      <div className={`rounded-xl p-5 text-center ${isYes ? 'bg-green-900/50 border border-green-500/50' : 'bg-red-900/50 border border-red-500/50'}`}>
         <div className={`text-3xl font-bold mb-1 ${isYes ? 'text-green-400' : 'text-red-400'}`}>
           {isYes ? 'YES' : 'NO'} Won
         </div>
@@ -147,7 +147,7 @@ function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?:
   }
 
   return (
-    <div className="rounded-xl p-5 text-center bg-yellow-900/25 border border-yellow-500/40">
+    <div className="rounded-xl p-5 text-center bg-yellow-900/50 border border-yellow-500/50">
       <div className="text-2xl font-bold text-yellow-400 mb-1">Cancelled</div>
       <div className="text-sm text-theme-text-muted">All collateral is refundable</div>
     </div>
