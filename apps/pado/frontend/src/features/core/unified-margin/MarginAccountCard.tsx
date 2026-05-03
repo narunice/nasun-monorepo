@@ -61,50 +61,64 @@ export function MarginAccountCard() {
     account,
     hasAccount,
     createAccount,
+    enablePado,
     deposit,
     withdraw,
     isCreating,
+    isEnabling,
     isDepositing,
     isWithdrawing,
     isLoading,
   } = useMarginAccount();
 
   // Trading for unified onboarding
-  const { balanceManagerId, createBalanceManager } = useTrading();
+  const { balanceManagerId, createBalanceManager, registerBalanceManager } = useTrading();
 
   const { showToast } = useToast();
 
   // Unified onboarding state
   const [isEnablingPado, setIsEnablingPado] = useState(false);
 
-  // Unified onboarding: Enable Pado (MarginAccount + BalanceManager)
+  // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
+  // Single-PTB atomic creation when both are missing — no partial-state UX.
+  // Legacy single-side users complete the pair via the appropriate single tx.
   const handleEnablePado = useCallback(async () => {
     setIsEnablingPado(true);
     try {
-      // Step 1: Create MarginAccount
-      await createAccount();
+      const hasBm = !!balanceManagerId;
+      const hasMa = hasAccount;
 
-      // Step 2: Create BalanceManager if not exists.
-      // signAndExecute / executeTransaction now block on waitForTransaction,
-      // so a fixed sleep between the two txs is unnecessary.
-      if (!balanceManagerId) {
-        try {
-          await createBalanceManager();
-          showToast("Pado enabled!", "success");
-        } catch (bmError) {
-          // MA succeeded but BM failed - show warning but don't fail
-          console.warn("[UnifiedOnboarding] BalanceManager creation failed:", bmError);
-          showToast("Pado Balance enabled but trading setup failed. Try refreshing the page.", "warning");
-        }
-      } else {
+      if (!hasBm && !hasMa) {
+        const { balanceManagerId: newBmId } = await enablePado();
+        registerBalanceManager(newBmId);
         showToast("Pado enabled!", "success");
+        return;
       }
+
+      if (hasBm && !hasMa) {
+        await createAccount();
+        showToast("Pado enabled!", "success");
+        return;
+      }
+
+      if (!hasBm && hasMa) {
+        const result = await createBalanceManager();
+        if (!result.success) {
+          showToast(formatErrorMessage(result.error), "error");
+          return;
+        }
+        showToast("Pado enabled!", "success");
+        return;
+      }
+
+      // Already fully enabled
+      showToast("Pado already enabled", "info");
     } catch (error) {
       showToast(formatErrorMessage(error), "error");
     } finally {
       setIsEnablingPado(false);
     }
-  }, [createAccount, balanceManagerId, createBalanceManager, showToast]);
+  }, [enablePado, registerBalanceManager, hasAccount, balanceManagerId, createAccount, createBalanceManager, showToast]);
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -195,7 +209,7 @@ export function MarginAccountCard() {
 
   // No account - show create button (unified onboarding)
   if (!hasAccount) {
-    const isEnabling = isEnablingPado || isCreating;
+    const isBusy = isEnablingPado || isEnabling || isCreating;
     return (
       <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-4">
         <div className="flex items-center justify-between">
@@ -207,10 +221,10 @@ export function MarginAccountCard() {
           </div>
           <button
             onClick={handleEnablePado}
-            disabled={isEnabling}
+            disabled={isBusy}
             className="px-4 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isEnabling ? "Enabling..." : "Enable Pado"}
+            {isBusy ? "Enabling..." : "Enable Pado"}
           </button>
         </div>
       </div>

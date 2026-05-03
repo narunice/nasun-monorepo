@@ -9,6 +9,7 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
+import { NETWORK_CONFIG } from '../config/network';
 
 // Contract addresses (V7 deployed, env-configured)
 export const UNIFIED_MARGIN_PACKAGE =
@@ -275,6 +276,34 @@ export async function findUserMarginAccount(
 export function buildCreateAccountTx(): Transaction {
   const tx = new Transaction();
 
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::create_account`,
+    arguments: [tx.object(MARGIN_REGISTRY_ID), tx.object(CLOCK_ID)],
+  });
+
+  return tx;
+}
+
+/**
+ * Build a single PTB that creates BalanceManager + MarginAccount atomically.
+ * Either both succeed or both fail — eliminates partial-state UX where the
+ * user ends up with one but not the other.
+ */
+export function buildEnablePadoTx(): Transaction {
+  const tx = new Transaction();
+
+  // 1. BalanceManager: create + share
+  const [balanceManager] = tx.moveCall({
+    target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::new`,
+    arguments: [],
+  });
+  tx.moveCall({
+    target: '0x2::transfer::public_share_object',
+    typeArguments: [`${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManager`],
+    arguments: [balanceManager],
+  });
+
+  // 2. MarginAccount: create_account internally transfers to sender
   tx.moveCall({
     target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::create_account`,
     arguments: [tx.object(MARGIN_REGISTRY_ID), tx.object(CLOCK_ID)],

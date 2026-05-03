@@ -136,6 +136,7 @@ export function useOrderActions(): UseOrderActionsResult {
     cancelOrder,
     cancelAllOrders,
     createBalanceManager,
+    registerBalanceManager,
     depositAllTokens,
     withdrawAllTokens,
     depositToken,
@@ -158,6 +159,7 @@ export function useOrderActions(): UseOrderActionsResult {
   const {
     hasAccount: hasMarginAccount,
     createAccount: createMarginAccount,
+    enablePado,
     account: marginAccount,
     accountId: marginAccountId,
   } = useMarginAccount();
@@ -463,43 +465,73 @@ export function useOrderActions(): UseOrderActionsResult {
   );
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
+  // Atomic single-PTB path when both are missing — neither partial-state nor
+  // double signing prompt. Legacy callers with BM-but-no-MA (or vice versa)
+  // fall through to single-object creation.
   const handleCreateBalanceManager = useCallback(async (): Promise<TradeResult> => {
     setIsEnabling(true);
     try {
-      // Step 1: Create BalanceManager
-      const result = await createBalanceManager();
+      const hasBm = !!balanceManagerId;
+      const hasMa = hasMarginAccount;
 
-      if (!result.success) {
-        const friendlyError = formatUserFriendlyError(result.error);
-        showToast(friendlyError, "error");
+      if (!hasBm && !hasMa) {
+        // Atomic path: single signature, single tx, all-or-nothing
+        try {
+          const { balanceManagerId: newBmId } = await enablePado();
+          registerBalanceManager(newBmId);
+          showToast('Pado enabled!', 'success');
+          refreshData();
+          return { success: true };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          showToast(formatUserFriendlyError(errorMsg), 'error');
+          return { success: false, error: errorMsg };
+        }
+      }
+
+      if (hasBm && !hasMa) {
+        // Legacy BM-only user: complete the pair by creating MA only
+        try {
+          await createMarginAccount();
+          showToast('Pado enabled!', 'success');
+          refreshData();
+          return { success: true };
+        } catch (error) {
+          const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+          showToast(formatUserFriendlyError(errorMsg), 'error');
+          return { success: false, error: errorMsg };
+        }
+      }
+
+      if (!hasBm && hasMa) {
+        // Anomalous MA-only state: complete the pair by creating BM only
+        const result = await createBalanceManager();
+        if (result.success) {
+          showToast('Pado enabled!', 'success');
+          refreshData();
+        } else {
+          showToast(formatUserFriendlyError(result.error), 'error');
+        }
         return result;
       }
 
-      // Step 2: Create MarginAccount if not exists (unified onboarding)
-      if (!hasMarginAccount) {
-        try {
-          // Wait for RPC to sync after BalanceManager creation
-          await new Promise((resolve) => setTimeout(resolve, RPC_SYNC_DELAY_MS));
-          await createMarginAccount();
-          showToast("Pado enabled!", "success");
-        } catch (error) {
-          // BM succeeded but MA failed - show warning but don't fail
-          const errorMsg = error instanceof Error ? error.message : "Unknown error";
-          console.warn("[UnifiedOnboarding] MarginAccount creation failed:", errorMsg);
-          showToast("Trading enabled. Pado Balance setup failed.", "warning");
-        }
-      } else {
-        showToast("Pado enabled!", "success");
-      }
-
-      // Refresh balance queries so the order form picks up wallet balances immediately
+      // Already fully enabled
       refreshData();
-
-      return result;
+      return { success: true };
     } finally {
       setIsEnabling(false);
     }
-  }, [createBalanceManager, hasMarginAccount, createMarginAccount, showToast, refreshData]);
+  }, [
+    enablePado,
+    registerBalanceManager,
+    balanceManagerId,
+    hasMarginAccount,
+    createMarginAccount,
+    createBalanceManager,
+    showToast,
+    refreshData,
+    formatUserFriendlyError,
+  ]);
 
   // Trading 잔고로 추가
   const handleDeposit = useCallback(async (): Promise<TradeResult> => {
