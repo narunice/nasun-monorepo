@@ -51,9 +51,6 @@ const ACTIONS: ActionItem[] = [
   },
   {
     id: 'predict',
-    // While VITE_IDEA_SUBMISSION_ENABLED is on, /predict is temporarily the
-    // Ideas & Feedback form. Label/description stay "Predict" so the tile
-    // still reads as the upcoming feature; only the gate is relaxed.
     label: 'Predict',
     description: 'Bet on future events',
     path: '/predict',
@@ -63,7 +60,7 @@ const ACTIONS: ActionItem[] = [
       </svg>
     ),
     color: 'indigo',
-    enabled: import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' || hasAccess('full'),
+    enabled: true,
   },
   {
     id: 'leaderboard',

@@ -40,8 +40,6 @@ const ACTIONS: QuickAction[] = [
     enabled: hasAccess('full'),
   },
   {
-    // Label stays "Predict"; the /predict route silently becomes the Ideas
-    // & Feedback form while VITE_IDEA_SUBMISSION_ENABLED is on.
     label: 'Predict',
     path: '/predict',
     icon: (
@@ -50,7 +48,7 @@ const ACTIONS: QuickAction[] = [
       </svg>
     ),
     color: 'text-indigo-500',
-    enabled: import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true' || hasAccess('full'),
+    enabled: true,
   },
   {
     label: 'Earn',

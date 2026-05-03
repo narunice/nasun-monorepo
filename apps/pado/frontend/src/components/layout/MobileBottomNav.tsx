@@ -67,15 +67,11 @@ interface MoreItem {
   enabled: boolean;
 }
 
-// See Header.tsx: /predict is repurposed as Ideas & Feedback while the flag is on,
-// but the label stays "Predict" — only the enabled gate is relaxed.
-const IDEA_MODE = import.meta.env.VITE_IDEA_SUBMISSION_ENABLED === 'true';
-
 const MORE_ITEMS: MoreItem[] = [
   { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
   { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: hasAccess('spot') },
   { label: 'Wallet', path: '/wallet', icon: '👛', enabled: hasAccess('spot') },
-  { label: 'Predict', path: '/predict', icon: '🔮', enabled: IDEA_MODE || hasAccess('full') },
+  { label: 'Predict', path: '/predict', icon: '🔮', enabled: true },
 ];
 
 export function MobileBottomNav() {
