@@ -10,5 +10,6 @@
  */
 export const UJU_CLAIM_ALL_OVERRIDE =
   "!bg-gradient-to-r !from-pado-3 !via-pado-4 !to-pado-5 !text-uju-bg " +
+  "!rounded-full !text-sm " +
   "!shadow-[0_4px_14px_rgba(94,225,228,0.4)] " +
   "hover:!brightness-110 hover:!shadow-[0_6px_20px_rgba(134,243,183,0.55)]";
