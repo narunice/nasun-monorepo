@@ -173,11 +173,10 @@ function parseTradeError(error: unknown): string {
       case 8: return 'Order not found.';
       case 9: return 'You are not the owner of this order.';
       case 10: return 'Market has expired.';
-      case 11: return 'Cannot trade with yourself.';
-      case 12: return 'Market is not cancelled.';
-      case 13: return 'Position does not belong to this market.';
-      case 14: return 'Resolve deadline has not passed yet.';
-      case 15: return 'Market cannot be cancelled in its current state.';
+      case 12: return 'Resolve deadline has passed. This market can no longer be resolved.';
+      case 13: return 'Market has not expired yet. Wait until after the resolve deadline.';
+      case 14: return 'Market is not cancelled.';
+      case 15: return 'Market has already been cancelled.';
       case 16: return 'Creator and resolver addresses must differ.';
       case 17: return 'Invalid input. Check amount, price, and time settings.';
       case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
