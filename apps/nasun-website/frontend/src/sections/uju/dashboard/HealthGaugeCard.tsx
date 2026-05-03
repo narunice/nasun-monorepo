@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { useEcosystemScore } from "@/hooks/useEcosystemScore";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
+import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader } from "../shared";
 import { SegmentedDonut } from "./SegmentedDonut";
@@ -177,6 +179,27 @@ export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
     user?.cognitoToken,
     user?.identityId,
   );
+  const { isMinted: isAllianceMinted } = useAllianceMintStatus(user?.cognitoToken);
+
+  const allianceInactiveHelper: React.ReactNode = isAllianceMinted ? (
+    <a
+      href="#nfts-activated"
+      onClick={(e) => {
+        e.preventDefault();
+        document.getElementById("nfts-activated")?.scrollIntoView({ behavior: "smooth" });
+      }}
+      className="text-pado-3 hover:text-pado-4 underline underline-offset-2 cursor-pointer"
+    >
+      Activate to unlock
+    </a>
+  ) : (
+    <Link
+      to="/community/alliance-nft"
+      className="inline-flex items-center gap-1 text-pado-3 hover:text-pado-4 underline underline-offset-2"
+    >
+      Mint to unlock
+    </Link>
+  );
 
   const wrap = (body: React.ReactNode, extraClass = "") => {
     if (bare)
@@ -226,7 +249,7 @@ export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
         `${allianceDaysToFull} more active day${allianceDaysToFull === 1 ? "" : "s"} to be healthy`
       )
     ) : (
-      "Activate to unlock"
+      allianceInactiveHelper
     );
 
     const genesisHelper = genesisPass.hasNft
@@ -299,7 +322,7 @@ export function HealthGaugeCard({ bare = false }: HealthGaugeCardProps = {}) {
                 </span>
               </>
             ) : hasAllianceActive ? undefined : (
-              "Activate to unlock"
+              allianceInactiveHelper
             )
           }
         />

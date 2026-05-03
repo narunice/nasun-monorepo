@@ -18,6 +18,7 @@ import {
 } from "@/services/ecosystemApi";
 import { syncEcosystemActivations } from "@/services/ecosystemScoreApi";
 import { queryClient as globalQueryClient } from "@/lib/queryClient";
+import { ecosystemScoreKeys } from "@/hooks/useEcosystemScore";
 
 const EMPTY_ACTIVATIONS: Activation[] = [];
 
@@ -72,9 +73,18 @@ export function useEcosystemStatus(
 
   const onMutationSuccess = useCallback(() => {
     localQueryClient.invalidateQueries({ queryKey: ecosystemStatusKeys.all });
-    // Fire-and-forget sync (only when identityId is provided)
     const id = identityIdRef.current;
-    if (id) syncEcosystemActivations(id).catch(() => {});
+    if (id) {
+      // Sync the explorer server's activations cache first, then invalidate the
+      // score query so the /score response reflects the updated hasNft state.
+      syncEcosystemActivations(id)
+        .catch(() => {})
+        .finally(() => {
+          localQueryClient.invalidateQueries({ queryKey: ecosystemScoreKeys.all });
+        });
+    } else {
+      localQueryClient.invalidateQueries({ queryKey: ecosystemScoreKeys.all });
+    }
   }, [localQueryClient]);
 
   const activateMutation = useMutation({
