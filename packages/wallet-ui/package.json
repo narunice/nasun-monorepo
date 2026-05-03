@@ -18,6 +18,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
   },
+  "dependencies": {
+    "@mysten/sui": "^1.0.0",
+    "@nasun/devnet-config": "workspace:*"
+  },
   "peerDependencies": {
     "@nasun/wallet": "workspace:*",
     "react": "^18.0.0 || ^19.0.0",
