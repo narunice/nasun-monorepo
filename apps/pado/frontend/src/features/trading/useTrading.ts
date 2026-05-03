@@ -61,6 +61,7 @@ interface UseTrading {
   isValidatingBalanceManager: boolean;
 
   // Actions
+  registerBalanceManager: (id: string) => void;
   createBalanceManager: () => Promise<TradeResult>;
   depositToBalanceManager: (coinId: string, coinType: string) => Promise<TradeResult>;
   placeLimitOrder: (params: PlaceLimitOrderParams) => Promise<TradeResult>;
@@ -174,6 +175,14 @@ export function useTrading(): UseTrading {
   }, [walletAddress, setBalanceManagerId, setIsValidatingBalanceManager]);
 
   // --- Balance Manager Operations ---
+
+  // Registers an externally-created BM ID (e.g. from atomic enablePado PTB)
+  // into both localStorage and Zustand so the rest of the trading layer picks it up.
+  const registerBalanceManager = useCallback((id: string) => {
+    if (!walletAddress) return;
+    storeBalanceManagerId(walletAddress, id);
+    setBalanceManagerId(id);
+  }, [walletAddress, setBalanceManagerId]);
 
   const createBalanceManager = useCallback(async (): Promise<TradeResult> => {
     if (!walletAddress) {
@@ -429,6 +438,7 @@ export function useTrading(): UseTrading {
     error,
     balanceManagerId,
     isValidatingBalanceManager,
+    registerBalanceManager,
     createBalanceManager,
     depositToBalanceManager,
     depositToken,

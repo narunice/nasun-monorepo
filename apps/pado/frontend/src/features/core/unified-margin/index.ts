@@ -10,6 +10,7 @@
 // Core hooks
 export { useUnifiedMargin, type UnifiedMarginState } from './useUnifiedMargin';
 export { useMarginAccount } from './useMarginAccount';
+export { usePadoAccount, type PadoAccountState } from './usePadoAccount';
 export { useRiskEngine, type UseRiskEngineResult } from './useRiskEngine';
 
 // Phase 16.1: Unified Balance (cash-only assets)

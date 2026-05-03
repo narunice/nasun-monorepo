@@ -19,6 +19,7 @@ import {
   getStoredMarginAccountId,
   storeMarginAccountId,
   buildCreateAccountTx,
+  buildEnablePadoTx,
   buildDepositWithSplitTx,
   buildWithdrawTx,
   buildWithdrawAllTx,
@@ -34,12 +35,14 @@ interface UseMarginAccountResult {
 
   // Account actions
   createAccount: () => Promise<void>;
+  enablePado: () => Promise<{ balanceManagerId: string; marginAccountId: string }>;
   deposit: (nusdcCoinId: string, amount: bigint) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
 
   // Action states
   isCreating: boolean;
+  isEnabling: boolean;
   isDepositing: boolean;
   isWithdrawing: boolean;
 
@@ -186,6 +189,48 @@ export function useMarginAccount(): UseMarginAccountResult {
     [activeAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair]
   );
 
+  // Single-PTB Enable Pado mutation: creates BalanceManager + MarginAccount
+  // atomically. Either both objects exist after this call, or neither — no
+  // partial state.
+  // NOTE: Only the MA ID is stored here. Callers (trading layer) are responsible
+  // for registering the BM ID into the trading store via useTrading.registerBalanceManager,
+  // keeping core layer free of trading-layer dependencies.
+  const enablePadoMutation = useMutation({
+    mutationFn: async () => {
+      if (!activeAddress) throw new Error('Wallet not connected');
+
+      const tx = buildEnablePadoTx();
+      const result = await signAndExecute(tx);
+
+      const created = result.objectChanges?.filter(
+        (c): c is SuiObjectChange & { type: 'created' } => c.type === 'created',
+      ) ?? [];
+
+      const bmObj = created.find((o) => o.objectType?.includes('::balance_manager::BalanceManager'));
+      const maObj = created.find((o) => o.objectType?.includes('::unified_margin::MarginAccount'));
+
+      if (!bmObj) {
+        throw new Error('Failed to find created BalanceManager in PTB result');
+      }
+      if (!maObj) {
+        throw new Error('Failed to find created MarginAccount in PTB result');
+      }
+
+      const balanceManagerId = (bmObj as { objectId: string }).objectId;
+      const marginAccountId = (maObj as { objectId: string }).objectId;
+
+      storeMarginAccountId(activeAddress, marginAccountId);
+      setMarginAccountId(marginAccountId);
+
+      return { balanceManagerId, marginAccountId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['margin-account-id'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
   // Create account mutation
   const createAccountMutation = useMutation({
     mutationFn: async () => {
@@ -274,6 +319,10 @@ export function useMarginAccount(): UseMarginAccountResult {
     await createAccountMutation.mutateAsync();
   }, [createAccountMutation]);
 
+  const enablePado = useCallback(async () => {
+    return enablePadoMutation.mutateAsync();
+  }, [enablePadoMutation]);
+
   const deposit = useCallback(
     async (nusdcCoinId: string, amount: bigint) => {
       await depositMutation.mutateAsync({ nusdcCoinId, amount });
@@ -299,11 +348,13 @@ export function useMarginAccount(): UseMarginAccountResult {
     error: error as Error | null,
 
     createAccount,
+    enablePado,
     deposit,
     withdraw,
     withdrawAll,
 
     isCreating: createAccountMutation.isPending,
+    isEnabling: enablePadoMutation.isPending,
     isDepositing: depositMutation.isPending,
     isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending,
 

@@ -141,16 +141,16 @@ export function TradingBalanceBar({
             </span>
           </div>
 
-          {/* Trading Row */}
+          {/* Pado Balance Row — combined BM (trading) + MA (margin) */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-            <span className="text-theme-text-muted">In Use:</span>
+            <span className="text-theme-text-muted">Pado Balance:</span>
             <div className="flex items-center gap-2">
               <span className="font-mono text-pd3">
                 {tradingBase.toFixed(4)} {baseSymbol}
                 <span className="text-theme-text-muted mx-2">|</span>
-                {tradingQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
+                {(tradingQuote + marginQuote).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
               </span>
-              {onWithdraw && (tradingBase > 0 || tradingQuote > 0) && (
+              {onWithdraw && (tradingBase > 0 || tradingQuote > 0 || marginQuote > 0) && (
                 <button
                   onClick={onWithdraw}
                   className="text-orange-400 hover:text-orange-300 text-[10px] xl:text-xs font-medium transition-colors shrink-0"
@@ -160,16 +160,6 @@ export function TradingBalanceBar({
               )}
             </div>
           </div>
-
-          {/* Margin Row */}
-          {marginQuote > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
-              <span className="text-theme-text-muted">Pado Balance:</span>
-              <span className="font-mono text-pd3">
-                {marginQuote.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC
-              </span>
-            </div>
-          )}
 
           {/* In Orders Row (Pro mode only) */}
           {isPro && hasLockedFunds && (
