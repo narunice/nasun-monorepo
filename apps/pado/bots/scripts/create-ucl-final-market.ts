@@ -34,7 +34,7 @@ import { Transaction } from '@mysten/sui/transactions';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const CLOCK_ID = '0x6';
-const DEFAULT_ADMIN_CAP = '0xbead7e77b4e0d131b6090f9e28c77e082de9b85b4d69dec5146a7bfade9c9533';
+const DEFAULT_ADMIN_CAP = '0x63ddeb9b82df1b7ef373a421920623a07c9e64b0eea5fc6d7f9fcaa742b06fc8';
 
 // Final: 2026-05-30 21:00 CEST = 19:00 UTC, Puskás Aréna Budapest.
 // close_time = kickoff - 5min, resolve_deadline = kickoff + 24h.

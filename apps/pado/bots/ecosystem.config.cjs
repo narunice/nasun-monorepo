@@ -33,7 +33,7 @@ const DISABLE_PREDICTION_LP = process.env.DISABLE_PREDICTION_LP === 'true';
 // Prediction Market deployed package id (devnet). Override via .env if redeployed.
 const PREDICTION_PACKAGE_ID =
   process.env.PREDICTION_PACKAGE_ID ||
-  '0xafd5b6eda4432e6910d8d8029d23ea1a16f73cbafcd9a9532fc302a2e6984afa';
+  '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d';
 
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
