@@ -12,12 +12,7 @@ import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
 import { POOLS } from '../../../config/network';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-
-// String-based float→bigint to avoid IEEE-754 round-trip errors.
-function floatToRaw(value: number, decimals: number): bigint {
-  const [int, frac = ''] = value.toFixed(decimals).split('.');
-  return BigInt(int + frac.padEnd(decimals, '0').slice(0, decimals));
-}
+import { floatToRaw } from '../../../lib/unified-margin';
 
 export interface PadoAccountState {
   /** True iff both BM and MA exist for the active wallet */

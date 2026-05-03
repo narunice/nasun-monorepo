@@ -46,7 +46,7 @@ export function WalletPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-theme-text-primary">Wallet</h1>
         <p className="text-sm text-theme-text-secondary mt-1">
-          Manage your assets across wallet, trading, and Pado Balance
+          Manage your wallet and Pado Balance
         </p>
       </div>
 

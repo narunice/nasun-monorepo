@@ -17,9 +17,47 @@
 import { useState } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useUnifiedBalance, formatTokenBreakdown } from './useUnifiedBalance';
+import { usePadoAccount } from './usePadoAccount';
 import { formatUsdValue, formatPercentage } from '../../../lib/prices';
 import type { TokenSymbol } from '../../../lib/prices';
 import { TokenIcon } from '@/components/common';
+
+function PocketBreakdown({
+  bmNusdcUsd,
+  maNusdcUsd,
+  bmNbtcHuman,
+}: {
+  bmNusdcUsd: number;
+  maNusdcUsd: number;
+  bmNbtcHuman: number;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-1">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
+      >
+        {open ? 'Hide pockets' : 'Show pockets'}
+      </button>
+      {open && (
+        <div className="mt-2 space-y-1 pl-4 border-l border-theme-border">
+          <div className="flex justify-between text-xs text-theme-text-muted">
+            <span>Trading</span>
+            <span>
+              {bmNbtcHuman > 0 && `${bmNbtcHuman.toFixed(8)} NBTC + `}
+              {bmNusdcUsd.toFixed(2)} NUSDC
+            </span>
+          </div>
+          <div className="flex justify-between text-xs text-theme-text-muted">
+            <span>Margin</span>
+            <span>{maNusdcUsd.toFixed(2)} NUSDC</span>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 interface UnifiedBalanceCardProps {
   /** Show compact view (header) vs full view (wallet page) */
@@ -47,23 +85,27 @@ export function UnifiedBalanceCard({
     totalChange24h,
     breakdown,
     isLoading,
-    hasBalanceManager,
-    hasMarginAccount,
   } = useUnifiedBalance();
+
+  const padoAccount = usePadoAccount();
 
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
 
   // Calculate fund distribution
+  const inPado = inTrading + inMargin; // Combined BM + MA — the "single pocket"
   const inWallet = available - inMargin; // Wallet portion of available
-  const hasFundsDistributed = inTrading > 0 || inMargin > 0;
-  const allFundsInWallet = !hasFundsDistributed;
+  const allFundsInWallet = inPado === 0;
 
   // Calculate percentages for display
-  const totalFunds = totalValue > 0 ? totalValue : 1; // Avoid division by zero
+  const totalFunds = totalValue > 0 ? totalValue : 1;
   const walletPercent = Math.round((inWallet / totalFunds) * 100);
-  const tradingPercent = Math.round((inTrading / totalFunds) * 100);
-  const marginPercent = Math.round((inMargin / totalFunds) * 100);
+  const padoPercent = Math.round((inPado / totalFunds) * 100);
+
+  // Breakdown values for "Show pockets" disclosure (raw NUSDC from usePadoAccount)
+  const bmNusdcUsd = Number(padoAccount.breakdown.bm.quoteRaw) / 1e6;
+  const maNusdcUsd = Number(padoAccount.breakdown.ma.nusdcRaw) / 1e6;
+  const bmNbtcHuman = Number(padoAccount.breakdown.bm.baseRaw) / 1e8;
 
   // Not connected
   if (!isConnected) {
@@ -117,14 +159,14 @@ export function UnifiedBalanceCard({
           Total Balance
         </h3>
         <div className="flex items-center gap-2">
-          {hasBalanceManager && (
-            <span className="text-xs text-pd3 bg-pd2/10 px-2 py-1 rounded">
-              Trading Active
+          {padoAccount.isEnabled && (
+            <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">
+              Pado Active
             </span>
           )}
-          {hasMarginAccount && (
-            <span className="text-xs text-purple-500 bg-purple-500/10 px-2 py-1 rounded">
-              Pado Balance Active
+          {padoAccount.isPartiallyEnabled && (
+            <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
+              Pado: legacy account
             </span>
           )}
         </div>
@@ -206,54 +248,32 @@ export function UnifiedBalanceCard({
               </div>
             </div>
 
-            {/* In Trading */}
-            <div className="flex items-center justify-between py-2 px-3 bg-theme-bg-tertiary rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-pd2"></div>
-                <div>
-                  <span className="text-sm text-theme-text-primary">In Trading</span>
-                  {inTrading === 0 && (
-                    <span className="text-xs text-theme-text-muted ml-2">
-                      (deposited for spot orders)
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="text-right">
-                <span className="text-sm font-medium text-pd3">
-                  {formatUsdValue(inTrading)}
-                </span>
-                {inTrading > 0 && (
-                  <span className="text-xs text-theme-text-muted ml-2">
-                    {tradingPercent}%
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* In Pado Balance */}
-            <div className="flex items-center justify-between py-2 px-3 bg-theme-bg-tertiary rounded-lg">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500"></div>
-                <div>
+            {/* In Pado Balance (combined BM + MA) */}
+            <div className="py-2 px-3 bg-theme-bg-tertiary rounded-lg">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-pd2"></div>
                   <span className="text-sm text-theme-text-primary">In Pado Balance</span>
-                  {inMargin === 0 && (
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-medium text-pd3">
+                    {formatUsdValue(inPado)}
+                  </span>
+                  {inPado > 0 && (
                     <span className="text-xs text-theme-text-muted ml-2">
-                      (for predictions & margin)
+                      {padoPercent}%
                     </span>
                   )}
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-sm font-medium text-purple-500">
-                  {formatUsdValue(inMargin)}
-                </span>
-                {inMargin > 0 && (
-                  <span className="text-xs text-theme-text-muted ml-2">
-                    {marginPercent}%
-                  </span>
-                )}
-              </div>
+              {/* "Show pockets" sub-disclosure for power users */}
+              {inPado > 0 && (
+                <PocketBreakdown
+                  bmNusdcUsd={bmNusdcUsd}
+                  maNusdcUsd={maNusdcUsd}
+                  bmNbtcHuman={bmNbtcHuman}
+                />
+              )}
             </div>
           </div>
         )}
@@ -310,11 +330,11 @@ export function UnifiedBalanceCard({
       )}
 
       {/* Tip for new users */}
-      {!hasBalanceManager && !hasMarginAccount && (
+      {!padoAccount.isEnabled && !padoAccount.isPartiallyEnabled && (
         <div className="mt-4 p-3 bg-pd2/5 border border-pd2/20 rounded-lg">
           <div className="text-sm text-theme-text-secondary">
-            <span className="font-medium">Tip:</span> Enable Trading or Pado
-            Balance to unlock more features.
+            <span className="font-medium">Tip:</span> Enable Pado to use your funds
+            across Trading, Predictions, and more.
           </div>
         </div>
       )}
