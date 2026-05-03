@@ -14,7 +14,6 @@ import {
   ACTIVATIONS_ERROR_RETRY_MS,
   MATVIEW_REFRESH_MIN_INTERVAL_MS,
   MATVIEW_REFRESH_MAX_STALE_MS,
-  calculateMultiplier,
   type NftActivation,
 } from '../config/ecosystem.js';
 import { saveCache, loadCache } from './cache-persist.js';
@@ -40,10 +39,6 @@ export function hasGenesisPass(identityId: string): boolean {
     if (a.nftType === 'genesis-pass') return true;
   }
   return false;
-}
-
-export function getMultiplierForUser(identityId: string): number {
-  return calculateMultiplier(getActivationsForUser(identityId));
 }
 
 export function getActivationsCacheSize(): number {

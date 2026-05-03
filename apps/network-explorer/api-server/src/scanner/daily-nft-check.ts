@@ -26,7 +26,6 @@
 import { pointsDb } from '../db.js';
 import { rpcCall } from '../rpc.js';
 import type { NftActivation } from '../config/ecosystem.js';
-import { isV2CutoverActive } from '../config/ecosystem.js';
 import {
   STAKING_V2_CUTOFF_DATE,
   calcStakingTierPts,
@@ -62,32 +61,29 @@ export async function runDailyNftChecks(
   const yesterdayDate = new Date(Date.UTC(nowUtc.getUTCFullYear(), nowUtc.getUTCMonth(), nowUtc.getUTCDate() - 1));
   const yesterdayStr = yesterdayDate.toISOString().slice(0, 10);
 
-  // V2 NFT health catch-up. Legacy V1 alliance-penalty branch removed
-  // (policy deprecated 2026-05-02). Pre-cutoff dates are no-ops.
-  if (isV2CutoverActive(yesterdayStr)) {
-    try {
-      const watermark = await getHealthWatermark();
-      const catchupStart = watermark
-        ? maxDate(addDays(yesterdayStr, -6), addDays(watermark, 1))
-        : yesterdayStr;
+  // V3 NFT health catch-up. Watermark-based; idempotent across restarts.
+  try {
+    const watermark = await getHealthWatermark();
+    const catchupStart = watermark
+      ? maxDate(addDays(yesterdayStr, -6), addDays(watermark, 1))
+      : yesterdayStr;
 
-      let allianceUpdated = 0, allianceSkipped = 0;
-      const days: string[] = [];
-      for (let d = catchupStart; d <= yesterdayStr; d = addDays(d, 1)) {
-        days.push(d);
-        const result = await updateHealthForAllNftHolders(activationsCache, d);
-        allianceUpdated += result.updated;
-        allianceSkipped += result.skipped;
-      }
-      if (days.length > 0) {
-        console.log(
-          `[DailyNftCheck] V2 health catchup: days=[${days.join(',')}] ` +
-          `updated=${allianceUpdated} skipped=${allianceSkipped}`,
-        );
-      }
-    } catch (err) {
-      console.error('[DailyNftCheck] V2 health update error (non-fatal):', err);
+    let allianceUpdated = 0, allianceSkipped = 0;
+    const days: string[] = [];
+    for (let d = catchupStart; d <= yesterdayStr; d = addDays(d, 1)) {
+      days.push(d);
+      const result = await updateHealthForAllNftHolders(activationsCache, d);
+      allianceUpdated += result.updated;
+      allianceSkipped += result.skipped;
     }
+    if (days.length > 0) {
+      console.log(
+        `[DailyNftCheck] Health catchup: days=[${days.join(',')}] ` +
+        `updated=${allianceUpdated} skipped=${allianceSkipped}`,
+      );
+    }
+  } catch (err) {
+    console.error('[DailyNftCheck] Health update error (non-fatal):', err);
   }
 
   // --- Genesis Passive Points ---
