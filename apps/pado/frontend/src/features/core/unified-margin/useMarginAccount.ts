@@ -25,9 +25,12 @@ import {
   buildWithdrawTx,
   buildWithdrawAllTx,
   buildWithdrawAllPadoTx,
+  floatToRaw,
   NUSDC_TYPE,
   type MarginAccountData,
 } from '../../../lib/unified-margin';
+import { getBalanceManagerBalances } from '../../../lib/deepbook';
+import { POOLS } from '../../../config/network';
 
 interface UseMarginAccountResult {
   // Account state
@@ -43,7 +46,7 @@ interface UseMarginAccountResult {
   depositByAmount: (rawAmount: bigint) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
-  withdrawAllPado: (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => Promise<void>;
+  withdrawAllPado: () => Promise<void>;
 
   // Action states
   isCreating: boolean;
@@ -343,13 +346,22 @@ export function useMarginAccount(): UseMarginAccountResult {
     },
   });
 
-  // Drain both BM and MA in a single PTB
+  // Drain both BM and MA in a single PTB. Fetches fresh BM balance on-demand
+  // to avoid stale-amount on-chain abort when BM changes between polls and TX.
   const withdrawAllPadoMutation = useMutation({
-    mutationFn: async ({ bmNusdcRaw, bmNbtcRaw }: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => {
+    mutationFn: async () => {
       if (!activeAddress) throw new Error('Wallet not connected');
 
       const balanceManagerId = getStoredBalanceManagerId(activeAddress);
       if (!marginAccountId && !balanceManagerId) throw new Error('Nothing to withdraw');
+
+      let bmNusdcRaw = 0n;
+      let bmNbtcRaw = 0n;
+      if (balanceManagerId) {
+        const fresh = await getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
+        bmNusdcRaw = floatToRaw(fresh.quote, 6);
+        bmNbtcRaw = floatToRaw(fresh.base, 8);
+      }
 
       const tx = buildWithdrawAllPadoTx(marginAccountId, balanceManagerId, bmNusdcRaw, bmNbtcRaw, activeAddress);
       await signAndExecute(tx);
@@ -393,12 +405,9 @@ export function useMarginAccount(): UseMarginAccountResult {
     await depositByAmountMutation.mutateAsync(rawAmount);
   }, [depositByAmountMutation]);
 
-  const withdrawAllPado = useCallback(
-    async (params: { bmNusdcRaw: bigint; bmNbtcRaw: bigint }) => {
-      await withdrawAllPadoMutation.mutateAsync(params);
-    },
-    [withdrawAllPadoMutation],
-  );
+  const withdrawAllPado = useCallback(async () => {
+    await withdrawAllPadoMutation.mutateAsync();
+  }, [withdrawAllPadoMutation]);
 
   return {
     account: account ?? null,

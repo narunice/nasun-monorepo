@@ -634,7 +634,7 @@ export async function getBalanceManagerBalances(
     };
   } catch (error) {
     logThrottled('deepbook-balances', 'error', 60_000, '[DeepBook] Failed to get BalanceManager balances:', error);
-    return { base: 0, quote: 0 };
+    throw error;
   }
 }
 

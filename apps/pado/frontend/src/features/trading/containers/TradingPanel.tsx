@@ -180,6 +180,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
     handleMarketOrder,
     handleCreateBalanceManager,
     handleWithdrawToken,
+    handleWithdrawAllPado,
     refreshData,
   } = useOrderActions();
 
@@ -583,14 +584,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
                 tradingQuote={bmBalance.quote}
                 marginQuote={marginQuote}
                 mode="simple"
-                onWithdraw={() => {
-                  // Open withdraw for the token with larger BM balance
-                  const baseValue = bmBalance.base;
-                  const quoteValue = bmBalance.quote;
-                  if (baseValue > 0 || quoteValue > 0) {
-                    handleOpenWithdraw(quoteValue > 0 ? 'NUSDC' : baseSymbol);
-                  }
-                }}
+                onWithdraw={() => { handleWithdrawAllPado(); }}
               />
             </div>
           )}

@@ -152,7 +152,7 @@ export function Header() {
           <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">
             PADO
           </h1>
-          <span className="hidden sm:inline-flex px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd3/15 text-pd3 border border-pd3/30 rounded">
+          <span className="hidden sm:inline-flex self-center px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd3/15 text-pd3 border border-pd3/30 rounded">
             Nasun Devnet
           </span>
         </Link>
@@ -351,13 +351,13 @@ export function Header() {
             />
           )}
           <a
-            href="https://nasun.io"
+            href="https://nasun.io/my-account"
             target="_blank"
             rel="noopener noreferrer"
             className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium rounded-md  text-theme-text-secondary hover:text-theme-text-primary hover:border-theme-border-hover transition-colors"
-            title="Go to Nasun Website"
+            title="Go to Nasun"
           >
-            nasun.io
+            Nasun
             <svg
               className="w-3 h-3"
               fill="none"
