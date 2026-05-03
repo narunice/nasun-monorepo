@@ -10,6 +10,7 @@ import { useWalletConnectState } from "./hooks/useWalletConnectState";
 import { WALLET_STYLES } from "../shared/styles";
 import { renderViewContent } from "./viewModeRouter";
 import type { ViewMode } from "./types";
+import type { RecoveryAdapter } from "../escape-hatch/types";
 
 interface WalletConnectProps {
   /** Dropdown position relative to button */
@@ -48,8 +49,11 @@ interface WalletConnectProps {
   lockedTitle?: string;
   /** Called when user clicks "Sign out" in the disconnected view. Only shown when provided. */
   onSignOut?: () => void;
-  /** Called when user clicks "Recover funds" in MoreMenu. Host app should navigate to its /recover route. */
+  /** Called when user clicks "Recover funds" in MoreMenu. Host app should navigate to its /recover route.
+   *  If omitted, the wallet opens the built-in inline recovery panel instead. */
   onRecoverFunds?: () => void;
+  /** Extra RecoveryAdapters to show in the inline recovery panel in addition to built-in Pado adapters. */
+  recoveryAdapters?: RecoveryAdapter[];
 }
 
 export function WalletConnect({
@@ -73,6 +77,7 @@ export function WalletConnect({
   lockedTitle,
   onSignOut,
   onRecoverFunds,
+  recoveryAdapters,
 }: WalletConnectProps) {
   const s = useWalletConnectState(initialViewMode, defaultOpen, onDropdownClose);
 
@@ -158,7 +163,7 @@ export function WalletConnect({
     setSelectedProposalId: s.setSelectedProposalId,
   } as const;
 
-  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice, lockedTitle, onSignOut, onRecoverFunds });
+  const dropdownContent = renderViewContent(s, connectedViewSharedProps, { showPrivacyNotice, lockedTitle, onSignOut, onRecoverFunds, recoveryAdapters });
 
   // True when any wallet type is actively connected — s.status alone is not enough
   // because zkLogin/passkey leave s.status as 'disconnected' (no self-custody keystore)

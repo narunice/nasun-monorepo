@@ -11,6 +11,8 @@
 import { useState, useCallback, type ReactNode } from "react";
 import type { WalletConnectStateReturn } from "./hooks/useWalletConnectState";
 import type { ViewMode } from "./types";
+import { InlineRecoveryView } from "../escape-hatch/InlineRecoveryView";
+import type { RecoveryAdapter } from "../escape-hatch/types";
 import { LockedStateUI } from "./LockedStateUI";
 import {
   ConnectedView,
@@ -459,8 +461,18 @@ function renderByWalletStatus(
 export function renderViewContent(
   s: WalletConnectStateReturn,
   connectedViewSharedProps: SharedConnectedProps,
-  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void; onRecoverFunds?: () => void },
+  options?: { showPrivacyNotice?: boolean; lockedTitle?: string; onSignOut?: () => void; onRecoverFunds?: () => void; recoveryAdapters?: RecoveryAdapter[] },
 ): ReactNode {
+  // Inline recovery view (has access to options.recoveryAdapters)
+  if (s.viewMode === "asset-recovery") {
+    return (
+      <InlineRecoveryView
+        setViewMode={s.setViewMode}
+        extraAdapters={options?.recoveryAdapters}
+      />
+    );
+  }
+
   // 1. Explicit ViewMode match
   const renderer = VIEW_RENDERERS[s.viewMode];
   if (renderer) {

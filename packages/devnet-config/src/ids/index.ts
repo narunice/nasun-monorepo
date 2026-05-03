@@ -16,3 +16,5 @@ export * from './governance';
 export * from './baram';
 export * from './nsa';
 export * from './contracts';
+export * from './margin';
+export * from './pools';

@@ -418,15 +418,14 @@ export function AccountTabContent({
         </>
       )}
 
-      {onRecoverFunds && (
-        <>
-          <div className={WALLET_STYLES.divider} />
-          <button onClick={onRecoverFunds} className={MENU_ITEM_CLASS}>
-            <MenuIcon d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            Recover Funds
-          </button>
-        </>
-      )}
+      <div className={WALLET_STYLES.divider} />
+      <button
+        onClick={() => onRecoverFunds ? onRecoverFunds() : onNavigate('asset-recovery')}
+        className={MENU_ITEM_CLASS}
+      >
+        <MenuIcon d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+        Recover Funds
+      </button>
     </div>
   );
 }
