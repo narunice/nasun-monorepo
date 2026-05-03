@@ -27,12 +27,12 @@ const ENV_MAPPINGS: Record<string, Record<string, () => string>> = {
     VITE_FAUCET_URL: () => config.network.faucetUrl,
     VITE_CHAIN_ID: () => config.network.chainId,
 
-    // Tokens
+    // Tokens (coin types use original package ID - Sui preserves type identity across upgrades)
     VITE_TOKENS_PACKAGE: () => config.tokens.packageId,
     VITE_TOKEN_FAUCET: () => config.tokens.tokenFaucet,
     VITE_CLAIM_RECORD: () => config.tokens.claimRecord,
-    VITE_NBTC_TYPE: () => `${config.tokens.packageId}::nbtc::NBTC`,
-    VITE_NUSDC_TYPE: () => `${config.tokens.packageId}::nusdc::NUSDC`,
+    VITE_NBTC_TYPE: () => `${config.tokens.originalPackageId || config.tokens.packageId}::nbtc::NBTC`,
+    VITE_NUSDC_TYPE: () => `${config.tokens.originalPackageId || config.tokens.packageId}::nusdc::NUSDC`,
     VITE_FAUCET_PACKAGE: () => config.tokens.packageId,
 
     // DeepBook
