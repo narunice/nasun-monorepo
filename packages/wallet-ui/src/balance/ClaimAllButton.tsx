@@ -61,24 +61,19 @@ export function ClaimAllButton({ className = '', onSuccess, persistent = false }
     setTimeout(() => setMessage(null), 5000);
   };
 
-  // Visual states:
-  //   idle    -> accent pill (cyan gradient) — value-positive CTA
-  //   success -> flat green confirmation (still pill-shaped, no shadow/hover)
-  //   error   -> flat coral message (same shape, distinct color)
-  const stateClass =
-    message?.type === 'success'
-      ? 'bg-green-500/20 text-green-300 border border-green-500/40'
-      : message?.type === 'error'
-        ? 'bg-red-500/20 text-red-300 border border-red-500/40'
-        : 'bg-gradient-to-r from-pado-violet to-pado-lavender text-uju-bg shadow-[0_4px_14px_rgba(124,92,255,0.4)] hover:brightness-110 hover:shadow-[0_6px_20px_rgba(124,92,255,0.55)] hover:-translate-y-0.5 active:scale-95';
-
   return (
     <button
       onClick={handleClick}
       disabled={isAnyLoading || !!message || claimable.length < (persistent ? 1 : 2)}
-      className={`w-full inline-flex items-center justify-center gap-2 px-4 py-2 min-h-[36px] text-sm font-semibold rounded-full transition-all duration-200 ease-out
-        ${stateClass}
-        disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none disabled:hover:translate-y-0 disabled:hover:brightness-100
+      className={`w-full py-1.5 text-xs xl:text-sm font-medium rounded-md transition-colors
+        ${
+          message?.type === 'success'
+            ? 'bg-green-500/20 text-green-400'
+            : message?.type === 'error'
+              ? 'bg-red-500/20 text-red-400'
+              : 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 hover:text-blue-300'
+        }
+        disabled:opacity-50 disabled:cursor-not-allowed
         ${className}`}
     >
       {isAnyLoading ? (
