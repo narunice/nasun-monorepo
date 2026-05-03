@@ -1,16 +1,18 @@
 /**
  * usePredictionFilters
  *
- * Client-side filter + sort for prediction markets list. Handles:
- * - Status (open / resolved / all) — default: open
- * - Category pill (All + canonical Crypto/Sports/Politics/Finance + Other)
- * - Sort (most-liquid / newest / closing-soon)
+ * Client-side filter + sort for prediction markets list. State lives in URL
+ * search params so Umami tracks each filter change as a distinct page view.
+ *
+ * URL structure: /predict?status=open&category=crypto&sort=closing-soon
+ * Defaults (omitted from URL): status=open, category=All, sort=closing-soon
  *
  * bigint comparisons use direct ordering (no Number() conversion) to avoid
  * 2^53 precision loss on large supply totals.
  */
 
-import { useMemo, useState } from 'react';
+import { useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import type { PredictionMarket } from '../types';
 
 export type MarketCategory =
@@ -23,6 +25,14 @@ export type MarketCategory =
 
 export type MarketSort = 'most-liquid' | 'newest' | 'closing-soon';
 export type StatusFilter = 'open' | 'resolved' | 'all';
+
+const DEFAULT_STATUS: StatusFilter = 'open';
+const DEFAULT_CATEGORY: MarketCategory = 'All';
+const DEFAULT_SORT: MarketSort = 'closing-soon';
+
+const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'all']);
+const VALID_CATEGORIES = new Set<MarketCategory>(['All', 'Crypto', 'Sports', 'Politics', 'Finance', 'Other']);
+const VALID_SORTS = new Set<MarketSort>(['most-liquid', 'newest', 'closing-soon']);
 
 const CANONICAL = ['crypto', 'sports', 'politics', 'finance'] as const;
 
@@ -47,9 +57,54 @@ export interface UsePredictionFiltersResult {
 export function usePredictionFilters(
   markets: PredictionMarket[],
 ): UsePredictionFiltersResult {
-  const [category, setCategory] = useState<MarketCategory>('All');
-  const [sortBy, setSortBy] = useState<MarketSort>('most-liquid');
-  const [status, setStatus] = useState<StatusFilter>('open');
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const status = (() => {
+    const v = searchParams.get('status') as StatusFilter | null;
+    return v && VALID_STATUSES.has(v) ? v : DEFAULT_STATUS;
+  })();
+
+  const category = (() => {
+    const raw = searchParams.get('category');
+    if (!raw) return DEFAULT_CATEGORY;
+    const v = (raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()) as MarketCategory;
+    return VALID_CATEGORIES.has(v) ? v : DEFAULT_CATEGORY;
+  })();
+
+  const sortBy = (() => {
+    const v = searchParams.get('sort') as MarketSort | null;
+    return v && VALID_SORTS.has(v) ? v : DEFAULT_SORT;
+  })();
+
+  const setParam = useCallback(
+    (key: string, value: string, defaultValue: string) => {
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        if (value === defaultValue) {
+          next.delete(key);
+        } else {
+          next.set(key, value);
+        }
+        return next;
+      }, { replace: false });
+    },
+    [setSearchParams],
+  );
+
+  const setStatus = useCallback(
+    (s: StatusFilter) => setParam('status', s, DEFAULT_STATUS),
+    [setParam],
+  );
+
+  const setCategory = useCallback(
+    (c: MarketCategory) => setParam('category', c.toLowerCase(), DEFAULT_CATEGORY.toLowerCase()),
+    [setParam],
+  );
+
+  const setSortBy = useCallback(
+    (s: MarketSort) => setParam('sort', s, DEFAULT_SORT),
+    [setParam],
+  );
 
   const filtered = useMemo(() => {
     let result = markets;
@@ -76,8 +131,7 @@ export function usePredictionFilters(
           primary = a.closeTime - b.closeTime;
           break;
       }
-      // Stable across refetches when primary keys tie. Without this,
-      // unrelated re-renders can flicker the row order on equal supply/time.
+      // Stable across refetches when primary keys tie.
       if (primary !== 0) return primary;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });

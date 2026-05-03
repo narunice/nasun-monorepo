@@ -23,6 +23,9 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
   const volume = formatVolume(market.totalVolume);
 
   const statusBadge = getStatusBadge(market.status, market.outcome);
+  const cryptoSymbol = market.category === 'crypto'
+    ? extractCryptoSymbol(market.question)
+    : null;
 
   return (
     <Link
@@ -36,6 +39,28 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
         </span>
         {statusBadge}
       </div>
+
+      {/* Crypto Token Symbol */}
+      {cryptoSymbol && (
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-full bg-theme-bg-tertiary flex items-center justify-center shrink-0 overflow-hidden">
+            {hasIcon(cryptoSymbol) ? (
+              <img
+                src={`/crypto-icons/${cryptoSymbol.toLowerCase()}.svg`}
+                alt={cryptoSymbol}
+                className="w-8 h-8"
+              />
+            ) : (
+              <span className="text-xs font-bold text-theme-text-secondary">
+                {cryptoSymbol.slice(0, 3)}
+              </span>
+            )}
+          </div>
+          <span className="text-2xl font-extrabold tracking-tight text-theme-text-primary">
+            {cryptoSymbol}
+          </span>
+        </div>
+      )}
 
       {/* Question */}
       <h3 className="text-base font-semibold text-theme-text-primary mb-4 line-clamp-2">
@@ -67,6 +92,22 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
       </div>
     </Link>
   );
+}
+
+function extractCryptoSymbol(question: string): string | null {
+  // Matches patterns like "Will BTC/USDT...", "Will ETH/USD...", "Will SOL price..."
+  const match = question.match(/Will\s+([A-Z]{2,6})(?:\/|\s)/);
+  return match ? match[1] : null;
+}
+
+const ICON_SYMBOLS = new Set([
+  'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'ADA', 'DOGE',
+  'AVAX', 'MATIC', 'LINK', 'DOT', 'UNI', 'ATOM', 'LTC',
+  'BCH', 'XLM', 'TRX', 'ALGO',
+]);
+
+function hasIcon(symbol: string): boolean {
+  return ICON_SYMBOLS.has(symbol.toUpperCase());
 }
 
 function getTimeRemaining(closeTime: number): string {

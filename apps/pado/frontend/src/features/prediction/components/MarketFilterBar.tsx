@@ -1,7 +1,8 @@
 /**
  * MarketFilterBar
  *
- * Status tabs + category pills + sort dropdown for the prediction markets list.
+ * Three segmented-control groups: Status | Category | Sort
+ * Each group is a pill container; active tab uses bg highlight, no border.
  */
 
 import type {
@@ -17,12 +18,13 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
 ];
 
 const CATEGORY_OPTIONS: ReadonlyArray<MarketCategory> = [
-  'All',
-  'Crypto',
-  'Sports',
-  'Politics',
-  'Finance',
-  'Other',
+  'All', 'Crypto', 'Sports', 'Politics', 'Finance', 'Other',
+];
+
+const SORT_OPTIONS: ReadonlyArray<{ value: MarketSort; label: string }> = [
+  { value: 'closing-soon', label: 'Closing Soon' },
+  { value: 'most-liquid', label: 'Most Liquid' },
+  { value: 'newest', label: 'Newest' },
 ];
 
 interface MarketFilterBarProps {
@@ -34,6 +36,35 @@ interface MarketFilterBarProps {
   setSortBy: (s: MarketSort) => void;
 }
 
+function SegmentedGroup({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-0.5 bg-theme-bg-tertiary rounded-lg p-0.5">
+      {children}
+    </div>
+  );
+}
+
+interface TabButtonProps {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function TabButton({ active, onClick, children }: TabButtonProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+        active
+          ? 'bg-pd1/80 text-white'
+          : 'text-theme-text-muted hover:text-theme-text-primary'
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function MarketFilterBar({
   status,
   category,
@@ -43,48 +74,35 @@ export function MarketFilterBar({
   setSortBy,
 }: MarketFilterBarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-3">
-      <div className="flex gap-1">
+    <div className="flex flex-wrap items-center gap-2">
+      {/* Status group */}
+      <SegmentedGroup>
         {STATUS_OPTIONS.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => setStatus(s.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              status === s.value
-                ? 'bg-pd1 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary'
-            }`}
-          >
+          <TabButton key={s.value} active={status === s.value} onClick={() => setStatus(s.value)}>
             {s.label}
-          </button>
+          </TabButton>
         ))}
-      </div>
+      </SegmentedGroup>
 
-      <div className="flex flex-wrap gap-1">
+      {/* Category group */}
+      <SegmentedGroup>
         {CATEGORY_OPTIONS.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCategory(c)}
-            className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-              category === c
-                ? 'bg-pd2 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary'
-            }`}
-          >
+          <TabButton key={c} active={category === c} onClick={() => setCategory(c)}>
             {c}
-          </button>
+          </TabButton>
         ))}
-      </div>
+      </SegmentedGroup>
 
-      <select
-        value={sortBy}
-        onChange={(e) => setSortBy(e.target.value as MarketSort)}
-        className="ml-auto text-sm bg-theme-bg-tertiary text-theme-text-secondary rounded-md px-2 py-1.5 border border-theme-border focus:outline-none focus:ring-1 focus:ring-pd3"
-      >
-        <option value="most-liquid">Most Liquid</option>
-        <option value="newest">Newest</option>
-        <option value="closing-soon">Closing Soon</option>
-      </select>
+      {/* Sort group */}
+      <div className="ml-auto">
+        <SegmentedGroup>
+          {SORT_OPTIONS.map((s) => (
+            <TabButton key={s.value} active={sortBy === s.value} onClick={() => setSortBy(s.value)}>
+              {s.label}
+            </TabButton>
+          ))}
+        </SegmentedGroup>
+      </div>
     </div>
   );
 }
