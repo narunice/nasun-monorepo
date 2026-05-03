@@ -45,6 +45,14 @@ import {
   type ResolutionCriteria,
 } from './lib/prediction-criteria.js';
 import { discoverMarketIds } from './lib/prediction-market-discovery.js';
+import {
+  fetchStockDailyClose,
+  inferMarket as inferStockMarket,
+  PriceFetchError as StockPriceFetchError,
+  PriceIntegrityError,
+  type StockQuote,
+} from './lib/stock-price.js';
+import { localDateString, sessionCloseUtc } from './lib/market-holidays.js';
 
 // ========================================
 // Configuration
@@ -192,6 +200,52 @@ async function fetchPriceWithFallback(symbol: string): Promise<number> {
 }
 
 // ========================================
+// Stock daily-close cache + dispatcher
+// ========================================
+
+// Daily close prices never change after the session is finalized, so we cache
+// per (symbol, sessionDateLocal). Cache survives the keeper process lifetime
+// only — restarts re-fetch, which is safe. Map is bounded by # of finance
+// markets * recent sessions, which stays well under 1000 entries in practice.
+const stockQuoteCache = new Map<string, StockQuote>();
+
+function stockCacheKey(symbol: string, sessionDateLocal: string): string {
+  return `${symbol}@${sessionDateLocal}`;
+}
+
+/**
+ * Resolve a stock daily close for the criteria's reading-time session.
+ *
+ * Reading time in the criteria block is the regular-session close in UTC.
+ * We derive the session's local-date label (YYYY-MM-DD in the exchange's
+ * timezone) and require:
+ *   - now >= session UTC close + 5 min grace (else: session in progress)
+ *   - cached or freshly fetched candle whose date matches the session
+ */
+async function fetchStockPriceForCriteria(
+  criteria: ResolutionCriteria,
+  closeTimeMs: number,
+): Promise<number> {
+  const market = inferStockMarket(criteria.symbol);
+  const sessionDateLocal = localDateString(market, new Date(closeTimeMs));
+  const sessionUtcClose = sessionCloseUtc(market, new Date(closeTimeMs));
+  const grace = 5 * 60 * 1000;
+  if (Date.now() < sessionUtcClose + grace) {
+    throw new StockPriceFetchError(
+      `session ${sessionDateLocal} not yet finalized (closes at ${new Date(sessionUtcClose).toISOString()})`,
+    );
+  }
+
+  const key = stockCacheKey(criteria.symbol, sessionDateLocal);
+  const cached = stockQuoteCache.get(key);
+  if (cached) return cached.price;
+
+  const quote = await fetchStockDailyClose(criteria, sessionDateLocal);
+  stockQuoteCache.set(key, quote);
+  return quote.price;
+}
+
+// ========================================
 // Resolve market
 // ========================================
 
@@ -288,11 +342,21 @@ async function processMarket(
 
   let price: number;
   try {
-    price = await fetchPriceWithFallback(criteria.symbol);
+    if (criteria.kind === 'stock') {
+      price = await fetchStockPriceForCriteria(criteria, market.closeTime);
+    } else {
+      price = await fetchPriceWithFallback(criteria.symbol);
+    }
   } catch (err) {
+    // PriceIntegrityError (currency mismatch / cross-source disagreement) is
+    // non-transient: retrying will not help, and silently warning would risk
+    // the resolve_deadline elapsing on a market that needs human inspection.
+    // Let it propagate as a hard error so the tick-loop counter escalates.
+    if (err instanceof PriceIntegrityError) throw err;
     const msg = err instanceof Error ? err.message : String(err);
-    // Wrap so the tick loop can distinguish transient upstream price failures
-    // from chain errors (which should bump the consecutive-error counter).
+    // Wrap transient upstream failures so the tick loop treats them as price
+    // warnings rather than bumping the chain-error counter (a pm2 restart
+    // would not recover Twelve Data / Yahoo / Binance outages).
     throw new PriceFetchError(msg);
   }
 
