@@ -69,6 +69,10 @@ export class NftSnapshotStack extends cdk.Stack {
     // Alchemy API key from environment (set in .env files)
     const alchemyApiKey = process.env.VITE_ALCHEMY_API_KEY || '';
     const alchemyBaseUrl = process.env.VITE_ALCHEMY_MAINNET_URL || 'https://eth-mainnet.g.alchemy.com/v2';
+    // NFT API v3 base URL is required by eth-collector-v2 (getOwnersForContract).
+    // v1's alchemyBaseUrl points at JSON-RPC v2 and cannot serve NFT v3 endpoints.
+    const alchemyNftV3BaseUrl =
+      process.env.VITE_ALCHEMY_NFT_V3_URL || 'https://eth-mainnet.g.alchemy.com/nft/v3';
 
     // ========== ETH NFT Collector Lambda ==========
 
@@ -115,7 +119,48 @@ export class NftSnapshotStack extends cdk.Stack {
       }),
     });
 
-    dailyRule.addTarget(new targets.LambdaFunction(ethCollector));
+    // ========== ETH NFT Collector v2 (holder-centric, ACTIVE) ==========
+    //
+    // Phase B: replaces wallet-by-wallet polling (~480 CU * N users) with one
+    // getOwnersForContract call per enabled ETH contract (~150 CU * M
+    // contracts). v1 Lambda is kept around for one week as a manual rollback
+    // target but no longer receives the daily EventBridge trigger; schedule
+    // it again or revert this commit to roll back.
+
+    const ethCollectorV2 = new NodejsFunction(this, 'EthNftCollectorV2Function', {
+      functionName: 'nasun-eth-nft-collector-v2',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'eth-collector-v2.ts'),
+      handler: 'handler',
+      timeout: cdk.Duration.minutes(15),
+      memorySize: 512,
+      description: 'Holder-centric ETH NFT ownership collector (Phase B, daily 01:00 UTC)',
+      environment: {
+        OWNERSHIP_TABLE: ownershipTable.tableName,
+        COLLECTIONS_TABLE: collectionsTable.tableName,
+        PROFILES_TABLE: profilesTable.tableName,
+        ALCHEMY_API_KEY: alchemyApiKey,
+        ALCHEMY_NFT_V3_BASE_URL: alchemyNftV3BaseUrl,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logRetention: logs.RetentionDays.ONE_MONTH,
+      depsLockFilePath,
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        externalModules: [
+          '@aws-sdk/client-dynamodb',
+          '@aws-sdk/lib-dynamodb',
+        ],
+      },
+    });
+
+    ownershipTable.grantReadWriteData(ethCollectorV2);
+    collectionsTable.grantReadData(ethCollectorV2);
+    profilesTable.grantReadData(ethCollectorV2);
+
+    // EventBridge daily target: v2 (cutover from v1).
+    dailyRule.addTarget(new targets.LambdaFunction(ethCollectorV2));
 
     // ========== Devnet NFT Collector Lambda ==========
 
@@ -177,6 +222,17 @@ export class NftSnapshotStack extends cdk.Stack {
     });
 
     ethErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
+
+    const ethV2ErrorAlarm = new cloudwatch.Alarm(this, 'EthNftCollectorV2ErrorAlarm', {
+      alarmName: 'nasun-eth-nft-collector-v2-errors',
+      alarmDescription: 'ETH NFT collector v2 (holder-centric) Lambda errors',
+      metric: ethCollectorV2.metricErrors({ period: cdk.Duration.hours(1) }),
+      threshold: 1,
+      evaluationPeriods: 1,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    ethV2ErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
     // ========== Ownership Verifier Lambda ==========
 
