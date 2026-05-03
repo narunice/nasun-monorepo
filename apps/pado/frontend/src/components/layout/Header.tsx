@@ -140,10 +140,10 @@ export function Header() {
           to="/"
           className="hover:opacity-80 transition-opacity flex items-center gap-2"
         >
-          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd3">
+          <h1 className="text-xl md:text-2xl font-brand tracking-wider text-pd0 dark:text-white">
             PADO
           </h1>
-          <span className="hidden sm:inline-flex self-center px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd3/15 text-pd3 border border-pd3/30 rounded">
+          <span className="hidden sm:inline-flex self-center px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase bg-pd1/10 text-pd1 border border-pd1/40 dark:bg-pd3/20 dark:text-pd4 dark:border-pd3/50 rounded">
             Nasun Devnet
           </span>
         </Link>
