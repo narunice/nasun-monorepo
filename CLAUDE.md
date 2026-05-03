@@ -94,6 +94,18 @@ Env var loss/staleness has repeatedly broken deploys. Follow this protocol witho
 4. **Post-build sanity**: run `/env-verify <app>` after any frontend build to confirm `VITE_*` values baked into `dist/assets/*.js` match the current `.env`. Rebuild on MISSING/STALE.
 5. **Envdir awareness**: pado uses `envDir: '../'` (reads `apps/pado/.env.production`, not `frontend/.env`). Verify the target file path against each app's vite config before editing.
 
+**Production Deploy Protocol (CRITICAL):**
+
+Same EC2 (`43.200.67.52`) hosts both `nasun.io` (`/var/www/nasun/dist`) and `pado.finance` (`/var/www/pado.finance`). A raw `rsync` typo can overwrite one app with another's build. 2026-05-03 incident: pado dist was rsynced to nasun root by mistake.
+
+1. **Never run raw `rsync` to `/var/www/*` on prod EC2.** No exceptions, even when "the memory says" a one-liner exists. Always use the canonical pnpm deploy command:
+   - `pnpm deploy:nasun-website:prod` → calls `scripts/deploy-nasun-website-production.sh`
+   - `pnpm deploy:pado:prod` → calls `scripts/deploy-pado-production.sh`
+   - These scripts perform: tsc → build → env-verify → **app-id marker check** → backup → rsync → nginx reload → health check → CloudFront invalidation → support `--rollback`.
+2. **App-id marker enforcement (auto)**: every frontend has `public/.app-id` (e.g. `nasun-website`, `pado-frontend`). Build copies it to `dist/.app-id`. Deploy script aborts if local marker mismatches expected, OR if remote `<root>/.app-id` exists and identifies a different app. This is the safety net that would have prevented the 5/3 incident.
+3. **Recovery from cross-app overwrite**: if remote `.app-id` blocks a legitimate redeploy, manually `ssh ... rm /var/www/<root>/.app-id` first, then redeploy. Do not bypass the check by editing the script.
+4. **Memory hygiene**: the deploy memory note documents *the pnpm command*, not the raw rsync. If you find raw `rsync` in any memory or doc that targets `/var/www/`, treat it as outdated and replace with the pnpm command.
+
 Security expectations:
 
 - Security-first mindset is mandatory

@@ -156,6 +156,41 @@ verify_env_embed() {
   fi
 }
 
+# app-id marker 검증: 잘못된 앱을 잘못된 경로로 배포하는 사고 방지
+# 사용: verify_app_id <local_dist> <expected_id> <ssh_key> <user@host> <remote_path>
+# - local: dist/.app-id가 expected_id와 일치하는지 확인
+# - remote: 기존 .app-id가 있으면 expected_id와 일치하는지 확인 (다른 앱이면 abort)
+verify_app_id() {
+  local local_dist=$1
+  local expected_id=$2
+  local ssh_key=$3
+  local remote_target=$4
+  local remote_path=$5
+
+  log_info "app-id marker 검증 중..."
+
+  if [ ! -f "$local_dist/.app-id" ]; then
+    log_error "$local_dist/.app-id 없음. public/.app-id 누락 또는 빌드 실패."
+  fi
+  local local_id
+  local_id=$(tr -d '[:space:]' < "$local_dist/.app-id")
+  if [ "$local_id" != "$expected_id" ]; then
+    log_error "로컬 dist marker '$local_id' != 기대값 '$expected_id'. 잘못된 빌드 산출물."
+  fi
+  log_success "로컬 marker 일치: $local_id"
+
+  local remote_id
+  remote_id=$(ssh -i "$ssh_key" "$remote_target" "cat $remote_path/.app-id 2>/dev/null | tr -d '[:space:]'" || true)
+  if [ -n "$remote_id" ] && [ "$remote_id" != "$expected_id" ]; then
+    log_error "원격 $remote_path 가 다른 앱('$remote_id')을 호스팅 중. '$expected_id' 배포를 거부합니다. 의도적 복구라면 원격 .app-id를 먼저 정리하세요."
+  fi
+  if [ -z "$remote_id" ]; then
+    log_warning "원격에 .app-id 없음 (최초 배포 또는 marker 도입 전). 진행."
+  else
+    log_success "원격 marker 일치: $remote_id"
+  fi
+}
+
 # 모노레포 루트 경로
 MONOREPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

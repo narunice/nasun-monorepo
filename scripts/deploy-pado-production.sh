@@ -182,6 +182,8 @@ log_success "빌드 완료 (크기: $BUILD_SIZE)"
 
 verify_env_embed "$APP_NAME" "production"
 
+verify_app_id "$APP_DIR/frontend/dist" "pado-frontend" "$PEM_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "$REMOTE_DIR"
+
 # 드라이런 모드면 종료
 if [ "$DRY_RUN" = true ]; then
   echo ""
