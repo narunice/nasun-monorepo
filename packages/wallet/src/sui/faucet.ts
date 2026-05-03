@@ -62,12 +62,13 @@ export async function checkFaucetAvailable(): Promise<boolean> {
   }
 }
 
-import { getCooldownRemaining, setCooldownTimestamp, clearCooldownTimestamp } from './faucetCooldown';
+import { getCooldownRemaining, setCooldownTimestamp } from './faucetCooldown';
 
 /**
  * Native NSN faucet handler with 24h localStorage cooldown.
  * Uses optimistic locking: sets cooldown BEFORE the HTTP call to prevent
- * concurrent requests from multiple UI components, then rolls back on failure.
+ * concurrent requests from multiple UI components. Lock is never rolled back
+ * since we cannot know if the server processed the request on network/5xx failures.
  */
 export const nativeFaucetHandler: TokenFaucetHandler = {
   request: async (address: string): Promise<boolean> => {
@@ -87,8 +88,10 @@ export const nativeFaucetHandler: TokenFaucetHandler = {
     } catch (err) {
       // If server says cooldown active (429), preserve localStorage and re-throw
       if (err instanceof Error && err.message.includes('cooldown')) throw err;
-      // Rollback cooldown on other failures — user didn't receive tokens
-      clearCooldownTimestamp(address, 'NSN');
+      // Keep optimistic lock even on failure: the request may have reached the server
+      // (network drop after send, 5xx after processing). Rolling back causes a misleading
+      // "Faucet" button when the server already recorded the claim, leading to confusing
+      // 429 errors on the next click. At worst, the user waits until the next daily reset.
       return false;
     }
   },
