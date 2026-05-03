@@ -348,6 +348,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           invalidateBalances();
           return { success: true, digest: result.digest };
         } catch (err) {
+          if (import.meta.env.DEV) console.error('[prediction trade] raw error:', err);
           const message = parseTradeError(err);
           setError(message);
           showToast(message, 'error');

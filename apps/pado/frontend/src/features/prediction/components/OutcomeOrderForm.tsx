@@ -59,13 +59,11 @@ export function OutcomeOrderForm({
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const {
     isLoading,
-    isFaucetLoading,
     bmId,
     createPadoAccount,
     placeBuyTaker,
     placeSellTaker,
     mintTokens,
-    requestNusdc,
   } = usePredictionTrade();
   const { data: multiBalance } = useMultiBalance();
   const queryClient = useQueryClient();
@@ -304,16 +302,7 @@ export function OutcomeOrderForm({
     });
   }, [amount, market.id, mintTokens, startSync, submitGuard]);
 
-  const handleNusdcFaucet = useCallback(async () => {
-    const result = await requestNusdc();
-    if (result.success) {
-      if (result.digest) await waitForTxIndexing(result.digest);
-      queryClient.invalidateQueries({ queryKey: ['wallet-multi-balance'] });
-      setSuccess('100,000 NUSDC received');
-    } else {
-      setError(result.error || 'Failed to get NUSDC');
-    }
-  }, [requestNusdc, queryClient]);
+
 
   const isDisabled =
     !isWalletConnected ||
@@ -344,13 +333,6 @@ export function OutcomeOrderForm({
                 <span className="text-xs sm:text-sm font-normal text-theme-text-muted"> NUSDC</span>
               </p>
             </div>
-            <button
-              onClick={handleNusdcFaucet}
-              disabled={isFaucetLoading}
-              className="shrink-0 min-h-[36px] px-3 py-2 text-xs bg-purple-600 hover:bg-purple-700 disabled:opacity-50 rounded text-white transition-colors"
-            >
-              {isFaucetLoading ? 'Requesting...' : 'Get NUSDC'}
-            </button>
           </div>
         </div>
       )}
@@ -510,23 +492,23 @@ export function OutcomeOrderForm({
           const profit = potentialPayout - cost;
           const returnPct = cost > 0 ? (profit / cost) * 100 : 0;
           const cappedReturn = Math.min(returnPct, 9999);
+          const isYes = outcomeType === 'yes';
           return (
-            <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1.5 text-sm">
-              <div className="flex justify-between">
-                <span className="text-theme-text-muted">Est. shares</span>
-                <span className="font-mono text-theme-text-primary">
-                  {estimatedShares.toFixed(2)} {outcomeType.toUpperCase()}
+            <div className={`rounded-xl p-4 border ${isYes ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+              <p className="text-xs text-theme-text-muted mb-1">
+                If {outcomeType.toUpperCase()} wins
+              </p>
+              <div className="flex items-baseline gap-2">
+                <span className={`text-2xl font-bold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+                  ${potentialPayout.toFixed(2)}
+                </span>
+                <span className={`text-sm font-semibold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+                  ({returnPct >= 0 ? '+' : ''}{cappedReturn.toFixed(0)}%)
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-theme-text-muted">If {outcomeType.toUpperCase()} wins</span>
-                <span className="font-mono">
-                  <span className="text-green-500">${potentialPayout.toFixed(2)}</span>
-                  <span className="text-green-500/70 ml-1.5 text-xs">
-                    ({returnPct >= 0 ? '+' : ''}{cappedReturn.toFixed(0)}%)
-                  </span>
-                </span>
-              </div>
+              <p className="text-xs text-theme-text-muted mt-2">
+                {estimatedShares.toFixed(2)} shares &times; $1.00
+              </p>
             </div>
           );
         })()}
