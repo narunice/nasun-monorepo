@@ -10,6 +10,10 @@ export const NETWORK_CONFIG = {
   // DeepBook V3
   deepbookPackage: import.meta.env.VITE_DEEPBOOK_PACKAGE,
   deepbookRegistry: import.meta.env.VITE_DEEPBOOK_REGISTRY,
+  // DEEP token used for DeepBook taker fees. Required as a coin argument to
+  // swap_exact_*; for whitelisted pools a zero-DEEP coin is accepted.
+  deepTokenPackage: import.meta.env.VITE_DEEP_TOKEN || '',
+  deepType: `${import.meta.env.VITE_DEEP_TOKEN || ''}::deep::DEEP`,
 
   // Tokens
   tokensPackage: import.meta.env.VITE_TOKENS_PACKAGE,
