@@ -18,7 +18,7 @@ import {
   getMatviewStatus,
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
-import { getActivationBonus, calculateMultiplier, calculateMultiplierV2, isV2CutoverActive } from '../config/ecosystem.js';
+import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
@@ -326,7 +326,7 @@ app.get('/score/:identityId', async (c) => {
         // Sum of base contributions from past snapshots (base_score * multiplier per day)
         // Bonus/gov/referral are queried directly from activity_points (not from snapshots)
         pointsDb!`
-          SELECT COALESCE(SUM(base_score * multiplier), 0)::numeric as base_cumulative
+          SELECT COALESCE(SUM(base_score * COALESCE(multiplier_v2, multiplier)), 0)::numeric as base_cumulative
           FROM ecosystem_score_snapshots
           WHERE identity_id = ${identityId}
         `.then(r => r[0]),
@@ -503,43 +503,37 @@ app.get('/score/:identityId', async (c) => {
 
       const todayStr = new Date().toISOString().slice(0, 10);
 
+      // V3 health-based multiplier. Pre-cutover snapshot rows store their
+      // legacy V1 multiplier in the `multiplier` column; live (today) score
+      // always uses V3.
       let allianceHealth = 100, gpHealth = 100;
       let allianceRestDays = 0, gpRestDays = 0;
-      let isPenalized = false;
-      let multiplier: number;
-
-      if (isV2CutoverActive(todayStr)) {
-        // V3: load health state from DB (no lookahead — invalidate-on-activity updates this)
-        const healthRows = await pointsDb!`
-          SELECT nft_type, health_pct, consecutive_rest_days
-          FROM nft_health_state
-          WHERE identity_id = ${identityId}
-        `;
-        for (const r of healthRows) {
-          if (r.nft_type === 'alliance') {
-            allianceHealth = parseFloat(r.health_pct as string);
-            allianceRestDays = r.consecutive_rest_days as number;
-          }
-          if (r.nft_type === 'genesis-pass') {
-            gpHealth = parseFloat(r.health_pct as string);
-            gpRestDays = r.consecutive_rest_days as number;
-          }
+      const healthRows = await pointsDb!`
+        SELECT nft_type, health_pct, consecutive_rest_days
+        FROM nft_health_state
+        WHERE identity_id = ${identityId}
+      `;
+      for (const r of healthRows) {
+        if (r.nft_type === 'alliance') {
+          allianceHealth = parseFloat(r.health_pct as string);
+          allianceRestDays = r.consecutive_rest_days as number;
         }
-        // GP boost: alliance is locked at 100% in V3 spec. Override DB value
-        // to keep response consistent before next daily health-update sync.
-        if (hasAlliance && hasGenesis) {
-          allianceHealth = 100;
-          allianceRestDays = 0;
+        if (r.nft_type === 'genesis-pass') {
+          gpHealth = parseFloat(r.health_pct as string);
+          gpRestDays = r.consecutive_rest_days as number;
         }
-        multiplier = calculateMultiplierV2(
-          { alliance: allianceHealth, genesisPass: gpHealth },
-          hasAlliance,
-          hasGenesis,
-        );
-      } else {
-        // V1 (pre-cutover): alliance penalty branch removed (policy deprecated 2026-05-02)
-        multiplier = calculateMultiplier(activations);
       }
+      // GP boost: alliance is locked at 100% in V3 spec. Override DB value
+      // to keep response consistent before next daily health-update sync.
+      if (hasAlliance && hasGenesis) {
+        allianceHealth = 100;
+        allianceRestDays = 0;
+      }
+      const multiplier = calculateMultiplier(
+        { alliance: allianceHealth, genesisPass: gpHealth },
+        hasAlliance,
+        hasGenesis,
+      );
 
       const bonusTotal = parseFloat(bonusRow?.bonus_total ?? '0');
       const bonusToday = parseFloat(bonusTodayRow?.bonus_today ?? '0');
@@ -620,7 +614,6 @@ app.get('/score/:identityId', async (c) => {
         scalingFactor,
         multiplier,
         activations,
-        isPenalized,
         hasActiveNft,
         hasAlliance,
         hasGenesis,
@@ -674,29 +667,25 @@ app.get('/score/:identityId', async (c) => {
   const bt = scores.bonusTotal;
 
   const sf = scores.scalingFactor;
-  const todayStr2 = new Date().toISOString().slice(0, 10);
-  const showHealth = isV2CutoverActive(todayStr2);
 
   const data = {
     identityId,
     multiplier: roundTo2(scores.multiplier),
     disabled,
     isWeakened,
-    isPenalized: showHealth ? false : scores.isPenalized,
-    ...(showHealth ? {
-      health: {
-        alliance: {
-          pct: scores.allianceHealth,
-          restDays: scores.allianceRestDays,
-          hasNft: scores.hasAlliance,
-        },
-        genesisPass: {
-          pct: scores.gpHealth,
-          restDays: scores.gpRestDays,
-          hasNft: scores.hasGenesis,
-        },
+    isPenalized: false,
+    health: {
+      alliance: {
+        pct: scores.allianceHealth,
+        restDays: scores.allianceRestDays,
+        hasNft: scores.hasAlliance,
       },
-    } : {}),
+      genesisPass: {
+        pct: scores.gpHealth,
+        restDays: scores.gpRestDays,
+        hasNft: scores.hasGenesis,
+      },
+    },
     bonusTotal: roundTo2(bt),
     referralBonus: roundTo2(scores.refTotal),
     referralScalingFactor: sf,
@@ -1444,12 +1433,13 @@ app.post('/sync/:identityId', async (c) => {
     return c.json({ error: 'rate_limited', message: 'Try again in 20 seconds' }, 429);
   }
 
-  const multiplier = calculateMultiplier(updated);
+  // Multiplier intentionally omitted: V3 multiplier needs a health-state DB
+  // read which is already done by the subsequent /score refetch the frontend
+  // triggers. This endpoint only confirms the activations cache was synced.
   return c.json({
     data: {
       identityId,
       activations: updated,
-      multiplier: roundTo2(multiplier),
       synced: true,
     },
   });
@@ -1499,11 +1489,19 @@ app.get('/snapshot/history/:identityId', async (c) => {
   // The CTE runs LAG over the user's full history before LIMIT so the oldest
   // row in the returned window still gets the correct previous-day baseline.
   // Pre-v2 rows (NULL all_time_staking_scaled) yield 0, which is correct.
+  // Post-V2 cutover rows write to multiplier_v2/ecosystem_score_v2 and leave the
+  // legacy columns NULL (see snapshot-schema.sql). Readers must COALESCE so the
+  // history window stays continuous across the cutover; otherwise V2 days come
+  // back as multiplier=NULL/ecosystem_score=NULL, which the dashboard renders as
+  // a missing bar, a 0-score rank tooltip, and a dropped activity-log row.
   const rows = await pointsDb`
     WITH with_lag AS (
-      SELECT snapshot_date, base_score, multiplier, bonus_total,
+      SELECT snapshot_date, base_score,
+             COALESCE(multiplier_v2, multiplier) AS multiplier,
+             bonus_total,
              COALESCE(referral_bonus, 0) AS referral_bonus,
-             ecosystem_score, is_penalized, rank,
+             COALESCE(ecosystem_score_v2, ecosystem_score) AS ecosystem_score,
+             is_penalized, rank,
              GREATEST(
                COALESCE(all_time_staking_scaled, 0)
                - LAG(COALESCE(all_time_staking_scaled, 0))

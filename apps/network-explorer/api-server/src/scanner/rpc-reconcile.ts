@@ -358,71 +358,181 @@ export async function reconcileFromRpc(
     totalFilled = insertResult.count;
   }
 
-  // If gaps were found, refresh matview and correct the snapshot
+  // If gaps were found, refresh matview and correct the snapshot.
+  // The correction is mission-aware: it computes the new base_score from
+  // activity_points filtered by each user's active mission selection, NOT
+  // from the global ecosystem_daily_scores matview (which doesn't filter
+  // by user_active_missions and would inflate base_score with categories
+  // the user opted out of).
   if (totalFilled > 0) {
     try {
-      await maybeRefreshMatview(true); // force refresh
+      await maybeRefreshMatview(true); // forward-only; live readers depend on it
 
-      // Correct snapshot: only UPDATE where matview > snapshot (new activities found)
-      await pointsDb`
-        WITH new_scores AS (
-          SELECT identity_id, base_score::int as new_base
-          FROM ecosystem_daily_scores
-          WHERE day = ${targetDate}::date
-        )
-        UPDATE ecosystem_score_snapshots s
-        SET base_score = ns.new_base,
-            ecosystem_score = (ns.new_base * s.multiplier + s.bonus_total + s.governance_bonus + s.referral_bonus * ${REFERRAL_ECOSYSTEM_SCALING_FACTOR})::numeric(10,2),
-            is_backfilled = TRUE
-        FROM new_scores ns
-        WHERE s.identity_id = ns.identity_id
-          AND s.snapshot_date = ${targetDate}::date
-          AND s.base_score < ns.new_base
-      `;
-
-      // Insert snapshot rows for users who had no snapshot at all
-      await pointsDb`
-        INSERT INTO ecosystem_score_snapshots
-          (identity_id, snapshot_date, base_score, multiplier, bonus_total,
-           referral_bonus, governance_bonus, ecosystem_score, is_penalized, rank, is_backfilled)
-        SELECT
-          d.identity_id, ${targetDate}::date, d.base_score::int,
-          COALESCE(
-            (SELECT s2.multiplier FROM ecosystem_score_snapshots s2
-             WHERE s2.identity_id = d.identity_id AND s2.multiplier > 0
-             ORDER BY ABS(s2.snapshot_date - ${targetDate}::date) LIMIT 1),
-            0
-          ),
-          0, 0, 0, 0, FALSE, NULL, TRUE
-        FROM ecosystem_daily_scores d
-        LEFT JOIN ecosystem_score_snapshots s
-          ON d.identity_id = s.identity_id AND s.snapshot_date = ${targetDate}::date
-        WHERE d.day = ${targetDate}::date AND s.identity_id IS NULL
-      `;
-
-      // Recalculate ecosystem_score for newly inserted rows
-      await pointsDb`
-        UPDATE ecosystem_score_snapshots
-        SET ecosystem_score = (base_score * multiplier + bonus_total + governance_bonus + referral_bonus * ${REFERRAL_ECOSYSTEM_SCALING_FACTOR})::numeric(10,2)
-        WHERE snapshot_date = ${targetDate}::date AND is_backfilled = TRUE AND ecosystem_score = 0 AND base_score > 0
-      `;
-
-      // Re-rank
-      await pointsDb`
-        WITH ranked AS (
-          SELECT identity_id, ROW_NUMBER() OVER (ORDER BY ecosystem_score DESC) as new_rank
-          FROM ecosystem_score_snapshots
-          WHERE snapshot_date = ${targetDate}::date AND multiplier > 0
-        )
-        UPDATE ecosystem_score_snapshots s
-        SET rank = r.new_rank
-        FROM ranked r
-        WHERE s.identity_id = r.identity_id AND s.snapshot_date = ${targetDate}::date
-      `;
+      await correctSnapshotForReconciledDate(targetDate);
     } catch (err) {
       console.error('[Reconcile] Snapshot correction error:', (err as Error).message);
     }
   }
 
   return totalFilled;
+}
+
+/**
+ * Recompute base_score / ecosystem_score / cumulative columns for a date
+ * after gap-fill. Mirrors daily-snapshot.ts' mission-aware base computation
+ * so post-reconcile snapshots respect each user's mission selection. Also
+ * propagates the all_time_* delta forward to any snapshot rows on later
+ * dates so the per-day cumulative anchor stays consistent.
+ *
+ * Single-block UPDATE keeps the read of "delta" and the apply of "delta"
+ * inside one transaction-shaped query, eliminating the prior pattern of
+ * three separate UPDATE statements that could partially apply.
+ */
+async function correctSnapshotForReconciledDate(targetDate: string): Promise<void> {
+  if (!pointsDb) return;
+  const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
+
+  // Default mission set: must mirror DEFAULT_MISSION_IDS in daily-snapshot.ts.
+  // Empty/missing user_active_missions falls back to this so an attacker who
+  // PUTs [] cannot zero out their snapshot base.
+  const defaultMissions = [
+    'faucet', 'wallet-transfer', 'pado-dex',
+    'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
+  ];
+
+  // Step 1: compute mission-filtered base + multiplier-scaled delta for the date.
+  // The delta CTE captures what would change so we can propagate to forward
+  // cumulative rows in step 2 without re-querying activity_points.
+  const deltaRows = await pointsDb`
+    WITH today_categories AS (
+      SELECT DISTINCT identity_id, category
+      FROM activity_points
+      WHERE tx_timestamp >= ${targetDate}::date
+        AND tx_timestamp <  (${targetDate}::date + interval '1 day')
+        AND NOT flagged
+        AND base_points > 0
+        AND identity_id IS NOT NULL
+        AND category NOT IN (
+          'referral-bonus', 'daily-mission', 'ecosystem-passive',
+          'staking-daily', 'staking'
+        )
+        AND category NOT LIKE 'ecosystem-bonus-%'
+    ),
+    user_effective_missions AS (
+      SELECT tc.identity_id,
+             COALESCE(
+               NULLIF(uam.missions, '{}'),
+               ${defaultMissions}::text[]
+             ) AS missions_arr
+      FROM (SELECT DISTINCT identity_id FROM today_categories) tc
+      LEFT JOIN user_active_missions uam ON uam.identity_id = tc.identity_id
+    ),
+    filtered_base AS (
+      SELECT tc.identity_id,
+             SUM(CASE WHEN tc.category = 'pado-dex' THEN 2 ELSE 1 END)::int AS new_base
+      FROM today_categories tc
+      JOIN user_effective_missions uem ON uem.identity_id = tc.identity_id
+      WHERE tc.category = ANY(uem.missions_arr)
+      GROUP BY tc.identity_id
+    )
+    SELECT s.identity_id,
+           s.base_score::int AS old_base,
+           fb.new_base,
+           COALESCE(s.multiplier_v2, s.multiplier, 0)::numeric AS mult,
+           ((fb.new_base - s.base_score) * COALESCE(s.multiplier_v2, s.multiplier, 0))::numeric AS scored_delta
+    FROM ecosystem_score_snapshots s
+    JOIN filtered_base fb ON fb.identity_id = s.identity_id
+    WHERE s.snapshot_date = ${targetDate}::date
+      AND fb.new_base > s.base_score
+  `;
+
+  if (deltaRows.length === 0) {
+    return; // no row qualifies for an update
+  }
+
+  // Step 2: apply the per-row update + forward-propagate cumulative columns.
+  // Forward propagation keeps prev-anchor reads consistent for tomorrow's
+  // daily-snapshot run; without it, the next snapshot would inherit a stale
+  // all_time_base and propagate the understatement indefinitely.
+  for (const row of deltaRows) {
+    const id = row.identity_id as string;
+    const newBase = row.new_base as number;
+    const mult = parseFloat(row.mult as string);
+    const scoredDelta = parseFloat(row.scored_delta as string);
+
+    // 2a. Update the target date row. Recomputes ecosystem_score from the
+    // canonical formula (base*mult + bonuses + ref*sf + day_staking_scaled).
+    // V1/V2 column choice is driven by which multiplier column is non-NULL.
+    await pointsDb`
+      WITH staking_today AS (
+        SELECT GREATEST(
+                 COALESCE(s.all_time_staking_scaled, 0)
+                 - COALESCE((
+                     SELECT prev.all_time_staking_scaled
+                     FROM ecosystem_score_snapshots prev
+                     WHERE prev.identity_id = ${id}
+                       AND prev.snapshot_date < ${targetDate}::date
+                     ORDER BY prev.snapshot_date DESC
+                     LIMIT 1
+                   ), 0),
+                 0
+               ) AS day_staking_scaled
+        FROM ecosystem_score_snapshots s
+        WHERE s.identity_id = ${id} AND s.snapshot_date = ${targetDate}::date
+      )
+      UPDATE ecosystem_score_snapshots s
+      SET base_score        = ${newBase},
+          all_time_base     = COALESCE(s.all_time_base, 0)  + ${scoredDelta.toFixed(3)}::numeric,
+          all_time_score    = COALESCE(s.all_time_score, 0) + ${scoredDelta.toFixed(3)}::numeric,
+          ecosystem_score   = CASE WHEN s.multiplier IS NOT NULL THEN
+            (${newBase} * s.multiplier + s.bonus_total + s.governance_bonus + s.referral_bonus * ${sf})::numeric(10,2)
+            ELSE s.ecosystem_score END,
+          ecosystem_score_v2 = CASE WHEN s.multiplier_v2 IS NOT NULL THEN
+            (${newBase} * s.multiplier_v2 + s.bonus_total + s.governance_bonus
+             + s.referral_bonus * ${sf} + st.day_staking_scaled)::numeric(14,3)
+            ELSE s.ecosystem_score_v2 END,
+          is_backfilled     = TRUE
+      FROM staking_today st
+      WHERE s.identity_id = ${id}
+        AND s.snapshot_date = ${targetDate}::date
+    `;
+
+    // 2b. Forward-propagate the all_time_base / all_time_score delta to any
+    // existing snapshot rows on later dates (rare unless reconcile runs late).
+    if (scoredDelta !== 0) {
+      await pointsDb`
+        UPDATE ecosystem_score_snapshots
+        SET all_time_base  = COALESCE(all_time_base, 0)  + ${scoredDelta.toFixed(3)}::numeric,
+            all_time_score = COALESCE(all_time_score, 0) + ${scoredDelta.toFixed(3)}::numeric
+        WHERE identity_id = ${id}
+          AND snapshot_date > ${targetDate}::date
+      `;
+    }
+
+    // Suppress unused-var lint
+    void mult;
+  }
+
+  // Step 3: re-rank for the date. Uses COALESCE so V1 and V2 rows compete
+  // on the same scale (the score columns are intentionally on the same
+  // numeric basis -- daily ecosystem score, with V2 just adding staking and
+  // health-derived multiplier).
+  await pointsDb`
+    WITH ranked AS (
+      SELECT identity_id,
+             ROW_NUMBER() OVER (
+               ORDER BY COALESCE(ecosystem_score_v2, ecosystem_score, 0) DESC
+             ) AS new_rank
+      FROM ecosystem_score_snapshots
+      WHERE snapshot_date = ${targetDate}::date
+        AND COALESCE(multiplier_v2, multiplier, 0) > 0
+    )
+    UPDATE ecosystem_score_snapshots s
+    SET rank = r.new_rank
+    FROM ranked r
+    WHERE s.identity_id = r.identity_id
+      AND s.snapshot_date = ${targetDate}::date
+  `;
+
+  console.log(`[Reconcile] Snapshot corrected for ${targetDate}: ${deltaRows.length} rows`);
 }
