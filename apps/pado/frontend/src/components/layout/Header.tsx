@@ -27,6 +27,7 @@ const NAV_ITEMS: NavItem[] = [
   { label: "Perpetuals", path: "/perpetuals", enabled: hasAccess("full") },
   { label: "Predict", path: "/predict", enabled: true },
   { label: "Earn", path: "/earn", enabled: hasAccess("full") },
+  { label: "Pocket", path: "/pocket", enabled: hasAccess("spot") },
 ];
 
 const SOCIAL_ITEMS: DropdownItem[] = [

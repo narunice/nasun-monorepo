@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
 import { useMarginAccount } from "./useMarginAccount";
@@ -28,6 +29,7 @@ function formatNusdc(amount: bigint | undefined): string {
 }
 
 export function MarginAccountCard() {
+  const navigate = useNavigate();
   const { status, account: walletAccount } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const { data: balances } = useMultiBalance();
@@ -72,12 +74,14 @@ export function MarginAccountCard() {
         const { balanceManagerId: newBmId } = await enablePado();
         registerBalanceManager(newBmId);
         showToast("Pado enabled!", "success");
+        navigate('/pocket');
         return;
       }
 
       if (hasBm && !hasMa) {
         await createAccount();
         showToast("Pado enabled!", "success");
+        navigate('/pocket');
         return;
       }
 
@@ -88,6 +92,7 @@ export function MarginAccountCard() {
           return;
         }
         showToast("Pado enabled!", "success");
+        navigate('/pocket');
         return;
       }
 

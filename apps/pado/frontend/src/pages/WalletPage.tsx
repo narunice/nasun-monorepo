@@ -8,7 +8,7 @@
  */
 
 import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { PaymentQRCode } from '../features/payments';
@@ -43,11 +43,19 @@ export function WalletPage() {
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-theme-text-primary">Wallet</h1>
-        <p className="text-sm text-theme-text-secondary mt-1">
-          Manage your wallet and Pado Balance
-        </p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-theme-text-primary">Pado Pocket</h1>
+          <p className="text-sm text-theme-text-secondary mt-1">
+            Your unified funds for Spot, Predict, and Earn
+          </p>
+        </div>
+        <Link
+          to="/portfolio"
+          className="text-sm text-pd3 hover:text-pd2 transition-colors whitespace-nowrap mt-1"
+        >
+          View analytics →
+        </Link>
       </div>
 
       {/* Unified Balance Overview */}
