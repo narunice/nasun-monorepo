@@ -162,13 +162,30 @@ export function clearBalanceManagerId(walletAddress: string): void {
 }
 
 /**
- * Parse Balance field from Move object (nested structure: { fields: { value: string } })
+ * Parse a Move `Balance<T>` field from a getObject({showContent:true}) response.
+ *
+ * Sui RPC has shipped this in several shapes for the same single-field struct:
+ *   1. plain string:     "453000000"
+ *   2. plain number:     453000000
+ *   3. flat object:      { value: "453000000" }
+ *   4. typed wrapper:    { type: "0x2::balance::Balance<...>", fields: { value: "453000000" } }
+ *
+ * Older code only handled (4); upgrades of the margin package surfaced (1) on devnet
+ * and silently zeroed user balances (deposits visible only via total_deposited_usd).
+ * Handle all four.
  */
 function parseBalanceField(field: unknown): bigint {
-  if (field && typeof field === 'object') {
-    const balanceFields = (field as { fields?: { value?: string } }).fields;
-    if (balanceFields?.value) {
-      return BigInt(balanceFields.value);
+  if (field == null) return 0n;
+  if (typeof field === 'string' || typeof field === 'number' || typeof field === 'bigint') {
+    try { return BigInt(field); } catch { return 0n; }
+  }
+  if (typeof field === 'object') {
+    const obj = field as { value?: unknown; fields?: { value?: unknown } };
+    if (obj.fields && obj.fields.value != null) {
+      try { return BigInt(obj.fields.value as string | number); } catch { return 0n; }
+    }
+    if (obj.value != null) {
+      try { return BigInt(obj.value as string | number); } catch { return 0n; }
     }
   }
   return 0n;
