@@ -26,6 +26,9 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
   const cryptoSymbol = market.category === 'crypto'
     ? extractCryptoSymbol(market.question)
     : null;
+  const stockTicker = market.category === 'finance'
+    ? extractStockTicker(market.question)
+    : null;
 
   return (
     <Link
@@ -58,6 +61,20 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
           </div>
           <span className="text-2xl font-extrabold tracking-tight text-theme-text-primary">
             {cryptoSymbol}
+          </span>
+        </div>
+      )}
+
+      {/* Stock Ticker (finance markets) */}
+      {stockTicker && (
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-10 h-10 rounded-md bg-theme-bg-tertiary flex items-center justify-center shrink-0">
+            <span className="text-xs font-bold text-theme-text-secondary">
+              {stockTicker.slice(0, 4)}
+            </span>
+          </div>
+          <span className="text-2xl font-extrabold tracking-tight text-theme-text-primary">
+            {stockTicker}
           </span>
         </div>
       )}
@@ -97,6 +114,13 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
 function extractCryptoSymbol(question: string): string | null {
   // Matches patterns like "Will BTC/USDT...", "Will ETH/USD...", "Will SOL price..."
   const match = question.match(/Will\s+([A-Z]{2,6})(?:\/|\s)/);
+  return match ? match[1] : null;
+}
+
+function extractStockTicker(question: string): string | null {
+  // Matches the parenthesized ticker emitted by create-finance-markets.ts:
+  // "Will Apple Inc. (AAPL) close..." or "Will Samsung (005930.KS) close..."
+  const match = question.match(/\(([A-Z0-9.\-]{1,20})\)/);
   return match ? match[1] : null;
 }
 
