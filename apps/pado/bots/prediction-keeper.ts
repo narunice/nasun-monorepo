@@ -11,16 +11,22 @@
  *   RESOLVED / CANCELLED                 -> skip
  *   non-standard criteria                -> log warn, skip (manual resolve path)
  *
+ * Market discovery:
+ *   If PREDICTION_KEEPER_MARKETS is set, those IDs are pinned (static list).
+ *   Otherwise, markets are discovered from on-chain MarketCreated events and
+ *   refreshed every PREDICTION_KEEPER_DISCOVER_INTERVAL_MS (default 10 min).
+ *   Both modes can be combined: pinned IDs are merged with discovered ones.
+ *
  * Stateless: re-reads on-chain status each tick. Single-instance enforced
  * by env (run on prod only). Gas top-up delegated to keeper-gas-watchdog.
  *
  * Env vars:
- *   PREDICTION_RESOLVER_KEY        Private key (hex or suiprivkey) of the
- *                                  resolver wallet. Must match market.resolver.
- *   PREDICTION_KEEPER_MARKETS      Comma-separated market object IDs.
- *   PREDICTION_KEEPER_INTERVAL_MS  Polling interval (default 60000).
- *   PREDICTION_PACKAGE_ID          Deployed prediction-market package id (required).
- *   NASUN_RPC_URL                  RPC endpoint (default devnet).
+ *   PREDICTION_RESOLVER_KEY                 Private key (hex or suiprivkey).
+ *   PREDICTION_KEEPER_MARKETS               Optional comma-separated market IDs (static pin).
+ *   PREDICTION_KEEPER_INTERVAL_MS           Polling interval (default 60000).
+ *   PREDICTION_KEEPER_DISCOVER_INTERVAL_MS  Market list refresh interval (default 600000).
+ *   PREDICTION_PACKAGE_ID                   Deployed package id (required).
+ *   NASUN_RPC_URL                           RPC endpoint (default devnet).
  *
  * Usage:
  *   node --env-file=.env --import tsx prediction-keeper.ts
@@ -38,6 +44,7 @@ import {
   BINANCE_SYMBOL_TO_COINGECKO,
   type ResolutionCriteria,
 } from './lib/prediction-criteria.js';
+import { discoverMarketIds } from './lib/prediction-market-discovery.js';
 
 // ========================================
 // Configuration
@@ -46,6 +53,7 @@ import {
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const CLOCK_ID = '0x6';
 const DEFAULT_INTERVAL_MS = 60_000;
+const DEFAULT_DISCOVER_INTERVAL_MS = 10 * 60_000;
 const MAX_CONSECUTIVE_ERRORS = 10;
 
 // On-chain status enum (mirrors Move STATUS_*).
@@ -363,6 +371,23 @@ async function tick(
   }
 }
 
+// ========================================
+// Market list (auto-discovery)
+// ========================================
+
+async function buildMarketList(
+  client: SuiClient,
+  packageId: string,
+  pinnedMarkets: string[],
+): Promise<string[]> {
+  const discovered = await discoverMarketIds(client, packageId);
+  const merged = new Map<string, true>();
+  for (const id of [...pinnedMarkets, ...discovered]) {
+    merged.set(id.toLowerCase(), true);
+  }
+  return [...merged.keys()];
+}
+
 async function main(): Promise<void> {
   const keyInput = process.env.PREDICTION_RESOLVER_KEY;
   if (!keyInput) {
@@ -377,15 +402,11 @@ async function main(): Promise<void> {
   }
   const packageId = packageIdRaw.toLowerCase();
 
-  const marketsRaw = process.env.PREDICTION_KEEPER_MARKETS || '';
-  const markets = marketsRaw
+  // Pinned markets (optional): merged with auto-discovered list.
+  const pinnedMarkets = (process.env.PREDICTION_KEEPER_MARKETS || '')
     .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0);
-  if (markets.length === 0) {
-    console.error('PREDICTION_KEEPER_MARKETS must list at least one market id');
-    process.exit(1);
-  }
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
   const intervalMs = parseInt(
     process.env.PREDICTION_KEEPER_INTERVAL_MS || String(DEFAULT_INTERVAL_MS),
@@ -396,6 +417,11 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  const discoverIntervalMs = parseInt(
+    process.env.PREDICTION_KEEPER_DISCOVER_INTERVAL_MS || String(DEFAULT_DISCOVER_INTERVAL_MS),
+    10,
+  );
+
   const keypair = parseKeypair(keyInput);
   const resolverAddress = keypair.toSuiAddress();
   const client = new SuiClient({ url: RPC_URL });
@@ -404,10 +430,14 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] Resolver: ${resolverAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
-  console.log(`[${timestamp()}] Markets (${markets.length}): ${markets.join(', ')}`);
-  console.log(`[${timestamp()}] Interval: ${intervalMs}ms`);
+  console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none)'}`);
+  console.log(`[${timestamp()}] Tick interval: ${intervalMs}ms  Discover interval: ${discoverIntervalMs}ms`);
 
-  // Interruptible sleep: shutdown signal cancels the wait immediately.
+  // Initial market discovery.
+  let markets = await buildMarketList(client, packageId, pinnedMarkets);
+  let lastDiscoverAt = Date.now();
+  console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
+
   let wakeUp: (() => void) | null = null;
   const sleep = (ms: number) =>
     new Promise<void>((resolve) => {
@@ -439,13 +469,28 @@ async function main(): Promise<void> {
   const runOnce = process.argv.includes('--once');
 
   await tick(client, keypair, packageId, markets, resolverAddress);
-  if (runOnce) {
-    process.exit(0);
-  }
+  if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
     await sleep(intervalMs);
     if (shuttingDown) break;
+
+    // Periodically refresh market list.
+    if (Date.now() - lastDiscoverAt >= discoverIntervalMs) {
+      try {
+        const fresh = await buildMarketList(client, packageId, pinnedMarkets);
+        const added = fresh.filter((id) => !markets.includes(id));
+        if (added.length > 0) {
+          console.log(`[${timestamp()}] Discovery: +${added.length} new market(s): ${added.join(', ')}`);
+        }
+        markets = fresh;
+        lastDiscoverAt = Date.now();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[${timestamp()}] Market discovery refresh failed: ${msg}`);
+      }
+    }
+
     await tick(client, keypair, packageId, markets, resolverAddress);
   }
 }

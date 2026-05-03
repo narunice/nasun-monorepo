@@ -4,24 +4,30 @@
  * Strategy per tick:
  *   1. Fetch market + YES order book.
  *   2. If status != OPEN or now >= close_time: cancel all my YES orders, skip.
- *   3. Compute midpoint from external orders (excluding my own); empty -> 5000 bps.
- *   4. Desired:
+ *   3. Auto-bootstrap: if LP has no YES Position for this market, mint inventory.
+ *   4. Compute midpoint from external orders (excluding my own); empty -> 5000 bps.
+ *   5. Desired:
  *        yes-bid  at max(1, mid - spread/2)
  *        yes-ask  at min(MAX_PRICE-1, mid + spread/2)  (only if I hold a YES Position)
- *   5. Cancel any of my existing YES orders that don't match desired prices.
- *   6. Place new buy-maker (NUSDC depth) and sell-maker (consumes one YES Position).
+ *   6. Cancel any of my existing YES orders that don't match desired prices.
+ *   7. Place new buy-maker (NUSDC depth) and sell-maker (consumes one YES Position).
  *
- * Inventory (YES + NO Positions) must be seeded once via
- * scripts/prediction-lp-bootstrap-mint.ts. This bot never mints.
+ * Market discovery:
+ *   If PREDICTION_LP_MARKETS is set, those IDs are pinned.
+ *   Otherwise, markets are discovered from on-chain MarketCreated events and
+ *   refreshed every PREDICTION_LP_DISCOVER_INTERVAL_MS (default 10 min).
+ *   Newly discovered OPEN markets are auto-bootstrapped (mint YES inventory).
  *
  * Env vars:
- *   PREDICTION_LP_PRIVATE_KEY            ed25519 hex or suiprivkey.
- *   PREDICTION_LP_MARKETS                Comma-separated market object ids.
- *   PREDICTION_LP_SPREAD_BPS             Total quote spread (default 200).
- *   PREDICTION_LP_DEPTH_NUSDC            Bid depth in NUSDC human units (default 100).
- *   PREDICTION_LP_UPDATE_INTERVAL_MS     Tick interval (default 10000).
- *   PREDICTION_PACKAGE_ID                Deployed package id (required).
- *   NASUN_RPC_URL                        RPC endpoint (default devnet).
+ *   PREDICTION_LP_PRIVATE_KEY              ed25519 hex or suiprivkey.
+ *   PREDICTION_LP_MARKETS                  Optional comma-separated market IDs (static pin).
+ *   PREDICTION_LP_SPREAD_BPS               Total quote spread (default 200).
+ *   PREDICTION_LP_DEPTH_NUSDC              Bid depth in NUSDC human units (default 100).
+ *   PREDICTION_LP_BOOTSTRAP_MINT_NUSDC     Inventory mint per new market (default 200).
+ *   PREDICTION_LP_UPDATE_INTERVAL_MS       Tick interval (default 10000).
+ *   PREDICTION_LP_DISCOVER_INTERVAL_MS     Market list refresh interval (default 600000).
+ *   PREDICTION_PACKAGE_ID                  Deployed package id (required).
+ *   NASUN_RPC_URL                          RPC endpoint (default devnet).
  *
  * Usage:
  *   node --env-file=.env --import tsx prediction-lp-bot.ts
@@ -39,6 +45,7 @@ import {
   MAX_PRICE_BPS,
   type BookOrder,
 } from './lib/prediction-quotes.js';
+import { discoverMarketIds } from './lib/prediction-market-discovery.js';
 
 // ========================================
 // Configuration
@@ -54,7 +61,9 @@ const STATUS_OPEN = 0;
 
 const DEFAULT_SPREAD_BPS = 200;
 const DEFAULT_DEPTH_NUSDC = 100;
+const DEFAULT_BOOTSTRAP_MINT_NUSDC = 200;
 const DEFAULT_INTERVAL_MS = 10_000;
+const DEFAULT_DISCOVER_INTERVAL_MS = 10 * 60_000;
 const MAX_CONSECUTIVE_ERRORS = 10;
 const ORDERBOOK_PAGE = 50;
 const MAX_ORDERBOOK_LEVELS = 200;
@@ -255,6 +264,92 @@ async function fetchLargestNUSDCCoin(
 }
 
 // ========================================
+// Auto-bootstrap mint
+// ========================================
+
+// Track markets we've already bootstrapped this process run to avoid redundant
+// RPC checks every tick. Cleared only on restart (acceptable: cheap check on miss).
+const bootstrappedMarkets = new Set<string>();
+
+async function hasYesInventory(
+  client: SuiClient,
+  owner: string,
+  packageId: string,
+  marketId: string,
+): Promise<boolean> {
+  const positionType = `${packageId}::prediction_market::Position`;
+  const target = marketId.toLowerCase();
+  let cursor: string | null | undefined = null;
+  while (true) {
+    const page = await client.getOwnedObjects({
+      owner,
+      filter: { StructType: positionType },
+      options: { showContent: true },
+      cursor: cursor ?? null,
+    });
+    for (const item of page.data) {
+      if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
+      const fields = item.data.content.fields as Record<string, unknown>;
+      if (
+        String(fields.market_id ?? '').toLowerCase() === target &&
+        Boolean(fields.is_yes) &&
+        BigInt(String(fields.shares ?? 0)) > 0n
+      ) {
+        return true;
+      }
+    }
+    if (!page.hasNextPage || !page.nextCursor) break;
+    cursor = page.nextCursor;
+  }
+  return false;
+}
+
+async function bootstrapMint(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  packageId: string,
+  marketId: string,
+  amountRaw: bigint,
+): Promise<void> {
+  const owner = keypair.toSuiAddress();
+  const coin = await fetchLargestNUSDCCoin(client, owner, amountRaw);
+  if (!coin) {
+    console.warn(
+      `[${timestamp()}] ${marketId}: bootstrap skipped — no NUSDC coin >= ${Number(amountRaw) / 10 ** NUSDC_DECIMALS} (fund LP wallet)`,
+    );
+    return;
+  }
+  const tx = new Transaction();
+  const [payment] = tx.splitCoins(tx.object(coin.id), [tx.pure.u64(amountRaw)]);
+  tx.moveCall({
+    target: `${packageId}::prediction_market::mint_outcome_tokens`,
+    arguments: [tx.object(marketId), payment, tx.object(CLOCK_ID)],
+  });
+  const digest = await executeAndWait(client, keypair, tx, 'bootstrap_mint');
+  bootstrappedMarkets.add(marketId.toLowerCase());
+  console.log(`[${timestamp()}] ${marketId}: bootstrap minted ${Number(amountRaw) / 10 ** NUSDC_DECIMALS} NUSDC -> YES+NO positions (${digest.slice(0, 12)})`);
+}
+
+async function ensureBootstrapped(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  packageId: string,
+  marketId: string,
+  amountRaw: bigint,
+): Promise<void> {
+  const key = marketId.toLowerCase();
+  if (bootstrappedMarkets.has(key)) return;
+  const owner = keypair.toSuiAddress();
+  const hasInventory = await hasYesInventory(client, owner, packageId, marketId);
+  if (hasInventory) {
+    bootstrappedMarkets.add(key);
+    return;
+  }
+  console.log(`[${timestamp()}] ${marketId}: no YES inventory — auto-bootstrapping`);
+  await bootstrapMint(client, keypair, packageId, marketId, amountRaw);
+}
+
+// ========================================
 // Tx builders
 // ========================================
 
@@ -332,6 +427,7 @@ async function reconcileMarket(
   marketId: string,
   spreadBps: number,
   depthNusdc: number,
+  bootstrapMintRaw: bigint,
 ): Promise<void> {
   const myAddress = keypair.toSuiAddress();
   const market = await fetchMarketSnapshot(client, marketId);
@@ -341,6 +437,11 @@ async function reconcileMarket(
   }
 
   const closing = market.status !== STATUS_OPEN || Date.now() >= market.closeTime;
+
+  // Auto-bootstrap YES inventory for OPEN markets before quoting.
+  if (!closing) {
+    await ensureBootstrapped(client, keypair, packageId, marketId, bootstrapMintRaw);
+  }
 
   // Always fetch both sides to find my orders for cancellation.
   const emptySide: BookSide = { orders: [], truncated: false };
@@ -501,6 +602,7 @@ async function tick(
   markets: string[],
   spreadBps: number,
   depthNusdc: number,
+  bootstrapMintRaw: bigint,
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
@@ -508,7 +610,7 @@ async function tick(
     for (const marketId of markets) {
       if (shuttingDown) break;
       try {
-        await reconcileMarket(client, keypair, packageId, marketId, spreadBps, depthNusdc);
+        await reconcileMarket(client, keypair, packageId, marketId, spreadBps, depthNusdc, bootstrapMintRaw);
         consecutiveErrors = 0;
       } catch (err) {
         consecutiveErrors++;
@@ -530,6 +632,23 @@ async function tick(
   }
 }
 
+// ========================================
+// Market list (auto-discovery)
+// ========================================
+
+async function buildMarketList(
+  client: SuiClient,
+  packageId: string,
+  pinnedMarkets: string[],
+): Promise<string[]> {
+  const discovered = await discoverMarketIds(client, packageId);
+  const merged = new Map<string, true>();
+  for (const id of [...pinnedMarkets, ...discovered]) {
+    merged.set(id.toLowerCase(), true);
+  }
+  return [...merged.keys()];
+}
+
 async function main(): Promise<void> {
   const keyInput = process.env.PREDICTION_LP_PRIVATE_KEY;
   if (!keyInput) {
@@ -544,21 +663,11 @@ async function main(): Promise<void> {
   }
   const packageId = packageIdRaw.toLowerCase();
 
-  const marketsRaw = process.env.PREDICTION_LP_MARKETS || '';
-  const markets = marketsRaw
+  // Pinned markets (optional): merged with auto-discovered list.
+  const pinnedMarkets = (process.env.PREDICTION_LP_MARKETS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
-    .filter((s) => s.length > 0);
-  if (markets.length === 0) {
-    console.error('PREDICTION_LP_MARKETS must list at least one market id');
-    process.exit(1);
-  }
-  for (const m of markets) {
-    if (!/^0x[0-9a-f]{64}$/.test(m)) {
-      console.error(`PREDICTION_LP_MARKETS: invalid market id ${m} (expected 0x-prefixed 32-byte hex)`);
-      process.exit(1);
-    }
-  }
+    .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
   const spreadBps = parseInt(process.env.PREDICTION_LP_SPREAD_BPS || String(DEFAULT_SPREAD_BPS), 10);
   if (!Number.isFinite(spreadBps) || spreadBps < 10 || spreadBps > 5000) {
@@ -570,6 +679,15 @@ async function main(): Promise<void> {
     console.error('PREDICTION_LP_DEPTH_NUSDC must be positive');
     process.exit(1);
   }
+  const bootstrapMintNusdc = parseFloat(
+    process.env.PREDICTION_LP_BOOTSTRAP_MINT_NUSDC || String(DEFAULT_BOOTSTRAP_MINT_NUSDC),
+  );
+  if (!Number.isFinite(bootstrapMintNusdc) || bootstrapMintNusdc <= 0) {
+    console.error('PREDICTION_LP_BOOTSTRAP_MINT_NUSDC must be positive');
+    process.exit(1);
+  }
+  const bootstrapMintRaw = BigInt(Math.round(bootstrapMintNusdc * 10 ** NUSDC_DECIMALS));
+
   const intervalMs = parseInt(
     process.env.PREDICTION_LP_UPDATE_INTERVAL_MS || String(DEFAULT_INTERVAL_MS),
     10,
@@ -578,6 +696,10 @@ async function main(): Promise<void> {
     console.error('PREDICTION_LP_UPDATE_INTERVAL_MS must be >= 2000');
     process.exit(1);
   }
+  const discoverIntervalMs = parseInt(
+    process.env.PREDICTION_LP_DISCOVER_INTERVAL_MS || String(DEFAULT_DISCOVER_INTERVAL_MS),
+    10,
+  );
 
   const keypair = parseKeypair(keyInput);
   const lpAddress = keypair.toSuiAddress();
@@ -587,10 +709,15 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] LP wallet: ${lpAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
-  console.log(`[${timestamp()}] Markets (${markets.length}): ${markets.join(', ')}`);
+  console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none — auto-discover only)'}`);
   console.log(
-    `[${timestamp()}] Spread=${spreadBps}bps depth=${depthNusdc} NUSDC interval=${intervalMs}ms`,
+    `[${timestamp()}] Spread=${spreadBps}bps depth=${depthNusdc} bootstrap=${bootstrapMintNusdc} NUSDC tick=${intervalMs}ms discover=${discoverIntervalMs}ms`,
   );
+
+  // Initial market discovery.
+  let markets = await buildMarketList(client, packageId, pinnedMarkets);
+  let lastDiscoverAt = Date.now();
+  console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
 
   let wakeUp: (() => void) | null = null;
   const sleep = (ms: number) =>
@@ -622,13 +749,30 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, spreadBps, depthNusdc);
+  await tick(client, keypair, packageId, markets, spreadBps, depthNusdc, bootstrapMintRaw);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
     await sleep(intervalMs);
     if (shuttingDown) break;
-    await tick(client, keypair, packageId, markets, spreadBps, depthNusdc);
+
+    // Periodically refresh market list.
+    if (Date.now() - lastDiscoverAt >= discoverIntervalMs) {
+      try {
+        const fresh = await buildMarketList(client, packageId, pinnedMarkets);
+        const added = fresh.filter((id) => !markets.includes(id));
+        if (added.length > 0) {
+          console.log(`[${timestamp()}] Discovery: +${added.length} new market(s): ${added.join(', ')}`);
+        }
+        markets = fresh;
+        lastDiscoverAt = Date.now();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[${timestamp()}] Market discovery refresh failed: ${msg}`);
+      }
+    }
+
+    await tick(client, keypair, packageId, markets, spreadBps, depthNusdc, bootstrapMintRaw);
   }
 }
 
