@@ -103,7 +103,7 @@ describe('LockedStateUI', () => {
     it('should show lockout warning when locked out', () => {
       vi.mocked(isLockedOut).mockReturnValue(true);
       vi.mocked(getLockoutRemainingMs).mockReturnValue(25000);
-      vi.mocked(getUnlockAttemptState).mockReturnValue({ failedAttempts: 8, lockedUntil: Date.now() + 25000 });
+      vi.mocked(getUnlockAttemptState).mockReturnValue({ failedAttempts: 8, lockoutEndTime: Date.now() + 25000, lastAttemptTime: Date.now() });
 
       render(<LockedStateUI {...defaultProps} />);
 

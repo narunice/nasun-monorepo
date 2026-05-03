@@ -23,6 +23,7 @@ vi.mock('../nft/NFTCard', () => ({
 
 const defaultProps = {
   isEVM: false,
+  isExternalMove: false,
   chain: { name: 'Nasun Devnet', nativeCurrency: { symbol: 'NSN' } },
   storedEVMAddress: null as string | null,
   evmBalance: null as { display: string } | null,
@@ -34,6 +35,9 @@ const defaultProps = {
     },
   },
   balancesLoading: false,
+  erc20Loading: false,
+  moveNativeBalance: undefined as { formattedBalance: string } | undefined,
+  moveNativeLoading: false,
   networkType: 'devnet',
   getAllTokens: () => [
     { symbol: 'NSN' },
@@ -111,8 +115,8 @@ describe('AssetsTabContent', () => {
 
     it('should show NFT count when present', () => {
       const nfts = [
-        { objectId: '0x1', name: 'NFT 1', imageUrl: '', description: '' },
-        { objectId: '0x2', name: 'NFT 2', imageUrl: '', description: '' },
+        { objectId: '0x1', version: '1', digest: 'abc', type: 'test::nft::NFT', display: { name: 'NFT 1', description: '', image_url: '' } },
+        { objectId: '0x2', version: '1', digest: 'def', type: 'test::nft::NFT', display: { name: 'NFT 2', description: '', image_url: '' } },
       ];
       render(<AssetsTabContent {...defaultProps} accumulatedNfts={nfts} />);
       expect(screen.getByText('NFTs (2)')).toBeInTheDocument();

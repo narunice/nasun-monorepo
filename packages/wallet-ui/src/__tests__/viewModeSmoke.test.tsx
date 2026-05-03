@@ -12,44 +12,43 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render } from './setup';
 import type { ViewMode } from '../connect/types';
 
 // Stub all view components to prevent deep rendering
 vi.mock('../connect/wallet-views', () => ({
-  ConnectedView: (props: any) => <div data-testid="connected-view" />,
-  DisconnectedView: (props: any) => <div data-testid="disconnected-view" />,
-  CreateWalletView: (props: any) => <div data-testid="create-wallet-view" />,
-  AutoLockSetupView: (props: any) => <div data-testid="auto-lock-view" />,
-  LedgerConnectView: (props: any) => <div data-testid="ledger-connect-view" />,
-  LedgerSelectView: (props: any) => <div data-testid="ledger-select-view" />,
-  LedgerConnectedView: (props: any) => <div data-testid="ledger-connected-view" />,
-  NsaViewRouter: (props: any) => <div data-testid="nsa-view-router" />,
-  PasskeySetupView: (props: any) => <div data-testid="passkey-setup-view" />,
-  BackupView: (props: any) => <div data-testid="backup-view" />,
-  ImportView: (props: any) => <div data-testid="import-view" />,
-  ExportView: (props: any) => <div data-testid="export-view" />,
-  SendView: (props: any) => <div data-testid="send-view" />,
-  StakingView: (props: any) => <div data-testid="staking-view" />,
-  PortfolioView: (props: any) => <div data-testid="portfolio-view" />,
-  NasunLinkView: (props: any) => <div data-testid="nasun-link-view" />,
-  SettingsView: (props: any) => <div data-testid="settings-view" />,
-  AddressBookView: (props: any) => <div data-testid="address-book-view" />,
-  ReceiveView: (props: any) => <div data-testid="receive-view" />,
-  AddTokenView: (props: any) => <div data-testid="add-token-view" />,
-  DeleteConfirmationView: (props: any) => <div data-testid="delete-confirmation-view" />,
+  ConnectedView: () => <div data-testid="connected-view" />,
+  DisconnectedView: () => <div data-testid="disconnected-view" />,
+  CreateWalletView: () => <div data-testid="create-wallet-view" />,
+  AutoLockSetupView: () => <div data-testid="auto-lock-view" />,
+  LedgerConnectView: () => <div data-testid="ledger-connect-view" />,
+  LedgerSelectView: () => <div data-testid="ledger-select-view" />,
+  LedgerConnectedView: () => <div data-testid="ledger-connected-view" />,
+  NsaViewRouter: () => <div data-testid="nsa-view-router" />,
+  PasskeySetupView: () => <div data-testid="passkey-setup-view" />,
+  BackupView: () => <div data-testid="backup-view" />,
+  ImportView: () => <div data-testid="import-view" />,
+  ExportView: () => <div data-testid="export-view" />,
+  SendView: () => <div data-testid="send-view" />,
+  StakingView: () => <div data-testid="staking-view" />,
+  PortfolioView: () => <div data-testid="portfolio-view" />,
+  NasunLinkView: () => <div data-testid="nasun-link-view" />,
+  SettingsView: () => <div data-testid="settings-view" />,
+  AddressBookView: () => <div data-testid="address-book-view" />,
+  ReceiveView: () => <div data-testid="receive-view" />,
+  AddTokenView: () => <div data-testid="add-token-view" />,
+  DeleteConfirmationView: () => <div data-testid="delete-confirmation-view" />,
 }));
 
 vi.mock('../connect/LockedStateUI', () => ({
-  LockedStateUI: (props: any) => <div data-testid="locked-state-ui" />,
+  LockedStateUI: () => <div data-testid="locked-state-ui" />,
 }));
 
 vi.mock('../walletconnect', () => ({
-  WCViewRouter: (props: any) => <div data-testid="wc-view-router" />,
+  WCViewRouter: () => <div data-testid="wc-view-router" />,
 }));
 
 vi.mock('../nsa', () => ({
-  NsaRestorePanel: (props: any) => <div data-testid="nsa-restore-panel" />,
+  NsaRestorePanel: () => <div data-testid="nsa-restore-panel" />,
 }));
 
 // Mock the hook helpers to no-ops
