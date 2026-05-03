@@ -12,6 +12,7 @@ import { findUserBalanceManager } from '../trading/lib/balanceManagerValidation'
 import { getBalanceManagerBalances } from '../../lib/deepbook';
 import { buildWithdrawAll } from '../trading/transactions';
 import { POOLS, TOKENS } from '../../config/network';
+import { floatToRaw } from '../../lib/unified-margin';
 
 interface SignAndExecute {
   (tx: Transaction): Promise<{ digest: string }>;
@@ -32,8 +33,8 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecute): RecoveryAda
         } catch {
           // Balance unavailable; hasFunds will be false, item will be disabled
         }
-        const nbtcRaw = BigInt(Math.round(balances.base * 10 ** TOKENS.NBTC.decimals));
-        const nusdcRaw = BigInt(Math.round(balances.quote * 10 ** TOKENS.NUSDC.decimals));
+        const nbtcRaw = floatToRaw(balances.base, TOKENS.NBTC.decimals);
+        const nusdcRaw = floatToRaw(balances.quote, TOKENS.NUSDC.decimals);
         const hasFunds = nbtcRaw > 0n || nusdcRaw > 0n;
         return {
           id,
