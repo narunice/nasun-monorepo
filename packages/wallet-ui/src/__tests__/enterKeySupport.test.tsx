@@ -201,9 +201,10 @@ function pressSpace(el: HTMLElement) {
 
 const MOCK_NFT = {
   objectId: '0x' + 'f'.repeat(64),
+  version: '1',
+  digest: 'abc123',
   type: 'test::nft::NFT',
   display: { name: 'Test NFT', description: 'A test NFT', image_url: '' },
-  owner: VALID_SUI,
 };
 
 // ─── beforeEach ────────────────────────────────────────────────────
@@ -470,10 +471,20 @@ describe('AddERC20Token Enter Key', () => {
         nativeCurrency: { symbol: 'ETH', name: 'Ether', decimals: 18 },
         rpcUrl: 'http://localhost:8545',
       },
+      chainId: 'evm-test',
       isEVM: true,
-      isMoveChain: false,
+      isMove: false,
+      isNasun: false,
+      isExternalMove: false,
+      isTestnet: true,
+      supportsAA: false,
+      chains: [],
+      evmChains: [],
+      moveChains: [],
+      nasunChains: [],
+      externalMoveChains: [],
       switchChain: vi.fn(),
-      availableChains: [],
+      switchChainByEvmId: vi.fn(),
     } as ReturnType<typeof walletModule.useChain>);
   });
 
