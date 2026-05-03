@@ -584,7 +584,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
                 tradingQuote={bmBalance.quote}
                 marginQuote={marginQuote}
                 mode="simple"
-                onWithdraw={() => { handleWithdrawAllPado(); }}
+                onWithdraw={() => { void handleWithdrawAllPado(); }}
               />
             </div>
           )}

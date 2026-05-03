@@ -44,7 +44,11 @@ export function usePadoAccount(): PadoAccountState {
     queryKey: ['bm-balance-pado-account', balanceManagerId],
     queryFn: async () => {
       if (!balanceManagerId) return { base: 0, quote: 0 };
-      return getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
+      try {
+        return await getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
+      } catch {
+        return { base: 0, quote: 0 };
+      }
     },
     refetchInterval: adaptiveInterval,
     staleTime: 5000,

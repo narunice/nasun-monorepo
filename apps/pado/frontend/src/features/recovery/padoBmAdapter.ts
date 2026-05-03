@@ -25,7 +25,13 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecute): RecoveryAda
       const items: RecoverableItem[] = [];
 
       const buildItem = async (id: string, label: string): Promise<RecoverableItem> => {
-        const balances = await getBalanceManagerBalances(id, POOLS.NBTC_NUSDC);
+        // Gracefully degrade on RPC failure — show disabled item rather than crashing recovery UI
+        let balances = { base: 0, quote: 0 };
+        try {
+          balances = await getBalanceManagerBalances(id, POOLS.NBTC_NUSDC);
+        } catch {
+          // Balance unavailable; hasFunds will be false, item will be disabled
+        }
         const nbtcRaw = BigInt(Math.round(balances.base * 10 ** TOKENS.NBTC.decimals));
         const nusdcRaw = BigInt(Math.round(balances.quote * 10 ** TOKENS.NUSDC.decimals));
         const hasFunds = nbtcRaw > 0n || nusdcRaw > 0n;
