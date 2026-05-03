@@ -37,3 +37,4 @@ export {
 export { MarginAccountCard } from './MarginAccountCard';
 export { UnifiedBalanceCard } from './UnifiedBalanceCard';
 export { SmartAccountPanel } from './SmartAccountPanel';
+export { WithdrawAllConfirmModal } from './WithdrawAllConfirmModal';

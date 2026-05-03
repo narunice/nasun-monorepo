@@ -19,7 +19,8 @@ import { TPSLKeeperModal, isKeeperModalSeen } from '../components/TPSLKeeperModa
 import type { ScaleOrderItem } from '../components/ScaleOrderForm';
 import type { PriceLevel } from '../../../lib/deepbook';
 import { GAS_RESERVE_HUMAN, NATIVE_TOKEN_TYPE } from '../constants';
-import { useMarginAccount } from '../../core/unified-margin';
+import { useMarginAccount, WithdrawAllConfirmModal } from '../../core/unified-margin';
+import { floatToRaw } from '../../../lib/unified-margin';
 
 // Stable empty array reference to avoid useMemo invalidation
 const EMPTY_LEVELS: PriceLevel[] = [];
@@ -193,11 +194,15 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const bmBalance = bmBalanceData ?? { base: 0, quote: 0 };
 
   // MA balance for Available display (NUSDC units → human-readable)
-  const { account: maAccount } = useMarginAccount();
+  const { account: maAccount, isWithdrawing } = useMarginAccount();
   const marginQuote = Number(maAccount?.nusdcBalance ?? 0n) / 1e6;
 
   // In-orders locked amounts (buy orders lock quote, sell orders lock base)
   const { lockedQuote, lockedBase } = calcLockedAmounts(openOrders);
+
+  // Withdraw All confirmation modal state
+  const [showWithdrawAllConfirm, setShowWithdrawAllConfirm] = useState(false);
+  const [withdrawAllError, setWithdrawAllError] = useState<string | null>(null);
 
   // Withdraw modal state for TransferModal
   const [withdrawModal, setWithdrawModal] = useState<{
@@ -584,7 +589,7 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
                 tradingQuote={bmBalance.quote}
                 marginQuote={marginQuote}
                 mode="simple"
-                onWithdraw={() => { void handleWithdrawAllPado(); }}
+                onWithdraw={() => setShowWithdrawAllConfirm(true)}
               />
             </div>
           )}
@@ -605,6 +610,27 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               if (result.success) setWithdrawModal(null);
               return result;
             }}
+          />
+        )}
+
+        {/* Withdraw All Confirmation Modal */}
+        {showWithdrawAllConfirm && (
+          <WithdrawAllConfirmModal
+            bmNusdcRaw={floatToRaw(bmBalance.quote, 6)}
+            bmNbtcRaw={floatToRaw(bmBalance.base, 8)}
+            maNusdcRaw={maAccount?.nusdcBalance ?? 0n}
+            isLoading={isWithdrawing}
+            error={withdrawAllError}
+            onConfirm={async () => {
+              setWithdrawAllError(null);
+              const result = await handleWithdrawAllPado();
+              if (result.success) {
+                setShowWithdrawAllConfirm(false);
+              } else {
+                setWithdrawAllError('Withdraw failed. Please try again.');
+              }
+            }}
+            onCancel={() => setShowWithdrawAllConfirm(false)}
           />
         )}
       </div>

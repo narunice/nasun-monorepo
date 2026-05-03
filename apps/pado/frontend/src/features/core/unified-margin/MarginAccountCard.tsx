@@ -12,6 +12,7 @@ import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
 import { useMarginAccount } from "./useMarginAccount";
 import { usePadoAccount } from "./usePadoAccount";
+import { WithdrawAllConfirmModal } from "./WithdrawAllConfirmModal";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
 import { floatToRaw } from "../../../lib/unified-margin";
@@ -101,9 +102,11 @@ export function MarginAccountCard() {
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [showWithdrawAllConfirm, setShowWithdrawAllConfirm] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [withdrawAllError, setWithdrawAllError] = useState<string | null>(null);
   const [showGasWarning, setShowGasWarning] = useState(false);
 
   const isConnected = (status === "unlocked" && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
@@ -133,12 +136,15 @@ export function MarginAccountCard() {
     }
   };
 
-  // Handle withdraw all from Pado (BM + MA combined, mutation fetches fresh BM balance internally)
-  const handleWithdrawAllPado = async () => {
+  // Handle withdraw all from Pado (BM + MA combined).
+  // Returns success flag so caller can decide whether to close the confirm modal.
+  const handleWithdrawAllPado = async (): Promise<{ success: boolean }> => {
     try {
       await withdrawAllPado();
+      return { success: true };
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Withdraw failed");
+      setWithdrawAllError(err instanceof Error ? err.message : "Withdraw failed");
+      return { success: false };
     }
   };
 
@@ -230,11 +236,18 @@ export function MarginAccountCard() {
 
       {/* Balance */}
       <div className="mb-4">
-        <div className="text-sm text-theme-text-secondary mb-1">Available Balance</div>
+        <div className="text-sm text-theme-text-secondary mb-1">Total Pado Balance</div>
         <div className="text-2xl font-bold text-theme-text-primary">
           {formatNusdc(padoAccount.totalNusdcRaw)}{" "}
           <span className="text-base font-normal text-theme-text-secondary">NUSDC</span>
         </div>
+        {(padoAccount.breakdown.bm.quoteRaw > 0n || padoAccount.breakdown.bm.baseRaw > 0n) && (
+          <div className="flex gap-3 mt-1 text-xs text-theme-text-muted">
+            <span>Trading: {formatNusdc(padoAccount.breakdown.bm.quoteRaw)}</span>
+            <span>|</span>
+            <span>Margin: {formatNusdc(padoAccount.breakdown.ma.nusdcRaw)}</span>
+          </div>
+        )}
       </div>
 
       {/* Stats */}
@@ -270,11 +283,11 @@ export function MarginAccountCard() {
         </button>
       </div>
 
-      {/* Withdraw All from Pado (BM + MA combined) */}
+      {/* Withdraw All from Pado (BM + MA combined) — opens confirm modal */}
       {(padoAccount.breakdown.bm.quoteRaw > 0n || padoAccount.breakdown.bm.baseRaw > 0n) && (
         <div className="mt-3">
           <button
-            onClick={handleWithdrawAllPado}
+            onClick={() => { setWithdrawAllError(null); setShowWithdrawAllConfirm(true); }}
             disabled={isWithdrawing}
             className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50"
           >
@@ -365,6 +378,22 @@ export function MarginAccountCard() {
         </div>
       )}
 
+      {/* Withdraw All Confirmation Modal */}
+      {showWithdrawAllConfirm && (
+        <WithdrawAllConfirmModal
+          bmNusdcRaw={padoAccount.breakdown.bm.quoteRaw}
+          bmNbtcRaw={padoAccount.breakdown.bm.baseRaw}
+          maNusdcRaw={padoAccount.breakdown.ma.nusdcRaw}
+          isLoading={isWithdrawing}
+          error={withdrawAllError}
+          onConfirm={async () => {
+            const result = await handleWithdrawAllPado();
+            if (result.success) setShowWithdrawAllConfirm(false);
+          }}
+          onCancel={() => setShowWithdrawAllConfirm(false)}
+        />
+      )}
+
       {/* Withdraw Modal */}
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -375,7 +404,7 @@ export function MarginAccountCard() {
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-theme-text-secondary">Amount</span>
                 <span className="text-theme-text-muted">
-                  Available: {formatNusdc(account?.nusdcBalance)} NUSDC
+                  Margin Account: {formatNusdc(account?.nusdcBalance)} NUSDC
                 </span>
               </div>
               <div className="relative">
