@@ -62,7 +62,10 @@ interface FinanceTemplate {
   horizons: Horizon[];
 }
 
-// v1: AAPL only. Add NVDA / 005930.KS / 000660.KS in v2 once pipeline proven.
+// v1: AAPL + NVDA (Twelve Data primary) + 005930.KS Samsung (Yahoo primary —
+// Twelve Data free tier does not include KRX listings, so KR markets run on
+// Yahoo alone with no cross-source agreement). Thresholds are picked off the
+// 2026-05-01 close as a mix of likely-YES (1w), ~50/50 (1m), and bullish (3m).
 const FINANCE_TEMPLATES: FinanceTemplate[] = [
   {
     ticker: 'AAPL',
@@ -73,6 +76,28 @@ const FINANCE_TEMPLATES: FinanceTemplate[] = [
       { label: '1w', daysFromNow: 7,  threshold: 270, op: '>' },
       { label: '1m', daysFromNow: 30, threshold: 290, op: '>' },
       { label: '3m', daysFromNow: 90, threshold: 320, op: '>' },
+    ],
+  },
+  {
+    ticker: 'NVDA',
+    market: 'NYSE',
+    currency: 'USD',
+    displayName: 'NVIDIA Corporation',
+    horizons: [
+      { label: '1w', daysFromNow: 7,  threshold: 195, op: '>' },
+      { label: '1m', daysFromNow: 30, threshold: 210, op: '>' },
+      { label: '3m', daysFromNow: 90, threshold: 240, op: '>' },
+    ],
+  },
+  {
+    ticker: '005930.KS',
+    market: 'KRX',
+    currency: 'KRW',
+    displayName: 'Samsung Electronics',
+    horizons: [
+      { label: '1w', daysFromNow: 7,  threshold: 215_000, op: '>' },
+      { label: '1m', daysFromNow: 30, threshold: 230_000, op: '>' },
+      { label: '3m', daysFromNow: 90, threshold: 260_000, op: '>' },
     ],
   },
 ];
@@ -164,6 +189,15 @@ function resolveCloseTime(template: FinanceTemplate, horizon: Horizon, fromMs: n
   return sessionCloseUtc(template.market, tradingDay);
 }
 
+function primarySourceUrl(t: FinanceTemplate): string {
+  // Twelve Data free tier does not include KRX listings, so KR markets use
+  // Yahoo Finance as the primary source and run without a cross-source check.
+  if (t.market === 'KRX') {
+    return `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(t.ticker)}`;
+  }
+  return `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(t.ticker)}&interval=1day`;
+}
+
 function buildMarketMeta(spec: MarketSpec): {
   question: string;
   description: string;
@@ -174,8 +208,7 @@ function buildMarketMeta(spec: MarketSpec): {
   const { template: t, horizon: h, closeTimeMs } = spec;
   const readingTime = formatReadingTime(closeTimeMs);
   const sessionDate = localDateString(t.market, new Date(closeTimeMs));
-  const sourceUrl =
-    `https://api.twelvedata.com/time_series?symbol=${encodeURIComponent(t.ticker)}&interval=1day`;
+  const sourceUrl = primarySourceUrl(t);
   const thresholdHuman = formatThresholdHuman(h.threshold, t.currency);
   const direction = h.op === '>' ? 'above' : 'below';
 
@@ -183,12 +216,15 @@ function buildMarketMeta(spec: MarketSpec): {
     `Will ${t.displayName} (${t.ticker}) close ${direction} ${thresholdHuman} ` +
     `on ${sessionDate}?`;
 
+  const sourceDescription = t.market === 'KRX'
+    ? `Price is read from Yahoo Finance (Twelve Data free tier does not list KRX). `
+    : `Price is read from Twelve Data with Yahoo Finance as a cross-source check (5 % agreement required). `;
+
   const description =
     `Daily-close prediction. Resolves YES if the regular-session close of ` +
     `${t.ticker} on ${sessionDate} (${t.market}) is ${h.op} ${thresholdHuman}; ` +
-    `NO otherwise. Price is read from Twelve Data with Yahoo Finance as a ` +
-    `cross-source check (5 % agreement required). Pre-market and after-hours ` +
-    `prices are not used.`;
+    `NO otherwise. ${sourceDescription}` +
+    `Pre-market and after-hours prices are not used.`;
 
   const resolutionSource = sourceUrl;
   const resolutionCriteria =
