@@ -15,7 +15,13 @@ export interface EthOwnershipRecord {
   snapshotDate: string; // YYYY-MM-DD
   holdings: EthNftHolding[];
   totalNftCount: number;
-  source: 'alchemy' | 'etherscan';
+  // 'alchemy'           -> legacy wallet-by-wallet daily collector (eth-collector.ts)
+  // 'alchemy-holder'    -> holder-centric daily collector (eth-collector-v2.ts)
+  // 'alchemy-ondemand'  -> ecosystem-api activate fallback (Phase A negative cache)
+  // 'etherscan'         -> reserved
+  source: 'alchemy' | 'alchemy-holder' | 'alchemy-ondemand' | 'etherscan';
+  // Set by ondemand fallback and v2 collector; absent on legacy v1 rows.
+  lastUpdatedAt?: string;
 }
 
 export interface EthNftHolding {
@@ -133,6 +139,10 @@ export interface EthCollectorEvent {
   source?: 'schedule' | 'manual';
   customDate?: string; // YYYY-MM-DD for backfill
   force?: boolean;
+  // v2 only: read-only mode. Fetches Alchemy + builds intersected records but
+  // skips all DDB writes (BatchWrite, cleanup, META). Returns the SK set so
+  // operators can diff against existing v1 snapshot rows for cutover validation.
+  dryRun?: boolean;
 }
 
 export interface DevnetCollectorEvent {
