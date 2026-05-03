@@ -3,22 +3,16 @@
  * Prediction Market listing page
  */
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarkets, MarketCard, usePredictionAdmin } from '../features/prediction';
-import {
-  usePredictionOnboardingTour,
-  isPredictionTourCompleted,
-} from '../features/prediction/hooks/usePredictionOnboardingTour';
 import { usePredictionFilters } from '../features/prediction/hooks/usePredictionFilters';
 import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
-import { OnboardingTour } from '../features/trading/components/OnboardingTour';
 import { SkeletonCard } from '../components/common';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
   const { isResolver } = usePredictionAdmin();
-  const tour = usePredictionOnboardingTour();
 
   const marketRecords = useMemo(() => markets.map((m) => m.market), [markets]);
   const {
@@ -37,21 +31,6 @@ export function PredictPage() {
       .filter(({ market }) => filteredIds.has(market.id))
       .sort((a, b) => (order.get(a.market.id) ?? 0) - (order.get(b.market.id) ?? 0));
   }, [markets, filtered]);
-
-  // Auto-start the tour at most once per page mount. Using a ref guard avoids
-  // re-firing when the tour object identity changes on subsequent renders.
-  const startRef = useRef(tour.start);
-  startRef.current = tour.start;
-  const tourStartedRef = useRef(false);
-  useEffect(() => {
-    if (isLoading || tourStartedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const force = params.get('tour') === '1';
-    if (!force && isPredictionTourCompleted()) return;
-    tourStartedRef.current = true;
-    const timer = setTimeout(() => startRef.current(), 400);
-    return () => clearTimeout(timer);
-  }, [isLoading]);
 
   if (isLoading) {
     return (
@@ -132,7 +111,6 @@ export function PredictPage() {
         </div>
       )}
 
-      <OnboardingTour tour={tour} />
     </div>
   );
 }
