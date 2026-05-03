@@ -43,7 +43,17 @@ export function InlineRecoveryView({ setViewMode, extraAdapters }: Props) {
         </button>
         <h2 className="text-base xl:text-lg font-medium text-gray-900 dark:text-white">Recover Funds</h2>
       </div>
-      <div className="px-3 py-3">
+      <div className="px-3 py-3 space-y-3">
+        <p className="text-sm text-gray-600 dark:text-zinc-400 leading-relaxed">
+          Several Pado products park your funds in product-specific on-chain accounts that sit outside
+          your wallet balance: a BalanceManager for Spot trading, a Margin Account for Perpetuals
+          collateral, and Position objects for each open Prediction Market share. This page scans every
+          one of those accounts you own and lets you withdraw the remaining balance, redeem winning
+          shares, or refund cancelled-market collateral directly back to your wallet. Use it when a
+          product's normal UI is unavailable, has been deprecated, or you simply want to sweep every
+          last cent back. You normally do not need this — it's an escape hatch for situations where the
+          regular in-app withdraw or claim flow is not an option.
+        </p>
         <AssetRecoveryPanel adapters={adapters} address={address} />
       </div>
     </div>
