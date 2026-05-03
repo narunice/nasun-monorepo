@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as deepbook from './deepbook';
 import {
   formatPrice,
   formatQuantity,
@@ -17,6 +18,8 @@ import {
   snapToTick,
   formatMinQuantity,
   formatMinPrice,
+  recommendedSlippageBps,
+  type SwapQuote,
 } from './deepbook';
 import type { PoolConfig } from '../features/trading/types';
 
@@ -391,5 +394,157 @@ describe('formatMinPrice', () => {
 
   it('formats NSN min price', () => {
     expect(formatMinPrice(NASUN_POOL)).toBe('$0.01');
+  });
+});
+
+// ========================================
+// computeSwapQuote — pure quote logic
+// ========================================
+describe('computeSwapQuote', () => {
+  const baseDecimals = 8;   // NETH-style
+  const quoteDecimals = 6;  // NUSDC
+
+  it('returns null when bids empty', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [],
+      midPrice: 100,
+      baseAmountRaw: 1_00000000n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    });
+    expect(q).toBeNull();
+  });
+
+  it('returns null when baseAmountRaw is 0', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 100, quantity: 10, total: 1000 }],
+      midPrice: 100,
+      baseAmountRaw: 0n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    });
+    expect(q).toBeNull();
+  });
+
+  it('returns null when midPrice is 0', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 100, quantity: 10, total: 1000 }],
+      midPrice: 0,
+      baseAmountRaw: 1_00000000n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    });
+    expect(q).toBeNull();
+  });
+
+  it('quotes 1 NETH @ 1500 NUSDC with 50bps slippage', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 1500, quantity: 5, total: 7500 }],
+      midPrice: 1500,
+      baseAmountRaw: 1_00000000n, // 1 NETH at 8 decimals
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    }) as SwapQuote;
+    // expected = 1 * 1500 NUSDC = 1500 * 10^6 raw
+    expect(q.expectedQuoteRaw).toBe(1500_000000n);
+    // min = 1500 * 0.995 = 1492.5 NUSDC = 1492500000n raw
+    expect(q.minQuoteRaw).toBe(1492500000n);
+    expect(q.effectivePrice).toBe(1500);
+    expect(q.midPrice).toBe(1500);
+    expect(q.priceImpact).toBe(0); // best bid = mid → no impact
+    expect(q.underestimateRisk).toBe(false); // 5 NETH bid covers 1 NETH ask
+  });
+
+  it('marks underestimateRisk when bid depth insufficient', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [
+        { price: 1500, quantity: 0.5, total: 750 }, // only 0.5 NETH at top
+        { price: 1499, quantity: 5,   total: 7495 },
+      ],
+      midPrice: 1500,
+      baseAmountRaw: 1_00000000n, // request 1 NETH
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    }) as SwapQuote;
+    expect(q.underestimateRisk).toBe(true);
+  });
+
+  it('reports priceImpact when best bid sits below mid', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 1485, quantity: 10, total: 14850 }],
+      midPrice: 1500, // ask side at 1515
+      baseAmountRaw: 1_00000000n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    }) as SwapQuote;
+    expect(q.priceImpact).toBeCloseTo((1500 - 1485) / 1500, 6);
+    expect(q.expectedQuoteRaw).toBe(1485_000000n);
+  });
+
+  it('handles 9-decimal base (NSOL)', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 145, quantity: 100, total: 14500 }],
+      midPrice: 145,
+      baseAmountRaw: 10_000_000_000n, // 10 NSOL at 9 decimals
+      baseDecimals: 9,
+      quoteDecimals: 6,
+      slippageBps: 50,
+    }) as SwapQuote;
+    // expected = 10 * 145 = 1450 NUSDC = 1450 * 10^6 raw
+    expect(q.expectedQuoteRaw).toBe(1450_000000n);
+    expect(q.minQuoteRaw).toBe(1442750000n); // 1450 * 0.995
+  });
+
+  it('returns null when bestBidPrice is non-positive', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 0, quantity: 10, total: 0 }],
+      midPrice: 100,
+      baseAmountRaw: 1_00000000n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 50,
+    });
+    expect(q).toBeNull();
+  });
+
+  it('clamps slippageBps >= 10000 to zero minQuote (no negative)', () => {
+    const q = (deepbook as any).computeSwapQuote({
+      bids: [{ price: 1500, quantity: 5, total: 7500 }],
+      midPrice: 1500,
+      baseAmountRaw: 1_00000000n,
+      baseDecimals,
+      quoteDecimals,
+      slippageBps: 20000, // wildly large
+    }) as SwapQuote;
+    expect(q.minQuoteRaw).toBe(0n);
+  });
+});
+
+describe('recommendedSlippageBps', () => {
+  const base = (impact: number): SwapQuote => ({
+    expectedQuoteRaw: 0n,
+    minQuoteRaw: 0n,
+    effectivePrice: 100,
+    midPrice: 100,
+    bestBidPrice: 100,
+    priceImpact: impact,
+    underestimateRisk: false,
+  });
+
+  it('returns 50 for low impact', () => {
+    expect(recommendedSlippageBps(base(0))).toBe(50);
+    expect(recommendedSlippageBps(base(0.001))).toBe(50);
+    expect(recommendedSlippageBps(base(0.004))).toBe(50);
+  });
+
+  it('returns 100 at the 0.5% threshold', () => {
+    expect(recommendedSlippageBps(base(0.005))).toBe(100);
+    expect(recommendedSlippageBps(base(0.02))).toBe(100);
   });
 });

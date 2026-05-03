@@ -3,7 +3,7 @@
  * Orderbook queries and trading functions
  */
 
-import { Transaction } from '@mysten/sui/transactions';
+import { Transaction, type TransactionObjectArgument } from '@mysten/sui/transactions';
 import { getSuiClient } from './sui-client';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../config/network';
 import type { PoolConfig } from '../features/trading/types';
@@ -295,6 +295,155 @@ export function quantityToRaw(quantity: number, decimals: number = TOKENS.NBTC.d
   // Use Math.round to avoid floating-point precision errors
   // e.g., 0.018 * 10^8 = 1799999.9999999998 with floor, but 1800000 with round
   return BigInt(Math.round(quantity * Math.pow(10, decimals)));
+}
+
+// Token symbol → DeepBook pool used for "deposit-as-X" auto-swap.
+// All Pado spot pools quote in NUSDC, so the deposit flow is always a
+// base→quote swap. NUSDC has no entry (no swap needed).
+const DEPOSIT_POOL_FOR: Record<string, PoolConfig | undefined> = {
+  NBTC: POOLS.NBTC_NUSDC, // for fallback callers; NBTC normally deposits direct
+  NETH: POOLS.NETH_NUSDC,
+  NSOL: POOLS.NSOL_NUSDC,
+  NSN:  POOLS.NASUN_NUSDC,
+};
+
+export function depositPoolFor(symbol: string): PoolConfig | undefined {
+  return DEPOSIT_POOL_FOR[symbol];
+}
+
+/**
+ * Conservative swap quote for the deposit flow.
+ *
+ * v1 strategy: use the best bid as the effective price (always equal to or
+ * worse than a full bid-walk for sells), so `minQuoteOut` is safe even when
+ * the book is fragmented. Marks `underestimateRisk` when the requested base
+ * exceeds the best bid's depth so the UI can warn.
+ *
+ * v1.1: replace with full bid-walk for accurate large-order quotes.
+ */
+export interface SwapQuote {
+  /** Expected NUSDC out (raw, 6-decimal) — best-bid based */
+  expectedQuoteRaw: bigint;
+  /** Min NUSDC out enforced in the PTB after slippage tolerance */
+  minQuoteRaw: bigint;
+  /** Effective price (quote per base, human float) used for expected */
+  effectivePrice: number;
+  /** Mid-price snapshot for reference */
+  midPrice: number;
+  /** Best-bid price (= effectivePrice for v1) */
+  bestBidPrice: number;
+  /** (mid - bestBid) / mid → sell-side execution loss vs mid */
+  priceImpact: number;
+  /** True if the best bid level cannot fully fill the requested base amount */
+  underestimateRisk: boolean;
+}
+
+/**
+ * Pure quote computation. Separated from RPC so unit tests can exercise the
+ * decimal arithmetic and edge cases without mocking network calls.
+ */
+export function computeSwapQuote(args: {
+  bids: PriceLevel[];
+  midPrice: number;
+  baseAmountRaw: bigint;
+  baseDecimals: number;
+  quoteDecimals: number;
+  slippageBps: number;
+}): SwapQuote | null {
+  const { bids, midPrice, baseAmountRaw, baseDecimals, quoteDecimals, slippageBps } = args;
+  if (baseAmountRaw <= 0n) return null;
+  if (bids.length === 0 || midPrice === 0) return null;
+
+  const bestBid = bids[0];
+  const bestBidPrice = bestBid.price;
+  if (bestBidPrice <= 0) return null;
+
+  // Convert price (human float, scaled to quote decimals) into a bigint
+  // multiplier. baseAmountRaw is in baseDecimals; we want quote in quoteDecimals.
+  //   expectedQuoteRaw = baseAmountRaw * priceScaled / 10^baseDecimals
+  // priceScaled = round(bestBidPrice * 10^quoteDecimals)
+  const priceScaled = BigInt(Math.round(bestBidPrice * Math.pow(10, quoteDecimals)));
+  const baseScale = 10n ** BigInt(baseDecimals);
+  const expectedQuoteRaw = (baseAmountRaw * priceScaled) / baseScale;
+
+  // minQuoteRaw enforced in PTB: floor(expected * (1 - slippage))
+  const slippageScale = BigInt(Math.max(0, 10000 - slippageBps));
+  const minQuoteRaw = (expectedQuoteRaw * slippageScale) / 10000n;
+
+  const priceImpact = midPrice > 0
+    ? Math.max(0, (midPrice - bestBidPrice) / midPrice)
+    : 0;
+
+  // bestBid.quantity is in human base units; convert to raw for comparison
+  const bestBidBaseRaw = BigInt(Math.round(bestBid.quantity * Math.pow(10, baseDecimals)));
+  const underestimateRisk = bestBidBaseRaw < baseAmountRaw;
+
+  return {
+    expectedQuoteRaw,
+    minQuoteRaw,
+    effectivePrice: bestBidPrice,
+    midPrice,
+    bestBidPrice,
+    priceImpact,
+    underestimateRisk,
+  };
+}
+
+export async function quoteBaseForQuote(
+  pool: PoolConfig,
+  baseAmountRaw: bigint,
+  baseDecimals: number,
+  quoteDecimals: number,
+  slippageBps: number,
+): Promise<SwapQuote | null> {
+  const { bids, midPrice } = await getOrderbook(pool);
+  return computeSwapQuote({ bids, midPrice, baseAmountRaw, baseDecimals, quoteDecimals, slippageBps });
+}
+
+/**
+ * v1 slippage policy: 50bps default; bump to 100bps if price impact ≥ 0.5%.
+ * UI surfaces this as the "recommended" preset; user may override.
+ */
+export function recommendedSlippageBps(quote: SwapQuote): number {
+  return quote.priceImpact >= 0.005 ? 100 : 50;
+}
+
+/**
+ * Append a `swap_exact_base_for_quote` move call to an existing PTB.
+ *
+ * Returns the three output coin TransactionArguments so callers can chain
+ * them (e.g. transfer base/deep dust to sender, deposit quote into MA).
+ *
+ * Pre-flight (probe-deep-fee.ts) verified that Pado pools are whitelisted
+ * (DEEP fee = 0), so callers may pass a `coin::zero<DEEP>` as `deepCoinArg`
+ * without sourcing real DEEP from the user's wallet.
+ */
+export function appendSwapBaseForQuote(
+  tx: Transaction,
+  pool: PoolConfig,
+  baseCoinArg: TransactionObjectArgument,
+  deepCoinArg: TransactionObjectArgument,
+  minQuoteRaw: bigint,
+): [
+  baseOut: TransactionObjectArgument,
+  quoteOut: TransactionObjectArgument,
+  deepOut: TransactionObjectArgument,
+] {
+  if (!pool.id) throw new Error(`Pool id missing for ${pool.name ?? 'pool'}`);
+  if (!pool.baseToken.type || !pool.quoteToken.type) {
+    throw new Error(`Pool token types missing for ${pool.name ?? 'pool'}`);
+  }
+  return tx.moveCall({
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_base_for_quote`,
+    typeArguments: [pool.baseToken.type, pool.quoteToken.type],
+    arguments: [
+      tx.object(pool.id),
+      baseCoinArg,
+      deepCoinArg,
+      tx.pure.u64(minQuoteRaw),
+      tx.object('0x6'), // Clock
+    ],
+  }) as unknown as [TransactionObjectArgument, TransactionObjectArgument, TransactionObjectArgument];
 }
 
 /**

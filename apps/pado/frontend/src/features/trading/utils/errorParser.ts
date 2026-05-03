@@ -28,7 +28,16 @@ const POOL_ERRORS: Record<number, string> = {
   3: 'Invalid quantity (must match lot size)',
   4: 'Order already cancelled or filled',
   5: 'Self-matching not allowed',
-  6: 'Post-only order would cross the book',
+  6: 'Swap rejected by pool. Likely causes: invalid amount, slippage breach, or insufficient liquidity. Try increasing slippage tolerance or reducing the amount.',
+};
+
+// Pado unified_margin 에러 코드 (apps/pado/contracts-margin/sources/unified_margin.move)
+const UNIFIED_MARGIN_ERRORS: Record<number, string> = {
+  0: 'Insufficient Pado Balance for this operation',
+  1: 'Amount must be greater than zero',
+  2: 'You are not the owner of this margin account',
+  3: 'Invalid haircut configuration',
+  4: 'Admin permission required',
 };
 
 // DeepBook V3 order_info 에러 코드 (order_info.move 참조)
@@ -120,6 +129,7 @@ const ERROR_MAPS: Record<string, { errors: Record<number, string>; prefix: strin
   balance_manager: { errors: BALANCE_MANAGER_ERRORS, prefix: 'BM' },
   pool: { errors: POOL_ERRORS, prefix: 'POOL' },
   order_info: { errors: ORDER_INFO_ERRORS, prefix: 'ORDER_INFO' },
+  unified_margin: { errors: UNIFIED_MARGIN_ERRORS, prefix: 'MARGIN' },
 };
 
 /**

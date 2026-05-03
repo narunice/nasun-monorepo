@@ -10,6 +10,8 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../config/network';
+import { appendSwapBaseForQuote } from './deepbook';
+import type { PoolConfig } from '../features/trading/types';
 
 // Contract addresses (V7 deployed, env-configured)
 export const UNIFIED_MARGIN_PACKAGE =
@@ -364,20 +366,34 @@ export function buildDepositTx(
 }
 
 /**
- * Build deposit transaction with split (for partial deposit)
+ * Build deposit transaction with split (for partial deposit).
+ *
+ * If `extraCoinIds` is non-empty, those coins are merged into the primary
+ * coin first so the split has enough balance. Required when no single NUSDC
+ * coin object holds the requested amount (common after many small faucet
+ * claims or auto-deposit fragmentation).
  *
  * @param marginAccountId - User's MarginAccount object ID
- * @param nusdcCoinId - NUSDC coin object ID to split from
+ * @param nusdcCoinId - Primary NUSDC coin object ID to split from
  * @param amount - Amount to deposit (in smallest unit, 6 decimals)
+ * @param extraCoinIds - Additional NUSDC coin object IDs to merge into the primary
  */
 export function buildDepositWithSplitTx(
   marginAccountId: string,
   nusdcCoinId: string,
-  amount: bigint
+  amount: bigint,
+  extraCoinIds: string[] = []
 ): Transaction {
   const tx = new Transaction();
 
-  // Split the exact amount
+  if (extraCoinIds.length > 0) {
+    tx.mergeCoins(
+      tx.object(nusdcCoinId),
+      extraCoinIds.map((id) => tx.object(id))
+    );
+  }
+
+  // Split the exact amount from the (possibly merged) primary coin
   const [depositCoin] = tx.splitCoins(tx.object(nusdcCoinId), [amount]);
 
   tx.moveCall({
@@ -459,20 +475,34 @@ export function buildDepositNbtcTx(
 }
 
 /**
- * Build deposit_nbtc transaction with split (for partial deposit)
+ * Build deposit_nbtc transaction with split (for partial deposit).
+ *
+ * NBTC is native multi-collateral (5% haircut) — deposits go directly into
+ * `MarginAccount.nbtc_balance`, never swapped to NUSDC.
+ *
+ * If `extraCoinIds` is non-empty, those coins are merged into the primary
+ * coin first so the split has enough balance.
  *
  * @param marginAccountId - User's MarginAccount object ID
- * @param nbtcCoinId - NBTC coin object ID to split from
- * @param amount - Amount to deposit (in smallest unit, 8 decimals)
+ * @param nbtcCoinId - Primary NBTC coin object ID to split from
+ * @param amount - Amount to deposit (raw, 8 decimals)
+ * @param extraCoinIds - Additional NBTC coin object IDs to merge into the primary
  */
 export function buildDepositNbtcWithSplitTx(
   marginAccountId: string,
   nbtcCoinId: string,
-  amount: bigint
+  amount: bigint,
+  extraCoinIds: string[] = []
 ): Transaction {
   const tx = new Transaction();
 
-  // Split the exact amount
+  if (extraCoinIds.length > 0) {
+    tx.mergeCoins(
+      tx.object(nbtcCoinId),
+      extraCoinIds.map((id) => tx.object(id))
+    );
+  }
+
   const [depositCoin] = tx.splitCoins(tx.object(nbtcCoinId), [amount]);
 
   tx.moveCall({
@@ -481,6 +511,87 @@ export function buildDepositNbtcWithSplitTx(
       tx.object(marginAccountId),
       tx.object(MARGIN_REGISTRY_ID),
       depositCoin,
+    ],
+  });
+
+  return tx;
+}
+
+/**
+ * Atomic "swap any base token → NUSDC → deposit to MA" PTB.
+ *
+ * Used for tokens that aren't accepted as native collateral (NETH, NSOL, NSN).
+ * The swap step enforces `minQuoteOut`; if the book moves unfavorably the
+ * entire transaction reverts and no state changes — base coins stay merged
+ * but unsplit (no harm done).
+ *
+ * Pre-flight verified that Pado pools are whitelisted (DEEP fee = 0), so we
+ * pass a `coin::zero<DEEP>` as the DeepBook fee coin.
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param pool - DeepBook pool (base/NUSDC). Asserted at runtime that quote = NUSDC
+ * @param baseCoinId - Primary base-token coin object ID
+ * @param baseAmount - Amount of base token to swap (raw, in base decimals)
+ * @param minQuoteOut - Minimum NUSDC out enforced by DeepBook (raw, 6 decimals)
+ * @param sender - Wallet address receiving base/deep dust
+ * @param extraBaseCoinIds - Additional base-token coins to merge into primary
+ */
+export function buildSwapAndDepositTx(args: {
+  marginAccountId: string;
+  pool: PoolConfig;
+  baseCoinId: string;
+  baseAmount: bigint;
+  minQuoteOut: bigint;
+  sender: string;
+  extraBaseCoinIds?: string[];
+}): Transaction {
+  if (args.pool.quoteToken.type !== NUSDC_TYPE) {
+    throw new Error(
+      `Pool quote token is not NUSDC (got ${args.pool.quoteToken.type}); cannot route to unified_margin::deposit`
+    );
+  }
+  if (!NETWORK_CONFIG.deepType) {
+    throw new Error('VITE_DEEP_TOKEN env var missing — cannot construct DEEP coin argument');
+  }
+
+  const tx = new Transaction();
+
+  // 1. (optional) merge fragmented base coins into the primary
+  if (args.extraBaseCoinIds && args.extraBaseCoinIds.length > 0) {
+    tx.mergeCoins(
+      tx.object(args.baseCoinId),
+      args.extraBaseCoinIds.map((id) => tx.object(id))
+    );
+  }
+
+  // 2. split the exact base amount to send into the swap
+  const [baseInput] = tx.splitCoins(tx.object(args.baseCoinId), [args.baseAmount]);
+
+  // 3. zero-DEEP fee coin (pool whitelisted — see probe-deep-fee.ts)
+  const [deepZero] = tx.moveCall({
+    target: '0x2::coin::zero',
+    typeArguments: [NETWORK_CONFIG.deepType],
+  });
+
+  // 4. swap base → NUSDC, with minQuoteOut as slippage floor
+  const [baseOut, quoteOut, deepOut] = appendSwapBaseForQuote(
+    tx,
+    args.pool,
+    baseInput,
+    deepZero,
+    args.minQuoteOut
+  );
+
+  // 5. dust back to sender (base remainder + deep)
+  tx.transferObjects([baseOut, deepOut], tx.pure.address(args.sender));
+
+  // 6. deposit the NUSDC output into MarginAccount
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit`,
+    arguments: [
+      tx.object(args.marginAccountId),
+      tx.object(MARGIN_REGISTRY_ID),
+      quoteOut,
     ],
   });
 

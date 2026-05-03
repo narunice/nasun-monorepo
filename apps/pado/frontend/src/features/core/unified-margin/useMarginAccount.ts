@@ -10,6 +10,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore, getSuiClient } from '@nasun/wallet';
+import { useActiveAddress } from '../../../hooks/useActiveAddress';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import type { SuiObjectChange } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
@@ -22,12 +23,18 @@ import {
   buildCreateAccountTx,
   buildEnablePadoTx,
   buildDepositWithSplitTx,
+  buildDepositNbtcWithSplitTx,
+  buildSwapAndDepositTx,
   buildWithdrawTx,
   buildWithdrawAllTx,
   buildWithdrawAllPadoTx,
   NUSDC_TYPE,
+  NBTC_TYPE,
   type MarginAccountData,
 } from '../../../lib/unified-margin';
+import { depositPoolFor } from '../../../lib/deepbook';
+import { TOKENS } from '../../../config/network';
+import { pickCoinsForAmount, totalBalance } from '../../../lib/coin-selection';
 
 interface UseMarginAccountResult {
   // Account state
@@ -41,6 +48,10 @@ interface UseMarginAccountResult {
   enablePado: () => Promise<{ balanceManagerId: string; marginAccountId: string }>;
   deposit: (nusdcCoinId: string, amount: bigint) => Promise<void>;
   depositByAmount: (rawAmount: bigint) => Promise<void>;
+  /** Deposit NBTC directly as native multi-collateral (no swap). */
+  depositNbtc: (rawAmount: bigint) => Promise<void>;
+  /** Swap a non-NUSDC/non-NBTC token to NUSDC and deposit, atomically. */
+  depositSwap: (params: { fromSymbol: 'NETH' | 'NSOL' | 'NSN'; rawAmount: bigint; minQuoteOut: bigint }) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
   withdrawAllPado: () => Promise<void>;
@@ -60,20 +71,14 @@ export function useMarginAccount(): UseMarginAccountResult {
   const { account: walletAccount, status, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
   const passkeyKeypair = usePasskeyStore((s) => s.keypair);
-  const passkeyAddress = usePasskeyStore((s) => s.address);
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const queryClient = useQueryClient();
   const adaptiveInterval = useAdaptiveInterval(10_000);
 
-  // Determine active wallet (zkLogin > local > passkey)
+  // Use the shared active-address resolver so balance display, deposit
+  // selection, and signing all agree on which wallet is active.
+  const activeAddress = useActiveAddress();
   const isLocalWalletActive = status === 'unlocked' && !!walletAccount?.address;
-  const activeAddress = isZkLoggedIn
-    ? zkState?.address
-    : isLocalWalletActive
-      ? walletAccount?.address
-      : isPasskeyUnlocked
-        ? passkeyAddress ?? undefined
-        : undefined;
   const isWalletConnected = isZkLoggedIn || isLocalWalletActive || isPasskeyUnlocked;
 
   const [marginAccountId, setMarginAccountId] = useState<string | null>(null);
@@ -327,11 +332,29 @@ export function useMarginAccount(): UseMarginAccountResult {
 
       const client = getSuiClient();
       const coins = await client.getCoins({ owner: activeAddress, coinType: NUSDC_TYPE });
-      // Prefer the smallest coin with sufficient balance to minimize fragmentation
+      // Total balance across all coin objects. Faucet claims fragment NUSDC
+      // into many small coins (saw 208 coins / ~23k NUSDC in field), so a
+      // single-coin deposit cannot cover large amounts even when the wallet
+      // total is sufficient.
+      const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
+      // Prefer the smallest coin with sufficient balance (no merge needed).
       const sufficient = coins.data.filter(c => BigInt(c.balance) >= rawAmount);
-      const coin = sufficient.length > 0
-        ? sufficient.reduce((a, b) => BigInt(a.balance) <= BigInt(b.balance) ? a : b)
-        : coins.data[0];
+      let primaryCoin: typeof coins.data[number] | undefined;
+      let extraCoinIds: string[] = [];
+      if (sufficient.length > 0) {
+        primaryCoin = sufficient.reduce((a, b) => BigInt(a.balance) <= BigInt(b.balance) ? a : b);
+      } else if (totalBalance >= rawAmount) {
+        // No single coin is enough but wallet total is. Merge into the largest
+        // coin first, then split the requested amount out of the merged coin.
+        const sortedDesc = [...coins.data].sort((a, b) =>
+          BigInt(b.balance) > BigInt(a.balance) ? 1 : -1
+        );
+        primaryCoin = sortedDesc[0];
+        extraCoinIds = sortedDesc.slice(1).map(c => c.coinObjectId);
+      } else {
+        primaryCoin = coins.data[0];
+      }
+      const coin = primaryCoin;
       if (!coin) {
         // Diagnostic: list all coin types this address actually holds, so we can
         // tell whether the wallet has zero balance vs. a coin-type mismatch
@@ -349,12 +372,80 @@ export function useMarginAccount(): UseMarginAccountResult {
         throw new Error(`No NUSDC coins at ${short}. ${hint}`);
       }
 
-      const tx = buildDepositWithSplitTx(marginAccountId, coin.coinObjectId, rawAmount);
+      const tx = buildDepositWithSplitTx(marginAccountId, coin.coinObjectId, rawAmount, extraCoinIds);
       await signAndExecute(tx);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['margin-account'] });
       queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  // Deposit NBTC directly as native multi-collateral (5% haircut).
+  // Mirrors depositByAmount but routes to deposit_nbtc; NBTC is never swapped.
+  const depositNbtcMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      if (!activeAddress) throw new Error('Wallet not connected');
+
+      const client = getSuiClient();
+      const coins = await client.getCoins({ owner: activeAddress, coinType: NBTC_TYPE });
+      const total = totalBalance(coins.data);
+      if (total < rawAmount) {
+        throw new Error(`Insufficient NBTC balance: have ${total}, need ${rawAmount}`);
+      }
+
+      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const tx = buildDepositNbtcWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  // Atomic swap (base → NUSDC) + deposit. For NETH/NSOL/NSN — tokens that
+  // aren't accepted as native collateral. minQuoteOut is the chain-enforced
+  // slippage floor (computed by the UI from the freshest quote at confirm).
+  const depositSwapMutation = useMutation({
+    mutationFn: async (params: {
+      fromSymbol: 'NETH' | 'NSOL' | 'NSN';
+      rawAmount: bigint;
+      minQuoteOut: bigint;
+    }) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      if (!activeAddress) throw new Error('Wallet not connected');
+
+      const pool = depositPoolFor(params.fromSymbol);
+      if (!pool) throw new Error(`No deposit pool for ${params.fromSymbol}`);
+
+      const tokenType = TOKENS[params.fromSymbol === 'NSN' ? 'NASUN' : params.fromSymbol].type;
+      if (!tokenType) throw new Error(`Token type not configured: ${params.fromSymbol}`);
+
+      const client = getSuiClient();
+      const coins = await client.getCoins({ owner: activeAddress, coinType: tokenType });
+      const total = totalBalance(coins.data);
+      if (total < params.rawAmount) {
+        throw new Error(`Insufficient ${params.fromSymbol} balance: have ${total}, need ${params.rawAmount}`);
+      }
+
+      const { primary, extras } = pickCoinsForAmount(coins.data, params.rawAmount);
+      const tx = buildSwapAndDepositTx({
+        marginAccountId,
+        pool,
+        baseCoinId: primary.coinObjectId,
+        extraBaseCoinIds: extras,
+        baseAmount: params.rawAmount,
+        minQuoteOut: params.minQuoteOut,
+        sender: activeAddress,
+      });
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['orderbook'] });
     },
   });
 
@@ -410,6 +501,14 @@ export function useMarginAccount(): UseMarginAccountResult {
     await depositByAmountMutation.mutateAsync(rawAmount);
   }, [depositByAmountMutation]);
 
+  const depositNbtc = useCallback(async (rawAmount: bigint) => {
+    await depositNbtcMutation.mutateAsync(rawAmount);
+  }, [depositNbtcMutation]);
+
+  const depositSwap = useCallback(async (params: { fromSymbol: 'NETH' | 'NSOL' | 'NSN'; rawAmount: bigint; minQuoteOut: bigint }) => {
+    await depositSwapMutation.mutateAsync(params);
+  }, [depositSwapMutation]);
+
   const withdrawAllPado = useCallback(async () => {
     await withdrawAllPadoMutation.mutateAsync();
   }, [withdrawAllPadoMutation]);
@@ -424,13 +523,19 @@ export function useMarginAccount(): UseMarginAccountResult {
     enablePado,
     deposit,
     depositByAmount,
+    depositNbtc,
+    depositSwap,
     withdraw,
     withdrawAll,
     withdrawAllPado,
 
     isCreating: createAccountMutation.isPending,
     isEnabling: enablePadoMutation.isPending,
-    isDepositing: depositMutation.isPending || depositByAmountMutation.isPending,
+    isDepositing:
+      depositMutation.isPending ||
+      depositByAmountMutation.isPending ||
+      depositNbtcMutation.isPending ||
+      depositSwapMutation.isPending,
     isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending || withdrawAllPadoMutation.isPending,
 
     refetch,

@@ -7,8 +7,9 @@
  * @version 0.2.0 - Renamed from "Unified Margin" to "Pado Balance"
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
 import { useActiveAddress } from "../../../hooks/useActiveAddress";
@@ -18,6 +19,39 @@ import { WithdrawAllConfirmModal } from "./WithdrawAllConfirmModal";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
 import { floatToRaw } from "../../../lib/unified-margin";
+import { quoteBaseForQuote, recommendedSlippageBps, depositPoolFor, type SwapQuote } from "../../../lib/deepbook";
+import { formatUsdValue, getUnifiedPrice, type TokenSymbol } from "../../../lib/prices";
+
+type DepositTab = 'NUSDC' | 'NBTC' | 'NETH' | 'NSOL';
+const DEPOSIT_TABS: DepositTab[] = ['NUSDC', 'NBTC', 'NETH', 'NSOL'];
+const LAST_DEPOSIT_TOKEN_KEY = 'pado:lastDepositToken';
+
+// Token decimal config (mirrors TOKENS in config/network.ts but locally typed
+// to keep this module focused on UI concerns).
+const TOKEN_DECIMALS: Record<DepositTab, number> = {
+  NUSDC: 6,
+  NBTC: 8,
+  NETH: 8,
+  NSOL: 9,
+};
+
+// Slippage presets in basis points (50 = 0.5%, 100 = 1%)
+const SLIPPAGE_PRESETS = [50, 100] as const;
+
+function isDepositTab(v: string | null): v is DepositTab {
+  return v !== null && (DEPOSIT_TABS as readonly string[]).includes(v);
+}
+
+// Lightweight debounce — used only for the quote queryKey so typing bursts
+// don't fan out into multiple stale queries.
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delayMs);
+    return () => clearTimeout(id);
+  }, [value, delayMs]);
+  return debounced;
+}
 
 // Format NUSDC amount (6 decimals)
 function formatNusdc(amount: bigint | undefined): string {
@@ -48,6 +82,8 @@ export function MarginAccountCard() {
     createAccount,
     enablePado,
     depositByAmount,
+    depositNbtc,
+    depositSwap,
     withdraw,
     withdrawAllPado,
     isCreating,
@@ -56,6 +92,7 @@ export function MarginAccountCard() {
     isWithdrawing,
     isLoading,
   } = useMarginAccount();
+  const queryClient = useQueryClient();
 
   const padoAccount = usePadoAccount();
 
@@ -120,30 +157,130 @@ export function MarginAccountCard() {
   const [withdrawAllError, setWithdrawAllError] = useState<string | null>(null);
   const [showGasWarning, setShowGasWarning] = useState(false);
 
+  // Deposit-tab state (multi-token)
+  const [activeTab, setActiveTab] = useState<DepositTab>(() => {
+    const last = typeof window !== 'undefined' ? localStorage.getItem(LAST_DEPOSIT_TOKEN_KEY) : null;
+    return isDepositTab(last) ? last : 'NUSDC';
+  });
+  const [slippageBps, setSlippageBps] = useState<number>(50);
+  const [customSlippage, setCustomSlippage] = useState<string>("");
+
   const isConnected = (status === "unlocked" && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
 
-  // Get wallet balances
-  const nusdcBalance = balances?.tokens?.NUSDC;
-  const walletNusdcAmount = nusdcBalance ? Number(nusdcBalance.balance) / 1e6 : 0;
-  const nasunBalance = balances?.tokens?.NSN;
-  const walletNasunAmount = nasunBalance ? Number(nasunBalance.balance) / 1e9 : 0;
-  const MIN_GAS_RESERVE = 0.1; // Keep at least 0.1 NASUN for gas
+  // Get wallet balances per token (raw bigint)
+  const tokenBalanceRaw: Record<DepositTab, bigint> = {
+    NUSDC: balances?.tokens?.NUSDC?.balance ?? 0n,
+    NBTC:  balances?.tokens?.NBTC?.balance  ?? 0n,
+    NETH:  balances?.tokens?.NETH?.balance  ?? 0n,
+    NSOL:  balances?.tokens?.NSOL?.balance  ?? 0n,
+  };
+  const nasunBalanceRaw = balances?.native?.balance ?? 0n;
+  const walletNasunAmount = Number(nasunBalanceRaw) / 1e9;
+  const MIN_GAS_RESERVE = 0.1; // Keep at least 0.1 NSN for gas
 
-  // Handle deposit
+  // Persist last selected tab
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LAST_DEPOSIT_TOKEN_KEY, activeTab);
+    }
+  }, [activeTab]);
+
+  // Active tab decimal + balance helpers
+  const activeDecimals = TOKEN_DECIMALS[activeTab];
+  const activeBalanceRaw = tokenBalanceRaw[activeTab];
+  const activeBalanceFloat = Number(activeBalanceRaw) / Math.pow(10, activeDecimals);
+
+  // Parse the input amount once for downstream use
+  const amountFloat = parseFloat(depositAmount);
+  const amountValid = !isNaN(amountFloat) && amountFloat > 0;
+  const amountRaw = amountValid ? floatToRaw(amountFloat, activeDecimals) : 0n;
+  const debouncedAmountRaw = useDebouncedValue(amountRaw, 250);
+
+  // Whether this tab needs swap routing
+  const isSwapTab = activeTab === 'NETH' || activeTab === 'NSOL';
+
+  // Live swap quote (NETH/NSOL only). 5s polling, debounced amount key.
+  const { data: quote, error: quoteError } = useQuery<SwapQuote | null>({
+    queryKey: ['deposit-quote', activeTab, debouncedAmountRaw.toString(), slippageBps],
+    queryFn: () => {
+      if (!isSwapTab || debouncedAmountRaw <= 0n) return null;
+      const pool = depositPoolFor(activeTab);
+      if (!pool) return null;
+      return quoteBaseForQuote(pool, debouncedAmountRaw, activeDecimals, 6, slippageBps);
+    },
+    refetchInterval: 5_000,
+    staleTime: 4_000,
+    gcTime: 5_000,
+    enabled: isSwapTab && debouncedAmountRaw > 0n,
+    placeholderData: keepPreviousData,
+  });
+
+  // Auto-bump slippage to recommended value when impact rises (one-shot per quote)
+  useEffect(() => {
+    if (!quote) return;
+    const recommended = recommendedSlippageBps(quote);
+    if (recommended > slippageBps) setSlippageBps(recommended);
+    // depositSwapMutation reads slippageBps via state; this effect only nudges up
+  }, [quote, slippageBps]);
+
+  // USD values for display (best-effort; oracle may be missing on devnet)
+  const tokenSymbolForPrice: TokenSymbol = activeTab === 'NUSDC' ? 'NUSDC' : activeTab;
+  const activePrice = getUnifiedPrice(tokenSymbolForPrice);
+  const amountUsd = activePrice > 0 ? amountFloat * activePrice : null;
+  const balanceUsd = activePrice > 0 ? activeBalanceFloat * activePrice : null;
+  const expectedUsd = quote && quote.expectedQuoteRaw > 0n
+    ? Number(quote.expectedQuoteRaw) / 1e6
+    : null;
+  const minReceivedFloat = quote ? Number(quote.minQuoteRaw) / 1e6 : null;
+
+  // Reset deposit ephemeral state when modal closes/opens or tab changes
+  const resetDepositState = useCallback(() => {
+    setDepositAmount("");
+    setError(null);
+    setShowGasWarning(false);
+    setSlippageBps(50);
+    setCustomSlippage("");
+  }, []);
+
+  // Handle deposit — dispatches based on active tab
   const handleDeposit = async () => {
     setError(null);
-    const amount = parseFloat(depositAmount);
-    if (isNaN(amount) || amount <= 0) {
+    if (!amountValid) {
       setError("Please enter a valid amount");
+      return;
+    }
+    if (amountRaw > activeBalanceRaw) {
+      setError(`Insufficient ${activeTab} balance`);
       return;
     }
 
     try {
-      await depositByAmount(floatToRaw(amount, 6));
+      if (activeTab === 'NUSDC') {
+        await depositByAmount(amountRaw);
+      } else if (activeTab === 'NBTC') {
+        await depositNbtc(amountRaw);
+      } else {
+        // NETH/NSOL: refetch fresh quote then submit with its locked minQuoteOut
+        const pool = depositPoolFor(activeTab);
+        if (!pool) throw new Error(`No deposit pool for ${activeTab}`);
+        const fresh = await queryClient.fetchQuery<SwapQuote | null>({
+          queryKey: ['deposit-quote', activeTab, amountRaw.toString(), slippageBps, 'confirm'],
+          queryFn: () => quoteBaseForQuote(pool, amountRaw, activeDecimals, 6, slippageBps),
+        });
+        if (!fresh) {
+          setError("No liquidity for this trade right now. Try a different token or smaller amount.");
+          return;
+        }
+        await depositSwap({
+          fromSymbol: activeTab,
+          rawAmount: amountRaw,
+          minQuoteOut: fresh.minQuoteRaw,
+        });
+      }
       setShowDepositModal(false);
-      setDepositAmount("");
+      resetDepositState();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Deposit failed");
+      setError(formatErrorMessage(err));
     }
   };
 
@@ -307,17 +444,54 @@ export function MarginAccountCard() {
         </div>
       )}
 
-      {/* Deposit Modal */}
+      {/* Deposit Modal — tabbed (NUSDC | NBTC | NETH | NSOL) */}
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Deposit NUSDC</h3>
+            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Deposit</h3>
 
+            {/* Token Tabs */}
+            <div className="flex gap-1 mb-4 border-b border-theme-border">
+              {DEPOSIT_TABS.map((tab) => {
+                const balance = tokenBalanceRaw[tab];
+                const disabled = balance === 0n;
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => {
+                      if (disabled) return;
+                      setActiveTab(tab);
+                      setDepositAmount("");
+                      setError(null);
+                      setShowGasWarning(false);
+                      setSlippageBps(50);
+                      setCustomSlippage("");
+                    }}
+                    disabled={disabled}
+                    title={disabled ? "No balance" : undefined}
+                    className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                      activeTab === tab
+                        ? 'border-pd2 text-theme-text-primary'
+                        : disabled
+                          ? 'border-transparent text-theme-text-muted cursor-not-allowed opacity-50'
+                          : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Amount input */}
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-theme-text-secondary">Amount</span>
                 <span className="text-theme-text-muted">
-                  Wallet: {walletNusdcAmount.toFixed(2)} NUSDC
+                  Wallet: {activeBalanceFloat.toLocaleString('en-US', { maximumFractionDigits: activeDecimals })} {activeTab}
+                  {balanceUsd !== null && (
+                    <span className="ml-1 text-theme-text-muted">≈ ${balanceUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                  )}
                 </span>
               </div>
               <div className="relative">
@@ -333,20 +507,115 @@ export function MarginAccountCard() {
                 />
                 <button
                   onClick={() => {
-                    setDepositAmount(walletNusdcAmount.toString());
-                    // Show gas warning if NASUN balance is low
-                    if (walletNasunAmount < MIN_GAS_RESERVE) {
-                      setShowGasWarning(true);
-                    }
+                    setDepositAmount(activeBalanceFloat.toString());
+                    if (walletNasunAmount < MIN_GAS_RESERVE) setShowGasWarning(true);
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
                 >
                   MAX
                 </button>
               </div>
+              {amountUsd !== null && amountValid && (
+                <div className="text-xs text-theme-text-muted mt-1">
+                  ≈ ${amountUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                </div>
+              )}
             </div>
 
-            {/* Gas Warning */}
+            {/* Quote Panel — NETH/NSOL only */}
+            {isSwapTab && amountValid && (
+              <div className="mb-4 p-3 bg-theme-bg-primary border border-theme-border rounded-lg space-y-2">
+                {quoteError && (
+                  <p className="text-xs text-red-400">Failed to fetch quote: {formatErrorMessage(quoteError)}</p>
+                )}
+                {!quote && !quoteError && debouncedAmountRaw > 0n && (
+                  <p className="text-xs text-theme-text-muted">Fetching quote…</p>
+                )}
+                {quote && (
+                  <>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-theme-text-secondary">You'll receive</span>
+                      <span className="text-theme-text-primary font-medium">
+                        ~{(Number(quote.expectedQuoteRaw) / 1e6).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
+                        {expectedUsd !== null && (
+                          <span className="ml-1 text-theme-text-muted text-xs">≈ ${expectedUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-theme-text-muted">Rate</span>
+                      <span className="text-theme-text-secondary">1 {activeTab} = {quote.bestBidPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span className="text-theme-text-muted">Price impact</span>
+                      <span
+                        className={
+                          quote.priceImpact < 0.001
+                            ? 'text-theme-text-secondary'
+                            : quote.priceImpact < 0.01
+                              ? 'text-yellow-500'
+                              : 'text-red-500 font-semibold'
+                        }
+                      >
+                        {(quote.priceImpact * 100).toFixed(3)}%
+                        {quote.priceImpact >= 0.01 && ' ⚠ high'}
+                      </span>
+                    </div>
+                    {/* Slippage selector */}
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-theme-text-muted">Slippage</span>
+                      <div className="flex gap-1">
+                        {SLIPPAGE_PRESETS.map((bps) => (
+                          <button
+                            key={bps}
+                            onClick={() => { setSlippageBps(bps); setCustomSlippage(""); }}
+                            className={`px-2 py-1 rounded text-xs ${
+                              slippageBps === bps && !customSlippage
+                                ? 'bg-pd2 text-white'
+                                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary'
+                            }`}
+                          >
+                            {bps / 100}%
+                            {bps === recommendedSlippageBps(quote) && (
+                              <span className="ml-1 text-[10px] opacity-70">rec.</span>
+                            )}
+                          </button>
+                        ))}
+                        <input
+                          type="number"
+                          step="0.1"
+                          min="0.05"
+                          max="10"
+                          placeholder="custom"
+                          value={customSlippage}
+                          onChange={(e) => {
+                            setCustomSlippage(e.target.value);
+                            const pct = parseFloat(e.target.value);
+                            if (!isNaN(pct) && pct > 0 && pct < 100) {
+                              setSlippageBps(Math.round(pct * 100));
+                            }
+                          }}
+                          className="w-16 px-2 py-1 bg-theme-bg-tertiary border border-theme-border rounded text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-xs pt-1 border-t border-theme-border">
+                      <span className="text-theme-text-muted">Min received</span>
+                      <span className="text-theme-text-secondary">
+                        {(minReceivedFloat ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
+                      </span>
+                    </div>
+                    {quote.underestimateRisk && (
+                      <p className="text-xs text-yellow-500">
+                        ⚠ Order size exceeds best-bid depth; actual fill may be lower than quoted.
+                      </p>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {/* Gas Warning — only for NUSDC MAX (existing logic) */}
             {showGasWarning && (
               <div className="mb-4 p-3 bg-yellow-500/25 border border-yellow-500/50 rounded-lg">
                 <div className="flex items-start gap-2">
@@ -370,8 +639,7 @@ export function MarginAccountCard() {
               <button
                 onClick={() => {
                   setShowDepositModal(false);
-                  setError(null);
-                  setShowGasWarning(false);
+                  resetDepositState();
                 }}
                 className="flex-1 py-2 bg-theme-bg-tertiary text-theme-text-primary rounded-lg"
               >
@@ -379,7 +647,7 @@ export function MarginAccountCard() {
               </button>
               <button
                 onClick={handleDeposit}
-                disabled={isDepositing}
+                disabled={isDepositing || (isSwapTab && !quote)}
                 className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg disabled:opacity-50"
               >
                 {isDepositing ? "Depositing..." : "Confirm Deposit"}
