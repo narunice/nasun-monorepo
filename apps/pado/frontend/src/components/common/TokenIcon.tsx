@@ -98,9 +98,9 @@ const TOKEN_ICON_CONFIG: Record<string, TokenIconConfig> = {
   },
   NSOL: {
     Icon: SolIcon,
-    bgClass: 'bg-emerald-500',
-    hexColor: '#14b8a6',
-    gradientClass: 'bg-gradient-to-br from-emerald-400 to-teal-600',
+    bgClass: 'bg-blue-600',
+    hexColor: '#2563eb',
+    gradientClass: 'bg-gradient-to-br from-blue-500 to-indigo-700',
   },
 };
 
