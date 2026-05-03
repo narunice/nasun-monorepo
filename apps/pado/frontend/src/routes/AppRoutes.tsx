@@ -48,6 +48,7 @@ function GatedRoute({ requires, children }: { requires: AccessMode; children: Re
 import { HomePage } from '../pages/HomePage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
 import { PredictPasswordGate } from '../components/common/PredictPasswordGate';
+import { PocketPasswordGate } from '../components/common/PocketPasswordGate';
 
 // Lazy: all other pages loaded on demand
 const TradePage = lazyWithRetry(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
@@ -84,8 +85,8 @@ export function AppRoutes() {
         <Route path="/trade/spot" element={<Navigate to="/spot" replace />} />
         <Route path="/trade/perp" element={<Navigate to="/perpetuals" replace />} />
 
-        {/* Pado Pocket (fund management) */}
-        <Route path="/pocket" element={<GatedRoute requires="spot"><WalletPage /></GatedRoute>} />
+        {/* Pado Pocket (fund management) — password-gated */}
+        <Route path="/pocket" element={<PocketPasswordGate><WalletPage /></PocketPasswordGate>} />
         <Route path="/wallet" element={<Navigate to="/pocket" replace />} />
 
         {/* Prediction Markets — password-gated */}
