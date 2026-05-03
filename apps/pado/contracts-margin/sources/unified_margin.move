@@ -333,7 +333,9 @@ module unified_margin::unified_margin {
         let withdrawn = balance::split(&mut account.nbtc_balance, amount);
         let coin = coin::from_balance(withdrawn, ctx);
 
-        // Update TVL
+        // Update TVL.
+        // NOTE: total_withdrawn_usd is intentionally NOT updated here. It tracks NUSDC-denominated
+        // withdrawal stats only (v0.5 design). NBTC oracle-denominated accounting is deferred to v1.
         registry.total_nbtc_tvl = registry.total_nbtc_tvl - amount;
 
         let new_balance = balance::value(&account.nbtc_balance);
