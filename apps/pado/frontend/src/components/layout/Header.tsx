@@ -338,7 +338,6 @@ export function Header() {
             <WalletConnect
               addressStartChars={isMobile ? 0 : 2}
               addressEndChars={3}
-              onRecoverFunds={() => navigate('/recover')}
             />
           )}
           <a
