@@ -27,6 +27,7 @@ import {
   UpdateCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
+import { getErc721Balance } from "./eth-rpc";
 
 // ---- Environment Variables ----
 
@@ -50,11 +51,6 @@ const GENESIS_PASS_CONTRACT = (process.env.GENESIS_PASS_CONTRACT_ADDRESS || "").
 if (!GENESIS_PASS_CONTRACT) {
   throw new Error("GENESIS_PASS_CONTRACT_ADDRESS not set");
 }
-
-const ALCHEMY_API_KEY = process.env.ALCHEMY_API_KEY || "";
-const ALCHEMY_BASE_URL =
-  process.env.ALCHEMY_BASE_URL || "https://eth-mainnet.g.alchemy.com/v2";
-const ALCHEMY_TIMEOUT_MS = 8_000;
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -116,75 +112,90 @@ async function handleStatus(
   return jsonResponse(200, { activations }, origin);
 }
 
-// ---- Alchemy on-demand ownership fallback ----
+// ---- On-demand ownership fallback ----
+//
+// Used when the daily snapshot hasn't caught up yet (newly linked MetaMask,
+// fresh OpenSea purchase, etc.). Calls ERC-721 balanceOf (26 CU) instead of
+// Alchemy getNFTsForOwner (480 CU) — activate flow only needs the count.
+//
+// Negative results (count = 0) are also persisted so repeated activation
+// attempts by non-holders do not re-hit Alchemy. The persisted row is treated
+// as a 10-minute cache by handleActivate; eth-collector's cleanup further
+// drops zero-balance rows older than 24h.
+//
+// Merges with the existing ETH#LATEST row so that a single-contract refresh
+// does not clobber holdings of other tracked collections (e.g., on-demand
+// activate for Battalion must not erase a Genesis Pass entry written by the
+// daily snapshot).
 
-interface AlchemyNftsResponse {
-  ownedNfts: Array<{ contract: { address: string }; id: { tokenId: string } }>;
-  pageKey?: string;
+const ON_DEMAND_FRESHNESS_MS = 10 * 60 * 1000;
+
+interface NftHolding {
+  contractAddress: string;
+  chain: string;
+  tokenCount: number;
 }
 
-// Query Alchemy for a wallet's holdings of a single contract and upsert
-// the ETH#LATEST record. Used when the daily snapshot hasn't caught up yet.
 async function fetchAndPersistOwnership(
   wallet: string,
   contractAddress: string
 ): Promise<Record<string, unknown>> {
-  if (!ALCHEMY_API_KEY) {
-    throw new Error("ALCHEMY_API_KEY not configured");
-  }
-
   const addr = contractAddress.toLowerCase();
-  const tokenIds: string[] = [];
-  let pageKey: string | undefined;
-  let pageCount = 0;
-  const MAX_PAGES = 5;
+  const lowerWallet = wallet.toLowerCase();
+  const tokenCount = await getErc721Balance(lowerWallet, addr);
 
-  do {
-    const params = new URLSearchParams({
-      owner: wallet,
-      withMetadata: "false",
-      pageSize: "100",
-    });
-    params.append("contractAddresses[]", addr);
-    if (pageKey) params.set("pageKey", pageKey);
+  const existing = await client.send(
+    new GetCommand({
+      TableName: NFT_OWNERSHIP_TABLE,
+      Key: { pk: "ETH#LATEST", sk: `WALLET#${lowerWallet}` },
+    })
+  );
+  const priorHoldings =
+    (existing.Item?.holdings as NftHolding[] | undefined)?.filter(
+      (h) => h.contractAddress.toLowerCase() !== addr
+    ) ?? [];
 
-    const url = `${ALCHEMY_BASE_URL}/${ALCHEMY_API_KEY}/getNFTsForOwner?${params}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(ALCHEMY_TIMEOUT_MS) });
-    if (!res.ok) {
-      throw new Error(`Alchemy HTTP ${res.status}`);
-    }
-    const data = (await res.json()) as AlchemyNftsResponse;
-    for (const nft of data.ownedNfts) {
-      if (nft.contract.address.toLowerCase() === addr) {
-        tokenIds.push(nft.id.tokenId);
-      }
-    }
-    pageKey = data.pageKey;
-    pageCount++;
-  } while (pageKey && pageCount < MAX_PAGES);
+  const mergedHoldings: NftHolding[] = [...priorHoldings];
+  if (tokenCount > 0) {
+    mergedHoldings.push({ contractAddress: addr, chain: "ethereum", tokenCount });
+  }
+  const totalNftCount = mergedHoldings.reduce((sum, h) => sum + h.tokenCount, 0);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const holdings = tokenIds.length > 0
-    ? [{ contractAddress: addr, chain: "ethereum", collectionName: "Genesis Pass", tokenIds, tokenCount: tokenIds.length }]
-    : [];
-
+  const now = new Date();
   const record = {
     pk: "ETH#LATEST",
-    sk: `WALLET#${wallet}`,
-    walletAddress: wallet,
-    snapshotDate: today,
-    holdings,
-    totalNftCount: tokenIds.length,
+    sk: `WALLET#${lowerWallet}`,
+    walletAddress: lowerWallet,
+    snapshotDate: now.toISOString().slice(0, 10),
+    holdings: mergedHoldings,
+    totalNftCount,
     source: "alchemy-ondemand",
+    lastUpdatedAt: now.toISOString(),
   };
 
-  // Only persist if we found something; empty records would pollute the table
-  // and would also be wiped by the next eth-collector run's cleanup step.
-  if (tokenIds.length > 0) {
-    await client.send(new PutCommand({ TableName: NFT_OWNERSHIP_TABLE, Item: record }));
-  }
+  await client.send(new PutCommand({ TableName: NFT_OWNERSHIP_TABLE, Item: record }));
 
   return record;
+}
+
+// True when an existing row is an alchemy-ondemand cache that does not list the
+// requested contract and is older than the freshness window. In that case the
+// activate path must re-query Alchemy so a newly purchased NFT is detected.
+function isStaleOnDemandMiss(
+  record: Record<string, unknown> | undefined,
+  contractAddress: string
+): boolean {
+  if (!record || record.source !== "alchemy-ondemand") return false;
+  const holdings = (record.holdings as NftHolding[] | undefined) ?? [];
+  const target = contractAddress.toLowerCase();
+  const hasContract = holdings.some(
+    (h) => h.contractAddress.toLowerCase() === target && h.tokenCount > 0
+  );
+  if (hasContract) return false;
+  const lastUpdatedAt = record.lastUpdatedAt as string | undefined;
+  if (!lastUpdatedAt) return true;
+  const age = Date.now() - new Date(lastUpdatedAt).getTime();
+  return !Number.isFinite(age) || age > ON_DEMAND_FRESHNESS_MS;
 }
 
 // ---- POST /ecosystem/activate ----
@@ -332,12 +343,15 @@ async function activateEthNft(
     })
   );
 
-  let walletRecord = ownershipResult.Item;
-  if (!walletRecord) {
-    // Snapshot miss: user likely just linked MetaMask or minted the NFT
-    // before the daily eth-collector cron ran. Fall back to on-demand
-    // Alchemy query so activation is not blocked for up to 24h.
-    console.warn(`[ecosystem] No LATEST snapshot for wallet ${evmWallet}, falling back to Alchemy`);
+  // Refresh on snapshot miss OR when a previously-cached on-demand record
+  // does not list the requested contract and is older than the freshness
+  // window. This catches users who buy the NFT after a non-holder activation
+  // attempt cached an empty result, without re-hitting Alchemy on every retry.
+  let walletRecord: Record<string, unknown> | undefined = ownershipResult.Item;
+  if (!walletRecord || isStaleOnDemandMiss(walletRecord, contractAddress)) {
+    console.warn(
+      `[ecosystem] LATEST ${walletRecord ? "stale" : "missing"} for wallet ${evmWallet}, falling back to Alchemy`,
+    );
     try {
       walletRecord = await fetchAndPersistOwnership(evmWallet, contractAddress);
     } catch (err) {
@@ -349,8 +363,9 @@ async function activateEthNft(
     }
   }
 
-  // walletRecord.holdings is an array of { contractAddress, tokenCount, ... }
-  const holdings = (walletRecord.holdings || []) as Array<{ contractAddress: string; tokenCount: number }>;
+  // walletRecord is guaranteed defined here: the branch above either threw
+  // or assigned it from fetchAndPersistOwnership.
+  const holdings = ((walletRecord!.holdings as NftHolding[] | undefined) ?? []);
   const match = holdings.find(
     (h) => h.contractAddress.toLowerCase() === contractAddress.toLowerCase()
   );

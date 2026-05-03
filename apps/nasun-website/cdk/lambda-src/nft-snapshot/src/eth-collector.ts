@@ -273,14 +273,29 @@ async function batchWriteRecords(records: EthOwnershipRecord[], today: string) {
   }
 }
 
+// Negative-cache rows from ecosystem-api's on-demand fallback are preserved
+// for this long after their lastUpdatedAt before cleanup deletes them. Keeps
+// the table from growing unboundedly with stale non-holder rows while still
+// deflecting repeat retries within the same day.
+const ONDEMAND_NEGATIVE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
 /**
  * Remove stale ETH#LATEST records for wallets that no longer hold any tracked NFTs.
  * This prevents the ownership-verifier from seeing phantom holdings.
+ *
+ * Preserves recent zero-balance records written by the ecosystem-api on-demand
+ * fallback (source = 'alchemy-ondemand', totalNftCount = 0, lastUpdatedAt within
+ * 24h). Those rows act as a negative cache so non-holder wallets do not
+ * repeatedly hit Alchemy on retried activations. Older negative-cache rows are
+ * eligible for deletion. Positive ondemand rows are also eligible for cleanup:
+ * if the wallet still holds the NFT, today's collector run will have refreshed
+ * the row; if not, the stale row would mislead the ownership-verifier.
  */
 async function cleanupStaleLatestRecords(currentWalletSks: Set<string>) {
   // Query all existing ETH#LATEST WALLET# records
   let lastKey: Record<string, unknown> | undefined;
   const staleKeys: Array<{ pk: string; sk: string }> = [];
+  const cutoff = Date.now() - ONDEMAND_NEGATIVE_CACHE_MAX_AGE_MS;
 
   do {
     const result = await client.send(
@@ -291,16 +306,22 @@ async function cleanupStaleLatestRecords(currentWalletSks: Set<string>) {
           ':pk': 'ETH#LATEST',
           ':prefix': 'WALLET#',
         },
-        ProjectionExpression: 'pk, sk',
+        ProjectionExpression: 'pk, sk, #src, totalNftCount, lastUpdatedAt',
+        ExpressionAttributeNames: { '#src': 'source' },
         ExclusiveStartKey: lastKey,
       }),
     );
 
     for (const item of result.Items || []) {
       const sk = item.sk as string;
-      if (!currentWalletSks.has(sk)) {
-        staleKeys.push({ pk: 'ETH#LATEST', sk });
+      if (currentWalletSks.has(sk)) continue;
+      if (item.source === 'alchemy-ondemand' && (item.totalNftCount ?? 0) === 0) {
+        const updatedAt = item.lastUpdatedAt
+          ? new Date(item.lastUpdatedAt as string).getTime()
+          : 0;
+        if (Number.isFinite(updatedAt) && updatedAt > cutoff) continue;
       }
+      staleKeys.push({ pk: 'ETH#LATEST', sk });
     }
 
     lastKey = result.LastEvaluatedKey;
