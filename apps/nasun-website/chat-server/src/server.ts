@@ -458,7 +458,15 @@ async function handleHttpRequest(
     const type = url.searchParams.get('type');
     const walletAddress = url.searchParams.get('walletAddress');
     if (type === 'profile' && walletAddress) {
-      invalidateNasunProfile(walletAddress);
+      const normalizedAddress = walletAddress.toLowerCase();
+      invalidateNasunProfile(normalizedAddress);
+      // Chat send/history paths read via getNasunProfileCached without a
+      // staleness check, so simply marking fetched_at=0 leaves the old
+      // custom_avatar_key in place. Refetch immediately so the next message
+      // broadcast and history query see the updated avatar.
+      ensureProfilesCached([normalizedAddress]).catch((err) => {
+        console.warn('[invalidate-profile] refetch failed:', err);
+      });
     } else {
       invalidateIdentityCache();
     }
