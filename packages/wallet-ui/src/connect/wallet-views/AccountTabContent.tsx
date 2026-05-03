@@ -275,11 +275,13 @@ export function AccountTabContent({
   nsaIsInitialized,
   nsaRecoveryCompleted,
   onNavigate,
+  onRecoverFunds,
 }: {
   variant: "zkLogin" | "self-custody" | "passkey";
   nsaIsInitialized: boolean;
   nsaRecoveryCompleted: number;
   onNavigate: (mode: ViewMode) => void;
+  onRecoverFunds?: () => void;
 }) {
   const [showBackupGuide, setShowBackupGuide] = useState(false);
   const { isAdvancedMode } = useUISettingsStore();
@@ -412,6 +414,16 @@ export function AccountTabContent({
           <button onClick={() => onNavigate("export-mnemonic")} className={MENU_ITEM_CLASS}>
             <MenuIcon d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
             View Recovery Phrase
+          </button>
+        </>
+      )}
+
+      {onRecoverFunds && (
+        <>
+          <div className={WALLET_STYLES.divider} />
+          <button onClick={onRecoverFunds} className={MENU_ITEM_CLASS}>
+            <MenuIcon d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            Recover Funds
           </button>
         </>
       )}
