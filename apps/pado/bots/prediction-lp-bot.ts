@@ -1,22 +1,21 @@
 /**
- * Prediction Market LP Bot (mvp, single-level YES quotes)
+ * Prediction Market LP Bot (dual YES+NO quotes)
  *
  * Strategy per tick:
- *   1. Fetch market + YES order book.
- *   2. If status != OPEN or now >= close_time: cancel all my YES orders, skip.
- *   3. Auto-bootstrap: if LP has no YES Position for this market, mint inventory.
- *   4. Compute midpoint from external orders (excluding my own); empty -> 5000 bps.
- *   5. Desired:
- *        yes-bid  at max(1, mid - spread/2)
- *        yes-ask  at min(MAX_PRICE-1, mid + spread/2)  (only if I hold a YES Position)
- *   6. Cancel any of my existing YES orders that don't match desired prices.
- *   7. Place new buy-maker (NUSDC depth) and sell-maker (consumes one YES Position).
+ *   1. Fetch market + all 4 order book sides (yes_bids, yes_asks, no_bids, no_asks).
+ *   2. If status != OPEN or now >= close_time: cancel all my orders on all sides, skip.
+ *   3. Auto-bootstrap: if LP has no inventory for this market, mint YES+NO positions.
+ *   4. Compute YES midpoint from external YES orders (excluding my own); empty -> 5000 bps.
+ *   5. Derive NO quotes from YES quotes (NO bid = MAX_PRICE - YES ask, NO ask = MAX_PRICE - YES bid).
+ *      This keeps both sides arbitrage-free by construction.
+ *   6. Cancel any of my existing orders that don't match desired prices.
+ *   7. Place YES bid, YES ask (if holding YES position), NO bid, NO ask (if holding NO position).
  *
  * Market discovery:
  *   If PREDICTION_LP_MARKETS is set, those IDs are pinned.
  *   Otherwise, markets are discovered from on-chain MarketCreated events and
  *   refreshed every PREDICTION_LP_DISCOVER_INTERVAL_MS (default 10 min).
- *   Newly discovered OPEN markets are auto-bootstrapped (mint YES inventory).
+ *   Newly discovered OPEN markets are auto-bootstrapped (mint YES+NO inventory).
  *
  * Env vars:
  *   PREDICTION_LP_PRIVATE_KEY              ed25519 hex or suiprivkey.
@@ -119,6 +118,8 @@ interface MarketSnapshot {
   closeTime: number;
   yesBidsTableId: string | null;
   yesAsksTableId: string | null;
+  noBidsTableId: string | null;
+  noAsksTableId: string | null;
 }
 
 async function fetchMarketSnapshot(
@@ -133,6 +134,8 @@ async function fetchMarketSnapshot(
     closeTime: Number(fields.close_time ?? 0),
     yesBidsTableId: extractTableId(fields.yes_bids),
     yesAsksTableId: extractTableId(fields.yes_asks),
+    noBidsTableId: extractTableId(fields.no_bids),
+    noAsksTableId: extractTableId(fields.no_asks),
   };
 }
 
@@ -202,21 +205,22 @@ async function fetchYesBookSide(
 }
 
 // ========================================
-// My inventory fetch (YES Positions)
+// My inventory fetch (YES or NO Positions)
 // ========================================
 
-interface YesPosition {
+interface OutcomePosition {
   id: string;
   shares: bigint;
 }
 
-async function fetchMyYesPositions(
+async function fetchMyPositions(
   client: SuiClient,
   owner: string,
   packageId: string,
   marketId: string,
-): Promise<YesPosition[]> {
-  const positions: YesPosition[] = [];
+  isYes: boolean,
+): Promise<OutcomePosition[]> {
+  const positions: OutcomePosition[] = [];
   let cursor: string | null | undefined = null;
   const positionType = `${packageId}::prediction_market::Position`;
   while (true) {
@@ -230,9 +234,9 @@ async function fetchMyYesPositions(
       if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
       const fields = item.data.content.fields as Record<string, unknown>;
       const itsMarket = String(fields.market_id ?? '').toLowerCase();
-      const isYes = Boolean(fields.is_yes ?? false);
+      const posIsYes = Boolean(fields.is_yes ?? false);
       const shares = BigInt(String(fields.shares ?? 0));
-      if (itsMarket === marketId.toLowerCase() && isYes && shares > 0n) {
+      if (itsMarket === marketId.toLowerCase() && posIsYes === isYes && shares > 0n) {
         positions.push({ id: item.data.objectId, shares });
       }
     }
@@ -271,12 +275,14 @@ async function fetchLargestNUSDCCoin(
 // RPC checks every tick. Cleared only on restart (acceptable: cheap check on miss).
 const bootstrappedMarkets = new Set<string>();
 
-async function hasYesInventory(
+async function hasAnyInventory(
   client: SuiClient,
   owner: string,
   packageId: string,
   marketId: string,
 ): Promise<boolean> {
+  // mint_outcome_tokens always creates both YES and NO together, so checking
+  // either is sufficient to determine whether bootstrap has occurred.
   const positionType = `${packageId}::prediction_market::Position`;
   const target = marketId.toLowerCase();
   let cursor: string | null | undefined = null;
@@ -292,7 +298,6 @@ async function hasYesInventory(
       const fields = item.data.content.fields as Record<string, unknown>;
       if (
         String(fields.market_id ?? '').toLowerCase() === target &&
-        Boolean(fields.is_yes) &&
         BigInt(String(fields.shares ?? 0)) > 0n
       ) {
         return true;
@@ -340,12 +345,12 @@ async function ensureBootstrapped(
   const key = marketId.toLowerCase();
   if (bootstrappedMarkets.has(key)) return;
   const owner = keypair.toSuiAddress();
-  const hasInventory = await hasYesInventory(client, owner, packageId, marketId);
+  const hasInventory = await hasAnyInventory(client, owner, packageId, marketId);
   if (hasInventory) {
     bootstrappedMarkets.add(key);
     return;
   }
-  console.log(`[${timestamp()}] ${marketId}: no YES inventory — auto-bootstrapping`);
+  console.log(`[${timestamp()}] ${marketId}: no inventory — auto-bootstrapping YES+NO`);
   await bootstrapMint(client, keypair, packageId, marketId, amountRaw);
 }
 
@@ -356,6 +361,7 @@ async function ensureBootstrapped(
 function buildCancelOrder(
   packageId: string,
   marketId: string,
+  isYes: boolean,
   isBid: boolean,
   price: number,
   orderId: number,
@@ -365,7 +371,7 @@ function buildCancelOrder(
     target: `${packageId}::prediction_market::cancel_order`,
     arguments: [
       tx.object(marketId),
-      tx.pure.bool(true), // is_yes
+      tx.pure.bool(isYes),
       tx.pure.bool(isBid),
       tx.pure.u64(price),
       tx.pure.u64(orderId),
@@ -378,6 +384,7 @@ function buildCancelOrder(
 function buildPlaceBuyMaker(
   packageId: string,
   marketId: string,
+  isYes: boolean,
   priceBps: number,
   paymentRaw: bigint,
   nusdcCoinId: string,
@@ -388,7 +395,7 @@ function buildPlaceBuyMaker(
     target: `${packageId}::prediction_market::place_buy_maker`,
     arguments: [
       tx.object(marketId),
-      tx.pure.bool(true), // is_yes
+      tx.pure.bool(isYes),
       tx.pure.u64(priceBps),
       payment,
       tx.object(CLOCK_ID),
@@ -420,6 +427,11 @@ function buildPlaceSellMaker(
 // Per-market reconcile
 // ========================================
 
+// Annotated order: which side of which book (YES vs NO).
+interface AnnotatedOrder extends BookOrder {
+  isYes: boolean;
+}
+
 async function reconcileMarket(
   client: SuiClient,
   keypair: Ed25519Keypair,
@@ -438,152 +450,187 @@ async function reconcileMarket(
 
   const closing = market.status !== STATUS_OPEN || Date.now() >= market.closeTime;
 
-  // Auto-bootstrap YES inventory for OPEN markets before quoting.
   if (!closing) {
     await ensureBootstrapped(client, keypair, packageId, marketId, bootstrapMintRaw);
   }
 
-  // Always fetch both sides to find my orders for cancellation.
+  // Fetch all 4 book sides in parallel.
   const emptySide: BookSide = { orders: [], truncated: false };
-  const [bidSide, askSide] = await Promise.all([
-    market.yesBidsTableId
-      ? fetchYesBookSide(client, market.yesBidsTableId, true)
-      : Promise.resolve<BookSide>(emptySide),
-    market.yesAsksTableId
-      ? fetchYesBookSide(client, market.yesAsksTableId, false)
-      : Promise.resolve<BookSide>(emptySide),
+  const [yesBidSide, yesAskSide, noBidSide, noAskSide] = await Promise.all([
+    market.yesBidsTableId ? fetchYesBookSide(client, market.yesBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
+    market.yesAsksTableId ? fetchYesBookSide(client, market.yesAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
+    market.noBidsTableId ? fetchYesBookSide(client, market.noBidsTableId, true) : Promise.resolve<BookSide>(emptySide),
+    market.noAsksTableId ? fetchYesBookSide(client, market.noAsksTableId, false) : Promise.resolve<BookSide>(emptySide),
   ]);
-  const bids = bidSide.orders;
-  const asks = askSide.orders;
 
-  const myOrders = [...bids, ...asks].filter((o) => o.owner === myAddress);
+  const annotate = (side: BookSide, isYes: boolean): AnnotatedOrder[] =>
+    side.orders.map((o) => ({ ...o, isYes }));
+
+  const allOrders: AnnotatedOrder[] = [
+    ...annotate(yesBidSide, true),
+    ...annotate(yesAskSide, true),
+    ...annotate(noBidSide, false),
+    ...annotate(noAskSide, false),
+  ];
+  const myOrders = allOrders.filter((o) => o.owner === myAddress);
 
   if (closing) {
     if (myOrders.length === 0) return;
     console.log(
       `[${timestamp()}] ${marketId}: market closing/closed, cancelling ${myOrders.length} order(s)`,
     );
-    // Best-effort: any cancel that fails (e.g. already filled by a taker) is
-    // logged and skipped. Move aborts are not retriable.
     for (const o of myOrders) {
       if (shuttingDown) break;
       try {
         const digest = await executeAndWait(
           client,
           keypair,
-          buildCancelOrder(packageId, marketId, o.isBid, o.price, o.orderId),
+          buildCancelOrder(packageId, marketId, o.isYes, o.isBid, o.price, o.orderId),
           `cancel_order`,
         );
         console.log(
-          `[${timestamp()}] ${marketId}: cancelled ${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
+          `[${timestamp()}] ${marketId}: cancelled ${o.isYes ? 'yes' : 'no'}-${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        console.warn(
-          `[${timestamp()}] ${marketId}: cancel ${o.price}/${o.orderId} failed: ${msg}`,
-        );
+        console.warn(`[${timestamp()}] ${marketId}: cancel ${o.price}/${o.orderId} failed: ${msg}`);
       }
     }
     return;
   }
 
-  const midpoint = computeMidpoint(bids, asks, myAddress);
-  const desired = computeQuotes(midpoint, spreadBps);
+  // YES quotes derived from YES order book.
+  const yesMid = computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
+  const yesDesired = computeQuotes(yesMid, spreadBps);
 
-  // Identify whether each side already has my desired-price order. If a stale
-  // cancel fails (e.g. taker filled it between our fetch and cancel tx), we
-  // also skip placement on that side this tick to avoid double-stacking.
-  // If a side was truncated, far-priced own orders may be invisible to the
-  // staleness check, so defensively skip placement on that side too.
-  let skipBidPlacement =
-    bidSide.truncated || myOrders.some((o) => o.isBid && o.price === desired.bidBps);
-  let skipAskPlacement =
-    askSide.truncated || myOrders.some((o) => !o.isBid && o.price === desired.askBps);
-  if (bidSide.truncated || askSide.truncated) {
-    console.warn(
-      `[${timestamp()}] ${marketId}: book truncated (bid=${bidSide.truncated} ask=${askSide.truncated}); skipping placement on truncated side(s) this tick`,
-    );
+  // NO quotes are the complement of YES quotes: YES + NO = MAX_PRICE.
+  // This keeps both sides arbitrage-free by construction.
+  const noDesired = {
+    bidBps: Math.max(1, MAX_PRICE_BPS - yesDesired.askBps),
+    askBps: Math.min(MAX_PRICE_BPS - 1, MAX_PRICE_BPS - yesDesired.bidBps),
+  };
+
+  // Per-side placement skip flags.
+  let skipYesBid = yesBidSide.truncated || myOrders.some((o) => o.isYes && o.isBid && o.price === yesDesired.bidBps);
+  let skipYesAsk = yesAskSide.truncated || myOrders.some((o) => o.isYes && !o.isBid && o.price === yesDesired.askBps);
+  let skipNoBid  = noBidSide.truncated  || myOrders.some((o) => !o.isYes && o.isBid && o.price === noDesired.bidBps);
+  let skipNoAsk  = noAskSide.truncated  || myOrders.some((o) => !o.isYes && !o.isBid && o.price === noDesired.askBps);
+
+  for (const side of [yesBidSide, yesAskSide, noBidSide, noAskSide]) {
+    if (side.truncated) {
+      console.warn(`[${timestamp()}] ${marketId}: book side truncated; skipping placement on truncated side(s) this tick`);
+      break;
+    }
   }
 
-  const stale = myOrders.filter(
-    (o) => (o.isBid ? o.price !== desired.bidBps : o.price !== desired.askBps),
-  );
+  // Cancel stale orders (wrong price for current desired quotes).
+  const stale = myOrders.filter((o) => {
+    const desired = o.isYes ? yesDesired : noDesired;
+    return o.isBid ? o.price !== desired.bidBps : o.price !== desired.askBps;
+  });
   for (const o of stale) {
     try {
       const digest = await executeAndWait(
         client,
         keypair,
-        buildCancelOrder(packageId, marketId, o.isBid, o.price, o.orderId),
+        buildCancelOrder(packageId, marketId, o.isYes, o.isBid, o.price, o.orderId),
         `cancel_order`,
       );
       console.log(
-        `[${timestamp()}] ${marketId}: cancelled stale ${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
+        `[${timestamp()}] ${marketId}: cancelled stale ${o.isYes ? 'yes' : 'no'}-${o.isBid ? 'bid' : 'ask'} @ ${o.price} order=${o.orderId} (${digest.slice(0, 12)})`,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(
-        `[${timestamp()}] ${marketId}: stale cancel ${o.price}/${o.orderId} failed: ${msg}`,
-      );
-      // Conservative: if cancel failed and the order is still on book at the
-      // wrong price, skip placement on this side rather than risk inventory
-      // being locked across two prices simultaneously.
-      if (o.isBid) skipBidPlacement = true;
-      else skipAskPlacement = true;
+      console.warn(`[${timestamp()}] ${marketId}: stale cancel ${o.price}/${o.orderId} failed: ${msg}`);
+      if (o.isYes && o.isBid) skipYesBid = true;
+      else if (o.isYes && !o.isBid) skipYesAsk = true;
+      else if (!o.isYes && o.isBid) skipNoBid = true;
+      else skipNoAsk = true;
     }
   }
 
-  if (!skipBidPlacement) {
-    const depthRaw = nusdcToRaw(depthNusdc);
+  const depthRaw = nusdcToRaw(depthNusdc);
+
+  // Place YES bid.
+  if (!skipYesBid) {
     const coin = await fetchLargestNUSDCCoin(client, myAddress, depthRaw);
     if (!coin) {
-      console.warn(
-        `[${timestamp()}] ${marketId}: no single NUSDC coin >= ${depthNusdc} (wallet may be fragmented; bootstrap merges coins)`,
-      );
+      console.warn(`[${timestamp()}] ${marketId}: no NUSDC coin >= ${depthNusdc} for yes-bid`);
     } else {
       try {
         const digest = await executeAndWait(
-          client,
-          keypair,
-          buildPlaceBuyMaker(packageId, marketId, desired.bidBps, depthRaw, coin.id),
-          `place_buy_maker`,
+          client, keypair,
+          buildPlaceBuyMaker(packageId, marketId, true, yesDesired.bidBps, depthRaw, coin.id),
+          `place_buy_maker(yes)`,
         );
-        console.log(
-          `[${timestamp()}] ${marketId}: placed yes-bid @ ${desired.bidBps}bps depth ${depthNusdc} (${digest.slice(0, 12)})`,
-        );
+        console.log(`[${timestamp()}] ${marketId}: placed yes-bid @ ${yesDesired.bidBps}bps depth ${depthNusdc} (${digest.slice(0, 12)})`);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[${timestamp()}] ${marketId}: place_buy_maker failed: ${msg}`);
+        console.warn(`[${timestamp()}] ${marketId}: yes-bid failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
 
-  if (!skipAskPlacement) {
-    const positions = await fetchMyYesPositions(client, myAddress, packageId, marketId);
+  // Place YES ask (requires YES position).
+  if (!skipYesAsk) {
+    const positions = await fetchMyPositions(client, myAddress, packageId, marketId, true);
     if (positions.length === 0) {
-      console.warn(
-        `[${timestamp()}] ${marketId}: no YES Position available, skipping ask placement (run bootstrap-mint to seed inventory)`,
-      );
+      console.warn(`[${timestamp()}] ${marketId}: no YES position for yes-ask`);
     } else {
       const largest = positions.reduce((a, b) => (b.shares > a.shares ? b : a));
       try {
         const digest = await executeAndWait(
-          client,
-          keypair,
-          buildPlaceSellMaker(packageId, marketId, largest.id, desired.askBps),
-          `place_sell_maker`,
+          client, keypair,
+          buildPlaceSellMaker(packageId, marketId, largest.id, yesDesired.askBps),
+          `place_sell_maker(yes)`,
         );
-        console.log(
-          `[${timestamp()}] ${marketId}: placed yes-ask @ ${desired.askBps}bps shares ${largest.shares} (${digest.slice(0, 12)})`,
-        );
+        console.log(`[${timestamp()}] ${marketId}: placed yes-ask @ ${yesDesired.askBps}bps shares ${largest.shares} (${digest.slice(0, 12)})`);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[${timestamp()}] ${marketId}: place_sell_maker failed: ${msg}`);
+        console.warn(`[${timestamp()}] ${marketId}: yes-ask failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
+  // Place NO bid.
+  if (!skipNoBid) {
+    const coin = await fetchLargestNUSDCCoin(client, myAddress, depthRaw);
+    if (!coin) {
+      console.warn(`[${timestamp()}] ${marketId}: no NUSDC coin >= ${depthNusdc} for no-bid`);
+    } else {
+      try {
+        const digest = await executeAndWait(
+          client, keypair,
+          buildPlaceBuyMaker(packageId, marketId, false, noDesired.bidBps, depthRaw, coin.id),
+          `place_buy_maker(no)`,
+        );
+        console.log(`[${timestamp()}] ${marketId}: placed no-bid @ ${noDesired.bidBps}bps depth ${depthNusdc} (${digest.slice(0, 12)})`);
+      } catch (err) {
+        console.warn(`[${timestamp()}] ${marketId}: no-bid failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    }
+  }
+
+  // Place NO ask (requires NO position).
+  if (!skipNoAsk) {
+    const positions = await fetchMyPositions(client, myAddress, packageId, marketId, false);
+    if (positions.length === 0) {
+      console.warn(`[${timestamp()}] ${marketId}: no NO position for no-ask`);
+    } else {
+      const largest = positions.reduce((a, b) => (b.shares > a.shares ? b : a));
+      try {
+        const digest = await executeAndWait(
+          client, keypair,
+          buildPlaceSellMaker(packageId, marketId, largest.id, noDesired.askBps),
+          `place_sell_maker(no)`,
+        );
+        console.log(`[${timestamp()}] ${marketId}: placed no-ask @ ${noDesired.askBps}bps shares ${largest.shares} (${digest.slice(0, 12)})`);
+      } catch (err) {
+        console.warn(`[${timestamp()}] ${marketId}: no-ask failed: ${err instanceof Error ? err.message : String(err)}`);
       }
     }
   }
 
   console.log(
-    `[${timestamp()}] ${marketId}: mid=${midpoint} bid=${desired.bidBps} ask=${desired.askBps} myOrders=${myOrders.length}`,
+    `[${timestamp()}] ${marketId}: yes-mid=${yesMid} yes=${yesDesired.bidBps}/${yesDesired.askBps} no=${noDesired.bidBps}/${noDesired.askBps} myOrders=${myOrders.length}`,
   );
 }
 
