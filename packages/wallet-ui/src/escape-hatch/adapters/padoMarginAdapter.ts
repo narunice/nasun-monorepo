@@ -7,7 +7,7 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { getSuiClient } from '@nasun/wallet';
-import { MARGIN_PACKAGE_ID, MARGIN_REGISTRY_ID, NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
+import { MARGIN_PACKAGE_ID, MARGIN_REGISTRY_ID } from '@nasun/devnet-config';
 import type { RecoveryAdapter, RecoverableItem, RecoveryAction } from '../types';
 import type { SignAndExecuteFn } from '../../hooks/useSignAndExecute';
 
@@ -57,10 +57,6 @@ function buildWithdrawAllNbtcTx(accountId: string): Transaction {
   });
   return tx;
 }
-
-// Suppress unused-import warnings
-void NBTC_TYPE;
-void NUSDC_TYPE;
 
 export function createPadoMarginAdapter(signAndExecute: SignAndExecuteFn): RecoveryAdapter {
   return {
