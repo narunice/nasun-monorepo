@@ -2,7 +2,7 @@
  * Tests for prediction-keeper resolution criteria parser + evaluator.
  *
  * These functions decide YES/NO outcomes deterministically from market
- * metadata + a price tick, so any drift = real user funds at stake.
+ * metadata + a price reading, so any drift = real user funds at stake.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -17,17 +17,34 @@ Reading time: 2026-05-19 00:00:00 UTC
 Comparison: price >= 100000
 Tie-breaking: NO if exactly equal`;
 
-describe('parseResolutionCriteria', () => {
-  it('parses the canonical 4-field block', () => {
+const VALID_STOCK = `Source: https://api.twelvedata.com/time_series?symbol=AAPL&interval=1day
+Symbol: AAPL
+Currency: USD
+Reading time: 2026-06-30 20:00:00 UTC
+Comparison: close > 250
+Tie-breaking: NO`;
+
+const VALID_KR_STOCK = `Source: https://api.twelvedata.com/time_series?symbol=005930.KS&interval=1day
+Symbol: 005930.KS
+Currency: KRW
+Reading time: 2026-06-30 06:30:00 UTC
+Comparison: close > 90,001
+Tie-breaking: NO`;
+
+describe('parseResolutionCriteria — crypto', () => {
+  it('parses the canonical crypto block', () => {
     const c = parseResolutionCriteria(VALID);
     expect(c).not.toBeNull();
     expect(c).toMatchObject({
+      kind: 'crypto',
       source: 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
+      sourceHost: 'api.binance.com',
       symbol: 'BTCUSDT',
       comparison: '>=',
       threshold: 100000,
       tieBreak: 'NO',
     });
+    expect(c?.currency).toBeUndefined();
   });
 
   it('uppercases the extracted symbol', () => {
@@ -83,7 +100,7 @@ describe('parseResolutionCriteria', () => {
     expect(parseResolutionCriteria(t1)).toBeNull();
   });
 
-  it('rejects non-standard comparison without "price" keyword', () => {
+  it('rejects non-standard comparison without "price"/"close" keyword', () => {
     const text = VALID.replace('Comparison: price >= 100000', 'Comparison: >= 100000');
     expect(parseResolutionCriteria(text)).toBeNull();
   });
@@ -100,6 +117,85 @@ describe('parseResolutionCriteria', () => {
     const c = parseResolutionCriteria(text);
     expect(c?.symbol).toBe('ETHUSDT');
   });
+
+  it('rejects unknown source host', () => {
+    const text = VALID.replace('api.binance.com', 'evil.example.com');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+
+  it('rejects http (non-TLS) source URL', () => {
+    const text = VALID.replace('https://', 'http://');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+});
+
+describe('parseResolutionCriteria — stock', () => {
+  it('parses Twelve Data US stock block', () => {
+    const c = parseResolutionCriteria(VALID_STOCK);
+    expect(c).not.toBeNull();
+    expect(c).toMatchObject({
+      kind: 'stock',
+      sourceHost: 'api.twelvedata.com',
+      symbol: 'AAPL',
+      currency: 'USD',
+      comparison: '>',
+      threshold: 250,
+      tieBreak: 'NO',
+    });
+  });
+
+  it('parses KR stock with dotted ticker and KRW thousands separators', () => {
+    const c = parseResolutionCriteria(VALID_KR_STOCK);
+    expect(c).not.toBeNull();
+    expect(c?.symbol).toBe('005930.KS');
+    expect(c?.currency).toBe('KRW');
+    expect(c?.threshold).toBe(90001);
+  });
+
+  it('accepts Yahoo Finance host', () => {
+    const text = VALID_STOCK.replace(
+      'https://api.twelvedata.com/time_series?symbol=AAPL&interval=1day',
+      'https://query1.finance.yahoo.com/v8/finance/chart/AAPL',
+    );
+    const c = parseResolutionCriteria(text);
+    expect(c?.kind).toBe('stock');
+    expect(c?.sourceHost).toBe('query1.finance.yahoo.com');
+    expect(c?.symbol).toBe('AAPL');
+  });
+
+  it('rejects stock block without Symbol field', () => {
+    const text = VALID_STOCK.replace('Symbol: AAPL\n', '');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+
+  it('rejects stock block without Currency field', () => {
+    const text = VALID_STOCK.replace('Currency: USD\n', '');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+
+  it('rejects symbol with disallowed characters', () => {
+    const text = VALID_STOCK.replace('Symbol: AAPL', 'Symbol: AAPL$$');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+
+  it('rejects 3-letter currency that is not all uppercase', () => {
+    // Regex requires uppercase, so "Usd" should fail.
+    const text = VALID_STOCK.replace('Currency: USD', 'Currency: usd');
+    expect(parseResolutionCriteria(text)).toBeNull();
+  });
+
+  it.each(['>', '<', '>=', '<='] as const)('accepts comparison %s for stock', (op) => {
+    const text = VALID_STOCK.replace('> 250', `${op} 270`);
+    const c = parseResolutionCriteria(text);
+    expect(c?.comparison).toBe(op);
+    expect(c?.threshold).toBe(270);
+  });
+
+  it('accepts uppercase ticker even when written lowercase', () => {
+    const text = VALID_STOCK.replace('Symbol: AAPL', 'Symbol: aapl');
+    const c = parseResolutionCriteria(text);
+    expect(c?.symbol).toBe('AAPL');
+  });
 });
 
 describe('evaluateOutcome', () => {
@@ -107,7 +203,9 @@ describe('evaluateOutcome', () => {
     overrides: Partial<ResolutionCriteria> = {},
   ): ResolutionCriteria {
     return {
-      source: 'x',
+      kind: 'crypto',
+      source: 'https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT',
+      sourceHost: 'api.binance.com',
       symbol: 'BTCUSDT',
       comparison: '>=',
       threshold: 100,
