@@ -67,8 +67,11 @@ export function AdvancedFundLocation() {
           </p>
 
           <div>
-            <div className="text-xs font-medium text-theme-text-secondary mb-1">
+            <div className="text-xs font-medium text-theme-text-secondary mb-0.5">
               Spot trading account
+            </div>
+            <div className="text-xs text-theme-text-muted mb-1">
+              Used for spot trading (buy/sell)
             </div>
             {bmEmpty ? (
               <div className="text-xs text-theme-text-muted">No funds here.</div>
@@ -81,8 +84,11 @@ export function AdvancedFundLocation() {
           </div>
 
           <div>
-            <div className="text-xs font-medium text-theme-text-secondary mb-1">
-              Margin account
+            <div className="text-xs font-medium text-theme-text-secondary mb-0.5">
+              Predictions &amp; Margin account
+            </div>
+            <div className="text-xs text-theme-text-muted mb-1">
+              Used for predictions, perp trading, and lending
             </div>
             {maEmpty ? (
               <div className="text-xs text-theme-text-muted">No funds here.</div>

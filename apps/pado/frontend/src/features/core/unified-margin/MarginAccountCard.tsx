@@ -9,9 +9,18 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
-import { formatErrorMessage } from '../../trading/utils/errorParser';
-import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from "@nasun/wallet";
+import {
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
+import { formatErrorMessage } from "../../trading/utils/errorParser";
+import {
+  useWallet,
+  useZkLogin,
+  useMultiBalance,
+  usePasskeyStore,
+} from "@nasun/wallet";
 import { useActiveAddress } from "../../../hooks/useActiveAddress";
 import { useMarginAccount } from "./useMarginAccount";
 import { usePadoAccount } from "./usePadoAccount";
@@ -19,15 +28,20 @@ import { WithdrawAllConfirmModal } from "./WithdrawAllConfirmModal";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
 import { floatToRaw } from "../../../lib/unified-margin";
-import { quoteBaseForQuote, recommendedSlippageBps, depositPoolFor, type SwapQuote } from "../../../lib/deepbook";
+import {
+  quoteBaseForQuote,
+  recommendedSlippageBps,
+  depositPoolFor,
+  type SwapQuote,
+} from "../../../lib/deepbook";
 import { getUnifiedPrice, type TokenSymbol } from "../../../lib/prices";
 import { TokenIcon } from "@/components/common";
 import { TOKENS } from "../../../config/network";
 import { PadoActivityCard } from "./PadoActivityCard";
 
-type DepositTab = 'NUSDC' | 'NBTC' | 'NETH' | 'NSOL';
-const DEPOSIT_TABS: DepositTab[] = ['NUSDC', 'NBTC', 'NETH', 'NSOL'];
-const LAST_DEPOSIT_TOKEN_KEY = 'pado:lastDepositToken';
+type DepositTab = "NUSDC" | "NBTC" | "NETH" | "NSOL";
+const DEPOSIT_TABS: DepositTab[] = ["NUSDC", "NBTC", "NETH", "NSOL"];
+const LAST_DEPOSIT_TOKEN_KEY = "pado:lastDepositToken";
 
 // Token decimal config (mirrors TOKENS in config/network.ts but locally typed
 // to keep this module focused on UI concerns).
@@ -100,7 +114,8 @@ export function MarginAccountCard() {
   const padoAccount = usePadoAccount();
 
   // Trading for unified onboarding
-  const { balanceManagerId, createBalanceManager, registerBalanceManager } = useTrading();
+  const { balanceManagerId, createBalanceManager, registerBalanceManager } =
+    useTrading();
 
   const { showToast } = useToast();
 
@@ -120,14 +135,14 @@ export function MarginAccountCard() {
         const { balanceManagerId: newBmId } = await enablePado();
         registerBalanceManager(newBmId);
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=balance');
+        navigate("/portfolio?tab=balance");
         return;
       }
 
       if (hasBm && !hasMa) {
         await createAccount();
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=balance');
+        navigate("/portfolio?tab=balance");
         return;
       }
 
@@ -138,7 +153,7 @@ export function MarginAccountCard() {
           return;
         }
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=balance');
+        navigate("/portfolio?tab=balance");
         return;
       }
 
@@ -149,7 +164,15 @@ export function MarginAccountCard() {
     } finally {
       setIsEnablingPado(false);
     }
-  }, [enablePado, registerBalanceManager, hasAccount, balanceManagerId, createAccount, createBalanceManager, showToast]);
+  }, [
+    enablePado,
+    registerBalanceManager,
+    hasAccount,
+    balanceManagerId,
+    createAccount,
+    createBalanceManager,
+    showToast,
+  ]);
 
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = useState(false);
@@ -162,20 +185,26 @@ export function MarginAccountCard() {
 
   // Deposit-tab state (multi-token)
   const [activeTab, setActiveTab] = useState<DepositTab>(() => {
-    const last = typeof window !== 'undefined' ? localStorage.getItem(LAST_DEPOSIT_TOKEN_KEY) : null;
-    return isDepositTab(last) ? last : 'NUSDC';
+    const last =
+      typeof window !== "undefined"
+        ? localStorage.getItem(LAST_DEPOSIT_TOKEN_KEY)
+        : null;
+    return isDepositTab(last) ? last : "NUSDC";
   });
   const [slippageBps, setSlippageBps] = useState<number>(50);
   const [customSlippage, setCustomSlippage] = useState<string>("");
 
-  const isConnected = (status === "unlocked" && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
+  const isConnected =
+    (status === "unlocked" && walletAccount) ||
+    isZkLoggedIn ||
+    isPasskeyUnlocked;
 
   // Get wallet balances per token (raw bigint)
   const tokenBalanceRaw: Record<DepositTab, bigint> = {
     NUSDC: balances?.tokens?.NUSDC?.balance ?? 0n,
-    NBTC:  balances?.tokens?.NBTC?.balance  ?? 0n,
-    NETH:  balances?.tokens?.NETH?.balance  ?? 0n,
-    NSOL:  balances?.tokens?.NSOL?.balance  ?? 0n,
+    NBTC: balances?.tokens?.NBTC?.balance ?? 0n,
+    NETH: balances?.tokens?.NETH?.balance ?? 0n,
+    NSOL: balances?.tokens?.NSOL?.balance ?? 0n,
   };
   const nasunBalanceRaw = balances?.native?.balance ?? 0n;
   const walletNasunAmount = Number(nasunBalanceRaw) / 1e9;
@@ -183,7 +212,7 @@ export function MarginAccountCard() {
 
   // Persist last selected tab
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       localStorage.setItem(LAST_DEPOSIT_TOKEN_KEY, activeTab);
     }
   }, [activeTab]);
@@ -191,7 +220,8 @@ export function MarginAccountCard() {
   // Active tab decimal + balance helpers
   const activeDecimals = TOKEN_DECIMALS[activeTab];
   const activeBalanceRaw = tokenBalanceRaw[activeTab];
-  const activeBalanceFloat = Number(activeBalanceRaw) / Math.pow(10, activeDecimals);
+  const activeBalanceFloat =
+    Number(activeBalanceRaw) / Math.pow(10, activeDecimals);
 
   // Parse the input amount once for downstream use
   const amountFloat = parseFloat(depositAmount);
@@ -200,16 +230,27 @@ export function MarginAccountCard() {
   const debouncedAmountRaw = useDebouncedValue(amountRaw, 250);
 
   // Whether this tab needs swap routing
-  const isSwapTab = activeTab === 'NETH' || activeTab === 'NSOL';
+  const isSwapTab = activeTab === "NETH" || activeTab === "NSOL";
 
   // Live swap quote (NETH/NSOL only). 5s polling, debounced amount key.
   const { data: quote, error: quoteError } = useQuery<SwapQuote | null>({
-    queryKey: ['deposit-quote', activeTab, debouncedAmountRaw.toString(), slippageBps],
+    queryKey: [
+      "deposit-quote",
+      activeTab,
+      debouncedAmountRaw.toString(),
+      slippageBps,
+    ],
     queryFn: () => {
       if (!isSwapTab || debouncedAmountRaw <= 0n) return null;
       const pool = depositPoolFor(activeTab);
       if (!pool) return null;
-      return quoteBaseForQuote(pool, debouncedAmountRaw, activeDecimals, 6, slippageBps);
+      return quoteBaseForQuote(
+        pool,
+        debouncedAmountRaw,
+        activeDecimals,
+        6,
+        slippageBps,
+      );
     },
     refetchInterval: 5_000,
     staleTime: 4_000,
@@ -227,13 +268,15 @@ export function MarginAccountCard() {
   }, [quote, slippageBps]);
 
   // USD values for display (best-effort; oracle may be missing on devnet)
-  const tokenSymbolForPrice: TokenSymbol = activeTab === 'NUSDC' ? 'NUSDC' : activeTab;
+  const tokenSymbolForPrice: TokenSymbol =
+    activeTab === "NUSDC" ? "NUSDC" : activeTab;
   const activePrice = getUnifiedPrice(tokenSymbolForPrice);
   const amountUsd = activePrice > 0 ? amountFloat * activePrice : null;
   const balanceUsd = activePrice > 0 ? activeBalanceFloat * activePrice : null;
-  const expectedUsd = quote && quote.expectedQuoteRaw > 0n
-    ? Number(quote.expectedQuoteRaw) / 1e6
-    : null;
+  const expectedUsd =
+    quote && quote.expectedQuoteRaw > 0n
+      ? Number(quote.expectedQuoteRaw) / 1e6
+      : null;
   const minReceivedFloat = quote ? Number(quote.minQuoteRaw) / 1e6 : null;
 
   // Reset deposit ephemeral state when modal closes/opens or tab changes
@@ -258,20 +301,29 @@ export function MarginAccountCard() {
     }
 
     try {
-      if (activeTab === 'NUSDC') {
+      if (activeTab === "NUSDC") {
         await depositByAmount(amountRaw);
-      } else if (activeTab === 'NBTC') {
+      } else if (activeTab === "NBTC") {
         await depositNbtc(amountRaw);
       } else {
         // NETH/NSOL: refetch fresh quote then submit with its locked minQuoteOut
         const pool = depositPoolFor(activeTab);
         if (!pool) throw new Error(`No deposit pool for ${activeTab}`);
         const fresh = await queryClient.fetchQuery<SwapQuote | null>({
-          queryKey: ['deposit-quote', activeTab, amountRaw.toString(), slippageBps, 'confirm'],
-          queryFn: () => quoteBaseForQuote(pool, amountRaw, activeDecimals, 6, slippageBps),
+          queryKey: [
+            "deposit-quote",
+            activeTab,
+            amountRaw.toString(),
+            slippageBps,
+            "confirm",
+          ],
+          queryFn: () =>
+            quoteBaseForQuote(pool, amountRaw, activeDecimals, 6, slippageBps),
         });
         if (!fresh) {
-          setError("No liquidity for this trade right now. Try a different token or smaller amount.");
+          setError(
+            "No liquidity for this trade right now. Try a different token or smaller amount.",
+          );
           return;
         }
         await depositSwap({
@@ -294,7 +346,9 @@ export function MarginAccountCard() {
       await withdrawAllPado();
       return { success: true };
     } catch (err) {
-      setWithdrawAllError(err instanceof Error ? err.message : "Withdraw failed");
+      setWithdrawAllError(
+        err instanceof Error ? err.message : "Withdraw failed",
+      );
       return { success: false };
     }
   };
@@ -360,7 +414,7 @@ export function MarginAccountCard() {
             </h3>
             <p className="text-sm text-theme-text-secondary mt-1">
               {isLegacy
-                ? "Add a Margin Account to unlock Perp, Predictions, and unified balance"
+                ? "Click the button to enable unified balance"
                 : "Enable Pado to use funds across Trading, Predictions, and more"}
             </p>
           </div>
@@ -369,7 +423,11 @@ export function MarginAccountCard() {
             disabled={isBusy}
             className="px-4 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
           >
-            {isBusy ? "Setting up..." : isLegacy ? "Complete Setup" : "Enable Pado"}
+            {isBusy
+              ? "Setting up..."
+              : isLegacy
+                ? "Complete Setup"
+                : "Enable Pado"}
           </button>
         </div>
       </div>
@@ -378,14 +436,16 @@ export function MarginAccountCard() {
 
   // Has account - show balance and actions
   // Compute Pado balance composition (NUSDC + NBTC) in USD
-  const totalNusdcUsd = Number(padoAccount.totalNusdcRaw) / Math.pow(10, TOKENS.NUSDC.decimals);
-  const totalNbtcAmount = Number(padoAccount.totalNbtcRaw) / Math.pow(10, TOKENS.NBTC.decimals);
-  const nbtcPriceForDisplay = getUnifiedPrice('NBTC');
+  const totalNusdcUsd =
+    Number(padoAccount.totalNusdcRaw) / Math.pow(10, TOKENS.NUSDC.decimals);
+  const totalNbtcAmount =
+    Number(padoAccount.totalNbtcRaw) / Math.pow(10, TOKENS.NBTC.decimals);
+  const nbtcPriceForDisplay = getUnifiedPrice("NBTC");
   const totalNbtcUsd = totalNbtcAmount * nbtcPriceForDisplay;
   const totalPadoUsd = totalNusdcUsd + totalNbtcUsd;
 
   type PadoToken = {
-    symbol: 'NUSDC' | 'NBTC';
+    symbol: "NUSDC" | "NBTC";
     name: string;
     amount: number;
     usd: number;
@@ -396,24 +456,24 @@ export function MarginAccountCard() {
   const tokens: PadoToken[] = [];
   if (totalNusdcUsd > 0) {
     tokens.push({
-      symbol: 'NUSDC',
-      name: 'Nasun USDC',
+      symbol: "NUSDC",
+      name: "Nasun USDC",
       amount: totalNusdcUsd,
       usd: totalNusdcUsd,
       pct: totalPadoUsd > 0 ? (totalNusdcUsd / totalPadoUsd) * 100 : 0,
-      barClass: 'bg-pd3',
-      dotClass: 'bg-pd3',
+      barClass: "bg-pd3",
+      dotClass: "bg-pd3",
     });
   }
   if (totalNbtcUsd > 0) {
     tokens.push({
-      symbol: 'NBTC',
-      name: 'Nasun BTC',
+      symbol: "NBTC",
+      name: "Nasun BTC",
       amount: totalNbtcAmount,
       usd: totalNbtcUsd,
       pct: totalPadoUsd > 0 ? (totalNbtcUsd / totalPadoUsd) * 100 : 0,
-      barClass: 'bg-yellow-500',
-      dotClass: 'bg-yellow-500',
+      barClass: "bg-yellow-500",
+      dotClass: "bg-yellow-500",
     });
   }
 
@@ -435,7 +495,9 @@ export function MarginAccountCard() {
       {/* Header */}
       <div className="flex items-start justify-between gap-2 mb-4">
         <div>
-          <h3 className="font-semibold text-theme-text-primary">Your Pado Balance</h3>
+          <h3 className="font-semibold text-theme-text-primary">
+            Your Pado Balance
+          </h3>
           <p className="text-xs text-theme-text-secondary mt-0.5">
             Funds deposited to Pado for Spot and Predict.
           </p>
@@ -448,19 +510,25 @@ export function MarginAccountCard() {
       {/* Total */}
       <div className="mb-5">
         <div className="text-3xl font-bold text-theme-text-primary">
-          ${totalPadoUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          $
+          {totalPadoUsd.toLocaleString("en-US", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
         </div>
         <div className="text-xs text-theme-text-muted mt-1">
           {tokens.length === 0
-            ? 'No tokens deposited yet'
-            : `Across ${tokens.length} ${tokens.length === 1 ? 'token' : 'tokens'}`}
+            ? "No tokens deposited yet"
+            : `Across ${tokens.length} ${tokens.length === 1 ? "token" : "tokens"}`}
         </div>
       </div>
 
       {/* Composition bar + legend (only if there is balance) */}
       {tokens.length > 0 && (
         <div className="mb-4">
-          <div className="text-xs text-theme-text-muted mb-1.5">Composition</div>
+          <div className="text-xs text-theme-text-muted mb-1.5">
+            Composition
+          </div>
           <div className="flex h-2.5 rounded-full overflow-hidden bg-theme-bg-tertiary">
             {tokens.map((t) => (
               <div
@@ -475,8 +543,12 @@ export function MarginAccountCard() {
             {tokens.map((t) => (
               <div key={t.symbol} className="flex items-center gap-1.5 text-xs">
                 <span className={`w-2 h-2 rounded-full ${t.dotClass}`} />
-                <span className="text-theme-text-secondary font-medium">{t.symbol}</span>
-                <span className="text-theme-text-muted">{t.pct.toFixed(1)}%</span>
+                <span className="text-theme-text-secondary font-medium">
+                  {t.symbol}
+                </span>
+                <span className="text-theme-text-muted">
+                  {t.pct.toFixed(1)}%
+                </span>
               </div>
             ))}
           </div>
@@ -492,20 +564,37 @@ export function MarginAccountCard() {
               className="flex items-center justify-between py-2.5 px-3 bg-theme-bg-tertiary rounded-lg"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <TokenIcon symbol={t.symbol as TokenSymbol} size="md" gradient />
+                <TokenIcon
+                  symbol={t.symbol as TokenSymbol}
+                  size="md"
+                  gradient
+                />
                 <div className="min-w-0">
-                  <div className="font-medium text-sm text-theme-text-primary">{t.symbol}</div>
-                  <div className="text-xs text-theme-text-muted truncate">{t.name}</div>
+                  <div className="font-medium text-sm text-theme-text-primary">
+                    {t.symbol}
+                  </div>
+                  <div className="text-xs text-theme-text-muted truncate">
+                    {t.name}
+                  </div>
                 </div>
               </div>
               <div className="text-right shrink-0">
                 <div className="text-sm font-medium text-theme-text-primary">
-                  {t.symbol === 'NBTC'
-                    ? t.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })
-                    : t.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {t.symbol === "NBTC"
+                    ? t.amount.toLocaleString("en-US", {
+                        maximumFractionDigits: 8,
+                      })
+                    : t.amount.toLocaleString("en-US", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                 </div>
                 <div className="text-xs text-theme-text-muted">
-                  ${t.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  $
+                  {t.usd.toLocaleString("en-US", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               </div>
             </div>
@@ -533,7 +622,10 @@ export function MarginAccountCard() {
       {/* Withdraw All from Pado (BM + MA combined) - opens confirm modal */}
       {hasAnyPadoBalance && (
         <button
-          onClick={() => { setWithdrawAllError(null); setShowWithdrawAllConfirm(true); }}
+          onClick={() => {
+            setWithdrawAllError(null);
+            setShowWithdrawAllConfirm(true);
+          }}
           disabled={isWithdrawing}
           className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50 mb-4"
         >
@@ -552,7 +644,9 @@ export function MarginAccountCard() {
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Deposit</h3>
+            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">
+              Deposit
+            </h3>
 
             {/* Token Tabs */}
             <div className="flex gap-1 mb-4 border-b border-theme-border">
@@ -575,10 +669,10 @@ export function MarginAccountCard() {
                     title={disabled ? "No balance" : undefined}
                     className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                       activeTab === tab
-                        ? 'border-pd2 text-theme-text-primary'
+                        ? "border-pd2 text-theme-text-primary"
                         : disabled
-                          ? 'border-transparent text-theme-text-muted cursor-not-allowed opacity-50'
-                          : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
+                          ? "border-transparent text-theme-text-muted cursor-not-allowed opacity-50"
+                          : "border-transparent text-theme-text-secondary hover:text-theme-text-primary"
                     }`}
                   >
                     {tab}
@@ -587,14 +681,40 @@ export function MarginAccountCard() {
               })}
             </div>
 
+            {/* Destination hint */}
+            <div className="mb-4 rounded-lg border border-theme-border bg-theme-bg-primary/60 px-3 py-2.5 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-theme-text-primary">
+                  Destination
+                </span>
+                <span className="text-xs font-medium text-pd3">
+                  Predictions &amp; Margin account
+                </span>
+              </div>
+              <p className="text-xs text-theme-text-muted leading-relaxed">
+                Funds land here first. When you place a spot buy order, Pado
+                automatically moves the needed amount to the Spot trading
+                account within the same transaction.
+              </p>
+            </div>
+
             {/* Amount input */}
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-2">
                 <span className="text-theme-text-secondary">Amount</span>
                 <span className="text-theme-text-muted">
-                  Wallet: {activeBalanceFloat.toLocaleString('en-US', { maximumFractionDigits: activeDecimals })} {activeTab}
+                  Wallet:{" "}
+                  {activeBalanceFloat.toLocaleString("en-US", {
+                    maximumFractionDigits: activeDecimals,
+                  })}{" "}
+                  {activeTab}
                   {balanceUsd !== null && (
-                    <span className="ml-1 text-theme-text-muted">≈ ${balanceUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                    <span className="ml-1 text-theme-text-muted">
+                      ≈ $
+                      {balanceUsd.toLocaleString("en-US", {
+                        maximumFractionDigits: 2,
+                      })}
+                    </span>
                   )}
                 </span>
               </div>
@@ -612,7 +732,8 @@ export function MarginAccountCard() {
                 <button
                   onClick={() => {
                     setDepositAmount(activeBalanceFloat.toString());
-                    if (walletNasunAmount < MIN_GAS_RESERVE) setShowGasWarning(true);
+                    if (walletNasunAmount < MIN_GAS_RESERVE)
+                      setShowGasWarning(true);
                   }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
                 >
@@ -621,7 +742,10 @@ export function MarginAccountCard() {
               </div>
               {amountUsd !== null && amountValid && (
                 <div className="text-xs text-theme-text-muted mt-1">
-                  ≈ ${amountUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}
+                  ≈ $
+                  {amountUsd.toLocaleString("en-US", {
+                    maximumFractionDigits: 2,
+                  })}
                 </div>
               )}
             </div>
@@ -630,39 +754,63 @@ export function MarginAccountCard() {
             {isSwapTab && amountValid && (
               <div className="mb-4 p-3 bg-theme-bg-primary border border-theme-border rounded-lg space-y-2">
                 {quoteError && (
-                  <p className="text-xs text-red-400">Failed to fetch quote: {formatErrorMessage(quoteError)}</p>
+                  <p className="text-xs text-red-400">
+                    Failed to fetch quote: {formatErrorMessage(quoteError)}
+                  </p>
                 )}
                 {!quote && !quoteError && debouncedAmountRaw > 0n && (
-                  <p className="text-xs text-theme-text-muted">Fetching quote…</p>
+                  <p className="text-xs text-theme-text-muted">
+                    Fetching quote…
+                  </p>
                 )}
                 {quote && (
                   <>
                     <div className="flex justify-between text-sm">
-                      <span className="text-theme-text-secondary">You'll receive</span>
+                      <span className="text-theme-text-secondary">
+                        You'll receive
+                      </span>
                       <span className="text-theme-text-primary font-medium">
-                        ~{(Number(quote.expectedQuoteRaw) / 1e6).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
+                        ~
+                        {(Number(quote.expectedQuoteRaw) / 1e6).toLocaleString(
+                          "en-US",
+                          { maximumFractionDigits: 2 },
+                        )}{" "}
+                        NUSDC
                         {expectedUsd !== null && (
-                          <span className="ml-1 text-theme-text-muted text-xs">≈ ${expectedUsd.toLocaleString('en-US', { maximumFractionDigits: 2 })}</span>
+                          <span className="ml-1 text-theme-text-muted text-xs">
+                            ≈ $
+                            {expectedUsd.toLocaleString("en-US", {
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
                         )}
                       </span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-theme-text-muted">Rate</span>
-                      <span className="text-theme-text-secondary">1 {activeTab} = {quote.bestBidPrice.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC</span>
+                      <span className="text-theme-text-secondary">
+                        1 {activeTab} ={" "}
+                        {quote.bestBidPrice.toLocaleString("en-US", {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        NUSDC
+                      </span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-theme-text-muted">Price impact</span>
+                      <span className="text-theme-text-muted">
+                        Price impact
+                      </span>
                       <span
                         className={
                           quote.priceImpact < 0.001
-                            ? 'text-theme-text-secondary'
+                            ? "text-theme-text-secondary"
                             : quote.priceImpact < 0.01
-                              ? 'text-yellow-500'
-                              : 'text-red-500 font-semibold'
+                              ? "text-yellow-500"
+                              : "text-red-500 font-semibold"
                         }
                       >
                         {(quote.priceImpact * 100).toFixed(3)}%
-                        {quote.priceImpact >= 0.01 && ' ⚠ high'}
+                        {quote.priceImpact >= 0.01 && " ⚠ high"}
                       </span>
                     </div>
                     {/* Slippage selector */}
@@ -672,16 +820,21 @@ export function MarginAccountCard() {
                         {SLIPPAGE_PRESETS.map((bps) => (
                           <button
                             key={bps}
-                            onClick={() => { setSlippageBps(bps); setCustomSlippage(""); }}
+                            onClick={() => {
+                              setSlippageBps(bps);
+                              setCustomSlippage("");
+                            }}
                             className={`px-2 py-1 rounded text-xs ${
                               slippageBps === bps && !customSlippage
-                                ? 'bg-pd2 text-white'
-                                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary'
+                                ? "bg-pd2 text-white"
+                                : "bg-theme-bg-tertiary text-theme-text-secondary hover:text-theme-text-primary"
                             }`}
                           >
                             {bps / 100}%
                             {bps === recommendedSlippageBps(quote) && (
-                              <span className="ml-1 text-[10px] opacity-70">rec.</span>
+                              <span className="ml-1 text-[10px] opacity-70">
+                                rec.
+                              </span>
                             )}
                           </button>
                         ))}
@@ -704,14 +857,20 @@ export function MarginAccountCard() {
                       </div>
                     </div>
                     <div className="flex justify-between text-xs pt-1 border-t border-theme-border">
-                      <span className="text-theme-text-muted">Min received</span>
+                      <span className="text-theme-text-muted">
+                        Min received
+                      </span>
                       <span className="text-theme-text-secondary">
-                        {(minReceivedFloat ?? 0).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
+                        {(minReceivedFloat ?? 0).toLocaleString("en-US", {
+                          maximumFractionDigits: 2,
+                        })}{" "}
+                        NUSDC
                       </span>
                     </div>
                     {quote.underestimateRisk && (
                       <p className="text-xs text-yellow-500">
-                        ⚠ Order size exceeds best-bid depth; actual fill may be lower than quoted.
+                        ⚠ Order size exceeds best-bid depth; actual fill may be
+                        lower than quoted.
                       </p>
                     )}
                   </>
@@ -726,8 +885,8 @@ export function MarginAccountCard() {
                   <span className="text-yellow-500 text-sm">⚠️</span>
                   <div className="flex-1">
                     <p className="text-sm text-yellow-600 dark:text-yellow-400">
-                      Low NSN balance ({walletNasunAmount.toFixed(3)} NSN). Keep at least{" "}
-                      {MIN_GAS_RESERVE} NSN for transaction fees.
+                      Low NSN balance ({walletNasunAmount.toFixed(3)} NSN). Keep
+                      at least {MIN_GAS_RESERVE} NSN for transaction fees.
                     </p>
                     <p className="text-xs text-theme-text-muted mt-1">
                       Get NSN from faucet on the Trade page.
@@ -781,7 +940,9 @@ export function MarginAccountCard() {
       {showWithdrawModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Withdraw NUSDC</h3>
+            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">
+              Withdraw NUSDC
+            </h3>
 
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-2">
@@ -800,7 +961,9 @@ export function MarginAccountCard() {
                 />
                 <button
                   onClick={() =>
-                    setWithdrawAmount((Number(account?.nusdcBalance || 0n) / 1e6).toString())
+                    setWithdrawAmount(
+                      (Number(account?.nusdcBalance || 0n) / 1e6).toString(),
+                    )
                   }
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
                 >
