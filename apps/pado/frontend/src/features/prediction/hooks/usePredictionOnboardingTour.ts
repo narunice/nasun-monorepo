@@ -19,20 +19,20 @@ export const PREDICTION_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="prediction-orderbook"]',
     title: 'Order Book',
-    description: 'Each price is a probability. 60% means the market thinks there\'s a 60% chance this resolves YES.',
-    noTargetDescription: 'The order book shows live YES/NO bids. Each price level represents a probability.',
+    description: 'Each price is both a price and a probability. 60¢ means a YES share costs $0.60 and the market implies a 60% chance of YES.',
+    noTargetDescription: 'The order book shows live YES/NO bids. A price of 60¢ means a share costs $0.60 and implies a 60% probability.',
   },
   {
     target: '[data-tour="prediction-order-form"]',
     title: 'Place an Order',
-    description: 'Buy YES or NO with Market or Limit orders. Your NUSDC comes from your Pado account automatically.',
-    noTargetDescription: 'Connect your wallet to place YES/NO orders. Your Pado account is used for both spot and prediction trades.',
+    description: 'Example: buy $10 of YES at 60¢ → you receive ~16.7 YES shares. If YES resolves true, each share pays $1 → $16.70. If false, your shares expire worthless ($10 loss).',
+    noTargetDescription: 'Connect your wallet to buy YES or NO shares. Each share pays $1 if its outcome wins, or $0 if it loses.',
   },
   {
     target: '[data-tour="prediction-positions"]',
     title: 'Your Positions',
-    description: 'Open positions show your estimated payout if the market resolves in your favor.',
-    noTargetDescription: 'After your first trade, your open positions and estimated payouts appear here.',
+    description: 'Open positions show your shares and estimated payout if the market resolves in your favor. You can close a position anytime by selling your shares back into the order book.',
+    noTargetDescription: 'After your first trade, your open shares and estimated payouts appear here. Close anytime by selling back into the order book.',
   },
   {
     target: '[data-tour="portfolio-link"]',

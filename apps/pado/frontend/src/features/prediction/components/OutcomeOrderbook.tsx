@@ -5,6 +5,7 @@
 
 import { useState, useMemo } from 'react';
 import type { Orderbook, OrderbookLevel } from '../types';
+import { formatCents } from '../utils/formatPrice';
 
 interface OutcomeOrderbookProps {
   yesOrderbook: Orderbook;
@@ -209,8 +210,8 @@ interface OrderbookRowProps {
 }
 
 function OrderbookRow({ level, depthPercent, isBid, color, onClick, hasRealOrders }: OrderbookRowProps) {
-  // Convert price from basis points (0-10000) to percentage (0-100)
-  const pricePercent = level.price / 100;
+  // bps → cents (1¢ = 1% probability since each share pays $1 at resolution)
+  const priceLabel = formatCents(level.price, 1);
   const shares = Number(level.amount);
   const isSimulated = level.isSimulated ?? false;
 
@@ -232,7 +233,7 @@ function OrderbookRow({ level, depthPercent, isBid, color, onClick, hasRealOrder
       />
       {/* Content */}
       <span className="relative z-10 font-mono flex items-center gap-1">
-        {pricePercent.toFixed(1)}%
+        {priceLabel}
         {isSimulated && hasRealOrders && (
           <span className="text-yellow-600 dark:text-yellow-500 text-[10px]">•</span>
         )}

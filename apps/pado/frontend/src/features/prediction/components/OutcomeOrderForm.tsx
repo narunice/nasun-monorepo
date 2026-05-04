@@ -19,6 +19,7 @@ import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
+import { formatCentsWithProb } from '../utils/formatPrice';
 import type { PredictionMarket, Orderbook } from '../types';
 
 interface OutcomeOrderFormProps {
@@ -108,6 +109,14 @@ export function OutcomeOrderForm({
       setSelectedPositionId('');
     }
   }, [orderType, filteredPositions]);
+
+  // Force back to buy if all positions are closed while sell tab is active
+  // (otherwise the hidden tab leaves orderType stuck in an invalid state).
+  useEffect(() => {
+    if (positions.length === 0 && orderType === 'sell') {
+      setOrderType('buy');
+    }
+  }, [positions.length, orderType]);
 
   const activeBook = outcomeType === 'yes' ? yesOrderbook : noOrderbook;
   const realAsks = activeBook?.asks.filter((l) => !l.isSimulated) ?? [];
@@ -228,7 +237,7 @@ export function OutcomeOrderForm({
           }
         } else {
           if (!selectedPositionId) {
-            setError('Please select a position to sell');
+            setError('Please select a position to close');
             return;
           }
 
@@ -246,12 +255,12 @@ export function OutcomeOrderForm({
 
           const result = await placeSellTaker(market.id, selectedPositionId, minPriceBps, restOnNoFill);
           if (result.success) {
-            setSuccess(`Sell order placed. Tx: ${result.digest?.slice(0, 8)}...`);
+            setSuccess(`Close order placed. Tx: ${result.digest?.slice(0, 8)}...`);
             setPrice('');
             refetchPositions();
             startSync(result.digest!);
           } else {
-            setError(result.error || 'Failed to place sell order');
+            setError(result.error || 'Failed to place close order');
           }
         }
       });
@@ -310,10 +319,10 @@ export function OutcomeOrderForm({
   const walletBalance = parseFloat(nusdcBalance) + maBalance;
 
   const pricePlaceholder = bestAskBps != null && orderType === 'buy'
-    ? `Best ask: ${(bestAskBps / 100).toFixed(2)}%`
+    ? `Best ask: ${formatCentsWithProb(bestAskBps, 2)}`
     : bestBidBps != null && orderType === 'sell'
-    ? `Best bid: ${(bestBidBps / 100).toFixed(2)}%`
-    : 'Enter price (1-99)';
+    ? `Best bid: ${formatCentsWithProb(bestBidBps, 2)}`
+    : 'Enter price (1¢ – 99¢)';
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
@@ -380,36 +389,44 @@ export function OutcomeOrderForm({
         </button>
       </div>
 
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setOrderType('buy')}
-          className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
-            orderType === 'buy'
-              ? 'bg-pd1 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-          }`}
-        >
-          Buy
-        </button>
-        <button
-          onClick={() => setOrderType('sell')}
-          className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
-            orderType === 'sell'
-              ? 'bg-pd1 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-          }`}
-        >
-          Sell
-        </button>
-      </div>
+      {/*
+        Hide Buy/Close tabs when the user has no positions in this market.
+        For novices a Sell button is meaningless (and confused with shorting)
+        until they own shares to close. Once they hold any position the
+        toggle reappears with the financial-instrument label "Close position".
+      */}
+      {positions.length > 0 && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setOrderType('buy')}
+            className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
+              orderType === 'buy'
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+            }`}
+          >
+            Buy
+          </button>
+          <button
+            onClick={() => setOrderType('sell')}
+            className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
+              orderType === 'sell'
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+            }`}
+          >
+            Close position
+          </button>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {orderType === 'sell' && (
           <div>
-            <label className="block text-sm text-theme-text-muted mb-1">Select Position</label>
+            <label className="block text-sm text-theme-text-muted mb-1">Position to close</label>
             {filteredPositions.length === 0 ? (
               <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
-                No {outcomeType.toUpperCase()} positions available.
+                No {outcomeType.toUpperCase()} shares to close.
                 {positions.length > 0 && ' Try the other outcome.'}
               </div>
             ) : (
@@ -521,7 +538,7 @@ export function OutcomeOrderForm({
           return (
             <div className="bg-theme-bg-tertiary rounded-lg p-3 space-y-1.5 text-sm">
               <div className="flex justify-between">
-                <span className="text-theme-text-muted">Sell now</span>
+                <span className="text-theme-text-muted">Close now</span>
                 <span className="font-mono text-theme-text-primary">${sellNow.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
@@ -587,7 +604,9 @@ export function OutcomeOrderForm({
                 ? 'Market Closed'
                 : isTradingFrozen
                   ? 'Awaiting Resolution'
-                  : `${orderMode === 'market' ? 'Market' : 'Limit'} ${orderType === 'buy' ? 'Buy' : 'Sell'} ${outcomeType.toUpperCase()}`}
+                  : orderType === 'sell'
+                    ? `Close ${outcomeType.toUpperCase()} position`
+                    : `${orderMode === 'market' ? 'Market' : 'Limit'} Buy ${outcomeType.toUpperCase()}`}
         </button>
 
         <div className="border-t border-theme-border pt-4 mt-4">
@@ -601,6 +620,10 @@ export function OutcomeOrderForm({
             {isLoading ? 'Minting...' : 'Mint YES + NO Tokens'}
           </button>
         </div>
+
+        <p className="text-sm leading-snug text-theme-text-secondary text-center pt-2">
+          Prediction market contracts. You may lose your entire position. Not investment advice.
+        </p>
       </form>
     </div>
   );
