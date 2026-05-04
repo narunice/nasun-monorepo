@@ -3,8 +3,9 @@
 **Rules (strict):**
 - Use "We" when referring to the ops team.
 - Do not use em dash (—). Use commas, periods, parentheses, or hyphens instead.
-- English only. Keep it short and warm.
-- Thank the reporter; describe what we did; mention points granted.
+- English only. Keep it friendly and detailed.
+- ALWAYS include thanks for participation AND patience. Required phrase: "Thank you for your participation and patience." (or a natural variation that conveys the same meaning).
+- Thank the reporter; describe what we did or why; mention points granted.
 
 ## fixed (bug confirmed and shipped)
 
