@@ -14,7 +14,14 @@ const COLORS = [
 ];
 
 const PARTICLE_COUNT = 36;
-const BURST_DURATION_S = 1.6;
+const BURST_DURATION_S = 3.2;
+// Hold particles fully opaque for the first 70% of the burst, then fade.
+// Without this, opacity decays linearly and particles become invisible by
+// the midpoint even though they're still on-screen.
+const OPACITY_HOLD_RATIO = 0.7;
+// Wait for the carousel slide-in transition (0.35s) to settle before firing,
+// so the burst lands on a stationary card instead of a sliding one.
+const ENTRY_DELAY_S = 0.4;
 
 // Top-10 celebration burst. Particles spray from the center outward with a
 // touch of downward gravity so they read as confetti rather than fireworks.
@@ -26,7 +33,10 @@ export function ConfettiBurst() {
   // Hide after the animation finishes so we don't keep DOM nodes around.
   const [visible, setVisible] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setVisible(false), (BURST_DURATION_S + 0.3) * 1000);
+    const t = setTimeout(
+      () => setVisible(false),
+      (ENTRY_DELAY_S + BURST_DURATION_S + 0.3) * 1000,
+    );
     return () => clearTimeout(t);
   }, []);
 
@@ -65,18 +75,28 @@ export function ConfettiBurst() {
             background: p.color,
             borderRadius: 1,
           }}
-          initial={{ x: 0, y: 0, opacity: 1, rotate: 0 }}
+          // Start invisible: framer renders the `initial` state during the
+          // entry delay, so opacity must be 0 here or particles would sit at
+          // center fully opaque before the burst fires.
+          initial={{ x: 0, y: 0, opacity: 0, rotate: 0 }}
           animate={{
             // Slight downward bias to suggest gravity without fully simulating it.
             x: Math.cos(p.angle) * p.distance,
             y: Math.sin(p.angle) * p.distance + 50,
             rotate: p.rotation,
-            opacity: 0,
+            opacity: [0, 1, 1, 0],
           }}
           transition={{
             duration: BURST_DURATION_S,
-            delay: p.delay,
+            delay: ENTRY_DELAY_S + p.delay,
             ease: [0.16, 1, 0.3, 1],
+            opacity: {
+              duration: BURST_DURATION_S,
+              delay: ENTRY_DELAY_S + p.delay,
+              // Instant pop-in (0 → 1 within first 2%), hold until 70%, fade.
+              times: [0, 0.02, OPACITY_HOLD_RATIO, 1],
+              ease: "easeOut",
+            },
           }}
         />
       ))}
