@@ -1,0 +1,30 @@
+# Static check on prod deploy scripts.
+#
+# Catches the cross-app-overwrite class that runtime layers cannot:
+# a typo INSIDE deploy-<app>-production.sh that points the rsync at the
+# wrong app's web root. The .app-id marker check still passes because
+# the dist correctly contains its own marker, but the wrong app gets
+# overwritten. See feedback_no_raw_rsync_to_prod.md (5/3 incident).
+#
+# Also runs locally via PostToolUse hook on Edit/Write of these scripts.
+
+name: lint-deploy-scripts
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/deploy-*-production.sh'
+      - 'scripts/lint-deploy-scripts.sh'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/deploy-*-production.sh'
+      - 'scripts/lint-deploy-scripts.sh'
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run lint-deploy-scripts.sh
+        run: ./scripts/lint-deploy-scripts.sh
