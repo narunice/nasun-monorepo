@@ -24,12 +24,18 @@ import {
   buildEnablePadoTx,
   buildDepositWithSplitTx,
   buildDepositNbtcWithSplitTx,
+  buildDepositNethWithSplitTx,
+  buildDepositNsolWithSplitTx,
+  buildWithdrawNethTx,
+  buildWithdrawNsolTx,
   buildSwapAndDepositTx,
   buildWithdrawTx,
   buildWithdrawAllTx,
   buildWithdrawAllPadoTx,
   NUSDC_TYPE,
   NBTC_TYPE,
+  NETH_TYPE,
+  NSOL_TYPE,
   type MarginAccountData,
 } from '../../../lib/unified-margin';
 import { depositPoolFor } from '../../../lib/deepbook';
@@ -50,7 +56,15 @@ interface UseMarginAccountResult {
   depositByAmount: (rawAmount: bigint) => Promise<void>;
   /** Deposit NBTC directly as native multi-collateral (no swap). */
   depositNbtc: (rawAmount: bigint) => Promise<void>;
-  /** Swap a non-NUSDC/non-NBTC token to NUSDC and deposit, atomically. */
+  /** Deposit NETH directly as native multi-collateral (post-V8). */
+  depositNeth: (rawAmount: bigint) => Promise<void>;
+  /** Deposit NSOL directly as native multi-collateral (post-V8). */
+  depositNsol: (rawAmount: bigint) => Promise<void>;
+  /** Withdraw NETH from MA. */
+  withdrawNeth: (rawAmount: bigint) => Promise<void>;
+  /** Withdraw NSOL from MA. */
+  withdrawNsol: (rawAmount: bigint) => Promise<void>;
+  /** Swap a non-native token to NUSDC and deposit, atomically. Kept as a secondary path. */
   depositSwap: (params: { fromSymbol: 'NETH' | 'NSOL' | 'NSN'; rawAmount: bigint; minQuoteOut: bigint }) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
@@ -405,9 +419,76 @@ export function useMarginAccount(): UseMarginAccountResult {
     },
   });
 
-  // Atomic swap (base → NUSDC) + deposit. For NETH/NSOL/NSN — tokens that
-  // aren't accepted as native collateral. minQuoteOut is the chain-enforced
-  // slippage floor (computed by the UI from the freshest quote at confirm).
+  const depositNethMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      if (!activeAddress) throw new Error('Wallet not connected');
+      if (!NETH_TYPE) throw new Error('NETH type not configured');
+
+      const client = getSuiClient();
+      const coins = await client.getCoins({ owner: activeAddress, coinType: NETH_TYPE });
+      const total = totalBalance(coins.data);
+      if (total < rawAmount) {
+        throw new Error(`Insufficient NETH balance: have ${total}, need ${rawAmount}`);
+      }
+      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const tx = buildDepositNethWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  const depositNsolMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      if (!activeAddress) throw new Error('Wallet not connected');
+      if (!NSOL_TYPE) throw new Error('NSOL type not configured');
+
+      const client = getSuiClient();
+      const coins = await client.getCoins({ owner: activeAddress, coinType: NSOL_TYPE });
+      const total = totalBalance(coins.data);
+      if (total < rawAmount) {
+        throw new Error(`Insufficient NSOL balance: have ${total}, need ${rawAmount}`);
+      }
+      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const tx = buildDepositNsolWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  const withdrawNethMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      const tx = buildWithdrawNethTx(marginAccountId, rawAmount);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  const withdrawNsolMutation = useMutation({
+    mutationFn: async (rawAmount: bigint) => {
+      if (!marginAccountId) throw new Error('No margin account');
+      const tx = buildWithdrawNsolTx(marginAccountId, rawAmount);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+    },
+  });
+
+  // Atomic swap (base → NUSDC) + deposit. Secondary path retained for users
+  // who prefer NUSDC accounting over native NETH/NSOL haircuts.
   const depositSwapMutation = useMutation({
     mutationFn: async (params: {
       fromSymbol: 'NETH' | 'NSOL' | 'NSN';
@@ -505,6 +586,22 @@ export function useMarginAccount(): UseMarginAccountResult {
     await depositNbtcMutation.mutateAsync(rawAmount);
   }, [depositNbtcMutation]);
 
+  const depositNeth = useCallback(async (rawAmount: bigint) => {
+    await depositNethMutation.mutateAsync(rawAmount);
+  }, [depositNethMutation]);
+
+  const depositNsol = useCallback(async (rawAmount: bigint) => {
+    await depositNsolMutation.mutateAsync(rawAmount);
+  }, [depositNsolMutation]);
+
+  const withdrawNeth = useCallback(async (rawAmount: bigint) => {
+    await withdrawNethMutation.mutateAsync(rawAmount);
+  }, [withdrawNethMutation]);
+
+  const withdrawNsol = useCallback(async (rawAmount: bigint) => {
+    await withdrawNsolMutation.mutateAsync(rawAmount);
+  }, [withdrawNsolMutation]);
+
   const depositSwap = useCallback(async (params: { fromSymbol: 'NETH' | 'NSOL' | 'NSN'; rawAmount: bigint; minQuoteOut: bigint }) => {
     await depositSwapMutation.mutateAsync(params);
   }, [depositSwapMutation]);
@@ -524,6 +621,10 @@ export function useMarginAccount(): UseMarginAccountResult {
     deposit,
     depositByAmount,
     depositNbtc,
+    depositNeth,
+    depositNsol,
+    withdrawNeth,
+    withdrawNsol,
     depositSwap,
     withdraw,
     withdrawAll,
@@ -535,8 +636,15 @@ export function useMarginAccount(): UseMarginAccountResult {
       depositMutation.isPending ||
       depositByAmountMutation.isPending ||
       depositNbtcMutation.isPending ||
+      depositNethMutation.isPending ||
+      depositNsolMutation.isPending ||
       depositSwapMutation.isPending,
-    isWithdrawing: withdrawMutation.isPending || withdrawAllMutation.isPending || withdrawAllPadoMutation.isPending,
+    isWithdrawing:
+      withdrawMutation.isPending ||
+      withdrawAllMutation.isPending ||
+      withdrawAllPadoMutation.isPending ||
+      withdrawNethMutation.isPending ||
+      withdrawNsolMutation.isPending,
 
     refetch,
     // Only true if account exists AND owner matches current user

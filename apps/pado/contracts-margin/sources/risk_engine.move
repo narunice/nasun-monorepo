@@ -209,6 +209,108 @@ module unified_margin::risk_engine {
         )
     }
 
+    // ===== V2 Risk Functions (NETH/NSOL collateral support) =====
+
+    /// V2 calculate_risk_metrics — same as V1 but consults V2 collateral value
+    /// (NUSDC + NBTC + NETH + NSOL with respective haircuts).
+    public fun calculate_risk_metrics_v2(
+        account: &MarginAccount,
+        registry: &MarginRegistry,
+        positions: &AccountPositions,
+        current_prices: vector<PriceInfo>,
+        nbtc_price: u64,
+        neth_price: u64,
+        nsol_price: u64,
+    ): RiskMetrics {
+        validate_prices_against_oracle(&current_prices, nbtc_price);
+
+        let collateral_value = unified_margin::calculate_collateral_value_usd_v2(
+            account,
+            registry,
+            nbtc_price,
+            neth_price,
+            nsol_price,
+        );
+
+        let (position_value, pnl_value, pnl_negative) = account_positions::get_total_position_value(
+            positions,
+            current_prices,
+        );
+
+        let margin_ratio = if (position_value == 0) {
+            MAX_MARGIN_RATIO
+        } else {
+            ((collateral_value as u128) * (BASIS_POINTS as u128) / (position_value as u128)) as u64
+        };
+
+        let required_margin = (position_value * INITIAL_MARGIN_BPS) / BASIS_POINTS;
+        let free_collateral = if (collateral_value > required_margin) {
+            collateral_value - required_margin
+        } else { 0 };
+
+        let risk_level = get_risk_level(margin_ratio);
+        let is_liquidatable = risk_level >= RISK_LEVEL_LIQUIDATABLE;
+
+        RiskMetrics {
+            collateral_value,
+            position_value,
+            unrealized_pnl_value: pnl_value,
+            unrealized_pnl_negative: pnl_negative,
+            margin_ratio,
+            free_collateral,
+            risk_level,
+            is_liquidatable,
+        }
+    }
+
+    /// V2 can_open_position with NETH/NSOL collateral
+    public fun can_open_position_v2(
+        account: &MarginAccount,
+        registry: &MarginRegistry,
+        positions: &AccountPositions,
+        new_position_value: u64,
+        current_prices: vector<PriceInfo>,
+        nbtc_price: u64,
+        neth_price: u64,
+        nsol_price: u64,
+    ): bool {
+        let collateral_value = unified_margin::calculate_collateral_value_usd_v2(
+            account,
+            registry,
+            nbtc_price,
+            neth_price,
+            nsol_price,
+        );
+
+        let (current_position_value, _, _) = account_positions::get_total_position_value(
+            positions,
+            current_prices,
+        );
+
+        let new_total_position = current_position_value + new_position_value;
+        if (new_total_position == 0) { return true };
+
+        let new_margin_ratio = ((collateral_value as u128) * (BASIS_POINTS as u128) / (new_total_position as u128)) as u64;
+        new_margin_ratio >= INITIAL_MARGIN_BPS
+    }
+
+    /// V2 validate_trade
+    public fun validate_trade_v2(
+        account: &MarginAccount,
+        registry: &MarginRegistry,
+        positions: &AccountPositions,
+        trade_value: u64,
+        current_prices: vector<PriceInfo>,
+        nbtc_price: u64,
+        neth_price: u64,
+        nsol_price: u64,
+    ): bool {
+        can_open_position_v2(
+            account, registry, positions, trade_value,
+            current_prices, nbtc_price, neth_price, nsol_price,
+        )
+    }
+
     // ===== Price Validation =====
 
     /// Validate caller-provided prices against Oracle reference price.

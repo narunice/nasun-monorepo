@@ -7,6 +7,8 @@ published-at = "0xbc2cbc6a529cf0da10113a4d76cde3019da64d3512f481a8227bcedde88270
 [dependencies]
 Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
 devnet_tokens = { local = "../../../packages/devnet-tokens" }
+devnet_tokens_v2 = { local = "../../../packages/devnet-tokens-v2" }
+devnet_tokens_v2_neth = { local = "../../../packages/devnet-tokens-v2-neth" }
 pado_oracle = { local = "../contracts-oracle" }
 
 [addresses]

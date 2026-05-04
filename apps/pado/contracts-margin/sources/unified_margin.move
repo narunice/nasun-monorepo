@@ -10,9 +10,31 @@
 module unified_margin::unified_margin {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
+    use sui::dynamic_field as df;
     use sui::event;
     use devnet_tokens::nusdc::NUSDC;
     use devnet_tokens::nbtc::NBTC;
+    use devnet_tokens_v2::nsol::NSOL;
+    use devnet_tokens_v2_neth::neth::NETH;
+
+    // ===== Dynamic Field Keys (NETH/NSOL extension) =====
+    //
+    // MarginAccount struct cannot grow new fields under Sui upgrade rules,
+    // so per-account NETH/NSOL balances are attached as dynamic fields keyed
+    // by phantom-typed keys. MarginRegistry reuses the same pattern for
+    // per-asset haircut and TVL counters.
+
+    public struct NethBalanceKey has copy, drop, store {}
+    public struct NsolBalanceKey has copy, drop, store {}
+    public struct NethHaircutKey has copy, drop, store {}
+    public struct NsolHaircutKey has copy, drop, store {}
+    public struct NethTvlKey has copy, drop, store {}
+    public struct NsolTvlKey has copy, drop, store {}
+
+    /// Default NETH haircut (10%) — conservative for ETH volatility
+    const DEFAULT_NETH_HAIRCUT: u64 = 1000;
+    /// Default NSOL haircut (15%) — higher for SOL volatility
+    const DEFAULT_NSOL_HAIRCUT: u64 = 1500;
 
     // ===== Error Codes =====
     const EInsufficientBalance: u64 = 0;
@@ -99,6 +121,34 @@ module unified_margin::unified_margin {
     }
 
     public struct NbtcWithdrawn has copy, drop {
+        account_id: ID,
+        owner: address,
+        amount: u64,
+        new_balance: u64,
+    }
+
+    public struct NethDeposited has copy, drop {
+        account_id: ID,
+        owner: address,
+        amount: u64,
+        new_balance: u64,
+    }
+
+    public struct NethWithdrawn has copy, drop {
+        account_id: ID,
+        owner: address,
+        amount: u64,
+        new_balance: u64,
+    }
+
+    public struct NsolDeposited has copy, drop {
+        account_id: ID,
+        owner: address,
+        amount: u64,
+        new_balance: u64,
+    }
+
+    public struct NsolWithdrawn has copy, drop {
         account_id: ID,
         owner: address,
         amount: u64,
@@ -362,6 +412,222 @@ module unified_margin::unified_margin {
         }
     }
 
+    // ===== NETH Functions (dynamic field-backed) =====
+
+    /// Internal: borrow_mut Balance<NETH>, creating zero balance if absent.
+    fun neth_balance_mut(account: &mut MarginAccount): &mut Balance<NETH> {
+        if (!df::exists_with_type<NethBalanceKey, Balance<NETH>>(&account.id, NethBalanceKey {})) {
+            df::add(&mut account.id, NethBalanceKey {}, balance::zero<NETH>());
+        };
+        df::borrow_mut(&mut account.id, NethBalanceKey {})
+    }
+
+    /// Internal: read-only Balance<NETH>, returns 0 if absent.
+    fun neth_balance_value(account: &MarginAccount): u64 {
+        if (!df::exists_with_type<NethBalanceKey, Balance<NETH>>(&account.id, NethBalanceKey {})) {
+            0
+        } else {
+            balance::value(df::borrow<NethBalanceKey, Balance<NETH>>(&account.id, NethBalanceKey {}))
+        }
+    }
+
+    /// Internal: registry NETH TVL bump
+    fun bump_neth_tvl(registry: &mut MarginRegistry, delta: u64, add: bool) {
+        if (!df::exists_with_type<NethTvlKey, u64>(&registry.id, NethTvlKey {})) {
+            df::add(&mut registry.id, NethTvlKey {}, 0u64);
+        };
+        let cur = df::borrow_mut<NethTvlKey, u64>(&mut registry.id, NethTvlKey {});
+        if (add) { *cur = *cur + delta; } else { *cur = *cur - delta; };
+    }
+
+    /// Deposit NETH into margin account
+    public fun deposit_neth(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        payment: Coin<NETH>,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        let amount = coin::value(&payment);
+        assert!(amount > 0, EZeroAmount);
+
+        balance::join(neth_balance_mut(account), coin::into_balance(payment));
+        bump_neth_tvl(registry, amount, true);
+
+        let new_balance = neth_balance_value(account);
+        event::emit(NethDeposited {
+            account_id: object::id(account),
+            owner: sender,
+            amount,
+            new_balance,
+        });
+    }
+
+    /// Withdraw NETH; transfers Coin<NETH> to sender
+    public fun withdraw_neth(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        let coin = split_neth(account, registry, amount, sender, ctx);
+        transfer::public_transfer(coin, sender);
+    }
+
+    /// Withdraw NETH and return Coin for PTB composition
+    public fun withdraw_neth_as_coin(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext,
+    ): Coin<NETH> {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        split_neth(account, registry, amount, sender, ctx)
+    }
+
+    /// Internal helper: split + accounting + event for NETH
+    fun split_neth(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        sender: address,
+        ctx: &mut TxContext,
+    ): Coin<NETH> {
+        assert!(amount > 0, EZeroAmount);
+        assert!(neth_balance_value(account) >= amount, EInsufficientBalance);
+
+        let bal_mut = neth_balance_mut(account);
+        let withdrawn = balance::split(bal_mut, amount);
+        bump_neth_tvl(registry, amount, false);
+
+        let new_balance = neth_balance_value(account);
+        event::emit(NethWithdrawn {
+            account_id: object::id(account),
+            owner: sender,
+            amount,
+            new_balance,
+        });
+        coin::from_balance(withdrawn, ctx)
+    }
+
+    /// Withdraw all NETH
+    public fun withdraw_all_neth(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        ctx: &mut TxContext
+    ) {
+        let v = neth_balance_value(account);
+        if (v > 0) { withdraw_neth(account, registry, v, ctx); }
+    }
+
+    // ===== NSOL Functions (dynamic field-backed) =====
+
+    fun nsol_balance_mut(account: &mut MarginAccount): &mut Balance<NSOL> {
+        if (!df::exists_with_type<NsolBalanceKey, Balance<NSOL>>(&account.id, NsolBalanceKey {})) {
+            df::add(&mut account.id, NsolBalanceKey {}, balance::zero<NSOL>());
+        };
+        df::borrow_mut(&mut account.id, NsolBalanceKey {})
+    }
+
+    fun nsol_balance_value(account: &MarginAccount): u64 {
+        if (!df::exists_with_type<NsolBalanceKey, Balance<NSOL>>(&account.id, NsolBalanceKey {})) {
+            0
+        } else {
+            balance::value(df::borrow<NsolBalanceKey, Balance<NSOL>>(&account.id, NsolBalanceKey {}))
+        }
+    }
+
+    fun bump_nsol_tvl(registry: &mut MarginRegistry, delta: u64, add: bool) {
+        if (!df::exists_with_type<NsolTvlKey, u64>(&registry.id, NsolTvlKey {})) {
+            df::add(&mut registry.id, NsolTvlKey {}, 0u64);
+        };
+        let cur = df::borrow_mut<NsolTvlKey, u64>(&mut registry.id, NsolTvlKey {});
+        if (add) { *cur = *cur + delta; } else { *cur = *cur - delta; };
+    }
+
+    public fun deposit_nsol(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        payment: Coin<NSOL>,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        let amount = coin::value(&payment);
+        assert!(amount > 0, EZeroAmount);
+
+        balance::join(nsol_balance_mut(account), coin::into_balance(payment));
+        bump_nsol_tvl(registry, amount, true);
+
+        let new_balance = nsol_balance_value(account);
+        event::emit(NsolDeposited {
+            account_id: object::id(account),
+            owner: sender,
+            amount,
+            new_balance,
+        });
+    }
+
+    public fun withdraw_nsol(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        let coin = split_nsol(account, registry, amount, sender, ctx);
+        transfer::public_transfer(coin, sender);
+    }
+
+    public fun withdraw_nsol_as_coin(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        ctx: &mut TxContext,
+    ): Coin<NSOL> {
+        let sender = tx_context::sender(ctx);
+        assert!(account.owner == sender, ENotOwner);
+        split_nsol(account, registry, amount, sender, ctx)
+    }
+
+    fun split_nsol(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        sender: address,
+        ctx: &mut TxContext,
+    ): Coin<NSOL> {
+        assert!(amount > 0, EZeroAmount);
+        assert!(nsol_balance_value(account) >= amount, EInsufficientBalance);
+
+        let bal_mut = nsol_balance_mut(account);
+        let withdrawn = balance::split(bal_mut, amount);
+        bump_nsol_tvl(registry, amount, false);
+
+        let new_balance = nsol_balance_value(account);
+        event::emit(NsolWithdrawn {
+            account_id: object::id(account),
+            owner: sender,
+            amount,
+            new_balance,
+        });
+        coin::from_balance(withdrawn, ctx)
+    }
+
+    public fun withdraw_all_nsol(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        ctx: &mut TxContext
+    ) {
+        let v = nsol_balance_value(account);
+        if (v > 0) { withdraw_nsol(account, registry, v, ctx); }
+    }
+
     // ===== Liquidation Functions (Package-level access) =====
 
     /// Withdraw NUSDC for liquidation (no owner check)
@@ -411,6 +677,40 @@ module unified_margin::unified_margin {
         transfer::public_transfer(coin, recipient);
     }
 
+    /// Withdraw NETH for liquidation (no owner check)
+    public(package) fun liquidation_withdraw_neth(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(amount > 0, EZeroAmount);
+        assert!(neth_balance_value(account) >= amount, EInsufficientBalance);
+        let bal_mut = neth_balance_mut(account);
+        let withdrawn = balance::split(bal_mut, amount);
+        let coin = coin::from_balance(withdrawn, ctx);
+        bump_neth_tvl(registry, amount, false);
+        transfer::public_transfer(coin, recipient);
+    }
+
+    /// Withdraw NSOL for liquidation (no owner check)
+    public(package) fun liquidation_withdraw_nsol(
+        account: &mut MarginAccount,
+        registry: &mut MarginRegistry,
+        amount: u64,
+        recipient: address,
+        ctx: &mut TxContext
+    ) {
+        assert!(amount > 0, EZeroAmount);
+        assert!(nsol_balance_value(account) >= amount, EInsufficientBalance);
+        let bal_mut = nsol_balance_mut(account);
+        let withdrawn = balance::split(bal_mut, amount);
+        let coin = coin::from_balance(withdrawn, ctx);
+        bump_nsol_tvl(registry, amount, false);
+        transfer::public_transfer(coin, recipient);
+    }
+
     // ===== Admin Functions =====
 
     /// Update NUSDC haircut (admin only)
@@ -446,6 +746,48 @@ module unified_margin::unified_margin {
 
         event::emit(HaircutUpdated {
             token: b"NBTC",
+            old_haircut_bps: old,
+            new_haircut_bps,
+        });
+    }
+
+    /// Update NETH haircut (admin only). Stored as dynamic field on registry.
+    public fun set_neth_haircut(
+        registry: &mut MarginRegistry,
+        new_haircut_bps: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == registry.admin, ENotAdmin);
+        assert!(new_haircut_bps < BPS, EInvalidHaircut);
+        let old = get_neth_haircut(registry);
+        if (df::exists_with_type<NethHaircutKey, u64>(&registry.id, NethHaircutKey {})) {
+            *df::borrow_mut<NethHaircutKey, u64>(&mut registry.id, NethHaircutKey {}) = new_haircut_bps;
+        } else {
+            df::add(&mut registry.id, NethHaircutKey {}, new_haircut_bps);
+        };
+        event::emit(HaircutUpdated {
+            token: b"NETH",
+            old_haircut_bps: old,
+            new_haircut_bps,
+        });
+    }
+
+    /// Update NSOL haircut (admin only). Stored as dynamic field on registry.
+    public fun set_nsol_haircut(
+        registry: &mut MarginRegistry,
+        new_haircut_bps: u64,
+        ctx: &mut TxContext
+    ) {
+        assert!(tx_context::sender(ctx) == registry.admin, ENotAdmin);
+        assert!(new_haircut_bps < BPS, EInvalidHaircut);
+        let old = get_nsol_haircut(registry);
+        if (df::exists_with_type<NsolHaircutKey, u64>(&registry.id, NsolHaircutKey {})) {
+            *df::borrow_mut<NsolHaircutKey, u64>(&mut registry.id, NsolHaircutKey {}) = new_haircut_bps;
+        } else {
+            df::add(&mut registry.id, NsolHaircutKey {}, new_haircut_bps);
+        };
+        event::emit(HaircutUpdated {
+            token: b"NSOL",
             old_haircut_bps: old,
             new_haircut_bps,
         });
@@ -504,6 +846,48 @@ module unified_margin::unified_margin {
         registry.nbtc_haircut_bps
     }
 
+    /// Get NETH balance (0 if account never deposited NETH)
+    public fun get_neth_balance(account: &MarginAccount): u64 {
+        neth_balance_value(account)
+    }
+
+    /// Get NSOL balance (0 if account never deposited NSOL)
+    public fun get_nsol_balance(account: &MarginAccount): u64 {
+        nsol_balance_value(account)
+    }
+
+    /// Get haircut for NETH (basis points). Returns DEFAULT until admin sets it.
+    public fun get_neth_haircut(registry: &MarginRegistry): u64 {
+        if (df::exists_with_type<NethHaircutKey, u64>(&registry.id, NethHaircutKey {})) {
+            *df::borrow<NethHaircutKey, u64>(&registry.id, NethHaircutKey {})
+        } else {
+            DEFAULT_NETH_HAIRCUT
+        }
+    }
+
+    /// Get haircut for NSOL (basis points). Returns DEFAULT until admin sets it.
+    public fun get_nsol_haircut(registry: &MarginRegistry): u64 {
+        if (df::exists_with_type<NsolHaircutKey, u64>(&registry.id, NsolHaircutKey {})) {
+            *df::borrow<NsolHaircutKey, u64>(&registry.id, NsolHaircutKey {})
+        } else {
+            DEFAULT_NSOL_HAIRCUT
+        }
+    }
+
+    /// Get registry NETH TVL (raw amount; 0 if no deposits yet)
+    public fun get_neth_tvl(registry: &MarginRegistry): u64 {
+        if (df::exists_with_type<NethTvlKey, u64>(&registry.id, NethTvlKey {})) {
+            *df::borrow<NethTvlKey, u64>(&registry.id, NethTvlKey {})
+        } else { 0 }
+    }
+
+    /// Get registry NSOL TVL (raw amount; 0 if no deposits yet)
+    public fun get_nsol_tvl(registry: &MarginRegistry): u64 {
+        if (df::exists_with_type<NsolTvlKey, u64>(&registry.id, NsolTvlKey {})) {
+            *df::borrow<NsolTvlKey, u64>(&registry.id, NsolTvlKey {})
+        } else { 0 }
+    }
+
     /// Calculate collateral value in USD with haircuts
     /// nbtc_price: BTC price in USD with 8 decimals (e.g., 97000_00000000 = $97,000)
     /// Returns: Total collateral value in NUSDC units (6 decimals)
@@ -526,6 +910,39 @@ module unified_margin::unified_margin {
         let nbtc_value = apply_haircut(nbtc_usd, nbtc_haircut);
 
         nusdc_value + nbtc_value
+    }
+
+    /// V2: Calculate collateral value in USD with all four assets (NUSDC + NBTC + NETH + NSOL).
+    /// Backward-compatible: V1 (`calculate_collateral_value_usd`) remains unchanged.
+    /// All prices are 8-decimal USD. Returns NUSDC units (6 decimals).
+    ///
+    /// Decimal scaling per asset:
+    ///   NBTC (8 dec) * price (8 dec) / 10^8 / 10^2 -> 6 dec USD
+    ///   NETH (8 dec) * price (8 dec) / 10^8 / 10^2 -> 6 dec USD
+    ///   NSOL (9 dec) * price (8 dec) / 10^8 / 10^3 -> 6 dec USD
+    public fun calculate_collateral_value_usd_v2(
+        account: &MarginAccount,
+        registry: &MarginRegistry,
+        nbtc_price: u64,
+        neth_price: u64,
+        nsol_price: u64,
+    ): u64 {
+        // NUSDC + NBTC reuse V1 math
+        let v1 = calculate_collateral_value_usd(account, registry, nbtc_price);
+
+        // NETH (8 dec amount, 8 dec price -> 6 dec USD via /10^10)
+        let neth_raw = neth_balance_value(account);
+        let neth_haircut = get_neth_haircut(registry);
+        let neth_usd = ((neth_raw as u128) * (neth_price as u128) / 100_000_000 / 100) as u64;
+        let neth_value = apply_haircut(neth_usd, neth_haircut);
+
+        // NSOL (9 dec amount, 8 dec price -> 6 dec USD via /10^11)
+        let nsol_raw = nsol_balance_value(account);
+        let nsol_haircut = get_nsol_haircut(registry);
+        let nsol_usd = ((nsol_raw as u128) * (nsol_price as u128) / 100_000_000 / 1_000) as u64;
+        let nsol_value = apply_haircut(nsol_usd, nsol_haircut);
+
+        v1 + neth_value + nsol_value
     }
 
     /// Apply haircut to a value
