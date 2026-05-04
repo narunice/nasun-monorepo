@@ -104,7 +104,10 @@ export function PredictPage() {
           <p className="text-theme-text-muted">No markets match your filters.</p>
         </div>
       ) : (
-        <div data-tour="prediction-market-list" className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div
+          data-tour="prediction-market-list"
+          className="-mx-3 sm:mx-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
+        >
           {filteredEntries.map(({ market, yesOrderbook }) => (
             <MarketCard key={market.id} market={market} yesOrderbook={yesOrderbook} />
           ))}
