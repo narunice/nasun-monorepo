@@ -337,13 +337,24 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       setIsLoading(true);
       setError(null);
 
-      const exec = async (): Promise<TradeResult> => {
+      // Retry once on stale-version errors. These happen when the LP bot ticks
+      // (or another taker fills) between dryRun and submit, bumping a referenced
+      // object's version. Rebuilding the tx pulls fresh refs from chain.
+      const isStaleVersionError = (err: unknown): boolean => {
+        const msg = err instanceof Error ? err.message : String(err);
+        return (
+          msg.includes('is not available for consumption') ||
+          msg.includes('ObjectVersionUnavailableForConsumption') ||
+          msg.includes('Object ID') && msg.includes('Version')
+        );
+      };
+
+      const attempt = async (): Promise<TradeResult & { _retriable?: boolean }> => {
         try {
           const tx = new Transaction();
           const client = getSuiClient();
           await build(tx, client);
           const result = await signAndExecute(tx);
-          // R7-W: wait for indexer so subsequent refetch hits indexed state.
           if (result.digest) {
             try {
               await client.waitForTransaction({
@@ -362,11 +373,37 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           return { success: true, digest: result.digest };
         } catch (err) {
           if (import.meta.env.DEV) console.error('[prediction trade] raw error:', err);
+          if (isStaleVersionError(err)) {
+            return { success: false, error: 'stale-version', _retriable: true };
+          }
           const message = parseTradeError(err);
-          setError(message);
-          showToast(message, 'error');
           return { success: false, error: message };
         }
+      };
+
+      const exec = async (): Promise<TradeResult> => {
+        const first = await attempt();
+        if (first.success || !first._retriable) {
+          if (!first.success) {
+            setError(first.error!);
+            showToast(first.error!, 'error');
+          }
+          return { success: first.success, digest: first.digest, error: first.error };
+        }
+        // Stale-version retry: invalidate caches, brief settle delay, then one more shot.
+        invalidateBalances();
+        invalidateMarketScoped(marketId, false);
+        await new Promise((r) => setTimeout(r, 400));
+        const second = await attempt();
+        if (!second.success) {
+          const msg = second._retriable
+            ? 'Network busy, please try again.'
+            : second.error!;
+          setError(msg);
+          showToast(msg, 'error');
+          return { success: false, error: msg };
+        }
+        return { success: true, digest: second.digest };
       };
 
       try {

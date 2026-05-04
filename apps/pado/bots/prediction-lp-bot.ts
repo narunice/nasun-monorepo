@@ -612,17 +612,33 @@ async function reconcileMarket(
   const rawMid = computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
   const state = getState(marketId);
   const smoothedMid = applyEma(state.yesMidEma, rawMid, cfg.emaLambda);
-  state.yesMidEma = smoothedMid;
+  // Note: state.yesMidEma is set AFTER skew below so the inventory-driven bias
+  // persists across ticks (otherwise mid reverts the moment LP refills depth).
 
-  const totalYesShares = positions.yes.reduce((s, p) => s + p.shares, 0n);
-  const totalNoShares = positions.no.reduce((s, p) => s + p.shares, 0n);
-  const deltaInv = totalYesShares - totalNoShares;
+  // Inventory imbalance signal: use resting ask depth on each side rather than
+  // idle Position objects. mint_outcome_tokens always mints YES+NO pairs, so
+  // idle positions stay ~1:1 regardless of taker flow — that signal is dead.
+  // Resting ask depletion directly reflects taker direction:
+  //   yes_ask depleted (yesAskAmt < target) → users bought YES → push mid UP
+  //   no_ask  depleted (noAskAmt  < target) → users bought NO  → push mid DOWN
+  // applyInventorySkew shifts mid down when its arg is positive, so we feed
+  // (yesAskAmt - noAskAmt): positive when noAsk is more depleted (NO bought).
+  const yesAskAmt = yesAskSide.orders
+    .filter((o) => o.owner === myAddress)
+    .reduce((s, o) => s + o.amount, 0n);
+  const noAskAmt = noAskSide.orders
+    .filter((o) => o.owner === myAddress)
+    .reduce((s, o) => s + o.amount, 0n);
+  const deltaInv = yesAskAmt - noAskAmt;
   const skewedMid = applyInventorySkew(
     smoothedMid,
     deltaInv,
     cfg.invCapShares,
     cfg.invSkewAlphaBps,
   );
+  // Persist the post-skew mid so taker-driven bias accumulates across ticks
+  // and decays gracefully when imbalance disappears.
+  state.yesMidEma = skewedMid;
 
   // Build YES ladder; mirror to NO via complement.
   const yesLadder = computeLadder(skewedMid, cfg.ladder);

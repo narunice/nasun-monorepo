@@ -48,7 +48,7 @@ type OutcomeType = 'yes' | 'no';
 type OrderType = 'buy' | 'sell';
 type OrderMode = 'market' | 'limit';
 
-const SLIPPAGE_BPS = 200; // 2% default slippage for market orders
+const SLIPPAGE_BPS = 1000; // 10% — thin orderbooks (sparse LP-bot levels) need wide tolerance for market sells; user-configurable slippage UI is the proper fix.
 // Move's validatePriceBps requires `> 0 && < MAX_PRICE (10000)`. Strict bounds.
 const MIN_PRICE_BPS = 1;
 const MAX_PRICE_BPS = 9999;
@@ -359,8 +359,9 @@ export function OutcomeOrderForm({
               setError('No bids. Switch to Limit mode and set a price.');
               return;
             }
-            // Move requires strict `> 0`. Clamp to MIN_PRICE_BPS + 1 = 2.
-            minPriceBps = Math.max(MIN_PRICE_BPS + 1, bestBidBps - SLIPPAGE_BPS);
+            // Move requires strict `> 0`. Clamp to 1¢ (100 bps) as a practical floor —
+            // anything below that is dust territory and unsafe as an auto-derived bound.
+            minPriceBps = Math.max(100, bestBidBps - SLIPPAGE_BPS);
           } else {
             minPriceBps = userPriceBps;
           }
@@ -524,23 +525,23 @@ export function OutcomeOrderForm({
 
       {/* Mode tabs (Market | Limit) — Advanced only */}
       {isAdvanced && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-1 mb-4 p-1 bg-theme-bg-tertiary rounded-lg">
           <button
             onClick={() => setOrderMode('market')}
-            className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'market'
-                ? 'bg-pd1 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
+                : 'bg-transparent text-white/40 hover:text-white/70'
             }`}
           >
             Market
           </button>
           <button
             onClick={() => setOrderMode('limit')}
-            className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'limit'
-                ? 'bg-pd1 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
+                : 'bg-transparent text-white/40 hover:text-white/70'
             }`}
           >
             Limit
@@ -548,23 +549,28 @@ export function OutcomeOrderForm({
         </div>
       )}
 
-      <div className="flex gap-2 mb-4">
+      {/* YES/NO segmented toggle — sliding indicator highlights active side */}
+      <div className="relative grid grid-cols-2 mb-4 p-1 bg-theme-bg-tertiary rounded-lg">
+        <span
+          aria-hidden
+          className={`absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-md transition-transform duration-200 ease-out ${
+            outcomeType === 'yes'
+              ? 'translate-x-0 bg-green-500/25 ring-1 ring-green-500/60'
+              : 'translate-x-full bg-red-500/25 ring-1 ring-red-500/60'
+          }`}
+        />
         <button
           onClick={() => setOutcomeType('yes')}
-          className={`flex-1 min-h-[44px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
-            outcomeType === 'yes'
-              ? 'bg-green-600 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+          className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
+            outcomeType === 'yes' ? 'text-green-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           YES
         </button>
         <button
           onClick={() => setOutcomeType('no')}
-          className={`flex-1 min-h-[44px] py-2 px-3 sm:px-4 rounded-lg font-medium text-sm transition-colors ${
-            outcomeType === 'no'
-              ? 'bg-red-600 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+          className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
+            outcomeType === 'no' ? 'text-red-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           NO
@@ -576,23 +582,23 @@ export function OutcomeOrderForm({
         Simple mode shows a banner instead (see below).
       */}
       {isAdvanced && positions.length > 0 && (
-        <div className="flex gap-2 mb-4">
+        <div className="flex gap-1 mb-4 p-1 bg-theme-bg-tertiary rounded-lg">
           <button
             onClick={() => setOrderType('buy')}
-            className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
+            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'buy'
-                ? 'bg-pd1 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
+                : 'bg-transparent text-white/40 hover:text-white/70'
             }`}
           >
             Buy
           </button>
           <button
             onClick={() => setOrderType('sell')}
-            className={`flex-1 min-h-[40px] py-2 px-3 rounded font-medium text-sm transition-colors ${
+            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'sell'
-                ? 'bg-pd1 text-white'
-                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
+                : 'bg-transparent text-white/40 hover:text-white/70'
             }`}
           >
             Close position
