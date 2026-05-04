@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useSearchParams } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import {
   useWallet,
   useZkLogin,
@@ -19,7 +19,7 @@ import { useBalance as useEthBalance } from "wagmi";
 import { ACTIVE_EVM_CHAIN, IS_EVM_TESTNET } from "@/config/evmChain";
 import { useAuth } from "@/features/auth";
 import { SOL_ADDRESS_RE } from "@/lib/solana";
-import { SOL_MAINNET_READ_RPC } from "@/lib/solana-readonly";
+import { solReadCall } from "@/lib/solana-readonly";
 import { UjuCard, UjuBadge, UjuButton, UjuSectionHeader } from "../shared";
 import { goToProfileConnectedAccounts } from "../shared/ujuNavigation";
 import { useMyProfile } from "@/features/profile/useMyProfile";
@@ -45,6 +45,14 @@ function NetworkBadge({ label }: { label: string }) {
   return <UjuBadge tone="violet">{label}</UjuBadge>;
 }
 
+// Public mainnet RPCs (Sui Foundation, Solana Foundation) are shared
+// rate-limited and occasionally drop requests. retry up to 3 with the
+// react-query default exponential backoff (1s, 2s, 4s) so a transient blip
+// resolves silently instead of surfacing as an "RPC error" in the UI.
+// keepPreviousData lets us show the last good balance during a refetch
+// instead of flashing "-" or an error state.
+const MAINNET_BALANCE_RETRY = 3;
+
 function useSuiMainnetBalance(address: string | undefined | null) {
   return useQuery({
     queryKey: ["balance", "sui-mainnet", address],
@@ -64,7 +72,8 @@ function useSuiMainnetBalance(address: string | undefined | null) {
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: 1,
+    retry: MAINNET_BALANCE_RETRY,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -74,33 +83,22 @@ function useSolMainnetBalance(address: string | null) {
     queryFn: async () => {
       if (!address || !SOL_ADDRESS_RE.test(address))
         throw new Error("Invalid Solana address");
-      const res = await fetch(SOL_MAINNET_READ_RPC, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "getBalance",
-          params: [address, { commitment: "confirmed" }],
-        }),
-      });
-      if (!res.ok) throw new Error("SOL RPC error");
-      const json = (await res.json()) as {
-        result?: { value: number };
-        error?: unknown;
-      };
-      if (json.error) throw new Error("SOL RPC error");
-      if (!json.result || typeof json.result.value !== "number") {
+      const result = await solReadCall<{ value: number }>("getBalance", [
+        address,
+        { commitment: "confirmed" },
+      ]);
+      if (typeof result?.value !== "number") {
         throw new Error("SOL RPC: unexpected response");
       }
-      return (json.result.value / 1e9).toFixed(4);
+      return (result.value / 1e9).toFixed(4);
     },
     enabled: !!address,
     staleTime: 60_000,
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: 1,
+    retry: MAINNET_BALANCE_RETRY,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -294,7 +292,12 @@ export function WalletBalanceCard() {
                   {suiPending ? (
                     "-"
                   ) : suiError ? (
-                    <span className="text-uju-secondary">RPC error</span>
+                    <span
+                      className="text-uju-secondary"
+                      title="Mainnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
+                    >
+                      Unavailable
+                    </span>
                   ) : (
                     `${suiBalance} SUI`
                   )}
@@ -383,7 +386,12 @@ export function WalletBalanceCard() {
                   {solPending ? (
                     "-"
                   ) : solFetchError ? (
-                    <span className="text-uju-secondary">RPC error</span>
+                    <span
+                      className="text-uju-secondary"
+                      title="Mainnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
+                    >
+                      Unavailable
+                    </span>
                   ) : (
                     `${solBalance} SOL`
                   )}

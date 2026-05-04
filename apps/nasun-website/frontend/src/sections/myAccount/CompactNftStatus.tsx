@@ -87,7 +87,9 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
   } = useAllianceMintStatus(cognitoToken);
 
   // Genesis Pass mint status (direct on-chain balanceOfBatch)
-  const { hasMinted: hasGenesisPassNft } = useGenesisPassOwnership(evmWalletAddress);
+  // Fall back to the registered EVM wallet from allowlist when MetaMask is not connected.
+  const effectiveEvmAddress = evmWalletAddress || genesisPassWallet?.toLowerCase() || undefined;
+  const { hasMinted: hasGenesisPassNft } = useGenesisPassOwnership(effectiveEvmAddress);
 
   // justMinted query param (redirect from drop page after successful mint)
   const [searchParams, setSearchParams] = useSearchParams();

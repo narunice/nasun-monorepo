@@ -61,6 +61,7 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     isConfigured: isGenesisPassConfigured,
     mintType: genesisPassMintType,
     eligibleStage: serverEligibleStage,
+    registeredWallet: genesisPassWallet,
   } = useGenesisPassStatus(evmWalletAddress, evmWalletAddress ? null : cognitoToken);
 
   // Derive eligibleStage from mintType if server doesn't provide it.
@@ -76,9 +77,11 @@ export const NftShowcaseCard: FC<NftShowcaseCardProps> = ({
     serverEligibleStage
     ?? (genesisPassMintType ? (MINT_TYPE_TO_STAGE[genesisPassMintType] ?? 3) : null);
 
-  // Direct on-chain ownership check
+  // Direct on-chain ownership check.
+  // Fall back to the registered EVM wallet from allowlist when MetaMask is not connected.
+  const effectiveEvmAddress = evmWalletAddress || genesisPassWallet?.toLowerCase() || undefined;
   const { hasMinted: hasGenesisPassNft, ownedEditionId } =
-    useGenesisPassOwnership(evmWalletAddress);
+    useGenesisPassOwnership(effectiveEvmAddress);
 
   // On-chain current stage
   const { currentStage } = useNftDropRead();
