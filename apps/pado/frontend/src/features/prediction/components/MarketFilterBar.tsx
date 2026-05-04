@@ -18,8 +18,12 @@ const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
 ];
 
 const CATEGORY_OPTIONS: ReadonlyArray<MarketCategory> = [
-  'All', 'Crypto', 'Sports', 'Politics', 'Finance', 'Other',
+  'All', 'Crypto', 'Finance', 'Sports', 'Politics', 'Other',
 ];
+
+// Categories with no live markets — kept visible for product-shape clarity
+// but disabled until at least one market in that category is created.
+const DISABLED_CATEGORIES = new Set<MarketCategory>(['Sports', 'Politics', 'Other']);
 
 const SORT_OPTIONS: ReadonlyArray<{ value: MarketSort; label: string }> = [
   { value: 'closing-soon', label: 'Closing Soon' },
@@ -48,16 +52,22 @@ interface TabButtonProps {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  disabled?: boolean;
+  title?: string;
 }
 
-function TabButton({ active, onClick, children }: TabButtonProps) {
+function TabButton({ active, onClick, children, disabled, title }: TabButtonProps) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
         active
           ? 'bg-pd1/80 text-white'
-          : 'text-theme-text-muted hover:text-theme-text-primary'
+          : disabled
+            ? 'text-theme-text-muted/40 cursor-not-allowed'
+            : 'text-theme-text-muted hover:text-theme-text-primary'
       }`}
     >
       {children}
@@ -86,11 +96,23 @@ export function MarketFilterBar({
 
       {/* Category group */}
       <SegmentedGroup>
-        {CATEGORY_OPTIONS.map((c) => (
-          <TabButton key={c} active={category === c} onClick={() => setCategory(c)}>
-            {c}
-          </TabButton>
-        ))}
+        {CATEGORY_OPTIONS.map((c) => {
+          const disabled = DISABLED_CATEGORIES.has(c);
+          return (
+            <TabButton
+              key={c}
+              active={category === c}
+              disabled={disabled}
+              title={disabled ? 'No markets available yet' : undefined}
+              onClick={() => {
+                if (disabled) return;
+                setCategory(c);
+              }}
+            >
+              {c}
+            </TabButton>
+          );
+        })}
       </SegmentedGroup>
 
       {/* Sort group */}
