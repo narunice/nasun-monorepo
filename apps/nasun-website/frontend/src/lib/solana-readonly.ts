@@ -21,6 +21,7 @@
 // If Foundation public RPC degrades, swap to a backend Lambda proxy.
 
 export const SOL_MAINNET_READ_RPC = "https://api.mainnet-beta.solana.com";
+export const SOL_DEVNET_READ_RPC = "https://api.devnet.solana.com";
 
 interface JsonRpcResponse<T> {
   jsonrpc: "2.0";
@@ -32,13 +33,14 @@ interface JsonRpcResponse<T> {
 let _id = 0;
 
 /**
- * Minimal JSON-RPC fetch wrapper for read-only Solana mainnet calls.
+ * Minimal JSON-RPC fetch wrapper for read-only Solana calls.
  * Throws on RPC error or non-OK HTTP. Caller handles retries via react-query.
  */
 export async function solReadCall<T = unknown>(
   method: string,
   params: unknown[],
   signal?: AbortSignal,
+  useDevnet: boolean = false,
 ): Promise<T> {
   // Defense-in-depth: refuse to issue any method that smells like signing.
   // Read methods on Solana are getBalance / getAccountInfo / getProgramAccounts /
@@ -51,8 +53,10 @@ export async function solReadCall<T = unknown>(
     throw new Error(`solReadCall: ${method} is forbidden on read-only RPC`);
   }
 
+  const rpcUrl = useDevnet ? SOL_DEVNET_READ_RPC : SOL_MAINNET_READ_RPC;
+
   _id += 1;
-  const res = await fetch(SOL_MAINNET_READ_RPC, {
+  const res = await fetch(rpcUrl, {
     method: "POST",
     signal,
     headers: { "Content-Type": "application/json" },
