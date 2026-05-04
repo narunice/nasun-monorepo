@@ -96,10 +96,11 @@ export function PredictMarketPage() {
     const params = new URLSearchParams(window.location.search);
     const force = params.get('tour') === '1';
     if (!force && isPredictionTourCompleted()) return;
+    if (market?.status !== 'open' && !force) return;
     tourStartedRef.current = true;
     const timer = setTimeout(() => startRef.current(), 600);
     return () => clearTimeout(timer);
-  }, [isLoading]);
+  }, [isLoading, market?.status]);
 
   if (isLoading) {
     return (
