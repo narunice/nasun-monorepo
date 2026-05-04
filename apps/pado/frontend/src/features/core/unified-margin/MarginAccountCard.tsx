@@ -21,6 +21,9 @@ import { useToast } from "@/components/common";
 import { floatToRaw } from "../../../lib/unified-margin";
 import { quoteBaseForQuote, recommendedSlippageBps, depositPoolFor, type SwapQuote } from "../../../lib/deepbook";
 import { getUnifiedPrice, type TokenSymbol } from "../../../lib/prices";
+import { TokenIcon } from "@/components/common";
+import { TOKENS } from "../../../config/network";
+import { PadoActivityCard } from "./PadoActivityCard";
 
 type DepositTab = 'NUSDC' | 'NBTC' | 'NETH' | 'NSOL';
 const DEPOSIT_TABS: DepositTab[] = ['NUSDC', 'NBTC', 'NETH', 'NSOL'];
@@ -42,7 +45,7 @@ function isDepositTab(v: string | null): v is DepositTab {
   return v !== null && (DEPOSIT_TABS as readonly string[]).includes(v);
 }
 
-// Lightweight debounce — used only for the quote queryKey so typing bursts
+// Lightweight debounce - used only for the quote queryKey so typing bursts
 // don't fan out into multiple stale queries.
 function useDebouncedValue<T>(value: T, delayMs: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -105,7 +108,7 @@ export function MarginAccountCard() {
   const [isEnablingPado, setIsEnablingPado] = useState(false);
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
-  // Single-PTB atomic creation when both are missing — no partial-state UX.
+  // Single-PTB atomic creation when both are missing - no partial-state UX.
   // Legacy single-side users complete the pair via the appropriate single tx.
   const handleEnablePado = useCallback(async () => {
     setIsEnablingPado(true);
@@ -242,7 +245,7 @@ export function MarginAccountCard() {
     setCustomSlippage("");
   }, []);
 
-  // Handle deposit — dispatches based on active tab
+  // Handle deposit - dispatches based on active tab
   const handleDeposit = async () => {
     setError(null);
     if (!amountValid) {
@@ -374,77 +377,178 @@ export function MarginAccountCard() {
   }
 
   // Has account - show balance and actions
+  // Compute Pado balance composition (NUSDC + NBTC) in USD
+  const totalNusdcUsd = Number(padoAccount.totalNusdcRaw) / Math.pow(10, TOKENS.NUSDC.decimals);
+  const totalNbtcAmount = Number(padoAccount.totalNbtcRaw) / Math.pow(10, TOKENS.NBTC.decimals);
+  const nbtcPriceForDisplay = getUnifiedPrice('NBTC');
+  const totalNbtcUsd = totalNbtcAmount * nbtcPriceForDisplay;
+  const totalPadoUsd = totalNusdcUsd + totalNbtcUsd;
+
+  type PadoToken = {
+    symbol: 'NUSDC' | 'NBTC';
+    name: string;
+    amount: number;
+    usd: number;
+    pct: number;
+    barClass: string;
+    dotClass: string;
+  };
+  const tokens: PadoToken[] = [];
+  if (totalNusdcUsd > 0) {
+    tokens.push({
+      symbol: 'NUSDC',
+      name: 'Nasun USDC',
+      amount: totalNusdcUsd,
+      usd: totalNusdcUsd,
+      pct: totalPadoUsd > 0 ? (totalNusdcUsd / totalPadoUsd) * 100 : 0,
+      barClass: 'bg-pd3',
+      dotClass: 'bg-pd3',
+    });
+  }
+  if (totalNbtcUsd > 0) {
+    tokens.push({
+      symbol: 'NBTC',
+      name: 'Nasun BTC',
+      amount: totalNbtcAmount,
+      usd: totalNbtcUsd,
+      pct: totalPadoUsd > 0 ? (totalNbtcUsd / totalPadoUsd) * 100 : 0,
+      barClass: 'bg-yellow-500',
+      dotClass: 'bg-yellow-500',
+    });
+  }
+
+  const hasAnyPadoBalance =
+    padoAccount.breakdown.bm.quoteRaw > 0n ||
+    padoAccount.breakdown.bm.baseRaw > 0n ||
+    padoAccount.breakdown.ma.nusdcRaw > 0n ||
+    padoAccount.breakdown.ma.nbtcRaw > 0n;
+
+  // Lifetime totals for the activity card "All time" preset.
+  // total_deposited_usd / total_withdrawn_usd on the MarginAccount track NUSDC
+  // 1:1 with USD (NBTC deposits are not folded in). The activity card uses
+  // these for the All-time fast path; other periods query events.
+  const lifetimeDepositedUsd = Number(account?.totalDepositedUsd ?? 0n) / 1e6;
+  const lifetimeWithdrawnUsd = Number(account?.totalWithdrawnUsd ?? 0n) / 1e6;
+
   return (
-    <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4">
+    <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-5">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-theme-text-primary">Pado Balance</h3>
-        <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded">Active</span>
+      <div className="flex items-start justify-between gap-2 mb-4">
+        <div>
+          <h3 className="font-semibold text-theme-text-primary">Your Pado Balance</h3>
+          <p className="text-xs text-theme-text-secondary mt-0.5">
+            Funds deposited to Pado for Spot and Predict.
+          </p>
+        </div>
+        <span className="text-xs text-green-500 bg-green-500/10 px-2 py-1 rounded shrink-0">
+          <span className="mr-1">●</span>Active
+        </span>
       </div>
 
-      {/* Balance */}
-      <div className="mb-4">
-        <div className="text-sm text-theme-text-secondary mb-1">Total Pado Balance</div>
-        <div className="text-2xl font-bold text-theme-text-primary">
-          {formatNusdc(padoAccount.totalNusdcRaw)}{" "}
-          <span className="text-base font-normal text-theme-text-secondary">NUSDC</span>
+      {/* Total */}
+      <div className="mb-5">
+        <div className="text-3xl font-bold text-theme-text-primary">
+          ${totalPadoUsd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
-        {(padoAccount.breakdown.bm.quoteRaw > 0n || padoAccount.breakdown.bm.baseRaw > 0n) && (
-          <div className="flex gap-3 mt-1 text-xs text-theme-text-muted">
-            <span>Trading: {formatNusdc(padoAccount.breakdown.bm.quoteRaw)}</span>
-            <span>|</span>
-            <span>Margin: {formatNusdc(padoAccount.breakdown.ma.nusdcRaw)}</span>
-          </div>
-        )}
+        <div className="text-xs text-theme-text-muted mt-1">
+          {tokens.length === 0
+            ? 'No tokens deposited yet'
+            : `Across ${tokens.length} ${tokens.length === 1 ? 'token' : 'tokens'}`}
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
-        <div className="min-w-0">
-          <div className="text-theme-text-muted text-xs sm:text-sm truncate">Total Deposited</div>
-          <div className="text-theme-text-primary font-medium truncate">
-            {formatNusdc(account?.totalDepositedUsd)} NUSDC
+      {/* Composition bar + legend (only if there is balance) */}
+      {tokens.length > 0 && (
+        <div className="mb-4">
+          <div className="text-xs text-theme-text-muted mb-1.5">Composition</div>
+          <div className="flex h-2.5 rounded-full overflow-hidden bg-theme-bg-tertiary">
+            {tokens.map((t) => (
+              <div
+                key={t.symbol}
+                className={t.barClass}
+                style={{ width: `${t.pct}%` }}
+                title={`${t.symbol} ${t.pct.toFixed(1)}%`}
+              />
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-4 mt-2">
+            {tokens.map((t) => (
+              <div key={t.symbol} className="flex items-center gap-1.5 text-xs">
+                <span className={`w-2 h-2 rounded-full ${t.dotClass}`} />
+                <span className="text-theme-text-secondary font-medium">{t.symbol}</span>
+                <span className="text-theme-text-muted">{t.pct.toFixed(1)}%</span>
+              </div>
+            ))}
           </div>
         </div>
-        <div className="min-w-0">
-          <div className="text-theme-text-muted text-xs sm:text-sm truncate">Total Withdrawn</div>
-          <div className="text-theme-text-primary font-medium truncate">
-            {formatNusdc(account?.totalWithdrawnUsd)} NUSDC
-          </div>
+      )}
+
+      {/* Token list */}
+      {tokens.length > 0 && (
+        <div className="space-y-2 mb-5">
+          {tokens.map((t) => (
+            <div
+              key={t.symbol}
+              className="flex items-center justify-between py-2.5 px-3 bg-theme-bg-tertiary rounded-lg"
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <TokenIcon symbol={t.symbol as TokenSymbol} size="md" gradient />
+                <div className="min-w-0">
+                  <div className="font-medium text-sm text-theme-text-primary">{t.symbol}</div>
+                  <div className="text-xs text-theme-text-muted truncate">{t.name}</div>
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <div className="text-sm font-medium text-theme-text-primary">
+                  {t.symbol === 'NBTC'
+                    ? t.amount.toLocaleString('en-US', { maximumFractionDigits: 8 })
+                    : t.amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+                <div className="text-xs text-theme-text-muted">
+                  ${t.usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <button
           onClick={() => setShowDepositModal(true)}
-          className="flex-1 py-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+          className="py-2.5 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
         >
-          Deposit
+          + Deposit
         </button>
         <button
           onClick={() => setShowWithdrawModal(true)}
           disabled={!account?.nusdcBalance || account.nusdcBalance === 0n}
-          className="flex-1 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary font-medium rounded-lg transition-colors disabled:opacity-50"
+          className="py-2.5 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary font-medium rounded-lg transition-colors disabled:opacity-50"
         >
-          Withdraw
+          - Withdraw
         </button>
       </div>
 
-      {/* Withdraw All from Pado (BM + MA combined) — opens confirm modal */}
-      {(padoAccount.breakdown.bm.quoteRaw > 0n || padoAccount.breakdown.bm.baseRaw > 0n) && (
-        <div className="mt-3">
-          <button
-            onClick={() => { setWithdrawAllError(null); setShowWithdrawAllConfirm(true); }}
-            disabled={isWithdrawing}
-            className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {isWithdrawing ? "Withdrawing..." : "Withdraw All from Pado"}
-          </button>
-        </div>
+      {/* Withdraw All from Pado (BM + MA combined) - opens confirm modal */}
+      {hasAnyPadoBalance && (
+        <button
+          onClick={() => { setWithdrawAllError(null); setShowWithdrawAllConfirm(true); }}
+          disabled={isWithdrawing}
+          className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50 mb-4"
+        >
+          {isWithdrawing ? "Withdrawing..." : "Withdraw All from Pado"}
+        </button>
       )}
 
-      {/* Deposit Modal — tabbed (NUSDC | NBTC | NETH | NSOL) */}
+      {/* Period-filtered activity */}
+      <PadoActivityCard
+        marginAccountId={account?.id ?? null}
+        lifetimeDepositedUsd={lifetimeDepositedUsd}
+        lifetimeWithdrawnUsd={lifetimeWithdrawnUsd}
+      />
+
+      {/* Deposit Modal - tabbed (NUSDC | NBTC | NETH | NSOL) */}
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6 w-full max-w-md">
@@ -522,7 +626,7 @@ export function MarginAccountCard() {
               )}
             </div>
 
-            {/* Quote Panel — NETH/NSOL only */}
+            {/* Quote Panel - NETH/NSOL only */}
             {isSwapTab && amountValid && (
               <div className="mb-4 p-3 bg-theme-bg-primary border border-theme-border rounded-lg space-y-2">
                 {quoteError && (
@@ -615,7 +719,7 @@ export function MarginAccountCard() {
               </div>
             )}
 
-            {/* Gas Warning — only for NUSDC MAX (existing logic) */}
+            {/* Gas Warning - only for NUSDC MAX (existing logic) */}
             {showGasWarning && (
               <div className="mb-4 p-3 bg-yellow-500/25 border border-yellow-500/50 rounded-lg">
                 <div className="flex items-start gap-2">

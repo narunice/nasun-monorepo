@@ -4,10 +4,7 @@
  * and fund management (Balance).
  */
 
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SendTransaction, SecuritySettings } from '@nasun/wallet-ui';
-import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import {
   AssetOverview,
   AllocationDonut,
@@ -17,9 +14,11 @@ import {
   MarketPerformance,
   ActivityTabs,
 } from '../features/portfolio/components';
-import { TransferHistory } from '../features/portfolio/components/TransferHistory';
-import { UnifiedBalanceCard, MarginAccountCard } from '../features/core/unified-margin';
-import { PaymentQRCode } from '../features/payments';
+import {
+  MarginAccountCard,
+  AdvancedFundLocation,
+  WalletSection,
+} from '../features/core/unified-margin';
 import { BalancePasswordGate } from '../components/common/BalancePasswordGate';
 
 type TabId = 'overview' | 'performance' | 'activity' | 'balance';
@@ -106,72 +105,33 @@ export function PortfolioPage() {
   );
 }
 
-type BalanceSubTab = 'send' | 'receive' | 'history' | 'settings';
-
-const BALANCE_SUB_TABS: { id: BalanceSubTab; label: string }[] = [
-  { id: 'send', label: 'Send' },
-  { id: 'receive', label: 'Receive' },
-  { id: 'history', label: 'History' },
-  { id: 'settings', label: 'Settings' },
-];
-
 function BalanceTab() {
-  const { status, account } = useWallet();
-  const { isConnected: isZkLoggedIn } = useZkLogin();
-  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
-
-  const [activeSubTab, setActiveSubTab] = useState<BalanceSubTab>('send');
-
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="mb-6">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div>
         <h2 className="text-lg font-bold text-theme-text-primary">Pado Balance</h2>
         <p className="text-sm text-theme-text-secondary mt-1">
-          Your unified funds for Spot, Predict, and Earn
+          Funds you've deposited to Pado for trading, plus what's still in your
+          Nasun wallet.
         </p>
       </div>
 
-      <div className="mb-6">
-        <UnifiedBalanceCard showBreakdown={true} />
-      </div>
+      {/* Hero: Pado deposit balance, composition, actions, period activity */}
+      <MarginAccountCard />
 
-      <div className="mb-6">
-        <MarginAccountCard />
-      </div>
+      {/* Self-custody reminder */}
+      <p className="text-xs text-theme-text-muted leading-relaxed px-1">
+        Your funds remain on-chain inside your wallet, escrowed to Pado for
+        trading. Withdrawing returns them to your spendable wallet balance.
+      </p>
 
-      <div className="flex gap-1.5 sm:gap-2 mb-6">
-        {BALANCE_SUB_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveSubTab(tab.id)}
-            className={`flex-1 py-2.5 px-2 sm:px-4 text-xs sm:text-sm font-medium rounded-lg transition-colors ${
-              activeSubTab === tab.id
-                ? 'bg-pd2 text-white'
-                : 'bg-theme-bg-secondary text-theme-text-secondary hover:bg-theme-bg-tertiary'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Advanced: where funds live (collapsed by default) */}
+      <AdvancedFundLocation />
 
-      <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-4 md:p-6">
-        {activeSubTab === 'send' && <SendTransaction />}
-        {activeSubTab === 'receive' && (
-          isConnected ? (
-            <PaymentQRCode />
-          ) : (
-            <div className="text-center py-8">
-              <p className="text-theme-text-muted">
-                Connect your wallet to view your receive address
-              </p>
-            </div>
-          )
-        )}
-        {activeSubTab === 'history' && <TransferHistory />}
-        {activeSubTab === 'settings' && <SecuritySettings />}
-      </div>
+      <div className="border-t border-theme-border" />
+
+      {/* Wallet section: holdings, send/receive/history/security, recovery */}
+      <WalletSection />
     </div>
   );
 }
