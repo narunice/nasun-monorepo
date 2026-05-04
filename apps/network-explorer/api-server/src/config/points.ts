@@ -58,6 +58,17 @@ export const SCORE_CATEGORIES = new Set([
   'governance', 'daily-mission', 'referral-bonus', 'ecosystem-passive',
 ]);
 
+// Default mission set applied to users with no persisted user_active_missions
+// row, or with an empty array (defensive: a stale [] write would otherwise
+// zero out base_score). Single source of truth for daily-snapshot.ts,
+// routes/ecosystem.ts (live /score), and rpc-reconcile.ts. All three readers
+// must use the same fallback or filtered base will drift between live and
+// the immutable end-of-day record (the 2026-05-03 incident root cause class).
+export const DEFAULT_MISSION_IDS: readonly string[] = [
+  'faucet', 'wallet-transfer', 'pado-dex',
+  'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
+];
+
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;
 

@@ -35,6 +35,7 @@ import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
 import { reconcileFromRpc } from './rpc-reconcile.js';
+import { runInvariantAuditDaily } from './invariant-audit.js';
 import { rpcCall } from '../rpc.js';
 import { fetchWithOffload } from './fetch-with-offload.js';
 import { saveCache, loadCache } from './cache-persist.js';
@@ -397,7 +398,7 @@ async function scanLoop(myGen: number): Promise<void> {
       const walletSnapshot = new Map(registeredWallets);
       isReconciling = true;
       reconcileFromRpc(yesterdayStr, walletSnapshot)
-        .then((gapsFilled) => {
+        .then(async (gapsFilled) => {
           if (gapsFilled > 0) {
             console.log(`[Reconcile] ${yesterdayStr}: ${gapsFilled} gaps filled from RPC`);
           } else {
@@ -413,6 +414,14 @@ async function scanLoop(myGen: number): Promise<void> {
           isReconciling = false;
         });
     }
+
+    // Daily ledger invariant audit (chain consistency / sum invariant /
+    // monotonic-decrease). Independent of snapshot/reconcile state so a
+    // broken snapshot loop doesn't also disable the audit. Self-gated to
+    // run at most once per UTC day inside runInvariantAuditDaily().
+    runInvariantAuditDaily().catch((err: unknown) => {
+      console.error('[InvariantAudit] Run error (non-fatal):', (err as Error).message);
+    });
   } catch (err) {
     console.error('[Points] Scan error:', err);
   } finally {
@@ -440,7 +449,8 @@ async function warmUpDailyCategoryCap(): Promise<void> {
     dailyCategorySeen = new Set();
     for (const row of rows) {
       if (row.identity_id) {
-        dailyCategorySeen.add(`${row.identity_id}::${row.category}`);
+        // Cap key matches processBatch(): identity::category::txDate
+        dailyCategorySeen.add(`${row.identity_id}::${row.category}::${today}`);
       }
     }
     console.log(`[Points] Daily cap warm-up: ${dailyCategorySeen.size} entries`);
@@ -641,9 +651,16 @@ async function processBatch(
     // Phase 1: only score registered wallets
     if (!identityId) continue;
 
-    // Daily category cap: 1 base_points insert per (identity, category) per day.
-    // Also limits referral bonus generation for capped events.
-    const capKey = `${identityId}::${mapping.category}`;
+    // Daily category cap: 1 base_points insert per (identity, category, day).
+    // The day component MUST be the transaction's UTC date, not the process's
+    // current date — without this, a re-scan that walks historical events
+    // (e.g. after a chain reset clearing activity_points) would skip every
+    // (identity, category) pair after its first occurrence regardless of date,
+    // collapsing all historical activity into a single per-pair row. The
+    // integrity guard on activity_points currently makes this scenario
+    // unreachable, but the keying is documented as the safety net here too.
+    const txDate = new Date(Number(event.timestamp_ms)).toISOString().slice(0, 10);
+    const capKey = `${identityId}::${mapping.category}::${txDate}`;
     if (dailyCategorySeen.has(capKey)) continue;
 
     // Score categories: apply genesis multiplier. Base categories: always 1.
