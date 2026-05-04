@@ -305,7 +305,13 @@ export async function fetchLatestRound(
  * As an extra safety net, we cap at MAX_PAGES to avoid runaway loops if
  * the RPC returns events without timestampMs.
  */
-const MAX_PAGES = 200; // 50 events × 200 pages = 10,000 ticket events
+// Headroom for very large rounds. Sui devnet RPC silently caps queryEvents
+// page size at 50 even when a higher limit is requested, so the effective
+// ceiling is 50 × MAX_PAGES. 5000 pages = 250k tickets (round 2 had 102k).
+// We still pass EVENTS_PAGE_SIZE=1000 so that if the node is reconfigured to
+// allow larger pages, fewer round-trips are needed.
+const EVENTS_PAGE_SIZE = 1000;
+const MAX_PAGES = 5000;
 const SAFETY_LOOKBACK_MS = 30 * 60 * 1000; // 30 min before round.startTime
 
 export async function countWinners(
@@ -330,7 +336,7 @@ export async function countWinners(
             MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`,
           },
           cursor: cursor ?? undefined,
-          limit: 50,
+          limit: EVENTS_PAGE_SIZE,
           order: 'descending',
         }),
       { label: 'queryTicketPurchased' },
