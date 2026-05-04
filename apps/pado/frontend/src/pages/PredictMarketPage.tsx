@@ -31,6 +31,7 @@ import {
   MyTradeHistory,
   RecentTradesFeed,
   MobileTradeStickyBar,
+  WinningClaimBanner,
   type PredictionMarket,
 } from '../features/prediction';
 import { calculateProbabilityFromOrderbook } from '../features/prediction/types';
@@ -220,6 +221,7 @@ export function PredictMarketPage() {
         <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
           <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} />
           <ResolutionMetaPanel market={market} />
+          <WinningClaimBanner market={market} positions={positions} />
           <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
           <MarketInfoPanel market={market} />
         </div>

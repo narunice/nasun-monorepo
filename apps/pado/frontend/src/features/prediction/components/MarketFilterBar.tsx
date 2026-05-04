@@ -14,6 +14,7 @@ import type {
 const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: "open", label: "Open" },
   { value: "resolved", label: "Resolved" },
+  { value: "mine", label: "Mine" },
   { value: "all", label: "All" },
 ];
 
@@ -51,7 +52,7 @@ interface MarketFilterBarProps {
 
 function SegmentedGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-0.5 bg-gray-800/70 rounded-lg p-0.5">
+    <div className="flex items-center gap-0.5 bg-gray-200 dark:bg-gray-800/70 rounded-lg p-0.5">
       {children}
     </div>
   );
@@ -81,8 +82,8 @@ function TabButton({
         active
           ? "bg-pd1 text-white shadow-sm"
           : disabled
-            ? "text-theme-text-muted opacity-25 cursor-not-allowed"
-            : "text-theme-text-muted opacity-50 hover:opacity-100 hover:text-theme-text-primary"
+            ? "text-gray-400 dark:text-theme-text-muted dark:opacity-25 cursor-not-allowed"
+            : "text-gray-700 dark:text-theme-text-muted dark:opacity-50 hover:text-gray-900 dark:hover:text-theme-text-primary dark:hover:opacity-100"
       }`}
     >
       {children}

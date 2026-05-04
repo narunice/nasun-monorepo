@@ -15,3 +15,4 @@ export { MyTradeHistory } from './MyTradeHistory';
 export { MobileTradeStickyBar } from './MobileTradeStickyBar';
 export { OrderSuccessModal, shouldShowOrderModal, incrementOrderModalCount, dismissOrderModal } from './OrderSuccessModal';
 export type { OrderSuccessData } from './OrderSuccessModal';
+export { WinningClaimBanner } from './WinningClaimBanner';
