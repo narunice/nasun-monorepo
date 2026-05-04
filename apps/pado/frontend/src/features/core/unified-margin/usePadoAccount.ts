@@ -3,7 +3,7 @@
  *
  * Unified selector that hides the BalanceManager / MarginAccount split and
  * exposes a single "Pado Account" abstraction. Consumers should prefer this
- * over reading BM and MA separately so the single-pocket UX stays coherent.
+ * over reading BM and MA separately so the Pado Balance UX stays coherent.
  */
 
 import { useQuery } from '@tanstack/react-query';

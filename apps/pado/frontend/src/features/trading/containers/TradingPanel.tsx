@@ -241,6 +241,11 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const walletQuote = isQuoteNative ? Math.max(0, walletQuoteRaw - GAS_RESERVE_HUMAN) : walletQuoteRaw;
   const availableBase = walletBase + bmBalance.base;
   const availableQuote = walletQuote + bmBalance.quote;
+  // Pado Balance — funds inside Pado (BM + MA NUSDC). Wallet excluded so the
+  // displayed Pado Balance matches what the Portfolio shows. MA only holds NUSDC,
+  // so the base side is BM-only.
+  const padoQuote = bmBalance.quote + marginQuote;
+  const padoBase = bmBalance.base;
 
   // TradeCap delegation for server-side TP/SL execution
   const tradeCap = useTradeCap(balanceManagerId, walletAddress);
@@ -573,8 +578,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
               onMarketSell={handleSimpleMarketSell}
               disabled={!isConnected || (!balanceManagerId && !isValidatingBalanceManager)}
               isLoading={isLoading}
-              quoteBalance={availableQuote}
-              baseBalance={availableBase}
+              quoteBalance={padoQuote}
+              baseBalance={padoBase}
               onWithdraw={handleOpenWithdraw}
               balanceManagerId={balanceManagerId}
             />

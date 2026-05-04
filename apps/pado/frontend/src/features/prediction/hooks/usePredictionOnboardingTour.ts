@@ -34,7 +34,7 @@ export const PREDICTION_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="portfolio-link"]',
     title: 'Portfolio',
-    description: 'View all your prediction positions and Pado Capital (Spot + Prediction balance) in one place.',
+    description: 'View all your prediction positions and Pado Balance (shared across Spot and Prediction) in one place.',
   },
 ];
 

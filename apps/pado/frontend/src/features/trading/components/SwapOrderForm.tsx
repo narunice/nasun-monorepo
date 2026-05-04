@@ -228,8 +228,9 @@ export function SwapOrderForm({
   }, [baseAmount, midPrice, isBuying, asks, bids]);
 
   // Balance and validation
-  // quoteBalance/baseBalance already include wallet + BM combined total.
-  // Auto deposit moves wallet funds to BM but cannot create funds, so validate against full balance.
+  // quoteBalance/baseBalance reflect Pado Balance (BM + MA NUSDC, BM-only base).
+  // Wallet auto-deposit can top BM up at order time, but the "Pado Balance"
+  // label only counts funds already inside Pado.
   const payBalance = isBuying ? quoteBalance : baseBalance;
   const maxPayAmount = isBuying ? quoteBalance / (1 + feeRate) : baseBalance;
   const isInsufficientBalance = payAmount > 0 && payAmount > maxPayAmount;
@@ -373,7 +374,7 @@ export function SwapOrderForm({
             className="text-theme-text-muted font-mono text-xs hover:text-theme-text-primary transition-colors disabled:cursor-default disabled:hover:text-theme-text-muted"
             title="Click to use max balance"
           >
-            Balance: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
+            Pado Balance: {payBalance.toLocaleString('en-US', { maximumFractionDigits: payDisplayDecimals })}
           </button>
         </div>
         <div>

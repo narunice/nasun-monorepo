@@ -117,14 +117,14 @@ export function MarginAccountCard() {
         const { balanceManagerId: newBmId } = await enablePado();
         registerBalanceManager(newBmId);
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=pocket');
+        navigate('/portfolio?tab=balance');
         return;
       }
 
       if (hasBm && !hasMa) {
         await createAccount();
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=pocket');
+        navigate('/portfolio?tab=balance');
         return;
       }
 
@@ -135,7 +135,7 @@ export function MarginAccountCard() {
           return;
         }
         showToast("Pado enabled!", "success");
-        navigate('/portfolio?tab=pocket');
+        navigate('/portfolio?tab=balance');
         return;
       }
 

@@ -1,7 +1,7 @@
 /**
  * PortfolioPage
  * Tabbed dashboard combining analytics (Overview / Performance / Activity)
- * and fund management (Pocket).
+ * and fund management (Balance).
  */
 
 import { useState } from 'react';
@@ -20,15 +20,15 @@ import {
 import { TransferHistory } from '../features/portfolio/components/TransferHistory';
 import { UnifiedBalanceCard, MarginAccountCard } from '../features/core/unified-margin';
 import { PaymentQRCode } from '../features/payments';
-import { PocketPasswordGate } from '../components/common/PocketPasswordGate';
+import { BalancePasswordGate } from '../components/common/BalancePasswordGate';
 
-type TabId = 'overview' | 'performance' | 'activity' | 'pocket';
+type TabId = 'overview' | 'performance' | 'activity' | 'balance';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'performance', label: 'Performance' },
   { id: 'activity', label: 'Activity' },
-  { id: 'pocket', label: 'Pocket' },
+  { id: 'balance', label: 'Pado Balance' },
 ];
 
 const VALID_TABS = new Set<TabId>(TABS.map((t) => t.id));
@@ -39,7 +39,9 @@ function isTabId(value: string | null): value is TabId {
 
 export function PortfolioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const tabParam = searchParams.get('tab');
+  const rawTabParam = searchParams.get('tab');
+  // Redirect legacy ?tab=pocket URLs to the canonical ?tab=balance.
+  const tabParam = rawTabParam === 'pocket' ? 'balance' : rawTabParam;
   const activeTab: TabId = isTabId(tabParam) ? tabParam : 'overview';
 
   const setActiveTab = (id: TabId) => {
@@ -95,36 +97,36 @@ export function PortfolioPage() {
 
       {activeTab === 'activity' && <ActivityTabs />}
 
-      {activeTab === 'pocket' && (
-        <PocketPasswordGate>
-          <PocketTab />
-        </PocketPasswordGate>
+      {activeTab === 'balance' && (
+        <BalancePasswordGate>
+          <BalanceTab />
+        </BalancePasswordGate>
       )}
     </div>
   );
 }
 
-type PocketSubTab = 'send' | 'receive' | 'history' | 'settings';
+type BalanceSubTab = 'send' | 'receive' | 'history' | 'settings';
 
-const POCKET_SUB_TABS: { id: PocketSubTab; label: string }[] = [
+const BALANCE_SUB_TABS: { id: BalanceSubTab; label: string }[] = [
   { id: 'send', label: 'Send' },
   { id: 'receive', label: 'Receive' },
   { id: 'history', label: 'History' },
   { id: 'settings', label: 'Settings' },
 ];
 
-function PocketTab() {
+function BalanceTab() {
   const { status, account } = useWallet();
   const { isConnected: isZkLoggedIn } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const isConnected = (status === 'unlocked' && account) || isZkLoggedIn || isPasskeyUnlocked;
 
-  const [activeSubTab, setActiveSubTab] = useState<PocketSubTab>('send');
+  const [activeSubTab, setActiveSubTab] = useState<BalanceSubTab>('send');
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h2 className="text-lg font-bold text-theme-text-primary">Pado Pocket</h2>
+        <h2 className="text-lg font-bold text-theme-text-primary">Pado Balance</h2>
         <p className="text-sm text-theme-text-secondary mt-1">
           Your unified funds for Spot, Predict, and Earn
         </p>
@@ -139,7 +141,7 @@ function PocketTab() {
       </div>
 
       <div className="flex gap-1.5 sm:gap-2 mb-6">
-        {POCKET_SUB_TABS.map((tab) => (
+        {BALANCE_SUB_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveSubTab(tab.id)}
