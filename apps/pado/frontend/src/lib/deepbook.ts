@@ -429,9 +429,10 @@ export function appendSwapBaseForQuote(
   quoteOut: TransactionObjectArgument,
   deepOut: TransactionObjectArgument,
 ] {
-  if (!pool.id) throw new Error(`Pool id missing for ${pool.name ?? 'pool'}`);
+  const poolLabel = `${pool.baseToken.symbol}/${pool.quoteToken.symbol}`;
+  if (!pool.id) throw new Error(`Pool id missing for ${poolLabel}`);
   if (!pool.baseToken.type || !pool.quoteToken.type) {
-    throw new Error(`Pool token types missing for ${pool.name ?? 'pool'}`);
+    throw new Error(`Pool token types missing for ${poolLabel}`);
   }
   return tx.moveCall({
     target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_base_for_quote`,

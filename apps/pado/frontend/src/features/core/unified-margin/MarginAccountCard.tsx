@@ -20,7 +20,7 @@ import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
 import { floatToRaw } from "../../../lib/unified-margin";
 import { quoteBaseForQuote, recommendedSlippageBps, depositPoolFor, type SwapQuote } from "../../../lib/deepbook";
-import { formatUsdValue, getUnifiedPrice, type TokenSymbol } from "../../../lib/prices";
+import { getUnifiedPrice, type TokenSymbol } from "../../../lib/prices";
 
 type DepositTab = 'NUSDC' | 'NBTC' | 'NETH' | 'NSOL';
 const DEPOSIT_TABS: DepositTab[] = ['NUSDC', 'NBTC', 'NETH', 'NSOL'];
