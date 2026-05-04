@@ -11,6 +11,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useMyOpenOrders } from '../hooks/useMyOpenOrders';
 import { usePredictionTrade } from '../hooks/usePredictionTrade';
 import { NUSDC_DECIMALS } from '../constants';
+import { formatCents } from '../utils/formatPrice';
 import type { PredictionMarket } from '../types';
 
 interface Props {
@@ -72,7 +73,7 @@ export function MyOpenOrdersList({ market }: Props) {
         <div className="space-y-2">
           {orders.map((o) => {
             const shares = Number(o.amount) / Math.pow(10, NUSDC_DECIMALS);
-            const pricePct = o.priceBps / 100;
+            const priceLabel = formatCents(o.priceBps, 2);
             const sideLabel = o.isBid ? 'Buy' : 'Sell';
             const outcomeLabel = o.isYes ? 'YES' : 'NO';
             const outcomeColor = o.isYes ? 'text-green-500' : 'text-red-500';
@@ -85,7 +86,7 @@ export function MyOpenOrdersList({ market }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-theme-text-primary">{sideLabel}</span>
                     <span className={`font-bold ${outcomeColor}`}>{outcomeLabel}</span>
-                    <span className="text-theme-text-muted">@ {pricePct.toFixed(2)}%</span>
+                    <span className="text-theme-text-muted">@ {priceLabel}</span>
                   </div>
                   <div className="text-xs text-theme-text-muted mt-0.5 font-mono">
                     {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} shares
