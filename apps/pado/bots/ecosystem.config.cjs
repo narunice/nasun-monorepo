@@ -298,7 +298,14 @@ module.exports = {
         PREDICTION_PACKAGE_ID,
         PREDICTION_LP_SPREAD_BPS: '200',
         PREDICTION_LP_DEPTH_NUSDC: '100',
-        PREDICTION_LP_UPDATE_INTERVAL_MS: '10000',
+        PREDICTION_LP_UPDATE_INTERVAL_MS: '20000',
+        // Inventory skew: ladder mid shifts with taker-driven imbalance so
+        // the YES/NO bar actually moves in response to volume.
+        PREDICTION_LP_INV_SKEW_ALPHA_BPS: '500',
+        PREDICTION_LP_INV_CAP_SHARES: '500',
+        // Suppress repost churn (and the resulting user-tx version conflicts)
+        // when ladder shift is below 1¢.
+        PREDICTION_LP_MIN_REPOST_BPS: '100',
       },
       max_restarts: 10,
       min_uptime: '30s',
