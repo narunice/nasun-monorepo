@@ -77,6 +77,66 @@ export async function getBmNusdcBalance(bmId: string): Promise<bigint> {
 }
 
 /**
+ * Append a wallet → MA auto-deposit + immediate withdraw_as_coin for trading,
+ * all in a single atomic PTB. The deposit+withdraw nets the user's MA balance
+ * unchanged, but funnels wallet NUSDC through Pado Balance, preserving the
+ * "Pado Balance only" semantics that the prediction gate enforces.
+ *
+ * `shortfall` is what's added to MA before the immediate withdraw.
+ * `amount` is the total NUSDC routed to the downstream prediction call.
+ *
+ * Pre-conditions:
+ *  - Wallet has at least `shortfall` NUSDC across one or more coin objects.
+ *  - User owns the MarginAccount referenced by `maId`.
+ */
+export async function assembleAutoDepositPaymentArg(
+  tx: Transaction,
+  amount: bigint,
+  shortfall: bigint,
+  walletAddress: string,
+  maId: string,
+  client: SuiClient,
+): Promise<TransactionArgument> {
+  if (shortfall <= 0n) throw new Error('Auto-deposit shortfall must be positive');
+
+  // Paginate wallet NUSDC coins.
+  const allCoins: Array<{ coinObjectId: string; balance: string }> = [];
+  let cursor: string | null | undefined = undefined;
+  do {
+    const page = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE, cursor });
+    allCoins.push(...page.data);
+    cursor = page.nextCursor;
+  } while (cursor);
+
+  const total = allCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+  if (total < shortfall) throw new Error('Insufficient wallet NUSDC for auto-deposit');
+
+  if (allCoins.length === 0) throw new Error('No wallet NUSDC coins found');
+
+  // Merge fragmented wallet coins into the primary, then split exactly `shortfall`.
+  const [primary, ...rest] = allCoins;
+  if (rest.length > 0) {
+    tx.mergeCoins(
+      tx.object(primary.coinObjectId),
+      rest.map((c) => tx.object(c.coinObjectId)),
+    );
+  }
+  const [depositCoin] = tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(shortfall)]);
+
+  // 1) Deposit shortfall into MA.
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nusdc`,
+    arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), depositCoin],
+  });
+
+  // 2) Immediately withdraw the full trade amount from MA as a Coin<NUSDC>.
+  return tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_nusdc_as_coin`,
+    arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), tx.pure.u64(amount)],
+  });
+}
+
+/**
  * Assemble wallet-coin payment: merges fragmented NUSDC, splits exact amount.
  */
 export async function assembleWalletPaymentArg(

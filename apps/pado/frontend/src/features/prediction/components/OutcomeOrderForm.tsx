@@ -75,6 +75,7 @@ export function OutcomeOrderForm({
     bmId,
     createPadoAccount,
     placeBuyTaker,
+    placeBuyTakerWithAutoDeposit,
     placeSellTaker,
     mintTokens,
   } = usePredictionTrade();
@@ -85,8 +86,24 @@ export function OutcomeOrderForm({
   // Pado Balance = BM (trading) + MA (margin) NUSDC, both decimal-6.
   const padoBalance =
     Number((breakdown.NUSDC?.trading ?? 0n) + (breakdown.NUSDC?.margin ?? 0n)) / 1e6;
+  const walletNusdcRaw = breakdown.NUSDC?.wallet ?? 0n;
+  const walletNusdc = Number(walletNusdcRaw) / 1e6;
   // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
   const [setupStep, setSetupStep] = useState<'creating-account' | 'placing-trade' | null>(null);
+
+  // Auto-deposit toggle: when ON, a buy with insufficient Pado Balance auto-pulls
+  // the shortfall from the wallet in a single atomic PTB (deposit + trade).
+  // Persisted per device.
+  const [autoDepositEnabled, setAutoDepositEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const stored = localStorage.getItem('pado:predictionAutoDeposit');
+    return stored === null ? true : stored === '1';
+  });
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pado:predictionAutoDeposit', autoDepositEnabled ? '1' : '0');
+    }
+  }, [autoDepositEnabled]);
 
   const { mode, setMode, isSimple, isAdvanced } = usePredictionFormMode();
 
@@ -205,14 +222,22 @@ export function OutcomeOrderForm({
       if (orderType === 'buy' && amountNum > MAX_NUSDC_PER_TX) {
         return `Amount exceeds per-transaction cap of ${MAX_NUSDC_PER_TX.toLocaleString('en-US')} NUSDC`;
       }
-      // Gate orders to displayed Pado Balance (BM + MA NUSDC). Falling back
-      // to wallet would let users spend funds they were not shown as available.
+      // Gate orders to displayed Pado Balance (BM + MA NUSDC). When auto-deposit
+      // is ON, allow the trade if wallet covers the shortfall — funds are routed
+      // through a single-PTB MA top-up so semantics remain "Pado Balance only".
       if (orderType === 'buy' && amountNum > padoBalance) {
-        return `Insufficient Pado Balance. Available: ${padoBalance.toFixed(2)} NUSDC. Deposit more or reduce the order.`;
+        if (autoDepositEnabled) {
+          const shortfall = amountNum - padoBalance;
+          if (shortfall > walletNusdc) {
+            return `Need ${(amountNum - padoBalance - walletNusdc).toFixed(2)} more NUSDC in wallet for auto-deposit, or reduce the order.`;
+          }
+          return null;
+        }
+        return `Insufficient Pado Balance. Available: ${padoBalance.toFixed(2)} NUSDC. Deposit more, enable auto-deposit, or reduce the order.`;
       }
       return null;
     },
-    [orderType, orderMode, padoBalance],
+    [orderType, orderMode, padoBalance, autoDepositEnabled, walletNusdc],
   );
 
   const handleSubmit = useCallback(
@@ -269,13 +294,31 @@ export function OutcomeOrderForm({
             maxPriceBps = userPriceBps;
           }
 
-          const result = await placeBuyTaker(
-            market.id,
-            isYes,
-            maxPriceBps,
-            restOnNoFill,
-            nusdcUnits(amountNum),
-          );
+          const amountUnits = nusdcUnits(amountNum);
+          const needsAutoDeposit = autoDepositEnabled && amountNum > padoBalance;
+          let result;
+          if (needsAutoDeposit) {
+            // Round-up shortfall to the next 6-decimal unit so we never deposit
+            // a hair under what the trade consumes due to FP truncation.
+            const shortfallNum = amountNum - padoBalance;
+            const shortfallUnits = nusdcUnits(Math.ceil(shortfallNum * 1e6) / 1e6);
+            result = await placeBuyTakerWithAutoDeposit(
+              market.id,
+              isYes,
+              maxPriceBps,
+              restOnNoFill,
+              amountUnits,
+              shortfallUnits,
+            );
+          } else {
+            result = await placeBuyTaker(
+              market.id,
+              isYes,
+              maxPriceBps,
+              restOnNoFill,
+              amountUnits,
+            );
+          }
           setSetupStep(null);
           if (result.success) {
             const modalData: OrderSuccessData = {
@@ -450,7 +493,7 @@ export function OutcomeOrderForm({
       </div>
 
       {isWalletConnected && (
-        <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
+        <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4 space-y-2">
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
               <span className="text-xs text-theme-text-muted">Pado Balance</span>
@@ -460,6 +503,22 @@ export function OutcomeOrderForm({
               </p>
             </div>
           </div>
+          <label className="flex items-center justify-between gap-2 pt-2 border-t border-theme-border cursor-pointer">
+            <div className="text-xs text-theme-text-secondary">
+              <div>Auto-deposit from wallet</div>
+              <div className="text-theme-text-muted text-[11px]">
+                {autoDepositEnabled
+                  ? `Wallet: ${walletNusdc.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} NUSDC available`
+                  : 'Trades use Pado Balance only'}
+              </div>
+            </div>
+            <input
+              type="checkbox"
+              checked={autoDepositEnabled}
+              onChange={(e) => setAutoDepositEnabled(e.target.checked)}
+              className="w-4 h-4 accent-pd2 cursor-pointer"
+            />
+          </label>
         </div>
       )}
 
