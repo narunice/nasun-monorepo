@@ -42,7 +42,7 @@ interface MarketFilterBarProps {
 
 function SegmentedGroup({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-0.5 bg-theme-bg-tertiary rounded-lg p-0.5">
+    <div className="flex items-center gap-0.5 bg-black/40 rounded-lg p-0.5">
       {children}
     </div>
   );
