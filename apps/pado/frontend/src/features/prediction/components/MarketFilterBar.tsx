@@ -66,8 +66,8 @@ function TabButton({ active, onClick, children, disabled, title }: TabButtonProp
         active
           ? 'bg-pd1 text-white shadow-sm'
           : disabled
-            ? 'text-theme-text-muted/20 cursor-not-allowed'
-            : 'text-theme-text-muted/40 hover:text-theme-text-primary'
+            ? 'text-theme-text-muted opacity-25 cursor-not-allowed'
+            : 'text-theme-text-muted opacity-50 hover:opacity-100 hover:text-theme-text-primary'
       }`}
     >
       {children}
