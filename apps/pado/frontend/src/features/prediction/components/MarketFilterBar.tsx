@@ -62,12 +62,12 @@ function TabButton({ active, onClick, children, disabled, title }: TabButtonProp
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap ${
+      className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors whitespace-nowrap ${
         active
-          ? 'bg-pd1/80 text-white'
+          ? 'bg-pd1 text-white shadow-sm'
           : disabled
-            ? 'text-theme-text-muted/40 cursor-not-allowed'
-            : 'text-theme-text-muted hover:text-theme-text-primary'
+            ? 'text-theme-text-muted/30 cursor-not-allowed'
+            : 'text-theme-text-muted/60 hover:text-theme-text-primary'
       }`}
     >
       {children}
