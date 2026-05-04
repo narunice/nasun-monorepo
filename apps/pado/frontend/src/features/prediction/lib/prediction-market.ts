@@ -86,10 +86,18 @@ function parseBalanceField(field: unknown): bigint {
 }
 
 function parseOutcomeField(field: unknown): boolean | undefined {
-  if (!field || typeof field !== 'object') return undefined;
-  const optionObj = field as Record<string, unknown>;
-  if (Array.isArray(optionObj.vec) && optionObj.vec.length > 0) {
-    return Boolean(optionObj.vec[0]);
+  if (field === undefined || field === null) return undefined;
+  // Some SDK / RPC paths normalize Sui's Option<bool> Some(x) down to the raw
+  // boolean. The previous parser only handled the `{ vec: [...] }` shape and
+  // returned undefined for raw booleans, which made every resolved market
+  // appear to have no outcome — UI then always rendered "NO Won" and the
+  // winning-side claim button never appeared.
+  if (typeof field === 'boolean') return field;
+  if (typeof field === 'object') {
+    const optionObj = field as Record<string, unknown>;
+    if (Array.isArray(optionObj.vec) && optionObj.vec.length > 0) {
+      return Boolean(optionObj.vec[0]);
+    }
   }
   return undefined;
 }
