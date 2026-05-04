@@ -304,8 +304,12 @@ export function PadoScoreLeaderboard() {
   const [selectedWeekId, setSelectedWeekId] = React.useState(currentWeekId);
 
   const availableWeeksQuery = useAvailableWeeks();
+  // Pado DeFi leaderboard launched W17/2026; W16 and earlier are pre-launch noise.
+  const PADO_LEADERBOARD_LAUNCH_WEEK_ID = "2026-W17";
   const pastWeeks = (availableWeeksQuery.data?.weeks ?? []).filter(
-    (w) => w.weekId !== currentWeekId,
+    (w) =>
+      w.weekId !== currentWeekId &&
+      w.weekId >= PADO_LEADERBOARD_LAUNCH_WEEK_ID,
   );
 
   const isCurrentWeek = viewMode === "current";
@@ -404,10 +408,14 @@ export function PadoScoreLeaderboard() {
                 setSelectedWeekId(e.target.value);
                 setPage(1);
               }}
-              className="text-sm bg-pd1/30 text-pd4 border border-pd2/30 rounded-sm px-2 py-1.5 focus:outline-none focus:border-pado-1/50"
+              className="text-sm bg-pd0s text-pd4 border border-pd2/30 rounded-sm px-2 py-1.5 focus:outline-none focus:border-pado-1/50"
             >
               {pastWeeks.map((w) => (
-                <option key={w.weekId} value={w.weekId}>
+                <option
+                  key={w.weekId}
+                  value={w.weekId}
+                  className="bg-pd0s text-pd4"
+                >
                   {w.label}
                 </option>
               ))}
