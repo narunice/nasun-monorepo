@@ -17,7 +17,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
-import { useMarginAccount } from '../../core/unified-margin';
+import { useUnifiedBalance } from '../../core/unified-margin';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
@@ -81,8 +81,10 @@ export function OutcomeOrderForm({
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
-  const { account: maAccount } = useMarginAccount();
-  const maBalance = Number(maAccount?.nusdcBalance ?? 0n) / 1e6;
+  const { breakdown } = useUnifiedBalance();
+  // Pado Balance = BM (trading) + MA (margin) NUSDC, both decimal-6.
+  const padoBalance =
+    Number((breakdown.NUSDC?.trading ?? 0n) + (breakdown.NUSDC?.margin ?? 0n)) / 1e6;
   // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
   const [setupStep, setSetupStep] = useState<'creating-account' | 'placing-trade' | null>(null);
 
@@ -203,14 +205,14 @@ export function OutcomeOrderForm({
       if (orderType === 'buy' && amountNum > MAX_NUSDC_PER_TX) {
         return `Amount exceeds per-transaction cap of ${MAX_NUSDC_PER_TX.toLocaleString('en-US')} NUSDC`;
       }
-      // Gate orders to displayed Pado Capital (MA balance). Falling back to BM/
-      // wallet would let users spend funds they were not shown as available.
-      if (orderType === 'buy' && amountNum > maBalance) {
-        return `Insufficient Pado Capital. Available: ${maBalance.toFixed(2)} NUSDC. Deposit more or reduce the order.`;
+      // Gate orders to displayed Pado Balance (BM + MA NUSDC). Falling back
+      // to wallet would let users spend funds they were not shown as available.
+      if (orderType === 'buy' && amountNum > padoBalance) {
+        return `Insufficient Pado Balance. Available: ${padoBalance.toFixed(2)} NUSDC. Deposit more or reduce the order.`;
       }
       return null;
     },
-    [orderType, orderMode, maBalance],
+    [orderType, orderMode, padoBalance],
   );
 
   const handleSubmit = useCallback(
@@ -404,9 +406,6 @@ export function OutcomeOrderForm({
     isTradingFrozen ||
     isLoading ||
     isSubmitting;
-  // Show Pado Capital (MA balance) as the primary available amount.
-  // Wallet NUSDC is a fallback payment source but not part of the Pado account.
-  const padoCapitalBalance = maBalance;
 
   const pricePlaceholder = bestAskBps != null && orderType === 'buy'
     ? `Best ask: ${formatCentsWithProb(bestAskBps, 2)}`
@@ -454,9 +453,9 @@ export function OutcomeOrderForm({
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-xs text-theme-text-muted">Pado Capital</span>
+              <span className="text-xs text-theme-text-muted">Pado Balance</span>
               <p className="text-base sm:text-lg font-semibold text-theme-text-primary tabular-nums truncate">
-                {padoCapitalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {padoBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-xs sm:text-sm font-normal text-theme-text-muted"> NUSDC</span>
               </p>
             </div>

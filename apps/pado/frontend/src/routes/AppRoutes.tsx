@@ -5,8 +5,8 @@
  * Navigation Structure:
  * Desktop: Spot | Perpetuals | Predict | Earn | Social v (Leaderboard, Competitions) | Portfolio
  * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio)
- * - Portfolio (/portfolio) - tabbed page: Overview | Performance | Activity | Pocket
- *   Pocket sub-tab is password-gated (legacy /pocket and /wallet redirect here)
+ * - Portfolio (/portfolio) - tabbed page: Overview | Performance | Activity | Balance
+ *   Balance sub-tab is password-gated (legacy /pocket and /wallet redirect here)
  * - Admin (/admin) - conditional, admin-only
  */
 
@@ -83,9 +83,9 @@ export function AppRoutes() {
         <Route path="/trade/spot" element={<Navigate to="/spot" replace />} />
         <Route path="/trade/perp" element={<Navigate to="/perpetuals" replace />} />
 
-        {/* Pado Pocket — merged into Portfolio as a password-gated tab */}
-        <Route path="/pocket" element={<Navigate to="/portfolio?tab=pocket" replace />} />
-        <Route path="/wallet" element={<Navigate to="/portfolio?tab=pocket" replace />} />
+        {/* Legacy /pocket and /wallet — redirect to Balance tab */}
+        <Route path="/pocket" element={<Navigate to="/portfolio?tab=balance" replace />} />
+        <Route path="/wallet" element={<Navigate to="/portfolio?tab=balance" replace />} />
 
         {/* Prediction Markets — password-gated */}
         <Route path="/predict" element={<PredictPasswordGate><PredictPage /></PredictPasswordGate>} />

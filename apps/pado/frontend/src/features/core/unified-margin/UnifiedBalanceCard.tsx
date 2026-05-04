@@ -22,7 +22,7 @@ import { formatUsdValue, formatPercentage } from '../../../lib/prices';
 import type { TokenSymbol } from '../../../lib/prices';
 import { TokenIcon } from '@/components/common';
 
-function PocketBreakdown({
+function BalanceBreakdown({
   bmNusdcUsd,
   maNusdcUsd,
   bmNbtcHuman,
@@ -38,7 +38,7 @@ function PocketBreakdown({
         onClick={() => setOpen((o) => !o)}
         className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
       >
-        {open ? 'Hide pockets' : 'Show pockets'}
+        {open ? 'Hide breakdown' : 'Show breakdown'}
       </button>
       {open && (
         <div className="mt-2 space-y-1 pl-4 border-l border-theme-border">
@@ -101,7 +101,7 @@ export function UnifiedBalanceCard({
   const walletPercent = Math.round((inWallet / totalFunds) * 100);
   const padoPercent = Math.round((inPado / totalFunds) * 100);
 
-  // Breakdown values for "Show pockets" disclosure (raw NUSDC from usePadoAccount)
+  // Breakdown values for "Show breakdown" disclosure (raw NUSDC from usePadoAccount)
   const bmNusdcUsd = Number(padoAccount.breakdown.bm.quoteRaw) / 1e6;
   const maNusdcUsd = Number(padoAccount.breakdown.ma.nusdcRaw) / 1e6;
   const bmNbtcHuman = Number(padoAccount.breakdown.bm.baseRaw) / 1e8;
@@ -265,9 +265,9 @@ export function UnifiedBalanceCard({
                   )}
                 </div>
               </div>
-              {/* "Show pockets" sub-disclosure for power users */}
+              {/* "Show breakdown" sub-disclosure for power users */}
               {inPado > 0 && (
-                <PocketBreakdown
+                <BalanceBreakdown
                   bmNusdcUsd={bmNusdcUsd}
                   maNusdcUsd={maNusdcUsd}
                   bmNbtcHuman={bmNbtcHuman}

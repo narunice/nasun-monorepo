@@ -66,7 +66,7 @@ export interface UnifiedBalanceState {
   inTrading: number;
   /** In MarginAccount (Pado Balance) */
   inMargin: number;
-  /** Combined BM + MA in USD — the user-facing "single pocket" total */
+  /** Combined BM + MA in USD — the user-facing Pado Balance total */
   inPado: number;
   /** Locked in open orders (estimated) */
   inOpenOrders: number;

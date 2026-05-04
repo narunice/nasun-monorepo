@@ -103,7 +103,7 @@ function buildWithdrawAll(bmId: string, recipient: string): Transaction {
 
 export function createPadoBmAdapter(signAndExecute: SignAndExecuteFn, address: string | null): RecoveryAdapter {
   return {
-    productName: 'Pado Spot / Prediction (BalanceManager)',
+    productName: 'Pado Balance - Spot / Prediction (BalanceManager)',
     async discover(userAddress) {
       const ids = await findUserBalanceManagers(userAddress);
       if (ids.length === 0) return [];
@@ -118,7 +118,7 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecuteFn, address: s
             return {
               id,
               label,
-              productName: 'Pado Spot / Prediction',
+              productName: 'Pado Balance - Spot / Prediction',
               balances: [
                 { token: 'NBTC', amount: base, decimals: NBTC_DECIMALS },
                 { token: 'NUSDC', amount: quote, decimals: NUSDC_DECIMALS },
@@ -136,7 +136,7 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecuteFn, address: s
             return {
               id,
               label: `${label} (failed to load)`,
-              productName: 'Pado Spot / Prediction',
+              productName: 'Pado Balance - Spot / Prediction',
               actions: [{ label: 'Discovery failed', disabled: true, disabledReason: reason, execute: async () => ({ digest: '' }) }],
             };
           }

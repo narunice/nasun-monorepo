@@ -60,7 +60,7 @@ function buildWithdrawAllNbtcTx(accountId: string): Transaction {
 
 export function createPadoMarginAdapter(signAndExecute: SignAndExecuteFn): RecoveryAdapter {
   return {
-    productName: 'Pado Perp Margin (MarginAccount)',
+    productName: 'Pado Balance - Perpetuals Margin (MarginAccount)',
     async discover(address) {
       const accountId = await findUserMarginAccount(address);
       if (!accountId) return [];
@@ -89,7 +89,7 @@ export function createPadoMarginAdapter(signAndExecute: SignAndExecuteFn): Recov
       const item: RecoverableItem = {
         id: accountId,
         label: 'Perp MarginAccount',
-        productName: 'Pado Perp Margin',
+        productName: 'Pado Balance - Perpetuals Margin',
         balances: [
           { token: 'NUSDC', amount: account.nusdcBalance, decimals: NUSDC_DECIMALS },
           { token: 'NBTC', amount: account.nbtcBalance, decimals: NBTC_DECIMALS },
