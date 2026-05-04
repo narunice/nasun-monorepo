@@ -167,17 +167,17 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
 
       {market.status === 'resolved' && (
         <div
-          className={`mb-4 p-3 rounded-lg text-sm ${
+          className={`mb-4 p-3 rounded-lg text-sm border ${
             market.outcome
-              ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-              : 'bg-red-500/20 text-red-400 border border-red-500/30'
+              ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-500/20 dark:border-green-500/30 dark:text-green-400'
+              : 'bg-red-50 border-red-300 text-red-700 dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400'
           }`}
         >
           Market Resolved: <strong>{market.outcome ? 'YES' : 'NO'}</strong> wins
         </div>
       )}
       {market.status === 'cancelled' && (
-        <div className="mb-4 p-3 rounded-lg text-sm bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+        <div className="mb-4 p-3 rounded-lg text-sm border bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-500/20 dark:border-yellow-500/30 dark:text-yellow-400">
           Market cancelled. Claim your collateral refund below.
         </div>
       )}

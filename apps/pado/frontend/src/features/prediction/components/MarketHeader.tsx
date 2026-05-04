@@ -135,11 +135,23 @@ function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?:
   if (status === 'resolved') {
     const isYes = Boolean(outcome);
     return (
-      <div className={`rounded-xl p-5 text-center ${isYes ? 'bg-green-900/50 border border-green-500/50' : 'bg-red-900/50 border border-red-500/50'}`}>
-        <div className={`text-3xl font-bold mb-1 ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+      <div
+        className={`rounded-xl p-5 text-center border ${
+          isYes
+            ? 'bg-green-50 border-green-300 dark:bg-green-900/50 dark:border-green-500/50'
+            : 'bg-red-50 border-red-300 dark:bg-red-900/50 dark:border-red-500/50'
+        }`}
+      >
+        <div
+          className={`text-3xl font-bold mb-1 ${
+            isYes
+              ? 'text-green-700 dark:text-green-400'
+              : 'text-red-700 dark:text-red-400'
+          }`}
+        >
           {isYes ? 'YES' : 'NO'} Won
         </div>
-        <div className="text-sm text-theme-text-muted">
+        <div className="text-sm text-gray-600 dark:text-theme-text-muted">
           Total supply: {formatNumber(supply)} shares
         </div>
       </div>
@@ -147,9 +159,9 @@ function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?:
   }
 
   return (
-    <div className="rounded-xl p-5 text-center bg-yellow-900/50 border border-yellow-500/50">
-      <div className="text-2xl font-bold text-yellow-400 mb-1">Cancelled</div>
-      <div className="text-sm text-theme-text-muted">All collateral is refundable</div>
+    <div className="rounded-xl p-5 text-center bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/50 dark:border-yellow-500/50">
+      <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mb-1">Cancelled</div>
+      <div className="text-sm text-gray-600 dark:text-theme-text-muted">All collateral is refundable</div>
     </div>
   );
 }

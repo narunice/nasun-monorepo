@@ -35,13 +35,19 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
   return (
     <div
       className={`p-4 rounded-xl border ${
-        position.isYes ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'
+        position.isYes
+          ? 'bg-green-50 border-green-300 dark:bg-green-500/25 dark:border-green-500/50'
+          : 'bg-red-50 border-red-300 dark:bg-red-500/25 dark:border-red-500/50'
       }`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <span className={`w-3 h-3 rounded-full ${position.isYes ? 'bg-green-500' : 'bg-red-500'}`} />
-          <span className={`font-bold ${position.isYes ? 'text-green-500' : 'text-red-500'}`}>
+          <span className={`font-bold ${
+            position.isYes
+              ? 'text-green-700 dark:text-green-500'
+              : 'text-red-700 dark:text-red-500'
+          }`}>
             {outcomeLabel} Position
           </span>
         </div>

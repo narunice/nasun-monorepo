@@ -18,8 +18,8 @@ export function ResolverDisclaimerBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="bg-pd2/25 border border-pd2/50 rounded-xl p-3 flex items-start justify-between gap-3">
-      <div className="text-sm text-theme-text-secondary">
+    <div className="bg-amber-50 border border-amber-200 dark:bg-pd2/25 dark:border-pd2/50 rounded-xl p-3 flex items-start justify-between gap-3">
+      <div className="text-sm text-amber-900 dark:text-theme-text-secondary">
         Markets settle based on the criteria below, decided by Nasun's resolver. If the
         resolver does not settle by the deadline, anyone can cancel and every participant
         recovers their collateral.
@@ -29,7 +29,7 @@ export function ResolverDisclaimerBanner() {
           sessionStorage.setItem(STORAGE_KEY, '1');
           setDismissed(true);
         }}
-        className="shrink-0 text-theme-text-muted hover:text-theme-text-primary text-sm"
+        className="shrink-0 text-amber-700 hover:text-amber-900 dark:text-theme-text-muted dark:hover:text-theme-text-primary text-sm"
         aria-label="Dismiss"
       >
         Dismiss
