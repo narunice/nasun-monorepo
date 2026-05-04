@@ -115,6 +115,16 @@ function getPreviousWeekId(): string {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
+// Compute the ISO week ID immediately preceding the given week. Used to look up
+// the previous week's rank for rankDelta metadata. Returns null on bad input.
+function getPreviousWeekIdOf(weekId: string): string | null {
+  const bounds = getWeekBounds(weekId);
+  if (!bounds) return null;
+  const prevMonday = new Date(bounds.start.getTime() - 7 * 86_400_000);
+  const { year, week } = getISOWeek(prevMonday);
+  return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
 // Monday 00:00 UTC reset. Settlement crons run at 00:15/00:20 UTC.
 function getWeekBounds(weekId: string): { start: Date; end: Date } | null {
   const match = weekId.match(/^(\d{4})-W(\d{2})$/);
@@ -267,6 +277,9 @@ interface RankedRow {
   hasSocialAccount: boolean;
   walletAddress: string | null;
   rank: number;
+  // previousRank is null when the user did not appear in last week's settled snapshot
+  // (new entrant). UI shows a NEW badge in that case.
+  previousRank: number | null;
 }
 
 async function main() {
@@ -445,6 +458,7 @@ async function main() {
       hasSocialAccount: flags?.hasSocialAccount ?? false,
       walletAddress: identityToWallet.get(r.identity_id) ?? null,
       rank: 0,
+      previousRank: null,
     };
   });
 
@@ -456,6 +470,34 @@ async function main() {
     return a.identityId.localeCompare(b.identityId);
   });
   ranked.forEach((row, idx) => { row.rank = idx + 1; });
+
+  // 6b. Look up previous week's rank from snapshot table for rankDelta metadata.
+  //     Missing rows -> null (treated as new entrant by UI).
+  const prevWeekId = getPreviousWeekIdOf(weekId);
+  const prevRankByIdentity = new Map<string, number>();
+  if (prevWeekId) {
+    const prevRows = await pgDb<Array<{ identity_id: string; rank: number }>>`
+      SELECT identity_id, rank
+      FROM weekly_ecosystem_snapshots
+      WHERE week_id = ${prevWeekId}
+        AND identity_id = ANY(${pgDb.array(ranked.map(r => r.identityId))})
+    `;
+    for (const r of prevRows) prevRankByIdentity.set(r.identity_id, r.rank);
+    console.log(`  previousRank lookups (week ${prevWeekId}): ${prevRows.length}`);
+  }
+  ranked.forEach((row) => {
+    row.previousRank = prevRankByIdentity.get(row.identityId) ?? null;
+  });
+
+  // Total participants for the week (used by UI for percentile). Counts every
+  // identity with non-zero weekly_score, not just the top 2000 we award.
+  const totalRow = await pgDb<Array<{ count: number }>>`
+    SELECT COUNT(DISTINCT identity_id)::int AS count
+    FROM activity_points
+    WHERE NOT flagged AND identity_id IS NOT NULL
+      AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
+  `;
+  const totalParticipants = totalRow[0]?.count ?? ranked.length;
 
   // 7. Ensure snapshot table exists
   await pgDb`
@@ -540,6 +582,20 @@ async function main() {
       continue;
     }
 
+    // Persist enough context for the UI to render a celebration card later
+    // without re-querying snapshot tables. New schema started 2026-W19; older
+    // bonus rows have no metadata and the UI falls back to a neutral message.
+    const metadata = {
+      leaderboardType: 'ecosystem' as const,
+      weekId,
+      rank,
+      previousRank: meta.previousRank,
+      rankDelta: meta.previousRank == null ? null : meta.previousRank - rank,
+      totalParticipants,
+      weeklyScore: meta.weeklyScore,
+      hasGenesisPass: isGP,
+    };
+
     try {
       await pgDb.begin(async (tx) => {
         const sql = tx as unknown as typeof pgDb;
@@ -547,12 +603,12 @@ async function main() {
           INSERT INTO activity_points
             (wallet_address, identity_id, tx_digest, category, activity_type,
              base_points, volume_tier, genesis_multiplier, final_points,
-             tx_timestamp, event_seq, tx_sequence_number)
+             tx_timestamp, event_seq, tx_sequence_number, metadata)
           VALUES
             (${meta.walletAddress}, ${row.identity_id}, ${digest},
              'ecosystem-bonus-leaderboard', ${'weekly-' + weekId},
              ${basePts}, 1.0, ${isGP ? 2.0 : 1.0}, ${finalPts.toFixed(2)},
-             NOW()::timestamptz, 0, 0)
+             NOW()::timestamptz, 0, 0, ${sql.json(metadata)})
           ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
         `;
         await sql`

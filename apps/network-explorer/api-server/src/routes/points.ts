@@ -307,6 +307,17 @@ app.post('/bug-report-reward', async (c) => {
   const category = rewardType === 'feedback' ? 'ecosystem-bonus-feedback' : 'ecosystem-bonus-bugreport';
   const walletAddress = body.walletAddress.toLowerCase();
 
+  // metadata for bonus-feed UI (graceful fallback if absent on legacy rows).
+  // Reason text is truncated to 200 chars to avoid bloating the row.
+  const reasonClipped = typeof body.reason === 'string'
+    ? body.reason.slice(0, 200)
+    : null;
+  const metadata = {
+    reportType: rewardType,
+    reportId: body.reportId,
+    reason: reasonClipped,
+  };
+
   // INSERT with ON CONFLICT DO NOTHING for idempotency
   const result = await pointsDb`
     INSERT INTO activity_points (
@@ -314,13 +325,13 @@ app.post('/bug-report-reward', async (c) => {
       wallet_address, identity_id,
       category, activity_type,
       base_points, volume_tier, genesis_multiplier, final_points,
-      event_seq
+      event_seq, metadata
     ) VALUES (
       ${txDigest}, 0, NOW(),
       ${walletAddress}, ${body.identityId},
       ${category}, 'report-accepted',
       ${finalPoints}, 1.0, 1.0, ${finalPoints},
-      0
+      0, ${pointsDb.json(metadata)}
     )
     ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
   `;

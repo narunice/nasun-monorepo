@@ -1587,6 +1587,167 @@ app.get('/bonus-history/:identityId', async (c) => {
   });
 });
 
+// GET /api/v1/ecosystem/bonus-feed/:identityId?limit=10
+//
+// Per-event bonus award feed for the My-Account celebration carousel. Returns
+// individual `ecosystem-bonus-*` rows (preserving rank/weekId/etc. metadata
+// stored at award time) plus daily-aggregated `referral-bonus` entries (those
+// fire many times per day so per-row would drown out leaderboard wins).
+//
+// Self-only: metadata may contain bug-report titles or other text the user
+// would not want public.
+app.get('/bonus-feed/:identityId', async (c) => {
+  if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
+
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
+
+  const limit = Math.min(Math.max(1, parseInt(c.req.query('limit') ?? '10', 10)), 50);
+
+  // 1. Individual ecosystem-bonus-* events (low volume; one row per award).
+  //    LEFT JOIN snapshot tables so legacy leaderboard rows (awarded before
+  //    settle-{ecosystem,pado}.ts started persisting metadata at award time)
+  //    still surface their rank to the carousel UI.
+  const eventRows = await pointsDb<Array<{
+    tx_digest: string;
+    event_seq: number;
+    category: string;
+    activity_type: string;
+    points: string;
+    awarded_at: Date;
+    metadata: Record<string, unknown> | null;
+    eco_rank: number | null;
+    eco_score: string | null;
+    pado_rank: number | null;
+    pado_score: number | null;
+    week_id_from_activity: string | null;
+  }>>`
+    SELECT
+      ap.tx_digest,
+      ap.event_seq,
+      ap.category,
+      ap.activity_type,
+      ap.final_points::numeric AS points,
+      ap.tx_timestamp AS awarded_at,
+      ap.metadata,
+      wes.rank AS eco_rank,
+      wes.weekly_score::text AS eco_score,
+      wss.rank AS pado_rank,
+      wss.total_score AS pado_score,
+      SUBSTRING(ap.activity_type FROM '^weekly-(.+)$') AS week_id_from_activity
+    FROM activity_points ap
+    LEFT JOIN weekly_ecosystem_snapshots wes
+      ON ap.category = 'ecosystem-bonus-leaderboard'
+      AND wes.identity_id = ap.identity_id
+      AND wes.week_id = SUBSTRING(ap.activity_type FROM '^weekly-(.+)$')
+    LEFT JOIN weekly_score_snapshots wss
+      ON ap.category = 'ecosystem-bonus-pado'
+      AND wss.address = ap.wallet_address
+      AND wss.week_id = SUBSTRING(ap.activity_type FROM '^weekly-(.+)$')
+    WHERE ap.identity_id = ${identityId}
+      AND NOT ap.flagged
+      AND (ap.metadata->>'synthetic') IS DISTINCT FROM 'true'
+      AND ap.category LIKE 'ecosystem-bonus-%'
+    ORDER BY ap.tx_timestamp DESC, ap.event_seq DESC
+    LIMIT ${limit}
+  `;
+
+  // 2. Daily-aggregated referral-bonus (avoids spam, one entry per day).
+  const referralRows = await pointsDb<Array<{
+    day: Date;
+    points: string;
+    count: number;
+  }>>`
+    SELECT
+      date_trunc('day', tx_timestamp)::timestamptz AS day,
+      SUM(final_points)::numeric AS points,
+      COUNT(*)::int AS count
+    FROM activity_points
+    WHERE identity_id = ${identityId}
+      AND NOT flagged
+      AND category = 'referral-bonus'
+    GROUP BY date_trunc('day', tx_timestamp)
+    ORDER BY day DESC
+    LIMIT ${limit}
+  `;
+
+  // 3. Cumulative totals per category (for the slide "Total ... bonus" line).
+  const cumulativeRows = await pointsDb<Array<{ category: string; total: string }>>`
+    SELECT category, SUM(final_points)::numeric AS total
+    FROM activity_points
+    WHERE identity_id = ${identityId}
+      AND NOT flagged
+      AND (category LIKE 'ecosystem-bonus-%' OR category = 'referral-bonus')
+    GROUP BY category
+  `;
+
+  const events = eventRows.map((r) => {
+    // Merge snapshot-derived rank back into metadata for legacy leaderboard
+    // rows. Award-time metadata (when present) takes precedence so settled
+    // rows keep their richer payload (previousRank, rankDelta, etc.).
+    const baseMetadata = (r.metadata ?? {}) as Record<string, unknown>;
+    let metadata: Record<string, unknown> | null = r.metadata ?? null;
+    if (r.category === 'ecosystem-bonus-leaderboard' && baseMetadata.rank == null && r.eco_rank != null) {
+      metadata = {
+        leaderboardType: 'ecosystem',
+        weekId: r.week_id_from_activity ?? null,
+        rank: r.eco_rank,
+        weeklyScore: r.eco_score != null ? parseFloat(r.eco_score) : null,
+        ...baseMetadata,
+      };
+    } else if (r.category === 'ecosystem-bonus-pado' && baseMetadata.rank == null && r.pado_rank != null) {
+      metadata = {
+        leaderboardType: 'pado',
+        weekId: r.week_id_from_activity ?? null,
+        rank: r.pado_rank,
+        totalScore: r.pado_score,
+        ...baseMetadata,
+      };
+    }
+    return {
+      id: `${r.tx_digest}:${r.event_seq}`,
+      category: r.category,
+      activityType: r.activity_type,
+      points: parseFloat(r.points),
+      awardedAt: r.awarded_at.toISOString(),
+      metadata,
+    };
+  });
+
+  const referralEntries = referralRows.map((r) => ({
+    id: `referral:${r.day.toISOString().slice(0, 10)}`,
+    category: 'referral-bonus',
+    activityType: 'daily-aggregate',
+    points: parseFloat(r.points),
+    awardedAt: r.day.toISOString(),
+    metadata: { count: r.count, date: r.day.toISOString().slice(0, 10) } as Record<string, unknown>,
+  }));
+
+  // Merge + sort newest first, then trim to limit.
+  const merged = [...events, ...referralEntries]
+    .sort((a, b) => (a.awardedAt < b.awardedAt ? 1 : -1))
+    .slice(0, limit);
+
+  const cumulativeByCategory: Record<string, number> = {};
+  let totalBonusAllTime = 0;
+  for (const r of cumulativeRows) {
+    const v = parseFloat(r.total);
+    cumulativeByCategory[r.category] = v;
+    totalBonusAllTime += v;
+  }
+
+  c.header('Cache-Control', 'private, max-age=60');
+  return c.json({
+    data: merged,
+    cumulativeByCategory,
+    totalBonusAllTime,
+  });
+});
+
 // GET /api/v1/ecosystem/base-history/:identityId?days=N
 //
 // Per-day base composition for the Activity Log. Mirrors the
