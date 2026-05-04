@@ -26,6 +26,7 @@ const inFlightRequests = new Map<string, Promise<void>>();
 
 let db: Database.Database | null = null;
 let nasunProfileApiUrl = '';
+let publicAvatarsBaseUrl = '';
 
 export function initStore(config: ChatServerConfig): void {
   mkdirSync(dirname(config.dbPath), { recursive: true });
@@ -149,6 +150,8 @@ export function initStore(config: ChatServerConfig): void {
   } else {
     console.log('[nasun-profile] API URL: NOT SET (display name sync disabled)');
   }
+
+  publicAvatarsBaseUrl = (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
 
   purgeOldMessages(config.messageRetentionDays);
 }
@@ -592,15 +595,29 @@ export function getProfileImagesBatch(addresses: string[]): Map<string, string> 
     .prepare(
       `SELECT
         input.address AS address,
-        COALESCE(u.profile_image_url, np.profile_image_url) AS profile_image_url
+        COALESCE(u.profile_image_url, np.profile_image_url) AS profile_image_url,
+        np.custom_avatar_key,
+        np.custom_avatar_banned
        FROM (SELECT value AS address FROM json_each(?)) AS input
        LEFT JOIN users u ON u.address = input.address
        LEFT JOIN nasun_profiles np ON np.address = input.address
-       WHERE u.profile_image_url IS NOT NULL OR np.profile_image_url IS NOT NULL`
+       WHERE u.profile_image_url IS NOT NULL OR np.profile_image_url IS NOT NULL
+          OR (np.custom_avatar_key IS NOT NULL AND np.custom_avatar_banned = 0)`
     )
-    .all(JSON.stringify(addresses)) as Array<{ address: string; profile_image_url: string }>;
+    .all(JSON.stringify(addresses)) as Array<{
+      address: string;
+      profile_image_url: string | null;
+      custom_avatar_key: string | null;
+      custom_avatar_banned: number;
+    }>;
   const result = new Map<string, string>();
-  for (const row of rows) result.set(row.address, row.profile_image_url);
+  for (const row of rows) {
+    if (row.custom_avatar_key && row.custom_avatar_banned === 0 && publicAvatarsBaseUrl) {
+      result.set(row.address, `${publicAvatarsBaseUrl}/${row.custom_avatar_key.replace(/^\/+/, '')}`);
+    } else if (row.profile_image_url) {
+      result.set(row.address, row.profile_image_url);
+    }
+  }
   return result;
 }
 
