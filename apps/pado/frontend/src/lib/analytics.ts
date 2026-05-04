@@ -19,6 +19,8 @@ declare global {
 export const AnalyticsEvent = {
   CROSS_APP_NAV: "cross_app_nav",
   CROSS_APP_ARRIVAL: "cross_app_arrival",
+  PREDICTION_FORM_MODE_INITIAL: "prediction_form_mode_initial",
+  PREDICTION_FORM_MODE_TOGGLED: "prediction_form_mode_toggled",
 } as const;
 
 type EventName = (typeof AnalyticsEvent)[keyof typeof AnalyticsEvent];
