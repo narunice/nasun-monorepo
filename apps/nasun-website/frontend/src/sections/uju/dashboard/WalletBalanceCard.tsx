@@ -34,32 +34,41 @@ import {
 } from "../stores/suiAddressStore";
 import { linkPasteAddress } from "@/services/userProfileApi";
 
-// Plan v5+: read-only mainnet for all external chains.
-const SUI_MAINNET_RPC = "https://fullnode.mainnet.sui.io:443";
+// Plan v5+: read-only testnet for all external chains.
+const SUI_TESTNET_RPC = "https://fullnode.testnet.sui.io:443";
 
 function shortenAddress(addr: string): string {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-function NetworkBadge({ label }: { label: string }) {
-  return <UjuBadge tone="violet">{label}</UjuBadge>;
+function NetworkBadge({ label, address }: { label: string; address?: string | null }) {
+  return (
+    <div className="flex items-center gap-2">
+      <UjuBadge tone="violet">{label}</UjuBadge>
+      {address && (
+        <span className="text-xs font-mono text-uju-secondary/60 bg-uju-border/10 px-1.5 py-0.5 rounded">
+          {shortenAddress(address)}
+        </span>
+      )}
+    </div>
+  );
 }
 
-// Public mainnet RPCs (Sui Foundation, Solana Foundation) are shared
+// Public testnet RPCs (Sui Foundation, Solana Foundation) are shared
 // rate-limited and occasionally drop requests. retry up to 3 with the
 // react-query default exponential backoff (1s, 2s, 4s) so a transient blip
 // resolves silently instead of surfacing as an "RPC error" in the UI.
 // keepPreviousData lets us show the last good balance during a refetch
 // instead of flashing "-" or an error state.
-const MAINNET_BALANCE_RETRY = 3;
+const TESTNET_BALANCE_RETRY = 3;
 
-function useSuiMainnetBalance(address: string | undefined | null) {
+function useSuiTestnetBalance(address: string | undefined | null) {
   return useQuery({
-    queryKey: ["balance", "sui-mainnet", address],
+    queryKey: ["balance", "sui-testnet", address],
     queryFn: async () => {
       if (!address || !isValidAddress(address))
         throw new Error("Invalid SUI address");
-      const client = getMoveClient(SUI_MAINNET_RPC, "sui-mainnet");
+      const client = getMoveClient(SUI_TESTNET_RPC, "sui-testnet");
       const { totalBalance } = await client.getBalance({ owner: address });
       const mist = BigInt(totalBalance);
       const sui = mist / 1_000_000_000n;
@@ -72,21 +81,22 @@ function useSuiMainnetBalance(address: string | undefined | null) {
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: MAINNET_BALANCE_RETRY,
+    retry: TESTNET_BALANCE_RETRY,
     placeholderData: keepPreviousData,
   });
 }
 
-function useSolMainnetBalance(address: string | null) {
+function useSolTestnetBalance(address: string | null) {
   return useQuery({
-    queryKey: ["balance", "sol-mainnet", address],
+    queryKey: ["balance", "sol-testnet", address],
     queryFn: async () => {
       if (!address || !SOL_ADDRESS_RE.test(address))
         throw new Error("Invalid Solana address");
+      // Use devnet RPC for testing balances
       const result = await solReadCall<{ value: number }>("getBalance", [
         address,
         { commitment: "confirmed" },
-      ]);
+      ], undefined, true); // Pass true to use devnet
       if (typeof result?.value !== "number") {
         throw new Error("SOL RPC: unexpected response");
       }
@@ -97,7 +107,7 @@ function useSolMainnetBalance(address: string | null) {
     refetchInterval: 120_000,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: true,
-    retry: MAINNET_BALANCE_RETRY,
+    retry: TESTNET_BALANCE_RETRY,
     placeholderData: keepPreviousData,
   });
 }
@@ -172,7 +182,7 @@ export function WalletBalanceCard() {
     data: suiBalance,
     isPending: suiPending,
     isError: suiError,
-  } = useSuiMainnetBalance(suiDisplayAddress);
+  } = useSuiTestnetBalance(suiDisplayAddress);
 
   // SOL: backend `linkedSolanaAddress` > legacy localStorage adapter address.
   const sol = useSolAddressForIdentity(identityId);
@@ -183,7 +193,7 @@ export function WalletBalanceCard() {
     data: solBalance,
     isPending: solPending,
     isError: solFetchError,
-  } = useSolMainnetBalance(solAddress);
+  } = useSolTestnetBalance(solAddress);
 
   // Hydrate legacy stores on identity change (still needed during migration).
   useEffect(() => {
@@ -241,6 +251,8 @@ export function WalletBalanceCard() {
     <span className="text-base text-uju-secondary">Not connected</span>
   );
 
+  const nasunAddress = account?.address ?? zkState?.address;
+
   return (
     <UjuCard>
       <UjuSectionHeader
@@ -253,7 +265,14 @@ export function WalletBalanceCard() {
         {/* NSN — Nasun-native. Click "Open" to launch the wallet UI in a
             centered modal (so it doesn't get clipped by the cards below). */}
         <li className="flex items-center justify-between gap-2">
-          <span className="text-base text-uju-secondary">NSN</span>
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-base text-uju-secondary">NSN</span>
+            {isNasunConnected && nasunAddress && (
+              <span className="text-xs font-mono text-uju-secondary/60 bg-uju-border/10 px-1.5 py-0.5 rounded">
+                {shortenAddress(nasunAddress)}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2 shrink-0">
             {isNasunConnected ? (
               <span className="text-base font-light text-uju-primary tabular-nums">
@@ -279,7 +298,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">SUI</span>
-              <NetworkBadge label="Testnet" />
+              <NetworkBadge label="Testnet" address={suiDisplayAddress} />
               {isExternalSui && (
                 <UjuBadge tone="amber" className="uppercase tracking-wide">
                   <span title="Address ownership not verified">unverified</span>
@@ -294,7 +313,7 @@ export function WalletBalanceCard() {
                   ) : suiError ? (
                     <span
                       className="text-uju-secondary"
-                      title="Mainnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
+                      title="Testnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
                     >
                       Unavailable
                     </span>
@@ -329,7 +348,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">ETH</span>
-              <NetworkBadge label={IS_EVM_TESTNET ? "Testnet" : "Mainnet"} />
+              <NetworkBadge label={IS_EVM_TESTNET ? "Testnet" : "Mainnet"} address={ethAddress} />
               {ethAddress && !ethVerified && (
                 <UjuBadge tone="amber" className="uppercase tracking-wide">
                   <span title="Address ownership not verified">unverified</span>
@@ -351,7 +370,7 @@ export function WalletBalanceCard() {
                           .slice(0, 4);
                         return `${whole}.${remStr} ETH`;
                       })()
-                    : shortenAddress(ethAddress)}
+                    : "-"}
                 </span>
               ) : (
                 notConnectedHint
@@ -373,7 +392,7 @@ export function WalletBalanceCard() {
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-base text-uju-secondary">SOL</span>
-              <NetworkBadge label="Testnet" />
+              <NetworkBadge label="Testnet" address={solAddress} />
               {solAddress && (
                 <UjuBadge tone="amber" className="uppercase tracking-wide">
                   <span title="Address ownership not verified">unverified</span>
@@ -388,7 +407,7 @@ export function WalletBalanceCard() {
                   ) : solFetchError ? (
                     <span
                       className="text-uju-secondary"
-                      title="Mainnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
+                      title="Testnet balance is temporarily unavailable. The public RPC may be rate-limited; we'll retry shortly."
                     >
                       Unavailable
                     </span>
