@@ -4,7 +4,7 @@
  * and fund management (Balance).
  */
 
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from "react-router-dom";
 import {
   AssetOverview,
   AllocationDonut,
@@ -13,21 +13,21 @@ import {
   TradeStats,
   MarketPerformance,
   ActivityTabs,
-} from '../features/portfolio/components';
+} from "../features/portfolio/components";
 import {
   MarginAccountCard,
   AdvancedFundLocation,
   WalletSection,
-} from '../features/core/unified-margin';
-import { BalancePasswordGate } from '../components/common/BalancePasswordGate';
+} from "../features/core/unified-margin";
+import { BalancePasswordGate } from "../components/common/BalancePasswordGate";
 
-type TabId = 'overview' | 'performance' | 'activity' | 'balance';
+type TabId = "overview" | "performance" | "activity" | "balance";
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'performance', label: 'Performance' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'balance', label: 'Pado Balance' },
+  { id: "overview", label: "Overview" },
+  { id: "performance", label: "Performance" },
+  { id: "activity", label: "Activity" },
+  { id: "balance", label: "Pado Balance" },
 ];
 
 const VALID_TABS = new Set<TabId>(TABS.map((t) => t.id));
@@ -38,15 +38,15 @@ function isTabId(value: string | null): value is TabId {
 
 export function PortfolioPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const rawTabParam = searchParams.get('tab');
+  const rawTabParam = searchParams.get("tab");
   // Redirect legacy ?tab=pocket URLs to the canonical ?tab=balance.
-  const tabParam = rawTabParam === 'pocket' ? 'balance' : rawTabParam;
-  const activeTab: TabId = isTabId(tabParam) ? tabParam : 'overview';
+  const tabParam = rawTabParam === "pocket" ? "balance" : rawTabParam;
+  const activeTab: TabId = isTabId(tabParam) ? tabParam : "overview";
 
   const setActiveTab = (id: TabId) => {
     const next = new URLSearchParams(searchParams);
-    if (id === 'overview') next.delete('tab');
-    else next.set('tab', id);
+    if (id === "overview") next.delete("tab");
+    else next.set("tab", id);
     setSearchParams(next, { replace: false });
   };
 
@@ -67,8 +67,8 @@ export function PortfolioPage() {
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
               activeTab === tab.id
-                ? 'border-pd2 text-theme-text-primary'
-                : 'border-transparent text-theme-text-secondary hover:text-theme-text-primary'
+                ? "border-pd2 text-theme-text-primary"
+                : "border-transparent text-theme-text-secondary hover:text-theme-text-primary"
             }`}
           >
             {tab.label}
@@ -76,7 +76,7 @@ export function PortfolioPage() {
         ))}
       </div>
 
-      {activeTab === 'overview' && (
+      {activeTab === "overview" && (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AssetOverview />
@@ -86,7 +86,7 @@ export function PortfolioPage() {
         </>
       )}
 
-      {activeTab === 'performance' && (
+      {activeTab === "performance" && (
         <>
           <PnlChart />
           <TradeStats />
@@ -94,9 +94,9 @@ export function PortfolioPage() {
         </>
       )}
 
-      {activeTab === 'activity' && <ActivityTabs />}
+      {activeTab === "activity" && <ActivityTabs />}
 
-      {activeTab === 'balance' && (
+      {activeTab === "balance" && (
         <BalancePasswordGate>
           <BalanceTab />
         </BalancePasswordGate>
@@ -109,7 +109,9 @@ function BalanceTab() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h2 className="text-lg font-bold text-theme-text-primary">Pado Balance</h2>
+        <h2 className="text-lg font-bold text-theme-text-primary">
+          Pado Balance
+        </h2>
         <p className="text-sm text-theme-text-secondary mt-1">
           Funds you've deposited to Pado for trading, plus what's still in your
           Nasun wallet.
@@ -120,9 +122,14 @@ function BalanceTab() {
       <MarginAccountCard />
 
       {/* Self-custody reminder */}
-      <p className="text-xs text-theme-text-muted leading-relaxed px-1">
-        Your funds remain on-chain inside your wallet, escrowed to Pado for
-        trading. Withdrawing returns them to your spendable wallet balance.
+      <p className="text-sm text-theme-text-secondary leading-relaxed px-1">
+        Depositing to Pado never moves your funds outside your wallet. When you
+        click "Enable Pado", a dedicated pocket is created inside your Nasun
+        wallet for using Pado. Depositing simply shifts funds between your
+        spendable Nasun wallet balance and your Pado balance, which is reserved
+        for trading and lending. Both pockets stay under your own keys. You can
+        move funds back to spendable anytime, either from Pado or from any Nasun
+        app via "Recover funds" menu in your wallet.
       </p>
 
       {/* Advanced: where funds live (collapsed by default) */}
