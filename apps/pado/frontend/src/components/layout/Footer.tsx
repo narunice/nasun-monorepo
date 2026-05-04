@@ -38,10 +38,10 @@ export function Footer() {
           </svg>
         </a>
       </footer>
-      <div className="border-t border-theme-border bg-amber-500/5">
-        <div className="mx-auto max-w-5xl px-4 py-4 text-sm leading-relaxed text-amber-200/90">
+      <div className="border-t border-amber-200 bg-amber-50 dark:border-theme-border dark:bg-amber-500/5">
+        <div className="mx-auto max-w-5xl px-4 py-4 text-sm leading-relaxed text-amber-900 dark:text-amber-200/90">
           <p>
-            <span className="font-semibold text-amber-200">Disclaimer.</span>{" "}
+            <span className="font-semibold text-amber-900 dark:text-amber-200">Disclaimer.</span>{" "}
             Pado is a proof-of-concept prototype running on Nasun Devnet. It is
             not a regulated financial product, an offer to sell securities, or
             investment advice, and nothing displayed here, including prices,
