@@ -129,6 +129,13 @@
 @font-face {
   font-family: "eurostile-extended";
   font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/eurostile-extended/Eurostile Extended Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "eurostile-extended";
+  font-style: normal;
   font-weight: 500;
   font-display: swap;
   src: url("/fonts/eurostile-extended/EurostileExtended-Medium.woff2") format("woff2");

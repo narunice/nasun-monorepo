@@ -8,19 +8,17 @@ import { useAuth } from "@/features/auth";
 
 interface Hero2026SectionProps {
   videoSrc?: string;
-  /** Negative top offset to crop the video from the top. E.g. "-15%" or "-120px" */
+  /** Negative top offset to crop the video from the top (desktop only). E.g. "-15%" or "-120px" */
   videoTopCrop?: string;
 }
 
 function Hero2026Section({
-  videoSrc = "/videos/Mediterranean-Website-4k-2-web.mp4",
-  videoTopCrop = "-10vh",
+  videoSrc = "/videos/Triangle-Hero-Section-BW-web.mp4",
+  videoTopCrop,
 }: Hero2026SectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const { isAuthenticated } = useAuth();
-
-  const bgVideo = videoSrc;
 
   const handleVideoCanPlay = () => {
     setIsVideoLoaded(true);
@@ -42,112 +40,172 @@ function Hero2026Section({
     return () => clearTimeout(timeout);
   }, [isVideoLoaded]);
 
-  const containerClassName =
-    "relative !p-0 mt-0 overflow-hidden h-full min-h-[calc(100dvh-50px)] flex items-center justify-center";
+  const buttons = (
+    <div className="flex items-center justify-center gap-3 md:gap-4">
+      {isAuthenticated ? (
+        <Link to="/my-account">
+          <ButtonV4
+            color="light"
+            size="sm"
+            className="py-1 drop-shadow-lg !font-inter !font-medium !text-lg"
+          >
+            Enter Nasun
+          </ButtonV4>
+        </Link>
+      ) : (
+        <ButtonV4
+          color="light"
+          size="sm"
+          className="py-1 min-w-[100px] md:min-w-[120px] drop-shadow-lg !font-inter !font-medium !text-lg"
+          onClick={() => {
+            localStorage.setItem("auth_return_to", "/my-account");
+            window.dispatchEvent(new Event("nasun:open-login"));
+          }}
+        >
+          Enter Nasun
+        </ButtonV4>
+      )}
+
+      <ButtonV4
+        color="ghost"
+        size="sm"
+        className="py-1 min-w-[100px] md:min-w-[120px] drop-shadow-lg !font-inter opacity-50 cursor-not-allowed !text-lg"
+      >
+        Read More
+      </ButtonV4>
+    </div>
+  );
 
   return (
-    <SectionLayout className={containerClassName}>
+    <SectionLayout className="relative !p-0 mt-0 overflow-hidden">
       {!isVideoPlaying && (
         <div className="absolute inset-0 flex items-center justify-center z-20">
           <InlineLoading message="Loading..." size="lg" />
         </div>
       )}
 
-      <video
-        autoPlay
-        loop
-        muted
-        playsInline
-        preload="auto"
-        onCanPlay={handleVideoCanPlay}
-        onPlaying={handleVideoPlaying}
-        className={`absolute inset-x-0 w-full object-cover ${
-          !isVideoPlaying ? "opacity-0" : "opacity-100"
-        } transition-opacity duration-1000 z-0`}
-        style={{
-          top: videoTopCrop || "0",
-          height: videoTopCrop
-            ? `calc(100% + ${videoTopCrop.replace(/^-/, "")})`
-            : "100%",
-        }}
-      >
-        <source src={bgVideo} type="video/mp4" />
-      </video>
+      {/* ── Desktop layout (≥ 1024px) ── */}
+      <div className="hidden lg:flex relative h-full min-h-[calc(100dvh-50px)] items-center justify-center">
+        {/* Full-bleed background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          preload="auto"
+          onCanPlay={handleVideoCanPlay}
+          onPlaying={handleVideoPlaying}
+          className={`absolute inset-x-0 w-full object-cover ${
+            !isVideoPlaying ? "opacity-0" : "opacity-100"
+          } transition-opacity duration-1000 z-0`}
+          style={{
+            top: videoTopCrop ?? "0",
+            height: videoTopCrop
+              ? `calc(100% + ${videoTopCrop.replace(/^-/, "")})`
+              : "100%",
+          }}
+        >
+          <source src={videoSrc} type="video/mp4" />
+        </video>
 
-      {/* Content - always centered in section, pushed into lower half */}
-      {isVideoPlaying && (
-        <div className="relative z-20 w-full px-5 md:px-6 flex flex-col items-center text-center mt-[28vh] md:mt-[32vh] lg:mt-[36vh]">
-          <FadeInUp>
-            <div className="flex flex-col items-center">
-              <h1
-                className="text-white
-             !font-changeling font-bold tracking-widest uppercase mb-1 md:mb-2 drop-shadow-[3px_3px_4px_rgba(0,0,0,0.5)] text-5xl md:text-6xl lg:text-7xl xl:text-8xl"
-              >
+        {/* Content - right-aligned, vertically centered */}
+        {isVideoPlaying && (
+          <div className="z-20 w-full h-full absolute inset-0 flex items-center justify-end px-8 md:px-16 lg:px-24 xl:px-32">
+            <FadeInUp>
+              <div className="flex flex-col items-start max-w-xl">
+                <h1 className="-ml-0.5 !font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-6xl md:text-7xl lg:text-[95px] xl:text-[107px] leading-none">
+                  NASUN
+                </h1>
+
+                <p className="!font-pirulen text-white uppercase tracking-wide drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] mb-4 md:mb-5">
+                  MAKING YOU THE CENTER OF CRYPTO
+                </p>
+
+                <p className="!font-inter !font-light text-white/90 drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] text-sm md:text-base lg:text-lg leading-relaxed mb-6 md:mb-8">
+                  Nasun turns your activity into compounding value.
+                  <br />
+                  Activate curated apps. Decide how deep you engage.
+                  <br />
+                  Nothing resets.
+                </p>
+
+                {buttons}
+              </div>
+            </FadeInUp>
+          </div>
+        )}
+
+        {/* Scroll indicator */}
+        {isVideoPlaying && (
+          <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
+            <svg
+              className="w-6 h-6 text-nasun-white/50 animate-bounce"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
+
+      {/* ── Mobile layout (< 1024px) ── */}
+      <div className="flex lg:hidden flex-col bg-black">
+        {/* Video block */}
+        <div
+          className="relative w-full overflow-hidden"
+          style={{ aspectRatio: "4.6 / 4" }}
+        >
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            preload="auto"
+            onCanPlay={handleVideoCanPlay}
+            onPlaying={handleVideoPlaying}
+            className={`absolute inset-0 w-full h-full object-cover object-left ${
+              !isVideoPlaying ? "opacity-0" : "opacity-100"
+            } transition-opacity duration-1000`}
+          >
+            <source src={videoSrc} type="video/mp4" />
+          </video>
+
+          {/* Gradient inside container: transparent → black, ending solid at the bottom edge */}
+          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-black pointer-events-none z-10" />
+        </div>
+
+        {/* Content overlaps with gradient zone */}
+        {isVideoPlaying && (
+          <div className="flex flex-col items-center text-center px-6 -mt-12 pb-16 z-20">
+            <FadeInUp>
+              <h1 className="!font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-[72px] leading-none mb-3">
                 NASUN
               </h1>
 
-              <h3 className="text-white font-medium mb-1 md:mb-2 drop-shadow-[4px_4px_4px_rgba(0,0,0,0.8)] text-xl md:text-2xl lg:text-3xl">
-                Grow the Life You Own
-              </h3>
-
-              <p className=" text-white max-w-3xl my-3 md:my-5 lg:my-6 font-medium bg-clip-text drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] text-base/snug md:text-lg/snug xl:text-xl/snug">
-                <span className="block">
-                  Nasun brings crypto, Web3, and Web2 into one experience built
-                  around you.
-                </span>
-                <span className="block mt-2">
-                  One account. Every app. Everything you do compounds.
-                </span>
+              <p className="!font-pirulen text-white uppercase tracking-wide drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] mb-4 text-sm md:text-base">
+                MAKING YOU THE CENTER OF CRYPTO
               </p>
 
-              <div className="relative inline-block mt-2 mb-2 md:mb-4 lg:mb-6">
-                {isAuthenticated ? (
-                  <Link to="/my-account">
-                    <ButtonV4
-                      color="pado-mint"
-                      size="lg"
-                      className="min-w-[160px] md:min-w-[200px] drop-shadow-lg font-medium text-white"
-                    >
-                      Explore Nasun
-                    </ButtonV4>
-                  </Link>
-                ) : (
-                  <ButtonV4
-                    color="pado-mint"
-                    size="lg"
-                    className="min-w-[160px] md:min-w-[200px] drop-shadow-lg font-medium text-white"
-                    onClick={() => {
-                      localStorage.setItem("auth_return_to", "/my-account");
-                      window.dispatchEvent(new Event("nasun:open-login"));
-                    }}
-                  >
-                    Enter Nasun
-                  </ButtonV4>
-                )}
-              </div>
-            </div>
-          </FadeInUp>
-        </div>
-      )}
+              <p className="!font-inter !font-light text-white/80 text-sm md:text-base leading-relaxed mb-8">
+                Nasun turns your activity into compounding value.
+                <br />
+                Activate curated apps. Decide how deep you engage.
+                <br />
+                Nothing resets.
+              </p>
 
-      {/* Scroll indicator - always at viewport bottom */}
-      {isVideoPlaying && (
-        <div className="absolute bottom-6 inset-x-0 z-30 flex justify-center">
-          <svg
-            className="w-6 h-6 text-nasun-white/50 animate-bounce"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19.5 8.25l-7.5 7.5-7.5-7.5"
-            />
-          </svg>
-        </div>
-      )}
+              {buttons}
+            </FadeInUp>
+          </div>
+        )}
+      </div>
     </SectionLayout>
   );
 }

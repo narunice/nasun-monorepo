@@ -21,7 +21,7 @@ export default function HomePage() {
       <JsonLd data={NASUN_ORG_SCHEMA} />
       <ErrorBoundary fallback={errorFallback}>
         <ScrollSnapContainer>
-          <ScrollSnapSection>
+          <ScrollSnapSection className="!min-h-0 !h-auto">
             <Hero2026Section />
           </ScrollSnapSection>
           <ScrollSnapSection allowTallContent>
