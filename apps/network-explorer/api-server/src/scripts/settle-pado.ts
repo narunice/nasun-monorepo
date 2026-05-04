@@ -106,6 +106,21 @@ function getPreviousWeekId(): string {
   return `${year}-W${String(week).padStart(2, '0')}`;
 }
 
+// ISO week immediately preceding the given weekId (handles year boundary).
+function getPreviousWeekIdOf(weekId: string): string | null {
+  const match = weekId.match(/^(\d{4})-W(\d{2})$/);
+  if (!match) return null;
+  const year = parseInt(match[1], 10);
+  const week = parseInt(match[2], 10);
+  const jan4 = new Date(Date.UTC(year, 0, 4));
+  const jan4Day = jan4.getUTCDay() || 7;
+  const week1Monday = new Date(jan4.getTime() - (jan4Day - 1) * 86_400_000);
+  const weekMonday = new Date(week1Monday.getTime() + (week - 1) * 7 * 86_400_000);
+  const prevMonday = new Date(weekMonday.getTime() - 7 * 86_400_000);
+  const { year: y, week: w } = getISOWeek(prevMonday);
+  return `${y}-W${String(w).padStart(2, '0')}`;
+}
+
 // ===== Args =====
 
 const args = process.argv.slice(2);
@@ -279,6 +294,22 @@ async function main() {
   `;
   console.log(`  ${unsettled.length} unsettled traders`);
 
+  // 6b. Look up previous week's rank for rankDelta metadata. Per-address since
+  //     Pado leaderboards are address-keyed, not identity-keyed.
+  const prevWeekId = getPreviousWeekIdOf(weekId);
+  const prevRankByAddr = new Map<string, number>();
+  if (prevWeekId && data.traders.length > 0) {
+    const prevRows = await pgDb<Array<{ address: string; rank: number }>>`
+      SELECT address, rank
+      FROM weekly_score_snapshots
+      WHERE week_id = ${prevWeekId}
+        AND address = ANY(${pgDb.array(data.traders.map(t => t.address.toLowerCase()))})
+    `;
+    for (const r of prevRows) prevRankByAddr.set(r.address.toLowerCase(), r.rank);
+    console.log(`  previousRank lookups (week ${prevWeekId}): ${prevRows.length}`);
+  }
+  const totalParticipants = data.totalTraders;
+
   if (unsettled.length === 0) {
     console.log('All traders already settled for this week. Exiting.');
     await pgDb.end();
@@ -341,6 +372,19 @@ async function main() {
       continue;
     }
 
+    // Persist enough context for the UI to render a celebration card later.
+    const previousRank = prevRankByAddr.get(addr) ?? null;
+    const metadata = {
+      leaderboardType: 'pado' as const,
+      weekId,
+      rank,
+      previousRank,
+      rankDelta: previousRank == null ? null : previousRank - rank,
+      totalParticipants,
+      totalScore: row.total_score,
+      hasGenesisPass: isGP,
+    };
+
     // Atomic: INSERT activity_points + UPDATE settled in one PG transaction.
     // ON CONFLICT DO NOTHING ensures idempotency on re-runs.
     try {
@@ -350,11 +394,11 @@ async function main() {
           INSERT INTO activity_points
             (wallet_address, identity_id, tx_digest, category, activity_type,
              base_points, volume_tier, genesis_multiplier, final_points,
-             tx_timestamp, event_seq, tx_sequence_number)
+             tx_timestamp, event_seq, tx_sequence_number, metadata)
           VALUES
             (${addr}, ${identityId}, ${digest}, 'ecosystem-bonus-pado', ${'weekly-' + weekId},
              ${basePts}, 1.0, ${isGP ? 2.0 : 1.0}, ${finalPts.toFixed(2)},
-             NOW()::timestamptz, 0, 0)
+             NOW()::timestamptz, 0, 0, ${sql.json(metadata)})
           ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
         `;
 
