@@ -30,7 +30,7 @@ import {
 import { buildCreateBalanceManager } from '../../trading/transactions';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
-import { assembleUnifiedPaymentArg } from '../../../lib/payment';
+import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../../lib/payment';
 import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
@@ -93,6 +93,19 @@ interface UsePredictionTradeResult {
     maxPriceBps: number,
     restOnNoFill: boolean,
     amountUnits: bigint,
+  ) => Promise<TradeResult>;
+  /**
+   * Same as placeBuyTaker but pre-funds MA with `shortfallUnits` from the
+   * connected wallet in a single atomic PTB before placing the order. Used by
+   * the prediction auto-deposit toggle when displayed Pado Balance is short.
+   */
+  placeBuyTakerWithAutoDeposit: (
+    marketId: string,
+    isYes: boolean,
+    maxPriceBps: number,
+    restOnNoFill: boolean,
+    amountUnits: bigint,
+    shortfallUnits: bigint,
   ) => Promise<TradeResult>;
   placeSellTaker: (
     marketId: string,
@@ -392,6 +405,38 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
   );
 
+  const placeBuyTakerWithAutoDeposit = useCallback(
+    (
+      marketId: string,
+      isYes: boolean,
+      maxPriceBps: number,
+      restOnNoFill: boolean,
+      amountUnits: bigint,
+      shortfallUnits: bigint,
+    ) =>
+      runOperation(
+        marketId,
+        `buy-taker-autodeposit:${isYes}`,
+        async (tx, client) => {
+          if (!maAccountId) {
+            throw new Error('Pado Balance account required for auto-deposit. Please set up Pado Balance first.');
+          }
+          const paymentArg = await assembleAutoDepositPaymentArg(
+            tx,
+            amountUnits,
+            shortfallUnits,
+            walletAddress!,
+            maAccountId,
+            client,
+          );
+          buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
+        },
+        restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
+        { useNusdcLock: true },
+      ),
+    [runOperation, walletAddress, maAccountId],
+  );
+
   const placeSellTaker = useCallback(
     (marketId: string, positionId: string, minPriceBps: number, restOnNoFill: boolean) =>
       runOperation(
@@ -642,6 +687,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     bmId,
     createPadoAccount,
     placeBuyTaker,
+    placeBuyTakerWithAutoDeposit,
     placeSellTaker,
     placeBuyMaker,
     placeSellMaker,

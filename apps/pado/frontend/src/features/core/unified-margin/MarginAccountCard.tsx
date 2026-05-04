@@ -100,8 +100,6 @@ export function MarginAccountCard() {
     enablePado,
     depositByAmount,
     depositNbtc,
-    depositNeth,
-    depositNsol,
     depositSwap,
     withdraw,
     withdrawAllPado,
@@ -195,10 +193,6 @@ export function MarginAccountCard() {
   });
   const [slippageBps, setSlippageBps] = useState<number>(50);
   const [customSlippage, setCustomSlippage] = useState<string>("");
-  // For NETH/NSOL tabs: native deposit (default) vs convert-to-NUSDC swap.
-  // Native preserves token identity at the cost of a haircut. Convert maximizes
-  // borrowing power but mints NUSDC accounting.
-  const [convertToNusdc, setConvertToNusdc] = useState<boolean>(false);
 
   const isConnected =
     (status === "unlocked" && walletAccount) ||
@@ -235,10 +229,11 @@ export function MarginAccountCard() {
   const amountRaw = amountValid ? floatToRaw(amountFloat, activeDecimals) : 0n;
   const debouncedAmountRaw = useDebouncedValue(amountRaw, 250);
 
-  // Whether this tab supports a convert-to-NUSDC swap path
+  // NETH/NSOL: native deposit is built but not yet deployed; for now we force
+  // the convert-to-NUSDC path so funds land as NUSDC in Pado Balance (the only
+  // collateral form that works with prediction at launch).
   const canConvert = activeTab === "NETH" || activeTab === "NSOL";
-  // Whether the current submission goes through the swap path
-  const isSwapTab = canConvert && convertToNusdc;
+  const isSwapTab = canConvert;
 
   // Live swap quote (NETH/NSOL only). 5s polling, debounced amount key.
   const { data: quote, error: quoteError } = useQuery<SwapQuote | null>({
@@ -313,12 +308,9 @@ export function MarginAccountCard() {
         await depositByAmount(amountRaw);
       } else if (activeTab === "NBTC") {
         await depositNbtc(amountRaw);
-      } else if (activeTab === "NETH" && !convertToNusdc) {
-        await depositNeth(amountRaw);
-      } else if (activeTab === "NSOL" && !convertToNusdc) {
-        await depositNsol(amountRaw);
       } else {
-        // NETH/NSOL convert path: refetch fresh quote then submit with locked minQuoteOut
+        // NETH/NSOL: convert-to-NUSDC swap path (native deposit not yet deployed).
+        // Refetch fresh quote then submit with locked minQuoteOut
         const pool = depositPoolFor(activeTab);
         if (!pool) throw new Error(`No deposit pool for ${activeTab}`);
         const fresh = await queryClient.fetchQuery<SwapQuote | null>({
@@ -639,9 +631,12 @@ export function MarginAccountCard() {
             setShowWithdrawAllConfirm(true);
           }}
           disabled={isWithdrawing}
-          className="w-full py-2 text-sm text-theme-text-secondary hover:text-theme-text-primary border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50 mb-4"
+          className="w-full py-2.5 text-sm font-medium text-theme-text-primary bg-theme-bg-tertiary hover:bg-pd2/10 border border-theme-border hover:border-pd2 rounded-lg transition-colors disabled:opacity-50 mb-4 flex items-center justify-center gap-2"
         >
-          {isWithdrawing ? "Withdrawing..." : "Withdraw All from Pado"}
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 6h18M3 14h18M3 18h18" />
+          </svg>
+          {isWithdrawing ? "Withdrawing..." : "Withdraw All from Pado Balance"}
         </button>
       )}
 
@@ -676,7 +671,6 @@ export function MarginAccountCard() {
                       setShowGasWarning(false);
                       setSlippageBps(50);
                       setCustomSlippage("");
-                      setConvertToNusdc(false);
                     }}
                     disabled={disabled}
                     title={disabled ? "No balance" : undefined}
@@ -763,38 +757,29 @@ export function MarginAccountCard() {
               )}
             </div>
 
-            {/* NETH/NSOL: Native vs Convert toggle */}
+            {/* NETH/NSOL: native deposit not yet enabled — convert to NUSDC only.
+                Native multi-collateral is built but not deployed; users can use
+                Spot trading auto-deposit in the meantime to put NETH/NSOL to work. */}
             {canConvert && (
-              <div className="mb-3 flex gap-2 text-sm">
-                <button
-                  type="button"
-                  onClick={() => setConvertToNusdc(false)}
-                  className={`flex-1 px-3 py-2 rounded-lg border transition-colors ${
-                    !convertToNusdc
-                      ? "bg-pd2/20 border-pd2 text-pd3"
-                      : "bg-theme-bg-primary border-theme-border text-theme-text-muted hover:text-theme-text-primary"
-                  }`}
-                >
-                  Deposit as {activeTab}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConvertToNusdc(true)}
-                  className={`flex-1 px-3 py-2 rounded-lg border transition-colors ${
-                    convertToNusdc
-                      ? "bg-pd2/20 border-pd2 text-pd3"
-                      : "bg-theme-bg-primary border-theme-border text-theme-text-muted hover:text-theme-text-primary"
-                  }`}
-                >
-                  Convert to NUSDC
-                </button>
-              </div>
-            )}
-            {canConvert && !convertToNusdc && amountValid && (
-              <div className="mb-3 px-3 py-2 bg-theme-bg-primary border border-theme-border rounded-lg text-xs text-theme-text-muted">
-                {activeTab} keeps its identity in your account with a{" "}
-                {activeTab === "NETH" ? "10%" : "15%"} collateral haircut.
-                Convert to NUSDC for maximum borrowing power.
+              <div className="mb-3 px-3 py-2 bg-theme-bg-primary border border-theme-border rounded-lg text-xs text-theme-text-muted space-y-1">
+                <p>
+                  Direct {activeTab} deposit is coming soon. For now, deposits
+                  are auto-converted to NUSDC.
+                </p>
+                <p>
+                  Want to keep your {activeTab}? Use it directly in{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowDepositModal(false);
+                      navigate("/spot");
+                    }}
+                    className="text-pd3 hover:text-pd2 underline underline-offset-2"
+                  >
+                    Spot trading
+                  </button>
+                  {" "}— auto-deposit accepts any token there.
+                </p>
               </div>
             )}
 
