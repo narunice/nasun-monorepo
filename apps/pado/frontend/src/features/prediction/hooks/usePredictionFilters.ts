@@ -24,13 +24,13 @@ export type MarketCategory =
   | 'Other';
 
 export type MarketSort = 'most-liquid' | 'newest' | 'closing-soon';
-export type StatusFilter = 'open' | 'resolved' | 'all';
+export type StatusFilter = 'open' | 'resolved' | 'mine' | 'all';
 
 const DEFAULT_STATUS: StatusFilter = 'open';
 const DEFAULT_CATEGORY: MarketCategory = 'All';
 const DEFAULT_SORT: MarketSort = 'closing-soon';
 
-const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'all']);
+const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'mine', 'all']);
 const VALID_CATEGORIES = new Set<MarketCategory>(['All', 'Crypto', 'Sports', 'Politics', 'Finance', 'Other']);
 const VALID_SORTS = new Set<MarketSort>(['most-liquid', 'newest', 'closing-soon']);
 
@@ -56,6 +56,7 @@ export interface UsePredictionFiltersResult {
 
 export function usePredictionFilters(
   markets: PredictionMarket[],
+  myMarketIds?: ReadonlySet<string>,
 ): UsePredictionFiltersResult {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -108,7 +109,12 @@ export function usePredictionFilters(
 
   const filtered = useMemo(() => {
     let result = markets;
-    if (status !== 'all') {
+    if (status === 'mine') {
+      // "Mine" surfaces every market the user holds a Position in regardless
+      // of lifecycle stage — so resolved-but-unclaimed wins are easy to find.
+      const ids = myMarketIds ?? new Set<string>();
+      result = result.filter((m) => ids.has(m.id));
+    } else if (status !== 'all') {
       result = result.filter((m) => m.status === status);
     }
     if (category !== 'All') {
@@ -135,7 +141,7 @@ export function usePredictionFilters(
       if (primary !== 0) return primary;
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
-  }, [markets, category, sortBy, status]);
+  }, [markets, category, sortBy, status, myMarketIds]);
 
   return { filtered, category, sortBy, status, setCategory, setSortBy, setStatus };
 }

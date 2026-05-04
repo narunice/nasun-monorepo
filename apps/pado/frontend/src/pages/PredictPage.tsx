@@ -7,14 +7,20 @@ import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useMarkets, MarketCard, usePredictionAdmin } from '../features/prediction';
 import { usePredictionFilters } from '../features/prediction/hooks/usePredictionFilters';
+import { usePredictionPositions } from '../features/prediction/hooks/usePredictionPositions';
 import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
 import { SkeletonCard } from '../components/common';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
   const { isResolver } = usePredictionAdmin();
+  const { positions: myPositions } = usePredictionPositions();
 
   const marketRecords = useMemo(() => markets.map((m) => m.market), [markets]);
+  const myMarketIds = useMemo(
+    () => new Set(myPositions.map((p) => p.marketId)),
+    [myPositions],
+  );
   const {
     filtered,
     category,
@@ -23,7 +29,7 @@ export function PredictPage() {
     setCategory,
     setSortBy,
     setStatus,
-  } = usePredictionFilters(marketRecords);
+  } = usePredictionFilters(marketRecords, myMarketIds);
   const filteredEntries = useMemo(() => {
     const filteredIds = new Set(filtered.map((m) => m.id));
     const order = new Map(filtered.map((m, i) => [m.id, i]));
