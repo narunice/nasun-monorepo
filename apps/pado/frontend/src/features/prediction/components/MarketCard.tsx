@@ -120,7 +120,11 @@ export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
 }
 
 function extractCryptoSymbol(question: string): string | null {
-  // Matches patterns like "Will BTC/USDT...", "Will ETH/USD...", "Will SOL price..."
+  // Newer crypto-batch script emits "Will Solana (SOL/USDT) close..." — prefer
+  // the parenthesized SYMBOL/QUOTE pair when present.
+  const paren = question.match(/\(([A-Z]{2,6})\/[A-Z]{2,5}\)/);
+  if (paren) return paren[1];
+  // Legacy/short form: "Will BTC/USDT...", "Will ETH/USD...", "Will SOL price..."
   const match = question.match(/Will\s+([A-Z]{2,6})(?:\/|\s)/);
   return match ? match[1] : null;
 }
