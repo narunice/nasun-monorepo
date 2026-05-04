@@ -52,7 +52,7 @@ export function DashboardTabBottom({ chatSlot }: DashboardTabBottomProps = {}) {
       {/* Row 2: Active Engagement + Chat. Chat is absolutely positioned
           inside its column so it takes the row's stretch height (driven by
           Daily Missions on the left) instead of growing the row itself. */}
-      <div data-uju-anchor="daily-missions" className="flex gap-4 sm:gap-5 items-stretch">
+      <div data-uju-anchor="daily-missions" role="region" aria-label="Daily missions" className="flex gap-4 sm:gap-5 items-stretch">
         <div className="flex-1 min-w-0">
           <UjuDailyMissionsCard
             pinnedApps={pinnedApps}

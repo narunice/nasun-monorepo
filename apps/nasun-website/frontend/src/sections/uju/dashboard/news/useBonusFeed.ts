@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth";
 import {
@@ -41,6 +42,13 @@ export function useBonusFeed(): {
     retry: 1,
   });
 
+  // useMemo must be called unconditionally (Rules of Hooks). When useMock is
+  // true this memo is computed but its result is not used.
+  const memoizedData = useMemo(() => {
+    if (!query.data) return null;
+    return { ...query.data, data: query.data.data.slice(0, MAX_SLIDES) };
+  }, [query.data]);
+
   if (useMock) {
     return {
       isLoading: false,
@@ -55,8 +63,6 @@ export function useBonusFeed(): {
   return {
     isLoading: query.isPending && !!identityId && !!cognitoToken,
     isError: query.isError,
-    data: query.data
-      ? { ...query.data, data: query.data.data.slice(0, MAX_SLIDES) }
-      : null,
+    data: memoizedData,
   };
 }
