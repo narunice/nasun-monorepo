@@ -15,17 +15,22 @@
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
 import { useMarginAccount } from '../../core/unified-margin';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
-import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
 import { usePredictionFormMode } from '../hooks/usePredictionFormMode';
 import type { PredictionFormMode } from '../hooks/usePredictionFormMode';
 import { formatCentsWithProb } from '../utils/formatPrice';
 import { trackEvent, AnalyticsEvent } from '../../../lib/analytics';
+import {
+  OrderSuccessModal,
+  shouldShowOrderModal,
+  incrementOrderModalCount,
+  type OrderSuccessData,
+} from './OrderSuccessModal';
 import type { PredictionMarket, Orderbook } from '../types';
 
 interface OutcomeOrderFormProps {
@@ -47,7 +52,7 @@ const SLIPPAGE_BPS = 200; // 2% default slippage for market orders
 // Move's validatePriceBps requires `> 0 && < MAX_PRICE (10000)`. Strict bounds.
 const MIN_PRICE_BPS = 1;
 const MAX_PRICE_BPS = 9999;
-const NO_ASKS_SIMPLE_ERROR = NO_ASKS_SIMPLE_ERROR as const;
+const NO_ASKS_SIMPLE_ERROR = '__NO_ASKS_SIMPLE__' as const;
 const MAX_NUSDC_PER_TX = 100_000; // mirrors Move MAX_PAYMENT_AMOUNT_BASE (round-7 W)
 
 const ANALYTICS_INITIAL_SESSION_KEY = 'pado_prediction_mode_initial_fired';
@@ -73,11 +78,9 @@ export function OutcomeOrderForm({
     placeSellTaker,
     mintTokens,
   } = usePredictionTrade();
-  const { data: multiBalance } = useMultiBalance();
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
 
-  const nusdcBalance = multiBalance?.tokens?.NUSDC?.formatted || '0';
   const { account: maAccount } = useMarginAccount();
   const maBalance = Number(maAccount?.nusdcBalance ?? 0n) / 1e6;
   // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
@@ -93,8 +96,7 @@ export function OutcomeOrderForm({
   const [selectedPositionId, setSelectedPositionId] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [lastBuy, setLastBuy] = useState<{ isYes: boolean; shares: number; priceBps: number } | null>(null);
-  const { shareTrade } = useShareMarket();
+  const [successModal, setSuccessModal] = useState<OrderSuccessData | null>(null);
   const { isSubmitting, guard: submitGuard } = useSubmitGuard();
   const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
@@ -201,13 +203,14 @@ export function OutcomeOrderForm({
       if (orderType === 'buy' && amountNum > MAX_NUSDC_PER_TX) {
         return `Amount exceeds per-transaction cap of ${MAX_NUSDC_PER_TX.toLocaleString('en-US')} NUSDC`;
       }
-      // Skip wallet balance check when BM is present: BM balance checked on-chain at trade time.
-      if (orderType === 'buy' && !bmId && amountNum > parseFloat(nusdcBalance)) {
-        return `Insufficient NUSDC. Wallet: ${parseFloat(nusdcBalance).toFixed(2)}`;
+      // Gate orders to displayed Pado Capital (MA balance). Falling back to BM/
+      // wallet would let users spend funds they were not shown as available.
+      if (orderType === 'buy' && amountNum > maBalance) {
+        return `Insufficient Pado Capital. Available: ${maBalance.toFixed(2)} NUSDC. Deposit more or reduce the order.`;
       }
       return null;
     },
-    [orderType, orderMode, nusdcBalance, bmId],
+    [orderType, orderMode, maBalance],
   );
 
   const handleSubmit = useCallback(
@@ -215,7 +218,6 @@ export function OutcomeOrderForm({
       e.preventDefault();
       setError(null);
       setSuccess(null);
-      setLastBuy(null);
 
       const amountNum = parseFloat(amount);
       const userPricePercent = parseFloat(price);
@@ -274,8 +276,27 @@ export function OutcomeOrderForm({
           );
           setSetupStep(null);
           if (result.success) {
-            setSuccess(`Order placed. Tx: ${result.digest?.slice(0, 8)}...`);
-            setLastBuy({ isYes, shares: estimatedShares, priceBps: maxPriceBps });
+            const modalData: OrderSuccessData = {
+              orderType: 'buy',
+              outcomeType,
+              orderMode,
+              isResting: restOnNoFill,
+              shares: estimatedShares,
+              cost: amountNum,
+              priceBps: maxPriceBps,
+              digest: result.digest!,
+            };
+            if (isSimple && shouldShowOrderModal()) {
+              // Only count filled orders toward the auto-show limit; resting
+              // orders haven't executed yet so don't consume a modal impression.
+              if (!restOnNoFill) incrementOrderModalCount();
+              setSuccessModal(modalData);
+            } else {
+              setSuccess(restOnNoFill
+                ? `Limit order resting at ${(maxPriceBps / 100).toFixed(0)}¢. Tx: ${result.digest?.slice(0, 8)}...`
+                : `Order placed. Tx: ${result.digest?.slice(0, 8)}...`
+              );
+            }
             setAmount('');
             startSync(result.digest!);
           } else {
@@ -299,9 +320,29 @@ export function OutcomeOrderForm({
             minPriceBps = userPriceBps;
           }
 
+          const pos = filteredPositions.find((p) => p.id === selectedPositionId);
+          const sellShares = pos ? Number(pos.shares) / 1_000_000 : 0;
           const result = await placeSellTaker(market.id, selectedPositionId, minPriceBps, restOnNoFill);
           if (result.success) {
-            setSuccess(`Close order placed. Tx: ${result.digest?.slice(0, 8)}...`);
+            const modalData: OrderSuccessData = {
+              orderType: 'sell',
+              outcomeType,
+              orderMode,
+              isResting: restOnNoFill,
+              shares: sellShares,
+              cost: 0,
+              priceBps: minPriceBps,
+              digest: result.digest!,
+            };
+            if (isSimple && shouldShowOrderModal()) {
+              if (!restOnNoFill) incrementOrderModalCount();
+              setSuccessModal(modalData);
+            } else {
+              setSuccess(restOnNoFill
+                ? `Close order resting at ${(minPriceBps / 100).toFixed(0)}¢. Tx: ${result.digest?.slice(0, 8)}...`
+                : `Close order placed. Tx: ${result.digest?.slice(0, 8)}...`
+              );
+            }
             setPrice('');
             refetchPositions();
             startSync(result.digest!);
@@ -325,6 +366,7 @@ export function OutcomeOrderForm({
       selectedPositionId,
       bmId,
       isSimple,
+      filteredPositions,
       createPadoAccount,
       placeBuyTaker,
       placeSellTaker,
@@ -362,8 +404,9 @@ export function OutcomeOrderForm({
     isTradingFrozen ||
     isLoading ||
     isSubmitting;
-  // Total available = wallet + MA (MA-first routing means both are spendable)
-  const walletBalance = parseFloat(nusdcBalance) + maBalance;
+  // Show Pado Capital (MA balance) as the primary available amount.
+  // Wallet NUSDC is a fallback payment source but not part of the Pado account.
+  const padoCapitalBalance = maBalance;
 
   const pricePlaceholder = bestAskBps != null && orderType === 'buy'
     ? `Best ask: ${formatCentsWithProb(bestAskBps, 2)}`
@@ -411,9 +454,9 @@ export function OutcomeOrderForm({
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
           <div className="flex justify-between items-center gap-2">
             <div className="min-w-0 flex-1">
-              <span className="text-xs text-theme-text-muted">Available NUSDC</span>
+              <span className="text-xs text-theme-text-muted">Pado Capital</span>
               <p className="text-base sm:text-lg font-semibold text-theme-text-primary tabular-nums truncate">
-                {walletBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                {padoCapitalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 <span className="text-xs sm:text-sm font-normal text-theme-text-muted"> NUSDC</span>
               </p>
             </div>
@@ -674,17 +717,8 @@ export function OutcomeOrderForm({
           </div>
         )}
         {success && (
-          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2 flex items-center justify-between gap-2">
-            <span>{success}</span>
-            {lastBuy && (
-              <button
-                type="button"
-                onClick={() => shareTrade(market, lastBuy.isYes, lastBuy.shares, lastBuy.priceBps)}
-                className="underline hover:no-underline whitespace-nowrap"
-              >
-                Share on X
-              </button>
-            )}
+          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2">
+            {success}
           </div>
         )}
         {isSyncing && (
@@ -753,6 +787,14 @@ export function OutcomeOrderForm({
           Prediction market contracts. You may lose your entire position. Not investment advice.
         </p>
       </form>
+
+      {successModal && (
+        <OrderSuccessModal
+          onClose={() => setSuccessModal(null)}
+          market={market}
+          data={successModal}
+        />
+      )}
     </div>
   );
 }
