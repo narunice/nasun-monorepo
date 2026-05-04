@@ -88,6 +88,10 @@
           {
             "type": "command",
             "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE 'git[[:space:]]+(commit|tag)[[:space:]]'; then exit 0; fi; reason=''; if echo \"$cmd\" | grep -qiE 'aws[[:space:]]+dynamodb[[:space:]]+(delete-table|delete-item|batch-write-item|drop-table)'; then reason='BLOCKED: aws dynamodb destructive operation (delete-table/delete-item/batch-write-item). Production data cannot be deleted autonomously. Get explicit user confirmation first.'; fi; if echo \"$cmd\" | grep -qE 'rm[[:space:]]+-[a-zA-Z]*r[a-zA-Z]*f|rm[[:space:]]+-[a-zA-Z]*f[a-zA-Z]*r' && echo \"$cmd\" | grep -qvE '/tmp/'; then reason='BLOCKED: rm -rf outside /tmp is forbidden without explicit user confirmation. Production files/data may be irreversibly lost.'; fi; if echo \"$cmd\" | grep -qiE '(DROP[[:space:]]+(TABLE|DATABASE|SCHEMA)|TRUNCATE[[:space:]]+TABLE)'; then reason='BLOCKED: SQL destructive statement (DROP/TRUNCATE) requires explicit user confirmation.'; fi; if echo \"$cmd\" | grep -qE 'aws[[:space:]]+s3[[:space:]]+rm[[:space:]]' && echo \"$cmd\" | grep -qv 'sync'; then reason='BLOCKED: aws s3 rm requires explicit user confirmation. S3 objects cannot be recovered without versioning.'; fi; if [ -n \"$reason\" ]; then jq -n --arg r \"$reason\" '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: $r}}'; fi"
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if echo \"$cmd\" | grep -qE '^[[:space:]]*(pnpm[[:space:]]+deploy:|\\./scripts/deploy-|ALLOW_PROD_DIRECT=1[[:space:]])'; then exit 0; fi; if echo \"$cmd\" | grep -qE '(43\\.200\\.67\\.52)'; then jq -n '{hookSpecificOutput: {hookEventName: \"PreToolUse\", permissionDecision: \"deny\", permissionDecisionReason: \"BLOCKED: direct prod EC2 access (43.200.67.52). Use pnpm deploy:<app>:prod or ./scripts/deploy-*-production.sh. For genuine recovery, prefix with ALLOW_PROD_DIRECT=1. See feedback_no_raw_rsync_to_prod.md and the 2026-05-03 cross-app overwrite incident.\"}}'; fi"
           }
         ]
       }
@@ -99,6 +103,10 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path // empty' | { read -r f; [ -n \"$f\" ] && /home/naru/my_apps/nasun-monorepo/scripts/env-duplicate-check.sh \"$f\"; } 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // empty' | { read -r f; case \"$f\" in */scripts/deploy-*-production.sh) /home/naru/my_apps/nasun-monorepo/scripts/lint-deploy-scripts.sh >&2 || echo 'WARNING: lint-deploy-scripts.sh failed -- review the script for cross-app overwrite class typos before deploying.' >&2 ;; esac; } 2>&1 || true"
           }
         ]
       }
