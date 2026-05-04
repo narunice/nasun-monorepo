@@ -12,6 +12,7 @@ import { useAuth } from "@/features/auth";
 import { useAllianceMintStatus } from "@/hooks/useAllianceMintStatus";
 import { useNftDropRead } from "@/hooks/useNftDrop";
 import { useGenesisPassOwnership } from "@/hooks/useGenesisPassOwnership";
+import { useGenesisPassStatus } from "@/hooks/useGenesisPassStatus";
 import {
   NFT_EDITIONS,
   getEditionIdFromMediaUrl,
@@ -37,22 +38,30 @@ export const UjuAssetsCard: FC<UjuAssetsCardProps> = ({
   const { isMinted: isAllianceMinted, data: allianceData } = useAllianceMintStatus(cognitoToken);
   const { registeredWallets } = useUjuWalletRegistration();
 
+  // Derive EVM address: MetaMask connected wallet, or the wallet registered on the allowlist.
+  // This ensures Genesis Pass remains visible even when MetaMask is not actively connected.
+  const evmWalletAddress =
+    user?.linkedAccounts?.metamask?.walletAddress?.toLowerCase() ||
+    (user?.provider === "MetaMask" ? user.walletAddress?.toLowerCase() : undefined);
+  const { registeredWallet: genesisPassWallet } = useGenesisPassStatus(
+    evmWalletAddress,
+    evmWalletAddress ? null : cognitoToken,
+  );
+  const effectiveEvmAddress = evmWalletAddress || genesisPassWallet?.toLowerCase() || undefined;
+
   const {
     data: multiChainNfts,
     error: nftError,
     isPending: isNftPending,
     refetch: refetchNfts,
-  } = useMultiChainNFTs(walletAddress);
+  } = useMultiChainNFTs(walletAddress || effectiveEvmAddress);
 
   const { transfersUnlocked, mintDeadline } = useNftDropRead();
 
   const isDropEnded = mintDeadline > 0 && Date.now() / 1000 > mintDeadline;
   const effectiveTransfersUnlocked = transfersUnlocked || isDropEnded;
 
-  const evmWalletAddress =
-    user?.linkedAccounts?.metamask?.walletAddress?.toLowerCase() ||
-    (user?.provider === "MetaMask" ? user.walletAddress?.toLowerCase() : undefined);
-  const { ownedEditionIds } = useGenesisPassOwnership(evmWalletAddress);
+  const { ownedEditionIds } = useGenesisPassOwnership(effectiveEvmAddress);
 
   const { data: collections } = useEnabledNftCollections();
 
