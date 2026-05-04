@@ -29,7 +29,7 @@ export const PREDICTION_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="prediction-positions"]',
     title: 'Your Positions',
-    description: 'Open positions show your shares and estimated payout if the market resolves in your favor. You can close a position anytime by selling your shares back into the order book.',
+    description: 'After you place your first order, your active positions appear here — showing your YES/NO share count, current value, and estimated payout at resolution. You can close any position early by selling shares back into the order book.',
   },
   {
     target: '[data-tour="portfolio-link"]',

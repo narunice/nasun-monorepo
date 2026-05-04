@@ -38,6 +38,14 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
     }
 
     const rect = el.getBoundingClientRect();
+    // If the target is outside the viewport (e.g. a header element that scrolled out),
+    // scroll it into view first and re-measure on the next frame.
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      setTimeout(updateRect, 400);
+      return;
+    }
+
     setTargetRect({
       top: rect.top - PADDING,
       left: rect.left - PADDING,

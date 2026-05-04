@@ -296,7 +296,7 @@ export function Header() {
               Portfolio
             </Link>
           ) : (
-            <span className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1">
+            <span data-tour="portfolio-link" className="group/nav px-3 py-2 text-sm font-medium rounded-md text-theme-text-muted cursor-not-allowed inline-flex items-center gap-1">
               Portfolio
               <svg
                 className="w-3.5 h-3.5 opacity-0 group-hover/nav:opacity-100 transition-opacity"
