@@ -70,16 +70,6 @@ function useDebouncedValue<T>(value: T, delayMs: number): T {
   return debounced;
 }
 
-// Format NUSDC amount (6 decimals)
-function formatNusdc(amount: bigint | undefined): string {
-  if (!amount) return "0.00";
-  const value = Number(amount) / 1e6;
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
-
 export function MarginAccountCard() {
   const navigate = useNavigate();
   const { status, account: walletAccount } = useWallet();
@@ -101,7 +91,6 @@ export function MarginAccountCard() {
     depositByAmount,
     depositNbtc,
     depositSwap,
-    withdraw,
     withdrawAllPado,
     isCreating,
     isEnabling,
@@ -175,10 +164,8 @@ export function MarginAccountCard() {
   ]);
 
   const [showDepositModal, setShowDepositModal] = useState(false);
-  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
   const [showWithdrawAllConfirm, setShowWithdrawAllConfirm] = useState(false);
   const [depositAmount, setDepositAmount] = useState("");
-  const [withdrawAmount, setWithdrawAmount] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [withdrawAllError, setWithdrawAllError] = useState<string | null>(null);
   const [showGasWarning, setShowGasWarning] = useState(false);
@@ -354,30 +341,6 @@ export function MarginAccountCard() {
         err instanceof Error ? err.message : "Withdraw failed",
       );
       return { success: false };
-    }
-  };
-
-  // Handle withdraw
-  const handleWithdraw = async () => {
-    setError(null);
-    const amount = parseFloat(withdrawAmount);
-    if (isNaN(amount) || amount <= 0) {
-      setError("Please enter a valid amount");
-      return;
-    }
-
-    const marginBalance = Number(account?.nusdcBalance || 0n) / 1e6;
-    if (amount > marginBalance) {
-      setError("Insufficient margin balance");
-      return;
-    }
-
-    try {
-      await withdraw(BigInt(Math.round(amount * 1e6)));
-      setShowWithdrawModal(false);
-      setWithdrawAmount("");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Withdraw failed");
     }
   };
 
@@ -606,24 +569,17 @@ export function MarginAccountCard() {
         </div>
       )}
 
-      {/* Actions */}
-      <div className="grid grid-cols-2 gap-2 mb-2">
-        <button
-          onClick={() => setShowDepositModal(true)}
-          className="py-2.5 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
-        >
-          + Deposit
-        </button>
-        <button
-          onClick={() => setShowWithdrawModal(true)}
-          disabled={!account?.nusdcBalance || account.nusdcBalance === 0n}
-          className="py-2.5 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary font-medium rounded-lg transition-colors disabled:opacity-50"
-        >
-          - Withdraw
-        </button>
-      </div>
+      {/* Actions: a single Deposit primary + Withdraw All secondary.
+          Partial single-asset withdraw was removed (was MA-NUSDC only and
+          confusingly disabled when only BM had funds). Users withdraw-all
+          and redeposit if they need a partial. */}
+      <button
+        onClick={() => setShowDepositModal(true)}
+        className="w-full py-2.5 mb-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+      >
+        + Deposit
+      </button>
 
-      {/* Withdraw All from Pado (BM + MA combined) - opens confirm modal */}
       {hasAnyPadoBalance && (
         <button
           onClick={() => {
@@ -969,65 +925,6 @@ export function MarginAccountCard() {
         />
       )}
 
-      {/* Withdraw Modal */}
-      {showWithdrawModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-theme-bg-secondary border border-theme-border rounded-xl p-6 w-full max-w-md">
-            <h3 className="text-lg font-semibold text-theme-text-primary mb-4">
-              Withdraw NUSDC
-            </h3>
-
-            <div className="mb-4">
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-theme-text-secondary">Amount</span>
-                <span className="text-theme-text-muted">
-                  Margin Account: {formatNusdc(account?.nusdcBalance)} NUSDC
-                </span>
-              </div>
-              <div className="relative">
-                <input
-                  type="number"
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="w-full px-4 py-3 bg-theme-bg-primary border border-theme-border rounded-lg text-theme-text-primary placeholder:text-theme-text-muted"
-                />
-                <button
-                  onClick={() =>
-                    setWithdrawAmount(
-                      (Number(account?.nusdcBalance || 0n) / 1e6).toString(),
-                    )
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-pd3 hover:text-pd3"
-                >
-                  MAX
-                </button>
-              </div>
-            </div>
-
-            {error && <div className="text-sm text-red-500 mb-4">{error}</div>}
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowWithdrawModal(false);
-                  setError(null);
-                }}
-                className="flex-1 py-2 bg-theme-bg-tertiary text-theme-text-primary rounded-lg"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleWithdraw}
-                disabled={isWithdrawing}
-                className="flex-1 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg disabled:opacity-50"
-              >
-                {isWithdrawing ? "Withdrawing..." : "Confirm Withdraw"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
