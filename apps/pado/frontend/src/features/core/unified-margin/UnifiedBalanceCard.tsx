@@ -14,13 +14,13 @@
  * @version 1.1.0 (Phase 16.1 - UX Improvement)
  */
 
-import { useState } from 'react';
-import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
-import { useUnifiedBalance, formatTokenBreakdown } from './useUnifiedBalance';
-import { usePadoAccount } from './usePadoAccount';
-import { formatUsdValue, formatPercentage } from '../../../lib/prices';
-import type { TokenSymbol } from '../../../lib/prices';
-import { TokenIcon } from '@/components/common';
+import { useState } from "react";
+import { useWallet, useZkLogin, usePasskeyStore } from "@nasun/wallet";
+import { useUnifiedBalance, formatTokenBreakdown } from "./useUnifiedBalance";
+import { usePadoAccount } from "./usePadoAccount";
+import { formatUsdValue, formatPercentage } from "../../../lib/prices";
+import type { TokenSymbol } from "../../../lib/prices";
+import { TokenIcon } from "@/components/common";
 
 function BalanceBreakdown({
   bmNusdcUsd,
@@ -38,7 +38,7 @@ function BalanceBreakdown({
         onClick={() => setOpen((o) => !o)}
         className="text-xs text-theme-text-muted hover:text-theme-text-secondary transition-colors"
       >
-        {open ? 'Hide breakdown' : 'Show breakdown'}
+        {open ? "Hide breakdown" : "Show breakdown"}
       </button>
       {open && (
         <div className="mt-2 space-y-1 pl-4 border-l border-theme-border">
@@ -90,7 +90,10 @@ export function UnifiedBalanceCard({
   const padoAccount = usePadoAccount();
 
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const isConnected = (status === 'unlocked' && walletAccount) || isZkLoggedIn || isPasskeyUnlocked;
+  const isConnected =
+    (status === "unlocked" && walletAccount) ||
+    isZkLoggedIn ||
+    isPasskeyUnlocked;
 
   // Calculate fund distribution
   const inWallet = available - inMargin; // Wallet portion of available
@@ -140,7 +143,7 @@ export function UnifiedBalanceCard({
         </div>
         <div
           className={`text-xs ${
-            totalChange24h >= 0 ? 'text-green-500' : 'text-red-500'
+            totalChange24h >= 0 ? "text-green-500" : "text-red-500"
           }`}
         >
           {formatPercentage(totalChange24h)}
@@ -179,7 +182,7 @@ export function UnifiedBalanceCard({
         <div className="flex items-center gap-3">
           <span
             className={`text-sm font-medium ${
-              totalPnl24h >= 0 ? 'text-green-500' : 'text-red-500'
+              totalPnl24h >= 0 ? "text-green-500" : "text-red-500"
             }`}
           >
             {formatUsdValue(totalPnl24h, { showSign: true })} (
@@ -213,17 +216,26 @@ export function UnifiedBalanceCard({
           <span>Fund Location</span>
           <span className="flex items-center gap-2">
             {allFundsInWallet ? (
-              <span className="text-xs text-green-500">All funds in wallet</span>
+              <span className="text-xs text-green-500">
+                All funds in wallet
+              </span>
             ) : (
-              <span className="text-xs text-theme-text-muted">Distributed across accounts</span>
+              <span className="text-xs text-theme-text-muted">
+                Distributed across accounts
+              </span>
             )}
             <svg
-              className={`w-4 h-4 transition-transform ${showFundDetails ? 'rotate-180' : ''}`}
+              className={`w-4 h-4 transition-transform ${showFundDetails ? "rotate-180" : ""}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </span>
         </button>
@@ -235,7 +247,9 @@ export function UnifiedBalanceCard({
             <div className="flex items-center justify-between py-2 px-3 bg-theme-bg-tertiary rounded-lg">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span className="text-sm text-theme-text-primary">In Wallet</span>
+                <span className="text-sm text-theme-text-primary">
+                  In Nasun Wallet
+                </span>
               </div>
               <div className="text-right">
                 <span className="text-sm font-medium text-theme-text-primary">
@@ -252,7 +266,9 @@ export function UnifiedBalanceCard({
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-pd2"></div>
-                  <span className="text-sm text-theme-text-primary">In Pado Balance</span>
+                  <span className="text-sm text-theme-text-primary">
+                    In Pado Balance
+                  </span>
                 </div>
                 <div className="text-right">
                   <span className="text-sm font-medium text-pd3">
@@ -314,8 +330,8 @@ export function UnifiedBalanceCard({
                     <div
                       className={`text-xs ${
                         tokenData.change24h >= 0
-                          ? 'text-green-500'
-                          : 'text-red-500'
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       {formatted.change}
@@ -332,12 +348,11 @@ export function UnifiedBalanceCard({
       {!padoAccount.isEnabled && !padoAccount.isPartiallyEnabled && (
         <div className="mt-4 p-3 bg-pd2/5 border border-pd2/20 rounded-lg">
           <div className="text-sm text-theme-text-secondary">
-            <span className="font-medium">Tip:</span> Enable Pado to use your funds
-            across Trading, Predictions, and more.
+            <span className="font-medium">Tip:</span> Enable Pado to use your
+            funds across Trading, Predictions, and more.
           </div>
         </div>
       )}
     </div>
   );
 }
-
