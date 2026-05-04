@@ -307,11 +307,16 @@ export async function fetchLatestRound(
  */
 // Headroom for very large rounds. Sui devnet RPC silently caps queryEvents
 // page size at 50 even when a higher limit is requested, so the effective
-// ceiling is 50 × MAX_PAGES. 5000 pages = 250k tickets (round 2 had 102k).
-// We still pass EVENTS_PAGE_SIZE=1000 so that if the node is reconfigured to
-// allow larger pages, fewer round-trips are needed.
+// ceiling is 50 × MAX_PAGES. 20,000 pages = 1M tickets of headroom.
+// Raising the cap is essentially free in normal operation: the loop exits
+// early via `pastCutoff` (events older than round.startTime - 30min) or
+// `!hasNextPage`, so RPC call count tracks actual ticket volume, not
+// MAX_PAGES. The cap only matters as a safety net against a runaway loop
+// if both early-exit conditions fail simultaneously.
+// We still pass EVENTS_PAGE_SIZE=1000 so that if the node is reconfigured
+// to allow larger pages, fewer round-trips are needed.
 const EVENTS_PAGE_SIZE = 1000;
-const MAX_PAGES = 5000;
+const MAX_PAGES = 20000;
 const SAFETY_LOOKBACK_MS = 30 * 60 * 1000; // 30 min before round.startTime
 
 export async function countWinners(
