@@ -100,6 +100,8 @@ export function MarginAccountCard() {
     enablePado,
     depositByAmount,
     depositNbtc,
+    depositNeth,
+    depositNsol,
     depositSwap,
     withdraw,
     withdrawAllPado,
@@ -193,6 +195,10 @@ export function MarginAccountCard() {
   });
   const [slippageBps, setSlippageBps] = useState<number>(50);
   const [customSlippage, setCustomSlippage] = useState<string>("");
+  // For NETH/NSOL tabs: native deposit (default) vs convert-to-NUSDC swap.
+  // Native preserves token identity at the cost of a haircut. Convert maximizes
+  // borrowing power but mints NUSDC accounting.
+  const [convertToNusdc, setConvertToNusdc] = useState<boolean>(false);
 
   const isConnected =
     (status === "unlocked" && walletAccount) ||
@@ -229,8 +235,10 @@ export function MarginAccountCard() {
   const amountRaw = amountValid ? floatToRaw(amountFloat, activeDecimals) : 0n;
   const debouncedAmountRaw = useDebouncedValue(amountRaw, 250);
 
-  // Whether this tab needs swap routing
-  const isSwapTab = activeTab === "NETH" || activeTab === "NSOL";
+  // Whether this tab supports a convert-to-NUSDC swap path
+  const canConvert = activeTab === "NETH" || activeTab === "NSOL";
+  // Whether the current submission goes through the swap path
+  const isSwapTab = canConvert && convertToNusdc;
 
   // Live swap quote (NETH/NSOL only). 5s polling, debounced amount key.
   const { data: quote, error: quoteError } = useQuery<SwapQuote | null>({
@@ -305,8 +313,12 @@ export function MarginAccountCard() {
         await depositByAmount(amountRaw);
       } else if (activeTab === "NBTC") {
         await depositNbtc(amountRaw);
+      } else if (activeTab === "NETH" && !convertToNusdc) {
+        await depositNeth(amountRaw);
+      } else if (activeTab === "NSOL" && !convertToNusdc) {
+        await depositNsol(amountRaw);
       } else {
-        // NETH/NSOL: refetch fresh quote then submit with its locked minQuoteOut
+        // NETH/NSOL convert path: refetch fresh quote then submit with locked minQuoteOut
         const pool = depositPoolFor(activeTab);
         if (!pool) throw new Error(`No deposit pool for ${activeTab}`);
         const fresh = await queryClient.fetchQuery<SwapQuote | null>({
@@ -327,7 +339,7 @@ export function MarginAccountCard() {
           return;
         }
         await depositSwap({
-          fromSymbol: activeTab,
+          fromSymbol: activeTab as "NETH" | "NSOL",
           rawAmount: amountRaw,
           minQuoteOut: fresh.minQuoteRaw,
         });
@@ -664,6 +676,7 @@ export function MarginAccountCard() {
                       setShowGasWarning(false);
                       setSlippageBps(50);
                       setCustomSlippage("");
+                      setConvertToNusdc(false);
                     }}
                     disabled={disabled}
                     title={disabled ? "No balance" : undefined}
@@ -749,6 +762,41 @@ export function MarginAccountCard() {
                 </div>
               )}
             </div>
+
+            {/* NETH/NSOL: Native vs Convert toggle */}
+            {canConvert && (
+              <div className="mb-3 flex gap-2 text-sm">
+                <button
+                  type="button"
+                  onClick={() => setConvertToNusdc(false)}
+                  className={`flex-1 px-3 py-2 rounded-lg border transition-colors ${
+                    !convertToNusdc
+                      ? "bg-pd2/20 border-pd2 text-pd3"
+                      : "bg-theme-bg-primary border-theme-border text-theme-text-muted hover:text-theme-text-primary"
+                  }`}
+                >
+                  Deposit as {activeTab}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConvertToNusdc(true)}
+                  className={`flex-1 px-3 py-2 rounded-lg border transition-colors ${
+                    convertToNusdc
+                      ? "bg-pd2/20 border-pd2 text-pd3"
+                      : "bg-theme-bg-primary border-theme-border text-theme-text-muted hover:text-theme-text-primary"
+                  }`}
+                >
+                  Convert to NUSDC
+                </button>
+              </div>
+            )}
+            {canConvert && !convertToNusdc && amountValid && (
+              <div className="mb-3 px-3 py-2 bg-theme-bg-primary border border-theme-border rounded-lg text-xs text-theme-text-muted">
+                {activeTab} keeps its identity in your account with a{" "}
+                {activeTab === "NETH" ? "10%" : "15%"} collateral haircut.
+                Convert to NUSDC for maximum borrowing power.
+              </div>
+            )}
 
             {/* Quote Panel - NETH/NSOL only */}
             {isSwapTab && amountValid && (

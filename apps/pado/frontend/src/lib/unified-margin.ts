@@ -24,9 +24,11 @@ const CLOCK_ID = '0x6';
 const TOKENS_PACKAGE = import.meta.env.VITE_TOKENS_PACKAGE || '';
 export const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || `${TOKENS_PACKAGE}::nusdc::NUSDC`;
 export const NBTC_TYPE = import.meta.env.VITE_NBTC_TYPE || `${TOKENS_PACKAGE}::nbtc::NBTC`;
+export const NETH_TYPE = import.meta.env.VITE_NETH_TYPE || '';
+export const NSOL_TYPE = import.meta.env.VITE_NSOL_TYPE || '';
 
-// Supported collateral tokens
-export type CollateralToken = 'NUSDC' | 'NBTC';
+// Supported collateral tokens (post-V8: NETH, NSOL native via dynamic field)
+export type CollateralToken = 'NUSDC' | 'NBTC' | 'NETH' | 'NSOL';
 
 /**
  * Convert a float to a raw bigint without IEEE-754 round-trip errors.
@@ -660,6 +662,80 @@ export function buildWithdrawAllPadoTx(
     tx.transferObjects([nbtcCoin], tx.pure.address(recipientAddress));
   }
 
+  return tx;
+}
+
+/**
+ * Build deposit_neth transaction with split (multi-coin merge supported).
+ * NETH is native collateral via dynamic field on MarginAccount (post-V8).
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param nethCoinId - Primary NETH coin object ID
+ * @param amount - Amount to deposit (raw, 8 decimals)
+ * @param extraCoinIds - Additional NETH coins to merge into primary
+ */
+export function buildDepositNethWithSplitTx(
+  marginAccountId: string,
+  nethCoinId: string,
+  amount: bigint,
+  extraCoinIds: string[] = []
+): Transaction {
+  const tx = new Transaction();
+  if (extraCoinIds.length > 0) {
+    tx.mergeCoins(tx.object(nethCoinId), extraCoinIds.map((id) => tx.object(id)));
+  }
+  const [depositCoin] = tx.splitCoins(tx.object(nethCoinId), [amount]);
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_neth`,
+    arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID), depositCoin],
+  });
+  return tx;
+}
+
+/**
+ * Build deposit_nsol transaction with split (multi-coin merge supported).
+ * NSOL is native collateral via dynamic field on MarginAccount (post-V8).
+ *
+ * @param marginAccountId - User's MarginAccount object ID
+ * @param nsolCoinId - Primary NSOL coin object ID
+ * @param amount - Amount to deposit (raw, 9 decimals)
+ * @param extraCoinIds - Additional NSOL coins to merge into primary
+ */
+export function buildDepositNsolWithSplitTx(
+  marginAccountId: string,
+  nsolCoinId: string,
+  amount: bigint,
+  extraCoinIds: string[] = []
+): Transaction {
+  const tx = new Transaction();
+  if (extraCoinIds.length > 0) {
+    tx.mergeCoins(tx.object(nsolCoinId), extraCoinIds.map((id) => tx.object(id)));
+  }
+  const [depositCoin] = tx.splitCoins(tx.object(nsolCoinId), [amount]);
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nsol`,
+    arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID), depositCoin],
+  });
+  return tx;
+}
+
+/** Build withdraw_neth transaction (transfers Coin<NETH> to sender) */
+export function buildWithdrawNethTx(marginAccountId: string, amount: bigint): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_neth`,
+    arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID), tx.pure.u64(amount)],
+  });
+  return tx;
+}
+
+/** Build withdraw_nsol transaction (transfers Coin<NSOL> to sender) */
+export function buildWithdrawNsolTx(marginAccountId: string, amount: bigint): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_nsol`,
+    arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID), tx.pure.u64(amount)],
+  });
   return tx;
 }
 
