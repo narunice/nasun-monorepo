@@ -1,29 +1,63 @@
+import { useMemo, useEffect, type ReactNode } from "react";
 import { UjuCard, UjuSectionHeader } from "../shared";
 import { useBonusFeed } from "./news/useBonusFeed";
-import { NewsCarousel } from "./news/NewsCarousel";
+import { NewsCarousel, type CarouselSlide } from "./news/NewsCarousel";
+import { BonusCelebrationSlide } from "./news/BonusCelebrationSlide";
+import { OnboardingSlide } from "./news/OnboardingSlide";
+import {
+  WELCOME_CARD,
+  ONBOARDING_PADS,
+  type OnboardingCard,
+} from "./news/onboardingCards";
+import type { BonusFeedEntry } from "@/services/ecosystemScoreApi";
 
-// Container for the My-Account celebration carousel. Wires the bonus feed
-// hook to a 4-slide auto-advancing carousel, with graceful states for
-// loading / empty / error.
+const MAX_SLIDES = 4;
+
+export function buildSlides(
+  entries: BonusFeedEntry[],
+  cumulativeByCategory: Record<string, number>,
+): CarouselSlide[] {
+  const bonusSlides: CarouselSlide[] = entries.map((entry) => ({
+    id: `bonus:${entry.id}`,
+    node: (
+      <BonusCelebrationSlide
+        entry={entry}
+        cumulative={cumulativeByCategory[entry.category]}
+      />
+    ) as ReactNode,
+  }));
+
+  const onboardingPool: OnboardingCard[] =
+    bonusSlides.length === 0 ? [WELCOME_CARD, ...ONBOARDING_PADS] : ONBOARDING_PADS;
+
+  const onboardingSlides: CarouselSlide[] = onboardingPool.map((card) => ({
+    id: `onboarding:${card.id}`,
+    node: <OnboardingSlide card={card} /> as ReactNode,
+  }));
+
+  return [...bonusSlides, ...onboardingSlides].slice(0, MAX_SLIDES);
+}
+
 export function NewsEventsCard() {
   const { isLoading, isError, data } = useBonusFeed();
-  const entries = data?.data ?? [];
-  const cumulativeByCategory = data?.cumulativeByCategory ?? {};
+  // Depend on `data` (stable ref from useBonusFeed's internal useMemo) so the
+  // memo only invalidates when the server response changes, not on every render.
+  const slides = useMemo(
+    () => buildSlides(data?.data ?? [], data?.cumulativeByCategory ?? {}),
+    [data],
+  );
+
+  useEffect(() => {
+    if (isError)
+      console.warn(
+        "[NewsEventsCard] bonus-feed fetch failed; showing onboarding-only carousel",
+      );
+  }, [isError]);
 
   return (
     <UjuCard className="h-full">
       <UjuSectionHeader accent title="Updates" subtitle="" />
-
-      {isLoading ? (
-        <SkeletonSlide />
-      ) : isError || entries.length === 0 ? (
-        <EmptyState />
-      ) : (
-        <NewsCarousel
-          entries={entries}
-          cumulativeByCategory={cumulativeByCategory}
-        />
-      )}
+      {isLoading ? <SkeletonSlide /> : <NewsCarousel slides={slides} />}
     </UjuCard>
   );
 }
@@ -43,38 +77,6 @@ function SkeletonSlide() {
           <div className="h-4 w-1/2 rounded bg-uju-border/20" />
         </div>
         <div className="h-12 w-32 rounded bg-uju-border/30" />
-      </div>
-    </div>
-  );
-}
-
-function EmptyState() {
-  return (
-    <div className="relative w-full min-h-[244px] sm:min-h-[260px] rounded-md overflow-hidden bg-[radial-gradient(120%_80%_at_50%_30%,rgba(94,225,228,0.10),transparent_60%)] border border-uju-border/30">
-      <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-12 h-12 rounded-full bg-pado-3/10 border border-pado-3/30 flex items-center justify-center mb-3">
-          <svg
-            width="22"
-            height="22"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-pado-3"
-            aria-hidden="true"
-          >
-            <path d="M12 3l1.9 4.6L18 9l-4.1 1.4L12 15l-1.9-4.6L6 9l4.1-1.4L12 3z" />
-          </svg>
-        </div>
-        <p className="text-base font-semibold text-uju-primary">
-          No bonus rewards yet
-        </p>
-        <p className="text-sm text-uju-secondary/80 mt-1 max-w-xs">
-          Climb the weekly leaderboards or report bugs to earn celebration cards
-          here.
-        </p>
       </div>
     </div>
   );

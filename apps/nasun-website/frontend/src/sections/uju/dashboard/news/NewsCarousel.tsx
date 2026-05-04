@@ -1,14 +1,15 @@
-import { useEffect, useReducer, useRef, useState } from "react";
+import { type ReactNode, useEffect, useReducer, useRef, useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import type { BonusFeedEntry } from "@/services/ecosystemScoreApi";
-import { BonusCelebrationSlide } from "./BonusCelebrationSlide";
-import { cumulativeKeyFor } from "./slideVariants";
 
 const AUTO_ADVANCE_MS = 5000;
 
+export interface CarouselSlide {
+  id: string;
+  node: ReactNode;
+}
+
 interface Props {
-  entries: BonusFeedEntry[];
-  cumulativeByCategory: Record<string, number>;
+  slides: CarouselSlide[];
 }
 
 type State = { index: number; direction: 1 | -1 };
@@ -36,8 +37,8 @@ const slideVariants: Variants = {
   exit: (dir: number) => ({ x: dir > 0 ? "-60%" : "60%", opacity: 0 }),
 };
 
-export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
-  const n = entries.length;
+export function NewsCarousel({ slides }: Props) {
+  const n = slides.length;
   const [{ index, direction }, dispatch] = useReducer(
     makeReducer(Math.max(1, n)),
     { index: 0, direction: 1 as const },
@@ -46,8 +47,7 @@ export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
   const touchStartX = useRef(0);
   const containerRef = useRef<HTMLDivElement | null>(null);
   // Bumping this resets the auto-advance interval whenever the user manually
-  // moves the carousel, so a manual nudge buys them a fresh 4 seconds.
-  // Must be state, not a ref — refs do not trigger effect re-runs.
+  // moves the carousel, so a manual nudge buys them a fresh 5 seconds.
   const [intervalKey, setIntervalKey] = useState(0);
 
   // Auto-advance. Recreated when intervalKey changes (manual interaction).
@@ -64,9 +64,8 @@ export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
     return () => clearInterval(id);
   }, [n, intervalKey]);
 
-  // Keyboard navigation. Scoped to the carousel: only fires when focus is
-  // inside the container (avoids conflict with BannerCarousel above, which
-  // would otherwise advance simultaneously on the same key).
+  // Keyboard navigation scoped to the container node to avoid conflict with
+  // other carousels on the same page (e.g. BannerCarousel above).
   useEffect(() => {
     if (n <= 1) return;
     const node = containerRef.current;
@@ -102,15 +101,15 @@ export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
   }
 
   if (n === 0) return null;
-  const current = entries[index];
-  const cumulative = cumulativeByCategory[cumulativeKeyFor(current)];
+  const current = slides[index];
 
   return (
     <div
       ref={containerRef}
       role="region"
       aria-roledescription="carousel"
-      aria-label="Recent bonus rewards"
+      aria-label="Updates"
+      tabIndex={0}
       className="relative w-full min-h-[244px] sm:min-h-[260px] rounded-md overflow-hidden focus:outline-none"
       onMouseEnter={() => {
         pausedRef.current = true;
@@ -132,26 +131,26 @@ export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
           transition={{ duration: 0.35, ease: "easeInOut" }}
           className="absolute inset-0"
         >
-          <BonusCelebrationSlide entry={current} cumulative={cumulative} />
+          {current.node}
         </motion.div>
       </AnimatePresence>
 
-      {/* Dot indicators (sole navigation; arrows removed for a cleaner
-          screenshot frame). Sized up + wider spacing for easier tapping. */}
       {n > 1 && (
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-3 z-10">
-          {entries.map((entry, i) => (
+          {slides.map((slide, i) => (
             <button
-              key={entry.id}
+              key={slide.id}
               type="button"
               onClick={() => {
                 dispatch({ type: "JUMP", to: i });
                 setIntervalKey((k) => k + 1);
               }}
-              aria-label={`Go to reward ${i + 1}`}
+              aria-label={`Go to update ${i + 1}`}
               aria-current={i === index ? true : undefined}
               className={`h-2 rounded-full transition-all duration-300 ${
-                i === index ? "w-8 bg-pado-3" : "w-2 bg-uju-border hover:bg-uju-border/80"
+                i === index
+                  ? "w-8 bg-pado-3"
+                  : "w-2 bg-uju-border hover:bg-uju-border/80"
               }`}
             />
           ))}
@@ -160,4 +159,3 @@ export function NewsCarousel({ entries, cumulativeByCategory }: Props) {
     </div>
   );
 }
-
