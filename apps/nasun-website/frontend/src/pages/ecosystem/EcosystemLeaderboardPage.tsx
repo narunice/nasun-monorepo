@@ -62,7 +62,11 @@ const EcosystemLeaderboardPage = () => {
 
   const weeksQuery = useAvailableEcosystemWeeks();
   const availableWeeks = weeksQuery.data ?? [];
-  const pastWeeks = availableWeeks.slice(1);
+  // Ecosystem points system launched W17/2026; W7–W16 are pre-launch noise.
+  const ECOSYSTEM_POINTS_LAUNCH_WEEK_ID = "2026-W17";
+  const pastWeeks = availableWeeks
+    .slice(1)
+    .filter((w) => w.weekId >= ECOSYSTEM_POINTS_LAUNCH_WEEK_ID);
 
   const weekIdForQuery = viewMode === "current" ? undefined : selectedWeekId;
   const leaderboardQuery = useEcosystemLeaderboard(

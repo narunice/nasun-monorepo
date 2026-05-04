@@ -14,6 +14,7 @@
  *     is used by the aggregator for wash-trading detection.
  */
 
+import { gunzipSync } from 'zlib';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 
@@ -64,7 +65,7 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
 
   const res = await fetch(WALLET_MAPPINGS_URL, {
     headers,
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`wallet-mappings fetch failed: ${res.status}`);
 
@@ -72,12 +73,15 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
     | { wallets?: Record<string, string> }
     | { url: string };
 
-  // Handle S3 presigned offload
+  // Handle S3 presigned offload (object stored as gzip; decompress via magic bytes).
   let wallets: Record<string, string> = {};
   if ('url' in data) {
     const s3Res = await fetch(data.url, { signal: AbortSignal.timeout(30_000) });
     if (!s3Res.ok) throw new Error(`S3 offload fetch failed: ${s3Res.status}`);
-    const s3Data = await s3Res.json() as { wallets?: Record<string, string> };
+    const buf = Buffer.from(await s3Res.arrayBuffer());
+    const isGzip = buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
+    const text = isGzip ? gunzipSync(buf).toString('utf-8') : buf.toString('utf-8');
+    const s3Data = JSON.parse(text) as { wallets?: Record<string, string> };
     wallets = s3Data.wallets ?? {};
   } else {
     wallets = data.wallets ?? {};
@@ -101,7 +105,16 @@ export async function refreshIdentityCache(): Promise<void> {
     try {
       const map = await loadIdentityMap();
       identityCache = { map, loadedAt: Date.now() };
-      console.log(`[identity-resolver] Cache refreshed: ${map.size} wallets`);
+      if (map.size === 0) {
+        // Empty map silently breaks the weekly score aggregator (all traders get
+        // filtered out). Surface as warn so it shows up in log scans rather than
+        // looking like a normal info-level cycle. See 2026-05-04 incident.
+        console.warn(
+          '[identity-resolver] Cache refreshed: 0 wallets — check WALLET_MAPPINGS_URL/_API_KEY env and Lambda response',
+        );
+      } else {
+        console.log(`[identity-resolver] Cache refreshed: ${map.size} wallets`);
+      }
     } catch (err) {
       console.error('[identity-resolver] Cache refresh failed:', (err as Error).message);
     } finally {

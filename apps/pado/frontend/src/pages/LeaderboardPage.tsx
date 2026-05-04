@@ -277,17 +277,16 @@ export function LeaderboardPage() {
                     </div>
                   );
                 }
-                if (isNewWeek) {
+                const currentTraders = scoreData?.traders ?? [];
+                if (isNewWeek && currentTraders.length === 0) {
                   const prevWeekId = prevWeekQuery.data?.weekId;
                   const prevTraders = prevWeekQuery.data?.traders ?? [];
                   return (
                     <div>
                       <div className="flex flex-col items-center justify-center py-8 text-theme-text-secondary border-b border-theme-border">
                         <p className="text-sm font-medium">
-                          Week just started - check back soon
-                        </p>
-                        <p className="text-xs text-theme-text-muted mt-1">
-                          New scores will appear as traders compete
+                          Week just started. Leaderboard updates as traders are
+                          active.
                         </p>
                       </div>
                       {(prevWeekQuery.isLoading || prevTraders.length > 0) && (
@@ -309,7 +308,7 @@ export function LeaderboardPage() {
                 }
                 return (
                   <ScoreLeaderboardTable
-                    traders={scoreQuery.data?.traders ?? []}
+                    traders={currentTraders}
                     isLoading={activeLoading}
                     currentUserAddress={userAddress}
                     followFilter={showFollowing}
