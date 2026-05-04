@@ -9,9 +9,12 @@
  *
  * Click-from-orderbook flow uses an imperative useEffect keyed on `clickVersion`
  * so user typing is not clobbered by a re-render of the parent (round-5 C14).
+ *
+ * Simple/Advanced mode toggle (Plan A): Simple = market buy only; Advanced = full
+ * controls (limit, close, mint). Mode persisted per device in localStorage.
  */
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore, useMultiBalance } from '@nasun/wallet';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
 import { useMarginAccount } from '../../core/unified-margin';
@@ -19,7 +22,10 @@ import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useShareMarket } from '../hooks/useShareMarket';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
+import { usePredictionFormMode } from '../hooks/usePredictionFormMode';
+import type { PredictionFormMode } from '../hooks/usePredictionFormMode';
 import { formatCentsWithProb } from '../utils/formatPrice';
+import { trackEvent, AnalyticsEvent } from '../../../lib/analytics';
 import type { PredictionMarket, Orderbook } from '../types';
 
 interface OutcomeOrderFormProps {
@@ -41,7 +47,10 @@ const SLIPPAGE_BPS = 200; // 2% default slippage for market orders
 // Move's validatePriceBps requires `> 0 && < MAX_PRICE (10000)`. Strict bounds.
 const MIN_PRICE_BPS = 1;
 const MAX_PRICE_BPS = 9999;
+const NO_ASKS_SIMPLE_ERROR = NO_ASKS_SIMPLE_ERROR as const;
 const MAX_NUSDC_PER_TX = 100_000; // mirrors Move MAX_PAYMENT_AMOUNT_BASE (round-7 W)
+
+const ANALYTICS_INITIAL_SESSION_KEY = 'pado_prediction_mode_initial_fired';
 
 export function OutcomeOrderForm({
   market,
@@ -74,6 +83,8 @@ export function OutcomeOrderForm({
   // Two-tx setup step: null = idle, 'creating-account' = tx1, 'placing-trade' = tx2
   const [setupStep, setSetupStep] = useState<'creating-account' | 'placing-trade' | null>(null);
 
+  const { mode, setMode, isSimple, isAdvanced } = usePredictionFormMode();
+
   const [outcomeType, setOutcomeType] = useState<OutcomeType>('yes');
   const [orderType, setOrderType] = useState<OrderType>('buy');
   const [orderMode, setOrderMode] = useState<OrderMode>('market');
@@ -86,6 +97,37 @@ export function OutcomeOrderForm({
   const { shareTrade } = useShareMarket();
   const { isSubmitting, guard: submitGuard } = useSubmitGuard();
   const { isSyncing, startSync } = useTransactionSync(onSuccess);
+
+  // Session-scoped analytics: fire once per session on mount.
+  const analyticsInitFired = useRef(false);
+  useEffect(() => {
+    if (analyticsInitFired.current) return;
+    if (typeof sessionStorage === 'undefined') return;
+    if (sessionStorage.getItem(ANALYTICS_INITIAL_SESSION_KEY)) return;
+    analyticsInitFired.current = true;
+    sessionStorage.setItem(ANALYTICS_INITIAL_SESSION_KEY, '1');
+    trackEvent(AnalyticsEvent.PREDICTION_FORM_MODE_INITIAL, { mode });
+    // mode intentionally excluded from deps — this is a one-shot mount event
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSetMode = useCallback((newMode: PredictionFormMode) => {
+    if (newMode === mode) return;
+    setMode(newMode);
+    trackEvent(AnalyticsEvent.PREDICTION_FORM_MODE_TOGGLED, { from: mode, to: newMode });
+  }, [mode, setMode]);
+
+  // Switching to Simple resets advanced-only controls to safe defaults.
+  const prevModeRef = useRef(mode);
+  useEffect(() => {
+    if (prevModeRef.current !== mode) {
+      prevModeRef.current = mode;
+      if (isSimple) {
+        setOrderMode('market');
+        setOrderType('buy');
+      }
+    }
+  }, [mode, isSimple]);
 
   // Imperative sync from orderbook clicks (round-6 plan §2.13).
   useEffect(() => {
@@ -210,7 +252,11 @@ export function OutcomeOrderForm({
           if (orderMode === 'market') {
             if (bestAskBps == null) {
               setSetupStep(null);
-              setError('No matching orders. Switch to Limit mode and set a price.');
+              setError(
+                isSimple
+                  ? NO_ASKS_SIMPLE_ERROR
+                  : 'No matching orders. Switch to Limit mode and set a price.',
+              );
               return;
             }
             // Move requires strict `< MAX_PRICE`. Clamp to MAX_PRICE_BPS - 1 = 9998.
@@ -278,6 +324,7 @@ export function OutcomeOrderForm({
       market.id,
       selectedPositionId,
       bmId,
+      isSimple,
       createPadoAccount,
       placeBuyTaker,
       placeSellTaker,
@@ -326,7 +373,39 @@ export function OutcomeOrderForm({
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
-      <h3 className="text-lg font-semibold text-theme-text-primary mb-4">Place Order</h3>
+      {/* Header: title + Simple/Advanced toggle */}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-theme-text-primary">Place Order</h3>
+        <div className="flex items-center gap-0.5" role="group" aria-label="Order form mode">
+          <button
+            type="button"
+            aria-pressed={isSimple}
+            onClick={() => handleSetMode('simple')}
+            disabled={isSubmitting}
+            className={`min-h-[44px] px-3 text-sm rounded-l transition-colors disabled:opacity-50 ${
+              isSimple
+                ? 'font-semibold text-theme-text-primary'
+                : 'text-theme-text-muted hover:text-theme-text-secondary'
+            }`}
+          >
+            Simple
+          </button>
+          <span className="text-theme-text-muted text-sm select-none">|</span>
+          <button
+            type="button"
+            aria-pressed={isAdvanced}
+            onClick={() => handleSetMode('advanced')}
+            disabled={isSubmitting}
+            className={`min-h-[44px] px-3 text-sm rounded-r transition-colors disabled:opacity-50 ${
+              isAdvanced
+                ? 'font-semibold text-theme-text-primary'
+                : 'text-theme-text-muted hover:text-theme-text-secondary'
+            }`}
+          >
+            Advanced
+          </button>
+        </div>
+      </div>
 
       {isWalletConnected && (
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4">
@@ -342,29 +421,31 @@ export function OutcomeOrderForm({
         </div>
       )}
 
-      {/* Mode tabs (Market | Limit) — round-3 N8 prominent. */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setOrderMode('market')}
-          className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
-            orderMode === 'market'
-              ? 'bg-pd1 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-          }`}
-        >
-          Market
-        </button>
-        <button
-          onClick={() => setOrderMode('limit')}
-          className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
-            orderMode === 'limit'
-              ? 'bg-pd1 text-white'
-              : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
-          }`}
-        >
-          Limit
-        </button>
-      </div>
+      {/* Mode tabs (Market | Limit) — Advanced only */}
+      {isAdvanced && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={() => setOrderMode('market')}
+            className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+              orderMode === 'market'
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+            }`}
+          >
+            Market
+          </button>
+          <button
+            onClick={() => setOrderMode('limit')}
+            className={`flex-1 min-h-[40px] py-2 px-3 rounded-lg font-medium text-sm transition-colors ${
+              orderMode === 'limit'
+                ? 'bg-pd1 text-white'
+                : 'bg-theme-bg-tertiary text-theme-text-secondary hover:bg-theme-bg-primary'
+            }`}
+          >
+            Limit
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-2 mb-4">
         <button
@@ -390,12 +471,10 @@ export function OutcomeOrderForm({
       </div>
 
       {/*
-        Hide Buy/Close tabs when the user has no positions in this market.
-        For novices a Sell button is meaningless (and confused with shorting)
-        until they own shares to close. Once they hold any position the
-        toggle reappears with the financial-instrument label "Close position".
+        Buy/Close tabs: Advanced only, and only when user holds positions.
+        Simple mode shows a banner instead (see below).
       */}
-      {positions.length > 0 && (
+      {isAdvanced && positions.length > 0 && (
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setOrderType('buy')}
@@ -416,6 +495,21 @@ export function OutcomeOrderForm({
             }`}
           >
             Close position
+          </button>
+        </div>
+      )}
+
+      {/* Simple mode: actionable banner when user holds positions */}
+      {isSimple && positions.length > 0 && (
+        <div className="mb-4 rounded-lg bg-theme-bg-tertiary p-3 flex items-center justify-between gap-2">
+          <span className="text-sm text-theme-text-secondary">You hold shares in this market.</span>
+          <button
+            type="button"
+            aria-label="Switch to Advanced mode to close position"
+            onClick={() => { handleSetMode('advanced'); setOrderType('sell'); }}
+            className="shrink-0 text-sm text-pd3 hover:underline font-medium whitespace-nowrap"
+          >
+            Switch to Advanced to close →
           </button>
         </div>
       )}
@@ -489,34 +583,47 @@ export function OutcomeOrderForm({
           </div>
         )}
 
-        {orderMode === 'market' && (bestAskBps == null && orderType === 'buy') && (
-          <div className="text-xs text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
+        {/* No-liquidity warnings: Advanced only (Simple gets inline error on submit) */}
+        {isAdvanced && orderMode === 'market' && bestAskBps == null && orderType === 'buy' && (
+          <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
             No matching asks. Switch to Limit mode and set your price.
           </div>
         )}
-        {orderMode === 'market' && (bestBidBps == null && orderType === 'sell') && (
-          <div className="text-xs text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
+        {isAdvanced && orderMode === 'market' && bestBidBps == null && orderType === 'sell' && (
+          <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
             No bids. Switch to Limit mode and set your price.
           </div>
         )}
 
+        {/* Payout summary — 2-line format (both modes) */}
         {orderType === 'buy' && parseFloat(amount) > 0 && estimatedShares > 0 && (() => {
           const cost = parseFloat(amount);
           const profit = potentialPayout - cost;
           const returnPct = cost > 0 ? (profit / cost) * 100 : 0;
           const cappedReturn = Math.min(returnPct, 9999);
           const isYes = outcomeType === 'yes';
+          const loseOutcome = isYes ? 'NO' : 'YES';
           return (
             <div className={`rounded-xl p-4 border ${isYes ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'}`}>
-              <p className="text-xs text-theme-text-muted mb-1">
-                If {outcomeType.toUpperCase()} wins
-              </p>
-              <div className="flex items-baseline gap-2">
-                <span className={`text-2xl font-bold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+              {/* Win row */}
+              <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-xs text-theme-text-muted w-24 shrink-0">
+                  If {outcomeType.toUpperCase()} wins
+                </span>
+                <span className={`text-xl font-bold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
                   ${potentialPayout.toFixed(2)}
                 </span>
                 <span className={`text-sm font-semibold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
                   ({returnPct >= 0 ? '+' : ''}{cappedReturn.toFixed(0)}%)
+                </span>
+              </div>
+              {/* Loss row */}
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs text-theme-text-muted w-24 shrink-0">
+                  If {loseOutcome} wins
+                </span>
+                <span className="text-sm text-theme-text-muted">
+                  -${cost.toFixed(2)} (you lose your stake)
                 </span>
               </div>
               <p className="text-xs text-theme-text-muted mt-2">
@@ -549,7 +656,23 @@ export function OutcomeOrderForm({
           );
         })()}
 
-        {error && <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>}
+        {error && (
+          <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2">
+            {error === NO_ASKS_SIMPLE_ERROR ? (
+              <>
+                No sellers at any price right now. Try again later, or{' '}
+                <button
+                  type="button"
+                  className="underline hover:no-underline font-medium"
+                  onClick={() => handleSetMode('advanced')}
+                >
+                  switch to Advanced
+                </button>{' '}
+                to set your own price.
+              </>
+            ) : error}
+          </div>
+        )}
         {success && (
           <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2 flex items-center justify-between gap-2">
             <span>{success}</span>
@@ -606,20 +729,25 @@ export function OutcomeOrderForm({
                   ? 'Awaiting Resolution'
                   : orderType === 'sell'
                     ? `Close ${outcomeType.toUpperCase()} position`
-                    : `${orderMode === 'market' ? 'Market' : 'Limit'} Buy ${outcomeType.toUpperCase()}`}
+                    : isSimple
+                      ? `Buy ${outcomeType.toUpperCase()}`
+                      : `${orderMode === 'market' ? 'Market' : 'Limit'} Buy ${outcomeType.toUpperCase()}`}
         </button>
 
-        <div className="border-t border-theme-border pt-4 mt-4">
-          <p className="text-xs text-theme-text-muted mb-2">Or mint both YES + NO tokens at 1:1 ratio</p>
-          <button
-            type="button"
-            onClick={handleMintTokens}
-            disabled={isDisabled || !amount}
-            className="w-full py-2 min-h-[48px] rounded-lg font-medium text-sm bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? 'Minting...' : 'Mint YES + NO Tokens'}
-          </button>
-        </div>
+        {/* Mint section — Advanced only */}
+        {isAdvanced && (
+          <div className="border-t border-theme-border pt-4 mt-4">
+            <p className="text-xs text-theme-text-muted mb-2">Or mint both YES + NO tokens at 1:1 ratio</p>
+            <button
+              type="button"
+              onClick={handleMintTokens}
+              disabled={isDisabled || !amount}
+              className="w-full py-2 min-h-[48px] rounded-lg font-medium text-sm bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? 'Minting...' : 'Mint YES + NO Tokens'}
+            </button>
+          </div>
+        )}
 
         <p className="text-sm leading-snug text-theme-text-secondary text-center pt-2">
           Prediction market contracts. You may lose your entire position. Not investment advice.
