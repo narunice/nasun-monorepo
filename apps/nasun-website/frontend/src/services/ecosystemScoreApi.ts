@@ -315,6 +315,56 @@ export async function getBonusHistory(
   return json.data ?? [];
 }
 
+// ===== Bonus feed (per-event award stream for the dashboard celebration carousel) =====
+
+// Metadata shape varies by category. The carousel narrows by category before
+// reading fields, so a flexible record type keeps the API surface honest about
+// what the server actually persists (legacy rows have null metadata).
+export interface BonusFeedEntry {
+  id: string;
+  category: string;
+  activityType: string;
+  points: number;
+  awardedAt: string;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface BonusFeedResponse {
+  data: BonusFeedEntry[];
+  cumulativeByCategory: Record<string, number>;
+  totalBonusAllTime: number;
+}
+
+/**
+ * Fetch the user's most recent bonus awards for the celebration carousel.
+ *
+ * Self-only endpoint: requires a Cognito JWT. Without a token we return an
+ * empty result so callers can render their empty-state without spurious 401s.
+ */
+export async function getBonusFeed(
+  identityId: string,
+  limit: number = 10,
+  token?: string,
+): Promise<BonusFeedResponse> {
+  const empty: BonusFeedResponse = { data: [], cumulativeByCategory: {}, totalBonusAllTime: 0 };
+  if (!API_BASE) return empty;
+  if (!IDENTITY_ID_RE.test(identityId)) return empty;
+  if (!token) return empty;
+
+  const encoded = encodeURIComponent(identityId);
+  const res = await fetch(
+    `${API_BASE}/ecosystem/bonus-feed/${encoded}?limit=${limit}`,
+    { headers: { Authorization: `Bearer ${token}` } },
+  );
+  if (!res.ok) return empty;
+  const json = await res.json();
+  return {
+    data: (json.data ?? []) as BonusFeedEntry[],
+    cumulativeByCategory: (json.cumulativeByCategory ?? {}) as Record<string, number>,
+    totalBonusAllTime: Number(json.totalBonusAllTime ?? 0),
+  };
+}
+
 export interface BaseHistoryItem {
   category: string;
   points: number;
