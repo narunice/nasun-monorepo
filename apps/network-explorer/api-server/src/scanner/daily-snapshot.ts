@@ -18,12 +18,10 @@ import {
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
 
-// Historic 6 default missions applied to users who have never persisted a
-// custom selection. Mirrors DEFAULT_MISSIONS_BY_APP in the frontend registry.
-const DEFAULT_MISSION_IDS: ReadonlySet<string> = new Set([
-  'faucet', 'wallet-transfer', 'pado-dex',
-  'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
-]);
+import { DEFAULT_MISSION_IDS as DEFAULT_MISSION_IDS_ARR } from '../config/points.js';
+// Set view of the canonical default mission list. Mutating the source array
+// would not reach this snapshot copy at runtime, so re-derive at module load.
+const DEFAULT_MISSION_IDS: ReadonlySet<string> = new Set(DEFAULT_MISSION_IDS_ARR);
 const PADO_DEX = 'pado-dex';
 
 export async function takeDailySnapshot(
@@ -34,15 +32,29 @@ export async function takeDailySnapshot(
 
   // 1. Load every user's active mission selection (full table — small).
   //    Users without a row get DEFAULT_MISSION_IDS applied at score-time.
+  //
+  //    The `missions` jsonb column has historically been written in two
+  //    formats: a native jsonb array (correct, post-2026-05-04 fix) and a
+  //    jsonb string holding the JSON-encoded array (legacy, from a stray
+  //    JSON.stringify in the PUT handler). The legacy form decoded into a
+  //    JS string here, which `new Set(...)` would then iterate per-character,
+  //    matching no real category and zeroing every affected user's base_score
+  //    in the snapshot (root cause of the 2026-05-03 incident). Read both
+  //    shapes defensively until the migration normalizes every row.
   const userMissionsRows = await pointsDb`
-    SELECT identity_id, missions FROM user_active_missions
+    SELECT identity_id,
+           CASE
+             WHEN jsonb_typeof(missions) = 'array'  THEN missions
+             WHEN jsonb_typeof(missions) = 'string' THEN (missions #>> '{}')::jsonb
+             ELSE '[]'::jsonb
+           END AS missions
+    FROM user_active_missions
   `;
   const userMissionsMap = new Map<string, ReadonlySet<string>>();
   for (const row of userMissionsRows) {
-    userMissionsMap.set(
-      row.identity_id as string,
-      new Set(row.missions as string[]),
-    );
+    const arr = row.missions as unknown;
+    if (!Array.isArray(arr)) continue;
+    userMissionsMap.set(row.identity_id as string, new Set(arr as string[]));
   }
 
   // 2. Fetch all distinct (identity_id, category) pairs for the snapshot date.
@@ -84,6 +96,28 @@ export async function takeDailySnapshot(
 
   if (allIds.size === 0) {
     console.log(`[Snapshot] No users to snapshot for ${snapshotDate}`);
+    return;
+  }
+
+  // 4b. Cross-check filteredBaseMap against the matview before locking in
+  // an immutable snapshot. The 2026-05-03 incident wrote base=0 for ~7K
+  // active users because the raw activity_points query returned 0 rows
+  // while the matview had the correct data. ON CONFLICT DO NOTHING then
+  // made the corruption permanent. This guard aborts the snapshot when
+  // the two sources disagree by more than half, letting the next scanLoop
+  // retry once the underlying inconsistency clears.
+  const matviewActiveRow = await pointsDb`
+    SELECT COUNT(*) FILTER (WHERE base_score > 0)::int AS active_users
+    FROM ecosystem_daily_scores WHERE day = ${snapshotDate}::date
+  `;
+  const matviewActiveUsers = (matviewActiveRow[0]?.active_users as number) ?? 0;
+  const ourActiveUsers = filteredBaseMap.size;
+  if (matviewActiveUsers >= 100 && ourActiveUsers < matviewActiveUsers * 0.5) {
+    console.error(
+      `[Snapshot] CRITICAL ABORT: filteredBaseMap has ${ourActiveUsers} active users ` +
+      `but matview shows ${matviewActiveUsers} for ${snapshotDate}. Skipping snapshot ` +
+      `to avoid locking in zero base scores; next scanLoop will retry.`,
+    );
     return;
   }
 

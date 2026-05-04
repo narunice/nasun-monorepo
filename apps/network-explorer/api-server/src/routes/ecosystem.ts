@@ -19,6 +19,7 @@ import {
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
+import { DEFAULT_MISSION_IDS } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
@@ -330,18 +331,28 @@ app.get('/score/:identityId', async (c) => {
           FROM ecosystem_score_snapshots
           WHERE identity_id = ${identityId}
         `.then(r => r[0]),
-        // Yesterday's base score if snapshot hasn't been created yet
-        // (covers the ~5min gap between UTC midnight and snapshot creation)
+        // Yesterday's distinct categories if snapshot hasn't been created yet
+        // (covers the ~5min gap between UTC midnight and snapshot creation).
+        // Returns the raw category list rather than a single count so the
+        // outer caller can apply the user's active-mission filter, matching
+        // the snapshot job's mission-aware base computation. Without this
+        // filter alignment, /score's allTime briefly includes categories the
+        // user opted out of, then drops by that amount when the snapshot
+        // locks in (monotonic-increase invariant violation).
         pointsDb!`
-          SELECT COALESCE(d.base_score, 0)::int as base_score
-          FROM ecosystem_daily_scores d
-          WHERE d.identity_id = ${identityId}
-            AND d.day = CURRENT_DATE - 1
+          SELECT DISTINCT category
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND tx_timestamp >= (CURRENT_DATE - 1) AT TIME ZONE 'UTC'
+            AND tx_timestamp <  CURRENT_DATE AT TIME ZONE 'UTC'
+            AND base_points > 0 AND NOT flagged
+            AND category NOT IN ('referral-bonus','daily-mission','ecosystem-passive','staking-daily','staking')
+            AND category NOT LIKE 'ecosystem-bonus-%'
             AND NOT EXISTS (
               SELECT 1 FROM ecosystem_score_snapshots s
               WHERE s.identity_id = ${identityId} AND s.snapshot_date = CURRENT_DATE - 1
             )
-        `.then(r => r[0]),
+        `.then(rows => rows.map((r: any) => r.category as string)),
         // bonus_total: synthetic INCLUDED intentionally — allTime must reflect
         // the user-visible score including restoration rows (never-reduce-score principle).
         // See fc4b0e72 recovery plan (v10) and scripts/restore-staking-recovery.sql.
@@ -562,49 +573,40 @@ app.get('/score/:identityId', async (c) => {
       // Staking uses current multiplier across all days (same approximation as weekly).
       // No compounding: bonus/gov/referral are from activity_points (raw totals)
       const todayBase = todayRow?.base_score ?? 0;
-      const unsnapshottedBase = unsnapshottedRow?.base_score ?? 0;
-      const todayBaseContribution = (todayBase + unsnapshottedBase) * multiplier;
-      const totalBasePoints = baseCumulative + todayBaseContribution;
       const stakingAllTimeContribution = stakingAllTime * multiplier;
 
-      // allTimeCumulative: SUM(past snapshots) + today delta.
-      // baseCumulative already uses COALESCE(multiplier_v2, multiplier) so past rows
-      // retain their original values even after a V2 multiplier drop.
-      // stakingAllTimeContribution uses current multiplier (known approximation).
-      const allTimeCumulative = Math.max(
-        0,
-        totalBasePoints + stakingAllTimeContribution
-          + bonusTotal + govTotal + refTotal * scalingFactor,
-      );
-
-      // Score breakdown for composition bar (base included, no reverse calculation)
+      // Score breakdown / allTime composition is finalized OUTSIDE this cached
+      // function because both depend on the user's active mission selection,
+      // which lives outside the 30s cache window. Returning raw components and
+      // assembling the final response after applying the mission filter keeps
+      // /score's allTime aligned with daily-snapshot.ts (which writes
+      // mission-filtered base into the immutable end-of-day record). When the
+      // two filters drift, allTime briefly inflates by the unfiltered
+      // contribution and then drops by that amount at midnight lock-in,
+      // violating the never-decrease invariant.
       const nonBaseCategories = bonusCategoryRows.map((r: any) => ({
         category: r.category as string,
         points: parseFloat(r.points ?? '0'),
       }));
-      // Apply scaling factor to referral-bonus in the breakdown
-      const scoreBreakdown = [
-        { category: 'base', points: totalBasePoints },
-        ...nonBaseCategories.map(c =>
-          c.category === 'referral-bonus'
-            ? { ...c, points: c.points * scalingFactor }
-            : c,
-        ),
-      ].filter(c => c.points > 0);
 
       return {
         todayBaseScore: todayBase,
+        // Categories from yesterday IF its snapshot is missing (rare ~5min gap
+        // around midnight UTC). Caller mission-filters these to derive the
+        // unsnapshotted contribution to allTime. Empty array when yesterday is
+        // already snapshotted.
+        unsnapshottedCategories: (unsnapshottedRow as string[] | undefined) ?? [],
         weeklyBaseScore: weeklyRow?.base_score ?? 0,
         weeklyActiveDays: weeklyRow?.active_days ?? 0,
         weeklySnapshotCumulative: parseFloat(weeklySnapshotSumRow?.weekly_snapshot_cumulative ?? '0'),
         allTimeBaseScore: allTimeRow?.base_score ?? 0,
         allTimeActiveDays: allTimeRow?.active_days ?? 0,
-        allTimeCumulative,
+        baseCumulative,
+        stakingAllTimeContribution,
         bonusTotal,
         bonusToday,
         bonusWeekly,
         bonusCategories: nonBaseCategories,
-        scoreBreakdown,
         govTotal,
         govToday,
         govWeekly,
@@ -631,22 +633,30 @@ app.get('/score/:identityId', async (c) => {
 
   // Fetch user's active missions outside the 30s cache — changes when the user
   // toggles missions on any device and must always reflect the latest selection.
-  // Falls back to the historic 6 defaults for users without a persisted record
-  // OR with an empty stored array (defensive: a stale empty record from a
-  // pre-validation client would otherwise force base = 0). Mirrors the
-  // snapshot job's `(stored && stored.size > 0) ? stored : DEFAULT_MISSION_IDS`
-  // logic so the live `/score` and the next-day snapshot agree.
-  const DEFAULT_MISSION_IDS: readonly string[] = [
-    'faucet', 'wallet-transfer', 'pado-dex',
-    'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
-  ];
+  // Falls back to DEFAULT_MISSION_IDS (config/points.ts) for users without a
+  // persisted record OR with an empty stored array. Snapshot, live /score,
+  // and rpc-reconcile must all read from the same constant or filtered base
+  // drifts between live display and the locked-in record.
   const [scores, userMissionsRow] = await Promise.all([
     getData(),
+    // Normalize to a real jsonb array regardless of whether the row was
+    // written with the legacy JSON.stringify (yields jsonb string) or the
+    // post-fix native form (jsonb array). See daily-snapshot.ts for the
+    // 2026-05-03 incident note.
     pointsDb!`
-      SELECT missions FROM user_active_missions WHERE identity_id = ${identityId}
+      SELECT
+        CASE
+          WHEN jsonb_typeof(missions) = 'array'  THEN missions
+          WHEN jsonb_typeof(missions) = 'string' THEN (missions #>> '{}')::jsonb
+          ELSE '[]'::jsonb
+        END AS missions
+      FROM user_active_missions WHERE identity_id = ${identityId}
     `.then(r => r[0] ?? null).catch(() => null),
   ]);
-  const storedMissions = userMissionsRow?.missions as string[] | undefined;
+  const storedMissionsRaw = userMissionsRow?.missions as unknown;
+  const storedMissions = Array.isArray(storedMissionsRaw)
+    ? (storedMissionsRaw as string[])
+    : undefined;
   const activeMissions: string[] =
     storedMissions && storedMissions.length > 0
       ? storedMissions
@@ -654,12 +664,42 @@ app.get('/score/:identityId', async (c) => {
 
   // Filtered today base: only categories the user has activated count.
   // pado-dex weight = 2 (mirrors matview), all others = 1.
-  let todayFilteredBase = 0;
-  for (const cat of scores.todayCategories) {
-    if (activeMissions.includes(cat)) {
-      todayFilteredBase += cat === 'pado-dex' ? 2 : 1;
+  const filterBase = (cats: readonly string[]): number => {
+    let total = 0;
+    for (const cat of cats) {
+      if (activeMissions.includes(cat)) total += cat === 'pado-dex' ? 2 : 1;
     }
-  }
+    return total;
+  };
+  const todayFilteredBase = filterBase(scores.todayCategories);
+  // Yesterday's mission-filtered contribution if its snapshot is still missing
+  // (the ~5min gap between UTC midnight and snapshot creation). Empty when
+  // already snapshotted, so this collapses to 0 outside that gap.
+  const unsnapshottedFilteredBase = filterBase(scores.unsnapshottedCategories);
+
+  // Final allTime composition with mission-filtered base, mirroring what
+  // daily-snapshot.ts will lock into ecosystem_score_snapshots tonight.
+  // Keeping these in sync is what guarantees the never-decrease invariant
+  // across the midnight transition.
+  const todayBaseContribution =
+    (todayFilteredBase + unsnapshottedFilteredBase) * scores.multiplier;
+  const totalBasePoints = scores.baseCumulative + todayBaseContribution;
+  const allTimeCumulative = Math.max(
+    0,
+    totalBasePoints
+      + scores.stakingAllTimeContribution
+      + scores.bonusTotal
+      + scores.govTotal
+      + scores.refTotal * scores.scalingFactor,
+  );
+  const scoreBreakdown = [
+    { category: 'base', points: totalBasePoints },
+    ...scores.bonusCategories.map((c: any) =>
+      c.category === 'referral-bonus'
+        ? { ...c, points: c.points * scores.scalingFactor }
+        : c,
+    ),
+  ].filter((c: any) => c.points > 0);
 
   const disabled = !scores.hasActiveNft;
   const isWeakened = scores.hasActiveNft && scores.multiplier === 0;
@@ -729,10 +769,10 @@ app.get('/score/:identityId', async (c) => {
       bonusTotal: roundTo2(bt),
       referralBonus: roundTo2(scores.refTotal),
       governancePoints: roundTo2(scores.govTotal),
-      ecosystemScore: roundTo2(scores.allTimeCumulative),
+      ecosystemScore: roundTo2(allTimeCumulative),
       activeDays: scores.allTimeActiveDays,
       bonusCategories: scores.bonusCategories.filter((c: any) => c.points > 0),
-      scoreBreakdown: scores.scoreBreakdown.map((c: any) => ({
+      scoreBreakdown: scoreBreakdown.map((c: any) => ({
         category: c.category,
         points: roundTo2(c.points),
       })),
@@ -755,12 +795,21 @@ app.get('/active-missions/:identityId', async (c) => {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
   const row = await pointsDb`
-    SELECT missions, updated_at FROM user_active_missions
+    SELECT
+      CASE
+        WHEN jsonb_typeof(missions) = 'array'  THEN missions
+        WHEN jsonb_typeof(missions) = 'string' THEN (missions #>> '{}')::jsonb
+        ELSE '[]'::jsonb
+      END AS missions,
+      updated_at
+    FROM user_active_missions
     WHERE identity_id = ${identityId}
   `.then(r => r[0] ?? null);
+  const rawMissions = row?.missions as unknown;
+  const missions = Array.isArray(rawMissions) ? (rawMissions as string[]) : null;
   return c.json({
     data: {
-      missions: (row?.missions as string[] | null) ?? null,
+      missions,
       updatedAt: row ? (row.updated_at as Date).toISOString() : null,
     },
   });
@@ -787,9 +836,14 @@ app.put('/active-missions/:identityId', async (c) => {
   if (!missions.every((m) => typeof m === 'string' && m.length > 0 && m.length <= 100)) {
     return c.json({ error: 'invalid_mission_id' }, 400);
   }
+  // Insert as proper jsonb array. Earlier code passed JSON.stringify(missions),
+  // which postgres.js then stored as a jsonb *string* of the JSON-encoded array
+  // (double-encoded). daily-snapshot read these back as a JS string and built
+  // a per-character Set, silently zeroing every affected user's base_score on
+  // 2026-05-03. pointsDb.json() forces the array to be sent as native jsonb.
   await pointsDb`
     INSERT INTO user_active_missions (identity_id, missions, updated_at)
-    VALUES (${identityId}, ${JSON.stringify(missions)}, NOW())
+    VALUES (${identityId}, ${pointsDb.json(missions as string[])}, NOW())
     ON CONFLICT (identity_id) DO UPDATE
       SET missions = EXCLUDED.missions,
           updated_at = EXCLUDED.updated_at

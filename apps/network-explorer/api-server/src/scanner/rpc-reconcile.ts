@@ -24,6 +24,7 @@ import {
   SCORE_CATEGORIES,
   GENESIS_PASS_MULTIPLIER,
   EVENT_MAPPING,
+  DEFAULT_MISSION_IDS,
 } from '../config/points.js';
 import {
   maybeRefreshMatview,
@@ -358,20 +359,23 @@ export async function reconcileFromRpc(
     totalFilled = insertResult.count;
   }
 
-  // If gaps were found, refresh matview and correct the snapshot.
-  // The correction is mission-aware: it computes the new base_score from
-  // activity_points filtered by each user's active mission selection, NOT
-  // from the global ecosystem_daily_scores matview (which doesn't filter
-  // by user_active_missions and would inflate base_score with categories
-  // the user opted out of).
-  if (totalFilled > 0) {
-    try {
+  // Always refresh matview + run snapshot correction, even when no gaps were
+  // filled this cycle. The 2026-05-03 incident wrote base=0 to a snapshot
+  // while activity_points already had the data (a reader-side mission-decode
+  // bug, not a missing-event gap), so reconcile found nothing to fill,
+  // skipped the correction, and left the corrupted lock-in in place. Running
+  // correctSnapshotForReconciledDate unconditionally turns reconcile into a
+  // last-line audit: any divergence between the immutable snapshot's
+  // base_score and the live mission-filtered activity_points sum is
+  // monotonically nudged upward (the function only updates rows where
+  // new_base > old_base). Idempotent on a clean ledger.
+  try {
+    if (totalFilled > 0) {
       await maybeRefreshMatview(true); // forward-only; live readers depend on it
-
-      await correctSnapshotForReconciledDate(targetDate);
-    } catch (err) {
-      console.error('[Reconcile] Snapshot correction error:', (err as Error).message);
     }
+    await correctSnapshotForReconciledDate(targetDate);
+  } catch (err) {
+    console.error('[Reconcile] Snapshot correction error:', (err as Error).message);
   }
 
   return totalFilled;
@@ -392,13 +396,16 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
   if (!pointsDb) return;
   const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
 
-  // Default mission set: must mirror DEFAULT_MISSION_IDS in daily-snapshot.ts.
-  // Empty/missing user_active_missions falls back to this so an attacker who
-  // PUTs [] cannot zero out their snapshot base.
-  const defaultMissions = [
-    'faucet', 'wallet-transfer', 'pado-dex',
-    'gostop-lottery', 'gostop-scratchcard', 'gostop-numbermatch',
-  ];
+  // Single source of truth in config/points.ts. All readers (snapshot, /score,
+  // reconcile) must agree to keep filtered base consistent across live and
+  // lock-in. We render the defaults as a postgres SQL fragment rather than
+  // a JS array parameter to avoid the jsonb-vs-text[] COALESCE collision
+  // (see comment in user_effective_missions CTE below).
+  const defaultMissionsLiteral = pointsDb.unsafe(
+    DEFAULT_MISSION_IDS
+      .map((m) => `'${m.replace(/'/g, "''")}'`)
+      .join(','),
+  );
 
   // Step 1: compute mission-filtered base + multiplier-scaled delta for the date.
   // The delta CTE captures what would change so we can propagate to forward
@@ -419,10 +426,22 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
         AND category NOT LIKE 'ecosystem-bonus-%'
     ),
     user_effective_missions AS (
+      -- user_active_missions.missions is jsonb. Post-2026-05-04 normalize is
+      -- always a native array, but we still tolerate the legacy
+      -- string-of-array form: (#>> '{}')::jsonb double-decodes both shapes
+      -- safely. Falls back to DEFAULT_MISSION_IDS when the row is missing.
+      --
+      -- The defaults are inlined as a postgres ARRAY literal rather than
+      -- parameterized: postgres.js serializes JS string-arrays as jsonb when
+      -- no explicit cast is in scope, and the parameterized text[] cast then
+      -- collides with the COALESCE branch type, producing
+      -- "COALESCE types jsonb and text[] cannot be matched".
       SELECT tc.identity_id,
              COALESCE(
-               NULLIF(uam.missions, '{}'),
-               ${defaultMissions}::text[]
+               (SELECT array_agg(v) FROM jsonb_array_elements_text(
+                  (uam.missions #>> '{}')::jsonb
+                ) AS v),
+               ARRAY[${defaultMissionsLiteral}]::text[]
              ) AS missions_arr
       FROM (SELECT DISTINCT identity_id FROM today_categories) tc
       LEFT JOIN user_active_missions uam ON uam.identity_id = tc.identity_id
