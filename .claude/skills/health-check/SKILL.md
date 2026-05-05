@@ -21,12 +21,14 @@ description: |
 | Node-3 (Explorer API) | 54.180.61.196 | ubuntu | `~/.ssh/.awskey/nasun-devnet-key.pem` |
 
 ### CloudFront
-| 도메인 | Distribution ID | Region | Origin |
-|--------|----------------|--------|--------|
-| nasun.io | E362CCGDH7WA7C | ap-northeast-2 | EC2 43.200.67.52 |
-| explorer.nasun.io | E31QOCW4WNY9FL | ap-northeast-2 | EC2 43.200.67.52 |
-| pado.finance | E35SWPQEJB8HHE | ap-northeast-2 | EC2 43.200.67.52 |
-| gostop.app | EPRUC29V8YRN3 | **us-east-1** | S3 gostop-site-466841130170 |
+| 도메인 | Distribution ID | Region | Origin | CustomErrorResp qty (expected) |
+|--------|----------------|--------|--------|--------------------------------|
+| nasun.io | E362CCGDH7WA7C | ap-northeast-2 | EC2 43.200.67.52 | 7 (403/404 SPA + 5xx pass-through, TTL=0) |
+| explorer.nasun.io | E31QOCW4WNY9FL | ap-northeast-2 | EC2 43.200.67.52 | 11 (4xx/5xx pass-through, TTL=0) |
+| pado.finance | E35SWPQEJB8HHE | ap-northeast-2 | EC2 43.200.67.52 | 11 (4xx/5xx pass-through, TTL=0) |
+| gostop.app | EPRUC29V8YRN3 | **us-east-1** | S3 gostop-site-466841130170 | 11 (4xx SPA + 5xx pass-through, TTL=0) |
+
+> **Cascade 차단 정책 (2026-05-05 사고 후)**: 모든 prod distribution은 4xx/5xx ErrorCachingMinTTL=0이어야 함. qty가 위 표보다 적거나 TTL>0이면 한 사용자의 일시 에러가 edge cache로 다른 사용자에게 cascade. 검증 명령은 5단계 5b 참조.
 
 ### AWS 프로필
 - 기본: `--profile nasun-prod --region ap-northeast-2`
@@ -38,12 +40,12 @@ description: |
 
 | 인자 | 실행 범위 |
 |------|----------|
-| (없음) / `full` | 전체 |
-| `quick` | 1단계만 (1e SSH 제외, SSH/AWS 불필요) |
-| `website` | 1a-d,1f-g + 2a,2b + 2.5 + 3 + 5W + 6W,A,B,S |
-| `explorer` | 1a-e + 2c + 3 + 4 + 5E + 6E,A,S |
-| `pado` | 1a-d,1h + 2a,2b + 2.5 + 3e + 5P + 6P,A,B,S |
-| `gostop` | 1a,1b,1c + 3e(gostop only) + 5G + 6GS,S |
+| (없음) / `full` | 전체 (5a/5b/5c 포함) |
+| `quick` | 1단계 + 5a + 5c (SSH/AWS는 5c만 필요) |
+| `website` | 1a-d,1f-g + 2a,2b + 2.5 + 3 + 5a,5b,5c + 6W,A,B,S |
+| `explorer` | 1a-e + 2c + 3 + 4 + 5a,5b,5c + 6E,A,S |
+| `pado` | 1a-d,1h + 2a,2b + 2.5 + 3e + 5a,5b,5c + 6P,A,B,S |
+| `gostop` | 1a,1b,1c + 3e(gostop only) + 5a,5b,5c (gostop only) + 6GS,S |
 
 ---
 
@@ -399,7 +401,9 @@ RPC checkpoint - Explorer latestCheckpoint = lag. <100=OK, 100-500=WARNING, >500
 
 ---
 
-### 5단계: CloudFront 캐시 분석
+### 5단계: CloudFront 캐시 + 에러 메트릭 분석
+
+#### 5a. 캐시 헤더 (per-URL)
 
 ```bash
 for url in "https://nasun.io" "https://explorer.nasun.io/devnet" "https://pado.finance" "https://gostop.app"; do
@@ -408,11 +412,58 @@ for url in "https://nasun.io" "https://explorer.nasun.io/devnet" "https://pado.f
 done
 # origin direct check (EC2 apps only - gostop is S3)
 curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_direct: HTTP %{http_code}\n"
+# explorer api: Cache-Control: no-store 검증 (2026-05-05 적용, edge cache 차단용)
+curl -sI -m 10 https://explorer.nasun.io/api/v1/health | grep -iE "^cache-control"
 ```
 
 - nasun.io index.html `no-cache,no-store`=OK (SPA 재배포 후 구버전 캐시 방지, 의도적)
+- explorer.nasun.io/api/v1/* `cache-control: no-store`=OK (cascade 차단). 빠지면 cascade 위험 — W11 패턴 발동
 - `x-cache: Error`=CRITICAL
 - gostop.app: S3 origin이므로 origin direct 체크 없음
+
+#### 5b. Custom Error Response config 검증 (cascade 차단 정책)
+
+```bash
+declare -A EXPECTED_QTY=(
+  [E362CCGDH7WA7C]=7    # nasun.io
+  [E31QOCW4WNY9FL]=11   # explorer.nasun.io
+  [E35SWPQEJB8HHE]=11   # pado.finance
+)
+for id in "${!EXPECTED_QTY[@]}"; do
+  qty=$(aws cloudfront get-distribution-config --id "$id" --profile nasun-prod --region us-east-1 \
+    --query 'DistributionConfig.CustomErrorResponses.Quantity' --output text 2>/dev/null)
+  max_ttl=$(aws cloudfront get-distribution-config --id "$id" --profile nasun-prod --region us-east-1 \
+    --query 'max(DistributionConfig.CustomErrorResponses.Items[].ErrorCachingMinTTL)' --output text 2>/dev/null)
+  echo "$id: qty=$qty (expected=${EXPECTED_QTY[$id]}) max_ttl=$max_ttl"
+done
+# gostop us-east-1
+qty=$(aws cloudfront get-distribution-config --id EPRUC29V8YRN3 --profile nasun-prod --region us-east-1 \
+  --query 'DistributionConfig.CustomErrorResponses.Quantity' --output text 2>/dev/null)
+max_ttl=$(aws cloudfront get-distribution-config --id EPRUC29V8YRN3 --profile nasun-prod --region us-east-1 \
+  --query 'max(DistributionConfig.CustomErrorResponses.Items[].ErrorCachingMinTTL)' --output text 2>/dev/null)
+echo "EPRUC29V8YRN3: qty=$qty (expected=11) max_ttl=$max_ttl"
+```
+
+- qty != expected = WARNING (W9 패턴). max_ttl > 0 = CRITICAL (cascade 위험 부활)
+
+#### 5c. CloudFront 에러율 메트릭 (지난 1h, 5min 단위 spike 감지)
+
+```bash
+for id in E362CCGDH7WA7C E31QOCW4WNY9FL E35SWPQEJB8HHE EPRUC29V8YRN3; do
+  echo "=== $id ==="
+  for metric in 4xxErrorRate 5xxErrorRate; do
+    max=$(aws cloudwatch get-metric-statistics --profile nasun-prod --region us-east-1 \
+      --namespace AWS/CloudFront --metric-name $metric \
+      --dimensions Name=DistributionId,Value=$id Name=Region,Value=Global \
+      --start-time "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S)" \
+      --end-time "$(date -u +%Y-%m-%dT%H:%M:%S)" --period 300 --statistics Average \
+      --query 'max(Datapoints[].Average)' --output text 2>/dev/null)
+    echo "  $metric max(5min avg, 1h)=${max:-0}%"
+  done
+done
+```
+
+- 4xx/5xx 각각 max < 1% = OK, 1-5% = WARNING (W12), > 5% = CRITICAL (W13). 2026-05-04 사고 시 explorer 81%까지 spike한 패턴.
 
 ---
 
@@ -431,6 +482,11 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_d
 | W6 | SSL 7-30일 | WARNING | `sudo certbot renew` (staging EC2) |
 | W7 | SSL <7일/만료 | CRITICAL | 즉시 갱신 |
 | W8 | nginx 5xx >5% / >10% | WARNING / CRITICAL | nginx error log 분석 |
+| W9 | CF Custom Error Response qty != expected (5b) | WARNING | distribution config 비교, 누락 코드 추가 (cascade 차단 정책) |
+| W10 | nginx error.log `proxy_buffer_size .* not enough for cache key` 누적 | WARNING | rpc-cache.conf cache key 설계 결함. `apps/nasun-website/chat-server/`의 SDK payload 증가 추적 + buffer 상향 또는 hash key |
+| W11 | explorer.nasun.io/api/v1/* 응답에 `Cache-Control: no-store` 누락 | WARNING | nginx explorer.conf의 `add_header Cache-Control "no-store" always;` 복원. 없으면 429가 edge cache되어 cascade |
+| W12 | CF 4xx/5xxErrorRate 5min avg 1-5% | WARNING | distribution별 추적. 일시적이면 OK, 지속이면 origin/rate-limit 점검 |
+| W13 | CF 4xx/5xxErrorRate 5min avg >5% | CRITICAL | 2026-05-04 사고 패턴. nginx error.log + EC2 부하 즉시 점검. cascade 진행 중일 가능성 |
 
 #### Explorer (E)
 | ID | 조건 | 심각도 | 조치 |
@@ -440,6 +496,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_d
 | E3 | node-3 nginx inactive | WARNING | `sudo systemctl restart nginx` |
 | E4 | indexer lag >500 | CRITICAL | devnet `/health-check` 실행 |
 | E5 | chainResetDetected=true | CRITICAL | Explorer DB 재초기화 필요 |
+| E6 | nginx error.log `limiting requests, excess.*explorer_api` 1h내 50건+ | WARNING | rate-limit zone trip. 단일 IP 봇이면 차단, 정상 사용자면 zone 추가 완화 (현재 rate=5r/s burst=30, 2026-05-05 완화됨) |
+| E7 | nginx error.log `limiting requests, excess.*explorer_api` 1h내 500건+ | CRITICAL | 5/4 사고 재현 가능성. CloudFront 4xx 메트릭 (5c)과 교차. cascade 진행 중일 수 있음 |
 
 #### AWS (A)
 | ID | 조건 | 심각도 | 조치 |
@@ -459,6 +517,8 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_d
 | P3 | prod pado index.html 없음 | CRITICAL | rsync 재배포 |
 | P4 | staging pado index.html 없음 | CRITICAL | rsync 재배포 |
 | P5 | chat-server restart >10 AND uptime <1h | WARNING | `pm2 logs nasun-chat-server --lines 50 --nostream` |
+| P5b | chat-server error.log `[Crash] HALTED.*manual intervention required` 최근 발생 | WARNING | Crash registry stuck → 자가복구 시도 중. 1h 후에도 hot loop면 P5c |
+| P5c | chat-server CPU >80% AND `crash-child.*exited` 반복 (1h내 5건+) | CRITICAL | LockConflict hot loop. Crash registry object 강제 finalize 필요. 코드 수정은 handoff `2026-05-05-outage-followup-code-fixes.md` 참고 |
 | P6 | chat-server mem >350MB / >500MB | WARNING / CRITICAL | 500MB=PM2 auto-restart |
 | P7 | price-updater stopped | CRITICAL | prod 전용 단일 인스턴스. `pm2 restart price-updater` |
 | P8 | lp-bot-* stopped | WARNING | `pm2 restart lp-bot-nbtc` 등 |
@@ -475,6 +535,7 @@ curl -sI -m 10 -H "Host: nasun.io" http://43.200.67.52 -o /dev/null -w "origin_d
 | GS1 | gostop.app HTTP != 200 or `x-cache: Error` | CRITICAL | CF EPRUC29V8YRN3 상태 확인 (us-east-1), S3 버킷 점검 |
 | GS2 | EPRUC29V8YRN3 Disabled or !Deployed | CRITICAL | AWS 콘솔 us-east-1 CloudFormation 확인 |
 | GS3 | gostop.app SSL <30일 | WARNING | ACM 자동갱신 확인 (us-east-1) |
+| GS4 | EPRUC29V8YRN3 CustomErrorResp qty != 11 or max_ttl > 0 | WARNING | 2026-05-05 적용 정책 회귀. 11개 모두 TTL=0이어야 cascade 차단 (이전 60s 캐시로 사고) |
 
 #### Backup (B)
 | ID | 조건 | 심각도 | 조치 |
