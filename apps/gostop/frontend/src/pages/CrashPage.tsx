@@ -33,7 +33,7 @@ export default function CrashPage() {
   const isFlying = state === "FLYING";
   const bettingEndsAt = crash.roundState?.bettingEndsAt ?? null;
 
-  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 1700;
+  const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 3_500;
   const bettingWindowExpired = isBetting && bettingEndsAt !== null && now >= bettingEndsAt;
   const showCashOutPanel = crash.hasBetThisRound && (isFlying || bettingWindowExpired);
   const cashOutDisabled = !isFlying || crash.phase === "cashing_out";

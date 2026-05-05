@@ -25,7 +25,14 @@ export function useCrashActions(
   const placeBet = useCallback(async (betAmount: bigint): Promise<boolean> => {
     if (!walletAddress || !roundObjectIdRef.current) return false
     if (betAmount < CRASH_MIN_BET) { setError('Minimum bet is 1 NUSDC'); return false }
-    
+    // Hard guard: refuse submission if betting window closes in < 3s to prevent
+    // ERoundNotInBetting abort (TX takes 1-3s to land on devnet).
+    const bettingEndsAt = roundState?.bettingEndsAt as number | null | undefined
+    if (roundState?.state !== 'BETTING' || !bettingEndsAt || bettingEndsAt - Date.now() < 3_000) {
+      setError('Betting window is closing. Wait for the next round.')
+      return false
+    }
+
     setError(null)
     setLocalPhase('placing_bet')
 
