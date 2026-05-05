@@ -12,6 +12,14 @@ export function formatNusdc(amount: bigint): string {
   });
 }
 
+/** Format NUSDC bigint as compact human-readable volume ("1.2K", "3.4M", or raw integer). */
+export function formatVolumeCompact(raw: bigint): string {
+  const n = Number(raw) / 1_000_000;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toFixed(0);
+}
+
 /** Format ms timestamp into compact relative-time string ("5s ago", "2m ago", "3h ago", "4d ago"). */
 export function formatTimeAgo(timestamp: number): string {
   const diff = Date.now() - timestamp;
