@@ -626,7 +626,7 @@ export function buildWithdrawNbtcTx(
 
 /**
  * Drain all NUSDC/NBTC from both BalanceManager and MarginAccount in one PTB.
- * MA side uses unified_margin::withdraw_all (transfers to sender internally).
+ * MA side uses withdraw_all (NUSDC) + withdraw_all_nbtc (NBTC) — both transfer to sender internally.
  * BM side uses balance_manager::withdraw_all to atomically drain each token,
  * eliminating the TOCTOU race that occurred with the explicit-amount withdraw.
  */
@@ -641,6 +641,10 @@ export function buildWithdrawAllPadoTx(
   if (marginAccountId) {
     tx.moveCall({
       target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_all`,
+      arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID)],
+    });
+    tx.moveCall({
+      target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_all_nbtc`,
       arguments: [tx.object(marginAccountId), tx.object(MARGIN_REGISTRY_ID)],
     });
   }
