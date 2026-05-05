@@ -34,6 +34,7 @@ import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../
 import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
+import type { OpenOrderRow } from './useMyOpenOrders';
 
 interface TradeResult {
   success: boolean;
@@ -587,14 +588,33 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   const cancelOrder = useCallback(
-    (marketId: string, isYes: boolean, isBid: boolean, priceBps: number, orderId: number | bigint) =>
-      runOperation(
+    async (marketId: string, isYes: boolean, isBid: boolean, priceBps: number, orderId: number | bigint) => {
+      // Optimistic: drop the order from the cached list now so the UI updates
+      // before the tx confirms. Restored on failure.
+      const addr = walletAddress;
+      const queryKey = ['prediction', 'my-orders', marketId, addr] as const;
+      const snapshot = addr
+        ? queryClient.getQueryData<OpenOrderRow[]>(queryKey)
+        : undefined;
+      const targetId = Number(orderId);
+      if (snapshot) {
+        queryClient.setQueryData<OpenOrderRow[]>(
+          queryKey,
+          snapshot.filter((o) => o.orderId !== targetId),
+        );
+      }
+      const result = await runOperation(
         marketId,
         `cancel:${orderId}`,
         (tx) => buildCancelOrder(tx, marketId, isYes, isBid, priceBps, orderId),
         'Order cancelled',
-      ),
-    [runOperation],
+      );
+      if (!result.success && snapshot) {
+        queryClient.setQueryData(queryKey, snapshot);
+      }
+      return result;
+    },
+    [runOperation, queryClient, walletAddress],
   );
 
   const claimRestingOrderRefund = useCallback(
