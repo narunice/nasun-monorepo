@@ -85,7 +85,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 2,
       label: 'Predict',
       description: 'Place an order on a prediction market',
-      externalUrl: 'https://pado.finance/predict',
+      externalUrl: 'https://pado.finance/',
     },
   ],
   gostop: [
