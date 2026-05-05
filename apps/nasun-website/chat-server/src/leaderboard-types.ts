@@ -133,6 +133,11 @@ export interface LeaderboardStatusResponse {
 export interface LeaderboardConfig {
   leaderboardDbPath: string;
   deepbookPackage: string;
+  // Optional: Pado prediction market package. When set, the indexer also
+  // ingests `prediction_market::OrderFilled` into trade_fills with pool_id
+  // prefixed `prediction:${market_id}` so source can be distinguished without
+  // a schema change.
+  predictionPackage?: string;
   rpcUrl: string;
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;
@@ -274,7 +279,12 @@ export const POINTS = {
   ],
 } as const;
 
-// Known bot wallet addresses - always excluded from leaderboards and points
+// Known bot wallet addresses - always excluded from leaderboards and points.
+//
+// Additional bot addresses can be supplied at deploy time via the
+// `INDEXER_EXCLUDED_ADDRESSES` env var (comma-separated). Use the env path for
+// rotating bot wallets (e.g. prediction LP bot per-market) so binary releases
+// stay stable.
 export const KNOWN_BOT_ADDRESSES: readonly string[] = [
   // Prod LP bot (common wallet, NBTC/NETH/NSOL)
   '0x9c8ef05cf0ec7a06a5019d01b8cf411ab0c749274182d36f6e714785af92b732',
@@ -284,6 +294,10 @@ export const KNOWN_BOT_ADDRESSES: readonly string[] = [
   '0x74a7daf4b88ce870e4c0f05350f6907621a923e728ff027f04cef6fc73de4d24',
   // Staging LP bot
   '0x69377697cebb6a6a748b9a5492de51b2d0f67413551d87f62cc17899432952cd',
+  // Prediction-market LP bots: add their addresses here (or via the
+  // INDEXER_EXCLUDED_ADDRESSES env var) once the bot wallets are provisioned.
+  // Without this, bot↔bot self-matches inflate volume_count / unique_pools for
+  // the few real users whose orders match against bot quotes.
 ];
 
 // ===== RPC Event Types =====
@@ -309,6 +323,25 @@ export interface OrderPlacedParsedJson {
   price: string;
   placed_quantity: string;
   is_bid: boolean;
+  [key: string]: unknown;
+}
+
+// Pado prediction market: prediction_market::OrderFilled
+// Distinct from DeepBook's OrderFilled — direct address fields (no balance
+// manager indirection). `cost` is in NUSDC raw (6 decimals), matching DeepBook
+// quote_quantity unit. `fill_shares` is share count and is NOT comparable to
+// DeepBook base_quantity in absolute terms (different decimals); aggregator
+// must isolate prediction pools via `pool_id LIKE 'prediction:%'`.
+export interface PredictionOrderFilledParsedJson {
+  market_id: string;
+  order_id: string;
+  maker: string;
+  taker: string;
+  is_yes: boolean;
+  is_bid: boolean;
+  price: string;
+  fill_shares: string;
+  cost: string;
   [key: string]: unknown;
 }
 

@@ -1,3 +1,10 @@
+-- ARCHIVAL: hash uses original 2026-04 weights at time of capture.
+-- DO NOT MODIFY the CASE WHEN category='pado-dex' THEN 2 expression — this
+-- script must reproduce the byte-identical hash of restore-staking-recovery.sql
+-- as it was when run. Heavy-base category set has expanded to include
+-- pado-prediction (see config/points.ts:HEAVY_BASE_CATEGORIES); applying that
+-- newer weight here would corrupt the hash invariant.
+--
 -- measure-expected-hash.sql
 -- Measures the expected diff_hash for restore-staking-recovery.sql
 -- Must be byte-identical (for _deltas construction) with the recovery SQL.

@@ -19,7 +19,7 @@ import {
   updateActivationsForUser,
 } from '../scanner/ecosystem-cache.js';
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
-import { DEFAULT_MISSION_IDS } from '../config/points.js';
+import { DEFAULT_MISSION_IDS, baseWeightFor } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
@@ -663,11 +663,12 @@ app.get('/score/:identityId', async (c) => {
       : [...DEFAULT_MISSION_IDS];
 
   // Filtered today base: only categories the user has activated count.
-  // pado-dex weight = 2 (mirrors matview), all others = 1.
+  // Weight via baseWeightFor() — single source of truth in config/points.ts
+  // (mirrors matview SQL `category IN ('pado-dex','pado-prediction')`).
   const filterBase = (cats: readonly string[]): number => {
     let total = 0;
     for (const cat of cats) {
-      if (activeMissions.includes(cat)) total += cat === 'pado-dex' ? 2 : 1;
+      if (activeMissions.includes(cat)) total += baseWeightFor(cat);
     }
     return total;
   };
@@ -1868,7 +1869,7 @@ app.get('/base-history/:identityId', async (c) => {
         continue;
       }
       const category = r.category as string;
-      const points = category === 'pado-dex' ? 2 : 1;
+      const points = baseWeightFor(category);
       if (!byDay.has(day)) byDay.set(day, []);
       byDay.get(day)!.push({ category, points });
     }

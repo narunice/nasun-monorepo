@@ -4,6 +4,7 @@ import type {
   OrderFilledParsedJson,
   OrderPlacedParsedJson,
   OrderCanceledParsedJson,
+  PredictionOrderFilledParsedJson,
   TradeFillData,
   OrderEventType,
 } from './leaderboard-types.js';
@@ -374,6 +375,103 @@ async function pollOrderEvents(): Promise<number> {
   return totalIndexed;
 }
 
+// ===== Prediction Market OrderFilled Polling =====
+//
+// Pado prediction market is a custom CLOB (apps/pado/contracts-prediction).
+// It emits its own `prediction_market::OrderFilled` with direct maker/taker
+// addresses (no balance manager indirection) and `cost` in NUSDC raw (6 dec).
+// We fold these into the same `trade_fills` table with pool_id prefixed
+// `prediction:${market_id}` so aggregator/PnL can distinguish source without a
+// schema change. `fill_shares` is shares (not comparable to spot base_quantity
+// in absolute terms); aggregator's PnL filter uses the prefix to isolate.
+
+const PREDICTION_CURSOR_KEY = 'prediction_order_filled_cursor';
+
+async function pollPredictionOrderFilled(): Promise<number> {
+  if (!client || !config) return 0;
+  if (!config.predictionPackage) return 0;
+
+  const savedCursor = getIndexerState(PREDICTION_CURSOR_KEY);
+  let cursor = null;
+  if (savedCursor) {
+    try {
+      cursor = JSON.parse(savedCursor);
+    } catch {
+      console.error('[Indexer:Prediction] Corrupt cursor, resetting');
+      setIndexerState(PREDICTION_CURSOR_KEY, '');
+    }
+  }
+
+  const eventType = `${config.predictionPackage}::prediction_market::OrderFilled`;
+
+  let totalIndexed = 0;
+  let currentCursor = cursor;
+  let hasMore = true;
+
+  while (hasMore && running) {
+    try {
+      const result = await client.queryEvents({
+        query: { MoveEventType: eventType },
+        cursor: currentCursor,
+        limit: 50,
+        order: 'ascending',
+      });
+
+      if (result.data.length === 0) {
+        hasMore = false;
+        break;
+      }
+
+      for (const event of result.data) {
+        const json = event.parsedJson as PredictionOrderFilledParsedJson | undefined;
+        if (!json) continue;
+
+        const eventSeq = event.id?.eventSeq ?? '0';
+        const txDigest = event.id?.txDigest ?? '';
+
+        // Synthetic pool_id with `prediction:` prefix so aggregator can isolate
+        // by pattern. `taker_is_bid` mirrors prediction's `is_bid` (taker side).
+        // `base_quantity` carries fill_shares for completeness; PnL must skip
+        // prediction pools because the share unit differs from spot tokens.
+        insertTradeFill({
+          tx_digest: txDigest,
+          event_seq: eventSeq,
+          pool_id: `prediction:${json.market_id}`,
+          maker_address: json.maker,
+          taker_address: json.taker,
+          maker_order_id: String(json.order_id || ''),
+          taker_order_id: null,
+          price: json.price,
+          base_quantity: json.fill_shares,
+          quote_quantity: json.cost,
+          taker_is_bid: json.is_bid ? 1 : 0,
+          timestamp_ms: Number(event.timestampMs) || Date.now(),
+        });
+
+        totalIndexed++;
+      }
+
+      if (result.nextCursor) {
+        currentCursor = result.nextCursor;
+        setIndexerState(PREDICTION_CURSOR_KEY, JSON.stringify(currentCursor));
+      }
+
+      hasMore = result.hasNextPage;
+      consecutiveRpcErrors = 0;
+
+      if (hasMore) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+    } catch (err) {
+      if (isRpcError(err)) consecutiveRpcErrors++;
+      console.error('[Indexer:Prediction] Poll error:', (err as Error).message);
+      hasMore = false;
+    }
+  }
+
+  return totalIndexed;
+}
+
 // ===== Lifecycle =====
 
 function schedulePoll(): void {
@@ -388,8 +486,11 @@ function schedulePoll(): void {
   pollTimer = setTimeout(async () => {
     const fillCount = await pollOrderFilled();
     const orderCount = await pollOrderEvents();
-    if (fillCount > 0 || orderCount > 0) {
-      console.log(`[Indexer] Indexed ${fillCount} fills, ${orderCount} order events`);
+    const predictionCount = await pollPredictionOrderFilled();
+    if (fillCount > 0 || orderCount > 0 || predictionCount > 0) {
+      console.log(
+        `[Indexer] Indexed ${fillCount} spot fills, ${orderCount} order events, ${predictionCount} prediction fills`,
+      );
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();
@@ -404,13 +505,21 @@ export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOpti
 
   console.log(`[Indexer] Starting (poll interval: ${cfg.indexerPollIntervalMs}ms, RPC: ${cfg.rpcUrl})`);
   console.log(`[Indexer] DeepBook package: ${cfg.deepbookPackage.slice(0, 16)}...`);
+  if (cfg.predictionPackage) {
+    console.log(`[Indexer] Prediction package: ${cfg.predictionPackage.slice(0, 16)}...`);
+  } else {
+    console.log('[Indexer] Prediction indexing disabled (PREDICTION_PACKAGE not set)');
+  }
 
   // Initial poll immediately then schedule — sequential to avoid racing on consecutiveRpcErrors
   (async () => {
     const fills = await pollOrderFilled();
     const orders = await pollOrderEvents();
-    if (fills > 0 || orders > 0) {
-      console.log(`[Indexer] Initial poll indexed ${fills} fills, ${orders} order events`);
+    const predFills = await pollPredictionOrderFilled();
+    if (fills > 0 || orders > 0 || predFills > 0) {
+      console.log(
+        `[Indexer] Initial poll indexed ${fills} spot fills, ${orders} order events, ${predFills} prediction fills`,
+      );
       setIndexerState('last_indexed_at', String(Date.now()));
     }
     schedulePoll();

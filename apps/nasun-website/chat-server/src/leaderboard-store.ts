@@ -877,16 +877,19 @@ export function computeCostBasis(
 ): CostBasisEntryRaw[] {
   const ldb = getLeaderboardDb();
 
-  // Fetch ALL fills for this address, chronologically ascending
+  // Fetch ALL spot fills for this address, chronologically ascending.
+  // Prediction-market pools (pool_id LIKE 'prediction:%') are excluded — see
+  // aggregateTraderPnlRaw for rationale (shares are not base tokens; binary
+  // outcome makes mark-to-market meaningless during trading window).
   const rows = ldb.prepare(`
     SELECT * FROM (
       SELECT id, pool_id, maker_address, taker_address,
              price, base_quantity, taker_is_bid
-      FROM trade_fills WHERE maker_address = ?
+      FROM trade_fills WHERE maker_address = ? AND pool_id NOT LIKE 'prediction:%'
       UNION
       SELECT id, pool_id, maker_address, taker_address,
              price, base_quantity, taker_is_bid
-      FROM trade_fills WHERE taker_address = ?
+      FROM trade_fills WHERE taker_address = ? AND pool_id NOT LIKE 'prediction:%'
     ) ORDER BY id ASC
   `).all(address, address) as Array<{
     id: number;
@@ -1152,6 +1155,18 @@ interface RawPnlRow {
 /**
  * Aggregate per-trader per-pool buy/sell totals for PnL calculation.
  * Grouped by (address, pool_id) to avoid mixing base token decimals across pools.
+ *
+ * Prediction-market pools are excluded via `pool_id NOT LIKE 'prediction:%'`.
+ * Reasons:
+ *   1. Prediction `fill_shares` is share count (not base token raw); applying the
+ *      spot FIFO cost-basis model would treat shares as if they were base tokens
+ *      with the same decimals, producing nonsense PnL.
+ *   2. Prediction outcomes are binary; mark-to-market during the trading window
+ *      is meaningless until `MarketResolved`. Ecosystem points already reward
+ *      prediction trading via the `pado-prediction` category.
+ *   3. Per-venue PnL ledger (planned): perp will need its own leverage-aware
+ *      module; lending has no leaderboard PnL semantics. Filtering at SQL is
+ *      cheap and reversible (one line) when prediction-specific PnL ships.
  */
 export function aggregateTraderPnlRaw(
   cutoffMs: number,
@@ -1180,11 +1195,13 @@ export function aggregateTraderPnlRaw(
       SELECT taker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
              taker_is_bid as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
       ${wash?.filterClause ?? ''}
       UNION ALL
       SELECT maker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
              CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
       FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
       ${wash?.filterClause ?? ''}
     )
     WHERE 1=1 ${excludePlaceholders}

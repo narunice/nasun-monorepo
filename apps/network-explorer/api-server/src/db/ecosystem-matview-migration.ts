@@ -26,12 +26,15 @@
 
 import { pointsDb } from '../db.js';
 
+// v5 (2026-05): pado-prediction joins pado-dex as a heavy-base category (weight 2).
+//   Mirrors HEAVY_BASE_CATEGORIES in config/points.ts. Existing rows recomputed
+//   on rebuild — forward-only invariant satisfied because new weight is >= old.
 // v4 (PR3a, 2026-04-29): GoStop categories split (pado-lottery / pado-scratchcard /
 //   pado-games → gostop-{lottery,scratchcard,numbermatch,mines,crash}). distinct_cats
 //   SQL unchanged; bump forces a superuser rebuild so leaderboard reflects the new
 //   per-category dedup (a user playing 5 GoStop games on the same day now contributes
 //   5 distinct categories to base_score instead of 1).
-const MATVIEW_VERSION = 4;
+const MATVIEW_VERSION = 5;
 const VERSION_MARKER = `matview_version=${MATVIEW_VERSION}`;
 
 const MATVIEW_SQL = `
@@ -54,7 +57,8 @@ WITH distinct_cats AS (
 SELECT
   identity_id,
   day,
-  SUM(CASE WHEN category = 'pado-dex' THEN 2 ELSE 1 END)::int AS base_score
+  -- HEAVY_BASE_CATEGORIES (config/points.ts) — keep IN list in lockstep
+  SUM(CASE WHEN category IN ('pado-dex','pado-prediction') THEN 2 ELSE 1 END)::int AS base_score
 FROM distinct_cats
 GROUP BY identity_id, day
 `;

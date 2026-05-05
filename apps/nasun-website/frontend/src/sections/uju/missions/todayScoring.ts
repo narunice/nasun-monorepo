@@ -9,12 +9,22 @@
  * Backend matview rules mirrored here:
  *   - per (identity_id, day, category) 1-credit cap (already enforced
  *     upstream: `todayCategories` is a deduplicated list)
- *   - pado-dex weighted x2, every other category weighted x1
+ *   - heavy-base categories weighted x2, every other category weighted x1
+ *
+ * SYNC WARNING: HEAVY_BASE_CATEGORIES below mirrors the backend constant of the
+ * same name in apps/network-explorer/api-server/src/config/points.ts. Keep both
+ * in lockstep — drift causes the my-account "pts today" indicator to disagree
+ * with the snapshot/score backend.
  */
 import { APP_MISSION_MAP, DEFAULT_MISSIONS_BY_APP } from './missionRegistry';
 import { DEFAULT_PINNED_APPS } from '../apps/appRegistry';
 
-const PADO_DEX_WEIGHT = 2;
+const HEAVY_BASE_CATEGORIES: ReadonlySet<string> = new Set(['pado-dex', 'pado-prediction']);
+const HEAVY_BASE_WEIGHT = 2;
+
+function baseWeightFor(category: string): number {
+  return HEAVY_BASE_CATEGORIES.has(category) ? HEAVY_BASE_WEIGHT : 1;
+}
 
 /**
  * Resolve the set of backend category names that the user currently has
@@ -94,7 +104,7 @@ export function computeCompletedMissions(
     result.push({
       id: resolved,
       label: getMissionLabel(resolved) ?? resolved,
-      pts: resolved === 'pado-dex' ? PADO_DEX_WEIGHT : 1,
+      pts: baseWeightFor(resolved),
     });
   }
   return result;
@@ -118,7 +128,7 @@ export function computeFilteredTodayBase(
     if (!activeCategories.has(resolved)) continue;
     if (counted.has(resolved)) continue;
     counted.add(resolved);
-    score += resolved === 'pado-dex' ? PADO_DEX_WEIGHT : 1;
+    score += baseWeightFor(resolved);
   }
   return score;
 }
