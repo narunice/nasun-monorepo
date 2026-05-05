@@ -78,16 +78,15 @@ export async function getBmNusdcBalance(bmId: string): Promise<bigint> {
 
 /**
  * Append a wallet → MA auto-deposit + immediate withdraw_as_coin for trading,
- * all in a single atomic PTB. The deposit+withdraw nets the user's MA balance
- * unchanged, but funnels wallet NUSDC through Pado Balance, preserving the
- * "Pado Balance only" semantics that the prediction gate enforces.
+ * all in a single atomic PTB.
  *
- * `shortfall` is what's added to MA before the immediate withdraw.
- * `amount` is the total NUSDC routed to the downstream prediction call.
+ * `cachedMaBalance` is the React Query MA balance at call time, used as a
+ * conservative upper bound when the live RPC returns a stale positive value.
+ * Taking min(live, cached) prevents the case where stale RPC balance causes
+ * shortfall=0 → no deposit → withdraw fails with EInsufficientBalance on-chain.
  *
- * Pre-conditions:
- *  - Wallet has at least `shortfall` NUSDC across one or more coin objects.
- *  - User owns the MarginAccount referenced by `maId`.
+ * If both live RPC and cached agree on the balance, normal shortfall logic applies.
+ * If live RPC over-reports (stale), the cached value caps it to the safer estimate.
  */
 export async function assembleAutoDepositPaymentArg(
   tx: Transaction,
@@ -95,11 +94,8 @@ export async function assembleAutoDepositPaymentArg(
   walletAddress: string,
   maId: string,
   client: SuiClient,
+  cachedMaBalance: bigint = 0n,
 ): Promise<TransactionArgument> {
-  // Fetch live MA balance to compute the exact shortfall. The caller's estimate
-  // (amountNum - padoBalance) includes BM funds in padoBalance, but this function
-  // only deposits into and withdraws from MA — BM is not part of this flow.
-  // Using live balance prevents EInsufficientBalance when the caller underestimates.
   const [liveAccount, walletCoins] = await Promise.all([
     getMarginAccount(maId),
     (async () => {
@@ -114,13 +110,17 @@ export async function assembleAutoDepositPaymentArg(
     })(),
   ]);
 
-  const maBalance = liveAccount?.nusdcBalance ?? 0n;
+  // Use the more conservative (lower) of live RPC and React Query balance.
+  // If the RPC is serving stale data (reporting higher than actual), this cap
+  // prevents under-depositing the shortfall.
+  const liveBalance = liveAccount?.nusdcBalance ?? 0n;
+  const maBalance = liveBalance < cachedMaBalance ? liveBalance : cachedMaBalance;
   const shortfall = amount > maBalance ? amount - maBalance : 0n;
 
   if (shortfall > 0n) {
+    if (walletCoins.length === 0) throw new Error('No wallet NUSDC coins found');
     const walletTotal = walletCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
     if (walletTotal < shortfall) throw new Error('Insufficient wallet NUSDC for auto-deposit');
-    if (walletCoins.length === 0) throw new Error('No wallet NUSDC coins found');
 
     const [primary, ...rest] = walletCoins;
     if (rest.length > 0) {
