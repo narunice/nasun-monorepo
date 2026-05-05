@@ -66,13 +66,13 @@ function Hero2026Section({
         </ButtonV4>
       )}
 
-      <ButtonV4
+      {/* <ButtonV4
         color="ghost"
         size="sm"
         className="py-1 min-w-[100px] md:min-w-[120px] drop-shadow-lg !font-inter opacity-50 cursor-not-allowed !text-lg"
       >
         Read More
-      </ButtonV4>
+      </ButtonV4> */}
     </div>
   );
 
@@ -112,7 +112,7 @@ function Hero2026Section({
         {isVideoPlaying && (
           <div className="z-20 w-full h-full absolute inset-0 flex items-center justify-end px-8 md:px-16 lg:px-24 xl:px-32">
             <FadeInUp>
-              <div className="flex flex-col items-start max-w-xl">
+              <div className="flex flex-col items-start max-w-xl text-left">
                 <h1 className="-ml-0.5 !font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-6xl md:text-7xl lg:text-[95px] xl:text-[107px] leading-none">
                   NASUN
                 </h1>
@@ -129,7 +129,7 @@ function Hero2026Section({
                   Nothing resets.
                 </p>
 
-                {buttons}
+                <div className="w-full flex justify-center">{buttons}</div>
               </div>
             </FadeInUp>
           </div>
@@ -183,7 +183,7 @@ function Hero2026Section({
 
         {/* Content overlaps with gradient zone */}
         {isVideoPlaying && (
-          <div className="flex flex-col items-center text-center px-6 -mt-12 pb-16 z-20">
+          <div className="flex flex-col items-center text-center px-6 pb-16 z-20">
             <FadeInUp>
               <h1 className="!font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-[72px] leading-none mb-3">
                 NASUN

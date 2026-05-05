@@ -78,18 +78,18 @@ function DevNewsEventsSection() {
     <div className="flex items-center justify-center gap-3">
       <button
         onClick={() => sliderRef.current?.slickPrev()}
-        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/10 border border-white/20 backdrop-blur-xl hover:bg-white/20 transition-colors drop-shadow-lg"
         aria-label="Previous news"
       >
-        <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6 text-black" />
+        <ChevronLeftIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
       </button>
 
       {postList.map((p, i) => (
         <button
           key={p.id}
           onClick={() => sliderRef.current?.slickGoTo(i)}
-          className={`rounded-full transition-all duration-300 drop-shadow-lg bg-white ring-1 ring-black/60 ${
-            i === activeIndex ? "w-5 h-2" : "w-2 h-2 hover:opacity-90"
+          className={`rounded-full transition-all duration-300 drop-shadow-lg ring-1 ring-white/10 ${
+            i === activeIndex ? "w-5 h-2 bg-white" : "w-2 h-2 bg-white/30 hover:bg-white/50"
           }`}
           aria-label={`Go to news ${i + 1}`}
         />
@@ -97,10 +97,10 @@ function DevNewsEventsSection() {
 
       <button
         onClick={() => sliderRef.current?.slickNext()}
-        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/80 border border-black/60 backdrop-blur-xl hover:bg-white/90 transition-colors drop-shadow-lg"
+        className="flex items-center justify-center w-9 h-9 md:w-11 md:h-11 rounded-full bg-white/10 border border-white/20 backdrop-blur-xl hover:bg-white/20 transition-colors drop-shadow-lg"
         aria-label="Next news"
       >
-        <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6 text-black" />
+        <ChevronRightIcon className="w-5 h-5 md:w-6 md:h-6 text-white" />
       </button>
     </div>
   );
@@ -111,7 +111,7 @@ function DevNewsEventsSection() {
       className=" relative w-full min-h-screen bg-[#0b1628] flex flex-col items-center pt-10 pb-10 md:pt-14 md:pb-16"
     >
       {/* Section title */}
-      <h2 className="!font-eurostile font-semibold uppercase tracking-wider drop-shadow-lg bg-gradient-to-r from-pado-3 to-[#DFF9BE] bg-clip-text text-transparent">
+      <h2 className="!font-eurostile font-semibold uppercase tracking-wider drop-shadow-lg text-white">
         NEWS
       </h2>
 
@@ -203,7 +203,7 @@ function DevNewsEventsSection() {
                 className="group min-w-0 max-w-full"
               >
                 <h6
-                  className="font-light text-pado-4 group-hover:text-pd5 group-hover:underline transition-colors duration-200 drop-shadow-lg line-clamp-2 md:truncate text-base md:text-lg"
+                  className="font-light text-white/90 group-hover:text-white group-hover:underline transition-colors duration-200 drop-shadow-lg line-clamp-2 md:truncate text-base md:text-lg"
                   style={{ fontFamily: "Rubik, sans-serif" }}
                   title={plainTitle(activePost.title.rendered)}
                 >
@@ -211,7 +211,7 @@ function DevNewsEventsSection() {
                 </h6>
               </Link>
               <time
-                className="shrink-0 text-pd4 text-xs md:text-sm drop-shadow-lg"
+                className="shrink-0 text-white/50 text-xs md:text-sm drop-shadow-lg"
                 style={{ fontFamily: "Rubik, sans-serif" }}
                 dateTime={activePost.date}
               >
@@ -223,7 +223,7 @@ function DevNewsEventsSection() {
             <div className="mt-6 md:mt-10 flex items-center justify-center gap-3 flex-wrap">
               <Link
                 to={`/news-events/${activePost.slug}`}
-                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-pd4 text-black hover:bg-pd5 text-sm font-medium drop-shadow-lg transition-colors"
+                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-white text-black hover:bg-white/90 text-sm font-medium drop-shadow-lg transition-colors"
                 style={{ fontFamily: "Rubik, sans-serif" }}
               >
                 Read More
@@ -236,7 +236,7 @@ function DevNewsEventsSection() {
               </Link>
               <a
                 href="https://nasun.io/about/news"
-                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-pd4/60 text-pd4 hover:border-pd5 hover:text-pd5 text-sm font-medium drop-shadow-lg transition-colors"
+                className="group inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-white/30 text-white/70 hover:border-white/60 hover:text-white text-sm font-medium drop-shadow-lg transition-colors"
                 style={{ fontFamily: "Rubik, sans-serif" }}
               >
                 Go to News
