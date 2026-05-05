@@ -1,6 +1,6 @@
 import { Suspense, lazy } from "react";
 import { PageLayout } from "../../components/layout/PageLayout";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
 import JoinSection from "@/sections/about/JoinSection";
 import { SectionLoading } from "@/components/ui/SectionLoading";

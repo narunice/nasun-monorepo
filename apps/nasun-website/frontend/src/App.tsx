@@ -2,7 +2,7 @@
 import { useEffect, lazy, Suspense } from "react";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "./providers/i18n/StaticTranslationProvider";
 import Navbar from "./components/navbar/Navbar";
 import Footer from "./components/layout/Footer";
 import AppRoutes from "./routes/AppRoutes";

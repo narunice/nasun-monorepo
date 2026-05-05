@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { FileCheck, Lock, Zap, Timer, Clock, Shield } from "lucide-react";
 import { MermaidDiagramDark } from "./MermaidDiagramDark";
 import escrowStateSvg from "./svg/escrow-state.svg?raw";

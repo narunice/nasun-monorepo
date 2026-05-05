@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Search, X, User } from "lucide-react";
 import { useUserSearchV3 } from "../hooks/useUserSearchV3";
 import type { SearchAccountResult } from "../services/leaderboardV3Api";

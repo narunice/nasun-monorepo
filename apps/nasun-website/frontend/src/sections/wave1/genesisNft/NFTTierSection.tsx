@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { NFTTierSectionProps } from "../../../types/genesisNFTs.d";
 import { PayAndMintNftCard } from "./PayAndMintNftCard";
 import { NFTTiers, NFT_COLLECTION } from "../../../constants/pageContent/genesisNFTTiers";

@@ -5,7 +5,7 @@
  * MetaMask 연결 → 서명 → API 호출 → 모달 표시
  */
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Button } from "../ui/button";
 import { WhitelistModal } from "./WhitelistModal";
 import { useWhitelistRegistration } from "../../hooks/whitelist/useWhitelistRegistration";

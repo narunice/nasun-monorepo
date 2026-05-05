@@ -30,7 +30,7 @@ import {
   Newspaper,
   Bot,
 } from "lucide-react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 const padoUiVideoDesktop = "/videos/Pado-Ui-Full-rf28.mp4";

@@ -4,7 +4,7 @@
  * 백엔드 Whitelist API와 통신하는 클라이언트 함수들
  */
 
-import i18n from '../i18n';
+import i18n from '@/providers/i18n/StaticTranslationProvider';
 import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 import type {
   JoinWhitelistRequest,

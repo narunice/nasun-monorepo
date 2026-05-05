@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Flame } from "lucide-react";
 import { useFeaturedFeed } from "../hooks/useFeaturedFeed";

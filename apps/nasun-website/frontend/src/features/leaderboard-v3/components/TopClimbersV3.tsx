@@ -6,7 +6,7 @@
  */
 
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Trophy } from "lucide-react";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { useTopClimbersV3 } from "../hooks/useTopClimbersV3";

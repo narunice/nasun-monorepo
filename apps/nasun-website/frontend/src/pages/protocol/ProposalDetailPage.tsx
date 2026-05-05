@@ -7,7 +7,7 @@
 
 import { FC, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { VoteNft } from "@/features/governance/types/voting";
 import { VoteModal } from "@/features/governance/components/VoteModal";

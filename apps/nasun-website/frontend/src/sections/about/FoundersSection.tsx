@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import TeamCard from "./TeamCard";
 import { TEAM_MEMBERS } from "../../constants/pageContent/team";
 import { PageTitle } from "@/components/ui/PageTitle";

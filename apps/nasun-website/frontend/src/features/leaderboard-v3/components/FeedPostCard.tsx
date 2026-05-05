@@ -4,7 +4,7 @@
  * Displays a single featured post using react-tweet for authentic X look & feel.
  */
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Tweet } from "react-tweet";
 import type { FeaturedFeedItem, BadgeType } from "../types";
 

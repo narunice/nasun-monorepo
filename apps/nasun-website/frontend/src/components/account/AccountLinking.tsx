@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useUserStore } from "../../store/userStore";
 import { useAccountLinking } from "../../sections/myAccount/hooks/useAccountLinking";
 

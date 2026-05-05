@@ -6,7 +6,7 @@
 
 import { Suspense } from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
 import { SectionLayout } from "../components/layout/SectionLayout";

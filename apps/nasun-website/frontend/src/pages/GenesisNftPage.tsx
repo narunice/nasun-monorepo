@@ -1,7 +1,7 @@
 import { Suspense, lazy, useState, useEffect, useCallback } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { usePageLoading } from "../contexts/PageLoadingContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 import GenesisNftHeroSkeleton from "../sections/wave1/genesisNft/GenesisNftHeroSkeleton";

@@ -5,7 +5,7 @@
  */
 
 import React, { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import type { SeasonLeaderboardEntry } from "../types";
 import { RankChangeIndicatorV3 } from "./RankChangeIndicatorV3";
 

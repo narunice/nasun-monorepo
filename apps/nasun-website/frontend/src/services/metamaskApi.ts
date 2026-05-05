@@ -8,8 +8,6 @@
  * so the client never sends the address to the prepare endpoint.
  */
 
-import i18n from '../i18n';
-
 // Backend API base URL
 const WALLET_AUTH_API_URL = import.meta.env.VITE_METAMASK_AUTH_API;
 
@@ -61,7 +59,7 @@ export async function prepareChallenge(): Promise<ChallengeResponse> {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lang: i18n.language }),
+      body: JSON.stringify({ lang: 'en' }),
     });
 
     const data = await response.json();

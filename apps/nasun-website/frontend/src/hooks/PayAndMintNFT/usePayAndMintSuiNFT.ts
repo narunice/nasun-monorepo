@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useCallback, useRef, useState } from "react";
 import { Transaction } from "@mysten/sui/transactions";
 import { useWallet, useZkLogin, getSuiClient } from "@nasun/wallet";

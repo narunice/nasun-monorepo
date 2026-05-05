@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { TeamMember } from "../../types/team.d";
 import { FiLinkedin, FiGlobe, FiFilm, FiBook, FiLink, FiMail } from "react-icons/fi";
 import { FaXTwitter } from "react-icons/fa6";

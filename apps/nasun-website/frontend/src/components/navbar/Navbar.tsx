@@ -1,6 +1,6 @@
 // components/navbar/Navbar.tsx
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { getNavItemsV2 } from "../../config/routesConfig";

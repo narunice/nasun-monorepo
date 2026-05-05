@@ -1,7 +1,7 @@
 import React from "react";
 import { NFTTierItem } from "../../../types/genesisNFTs.d";
 import { TierBadge } from "./TierBadge";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Button } from "@/components/ui/button";
 
 function TierCardComponent({ nftData }: { nftData: NFTTierItem }) {

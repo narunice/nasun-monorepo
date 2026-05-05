@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { motion } from "framer-motion";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { useIsMobile } from "@/hooks/useIsMobile";

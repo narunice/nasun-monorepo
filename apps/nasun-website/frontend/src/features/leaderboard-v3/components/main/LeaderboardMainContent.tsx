@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import LeaderboardV3Row from "../LeaderboardV3Row";
 import PaginationControlsV3 from "../PaginationControlsV3";
 import type { SeasonLeaderboardResponse } from "../../types";

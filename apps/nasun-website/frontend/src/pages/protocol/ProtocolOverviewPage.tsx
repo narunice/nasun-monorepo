@@ -1,6 +1,6 @@
 // src/pages/protocol/ProtocolOverviewPage.tsx
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 
 export default function ProtocolOverviewPage() {

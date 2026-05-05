@@ -1,7 +1,7 @@
 import { Suspense, lazy } from "react";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SectionLoading } from "../components/ui";
 
 const RoadmapIntroSection = lazy(() =>

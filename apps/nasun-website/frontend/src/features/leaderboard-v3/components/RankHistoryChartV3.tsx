@@ -16,7 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { useTranslation } from 'react-i18next';
+import { useStaticTranslation as useTranslation } from '@/providers/i18n/StaticTranslationProvider';
 import type { RankHistoryEntry } from '../types';
 
 export interface RankHistoryChartV3Props {
