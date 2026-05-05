@@ -613,7 +613,10 @@ export function useMarginAccount(): UseMarginAccountResult {
   return {
     account: account ?? null,
     accountId: marginAccountId,
-    isLoading: isFinding || isLoadingAccount,
+    // Bridge the gap between foundAccountId arriving and marginAccountId state updating.
+    // Without this, private-mode browsers (no localStorage) flash the setup banner
+    // for one render between query completion and the state setter effect firing.
+    isLoading: isFinding || isLoadingAccount || (!!foundAccountId && !marginAccountId),
     error: error as Error | null,
 
     createAccount,

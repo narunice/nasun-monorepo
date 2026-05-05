@@ -280,16 +280,27 @@ export async function findUserMarginAccount(
   const client = getSuiClient();
 
   try {
-    const objects = await client.getOwnedObjects({
-      owner: userAddress,
-      filter: {
-        StructType: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::MarginAccount`,
-      },
-      options: { showContent: true },
-    });
+    // Search without a package-ID-bound StructType filter so that accounts
+    // created before a contract upgrade (different package ID) are still found.
+    // We match on module+struct name client-side instead.
+    let cursor: string | null | undefined = undefined;
+    while (true) {
+      const page = await client.getOwnedObjects({
+        owner: userAddress,
+        options: { showType: true },
+        cursor,
+        limit: 50,
+      });
 
-    if (objects.data.length > 0 && objects.data[0].data) {
-      return objects.data[0].data.objectId;
+      for (const item of page.data) {
+        const type = item.data?.type ?? '';
+        if (type.includes('::unified_margin::MarginAccount')) {
+          return item.data!.objectId;
+        }
+      }
+
+      if (!page.hasNextPage) break;
+      cursor = page.nextCursor;
     }
 
     return null;
