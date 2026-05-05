@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { MarketWithOrderbook } from '../../hooks/useMarkets';
 import { HeroStatsRow } from './HeroStatsRow';
-import { FeaturedMarketStrip } from './FeaturedMarketStrip';
+import { FeaturedMarketCarousel } from './FeaturedMarketCarousel';
+import { PadoFeedCarousel } from './PadoFeedCarousel';
 
 interface PredictHeroProps {
   markets: MarketWithOrderbook[];
@@ -62,7 +63,14 @@ export function PredictHero({ markets, myPositionCount }: PredictHeroProps) {
         totalVolumeRaw={totalVolumeRaw}
         myPositionCount={myPositionCount}
       />
-      <FeaturedMarketStrip featured={featured} />
+      <div className="flex gap-4 h-[360px]">
+        <div className="flex-1 min-w-0 h-full">
+          <FeaturedMarketCarousel featured={featured} />
+        </div>
+        <div className="hidden lg:flex w-1/3 shrink-0 h-full">
+          <PadoFeedCarousel />
+        </div>
+      </div>
     </div>
   );
 }
