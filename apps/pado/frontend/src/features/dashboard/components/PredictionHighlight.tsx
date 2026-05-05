@@ -78,7 +78,7 @@ export function PredictionHighlight() {
 
       <div className="space-y-3">
         {markets.slice(0, 3).map(({ market, yesOrderbook }) => {
-          const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook, null);
+          const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook);
           return <MarketRow key={market.id} question={market.question} yesProbability={yesProbability} />;
         })}
       </div>
