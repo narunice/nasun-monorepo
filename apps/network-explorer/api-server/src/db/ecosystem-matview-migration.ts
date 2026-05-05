@@ -163,14 +163,31 @@ async function rebuildViaSwap(): Promise<void> {
     );
 
     // Atomic swap: both renames commit together or not at all.
+    //
+    // PostgreSQL does not auto-rename indexes when a materialized view is
+    // renamed — the retired matview keeps its original `idx_eco_daily_*`
+    // index names. Without first vacating those names the final
+    // `ALTER INDEX idx_${newName}_* RENAME TO idx_eco_daily_*` step collides
+    // and the whole swap aborts (observed 2026-05-05 on v3 → v5 jump).
+    // Step 1 below renames the retired indexes off the canonical names
+    // before step 4 reclaims them on the new matview.
     await pointsDb.begin(async (tx) => {
       await tx.unsafe(`SET LOCAL lock_timeout = '5s'`);
+      // 1. Vacate canonical index names off the old matview's indexes.
+      await tx.unsafe(
+        `ALTER INDEX idx_eco_daily_identity_day RENAME TO idx_${retiredName}_identity_day`,
+      );
+      await tx.unsafe(
+        `ALTER INDEX idx_eco_daily_day_score RENAME TO idx_${retiredName}_day_score`,
+      );
+      // 2. Rename the matviews.
       await tx.unsafe(
         `ALTER MATERIALIZED VIEW ecosystem_daily_scores RENAME TO ${retiredName}`,
       );
       await tx.unsafe(
         `ALTER MATERIALIZED VIEW ${newName} RENAME TO ecosystem_daily_scores`,
       );
+      // 3. Promote the new indexes to the canonical names.
       await tx.unsafe(
         `ALTER INDEX idx_${newName}_identity_day RENAME TO idx_eco_daily_identity_day`,
       );
