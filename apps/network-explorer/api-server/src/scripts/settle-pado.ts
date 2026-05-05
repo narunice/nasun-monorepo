@@ -184,6 +184,35 @@ async function fetchActivationsPayload(): Promise<{
   return data;
 }
 
+/**
+ * Fetch banned identity IDs and wallet addresses from the explorer api-server.
+ *
+ * Defense-in-depth: chat-server's internal weekly-scores feed already filters
+ * banned wallets, but a ban added between fetchWeeklyScores() and the
+ * settlement loop would still reward the user. By fetching the ban list
+ * directly here too, we close that race.
+ *
+ * Returns empty sets if BANNED_USERS_URL is not configured (no-op fallback).
+ */
+async function fetchBannedSets(): Promise<{ identityIds: Set<string>; addresses: Set<string> }> {
+  const url = process.env.BANNED_USERS_URL;
+  const token = process.env.BANNED_USERS_API_KEY || process.env.INTERNAL_INVALIDATE_TOKEN;
+  if (!url) {
+    return { identityIds: new Set(), addresses: new Set() };
+  }
+  const headers: Record<string, string> = {};
+  if (token) headers['X-Internal-Auth'] = token;
+  const res = await fetch(url, { headers, signal: AbortSignal.timeout(15_000) });
+  if (!res.ok) {
+    throw new Error(`banned-users fetch error: ${res.status}`);
+  }
+  const data = (await res.json()) as { addresses?: string[]; identityIds?: string[] };
+  return {
+    identityIds: new Set(data.identityIds ?? []),
+    addresses: new Set((data.addresses ?? []).map((a) => a.toLowerCase())),
+  };
+}
+
 async function fetchAllianceSet(): Promise<Set<string>> {
   const payload = await fetchActivationsPayload();
 
@@ -239,6 +268,11 @@ async function main() {
   console.log('Fetching Alliance NFT activations...');
   const allianceSet = await fetchAllianceSet();
   console.log(`  ${allianceSet.size} identities with active Alliance NFT`);
+
+  // 1b. Fetch banned identities/wallets so we can drop pre-ban snapshot rows.
+  console.log('Fetching banned-users set...');
+  const bannedSets = await fetchBannedSets();
+  console.log(`  ${bannedSets.identityIds.size} banned identities, ${bannedSets.addresses.size} banned wallets`);
 
   if (allianceSet.size === 0) {
     console.error('ABORT: Alliance NFT set is empty. API may be unavailable or returned no data.');
@@ -326,6 +360,7 @@ async function main() {
   let skippedUnregistered = 0;
   let skippedNoReward = 0;
   let skippedNoAlliance = 0;
+  let skippedBanned = 0;
 
   console.log('\n--- Settlement Results ---\n');
 
@@ -346,6 +381,14 @@ async function main() {
       skippedUnregistered++;
       if (dryRun) {
         console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (not registered)`);
+      }
+      continue;
+    }
+
+    if (bannedSets.addresses.has(addr) || bannedSets.identityIds.has(identityId)) {
+      skippedBanned++;
+      if (dryRun) {
+        console.log(`  #${rank} ${addr.slice(0, 10)}... -> SKIP (banned)`);
       }
       continue;
     }
@@ -420,6 +463,7 @@ async function main() {
   console.log('\n--- Summary ---');
   console.log(`  Awarded: ${awarded}`);
   console.log(`  Skipped (unregistered): ${skippedUnregistered}`);
+  console.log(`  Skipped (banned): ${skippedBanned}`);
   console.log(`  Skipped (no Alliance NFT): ${skippedNoAlliance}`);
   console.log(`  Skipped (rank > 2000): ${skippedNoReward}`);
 

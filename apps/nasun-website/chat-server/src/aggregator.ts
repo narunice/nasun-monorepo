@@ -23,6 +23,7 @@ import {
   setWeeklyParticipantCount,
 } from './leaderboard-store.js';
 import { buildSameIdentityPairs, refreshIdentityCache, getIdentityMap, getSocialBadgesBatch } from './identity-resolver.js';
+import { backgroundRefreshBannedCache, getBannedSnapshotSync, refreshBannedCache } from './banned-loader.js';
 
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
@@ -35,6 +36,20 @@ let timer: ReturnType<typeof setInterval> | null = null;
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 const AGGREGATION_LIMIT = 20000;
+
+/**
+ * Effective exclusion set: static config (team/test wallets) ∪ banned wallets.
+ * Banned set is sourced from explorer api-server's banned-users feed and
+ * refreshed every 5 minutes (or on-demand via /banned-cache/refresh).
+ */
+function getEffectiveExcludedAddresses(): Set<string> {
+  if (!config) return new Set();
+  const banned = getBannedSnapshotSync().addresses;
+  if (banned.size === 0) return config.excludedAddresses;
+  const merged = new Set<string>(config.excludedAddresses);
+  for (const a of banned) merged.add(a);
+  return merged;
+}
 
 /**
  * Run aggregation for all periods.
@@ -52,7 +67,7 @@ function runAggregation(): void {
     const currentRanks = getCurrentRanks(period);
 
     // Aggregate trader volumes
-    const traders = aggregateTraderVolume(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
+    const traders = aggregateTraderVolume(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
 
     // Build ranked entries
     const ranked = traders.map((t, index) => {
@@ -122,7 +137,7 @@ function runPnlAggregation(): void {
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
 
     const currentRanks = getPnlCurrentRanks(period);
-    const traders = computeTraderPnl(cutoff, config.excludedAddresses, AGGREGATION_LIMIT);
+    const traders = computeTraderPnl(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
 
     // Cache "all" period PnL data for points aggregation
     if (period === 'all') {
@@ -165,7 +180,7 @@ function runPointsAggregation(): void {
   if (!config) return;
 
   // Use the "all" period volume data (already aggregated above)
-  const traders = aggregateTraderVolume(0, config.excludedAddresses, AGGREGATION_LIMIT);
+  const traders = aggregateTraderVolume(0, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
   if (traders.length === 0) return;
 
   const currentRanks = getPointsCurrentRanks();
@@ -250,7 +265,7 @@ async function runWeeklyScoreAggregation(): Promise<void> {
 
   // Volume stats filtered to this week (wash pairs excluded).
   // trade_count is capped per calendar day via SQL window function.
-  const rawTraders = aggregateWeeklyTraderVolume(weekStart, config.excludedAddresses, POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
+  const rawTraders = aggregateWeeklyTraderVolume(weekStart, getEffectiveExcludedAddresses(), POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
   if (rawTraders.length === 0) return;
 
   // Filter out wallets not registered to nasun-website (no Cognito identityId).
@@ -268,7 +283,7 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   if (traders.length === 0) return;
 
   // PnL for this week only (wash pairs excluded)
-  const weeklyPnlList = computeTraderPnl(weekStart, config.excludedAddresses, AGGREGATION_LIMIT, sameIdentityPairs);
+  const weeklyPnlList = computeTraderPnl(weekStart, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT, sameIdentityPairs);
   const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
   for (const t of weeklyPnlList) {
     weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
@@ -352,7 +367,7 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   const prevWeekParticipants = countWeeklyUniqueTraders(
     prevWeekStart,
     weekStart,
-    config.excludedAddresses,
+    getEffectiveExcludedAddresses(),
   );
   setWeeklyParticipantCount(prevWeekId, prevWeekParticipants);
 }
@@ -385,7 +400,7 @@ function runCompetitionAggregation(): void {
       const traders = aggregateCompetitionVolume(
         comp.start_ms,
         Math.min(now, comp.end_ms),
-        config.excludedAddresses,
+        getEffectiveExcludedAddresses(),
         AGGREGATION_LIMIT,
       );
 
@@ -402,6 +417,7 @@ function runCompetitionAggregation(): void {
 }
 
 const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000; // 1 hour
+const BANNED_CACHE_REFRESH_MS = 5 * 60 * 1000;    // 5 minutes
 
 export function startAggregator(cfg: LeaderboardConfig): void {
   config = cfg;
@@ -416,6 +432,11 @@ export function startAggregator(cfg: LeaderboardConfig): void {
     console.error('[Aggregator] Identity cache load failed:', err.message);
   });
 
+  // Load banned-users cache (non-blocking; aggregator falls back to empty
+  // exclusion if not yet loaded — banned users would briefly appear, but the
+  // initial fetch finishes within seconds).
+  refreshBannedCache().catch(() => { /* logged inside */ });
+
   // Schedule identity cache refresh every hour
   setInterval(async () => {
     try {
@@ -425,6 +446,11 @@ export function startAggregator(cfg: LeaderboardConfig): void {
       console.error('[Aggregator] Identity cache refresh error:', (err as Error).message);
     }
   }, IDENTITY_CACHE_REFRESH_MS);
+
+  // Schedule banned-users cache refresh every 5 minutes
+  setInterval(() => {
+    backgroundRefreshBannedCache();
+  }, BANNED_CACHE_REFRESH_MS);
 
   // Run immediately on start
   try {
