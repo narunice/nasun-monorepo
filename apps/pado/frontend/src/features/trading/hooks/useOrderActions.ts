@@ -25,6 +25,7 @@ import { withdrawNusdcFromMa } from "../../../lib/payment";
 import { NETWORK_CONFIG } from "../../../config/network";
 import { parseExecutionInfo } from "../lib/parseExecutionInfo";
 import type { AutoDepositResult } from "./useAutoDeposit";
+import type { OpenOrdersData } from "./useOpenOrders";
 
 /**
  * Shared auto-deposit helper to avoid duplication between limit and market order handlers.
@@ -126,7 +127,7 @@ function formatOrderResult(result: TradeResult, isBid: boolean, feeBps?: number)
 export function useOrderActions(): UseOrderActionsResult {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const { currentPool } = useMarket();
+  const { currentPool, currentMarket } = useMarket();
   const {
     isLoading,
     isValidatingBalanceManager,
@@ -421,6 +422,18 @@ export function useOrderActions(): UseOrderActionsResult {
   // 주문 취소
   const handleCancelOrder = useCallback(
     async (orderId: string): Promise<TradeResult> => {
+      // Optimistic: drop the order from the cached list now so the UI updates
+      // before the tx confirms. Restored on failure.
+      const queryKey = ['openOrders', balanceManagerId, currentMarket] as const;
+      const snapshot = balanceManagerId
+        ? queryClient.getQueryData<OpenOrdersData>(queryKey)
+        : undefined;
+      if (snapshot) {
+        queryClient.setQueryData<OpenOrdersData>(queryKey, {
+          orders: snapshot.orders.filter((o) => o.orderId !== orderId),
+        });
+      }
+
       const result = await cancelOrder(orderId);
 
       if (result.success) {
@@ -430,14 +443,17 @@ export function useOrderActions(): UseOrderActionsResult {
         const parsed = parseError(result.error);
         if (parsed.errorType === 'ORDER_NOT_FOUND') {
           showToast("Order already filled or cancelled", "warning");
+          // Order really is gone — keep optimistic state, just refresh balances etc.
+          refreshData();
         } else {
+          if (snapshot) queryClient.setQueryData(queryKey, snapshot);
           showToast(formatUserFriendlyError(result.error), "error");
         }
       }
 
       return result;
     },
-    [cancelOrder, showToast, refreshData, formatUserFriendlyError]
+    [cancelOrder, showToast, refreshData, formatUserFriendlyError, queryClient, balanceManagerId, currentMarket]
   );
 
   // Cancel all open orders in a single PTB (atomic batch)
@@ -447,6 +463,19 @@ export function useOrderActions(): UseOrderActionsResult {
       if (orderIds.length === 0) return { success: true };
 
       const cappedIds = orderIds.slice(0, MAX_CANCEL_BATCH);
+
+      // Optimistic: drop the cancelled orders from the cached list immediately.
+      const queryKey = ['openOrders', balanceManagerId, currentMarket] as const;
+      const snapshot = balanceManagerId
+        ? queryClient.getQueryData<OpenOrdersData>(queryKey)
+        : undefined;
+      if (snapshot) {
+        const cancelled = new Set(cappedIds);
+        queryClient.setQueryData<OpenOrdersData>(queryKey, {
+          orders: snapshot.orders.filter((o) => !cancelled.has(o.orderId)),
+        });
+      }
+
       const result = await cancelAllOrders(cappedIds);
 
       if (result.success) {
@@ -459,12 +488,13 @@ export function useOrderActions(): UseOrderActionsResult {
           refreshData();
           return { success: true };
         }
+        if (snapshot) queryClient.setQueryData(queryKey, snapshot);
         showToast(`Failed to cancel orders: ${formatUserFriendlyError(result.error)}`, "error");
       }
 
       return result;
     },
-    [cancelAllOrders, showToast, refreshData, formatUserFriendlyError]
+    [cancelAllOrders, showToast, refreshData, formatUserFriendlyError, queryClient, balanceManagerId, currentMarket]
   );
 
   // Unified onboarding: Enable Pado (BalanceManager + MarginAccount)
