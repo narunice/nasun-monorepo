@@ -29,6 +29,7 @@ export type MissionId =
   | "faucet"
   | "wallet-transfer"
   | "pado-dex"
+  | "pado-prediction"
   | "gostop-lottery"
   | "gostop-scratchcard"
   | "gostop-numbermatch"
@@ -47,6 +48,11 @@ export type MissionId =
 const EVENT_MISSION_MAP: Array<{ suffix: string; missionId: MissionId }> = [
   { suffix: "::order_info::OrderPlaced", missionId: "pado-dex" },
   { suffix: "::order_info::OrderFilled", missionId: "pado-dex" },
+  // Pado prediction market: OrderPlaced fires on maker resting paths;
+  // OrderFilled fires on taker fast-fill (immediate match). Mapping both so
+  // taker-only fills still tick the prediction mission.
+  { suffix: "::prediction_market::OrderPlaced", missionId: "pado-prediction" },
+  { suffix: "::prediction_market::OrderFilled", missionId: "pado-prediction" },
   // Each GoStop game maps to its own mission id (and its own backend category).
   { suffix: "::lottery::TicketPurchased", missionId: "gostop-lottery" },
   { suffix: "::scratchcard::ScratchCardPurchased", missionId: "gostop-scratchcard" },
@@ -85,7 +91,7 @@ const CONTRACT_MODULES_EXCLUDING_TRANSFER = new Set([
   "order_info", "order", "pool", "deep", "balance_manager",
   "unified_margin",
   // Pado games
-  "prediction", "lottery", "scratchcard", "numbermatch",
+  "prediction_market", "lottery", "scratchcard", "numbermatch",
   // Gostop games
   "mines", "crash",
   // Nasun website / admin
@@ -104,6 +110,7 @@ const ALL_MISSION_IDS: Set<MissionId> = new Set([
   "faucet",
   "wallet-transfer",
   "pado-dex",
+  "pado-prediction",
   "gostop-lottery",
   "gostop-scratchcard",
   "gostop-numbermatch",

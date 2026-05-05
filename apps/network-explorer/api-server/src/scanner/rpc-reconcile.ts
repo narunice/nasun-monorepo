@@ -42,7 +42,9 @@ interface ReconcileQuery {
 
 // Package IDs (original, for RPC MoveEventType queries)
 const PKG = {
-  prediction: '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895',
+  // SYNC WARNING: mirrors PKG.prediction in config/points.ts. Old package
+  // 0x98765cc3... is dead; current package 0xbe6d8f69... per devnet-ids.json.
+  prediction: '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   lottery: '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
   perp: '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
   scratchcard: '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
@@ -78,11 +80,15 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.governanceMultiChoice}::multi_choice_proposal::MultiChoiceVoteRegistered`, category: 'governance', activityType: 'vote' },
   { moveEventType: `${PKG.governance}::delegation::DelegationCreated`, category: 'governance', activityType: 'delegate' },
   { moveEventType: `${PKG.governance}::delegation::DelegationRevoked`, category: 'governance', activityType: 'delegate' },
-  // Prediction
-  { moveEventType: `${PKG.prediction}::prediction::TokensMinted`, category: 'pado-prediction', activityType: 'mint-tokens' },
-  { moveEventType: `${PKG.prediction}::prediction::BidPlaced`, category: 'pado-prediction', activityType: 'place-bid' },
-  { moveEventType: `${PKG.prediction}::prediction::AskPlaced`, category: 'pado-prediction', activityType: 'place-ask' },
-  { moveEventType: `${PKG.prediction}::prediction::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
+  // Prediction (module: prediction_market). SYNC WARNING: matches
+  // EVENT_MAP_ENTRIES in config/points.ts — keep in lockstep. Mapping both
+  // OrderPlaced (maker resting) and OrderFilled (taker fast-fill) so taker
+  // fills credit the taker.
+  { moveEventType: `${PKG.prediction}::prediction_market::TokensMinted`, category: 'pado-prediction', activityType: 'mint-tokens' },
+  { moveEventType: `${PKG.prediction}::prediction_market::OrderPlaced`, category: 'pado-prediction', activityType: 'place-order' },
+  { moveEventType: `${PKG.prediction}::prediction_market::OrderFilled`, category: 'pado-prediction', activityType: 'fill-order' },
+  { moveEventType: `${PKG.prediction}::prediction_market::OrderCancelled`, category: 'pado-prediction', activityType: 'cancel-order' },
+  { moveEventType: `${PKG.prediction}::prediction_market::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
   // Gostop Lottery (own category; pado-side lottery PKG kept in EXCLUDED_PACKAGES
   // but no longer mapped to a points category since pado-side traffic is 0)
   { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'gostop-lottery', activityType: 'buy-ticket' },
@@ -447,8 +453,11 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
       LEFT JOIN user_active_missions uam ON uam.identity_id = tc.identity_id
     ),
     filtered_base AS (
+      -- SYNC WARNING: mirrors HEAVY_BASE_CATEGORIES in config/points.ts and
+      -- the matview SQL in db/ecosystem-schema.sql. Add new heavy categories
+      -- to all three locations.
       SELECT tc.identity_id,
-             SUM(CASE WHEN tc.category = 'pado-dex' THEN 2 ELSE 1 END)::int AS new_base
+             SUM(CASE WHEN tc.category IN ('pado-dex','pado-prediction') THEN 2 ELSE 1 END)::int AS new_base
       FROM today_categories tc
       JOIN user_effective_missions uem ON uem.identity_id = tc.identity_id
       WHERE tc.category = ANY(uem.missions_arr)

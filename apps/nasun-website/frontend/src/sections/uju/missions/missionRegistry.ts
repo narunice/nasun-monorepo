@@ -78,6 +78,15 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       description: 'Place a trade on the DEX orderbook',
       externalUrl: 'https://pado.finance',
     },
+    {
+      id: 'pado-prediction',
+      appId: 'pado',
+      completionType: 'onchain',
+      points: 2,
+      label: 'Predict',
+      description: 'Place an order on a prediction market',
+      externalUrl: 'https://pado.finance/predict',
+    },
   ],
   gostop: [
     {

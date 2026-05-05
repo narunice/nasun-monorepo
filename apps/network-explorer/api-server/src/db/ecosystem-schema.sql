@@ -26,8 +26,9 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_timestamp_category_flagged
 --
 -- 2. Materialized view: daily ecosystem base scores per identity
 -- base_score = weighted sum of distinct activity categories per day
--- Most categories count as 1; pado-dex counts as 2 (higher commitment).
--- (e.g., if a user does DEX + lottery + governance in one day, base_score = 4)
+-- Most categories count as 1; pado-dex and pado-prediction count as 2 (heavier
+-- commitment). Mirrors HEAVY_BASE_CATEGORIES in config/points.ts and the live
+-- /score endpoint's baseWeightFor() helper.
 --
 -- Excluded categories (unified with daily-nft-check.ts EXCLUDED_CATEGORIES):
 --   referral-bonus, daily-mission (system-generated bonuses)
@@ -41,7 +42,7 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_ap_timestamp_category_flagged
 --   faucet, pado-*, baram-* (on-chain actions)
 --   staking: excluded from base_score, planned for independent scoring system
 --
--- Weight override: pado-dex = 2 (matches DailyMissionsCard UI points)
+-- Weight override: pado-dex, pado-prediction = 2 (heavy-commitment categories)
 CREATE MATERIALIZED VIEW IF NOT EXISTS ecosystem_daily_scores AS
 WITH distinct_cats AS (
   SELECT DISTINCT
@@ -57,7 +58,7 @@ WITH distinct_cats AS (
 SELECT
   identity_id,
   day,
-  SUM(CASE WHEN category = 'pado-dex' THEN 2 ELSE 1 END)::int AS base_score
+  SUM(CASE WHEN category IN ('pado-dex','pado-prediction') THEN 2 ELSE 1 END)::int AS base_score
 FROM distinct_cats
 GROUP BY identity_id, day;
 

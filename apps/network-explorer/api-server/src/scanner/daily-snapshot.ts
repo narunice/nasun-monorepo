@@ -16,13 +16,12 @@ import {
   type NftHealth,
 } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
-import { STAKING_V2_CUTOFF_DATE } from '../config/points.js';
+import { STAKING_V2_CUTOFF_DATE, baseWeightFor } from '../config/points.js';
 
 import { DEFAULT_MISSION_IDS as DEFAULT_MISSION_IDS_ARR } from '../config/points.js';
 // Set view of the canonical default mission list. Mutating the source array
 // would not reach this snapshot copy at runtime, so re-derive at module load.
 const DEFAULT_MISSION_IDS: ReadonlySet<string> = new Set(DEFAULT_MISSION_IDS_ARR);
-const PADO_DEX = 'pado-dex';
 
 export async function takeDailySnapshot(
   snapshotDate: string,
@@ -85,7 +84,7 @@ export async function takeDailySnapshot(
     const activeMissions: ReadonlySet<string> =
       (stored && stored.size > 0) ? stored : DEFAULT_MISSION_IDS;
     if (!activeMissions.has(category)) continue;
-    const weight = category === PADO_DEX ? 2 : 1;
+    const weight = baseWeightFor(category);
     filteredBaseMap.set(identityId, (filteredBaseMap.get(identityId) ?? 0) + weight);
   }
 

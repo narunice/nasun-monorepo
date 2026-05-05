@@ -1,3 +1,9 @@
+-- ARCHIVAL: one-shot recovery script, executed 2026-04. Weights frozen at the
+-- time of execution (pado-dex=2 only). DO NOT MODIFY — the matching hash in
+-- measure-expected-hash.sql depends on byte-identical SQL. Heavy-base set has
+-- since expanded (see config/points.ts:HEAVY_BASE_CATEGORIES), but historical
+-- recovery must keep the original CASE expression.
+--
 -- restore-staking-recovery.sql
 -- Incident: fc4b0e72 staking exclusion retroactive deduction
 -- Cutoff: 2026-04-12 00:00:00 UTC

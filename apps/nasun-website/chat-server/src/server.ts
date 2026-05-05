@@ -1192,6 +1192,7 @@ if (leaderboardEnabled) {
     initLeaderboardStore({
       leaderboardDbPath: CONFIG.leaderboardDbPath,
       deepbookPackage: CONFIG.deepbookPackage,
+      predictionPackage: CONFIG.predictionPackage,
       rpcUrl: CONFIG.rpcUrl,
       indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
       aggregationIntervalMs: CONFIG.aggregationIntervalMs,
@@ -1239,6 +1240,7 @@ if (leaderboardEnabled) {
     const lbConfig: LeaderboardConfig = {
       leaderboardDbPath: CONFIG.leaderboardDbPath,
       deepbookPackage: CONFIG.deepbookPackage,
+      predictionPackage: CONFIG.predictionPackage,
       rpcUrl: CONFIG.rpcUrl,
       indexerPollIntervalMs: CONFIG.indexerPollIntervalMs,
       aggregationIntervalMs: CONFIG.aggregationIntervalMs,

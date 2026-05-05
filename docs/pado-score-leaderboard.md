@@ -8,7 +8,9 @@
 
 ## 1. 시스템 목적
 
-Pado Score Leaderboard는 매주 DEX 트레이딩 활동을 기반으로 순위를 산정하고, 주간 종료 후 생태계 포인트(Ecosystem Points)로 환산 지급하는 경쟁 리더보드입니다.
+Pado Score Leaderboard는 매주 **Pado 거래 활동**(스팟 DEX + 예측시장)을 기반으로 순위를 산정하고, 주간 종료 후 생태계 포인트(Ecosystem Points)로 환산 지급하는 경쟁 리더보드입니다.
+
+> **Prediction market 통합 (2026-05)**: Pado 예측시장의 `prediction_market::OrderFilled` 이벤트도 동일한 `trade_fills` 테이블에 적재됩니다. `pool_id`를 `prediction:${market_id}` prefix로 저장하여 source를 식별. `tradeCount` / `volumeUsd`(=NUSDC `cost`) / `unique_pools`에는 자연스럽게 합산되며, **PnL은 prediction 풀에서 격리**(`pool_id NOT LIKE 'prediction:%'`) — shares 단위가 spot의 base token decimals 모델과 호환되지 않고 binary outcome 시장이라 mark-to-market 의미가 모호하기 때문. perp/lending 도입 시에도 별도 venue ledger 권장.
 
 - 주 단위 리셋으로 신규 참여자에게 지속적 기회를 부여
 - 상위 2000위까지 Ecosystem Points 지급 (Genesis Pass 보유자 2x). 자격: 등록된 identityId + Alliance NFT 활성화. (소셜 계정 요건은 2026-04-27 정책 업데이트로 폐지)

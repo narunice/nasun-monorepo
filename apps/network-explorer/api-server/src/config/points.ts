@@ -13,7 +13,15 @@
 export const BASE_POINTS: Record<string, Record<string, number>> = {
   // Base categories (existence markers)
   'pado-dex': { 'limit-order': 1, 'market-order': 1, 'cancel-order': 1 },
-  'pado-prediction': { 'mint-tokens': 1, 'place-bid': 1, 'place-ask': 1, 'claim-winnings': 1 },
+  'pado-prediction': {
+    'place-order': 1,
+    'fill-order': 1,
+    'mint-tokens': 1,
+    'cancel-order': 1,
+    'claim-winnings': 1,
+    // legacy activity types (stale 0x98765cc3 package, kept for historical rows)
+    'place-bid': 1, 'place-ask': 1,
+  },
   'pado-perp': { 'open-position': 1, 'close-position': 1, 'add-margin': 1, 'remove-margin': 1 },
   'pado-lending': { deposit: 1, withdraw: 1, borrow: 1, repay: 1 },
   'baram-ai': { 'create-request': 1, settle: 1, cancel: 1 },
@@ -71,6 +79,20 @@ export const DEFAULT_MISSION_IDS: readonly string[] = [
 
 export const GENESIS_PASS_MULTIPLIER = 2.0; // Forward-only: existing 1.5x records remain immutable
 export const VOLUME_TIER_CAP = 3.0;
+
+// Categories that count as 2 points in base_score (heavier commitment).
+// Single source of truth for the per-day distinct-category sum used by
+// daily-snapshot, /score live, rpc-reconcile, and the frontend pts-today
+// indicator. SQL readers must mirror this set as
+// `category IN ('pado-dex','pado-prediction')`.
+export const HEAVY_BASE_CATEGORIES: ReadonlySet<string> = new Set([
+  'pado-dex',
+  'pado-prediction',
+]);
+
+export function baseWeightFor(category: string): number {
+  return HEAVY_BASE_CATEGORIES.has(category) ? 2 : 1;
+}
 
 // --- Staking emissions leaderboard ---
 // final_points = STAKING_EMISSION_COEFF * LOG2(delta_mist + 1)
@@ -133,8 +155,10 @@ const PKG = {
   allianceNft: stripHex(
     '0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b',
   ),
+  // Prediction package: superseded 2026-05 (was 0x98765cc3..., now 0xbe6d8f69...).
+  // Mirrors packages/devnet-config/devnet-ids.json prediction.packageId.
   prediction: stripHex(
-    '0x98765cc3765324148db9815da8bce85e6ca895e94eed910b6cc9bec55cc22895',
+    '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   ),
   lottery: stripHex(
     '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
@@ -233,7 +257,7 @@ export const WALLET_TRANSFER_EXCLUDED_MODULES: readonly string[] = [
   'order_info', 'order', 'pool', 'deep', 'balance_manager',
   'unified_margin',
   // Pado games
-  'prediction', 'lottery', 'scratchcard', 'numbermatch',
+  'prediction_market', 'lottery', 'scratchcard', 'numbermatch',
   // Gostop games
   'mines', 'crash',
   // Nasun website / admin
@@ -293,11 +317,15 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.deepbook, 'order', 'OrderCanceled', { category: 'pado-dex', activityType: 'cancel-order' }],
   // OrderInfo is a companion event emitted with OrderPlaced, skip to avoid double-counting
 
-  // Pado Prediction
-  [PKG.prediction, 'prediction', 'TokensMinted', { category: 'pado-prediction', activityType: 'mint-tokens' }],
-  [PKG.prediction, 'prediction', 'BidPlaced', { category: 'pado-prediction', activityType: 'place-bid' }],
-  [PKG.prediction, 'prediction', 'AskPlaced', { category: 'pado-prediction', activityType: 'place-ask' }],
-  [PKG.prediction, 'prediction', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
+  // Pado Prediction (module: prediction_market — emits OrderPlaced from maker
+  // resting paths and OrderFilled from taker fast-fill paths; mapping both is
+  // required so taker-only fills still credit the taker. The 1pt/day category
+  // cap collapses any duplicate same-tx events.)
+  [PKG.prediction, 'prediction_market', 'TokensMinted', { category: 'pado-prediction', activityType: 'mint-tokens' }],
+  [PKG.prediction, 'prediction_market', 'OrderPlaced', { category: 'pado-prediction', activityType: 'place-order' }],
+  [PKG.prediction, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
+  [PKG.prediction, 'prediction_market', 'OrderCancelled', { category: 'pado-prediction', activityType: 'cancel-order' }],
+  [PKG.prediction, 'prediction_market', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
 
   // GoStop games: split into per-game categories so each carries its own
   // 1pt/day cap (up to 5pt/day across the suite). Pado-side lottery /

@@ -264,6 +264,9 @@ export interface ChatServerConfig {
   // Leaderboard indexer (enabled when deepbookPackage is set)
   leaderboardDbPath: string;
   deepbookPackage: string;
+  // Pado prediction market package (module: prediction_market). Optional —
+  // when empty, prediction-side indexing is disabled (DeepBook still runs).
+  predictionPackage: string;
   rpcUrl: string;
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;
@@ -297,6 +300,7 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   // Leaderboard indexer
   leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
   deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
+  predictionPackage: process.env.PREDICTION_PACKAGE || '',
   rpcUrl: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
   indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
   aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),

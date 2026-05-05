@@ -69,7 +69,7 @@ V3에서 변경된 핵심 원칙:
   - Event-based: `points-scanner.ts`가 60초 간격으로 Sui 이벤트 구독.
   - Indexer-SQL: `wallet-transfer` 등 대용량 카테고리는 인덱서의 `tx_affected_addresses` 직접 조회.
 - **포인트 카테고리 두 종류**:
-  - **Base categories**: 카테고리당 하루 최대 1회 인정 (DEX 거래, 게임 참여, 지갑 전송, faucet 등). `final_points`는 항상 1, 점수 계산은 distinct 카테고리 가중합 (pado-dex weight=2).
+  - **Base categories**: 카테고리당 하루 최대 1회 인정 (DEX 거래, 게임 참여, 지갑 전송, faucet 등). `final_points`는 항상 1, 점수 계산은 distinct 카테고리 가중합 (heavy categories `pado-dex`, `pado-prediction` = weight 2; 그 외 = 1). 가중치 단일 source는 `config/points.ts:HEAVY_BASE_CATEGORIES` + `baseWeightFor()` 헬퍼이며 SQL 측은 `category IN ('pado-dex','pado-prediction')` 패턴으로 lockstep.
   - **Score categories**: `final_points`가 그대로 점수에 가산 (governance, referral-bonus, daily-mission, staking, ecosystem-bonus-*, staking-reward).
 - **야간 정합성 검사 (Nightly Reconciliation)**: `rpc-reconcile.ts`가 매일 자정(UTC) 이후 RPC 직접 조회로 누락된 이벤트 복구. 신규 갭이 발견되면 **사용자별 미션 선택을 적용한** base_score를 다시 계산하여 snapshot 보정 + 누적 컬럼 forward-propagation.
 
@@ -93,7 +93,7 @@ daily_ecosystem_score
   + staking_delta * multiplier
 ```
 
-- `base_score`: 사용자가 활성화한 미션 중 오늘 수행한 distinct 카테고리 수의 가중합 (`pado-dex` weight=2, 그 외 weight=1).
+- `base_score`: 사용자가 활성화한 미션 중 오늘 수행한 distinct 카테고리 수의 가중합 (heavy categories `pado-dex`/`pado-prediction` weight=2, 그 외 weight=1; `HEAVY_BASE_CATEGORIES` 단일 상수).
 - `multiplier`: V3 health-based multiplier (3.3 참조). NFT 미보유 또는 Alliance 미보유 시 0.
 - `bonus_total`: 오늘 적립된 `ecosystem-bonus-*` 카테고리 합 (synthetic 제외).
 - `governance_bonus`: 오늘 governance 카테고리 합.
@@ -179,9 +179,10 @@ allTime_live
 | 카테고리 | 활동 | 종류 |
 |---|---|---|
 | `pado-dex` | DEX 주문 / 시장가 / 취소 | Base (weight 2) |
+| `pado-prediction` | Pado 예측시장 주문/체결/민트/취소/배당 | Base (weight 2) |
 | `wallet-transfer` | 다른 지갑으로 자산 전송 (linked wallet 자동 제외) | Base (1) |
 | `faucet` | Faucet 토큰 청구 | Base (1) |
-| `pado-prediction`, `pado-perp`, `pado-lending` | Pado 파생/예측/대출 | Base (1) |
+| `pado-perp`, `pado-lending` | Pado 파생/대출 | Base (1) |
 | `gostop-lottery`, `gostop-scratchcard`, `gostop-numbermatch`, `gostop-mines`, `gostop-crash` | GoStop 게임 | Base (1) — 게임당 독립 카운트 |
 | `chat` | 채팅 참여 | Base (1) |
 | `baram-ai`, `baram-executor` | Baram AI 정산 | Base (1) |
