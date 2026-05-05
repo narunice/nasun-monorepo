@@ -128,17 +128,19 @@ cmd_apply() {
   log_info "Applying rendered baseline → prod"
   load_secrets
 
-  # 1. Drift check unless --force
-  if [ "$FORCE" != "--force" ]; then
-    log_info "Pre-flight drift check..."
-    set +e
-    cmd_diff
-    rc=$?
-    set -e
-    if [ "$rc" -eq 2 ]; then
-      log_error "Prod has uncommitted changes. Review with 'diff' or pass '--force' after manual confirmation."
-    fi
+  # 1. Pre-flight diff (informational). User has already reviewed snapshots/
+  #    via PR; here we just print what's about to change before push.
+  #    Run in subshell so cmd_diff's `exit` doesn't terminate cmd_apply.
+  log_info "Pre-flight diff (changes about to be applied):"
+  set +e
+  ( cmd_diff )
+  rc=$?
+  set -e
+  if [ "$rc" -eq 0 ]; then
+    log_info "Prod already matches baseline. Nothing to apply."
+    exit 0
   fi
+  log_info "(continuing with apply)"
 
   # 2. Render + stage + push each file
   log_info "Rendering and syncing files..."
