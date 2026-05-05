@@ -6,7 +6,7 @@
  * Desktop: Spot | Perpetuals | Predict | Earn | Social v (Leaderboard, Competitions) | Portfolio
  * Mobile:  Home | Spot | Predict | Social | More (Perpetuals, Earn, Portfolio)
  * - Portfolio (/portfolio) - tabbed page: Overview | Performance | Activity | Balance
- *   Balance sub-tab is password-gated (legacy /pocket and /wallet redirect here)
+ *   (legacy /pocket and /wallet redirect here)
  * - Admin (/admin) - conditional, admin-only
  */
 
@@ -48,7 +48,6 @@ function GatedRoute({ requires, children }: { requires: AccessMode; children: Re
 // Eager: landing page and auth redirect (must load immediately)
 import { HomePage } from '../pages/HomePage';
 import { AuthCallbackPage } from '../pages/AuthCallbackPage';
-import { PredictPasswordGate } from '../components/common/PredictPasswordGate';
 
 // Lazy: all other pages loaded on demand
 const TradePage = lazyWithRetry(() => import('../pages/TradePage').then(m => ({ default: m.TradePage })));
@@ -87,10 +86,10 @@ export function AppRoutes() {
         <Route path="/pocket" element={<Navigate to="/portfolio?tab=balance" replace />} />
         <Route path="/wallet" element={<Navigate to="/portfolio?tab=balance" replace />} />
 
-        {/* Prediction Markets — password-gated */}
-        <Route path="/predict" element={<PredictPasswordGate><PredictPage /></PredictPasswordGate>} />
+        {/* Prediction Markets */}
+        <Route path="/predict" element={<PredictPage />} />
         <Route path="/predict/markets" element={<Navigate to="/predict" replace />} />
-        <Route path="/predict/:marketId" element={<PredictPasswordGate><PredictMarketPage /></PredictPasswordGate>} />
+        <Route path="/predict/:marketId" element={<PredictMarketPage />} />
 
         {/* Legacy /games/* — archived, redirect home */}
         <Route path="/games/*" element={<Navigate to="/" replace />} />

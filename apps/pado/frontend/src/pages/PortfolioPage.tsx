@@ -19,7 +19,6 @@ import {
   AdvancedFundLocation,
   WalletSection,
 } from "../features/core/unified-margin";
-import { BalancePasswordGate } from "../components/common/BalancePasswordGate";
 
 type TabId = "overview" | "performance" | "activity" | "balance";
 
@@ -96,11 +95,7 @@ export function PortfolioPage() {
 
       {activeTab === "activity" && <ActivityTabs />}
 
-      {activeTab === "balance" && (
-        <BalancePasswordGate>
-          <BalanceTab />
-        </BalancePasswordGate>
-      )}
+      {activeTab === "balance" && <BalanceTab />}
     </div>
   );
 }

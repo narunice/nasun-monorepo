@@ -3,36 +3,12 @@
  * App 컴포넌트: 레이아웃 + 라우팅만 담당
  */
 
-import { useEffect, useRef } from 'react';
 import { Turnstile } from '@marsidev/react-turnstile';
 import { Header, Footer, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { OfflineBanner } from './components/common/OfflineBanner';
 import { useChatMode, FloatingChatPopup, MobileChatDrawer, useChatTurnstilePrewarm } from './features/social';
 import { useCrossAppArrival } from './hooks/useCrossAppArrival';
-import { useWallet } from '@nasun/wallet';
-
-// Session keys written by password gates — cleared on wallet lock so the
-// gates re-appear the next time the user (or a different user) logs in.
-const GATE_SESSION_KEYS = [
-  'pado_balance_unlocked',
-  'pado_predict_unlocked',
-  'pado_pocket_unlocked', // legacy key
-];
-
-function useGateClearOnLock() {
-  const { status } = useWallet();
-  const prevStatus = useRef(status);
-
-  useEffect(() => {
-    const wasUnlocked = prevStatus.current === 'unlocked';
-    const isNowLocked = status === 'locked';
-    if (wasUnlocked && isNowLocked) {
-      GATE_SESSION_KEYS.forEach((k) => sessionStorage.removeItem(k));
-    }
-    prevStatus.current = status;
-  }, [status]);
-}
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
@@ -98,7 +74,6 @@ function ChatLayer() {
 
 export default function App() {
   useCrossAppArrival();
-  useGateClearOnLock();
   return (
     <div className="min-h-screen flex flex-col bg-theme-bg-primary text-theme-text-primary">
       <OfflineBanner />
