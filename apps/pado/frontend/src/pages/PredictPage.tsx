@@ -118,8 +118,8 @@ export function PredictPage() {
           data-tour="prediction-market-list"
           className="-mx-3 sm:mx-0 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4"
         >
-          {filteredEntries.map(({ market, yesOrderbook }) => (
-            <MarketCard key={market.id} market={market} yesOrderbook={yesOrderbook} />
+          {filteredEntries.map(({ market, yesOrderbook, noOrderbook }) => (
+            <MarketCard key={market.id} market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} />
           ))}
         </div>
       )}

@@ -11,12 +11,14 @@ import { useShareMarket } from "../hooks/useShareMarket";
 interface MarketHeaderProps {
   market: PredictionMarket;
   yesOrderbook?: Orderbook | null;
+  noOrderbook?: Orderbook | null;
   lastTradePriceBps?: number | null;
 }
 
 export function MarketHeader({
   market,
   yesOrderbook,
+  noOrderbook,
   lastTradePriceBps,
 }: MarketHeaderProps) {
   const { shareMarket } = useShareMarket();
@@ -26,6 +28,7 @@ export function MarketHeader({
   const { yesProbability, noProbability, hasRealOrders } =
     calculateProbabilityFromOrderbook(
       yesOrderbook ?? null,
+      noOrderbook ?? null,
       lastTradePriceBps,
     );
 

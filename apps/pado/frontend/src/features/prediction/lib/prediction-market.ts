@@ -209,17 +209,24 @@ function parseLevel(
 }
 
 export async function fetchMarketsWithOrderbooks(): Promise<
-  { market: PredictionMarket; yesOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null }[]
+  {
+    market: PredictionMarket;
+    yesOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null;
+    noOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null;
+  }[]
 > {
   const markets = await fetchMarkets();
   const results = await Promise.all(
     markets.map(async (market) => {
       try {
-        const yesOrderbook = await fetchMarketOrderbook(market.id, true);
-        return { market, yesOrderbook };
+        const [yesOrderbook, noOrderbook] = await Promise.all([
+          fetchMarketOrderbook(market.id, true),
+          fetchMarketOrderbook(market.id, false),
+        ]);
+        return { market, yesOrderbook, noOrderbook };
       } catch (error) {
         console.error(`Failed to fetch orderbook for ${market.id}:`, error);
-        return { market, yesOrderbook: null };
+        return { market, yesOrderbook: null, noOrderbook: null };
       }
     }),
   );

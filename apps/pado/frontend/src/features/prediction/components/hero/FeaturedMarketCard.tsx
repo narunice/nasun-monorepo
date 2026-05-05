@@ -8,6 +8,7 @@ import { ProbabilitySparkline } from './ProbabilitySparkline';
 interface FeaturedMarketCardProps {
   market: PredictionMarket;
   yesOrderbook: Orderbook | null;
+  noOrderbook: Orderbook | null;
 }
 
 function formatTimeRemaining(closeTime: number): string {
@@ -21,12 +22,16 @@ function formatTimeRemaining(closeTime: number): string {
   return `${mins}m`;
 }
 
-export function FeaturedMarketCard({ market, yesOrderbook }: FeaturedMarketCardProps) {
+export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: FeaturedMarketCardProps) {
   const { data: fills = [], isLoading: fillsLoading } = useRecentFills(market.id);
   const lastTradePriceBps = fills.length > 0
     ? (fills[0].isYes ? fills[0].price : 10000 - fills[0].price)
     : null;
-  const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(yesOrderbook, lastTradePriceBps);
+  const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(
+    yesOrderbook,
+    noOrderbook,
+    lastTradePriceBps,
+  );
   const noProbability = 100 - yesProbability;
 
   return (
