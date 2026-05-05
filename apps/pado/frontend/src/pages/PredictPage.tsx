@@ -10,6 +10,7 @@ import { usePredictionFilters } from '../features/prediction/hooks/usePrediction
 import { usePredictionPositions } from '../features/prediction/hooks/usePredictionPositions';
 import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
 import { SkeletonCard } from '../components/common';
+import { PredictHero } from '../features/prediction/components/hero/PredictHero';
 
 export function PredictPage() {
   const { markets, isLoading, error } = useMarkets();
@@ -87,6 +88,9 @@ export function PredictPage() {
           </Link>
         )}
       </div>
+
+      {/* Hero Section */}
+      <PredictHero markets={markets} myPositionCount={myPositions.length} />
 
       {/* Filters */}
       {markets.length > 0 && (
