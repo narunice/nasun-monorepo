@@ -13,7 +13,7 @@
  */
 
 import { useParams, Link } from 'react-router-dom';
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import {
   useMarket,
   useMarketOrderbook,
@@ -37,12 +37,6 @@ import {
 import { calculateProbabilityFromOrderbook } from '../features/prediction/types';
 import { useNow } from '@/hooks/useNow';
 import { Spinner } from '../components/common';
-import {
-  usePredictionOnboardingTour,
-  isPredictionTourCompleted,
-} from '../features/prediction/hooks/usePredictionOnboardingTour';
-import { OnboardingTour } from '../features/trading/components/OnboardingTour';
-
 export function PredictMarketPage() {
   const { marketId } = useParams<{ marketId: string }>();
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
@@ -50,7 +44,6 @@ export function PredictMarketPage() {
   const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
   const { isResolver } = usePredictionAdmin();
   const now = useNow();
-  const tour = usePredictionOnboardingTour();
 
   const [showResolveModal, setShowResolveModal] = useState(false);
   const [clickedPrice, setClickedPrice] = useState<number | null>(null);
@@ -88,20 +81,6 @@ export function PredictMarketPage() {
     now >= market.closeTime &&
     now < market.resolveDeadline;
 
-  // Auto-start the tour once per session when user first enters a market page.
-  const startRef = useRef(tour.start);
-  startRef.current = tour.start;
-  const tourStartedRef = useRef(false);
-  useEffect(() => {
-    if (isLoading || tourStartedRef.current) return;
-    const params = new URLSearchParams(window.location.search);
-    const force = params.get('tour') === '1';
-    if (!force && isPredictionTourCompleted()) return;
-    if (market?.status !== 'open' && !force) return;
-    tourStartedRef.current = true;
-    const timer = setTimeout(() => startRef.current(), 600);
-    return () => clearTimeout(timer);
-  }, [isLoading, market?.status]);
 
   if (isLoading) {
     return (
@@ -244,7 +223,6 @@ export function PredictMarketPage() {
         />
       )}
 
-      <OnboardingTour tour={tour} />
     </div>
   );
 }
