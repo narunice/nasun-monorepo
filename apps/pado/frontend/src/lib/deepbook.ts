@@ -389,6 +389,43 @@ export function computeSwapQuote(args: {
   };
 }
 
+/**
+ * Query DeepBook's on-chain swap simulation for exact output including fee penalty.
+ * DeepBook charges takerFee * 1.25x from base input when not paying DEEP fees,
+ * which reduces the effective base traded (and thus the quote output) in a way
+ * that the client-side orderbook walk cannot accurately predict.
+ *
+ * Returns the exact quoteOut, or null on RPC failure.
+ */
+async function getOnChainSwapQuote(
+  pool: PoolConfig,
+  baseAmountRaw: bigint,
+): Promise<bigint | null> {
+  if (!pool.id || !pool.baseToken.type || !pool.quoteToken.type) return null;
+  const client = getSuiClient();
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::get_quote_quantity_out_input_fee`,
+    typeArguments: [pool.baseToken.type, pool.quoteToken.type],
+    arguments: [tx.object(pool.id), tx.pure.u64(baseAmountRaw), tx.object('0x6')],
+  });
+  try {
+    const result = await client.devInspectTransactionBlock({
+      sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
+      transactionBlock: tx,
+    });
+    const rv = result.results?.[0]?.returnValues;
+    if (!rv || rv.length < 2) return null;
+    // Returns (baseOut, quoteOut, deepRequired) — index 1 is quoteOut
+    const quoteBytes = rv[1][0];
+    let quoteOut = 0n;
+    for (let j = 0; j < 8; j++) quoteOut |= BigInt(quoteBytes[j]) << BigInt(8 * j);
+    return quoteOut;
+  } catch {
+    return null;
+  }
+}
+
 export async function quoteBaseForQuote(
   pool: PoolConfig,
   baseAmountRaw: bigint,
@@ -396,7 +433,39 @@ export async function quoteBaseForQuote(
   quoteDecimals: number,
   slippageBps: number,
 ): Promise<SwapQuote | null> {
-  const { bids, midPrice } = await getOrderbook(pool);
+  const [{ bids, midPrice }, onChainQuoteOut] = await Promise.all([
+    getOrderbook(pool),
+    getOnChainSwapQuote(pool, baseAmountRaw),
+  ]);
+
+  // Use on-chain result as the source of truth for expectedQuoteRaw and minQuoteRaw.
+  // The on-chain simulation accounts for the 12.5bps fee penalty on base input
+  // and lot rounding, which the client-side orderbook walk cannot replicate.
+  // If on-chain returns 0, the amount is below the minimum lot after fee deduction.
+  if (onChainQuoteOut !== null) {
+    if (onChainQuoteOut === 0n) return null;
+    const slippageScale = BigInt(Math.max(0, 10000 - slippageBps));
+    const minQuoteRaw = (onChainQuoteOut * slippageScale) / 10000n;
+
+    // Derive display metrics from the orderbook walk (best-effort)
+    const displayQuote = computeSwapQuote({ bids, midPrice, baseAmountRaw, baseDecimals, quoteDecimals, slippageBps });
+    const effectivePrice = displayQuote?.effectivePrice ?? 0;
+    const bestBidPrice = displayQuote?.bestBidPrice ?? 0;
+    const priceImpact = displayQuote?.priceImpact ?? 0;
+    const underestimateRisk = displayQuote?.underestimateRisk ?? false;
+
+    return {
+      expectedQuoteRaw: onChainQuoteOut,
+      minQuoteRaw,
+      effectivePrice,
+      midPrice,
+      bestBidPrice,
+      priceImpact,
+      underestimateRisk,
+    };
+  }
+
+  // Fallback to client-side estimate if on-chain call fails
   return computeSwapQuote({ bids, midPrice, baseAmountRaw, baseDecimals, quoteDecimals, slippageBps });
 }
 
