@@ -24,48 +24,75 @@ function formatTimeRemaining(closeTime: number): string {
 export function FeaturedMarketCard({ market, yesOrderbook }: FeaturedMarketCardProps) {
   const { data: fills = [], isLoading: fillsLoading } = useRecentFills(market.id);
   const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(yesOrderbook, null);
-
-  const probColor = yesProbability >= 60
-    ? 'text-green-600 dark:text-green-400'
-    : yesProbability <= 40
-      ? 'text-red-600 dark:text-red-400'
-      : 'text-theme-text-primary';
+  const noProbability = 100 - yesProbability;
 
   return (
     <Link
       to={`/predict/${market.id}`}
-      className="block shrink-0 w-[280px] sm:w-[320px] snap-start rounded-2xl bg-theme-bg-secondary p-4 hover:border-pd3/60 transition-all cursor-pointer"
+      className="flex flex-col w-full h-full rounded-2xl bg-theme-bg-secondary p-4 sm:p-6 transition-all cursor-pointer"
     >
-      {/* Category badge */}
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-medium text-pd1 dark:text-pd3 bg-pd5 dark:bg-pd0/30 px-2 py-0.5 rounded">
+      {/* Header: category + time */}
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-sm font-medium text-pd1 dark:text-pd3 bg-pd5 dark:bg-pd0/30 px-2.5 py-1 rounded">
           {market.category}
         </span>
-        {!hasRealOrders && (
-          <span className="text-[10px] text-theme-text-muted">No orders yet</span>
-        )}
+        <span className="text-sm text-theme-text-muted tabular-nums">
+          {formatTimeRemaining(market.closeTime)} left
+        </span>
       </div>
 
       {/* Question */}
-      <p className="text-sm font-semibold text-theme-text-primary line-clamp-2 mb-3 leading-snug min-h-[2.5rem]">
+      <p className="text-lg sm:text-xl font-bold text-theme-text-primary line-clamp-3 mb-6 leading-snug">
         {market.question}
       </p>
 
-      {/* Probability + Sparkline */}
-      <div className="flex items-end justify-between gap-3 mb-3">
-        <div>
-          <div className={`text-3xl font-extrabold tabular-nums leading-none ${probColor}`}>
-            {yesProbability.toFixed(0)}%
+      {/* YES / NO probability bars — compact */}
+      <div className="space-y-1.5 mb-4">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-green-500 w-7 shrink-0">YES</span>
+          <div className="flex-1 h-1.5 rounded-full bg-theme-border/30 overflow-hidden">
+            <div className="h-full rounded-full bg-green-500 transition-all duration-700" style={{ width: `${yesProbability}%` }} />
           </div>
-          <div className="text-xs text-theme-text-muted mt-0.5">YES chance</div>
+          <span className="text-sm font-bold tabular-nums text-green-500 w-10 text-right shrink-0">
+            {yesProbability.toFixed(0)}%
+          </span>
         </div>
-        <ProbabilitySparkline fills={fills} isLoading={fillsLoading} width={110} height={44} />
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-red-500 w-7 shrink-0">NO</span>
+          <div className="flex-1 h-1.5 rounded-full bg-theme-border/30 overflow-hidden">
+            <div className="h-full rounded-full bg-red-500 transition-all duration-700" style={{ width: `${noProbability}%` }} />
+          </div>
+          <span className="text-sm font-bold tabular-nums text-red-500 w-10 text-right shrink-0">
+            {noProbability.toFixed(0)}%
+          </span>
+        </div>
+        {!hasRealOrders && (
+          <p className="text-xs text-theme-text-muted italic pl-10">No orders yet</p>
+        )}
       </div>
 
-      {/* Footer: volume + time */}
-      <div className="flex items-center justify-between text-xs text-theme-text-muted border-t border-theme-border/50 pt-2">
-        <span>Vol: {formatVolumeCompact(market.totalVolume)} NUSDC</span>
-        <span>{formatTimeRemaining(market.closeTime)}</span>
+      {/* Sparkline — full width, fills remaining space */}
+      <div className="flex-1 overflow-hidden min-h-0">
+        <ProbabilitySparkline
+          fills={fills}
+          isLoading={fillsLoading}
+          width={600}
+          height={200}
+          className="w-full h-full"
+        />
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between text-sm border-t border-theme-border/50 pt-3 mt-3">
+        <span className="text-theme-text-muted">
+          Vol: {formatVolumeCompact(market.totalVolume)} NUSDC
+        </span>
+        <span className="flex items-center gap-1 text-pd1 dark:text-pd3 font-medium">
+          Trade
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+          </svg>
+        </span>
       </div>
     </Link>
   );

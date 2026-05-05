@@ -6,6 +6,7 @@ interface ProbabilitySparklineProps {
   isLoading: boolean;
   width?: number;
   height?: number;
+  className?: string;
 }
 
 export function ProbabilitySparkline({
@@ -13,13 +14,14 @@ export function ProbabilitySparkline({
   isLoading,
   width = 120,
   height = 44,
+  className,
 }: ProbabilitySparklineProps) {
   const baseId = useId();
   const PAD = 3;
 
   if (isLoading || fills.length < 2) {
     return (
-      <svg width={width} height={height} aria-hidden>
+      <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} preserveAspectRatio="none" aria-hidden>
         <line
           x1={PAD} y1={height / 2}
           x2={width - PAD} y2={height / 2}
@@ -66,7 +68,7 @@ export function ProbabilitySparkline({
   const gradId = `spark-grad-${baseId}`;
 
   return (
-    <svg width={width} height={height} aria-hidden overflow="visible">
+    <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} preserveAspectRatio="none" aria-hidden overflow="visible">
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={color} stopOpacity="0.25" />
