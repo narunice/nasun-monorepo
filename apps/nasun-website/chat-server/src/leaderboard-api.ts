@@ -51,6 +51,7 @@ import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-ty
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
 import { resolveIdentityIds, checkSocialConnectionsBatch, getSocialBadgesBatch, type SocialBadges } from './identity-resolver.js';
+import { getBannedSnapshotSync, refreshBannedCache } from './banned-loader.js';
 
 // ===== Dependency injection interface =====
 
@@ -236,6 +237,17 @@ export async function handleLeaderboardRequest(
     }
 
     // Internal endpoint: settlement server (settle-pado on node-3) pulls weekly scores
+    if (pathname === '/api/pado/internal/banned-cache/refresh' && method === 'POST') {
+      handleBannedCacheRefresh(req, res, corsHeaders).catch((err) => {
+        console.error('[BannedCacheRefresh] Error:', (err as Error).message);
+        if (!res.writableEnded) {
+          res.writeHead(500, corsHeaders);
+          res.end(JSON.stringify({ error: 'internal_error' }));
+        }
+      });
+      return true;
+    }
+
     const internalWeeklyMatch = pathname.match(/^\/api\/pado\/internal\/weekly-scores\/(\d{4}-W\d{2})$/);
     if (internalWeeklyMatch && method === 'GET') {
       handleInternalWeeklyScores(req, res, corsHeaders, internalWeeklyMatch[1]).catch((err) => {
@@ -531,6 +543,34 @@ function handleLeaderboardStatus(
 // CloudFront /chat/* CachingDisabled — CDN bypass, browser caches 30s.
 
 /**
+ * POST /api/pado/internal/banned-cache/refresh
+ * Triggers an immediate refresh of the in-memory banned-users cache.
+ * Called by the ban-users CLI right after a write so admins don't have to
+ * wait the 5-minute TTL.
+ */
+async function handleBannedCacheRefresh(
+  req: IncomingMessage,
+  res: ServerResponse,
+  corsHeaders: Record<string, string>,
+): Promise<boolean> {
+  const internalApiKey = process.env.INTERNAL_API_KEY;
+  if (!checkAdminAuth(req, internalApiKey ?? '')) {
+    res.writeHead(401, corsHeaders);
+    res.end(JSON.stringify({ error: 'unauthorized' }));
+    return true;
+  }
+  await refreshBannedCache();
+  const snap = getBannedSnapshotSync();
+  res.writeHead(200, corsHeaders);
+  res.end(JSON.stringify({
+    ok: true,
+    addresses: snap.addresses.size,
+    identityIds: snap.identityIds.size,
+  }));
+  return true;
+}
+
+/**
  * GET /api/pado/leaderboard/score
  * Default: weekly scope (current week).
  * Legacy ?scope=alltime still supported for backward compatibility.
@@ -573,8 +613,18 @@ async function handleScoreLeaderboardAlltime(
 ): Promise<boolean> {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 2000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
-  const rows = getScoreLeaderboard(limit, offset);
-  const totalTraders = getTotalScoreTraders();
+  // Over-fetch + filter pattern: banned users may still have rows in
+  // trader_points (from pre-ban aggregation cycles). We drop them after
+  // SQLite read so old data drains naturally.
+  const bannedAddresses = getBannedSnapshotSync().addresses;
+  const overFetch = bannedAddresses.size > 0 ? Math.min(limit + bannedAddresses.size + 50, 2000) : limit;
+  const rawRows = getScoreLeaderboard(overFetch, offset);
+  const filteredRows = bannedAddresses.size > 0
+    ? rawRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+    : rawRows;
+  const rows = filteredRows.slice(0, limit);
+  const filteredOut = rawRows.length - filteredRows.length;
+  const totalTraders = Math.max(0, getTotalScoreTraders() - filteredOut);
   const addresses = rows.map((r) => r.address);
   const nicknames = addresses.length > 0 ? getDisplayNamesBatch(addresses) : new Map<string, string>();
   const followerCounts = addresses.length > 0 ? getCachedFollowerCounts(addresses) : new Map<string, number>();
@@ -662,8 +712,14 @@ async function handleInternalWeeklyScores(
     return true;
   }
 
-  // Fetch all traders for this week (top 2000 max, rank-ordered)
-  const rows = getWeeklyScoreLeaderboard(weekId, 2000, 0);
+  // Fetch all traders for this week (top 2000 max, rank-ordered).
+  // Filter out banned wallets — settle-pado is the canonical disbursement
+  // path, so this is the strictest possible bypass of pre-ban snapshot rows.
+  const bannedAddresses = getBannedSnapshotSync().addresses;
+  const allRows = getWeeklyScoreLeaderboard(weekId, 2000, 0);
+  const rows = bannedAddresses.size > 0
+    ? allRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+    : allRows;
   if (rows.length === 0) {
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ weekId, traders: [], totalTraders: 0 }));
@@ -722,8 +778,17 @@ function handleScoreLeaderboardWeekly(
 ): void {
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '50', 10), 1), 2000);
   const offset = Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0);
-  const rows = getWeeklyScoreLeaderboard(weekId, limit, offset);
-  const totalTraders = getWeeklyScoreCount(weekId);
+  // Over-fetch + filter pattern: pre-ban snapshots in trader_points_weekly
+  // may still contain banned addresses. Drop after SQLite read.
+  const bannedAddresses = getBannedSnapshotSync().addresses;
+  const overFetch = bannedAddresses.size > 0 ? Math.min(limit + bannedAddresses.size + 50, 2000) : limit;
+  const rawRows = getWeeklyScoreLeaderboard(weekId, overFetch, offset);
+  const filteredRows = bannedAddresses.size > 0
+    ? rawRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+    : rawRows;
+  const rows = filteredRows.slice(0, limit);
+  const filteredOut = rawRows.length - filteredRows.length;
+  const totalTraders = Math.max(0, getWeeklyScoreCount(weekId) - filteredOut);
   const weekStartMs = weekIdToStartMs(weekId);
   const prevWeekStartMs = weekStartMs - 7 * 24 * 60 * 60 * 1000;
   const prevWeekId = getWeekId(prevWeekStartMs);
