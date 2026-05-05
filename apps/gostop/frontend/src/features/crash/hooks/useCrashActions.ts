@@ -30,7 +30,7 @@ export function useCrashActions(
     setLocalPhase('placing_bet')
 
     const success = await executeGameTx(
-      async (coins) => buildPlaceBetTx(roundObjectIdRef.current!, coins!.primary, betAmount),
+      async (coins) => buildPlaceBetTx(roundObjectIdRef.current!, coins!.primary, betAmount, coins!.extra),
       {
         amount: betAmount,
         onError: (err) => {

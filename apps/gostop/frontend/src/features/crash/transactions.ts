@@ -10,8 +10,18 @@ export function buildPlaceBetTx(
   roundObjectId: string,
   parentCoinId: string,
   betAmount: bigint,
+  extraCoinsToMerge: string[] = [],
 ): Transaction {
   const tx = new Transaction()
+  // Merge extra coins into the parent first if the user's NUSDC balance is
+  // fragmented across multiple objects and the largest one alone is < betAmount.
+  // Without this, splitCoins below fails with InsufficientCoinBalance.
+  if (extraCoinsToMerge.length > 0) {
+    tx.mergeCoins(
+      tx.object(parentCoinId),
+      extraCoinsToMerge.map((id) => tx.object(id)),
+    )
+  }
   // Split exact betAmount from the parent NUSDC coin. Without this the whole
   // parent coin (often >= bet) is passed to place_bet which then sees a much
   // larger bet_amount than the user intended, triggering EBetTooLarge.
