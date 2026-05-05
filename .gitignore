@@ -77,3 +77,6 @@ backup/
 # Data export folders (place ad-hoc CSV/JSON exports here)
 exports/
 data-exports/
+
+# nginx infra secrets (rendered into snapshots at deploy time)
+infra/nginx/secrets.env
