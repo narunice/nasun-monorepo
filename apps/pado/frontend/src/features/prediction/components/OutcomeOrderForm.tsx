@@ -17,7 +17,7 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { usePredictionTrade, nusdcUnits } from '../hooks/usePredictionTrade';
-import { useUnifiedBalance } from '../../core/unified-margin';
+import { useUnifiedBalance, useMarginAccount } from '../../core/unified-margin';
 import { usePredictionPositions } from '../hooks/usePredictionPositions';
 import { useSubmitGuard } from '../../../hooks/useSubmitGuard';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
@@ -25,6 +25,9 @@ import { usePredictionFormMode } from '../hooks/usePredictionFormMode';
 import type { PredictionFormMode } from '../hooks/usePredictionFormMode';
 import { formatCentsWithProb } from '../utils/formatPrice';
 import { trackEvent, AnalyticsEvent } from '../../../lib/analytics';
+import { useTrading } from '../../trading/useTrading';
+import { formatErrorMessage } from '../../trading/utils/errorParser';
+import { useToast } from '@/components/common/Toast';
 import {
   OrderSuccessModal,
   shouldShowOrderModal,
@@ -81,6 +84,61 @@ export function OutcomeOrderForm({
   } = usePredictionTrade();
   const isWalletConnected = status === 'unlocked' || isZkLoggedIn || isPasskeyUnlocked;
   const { positions, refetch: refetchPositions } = usePredictionPositions(market.id);
+
+  const {
+    hasAccount,
+    createAccount,
+    enablePado,
+    isCreating,
+    isEnabling,
+    isLoading: isLoadingMA,
+  } = useMarginAccount();
+  const { balanceManagerId, createBalanceManager, registerBalanceManager } = useTrading();
+  const { showToast } = useToast();
+  const [isEnablingPado, setIsEnablingPado] = useState(false);
+
+  const handleCompleteSetup = useCallback(async () => {
+    setIsEnablingPado(true);
+    try {
+      const hasBm = !!balanceManagerId;
+      const hasMa = hasAccount;
+
+      if (!hasBm && !hasMa) {
+        const { balanceManagerId: newBmId } = await enablePado();
+        registerBalanceManager(newBmId);
+        showToast('Pado enabled!', 'success');
+        return;
+      }
+
+      if (hasBm && !hasMa) {
+        await createAccount();
+        showToast('Pado enabled!', 'success');
+        return;
+      }
+
+      if (!hasBm && hasMa) {
+        const result = await createBalanceManager();
+        if (!result.success) {
+          showToast(formatErrorMessage(result.error), 'error');
+          return;
+        }
+        showToast('Pado enabled!', 'success');
+        return;
+      }
+    } catch (error) {
+      showToast(formatErrorMessage(error), 'error');
+    } finally {
+      setIsEnablingPado(false);
+    }
+  }, [
+    enablePado,
+    registerBalanceManager,
+    hasAccount,
+    balanceManagerId,
+    createAccount,
+    createBalanceManager,
+    showToast,
+  ]);
 
   const { breakdown } = useUnifiedBalance();
   // Pado Balance = BM (trading) + MA (margin) NUSDC, both decimal-6.
@@ -492,6 +550,39 @@ export function OutcomeOrderForm({
           </button>
         </div>
       </div>
+
+      {/* Complete Pado Setup banner for legacy users and new users without MA */}
+      {isWalletConnected && !isLoadingMA && !hasAccount && (
+        <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-4 mb-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="text-base">⚡</span>
+                <h4 className="font-semibold text-theme-text-primary text-sm">
+                  {balanceManagerId ? 'Complete Pado Setup' : 'Enable Pado'}
+                </h4>
+              </div>
+              <p className="text-sm text-theme-text-secondary">
+                {balanceManagerId
+                  ? 'A one-time setup is required to enable Pado Balance and auto-deposit.'
+                  : 'Enable Pado to use funds across Trading, Predictions, and more.'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCompleteSetup}
+              disabled={isEnablingPado || isEnabling || isCreating}
+              className="flex-shrink-0 px-4 py-2 bg-pd2 hover:bg-pd1 text-white font-medium rounded-lg transition-colors disabled:opacity-50 text-sm whitespace-nowrap"
+            >
+              {isEnablingPado || isEnabling || isCreating
+                ? 'Setting up...'
+                : balanceManagerId
+                  ? 'Complete Setup'
+                  : 'Enable Pado'}
+            </button>
+          </div>
+        </div>
+      )}
 
       {isWalletConnected && (
         <div className="bg-theme-bg-tertiary rounded-lg p-3 mb-4 space-y-2">
