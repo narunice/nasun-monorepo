@@ -29,7 +29,12 @@ module.exports = {
         POOL_NASUN_NUSDC: '0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e',
         POOL_NETH_NUSDC: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
         POOL_NSOL_NUSDC: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
-        INDEXER_EXCLUDED_ADDRESSES: '0x9c8ef05...,', // fill from .env on server
+        // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
+        // sourced from .env (via `set -a && source .env && set +a` before
+        // `pm2 startOrRestart`) reaches the process. Listing it with a
+        // placeholder previously shadowed the .env value and silently no-op'd
+        // bot exclusion (2026-05-05 — discovered when prediction-market LP bot
+        // pair kept appearing on the weekly leaderboard despite .env update).
         // Secrets (TURNSTILE_SECRET_KEY, INTERNAL_API_KEY, ANTHROPIC_API_KEY): set in .env on server
       },
     },
