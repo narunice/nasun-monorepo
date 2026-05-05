@@ -29,7 +29,6 @@ const DASHBOARD_MARKETS: Array<{
   { symbol: 'NBTC', name: 'Nasun BTC', pool: 'NBTC_NUSDC' },
   { symbol: 'NETH', name: 'Nasun ETH', pool: 'NETH_NUSDC' },
   { symbol: 'NSOL', name: 'Nasun SOL', pool: 'NSOL_NUSDC' },
-  { symbol: 'NSN', name: 'Nasun', pool: 'NASUN_NUSDC' },
 ];
 
 // Binance symbols for batch fetch (only tokens with Binance mapping)
