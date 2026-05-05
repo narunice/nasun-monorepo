@@ -273,7 +273,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const setBalanceManagerId = useBalanceManagerStore((s) => s.setBalanceManagerId);
 
   // MA: unified margin account — used as primary payment source (MA-first routing).
-  const { accountId: maAccountId } = useMarginAccount();
+  const { accountId: maAccountId, account: maAccount } = useMarginAccount();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
@@ -511,13 +511,14 @@ export function usePredictionTrade(): UsePredictionTradeResult {
             walletAddress!,
             maAccountId,
             client,
+            maAccount?.nusdcBalance ?? 0n,
           );
           buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
         },
         restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress, maAccountId],
+    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
   );
 
   const placeSellTaker = useCallback(
