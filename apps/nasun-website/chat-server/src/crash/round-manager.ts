@@ -479,6 +479,13 @@ export class RoundManager {
   // through immediately.
   private static readonly LOCK_CONFLICT_RETRIES = 3;
   private static readonly LOCK_CONFLICT_BACKOFF_MS = 600;
+  // After waitForTransaction, give the fullnode a moment to propagate effects so
+  // the next tx's input resolution doesn't resolve stale ObjectRefs.
+  private static readonly TX_PROPAGATION_SLEEP_MS = 300;
+  // close_betting outer retry budget (separate from execTx inner LockConflict retry).
+  private static readonly CLOSE_BETTING_NOT_ENDED_MAX = 5;
+  private static readonly CLOSE_BETTING_LOCK_CONFLICT_MAX = 3;
+  private static readonly CLOSE_BETTING_LOCK_BACKOFF_MS = 1_500;
 
   private isLockConflict(msg: string): boolean {
     return msg.includes('is not available for consumption');
@@ -514,6 +521,8 @@ export class RoundManager {
         // a propagated failure surfaces, and so the next tx's input resolution
         // observes the new versions.
         await this.client.waitForTransaction({ digest: res.digest });
+        // Let the fullnode propagate effects before the next tx resolves inputs.
+        await this.sleep(RoundManager.TX_PROPAGATION_SLEEP_MS);
         return { digest: res.digest, objectChanges: res.objectChanges ?? [], events: res.events ?? [] };
       } catch (err) {
         lastErr = err;
@@ -688,10 +697,16 @@ export class RoundManager {
     await this.sleep(waitMs);
     if (!this.running) return;
 
-    // --- close_betting tx (retry on EBettingNotEnded) ---
+    // --- close_betting tx (retry on EBettingNotEnded or outer LockConflict) ---
+    // EBettingNotEnded: on-chain clock lagged, retry up to NOT_ENDED_MAX times.
+    // LockConflict: execTx inner 3-retry already exhausted; outer retry rebuilds
+    // Transaction for fresh ObjectRef resolution (same fix as execTx inner, but
+    // at a longer cadence). The two error types are mutually exclusive in practice.
     let closed = false;
     let closeRes: { digest: string; events?: unknown[] } | null = null;
-    for (let attempt = 0; attempt < 5 && !closed; attempt++) {
+    let eNotEndedCount = 0;
+    let lcCount = 0;
+    while (!closed) {
       try {
         closeRes = await this.execTx(() => {
           const closeTx = new Transaction();
@@ -708,15 +723,21 @@ export class RoundManager {
         closed = true;
       } catch (err) {
         const msg = (err as Error).message;
-        // EBettingNotEnded = 18; on-chain clock lagged. Retry after backoff.
-        if (msg.includes(', 18)') || msg.includes('EBettingNotEnded')) {
+        if ((msg.includes(', 18)') || msg.includes('EBettingNotEnded')) && eNotEndedCount < RoundManager.CLOSE_BETTING_NOT_ENDED_MAX) {
+          eNotEndedCount++;
           await this.sleep(2_000);
+          continue;
+        }
+        if (this.isLockConflict(msg) && lcCount < RoundManager.CLOSE_BETTING_LOCK_CONFLICT_MAX) {
+          lcCount++;
+          console.warn(`[Crash] close_betting outer LockConflict (${lcCount}/${RoundManager.CLOSE_BETTING_LOCK_CONFLICT_MAX}); rebuilding tx`);
+          await this.sleep(RoundManager.CLOSE_BETTING_LOCK_BACKOFF_MS * lcCount);
           continue;
         }
         throw err;
       }
     }
-    if (!closed || !closeRes) throw new Error('close_betting failed after retries');
+    if (!closeRes) throw new Error('close_betting failed after retries');
 
     // Use the on-chain flying_started_at from BettingClosed event, NOT Date.now().
     // The on-chain value is the Sui clock at execution; Date.now() here is later
