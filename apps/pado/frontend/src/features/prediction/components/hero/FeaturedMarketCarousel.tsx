@@ -30,9 +30,9 @@ export function FeaturedMarketCarousel({ featured }: FeaturedMarketCarouselProps
         style={{ transform: `translateX(-${currentIndex * 100}%)` }}
         onTransitionEnd={handleTransitionEnd}
       >
-        {slides.map(({ market, yesOrderbook }, i) => (
+        {slides.map(({ market, yesOrderbook, noOrderbook }, i) => (
           <div key={i < featured.length ? market.id : `${market.id}-clone`} className="w-full shrink-0 h-full">
-            <FeaturedMarketCard market={market} yesOrderbook={yesOrderbook} />
+            <FeaturedMarketCard market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} />
           </div>
         ))}
       </div>

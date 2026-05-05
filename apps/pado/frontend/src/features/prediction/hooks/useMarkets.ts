@@ -11,6 +11,7 @@ import type { PredictionMarket, Orderbook } from '../types';
 export interface MarketWithOrderbook {
   market: PredictionMarket;
   yesOrderbook: Orderbook | null;
+  noOrderbook: Orderbook | null;
 }
 
 interface UseMarketsResult {

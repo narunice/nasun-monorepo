@@ -11,11 +11,13 @@ import { NUSDC_DECIMALS } from '../constants';
 interface MarketCardProps {
   market: PredictionMarket;
   yesOrderbook?: Orderbook | null;
+  noOrderbook?: Orderbook | null;
 }
 
-export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
+export function MarketCard({ market, yesOrderbook, noOrderbook }: MarketCardProps) {
   const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
+    noOrderbook ?? null,
   );
 
   const timeRemaining = getTimeRemaining(market.closeTime);

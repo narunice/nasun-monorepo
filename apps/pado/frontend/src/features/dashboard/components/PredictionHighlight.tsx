@@ -77,8 +77,8 @@ export function PredictionHighlight() {
       <p className="text-xs xl:text-sm text-theme-text-muted mb-3">Bet on future events and win rewards</p>
 
       <div className="space-y-3">
-        {markets.slice(0, 3).map(({ market, yesOrderbook }) => {
-          const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook);
+        {markets.slice(0, 3).map(({ market, yesOrderbook, noOrderbook }) => {
+          const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook);
           return <MarketRow key={market.id} question={market.question} yesProbability={yesProbability} />;
         })}
       </div>

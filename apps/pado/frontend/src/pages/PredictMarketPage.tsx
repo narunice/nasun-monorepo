@@ -74,8 +74,8 @@ export function PredictMarketPage() {
   }, []);
 
   const { yesProbability, noProbability } = useMemo(
-    () => calculateProbabilityFromOrderbook(yesOrderbook ?? null, lastTradePriceBps),
-    [yesOrderbook, lastTradePriceBps],
+    () => calculateProbabilityFromOrderbook(yesOrderbook ?? null, noOrderbook ?? null, lastTradePriceBps),
+    [yesOrderbook, noOrderbook, lastTradePriceBps],
   );
 
   const isTradingFrozen = !!market &&
@@ -134,7 +134,7 @@ export function PredictMarketPage() {
         /* Active market: 2-column layout with orderbook + trade form */
         <div className="grid grid-cols-1 lg:grid-cols-[2fr_1fr] xl:grid-cols-[3fr_2fr] gap-4 md:gap-6">
           <main className="space-y-4 md:space-y-6 order-2 lg:order-1">
-            <MarketHeader market={market} yesOrderbook={yesOrderbook} lastTradePriceBps={lastTradePriceBps} />
+            <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} lastTradePriceBps={lastTradePriceBps} />
 
             <ResolutionMetaPanel market={market} />
 
@@ -200,7 +200,7 @@ export function PredictMarketPage() {
       ) : (
         /* Resolved / Cancelled market: single-column, outcome-first layout */
         <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
-          <MarketHeader market={market} yesOrderbook={yesOrderbook} lastTradePriceBps={lastTradePriceBps} />
+          <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} lastTradePriceBps={lastTradePriceBps} />
           <ResolutionMetaPanel market={market} />
           <WinningClaimBanner market={market} positions={positions} />
           <PositionList market={market} positions={positions} onSuccess={handleRefetch} />

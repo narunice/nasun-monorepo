@@ -126,39 +126,62 @@ export function calculateProbability(yesSupply: bigint, noSupply: bigint): numbe
   return Number((noSupply * 10000n) / total) / 100;
 }
 
-// Polymarket display rule: mid when spread ≤ $0.10 (1000 bps),
-// otherwise the last traded price.
+// Polymarket display rule + Kalshi reciprocal derivation.
+// - Effective YES bid/ask combine the YES book with NO book reciprocals
+//   (NO bid X bps ⇒ implied YES ask 10000-X; NO ask X ⇒ implied YES bid 10000-X).
+// - Mid when effective spread ≤ 1000 bps, otherwise last traded price.
 // https://docs.polymarket.com/concepts/prices-orderbook
+// https://docs.kalshi.com/getting_started/orderbook_responses
 const SPREAD_THRESHOLD_BPS = 1000;
+const MAX_PRICE_BPS = 10000;
+
+function bestBid(ob: Orderbook | null): number | null {
+  const real = ob?.bids.filter((l) => !l.isSimulated) ?? [];
+  return real.length > 0 ? Math.max(...real.map((l) => l.price)) : null;
+}
+
+function bestAsk(ob: Orderbook | null): number | null {
+  const real = ob?.asks.filter((l) => !l.isSimulated) ?? [];
+  return real.length > 0 ? Math.min(...real.map((l) => l.price)) : null;
+}
 
 export function calculateProbabilityFromOrderbook(
   yesOrderbook: Orderbook | null,
+  noOrderbook?: Orderbook | null,
   lastTradePriceBps?: number | null,
 ): { yesProbability: number; noProbability: number; hasRealOrders: boolean } {
-  const realBids = yesOrderbook?.bids.filter((l) => !l.isSimulated) ?? [];
-  const realAsks = yesOrderbook?.asks.filter((l) => !l.isSimulated) ?? [];
+  const yesB = bestBid(yesOrderbook);
+  const yesA = bestAsk(yesOrderbook);
+  const noB = bestBid(noOrderbook ?? null);
+  const noA = bestAsk(noOrderbook ?? null);
 
-  const bestBid =
-    realBids.length > 0 ? Math.max(...realBids.map((l) => l.price)) : null;
-  const bestAsk =
-    realAsks.length > 0 ? Math.min(...realAsks.map((l) => l.price)) : null;
+  const impliedYesAsk = noB !== null ? MAX_PRICE_BPS - noB : null;
+  const impliedYesBid = noA !== null ? MAX_PRICE_BPS - noA : null;
 
-  const hasRealOrders = bestBid !== null || bestAsk !== null;
+  // Take the tightest effective bid (higher) and ask (lower).
+  const effectiveBid = [yesB, impliedYesBid]
+    .filter((v): v is number => v !== null)
+    .reduce<number | null>((acc, v) => (acc === null || v > acc ? v : acc), null);
+  const effectiveAsk = [yesA, impliedYesAsk]
+    .filter((v): v is number => v !== null)
+    .reduce<number | null>((acc, v) => (acc === null || v < acc ? v : acc), null);
+
+  const hasRealOrders = effectiveBid !== null || effectiveAsk !== null;
   let yesProbability = 50;
 
-  if (bestBid !== null && bestAsk !== null) {
-    const spread = bestAsk - bestBid;
+  if (effectiveBid !== null && effectiveAsk !== null) {
+    const spread = effectiveAsk - effectiveBid;
     if (spread <= SPREAD_THRESHOLD_BPS) {
-      yesProbability = (bestBid + bestAsk) / 2 / 100;
+      yesProbability = (effectiveBid + effectiveAsk) / 2 / 100;
     } else if (lastTradePriceBps != null) {
       yesProbability = lastTradePriceBps / 100;
     } else {
-      yesProbability = (bestBid + bestAsk) / 2 / 100;
+      yesProbability = (effectiveBid + effectiveAsk) / 2 / 100;
     }
-  } else if (bestAsk !== null) {
-    yesProbability = bestAsk / 100;
-  } else if (bestBid !== null) {
-    yesProbability = bestBid / 100;
+  } else if (effectiveAsk !== null) {
+    yesProbability = effectiveAsk / 100;
+  } else if (effectiveBid !== null) {
+    yesProbability = effectiveBid / 100;
   } else if (lastTradePriceBps != null) {
     yesProbability = lastTradePriceBps / 100;
   }
