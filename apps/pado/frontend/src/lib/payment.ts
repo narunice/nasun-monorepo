@@ -13,7 +13,7 @@ import type { SuiClient } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../config/network';
 import { getSuiClient } from './sui-client';
 import { NUSDC_TYPE } from '../features/prediction/constants';
-import { UNIFIED_MARGIN_PACKAGE, MARGIN_REGISTRY_ID } from './unified-margin';
+import { UNIFIED_MARGIN_PACKAGE, MARGIN_REGISTRY_ID, getMarginAccount } from './unified-margin';
 
 /**
  * Append a MA NUSDC withdraw call to an existing PTB.
@@ -92,44 +92,51 @@ export async function getBmNusdcBalance(bmId: string): Promise<bigint> {
 export async function assembleAutoDepositPaymentArg(
   tx: Transaction,
   amount: bigint,
-  shortfall: bigint,
   walletAddress: string,
   maId: string,
   client: SuiClient,
 ): Promise<TransactionArgument> {
-  if (shortfall <= 0n) throw new Error('Auto-deposit shortfall must be positive');
+  // Fetch live MA balance to compute the exact shortfall. The caller's estimate
+  // (amountNum - padoBalance) includes BM funds in padoBalance, but this function
+  // only deposits into and withdraws from MA — BM is not part of this flow.
+  // Using live balance prevents EInsufficientBalance when the caller underestimates.
+  const [liveAccount, walletCoins] = await Promise.all([
+    getMarginAccount(maId),
+    (async () => {
+      const allCoins: Array<{ coinObjectId: string; balance: string }> = [];
+      let cursor: string | null | undefined = undefined;
+      do {
+        const page = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE, cursor });
+        allCoins.push(...page.data);
+        cursor = page.nextCursor;
+      } while (cursor);
+      return allCoins;
+    })(),
+  ]);
 
-  // Paginate wallet NUSDC coins.
-  const allCoins: Array<{ coinObjectId: string; balance: string }> = [];
-  let cursor: string | null | undefined = undefined;
-  do {
-    const page = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE, cursor });
-    allCoins.push(...page.data);
-    cursor = page.nextCursor;
-  } while (cursor);
+  const maBalance = liveAccount?.nusdcBalance ?? 0n;
+  const shortfall = amount > maBalance ? amount - maBalance : 0n;
 
-  const total = allCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
-  if (total < shortfall) throw new Error('Insufficient wallet NUSDC for auto-deposit');
+  if (shortfall > 0n) {
+    const walletTotal = walletCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+    if (walletTotal < shortfall) throw new Error('Insufficient wallet NUSDC for auto-deposit');
+    if (walletCoins.length === 0) throw new Error('No wallet NUSDC coins found');
 
-  if (allCoins.length === 0) throw new Error('No wallet NUSDC coins found');
+    const [primary, ...rest] = walletCoins;
+    if (rest.length > 0) {
+      tx.mergeCoins(
+        tx.object(primary.coinObjectId),
+        rest.map((c) => tx.object(c.coinObjectId)),
+      );
+    }
+    const [depositCoin] = tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(shortfall)]);
 
-  // Merge fragmented wallet coins into the primary, then split exactly `shortfall`.
-  const [primary, ...rest] = allCoins;
-  if (rest.length > 0) {
-    tx.mergeCoins(
-      tx.object(primary.coinObjectId),
-      rest.map((c) => tx.object(c.coinObjectId)),
-    );
+    tx.moveCall({
+      target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nusdc`,
+      arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), depositCoin],
+    });
   }
-  const [depositCoin] = tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(shortfall)]);
 
-  // 1) Deposit shortfall into MA.
-  tx.moveCall({
-    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::deposit_nusdc`,
-    arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), depositCoin],
-  });
-
-  // 2) Immediately withdraw the full trade amount from MA as a Coin<NUSDC>.
   return tx.moveCall({
     target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::withdraw_nusdc_as_coin`,
     arguments: [tx.object(maId), tx.object(MARGIN_REGISTRY_ID), tx.pure.u64(amount)],
@@ -177,20 +184,18 @@ export async function assembleWalletPaymentArg(
 export type UnifiedPaymentOptions = {
   /** DeepBook BalanceManager ID — falls back to wallet if null */
   bmId: string | null;
-  /** MarginAccount object ID — checked first (cached balance, no extra RPC) */
+  /** MarginAccount object ID — live-queried before routing to avoid stale-balance mismatch */
   maId: string | null;
-  /** Cached MA NUSDC balance (useMarginAccount().account?.nusdcBalance ?? 0n) */
-  maBalance: bigint;
   client: SuiClient;
 };
 
 /**
  * MA-first payment dispatcher.
  *
- * Routing priority: MA (cached balance, no RPC) → BM (devInspect RPC) → wallet.
- * When MA has sufficient balance the whole flow is one atomic PTB.
- *
- * Returns the payment arg and the source for UX/debugging.
+ * Routing priority: MA (live RPC) → BM (devInspect RPC) → wallet.
+ * Both MA and BM are queried in parallel when both IDs are present.
+ * MA balance is always queried live (not from React cache) to avoid
+ * EInsufficientBalance (code 0) being misreported as "Market is not open."
  */
 export async function assembleUnifiedPaymentArg(
   tx: Transaction,
@@ -198,15 +203,16 @@ export async function assembleUnifiedPaymentArg(
   walletAddress: string,
   options: UnifiedPaymentOptions,
 ): Promise<{ paymentArg: TransactionArgument; source: 'ma' | 'bm' | 'wallet' }> {
-  const { bmId, maId, maBalance, client } = options;
-  if (maId && maBalance >= amount) {
-    return { paymentArg: withdrawNusdcFromMa(tx, maId, amount), source: 'ma' };
+  const { bmId, maId, client } = options;
+  const [liveAccount, bmBalance] = await Promise.all([
+    maId ? getMarginAccount(maId) : Promise.resolve(null),
+    bmId ? getBmNusdcBalance(bmId) : Promise.resolve(0n),
+  ]);
+  if (liveAccount && liveAccount.nusdcBalance >= amount) {
+    return { paymentArg: withdrawNusdcFromMa(tx, maId!, amount), source: 'ma' };
   }
-  if (bmId) {
-    const bmBalance = await getBmNusdcBalance(bmId);
-    if (bmBalance >= amount) {
-      return { paymentArg: withdrawNusdcFromBm(tx, bmId, amount), source: 'bm' };
-    }
+  if (bmId && bmBalance >= amount) {
+    return { paymentArg: withdrawNusdcFromBm(tx, bmId, amount), source: 'bm' };
   }
   const paymentArg = await assembleWalletPaymentArg(tx, amount, walletAddress, client);
   return { paymentArg, source: 'wallet' };

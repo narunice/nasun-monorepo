@@ -146,6 +146,16 @@ interface UsePredictionTradeResult {
   requestNusdc: () => Promise<TradeResult>;
 }
 
+// Abort codes that indicate the market's on-chain status changed while the
+// user had the page open (resolved, cancelled, or expired).
+const STALE_MARKET_ABORT_CODES = new Set([0, 2, 10, 15]); // EMarketNotOpen, EMarketAlreadyResolved, EMarketExpired, EMarketAlreadyCancelled
+
+function getMoveAbortCode(error: unknown): number | null {
+  const msg = error instanceof Error ? error.message : String(error);
+  const m = msg.match(/MoveAbort[^,]*,\s*(\d+)/);
+  return m ? parseInt(m[1]) : null;
+}
+
 function parseTradeError(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
 
@@ -169,36 +179,65 @@ function parseTradeError(error: unknown): string {
     return 'Insufficient NUSDC.';
   }
 
-  // MoveAbort error code mapping (round-6 plan §2.4 parseTradeError table)
-  const errorCodeMatch = message.match(/(?:error[_\s]?code:?\s*|,\s*)(\d+)(?:\s*\)|$)/i);
-  const moveAbortMatch = errorCodeMatch || message.match(/MoveAbort[^,]*,\s*(\d+)/);
-  if (moveAbortMatch) {
-    const code = parseInt(moveAbortMatch[1]);
-    switch (code) {
-      case 0: return 'Market is not open for trading.';
-      case 1: return 'Market has not closed yet.';
-      case 2: return 'Market has already been resolved.';
-      case 3: return 'Only the designated resolver can resolve this market.';
-      case 4: return 'Market has not been resolved yet.';
-      case 5: return 'This position did not win.';
-      case 6: return 'Insufficient balance.';
-      case 7: return 'Invalid price. Must be between 1% and 99%.';
-      case 8: return 'Order not found.';
-      case 9: return 'You are not the owner of this order.';
-      case 10: return 'Market has expired.';
-      case 12: return 'Resolve deadline has passed. This market can no longer be resolved.';
-      case 13: return 'Market has not expired yet. Wait until after the resolve deadline.';
-      case 14: return 'Market is not cancelled.';
-      case 15: return 'Market has already been cancelled.';
-      case 16: return 'Creator and resolver addresses must differ.';
-      case 17: return 'Invalid input. Check amount, price, and time settings.';
-      case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
-      case 19: return 'No matching orders at market price. Try a Limit order or wait for liquidity.';
-      case 20: return 'Order not found. It may have been filled or cancelled.';
-      case 100: return 'Price moved too much during your order. Refresh the orderbook and try again.';
-      case 101: return 'Trade value cannot be zero.';
-      default: return `Transaction failed (code: ${code}). Please try again.`;
+  // Parse MoveAbort: extract module name + abort code.
+  // Sui error format: MoveAbort(MoveLocation { module: ModuleId { address: 0x..., name: Identifier("module_name") }, ... }, CODE)
+  // We must extract module first so we don't mismap abort codes from other contracts
+  // (e.g. unified_margin::EInsufficientBalance = 0 must not become "Market is not open").
+  const moveAbortFull = message.match(/MoveAbort\(.*?Identifier\("([^"]+)"\).*?,\s*(\d+)\)/s)
+    || message.match(/MoveAbort[^,]*::([a-z_]+)::[^,]+,\s*(\d+)/);
+  const moveAbortCodeOnly = message.match(/MoveAbort[^,]*,\s*(\d+)/);
+
+  const abortModule = moveAbortFull?.[1] ?? null;
+  const abortCodeStr = moveAbortFull?.[2] ?? moveAbortCodeOnly?.[1] ?? null;
+
+  if (abortCodeStr !== null) {
+    const code = parseInt(abortCodeStr);
+
+    // unified_margin abort codes (EInsufficientBalance=0, EZeroAmount=1, ENotOwner=2, ...)
+    if (abortModule === 'unified_margin') {
+      switch (code) {
+        case 0: return 'Insufficient balance in Pado Balance. Please deposit more NUSDC.';
+        case 1: return 'Amount cannot be zero.';
+        case 2: return 'You do not own this account.';
+        default: return `Pado Balance error (code: ${code}). Please try again.`;
+      }
     }
+
+    // balance_manager (DeepBook) abort codes
+    if (abortModule === 'balance_manager') {
+      return 'Insufficient balance. Please check your Pado Balance.';
+    }
+
+    // prediction_market abort codes — only apply when from the correct module or unidentified
+    if (abortModule === 'prediction_market' || abortModule === null) {
+      switch (code) {
+        case 0: return 'Market is not open for trading.';
+        case 1: return 'Market has not closed yet.';
+        case 2: return 'Market has already been resolved.';
+        case 3: return 'Only the designated resolver can resolve this market.';
+        case 4: return 'Market has not been resolved yet.';
+        case 5: return 'This position did not win.';
+        case 6: return 'Insufficient balance.';
+        case 7: return 'Invalid price. Must be between 1% and 99%.';
+        case 8: return 'Order not found.';
+        case 9: return 'You are not the owner of this order.';
+        case 10: return 'Market has expired.';
+        case 12: return 'Resolve deadline has passed. This market can no longer be resolved.';
+        case 13: return 'Market has not expired yet. Wait until after the resolve deadline.';
+        case 14: return 'Market is not cancelled.';
+        case 15: return 'Market has already been cancelled.';
+        case 16: return 'Creator and resolver addresses must differ.';
+        case 17: return 'Invalid input. Check amount, price, and time settings.';
+        case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
+        case 19: return 'No matching orders at market price. Try a Limit order or wait for liquidity.';
+        case 20: return 'Order not found. It may have been filled or cancelled.';
+        case 100: return 'Price moved too much during your order. Refresh the orderbook and try again.';
+        case 101: return 'Trade value cannot be zero.';
+        default: return `Transaction failed (code: ${code}). Please try again.`;
+      }
+    }
+
+    return `Transaction failed (code: ${code}). Please try again.`;
   }
 
   if (message.includes('Transaction failed')) {
@@ -234,7 +273,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   const setBalanceManagerId = useBalanceManagerStore((s) => s.setBalanceManagerId);
 
   // MA: unified margin account — used as primary payment source (MA-first routing).
-  const { account: maAccount, accountId: maAccountId } = useMarginAccount();
+  const { accountId: maAccountId } = useMarginAccount();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFaucetLoading, setIsFaucetLoading] = useState(false);
@@ -349,7 +388,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         );
       };
 
-      const attempt = async (): Promise<TradeResult & { _retriable?: boolean }> => {
+      const attempt = async (): Promise<TradeResult & { _retriable?: boolean; _staleMarket?: boolean }> => {
         try {
           const tx = new Transaction();
           const client = getSuiClient();
@@ -376,8 +415,9 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           if (isStaleVersionError(err)) {
             return { success: false, error: 'stale-version', _retriable: true };
           }
+          const abortCode = getMoveAbortCode(err);
           const message = parseTradeError(err);
-          return { success: false, error: message };
+          return { success: false, error: message, _staleMarket: abortCode !== null && STALE_MARKET_ABORT_CODES.has(abortCode) };
         }
       };
 
@@ -387,6 +427,11 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           if (!first.success) {
             setError(first.error!);
             showToast(first.error!, 'error');
+            // Always refresh balances on failure so the next attempt uses fresh MA/BM data.
+            invalidateBalances();
+            if (first._staleMarket) {
+              invalidateMarketScoped(marketId, true);
+            }
           }
           return { success: first.success, digest: first.digest, error: first.error };
         }
@@ -401,6 +446,10 @@ export function usePredictionTrade(): UsePredictionTradeResult {
             : second.error!;
           setError(msg);
           showToast(msg, 'error');
+          invalidateBalances();
+          if (second._staleMarket) {
+            invalidateMarketScoped(marketId, true);
+          }
           return { success: false, error: msg };
         }
         return { success: true, digest: second.digest };
@@ -431,7 +480,6 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
             bmId: currentBmId,
             maId: maAccountId ?? null,
-            maBalance: maAccount?.nusdcBalance ?? 0n,
             client,
           });
           buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
@@ -439,7 +487,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         restOnNoFill ? 'Limit buy submitted' : 'Buy filled',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
+    [runOperation, walletAddress, maAccountId],
   );
 
   const placeBuyTakerWithAutoDeposit = useCallback(
@@ -449,7 +497,6 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       maxPriceBps: number,
       restOnNoFill: boolean,
       amountUnits: bigint,
-      shortfallUnits: bigint,
     ) =>
       runOperation(
         marketId,
@@ -461,7 +508,6 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const paymentArg = await assembleAutoDepositPaymentArg(
             tx,
             amountUnits,
-            shortfallUnits,
             walletAddress!,
             maAccountId,
             client,
@@ -497,7 +543,6 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
             bmId: currentBmId,
             maId: maAccountId ?? null,
-            maBalance: maAccount?.nusdcBalance ?? 0n,
             client,
           });
           buildPlaceBuyMaker(tx, marketId, isYes, priceBps, amountUnits, paymentArg);
@@ -505,7 +550,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         'Limit buy resting',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
+    [runOperation, walletAddress, maAccountId],
   );
 
   const placeSellMaker = useCallback(
@@ -529,7 +574,6 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const { paymentArg } = await assembleUnifiedPaymentArg(tx, amountUnits, walletAddress!, {
             bmId: currentBmId,
             maId: maAccountId ?? null,
-            maBalance: maAccount?.nusdcBalance ?? 0n,
             client,
           });
           buildMintOutcomeTokens(tx, marketId, amountUnits, paymentArg);
@@ -537,7 +581,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         'YES + NO tokens minted',
         { useNusdcLock: true },
       ),
-    [runOperation, walletAddress, maAccountId, maAccount?.nusdcBalance],
+    [runOperation, walletAddress, maAccountId],
   );
 
   const cancelOrder = useCallback(

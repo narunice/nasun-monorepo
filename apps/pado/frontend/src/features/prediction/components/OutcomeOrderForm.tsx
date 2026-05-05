@@ -356,17 +356,12 @@ export function OutcomeOrderForm({
           const needsAutoDeposit = autoDepositEnabled && amountNum > padoBalance;
           let result;
           if (needsAutoDeposit) {
-            // Round-up shortfall to the next 6-decimal unit so we never deposit
-            // a hair under what the trade consumes due to FP truncation.
-            const shortfallNum = amountNum - padoBalance;
-            const shortfallUnits = nusdcUnits(Math.ceil(shortfallNum * 1e6) / 1e6);
             result = await placeBuyTakerWithAutoDeposit(
               market.id,
               isYes,
               maxPriceBps,
               restOnNoFill,
               amountUnits,
-              shortfallUnits,
             );
           } else {
             result = await placeBuyTaker(
