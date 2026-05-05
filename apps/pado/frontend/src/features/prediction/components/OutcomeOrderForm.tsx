@@ -513,12 +513,19 @@ export function OutcomeOrderForm({
                   : 'Trades use Pado Balance only'}
               </div>
             </div>
-            <input
-              type="checkbox"
-              checked={autoDepositEnabled}
-              onChange={(e) => setAutoDepositEnabled(e.target.checked)}
-              className="w-4 h-4 accent-pd2 cursor-pointer"
-            />
+            <button
+              type="button"
+              onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
+              className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
+                autoDepositEnabled ? 'bg-green-500' : 'bg-theme-toggle-off'
+              }`}
+            >
+              <span
+                className={`block w-3 h-3 rounded-full bg-white transition-transform ${
+                  autoDepositEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
           </label>
         </div>
       )}
@@ -530,8 +537,8 @@ export function OutcomeOrderForm({
             onClick={() => setOrderMode('market')}
             className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'market'
-                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
-                : 'bg-transparent text-white/40 hover:text-white/70'
+                ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
+                : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
             }`}
           >
             Market
@@ -540,8 +547,8 @@ export function OutcomeOrderForm({
             onClick={() => setOrderMode('limit')}
             className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'limit'
-                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
-                : 'bg-transparent text-white/40 hover:text-white/70'
+                ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
+                : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
             }`}
           >
             Limit
@@ -562,7 +569,7 @@ export function OutcomeOrderForm({
         <button
           onClick={() => setOutcomeType('yes')}
           className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
-            outcomeType === 'yes' ? 'text-green-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
+            outcomeType === 'yes' ? 'text-green-700 dark:text-green-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           YES
@@ -570,7 +577,7 @@ export function OutcomeOrderForm({
         <button
           onClick={() => setOutcomeType('no')}
           className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
-            outcomeType === 'no' ? 'text-red-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
+            outcomeType === 'no' ? 'text-red-700 dark:text-red-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           NO
@@ -587,8 +594,8 @@ export function OutcomeOrderForm({
             onClick={() => setOrderType('buy')}
             className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'buy'
-                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
-                : 'bg-transparent text-white/40 hover:text-white/70'
+                ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
+                : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
             }`}
           >
             Buy
@@ -597,8 +604,8 @@ export function OutcomeOrderForm({
             onClick={() => setOrderType('sell')}
             className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'sell'
-                ? 'bg-white/15 text-white shadow-md ring-1 ring-white/20'
-                : 'bg-transparent text-white/40 hover:text-white/70'
+                ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
+                : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
             }`}
           >
             Close position

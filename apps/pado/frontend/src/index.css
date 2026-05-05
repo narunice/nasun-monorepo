@@ -60,9 +60,9 @@
 /* Theme CSS Variables — pd palette based */
 :root {
   /* Light Theme */
-  --color-bg-primary: #f5f7fa;
-  --color-bg-secondary: #e1e5ea;    /* pd5 */
-  --color-bg-tertiary: #d0d6de;
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f8f9fb;
+  --color-bg-tertiary: #f0f2f5;
   --color-text-primary: #0e1a2d;
   --color-text-secondary: #243f5c;  /* pd1→pd2 midpoint (darker for readability) */
   --color-text-muted: #4d6e8c;      /* pd2→pd3 midpoint (darker for readability) */
@@ -77,6 +77,7 @@
   /* Panel depth */
   --color-panel-shadow: rgba(0, 0, 0, 0.06);
   --color-panel-border: rgba(26, 140, 188, 0.12);  /* pado-1 tinted */
+  --color-card-border: #e2e8ef;
 
   /* Glow (theme-aware) */
   --shadow-glow: 0 0 12px rgba(26, 140, 188, 0.12);
@@ -96,8 +97,8 @@
 .dark {
   /* Dark Theme — pd palette based */
   --color-bg-primary: #080c16;      /* pd0 -30% lightness */
-  --color-bg-secondary: #1c2942;    /* bumped for clearer card-vs-page distinction */
-  --color-bg-tertiary: #2a3a58;     /* bumped to keep tertiary visibly above secondary */
+  --color-bg-secondary: #121b2e;
+  --color-bg-tertiary: #1a2840;
   --color-text-primary: #ffffff;    /* pure white for max contrast on dark bg */
   --color-text-secondary: #e8eef5;  /* near-white, slightly cooled */
   --color-text-muted: #c5d5e6;      /* lifted from pd3→pd4 midpoint for readability */
@@ -112,6 +113,7 @@
   /* Panel depth — border luminance for depth on dark backgrounds */
   --color-panel-shadow: rgba(0, 0, 0, 0.4);
   --color-panel-border: rgba(59, 185, 216, 0.14);  /* pado-2 tinted */
+  --color-card-border: rgba(59, 185, 216, 0.15);
 
   /* Glow (brighter for dark bg) */
   --shadow-glow: 0 0 16px rgba(59, 185, 216, 0.18);
@@ -259,6 +261,14 @@ body {
   }
   .pd-gradient-radial {
     background: radial-gradient(circle, #1f3a61, #3a5f78, #7d9dbf, #aac9d5, #e1e5ea);
+  }
+}
+
+/* Card border — applied globally to all bg-theme-bg-secondary containers.
+   In @layer components so Tailwind utilities (e.g. border-theme-border) take precedence. */
+@layer components {
+  .bg-theme-bg-secondary {
+    border: 1px solid var(--color-card-border);
   }
 }
 

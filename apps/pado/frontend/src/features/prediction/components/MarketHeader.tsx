@@ -3,10 +3,10 @@
  * Displays market information header with countdown timer
  */
 
-import { useState, useEffect } from 'react';
-import type { PredictionMarket, Orderbook } from '../types';
-import { calculateProbabilityFromOrderbook } from '../types';
-import { useShareMarket } from '../hooks/useShareMarket';
+import { useState, useEffect } from "react";
+import type { PredictionMarket, Orderbook } from "../types";
+import { calculateProbabilityFromOrderbook } from "../types";
+import { useShareMarket } from "../hooks/useShareMarket";
 
 interface MarketHeaderProps {
   market: PredictionMarket;
@@ -14,13 +14,20 @@ interface MarketHeaderProps {
   noOrderbook?: Orderbook | null;
 }
 
-export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeaderProps) {
+export function MarketHeader({
+  market,
+  yesOrderbook,
+  noOrderbook,
+}: MarketHeaderProps) {
   const { shareMarket } = useShareMarket();
-  const [timeRemaining, setTimeRemaining] = useState(getTimeRemaining(market.closeTime));
-  const { yesProbability, noProbability, hasRealOrders } = calculateProbabilityFromOrderbook(
-    yesOrderbook ?? null,
-    noOrderbook ?? null
+  const [timeRemaining, setTimeRemaining] = useState(
+    getTimeRemaining(market.closeTime),
   );
+  const { yesProbability, noProbability, hasRealOrders } =
+    calculateProbabilityFromOrderbook(
+      yesOrderbook ?? null,
+      noOrderbook ?? null,
+    );
 
   // Update countdown every second
   useEffect(() => {
@@ -68,21 +75,25 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
         </p>
       )}
 
-      {market.status === 'open' ? (
+      {market.status === "open" ? (
         <>
           {/* Probability Display */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
-            <div className="bg-green-100 dark:bg-green-900/20 rounded-lg p-3 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-green-600 dark:text-green-400 tabular-nums">
+            <div className="bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-500/30 rounded-lg p-3 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-400 tabular-nums">
                 {yesProbability.toFixed(1)}%
               </div>
-              <div className="text-xs sm:text-sm font-medium text-green-600 dark:text-green-400">YES</div>
+              <div className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-400">
+                YES
+              </div>
             </div>
-            <div className="bg-red-100 dark:bg-red-900/20 rounded-lg p-3 text-center">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-lg p-3 text-center">
               <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
                 {noProbability.toFixed(1)}%
               </div>
-              <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">NO</div>
+              <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">
+                NO
+              </div>
             </div>
           </div>
 
@@ -109,7 +120,9 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
               <span className="text-theme-text-secondary">{timeRemaining}</span>
             </div>
             <div className="flex items-center gap-4 text-theme-text-muted">
-              <span>Supply: {formatNumber(market.yesSupply + market.noSupply)}</span>
+              <span>
+                Supply: {formatNumber(market.yesSupply + market.noSupply)}
+              </span>
             </div>
           </div>
           {/* Resolve deadline (only visible after closeTime has passed) */}
@@ -117,39 +130,49 @@ export function MarketHeader({ market, yesOrderbook, noOrderbook }: MarketHeader
             const label = getResolveDeadlineLabel(market);
             if (!label) return null;
             return (
-              <div className="mt-2 text-xs text-theme-text-muted">
-                {label}
-              </div>
+              <div className="mt-2 text-xs text-theme-text-muted">{label}</div>
             );
           })()}
         </>
       ) : (
         /* Resolved / Cancelled state — outcome takes center stage */
-        <OutcomeDisplay status={market.status} outcome={market.outcome} supply={market.yesSupply + market.noSupply} />
+        <OutcomeDisplay
+          status={market.status}
+          outcome={market.outcome}
+          supply={market.yesSupply + market.noSupply}
+        />
       )}
     </div>
   );
 }
 
-function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?: boolean; supply: bigint }) {
-  if (status === 'resolved') {
+function OutcomeDisplay({
+  status,
+  outcome,
+  supply,
+}: {
+  status: string;
+  outcome?: boolean;
+  supply: bigint;
+}) {
+  if (status === "resolved") {
     const isYes = Boolean(outcome);
     return (
       <div
         className={`rounded-xl p-5 text-center border ${
           isYes
-            ? 'bg-green-50 border-green-300 dark:bg-green-900/50 dark:border-green-500/50'
-            : 'bg-red-50 border-red-300 dark:bg-red-900/50 dark:border-red-500/50'
+            ? "bg-green-50 border-green-300 dark:bg-green-900/50 dark:border-green-500/50"
+            : "bg-red-50 border-red-300 dark:bg-red-900/50 dark:border-red-500/50"
         }`}
       >
         <div
           className={`text-3xl font-bold mb-1 ${
             isYes
-              ? 'text-green-700 dark:text-green-400'
-              : 'text-red-700 dark:text-red-400'
+              ? "text-green-700 dark:text-green-400"
+              : "text-red-700 dark:text-red-400"
           }`}
         >
-          {isYes ? 'YES' : 'NO'} Won
+          {isYes ? "YES" : "NO"} Won
         </div>
         <div className="text-sm text-gray-600 dark:text-theme-text-muted">
           Total supply: {formatNumber(supply)} shares
@@ -160,22 +183,36 @@ function OutcomeDisplay({ status, outcome, supply }: { status: string; outcome?:
 
   return (
     <div className="rounded-xl p-5 text-center bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/50 dark:border-yellow-500/50">
-      <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mb-1">Cancelled</div>
-      <div className="text-sm text-gray-600 dark:text-theme-text-muted">All collateral is refundable</div>
+      <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mb-1">
+        Cancelled
+      </div>
+      <div className="text-sm text-gray-600 dark:text-theme-text-muted">
+        All collateral is refundable
+      </div>
     </div>
   );
 }
 
-function StatusBadge({ status, outcome }: { status: string; outcome?: boolean }) {
-  if (status === 'resolved') {
-    const label = outcome ? 'YES Won' : 'NO Won';
+function StatusBadge({
+  status,
+  outcome,
+}: {
+  status: string;
+  outcome?: boolean;
+}) {
+  if (status === "resolved") {
+    const label = outcome ? "YES Won" : "NO Won";
     const color = outcome
-      ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-      : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-    return <span className={`text-xs font-medium px-2 py-1 rounded ${color}`}>{label}</span>;
+      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+    return (
+      <span className={`text-xs font-medium px-2 py-1 rounded ${color}`}>
+        {label}
+      </span>
+    );
   }
 
-  if (status === 'closed') {
+  if (status === "closed") {
     return (
       <span className="text-xs font-medium px-2 py-1 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
         Awaiting Result
@@ -192,8 +229,18 @@ function StatusBadge({ status, outcome }: { status: string; outcome?: boolean })
 
 function ClockIcon() {
   return (
-    <svg className="w-4 h-4 text-theme-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+    <svg
+      className="w-4 h-4 text-theme-text-muted"
+      fill="none"
+      stroke="currentColor"
+      viewBox="0 0 24 24"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+      />
     </svg>
   );
 }
@@ -205,20 +252,20 @@ function ClockIcon() {
  * unnecessary cost.
  */
 function getResolveDeadlineLabel(market: PredictionMarket): string | null {
-  if (market.status !== 'open') return null;
+  if (market.status !== "open") return null;
   const now = Date.now();
   if (now < market.closeTime) return null;
   if (market.resolveDeadline > 0 && now < market.resolveDeadline) {
-    return `Resolves by ${new Date(market.resolveDeadline).toLocaleString('en-US')}`;
+    return `Resolves by ${new Date(market.resolveDeadline).toLocaleString("en-US")}`;
   }
-  return 'Awaiting resolution';
+  return "Awaiting resolution";
 }
 
 function getTimeRemaining(closeTime: number): string {
   const now = Date.now();
   const diff = closeTime - now;
 
-  if (diff <= 0) return 'Closed';
+  if (diff <= 0) return "Closed";
 
   const days = Math.floor(diff / (1000 * 60 * 60 * 24));
   const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
