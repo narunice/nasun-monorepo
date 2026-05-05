@@ -184,6 +184,22 @@ const BACKOFF_MAX_EXITS = 5;
 const BACKOFF_LONG_WAIT_MS = 30 * 60_000;
 const RESTART_BASE_MS = 5_000;
 
+// Boot-block (code=2) exponential backoff: 60s, 5min, 30min, 1h cap.
+let bootBlockCount = 0;
+const BOOT_BLOCK_DELAYS_MS = [60_000, 5 * 60_000, 30 * 60_000, 60 * 60_000];
+
+// Send a plain-text Slack notification if CRASH_ALERT_WEBHOOK_URL is set.
+// Failures are non-fatal: logged at warn level, never throw.
+function sendSlackAlert(logger: CrashModuleDeps['logger'], text: string): void {
+  const url = process.env.CRASH_ALERT_WEBHOOK_URL;
+  if (!url) return;
+  fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  }).catch((err: unknown) => logger.warn(`[Crash] Slack alert failed: ${(err as Error).message}`));
+}
+
 function createInitialSnapshot(): SnapshotState {
   return {
     state: 'IDLE',
@@ -311,10 +327,21 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
     }
 
     // Exit code 2 = boot-blocked (stale round in registry). Don't count as crash.
-    // Retry every 60s until the stuck round is cleared manually.
+    // Exit code 2 = boot-blocked (entries>0 stuck round in registry).
+    // Exponential backoff: 60s, 5min, 30min, 1h cap to avoid hot loop while
+    // waiting for manual emergency_refund_batch + admin_finalize.
     if (code === 2) {
-      logger.warn('[Crash] Boot-blocked — retrying in 60s (clear stuck round to unblock).');
-      restartTimer = setTimeout(() => spawnChild(logger), 60_000);
+      bootBlockCount++;
+      const delayMs = BOOT_BLOCK_DELAYS_MS[Math.min(bootBlockCount - 1, BOOT_BLOCK_DELAYS_MS.length - 1)];
+      logger.warn(`[Crash] Boot-blocked (attempt ${bootBlockCount}) — retrying in ${delayMs / 1000}s. Clear stuck round to unblock.`);
+      broadcast({
+        type: 'disabled',
+        reason: 'boot_blocked',
+        retryAt: Date.now() + delayMs,
+        stateVersion: ++snapshot.stateVersion,
+      });
+      sendSlackAlert(logger, `[Crash] Boot-blocked (attempt ${bootBlockCount}), retry in ${delayMs / 1000}s — stuck round in registry, needs emergency_refund_batch + admin_finalize.`);
+      restartTimer = setTimeout(() => spawnChild(logger), delayMs);
       return;
     }
 
@@ -326,6 +353,7 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
 
     if (exitHistory.length >= BACKOFF_MAX_EXITS) {
       logger.error(`[CRASH CRITICAL] child crash loop detected (${exitHistory.length} exits in ${BACKOFF_WINDOW_MS}ms). Backing off ${BACKOFF_LONG_WAIT_MS}ms. Manual intervention required.`);
+      sendSlackAlert(logger, `[Crash] CRITICAL: crash loop (${exitHistory.length} exits/${BACKOFF_WINDOW_MS / 1000}s). Backing off ${BACKOFF_LONG_WAIT_MS / 60000}min. Manual intervention required.`);
       // A-W1: 사용자에게 disabled 상태 명시 broadcast
       const disabledEvent: WsEvent = {
         type: 'disabled',
@@ -360,6 +388,7 @@ function applyEvent(event: WsEvent) {
       snapshot.flyingStartedAt = null;
       snapshot.nextRoundAt = null;
       snapshot.crashedAlreadyFired = false;
+      bootBlockCount = 0;  // child recovered successfully
       break;
     case 'betting_closed':
       snapshot.state = 'FLYING';

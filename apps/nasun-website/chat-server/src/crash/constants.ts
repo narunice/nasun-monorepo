@@ -2,8 +2,9 @@
 // drift between PM2 kill_timeout, parent grace, and child backstop.
 //
 // Worst-case drain duration: SIGTERM mid-BETTING -> finish window -> close_betting
-// (with up to 5x2s on-chain clock skew retry) -> FLYING (max 60s) -> resolve_round
-// (with 3x3s tight retry budget) -> exit. Buffer covers RPC jitter and IPC.
+// (up to 5x2s EBettingNotEnded or up to 3x(1.5+3+4.5)s outer LockConflict, not both)
+// -> FLYING (max 60s) -> resolve_round (with 3x3s tight retry budget) -> exit.
+// Buffer covers RPC jitter and IPC.
 
 const FLYING_MAX_MS = 60_000;
 const CLOSE_BETTING_RETRY_MS = 5 * 2_000;

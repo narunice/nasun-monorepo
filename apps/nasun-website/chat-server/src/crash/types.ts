@@ -29,7 +29,7 @@ export type WsEvent =
   | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; crashPointBps: number; stateVersion: number }
   | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
-  | { type: 'disabled'; reason: 'backoff' | 'shutdown'; retryAt?: number; stateVersion: number }
+  | { type: 'disabled'; reason: 'backoff' | 'shutdown' | 'boot_blocked'; retryAt?: number; stateVersion: number }
   // Parent persists to history DB AND broadcasts to ws clients so the frontend
   // can confirm per-player payouts (cashout valid → payout > 0; cashout invalid
   // due to recorded_at > crash_deadline race → payout = 0).
