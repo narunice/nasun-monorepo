@@ -22,7 +22,7 @@ const FEED_API_URL = import.meta.env.VITE_NEWS_API_URL as string | undefined;
 
 async function fetchPadoFeed(limit: number): Promise<PadoFeedResponse> {
   if (!FEED_API_URL) throw new Error('VITE_NEWS_API_URL is not configured');
-  const res = await fetch(`${FEED_API_URL}?audience=pado&limit=${limit}`, {
+  const res = await fetch(`${FEED_API_URL}?audience=uju&limit=${limit}`, {
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) throw new Error(`Feed error: ${res.status}`);
