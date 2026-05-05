@@ -13,11 +13,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
   type ReactNode,
 } from 'react'
+import { useLocation } from 'react-router-dom'
 import { ErrorBoundary } from '../ErrorBoundary'
 import { CelebrationOverlayHost } from './CelebrationOverlayHost'
 import type { CelebrationConfig } from './types'
@@ -55,6 +57,12 @@ export function CelebrationProvider({ children }: { children: ReactNode }) {
   const dismiss = useCallback(() => {
     setConfig(null)
   }, [])
+
+  // Dismiss any in-flight celebration when the user navigates to a different page.
+  const { pathname } = useLocation()
+  useEffect(() => {
+    dismiss()
+  }, [pathname, dismiss])
 
   // Stable wrapper so dispatch identity is preserved across renders.
   const dispatchValue = useMemo(() => dispatch, [dispatch])
