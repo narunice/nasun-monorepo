@@ -103,7 +103,7 @@ export function MarketCard({ market, yesOrderbook, noOrderbook }: MarketCardProp
             NO {noProbability.toFixed(0)}%
           </span>
         </div>
-        <div className="h-2 bg-theme-bg-tertiary rounded-full overflow-hidden">
+        <div className="h-2 bg-red-500 rounded-full overflow-hidden flex">
           <div
             className="h-full bg-green-500 transition-all duration-300"
             style={{ width: `${yesProbability}%` }}
