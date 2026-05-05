@@ -8,7 +8,7 @@
  * falls back to toast. User can dismiss permanently via "don't show again".
  *
  * Status variants:
- *   - buy + market (filled):   "Order Placed" — shares bought, payout table
+ *   - buy + market (filled):   "Order Filled" — shares bought, payout table
  *   - buy + limit (resting):   "Order Resting" — waiting to fill at price
  *   - sell + market (filled):  "Position Closed" — close order placed
  *   - sell + limit (resting):  "Close Order Resting" — waiting for bid
@@ -326,7 +326,7 @@ function getModalCopy(data: OrderSuccessData, question: string): { title: string
       };
     }
     return {
-      title: 'Order Placed',
+      title: 'Order Filled',
       subtitle: `You're predicting "${question}" will resolve ${outcomeLabel}.`,
     };
   }
