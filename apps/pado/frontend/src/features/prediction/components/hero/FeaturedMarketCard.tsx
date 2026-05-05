@@ -23,7 +23,10 @@ function formatTimeRemaining(closeTime: number): string {
 
 export function FeaturedMarketCard({ market, yesOrderbook }: FeaturedMarketCardProps) {
   const { data: fills = [], isLoading: fillsLoading } = useRecentFills(market.id);
-  const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(yesOrderbook, null);
+  const lastTradePriceBps = fills.length > 0
+    ? (fills[0].isYes ? fills[0].price : 10000 - fills[0].price)
+    : null;
+  const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(yesOrderbook, lastTradePriceBps);
   const noProbability = 100 - yesProbability;
 
   return (

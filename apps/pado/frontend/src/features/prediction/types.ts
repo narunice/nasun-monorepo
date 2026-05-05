@@ -126,10 +126,14 @@ export function calculateProbability(yesSupply: bigint, noSupply: bigint): numbe
   return Number((noSupply * 10000n) / total) / 100;
 }
 
-// Polymarket midpoint method using only real orders. Excludes simulated.
+// Polymarket display rule: mid when spread ≤ $0.10 (1000 bps),
+// otherwise the last traded price.
+// https://docs.polymarket.com/concepts/prices-orderbook
+const SPREAD_THRESHOLD_BPS = 1000;
+
 export function calculateProbabilityFromOrderbook(
   yesOrderbook: Orderbook | null,
-  _noOrderbook: Orderbook | null // eslint-disable-line @typescript-eslint/no-unused-vars
+  lastTradePriceBps?: number | null,
 ): { yesProbability: number; noProbability: number; hasRealOrders: boolean } {
   const realBids = yesOrderbook?.bids.filter((l) => !l.isSimulated) ?? [];
   const realAsks = yesOrderbook?.asks.filter((l) => !l.isSimulated) ?? [];
@@ -139,24 +143,26 @@ export function calculateProbabilityFromOrderbook(
   const bestAsk =
     realAsks.length > 0 ? Math.min(...realAsks.map((l) => l.price)) : null;
 
-  let yesProbability = 50;
   const hasRealOrders = bestBid !== null || bestAsk !== null;
+  let yesProbability = 50;
 
   if (bestBid !== null && bestAsk !== null) {
     const spread = bestAsk - bestBid;
-    if (spread <= 1000) {
+    if (spread <= SPREAD_THRESHOLD_BPS) {
       yesProbability = (bestBid + bestAsk) / 2 / 100;
+    } else if (lastTradePriceBps != null) {
+      yesProbability = lastTradePriceBps / 100;
     } else {
-      yesProbability = bestAsk / 100;
+      yesProbability = (bestBid + bestAsk) / 2 / 100;
     }
   } else if (bestAsk !== null) {
     yesProbability = bestAsk / 100;
   } else if (bestBid !== null) {
     yesProbability = bestBid / 100;
+  } else if (lastTradePriceBps != null) {
+    yesProbability = lastTradePriceBps / 100;
   }
 
   yesProbability = Math.max(0.1, Math.min(99.9, yesProbability));
-  const noProbability = 100 - yesProbability;
-
-  return { yesProbability, noProbability, hasRealOrders };
+  return { yesProbability, noProbability: 100 - yesProbability, hasRealOrders };
 }

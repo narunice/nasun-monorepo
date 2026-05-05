@@ -16,7 +16,6 @@ interface MarketCardProps {
 export function MarketCard({ market, yesOrderbook }: MarketCardProps) {
   const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
-    null
   );
 
   const timeRemaining = getTimeRemaining(market.closeTime);

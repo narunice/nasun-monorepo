@@ -5,5 +5,6 @@ export { usePredictionTrade } from './usePredictionTrade';
 export { usePredictionPositions, usePositionValue, formatPositionAmount } from './usePredictionPositions';
 export { usePredictionAdmin } from './usePredictionAdmin';
 export { useRecentFills } from './useRecentFills';
+export { useLastTradePrice } from './useLastTradePrice';
 export { useMyOpenOrders } from './useMyOpenOrders';
 export { useMyTradeHistory } from './useMyTradeHistory';
