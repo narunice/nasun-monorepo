@@ -246,19 +246,18 @@ export function useOrderActions(): UseOrderActionsResult {
     [currentPool]
   );
 
-  // 데이터 갱신 헬퍼
+  // Refresh on success: invalidate all caches affected by an order action.
+  // Runs synchronously — the PTB has been confirmed by the time we get here.
   const refreshData = useCallback(() => {
-    setTimeout(() => {
-      queryClient.invalidateQueries({ queryKey: ["balances"] });
-      queryClient.invalidateQueries({ queryKey: ["openOrders"] });
-      queryClient.invalidateQueries({ queryKey: ["balance-manager-balance"] });
-      queryClient.invalidateQueries({ queryKey: ["bm-balance-global"] });
-      queryClient.invalidateQueries({ queryKey: ["wallet-multi-balance"] });
-      queryClient.invalidateQueries({ queryKey: ["orderbook"] });
-      queryClient.invalidateQueries({ queryKey: ["orderHistory"] });
-      queryClient.invalidateQueries({ queryKey: ["sender-events"] });
-      queryClient.invalidateQueries({ queryKey: ["margin-account"] });
-    }, 2000);
+    queryClient.invalidateQueries({ queryKey: ["openOrders"] });
+    queryClient.invalidateQueries({ queryKey: ["balance-manager-balance"] });
+    queryClient.invalidateQueries({ queryKey: ["bm-balance-global"] });
+    queryClient.invalidateQueries({ queryKey: ["bm-balance-pado-account"] });
+    queryClient.invalidateQueries({ queryKey: ["wallet-multi-balance"] });
+    queryClient.invalidateQueries({ queryKey: ["orderbook"] });
+    queryClient.invalidateQueries({ queryKey: ["sender-events"] });
+    queryClient.invalidateQueries({ queryKey: ["my-trades-api"] });
+    queryClient.invalidateQueries({ queryKey: ["margin-account"] });
   }, [queryClient]);
 
   // 지정가 주문 실행 (with auto deposit)

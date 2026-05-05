@@ -338,6 +338,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       if (addr) {
         queryClient.invalidateQueries({ queryKey: ['prediction-positions', addr, marketId] });
         queryClient.invalidateQueries({ queryKey: ['prediction', 'my-orders', marketId, addr] });
+        queryClient.invalidateQueries({ queryKey: ['prediction', 'my-trade-history', marketId, addr] });
       }
       if (alsoInvalidateMarketsList) {
         queryClient.invalidateQueries({ queryKey: ['prediction-markets-with-orderbooks'] });
