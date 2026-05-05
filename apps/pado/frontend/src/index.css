@@ -6,8 +6,9 @@
   font-display: swap;
   src: url("/fonts/rubik/Rubik-Light.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Rubik";
@@ -16,8 +17,9 @@
   font-display: swap;
   src: url("/fonts/rubik/Rubik-Regular.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Rubik";
@@ -26,8 +28,9 @@
   font-display: swap;
   src: url("/fonts/rubik/Rubik-Medium.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Rubik";
@@ -36,8 +39,9 @@
   font-display: swap;
   src: url("/fonts/rubik/Rubik-SemiBold.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 @font-face {
   font-family: "Rubik";
@@ -46,8 +50,9 @@
   font-display: swap;
   src: url("/fonts/rubik/Rubik-Bold.woff2") format("woff2");
   unicode-range:
-    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
-    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+    U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
 }
 
 @tailwind base;
@@ -64,26 +69,26 @@
   --color-bg-secondary: #f8f9fb;
   --color-bg-tertiary: #f0f2f5;
   --color-text-primary: #0e1a2d;
-  --color-text-secondary: #243f5c;  /* pd1→pd2 midpoint (darker for readability) */
-  --color-text-muted: #4d6e8c;      /* pd2→pd3 midpoint (darker for readability) */
-  --color-border: #84a3ba;          /* pd3→pd4 midpoint (stronger for readability) */
-  --color-accent: #1a8cbc;           /* pado-1 (brand teal) */
-  --color-accent-hover: #3bb9d8;     /* pado-2 */
-  --color-accent-active: #5ee1e4;    /* pado-3 */
+  --color-text-secondary: #243f5c; /* pd1→pd2 midpoint (darker for readability) */
+  --color-text-muted: #4d6e8c; /* pd2→pd3 midpoint (darker for readability) */
+  --color-border: #84a3ba; /* pd3→pd4 midpoint (stronger for readability) */
+  --color-accent: #1a8cbc; /* pado-1 (brand teal) */
+  --color-accent-hover: #3bb9d8; /* pado-2 */
+  --color-accent-active: #5ee1e4; /* pado-3 */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
   /* Panel depth */
   --color-panel-shadow: rgba(0, 0, 0, 0.06);
-  --color-panel-border: rgba(26, 140, 188, 0.12);  /* pado-1 tinted */
+  --color-panel-border: rgba(26, 140, 188, 0.12); /* pado-1 tinted */
   --color-card-border: #e2e8ef;
 
   /* Glow (theme-aware) */
   --shadow-glow: 0 0 12px rgba(26, 140, 188, 0.12);
 
   /* Toggle switch OFF background */
-  --color-toggle-off: #aac9d5;     /* pd4 */
+  --color-toggle-off: #aac9d5; /* pd4 */
 
   /* Trading-specific colors (light mode — darker for readability on #e1e5ea) */
   --color-bid: #166534;
@@ -96,30 +101,30 @@
 
 .dark {
   /* Dark Theme — pd palette based */
-  --color-bg-primary: #080c16;      /* pd0 -30% lightness */
-  --color-bg-secondary: #121b2e;
+  --color-bg-primary: #03060b;
+  --color-bg-secondary: #111b2d;
   --color-bg-tertiary: #1a2840;
-  --color-text-primary: #ffffff;    /* pure white for max contrast on dark bg */
-  --color-text-secondary: #e8eef5;  /* near-white, slightly cooled */
-  --color-text-muted: #c5d5e6;      /* lifted from pd3→pd4 midpoint for readability */
-  --color-border: #3a5f7e;          /* pd1→pd2 midpoint (more visible) */
-  --color-accent: #1a8cbc;           /* pado-1 (WCAG AA: 4.1:1 vs white) */
-  --color-accent-hover: #5ee1e4;     /* pado-3 */
-  --color-accent-active: #86f3b7;    /* pado-4 — dark mode only */
+  --color-text-primary: #ffffff; /* pure white for max contrast on dark bg */
+  --color-text-secondary: #e8eef5; /* near-white, slightly cooled */
+  --color-text-muted: #cad9e8; /* lifted from pd3→pd4 midpoint for readability */
+  --color-border: #3a5f7e; /* pd1→pd2 midpoint (more visible) */
+  --color-accent: #1a8cbc; /* pado-1 (WCAG AA: 4.1:1 vs white) */
+  --color-accent-hover: #5ee1e4; /* pado-3 */
+  --color-accent-active: #86f3b7; /* pado-4 — dark mode only */
   --color-success: #22c55e;
   --color-error: #ef4444;
   --color-warning: #f59e0b;
 
   /* Panel depth — border luminance for depth on dark backgrounds */
   --color-panel-shadow: rgba(0, 0, 0, 0.4);
-  --color-panel-border: rgba(59, 185, 216, 0.14);  /* pado-2 tinted */
+  --color-panel-border: rgba(59, 185, 216, 0.14); /* pado-2 tinted */
   --color-card-border: rgba(59, 185, 216, 0.15);
 
   /* Glow (brighter for dark bg) */
   --shadow-glow: 0 0 16px rgba(59, 185, 216, 0.18);
 
   /* Toggle switch OFF background */
-  --color-toggle-off: #5b7e9c;     /* pd2→pd3 midpoint (more visible) */
+  --color-toggle-off: #5b7e9c; /* pd2→pd3 midpoint (more visible) */
 
   /* Trading-specific colors (subtle) */
   --color-bid: #16a34a;
@@ -219,7 +224,6 @@ body {
   animation: trade-row-in 0.2s ease-out;
 }
 
-
 /* Custom scrollbar - thin, themed */
 * {
   scrollbar-width: thin;
@@ -257,10 +261,24 @@ body {
 /* Pado custom gradient utilities */
 @layer utilities {
   .pd-gradient-linear {
-    background: linear-gradient(0.25turn, #1f3a61, #3a5f78, #7d9dbf, #aac9d5, #e1e5ea);
+    background: linear-gradient(
+      0.25turn,
+      #1f3a61,
+      #3a5f78,
+      #7d9dbf,
+      #aac9d5,
+      #e1e5ea
+    );
   }
   .pd-gradient-radial {
-    background: radial-gradient(circle, #1f3a61, #3a5f78, #7d9dbf, #aac9d5, #e1e5ea);
+    background: radial-gradient(
+      circle,
+      #1f3a61,
+      #3a5f78,
+      #7d9dbf,
+      #aac9d5,
+      #e1e5ea
+    );
   }
 }
 
@@ -329,7 +347,9 @@ input[type="number"] {
   border-radius: 2px;
   color: var(--color-text-muted);
   cursor: pointer;
-  transition: background-color 0.1s, color 0.1s;
+  transition:
+    background-color 0.1s,
+    color 0.1s;
 }
 
 .number-spinner button:hover {
