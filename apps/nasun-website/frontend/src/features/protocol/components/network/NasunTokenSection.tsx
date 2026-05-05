@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SectionLayout } from "../../../layout/SectionLayout";
 import { DividerBox } from "../../../ui/DividerBox";
 

@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Shield, Lock, Coins, ClipboardCheck } from "lucide-react";
 import type { CSSProperties } from "react";
 import { StaggerContainer, StaggerItem } from "../animations";

@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import DOMPurify from "dompurify";
 import { Post } from "../../types/post.d";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";

@@ -1,6 +1,6 @@
 // sections/news/NewsCard.tsx
 import { Link } from "react-router-dom";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { ArrowRight } from "lucide-react";
 import { Post } from "../../../types/post.d";
 import { TagV2 } from "@/components/ui/tag-v2";

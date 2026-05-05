@@ -11,7 +11,7 @@ import { isMultiChoiceProposal } from "../utils/proposalHelpers";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { FC, Suspense, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { fetchHiddenProposalIds } from "../utils/hiddenProposals";
 import { SectionLoading, InlineLoading, PageTitle } from "@/components/ui";
 

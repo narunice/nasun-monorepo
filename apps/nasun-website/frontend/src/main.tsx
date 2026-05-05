@@ -1,9 +1,7 @@
 // main.tsx
-import "./i18n"; // i18n 설정 파일 임포트 (가장 먼저 로드)
 import { StrictMode, lazy, Suspense } from "react";
-import { I18nextProvider } from "react-i18next";
-import i18n from "./i18n";
 import { createRoot } from "react-dom/client";
+import { StaticTranslationProvider } from "./providers/i18n/StaticTranslationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
 import { Amplify } from "aws-amplify";
@@ -98,7 +96,7 @@ if (!container) throw new Error("Failed to find the root element");
 // 6. 애플리케이션 렌더링
 createRoot(container).render(
   <StrictMode>
-    <I18nextProvider i18n={i18n}>
+    <StaticTranslationProvider ns="home">
       <Tooltip.Provider delayDuration={100} skipDelayDuration={0} disableHoverableContent={false}>
         <ThemeProvider>
           <AuthProvider>
@@ -119,6 +117,6 @@ createRoot(container).render(
           </AuthProvider>
         </ThemeProvider>
       </Tooltip.Provider>
-    </I18nextProvider>
+    </StaticTranslationProvider>
   </StrictMode>
 );

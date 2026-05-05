@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { MermaidDiagramDark } from "./MermaidDiagramDark";
 import executorLifecycleSvg from "./svg/executor-lifecycle.svg?raw";
 import { OuterBox } from "@/components/ui/OuterBox";

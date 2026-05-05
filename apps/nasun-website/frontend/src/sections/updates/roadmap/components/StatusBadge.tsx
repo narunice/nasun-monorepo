@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { CheckCircle, CircleDot, Circle } from "lucide-react";
 import type { RoadmapStatus } from "../../../types/roadmap";
 

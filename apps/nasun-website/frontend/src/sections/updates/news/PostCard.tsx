@@ -1,5 +1,5 @@
 // components/news/PostCard.tsx
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Post } from "../../types/post.d";
 import { ArrowRight } from "lucide-react";
 import DOMPurify from "dompurify";

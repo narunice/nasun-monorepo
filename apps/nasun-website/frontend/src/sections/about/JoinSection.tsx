@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Link } from "react-router-dom";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { SectionLayout } from "@/components/layout/SectionLayout";

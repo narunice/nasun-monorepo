@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Lock, Zap, Clock, Wallet, Tag, ListChecks, Timer } from "lucide-react";
 import { flowStepsDark } from "./flowSteps";
 import { OuterBox } from "@/components/ui/OuterBox";

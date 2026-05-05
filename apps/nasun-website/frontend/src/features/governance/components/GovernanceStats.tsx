@@ -6,7 +6,7 @@
  */
 
 import { FC } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useVoteHistory } from "../hooks/useVoteHistory";
 import { OuterBox, Spinner } from "@/components/ui";

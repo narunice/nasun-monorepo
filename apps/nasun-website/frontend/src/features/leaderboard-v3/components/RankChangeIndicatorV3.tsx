@@ -5,7 +5,7 @@
  * Based on V2 RankChangeIndicator pattern.
  */
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import type { RankChangeDirection } from '../types';
 
 interface RankChangeIndicatorV3Props {

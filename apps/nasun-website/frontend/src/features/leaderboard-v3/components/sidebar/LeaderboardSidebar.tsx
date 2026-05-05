@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { MyRankCardV3 } from "./MyRank";
 import { NasunContentFeed } from "../NasunContentFeed";
 

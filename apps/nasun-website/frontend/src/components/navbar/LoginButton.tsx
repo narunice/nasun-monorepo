@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { useNavigate } from "react-router-dom";
 import { useState, useCallback, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";

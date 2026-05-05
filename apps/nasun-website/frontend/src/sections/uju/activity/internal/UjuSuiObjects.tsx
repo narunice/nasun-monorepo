@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SuiObjectResponse } from "@mysten/sui/client";
 import { FC } from "react";
 import { UjuNftCard, renderUjuFieldIfExists } from "./UjuNftCard";

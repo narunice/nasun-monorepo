@@ -4,7 +4,7 @@
  * Dropdown/tabs for selecting active or past seasons.
  */
 
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import type { Season } from '../types';
 
 interface SeasonSelectorProps {

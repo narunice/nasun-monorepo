@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../../ui/dialog";
 import { DividerBox, InlineLoading } from "../../ui";
 import { formatWalletAddress, DIALOG_CONTENT_CLASS } from "../utils";

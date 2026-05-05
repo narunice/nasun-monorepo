@@ -1,5 +1,5 @@
 // sections/news/CategoryFilter.tsx
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Tag } from "@/components/ui/tag";
 import { categories, CategoryType } from "./categoryUtils";
 

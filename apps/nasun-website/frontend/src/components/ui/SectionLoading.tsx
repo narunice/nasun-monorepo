@@ -11,7 +11,7 @@
 
 import React from "react";
 import { SectionLayout } from "../layout/SectionLayout";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Spinner } from "./Spinner";
 
 interface SectionLoadingProps {

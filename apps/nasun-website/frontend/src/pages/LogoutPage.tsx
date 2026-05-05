@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { Link } from "react-router-dom";
 import { SectionLayout } from "../components/layout/SectionLayout";
 import { Button } from "../components/ui/button";

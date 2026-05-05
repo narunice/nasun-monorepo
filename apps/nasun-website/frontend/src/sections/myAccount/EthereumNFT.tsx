@@ -8,7 +8,7 @@
  * @since 2025-11-13
  */
 
-import { useTranslation } from 'react-i18next';
+import { useStaticTranslation as useTranslation } from '@/providers/i18n/StaticTranslationProvider';
 import { FC } from 'react';
 import { ExternalLink } from 'lucide-react';
 import type { EthereumNFT as EthereumNFTType } from '../../types/ethereum';

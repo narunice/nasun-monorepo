@@ -1,4 +1,4 @@
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { EyeOff, Ban, FileQuestion } from "lucide-react";
 import { StaggerContainer, StaggerItem } from "../animations";
 import { OuterBox } from "@/components/ui/OuterBox";

@@ -1,5 +1,5 @@
 import React, { useRef } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SectionLayout } from "../../../layout/SectionLayout";
 import { PageTitle } from "../../../ui/PageTitle";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";

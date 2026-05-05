@@ -1,6 +1,6 @@
 import { useSuiClientQuery } from "@mysten/dapp-kit";
 import { FC, useRef, useState, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { EcText } from "@/components/ui/Shared";
 import { VoteNft } from "../types/voting";
 import { useProposalType } from "../hooks/useProposalType";

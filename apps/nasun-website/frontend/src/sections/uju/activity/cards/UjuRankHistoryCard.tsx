@@ -7,7 +7,7 @@
 
 import { FC, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
+import { useStaticTranslation as useTranslation } from '@/providers/i18n/StaticTranslationProvider';
 import { useAuth } from '@/features/auth';
 import { getTwitterHandle } from '@/utils/getTwitterHandle';
 import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderboard-v3/hooks';

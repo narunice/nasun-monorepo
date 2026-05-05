@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useState, useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { GenesisNftPage as GenesisNftComponent } from "../../sections/genesis-nft/GenesisNftPage";
 import { PageLayout } from "../../components/layout/PageLayout";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";

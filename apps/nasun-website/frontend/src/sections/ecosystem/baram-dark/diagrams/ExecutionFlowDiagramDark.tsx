@@ -1,5 +1,5 @@
 import React from "react";
-import { useTranslation } from "react-i18next";
+import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { ChevronRight, ChevronLeft, ChevronDown } from "lucide-react";
 import type { TFunction } from "i18next";
 import { StaggerContainer, StaggerItem } from "../animations";
