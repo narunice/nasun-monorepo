@@ -117,8 +117,8 @@
 
   /* Panel depth — border luminance for depth on dark backgrounds */
   --color-panel-shadow: rgba(0, 0, 0, 0.4);
-  --color-panel-border: rgba(59, 185, 216, 0.14); /* pado-2 tinted */
-  --color-card-border: rgba(59, 185, 216, 0.15);
+  --color-panel-border: rgba(59, 185, 216, 0.01); /* pado-2 tinted */
+  --color-card-border: rgba(59, 185, 216, 0.01);
 
   /* Glow (brighter for dark bg) */
   --shadow-glow: 0 0 16px rgba(59, 185, 216, 0.18);
