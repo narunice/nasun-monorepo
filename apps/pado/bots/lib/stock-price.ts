@@ -262,10 +262,36 @@ export async function fetchStockDailyClose(
 
   const useTwelveDataFirst = criteria.sourceHost === 'api.twelvedata.com';
 
-  // Primary fetch.
-  const primary = useTwelveDataFirst
-    ? await fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
-    : await fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market);
+  const fetchPrimary = () =>
+    useTwelveDataFirst
+      ? fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
+      : fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market);
+  const fetchAlternate = () =>
+    useTwelveDataFirst
+      ? fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market)
+      : apiKey
+        ? fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
+        : Promise.reject(new PriceFetchError('TWELVEDATA_API_KEY is not set'));
+
+  // Primary fetch with automatic fallback to alternate source on transient
+  // failure. PriceIntegrityError (currency mismatch / data corruption) is not
+  // recoverable by switching sources, so we let it propagate. PriceFetchError
+  // (HTTP error, missing key, no candle, parse failure) triggers the swap.
+  let primary: StockQuote;
+  let usedFallback = false;
+  try {
+    primary = await fetchPrimary();
+  } catch (err) {
+    if (err instanceof PriceIntegrityError) throw err;
+    const primaryName = useTwelveDataFirst ? 'twelvedata' : 'yahoo';
+    const alternateName = useTwelveDataFirst ? 'yahoo' : 'twelvedata';
+    console.warn(
+      `[stock-price] primary (${primaryName}) failed for ${criteria.symbol}: ` +
+        `${err instanceof Error ? err.message : err} -- falling back to ${alternateName}`,
+    );
+    primary = await fetchAlternate();
+    usedFallback = true;
+  }
 
   if (primary.currency !== criteria.currency) {
     throw new PriceIntegrityError(
@@ -273,18 +299,22 @@ export async function fetchStockDailyClose(
     );
   }
 
-  // Best-effort cross-check.
+  // Best-effort cross-check using the *other* source. Skipped when we already
+  // had to fall back (alternate is now the primary, so there is no third source
+  // to cross-check against — accept the single-source quote).
   let cross: StockQuote | null = null;
-  try {
-    cross = useTwelveDataFirst
-      ? await fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market)
-      : apiKey
-        ? await fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
-        : null;
-  } catch (err) {
-    // Cross-check failures are advisory only; primary is authoritative when
-    // alternate source is unavailable. We log but do not abort.
-    console.warn(`[stock-price] cross-check failed for ${criteria.symbol}: ${err instanceof Error ? err.message : err}`);
+  if (!usedFallback) {
+    try {
+      cross = useTwelveDataFirst
+        ? await fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market)
+        : apiKey
+          ? await fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
+          : null;
+    } catch (err) {
+      // Cross-check failures are advisory only; primary is authoritative when
+      // alternate source is unavailable. We log but do not abort.
+      console.warn(`[stock-price] cross-check failed for ${criteria.symbol}: ${err instanceof Error ? err.message : err}`);
+    }
   }
 
   if (cross) {
