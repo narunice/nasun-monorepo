@@ -265,6 +265,24 @@ export async function fetchOrderHistoryFromApi(
   };
 }
 
+// ===== Pool Price History =====
+
+interface PoolPriceHistoryResponse {
+  poolId: string;
+  hours: number;
+  series: { t: number; close: number }[];
+}
+
+export async function fetchPoolPriceHistory(
+  poolId: string,
+  hours: number = 24,
+): Promise<{ t: number; close: number }[]> {
+  const data = await apiFetch<PoolPriceHistoryResponse>(
+    `/api/pado/pool-price-history/${encodeURIComponent(poolId)}?hours=${hours}`,
+  );
+  return data.series;
+}
+
 // ===== Feature Detection =====
 
 export function isTradeApiAvailable(): boolean {
