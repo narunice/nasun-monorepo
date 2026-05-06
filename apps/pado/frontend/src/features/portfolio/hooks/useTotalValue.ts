@@ -17,6 +17,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMultiBalance, useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
+import { usePrices } from '../../core/usePrices';
 import { usePredictionPositions } from '../../prediction/hooks/usePredictionPositions';
 import { useMarginAccount } from '../../core/unified-margin';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
@@ -61,6 +62,10 @@ export function useTotalValue(): UseTotalValueResult {
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const passkeyAddress = usePasskeyStore((s) => s.address);
   const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined));
+
+  // Drive the unified price cache (oracle + on-chain NSN mid-price) while
+  // this hook is mounted so dashboard valuations reflect real spot prices.
+  usePrices();
 
   const { data: multiBalance, isLoading: isBalanceLoading } = useMultiBalance();
   const { positions, isLoading: isPositionsLoading } = usePredictionPositions();

@@ -15,7 +15,7 @@ interface TokenRowProps {
 
 function TokenRow({ token }: TokenRowProps) {
   const isPredictions = token.symbol === 'Predictions';
-  const showSparkline = !isPredictions && token.symbol !== 'NUSDC';
+  const showSparkline = !isPredictions;
   const { data: prices } = useTokenSparkline(showSparkline ? token.symbol : '');
 
   // Format balance based on token - simplified for readability

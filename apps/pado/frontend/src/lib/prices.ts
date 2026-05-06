@@ -16,6 +16,8 @@ import { getSuiClient } from './sui-client';
 import * as oracleClient from './oracle-client';
 import type { SymbolKey } from './oracle-client';
 import { logOnce, logThrottled } from './logger';
+import { getOrderbook } from './deepbook';
+import { POOLS } from '../config/network';
 
 export type TokenSymbol = 'NSN' | 'NBTC' | 'NUSDC' | 'NETH' | 'NSOL';
 
@@ -137,6 +139,20 @@ export async function fetchOraclePrice(
 }
 
 /**
+ * Override the cached price for a symbol from an external real-time source
+ * (e.g. on-chain DEX mid-price). Useful when an off-chain oracle is unreliable
+ * for tokens whose primary venue is on-chain.
+ */
+export function overridePrice(
+  symbol: TokenSymbol,
+  price: number,
+  source: 'oracle' | 'simulated' = 'oracle',
+): void {
+  if (!Number.isFinite(price) || price <= 0) return;
+  priceCache.set(symbol, { price, source, timestamp: Date.now() });
+}
+
+/**
  * Refresh price cache for a symbol (call this periodically)
  *
  * @param symbol - Token symbol to refresh
@@ -171,6 +187,19 @@ export async function refreshAllPrices(): Promise<void> {
 
     // NUSDC is always $1.00 (no oracle)
     priceCache.set('NUSDC', { price: 1.0, source: 'simulated', timestamp: now });
+
+    // NSN: prefer on-chain NASUN_NUSDC pool mid-price (real spot price) over
+    // the off-chain oracle when available. The DevOracle is a manually-set
+    // value and can drift from the actual DEX price; for a token whose only
+    // venue is the local DEX, the mid-price IS the price.
+    try {
+      const ob = await getOrderbook(POOLS.NASUN_NUSDC);
+      if (ob.midPrice > 0) {
+        priceCache.set('NSN', { price: ob.midPrice, source: 'oracle', timestamp: now });
+      }
+    } catch (err) {
+      logThrottled('prices-nsn-mid', 'warn', 60_000, '[Prices] NASUN_NUSDC mid-price fetch failed:', err);
+    }
   } catch (error) {
     logThrottled('prices-batch', 'error', 60_000, '[Prices] Batch price refresh failed, using individual:', error);
     // Fallback to individual calls
