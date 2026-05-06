@@ -276,7 +276,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
               <button
                 type="submit"
                 disabled={isSubmitting || !title.trim() || !description.trim() || !walletConnected}
-                className="flex-1 px-4 py-2 bg-nasun-c4 text-white rounded-lg text-sm font-medium hover:bg-nasun-c4/80 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                className="flex-1 px-4 py-2 bg-nasun-c4 text-white rounded-lg text-sm font-medium hover:bg-nasun-c4/80 disabled:bg-white/10 disabled:text-white/50 disabled:cursor-not-allowed transition-colors"
               >
                 {isUploading ? 'Uploading...' : isPending ? 'Submitting...' : 'Submit'}
               </button>

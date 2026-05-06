@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { UjuCard, UjuButton, UjuSectionHeader } from "../shared";
 import { goToActivityDirectory, useConsumeScrollTarget } from "../shared/ujuNavigation";
@@ -14,12 +14,24 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
   const [, setSearchParams] = useSearchParams();
   const { pinnedApps } = directory;
   const [missionsApp, setMissionsApp] = useState<AppEntry | null>(null);
+  const [flashMissions, setFlashMissions] = useState(false);
 
   const goToActivity = () => goToActivityDirectory(setSearchParams);
 
   // "Go to Activated Apps →" on the activity tab sets a pending scroll
   // target; consume on dashboard mount.
   useConsumeScrollTarget("activated-apps");
+
+  // Light up Missions buttons briefly when the dashboard's empty-slot CTA
+  // points users here. Listener cleared on unmount.
+  useEffect(() => {
+    const onFlash = () => {
+      setFlashMissions(true);
+      window.setTimeout(() => setFlashMissions(false), 1500);
+    };
+    window.addEventListener("uju:flash-missions", onFlash);
+    return () => window.removeEventListener("uju:flash-missions", onFlash);
+  }, []);
 
   return (
     <UjuCard>
@@ -61,7 +73,9 @@ export function ActivatedAppsSection({ directory }: ActivatedAppsSectionProps) {
                     size="xs"
                     onClick={() => setMissionsApp(app)}
                     aria-label={`Manage active engagement for ${app.name}`}
-                    className="!border-pado-2/60 !text-pado-2 hover:!border-pado-2 hover:!text-white hover:!bg-pado-2/10"
+                    className={`!border-pado-2/60 !text-pado-2 hover:!border-pado-2 hover:!text-white hover:!bg-pado-2/10 ${
+                      flashMissions ? "uju-flash-outline" : ""
+                    }`}
                   >
                     Missions
                   </UjuButton>

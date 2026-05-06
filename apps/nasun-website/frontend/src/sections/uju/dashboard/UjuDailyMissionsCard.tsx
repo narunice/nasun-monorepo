@@ -389,19 +389,41 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
             opened "show all" since extra rows would otherwise bloat the card. */}
         {!showAll &&
           slotsLeft > 0 &&
-          Array.from({ length: slotsLeft }).map((_, i) => (
-            <div
-              key={`empty-slot-${i}`}
-              aria-hidden="true"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-uju-border/40 bg-uju-bg/20"
-            >
-              <span className="shrink-0 w-12 h-5 rounded-md bg-uju-border/30" />
-              <div className="flex-1 min-w-0">
-                <span className="block w-2/3 h-4 rounded bg-uju-border/20" />
-              </div>
-              <span className="shrink-0 w-5 h-5 rounded-full border-2 border-dashed border-uju-border/40" />
-            </div>
-          ))}
+          Array.from({ length: slotsLeft }).map((_, i) => {
+            const handleClick = () => {
+              const el = document.querySelector(
+                '[data-uju-scroll-target="activated-apps"]',
+              );
+              if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+              // Defer flash dispatch until after the smooth-scroll begins so
+              // the highlighted button is in view when the trace lights up.
+              window.setTimeout(() => {
+                window.dispatchEvent(new CustomEvent("uju:flash-missions"));
+              }, 350);
+            };
+            return (
+              <button
+                key={`empty-slot-${i}`}
+                type="button"
+                onClick={handleClick}
+                aria-label="Add an activity"
+                className="group relative w-full flex items-center gap-3 px-3 py-2.5 rounded-lg border border-dashed border-uju-border/40 bg-uju-bg/20 hover:border-pado-2/60 hover:bg-uju-bg/30 transition-colors"
+              >
+                {/* Skeleton structure (badge + label + circle) preserved so the
+                    empty slot keeps the same physical layout as a mission row */}
+                <span className="shrink-0 w-12 h-5 rounded-md bg-uju-border/30" />
+                <div className="flex-1 min-w-0">
+                  <span className="block w-2/3 h-4 rounded bg-uju-border/20" />
+                </div>
+                <span className="shrink-0 w-5 h-5 rounded-full border-2 border-dashed border-uju-border/40" />
+                {/* Overlay CTA — sits on top of the skeleton without altering
+                    its physical dimensions */}
+                <span className="absolute inset-0 flex items-center justify-center text-sm font-medium text-uju-secondary/70 group-hover:text-pado-2 transition-colors pointer-events-none">
+                  + Add an activity
+                </span>
+              </button>
+            );
+          })}
       </div>
 
       {/* Overflow control */}
