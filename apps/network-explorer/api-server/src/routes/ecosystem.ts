@@ -657,9 +657,11 @@ app.get('/score/:identityId', async (c) => {
   const storedMissions = Array.isArray(storedMissionsRaw)
     ? (storedMissionsRaw as string[])
     : undefined;
+  // Clamp to 7 to mirror the frontend MAX_DAILY_MISSIONS cap. Defends against
+  // historical rows that exceeded the limit before the PUT endpoint enforced 7.
   const activeMissions: string[] =
     storedMissions && storedMissions.length > 0
-      ? storedMissions
+      ? storedMissions.slice(0, 7)
       : [...DEFAULT_MISSION_IDS];
 
   // Filtered today base: only categories the user has activated count.
@@ -818,9 +820,10 @@ app.get('/active-missions/:identityId', async (c) => {
 
 // PUT /api/v1/ecosystem/active-missions/:identityId
 // Upserts the user's active mission selection. Accepts a flat string array of
-// category ids (max 10). No auth token required — same public-identityId
-// pattern as the rest of the ecosystem endpoints. The worst-case abuse is a
-// display preference change, not a points manipulation.
+// category ids (max 7, matching frontend MAX_DAILY_MISSIONS). No auth token
+// required — same public-identityId pattern as the rest of the ecosystem
+// endpoints. The cap mirrors the frontend so direct API calls cannot exceed
+// the displayed limit and inflate base score.
 app.put('/active-missions/:identityId', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
   const identityId = c.req.param('identityId');
@@ -833,7 +836,7 @@ app.put('/active-missions/:identityId', async (c) => {
   }
   const missions = body.missions as unknown[];
   if (missions.length === 0) return c.json({ error: 'missions_empty' }, 400);
-  if (missions.length > 10) return c.json({ error: 'too_many_missions' }, 400);
+  if (missions.length > 7) return c.json({ error: 'too_many_missions' }, 400);
   if (!missions.every((m) => typeof m === 'string' && m.length > 0 && m.length <= 100)) {
     return c.json({ error: 'invalid_mission_id' }, 400);
   }
