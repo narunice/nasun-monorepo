@@ -35,7 +35,7 @@ export const CHART_COLORS = {
     volumeDown: 'rgba(239, 83, 80, 0.45)',
   },
   light: {
-    background: '#e1e5ea',
+    background: '#ffffff',
     text: '#191615',
     grid: '#cdd3db',
     border: '#aac9d5',

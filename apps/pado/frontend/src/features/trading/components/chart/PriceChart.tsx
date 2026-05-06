@@ -322,8 +322,16 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
       if (range) chart.timeScale().setVisibleLogicalRange(range);
     });
 
-    // Resize
+    // Resize — preserve visible time range so bars don't compress when width changes drastically
+    // (e.g. desktop→mobile breakpoint, where the hidden layout mounted at clientWidth=0).
+    let lastWidth = chartContainerRef.current?.clientWidth ?? 0;
     const handleResize = () => {
+      const newWidth = chartContainerRef.current?.clientWidth ?? 0;
+      const widthChangedSignificantly = Math.abs(newWidth - lastWidth) > 50;
+      const savedRange = widthChangedSignificantly
+        ? chartRef.current?.timeScale().getVisibleRange()
+        : null;
+
       if (chartContainerRef.current && chartRef.current) {
         chartRef.current.applyOptions({ width: chartContainerRef.current.clientWidth });
       }
@@ -333,10 +341,20 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
       if (volumeContainerRef.current && volumeChartRef.current) {
         volumeChartRef.current.applyOptions({ width: volumeContainerRef.current.clientWidth });
       }
+
+      if (savedRange && newWidth > 0) {
+        chartRef.current?.timeScale().setVisibleRange(savedRange);
+      } else if (lastWidth === 0 && newWidth > 0) {
+        // First time becoming visible (was display:none) — fit all data to avoid compressed view.
+        chartRef.current?.timeScale().fitContent();
+      }
+      lastWidth = newWidth;
     };
 
     const resizeObserver = new ResizeObserver(handleResize);
     if (mainChartWrapperRef.current) resizeObserver.observe(mainChartWrapperRef.current);
+    if (chartContainerRef.current) resizeObserver.observe(chartContainerRef.current);
+    if (volumeContainerRef.current) resizeObserver.observe(volumeContainerRef.current);
     window.addEventListener('resize', handleResize);
 
     return () => {
