@@ -414,14 +414,19 @@ export function getPoolPriceHistory(
 ): PoolPricePoint[] {
   const bucketMs = 3_600_000;
   const sinceMs = Date.now() - hours * bucketMs;
+  // Hardcode bucket size as SQL integer literal: better-sqlite3 binds JS
+  // Numbers as REAL by default, which would turn (ts / 3600000) into float
+  // division and defeat bucketing.
   const rows = getLeaderboardDb()
     .prepare(
       `SELECT bucket_ms, price AS close_price_raw FROM (
          SELECT
-           (timestamp_ms / ?) * ? AS bucket_ms,
+           (timestamp_ms / 3600000) * 3600000 AS bucket_ms,
+           id,
+           timestamp_ms,
            price,
            ROW_NUMBER() OVER (
-             PARTITION BY (timestamp_ms / ?)
+             PARTITION BY (timestamp_ms / 3600000)
              ORDER BY timestamp_ms DESC, id DESC
            ) AS rn
          FROM trade_fills
@@ -430,7 +435,7 @@ export function getPoolPriceHistory(
        WHERE rn = 1
        ORDER BY bucket_ms ASC`,
     )
-    .all(bucketMs, bucketMs, bucketMs, poolId, sinceMs) as PoolPricePoint[];
+    .all(poolId, sinceMs) as PoolPricePoint[];
   return rows;
 }
 
