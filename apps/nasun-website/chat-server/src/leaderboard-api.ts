@@ -46,6 +46,7 @@ import {
   getFollowedTraderFills,
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
+  getPoolPriceHistory,
 } from './leaderboard-store.js';
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
@@ -258,6 +259,11 @@ export async function handleLeaderboardRequest(
         }
       });
       return true;
+    }
+
+    const priceHistoryMatch = pathname.match(/^\/api\/pado\/pool-price-history\/(0x[a-fA-F0-9]{64})$/);
+    if (priceHistoryMatch && method === 'GET') {
+      return handlePoolPriceHistory(res, url, corsHeaders, priceHistoryMatch[1]);
     }
 
     const weeklyScoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/score\/weekly\/(\d{4}-W\d{2})$/);
@@ -960,6 +966,27 @@ function handleCostBasis(
     entries,
     total_realized_pnl: Math.round(totalRealizedPnl * 100) / 100,
   }));
+  return true;
+}
+
+function handlePoolPriceHistory(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>, poolId: string,
+): boolean {
+  const parsedHours = parseInt(url.searchParams.get('hours') || '24', 10);
+  const hours = Math.min(Math.max(Number.isFinite(parsedHours) ? parsedHours : 24, 1), 168);
+
+  const points = getPoolPriceHistory(poolId, hours);
+  // Convert raw price (DeepBook V3, 1e9 scale) to human float
+  const series = points.map((p) => ({
+    t: p.bucket_ms,
+    close: Number(p.close_price_raw) / 1_000_000_000,
+  }));
+
+  res.writeHead(200, {
+    ...corsHeaders,
+    'Cache-Control': 'public, max-age=60',
+  });
+  res.end(JSON.stringify({ poolId, hours, series }));
   return true;
 }
 
