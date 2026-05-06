@@ -67,7 +67,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   const addressSuffix = address ? address.slice(-4) : '0000';
 
   return (
-    <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden border border-theme-border">
+    <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden border border-[color:var(--color-card-border)]">
       {/* Header (hidden in floating mode where FloatingChatPopup provides its own) */}
       {!hideHeader && (
         <div className="flex items-center justify-between px-3 py-2 border-b border-theme-border shrink-0">
