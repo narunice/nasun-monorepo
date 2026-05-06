@@ -398,6 +398,42 @@ export function getTotalFillsCount(): number {
   return row.count;
 }
 
+export interface PoolPricePoint {
+  bucket_ms: number;
+  close_price_raw: string; // DeepBook V3 raw price (divide by 1e9 for human)
+}
+
+/**
+ * Hourly close prices for a pool over the last `hours` hours.
+ * Bucket = floor(timestamp_ms / hour_ms). Close = last fill in each bucket.
+ * Returns ascending by bucket_ms.
+ */
+export function getPoolPriceHistory(
+  poolId: string,
+  hours: number,
+): PoolPricePoint[] {
+  const bucketMs = 3_600_000;
+  const sinceMs = Date.now() - hours * bucketMs;
+  const rows = getLeaderboardDb()
+    .prepare(
+      `SELECT bucket_ms, price AS close_price_raw FROM (
+         SELECT
+           (timestamp_ms / ?) * ? AS bucket_ms,
+           price,
+           ROW_NUMBER() OVER (
+             PARTITION BY (timestamp_ms / ?)
+             ORDER BY timestamp_ms DESC, id DESC
+           ) AS rn
+         FROM trade_fills
+         WHERE pool_id = ? AND timestamp_ms >= ?
+       )
+       WHERE rn = 1
+       ORDER BY bucket_ms ASC`,
+    )
+    .all(bucketMs, bucketMs, bucketMs, poolId, sinceMs) as PoolPricePoint[];
+  return rows;
+}
+
 // ===== Aggregation Queries =====
 
 interface AggregatedTrader {
