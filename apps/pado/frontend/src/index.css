@@ -81,8 +81,8 @@
 
   /* Panel depth */
   --color-panel-shadow: rgba(0, 0, 0, 0.06);
-  --color-panel-border: rgba(26, 140, 188, 0.12); /* pado-1 tinted */
-  --color-card-border: #e2e8ef;
+  --color-panel-border: rgba(26, 140, 188, 0.01); /* pado-1 tinted */
+  --color-card-border: rgba(26, 140, 188, 0.01);
 
   /* Glow (theme-aware) */
   --shadow-glow: 0 0 12px rgba(26, 140, 188, 0.12);
