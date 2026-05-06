@@ -267,8 +267,16 @@ export class RoundManager {
       return await this.recoverFlying(round);
     }
 
+    // STATE_BETTING(=0) with entries>0: previous keeper crashed mid-round
+    // (most often a transient RPC error on close_betting). Self-heal by driving
+    // the round to FLYING and reusing recoverFlying(). Avoids the 1h refund
+    // timeout trap that otherwise locks player funds.
+    if (round.state === 0 && round.entriesCount > 0) {
+      return await this.recoverBetting(round);
+    }
+
     if (round.entriesCount > 0) {
-      console.error(`[Crash] BOOT BLOCKED: round ${round.roundId} has ${round.entriesCount} entries. Run emergency_refund_batch + admin_finalize.`);
+      console.error(`[Crash] BOOT BLOCKED: round ${round.roundId} has ${round.entriesCount} entries in unexpected state ${round.state}. Run emergency_refund_batch + admin_finalize.`);
       return 'block';
     }
 
@@ -363,6 +371,83 @@ export class RoundManager {
     this.db.prepare('UPDATE crash_salts SET resolved = 1 WHERE round_id = ?').run(round.roundId);
     console.warn(`[Crash] Boot recovery: round ${round.roundId} resolved digest=${digest}`);
     return 'ok';
+  }
+
+  /// Boot-time auto-recovery for a BETTING round with entries>0 that the
+  /// previous keeper failed to close (transient RPC error mid-round). Drives
+  /// close_betting then defers to recoverFlying() for the resolve step. Returns
+  /// 'block' if betting window is still active (parent retries in 60s) or salt
+  /// is missing.
+  private async recoverBetting(round: {
+    roundId: number;
+    objectId: string;
+    entriesCount: number;
+    bettingEndsAt: number;
+    commitHash: Buffer;
+  }): Promise<'ok' | 'block'> {
+    const now = Date.now();
+    if (now <= round.bettingEndsAt) {
+      console.warn(
+        `[Crash] Recover: round ${round.roundId} BETTING with ${round.entriesCount} entries, ` +
+        `${round.bettingEndsAt - now}ms remaining; deferring to next retry`,
+      );
+      return 'block';
+    }
+
+    const saltRow = this.db.prepare(
+      'SELECT salt, crash_point_bps FROM crash_salts WHERE round_id = ?',
+    ).get(round.roundId) as { salt: Buffer | Uint8Array; crash_point_bps: number } | undefined;
+
+    if (!saltRow) {
+      console.error(
+        `[Crash] BOOT BLOCKED: round ${round.roundId} BETTING with entries=${round.entriesCount} ` +
+        `but no salt in SQLite — manual emergency_refund_batch required`,
+      );
+      return 'block';
+    }
+
+    const salt = Buffer.from(saltRow.salt);
+    const bps = Number(saltRow.crash_point_bps);
+    const localHash = Buffer.from(this.computeCommitHash(bps, salt));
+    if (!localHash.equals(round.commitHash)) {
+      console.error(
+        `[Crash] BOOT BLOCKED: round ${round.roundId} commit_hash mismatch ` +
+        `(local=${localHash.toString('hex')} chain=${round.commitHash.toString('hex')}) — DB corruption suspected`,
+      );
+      return 'block';
+    }
+
+    console.warn(
+      `[Crash] Recover: round ${round.roundId} stuck in BETTING with ${round.entriesCount} entries; ` +
+      `attempting close_betting → resolve_round`,
+    );
+
+    try {
+      await this.execTx(() => {
+        const tx = new Transaction();
+        tx.moveCall({
+          target: `${this.config.packageId}::crash::close_betting`,
+          arguments: [
+            tx.object(this.config.registryId),
+            tx.object(round.objectId),
+            tx.object(SUI_CLOCK),
+          ],
+        });
+        return tx;
+      }, 'recover_close_betting');
+    } catch (err) {
+      console.error(`[Crash] Recover: close_betting failed for round ${round.roundId}:`, err);
+      return 'block';
+    }
+
+    const refetched = await this.fetchRoundScalars(round.objectId).catch(() => null);
+    if (!refetched || refetched.state !== 1) {
+      console.error(
+        `[Crash] Recover: round ${round.roundId} not FLYING after close_betting (state=${refetched?.state})`,
+      );
+      return 'block';
+    }
+    return await this.recoverFlying(refetched);
   }
 
   private async fetchCurrentRoundId(): Promise<string | null> {
@@ -491,6 +576,19 @@ export class RoundManager {
     return msg.includes('is not available for consumption');
   }
 
+  // Transient RPC failures (HTTP 5xx, network resets, DNS hiccups) can surface
+  // anywhere the SDK touches the fullnode — most commonly during input
+  // resolution before submit. 2026-05-06 incident: a 503 on close_betting input
+  // resolution propagated up, runLoop fell into recover(), and BETTING+entries>0
+  // bricked the keeper for ~15min. These errors are safe to retry: the tx was
+  // never accepted, so a rebuild on the next attempt is functionally identical.
+  private isTransientRpcError(err: unknown): boolean {
+    const e = err as { status?: number; message?: string } | undefined;
+    if (e && typeof e.status === 'number' && e.status >= 500 && e.status < 600) return true;
+    const msg = String(e?.message ?? err);
+    return /status code: 5\d\d|ETIMEDOUT|ECONNRESET|ENOTFOUND|EAI_AGAIN|fetch failed|socket hang up|Service Temporarily Unavailable/i.test(msg);
+  }
+
   private async execTx(
     buildTx: () => Transaction,
     label: string,
@@ -530,6 +628,11 @@ export class RoundManager {
         if (this.isLockConflict(msg) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
           console.warn(`[Crash] ${label} LockConflict at submit (attempt ${attempt + 1}): ${msg}`);
           await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1));
+          continue;
+        }
+        if (this.isTransientRpcError(err) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+          console.warn(`[Crash] ${label} transient RPC error (attempt ${attempt + 1}): ${msg}`);
+          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1) * 2);
           continue;
         }
         throw err;
