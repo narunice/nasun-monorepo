@@ -36,9 +36,9 @@ export function UnderlineTabs<T extends string>({
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`flex items-center gap-1.5 px-3 py-2 ${fontSize} font-medium whitespace-nowrap transition-colors border-b-2 -mb-px ${
+            className={`flex items-center gap-1.5 px-3 py-2 ${fontSize} font-medium whitespace-nowrap transition-colors border-b-[3px] -mb-[1px] ${
               activeTab === tab.id
-                ? 'text-theme-text-primary border-theme-accent'
+                ? 'text-theme-text-primary border-pd3'
                 : 'text-theme-text-muted border-transparent hover:text-theme-text-secondary hover:border-theme-border'
             }`}
           >

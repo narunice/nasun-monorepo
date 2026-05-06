@@ -71,7 +71,7 @@ export function MarketSelector() {
       {/* 선택 버튼 */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-theme-bg-tertiary hover:bg-theme-bg-secondary rounded-lg transition-colors border border-transparent"
       >
         {/* 토큰 아이콘 — base token in front */}
         <div className="flex -space-x-2">

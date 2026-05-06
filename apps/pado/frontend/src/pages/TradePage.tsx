@@ -45,6 +45,7 @@ import type { PriceLevel } from "../lib/deepbook";
 import { fetchBinance24hTicker, getBinanceSymbol } from "../lib/indicators";
 import { useState, useEffect, useCallback } from "react";
 import { ChatPanel, useChatMode } from "../features/social";
+import { UnderlineTabs } from "../components/common/UnderlineTabs";
 import { NewsCarousel } from "../features/news";
 
 
@@ -55,7 +56,7 @@ const CHART_HEIGHT = 770;
 const CHAT_HEIGHT = 360;
 
 // Per-card width — shared by each right-side card and header toggles
-const CARD_W = "w-[300px] 2xl:w-[340px]";
+const CARD_W = "w-[320px] 2xl:w-[360px]";
 
 // Simple mode max width: Chart + 2 cards + gaps, centered
 // Wider layout for more chart space: ~780px chart + 2*300px cards + 2*12px gaps ≈ 1404px
@@ -82,27 +83,15 @@ function ChartArea({
 }: ChartAreaProps) {
   return (
     <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden">
-      <div className="shrink-0 flex items-center gap-1 px-3 py-1.5">
-        <button
-          onClick={() => onChartViewChange("price")}
-          className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-            chartView === "price"
-              ? "text-theme-text-primary bg-theme-bg-tertiary"
-              : "text-theme-text-muted hover:text-theme-text-secondary"
-          }`}
-        >
-          Price
-        </button>
-        <button
-          onClick={() => onChartViewChange("depth")}
-          className={`px-2 py-0.5 text-xs font-medium rounded transition-colors ${
-            chartView === "depth"
-              ? "text-theme-text-primary bg-theme-bg-tertiary"
-              : "text-theme-text-muted hover:text-theme-text-secondary"
-          }`}
-        >
-          Depth
-        </button>
+      <div className="shrink-0 px-3">
+        <UnderlineTabs
+          tabs={[
+            { id: "price" as const, label: "Price" },
+            { id: "depth" as const, label: "Depth" },
+          ]}
+          activeTab={chartView}
+          onTabChange={onChartViewChange}
+        />
       </div>
       <div className="flex-1 min-h-0">
         {chartView === "price" ? (

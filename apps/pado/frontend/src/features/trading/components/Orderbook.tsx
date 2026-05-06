@@ -103,7 +103,7 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
   return (
     <>
       {/* Column Headers */}
-      <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted mb-1 pb-1 border-b border-theme-border`}>
+      <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted pt-1 pb-1 mb-1 border-b border-theme-border`}>
         <span>Price</span>
         <span className="text-right">Size</span>
         <span className="text-right flex items-center justify-end gap-1">
@@ -513,7 +513,7 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
       {activeTab === 'book' && (
         <>
           {/* Column Headers */}
-          <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted mb-1 pb-1 border-b border-theme-border`}>
+          <div className={`grid grid-cols-3 gap-1 ${fontSize} text-theme-text-muted pt-1 pb-1 mb-1 border-b border-theme-border`}>
             <span>Price</span>
             <span className="text-right">Size</span>
             <span className="text-right">Total</span>
