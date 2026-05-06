@@ -230,7 +230,7 @@ function parseTradeError(error: unknown): string {
         case 16: return 'Creator and resolver addresses must differ.';
         case 17: return 'Invalid input. Check amount, price, and time settings.';
         case 18: return 'Order is too large to fill in one transaction. Try smaller size or different price.';
-        case 19: return 'No matching orders at market price. Try a Limit order or wait for liquidity.';
+        case 19: return 'The orderbook is empty on the opposite side right now -- there are no resting orders to match. Try a Limit order, or wait for someone to add liquidity.';
         case 20: return 'Order not found. It may have been filled or cancelled.';
         case 100: return 'Price moved too much during your order. Refresh the orderbook and try again.';
         case 101: return 'Trade value cannot be zero.';

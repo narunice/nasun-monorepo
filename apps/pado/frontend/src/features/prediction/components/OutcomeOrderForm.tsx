@@ -621,7 +621,7 @@ export function OutcomeOrderForm({
         <div className="flex gap-1 mb-4 p-1 bg-theme-bg-tertiary rounded-lg">
           <button
             onClick={() => setOrderMode('market')}
-            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
+            className={`flex-1 min-h-[44px] py-2 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'market'
                 ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
                 : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
@@ -631,7 +631,7 @@ export function OutcomeOrderForm({
           </button>
           <button
             onClick={() => setOrderMode('limit')}
-            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
+            className={`flex-1 min-h-[44px] py-2 px-3 rounded-md font-semibold text-sm transition-all ${
               orderMode === 'limit'
                 ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
                 : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
@@ -678,7 +678,7 @@ export function OutcomeOrderForm({
         <div className="flex gap-1 mb-4 p-1 bg-theme-bg-tertiary rounded-lg">
           <button
             onClick={() => setOrderType('buy')}
-            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
+            className={`flex-1 min-h-[44px] py-2 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'buy'
                 ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
                 : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
@@ -688,7 +688,7 @@ export function OutcomeOrderForm({
           </button>
           <button
             onClick={() => setOrderType('sell')}
-            className={`flex-1 min-h-[36px] py-1.5 px-3 rounded-md font-semibold text-sm transition-all ${
+            className={`flex-1 min-h-[44px] py-2 px-3 rounded-md font-semibold text-sm transition-all ${
               orderType === 'sell'
                 ? 'bg-theme-bg-primary dark:bg-white/15 text-theme-text-primary shadow-sm ring-1 ring-theme-border dark:ring-white/20'
                 : 'bg-transparent text-theme-text-muted dark:text-white/40 hover:text-theme-text-primary dark:hover:text-white/70'
