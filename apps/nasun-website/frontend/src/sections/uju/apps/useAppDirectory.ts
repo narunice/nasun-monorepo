@@ -26,7 +26,30 @@ const STALE_MISSION_IDS: ReadonlySet<string> = new Set([
   'jupiter-swap',
   'cetus-trade',
   'uniswap-swap',
+  'gostop-crash', // Crash under maintenance — remove when game reopens
 ]);
+
+// Scans raw localStorage for mission IDs that are currently under maintenance.
+// Must be called BEFORE loadFromStorage, which cleans up localStorage via
+// parseDirectoryState + writeJson. Once the raw store is overwritten, these
+// IDs are undetectable. The result is used to show a one-time toast.
+function detectMaintenanceDrops(identityId: string | undefined): string[] {
+  const MAINTENANCE_IDS = new Set(['gostop-crash']);
+  const raw = readJson(directoryKey(identityId));
+  if (!raw || typeof raw !== 'object') return [];
+  const r = raw as { missions?: unknown };
+  if (!r.missions || typeof r.missions !== 'object') return [];
+  const dropped: string[] = [];
+  for (const ids of Object.values(r.missions as Record<string, unknown>)) {
+    if (!Array.isArray(ids)) continue;
+    for (const id of ids) {
+      if (typeof id === 'string' && MAINTENANCE_IDS.has(id) && !dropped.includes(id)) {
+        dropped.push(id);
+      }
+    }
+  }
+  return dropped;
+}
 
 // ---------------------------------------------------------------------------
 // State shape
@@ -298,9 +321,18 @@ export interface UseAppDirectoryResult {
   setMissions: (appId: string, ids: string[]) => void;
   selectedTotal: number;
   isAtCap: boolean;
+  droppedForMaintenanceOnMount: string[];
 }
 
 export function useAppDirectory(identityId: string | undefined): UseAppDirectoryResult {
+  // Must be declared BEFORE the state useState so its initializer runs first,
+  // while localStorage still contains the raw (un-cleaned) data. loadFromStorage
+  // calls parseDirectoryState + writeJson which removes STALE_MISSION_IDS from
+  // localStorage; scanning after that would always return an empty array.
+  const [droppedForMaintenanceOnMount] = useState<string[]>(() =>
+    detectMaintenanceDrops(identityId),
+  );
+
   const [state, setStateRaw] = useState<AppDirectoryState>(() =>
     loadFromStorage(identityId),
   );
@@ -501,5 +533,6 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     setMissions,
     selectedTotal,
     isAtCap,
+    droppedForMaintenanceOnMount,
   };
 }

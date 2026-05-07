@@ -29,7 +29,7 @@ export const MAX_DAILY_MISSIONS = 7;
 // On Activate, seed only these missions (not the full APP_MISSION_MAP entry).
 // Sized to 6 by default to mirror the legacy 7-mission my-account list minus
 // chat (deprecated in PR3b). gostop ships 5 games but only 3 are seeded so the
-// migrated user sees the same historic gostop missions; mines/crash are
+// migrated user sees the same historic gostop missions; mines is
 // available for manual opt-in within the 7-mission cap.
 export const DEFAULT_MISSIONS_BY_APP: Record<string, readonly string[]> = {
   'nasun-devnet': ['faucet', 'wallet-transfer'],
@@ -44,9 +44,9 @@ export const DEFAULT_MISSIONS_BY_APP: Record<string, readonly string[]> = {
 // fresh users auto-seeded via DEFAULT_PINNED_APPS in appRegistry.
 //
 // GoStop missions: each game owns a separate mission id and a separate backend
-// category, so the 1pt/day cap applies per game (a user playing all five games
-// can earn 5pt/day from GoStop). Mission ids match the backend category names
-// (gostop-{lottery,scratchcard,numbermatch,mines,crash}); useDailyMissions.ts
+// category, so the 1pt/day cap applies per game (a user playing all four games
+// can earn 4pt/day from GoStop). Mission ids match the backend category names
+// (gostop-{lottery,scratchcard,numbermatch,mines}); useDailyMissions.ts
 // EVENT_MISSION_MAP must stay in sync.
 export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
   'nasun-devnet': [
@@ -124,15 +124,6 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       label: 'Play Mines',
       description: 'Reveal cells, dodge mines, cash out before you bust',
       externalUrl: 'https://gostop.app/mines',
-    },
-    {
-      id: 'gostop-crash',
-      appId: 'gostop',
-      completionType: 'onchain',
-      points: 1,
-      label: 'Play Crash',
-      description: 'Bet on the multiplier, cash out before the crash',
-      externalUrl: 'https://gostop.app/crash',
     },
   ],
 };
