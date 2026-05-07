@@ -361,13 +361,7 @@ export class AdminStack extends cdk.Stack {
     const devnetMetricsResource = this.api.root.addResource("devnet-metrics");
     devnetMetricsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
-    // User Analytics API Route (admin only)
-    const userAnalyticsResource = this.api.root.addResource("user-analytics");
-    userAnalyticsResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
-
-    // Nasun Stats snapshot route (admin only)
-    // Single endpoint, single Lambda permission pair (API Gateway resource policy
-    // is close to the 20KB limit — keep new resources minimal).
+    // Nasun Stats snapshot route (admin only).
     // GET /nasun-stats/download?format=csv|txt|meta
     //   csv  → text/csv blob
     //   txt  → text/plain blob

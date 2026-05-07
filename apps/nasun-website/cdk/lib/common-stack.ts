@@ -702,50 +702,6 @@ export class CommonStack extends cdk.Stack {
     });
 
     // ========================================
-    // 6-2. Get Follower Count Lambda (Twitter API)
-    // ========================================
-
-    const getFollowerCountLambda = new NodejsFunction(this, "GetFollowerCountLambda", {
-      functionName: "nasun-common-get-follower-count",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'get-follower-count', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(30),
-      environment: {
-        TARGET_USER_ID: "1725466995565752320",
-        TARGET_USERNAME: process.env.TARGET_USERNAME || "Nasun_io", // For logging only
-        TWITTER_TOKENS_SECRET_NAME: process.env.TWITTER_TOKENS_SECRET_NAME || "nasun-twitter-tokens",
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-      },
-      logGroup: new logs.LogGroup(this, "GetFollowerCountLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-follower-count",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-
-    // Secrets Manager read-only permission (token refresh is handled by dedicated Lambda)
-    getFollowerCountLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["secretsmanager:GetSecretValue"],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:nasun-twitter-tokens*`,
-        ]
-      })
-    );
-
-    const getFollowerCountApi = new apigw.LambdaRestApi(this, "GetFollowerCountApi", {
-      handler: getFollowerCountLambda,
-      restApiName: "NASUN Get Follower Count API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["GET", "OPTIONS"]
-      },
-    });
-
-    // ========================================
     // 7. SSM Parameters
     // ========================================
 
@@ -819,11 +775,6 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "GetUserCountApiUrl", {
       value: getUserCountApi.url,
       description: "Get User Count API URL (CommonStack)",
-    });
-
-    new cdk.CfnOutput(this, "GetFollowerCountApiUrl", {
-      value: getFollowerCountApi.url,
-      description: "Get Follower Count API URL (CommonStack)",
     });
 
     // ========================================
