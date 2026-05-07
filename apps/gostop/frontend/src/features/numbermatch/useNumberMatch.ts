@@ -83,6 +83,9 @@ export function useNumberMatch(): UseNumberMatchResult {
 }
 
 function humanizeNmError(raw: string): string {
+  if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
+    return 'Not enough NASUN for gas. Please top up your wallet and try again.'
+  }
   if (raw.includes('MoveAbort')) {
     if (raw.includes(', 0)')) return 'Invalid pick count (1-3).'
     if (raw.includes(', 1)')) return 'Number out of range (1-5).'

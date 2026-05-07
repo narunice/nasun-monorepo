@@ -52,6 +52,9 @@ export function maxMultiplierBps(mineCount: number): number {
 }
 
 export function humanizeMinesError(raw: string): string {
+  if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
+    return 'Not enough NASUN for gas. Please top up your wallet and try again.'
+  }
   if (raw.includes('MoveAbort')) {
     for (const code of Object.keys(MINES_ERRORS)) {
       if (raw.includes(`, ${code})`)) return MINES_ERRORS[Number(code)]
