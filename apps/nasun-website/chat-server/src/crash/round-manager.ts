@@ -122,7 +122,7 @@ const BANKROLL_POOL = '0xf74e8c3c16ee077651f82459f350e96027c82319686395679d10f08
 const SUI_CLOCK = '0x6';
 
 // Must match Move INVERSE_SEARCH_TOP_BPS to keep the post-crash bound enforceable.
-const CRASH_POINT_CAP_BPS = 26_650_000;
+const CRASH_POINT_CAP_BPS = 2_000_000;
 
 export interface RoundManagerConfig {
   rpcUrl: string;
@@ -238,7 +238,7 @@ export class RoundManager {
   private async recover(): Promise<'ok' | 'block'> {
     let currentId: string | null;
     try {
-      currentId = await this.fetchCurrentRoundId();
+      currentId = await this.withRpcRetry(() => this.fetchCurrentRoundId(), 'recover_registry_fetch');
     } catch (err) {
       console.error('[Crash] recover: registry fetch failed:', err);
       return 'block';
@@ -250,7 +250,7 @@ export class RoundManager {
 
     let round: Awaited<ReturnType<RoundManager['fetchRoundScalars']>>;
     try {
-      round = await this.fetchRoundScalars(currentId);
+      round = await this.withRpcRetry(() => this.fetchRoundScalars(currentId!), 'recover_round_fetch');
     } catch (err) {
       console.error('[Crash] recover: round fetch failed:', err);
       return 'block';
@@ -356,7 +356,10 @@ export class RoundManager {
       // Race: another process resolved between our state read and tx submit.
       // Use on-chain ground truth instead of error-string parsing — robust to
       // SDK format changes.
-      const stillExists = await this.fetchRoundScalars(round.objectId).catch(() => null);
+      const stillExists = await this.withRpcRetry(
+        () => this.fetchRoundScalars(round.objectId),
+        'recoverFlying_post_resolve_check',
+      ).catch(() => null);
       if (!stillExists || stillExists.state !== 1) {
         console.warn(
           `[Crash] Boot recovery: round ${round.roundId} already resolved on-chain (race detected) — proceeding`
@@ -440,7 +443,10 @@ export class RoundManager {
       return 'block';
     }
 
-    const refetched = await this.fetchRoundScalars(round.objectId).catch(() => null);
+    const refetched = await this.withRpcRetry(
+      () => this.fetchRoundScalars(round.objectId),
+      'recoverBetting_post_close_check',
+    ).catch(() => null);
     if (!refetched || refetched.state !== 1) {
       console.error(
         `[Crash] Recover: round ${round.roundId} not FLYING after close_betting (state=${refetched?.state})`,
@@ -536,15 +542,20 @@ export class RoundManager {
   }
 
   private generateCrashPoint(): { crashPointBps: number; salt: Buffer } {
-    // Standard provably-fair crash distribution. Instant-crash band kept narrow
-    // so most rounds give players a real chance to cash out.
-    // Numerator (10000 - INSTANT_BAND) sets the on-chain house edge: 1%.
-    const INSTANT_BAND = 100;
+    // Provably-fair crash distribution anchored at MIN_CRASH_BPS.
+    // The distribution formula is: crashPoint = MIN * (1-E) / (1 - raw/10000)
+    // where E = INSTANT_BAND/10000 is the house edge (~1%).
+    // INSTANT_BAND rounds collapse to MIN_CRASH_BPS (the "house wins" band).
+    //
+    // With MIN = 1.5x: P(crash <= 2x) = 27%, P(crash <= 3x) = 51%.
+    // Compared to min=1.0x: P(crash <= 2x) was 50%. Every round now gives
+    // players meaningful reaction time.
+    const INSTANT_BAND = 100;          // 1% house edge
+    const MIN_CRASH_BPS = 15_000;      // 1.5x minimum crash point
     const raw = randomInt(0, 10_000);
     let crashPointBps = raw < INSTANT_BAND
-      ? 10_000
-      : Math.floor((10_000 - INSTANT_BAND) * 10_000 / (10_000 - raw));
-    // Cap matches Move INVERSE_SEARCH_TOP_BPS.
+      ? MIN_CRASH_BPS
+      : Math.floor((10_000 - INSTANT_BAND) * MIN_CRASH_BPS / (10_000 - raw));
     if (crashPointBps > CRASH_POINT_CAP_BPS) crashPointBps = CRASH_POINT_CAP_BPS;
     const salt = randomBytes(32);
     return { crashPointBps, salt };
@@ -562,8 +573,18 @@ export class RoundManager {
   // eliminate the race, so we rebuild the Transaction (forcing fresh ObjectRef
   // resolution) and retry with backoff. Move aborts and other failures fall
   // through immediately.
+  //
+  // Validator-stake reject ("rejected as invalid by more than 1/3 of validators
+  // by stake (non-retriable)") is the *consensus-confirmed* form of the same
+  // ObjectRef-staleness problem: the fullnode's serving a version that
+  // validators have already moved past. Tighter retries on the same fullnode
+  // pin won't help — back off long enough for the fullnode to sync to
+  // consensus. 2026-05-07 incident: 3x600ms retries all hit the same stale ref
+  // and the keeper bricked.
   private static readonly LOCK_CONFLICT_RETRIES = 3;
   private static readonly LOCK_CONFLICT_BACKOFF_MS = 600;
+  private static readonly VALIDATOR_REJECT_RETRIES = 4;
+  private static readonly VALIDATOR_REJECT_BACKOFF_MS = 5_000;
   // After waitForTransaction, give the fullnode a moment to propagate effects so
   // the next tx's input resolution doesn't resolve stale ObjectRefs.
   private static readonly TX_PROPAGATION_SLEEP_MS = 300;
@@ -572,8 +593,26 @@ export class RoundManager {
   private static readonly CLOSE_BETTING_LOCK_CONFLICT_MAX = 3;
   private static readonly CLOSE_BETTING_LOCK_BACKOFF_MS = 1_500;
 
+  // The fullnode-side staleness race ("is not available for consumption" surfaced
+  // before validators voted): a Tx rebuild on the same fullnode is enough to
+  // recover. We treat the consensus-confirmed variant separately because tight
+  // retries don't help once validators have already rejected the version.
   private isLockConflict(msg: string): boolean {
+    if (this.isValidatorReject(msg)) return false;
     return msg.includes('is not available for consumption');
+  }
+
+  // Consensus-confirmed ObjectRef staleness. The fullnode is serving a version
+  // already moved past in consensus. Retrying within 600-1800ms hits the same
+  // stale pin; we need seconds for the fullnode to catch up. We still rebuild
+  // the Tx each attempt so input resolution refreshes when the fullnode
+  // recovers.
+  private isValidatorReject(msg: string): boolean {
+    // Match only the consensus-level ObjectRef staleness message, NOT the broader
+    // "non-retriable" string that the Sui SDK appends to Move execution aborts
+    // (e.g. EAlreadyResolved, EBettingNotOpen). Including "non-retriable" caused
+    // legitimate Move aborts to enter the 4x5s backoff path, stalling the keeper.
+    return /rejected as invalid by more than 1\/3 of validators by stake/i.test(msg);
   }
 
   // Transient RPC failures (HTTP 5xx, network resets, DNS hiccups) can surface
@@ -589,12 +628,46 @@ export class RoundManager {
     return /status code: 5\d\d|ETIMEDOUT|ECONNRESET|ENOTFOUND|EAI_AGAIN|fetch failed|socket hang up|Service Temporarily Unavailable/i.test(msg);
   }
 
+  // Retry wrapper for read-only RPC calls (getObject, queryEvents, etc).
+  // recover() previously returned 'block' on first 503, causing parent backoff
+  // (60s/300s/1800s) and user-visible downtime during RPC outages even though
+  // the registry/round read itself is idempotent and safe to retry. Same retry
+  // budget as execTx, with the same 2x backoff for 5xx storms.
+  private async withRpcRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < RoundManager.LOCK_CONFLICT_RETRIES; attempt++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        if (this.isTransientRpcError(err) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+          const msg = (err as Error).message;
+          console.warn(`[Crash] ${label} transient RPC error (attempt ${attempt + 1}): ${msg}`);
+          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1) * 2);
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  }
+
   private async execTx(
     buildTx: () => Transaction,
     label: string,
   ): Promise<{ digest: string; objectChanges?: unknown[]; events?: unknown[] }> {
+    // Pick the bigger of the two retry budgets so a single attempt can switch
+    // class (e.g. fullnode-side LockConflict on attempt 1 escalates to
+    // validator-reject on attempt 2 once consensus catches up). Each iteration
+    // rebuilds the Tx, so ObjectRef resolution is fresh.
+    const maxAttempts = Math.max(
+      RoundManager.LOCK_CONFLICT_RETRIES,
+      RoundManager.VALIDATOR_REJECT_RETRIES,
+    );
     let lastErr: unknown;
-    for (let attempt = 0; attempt < RoundManager.LOCK_CONFLICT_RETRIES; attempt++) {
+    let lockConflictAttempts = 0;
+    let validatorRejectAttempts = 0;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
         const tx = buildTx();
         tx.setGasBudget(100_000_000);
@@ -607,9 +680,10 @@ export class RoundManager {
         if (res.effects?.status.status !== 'success') {
           const errStr = JSON.stringify(res.effects?.status);
           // Execution-level LockConflict is also retriable; Move aborts are not.
-          if (this.isLockConflict(errStr) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
-            console.warn(`[Crash] ${label} LockConflict at exec (attempt ${attempt + 1}); retrying`);
-            await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1));
+          if (this.isLockConflict(errStr) && lockConflictAttempts < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+            lockConflictAttempts++;
+            console.warn(`[Crash] ${label} LockConflict at exec (lc attempt ${lockConflictAttempts}); retrying`);
+            await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * lockConflictAttempts);
             continue;
           }
           throw new Error(`Tx ${label} failed: ${errStr}`);
@@ -625,14 +699,23 @@ export class RoundManager {
       } catch (err) {
         lastErr = err;
         const msg = (err as Error).message ?? String(err);
-        if (this.isLockConflict(msg) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
-          console.warn(`[Crash] ${label} LockConflict at submit (attempt ${attempt + 1}): ${msg}`);
-          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1));
+        if (this.isValidatorReject(msg) && validatorRejectAttempts < RoundManager.VALIDATOR_REJECT_RETRIES - 1) {
+          validatorRejectAttempts++;
+          const backoff = RoundManager.VALIDATOR_REJECT_BACKOFF_MS * validatorRejectAttempts;
+          console.warn(`[Crash] ${label} validator-stake reject (vr attempt ${validatorRejectAttempts}); waiting ${backoff}ms for fullnode to sync: ${msg}`);
+          await this.sleep(backoff);
           continue;
         }
-        if (this.isTransientRpcError(err) && attempt < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
-          console.warn(`[Crash] ${label} transient RPC error (attempt ${attempt + 1}): ${msg}`);
-          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * (attempt + 1) * 2);
+        if (this.isLockConflict(msg) && lockConflictAttempts < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+          lockConflictAttempts++;
+          console.warn(`[Crash] ${label} LockConflict at submit (lc attempt ${lockConflictAttempts}): ${msg}`);
+          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * lockConflictAttempts);
+          continue;
+        }
+        if (this.isTransientRpcError(err) && lockConflictAttempts < RoundManager.LOCK_CONFLICT_RETRIES - 1) {
+          lockConflictAttempts++;
+          console.warn(`[Crash] ${label} transient RPC error (rpc attempt ${lockConflictAttempts}): ${msg}`);
+          await this.sleep(RoundManager.LOCK_CONFLICT_BACKOFF_MS * lockConflictAttempts * 2);
           continue;
         }
         throw err;
@@ -800,6 +883,38 @@ export class RoundManager {
     await this.sleep(waitMs);
     if (!this.running) return;
 
+    // --- Pre-broadcast predicted betting_closed BEFORE close_betting RPC ---
+    // The close_betting RPC blocks for RPC + consensus delay (observed up to
+    // 2.4s on devnet). During that window the client previously had no
+    // flyingStartedAt anchor and either rendered nothing (post B+C fix) or
+    // raced ahead off the bettingEndsAt fallback (pre-fix) — either way the
+    // cashout button was disabled. For low crash points (<2x ≈ 2s) the round
+    // could crash before betting_closed even arrived, leaving the user with
+    // no chance to cash out.
+    //
+    // Predicted flyingStartedAt = bettingEndsAt + EST_CONSENSUS_DELAY_MS so
+    // that the client multiplier starts climbing immediately and the cashout
+    // button enables. After the RPC returns we send 'flying_corrected' with
+    // the actual on-chain value; the client transitionTween smooths the
+    // small discrepancy.
+    //
+    // If close_betting permanently fails (extremely rare; LockConflict and
+    // transient RPC are retried), the keeper throws → runLoop crashes →
+    // recover() handles via recoverBetting() on next boot. The brief stale
+    // FLYING state on the client is reconciled on the next state_sync.
+    const EST_CONSENSUS_DELAY_MS = 200;
+    const predictedFlyingStartedAt = bettingEndsAt + EST_CONSENSUS_DELAY_MS;
+    this.roundState.state = 'FLYING';
+    this.roundState.flyingStartedAt = predictedFlyingStartedAt;
+    this.roundState.stateVersion = this.bumpVersion();
+    this.broadcast({
+      type: 'betting_closed',
+      roundId,
+      flyingStartedAt: predictedFlyingStartedAt,
+      stateVersion: this.roundState.stateVersion,
+      predicted: true,
+    });
+
     // --- close_betting tx (retry on EBettingNotEnded or outer LockConflict) ---
     // EBettingNotEnded: on-chain clock lagged, retry up to NOT_ENDED_MAX times.
     // LockConflict: execTx inner 3-retry already exhausted; outer retry rebuilds
@@ -855,12 +970,19 @@ export class RoundManager {
       throw new Error('close_betting succeeded but no BettingClosed event found');
     }
     const flyingStartedAt = onChainFlyingStartedAt;
-    this.roundState.state = 'FLYING';
+    // Server-side polling MUST anchor to the on-chain value so the broadcast
+    // 'crashed' time agrees with the on-chain crash_deadline (otherwise
+    // legitimate cashouts could be invalidated by recorded_at > deadline).
     this.roundState.flyingStartedAt = flyingStartedAt;
+    // Always send flying_corrected after close_betting succeeds — even when the
+    // on-chain value matches the prediction. Clients use this event as a reliable
+    // "close_betting confirmed" signal to re-enable auto-cashout (which is
+    // suppressed during the predicted window to prevent spurious TX failures while
+    // the round is still in BETTING state on-chain). Without an unconditional send,
+    // a lucky prediction match would leave clients stuck with auto-cashout disabled.
     this.roundState.stateVersion = this.bumpVersion();
-
     this.broadcast({
-      type: 'betting_closed',
+      type: 'flying_corrected',
       roundId,
       flyingStartedAt,
       stateVersion: this.roundState.stateVersion,
@@ -871,9 +993,28 @@ export class RoundManager {
     // on-chain wall clock. Sui devnet clock tracks wall time within tens of ms,
     // so this approximation is safe. The 100ms poll cadence is the dominant
     // error term anyway.
+    //
+    // Tick broadcast (~1Hz): without a steady FLYING-side message, the client
+    // has no way to distinguish "server is fine, no state change" from "WS is
+    // lagging". The crash-ws.ts liveness check is 75s (half-open detection),
+    // far too coarse to gate the cashout button. Emitting a small message
+    // every TICK_BROADCAST_MS gives the FE a fresh lastMessageAt to feed its
+    // ~1.5s freeze threshold.
+    const TICK_BROADCAST_MS = 500;
+    let lastTickAt = Date.now();
     while (this.running) {
       await this.sleep(100);
-      const elapsed = Date.now() - flyingStartedAt;
+      const now = Date.now();
+      const elapsed = now - flyingStartedAt;
+      if (now - lastTickAt >= TICK_BROADCAST_MS) {
+        lastTickAt = now;
+        this.broadcast({
+          type: 'tick',
+          roundId,
+          serverTime: now,
+          stateVersion: this.roundState.stateVersion,
+        });
+      }
       if (multiplierAtBps(elapsed) >= crashPointBps) break;
     }
     if (!this.running) return;
@@ -924,6 +1065,20 @@ export class RoundManager {
     // writer for the history DB; child stays focused on tx execution).
     try {
       const rows = parsePlayerResultsFromEvents(resolveRes.events);
+      // Phase 1 telemetry: count invalid cashouts per round. invalid means a
+      // cash_out tx landed on chain (Move 3% bound passed) but resolve_round
+      // rejected the entry (recorded_at > crash_deadline OR multiplier ≥ crash
+      // point). For the cashout-timing problem we are tracking, the dominant
+      // signal is recorded_at > crash_deadline. If this count stays low, the
+      // FE-side fixes (button freeze + neutral pending modal) are sufficient
+      // and the heavier server-attestation rebuild can stay on the shelf.
+      const invalidPlayers = rows.filter((r) => r.payout === '0');
+      if (invalidPlayers.length > 0) {
+        const crashTimeMs = inverseMultiplierAt(crashPointBps);
+        console.warn(
+          `[Crash][telemetry] invalid_cashouts round_id=${roundId} count=${invalidPlayers.length}/${rows.length} crash_point_bps=${crashPointBps} crash_time_ms=${crashTimeMs} flying_started_at=${flyingStartedAt} players=[${invalidPlayers.map((r) => r.player).join(',')}]`,
+        );
+      }
       if (rows.length > 0) {
         // Enrich with bet_tx digests by querying BetPlaced events for this
         // round. Done out-of-band so a query failure doesn't lose the row.
