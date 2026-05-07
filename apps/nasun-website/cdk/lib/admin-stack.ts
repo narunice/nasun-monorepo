@@ -352,36 +352,10 @@ export class AdminStack extends cdk.Stack {
     // GET /users/{identityId} - Admin: get user detail
     userIdResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
 
-    // Account Flag Lambda — separate from exportFunction because it needs
-    // UserProfiles WRITE access (export only has read).
-    const accountFlagFunction = new NodejsFunction(this, "AccountFlagFunction", {
-      runtime: lambda.Runtime.NODEJS_22_X,
-      handler: "handler",
-      entry: path.join(__dirname, "../lambda-src/admin-api/src/handlers/account-flag.ts"),
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 256,
-      depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
-      environment: {
-        USER_PROFILES_TABLE: userProfilesTableName,
-        ALLOWED_ORIGINS: allowedOrigins,
-        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
-      },
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        target: "node22",
-        format: OutputFormat.ESM,
-        mainFields: ["module", "main"],
-      },
-    });
-    userProfilesTable.grantReadWriteData(accountFlagFunction);
-
-    const accountFlagIntegration = new apigateway.LambdaIntegration(accountFlagFunction);
-    const userFlagResource = userIdResource.addResource("flag");
-    // GET /users/{identityId}/flag - Admin: read flag status
-    userFlagResource.addMethod("GET", accountFlagIntegration, authorizedMethodOptions);
-    // PUT /users/{identityId}/flag - Admin: set/clear account flag
-    userFlagResource.addMethod("PUT", accountFlagIntegration, authorizedMethodOptions);
+    // (legacy account-flag Lambda + /users/{id}/flag routes removed 2026-05-07.
+    // Bot mitigation now lives in banned_users + activity_points.flagged on
+    // the points DB; admin UI calls explorer-api /api/v1/internal/ecosystem-ban
+    // directly.)
 
     // Devnet Metrics API Route (admin only)
     const devnetMetricsResource = this.api.root.addResource("devnet-metrics");
