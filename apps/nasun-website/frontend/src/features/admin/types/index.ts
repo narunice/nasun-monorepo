@@ -27,10 +27,6 @@ export interface UserProfile {
   };
   googleEmail?: string;
   linkedProviders?: string[];
-  isAccountFlagged?: boolean;
-  flagReason?: string;
-  flaggedAt?: string;
-  flaggedBy?: string;
 }
 
 export interface LinkedAccountInfo {

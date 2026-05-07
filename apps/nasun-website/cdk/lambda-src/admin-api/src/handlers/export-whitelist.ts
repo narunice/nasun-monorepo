@@ -99,10 +99,6 @@ interface UserProfileItem {
   linkedProviders: string[];
   probableBot?: boolean;
   botTier?: number;
-  isAccountFlagged?: boolean;
-  flagReason?: string;
-  flaggedAt?: string;
-  flaggedBy?: string;
 }
 
 function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
@@ -166,10 +162,6 @@ function parseUserProfileItem(item: Record<string, any>): UserProfileItem {
     linkedProviders,
     probableBot: item.probableBot?.BOOL ?? false,
     botTier: item.botTier?.N ? Number(item.botTier.N) : undefined,
-    isAccountFlagged: item.isAccountFlagged?.BOOL ?? false,
-    flagReason: item.flagReason?.S,
-    flaggedAt: item.flaggedAt?.S,
-    flaggedBy: item.flaggedBy?.S,
   };
 }
 
