@@ -1,4 +1,5 @@
-import { createContext, useContext, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, type ReactNode } from 'react';
+import { toast } from 'react-toastify';
 import { useAppDirectory, type UseAppDirectoryResult } from './useAppDirectory';
 
 // Single source of truth for App Directory state across uju surfaces. Both
@@ -16,6 +17,16 @@ export interface UjuAppDirectoryProviderProps {
 
 export function UjuAppDirectoryProvider({ identityId, children }: UjuAppDirectoryProviderProps) {
   const value = useAppDirectory(identityId);
+
+  const { droppedForMaintenanceOnMount } = value;
+  useEffect(() => {
+    if (droppedForMaintenanceOnMount.length === 0) return;
+    toast.info(
+      'Crash is temporarily offline for maintenance and has been removed from your active engagements. Please add another game to keep earning points.',
+      { toastId: 'crash-maintenance', autoClose: 8000 },
+    );
+  }, [droppedForMaintenanceOnMount]);
+
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
