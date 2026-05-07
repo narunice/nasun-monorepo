@@ -50,7 +50,6 @@ build_lambda "lambda-src/deactivate-user-account" "deactivate-user-account"
 build_lambda "lambda-src/purge-deactivated-accounts" "purge-deactivated-accounts"
 build_lambda "lambda-src/get-backup-prices" "get-backup-prices"
 build_lambda "lambda-src/get-user-count" "get-user-count"
-build_lambda "lambda-src/get-follower-count" "get-follower-count"
 build_lambda "lambda-src/governance-api" "governance-api"
 
 # 2. NFT Event (Wave 1 Battalion)

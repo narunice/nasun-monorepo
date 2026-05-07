@@ -1512,52 +1512,6 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // GET /user-analytics - User analytics daily metrics (admin only)
-    if (path.endsWith("/user-analytics") && event.httpMethod === "GET") {
-      console.log("Fetching user analytics metrics");
-
-      const metrics: Array<{
-        date: string;
-        registeredUsers: number;
-        leaderboardAccounts: number;
-        telegramMembers: number;
-        xConnected: number;
-      }> = [];
-      let lastEvaluatedKey: Record<string, any> | undefined;
-
-      do {
-        const result = await dynamoClient.send(
-          new ScanCommand({
-            TableName: DEVNET_METRICS_TABLE,
-            FilterExpression: "begins_with(pk, :prefix)",
-            ExpressionAttributeValues: { ":prefix": { S: "USER_METRICS#" } },
-            ProjectionExpression: "pk, registeredUsers, leaderboardAccounts, telegramMembers, xConnected",
-            ExclusiveStartKey: lastEvaluatedKey,
-          })
-        );
-
-        if (result.Items) {
-          for (const item of result.Items) {
-            const pk = item.pk?.S || "";
-            metrics.push({
-              date: pk.replace("USER_METRICS#", ""),
-              registeredUsers: Number(item.registeredUsers?.N) || 0,
-              leaderboardAccounts: Number(item.leaderboardAccounts?.N) || 0,
-              telegramMembers: Number(item.telegramMembers?.N) || 0,
-              xConnected: Number(item.xConnected?.N) || 0,
-            });
-          }
-        }
-
-        lastEvaluatedKey = result.LastEvaluatedKey;
-      } while (lastEvaluatedKey);
-
-      // Sort by date ascending
-      metrics.sort((a, b) => a.date.localeCompare(b.date));
-
-      return jsonResponse(200, { metrics }, requestOrigin);
-    }
-
     // ==================== Genesis Pass Allowlist CRUD ====================
 
     const EVM_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;

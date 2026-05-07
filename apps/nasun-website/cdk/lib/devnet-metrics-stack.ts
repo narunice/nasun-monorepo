@@ -4,10 +4,9 @@
  * Standalone CDK stack for daily metrics collection.
  *
  * Resources:
- * - DynamoDB table: devnet-metrics (shared with user analytics)
+ * - DynamoDB table: devnet-metrics
  * - Lambda: nasun-devnet-metrics-collector (DAU, addresses via RPC)
- * - Lambda: nasun-user-analytics-collector (user/leaderboard/telegram/X counts)
- * - EventBridge rules: daily at 00:30 UTC (devnet) and 00:45 UTC (user analytics)
+ * - EventBridge rule: daily at 00:30 UTC
  * - CloudWatch alarm: devnet collector error notification
  */
 
@@ -112,78 +111,5 @@ export class DevnetMetricsStack extends cdk.Stack {
 
     errorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
-    // ========================================
-    // User Analytics Collector
-    // ========================================
-
-    const userProfilesTable = dynamodb.Table.fromTableName(
-      this,
-      'UserProfilesTable',
-      'UserProfiles',
-    );
-
-    const leaderboardAccountsTable = dynamodb.Table.fromTableName(
-      this,
-      'LeaderboardAccountsTable',
-      'leaderboard-v3-accounts',
-    );
-
-    const userAnalyticsSrcPath = path.join(__dirname, '..', 'lambda-src', 'user-analytics-collector', 'src');
-
-    // NASUN_METRICS_API_KEY is supplied at deploy time via shell env. The
-    // collector uses it to POST wallet arrays to the explorer-api /stats/nasun-metrics
-    // endpoint, which runs the 11-CTE postgres query and returns the full
-    // report data for CSV/TXT snapshot.
-    const nasunMetricsApiKey = process.env.NASUN_METRICS_API_KEY ?? '';
-    if (!nasunMetricsApiKey) {
-      console.warn(
-        '[DevnetMetricsStack] NASUN_METRICS_API_KEY env not set — nasun-stats snapshot build will be skipped at runtime.',
-      );
-    }
-
-    const userAnalyticsCollector = new NodejsFunction(this, 'UserAnalyticsCollectorFunction', {
-      functionName: 'nasun-user-analytics-collector',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(userAnalyticsSrcPath, 'index.ts'),
-      handler: 'handler',
-      timeout: cdk.Duration.minutes(10),
-      memorySize: 1024,
-      description: 'Daily user analytics collector + nasun-stats snapshot builder',
-      environment: {
-        DEVNET_METRICS_TABLE: metricsTable.tableName,
-        USER_PROFILES_TABLE: 'UserProfiles',
-        LEADERBOARD_ACCOUNTS_TABLE: 'leaderboard-v3-accounts',
-        EXPLORER_API_BASE: 'https://explorer.nasun.io/api/v1',
-        NASUN_METRICS_API_KEY: nasunMetricsApiKey,
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logRetention: logs.RetentionDays.ONE_MONTH,
-      depsLockFilePath,
-      bundling: {
-        minify: true,
-        sourceMap: true,
-        externalModules: [
-          '@aws-sdk/client-dynamodb',
-          '@aws-sdk/lib-dynamodb',
-        ],
-      },
-    });
-
-    metricsTable.grantReadWriteData(userAnalyticsCollector);
-    userProfilesTable.grantReadData(userAnalyticsCollector);
-    leaderboardAccountsTable.grantReadData(userAnalyticsCollector);
-
-    // EventBridge: daily at 00:45 UTC (after devnet metrics at 00:30)
-    const userAnalyticsRule = new events.Rule(this, 'UserAnalyticsDailyRule', {
-      ruleName: 'nasun-user-analytics-daily',
-      description: 'Daily user analytics collection at 00:45 UTC',
-      enabled: true,
-      schedule: events.Schedule.cron({
-        minute: '45',
-        hour: '0',
-      }),
-    });
-
-    userAnalyticsRule.addTarget(new targets.LambdaFunction(userAnalyticsCollector));
   }
 }

@@ -130,34 +130,6 @@ cd "$CDK_ROOT"
 echo ""
 
 # =============================================================================
-# Build get-follower-count (npm + esbuild)
-# =============================================================================
-echo "📦 Building get-follower-count..."
-cd "$CDK_ROOT/lambda-src/get-follower-count"
-
-if [ -f "package.json" ]; then
-  if [ ! -d "node_modules" ] || [ ! -f "package-lock.json" ]; then
-    echo "📥 Installing dependencies with npm..."
-    npm install --silent
-  fi
-
-  echo "🔨 Building with esbuild..."
-  npm run build
-
-  if [ -d "dist" ] && [ -f "dist/index.js" ]; then
-    echo "✅ get-follower-count built successfully!"
-  else
-    echo "❌ get-follower-count build failed! Missing dist/index.js."
-    exit 1
-  fi
-else
-  echo "⚠️  No package.json found in get-follower-count"
-fi
-
-cd "$CDK_ROOT"
-echo ""
-
-# =============================================================================
 # Build get-user-count (npm + esbuild)
 # =============================================================================
 echo "📦 Building get-user-count..."
@@ -223,7 +195,6 @@ echo "  ✅ auth-twitter: TypeScript compiled (npm)"
 echo "  ✅ wallet-api: pnpm build completed"
 echo "  ✅ PriceAPI: pnpm build completed"
 echo "  ✅ get-backup-prices: esbuild completed (npm)"
-echo "  ✅ get-follower-count: esbuild completed (npm)"
 echo "  ✅ get-user-count: esbuild completed (npm)"
 echo "  ✅ whitelist: TypeScript compiled (npm)"
 echo ""
