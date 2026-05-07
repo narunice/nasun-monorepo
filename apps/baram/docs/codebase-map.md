@@ -9,10 +9,10 @@ apps/baram/
 │       ├── features/
 │       │   ├── request/         # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)
 │       │   │   ├── hooks/       # useExecutors, useCreateRequest, useAER, useAttestation, useRequestWithRetry
-│       │   │   ├── services/    # transactionBuilder.ts (TX builders), coinService.ts
-│       │   │   └── components/  # ECRReceipt.tsx (AER detail modal)
+│       │   │   ├── services/    # transactionBuilder.ts (TX builders), coinService.ts, aerService.ts
+│       │   │   └── components/  # AttestationDisplay.tsx, ExecutionReport.tsx (AER detail UI)
 │       │   ├── aer/             # AER data fetching
-│       │   │   └── hooks/useAERRecords.ts  # Dual-mode: indexer API first, RPC fallback
+│       │   │   └── hooks/       # useAERRecords.ts (indexer API first, RPC fallback), useAERResult.ts
 │       │   └── agents/          # Agent data fetching
 │       │       └── hooks/       # useAgentProfiles.ts, useAgentBudgets.ts
 │       ├── pages/               # Dashboard pages
@@ -23,20 +23,22 @@ apps/baram/
 │       │   ├── AERTimeline.tsx        # AER 타임라인
 │       │   ├── ChatPage.tsx           # Standalone chat page (/chat route)
 │       │   └── AuthCallback.tsx       # zkLogin OAuth callback
+│       ├── layouts/             # DashboardLayout.tsx (sidebar + header shell)
 │       ├── components/
-│       │   ├── input/           # ChatInput, InputFooter
-│       │   ├── badges/          # TierBadge, DormantBadge
-│       │   ├── modals/          # CreateBudgetModal, BudgetSettingsModal, CreateAgentModal
-│       │   ├── sidebar/         # BudgetDetail, SidebarSettings
+│       │   ├── input/           # ChatInput, InputFooter, ModelSelector
+│       │   ├── badges/          # TierBadge
+│       │   ├── modals/          # CreateBudgetModal, BudgetSettingsModal, CreateAgentModal, ResultViewerModal
+│       │   ├── sidebar/         # BudgetCard, BudgetDetail, BudgetSection, NewChatButton, SessionItem, SessionList, SidebarSettings
 │       │   ├── navigation/      # DashboardSidebar, DashboardHeader
 │       │   ├── receipt/         # AER receipt components (Row, Section, CopyableHash, ReceiptFooter, LocalReceiptContent, OnChainReceiptContent)
 │       │   ├── chat/            # Chat UI (AssistantMessage, ChatTopBar, MessageList, UserMessage)
-│       │   ├── empty/           # LandingScreen, WelcomeScreen, NFTGateScreen
+│       │   ├── empty/           # LandingScreen, WelcomeScreen, NFTGateScreen, OnboardingChecklist, SuggestionCard
 │       │   └── theme/           # ThemeProvider, ThemeToggle
 │       ├── hooks/               # useNFTGate, useIdleTimeout, useBudgets, useCreateAgent, useAgentActions, useWalletSession
 │       ├── stores/              # budgetStore.ts, chatStore.ts (Zustand)
-│       ├── config/              # network.ts (Tier 상수, MODEL_PRICING, AER_CONFIG), attestation.ts, client.ts
-│       ├── services/            # chatCrypto.ts (AES-256-GCM), chatStorage.ts (IndexedDB)
+│       ├── config/              # network.ts (Tier 상수, MODEL_PRICING, AER_CONFIG, TEE_TYPES, BUDGET_CONFIG 등), attestation.ts, client.ts
+│       ├── services/            # chatCrypto.ts (AES-256-GCM), chatStorage.ts (IndexedDB), agentKeyStorage.ts, contextBuilder.ts
+│       ├── types/               # chat.ts (chat message/session 타입)
 │       └── utils/               # crypto.ts (RSA-OAEP), format.ts (NUSDC formatting), budget.ts, tee.ts, suiPagination.ts, executor.ts, encoding.ts
 │
 ├── contracts/                   # baram 패키지 (에스크로 + Budget + BetaAccess)
@@ -82,19 +84,21 @@ apps/baram/
 │   └── src/
 │       ├── index.ts             # 메인 서버 (CORS, rate limiting, graceful shutdown)
 │       ├── db.ts                # PostgreSQL 스키마 (aer_records 31필드 인덱싱)
-│       ├── cache.ts             # In-memory TTL 캐시 (15초)
-│       ├── routes/aer.ts        # /api/v1/aer (필터, 페이지네이션)
+│       ├── cache.ts             # In-memory TTL 캐시 (15초) + cache.test.ts
+│       ├── rate-limit.ts        # Rate limit 미들웨어 + rate-limit.test.ts
+│       ├── routes/aer.ts        # /api/v1/aer (필터, 페이지네이션) + aer.test.ts
 │       └── sync/aer-sync.ts     # RPC 이벤트 동기화 워커 (30초 간격)
 │
 ├── agent-runner/                # 자율 에이전트 실행기 (CLI 데몬)
 │   └── src/
 │       ├── index.ts             # 메인 루프 + runCycle 오케스트레이션
-│       ├── config.ts            # 환경 변수 로딩 + 검증
-│       ├── baram-client.ts      # 온체인: Budget 체크, create_request_with_budget_v2
-│       ├── executor-client.ts   # Lambda /execute + /record 클라이언트
-│       └── presets/             # research (30분), content (24시간), analysis (24시간, 3단계 체크포인팅)
+│       ├── config.ts            # 환경 변수 로딩 + 검증 (+ config.test.ts)
+│       ├── baram-client.ts      # 온체인: Budget 체크, create_request_with_budget_v2 (+ baram-client.test.ts)
+│       ├── executor-client.ts   # Lambda /execute + /record 클라이언트 (+ executor-client.test.ts)
+│       ├── llm-client.ts        # LLM 호출 추상화 (+ llm-client.test.ts)
+│       └── presets/             # research (30분), content (24시간), analysis (24시간, 3단계 체크포인팅) + types.ts
 │
-├── scripts/                     # mint-beta-access.sh (BetaAccessNFT 민팅)
+├── scripts/                     # mint-beta-access.sh (BetaAccessNFT 민팅), demo-agent.ts, demo-config.ts
 └── docs/                        # 설계 문서
 ```
 

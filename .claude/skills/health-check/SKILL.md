@@ -40,12 +40,12 @@ description: |
 
 | 인자 | 실행 범위 |
 |------|----------|
-| (없음) / `full` | 전체 (5a/5b/5c 포함) |
-| `quick` | 1단계 + 5a + 5c (SSH/AWS는 5c만 필요) |
-| `website` | 1a-d,1f-g + 2a,2b + 2.5 + 3 + 5a,5b,5c + 6W,A,B,S |
-| `explorer` | 1a-e + 2c + 3 + 4 + 5a,5b,5c + 6E,A,S |
-| `pado` | 1a-d,1h + 2a,2b + 2.5 + 3e + 5a,5b,5c + 6P,A,B,S |
-| `gostop` | 1a,1b,1c + 3e(gostop only) + 5a,5b,5c (gostop only) + 6GS,S |
+| (없음) / `full` | 전체 (5a/5b/5c/5d 포함) |
+| `quick` | 1단계 + 5a + 5c + 5d (SSH/AWS는 5c/5d만 필요) |
+| `website` | 1a-d,1f-g + 2a,2b + 2.5 + 3 + 5a,5b,5c,5d + 6W,A,B,S,WF |
+| `explorer` | 1a-e + 2c + 3 + 4 + 5a,5b,5c,5d + 6E,A,S,WF |
+| `pado` | 1a-d,1h + 2a,2b + 2.5 + 3e + 5a,5b,5c,5d + 6P,A,B,S,WF |
+| `gostop` | 1a,1b,1c + 3e(gostop only) + 5a,5b,5c (gostop only) + 6GS,S,WF |
 
 ---
 
@@ -465,6 +465,65 @@ done
 
 - 4xx/5xx 각각 max < 1% = OK, 1-5% = WARNING (W12), > 5% = CRITICAL (W13). 2026-05-04 사고 시 explorer 81%까지 spike한 패턴.
 
+#### 5d. WAF policy invariant + BlockedRequests (이중 ACL)
+
+운영 중 ACL은 **두 개 분리**:
+
+| ACL | Region/Scope | 부착 대상 | Expected Rule Count |
+|-----|--------------|----------|---------------------|
+| `nasun-cloudfront-waf` | us-east-1 / CLOUDFRONT | 4 distribution (nasun.io / explorer / pado / gostop) 전부 | **3** |
+| `nasun-shared-waf` | ap-northeast-2 / REGIONAL | API Gateway (per-API rate limit) | **11** |
+
+기대 rule 이름:
+- **CloudFront ACL (3)**: `AllowTrustedIPs`, `DenyKnownScanners`, `RateLimit8000Per5Min` — 2026-05-05 사고 후 영구화 정책. 단일 cap rule + scanner deny + trusted bypass.
+- **Regional ACL (11)**: `AWSManagedIPReputation`, `AWSManagedKnownBadInputs`, `RateLimit-{TwitterAuth,BugReport,MetaMaskAuth,ZkLoginAuth,SuiAuth,Referral,NftEvent,GenesisPass,LeaderboardV3}` — CDK `apps/nasun-website/cdk/lib/shared-waf-stack.ts` 정의.
+
+```bash
+# (1) CloudFront WAF (us-east-1)
+cf_id=$(aws wafv2 list-web-acls --scope CLOUDFRONT --profile nasun-prod --region us-east-1 \
+  --query "WebACLs[?Name=='nasun-cloudfront-waf'].Id | [0]" --output text 2>/dev/null)
+cf_rules=$(aws wafv2 get-web-acl --scope CLOUDFRONT --profile nasun-prod --region us-east-1 \
+  --name nasun-cloudfront-waf --id "$cf_id" --query 'WebACL.Rules[].Name' --output text 2>/dev/null)
+cf_count=$(echo "$cf_rules" | tr '\t' '\n' | wc -l)
+echo "cloudfront_waf: count=$cf_count (expected=3) rules=$cf_rules"
+
+# (2) Regional WAF (ap-northeast-2)
+rg_id=$(aws wafv2 list-web-acls --scope REGIONAL --profile nasun-prod --region ap-northeast-2 \
+  --query "WebACLs[?Name=='nasun-shared-waf'].Id | [0]" --output text 2>/dev/null)
+rg_rules=$(aws wafv2 get-web-acl --scope REGIONAL --profile nasun-prod --region ap-northeast-2 \
+  --name nasun-shared-waf --id "$rg_id" --query 'WebACL.Rules[].Name' --output text 2>/dev/null)
+rg_count=$(echo "$rg_rules" | tr '\t' '\n' | wc -l)
+echo "regional_waf: count=$rg_count (expected=11) rules=$rg_rules"
+
+# (3) Distribution attachment 일관성 (4개 모두 nasun-cloudfront-waf인지)
+for id in E362CCGDH7WA7C E31QOCW4WNY9FL E35SWPQEJB8HHE EPRUC29V8YRN3; do
+  acl=$(aws cloudfront get-distribution-config --id "$id" --profile nasun-prod --region us-east-1 \
+    --query 'DistributionConfig.WebACLId' --output text 2>/dev/null)
+  echo "$id: $(echo $acl | grep -oE 'webacl/[^/]+' || echo NONE)"
+done
+
+# (4) BlockedRequests 1h max — 두 ACL 각각
+cf_blocked=$(aws cloudwatch get-metric-statistics --profile nasun-prod --region us-east-1 \
+  --namespace AWS/WAFV2 --metric-name BlockedRequests \
+  --dimensions Name=WebACL,Value=nasun-cloudfront-waf Name=Region,Value=CloudFront Name=Rule,Value=ALL \
+  --start-time "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S)" \
+  --end-time "$(date -u +%Y-%m-%dT%H:%M:%S)" --period 300 --statistics Sum \
+  --query 'max(Datapoints[].Sum)' --output text 2>/dev/null)
+rg_blocked=$(aws cloudwatch get-metric-statistics --profile nasun-prod --region ap-northeast-2 \
+  --namespace AWS/WAFV2 --metric-name BlockedRequests \
+  --dimensions Name=WebACL,Value=nasun-shared-waf Name=Region,Value=ap-northeast-2 Name=Rule,Value=ALL \
+  --start-time "$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%S)" \
+  --end-time "$(date -u +%Y-%m-%dT%H:%M:%S)" --period 300 --statistics Sum \
+  --query 'max(Datapoints[].Sum)' --output text 2>/dev/null)
+echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_blocked:-0}"
+```
+
+판정:
+- count != expected = WARNING (WF1). CloudFront 3 / Regional 11 invariant.
+- 기대 rule 이름 중 누락 = WARNING (WF2).
+- 4개 distribution이 모두 `nasun-cloudfront-waf`에 attach되어 있지 않으면 WARNING (WF5, 통일 정책 회귀).
+- BlockedRequests 5min sum < 100 = OK, 100-1000 = WARNING (WF3, 봇 wave), > 1000 = CRITICAL (WF4, 잠재 collateral block 또는 진행 중인 공격). 두 ACL 합산 또는 큰 쪽 기준.
+
 ---
 
 ### 6단계: 장애 패턴 탐지
@@ -528,6 +587,19 @@ done
 | P12 | lottery-keeper stopped | WARNING | `pm2 restart lottery-keeper` |
 | P13 | keeper-gas-watchdog source <500k NASUN | WARNING | Check watchdog logs or RPC. If <200k, may indicate super-source refill failure |
 | P14 | keeper-gas-watchdog source <200k NASUN | CRITICAL | RPC check + watchdog logs. If unrefilled, manually: `curl -X POST https://rpc.devnet.nasun.io ... (faucet transfer)` |
+| P15 | prediction-keeper stopped on prod (DISABLE_PREDICTION_KEEPER 미설정인데 stopped) | WARNING | `pm2 restart prediction-keeper`. PREDICTION_RESOLVER_KEY 또는 PREDICTION_KEEPER_MARKETS 누락 시 즉시 exit하므로 .env 점검 |
+| P16 | prediction-lp stopped on prod (DISABLE_PREDICTION_LP 미설정인데 stopped) | WARNING | `pm2 restart prediction-lp`. PREDICTION_LP_PRIVATE_KEY/PREDICTION_LP_MARKETS .env 점검. inventory bootstrap 미수행 시 quote 못 올림 |
+| P17 | gostop-lottery-keeper stopped | WARNING | `pm2 restart gostop-lottery-keeper`. gostop.app 전용 lottery 정산 keeper |
+| P18 | prediction-keeper/prediction-lp/gostop-lottery-keeper restart >10 AND uptime <1h | WARNING | `pm2 logs <name> --lines 50 --nostream` — 환경변수/RPC/지갑 잔고 점검 |
+
+#### WAF (WF)
+| ID | 조건 | 심각도 | 조치 |
+|----|------|--------|------|
+| WF1 | CloudFront WAF rule_count != 3 OR Regional WAF rule_count != 11 | WARNING | CDK `shared-waf-stack.ts` 정의 + CloudFront stack 비교. 정책 회귀 (cap 8000/5min + DenyKnownScanners + AllowTrustedIPs invariant) |
+| WF2 | 기대 rule 이름 누락. CloudFront=AllowTrustedIPs/DenyKnownScanners/RateLimit8000Per5Min, Regional=Managed 2 + RateLimit-* 9 | WARNING | 누락 rule 추가 후 redeploy. 5/5 사고 후 영구화 정책 회귀 |
+| WF3 | BlockedRequests 5min sum 100-1000 (둘 중 하나) | WARNING | 봇 wave 진행 중. 정상 사용자 collateral block 여부는 5c CF 4xx와 교차. residential ISP(KT/SKT/LGU+/SHATEL 등) 차단 금지 |
+| WF4 | BlockedRequests 5min sum >1000 (둘 중 하나) | CRITICAL | 5/5 collateral block 사고 패턴 가능. CloudWatch에서 Rule별 메트릭 분리 후 어떤 rule이 trip인지 식별. cap 일시 상향 검토는 사용자 승인 필수 |
+| WF5 | 4 distribution(nasun.io/explorer/pado/gostop) 중 nasun-cloudfront-waf에 attach되지 않은 것 존재 | WARNING | "4 distribution 통일" invariant 회귀. AWS 콘솔 또는 CDK로 attach 복구 |
 
 #### gostop (GS)
 | ID | 조건 | 심각도 | 조치 |
@@ -601,7 +673,13 @@ done
 ### 12. AWS Services
 | Service | Status | Notes |
 
-### 13. Detected Issues
+### 13. WAF (nasun-shared-waf, us-east-1)
+| Item | Value | Status |
+|------|-------|--------|
+| Rule count | n / expected=11 | OK/WARN |
+| BlockedRequests max(5min sum, 1h) | n | OK/WARN/CRIT |
+
+### 14. Detected Issues
 [CRITICAL/WARNING 항목별 상태 + 조치 명령어]
 (문제 없으면: All systems operational.)
 ```

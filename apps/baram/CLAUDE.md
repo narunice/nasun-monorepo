@@ -20,6 +20,32 @@
 - "No job allocation by tier" -- Tier를 weight에 포함하지 않음
 - Executor 자동 배정 (Weighted Random) -- 사용자 결정 부담 제거
 - Tier는 eligible set 필터 (Bronze+ 자격) + 사후 투명성 정보
+- **Tier = min(stake_tier, reputation_tier)** -- 스테이킹과 운영 실적(AER 제출 이력)을 동시에 만족해야 승급. 단순 자본 게이팅이 아님. 정의: [executor_tier.move](contracts-executor/sources/executor_tier.move)
+
+---
+
+## Reputation System
+
+평판 점수는 Executor의 운영 실적을 정량화한 0~1000 값으로, Tier 산정의 한 축이다. 정의: [executor.move](contracts-executor/sources/executor.move), decay cron: [decay-reputation.ts](executor-nitro/scripts/decay-reputation.ts).
+
+| 항목 | 값 |
+|------|----|
+| 범위 | 0 ~ 1000 |
+| 초기값 | 500 (neutral) |
+| 성공(AER 제출 + completion) | +10 (cap 1000) |
+| 실패(timeout/error) | -20 (floor 0) |
+| Decay 임계 | 30일 미활동 시 트리거 |
+| Decay 양 | 회당 -50, 최저 100 (`DECAY_MIN_REPUTATION`) |
+| 호출 방식 | `decay_reputation_permissionless` -- 누구나 호출 가능한 cron |
+
+**Tier 컷오프 (stake AND reputation 둘 다 충족해야 함):**
+
+| Tier | Stake (NASUN) | Reputation |
+|------|---------------|------------|
+| Open | 0 | 0 |
+| Bronze | 1,000 | 300 |
+| Silver | 5,000 | 500 |
+| Gold | 10,000 | 700 |
 
 ---
 
@@ -69,6 +95,42 @@ cd apps/baram/contracts-executor
 /home/naru/my_apps/nasun-devnet/sui/target/release/sui client publish --gas-budget 100000000
 ```
 
+### API Server (포트 3201)
+
+```bash
+cd apps/baram/api-server
+pnpm dev          # tsx watch + auto reload
+pnpm test         # vitest (cache, rate-limit, routes/aer)
+```
+
+PostgreSQL이 필요하다 (`DATABASE_URL` 환경 변수). RPC 이벤트 sync 워커는 30초 간격으로 `aer_records` 테이블을 갱신.
+
+### Agent Runner (CLI 데몬)
+
+```bash
+cd apps/baram/agent-runner
+pnpm start        # 메인 루프 (research/content/analysis preset)
+pnpm test         # vitest
+```
+
+요구 환경 변수: `AGENT_ID`, `AGENT_PRIVATE_KEY`, `EXECUTOR_LAMBDA_URL`, `BUDGET_ID` 등 ([config.ts](agent-runner/src/config.ts) 참조).
+
+### Reputation Decay Cron
+
+```bash
+cd apps/baram/executor-nitro
+npx tsx scripts/decay-reputation.ts
+```
+
+요구 환경 변수: `EXECUTOR_PACKAGE_ID`, `EXECUTOR_REGISTRY_ID`, `DECAY_CALLER_KEY`. 30일 이상 미활동 executor에 한해 `decay_reputation_permissionless` 호출. 누구나 실행 가능 (permissionless).
+
+### Utility Scripts (`apps/baram/scripts/`)
+
+```bash
+./scripts/mint-beta-access.sh        # BetaAccessNFT 민팅 (Beta gating)
+npx tsx scripts/demo-agent.ts        # 에이전트 동작 데모/스모크 테스트
+```
+
 ### TEE Spot Instance
 
 > **주의: 개발 종료 후 반드시 `terminate-spot.sh` 실행!**
@@ -83,19 +145,37 @@ cd apps/baram/executor-nitro
 
 ---
 
-## Frontend Environment (.env)
+## Frontend Environment
+
+> **주의**: Vite의 `envDir`이 `'../'`로 설정되어 있어 `apps/baram/.env`를 읽는다. `frontend/.env`는 사용되지 않음 (자리표시 파일).
 
 ```env
+# Network
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
 VITE_CHAIN_ID=272218f1
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
-VITE_NUSDC_TYPE=0x96adf...::nusdc::NUSDC
-VITE_TOKENS_PACKAGE_ID=0x96adf...
-VITE_TOKEN_FAUCET_ID=0x7cc75...
-VITE_BARAM_PACKAGE_ID=...        # falls back to @nasun/devnet-config
-VITE_EXECUTOR_PACKAGE_ID=...
-VITE_NFT_GATE_ENABLED=false      # Beta Access NFT Gate
+
+# Tokens
+VITE_NUSDC_TYPE=0x...::nusdc::NUSDC
+VITE_TOKENS_PACKAGE_ID=0x...
+VITE_TOKEN_FAUCET_ID=0x...
+
+# Baram packages / shared objects
+VITE_BARAM_PACKAGE_ID=0x...      # @nasun/devnet-config로 fallback
+VITE_BARAM_REGISTRY_ID=0x...     # 에스크로 Registry shared object
+VITE_BARAM_UPGRADE_CAP=0x...
+VITE_CLAIM_RECORD_ID=0x...
+
+# Backend / API
+VITE_BACKEND_URL=...             # Lambda/CDK executor 엔드포인트
+VITE_BARAM_API_KEY=...           # api-server 인덱서 인증
+VITE_WALLET_API_ENDPOINT=...
+
+# Auth
+VITE_GOOGLE_CLIENT_ID=...        # zkLogin OAuth client ID
+VITE_ZKLOGIN_SALT_API_URL=...
+VITE_WALLETCONNECT_PROJECT_ID=...
 ```
 
 ---
