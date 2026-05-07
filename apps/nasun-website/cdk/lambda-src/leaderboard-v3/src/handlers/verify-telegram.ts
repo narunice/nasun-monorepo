@@ -585,8 +585,10 @@ export const handler = async (
       }, requestOrigin);
     }
 
+    const telegramUsername = telegramAuth.username ? telegramAuth.username.toLowerCase() : null;
+
     // 9. Primary: Update UserProfiles table
-    await updateUserProfileTelegram(identityId, telegramUserIdStr, telegramAuth.username || null);
+    await updateUserProfileTelegram(identityId, telegramUserIdStr, telegramUsername);
 
     // 10. Secondary: Sync to leaderboard accounts if twitterHandle exists
     if (userProfile.twitterHandle) {
@@ -594,7 +596,7 @@ export const handler = async (
         await syncToLeaderboardAccount(
           userProfile.twitterHandle,
           telegramUserIdStr,
-          telegramAuth.username || null,
+          telegramUsername,
         );
       } catch (err) {
         // Non-critical: UserProfiles is already updated, leaderboard sync can happen later via get-my-rank
@@ -610,7 +612,7 @@ export const handler = async (
 
     return createResponse(200, {
       success: true,
-      telegramUsername: telegramAuth.username || null,
+      telegramUsername,
       message: 'Telegram channel membership verified successfully',
     }, requestOrigin);
   } catch (error: unknown) {

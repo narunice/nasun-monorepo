@@ -28,22 +28,6 @@ describe('08 — User Count API', () => {
   });
 });
 
-describe('08 — Follower Count API', () => {
-  test('GET / returns follower count', async () => {
-    const res = await get(URLS.followerCount);
-    expect(res.status).toBe(200);
-    const body = res.body as Record<string, unknown>;
-    if (typeof body === 'object' && body !== null) {
-      // Should have followerCount or count field
-      const hasCount =
-        'followerCount' in body ||
-        'count' in body ||
-        'followers_count' in body;
-      expect(hasCount).toBe(true);
-    }
-  });
-});
-
 describe('08 — Random Image API', () => {
   test('POST / with valid tier returns image data or sold-out', async () => {
     const res = await post(URLS.randomImage, { tier: 'TIER1' });

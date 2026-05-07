@@ -15,7 +15,6 @@ describe('01 — Endpoint Health Checks', () => {
     { name: 'Price API', url: URLS.priceApi, path: '/api/prices' },
     { name: 'Backup Price API', url: URLS.backupPrice, path: '/BackupPrices' },
     { name: 'User Count API', url: URLS.userCount },
-    { name: 'Follower Count API', url: URLS.followerCount },
     { name: 'Governance API', url: URLS.governance, path: '/voting-power' },
     { name: 'Leaderboard V3 API', url: URLS.leaderboardV3, path: '/v3/leaderboard?listSeasons=true' },
     { name: 'Admin API', url: URLS.adminApi, path: '/nft-collections' },

@@ -27,7 +27,6 @@ export const URLS = {
   priceApi: requireEnv('VITE_PRICE_API_ENDPOINT'),
   backupPrice: requireEnv('VITE_BACKUP_API_ENDPOINT'),
   userCount: requireEnv('VITE_USER_COUNT_API'),
-  followerCount: requireEnv('VITE_FOLLOWER_COUNT_API'),
   governance: requireEnv('VITE_GOVERNANCE_API_URL'),
   leaderboardV3: requireEnv('VITE_LEADERBOARD_V3_API_URL'),
   adminApi: requireEnv('VITE_ADMIN_API_URL'),
