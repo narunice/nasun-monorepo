@@ -39,15 +39,19 @@ export function isInputObjectDeletedError(err: unknown): boolean {
 }
 
 /**
- * Run an async tx pipeline (fetch coins → build → sign → execute) with a
- * single retry on stale-object errors. The pipeline must be idempotent at
- * the application layer: only stale-version rejections trigger retry, so
- * a successful first attempt is never re-executed.
+ * Run an async tx pipeline (fetch coins → build → sign → execute) with
+ * retries on stale-object errors. The pipeline must be idempotent at the
+ * application layer: only stale-version rejections trigger retry, so a
+ * successful first attempt is never re-executed.
+ *
+ * Uses backoff (500ms, 1200ms, 2500ms) — sequential lottery claims hit the
+ * same gas / shared-state churn and a single 350ms retry was not enough.
  */
 export async function withStaleObjectRetry<T>(
   fn: () => Promise<T>,
-  maxRetries = 1,
+  maxRetries = 3,
 ): Promise<T> {
+  const delays = [500, 1200, 2500];
   let lastErr: unknown;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -55,8 +59,8 @@ export async function withStaleObjectRetry<T>(
     } catch (err) {
       lastErr = err;
       if (attempt >= maxRetries || !isStaleObjectError(err)) throw err;
-      // Brief delay so the RPC indexer can catch up to the new version.
-      await new Promise((r) => setTimeout(r, 350));
+      const delay = delays[Math.min(attempt, delays.length - 1)];
+      await new Promise((r) => setTimeout(r, delay));
     }
   }
   throw lastErr;

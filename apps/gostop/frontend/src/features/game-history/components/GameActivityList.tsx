@@ -42,9 +42,11 @@ const GAME_BADGE: Record<GameType, { label: string; className: string }> = {
 function ResultBadge({
   result,
   payout,
+  gameType,
 }: {
   result: GameActivity["result"];
   payout: bigint;
+  gameType: GameActivity["gameType"];
 }) {
   if (result === "win") {
     return (
@@ -54,9 +56,12 @@ function ResultBadge({
     );
   }
   if (result === "pending") {
+    // Lottery is a weekly-batch game; "Settling" reads as "in progress" but
+    // tickets actually wait on the next scheduled draw. Use a clearer label.
+    const label = gameType === "lottery" ? "Awaiting draw" : "Settling";
     return (
       <span className="inline-flex items-center gap-1 text-amber-300 text-sm font-medium px-2 py-0.5 rounded bg-amber-900/30 border border-amber-700/40">
-        <ClockIcon /> Settling
+        <ClockIcon /> {label}
       </span>
     );
   }
@@ -172,7 +177,7 @@ function ActivityCard({
         <span className="text-neutral-300 font-mono">
           −{formatNusdc(activity.spent)} NUSDC
         </span>
-        <ResultBadge result={activity.result} payout={activity.payout} />
+        <ResultBadge result={activity.result} payout={activity.payout} gameType={activity.gameType} />
       </div>
     </div>
   );
@@ -203,7 +208,7 @@ function ActivityRow({
         {formatNusdc(activity.spent)}
       </td>
       <td className="py-3 px-3 text-right">
-        <ResultBadge result={activity.result} payout={activity.payout} />
+        <ResultBadge result={activity.result} payout={activity.payout} gameType={activity.gameType} />
       </td>
       <td className="py-3 px-3 text-center whitespace-nowrap">
         <TxLinks activity={activity} viewer={viewer} />

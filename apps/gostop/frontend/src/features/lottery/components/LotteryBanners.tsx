@@ -9,12 +9,14 @@ export function ClaimBanner({
   earliestDeadlineMs,
   onClaim,
   isClaiming,
+  claimingTicketId,
 }: {
   claimable: ClaimableTicket[];
   totalNusdc: bigint;
   earliestDeadlineMs: number | null;
   onClaim: (roundId: string, ticketId: string) => void;
   isClaiming: boolean;
+  claimingTicketId?: string | null;
 }) {
   if (claimable.length === 0) return null;
 
@@ -81,7 +83,11 @@ export function ClaimBanner({
                 disabled={isClaiming}
                 className="btn-gold !py-2 !px-4 text-sm"
               >
-                {isClaiming ? "Claiming..." : "Claim"}
+                {claimingTicketId === c.ticket.id
+                  ? "Claiming..."
+                  : isClaiming
+                    ? "Claim"
+                    : "Claim"}
               </button>
             </li>
           );
