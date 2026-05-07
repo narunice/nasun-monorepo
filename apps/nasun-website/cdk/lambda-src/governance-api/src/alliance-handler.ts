@@ -38,7 +38,10 @@ const NFT_DESCRIPTION = "Nasun Alliance NFT";
 // Distributed mint lock to prevent owned object contention on Sui
 const MINT_LOCK_KEY = "__ALLIANCE_MINT_LOCK__";
 const MINT_LOCK_TTL_MS = 65_000; // Must exceed Lambda timeout (60s) to prevent premature expiry
-const OBJECT_CONTENTION_COOLDOWN_MS = 10_000; // Hold lock after Sui object contention errors
+// When devnet RPC fullnode lags behind validators, all mint attempts using the stale object version
+// will fail. 120s cooldown gives the fullnode time to catch up before the next attempt.
+// During cooldown, concurrent users get 429 MINT_BUSY instead of cascading 500s.
+const OBJECT_CONTENTION_COOLDOWN_MS = 120_000;
 
 async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boolean> {
   const now = Date.now();
@@ -438,7 +441,10 @@ async function handleMint(
     };
   }
 
-  const MAX_RETRIES = 2;
+  // One retry gives the RPC a brief chance to sync after a transient blip.
+  // If contention persists through the retry, it indicates sustained RPC lag —
+  // we stop retrying and apply the long cooldown lock (OBJECT_CONTENTION_COOLDOWN_MS).
+  const MAX_RETRIES = 1;
   const RETRY_BASE_DELAY_MS = 2_000;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -497,6 +503,15 @@ async function handleMint(
 
       console.log(`[alliance] Minted NFT for ${identityId}: tx=${txDigest}, nft=${nftObjectId}`);
 
+      // Wait for the RPC fullnode to index this tx before releasing the lock.
+      // Without this, the next minter may read a stale admin/registry object version
+      // and hit "Object not available for consumption" rejection at validators.
+      try {
+        await suiClient.waitForTransaction({ digest: txDigest, timeout: 15_000, pollInterval: 300 });
+      } catch (waitErr) {
+        console.warn(`[alliance] waitForTransaction timed out for ${txDigest} (continuing):`, waitErr);
+      }
+
       await releaseMintLock(docClient);
       return {
         statusCode: 200,
@@ -536,6 +551,13 @@ async function handleMint(
           } catch (updateErr) {
             console.error(`[alliance] CRITICAL: DB update failed after on-chain recovery. identity=${identityId}`, updateErr);
           }
+          if (landed.txDigest) {
+            try {
+              await suiClient.waitForTransaction({ digest: landed.txDigest, timeout: 8_000, pollInterval: 300 });
+            } catch (waitErr) {
+              console.warn(`[alliance] waitForTransaction timed out post-recovery (continuing):`, waitErr);
+            }
+          }
           await releaseMintLock(docClient);
           return {
             statusCode: 200,
@@ -551,7 +573,10 @@ async function handleMint(
       // Retryable: object contention or RPC transient error
       const isRetryable = isObjectContention || isRpcError;
       if (isRetryable && attempt < MAX_RETRIES) {
-        const delay = RETRY_BASE_DELAY_MS * (attempt + 1);
+        // For object contention, use a fixed 5s delay. Exponential backoff isn't helpful here
+        // because the RPC fullnode lag is measured in minutes — a few extra seconds won't help.
+        // One retry is enough to confirm whether this is a transient blip or sustained lag.
+        const delay = isObjectContention ? 5_000 : RETRY_BASE_DELAY_MS * (attempt + 1);
         console.warn(`[alliance] Retryable error on attempt ${attempt + 1}/${MAX_RETRIES + 1}, waiting ${delay}ms: ${errMsg}`);
         await sleep(delay);
         continue;
@@ -568,11 +593,11 @@ async function handleMint(
         console.error("[alliance] Rollback failed:", rollbackErr);
       }
 
-      // Object contention: keep lock to enforce cooldown (prevent immediate retry from next request)
       if (isObjectContention) {
-        console.warn(`[alliance] Object contention detected. Keeping lock for ${OBJECT_CONTENTION_COOLDOWN_MS}ms cooldown.`);
-        // Set lockedAt so acquireMintLock's expiry check (lockedAt < now - TTL) passes after cooldown
-        // lockedAt = now - TTL + cooldown => expires when now > lockedAt + TTL => after cooldown
+        // Devnet RPC fullnode is likely lagging behind validators. Apply a long cooldown so that
+        // subsequent requests queue as MINT_BUSY (429) rather than cascading into 500s.
+        // During the cooldown the fullnode should catch up, allowing the next user to succeed.
+        console.warn(`[alliance] RPC lag detected. Holding lock for ${OBJECT_CONTENTION_COOLDOWN_MS}ms cooldown.`);
         try {
           const cooldownLockedAt = Date.now() - MINT_LOCK_TTL_MS + OBJECT_CONTENTION_COOLDOWN_MS;
           await docClient.send(
@@ -580,17 +605,31 @@ async function handleMint(
               TableName: ALLIANCE_MINT_TABLE,
               Key: { identityId: MINT_LOCK_KEY },
               UpdateExpression: "SET lockedAt = :lockedAt, #t = :ttl",
-              ExpressionAttributeNames: { "#t": "ttl" },
+              // Only overwrite if this Lambda still owns the lock (status = LOCKED).
+              // Guards against the narrow window where another Lambda acquired the lock
+              // between the PENDING rollback and this cooldown extension.
+              ConditionExpression: "#s = :locked",
+              ExpressionAttributeNames: { "#t": "ttl", "#s": "status" },
               ExpressionAttributeValues: {
                 ":lockedAt": cooldownLockedAt,
                 ":ttl": Math.floor(Date.now() / 1000) + Math.ceil(OBJECT_CONTENTION_COOLDOWN_MS / 1000),
+                ":locked": "LOCKED",
               },
             }),
           );
         } catch (lockErr) {
           console.error("[alliance] Failed to extend lock for cooldown:", lockErr);
         }
-        // Do NOT release lock; let TTL expire after cooldown
+        // Return 429 (not 500) so this doesn't count as a 5xx server error.
+        // The client should surface a user-friendly message and retry after Retry-After seconds.
+        return {
+          statusCode: 429,
+          headers: { ...corsHeaders(), "Retry-After": String(Math.ceil(OBJECT_CONTENTION_COOLDOWN_MS / 1000)) },
+          body: JSON.stringify({
+            error: "Alliance minting is temporarily unavailable due to network congestion. Please try again in 2 minutes.",
+            code: "MINT_UNAVAILABLE",
+          }),
+        };
       } else {
         await releaseMintLock(docClient);
       }
