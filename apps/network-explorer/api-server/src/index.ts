@@ -12,6 +12,7 @@ import creatorsAppreciationRoutes from './routes/creators-appreciation.js';
 import nasunMetricsRoutes from './routes/nasun-metrics.js';
 import internalInvalidateRoutes from './routes/internal-invalidate.js';
 import bannedUsersRoutes from './routes/banned-users.js';
+import ecosystemBanRoutes from './routes/ecosystem-ban.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -58,6 +59,7 @@ app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
 // rule `/api/* → :3200/api/v1/*` forwards correctly.
 app.route('/api/v1/internal', internalInvalidateRoutes);
 app.route('/api/v1/internal/banned-users', bannedUsersRoutes);
+app.route('/api/v1/internal/ecosystem-ban', ecosystemBanRoutes);
 
 // Root
 app.get('/', (c) => c.json({ service: 'explorer-api', version: '0.1.0' }));
