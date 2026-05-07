@@ -43,12 +43,12 @@ module gostop_crash::crash {
     // 3% multiplicative tolerance for cash_out bound check.
     const TOLERANCE_MULT_BPS: u64 = 10_300;
 
-    // Max elapsed for binary search in inverse_multiplier_at (240 seconds).
-    // multiplier_at_bps(240_000) = 10_000 + 720_000 + 25_920_000 = 26_650_000.
-    // crash_point above this would silently saturate inverse search, breaking the
-    // post-crash bound. resolve_round asserts crash_point_bps <= INVERSE_SEARCH_TOP_BPS.
-    const INVERSE_SEARCH_HI: u64 = 240_000;
-    const INVERSE_SEARCH_TOP_BPS: u64 = 26_650_000;
+    // Max elapsed for binary search in inverse_multiplier_at (64 seconds).
+    // multiplier_at_bps(64_000) = 10_000 + 192_000 + 1_843_200 = 2_045_200 > 200x cap.
+    // crash_point above INVERSE_SEARCH_TOP_BPS (200x) would silently saturate
+    // inverse search; resolve_round asserts crash_point_bps <= INVERSE_SEARCH_TOP_BPS.
+    const INVERSE_SEARCH_HI: u64 = 64_000;
+    const INVERSE_SEARCH_TOP_BPS: u64 = 2_000_000;
 
     // Liveness timeouts.
     const EMERGENCY_REFUND_TIMEOUT_MS: u64 = 86_400_000;  // 24h from flying_started_at
