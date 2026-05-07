@@ -21,6 +21,8 @@ export interface UseLotteryActionsResult {
   burnTicket: (roundId: string, ticketId: string) => Promise<boolean>
   isBuying: boolean
   isClaiming: boolean
+  claimingTicketId: string | null
+  burningTicketId: string | null
   error: string | null
   clearError: () => void
 }
@@ -30,6 +32,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const isWalletConnected = !!walletAddress
 
   const [localPhase, setLocalPhase] = useState<'buying' | 'claiming' | 'idle'>('idle')
+  const [claimingTicketId, setClaimingTicketId] = useState<string | null>(null)
+  const [burningTicketId, setBurningTicketId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { executeGameTx, isPending } = useGameTransaction()
 
@@ -85,6 +89,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const claimPrize = useCallback(
     async (roundId: string, ticketId: string): Promise<boolean> => {
       setLocalPhase('claiming')
+      setClaimingTicketId(ticketId)
       setError(null)
 
       const success = await executeGameTx(
@@ -96,6 +101,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
       )
 
       setLocalPhase('idle')
+      setClaimingTicketId(null)
       return success
     },
     [executeGameTx]
@@ -104,6 +110,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const burnTicket = useCallback(
     async (roundId: string, ticketId: string): Promise<boolean> => {
       setError(null)
+      setBurningTicketId(ticketId)
       const success = await executeGameTx(
         async () => buildBurnTicket(roundId, ticketId),
         {
@@ -111,6 +118,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
+      setBurningTicketId(null)
       return success
     },
     [executeGameTx]
@@ -125,6 +133,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
     burnTicket,
     isBuying: isPending && localPhase === 'buying',
     isClaiming: isPending && localPhase === 'claiming',
+    claimingTicketId,
+    burningTicketId,
     error,
     clearError: () => setError(null),
   }

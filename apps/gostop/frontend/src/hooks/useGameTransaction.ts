@@ -123,18 +123,33 @@ export function useGameTransaction() {
         console.error('[GameTransaction] Error:', err);
         const message = err?.message || GAME_ERRORS.TX_FAILED;
         
+        // Devnet is a prototype network and occasionally reboots / lags. Map
+        // every common transient failure to a calm, actionable message so
+        // users don't see raw RPC dumps. Keep messages short and consistent.
+        const RETRY_HINT = "Devnet hiccup. Give it a moment and try again.";
         let userMessage: string;
         if (message.includes('MoveAbort')) {
           userMessage = 'Transaction rejected by smart contract.';
+        } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(message)) {
+          userMessage = RETRY_HINT;
         } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {
           userMessage = 'Not enough NASUN for gas. Please top up your wallet and try again.';
-        } else if (/(?:status code|HTTP)\s*:?\s*5\d\d|Service (?:Temporarily )?Unavailable|ETIMEDOUT|ECONNRESET|fetch failed|socket hang up/i.test(message)) {
-          // Transient RPC fault (fullnode 5xx, network hiccup). User-actionable
-          // wording so they retry instead of seeing a raw "Unexpected status
-          // code: 503" toast.
-          userMessage = 'Network busy, please try again in a moment.';
+        } else if (
+          /(?:status code|HTTP)\s*:?\s*(?:0|5\d\d)/i.test(message) ||
+          /Service (?:Temporarily )?Unavailable|Bad Gateway|Gateway Timeout/i.test(message) ||
+          /ETIMEDOUT|ECONNRESET|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/i.test(message) ||
+          /fetch failed|socket hang up|network ?error|timed? ?out/i.test(message) ||
+          /TypeError:\s*Failed to fetch|Load failed|NetworkError/i.test(message) ||
+          /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(message)
+        ) {
+          userMessage = RETRY_HINT;
+        } else if (/Rejected from user|User rejected|denied by user|Request rejected/i.test(message)) {
+          userMessage = 'Transaction cancelled.';
         } else {
-          userMessage = message;
+          // Last-resort: still avoid leaking long RPC payloads. Take the
+          // first line, trim hex blobs, cap length.
+          const firstLine = message.split('\n')[0].replace(/0x[0-9a-fA-F]{16,}/g, '0x…').trim();
+          userMessage = firstLine.length > 140 ? firstLine.slice(0, 137) + '…' : firstLine;
         }
 
         showToast(userMessage, 'error');

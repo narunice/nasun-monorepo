@@ -55,9 +55,13 @@ const BANKROLL_ABORT_MAP: Record<number, string> = {
 export function humanizeLotteryError(rawMessage: string): string {
   if (!rawMessage) return 'Transaction failed.'
 
-  // Network glitches first.
-  if (/not available for consumption|ObjectVersionUnavailable/i.test(rawMessage)) {
-    return 'Network is busy. Please try again in a moment.'
+  // Network glitches first. Devnet reboots/RPC lag surface as object-version
+  // mismatches; phrase as a hiccup so users just retry instead of debugging.
+  if (/not available for consumption|ObjectVersionUnavailable|current version:/i.test(rawMessage)) {
+    return 'Devnet hiccup. Give it a moment and try again.'
+  }
+  if (/Transaction is rejected as invalid by more than 1\/3 of validators/i.test(rawMessage)) {
+    return 'Devnet hiccup. Give it a moment and try again.'
   }
   if (/InsufficientGas|gas budget|GasBalanceTooLow|Balance of gas object.*lower than the needed amount/i.test(rawMessage)) {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'

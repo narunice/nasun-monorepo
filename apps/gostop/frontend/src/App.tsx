@@ -4,6 +4,7 @@ import { WalletConnect } from '@nasun/wallet-ui'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
 import LotteryPage from './pages/LotteryPage'
+import LotteryHistoryPage from './pages/LotteryHistoryPage'
 import ScratchCardPage from './pages/ScratchCardPage'
 import NumberMatchPage from './pages/NumberMatchPage'
 import MinesPage from './pages/MinesPage'
@@ -77,6 +78,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/floor" element={<FloorPage />} />
           <Route path="/lottery" element={<LotteryPage />} />
+          <Route path="/lottery/history" element={<LotteryHistoryPage />} />
           <Route path="/scratch" element={<ScratchCardPage />} />
           <Route path="/numbermatch" element={<NumberMatchPage />} />
           <Route path="/mines" element={<MinesPage />} />

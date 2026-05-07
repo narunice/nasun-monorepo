@@ -77,6 +77,8 @@ export function MyTickets({
   onClaim,
   onBurn,
   isClaiming,
+  claimingTicketId,
+  burningTicketId,
   isWalletConnected,
 }: {
   tickets: Ticket[];
@@ -84,6 +86,8 @@ export function MyTickets({
   onClaim: (roundId: string, ticketId: string) => void;
   onBurn: (roundId: string, ticketId: string) => void;
   isClaiming: boolean;
+  claimingTicketId?: string | null;
+  burningTicketId?: string | null;
   isWalletConnected: boolean;
 }) {
   if (!isWalletConnected) {
@@ -144,24 +148,33 @@ export function MyTickets({
                   </span>
                 )}
                 {!settled && <span className="font-mono text-sm text-gold-200">5.00 NUSDC</span>}
-                {settled && tier !== 0 && (
-                  <button
-                    onClick={() => onClaim(t.roundId, t.id)}
-                    disabled={isClaiming}
-                    className="btn-gold !py-2 !px-4 text-sm shrink-0"
-                  >
-                    {isClaiming ? "Claiming..." : "Claim"}
-                  </button>
-                )}
-                {settled && tier === 0 && (
-                  <button
-                    onClick={() => onBurn(t.roundId, t.id)}
-                    className="btn-ghost !py-2 !px-4 text-sm shrink-0"
-                    title="Remove non-winning ticket from your wallet"
-                  >
-                    Burn
-                  </button>
-                )}
+                {settled && tier !== 0 && (() => {
+                  const isThisClaiming = claimingTicketId === t.id;
+                  const otherInFlight = isClaiming && !isThisClaiming;
+                  return (
+                    <button
+                      onClick={() => onClaim(t.roundId, t.id)}
+                      disabled={isClaiming}
+                      className="btn-gold !py-2 !px-4 text-sm shrink-0 disabled:opacity-60"
+                      title={otherInFlight ? "Another claim in progress" : undefined}
+                    >
+                      {isThisClaiming ? "Claiming..." : "Claim"}
+                    </button>
+                  );
+                })()}
+                {settled && tier === 0 && (() => {
+                  const isThisBurning = burningTicketId === t.id;
+                  return (
+                    <button
+                      onClick={() => onBurn(t.roundId, t.id)}
+                      disabled={isThisBurning}
+                      className="btn-ghost !py-2 !px-4 text-sm shrink-0 disabled:opacity-60"
+                      title="Remove non-winning ticket from your wallet"
+                    >
+                      {isThisBurning ? "Burning..." : "Burn"}
+                    </button>
+                  );
+                })()}
               </div>
             </li>
           );

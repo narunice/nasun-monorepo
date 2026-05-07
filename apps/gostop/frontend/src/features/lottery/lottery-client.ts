@@ -108,6 +108,59 @@ export async function fetchLatestRound(): Promise<LotteryRound | null> {
   return fetchLotteryRound(id);
 }
 
+/**
+ * Fetch up to `limit` most recent rounds, descending by round_number.
+ * Used by the history page to render past round results (drawn numbers,
+ * winners per tier, payouts).
+ */
+export async function fetchPastRounds(limit = 24): Promise<LotteryRound[]> {
+  const client = getSuiClient();
+  try {
+    const roundIds: string[] = [];
+    let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
+    while (roundIds.length < limit) {
+      const events = await client.queryEvents({
+        query: { MoveEventType: ROUND_CREATED_EVENT_TYPE },
+        limit: Math.min(50, limit - roundIds.length),
+        order: 'descending',
+        cursor: cursor ?? null,
+      });
+      for (const ev of events.data) {
+        const p = ev.parsedJson as { round_id?: string };
+        if (p?.round_id) roundIds.push(p.round_id);
+        if (roundIds.length >= limit) break;
+      }
+      if (!events.hasNextPage || events.data.length === 0) break;
+      cursor = events.nextCursor as typeof cursor;
+    }
+    const rounds: LotteryRound[] = [];
+    for (let i = 0; i < roundIds.length; i += 50) {
+      const chunk = roundIds.slice(i, i + 50);
+      const results = await client.multiGetObjects({
+        ids: chunk,
+        options: { showContent: true },
+      });
+      for (const obj of results) {
+        if (obj.data?.content?.dataType !== 'moveObject') continue;
+        try {
+          rounds.push(
+            parseRoundFields(
+              obj.data.objectId,
+              obj.data.content.fields as Record<string, unknown>,
+            ),
+          );
+        } catch {
+          // skip unparseable
+        }
+      }
+    }
+    return rounds.sort((a, b) => b.roundNumber - a.roundNumber);
+  } catch (e) {
+    console.error('[lottery] fetchPastRounds:', e);
+    return [];
+  }
+}
+
 export async function fetchUserTickets(
   owner: string,
   roundId?: string,
@@ -204,10 +257,19 @@ export function isClaimable(round: LotteryRound, ticket: Ticket, nowMs: number):
 export { parseRoundFields as parseLotteryRoundFields };
 
 function parseRoundFields(id: string, f: Record<string, unknown>): LotteryRound {
+  // `Option<vector<u8>>` is serialized differently across Sui SDK versions.
+  // Older RPC: `{ vec: [[1,2,3,4,5]] }` for Some, `{ vec: [] }` for None.
+  // Newer normalized RPC: `[1,2,3,4,5]` for Some, `null` for None.
+  // Tolerate both shapes; otherwise drawn rounds show as "Settling" forever.
   let drawnNumbers: number[] | null = null;
-  const drawn = f.drawn_numbers as { vec?: unknown[] } | null;
-  if (drawn?.vec && Array.isArray(drawn.vec) && drawn.vec.length > 0) {
-    drawnNumbers = parseNumbers(drawn.vec[0]);
+  const drawn = f.drawn_numbers;
+  if (Array.isArray(drawn) && drawn.length > 0) {
+    drawnNumbers = parseNumbers(drawn);
+  } else if (drawn && typeof drawn === 'object' && 'vec' in drawn) {
+    const vec = (drawn as { vec?: unknown[] }).vec;
+    if (Array.isArray(vec) && vec.length > 0) {
+      drawnNumbers = parseNumbers(vec[0]);
+    }
   }
 
   // prize_pool is a Balance<NUSDC>. RPC may serialize either as a Balance

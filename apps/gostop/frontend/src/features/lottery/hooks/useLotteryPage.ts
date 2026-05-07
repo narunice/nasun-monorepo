@@ -28,6 +28,8 @@ export function useLotteryPage(celebrate: any) {
     burnTicket,
     isBuying,
     isClaiming,
+    claimingTicketId,
+    burningTicketId,
     error,
     clearError,
   } = useLotteryActions();
@@ -138,6 +140,8 @@ export function useLotteryPage(celebrate: any) {
     clearError,
     isBuying,
     isClaiming,
+    claimingTicketId,
+    burningTicketId,
     togglePick,
     quickPick,
     onBuy,

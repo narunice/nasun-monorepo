@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useCelebrate, useForceTierDebug } from "../components/celebration";
 import { LOTTERY_TICKET_PRICE } from "../lib/gostop-config";
 import { formatNusdc } from "../lib/format";
@@ -29,6 +30,8 @@ export default function LotteryPage() {
     clearError,
     isBuying,
     isClaiming,
+    claimingTicketId,
+    burningTicketId,
     togglePick,
     quickPick,
     onBuy,
@@ -66,6 +69,7 @@ export default function LotteryPage() {
         earliestDeadlineMs={claimSummary.earliestDeadlineMs}
         onClaim={onClaim}
         isClaiming={isClaiming}
+        claimingTicketId={claimingTicketId}
       />
       <ExpiredBanner expired={claimSummary.expired} />
 
@@ -100,10 +104,21 @@ export default function LotteryPage() {
         onClaim={onClaim}
         onBurn={onBurn}
         isClaiming={isClaiming}
+        claimingTicketId={claimingTicketId}
+        burningTicketId={burningTicketId}
         isWalletConnected={isWalletConnected}
       />
 
       <PrizeTable />
+
+      <div className="flex justify-center">
+        <Link
+          to="/lottery/history"
+          className="btn-ghost !py-2 !px-5 text-sm"
+        >
+          View past round results →
+        </Link>
+      </div>
 
       {purchaseConfirm && (
         <PurchaseConfirmModal
