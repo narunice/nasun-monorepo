@@ -36,7 +36,24 @@ export default function CrashPage() {
   const bettingClosingSoon = bettingEndsAt !== null && bettingEndsAt - now < 1700;
   const bettingWindowExpired = isBetting && bettingEndsAt !== null && now >= bettingEndsAt;
   const showCashOutPanel = crash.hasBetThisRound && (isFlying || bettingWindowExpired);
-  const cashOutDisabled = !isFlying || crash.phase === "cashing_out";
+  // Gate cashout on liveMultiplierBps (which is anchored to the on-chain
+  // flyingStartedAt) rather than roundState.state. The 'FLYING' state flips
+  // only when the betting_closed WS event arrives, which can lag the actual
+  // on-chain start by RPC + consensus delay (up to ~2.4s on devnet). With low
+  // crash points (<2x ≈ 2s) the rocket would crash before the state event
+  // arrived, leaving the button disabled the entire round.
+  const multiplierLive = crash.liveMultiplierBps > 10_000;
+  const roundOver = state === "CRASHED" || state === "RESOLVED";
+  const cashOutDisabled =
+    !multiplierLive ||
+    roundOver ||
+    crash.hasCashedOut ||
+    crash.phase === "cashing_out" ||
+    crash.isStale ||
+    // WS silent for >1.5s during FLYING. The displayed multiplier may be
+    // extrapolated past a crash that already happened server-side, so freeze
+    // the button until a fresh frame arrives.
+    crash.isWsLagged;
 
   function handleBet() {
     const amount = BigInt(Math.round(parseFloat(betInput) * 1_000_000));

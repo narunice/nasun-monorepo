@@ -20,6 +20,8 @@ export interface UseCrashResult {
   hasCashedOut: boolean
   myCashoutBps: number | null
   cashoutSettlement: CashoutSettlement | null
+  isStale: boolean
+  isWsLagged: boolean
   error: string | null
   placeBet: (betAmount: bigint) => Promise<boolean>
   cashOut: () => Promise<boolean>
@@ -30,10 +32,6 @@ export interface UseCrashResult {
 export function useCrash(): UseCrashResult {
   const {
     walletAddress,
-    kind,
-    zkSign,
-    getKeypair,
-    passkeyKeypair,
     isWalletConnected,
   } = useCrashWallet()
 
@@ -45,11 +43,11 @@ export function useCrash(): UseCrashResult {
     myCashoutBps,
     setMyCashoutBps,
     cashoutSettlement,
-    setCashoutSettlement,
+    isWsLagged,
     serverSkewMsRef,
     flyingStartedAtRef,
-    bettingEndsAtRef,
     roundObjectIdRef,
+    isConfirmedFlyingRef,
     tweenSignal,
     setTweenSignal,
   } = useCrashSocketState(walletAddress)
@@ -58,10 +56,10 @@ export function useCrash(): UseCrashResult {
 
   const {
     liveMultiplierBps,
+    isStale,
   } = useCrashTimer(
     serverSkewMsRef,
     flyingStartedAtRef,
-    bettingEndsAtRef,
     tweenSignal,
     onTweenConsumed
   )
@@ -81,7 +79,9 @@ export function useCrash(): UseCrashResult {
     setHasBetThisRound,
     myCashoutBps,
     setMyCashoutBps,
-    roundState
+    roundState,
+    isStale,
+    isConfirmedFlyingRef,
   )
 
   return {
@@ -95,6 +95,8 @@ export function useCrash(): UseCrashResult {
     hasCashedOut: myCashoutBps !== null,
     myCashoutBps,
     cashoutSettlement,
+    isStale,
+    isWsLagged,
     error,
     placeBet,
     cashOut,

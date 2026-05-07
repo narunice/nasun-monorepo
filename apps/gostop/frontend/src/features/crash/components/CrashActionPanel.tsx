@@ -42,7 +42,10 @@ export function CrashActionPanel({
   cashOutDisabled,
 }: CrashActionPanelProps) {
   const isBetting = state === "BETTING";
-  const isFlying = state === "FLYING";
+  // Use the live multiplier (not state) to label the cashout button so it
+  // shows the current multiplier as soon as the rocket starts flying, even
+  // before the betting_closed WS event arrives.
+  const multiplierLive = crash.liveMultiplierBps > 10_000;
 
   const betFloat = parseFloat(betInput);
   const betAmountBig = Number.isFinite(betFloat)
@@ -55,16 +58,42 @@ export function CrashActionPanel({
       {!crash.isWalletConnected ? (
         <WalletConnect />
       ) : crash.cashoutSettlement?.status === "invalid" ? (
+        // Cashout was recorded on-chain but invalidated by resolve_round
+        // (recorded_at > crash_deadline). Use the actual crash point so the
+        // user sees the real story: "you clicked at X but the rocket had
+        // already crashed at Y."
         <div className="text-center text-red-400 font-semibold py-4">
-          Cashout invalidated by chain
+          Crashed at{" "}
+          {formatMultiplier(crash.recentRounds[0]?.crashPointBps ?? 10_000)}
+          <div className="text-xs font-normal text-red-300/70 mt-1">
+            Cashout landed too late on-chain
+          </div>
         </div>
-      ) : crash.hasCashedOut ? (
+      ) : crash.cashoutSettlement?.status === "confirmed" ? (
+        // Resolve confirmed: payout > 0. Show the realized multiplier from
+        // the chain (resolve_persisted), not the user's claimed value, in
+        // case the contract clamped to its 3% bound.
         <div className="text-center py-5 sm:py-6">
           <div className="text-xs sm:text-sm uppercase tracking-[0.2em] text-green-300/80 mb-1">
             Cashed out
           </div>
           <div className="text-4xl sm:text-5xl font-extrabold text-green-400 drop-shadow-[0_0_18px_rgba(74,222,128,0.45)]">
-            {formatMultiplier(crash.myCashoutBps ?? 10_000)}
+            {formatMultiplier(crash.cashoutSettlement.multiplierBps)}
+          </div>
+        </div>
+      ) : crash.hasCashedOut ? (
+        // Pending: TX submitted (and Move accepted), but resolve_round hasn't
+        // run yet. The cashout could still be invalidated post-hoc by the
+        // recorded_at <= crash_deadline check. Show a deliberately neutral
+        // pending state — a green or yellow flourish here would read as
+        // "won!" and force a confusing flip to red on invalidation.
+        <div className="text-center py-5 sm:py-6 space-y-2">
+          <div className="flex items-center justify-center gap-2 text-gray-200">
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
+            <span className="text-base font-semibold">Pending</span>
+          </div>
+          <div className="text-sm text-gray-300">
+            Cashout submitted at {formatMultiplier(crash.myCashoutBps ?? 10_000)} — waiting for round to resolve
           </div>
         </div>
       ) : crash.hasBetThisRound && (state === "CRASHED" || state === "RESOLVED") ? (
@@ -84,11 +113,13 @@ export function CrashActionPanel({
               disabled={cashOutDisabled}
               className="w-full sm:min-w-[22rem] py-4 sm:py-5 px-6 sm:px-10 text-xl sm:text-2xl font-extrabold tracking-wide bg-yellow-500 hover:bg-yellow-400 text-black rounded-xl shadow-[0_0_24px_rgba(234,179,8,0.45)] disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition"
             >
-              {crash.phase === "cashing_out"
-                ? "Cashing out..."
-                : isFlying
-                  ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
-                  : "Cash Out"}
+              {crash.isStale || crash.isWsLagged
+                ? "Reconnecting..."
+                : crash.phase === "cashing_out"
+                  ? "Cashing out..."
+                  : multiplierLive
+                    ? `Cash Out @ ${formatMultiplier(crash.liveMultiplierBps)}`
+                    : "Cash Out"}
             </button>
           </div>
           <div className="flex gap-2 items-center">
@@ -151,6 +182,26 @@ export function CrashActionPanel({
               Max
             </button>
           </div>
+          <div className="flex gap-2 items-center">
+            <input
+              type="number"
+              placeholder="Auto cash-out (optional, e.g. 2.00)"
+              className="flex-1 bg-gray-700 text-white px-3 py-2 rounded text-sm"
+              value={autoInput}
+              onChange={(e) => setAutoInput(e.target.value)}
+            />
+            <button onClick={handleAutoSet} className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white text-sm rounded">
+              Set
+            </button>
+            {crash.autoCashOutBps && (
+              <button onClick={handleAutoClear} className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white text-sm rounded">
+                Clear
+              </button>
+            )}
+          </div>
+          {crash.autoCashOutBps && (
+            <p className="text-xs text-gray-400 text-center">Auto: {formatMultiplier(crash.autoCashOutBps)}</p>
+          )}
           <button
             onClick={handleBet}
             disabled={crash.phase === "placing_bet" || bettingClosingSoon || overMax}
