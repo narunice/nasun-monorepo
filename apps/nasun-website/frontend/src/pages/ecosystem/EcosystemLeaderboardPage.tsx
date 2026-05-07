@@ -13,6 +13,7 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PageTitle } from "../../components/ui/PageTitle";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
+import { EcosystemAvatar } from "@nasun/profile-react";
 import {
   LeaderboardSearchBox,
   type LeaderboardSearchResult,
@@ -28,24 +29,6 @@ import {
 } from "./useEcosystemLeaderboard";
 
 const PAGE_SIZE = 50;
-
-const failedAvatarUrls = new Set<string>();
-
-function EntryAvatar({ url }: { url: string }) {
-  const [failed, setFailed] = useState(() => failedAvatarUrls.has(url));
-  if (failed) return <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />;
-  return (
-    <img
-      src={url}
-      alt=""
-      className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-      referrerPolicy="no-referrer"
-      crossOrigin="anonymous"
-      loading="lazy"
-      onError={() => { failedAvatarUrls.add(url); setFailed(true); }}
-    />
-  );
-}
 const MAX_RANK = 2000;
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
 
@@ -404,11 +387,13 @@ const EcosystemLeaderboardPage = () => {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            {entry.profileImageUrl ? (
-                              <EntryAvatar url={entry.profileImageUrl} />
-                            ) : (
-                              <div className="w-12 h-12 rounded-lg shrink-0 bg-nasun-c6/60" />
-                            )}
+                            <EcosystemAvatar
+                              seed={entry.identityId}
+                              imageUrl={entry.profileImageUrl}
+                              size={48}
+                              className="bg-nasun-dark-500"
+                            />
+
                             <div className="min-w-0">
                               <div className="flex items-center gap-1.5">
                                 <span className="font-medium text-sm text-nasun-white truncate inline-block max-w-[14ch] md:max-w-[20ch]">

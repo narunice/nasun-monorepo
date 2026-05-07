@@ -1,33 +1,8 @@
-import { useState } from 'react';
 import { shortenAddress } from '@nasun/wallet';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
+import { EcosystemAvatar } from '@nasun/profile-react';
 import Avatar from 'boring-avatars';
 import type { ChatMessage as ChatMessageType } from '../types';
-
-const failedAvatarUrls = new Set<string>();
-
-function ChatAvatar({ address, imageUrl, size = 18 }: {
-  address: string; imageUrl?: string | null; size?: number;
-}) {
-  const [imgError, setImgError] = useState(() => !!imageUrl && failedAvatarUrls.has(imageUrl));
-
-  if (imageUrl && !imgError) {
-    return (
-      <img
-        src={imageUrl}
-        alt=""
-        width={size}
-        height={size}
-        className="rounded-full object-cover shrink-0"
-        style={{ width: size, height: size }}
-        referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
-        onError={() => { failedAvatarUrls.add(imageUrl); setImgError(true); }}
-      />
-    );
-  }
-  return <Avatar name={address} variant="beam" size={size} />;
-}
 import { isTradeShare, parseTradeShare } from '../types';
 import type { ChatTextSize } from '../hooks/useChatTextSize';
 import { NETWORK_CONFIG } from '../../../config/network';
@@ -210,7 +185,7 @@ export function ChatMessage({ message, isOwnMessage, textSize = 0, onToggleReact
       }`}
     >
       <div className="shrink-0 mt-0.5">
-        <ChatAvatar address={message.sender} imageUrl={message.senderProfileImageUrl} size={sizes.avatar} />
+        <EcosystemAvatar seed={message.sender} imageUrl={message.senderProfileImageUrl} size={sizes.avatar} />
       </div>
       <div className={`flex-1 min-w-0 ${isOwnMessage ? 'text-right' : ''}`}>
         <div className={`flex items-baseline gap-2 ${isOwnMessage ? 'flex-row-reverse' : ''}`}>

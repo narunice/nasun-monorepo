@@ -1,45 +1,9 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Avatar from 'boring-avatars';
+import { EcosystemAvatar } from '@nasun/profile-react';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 import type { ChatMessage } from '../../../lib/chat-service';
 import ReactionBar, { REACTION_CODES, REACTION_EMOJI } from './ReactionBar';
-
-// Session-scoped blacklist for failed avatar URLs. Cleared on page reload.
-const failedUrls = new Set<string>();
-
-const ChatAvatar = memo(function ChatAvatar({ address, imageUrl, size = 24 }: {
-  address: string; imageUrl?: string | null; size?: number;
-}) {
-  const [imgError, setImgError] = useState(false);
-
-  if (imageUrl && !imgError && !failedUrls.has(imageUrl)) {
-    return (
-      <img
-        src={imageUrl}
-        alt=""
-        width={size}
-        height={size}
-        className="rounded-md object-cover shrink-0"
-        style={{ width: size, height: size }}
-        referrerPolicy="no-referrer"
-        crossOrigin="anonymous"
-        onError={() => {
-          failedUrls.add(imageUrl);
-          setImgError(true);
-        }}
-      />
-    );
-  }
-  return (
-    <div
-      className="shrink-0 overflow-hidden rounded-md"
-      style={{ width: size, height: size }}
-    >
-      <Avatar name={address} variant="pixel" size={size} square />
-    </div>
-  );
-});
 
 // Highlight @mentions in message content
 // Format: @[Display Name] for names with spaces, @nickname for simple names
@@ -102,7 +66,7 @@ const MessageItem = memo(function MessageItem({ msg, isMine, onToggleReaction, o
   return (
     <div className={`group py-0.5 flex gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>
       <div className="shrink-0 mt-0.5">
-        <ChatAvatar address={msg.sender} imageUrl={msg.senderProfileImageUrl} size={24} />
+        <EcosystemAvatar seed={msg.sender} imageUrl={msg.senderProfileImageUrl} size={24} />
       </div>
       <div className={`flex-1 min-w-0 ${isMine ? 'text-right' : ''}`}>
         <div className={`flex items-baseline gap-2 ${isMine ? 'flex-row-reverse' : ''}`}>

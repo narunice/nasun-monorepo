@@ -1,6 +1,5 @@
-import React, { useCallback, useEffect, useState } from "react";
-import Avatar from "boring-avatars";
-import { resolveAvatarUrl, useProfile } from "@nasun/profile-react";
+import React, { useCallback } from "react";
+import { EcosystemAvatar, resolveAvatarUrl, useProfile } from "@nasun/profile-react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
 import { DashboardCard } from "../../components/ui/DashboardCard";
 import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../../components/ui/LeaderboardSearchBox";
@@ -21,9 +20,9 @@ const PUBLIC_AVATARS_BASE_URL =
   (import.meta.env.VITE_PUBLIC_AVATARS_BASE_URL as string | undefined) ?? "";
 
 /**
- * TraderAvatar — ecosystem profile cascade matching pado/uju/my-account:
- *   customAvatarKey > linkedAccounts.twitter > linkedAccounts.google
- *   > leaderboard API fallback > boring-avatars beam identicon.
+ * TraderAvatar — ecosystem profile cascade. customAvatarKey > linkedAccounts
+ * twitter/google > leaderboard API fallback > pixel identicon. Rendering and
+ * variant unified via shared <EcosystemAvatar>.
  */
 function TraderAvatar({
   walletAddress,
@@ -41,26 +40,13 @@ function TraderAvatar({
     : null;
   const imageUrl = ecosystemUrl ?? fallbackUrl ?? null;
 
-  const [failed, setFailed] = useState(false);
-  useEffect(() => { setFailed(false); }, [imageUrl]);
-
-  if (imageUrl && !failed) {
-    return (
-      <img
-        key={`${walletAddress}|${imageUrl}`}
-        src={imageUrl}
-        alt=""
-        className="w-12 h-12 rounded-lg shrink-0 object-cover bg-nasun-dark-500"
-        referrerPolicy="no-referrer"
-        loading="lazy"
-        onError={() => setFailed(true)}
-      />
-    );
-  }
   return (
-    <div className="w-12 h-12 rounded-lg shrink-0 overflow-hidden">
-      <Avatar name={walletAddress || "unknown"} variant="beam" size={48} />
-    </div>
+    <EcosystemAvatar
+      seed={walletAddress || 'unknown'}
+      imageUrl={imageUrl}
+      size={48}
+      className="bg-nasun-dark-500"
+    />
   );
 }
 

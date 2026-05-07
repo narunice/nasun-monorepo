@@ -591,11 +591,18 @@ export function getGenesisPassBatch(addresses: string[]): Set<string> {
 
 export function getProfileImagesBatch(addresses: string[]): Map<string, string> {
   if (addresses.length === 0) return new Map();
+  // Priority follows @nasun/profile-core/resolveAvatarUrl:
+  //   1. custom_avatar_key (when not banned) — applied in the loop below
+  //   2. nasun_profiles.profile_image_url — canonical, sourced from
+  //      get-user-profile Lambda (already standard-resolved)
+  //   3. users.profile_image_url — legacy chat-connect snapshot, may be stale
+  //      after a social unlink. Only used if (2) is missing for first-time
+  //      cache-miss rows.
   const rows = getDb()
     .prepare(
       `SELECT
         input.address AS address,
-        COALESCE(u.profile_image_url, np.profile_image_url) AS profile_image_url,
+        COALESCE(np.profile_image_url, u.profile_image_url) AS profile_image_url,
         np.custom_avatar_key,
         np.custom_avatar_banned
        FROM (SELECT value AS address FROM json_each(?)) AS input
