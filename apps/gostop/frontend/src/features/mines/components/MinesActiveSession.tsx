@@ -12,7 +12,7 @@ export function MinesActiveSession({
 }: {
   session: MinesSession;
   pendingCells: Set<number>;
-  phase: "idle" | "creating" | "cashing_out";
+  phase: "idle" | "creating" | "cashing_out" | "busy";
   onReveal: (i: number) => void;
   onCashout: () => void;
 }) {

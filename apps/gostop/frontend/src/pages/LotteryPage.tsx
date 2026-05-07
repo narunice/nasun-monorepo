@@ -1,5 +1,5 @@
 import { useCelebrate, useForceTierDebug } from "../components/celebration";
-import { LOTTERY_TICKET_PRICE, ROUND_STATUS } from "../lib/gostop-config";
+import { LOTTERY_TICKET_PRICE } from "../lib/gostop-config";
 import { formatNusdc } from "../lib/format";
 
 import { statusLabel } from "../features/lottery/lottery-utils";

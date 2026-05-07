@@ -1,5 +1,4 @@
 import { useEffect } from 'react'
-import { useWallet } from '@nasun/wallet'
 import { useQuery } from '@tanstack/react-query'
 import { getSuiClient } from '../lib/sui-client'
 import { NUSDC_TYPE } from '../lib/gostop-config'

@@ -1,5 +1,4 @@
-import { GameHeader, BetSlider } from "../../../components/shared/GameUI";
-import minesThumb from "../../../assets/images/mines.webp";
+import { BetSlider } from "../../../components/shared/GameUI";
 import {
   MINES_GRID_SIZE,
   MINES_MIN_MINES,

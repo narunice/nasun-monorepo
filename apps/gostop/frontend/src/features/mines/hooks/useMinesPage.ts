@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useMines } from "../useMines";
-import { useCelebrate, tierForMines } from "../../../components/celebration";
+import { tierForMines } from "../../../components/celebration";
 import { useInvalidateGameHistory } from "../../game-history";
 import { useToast } from "../../../components/ui/Toast";
 import { MINES_MAX_BET, MINES_MAX_SINGLE_PAYOUT } from "../../../lib/gostop-config";
