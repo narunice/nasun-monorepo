@@ -1,13 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import { Button } from "@/components/ui/button";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { useUserList, useUserDetail, useUserSearch } from "../../hooks/useUserManagement";
 import { useAdminAuth } from "../../hooks/useAdminAuth";
+import { useBannedList, useBanAccount, useUnbanAccount } from "../../hooks/useEcosystemBan";
 import { truncateAddress } from "@/utils/addressUtils";
 import type { UserProfile, SearchField } from "../../types";
-import { getAccountFlag, setAccountFlag } from "../../services/accountFlagApi";
+import type { BannedAccount } from "../../services/banApi";
 import { SearchBar } from "./SearchBar";
 import { Pagination } from "./Pagination";
 
@@ -76,23 +76,12 @@ function RoleBadge({ role }: { role?: string }) {
   );
 }
 
-function RowFlagButton({ user }: { user: UserProfile }) {
+function RowBanButton({ user, banned }: { user: UserProfile; banned: boolean }) {
   const { cognitoToken } = useAdminAuth();
-  const queryClient = useQueryClient();
+  const banMutation = useBanAccount(cognitoToken);
+  const unbanMutation = useUnbanAccount(cognitoToken);
   const isAdmin = user.role === "ADMIN";
-
-  const mutation = useMutation({
-    mutationFn: (params: { flagged: boolean; reason?: string }) =>
-      setAccountFlag(cognitoToken!, user.identityId, params.flagged, params.reason),
-    onSuccess: (data) => {
-      toast.success(data.isAccountFlagged ? "Account flagged" : "Account unflagged");
-      queryClient.invalidateQueries({ queryKey: ["admin-account-flag", user.identityId] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (err: Error) => {
-      toast.error(`Flag update failed: ${err.message}`);
-    },
-  });
+  const pending = banMutation.isPending || unbanMutation.isPending;
 
   if (isAdmin) {
     return <span className="text-xs text-nasun-white/30">—</span>;
@@ -100,148 +89,156 @@ function RowFlagButton({ user }: { user: UserProfile }) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (user.isAccountFlagged) {
-      mutation.mutate({ flagged: false });
+    if (banned) {
+      const reason = window.prompt("Reason for unban (optional):", "");
+      if (reason === null) return;
+      unbanMutation.mutate(
+        { identityId: user.identityId, reason: reason.trim() || undefined },
+        {
+          onSuccess: () => toast.success("Account unbanned"),
+          onError: (err: Error) => toast.error(`Unban failed: ${err.message}`),
+        },
+      );
       return;
     }
-    const reason = window.prompt("Reason for flagging (visible to admins only):", "");
+    const reason = window.prompt("Reason for ban (visible to admins only):", "");
     if (reason === null) return;
+    if (!reason.trim()) {
+      toast.error("Reason is required");
+      return;
+    }
     if (!window.confirm(
-      `Flag @${user.originalTwitterHandle || user.twitterHandle || user.username}? ` +
-      "They will be blocked from airdrop registration. Existing points are not modified.",
+      `Ban @${user.originalTwitterHandle || user.twitterHandle || user.username}? ` +
+      "All ecosystem points accrual stops; user disappears from leaderboards. " +
+      "Existing settled snapshots are not modified.",
     )) return;
-    mutation.mutate({ flagged: true, reason: reason.trim() });
+    banMutation.mutate(
+      { identityId: user.identityId, handle: user.twitterHandle, reason: reason.trim() },
+      {
+        onSuccess: () => toast.success("Account banned"),
+        onError: (err: Error) => toast.error(`Ban failed: ${err.message}`),
+      },
+    );
   };
 
   return (
     <button
       onClick={handleClick}
-      disabled={mutation.isPending}
+      disabled={pending}
       className={`text-xs font-medium px-2 py-1 rounded transition-colors ${
-        user.isAccountFlagged
+        banned
           ? "bg-nasun-white/10 hover:bg-nasun-white/15 text-nasun-white/80"
           : "bg-red-500/15 hover:bg-red-500/25 text-red-300"
       } disabled:opacity-50`}
-      title={user.isAccountFlagged ? "Unflag this account" : "Flag this account (excludes from airdrops)"}
+      title={banned ? "Unban this account" : "Ban this account (stops all ecosystem points)"}
     >
-      {mutation.isPending ? "..." : user.isAccountFlagged ? "Unflag" : "Flag"}
+      {pending ? "..." : banned ? "Unban" : "Ban"}
     </button>
   );
 }
 
-function FlaggedBadge({ flagged }: { flagged?: boolean }) {
-  if (!flagged) return null;
+function BannedBadge({ banned }: { banned?: boolean }) {
+  if (!banned) return null;
   return (
     <span
       className="inline-block px-2 py-0.5 rounded text-xs font-medium bg-red-500/20 text-red-300"
-      title="Account flagged: excluded from airdrops"
+      title="Account banned: excluded from all ecosystem points"
     >
-      FLAGGED
+      BANNED
     </span>
   );
 }
 
-function AccountFlagPanel({ user }: { user: UserProfile }) {
+function BanStatusPanel({ user, banEntry }: { user: UserProfile; banEntry?: BannedAccount }) {
   const { cognitoToken } = useAdminAuth();
-  const queryClient = useQueryClient();
-
-  const { data: flagStatus } = useQuery({
-    queryKey: ["admin-account-flag", user.identityId],
-    queryFn: () => getAccountFlag(cognitoToken!, user.identityId),
-    enabled: !!cognitoToken && !!user.identityId,
-    staleTime: 30_000,
-    initialData: user.isAccountFlagged !== undefined
-      ? {
-          identityId: user.identityId,
-          isAccountFlagged: user.isAccountFlagged ?? false,
-          flagReason: user.flagReason ?? null,
-          flaggedAt: user.flaggedAt ?? null,
-          flaggedBy: user.flaggedBy ?? null,
-        }
-      : undefined,
-  });
-
-  const mutation = useMutation({
-    mutationFn: (params: { flagged: boolean; reason?: string }) =>
-      setAccountFlag(cognitoToken!, user.identityId, params.flagged, params.reason),
-    onSuccess: (data) => {
-      toast.success(data.isAccountFlagged ? "Account flagged" : "Account unflagged");
-      queryClient.invalidateQueries({ queryKey: ["admin-account-flag", user.identityId] });
-      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
-    },
-    onError: (err: Error) => {
-      toast.error(`Flag update failed: ${err.message}`);
-    },
-  });
-
-  const flagged = flagStatus?.isAccountFlagged ?? false;
+  const banMutation = useBanAccount(cognitoToken);
+  const unbanMutation = useUnbanAccount(cognitoToken);
+  const banned = !!banEntry;
   const isAdmin = user.role === "ADMIN";
+  const pending = banMutation.isPending || unbanMutation.isPending;
 
   return (
     <div
       className={`mt-2 rounded p-3 border ${
-        flagged ? "bg-red-500/5 border-red-400/30" : "bg-nasun-white/[0.03] border-nasun-white/10"
+        banned ? "bg-red-500/5 border-red-400/30" : "bg-nasun-white/[0.03] border-nasun-white/10"
       }`}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs uppercase tracking-widest text-nasun-white/60">Account Flag</span>
-        <span className={`text-xs font-medium ${flagged ? "text-red-300" : "text-nasun-white/40"}`}>
-          {flagged ? "FLAGGED" : "Not flagged"}
+        <span className="text-xs uppercase tracking-widest text-nasun-white/60">Ban Status</span>
+        <span className={`text-xs font-medium ${banned ? "text-red-300" : "text-nasun-white/40"}`}>
+          {banned ? "BANNED" : "Not banned"}
         </span>
       </div>
 
-      {flagged && flagStatus && (
+      {banned && banEntry && (
         <div className="text-xs text-nasun-white/70 space-y-0.5 mb-3">
-          {flagStatus.flagReason && (
-            <div className="text-red-200/80">Reason: {flagStatus.flagReason}</div>
+          {banEntry.reason && (
+            <div className="text-red-200/80">Reason: {banEntry.reason}</div>
           )}
-          {flagStatus.flaggedAt && (
-            <div>
-              At: {new Date(flagStatus.flaggedAt).toLocaleString("en-US")}
-            </div>
+          {banEntry.bannedAt && (
+            <div>At: {new Date(banEntry.bannedAt).toLocaleString("en-US")}</div>
           )}
-          {flagStatus.flaggedBy && (
-            <div className="font-mono break-all">By: {flagStatus.flaggedBy}</div>
+          {banEntry.bannedBy && (
+            <div className="font-mono break-all">By: {banEntry.bannedBy}</div>
           )}
         </div>
       )}
 
       {isAdmin ? (
-        <p className="text-xs text-nasun-white/40">Admin accounts cannot be flagged.</p>
-      ) : flagged ? (
+        <p className="text-xs text-nasun-white/40">Admin accounts cannot be banned.</p>
+      ) : banned ? (
         <Button
           variant="outlineC5"
           size="sm"
-          onClick={() => mutation.mutate({ flagged: false })}
-          disabled={mutation.isPending}
+          onClick={() => {
+            const reason = window.prompt("Reason for unban (optional):", "");
+            if (reason === null) return;
+            unbanMutation.mutate(
+              { identityId: user.identityId, reason: reason.trim() || undefined },
+              {
+                onSuccess: () => toast.success("Account unbanned"),
+                onError: (err: Error) => toast.error(`Unban failed: ${err.message}`),
+              },
+            );
+          }}
+          disabled={pending}
           className="w-full"
         >
-          {mutation.isPending ? "Updating..." : "Unflag account"}
+          {pending ? "Updating..." : "Unban account"}
         </Button>
       ) : (
         <Button
           variant="c4"
           size="sm"
           onClick={() => {
-            const reason = window.prompt("Reason for flagging (visible to admins only):", "");
+            const reason = window.prompt("Reason for ban (visible to admins only):", "");
             if (reason === null) return;
-            if (
-              !window.confirm(
-                "Flag this account? They will be blocked from airdrop registration. " +
-                "Existing points are not modified.",
-              )
-            ) return;
-            mutation.mutate({ flagged: true, reason: reason.trim() });
+            if (!reason.trim()) {
+              toast.error("Reason is required");
+              return;
+            }
+            if (!window.confirm(
+              "Ban this account? All ecosystem points accrual stops; user disappears " +
+              "from leaderboards. Existing settled snapshots are not modified.",
+            )) return;
+            banMutation.mutate(
+              { identityId: user.identityId, handle: user.twitterHandle, reason: reason.trim() },
+              {
+                onSuccess: () => toast.success("Account banned"),
+                onError: (err: Error) => toast.error(`Ban failed: ${err.message}`),
+              },
+            );
           }}
-          disabled={mutation.isPending}
+          disabled={pending}
           className="w-full bg-red-600/80 hover:bg-red-600 text-white"
         >
-          {mutation.isPending ? "Updating..." : "Flag account (excludes from airdrops)"}
+          {pending ? "Updating..." : "Ban account (stops all ecosystem points)"}
         </Button>
       )}
 
       <p className="text-[10px] text-nasun-white/40 mt-2">
-        Flag persists in UserProfiles. Existing ecosystem points are never modified.
+        Ban writes to banned_users + activity_points.flagged. Past settled snapshots are
+        not modified.
       </p>
     </div>
   );
@@ -249,9 +246,11 @@ function AccountFlagPanel({ user }: { user: UserProfile }) {
 
 function UserDetailModal({
   user,
+  banEntry,
   onClose,
 }: {
   user: UserProfile;
+  banEntry?: BannedAccount;
   onClose: () => void;
 }) {
   useEffect(() => {
@@ -323,9 +322,9 @@ function UserDetailModal({
           </div>
         )}
 
-        {/* Account Flag controls */}
+        {/* Ban controls */}
         <div className="mb-6">
-          <AccountFlagPanel user={user} />
+          <BanStatusPanel user={user} banEntry={banEntry} />
         </div>
 
         {/* Fields grid */}
@@ -412,6 +411,7 @@ function UserDetailModal({
 
 export function UsersTab() {
   const { cognitoToken } = useAdminAuth();
+  const { bannedIdentityIds, data: bannedListData } = useBannedList(cognitoToken);
 
   // Search state
   const [qInput, setQInput] = useState("");
@@ -553,12 +553,14 @@ export function UsersTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-nasun-white/5">
-                  {displayUsers.map((user) => (
+                  {displayUsers.map((user) => {
+                    const banned = bannedIdentityIds.has(user.identityId);
+                    return (
                     <tr
                       key={user.identityId}
                       onClick={() => setSelectedUserId(user.identityId)}
                       className={`cursor-pointer transition-colors ${
-                        user.isAccountFlagged
+                        banned
                           ? "bg-red-500/10 hover:bg-red-500/15 border-l-2 border-red-400/60"
                           : "hover:bg-nasun-white/5"
                       }`}
@@ -616,7 +618,7 @@ export function UsersTab() {
                       <td className="py-3 px-2">
                         <div className="flex flex-wrap gap-1">
                           <RoleBadge role={user.role} />
-                          <FlaggedBadge flagged={user.isAccountFlagged} />
+                          <BannedBadge banned={banned} />
                         </div>
                       </td>
                       <td className="py-3 px-2 text-nasun-white/60 whitespace-nowrap">
@@ -632,10 +634,11 @@ export function UsersTab() {
                           : "-"}
                       </td>
                       <td className="py-3 px-2 text-right whitespace-nowrap">
-                        <RowFlagButton user={user} />
+                        <RowBanButton user={user} banned={banned} />
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -656,7 +659,11 @@ export function UsersTab() {
       </OuterBox>
 
       {selectedUserId && detailData?.user && (
-        <UserDetailModal user={detailData.user} onClose={handleCloseModal} />
+        <UserDetailModal
+          user={detailData.user}
+          banEntry={bannedListData?.bans.find((b) => b.identityId === detailData.user.identityId)}
+          onClose={handleCloseModal}
+        />
       )}
     </div>
   );
