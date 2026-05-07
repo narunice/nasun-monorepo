@@ -37,3 +37,57 @@ CREATE INDEX IF NOT EXISTS idx_banned_users_active
 CREATE INDEX IF NOT EXISTS idx_banned_users_x_handle
   ON banned_users (x_handle)
   WHERE unbanned_at IS NULL AND x_handle IS NOT NULL;
+
+-- BEFORE INSERT trigger on activity_points: auto-flag rows whose identity_id
+-- (or wallet_address) belongs to an active ban. Silent-ban semantics -- INSERT
+-- succeeds (preserving audit trail) but flagged=true so the row is excluded
+-- from every leaderboard/settlement query (`WHERE NOT flagged`).
+--
+-- Covers all insert paths uniformly: indexer, /creator-post-reward,
+-- /bug-report-reward, manual psql, and any future endpoint. No per-route
+-- gating to forget.
+--
+-- BEFORE INSERT only (not UPDATE): all callers use INSERT ... ON CONFLICT DO
+-- NOTHING for idempotency. The table has no UPDATE paths in the codebase, so
+-- a BEFORE UPDATE trigger would be dead code and misleading.
+--
+-- Lookup cost: one indexed point lookup per INSERT (idx_banned_users_active +
+-- idx_banned_users_active_wallet, both partial WHERE unbanned_at IS NULL).
+--
+-- Atomicity: wrapped in a transaction so the DROP TRIGGER -> CREATE TRIGGER
+-- window is never visible to concurrent INSERTs under load.
+
+BEGIN;
+
+CREATE OR REPLACE FUNCTION _activity_points_autoflag_banned()
+RETURNS TRIGGER AS $$
+BEGIN
+  IF NEW.flagged THEN
+    RETURN NEW;
+  END IF;
+  IF NEW.identity_id IS NOT NULL AND EXISTS (
+    SELECT 1 FROM banned_users
+    WHERE identity_id = NEW.identity_id AND unbanned_at IS NULL
+  ) THEN
+    NEW.flagged := TRUE;
+    NEW.flag_reason := COALESCE(NEW.flag_reason, 'banned-user');
+    RETURN NEW;
+  END IF;
+  IF NEW.wallet_address IS NOT NULL AND EXISTS (
+    SELECT 1 FROM banned_users
+    WHERE wallet_address = NEW.wallet_address AND unbanned_at IS NULL
+  ) THEN
+    NEW.flagged := TRUE;
+    NEW.flag_reason := COALESCE(NEW.flag_reason, 'banned-user');
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS _ap_autoflag_banned ON activity_points;
+CREATE TRIGGER _ap_autoflag_banned
+  BEFORE INSERT ON activity_points
+  FOR EACH ROW
+  EXECUTE FUNCTION _activity_points_autoflag_banned();
+
+COMMIT;
