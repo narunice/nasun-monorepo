@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { formatMultiplier } from "../crash-math";
 import { formatNusdc } from "../../../lib/format";
-import { CRASH_MIN_BET, CRASH_MAX_BET } from "../../../lib/gostop-config";
 import { Spinner, BetSlider } from "../../../components/shared/GameUI";
 
 const CHAIN_CONFIRMATION_BUFFER_MS = 2500;
