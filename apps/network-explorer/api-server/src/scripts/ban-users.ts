@@ -42,14 +42,16 @@
 
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  resolveHandle as svcResolveHandle,
+  applyBans as svcApplyBans,
+  applyUnbans as svcApplyUnbans,
+  refreshChatServerCache as svcRefreshChatServerCache,
+  normalizeHandle,
+  type Resolution,
+} from '../services/ban-service.js';
 
 const POINTS_DB_URL = process.env.POINTS_DATABASE_URL;
-const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
-const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
-const CHAT_SERVER_URL = process.env.CHAT_SERVER_URL;
-const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
 const ADMIN_ACTOR = process.env.BAN_ADMIN_ACTOR || process.env.USER || 'cli';
 
 if (!POINTS_DB_URL) {
@@ -86,20 +88,11 @@ const reason = getValue('--reason') || (unban ? 'unbanned via CLI' : '');
 const handlesArg = getMulti('--handles');
 const handlesFile = getValue('--handles-file');
 
-// ===== DB / DynamoDB clients =====
+// ===== DB =====
 
 const db = postgres(POINTS_DB_URL, { max: 3, idle_timeout: 30, connect_timeout: 10 });
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
 
 // ===== Helpers =====
-
-function normalizeHandle(raw: string): string {
-  return raw.replace(/^@/, '').toLowerCase().trim();
-}
-
-function isValidHandle(handle: string): boolean {
-  return /^[a-z0-9_]{1,15}$/.test(handle);
-}
 
 function loadHandles(): string[] {
   const raw: string[] = [...handlesArg];
@@ -120,120 +113,6 @@ function loadHandles(): string[] {
     out.push(n);
   }
   return out;
-}
-
-interface UserProfileRecord {
-  identityId: string;
-  username?: string;
-  twitterHandle?: string;
-  walletAddress?: string;
-}
-
-interface LinkedAccountInfo {
-  identityId?: string;
-  walletAddress?: string;
-}
-
-interface FullProfile {
-  identityId: string;
-  walletAddress?: string;
-  linkedAccounts?: Record<string, LinkedAccountInfo>;
-}
-
-interface Resolution {
-  handle: string;
-  identityId?: string;
-  walletAddress?: string;
-  status: 'mapped' | 'no-profile' | 'no-wallet' | 'lookup-error' | 'invalid-handle';
-  note?: string;
-}
-
-async function lookupIdentityByHandle(handle: string): Promise<string | null> {
-  const result = await ddb.send(
-    new QueryCommand({
-      TableName: USER_PROFILES_TABLE,
-      IndexName: 'twitterHandle-index',
-      KeyConditionExpression: 'twitterHandle = :handle',
-      ExpressionAttributeValues: { ':handle': handle },
-    }),
-  );
-  if (!result.Items || result.Items.length === 0) return null;
-
-  // Prefer the profile that actually has Twitter as primary identity (username
-  // not wallet-shaped). Falls back to first item.
-  let best = result.Items[0] as UserProfileRecord;
-  for (const it of result.Items) {
-    const p = it as UserProfileRecord;
-    if (p.username && !p.username.startsWith('0x')) {
-      best = p;
-      break;
-    }
-  }
-  return best.identityId;
-}
-
-/**
- * Resolve the wallet that earns ecosystem points for this user.
- *
- * X-primary signups link a separate "nasun wallet" identity that owns the
- * actual on-chain activity. We mirror the disbursement-target resolution from
- * grant-creators-appreciation-bonus.ts so bans hit the identity that earns,
- * not just the X-login identity.
- *
- * Returns up to 2 (identityId, walletAddress) pairs: the primary X-login
- * identity AND the linked nasun wallet identity. Both are banned so the
- * user can't simply switch login methods to evade.
- */
-async function resolveBanTargets(primaryIdentityId: string): Promise<Array<{ identityId: string; walletAddress?: string; source: string }>> {
-  const result = await ddb.send(
-    new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: primaryIdentityId } }),
-  );
-  const profile = result.Item as FullProfile | undefined;
-  if (!profile) {
-    return [{ identityId: primaryIdentityId, source: 'primary-no-profile' }];
-  }
-
-  const targets: Array<{ identityId: string; walletAddress?: string; source: string }> = [
-    {
-      identityId: primaryIdentityId,
-      walletAddress: profile.walletAddress?.toLowerCase(),
-      source: 'primary',
-    },
-  ];
-
-  const nasunLink = profile.linkedAccounts?.['nasun wallet'];
-  if (nasunLink?.identityId && nasunLink.identityId !== primaryIdentityId) {
-    targets.push({
-      identityId: nasunLink.identityId,
-      walletAddress: nasunLink.walletAddress?.toLowerCase(),
-      source: 'linked-nasun-wallet',
-    });
-  }
-
-  return targets;
-}
-
-async function resolveHandle(handle: string): Promise<Resolution[]> {
-  if (!isValidHandle(handle)) {
-    return [{ handle, status: 'invalid-handle', note: 'X handle pattern violation' }];
-  }
-  let primaryId: string | null;
-  try {
-    primaryId = await lookupIdentityByHandle(handle);
-  } catch (err) {
-    return [{ handle, status: 'lookup-error', note: (err as Error).message }];
-  }
-  if (!primaryId) {
-    return [{ handle, status: 'no-profile', note: 'no UserProfiles row with this twitterHandle' }];
-  }
-  const targets = await resolveBanTargets(primaryId);
-  return targets.map((t) => ({
-    handle,
-    identityId: t.identityId,
-    walletAddress: t.walletAddress,
-    status: t.walletAddress ? 'mapped' : 'no-wallet',
-    note: t.source,
-  }));
 }
 
 // ===== Operations =====
@@ -268,45 +147,11 @@ async function applyBans(resolutions: Resolution[]): Promise<void> {
     console.log('No mappable resolutions. Nothing to ban.');
     return;
   }
-
   console.log(`\nApplying ${mapped.length} ban(s)...`);
-
-  for (const r of mapped) {
-    await db.begin(async (tx) => {
-      const sql = tx as unknown as typeof db;
-      // activity_points has a PG-side integrity guard that blocks all
-      // UPDATEs by default (runtime code is INSERT-only). Admin corrections
-      // bypass the guard for the duration of this single transaction.
-      await sql`SET LOCAL app.allow_points_mutation = 'on'`;
-      await sql`
-        INSERT INTO banned_users (identity_id, wallet_address, x_handle, reason, banned_by, unbanned_at, unbanned_by)
-        VALUES (${r.identityId!}, ${r.walletAddress ?? null}, ${r.handle}, ${reason}, ${ADMIN_ACTOR}, NULL, NULL)
-        ON CONFLICT (identity_id) DO UPDATE SET
-          wallet_address = COALESCE(EXCLUDED.wallet_address, banned_users.wallet_address),
-          x_handle       = EXCLUDED.x_handle,
-          reason         = EXCLUDED.reason,
-          banned_at      = NOW(),
-          banned_by      = EXCLUDED.banned_by,
-          unbanned_at    = NULL,
-          unbanned_by    = NULL
-      `;
-
-      // Cascade: flag all activity_points rows so existing & future ecosystem
-      // queries (which already filter `WHERE NOT flagged`) drop this user.
-      const updated = await sql<Array<{ count: string }>>`
-        WITH upd AS (
-          UPDATE activity_points
-          SET flagged = true
-          WHERE identity_id = ${r.identityId!}
-            AND NOT flagged
-          RETURNING 1
-        )
-        SELECT COUNT(*)::text AS count FROM upd
-      `;
-      console.log(`  @${r.handle} → ${r.identityId} (${r.note ?? ''}): flagged ${updated[0].count} activity rows`);
-    });
+  const results = await svcApplyBans(db, resolutions, reason, ADMIN_ACTOR);
+  for (const r of results) {
+    console.log(`  @${r.handle} → ${r.identityId} (${r.source ?? ''}): flagged ${r.flaggedRows} activity rows`);
   }
-
   await refreshChatServerCache();
 }
 
@@ -316,66 +161,25 @@ async function applyUnbans(resolutions: Resolution[]): Promise<void> {
     console.log('No mappable resolutions. Nothing to unban.');
     return;
   }
-
   console.log(`\nUnbanning ${mapped.length} identity(ies)...`);
-
-  for (const r of mapped) {
-    await db.begin(async (tx) => {
-      const sql = tx as unknown as typeof db;
-      await sql`SET LOCAL app.allow_points_mutation = 'on'`;
-      const result = await sql<Array<{ identity_id: string }>>`
-        UPDATE banned_users
-        SET unbanned_at = NOW(),
-            unbanned_by = ${ADMIN_ACTOR},
-            notes = COALESCE(notes || E'\n', '') || ${'unban reason: ' + reason}
-        WHERE identity_id = ${r.identityId!}
-          AND unbanned_at IS NULL
-        RETURNING identity_id
-      `;
-      if (result.length === 0) {
-        console.log(`  @${r.handle} → ${r.identityId}: no active ban (skipped)`);
-        return;
-      }
-      // Clear flagged on activity_points. Note: this also clears flagged that
-      // may have been set by other sources (anti-abuse, manual). For now ban
-      // is the only path that sets flagged=true on this code base. If other
-      // flagging sources are added later, introduce a separate `flag_source`
-      // column.
-      const updated = await sql<Array<{ count: string }>>`
-        WITH upd AS (
-          UPDATE activity_points
-          SET flagged = false
-          WHERE identity_id = ${r.identityId!}
-            AND flagged
-          RETURNING 1
-        )
-        SELECT COUNT(*)::text AS count FROM upd
-      `;
-      console.log(`  @${r.handle} → ${r.identityId}: unflagged ${updated[0].count} activity rows`);
-    });
+  const results = await svcApplyUnbans(db, resolutions, ADMIN_ACTOR, reason);
+  for (const r of results) {
+    if (!r.cleared) console.log(`  @${r.handle} → ${r.identityId}: no active ban (skipped)`);
+    else console.log(`  @${r.handle} → ${r.identityId}: unflagged ${r.unflaggedRows} activity rows`);
   }
-
   await refreshChatServerCache();
 }
 
 async function refreshChatServerCache(): Promise<void> {
-  if (!CHAT_SERVER_URL || !INTERNAL_API_KEY) {
-    console.log('\n[skip] CHAT_SERVER_URL or INTERNAL_API_KEY not set — chat-server will refresh on its own TTL.');
-    return;
-  }
-  try {
-    const res = await fetch(`${CHAT_SERVER_URL}/api/pado/internal/banned-cache/refresh`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${INTERNAL_API_KEY}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (res.ok) {
-      console.log('\n[ok] chat-server banned cache refreshed');
-    } else {
-      console.warn(`\n[warn] chat-server refresh returned ${res.status} (will refresh on TTL)`);
-    }
-  } catch (err) {
-    console.warn(`\n[warn] chat-server refresh failed: ${(err as Error).message} (will refresh on TTL)`);
+  const r = await svcRefreshChatServerCache();
+  if (r.ok) {
+    console.log('\n[ok] chat-server banned cache refreshed');
+  } else if (r.error?.includes('not set')) {
+    console.log(`\n[skip] ${r.error} — chat-server will refresh on its own TTL.`);
+  } else if (r.status) {
+    console.warn(`\n[warn] chat-server refresh returned ${r.status} (will refresh on TTL)`);
+  } else {
+    console.warn(`\n[warn] chat-server refresh failed: ${r.error} (will refresh on TTL)`);
   }
 }
 
@@ -406,7 +210,7 @@ async function main() {
   // Resolve all handles in sequence (low rate, ~1 RPS, simpler than parallel).
   const allResolutions: Resolution[] = [];
   for (const handle of handles) {
-    const rs = await resolveHandle(handle);
+    const rs = await svcResolveHandle(handle);
     allResolutions.push(...rs);
   }
 
