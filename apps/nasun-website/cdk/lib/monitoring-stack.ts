@@ -148,9 +148,9 @@ export class MonitoringStack extends cdk.Stack {
     if (props.governanceApi) {
       const governanceApiErrorAlarm = new cloudwatch.Alarm(this, "GovernanceApiServerErrorAlarm", {
         alarmName: "NASUN-GovernanceAPI-서버에러",
-        alarmDescription: "Governance API 5xx 에러가 5분간 3회 이상 발생",
+        alarmDescription: "Governance API 5xx 에러가 5분간 5회 이상 발생 (alliance mint RPC lag은 429로 변환되어 5xx 미계산)",
         metric: props.governanceApi.metricServerError({ period }),
-        threshold: 3,
+        threshold: 5,
         evaluationPeriods: 1,
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
       });
