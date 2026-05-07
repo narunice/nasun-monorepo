@@ -1112,6 +1112,11 @@ app.get('/leaderboard', async (c) => {
           ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
         FULL OUTER JOIN staking_emission se
           ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
+        WHERE NOT EXISTS (
+          SELECT 1 FROM banned_users bu
+          WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id)
+            AND bu.unbanned_at IS NULL
+        )
         -- Pre-sort by SQL-computable columns. JS applies isTelegramMember/hasGenesisPass tiebreakers after.
         ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
         LIMIT ${LEADERBOARD_TOP_N}
@@ -1120,7 +1125,14 @@ app.get('/leaderboard', async (c) => {
       const validRows = (rows as any[]).filter((r) => r.identity_id != null);
       const identityIds = validRows.map((r) => r.identity_id as string);
 
-      // hasGenesisPass: synchronous in-memory activations cache lookup
+      // NFT gate: only users with at least one active Alliance or Genesis Pass appear on the leaderboard.
+      const nftEligibleSet = new Set(
+        identityIds.filter((id: string) =>
+          getActivationsForUser(id).some(
+            (a: any) => (a.nftType === 'genesis-pass' || a.nftType === 'alliance') && a.status === 'ACTIVE'
+          )
+        )
+      );
       const genesisPassSet = new Set(
         identityIds.filter((id: string) =>
           getActivationsForUser(id).some((a: any) => a.nftType === 'genesis-pass')
@@ -1130,7 +1142,9 @@ app.get('/leaderboard', async (c) => {
       // displayName / xHandle / profileImageUrl: DynamoDB BatchGet
       const profiles = await fetchProfilesBatch(identityIds);
 
-      const entries = validRows.map((r: any) => ({
+      const entries = validRows
+        .filter((r: any) => nftEligibleSet.has(r.identity_id as string))
+        .map((r: any) => ({
         identityId: r.identity_id as string,
         activityScore: r.activity_score as number,
         creatorPostScore: r.creator_post_score as number,
@@ -1225,6 +1239,11 @@ app.get('/leaderboard', async (c) => {
           FULL OUTER JOIN staking_emission se
             ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
           WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) IS NOT NULL
+            AND NOT EXISTS (
+              SELECT 1 FROM banned_users bu
+              WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id)
+                AND bu.unbanned_at IS NULL
+            )
         ) sub
       `;
       return Number((result[0] as any).total ?? 0);

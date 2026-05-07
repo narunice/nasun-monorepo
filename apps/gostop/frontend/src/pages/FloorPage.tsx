@@ -23,13 +23,12 @@ interface UpcomingGame {
 
 const LIVE_GAMES: LiveGame[] = [
   {
-    title: 'Crash',
+    title: 'Mines',
     tagline:
-      'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet. Provably fair, salted commit-reveal each round.',
-    cta: 'Fly',
-    to: '/crash',
-    thumb: crashThumb,
-    maintenance: !ENABLE_CRASH,
+      'Open tiles on a 5x5 grid seeded with hidden mines. Every safe tile pumps your multiplier higher, but one mine ends the run. Cash out at any time, push your luck for more.',
+    cta: 'Enter',
+    to: '/mines',
+    thumb: minesThumb,
   },
   {
     title: 'Weekly Lottery',
@@ -56,12 +55,13 @@ const LIVE_GAMES: LiveGame[] = [
     thumb: numberMatchThumb,
   },
   {
-    title: 'Mines',
+    title: 'Crash',
     tagline:
-      'Open tiles on a 5x5 grid seeded with hidden mines. Every safe tile pumps your multiplier higher, but one mine ends the run. Cash out at any time, push your luck for more.',
-    cta: 'Enter',
-    to: '/mines',
-    thumb: minesThumb,
+      'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet. Provably fair, salted commit-reveal each round.',
+    cta: 'Fly',
+    to: '/crash',
+    thumb: crashThumb,
+    maintenance: !ENABLE_CRASH,
   },
 ]
 
