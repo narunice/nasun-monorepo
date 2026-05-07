@@ -738,7 +738,7 @@ module gostop_crash::crash_tests {
         ts::end(scenario);
     }
 
-    /// resolve_round: crash_point > INVERSE_SEARCH_TOP_BPS (26_650_000) → abort ECrashPointTooHigh (=21)
+    /// resolve_round: crash_point > INVERSE_SEARCH_TOP_BPS (2_000_000) → abort ECrashPointTooHigh (=21)
     #[test]
     #[expected_failure(abort_code = 21, location = gostop_crash::crash)]
     fun test_resolve_with_crash_point_above_top_bps_aborts() {
@@ -755,7 +755,7 @@ module gostop_crash::crash_tests {
         };
 
         // 너무 큰 crash_point로 commit_hash 만들고 resolve 시도
-        let too_high_crash_point: u64 = 27_000_000;  // > INVERSE_SEARCH_TOP_BPS
+        let too_high_crash_point: u64 = 2_100_000;  // > INVERSE_SEARCH_TOP_BPS (2_000_000)
         let salt = b"saltsaltsaltsaltsaltsaltsaltsalt";
         let commit_hash = make_commit_hash(too_high_crash_point, salt);
 
