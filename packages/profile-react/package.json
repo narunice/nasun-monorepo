@@ -21,7 +21,8 @@
     "react": "^18.0.0 || ^19.0.0"
   },
   "dependencies": {
-    "@nasun/profile-core": "workspace:*"
+    "@nasun/profile-core": "workspace:*",
+    "boring-avatars": "^2.0.4"
   },
   "devDependencies": {
     "@nasun/tsconfig": "workspace:*",

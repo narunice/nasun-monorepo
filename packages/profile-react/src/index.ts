@@ -1,4 +1,5 @@
 export { useProfile } from './useProfile.js';
+export { EcosystemAvatar, type EcosystemAvatarProps } from './EcosystemAvatar.js';
 export {
   fetchPublicProfile,
   ProfileFetchError,

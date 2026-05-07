@@ -58,37 +58,74 @@ function getDdbClient(): DynamoDBDocumentClient {
   return _ddbClient;
 }
 
-// Same priority chain as get-user-profile Lambda: customDisplayName > Twitter > linkedAccounts > email prefix
-function resolveDisplayName(item: Record<string, unknown>): string | null {
-  if (item.customDisplayName) return item.customDisplayName as string;
-  if (item.provider === 'Twitter' && item.username) return item.username as string;
-  const linked = item.linkedAccounts as Record<string, Record<string, string>> | undefined;
-  if (linked?.twitter?.username) return linked.twitter.username;
-  const email = item.email as string | undefined;
-  if (email) return email.split('@')[0];
-  return null;
-}
-
 const PUBLIC_AVATARS_BASE_URL = (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
 
-// Avatar URL cascade: customAvatarKey > linked twitter image > linked google image > null.
-// Mirrors @nasun/profile-core/resolveAvatarUrl. Inlined here to avoid pulling
-// the package + dist build into the api-server build pipeline (this is a
-// stable few lines; sync if @nasun/profile-core changes).
+const WALLET_SHORT_HEAD = 6;
+const WALLET_SHORT_TAIL = 4;
+function shortenWallet(addr: string): string {
+  if (addr.length <= WALLET_SHORT_HEAD + WALLET_SHORT_TAIL + 2) return addr;
+  return `${addr.slice(0, WALLET_SHORT_HEAD)}...${addr.slice(-WALLET_SHORT_TAIL)}`;
+}
+
+// Mirror of @nasun/profile-core/resolveDisplayName. Inlined to keep the
+// api-server deploy pipeline (npm install --omit=dev on a single rsynced dir)
+// free of workspace-protocol dependencies. Keep this exactly in sync with
+// packages/profile-core/src/resolvers.ts.
+//
+// Priority: customDisplayName > Twitter (originalTwitterHandle preserved) >
+//           Google email local part > shortened wallet > 'User'
+function resolveDisplayName(item: Record<string, unknown>): string {
+  if (item.customDisplayName) return item.customDisplayName as string;
+
+  const linked = item.linkedAccounts as
+    | { twitter?: Record<string, string>; google?: Record<string, string> }
+    | undefined;
+
+  const twHandle =
+    linked?.twitter?.originalTwitterHandle ??
+    linked?.twitter?.twitterHandle ??
+    linked?.twitter?.username ??
+    (item.provider === 'Twitter'
+      ? ((item.originalTwitterHandle ?? item.twitterHandle ?? item.username) as string | undefined)
+      : undefined);
+  if (twHandle) return twHandle;
+
+  const gEmail =
+    linked?.google?.email ??
+    (item.provider === 'Google' ? (item.email as string | undefined) : undefined);
+  if (gEmail) {
+    const localPart = gEmail.split('@')[0];
+    if (localPart) return localPart;
+  }
+
+  const wallet = item.walletAddress as string | undefined;
+  if (wallet) return shortenWallet(wallet);
+
+  return 'User';
+}
+
+// Mirror of @nasun/profile-core/resolveAvatarUrl.
+//
+// Priority: customAvatarKey (when not banned) > linked twitter image >
+//           linked google image > null. We intentionally do NOT fall back to
+//           the legacy root profileImageUrl: after a social unlink that field
+//           can hold a stale URL whose CDN tokens are revoked.
 function resolveAvatarUrl(item: Record<string, unknown>): string | null {
   const banned = item.customAvatarBanned === true;
   const customAvatarKey = !banned ? (item.customAvatarKey as string | undefined) : undefined;
   if (customAvatarKey && PUBLIC_AVATARS_BASE_URL) {
     return `${PUBLIC_AVATARS_BASE_URL}/${customAvatarKey.replace(/^\/+/, '')}`;
   }
-  const linked = item.linkedAccounts as Record<string, Record<string, string>> | undefined;
+  const linked = item.linkedAccounts as
+    | { twitter?: Record<string, string>; google?: Record<string, string> }
+    | undefined;
   if (linked?.twitter?.profileImageUrl) return linked.twitter.profileImageUrl;
   if (linked?.google?.profileImageUrl) return linked.google.profileImageUrl;
   return null;
 }
 
 interface ProfileCacheEntry {
-  displayName: string | null;
+  displayName: string;
   xHandle: string | null;
   profileImageUrl: string | null;
   isTelegramMember: boolean;
@@ -138,7 +175,7 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
       const ddb = getDdbClient();
       const CHUNK = 100;
       const PROJECTION =
-        'identityId, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, linkedToPrimaryId, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm';
+        'identityId, walletAddress, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, linkedToPrimaryId, twitterHandle, originalTwitterHandle, #em, #tgm';
       const EAN = { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' };
 
       // Pass 1: fetch missing identities directly.
@@ -204,11 +241,10 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
         }
         const provider = ((merged.provider as string | undefined) ?? '').toLowerCase();
         const linked = (merged.linkedAccounts as Record<string, unknown> | undefined) ?? {};
-        const cascaded = resolveAvatarUrl(merged);
         profileCache.data.set(id, {
           displayName: resolveDisplayName(merged),
           xHandle: sanitizeXHandle(merged.originalTwitterHandle ?? merged.twitterHandle),
-          profileImageUrl: cascaded ?? (merged.profileImageUrl as string | undefined) ?? null,
+          profileImageUrl: resolveAvatarUrl(merged),
           isTelegramMember: (merged.isTelegramMember as boolean | undefined) ?? false,
           hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
         });
@@ -224,7 +260,7 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
 
   const result = new Map<string, ProfileCacheEntry>();
   for (const id of identityIds) {
-    result.set(id, profileCache.data.get(id) ?? { displayName: null, xHandle: null, profileImageUrl: null, isTelegramMember: false, hasGoogle: false });
+    result.set(id, profileCache.data.get(id) ?? { displayName: 'User', xHandle: null, profileImageUrl: null, isTelegramMember: false, hasGoogle: false });
   }
   return result;
 }
