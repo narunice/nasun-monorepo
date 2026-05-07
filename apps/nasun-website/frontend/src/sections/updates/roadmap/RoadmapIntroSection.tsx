@@ -4,13 +4,14 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { OuterBox } from "@/components/ui/OuterBox";
 import { PageTitle } from "@/components/ui/PageTitle";
 import { Trophy, Calendar, Users } from "lucide-react";
-import { useFollowerCount } from "../../../hooks/useFollowerCount";
 import grantsData from "../../../assets/locales/en/grants.json";
 import { MetricCard } from "./components/MetricCard";
 
+// Manually maintained community size. Update this constant periodically.
+const COMMUNITY_COUNT = 5177;
+
 export const RoadmapIntroSection = () => {
   const { t } = useTranslation("roadmap");
-  const { count: followerCount } = useFollowerCount();
 
   // grants.json에서 실제 awards 수를 가져옴
   const grantsCount = useMemo(() => {
@@ -28,8 +29,7 @@ export const RoadmapIntroSection = () => {
     return currentYear - startYear + 1;
   }, []);
 
-  // Twitter 팔로워 수 (실제 값만 표시, 없으면 1000)
-  const communityCount = followerCount ?? 1000;
+  const communityCount = COMMUNITY_COUNT;
 
   const metrics = [
     {
