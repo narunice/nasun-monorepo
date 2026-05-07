@@ -59,8 +59,8 @@ export function humanizeLotteryError(rawMessage: string): string {
   if (/not available for consumption|ObjectVersionUnavailable/i.test(rawMessage)) {
     return 'Network is busy. Please try again in a moment.'
   }
-  if (/InsufficientGas|gas budget/i.test(rawMessage)) {
-    return 'Insufficient gas. Try again or top up NASUN.'
+  if (/InsufficientGas|gas budget|GasBalanceTooLow|Balance of gas object.*lower than the needed amount/i.test(rawMessage)) {
+    return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }
 
   // MoveAbort(... , N) in command M

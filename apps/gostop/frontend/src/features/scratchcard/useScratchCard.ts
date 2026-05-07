@@ -104,6 +104,9 @@ export function useScratchCard(): UseScratchCardResult {
 }
 
 function humanizeScratchError(raw: string): string {
+  if (/Balance of gas object.*lower than the needed amount|GasBalanceTooLow/i.test(raw)) {
+    return 'Not enough NASUN for gas. Please top up your wallet and try again.'
+  }
   if (raw.includes('MoveAbort')) {
     if (raw.includes(', 0)')) return 'Invalid card count (must be 1-10).'
     if (raw.includes(', 1)')) return 'Payment amount does not match card price exactly.'

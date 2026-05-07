@@ -126,8 +126,8 @@ export function useGameTransaction() {
         let userMessage: string;
         if (message.includes('MoveAbort')) {
           userMessage = 'Transaction rejected by smart contract.';
-        } else if (message.includes('GasBalanceTooLow')) {
-          userMessage = 'Insufficient SUI for gas fees.';
+        } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {
+          userMessage = 'Not enough NASUN for gas. Please top up your wallet and try again.';
         } else if (/(?:status code|HTTP)\s*:?\s*5\d\d|Service (?:Temporarily )?Unavailable|ETIMEDOUT|ECONNRESET|fetch failed|socket hang up/i.test(message)) {
           // Transient RPC fault (fullnode 5xx, network hiccup). User-actionable
           // wording so they retry instead of seeing a raw "Unexpected status
