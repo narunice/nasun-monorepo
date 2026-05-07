@@ -1061,7 +1061,46 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         return errorResponse(404, "User not found", requestOrigin);
       }
 
-      return jsonResponse(200, { success: true, user: parseUserProfileDetail(result.Item) }, requestOrigin);
+      // Enrich linkedAccounts with identifying fields stored on each linked
+      // sub-identity record (twitterHandle/twitterId, email, telegramUserId/Username).
+      // The primary record may only carry the link pointer + linkedAt while the
+      // actual identifier lives on the secondary's top-level attributes.
+      const primary = result.Item;
+      const linkedM: Record<string, any> = primary.linkedAccounts?.M ?? {};
+      const subIds: string[] = [];
+      for (const [, v] of Object.entries(linkedM)) {
+        const id = (v as any)?.M?.identityId?.S;
+        if (id && id !== targetIdentityId) subIds.push(id);
+      }
+      for (const subId of [...new Set(subIds)]) {
+        try {
+          const r = await dynamoClient.send(
+            new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: subId } } })
+          );
+          const sec = r.Item;
+          if (!sec) continue;
+          if (sec.twitterHandle?.S || sec.twitterId?.S) {
+            const tw: Record<string, any> = linkedM.twitter?.M ?? {};
+            if (!tw.twitterHandle && sec.twitterHandle?.S) tw.twitterHandle = { S: sec.twitterHandle.S };
+            if (!tw.twitterId && sec.twitterId?.S) tw.twitterId = { S: sec.twitterId.S };
+            linkedM.twitter = { M: tw };
+          }
+          if (sec.email?.S) {
+            const g: Record<string, any> = linkedM.google?.M ?? {};
+            if (!g.email) g.email = { S: sec.email.S };
+            linkedM.google = { M: g };
+          }
+          if (sec.telegramUserId?.S || sec.telegramUsername?.S) {
+            const tg: Record<string, any> = linkedM.telegram?.M ?? {};
+            if (!tg.telegramUserId && sec.telegramUserId?.S) tg.telegramUserId = { S: sec.telegramUserId.S };
+            if (!tg.telegramUsername && sec.telegramUsername?.S) tg.telegramUsername = { S: sec.telegramUsername.S };
+            linkedM.telegram = { M: tg };
+          }
+        } catch (_) { /* best-effort */ }
+      }
+      primary.linkedAccounts = { M: linkedM };
+
+      return jsonResponse(200, { success: true, user: parseUserProfileDetail(primary) }, requestOrigin);
     }
 
     // GET /users - List users (paginated) OR search (?q=... present)
@@ -1098,7 +1137,51 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
         const matchedItems: Record<string, any>[] = [];
         let truncated = false;
-        const SCAN_LIMIT = 500;
+        // Per-page size for paginated scans. Total scan is unbounded (we follow
+        // LastEvaluatedKey until exhausted) but we cap at SCAN_PAGE_BUDGET pages
+        // as a circuit breaker against unexpectedly huge tables.
+        const SCAN_PAGE_SIZE = 1000;
+        const SCAN_PAGE_BUDGET = 200; // 200 * 1000 = up to 200k items per request
+
+        async function paginatedScan(
+          input: Omit<ConstructorParameters<typeof ScanCommand>[0], "Limit" | "ExclusiveStartKey">
+        ): Promise<{ items: Record<string, any>[]; truncated: boolean }> {
+          const items: Record<string, any>[] = [];
+          let cursor: Record<string, any> | undefined;
+          let pages = 0;
+          do {
+            const r = await dynamoClient.send(
+              new ScanCommand({ ...input, Limit: SCAN_PAGE_SIZE, ExclusiveStartKey: cursor })
+            );
+            if (r.Items) items.push(...r.Items);
+            cursor = r.LastEvaluatedKey;
+            pages += 1;
+            if (pages >= SCAN_PAGE_BUDGET) {
+              return { items, truncated: !!cursor };
+            }
+          } while (cursor);
+          return { items, truncated: false };
+        }
+
+        // Hydrate GSI projection results into full UserProfiles items via per-id GetItem.
+        // GSIs on this table use KEYS_ONLY or partial INCLUDE projections (no
+        // linkedToPrimaryId), so we cannot rely on GSI items for downstream logic.
+        async function hydrateByIdentityIds(
+          items: Record<string, any>[] | undefined
+        ): Promise<Record<string, any>[]> {
+          if (!items || items.length === 0) return [];
+          const ids = [...new Set(items.map((i) => i.identityId?.S).filter((s): s is string => !!s))];
+          const out: Record<string, any>[] = [];
+          for (const id of ids) {
+            try {
+              const r = await dynamoClient.send(
+                new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: id } } })
+              );
+              if (r.Item) out.push(r.Item);
+            } catch (_) { /* best-effort */ }
+          }
+          return out;
+        }
 
         if (fieldKind === "identity_id") {
           const result = await dynamoClient.send(
@@ -1108,30 +1191,30 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
         } else if (fieldKind === "twitter") {
           const normalized = rawQ.replace(/^@/, "").toLowerCase();
+          // GSI projects subset of attributes (no linkedToPrimaryId), so we cannot use a
+          // FilterExpression on linkedToPrimaryId here. Hydrate full items via GetItem
+          // and let the resolvePrimary stage below handle secondary→primary mapping.
           const gsiResult = await dynamoClient.send(
             new QueryCommand({
               TableName: USER_PROFILES_TABLE,
               IndexName: "twitterHandle-index",
               KeyConditionExpression: "twitterHandle = :h",
-              FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
               ExpressionAttributeValues: { ":h": { S: normalized } },
             })
           );
-          if (gsiResult.Items && gsiResult.Items.length > 0) {
-            matchedItems.push(...gsiResult.Items);
+          const hydrated = await hydrateByIdentityIds(gsiResult.Items);
+          if (hydrated.length > 0) {
+            matchedItems.push(...hydrated);
           } else {
             // Fallback: scan for legacy records where twitterHandle is only in linkedAccounts
-            const scanResult = await dynamoClient.send(
-              new ScanCommand({
-                TableName: USER_PROFILES_TABLE,
-                FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND #la.#tw.#th = :h",
-                ExpressionAttributeNames: { "#la": "linkedAccounts", "#tw": "twitter", "#th": "twitterHandle" },
-                ExpressionAttributeValues: { ":h": { S: normalized } },
-                Limit: SCAN_LIMIT,
-              })
-            );
-            if (scanResult.Items) matchedItems.push(...scanResult.Items);
-            if (scanResult.LastEvaluatedKey) truncated = true;
+            const scanResult = await paginatedScan({
+              TableName: USER_PROFILES_TABLE,
+              FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND #la.#tw.#th = :h",
+              ExpressionAttributeNames: { "#la": "linkedAccounts", "#tw": "twitter", "#th": "twitterHandle" },
+              ExpressionAttributeValues: { ":h": { S: normalized } },
+            });
+            matchedItems.push(...scanResult.items);
+            truncated = truncated || scanResult.truncated;
           }
 
         } else if (fieldKind === "google") {
@@ -1143,28 +1226,25 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
                 TableName: USER_PROFILES_TABLE,
                 IndexName: "email-index",
                 KeyConditionExpression: "#em = :e",
-                FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
                 ExpressionAttributeNames: { "#em": "email" },
                 ExpressionAttributeValues: { ":e": { S: normalizedEmail } },
               })
             );
-            if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+            const hydrated = await hydrateByIdentityIds(gsiResult.Items);
+            matchedItems.push(...hydrated);
             gsiSuccess = true;
           } catch (err: any) {
             if (err?.name !== "ResourceNotFoundException" && err?.name !== "ValidationException") throw err;
           }
           if (!gsiSuccess) {
-            const scanResult = await dynamoClient.send(
-              new ScanCommand({
-                TableName: USER_PROFILES_TABLE,
-                FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND (#em = :e OR #la.#g.#em2 = :e)",
-                ExpressionAttributeNames: { "#em": "email", "#la": "linkedAccounts", "#g": "google", "#em2": "email" },
-                ExpressionAttributeValues: { ":e": { S: normalizedEmail } },
-                Limit: SCAN_LIMIT,
-              })
-            );
-            if (scanResult.Items) matchedItems.push(...scanResult.Items);
-            if (scanResult.LastEvaluatedKey) truncated = true;
+            const scanResult = await paginatedScan({
+              TableName: USER_PROFILES_TABLE,
+              FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND (#em = :e OR #la.#g.#em2 = :e)",
+              ExpressionAttributeNames: { "#em": "email", "#la": "linkedAccounts", "#g": "google", "#em2": "email" },
+              ExpressionAttributeValues: { ":e": { S: normalizedEmail } },
+            });
+            matchedItems.push(...scanResult.items);
+            truncated = truncated || scanResult.truncated;
           }
 
         } else if (fieldKind === "telegram_id") {
@@ -1173,24 +1253,21 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
               TableName: USER_PROFILES_TABLE,
               IndexName: "telegramUserId-index",
               KeyConditionExpression: "telegramUserId = :id",
-              FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
               ExpressionAttributeValues: { ":id": { S: rawQ } },
             })
           );
-          if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+          const hydrated = await hydrateByIdentityIds(gsiResult.Items);
+          matchedItems.push(...hydrated);
 
         } else if (fieldKind === "telegram_username") {
           const normalized = rawQ.replace(/^@/, "").toLowerCase();
-          const scanResult = await dynamoClient.send(
-            new ScanCommand({
-              TableName: USER_PROFILES_TABLE,
-              FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND telegramUsername = :u",
-              ExpressionAttributeValues: { ":u": { S: normalized } },
-              Limit: SCAN_LIMIT,
-            })
-          );
-          if (scanResult.Items) matchedItems.push(...scanResult.Items);
-          if (scanResult.LastEvaluatedKey) truncated = true;
+          const scanResult = await paginatedScan({
+            TableName: USER_PROFILES_TABLE,
+            FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND telegramUsername = :u",
+            ExpressionAttributeValues: { ":u": { S: normalized } },
+          });
+          matchedItems.push(...scanResult.items);
+          truncated = truncated || scanResult.truncated;
 
         } else if (fieldKind === "wallet") {
           const normalizedWallet = rawQ.toLowerCase();
@@ -1201,56 +1278,92 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
                 TableName: USER_PROFILES_TABLE,
                 IndexName: "walletAddress-index",
                 KeyConditionExpression: "walletAddress = :w",
-                FilterExpression: "attribute_not_exists(linkedToPrimaryId)",
                 ExpressionAttributeValues: { ":w": { S: normalizedWallet } },
               })
             );
-            if (gsiResult.Items) matchedItems.push(...gsiResult.Items);
+            const hydrated = await hydrateByIdentityIds(gsiResult.Items);
+            matchedItems.push(...hydrated);
             gsiSuccess = true;
           } catch (err: any) {
             if (err?.name !== "ResourceNotFoundException" && err?.name !== "ValidationException") throw err;
           }
           if (!gsiSuccess) {
-            const scanResult = await dynamoClient.send(
-              new ScanCommand({
-                TableName: USER_PROFILES_TABLE,
-                FilterExpression:
-                  "attribute_not_exists(linkedToPrimaryId) AND (walletAddress = :w OR #la.metamask.#wa = :w OR #la.#nw.#wa = :w)",
-                ExpressionAttributeNames: { "#la": "linkedAccounts", "#wa": "walletAddress", "#nw": "nasun wallet" },
-                ExpressionAttributeValues: { ":w": { S: normalizedWallet } },
-                Limit: SCAN_LIMIT,
-              })
-            );
-            if (scanResult.Items) matchedItems.push(...scanResult.Items);
-            if (scanResult.LastEvaluatedKey) truncated = true;
+            const scanResult = await paginatedScan({
+              TableName: USER_PROFILES_TABLE,
+              FilterExpression:
+                "attribute_not_exists(linkedToPrimaryId) AND (walletAddress = :w OR #la.metamask.#wa = :w OR #la.#nw.#wa = :w)",
+              ExpressionAttributeNames: { "#la": "linkedAccounts", "#wa": "walletAddress", "#nw": "nasun wallet" },
+              ExpressionAttributeValues: { ":w": { S: normalizedWallet } },
+            });
+            matchedItems.push(...scanResult.items);
+            truncated = truncated || scanResult.truncated;
           }
         }
 
         // Resolve secondary accounts to their primary
         let resolvedItems = matchedItems;
         if (resolvePrimary && matchedItems.length > 0) {
-          const primaryIds = new Set<string>();
-          const directPrimaryItems: Record<string, any>[] = [];
+          const primaryById = new Map<string, Record<string, any>>();
+          // primaryId -> list of secondary records that resolved to it. Used
+          // below to enrich the primary with attributes the admin actually
+          // searched on (e.g. twitterHandle stored only on the secondary).
+          const secondariesByPrimary = new Map<string, Record<string, any>[]>();
           const secondaryItems: Record<string, any>[] = [];
+
           for (const item of matchedItems) {
             if (item.linkedToPrimaryId?.S) secondaryItems.push(item);
-            else { primaryIds.add(item.identityId?.S ?? ""); directPrimaryItems.push(item); }
-          }
-          if (secondaryItems.length > 0) {
-            const toFetch = [...new Set(
-              secondaryItems.map((i) => i.linkedToPrimaryId?.S).filter((id): id is string => !!id && !primaryIds.has(id))
-            )];
-            for (const primaryId of toFetch) {
-              if (primaryIds.has(primaryId)) continue;
-              try {
-                const r = await dynamoClient.send(
-                  new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: primaryId } } })
-                );
-                if (r.Item) { directPrimaryItems.push(r.Item); primaryIds.add(primaryId); }
-              } catch (_) { /* best-effort */ }
+            else {
+              const id = item.identityId?.S ?? "";
+              if (id) primaryById.set(id, item);
             }
           }
-          resolvedItems = directPrimaryItems;
+          for (const sec of secondaryItems) {
+            const pid = sec.linkedToPrimaryId?.S;
+            if (!pid) continue;
+            const list = secondariesByPrimary.get(pid) ?? [];
+            list.push(sec);
+            secondariesByPrimary.set(pid, list);
+          }
+          for (const pid of secondariesByPrimary.keys()) {
+            if (primaryById.has(pid)) continue;
+            try {
+              const r = await dynamoClient.send(
+                new GetItemCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId: { S: pid } } })
+              );
+              if (r.Item) primaryById.set(pid, r.Item);
+            } catch (_) { /* best-effort */ }
+          }
+
+          // Enrich each primary's linkedAccounts with attributes from any
+          // matched secondary (without overwriting existing values). This
+          // ensures the admin UI shows the identifier they searched on.
+          for (const [pid, primary] of primaryById) {
+            const secondaries = secondariesByPrimary.get(pid);
+            if (!secondaries || secondaries.length === 0) continue;
+            const linkedM: Record<string, any> = primary.linkedAccounts?.M ?? {};
+            for (const sec of secondaries) {
+              if (sec.twitterHandle?.S || sec.twitterId?.S) {
+                const tw: Record<string, any> = linkedM.twitter?.M ?? {};
+                if (!tw.twitterHandle && sec.twitterHandle?.S) tw.twitterHandle = { S: sec.twitterHandle.S };
+                if (!tw.twitterId && sec.twitterId?.S) tw.twitterId = { S: sec.twitterId.S };
+                linkedM.twitter = { M: tw };
+              }
+              if (sec.email?.S) {
+                const g: Record<string, any> = linkedM.google?.M ?? {};
+                if (!g.email) g.email = { S: sec.email.S };
+                linkedM.google = { M: g };
+              }
+              if (sec.telegramUserId?.S || sec.telegramUsername?.S) {
+                const tg: Record<string, any> = linkedM.telegram?.M ?? {};
+                if (!tg.telegramUserId && sec.telegramUserId?.S) tg.telegramUserId = { S: sec.telegramUserId.S };
+                if (!tg.telegramUsername && sec.telegramUsername?.S) tg.telegramUsername = { S: sec.telegramUsername.S };
+                linkedM.telegram = { M: tg };
+              }
+            }
+            primary.linkedAccounts = { M: linkedM };
+          }
+
+          resolvedItems = [...primaryById.values()];
         }
 
         return jsonResponse(200, {
