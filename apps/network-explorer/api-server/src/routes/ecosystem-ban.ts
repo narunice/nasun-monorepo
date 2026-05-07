@@ -1,12 +1,9 @@
 /**
- * Internal admin endpoint for ecosystem-level ban (banned_users + activity_points.flagged).
+ * Admin endpoint for ecosystem-level ban (banned_users + activity_points.flagged).
  *
- * Auth: X-Internal-Auth: $INTERNAL_INVALIDATE_TOKEN (shared secret with
- * banned-users.ts and internal-invalidate.ts).
- *
- * Designed to be called from the nasun-website AdminStack admin Lambda
- * (which has already verified the operator's Cognito role=ADMIN). The
- * admin Lambda forwards the request with the shared internal token.
+ * Auth: requireAdmin — accepts either the shared X-Internal-Auth secret
+ * (CLI/chat-server) or a Cognito Bearer token whose UserProfiles row has
+ * role=ADMIN (admin web UI).
  *
  * Routes:
  *   POST   /api/v1/internal/ecosystem-ban        — ban
@@ -18,19 +15,18 @@
  *     "handle"?:     "username",                       // X handle (preferred)
  *     "identityId"?: "ap-northeast-2:uuid",            // primary Cognito identity
  *     "reason":      "bot-suspected: ...",             // required
- *     "actor":       "admin@nasun" | "user-display"    // optional, default "admin-web"
+ *     "actor":       "admin@nasun" | "user-display"    // optional fallback
  *   }
  *
- * At least one of `handle` or `identityId` must be provided. Both may be
- * provided; `identityId` short-circuits the X-handle lookup but `handle`
- * (if also provided) is stored in banned_users.x_handle for traceability.
+ * `actor` defaults to the resolved admin identity (Cognito email or
+ * "internal-token") so the audit trail is non-empty even when callers omit it.
  *
- * Response: same `Resolution[]` table the CLI prints, plus the apply
- * result (flaggedRows per identity) and chat-cache refresh status.
+ * At least one of `handle` or `identityId` must be provided.
  */
 
 import { Hono } from 'hono';
 import { pointsDb } from '../db.js';
+import { requireAdmin, type AdminContext } from '../auth/admin.js';
 import {
   resolveHandle,
   resolveByIdentityId,
@@ -41,13 +37,7 @@ import {
   type Resolution,
 } from '../services/ban-service.js';
 
-const INTERNAL_TOKEN = process.env.INTERNAL_INVALIDATE_TOKEN || '';
-
-const app = new Hono();
-
-function checkAuth(authHeader: string | undefined): boolean {
-  return !!INTERNAL_TOKEN && authHeader === INTERNAL_TOKEN;
-}
+const app = new Hono<{ Variables: { admin: AdminContext } }>();
 
 interface BanRequest {
   handle?: string;
@@ -63,11 +53,16 @@ interface UnbanRequest {
   actor?: string;
 }
 
+function defaultActor(admin: AdminContext, override?: string): string {
+  if (override?.trim()) return override.trim();
+  if (admin.source === 'internal-token') return 'internal-token';
+  return admin.email ? `admin-web:${admin.email}` : `admin-web:${admin.identityId}`;
+}
+
+app.use('*', requireAdmin);
+
 // POST /api/v1/internal/ecosystem-ban — ban
 app.post('/', async (c) => {
-  if (!checkAuth(c.req.header('X-Internal-Auth'))) {
-    return c.json({ error: 'unauthorized' }, 401);
-  }
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
   let body: BanRequest;
@@ -80,7 +75,7 @@ app.post('/', async (c) => {
   const handle = body.handle ? normalizeHandle(body.handle) : undefined;
   const identityId = body.identityId?.trim();
   const reason = body.reason?.trim();
-  const actor = body.actor?.trim() || 'admin-web';
+  const actor = defaultActor(c.get('admin'), body.actor);
 
   if (!handle && !identityId) {
     return c.json({ error: 'handle_or_identityId_required' }, 400);
@@ -105,11 +100,7 @@ app.post('/', async (c) => {
 
   const mappable = resolutions.filter((r) => r.identityId);
   if (mappable.length === 0) {
-    return c.json({
-      success: false,
-      error: 'no_mappable_targets',
-      resolutions,
-    }, 400);
+    return c.json({ success: false, error: 'no_mappable_targets', resolutions }, 400);
   }
 
   let applied;
@@ -120,19 +111,11 @@ app.post('/', async (c) => {
   }
   const cacheRefresh = await refreshChatServerCache();
 
-  return c.json({
-    success: true,
-    resolutions,
-    applied,
-    cacheRefresh,
-  });
+  return c.json({ success: true, resolutions, applied, cacheRefresh });
 });
 
 // DELETE /api/v1/internal/ecosystem-ban — unban
 app.delete('/', async (c) => {
-  if (!checkAuth(c.req.header('X-Internal-Auth'))) {
-    return c.json({ error: 'unauthorized' }, 401);
-  }
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
   let body: UnbanRequest;
@@ -145,7 +128,7 @@ app.delete('/', async (c) => {
   const handle = body.handle ? normalizeHandle(body.handle) : undefined;
   const identityId = body.identityId?.trim();
   const reason = body.reason?.trim() || 'unbanned via admin web';
-  const actor = body.actor?.trim() || 'admin-web';
+  const actor = defaultActor(c.get('admin'), body.actor);
 
   if (!handle && !identityId) {
     return c.json({ error: 'handle_or_identityId_required' }, 400);
@@ -170,19 +153,11 @@ app.delete('/', async (c) => {
   }
   const cacheRefresh = await refreshChatServerCache();
 
-  return c.json({
-    success: true,
-    resolutions,
-    applied,
-    cacheRefresh,
-  });
+  return c.json({ success: true, resolutions, applied, cacheRefresh });
 });
 
 // GET /api/v1/internal/ecosystem-ban — list active bans
 app.get('/', async (c) => {
-  if (!checkAuth(c.req.header('X-Internal-Auth'))) {
-    return c.json({ error: 'unauthorized' }, 401);
-  }
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
   const rows = await pointsDb<Array<{
