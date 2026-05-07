@@ -188,6 +188,11 @@ const RESTART_BASE_MS = 5_000;
 let bootBlockCount = 0;
 const BOOT_BLOCK_DELAYS_MS = [60_000, 5 * 60_000, 30 * 60_000, 60 * 60_000];
 
+// Last `disabled` event broadcast to clients. Replayed on re-subscribe so
+// clients reconnecting during a long backoff window get the gating signal
+// instead of an empty state_sync. Cleared when the next round_started arrives.
+let activeDisabled: { reason: 'backoff' | 'shutdown' | 'boot_blocked' | 'stale_recovery'; retryAt?: number; stateVersion: number } | null = null;
+
 // Send a plain-text Slack notification if CRASH_ALERT_WEBHOOK_URL is set.
 // Failures are non-fatal: logged at warn level, never throw.
 function sendSlackAlert(logger: CrashModuleDeps['logger'], text: string): void {
@@ -261,6 +266,17 @@ export async function startCrashModule({ wsServer, logger }: CrashModuleDeps): P
           ...snapshot,
           serverTime: Date.now(),
         }));
+        // If the round loop is currently disabled (boot-block / backoff /
+        // stale-recovery), replay the latest disabled event so reconnecting
+        // clients block their UI instead of waiting for a round_started that
+        // may not arrive for minutes.
+        if (activeDisabled) {
+          ws.send(JSON.stringify({
+            channel: CRASH_CHANNEL,
+            type: 'disabled',
+            ...activeDisabled,
+          }));
+        }
       } else if (msg.type === 'unsubscribe') {
         crashClients.delete(ws);
       }
@@ -316,14 +332,26 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
     logger.warn(`[crash-child] exited code=${code} signal=${signal}`);
     child = null;
 
-    // Tripwire: if the child died mid-round, the parent snapshot retains
-    // stale state (roundId, flyingStartedAt, etc.) until the next
-    // round_started IPC arrives from the respawned child. Reconnecting
-    // clients during that window receive stale state_sync. Log at error
-    // level so we know if/when this actually happens in prod — fix is
-    // deferred until evidence exists.
-    if (snapshot.state === 'BETTING' || snapshot.state === 'FLYING' || snapshot.state === 'CRASHED') {
-      logger.error(`[CRASH STALE-SNAPSHOT] child died mid-round, parent snapshot is now stale until next round_started: state=${snapshot.state} roundId=${snapshot.roundId} flyingStartedAt=${snapshot.flyingStartedAt}`);
+    // Mid-round child death: parent snapshot retains stale roundId /
+    // flyingStartedAt until the next round_started IPC. Without intervention,
+    // reconnecting clients receive stale state_sync (e.g. state=FLYING with an
+    // anchor 30s in the past), and the rocket animation runs unbounded
+    // client-side because no `crashed`/`resolved` event arrives. Zero out the
+    // in-memory snapshot so subsequent state_sync replies don't resurrect the
+    // stale state. The disabled broadcast is owned by the boot_blocked /
+    // backoff branches below for code=2 / crash-loop, and emitted here only
+    // for the normal-restart path (code != 2 with no backoff trigger).
+    const wasMidRound = snapshot.state === 'BETTING' || snapshot.state === 'FLYING' || snapshot.state === 'CRASHED';
+    if (wasMidRound) {
+      logger.error(`[CRASH STALE-SNAPSHOT] child died mid-round; clearing snapshot. prevState=${snapshot.state} roundId=${snapshot.roundId} flyingStartedAt=${snapshot.flyingStartedAt}`);
+      snapshot.state = 'IDLE';
+      snapshot.roundId = null;
+      snapshot.roundObjectId = null;
+      snapshot.commitHash = null;
+      snapshot.bettingEndsAt = null;
+      snapshot.flyingStartedAt = null;
+      snapshot.nextRoundAt = null;
+      snapshot.crashedAlreadyFired = false;
     }
 
     // Exit code 2 = boot-blocked (stale round in registry). Don't count as crash.
@@ -334,12 +362,12 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
       bootBlockCount++;
       const delayMs = BOOT_BLOCK_DELAYS_MS[Math.min(bootBlockCount - 1, BOOT_BLOCK_DELAYS_MS.length - 1)];
       logger.warn(`[Crash] Boot-blocked (attempt ${bootBlockCount}) — retrying in ${delayMs / 1000}s. Clear stuck round to unblock.`);
-      broadcast({
-        type: 'disabled',
+      activeDisabled = {
         reason: 'boot_blocked',
         retryAt: Date.now() + delayMs,
         stateVersion: ++snapshot.stateVersion,
-      });
+      };
+      broadcast({ type: 'disabled', ...activeDisabled });
       sendSlackAlert(logger, `[Crash] Boot-blocked (attempt ${bootBlockCount}), retry in ${delayMs / 1000}s — stuck round in registry, needs emergency_refund_batch + admin_finalize.`);
       restartTimer = setTimeout(() => spawnChild(logger), delayMs);
       return;
@@ -355,18 +383,29 @@ function spawnChild(logger: CrashModuleDeps['logger']) {
       logger.error(`[CRASH CRITICAL] child crash loop detected (${exitHistory.length} exits in ${BACKOFF_WINDOW_MS}ms). Backing off ${BACKOFF_LONG_WAIT_MS}ms. Manual intervention required.`);
       sendSlackAlert(logger, `[Crash] CRITICAL: crash loop (${exitHistory.length} exits/${BACKOFF_WINDOW_MS / 1000}s). Backing off ${BACKOFF_LONG_WAIT_MS / 60000}min. Manual intervention required.`);
       // A-W1: 사용자에게 disabled 상태 명시 broadcast
-      const disabledEvent: WsEvent = {
-        type: 'disabled',
+      activeDisabled = {
         reason: 'backoff',
         retryAt: now + BACKOFF_LONG_WAIT_MS,
         stateVersion: ++snapshot.stateVersion,
       };
-      broadcast(disabledEvent);
+      broadcast({ type: 'disabled', ...activeDisabled });
       restartTimer = setTimeout(() => {
         exitHistory.length = 0;
         spawnChild(logger);
       }, BACKOFF_LONG_WAIT_MS);
     } else {
+      // Normal restart path. If the child died mid-round, surface a disabled
+      // signal so clients freeze the rocket instead of extrapolating off the
+      // stale flyingStartedAt. boot_blocked/backoff branches above already
+      // broadcast their own disabled events.
+      if (wasMidRound) {
+        activeDisabled = {
+          reason: 'stale_recovery',
+          retryAt: now + RESTART_BASE_MS,
+          stateVersion: ++snapshot.stateVersion,
+        };
+        broadcast({ type: 'disabled', ...activeDisabled });
+      }
       restartTimer = setTimeout(() => spawnChild(logger), RESTART_BASE_MS);
     }
   });
@@ -389,9 +428,14 @@ function applyEvent(event: WsEvent) {
       snapshot.nextRoundAt = null;
       snapshot.crashedAlreadyFired = false;
       bootBlockCount = 0;  // child recovered successfully
+      activeDisabled = null; // round flowing again, drop replayable disabled
       break;
     case 'betting_closed':
       snapshot.state = 'FLYING';
+      snapshot.flyingStartedAt = event.flyingStartedAt;
+      break;
+    case 'flying_corrected':
+      // Predicted flyingStartedAt replaced by on-chain value. State stays FLYING.
       snapshot.flyingStartedAt = event.flyingStartedAt;
       break;
     case 'crashed':

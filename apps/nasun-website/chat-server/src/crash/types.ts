@@ -26,10 +26,20 @@ export interface ResolvePlayerRow {
 
 export type WsEvent =
   | { type: 'round_started'; roundId: number; roundObjectId: string; commitHash: string; bettingEndsAt: number; serverTime: number; stateVersion: number }
-  | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number }
+  // `predicted: true` means flyingStartedAt is the keeper's pre-RPC estimate
+  // (bettingEndsAt + EST_CONSENSUS_DELAY_MS), sent before close_betting RPC
+  // returns so the client can start animating + enable cashout immediately.
+  // Followed by 'flying_corrected' once the on-chain value is known.
+  | { type: 'betting_closed'; roundId: number; flyingStartedAt: number; stateVersion: number; predicted?: boolean }
+  | { type: 'flying_corrected'; roundId: number; flyingStartedAt: number; stateVersion: number }
   | { type: 'crashed'; roundId: number; crashPointBps: number; stateVersion: number }
   | { type: 'resolved'; roundId: number; crashPointBps: number; crashTimeMs: number; nextRoundAt: number; stateVersion: number }
-  | { type: 'disabled'; reason: 'backoff' | 'shutdown' | 'boot_blocked'; retryAt?: number; stateVersion: number }
+  | { type: 'disabled'; reason: 'backoff' | 'shutdown' | 'boot_blocked' | 'stale_recovery'; retryAt?: number; stateVersion: number }
+  // FLYING-only liveness signal so the client can detect WS lag and freeze the
+  // cashout button before the user clicks against a fictional multiplier. Sent
+  // ~1Hz from the polling loop. State is unchanged; serverTime carries the
+  // server-side wall clock at emission for skew tracking.
+  | { type: 'tick'; roundId: number; serverTime: number; stateVersion: number }
   // Parent persists to history DB AND broadcasts to ws clients so the frontend
   // can confirm per-player payouts (cashout valid → payout > 0; cashout invalid
   // due to recorded_at > crash_deadline race → payout = 0).
