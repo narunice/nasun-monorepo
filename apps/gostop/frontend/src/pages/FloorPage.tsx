@@ -12,6 +12,7 @@ interface LiveGame {
   cta: string
   to: string
   thumb: string
+  maintenance?: boolean
 }
 
 interface UpcomingGame {
@@ -21,18 +22,15 @@ interface UpcomingGame {
 }
 
 const LIVE_GAMES: LiveGame[] = [
-  ...(ENABLE_CRASH
-    ? [
-        {
-          title: 'Crash',
-          tagline:
-            'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet. Provably fair, salted commit-reveal each round.',
-          cta: 'Fly',
-          to: '/crash',
-          thumb: crashThumb,
-        },
-      ]
-    : []),
+  {
+    title: 'Crash',
+    tagline:
+      'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet. Provably fair, salted commit-reveal each round.',
+    cta: 'Fly',
+    to: '/crash',
+    thumb: crashThumb,
+    maintenance: !ENABLE_CRASH,
+  },
   {
     title: 'Weekly Lottery',
     tagline:
@@ -68,16 +66,6 @@ const LIVE_GAMES: LiveGame[] = [
 ]
 
 const UPCOMING_GAMES: UpcomingGame[] = [
-  ...(ENABLE_CRASH
-    ? []
-    : [
-        {
-          title: 'Crash',
-          tagline:
-            'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet.',
-          eta: 'Phase 2',
-        },
-      ]),
   {
     title: 'Plinko',
     tagline:
@@ -129,9 +117,10 @@ function FloorHeader() {
 }
 
 function LiveSection() {
+  const liveCount = LIVE_GAMES.filter((g) => !g.maintenance).length
   return (
     <section>
-      <SectionHeading title="Now Open" caption={`${LIVE_GAMES.length} games live`} />
+      <SectionHeading title="Now Open" caption={`${liveCount} games live`} />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10">
         {LIVE_GAMES.map((g) => (
           <LiveCard key={g.title} game={g} />
@@ -164,6 +153,40 @@ function SectionHeading({ title, caption }: { title: string; caption: string }) 
 }
 
 function LiveCard({ game }: { game: LiveGame }) {
+  if (game.maintenance) {
+    return (
+      <article className="panel relative overflow-hidden flex flex-col">
+        <div className="relative aspect-square overflow-hidden border-b border-gold-subtle">
+          <img
+            src={game.thumb}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover opacity-40 grayscale"
+          />
+          <div
+            aria-hidden
+            className="absolute inset-0 bg-gradient-to-t from-ink-950/90 via-ink-950/40 to-transparent"
+          />
+          <span className="absolute top-4 left-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-semibold uppercase tracking-[0.15em] border border-amber-400/60 bg-amber-950/70 text-amber-300 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-amber-400" aria-hidden />
+            Maintenance
+          </span>
+          <h3 className="absolute bottom-4 left-5 right-5 font-display text-3xl md:text-4xl text-gold/60 drop-shadow-[0_2px_8px_rgba(0,0,0,0.6)]">
+            {game.title}
+          </h3>
+        </div>
+        <div className="flex flex-col gap-4 sm:gap-5 p-5 sm:p-6 md:p-7">
+          <p className="text-base md:text-lg text-neutral-400 leading-relaxed">
+            {game.tagline}
+          </p>
+          <span className="btn-ghost self-start whitespace-nowrap cursor-not-allowed select-none opacity-50">
+            Under Maintenance
+          </span>
+        </div>
+      </article>
+    )
+  }
+
   return (
     <Link
       to={game.to}

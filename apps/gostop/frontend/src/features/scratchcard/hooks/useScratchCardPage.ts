@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useScratchCard, type ScratchResult } from "../useScratchCard";
 import { useToast } from "../../../components/ui/Toast";
-import { useCelebrate, tierForScratch } from "../../../components/celebration";
+import { tierForScratch } from "../../../components/celebration";
 import { useInvalidateGameHistory } from "../../game-history";
 import { NUSDC_UNIT_NUMBER, NUSDC_UNIT } from "../../../lib/constants/assets";
 

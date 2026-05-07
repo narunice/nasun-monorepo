@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useClaimSummary, useLatestRound, useMyTickets } from "../hooks";
-import { LOTTERY_TICKET_PRICE, ROUND_STATUS } from "../../../lib/gostop-config";
+import { ROUND_STATUS } from "../../../lib/gostop-config";
 import { nextMondayUtc } from "../lottery-utils";
 import { useLotteryActions } from "../useLotteryActions";
 import { tierForLottery } from "../../../components/celebration";
