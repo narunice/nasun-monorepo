@@ -16,14 +16,16 @@ Nasun 전체 현황을 단일 실행으로 추출합니다.
 CSV 컬럼:
 ```
 date,
-dau, new_addresses, returning_addresses, returning_pct,
+dau, new_addresses, new_verified, returning_addresses, returning_pct,
 unique_traders, unique_gamers,
 verified_unique_traders, verified_unique_gamers,
 dau_x_social, dau_google_social, dau_telegram_social, dau_any_social, dau_no_social,
 mission_1, mission_2, mission_3, mission_4, mission_5, mission_6plus
 ```
 
-Daily mission 7종: `faucet`, `wallet-transfer`, `pado-dex`, `pado-scratchcard`, `pado-games`, `pado-lottery`, `chat`
+Daily mission 7종: `faucet`, `wallet-transfer`, `pado-dex`, `scratchcard` (pado-scratchcard OR gostop-scratchcard), `games` (pado-games OR gostop-numbermatch), `lottery` (pado-lottery OR gostop-lottery), `chat`
+
+gostop 마이그레이션(2026-04-30~) 이후 pado-* 카테고리가 gostop-*로 교체됨. 미션 카운트 시 두 카테고리를 동일 미션으로 취급.
 
 `new_verified_rate` 및 소셜 유저 top 활동은 snapshot.txt에만 포함한다.
 
@@ -287,6 +289,12 @@ new_per_day AS (
   WHERE first_day BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY first_day
 ),
+new_verified_per_day AS (
+  SELECT fs.first_day AS day, COUNT(*) AS new_verified
+  FROM first_seen fs JOIN verified_wallets vw ON fs.wallet_address = vw.wallet_address
+  WHERE fs.first_day BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  GROUP BY fs.first_day
+),
 traders AS (
   SELECT tx_timestamp::date AS day, COUNT(DISTINCT wallet_address) AS unique_traders
   FROM activity_points
@@ -371,9 +379,16 @@ dau_any AS (
 ),
 mission_per_user AS (
   SELECT ap.wallet_address, ap.tx_timestamp::date AS day,
-    COUNT(DISTINCT ap.category) AS missions_done
+    COUNT(DISTINCT
+      CASE ap.category
+        WHEN 'gostop-scratchcard'  THEN 'pado-scratchcard'
+        WHEN 'gostop-numbermatch'  THEN 'pado-games'
+        WHEN 'gostop-lottery'      THEN 'pado-lottery'
+        ELSE ap.category
+      END
+    ) AS missions_done
   FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
-  WHERE ap.category IN ('faucet','wallet-transfer','pado-dex','pado-scratchcard','pado-games','pado-lottery','chat')
+  WHERE ap.category IN ('faucet','wallet-transfer','pado-dex','pado-scratchcard','gostop-scratchcard','pado-games','gostop-numbermatch','pado-lottery','gostop-lottery','chat')
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1, 2
 ),
@@ -391,6 +406,7 @@ SELECT
   ds.day,
   COALESCE(d.dau, 0),
   COALESCE(n.new_addresses, 0),
+  COALESCE(nv.new_verified, 0),
   COALESCE(d.dau, 0) - COALESCE(n.new_addresses, 0),
   ROUND((COALESCE(d.dau,0) - COALESCE(n.new_addresses,0))::numeric / NULLIF(COALESCE(d.dau,0),0) * 100, 1),
   COALESCE(t.unique_traders, 0),
@@ -409,9 +425,10 @@ SELECT
   COALESCE(m.mission_5, 0),
   COALESCE(m.mission_6plus, 0)
 FROM date_series ds
-LEFT JOIN daily_dau   d   ON ds.day = d.day
-LEFT JOIN new_per_day n   ON ds.day = n.day
-LEFT JOIN traders     t   ON ds.day = t.day
+LEFT JOIN daily_dau          d   ON ds.day = d.day
+LEFT JOIN new_per_day        n   ON ds.day = n.day
+LEFT JOIN new_verified_per_day nv ON ds.day = nv.day
+LEFT JOIN traders            t   ON ds.day = t.day
 LEFT JOIN gamers      g   ON ds.day = g.day
 LEFT JOIN vtraders    vt  ON ds.day = vt.day
 LEFT JOIN vgamers     vg  ON ds.day = vg.day
@@ -549,7 +566,7 @@ echo "GRPSTAT rows: $(echo "$GRPSTATS" | wc -l)"
 
 echo "=== Step 5: Build output files ==="
 
-echo "date,dau,new_addresses,returning_addresses,returning_pct,unique_traders,unique_gamers,verified_unique_traders,verified_unique_gamers,dau_x_social,dau_google_social,dau_telegram_social,dau_any_social,dau_no_social,mission_1,mission_2,mission_3,mission_4,mission_5,mission_6plus" > "$CSV_FILE"
+echo "date,dau,new_addresses,new_verified,returning_addresses,returning_pct,unique_traders,unique_gamers,verified_unique_traders,verified_unique_gamers,dau_x_social,dau_google_social,dau_telegram_social,dau_any_social,dau_no_social,mission_1,mission_2,mission_3,mission_4,mission_5,mission_6plus" > "$CSV_FILE"
 cat /tmp/nasun_daily_raw.csv >> "$CSV_FILE"
 
 python3 << PYEOF2
@@ -606,19 +623,42 @@ if dau_rows:
     avg_dau = sum(int(r['dau']) for r in dau_rows) / active_days
     v_traders = int(latest.get('verified_unique_traders', 0))
     v_gamers  = int(latest.get('verified_unique_gamers', 0))
+    y_new     = int(latest.get('new_addresses', 0))
+    y_new_v   = int(latest.get('new_verified', 0))
+    y_new_v_pct = f"{y_new_v/y_new*100:.1f}%" if y_new else "N/A"
+    rows_with_new = [r for r in dau_rows if int(r.get('new_addresses', 0)) > 0]
+    avg_new_v_pct = (
+        sum(int(r['new_verified'])/int(r['new_addresses'])*100 for r in rows_with_new)
+        / len(rows_with_new)
+    ) if rows_with_new else 0.0
+    total_new_all = sum(int(r['new_addresses']) for r in dau_rows)
+    total_new_v_all = sum(int(r['new_verified']) for r in dau_rows)
+    total_new_v_pct = f"{total_new_v_all/total_new_all*100:.1f}%" if total_new_all else "N/A"
     daa_section = (
         f"-- Devnet DAA ({date_from} ~ {date_to}, {active_days} active days) --\n"
         f"Yesterday DAA ({latest['date']}):      {int(latest['dau']):,}\n"
         f"  Returning:                         {int(latest['returning_addresses']):,}  ({latest['returning_pct']}%)\n"
-        f"  New:                               {int(latest['new_addresses']):,}\n"
+        f"  New:                               {y_new:,}\n"
         f"Peak DAA   ({peak['date']}):         {int(peak['dau']):,}\n"
         f"Avg DAA:                             {avg_dau:,.0f}\n"
         f"Avg returning rate:                  {avg_ret:.1f}%\n"
         f"Yesterday pado-dex  (social verified): {v_traders:,}\n"
         f"Yesterday pado-game (social verified): {v_gamers:,}"
     )
+    new_user_quality_section = (
+        f"-- Yesterday New User Social Quality ({latest['date']}) --\n"
+        f"  New addresses:                     {y_new:,}\n"
+        f"  Social connected (any):            {y_new_v:,}  ({y_new_v_pct})\n"
+        f"  No social:                         {y_new - y_new_v:,}\n"
+        f"\n"
+        f"-- Cumulative New User Social Quality ({date_from} ~ {date_to}) --\n"
+        f"  Total new addresses:               {total_new_all:,}\n"
+        f"  Social connected (any):            {total_new_v_all:,}  ({total_new_v_pct})\n"
+        f"  Avg daily social verify rate:      {avg_new_v_pct:.1f}%"
+    )
 else:
     daa_section = f"-- Devnet DAA ({date_from} ~ {date_to}) --\nNo active days in this period."
+    new_user_quality_section = ""
 
 # Top activities
 top_lines = [l for l in """$TOP_ACTIVITIES""".strip().split("\n") if l.strip()]
@@ -714,6 +754,8 @@ yesterday_pado_section = "\n".join(cat_section_lines)
 snapshot = f"""==== Nasun Stats Snapshot ({today}, report base = {yesterday}) ====
 
 {daa_section}
+
+{new_user_quality_section}
 
 {users_section}
 
