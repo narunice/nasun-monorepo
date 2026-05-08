@@ -389,12 +389,12 @@ export function WalletBalanceCard() {
 
         {/* SOL */}
         <li>
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 min-w-0 flex-wrap">
               <span className="text-base text-uju-secondary">SOL</span>
               <NetworkBadge label="Testnet" address={solAddress} />
               {solAddress && (
-                <UjuBadge tone="amber" className="uppercase tracking-wide">
+                <UjuBadge tone="amber" className="uppercase tracking-wide shrink-0">
                   <span title="Address ownership not verified">unverified</span>
                 </UjuBadge>
               )}
