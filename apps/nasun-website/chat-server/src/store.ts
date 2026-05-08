@@ -233,6 +233,17 @@ export function getUserReaction(messageId: number, address: string): string | nu
   return row?.emoji_code ?? null;
 }
 
+export function getUserReactionsBatch(messageId: number, addresses: string[]): Map<string, string | null> {
+  const result = new Map<string, string | null>();
+  if (addresses.length === 0) return result;
+  for (const addr of addresses) result.set(addr, null);
+  const rows = getDb()
+    .prepare('SELECT address, emoji_code FROM reactions WHERE message_id=? AND address IN (SELECT value FROM json_each(?))')
+    .all(messageId, JSON.stringify(addresses)) as Array<{ address: string; emoji_code: string }>;
+  for (const row of rows) result.set(row.address, row.emoji_code);
+  return result;
+}
+
 export function getReactionSummaryForMessage(messageId: number): Record<string, number> {
   const rows = getDb()
     .prepare('SELECT emoji_code, COUNT(*) as cnt FROM reactions WHERE message_id=? GROUP BY emoji_code')

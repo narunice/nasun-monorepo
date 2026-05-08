@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReactionsBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -37,6 +37,11 @@ const lastReactionMessageMap = new Map<string, { messageId: number; at: number }
 
 // Follow rate limiting: address -> timestamps (sliding window)
 const lastFollowToggleTime = new Map<string, number[]>();
+
+// In-memory display name cache: address -> resolved display name.
+// Updated on connect (after profile fetch) and invalidated on disconnect.
+// Eliminates O(N) DB queries in the message broadcast path.
+const activeDisplayNameCache = new Map<string, string>();
 
 // Session tokens for REST API authentication (issued on WS auth_success)
 const sessionTokens = new Map<string, { address: string; expiresAt: number }>();
@@ -460,7 +465,11 @@ async function handleHttpRequest(
       // staleness check, so simply marking fetched_at=0 leaves the old
       // custom_avatar_key in place. Refetch immediately so the next message
       // broadcast and history query see the updated avatar.
-      ensureProfilesCached([normalizedAddress]).catch((err) => {
+      ensureProfilesCached([normalizedAddress]).then(() => {
+        const nameMap = getDisplayNamesBatch([normalizedAddress]);
+        const resolved = nameMap.get(normalizedAddress);
+        if (resolved) activeDisplayNameCache.set(normalizedAddress, resolved);
+      }).catch((err) => {
         console.warn('[invalidate-profile] refetch failed:', err);
       });
     } else {
@@ -661,6 +670,9 @@ wss.on('connection', (ws, req) => {
           checkGenesisPass(verifiedAddress, client),
         ]);
 
+        // Cache display name for broadcast suffix-collision detection
+        activeDisplayNameCache.set(verifiedAddress, client.displayName);
+
         // Upsert user in DB
         try {
           upsertUser(verifiedAddress, client.displayName);
@@ -727,7 +739,12 @@ wss.on('connection', (ws, req) => {
       pendingAuth.delete(ws);
     }
 
+    const closingClient = authenticatedClients.get(ws);
     authenticatedClients.delete(ws);
+    if (closingClient) {
+      const stillConnected = [...authenticatedClients.values()].some(c => c.address === closingClient.address);
+      if (!stillConnected) activeDisplayNameCache.delete(closingClient.address);
+    }
 
     // Decrement IP count
     const currentCount = connectionsPerIp.get(ip) || 0;
@@ -879,14 +896,13 @@ function handleSendMessage(
 
     client.lastMessageAt = now;
 
-    const displayNameMap = getDisplayNamesBatch([stored.sender]);
+    const displayNameMap = new Map([[stored.sender, client.displayName]]);
     const gpSet = getGenesisPassBatch([stored.sender]);
     const profileImageMap = new Map<string, string>();
     if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
-    const allAddresses = new Set<string>([stored.sender]);
+    const allAddresses = new Set<string>();
     for (const c of authenticatedClients.values()) allAddresses.add(c.address);
-    const liveDisplayNameMap = getDisplayNamesBatch([...allAddresses]);
-    const displaySuffixMap = computeDisplaySuffixMap(allAddresses, liveDisplayNameMap);
+    const displaySuffixMap = computeDisplaySuffixMap(allAddresses, activeDisplayNameCache);
     const payload = storedToPayload(stored, { displayNameMap, gpSet, profileImageMap, displaySuffixMap });
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
@@ -950,10 +966,11 @@ function handleToggleReaction(
     lastReactionTime.set(client.address, now);
     lastReactionMessageMap.set(client.address, { messageId, at: now });
 
-    // Send per-client reaction_update with each client's myReaction
+    // Send per-client reaction_update with each client's myReaction (single batch query)
+    const allAddrs = [...authenticatedClients.values()].map(c => c.address);
+    const myReactionMap = getUserReactionsBatch(messageId, allAddrs);
     for (const [ws, c] of authenticatedClients) {
-      const myReaction = getUserReaction(messageId, c.address);
-      send(ws, { type: 'reaction_update', messageId, roomId, reactions, myReaction });
+      send(ws, { type: 'reaction_update', messageId, roomId, reactions, myReaction: myReactionMap.get(c.address) ?? null });
     }
   } catch (err) {
     console.error('Failed to toggle reaction:', err);
