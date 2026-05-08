@@ -878,6 +878,13 @@ function handleSendMessage(
 
   // Store message
   try {
+    // Shadow ban: silently drop the message without storing it.
+    // The sender gets no error — from their perspective the send succeeded.
+    const { addresses: bannedAddrs } = getBannedSnapshotSync();
+    if (bannedAddrs.has(client.address.toLowerCase())) {
+      return;
+    }
+
     const stored = insertMessage({
       roomId,
       sender: client.address,
@@ -890,11 +897,6 @@ function handleSendMessage(
 
     client.lastMessageAt = now;
 
-    // Shadow-banned senders get a silent confirmation only — their message is
-    // stored but never broadcast to other participants.
-    const { addresses: bannedAddrs } = getBannedSnapshotSync();
-    const isShadowBanned = bannedAddrs.has(stored.sender.toLowerCase());
-
     const nicknameMap = getNicknamesBatch([stored.sender]);
     const displayNameMap = getDisplayNamesBatch([stored.sender]);
     const profileNameSet = getAddressesWithProfileName([stored.sender]);
@@ -906,8 +908,7 @@ function handleSendMessage(
     const liveDisplayNameMap = getDisplayNamesBatch([...allAddresses]);
     const displaySuffixMap = computeDisplaySuffixMap(allAddresses, liveDisplayNameMap);
     const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
-    for (const [ws, c] of authenticatedClients) {
-      if (isShadowBanned && c.address.toLowerCase() !== stored.sender.toLowerCase()) continue;
+    for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
 
@@ -1003,7 +1004,11 @@ function handleLoadHistory(
   }
 
   const limit = Math.min(msg.limit || 50, 100);
-  const messages = getRecentMessages(roomId, limit, msg.before);
+  const { addresses: bannedAddrs } = getBannedSnapshotSync();
+  const rawMessages = getRecentMessages(roomId, limit, msg.before);
+  const messages = bannedAddrs.size > 0
+    ? rawMessages.filter((m) => !bannedAddrs.has(m.sender.toLowerCase()))
+    : rawMessages;
 
   // Batch fetch reactions and nicknames for all messages
   const messageIds = messages.map((m) => m.id);
