@@ -72,6 +72,57 @@ describe('14 -- Referral Activate Endpoint', () => {
   });
 });
 
+describe.skipIf(!URLS.explorerApi)('14 -- Referral Eligibility Signals (gate, internal)', () => {
+  const EXPLORER = URLS.explorerApi!;
+  const VALID_ID = 'ap-northeast-2:00000000-0000-0000-0000-000000000001';
+
+  test('returns 401 without API key', async () => {
+    const res = await get(`${EXPLORER}/api/v1/points/referral-eligibility-signals/${VALID_ID}`);
+    expect(res.status).toBe(401);
+  });
+
+  test('returns 401 with invalid API key', async () => {
+    const res = await get(
+      `${EXPLORER}/api/v1/points/referral-eligibility-signals/${VALID_ID}`,
+      { 'x-api-key': 'invalid-key-12345' },
+    );
+    expect(res.status).toBe(401);
+  });
+
+  test('rejects malformed identityId (auth-first ordering acceptable)', async () => {
+    const res = await get(
+      `${EXPLORER}/api/v1/points/referral-eligibility-signals/not-a-valid-id`,
+    );
+    // Either 401 (auth rejected first) or 400 (validation) is acceptable;
+    // both prove the endpoint does not leak signals to anonymous callers.
+    expect([401, 400]).toContain(res.status);
+  });
+
+  test('does not leak DB/internal info on rejection', async () => {
+    const res = await get(
+      `${EXPLORER}/api/v1/points/referral-eligibility-signals/${VALID_ID}`,
+    );
+    const bodyStr = JSON.stringify(res.body);
+    expect(bodyStr).not.toMatch(/postgres|sql|password|secret/i);
+  });
+});
+
+describe.skipIf(!URLS.referralApi)('14 -- Referral my-code gate (handler)', () => {
+  const REFERRAL = URLS.referralApi!;
+
+  test('GET /referral/my-code without auth returns 401', async () => {
+    const res = await get(`${REFERRAL}/referral/my-code`);
+    expect(res.status).toBe(401);
+  });
+
+  test('GET /referral/my-code with bogus bearer returns 401', async () => {
+    const res = await get(`${REFERRAL}/referral/my-code`, {
+      Authorization: 'Bearer not-a-real-jwt',
+    });
+    expect(res.status).toBe(401);
+  });
+});
+
 describe('14 -- Referral Anti-Spam Security', () => {
   test('POST /internal/referral-activate with XSS in identityIds returns safe response', async () => {
     const res = await post(`${ADMIN}/internal/referral-activate`, {

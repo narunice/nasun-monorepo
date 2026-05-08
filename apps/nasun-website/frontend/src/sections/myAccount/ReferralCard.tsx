@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth";
 import {
   getMyReferralCode,
   getMyReferralStats,
+  ReferralApiError,
   type ReferralStats,
 } from "@/services/referralApi";
 import { OuterBox, Spinner } from "@/components/ui";
@@ -18,12 +19,20 @@ interface ReferralCardProps {
   className?: string;
 }
 
+interface NotEligibleInfo {
+  hint?: string;
+  closestPath?: string;
+  adminCuratedBonusTotal?: number;
+}
+
 export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   const { user } = useAuth();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [notEligible, setNotEligible] = useState<NotEligibleInfo | null>(null);
+  const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const token = user?.cognitoToken;
@@ -38,15 +47,41 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
     let cancelled = false;
     setIsLoading(true);
     setError(null);
+    setNotEligible(null);
+    setPending(false);
 
-    Promise.all([getMyReferralCode(token), getMyReferralStats(token)])
-      .then(([codeRes, statsRes]) => {
+    // Stats are independent of code issuance and shown for users who already
+    // have a code; load them in parallel and tolerate failure independently.
+    getMyReferralStats(token)
+      .then((statsRes) => {
+        if (!cancelled) setStats(statsRes);
+      })
+      .catch(() => {
+        // non-fatal
+      });
+
+    getMyReferralCode(token)
+      .then((codeRes) => {
         if (cancelled) return;
         setReferralCode(codeRes.referralCode);
-        setStats(statsRes);
       })
-      .catch((err) => {
+      .catch((err: ReferralApiError | Error) => {
         if (cancelled) return;
+        if (err instanceof ReferralApiError) {
+          if (err.errorCode === "NOT_ELIGIBLE") {
+            setNotEligible({
+              hint: err.details?.hint as string | undefined,
+              closestPath: err.details?.closestPath as string | undefined,
+              adminCuratedBonusTotal: err.details
+                ?.adminCuratedBonusTotal as number | undefined,
+            });
+            return;
+          }
+          if (err.errorCode === "ELIGIBILITY_PENDING") {
+            setPending(true);
+            return;
+          }
+        }
         setError(err.message);
       })
       .finally(() => {
@@ -129,6 +164,55 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
         {title}
         <div className="flex items-center justify-center py-8">
           <Spinner />
+        </div>
+      </OuterBox>
+    );
+  }
+
+  // Eligibility pending (GP cache warming up)
+  if (pending) {
+    return (
+      <OuterBox color="w2" padding="sm" className={className}>
+        {title}
+        <div className="flex flex-col items-center justify-center py-6 gap-2">
+          <Spinner />
+          <p className="text-sm text-nasun-white/80">
+            Checking eligibility...
+          </p>
+        </div>
+      </OuterBox>
+    );
+  }
+
+  // Not eligible: show static gate explanation
+  if (notEligible) {
+    return (
+      <OuterBox color="w2" padding="sm" className={className}>
+        {title}
+        <div className="space-y-3">
+          <p className="text-base text-nasun-white">
+            Referral codes are limited during devnet. You can earn one by:
+          </p>
+          <ul className="text-sm text-nasun-white/80 space-y-1.5 list-disc pl-5">
+            <li>Voting on a governance proposal</li>
+            <li>Holding a Genesis Pass NFT</li>
+            <li>
+              Earning 40+ admin-curated bonus points (creator posts, bug
+              reports, feedback)
+            </li>
+            <li>
+              Connecting X, Google, and Telegram + earning 25+ admin-curated
+              bonus points
+            </li>
+          </ul>
+          {typeof notEligible.adminCuratedBonusTotal === "number" && (
+            <p className="text-sm text-nasun-white/80 pt-2 border-t border-nasun-white/10">
+              Your admin-curated bonus points: {notEligible.adminCuratedBonusTotal}
+            </p>
+          )}
+          {notEligible.hint && (
+            <p className="text-sm text-amber-400">{notEligible.hint}</p>
+          )}
         </div>
       </OuterBox>
     );
@@ -226,8 +310,9 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
           {/* How it works */}
           <div className=" text-nasun-white/80 pt-2 border-t border-nasun-white/10 space-y-1">
             <p className="text-sm">
-              Earn 10% of your referrals' on-chain activity as ecosystem points
-              (scaled at 50%). Referred users also earn a 5% bonus.
+              Earn 10% of your referrals' on-chain activity. Referred users
+              also earn 10%. Both contribute to your ecosystem points (scaled
+              at 50%).
             </p>
             <p className="text-sm">
               Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.
