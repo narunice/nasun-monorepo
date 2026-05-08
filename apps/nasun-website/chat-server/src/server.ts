@@ -21,6 +21,7 @@ import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
 import { canonicalizeDisplayName } from '@nasun/profile-core';
+import { getBannedSnapshotSync } from './banned-loader.js';
 
 // ===== State =====
 
@@ -889,22 +890,24 @@ function handleSendMessage(
 
     client.lastMessageAt = now;
 
-    // Broadcast to all (including sender for confirmation)
+    // Shadow-banned senders get a silent confirmation only — their message is
+    // stored but never broadcast to other participants.
+    const { addresses: bannedAddrs } = getBannedSnapshotSync();
+    const isShadowBanned = bannedAddrs.has(stored.sender.toLowerCase());
+
     const nicknameMap = getNicknamesBatch([stored.sender]);
     const displayNameMap = getDisplayNamesBatch([stored.sender]);
     const profileNameSet = getAddressesWithProfileName([stored.sender]);
     const gpSet = getGenesisPassBatch([stored.sender]);
     const profileImageMap = new Map<string, string>();
     if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
-    // Single-sender broadcast: collisions are computed against currently
-    // authenticated clients so a duplicate name from another live participant
-    // gets disambiguated immediately.
     const allAddresses = new Set<string>([stored.sender]);
     for (const c of authenticatedClients.values()) allAddresses.add(c.address);
     const liveDisplayNameMap = getDisplayNamesBatch([...allAddresses]);
     const displaySuffixMap = computeDisplaySuffixMap(allAddresses, liveDisplayNameMap);
     const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
-    for (const [ws] of authenticatedClients) {
+    for (const [ws, c] of authenticatedClients) {
+      if (isShadowBanned && c.address.toLowerCase() !== stored.sender.toLowerCase()) continue;
       send(ws, payload);
     }
 
