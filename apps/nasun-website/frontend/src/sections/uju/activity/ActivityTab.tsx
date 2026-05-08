@@ -43,11 +43,11 @@ export const ActivityTab: FC = () => {
       {/* section: Bug Reports & Feedback */}
       <UjuBugReportsCard />
 
-      {/* section: Governance overview */}
-      <UjuGovernanceCard />
-
       {/* section: Referral program (eligibility-gated) */}
       <UjuReferralCard />
+
+      {/* section: Governance overview */}
+      <UjuGovernanceCard />
 
       {/* section: Assets (NFTs & Objects) */}
       <UjuAssetsCard walletAddress={walletAddress} />
