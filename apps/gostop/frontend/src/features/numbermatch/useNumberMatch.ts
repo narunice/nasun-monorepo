@@ -94,5 +94,12 @@ function humanizeNmError(raw: string): string {
     if (raw.includes(', 4)')) return 'Bankroll pool is temporarily low. Try again shortly.'
     if (raw.includes(', 6)')) return 'Number match module is not ready (game cap not installed).'
   }
+  if (
+    /is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(raw) ||
+    /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(raw) ||
+    /ETIMEDOUT|ECONNRESET|fetch failed|socket hang up|NetworkError|Failed to fetch/i.test(raw)
+  ) {
+    return 'Devnet hiccup. Give it a moment and try again.'
+  }
   return raw
 }
