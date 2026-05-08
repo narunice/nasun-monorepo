@@ -27,6 +27,7 @@ export interface UserProfile {
   };
   googleEmail?: string;
   linkedProviders?: string[];
+  customDisplayName?: string;
 }
 
 export interface LinkedAccountInfo {
@@ -161,7 +162,7 @@ export interface UserDetailResponse {
   user: UserProfile;
 }
 
-export type SearchField = "auto" | "twitter" | "google" | "telegram" | "wallet" | "identityid";
+export type SearchField = "auto" | "twitter" | "google" | "telegram" | "wallet" | "identityid" | "displayname";
 
 export interface SearchUsersParams {
   q: string;

@@ -13,8 +13,9 @@ const FIELD_OPTIONS: { value: SearchField; label: string; placeholder: string }[
   { value: 'twitter',   label: 'Twitter',    placeholder: '@handle or handle' },
   { value: 'google',    label: 'Google',     placeholder: 'email@example.com' },
   { value: 'telegram',  label: 'Telegram',   placeholder: '@username or numeric ID' },
-  { value: 'wallet',    label: 'Wallet',     placeholder: '0x...' },
-  { value: 'identityid', label: 'Identity ID', placeholder: 'us-east-1:uuid-...' },
+  { value: 'wallet',      label: 'Wallet',       placeholder: '0x...' },
+  { value: 'identityid',  label: 'Identity ID',  placeholder: 'us-east-1:uuid-...' },
+  { value: 'displayname', label: 'Display Name', placeholder: 'custom display name' },
 ];
 
 export function SearchBar({ q, field, onQChange, onFieldChange, onClear }: Props) {
