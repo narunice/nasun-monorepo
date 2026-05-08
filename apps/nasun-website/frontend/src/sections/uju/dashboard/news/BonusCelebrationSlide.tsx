@@ -47,8 +47,10 @@ export const BonusCelebrationSlide: FC<Props> = ({ entry, cumulative }) => {
     >
       <div className="relative h-full flex flex-col px-4 sm:px-5 pt-5 sm:pt-6 pb-8 sm:pb-9">
         <div className="flex flex-col items-center text-center gap-3 sm:gap-4">
-          <p className="text-base sm:text-xl font-extrabold tracking-[0.22em] bg-clip-text text-transparent bg-gradient-to-r from-pado-lavender via-pink-300 to-pink-400 drop-shadow-[0_1px_8px_rgba(244,114,182,0.25)]">
-            CONGRATULATIONS!
+          <p
+            className={`text-base sm:text-xl font-extrabold tracking-[0.22em] bg-clip-text text-transparent bg-gradient-to-r ${variant.topLabelGradient ?? "from-pado-lavender via-pink-300 to-pink-400"} drop-shadow-[0_1px_8px_rgba(244,114,182,0.25)]`}
+          >
+            {variant.topLabel ?? "CONGRATULATIONS!"}
           </p>
 
           <h3 className="inline-flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-lg sm:text-xl font-semibold text-white leading-tight">
@@ -91,7 +93,7 @@ export const BonusCelebrationSlide: FC<Props> = ({ entry, cumulative }) => {
                 NEW
               </span>
             )}
-            <span className="truncate">
+            <span className={variant.multilineSubline ? "line-clamp-2" : "truncate"}>
               {isLeaderboard && weekId
                 ? weekId
                 : subline ?? ""}
