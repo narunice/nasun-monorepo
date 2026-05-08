@@ -3,6 +3,13 @@ import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { rpcCall } from '../rpc.js';
 import { getScannerHealth } from '../scanner/points-scanner.js';
+import { requireInternalApiKey } from '../auth/internal-api-key.js';
+import {
+  hasGenesisPass,
+  getActivationsCacheSize,
+} from '../scanner/ecosystem-cache.js';
+
+const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
 
 const app = new Hono();
 
@@ -213,21 +220,12 @@ app.get('/user/:address', async (c) => {
 
 // GET /api/v1/points/referral-stats?referrer=:identityId
 // Internal endpoint for Lambda my-stats to fetch bonus totals (API key required)
-app.get('/referral-stats', async (c) => {
+app.get('/referral-stats', requireInternalApiKey('REFERRAL_MAPPINGS_API_KEY'), async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
   }
 
-  // Require API key (same as wallet-mappings pattern)
-  const INTERNAL_API_KEY = process.env.REFERRAL_MAPPINGS_API_KEY;
-  const requestKey = c.req.header('x-api-key');
-  if (!INTERNAL_API_KEY || !requestKey || requestKey !== INTERNAL_API_KEY) {
-    return c.json({ error: 'unauthorized' }, 401);
-  }
-
   const referrer = c.req.query('referrer');
-  // Validate Cognito identityId format: region:uuid
-  const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
   if (!referrer || !IDENTITY_ID_PATTERN.test(referrer)) {
     return c.json({ error: 'invalid_referrer' }, 400);
   }
@@ -258,16 +256,9 @@ app.get('/referral-stats', async (c) => {
 // POST /api/v1/points/bug-report-reward
 // Internal endpoint for admin Lambda to grant bug report bonus points.
 // Uses ecosystem-bonus-bugreport category to integrate with existing bonus pipeline.
-app.post('/bug-report-reward', async (c) => {
+app.post('/bug-report-reward', requireInternalApiKey('BUG_REPORT_API_KEY'), async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
-  }
-
-  // API key auth
-  const apiKey = process.env.BUG_REPORT_API_KEY;
-  const requestKey = c.req.header('x-api-key');
-  if (!apiKey || !requestKey || requestKey !== apiKey) {
-    return c.json({ error: 'unauthorized' }, 401);
   }
 
   const body = await c.req.json<{
@@ -354,16 +345,9 @@ app.post('/bug-report-reward', async (c) => {
 // POST /api/v1/points/creator-post-reward
 // Internal endpoint for admin Lambda to grant creator-post bonus points.
 // Uses ecosystem-bonus-creator-posts category. identityId-based grant; wallet optional.
-app.post('/creator-post-reward', async (c) => {
+app.post('/creator-post-reward', requireInternalApiKey('BUG_REPORT_API_KEY'), async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
-  }
-
-  // API key auth (reuses BUG_REPORT_API_KEY per plan v6)
-  const apiKey = process.env.BUG_REPORT_API_KEY;
-  const requestKey = c.req.header('x-api-key');
-  if (!apiKey || !requestKey || requestKey !== apiKey) {
-    return c.json({ error: 'unauthorized' }, 401);
   }
 
   const body = await c.req.json<{
@@ -428,6 +412,69 @@ app.post('/creator-post-reward', async (c) => {
     postId: body.postId,
   });
 });
+
+// GET /api/v1/points/referral-eligibility-signals/:identityId
+// Internal endpoint: returns raw signals used by the referral handler Lambda
+// to decide whether the caller qualifies for a referral code. Decision policy
+// lives in the handler; this endpoint only reports facts.
+app.get(
+  '/referral-eligibility-signals/:identityId',
+  requireInternalApiKey('REFERRAL_MAPPINGS_API_KEY'),
+  async (c) => {
+    if (!pointsDb) {
+      return c.json({ error: 'points_not_configured' }, 503);
+    }
+
+    const identityId = c.req.param('identityId');
+    if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+      return c.json({ error: 'invalid_identity_id' }, 400);
+    }
+
+    const activationsCacheReady = getActivationsCacheSize() > 0;
+    const gpHeld = activationsCacheReady ? hasGenesisPass(identityId) : false;
+
+    const getSignals = cached(
+      `referral-eligibility-${identityId}`,
+      60 * 1000,
+      async () => {
+        const [govRow] = await pointsDb!`
+          SELECT 1
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category = 'governance'
+            AND activity_type = 'vote'
+            AND NOT flagged
+          LIMIT 1
+        `;
+        const [bonusRow] = await pointsDb!`
+          SELECT COALESCE(SUM(final_points), 0)::float8 as total
+          FROM activity_points
+          WHERE identity_id = ${identityId}
+            AND category IN (
+              'ecosystem-bonus-creator-posts',
+              'ecosystem-bonus-bugreport',
+              'ecosystem-bonus-feedback'
+            )
+            AND NOT flagged
+        `;
+        return {
+          hasGovernanceVote: !!govRow,
+          adminCuratedBonusTotal: Number(bonusRow?.total ?? 0),
+        };
+      },
+    );
+
+    const sql = await getSignals();
+
+    c.header('Cache-Control', 'no-store');
+    return c.json({
+      hasGovernanceVote: sql.hasGovernanceVote,
+      hasGenesisPass: gpHeld,
+      adminCuratedBonusTotal: sql.adminCuratedBonusTotal,
+      activationsCacheReady,
+    });
+  },
+);
 
 // GET /api/v1/points/health
 app.get('/health', async (c) => {

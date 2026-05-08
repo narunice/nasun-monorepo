@@ -12,6 +12,7 @@ export class ReferralApiError extends Error {
     message: string,
     public statusCode?: number,
     public errorCode?: string,
+    public details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "ReferralApiError";
@@ -63,6 +64,7 @@ export async function getMyReferralCode(
       body.message || `Failed to get referral code: ${res.status}`,
       res.status,
       body.error,
+      body,
     );
   }
 

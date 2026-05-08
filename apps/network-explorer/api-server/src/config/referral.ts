@@ -9,8 +9,9 @@ export const REFERRAL_REWARD_ENABLED =
 // Bonus rate: 10% of referred user's base_points (paid to referrer)
 export const REFERRAL_L1_BONUS_RATE = 0.1;
 
-// Bonus rate: 5% extra on referred user's own base_points (paid to referred user)
-export const REFERRAL_L1_REFERRED_BONUS_RATE = 0.05;
+// Bonus rate: 10% extra on referred user's own base_points (paid to referred user).
+// Equal to referrer rate so both sides see symmetric incentive.
+export const REFERRAL_L1_REFERRED_BONUS_RATE = 0.1;
 
 // Max bonus points per day (applies independently to referrer and referred user)
 export const REFERRAL_DAILY_BONUS_CAP = 50;

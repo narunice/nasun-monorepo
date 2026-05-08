@@ -126,7 +126,21 @@ export class ReferralStack extends cdk.Stack {
         REFERRALS_TABLE_NAME: this.referralsTable.tableName,
         USER_PROFILES_TABLE_NAME: userProfilesTableName,
         REFERRAL_STATS_API_URL: process.env.REFERRAL_STATS_API_URL || "",
-        REFERRAL_STATS_API_KEY: process.env.INTERNAL_API_KEY || "",
+        // explorer.nasun.io is a single shared host serving both dev and prod
+        // CDK accounts; the explorer-api expects one key value. Keep this
+        // separate from INTERNAL_API_KEY (which differs per CDK account and
+        // gates admin-stack internal calls).
+        REFERRAL_STATS_API_KEY:
+          process.env.EXPLORER_INTERNAL_API_KEY ||
+          process.env.INTERNAL_API_KEY ||
+          "",
+        REFERRAL_ELIGIBILITY_API_URL:
+          process.env.REFERRAL_ELIGIBILITY_API_URL || "",
+        REFERRAL_ELIGIBILITY_API_KEY:
+          process.env.EXPLORER_INTERNAL_API_KEY ||
+          process.env.INTERNAL_API_KEY ||
+          "",
+        REFERRAL_GATE_ENABLED: process.env.REFERRAL_GATE_ENABLED || "true",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
       },
@@ -194,6 +208,29 @@ export class ReferralStack extends cdk.Stack {
         allowMethods: apigateway.Cors.ALL_METHODS,
         allowHeaders: ["Content-Type", "Authorization"],
         allowCredentials: false,
+      },
+    });
+
+    // Gateway Responses for 4xx/5xx so authorizer-level rejections (401/403)
+    // and Lambda errors come back with CORS headers. Without these, browsers
+    // report opaque "CORS error" instead of the actual status. allowCredentials
+    // is false on this API (Bearer token via header, no cookies), so wildcard
+    // origin is acceptable — it only applies to error responses; successful
+    // responses go through the Lambda which echoes the matching allowed origin.
+    this.api.addGatewayResponse("Default4xx", {
+      type: apigateway.ResponseType.DEFAULT_4XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
+      },
+    });
+    this.api.addGatewayResponse("Default5xx", {
+      type: apigateway.ResponseType.DEFAULT_5XX,
+      responseHeaders: {
+        "Access-Control-Allow-Origin": "'*'",
+        "Access-Control-Allow-Headers": "'Content-Type,Authorization'",
+        "Access-Control-Allow-Methods": "'GET,POST,OPTIONS'",
       },
     });
 

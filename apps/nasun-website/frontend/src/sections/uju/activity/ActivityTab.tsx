@@ -9,6 +9,7 @@ import { UjuGovernanceCard } from "./cards/UjuGovernanceCard";
 import { UjuAppDirectoryCard } from "./cards/UjuAppDirectoryCard";
 import { UjuAssetsCard } from "./cards/UjuAssetsCard";
 import { UjuBugReportsCard } from "./cards/UjuBugReportsCard";
+import { UjuReferralCard } from "./cards/UjuReferralCard";
 import { useConsumeScrollTarget } from "../shared/ujuNavigation";
 
 export const ActivityTab: FC = () => {
@@ -44,6 +45,9 @@ export const ActivityTab: FC = () => {
 
       {/* section: Governance overview */}
       <UjuGovernanceCard />
+
+      {/* section: Referral program (eligibility-gated) */}
+      <UjuReferralCard />
 
       {/* section: Assets (NFTs & Objects) */}
       <UjuAssetsCard walletAddress={walletAddress} />

@@ -23,6 +23,11 @@ import {
   ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { randomBytes } from "crypto";
+import {
+  evaluateGate,
+  type EligibilitySignals,
+  type GateDecision,
+} from "./eligibility.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -31,6 +36,37 @@ const REFERRALS_TABLE = process.env.REFERRALS_TABLE_NAME;
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE_NAME;
 const REFERRAL_STATS_API_URL = process.env.REFERRAL_STATS_API_URL || "";
 const REFERRAL_STATS_API_KEY = process.env.REFERRAL_STATS_API_KEY || "";
+const REFERRAL_ELIGIBILITY_API_URL = process.env.REFERRAL_ELIGIBILITY_API_URL || "";
+const REFERRAL_ELIGIBILITY_API_KEY = process.env.REFERRAL_ELIGIBILITY_API_KEY || "";
+const REFERRAL_GATE_ENABLED = process.env.REFERRAL_GATE_ENABLED !== "false";
+
+// ==================== CloudWatch EMF metrics ====================
+// CloudWatch automatically extracts metrics from log lines in this format —
+// no SDK call, no IAM permission beyond default Lambda log access.
+
+const METRIC_NAMESPACE = "Nasun/Referral";
+
+function emitMetric(
+  metricName: "ReferralCodeIssued" | "ReferralCodeRejected" | "ReferralEligibilityPending" | "ReferralEligibilityOutage",
+  dimensions: Record<string, string> = {},
+): void {
+  const dimensionNames = Object.keys(dimensions);
+  const payload = {
+    _aws: {
+      Timestamp: Date.now(),
+      CloudWatchMetrics: [
+        {
+          Namespace: METRIC_NAMESPACE,
+          Dimensions: dimensionNames.length > 0 ? [dimensionNames] : [[]],
+          Metrics: [{ Name: metricName, Unit: "Count" }],
+        },
+      ],
+    },
+    ...dimensions,
+    [metricName]: 1,
+  };
+  console.log(JSON.stringify(payload));
+}
 
 if (!REFERRAL_CODES_TABLE || !REFERRALS_TABLE || !USER_PROFILES_TABLE) {
   throw new Error(
@@ -112,23 +148,126 @@ function generateReferralCode(): string {
     .slice(0, 8);
 }
 
+// ==================== Eligibility helpers ====================
+
+async function fetchEligibilitySignals(
+  identityId: string
+): Promise<EligibilitySignals | { error: "pending" } | { error: "outage" }> {
+  if (!REFERRAL_ELIGIBILITY_API_URL || !REFERRAL_ELIGIBILITY_API_KEY) {
+    console.error("[referral] Eligibility API not configured");
+    return { error: "outage" };
+  }
+
+  const url = `${REFERRAL_ELIGIBILITY_API_URL.replace(/\/$/, "")}/${encodeURIComponent(identityId)}`;
+  const headers = { "x-api-key": REFERRAL_ELIGIBILITY_API_KEY };
+
+  // 5s timeout, 1 retry
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers,
+        signal: AbortSignal.timeout(5_000),
+      });
+      if (res.status === 503) {
+        return { error: "pending" };
+      }
+      if (!res.ok) {
+        if (attempt === 1) return { error: "outage" };
+        continue;
+      }
+      const data = (await res.json()) as EligibilitySignals;
+      if (!data.activationsCacheReady) {
+        // GP cache cold; treat as pending so caller can retry shortly
+        return { error: "pending" };
+      }
+      return data;
+    } catch (err) {
+      if (attempt === 1) {
+        console.warn("[referral] Eligibility fetch failed:", err);
+        return { error: "outage" };
+      }
+    }
+  }
+  return { error: "outage" };
+}
+
 // ==================== GET /referral/my-code ====================
 
 async function handleMyCode(
   identityId: string,
   origin?: string
 ): Promise<APIGatewayProxyResult> {
-  // 1. Check UserProfiles for existing referralCode
+  // 1. Load profile (referralCode + social fields)
   const profile = await client.send(
     new GetCommand({
       TableName: USER_PROFILES_TABLE,
       Key: { identityId },
-      ProjectionExpression: "referralCode",
+      ProjectionExpression:
+        "referralCode, twitterHandle, provider, isTelegramMember, linkedAccounts",
     })
   );
 
   if (profile.Item?.referralCode) {
     return jsonResponse(200, { referralCode: profile.Item.referralCode }, origin);
+  }
+
+  // 1.5. Eligibility gate (skip if disabled by env toggle)
+  if (REFERRAL_GATE_ENABLED) {
+    const signals = await fetchEligibilitySignals(identityId);
+    if ("error" in signals) {
+      if (signals.error === "pending") {
+        emitMetric("ReferralEligibilityPending");
+        return jsonResponse(
+          503,
+          {
+            error: "ELIGIBILITY_PENDING",
+            message: "Eligibility check is warming up. Please retry shortly.",
+          },
+          origin
+        );
+      }
+      // outage: fail-closed (do not issue codes when gate cannot be verified)
+      emitMetric("ReferralEligibilityOutage");
+      return jsonResponse(
+        500,
+        {
+          error: "ELIGIBILITY_UNAVAILABLE",
+          message: "Eligibility service temporarily unavailable. Please try again later.",
+        },
+        origin
+      );
+    }
+
+    const decision = evaluateGate(profile.Item, signals);
+    console.log(
+      `[referral] Gate check ${identityId.slice(0, 16)}...: ` +
+        `eligible=${decision.eligible} path=${decision.passedPath || decision.closestPath} ` +
+        `bonus=${signals.adminCuratedBonusTotal} gov=${signals.hasGovernanceVote} gp=${signals.hasGenesisPass}`
+    );
+    if (!decision.eligible) {
+      emitMetric("ReferralCodeRejected", {
+        closestPath: decision.closestPath || "unknown",
+      });
+      return jsonResponse(
+        403,
+        {
+          error: "NOT_ELIGIBLE",
+          message:
+            "You do not yet qualify for a referral code. See the eligibility criteria.",
+          closestPath: decision.closestPath,
+          hint: decision.hint,
+          adminCuratedBonusTotal: signals.adminCuratedBonusTotal,
+        },
+        origin
+      );
+    }
+
+    // Reach here only when gate passes; tag issuance with which path won.
+    emitMetric("ReferralCodeIssued", {
+      passedPath: decision.passedPath || "unknown",
+    });
+  } else {
+    emitMetric("ReferralCodeIssued", { passedPath: "gate-disabled" });
   }
 
   // 2. Generate new code with collision retry
