@@ -156,7 +156,7 @@ function Hero2026Section({
       </div>
 
       {/* ── Mobile layout (< 1024px) ── */}
-      <div className="flex lg:hidden flex-col bg-black">
+      <div className="flex lg:hidden flex-col bg-black h-full">
         {/* Video block */}
         <div
           className="relative w-full overflow-hidden"
@@ -178,25 +178,25 @@ function Hero2026Section({
           </video>
 
           {/* Gradient inside container: transparent → black, ending solid at the bottom edge */}
-          <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-black pointer-events-none z-10" />
         </div>
 
         {/* Content overlaps with gradient zone */}
         {isVideoPlaying && (
-          <div className="flex flex-col items-center text-center px-6 pb-16 z-20">
+          <div className="flex flex-col items-center text-center px-6 pb-16 z-20 pt-10">
             <FadeInUp>
-              <h1 className="!font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-[72px] leading-none mb-3">
+              <h1 className="!font-changeling font-bold tracking-widest uppercase text-white drop-shadow-[3px_3px_6px_rgba(0,0,0,0.7)] text-[50px] leading-none mb-3">
                 NASUN
               </h1>
 
               <p className="!font-pirulen text-white uppercase tracking-wide drop-shadow-[2px_2px_4px_rgba(0,0,0,0.8)] mb-4 text-sm md:text-base">
-                MAKING YOU THE CENTER OF CRYPTO
+                MAKING YOU THE CENTER <br /> OF CRYPTO
               </p>
 
               <p className="!font-inter !font-light text-white/80 text-sm md:text-base leading-relaxed mb-8">
                 Nasun turns your activity into compounding value.
                 <br />
-                Activate curated apps. Decide how deep you engage.
+                Activate curated apps. <br />
+                Decide how deep you engage.
                 <br />
                 Nothing resets.
               </p>
