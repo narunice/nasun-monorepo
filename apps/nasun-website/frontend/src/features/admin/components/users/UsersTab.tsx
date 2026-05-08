@@ -330,6 +330,7 @@ function UserDetailModal({
         {/* Fields grid */}
         <dl className="grid grid-cols-2 gap-4 mb-6">
           <Field label="Username" value={user.username} />
+          <Field label="Display Name" value={user.customDisplayName} />
           <Field label="Email" value={user.email} />
           <Field label="Provider" value={user.provider} />
           <Field label="Role" value={user.role || "USER"} />

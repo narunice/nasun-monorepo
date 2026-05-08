@@ -70,6 +70,7 @@ const USER_LIST_FIELDS = [
   "role", "verified", "isTelegramMember", "telegramUserId", "telegramUsername",
   "createdAt", "updatedAt", "status", "linkedToPrimaryId", "linkedAccounts",
   "googleEmail", "linkedProviders", "probableBot", "botTier",
+  "customDisplayName",
 ] as const;
 
 // Provider keys that represent social connections (not wallets)
@@ -1106,7 +1107,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         const rawField = (queryParams.field ?? "auto").toLowerCase();
         const resolvePrimary = queryParams.resolvePrimary !== "false";
 
-        type FieldKind = "twitter" | "google" | "telegram_id" | "telegram_username" | "wallet" | "identity_id";
+        type FieldKind = "twitter" | "google" | "telegram_id" | "telegram_username" | "wallet" | "identity_id" | "displayname";
 
         function inferField(input: string): FieldKind {
           if (/^0x[a-f0-9]{40,}$/i.test(input)) return "wallet";
@@ -1122,6 +1123,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           if (rawField === "telegram") return /^\d+$/.test(rawQ) ? "telegram_id" : "telegram_username";
           if (rawField === "wallet") return "wallet";
           if (rawField === "identityid" || rawField === "identity_id") return "identity_id";
+          if (rawField === "displayname") return "displayname";
           return inferField(rawQ);
         })();
 
@@ -1290,6 +1292,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             matchedItems.push(...scanResult.items);
             truncated = truncated || scanResult.truncated;
           }
+
+        } else if (fieldKind === "displayname") {
+          const scanResult = await paginatedScan({
+            TableName: USER_PROFILES_TABLE,
+            FilterExpression: "attribute_not_exists(linkedToPrimaryId) AND contains(customDisplayName, :q)",
+            ExpressionAttributeValues: { ":q": { S: rawQ } },
+          });
+          matchedItems.push(...scanResult.items);
+          truncated = truncated || scanResult.truncated;
         }
 
         // Resolve secondary accounts to their primary
