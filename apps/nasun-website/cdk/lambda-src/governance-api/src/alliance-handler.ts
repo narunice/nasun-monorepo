@@ -37,13 +37,17 @@ const NFT_DESCRIPTION = "Nasun Alliance NFT";
 
 // Distributed mint lock to prevent owned object contention on Sui
 const MINT_LOCK_KEY = "__ALLIANCE_MINT_LOCK__";
+const LAST_TX_KEY = "__LAST_MINT_TX__";
 const MINT_LOCK_TTL_MS = 65_000; // Must exceed Lambda timeout (60s) to prevent premature expiry
 // When devnet RPC fullnode lags behind validators, all mint attempts using the stale object version
 // will fail. 120s cooldown gives the fullnode time to catch up before the next attempt.
 // During cooldown, concurrent users get 429 MINT_BUSY instead of cascading 500s.
 const OBJECT_CONTENTION_COOLDOWN_MS = 120_000;
 
-async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boolean> {
+// Returns the last successful mint txDigest alongside the lock result.
+// The caller must waitForTransaction(lastTxDigest) before reading Admin object from RPC,
+// ensuring the RPC has indexed the previous mint and will return the current object version.
+async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<{ acquired: boolean; lastTxDigest?: string }> {
   const now = Date.now();
   try {
     await docClient.send(
@@ -62,10 +66,19 @@ async function acquireMintLock(docClient: DynamoDBDocumentClient): Promise<boole
         },
       }),
     );
-    return true;
   } catch (err) {
-    if (err instanceof ConditionalCheckFailedException) return false;
+    if (err instanceof ConditionalCheckFailedException) return { acquired: false };
     throw err;
+  }
+
+  // Read the last successful txDigest so the caller can wait for RPC to catch up.
+  try {
+    const lastTxRecord = await docClient.send(
+      new GetCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId: LAST_TX_KEY } }),
+    );
+    return { acquired: true, lastTxDigest: lastTxRecord.Item?.txDigest as string | undefined };
+  } catch {
+    return { acquired: true };
   }
 }
 
@@ -338,7 +351,7 @@ async function handleMint(
   const imageUrl = ALLIANCE_IMAGES[imageIndex];
 
   // Acquire distributed lock to serialize Sui tx (prevents owned object contention)
-  const lockAcquired = await acquireMintLock(docClient);
+  const { acquired: lockAcquired, lastTxDigest } = await acquireMintLock(docClient);
   if (!lockAcquired) {
     return {
       statusCode: 429,
@@ -414,6 +427,15 @@ async function handleMint(
             body: JSON.stringify({ error: "Mint in progress", code: "MINT_IN_PROGRESS" }),
           };
         }
+      } else {
+        // Unknown state (record deleted between PutCommand and GetCommand, or unexpected status).
+        // Release lock and surface as busy so the client retries cleanly.
+        await releaseMintLock(docClient);
+        return {
+          statusCode: 429,
+          headers: { ...corsHeaders(), "Retry-After": "3" },
+          body: JSON.stringify({ error: "Mint service busy, please retry", code: "MINT_BUSY" }),
+        };
       }
     } else {
       await releaseMintLock(docClient);
@@ -428,7 +450,19 @@ async function handleMint(
   const adminAddress = keypair.getPublicKey().toSuiAddress();
 
   // Gas balance check
-  const balance = await suiClient.getBalance({ owner: adminAddress });
+  let balance: Awaited<ReturnType<typeof suiClient.getBalance>>;
+  try {
+    balance = await suiClient.getBalance({ owner: adminAddress });
+  } catch (balanceErr) {
+    await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
+    await releaseMintLock(docClient);
+    console.error("[alliance] Gas balance check failed, rolled back PENDING:", balanceErr);
+    return {
+      statusCode: 503,
+      headers: { ...corsHeaders(), "Retry-After": "10" },
+      body: JSON.stringify({ error: "RPC unavailable, please retry", code: "RPC_ERROR" }),
+    };
+  }
   const balanceMist = BigInt(balance.totalBalance);
   if (balanceMist < 50_000_000n) {
     await docClient.send(new DeleteCommand({ TableName: ALLIANCE_MINT_TABLE, Key: { identityId } }));
@@ -439,6 +473,18 @@ async function handleMint(
       headers: corsHeaders(),
       body: JSON.stringify({ error: "Service temporarily unavailable", code: "INSUFFICIENT_GAS" }),
     };
+  }
+
+  // Wait for the previous mint's tx to be indexed by the RPC before reading Admin object.
+  // Without this, a burst of concurrent mints can leave the RPC showing a stale object
+  // version — causing validators to reject the tx with "object not available for consumption".
+  if (lastTxDigest) {
+    try {
+      await suiClient.waitForTransaction({ digest: lastTxDigest, timeout: 10_000, pollInterval: 300 });
+    } catch {
+      // RPC timeout: proceed anyway. If the object is still stale, contention handling will retry.
+      console.warn(`[alliance] Pre-mint waitForTransaction timed out for ${lastTxDigest}, proceeding`);
+    }
   }
 
   // One retry gives the RPC a brief chance to sync after a transient blip.
@@ -510,6 +556,18 @@ async function handleMint(
         await suiClient.waitForTransaction({ digest: txDigest, timeout: 15_000, pollInterval: 300 });
       } catch (waitErr) {
         console.warn(`[alliance] waitForTransaction timed out for ${txDigest} (continuing):`, waitErr);
+      }
+
+      // Persist txDigest so the next minter can wait for it before reading the Admin object.
+      try {
+        await docClient.send(
+          new PutCommand({
+            TableName: ALLIANCE_MINT_TABLE,
+            Item: { identityId: LAST_TX_KEY, txDigest },
+          }),
+        );
+      } catch (persistErr) {
+        console.warn(`[alliance] Failed to persist lastTxDigest (non-critical):`, persistErr);
       }
 
       await releaseMintLock(docClient);
