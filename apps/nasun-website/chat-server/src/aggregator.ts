@@ -432,10 +432,20 @@ export function startAggregator(cfg: LeaderboardConfig): void {
     console.error('[Aggregator] Identity cache load failed:', err.message);
   });
 
-  // Load banned-users cache (non-blocking; aggregator falls back to empty
-  // exclusion if not yet loaded — banned users would briefly appear, but the
-  // initial fetch finishes within seconds).
-  refreshBannedCache().catch(() => { /* logged inside */ });
+  // Load banned-users cache on startup. Retry every 30s until first success,
+  // then switch to the normal 5-minute interval.
+  let bannedCacheLoaded = false;
+  const startupBannedRefresh = async () => {
+    if (bannedCacheLoaded) return;
+    try {
+      await refreshBannedCache();
+      bannedCacheLoaded = true;
+    } catch {
+      // error already logged in refreshBannedCache; retry after 30s
+      setTimeout(startupBannedRefresh, 30_000);
+    }
+  };
+  startupBannedRefresh();
 
   // Schedule identity cache refresh every hour
   setInterval(async () => {
@@ -449,6 +459,7 @@ export function startAggregator(cfg: LeaderboardConfig): void {
 
   // Schedule banned-users cache refresh every 5 minutes
   setInterval(() => {
+    bannedCacheLoaded = true; // suppress startup retry once interval takes over
     backgroundRefreshBannedCache();
   }, BANNED_CACHE_REFRESH_MS);
 

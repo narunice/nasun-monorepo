@@ -38,7 +38,7 @@ async function loadBanned(): Promise<{ addresses: Set<string>; identityIds: Set<
 
   const res = await fetch(BANNED_USERS_URL, {
     headers,
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(60_000),
   });
   if (!res.ok) {
     throw new Error(`banned-users fetch failed: ${res.status}`);
