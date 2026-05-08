@@ -44,8 +44,8 @@ export async function runDailyNftChecks(
   activationsCache: Map<string, NftActivation[]>,
   identityToWallet: Map<string, string>,
   registeredWallets: Map<string, string>,
-): Promise<number> {
-  if (!pointsDb) return 0;
+): Promise<{ totalInserts: number; stakingRetryNeeded: boolean }> {
+  if (!pointsDb) return { totalInserts: 0, stakingRetryNeeded: false };
 
   const genesisIds: string[] = [];
   for (const [identityId, activations] of activationsCache) {
@@ -94,6 +94,7 @@ export async function runDailyNftChecks(
   // --- Staking Daily + Emissions (single RPC fetch shared) ---
   let stakingAwarded = 0;
   let emissionsAwarded = 0;
+  let stakingRetryNeeded = false;
   try {
     // Use staking-daily within last 3 days as the active-stake proxy.
     // This is equivalent to the old "has ever delegated" query but scoped
@@ -108,7 +109,17 @@ export async function runDailyNftChecks(
 
     if (stakingIdentityIds.size > 0) {
       const stakeDataByIdentity = await fetchIdentityStakeData(registeredWallets, stakingIdentityIds);
-      stakingAwarded = await awardStakingDailyPoints(stakeDataByIdentity);
+      const stakingRes = await awardStakingDailyPoints(stakeDataByIdentity);
+      stakingAwarded = stakingRes.awarded;
+      // If any identity got skipped due to RPC partial failure on today's
+      // daysAgo=0 pass, ask the caller to keep the daily gate open so the
+      // next scan cycle re-fetches stakes (ON CONFLICT DO NOTHING is safe).
+      if (stakingRes.todayPartialFailures > 0) {
+        stakingRetryNeeded = true;
+        console.warn(
+          `[DailyNftCheck] staking-daily partial-failure today: ${stakingRes.todayPartialFailures} identities deferred for retry`,
+        );
+      }
       emissionsAwarded = await awardStakingEmissions(stakeDataByIdentity);
     }
   } catch (err) {
@@ -123,7 +134,7 @@ export async function runDailyNftChecks(
     );
   }
 
-  return totalInserts;
+  return { totalInserts, stakingRetryNeeded };
 }
 
 // --- Genesis Passive Points ---
@@ -231,9 +242,19 @@ async function fetchIdentityStakeData(
     const batch = entries.slice(i, i + RPC_CONCURRENCY);
 
     await Promise.all(batch.map(async ([identityId, wallets]) => {
-      const stakeResults = await Promise.allSettled(
-        wallets.map((w) => rpcCall<StakeInfo[]>('suix_getStakes', [w])),
-      );
+      // Per-wallet RPC fetch with one retry + backoff. Fullnode 5xx/timeout
+      // bursts (5/8 incident) marked entire identities as partial-failure on
+      // first attempt, blocking the same-day staking-daily insert. Retrying
+      // the failed wallets recovers most cases without inflating concurrency.
+      const fetchOne = async (w: string): Promise<StakeInfo[]> => {
+        try {
+          return await rpcCall<StakeInfo[]>('suix_getStakes', [w]);
+        } catch {
+          await new Promise((r) => setTimeout(r, 750));
+          return rpcCall<StakeInfo[]>('suix_getStakes', [w]);
+        }
+      };
+      const stakeResults = await Promise.allSettled(wallets.map(fetchOne));
 
       let totalPrincipalMist = 0n;
       let totalEstimatedRewardMist = 0n;
@@ -280,11 +301,15 @@ async function fetchIdentityStakeData(
  */
 async function awardStakingDailyPoints(
   stakeDataByIdentity: Map<string, IdentityStakeData>,
-): Promise<number> {
-  if (!pointsDb || stakeDataByIdentity.size === 0) return 0;
+): Promise<{ awarded: number; todayPartialFailures: number }> {
+  if (!pointsDb || stakeDataByIdentity.size === 0) {
+    return { awarded: 0, todayPartialFailures: 0 };
+  }
 
   const now = new Date();
   let totalAwarded = 0;
+  let todayPartialFailures = 0;
+  const todayStr = now.toISOString().slice(0, 10);
 
   // daysAgo=0 keeps `daily.stakingScore` populated within one scan cycle.
   // ON CONFLICT DO NOTHING locks today's tier at first sight (monotonic per-day).
@@ -299,7 +324,12 @@ async function awardStakingDailyPoints(
     for (const [identityId, data] of stakeDataByIdentity) {
       const { wallets, totalPrincipalMist, hasPartialFailure } = data;
       if (wallets.length === 0) continue;
-      if (hasPartialFailure) continue; // partial data -> skip to avoid under-crediting
+      if (hasPartialFailure) {
+        // partial data -> skip to avoid under-crediting. Track today's misses
+        // so the caller can defer the daily-gate close and retry next cycle.
+        if (dateStr === todayStr) todayPartialFailures++;
+        continue;
+      }
 
       const digest = `stk:${identityId}:${dateStr}`;
 
@@ -330,7 +360,7 @@ async function awardStakingDailyPoints(
     }
   }
 
-  return totalAwarded;
+  return { awarded: totalAwarded, todayPartialFailures };
 }
 
 // --- Staking Emissions (staking-reward) ---
