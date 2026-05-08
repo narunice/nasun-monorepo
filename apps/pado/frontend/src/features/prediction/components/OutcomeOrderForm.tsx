@@ -31,7 +31,6 @@ import { useToast } from '@/components/common/Toast';
 import {
   OrderSuccessModal,
   shouldShowOrderModal,
-  incrementOrderModalCount,
   type OrderSuccessData,
 } from './OrderSuccessModal';
 import type { PredictionMarket, Orderbook } from '../types';
@@ -385,9 +384,6 @@ export function OutcomeOrderForm({
               digest: result.digest!,
             };
             if (isSimple && shouldShowOrderModal()) {
-              // Only count filled orders toward the auto-show limit; resting
-              // orders haven't executed yet so don't consume a modal impression.
-              if (!restOnNoFill) incrementOrderModalCount();
               setSuccessModal(modalData);
             } else {
               setSuccess(restOnNoFill
@@ -434,7 +430,6 @@ export function OutcomeOrderForm({
               digest: result.digest!,
             };
             if (isSimple && shouldShowOrderModal()) {
-              if (!restOnNoFill) incrementOrderModalCount();
               setSuccessModal(modalData);
             } else {
               setSuccess(restOnNoFill

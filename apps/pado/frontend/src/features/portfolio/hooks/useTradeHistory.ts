@@ -288,7 +288,7 @@ export function useTradeHistory(): UseTradeHistoryResult {
   return {
     trades: safeTrades,
     stats,
-    isLoading: query.isLoading,
+    isLoading: query.isPending,
     error: query.error ? 'Failed to load trade history' : null,
     refetch: query.refetch,
     fetchNextPage: query.fetchNextPage,
