@@ -90,21 +90,32 @@ function ChevronRightIcon() {
 function FeedbackButton({
   vote,
   active,
+  light,
   onClick,
 }: {
   vote: 'up' | 'down';
   active: boolean;
+  light?: boolean;
   onClick: () => void;
 }) {
   const activeClass = vote === 'up' ? 'text-pado-2' : 'text-nasun-scarlet';
+  const inactiveClass = light ? 'text-black/40 hover:text-black' : 'text-uju-secondary hover:text-uju-primary';
   return (
     <button
       onClick={onClick}
       aria-label={vote === 'up' ? 'Helpful' : 'Not helpful'}
-      className={`transition-colors ${active ? activeClass : 'text-uju-secondary hover:text-uju-primary'}`}
+      className={`transition-colors ${active ? activeClass : inactiveClass}`}
     >
       {vote === 'up' ? <ThumbUpIcon /> : <ThumbDownIcon />}
     </button>
+  );
+}
+
+function XLogoIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" className="w-full h-full">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
   );
 }
 
@@ -115,14 +126,17 @@ export function BannerCarousel() {
   const touchStartX = useRef(0);
 
   const banner = BANNER_ITEMS[index];
-  const accent = ACCENT_STYLES[banner.accent];
+  const accentBase = ACCENT_STYLES[banner.accent];
+  const activeBg = banner.bg ?? accentBase.bg;
+  const isLight = banner.light ?? accentBase.light ?? false;
+  const accent = { ...accentBase, bg: activeBg, light: isLight };
 
   // Auto-advance: single interval, never recreated
   useEffect(() => {
     if (BANNER_ITEMS.length <= 1) return;
     const id = setInterval(() => {
       if (!pausedRef.current) dispatch({ type: 'GO', dir: 1 });
-    }, 5000);
+    }, 10000);
     return () => clearInterval(id);
   }, []);
 
@@ -170,7 +184,7 @@ export function BannerCarousel() {
     <div
       role="region"
       aria-label="Announcements"
-      className="relative bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg overflow-hidden min-h-[176px]"
+      className={`relative border rounded-lg overflow-hidden min-h-[176px] transition-colors duration-500 ${accent.bg ? `${accent.bg} border-black/10` : 'bg-gray-950/50 backdrop-blur-sm border-uju-border/60'}`}
       onMouseEnter={() => { pausedRef.current = true; }}
       onMouseLeave={() => { pausedRef.current = false; }}
       onTouchStart={handleTouchStart}
@@ -189,18 +203,24 @@ export function BannerCarousel() {
           animate="center"
           exit="exit"
           transition={{ duration: 0.3, ease: 'easeInOut' }}
-          className="absolute inset-0 p-5 flex flex-col justify-between"
+          className="absolute inset-0 p-5 flex flex-col justify-between overflow-hidden"
         >
+          {/* Decorative X logo for amber (light) banners */}
+          {banner.id === 'repost-bonus' && (
+            <div className="absolute right-24 top-1/2 -translate-y-1/2 w-24 h-24 text-black/8 pointer-events-none select-none">
+              <XLogoIcon />
+            </div>
+          )}
           {/* Top: tag + nav arrows */}
           <div className="flex items-center justify-between">
-            <span className={`text-base font-light px-2.5 py-0.5 rounded-full ${accent.tag}`}>
+            <span className={`text-base font-light px-2.5 py-0.5 rounded-full ${isLight ? 'text-black/80 bg-black/20 font-medium' : accent.tag}`}>
               {banner.tag}
             </span>
-            <div className="flex items-center gap-2 text-uju-secondary">
+            <div className={`flex items-center gap-2 ${accent.light ? 'text-black/50' : 'text-uju-secondary'}`}>
               <button
                 onClick={() => dispatch({ type: 'GO', dir: -1 })}
                 aria-label="Previous banner"
-                className="hover:text-uju-primary transition-colors"
+                className={`transition-colors ${accent.light ? 'hover:text-black' : 'hover:text-uju-primary'}`}
               >
                 <ChevronLeftIcon />
               </button>
@@ -208,7 +228,7 @@ export function BannerCarousel() {
               <button
                 onClick={() => dispatch({ type: 'GO', dir: 1 })}
                 aria-label="Next banner"
-                className="hover:text-uju-primary transition-colors"
+                className={`transition-colors ${accent.light ? 'hover:text-black' : 'hover:text-uju-primary'}`}
               >
                 <ChevronRightIcon />
               </button>
@@ -217,8 +237,8 @@ export function BannerCarousel() {
 
           {/* Middle: title + description */}
           <div>
-            <p className="text-lg font-semibold text-uju-primary">{banner.title}</p>
-            <p className="text-base text-uju-secondary mt-1 line-clamp-2">{banner.description}</p>
+            <p className={`text-xl font-semibold ${accent.light ? 'text-black' : 'text-uju-primary'}`}>{banner.title}</p>
+            <p className={`text-base mt-1.5 line-clamp-2 ${accent.light ? 'text-black/70' : 'text-uju-secondary'}`}>{banner.description}</p>
           </div>
 
           {/* Bottom: CTA + feedback */}
@@ -230,14 +250,14 @@ export function BannerCarousel() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`${banner.ctaLabel}, opens in new tab`}
-                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
+                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${isLight ? 'text-black border-black/30 hover:bg-black/10 font-medium' : accent.cta}`}
                 >
                   {banner.ctaLabel}
                 </a>
               ) : (
                 <Link
                   to={banner.ctaUrl}
-                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${accent.cta}`}
+                  className={`text-base px-3 py-1 rounded-lg border transition-colors ${isLight ? 'text-black border-black/30 hover:bg-black/10 font-medium' : accent.cta}`}
                 >
                   {banner.ctaLabel}
                 </Link>
@@ -249,11 +269,13 @@ export function BannerCarousel() {
               <FeedbackButton
                 vote="up"
                 active={feedback[banner.id] === 'up'}
+                light={accent.light}
                 onClick={() => handleFeedback(banner.id, 'up')}
               />
               <FeedbackButton
                 vote="down"
                 active={feedback[banner.id] === 'down'}
+                light={accent.light}
                 onClick={() => handleFeedback(banner.id, 'down')}
               />
             </div>
