@@ -18,25 +18,14 @@ import { useCallback } from 'react';
 import { useShareMarket } from '../hooks/useShareMarket';
 import type { PredictionMarket } from '../types';
 
-const MODAL_COUNT_KEY = 'pado_pred_order_modal_count';
 const MODAL_DISMISSED_KEY = 'pado_pred_order_modal_dismissed';
-const MODAL_AUTO_SHOW_LIMIT = 10;
 
 export function shouldShowOrderModal(): boolean {
   try {
-    if (localStorage.getItem(MODAL_DISMISSED_KEY) === '1') return false;
-    const count = parseInt(localStorage.getItem(MODAL_COUNT_KEY) ?? '0', 10);
-    return count < MODAL_AUTO_SHOW_LIMIT;
+    return localStorage.getItem(MODAL_DISMISSED_KEY) !== '1';
   } catch {
     return false;
   }
-}
-
-export function incrementOrderModalCount(): void {
-  try {
-    const count = parseInt(localStorage.getItem(MODAL_COUNT_KEY) ?? '0', 10);
-    localStorage.setItem(MODAL_COUNT_KEY, String(count + 1));
-  } catch {}
 }
 
 export function dismissOrderModal(): void {
