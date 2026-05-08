@@ -1,18 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync, renameSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import type { StoredMessage, ChatServerConfig, NicknameRateLimit } from './types.js';
-
-// Nickname validation
-const NICKNAME_REGEX = /^[a-zA-Z0-9_-]{2,16}$/;
-const RESERVED_NICKNAMES = new Set([
-  'admin', 'system', 'bot', 'pado', 'nasun', 'mod', 'moderator',
-]);
-
-// Nickname rate limit constants
-const GRACE_WINDOW_MS = 60 * 60 * 1000;           // 1 hour
-const LOCK_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
-const MAX_CHANGES_IN_WINDOW = 10;
+import type { StoredMessage, ChatServerConfig } from './types.js';
 
 // Profile cache constants
 // 5 min TTL is the fallback for cases where the nasun-website Lambda's
@@ -307,174 +296,6 @@ export function getMessageRoomId(messageId: number): number | null {
     .prepare('SELECT room_id FROM messages WHERE id = ?')
     .get(messageId) as { room_id: number } | undefined;
   return row?.room_id ?? null;
-}
-
-// ===== Nickname API =====
-
-export function validateNickname(nickname: string): { ok: boolean; error?: string } {
-  if (!NICKNAME_REGEX.test(nickname)) {
-    return { ok: false, error: 'invalid_format' };
-  }
-  if (RESERVED_NICKNAMES.has(nickname.toLowerCase())) {
-    return { ok: false, error: 'reserved' };
-  }
-  return { ok: true };
-}
-
-export function getNicknameRateLimit(address: string): NicknameRateLimit {
-  const row = getDb()
-    .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
-    .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
-
-  if (!row || !row.nickname_window_start) {
-    return { canChange: true, changesRemaining: MAX_CHANGES_IN_WINDOW, lockedUntil: null };
-  }
-
-  const now = Date.now();
-  const windowStart = row.nickname_window_start;
-  const changeCount = row.nickname_change_count;
-
-  if (now - windowStart < GRACE_WINDOW_MS) {
-    const remaining = MAX_CHANGES_IN_WINDOW - changeCount;
-    if (remaining <= 0) {
-      const lockedUntil = windowStart + GRACE_WINDOW_MS + LOCK_DURATION_MS;
-      return { canChange: false, changesRemaining: 0, lockedUntil };
-    }
-    return { canChange: true, changesRemaining: remaining, lockedUntil: null };
-  }
-
-  const lockEnd = windowStart + GRACE_WINDOW_MS + LOCK_DURATION_MS;
-  if (now < lockEnd) {
-    return { canChange: false, changesRemaining: 0, lockedUntil: lockEnd };
-  }
-
-  return { canChange: true, changesRemaining: MAX_CHANGES_IN_WINDOW, lockedUntil: null };
-}
-
-export function getNickname(address: string): string | null {
-  const row = getDb()
-    .prepare('SELECT nickname FROM users WHERE address = ?')
-    .get(address) as { nickname: string | null } | undefined;
-  return row?.nickname ?? null;
-}
-
-export function isNicknameAvailable(nickname: string): boolean {
-  const row = getDb()
-    .prepare('SELECT 1 FROM users WHERE nickname = ? COLLATE NOCASE')
-    .get(nickname);
-  return !row;
-}
-
-export function setNickname(
-  address: string,
-  nickname: string
-): { ok: boolean; error?: string; rateLimit?: NicknameRateLimit } {
-  const validation = validateNickname(nickname);
-  if (!validation.ok) return validation;
-
-  const d = getDb();
-
-  const txn = d.transaction(() => {
-    // Check rate limit (skip for first-time set)
-    const existingNickname = getNickname(address);
-    if (existingNickname !== null) {
-      const rateLimit = getNicknameRateLimit(address);
-      if (!rateLimit.canChange) {
-        return { ok: false as const, error: 'rate_limited', rateLimit };
-      }
-    }
-
-    const now = Date.now();
-
-    const row = d
-      .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
-      .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
-
-    let windowStart = now;
-    let changeCount = 1;
-
-    if (row && row.nickname_window_start) {
-      const elapsed = now - row.nickname_window_start;
-      const lockEnd = row.nickname_window_start + GRACE_WINDOW_MS + LOCK_DURATION_MS;
-
-      if (elapsed < GRACE_WINDOW_MS) {
-        windowStart = row.nickname_window_start;
-        changeCount = row.nickname_change_count + 1;
-      } else if (now >= lockEnd) {
-        windowStart = now;
-        changeCount = 1;
-      }
-    }
-
-    // Upsert: user row may already exist from upsertUser()
-    d.prepare(
-      `UPDATE users SET nickname = ?, nickname_window_start = ?, nickname_change_count = ?
-       WHERE address = ?`
-    ).run(nickname, windowStart, changeCount, address);
-
-    const rateLimit = getNicknameRateLimit(address);
-    return { ok: true as const, rateLimit };
-  });
-
-  try {
-    return txn();
-  } catch (err: unknown) {
-    if (err instanceof Error && err.message.includes('UNIQUE')) {
-      return { ok: false, error: 'already_taken' };
-    }
-    throw err;
-  }
-}
-
-export function clearNickname(address: string): { ok: boolean; error?: string; rateLimit?: NicknameRateLimit } {
-  const d = getDb();
-  return d.transaction(() => {
-    const existing = getNickname(address);
-    if (existing === null) return { ok: false as const, error: 'no_nickname' };
-
-    // Clearing (reset) is always allowed regardless of rate limit.
-    // Rate limit only applies to setting/changing nicknames.
-
-    const now = Date.now();
-    const row = d
-      .prepare('SELECT nickname_window_start, nickname_change_count FROM users WHERE address = ?')
-      .get(address) as { nickname_window_start: number | null; nickname_change_count: number } | undefined;
-
-    let windowStart = now;
-    let changeCount = 1;
-    if (row && row.nickname_window_start) {
-      const elapsed = now - row.nickname_window_start;
-      const lockEnd = row.nickname_window_start + GRACE_WINDOW_MS + LOCK_DURATION_MS;
-      if (elapsed < GRACE_WINDOW_MS) {
-        windowStart = row.nickname_window_start;
-        changeCount = row.nickname_change_count + 1;
-      } else if (now >= lockEnd) {
-        windowStart = now;
-        changeCount = 1;
-      }
-    }
-
-    d.prepare(
-      'UPDATE users SET nickname = NULL, nickname_window_start = ?, nickname_change_count = ? WHERE address = ?'
-    ).run(windowStart, changeCount, address);
-
-    return { ok: true as const, rateLimit: getNicknameRateLimit(address) };
-  })();
-}
-
-export function getNicknamesBatch(addresses: string[]): Map<string, string> {
-  if (addresses.length === 0) return new Map();
-
-  const placeholders = addresses.map(() => '?').join(',');
-  const rows = getDb()
-    .prepare(`SELECT address, nickname FROM users WHERE address IN (${placeholders}) AND nickname IS NOT NULL`)
-    .all(...addresses) as Array<{ address: string; nickname: string }>;
-
-  const result = new Map<string, string>();
-  for (const row of rows) {
-    result.set(row.address, row.nickname);
-  }
-  return result;
 }
 
 // ===== Follows API =====
@@ -812,16 +633,8 @@ export async function ensureProfilesCached(addresses: string[]): Promise<void> {
   }
 }
 
-// Unified display name: nasun_profiles (priority 1) > nickname (priority 2) > users.display_name (priority 3)
-// Profile customDisplayName (via My Account) takes precedence over chat nickname.
 export function getDisplayName(address: string): string | null {
-  const nasunName = getNasunDisplayName(address);
-  if (nasunName) return nasunName;
-  const row = getDb()
-    .prepare('SELECT nickname, display_name FROM users WHERE address = ?')
-    .get(address) as { nickname: string | null; display_name: string } | undefined;
-  if (row?.nickname) return row.nickname;
-  return row?.display_name ?? null;
+  return getNasunDisplayName(address);
 }
 
 export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
@@ -830,12 +643,10 @@ export function getDisplayNamesBatch(addresses: string[]): Map<string, string> {
 
   const rows = d
     .prepare(
-      `SELECT addr,
-              COALESCE(np.resolved_display_name, u.nickname, u.display_name) as display_name
+      `SELECT addr, np.resolved_display_name as display_name
        FROM (SELECT value as addr FROM json_each(?)) AS input
-       LEFT JOIN users u ON u.address = input.addr
        LEFT JOIN nasun_profiles np ON np.address = input.addr
-       WHERE np.resolved_display_name IS NOT NULL OR u.nickname IS NOT NULL OR u.display_name IS NOT NULL`
+       WHERE np.resolved_display_name IS NOT NULL`
     )
     .all(JSON.stringify(addresses)) as Array<{ addr: string; display_name: string }>;
 

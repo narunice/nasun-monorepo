@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getChatService } from '../../../lib/chat-service';
-import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn, NicknameRateLimit } from '../../../lib/chat-service';
+import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
 import { useUserStore } from '../../../store/userStore';
 import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
@@ -37,8 +37,6 @@ export function useChat() {
   const activeRoomState = useChatStore((s) => s.roomStates.get(s.activeRoomId));
   const connectedRef = useRef(false);
 
-  const [nickname, setNicknameState] = useState<string | null>(null);
-  const [nicknameRateLimit, setNicknameRateLimit] = useState<NicknameRateLimit | null>(null);
   // If Turnstile is configured, wait for token before connecting
   const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
   // Incremented to force Turnstile widget remount when a new token is needed
@@ -139,11 +137,6 @@ export function useChat() {
       useChatStore.getState().updateReaction(data.roomId, data.messageId, data.reactions, data.myReaction);
     };
 
-    const onNickname = (data: { ok: boolean; nickname?: string; rateLimit?: NicknameRateLimit }) => {
-      if (data.ok) setNicknameState(data.nickname ?? null);
-      if (data.rateLimit) setNicknameRateLimit(data.rateLimit);
-    };
-
     const onError = (data: { code: string; message: string }) => {
       const authCodes = new Set(['AUTH_ERROR', 'SIGN_ERROR', 'NO_SIGNER']);
       if (authCodes.has(data.code)) {
@@ -163,18 +156,11 @@ export function useChat() {
     service.on('online_count', onCount);
     service.on('rooms_list', onRoomsList);
     service.on('reaction_update', onReactionUpdate);
-    service.on('nickname', onNickname);
     service.on('error', onError);
     service.on('captcha_required', onCaptchaRequired);
 
     service.connect(WS_URL, signFn);
     connectedRef.current = true;
-
-    // Initialize from cached values (in case of HMR / re-render)
-    const cachedNickname = service.getNickname();
-    if (cachedNickname) setNicknameState(cachedNickname);
-    const cachedRateLimit = service.getRateLimit();
-    if (cachedRateLimit) setNicknameRateLimit(cachedRateLimit);
 
     return () => {
       service.off('message', onMessage);
@@ -183,7 +169,6 @@ export function useChat() {
       service.off('online_count', onCount);
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
-      service.off('nickname', onNickname);
       service.off('error', onError);
       service.off('captcha_required', onCaptchaRequired);
     };
@@ -264,14 +249,6 @@ export function useChat() {
     useChatStore.getState().setActiveRoomId(roomId);
   }, []);
 
-  // The chat-server already prefers customDisplayName over the legacy
-  // chat-only nickname (storedToPayload). When customDisplayName is set, the
-  // user's chat sender name will be that value regardless of the legacy
-  // nickname. Suppress the modal in that case so the user is not prompted to
-  // pick a redundant chat-only handle.
-  const needsNickname =
-    status === 'connected' && nickname === null && !user?.customDisplayName;
-
   const setTurnstileToken = useCallback((token: string) => {
     getChatService().setTurnstileToken(token);
     turnstileRetryRef.current = 0;
@@ -335,9 +312,6 @@ export function useChat() {
     switchRoom,
     toggleReaction,
     canChat: !!user?.walletAddress,
-    nickname,
-    needsNickname,
-    nicknameRateLimit,
     setTurnstileToken,
     onTurnstileError,
     onTurnstileExpire,
