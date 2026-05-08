@@ -60,5 +60,12 @@ export function humanizeMinesError(raw: string): string {
       if (raw.includes(`, ${code})`)) return MINES_ERRORS[Number(code)]
     }
   }
+  if (
+    /is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(raw) ||
+    /Transaction is rejected as invalid by more than 1\/3 of validators/i.test(raw) ||
+    /ETIMEDOUT|ECONNRESET|fetch failed|socket hang up|NetworkError|Failed to fetch/i.test(raw)
+  ) {
+    return 'Devnet hiccup. Give it a moment and try again.'
+  }
   return raw
 }
