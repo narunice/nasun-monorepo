@@ -69,7 +69,7 @@ export function useBalanceManagerBalance(options?: {
     },
     refetchInterval: adaptiveInterval,
     enabled: enabled && !!balanceManagerId,
-    staleTime: 2000,
+    staleTime: 0,
   });
 
   return {

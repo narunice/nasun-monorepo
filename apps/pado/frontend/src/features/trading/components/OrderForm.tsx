@@ -202,24 +202,35 @@ export function OrderForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectivePrice]);
 
-  // Percentage amount buttons (buy side reserves fee from available balance)
+  // Percentage amount buttons (buy side reserves fee from available balance).
+  // Falls back to midPrice when the limit price field is empty so users can
+  // size the order before picking a price; the price input is auto-filled
+  // with the snapped midPrice in that case.
   const handlePercentAmount = useCallback((pct: number) => {
     setActiveField('amount');
     if (isBuy) {
-      if (effectivePrice <= 0) return;
+      let priceForCalc = effectivePrice;
+      if (priceForCalc <= 0 && !isMarket && !isTrailingStop && midPrice && midPrice > 0) {
+        const snapped = snapToTick(midPrice, currentPool);
+        if (snapped > 0) {
+          priceForCalc = snapped;
+          onPriceChange(snapped.toString());
+        }
+      }
+      if (priceForCalc <= 0) return;
       // Reserve fee: usable = balance / (1 + feeRate) so total + fee <= balance
       const usableQuote = availableQuote / (1 + feeRate);
-      const baseAmount = snapToLot((usableQuote * pct / 100) / effectivePrice, currentPool);
+      const baseAmount = snapToLot((usableQuote * pct / 100) / priceForCalc, currentPool);
       const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
       onAmountChange(newAmount);
-      if (baseAmount > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
+      if (baseAmount > 0) setTotalInput((baseAmount * priceForCalc).toFixed(2));
     } else {
       const baseAmount = snapToLot(availableBase * pct / 100, currentPool);
       const newAmount = baseAmount > 0 ? baseAmount.toFixed(4) : '';
       onAmountChange(newAmount);
       if (baseAmount > 0 && effectivePrice > 0) setTotalInput((baseAmount * effectivePrice).toFixed(2));
     }
-  }, [isBuy, effectivePrice, availableQuote, availableBase, onAmountChange, feeRate, currentPool]);
+  }, [isBuy, isMarket, isTrailingStop, midPrice, effectivePrice, availableQuote, availableBase, onAmountChange, onPriceChange, feeRate, currentPool]);
 
   // Keyboard shortcut: percentage amount (1-9 = 10%-90%, 0 = 100%)
   useEffect(() => {
