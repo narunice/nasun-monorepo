@@ -649,9 +649,40 @@ async function reconcileMarket(
   // Ensure inventory before quoting (mints up to K Position pairs).
   const positions = await ensureInventory(client, keypair, packageId, marketId, cfg.ladder);
 
-  // Compute YES midpoint -> EMA -> inventory skew.
-  const rawMid = computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
+  // Compute YES midpoint using 4-book complementary view to prevent skew when
+  // external YES bids are abnormally high (e.g. crossed market from user orders).
+  // Uses the same effective-bid/ask logic as calculateProbabilityFromOrderbook:
+  //   effectiveBid = max(yesBestBid, MAX - noExternalBestAsk)
+  //   effectiveAsk = min(yesBestAsk, MAX - noExternalBestBid)
+  const extYesBid = yesBidSide.orders.filter((o) => o.owner !== myAddress)
+    .reduce((best, o) => Math.max(best, Number(o.price)), 0);
+  const extYesAsk = yesAskSide.orders.filter((o) => o.owner !== myAddress)
+    .reduce<number>((best, o) => best === 0 ? Number(o.price) : Math.min(best, Number(o.price)), 0);
+  const extNoBid = noBidSide.orders.filter((o) => o.owner !== myAddress)
+    .reduce((best, o) => Math.max(best, Number(o.price)), 0);
+  const extNoAsk = noAskSide.orders.filter((o) => o.owner !== myAddress)
+    .reduce<number>((best, o) => best === 0 ? Number(o.price) : Math.min(best, Number(o.price)), 0);
+
+  const impliedYesBid = extNoAsk > 0 ? MAX_PRICE_BPS - extNoAsk : 0;
+  const impliedYesAsk = extNoBid > 0 ? MAX_PRICE_BPS - extNoBid : 0;
+  const effectiveBid = Math.max(extYesBid, impliedYesBid);
+  const effectiveAsk = impliedYesAsk > 0 && extYesAsk > 0
+    ? Math.min(extYesAsk, impliedYesAsk)
+    : impliedYesAsk > 0 ? impliedYesAsk
+    : extYesAsk;
+
+  const rawMid = effectiveBid > 0 && effectiveAsk > 0
+    ? Math.round((effectiveBid + effectiveAsk) / 2)
+    : computeMidpoint(yesBidSide.orders, yesAskSide.orders, myAddress);
+
   const state = getState(marketId);
+  // Reset EMA when mid shifts by more than 1500 bps (market regime change).
+  if (state.yesMidEma !== 0 && Math.abs(rawMid - state.yesMidEma) > 1500) {
+    console.log(
+      `[${timestamp()}] ${marketId}: mid regime shift ${state.yesMidEma}->${rawMid}, resetting EMA`,
+    );
+    state.yesMidEma = rawMid;
+  }
   const smoothedMid = applyEma(state.yesMidEma, rawMid, cfg.emaLambda);
   // Note: state.yesMidEma is set AFTER skew below so the inventory-driven bias
   // persists across ticks (otherwise mid reverts the moment LP refills depth).
