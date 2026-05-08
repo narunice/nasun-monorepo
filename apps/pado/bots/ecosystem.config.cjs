@@ -319,6 +319,40 @@ module.exports = {
     }]),
 
     // ==============================
+    // Prediction Arbitrage Bot
+    // Captures mint-arbitrage when (yes_bid + no_bid) > 10000 bps.
+    // Requires a funded NUSDC wallet (separate from prediction-lp to avoid coin conflicts).
+    // ==============================
+    {
+      name: 'prediction-arb',
+      script: './node_modules/.bin/tsx',
+      args: 'prediction-arb-bot.ts',
+      cwd: __dirname,
+      interpreter: 'none',
+      env: {
+        NODE_ENV: 'production',
+        // PREDICTION_ARB_PRIVATE_KEY loaded from .env
+        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        PREDICTION_PACKAGE_ID,
+        PREDICTION_ARB_INTERVAL_MS: '15000',
+        PREDICTION_ARB_MAX_NUSDC: '10',
+        PREDICTION_ARB_MIN_PROFIT_BPS: '100',
+        PREDICTION_ARB_MIN_GAS_NASUN: '50',
+        PREDICTION_ARB_MIN_NUSDC: '50',
+        PREDICTION_ARB_NUSDC_REFILL_ROUNDS: '50',
+      },
+      max_restarts: 10,
+      min_uptime: '30s',
+      restart_delay: 10000,
+      kill_timeout: 10000,
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      error_file: './logs/prediction-arb-error.log',
+      out_file: './logs/prediction-arb-out.log',
+      merge_logs: true,
+      max_memory_restart: '200M',
+    },
+
+    // ==============================
     // Lottery Keeper Bot (weekly cycle automation)
     // ==============================
     {
