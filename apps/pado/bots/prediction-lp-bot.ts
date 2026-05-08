@@ -299,25 +299,59 @@ async function fetchAllPositions(
   return { yes, no };
 }
 
-async function fetchLargestNUSDCCoin(
+// Cap on opportunistic NUSDC fragments merged per tx. Each maker placement
+// produces a tiny change coin (= largest ladder size); without inline merge,
+// the wallet fragments until no single coin is large enough for ladder/mint
+// totals and the bot silently stalls. We always merge enough fragments to
+// reach minRaw and pull additional small coins (up to this cap) to defrag
+// over time. Cap keeps PTB input-object count well under Sui limits.
+const NUSDC_DEFRAG_EXTRA_CAP = 100;
+
+/**
+ * Pick a primary NUSDC coin and a list of extra coin ids whose merged total
+ * is >= `minRaw`. Returns null only if the wallet's total NUSDC balance is
+ * insufficient. Callers must `tx.mergeCoins(primary, extras)` before
+ * splitting/spending the primary.
+ */
+async function fetchEnoughNUSDC(
   client: SuiClient,
   owner: string,
   minRaw: bigint,
-): Promise<{ id: string; balance: bigint } | null> {
+): Promise<{ primary: string; extras: string[]; mergedBalance: bigint } | null> {
   let cursor: string | null | undefined = null;
-  let best: { id: string; balance: bigint } | null = null;
+  const all: { id: string; balance: bigint }[] = [];
   while (true) {
     const page = await client.getCoins({ owner, coinType: NUSDC_TYPE, cursor: cursor ?? null });
-    for (const c of page.data) {
-      const bal = BigInt(c.balance);
-      if (bal >= minRaw && (!best || bal > best.balance)) {
-        best = { id: c.coinObjectId, balance: bal };
-      }
-    }
+    for (const c of page.data) all.push({ id: c.coinObjectId, balance: BigInt(c.balance) });
     if (!page.hasNextPage || !page.nextCursor) break;
     cursor = page.nextCursor;
   }
-  return best;
+  if (all.length === 0) return null;
+  // Largest first — primary is always the biggest coin so we never waste a
+  // big coin as a mergeable extra.
+  all.sort((a, b) => (b.balance > a.balance ? 1 : b.balance < a.balance ? -1 : 0));
+
+  const primary = all[0];
+  let merged = primary.balance;
+  const extras: string[] = [];
+  // Phase 1: take next-largest coins until threshold met.
+  let i = 1;
+  while (merged < minRaw && i < all.length && extras.length < NUSDC_DEFRAG_EXTRA_CAP) {
+    extras.push(all[i].id);
+    merged += all[i].balance;
+    i++;
+  }
+  if (merged < minRaw) return null;
+  // Phase 2: opportunistically pull smallest coins from the tail to defrag.
+  const remaining = NUSDC_DEFRAG_EXTRA_CAP - extras.length;
+  if (remaining > 0 && i < all.length) {
+    const tail = all.slice(i).slice(-remaining);
+    for (const c of tail) {
+      extras.push(c.id);
+      merged += c.balance;
+    }
+  }
+  return { primary: primary.id, extras, mergedBalance: merged };
 }
 
 // ========================================
@@ -360,17 +394,20 @@ async function ensureInventory(
   const toMint = targetSizes.slice(0, shortfall);
   const totalNusdc = toMint.reduce((s, v) => s + v, 0);
   const totalRaw = nusdcToRaw(totalNusdc);
-  const coin = await fetchLargestNUSDCCoin(client, owner, totalRaw);
-  if (!coin) {
+  const funds = await fetchEnoughNUSDC(client, owner, totalRaw);
+  if (!funds) {
     console.warn(
-      `[${timestamp()}] ${marketId}: inventory top-up skipped — no NUSDC coin >= ${totalNusdc} (fund LP wallet)`,
+      `[${timestamp()}] ${marketId}: inventory top-up skipped — wallet NUSDC < ${totalNusdc} (fund LP wallet)`,
     );
     return positions;
   }
 
   const tx = new Transaction();
+  if (funds.extras.length > 0) {
+    tx.mergeCoins(tx.object(funds.primary), funds.extras.map((id) => tx.object(id)));
+  }
   const splits = tx.splitCoins(
-    tx.object(coin.id),
+    tx.object(funds.primary),
     toMint.map((amt) => tx.pure.u64(nusdcToRaw(amt))),
   );
   for (let i = 0; i < toMint.length; i++) {
@@ -479,8 +516,12 @@ function buildBatchedBuyMakers(
   isYes: boolean,
   levels: LadderLevel[],
   sourceCoinId: string,
+  mergeCoinIds: string[] = [],
 ): Transaction {
   const tx = new Transaction();
+  if (mergeCoinIds.length > 0) {
+    tx.mergeCoins(tx.object(sourceCoinId), mergeCoinIds.map((id) => tx.object(id)));
+  }
   const splits = tx.splitCoins(
     tx.object(sourceCoinId),
     levels.map((l) => tx.pure.u64(nusdcToRaw(l.sizeNusdc))),
@@ -733,15 +774,15 @@ async function placeBidLadder(
   const owner = keypair.toSuiAddress();
   const totalNusdc = levels.reduce((s, l) => s + l.sizeNusdc, 0);
   const totalRaw = nusdcToRaw(totalNusdc);
-  const coin = await fetchLargestNUSDCCoin(client, owner, totalRaw);
-  if (!coin) {
+  const funds = await fetchEnoughNUSDC(client, owner, totalRaw);
+  if (!funds) {
     console.warn(
-      `[${timestamp()}] ${marketId}: no NUSDC coin >= ${totalNusdc} for ${isYes ? 'yes' : 'no'}-bid ladder`,
+      `[${timestamp()}] ${marketId}: wallet NUSDC < ${totalNusdc} for ${isYes ? 'yes' : 'no'}-bid ladder`,
     );
     return;
   }
   try {
-    const tx = buildBatchedBuyMakers(packageId, marketId, isYes, levels, coin.id);
+    const tx = buildBatchedBuyMakers(packageId, marketId, isYes, levels, funds.primary, funds.extras);
     const digest = await executeAndWait(
       client, keypair, tx,
       `place_buy_maker_batch(${isYes ? 'yes' : 'no'})`,
