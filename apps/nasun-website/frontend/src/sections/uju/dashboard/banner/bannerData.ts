@@ -13,6 +13,17 @@ export interface BannerItem {
 
 export const BANNER_ITEMS: BannerItem[] = [
   {
+    id: 'repost-bonus',
+    tag: 'Announcement',
+    title: 'Repost @nasun_io for +3 Points',
+    description:
+      'Repost any official @nasun_io post on X to earn +3 bonus points. Points are granted in bulk 3 days after each post based on the repost list.',
+    ctaLabel: 'Follow @nasun_io',
+    ctaUrl: 'https://x.com/nasun_io',
+    isExternal: true,
+    accent: 'scarlet',
+  },
+  {
     id: 'nsn-staking',
     tag: 'Network',
     title: 'NSN Staking is Live',
