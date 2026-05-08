@@ -55,7 +55,18 @@
       "Bash(ffmpeg -y -i /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/videos/Canyons-X-Post-web.mp4 -vframes 1 -ss 2 -vf scale=960:-1 -quality 60 /home/naru/my_apps/nasun-monorepo/apps/nasun-website/frontend/public/images/posters/Canyons-X-Post-web.webp)",
       "Edit(/.claude/skills/deploy/**)",
       "Read(//etc/**)",
-      "Read(//mnt/d/wsl-mirror/**)"
+      "Read(//mnt/d/wsl-mirror/**)",
+      "Bash(AWS_PROFILE=nasun-dev aws lambda get-function-configuration --function-name nasun-referral-handler --region ap-northeast-2 --query 'Environment.Variables.REFERRAL_ELIGIBILITY_API_KEY')",
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196 \"ls -d ~/my_apps/nasun-monorepo/apps/network-explorer/api-server 2>&1; find ~/my_apps -maxdepth 5 -name '.env' 2>/dev/null | head -5\")",
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196 \"ls ~ && ls /opt 2>/dev/null && pgrep -af 'api-server\\\\|node.*explorer' | head\")",
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196 \"ls ~/explorer-api/ 2>/dev/null | head && echo --- && find ~/explorer-api -maxdepth 3 -name '.env*' 2>/dev/null\")",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo diff .claude/settings.json)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo diff --stat apps/nasun-website/cdk apps/nasun-website/e2e apps/network-explorer/api-server/src/auth apps/network-explorer/api-server/src/config apps/network-explorer/api-server/src/routes apps/nasun-website/frontend/src/sections/myAccount apps/nasun-website/frontend/src/sections/uju/activity apps/nasun-website/frontend/src/services apps/pado)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo add apps/gostop/frontend/src/features/mines/mines-config.ts apps/gostop/frontend/src/features/numbermatch/useNumberMatch.ts apps/gostop/frontend/src/features/scratchcard/useScratchCard.ts)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo commit -m ' *)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo add apps/network-explorer/api-server/src/scripts/grant-may4-outage-comp.ts)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo add apps/nasun-website/cdk/lambda-src/referral/handler/src/index.ts apps/nasun-website/cdk/lambda-src/referral/handler/src/eligibility.ts apps/nasun-website/cdk/lambda-src/referral/handler/src/__tests__ apps/nasun-website/cdk/lib/referral-stack.ts apps/nasun-website/e2e/14-referral-antispam.e2e.test.ts apps/nasun-website/frontend/src/sections/myAccount/ReferralCard.tsx apps/nasun-website/frontend/src/sections/uju/activity/ActivityTab.tsx apps/nasun-website/frontend/src/sections/uju/activity/cards/UjuReferralCard.tsx apps/nasun-website/frontend/src/services/referralApi.ts apps/network-explorer/api-server/src/auth/internal-api-key.ts apps/network-explorer/api-server/src/auth/__tests__ apps/network-explorer/api-server/src/config/referral.ts apps/network-explorer/api-server/src/routes/points.ts)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo add apps/pado/frontend/src/features/portfolio/components/MyPredictionPositions.tsx apps/pado/frontend/src/features/portfolio/components/index.ts apps/pado/frontend/src/features/prediction/components/MarketCard.tsx apps/pado/frontend/src/pages/PortfolioPage.tsx apps/pado/frontend/src/pages/PredictPage.tsx)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
