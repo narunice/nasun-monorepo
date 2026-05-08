@@ -37,20 +37,6 @@ export interface ToggleReactionPayload {
   emojiCode: string;
 }
 
-export interface SetNicknamePayload {
-  type: 'set_nickname';
-  nickname: string;
-}
-
-export interface CheckNicknamePayload {
-  type: 'check_nickname';
-  nickname: string;
-}
-
-export interface ClearNicknamePayload {
-  type: 'clear_nickname';
-}
-
 export interface ToggleFollowPayload {
   type: 'toggle_follow';
   target: string;
@@ -66,9 +52,6 @@ export type ClientMessage =
   | LoadHistoryPayload
   | ListRoomsPayload
   | ToggleReactionPayload
-  | SetNicknamePayload
-  | CheckNicknamePayload
-  | ClearNicknamePayload
   | ToggleFollowPayload
   | GetFollowingPayload;
 
@@ -79,18 +62,10 @@ export interface AuthChallengeMessage {
   challenge: string;
 }
 
-export interface NicknameRateLimit {
-  canChange: boolean;
-  changesRemaining: number;
-  lockedUntil: number | null; // epoch ms
-}
-
 export interface AuthSuccessMessage {
   type: 'auth_success';
   address: string;
   displayName: string | null;
-  nickname: string | null;
-  rateLimit?: NicknameRateLimit;
   sessionToken?: string;
 }
 
@@ -163,20 +138,6 @@ export interface HeartbeatMessage {
   type: 'heartbeat';
 }
 
-export interface NicknameResultMessage {
-  type: 'nickname_result';
-  ok: boolean;
-  nickname?: string;
-  error?: string;
-  rateLimit?: NicknameRateLimit;
-}
-
-export interface NicknameCheckMessage {
-  type: 'nickname_check';
-  available: boolean;
-  nickname: string;
-}
-
 export interface FollowResultPayload {
   type: 'follow_result';
   target: string;
@@ -201,8 +162,6 @@ export type ServerMessage =
   | HeartbeatMessage
   | RoomsListPayload
   | ReactionUpdatePayload
-  | NicknameResultMessage
-  | NicknameCheckMessage
   | FollowResultPayload
   | FollowingListPayload;
 

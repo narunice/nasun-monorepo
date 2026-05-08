@@ -3,7 +3,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, validateNickname, setNickname, clearNickname, isNicknameAvailable, getNickname, getNicknameRateLimit, getNicknamesBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, getAddressesWithProfileName, invalidateNasunProfile, getNasunProfileCached } from './store.js';
+import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReaction, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
 import { DEFAULT_CONFIG as CONFIG, ROOMS, VALID_ROOM_IDS, VALID_REACTION_CODES } from './types.js';
@@ -316,9 +316,7 @@ function computeDisplaySuffixMap(
 }
 
 interface PayloadOptions {
-  nicknameMap?: Map<string, string>;
   displayNameMap?: Map<string, string>;
-  profileNameSet?: Set<string>;
   gpSet?: Set<string>;
   profileImageMap?: Map<string, string>;
   /**
@@ -350,9 +348,6 @@ function composeSenderAvatarUrl(address: string, twitterImage: string | null | u
 
 function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMessagePayload {
   const resolvedName = opts.displayNameMap?.get(msg.sender);
-  // Suppress chat nickname when profile name exists (profile name takes precedence)
-  const hasProfileName = opts.profileNameSet?.has(msg.sender) ?? false;
-  const nickname = hasProfileName ? null : (opts.nicknameMap?.get(msg.sender) ?? null);
   const senderAvatarUrl = composeSenderAvatarUrl(
     msg.sender,
     opts.profileImageMap?.get(msg.sender) ?? null,
@@ -362,8 +357,8 @@ function storedToPayload(msg: StoredMessage, opts: PayloadOptions = {}): ChatMes
     id: msg.id,
     roomId: msg.roomId,
     sender: msg.sender,
-    senderName: resolvedName ?? msg.senderName,
-    senderNickname: nickname,
+    senderName: resolvedName ?? shortenWalletForSuffix(msg.sender),
+    senderNickname: null,
     senderBadge: opts.gpSet?.has(msg.sender) ? 'GP' : null,
     senderProfileImageUrl: senderAvatarUrl,
     senderDisplaySuffix: opts.displaySuffixMap?.get(msg.sender) ?? null,
@@ -673,10 +668,8 @@ wss.on('connection', (ws, req) => {
           console.error('Failed to upsert user:', err);
         }
 
-        const nickname = getNickname(verifiedAddress);
-        const rateLimit = getNicknameRateLimit(verifiedAddress);
         const sessionToken = issueSessionToken(verifiedAddress);
-        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: client.displayName, nickname, rateLimit, sessionToken });
+        send(ws, { type: 'auth_success', address: verifiedAddress, displayName: client.displayName, sessionToken });
         send(ws, { type: 'rooms_list', rooms: ROOMS });
         broadcastOnlineCount();
 
@@ -709,17 +702,6 @@ wss.on('connection', (ws, req) => {
         case 'toggle_reaction':
           handleToggleReaction(client, data);
           break;
-        case 'set_nickname':
-          handleSetNickname(client, data);
-          break;
-        case 'check_nickname':
-          handleCheckNickname(client, data);
-          break;
-        case 'clear_nickname': {
-          const result = clearNickname(client.address);
-          send(client.ws, { type: 'nickname_result', ok: result.ok, nickname: undefined, error: result.error, rateLimit: result.rateLimit });
-          break;
-        }
         case 'toggle_follow':
           handleToggleFollow(client, data);
           break;
@@ -897,9 +879,7 @@ function handleSendMessage(
 
     client.lastMessageAt = now;
 
-    const nicknameMap = getNicknamesBatch([stored.sender]);
     const displayNameMap = getDisplayNamesBatch([stored.sender]);
-    const profileNameSet = getAddressesWithProfileName([stored.sender]);
     const gpSet = getGenesisPassBatch([stored.sender]);
     const profileImageMap = new Map<string, string>();
     if (client.profileImageUrl) profileImageMap.set(stored.sender, client.profileImageUrl);
@@ -907,14 +887,14 @@ function handleSendMessage(
     for (const c of authenticatedClients.values()) allAddresses.add(c.address);
     const liveDisplayNameMap = getDisplayNamesBatch([...allAddresses]);
     const displaySuffixMap = computeDisplaySuffixMap(allAddresses, liveDisplayNameMap);
-    const payload = storedToPayload(stored, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
+    const payload = storedToPayload(stored, { displayNameMap, gpSet, profileImageMap, displaySuffixMap });
     for (const [ws] of authenticatedClients) {
       send(ws, payload);
     }
 
     // Check for AI chatbot mention (non-blocking)
-    const senderNickname = nicknameMap.get(stored.sender) ?? null;
-    onUserMessage(content, senderNickname, client.address, roomId).catch((err) => {
+    const senderDisplayName = displayNameMap.get(stored.sender) ?? null;
+    onUserMessage(content, senderDisplayName, client.address, roomId).catch((err) => {
       console.warn('[Chatbot] Error:', (err as Error).message);
     });
   } catch (err) {
@@ -1014,9 +994,7 @@ function handleLoadHistory(
   const messageIds = messages.map((m) => m.id);
   const reactionMap = getReactionSummaries(messageIds, client.address);
   const senderAddresses = [...new Set(messages.map((m) => m.sender))];
-  const nicknameMap = getNicknamesBatch(senderAddresses);
   const displayNameMap = getDisplayNamesBatch(senderAddresses);
-  const profileNameSet = getAddressesWithProfileName(senderAddresses);
   const gpSet = getGenesisPassBatch(senderAddresses);
   const profileImageMap = getProfileImagesBatch(senderAddresses);
   // History batch: collisions computed across the visible message window.
@@ -1026,7 +1004,7 @@ function handleLoadHistory(
     type: 'history',
     roomId,
     messages: messages.map((m) => {
-      const payload = storedToPayload(m, { nicknameMap, displayNameMap, profileNameSet, gpSet, profileImageMap, displaySuffixMap });
+      const payload = storedToPayload(m, { displayNameMap, gpSet, profileImageMap, displaySuffixMap });
       const reactionData = reactionMap.get(m.id);
       if (reactionData) {
         payload.reactions = reactionData.reactions;
@@ -1036,54 +1014,6 @@ function handleLoadHistory(
     }),
     hasMore: messages.length === limit,
   });
-}
-
-// ===== Nickname Handler =====
-
-function handleSetNickname(
-  client: AuthenticatedClient,
-  msg: { type: 'set_nickname'; nickname: string }
-): void {
-  // Reject set_nickname when the user already has a customDisplayName.
-  // customDisplayName takes priority server-side (storedToPayload), so a
-  // legacy chat-only nickname is unreachable for them; we should not let
-  // them allocate / change it. Frontend keeps the modal suppressed for the
-  // same reason — this is a defense-in-depth check.
-  const hasProfileName = getAddressesWithProfileName([client.address]).has(client.address);
-  if (hasProfileName) {
-    send(client.ws, {
-      type: 'nickname_result',
-      ok: false,
-      error: 'USE_PROFILE_NAME: set Display Name in Profile instead',
-    });
-    return;
-  }
-  const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
-  const validation = validateNickname(nickname);
-  if (!validation.ok) {
-    send(client.ws, { type: 'nickname_result', ok: false, error: validation.error });
-    return;
-  }
-  const result = setNickname(client.address, nickname);
-  if (result.ok) {
-    send(client.ws, { type: 'nickname_result', ok: true, nickname, rateLimit: result.rateLimit });
-  } else {
-    send(client.ws, { type: 'nickname_result', ok: false, error: result.error, rateLimit: result.rateLimit });
-  }
-}
-
-function handleCheckNickname(
-  client: AuthenticatedClient,
-  msg: { type: 'check_nickname'; nickname: string }
-): void {
-  const nickname = typeof msg.nickname === 'string' ? msg.nickname.trim() : '';
-  const validation = validateNickname(nickname);
-  if (!validation.ok) {
-    send(client.ws, { type: 'nickname_check', available: false, nickname });
-    return;
-  }
-  const available = isNicknameAvailable(nickname);
-  send(client.ws, { type: 'nickname_check', available, nickname });
 }
 
 // ===== Follow Handler =====

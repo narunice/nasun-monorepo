@@ -5,7 +5,6 @@ import { useUserStore } from "../../../store/userStore";
 import type { RoomInfo } from "../../../lib/chat-service";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
-import { SetNicknameModal } from "./SetNicknameModal";
 import { Turnstile } from "@marsidev/react-turnstile";
 
 const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
@@ -37,14 +36,11 @@ export default function ChatWidget() {
     switchRoom,
     toggleReaction,
     canChat,
-    nickname,
-    nicknameRateLimit,
     setTurnstileToken,
     onTurnstileError,
     onTurnstileExpire,
     turnstileKey,
   } = useChat();
-  const [showNicknameModal, setShowNicknameModal] = useState(false);
   const visibleRooms = useMemo(
     () => rooms.filter((r) => VISIBLE_ROOM_IDS.has(r.id)),
     [rooms],
@@ -321,17 +317,6 @@ export default function ChatWidget() {
               )}
             </div>
             <div className="flex items-center gap-1">
-              {/* Nickname set/edit */}
-              <button
-                onClick={() => setShowNicknameModal(true)}
-                className="text-white/30 hover:text-white/60 transition-colors p-1"
-                title={nickname ? `Nickname: ${nickname} (click to change)` : 'Set a chat nickname'}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
-                  <path d="M11.5 1.5l3 3L5 14H2v-3z" />
-                  <path d="M9.5 3.5l3 3" />
-                </svg>
-              </button>
               {/* Mention sound toggle */}
               <button
                 onClick={toggleMentionSound}
@@ -456,17 +441,6 @@ export default function ChatWidget() {
           />
         </div>
       )}
-
-      {/* Nickname Modal */}
-      {showNicknameModal && canChat && currentUserId && (
-          <SetNicknameModal
-            addressSuffix={currentUserId.slice(-4)}
-            currentNickname={nickname ?? undefined}
-            rateLimit={nicknameRateLimit ?? undefined}
-            onSuccess={() => setShowNicknameModal(false)}
-            onClose={() => setShowNicknameModal(false)}
-          />
-        )}
 
       {/* Toggle Button */}
       <button
