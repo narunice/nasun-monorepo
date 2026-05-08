@@ -43,7 +43,7 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
   const { isFollowing, toggleFollow } = useFollowedTraders();
   const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
   const displayName =
-    profile?.customDisplayName || trader.nickname || shortenAddress(trader.address);
+    profile?.resolvedDisplayName || trader.nickname || shortenAddress(trader.address);
   const followed = isFollowing(trader.address);
 
   return (
@@ -98,7 +98,7 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
                 </a>
               )}
             </div>
-            {(profile?.customDisplayName || trader.nickname) && (
+            {(profile?.resolvedDisplayName || trader.nickname) && (
               <span className="text-sm text-theme-text-muted font-mono opacity-80">
                 {shortenAddress(trader.address)}
               </span>

@@ -40,7 +40,7 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
   const { isFollowing, toggleFollow } = useFollowedTraders();
   const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
   const displayName =
-    profile?.customDisplayName || trader.nickname || shortenAddress(trader.address);
+    profile?.resolvedDisplayName || trader.nickname || shortenAddress(trader.address);
   const followed = isFollowing(trader.address);
   const badges = useMemo(() => computeBadgesFromLeaderboard(trader), [trader]);
 
@@ -100,7 +100,7 @@ export function TraderRow({ trader, isCurrentUser }: TraderRowProps) {
               )}
               {badges.length > 0 && <BadgeDisplay badges={badges} compact />}
             </div>
-            {(profile?.customDisplayName || trader.nickname) && (
+            {(profile?.resolvedDisplayName || trader.nickname) && (
               <span className="text-xs text-theme-text-muted font-mono">
                 {shortenAddress(trader.address)}
               </span>

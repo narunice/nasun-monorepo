@@ -21,6 +21,12 @@ export interface EcosystemProfile {
   identityId?: string;
   walletAddress?: string;
 
+  /**
+   * Resolved display name from the server-side priority chain:
+   * customDisplayName > Twitter username > Google email prefix.
+   * Use this as the primary display name in UI components.
+   */
+  resolvedDisplayName?: string;
   /** User-set display name. Source of truth for ecosystem-wide identity. */
   customDisplayName?: string;
   /** Storage key under PUBLIC_AVATARS_BASE_URL. URL is composed at read-time. */
