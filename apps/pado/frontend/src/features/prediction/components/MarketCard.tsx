@@ -4,7 +4,7 @@
  */
 
 import { Link } from 'react-router-dom';
-import type { PredictionMarket, Orderbook } from '../types';
+import type { PredictionMarket, Orderbook, Position } from '../types';
 import { calculateProbabilityFromOrderbook } from '../types';
 import { NUSDC_DECIMALS } from '../constants';
 
@@ -12,9 +12,10 @@ interface MarketCardProps {
   market: PredictionMarket;
   yesOrderbook?: Orderbook | null;
   noOrderbook?: Orderbook | null;
+  myPositions?: Position[];
 }
 
-export function MarketCard({ market, yesOrderbook, noOrderbook }: MarketCardProps) {
+export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: MarketCardProps) {
   const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
     noOrderbook ?? null,
@@ -24,6 +25,7 @@ export function MarketCard({ market, yesOrderbook, noOrderbook }: MarketCardProp
   const volume = formatVolume(market.totalVolume);
 
   const statusBadge = getStatusBadge(market.status, market.outcome);
+  const myPositionBadge = getMyPositionBadge(market, myPositions);
   const cryptoSymbol = market.category === 'crypto'
     ? extractCryptoSymbol(market.question)
     : null;
@@ -116,6 +118,12 @@ export function MarketCard({ market, yesOrderbook, noOrderbook }: MarketCardProp
         <span>Volume: {volume}</span>
         <span>{timeRemaining}</span>
       </div>
+
+      {myPositionBadge && (
+        <div className="mt-3 pt-3 border-t border-theme-border/60">
+          {myPositionBadge}
+        </div>
+      )}
     </Link>
   );
 }
@@ -174,6 +182,67 @@ function formatVolume(volume: bigint): string {
   if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
   return `$${value.toFixed(0)}`;
+}
+
+function getMyPositionBadge(
+  market: PredictionMarket,
+  positions: Position[] | undefined,
+): React.ReactNode {
+  if (!positions || positions.length === 0) return null;
+
+  const divisor = Math.pow(10, NUSDC_DECIMALS);
+  let yesShares = 0n;
+  let noShares = 0n;
+  let costBasis = 0n;
+  for (const p of positions) {
+    if (p.isYes) yesShares += p.shares;
+    else noShares += p.shares;
+    costBasis += p.costBasis;
+  }
+  const yesNum = Number(yesShares) / divisor;
+  const noNum = Number(noShares) / divisor;
+  const costNum = Number(costBasis) / divisor;
+
+  const sideText = (() => {
+    const parts: string[] = [];
+    if (yesNum > 0) parts.push(`YES ${yesNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
+    if (noNum > 0) parts.push(`NO ${noNum.toLocaleString('en-US', { maximumFractionDigits: 2 })}`);
+    return parts.join(' / ');
+  })();
+
+  if (market.status === 'resolved') {
+    const winningShares = market.outcome ? yesNum : noNum;
+    const pnl = winningShares - costNum;
+    const isWin = winningShares > 0;
+    const color = isWin
+      ? 'text-green-700 dark:text-green-400'
+      : 'text-red-700 dark:text-red-400';
+    const label = isWin
+      ? `Won +${pnl.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC`
+      : `Lost ${(-costNum).toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC`;
+    return (
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-theme-text-muted">My position: {sideText}</span>
+        <span className={`font-semibold ${color}`}>{label}</span>
+      </div>
+    );
+  }
+
+  if (market.status === 'cancelled') {
+    return (
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-theme-text-muted">My position: {sideText}</span>
+        <span className="font-semibold text-yellow-700 dark:text-yellow-400">Refundable</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center justify-between text-xs">
+      <span className="text-theme-text-muted">My position</span>
+      <span className="font-semibold text-theme-text-primary">{sideText}</span>
+    </div>
+  );
 }
 
 function getStatusBadge(
