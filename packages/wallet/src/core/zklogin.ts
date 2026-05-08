@@ -43,8 +43,12 @@ const DEFAULT_PROVER_URL = 'https://rpc.devnet.nasun.io/zkprover/v1';
 /** Mysten Labs public prover (fallback when self-hosted prover is overloaded) */
 const FALLBACK_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
 
-/** Primary prover timeout (ms). Short enough to fail fast and try fallback. */
-const PROVER_TIMEOUT_MS = 30_000;
+/** Primary prover timeout (ms). Tuned for UX: stay under user patience threshold
+ * (~10-15s) so we fail over to the public prover before users abandon the flow.
+ * Self-hosted prover normal response is 2-8s; 12s leaves headroom while keeping
+ * the worst-case wait bounded.
+ */
+const PROVER_TIMEOUT_MS = 12_000;
 
 /** Fallback prover timeout (ms). More generous since it's the last resort. */
 const FALLBACK_PROVER_TIMEOUT_MS = 60_000;
