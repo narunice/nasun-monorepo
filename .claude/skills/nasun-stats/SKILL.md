@@ -1,7 +1,7 @@
 ---
 name: nasun-stats
 description: Nasun 전체 현황 통계를 단일 실행으로 추출합니다. DynamoDB 소셜 연결 스냅샷 + 날짜별 DAU/traders/gamers/verified/social-breakdown/mission 시계열 CSV를 생성합니다. Lambda 한도 우회, DB 직접 쿼리 방식. "nasun stats", "전체 통계", "현황 보고", "통합 통계" 등의 요청에 사용합니다.
-argument-hint: "[YYYY-MM-DD to YYYY-MM-DD]"
+argument-hint: "[YYYY-MM-DD to YYYY-MM-DD] [--include-banned]"
 ---
 
 # Nasun Stats
@@ -31,8 +31,9 @@ Daily mission 7종: `faucet`, `wallet-transfer`, `pado-dex`, `pado-scratchcard`,
 
 | 입력 | 동작 |
 |------|------|
-| (없음) | 전체 기간 (2026-03-05 ~ 오늘) |
+| (없음) | 전체 기간 (2026-03-05 ~ 오늘), ban 필터 적용 |
 | `YYYY-MM-DD to YYYY-MM-DD` | 해당 기간만 추출 |
+| `--include-banned` | ban된 계정 포함 (필터 비활성화) |
 
 ## 실행
 
@@ -40,6 +41,15 @@ Daily mission 7종: `faucet`, `wallet-transfer`, `pado-dex`, `pado-scratchcard`,
 set -euo pipefail
 
 ARGS="$ARGUMENTS"
+
+# --include-banned flag: skip ban filtering by creating empty banned_wallets table
+if echo "$ARGS" | grep -q '\-\-include-banned'; then
+  INCLUDE_BANNED=true
+  ARGS=$(echo "$ARGS" | sed 's/--include-banned//')
+else
+  INCLUDE_BANNED=false
+fi
+
 if echo "$ARGS" | grep -qE '[0-9]{4}-[0-9]{2}-[0-9]{2} to [0-9]{4}-[0-9]{2}-[0-9]{2}'; then
   DATE_FROM=$(echo "$ARGS" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | head -1)
   DATE_TO=$(echo "$ARGS" | grep -oE '[0-9]{4}-[0-9]{2}-[0-9]{2}' | tail -1)
@@ -50,14 +60,26 @@ fi
 
 TODAY=$(date +%Y-%m-%d)
 YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+
+# SQL snippet injected into both psql sessions
+if [[ "$INCLUDE_BANNED" == "true" ]]; then
+  BAN_LABEL="(ban filter: OFF)"
+  BAN_SQL="CREATE TEMP TABLE banned_wallets (wallet_address TEXT PRIMARY KEY);"
+else
+  BAN_LABEL="(ban filter: ON)"
+  BAN_SQL="CREATE TEMP TABLE banned_wallets AS SELECT wallet_address FROM banned_users WHERE unbanned_at IS NULL AND wallet_address IS NOT NULL;"
+fi
+echo "Mode: $BAN_LABEL"
+
 SSH_KEY=~/.ssh/.awskey/nasun-devnet-key.pem
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o ConnectTimeout=10"
 NODE3="ubuntu@54.180.61.196"
 
 mkdir -p stats
 
-SNAPSHOT_FILE="stats/nasun-stats-snapshot-$TODAY.txt"
-CSV_FILE="stats/nasun-stats-$TODAY.csv"
+BAN_SUFFIX=$([[ "$INCLUDE_BANNED" == "true" ]] && echo "-raw" || echo "")
+SNAPSHOT_FILE="stats/nasun-stats-snapshot-$TODAY${BAN_SUFFIX}.txt"
+CSV_FILE="stats/nasun-stats-$TODAY${BAN_SUFFIX}.csv"
 
 echo "=== Step 1: DynamoDB scan (24h cache check) ==="
 
@@ -220,6 +242,11 @@ COPY verified_wallets  (wallet_address) FROM '/tmp/nasun_wallets_any_$TS.txt';
 COPY x_wallets         (wallet_address) FROM '/tmp/nasun_wallets_x_$TS.txt';
 COPY google_wallets    (wallet_address) FROM '/tmp/nasun_wallets_google_$TS.txt';
 COPY telegram_wallets  (wallet_address) FROM '/tmp/nasun_wallets_telegram_$TS.txt';
+$BAN_SQL
+DELETE FROM verified_wallets WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
+DELETE FROM x_wallets        WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
+DELETE FROM google_wallets   WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
+DELETE FROM telegram_wallets WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
 WITH
 date_series AS (
   SELECT generate_series(
@@ -237,6 +264,7 @@ onchain AS (
     'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
   )
   AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
 ),
 first_seen AS (
   SELECT wallet_address, MIN(tx_timestamp::date) AS first_day
@@ -248,6 +276,7 @@ first_seen AS (
     'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
     'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
   )
+  AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY wallet_address
 ),
 daily_dau AS (
@@ -263,13 +292,15 @@ traders AS (
   FROM activity_points
   WHERE category = 'pado-dex'
   AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY 1
 ),
 gamers AS (
   SELECT tx_timestamp::date AS day, COUNT(DISTINCT wallet_address) AS unique_gamers
   FROM activity_points
-  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard')
+  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
   AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
+  AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY 1
 ),
 vtraders AS (
@@ -282,7 +313,7 @@ vtraders AS (
 vgamers AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS verified_unique_gamers
   FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
-  WHERE ap.category IN ('pado-lottery','pado-games','pado-scratchcard')
+  WHERE ap.category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
@@ -403,6 +434,8 @@ echo "=== Step 4: psql - new_verified_rate + top activities ==="
 TOP_AND_RATE=$(ssh $SSH_OPTS "$NODE3" "sudo -u postgres psql -d nasun_points -q -t -A -F'|'" << SQLEOF3
 CREATE TEMP TABLE verified_wallets (wallet_address TEXT PRIMARY KEY);
 COPY verified_wallets (wallet_address) FROM '/tmp/nasun_wallets_any_$TS.txt';
+$BAN_SQL
+DELETE FROM verified_wallets WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
 -- new_verified_rate for today
 SELECT 'RATE',
   COUNT(*) AS new_total,
@@ -416,6 +449,7 @@ FROM (
     'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
     'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
   )
+  AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY wallet_address
   HAVING MIN(tx_timestamp::date) = CURRENT_DATE
 ) new_today
@@ -434,7 +468,8 @@ GROUP BY ap.category ORDER BY unique_users DESC LIMIT 8;
 CREATE TEMP TABLE yday_cat AS
   SELECT DISTINCT category, wallet_address FROM activity_points
   WHERE tx_timestamp::date = '$YESTERDAY'::date
-    AND category NOT IN ('daily-mission','ecosystem-passive','ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin','ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport','ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop','ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback');
+    AND category NOT IN ('daily-mission','ecosystem-passive','ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin','ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport','ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop','ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback')
+    AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets);
 CREATE TEMP TABLE first_seen_cat AS
   SELECT category, wallet_address, MIN(tx_timestamp::date) AS first_day
   FROM activity_points
@@ -459,15 +494,15 @@ LEFT JOIN dbd_cat dbd ON dbd.category = y.category AND dbd.wallet_address = y.wa
 GROUP BY y.category ORDER BY total DESC;
 -- GAMES group (union of lottery/games/scratchcard, wallet-level dedup)
 WITH yg AS (
-  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN ('pado-lottery','pado-games','pado-scratchcard')
+  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
 ),
 fsg AS (
   SELECT wallet_address, MIN(tx_timestamp::date) AS first_day FROM activity_points
-  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard') GROUP BY 1
+  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash') GROUP BY 1
 ),
 dbdg AS (
   SELECT DISTINCT wallet_address FROM activity_points
-  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN ('pado-lottery','pado-games','pado-scratchcard')
+  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
 )
 SELECT 'GRPSTAT', 'GAMES',
   COUNT(*) AS total,
