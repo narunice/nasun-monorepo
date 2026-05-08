@@ -44,7 +44,7 @@ export const ActivityTab: FC = () => {
       <UjuBugReportsCard />
 
       {/* section: Referral program (eligibility-gated) */}
-      <UjuReferralCard />
+      {/* <UjuReferralCard /> */}
 
       {/* section: Governance overview */}
       <UjuGovernanceCard />

@@ -287,7 +287,7 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
             </p>
             <p className="text-sm">
               Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.
-            </p>{" "}
+            </p>
             <p className="text-sm">Subject to change in our discretion.</p>
           </div>
         </div>
