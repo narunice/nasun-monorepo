@@ -159,7 +159,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                 required
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50"
               />
-              <span className="text-[10px] text-white/20">{title.length}/100</span>
+              <span className="text-xs text-white/40">{title.length}/100</span>
             </div>
 
             {/* Category */}
@@ -187,7 +187,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                 rows={4}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50 resize-none"
               />
-              <span className="text-[10px] text-white/20">{description.length}/2000</span>
+              <span className="text-xs text-white/40">{description.length}/2000</span>
             </div>
 
             {/* Repro Steps */}
@@ -200,6 +200,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                 rows={3}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50 resize-none"
               />
+              <span className="text-xs text-white/40">{reproSteps.length}/2000</span>
             </div>
 
             {/* Screenshots */}

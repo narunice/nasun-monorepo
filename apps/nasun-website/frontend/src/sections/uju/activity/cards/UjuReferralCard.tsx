@@ -74,8 +74,9 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
             setNotEligible({
               hint: err.details?.hint as string | undefined,
               closestPath: err.details?.closestPath as string | undefined,
-              adminCuratedBonusTotal: err.details
-                ?.adminCuratedBonusTotal as number | undefined,
+              adminCuratedBonusTotal: err.details?.adminCuratedBonusTotal as
+                | number
+                | undefined,
             });
             return;
           }
@@ -119,7 +120,7 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
 
   const handleShareX = useCallback(() => {
     if (!referralLink) return;
-    const text = `Join Nasun and explore the future of decentralized finance!\n\n${referralLink}`;
+    const text = `Join me on Nasun — a new L1 blockchain with finance, gaming, AI, and more. Devnet is live.\n\n${referralLink}`;
     const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }, [referralLink]);
@@ -200,7 +201,8 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
           </ul>
           {typeof notEligible.adminCuratedBonusTotal === "number" && (
             <p className="text-sm text-uju-secondary pt-2 border-t border-uju-border/40">
-              Your admin-curated bonus points: {notEligible.adminCuratedBonusTotal}
+              Your admin-curated bonus points:{" "}
+              {notEligible.adminCuratedBonusTotal}
             </p>
           )}
           {notEligible.hint && (
@@ -281,12 +283,12 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
           <div className="text-uju-secondary pt-2 border-t border-uju-border/40 space-y-1">
             <p className="text-sm">
               Earn 10% of your referrals' on-chain activity. Referred users also
-              earn 10%. Both contribute to your ecosystem points (scaled at
-              50%).
+              earn 10%.
             </p>
             <p className="text-sm">
               Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.
-            </p>
+            </p>{" "}
+            <p className="text-sm">Subject to change in our discretion.</p>
           </div>
         </div>
       )}

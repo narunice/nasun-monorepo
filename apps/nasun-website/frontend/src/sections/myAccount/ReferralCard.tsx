@@ -72,8 +72,9 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
             setNotEligible({
               hint: err.details?.hint as string | undefined,
               closestPath: err.details?.closestPath as string | undefined,
-              adminCuratedBonusTotal: err.details
-                ?.adminCuratedBonusTotal as number | undefined,
+              adminCuratedBonusTotal: err.details?.adminCuratedBonusTotal as
+                | number
+                | undefined,
             });
             return;
           }
@@ -119,7 +120,7 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
 
   const handleShareX = useCallback(() => {
     if (!referralLink) return;
-    const text = `Join Nasun and explore the future of decentralized finance!\n\n${referralLink}`;
+    const text = `Join me on Nasun — a new L1 blockchain with finance, gaming, AI, and more. Devnet is live.\n\n${referralLink}`;
     const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, "_blank", "noopener,noreferrer");
   }, [referralLink]);
@@ -176,9 +177,7 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
         {title}
         <div className="flex flex-col items-center justify-center py-6 gap-2">
           <Spinner />
-          <p className="text-sm text-nasun-white/80">
-            Checking eligibility...
-          </p>
+          <p className="text-sm text-nasun-white/80">Checking eligibility...</p>
         </div>
       </OuterBox>
     );
@@ -207,7 +206,8 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
           </ul>
           {typeof notEligible.adminCuratedBonusTotal === "number" && (
             <p className="text-sm text-nasun-white/80 pt-2 border-t border-nasun-white/10">
-              Your admin-curated bonus points: {notEligible.adminCuratedBonusTotal}
+              Your admin-curated bonus points:{" "}
+              {notEligible.adminCuratedBonusTotal}
             </p>
           )}
           {notEligible.hint && (
@@ -310,13 +310,13 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
           {/* How it works */}
           <div className=" text-nasun-white/80 pt-2 border-t border-nasun-white/10 space-y-1">
             <p className="text-sm">
-              Earn 10% of your referrals' on-chain activity. Referred users
-              also earn 10%. Both contribute to your ecosystem points (scaled
-              at 50%).
+              Earn 10% of your referrals' on-chain activity. Referred users also
+              earn 10%.
             </p>
             <p className="text-sm">
               Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.
             </p>
+            <p className="text-sm">Subject to change in our discretion.</p>
           </div>
         </div>
       )}
