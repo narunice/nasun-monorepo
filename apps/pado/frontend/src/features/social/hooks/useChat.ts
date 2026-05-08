@@ -548,7 +548,7 @@ export function useChat(): UseChatResult {
     chatService.toggleReaction(messageId, emojiCode);
   }, []);
 
-  const needsNickname = status === 'connected' && nickname === null;
+  const needsNickname = false;
 
   const setTurnstileToken = useCallback((token: string) => {
     markTurnstileSuccess(token);

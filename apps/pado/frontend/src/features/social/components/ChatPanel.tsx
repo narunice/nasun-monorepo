@@ -3,7 +3,6 @@ import { useSignerAddress } from '@nasun/wallet';
 import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';
 import { ChatInput, type ChatInputHandle } from './ChatInput';
-import { SetNicknameModal } from './SetNicknameModal';
 import { ChatRoomTabs } from './ChatRoomTabs';
 import { useChatTextSize } from '../hooks/useChatTextSize';
 
@@ -26,45 +25,14 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   const address = useSignerAddress();
   const {
     messages, sendMessage, loadMore, isConnected, displayStatus, captchaRequired, onlineCount, hasMore,
-    nickname, needsNickname, nicknameRateLimit,
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
     unreadCounts,
   } = useChat();
 
-  // false = closed, 'first' = first-time set (with pending message), 'edit' = change existing
-  const [nicknameModalMode, setNicknameModalMode] = useState<false | 'first' | 'edit'>(false);
-  const pendingMessageRef = useRef<string | null>(null);
   const chatInputRef = useRef<ChatInputHandle>(null);
 
-  // Wrap sendMessage to prompt nickname modal on first attempt if needed
-  const handleSend = useCallback((content: string) => {
-    if (needsNickname) {
-      pendingMessageRef.current = content;
-      setNicknameModalMode('first');
-      return;
-    }
-    sendMessage(content);
-  }, [needsNickname, sendMessage]);
-
-  const handleNicknameSuccess = useCallback(() => {
-    const wasFirstTime = nicknameModalMode === 'first';
-    setNicknameModalMode(false);
-    // Send the pending message that triggered the modal (first-time only)
-    if (wasFirstTime) {
-      const pending = pendingMessageRef.current;
-      pendingMessageRef.current = null;
-      if (pending) {
-        setTimeout(() => sendMessage(pending), 100);
-      }
-    }
-  }, [sendMessage, nicknameModalMode]);
-
   const { textSize, increase, decrease, isMin, isMax } = useChatTextSize();
-
-  const canEditNickname = nicknameRateLimit?.canChange !== false;
-
-  const addressSuffix = address ? address.slice(-4) : '0000';
 
   return (
     <div className="flex flex-col h-full bg-theme-bg-secondary rounded-lg overflow-hidden border border-[color:var(--color-card-border)]">
@@ -87,21 +55,6 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
             }
           </div>
           <div className="flex items-center gap-2">
-            {isConnected && nickname && (
-              <button
-                onClick={() => canEditNickname && setNicknameModalMode('edit')}
-                className={`text-trading-xs text-theme-text-muted truncate max-w-[100px] flex items-center gap-0.5
-                  ${canEditNickname ? 'hover:text-theme-text-primary cursor-pointer' : 'cursor-default'}`}
-                title={canEditNickname ? `${nickname}#${addressSuffix} (click to change)` : `${nickname}#${addressSuffix}`}
-              >
-                {nickname}#{addressSuffix}
-                {canEditNickname && (
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0">
-                    <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
-                  </svg>
-                )}
-              </button>
-            )}
             {isConnected && (
               <span className="text-trading-xs text-theme-text-muted">
                 {onlineCount} online
@@ -187,24 +140,10 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
       {/* Input */}
       <ChatInput
         ref={chatInputRef}
-        onSend={handleSend}
+        onSend={sendMessage}
         disabled={!isConnected}
         disabledPlaceholder={!address ? 'Connect wallet to chat' : 'Connecting...'}
       />
-
-      {/* Nickname modal */}
-      {nicknameModalMode && (
-        <SetNicknameModal
-          addressSuffix={addressSuffix}
-          currentNickname={nicknameModalMode === 'edit' ? nickname ?? undefined : undefined}
-          rateLimit={nicknameRateLimit ?? undefined}
-          onSuccess={handleNicknameSuccess}
-          onClose={() => {
-            setNicknameModalMode(false);
-            pendingMessageRef.current = null;
-          }}
-        />
-      )}
       {/* Turnstile widget is mounted at the App root (ChatLayer) so the
           challenge completes in the background before the panel opens. */}
     </div>
