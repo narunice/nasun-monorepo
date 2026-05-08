@@ -95,8 +95,8 @@ function TraderRow({
   const isHighlighted = highlightedId === trader.address;
   const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
   const displayName =
-    profile?.customDisplayName || trader.nickname || abbreviateAddress(trader.address);
-  const hasName = !!(profile?.customDisplayName || trader.nickname);
+    profile?.resolvedDisplayName || trader.nickname || abbreviateAddress(trader.address);
+  const hasName = !!(profile?.resolvedDisplayName || trader.nickname);
   return (
     <tr
       data-address={trader.address}

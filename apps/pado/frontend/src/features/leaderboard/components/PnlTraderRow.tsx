@@ -40,7 +40,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
   const { isFollowing, toggleFollow } = useFollowedTraders();
   const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
   const displayName =
-    profile?.customDisplayName || trader.nickname || shortenAddress(trader.address);
+    profile?.resolvedDisplayName || trader.nickname || shortenAddress(trader.address);
   const pnlNum = parseFloat(trader.pnlUsd) || 0;
   const isPositive = pnlNum >= 0;
   const followed = isFollowing(trader.address);
@@ -97,7 +97,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
                 </a>
               )}
             </div>
-            {(profile?.customDisplayName || trader.nickname) && (
+            {(profile?.resolvedDisplayName || trader.nickname) && (
               <span className="text-xs text-theme-text-muted font-mono">
                 {shortenAddress(trader.address)}
               </span>

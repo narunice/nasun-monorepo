@@ -48,7 +48,7 @@ const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 
 export function TraderProfileHeader({ address, stats, classification, isLoading, followerCount: followerCountProp }: TraderProfileHeaderProps) {
   const { data: profile } = useProfile(address, { endpoint: PROFILE_API });
-  const nickname = profile?.customDisplayName || stats?.nickname;
+  const nickname = profile?.resolvedDisplayName || stats?.nickname;
   const explorerUrl = NETWORK_CONFIG.explorerUrl;
   const { isFollowing, toggleFollow, followCount: followingCount } = useFollowedTraders();
   const followed = isFollowing(address);
