@@ -319,13 +319,18 @@ async function scanLoop(myGen: number): Promise<void> {
     const todayStr = new Date().toISOString().slice(0, 10);
     if (todayStr !== lastDailyNftCheckDate) {
       try {
-        const nftCheckInserts = await runDailyNftChecks(
+        const nftCheckResult = await runDailyNftChecks(
           getActivationsCacheMap(),
           getIdentityToWalletMap(),
           registeredWallets,
         );
-        totalProcessed += nftCheckInserts;
-        lastDailyNftCheckDate = todayStr;
+        totalProcessed += nftCheckResult.totalInserts;
+        // Keep the daily gate open if today's staking-daily had RPC partial
+        // failures; the next scan cycle will retry the missed identities.
+        // ON CONFLICT DO NOTHING makes already-awarded users idempotent.
+        if (!nftCheckResult.stakingRetryNeeded) {
+          lastDailyNftCheckDate = todayStr;
+        }
       } catch (err) {
         console.error('[DailyNftCheck] Error (non-fatal):', (err as Error).message);
       }
