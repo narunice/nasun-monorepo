@@ -7,3 +7,4 @@ export { TransferHistory } from './TransferHistory';
 export { ActivityTabs } from './ActivityTabs';
 export { AllocationDonut } from './AllocationDonut';
 export { MarketPerformance } from './MarketPerformance';
+export { MyPredictionPositions } from './MyPredictionPositions';

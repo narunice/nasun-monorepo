@@ -13,6 +13,7 @@ import {
   TradeStats,
   MarketPerformance,
   ActivityTabs,
+  MyPredictionPositions,
 } from "../features/portfolio/components";
 import {
   MarginAccountCard,
@@ -20,12 +21,13 @@ import {
   WalletSection,
 } from "../features/core/unified-margin";
 
-type TabId = "overview" | "performance" | "activity" | "balance";
+type TabId = "overview" | "performance" | "activity" | "predictions" | "balance";
 
 const TABS: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "performance", label: "Performance" },
   { id: "activity", label: "Activity" },
+  { id: "predictions", label: "Predictions" },
   { id: "balance", label: "Pado Balance" },
 ];
 
@@ -94,6 +96,8 @@ export function PortfolioPage() {
       )}
 
       {activeTab === "activity" && <ActivityTabs />}
+
+      {activeTab === "predictions" && <MyPredictionPositions />}
 
       {activeTab === "balance" && <BalanceTab />}
     </div>
