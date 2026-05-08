@@ -19,6 +19,7 @@ export type SlideKind =
   | "earlybird"
   | "creator-post"
   | "creators-appreciation"
+  | "outage-comp-may4"
   | "generic";
 
 export interface SlideVariant {
@@ -39,6 +40,16 @@ export interface SlideVariant {
   // Icon glyph rendered at top-left next to the tag. SVG strings keep the
   // bundle small vs. importing from a library.
   iconKey: IconKey;
+  // Optional override for the top label above the headline. Default is
+  // "CONGRATULATIONS!" for celebratory slides; apology/recovery slides set
+  // their own (e.g. "MAKING IT RIGHT").
+  topLabel?: string;
+  // Tailwind gradient class fragment ("from-X via-Y to-Z") for the top label
+  // text. Default uses the celebratory pink gradient.
+  topLabelGradient?: string;
+  // When true, the subline uses line-clamp-2 instead of single-line truncate.
+  // Used for slides whose copy needs to explain context (e.g. compensation).
+  multilineSubline?: boolean;
 }
 
 export type IconKey =
@@ -65,6 +76,7 @@ const CATEGORY_TO_KIND: Record<string, SlideKind> = {
   "ecosystem-bonus-earlybird": "earlybird",
   "ecosystem-bonus-creator-posts": "creator-post",
   "ecosystem-bonus-creators-appreciation": "creators-appreciation",
+  "ecosystem-bonus-outage-may4": "outage-comp-may4",
   "referral-bonus": "referral",
 };
 
@@ -233,6 +245,20 @@ export const VARIANTS: Record<SlideKind, SlideVariant> = {
     buildSubline: () => "Season-end recognition",
     iconKey: "sparkle",
   },
+  "outage-comp-may4": {
+    kind: "outage-comp-may4",
+    glowGradient:
+      "bg-[radial-gradient(120%_80%_at_15%_20%,rgba(94,225,228,0.22),transparent_60%),radial-gradient(120%_80%_at_85%_85%,rgba(148,225,211,0.18),transparent_55%)]",
+    pointsGradient: "bg-gradient-to-br from-nasun-c3 via-pado-3 to-pado-2",
+    tagClass: "bg-pado-3/15 text-pado-3 border border-pado-3/30",
+    headline: "May 4 Outage Compensation",
+    buildSubline: () =>
+      "On May 4, a brief network issue prevented some of your daily missions from crediting. This bonus covers the missed credits and streak impact.",
+    iconKey: "shield",
+    topLabel: "MAKING IT RIGHT",
+    topLabelGradient: "from-nasun-c3 via-pado-3 to-pado-2",
+    multilineSubline: true,
+  },
   generic: {
     kind: "generic",
     glowGradient:
@@ -276,6 +302,8 @@ export function cumulativeLabelFor(kind: SlideKind): string {
     case "creator-post":
     case "creators-appreciation":
       return "Total Creator rewards";
+    case "outage-comp-may4":
+      return "Service compensation";
     default:
       return "Total bonuses";
   }
