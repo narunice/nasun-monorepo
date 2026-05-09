@@ -38,6 +38,8 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
   const [sellModalPosition, setSellModalPosition] = useState<string | null>(null);
   const [sellPriceNusdc, setSellPriceNusdc] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const POSITIONS_PAGE_SIZE = 5;
+  const [visibleCount, setVisibleCount] = useState(POSITIONS_PAGE_SIZE);
   const { isSyncing, startSync } = useTransactionSync(onSuccess);
 
   const yesProbability = calculateProbability(market.yesSupply, market.noSupply);
@@ -202,8 +204,10 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
           </div>
         )}
 
-        {/* Per-position rows so each Position NFT can be sold/claimed individually. */}
-        {positions.map((position) => (
+        {/* Per-position rows so each Position NFT can be sold/claimed individually.
+            Positions are pre-sorted newest-first by Sui object version in
+            usePredictionPositions, so a recent buy renders at the top. */}
+        {positions.slice(0, visibleCount).map((position) => (
           <PayoffCard
             key={position.id}
             position={position}
@@ -213,6 +217,16 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
             isLoading={isLoading}
           />
         ))}
+
+        {positions.length > visibleCount && (
+          <button
+            type="button"
+            onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
+            className="w-full min-h-[44px] py-2.5 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary rounded-lg text-sm font-medium border border-theme-border"
+          >
+            Load more ({positions.length - visibleCount} remaining)
+          </button>
+        )}
       </div>
 
       {isSyncing && (
