@@ -8,6 +8,7 @@
  */
 
 import { SuiClient } from '@mysten/sui/client';
+import { fromBase58 } from '@mysten/sui/utils';
 import { loadConfig, maskApiKey, type PresetName } from './config.js';
 import { checkBudget, createRequest, sha256Hex, categorizeError } from './baram-client.js';
 import { executeRequest, recordRequest } from './executor-client.js';
@@ -20,12 +21,28 @@ import {
   saveCheckpoint,
   clearCheckpoint,
 } from './presets/analysis.js';
+import {
+  TRADER_CONFIG,
+  buildTraderPrompt,
+  parseTradeDecision,
+  executeTrade,
+  fetchAgentBalances,
+  dailySpentQuoteRaw,
+  recentTrades,
+} from './presets/trader.js';
 import type { Preset } from './presets/types.js';
+
+const TRADER_PLACEHOLDER: Preset = {
+  name: 'Pado Trader Agent',
+  description: 'Autonomous NBTC/NUSDC trading on Pado DeepBook v3',
+  generateSteps: () => [{ prompt: '', category: 'ai_inference' }],
+};
 
 const PRESETS: Record<PresetName, Preset> = {
   research: researchPreset,
   content: contentPreset,
   analysis: analysisPreset,
+  trader: TRADER_PLACEHOLDER,
 };
 
 function log(msg: string): void {
@@ -62,8 +79,125 @@ async function runCycle(client: SuiClient, config: ReturnType<typeof loadConfig>
   // 2. Generate steps
   if (config.preset === 'analysis') {
     await runAnalysisCycle(client, config);
+  } else if (config.preset === 'trader') {
+    await runTraderCycle(client, config);
   } else {
     await runSingleStepCycle(client, config, preset);
+  }
+}
+
+// Holds the most recent successful trade digest (base58) so the NEXT cycle
+// can attach it to its AER (triggered_by + purpose). Persisted to disk so
+// the chain survives process restarts.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
+
+const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
+
+interface TraderState {
+  lastTradeDigest: string | null;
+}
+
+function loadTraderState(): TraderState {
+  try {
+    if (existsSync(TRADER_STATE_PATH)) {
+      const raw = readFileSync(TRADER_STATE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw) as Partial<TraderState>;
+      return { lastTradeDigest: typeof parsed.lastTradeDigest === 'string' ? parsed.lastTradeDigest : null };
+    }
+  } catch {
+    // Corrupt file — fall through to default
+  }
+  return { lastTradeDigest: null };
+}
+
+function saveTraderState(state: TraderState): void {
+  try {
+    writeFileSync(TRADER_STATE_PATH, JSON.stringify(state, null, 2));
+  } catch (err) {
+    console.warn('[trader] Failed to persist state:', err instanceof Error ? err.message : err);
+  }
+}
+
+let lastTradeDigest: string | null = loadTraderState().lastTradeDigest;
+
+function digestB58ToIdHex(digestB58: string): string | null {
+  try {
+    const bytes = fromBase58(digestB58);
+    if (bytes.length !== 32) return null;
+    return '0x' + Buffer.from(bytes).toString('hex');
+  } catch {
+    return null;
+  }
+}
+
+async function runTraderCycle(
+  client: SuiClient,
+  config: ReturnType<typeof loadConfig>,
+): Promise<void> {
+  const agentAddr = config.agentAddress;
+
+  // 1. Fetch balances
+  const balances = await fetchAgentBalances(client, agentAddr);
+  log(`Trader balances: ${(Number(balances.nbtcRaw)/1e8).toFixed(8)} NBTC, ${(Number(balances.nusdcRaw)/1e6).toFixed(6)} NUSDC`);
+
+  // 2. Build market prompt
+  const prompt = buildTraderPrompt({
+    agentAddr,
+    nbtcRaw: balances.nbtcRaw,
+    nusdcRaw: balances.nusdcRaw,
+    perTradeMaxQuoteRaw: TRADER_CONFIG.perTradeMaxQuoteRaw,
+    dailyMaxQuoteRaw: TRADER_CONFIG.dailyMaxQuoteRaw,
+    dailySpentRaw: dailySpentQuoteRaw(),
+    recent: recentTrades(),
+  });
+
+  // Build AER extras: link this cycle's AER to the prior cycle's trade.
+  // NOTE: triggeredBy is the prior swap tx digest (32-byte) encoded as an ID.
+  // Semantically it points to a TX, not an AER object — frontend should treat
+  // it as "explorer.nasun.io/devnet/tx/<id-without-0x-as-base58>".
+  let extras: import('./executor-client.js').AERExtras | undefined;
+  if (lastTradeDigest) {
+    const triggeredBy = digestB58ToIdHex(lastTradeDigest);
+    extras = {
+      purpose: `Trader cycle following trade ${lastTradeDigest}`,
+      ...(triggeredBy ? { triggeredBy } : {}),
+    };
+  }
+
+  // 3. Call Baram /execute (LLM + AER auto-issued, with prior-trade link)
+  const stepResult = await runLambdaStep(client, config, prompt, 'ai_inference', extras);
+  if (!stepResult.success || !stepResult.result) {
+    log('[trader] No LLM result; skipping trade.');
+    return;
+  }
+
+  // 4. Parse decision
+  let decision;
+  try {
+    decision = parseTradeDecision(stepResult.result);
+  } catch (err) {
+    log(`[trader] Decision parse failed: ${err instanceof Error ? err.message : String(err)}`);
+    return;
+  }
+  log(`[trader] Decision: ${decision.action} size=${decision.sizeNUSDC} reason="${decision.reason}"`);
+
+  if (decision.action === 'HOLD') {
+    log('[trader] HOLD — no trade this cycle.');
+    return;
+  }
+
+  // 5. Execute trade
+  try {
+    const trade = await executeTrade(client, config.keypair, decision, balances);
+    if (trade) {
+      log(`[trader] Trade executed: ${trade.description} digest=${trade.digest}`);
+      lastTradeDigest = trade.digest;
+      saveTraderState({ lastTradeDigest });
+    }
+  } catch (err) {
+    log(`[trader] Trade failed: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -87,6 +221,7 @@ async function runLambdaStep(
   config: ReturnType<typeof loadConfig>,
   prompt: string,
   category: string,
+  extras?: import('./executor-client.js').AERExtras,
 ): Promise<{ success: boolean; result?: string }> {
   // Create on-chain request
   let requestId: number;
@@ -111,7 +246,8 @@ async function runLambdaStep(
     config.apiKey,
     requestId,
     prompt,
-    config.model
+    config.model,
+    extras,
   );
 
   if (result.success) {

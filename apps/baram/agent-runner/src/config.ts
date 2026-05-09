@@ -8,7 +8,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 const MIN_INTERVAL_MINUTES = 5;
 const CLOCK_ID = '0x0000000000000000000000000000000000000000000000000000000000000006';
 
-export type PresetName = 'research' | 'content' | 'analysis';
+export type PresetName = 'research' | 'content' | 'analysis' | 'trader';
 export type RunMode = 'lambda' | 'record';
 
 interface PresetDefaults {
@@ -20,6 +20,7 @@ const PRESET_DEFAULTS: Record<PresetName, PresetDefaults> = {
   research: { intervalMinutes: 30, category: 'research' },
   content: { intervalMinutes: 1440, category: 'content' },
   analysis: { intervalMinutes: 1440, category: 'analysis' },
+  trader: { intervalMinutes: 30, category: 'ai_inference' },
 };
 
 function requireEnv(key: string): string {
@@ -37,7 +38,8 @@ function requireHttpsUrl(raw: string, name: string): string {
   } catch {
     throw new Error(`${name} is not a valid URL: ${raw}`);
   }
-  if (url.protocol !== 'https:') {
+  const isLocalhost = url.hostname === 'localhost' || url.hostname === '127.0.0.1';
+  if (url.protocol !== 'https:' && !(url.protocol === 'http:' && isLocalhost)) {
     throw new Error(`${name} must use HTTPS (got ${url.protocol})`);
   }
   return raw;
@@ -77,7 +79,7 @@ function parsePriceOrDefault(raw: string | undefined, defaultPrice: number): num
 export function loadConfig() {
   const preset = (process.env.PRESET ?? 'research') as PresetName;
   if (!(preset in PRESET_DEFAULTS)) {
-    throw new Error(`Invalid PRESET: ${preset}. Must be: research, content, analysis`);
+    throw new Error(`Invalid PRESET: ${preset}. Must be: research, content, analysis, trader`);
   }
 
   const defaults = PRESET_DEFAULTS[preset];

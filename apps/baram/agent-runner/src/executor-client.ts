@@ -18,12 +18,20 @@ const FETCH_TIMEOUT_MS = 60_000; // Lambda API Gateway max 29s + generous buffer
 /**
  * Call Lambda /execute endpoint to run AI inference + on-chain settlement
  */
+export interface AERExtras {
+  purpose?: string | null;
+  constraints?: string | null;
+  triggeredBy?: string | null;     // 0x + 64 hex (e.g. prior trade tx digest as ID)
+  triggeredAction?: string | null;
+}
+
 export async function executeRequest(
   lambdaUrl: string,
   apiKey: string,
   requestId: number,
   prompt: string,
-  model: string
+  model: string,
+  extras?: AERExtras,
 ): Promise<ExecuteResult> {
   let lastError: string | undefined;
 
@@ -45,6 +53,10 @@ export async function executeRequest(
             // (TLS provides transport security; TEE mode uses actual encryption)
             encryptedPrompt: Buffer.from(prompt).toString('base64'),
             model,
+            ...(extras?.purpose ? { purpose: extras.purpose } : {}),
+            ...(extras?.constraints ? { constraints: extras.constraints } : {}),
+            ...(extras?.triggeredBy ? { triggeredBy: extras.triggeredBy } : {}),
+            ...(extras?.triggeredAction ? { triggeredAction: extras.triggeredAction } : {}),
           }),
           signal: controller.signal,
         });
