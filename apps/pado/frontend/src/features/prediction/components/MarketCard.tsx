@@ -6,6 +6,7 @@
 import { Link } from 'react-router-dom';
 import type { PredictionMarket, Orderbook, Position } from '../types';
 import { calculateProbabilityFromOrderbook } from '../types';
+import { useLastTradePrice } from '../hooks/useLastTradePrice';
 import { NUSDC_DECIMALS } from '../constants';
 
 interface MarketCardProps {
@@ -16,9 +17,16 @@ interface MarketCardProps {
 }
 
 export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: MarketCardProps) {
+  // List page no longer pre-fetches orderbooks (lazy on detail page only).
+  // Fall back to lastTradePrice so cards show a real probability instead of
+  // 50/50 default. The fills query is shared across the page (one cache per
+  // market) so this does not multiply RPC calls beyond what the hero already
+  // does.
+  const lastTradePriceBps = useLastTradePrice(market.id);
   const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
     noOrderbook ?? null,
+    lastTradePriceBps,
   );
 
   const timeRemaining = getTimeRemaining(market.closeTime);

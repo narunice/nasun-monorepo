@@ -36,9 +36,16 @@ import {
   type PredictionMarket,
 } from '../features/prediction';
 import { calculateProbabilityFromOrderbook } from '../features/prediction/types';
+import { usePredictionEventBridge } from '../features/prediction/hooks/usePredictionEventBridge';
 import { useNow } from '@/hooks/useNow';
 import { Spinner } from '../components/common';
 export function PredictMarketPage() {
+  // Wire prediction_market events → react-query cache invalidations. Mounting
+  // here means the bridge is alive whenever the user is on a market detail
+  // page; if /predict gets a layout route in the future, move this up so it
+  // also covers the list page without needing two subscriptions.
+  usePredictionEventBridge();
+
   const { marketId } = useParams<{ marketId: string }>();
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
   const { yesOrderbook, noOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);

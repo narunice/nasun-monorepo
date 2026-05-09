@@ -8,11 +8,16 @@ import { Link } from 'react-router-dom';
 import { useMarkets, MarketCard, usePredictionAdmin } from '../features/prediction';
 import { usePredictionFilters } from '../features/prediction/hooks/usePredictionFilters';
 import { usePredictionPositions } from '../features/prediction/hooks/usePredictionPositions';
+import { usePredictionEventBridge } from '../features/prediction/hooks/usePredictionEventBridge';
 import { MarketFilterBar } from '../features/prediction/components/MarketFilterBar';
 import { SkeletonCard } from '../components/common';
 import { PredictHero } from '../features/prediction/components/hero/PredictHero';
 
 export function PredictPage() {
+  // Subscribe to prediction events while user is on the listing page so newly
+  // resolved/created markets refresh without polling the entire markets list.
+  usePredictionEventBridge();
+
   const { markets, isLoading, error } = useMarkets();
   const { isResolver } = usePredictionAdmin();
   const { positions: myPositions } = usePredictionPositions();

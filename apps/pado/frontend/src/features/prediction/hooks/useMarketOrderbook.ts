@@ -26,7 +26,10 @@ interface UseMarketOrderbookResult {
 const EMPTY: Orderbook = { bids: [], asks: [] };
 
 export function useMarketOrderbook(marketId: string | undefined): UseMarketOrderbookResult {
-  const adaptiveInterval = useAdaptiveInterval(15_000);
+  // Polling cadence relaxed: usePredictionEventBridge invalidates these keys on
+  // every OrderPlaced / OrderCancelled / OrderFilled, so a 30s safety net is
+  // enough. Prior 4-15s polling was a 7× RPC tax on every market viewer.
+  const adaptiveInterval = useAdaptiveInterval(30_000);
 
   const yesQuery = useQuery({
     queryKey: ['prediction', 'orderbook', marketId, 'yes'] as const,

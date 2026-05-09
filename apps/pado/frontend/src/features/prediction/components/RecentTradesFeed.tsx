@@ -6,8 +6,11 @@
  * direction so green = buy, red = sell.
  */
 
+import { useMemo } from 'react';
+
 import type { RecentFill } from '../types';
 import { useRecentFills } from '../hooks/useRecentFills';
+import { useMyMarketFills } from '../hooks/useMyMarketFills';
 import { useActiveAddress } from '../hooks/useActiveAddress';
 import { formatTimeAgo } from '@/lib/format';
 
@@ -87,8 +90,22 @@ function SkeletonRow() {
 
 export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
   const myAddress = useActiveAddress();
-  const { data: fills = [], isLoading } = useRecentFills(marketId, myAddress);
   const myAddressLc = myAddress?.toLowerCase();
+  const { data: marketFills = [], isLoading: marketLoading } = useRecentFills(marketId);
+  const { data: myFills = [], isLoading: myLoading } = useMyMarketFills(marketId, myAddress);
+
+  // Merge market-wide (dust-filtered, shared cache) with user-scoped fills
+  // (no dust filter, per-user cache). Dedup by orderId+timestamp; user fills
+  // win when both queries see the same event so the row is annotated as mine
+  // consistently. Sort by timestamp desc and slice to the visible window.
+  const fills = useMemo(() => {
+    const seen = new Map<string, RecentFill>();
+    for (const f of marketFills) seen.set(`${f.orderId}-${f.timestamp}`, f);
+    for (const f of myFills) seen.set(`${f.orderId}-${f.timestamp}`, f);
+    return Array.from(seen.values()).sort((a, b) => b.timestamp - a.timestamp);
+  }, [marketFills, myFills]);
+
+  const isLoading = marketLoading && (myLoading || !myAddress);
   const visible = fills.slice(0, VISIBLE_LIMIT);
 
   return (
