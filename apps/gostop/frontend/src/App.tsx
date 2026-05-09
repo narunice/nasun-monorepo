@@ -1,6 +1,8 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { Turnstile } from '@marsidev/react-turnstile'
 import { WalletConnect } from '@nasun/wallet-ui'
+import { useTurnstileWidget } from './lib/turnstile-gate'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
 import LotteryPage from './pages/LotteryPage'
@@ -66,6 +68,27 @@ function ScrollToTop() {
 
 import { useBalanceSync } from './hooks/useBalanceSync'
 
+/**
+ * Pre-warm the invisible Turnstile challenge at the App root so it completes
+ * in the background before the user clicks a mission button. Cloudflare auto-
+ * decides silent vs interactive based on IP reputation. The token is exchanged
+ * server-side (nasun-chat-server) for an HMAC-signed pass cached in
+ * localStorage, which useGameTransaction checks before each on-chain submit.
+ */
+function TurnstilePrewarm() {
+  const { siteKey, widgetKey, onSuccess } = useTurnstileWidget()
+  if (!siteKey) return null
+  return (
+    <Turnstile
+      key={widgetKey}
+      siteKey={siteKey}
+      options={{ appearance: 'execute', size: 'invisible' }}
+      onSuccess={onSuccess}
+      style={{ display: 'none' }}
+    />
+  )
+}
+
 export default function App() {
   useBalanceSync() // Start background balance sync
 
@@ -89,6 +112,7 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
+      <TurnstilePrewarm />
     </div>
   )
 }
