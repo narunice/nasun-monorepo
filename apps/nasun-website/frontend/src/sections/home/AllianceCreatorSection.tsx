@@ -71,7 +71,7 @@ export default function AllianceCreatorSection() {
         </div>
         <div className="absolute bottom-[14%]  inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.1s">
-            <ButtonV4 color="light" size="lg" asChild>
+            <ButtonV4 color="light" size="lg" asChild className="hover:bg-neutral-300">
               <Link to="/community/alliance-nft">Mint Free Alliance NFT</Link>
             </ButtonV4>
           </FadeInUp>
@@ -110,7 +110,7 @@ export default function AllianceCreatorSection() {
         </div>
         <div className="absolute bottom-[14%]  inset-x-0 z-10 flex justify-center">
           <FadeInUp delay="0.25s">
-            <ButtonV4 color="light" size="lg" onClick={handleCreatorPostsClick}>
+            <ButtonV4 color="light" size="lg" onClick={handleCreatorPostsClick} className="hover:bg-neutral-300">
               {isAuthenticated ? "Submit Posts" : "Sign Up / Login"}
             </ButtonV4>
           </FadeInUp>
