@@ -12,7 +12,13 @@ import { getSuiClient } from '../../../lib/sui-client';
 import { ORDER_FILLED_EVENT } from '../constants';
 import type { RecentFill } from '../types';
 
-const PAGE_LIMIT = 50;
+// Bumped from 50 → 250: prediction-arb sweeps + LP repositioning generate
+// many small dust fills. A 50-event window can push a real user trade out
+// before it's seen. 250 covers ~5-10 minutes of cross-market activity.
+const PAGE_LIMIT = 250;
+// Dust filter: skip fills below 0.5 NUSDC notional. These are
+// arb/maker-vs-maker leftovers that clutter the feed.
+const DUST_COST_THRESHOLD = 500_000n; // 0.5 NUSDC at 6 decimals
 
 async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
   const client = getSuiClient();
@@ -26,6 +32,8 @@ async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
   for (const event of page.data) {
     const j = event.parsedJson as Record<string, unknown> | null;
     if (!j || j.market_id !== marketId) continue;
+    const cost = BigInt(String(j.cost ?? 0));
+    if (cost < DUST_COST_THRESHOLD) continue;
     fills.push({
       marketId: String(j.market_id),
       orderId: Number(j.order_id ?? 0),
@@ -35,7 +43,7 @@ async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
       isBid: Boolean(j.is_bid ?? false),
       price: Number(j.price ?? 0),
       fillShares: BigInt(String(j.fill_shares ?? 0)),
-      cost: BigInt(String(j.cost ?? 0)),
+      cost,
       timestamp: Number(event.timestampMs ?? 0),
     });
   }
@@ -47,7 +55,9 @@ export function useRecentFills(marketId: string | undefined) {
     queryKey: ['prediction', 'recent-fills', marketId],
     queryFn: () => fetchRecentFills(marketId!),
     enabled: !!marketId,
-    staleTime: 10_000,
-    refetchInterval: 15_000,
+    // Tightened so a freshly invalidated query (after user trade) refetches
+    // immediately instead of returning the cached pre-trade snapshot.
+    staleTime: 2_000,
+    refetchInterval: 6_000,
   });
 }

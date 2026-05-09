@@ -93,7 +93,12 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       return positions;
     },
     enabled: isConnected && !!address,
-    staleTime: 10_000,
+    // 2s staleTime so a tx-success-driven invalidate triggers a fresh fetch
+    // instead of returning the cached pre-trade snapshot. Sui's owned-objects
+    // indexer typically catches up within 2-5s of tx confirmation; combined
+    // with the delayed retries fired from usePredictionTrade we land on the
+    // post-trade state quickly without spamming the RPC every render.
+    staleTime: 2_000,
     refetchInterval: adaptiveInterval,
   });
 
