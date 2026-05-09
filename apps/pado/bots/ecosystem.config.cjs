@@ -287,16 +287,28 @@ module.exports = {
         // PREDICTION_LP_PRIVATE_KEY + PREDICTION_LP_MARKETS loaded from .env
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
-        PREDICTION_LP_SPREAD_BPS: '200',
-        PREDICTION_LP_DEPTH_NUSDC: '100',
-        PREDICTION_LP_UPDATE_INTERVAL_MS: '20000',
-        // Inventory skew: ladder mid shifts with taker-driven imbalance so
-        // the YES/NO bar actually moves in response to volume.
+        // Tightened ladder for richer top-of-book and gentler small-trade impact.
+        // Top quote sits 100 bps from mid (was 200); 8 levels per side (was 5);
+        // gaps shrink to 30 bps with milder geometric growth so the middle
+        // levels are denser and outer levels stay reachable.
+        PREDICTION_LP_BASE_SPREAD_BPS: '100',
+        PREDICTION_LP_LADDER_LEVELS: '8',
+        PREDICTION_LP_LEVEL_GAP_BPS: '30',
+        PREDICTION_LP_GAP_GROWTH: '1.3',
+        // Depth: innermost 75 NUSDC (was 25) + softer pyramid so users hitting
+        // small sizes (≤100 NUSDC) sweep entirely within the inner two levels.
+        PREDICTION_LP_BASE_SIZE_NUSDC: '75',
+        PREDICTION_LP_SIZE_GROWTH: '1.4',
+        PREDICTION_LP_UPDATE_INTERVAL_MS: '10000',
+        // Inventory skew: ladder mid still shifts with taker-driven imbalance so
+        // the YES/NO bar moves on real volume — but the cap is 3× larger so a
+        // tiny imbalance no longer produces a visible mid jump. Max shift
+        // (alpha) stays at 5% for genuinely lopsided depth.
         PREDICTION_LP_INV_SKEW_ALPHA_BPS: '500',
-        PREDICTION_LP_INV_CAP_SHARES: '500',
-        // Suppress repost churn (and the resulting user-tx version conflicts)
-        // when ladder shift is below 1¢.
-        PREDICTION_LP_MIN_REPOST_BPS: '100',
+        PREDICTION_LP_INV_CAP_SHARES: '1500',
+        // Repost on ≥0.5% mid shift (was 1%) so quotes track volume more closely
+        // without spamming the network on sub-bps drift.
+        PREDICTION_LP_MIN_REPOST_BPS: '50',
       },
       max_restarts: 10,
       min_uptime: '30s',
