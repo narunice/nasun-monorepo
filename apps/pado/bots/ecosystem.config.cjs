@@ -301,17 +301,19 @@ module.exports = {
         // Inner three levels alone hold ~910 NUSDC, total per side ~6500 NUSDC.
         PREDICTION_LP_BASE_SIZE_NUSDC: '250',
         PREDICTION_LP_SIZE_GROWTH: '1.2',
-        // Faster refill after a sweep so the book is rarely thin for long.
-        PREDICTION_LP_UPDATE_INTERVAL_MS: '6000',
-        // Inventory skew: ladder mid still shifts with taker-driven imbalance so
-        // the YES/NO bar moves on real volume — but the cap is 3× larger so a
-        // tiny imbalance no longer produces a visible mid jump. Max shift
-        // (alpha) stays at 5% for genuinely lopsided depth.
+        // Aggressive refill: 4s cycle so a sweep is replenished quickly. Combined
+        // with the thicker inner depth (250 NUSDC) this keeps top of book live.
+        PREDICTION_LP_UPDATE_INTERVAL_MS: '4000',
+        // Inventory skew: with BASE_SIZE=250 a $200 trade is ~400 share imbalance
+        // (well under INV_CAP) so the bar barely moves; a $400 trade is ~800
+        // shares which saturates ~50% of the cap → ~250 bps shift = visible 2-3%
+        // move. INV_CAP=700 is the sweet spot that lets small trades stay quiet
+        // while genuinely flipping the book on mid-size volume.
         PREDICTION_LP_INV_SKEW_ALPHA_BPS: '500',
-        PREDICTION_LP_INV_CAP_SHARES: '1500',
-        // Repost on ≥0.5% mid shift (was 1%) so quotes track volume more closely
-        // without spamming the network on sub-bps drift.
-        PREDICTION_LP_MIN_REPOST_BPS: '50',
+        PREDICTION_LP_INV_CAP_SHARES: '700',
+        // Repost on ≥0.25% mid shift so quotes track volume aggressively after
+        // a sweep instead of waiting for a larger natural drift.
+        PREDICTION_LP_MIN_REPOST_BPS: '25',
       },
       max_restarts: 10,
       min_uptime: '30s',
