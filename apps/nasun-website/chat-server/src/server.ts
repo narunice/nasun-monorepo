@@ -2,7 +2,7 @@ import './env.js'; // Must be first: loads .env before any module reads process.
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
-import { randomBytes, timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
 import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReactionsBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
@@ -131,6 +131,33 @@ async function verifyTurnstileToken(token: string, secretKey: string): Promise<b
     }
     return false;
   }
+}
+
+// ===== Gostop session pass (HMAC-signed) =====
+//
+// Issued after a successful Turnstile challenge. Stored client-side in
+// localStorage and presented in subsequent requests as proof-of-passage.
+// Format: base64url(JSON({ iat, exp, nonce })) + '.' + base64url(HMAC).
+// Stateless: server holds no per-pass state, just the signing secret.
+
+function b64urlEncode(buf: Buffer): string {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlDecode(s: string): Buffer {
+  const pad = (4 - (s.length % 4)) % 4;
+  return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat(pad), 'base64');
+}
+
+function signGostopPass(secret: string, ttlSec: number): { token: string; expiresAt: number } {
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + ttlSec;
+  const nonce = randomBytes(8).toString('hex');
+  const payload = JSON.stringify({ iat: now, exp, nonce });
+  const payloadB64 = b64urlEncode(Buffer.from(payload, 'utf8'));
+  const sig = createHmac('sha256', secret).update(payloadB64).digest();
+  const sigB64 = b64urlEncode(sig);
+  return { token: `${payloadB64}.${sigB64}`, expiresAt: exp };
 }
 
 function send(ws: WebSocket, msg: ServerMessage): void {
@@ -430,6 +457,81 @@ async function handleHttpRequest(
   // Crash API
   if (crashHttpHandler && url.pathname.startsWith('/api/crash/')) {
     if (crashHttpHandler(req, res, corsHeaders)) return;
+  }
+
+  // Gostop session pass — issued after a successful Turnstile challenge,
+  // presented by gostop frontend on subsequent mission claims so the captcha
+  // is only seen on the first action of a session. Handles its own OPTIONS
+  // preflight to advertise POST.
+  if (url.pathname === '/api/turnstile/gostop-pass') {
+    const passCors = {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, passCors);
+      res.end();
+      return;
+    }
+    if (req.method !== 'POST') {
+      res.writeHead(405, passCors);
+      res.end(JSON.stringify({ error: 'method_not_allowed' }));
+      return;
+    }
+    if (!CONFIG.gostopPassSecret || CONFIG.gostopPassSecret.length < 32) {
+      console.warn('[gostop-pass] GOSTOP_PASS_SECRET missing or too short — rejecting');
+      res.writeHead(503, passCors);
+      res.end(JSON.stringify({ error: 'pass_unavailable' }));
+      return;
+    }
+    if (!CONFIG.turnstileSecretKey) {
+      console.warn('[gostop-pass] TURNSTILE_SECRET_KEY not set — rejecting');
+      res.writeHead(503, passCors);
+      res.end(JSON.stringify({ error: 'turnstile_disabled' }));
+      return;
+    }
+    let body = '';
+    req.on('data', (chunk) => {
+      body += chunk;
+      if (body.length > 4096) req.destroy();
+    });
+    req.on('end', async () => {
+      try {
+        let data: { turnstileToken?: string };
+        try {
+          data = body ? (JSON.parse(body) as { turnstileToken?: string }) : {};
+        } catch {
+          res.writeHead(400, passCors);
+          res.end(JSON.stringify({ error: 'invalid_json' }));
+          return;
+        }
+        if (!data.turnstileToken || typeof data.turnstileToken !== 'string') {
+          res.writeHead(400, passCors);
+          res.end(JSON.stringify({ error: 'missing_token' }));
+          return;
+        }
+        const ok = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
+        if (!ok) {
+          // 400 (not 403) so CloudFront's Custom Error Response for 4xx/5xx
+          // doesn't intercept and replace with the SPA index.html. The error
+          // is communicated via the JSON body, which the frontend reads.
+          res.writeHead(400, passCors);
+          res.end(JSON.stringify({ error: 'turnstile_failed' }));
+          return;
+        }
+        const { token, expiresAt } = signGostopPass(CONFIG.gostopPassSecret, CONFIG.gostopPassTtlSec);
+        res.writeHead(200, passCors);
+        res.end(JSON.stringify({ pass: token, expiresAt }));
+      } catch (err) {
+        console.warn('[gostop-pass] handler error:', (err as Error).message);
+        if (!res.headersSent) {
+          res.writeHead(500, passCors);
+          res.end(JSON.stringify({ error: 'internal_error' }));
+        }
+      }
+    });
+    return;
   }
 
   if (req.method === 'OPTIONS') {
