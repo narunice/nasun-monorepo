@@ -343,11 +343,6 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.Founders,
         },
         {
-          name: "navigation.litepaper",
-          path: "/about/litepaper",
-          element: Pages.Litepaper,
-        },
-        {
           name: "navigation.news",
           path: "/about/news",
           element: Pages.News,
@@ -577,6 +572,20 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       title: "My Account (Archive) - NASUN",
       description: "Archived account dashboard",
       requiresAuth: true,
+    },
+  },
+
+  archiveLitepaper: {
+    path: "/archive/litepaper",
+    component: Pages.Litepaper,
+    navItem: {
+      name: "navigation.litepaper",
+      path: "/archive/litepaper",
+      hidden: true,
+    },
+    meta: {
+      title: "Litepaper (Archive) - NASUN",
+      description: "Archived Nasun litepaper",
     },
   },
 
