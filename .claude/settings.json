@@ -133,7 +133,15 @@
       "Bash(./scripts/deploy-nasun-chat-server-production.sh)",
       "Bash(./scripts/deploy-nasun-chat-server-production.sh --force)",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'pm2 logs nasun-chat-server --lines 20 --nostream 2>/dev/null | tail -20')",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'pm2 logs nasun-chat-server --lines 50 --nostream 2>/dev/null | grep -i \"banned\\\\|ban\\\\|Cache refreshed\\\\|addresses\" | tail -10')"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'pm2 logs nasun-chat-server --lines 50 --nostream 2>/dev/null | grep -i \"banned\\\\|ban\\\\|Cache refreshed\\\\|addresses\" | tail -10')",
+
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'cd /home/ec2-user/pado-bots && pm2 delete prediction-arb 2>/dev/null; set -a; source .env; set +a; pm2 start ecosystem.config.cjs --only prediction-arb && sleep 5 && pm2 jlist | python3 -c \"import sys,json *)",
+      "Bash(mkdir -p /home/naru/my_apps/nasun-monorepo/.claude/skills/repost-bonus)",
+      "Edit(/.claude/skills/repost-bonus/**)",
+      "Bash(pm2 show *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"find /home/ec2-user /var/www -name '.env' 2>/dev/null | grep -i 'explorer\\\\|api-server\\\\|points\\\\|scanner' | head -10; pm2 list 2>/dev/null | grep -E 'online|stopped' | head -20\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"find /home/ec2-user -name '.env' 2>/dev/null | head -20\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"find /home/ec2-user /opt -maxdepth 4 -name 'api-server' -type d 2>/dev/null; find /home/ec2-user -name 'ecosystem.config*' 2>/dev/null\")"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
@@ -141,7 +149,8 @@
       "/home/naru/my_apps/nasun-devnet/sui/crates/sui-faucet/src",
       "/home/naru/.claude/projects/-home-naru-my_apps-nasun-monorepo/memory",
       "/tmp",
-      "/home/naru/.claude/plans"
+      "/home/naru/.claude/plans",
+      "/home/naru/my_apps/nasun-monorepo/.claude/skills"
     ]
   },
   "hooks": {
