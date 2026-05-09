@@ -53,6 +53,7 @@ import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
 import { resolveIdentityIds, checkSocialConnectionsBatch, getSocialBadgesBatch, type SocialBadges } from './identity-resolver.js';
 import { getBannedSnapshotSync, refreshBannedCache } from './banned-loader.js';
+import { getAdminAddresses } from './admin-loader.js';
 
 // ===== Dependency injection interface =====
 
@@ -623,10 +624,12 @@ async function handleScoreLeaderboardAlltime(
   // trader_points (from pre-ban aggregation cycles). We drop them after
   // SQLite read so old data drains naturally.
   const bannedAddresses = getBannedSnapshotSync().addresses;
-  const overFetch = bannedAddresses.size > 0 ? Math.min(limit + bannedAddresses.size + 50, 2000) : limit;
+  const adminAddresses = getAdminAddresses();
+  const excluded = new Set([...bannedAddresses, ...adminAddresses]);
+  const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 2000) : limit;
   const rawRows = getScoreLeaderboard(overFetch, offset);
-  const filteredRows = bannedAddresses.size > 0
-    ? rawRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+  const filteredRows = excluded.size > 0
+    ? rawRows.filter((r) => !excluded.has(r.address.toLowerCase()))
     : rawRows;
   const rows = filteredRows.slice(0, limit);
   const filteredOut = rawRows.length - filteredRows.length;
@@ -722,9 +725,11 @@ async function handleInternalWeeklyScores(
   // Filter out banned wallets — settle-pado is the canonical disbursement
   // path, so this is the strictest possible bypass of pre-ban snapshot rows.
   const bannedAddresses = getBannedSnapshotSync().addresses;
+  const adminAddresses = getAdminAddresses();
+  const excluded = new Set([...bannedAddresses, ...adminAddresses]);
   const allRows = getWeeklyScoreLeaderboard(weekId, 2000, 0);
-  const rows = bannedAddresses.size > 0
-    ? allRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+  const rows = excluded.size > 0
+    ? allRows.filter((r) => !excluded.has(r.address.toLowerCase()))
     : allRows;
   if (rows.length === 0) {
     res.writeHead(200, corsHeaders);
@@ -787,10 +792,12 @@ function handleScoreLeaderboardWeekly(
   // Over-fetch + filter pattern: pre-ban snapshots in trader_points_weekly
   // may still contain banned addresses. Drop after SQLite read.
   const bannedAddresses = getBannedSnapshotSync().addresses;
-  const overFetch = bannedAddresses.size > 0 ? Math.min(limit + bannedAddresses.size + 50, 2000) : limit;
+  const adminAddresses = getAdminAddresses();
+  const excluded = new Set([...bannedAddresses, ...adminAddresses]);
+  const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 2000) : limit;
   const rawRows = getWeeklyScoreLeaderboard(weekId, overFetch, offset);
-  const filteredRows = bannedAddresses.size > 0
-    ? rawRows.filter((r) => !bannedAddresses.has(r.address.toLowerCase()))
+  const filteredRows = excluded.size > 0
+    ? rawRows.filter((r) => !excluded.has(r.address.toLowerCase()))
     : rawRows;
   const rows = filteredRows.slice(0, limit);
   const filteredOut = rawRows.length - filteredRows.length;
