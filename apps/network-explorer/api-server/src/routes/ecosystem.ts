@@ -67,13 +67,12 @@ function shortenWallet(addr: string): string {
   return `${addr.slice(0, WALLET_SHORT_HEAD)}...${addr.slice(-WALLET_SHORT_TAIL)}`;
 }
 
-// Mirror of @nasun/profile-core/resolveDisplayName. Inlined to keep the
-// api-server deploy pipeline (npm install --omit=dev on a single rsynced dir)
-// free of workspace-protocol dependencies. Keep this exactly in sync with
-// packages/profile-core/src/resolvers.ts.
+// Aligned with apps/nasun-website/cdk/lambda-src/get-user-profile/index.ts
+// resolveDisplayName so ecosystem and DeFi leaderboards render the same name.
 //
-// Priority: customDisplayName > Twitter (originalTwitterHandle preserved) >
-//           Google email local part > shortened wallet > 'User'
+// Priority: customDisplayName > Twitter username (X display name, e.g. "Naru")
+//           > Twitter handle (e.g. "fall2026") > Google email local part
+//           > shortened wallet > 'User'
 function resolveDisplayName(item: Record<string, unknown>): string {
   if (item.customDisplayName) return item.customDisplayName as string;
 
@@ -81,12 +80,16 @@ function resolveDisplayName(item: Record<string, unknown>): string {
     | { twitter?: Record<string, string>; google?: Record<string, string> }
     | undefined;
 
+  const twName =
+    linked?.twitter?.username ??
+    (item.provider === 'Twitter' ? (item.username as string | undefined) : undefined);
+  if (twName) return twName;
+
   const twHandle =
     linked?.twitter?.originalTwitterHandle ??
     linked?.twitter?.twitterHandle ??
-    linked?.twitter?.username ??
     (item.provider === 'Twitter'
-      ? ((item.originalTwitterHandle ?? item.twitterHandle ?? item.username) as string | undefined)
+      ? ((item.originalTwitterHandle ?? item.twitterHandle) as string | undefined)
       : undefined);
   if (twHandle) return twHandle;
 
@@ -130,6 +133,7 @@ interface ProfileCacheEntry {
   profileImageUrl: string | null;
   isTelegramMember: boolean;
   hasGoogle: boolean;
+  isAdmin: boolean;
 }
 
 const profileCache = {
@@ -175,8 +179,8 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
       const ddb = getDdbClient();
       const CHUNK = 100;
       const PROJECTION =
-        'identityId, walletAddress, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, linkedToPrimaryId, twitterHandle, originalTwitterHandle, #em, #tgm';
-      const EAN = { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember' };
+        'identityId, walletAddress, customDisplayName, customAvatarKey, customAvatarBanned, #pr, username, linkedAccounts, linkedToPrimaryId, twitterHandle, originalTwitterHandle, profileImageUrl, #em, #tgm, #rl';
+      const EAN = { '#pr': 'provider', '#em': 'email', '#tgm': 'isTelegramMember', '#rl': 'role' };
 
       // Pass 1: fetch missing identities directly.
       const fetched = new Map<string, Record<string, unknown>>();
@@ -223,6 +227,36 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
         }
       }
 
+      // Pass 3: hop into linkedAccounts.<provider>.identityId secondary identities
+      // to fill profileImageUrl / username / handle that aren't inlined on the
+      // primary's linkedAccounts map. Mirrors get-user-profile Lambda's hop so
+      // ecosystem and DeFi leaderboards render the same avatar/name.
+      const secondaryIdsToFetch = new Set<string>();
+      for (const item of fetched.values()) {
+        const la = item.linkedAccounts as Record<string, Record<string, unknown>> | undefined;
+        if (!la) continue;
+        for (const provData of Object.values(la)) {
+          const sid = provData?.identityId as string | undefined;
+          if (sid && !fetched.has(sid) && !primaries.has(sid)) secondaryIdsToFetch.add(sid);
+        }
+      }
+      const secondaries = new Map<string, Record<string, unknown>>();
+      const secondaryIds = Array.from(secondaryIdsToFetch);
+      for (let i = 0; i < secondaryIds.length; i += CHUNK) {
+        let pendingKeys = secondaryIds.slice(i, i + CHUNK).map(id => ({ identityId: id }));
+        while (pendingKeys.length > 0) {
+          const res = await ddb.send(new BatchGetCommand({
+            RequestItems: {
+              [USER_PROFILES_TABLE]: { Keys: pendingKeys, ProjectionExpression: PROJECTION, ExpressionAttributeNames: EAN },
+            },
+          }));
+          for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
+            secondaries.set(item.identityId as string, item as Record<string, unknown>);
+          }
+          pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
+        }
+      }
+
       // Build cache entries with primary overrides applied.
       for (const [id, item] of fetched.entries()) {
         const linkedTo = item.linkedToPrimaryId as string | undefined;
@@ -239,14 +273,49 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
           if (p.customAvatarKey) merged.customAvatarKey = p.customAvatarKey;
           if (p.customAvatarBanned !== undefined) merged.customAvatarBanned = p.customAvatarBanned;
         }
+        // Hop into linkedAccounts.<provider>.identityId secondaries to enrich
+        // missing profileImageUrl / username / handle on the linked entry.
+        const linkedRaw = (merged.linkedAccounts as Record<string, Record<string, unknown>> | undefined) ?? {};
+        const enrichedLinked: Record<string, Record<string, unknown>> = {};
+        for (const [provKey, provData] of Object.entries(linkedRaw)) {
+          const enriched: Record<string, unknown> = { ...provData };
+          const sid = provData?.identityId as string | undefined;
+          const sec = sid ? secondaries.get(sid) : undefined;
+          if (sec) {
+            const sp = ((sec.provider as string | undefined) ?? '').toLowerCase();
+            const canonical = sp === 'twitter' ? 'twitter' : sp === 'google' ? 'google' : provKey;
+            const target = enrichedLinked[canonical] ?? { ...enriched };
+            if (!target.profileImageUrl && sec.profileImageUrl) target.profileImageUrl = sec.profileImageUrl;
+            if (!target.username && sec.username) target.username = sec.username;
+            if (canonical === 'twitter') {
+              if (!target.twitterHandle && sec.twitterHandle) target.twitterHandle = sec.twitterHandle;
+              if (!target.originalTwitterHandle && sec.originalTwitterHandle) {
+                target.originalTwitterHandle = sec.originalTwitterHandle;
+              }
+            } else if (canonical === 'google' && !target.email && sec.email) {
+              target.email = sec.email;
+            }
+            enrichedLinked[canonical] = target;
+          } else {
+            enrichedLinked[provKey] = enriched;
+          }
+        }
+        merged.linkedAccounts = enrichedLinked;
+
         const provider = ((merged.provider as string | undefined) ?? '').toLowerCase();
-        const linked = (merged.linkedAccounts as Record<string, unknown> | undefined) ?? {};
+        const linked = enrichedLinked;
         profileCache.data.set(id, {
           displayName: resolveDisplayName(merged),
-          xHandle: sanitizeXHandle(merged.originalTwitterHandle ?? merged.twitterHandle),
+          xHandle: sanitizeXHandle(
+            (linked.twitter?.originalTwitterHandle as string | undefined) ??
+              (linked.twitter?.twitterHandle as string | undefined) ??
+              merged.originalTwitterHandle ??
+              merged.twitterHandle,
+          ),
           profileImageUrl: resolveAvatarUrl(merged),
           isTelegramMember: (merged.isTelegramMember as boolean | undefined) ?? false,
           hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
+          isAdmin: (merged.role as string | undefined) === 'ADMIN',
         });
       }
       profileCache.expiresAt = now + PROFILE_CACHE_TTL;
@@ -260,7 +329,7 @@ async function fetchProfilesBatch(identityIds: string[]): Promise<Map<string, Pr
 
   const result = new Map<string, ProfileCacheEntry>();
   for (const id of identityIds) {
-    result.set(id, profileCache.data.get(id) ?? { displayName: 'User', xHandle: null, profileImageUrl: null, isTelegramMember: false, hasGoogle: false });
+    result.set(id, profileCache.data.get(id) ?? { displayName: 'User', xHandle: null, profileImageUrl: null, isTelegramMember: false, hasGoogle: false, isAdmin: false });
   }
   return result;
 }
@@ -1180,6 +1249,7 @@ app.get('/leaderboard', async (c) => {
 
       const entries = validRows
         .filter((r: any) => nftEligibleSet.has(r.identity_id as string))
+        .filter((r: any) => !(profiles.get(r.identity_id as string)?.isAdmin ?? false))
         .map((r: any) => ({
         identityId: r.identity_id as string,
         activityScore: r.activity_score as number,
