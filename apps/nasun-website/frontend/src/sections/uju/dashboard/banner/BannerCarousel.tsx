@@ -207,7 +207,7 @@ export function BannerCarousel() {
         >
           {/* Decorative X logo for amber (light) banners */}
           {banner.id === 'repost-bonus' && (
-            <div className="absolute right-24 top-1/2 -translate-y-1/2 w-24 h-24 text-black/8 pointer-events-none select-none">
+            <div className="hidden sm:block absolute right-24 top-1/2 -translate-y-1/2 w-24 h-24 text-black/8 pointer-events-none select-none">
               <XLogoIcon />
             </div>
           )}
