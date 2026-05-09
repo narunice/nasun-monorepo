@@ -66,13 +66,11 @@ app.post('/wallet-registered', async (c) => {
   const walletAddress = walletAddressRaw.toLowerCase();
 
   // Force-refresh wallet cache so the live scanner immediately recognizes the
-  // new wallet on its next iteration. Awaited so we know reconcile sees the
-  // new mapping if it consults the cache for any side reason.
-  try {
-    await maybeRefreshWalletCache(true);
-  } catch (err) {
+  // new wallet. Fire-and-forget: caller (Lambda) has a 3s timeout and the
+  // refresh can take longer; awaiting it caused 499s without affecting outcome.
+  maybeRefreshWalletCache(true).catch((err) => {
     console.warn('[wallet-registered] cache refresh failed:', (err as Error).message);
-  }
+  });
 
   // Today-window reconcile is fire-and-forget. RPC + indexer queries can take
   // a few seconds; we don't make the Lambda wait. Errors are logged.
