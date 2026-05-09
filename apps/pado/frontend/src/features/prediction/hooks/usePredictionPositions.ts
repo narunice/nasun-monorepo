@@ -107,7 +107,13 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       all.sort((a, b) => (b._version > a._version ? 1 : b._version < a._version ? -1 : 0));
 
       // Drop the internal `_version` from the returned shape.
-      const positions: Position[] = all.map(({ _version: _v, ...p }) => p);
+      // Drop fully-emptied Position NFTs (shares = 0). These are stale objects
+      // left over from full sells / claims / partial-fill bookkeeping that
+      // would otherwise render as empty "0 shares · 1.00 NUSDC" cards above
+      // the user's real holdings.
+      const positions: Position[] = all
+        .filter((p) => p.shares > 0n)
+        .map(({ _version: _v, ...p }) => p);
 
       // Filter by market if specified
       if (marketId) {

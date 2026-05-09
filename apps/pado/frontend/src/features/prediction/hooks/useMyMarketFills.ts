@@ -34,6 +34,13 @@ async function fetchMyMarketFills(marketId: string, owner: string): Promise<Rece
     if (event.type !== ORDER_FILLED_EVENT) continue;
     const j = event.parsedJson as Record<string, unknown> | null;
     if (!j || j.market_id !== marketId) continue;
+    // The contract emits one OrderFilled per maker-side level walked, but only
+    // the level where nusdc actually got consumed has cost > 0. The other
+    // levels in the same tx emit with cost=0 + fill_shares=0 as zero-fill
+    // bookkeeping events. Drop those so the user's "BUY NO $0.61 $0.00" rows
+    // disappear and only the meaningful fill stays.
+    const cost = BigInt(String(j.cost ?? 0));
+    if (cost === 0n) continue;
     fills.push({
       marketId: String(j.market_id),
       orderId: Number(j.order_id ?? 0),
@@ -43,7 +50,7 @@ async function fetchMyMarketFills(marketId: string, owner: string): Promise<Rece
       isBid: Boolean(j.is_bid ?? false),
       price: Number(j.price ?? 0),
       fillShares: BigInt(String(j.fill_shares ?? 0)),
-      cost: BigInt(String(j.cost ?? 0)),
+      cost,
       timestamp: Number(event.timestampMs ?? 0),
     });
   }
