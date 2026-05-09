@@ -333,6 +333,7 @@ export interface SocialBadges {
   xHandle: string | null;
   hasGoogle: boolean;
   hasTelegram: boolean;
+  isAdmin: boolean;
 }
 
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
@@ -348,6 +349,7 @@ function parseSocialBadges(item: Record<string, unknown>): SocialBadges {
     xHandle: sanitizeXHandle(item.twitterHandle as string | undefined),
     hasGoogle: !!(linked.google) || provider === 'google' || provider === 'accounts.google.com',
     hasTelegram: item.isTelegramMember === true,
+    isAdmin: (item.role as string | undefined) === 'ADMIN',
   };
 }
 
@@ -373,8 +375,8 @@ async function fetchBadgesChunk(
       RequestItems: {
         [USER_PROFILES_TABLE]: {
           Keys: pendingKeys,
-          ProjectionExpression: 'identityId, twitterHandle, #p, isTelegramMember, telegramUserId, linkedAccounts',
-          ExpressionAttributeNames: { '#p': 'provider' },
+          ProjectionExpression: 'identityId, twitterHandle, #p, isTelegramMember, telegramUserId, linkedAccounts, #r',
+          ExpressionAttributeNames: { '#p': 'provider', '#r': 'role' },
         },
       },
     }));
