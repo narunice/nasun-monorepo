@@ -39,6 +39,41 @@ export async function takeDailySnapshot(
 ): Promise<boolean> {
   if (!pointsDb) return false;
 
+  // 0. Short-circuit: if snapshotDate already has a row count comparable to
+  //    the days around it, treat the snapshot as done. New NFT activations
+  //    happening *today* will keep tripping the health-missing fail-safe
+  //    forever otherwise, even though the snapshot we care about is already
+  //    in the table from earlier scanLoop ticks. We do this *before* the
+  //    expensive computation so the retry loop exits on the next scan after
+  //    the day successfully snapshotted.
+  const [coverageRow] = await pointsDb`
+    WITH today AS (
+      SELECT COUNT(*)::int AS today_count
+      FROM ecosystem_score_snapshots WHERE snapshot_date = ${snapshotDate}::date
+    ),
+    neighbors AS (
+      SELECT MAX(c)::int AS neighbor_max FROM (
+        SELECT COUNT(*) AS c
+        FROM ecosystem_score_snapshots
+        WHERE snapshot_date BETWEEN (${snapshotDate}::date - 7) AND (${snapshotDate}::date - 1)
+        GROUP BY snapshot_date
+      ) s
+    )
+    SELECT today.today_count, neighbors.neighbor_max FROM today, neighbors
+  `;
+  const todayCount = (coverageRow?.today_count as number) ?? 0;
+  const neighborMax = (coverageRow?.neighbor_max as number) ?? 0;
+  // 95% of the best neighboring day is "good enough" — accounts for genuine
+  // day-over-day variance without forcing exact equality. If neighbors are
+  // empty (cold start), we still let the regular path run.
+  if (neighborMax > 0 && todayCount >= Math.floor(neighborMax * 0.95)) {
+    console.log(
+      `[Snapshot] ${snapshotDate} already covered (${todayCount}/${neighborMax} = ` +
+        `${Math.round((todayCount / neighborMax) * 100)}%); treating as done.`,
+    );
+    return true;
+  }
+
   // 1. Load every user's active mission selection (full table — small).
   //    Users without a row get DEFAULT_MISSION_IDS applied at score-time.
   //
@@ -155,11 +190,53 @@ export async function takeDailySnapshot(
     healthMap.set(r.identity_id as string, entry);
   }
 
+  // Distinguish genuine misses (held NFT on snapshotDate but health row absent)
+  // from post-snapshotDate activations (NFT minted/activated after the date,
+  // so they legitimately have no history for it). Without this split the
+  // fail-safe pins the snapshot all day for tomorrow's new holders, who
+  // should not block today's lock-in.
+  const minHealthRows = await pointsDb`
+    SELECT identity_id, MIN(last_evaluated_day)::text AS min_day
+    FROM nft_health_state
+    WHERE identity_id = ANY(${allIdsArr})
+    GROUP BY identity_id
+  `;
+  const minHealthMap = new Map<string, string>();
+  for (const r of minHealthRows) {
+    minHealthMap.set(r.identity_id as string, r.min_day as string);
+  }
+
+  const activeOnDateRows = await pointsDb`
+    SELECT DISTINCT identity_id
+    FROM activity_points
+    WHERE NOT flagged
+      AND identity_id = ANY(${allIdsArr})
+      AND tx_timestamp >= ${snapshotDate}::date
+      AND tx_timestamp <  (${snapshotDate}::date + interval '1 day')
+  `;
+  const activeOnDate = new Set(activeOnDateRows.map(r => r.identity_id as string));
+
   let missingCount = 0;
+  let postDateActivations = 0;
   for (const [id, acts] of activationsCache) {
     const hasNft = acts.some(a => a.status === 'ACTIVE' &&
       (a.nftType === 'alliance' || a.nftType === 'genesis-pass'));
-    if (hasNft && !healthMap.has(id)) missingCount++;
+    if (!hasNft || healthMap.has(id)) continue;
+
+    const minDay = minHealthMap.get(id);
+    // Genuine miss: holder either was active on snapshotDate OR has health
+    // history that begins on/before it. Either way they should have a row.
+    // Otherwise they activated after snapshotDate and we skip silently.
+    if (activeOnDate.has(id) || (minDay && minDay <= snapshotDate)) {
+      missingCount++;
+    } else {
+      postDateActivations++;
+    }
+  }
+  if (postDateActivations > 0) {
+    console.log(
+      `[Snapshot] Skipping ${postDateActivations} post-${snapshotDate} activations (no health row needed for older date).`,
+    );
   }
   if (missingCount > 0) {
     console.error(
@@ -168,15 +245,12 @@ export async function takeDailySnapshot(
     if (missingCount > 10) {
       console.error('[Snapshot] ALERT: >10 missing holders, investigate health-update.');
     }
-    // Send a Telegram alert so a sustained miss is visible operationally
-    // (the 2026-05-08 lockout went undetected for ~24h because the only
-    // signal was stderr). dedup per (date, count-bucket) so the alert
-    // re-fires when the gap widens but doesn't spam every 60s scanLoop.
-    const bucket = missingCount > 100 ? '100+' : missingCount > 10 ? '10+' : `${missingCount}`;
+    // Per-date dedup with a single key so the alert fires at most once per
+    // 5min RATE_LIMIT window per date (not once per count-bucket transition).
     void sendTelegramAlert(
       `Snapshot ${snapshotDate} blocked: ${missingCount} NFT holders missing health row. ` +
         `Will retry next scanLoop. If this persists past UTC midnight, manual backfill needed.`,
-      { dedupKey: `snapshot-health-missing-${snapshotDate}-${bucket}` },
+      { dedupKey: `snapshot-health-missing-${snapshotDate}` },
     );
     return false;
   }
