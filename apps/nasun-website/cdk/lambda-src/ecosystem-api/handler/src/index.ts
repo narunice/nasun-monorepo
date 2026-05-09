@@ -27,7 +27,7 @@ import {
   UpdateCommand,
   QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { getErc721Balance } from "./eth-rpc";
+import { getErc721Balance, getErc1155TokenIds } from "./eth-rpc";
 
 // ---- Environment Variables ----
 
@@ -138,11 +138,15 @@ interface NftHolding {
 
 async function fetchAndPersistOwnership(
   wallet: string,
-  contractAddress: string
+  contractAddress: string,
+  standard: "erc721" | "erc1155"
 ): Promise<Record<string, unknown>> {
   const addr = contractAddress.toLowerCase();
   const lowerWallet = wallet.toLowerCase();
-  const tokenCount = await getErc721Balance(lowerWallet, addr);
+  const tokenCount =
+    standard === "erc1155"
+      ? (await getErc1155TokenIds(lowerWallet, addr)).length
+      : await getErc721Balance(lowerWallet, addr);
 
   const existing = await client.send(
     new GetCommand({
@@ -235,7 +239,7 @@ async function handleActivate(
   }
 
   if (nftType === "genesis-pass") {
-    return await activateEthNft(identityId, profile, "genesis-pass", GENESIS_PASS_CONTRACT, origin);
+    return await activateEthNft(identityId, profile, "genesis-pass", GENESIS_PASS_CONTRACT, "erc1155", origin);
   }
 
   if (nftType === "battalion") {
@@ -315,6 +319,7 @@ async function activateEthNft(
   profile: Record<string, unknown>,
   nftType: string,
   contractAddress: string,
+  standard: "erc721" | "erc1155",
   origin?: string
 ): Promise<APIGatewayProxyResult> {
   const linkedAccounts = profile.linkedAccounts as Record<string, unknown> | undefined;
@@ -353,7 +358,7 @@ async function activateEthNft(
       `[ecosystem] LATEST ${walletRecord ? "stale" : "missing"} for wallet ${evmWallet}, falling back to Alchemy`,
     );
     try {
-      walletRecord = await fetchAndPersistOwnership(evmWallet, contractAddress);
+      walletRecord = await fetchAndPersistOwnership(evmWallet, contractAddress, standard);
     } catch (err) {
       console.error(`[ecosystem] Alchemy fallback failed for ${evmWallet}:`, err);
       return jsonResponse(503, {
