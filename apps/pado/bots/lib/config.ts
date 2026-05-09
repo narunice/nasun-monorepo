@@ -52,6 +52,25 @@ export const CLOCK_ID = '0x6';
 // Market Configuration
 // ========================================
 
+/**
+ * Tiered grid zone: a contiguous band of levels at a given spacing and size multiplier.
+ * Inner zones produce tighter, smaller orders near the mid; outer zones produce sparser,
+ * thicker orders for depth.
+ */
+export interface ZoneConfig {
+  levels: number;       // Number of levels in this zone (per side)
+  spacingBps: number;   // Per-level spacing in bps within this zone
+  sizeMult: number;     // Multiplier on base orderSize for orders in this zone
+}
+
+// Default tiered grid shared across markets. Inner: tight & small, Outer: sparse & thick.
+// Innermost spread is consumed from config.spreadBps (default 3 bps).
+const DEFAULT_ZONES: ZoneConfig[] = [
+  { levels: 10, spacingBps: 3,  sizeMult: 1.0 },
+  { levels: 15, spacingBps: 8,  sizeMult: 1.3 },
+  { levels: 15, spacingBps: 22, sizeMult: 1.8 },
+];
+
 export interface MarketConfig {
   name: string;           // Display name (NBTC, NETH, NSOL)
   baseType: string;       // Full Move type for base token
@@ -66,7 +85,7 @@ export interface MarketConfig {
   defaultMinPrice: number;
   defaultMaxPrice: number;
   defaultOrderSize: number;
-  defaultLevelSpacing: number;         // Default level spacing in bps (per-market)
+  defaultLevelSpacing: number;         // Default level spacing in bps (per-market, uniform fallback)
   defaultSpreadBps: number;            // Default spread in bps (per-market)
   defaultRequoteThresholdBps: number;  // Price move threshold to trigger cancel+place (per-market)
   defaultMaxArbQuantity: number;       // Default max arb quantity (per-market)
@@ -77,6 +96,7 @@ export interface MarketConfig {
   faucetV2Package?: string;  // Package to call for V2 faucet (per-market)
   faucetV2Object?: string;   // Shared faucet object for V2 (per-market)
   faucetV2Function?: string; // Function name for V2 faucet (default: 'request_tokens')
+  defaultZones?: ZoneConfig[]; // Tiered grid zones; falls back to uniform when undefined
 }
 
 export const MARKETS: Record<string, MarketConfig> = {
@@ -95,13 +115,14 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 200000,
     defaultOrderSize: 0.05,
     defaultLevelSpacing: 8,
-    defaultSpreadBps: 6,
-    defaultRequoteThresholdBps: 35, // NBTC moves ~2bps/10s; 35bps avoids premature requotes
+    defaultSpreadBps: 3,
+    defaultRequoteThresholdBps: 5,
     defaultMaxArbQuantity: 0.1,
     defaultMaxOrderSize: 1.0,
     faucetBaseAmount: 0.01,  // V1 faucet: 0.01 NBTC per call
     startupDelayMs: 0,
     faucetType: 'v1',
+    defaultZones: DEFAULT_ZONES,
   },
   NETH: {
     name: 'NETH',
@@ -118,8 +139,8 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 10000,
     defaultOrderSize: 2,
     defaultLevelSpacing: 12,
-    defaultSpreadBps: 6,
-    defaultRequoteThresholdBps: 25,
+    defaultSpreadBps: 3,
+    defaultRequoteThresholdBps: 5,
     defaultMaxArbQuantity: 5,
     defaultMaxOrderSize: 10.0,
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
@@ -128,6 +149,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
     faucetV2Object: TOKEN_FAUCET_V2,
     faucetV2Function: 'request_neth',
+    defaultZones: DEFAULT_ZONES,
   },
   NSOL: {
     name: 'NSOL',
@@ -144,8 +166,8 @@ export const MARKETS: Record<string, MarketConfig> = {
     defaultMaxPrice: 1000,
     defaultOrderSize: 30,
     defaultLevelSpacing: 15,
-    defaultSpreadBps: 6,
-    defaultRequoteThresholdBps: 20,
+    defaultSpreadBps: 3,
+    defaultRequoteThresholdBps: 5,
     defaultMaxArbQuantity: 100,
     defaultMaxOrderSize: 1000,
     faucetBaseAmount: 10,    // V2 faucet: 10 NSOL per call (request_nsol)
@@ -154,6 +176,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
     faucetV2Object: TOKEN_FAUCET_V2,
     faucetV2Function: 'request_nsol',
+    defaultZones: DEFAULT_ZONES,
   },
 };
 
@@ -208,11 +231,69 @@ export interface LPConfig {
 
   // Divergence detection
   divergenceForceRequoteBps: number;
+
+  // Tiered grid (optional). When set, overrides uniform `levelSpacingBps`/`orderLevels` path.
+  // Inner→outer order; first zone's offset starts at `spreadBps`.
+  zones?: ZoneConfig[];
+}
+
+/**
+ * Parse `LP_ZONES` env var. Accepts JSON of either ZoneConfig[] (objects) or
+ * tuple form: `[[levels, spacingBps, sizeMult], ...]`. Returns undefined when
+ * unset/empty/invalid (caller falls back to MarketConfig.defaultZones).
+ */
+function parseZonesEnv(raw: string | undefined): ZoneConfig[] | undefined {
+  if (!raw || raw.trim() === '' || raw.trim() === '[]') return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    throw new Error(`LP_ZONES is not valid JSON: ${raw}`);
+  }
+  if (!Array.isArray(parsed) || parsed.length === 0) return undefined;
+  return parsed.map((entry, i) => {
+    if (Array.isArray(entry) && entry.length === 3) {
+      return { levels: Number(entry[0]), spacingBps: Number(entry[1]), sizeMult: Number(entry[2]) };
+    }
+    if (entry && typeof entry === 'object') {
+      const e = entry as Record<string, unknown>;
+      return { levels: Number(e.levels), spacingBps: Number(e.spacingBps), sizeMult: Number(e.sizeMult) };
+    }
+    throw new Error(`LP_ZONES[${i}] must be {levels,spacingBps,sizeMult} or [levels,spacingBps,sizeMult]`);
+  });
+}
+
+function validateZones(zones: ZoneConfig[]): void {
+  if (zones.length === 0) {
+    throw new Error('zones must contain at least one entry');
+  }
+  let totalLevels = 0;
+  for (const [i, z] of zones.entries()) {
+    if (!Number.isFinite(z.levels) || z.levels < 1 || z.levels > 50) {
+      throw new Error(`zones[${i}].levels must be 1..50`);
+    }
+    if (!Number.isFinite(z.spacingBps) || z.spacingBps < 1 || z.spacingBps > 1000) {
+      throw new Error(`zones[${i}].spacingBps must be 1..1000`);
+    }
+    if (!Number.isFinite(z.sizeMult) || z.sizeMult <= 0 || z.sizeMult > 100) {
+      throw new Error(`zones[${i}].sizeMult must be (0, 100]`);
+    }
+    totalLevels += z.levels;
+  }
+  if (totalLevels > 50) {
+    throw new Error(`total tiered levels per side must be <= 50, got ${totalLevels}`);
+  }
 }
 
 export function loadConfig(): LPConfig {
   const spreadBps = parseInt(process.env.LP_SPREAD_BPS || String(MARKET.defaultSpreadBps), 10);
-  const minSpreadBps = parseInt(process.env.LP_MIN_SPREAD_BPS || '10', 10);
+  // Floor below which `validateOrders` filters orders. Lowered to 2 so that the
+  // tiered grid's innermost band (3 bps offset) survives validation. Override
+  // via LP_MIN_SPREAD_BPS.
+  const minSpreadBps = parseInt(process.env.LP_MIN_SPREAD_BPS || '2', 10);
+
+  const zones = parseZonesEnv(process.env.LP_ZONES) ?? MARKET.defaultZones;
+  if (zones) validateZones(zones);
 
   console.log(`[DEBUG] spreadBps: ${spreadBps}, minSpreadBps: ${minSpreadBps}`);
 
@@ -223,7 +304,7 @@ export function loadConfig(): LPConfig {
 
     orderSize: parseFloat(process.env.LP_ORDER_SIZE || String(MARKET.defaultOrderSize)),
 
-    updateIntervalMs: parseInt(process.env.LP_UPDATE_INTERVAL || '10000', 10),
+    updateIntervalMs: parseInt(process.env.LP_UPDATE_INTERVAL || '4000', 10),
     requoteThresholdBps: parseInt(process.env.LP_REQUOTE_THRESHOLD || String(MARKET.defaultRequoteThresholdBps), 10),
 
     refillThresholdBase: parseFloat(process.env.LP_REFILL_THRESHOLD_BASE || '5'),
@@ -244,6 +325,8 @@ export function loadConfig(): LPConfig {
     disableTokenFaucet: process.env.LP_DISABLE_TOKEN_FAUCET === 'true',
 
     divergenceForceRequoteBps: parseInt(process.env.LP_DIVERGENCE_THRESHOLD_BPS || '30', 10),
+
+    zones,
   };
   // Validate configuration bounds
   for (const [key, value] of Object.entries(config)) {

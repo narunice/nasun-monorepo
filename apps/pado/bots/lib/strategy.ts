@@ -9,6 +9,7 @@ import {
   type LPConfig,
   type OrderSpec,
   type Inventory,
+  type ZoneConfig,
   priceToRaw,
   quantityToRaw,
   rawToPrice,
@@ -27,19 +28,22 @@ export function calculateOrders(
   inventory: Inventory,
   orderbook?: OrderbookState,
 ): OrderSpec[] {
-  const orders: OrderSpec[] = [];
-
-  const baseSpread = config.spreadBps / 10000;
-  const levelSpacing = config.levelSpacingBps / 10000;
-
   const skewAdjustment = calculateSkewAdjustment(midPrice, inventory, config.spreadBps);
+  const constraints = computeOrderbookConstraints(midPrice, orderbook);
 
-  const orderQuantity = roundToLotSize(quantityToRaw(config.orderSize));
-
-  if (orderQuantity <= 0n) {
-    return orders;
+  if (config.zones && config.zones.length > 0) {
+    return buildTieredOrders(midPrice, config, skewAdjustment, constraints);
   }
 
+  return buildUniformOrders(midPrice, config, skewAdjustment, constraints);
+}
+
+interface PriceConstraints {
+  maxBidPrice: number;  // Bids must be strictly below this (POST_ONLY safety)
+  minAskPrice: number;  // Asks must be strictly above this; 0 = no constraint
+}
+
+function computeOrderbookConstraints(midPrice: number, orderbook?: OrderbookState): PriceConstraints {
   // Clamp orderbook-derived constraints to within MAX_CONSTRAINT_BPS of the
   // current market price. Anomalous stale orders (e.g. bids at $400k when
   // BTC is $75k) must not push the bot's own pricing into nonsensical ranges.
@@ -56,6 +60,25 @@ export function calculateOrders(
   const minAskPrice = rawMinAskPrice > midPrice * (1 + MAX_CONSTRAINT_BPS / 10000)
     ? 0  // ignore anomalous stale bid
     : rawMinAskPrice;
+
+  return { maxBidPrice, minAskPrice };
+}
+
+function buildUniformOrders(
+  midPrice: number,
+  config: LPConfig,
+  skewAdjustment: SkewAdjustment,
+  constraints: PriceConstraints,
+): OrderSpec[] {
+  const orders: OrderSpec[] = [];
+
+  const baseSpread = config.spreadBps / 10000;
+  const levelSpacing = config.levelSpacingBps / 10000;
+
+  const orderQuantity = roundToLotSize(quantityToRaw(config.orderSize));
+  if (orderQuantity <= 0n) return orders;
+
+  const { maxBidPrice, minAskPrice } = constraints;
 
   // Generate bid orders
   for (let i = 0; i < config.orderLevels; i++) {
@@ -94,6 +117,91 @@ export function calculateOrders(
       quantity: orderQuantity,
       isBid: false,
     });
+  }
+
+  return orders;
+}
+
+// ========================================
+// Tiered Grid (zone-based)
+// ========================================
+
+/**
+ * Build orders from zone-based tiered config. Inner zones produce tight, small
+ * orders near mid; outer zones produce sparser, thicker orders for depth.
+ *
+ * Innermost level offset = `spreadBps`. Subsequent levels accumulate the
+ * current zone's `spacingBps`. Each order's quantity = `orderSize * sizeMult`
+ * (rounded to lot). Skew adjustment shifts the entire grid on the affected side.
+ *
+ * Orders are emitted inner→outer per side; this matches the inventory cap
+ * accumulator which slices from the front when funds are limited.
+ */
+function buildTieredOrders(
+  midPrice: number,
+  config: LPConfig,
+  skewAdjustment: SkewAdjustment,
+  constraints: PriceConstraints,
+): OrderSpec[] {
+  const orders: OrderSpec[] = [];
+  const zones = config.zones!;
+  const baseSpread = config.spreadBps / 10000;
+  const baseOrderSize = config.orderSize;
+  const { maxBidPrice, minAskPrice } = constraints;
+
+  // Pre-compute per-zone quantity (lot-rounded). Zones whose quantity rounds to
+  // zero (e.g. sizeMult * orderSize < lotSize) are skipped.
+  const zoneQuantities: bigint[] = zones.map((z) =>
+    roundToLotSize(quantityToRaw(baseOrderSize * z.sizeMult)),
+  );
+
+  // Bids
+  let bidOffset = baseSpread + skewAdjustment.bidAdjustment;
+  let bidLevelIdx = 0;
+  for (const [zi, zone] of zones.entries()) {
+    const qty = zoneQuantities[zi];
+    const spacing = zone.spacingBps / 10000;
+    for (let i = 0; i < zone.levels; i++) {
+      const offsetForThisLevel = bidLevelIdx === 0 ? bidOffset : bidOffset + spacing;
+      bidOffset = offsetForThisLevel;
+      bidLevelIdx++;
+
+      if (qty <= 0n) continue;
+
+      const bidPrice = midPrice * (1 - offsetForThisLevel);
+      if (bidPrice >= maxBidPrice) continue;
+      if (bidPrice <= 0) continue;
+
+      orders.push({
+        price: roundToTickSize(priceToRaw(bidPrice)),
+        quantity: qty,
+        isBid: true,
+      });
+    }
+  }
+
+  // Asks
+  let askOffset = baseSpread + skewAdjustment.askAdjustment;
+  let askLevelIdx = 0;
+  for (const [zi, zone] of zones.entries()) {
+    const qty = zoneQuantities[zi];
+    const spacing = zone.spacingBps / 10000;
+    for (let i = 0; i < zone.levels; i++) {
+      const offsetForThisLevel = askLevelIdx === 0 ? askOffset : askOffset + spacing;
+      askOffset = offsetForThisLevel;
+      askLevelIdx++;
+
+      if (qty <= 0n) continue;
+
+      const askPrice = midPrice * (1 + offsetForThisLevel);
+      if (minAskPrice > 0 && askPrice <= minAskPrice) continue;
+
+      orders.push({
+        price: roundToTickSize(priceToRaw(askPrice)),
+        quantity: qty,
+        isBid: false,
+      });
+    }
   }
 
   return orders;
