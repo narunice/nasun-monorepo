@@ -1,5 +1,6 @@
 // main.tsx
-import { StrictMode, lazy, Suspense } from "react";
+import { StrictMode, Suspense } from "react";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { createRoot } from "react-dom/client";
 import { StaticTranslationProvider } from "./providers/i18n/StaticTranslationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ installQueryClientBroadcast(queryClient);
 
 // Lazy-load wallet layer: @nasun/wallet + @nasun/wallet-ui + @mysten/dapp-kit
 // are deferred until after the app shell renders (~667KB gzip saved from initial load)
-const WalletLayer = lazy(() => import("./providers/WalletLayer"));
+const WalletLayer = lazyWithRetry(() => import("./providers/WalletLayer"));
 
 // 1. Chrome Extension 에러 핸들링 (브라우저 확장 프로그램 통신 오류 방지)
 function setupErrorHandlers() {
