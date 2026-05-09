@@ -173,7 +173,12 @@ async function verifyToken(authHeader: string | undefined): Promise<string | und
     });
     return payload.sub;
   } catch (error) {
-    console.error("[alliance] JWT verification failed:", error);
+    const code = (error as { code?: string })?.code;
+    if (code === "ERR_JWT_EXPIRED") {
+      console.warn("[alliance] JWT expired (client must re-authenticate)");
+    } else {
+      console.error("[alliance] JWT verification failed:", error);
+    }
     return undefined;
   }
 }
