@@ -16,6 +16,8 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import { bcs } from '@mysten/sui/bcs';
+import { deriveDynamicFieldID } from '@mysten/sui/utils';
 import { getSuiClient } from '../../../lib/sui-client';
 import { ORDER_PLACED_EVENT } from '../constants';
 import type { Order } from '../types';
@@ -88,44 +90,57 @@ async function fetchMyOpenOrders(marketId: string, owner: string): Promise<OpenO
     byKey.get(key)!.orderIds.add(c.orderId);
   }
 
+  // Derive dynamic field IDs locally from (parentId, type, key) and batch
+  // the reads into one multiGetObjects RPC instead of N getDynamicFieldObject.
+  const u64KeyType = { u64: true as const };
+  type Resolved = { group: typeof byKey extends Map<string, infer V> ? V : never; objectId: string };
+  const resolved: Resolved[] = [];
+  for (const group of byKey.values()) {
+    const tid = tableId(group.side);
+    if (!tid) continue;
+    const keyBytes = bcs.u64().serialize(BigInt(group.price)).toBytes();
+    const objectId = deriveDynamicFieldID(tid, u64KeyType, keyBytes);
+    resolved.push({ group, objectId });
+  }
+
   const out: OpenOrderRow[] = [];
-  await Promise.all(
-    Array.from(byKey.values()).map(async (group) => {
-      const tid = tableId(group.side);
-      if (!tid) return;
-      const fieldObj = await client.getDynamicFieldObject({
-        parentId: tid,
-        name: { type: 'u64', value: String(group.price) },
+  if (resolved.length === 0) return out;
+
+  const objects = await client.multiGetObjects({
+    ids: resolved.map((r) => r.objectId),
+    options: { showContent: true },
+  });
+
+  for (let i = 0; i < resolved.length; i++) {
+    const { group } = resolved[i];
+    const obj = objects[i];
+    if (!obj?.data?.content || obj.data.content.dataType !== 'moveObject') continue;
+    const value = obj.data.content.fields as Record<string, unknown>;
+    const orders = value.value as Array<Record<string, unknown>> | undefined;
+    if (!orders) continue;
+
+    const isBid = group.side.endsWith('_bids');
+    const isYes = group.side.startsWith('yes_');
+    for (const raw of orders) {
+      // Sui SDK wraps nested Move struct fields inside an inner `fields` object.
+      const o = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
+      const orderId = Number(o.order_id ?? 0);
+      const ownerInBook = String(o.owner ?? '');
+      if (ownerInBook.toLowerCase() !== owner.toLowerCase()) continue;
+      if (!group.orderIds.has(orderId)) continue;
+      out.push({
+        marketId,
+        isYes,
+        isBid,
+        priceBps: group.price,
+        orderId,
+        amount: BigInt(String(o.amount ?? 0)),
+        lockedNusdc: BigInt(String(o.locked_nusdc ?? 0)),
+        costBasis: BigInt(String(o.cost_basis ?? 0)),
+        timestamp: Number(o.timestamp ?? 0),
       });
-      if (!fieldObj.data?.content || fieldObj.data.content.dataType !== 'moveObject') return;
-
-      const value = fieldObj.data.content.fields as Record<string, unknown>;
-      const orders = value.value as Array<Record<string, unknown>> | undefined;
-      if (!orders) return;
-
-      const isBid = group.side.endsWith('_bids');
-      const isYes = group.side.startsWith('yes_');
-      for (const raw of orders) {
-        // Sui SDK wraps nested Move struct fields inside an inner `fields` object.
-        const o = ((raw as { fields?: Record<string, unknown> }).fields ?? raw);
-        const orderId = Number(o.order_id ?? 0);
-        const ownerInBook = String(o.owner ?? '');
-        if (ownerInBook.toLowerCase() !== owner.toLowerCase()) continue;
-        if (!group.orderIds.has(orderId)) continue;
-        out.push({
-          marketId,
-          isYes,
-          isBid,
-          priceBps: group.price,
-          orderId,
-          amount: BigInt(String(o.amount ?? 0)),
-          lockedNusdc: BigInt(String(o.locked_nusdc ?? 0)),
-          costBasis: BigInt(String(o.cost_basis ?? 0)),
-          timestamp: Number(o.timestamp ?? 0),
-        });
-      }
-    }),
-  );
+    }
+  }
 
   // Newest first.
   out.sort((a, b) => b.timestamp - a.timestamp);
