@@ -17,14 +17,19 @@ import { useAgentProfiles } from '../features/agents/hooks/useAgentProfiles';
 import { useAgentBudgets, useSpendingLimits } from '../features/agents/hooks/useAgentBudgets';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { suiClient } from '../config/client';
+import { TOKENS } from '../config/network';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatTimestamp } from '../utils/format';
 import { exportAgentKeypairBase64, hasAgentKey } from '../services/agentKeyStorage';
 import { useBudgets } from '../hooks/useBudgets';
+import { useTraderConfig } from '../hooks/useTraderConfig';
+import { useTraderScheduler } from '../hooks/useTraderScheduler';
 import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
+import { TraderConfigForm } from '../components/forms/TraderConfigForm';
 
-type Tab = 'overview' | 'budget' | 'activity';
+type Tab = 'overview' | 'budget' | 'activity' | 'trader';
 
 const MAX_FUND_NASUN = 100;
+const MAX_FUND_NUSDC = 1000;
 
 export function AgentDetail() {
   const { id } = useParams<{ id: string }>();
@@ -45,6 +50,14 @@ export function AgentDetail() {
   const [fundStatus, setFundStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [fundError, setFundError] = useState<string | null>(null);
   const [fundTxDigest, setFundTxDigest] = useState<string | null>(null);
+
+  // Fund NUSDC state
+  const [showFundNusdc, setShowFundNusdc] = useState(false);
+  const [fundNusdcAmount, setFundNusdcAmount] = useState('30');
+  const [fundNusdcStatus, setFundNusdcStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [fundNusdcError, setFundNusdcError] = useState<string | null>(null);
+  const [fundNusdcTxDigest, setFundNusdcTxDigest] = useState<string | null>(null);
+  const [agentNusdcBalance, setAgentNusdcBalance] = useState<string | null>(null);
 
   // Export Key state
   const [showExportKey, setShowExportKey] = useState(false);
@@ -107,9 +120,21 @@ export function AgentDetail() {
     }
   }, [agent]);
 
+  // Fetch agent NUSDC balance (raw amount held outside Budget — for direct DEX swaps)
+  const fetchAgentNusdcBalance = useCallback(async () => {
+    if (!agent) return;
+    try {
+      const bal = await suiClient.getBalance({ owner: agent.agentAddress, coinType: TOKENS.NUSDC.type });
+      setAgentNusdcBalance((Number(bal.totalBalance) / 1e6).toFixed(2));
+    } catch {
+      setAgentNusdcBalance(null);
+    }
+  }, [agent]);
+
   useEffect(() => {
     fetchAgentBalance();
-  }, [fetchAgentBalance]);
+    fetchAgentNusdcBalance();
+  }, [fetchAgentBalance, fetchAgentNusdcBalance]);
 
   // Fund Gas handler
   const handleFundGas = async () => {
@@ -155,6 +180,68 @@ export function AgentDetail() {
     } catch (err) {
       setFundError(err instanceof Error ? err.message : 'Transfer failed');
       setFundStatus('error');
+    }
+  };
+
+  // Fund NUSDC handler — transfers raw NUSDC coin to agent address
+  // (separate from Budget — used by trader presets that need direct coin to swap)
+  const handleFundNusdc = async () => {
+    if (!signer || !signerAddress || !agent) return;
+    const amount = parseFloat(fundNusdcAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setFundNusdcError('Invalid amount');
+      return;
+    }
+    if (amount > MAX_FUND_NUSDC) {
+      setFundNusdcError(`Maximum ${MAX_FUND_NUSDC} NUSDC per transfer`);
+      return;
+    }
+    const amountRaw = Math.round(amount * 1e6);
+
+    setFundNusdcStatus('sending');
+    setFundNusdcError(null);
+    setFundNusdcTxDigest(null);
+
+    try {
+      // Find a NUSDC coin owned by the signer
+      const coins = await suiClient.getCoins({ owner: signerAddress, coinType: TOKENS.NUSDC.type, limit: 50 });
+      if (coins.data.length === 0) {
+        throw new Error('No NUSDC in your wallet');
+      }
+      const total = coins.data.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+      if (total < BigInt(amountRaw)) {
+        throw new Error(`Insufficient NUSDC: have ${Number(total) / 1e6}, need ${amount}`);
+      }
+
+      const tx = new Transaction();
+      // Merge if multiple coins, then split exact amount
+      const primary = coins.data[0].coinObjectId;
+      if (coins.data.length > 1) {
+        tx.mergeCoins(tx.object(primary), coins.data.slice(1).map((c) => tx.object(c.coinObjectId)));
+      }
+      const [sendCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(amountRaw)]);
+      tx.transferObjects([sendCoin], tx.pure.address(agent.agentAddress));
+      tx.setSender(signerAddress);
+
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes,
+        signature,
+        options: { showEffects: true },
+      });
+
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error || 'Transaction failed');
+      }
+
+      setFundNusdcTxDigest(result.digest);
+      setFundNusdcStatus('success');
+      setTimeout(fetchAgentNusdcBalance, 2000);
+    } catch (err) {
+      setFundNusdcError(err instanceof Error ? err.message : 'Transfer failed');
+      setFundNusdcStatus('error');
     }
   };
 
@@ -220,6 +307,7 @@ export function AgentDetail() {
     { key: 'overview', label: 'Overview' },
     { key: 'budget', label: 'Budget' },
     { key: 'activity', label: 'Activity' },
+    { key: 'trader', label: 'Trader' },
   ];
 
   return (
@@ -273,6 +361,12 @@ export function AgentDetail() {
         >
           Fund Gas {agentBalance !== null && `(${agentBalance} NASUN)`}
         </button>
+        <button
+          onClick={() => { setFundNusdcStatus('idle'); setFundNusdcError(null); setShowFundNusdc(true); }}
+          className="px-3 py-1.5 text-xs font-medium rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+        >
+          Fund NUSDC {agentNusdcBalance !== null && `(${agentNusdcBalance} NUSDC)`}
+        </button>
         {hasKey && (
           <button
             onClick={() => { setExportPassphrase(''); setExportedKey(null); setExportError(null); setShowExportKey(true); }}
@@ -325,6 +419,9 @@ export function AgentDetail() {
       )}
       {activeTab === 'activity' && (
         <ActivityTab agent={agent} />
+      )}
+      {activeTab === 'trader' && agent && (
+        <TraderTab agentId={agent.id} agentAddress={agent.agentAddress} budgetId={budget?.id ?? ''} />
       )}
 
       {/* Deactivate confirmation modal */}
@@ -464,6 +561,79 @@ export function AgentDetail() {
                     className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                   >
                     {fundStatus === 'sending' ? 'Sending...' : 'Send'}
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fund NUSDC modal */}
+      {showFundNusdc && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowFundNusdc(false)} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Fund Agent NUSDC</h3>
+            <p className="text-xs text-[var(--color-text-muted)]">
+              Transfer NUSDC directly to agent address. Used by trader presets that swap on Pado DEX. This is separate from the Budget (which pays AER fees).
+            </p>
+            <div className="space-y-1">
+              <label className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Amount (NUSDC)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0.01"
+                max={MAX_FUND_NUSDC}
+                value={fundNusdcAmount}
+                onChange={(e) => setFundNusdcAmount(e.target.value)}
+                className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+              />
+            </div>
+            {fundNusdcStatus === 'success' && (
+              <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 text-center space-y-1">
+                <p>Transfer successful</p>
+                {fundNusdcTxDigest && (
+                  <a
+                    href={`https://explorer.nasun.io/devnet/tx/${fundNusdcTxDigest}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[var(--color-accent)] hover:underline"
+                  >
+                    View on Explorer
+                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                )}
+              </div>
+            )}
+            {fundNusdcError && (
+              <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400 text-center">{fundNusdcError}</div>
+            )}
+            <div className="flex gap-2">
+              {fundNusdcStatus === 'success' ? (
+                <button
+                  onClick={() => setShowFundNusdc(false)}
+                  className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+                >
+                  Done
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setShowFundNusdc(false)}
+                    disabled={fundNusdcStatus === 'sending'}
+                    className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                  >
+                    Close
+                  </button>
+                  <button
+                    onClick={handleFundNusdc}
+                    disabled={fundNusdcStatus === 'sending'}
+                    className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+                  >
+                    {fundNusdcStatus === 'sending' ? 'Sending...' : 'Send'}
                   </button>
                 </>
               )}
@@ -753,6 +923,183 @@ function ActivityTab({ agent }: { agent: { totalExecutions: number; lastActiveAt
       <p className="text-xs text-[var(--color-text-muted)] mt-4">
         Detailed activity timeline coming soon.
       </p>
+    </div>
+  );
+}
+
+function TraderTab({ agentId, agentAddress, budgetId }: { agentId: string; agentAddress: string; budgetId: string }) {
+  const { config, loading, save, remove } = useTraderConfig(agentAddress);
+  const scheduler = useTraderScheduler();
+  const [showStart, setShowStart] = useState(false);
+  const [passphrase, setPassphrase] = useState('');
+  const [now, setNow] = useState(Date.now());
+
+  // Tick clock for countdown
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (loading && !config) {
+    return <div className="text-center py-8 text-xs text-[var(--color-text-muted)]">Loading…</div>;
+  }
+
+  const isRunning = scheduler.status === 'running' || scheduler.status === 'cycling' || scheduler.status === 'starting';
+  const countdown = scheduler.nextCycleAt ? Math.max(0, scheduler.nextCycleAt - now) : 0;
+  const countdownText = scheduler.status === 'cycling' ? 'cycling…' : countdown > 0 ? `${Math.floor(countdown/60000)}m ${Math.floor((countdown%60000)/1000)}s` : '—';
+
+  return (
+    <div className="space-y-4">
+      <div className="p-3 rounded-lg bg-[var(--color-bg-tertiary)] border border-[var(--color-border)]">
+        <p className="text-xs text-[var(--color-text-secondary)]">
+          Define and run this agent's autonomous trader bot. Cycles run in this browser tab; closing the tab pauses the bot.
+        </p>
+      </div>
+
+      {/* Live status panel (only when started) */}
+      {scheduler.status !== 'idle' && (
+        <div className="p-3 rounded-lg bg-[var(--color-bg-secondary)] border border-[var(--color-border)] space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className={`w-2 h-2 rounded-full ${
+                scheduler.status === 'running' ? 'bg-emerald-500' :
+                scheduler.status === 'cycling' ? 'bg-amber-500 animate-pulse' :
+                scheduler.status === 'error' ? 'bg-red-500' :
+                scheduler.status === 'stopped' ? 'bg-neutral-500' :
+                'bg-blue-500'
+              }`} />
+              <span className="text-xs font-medium text-[var(--color-text-primary)] capitalize">{scheduler.status}</span>
+            </div>
+            <div className="text-2xs text-[var(--color-text-muted)]">next cycle: {countdownText}</div>
+          </div>
+          {scheduler.error && (
+            <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{scheduler.error}</div>
+          )}
+          <div className="flex gap-2">
+            {isRunning ? (
+              <>
+                <button
+                  onClick={() => scheduler.runNow()}
+                  disabled={scheduler.status === 'cycling'}
+                  className="px-3 py-1 text-2xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+                >Run cycle now</button>
+                <button
+                  onClick={() => scheduler.stop()}
+                  className="px-3 py-1 text-2xs rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors"
+                >Stop</button>
+              </>
+            ) : (
+              config && (
+                <button
+                  onClick={() => { setPassphrase(''); setShowStart(true); }}
+                  className="px-3 py-1 text-2xs rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+                >Start</button>
+              )
+            )}
+          </div>
+
+          {/* Recent trades */}
+          {scheduler.trades.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Recent trades</div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {scheduler.trades.slice().reverse().map((t) => (
+                  <div key={t.digest} className="flex items-center justify-between text-2xs font-mono">
+                    <span className={t.action === 'BUY' ? 'text-emerald-400' : 'text-red-400'}>{t.action}</span>
+                    <span className="text-[var(--color-text-secondary)]">{(Number(BigInt(t.sizeQuoteRaw))/1e6).toFixed(4)} NUSDC eq</span>
+                    <a
+                      href={`https://explorer.nasun.io/devnet/tx/${t.digest}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="text-[var(--color-accent)] hover:underline"
+                    >{t.digest.slice(0,8)}…</a>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Cycle log (last 8) */}
+          {scheduler.log.length > 0 && (
+            <div className="space-y-1">
+              <div className="text-2xs uppercase tracking-wider text-[var(--color-text-muted)]">Log</div>
+              <pre className="text-2xs bg-[var(--color-bg-primary)] rounded-lg p-2 max-h-32 overflow-y-auto whitespace-pre-wrap break-words text-[var(--color-text-muted)]">
+                {scheduler.log.slice(-8).join('\n')}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Start button when bot not yet started */}
+      {scheduler.status === 'idle' && config && (
+        <div className="flex gap-2">
+          <button
+            onClick={() => { setPassphrase(''); setShowStart(true); }}
+            className="px-4 py-2 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+          >Start Trader Bot</button>
+          <span className="self-center text-2xs text-[var(--color-text-muted)]">
+            Cycles run only while this tab is open.
+          </span>
+        </div>
+      )}
+
+      <TraderConfigForm
+        agentAddress={agentAddress}
+        agentBudgetId={budgetId}
+        initial={config}
+        onSave={async (values) => {
+          await save({
+            agentAddress: values.agentAddress,
+            budgetId: values.budgetId,
+            executorAddress: values.executorAddress,
+            executorEndpoint: values.executorEndpoint,
+            name: values.name,
+            pair: values.pair,
+            perTradeMaxQuoteRaw: values.perTradeMaxQuoteRaw,
+            dailyMaxQuoteRaw: values.dailyMaxQuoteRaw,
+            intervalMinutes: values.intervalMinutes,
+            model: values.model,
+            promptTemplate: values.promptTemplate,
+            enabled: values.enabled,
+          });
+        }}
+        onDelete={config ? async () => { await remove(); } : undefined}
+      />
+
+      {/* Start passphrase modal */}
+      {showStart && config && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60" onClick={() => setShowStart(false)} />
+          <div className="relative w-full max-w-sm bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-xl shadow-2xl p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">Unlock agent key</h3>
+            <p className="text-2xs text-[var(--color-text-muted)]">
+              Enter the passphrase you set when generating this agent's keypair. The decrypted key stays in this tab's memory only.
+            </p>
+            <input
+              type="password"
+              autoFocus
+              value={passphrase}
+              onChange={(e) => setPassphrase(e.target.value)}
+              placeholder="Passphrase"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)]"
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowStart(false)}
+                className="flex-1 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+              >Cancel</button>
+              <button
+                disabled={passphrase.length < 1}
+                onClick={async () => {
+                  const ok = await scheduler.start(agentId, passphrase, config);
+                  if (ok) setShowStart(false);
+                }}
+                className="flex-1 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+              >Unlock & Start</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
