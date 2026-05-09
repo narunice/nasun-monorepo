@@ -52,7 +52,7 @@ export function PortfolioPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-bold">Portfolio</h1>
         <span className="text-xs font-bold tracking-wider text-yellow-600 dark:text-yellow-400 bg-yellow-100 dark:bg-yellow-400/10 border border-yellow-300 dark:border-yellow-400/30 px-2 py-0.5 rounded">
@@ -106,7 +106,7 @@ export function PortfolioPage() {
 
 function BalanceTab() {
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-lg font-bold text-theme-text-primary">
           Pado Balance

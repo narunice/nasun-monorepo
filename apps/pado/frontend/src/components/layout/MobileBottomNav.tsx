@@ -2,7 +2,7 @@
  * MobileBottomNav
  * 5-tab bottom navigation bar for mobile (< md breakpoint).
  *
- * Tabs: Home | Spot | Perpetuals | Social | More
+ * Tabs: Home | Spot | Predict | Social | More
  * - Fixed at bottom with safe-area padding for iOS notch
  * - Hidden on md+ (desktop uses header nav)
  * - "More" opens a bottom sheet overlay with secondary features
@@ -38,9 +38,11 @@ const spotIcon = (active: boolean) => (
   </svg>
 );
 
-const perpIcon = (active: boolean) => (
+const predictIcon = (active: boolean) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.2 : 1.8}>
-    <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="13" r="7" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 11.5a3 3 0 013-2.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8 6l1.5-2M16 6l-1.5-2M12 4V2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
 
@@ -56,7 +58,7 @@ const socialIcon = (active: boolean) => (
 const TABS: NavTab[] = [
   { label: 'Home', path: '/', matchPaths: ['/'], icon: homeIcon, enabled: true },
   { label: 'Spot', path: '/spot', matchPaths: ['/spot', '/markets/spot', '/trade/spot'], icon: spotIcon, enabled: hasAccess('spot') },
-  { label: 'Perpetuals', path: '/perpetuals', matchPaths: ['/perpetuals', '/markets/perp', '/trade/perp'], icon: perpIcon, enabled: hasAccess('full') },
+  { label: 'Predict', path: '/predict', matchPaths: ['/predict'], icon: predictIcon, enabled: true },
   { label: 'Social', path: '/leaderboard', matchPaths: ['/leaderboard', '/competitions'], icon: socialIcon, enabled: hasAccess('spot') },
 ];
 
@@ -68,9 +70,9 @@ interface MoreItem {
 }
 
 const MORE_ITEMS: MoreItem[] = [
-  { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
   { label: 'Portfolio', path: '/portfolio', icon: '📊', enabled: hasAccess('spot') },
-  { label: 'Predict', path: '/predict', icon: '🔮', enabled: true },
+  { label: 'Earn', path: '/earn', icon: '💰', enabled: hasAccess('full') },
+  { label: 'Perpetuals', path: '/perpetuals', icon: '📈', enabled: hasAccess('full') },
 ];
 
 export function MobileBottomNav() {
