@@ -18,6 +18,8 @@ import {
 } from '../config/ecosystem.js';
 import { saveCache, loadCache } from './cache-persist.js';
 import { fetchWithOffload } from './fetch-with-offload.js';
+import { withRetry } from '../utils/rpc-retry.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 
 // --- Activations Cache ---
 
@@ -65,14 +67,24 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
   }
 
   try {
-    const data = await fetchWithOffload<{
-      activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
-    }>({
-      url,
-      apiKey,
-      label: 'Ecosystem',
-      timeoutMs: 30_000,
-    });
+    // withRetry handles transient 5xx + network errors with bounded backoff
+    // (1s/3s + jitter, 3 attempts total). The 2026-05-08 snapshot lockout
+    // started here: a single admin-api 503 dropped freshly-activated NFT
+    // holders out of the cache, which then cascaded into health-update and
+    // snapshot fail-safe abort.
+    const data = await withRetry(
+      () =>
+        fetchWithOffload<{
+          activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+        }>({
+          url,
+          apiKey,
+          label: 'Ecosystem',
+          timeoutMs: 30_000,
+          throwOnTransient: true,
+        }),
+      { label: 'EcosystemActivations', maxAttempts: 3, baseDelayMs: 1000 },
+    );
 
     if (!data) {
       if (activationsCache.size === 0) {
@@ -89,6 +101,10 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
     console.log(`[Ecosystem] Activations cache refreshed: ${activationsCache.size} users`);
   } catch (err) {
     console.error('[Ecosystem] Activations cache refresh error:', err);
+    void sendTelegramAlert(
+      `Activations cache refresh failed after retries: ${(err as Error).message}`,
+      { dedupKey: 'ecosystem-cache-refresh-fail' },
+    );
     if (activationsCache.size === 0) {
       tryLoadActivationsFallback();
     }

@@ -373,20 +373,25 @@ async function scanLoop(myGen: number): Promise<void> {
         // for the entire day. Letting the next scanLoop retry recovers.
         console.warn('[Snapshot] Skipped: activation cache is empty (would record multiplier=0 for all users); will retry next loop');
       } else {
+        let snapshotOk = false;
         try {
           const yesterday = new Date();
           yesterday.setUTCDate(yesterday.getUTCDate() - 1);
-          await takeDailySnapshot(
+          snapshotOk = await takeDailySnapshot(
             yesterday.toISOString().slice(0, 10),
             cacheMap,
           );
         } catch (err) {
           console.error('[Snapshot] Error (non-fatal):', (err as Error).message);
         }
-        // Mark snapshot as attempted (idempotent via ON CONFLICT). Only set
-        // when the cache was actually available so we don't pin
-        // lastSnapshotDate to an empty-cache run that skipped everyone.
-        lastSnapshotDate = todayStr;
+        // Only mark the day as done when the snapshot actually reached the
+        // INSERT phase. Early fail-safe aborts (missing health rows, matview
+        // sanity gate) return false so the next scanLoop retries within the
+        // same UTC day instead of pinning the gate and losing the snapshot
+        // entirely (root cause of the 2026-05-08 missing-snapshot incident).
+        if (snapshotOk) {
+          lastSnapshotDate = todayStr;
+        }
       }
     }
 
