@@ -37,11 +37,13 @@ const PREDICTION_PACKAGE_ID =
 
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
-  // Order depth (45 levels per side = 90 total orders)
-  LP_ORDER_LEVELS: '45',
-  LP_UPDATE_INTERVAL: '10000',   // 10 seconds
-  // Risk controls
-  LP_MIN_SPREAD_BPS: '10',
+  // Tiered grid is configured in lib/config.ts (DEFAULT_ZONES: 10@3 / 15@8 / 15@22).
+  // LP_ORDER_LEVELS is only consulted by the legacy uniform path; total tiered
+  // levels per side is sum of zone.levels (40), well within the 50 cap.
+  LP_ORDER_LEVELS: '40',
+  LP_UPDATE_INTERVAL: '4000',   // 4s post-cycle gap (setTimeout chain self-paces if cycle > 4s)
+  // Allow innermost 3 bps band to pass validateOrders (DEFAULT_ZONES inner spacing = 3).
+  LP_MIN_SPREAD_BPS: '2',
   LP_MAX_FAILURES: '5',
   // Gas: warn when below 1000 NASUN (each bot pre-funded with 100k NASUN via refill-gas.ts)
   LP_GAS_REFILL_THRESHOLD: '1000',
@@ -76,14 +78,11 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NBTC || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NBTC',
-        // Tight spread for main market
-        LP_SPREAD_BPS: '20',
-        LP_REQUOTE_THRESHOLD: '20',
-        LP_LEVEL_SPACING_BPS: '6',
+        // Spread/spacing/requote/divergence: tiered grid defaults from lib/config.ts
+        // (DEFAULT_ZONES + market.defaultSpreadBps=3, defaultRequoteThresholdBps=5).
         LP_ORDER_SIZE: '0.1',
         LP_MAX_ORDER_SIZE: '0.5',
         LP_MAX_ARB_QUANTITY: '10',
-        LP_DIVERGENCE_THRESHOLD_BPS: '30',   // 1.5x spread(20bps); must be > LP_REQUOTE_THRESHOLD(20)
         LP_REFILL_THRESHOLD_BASE: '6',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '50000',
@@ -99,14 +98,10 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NETH || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NETH',
-        // Standard spread
-        LP_SPREAD_BPS: '30',
-        LP_REQUOTE_THRESHOLD: '25',
-        LP_LEVEL_SPACING_BPS: '8',
+        // Spread/spacing/requote/divergence: tiered grid defaults from lib/config.ts.
         LP_ORDER_SIZE: '4',
         LP_MAX_ORDER_SIZE: '20',
         LP_MAX_ARB_QUANTITY: '5',
-        LP_DIVERGENCE_THRESHOLD_BPS: '45',   // 1.5x spread(30bps); must be > LP_REQUOTE_THRESHOLD(25)
         LP_REFILL_THRESHOLD_BASE: '250',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '1000',
@@ -122,14 +117,10 @@ module.exports = {
         ...COMMON_LP_ENV,
         LP_PRIVATE_KEY: process.env.LP_PRIVATE_KEY_NSOL || process.env.LP_PRIVATE_KEY,
         LP_MARKET: 'NSOL',
-        // Wide spread for volatile asset
-        LP_SPREAD_BPS: '40',
-        LP_REQUOTE_THRESHOLD: '30',
-        LP_LEVEL_SPACING_BPS: '10',
+        // Spread/spacing/requote/divergence: tiered grid defaults from lib/config.ts.
         LP_ORDER_SIZE: '50',
         LP_MAX_ORDER_SIZE: '300',
         LP_MAX_ARB_QUANTITY: '100',
-        LP_DIVERGENCE_THRESHOLD_BPS: '60',   // 1.5x spread(40bps); must be > LP_REQUOTE_THRESHOLD(30)
         LP_REFILL_THRESHOLD_BASE: '3500',
         LP_REFILL_THRESHOLD_QUOTE: '200000',
         LP_MIN_PRICE: '10',
