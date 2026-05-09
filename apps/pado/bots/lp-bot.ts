@@ -36,6 +36,7 @@ import {
   type LPConfig,
   type BotState,
   rawToPrice,
+  quantityToRaw,
   isGasExhaustedError,
   timestamp,
 } from './lib/config.js';
@@ -262,18 +263,39 @@ async function runBot(
 
   // Cap order count to available inventory to prevent withdraw_with_proof failures.
   // DeepBook V3 reserves maker fees upfront per order, so use 95% of balance as safe limit.
-  const safeBase = inventory.base * 0.95;
-  const safeQuote = inventory.quote * 0.95;
-  const maxAsks = safeBase > 0
-    ? Math.floor(safeBase / config.orderSize)
-    : 0;
-  const maxBids = (safeQuote > 0 && price > 0)
-    ? Math.floor(safeQuote / (config.orderSize * price))
-    : 0;
+  // Accumulator loop walks orders in inner→outer order (already sorted by strategy)
+  // and stops when the running sum exceeds the budget. This handles tiered grids
+  // where each order has a different size; for uniform grids it reduces to the
+  // same per-side count cap as before.
+  const totalBids = bids.length;
+  const totalAsks = asks.length;
 
-  if (maxAsks < asks.length || maxBids < bids.length) {
-    bids = bids.slice(0, Math.max(0, maxBids));
-    asks = asks.slice(0, Math.max(0, maxAsks));
+  const safeBaseRaw = quantityToRaw(inventory.base * 0.95);
+  let cumBaseRaw = 0n;
+  const cappedAsks = [] as typeof asks;
+  for (const ask of asks) {
+    if (cumBaseRaw + ask.quantity > safeBaseRaw) break;
+    cumBaseRaw += ask.quantity;
+    cappedAsks.push(ask);
+  }
+
+  // Bids are denominated in quote: each bid reserves `quantity * price` (raw quote).
+  // We approximate cost using the order's own price for accuracy across tiers.
+  const safeQuoteRaw = price > 0 ? BigInt(Math.floor(inventory.quote * 0.95 * Math.pow(10, MARKET.quoteDecimals))) : 0n;
+  let cumQuoteRaw = 0n;
+  const cappedBids = [] as typeof bids;
+  for (const bid of bids) {
+    // Cost = quantity (base raw) * price (quote raw / base unit)
+    // Both already in raw units; divide by 10^baseDecimals to align units.
+    const costRaw = (bid.quantity * bid.price) / BigInt(Math.pow(10, MARKET.baseDecimals));
+    if (cumQuoteRaw + costRaw > safeQuoteRaw) break;
+    cumQuoteRaw += costRaw;
+    cappedBids.push(bid);
+  }
+
+  if (cappedAsks.length < totalAsks || cappedBids.length < totalBids) {
+    bids = cappedBids;
+    asks = cappedAsks;
 
     if (bids.length === 0 && asks.length === 0) {
       console.error(`[${timestamp()}] Insufficient inventory for any orders (base: ${inventory.base.toFixed(4)}, quote: ${inventory.quote.toFixed(0)})`);
