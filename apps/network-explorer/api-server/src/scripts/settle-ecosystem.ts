@@ -216,6 +216,7 @@ async function fetchIdentityToWallet(): Promise<Map<string, string>> {
 interface ProfileFlags {
   hasSocialAccount: boolean;
   isTelegramMember: boolean;
+  isAdmin: boolean;
 }
 
 function hasSocialConnection(item: Record<string, unknown>): boolean {
@@ -248,8 +249,8 @@ async function fetchProfileFlags(identityIds: string[]): Promise<Map<string, Pro
         RequestItems: {
           [USER_PROFILES_TABLE]: {
             Keys: pendingKeys,
-            ProjectionExpression: 'identityId, #pr, twitterHandle, linkedAccounts, #tgm, telegramUserId',
-            ExpressionAttributeNames: { '#pr': 'provider', '#tgm': 'isTelegramMember' },
+            ProjectionExpression: 'identityId, #pr, twitterHandle, linkedAccounts, #tgm, telegramUserId, #rl',
+            ExpressionAttributeNames: { '#pr': 'provider', '#tgm': 'isTelegramMember', '#rl': 'role' },
           },
         },
       }));
@@ -258,6 +259,7 @@ async function fetchProfileFlags(identityIds: string[]): Promise<Map<string, Pro
         result.set(id, {
           hasSocialAccount: hasSocialConnection(item),
           isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
+          isAdmin: (item.role as string | undefined) === 'ADMIN',
         });
       }
       pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
@@ -447,7 +449,10 @@ async function main() {
   const profileFlags = await fetchProfileFlags(identityIds);
 
   // 6. Build ranked rows + apply JS tiebreaker (matches /leaderboard endpoint)
-  const ranked: RankedRow[] = validRows.map(r => {
+  // Drop admin profiles so they neither appear nor receive payout.
+  const ranked: RankedRow[] = validRows
+    .filter(r => !(profileFlags.get(r.identity_id)?.isAdmin ?? false))
+    .map(r => {
     const flags = profileFlags.get(r.identity_id);
     return {
       identityId: r.identity_id,
