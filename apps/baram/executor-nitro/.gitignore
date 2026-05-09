@@ -16,6 +16,9 @@ models/*.gguf
 .env
 .env.ami
 
+# One-shot keypair generator output (developer-local only)
+gen-executor-keypair.ts
+
 # IDE
 .vscode/
 .idea/

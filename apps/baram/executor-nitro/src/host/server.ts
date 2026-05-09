@@ -111,20 +111,34 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     next();
   }
 
-  // CORS — fail-secure: no CORS headers unless explicitly configured
+  // CORS — explicit allowlist; localhost auto-allow ONLY when developer opts in
+  // via BARAM_DEV_CORS_LOCALHOST=true. We do NOT enable it by default because
+  // any locally-running page (browser extensions, dev tools, electron apps)
+  // could otherwise spend the operator's escrow / burn LLM quota.
   const allowedOrigin = process.env.CORS_ALLOWED_ORIGIN;
-  if (allowedOrigin) {
-    app.use((req: Request, res: Response, next: NextFunction) => {
-      res.header('Access-Control-Allow-Origin', allowedOrigin);
-      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type');
-      if (req.method === 'OPTIONS') {
-        res.sendStatus(200);
-        return;
-      }
-      next();
-    });
+  const devLocalhost = process.env.BARAM_DEV_CORS_LOCALHOST === 'true';
+  if (devLocalhost && !allowedOrigin) {
+    console.warn('[Host/Server] BARAM_DEV_CORS_LOCALHOST=true — auto-allowing http(s)://localhost origins. Disable in production.');
   }
+  app.use((req: Request, res: Response, next: NextFunction) => {
+    const origin = req.headers.origin as string | undefined;
+    let allow: string | undefined;
+    if (allowedOrigin) {
+      allow = allowedOrigin;
+    } else if (devLocalhost && origin && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+      allow = origin;
+    }
+    if (allow) {
+      res.header('Access-Control-Allow-Origin', allow);
+      res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, x-api-key');
+    }
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(allow ? 200 : 403);
+      return;
+    }
+    next();
+  });
 
   /**
    * GET /health
@@ -210,7 +224,16 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
    * }
    */
   app.post('/execute', rateLimit, async (req: Request, res: Response) => {
-    const { requestId, encryptedPrompt, model, budgetId, authorizer } = req.body;
+    const { requestId, encryptedPrompt, model, budgetId, authorizer, purpose, constraints, triggeredBy, triggeredAction } = req.body;
+
+    // Validate optional AER metadata (string fields max 256 chars; ID fields must be 0x + 64 hex)
+    const ID_RE = /^0x[0-9a-fA-F]{64}$/;
+    const aerMeta = {
+      purpose: typeof purpose === 'string' && purpose.length > 0 && purpose.length <= 256 ? purpose : null,
+      constraints: typeof constraints === 'string' && constraints.length > 0 && constraints.length <= 256 ? constraints : null,
+      triggeredBy: typeof triggeredBy === 'string' && ID_RE.test(triggeredBy) ? triggeredBy : null,
+      triggeredAction: typeof triggeredAction === 'string' && ID_RE.test(triggeredAction) ? triggeredAction : null,
+    };
 
     // Validate request
     if (typeof requestId !== 'number' || !Number.isInteger(requestId) || requestId < 0 || requestId > Number.MAX_SAFE_INTEGER) {
@@ -325,22 +348,22 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
               executorPrincipal: null,
               // HOW MUCH (payment_amount, executor_received, payment_token from receipt)
               feeDetail: null,
-              budgetId: (typeof budgetId === 'string' && budgetId) || null,
+              budgetId: (typeof budgetId === 'string' && ID_RE.test(budgetId)) ? budgetId : null,
               budgetRemaining: null,
               // WHAT (model_name, output_hash, execution_time_ms from receipt)
               modelMetadata: null,
-              // WHY
-              purpose: null,
-              constraints: null,
+              // WHY (from /execute body — used by trader to link prior trade digest)
+              purpose: aerMeta.purpose,
+              constraints: aerMeta.constraints,
               // HOW TRUSTWORTHY
               executorTier: executorStats.tier,
               executorReputation: executorStats.reputation,
               executorStakeAmount: executorStats.stakeAmount,
               teeVerified: attestationVerification?.valid ?? false,
               teeAttestationHash: attestationHashBytes,
-              // CHAIN
-              triggeredBy: null,
-              triggeredAction: null,
+              // CHAIN (from /execute body — trader passes prior trade tx digest as triggeredBy)
+              triggeredBy: aerMeta.triggeredBy,
+              triggeredAction: aerMeta.triggeredAction,
             };
 
             txDigest = await submitProofWithAERRetry(

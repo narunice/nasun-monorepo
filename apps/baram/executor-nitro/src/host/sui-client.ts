@@ -71,7 +71,14 @@ let config: SuiConfig | null = null;
 
 export function initSuiClient(cfg: SuiConfig): void {
   client = new SuiClient({ url: cfg.rpcUrl });
-  keypair = Ed25519Keypair.fromSecretKey(Buffer.from(cfg.executorPrivateKey, 'hex'));
+  const raw = cfg.executorPrivateKey;
+  keypair = Ed25519Keypair.fromSecretKey(
+    raw.startsWith('suiprivkey1')
+      ? raw
+      : /^(0x)?[0-9a-fA-F]{64}$/.test(raw)
+        ? Buffer.from(raw.replace(/^0x/, ''), 'hex')
+        : Buffer.from(raw, 'base64'),
+  );
   // Clear raw private key from config — keypair holds the derived key internally
   config = { ...cfg, executorPrivateKey: '' };
   console.log(`[Sui] Initialized with executor: ${keypair.getPublicKey().toSuiAddress()}`);
