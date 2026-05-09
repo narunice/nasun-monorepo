@@ -215,22 +215,14 @@ export async function fetchMarketsWithOrderbooks(): Promise<
     noOrderbook: { bids: OrderbookLevel[]; asks: OrderbookLevel[] } | null;
   }[]
 > {
+  // Lazy orderbook: previously this paralleled `fetchMarketOrderbook(yes)` +
+  // `fetchMarketOrderbook(no)` for every discovered market, which on a 10-
+  // market list meant ~40 sequential dynamic-field walks just to render the
+  // /predict landing page (the core reason it loaded much slower than /spot).
+  // List cards now read `lastTradePrice` from the shared market-fills cache;
+  // full orderbooks are fetched only when the user opens a market detail.
   const markets = await fetchMarkets();
-  const results = await Promise.all(
-    markets.map(async (market) => {
-      try {
-        const [yesOrderbook, noOrderbook] = await Promise.all([
-          fetchMarketOrderbook(market.id, true),
-          fetchMarketOrderbook(market.id, false),
-        ]);
-        return { market, yesOrderbook, noOrderbook };
-      } catch (error) {
-        console.error(`Failed to fetch orderbook for ${market.id}:`, error);
-        return { market, yesOrderbook: null, noOrderbook: null };
-      }
-    }),
-  );
-  return results;
+  return markets.map((market) => ({ market, yesOrderbook: null, noOrderbook: null }));
 }
 
 /**

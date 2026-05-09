@@ -336,27 +336,29 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         queryClient.invalidateQueries({ queryKey: ['prediction', 'market', marketId] });
         queryClient.invalidateQueries({ queryKey: ['prediction', 'orderbook', marketId, 'yes'] });
         queryClient.invalidateQueries({ queryKey: ['prediction', 'orderbook', marketId, 'no'] });
-        queryClient.invalidateQueries({ queryKey: ['prediction', 'recent-fills', marketId] });
+        // Recent-fills hook split: market-wide (shared) + my-fills (per-user).
+        queryClient.invalidateQueries({ queryKey: ['prediction', 'market-fills', marketId] });
         if (addr) {
-          queryClient.invalidateQueries({ queryKey: ['prediction-positions', addr, marketId] });
-          // PositionList queries with marketId=undefined too (wallet-scoped list).
+          // Wallet-scoped positions: hook reads with optional marketId filter,
+          // so invalidating just the wallet-level prefix matches both
+          // (`['prediction-positions', addr]` and `[..., addr, marketId]`).
           queryClient.invalidateQueries({ queryKey: ['prediction-positions', addr] });
           queryClient.invalidateQueries({ queryKey: ['prediction', 'my-orders', marketId, addr] });
           queryClient.invalidateQueries({ queryKey: ['prediction', 'my-trade-history', marketId, addr] });
+          queryClient.invalidateQueries({ queryKey: ['prediction', 'my-fills', marketId, addr] });
         }
         if (alsoInvalidateMarketsList) {
           queryClient.invalidateQueries({ queryKey: ['prediction-markets-with-orderbooks'] });
         }
       };
 
-      // Sui's owned-objects + event indexers typically lag tx confirmation by
-      // 2-6 seconds. A single invalidate fired immediately after tx success
-      // racing with that lag yields a stale refetch. Re-fire at +1.5s, +4s,
-      // and +8s so the post-trade state lands on screen reliably.
+      // EventService bridge handles event-driven invalidation (5s polling
+      // tick). The trade-flow invalidate is a safety net for Sui's
+      // owned-objects indexer (Position NFTs), which lags 5-8s post-tx.
+      // Two-cycle (immediate + 5s) is enough; the previous 4-cycle (0/1.5/
+      // 4/8s) wave-of-refetches piled on top of EventService for no benefit.
       invalidate();
-      setTimeout(invalidate, 1_500);
-      setTimeout(invalidate, 4_000);
-      setTimeout(invalidate, 8_000);
+      setTimeout(invalidate, 5_000);
     },
     [queryClient, walletAddress],
   );

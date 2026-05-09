@@ -16,7 +16,9 @@ interface UseMarketResult {
 }
 
 export function useMarket(marketId: string | undefined): UseMarketResult {
-  const adaptiveInterval = useAdaptiveInterval(30_000);
+  // EventService bridge invalidates this key on OrderFilled / MarketResolved /
+  // MarketCancelled, so a long polling safety net (60s) is sufficient.
+  const adaptiveInterval = useAdaptiveInterval(60_000);
 
   const {
     data: market = null,
@@ -24,7 +26,11 @@ export function useMarket(marketId: string | undefined): UseMarketResult {
     error,
     refetch,
   } = useQuery({
-    queryKey: ['prediction-market', marketId],
+    // Note: key changed from ['prediction-market', mid] to ['prediction',
+    // 'market', mid] so existing invalidate calls (usePredictionTrade,
+    // bridge) actually match. Previously the legacy hyphenated key never
+    // got invalidated by trade flow.
+    queryKey: ['prediction', 'market', marketId],
     queryFn: () => fetchMarket(marketId!),
     enabled: !!marketId,
     staleTime: 10_000, // 10 seconds

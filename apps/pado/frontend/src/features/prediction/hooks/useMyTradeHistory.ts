@@ -70,7 +70,8 @@ export function useMyTradeHistory(
     queryKey: ['prediction', 'my-trade-history', marketId, owner],
     queryFn: () => fetchMyTradeHistory(marketId!, owner!),
     enabled: !!marketId && !!owner,
-    staleTime: 10_000,
-    refetchInterval: 15_000,
+    // Bridge invalidates on user's own OrderFilled. 60s safety net.
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }

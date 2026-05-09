@@ -152,8 +152,10 @@ export function useMyOpenOrders(marketId: string | undefined, owner: string | un
     queryKey: ['prediction', 'my-orders', marketId, owner],
     queryFn: () => fetchMyOpenOrders(marketId!, owner!),
     enabled: !!marketId && !!owner,
-    staleTime: 15_000,
-    refetchInterval: 30_000,
+    // Bridge invalidates on user's own OrderPlaced / OrderCancelled /
+    // OrderFilled (own order filled = amount changes). 60s safety net.
+    staleTime: 30_000,
+    refetchInterval: 60_000,
   });
 }
 
