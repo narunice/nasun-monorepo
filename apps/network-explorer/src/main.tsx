@@ -3,7 +3,8 @@
  * Uses the same static import pattern as other apps (pado, baram, nasun-website)
  */
 
-import { StrictMode, Suspense, lazy } from 'react'
+import { StrictMode, Suspense } from 'react'
+import { lazyWithRetry } from './utils/lazyWithRetry'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider, QueryCache } from '@tanstack/react-query'
@@ -39,7 +40,7 @@ if (googleClientId && saltApiUrl) {
 }
 
 // Lazy load App for code splitting (not for SES workaround)
-const App = lazy(() => import('./App.tsx'))
+const App = lazyWithRetry(() => import('./App.tsx'))
 
 // Deduplicate error toasts — show at most one per 30s
 let lastErrorToast = 0;

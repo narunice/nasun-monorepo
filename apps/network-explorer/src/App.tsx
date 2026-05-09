@@ -1,4 +1,4 @@
-import { lazy } from 'react';
+import { lazyWithRetry } from './utils/lazyWithRetry';
 import { Routes, Route, Link } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { ErrorBoundary, Layout } from './components/layout';
@@ -6,21 +6,21 @@ import Home from './pages/Home';
 import { Card } from './components/ui/Card';
 
 // Lazy-loaded pages — each becomes a separate chunk
-const Analytics = lazy(() => import('./pages/Analytics'));
-const Transaction = lazy(() => import('./pages/Transaction'));
-const Transactions = lazy(() => import('./pages/Transactions'));
-const ObjectPage = lazy(() => import('./pages/Object'));
-const Address = lazy(() => import('./pages/Address'));
-const Validators = lazy(() => import('./pages/Validators'));
-const Validator = lazy(() => import('./pages/Validator'));
-const Checkpoints = lazy(() => import('./pages/Checkpoints'));
-const Checkpoint = lazy(() => import('./pages/Checkpoint'));
-const Package = lazy(() => import('./pages/Package'));
-const Packages = lazy(() => import('./pages/Packages'));
-const Tokens = lazy(() => import('./pages/Tokens'));
-const Epoch = lazy(() => import('./pages/Epoch'));
-const TopAccounts = lazy(() => import('./pages/TopAccounts'));
-const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const Analytics = lazyWithRetry(() => import('./pages/Analytics'));
+const Transaction = lazyWithRetry(() => import('./pages/Transaction'));
+const Transactions = lazyWithRetry(() => import('./pages/Transactions'));
+const ObjectPage = lazyWithRetry(() => import('./pages/Object'));
+const Address = lazyWithRetry(() => import('./pages/Address'));
+const Validators = lazyWithRetry(() => import('./pages/Validators'));
+const Validator = lazyWithRetry(() => import('./pages/Validator'));
+const Checkpoints = lazyWithRetry(() => import('./pages/Checkpoints'));
+const Checkpoint = lazyWithRetry(() => import('./pages/Checkpoint'));
+const Package = lazyWithRetry(() => import('./pages/Package'));
+const Packages = lazyWithRetry(() => import('./pages/Packages'));
+const Tokens = lazyWithRetry(() => import('./pages/Tokens'));
+const Epoch = lazyWithRetry(() => import('./pages/Epoch'));
+const TopAccounts = lazyWithRetry(() => import('./pages/TopAccounts'));
+const AuthCallback = lazyWithRetry(() => import('./pages/AuthCallback'));
 
 function NotFound() {
   return (

@@ -2,20 +2,20 @@
  * Lazy loading with retry + stale-chunk recovery.
  *
  * Two failure modes:
- * 1. Transient network blip → backoff retry (1s, 2s) usually recovers.
+ * 1. Transient network blip → backoff retry usually recovers.
  * 2. Stale chunk after deploy → chunk hash 404s permanently. Reload with
  *    cache-busting query so CDN edge serves fresh index.html.
  *
  * Timestamp-based guard (60s) prevents reload loops while still allowing
  * a later deploy to trigger another auto-reload in the same tab.
  */
-import { lazy, type ComponentType } from "react";
+import { lazy, type ComponentType } from 'react';
 
-const RELOAD_KEY = "chunk-reload-at";
+const RELOAD_KEY = 'chunk-reload-at';
 
 export function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
-  retries = 2
+  retries = 2,
 ): React.LazyExoticComponent<T> {
   return lazy(async () => {
     for (let attempt = 0; attempt <= retries; attempt++) {
@@ -32,17 +32,14 @@ export function lazyWithRetry<T extends ComponentType<any>>(
 
         const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
         const now = Date.now();
-        if (now - last < 60_000) {
-          // Already reloaded recently; surface the error to the boundary
-          throw error;
-        }
+        if (now - last < 60_000) throw error;
         sessionStorage.setItem(RELOAD_KEY, String(now));
         const url = new URL(window.location.href);
-        url.searchParams.set("_r", String(now));
+        url.searchParams.set('_r', String(now));
         window.location.replace(url.toString());
         return new Promise<{ default: T }>(() => {});
       }
     }
-    throw new Error("Failed to load component after retries");
+    throw new Error('Failed to load component after retries');
   });
 }

@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { lazyWithRetry } from './utils/lazyWithRetry'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { WalletConnect } from '@nasun/wallet-ui'
@@ -17,7 +18,7 @@ import GameHistoryPage from './pages/GameHistoryPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
 
 // Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
-const CrashPage = ENABLE_CRASH ? lazy(() => import('./pages/CrashPage')) : null
+const CrashPage = ENABLE_CRASH ? lazyWithRetry(() => import('./pages/CrashPage')) : null
 
 interface NavEntry {
   to: string

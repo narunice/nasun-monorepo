@@ -16,22 +16,32 @@ import { PageSpinner } from '../components/common/PageSpinner';
 import { hasAccess, type AccessMode } from '../config/network';
 import { useAppAdmin } from '../hooks/useAppAdmin';
 
-// Retry dynamic import once on chunk load failure (stale cache after deploy).
-// On failure, reload the page to fetch the new index.html + chunks.
+// Retry dynamic import on chunk load failure (stale cache after deploy).
+// On failure, reload with a cache-busting query so CDN edge doesn't return the same stale index.html.
+// Guard is timestamp-based so a later deploy can also trigger a retry.
 function lazyWithRetry<T extends ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
 ): React.LazyExoticComponent<T> {
   return lazy(() =>
-    factory().catch(() => {
-      // Prevent infinite reload loops: only reload once per session
-      const key = 'chunk-reload';
-      if (!sessionStorage.getItem(key)) {
-        sessionStorage.setItem(key, '1');
-        window.location.reload();
-      }
-      // Return a never-resolving promise to prevent React from rendering stale module
-      return new Promise(() => {});
-    }),
+    factory().then(
+      mod => {
+        // Clear guard on first successful chunk load this session
+        sessionStorage.removeItem('chunk-reload-at');
+        return mod;
+      },
+      (error) => {
+        const key = 'chunk-reload-at';
+        const last = Number(sessionStorage.getItem(key) ?? 0);
+        const now = Date.now();
+        // Already reloaded within 60s — surface to ErrorBoundary instead of looping
+        if (now - last < 60_000) throw error;
+        sessionStorage.setItem(key, String(now));
+        const url = new URL(window.location.href);
+        url.searchParams.set('_r', String(now));
+        window.location.replace(url.toString());
+        return new Promise<{ default: T }>(() => {});
+      },
+    ),
   );
 }
 

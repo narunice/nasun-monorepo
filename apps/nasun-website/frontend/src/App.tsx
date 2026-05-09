@@ -1,5 +1,6 @@
 // App.tsx
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, Suspense } from "react";
+import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { HelmetProvider } from "react-helmet-async";
 import { BrowserRouter as Router, useLocation } from "react-router-dom";
 import { useStaticTranslation as useTranslation } from "./providers/i18n/StaticTranslationProvider";
@@ -12,7 +13,7 @@ import { Button } from "./components/ui/button";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 import { useCrossAppArrival } from "./hooks/useCrossAppArrival";
 
-const ChatWidget = lazy(() => import("./features/chat/components/ChatWidget"));
+const ChatWidget = lazyWithRetry(() => import("./features/chat/components/ChatWidget"));
 
 /**
  * Error fallback component with i18n support
