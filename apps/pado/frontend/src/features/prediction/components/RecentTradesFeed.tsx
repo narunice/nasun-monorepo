@@ -86,8 +86,9 @@ function SkeletonRow() {
 }
 
 export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
-  const { data: fills = [], isLoading } = useRecentFills(marketId);
-  const myAddress = useActiveAddress()?.toLowerCase();
+  const myAddress = useActiveAddress();
+  const { data: fills = [], isLoading } = useRecentFills(marketId, myAddress);
+  const myAddressLc = myAddress?.toLowerCase();
   const visible = fills.slice(0, VISIBLE_LIMIT);
 
   return (
@@ -120,9 +121,9 @@ export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
           </div>
         ) : (
           visible.map((fill) => {
-            const isMine = !!myAddress && (
-              fill.taker.toLowerCase() === myAddress ||
-              fill.maker.toLowerCase() === myAddress
+            const isMine = !!myAddressLc && (
+              fill.taker.toLowerCase() === myAddressLc ||
+              fill.maker.toLowerCase() === myAddressLc
             );
             return (
               <TradeRow key={`${fill.orderId}-${fill.timestamp}`} fill={fill} isMine={isMine} />

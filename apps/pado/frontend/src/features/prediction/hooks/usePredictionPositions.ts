@@ -14,17 +14,22 @@ import type { Position } from '../types';
 /**
  * Parse Position object from Sui response
  */
-function parsePosition(obj: SuiObjectResponse): Position {
+function parsePosition(obj: SuiObjectResponse): Position & { _version: bigint } {
   const data = obj.data;
   const content = data?.content;
   const fields = content && 'fields' in content ? (content.fields as Record<string, unknown>) : undefined;
 
+  // `version` is a Sui-internal monotonic counter assigned at creation/mutation
+  // time. Newer Position NFTs have higher versions, so sorting desc puts the
+  // user's most recent purchase at the top of the list. Stored as bigint to
+  // avoid Number precision loss at high checkpoints.
   return {
     id: data?.objectId || '',
     marketId: (fields?.market_id as string) || '',
     isYes: (fields?.is_yes as boolean) ?? true,
     shares: BigInt((fields?.shares as string | number) || 0),
     costBasis: BigInt((fields?.cost_basis as string | number) || 0),
+    _version: BigInt(data?.version ?? 0),
   };
 }
 
@@ -78,13 +83,31 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       if (!address) return [];
 
       const client = getSuiClient();
-      const response = await client.getOwnedObjects({
-        owner: address,
-        filter: { StructType: POSITION_TYPE },
-        options: { showContent: true },
-      });
 
-      const positions = response.data.map(parsePosition);
+      // Paginate through ALL Position NFTs owned by the user. Sui's
+      // getOwnedObjects returns 50 per page by default; users with > 50
+      // positions across markets would silently see a truncated list.
+      // Cap at 1000 (20 pages) to avoid pathological loops.
+      const all: ReturnType<typeof parsePosition>[] = [];
+      let cursor: string | null | undefined = undefined;
+      const MAX_PAGES = 20;
+      for (let page = 0; page < MAX_PAGES; page++) {
+        const response = await client.getOwnedObjects({
+          owner: address,
+          filter: { StructType: POSITION_TYPE },
+          options: { showContent: true },
+          cursor,
+        });
+        for (const obj of response.data) all.push(parsePosition(obj));
+        if (!response.hasNextPage || !response.nextCursor) break;
+        cursor = response.nextCursor;
+      }
+
+      // Newest first (by Sui object version — assigned at mint time).
+      all.sort((a, b) => (b._version > a._version ? 1 : b._version < a._version ? -1 : 0));
+
+      // Drop the internal `_version` from the returned shape.
+      const positions: Position[] = all.map(({ _version: _v, ...p }) => p);
 
       // Filter by market if specified
       if (marketId) {
