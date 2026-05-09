@@ -142,62 +142,17 @@ async function resolveFeedsTableId(client: SuiClient): Promise<string | null> {
 }
 
 /**
- * Get price data from on-chain oracle
- *
- * @param client - SuiClient instance
- * @param symbol - Symbol key (BTCUSD, ETHUSD, NASUSD)
- * @returns PriceData or null if not found
+ * Get price data from on-chain oracle (single symbol).
+ * Delegates to the batch path so concurrent per-symbol callers (e.g. multiple
+ * useOraclePrice hooks across perp markets) coalesce into one RPC round-trip
+ * instead of N. The batch path is in-flight-deduped.
  */
 export async function getPrice(
   client: SuiClient,
   symbol: SymbolKey
 ): Promise<PriceData | null> {
-  try {
-    const tableId = await resolveFeedsTableId(client);
-    if (!tableId) {
-      logOnce('oracle-feeds-unresolved', 'warn', '[Oracle] Cannot resolve feeds table ID. Using simulated prices.');
-      return null;
-    }
-
-    const result = await client.getDynamicFieldObject({
-      parentId: tableId,
-      name: {
-        type: 'u64',
-        value: SYMBOLS[symbol].toString(),
-      },
-    });
-
-    const outerFields = getMoveFields(result.data?.content);
-    if (!outerFields) {
-      logOnce(`oracle-feed-${symbol}`, 'warn', `[Oracle] Feed not found for ${symbol}`);
-      return null;
-    }
-
-    const rawPrice = safeBigInt(getNestedField(outerFields, 'value.price'));
-    const rawConfidence = safeBigInt(getNestedField(outerFields, 'value.confidence'));
-    const timestamp = getNestedField(outerFields, 'value.timestamp');
-
-    if (rawPrice === null || rawConfidence === null || timestamp == null) {
-      logOnce(`oracle-feeddata-${symbol}`, 'warn', `[Oracle] Invalid feed data for ${symbol}`);
-      return null;
-    }
-
-    const divisor = Math.pow(10, DECIMALS);
-
-    return {
-      price: Number(rawPrice) / divisor,
-      confidence: Number(rawConfidence) / divisor,
-      timestamp: Number(timestamp),
-      symbol,
-      raw: {
-        price: rawPrice,
-        confidence: rawConfidence,
-      },
-    };
-  } catch (error) {
-    logThrottled(`oracle-price-${symbol}`, 'error', 60_000, `[Oracle] Error fetching ${symbol}:`, error);
-    return null;
-  }
+  const all = await getBatchPrices(client);
+  return all[symbol];
 }
 
 /**
@@ -234,27 +189,12 @@ export async function getPriceWithValidation(
 }
 
 /**
- * Get all prices at once (individual calls)
- *
- * @param client - SuiClient instance
- * @returns Record of symbol to PriceData
+ * Get all prices at once. Alias for getBatchPrices (1 RPC call).
  */
 export async function getAllPrices(
   client: SuiClient
 ): Promise<Record<SymbolKey, PriceData | null>> {
-  const symbols = Object.keys(SYMBOLS) as SymbolKey[];
-  const results = Object.fromEntries(
-    symbols.map(s => [s, null])
-  ) as Record<SymbolKey, PriceData | null>;
-
-  // Fetch in parallel
-  await Promise.all(
-    symbols.map(async (symbol) => {
-      results[symbol] = await getPrice(client, symbol);
-    })
-  );
-
-  return results;
+  return getBatchPrices(client);
 }
 
 /**
@@ -288,12 +228,30 @@ async function resolveFeedObjectId(
   }
 }
 
+// In-flight Promise dedup: concurrent callers within the same tick share one
+// multiGetObjects round-trip instead of stampeding the fullnode.
+let inflightBatch: Promise<Record<SymbolKey, PriceData | null>> | null = null;
+
 /**
  * Get all prices in a single multiGetObjects RPC call (4 symbols -> 1 RPC).
  * On first call, resolves feed object IDs (individual calls, then cached).
- * Subsequent calls: 1 RPC call total.
+ * Subsequent calls: 1 RPC call total. Concurrent calls share one in-flight Promise.
  */
 export async function getBatchPrices(
+  client: SuiClient,
+): Promise<Record<SymbolKey, PriceData | null>> {
+  if (inflightBatch) return inflightBatch;
+  inflightBatch = (async () => {
+    try {
+      return await getBatchPricesUncached(client);
+    } finally {
+      inflightBatch = null;
+    }
+  })();
+  return inflightBatch;
+}
+
+async function getBatchPricesUncached(
   client: SuiClient,
 ): Promise<Record<SymbolKey, PriceData | null>> {
   const symbols = Object.keys(SYMBOLS) as SymbolKey[];
