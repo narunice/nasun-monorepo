@@ -23,7 +23,11 @@ export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: M
   // market) so this does not multiply RPC calls beyond what the hero already
   // does.
   const lastTradePriceBps = useLastTradePrice(market.id);
-  const { yesProbability, noProbability } = calculateProbabilityFromOrderbook(
+  const resolvedProbability = market.status === 'resolved' && market.outcome != null
+    ? (market.outcome === true ? { yesProbability: 100, noProbability: 0 }
+      : { yesProbability: 0, noProbability: 100 })
+    : null;
+  const { yesProbability, noProbability } = resolvedProbability ?? calculateProbabilityFromOrderbook(
     yesOrderbook ?? null,
     noOrderbook ?? null,
     lastTradePriceBps,
