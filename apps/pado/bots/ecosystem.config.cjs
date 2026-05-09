@@ -288,18 +288,21 @@ module.exports = {
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
         // Tightened ladder for richer top-of-book and gentler small-trade impact.
-        // Top quote sits 100 bps from mid (was 200); 8 levels per side (was 5);
-        // gaps shrink to 30 bps with milder geometric growth so the middle
-        // levels are denser and outer levels stay reachable.
+        // Top quote sits 100 bps from mid; 10 levels per side; gaps grow gently
+        // (30 bps base × 1.3 geometric) so the middle band is dense and outer
+        // levels stay within ~10% of mid for shock absorption.
         PREDICTION_LP_BASE_SPREAD_BPS: '100',
-        PREDICTION_LP_LADDER_LEVELS: '8',
+        PREDICTION_LP_LADDER_LEVELS: '10',
         PREDICTION_LP_LEVEL_GAP_BPS: '30',
         PREDICTION_LP_GAP_GROWTH: '1.3',
-        // Depth: innermost 75 NUSDC (was 25) + softer pyramid so users hitting
-        // small sizes (≤100 NUSDC) sweep entirely within the inner two levels.
-        PREDICTION_LP_BASE_SIZE_NUSDC: '75',
-        PREDICTION_LP_SIZE_GROWTH: '1.4',
-        PREDICTION_LP_UPDATE_INTERVAL_MS: '10000',
+        // Depth: innermost 250 NUSDC (was 75) so a single $200 sweep barely
+        // dents the top level. Softer 1.2 size growth keeps middle levels thick
+        // (300/360/432/519/622/...) instead of pushing all depth to the edges.
+        // Inner three levels alone hold ~910 NUSDC, total per side ~6500 NUSDC.
+        PREDICTION_LP_BASE_SIZE_NUSDC: '250',
+        PREDICTION_LP_SIZE_GROWTH: '1.2',
+        // Faster refill after a sweep so the book is rarely thin for long.
+        PREDICTION_LP_UPDATE_INTERVAL_MS: '6000',
         // Inventory skew: ladder mid still shifts with taker-driven imbalance so
         // the YES/NO bar moves on real volume — but the cap is 3× larger so a
         // tiny imbalance no longer produces a visible mid jump. Max shift
