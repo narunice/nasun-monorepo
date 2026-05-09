@@ -20,6 +20,7 @@ export type SlideKind =
   | "creator-post"
   | "creators-appreciation"
   | "outage-comp-may4"
+  | "repost"
   | "generic";
 
 export interface SlideVariant {
@@ -77,6 +78,7 @@ const CATEGORY_TO_KIND: Record<string, SlideKind> = {
   "ecosystem-bonus-creator-posts": "creator-post",
   "ecosystem-bonus-creators-appreciation": "creators-appreciation",
   "ecosystem-bonus-outage-may4": "outage-comp-may4",
+  "ecosystem-bonus-repost": "repost",
   "referral-bonus": "referral",
 };
 
@@ -259,6 +261,16 @@ export const VARIANTS: Record<SlideKind, SlideVariant> = {
     topLabelGradient: "from-nasun-c3 via-pado-3 to-pado-2",
     multilineSubline: true,
   },
+  repost: {
+    kind: "repost",
+    glowGradient:
+      "bg-[radial-gradient(120%_80%_at_15%_20%,rgba(29,161,242,0.28),transparent_60%),radial-gradient(120%_80%_at_85%_85%,rgba(94,225,228,0.20),transparent_55%)]",
+    pointsGradient: "bg-gradient-to-br from-nasun-c4 via-nasun-c3 to-pado-3",
+    tagClass: "bg-nasun-c4/15 text-nasun-c3 border border-nasun-c4/30",
+    headline: "Repost Bonus",
+    buildSubline: () => "Thanks for spreading the word",
+    iconKey: "users",
+  },
   generic: {
     kind: "generic",
     glowGradient:
@@ -304,6 +316,8 @@ export function cumulativeLabelFor(kind: SlideKind): string {
       return "Total Creator rewards";
     case "outage-comp-may4":
       return "Service compensation";
+    case "repost":
+      return "Total Repost rewards";
     default:
       return "Total bonuses";
   }
