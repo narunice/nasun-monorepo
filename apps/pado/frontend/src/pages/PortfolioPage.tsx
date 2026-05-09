@@ -61,12 +61,12 @@ export function PortfolioPage() {
       </div>
 
       {/* Top-level tab nav */}
-      <div className="flex gap-1.5 sm:gap-2 border-b border-theme-border">
+      <div className="flex gap-1.5 sm:gap-2 border-b border-theme-border overflow-x-auto scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-3 sm:px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px whitespace-nowrap shrink-0 ${
               activeTab === tab.id
                 ? "border-pd2 text-theme-text-primary"
                 : "border-transparent text-theme-text-secondary hover:text-theme-text-primary"
