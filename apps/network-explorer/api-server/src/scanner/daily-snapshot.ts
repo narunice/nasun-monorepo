@@ -17,17 +17,27 @@ import {
 } from '../config/ecosystem.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { STAKING_V2_CUTOFF_DATE, baseWeightFor } from '../config/points.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 
 import { DEFAULT_MISSION_IDS as DEFAULT_MISSION_IDS_ARR } from '../config/points.js';
 // Set view of the canonical default mission list. Mutating the source array
 // would not reach this snapshot copy at runtime, so re-derive at module load.
 const DEFAULT_MISSION_IDS: ReadonlySet<string> = new Set(DEFAULT_MISSION_IDS_ARR);
 
+/**
+ * Take the daily ecosystem score snapshot.
+ *
+ * Returns `true` when the run reached the INSERT phase (including the benign
+ * "no users today" case), so the caller can mark this date as done. Returns
+ * `false` when an early fail-safe aborted before the INSERT phase (missing
+ * health rows, matview-vs-live mismatch, no DB) so the caller leaves the
+ * gate open for the next scanLoop to retry.
+ */
 export async function takeDailySnapshot(
   snapshotDate: string,
   activationsCache: Map<string, NftActivation[]>,
-): Promise<void> {
-  if (!pointsDb) return;
+): Promise<boolean> {
+  if (!pointsDb) return false;
 
   // 1. Load every user's active mission selection (full table — small).
   //    Users without a row get DEFAULT_MISSION_IDS applied at score-time.
@@ -95,7 +105,7 @@ export async function takeDailySnapshot(
 
   if (allIds.size === 0) {
     console.log(`[Snapshot] No users to snapshot for ${snapshotDate}`);
-    return;
+    return true;
   }
 
   // 4b. Cross-check filteredBaseMap against the matview before locking in
@@ -117,7 +127,12 @@ export async function takeDailySnapshot(
       `but matview shows ${matviewActiveUsers} for ${snapshotDate}. Skipping snapshot ` +
       `to avoid locking in zero base scores; next scanLoop will retry.`,
     );
-    return;
+    void sendTelegramAlert(
+      `Snapshot ${snapshotDate} aborted: matview/live mismatch ` +
+        `(live=${ourActiveUsers}, matview=${matviewActiveUsers}). Will retry next scanLoop.`,
+      { dedupKey: `snapshot-matview-${snapshotDate}` },
+    );
+    return false;
   }
 
   // 5. Load health state for V3 multiplier. Fail-safe: bail if any NFT
@@ -153,7 +168,17 @@ export async function takeDailySnapshot(
     if (missingCount > 10) {
       console.error('[Snapshot] ALERT: >10 missing holders, investigate health-update.');
     }
-    return;
+    // Send a Telegram alert so a sustained miss is visible operationally
+    // (the 2026-05-08 lockout went undetected for ~24h because the only
+    // signal was stderr). dedup per (date, count-bucket) so the alert
+    // re-fires when the gap widens but doesn't spam every 60s scanLoop.
+    const bucket = missingCount > 100 ? '100+' : missingCount > 10 ? '10+' : `${missingCount}`;
+    void sendTelegramAlert(
+      `Snapshot ${snapshotDate} blocked: ${missingCount} NFT holders missing health row. ` +
+        `Will retry next scanLoop. If this persists past UTC midnight, manual backfill needed.`,
+      { dedupKey: `snapshot-health-missing-${snapshotDate}-${bucket}` },
+    );
+    return false;
   }
 
   // 6. Batch bonus + referral + governance queries (date-filtered: today's delta only).
@@ -436,4 +461,5 @@ export async function takeDailySnapshot(
   }
 
   console.log(`[Snapshot] ${inserted} users snapshotted for ${snapshotDate}`);
+  return true;
 }

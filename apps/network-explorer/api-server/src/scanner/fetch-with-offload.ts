@@ -15,6 +15,20 @@ interface FetchOptions {
   apiKey?: string;
   timeoutMs?: number;
   label: string;
+  /**
+   * When true, throw on transient (5xx) errors instead of returning null.
+   * Lets callers wrap with withRetry to recover from upstream blips.
+   * 4xx responses still return null because they signal a misconfiguration
+   * and retrying won't help.
+   */
+  throwOnTransient?: boolean;
+}
+
+class TransientFetchError extends Error {
+  constructor(message: string, public status?: number) {
+    super(message);
+    this.name = 'TransientFetchError';
+  }
 }
 
 /**
@@ -24,7 +38,7 @@ interface FetchOptions {
 export async function fetchWithOffload<T = unknown>(
   opts: FetchOptions,
 ): Promise<T | null> {
-  const { url, apiKey, timeoutMs = 30_000, label } = opts;
+  const { url, apiKey, timeoutMs = 30_000, label, throwOnTransient = false } = opts;
 
   const headers: Record<string, string> = {};
   if (apiKey) headers['x-api-key'] = apiKey;
@@ -37,6 +51,9 @@ export async function fetchWithOffload<T = unknown>(
 
   if (!res.ok) {
     console.error(`[${label}] API fetch failed: ${res.status} ${res.statusText}`);
+    if (throwOnTransient && res.status >= 500) {
+      throw new TransientFetchError(`${label} API ${res.status}`, res.status);
+    }
     return null;
   }
 
@@ -50,6 +67,9 @@ export async function fetchWithOffload<T = unknown>(
 
     if (!s3Res.ok) {
       console.error(`[${label}] S3 presigned fetch failed: ${s3Res.status}`);
+      if (throwOnTransient && s3Res.status >= 500) {
+        throw new TransientFetchError(`${label} S3 ${s3Res.status}`, s3Res.status);
+      }
       return null;
     }
 
