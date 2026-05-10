@@ -45,10 +45,10 @@ const FALLBACK_PROVER_URL = 'https://prover-dev.mystenlabs.com/v1';
 
 /** Primary prover timeout (ms). Tuned for UX: stay under user patience threshold
  * (~10-15s) so we fail over to the public prover before users abandon the flow.
- * Self-hosted prover normal response is 2-8s; 12s leaves headroom while keeping
- * the worst-case wait bounded.
+ * Self-hosted prover normal response is 2-8s; 15s covers "1 request queued" case
+ * (up to 6s wait + 6s proof) while still failing fast for 3+ concurrent requests.
  */
-const PROVER_TIMEOUT_MS = 12_000;
+const PROVER_TIMEOUT_MS = 15_000;
 
 /** Fallback prover timeout (ms). More generous since it's the last resort. */
 const FALLBACK_PROVER_TIMEOUT_MS = 60_000;
