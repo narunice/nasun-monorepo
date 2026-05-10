@@ -5,7 +5,10 @@
 
 import { Link } from 'react-router-dom';
 import type { PredictionMarket, Orderbook, Position } from '../types';
-import { calculateProbabilityFromOrderbook } from '../types';
+import {
+  calculateProbabilityFromOrderbook,
+  calculateProbabilityFromBestPrices,
+} from '../types';
 import { useLastTradePrice } from '../hooks/useLastTradePrice';
 import { NUSDC_DECIMALS } from '../constants';
 
@@ -17,21 +20,29 @@ interface MarketCardProps {
 }
 
 export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: MarketCardProps) {
-  // List page no longer pre-fetches orderbooks (lazy on detail page only).
-  // Fall back to lastTradePrice so cards show a real probability instead of
-  // 50/50 default. The fills query is shared across the page (one cache per
-  // market) so this does not multiply RPC calls beyond what the hero already
-  // does.
-  const lastTradePriceBps = useLastTradePrice(market.id);
+  // List page does not pre-fetch full orderbooks (lazy on detail page only),
+  // but the Market struct itself stores sorted price-level vectors inline —
+  // `fetchMarket` already pulled them via showContent at zero extra RPC cost,
+  // so we get accurate best bid/ask without paginating ORDER_FILLED events.
+  // lastTradePrice is kept only as a final fallback for markets that have
+  // never had a resting order on either side.
+  const hasAnyQuote =
+    market.bestPrices.yesBid !== null ||
+    market.bestPrices.yesAsk !== null ||
+    market.bestPrices.noBid !== null ||
+    market.bestPrices.noAsk !== null;
+  const lastTradePriceBps = useLastTradePrice(hasAnyQuote ? undefined : market.id);
+
   const resolvedProbability = market.status === 'resolved' && market.outcome != null
-    ? (market.outcome === true ? { yesProbability: 100, noProbability: 0 }
-      : { yesProbability: 0, noProbability: 100 })
+    ? { yesProbability: market.outcome ? 100 : 0, noProbability: market.outcome ? 0 : 100, hasRealQuotes: true }
     : null;
-  const { yesProbability, noProbability } = resolvedProbability ?? calculateProbabilityFromOrderbook(
-    yesOrderbook ?? null,
-    noOrderbook ?? null,
-    lastTradePriceBps,
-  );
+
+  const probability =
+    resolvedProbability ??
+    ((yesOrderbook || noOrderbook)
+      ? calculateProbabilityFromOrderbook(yesOrderbook ?? null, noOrderbook ?? null, lastTradePriceBps)
+      : calculateProbabilityFromBestPrices(market.bestPrices, lastTradePriceBps));
+  const { yesProbability, noProbability, hasRealQuotes } = probability;
 
   const timeRemaining = getTimeRemaining(market.closeTime);
   const volume = formatVolume(market.totalVolume);
@@ -111,18 +122,21 @@ export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: M
       <div className="mb-4">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-green-600 dark:text-green-400 font-medium">
-            YES {yesProbability.toFixed(0)}%
+            YES {hasRealQuotes ? `${yesProbability.toFixed(0)}%` : '—'}
           </span>
           <span className="text-red-600 dark:text-red-400 font-medium">
-            NO {noProbability.toFixed(0)}%
+            NO {hasRealQuotes ? `${noProbability.toFixed(0)}%` : '—'}
           </span>
         </div>
         <div className="h-2 bg-red-500 rounded-full overflow-hidden flex">
           <div
             className="h-full bg-green-500 transition-all duration-300"
-            style={{ width: `${yesProbability}%` }}
+            style={{ width: `${hasRealQuotes ? yesProbability : 50}%` }}
           />
         </div>
+        {!hasRealQuotes && (
+          <p className="mt-1 text-[11px] text-theme-text-muted">No quotes yet</p>
+        )}
       </div>
 
       {/* Footer: Volume & Time */}

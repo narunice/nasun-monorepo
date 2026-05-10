@@ -32,6 +32,19 @@ export interface PredictionMarket {
   // Admin
   creator: string;
   resolver: string;
+
+  // Best price levels (heads of the on-chain sorted price vectors). Read
+  // inline from the Market object — no extra RPC call. List cards use these
+  // to display accurate probability without walking the dynamic-field
+  // orderbook tables.
+  bestPrices: BestPrices;
+}
+
+export interface BestPrices {
+  yesBid: number | null;
+  yesAsk: number | null;
+  noBid: number | null;
+  noAsk: number | null;
 }
 
 export interface Position {
@@ -145,30 +158,42 @@ function bestAsk(ob: Orderbook | null): number | null {
   return real.length > 0 ? Math.min(...real.map((l) => l.price)) : null;
 }
 
-export function calculateProbabilityFromOrderbook(
-  yesOrderbook: Orderbook | null,
-  noOrderbook?: Orderbook | null,
+export interface ProbabilityResult {
+  yesProbability: number;
+  noProbability: number;
+  /**
+   * True when the displayed probability reflects on-chain quotes or a recent
+   * fill (i.e. it is not a 50% fallback). Callers gate "real number" UI vs a
+   * neutral "—" placeholder on this flag.
+   */
+  hasRealQuotes: boolean;
+}
+
+/**
+ * Core probability rule. Operates on the four best-price scalars (YES/NO ×
+ * bid/ask) plus an optional last trade price. Used directly by views that
+ * read the inline `bestPrices` stored on the Market object, and indirectly
+ * by `calculateProbabilityFromOrderbook` (which extracts the quartet from a
+ * full orderbook before delegating).
+ */
+export function calculateProbabilityFromBestPrices(
+  bp: BestPrices,
   lastTradePriceBps?: number | null,
-): { yesProbability: number; noProbability: number; hasRealOrders: boolean } {
-  const yesB = bestBid(yesOrderbook);
-  const yesA = bestAsk(yesOrderbook);
-  const noB = bestBid(noOrderbook ?? null);
-  const noA = bestAsk(noOrderbook ?? null);
+): ProbabilityResult {
+  const impliedYesAsk = bp.noBid !== null ? MAX_PRICE_BPS - bp.noBid : null;
+  const impliedYesBid = bp.noAsk !== null ? MAX_PRICE_BPS - bp.noAsk : null;
 
-  const impliedYesAsk = noB !== null ? MAX_PRICE_BPS - noB : null;
-  const impliedYesBid = noA !== null ? MAX_PRICE_BPS - noA : null;
-
-  // Take the tightest effective bid (higher) and ask (lower).
-  const effectiveBid = [yesB, impliedYesBid]
+  const effectiveBid = [bp.yesBid, impliedYesBid]
     .filter((v): v is number => v !== null)
     .reduce<number | null>((acc, v) => (acc === null || v > acc ? v : acc), null);
-  const effectiveAsk = [yesA, impliedYesAsk]
+  const effectiveAsk = [bp.yesAsk, impliedYesAsk]
     .filter((v): v is number => v !== null)
     .reduce<number | null>((acc, v) => (acc === null || v < acc ? v : acc), null);
 
-  const hasRealOrders = effectiveBid !== null || effectiveAsk !== null;
-  let yesProbability = 50;
+  const hasRealQuotes =
+    effectiveBid !== null || effectiveAsk !== null || lastTradePriceBps != null;
 
+  let yesProbability = 50;
   if (effectiveBid !== null && effectiveAsk !== null) {
     const spread = effectiveAsk - effectiveBid;
     if (spread <= SPREAD_THRESHOLD_BPS) {
@@ -187,5 +212,26 @@ export function calculateProbabilityFromOrderbook(
   }
 
   yesProbability = Math.max(0.1, Math.min(99.9, yesProbability));
-  return { yesProbability, noProbability: 100 - yesProbability, hasRealOrders };
+  return { yesProbability, noProbability: 100 - yesProbability, hasRealQuotes };
+}
+
+/**
+ * Adapter for callers that have full orderbooks (detail page). Extracts
+ * best bid/ask from each side and delegates to `calculateProbabilityFromBestPrices`
+ * so the pricing rule lives in exactly one place.
+ */
+export function calculateProbabilityFromOrderbook(
+  yesOrderbook: Orderbook | null,
+  noOrderbook?: Orderbook | null,
+  lastTradePriceBps?: number | null,
+): ProbabilityResult {
+  return calculateProbabilityFromBestPrices(
+    {
+      yesBid: bestBid(yesOrderbook),
+      yesAsk: bestAsk(yesOrderbook),
+      noBid: bestBid(noOrderbook ?? null),
+      noAsk: bestAsk(noOrderbook ?? null),
+    },
+    lastTradePriceBps,
+  );
 }
