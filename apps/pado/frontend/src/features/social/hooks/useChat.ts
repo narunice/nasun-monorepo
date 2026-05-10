@@ -37,6 +37,14 @@ function markCaptchaRequired(): void {
   notifyTurnstileSubscribers();
 }
 
+// CF onError/onExpire handler: bump the key to remount the widget. Bounded
+// by the natural cadence of CF error events, unlike per-action remounts.
+function markTurnstileError(): void {
+  sharedTurnstileReady = false;
+  sharedTurnstileKey++;
+  notifyTurnstileSubscribers();
+}
+
 /**
  * Reset Turnstile shared state on logout so the next login starts with a
  * fresh challenge instead of relying on a stale `ready=true` flag whose
@@ -78,7 +86,11 @@ export function useChatTurnstilePrewarm() {
     markTurnstileSuccess(token);
   }, []);
 
-  return { turnstileKey, onSuccess };
+  const onError = useCallback(() => {
+    markTurnstileError();
+  }, []);
+
+  return { turnstileKey, onSuccess, onError };
 }
 
 // Reference count of active useChat instances.
