@@ -215,6 +215,8 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   const bmBalanceRef = useRef(bmBalance);
   bmBalanceRef.current = bmBalance;
 
+  const isMarketOrderSubmitting = useRef(false);
+
   const handleOpenWithdraw = useCallback((tokenSymbol: string) => {
     const isBase = tokenSymbol !== 'NUSDC';
     const token = isBase ? currentPool.baseToken : currentPool.quoteToken;
@@ -483,11 +485,17 @@ export function TradingPanel({ mode = 'pro' }: TradingPanelProps) {
   // Unified market order handler
   const handleMarketOrderClick = async (orderSide: 'buy' | 'sell') => {
     if (!amount) return;
-    const amountNum = parseFloat(amount);
-    const result = await handleMarketOrder(orderSide, amountNum);
-    if (result.success) {
-      await createTPSLOrdersIfEnabled(orderSide, amountNum);
-      setAmount('');
+    if (isMarketOrderSubmitting.current) return;
+    isMarketOrderSubmitting.current = true;
+    try {
+      const amountNum = parseFloat(amount);
+      const result = await handleMarketOrder(orderSide, amountNum);
+      if (result.success) {
+        await createTPSLOrdersIfEnabled(orderSide, amountNum);
+        setAmount('');
+      }
+    } finally {
+      isMarketOrderSubmitting.current = false;
     }
   };
 
