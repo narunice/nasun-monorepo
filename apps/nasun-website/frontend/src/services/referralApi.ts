@@ -6,6 +6,7 @@
  */
 
 const API_BASE = import.meta.env.VITE_REFERRAL_API;
+const ADMIN_API_URL = import.meta.env.VITE_ADMIN_API_URL;
 
 export class ReferralApiError extends Error {
   constructor(
@@ -26,6 +27,15 @@ function authHeaders(token: string): HeadersInit {
   };
 }
 
+export interface RefereeRow {
+  // identityId intentionally omitted server-side for privacy.
+  twitterHandle: string | null;
+  twitterLinked: boolean;
+  status: string;
+  appliedAt: string;
+  activatedAt: string | null;
+}
+
 export interface ReferralStats {
   referralCode: string | null;
   totalReferrals: number;
@@ -36,14 +46,29 @@ export interface ReferralStats {
     appliedAt: string;
     activatedAt: string | null;
   }>;
+  referees?: {
+    items: RefereeRow[];
+    nextCursor: string | null;
+  };
   referredBy: {
     referralCode: string;
     appliedAt: string;
     status: string;
+    activatedAt: string | null;
   } | null;
   bonusStats: {
     totalBonusPoints: number;
   } | null;
+}
+
+export interface ReviewItem {
+  referredIdentityId: string;
+  referrerIdentityId: string;
+  twitterHandle: string | null;
+  twitterLinked: boolean;
+  referrerHandle: string | null;
+  referralCode: string | null;
+  appliedAt: string | null;
 }
 
 /**
@@ -119,5 +144,101 @@ export async function getMyReferralStats(
     );
   }
 
+  return res.json();
+}
+
+/**
+ * Fetch additional referees beyond the first page returned inline by my-stats.
+ */
+export async function getMoreReferees(
+  token: string,
+  cursor: string,
+  limit = 20,
+): Promise<{ items: RefereeRow[]; nextCursor: string | null }> {
+  if (!API_BASE) throw new ReferralApiError("Referral API not configured");
+
+  const url = new URL(`${API_BASE}/referral/my-referees`);
+  url.searchParams.set("cursor", cursor);
+  url.searchParams.set("limit", String(limit));
+
+  const res = await fetch(url.toString(), { headers: authHeaders(token) });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Failed to fetch referees: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
+  return res.json();
+}
+
+// ==================== Admin: Referral Review ====================
+
+export async function listReferralReview(
+  token: string,
+  cursor?: string,
+  limit = 20,
+): Promise<{ items: ReviewItem[]; nextCursor: string | null }> {
+  if (!ADMIN_API_URL) throw new ReferralApiError("Admin API not configured");
+
+  const url = new URL(`${ADMIN_API_URL}/admin/referral-review`);
+  if (cursor) url.searchParams.set("cursor", cursor);
+  url.searchParams.set("limit", String(limit));
+
+  const res = await fetch(url.toString(), { headers: authHeaders(token) });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Failed to load review queue: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
+  return res.json();
+}
+
+export async function approveReferral(
+  token: string,
+  identityId: string,
+): Promise<{ activated: number; identityId: string }> {
+  if (!ADMIN_API_URL) throw new ReferralApiError("Admin API not configured");
+
+  const res = await fetch(`${ADMIN_API_URL}/admin/referral-review/approve`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ identityId }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Approve failed: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
+  return res.json();
+}
+
+export async function declineReferral(
+  token: string,
+  identityId: string,
+  reviewerNote: string,
+): Promise<{ declined: number; identityId: string }> {
+  if (!ADMIN_API_URL) throw new ReferralApiError("Admin API not configured");
+
+  const res = await fetch(`${ADMIN_API_URL}/admin/referral-review/decline`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ identityId, reviewerNote }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Decline failed: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
   return res.json();
 }

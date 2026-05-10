@@ -12,10 +12,13 @@ import { Spinner } from "@/components/ui";
 import {
   getMyReferralCode,
   getMyReferralStats,
+  getMoreReferees,
   ReferralApiError,
   type ReferralStats,
+  type RefereeRow,
 } from "@/services/referralApi";
 import { UjuCard, UjuSectionHeader, UjuButton, UjuStat } from "../../shared";
+import { useAccountLinking } from "@/sections/myAccount/hooks/useAccountLinking";
 
 interface UjuReferralCardProps {
   className?: string;
@@ -41,6 +44,11 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [referees, setReferees] = useState<RefereeRow[]>([]);
+  const [refereesCursor, setRefereesCursor] = useState<string | null>(null);
+  const [refereesLoading, setRefereesLoading] = useState(false);
+  const { handleLinkTwitter, isLinking } = useAccountLinking({ user: user as never });
+  const xLinked = Boolean(user?.twitterId);
 
   useEffect(() => {
     if (!token || !isConfigured) {
@@ -56,7 +64,13 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
 
     getMyReferralStats(token)
       .then((s) => {
-        if (!cancelled) setStats(s);
+        if (cancelled) return;
+        setStats(s);
+        // Seed first page of referees from inline response (avoids 2nd round-trip).
+        if (s.referees) {
+          setReferees(s.referees.items);
+          setRefereesCursor(s.referees.nextCursor);
+        }
       })
       .catch(() => {
         // non-fatal
@@ -125,6 +139,141 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
     window.open(url, "_blank", "noopener,noreferrer");
   }, [referralLink]);
 
+  const handleLoadMoreReferees = useCallback(async () => {
+    if (!token || !refereesCursor || refereesLoading) return;
+    setRefereesLoading(true);
+    try {
+      const res = await getMoreReferees(token, refereesCursor);
+      setReferees((prev) => [...prev, ...res.items]);
+      setRefereesCursor(res.nextCursor);
+    } catch {
+      // non-fatal: leave existing list intact
+    } finally {
+      setRefereesLoading(false);
+    }
+  }, [token, refereesCursor, refereesLoading]);
+
+  const openFollowTab = useCallback(() => {
+    window.open("https://x.com/Nasun_io", "_blank", "noopener,noreferrer");
+  }, []);
+
+  // "I am a referred user" block — bonus activation status. Renders whenever
+  // stats.referredBy exists, regardless of whether this user is also eligible
+  // to issue their own code. Pure read; uses useAuth/twitterId for X linked.
+  const referredSelfBlock = stats?.referredBy ? (
+    <div className="space-y-3 mb-5 pb-5 border-b border-uju-border/40">
+      <p className="text-sm font-medium text-nasun-white">Your referral bonus</p>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-uju-secondary">
+          1. Connect your X account
+        </div>
+        {xLinked ? (
+          <span className="text-xs px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
+            Connected
+          </span>
+        ) : (
+          <button
+            onClick={handleLinkTwitter}
+            disabled={isLinking}
+            className="px-2.5 py-1 rounded bg-nasun-c4/30 hover:bg-nasun-c4/50 text-nasun-white text-sm disabled:opacity-50"
+          >
+            {isLinking ? "Connecting..." : "Connect"}
+          </button>
+        )}
+      </div>
+
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-uju-secondary">
+          2. Follow @Nasun_io on X
+        </div>
+        <button
+          onClick={openFollowTab}
+          className="px-2.5 py-1 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm"
+        >
+          Open X
+        </button>
+      </div>
+
+      {/* Status badge */}
+      <div className="pt-2">
+        {!xLinked && (
+          <span className="text-sm text-amber-400">
+            Action required: connect X to start review.
+          </span>
+        )}
+        {xLinked && stats.referredBy.status === "PENDING" && (
+          <span className="text-sm text-nasun-white/80">
+            Pending review — admin will verify your follow shortly.
+          </span>
+        )}
+        {stats.referredBy.status === "ACTIVATED" && stats.referredBy.activatedAt && (
+          <span className="text-sm text-emerald-400">
+            Approved — earning 10% bonus since{" "}
+            {new Date(stats.referredBy.activatedAt).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+            })}
+          </span>
+        )}
+      </div>
+    </div>
+  ) : null;
+
+  // "Your referees" list — visible only if user has issued a code.
+  const refereesBlock = referralCode && referees.length > 0 ? (
+    <div className="space-y-2 mt-5 pt-4 border-t border-uju-border/40">
+      <p className="text-sm font-medium text-nasun-white">Your referees</p>
+      <ul className="text-sm divide-y divide-uju-border/30">
+        {referees.map((r, i) => (
+          <li key={i} className="py-2 flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <p className="text-nasun-white truncate">
+                {r.twitterHandle ? `@${r.twitterHandle}` : "Anonymous"}
+              </p>
+              <p className="text-xs text-uju-secondary">
+                {r.appliedAt
+                  ? new Date(r.appliedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                  : "—"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span
+                className={
+                  "text-xs px-2 py-0.5 rounded " +
+                  (r.twitterLinked
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : "bg-nasun-white/10 text-nasun-white/60")
+                }
+              >
+                {r.twitterLinked ? "X linked" : "X missing"}
+              </span>
+              <span
+                className={
+                  "text-xs px-2 py-0.5 rounded " +
+                  (r.status === "ACTIVATED"
+                    ? "bg-emerald-500/20 text-emerald-400"
+                    : "bg-amber-500/20 text-amber-400")
+                }
+              >
+                {r.status === "ACTIVATED" ? "Approved" : "Pending"}
+              </span>
+            </div>
+          </li>
+        ))}
+      </ul>
+      {refereesCursor && (
+        <button
+          onClick={handleLoadMoreReferees}
+          disabled={refereesLoading}
+          className="w-full mt-2 px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-50"
+        >
+          {refereesLoading ? "Loading..." : "Load more"}
+        </button>
+      )}
+    </div>
+  ) : null;
+
   const header = (
     <UjuSectionHeader
       accent
@@ -183,6 +332,7 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
     return (
       <UjuCard className={className}>
         {header}
+        {referredSelfBlock}
         <div className="space-y-3">
           <p className="text-base text-white/90">
             Referral codes are limited during devnet. You can earn one by:
@@ -227,6 +377,8 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
   return (
     <UjuCard className={className}>
       {header}
+
+      {referredSelfBlock}
 
       {referralCode && (
         <div className="mb-5">
@@ -292,6 +444,8 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
           </div>
         </div>
       )}
+
+      {refereesBlock}
     </UjuCard>
   );
 };
