@@ -49,7 +49,7 @@ export function PredictMarketPage() {
   const { marketId } = useParams<{ marketId: string }>();
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
   const { yesOrderbook, noOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
-  const { positions, refetch: refetchPositions } = usePredictionPositions(marketId);
+  const { positions, isLoading: isPositionsLoading, refetch: refetchPositions } = usePredictionPositions(marketId);
   const { isResolver } = usePredictionAdmin();
   const lastTradePriceBps = useLastTradePrice(marketId);
   const now = useNow();
@@ -198,7 +198,7 @@ export function PredictMarketPage() {
               />
             </div>
             <div data-tour="prediction-positions">
-              <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
+              <PositionList market={market} positions={positions} isLoading={isPositionsLoading} onSuccess={handleRefetch} />
             </div>
             <MyOpenOrdersList market={market} />
             <MyTradeHistory marketId={market.id} />
@@ -210,7 +210,7 @@ export function PredictMarketPage() {
           <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} lastTradePriceBps={lastTradePriceBps} />
           <ResolutionMetaPanel market={market} />
           <WinningClaimBanner market={market} positions={positions} />
-          <PositionList market={market} positions={positions} onSuccess={handleRefetch} />
+          <PositionList market={market} positions={positions} isLoading={isPositionsLoading} onSuccess={handleRefetch} />
           <MarketInfoPanel market={market} />
         </div>
       )}

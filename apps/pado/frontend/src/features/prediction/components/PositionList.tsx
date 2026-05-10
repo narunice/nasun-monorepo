@@ -20,10 +20,14 @@ import { FullyHedgedCard } from './position/FullyHedgedCard';
 interface PositionListProps {
   market: PredictionMarket;
   positions: Position[];
+  /** True while the initial positions query is in flight. Used to show a
+   * skeleton instead of the empty-state message, which would otherwise read
+   * "no positions" for several seconds before the data arrives. */
+  isLoading?: boolean;
   onSuccess?: () => void;
 }
 
-export function PositionList({ market, positions, onSuccess }: PositionListProps) {
+export function PositionList({ market, positions, isLoading: isPositionsLoading, onSuccess }: PositionListProps) {
   const { status } = useWallet();
   const { isConnected: isZkConnected } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
@@ -151,9 +155,17 @@ export function PositionList({ market, positions, onSuccess }: PositionListProps
     return (
       <div className="bg-theme-bg-secondary rounded-xl p-4">
         <h3 className="text-lg font-semibold text-theme-text-primary mb-2">My Positions</h3>
-        <p className="text-sm text-theme-text-muted">
-          You have no positions in this market yet. Place your first trade to see it here.
-        </p>
+        {isPositionsLoading ? (
+          <div className="space-y-2" aria-busy="true" aria-live="polite">
+            <div className="h-16 rounded-lg bg-theme-bg-primary/40 animate-pulse" />
+            <div className="h-16 rounded-lg bg-theme-bg-primary/40 animate-pulse" />
+            <span className="sr-only">Loading positions…</span>
+          </div>
+        ) : (
+          <p className="text-sm text-theme-text-muted">
+            You have no positions in this market yet. Place your first trade to see it here.
+          </p>
+        )}
       </div>
     );
   }

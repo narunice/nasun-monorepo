@@ -107,12 +107,14 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       all.sort((a, b) => (b._version > a._version ? 1 : b._version < a._version ? -1 : 0));
 
       // Drop the internal `_version` from the returned shape.
-      // Drop fully-emptied Position NFTs (shares = 0). These are stale objects
-      // left over from full sells / claims / partial-fill bookkeeping that
-      // would otherwise render as empty "0 shares · 1.00 NUSDC" cards above
-      // the user's real holdings.
+      // Drop fully-emptied Position NFTs (shares = 0) and dust positions below
+      // 0.005 NUSDC (5000 raw units). Dust accumulates when placeSellTaker with
+      // rest=true partially fills a taker order and the remaining shares are
+      // negligible — they pass the > 0 check but render as "0" in the UI with
+      // a misleading avg price of 1.00 NUSDC.
+      const DUST_THRESHOLD = BigInt(10 ** NUSDC_DECIMALS) / 200n; // 0.005 NUSDC
       const positions: Position[] = all
-        .filter((p) => p.shares > 0n)
+        .filter((p) => p.shares >= DUST_THRESHOLD)
         .map(({ _version: _v, ...p }) => p);
 
       // Filter by market if specified
