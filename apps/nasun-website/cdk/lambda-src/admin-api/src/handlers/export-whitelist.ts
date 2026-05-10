@@ -557,9 +557,16 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       // Scan nasun-referrals table, only include ACTIVATED + non-expired referrals.
       // Expiry: 180 days from appliedAt. Legacy records without appliedAt are treated as non-expired.
+      // Each entry includes activatedAt so the scanner can skip txs predating approval
+      // (manual-review model: bonus only counts for activity AFTER admin approves).
       const EXPIRY_MS = 180 * 24 * 60 * 60 * 1000;
       const now = Date.now();
+      // Dual-shape: keep legacy `referrals: Record<id,id>` for old scanners
+      // AND emit `referralsV2: Record<id,{referrerId,activatedAt}>` for new
+      // scanners that need activatedAt to skip pre-approval txs. Old scanners
+      // ignore unknown keys; new scanners prefer V2 and fall back to legacy.
       const referrals: Record<string, string> = {};
+      const referralsV2: Record<string, { referrerId: string; activatedAt: string | null }> = {};
       let totalRelationships = 0;
       let totalActivated = 0;
       let totalExpired = 0;
@@ -568,7 +575,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         const result = await dynamoClient.send(
           new ScanCommand({
             TableName: REFERRALS_TABLE,
-            ProjectionExpression: "referredIdentityId, referrerIdentityId, #s, appliedAt",
+            ProjectionExpression: "referredIdentityId, referrerIdentityId, #s, appliedAt, activatedAt",
             ExpressionAttributeNames: { "#s": "status" },
             ...(refLastKey && { ExclusiveStartKey: refLastKey }),
           })
@@ -590,6 +597,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
                 }
               }
               referrals[referredId] = referrerId;
+              referralsV2[referredId] = {
+                referrerId,
+                activatedAt: item.activatedAt?.S || null,
+              };
               totalActivated++;
             }
           }
@@ -598,7 +609,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } while (refLastKey);
 
       const payload = {
+        version: 2,
         referrals,
+        referralsV2,
         stats: { totalRelationships, totalActivated },
       };
       console.log(`[internal] Referral mappings: ${totalRelationships} total, ${totalActivated} activated (returned), ${totalExpired} expired (filtered)`);
@@ -1691,6 +1704,216 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       console.log(`[genesis-pass-crud] Deleted: ${normalizedAddress}`);
       return jsonResponse(200, { success: true, walletAddress: normalizedAddress }, requestOrigin);
+    }
+
+    // ==================== Admin: Referral Review ====================
+    // GET /admin/referral-review?cursor=<base64>&limit=<n>
+    // Returns PENDING referrals with referee + referrer twitterHandle for manual review.
+    if (path.endsWith("/admin/referral-review") && event.httpMethod === "GET") {
+      const cursorParam = queryParams.cursor as string | undefined;
+      let limit = parseInt(queryParams.limit || "20", 10);
+      if (!Number.isFinite(limit) || limit <= 0) limit = 20;
+      if (limit > 100) limit = 100;
+
+      let exclusiveStartKey: Record<string, any> | undefined;
+      if (cursorParam) {
+        try {
+          const parsed = JSON.parse(Buffer.from(cursorParam, "base64").toString("utf-8"));
+          if (parsed?.v !== 1 || typeof parsed.key !== "object") {
+            return errorResponse(400, "Invalid cursor", requestOrigin);
+          }
+          exclusiveStartKey = parsed.key;
+        } catch {
+          return errorResponse(400, "Invalid cursor", requestOrigin);
+        }
+      }
+
+      // No `Limit` cap on the underlying Scan: Limit applies to *raw* rows
+      // before FilterExpression, so a `Limit: limit*4` slice could leave
+      // PENDING rows stranded (LastEvaluatedKey advances past them and
+      // subsequent pages never see them). Loop until we have `limit` matches
+      // or DDB exhausts the table. Devnet PENDING count is bounded by
+      // MAX_REFERRALS_PER_USER (100) per referrer, so total stays in the
+      // hundreds — single Scan pass typically suffices.
+      const rawItems: Array<Record<string, any>> = [];
+      let scanCursor: Record<string, any> | undefined = exclusiveStartKey;
+      let lastReturnedCursor: Record<string, any> | undefined;
+      do {
+        const r = await dynamoClient.send(
+          new ScanCommand({
+            TableName: REFERRALS_TABLE,
+            FilterExpression: "#s = :pending",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":pending": { S: "PENDING" } },
+            ...(scanCursor && { ExclusiveStartKey: scanCursor }),
+          })
+        );
+        for (const it of r.Items || []) {
+          if (rawItems.length >= limit) break;
+          rawItems.push(it);
+        }
+        lastReturnedCursor = r.LastEvaluatedKey;
+        scanCursor = r.LastEvaluatedKey;
+      } while (rawItems.length < limit && scanCursor);
+      const scanResult = { LastEvaluatedKey: lastReturnedCursor };
+      const refereeIds = rawItems.map((i) => i.referredIdentityId?.S).filter(Boolean) as string[];
+      const referrerIds = [...new Set(rawItems.map((i) => i.referrerIdentityId?.S).filter(Boolean))] as string[];
+
+      // Parallel UserProfiles lookups for both sides (max 2*limit calls, limit<=100)
+      const profileMap = new Map<string, { twitterHandle?: string; twitterId?: string }>();
+      await Promise.all(
+        [...new Set([...refereeIds, ...referrerIds])].map(async (id) => {
+          try {
+            const res = await dynamoClient.send(
+              new GetItemCommand({
+                TableName: USER_PROFILES_TABLE,
+                Key: { identityId: { S: id } },
+                ProjectionExpression: "twitterHandle, twitterId",
+              })
+            );
+            if (res.Item) {
+              profileMap.set(id, {
+                twitterHandle: res.Item.twitterHandle?.S,
+                twitterId: res.Item.twitterId?.S,
+              });
+            }
+          } catch {
+            // ignore individual lookup failures
+          }
+        })
+      );
+
+      const items = rawItems.map((it) => {
+        const refId = it.referredIdentityId?.S || "";
+        const rerId = it.referrerIdentityId?.S || "";
+        const refProfile = profileMap.get(refId) || {};
+        const rerProfile = profileMap.get(rerId) || {};
+        return {
+          referredIdentityId: refId,
+          referrerIdentityId: rerId,
+          twitterHandle: refProfile.twitterHandle || null,
+          twitterLinked: Boolean(refProfile.twitterId),
+          referrerHandle: rerProfile.twitterHandle || null,
+          referralCode: it.referralCode?.S || null,
+          appliedAt: it.appliedAt?.S || null,
+        };
+      });
+
+      const nextCursor = scanResult.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify({ v: 1, key: scanResult.LastEvaluatedKey })).toString("base64")
+        : null;
+
+      return jsonResponse(200, { items, nextCursor }, requestOrigin);
+    }
+
+    // POST /admin/referral-review/approve  body: { identityId }
+    if (path.endsWith("/admin/referral-review/approve") && event.httpMethod === "POST") {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const referredId = body.identityId as string | undefined;
+      if (!referredId || typeof referredId !== "string") {
+        return errorResponse(400, "identityId is required", requestOrigin);
+      }
+
+      const now = new Date().toISOString();
+      try {
+        await dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: REFERRALS_TABLE,
+            Key: { referredIdentityId: { S: referredId } },
+            UpdateExpression:
+              "SET #s = :activated, activatedAt = :now, reviewedAt = :now, reviewerIdentityId = :admin",
+            ConditionExpression: "attribute_exists(referredIdentityId) AND #s = :pending",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: {
+              ":activated": { S: "ACTIVATED" },
+              ":pending": { S: "PENDING" },
+              ":now": { S: now },
+              ":admin": { S: admin.identityId },
+            },
+          })
+        );
+      } catch (err: any) {
+        if (err.name === "ConditionalCheckFailedException") {
+          return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+        }
+        throw err;
+      }
+
+      console.log(JSON.stringify({
+        event: "referral_approved",
+        referredIdentityId: referredId,
+        reviewerIdentityId: admin.identityId,
+        ts: now,
+      }));
+      return jsonResponse(200, { activated: 1, identityId: referredId }, requestOrigin);
+    }
+
+    // POST /admin/referral-review/decline  body: { identityId, reviewerNote }
+    if (path.endsWith("/admin/referral-review/decline") && event.httpMethod === "POST") {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const referredId = body.identityId as string | undefined;
+      const reviewerNote = (body.reviewerNote as string | undefined) || "";
+      if (!referredId || typeof referredId !== "string") {
+        return errorResponse(400, "identityId is required", requestOrigin);
+      }
+
+      // Look up referrer first (for audit log) before deleting.
+      const existing = await dynamoClient.send(
+        new GetItemCommand({
+          TableName: REFERRALS_TABLE,
+          Key: { referredIdentityId: { S: referredId } },
+          ProjectionExpression: "referrerIdentityId, referralCode, #s",
+          ExpressionAttributeNames: { "#s": "status" },
+        })
+      );
+
+      if (!existing.Item || existing.Item.status?.S !== "PENDING") {
+        return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+      }
+
+      const now = new Date().toISOString();
+      try {
+        await dynamoClient.send(
+          new DeleteItemCommand({
+            TableName: REFERRALS_TABLE,
+            Key: { referredIdentityId: { S: referredId } },
+            ConditionExpression: "attribute_exists(referredIdentityId) AND #s = :pending",
+            ExpressionAttributeNames: { "#s": "status" },
+            ExpressionAttributeValues: { ":pending": { S: "PENDING" } },
+          })
+        );
+      } catch (err: any) {
+        if (err.name === "ConditionalCheckFailedException") {
+          return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+        }
+        throw err;
+      }
+
+      // Set 30-day cooldown tombstone on the declined user.
+      try {
+        await dynamoClient.send(
+          new UpdateItemCommand({
+            TableName: USER_PROFILES_TABLE,
+            Key: { identityId: { S: referredId } },
+            UpdateExpression: "SET lastReferralDeclinedAt = :now",
+            ExpressionAttributeValues: { ":now": { S: now } },
+          })
+        );
+      } catch (err: any) {
+        // Non-fatal: row delete already succeeded; cooldown is best-effort.
+        console.error("[referral-review] Failed to set cooldown tombstone:", err.message);
+      }
+
+      console.log(JSON.stringify({
+        event: "referral_declined",
+        referredIdentityId: referredId,
+        referrerIdentityId: existing.Item.referrerIdentityId?.S || null,
+        referralCode: existing.Item.referralCode?.S || null,
+        reviewerNote,
+        reviewerIdentityId: admin.identityId,
+        ts: now,
+      }));
+      return jsonResponse(200, { declined: 1, identityId: referredId }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);

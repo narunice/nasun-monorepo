@@ -383,6 +383,20 @@ export class AdminStack extends cdk.Stack {
     // DELETE /genesis-pass/entries/{walletAddress} - Admin: delete entry
     genesisPassEntryIdResource.addMethod("DELETE", exportIntegration, authorizedMethodOptions);
 
+    // Referral Review API Routes (admin only)
+    // Manual approval workflow: admin views PENDING referrals, then approves
+    // (sets ACTIVATED + activatedAt) or declines (deletes row + sets 30-day cooldown).
+    const adminResource = this.api.root.addResource("admin");
+    const referralReviewResource = adminResource.addResource("referral-review");
+    // GET /admin/referral-review?cursor=&limit= - List PENDING referrals
+    referralReviewResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
+    const referralApproveResource = referralReviewResource.addResource("approve");
+    // POST /admin/referral-review/approve - Approve a single referral
+    referralApproveResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
+    const referralDeclineResource = referralReviewResource.addResource("decline");
+    // POST /admin/referral-review/decline - Decline + 30-day cooldown
+    referralDeclineResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
+
     // Internal API Routes (API key auth in Lambda, no Cognito authorizer)
     const internalResource = this.api.root.addResource("internal");
     const walletMappingsResource = internalResource.addResource("wallet-mappings");
