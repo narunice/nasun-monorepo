@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMarkets } from "../../prediction";
+import { useMarkets, useLastTradePrice, useMarketOrderbook } from "../../prediction";
 import { calculateProbabilityFromOrderbook } from "../../prediction/types";
 
 function LoadingCard() {
@@ -17,12 +17,15 @@ function LoadingCard() {
 }
 
 interface MarketRowProps {
+  marketId: string;
   question: string;
   category: string;
-  yesProbability: number;
 }
 
-function MarketRow({ question, category, yesProbability }: MarketRowProps) {
+function MarketRow({ marketId, question, category }: MarketRowProps) {
+  const lastTradePriceBps = useLastTradePrice(marketId);
+  const { yesOrderbook, noOrderbook } = useMarketOrderbook(marketId);
+  const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook, lastTradePriceBps);
   const noProbability = 100 - yesProbability;
 
   const cryptoSymbol = category === "crypto" ? extractCryptoSymbol(question) : null;
@@ -233,21 +236,15 @@ export function PredictionHighlight() {
       </p>
 
       <div className="flex-1 flex flex-col justify-around">
-        {markets.slice(0, 3).map(({ market, yesOrderbook, noOrderbook }) => {
-          const { yesProbability } = calculateProbabilityFromOrderbook(
-            yesOrderbook,
-            noOrderbook,
-          );
-          return (
-            <Link key={market.id} to={`/predict/${market.id}`} className="block">
-              <MarketRow
-                question={market.question}
-                category={market.category}
-                yesProbability={yesProbability}
-              />
-            </Link>
-          );
-        })}
+        {markets.slice(0, 3).map(({ market }) => (
+          <Link key={market.id} to={`/predict/${market.id}`} className="block">
+            <MarketRow
+              marketId={market.id}
+              question={market.question}
+              category={market.category}
+            />
+          </Link>
+        ))}
       </div>
     </div>
   );
