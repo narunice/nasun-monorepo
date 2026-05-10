@@ -255,6 +255,10 @@ export class ReferralStack extends cdk.Stack {
     const myStatsResource = referralResource.addResource("my-stats");
     myStatsResource.addMethod("GET", handlerIntegration, authOptions);
 
+    // GET  /referral/my-referees - Cursor-paginated referee list
+    const myRefereesResource = referralResource.addResource("my-referees");
+    myRefereesResource.addMethod("GET", handlerIntegration, authOptions);
+
     // ========== 5. CloudFormation Outputs ==========
 
     new cdk.CfnOutput(this, "ReferralCodesTableName", {
