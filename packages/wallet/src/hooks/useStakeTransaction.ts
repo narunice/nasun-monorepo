@@ -49,6 +49,16 @@ function parseStakeError(error: string): string {
     }
   }
 
+  // Stale object version — RPC returned an outdated object version during
+  // a transient validator sync lag. Safe to retry immediately.
+  if (
+    error.includes('Object ID is not available for consumption') ||
+    error.includes('rejected as invalid by more than') ||
+    error.includes('object_id_not_available')
+  ) {
+    return 'Network sync issue — please wait a moment and try again';
+  }
+
   // Insufficient gas
   if (error.includes('InsufficientGas') || error.includes('insufficient gas')) {
     return 'Insufficient NASUN for gas fees';
