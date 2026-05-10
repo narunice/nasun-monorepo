@@ -17,7 +17,7 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
     rooms, activeRoomId,
     sendMessage, loadMore, switchRoom, toggleReaction,
     canChat,
-    setTurnstileToken, turnstileKey,
+    setTurnstileToken, turnstileKey, onTurnstileError, onTurnstileExpire,
   } = useChat();
 
   const inputRef = useRef<MessageInputHandle>(null);
@@ -102,14 +102,19 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
       {/* Nickname modal is hoisted to UjuPage so it survives sidebar
           conditional unmount on tab switches. */}
 
-      {/* Invisible Turnstile CAPTCHA */}
+      {/* size:'invisible' renders nothing for clean IPs; CF auto-escalates
+          with its own modal when interactive challenge is needed. Host element
+          stays in normal flow (NOT display:none) so the iframe remains
+          interactable. Previous display:none + appearance:'execute' combo
+          trapped users on suspicious-IP networks (2026-05-09 outage). */}
       {TURNSTILE_SITE_KEY && canChat && (
         <Turnstile
           key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
-          options={{ appearance: "execute", size: "invisible" }}
+          options={{ size: "invisible" }}
           onSuccess={setTurnstileToken}
-          style={{ display: "none" }}
+          onError={onTurnstileError}
+          onExpire={onTurnstileExpire}
         />
       )}
     </div>
