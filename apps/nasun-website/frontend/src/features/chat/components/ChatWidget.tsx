@@ -475,16 +475,20 @@ export default function ChatWidget() {
         </svg>
       </button>
 
-      {/* Invisible Turnstile widget - re-mounts on captcha_required to get a fresh token */}
+      {/* size:'invisible' renders nothing for clean IPs; CF auto-escalates
+          with its own modal overlay when interactive challenge is needed.
+          Host element stays in the normal flow (NOT display:none) so the
+          iframe is interactable in the rare interactive-fallback case.
+          The previous display:none + appearance:'execute' combo trapped
+          users on suspicious-IP networks (2026-05-09 outage). */}
       {TURNSTILE_SITE_KEY && canChat && (
         <Turnstile
           key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
-          options={{ appearance: 'execute', size: 'invisible' }}
+          options={{ size: 'invisible' }}
           onSuccess={setTurnstileToken}
           onError={onTurnstileError}
           onExpire={onTurnstileExpire}
-          style={{ display: 'none' }}
         />
       )}
     </>
