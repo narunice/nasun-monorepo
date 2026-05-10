@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { useMarkets, useLastTradePrice, useMarketOrderbook } from "../../prediction";
-import { calculateProbabilityFromOrderbook } from "../../prediction/types";
+import { useMarkets, useLastTradePrice } from "../../prediction";
+import { calculateProbabilityFromBestPrices } from "../../prediction/types";
+import type { PredictionMarket } from "../../prediction/types";
 
 function LoadingCard() {
   return (
@@ -17,15 +18,26 @@ function LoadingCard() {
 }
 
 interface MarketRowProps {
-  marketId: string;
-  question: string;
-  category: string;
+  market: PredictionMarket;
 }
 
-function MarketRow({ marketId, question, category }: MarketRowProps) {
-  const lastTradePriceBps = useLastTradePrice(marketId);
-  const { yesOrderbook, noOrderbook } = useMarketOrderbook(marketId);
-  const { yesProbability } = calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook, lastTradePriceBps);
+function MarketRow({ market }: MarketRowProps) {
+  // Use the inline best-price quartet read off the Market object (free) and
+  // skip the global ORDER_FILLED scan when any quote exists. Mirrors the fix
+  // applied to MarketCard — previously this row triggered a full dynamic-field
+  // orderbook walk per dashboard render and still defaulted to 50/50 when the
+  // walk returned empty.
+  const { question, category } = market;
+  const hasAnyQuote =
+    market.bestPrices.yesBid !== null ||
+    market.bestPrices.yesAsk !== null ||
+    market.bestPrices.noBid !== null ||
+    market.bestPrices.noAsk !== null;
+  const lastTradePriceBps = useLastTradePrice(hasAnyQuote ? undefined : market.id);
+  const { yesProbability, hasRealQuotes } = calculateProbabilityFromBestPrices(
+    market.bestPrices,
+    lastTradePriceBps,
+  );
   const noProbability = 100 - yesProbability;
 
   const cryptoSymbol = category === "crypto" ? extractCryptoSymbol(question) : null;
@@ -169,24 +181,24 @@ function MarketRow({ marketId, question, category }: MarketRowProps) {
         <div className="flex items-center gap-2">
           <div className="text-[10px] xl:text-xs min-w-[30px]">
             <span className="text-green-500 font-bold">
-              {Math.round(yesProbability)}%
+              {hasRealQuotes ? `${Math.round(yesProbability)}%` : '—'}
             </span>
           </div>
           <div className="flex-1">
             <div className="h-1.5 bg-red-500/10 rounded-full overflow-hidden flex">
               <div
                 className="h-full bg-green-500"
-                style={{ width: `${yesProbability}%` }}
+                style={{ width: `${hasRealQuotes ? yesProbability : 50}%` }}
               />
               <div
                 className="h-full bg-red-500"
-                style={{ width: `${noProbability}%` }}
+                style={{ width: `${hasRealQuotes ? noProbability : 50}%` }}
               />
             </div>
           </div>
           <div className="text-[10px] xl:text-xs min-w-[30px] text-right">
             <span className="text-red-500 font-bold">
-              {Math.round(noProbability)}%
+              {hasRealQuotes ? `${Math.round(noProbability)}%` : '—'}
             </span>
           </div>
         </div>
@@ -238,11 +250,7 @@ export function PredictionHighlight() {
       <div className="flex-1 flex flex-col justify-around">
         {markets.slice(0, 3).map(({ market }) => (
           <Link key={market.id} to={`/predict/${market.id}`} className="block">
-            <MarketRow
-              marketId={market.id}
-              question={market.question}
-              category={market.category}
-            />
+            <MarketRow market={market} />
           </Link>
         ))}
       </div>

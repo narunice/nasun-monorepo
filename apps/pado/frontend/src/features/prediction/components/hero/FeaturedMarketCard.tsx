@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom';
 import type { PredictionMarket, Orderbook } from '../../types';
-import { calculateProbabilityFromOrderbook } from '../../types';
+import {
+  calculateProbabilityFromOrderbook,
+  calculateProbabilityFromBestPrices,
+} from '../../types';
 import { useRecentFills } from '../../hooks/useRecentFills';
 import { formatVolumeCompact } from '../../../../lib/format';
 import { ProbabilitySparkline } from './ProbabilitySparkline';
@@ -27,11 +30,13 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
   const lastTradePriceBps = fills.length > 0
     ? (fills[0].isYes ? fills[0].price : 10000 - fills[0].price)
     : null;
-  const { yesProbability, hasRealOrders } = calculateProbabilityFromOrderbook(
-    yesOrderbook,
-    noOrderbook,
-    lastTradePriceBps,
-  );
+  // Featured carousel currently receives null orderbooks from
+  // `fetchMarketsWithOrderbooks` (lazy on detail). Fall back to the inline
+  // best-price quartet stored on the Market object so the hero shows real
+  // probability instead of 50/50 when nothing has traded recently.
+  const { yesProbability, hasRealQuotes } = (yesOrderbook || noOrderbook)
+    ? calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook, lastTradePriceBps)
+    : calculateProbabilityFromBestPrices(market.bestPrices, lastTradePriceBps);
   const noProbability = 100 - yesProbability;
 
   return (
@@ -74,7 +79,7 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
             {noProbability.toFixed(0)}%
           </span>
         </div>
-        {!hasRealOrders && (
+        {!hasRealQuotes && (
           <p className="text-xs text-theme-text-muted italic pl-10">No orders yet</p>
         )}
       </div>

@@ -76,7 +76,25 @@ function parseMarketFields(id: string, fields: Record<string, unknown>): Predict
     outcome: parseOutcomeField(fields.outcome),
     creator: String(fields.creator ?? ''),
     resolver: String(fields.resolver ?? ''),
+    // The Market struct stores yes_*_prices / no_*_prices as sorted vectors
+    // (asks ascending, bids descending) so the head of each vector is the best
+    // level. Reading them here is free — they ride along with the showContent
+    // payload `fetchMarket` already requested.
+    bestPrices: {
+      yesBid: extractBestPrice(fields.yes_bid_prices),
+      yesAsk: extractBestPrice(fields.yes_ask_prices),
+      noBid: extractBestPrice(fields.no_bid_prices),
+      noAsk: extractBestPrice(fields.no_ask_prices),
+    },
   };
+}
+
+function extractBestPrice(field: unknown): number | null {
+  if (!Array.isArray(field) || field.length === 0) return null;
+  const head = field[0];
+  if (head === null || head === undefined) return null;
+  const n = Number(head);
+  return Number.isFinite(n) ? n : null;
 }
 
 function parseBalanceField(field: unknown): bigint {

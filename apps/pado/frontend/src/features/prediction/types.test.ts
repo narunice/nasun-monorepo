@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { calculateProbabilityFromOrderbook } from './types';
-import type { Orderbook } from './types';
+import {
+  calculateProbabilityFromOrderbook,
+  calculateProbabilityFromBestPrices,
+} from './types';
+import type { Orderbook, BestPrices } from './types';
 
 function makeOrderbook(
   bids: number[],
@@ -49,13 +52,14 @@ describe('calculateProbabilityFromOrderbook (Polymarket + Kalshi reciprocal)', (
     const ob = makeOrderbook([], []);
     const r = calculateProbabilityFromOrderbook(ob, null, 7500);
     expect(r.yesProbability).toBe(75);
-    expect(r.hasRealOrders).toBe(false);
+    // last trade counts as a real quote — UI should show the number, not "—"
+    expect(r.hasRealQuotes).toBe(true);
   });
 
   it('returns 50% default when nothing known', () => {
     const r = calculateProbabilityFromOrderbook(null, null, null);
     expect(r.yesProbability).toBe(50);
-    expect(r.hasRealOrders).toBe(false);
+    expect(r.hasRealQuotes).toBe(false);
   });
 
   it('clamps probabilities to [0.1, 99.9]', () => {
@@ -103,5 +107,57 @@ describe('calculateProbabilityFromOrderbook (Polymarket + Kalshi reciprocal)', (
     // mid = 6500
     const r = calculateProbabilityFromOrderbook(null, noOb);
     expect(r.yesProbability).toBe(65);
+  });
+});
+
+describe('calculateProbabilityFromBestPrices (inline best-quartet)', () => {
+  const empty: BestPrices = { yesBid: null, yesAsk: null, noBid: null, noAsk: null };
+
+  it('mirrors the 48.3/51.7 case from the bug report (NO bid only)', () => {
+    // NO bid 5170 → implied YES ask 4830, no other quotes.
+    const bp: BestPrices = { yesBid: null, yesAsk: null, noBid: 5170, noAsk: null };
+    const r = calculateProbabilityFromBestPrices(bp);
+    expect(r.yesProbability).toBeCloseTo(48.3);
+    expect(r.noProbability).toBeCloseTo(51.7);
+    expect(r.hasRealQuotes).toBe(true);
+  });
+
+  it('uses tight YES mid when spread <= 1000 bps', () => {
+    const bp: BestPrices = { yesBid: 4900, yesAsk: 5100, noBid: null, noAsk: null };
+    const r = calculateProbabilityFromBestPrices(bp);
+    expect(r.yesProbability).toBe(50);
+    expect(r.hasRealQuotes).toBe(true);
+  });
+
+  it('falls back to last trade when spread > 1000 bps', () => {
+    const bp: BestPrices = { yesBid: 3000, yesAsk: 7000, noBid: null, noAsk: null };
+    const r = calculateProbabilityFromBestPrices(bp, 6500);
+    expect(r.yesProbability).toBe(65);
+  });
+
+  it('combines YES and NO into the tightest effective spread', () => {
+    // YES bid 45, ask 55; NO bid 44 → implied YES ask 56; NO ask 54 → implied YES bid 46.
+    const bp: BestPrices = { yesBid: 4500, yesAsk: 5500, noBid: 4400, noAsk: 5400 };
+    const r = calculateProbabilityFromBestPrices(bp);
+    // effective bid=max(4500, 4600)=4600, ask=min(5500, 5600)=5500, mid=5050
+    expect(r.yesProbability).toBe(50.5);
+  });
+
+  it('reports no real quotes and defaults to 50 when nothing is known', () => {
+    const r = calculateProbabilityFromBestPrices(empty, null);
+    expect(r.yesProbability).toBe(50);
+    expect(r.hasRealQuotes).toBe(false);
+  });
+
+  it('treats a known last trade as a real quote even with empty book', () => {
+    const r = calculateProbabilityFromBestPrices(empty, 7500);
+    expect(r.yesProbability).toBe(75);
+    expect(r.hasRealQuotes).toBe(true);
+  });
+
+  it('uses ask alone when only YES asks exist', () => {
+    const bp: BestPrices = { yesBid: null, yesAsk: 4000, noBid: null, noAsk: null };
+    const r = calculateProbabilityFromBestPrices(bp);
+    expect(r.yesProbability).toBe(40);
   });
 });
