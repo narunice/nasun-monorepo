@@ -9,6 +9,8 @@ import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 import { useAuth } from "@/features/auth";
+import { ReferralWelcomeModal, REFERRAL_MODAL_DISMISSED_KEY } from "../../sections/uju/onboarding/ReferralWelcomeModal";
+import { getMyReferralStats } from "@/services/referralApi";
 
 type Tab = "dashboard" | "activity" | "profile";
 const VALID_TABS = new Set<Tab>(["dashboard", "activity", "profile"]);
@@ -41,6 +43,37 @@ export default function UjuPage() {
 
   const showInlineChat = chatOpen && isDesktop && tab === "dashboard";
   const showMobileChat = chatOpen && !isDesktop;
+
+  // Referral welcome modal: shown when user signed up via referral and hasn't
+  // completed activation. Dismissable per-device via localStorage. Soft gate —
+  // closing it doesn't restrict the page.
+  const [referralModalOpen, setReferralModalOpen] = useState(false);
+  useEffect(() => {
+    const token = user?.cognitoToken;
+    if (!token) return;
+    // Auto-close if user just linked X mid-session.
+    if (user?.twitterId) setReferralModalOpen(false);
+    // Skip the network fetch entirely when dismissed (cheap short-circuit).
+    try {
+      if (localStorage.getItem(REFERRAL_MODAL_DISMISSED_KEY)) return;
+    } catch {
+      // ignore localStorage failure (Safari private)
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const stats = await getMyReferralStats(token);
+        if (cancelled) return;
+        if (!stats.referredBy || stats.referredBy.status !== "PENDING") return;
+        // X linked AND admin-approved => no modal.
+        if (user?.twitterId && stats.referredBy.activatedAt) return;
+        setReferralModalOpen(true);
+      } catch {
+        // non-fatal: skip modal if stats call fails
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.cognitoToken, user?.twitterId]);
 
   const inlineChatSlot = showInlineChat ? (
     <div className="h-full bg-gray-950/50 backdrop-blur-sm border border-uju-border/60 rounded-lg overflow-hidden shadow-[0_4px_24px_rgba(14,28,36,0.5)] flex flex-col">
@@ -99,6 +132,11 @@ export default function UjuPage() {
         </div>
       )}
 
+      <ReferralWelcomeModal
+        open={referralModalOpen}
+        onClose={() => setReferralModalOpen(false)}
+        user={user}
+      />
     </UjuLayout>
     </UjuAppDirectoryProvider>
   );

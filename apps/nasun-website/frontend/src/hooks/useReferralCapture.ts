@@ -75,8 +75,17 @@ export function useReferralCapture(): void {
         localStorage.removeItem(STORAGE_KEY);
       })
       .catch((err) => {
-        // ALREADY_APPLIED or SELF_REFERRAL are expected, just clean up
-        if (err.errorCode === "ALREADY_APPLIED" || err.errorCode === "SELF_REFERRAL") {
+        // Terminal error codes: drop the stored code so we stop retrying.
+        // ALREADY_APPLIED — already attached.
+        // SELF_REFERRAL   — won't ever succeed for this user.
+        // RECENTLY_DECLINED — under 30-day cooldown after admin decline.
+        // CODE_NOT_FOUND  — bad code in URL; no point retrying.
+        if (
+          err.errorCode === "ALREADY_APPLIED" ||
+          err.errorCode === "SELF_REFERRAL" ||
+          err.errorCode === "RECENTLY_DECLINED" ||
+          err.errorCode === "CODE_NOT_FOUND"
+        ) {
           localStorage.removeItem(STORAGE_KEY);
         }
         // Other errors: keep in storage for retry on next login

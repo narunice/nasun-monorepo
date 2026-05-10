@@ -43,8 +43,9 @@ export const ActivityTab: FC = () => {
       {/* section: Bug Reports & Feedback */}
       <UjuBugReportsCard />
 
-      {/* section: Referral program (eligibility-gated) */}
-      {/* <UjuReferralCard /> */}
+      {/* section: Referral program — code issuance gated by 4-path eligibility,
+          but referred users always see their own bonus activation status */}
+      <UjuReferralCard />
 
       {/* section: Governance overview */}
       <UjuGovernanceCard />
