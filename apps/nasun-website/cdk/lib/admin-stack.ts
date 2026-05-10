@@ -386,16 +386,21 @@ export class AdminStack extends cdk.Stack {
     // Referral Review API Routes (admin only)
     // Manual approval workflow: admin views PENDING referrals, then approves
     // (sets ACTIVATED + activatedAt) or declines (deletes row + sets 30-day cooldown).
+    //
+    // IMPORTANT: routes use a single ANY {proxy+} method to keep AdminExportFunction's
+    // resource policy under the 20KB limit. Per-method permissions add ~500B each
+    // and the function already has ~40 statements. allowTestInvoke:false drops the
+    // duplicate test-stage permission. The Lambda routes by event.path internally
+    // (`endsWith('/admin/referral-review')`, `.../approve`, `.../decline`).
+    const referralReviewIntegration = new apigateway.LambdaIntegration(this.exportFunction, {
+      proxy: true,
+      allowTestInvoke: false,
+    });
     const adminResource = this.api.root.addResource("admin");
     const referralReviewResource = adminResource.addResource("referral-review");
-    // GET /admin/referral-review?cursor=&limit= - List PENDING referrals
-    referralReviewResource.addMethod("GET", exportIntegration, authorizedMethodOptions);
-    const referralApproveResource = referralReviewResource.addResource("approve");
-    // POST /admin/referral-review/approve - Approve a single referral
-    referralApproveResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
-    const referralDeclineResource = referralReviewResource.addResource("decline");
-    // POST /admin/referral-review/decline - Decline + 30-day cooldown
-    referralDeclineResource.addMethod("POST", exportIntegration, authorizedMethodOptions);
+    referralReviewResource.addMethod("ANY", referralReviewIntegration, authorizedMethodOptions);
+    const referralReviewProxy = referralReviewResource.addResource("{proxy+}");
+    referralReviewProxy.addMethod("ANY", referralReviewIntegration, authorizedMethodOptions);
 
     // Internal API Routes (API key auth in Lambda, no Cognito authorizer)
     const internalResource = this.api.root.addResource("internal");
