@@ -138,6 +138,33 @@ node-3에서 별도 PostgreSQL DB로 운영되는 온체인 활동 포인트 시
 | `GET /user/:walletAddress` | 지갑별 포인트 + 카테고리 분해 | 5분 |
 | `GET /health` | Scanner 상태 (last_tx_sequence, wallet cache 등) | 없음 |
 
+### 사용자 포인트 직접 조회 (admin)
+
+`activity_points` 테이블은 **node-3 (54.180.61.196)의 `nasun_points` PostgreSQL DB**에 있음.
+explorer-api node_modules에 pg 패키지 없음 - `sudo -u postgres psql`로 직접 조회.
+
+```bash
+# identityId로 all-time 포인트 합산
+ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196 \
+  "sudo -u postgres psql -d nasun_points -c \"
+    SELECT SUM(final_points) as total, COUNT(*) as records
+    FROM activity_points
+    WHERE identity_id = '<identityId>' AND NOT flagged;
+  \""
+
+# 카테고리별 분해
+ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem ubuntu@54.180.61.196 \
+  "sudo -u postgres psql -d nasun_points -c \"
+    SELECT category, SUM(final_points) as pts, COUNT(*) as cnt
+    FROM activity_points
+    WHERE identity_id = '<identityId>' AND NOT flagged
+    GROUP BY category ORDER BY pts DESC;
+  \""
+```
+
+> identityId는 DynamoDB `UserProfiles` 테이블의 PK. walletAddress로 먼저 identityId를 찾으려면:
+> `aws dynamodb scan --table-name UserProfiles --filter-expression "walletAddress = :w" ...`
+
 ### 환경변수 (node-3 ~/explorer-api/.env)
 
 | 변수 | 설명 |

@@ -132,7 +132,6 @@ declare -A APIS=(
   ["Random Image"]="https://y6davo1om2.execute-api.ap-northeast-2.amazonaws.com/prod/"
   ["User Profile"]="https://aanboqet5i.execute-api.ap-northeast-2.amazonaws.com/prod/"
   ["User Count"]="https://mwhyuu1k51.execute-api.ap-northeast-2.amazonaws.com/prod/"
-  ["Follower Count"]="https://as05kvrlii.execute-api.ap-northeast-2.amazonaws.com/prod/"
   ["Wallet API"]="https://6pnnb6hcrd.execute-api.ap-northeast-2.amazonaws.com/prod/"
   ["Link Account"]="https://33j69j7lpg.execute-api.ap-northeast-2.amazonaws.com/prod/"
   ["Deactivate User"]="https://tz8yw7w72d.execute-api.ap-northeast-2.amazonaws.com/prod/"
@@ -643,7 +642,7 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 ### 4. Shared Infrastructure
 | Service | Result | Status |
 
-### 5. Lambda APIs (19 endpoints)
+### 5. Lambda APIs (18 endpoints)
 | API | HTTP | Time | Status |
 
 ### 6. EC2 Instances
