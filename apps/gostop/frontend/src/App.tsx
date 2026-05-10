@@ -3,7 +3,7 @@ import { lazyWithRetry } from './utils/lazyWithRetry'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
 import { Turnstile } from '@marsidev/react-turnstile'
 import { WalletConnect } from '@nasun/wallet-ui'
-import { useTurnstileWidget } from './lib/turnstile-gate'
+import { useTurnstileWidget, onTurnstileError } from './lib/turnstile-gate'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
 import LotteryPage from './pages/LotteryPage'
@@ -79,13 +79,20 @@ import { useBalanceSync } from './hooks/useBalanceSync'
 function TurnstilePrewarm() {
   const { siteKey, widgetKey, onSuccess } = useTurnstileWidget()
   if (!siteKey) return null
+  // size:'invisible' renders nothing for clean IPs; CF auto-escalates with
+  // its own modal overlay when interactive challenge is needed. We mount the
+  // host element with normal flow (NOT display:none, NOT visibility:hidden)
+  // so the iframe stays interactable in the rare interactive-fallback case.
+  // The previous gate's display:none + appearance:'execute' combo trapped
+  // suspicious-IP users in a hidden iframe (2026-05-09 outage).
   return (
     <Turnstile
       key={widgetKey}
       siteKey={siteKey}
-      options={{ appearance: 'execute', size: 'invisible' }}
+      options={{ size: 'invisible' }}
       onSuccess={onSuccess}
-      style={{ display: 'none' }}
+      onError={onTurnstileError}
+      onExpire={onTurnstileError}
     />
   )
 }

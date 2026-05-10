@@ -19,8 +19,14 @@ import { useEffect, useState, useCallback } from 'react';
 
 const SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 const VERIFY_URL = import.meta.env.VITE_TURNSTILE_PASS_VERIFY_URL as string | undefined;
-const STORAGE_KEY = 'gostop_turnstile_pass_v1';
-const PASS_AWAIT_TIMEOUT_MS = 12_000;
+// Bumped from v1 -> v2 (2026-05-10) to clear stale localStorage state from
+// users trapped by the previous gate's display:none + appearance:'execute'
+// misconfiguration. Old keys are simply ignored.
+const STORAGE_KEY = 'gostop_turnstile_pass_v2';
+// Long enough for an interactive Cloudflare challenge (user clicks the box,
+// possibly after a visual delay). The previous 12s value was shorter than
+// many real-world challenges and produced a guaranteed self-DOS.
+const PASS_AWAIT_TIMEOUT_MS = 45_000;
 
 interface StoredPass {
   pass: string;
@@ -72,6 +78,11 @@ function passIsFresh(p: StoredPass | null): boolean {
 let widgetKey = 0;
 let pendingPassResolvers: Array<(ok: boolean) => void> = [];
 let exchangeInFlight: Promise<boolean> | null = null;
+// Latest-wins: if a fresh Turnstile token arrives while a verify is in-flight,
+// stash it here so we can re-exchange immediately after the in-flight resolves.
+// Turnstile tokens are single-use, so we drop older queued tokens (only keep
+// the most recent) to avoid wasting siteverify quota on stale tokens.
+let pendingToken: string | null = null;
 const subscribers = new Set<() => void>();
 
 function notify(): void {
@@ -88,37 +99,56 @@ async function exchangeTokenForPass(turnstileToken: string): Promise<boolean> {
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) {
-      console.warn('[turnstile-gate] exchange failed:', res.status);
+      console.warn('[metric] turnstile_exchange_fail', { status: res.status });
       return false;
     }
     const data = (await res.json()) as { pass?: string; expiresAt?: number };
     if (!data?.pass || typeof data.expiresAt !== 'number') {
-      console.warn('[turnstile-gate] malformed exchange response');
+      console.warn('[metric] turnstile_exchange_fail', { reason: 'malformed' });
       return false;
     }
     writeStoredPass({ pass: data.pass, expiresAt: data.expiresAt });
+    console.log('[metric] turnstile_exchange_success');
     return true;
   } catch (err) {
-    console.warn('[turnstile-gate] exchange error:', (err as Error).message);
+    console.warn('[metric] turnstile_exchange_fail', { reason: (err as Error).message });
     return false;
   }
 }
 
-/**
- * Called by the widget at App root when Turnstile auto-execute completes.
- * Exchanges the Turnstile token for a server-signed pass and resolves any
- * waiters. Idempotent — concurrent calls coalesce.
- */
-export function onTurnstileSuccess(turnstileToken: string): void {
-  if (exchangeInFlight) return;
+function startExchange(turnstileToken: string): void {
   exchangeInFlight = exchangeTokenForPass(turnstileToken).then((ok) => {
     exchangeInFlight = null;
+    // Latest-wins: if a newer token arrived during this exchange, run it next
+    // before resolving waiters. This avoids dropping fresh tokens that the
+    // previous version silently discarded via `if (exchangeInFlight) return`.
+    if (pendingToken && !ok) {
+      const next = pendingToken;
+      pendingToken = null;
+      startExchange(next);
+      return ok;
+    }
+    pendingToken = null;
     const waiters = pendingPassResolvers;
     pendingPassResolvers = [];
     for (const r of waiters) r(ok);
     notify();
     return ok;
   });
+}
+
+/**
+ * Called by the widget at App root when Turnstile auto-execute completes.
+ * Exchanges the Turnstile token for a server-signed pass and resolves any
+ * waiters. If an exchange is already in-flight, the new token is stashed
+ * (latest-wins) and consumed after the current exchange settles.
+ */
+export function onTurnstileSuccess(turnstileToken: string): void {
+  if (exchangeInFlight) {
+    pendingToken = turnstileToken;
+    return;
+  }
+  startExchange(turnstileToken);
 }
 
 /**
@@ -140,21 +170,29 @@ export function ensureGostopPass(): Promise<boolean> {
   if (!isGateEnabled()) return Promise.resolve(true);
   if (passIsFresh(readStoredPass())) return Promise.resolve(true);
 
-  // No fresh pass — wait for the next widget success (or trigger a re-run if
-  // the widget has already fired and was discarded).
+  // No fresh pass — wait for the next widget success. Only force a remount
+  // when there's clearly no challenge in progress; remounting mid-challenge
+  // destroys whatever the user is solving (the previous version's self-DOS).
   return new Promise<boolean>((resolve) => {
-    const timeout = setTimeout(() => {
-      const idx = pendingPassResolvers.indexOf(wrapped);
-      if (idx >= 0) pendingPassResolvers.splice(idx, 1);
-      resolve(false);
-    }, PASS_AWAIT_TIMEOUT_MS);
-
     const wrapped = (ok: boolean) => {
       clearTimeout(timeout);
       resolve(ok);
     };
+    const timeout = setTimeout(() => {
+      const idx = pendingPassResolvers.indexOf(wrapped);
+      if (idx >= 0) pendingPassResolvers.splice(idx, 1);
+      console.warn('[metric] turnstile_pass_timeout');
+      resolve(false);
+    }, PASS_AWAIT_TIMEOUT_MS);
+
     pendingPassResolvers.push(wrapped);
-    refreshTurnstileWidget();
+    // Only kick a fresh challenge if nothing is already in motion. Multiple
+    // concurrent ensureGostopPass calls coalesce onto the same widget run.
+    const hasInFlight = exchangeInFlight !== null || pendingToken !== null;
+    const hasOtherWaiters = pendingPassResolvers.length > 1;
+    if (!hasInFlight && !hasOtherWaiters) {
+      refreshTurnstileWidget();
+    }
   });
 }
 
@@ -166,6 +204,30 @@ export function getStoredPassToken(): string | null {
 export function clearGostopPass(): void {
   clearStoredPass();
   notify();
+}
+
+/**
+ * Called by the widget on Cloudflare error/expire callbacks. Bumps the key so
+ * the next render starts a fresh challenge. Bounded by the natural cadence of
+ * CF error events, so this can't loop tightly the way the old per-call
+ * remount did.
+ */
+export function onTurnstileError(): void {
+  console.warn('[metric] turnstile_widget_error');
+  refreshTurnstileWidget();
+}
+
+// Re-warm a fresh challenge when the user returns to the tab if the cached
+// pass is gone or about to expire. This avoids the cold first-click latency
+// the previous version always paid every 4h after pass TTL.
+if (typeof document !== 'undefined' && isGateEnabled()) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const stored = readStoredPass();
+    if (passIsFresh(stored)) return;
+    if (exchangeInFlight !== null) return;
+    refreshTurnstileWidget();
+  });
 }
 
 /**
