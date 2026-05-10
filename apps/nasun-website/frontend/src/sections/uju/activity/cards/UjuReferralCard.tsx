@@ -220,12 +220,36 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
     </div>
   ) : null;
 
-  // "Your referees" list — visible only if user has issued a code.
-  const refereesBlock = referralCode && referees.length > 0 ? (
+  // "Your referees" list — visible whenever the user has issued a code AND
+  // has at least one referee (totalReferrals > 0). Two data sources:
+  //   - Preferred: `referees` (enriched: twitterHandle + twitterLinked +
+  //     status). Populated from /referral/my-stats when the new Lambda is
+  //     deployed.
+  //   - Fallback: `stats.referrals` (anonymous: status only). Always
+  //     present from both old and new Lambda. Used until the new Lambda
+  //     ships so users still see per-referee status, just without handle.
+  const hasEnriched = referees.length > 0;
+  const fallbackRows = !hasEnriched && stats?.referrals
+    ? stats.referrals.map((r) => ({
+        twitterHandle: null as string | null,
+        twitterLinked: false,
+        status: r.status,
+        appliedAt: r.appliedAt,
+        activatedAt: r.activatedAt,
+      }))
+    : [];
+  const displayRows = hasEnriched ? referees : fallbackRows;
+
+  const refereesBlock = referralCode && displayRows.length > 0 ? (
     <div className="space-y-2 mt-5 pt-4 border-t border-uju-border/40">
       <p className="text-sm font-medium text-nasun-white">Your referees</p>
+      {!hasEnriched && (
+        <p className="text-xs text-uju-secondary">
+          Detailed handles will appear here once the latest backend rolls out.
+        </p>
+      )}
       <ul className="text-sm divide-y divide-uju-border/30">
-        {referees.map((r, i) => (
+        {displayRows.map((r, i) => (
           <li key={i} className="py-2 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-nasun-white truncate">
@@ -238,16 +262,18 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <span
-                className={
-                  "text-xs px-2 py-0.5 rounded " +
-                  (r.twitterLinked
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-nasun-white/10 text-nasun-white/60")
-                }
-              >
-                {r.twitterLinked ? "X linked" : "X missing"}
-              </span>
+              {hasEnriched && (
+                <span
+                  className={
+                    "text-xs px-2 py-0.5 rounded " +
+                    (r.twitterLinked
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : "bg-nasun-white/10 text-nasun-white/60")
+                  }
+                >
+                  {r.twitterLinked ? "X linked" : "X missing"}
+                </span>
+              )}
               <span
                 className={
                   "text-xs px-2 py-0.5 rounded " +
