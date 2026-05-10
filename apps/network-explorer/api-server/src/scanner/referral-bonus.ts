@@ -28,8 +28,15 @@ import {
 import { saveCache, loadCache } from './cache-persist.js';
 import { fetchWithOffload } from './fetch-with-offload.js';
 
-// Referral cache: referredIdentityId -> referrerIdentityId
-let referralCache = new Map<string, string>();
+// Referral cache shape v2: referredIdentityId -> { referrerId, activatedAt }
+// activatedAt enables filtering out txs that predate admin approval
+// (manual-review model: bonus only counts for activity AFTER admin approves).
+const REFERRAL_CACHE_VERSION = 2;
+interface ReferralEntry {
+  referrerId: string;
+  activatedAt: string | null; // ISO8601; null tolerated for legacy ACTIVATED rows
+}
+let referralCache = new Map<string, ReferralEntry>();
 let referralCacheLastRefresh = 0;
 
 // Daily bonus accumulators (keyed by identityId, reset at UTC midnight)
@@ -84,30 +91,31 @@ export async function maybeRefreshReferralCache(): Promise<void> {
   }
 
   try {
-    const data = await fetchWithOffload<{
-      referrals: Record<string, string>;
-    }>({
+    const data = await fetchWithOffload<MappingsPayload>({
       url,
       apiKey,
       label: 'Referral',
     });
 
     if (!data) {
-      if (referralCache.size === 0) {
-        const fallback = loadCache<{ referrals: Record<string, string> }>('referral-mappings');
-        if (fallback?.referrals) {
-          applyReferralData(fallback.referrals);
-          console.warn(`[Referral] Loaded from disk fallback: ${referralCache.size} relationships`);
-        }
-      }
+      loadFromDiskFallback();
       referralCacheLastRefresh = now;
       return;
     }
 
-    if (data.referrals) {
-      applyReferralData(data.referrals);
-      saveCache('referral-mappings', data);
+    // V1-only fresh response means the server is rolled back to pre-V2.
+    // Bypassing the activatedAt gate would silently re-enable bonuses for
+    // pre-approval activity — refuse and keep prior cache.
+    if (!data.referralsV2 && data.referrals) {
+      console.error(
+        '[Referral] Fresh response is V1-only (no referralsV2); refusing to apply (would bypass activatedAt gate). Keeping prior cache.',
+      );
+      referralCacheLastRefresh = now;
+      return;
     }
+
+    applyReferralPayload(data);
+    saveCache('referral-mappings', { ...data, version: REFERRAL_CACHE_VERSION });
 
     referralCacheLastRefresh = now;
     console.log(
@@ -116,26 +124,58 @@ export async function maybeRefreshReferralCache(): Promise<void> {
   } catch (err) {
     console.error('[Referral] Cache refresh error:', err);
     if (referralCache.size === 0) {
-      const fallback = loadCache<{ referrals: Record<string, string> }>('referral-mappings');
-      if (fallback?.referrals) {
-        applyReferralData(fallback.referrals);
-        console.warn(`[Referral] Loaded from disk fallback: ${referralCache.size} relationships`);
-      }
+      loadFromDiskFallback();
     }
     referralCacheLastRefresh = now;
   }
 }
 
-function applyReferralData(referrals: Record<string, string>): void {
-  if (referrals && typeof referrals === 'object') {
-    const newMap = new Map<string, string>();
-    for (const [referredId, referrerId] of Object.entries(referrals)) {
+interface MappingsPayload {
+  version?: number;
+  referrals?: Record<string, string>;
+  referralsV2?: Record<string, { referrerId: string; activatedAt: string | null }>;
+}
+
+function loadFromDiskFallback(): void {
+  if (referralCache.size > 0) return;
+  const fallback = loadCache<MappingsPayload>('referral-mappings');
+  if (!fallback) return;
+  // Version gate: ignore caches saved before V2 introduction. Legacy disk
+  // caches lack activatedAt and would silently allow pre-approval bonuses.
+  if (fallback.version !== REFERRAL_CACHE_VERSION) {
+    console.warn(
+      `[Referral] Disk cache version ${fallback.version ?? 'unknown'} != ${REFERRAL_CACHE_VERSION}, ignoring`,
+    );
+    return;
+  }
+  applyReferralPayload(fallback);
+  if (referralCache.size > 0) {
+    console.warn(`[Referral] Loaded from disk fallback: ${referralCache.size} relationships`);
+  }
+}
+
+function applyReferralPayload(data: MappingsPayload): void {
+  // Prefer V2 (carries activatedAt). Fall back to legacy shape only if V2 absent;
+  // legacy entries get activatedAt=null which the bonus loop tolerates as
+  // "always eligible" for back-compat with pre-manual-review records.
+  const newMap = new Map<string, ReferralEntry>();
+  if (data.referralsV2 && typeof data.referralsV2 === 'object') {
+    for (const [referredId, entry] of Object.entries(data.referralsV2)) {
+      if (typeof referredId !== 'string' || !entry || typeof entry !== 'object') continue;
+      if (typeof entry.referrerId !== 'string') continue;
+      newMap.set(referredId, {
+        referrerId: entry.referrerId,
+        activatedAt: typeof entry.activatedAt === 'string' ? entry.activatedAt : null,
+      });
+    }
+  } else if (data.referrals && typeof data.referrals === 'object') {
+    for (const [referredId, referrerId] of Object.entries(data.referrals)) {
       if (typeof referredId === 'string' && typeof referrerId === 'string') {
-        newMap.set(referredId, referrerId);
+        newMap.set(referredId, { referrerId, activatedAt: null });
       }
     }
-    referralCache = newMap;
   }
+  referralCache = newMap;
 }
 
 /**
@@ -244,8 +284,20 @@ export async function calculateReferralBonuses(
     const referredId = insert.identity_id;
     if (!referredId) continue;
 
-    const referrerId = referralCache.get(referredId);
-    if (!referrerId) continue;
+    const entry = referralCache.get(referredId);
+    if (!entry) continue;
+    const referrerId = entry.referrerId;
+
+    // Skip txs that predate admin approval. Manual-review model: bonus only
+    // counts for activity AFTER admin clicks Approve. Legacy entries (V1 disk
+    // fallback or pre-V2 records) carry activatedAt=null and bypass this gate
+    // for back-compat — those can only enter the cache via the legacy code path.
+    if (entry.activatedAt) {
+      const activatedMs = Date.parse(entry.activatedAt);
+      if (Number.isFinite(activatedMs) && insert.tx_timestamp.getTime() < activatedMs) {
+        continue;
+      }
+    }
 
     // --- Referrer bonus (10%): paid to the person who shared the code ---
     const referrerBonus = insert.base_points * REFERRAL_L1_BONUS_RATE;
