@@ -231,22 +231,24 @@ health_check "$HEALTH_CHECK_URL" "$HTACCESS_USER" "$HTACCESS_PASS"
 log_step 8 8 "CloudFront 캐시 무효화"
 
 if ! command -v aws >/dev/null 2>&1; then
-  log_warning "aws CLI 미설치 — CloudFront 무효화 건너뜀 (수동 실행 필요)"
+  log_error "aws CLI 미설치 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+  exit 1
 else
   log_info "Distribution ${CLOUDFRONT_DIST_ID} 무효화 요청 중..."
+  INVALIDATION_ERROR=""
   INVALIDATION_ID=$(aws cloudfront create-invalidation \
     --distribution-id "$CLOUDFRONT_DIST_ID" \
     --paths "/*" \
     --profile "$AWS_PROFILE_NAME" \
     --query "Invalidation.Id" \
-    --output text 2>&1) || {
-      log_warning "CloudFront 무효화 실패: $INVALIDATION_ID"
-      log_warning "수동 재시도: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths '/*' --profile $AWS_PROFILE_NAME"
-      INVALIDATION_ID=""
-    }
-  if [ -n "$INVALIDATION_ID" ]; then
-    log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) — propagation 5~10분"
+    --output text 2>&1) || INVALIDATION_ERROR="$INVALIDATION_ID"
+  if [ -n "$INVALIDATION_ERROR" ] || [ -z "$INVALIDATION_ID" ]; then
+    log_error "CloudFront 무효화 실패 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+    log_error "오류: ${INVALIDATION_ERROR:-empty response}"
+    log_error "수동 재시도: aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths '/*' --profile $AWS_PROFILE_NAME"
+    exit 1
   fi
+  log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) - propagation 5~10분"
 fi
 
 # --- 완료 ---

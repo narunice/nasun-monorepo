@@ -205,13 +205,25 @@ aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
 log_success "S3 동기화 완료"
 
 log_info "CloudFront 캐시 무효화 중..."
+if ! command -v aws >/dev/null 2>&1; then
+  log_error "aws CLI 미설치 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html'"
+  exit 1
+fi
+INVALIDATION_ERROR=""
 INVALIDATION_ID=$(aws cloudfront create-invalidation \
   --profile "$AWS_PROFILE_NAME" \
   --distribution-id "$DIST_ID" \
   --paths "/" "/index.html" "/*.html" \
   --query 'Invalidation.Id' \
-  --output text 2>/dev/null)
-log_success "무효화 요청: $INVALIDATION_ID"
+  --output text 2>&1) || INVALIDATION_ERROR="$INVALIDATION_ID"
+if [ -n "$INVALIDATION_ERROR" ] || [ -z "$INVALIDATION_ID" ]; then
+  log_error "CloudFront 무효화 실패 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+  log_error "오류: ${INVALIDATION_ERROR:-empty response}"
+  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html'"
+  exit 1
+fi
+log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) - propagation 5~10분"
 
 # --- Phase 7: 헬스 체크 ---
 log_step 6 $TOTAL_STEPS "헬스 체크"

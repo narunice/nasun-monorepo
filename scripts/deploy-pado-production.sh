@@ -251,21 +251,25 @@ health_check "$HEALTH_CHECK_URL"
 log_step 8 $TOTAL_STEPS "CloudFront 캐시 무효화"
 
 if [ -z "$CLOUDFRONT_DISTRIBUTION_ID" ]; then
-  log_warning "CLOUDFRONT_DISTRIBUTION_ID 미설정 — 무효화 건너뜀"
+  log_error "CLOUDFRONT_DISTRIBUTION_ID 미설정 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+  exit 1
 elif ! command -v aws >/dev/null 2>&1; then
-  log_warning "aws CLI 미설치 — 무효화 건너뜀"
+  log_error "aws CLI 미설치 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+  exit 1
 else
   log_info "Distribution ${CLOUDFRONT_DISTRIBUTION_ID} 무효화 요청 중..."
+  INVALIDATION_ERROR=""
   INVALIDATION_ID=$(aws cloudfront create-invalidation --profile nasun-prod \
     --distribution-id "$CLOUDFRONT_DISTRIBUTION_ID" \
     --paths "/*" \
-    --query "Invalidation.Id" --output text 2>&1) || {
-      log_warning "CloudFront 무효화 실패 (수동 재시도): pnpm invalidate:pado:cdn"
-      INVALIDATION_ID=""
-    }
-  if [ -n "$INVALIDATION_ID" ]; then
-    log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) — propagation 5~10분"
+    --query "Invalidation.Id" --output text 2>&1) || INVALIDATION_ERROR="$INVALIDATION_ID"
+  if [ -n "$INVALIDATION_ERROR" ] || [ -z "$INVALIDATION_ID" ]; then
+    log_error "CloudFront 무효화 실패 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
+    log_error "오류: ${INVALIDATION_ERROR:-empty response}"
+    log_error "수동 재시도: pnpm invalidate:pado:cdn"
+    exit 1
   fi
+  log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) - propagation 5~10분"
 fi
 
 # --- Phase 9-10: LP 봇 배포 ---
