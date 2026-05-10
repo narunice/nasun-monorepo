@@ -16,6 +16,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
+  BatchGetCommand,
   GetCommand,
   PutCommand,
   QueryCommand,
@@ -80,6 +81,9 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "https://nasun.io")
 
 const MAX_REFERRALS_PER_USER = 100;
 const CODE_GENERATION_MAX_RETRIES = 3;
+const DECLINE_COOLDOWN_DAYS = 30;
+const REFEREES_INLINE_PAGE_SIZE = 20;
+const REFEREES_MAX_PAGE_SIZE = 100;
 
 // --- Response helpers ---
 
@@ -357,6 +361,42 @@ async function handleApply(
     return jsonResponse(400, { error: "SELF_REFERRAL", message: "Cannot use your own referral code" }, origin);
   }
 
+  // 3.5. Decline cooldown: a previously declined user cannot re-apply within
+  // 30 days. Check ALL linked identities (mirrors the self-referral pattern
+  // above) so a user can't sidestep cooldown by logging in via a linked
+  // Google/X/MetaMask identity. Take max(lastReferralDeclinedAt) across them.
+  const otherCallerIds = allCallerIds.filter((id) => id !== identityId);
+  const linkedProfiles = otherCallerIds.length
+    ? await Promise.all(
+        otherCallerIds.map((id) =>
+          client.send(
+            new GetCommand({
+              TableName: USER_PROFILES_TABLE,
+              Key: { identityId: id },
+              ProjectionExpression: "lastReferralDeclinedAt",
+            })
+          ).catch(() => ({ Item: undefined as Record<string, any> | undefined }))
+        )
+      )
+    : [];
+  let latestDeclinedMs = 0;
+  const ownDeclined = callerProfile.Item?.lastReferralDeclinedAt as string | undefined;
+  if (ownDeclined) latestDeclinedMs = Math.max(latestDeclinedMs, Date.parse(ownDeclined) || 0);
+  for (const p of linkedProfiles) {
+    const v = p.Item?.lastReferralDeclinedAt as string | undefined;
+    if (v) latestDeclinedMs = Math.max(latestDeclinedMs, Date.parse(v) || 0);
+  }
+  if (latestDeclinedMs > 0) {
+    const cooldownMs = DECLINE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+    if (Date.now() - latestDeclinedMs < cooldownMs) {
+      return jsonResponse(403, {
+        error: "RECENTLY_DECLINED",
+        message: "Your previous referral was declined. You can re-apply later.",
+        retryAt: new Date(latestDeclinedMs + cooldownMs).toISOString(),
+      }, origin);
+    }
+  }
+
   // 4. Check referrer's existing referral count (max 100)
   const referrerCount = await client.send(
     new QueryCommand({
@@ -405,6 +445,92 @@ async function handleApply(
   return jsonResponse(200, { success: true }, origin);
 }
 
+// ==================== Referee enrichment ====================
+
+interface RefereeRow {
+  // identityId deliberately omitted: handleMyStats historically stripped it
+  // ("no identityIds exposed") and exposing it via the new pagination would
+  // let referrers build a permanent identityId<->X-handle map. UI doesn't
+  // need it (uses index-based React key).
+  twitterHandle: string | null;
+  twitterLinked: boolean;
+  status: string;
+  appliedAt: string;
+  activatedAt: string | null;
+}
+
+/**
+ * Enrich raw referral rows with twitterHandle/twitterLinked from UserProfiles.
+ * Single BatchGetCommand (DDB caps at 100 keys per call); a referrer is capped
+ * at MAX_REFERRALS_PER_USER=100 elsewhere so a single batch always suffices
+ * for the per-page slice we hand it. UnprocessedKeys retried once.
+ */
+async function enrichReferees(
+  rawItems: Array<Record<string, any>>
+): Promise<RefereeRow[]> {
+  if (rawItems.length === 0) return [];
+  const ids = [...new Set(rawItems.map((r) => r.referredIdentityId).filter(Boolean))];
+  const profileMap = new Map<string, { twitterHandle?: string; twitterId?: string }>();
+
+  let keys = ids.map((id) => ({ identityId: id }));
+  for (let attempt = 0; attempt < 2 && keys.length > 0; attempt++) {
+    try {
+      const res = await client.send(
+        new BatchGetCommand({
+          RequestItems: {
+            [USER_PROFILES_TABLE!]: {
+              Keys: keys,
+              ProjectionExpression: "identityId, twitterHandle, twitterId",
+            },
+          },
+        })
+      );
+      const items = res.Responses?.[USER_PROFILES_TABLE!] || [];
+      for (const it of items) {
+        profileMap.set(it.identityId as string, {
+          twitterHandle: it.twitterHandle as string | undefined,
+          twitterId: it.twitterId as string | undefined,
+        });
+      }
+      const unprocessed = res.UnprocessedKeys?.[USER_PROFILES_TABLE!]?.Keys as
+        | Array<{ identityId: string }>
+        | undefined;
+      keys = unprocessed || [];
+    } catch (err) {
+      // Don't silently mask: log and move on with whatever we got.
+      console.warn("[referral] BatchGet UserProfiles failed:", err);
+      break;
+    }
+  }
+
+  return rawItems.map((item) => {
+    const p = profileMap.get(item.referredIdentityId) || {};
+    return {
+      twitterHandle: p.twitterHandle ?? null,
+      twitterLinked: Boolean(p.twitterId),
+      status: item.status,
+      appliedAt: item.appliedAt,
+      activatedAt: item.activatedAt || null,
+    };
+  });
+}
+
+function encodeOffsetCursor(offset: number): string {
+  return Buffer.from(JSON.stringify({ v: 1, offset })).toString("base64");
+}
+
+function decodeOffsetCursor(cursor: string | undefined): number | null {
+  if (!cursor) return 0;
+  try {
+    const parsed = JSON.parse(Buffer.from(cursor, "base64").toString("utf-8"));
+    if (parsed?.v !== 1 || typeof parsed.offset !== "number") return null;
+    if (parsed.offset < 0 || !Number.isInteger(parsed.offset)) return null;
+    return parsed.offset;
+  } catch {
+    return null;
+  }
+}
+
 // ==================== GET /referral/my-stats ====================
 
 async function handleMyStats(
@@ -422,12 +548,13 @@ async function handleMyStats(
 
   const referralCode = profile.Item?.referralCode || null;
 
-  // 2. Get my referrals (people I invited) - no identityIds exposed
+  // 2. Get my referrals (people I invited)
   let referrals: Array<{
     status: string;
     appliedAt: string;
     activatedAt: string | null;
   }> = [];
+  let sortedRawReferrals: Array<Record<string, any>> = [];
 
   if (referralCode) {
     const result = await client.send(
@@ -439,14 +566,30 @@ async function handleMyStats(
       })
     );
 
-    referrals = (result.Items || []).map((item) => ({
+    // GSI has no sort key; sort in Lambda by appliedAt desc for stable ordering.
+    sortedRawReferrals = (result.Items || []).slice().sort((a, b) => {
+      const ta = Date.parse(a.appliedAt || "") || 0;
+      const tb = Date.parse(b.appliedAt || "") || 0;
+      return tb - ta;
+    });
+
+    referrals = sortedRawReferrals.map((item) => ({
       status: item.status,
       appliedAt: item.appliedAt,
       activatedAt: item.activatedAt || null,
     }));
   }
 
-  // 3. Check if I was referred by someone - no referrer identityId exposed
+  // 2.5. Inline first page of enriched referees (referrer view).
+  // 1 round-trip: client gets stats + first 20 referees in a single call.
+  const firstPageRaw = sortedRawReferrals.slice(0, REFEREES_INLINE_PAGE_SIZE);
+  const refereeItems = await enrichReferees(firstPageRaw);
+  const refereesNextCursor =
+    sortedRawReferrals.length > REFEREES_INLINE_PAGE_SIZE
+      ? encodeOffsetCursor(REFEREES_INLINE_PAGE_SIZE)
+      : null;
+
+  // 3. Check if I was referred by someone
   const myReferral = await client.send(
     new GetCommand({
       TableName: REFERRALS_TABLE,
@@ -459,6 +602,7 @@ async function handleMyStats(
         referralCode: myReferral.Item.referralCode,
         appliedAt: myReferral.Item.appliedAt,
         status: myReferral.Item.status,
+        activatedAt: (myReferral.Item.activatedAt as string) || null,
       }
     : null;
 
@@ -488,11 +632,50 @@ async function handleMyStats(
       activatedCount: referrals.filter((r) => r.status === "ACTIVATED").length,
       pendingCount: referrals.filter((r) => r.status === "PENDING").length,
       referrals,
+      referees: { items: refereeItems, nextCursor: refereesNextCursor },
       referredBy,
       bonusStats,
     },
     origin
   );
+}
+
+// ==================== GET /referral/my-referees ====================
+
+async function handleMyReferees(
+  identityId: string,
+  query: { cursor?: string; limit?: string },
+  origin?: string
+): Promise<APIGatewayProxyResult> {
+  const offset = decodeOffsetCursor(query.cursor);
+  if (offset === null) {
+    return jsonResponse(400, { error: "INVALID_CURSOR", message: "Cursor is malformed or from an incompatible version" }, origin);
+  }
+  let limit = parseInt(query.limit || String(REFEREES_INLINE_PAGE_SIZE), 10);
+  if (!Number.isFinite(limit) || limit <= 0) limit = REFEREES_INLINE_PAGE_SIZE;
+  if (limit > REFEREES_MAX_PAGE_SIZE) limit = REFEREES_MAX_PAGE_SIZE;
+
+  const result = await client.send(
+    new QueryCommand({
+      TableName: REFERRALS_TABLE,
+      IndexName: "referrerIdentityId-index",
+      KeyConditionExpression: "referrerIdentityId = :id",
+      ExpressionAttributeValues: { ":id": identityId },
+    })
+  );
+
+  const sorted = (result.Items || []).slice().sort((a, b) => {
+    const ta = Date.parse(a.appliedAt || "") || 0;
+    const tb = Date.parse(b.appliedAt || "") || 0;
+    return tb - ta;
+  });
+
+  const slice = sorted.slice(offset, offset + limit);
+  const items = await enrichReferees(slice);
+  const nextCursor =
+    sorted.length > offset + limit ? encodeOffsetCursor(offset + limit) : null;
+
+  return jsonResponse(200, { items, nextCursor }, origin);
 }
 
 // ==================== Main handler ====================
@@ -521,6 +704,15 @@ export async function handler(
 
     if (path.endsWith("/my-stats") && method === "GET") {
       return await handleMyStats(identityId, origin);
+    }
+
+    if (path.endsWith("/my-referees") && method === "GET") {
+      const q = event.queryStringParameters || {};
+      return await handleMyReferees(
+        identityId,
+        { cursor: q.cursor, limit: q.limit },
+        origin,
+      );
     }
 
     return jsonResponse(404, { error: "NOT_FOUND", message: "Unknown endpoint" }, origin);
