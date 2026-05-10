@@ -21,17 +21,24 @@ const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | u
  * panel mounts.
  */
 function ChatTurnstilePrewarm() {
-  const { turnstileKey, onSuccess } = useChatTurnstilePrewarm();
+  const { turnstileKey, onSuccess, onError } = useChatTurnstilePrewarm();
 
   if (!TURNSTILE_SITE_KEY) return null;
 
+  // size:'invisible' renders nothing for clean IPs; CF auto-escalates with
+  // its own modal overlay when interactive challenge is needed. The host
+  // element stays in the normal flow (NOT display:none) so the iframe is
+  // interactable in the rare interactive-fallback case. The previous
+  // display:none + appearance:'execute' combo trapped users on
+  // suspicious-IP networks (2026-05-09 outage).
   return (
     <Turnstile
       key={turnstileKey}
       siteKey={TURNSTILE_SITE_KEY}
-      options={{ appearance: 'execute', size: 'invisible' }}
+      options={{ size: 'invisible' }}
       onSuccess={onSuccess}
-      style={{ display: 'none' }}
+      onError={onError}
+      onExpire={onError}
     />
   );
 }
