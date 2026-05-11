@@ -12,7 +12,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore, getSuiClient } from '@nasun/wallet';
 import { useActiveAddress } from '../../../hooks/useActiveAddress';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-import type { SuiObjectChange } from '@mysten/sui/client';
+import type { CoinStruct, SuiObjectChange } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import {
   getMarginAccount,
@@ -40,7 +40,7 @@ import {
 } from '../../../lib/unified-margin';
 import { depositPoolFor } from '../../../lib/deepbook';
 import { TOKENS } from '../../../config/network';
-import { pickCoinsForAmount, totalBalance } from '../../../lib/coin-selection';
+import { getAllCoins, pickCoinsForAmount, totalBalance } from '../../../lib/coin-selection';
 
 interface UseMarginAccountResult {
   // Account state
@@ -345,28 +345,19 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!activeAddress) throw new Error('Wallet not connected');
 
       const client = getSuiClient();
-      const coins = await client.getCoins({ owner: activeAddress, coinType: NUSDC_TYPE });
-      // Total balance across all coin objects. Faucet claims fragment NUSDC
-      // into many small coins (saw 208 coins / ~23k NUSDC in field), so a
-      // single-coin deposit cannot cover large amounts even when the wallet
-      // total is sufficient.
-      const totalBalance = coins.data.reduce((sum, c) => sum + BigInt(c.balance), 0n);
-      // Prefer the smallest coin with sufficient balance (no merge needed).
-      const sufficient = coins.data.filter(c => BigInt(c.balance) >= rawAmount);
-      let primaryCoin: typeof coins.data[number] | undefined;
+      // Paginate. Faucet claims fragment NUSDC into many small coins
+      // (we have seen >200 in the field), so a non-paginated getCoins()
+      // mis-reports wallet total and blocks valid deposits.
+      const coins = await getAllCoins(client, activeAddress, NUSDC_TYPE);
+      const total = totalBalance(coins);
+      let primaryCoin: CoinStruct | undefined;
       let extraCoinIds: string[] = [];
-      if (sufficient.length > 0) {
-        primaryCoin = sufficient.reduce((a, b) => BigInt(a.balance) <= BigInt(b.balance) ? a : b);
-      } else if (totalBalance >= rawAmount) {
-        // No single coin is enough but wallet total is. Merge into the largest
-        // coin first, then split the requested amount out of the merged coin.
-        const sortedDesc = [...coins.data].sort((a, b) =>
-          BigInt(b.balance) > BigInt(a.balance) ? 1 : -1
-        );
-        primaryCoin = sortedDesc[0];
-        extraCoinIds = sortedDesc.slice(1).map(c => c.coinObjectId);
+      if (coins.length > 0 && total >= rawAmount) {
+        const sel = pickCoinsForAmount(coins, rawAmount);
+        primaryCoin = sel.primary;
+        extraCoinIds = sel.extras;
       } else {
-        primaryCoin = coins.data[0];
+        primaryCoin = coins[0];
       }
       const coin = primaryCoin;
       if (!coin) {
@@ -403,13 +394,13 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!activeAddress) throw new Error('Wallet not connected');
 
       const client = getSuiClient();
-      const coins = await client.getCoins({ owner: activeAddress, coinType: NBTC_TYPE });
-      const total = totalBalance(coins.data);
+      const coins = await getAllCoins(client, activeAddress, NBTC_TYPE);
+      const total = totalBalance(coins);
       if (total < rawAmount) {
         throw new Error(`Insufficient NBTC balance: have ${total}, need ${rawAmount}`);
       }
 
-      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const { primary, extras } = pickCoinsForAmount(coins, rawAmount);
       const tx = buildDepositNbtcWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
       await signAndExecute(tx);
     },
@@ -426,12 +417,12 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!NETH_TYPE) throw new Error('NETH type not configured');
 
       const client = getSuiClient();
-      const coins = await client.getCoins({ owner: activeAddress, coinType: NETH_TYPE });
-      const total = totalBalance(coins.data);
+      const coins = await getAllCoins(client, activeAddress, NETH_TYPE);
+      const total = totalBalance(coins);
       if (total < rawAmount) {
         throw new Error(`Insufficient NETH balance: have ${total}, need ${rawAmount}`);
       }
-      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const { primary, extras } = pickCoinsForAmount(coins, rawAmount);
       const tx = buildDepositNethWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
       await signAndExecute(tx);
     },
@@ -448,12 +439,12 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!NSOL_TYPE) throw new Error('NSOL type not configured');
 
       const client = getSuiClient();
-      const coins = await client.getCoins({ owner: activeAddress, coinType: NSOL_TYPE });
-      const total = totalBalance(coins.data);
+      const coins = await getAllCoins(client, activeAddress, NSOL_TYPE);
+      const total = totalBalance(coins);
       if (total < rawAmount) {
         throw new Error(`Insufficient NSOL balance: have ${total}, need ${rawAmount}`);
       }
-      const { primary, extras } = pickCoinsForAmount(coins.data, rawAmount);
+      const { primary, extras } = pickCoinsForAmount(coins, rawAmount);
       const tx = buildDepositNsolWithSplitTx(marginAccountId, primary.coinObjectId, rawAmount, extras);
       await signAndExecute(tx);
     },
