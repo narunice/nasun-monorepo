@@ -9,7 +9,7 @@ import { ToastProvider } from './components/ui/Toast'
 import { CelebrationProvider } from './components/celebration'
 import { SoundOptInToast } from './components/celebration/SoundOptInToast'
 import { GOSTOP_RPC_URL, NUSDC_TYPE } from './lib/gostop-config'
-import { startVersionCheck } from '../../_shared/version-check'
+import { startVersionCheck } from '../../../_shared/version-check'
 import './index.css'
 
 // Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
