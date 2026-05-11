@@ -18,7 +18,7 @@ import { MarketProvider } from './features/trading/context';
 import { ChatModeProvider } from './features/social';
 import { validateEnvWithWarning, logEnvSummary } from './utils';
 import { NETWORK_CONFIG, TOKENS } from './config/network';
-import { startVersionCheck } from '../../_shared/version-check';
+import { startVersionCheck } from '../../../_shared/version-check';
 import App from './App';
 import './index.css';
 
