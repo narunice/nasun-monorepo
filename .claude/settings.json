@@ -212,7 +212,13 @@
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -E '^\\(ADMIN_WALLET_ADDRESSES|INDEXER_EXCLUDED_ADDRESSES\\)=' /home/ec2-user/nasun-chat-server/.env\")",
       "Bash(ALLOW_PROD_DIRECT=1 bash ./scripts/deploy-nasun-chat-server-production.sh)",
       "Bash(ALLOW_PROD_DIRECT=1 bash ./scripts/deploy-nasun-chat-server-production.sh --force)",
-      "Bash(ALLOW_PROD_DIRECT=1 bash /home/naru/my_apps/nasun-monorepo/scripts/deploy-explorer-api.sh --force)"
+      "Bash(ALLOW_PROD_DIRECT=1 bash /home/naru/my_apps/nasun-monorepo/scripts/deploy-explorer-api.sh --force)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 list 2>/dev/null | grep -E 'chat|gostop' && echo '---' && ls -la /var/www/gostop.app/.app-id 2>/dev/null && cat /var/www/gostop.app/.app-id 2>/dev/null\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"cat /var/www/gostop.app/.app-id 2>/dev/null; echo; stat /var/www/gostop.app/assets/*.js 2>/dev/null | grep Modify | tail -3\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls -la /var/www/gostop.app/ 2>/dev/null | head -10\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls /var/www/ 2>&1\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 logs nasun-chat-server --lines 30 --nostream 2>/dev/null | grep -i 'turnstile\\\\|gostop-pass\\\\|fail-open\\\\|timeout\\\\|exchange_fail\\\\|widget_error' | tail -30\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 logs nasun-chat-server --lines 200 --nostream 2>/dev/null | grep -i 'turnstile\\\\|gostop-pass\\\\|pass_v2\\\\|exchange\\\\|widget' | tail -50\")"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
