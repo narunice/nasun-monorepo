@@ -197,7 +197,13 @@
       "Bash(# Check pado VitePWA workbox config full + check whether pado SW is actually being served + check nasun-website nginx for dup cache-control *)",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
       "Bash(systemctl list-timers *)",
-      "Bash(sudo grep -iE \"cron\" /var/log/syslog)"
+      "Bash(sudo grep -iE \"cron\" /var/log/syslog)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all -p -- \"*/leaderboard*\" \"*/pado*\")",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all --oneline -- \"*leaderboard*\" \"*pado*\")",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all -p -- \"apps/nasun-website/chat-server/src/leaderboard-api.ts\")",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo show 563fe1a6 -- apps/nasun-website/chat-server/src/leaderboard-api.ts)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all --oneline)",
+      "Bash(ls apps/nasun-website/cdk/lambda-src/_shared/ && rm -f apps/nasun-website/cdk/lambda-src/_shared/*.ts && rmdir apps/nasun-website/cdk/lambda-src/_shared && echo \"removed\"; ls apps/nasun-website/cdk/lambda-src/_shared 2>&1 | head -2)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
@@ -208,7 +214,8 @@
       "/home/naru/.claude/plans",
       "/home/naru/my_apps/nasun-monorepo/.claude/skills",
       "/home/naru/my_apps/nasun-monorepo/apps/gostop/frontend",
-      "/home/naru/my_apps/nasun-monorepo/apps/pado/frontend"
+      "/home/naru/my_apps/nasun-monorepo/apps/pado/frontend",
+      "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk/lambda-src/_shared"
     ]
   },
   "hooks": {
