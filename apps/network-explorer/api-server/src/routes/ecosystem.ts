@@ -1550,6 +1550,11 @@ app.get('/leaderboard', async (c) => {
               FULL OUTER JOIN referrer_bonus_score rb
                 ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
               WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) IS NOT NULL
+                AND NOT EXISTS (
+                  SELECT 1 FROM banned_users bu
+                  WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id)
+                    AND bu.unbanned_at IS NULL
+                )
             ) sub
           `;
           return Number((result[0] as any).total ?? 0);
