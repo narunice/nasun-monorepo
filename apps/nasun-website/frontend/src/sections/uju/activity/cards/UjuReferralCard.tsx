@@ -47,7 +47,18 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
   const [referees, setReferees] = useState<RefereeRow[]>([]);
   const [refereesCursor, setRefereesCursor] = useState<string | null>(null);
   const [refereesLoading, setRefereesLoading] = useState(false);
-  const { handleLinkTwitter, isLinking } = useAccountLinking({ user: user as never });
+  // Client-side pagination cap for the legacy fallback path (old Lambda
+  // returns ALL referrals inline; we slice locally so the card doesn't
+  // grow unboundedly while we wait for the new backend to roll out).
+  const [legacyVisibleCount, setLegacyVisibleCount] = useState(20);
+  // Detail toggles: separate state per section so a user who is BOTH a
+  // referred user AND a referrer can collapse one without affecting the
+  // other. Defaults to expanded so first-time viewers see the rules.
+  const [selfDetailsOpen, setSelfDetailsOpen] = useState(true);
+  const [referrerDetailsOpen, setReferrerDetailsOpen] = useState(true);
+  const { handleLinkTwitter, isLinking } = useAccountLinking({
+    user: user as never,
+  });
   const xLinked = Boolean(user?.twitterId);
 
   useEffect(() => {
@@ -157,12 +168,49 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
     window.open("https://x.com/Nasun_io", "_blank", "noopener,noreferrer");
   }, []);
 
+  // Toggle button factory: shared visual style, per-section state. Caret
+  // direction reflects the bound open state.
+  const buildToggle = (open: boolean, setOpen: (v: boolean) => void) => (
+    <button
+      onClick={() => setOpen(!open)}
+      className="w-full text-sm text-uju-secondary hover:text-nasun-white py-1.5 flex items-center justify-center gap-1.5 transition-colors"
+      aria-expanded={open}
+    >
+      <span>{open ? "Hide details" : "Show details"}</span>
+      <span aria-hidden="true">{open ? "▲" : "▼"}</span>
+    </button>
+  );
+
+  // Shared explainer rendered in both views (referrer + referred). Single
+  // source of truth so the rules stay in sync across the two perspectives.
+  const bonusExplainer = (
+    <div className="text-sm text-uju-secondary space-y-1">
+      <p className="text-amber-300/90">
+        Referral bonus activates only after admin approves the referee.
+        Approval requires the referee to (1) connect X and (2) follow
+        @Nasun_io. No 10% bonus is added before approval.
+      </p>
+      <p>
+        Once approved, both the referrer and the referee earn 10% of the
+        referee's total daily points (base activity + admin-curated bonuses
+        such as creator posts, missions, and repost rewards). Bonuses are
+        computed once per UTC day and post the following day.
+      </p>
+      <p>
+        Active for 180 days after admin approval. Daily cap: 50 pts each.
+        Subject to change in our discretion.
+      </p>
+    </div>
+  );
+
   // "I am a referred user" block — bonus activation status. Renders whenever
   // stats.referredBy exists, regardless of whether this user is also eligible
   // to issue their own code. Pure read; uses useAuth/twitterId for X linked.
   const referredSelfBlock = stats?.referredBy ? (
     <div className="space-y-3 mb-5 pb-5 border-b border-uju-border/40">
-      <p className="text-sm font-medium text-nasun-white">Your referral bonus</p>
+      <p className="text-sm font-medium text-nasun-white">
+        Your referral bonus
+      </p>
 
       <div className="flex items-center justify-between gap-3">
         <div className="text-sm text-uju-secondary">
@@ -207,104 +255,161 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
             Pending review — admin will verify your follow shortly.
           </span>
         )}
-        {stats.referredBy.status === "ACTIVATED" && stats.referredBy.activatedAt && (
-          <span className="text-sm text-emerald-400">
-            Approved — earning 10% bonus since{" "}
-            {new Date(stats.referredBy.activatedAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-        )}
+        {stats.referredBy.status === "ACTIVATED" &&
+          stats.referredBy.activatedAt && (
+            <span className="text-sm text-emerald-400">
+              Approved — earning 10% bonus since{" "}
+              {new Date(stats.referredBy.activatedAt).toLocaleDateString(
+                "en-US",
+                {
+                  month: "short",
+                  day: "numeric",
+                },
+              )}
+            </span>
+          )}
+      </div>
+
+      <div className="pt-3 border-t border-uju-border/30">
+        {buildToggle(selfDetailsOpen, setSelfDetailsOpen)}
+        {selfDetailsOpen && bonusExplainer}
       </div>
     </div>
   ) : null;
 
-  // "Your referees" list — visible whenever the user has issued a code AND
-  // has at least one referee (totalReferrals > 0). Two data sources:
-  //   - Preferred: `referees` (enriched: twitterHandle + twitterLinked +
-  //     status). Populated from /referral/my-stats when the new Lambda is
-  //     deployed.
-  //   - Fallback: `stats.referrals` (anonymous: status only). Always
-  //     present from both old and new Lambda. Used until the new Lambda
-  //     ships so users still see per-referee status, just without handle.
+  // "Your referees" list — privacy-first: no handles, no identityIds.
+  // Each row is identified only by a stable serial (oldest=1) + apply date.
+  // Backend may return rich `referees` (with serial + twitterLinked) or, on
+  // an older Lambda, only the anonymous `referrals` (status + dates). In
+  // the legacy fallback we synthesize serials in chronological order so
+  // the UI shape is identical either way.
   const hasEnriched = referees.length > 0;
-  const fallbackRows = !hasEnriched && stats?.referrals
-    ? stats.referrals.map((r) => ({
-        twitterHandle: null as string | null,
-        twitterLinked: false,
+  type DisplayRow = {
+    serial: number;
+    twitterLinked: boolean | null; // null = unknown (legacy backend)
+    status: string;
+    appliedAt: string;
+    activatedAt: string | null;
+  };
+  const fallbackRows: DisplayRow[] =
+    !hasEnriched && stats?.referrals
+      ? (() => {
+          const ascending = stats.referrals
+            .slice()
+            .sort(
+              (a, b) =>
+                (Date.parse(a.appliedAt || "") || 0) -
+                (Date.parse(b.appliedAt || "") || 0),
+            );
+          return ascending
+            .map((r, idx) => ({
+              serial: idx + 1,
+              twitterLinked: null as boolean | null,
+              status: r.status,
+              appliedAt: r.appliedAt,
+              activatedAt: r.activatedAt,
+            }))
+            .reverse();
+        })()
+      : [];
+  const enrichedRows: DisplayRow[] = hasEnriched
+    ? referees.map((r) => ({
+        serial: r.serial,
+        twitterLinked: r.twitterLinked,
         status: r.status,
         appliedAt: r.appliedAt,
         activatedAt: r.activatedAt,
       }))
     : [];
-  const displayRows = hasEnriched ? referees : fallbackRows;
+  // Two pagination paths converge here:
+  //   - Enriched (new Lambda): server-side cursor; we render everything in
+  //     `referees` and let "Load more" call /referral/my-referees for more.
+  //   - Legacy fallback (old Lambda): client-side slice of fallbackRows up
+  //     to `legacyVisibleCount`; "Load more" bumps the cap by 20.
+  const allDisplayRows = hasEnriched ? enrichedRows : fallbackRows;
+  const displayRows = hasEnriched
+    ? allDisplayRows
+    : allDisplayRows.slice(0, legacyVisibleCount);
+  const hasMore = hasEnriched
+    ? Boolean(refereesCursor)
+    : allDisplayRows.length > legacyVisibleCount;
+  const onLoadMore = hasEnriched
+    ? handleLoadMoreReferees
+    : () => setLegacyVisibleCount((n) => n + 20);
 
-  const refereesBlock = referralCode && displayRows.length > 0 ? (
-    <div className="space-y-2 mt-5 pt-4 border-t border-uju-border/40">
-      <p className="text-sm font-medium text-nasun-white">Your referees</p>
-      {!hasEnriched && (
-        <p className="text-xs text-uju-secondary">
-          Detailed handles will appear here once the latest backend rolls out.
+  const refereesBlock =
+    referralCode && displayRows.length > 0 ? (
+      <div className="space-y-2 mt-5 pt-4 border-t border-uju-border/40">
+        <p className="text-sm font-medium text-nasun-white">
+          Your referees{" "}
+          <span className="text-uju-secondary text-xs font-normal">
+            ({allDisplayRows.length}
+            {hasEnriched && refereesCursor ? "+" : ""})
+          </span>
         </p>
-      )}
-      <ul className="text-sm divide-y divide-uju-border/30">
-        {displayRows.map((r, i) => (
-          <li key={i} className="py-2 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
-              <p className="text-nasun-white truncate">
-                {r.twitterHandle ? `@${r.twitterHandle}` : "Anonymous"}
-              </p>
-              <p className="text-xs text-uju-secondary">
-                {r.appliedAt
-                  ? new Date(r.appliedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                  : "—"}
-              </p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              {hasEnriched && (
+        <ul className="text-sm divide-y divide-uju-border/30">
+          {displayRows.map((r) => (
+            <li
+              key={r.serial}
+              className="py-2 flex items-center justify-between gap-2"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="text-nasun-white">Referee #{r.serial}</p>
+                <p className="text-xs text-uju-secondary">
+                  Joined{" "}
+                  {r.appliedAt
+                    ? new Date(r.appliedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "—"}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {r.twitterLinked !== null && (
+                  <span
+                    className={
+                      "text-xs px-2 py-0.5 rounded " +
+                      (r.twitterLinked
+                        ? "bg-emerald-500/20 text-emerald-400"
+                        : "bg-nasun-white/10 text-nasun-white/60")
+                    }
+                  >
+                    {r.twitterLinked ? "X linked" : "X missing"}
+                  </span>
+                )}
                 <span
                   className={
                     "text-xs px-2 py-0.5 rounded " +
-                    (r.twitterLinked
+                    (r.status === "ACTIVATED"
                       ? "bg-emerald-500/20 text-emerald-400"
-                      : "bg-nasun-white/10 text-nasun-white/60")
+                      : "bg-amber-500/20 text-amber-400")
                   }
                 >
-                  {r.twitterLinked ? "X linked" : "X missing"}
+                  {r.status === "ACTIVATED" ? "Approved" : "Pending"}
                 </span>
-              )}
-              <span
-                className={
-                  "text-xs px-2 py-0.5 rounded " +
-                  (r.status === "ACTIVATED"
-                    ? "bg-emerald-500/20 text-emerald-400"
-                    : "bg-amber-500/20 text-amber-400")
-                }
-              >
-                {r.status === "ACTIVATED" ? "Approved" : "Pending"}
-              </span>
-            </div>
-          </li>
-        ))}
-      </ul>
-      {refereesCursor && (
-        <button
-          onClick={handleLoadMoreReferees}
-          disabled={refereesLoading}
-          className="w-full mt-2 px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-50"
-        >
-          {refereesLoading ? "Loading..." : "Load more"}
-        </button>
-      )}
-    </div>
-  ) : null;
+              </div>
+            </li>
+          ))}
+        </ul>
+        {hasMore && (
+          <button
+            onClick={onLoadMore}
+            disabled={refereesLoading}
+            className="w-full mt-2 px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-50"
+          >
+            {refereesLoading ? "Loading..." : "Load more"}
+          </button>
+        )}
+      </div>
+    ) : null;
 
   const header = (
     <UjuSectionHeader
       accent
       title="Referral Program"
-      subtitle="Invite users and earn ecosystem points together"
+      subtitle="Invite users and earn Nasun points together"
     />
   );
 
@@ -458,20 +563,14 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
             </p>
           )}
 
-          <div className="text-uju-secondary pt-2 border-t border-uju-border/40 space-y-1">
-            <p className="text-sm">
-              Earn 10% of your referrals' on-chain activity. Referred users also
-              earn 10%.
-            </p>
-            <p className="text-sm">
-              Bonuses are active for 180 days after sign-up. Daily cap: 50 pts.
-            </p>
-            <p className="text-sm">Subject to change in our discretion.</p>
+          <div className="pt-2 border-t border-uju-border/40">
+            {buildToggle(referrerDetailsOpen, setReferrerDetailsOpen)}
+            {referrerDetailsOpen && bonusExplainer}
           </div>
         </div>
       )}
 
-      {refereesBlock}
+      {referrerDetailsOpen && refereesBlock}
     </UjuCard>
   );
 };
