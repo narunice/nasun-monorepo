@@ -53,6 +53,10 @@ export interface Position {
   isYes: boolean;
   shares: bigint;
   costBasis: bigint;
+  // Optimistic-update flag. Set when the row is synthesized from a tx receipt
+  // before the on-chain indexer has caught up. Replaced by indexer-sourced
+  // data (same id, no flag) on first successful refetch.
+  _pending?: boolean;
 }
 
 /**
@@ -95,6 +99,10 @@ export interface RecentFill {
   fillShares: bigint;
   cost: bigint;
   timestamp: number;
+  // Optimistic-update flag. Same semantics as Position._pending: synthesized
+  // from tx receipt, evicted once the global event poll surfaces the same
+  // OrderFilled.
+  _pending?: boolean;
 }
 
 /**
