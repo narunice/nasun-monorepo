@@ -67,7 +67,7 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
             <div className="h-full rounded-full bg-green-500 transition-all duration-700" style={{ width: `${yesProbability}%` }} />
           </div>
           <span className="text-sm font-bold tabular-nums text-green-500 w-10 text-right shrink-0">
-            {yesProbability.toFixed(0)}%
+            {yesProbability.toFixed(1)}%
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -76,7 +76,7 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
             <div className="h-full rounded-full bg-red-500 transition-all duration-700" style={{ width: `${noProbability}%` }} />
           </div>
           <span className="text-sm font-bold tabular-nums text-red-500 w-10 text-right shrink-0">
-            {noProbability.toFixed(0)}%
+            {noProbability.toFixed(1)}%
           </span>
         </div>
         {!hasRealQuotes && (
@@ -89,6 +89,7 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
         <ProbabilitySparkline
           fills={fills}
           isLoading={fillsLoading}
+          currentProbability={yesProbability}
           width={600}
           height={200}
           className="w-full h-full"

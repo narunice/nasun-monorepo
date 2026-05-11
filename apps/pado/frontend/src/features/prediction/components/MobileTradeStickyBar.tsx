@@ -55,7 +55,7 @@ export function MobileTradeStickyBar({
             <div className="relative flex items-center justify-center gap-2 h-full">
               <span className="text-sm font-bold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">BUY YES</span>
               <span className="text-base font-mono font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {yesProbability.toFixed(0)}%
+                {yesProbability.toFixed(1)}%
               </span>
             </div>
           </button>
@@ -71,7 +71,7 @@ export function MobileTradeStickyBar({
             <div className="relative flex items-center justify-center gap-2 h-full">
               <span className="text-sm font-bold text-white tracking-wide drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">BUY NO</span>
               <span className="text-base font-mono font-black text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
-                {noProbability.toFixed(0)}%
+                {noProbability.toFixed(1)}%
               </span>
             </div>
           </button>
