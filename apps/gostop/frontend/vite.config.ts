@@ -1,12 +1,14 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { viteVersionPlugin } from '../../_shared/vite-version-plugin'
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '')
   return {
   plugins: [
     react(),
+    viteVersionPlugin(),
     // Inject Umami analytics only when env vars are set (omitted in dev).
     // Shares the Nasun Ecosystem website (nasun.io + pado.finance) so gostop.app
     // visits land in the same Umami dataset, distinguished by hostname.

@@ -9,7 +9,20 @@ import { ToastProvider } from './components/ui/Toast'
 import { CelebrationProvider } from './components/celebration'
 import { SoundOptInToast } from './components/celebration/SoundOptInToast'
 import { GOSTOP_RPC_URL, NUSDC_TYPE } from './lib/gostop-config'
+import { startVersionCheck } from '../../_shared/version-check'
 import './index.css'
+
+// Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
+// and reloads at the next safe moment (tab focus, idle, route change).
+// Disabled in dev so HMR works without interference.
+if (import.meta.env.PROD) {
+  startVersionCheck({
+    // Games set window.__GOSTOP_GAME_ACTIVE__ = true during a round so we
+    // defer the reload until the round ends.
+    isUnsafeToReload: () =>
+      (globalThis as { __GOSTOP_GAME_ACTIVE__?: boolean }).__GOSTOP_GAME_ACTIVE__ === true,
+  })
+}
 
 registerTokens([
   {

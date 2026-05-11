@@ -35,7 +35,8 @@
   },
   "include": [
     "src",
-    "vite-env.d.ts"
+    "vite-env.d.ts",
+    "../../_shared/version-check.ts"
   ],
   "exclude": [
     "src/_archive"
