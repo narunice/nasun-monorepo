@@ -36,6 +36,7 @@ const TELEGRAM_BOT_TOKEN_SECRET_NAME =
 const NARU_TELEGRAM_CHAT_ID = process.env.NARU_TELEGRAM_CHAT_ID || '';
 
 const ALLOWED_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Feedback', 'Other'];
+const ALLOWED_APPS = ['nasun', 'pado', 'gostop', 'network-explorer', 'general'];
 const MAX_SCREENSHOTS = 3;
 const SCREENSHOT_MAX_SIZE = 5 * 1024 * 1024; // 5MB
 const COOLDOWN_MINUTES = 5;
@@ -128,6 +129,7 @@ async function handleSubmit(
   // Parse body
   let body: {
     title?: string;
+    app?: string;
     category?: string;
     description?: string;
     reproSteps?: string;
@@ -142,7 +144,7 @@ async function handleSubmit(
     return respond(400, { error: 'Invalid JSON' }, cors);
   }
 
-  const { title, category, description, reproSteps, displayName, screenshotKeys, pageUrl, walletAddress } = body;
+  const { title, app, category, description, reproSteps, displayName, screenshotKeys, pageUrl, walletAddress } = body;
 
   // Validate required fields
   if (!title || typeof title !== 'string' || title.trim().length === 0) {
@@ -159,6 +161,9 @@ async function handleSubmit(
   }
   if (category && (typeof category !== 'string' || !ALLOWED_CATEGORIES.includes(category))) {
     return respond(400, { error: `Invalid category. Allowed: ${ALLOWED_CATEGORIES.join(', ')}` }, cors);
+  }
+  if (app && (typeof app !== 'string' || !ALLOWED_APPS.includes(app))) {
+    return respond(400, { error: `Invalid app. Allowed: ${ALLOWED_APPS.join(', ')}` }, cors);
   }
   if (reproSteps && (typeof reproSteps !== 'string' || reproSteps.length > 2000)) {
     return respond(400, { error: 'Repro steps too long (max 2000 characters)' }, cors);
@@ -213,6 +218,7 @@ async function handleSubmit(
       timestamp,
       identityId,
       title: title.trim(),
+      app: app || 'general',
       category: category || 'Other',
       description: description.trim(),
       reproSteps: reproSteps?.trim() || null,
@@ -227,6 +233,7 @@ async function handleSubmit(
   await sendTelegramNotification({
     reportId,
     title: title.trim(),
+    app: app || 'general',
     category: category || 'Other',
     description: description.trim(),
     identityId,
@@ -421,6 +428,7 @@ async function getBotToken(): Promise<string> {
 async function sendTelegramNotification(report: {
   reportId: string;
   title: string;
+  app: string;
   category: string;
   description: string;
   identityId: string;
@@ -433,6 +441,7 @@ async function sendTelegramNotification(report: {
     const botToken = await getBotToken();
     const text = [
       `[Bug Report] #${report.reportId.slice(0, 8)}`,
+      `App: ${report.app}`,
       `Category: ${report.category}`,
       `From: ${report.displayName}`,
       '---',

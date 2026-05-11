@@ -1,5 +1,6 @@
 export interface BugReportData {
   title: string;
+  app: string;
   category: string;
   description: string;
   reproSteps?: string;
@@ -19,6 +20,7 @@ export interface BugReport {
   timestamp: string;
   identityId: string;
   title: string;
+  app?: string;
   category: string;
   description: string;
   reproSteps?: string;
@@ -52,6 +54,9 @@ export type BugReportStatus =
 
 export const BUG_CATEGORIES = ['UI Bug', 'Wallet Issue', 'Performance', 'Security', 'Feature Request', 'Feedback', 'Other'] as const;
 export type BugCategory = typeof BUG_CATEGORIES[number];
+
+export const BUG_APPS = ['nasun', 'pado', 'gostop', 'network-explorer', 'general'] as const;
+export type BugApp = typeof BUG_APPS[number];
 
 export const STATUS_LABELS: Record<BugReportStatus, string> = {
   'new': 'New',

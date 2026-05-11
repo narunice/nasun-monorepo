@@ -1,7 +1,7 @@
 # Nasun Bug Report & Feedback System Technical Specification
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-15
+**최근 업데이트**: 2026-05-11
 **핵심 경로**:
 - Frontend Submission: `apps/nasun-website/frontend/src/sections/myAccount/BugReportsCard.tsx`
 - Admin UI: `apps/nasun-website/frontend/src/features/admin/pages/BugReportAdmin.tsx`
@@ -17,7 +17,8 @@
 ## 2. 아키텍처 및 파이프라인 (Architecture & Pipeline)
 
 ### 2.1 제출 단계 (Submission Phase)
-1. **사용자 입력**: 사용자가 웹사이트의 'My Account' 페이지에서 버그 리포트 폼을 작성합니다. (제목, 내용, 카테고리, 스크린샷 첨부 가능)
+1. **사용자 입력**: 사용자가 웹사이트의 'My Account' 페이지에서 버그 리포트 폼을 작성합니다. (제목, 대상 앱, 카테고리, 내용, 스크린샷 첨부 가능)
+   - 제출 진입점은 섹션당 **"Submit Report" 버튼 1개**로 통일합니다. (별도의 "Submit Feedback" 버튼 추가 금지 — 동일 모달에서 카테고리로 분기)
 2. **데이터 처리**: 프론트엔드는 입력값과 현재 세션의 `identityId`, `walletAddress`를 포함하여 API Gateway로 전송합니다.
 3. **Lambda 처리 (`bug-report` Lambda)**:
     - 제출된 데이터를 **DynamoDB**(`nasun-bug-reports`)에 저장합니다.
@@ -43,12 +44,21 @@
 - **Bug 관련**: `UI Bug`, `Wallet Issue`, `Performance`, `Security`, `Other` (상태: `fixed` 시 보상)
 - **Feedback 관련**: `Feedback`, `Feature Request` (상태: `accepted` 시 보상)
 
+### 3.1.1 대상 앱 (App)
+폼 제출 시 어떤 앱에 대한 리포트인지 사용자가 선택합니다. 제목과 카테고리 사이에 위치한 필수 셀렉트입니다.
+
+- 허용값: `nasun`, `pado`, `gostop`, `network-explorer`, `general`
+- 미지정/누락 시 백엔드는 `general`로 저장합니다.
+- 백엔드 검증 위치: `cdk/lambda-src/bug-report/src/index.ts`의 `ALLOWED_APPS`.
+- DynamoDB(`nasun-bug-reports`)에는 `app` 필드로 저장되며, Telegram 알림 본문(`App: <value>`)에도 포함됩니다.
+
 ### 3.2 데이터베이스 스키마 (DynamoDB: `nasun-bug-reports`)
 | 필드 | 설명 |
 | :--- | :--- |
 | `reportId` | 고유 ID (Partition Key) |
 | `timestamp` | 생성 일시 (Sort Key) |
 | `identityId` | 제출자 Cognito ID |
+| `app` | 대상 앱 (`nasun`/`pado`/`gostop`/`network-explorer`/`general`) |
 | `walletAddress` | 보상받을 Sui 지갑 주소 |
 | `status` | 현재 진행 상태 (`new`, `fixed`, `accepted`, `duplicate` 등) |
 | `bonusPoints` | 부여된 보상 점수 (0-100) |

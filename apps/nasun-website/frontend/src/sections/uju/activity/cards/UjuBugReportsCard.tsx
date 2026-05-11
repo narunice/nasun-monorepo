@@ -71,16 +71,10 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
           <p className="text-sm text-red-400 font-light text-center">Failed to load reports</p>
         </div>
       ) : !reports || reports.length === 0 ? (
-        <div className="flex flex-col items-center py-8 gap-4 bg-uju-bg/30 rounded-xl border border-uju-border/10">
+        <div className="flex flex-col items-center py-8 bg-uju-bg/30 rounded-xl border border-uju-border/10">
           <p className="text-base text-uju-secondary text-center px-6">
             No submissions yet. Found a bug or have feedback? Share it and earn points!
           </p>
-          <UjuButton
-            variant="secondary"
-            onClick={() => setModalOpen(true)}
-          >
-            Submit Feedback
-          </UjuButton>
         </div>
       ) : (
         <div className="space-y-3">
