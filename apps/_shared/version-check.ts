@@ -77,6 +77,11 @@ export function startVersionCheck(opts: VersionCheckOptions = {}): VersionCheckH
   let pollTimerId: ReturnType<typeof setInterval> | null = null
   let idleTimerId: ReturnType<typeof setInterval> | null = null
   let hardTimeoutId: ReturnType<typeof setTimeout> | null = null
+  // In-memory fallback for the loop guard when sessionStorage throws
+  // (Safari private mode, sandboxed iframes). Persists for the lifetime of
+  // this module instance; page reload resets it, which is exactly the
+  // boundary we care about.
+  let inMemoryReloadAt = 0
 
   const fetchVersion = async (): Promise<string | null> => {
     try {
@@ -93,11 +98,14 @@ export function startVersionCheck(opts: VersionCheckOptions = {}): VersionCheckH
   }
 
   const passesLoopGuard = (): boolean => {
+    const now = Date.now()
+    if (inMemoryReloadAt && now - inMemoryReloadAt < reloadGuardMs) return false
     try {
       const last = sessionStorage.getItem(SESSION_KEY)
-      if (last && Date.now() - Number(last) < reloadGuardMs) return false
+      if (last && now - Number(last) < reloadGuardMs) return false
     } catch {
-      // sessionStorage unavailable (private mode, sandboxed iframe) — allow
+      // sessionStorage unavailable — rely solely on the in-memory fallback
+      // above so we never silently disable the guard.
     }
     return true
   }
@@ -107,10 +115,11 @@ export function startVersionCheck(opts: VersionCheckOptions = {}): VersionCheckH
     if (mismatchSince === null) return
     if (!passesLoopGuard()) return
     if (opts.isUnsafeToReload?.()) return
+    inMemoryReloadAt = Date.now()
     try {
-      sessionStorage.setItem(SESSION_KEY, String(Date.now()))
+      sessionStorage.setItem(SESSION_KEY, String(inMemoryReloadAt))
     } catch {
-      // ignore
+      // ignore — in-memory guard already records the timestamp
     }
     try {
       opts.onReload?.()
@@ -135,15 +144,19 @@ export function startVersionCheck(opts: VersionCheckOptions = {}): VersionCheckH
       // require two consecutive mismatches to absorb CDN edge inconsistency
       if (mismatchCount < 2) return
       if (mismatchSince === null) {
+        // First confirmed detection: arm the hard-timeout safety net and
+        // try once immediately. All subsequent reload attempts come from
+        // user-facing triggers (visibility, route, idle) so we don't
+        // re-evaluate isUnsafeToReload on every poll.
         mismatchSince = Date.now()
         try {
           opts.onUpdateAvailable?.(current, initialVersion)
         } catch {
-          // ignore
+          // ignore — never let the callback block the loop
         }
         hardTimeoutId = setTimeout(performReload, hardTimeoutMs)
+        performReload()
       }
-      performReload()
     } else {
       mismatchCount = 0
     }
