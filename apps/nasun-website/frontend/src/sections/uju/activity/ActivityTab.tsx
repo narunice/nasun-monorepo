@@ -44,7 +44,8 @@ export const ActivityTab: FC = () => {
       <UjuBugReportsCard />
 
       {/* section: Referral program — code issuance gated by 4-path eligibility,
-          but referred users always see their own bonus activation status */}
+          but referred users always see their own bonus activation status.
+          Referee list is privacy-redacted: serial + date + status only. */}
       <UjuReferralCard />
 
       {/* section: Governance overview */}

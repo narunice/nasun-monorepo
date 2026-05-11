@@ -28,8 +28,10 @@ function authHeaders(token: string): HeadersInit {
 }
 
 export interface RefereeRow {
-  // identityId intentionally omitted server-side for privacy.
-  twitterHandle: string | null;
+  // No identifying info exposed to the referrer (no identityId, no
+  // twitterHandle). They see only their own bonus pipeline state.
+  // serial: stable chronological order (oldest=1), survives new signups.
+  serial: number;
   twitterLinked: boolean;
   status: string;
   appliedAt: string;
