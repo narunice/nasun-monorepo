@@ -186,15 +186,15 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
   const bonusExplainer = (
     <div className="text-sm text-uju-secondary space-y-1">
       <p className="text-amber-300/90">
-        Referral bonus activates only after admin approves the referee.
-        Approval requires the referee to (1) connect X and (2) follow
-        @Nasun_io. No 10% bonus is added before approval.
+        Referral bonus activates only after admin approves the referee. Approval
+        requires the referee to (1) connect X and (2) follow @Nasun_io. No 10%
+        bonus is added before approval.
       </p>
       <p>
         Once approved, both the referrer and the referee earn 10% of the
-        referee's total daily points (base activity + admin-curated bonuses
-        such as creator posts, missions, and repost rewards). Bonuses are
-        computed once per UTC day and post the following day.
+        referee's total daily points (base activity + admin-curated bonuses such
+        as creator posts, missions, and repost rewards). Bonuses are computed
+        once per UTC day and post the following day.
       </p>
       <p>
         Active for 180 days after admin approval. Daily cap: 50 pts each.
@@ -466,7 +466,8 @@ export const UjuReferralCard: FC<UjuReferralCardProps> = ({
         {referredSelfBlock}
         <div className="space-y-3">
           <p className="text-base text-white/90">
-            Referral codes are limited during devnet. You can earn one by:
+            Referral codes are reserved for active Nasun contributors. You can
+            earn one by:
           </p>
           <ul className="text-sm text-uju-secondary space-y-1.5 list-disc pl-5">
             <li>Voting on a governance proposal</li>
