@@ -397,6 +397,46 @@ async function handleApply(
     }
   }
 
+  // 3.7. Twitter reuse guard: an X account that has ever been linked to a
+  // different (non-self) profile cannot be used for a referral signup. Defense
+  // in depth against the bot pattern of recycling one X account across many
+  // wallets. link-account also enforces uniqueness upstream; this is a
+  // backstop for any pre-existing duplicate state.
+  const callerTwitterId = callerProfile.Item?.twitterId as string | undefined;
+  if (callerTwitterId) {
+    try {
+      const twitterDupResult = await client.send(
+        new QueryCommand({
+          TableName: USER_PROFILES_TABLE,
+          IndexName: "twitterId-index",
+          KeyConditionExpression: "twitterId = :tid",
+          ExpressionAttributeValues: { ":tid": callerTwitterId },
+          ProjectionExpression: "identityId",
+        })
+      );
+      const callerSelfIds = new Set(allCallerIds);
+      const foreignOwner = (twitterDupResult.Items || []).find(
+        (it) => !callerSelfIds.has(it.identityId as string)
+      );
+      if (foreignOwner) {
+        console.warn(
+          `[referral] TWITTER_REUSED identityId=${identityId} twitterId=${callerTwitterId} foreign=${foreignOwner.identityId}`
+        );
+        return jsonResponse(409, {
+          error: "TWITTER_REUSED",
+          message:
+            "Your X account is already linked to another wallet. Referral signup requires a fresh X account.",
+        }, origin);
+      }
+    } catch (err) {
+      console.error("[referral] twitterId uniqueness query failed:", err);
+      return jsonResponse(503, {
+        error: "VERIFICATION_UNAVAILABLE",
+        message: "Could not verify account eligibility. Please try again.",
+      }, origin);
+    }
+  }
+
   // 4. Check referrer's existing referral count (max 100)
   const referrerCount = await client.send(
     new QueryCommand({
