@@ -123,9 +123,9 @@ export function useGameTransaction() {
 
           if (!result) throw new Error(GAME_ERRORS.TX_FAILED);
 
-          // Wait for checkpoint if requested
+          // Wait for checkpoint if requested (30s timeout to avoid infinite hang on devnet lag)
           if (options.awaitFullnode !== false) {
-            await client.waitForTransaction({ digest: result.digest });
+            await client.waitForTransaction({ digest: result.digest, timeout: 30_000 });
           }
           
           return result;

@@ -6,10 +6,11 @@
  * games appear without forcing the user to refresh.
  */
 
-import { useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useActiveAddress } from '../../../hooks/useActiveAddress'
-import { fetchAllGameHistory } from '../lib/game-client'
+import { fetchAllGameHistory, fetchMoreOnChainHistory } from '../lib/game-client'
+import type { EventId } from '../lib/game-client'
 import type { GameType, GameActivity, GameSummary } from '../types'
 
 const EMPTY_SUMMARY: GameSummary = {
@@ -31,10 +32,18 @@ export interface UseGameHistoryResult {
   isLoading: boolean
   error: string | null
   refetch: () => void
+  /** True if older on-chain events are available to load. */
+  canLoadMore: boolean
+  /** Load the next batch of older on-chain events. */
+  loadMore: () => void
+  isLoadingMore: boolean
 }
 
 export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistoryResult {
   const address = useActiveAddress()
+  const [extraActivities, setExtraActivities] = useState<GameActivity[]>([])
+  const [nextCursor, setNextCursor] = useState<EventId | null>(null)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['game-history', address],
@@ -45,7 +54,29 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
     refetchOnWindowFocus: false,
   })
 
-  const all = useMemo(() => data?.activities ?? [], [data])
+  // Reset extra pages when base data changes (e.g. after refetch)
+  useEffect(() => {
+    setNextCursor(data?.nextCursor ?? null)
+    setExtraActivities([])
+  }, [data])
+
+  const all = useMemo(() => {
+    const base = data?.activities ?? []
+    if (extraActivities.length === 0) return base
+    return [...base, ...extraActivities].sort((a, b) => b.timestampMs - a.timestampMs)
+  }, [data, extraActivities])
+
+  const loadMore = useCallback(() => {
+    if (!address || !nextCursor || isLoadingMore) return
+    setIsLoadingMore(true)
+    fetchMoreOnChainHistory(address, nextCursor)
+      .then(({ activities, nextCursor: newCursor }) => {
+        setExtraActivities((prev) => [...prev, ...activities])
+        setNextCursor(newCursor)
+      })
+      .catch((e) => console.error('[useGameHistory] loadMore failed', e))
+      .finally(() => setIsLoadingMore(false))
+  }, [address, nextCursor, isLoadingMore])
 
   const filtered = useMemo(
     () => (filter === 'all' ? all : all.filter((a) => a.gameType === filter)),
@@ -93,5 +124,8 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
     refetch: () => {
       void refetch()
     },
+    canLoadMore: !!nextCursor && !isLoading,
+    loadMore,
+    isLoadingMore,
   }
 }

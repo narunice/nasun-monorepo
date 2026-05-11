@@ -22,7 +22,7 @@ const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
 export default function GameHistoryPage() {
   const address = useActiveAddress()
   const [filter, setFilter] = useState<GameType | 'all'>('all')
-  const { activities, summary, hasCrashActivity, isLoading, error, refetch } =
+  const { activities, summary, hasCrashActivity, isLoading, error, refetch, canLoadMore, loadMore, isLoadingMore } =
     useGameHistory(filter)
 
   if (!address) {
@@ -92,6 +92,19 @@ export default function GameHistoryPage() {
         error={error}
         showCrashFootnote={hasCrashActivity}
       />
+
+      {canLoadMore && (
+        <div className="flex justify-center mt-2">
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={isLoadingMore}
+            className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
+          >
+            {isLoadingMore ? 'Loading…' : 'Load older history'}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
