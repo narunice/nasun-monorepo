@@ -13,8 +13,17 @@ import { AuthProvider } from "@/features/auth/providers/AuthProvider";
 import { validateEnv } from "./utils/envValidation";
 import { queryClient } from "@/lib/queryClient";
 import { installQueryClientBroadcast } from "@/lib/queryClientBroadcast";
+import { startVersionCheck } from "../../../_shared/version-check";
 import "./index.css";
 import App from "./App";
+
+// Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
+// and reloads at the next safe moment (tab focus, idle, route change).
+// Coexists with the kill-switch sw.js: that worker unregisters itself on
+// activate, so by the time polling starts there is no SW intercepting fetches.
+if (import.meta.env.PROD) {
+  startVersionCheck();
+}
 
 // Multi-tab sync: tab A invalidating a query invalidates the same key in tab B.
 // Same-origin only; safe to call once at boot.

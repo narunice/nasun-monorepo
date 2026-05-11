@@ -18,8 +18,24 @@ import { MarketProvider } from './features/trading/context';
 import { ChatModeProvider } from './features/social';
 import { validateEnvWithWarning, logEnvSummary } from './utils';
 import { NETWORK_CONFIG, TOKENS } from './config/network';
+import { startVersionCheck } from '../../_shared/version-check';
 import App from './App';
 import './index.css';
+
+// Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
+// and reloads at the next safe moment (tab focus, idle, route change).
+// Coexists with VitePWA autoUpdate — both can trigger a reload; the 60s
+// sessionStorage guard inside startVersionCheck prevents reload loops.
+// Defers when the user is actively signing a transaction or has an open
+// order form, to avoid losing in-progress trading actions.
+if (import.meta.env.PROD) {
+  startVersionCheck({
+    isUnsafeToReload: () => {
+      const w = globalThis as { __PADO_SIGNING__?: boolean; __PADO_ORDER_DIRTY__?: boolean };
+      return w.__PADO_SIGNING__ === true || w.__PADO_ORDER_DIRTY__ === true;
+    },
+  });
+}
 
 // 환경변수 검증 (개발 모드에서 경고 출력)
 validateEnvWithWarning();

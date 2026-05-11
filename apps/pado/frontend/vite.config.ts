@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 import fs from 'fs'
+import { viteVersionPlugin } from '../../_shared/vite-version-plugin'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -31,6 +32,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     react(),
+    // Writes dist/version.json with the current git short SHA — polled at
+    // runtime by startVersionCheck() so users on open tabs auto-reload onto
+    // new deploys without manual refresh.
+    viteVersionPlugin(),
     // Inject Umami analytics only when env vars are set (omitted in dev)
     {
       name: 'inject-umami',

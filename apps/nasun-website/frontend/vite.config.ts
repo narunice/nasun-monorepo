@@ -6,6 +6,7 @@ import { nodePolyfills } from "vite-plugin-node-polyfills";
 import path from "path";
 import fs from "fs";
 import { createHtmlPlugin } from "vite-plugin-html";
+import { viteVersionPlugin } from "../../_shared/vite-version-plugin";
 
 export default defineConfig(({ mode }) => {
   // 1) Load all .env files for the current mode (e.g. .env + .env.development)
@@ -78,6 +79,9 @@ export default defineConfig(({ mode }) => {
             : [],
         },
       }),
+      // Writes dist/version.json with the current git short SHA — polled at
+      // runtime by startVersionCheck() to detect new deploys.
+      viteVersionPlugin(),
       // CSP injection plugin — always applies (uses DEFAULT_CSP as fallback)
       {
         name: "inject-csp",

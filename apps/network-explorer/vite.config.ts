@@ -1,12 +1,13 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { viteVersionPlugin } from '../_shared/vite-version-plugin'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   // Base path: /devnet/ for staging/production, / for development
   base: mode === 'staging' || mode === 'production' ? '/devnet/' : '/',
-  plugins: [react()],
+  plugins: [react(), viteVersionPlugin()],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

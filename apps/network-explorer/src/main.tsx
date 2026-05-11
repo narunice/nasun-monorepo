@@ -12,7 +12,17 @@ import { toast } from 'sonner'
 import { configureWallet, initZkLogin } from '@nasun/wallet'
 import { WalletProvider } from '@nasun/wallet-ui'
 import { ThemeProvider } from './components/theme/ThemeProvider'
+import { startVersionCheck } from '../../_shared/version-check'
 import './index.css'
+
+// Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
+// and reloads at the next safe moment (tab focus, idle, route change).
+// Disabled in dev so HMR works without interference.
+if (import.meta.env.PROD) {
+  startVersionCheck({
+    endpoint: `${import.meta.env.BASE_URL}version.json`,
+  })
+}
 
 // Configure wallet with Nasun network (static, before React renders)
 configureWallet({
