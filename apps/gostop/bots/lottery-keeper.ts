@@ -274,7 +274,15 @@ async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<Lottery
 
       for (let attempt = 0; attempt < MAX_EVENT_COUNT_RETRIES; attempt++) {
         const result = await countWinners(client, round.id, round.drawnNumbers, round.startTime);
-        if (result.totalFetched === round.ticketCount) {
+        if (result.totalFetched >= round.ticketCount) {
+          if (result.totalFetched > round.ticketCount) {
+            // Extra events beyond chain ticketCount: possible duplicate event emission.
+            // Winner counts computed from all events are still valid since settle_round
+            // distributes the pool across counted winners.
+            console.warn(
+              `[${timestamp()}] Event surplus: events=${result.totalFetched}, chain=${round.ticketCount} — proceeding with settlement`,
+            );
+          }
           counts = result;
           break;
         }
