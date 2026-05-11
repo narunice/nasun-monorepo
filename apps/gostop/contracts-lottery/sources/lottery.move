@@ -549,6 +549,82 @@ module gostop_lottery::lottery {
         transfer::transfer(ticket, sender);
     }
 
+    /// Same as `buy_ticket` but omits `&mut LotteryRegistry` to eliminate the
+    /// global write-lock that serializes every concurrent purchase across all
+    /// rounds. ticket_id becomes per-round (1-indexed off `round.ticket_count`)
+    /// since it is only an informational label (claim/burn use the Ticket
+    /// object id, not this field).
+    public entry fun buy_ticket_v2(
+        round: &mut LotteryRound,
+        payment: Coin<NUSDC>,
+        n1: u8, n2: u8, n3: u8, n4: u8, n5: u8,
+        clock: &Clock,
+        ctx: &mut TxContext
+    ) {
+        assert!(round.status == STATUS_OPEN, ERoundNotOpen);
+        assert!(clock::timestamp_ms(clock) < round.close_time, ERoundExpired);
+
+        let sender = tx_context::sender(ctx);
+
+        let current_count = if (table::contains(&round.tickets_by_address, sender)) {
+            *table::borrow(&round.tickets_by_address, sender)
+        } else {
+            0
+        };
+        assert!(current_count < MAX_TICKETS_PER_ADDRESS, ETicketLimitExceeded);
+
+        let payment_amount = coin::value(&payment);
+        assert!(payment_amount >= TICKET_PRICE, EInsufficientPayment);
+
+        let mut numbers = vector[n1, n2, n3, n4, n5];
+        validate_numbers(&numbers);
+        sort_numbers(&mut numbers);
+
+        if (payment_amount == TICKET_PRICE) {
+            balance::join(&mut round.prize_pool, coin::into_balance(payment));
+        } else {
+            let mut payment_balance = coin::into_balance(payment);
+            let ticket_payment = balance::split(&mut payment_balance, TICKET_PRICE);
+            balance::join(&mut round.prize_pool, ticket_payment);
+
+            let change = coin::from_balance(payment_balance, ctx);
+            transfer::public_transfer(change, sender);
+        };
+
+        if (table::contains(&round.tickets_by_address, sender)) {
+            let count = table::borrow_mut(&mut round.tickets_by_address, sender);
+            *count = *count + 1;
+        } else {
+            table::add(&mut round.tickets_by_address, sender, 1);
+        };
+
+        let ticket_id = round.ticket_count + 1;
+
+        let ticket = Ticket {
+            id: object::new(ctx),
+            ticket_id,
+            round_id: object::id(round),
+            round_number: round.round_number,
+            owner: sender,
+            numbers,
+            purchase_time: clock::timestamp_ms(clock),
+        };
+
+        round.ticket_count = round.ticket_count + 1;
+        round.total_sales = round.total_sales + TICKET_PRICE;
+
+        event::emit(TicketPurchased {
+            round_id: object::id(round),
+            round_number: round.round_number,
+            ticket_id,
+            buyer: sender,
+            numbers,
+            amount: TICKET_PRICE,
+        });
+
+        transfer::transfer(ticket, sender);
+    }
+
     /// Claim prize for a winning ticket (tier 1/2/3).
     /// Must be claimed within `CLAIM_WINDOW_MS` after `round.draw_time`;
     /// otherwise the prize is forfeit and can be swept to BankrollPool.
