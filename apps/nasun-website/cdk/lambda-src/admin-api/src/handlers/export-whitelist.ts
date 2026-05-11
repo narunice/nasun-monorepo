@@ -556,9 +556,12 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       console.log("[internal] Fetching referral mappings for points scanner");
 
       // Scan nasun-referrals table, only include ACTIVATED + non-expired referrals.
-      // Expiry: 180 days from appliedAt. Legacy records without appliedAt are treated as non-expired.
-      // Each entry includes activatedAt so the scanner can skip txs predating approval
-      // (manual-review model: bonus only counts for activity AFTER admin approves).
+      // Expiry: 180 days from activatedAt (admin approval) — manual-review model
+      // means review-wait time should not eat into the bonus window. Legacy rows
+      // missing activatedAt fall back to appliedAt (and rows missing both are
+      // treated as non-expired to avoid losing legacy ACTIVATED records).
+      // Each entry includes activatedAt so the daily bonus job can skip dates
+      // that predate approval.
       const EXPIRY_MS = 180 * 24 * 60 * 60 * 1000;
       const now = Date.now();
       // Dual-shape: keep legacy `referrals: Record<id,id>` for old scanners
@@ -587,11 +590,16 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           if (referredId && referrerId) {
             totalRelationships++;
             if (status === "ACTIVATED") {
-              // Filter expired referrals (legacy records without appliedAt are never expired)
+              // Expiry from activatedAt (admin approval), not appliedAt.
+              // Fall back to appliedAt for legacy rows where activatedAt
+              // wasn't recorded; if both absent, treat as non-expired
+              // (preserves legacy behavior, prevents data loss).
+              const activatedAt = item.activatedAt?.S;
               const appliedAt = item.appliedAt?.S;
-              if (appliedAt) {
-                const appliedMs = Date.parse(appliedAt);
-                if (!isNaN(appliedMs) && now - appliedMs > EXPIRY_MS) {
+              const expiryAnchor = activatedAt || appliedAt;
+              if (expiryAnchor) {
+                const anchorMs = Date.parse(expiryAnchor);
+                if (!isNaN(anchorMs) && now - anchorMs > EXPIRY_MS) {
                   totalExpired++;
                   continue;
                 }

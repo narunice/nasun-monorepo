@@ -448,11 +448,12 @@ async function handleApply(
 // ==================== Referee enrichment ====================
 
 interface RefereeRow {
-  // identityId deliberately omitted: handleMyStats historically stripped it
-  // ("no identityIds exposed") and exposing it via the new pagination would
-  // let referrers build a permanent identityId<->X-handle map. UI doesn't
-  // need it (uses index-based React key).
-  twitterHandle: string | null;
+  // No identifying info (identityId, twitterHandle) is exposed to the
+  // referrer. They get only what they need to track their bonus pipeline:
+  // a stable serial (chronological order, oldest=1; survives new signups
+  // and never reshuffles existing rows), the apply date, whether the user
+  // linked X (gates admin approval), and the activation status.
+  serial: number;
   twitterLinked: boolean;
   status: string;
   appliedAt: string;
@@ -460,17 +461,26 @@ interface RefereeRow {
 }
 
 /**
- * Enrich raw referral rows with twitterHandle/twitterLinked from UserProfiles.
- * Single BatchGetCommand (DDB caps at 100 keys per call); a referrer is capped
- * at MAX_REFERRALS_PER_USER=100 elsewhere so a single batch always suffices
- * for the per-page slice we hand it. UnprocessedKeys retried once.
+ * Enrich raw referral rows with twitterLinked status from UserProfiles.
+ * Each input row must carry a precomputed `_serial` (chronological order
+ * across the full referrer list — not the page slice — so it stays stable
+ * as new referees join). Caller assigns serials before slicing for
+ * pagination so older referees keep the same serial forever.
+ *
+ * Single BatchGetCommand (DDB caps at 100 keys); referrer is capped at
+ * MAX_REFERRALS_PER_USER=100 so one batch covers any single page request.
+ * UnprocessedKeys retried once.
+ *
+ * twitterHandle is intentionally NOT fetched: exposing it to the referrer
+ * lets them build a permanent identity map from a single referral link
+ * click. Only the boolean linked/unlinked is returned (gates admin review).
  */
 async function enrichReferees(
-  rawItems: Array<Record<string, any>>
+  rawItems: Array<Record<string, any> & { _serial: number }>
 ): Promise<RefereeRow[]> {
   if (rawItems.length === 0) return [];
   const ids = [...new Set(rawItems.map((r) => r.referredIdentityId).filter(Boolean))];
-  const profileMap = new Map<string, { twitterHandle?: string; twitterId?: string }>();
+  const linkedSet = new Set<string>();
 
   let keys = ids.map((id) => ({ identityId: id }));
   for (let attempt = 0; attempt < 2 && keys.length > 0; attempt++) {
@@ -480,17 +490,16 @@ async function enrichReferees(
           RequestItems: {
             [USER_PROFILES_TABLE!]: {
               Keys: keys,
-              ProjectionExpression: "identityId, twitterHandle, twitterId",
+              // Project ONLY twitterId (and the key). twitterHandle is
+              // intentionally not requested to avoid accidental exposure.
+              ProjectionExpression: "identityId, twitterId",
             },
           },
         })
       );
       const items = res.Responses?.[USER_PROFILES_TABLE!] || [];
       for (const it of items) {
-        profileMap.set(it.identityId as string, {
-          twitterHandle: it.twitterHandle as string | undefined,
-          twitterId: it.twitterId as string | undefined,
-        });
+        if (it.twitterId) linkedSet.add(it.identityId as string);
       }
       const unprocessed = res.UnprocessedKeys?.[USER_PROFILES_TABLE!]?.Keys as
         | Array<{ identityId: string }>
@@ -503,16 +512,13 @@ async function enrichReferees(
     }
   }
 
-  return rawItems.map((item) => {
-    const p = profileMap.get(item.referredIdentityId) || {};
-    return {
-      twitterHandle: p.twitterHandle ?? null,
-      twitterLinked: Boolean(p.twitterId),
-      status: item.status,
-      appliedAt: item.appliedAt,
-      activatedAt: item.activatedAt || null,
-    };
-  });
+  return rawItems.map((item) => ({
+    serial: item._serial,
+    twitterLinked: linkedSet.has(item.referredIdentityId),
+    status: item.status,
+    appliedAt: item.appliedAt,
+    activatedAt: item.activatedAt || null,
+  }));
 }
 
 function encodeOffsetCursor(offset: number): string {
@@ -566,12 +572,16 @@ async function handleMyStats(
       })
     );
 
-    // GSI has no sort key; sort in Lambda by appliedAt desc for stable ordering.
-    sortedRawReferrals = (result.Items || []).slice().sort((a, b) => {
+    // GSI has no sort key. Sort by appliedAt ASC first to assign stable
+    // chronological serials (oldest=1) — these never reshuffle as new
+    // referees join — then sort DESC for newest-first display.
+    const ascending = (result.Items || []).slice().sort((a, b) => {
       const ta = Date.parse(a.appliedAt || "") || 0;
       const tb = Date.parse(b.appliedAt || "") || 0;
-      return tb - ta;
+      return ta - tb;
     });
+    const withSerials = ascending.map((item, idx) => ({ ...item, _serial: idx + 1 }));
+    sortedRawReferrals = withSerials.slice().reverse();
 
     referrals = sortedRawReferrals.map((item) => ({
       status: item.status,
@@ -582,7 +592,7 @@ async function handleMyStats(
 
   // 2.5. Inline first page of enriched referees (referrer view).
   // 1 round-trip: client gets stats + first 20 referees in a single call.
-  const firstPageRaw = sortedRawReferrals.slice(0, REFEREES_INLINE_PAGE_SIZE);
+  const firstPageRaw = sortedRawReferrals.slice(0, REFEREES_INLINE_PAGE_SIZE) as Array<Record<string, any> & { _serial: number }>;
   const refereeItems = await enrichReferees(firstPageRaw);
   const refereesNextCursor =
     sortedRawReferrals.length > REFEREES_INLINE_PAGE_SIZE
@@ -664,13 +674,16 @@ async function handleMyReferees(
     })
   );
 
-  const sorted = (result.Items || []).slice().sort((a, b) => {
+  // ASC sort to assign stable serials (oldest=1), then DESC for display.
+  const ascending = (result.Items || []).slice().sort((a, b) => {
     const ta = Date.parse(a.appliedAt || "") || 0;
     const tb = Date.parse(b.appliedAt || "") || 0;
-    return tb - ta;
+    return ta - tb;
   });
+  const withSerials = ascending.map((item, idx) => ({ ...item, _serial: idx + 1 }));
+  const sorted = withSerials.slice().reverse();
 
-  const slice = sorted.slice(offset, offset + limit);
+  const slice = sorted.slice(offset, offset + limit) as Array<Record<string, any> & { _serial: number }>;
   const items = await enrichReferees(slice);
   const nextCursor =
     sorted.length > offset + limit ? encodeOffsetCursor(offset + limit) : null;
