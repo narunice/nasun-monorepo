@@ -21,6 +21,7 @@ import { usePasskey } from './usePasskey';
 import { useRefreshMultiBalance } from './useMultiBalance';
 import { getTokenFaucet, hasTokenFaucet } from '../config/tokens';
 import { getSuiClient } from '../sui/client';
+import { peekServerCooldown } from '../sui/faucet';
 import { buildBatchFaucetTx, ONCHAIN_FAUCET_SYMBOLS, queryAllCooldowns } from '../sui/tokenFaucet';
 import {
   getCooldownRemaining as getRawCooldownRemaining,
@@ -189,8 +190,17 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
       try {
         const suiClient = getSuiClient();
-        const cooldowns = await queryAllCooldowns(suiClient, address!);
-        for (const [symbol, remaining] of Object.entries(cooldowns)) {
+        // Query on-chain (NBTC/NUSDC/NETH/NSOL) and HTTP faucet (NSN) in parallel.
+        // NSN cooldown lives only in the faucet server's in-memory ClaimTracker;
+        // without this fetch, localStorage cleared by cross-origin claim or cache
+        // wipe would falsely render NSN as claimable.
+        const [onchainCooldowns, nsnRemaining] = await Promise.all([
+          queryAllCooldowns(suiClient, address!),
+          peekServerCooldown(address!),
+        ]);
+        const all: Record<string, number> = { ...onchainCooldowns };
+        if (nsnRemaining !== null) all.NSN = nsnRemaining;
+        for (const [symbol, remaining] of Object.entries(all)) {
           const localRemaining = getRawCooldownRemaining(address!, symbol);
           if (remaining > 0 && localRemaining === 0) {
             setCooldownTimestamp(address!, symbol);

@@ -46,6 +46,30 @@ export async function requestFaucet(address: string): Promise<FaucetResponse> {
 }
 
 /**
+ * Read-only server cooldown lookup (GET /cooldown?address=...).
+ * Used to reconcile localStorage with server-authoritative ClaimTracker when
+ * the client lacks local state (cross-origin, fresh device, cache clear).
+ * Returns remaining milliseconds, or null on network/parse error (caller falls back).
+ */
+export async function peekServerCooldown(address: string): Promise<number | null> {
+  const config = getWalletConfig();
+  const faucetUrl = config.faucetUrl || 'https://faucet.devnet.nasun.io';
+
+  try {
+    const response = await fetch(
+      `${faucetUrl}/cooldown?address=${encodeURIComponent(address)}`,
+      { method: 'GET' },
+    );
+    if (!response.ok) return null;
+    const data = (await response.json()) as { remaining_secs?: number };
+    if (typeof data.remaining_secs !== 'number') return null;
+    return data.remaining_secs * 1000;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Check if faucet is available
  */
 export async function checkFaucetAvailable(): Promise<boolean> {
