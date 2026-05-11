@@ -32,13 +32,19 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
   const outcomeLabel = position.isYes ? 'YES' : 'NO';
   const oppositeLabel = position.isYes ? 'NO' : 'YES';
 
+  // `_pending` rows are synthesized from a tx receipt before the on-chain
+  // indexer has surfaced the real Position. They render with a subtle pulse
+  // until the per-object poll (in optimistic-update.ts) replaces them with
+  // canonical data — usually within 1-3s.
+  const pendingClass = position._pending ? ' opacity-80 animate-pulse' : '';
+
   return (
     <div
       className={`p-4 rounded-xl border ${
         position.isYes
           ? 'bg-green-50 border-green-300 dark:bg-green-500/25 dark:border-green-500/50'
           : 'bg-red-50 border-red-300 dark:bg-red-500/25 dark:border-red-500/50'
-      }`}
+      }${pendingClass}`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">

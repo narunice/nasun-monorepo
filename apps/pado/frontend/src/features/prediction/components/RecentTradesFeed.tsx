@@ -49,11 +49,16 @@ function TradeRow({ fill, isMine }: { fill: RecentFill; isMine: boolean }) {
   const borderColor = isBuy ? 'rgb(22 163 74)' : 'rgb(220 38 38)';
   const sideColor = isBuy ? 'text-green-500' : 'text-red-500';
 
+  // `_pending` row is synthesized from a tx receipt before the global event
+  // index has surfaced this OrderFilled. Subtle pulse so the user sees the
+  // row appear immediately; replaced by the indexer-sourced row within ~5s.
+  const pendingClass = fill._pending ? ' opacity-80 animate-pulse' : '';
+
   return (
     <div
       className={`flex items-center gap-3 px-3 py-1.5 border-l-2 transition-colors duration-150 hover:bg-theme-bg-primary/40 animate-trade-row-in${
         isMine ? ' bg-theme-accent/10 ring-1 ring-theme-accent/40' : ''
-      }`}
+      }${pendingClass}`}
       style={{ borderLeftColor: borderColor }}
     >
       <span className={`shrink-0 text-[10px] font-bold font-mono tracking-wider w-16 ${sideColor}`}>
@@ -95,13 +100,18 @@ export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
   const { data: myFills = [], isLoading: myLoading } = useMyMarketFills(marketId, myAddress);
 
   // Merge market-wide (dust-filtered, shared cache) with user-scoped fills
-  // (no dust filter, per-user cache). Dedup by orderId+timestamp; user fills
-  // win when both queries see the same event so the row is annotated as mine
-  // consistently. Sort by timestamp desc and slice to the visible window.
+  // (no dust filter, per-user cache). Dedup by stable key (orderId + maker +
+  // taker) — timestamps differ between optimistic synthesized rows (tx
+  // submit time) and indexer-sourced rows (event time), so the previous
+  // `orderId-timestamp` key produced duplicates during the pending window.
+  // User fills win when both queries see the same event so the row is
+  // annotated as mine consistently. Pending rows are overridden by real
+  // rows because real rows arrive second in iteration order.
   const fills = useMemo(() => {
     const seen = new Map<string, RecentFill>();
-    for (const f of marketFills) seen.set(`${f.orderId}-${f.timestamp}`, f);
-    for (const f of myFills) seen.set(`${f.orderId}-${f.timestamp}`, f);
+    const keyOf = (f: RecentFill) => `${f.orderId}|${f.maker}|${f.taker}`;
+    for (const f of marketFills) seen.set(keyOf(f), f);
+    for (const f of myFills) seen.set(keyOf(f), f);
     return Array.from(seen.values()).sort((a, b) => b.timestamp - a.timestamp);
   }, [marketFills, myFills]);
 
@@ -143,7 +153,11 @@ export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
               fill.maker.toLowerCase() === myAddressLc
             );
             return (
-              <TradeRow key={`${fill.orderId}-${fill.timestamp}`} fill={fill} isMine={isMine} />
+              <TradeRow
+                key={`${fill.orderId}|${fill.maker}|${fill.taker}`}
+                fill={fill}
+                isMine={isMine}
+              />
             );
           })
         )}

@@ -34,6 +34,7 @@ import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../
 import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
+import { applyOptimisticTrade } from '../lib/optimistic-update';
 import type { OpenOrderRow } from './useMyOpenOrders';
 
 interface TradeResult {
@@ -289,7 +290,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   }, [walletAddress]);
 
   const signAndExecute = useCallback(
-    async (tx: Transaction, opts: { showObjectChanges?: boolean } = {}) => {
+    async (tx: Transaction, opts: { showObjectChanges?: boolean; showEvents?: boolean } = {}) => {
       if (!walletAddress) throw new Error('Wallet not connected');
 
       const client = getSuiClient();
@@ -312,7 +313,11 @@ export function usePredictionTrade(): UsePredictionTradeResult {
       const result = await client.executeTransactionBlock({
         transactionBlock: bytes,
         signature,
-        options: { showEffects: true, showObjectChanges: opts.showObjectChanges },
+        options: {
+          showEffects: true,
+          showObjectChanges: opts.showObjectChanges,
+          showEvents: opts.showEvents,
+        },
       });
 
       if (result.effects?.status?.status !== 'success') {
@@ -410,7 +415,10 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           const tx = new Transaction();
           const client = getSuiClient();
           await build(tx, client);
-          const result = await signAndExecute(tx);
+          // Events + objectChanges are needed for optimistic cache injection
+          // (apply post-success). They add a small response payload but unlock
+          // <300ms perceived freshness on Recent Trades / My Positions.
+          const result = await signAndExecute(tx, { showEvents: true, showObjectChanges: true });
           if (result.digest) {
             try {
               await client.waitForTransaction({
@@ -424,6 +432,24 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           }
           const digestSuffix = result.digest ? ` — ${result.digest.slice(0, 8)}...` : '';
           showToast(`${successMessage}${digestSuffix}`, 'success');
+          // Optimistic update BEFORE invalidate so the synthesized rows are in
+          // place when any in-flight refetch from invalidate completes (real
+          // rows dedupe-merge over pending rows by stable key).
+          if (walletAddress) {
+            try {
+              applyOptimisticTrade({
+                queryClient,
+                client,
+                marketId,
+                myAddress: walletAddress,
+                receipt: result,
+              });
+            } catch (e) {
+              // Non-fatal: optimistic UI is a perf optimization, the invalidate
+              // path below still produces correct state.
+              if (import.meta.env.DEV) console.warn('[prediction trade] optimistic apply failed:', e);
+            }
+          }
           invalidateMarketScoped(marketId, opts.invalidateMarketsList);
           invalidateBalances();
           return { success: true, digest: result.digest };
@@ -484,7 +510,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         setIsLoading(false);
       }
     },
-    [isWalletConnected, walletAddress, signAndExecute, showToast, invalidateMarketScoped, invalidateBalances],
+    [isWalletConnected, walletAddress, signAndExecute, showToast, invalidateMarketScoped, invalidateBalances, queryClient],
   );
 
   const placeBuyTaker = useCallback(
