@@ -421,8 +421,17 @@ function handleLeaderboard(
     return true;
   }
 
+  const bannedAddresses = getBannedSnapshotSync().addresses;
+  const adminAddresses = getAdminAddresses();
+  const excluded = new Set([...bannedAddresses, ...adminAddresses].map((a) => a.toLowerCase()));
+
   if (mode === 'pnl') {
-    const rows = getLeaderboardPnl(period, limit, offset);
+    const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 500) : limit;
+    const rawRows = getLeaderboardPnl(period, overFetch, offset);
+    const filteredRows = excluded.size > 0
+      ? rawRows.filter((r) => !excluded.has(r.address.toLowerCase()))
+      : rawRows;
+    const rows = filteredRows.slice(0, limit);
     const addresses = rows.map((r) => r.address);
     if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
       console.error('[handleLeaderboard:pnl] ensureProfilesCached error:', (err as Error).message);
@@ -432,24 +441,33 @@ function handleLeaderboard(
     const gpSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
     const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
     const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
-    const traders = rows.map((r) => ({
-      rank: r.rank, address: r.address,
-      nickname: nicknames.get(r.address) ?? null,
-      hasGenesisPass: gpSet.has(r.address),
-      profileImageUrl: profileImages.get(r.address) ?? null,
-      twitterHandle: xHandles.get(r.address) ?? null,
-      pnlUsd: formatQuoteVolume(r.realized_pnl),
-      pnlPercent: r.pnl_percent,
-      tradeCount: r.trade_count,
-      rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
-      followerCount: followerCnts.get(r.address) ?? 0,
-    }));
+    const traders = rows.map((r, i) => {
+      const displayRank = offset + i + 1;
+      return {
+        rank: displayRank, address: r.address,
+        nickname: nicknames.get(r.address) ?? null,
+        hasGenesisPass: gpSet.has(r.address),
+        profileImageUrl: profileImages.get(r.address) ?? null,
+        twitterHandle: xHandles.get(r.address) ?? null,
+        pnlUsd: formatQuoteVolume(r.realized_pnl),
+        pnlPercent: r.pnl_percent,
+        tradeCount: r.trade_count,
+        rankChange: r.prev_rank > 0 ? r.prev_rank - displayRank : 0,
+        followerCount: followerCnts.get(r.address) ?? 0,
+      };
+    });
     const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
-    const totalTraders = getTotalPnlTradersCount(period);
+    const filteredOut = rawRows.length - filteredRows.length;
+    const totalTraders = Math.max(0, getTotalPnlTradersCount(period) - filteredOut);
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ mode: 'pnl', period, traders, updatedAt, totalTraders }));
   } else {
-    const rows = getLeaderboard(period, limit, offset);
+    const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 500) : limit;
+    const rawRows = getLeaderboard(period, overFetch, offset);
+    const filteredRows = excluded.size > 0
+      ? rawRows.filter((r) => !excluded.has(r.address.toLowerCase()))
+      : rawRows;
+    const rows = filteredRows.slice(0, limit);
     const addresses = rows.map((r) => r.address);
     if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
       console.error('[handleLeaderboard:volume] ensureProfilesCached error:', (err as Error).message);
@@ -459,20 +477,24 @@ function handleLeaderboard(
     const gpSet = addresses.length > 0 ? getGenesisPassBatch(addresses) : new Set<string>();
     const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
     const xHandles = addresses.length > 0 ? getXHandlesBatch(addresses) : new Map<string, string>();
-    const traders = rows.map((r) => ({
-      rank: r.rank, address: r.address,
-      nickname: nicknames.get(r.address) ?? null,
-      hasGenesisPass: gpSet.has(r.address),
-      profileImageUrl: profileImages.get(r.address) ?? null,
-      twitterHandle: xHandles.get(r.address) ?? null,
-      volumeUsd: formatQuoteVolume(r.volume_quote),
-      tradeCount: r.trade_count, uniquePools: r.unique_pools,
-      rankChange: r.prev_rank > 0 ? r.prev_rank - r.rank : 0,
-      lastTradeAt: r.last_trade_at,
-      followerCount: followerCnts.get(r.address) ?? 0,
-    }));
+    const traders = rows.map((r, i) => {
+      const displayRank = offset + i + 1;
+      return {
+        rank: displayRank, address: r.address,
+        nickname: nicknames.get(r.address) ?? null,
+        hasGenesisPass: gpSet.has(r.address),
+        profileImageUrl: profileImages.get(r.address) ?? null,
+        twitterHandle: xHandles.get(r.address) ?? null,
+        volumeUsd: formatQuoteVolume(r.volume_quote),
+        tradeCount: r.trade_count, uniquePools: r.unique_pools,
+        rankChange: r.prev_rank > 0 ? r.prev_rank - displayRank : 0,
+        lastTradeAt: r.last_trade_at,
+        followerCount: followerCnts.get(r.address) ?? 0,
+      };
+    });
     const updatedAt = rows.length > 0 ? rows[0].updated_at : Date.now();
-    const totalTraders = getTotalTradersCount(period);
+    const filteredOut = rawRows.length - filteredRows.length;
+    const totalTraders = Math.max(0, getTotalTradersCount(period) - filteredOut);
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ mode: 'volume', period, traders, updatedAt, totalTraders }));
   }
@@ -793,7 +815,7 @@ function handleScoreLeaderboardWeekly(
   // may still contain banned addresses. Drop after SQLite read.
   const bannedAddresses = getBannedSnapshotSync().addresses;
   const adminAddresses = getAdminAddresses();
-  const excluded = new Set([...bannedAddresses, ...adminAddresses]);
+  const excluded = new Set([...bannedAddresses, ...adminAddresses].map((a) => a.toLowerCase()));
   const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 2000) : limit;
   const rawRows = getWeeklyScoreLeaderboard(weekId, overFetch, offset);
   const filteredRows = excluded.size > 0
@@ -818,9 +840,12 @@ function handleScoreLeaderboardWeekly(
   const profileImages = addresses.length > 0 ? getProfileImagesBatch(addresses) : new Map<string, string>();
 
   // Social badges are pre-computed at aggregation time and stored in SQLite.
-  const traders = rows.map((row) => {
+  // Ranks are reassigned sequentially starting at offset+1 to close any gaps
+  // caused by filtering out banned/admin addresses after DB read.
+  const traders = rows.map((row, i) => {
+    const displayRank = offset + i + 1;
     return {
-      rank: row.rank,
+      rank: displayRank,
       address: row.address,
       nickname: nicknames.get(row.address) ?? null,
       hasGenesisPass: genesisPassSet.has(row.address),
@@ -829,7 +854,7 @@ function handleScoreLeaderboardWeekly(
       totalScore: row.total_score,
       tradeCount: row.trade_count,
       volumeUsd: formatQuoteVolume(row.volume_quote),
-      rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - row.rank,
+      rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - displayRank,
       hasGoogle: Boolean(row.has_google),
       hasTelegram: Boolean(row.has_telegram),
     };
