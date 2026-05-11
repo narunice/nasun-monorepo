@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2051941300048646428';
+const TWEET_ID = '2052216981710045248';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@supirimalla @indah_ye99 @OjoPhilemo17247 @Abe_qearo @Savior_16 @Putri_dhone @Anton4599262075 @BernadetaD70810 @naro0ck @Zee_of_web3 @noxo_noxon @Cobalt_Duck @NurRohm22672781 @safdarsulehry55 @Jonny_KX @StoryMofi @hashafifi @6brother9 @larionewlife @zare_obi @Satumilyar111
+@noxo_noxon @Krplesen888 @NurRohm22672781 @safdarsulehry55 @Andreas1985x @MTown134056 @Jonny_KX @StoryMofi @RvdWixx49687 @__Jayden007 @hashafifi @VongVuot88444 @Umishada180523 @larionewlife @grom60345 @0Gyang99 @zare_obi @Satumilyar111 @Hwang_Zi1 @Chapa157232 @siregarfirman90 @benjaminy40222 @akau_e96614 @hendra648715
 `;
 
 const BONUS_POINTS = 3;
