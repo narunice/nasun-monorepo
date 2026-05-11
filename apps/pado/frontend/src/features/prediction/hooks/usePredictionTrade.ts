@@ -730,6 +730,12 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         marketId,
         'recover:phase-b',
         (tx) => {
+          // Gas budget scales with chunk size so a 100-Position chunk does not
+          // get capped at the default dry-run estimate. Numbers are conservative
+          // first-cut; tune from `[claim-all]` console telemetry.
+          const BASE_BUDGET = 50_000_000;
+          const PER_POSITION = 3_000_000;
+          tx.setGasBudget(BASE_BUDGET + PER_POSITION * positions.length);
           for (const p of positions) {
             if (p.won) {
               buildClaimWinnings(tx, marketId, p.positionId);
