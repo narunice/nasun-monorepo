@@ -40,7 +40,7 @@ import {
   getTraderFillsByAddress, computeCostBasis,
   getOrderEventsByAddress,
   getWeeklyScoreLeaderboard, getWeeklyScoreCount, countWeeklyUniqueTraders,
-  getWeeklyParticipantCount, getTraderWeeklyScore,
+  getTraderWeeklyScore,
   getAvailableWeeks,
   getCurrentWeekStart, getWeekId,
   getFollowedTraderFills,
@@ -48,7 +48,7 @@ import {
   getCompetitionResults,
   getPoolPriceHistory,
 } from './leaderboard-store.js';
-import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES } from './leaderboard-types.js';
+import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES, KNOWN_BOT_ADDRESSES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
 import { mapRowToListItem } from './leaderboard-mapper.js';
 import { resolveIdentityIds, checkSocialConnectionsBatch, getSocialBadgesBatch, type SocialBadges } from './identity-resolver.js';
@@ -423,7 +423,9 @@ function handleLeaderboard(
 
   const bannedAddresses = getBannedSnapshotSync().addresses;
   const adminAddresses = getAdminAddresses();
-  const excluded = new Set([...bannedAddresses, ...adminAddresses].map((a) => a.toLowerCase()));
+  const excluded = new Set(
+    [...bannedAddresses, ...adminAddresses, ...KNOWN_BOT_ADDRESSES].map((a) => a.toLowerCase()),
+  );
 
   if (mode === 'pnl') {
     const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 500) : limit;
@@ -815,7 +817,9 @@ function handleScoreLeaderboardWeekly(
   // may still contain banned addresses. Drop after SQLite read.
   const bannedAddresses = getBannedSnapshotSync().addresses;
   const adminAddresses = getAdminAddresses();
-  const excluded = new Set([...bannedAddresses, ...adminAddresses].map((a) => a.toLowerCase()));
+  const excluded = new Set(
+    [...bannedAddresses, ...adminAddresses, ...KNOWN_BOT_ADDRESSES].map((a) => a.toLowerCase()),
+  );
   const overFetch = excluded.size > 0 ? Math.min(limit + excluded.size + 50, 2000) : limit;
   const rawRows = getWeeklyScoreLeaderboard(weekId, overFetch, offset);
   const filteredRows = excluded.size > 0
@@ -826,11 +830,12 @@ function handleScoreLeaderboardWeekly(
   const totalTraders = Math.max(0, getWeeklyScoreCount(weekId) - filteredOut);
   const weekStartMs = weekIdToStartMs(weekId);
   const prevWeekStartMs = weekStartMs - 7 * 24 * 60 * 60 * 1000;
-  const prevWeekId = getWeekId(prevWeekStartMs);
-  const cached = getWeeklyParticipantCount(prevWeekId);
-  const totalParticipants = cached > 0
-    ? cached
-    : countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs);
+  // Live count with current exclusion set (banned + admin + known bots).
+  // Previously cached at write time, which froze each week's count at the
+  // ban-list state when it was aggregated and made older weeks look inflated
+  // versus newer weeks as the ban list grew. trade_fills.timestamp_ms is
+  // indexed; window scans are cheap.
+  const totalParticipants = countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs, excluded);
   const addresses = rows.map((r) => r.address);
   if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
     console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);
