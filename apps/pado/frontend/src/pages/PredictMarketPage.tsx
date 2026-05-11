@@ -209,7 +209,7 @@ export function PredictMarketPage() {
         <div className="max-w-3xl mx-auto space-y-4 md:space-y-6">
           <MarketHeader market={market} yesOrderbook={yesOrderbook} noOrderbook={noOrderbook} lastTradePriceBps={lastTradePriceBps} />
           <ResolutionMetaPanel market={market} />
-          <WinningClaimBanner market={market} positions={positions} />
+          <WinningClaimBanner market={market} positions={positions} onSettled={handleRefetch} />
           <PositionList market={market} positions={positions} isLoading={isPositionsLoading} onSuccess={handleRefetch} />
           <MarketInfoPanel market={market} />
         </div>
