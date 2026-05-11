@@ -122,10 +122,10 @@ export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: M
       <div className="mb-4">
         <div className="flex justify-between text-sm mb-1">
           <span className="text-green-600 dark:text-green-400 font-medium">
-            YES {hasRealQuotes ? `${yesProbability.toFixed(0)}%` : '—'}
+            YES {hasRealQuotes ? `${yesProbability.toFixed(1)}%` : '—'}
           </span>
           <span className="text-red-600 dark:text-red-400 font-medium">
-            NO {hasRealQuotes ? `${noProbability.toFixed(0)}%` : '—'}
+            NO {hasRealQuotes ? `${noProbability.toFixed(1)}%` : '—'}
           </span>
         </div>
         <div className="h-2 bg-red-500 rounded-full overflow-hidden flex">

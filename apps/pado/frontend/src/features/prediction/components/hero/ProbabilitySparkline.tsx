@@ -4,6 +4,7 @@ import type { RecentFill } from '../../types';
 interface ProbabilitySparklineProps {
   fills: RecentFill[];
   isLoading: boolean;
+  currentProbability?: number;
   width?: number;
   height?: number;
   className?: string;
@@ -12,6 +13,7 @@ interface ProbabilitySparklineProps {
 export function ProbabilitySparkline({
   fills,
   isLoading,
+  currentProbability,
   width = 120,
   height = 44,
   className,
@@ -35,12 +37,68 @@ export function ProbabilitySparkline({
   }
 
   // fills are descending (newest first) — reverse to chronological
-  const sorted = [...fills].reverse();
-  const probs = sorted.map((f) => f.price / 100); // bps -> 0..100
+  const sorted = [...fills].sort((a, b) => a.timestamp - b.timestamp);
 
-  const minP = Math.min(...probs);
-  const maxP = Math.max(...probs);
-  const range = maxP - minP || 1;
+  // Bucket fills into N time intervals and average YES probability per bucket.
+  // This cancels out bid-ask bounce from LP market-making (YES/NO alternation).
+  const BUCKETS = 12;
+  const tMin = sorted[0].timestamp;
+  const tMax = sorted[sorted.length - 1].timestamp;
+  const tRange = tMax - tMin || 1;
+
+  const buckets: number[][] = Array.from({ length: BUCKETS }, () => []);
+  for (const f of sorted) {
+    const idx = Math.min(BUCKETS - 1, Math.floor(((f.timestamp - tMin) / tRange) * BUCKETS));
+    buckets[idx].push((f.isYes ? f.price : 10000 - f.price) / 100);
+  }
+
+  // Only keep buckets that have data; compute average per bucket.
+  const probs = buckets
+    .map((b) => b.length > 0 ? b.reduce((s, v) => s + v, 0) / b.length : null)
+    .filter((v): v is number => v !== null);
+
+  // If fewer than 2 fills, show flat line at currentProbability (price discovery exists
+  // but fill history is too old to appear in the recent event window).
+  if (probs.length < 2) {
+    if (currentProbability == null) {
+      return (
+        <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} preserveAspectRatio="none" aria-hidden>
+          <line
+            x1={PAD} y1={height / 2}
+            x2={width - PAD} y2={height / 2}
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeDasharray="4,3"
+            className="text-theme-border"
+          />
+        </svg>
+      );
+    }
+    // Flat line at currentProbability
+    const y = PAD + (height - PAD * 2) * (1 - currentProbability / 100);
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} width={width} height={height} className={className} preserveAspectRatio="none" aria-hidden>
+        <line
+          x1={PAD} y1={y}
+          x2={width - PAD} y2={y}
+          stroke={currentProbability >= 50 ? '#22c55e' : '#ef4444'}
+          strokeWidth="1.5"
+          strokeOpacity="0.5"
+          strokeDasharray="4,3"
+        />
+      </svg>
+    );
+  }
+
+  const rawMin = Math.min(...probs);
+  const rawMax = Math.max(...probs);
+  // Enforce a minimum 20pp display window so small bid-ask spread variations
+  // don't get stretched to full chart height and look like extreme swings.
+  const midP = (rawMin + rawMax) / 2;
+  const halfRange = Math.max((rawMax - rawMin) / 2, 10);
+  const minP = Math.max(0, midP - halfRange);
+  const maxP = Math.min(100, midP + halfRange);
+  const range = maxP - minP;
 
   const innerW = width - PAD * 2;
   const innerH = height - PAD * 2;

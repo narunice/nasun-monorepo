@@ -17,35 +17,46 @@ import { ORDER_FILLED_EVENT } from '../constants';
 import type { RecentFill } from '../types';
 
 const PAGE_LIMIT = 250;
+const MAX_PAGES = 4;       // fetch up to 1000 events total
+const MIN_FILLS = 10;      // stop early once we have enough per-market fills
 const DUST_COST_THRESHOLD = 500_000n; // 0.5 NUSDC at 6 decimals
 
 async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
   const client = getSuiClient();
-  const page = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_EVENT },
-    limit: PAGE_LIMIT,
-    order: 'descending',
-  });
-
   const fills: RecentFill[] = [];
-  for (const event of page.data) {
-    const j = event.parsedJson as Record<string, unknown> | null;
-    if (!j || j.market_id !== marketId) continue;
-    const cost = BigInt(String(j.cost ?? 0));
-    if (cost < DUST_COST_THRESHOLD) continue;
-    fills.push({
-      marketId: String(j.market_id),
-      orderId: Number(j.order_id ?? 0),
-      taker: String(j.taker ?? ''),
-      maker: String(j.maker ?? ''),
-      isYes: Boolean(j.is_yes ?? false),
-      isBid: Boolean(j.is_bid ?? false),
-      price: Number(j.price ?? 0),
-      fillShares: BigInt(String(j.fill_shares ?? 0)),
-      cost,
-      timestamp: Number(event.timestampMs ?? 0),
+  let cursor: string | null | undefined = undefined;
+
+  for (let page = 0; page < MAX_PAGES; page++) {
+    const result = await client.queryEvents({
+      query: { MoveEventType: ORDER_FILLED_EVENT },
+      limit: PAGE_LIMIT,
+      order: 'descending',
+      cursor: cursor ?? undefined,
     });
+
+    for (const event of result.data) {
+      const j = event.parsedJson as Record<string, unknown> | null;
+      if (!j || j.market_id !== marketId) continue;
+      const cost = BigInt(String(j.cost ?? 0));
+      if (cost < DUST_COST_THRESHOLD) continue;
+      fills.push({
+        marketId: String(j.market_id),
+        orderId: Number(j.order_id ?? 0),
+        taker: String(j.taker ?? ''),
+        maker: String(j.maker ?? ''),
+        isYes: Boolean(j.is_yes ?? false),
+        isBid: Boolean(j.is_bid ?? false),
+        price: Number(j.price ?? 0),
+        fillShares: BigInt(String(j.fill_shares ?? 0)),
+        cost,
+        timestamp: Number(event.timestampMs ?? 0),
+      });
+    }
+
+    if (fills.length >= MIN_FILLS || !result.hasNextPage) break;
+    cursor = result.nextCursor;
   }
+
   return fills;
 }
 
