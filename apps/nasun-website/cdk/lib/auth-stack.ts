@@ -67,6 +67,10 @@ export class AuthStack extends cdk.Stack {
         NFT_EVENT_TASKS_TABLE_NAME: nftEventTasksTableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: '--enable-source-maps',
+        // Onboarding bonus: referral-only x-link bonus on first X login
+        REFERRALS_TABLE: 'nasun-referrals',
+        EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
+        ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || '',
       },
       logGroup: new logs.LogGroup(this, "TwitterAuthLambdaLogGroup", {
         removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -79,6 +83,11 @@ export class AuthStack extends cdk.Stack {
     props.userProfilesTable.grantReadWriteData(twitterLoginFunction);
     // Grant write access to NFT event tasks table for X access token storage
     nftEventTasksTable.grantWriteData(twitterLoginFunction);
+    // Read-only on nasun-referrals for onboarding bonus referral-status check
+    const nasunReferralsForTwitter = dynamodb.Table.fromTableName(
+      this, 'NasunReferralsForTwitter', 'nasun-referrals'
+    );
+    nasunReferralsForTwitter.grantReadData(twitterLoginFunction);
 
     // Grant Secrets Manager read access for OAuth2 client credentials
     twitterLoginFunction.addToRolePolicy(

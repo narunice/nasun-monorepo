@@ -518,6 +518,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
           ...lambdaEnvironment,
           TELEGRAM_BOT_TOKEN_SECRET_NAME: process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token',
           TELEGRAM_CHANNEL_USERNAME: process.env.TELEGRAM_CHANNEL_USERNAME || '',
+          // Onboarding bonus: referral-only telegram-link bonus on first verify
+          REFERRALS_TABLE: 'nasun-referrals',
+          EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
+          ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || '',
         },
         bundling: {
           ...bundlingOptions,
@@ -663,6 +667,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.accountsTable.grantReadWriteData(verifyTelegramLambda);
     this.seasonAccountsTable.grantReadWriteData(verifyTelegramLambda);
     this.seasonsTable.grantReadData(verifyTelegramLambda);
+    // Read-only on nasun-referrals for onboarding bonus referral-status check
+    const nasunReferralsForTelegram = dynamodb.Table.fromTableName(
+      this, 'NasunReferralsForTelegram', 'nasun-referrals'
+    );
+    nasunReferralsForTelegram.grantReadData(verifyTelegramLambda);
     userProfilesTable.grantReadWriteData(verifyTelegramLambda); // v2: primary storage in UserProfiles
 
     // Telegram Status permissions (read-only)

@@ -30,6 +30,7 @@ import {
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
+import { grantIfReferralActivated } from '../utils/onboardingBonus';
 
 // DynamoDB
 const ddbClient = new DynamoDBClient({});
@@ -589,6 +590,20 @@ export const handler = async (
 
     // 9. Primary: Update UserProfiles table
     await updateUserProfileTelegram(identityId, telegramUserIdStr, telegramUsername);
+
+    // Onboarding bonus: telegram-link. Granted only if user joined via referral
+    // and that referral is ACTIVATED. Idempotent via PG UNIQUE, so re-verify is safe.
+    if (process.env.EXPLORER_API_URL) {
+      await grantIfReferralActivated({
+        ddbClient: docClient,
+        referralsTable: process.env.REFERRALS_TABLE || 'nasun-referrals',
+        explorerApiUrl: process.env.EXPLORER_API_URL,
+        apiKey: process.env.ONBOARDING_BONUS_API_KEY || '',
+        identityId,
+        kind: 'telegram-link',
+        externalId: telegramUserIdStr,
+      }).catch((e) => console.warn('[onboarding-bonus] telegram-link non-fatal', e));
+    }
 
     // 10. Secondary: Sync to leaderboard accounts if twitterHandle exists
     if (userProfile.twitterHandle) {

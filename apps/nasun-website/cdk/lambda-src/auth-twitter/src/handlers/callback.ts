@@ -7,6 +7,7 @@ import { CognitoService } from '../utils/cognito';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 import { getOAuthClientCredentials } from '../utils/secrets';
 import { appendXHistory, XChangeType } from '../utils/xHistory';
+import { grantIfReferralActivated } from '../utils/onboardingBonus';
 
 // Read from environment variable (set by CDK from shared constants/cors.ts)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
@@ -205,6 +206,22 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
           oldTwitterId: oldTwitterId || undefined,
           newTwitterId: twitterUser.id,
         }).catch((e) => console.warn('[xHistory] append failed', e));
+      }
+
+      // Onboarding bonus: x-link. Fires on every X re-login but PG UNIQUE
+      // dedupes so the first call per twitterId wins. Only granted for
+      // referral ACTIVATED users.
+      if (process.env.EXPLORER_API_URL) {
+        const docClient = DynamoDBDocumentClient.from(dynamoClient);
+        await grantIfReferralActivated({
+          ddbClient: docClient,
+          referralsTable: process.env.REFERRALS_TABLE || 'nasun-referrals',
+          explorerApiUrl: process.env.EXPLORER_API_URL,
+          apiKey: process.env.ONBOARDING_BONUS_API_KEY || '',
+          identityId: cognitoIdentity.identityId,
+          kind: 'x-link',
+          externalId: twitterUser.id,
+        }).catch((e) => console.warn('[onboarding-bonus] x-link non-fatal', e));
       }
     } else {
       // Do NOT create a new user profile here.

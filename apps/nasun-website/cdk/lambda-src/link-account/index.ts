@@ -3,6 +3,7 @@ import { APIGatewayProxyHandler } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCommand, DeleteCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
 import { appendXHistory } from './utils/xHistory';
+import { grantIfReferralActivated } from './onboardingBonus';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -731,6 +732,35 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
     console.log('Updating primary profile with linkedAccounts:', primaryLinkedAccounts);
     await dynamoClient.send(updatePrimaryCommand);
+
+    // Onboarding bonus grants. PG UNIQUE on (tx_digest, activity_type, event_seq)
+    // dedupes (auth-twitter callback also grants x-link on X re-login), so only
+    // the first INSERT for a given twitterId wins. Both entrypoints needed to
+    // cover X-as-primary (callback) and X-as-secondary (this path) flows.
+    if (process.env.EXPLORER_API_URL) {
+      const onboardingCommon = {
+        ddbClient: dynamoClient,
+        referralsTable: process.env.REFERRALS_TABLE || 'nasun-referrals',
+        explorerApiUrl: process.env.EXPLORER_API_URL,
+        apiKey: process.env.ONBOARDING_BONUS_API_KEY || '',
+        identityId: primaryIdentityId,
+        walletAddress: primaryProfile.walletAddress ?? null,
+      };
+      if (providerKey === 'google') {
+        // Google externalId = secondary Cognito identityId (stable per Google account).
+        await grantIfReferralActivated({
+          ...onboardingCommon,
+          kind: 'google-link',
+          externalId: secondaryIdentityId,
+        }).catch((e) => console.warn('[onboarding-bonus] google-link non-fatal', e));
+      } else if (providerKey === 'twitter' && secondaryProfile.twitterId) {
+        await grantIfReferralActivated({
+          ...onboardingCommon,
+          kind: 'x-link',
+          externalId: secondaryProfile.twitterId,
+        }).catch((e) => console.warn('[onboarding-bonus] x-link non-fatal', e));
+      }
+    }
 
     // Record X link history (non-blocking, best-effort)
     if (providerKey === 'twitter') {
