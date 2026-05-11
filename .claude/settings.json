@@ -180,7 +180,24 @@
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'curl -s '\\\\''http://localhost:3101/api/leaderboard/account/ap-northeast-2:6cb1e654-bae0-ca3b-3be4-61f86dd3f75a'\\\\'' | head -c 2000; echo '\\\\''==='\\\\''; curl -s '\\\\''http://localhost:3101/api/leaderboard/account/ap-northeast-2:6cb1e654-ba65-cf6a-e6ac-2a868dd991d0'\\\\'' | head -c 2000')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'curl -s '\\\\''http://localhost:3101/'\\\\'' | head -c 200; echo; grep -r '\\\\''ecosystem\\\\|score\\\\|points\\\\|leaderboard'\\\\'' ~/nasun-chat-server/src/ --include='\\\\''*.ts'\\\\'' -l 2>/dev/null | head -10')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'curl -s '\\\\''http://localhost:3101/api/pado/leaderboard/trader/0xee4362b9fbf28679064680fcabebbadb2fad5e072332f3c7a0c03a87d18cb159/score'\\\\'' | head -c 500; echo '\\\\''==='\\\\''; curl -s '\\\\''http://localhost:3101/api/pado/leaderboard/trader/0x87930ddeffc2169a5d65cef125d872697933be69392a799d6890df980d06321c/score'\\\\'' | head -c 500')",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'grep -i '\\\\''ee4362b9\\\\|87930dde'\\\\'' ~/nasun-chat-server/data/banned.json 2>/dev/null || echo '\\\\''not in banned.json'\\\\''')"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'grep -i '\\\\''ee4362b9\\\\|87930dde'\\\\'' ~/nasun-chat-server/data/banned.json 2>/dev/null || echo '\\\\''not in banned.json'\\\\''')",
+      "Bash(cp /tmp/dry-run-bulk.mjs /home/naru/my_apps/nasun-monorepo/apps/gostop/frontend/dry-run-bulk.mjs *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash)",
+      "Bash(ALLOW_PROD_DIRECT=1 curl -s -m 15 -k -o /dev/null --resolve nasun.io:443:43.200.67.52 -w '  origin__TRACKED_VAR__: HTTP=%{http_code} time=%{time_total}s ttfb=%{time_starttransfer}s\\\\n' https://nasun.io/chat/health)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 restart nasun-chat-server && sleep 3 && pm2 status nasun-chat-server\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 show nasun-chat-server | grep -E 'script|exec|interpreter|cwd'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 list 2>/dev/null | grep -i gostop; echo '---'; pm2 list 2>/dev/null | grep -i lottery\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 logs gostop-lottery-keeper --lines 80 --nostream 2>/dev/null\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls ~/gostop-bots/\")",
+      "Bash(ALLOW_PROD_DIRECT=1 scp -i '~/.ssh/.awskey/nasun-prod-key' /home/naru/my_apps/nasun-monorepo/apps/gostop/bots/lottery-keeper.ts 'ec2-user@43.200.67.52:~/gostop-bots/lottery-keeper.ts')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 logs gostop-lottery-keeper --lines 30 --nostream 2>/dev/null\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"until grep -q 'settle_round\\\\|Settlement skipped\\\\|Event surplus\\\\|Winners:' ~/gostop-bots/logs/gostop-lottery-keeper-out.log 2>/dev/null && tail -1 ~/gostop-bots/logs/gostop-lottery-keeper-out.log | grep -q '00:3[89]\\\\|00:4[0-9]'; do sleep 5; done; tail -20 ~/gostop-bots/logs/gostop-lottery-keeper-out.log; echo '---errors---'; tail -5 ~/gostop-bots/logs/gostop-lottery-keeper-error.log\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"tail -25 ~/gostop-bots/logs/gostop-lottery-keeper-out.log && echo '---errors---' && tail -5 ~/gostop-bots/logs/gostop-lottery-keeper-error.log\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"cd ~/explorer-api && set -a && source .env && set +a && AWS_PROFILE=nasun-prod npx tsx src/scripts/settle-ecosystem.ts --week 2026-W19 --dry-run 2>&1 | tail -50\")",
+      "Bash(# Check pado VitePWA workbox config full + check whether pado SW is actually being served + check nasun-website nginx for dup cache-control *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
+      "Bash(systemctl list-timers *)",
+      "Bash(sudo grep -iE \"cron\" /var/log/syslog)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
@@ -189,7 +206,9 @@
       "/home/naru/.claude/projects/-home-naru-my_apps-nasun-monorepo/memory",
       "/tmp",
       "/home/naru/.claude/plans",
-      "/home/naru/my_apps/nasun-monorepo/.claude/skills"
+      "/home/naru/my_apps/nasun-monorepo/.claude/skills",
+      "/home/naru/my_apps/nasun-monorepo/apps/gostop/frontend",
+      "/home/naru/my_apps/nasun-monorepo/apps/pado/frontend"
     ]
   },
   "hooks": {
