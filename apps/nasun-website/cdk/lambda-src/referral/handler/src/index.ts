@@ -656,6 +656,38 @@ async function handleMyStats(
       }
     : null;
 
+  // Decline/appeal surface: shown only when the user has a DECLINED or
+  // APPEALED row, so the UI can render the reviewer's reason and the
+  // appeal flow without a separate endpoint.
+  let declineInfo: {
+    status: "DECLINED" | "APPEALED";
+    reviewedAt: string;
+    reviewerNote: string;
+    retryAt: string;
+    appealedAt?: string;
+    appealText?: string;
+    appealResolution?: "reversed" | "reconfirmed";
+    appealResolvedAt?: string;
+  } | null = null;
+  if (
+    myReferral.Item &&
+    (myReferral.Item.status === "DECLINED" || myReferral.Item.status === "APPEALED")
+  ) {
+    const reviewedAt = (myReferral.Item.reviewedAt as string) || "";
+    const reviewedMs = Date.parse(reviewedAt) || 0;
+    const cooldownMs = DECLINE_COOLDOWN_DAYS * 24 * 60 * 60 * 1000;
+    declineInfo = {
+      status: myReferral.Item.status as "DECLINED" | "APPEALED",
+      reviewedAt,
+      reviewerNote: (myReferral.Item.reviewerNote as string) || "",
+      retryAt: reviewedMs ? new Date(reviewedMs + cooldownMs).toISOString() : "",
+      appealedAt: (myReferral.Item.appealedAt as string) || undefined,
+      appealText: (myReferral.Item.appealText as string) || undefined,
+      appealResolution: (myReferral.Item.appealResolution as "reversed" | "reconfirmed") || undefined,
+      appealResolvedAt: (myReferral.Item.appealResolvedAt as string) || undefined,
+    };
+  }
+
   // 4. Fetch bonus stats from api-server (if URL configured)
   let bonusStats: { totalBonusPoints: number } | null = null;
   if (REFERRAL_STATS_API_URL && referralCode) {
@@ -684,6 +716,7 @@ async function handleMyStats(
       referrals,
       referees: { items: refereeItems, nextCursor: refereesNextCursor },
       referredBy,
+      declineInfo,
       bonusStats,
     },
     origin
@@ -731,6 +764,79 @@ async function handleMyReferees(
   return jsonResponse(200, { items, nextCursor }, origin);
 }
 
+// ==================== POST /referral/appeal ====================
+
+async function handleAppeal(
+  identityId: string,
+  body: string | null,
+  origin?: string
+): Promise<APIGatewayProxyResult> {
+  let appealText: string;
+  try {
+    const parsed = JSON.parse(body || "{}");
+    appealText = ((parsed.appealText as string) || "").trim();
+  } catch {
+    return jsonResponse(400, { error: "INVALID_BODY", message: "Invalid request body" }, origin);
+  }
+
+  if (appealText.length < 10 || appealText.length > 1000) {
+    return jsonResponse(400, {
+      error: "INVALID_APPEAL",
+      message: "Appeal must be 10-1000 characters",
+    }, origin);
+  }
+
+  const now = new Date().toISOString();
+  try {
+    await client.send(
+      new UpdateCommand({
+        TableName: REFERRALS_TABLE,
+        Key: { referredIdentityId: identityId },
+        UpdateExpression:
+          "SET #s = :appealed, appealText = :text, appealedAt = :now",
+        ConditionExpression:
+          "attribute_exists(referredIdentityId) AND #s = :declined AND attribute_not_exists(appealedAt)",
+        ExpressionAttributeNames: { "#s": "status" },
+        ExpressionAttributeValues: {
+          ":appealed": "APPEALED",
+          ":declined": "DECLINED",
+          ":text": appealText,
+          ":now": now,
+        },
+      })
+    );
+  } catch (err: any) {
+    if (err.name === "ConditionalCheckFailedException") {
+      // Differentiate the two cases for the client.
+      const existing = await client.send(
+        new GetCommand({
+          TableName: REFERRALS_TABLE,
+          Key: { referredIdentityId: identityId },
+          ProjectionExpression: "#s, appealedAt",
+          ExpressionAttributeNames: { "#s": "status" },
+        })
+      );
+      if (!existing.Item || existing.Item.status !== "DECLINED") {
+        return jsonResponse(409, {
+          error: "NO_DECLINED_REFERRAL",
+          message: "No declined referral to appeal",
+        }, origin);
+      }
+      if (existing.Item.appealedAt) {
+        return jsonResponse(409, {
+          error: "ALREADY_APPEALED",
+          message: "You have already submitted an appeal",
+        }, origin);
+      }
+      return jsonResponse(409, { error: "CONFLICT", message: "Appeal could not be submitted" }, origin);
+    }
+    throw err;
+  }
+
+  console.log(`[referral] ${identityId} submitted appeal`);
+  return jsonResponse(200, { ok: true, appealedAt: now }, origin);
+}
+
 // ==================== Main handler ====================
 
 export async function handler(
@@ -757,6 +863,10 @@ export async function handler(
 
     if (path.endsWith("/my-stats") && method === "GET") {
       return await handleMyStats(identityId, origin);
+    }
+
+    if (path.endsWith("/appeal") && method === "POST") {
+      return await handleAppeal(identityId, event.body, origin);
     }
 
     if (path.endsWith("/my-referees") && method === "GET") {

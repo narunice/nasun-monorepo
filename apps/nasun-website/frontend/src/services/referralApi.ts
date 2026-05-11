@@ -58,12 +58,25 @@ export interface ReferralStats {
     status: string;
     activatedAt: string | null;
   } | null;
+  declineInfo: {
+    status: "DECLINED" | "APPEALED";
+    reviewedAt: string;
+    reviewerNote: string;
+    retryAt: string;
+    appealedAt?: string;
+    appealText?: string;
+    appealResolution?: "reversed" | "reconfirmed";
+    appealResolvedAt?: string;
+  } | null;
   bonusStats: {
     totalBonusPoints: number;
   } | null;
 }
 
+export type ReviewStatus = "pending" | "appealed" | "declined";
+
 export interface ReviewItem {
+  serial: number;
   referredIdentityId: string;
   referrerIdentityId: string;
   twitterHandle: string | null;
@@ -71,6 +84,12 @@ export interface ReviewItem {
   referrerHandle: string | null;
   referralCode: string | null;
   appliedAt: string | null;
+  reviewedAt: string | null;
+  reviewerNote: string | null;
+  appealedAt: string | null;
+  appealText: string | null;
+  appealResolution: "reversed" | "reconfirmed" | null;
+  appealResolvedAt: string | null;
 }
 
 /**
@@ -179,20 +198,67 @@ export async function getMoreReferees(
 
 export async function listReferralReview(
   token: string,
-  cursor?: string,
-  limit = 20,
-): Promise<{ items: ReviewItem[]; nextCursor: string | null }> {
+  status: ReviewStatus = "pending",
+): Promise<{ items: ReviewItem[]; total: number; status: string }> {
   if (!ADMIN_API_URL) throw new ReferralApiError("Admin API not configured");
 
   const url = new URL(`${ADMIN_API_URL}/admin/referral-review`);
-  if (cursor) url.searchParams.set("cursor", cursor);
-  url.searchParams.set("limit", String(limit));
+  url.searchParams.set("status", status);
 
   const res = await fetch(url.toString(), { headers: authHeaders(token) });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
     throw new ReferralApiError(
       body.message || `Failed to load review queue: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
+  return res.json();
+}
+
+export async function resolveAppeal(
+  token: string,
+  identityId: string,
+  action: "reverse" | "reconfirm",
+  resolverNote?: string,
+): Promise<{ resolved: number; action: string; identityId: string }> {
+  if (!ADMIN_API_URL) throw new ReferralApiError("Admin API not configured");
+
+  const res = await fetch(`${ADMIN_API_URL}/admin/referral-review/resolve-appeal`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ identityId, action, resolverNote }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Resolve appeal failed: ${res.status}`,
+      res.status,
+      body.error,
+    );
+  }
+  return res.json();
+}
+
+/**
+ * Submit appeal for a DECLINED referral (one-shot).
+ */
+export async function submitAppeal(
+  token: string,
+  appealText: string,
+): Promise<{ ok: boolean; appealedAt: string }> {
+  if (!API_BASE) throw new ReferralApiError("Referral API not configured");
+
+  const res = await fetch(`${API_BASE}/referral/appeal`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ appealText }),
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new ReferralApiError(
+      body.message || `Appeal failed: ${res.status}`,
       res.status,
       body.error,
     );

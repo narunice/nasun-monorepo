@@ -259,6 +259,10 @@ export class ReferralStack extends cdk.Stack {
     const myRefereesResource = referralResource.addResource("my-referees");
     myRefereesResource.addMethod("GET", handlerIntegration, authOptions);
 
+    // POST /referral/appeal - Submit appeal for a DECLINED referral (1x only)
+    const appealResource = referralResource.addResource("appeal");
+    appealResource.addMethod("POST", handlerIntegration, authOptions);
+
     // ========== 5. CloudFormation Outputs ==========
 
     new cdk.CfnOutput(this, "ReferralCodesTableName", {

@@ -5,11 +5,12 @@
  * Shows referral code, copy/share buttons, and invitee stats.
  */
 
-import { FC, useEffect, useState, useCallback } from "react";
+import { FC, ReactNode, useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/features/auth";
 import {
   getMyReferralCode,
   getMyReferralStats,
+  submitAppeal,
   ReferralApiError,
   type ReferralStats,
 } from "@/services/referralApi";
@@ -34,6 +35,10 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
   const [notEligible, setNotEligible] = useState<NotEligibleInfo | null>(null);
   const [pending, setPending] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [appealOpen, setAppealOpen] = useState(false);
+  const [appealText, setAppealText] = useState("");
+  const [appealSubmitting, setAppealSubmitting] = useState(false);
+  const [appealError, setAppealError] = useState<string | null>(null);
 
   const token = user?.cognitoToken;
   const isConfigured = !!import.meta.env.VITE_REFERRAL_API;
@@ -117,6 +122,37 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [referralLink]);
+
+  const reloadStats = useCallback(async () => {
+    if (!token) return;
+    try {
+      const s = await getMyReferralStats(token);
+      setStats(s);
+    } catch {
+      // non-fatal
+    }
+  }, [token]);
+
+  const handleAppealSubmit = useCallback(async () => {
+    if (!token) return;
+    const text = appealText.trim();
+    if (text.length < 10 || text.length > 1000) {
+      setAppealError("Appeal must be 10-1000 characters");
+      return;
+    }
+    setAppealSubmitting(true);
+    setAppealError(null);
+    try {
+      await submitAppeal(token, text);
+      setAppealOpen(false);
+      setAppealText("");
+      await reloadStats();
+    } catch (err) {
+      setAppealError(err instanceof Error ? err.message : "Failed to submit appeal");
+    } finally {
+      setAppealSubmitting(false);
+    }
+  }, [token, appealText, reloadStats]);
 
   const handleShareX = useCallback(() => {
     if (!referralLink) return;
@@ -229,6 +265,127 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
         </p>
       </OuterBox>
     );
+  }
+
+  const declineInfo = stats?.declineInfo || null;
+
+  if (declineInfo) {
+    const retryMs = Date.parse(declineInfo.retryAt) || 0;
+    const remainingDays = retryMs > Date.now()
+      ? Math.ceil((retryMs - Date.now()) / (24 * 60 * 60 * 1000))
+      : 0;
+    const retryReadable = declineInfo.retryAt
+      ? new Date(declineInfo.retryAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+      : "-";
+
+    let bannerTitle = "";
+    let bannerTone = "rose";
+    let bannerBody: ReactNode = null;
+    let actionButton: ReactNode = null;
+
+    if (declineInfo.status === "DECLINED" && !declineInfo.appealResolution) {
+      bannerTitle = "Your referral was declined";
+      bannerBody = (
+        <>
+          <p className="text-sm text-nasun-white/90 whitespace-pre-wrap">{declineInfo.reviewerNote}</p>
+          <p className="text-xs text-nasun-white/60">
+            You can re-apply on {retryReadable}
+            {remainingDays > 0 ? ` (${remainingDays} day${remainingDays === 1 ? "" : "s"} left)` : ""}.
+          </p>
+        </>
+      );
+      actionButton = (
+        <button
+          onClick={() => { setAppealOpen(true); setAppealError(null); }}
+          className="px-3 py-1.5 rounded bg-nasun-white/10 hover:bg-nasun-white/20 text-nasun-white text-sm"
+        >
+          Submit appeal
+        </button>
+      );
+    } else if (declineInfo.status === "APPEALED" && !declineInfo.appealResolution) {
+      bannerTone = "amber";
+      bannerTitle = "Appeal under review";
+      bannerBody = (
+        <>
+          <p className="text-xs text-nasun-white/60 uppercase">Original decline reason</p>
+          <p className="text-sm text-nasun-white/90 whitespace-pre-wrap">{declineInfo.reviewerNote}</p>
+          <p className="text-xs text-nasun-white/60 uppercase mt-2">Your appeal</p>
+          <p className="text-sm text-nasun-white/90 whitespace-pre-wrap">{declineInfo.appealText}</p>
+          <p className="text-xs text-nasun-white/60 mt-2">
+            Submitted on {declineInfo.appealedAt
+              ? new Date(declineInfo.appealedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+              : "-"}
+          </p>
+        </>
+      );
+    } else if (declineInfo.appealResolution === "reconfirmed") {
+      bannerTitle = "Appeal denied";
+      bannerBody = (
+        <>
+          <p className="text-sm text-nasun-white/90 whitespace-pre-wrap">{declineInfo.reviewerNote}</p>
+          <p className="text-xs text-nasun-white/60">
+            You can re-apply on {retryReadable}
+            {remainingDays > 0 ? ` (${remainingDays} day${remainingDays === 1 ? "" : "s"} left)` : ""}.
+          </p>
+        </>
+      );
+    }
+
+    if (bannerTitle) {
+      const toneClasses = bannerTone === "amber"
+        ? "border-amber-500/40 bg-amber-500/10"
+        : "border-rose-500/40 bg-rose-500/10";
+      return (
+        <OuterBox color="w2" padding="sm" className={className}>
+          {title}
+          <div className={"rounded border p-4 space-y-2 " + toneClasses}>
+            <p className="text-nasun-white font-semibold">{bannerTitle}</p>
+            {bannerBody}
+            {actionButton && <div className="pt-2">{actionButton}</div>}
+          </div>
+
+          {appealOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+              <div className="bg-nasun-c6 border border-nasun-white/20 rounded p-5 w-full max-w-md">
+                <h3 className="text-lg font-semibold text-nasun-white mb-2">Submit appeal</h3>
+                <p className="text-sm text-nasun-white/80 mb-3">
+                  Explain why you believe this referral should be approved. An
+                  admin will review your appeal. You can only submit once.
+                </p>
+                <textarea
+                  value={appealText}
+                  onChange={(e) => setAppealText(e.target.value)}
+                  placeholder="Your appeal (10-1000 characters)"
+                  rows={6}
+                  maxLength={1000}
+                  className="w-full bg-nasun-white/5 border border-nasun-white/20 rounded px-2 py-1.5 text-sm text-nasun-white"
+                />
+                <div className="flex items-center justify-between mt-2">
+                  <span className="text-xs text-nasun-white/50">{appealText.trim().length}/1000</span>
+                  {appealError && <span className="text-xs text-rose-400">{appealError}</span>}
+                </div>
+                <div className="flex justify-end gap-2 mt-3">
+                  <button
+                    onClick={() => { setAppealOpen(false); setAppealError(null); }}
+                    disabled={appealSubmitting}
+                    className="px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => void handleAppealSubmit()}
+                    disabled={appealSubmitting}
+                    className="px-3 py-1.5 rounded bg-emerald-500/40 hover:bg-emerald-500/60 text-white text-sm disabled:opacity-50"
+                  >
+                    {appealSubmitting ? "Submitting…" : "Submit appeal"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </OuterBox>
+      );
+    }
   }
 
   return (
