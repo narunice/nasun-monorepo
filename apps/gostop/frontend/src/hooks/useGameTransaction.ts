@@ -29,6 +29,12 @@ export interface GameTxOptions {
   validate?: () => ValidationResult;
   /** If true, transaction expires at the end of the current epoch (~24h max). */
   expireThisEpoch?: boolean;
+  /**
+   * If true, the central balance refresh after tx success is skipped so the
+   * caller can defer it (e.g. scratch card: showing the post-payout balance
+   * before the user has scratched the cards would spoil the outcome).
+   */
+  deferBalanceRefresh?: boolean;
 }
 
 /**
@@ -131,8 +137,12 @@ export function useGameTransaction() {
           return result;
         });
 
-        // Success (outside retry loop to only trigger once)
-        refreshBalance(); // Update balance immediately after successful TX
+        // Success (outside retry loop to only trigger once).
+        // Scratch card defers this until after all cards are revealed so the
+        // post-payout balance does not leak the win/loss before the reveal.
+        if (!options.deferBalanceRefresh) {
+          refreshBalance();
+        }
         if (options.successMessage) {
           showToast(options.successMessage, 'success');
         }
@@ -184,5 +194,5 @@ export function useGameTransaction() {
     [address, isPending, signAndExecuteTransaction, showToast, addPendingBet, removePendingBet, refreshBalance]
   );
 
-  return { executeGameTx, isPending };
+  return { executeGameTx, isPending, refreshBalance };
 }

@@ -25,6 +25,7 @@ export interface UseScratchCardResult {
   isBuying: boolean
   error: string | null
   clearError: () => void
+  refreshBalance: () => void
 }
 
 /**
@@ -37,7 +38,7 @@ export function useScratchCard(): UseScratchCardResult {
   const isWalletConnected = !!walletAddress
 
   const [error, setError] = useState<string | null>(null)
-  const { executeGameTx, isPending } = useGameTransaction()
+  const { executeGameTx, isPending, refreshBalance } = useGameTransaction()
 
   const buy = useCallback(
     async (count: number): Promise<ScratchResult[] | null> => {
@@ -54,6 +55,11 @@ export function useScratchCard(): UseScratchCardResult {
         },
         {
           amount: totalCost,
+          // Hold the wallet balance constant after purchase so the displayed
+          // number does not jump to the post-payout total before the user
+          // has revealed any cards. Caller (useScratchCardPage) refreshes
+          // once all cards are revealed.
+          deferBalanceRefresh: true,
           onSuccess: (result) => {
             const events = result.events ?? []
             results = events
@@ -100,6 +106,7 @@ export function useScratchCard(): UseScratchCardResult {
     isBuying: isPending,
     error,
     clearError: () => setError(null),
+    refreshBalance,
   }
 }
 
