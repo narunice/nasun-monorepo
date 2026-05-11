@@ -413,6 +413,90 @@ app.post('/creator-post-reward', requireInternalApiKey('BUG_REPORT_API_KEY'), as
   });
 });
 
+// POST /api/v1/points/onboarding-bonus
+// Internal endpoint for nasun-website Lambdas to grant onboarding bonus points
+// to referral-activated users on their first social action.
+// Uses ecosystem-bonus-onboard category. Idempotency via PG UNIQUE
+// (tx_digest, activity_type, event_seq) — txDigest is `onboard-{kind}:{externalId}`.
+const ONBOARDING_BONUS_POINTS = {
+  'follow-nasun': 25,
+  'x-link': 25,
+  'google-link': 10,
+  'telegram-link': 10,
+} as const;
+type OnboardingKind = keyof typeof ONBOARDING_BONUS_POINTS;
+
+// Per-kind externalId validation. Google externalId is a Cognito identityId
+// (federated identity is stable across re-login for the same Google account).
+const ONBOARDING_EXTERNAL_ID_REGEX: Record<OnboardingKind, RegExp> = {
+  'follow-nasun': /^\d{1,25}$/,
+  'x-link': /^\d{1,25}$/,
+  'google-link': /^[\w-]+:[\w-]{36}$/,
+  'telegram-link': /^\d{1,25}$/,
+};
+
+app.post('/onboarding-bonus', requireInternalApiKey('ONBOARDING_BONUS_API_KEY'), async (c) => {
+  if (!pointsDb) {
+    return c.json({ error: 'points_not_configured' }, 503);
+  }
+
+  const body = await c.req.json<{
+    identityId?: string;
+    walletAddress?: string;
+    kind?: string;
+    externalId?: string;
+  }>();
+
+  if (!body.identityId || !IDENTITY_ID_PATTERN.test(body.identityId)) {
+    return c.json({ error: 'Invalid identityId' }, 400);
+  }
+  if (!body.kind || !(body.kind in ONBOARDING_BONUS_POINTS)) {
+    return c.json({ error: 'Invalid kind' }, 400);
+  }
+  const kind = body.kind as OnboardingKind;
+  if (!body.externalId || typeof body.externalId !== 'string' ||
+      !ONBOARDING_EXTERNAL_ID_REGEX[kind].test(body.externalId)) {
+    return c.json({ error: 'Invalid externalId for kind' }, 400);
+  }
+
+  let walletAddress: string | null = null;
+  if (body.walletAddress !== undefined && body.walletAddress !== null && body.walletAddress !== '') {
+    if (typeof body.walletAddress !== 'string' || !/^0x[a-fA-F0-9]{64}$/.test(body.walletAddress)) {
+      return c.json({ error: 'Invalid walletAddress format' }, 400);
+    }
+    walletAddress = body.walletAddress.toLowerCase();
+  }
+
+  const points = ONBOARDING_BONUS_POINTS[kind];
+  const txDigest = `onboard-${kind}:${body.externalId}`;
+
+  const result = await pointsDb`
+    INSERT INTO activity_points (
+      tx_digest, tx_sequence_number, tx_timestamp,
+      wallet_address, identity_id,
+      category, activity_type,
+      base_points, volume_tier, genesis_multiplier, final_points,
+      event_seq
+    ) VALUES (
+      ${txDigest}, 0, NOW(),
+      ${walletAddress}, ${body.identityId},
+      'ecosystem-bonus-onboard', ${kind},
+      ${points}, 1.0, 1.0, ${points},
+      0
+    )
+    ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
+  `;
+
+  const created = result.count > 0;
+
+  console.log(
+    `[onboarding-bonus] decision=${created ? 'granted' : 'dup'} ` +
+    `id=${body.identityId.slice(0, 16)}... kind=${kind} points=${points}`,
+  );
+
+  return c.json({ created, txDigest, points });
+});
+
 // GET /api/v1/points/referral-eligibility-signals/:identityId
 // Internal endpoint: returns raw signals used by the referral handler Lambda
 // to decide whether the caller qualifies for a referral code. Decision policy

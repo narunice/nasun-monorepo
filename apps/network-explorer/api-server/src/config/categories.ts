@@ -26,6 +26,7 @@ export const OFFCHAIN_CATEGORIES = [
   'ecosystem-bonus-alliance-airdrop',
   'ecosystem-bonus-genesis-pass-airdrop',
   'ecosystem-bonus-feedback',
+  'ecosystem-bonus-onboard',
 ] as const;
 
 export type OffchainCategory = (typeof OFFCHAIN_CATEGORIES)[number];
