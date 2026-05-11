@@ -13,6 +13,8 @@ import { verifyAdminRole, extractIdentityIdFromAuthorizer, verifyTokenManually }
 import { generateCSV, generateFilename } from "../utils/csv.js";
 import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResponse } from "../utils/response.js";
 import { uploadAndPresign, getS3Object } from "../utils/s3-offload.js";
+import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
+import { grantIfReferralActivated } from "../utils/onboardingBonus.js";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -1853,6 +1855,71 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         reviewerIdentityId: admin.identityId,
         ts: now,
       }));
+
+      // Onboarding bonus backfill: now that the referral is ACTIVATED, grant
+      // any social bonuses the referee already earned (follow-nasun + x-link +
+      // google-link + telegram-link). PG UNIQUE dedupes against future live
+      // triggers, so this is safe to run unconditionally. Non-blocking: a grant
+      // failure must not fail the approve response.
+      if (process.env.EXPLORER_API_URL) {
+        try {
+          const profileRes = await dynamoClient.send(
+            new GetItemCommand({
+              TableName: USER_PROFILES_TABLE,
+              Key: { identityId: { S: referredId } },
+            }),
+          );
+          const item = profileRes.Item;
+          if (item) {
+            const twitterId = item.twitterId?.S;
+            const telegramUserId = item.telegramUserId?.S;
+            // For Google-as-secondary the externalId lives in linkedAccounts.google.
+            // For Google-as-primary the user IS the Google federated identity, so
+            // referredId itself is the Cognito identityId tied to that Google sub.
+            const googleSecondaryId = item.linkedAccounts?.M?.google?.M?.identityId?.S;
+            const provider = item.provider?.S?.toLowerCase();
+            const googleExternalId = googleSecondaryId
+              || (provider === "google" ? referredId : undefined);
+            const walletAddress = item.walletAddress?.S ?? null;
+
+            const docClient = DynamoDBDocumentClient.from(dynamoClient);
+            const common = {
+              ddbClient: docClient,
+              referralsTable: process.env.REFERRALS_TABLE || "nasun-referrals",
+              explorerApiUrl: process.env.EXPLORER_API_URL,
+              apiKey: process.env.ONBOARDING_BONUS_API_KEY || "",
+              identityId: referredId,
+              walletAddress,
+            };
+            const tasks: Promise<unknown>[] = [];
+            if (twitterId) {
+              tasks.push(
+                grantIfReferralActivated({ ...common, kind: "follow-nasun", externalId: twitterId }),
+                grantIfReferralActivated({ ...common, kind: "x-link", externalId: twitterId }),
+              );
+            } else {
+              console.warn("[onboarding-bonus] approve: no twitterId, skipping follow+x", { referredId });
+            }
+            if (googleExternalId) {
+              tasks.push(grantIfReferralActivated({ ...common, kind: "google-link", externalId: googleExternalId }));
+            }
+            if (telegramUserId) {
+              tasks.push(grantIfReferralActivated({ ...common, kind: "telegram-link", externalId: telegramUserId }));
+            }
+            const settled = await Promise.allSettled(tasks);
+            const rejected = settled.filter((r) => r.status === "rejected");
+            if (rejected.length > 0) {
+              console.warn("[onboarding-bonus] approve: partial backfill failures", {
+                referredId,
+                rejectedCount: rejected.length,
+              });
+            }
+          }
+        } catch (err) {
+          console.warn("[onboarding-bonus] approve backfill failed (non-fatal)", err);
+        }
+      }
+
       return jsonResponse(200, { activated: 1, identityId: referredId }, requestOrigin);
     }
 

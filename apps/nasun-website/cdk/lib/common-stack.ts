@@ -292,6 +292,10 @@ export class CommonStack extends cdk.Stack {
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         GENESIS_PASS_ALLOWLIST_TABLE: "nasun-genesis-pass-allowlist",
+        // Onboarding bonus: referral-only social-link bonuses
+        REFERRALS_TABLE: "nasun-referrals",
+        EXPLORER_API_URL: process.env.EXPLORER_API_URL || "",
+        ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || "",
       },
       timeout: cdk.Duration.seconds(10),
       logGroup: new logs.LogGroup(this, "LinkAccountLambdaLogGroup", {
@@ -304,6 +308,11 @@ export class CommonStack extends cdk.Stack {
       this, "GenesisPassAllowlistForLink", "nasun-genesis-pass-allowlist"
     );
     genesisPassAllowlistForLink.grantReadWriteData(linkAccountLambda);
+    // Read-only on nasun-referrals for onboarding bonus referral-status check
+    const nasunReferralsForLink = dynamodb.Table.fromTableName(
+      this, "NasunReferralsForLink", "nasun-referrals"
+    );
+    nasunReferralsForLink.grantReadData(linkAccountLambda);
 
     const linkAccountApi = new apigw.LambdaRestApi(this, "LinkAccountApi", {
       handler: linkAccountLambda,

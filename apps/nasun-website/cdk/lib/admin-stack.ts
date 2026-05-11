@@ -171,6 +171,9 @@ export class AdminStack extends cdk.Stack {
         INTERNAL_CACHE_BUCKET: internalCacheBucket.bucketName,
         ALLOWED_ORIGINS: allowedOrigins,
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
+        // Onboarding bonus backfill on referral approve
+        EXPLORER_API_URL: process.env.EXPLORER_API_URL || "",
+        ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || "",
       },
       bundling: {
         minify: true,
