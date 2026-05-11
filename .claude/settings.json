@@ -203,7 +203,16 @@
       "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all -p -- \"apps/nasun-website/chat-server/src/leaderboard-api.ts\")",
       "Bash(git -C /home/naru/my_apps/nasun-monorepo show 563fe1a6 -- apps/nasun-website/chat-server/src/leaderboard-api.ts)",
       "Bash(git -C /home/naru/my_apps/nasun-monorepo log --since=\"2026-04-25\" --until=\"2026-05-11\" --all --oneline)",
-      "Bash(ls apps/nasun-website/cdk/lambda-src/_shared/ && rm -f apps/nasun-website/cdk/lambda-src/_shared/*.ts && rmdir apps/nasun-website/cdk/lambda-src/_shared && echo \"removed\"; ls apps/nasun-website/cdk/lambda-src/_shared 2>&1 | head -2)"
+      "Bash(ls apps/nasun-website/cdk/lambda-src/_shared/ && rm -f apps/nasun-website/cdk/lambda-src/_shared/*.ts && rmdir apps/nasun-website/cdk/lambda-src/_shared && echo \"removed\"; ls apps/nasun-website/cdk/lambda-src/_shared 2>&1 | head -2)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'cd ~/explorer-api && git log --oneline -5; echo \"---\"; grep -E \"ONBOARDING_BONUS_API_KEY|BUG_REPORT_API_KEY\" .env 2>/dev/null | sed \"s/=.*/=<redacted>/\"')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 list 2>&1 | head -20; echo \"---\"; find ~ -maxdepth 3 -name \".env\" 2>/dev/null | head -5; echo \"---\"; find /home /opt -maxdepth 4 -name \"api-server\" -type d 2>/dev/null | head -3')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 list 2>&1 | tail -30; echo \"---NGINX EXPLORER---\"; sudo grep -rE \"explorer\\\\.nasun\\\\.io|/api/v1/points\" /etc/nginx/conf.d/ 2>&1 | head -10')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'sudo grep -E \"/api/v1/points|proxy_pass\" /etc/nginx/conf.d/explorer.conf 2>&1 | head -15')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i '~/.ssh/.awskey/nasun-prod-key' ec2-user@43.200.67.52 'cd /home/ec2-user/nasun-chat-server && sqlite3 data/leaderboard.db <<'\\\\''SQL'\\\\'' *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -E '^\\(ADMIN_WALLET_ADDRESSES|INDEXER_EXCLUDED_ADDRESSES\\)=' /home/ec2-user/nasun-chat-server/.env\")",
+      "Bash(ALLOW_PROD_DIRECT=1 bash ./scripts/deploy-nasun-chat-server-production.sh)",
+      "Bash(ALLOW_PROD_DIRECT=1 bash ./scripts/deploy-nasun-chat-server-production.sh --force)",
+      "Bash(ALLOW_PROD_DIRECT=1 bash /home/naru/my_apps/nasun-monorepo/scripts/deploy-explorer-api.sh --force)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
