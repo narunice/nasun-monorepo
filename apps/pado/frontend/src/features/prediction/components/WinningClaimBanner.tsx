@@ -34,7 +34,9 @@ const CLAIM_CHUNK_SIZE = 100;
 export function WinningClaimBanner({ market, positions, onSettled }: WinningClaimBannerProps) {
   const { settlePositionsBatch } = usePredictionTrade();
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
-  const [isClaiming, setIsClaiming] = useState(false);
+  // 'claiming' = chunks in flight; 'syncing' = waiting for owned-object indexer
+  // to catch up (~5-8s lag) before re-enabling the button.
+  const [claimPhase, setClaimPhase] = useState<'idle' | 'claiming' | 'syncing'>('idle');
 
   const { winningShares, settleable } = useMemo(() => {
     if (market.status !== 'resolved' || market.outcome === undefined) {
@@ -52,8 +54,8 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
   }, [positions, market.status, market.outcome]);
 
   const handleClaimAll = useCallback(async () => {
-    if (settleable.length === 0 || isClaiming) return;
-    setIsClaiming(true);
+    if (settleable.length === 0 || claimPhase !== 'idle') return;
+    setClaimPhase('claiming');
     setProgress({ done: 0, total: settleable.length });
     const startedAt = Date.now();
     let done = 0;
@@ -65,9 +67,8 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
         `[claim-all] chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(settleable.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
       );
       if (!result.success) {
-        // settlePositionsBatch surfaces its own toast. Stop and let the user
-        // retry: positions cache is invalidated by the hook, so the next click
-        // will recompute over the remaining on-chain Positions.
+        // settlePositionsBatch already showed an error toast. Enter syncing
+        // phase so the button stays disabled while the indexer catches up.
         break;
       }
       done += chunk.length;
@@ -75,9 +76,15 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
       onSettled?.();
     }
     console.info(`[claim-all] total settled=${done}/${settleable.length} elapsed=${Date.now() - startedAt}ms`);
-    setIsClaiming(false);
+
+    // Gate the button for 8s while the owned-object indexer catches up (5-8s
+    // typical lag). Without this, a refetch still showing settled positions as
+    // "remaining" would let the user immediately re-click and get ObjectDeleted.
     setProgress(null);
-  }, [settleable, isClaiming, market.id, settlePositionsBatch, onSettled]);
+    setClaimPhase('syncing');
+    onSettled?.();
+    setTimeout(() => setClaimPhase('idle'), 8_000);
+  }, [settleable, claimPhase, market.id, settlePositionsBatch, onSettled]);
 
   if (settleable.length === 0) return null;
 
@@ -85,10 +92,14 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
   const payout = Number(winningShares) / Math.pow(10, NUSDC_DECIMALS);
   const outcomeLabel = market.outcome ? 'YES' : 'NO';
   const showClaimAll = settleable.length >= 2;
+  const isBusy = claimPhase !== 'idle';
 
-  const buttonLabel = isClaiming && progress
-    ? `Settling ${progress.done} / ${progress.total}…`
-    : `Claim All (${settleable.length} position${settleable.length === 1 ? '' : 's'})`;
+  const buttonLabel =
+    claimPhase === 'syncing'
+      ? 'Syncing...'
+      : progress
+        ? `Settling ${progress.done} / ${progress.total}…`
+        : `Claim All (${settleable.length} position${settleable.length === 1 ? '' : 's'})`;
 
   return (
     <div
@@ -172,7 +183,7 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
               <button
                 type="button"
                 onClick={handleClaimAll}
-                disabled={isClaiming}
+                disabled={isBusy}
                 className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-white disabled:opacity-60 ${
                   hasWinnings ? 'bg-green-600 hover:bg-green-500' : 'bg-pd1 hover:bg-pd1/80'
                 }`}
