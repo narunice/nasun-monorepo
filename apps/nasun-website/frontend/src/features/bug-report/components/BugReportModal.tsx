@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useBugReport, uploadScreenshot } from '../hooks/useBugReport';
-import { BUG_CATEGORIES } from '../types';
+import { BUG_CATEGORIES, BUG_APPS } from '../types';
 import { useUserStore } from '../../../store/userStore';
 import { toast } from 'react-toastify';
 
@@ -16,6 +16,7 @@ const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 
 export default function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
   const [title, setTitle] = useState('');
+  const [app, setApp] = useState<string>('nasun');
   const [category, setCategory] = useState('Other');
   const [description, setDescription] = useState('');
   const [reproSteps, setReproSteps] = useState('');
@@ -27,6 +28,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
 
   const resetForm = () => {
     setTitle('');
+    setApp('nasun');
     setCategory('Other');
     setDescription('');
     setReproSteps('');
@@ -107,6 +109,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
       mutate(
         {
           title: title.trim(),
+          app,
           category,
           description: description.trim(),
           reproSteps: reproSteps.trim() || undefined,
@@ -160,6 +163,20 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-white/30 focus:outline-none focus:border-nasun-c4/50"
               />
               <span className="text-xs text-white/40">{title.length}/100</span>
+            </div>
+
+            {/* App */}
+            <div>
+              <label className="block text-sm text-white/60 mb-1">App *</label>
+              <select
+                value={app}
+                onChange={(e) => setApp(e.target.value)}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-nasun-c4/50"
+              >
+                {BUG_APPS.map((a) => (
+                  <option key={a} value={a} className="bg-nasun-black">{a}</option>
+                ))}
+              </select>
             </div>
 
             {/* Category */}
