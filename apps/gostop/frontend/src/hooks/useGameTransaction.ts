@@ -125,7 +125,7 @@ export function useGameTransaction() {
 
           // Wait for checkpoint if requested (30s timeout to avoid infinite hang on devnet lag)
           if (options.awaitFullnode !== false) {
-            await client.waitForTransaction({ digest: result.digest, timeout: 30_000 });
+            await client.waitForTransaction({ digest: result.digest, timeout: 12_000 });
           }
           
           return result;
