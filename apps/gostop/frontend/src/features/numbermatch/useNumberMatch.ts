@@ -45,7 +45,10 @@ export function useNumberMatch(): UseNumberMatchResult {
           amount: totalCost,
           onSuccess: (txResult) => {
             const ev = (txResult.events ?? []).find((e: any) => e.type === NM_PLAYED_EVENT_TYPE)
-            if (!ev) return
+            if (!ev) {
+              setError('Transaction confirmed but game result was not returned. Check your history for the outcome.')
+              return
+            }
             const pj = ev.parsedJson as {
               game_id: string | number
               picks: number[]

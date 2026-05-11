@@ -8,6 +8,7 @@
  */
 
 import type { SuiEvent, EventId } from '@mysten/sui/client'
+export type { EventId }
 import { getSuiClient } from '../../../lib/sui-client'
 import {
   SCRATCH_PURCHASED_EVENT_TYPE,
@@ -32,7 +33,9 @@ import type {
 
 // === Constants ===
 
-const MAX_PAGES = 20
+// Initial fetch covers the most recent ~200 events. Older history is loaded
+// on demand via cursor-based "Load older history" pagination.
+const INITIAL_MAX_PAGES = 4
 const PAGE_SIZE = 50
 
 // === Sender event fetcher ===
@@ -51,21 +54,27 @@ interface RawEvents {
   lottery: SuiEvent[]
   mines: SuiEvent[]
   isTruncated: boolean
+  nextCursor: EventId | null
 }
 
-async function fetchUserGameEvents(address: string): Promise<RawEvents> {
+async function fetchUserGameEvents(
+  address: string,
+  opts: { startCursor?: EventId | null; maxPages?: number } = {},
+): Promise<RawEvents> {
   const client = getSuiClient()
+  const maxPages = opts.maxPages ?? INITIAL_MAX_PAGES
   const out: RawEvents = {
     scratch: [],
     numbermatch: [],
     lottery: [],
     mines: [],
     isTruncated: false,
+    nextCursor: null,
   }
-  let cursor: EventId | null = null
+  let cursor: EventId | null = opts.startCursor ?? null
   let exhausted = false
 
-  for (let page = 0; page < MAX_PAGES; page++) {
+  for (let page = 0; page < maxPages; page++) {
     const result = await client.queryEvents({
       query: { Sender: address },
       limit: PAGE_SIZE,
@@ -93,6 +102,7 @@ async function fetchUserGameEvents(address: string): Promise<RawEvents> {
   }
 
   out.isTruncated = !exhausted
+  out.nextCursor = exhausted ? null : cursor
   return out
 }
 
@@ -371,15 +381,11 @@ export interface GameHistoryData {
   activities: GameActivity[]
   isTruncated: boolean
   crashBackendError: boolean
+  /** Cursor for the next page of on-chain events. Null means fully loaded. */
+  nextCursor: EventId | null
 }
 
-export async function fetchAllGameHistory(address: string): Promise<GameHistoryData> {
-  // Crash and the on-chain event scan are independent — fetch in parallel.
-  const [raw, crashOutcome] = await Promise.all([
-    fetchUserGameEvents(address),
-    fetchCrashHistoryFromBackend(address),
-  ])
-
+async function mapRawEvents(raw: RawEvents): Promise<GameActivity[]> {
   const scratchItems = raw.scratch
     .map(mapScratch)
     .filter((x): x is GameActivity => x !== null)
@@ -397,15 +403,37 @@ export async function fetchAllGameHistory(address: string): Promise<GameHistoryD
   const rounds = await fetchRoundsByIds(roundIds)
   const lotteryItems = resolveTicketResults(tickets, rounds)
 
+  return [...scratchItems, ...nmItems, ...minesItems, ...lotteryItems]
+}
+
+export async function fetchAllGameHistory(address: string): Promise<GameHistoryData> {
+  // Crash and the on-chain event scan are independent — fetch in parallel.
+  const [raw, crashOutcome] = await Promise.all([
+    fetchUserGameEvents(address),
+    fetchCrashHistoryFromBackend(address),
+  ])
+
+  const onChainItems = await mapRawEvents(raw)
+
   return {
-    activities: [
-      ...scratchItems,
-      ...nmItems,
-      ...minesItems,
-      ...crashOutcome.items,
-      ...lotteryItems,
-    ].sort((a, b) => b.timestampMs - a.timestampMs),
+    activities: [...onChainItems, ...crashOutcome.items].sort(
+      (a, b) => b.timestampMs - a.timestampMs,
+    ),
     isTruncated: raw.isTruncated,
     crashBackendError: crashOutcome.backendError,
+    nextCursor: raw.nextCursor,
+  }
+}
+
+/** Load additional on-chain history pages starting from the given cursor. */
+export async function fetchMoreOnChainHistory(
+  address: string,
+  cursor: EventId,
+): Promise<{ activities: GameActivity[]; nextCursor: EventId | null }> {
+  const raw = await fetchUserGameEvents(address, { startCursor: cursor })
+  const activities = await mapRawEvents(raw)
+  return {
+    activities: activities.sort((a, b) => b.timestampMs - a.timestampMs),
+    nextCursor: raw.nextCursor,
   }
 }
