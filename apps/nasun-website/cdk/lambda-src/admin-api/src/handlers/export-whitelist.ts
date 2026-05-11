@@ -40,6 +40,15 @@ let cachedUsers: UserProfileItem[] | null = null;
 let lastCacheUpdate = 0;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes in-memory
 
+// Referral review list cache (warm-container, per-status).
+// 10s TTL keeps the admin UI responsive across tab switches without
+// hammering DDB Scan on every refresh.
+const REFERRAL_REVIEW_CACHE_TTL_MS = 10_000;
+const referralReviewCache = new Map<string, { ts: number; payload: any }>();
+function invalidateReferralReviewCache() {
+  referralReviewCache.clear();
+}
+
 interface GenesisWhitelistItem {
   walletAddress: string;
   joinedAt: string;
@@ -1717,59 +1726,53 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     // ==================== Admin: Referral Review ====================
-    // GET /admin/referral-review?cursor=<base64>&limit=<n>
-    // Returns PENDING referrals with referee + referrer twitterHandle for manual review.
+    // GET /admin/referral-review?status=pending|appealed|declined
+    // Returns the full filtered list, sorted ASC by the status-relevant
+    // timestamp (appliedAt for PENDING, appealedAt for APPEALED, reviewedAt
+    // for DECLINED), with stable serial numbers (1..N) for the admin UI.
+    // Lambda warm-container in-memory cache (10s) absorbs tab-switch bursts.
     if (path.endsWith("/admin/referral-review") && event.httpMethod === "GET") {
-      const cursorParam = queryParams.cursor as string | undefined;
-      let limit = parseInt(queryParams.limit || "20", 10);
-      if (!Number.isFinite(limit) || limit <= 0) limit = 20;
-      if (limit > 100) limit = 100;
+      const statusRaw = (queryParams.status as string | undefined)?.toUpperCase() || "PENDING";
+      if (!["PENDING", "APPEALED", "DECLINED"].includes(statusRaw)) {
+        return errorResponse(400, "Invalid status", requestOrigin);
+      }
+      const status = statusRaw as "PENDING" | "APPEALED" | "DECLINED";
 
-      let exclusiveStartKey: Record<string, any> | undefined;
-      if (cursorParam) {
-        try {
-          const parsed = JSON.parse(Buffer.from(cursorParam, "base64").toString("utf-8"));
-          if (parsed?.v !== 1 || typeof parsed.key !== "object") {
-            return errorResponse(400, "Invalid cursor", requestOrigin);
-          }
-          exclusiveStartKey = parsed.key;
-        } catch {
-          return errorResponse(400, "Invalid cursor", requestOrigin);
-        }
+      const cached = referralReviewCache.get(status);
+      if (cached && Date.now() - cached.ts < REFERRAL_REVIEW_CACHE_TTL_MS) {
+        return jsonResponse(200, cached.payload, requestOrigin);
       }
 
-      // No `Limit` cap on the underlying Scan: Limit applies to *raw* rows
-      // before FilterExpression, so a `Limit: limit*4` slice could leave
-      // PENDING rows stranded (LastEvaluatedKey advances past them and
-      // subsequent pages never see them). Loop until we have `limit` matches
-      // or DDB exhausts the table. Devnet PENDING count is bounded by
-      // MAX_REFERRALS_PER_USER (100) per referrer, so total stays in the
-      // hundreds — single Scan pass typically suffices.
+      // Loop Scan until DDB is exhausted (FilterExpression doesn't pre-limit).
+      // Total PENDING is bounded by MAX_REFERRALS_PER_USER * active referrers,
+      // staying in the hundreds, fits in a single warm Lambda call.
       const rawItems: Array<Record<string, any>> = [];
-      let scanCursor: Record<string, any> | undefined = exclusiveStartKey;
-      let lastReturnedCursor: Record<string, any> | undefined;
+      let scanCursor: Record<string, any> | undefined = undefined;
       do {
-        const r = await dynamoClient.send(
+        const r: any = await dynamoClient.send(
           new ScanCommand({
             TableName: REFERRALS_TABLE,
-            FilterExpression: "#s = :pending",
+            FilterExpression: "#s = :st",
             ExpressionAttributeNames: { "#s": "status" },
-            ExpressionAttributeValues: { ":pending": { S: "PENDING" } },
+            ExpressionAttributeValues: { ":st": { S: status } },
             ...(scanCursor && { ExclusiveStartKey: scanCursor }),
           })
         );
-        for (const it of r.Items || []) {
-          if (rawItems.length >= limit) break;
-          rawItems.push(it);
-        }
-        lastReturnedCursor = r.LastEvaluatedKey;
+        for (const it of r.Items || []) rawItems.push(it);
         scanCursor = r.LastEvaluatedKey;
-      } while (rawItems.length < limit && scanCursor);
-      const scanResult = { LastEvaluatedKey: lastReturnedCursor };
+      } while (scanCursor);
+
+      // Sort ASC by the status-relevant timestamp, oldest first → serial 1.
+      const sortField = status === "APPEALED" ? "appealedAt" : status === "DECLINED" ? "reviewedAt" : "appliedAt";
+      rawItems.sort((a, b) => {
+        const ta = Date.parse(a[sortField]?.S || a.appliedAt?.S || "") || 0;
+        const tb = Date.parse(b[sortField]?.S || b.appliedAt?.S || "") || 0;
+        return ta - tb;
+      });
+
       const refereeIds = rawItems.map((i) => i.referredIdentityId?.S).filter(Boolean) as string[];
       const referrerIds = [...new Set(rawItems.map((i) => i.referrerIdentityId?.S).filter(Boolean))] as string[];
 
-      // Parallel UserProfiles lookups for both sides (max 2*limit calls, limit<=100)
       const profileMap = new Map<string, { twitterHandle?: string; twitterId?: string }>();
       await Promise.all(
         [...new Set([...refereeIds, ...referrerIds])].map(async (id) => {
@@ -1793,12 +1796,13 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         })
       );
 
-      const items = rawItems.map((it) => {
+      const items = rawItems.map((it, idx) => {
         const refId = it.referredIdentityId?.S || "";
         const rerId = it.referrerIdentityId?.S || "";
         const refProfile = profileMap.get(refId) || {};
         const rerProfile = profileMap.get(rerId) || {};
         return {
+          serial: idx + 1,
           referredIdentityId: refId,
           referrerIdentityId: rerId,
           twitterHandle: refProfile.twitterHandle || null,
@@ -1806,14 +1810,18 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           referrerHandle: rerProfile.twitterHandle || null,
           referralCode: it.referralCode?.S || null,
           appliedAt: it.appliedAt?.S || null,
+          reviewedAt: it.reviewedAt?.S || null,
+          reviewerNote: it.reviewerNote?.S || null,
+          appealedAt: it.appealedAt?.S || null,
+          appealText: it.appealText?.S || null,
+          appealResolution: it.appealResolution?.S || null,
+          appealResolvedAt: it.appealResolvedAt?.S || null,
         };
       });
 
-      const nextCursor = scanResult.LastEvaluatedKey
-        ? Buffer.from(JSON.stringify({ v: 1, key: scanResult.LastEvaluatedKey })).toString("base64")
-        : null;
-
-      return jsonResponse(200, { items, nextCursor }, requestOrigin);
+      const payload = { items, total: items.length, status };
+      referralReviewCache.set(status, { ts: Date.now(), payload });
+      return jsonResponse(200, payload, requestOrigin);
     }
 
     // POST /admin/referral-review/approve  body: { identityId }
@@ -1920,41 +1928,42 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         }
       }
 
+      invalidateReferralReviewCache();
       return jsonResponse(200, { activated: 1, identityId: referredId }, requestOrigin);
     }
 
     // POST /admin/referral-review/decline  body: { identityId, reviewerNote }
+    // Persists DECLINED status (no longer deletes the row) so the user can
+    // see the reviewer's reason and submit an appeal. reviewerNote is now
+    // user-facing, so admins are expected to be professional.
     if (path.endsWith("/admin/referral-review/decline") && event.httpMethod === "POST") {
       const body = event.body ? JSON.parse(event.body) : {};
       const referredId = body.identityId as string | undefined;
-      const reviewerNote = (body.reviewerNote as string | undefined) || "";
+      const reviewerNote = (body.reviewerNote as string | undefined || "").trim();
       if (!referredId || typeof referredId !== "string") {
         return errorResponse(400, "identityId is required", requestOrigin);
       }
-
-      // Look up referrer first (for audit log) before deleting.
-      const existing = await dynamoClient.send(
-        new GetItemCommand({
-          TableName: REFERRALS_TABLE,
-          Key: { referredIdentityId: { S: referredId } },
-          ProjectionExpression: "referrerIdentityId, referralCode, #s",
-          ExpressionAttributeNames: { "#s": "status" },
-        })
-      );
-
-      if (!existing.Item || existing.Item.status?.S !== "PENDING") {
-        return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+      if (reviewerNote.length < 10 || reviewerNote.length > 500) {
+        return errorResponse(400, "reviewerNote must be 10-500 characters", requestOrigin);
       }
 
       const now = new Date().toISOString();
       try {
         await dynamoClient.send(
-          new DeleteItemCommand({
+          new UpdateItemCommand({
             TableName: REFERRALS_TABLE,
             Key: { referredIdentityId: { S: referredId } },
+            UpdateExpression:
+              "SET #s = :declined, reviewedAt = :now, reviewerIdentityId = :admin, reviewerNote = :note",
             ConditionExpression: "attribute_exists(referredIdentityId) AND #s = :pending",
             ExpressionAttributeNames: { "#s": "status" },
-            ExpressionAttributeValues: { ":pending": { S: "PENDING" } },
+            ExpressionAttributeValues: {
+              ":declined": { S: "DECLINED" },
+              ":pending": { S: "PENDING" },
+              ":now": { S: now },
+              ":admin": { S: admin.identityId },
+              ":note": { S: reviewerNote },
+            },
           })
         );
       } catch (err: any) {
@@ -1964,7 +1973,8 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         throw err;
       }
 
-      // Set 30-day cooldown tombstone on the declined user.
+      // Set 30-day cooldown tombstone on the declined user (compat with
+      // existing referral apply handler's lastReferralDeclinedAt check).
       try {
         await dynamoClient.send(
           new UpdateItemCommand({
@@ -1975,20 +1985,164 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           })
         );
       } catch (err: any) {
-        // Non-fatal: row delete already succeeded; cooldown is best-effort.
         console.error("[referral-review] Failed to set cooldown tombstone:", err.message);
       }
 
       console.log(JSON.stringify({
         event: "referral_declined",
         referredIdentityId: referredId,
-        referrerIdentityId: existing.Item.referrerIdentityId?.S || null,
-        referralCode: existing.Item.referralCode?.S || null,
         reviewerNote,
         reviewerIdentityId: admin.identityId,
         ts: now,
       }));
+      invalidateReferralReviewCache();
       return jsonResponse(200, { declined: 1, identityId: referredId }, requestOrigin);
+    }
+
+    // POST /admin/referral-review/resolve-appeal
+    // body: { identityId, action: "reverse" | "reconfirm", resolverNote? }
+    // Only operates on APPEALED rows. "reverse" activates the referral and
+    // triggers the same onboarding bonus backfill as the normal approve path.
+    // "reconfirm" keeps DECLINED but records that the appeal was rejected.
+    if (path.endsWith("/admin/referral-review/resolve-appeal") && event.httpMethod === "POST") {
+      const body = event.body ? JSON.parse(event.body) : {};
+      const referredId = body.identityId as string | undefined;
+      const action = body.action as string | undefined;
+      const resolverNote = ((body.resolverNote as string | undefined) || "").trim();
+      if (!referredId || typeof referredId !== "string") {
+        return errorResponse(400, "identityId is required", requestOrigin);
+      }
+      if (action !== "reverse" && action !== "reconfirm") {
+        return errorResponse(400, "action must be 'reverse' or 'reconfirm'", requestOrigin);
+      }
+      if (resolverNote.length > 500) {
+        return errorResponse(400, "resolverNote must be <= 500 characters", requestOrigin);
+      }
+
+      const now = new Date().toISOString();
+      if (action === "reverse") {
+        try {
+          await dynamoClient.send(
+            new UpdateItemCommand({
+              TableName: REFERRALS_TABLE,
+              Key: { referredIdentityId: { S: referredId } },
+              UpdateExpression:
+                "SET #s = :activated, activatedAt = :now, appealResolution = :res, appealResolvedAt = :now, appealResolverIdentityId = :admin"
+                + (resolverNote ? ", appealResolverNote = :note" : ""),
+              ConditionExpression: "attribute_exists(referredIdentityId) AND #s = :appealed",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: {
+                ":activated": { S: "ACTIVATED" },
+                ":appealed": { S: "APPEALED" },
+                ":now": { S: now },
+                ":res": { S: "reversed" },
+                ":admin": { S: admin.identityId },
+                ...(resolverNote && { ":note": { S: resolverNote } }),
+              },
+            })
+          );
+        } catch (err: any) {
+          if (err.name === "ConditionalCheckFailedException") {
+            return errorResponse(409, "Referral is not in APPEALED state", requestOrigin);
+          }
+          throw err;
+        }
+
+        // Onboarding bonus backfill (mirrors the approve path).
+        if (process.env.EXPLORER_API_URL) {
+          try {
+            const profileRes = await dynamoClient.send(
+              new GetItemCommand({
+                TableName: USER_PROFILES_TABLE,
+                Key: { identityId: { S: referredId } },
+              }),
+            );
+            const item = profileRes.Item;
+            if (item) {
+              const twitterId = item.twitterId?.S;
+              const telegramUserId = item.telegramUserId?.S;
+              const googleSecondaryId = item.linkedAccounts?.M?.google?.M?.identityId?.S;
+              const provider = item.provider?.S?.toLowerCase();
+              const googleExternalId = googleSecondaryId
+                || (provider === "google" ? referredId : undefined);
+              const walletAddress = item.walletAddress?.S ?? null;
+
+              const docClient = DynamoDBDocumentClient.from(dynamoClient);
+              const common = {
+                ddbClient: docClient,
+                referralsTable: process.env.REFERRALS_TABLE || "nasun-referrals",
+                explorerApiUrl: process.env.EXPLORER_API_URL,
+                apiKey: process.env.ONBOARDING_BONUS_API_KEY || "",
+                identityId: referredId,
+                walletAddress,
+              };
+              const tasks: Promise<unknown>[] = [];
+              if (twitterId) {
+                tasks.push(
+                  grantIfReferralActivated({ ...common, kind: "follow-nasun", externalId: twitterId }),
+                  grantIfReferralActivated({ ...common, kind: "x-link", externalId: twitterId }),
+                );
+              }
+              if (googleExternalId) {
+                tasks.push(grantIfReferralActivated({ ...common, kind: "google-link", externalId: googleExternalId }));
+              }
+              if (telegramUserId) {
+                tasks.push(grantIfReferralActivated({ ...common, kind: "telegram-link", externalId: telegramUserId }));
+              }
+              await Promise.allSettled(tasks);
+            }
+          } catch (err) {
+            console.warn("[onboarding-bonus] reverse backfill failed (non-fatal)", err);
+          }
+        }
+
+        console.log(JSON.stringify({
+          event: "referral_appeal_reversed",
+          referredIdentityId: referredId,
+          resolverNote,
+          reviewerIdentityId: admin.identityId,
+          ts: now,
+        }));
+      } else {
+        // reconfirm: keep DECLINED, record resolution metadata
+        try {
+          await dynamoClient.send(
+            new UpdateItemCommand({
+              TableName: REFERRALS_TABLE,
+              Key: { referredIdentityId: { S: referredId } },
+              UpdateExpression:
+                "SET #s = :declined, appealResolution = :res, appealResolvedAt = :now, appealResolverIdentityId = :admin"
+                + (resolverNote ? ", appealResolverNote = :note" : ""),
+              ConditionExpression: "attribute_exists(referredIdentityId) AND #s = :appealed",
+              ExpressionAttributeNames: { "#s": "status" },
+              ExpressionAttributeValues: {
+                ":declined": { S: "DECLINED" },
+                ":appealed": { S: "APPEALED" },
+                ":now": { S: now },
+                ":res": { S: "reconfirmed" },
+                ":admin": { S: admin.identityId },
+                ...(resolverNote && { ":note": { S: resolverNote } }),
+              },
+            })
+          );
+        } catch (err: any) {
+          if (err.name === "ConditionalCheckFailedException") {
+            return errorResponse(409, "Referral is not in APPEALED state", requestOrigin);
+          }
+          throw err;
+        }
+
+        console.log(JSON.stringify({
+          event: "referral_appeal_reconfirmed",
+          referredIdentityId: referredId,
+          resolverNote,
+          reviewerIdentityId: admin.identityId,
+          ts: now,
+        }));
+      }
+
+      invalidateReferralReviewCache();
+      return jsonResponse(200, { resolved: 1, action, identityId: referredId }, requestOrigin);
     }
 
     return errorResponse(404, "Not found", requestOrigin);
