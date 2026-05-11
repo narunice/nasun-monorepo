@@ -400,9 +400,6 @@ importers:
 
   apps/gostop/frontend:
     dependencies:
-      '@marsidev/react-turnstile':
-        specifier: ^1.5.0
-        version: 1.5.0(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
