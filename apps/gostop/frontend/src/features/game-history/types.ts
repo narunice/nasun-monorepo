@@ -4,6 +4,24 @@
 
 export type GameType = 'scratch' | 'numbermatch' | 'lottery' | 'mines' | 'crash'
 
+export type HistoryWindow = '7d' | '2w' | '4w' | '3m'
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export const HISTORY_WINDOW_MS: Record<HistoryWindow, number> = {
+  '7d': 7 * DAY_MS,
+  '2w': 14 * DAY_MS,
+  '4w': 28 * DAY_MS,
+  '3m': 90 * DAY_MS,
+}
+
+export const HISTORY_WINDOW_LABEL: Record<HistoryWindow, string> = {
+  '7d': '7 days',
+  '2w': '2 weeks',
+  '4w': '4 weeks',
+  '3m': '3 months',
+}
+
 export type ActivityResult = 'win' | 'loss' | 'pending'
 
 export type ActivitySource =
@@ -48,8 +66,12 @@ export interface GameSummary {
   winCount: number
   /** 0–100. Denominator excludes pending. */
   winRate: number
-  /** True when sender-event pagination cap was hit. */
+  /** True only when the safety-cap on sender-event pagination was hit before
+   *  reaching the requested window's cutoff. Normal in-window completion
+   *  leaves this false. */
   isTruncated: boolean
+  /** The window that produced this summary, surfaced for UI labels. */
+  window: HistoryWindow
   /** True when the crash history backend was unreachable. */
   crashBackendError?: boolean
 }

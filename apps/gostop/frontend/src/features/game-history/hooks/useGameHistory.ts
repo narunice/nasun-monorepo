@@ -1,19 +1,21 @@
 /**
- * useGameHistory — single sender-event fetch + filter + summary computation.
+ * useGameHistory — window-bounded fetch + filter + summary computation.
  *
- * staleTime 5min keeps RPC traffic low; tx-success sites in each game page
- * call useInvalidateGameHistory() to break stale-cache so newly played
- * games appear without forcing the user to refresh.
+ * Default window is 7d; the page surfaces a selector for 2w / 4w / 3m for
+ * users who want to look further back. RPC paging terminates at the window
+ * cutoff, so widening the window is the only operation that costs more
+ * calls. tx-success sites call useInvalidateGameHistory() to break stale-
+ * cache so newly played games appear without forcing the user to refresh.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useActiveAddress } from '../../../hooks/useActiveAddress'
-import { fetchAllGameHistory, fetchMoreOnChainHistory } from '../lib/game-client'
-import type { EventId } from '../lib/game-client'
-import type { GameType, GameActivity, GameSummary } from '../types'
+import { fetchAllGameHistory } from '../lib/game-client'
+import type { GameType, GameActivity, GameSummary, HistoryWindow } from '../types'
+import { HISTORY_WINDOW_MS } from '../types'
 
-const EMPTY_SUMMARY: GameSummary = {
+const EMPTY_SUMMARY = (window: HistoryWindow): GameSummary => ({
   totalSpent: 0n,
   totalPayouts: 0n,
   netPnl: 0n,
@@ -22,7 +24,8 @@ const EMPTY_SUMMARY: GameSummary = {
   winCount: 0,
   winRate: 0,
   isTruncated: false,
-}
+  window,
+})
 
 export interface UseGameHistoryResult {
   activities: GameActivity[]
@@ -32,51 +35,27 @@ export interface UseGameHistoryResult {
   isLoading: boolean
   error: string | null
   refetch: () => void
-  /** True if older on-chain events are available to load. */
-  canLoadMore: boolean
-  /** Load the next batch of older on-chain events. */
-  loadMore: () => void
-  isLoadingMore: boolean
 }
 
-export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistoryResult {
+export function useGameHistory(
+  filter: GameType | 'all' = 'all',
+  window: HistoryWindow = '7d',
+): UseGameHistoryResult {
   const address = useActiveAddress()
-  const [extraActivities, setExtraActivities] = useState<GameActivity[]>([])
-  const [nextCursor, setNextCursor] = useState<EventId | null>(null)
-  const [isLoadingMore, setIsLoadingMore] = useState(false)
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['game-history', address],
-    queryFn: () => fetchAllGameHistory(address!),
+    queryKey: ['game-history', address, window],
+    // cutoffMs is computed inside queryFn so cache freshness controls
+    // its own time horizon; React Query staleTime suppresses re-fetch
+    // within the window.
+    queryFn: () => fetchAllGameHistory(address!, Date.now() - HISTORY_WINDOW_MS[window]),
     enabled: !!address,
     staleTime: 5 * 60 * 1000,
     gcTime: 30 * 60 * 1000,
     refetchOnWindowFocus: false,
   })
 
-  // Reset extra pages when base data changes (e.g. after refetch)
-  useEffect(() => {
-    setNextCursor(data?.nextCursor ?? null)
-    setExtraActivities([])
-  }, [data])
-
-  const all = useMemo(() => {
-    const base = data?.activities ?? []
-    if (extraActivities.length === 0) return base
-    return [...base, ...extraActivities].sort((a, b) => b.timestampMs - a.timestampMs)
-  }, [data, extraActivities])
-
-  const loadMore = useCallback(() => {
-    if (!address || !nextCursor || isLoadingMore) return
-    setIsLoadingMore(true)
-    fetchMoreOnChainHistory(address, nextCursor)
-      .then(({ activities, nextCursor: newCursor }) => {
-        setExtraActivities((prev) => [...prev, ...activities])
-        setNextCursor(newCursor)
-      })
-      .catch((e) => console.error('[useGameHistory] loadMore failed', e))
-      .finally(() => setIsLoadingMore(false))
-  }, [address, nextCursor, isLoadingMore])
+  const all = data?.activities ?? []
 
   const filtered = useMemo(
     () => (filter === 'all' ? all : all.filter((a) => a.gameType === filter)),
@@ -89,7 +68,7 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
   )
 
   const summary = useMemo<GameSummary>(() => {
-    if (all.length === 0) return EMPTY_SUMMARY
+    if (all.length === 0) return EMPTY_SUMMARY(window)
 
     const nonPending = all.filter((a) => a.result !== 'pending')
     const pending = all.filter((a) => a.result === 'pending')
@@ -112,8 +91,9 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
         totalResolved > 0 ? Math.round((winCount / totalResolved) * 10000) / 100 : 0,
       isTruncated: data?.isTruncated ?? false,
       crashBackendError: data?.crashBackendError,
+      window,
     }
-  }, [all, data])
+  }, [all, data, window])
 
   return {
     activities: filtered,
@@ -124,8 +104,5 @@ export function useGameHistory(filter: GameType | 'all' = 'all'): UseGameHistory
     refetch: () => {
       void refetch()
     },
-    canLoadMore: !!nextCursor && !isLoading,
-    loadMore,
-    isLoadingMore,
   }
 }

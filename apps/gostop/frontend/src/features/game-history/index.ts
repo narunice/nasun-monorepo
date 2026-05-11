@@ -10,4 +10,6 @@ export type {
   GameType,
   ActivityResult,
   ActivitySource,
+  HistoryWindow,
 } from './types'
+export { HISTORY_WINDOW_MS, HISTORY_WINDOW_LABEL } from './types'

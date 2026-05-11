@@ -5,6 +5,7 @@
 
 import { formatNusdc } from '../../../lib/format'
 import type { GameSummary } from '../types'
+import { HISTORY_WINDOW_LABEL } from '../types'
 
 interface Props {
   summary: GameSummary
@@ -40,14 +41,23 @@ export function GameSummaryCards({ summary, isLoading }: Props) {
         ? 'text-crimson-500'
         : 'text-gold-100'
   const netPnlPrefix = summary.netPnl > 0n ? '+' : ''
+  const windowLabel = HISTORY_WINDOW_LABEL[summary.window]
 
   return (
     <section className="space-y-3">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4">
-        <Card label="Total Spent" value={formatNusdc(summary.totalSpent)} valueClass="text-gold-100" />
-        <Card label="Total Payouts" value={formatNusdc(summary.totalPayouts)} valueClass="text-gold-100" />
         <Card
-          label="Net P&L"
+          label={`Total Spent (${windowLabel})`}
+          value={formatNusdc(summary.totalSpent)}
+          valueClass="text-gold-100"
+        />
+        <Card
+          label={`Total Payouts (${windowLabel})`}
+          value={formatNusdc(summary.totalPayouts)}
+          valueClass="text-gold-100"
+        />
+        <Card
+          label={`Net P&L (${windowLabel})`}
           value={`${netPnlPrefix}${formatNusdc(summary.netPnl)}`}
           valueClass={netPnlColor}
         />
@@ -65,7 +75,7 @@ export function GameSummaryCards({ summary, isLoading }: Props) {
         </span>
         {summary.isTruncated && (
           <span className="text-amber-300">
-            Showing recent history only — older games may be missing
+            Very active sender in this window — some older games in the {windowLabel} range may be missing
           </span>
         )}
         {summary.crashBackendError && (
