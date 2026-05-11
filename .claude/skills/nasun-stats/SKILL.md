@@ -249,6 +249,19 @@ DELETE FROM verified_wallets WHERE wallet_address IN (SELECT wallet_address FROM
 DELETE FROM x_wallets        WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
 DELETE FROM google_wallets   WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
 DELETE FROM telegram_wallets WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
+-- Categories excluded from DAU/new-address tracking (bonuses, passive, mission-meta, faucet/chat)
+CREATE TEMP TABLE excluded_cats (category TEXT PRIMARY KEY);
+INSERT INTO excluded_cats VALUES
+  ('faucet'),('chat'),('daily-mission'),('ecosystem-passive'),
+  ('ecosystem-bonus-restoration'),('ecosystem-bonus-earlybird'),('ecosystem-bonus-admin'),
+  ('ecosystem-bonus-game'),('ecosystem-bonus-creators-appreciation'),('ecosystem-bonus-bugreport'),
+  ('ecosystem-bonus-creator-posts'),('ecosystem-bonus-alliance-airdrop'),
+  ('ecosystem-bonus-genesis-pass-airdrop'),('ecosystem-bonus-feedback');
+CREATE TEMP TABLE game_cats (category TEXT PRIMARY KEY);
+INSERT INTO game_cats VALUES
+  ('pado-lottery'),('pado-games'),('pado-scratchcard'),
+  ('gostop-lottery'),('gostop-scratchcard'),('gostop-numbermatch'),
+  ('gostop-mines'),('gostop-crash');
 WITH
 date_series AS (
   SELECT generate_series(
@@ -258,26 +271,14 @@ date_series AS (
 onchain AS (
   SELECT wallet_address, tx_timestamp::date AS day
   FROM activity_points
-  WHERE category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE category NOT IN (SELECT category FROM excluded_cats)
   AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
 ),
 first_seen AS (
   SELECT wallet_address, MIN(tx_timestamp::date) AS first_day
   FROM activity_points
-  WHERE category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE category NOT IN (SELECT category FROM excluded_cats)
   AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY wallet_address
 ),
@@ -306,7 +307,7 @@ traders AS (
 gamers AS (
   SELECT tx_timestamp::date AS day, COUNT(DISTINCT wallet_address) AS unique_gamers
   FROM activity_points
-  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
+  WHERE category IN (SELECT category FROM game_cats)
   AND tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY 1
@@ -321,59 +322,35 @@ vtraders AS (
 vgamers AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS verified_unique_gamers
   FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
-  WHERE ap.category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
+  WHERE ap.category IN (SELECT category FROM game_cats)
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
 dau_x AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_x_social
   FROM activity_points ap JOIN x_wallets xw ON ap.wallet_address = xw.wallet_address
-  WHERE ap.category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE ap.category NOT IN (SELECT category FROM excluded_cats)
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
 dau_google AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_google_social
   FROM activity_points ap JOIN google_wallets gw ON ap.wallet_address = gw.wallet_address
-  WHERE ap.category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE ap.category NOT IN (SELECT category FROM excluded_cats)
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
 dau_telegram AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_telegram_social
   FROM activity_points ap JOIN telegram_wallets tw ON ap.wallet_address = tw.wallet_address
-  WHERE ap.category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE ap.category NOT IN (SELECT category FROM excluded_cats)
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
 dau_any AS (
   SELECT ap.tx_timestamp::date AS day, COUNT(DISTINCT ap.wallet_address) AS dau_any_social
   FROM activity_points ap JOIN verified_wallets vw ON ap.wallet_address = vw.wallet_address
-  WHERE ap.category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE ap.category NOT IN (SELECT category FROM excluded_cats)
   AND ap.tx_timestamp::date BETWEEN '$DATE_FROM'::date AND '$DATE_TO'::date
   GROUP BY 1
 ),
@@ -453,19 +430,26 @@ CREATE TEMP TABLE verified_wallets (wallet_address TEXT PRIMARY KEY);
 COPY verified_wallets (wallet_address) FROM '/tmp/nasun_wallets_any_$TS.txt';
 $BAN_SQL
 DELETE FROM verified_wallets WHERE wallet_address IN (SELECT wallet_address FROM banned_wallets);
+CREATE TEMP TABLE excluded_cats (category TEXT PRIMARY KEY);
+INSERT INTO excluded_cats VALUES
+  ('faucet'),('chat'),('daily-mission'),('ecosystem-passive'),
+  ('ecosystem-bonus-restoration'),('ecosystem-bonus-earlybird'),('ecosystem-bonus-admin'),
+  ('ecosystem-bonus-game'),('ecosystem-bonus-creators-appreciation'),('ecosystem-bonus-bugreport'),
+  ('ecosystem-bonus-creator-posts'),('ecosystem-bonus-alliance-airdrop'),
+  ('ecosystem-bonus-genesis-pass-airdrop'),('ecosystem-bonus-feedback');
+-- Game categories (pado + gostop union)
+CREATE TEMP TABLE game_cats (category TEXT PRIMARY KEY);
+INSERT INTO game_cats VALUES
+  ('pado-lottery'),('pado-games'),('pado-scratchcard'),
+  ('gostop-lottery'),('gostop-scratchcard'),('gostop-numbermatch'),
+  ('gostop-mines'),('gostop-crash');
 -- new_verified_rate for today
 SELECT 'RATE',
   COUNT(*) AS new_total,
   SUM(CASE WHEN vw.wallet_address IS NOT NULL THEN 1 ELSE 0 END) AS new_verified
 FROM (
   SELECT wallet_address FROM activity_points
-  WHERE category NOT IN (
-    'faucet','chat','daily-mission','ecosystem-passive',
-    'ecosystem-bonus-restoration','ecosystem-bonus-earlybird','ecosystem-bonus-admin',
-    'ecosystem-bonus-game','ecosystem-bonus-creators-appreciation','ecosystem-bonus-bugreport',
-    'ecosystem-bonus-creator-posts','ecosystem-bonus-alliance-airdrop',
-    'ecosystem-bonus-genesis-pass-airdrop','ecosystem-bonus-feedback'
-  )
+  WHERE category NOT IN (SELECT category FROM excluded_cats)
   AND wallet_address NOT IN (SELECT wallet_address FROM banned_wallets)
   GROUP BY wallet_address
   HAVING MIN(tx_timestamp::date) = CURRENT_DATE
@@ -511,15 +495,15 @@ LEFT JOIN dbd_cat dbd ON dbd.category = y.category AND dbd.wallet_address = y.wa
 GROUP BY y.category ORDER BY total DESC;
 -- GAMES group (union of lottery/games/scratchcard, wallet-level dedup)
 WITH yg AS (
-  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
+  SELECT DISTINCT wallet_address FROM yday_cat WHERE category IN (SELECT category FROM game_cats)
 ),
 fsg AS (
   SELECT wallet_address, MIN(tx_timestamp::date) AS first_day FROM activity_points
-  WHERE category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash') GROUP BY 1
+  WHERE category IN (SELECT category FROM game_cats) GROUP BY 1
 ),
 dbdg AS (
   SELECT DISTINCT wallet_address FROM activity_points
-  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN ('pado-lottery','pado-games','pado-scratchcard','gostop-lottery','gostop-scratchcard','gostop-numbermatch','gostop-mines','gostop-crash')
+  WHERE tx_timestamp::date = ('$YESTERDAY'::date - 1) AND category IN (SELECT category FROM game_cats)
 )
 SELECT 'GRPSTAT', 'GAMES',
   COUNT(*) AS total,
@@ -642,8 +626,8 @@ if dau_rows:
         f"Peak DAA   ({peak['date']}):         {int(peak['dau']):,}\n"
         f"Avg DAA:                             {avg_dau:,.0f}\n"
         f"Avg returning rate:                  {avg_ret:.1f}%\n"
-        f"Yesterday pado-dex  (social verified): {v_traders:,}\n"
-        f"Yesterday pado-game (social verified): {v_gamers:,}"
+        f"Yesterday DEX traders   (social verified): {v_traders:,}\n"
+        f"Yesterday game players  (social verified): {v_gamers:,}"
     )
     new_user_quality_section = (
         f"-- Yesterday New User Social Quality ({latest['date']}) --\n"
