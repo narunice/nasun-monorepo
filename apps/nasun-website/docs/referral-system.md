@@ -117,15 +117,27 @@ GSI `referrerIdentityId-index`: 초대자별 초대 목록 조회용
 
 > `REFERRAL_DAILY_BONUS_CAP = 50`은 초대자 보너스와 초대받은 사용자 보너스에 **별도 적용**됩니다. 따라서 한 사용자가 같은 날 초대자이면서 초대받은 사용자이면 두 보너스 합산 최대 100점이 가능합니다.
 
-**Ecosystem Score 반영:**
+**Ecosystem Score 반영 (개인 누적 점수):**
 
-리퍼럴 보너스는 Ecosystem Score 계산 시 **50% 비중**으로만 반영됩니다.
+리퍼럴 보너스는 사용자의 개인 누적 ecosystem points (`/score` 엔드포인트의 `allTime` /
+`weekly` / `daily`) 계산 시 **50% 비중**으로 반영됩니다. l1-bonus와 l1-referred-bonus
+양쪽 모두 포함.
 
 ```
 ecosystemScore += referralBonusTotal * REFERRAL_ECOSYSTEM_SCALING_FACTOR (기본값: 0.5)
 ```
 
 `REFERRAL_ECOSYSTEM_SCALING` 환경변수로 오버라이드 가능합니다.
+
+**리더보드 통합:**
+
+| 리더보드 | 반영 방식 |
+|---|---|
+| **나선 에코시스템 주간 리더보드** ([nasun.io/community/nasun-ecosystem-leaderboard](https://nasun.io/community/nasun-ecosystem-leaderboard)) | 추천인 보너스(`activity_type='l1-bonus'`)만 `weekly_score`에 `× 2/3`로 가산. 추천받은 사용자 보너스(`l1-referred-bonus`)는 제외 (referee 본인 활동이 이미 리더보드에 반영되므로 중복 차단). 상수: `REFERRER_BONUS_LEADERBOARD_FACTOR = 2/3` |
+| **Pado DeFi 리더보드** | 미반영 (DeepBook 거래 이벤트만 집계) |
+| **Community Leaderboard V3** | 미반영 (DynamoDB 기반 시즌별 소셜 큐레이션) |
+
+상세: [ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md](../doc/ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md#referrer-bonus-score)
 
 소스: [`apps/network-explorer/api-server/src/config/referral.ts`](../../../network-explorer/api-server/src/config/referral.ts), [`apps/network-explorer/api-server/src/scanner/referral-bonus.ts`](../../../network-explorer/api-server/src/scanner/referral-bonus.ts)
 

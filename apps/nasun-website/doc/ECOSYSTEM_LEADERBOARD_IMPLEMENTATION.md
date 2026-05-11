@@ -1,6 +1,8 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified; week boundary changed Mon 00:10 UTC → 00:00 UTC; settle-ecosystem automated via cron Mon 00:20 UTC)
+Last updated: 2026-05-11 (referrer_bonus_score added: l1-bonus rows × 2/3 contribute to weekly_score; l1-referred-bonus excluded to prevent double-counting referee activity)
+
+Earlier: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified; week boundary changed Mon 00:10 UTC → 00:00 UTC; settle-ecosystem automated via cron Mon 00:20 UTC)
 
 ## Overview
 
@@ -27,6 +29,8 @@ weekly_score = activity_score
              + bonus_score          (= bugreport+feedback / 2.0 + game / 3.0)
              + volume_bonus         (= 1.6 * LOG2(volume_count + 1))
              + staking_emission     (= SUM(final_points) WHERE category='staking-reward')
+             + referrer_bonus       (= SUM(final_points) * (2/3)
+                                       WHERE category='referral-bonus' AND activity_type='l1-bonus')
 
 activity_score =
   COUNT of DISTINCT (identity_id, day_slot, category) triples over the week
@@ -51,6 +55,9 @@ All `activity_points` rows that are:
 - Category NOT IN: `referral-bonus`, `daily-mission`, `ecosystem-passive`, `staking-daily`, `staking`, `staking-reward`
 - Category NOT LIKE: `ecosystem-bonus-%` (creator-posts/bugreport/feedback/game handled separately)
 - Category NOT LIKE: `pado-%` (pado-dex covered by Pado Leaderboard; games included via volume_bonus)
+
+`referral-bonus` is excluded from `activity_score` but partially reintroduced as the
+referrer-only `referrer_bonus` term (see below).
 
 Notable inclusions: `governance`, `wallet-transfer`, `faucet`, `baram-*`, `chat`.
 
@@ -100,6 +107,31 @@ Config: `apps/network-explorer/api-server/src/config/points.ts`
 - `STAKING_EMISSION_CUTOFF_DATE = '2026-04-21'`
 
 State table: `staking_emission_state` (`nasun_points` DB, `identity_id PK`, `last_total_mist NUMERIC`).
+
+### Referrer bonus score
+
+Rewards users for *referring* active members. Only the referrer-side row of the
+daily referral batch (`activity_type = 'l1-bonus'`) contributes; the referee's
+own `l1-referred-bonus` is excluded so referee activity is not double-counted
+(it already feeds the leaderboard via the referee's own row).
+
+```
+referrer_bonus = SUM(final_points) * REFERRER_BONUS_LEADERBOARD_FACTOR
+                 WHERE category='referral-bonus' AND activity_type='l1-bonus'
+```
+
+Config: `apps/network-explorer/api-server/src/config/referral.ts`
+- `REFERRER_BONUS_LEADERBOARD_FACTOR = 2/3` (env: `REFERRER_BONUS_LEADERBOARD_FACTOR`)
+
+The 2/3 haircut is a deliberate scaling: the referrer kicker should be able to
+move ranking but not dominate over a referrer's own diversity score. Daily cap
+on `final_points` is already enforced upstream by the daily-batch
+(`REFERRAL_DAILY_BONUS_CAP = 50` per referee per day).
+
+This is the *only* path by which referral activity affects ranking. The same
+`referral-bonus` rows also contribute to per-user cumulative ecosystem points
+via a separate `REFERRAL_ECOSYSTEM_SCALING_FACTOR = 0.5` term in the live
+`/score` endpoint — that scaling does NOT apply here.
 
 ### What multipliers do NOT affect
 
@@ -298,27 +330,39 @@ staking_emission AS (
   WHERE category = 'staking-reward' AND NOT flagged AND identity_id IS NOT NULL
     AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
   GROUP BY identity_id
+),
+referrer_bonus_score AS (
+  SELECT identity_id,
+         (COALESCE(SUM(final_points), 0) * :referrer_bonus_factor)::float8 AS referrer_bonus
+  FROM activity_points
+  WHERE category = 'referral-bonus' AND activity_type = 'l1-bonus'
+    AND NOT flagged AND identity_id IS NOT NULL
+    AND tx_timestamp >= :week_start AND tx_timestamp < :week_end
+  GROUP BY identity_id
 )
 SELECT
-  COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) AS identity_id,
+  COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id,
   COALESCE(a.activity_score, 0)::int AS activity_score,
   COALESCE(c.post_score, 0) AS creator_post_score,
   COALESCE(b.bonus_score, 0) AS bonus_score,
   COALESCE(a.active_days, 0)::int AS active_days,
   COALESCE(v.volume_count, 0)::int AS volume_count,
   COALESCE(se.emission_score, 0)::float8 AS emission_score,
+  COALESCE(rb.referrer_bonus, 0)::float8 AS referrer_bonus_score,
   (
     COALESCE(a.activity_score, 0)
     + COALESCE(c.post_score, 0)
     + COALESCE(b.bonus_score, 0)
     + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
     + COALESCE(se.emission_score, 0)
+    + COALESCE(rb.referrer_bonus, 0)
   )::float8 AS weekly_score
 FROM activity_score a
 FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
 FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
 FULL OUTER JOIN volume_score v ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
 FULL OUTER JOIN staking_emission se ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
+FULL OUTER JOIN referrer_bonus_score rb ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
 ORDER BY weekly_score DESC, identity_id ASC
 ```
 

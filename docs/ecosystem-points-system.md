@@ -17,7 +17,8 @@
 
 **관련 시스템**:
 - 주간 Pado DEX 트레이딩 리더보드 → 정산 시 본 시스템의 `activity_points`에 `ecosystem-bonus-pado` 카테고리로 적립 ([pado-score-leaderboard.md](pado-score-leaderboard.md))
-- 주간 Nasun Ecosystem Leaderboard → 본 시스템의 `activity_points`를 직접 조회
+- 주간 Nasun Ecosystem Leaderboard → 본 시스템의 `activity_points`를 직접 조회. 추천인 보너스(`activity_type='l1-bonus'`)는 `× 2/3`로 weekly_score에 반영 ([ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md](../apps/nasun-website/doc/ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md#referrer-bonus-score))
+- Daily referral bonus (2026-05-11~): UTC 자정 직후 `runDailyReferralBonus()`가 어제 referee의 모든 final_points × 10% (per-referee MIN(50pt))을 `referral-bonus` 카테고리로 batch insert. 활성화(`tx_timestamp >= activatedAt`) 이후 활동만 포함
 
 ---
 
