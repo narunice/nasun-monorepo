@@ -47,10 +47,9 @@ export function buildBuyTicket(
   const [paymentCoin] = tx.splitCoins(tx.object(nusdcCoinId), [tx.pure.u64(LOTTERY_TICKET_PRICE)]);
 
   tx.moveCall({
-    target: `${LOTTERY_PACKAGE_ID}::lottery::buy_ticket`,
+    target: `${LOTTERY_PACKAGE_ID}::lottery::buy_ticket_v2`,
     arguments: [
       tx.object(roundId),
-      tx.object(LOTTERY_REGISTRY_ID),
       paymentCoin,
       tx.pure.u8(sorted[0]),
       tx.pure.u8(sorted[1]),
@@ -112,7 +111,7 @@ export function buildBuyTicketBulk(
   }
 
   const tx = new Transaction();
-  tx.setGasBudget(500_000_000); // 10 tickets × registry mutate × event emit. Measure + adjust on devnet.
+  tx.setGasBudget(500_000_000); // 10 tickets × round mutate × event emit. v2 drops registry write.
 
   if (extraCoinsToMerge.length > 0) {
     tx.mergeCoins(
@@ -130,10 +129,9 @@ export function buildBuyTicketBulk(
   for (let i = 0; i < count; i++) {
     const sorted = [...bulkPicks[i]].sort((a, b) => a - b);
     tx.moveCall({
-      target: `${LOTTERY_PACKAGE_ID}::lottery::buy_ticket`,
+      target: `${LOTTERY_PACKAGE_ID}::lottery::buy_ticket_v2`,
       arguments: [
         tx.object(roundId),
-        tx.object(LOTTERY_REGISTRY_ID),
         payments[i],
         tx.pure.u8(sorted[0]),
         tx.pure.u8(sorted[1]),
