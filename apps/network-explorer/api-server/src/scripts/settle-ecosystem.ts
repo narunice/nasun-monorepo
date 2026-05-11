@@ -40,6 +40,7 @@ import { gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
+import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -411,9 +412,21 @@ async function main() {
         AND NOT flagged AND identity_id IS NOT NULL
         AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
       GROUP BY identity_id
+    ),
+    referrer_bonus_score AS (
+      -- Referrer's 10% kicker only (activity_type='l1-bonus'). Referee's
+      -- l1-referred-bonus is excluded to prevent double-counting referee
+      -- activity that already feeds the leaderboard via the referee's row.
+      SELECT identity_id,
+             (COALESCE(SUM(final_points), 0) * ${REFERRER_BONUS_LEADERBOARD_FACTOR})::float8 AS referrer_bonus
+      FROM activity_points
+      WHERE category = 'referral-bonus' AND activity_type = 'l1-bonus'
+        AND NOT flagged AND identity_id IS NOT NULL
+        AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
+      GROUP BY identity_id
     )
     SELECT
-      COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) AS identity_id,
+      COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id,
       COALESCE(a.activity_score, 0)::int AS activity_score,
       (
         COALESCE(a.activity_score, 0)
@@ -421,6 +434,7 @@ async function main() {
         + COALESCE(b.bonus_score, 0)
         + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
         + COALESCE(se.emission_score, 0)
+        + COALESCE(rb.referrer_bonus, 0)
       )::float8 AS weekly_score
     FROM activity_score a
     FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
@@ -430,6 +444,8 @@ async function main() {
       ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
     FULL OUTER JOIN staking_emission se
       ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
+    FULL OUTER JOIN referrer_bonus_score rb
+      ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
     ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
     LIMIT ${TOP_N}
   `;

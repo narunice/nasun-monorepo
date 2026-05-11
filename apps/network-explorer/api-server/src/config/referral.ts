@@ -31,3 +31,13 @@ export const REFERRAL_CACHE_REFRESH_MS = 3 * 60 * 60 * 1000; // 3 hours
 // 1.0 = full contribution, 0.5 = half, 0 = excluded from ecosystem score.
 export const REFERRAL_ECOSYSTEM_SCALING_FACTOR =
   safeFloat(process.env.REFERRAL_ECOSYSTEM_SCALING, 0.5);
+
+// Scaling factor for *referrer* bonus contribution to the weekly ecosystem
+// leaderboard score. Only `activity_type = 'l1-bonus'` rows count (i.e., the
+// 10% kicker the referrer earns from a referee's activity). The referee's own
+// `l1-referred-bonus` is excluded — including it would double-count the
+// referee's activity since their base activity already feeds the leaderboard
+// directly. 2/3 is a deliberate haircut so the referrer kicker can move the
+// ranking without drowning out the referee's own diversity score.
+export const REFERRER_BONUS_LEADERBOARD_FACTOR =
+  safeFloat(process.env.REFERRER_BONUS_LEADERBOARD_FACTOR, 2 / 3);
