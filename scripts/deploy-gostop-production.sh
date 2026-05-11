@@ -192,6 +192,7 @@ aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
   --delete \
   --exclude "index.html" \
   --exclude "*.html" \
+  --exclude "version.json" \
   --cache-control "public, max-age=31536000, immutable" > /dev/null
 
 log_info "HTML 업로드 중 (no cache)..."
@@ -202,25 +203,38 @@ aws s3 sync "$DIST_DIR/" "s3://$BUCKET/" \
   --include "*.html" \
   --cache-control "no-cache, no-store, must-revalidate" > /dev/null
 
+# version.json is polled by the SPA every 5 min to detect new deploys.
+# Must be served with no-store so polling actually returns the fresh version.
+if [ -f "$DIST_DIR/version.json" ]; then
+  log_info "version.json 업로드 중 (no-store)..."
+  aws s3 cp "$DIST_DIR/version.json" "s3://$BUCKET/version.json" \
+    --profile "$AWS_PROFILE_NAME" \
+    --region "$AWS_REGION" \
+    --cache-control "no-store" \
+    --content-type "application/json" > /dev/null
+else
+  log_warning "version.json 누락 - viteVersionPlugin이 빌드 산출물을 생성했는지 확인 필요"
+fi
+
 log_success "S3 동기화 완료"
 
 log_info "CloudFront 캐시 무효화 중..."
 if ! command -v aws >/dev/null 2>&1; then
   log_error "aws CLI 미설치 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
-  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html'"
+  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html' '/version.json'"
   exit 1
 fi
 INVALIDATION_ERROR=""
 INVALIDATION_ID=$(aws cloudfront create-invalidation \
   --profile "$AWS_PROFILE_NAME" \
   --distribution-id "$DIST_ID" \
-  --paths "/" "/index.html" "/*.html" \
+  --paths "/" "/index.html" "/*.html" "/version.json" \
   --query 'Invalidation.Id' \
   --output text 2>&1) || INVALIDATION_ERROR="$INVALIDATION_ID"
 if [ -n "$INVALIDATION_ERROR" ] || [ -z "$INVALIDATION_ID" ]; then
   log_error "CloudFront 무효화 실패 - 파일은 배포됐지만 엣지 캐시가 구버전입니다!"
   log_error "오류: ${INVALIDATION_ERROR:-empty response}"
-  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html'"
+  log_error "수동 재시도: aws cloudfront create-invalidation --profile $AWS_PROFILE_NAME --distribution-id $DIST_ID --paths '/' '/index.html' '/*.html' '/version.json'"
   exit 1
 fi
 log_success "무효화 요청됨 (ID: ${INVALIDATION_ID}) - propagation 5~10분"
