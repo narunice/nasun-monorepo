@@ -11,7 +11,6 @@ import { GAME_ERRORS } from '../lib/constants/errors';
 import { NUSDC_UNIT_NUMBER } from '../lib/constants/assets';
 import { findNusdcCoins, type FoundCoins } from '../features/shared/coin-utils';
 import type { ValidationResult } from '../lib/validation/game-rules';
-import { ensureGostopPass, isGateEnabled } from '../lib/turnstile-gate';
 
 export interface GameTxOptions {
   amount?: bigint;
@@ -59,24 +58,6 @@ export function useGameTransaction() {
       }
 
       if (isPending) return false;
-
-      // 0. Bot-prevention gate. ensureGostopPass() resolves true silently if
-      // a fresh Turnstile-issued pass is in localStorage, otherwise it
-      // refreshes the App-root widget and waits for it to complete. When the
-      // gate is disabled (no VITE_TURNSTILE_SITE_KEY set), it resolves true
-      // immediately. Fail-open on unexpected errors so a buggy gate can't
-      // lock every user out of every game.
-      if (isGateEnabled()) {
-        try {
-          const passOk = await ensureGostopPass();
-          if (!passOk) {
-            showToast('Verifying you are human... please retry in a moment.', 'warning');
-            return false;
-          }
-        } catch (err) {
-          console.warn('[GameTransaction] gate check failed, failing open:', err);
-        }
-      }
 
       // 1. Run Pre-validation
       if (options.validate) {

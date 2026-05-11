@@ -1,9 +1,7 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { lazyWithRetry } from './utils/lazyWithRetry'
 import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
-import { Turnstile } from '@marsidev/react-turnstile'
 import { WalletConnect } from '@nasun/wallet-ui'
-import { useTurnstileWidget, onTurnstileError } from './lib/turnstile-gate'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
 import LotteryPage from './pages/LotteryPage'
@@ -69,34 +67,6 @@ function ScrollToTop() {
 
 import { useBalanceSync } from './hooks/useBalanceSync'
 
-/**
- * Pre-warm the invisible Turnstile challenge at the App root so it completes
- * in the background before the user clicks a mission button. Cloudflare auto-
- * decides silent vs interactive based on IP reputation. The token is exchanged
- * server-side (nasun-chat-server) for an HMAC-signed pass cached in
- * localStorage, which useGameTransaction checks before each on-chain submit.
- */
-function TurnstilePrewarm() {
-  const { siteKey, widgetKey, onSuccess } = useTurnstileWidget()
-  if (!siteKey) return null
-  // size:'invisible' renders nothing for clean IPs; CF auto-escalates with
-  // its own modal overlay when interactive challenge is needed. We mount the
-  // host element with normal flow (NOT display:none, NOT visibility:hidden)
-  // so the iframe stays interactable in the rare interactive-fallback case.
-  // The previous gate's display:none + appearance:'execute' combo trapped
-  // suspicious-IP users in a hidden iframe (2026-05-09 outage).
-  return (
-    <Turnstile
-      key={widgetKey}
-      siteKey={siteKey}
-      options={{ size: 'invisible' }}
-      onSuccess={onSuccess}
-      onError={onTurnstileError}
-      onExpire={onTurnstileError}
-    />
-  )
-}
-
 export default function App() {
   useBalanceSync() // Start background balance sync
 
@@ -120,7 +90,6 @@ export default function App() {
         </Routes>
       </main>
       <Footer />
-      <TurnstilePrewarm />
     </div>
   )
 }

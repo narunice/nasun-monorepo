@@ -15,6 +15,7 @@ import {
   NM_PLAYED_EVENT_TYPE,
   TICKET_PURCHASED_EVENT_TYPE,
   MINES_SESSION_FINISHED_EVENT_TYPE,
+  ENABLE_CRASH,
 } from '../../../lib/gostop-config'
 import {
   countMatchingNumbers,
@@ -354,6 +355,10 @@ async function fetchCrashHistoryFromBackend(
   address: string,
   cutoffMs: number,
 ): Promise<CrashFetchOutcome> {
+  // Skip backend fetch entirely when Crash is disabled. The chat-server route
+  // is not registered in that mode and CloudFront/nginx returns the SPA
+  // fallback (no CORS headers), producing console noise on /games/history.
+  if (!ENABLE_CRASH) return { items: [], backendError: false }
   // Backend max limit is 500. Pull the top of the page and cutoff-filter
   // client-side; in practice the chosen windows rarely exceed 500 crash
   // rounds for a single sender.
