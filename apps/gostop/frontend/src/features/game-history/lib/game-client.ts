@@ -7,8 +7,7 @@
  * is the source of truth.
  */
 
-import type { SuiEvent, EventId } from '@mysten/sui/client'
-export type { EventId }
+import type { SuiEvent } from '@mysten/sui/client'
 import { getSuiClient } from '../../../lib/sui-client'
 import {
   SCRATCH_PURCHASED_EVENT_TYPE,
@@ -33,9 +32,11 @@ import type {
 
 // === Constants ===
 
-// Initial fetch covers the most recent ~200 events. Older history is loaded
-// on demand via cursor-based "Load older history" pagination.
-const INITIAL_MAX_PAGES = 4
+// Window-based fetch: queryEvents pages descending until the page's oldest
+// event falls below the cutoff, or MAX_SAFETY_PAGES is hit. The cap exists
+// only to bound worst-case RPC use (e.g. extremely active senders over a
+// long window); normal completion terminates via the cutoff.
+const MAX_SAFETY_PAGES = 40
 const PAGE_SIZE = 50
 
 // === Sender event fetcher ===
@@ -53,28 +54,26 @@ interface RawEvents {
   numbermatch: SuiEvent[]
   lottery: SuiEvent[]
   mines: SuiEvent[]
+  /** Safety-cap hit before reaching cutoff. Normal completion = false. */
   isTruncated: boolean
-  nextCursor: EventId | null
 }
 
 async function fetchUserGameEvents(
   address: string,
-  opts: { startCursor?: EventId | null; maxPages?: number } = {},
+  cutoffMs: number,
 ): Promise<RawEvents> {
   const client = getSuiClient()
-  const maxPages = opts.maxPages ?? INITIAL_MAX_PAGES
   const out: RawEvents = {
     scratch: [],
     numbermatch: [],
     lottery: [],
     mines: [],
     isTruncated: false,
-    nextCursor: null,
   }
-  let cursor: EventId | null = opts.startCursor ?? null
-  let exhausted = false
+  let cursor: { txDigest: string; eventSeq: string } | null = null
+  let reachedCutoff = false
 
-  for (let page = 0; page < maxPages; page++) {
+  for (let page = 0; page < MAX_SAFETY_PAGES; page++) {
     const result = await client.queryEvents({
       query: { Sender: address },
       limit: PAGE_SIZE,
@@ -82,7 +81,11 @@ async function fetchUserGameEvents(
       cursor: cursor ?? undefined,
     })
 
+    let pageOldestMs = Number.POSITIVE_INFINITY
     for (const event of result.data) {
+      const ts = Number(event.timestampMs ?? 0)
+      if (ts < pageOldestMs) pageOldestMs = ts
+      if (ts < cutoffMs) continue
       if (!ALL_EVENT_TYPES.has(event.type)) continue
       if (event.type === EVENT_TYPES.scratch) out.scratch.push(event)
       else if (event.type === EVENT_TYPES.nm) out.numbermatch.push(event)
@@ -90,8 +93,13 @@ async function fetchUserGameEvents(
       else if (event.type === EVENT_TYPES.minesFinished) out.mines.push(event)
     }
 
+    // Page contains an event older than cutoff → fully covered the window.
+    if (pageOldestMs < cutoffMs) {
+      reachedCutoff = true
+      break
+    }
     if (!result.hasNextPage) {
-      exhausted = true
+      reachedCutoff = true
       break
     }
     if (!result.nextCursor) {
@@ -101,8 +109,7 @@ async function fetchUserGameEvents(
     cursor = result.nextCursor
   }
 
-  out.isTruncated = !exhausted
-  out.nextCursor = exhausted ? null : cursor
+  out.isTruncated = !reachedCutoff
   return out
 }
 
@@ -343,8 +350,14 @@ interface CrashFetchOutcome {
   backendError: boolean
 }
 
-async function fetchCrashHistoryFromBackend(address: string): Promise<CrashFetchOutcome> {
-  const url = `${resolveCrashHistoryUrl()}?address=${encodeURIComponent(address)}&limit=200`
+async function fetchCrashHistoryFromBackend(
+  address: string,
+  cutoffMs: number,
+): Promise<CrashFetchOutcome> {
+  // Backend max limit is 500. Pull the top of the page and cutoff-filter
+  // client-side; in practice the chosen windows rarely exceed 500 crash
+  // rounds for a single sender.
+  const url = `${resolveCrashHistoryUrl()}?address=${encodeURIComponent(address)}&limit=500`
   let body: CrashHistoryResponse
   try {
     const r = await fetch(url)
@@ -354,7 +367,9 @@ async function fetchCrashHistoryFromBackend(address: string): Promise<CrashFetch
     console.warn('[history] crash backend fetch failed', err)
     return { items: [], backendError: true }
   }
-  const items: GameActivity[] = (body.items ?? []).map((it) => {
+  const items: GameActivity[] = (body.items ?? [])
+    .filter((it) => it.timestamp_ms >= cutoffMs)
+    .map((it) => {
     const bet = BigInt(it.bet_amount)
     const payout = BigInt(it.payout)
     const isWin = payout > 0n
@@ -381,8 +396,6 @@ export interface GameHistoryData {
   activities: GameActivity[]
   isTruncated: boolean
   crashBackendError: boolean
-  /** Cursor for the next page of on-chain events. Null means fully loaded. */
-  nextCursor: EventId | null
 }
 
 async function mapRawEvents(raw: RawEvents): Promise<GameActivity[]> {
@@ -406,11 +419,14 @@ async function mapRawEvents(raw: RawEvents): Promise<GameActivity[]> {
   return [...scratchItems, ...nmItems, ...minesItems, ...lotteryItems]
 }
 
-export async function fetchAllGameHistory(address: string): Promise<GameHistoryData> {
+export async function fetchAllGameHistory(
+  address: string,
+  cutoffMs: number,
+): Promise<GameHistoryData> {
   // Crash and the on-chain event scan are independent — fetch in parallel.
   const [raw, crashOutcome] = await Promise.all([
-    fetchUserGameEvents(address),
-    fetchCrashHistoryFromBackend(address),
+    fetchUserGameEvents(address, cutoffMs),
+    fetchCrashHistoryFromBackend(address, cutoffMs),
   ])
 
   const onChainItems = await mapRawEvents(raw)
@@ -421,19 +437,5 @@ export async function fetchAllGameHistory(address: string): Promise<GameHistoryD
     ),
     isTruncated: raw.isTruncated,
     crashBackendError: crashOutcome.backendError,
-    nextCursor: raw.nextCursor,
-  }
-}
-
-/** Load additional on-chain history pages starting from the given cursor. */
-export async function fetchMoreOnChainHistory(
-  address: string,
-  cursor: EventId,
-): Promise<{ activities: GameActivity[]; nextCursor: EventId | null }> {
-  const raw = await fetchUserGameEvents(address, { startCursor: cursor })
-  const activities = await mapRawEvents(raw)
-  return {
-    activities: activities.sort((a, b) => b.timestampMs - a.timestampMs),
-    nextCursor: raw.nextCursor,
   }
 }

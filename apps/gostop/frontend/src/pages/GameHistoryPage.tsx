@@ -4,7 +4,9 @@ import {
   useGameHistory,
   GameSummaryCards,
   GameActivityList,
+  HISTORY_WINDOW_LABEL,
   type GameType,
+  type HistoryWindow,
 } from '../features/game-history'
 import { ENABLE_CRASH } from '../lib/gostop-config'
 
@@ -19,11 +21,19 @@ const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   ...(ENABLE_CRASH ? [{ value: 'crash' as const, label: 'Crash' }] : []),
 ]
 
+const WINDOW_OPTIONS: { value: HistoryWindow; label: string }[] = [
+  { value: '7d', label: '7d' },
+  { value: '2w', label: '2w' },
+  { value: '4w', label: '4w' },
+  { value: '3m', label: '3m' },
+]
+
 export default function GameHistoryPage() {
   const address = useActiveAddress()
   const [filter, setFilter] = useState<GameType | 'all'>('all')
-  const { activities, summary, hasCrashActivity, isLoading, error, refetch, canLoadMore, loadMore, isLoadingMore } =
-    useGameHistory(filter)
+  const [window, setWindow] = useState<HistoryWindow>('7d')
+  const { activities, summary, hasCrashActivity, isLoading, error, refetch } =
+    useGameHistory(filter, window)
 
   if (!address) {
     return (
@@ -49,7 +59,7 @@ export default function GameHistoryPage() {
         <div>
           <h1 className="font-display text-3xl md:text-4xl text-gold">Game History</h1>
           <p className="text-sm text-neutral-300 mt-1">
-            Recent activity across all gostop games.
+            Showing the last {HISTORY_WINDOW_LABEL[window]} of activity across all gostop games.
           </p>
         </div>
         <button
@@ -64,6 +74,34 @@ export default function GameHistoryPage() {
       </div>
 
       <GameSummaryCards summary={summary} isLoading={isLoading} />
+
+      <div
+        role="group"
+        aria-label="History time window"
+        className="flex flex-wrap items-center gap-2"
+      >
+        <span className="text-xs uppercase tracking-[0.18em] text-neutral-300 mr-1">
+          Window
+        </span>
+        {WINDOW_OPTIONS.map((opt) => {
+          const active = window === opt.value
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setWindow(opt.value)}
+              aria-pressed={active}
+              className={`px-3 py-1.5 text-sm rounded-full border transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200 ${
+                active
+                  ? 'bg-gold-400/15 text-gold-200 border-gold-200/60 shadow-[inset_0_0_0_1px_rgba(212,175,55,0.3)]'
+                  : 'border-gold-subtle text-neutral-300 hover:text-gold-200 hover:border-gold-200/40'
+              }`}
+            >
+              {opt.label}
+            </button>
+          )
+        })}
+      </div>
 
       <div role="group" aria-label="Filter by game" className="flex flex-wrap gap-2">
         {FILTER_OPTIONS.map((opt) => {
@@ -92,19 +130,6 @@ export default function GameHistoryPage() {
         error={error}
         showCrashFootnote={hasCrashActivity}
       />
-
-      {canLoadMore && (
-        <div className="flex justify-center mt-2">
-          <button
-            type="button"
-            onClick={loadMore}
-            disabled={isLoadingMore}
-            className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-200"
-          >
-            {isLoadingMore ? 'Loading…' : 'Load older history'}
-          </button>
-        </div>
-      )}
     </div>
   )
 }
