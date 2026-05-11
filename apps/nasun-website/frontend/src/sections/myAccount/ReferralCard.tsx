@@ -190,7 +190,8 @@ export const ReferralCard: FC<ReferralCardProps> = ({ className = "" }) => {
         {title}
         <div className="space-y-3">
           <p className="text-base text-nasun-white">
-            Referral codes are limited during devnet. You can earn one by:
+            Referral codes are reserved for active Nasun contributors. You can
+            earn one by:
           </p>
           <ul className="text-sm text-nasun-white/80 space-y-1.5 list-disc pl-5">
             <li>Voting on a governance proposal</li>
