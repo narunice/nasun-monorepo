@@ -8,7 +8,7 @@ import { NUSDC_UNIT_NUMBER, NUSDC_UNIT } from "../../../lib/constants/assets";
 const CARD_PRICE_NUSDC = 5;
 
 export function useScratchCardPage(celebrate: any) {
-  const { isWalletConnected, buy, isBuying, error, clearError } = useScratchCard();
+  const { isWalletConnected, buy, isBuying, error, clearError, refreshBalance } = useScratchCard();
   const { showToast } = useToast();
   const invalidateHistory = useInvalidateGameHistory();
 
@@ -44,6 +44,10 @@ export function useScratchCardPage(celebrate: any) {
     if (celebratedBatchRef.current === batchKey) return;
     celebratedBatchRef.current = batchKey;
 
+    // Reveal-complete: now safe to sync the displayed wallet balance with
+    // the on-chain post-payout state. Purchase intentionally deferred this.
+    refreshBalance();
+
     const totalPrize = results.reduce((s, r) => s + r.prizeAmount, 0n);
     const wins = results.filter((r) => r.multiplier > 0).length;
     const spent = BigInt(results.length) * BigInt(CARD_PRICE_NUSDC) * NUSDC_UNIT;
@@ -71,7 +75,7 @@ export function useScratchCardPage(celebrate: any) {
       summaryShownForRef.current = batchKey;
       setSummaryOpen(true);
     }
-  }, [revealed, results, celebrate, showToast]);
+  }, [revealed, results, celebrate, showToast, refreshBalance]);
 
   const revealAll = useCallback(() => {
     setRevealed(new Set(results.map((_, i) => i)));
