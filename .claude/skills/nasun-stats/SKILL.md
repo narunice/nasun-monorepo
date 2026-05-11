@@ -630,15 +630,17 @@ if dau_rows:
         f"Yesterday game players  (social verified): {v_gamers:,}"
     )
     new_user_quality_section = (
-        f"-- Yesterday New User Social Quality ({latest['date']}) --\n"
-        f"  New addresses:                     {y_new:,}\n"
+        f"-- Yesterday First-Time On-chain Active Wallets ({latest['date']}) --\n"
+        f"  (wallets whose first non-faucet/chat/bonus activity was yesterday)\n"
+        f"  New active wallets:                {y_new:,}\n"
         f"  Social connected (any):            {y_new_v:,}  ({y_new_v_pct})\n"
         f"  No social:                         {y_new - y_new_v:,}\n"
         f"\n"
-        f"-- Cumulative New User Social Quality ({date_from} ~ {date_to}) --\n"
-        f"  Total new addresses:               {total_new_all:,}\n"
+        f"-- Cumulative First-Time On-chain Active Wallets ({date_from} ~ {date_to}) --\n"
+        f"  (excludes wallets active before {date_from}; excludes faucet/chat/bonus-only)\n"
+        f"  Total new active wallets:          {total_new_all:,}\n"
         f"  Social connected (any):            {total_new_v_all:,}  ({total_new_v_pct})\n"
-        f"  Avg daily social verify rate:      {avg_new_v_pct:.1f}%"
+        f"  Avg daily social verify rate:      {avg_new_v_pct:.1f}%  (unweighted daily mean)"
     )
 else:
     daa_section = f"-- Devnet DAA ({date_from} ~ {date_to}) --\nNo active days in this period."
