@@ -1,4 +1,5 @@
 import { NM_PRICE_PER_PICK_NUSDC } from '../constants'
+import { Spinner } from '../../../components/shared/GameUI'
 
 interface NMPlayPanelProps {
   picksCount: number
@@ -33,8 +34,9 @@ export function NMPlayPanel({
         <button
           onClick={onPlay}
           disabled={!canPlay}
-          className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none"
+          className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none inline-flex items-center justify-center gap-2"
         >
+          {isPlaying && <Spinner className="h-5 w-5" />}
           {isPlaying
             ? 'Playing…'
             : !isWalletConnected

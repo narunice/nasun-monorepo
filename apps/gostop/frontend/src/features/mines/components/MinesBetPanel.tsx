@@ -1,4 +1,4 @@
-import { BetSlider } from "../../../components/shared/GameUI";
+import { BetSlider, Spinner } from "../../../components/shared/GameUI";
 import {
   MINES_GRID_SIZE,
   MINES_MIN_MINES,
@@ -106,8 +106,9 @@ export function MinesBetPanel({
       <button
         onClick={onCreate}
         disabled={!isWalletConnected || isCreating || bet < MIN_BET_NUSDC}
-        className="btn-gold w-full md:w-auto"
+        className="btn-gold w-full md:w-auto inline-flex items-center justify-center gap-2"
       >
+        {isCreating && <Spinner className="h-4 w-4" />}
         {isCreating
           ? "Starting…"
           : !isWalletConnected

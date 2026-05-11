@@ -2,6 +2,7 @@ import { MINES_GRID_SIZE, MINES_MAX_SINGLE_PAYOUT } from "../../../lib/gostop-co
 import { computeMultiplierBps } from "../mines-config";
 import type { MinesSession } from "../mines-client";
 import { formatNusdcFixed } from "../../../lib/format";
+import { Spinner } from "../../../components/shared/GameUI";
 
 export function MinesActiveSession({
   session,
@@ -65,8 +66,9 @@ export function MinesActiveSession({
         <button
           onClick={onCashout}
           disabled={!canCashout}
-          className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none"
+          className="btn-gold w-full sm:w-auto sm:min-w-[20rem] !px-10 !py-4 text-xl font-bold tracking-wide shadow-gold-glow disabled:shadow-none inline-flex items-center justify-center gap-2"
         >
+          {phase === "cashing_out" && <Spinner className="h-5 w-5" />}
           {phase === "cashing_out"
             ? "Cashing out…"
             : session.safeReveals === 0

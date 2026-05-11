@@ -1,4 +1,5 @@
 import { LOTTERY_MAX_NUMBER, LOTTERY_NUMBERS_COUNT } from "../../../lib/gostop-config";
+import { Spinner } from "../../../components/shared/GameUI";
 
 export function PickPanel({
   picks,
@@ -124,7 +125,13 @@ export function BuyPanel({
         </div>
       </dl>
 
-      <button onClick={onBuy} disabled={!canBuy} className="btn-gold mt-6" title={title}>
+      <button
+        onClick={onBuy}
+        disabled={!canBuy}
+        className="btn-gold mt-6 inline-flex items-center justify-center gap-2"
+        title={title}
+      >
+        {isBuying && <Spinner className="h-4 w-4" />}
         {label}
       </button>
     </div>
@@ -166,9 +173,10 @@ export function QuickBuyPanel({
             key={n}
             onClick={() => onQuickBuy(n)}
             disabled={disabled}
-            className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed"
+            className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
             title={hint}
           >
+            {isBuying && <Spinner className="h-4 w-4" />}
             <span className="font-semibold">Buy {n}</span>
             <span className="ml-2 font-mono text-gold-200">{(n * 5).toFixed(2)} NUSDC</span>
           </button>
