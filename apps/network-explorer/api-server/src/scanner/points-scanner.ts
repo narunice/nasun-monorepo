@@ -12,10 +12,9 @@ import {
 import {
   maybeRefreshReferralCache,
   updateIdentityToWalletMap,
-  warmUpDailyBonusAccumulator,
-  calculateReferralBonuses,
   type PointsInsert,
 } from './referral-bonus.js';
+import { runDailyReferralBonus } from './daily-referral-bonus.js';
 import {
   maybeRefreshActivationsCache,
   maybeRefreshMatview,
@@ -140,7 +139,8 @@ export function startPointsScanner(): void {
       console.error('[Points] Matview version check failed:', (err as Error).message);
     }
     try {
-      await warmUpDailyBonusAccumulator();
+      // (Referral bonus warm-up removed: bonuses are batched once per UTC
+      //  day in daily-referral-bonus.ts; no in-process accumulator state.)
       await warmUpDailyCategoryCap();
     } catch (err) {
       console.error('[Points] Warm-up failed:', (err as Error).message);
@@ -261,16 +261,11 @@ async function scanLoop(myGen: number): Promise<void> {
       const batch = await fetchEventBatch(lastSeq, BATCH_SIZE);
       if (batch.length === 0) break;
 
-      const { count: inserted, inserts: batchInserts } = await processBatch(batch);
+      const { count: inserted } = await processBatch(batch);
       totalProcessed += inserted;
 
-      // Referral bonus: isolated try-catch to prevent main loop disruption
-      try {
-        const bonusCount = await calculateReferralBonuses(batchInserts);
-        totalProcessed += bonusCount;
-      } catch (err) {
-        console.error('[Referral] Bonus calculation error (non-fatal):', err);
-      }
+      // (Per-batch referral bonus calc removed; runs once per UTC day in
+      //  the snapshot block below to capture admin-curated grants too.)
 
       lastSeq = batch[batch.length - 1].tx_sequence_number;
       // Final gate before persisting cursor: prevents a zombie loop from
@@ -391,6 +386,18 @@ async function scanLoop(myGen: number): Promise<void> {
         // entirely (root cause of the 2026-05-08 missing-snapshot incident).
         if (snapshotOk) {
           lastSnapshotDate = todayStr;
+
+          // Daily referral bonus: 10% of yesterday's total points (incl.
+          // admin-curated) to both referrer and referred. Idempotent via
+          // ON CONFLICT DO NOTHING. Runs only after the snapshot has
+          // finalized yesterday's data and only once per UTC day.
+          try {
+            const yesterday = new Date();
+            yesterday.setUTCDate(yesterday.getUTCDate() - 1);
+            await runDailyReferralBonus(yesterday.toISOString().slice(0, 10));
+          } catch (err) {
+            console.error('[Referral-Daily] Error (non-fatal):', (err as Error).message);
+          }
         }
       }
     }
