@@ -484,9 +484,36 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           .find(k => oldLinked[k]?.identityId === secondaryIdentityId);
 
         if (matchingKey) {
-          // Require explicit user confirmation before transferring a linked
-          // account away from another wallet. Admin-link bypasses the gate
-          // because identity merges are an intentional admin operation.
+          // Twitter is uniqueness-enforced: never auto-transfer, even with
+          // confirmTransfer. User must explicitly unlink X from the other
+          // wallet first. (Bots used to pass referral verification by clicking
+          // through the confirm modal with the same X reused on a new wallet.)
+          if (matchingKey === 'twitter' && !isAdminLink) {
+            console.log(JSON.stringify({
+              event: 'LINK_TWITTER_TRANSFER_BLOCKED',
+              oldPrimaryId,
+              newPrimaryId: primaryIdentityId,
+              secondaryId: secondaryIdentityId,
+            }));
+            return {
+              statusCode: 409,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                code: 'TWITTER_ALREADY_LINKED',
+                message: 'This X account is already linked to another wallet. Unlink it from the other wallet first.',
+                existingPrimary: {
+                  identityId: oldPrimaryId,
+                  walletAddress: typeof oldPrimary.walletAddress === 'string' ? oldPrimary.walletAddress : null,
+                  username: oldPrimary.customDisplayName || oldPrimary.username || null,
+                },
+              }),
+            };
+          }
+
+          // Other providers: require explicit user confirmation before
+          // transferring a linked account away from another wallet. Admin-link
+          // bypasses the gate because identity merges are an intentional admin
+          // operation.
           if (!isAdminLink && confirmTransfer !== true) {
             console.log(JSON.stringify({
               event: 'LINK_NEEDS_CONFIRM',
@@ -587,46 +614,65 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       ':updatedAt': new Date().toISOString(),
     };
 
-    // Dedup: Remove promoted Twitter fields from other profiles that have the same twitterId
-    if (providerKey === 'twitter' && secondaryProfile.twitterId) {
+    // Hard-reject: a twitterId already linked to a different (non-self) primary
+    // profile cannot be re-linked. Silent transfer used to be allowed here; bots
+    // exploited it to recycle one X account across many wallets to pass referral
+    // verification. Legitimate migration must go through explicit unlink first.
+    // Admin-link bypasses this gate (admin-driven identity merges).
+    if (providerKey === 'twitter' && secondaryProfile.twitterId && !isAdminLink) {
       try {
         const dedupResult = await dynamoClient.send(new QueryCommand({
           TableName: tableName,
           IndexName: 'twitterId-index',
           KeyConditionExpression: 'twitterId = :tid',
           ExpressionAttributeValues: { ':tid': secondaryProfile.twitterId },
+          ProjectionExpression: 'identityId, walletAddress, username, customDisplayName',
         }));
 
         for (const item of dedupResult.Items || []) {
-          const dupId = item.identityId;
+          const dupId = item.identityId as string;
+          // Skip the caller's own primary identity, the Twitter-side Cognito
+          // identity (secondary), and any other identities already linked to
+          // the caller (linkedAccounts.*.identityId) — those are all "self".
           if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
+          const primaryLinked = (primaryProfile.linkedAccounts || {}) as Record<string, any>;
+          const linkedSelfIds = Object.values(primaryLinked)
+            .map((v) => v?.identityId)
+            .filter(Boolean);
+          if (linkedSelfIds.includes(dupId)) continue;
 
-          try {
-            await dynamoClient.send(new UpdateCommand({
-              TableName: tableName,
-              Key: { identityId: dupId },
-              UpdateExpression: 'SET updatedAt = :ua REMOVE twitterHandle, originalTwitterHandle, twitterId, linkedAccounts.twitter',
-              ConditionExpression: 'twitterId = :expectedTid',
-              ExpressionAttributeValues: {
-                ':ua': new Date().toISOString(),
-                ':expectedTid': secondaryProfile.twitterId,
+          console.log(JSON.stringify({
+            event: 'LINK_TWITTER_ALREADY_LINKED',
+            twitterId: secondaryProfile.twitterId,
+            otherPrimaryId: dupId,
+            attemptedPrimaryId: primaryIdentityId,
+            secondaryId: secondaryIdentityId,
+          }));
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              code: 'TWITTER_ALREADY_LINKED',
+              message: 'This X account is already linked to another wallet. Unlink it from the other wallet first.',
+              existingPrimary: {
+                identityId: dupId,
+                walletAddress: typeof item.walletAddress === 'string' ? item.walletAddress : null,
+                username: (item.customDisplayName || item.username || null) as string | null,
               },
-            }));
-
-            console.log(JSON.stringify({
-              event: 'LINK_DEDUP_CLEANUP',
-              cleanedProfileId: dupId,
-              twitterId: secondaryProfile.twitterId,
-              newOwnerId: primaryIdentityId,
-            }));
-          } catch (condErr: any) {
-            if (condErr.name !== 'ConditionalCheckFailedException') {
-              console.warn('Dedup cleanup failed for', dupId, condErr);
-            }
-          }
+            }),
+          };
         }
       } catch (dedupError) {
-        console.warn('Twitter dedup query failed (non-blocking):', dedupError);
+        console.warn('Twitter uniqueness query failed:', dedupError);
+        // Fail closed: if we cannot verify uniqueness, refuse the link.
+        return {
+          statusCode: 503,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            code: 'TWITTER_UNIQUENESS_CHECK_FAILED',
+            message: 'Could not verify X account uniqueness. Please try again.',
+          }),
+        };
       }
     }
 

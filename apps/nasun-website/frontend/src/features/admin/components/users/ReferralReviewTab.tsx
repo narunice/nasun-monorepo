@@ -18,33 +18,66 @@ import {
 
 type RowStatus = "idle" | "pending" | "done" | "declined" | "error";
 
+const PAGE_SIZE = 20;
+
 export const ReferralReviewTab: FC = () => {
   const { cognitoToken } = useAdminAuth();
   const [items, setItems] = useState<ReviewItem[]>([]);
-  const [cursor, setCursor] = useState<string | null>(null);
+  // Cursor history: cursors[i] is the cursor used to fetch page i.
+  // cursors[0] === undefined (first page has no cursor).
+  const [cursors, setCursors] = useState<Array<string | undefined>>([undefined]);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rowState, setRowState] = useState<Record<string, RowStatus>>({});
   const [declineFor, setDeclineFor] = useState<string | null>(null);
   const [declineNote, setDeclineNote] = useState("");
 
-  const load = useCallback(async (append: boolean) => {
-    if (!cognitoToken) return;
-    if (append) setLoadingMore(true); else setLoading(true);
+  const loadPage = useCallback(async (cursor: string | undefined) => {
+    if (!cognitoToken) return null;
+    setLoading(true);
     setError(null);
     try {
-      const res = await listReferralReview(cognitoToken, append ? cursor || undefined : undefined);
-      setItems((prev) => append ? [...prev, ...res.items] : res.items);
-      setCursor(res.nextCursor);
+      const res = await listReferralReview(cognitoToken, cursor, PAGE_SIZE);
+      setItems(res.items);
+      setNextCursor(res.nextCursor);
+      return res;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load review queue");
+      return null;
     } finally {
-      if (append) setLoadingMore(false); else setLoading(false);
+      setLoading(false);
     }
-  }, [cognitoToken, cursor]);
+  }, [cognitoToken]);
 
-  useEffect(() => { void load(false); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [cognitoToken]);
+  useEffect(() => {
+    if (!cognitoToken) return;
+    setCursors([undefined]);
+    setPageIndex(0);
+    void loadPage(undefined);
+  }, [cognitoToken, loadPage]);
+
+  const onNext = useCallback(async () => {
+    if (!nextCursor) return;
+    const next = nextCursor;
+    const res = await loadPage(next);
+    if (res) {
+      setCursors((prev) => {
+        const copy = [...prev];
+        copy[pageIndex + 1] = next;
+        return copy;
+      });
+      setPageIndex((p) => p + 1);
+    }
+  }, [nextCursor, loadPage, pageIndex]);
+
+  const onPrev = useCallback(async () => {
+    if (pageIndex === 0) return;
+    const prevIdx = pageIndex - 1;
+    const res = await loadPage(cursors[prevIdx]);
+    if (res) setPageIndex(prevIdx);
+  }, [pageIndex, cursors, loadPage]);
 
   const onApprove = useCallback(async (id: string) => {
     if (!cognitoToken) return;
@@ -77,7 +110,7 @@ export const ReferralReviewTab: FC = () => {
 
   if (loading) return <div className="py-8 text-center text-nasun-white/70">Loading...</div>;
   if (error) return <div className="py-4 text-rose-400">{error}</div>;
-  if (items.length === 0) return <div className="py-8 text-center text-nasun-white/70">No pending referrals.</div>;
+  if (items.length === 0 && pageIndex === 0) return <div className="py-8 text-center text-nasun-white/70">No pending referrals.</div>;
 
   return (
     <div className="space-y-4">
@@ -158,15 +191,27 @@ export const ReferralReviewTab: FC = () => {
         </table>
       </div>
 
-      {cursor && (
-        <button
-          onClick={() => void load(true)}
-          disabled={loadingMore}
-          className="w-full px-3 py-2 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-50"
-        >
-          {loadingMore ? "Loading..." : "Load more"}
-        </button>
-      )}
+      <div className="flex items-center justify-between gap-2 pt-2">
+        <span className="text-xs text-nasun-white/60">
+          Page {pageIndex + 1} · {items.length} item{items.length === 1 ? "" : "s"}
+        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void onPrev()}
+            disabled={loading || pageIndex === 0}
+            className="px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Prev
+          </button>
+          <button
+            onClick={() => void onNext()}
+            disabled={loading || !nextCursor}
+            className="px-3 py-1.5 rounded bg-nasun-white/5 hover:bg-nasun-white/10 text-nasun-white text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       {/* Decline confirmation modal */}
       {declineFor && (
