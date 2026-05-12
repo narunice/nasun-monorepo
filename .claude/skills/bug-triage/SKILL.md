@@ -55,6 +55,10 @@ bash .claude/skills/bug-triage/scripts/fetch-open-reports.sh
 
 사용자가 선택한 클러스터에 대해:
 
+0. **포인트/미션/봇 의심 리포트는 ban 체크 먼저** (Wallet Issue / Performance / Other 카테고리에서 본문에 "미션", "포인트", "봇", "claim", "ban" 키워드 포함 시):
+   - `aws dynamodb get-item --table-name UserProfiles --key '{"identityId":{"S":"<id>"}}'`로 `banned` 필드 조회
+   - 어필 본문이 사람 작성 + `banned=true`이면 unban 후 정해진 unblocked 문구로 답장 (자세한 운영 규칙은 memory `feedback_points_report_ban_check_first.md` 참조)
+   - `banned=false`이면 unban 답장 금지 → 실제 원인 디버그 진행
 1. 대표 리포트 1건의 재현 경로 확인 (필요 시 스크린샷 S3 URL presigned)
 2. **Explore 서브에이전트** 호출해서 관련 코드 경로 찾기. 메인은 파일 경로 + 증거만 받는다.
 3. 사용자와 대화로 원인 합의 → 수정은 별도 세션(새 `/code-review` 또는 수동)로 분리 권장
