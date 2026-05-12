@@ -653,6 +653,15 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
     if (binanceSymbol) {
       const lastCandle = effectiveCandleData[effectiveCandleData.length - 1];
       if (!lastCandle || !currentPrice) return;
+      // Live-overlay the on-chain Pado price onto the latest Binance candle so
+      // the chart feels live. Skip the update when Pado diverges materially
+      // from Binance — devnet LP quotes can momentarily sit far from the
+      // external mid, and writing that price would draw a single elongated
+      // candle (open from Binance, close from Pado) that looks like a glitch.
+      const LIVE_OVERLAY_TOLERANCE = 0.003; // 0.3%
+      if (Math.abs(currentPrice - lastCandle.close) / lastCandle.close > LIVE_OVERLAY_TOLERANCE) {
+        return;
+      }
       candleSeriesRef.current.update({
         time: lastCandle.time,
         open: lastCandle.open,
