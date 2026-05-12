@@ -212,7 +212,11 @@ interface IdentityStakeData {
 
 const MIST_PER_NSN = 10n ** 9n;
 
-const RPC_CONCURRENCY = 50; // max parallel suix_getStakes calls
+// Lowered from 50 to 20 (2026-05-12): 14k staker x 50 concurrent overlapped
+// with fullnode catchup window after restarts (00:00/06:00 cycles), inflating
+// 503 bursts. 20 keeps the loop well under scanLoop's 180s budget while
+// halving peak burst pressure on the RPC. See HANDOFF rpc-503-mitigation.
+const RPC_CONCURRENCY = 20; // max parallel suix_getStakes calls
 
 /**
  * Fetch suix_getStakes for all staking identities with bounded concurrency.
@@ -242,19 +246,12 @@ async function fetchIdentityStakeData(
     const batch = entries.slice(i, i + RPC_CONCURRENCY);
 
     await Promise.all(batch.map(async ([identityId, wallets]) => {
-      // Per-wallet RPC fetch with one retry + backoff. Fullnode 5xx/timeout
-      // bursts (5/8 incident) marked entire identities as partial-failure on
-      // first attempt, blocking the same-day staking-daily insert. Retrying
-      // the failed wallets recovers most cases without inflating concurrency.
-      const fetchOne = async (w: string): Promise<StakeInfo[]> => {
-        try {
-          return await rpcCall<StakeInfo[]>('suix_getStakes', [w]);
-        } catch {
-          await new Promise((r) => setTimeout(r, 750));
-          return rpcCall<StakeInfo[]>('suix_getStakes', [w]);
-        }
-      };
-      const stakeResults = await Promise.allSettled(wallets.map(fetchOne));
+      // rpcCall handles transient 5xx/timeout retries internally; no per-call
+      // wrapper needed. Recovery from the 5/8 partial-failure incident now
+      // comes from the centralized retry+backoff in rpc.ts.
+      const stakeResults = await Promise.allSettled(
+        wallets.map((w) => rpcCall<StakeInfo[]>('suix_getStakes', [w])),
+      );
 
       let totalPrincipalMist = 0n;
       let totalEstimatedRewardMist = 0n;
