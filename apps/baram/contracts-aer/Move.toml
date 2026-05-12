@@ -1,8 +1,8 @@
 [package]
 name = "baram_aer"
 edition = "2024"
-version = "0.0.3"
-published-at = "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0"
+version = "1.1.0"
+published-at = "0x0c9f78fc8c91a1f26e5643d08c6ebce5a8ef43b2fcdbf658b1dfa70db466b164"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework", override = true }
@@ -10,7 +10,7 @@ MoveStdlib = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework
 baram = { local = "../contracts" }
 
 [addresses]
-baram_aer = "0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0"
+baram_aer = "0x0c9f78fc8c91a1f26e5643d08c6ebce5a8ef43b2fcdbf658b1dfa70db466b164"
 
 [environments]
 devnet = "272218f1"
