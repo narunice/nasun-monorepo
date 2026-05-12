@@ -73,7 +73,7 @@ export interface ReferralStats {
   } | null;
 }
 
-export type ReviewStatus = "pending" | "appealed" | "declined";
+export type ReviewStatus = "pending" | "appealed" | "declined" | "activated";
 
 export interface ReviewItem {
   serial: number;
@@ -84,6 +84,7 @@ export interface ReviewItem {
   referrerHandle: string | null;
   referralCode: string | null;
   appliedAt: string | null;
+  activatedAt: string | null;
   reviewedAt: string | null;
   reviewerNote: string | null;
   appealedAt: string | null;

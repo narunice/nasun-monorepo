@@ -199,7 +199,7 @@ export class AdminStack extends cdk.Stack {
     genesisPassTable.grantReadWriteData(this.exportFunction);
     userWalletsTable.grantReadData(this.exportFunction);
     referralCodesTable.grantReadData(this.exportFunction);
-    referralsTable.grantReadData(this.exportFunction);
+    referralsTable.grantReadWriteData(this.exportFunction);
     activationsTable.grantReadData(this.exportFunction);
     internalCacheBucket.grantReadWrite(this.exportFunction);
 
