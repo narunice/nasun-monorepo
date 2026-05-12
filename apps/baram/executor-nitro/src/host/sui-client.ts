@@ -1,13 +1,12 @@
 /**
- * Sui Client for Nitro Host — Settlement + AER
+ * Sui Client for Nitro Host — Settlement + AER (capability-gated).
  *
- * Handles on-chain settlement (submit_proof) and AI Execution Report (create_report)
- * after the Enclave returns execution results.
- *
- * Plan B B2: `submitProofWithAERCapability` calls the new capability-gated AER
- * entry. The legacy `submitProofWithAER` path remains in this file but targets
- * an entry that no longer exists in the post-republish baram_aer package, so
- * the only live execution path now goes through the capability variant.
+ * Plan C removed the legacy `submitProofWithAER` / `submitProofWithAERRetry`
+ * helpers because the underlying `aer::create_report_with_receipt` entry now
+ * only accepts settlement-class events. All cognition/execution AERs flow
+ * through `submitProofWithAERCapability`. Settlement-class AERs (executor
+ * fee, gas refund) still exist on-chain but are emitted by Move-internal
+ * paths, not by the host directly.
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -488,176 +487,6 @@ export async function getAttestationBaseline(): Promise<{
     console.warn('[Sui] Failed to fetch attestation baseline:', error);
     return null;
   }
-}
-
-/**
- * Submit proof + create AI Execution Report in the same PTB (atomic).
- * Called after Enclave returns execution results.
- */
-export async function submitProofWithAER(
-  requestId: number,
-  resultHash: string,
-  executionTimeMs: number,
-  request: ComputeRequestOnChain,
-  aer: AERReportData,
-): Promise<string> {
-  const sui = getClient();
-  const kp = getKeypair();
-  const cfg = getConfig();
-
-  console.log(`[Sui] Submitting proof + AER for request ${requestId}`);
-
-  const tx = new Transaction();
-
-  const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
-  const promptHashBytes = Array.isArray(request.promptHash)
-    ? request.promptHash as unknown as number[]
-    : Array.from(Buffer.from(request.promptHash, 'hex'));
-
-  // Call 1: submit_proof_with_receipt (settlement + payment + hot-potato receipt)
-  // Receipt is consumed by create_report_with_receipt in the same PTB.
-  const [receipt] = tx.moveCall({
-    target: `${cfg.packageId}::baram::submit_proof_with_receipt`,
-    arguments: [
-      tx.object(cfg.registryId),
-      tx.pure.u64(requestId),
-      tx.pure.vector('u8', resultHashBytes),
-      tx.pure.u64(executionTimeMs),
-      tx.object('0x6'), // Clock
-    ],
-  });
-
-  // Call 2: create_report_with_receipt (AER — consumes hot-potato receipt)
-  // Fields from receipt: request_id, authorizer, executor, payment_amount, model_name,
-  // output_hash, execution_time_ms, settled_at
-  if (cfg.aerPackageId && cfg.aerRegistryId) {
-    tx.moveCall({
-      target: `${cfg.aerPackageId}::aer::create_report_with_receipt`,
-      arguments: [
-        tx.object(cfg.aerRegistryId),
-        receipt,                                                                // SettlementReceipt
-        // 1. WHO — Requester (authorizer from receipt)
-        tx.pure.address(request.requester),                                    // initiator
-        tx.pure.vector('address', aer.delegationPath),                         // delegation_path
-        // 2. WHO — Executor (executor from receipt)
-        tx.pure(bcs.option(bcs.Address).serialize(aer.executorPrincipal)),     // executor_principal
-        // 3. HOW MUCH (payment_amount, executor_received from receipt)
-        tx.pure(bcs.option(bcs.string()).serialize(aer.feeDetail)),            // fee_detail
-        tx.pure(bcs.option(bcs.Address).serialize(aer.budgetId)),              // budget_id
-        tx.pure(bcs.option(bcs.u64()).serialize(aer.budgetRemaining != null ? BigInt(aer.budgetRemaining) : null)), // budget_remaining
-        // 4. WHAT (model_name, output_hash, execution_time_ms from receipt)
-        tx.pure(bcs.option(bcs.string()).serialize(aer.modelMetadata)),        // model_metadata
-        tx.pure.vector('u8', promptHashBytes),                                 // input_hash
-        // 5. WHY
-        tx.pure(bcs.option(bcs.string()).serialize(aer.purpose)),              // purpose
-        tx.pure(bcs.option(bcs.string()).serialize(aer.constraints)),          // constraints
-        // 6. HOW TRUSTWORTHY
-        tx.pure.u8(aer.executorTier),                                          // executor_tier
-        tx.pure.u64(aer.executorReputation),                                   // executor_reputation
-        tx.pure.u64(aer.executorStakeAmount),                                  // executor_stake_amount
-        tx.pure.bool(aer.teeVerified),                                         // tee_verified
-        tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(aer.teeAttestationHash)), // tee_attestation_hash
-        // 7. WHEN (settled_at from receipt)
-        tx.pure.u64(request.createdAt),                                        // requested_at
-        // 8. CHAIN
-        tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),           // triggered_by
-        tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),       // triggered_action
-      ],
-    });
-  } else {
-    console.warn('[Sui] AER not configured, submitting proof only');
-  }
-
-  // Call 3: record_job_completion (self-service reputation update + dedup guard)
-  if (cfg.executorPackageId && cfg.executorRegistryId && cfg.processedRequestsId) {
-    tx.moveCall({
-      target: `${cfg.executorPackageId}::executor::record_job_completion`,
-      arguments: [
-        tx.object(cfg.executorRegistryId),
-        tx.object(cfg.processedRequestsId),
-        tx.pure.u64(requestId),
-        tx.object('0x6'), // Clock
-      ],
-    });
-  }
-
-  // Call 4: refresh_tier_from_state (permissionless tier recalculation)
-  if (cfg.executorPackageId && cfg.tierRegistryId && cfg.executorRegistryId && cfg.executorStakeId) {
-    tx.moveCall({
-      target: `${cfg.executorPackageId}::executor_tier::refresh_tier_from_state`,
-      arguments: [
-        tx.object(cfg.tierRegistryId),
-        tx.object(cfg.executorRegistryId),
-        tx.object(cfg.executorStakeId),
-      ],
-    });
-  }
-
-  const result = await sui.signAndExecuteTransaction({
-    signer: kp,
-    transaction: tx,
-    options: { showEffects: true, showEvents: true },
-  });
-
-  if (result.effects?.status?.status !== 'success') {
-    const error = result.effects?.status?.error || 'Unknown error';
-    throw new Error(`Transaction failed: ${error}`);
-  }
-
-  console.log(`[Sui] Proof + AER submitted: ${result.digest}`);
-  return result.digest;
-}
-
-/**
- * Get on-chain request status (for settlement retry logic).
- * Returns: 0=PENDING, 1=EXECUTING, 2=COMPLETED, 3=CANCELLED, 4=REFUNDED, null=not found
- */
-export async function getRequestStatus(requestId: number): Promise<number | null> {
-  const req = await getRequest(requestId);
-  return req?.status ?? null;
-}
-
-/**
- * Submit proof with AER + retry logic.
- * Retries on transient failures, checks on-chain status to detect
- * successful-but-timed-out submissions.
- */
-export async function submitProofWithAERRetry(
-  requestId: number,
-  resultHash: string,
-  executionTimeMs: number,
-  request: ComputeRequestOnChain,
-  aer: AERReportData,
-  maxRetries: number = 3,
-): Promise<string> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await submitProofWithAER(requestId, resultHash, executionTimeMs, request, aer);
-    } catch (err) {
-      // Check if TX actually landed on-chain despite network error
-      try {
-        const status = await getRequestStatus(requestId);
-        if (status === 2) { // STATUS_COMPLETED — TX went through
-          console.log(`[Sui] Request ${requestId} already settled on-chain (detected on retry ${attempt})`);
-          return 'settlement-confirmed-via-status-check';
-        }
-        if (status === 3 || status === 4) { // CANCELLED or REFUNDED
-          throw new Error(`Request ${requestId} already cancelled/refunded (status=${status})`);
-        }
-      } catch (statusErr) {
-        // Status check also failed (RPC down) — continue retry
-        if (statusErr instanceof Error && statusErr.message.includes('already cancelled/refunded')) {
-          throw statusErr;
-        }
-      }
-
-      if (attempt === maxRetries) throw err;
-      const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
-      console.warn(`[Sui] Settlement attempt ${attempt}/${maxRetries} failed, retrying in ${delay}ms...`, err);
-      await new Promise(r => setTimeout(r, delay));
-    }
-  }
-  throw new Error('Settlement retry exhausted');
 }
 
 /**

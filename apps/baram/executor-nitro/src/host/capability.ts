@@ -55,7 +55,18 @@ export async function fetchCapability(
   client: SuiClient,
   capId: string,
 ): Promise<CapabilityRef> {
-  const ref = await capabilitySdk.fetchCapability(client, capId);
+  // F6: pin the type to the deployed AER package id (where the Capability
+  // struct lives, baram_aer::capability::Capability) when available so a
+  // misbehaving fullnode can't return a same-shape object from another
+  // package. Reads at boot from process.env to avoid plumbing a long
+  // config object through every preflight call; falls back to "any
+  // ::capability::Capability" suffix check inside the SDK helper when env
+  // is unset (e.g. during local dev where a single deployment doesn't have
+  // a stable id pinned yet).
+  const expectedPackageId = process.env.AER_PACKAGE_ID || undefined;
+  const ref = await capabilitySdk.fetchCapability(client, capId, {
+    expectedPackageId,
+  });
   initialSharedVersionCache.set(ref.objectId, ref.initialSharedVersion);
   return ref;
 }

@@ -26,8 +26,6 @@ import {
   getRequest,
   getExecutorAddress,
   getExecutorStats,
-  getAttestationBaseline,
-  submitProofWithAERRetry,
   submitProofWithAERCapability,
   defaultCognitionEnvelope,
   actionPayloadHash,
@@ -102,7 +100,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   // Middleware
   app.use(express.json({ limit: '1mb' }));
 
-  // In-memory rate limiter for /execute (no external dependency)
+  // In-memory rate limiter for /execute-capability (no external dependency)
   const rateLimitWindow = 60_000; // 1 minute
   const rateLimitMax = 15; // max requests per window per IP
   const requestCounts = new Map<string, { count: number; resetAt: number }>();
@@ -229,203 +227,31 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   });
 
   /**
-   * POST /execute
-   * Execute AI inference with encrypted prompt
+   * POST /execute — REMOVED (Plan C, F16).
    *
-   * Request body:
-   * {
-   *   requestId: number,        // On-chain request ID
-   *   encryptedPrompt: string,  // RSA-OAEP encrypted prompt (Base64)
-   *   model: string             // Model ID (e.g., "llama-3.3-70b-versatile")
-   * }
+   * The pre-Plan-B ungated AER entry path was removed when the AER package
+   * was republished in B1; `submit_proof_with_receipt -> create_report_with_
+   * receipt` now only accepts settlement-class AERs. Routing arbitrary
+   * cognition/execution inferences through it would have produced unrecoverable
+   * PTB rollbacks (receipt destroyed but AER refused) and bypassed all the
+   * capability hard rails. Callers must use `/execute-capability` instead and
+   * supply an envelope/lineage/wake/replay block.
+   *
+   * The 410 Gone response includes a `migration` field so the dashboard can
+   * surface a clear migration message to the user instead of bubbling up a
+   * generic 404.
    */
-  app.post('/execute', rateLimit, async (req: Request, res: Response) => {
-    const { requestId, encryptedPrompt, model, budgetId, authorizer, purpose, constraints, triggeredBy, triggeredAction } = req.body;
-
-    // Validate optional AER metadata (string fields max 256 chars; ID fields must be 0x + 64 hex)
-    const ID_RE = /^0x[0-9a-fA-F]{64}$/;
-    const aerMeta = {
-      purpose: typeof purpose === 'string' && purpose.length > 0 && purpose.length <= 256 ? purpose : null,
-      constraints: typeof constraints === 'string' && constraints.length > 0 && constraints.length <= 256 ? constraints : null,
-      triggeredBy: typeof triggeredBy === 'string' && ID_RE.test(triggeredBy) ? triggeredBy : null,
-      triggeredAction: typeof triggeredAction === 'string' && ID_RE.test(triggeredAction) ? triggeredAction : null,
-    };
-
-    // Validate request
-    if (typeof requestId !== 'number' || !Number.isInteger(requestId) || requestId < 0 || requestId > Number.MAX_SAFE_INTEGER) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing or invalid requestId (must be a non-negative integer)',
-      });
-      return;
-    }
-
-    if (!encryptedPrompt || typeof encryptedPrompt !== 'string') {
-      res.status(400).json({
-        success: false,
-        error: 'Missing or invalid encryptedPrompt',
-      });
-      return;
-    }
-
-    // Reject oversized prompts (1MB base64 ≈ ~750KB raw, well above typical LLM context)
-    const MAX_PROMPT_LENGTH = 1 * 1024 * 1024;
-    if (encryptedPrompt.length > MAX_PROMPT_LENGTH) {
-      res.status(413).json({
-        success: false,
-        error: 'Encrypted prompt too large',
-      });
-      return;
-    }
-
-    if (!model || typeof model !== 'string' || model.length > 100) {
-      res.status(400).json({
-        success: false,
-        error: 'Missing or invalid model',
-      });
-      return;
-    }
-
-    console.log(`[Host/Server] Execute request for requestId=${requestId}, model=${model}`);
-
-    try {
-      // Forward to Enclave
-      const response = await vsockClient.executeInference(
-        encryptedPrompt,
-        model,
-        requestId
-      );
-
-      // Load expected PCRs from on-chain AttestationRegistry (if Sui enabled)
-      let expectedPcrs: { pcr0?: string; pcr1?: string; pcr2?: string } | undefined;
-      let baselineVersion = 0;
-
-      if (suiEnabled) {
-        try {
-          const baseline = await getAttestationBaseline();
-          if (baseline) {
-            expectedPcrs = { pcr0: baseline.pcr0, pcr1: baseline.pcr1, pcr2: baseline.pcr2 };
-            baselineVersion = baseline.version;
-          }
-        } catch (baselineError) {
-          console.warn('[Host/Server] Failed to load PCR baseline:', baselineError);
-        }
-      }
-
-      // Verify attestation if raw document is present (production Nitro mode)
-      let attestationVerification: VerificationResult | undefined;
-      const attestation = response.payload.attestation;
-
-      if (attestation.rawDocument) {
-        try {
-          const rawDocBuffer = Buffer.from(attestation.rawDocument, 'base64');
-          attestationVerification = verifyAttestationDocument(
-            rawDocBuffer,
-            expectedPcrs,
-            5 * 60 * 1000 // 5 minutes max age
-          );
-          console.log('[Host/Server] Attestation verification:', attestationVerification.valid ? 'PASSED' : 'FAILED');
-          if (!attestationVerification.valid) {
-            console.warn('[Host/Server] Attestation verification failed:', attestationVerification.error);
-          }
-        } catch (verifyError) {
-          console.error('[Host/Server] Attestation verification error:', verifyError);
-          attestationVerification = {
-            valid: false,
-            error: verifyError instanceof Error ? verifyError.message : 'Verification error',
-          };
-        }
-      } else {
-        // Simulation mode - no raw document
-        console.log('[Host/Server] No raw attestation document (simulation mode)');
-      }
-
-      // On-chain settlement + AER (atomic PTB)
-      let txDigest: string | undefined;
-
-      if (suiEnabled) {
-        try {
-          const onChainRequest = await getRequest(requestId);
-          if (!onChainRequest) {
-            console.warn(`[Host/Server] On-chain request ${requestId} not found, skipping settlement`);
-          } else {
-            const executorAddress = getExecutorAddress();
-            const executorStats = await getExecutorStats(executorAddress);
-
-            // Build AER data from attestation + executor stats + request metadata
-            const attestationHashBytes = attestation.rawDocument
-              ? sha256Bytes(attestation.rawDocument)
-              : null;
-
-            const aerData: AERReportData = {
-              // WHO — Requester
-              delegationPath: [],
-              // WHO — Executor
-              executorPrincipal: null,
-              // HOW MUCH (payment_amount, executor_received, payment_token from receipt)
-              feeDetail: null,
-              budgetId: (typeof budgetId === 'string' && ID_RE.test(budgetId)) ? budgetId : null,
-              budgetRemaining: null,
-              // WHAT (model_name, output_hash, execution_time_ms from receipt)
-              modelMetadata: null,
-              // WHY (from /execute body — used by trader to link prior trade digest)
-              purpose: aerMeta.purpose,
-              constraints: aerMeta.constraints,
-              // HOW TRUSTWORTHY
-              executorTier: executorStats.tier,
-              executorReputation: executorStats.reputation,
-              executorStakeAmount: executorStats.stakeAmount,
-              teeVerified: attestationVerification?.valid ?? false,
-              teeAttestationHash: attestationHashBytes,
-              // CHAIN (from /execute body — trader passes prior trade tx digest as triggeredBy)
-              triggeredBy: aerMeta.triggeredBy,
-              triggeredAction: aerMeta.triggeredAction,
-            };
-
-            txDigest = await submitProofWithAERRetry(
-              requestId,
-              response.payload.resultHash,
-              response.payload.executionTimeMs,
-              onChainRequest,
-              aerData,
-            );
-
-            console.log(`[Host/Server] Settlement completed: ${txDigest}`);
-          }
-        } catch (settlementError) {
-          // Settlement failed after retries — do NOT return the result.
-          // User's escrow is safe (PENDING state, auto-refund after 5min timeout).
-          console.error('[Host/Server] Settlement failed after retries:', settlementError);
-          res.status(502).json({
-            success: false,
-            error: 'Settlement failed. Your escrow is safe and will auto-refund after timeout.',
-            settlementFailed: true,
-          });
-          return;
-        }
-      }
-
-      res.json({
-        success: true,
-        result: response.payload.result,
-        resultHash: response.payload.resultHash,
-        encrypted: response.payload.encrypted ?? false,
-        executionTimeMs: response.payload.executionTimeMs,
-        txDigest,
-        attestation: response.payload.attestation,
-        attestationVerification: attestationVerification ? {
-          valid: attestationVerification.valid,
-          error: attestationVerification.error,
-          details: attestationVerification.details,
-        } : undefined,
-      });
-    } catch (error) {
-      console.error('[Host/Server] Execution failed:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Execution failed',
-      });
-    }
+  app.post('/execute', (_req: Request, res: Response) => {
+    res.status(410).json({
+      success: false,
+      error: 'POST /execute is removed. Use POST /execute-capability.',
+      migration: {
+        replacementEndpoint: '/execute-capability',
+        reason:
+          'capability-gated AER is required after the Plan B republish; the legacy AER entry no longer accepts cognition/execution events.',
+        docs: 'apps/baram/docs/smoke-b2-runbook.md',
+      },
+    });
   });
 
   // ==========================================================================
@@ -467,9 +293,30 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
   })();
 
   // Configure cognition cap if env is set. Map of walletAddress -> cap is
-  // populated lazily on first request from that wallet.
+  // populated lazily on first request from that wallet. We bound the
+  // `seenWallets` set to avoid unbounded memory growth on a host that has
+  // been up for months — the cognition tracker itself is already keyed by
+  // walletAddress so a wallet falling out of `seenWallets` just means its
+  // next request re-runs `configureCognitionCap`, which is idempotent.
   const cognitionCapEnv = Number(process.env.DAILY_COGNITION_PAYOUT_CAP ?? '0');
-  const seenWallets = new Set<string>();
+  const SEEN_WALLETS_LIMIT = 10_000;
+  const seenWallets = new Map<string, true>();
+
+  // Shared SuiClient for preflight reads. The capability-gated PTB path uses
+  // the keypair-bound client in sui-client.ts; this one is RPC-only and
+  // re-used across requests so we don't pay the per-request `new SuiClient`
+  // overhead (each constructor opens an HTTP keepalive pool). F5 from the
+  // B2 review punch list.
+  let preflightClient: SuiClient | null = null;
+  function getPreflightClient(): SuiClient {
+    if (!preflightClient) {
+      if (!serverConfig.sui) {
+        throw new Error('Sui config missing — preflight client unavailable');
+      }
+      preflightClient = new SuiClient({ url: serverConfig.sui.rpcUrl });
+    }
+    return preflightClient;
+  }
 
   app.post('/execute-capability', rateLimit, async (req: Request, res: Response) => {
     if (!suiEnabled || !serverConfig.sui) {
@@ -633,13 +480,25 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     // successful configure call. Two concurrent requests for a new wallet
     // could both pass the `!has` check; the worst case is the second one
     // resets a freshly-empty ring, which is a no-op.
-    if (!seenWallets.has(walletAddress)) {
+    //
+    // F5 LRU touch: re-inserting a key into a Map moves it to "most
+    // recently used" in insertion order, so when we hit the limit we drop
+    // the oldest entry. The cognition tracker itself outlives this index;
+    // if the dropped wallet returns later the next branch re-configures
+    // with the same env cap (idempotent).
+    if (seenWallets.has(walletAddress)) {
+      seenWallets.delete(walletAddress);
+      seenWallets.set(walletAddress, true);
+    } else {
       configureCognitionCap(walletAddress, cognitionCapEnv);
-      seenWallets.add(walletAddress);
+      seenWallets.set(walletAddress, true);
+      if (seenWallets.size > SEEN_WALLETS_LIMIT) {
+        const oldest = seenWallets.keys().next().value;
+        if (oldest !== undefined) seenWallets.delete(oldest);
+      }
     }
 
-    const rpcUrl = serverConfig.sui.rpcUrl;
-    const client = new SuiClient({ url: rpcUrl });
+    const client = getPreflightClient();
 
     let pre;
     try {

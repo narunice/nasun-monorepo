@@ -119,54 +119,51 @@ async function runTest(): Promise<void> {
     // Verify Host cannot decrypt
     console.log('[Test] Note: Host cannot see the plaintext prompt - only Enclave can decrypt');
 
-    // Step 4: Execute inference
-    console.log('\n[Test] Step 4: Executing AI inference...');
+    // Step 4: Verify legacy /execute is gone (Plan C F16).
+    // /execute now returns 410 Gone. Full E2E coverage of the capability-
+    // gated path lives in apps/baram/docs/smoke-b2-runbook.md, which forges
+    // a capability + envelope + lineage block — far beyond what this stub
+    // harness was meant to do. We assert the migration response shape here
+    // so the test-client still catches regressions in the 410 contract.
+    console.log('\n[Test] Step 4: Verifying /execute is gone (410 Gone)...');
     const executeRes = await fetch(`${HOST_URL}/execute`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        requestId: 9999, // Test request ID
+        requestId: 9999,
         encryptedPrompt,
         model: 'llama-3.3-70b-versatile',
       }),
     });
 
-    const executeData: ExecuteResponse = await executeRes.json();
-
-    if (!executeData.success) {
-      throw new Error(`Execution failed: ${executeData.error}`);
+    if (executeRes.status !== 410) {
+      throw new Error(
+        `Expected 410 Gone on /execute, got ${executeRes.status}. ` +
+          'The legacy path should have been removed in Plan C.',
+      );
     }
-
-    // Step 5: Verify result
-    console.log('\n[Test] Step 5: Results');
-    console.log(`[Test] AI Response: "${executeData.result}"`);
-    console.log(`[Test] Result Hash: ${executeData.resultHash}`);
-    console.log(`[Test] Execution Time: ${executeData.executionTimeMs}ms`);
-
-    // Verify hash
-    const expectedHash = crypto
-      .createHash('sha256')
-      .update(executeData.result)
-      .digest('hex');
-
-    if (expectedHash === executeData.resultHash) {
-      console.log('[Test] Hash verification: PASSED');
-    } else {
-      console.log('[Test] Hash verification: FAILED');
-      console.log(`[Test] Expected: ${expectedHash}`);
-      console.log(`[Test] Got: ${executeData.resultHash}`);
+    const executeData = (await executeRes.json()) as ExecuteResponse & {
+      migration?: { replacementEndpoint?: string };
+    };
+    if (executeData.migration?.replacementEndpoint !== '/execute-capability') {
+      throw new Error(
+        '410 response is missing the migration.replacementEndpoint hint',
+      );
     }
+    console.log('[Test] /execute correctly returns 410 with migration metadata.');
+    console.log(
+      '[Test] For end-to-end smoke including /execute-capability, run apps/baram/docs/smoke-b2-runbook.md',
+    );
 
     console.log('\n========================================');
-    console.log('  E2E Test: SUCCESS');
+    console.log('  Public-key + /execute migration check: SUCCESS');
     console.log('========================================');
     console.log('');
-    console.log('Privacy verification:');
+    console.log('Verified:');
     console.log('- Public key obtained from Enclave');
-    console.log('- Prompt encrypted with RSA-OAEP');
-    console.log('- Only Enclave could decrypt the prompt');
-    console.log('- Host only saw encrypted data');
-    console.log('- Result hash matches computed hash');
+    console.log('- Prompt encrypted with RSA-OAEP + AES-256-GCM');
+    console.log('- Legacy /execute returns 410 Gone with migration hint');
+    console.log('- Caller is directed at /execute-capability');
     console.log('');
   } catch (error) {
     console.error('\n[Test] ERROR:', error);

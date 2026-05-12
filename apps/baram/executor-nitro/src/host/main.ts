@@ -84,7 +84,7 @@ async function main(): Promise<void> {
   console.log('Endpoints:');
   console.log(`  GET  http://localhost:${httpPort}/health       - Health check`);
   console.log(`  GET  http://localhost:${httpPort}/public-key   - Get Enclave public key`);
-  console.log(`  POST http://localhost:${httpPort}/execute      - Execute AI inference`);
+  console.log(`  POST http://localhost:${httpPort}/execute-capability - Capability-gated AI inference + AER`);
   console.log('');
 
   // Graceful shutdown
