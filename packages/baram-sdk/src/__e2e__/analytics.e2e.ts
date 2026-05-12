@@ -27,7 +27,7 @@ beforeAll(async () => {
 describe('Analytics E2E', () => {
   it('should produce valid empty summary when no data', () => {
     if (hasData) {
-      logTest('SKIP: Has data — tested in data-present test below');
+      logTest('SKIP: Has data - tested in data-present test below');
       return;
     }
     const summary = client.summarize(records);

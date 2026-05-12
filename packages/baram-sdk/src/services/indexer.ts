@@ -1,5 +1,5 @@
 /**
- * Indexer fetch layer — queries the baram API server instead of RPC.
+ * Indexer fetch layer - queries the baram API server instead of RPC.
  * Falls back to RPC on 5xx/network errors; propagates 4xx as client errors.
  */
 

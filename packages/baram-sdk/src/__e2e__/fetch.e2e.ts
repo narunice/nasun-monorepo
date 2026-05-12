@@ -1,6 +1,6 @@
 /**
  * E2E tests for AER fetch operations against Nasun devnet.
- * Uses existing AER records — no write operations needed.
+ * Uses existing AER records - no write operations needed.
  *
  * Tests gracefully skip when devnet has no AER records
  * (e.g., after a chain reset).
@@ -27,7 +27,7 @@ beforeAll(async () => {
 
 describe('Fetch E2E', () => {
   it('should connect to devnet and query events', async () => {
-    // This test passes even with 0 records — it verifies the RPC connection works
+    // This test passes even with 0 records - it verifies the RPC connection works
     const result = await client.getRecent({ limit: 1 });
     expect(Array.isArray(result.data)).toBe(true);
     expect(typeof result.hasNextPage).toBe('boolean');

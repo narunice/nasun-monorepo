@@ -1,5 +1,5 @@
 /**
- * AERClient — read-only client for querying and analyzing AI Execution Reports.
+ * AERClient - read-only client for querying and analyzing AI Execution Reports.
  * No signer/keypair required; all operations are read-only on-chain queries
  * and in-memory analytics.
  *
@@ -90,7 +90,7 @@ export class AERClient {
     return rpcFn();
   }
 
-  // === Single Record Queries (always RPC — freshness required) ===
+  // === Single Record Queries (always RPC - freshness required) ===
 
   async getByRequestId(requestId: number): Promise<AERRecord | null> {
     return fetchAERByRequestId(this.client, this.config, requestId);

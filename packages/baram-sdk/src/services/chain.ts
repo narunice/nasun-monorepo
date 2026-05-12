@@ -1,5 +1,5 @@
 /**
- * Decision chain traversal — trace linked AER records via triggeredBy/triggeredAction.
+ * Decision chain traversal - trace linked AER records via triggeredBy/triggeredAction.
  * Supports both backward (to parent) and forward (to children) traversal.
  */
 

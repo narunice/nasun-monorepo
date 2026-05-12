@@ -1,5 +1,5 @@
 /**
- * Move field parsing — converts raw on-chain fields to typed AERRecord.
+ * Move field parsing - converts raw on-chain fields to typed AERRecord.
  * Ported from baram-sdk/services/aer.ts with typed JSON parsing additions.
  */
 
@@ -112,12 +112,12 @@ export function parseAERFields(
     objectId,
     requestId: Number(fields.request_id || 0),
 
-    // 1. WHO — Requester
+    // 1. WHO - Requester
     initiator: String(fields.initiator || ''),
     authorizer: String(fields.authorizer || ''),
     delegationPath,
 
-    // 2. WHO — Executor
+    // 2. WHO - Executor
     executor: String(fields.executor || ''),
     executorPrincipal: parseOptionString(fields.executor_principal),
 
