@@ -481,7 +481,11 @@ export default function ChatWidget() {
           iframe is interactable in the rare interactive-fallback case.
           The previous display:none + appearance:'execute' combo trapped
           users on suspicious-IP networks (2026-05-09 outage). */}
-      {TURNSTILE_SITE_KEY && canChat && (
+      {/* Mount unconditionally (was gated by `canChat`) so the CF challenge
+          starts solving at page load instead of waiting for wallet login.
+          Token is stored in chat-service singleton until the WebSocket
+          auth_response consumes it. */}
+      {TURNSTILE_SITE_KEY && (
         <Turnstile
           key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
