@@ -1,7 +1,7 @@
 # Nasun Ecosystem Points System Technical Specification
 
 **상태**: 운영 중 (Production, V3 단일 경로, post-2026-05-04 안정화)
-**최근 업데이트**: 2026-05-11 (daily-mission tier/first-time bonus scanner 제거 — dead code였음)
+**최근 업데이트**: 2026-05-12 (RPC 503 mitigation: fullnode-restart cron 시각 분산 + daily-nft-check RPC_CONCURRENCY 50→20 + rpc.ts 중앙집중 retry+backoff. 5/8 staking-daily 14k 미적립 사고 클래스를 구조적으로 차단)
 **핵심 경로**:
 - Backend API: `apps/network-explorer/api-server/src/routes/ecosystem.ts`
 - Multiplier Config: `apps/network-explorer/api-server/src/config/ecosystem.ts`
@@ -447,7 +447,39 @@ allTime_live
 
 **검증**: `pnpm tsc --noEmit`으로 api-server 타입 체크 통과. 다른 import 끊김 없음.
 
-### 향후 개선 후보
+### 2026-05-12 RPC 503 mitigation (staking-daily 적립 신뢰성)
+
+**배경**: 자정 day-rollover 시점에 explorer-api `scanLoop`이 `runDailyNftChecks` 진입(utcMinutes gate 없음, [points-scanner.ts:331](../apps/network-explorer/api-server/src/scanner/points-scanner.ts#L331)) → `fetchIdentityStakeData`가 14k staking 식별자에 대해 `suix_getStakes`를 **`RPC_CONCURRENCY=50`** 동시 호출 → fullnode 메모리 폭증 → `check-fullnode-memory.sh` (`*/5`, 16GB threshold)가 즉시 restart 트리거 → ~60-90초 RPC downtime 동안 explorer-api의 모든 RPC caller가 503 폭격 → `hasPartialFailure=true`로 `staking-daily`/`staking-reward` 적립 skip. 2026-05-08 14k staker가 하루 1pt를 잃은 사고의 직접 원인 클래스.
+
+**3-fix coordinated**:
+
+1. **Cron 시각 분산** (dev EC2 crontab): `fullnode-restart.sh` 의도적 restart를 `0 */6` → `30 */6` UTC. critical Monday window(00:00 leaderboard reset / 00:05 snapshot / 00:15 settle-pado / 00:20 settle-ecosystem)가 모두 종료된 후 restart fire하도록 격리. settle-pado/settle-ecosystem/daily-snapshot/daily-referral-bonus 모두 fullnode RPC 의존이 0임을 grep으로 검증 → restart 시각 이동이 정산 파이프라인과 모순되지 않음 확인.
+
+2. **`RPC_CONCURRENCY` 50 → 20** ([daily-nft-check.ts:215](../apps/network-explorer/api-server/src/scanner/daily-nft-check.ts#L215)): 14k× `suix_getStakes` 동시 호출량을 60% 감소 → fullnode 메모리 burst 약화 → 16GB watchdog threshold 도달 가능성 감소. 처리 시간 ~6분 → ~15분으로 증가하나 scanLoop 외부 호출이라 timeout 무관. partial-failure 시 `stakingRetryNeeded`로 daily-gate 유지 + 다음 scanLoop(~60s) ON CONFLICT DO NOTHING 재시도가 멱등 보장.
+
+3. **`rpc.ts` 중앙집중 retry+backoff** ([rpc.ts:17-110](../apps/network-explorer/api-server/src/rpc.ts#L17-L110)): 모든 `rpcCall<T>(method, params)` caller가 자동으로 흡수.
+   - 502/503/504 + AbortError(timeout) + TypeError(fetch network failure) → 최대 3회 시도
+   - backoff: 500ms → 1500ms → 4500ms × ±20% jitter
+   - nginx `Retry-After` 헤더 존재 시 우선(max 5s cap) — 실제 504 응답이 `Retry-After: 5`를 보내므로 5초 cap에 자주 도달
+   - JSON-RPC application error (`json.error.code`) 및 retryable 외 4xx → 즉시 throw (non-idempotent)
+   - retry 시도/실패를 `console.warn`으로 로깅 (silent failure 방지)
+   - `daily-nft-check.ts`의 per-wallet ad-hoc retry는 제거. 중복 회피 + 모든 RPC caller(rpc-reconcile, rpc-reconcile-identity, detectChainReset 등)가 동일하게 보호받음
+
+**관측 (배포 직후 12:30 UTC cron fire)**:
+- cron이 정확히 `:30`으로 이동: `[2026-05-12 12:30:01 UTC] Restarting fullnode...`
+- nginx 503 burst: 5/12 06:00 (변경 전) 35,232건/3min → 5/12 12:30 (변경 후) ~1,727건/3min. **약 95% 감소**
+- explorer-api `RPC suix_queryEvents 503, retry 1/2 in 5000ms` retry warn 로그 첫 등장 확인. retry 1/2 → 2/2 단계적 시도 정상 작동
+- retry 실패 잔재(1,725건/min)는 `fullnode-restart.sh` 주석의 "RPC downtime ~60-90s"와 일치. Fix 3 retry 윈도우(5s×3 = ~15s)로는 단일 restart를 fully cover 못 함 → daily-nft-check의 partial-failure → 다음 scanLoop 재시도 layer가 최종 적립 보장
+
+**불변식 영향 (검토 완료, [pado-score-leaderboard.md] + [ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md] 교차 검증)**:
+- Points 단조 증가: cron/concurrency/retry는 공식 미터치, INSERT-only ledger 보존
+- Live ↔ snapshot lock-in 일치: snapshot/`/score` 모두 PG-only, fullnode RPC 무관
+- Pado Score Leaderboard: prod EC2 chat-server 운영 + SQLite + DeepBook. devnet fullnode RPC 무관, 영향 0
+- settle-pado(Mon 00:15) / settle-ecosystem(Mon 00:20): S3/HTTP/PG 의존만, fullnode RPC 0. 신 cron(:30)과 충돌 없음
+- 매시 :30 cron(`indexer-db-reinit`, `backfill-snapshot-day`)이 fullnode-restart와 같은 분에 발화하지만 Fix 3 retry로 transparent 흡수
+
+**미해결 anomaly (별도 추적)**:
+- 정각(:00) 503 burst의 진짜 트리거는 `check-fullnode-memory.sh` watchdog일 가능성. Fix 2로 14k getStakes 메모리 burst가 약해지면 자정 burst도 사라질 것. 다음 자정(00:00 UTC = KST 09:00) 측정이 결정적
 
 - **Monotonic-increase watermark**: 사용자별 historical max allTime을 별도 테이블에 유지하고 라이브 응답이 그보다 작아지지 않도록 floor 적용 (deploy 시 단발성 정상화 충격 흡수용).
 - **snapshot 컬럼 명 통일**: V1 컬럼이 archival-only가 된 만큼, 새 컬럼명(`multiplier`, `ecosystem_score`)으로 V3 데이터를 재정의하는 마이그레이션을 검토. 단, 라이브 데이터 마이그레이션이라 별도 sprint 필요.
