@@ -88,6 +88,10 @@ interface UsePredictionTradeResult {
     marketId: string,
     positions: Array<{ positionId: string; won: boolean }>,
   ) => Promise<TradeResult>;
+  settleRefundsBatch: (
+    marketId: string,
+    positionIds: string[],
+  ) => Promise<TradeResult>;
 
   placeBuyTaker: (
     marketId: string,
@@ -776,6 +780,30 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   /**
+   * Bulk-claim refunds across positions in a cancelled market in a single PTB.
+   * Mirrors `settlePositionsBatch` but targets `buildClaimCancelledRefund`. The
+   * caller is responsible for chunking (PTB input-object cap) and refetching
+   * positions afterwards.
+   */
+  const settleRefundsBatch = useCallback(
+    (marketId: string, positionIds: string[]) =>
+      runOperation(
+        marketId,
+        'refund:batch',
+        (tx) => {
+          const BASE_BUDGET = 50_000_000;
+          const PER_POSITION = 3_000_000;
+          tx.setGasBudget(BASE_BUDGET + PER_POSITION * positionIds.length);
+          for (const id of positionIds) {
+            buildClaimCancelledRefund(tx, marketId, id);
+          }
+        },
+        'Refunds claimed',
+      ),
+    [runOperation],
+  );
+
+  /**
    * Create a BalanceManager for the connected wallet (tx1 of first-trade two-tx flow).
    * Stores the new BM ID in localStorage and the shared Zustand store so subsequent
    * placeBuyTaker calls route through it automatically.
@@ -850,6 +878,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     burnLosingPosition,
     claimRestingRefundsBatch,
     settlePositionsBatch,
+    settleRefundsBatch,
     requestNusdc,
   };
 }
