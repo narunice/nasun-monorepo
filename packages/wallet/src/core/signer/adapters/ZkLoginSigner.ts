@@ -107,6 +107,14 @@ export class ZkLoginSigner implements SignerAdapter {
   }
 
   /**
+   * Expose session expiry so callers can apply their own grace period
+   * (e.g. chat auth refuses to sign once <30s remain to avoid mid-handshake races).
+   */
+  getExpiresAt(): number {
+    return this.zkState.expiresAt;
+  }
+
+  /**
    * Sign a message with the ephemeral Ed25519 key (not a zkLogin signature).
    * Useful for non-financial authentication (e.g., chat challenge-response)
    * where verifyPersonalMessageSignature against the zkLogin address is not applicable.
