@@ -48,35 +48,20 @@ const MAX_RETRIES = 3;
 let syncing = false;
 
 /**
- * Read `<sub-struct>.<field>` from an Sui object's parsed fields. Sui's RPC
- * wraps nested struct fields in `{ fields: { ... } }`, sometimes nested
- * twice depending on display vs content. Returns undefined if the path
- * doesn't exist so callers can fall through to a null on legacy AERs that
- * never had the sub-struct at all.
+ * Read the nested-fields envelope of an Sui-encoded Move sub-struct. Sui's
+ * RPC wraps nested struct fields in `{ type, fields: { ... } }`. We accept
+ * either shape (with-fields-wrapper or already-unwrapped) so the parser is
+ * robust against shape drift between `showContent` / `showDisplay` callers.
+ * Returns null if the path doesn't exist so callers can short-circuit.
  */
-function extractFromSubStruct(
+function getSubStruct(
   fields: Record<string, unknown>,
   subStruct: string,
-  fieldName: string,
-): unknown {
+): Record<string, unknown> | null {
   const outer = fields[subStruct] as Record<string, unknown> | undefined;
-  if (!outer) return undefined;
+  if (!outer) return null;
   const inner = (outer.fields as Record<string, unknown> | undefined) ?? outer;
-  return inner[fieldName];
-}
-
-/** Read a value from `fields.<subStruct>.<field>` falling back to the flat
- *  `fields.<field>` path. Plan B AERs put `purpose`, `policy_version`,
- *  `constraints` inside `why`; v1 AERs put them at the top level. Until the
- *  full Plan-A indexer cutover lands in Plan C, the parser must read from
- *  both layouts so the column doesn't go silently NULL for one half. */
-function readScalarFromWhyOrFlat(
-  fields: Record<string, unknown>,
-  fieldName: string,
-): unknown {
-  const nested = extractFromSubStruct(fields, 'why', fieldName);
-  if (nested !== undefined) return nested;
-  return fields[fieldName];
+  return inner;
 }
 
 function parseOptionString(val: unknown): string | null {
@@ -95,6 +80,13 @@ function bytesToHex(val: unknown): string {
   return '';
 }
 
+/** Optional<vector<u8>> → hex | null. Sui RPC presents `Option::Some(bytes)`
+ *  as the raw `number[]` value and `Option::None` as `null`. */
+function parseOptionBytesHex(val: unknown): string | null {
+  if (val === null || val === undefined) return null;
+  return bytesToHex(val);
+}
+
 function safeJsonParse(val: unknown): unknown {
   if (val === null || val === undefined) return null;
   const str = String(val);
@@ -105,54 +97,134 @@ function safeJsonParse(val: unknown): unknown {
   }
 }
 
+/**
+ * Sui RPC presents `VecMap<K, V>` as `{ contents: [{ key, value }, ...] }`,
+ * wrapped in the same `{ fields: ... }` envelope as a struct. Returns a flat
+ * object suitable for JSONB storage. Keys are decoded as strings; values are
+ * decoded as hex (the on-chain type is `vector<u8>`).
+ */
+function parseReplayExtras(val: unknown): Record<string, string> | null {
+  if (val === null || val === undefined) return null;
+  const wrap = val as Record<string, unknown>;
+  const inner = (wrap.fields as Record<string, unknown> | undefined) ?? wrap;
+  const contents = inner.contents;
+  if (!Array.isArray(contents) || contents.length === 0) return null;
+  const out: Record<string, string> = {};
+  for (const entry of contents) {
+    if (!entry || typeof entry !== 'object') continue;
+    const e = entry as Record<string, unknown>;
+    const kvWrap = (e.fields as Record<string, unknown> | undefined) ?? e;
+    const key = kvWrap.key;
+    const value = kvWrap.value;
+    if (key === undefined || value === undefined) continue;
+    out[String(key)] = bytesToHex(value);
+  }
+  return out;
+}
+
 interface AERRow {
   object_id: string;
   request_id: number;
+  // 1. Requester
   initiator: string;
   authorizer: string;
   delegation_path: string[];
+  // 2. Executor
   executor: string;
   executor_principal: string | null;
+  // 3. Payment
   payment_amount: number;
   payment_token: number;
   executor_received: number;
   fee_detail: unknown;
   budget_id: string | null;
   budget_remaining: number | null;
+  // 4. Inference
   model_name: string;
   model_metadata: unknown;
   input_hash: string;
   output_hash: string;
   execution_time_ms: number;
+  // 5. Why
   purpose: string | null;
   policy_version: number | null;
   /** Plan B B2: snapshot of `Capability.version` at AER creation. NULL for
    *  v1 AERs and for the ungated/settlement path. */
   capability_version: number | null;
   constraints: unknown;
+  // 6. Trust
   executor_tier: number;
   executor_reputation: number;
   executor_stake_amount: number;
   tee_verified: boolean;
   tee_attestation_hash: string | null;
+  // 7. Time
   requested_at: number;
   settled_at: number;
   status: number;
+  // 8. Chain
   triggered_by: string | null;
   triggered_action: string | null;
+  // 8b. Lineage (ChainContext.lineage). Plan C: surfaced as own columns so
+  // the indexer can resolve "all AERs of intent X" cheaply.
+  intent_id: string | null;
+  parent_intent_id: string | null;
+  execution_id: number | null;
+  // 9. Envelope (Plan A). Caller-supplied; one row per AER.
+  event_class: number | null;
+  action_type: string | null;
+  action_schema_version: number | null;
+  payload_codec: string | null;
+  payload_hash: string | null;
+  payload_bytes: string | null;
+  action_summary: string | null;
+  action_outcome: number | null;
+  // 10. Wake
+  triggered_by_type: number | null;
+  triggered_by_ref: string | null;
+  // 11. Replay
+  model_version: string | null;
+  prompt_template_hash: string | null;
+  market_snapshot_hash: string | null;
+  replay_extras: unknown;
+  // Sync metadata
   source_tx_digest: string | null;
 }
 
 /**
- * Parse Move object fields into a DB row.
- * Mirrors parseAERFields from baram-sdk.
+ * Parse a Move AER object into a DB row by walking the canonical nested
+ * sub-struct shape that Plan A introduced. All eleven sub-structs (requester,
+ * executor, payment, inference, why, trust, time, chain, envelope, wake,
+ * replay) are expected; absent sub-structs surface as NULLs rather than
+ * synthesised defaults so the dashboard can tell a missing field apart from
+ * a deliberate `Option::None`.
+ *
+ * Plan B v1 AERs (pre-republish) had a flat layout. We no longer back-read
+ * the flat shape: the republish drops legacy AERs from the registry, and
+ * supporting both shapes makes silent-null bugs hard to spot. If a row from
+ * a legacy AER ever shows up, every sub-struct will be missing and the row
+ * will surface as obviously-null in the dashboard. That's the correct
+ * signal: "this is not a Plan-A-shaped AER."
  */
 function parseObjectToRow(
   fields: Record<string, unknown>,
   objectId: string,
   txDigest: string | null,
 ): AERRow {
-  const rawDelegationPath = fields.delegation_path;
+  const requester = getSubStruct(fields, 'requester') ?? {};
+  const executor = getSubStruct(fields, 'executor') ?? {};
+  const payment = getSubStruct(fields, 'payment') ?? {};
+  const inference = getSubStruct(fields, 'inference') ?? {};
+  const why = getSubStruct(fields, 'why') ?? {};
+  const trust = getSubStruct(fields, 'trust') ?? {};
+  const time = getSubStruct(fields, 'time') ?? {};
+  const chain = getSubStruct(fields, 'chain') ?? {};
+  const lineage = getSubStruct(chain, 'lineage') ?? {};
+  const envelope = getSubStruct(fields, 'envelope') ?? {};
+  const wake = getSubStruct(fields, 'wake') ?? {};
+  const replay = getSubStruct(fields, 'replay') ?? {};
+
+  const rawDelegationPath = requester.delegation_path;
   const delegationPath: string[] = Array.isArray(rawDelegationPath)
     ? rawDelegationPath.map(String)
     : [];
@@ -160,45 +232,74 @@ function parseObjectToRow(
   return {
     object_id: objectId,
     request_id: Number(fields.request_id || 0),
-    initiator: String(fields.initiator || ''),
-    authorizer: String(fields.authorizer || ''),
+    // 1. Requester
+    initiator: String(requester.initiator || ''),
+    authorizer: String(requester.authorizer || ''),
     delegation_path: delegationPath,
-    executor: String(fields.executor || ''),
-    executor_principal: parseOptionString(fields.executor_principal),
-    payment_amount: Number(fields.payment_amount || 0),
-    payment_token: Number(fields.payment_token || 0),
-    executor_received: Number(fields.executor_received || 0),
-    fee_detail: safeJsonParse(parseOptionString(fields.fee_detail)),
-    budget_id: parseOptionString(fields.budget_id),
-    budget_remaining: parseOptionNumber(fields.budget_remaining),
-    model_name: String(fields.model_name || ''),
-    model_metadata: safeJsonParse(parseOptionString(fields.model_metadata)),
-    input_hash: bytesToHex(fields.input_hash),
-    output_hash: bytesToHex(fields.output_hash),
-    execution_time_ms: Number(fields.execution_time_ms || 0),
-    // Plan B B2: the AER schema nests these fields under `why`. v1 AERs put
-    // them at the top level. readScalarFromWhyOrFlat handles both until
-    // Plan C does the full sub-struct walk for every category.
-    purpose: parseOptionString(readScalarFromWhyOrFlat(fields, 'purpose')),
-    policy_version: parseOptionNumber(readScalarFromWhyOrFlat(fields, 'policy_version')),
-    capability_version: parseOptionNumber(
-      extractFromSubStruct(fields, 'why', 'capability_version'),
-    ),
-    constraints: safeJsonParse(
-      parseOptionString(readScalarFromWhyOrFlat(fields, 'constraints')),
-    ),
-    executor_tier: Math.min(Number(fields.executor_tier || 0), 3),
-    executor_reputation: Number(fields.executor_reputation || 0),
-    executor_stake_amount: Number(fields.executor_stake_amount || 0),
-    tee_verified: Boolean(fields.tee_verified),
-    tee_attestation_hash: fields.tee_attestation_hash
-      ? bytesToHex(fields.tee_attestation_hash)
-      : null,
-    requested_at: Number(fields.requested_at || 0),
-    settled_at: Number(fields.settled_at || 0),
-    status: Number(fields.status || 0),
-    triggered_by: parseOptionString(fields.triggered_by),
-    triggered_action: parseOptionString(fields.triggered_action),
+    // 2. Executor
+    executor: String(executor.executor || ''),
+    executor_principal: parseOptionString(executor.executor_principal),
+    // 3. Payment
+    payment_amount: Number(payment.payment_amount || 0),
+    payment_token: Number(payment.payment_token || 0),
+    executor_received: Number(payment.executor_received || 0),
+    fee_detail: safeJsonParse(parseOptionString(payment.fee_detail)),
+    budget_id: parseOptionString(payment.budget_id),
+    budget_remaining: parseOptionNumber(payment.budget_remaining),
+    // 4. Inference
+    model_name: String(inference.model_name || ''),
+    model_metadata: safeJsonParse(parseOptionString(inference.model_metadata)),
+    input_hash: bytesToHex(inference.input_hash),
+    output_hash: bytesToHex(inference.output_hash),
+    execution_time_ms: Number(inference.execution_time_ms || 0),
+    // 5. Why
+    purpose: parseOptionString(why.purpose),
+    policy_version: parseOptionNumber(why.policy_version),
+    capability_version: parseOptionNumber(why.capability_version),
+    constraints: safeJsonParse(parseOptionString(why.constraints)),
+    // 6. Trust
+    executor_tier: Math.min(Number(trust.executor_tier || 0), 3),
+    executor_reputation: Number(trust.executor_reputation || 0),
+    executor_stake_amount: Number(trust.executor_stake_amount || 0),
+    tee_verified: Boolean(trust.tee_verified),
+    tee_attestation_hash: parseOptionBytesHex(trust.tee_attestation_hash),
+    // 7. Time
+    requested_at: Number(time.requested_at || 0),
+    settled_at: Number(time.settled_at || 0),
+    status: Number(time.status || 0),
+    // 8. Chain
+    triggered_by: parseOptionString(chain.triggered_by),
+    triggered_action: parseOptionString(chain.triggered_action),
+    // 8b. Lineage (intent_id is vector<u8>; store as hex for portability)
+    intent_id: lineage.intent_id !== undefined ? bytesToHex(lineage.intent_id) || null : null,
+    parent_intent_id: parseOptionBytesHex(lineage.parent_intent_id),
+    execution_id: lineage.execution_id !== undefined ? Number(lineage.execution_id) : null,
+    // 9. Envelope
+    event_class: envelope.event_class !== undefined ? Number(envelope.event_class) : null,
+    action_type: envelope.action_type !== undefined ? String(envelope.action_type) : null,
+    action_schema_version:
+      envelope.action_schema_version !== undefined ? Number(envelope.action_schema_version) : null,
+    payload_codec: envelope.payload_codec !== undefined ? String(envelope.payload_codec) : null,
+    payload_hash: envelope.payload_hash !== undefined ? bytesToHex(envelope.payload_hash) || null : null,
+    // Payload bytes can be large; keep as hex but the JSONB ceiling in PG is
+    // ~1GB, so this is fine for prototype scale. Plan E may want a separate
+    // table if we ever store large blobs.
+    payload_bytes:
+      envelope.payload_bytes !== undefined ? bytesToHex(envelope.payload_bytes) || null : null,
+    action_summary: envelope.action_summary !== undefined ? String(envelope.action_summary) : null,
+    action_outcome: envelope.action_outcome !== undefined ? Number(envelope.action_outcome) : null,
+    // 10. Wake
+    triggered_by_type:
+      wake.triggered_by_type !== undefined ? Number(wake.triggered_by_type) : null,
+    triggered_by_ref: parseOptionString(wake.triggered_by_ref),
+    // 11. Replay
+    model_version: replay.model_version !== undefined ? String(replay.model_version) : null,
+    prompt_template_hash:
+      replay.prompt_template_hash !== undefined
+        ? bytesToHex(replay.prompt_template_hash) || null
+        : null,
+    market_snapshot_hash: parseOptionBytesHex(replay.market_snapshot_hash),
+    replay_extras: parseReplayExtras(replay.replay_extras),
     source_tx_digest: txDigest,
   };
 }
@@ -232,7 +333,8 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
     try {
       await sql`
         INSERT INTO aer_records (
-          object_id, request_id, initiator, authorizer, delegation_path,
+          object_id, request_id,
+          initiator, authorizer, delegation_path,
           executor, executor_principal,
           payment_amount, payment_token, executor_received, fee_detail, budget_id, budget_remaining,
           model_name, model_metadata, input_hash, output_hash, execution_time_ms,
@@ -240,9 +342,15 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
           requested_at, settled_at, status,
           triggered_by, triggered_action,
+          intent_id, parent_intent_id, execution_id,
+          event_class, action_type, action_schema_version, payload_codec,
+          payload_hash, payload_bytes, action_summary, action_outcome,
+          triggered_by_type, triggered_by_ref,
+          model_version, prompt_template_hash, market_snapshot_hash, replay_extras,
           source_tx_digest
         ) VALUES (
-          ${row.object_id}, ${row.request_id}, ${row.initiator}, ${row.authorizer}, ${row.delegation_path},
+          ${row.object_id}, ${row.request_id},
+          ${row.initiator}, ${row.authorizer}, ${row.delegation_path},
           ${row.executor}, ${row.executor_principal},
           ${row.payment_amount}, ${row.payment_token}, ${row.executor_received},
           ${row.fee_detail ? JSON.stringify(row.fee_detail) : null}::jsonb,
@@ -256,6 +364,12 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           ${row.tee_verified}, ${row.tee_attestation_hash},
           ${row.requested_at}, ${row.settled_at}, ${row.status},
           ${row.triggered_by}, ${row.triggered_action},
+          ${row.intent_id}, ${row.parent_intent_id}, ${row.execution_id},
+          ${row.event_class}, ${row.action_type}, ${row.action_schema_version}, ${row.payload_codec},
+          ${row.payload_hash}, ${row.payload_bytes}, ${row.action_summary}, ${row.action_outcome},
+          ${row.triggered_by_type}, ${row.triggered_by_ref},
+          ${row.model_version}, ${row.prompt_template_hash}, ${row.market_snapshot_hash},
+          ${row.replay_extras ? JSON.stringify(row.replay_extras) : null}::jsonb,
           ${row.source_tx_digest}
         )
         ON CONFLICT (object_id) DO NOTHING

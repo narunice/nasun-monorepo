@@ -63,9 +63,33 @@ export async function initSchema(): Promise<void> {
       settled_at           BIGINT NOT NULL,
       status               SMALLINT NOT NULL DEFAULT 0,
 
-      -- 8. CHAIN
+      -- 8. CHAIN (sub-struct: ChainContext)
       triggered_by         TEXT,
       triggered_action     TEXT,
+      -- 8b. LINEAGE (sub-struct: ChainContext.lineage)
+      intent_id            TEXT,
+      parent_intent_id     TEXT,
+      execution_id         INTEGER,
+
+      -- 9. ENVELOPE (sub-struct: ActionEnvelope)
+      event_class             SMALLINT,
+      action_type             TEXT,
+      action_schema_version   INTEGER,
+      payload_codec           TEXT,
+      payload_hash            TEXT,
+      payload_bytes           TEXT,
+      action_summary          TEXT,
+      action_outcome          SMALLINT,
+
+      -- 10. WAKE (sub-struct: WakeContext)
+      triggered_by_type    SMALLINT,
+      triggered_by_ref     TEXT,
+
+      -- 11. REPLAY (sub-struct: ReplayContext)
+      model_version         TEXT,
+      prompt_template_hash  TEXT,
+      market_snapshot_hash  TEXT,
+      replay_extras         JSONB,
 
       -- Sync metadata
       synced_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -87,18 +111,42 @@ export async function initSchema(): Promise<void> {
     // emitted under a specific cap version" (used by the Dashboard
     // capability history view in Plan E). Per AER_V2_CODEC §15.
     `CREATE INDEX IF NOT EXISTS idx_aer_capability_version ON aer_records(capability_version, settled_at DESC) WHERE capability_version IS NOT NULL`,
+    // Plan C: queries the Dashboard (and Plan E debug view) needs against
+    // the v2-only sub-structs. action_type + event_class drives the
+    // cognition-vs-execution breakdown; intent_id resolves a heartbeat to
+    // its full cognition-then-execution chain.
+    `CREATE INDEX IF NOT EXISTS idx_aer_event_class  ON aer_records(event_class, settled_at DESC) WHERE event_class IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_action_type  ON aer_records(action_type, settled_at DESC) WHERE action_type IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_intent_id    ON aer_records(intent_id) WHERE intent_id IS NOT NULL`,
   ];
   for (const idx of indexes) {
     await sql.unsafe(idx);
   }
 
-  // Forward-migrate existing rows. Safe to call repeatedly; ADD COLUMN IF
-  // NOT EXISTS is a no-op once applied. Existing v1 AERs end up with
-  // capability_version = NULL, which the SDK surfaces as `null` per the
-  // Plan B handoff invariant.
+  // Forward-migrate existing rows. Each ADD COLUMN IF NOT EXISTS is
+  // idempotent so this block is safe to re-run on a deployed DB. New
+  // columns surface as NULL for pre-Plan-C AERs (which never had the
+  // sub-structs at all) and for the legacy ungated settlement path.
   await sql`
     ALTER TABLE aer_records
-      ADD COLUMN IF NOT EXISTS capability_version BIGINT
+      ADD COLUMN IF NOT EXISTS capability_version    BIGINT,
+      ADD COLUMN IF NOT EXISTS intent_id             TEXT,
+      ADD COLUMN IF NOT EXISTS parent_intent_id      TEXT,
+      ADD COLUMN IF NOT EXISTS execution_id          INTEGER,
+      ADD COLUMN IF NOT EXISTS event_class           SMALLINT,
+      ADD COLUMN IF NOT EXISTS action_type           TEXT,
+      ADD COLUMN IF NOT EXISTS action_schema_version INTEGER,
+      ADD COLUMN IF NOT EXISTS payload_codec         TEXT,
+      ADD COLUMN IF NOT EXISTS payload_hash          TEXT,
+      ADD COLUMN IF NOT EXISTS payload_bytes         TEXT,
+      ADD COLUMN IF NOT EXISTS action_summary        TEXT,
+      ADD COLUMN IF NOT EXISTS action_outcome        SMALLINT,
+      ADD COLUMN IF NOT EXISTS triggered_by_type     SMALLINT,
+      ADD COLUMN IF NOT EXISTS triggered_by_ref      TEXT,
+      ADD COLUMN IF NOT EXISTS model_version         TEXT,
+      ADD COLUMN IF NOT EXISTS prompt_template_hash  TEXT,
+      ADD COLUMN IF NOT EXISTS market_snapshot_hash  TEXT,
+      ADD COLUMN IF NOT EXISTS replay_extras         JSONB
   `;
 
   await sql`
