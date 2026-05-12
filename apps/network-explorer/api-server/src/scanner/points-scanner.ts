@@ -98,7 +98,10 @@ let lastSnapshotDate = '';
 let lastReconcileDate = '';
 
 // Daily category cap: only one base_points insert per (identity, category) per day.
-// Key format: "identityId::category". Cleared on date rollover and chain reset.
+// Key format: "identityId::category::YYYY-MM-DD" (3-part). The date suffix lets
+// stale entries expire naturally on rollover and keeps faucet/chat-scanner
+// (which used to use 2-part keys) in lockstep with processBatch's warm-up.
+// Cleared on date rollover (scanLoop top + processBatch) and chain reset.
 let dailyCategorySeen = new Set<string>();
 
 // Unmapped event detection (Phase 2 of points-audit plan).
@@ -253,6 +256,19 @@ async function scanLoop(myGen: number): Promise<void> {
     // Ecosystem: refresh NFT activations cache (for multiplier calculation)
     await maybeRefreshActivationsCache();
     if (!isCurrentGen(myGen)) return;
+
+    // Date-rollover reset, scanLoop-scoped. processBatch already does this
+    // but only when the main event batch has rows. Faucet/chat scanners run
+    // regardless of event activity, so without this top-level check, a quiet
+    // main loop right after UTC midnight would leave stale yesterday cap
+    // keys blocking today's first chat/faucet credit.
+    {
+      const todayCap = new Date().toISOString().slice(0, 10);
+      if (todayCap !== dailyCategoryDate) {
+        dailyCategorySeen = new Set();
+        dailyCategoryDate = todayCap;
+      }
+    }
 
     let lastSeq = await getLastProcessedSequence();
 

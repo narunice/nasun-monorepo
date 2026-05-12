@@ -97,14 +97,18 @@ export async function scanFaucetClaims(
   }
 
   const inserts: PointsInsert[] = [];
+  const pendingCapKeys: string[] = [];
 
   for (const row of rows) {
     const walletAddress = `0x${row.sender_hex}`;
     const identityId = registeredWallets.get(walletAddress.toLowerCase());
     if (!identityId) continue;
 
-    // Daily category cap (shared with main scanner)
-    const capKey = `${identityId}::faucet`;
+    // Daily category cap (shared with main scanner). Key MUST match
+    // processBatch's 3-part format so the warm-up Set is honored and
+    // self-added keys naturally expire on date rollover.
+    const txDate = new Date(Number(row.timestamp_ms)).toISOString().slice(0, 10);
+    const capKey = `${identityId}::faucet::${txDate}`;
     if (dailyCategorySeen.has(capKey)) continue;
 
     // Faucet is a base category: existence-only, final_points always 1
@@ -126,8 +130,7 @@ export async function scanFaucetClaims(
       tx_timestamp: new Date(Number(row.timestamp_ms)),
       event_seq: 0,
     });
-
-    dailyCategorySeen.add(capKey);
+    pendingCapKeys.push(capKey);
   }
 
   if (inserts.length > 0) {
@@ -139,6 +142,11 @@ export async function scanFaucetClaims(
       )}
       ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
     `;
+    // Only mark the cap after the INSERT settles. If the INSERT throws (PG
+    // connection drop, statement timeout), the cap stays clear so the next
+    // cycle can retry the same rows. lastFaucetSeq below is also unchanged
+    // on throw, keeping the cursor on the un-inserted batch.
+    for (const k of pendingCapKeys) dailyCategorySeen.add(k);
   }
 
   const newLastSeq = rows[rows.length - 1].tx_sequence_number;

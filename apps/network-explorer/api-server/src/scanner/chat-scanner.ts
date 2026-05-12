@@ -101,13 +101,18 @@ export async function scanChatParticipation(
   if (participants.size === 0) return 0;
 
   const inserts: PointsInsert[] = [];
+  const pendingCapKeys: string[] = [];
 
   for (const addr of participants) {
     const walletAddress = addr.startsWith('0x') ? addr : `0x${addr}`;
     const identityId = registeredWallets.get(walletAddress);
     if (!identityId) continue;
 
-    const capKey = `${identityId}::chat`;
+    // 3-part cap key matches processBatch's format. Without the date,
+    // a self-added entry from yesterday would block today's first chat
+    // credit until processBatch's date-rollover reset ran (which is gated
+    // on a non-empty event batch and may lag past midnight).
+    const capKey = `${identityId}::chat::${today}`;
     if (dailyCategorySeen.has(capKey)) continue;
 
     inserts.push({
@@ -124,8 +129,7 @@ export async function scanChatParticipation(
       tx_timestamp: new Date(`${today}T00:00:00.000Z`),
       event_seq: 0,
     });
-
-    dailyCategorySeen.add(capKey);
+    pendingCapKeys.push(capKey);
   }
 
   if (inserts.length > 0) {
@@ -147,6 +151,10 @@ export async function scanChatParticipation(
       )}
       ON CONFLICT (tx_digest, activity_type, event_seq) DO NOTHING
     `;
+    // Mark cap only after INSERT settles. On throw, the cap stays clear so
+    // the next cycle (chat has no cursor; participants are re-fetched every
+    // cycle) can retry until the row lands.
+    for (const k of pendingCapKeys) dailyCategorySeen.add(k);
     console.log(`[Chat] Recorded ${inserts.length} chat participants`);
   }
 
