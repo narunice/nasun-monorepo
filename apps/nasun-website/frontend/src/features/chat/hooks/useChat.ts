@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import { getChatService } from '../../../lib/chat-service';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo, ChatSignFn } from '../../../lib/chat-service';
+import { CHAT_SESSION_EXPIRED_ERROR } from '../../../lib/chat-service';
 import { useChatStore } from '../../../store/chatStore';
 import { useUserStore } from '../../../store/userStore';
 import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
@@ -47,6 +48,10 @@ export function useChat() {
   const [turnstilePermanentlyFailed, setTurnstilePermanentlyFailed] = useState(false);
   // Retry counter for invisible Turnstile errors (privacy browsers, script blockers, etc.)
   const turnstileRetryRef = useRef(0);
+  // Latched when ChatService emits session_expired. Cleared by an explicit
+  // "Re-login" action (handled via the global nasun:open-login flow). Gates
+  // the 30s periodic reconnect so we don't churn against a known-bad signer.
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   // Keep display name in a ref so changes don't trigger reconnection
   const userDisplayNameRef = useRef<string>('');
@@ -60,6 +65,11 @@ export function useChat() {
   // Keep signFn in a ref so the periodic reconnect always uses the latest signer
   // without needing to be included in dependency arrays.
   const signFnRef = useRef<ChatSignFn | null>(null);
+  // Track the last signer type used so session_expired UX can route only
+  // zkLogin users (whose remediation is OAuth re-login) to the global login
+  // modal. Local/passkey wallets keep their key material across sessions, so
+  // the modal is irrelevant and would mislead them.
+  const lastSignerTypeRef = useRef<'zklogin' | 'other' | null>(null);
 
   useEffect(() => {
     const walletAddress = user?.walletAddress;
@@ -82,8 +92,19 @@ export function useChat() {
         ? signer.getUnderlyingSigner()
         : signer;
 
+      lastSignerTypeRef.current = effectiveSigner instanceof ZkLoginSigner ? 'zklogin' : 'other';
+
       if (effectiveSigner instanceof ZkLoginSigner) {
-        // zkLogin cannot sign personal messages; use ephemeral key instead
+        // 30s grace: refuse to sign once expiry is imminent so we never produce
+        // a signature that the server might accept now but reject seconds later
+        // (or vice versa under clock skew). ChatService converts this rejection
+        // into a session_expired event without a SIGN_ERROR/reconnect loop.
+        const remainMs = effectiveSigner.getExpiresAt() - Date.now();
+        if (remainMs < 30_000) {
+          const err = new Error('zkLogin session expired or about to expire');
+          err.name = CHAT_SESSION_EXPIRED_ERROR;
+          throw err;
+        }
         const { signature } = await effectiveSigner.signWithEphemeralKey(messageBytes);
         return {
           signature,
@@ -150,6 +171,20 @@ export function useChat() {
       setTurnstileKey((k) => k + 1);
     };
 
+    const onSessionExpired = () => {
+      setSessionExpired(true);
+      useChatStore.getState().setAuthError('Chat session expired. Please re-authenticate to continue.');
+      // Only zkLogin users have an OAuth re-login flow that the global modal
+      // can drive. Local/passkey wallets don't expire and dispatching the
+      // login modal would mislead them — they need to investigate why the
+      // server rejected their signature (key import issue, etc.), not log in.
+      if (lastSignerTypeRef.current === 'zklogin') {
+        try {
+          window.dispatchEvent(new CustomEvent('nasun:open-login'));
+        } catch { /* SSR / non-window env */ }
+      }
+    };
+
     service.on('message', onMessage);
     service.on('history', onHistory);
     service.on('status', onStatus);
@@ -158,6 +193,7 @@ export function useChat() {
     service.on('reaction_update', onReactionUpdate);
     service.on('error', onError);
     service.on('captcha_required', onCaptchaRequired);
+    service.on('session_expired', onSessionExpired);
 
     service.connect(WS_URL, signFn);
     connectedRef.current = true;
@@ -171,13 +207,26 @@ export function useChat() {
       service.off('reaction_update', onReactionUpdate);
       service.off('error', onError);
       service.off('captcha_required', onCaptchaRequired);
+      service.off('session_expired', onSessionExpired);
     };
   }, [user?.walletAddress, turnstileReady]);
 
+  // Clear the session_expired latch only when the user genuinely re-authenticates
+  // (wallet address change). Re-running the main effect for unrelated reasons —
+  // turnstile remount, StrictMode double-mount, ref churn — must NOT clear the
+  // latch, otherwise the silent reconnect loop this latch prevents would resume.
+  useEffect(() => {
+    if (!user?.walletAddress) return;
+    setSessionExpired(false);
+    getChatService().resetSessionLatch();
+  }, [user?.walletAddress]);
+
   // Periodic reconnect: if we should be connected but aren't, retry every 30s.
   // Handles transient auth failures, network blips, and server restarts.
+  // Skipped when sessionExpired is latched — re-login flips the wallet effect
+  // which re-creates the signer and re-runs this effect from a clean state.
   useEffect(() => {
-    if (!user?.walletAddress || !turnstileReady) return;
+    if (!user?.walletAddress || !turnstileReady || sessionExpired) return;
 
     const checkInterval = setInterval(() => {
       const fn = signFnRef.current;
@@ -189,7 +238,7 @@ export function useChat() {
     }, 30_000);
 
     return () => clearInterval(checkInterval);
-  }, [user?.walletAddress, turnstileReady]);
+  }, [user?.walletAddress, turnstileReady, sessionExpired]);
 
   // Load history for active room when switching
   useEffect(() => {

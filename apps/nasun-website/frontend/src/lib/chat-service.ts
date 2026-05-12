@@ -87,7 +87,7 @@ export interface RoomInfo {
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list' | 'captcha_required';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list' | 'captcha_required' | 'session_expired';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -100,7 +100,13 @@ export interface ChatEventMap {
   follow_result: { target: string; following: boolean; followerCount: number; error?: string };
   following_list: { addresses: string[] };
   captcha_required: undefined;
+  session_expired: undefined;
 }
+
+// Custom error name signFn can throw to signal "session expired, do not retry".
+// Recognized by ChatService and converted to a session_expired event instead of
+// SIGN_ERROR + reconnect loop.
+export const CHAT_SESSION_EXPIRED_ERROR = 'ChatSessionExpiredError';
 
 type ChatListener<T extends ChatEventType> = (data: ChatEventMap[T]) => void;
 
@@ -132,6 +138,11 @@ export class ChatService {
   private seenMessageIds = new Set<number>();
   private pendingTurnstileToken: string | null = null;
   private captchaRequired = false;
+  // Set when the session is detected as unrecoverable without re-login
+  // (ZkLogin expired, or server closed with 4401 Auth failed).
+  // Cleared only by an explicit connect() with a fresh signFn (post re-login)
+  // or by disconnect().
+  private sessionExpired = false;
   // Once the Turnstile widget has delivered any token to us, every subsequent
   // connect needs a fresh one. Flipping this on token receipt (not on first
   // server-bound use) closes the race where an early auth_challenge fires
@@ -175,27 +186,43 @@ export class ChatService {
   }
 
   connect(wsUrl: string, signFn: ChatSignFn): void {
-    // Always refresh wsUrl/signFn so the next challenge uses the latest signer
     this.wsUrl = wsUrl;
     this.signFn = signFn;
-    // If already connected, do nothing further — signFn is now up to date for future challenges
+
+    // Hard gate: if a previous attempt latched session_expired, do not connect.
+    // The latch is cleared only by an explicit resetSessionLatch() call from
+    // the caller after a real re-authentication (wallet address change). This
+    // is the single chokepoint that the useChat 30s interval and React effect
+    // churn both flow through.
+    if (this.sessionExpired) {
+      return;
+    }
+
     if (this.ws && this.status === 'connected') {
       return;
     }
-    // Clear any pending reconnect before starting a fresh connection
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    // NOTE: do not reset reconnectAttempts here. Resetting on every connect() call would
-    // let React effect churn defeat the exponential backoff. Counter is reset only on
-    // successful auth (auth_success) or explicit disconnect().
     this.doConnect();
+  }
+
+  /**
+   * Clear the session_expired latch. Caller must guarantee that the user has
+   * actually re-authenticated (wallet identity changed); calling this for any
+   * other reason re-enables the silent reconnect loop this latch is designed
+   * to prevent.
+   */
+  resetSessionLatch(): void {
+    this.sessionExpired = false;
   }
 
   disconnect(): void {
     this.reconnectAttempts = 0;
     this.captchaRequired = false;
+    this.sessionExpired = false;
+    this.signFn = null;
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
@@ -209,6 +236,20 @@ export class ChatService {
       this.ws = null;
     }
     this.setStatus('disconnected');
+  }
+
+  /**
+   * Latch the session_expired state, emit the event once, and stop reconnect
+   * cycles until a new signFn is supplied via connect() (post re-login).
+   */
+  private markSessionExpired(): void {
+    if (this.sessionExpired) return;
+    this.sessionExpired = true;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.emit('session_expired', undefined);
   }
 
   private doConnect(): void {
@@ -249,17 +290,23 @@ export class ChatService {
       this.handleMessage(msg);
     };
 
-    this.ws.onclose = () => {
+    this.ws.onclose = (event) => {
       if (this.connectionTimer) {
         clearTimeout(this.connectionTimer);
         this.connectionTimer = null;
       }
+      // 4401 = server signaled "Auth failed" — silent reconnect would just
+      // re-fail with the same stale signer state. Treat as session_expired
+      // so the user is prompted to re-login (cf. server.ts ws.close(4401, ...)).
+      if (event.code === 4401) {
+        this.markSessionExpired();
+      }
       if (this.status !== 'disconnected') {
         this.setStatus('disconnected');
-        // Don't auto-reconnect when captcha is required — wait for new token
-        if (!this.captchaRequired) {
-          this.scheduleReconnect();
+        if (this.captchaRequired || this.sessionExpired) {
+          return;
         }
+        this.scheduleReconnect();
       }
     };
 
@@ -289,9 +336,16 @@ export class ChatService {
           .then(({ signature, address, authMethod, ephemeralPubKey, displayName }) => {
             this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName, turnstileToken });
           })
-          .catch((err) => {
-            console.error('Chat sign error:', err);
-            this.emit('error', { code: 'SIGN_ERROR', message: 'Failed to sign challenge' });
+          .catch((err: unknown) => {
+            const isExpired = err instanceof Error && err.name === CHAT_SESSION_EXPIRED_ERROR;
+            if (isExpired) {
+              // Skip the SIGN_ERROR/error event entirely so authError UI doesn't
+              // briefly flash before the session_expired modal trigger fires.
+              this.markSessionExpired();
+            } else {
+              console.error('Chat sign error:', err);
+              this.emit('error', { code: 'SIGN_ERROR', message: 'Failed to sign challenge' });
+            }
             this.ws?.close();
           });
         break;
@@ -306,6 +360,11 @@ export class ChatService {
         if (msg.reason === 'Captcha required' || msg.reason === 'Captcha verification failed') {
           this.captchaRequired = true;
           this.emit('captcha_required', undefined);
+        } else if (msg.reason === 'Invalid signature') {
+          // Server rejected the signature — retrying with the same signer state
+          // produces an identical reject. Latch session_expired so the user is
+          // routed to re-login instead of churning in a reconnect loop.
+          this.markSessionExpired();
         }
         this.emit('error', { code: 'AUTH_ERROR', message: msg.reason });
         this.ws?.close();
