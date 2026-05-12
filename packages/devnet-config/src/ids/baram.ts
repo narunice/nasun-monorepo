@@ -45,6 +45,9 @@ export const AER_UPGRADE_CAP = config.baram.aerUpgradeCap as ObjectId;
 // AER type origin (runtime type origin for AIExecutionReport struct)
 export const AER_TYPE_ORIGIN = config.baram.aerTypeOrigin as ObjectId;
 
+// Plan B: Capability (lives in baram_aer package).
+export const CAPABILITY_REGISTRY = config.baram.capabilityRegistry as ObjectId;
+
 // Budget type origin (runtime type origin for budget module types)
 export const BUDGET_TYPE_ORIGIN = config.baram.budgetTypeOrigin as ObjectId;
 // Budget V2 type origin (SpendingLimits/Categories added in upgrade)
@@ -88,6 +91,7 @@ export const BARAM: BaramConfig = {
   aerAdminCap: AER_ADMIN_CAP,
   aerUpgradeCap: AER_UPGRADE_CAP,
   aerTypeOrigin: AER_TYPE_ORIGIN,
+  capabilityRegistry: CAPABILITY_REGISTRY,
   budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
   budgetV2TypeOrigin: BUDGET_V2_TYPE_ORIGIN,
   agentPackageId: AGENT_PACKAGE_ID,
