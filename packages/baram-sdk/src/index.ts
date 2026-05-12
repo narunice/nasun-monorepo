@@ -52,3 +52,7 @@ export { bytesToHex, hexToBytes } from './utils/bytes';
 // AER v2 canonical execution ledger (clean-slate schema).
 // Spec: apps/baram/docs/AER_V2_CODEC.md
 export * as aer from './aer';
+
+// Plan B: Capability primitive that gates AER creation.
+// Spec: apps/baram/docs/AER_V2_CODEC.md §17
+export * as capability from './capability';
