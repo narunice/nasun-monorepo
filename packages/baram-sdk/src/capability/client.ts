@@ -17,6 +17,16 @@ import { CapabilityBcs, decodeCapability } from './codec';
 import type { Capability, CapabilityRef } from './types';
 
 /**
+ * Type-tag suffix every Capability object must report. The package id changes
+ * across republishes; we anchor on the `<module>::<struct>` suffix that the
+ * Move contract never renames. F6 hardening: without this check, a malicious
+ * indexer reply could swap in any `<other_pkg>::shared::Whatever` object that
+ * happens to BCS-decode under the same layout and we would forge a PTB that
+ * the on-chain entry then aborts on, costing gas.
+ */
+const CAPABILITY_TYPE_SUFFIX = '::capability::Capability';
+
+/**
  * Fetch + decode a Capability shared object by id, plus the shared-object
  * reference fields the host needs to compose a PTB with `mutable: false`.
  *
@@ -25,13 +35,13 @@ import type { Capability, CapabilityRef } from './types';
  * wants an explicit `tx.sharedObjectRef({ mutable: false })` rather than the
  * fullnode-inferred `tx.object(id)` form.
  *
- * Throws if the object is gone, not a Capability, BCS is missing, or the
- * owner is not a Shared owner (defensive: a Capability that lost its Shared
- * owner is unusable and likely indicates an indexer-side data error).
+ * Throws if the object is gone, not a `*::capability::Capability`, BCS is
+ * missing, or the owner is not a Shared owner.
  */
 export async function fetchCapability(
   client: SuiClient,
-  capId: string
+  capId: string,
+  options?: { expectedPackageId?: string }
 ): Promise<CapabilityRef> {
   const resp = await client.getObject({
     id: capId,
@@ -43,6 +53,24 @@ export async function fetchCapability(
   const bcsData = resp.data.bcs;
   if (!bcsData || bcsData.dataType !== 'moveObject') {
     throw new Error(`Capability ${capId} has no BCS data on response`);
+  }
+  // F6 type origin assertion. We accept any package id by default (devnet
+  // republishes happen) but require the canonical `::capability::Capability`
+  // suffix. Callers in production should pass `expectedPackageId` to lock to
+  // the exact deployed package and reject upgrades.
+  const moveType = resp.data.type;
+  if (typeof moveType !== 'string' || !moveType.endsWith(CAPABILITY_TYPE_SUFFIX)) {
+    throw new Error(
+      `Capability ${capId} has unexpected type "${moveType}"; expected *${CAPABILITY_TYPE_SUFFIX}`,
+    );
+  }
+  if (options?.expectedPackageId) {
+    const expectedType = `${options.expectedPackageId}${CAPABILITY_TYPE_SUFFIX}`;
+    if (moveType !== expectedType) {
+      throw new Error(
+        `Capability ${capId} type "${moveType}" does not match expected "${expectedType}"`,
+      );
+    }
   }
   const owner = resp.data.owner;
   // Sui owner shape: 'Immutable' | 'AddressOwner' | 'ObjectOwner' |
