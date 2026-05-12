@@ -1,6 +1,27 @@
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
+
+export type AuthFailReason =
+  | 'challenge_unknown'
+  | 'challenge_expired'
+  | 'bad_address_format'
+  | 'key_length_invalid'
+  | 'binding_collision'
+  | 'key_mismatch'
+  | 'profile_not_found'
+  | 'verify_throw'
+  | 'personal_addr_mismatch'
+  | 'personal_throw';
+
+export type VerifyResult =
+  | { ok: true; address: string }
+  | { ok: false; reason: AuthFailReason; claimedKeyPrefix?: string; recoveredKeyPrefix?: string };
+
+/** Stable, non-reversible identifier for grouping logs by address without exposing the address. */
+export function addrTag(address: string): string {
+  return createHash('sha256').update(address.toLowerCase()).digest('hex').slice(0, 8);
+}
 
 // Active challenges: challenge string -> expiresAt timestamp
 const pendingChallenges = new Map<string, { expiresAt: number }>();
@@ -80,36 +101,34 @@ export async function verifySignature(
   claimedAddress: string,
   authMethod?: 'personal_sign' | 'ephemeral',
   ephemeralPubKey?: string,
-): Promise<string | null> {
-  // Check challenge exists and is not expired
+): Promise<VerifyResult> {
   const challengeData = pendingChallenges.get(challenge);
-  if (!challengeData) return null;
+  if (!challengeData) return { ok: false, reason: 'challenge_unknown' };
 
   if (Date.now() > challengeData.expiresAt) {
     pendingChallenges.delete(challenge);
-    return null;
+    return { ok: false, reason: 'challenge_expired' };
   }
 
-  // Remove the challenge (one-time use)
+  // One-time use
   pendingChallenges.delete(challenge);
 
-  try {
-    if (authMethod === 'ephemeral') {
-      return verifyEphemeralSignature(challenge, signature, claimedAddress, ephemeralPubKey);
-    }
+  if (authMethod === 'ephemeral') {
+    return verifyEphemeralSignature(challenge, signature, claimedAddress, ephemeralPubKey);
+  }
 
-    // Default: personal_sign verification (local wallets, passkey)
+  try {
     const messageBytes = new TextEncoder().encode(challenge);
     const publicKey = await verifyPersonalMessageSignature(messageBytes, signature);
     const recoveredAddress = publicKey.toSuiAddress();
 
     if (normalizeAddress(recoveredAddress) !== normalizeAddress(claimedAddress)) {
-      return null;
+      return { ok: false, reason: 'personal_addr_mismatch' };
     }
 
-    return recoveredAddress;
+    return { ok: true, address: recoveredAddress };
   } catch {
-    return null;
+    return { ok: false, reason: 'personal_throw' };
   }
 }
 
@@ -151,41 +170,58 @@ async function verifyEphemeralSignature(
   signature: string,
   claimedAddress: string,
   ephemeralPubKey?: string,
-): Promise<string | null> {
-  if (!ephemeralPubKey || typeof ephemeralPubKey !== 'string') return null;
-  if (!isValidSuiAddress(claimedAddress)) return null;
-
-  const keyBytes = Buffer.from(ephemeralPubKey, 'base64');
-  if (keyBytes.length !== 32) return null;
-
-  // Binding check: reject if key is bound to a different address
-  const boundAddress = getEphemeralBinding(ephemeralPubKey);
-  if (boundAddress && normalizeAddress(boundAddress) !== normalizeAddress(claimedAddress)) {
-    return null;
+): Promise<VerifyResult> {
+  if (!ephemeralPubKey || typeof ephemeralPubKey !== 'string') {
+    return { ok: false, reason: 'key_length_invalid' };
+  }
+  if (!isValidSuiAddress(claimedAddress)) {
+    return { ok: false, reason: 'bad_address_format' };
   }
 
+  const keyBytes = Buffer.from(ephemeralPubKey, 'base64');
+  if (keyBytes.length !== 32) {
+    return { ok: false, reason: 'key_length_invalid' };
+  }
+
+  const claimedKeyB64 = ephemeralPubKey;
+
+  const boundAddress = getEphemeralBinding(ephemeralPubKey);
+  if (boundAddress && normalizeAddress(boundAddress) !== normalizeAddress(claimedAddress)) {
+    return { ok: false, reason: 'binding_collision', claimedKeyPrefix: claimedKeyB64.slice(0, 8) };
+  }
+
+  let recoveredKeyB64: string;
+  let claimedKeyExpectedB64: string;
   try {
     const messageBytes = new TextEncoder().encode(challenge);
     const recoveredKey = await verifyPersonalMessageSignature(messageBytes, signature);
-
-    const claimedKey = new Ed25519PublicKey(keyBytes);
-    if (recoveredKey.toBase64() !== claimedKey.toBase64()) {
-      return null;
-    }
-
-    // New binding: verify address exists in profile system before accepting
-    if (!boundAddress) {
-      const exists = await verifyAddressExists(claimedAddress);
-      if (!exists) {
-        return null;
-      }
-      registerEphemeralBinding(ephemeralPubKey, claimedAddress);
-    }
-
-    return claimedAddress;
+    recoveredKeyB64 = recoveredKey.toBase64();
+    // Ed25519PublicKey constructor validates internally — wrap it so any future
+    // SDK tightening (extra format check, etc.) returns a structured fail
+    // instead of throwing past verifySignature into the connection handler.
+    claimedKeyExpectedB64 = new Ed25519PublicKey(keyBytes).toBase64();
   } catch {
-    return null;
+    return { ok: false, reason: 'verify_throw', claimedKeyPrefix: claimedKeyB64.slice(0, 8) };
   }
+
+  if (recoveredKeyB64 !== claimedKeyExpectedB64) {
+    return {
+      ok: false,
+      reason: 'key_mismatch',
+      claimedKeyPrefix: claimedKeyB64.slice(0, 8),
+      recoveredKeyPrefix: recoveredKeyB64.slice(0, 8),
+    };
+  }
+
+  if (!boundAddress) {
+    const exists = await verifyAddressExists(claimedAddress);
+    if (!exists) {
+      return { ok: false, reason: 'profile_not_found', claimedKeyPrefix: claimedKeyB64.slice(0, 8) };
+    }
+    registerEphemeralBinding(ephemeralPubKey, claimedAddress);
+  }
+
+  return { ok: true, address: claimedAddress };
 }
 
 function normalizeAddress(addr: string): string {

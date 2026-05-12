@@ -1,7 +1,7 @@
 import './env.js'; // Must be first: loads .env before any module reads process.env
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
-import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl } from './auth.js';
+import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl, addrTag } from './auth.js';
 import { randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
 import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReactionsBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
@@ -724,20 +724,25 @@ wss.on('connection', (ws, req) => {
           }
         }
 
-        const verifiedAddress = await verifySignature(
+        const verifyResult = await verifySignature(
           pending.challenge, data.signature, data.address,
           data.authMethod, data.ephemeralPubKey,
         );
         clearTimeout(pending.timeout);
         pendingAuth.delete(ws);
 
-        if (!verifiedAddress) {
+        if (!verifyResult.ok) {
           recordAuthFailure(ip);
-          console.warn(`[Auth] signature invalid ip=${ip} method=${data.authMethod ?? 'personal'}`);
+          const method = data.authMethod ?? 'personal';
+          const tag = addrTag(data.address);
+          const ck = verifyResult.claimedKeyPrefix ? ` claimedKey=${verifyResult.claimedKeyPrefix}` : '';
+          const rk = verifyResult.recoveredKeyPrefix ? ` recoveredKey=${verifyResult.recoveredKeyPrefix}` : '';
+          console.warn(`[Auth] auth_fail reason=${verifyResult.reason} method=${method} ip=${ip} addrTag=${tag}${ck}${rk}`);
           send(ws, { type: 'auth_error', reason: 'Invalid signature' });
           ws.close(4401, 'Auth failed');
           return;
         }
+        const verifiedAddress = verifyResult.address;
 
         // Guard: authTimeout may have fired while awaiting verifySignature
         if (ws.readyState !== WebSocket.OPEN) {

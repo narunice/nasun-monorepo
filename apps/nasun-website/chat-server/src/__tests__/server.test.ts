@@ -9,13 +9,13 @@ import { tmpdir } from 'node:os';
 vi.mock('../auth.js', () => ({
   generateChallenge: vi.fn(() => 'test-challenge-' + Math.random().toString(36).slice(2)),
   verifySignature: vi.fn(async (challenge: string, signature: string, address: string) => {
-    if (signature === 'valid-sig-user1') return '0x' + '1'.repeat(64);
-    if (signature === 'valid-sig-user2') return '0x' + '2'.repeat(64);
+    if (signature === 'valid-sig-user1') return { ok: true, address: '0x' + '1'.repeat(64) };
+    if (signature === 'valid-sig-user2') return { ok: true, address: '0x' + '2'.repeat(64) };
     if (signature === 'slow-sig') {
       await new Promise((r) => setTimeout(r, 100));
-      return '0x' + '3'.repeat(64);
+      return { ok: true, address: '0x' + '3'.repeat(64) };
     }
-    return null;
+    return { ok: false, reason: 'verify_throw' };
   }),
   isValidSuiAddress: vi.fn((addr: string) => /^0x[0-9a-fA-F]{64}$/.test(addr)),
 }));
@@ -117,14 +117,15 @@ function setupServer(): void {
             ws.close(4401, 'Invalid address');
             return;
           }
-          const verifiedAddress = await verifySignature(pending.challenge, data.signature, data.address);
+          const verifyResult = await verifySignature(pending.challenge, data.signature, data.address);
           clearTimeout(pending.timeout);
           pendingAuth.delete(ws);
-          if (!verifiedAddress) {
+          if (!verifyResult.ok) {
             send(ws, { type: 'auth_error', reason: 'Invalid signature' });
             ws.close(4401, 'Auth failed');
             return;
           }
+          const verifiedAddress = verifyResult.address;
           const shortName = verifiedAddress.slice(0, 6) + '...' + verifiedAddress.slice(-4);
           authenticatedClients.set(ws, {
             ws, address: verifiedAddress, displayName: shortName,
