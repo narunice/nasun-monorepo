@@ -24,6 +24,7 @@ module baram_aer::aer {
     use sui::table::{Self, Table};
     use sui::vec_map::{Self, VecMap};
     use std::string::{Self, String};
+    use baram_aer::capability::{Self, Capability};
 
     // ========== Error Codes ==========
     // Codes 400 and 405 are reserved (formerly E_NOT_ADMIN and E_DEPRECATED in
@@ -46,6 +47,12 @@ module baram_aer::aer {
     const E_DUPLICATE_REQUEST_ID: u64 = 417;
     const E_INVALID_TEE_ATTESTATION_HASH: u64 = 418;
     const E_INVALID_PARENT_INTENT_ID: u64 = 419;
+    // Plan B: ungated entry restricted to settlement event_class. Code lives in
+    // the capability error range (550-599) by design since this guards the
+    // boundary between gated and ungated AER creation paths.
+    const E_UNGATED_REQUIRES_SETTLEMENT_CLASS: u64 = 554;
+    // Plan B: gated entry restricted to cognition + execution event_class.
+    const E_GATED_REQUIRES_NON_SETTLEMENT_CLASS: u64 = 564;
 
     // ========== Constants ==========
     const HASH_LENGTH: u64 = 32;
@@ -60,11 +67,8 @@ module baram_aer::aer {
     const PAYLOAD_CODEC_BCS: vector<u8> = b"bcs";
 
     // event_class enum
-    #[allow(unused_const)]
     const EVENT_CLASS_COGNITION: u8 = 1;
-    #[allow(unused_const)]
     const EVENT_CLASS_EXECUTION: u8 = 2;
-    #[allow(unused_const)]
     const EVENT_CLASS_SETTLEMENT: u8 = 3;
     #[allow(unused_const)]
     const EVENT_CLASS_OBSERVATION: u8 = 4;
@@ -183,6 +187,12 @@ module baram_aer::aer {
         purpose: Option<String>,
         // Snapshotted from registry.policy_version at AER creation. Caller does not supply it.
         policy_version: Option<u64>,
+        // Plan B: snapshotted from capability.version when the gated entry path
+        // is used; None for the ungated (settlement-only) entry path. Lets AER
+        // replay reflect the cap state at the moment of execution and lets the
+        // indexer flag any execution whose cap was rotated mid-flight.
+        // Wire-position: between policy_version and constraints. Do not reorder.
+        capability_version: Option<u64>,
         constraints: Option<String>,
     }
 
@@ -358,6 +368,12 @@ module baram_aer::aer {
         replay_extras_vals: vector<vector<u8>>,
         ctx: &mut TxContext,
     ) {
+        // Plan B §1.7 hardening: ungated path is for SETTLEMENT class only
+        // (executor.fee.v1, gas.refund.v1 patterns). Cognition + execution
+        // belong on the capability-gated entry below. Reject up-front so a
+        // bad caller cannot bypass capability scope by routing through here.
+        assert!(event_class == EVENT_CLASS_SETTLEMENT, E_UNGATED_REQUIRES_SETTLEMENT_CLASS);
+
         // Consume receipt (destroys hot-potato). The witness gates the call
         // in baram::baram so that no other module can destructure receipts
         // and skip AER creation. See `AERWitness` doc comment.
@@ -372,6 +388,218 @@ module baram_aer::aer {
             settled_at,
         ) = baram::baram::consume_receipt(baram_registry, receipt, AERWitness {});
 
+        finalize_aer_from_receipt(
+            registry,
+            request_id, requester, receipt_executor, price, model_name, output_hash,
+            execution_time_ms, settled_at,
+            initiator, delegation_path, executor_principal,
+            fee_detail, budget_id, budget_remaining,
+            model_metadata, input_hash,
+            purpose, option::none<u64>(), constraints,
+            executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
+            requested_at,
+            triggered_by, triggered_action, intent_id, parent_intent_id, execution_id,
+            event_class, action_type, action_schema_version, payload_codec,
+            payload_hash, payload_bytes, action_summary, action_outcome,
+            triggered_by_type, triggered_by_ref,
+            model_version, prompt_template_hash, market_snapshot_hash,
+            replay_extras_keys, replay_extras_vals,
+            ctx,
+        );
+    }
+
+    /// Capability-gated AER creation (Plan B §1.5).
+    ///
+    /// Same args as `create_report_with_receipt` plus:
+    ///   - `cap: &Capability` (immutable ref, never consumed).
+    ///   - `expected_capability_version: u64` (caller asserts; aborts with
+    ///     E_INVALID_CAPABILITY_VERSION on mismatch to catch in-flight wallet
+    ///     mutations that race with host PTB submission).
+    ///
+    /// Enforces (in addition to all common validation):
+    ///   - event_class ∈ {cognition, execution}. settlement class is the
+    ///     ungated path's job; routing it here would let the agent emit
+    ///     fake settlement attestations.
+    ///   - capability::assert_can_execute (not revoked, not paused, owner ==
+    ///     receipt.requester, version matches, action_type in allowed set,
+    ///     payment within notional cap). On success, the cap.version is
+    ///     snapshotted into AER.why.capability_version.
+    public fun create_report_with_receipt_capability(
+        registry: &mut AERRegistry,
+        baram_registry: &baram::baram::BaramRegistry,
+        receipt: baram::baram::SettlementReceipt,
+        cap: &Capability,
+        expected_capability_version: u64,
+        // Requester
+        initiator: address,
+        delegation_path: vector<address>,
+        // Executor
+        executor_principal: Option<address>,
+        // Payment
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+        // Inference
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        // Why
+        purpose: Option<String>,
+        constraints: Option<String>,
+        // Trust
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+        // When
+        requested_at: u64,
+        // Chain
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+        // Envelope
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+        // Wake
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+        // Replay
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        replay_extras_keys: vector<String>,
+        replay_extras_vals: vector<vector<u8>>,
+        ctx: &mut TxContext,
+    ) {
+        // Gated path admits only cognition + execution. settlement is reserved
+        // for the ungated entry; allowing it here would let the agent forge
+        // "settlement" AERs under a user capability.
+        assert!(
+            event_class == EVENT_CLASS_COGNITION || event_class == EVENT_CLASS_EXECUTION,
+            E_GATED_REQUIRES_NON_SETTLEMENT_CLASS,
+        );
+
+        // Consume receipt FIRST so we get the authoritative requester + price
+        // (capability scope check needs both).
+        let (
+            request_id,
+            requester,
+            receipt_executor,
+            price,
+            model_name,
+            output_hash,
+            execution_time_ms,
+            settled_at,
+        ) = baram::baram::consume_receipt(baram_registry, receipt, AERWitness {});
+
+        // Capability hard rail. Snapshots cap.version on success so replay can
+        // verify scope at the moment of execution.
+        let cap_version = capability::assert_can_execute(
+            cap,
+            requester,
+            &action_type,
+            price,
+            expected_capability_version,
+        );
+
+        finalize_aer_from_receipt(
+            registry,
+            request_id, requester, receipt_executor, price, model_name, output_hash,
+            execution_time_ms, settled_at,
+            initiator, delegation_path, executor_principal,
+            fee_detail, budget_id, budget_remaining,
+            model_metadata, input_hash,
+            purpose, option::some(cap_version), constraints,
+            executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
+            requested_at,
+            triggered_by, triggered_action, intent_id, parent_intent_id, execution_id,
+            event_class, action_type, action_schema_version, payload_codec,
+            payload_hash, payload_bytes, action_summary, action_outcome,
+            triggered_by_type, triggered_by_ref,
+            model_version, prompt_template_hash, market_snapshot_hash,
+            replay_extras_keys, replay_extras_vals,
+            ctx,
+        );
+    }
+
+    /// Common AER validation + construction body, factored out of both entry
+    /// functions to keep their gating logic narrow. event_class restriction
+    /// is the caller's responsibility (settlement-only for ungated, cognition
+    /// or execution for gated). The `capability_version_opt` argument carries
+    /// the snapshot of cap.version when the gated path was taken, or None
+    /// for the ungated settlement path.
+    ///
+    /// Validation order is identical to Plan A's create_report_with_receipt;
+    /// only the WhyContext construction differs (capability_version field).
+    fun finalize_aer_from_receipt(
+        registry: &mut AERRegistry,
+        // From receipt
+        request_id: u64,
+        requester: address,
+        receipt_executor: address,
+        price: u64,
+        model_name: String,
+        output_hash: vector<u8>,
+        execution_time_ms: u64,
+        settled_at: u64,
+        // Requester
+        initiator: address,
+        delegation_path: vector<address>,
+        // Executor
+        executor_principal: Option<address>,
+        // Payment
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+        // Inference
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        // Why (capability_version_opt encodes ungated vs gated)
+        purpose: Option<String>,
+        capability_version_opt: Option<u64>,
+        constraints: Option<String>,
+        // Trust
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+        // When
+        requested_at: u64,
+        // Chain
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+        // Envelope
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+        // Wake
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+        // Replay
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        replay_extras_keys: vector<String>,
+        replay_extras_vals: vector<vector<u8>>,
+        ctx: &mut TxContext,
+    ) {
         // The executor signing this tx must match the receipt.
         assert!(receipt_executor == tx_context::sender(ctx), E_EXECUTOR_MISMATCH);
         // The initiator must match the receipt's requester to prevent
@@ -405,7 +633,8 @@ module baram_aer::aer {
             );
         };
 
-        // Enum range checks
+        // Enum range checks. event_class is also class-restricted by the
+        // entry function above; this only enforces overall enum bounds.
         assert!(event_class >= 1 && event_class <= EVENT_CLASS_MAX, E_INVALID_ENUM_VALUE);
         assert!(action_outcome >= 1 && action_outcome <= OUTCOME_MAX, E_INVALID_ENUM_VALUE);
         assert!(triggered_by_type >= 1 && triggered_by_type <= TRIGGER_MAX, E_INVALID_ENUM_VALUE);
@@ -478,6 +707,7 @@ module baram_aer::aer {
             why: WhyContext {
                 purpose,
                 policy_version: option::some(registry.policy_version),
+                capability_version: capability_version_opt,
                 constraints,
             },
             trust: TrustContext {
@@ -606,6 +836,9 @@ module baram_aer::aer {
 
     #[test_only]
     public fun why_policy_version(w: &WhyContext): Option<u64> { w.policy_version }
+
+    #[test_only]
+    public fun why_capability_version(w: &WhyContext): Option<u64> { w.capability_version }
 
     #[test_only]
     public fun time_requested_at(t: &TimeContext): u64 { t.requested_at }

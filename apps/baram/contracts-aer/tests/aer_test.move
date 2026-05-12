@@ -86,7 +86,7 @@ module baram_aer::aer_test {
         };
         let event_class = if (option::is_some(&event_class_override)) {
             option::destroy_some(event_class_override)
-        } else { 2 /* execution */ };
+        } else { 3 /* settlement (Plan B §1.7 ungated-path hardening) */ };
         let action_outcome = if (option::is_some(&action_outcome_override)) {
             option::destroy_some(action_outcome_override)
         } else { 1 /* success */ };
@@ -111,12 +111,16 @@ module baram_aer::aer_test {
         let action_type = if (option::is_some(&action_type_override)) {
             string::utf8(option::destroy_some(action_type_override))
         } else {
-            string::utf8(b"trade.swap.v1")
+            // Ungated path is settlement-only after Plan B §1.7 hardening.
+            // executor.fee.v1 is the canonical settlement-class action_type;
+            // execution-class types (trade.swap.v1 etc.) are exercised in
+            // capability_test.move via the gated entry.
+            string::utf8(b"executor.fee.v1")
         };
         let action_summary = if (option::is_some(&action_summary_override)) {
             string::utf8(option::destroy_some(action_summary_override))
         } else {
-            string::utf8(b"BUY 50 NUSDC -> NBTC")
+            string::utf8(b"executor fee 1.0 NUSDC")
         };
         let prompt_template_hash = if (option::is_some(&prompt_template_hash_override)) {
             option::destroy_some(prompt_template_hash_override)
@@ -314,9 +318,53 @@ module baram_aer::aer_test {
         ts::end(scenario);
     }
 
+    // Plan B §1.7: ungated entry must reject non-settlement event_class. The
+    // assertion fires BEFORE consume_receipt, so the receipt + executor
+    // payout are preserved (PTB rollback). This is the boundary that prevents
+    // an executor from routing cognition or execution AERs through the
+    // un-capability-checked path. The original "enum-out-of-range" coverage
+    // for event_class is no longer reachable via this entry (the settlement
+    // check is stricter); action_outcome and triggered_by_type retain their
+    // dedicated enum-range tests below.
     #[test]
-    #[expected_failure(abort_code = 410, location = baram_aer::aer)]
-    fun rejects_event_class_out_of_range() {
+    #[expected_failure(abort_code = 554, location = baram_aer::aer)]
+    fun rejects_ungated_with_execution_event_class() {
+        let mut scenario = setup();
+        call_create(
+            &mut scenario, 1,
+            option::none(),
+            option::some(2u8), // execution - must route through gated entry
+            option::none(), option::none(),
+            option::none(), option::none(), option::none(), option::none(),
+            option::none(), option::none(), option::none(), option::none(),
+            option::none(),
+        );
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 554, location = baram_aer::aer)]
+    fun rejects_ungated_with_cognition_event_class() {
+        let mut scenario = setup();
+        call_create(
+            &mut scenario, 1,
+            option::none(),
+            option::some(1u8), // cognition - must route through gated entry
+            option::none(), option::none(),
+            option::none(), option::none(), option::none(), option::none(),
+            option::none(), option::none(), option::none(), option::none(),
+            option::none(),
+        );
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 554, location = baram_aer::aer)]
+    fun rejects_ungated_with_out_of_range_event_class() {
+        // event_class=99 is out of enum range AND not settlement. The
+        // settlement check is the first gate the entry hits, so this aborts
+        // with E_UNGATED_REQUIRES_SETTLEMENT_CLASS rather than the generic
+        // E_INVALID_ENUM_VALUE. Documents the order-of-checks.
         let mut scenario = setup();
         call_create(
             &mut scenario, 1,
@@ -636,13 +684,13 @@ module baram_aer::aer_test {
             uuidv7_bytes(0x77),
             option::none<vector<u8>>(),
             1,
-            2,
-            string::utf8(b"trade.swap.v1"),
+            3, // settlement (Plan B §1.7)
+            string::utf8(b"executor.fee.v1"),
             1,
             string::utf8(b"bcs"),
             hash32(0xBB),
             valid_payload_bytes(),
-            string::utf8(b"BUY 50 NUSDC -> NBTC"),
+            string::utf8(b"executor fee 1.0 NUSDC"),
             1,
             1,
             option::none<string::String>(),
