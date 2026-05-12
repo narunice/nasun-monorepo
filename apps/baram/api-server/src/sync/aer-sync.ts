@@ -47,6 +47,38 @@ const MAX_RETRIES = 3;
 
 let syncing = false;
 
+/**
+ * Read `<sub-struct>.<field>` from an Sui object's parsed fields. Sui's RPC
+ * wraps nested struct fields in `{ fields: { ... } }`, sometimes nested
+ * twice depending on display vs content. Returns undefined if the path
+ * doesn't exist so callers can fall through to a null on legacy AERs that
+ * never had the sub-struct at all.
+ */
+function extractFromSubStruct(
+  fields: Record<string, unknown>,
+  subStruct: string,
+  fieldName: string,
+): unknown {
+  const outer = fields[subStruct] as Record<string, unknown> | undefined;
+  if (!outer) return undefined;
+  const inner = (outer.fields as Record<string, unknown> | undefined) ?? outer;
+  return inner[fieldName];
+}
+
+/** Read a value from `fields.<subStruct>.<field>` falling back to the flat
+ *  `fields.<field>` path. Plan B AERs put `purpose`, `policy_version`,
+ *  `constraints` inside `why`; v1 AERs put them at the top level. Until the
+ *  full Plan-A indexer cutover lands in Plan C, the parser must read from
+ *  both layouts so the column doesn't go silently NULL for one half. */
+function readScalarFromWhyOrFlat(
+  fields: Record<string, unknown>,
+  fieldName: string,
+): unknown {
+  const nested = extractFromSubStruct(fields, 'why', fieldName);
+  if (nested !== undefined) return nested;
+  return fields[fieldName];
+}
+
 function parseOptionString(val: unknown): string | null {
   if (val === null || val === undefined) return null;
   return String(val);
@@ -94,6 +126,9 @@ interface AERRow {
   execution_time_ms: number;
   purpose: string | null;
   policy_version: number | null;
+  /** Plan B B2: snapshot of `Capability.version` at AER creation. NULL for
+   *  v1 AERs and for the ungated/settlement path. */
+  capability_version: number | null;
   constraints: unknown;
   executor_tier: number;
   executor_reputation: number;
@@ -141,9 +176,17 @@ function parseObjectToRow(
     input_hash: bytesToHex(fields.input_hash),
     output_hash: bytesToHex(fields.output_hash),
     execution_time_ms: Number(fields.execution_time_ms || 0),
-    purpose: parseOptionString(fields.purpose),
-    policy_version: parseOptionNumber(fields.policy_version),
-    constraints: safeJsonParse(parseOptionString(fields.constraints)),
+    // Plan B B2: the AER schema nests these fields under `why`. v1 AERs put
+    // them at the top level. readScalarFromWhyOrFlat handles both until
+    // Plan C does the full sub-struct walk for every category.
+    purpose: parseOptionString(readScalarFromWhyOrFlat(fields, 'purpose')),
+    policy_version: parseOptionNumber(readScalarFromWhyOrFlat(fields, 'policy_version')),
+    capability_version: parseOptionNumber(
+      extractFromSubStruct(fields, 'why', 'capability_version'),
+    ),
+    constraints: safeJsonParse(
+      parseOptionString(readScalarFromWhyOrFlat(fields, 'constraints')),
+    ),
     executor_tier: Math.min(Number(fields.executor_tier || 0), 3),
     executor_reputation: Number(fields.executor_reputation || 0),
     executor_stake_amount: Number(fields.executor_stake_amount || 0),
@@ -193,7 +236,7 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           executor, executor_principal,
           payment_amount, payment_token, executor_received, fee_detail, budget_id, budget_remaining,
           model_name, model_metadata, input_hash, output_hash, execution_time_ms,
-          purpose, policy_version, constraints,
+          purpose, policy_version, capability_version, constraints,
           executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
           requested_at, settled_at, status,
           triggered_by, triggered_action,
@@ -207,7 +250,7 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           ${row.model_name},
           ${row.model_metadata ? JSON.stringify(row.model_metadata) : null}::jsonb,
           ${row.input_hash}, ${row.output_hash}, ${row.execution_time_ms},
-          ${row.purpose}, ${row.policy_version},
+          ${row.purpose}, ${row.policy_version}, ${row.capability_version},
           ${row.constraints ? JSON.stringify(row.constraints) : null}::jsonb,
           ${row.executor_tier}, ${row.executor_reputation}, ${row.executor_stake_amount},
           ${row.tee_verified}, ${row.tee_attestation_hash},

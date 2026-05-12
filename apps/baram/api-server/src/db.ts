@@ -48,6 +48,7 @@ export async function initSchema(): Promise<void> {
       -- 5. WHY
       purpose              TEXT,
       policy_version       INTEGER,
+      capability_version   BIGINT,
       constraints          JSONB,
 
       -- 6. HOW TRUSTWORTHY
@@ -82,10 +83,23 @@ export async function initSchema(): Promise<void> {
     `CREATE INDEX IF NOT EXISTS idx_aer_settled_at   ON aer_records(settled_at DESC)`,
     `CREATE INDEX IF NOT EXISTS idx_aer_triggered_by ON aer_records(triggered_by) WHERE triggered_by IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_aer_model        ON aer_records(model_name, settled_at DESC)`,
+    // Plan B B2: capability_version snapshot. Indexer query: "all AERs
+    // emitted under a specific cap version" (used by the Dashboard
+    // capability history view in Plan E). Per AER_V2_CODEC §15.
+    `CREATE INDEX IF NOT EXISTS idx_aer_capability_version ON aer_records(capability_version, settled_at DESC) WHERE capability_version IS NOT NULL`,
   ];
   for (const idx of indexes) {
     await sql.unsafe(idx);
   }
+
+  // Forward-migrate existing rows. Safe to call repeatedly; ADD COLUMN IF
+  // NOT EXISTS is a no-op once applied. Existing v1 AERs end up with
+  // capability_version = NULL, which the SDK surfaces as `null` per the
+  // Plan B handoff invariant.
+  await sql`
+    ALTER TABLE aer_records
+      ADD COLUMN IF NOT EXISTS capability_version BIGINT
+  `;
 
   await sql`
     CREATE TABLE IF NOT EXISTS aer_sync_state (
