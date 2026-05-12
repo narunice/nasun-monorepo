@@ -150,6 +150,7 @@ export const ReferralReviewTab: FC = () => {
         <TabBtn value="pending" label="Pending" />
         <TabBtn value="appealed" label="Appealed" />
         <TabBtn value="declined" label="Declined" />
+        <TabBtn value="activated" label="Approved" />
         <div className="ml-auto pb-1">
           <input
             type="search"
@@ -167,7 +168,10 @@ export const ReferralReviewTab: FC = () => {
         <div className="py-4 text-rose-400">{error}</div>
       ) : filtered.length === 0 ? (
         <div className="py-8 text-center text-nasun-white/70">
-          {tab === "pending" ? "No pending referrals." : tab === "appealed" ? "No appeals waiting." : "No declined referrals."}
+          {tab === "pending" ? "No pending referrals."
+            : tab === "appealed" ? "No appeals waiting."
+            : tab === "declined" ? "No declined referrals."
+            : "No approved referrals."}
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -182,6 +186,7 @@ export const ReferralReviewTab: FC = () => {
                 <th className="py-2 pr-3">Signed up</th>
                 {tab === "appealed" && <th className="py-2 pr-3">Appeal</th>}
                 {tab === "declined" && <th className="py-2 pr-3">Reason</th>}
+                {tab === "activated" && <th className="py-2 pr-3">Approved at</th>}
                 <th className="py-2">Actions</th>
               </tr>
             </thead>
@@ -231,6 +236,14 @@ export const ReferralReviewTab: FC = () => {
                           {formatDateTime(it.reviewedAt)}
                           {it.appealResolution === "reconfirmed" && " · appeal reconfirmed"}
                         </div>
+                      </td>
+                    )}
+                    {tab === "activated" && (
+                      <td className="py-2 pr-3 text-nasun-white/70 font-mono text-xs whitespace-nowrap">
+                        {formatDateTime(it.activatedAt)}
+                        {it.appealResolution === "reversed" && (
+                          <div className="text-[11px] text-emerald-400/70 mt-1">appeal reversed</div>
+                        )}
                       </td>
                     )}
                     <td className="py-2">

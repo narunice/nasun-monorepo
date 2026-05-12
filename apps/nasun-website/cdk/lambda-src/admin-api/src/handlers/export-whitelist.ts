@@ -1726,17 +1726,18 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
     }
 
     // ==================== Admin: Referral Review ====================
-    // GET /admin/referral-review?status=pending|appealed|declined
+    // GET /admin/referral-review?status=pending|appealed|declined|activated
     // Returns the full filtered list, sorted ASC by the status-relevant
     // timestamp (appliedAt for PENDING, appealedAt for APPEALED, reviewedAt
-    // for DECLINED), with stable serial numbers (1..N) for the admin UI.
-    // Lambda warm-container in-memory cache (10s) absorbs tab-switch bursts.
+    // for DECLINED, activatedAt for ACTIVATED), with stable serial numbers
+    // (1..N) for the admin UI. Warm-container in-memory cache (10s) absorbs
+    // tab-switch bursts.
     if (path.endsWith("/admin/referral-review") && event.httpMethod === "GET") {
       const statusRaw = (queryParams.status as string | undefined)?.toUpperCase() || "PENDING";
-      if (!["PENDING", "APPEALED", "DECLINED"].includes(statusRaw)) {
+      if (!["PENDING", "APPEALED", "DECLINED", "ACTIVATED"].includes(statusRaw)) {
         return errorResponse(400, "Invalid status", requestOrigin);
       }
-      const status = statusRaw as "PENDING" | "APPEALED" | "DECLINED";
+      const status = statusRaw as "PENDING" | "APPEALED" | "DECLINED" | "ACTIVATED";
 
       const cached = referralReviewCache.get(status);
       if (cached && Date.now() - cached.ts < REFERRAL_REVIEW_CACHE_TTL_MS) {
@@ -1763,7 +1764,11 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       } while (scanCursor);
 
       // Sort ASC by the status-relevant timestamp, oldest first → serial 1.
-      const sortField = status === "APPEALED" ? "appealedAt" : status === "DECLINED" ? "reviewedAt" : "appliedAt";
+      const sortField =
+        status === "APPEALED" ? "appealedAt"
+        : status === "DECLINED" ? "reviewedAt"
+        : status === "ACTIVATED" ? "activatedAt"
+        : "appliedAt";
       rawItems.sort((a, b) => {
         const ta = Date.parse(a[sortField]?.S || a.appliedAt?.S || "") || 0;
         const tb = Date.parse(b[sortField]?.S || b.appliedAt?.S || "") || 0;
@@ -1810,6 +1815,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           referrerHandle: rerProfile.twitterHandle || null,
           referralCode: it.referralCode?.S || null,
           appliedAt: it.appliedAt?.S || null,
+          activatedAt: it.activatedAt?.S || null,
           reviewedAt: it.reviewedAt?.S || null,
           reviewerNote: it.reviewerNote?.S || null,
           appealedAt: it.appealedAt?.S || null,
