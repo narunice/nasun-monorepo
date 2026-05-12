@@ -1,0 +1,17 @@
+{
+  "$comment": "Plan B static action-class registry. Plan B §4.3. Action_type → (target package, module, function set, asset TypeNames). The host refuses any execution AER whose proposed target/function/asset combination isn't listed here, even if cap.allowed_targets admits the package — two-layer defense. Strings prefixed with $ are env vars resolved at boot (lets devnet/staging/prod share one file).",
+
+  "trade.swap.v1": {
+    "targets": [
+      {
+        "package": "$PADO_DEEPBOOK_PACKAGE_ID",
+        "module": "pool",
+        "functions": [
+          "swap_exact_base_for_quote",
+          "swap_exact_quote_for_base"
+        ]
+      }
+    ],
+    "assets": ["$NBTC_TYPE", "$NUSDC_TYPE", "$NASUN_TYPE"]
+  }
+}

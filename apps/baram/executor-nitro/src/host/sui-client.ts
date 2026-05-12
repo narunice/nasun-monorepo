@@ -3,6 +3,11 @@
  *
  * Handles on-chain settlement (submit_proof) and AI Execution Report (create_report)
  * after the Enclave returns execution results.
+ *
+ * Plan B B2: `submitProofWithAERCapability` calls the new capability-gated AER
+ * entry. The legacy `submitProofWithAER` path remains in this file but targets
+ * an entry that no longer exists in the post-republish baram_aer package, so
+ * the only live execution path now goes through the capability variant.
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -10,6 +15,8 @@ import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { bcs } from '@mysten/sui/bcs';
 import { createHash } from 'crypto';
+
+import type { CapabilityRef } from './capability.js';
 
 // On-chain request structure (mirrors baram.move ComputeRequest)
 export interface ComputeRequestOnChain {
@@ -63,6 +70,9 @@ export interface SuiConfig {
   executorPackageId: string;         // baram_executor package ID
   processedRequestsId: string;       // ProcessedRequests shared object ID
   executorStakeId: string;           // ExecutorStake owned object ID (for tier refresh)
+  /** Plan B: shared `CapabilityRegistry` object id. Currently used only for
+   *  bookkeeping/source-of-events; not referenced in the gated PTB itself. */
+  capabilityRegistryId?: string;
 }
 
 let client: SuiClient | null = null;
@@ -655,4 +665,312 @@ export async function submitProofWithAERRetry(
  */
 export function sha256Bytes(content: string): number[] {
   return Array.from(createHash('sha256').update(content, 'utf-8').digest());
+}
+
+// ============================================================================
+// Plan B B2: Capability-gated AER PTB
+// ============================================================================
+
+/** The seven AER sub-categories the v2 entry adds on top of `AERReportData`.
+ *  Each maps 1:1 to a sub-struct in the Move contract (see Plan A §1). The
+ *  host fills these from request metadata; trader presets (Plan C) will
+ *  produce richer values, but a minimal cognition-noop AER can be built from
+ *  the same shape using `defaultCognitionEnvelope`. */
+export interface AEREnvelopeMeta {
+  /** 1=cognition, 2=execution. Settlement class is the legacy ungated path. */
+  eventClass: 1 | 2;
+  actionType: string;
+  actionSchemaVersion: number;
+  payloadCodec: 'bcs';
+  /** SHA-256(action_type_bytes || payload_bytes) — caller computes. */
+  payloadHash: number[];
+  payloadBytes: number[];
+  actionSummary: string;
+  /** 1=success, 2=hold-noop, 3=failure. */
+  actionOutcome: 1 | 2 | 3;
+}
+
+export interface AERLineageMeta {
+  /** UUIDv7, 16 bytes. Generate via `capability.generateIntentId` or pass through. */
+  intentId: number[];
+  parentIntentId: number[] | null;
+  /** Local retry counter within the intent. 1 for first attempt. */
+  executionId: number;
+}
+
+export interface AERWakeMeta {
+  /** 1=heartbeat, 2=user_message, 3=price_alert, 4=manual. */
+  triggeredByType: 1 | 2 | 3 | 4;
+  triggeredByRef: string | null;
+}
+
+export interface AERReplayMeta {
+  modelVersion: string;
+  /** SHA-256 of the rendered prompt template. */
+  promptTemplateHash: number[];
+  marketSnapshotHash: number[] | null;
+  /** Strict-ascending UTF-8 byte order by key; caller's responsibility. */
+  replayExtras: Array<[string, number[]]>;
+}
+
+/** The optional execution action the host appends as Cmd 0 of the PTB. For
+ *  HOLD/cognition AERs this is `null` — the PTB has just the settlement +
+ *  AER commands. Plan B B2 ships this as the pre-Plan-C wiring; the trader
+ *  preset (Plan C) will own constructing the args. */
+export interface ActionCallSpec {
+  targetPackage: string;
+  module: string;
+  fn: string;
+  /** Type arguments for generic Move calls. Pado pool swap calls usually
+   *  parameterize on base/quote coin types. */
+  typeArguments: string[];
+  /** Each arg is either an object id (the host wraps with `tx.object`) or
+   *  BCS-encoded pure bytes (caller is responsible for matching the function
+   *  signature byte-for-byte). Keeping it raw here means this layer doesn't
+   *  need to know any swap-specific signatures. */
+  args: Array<{ kind: 'object'; id: string } | { kind: 'pure'; bytes: Uint8Array }>;
+}
+
+export interface SubmitProofWithCapabilityInput {
+  requestId: number;
+  resultHash: string;
+  executionTimeMs: number;
+  request: ComputeRequestOnChain;
+  aer: AERReportData;
+  capRef: CapabilityRef;
+  envelope: AEREnvelopeMeta;
+  lineage: AERLineageMeta;
+  wake: AERWakeMeta;
+  replay: AERReplayMeta;
+  /** Optional execution action. Null for HOLD/cognition AERs. */
+  actionCall?: ActionCallSpec | null;
+}
+
+/**
+ * Submit the capability-gated atomic settlement PTB.
+ *
+ * PTB layout (Plan B §4.2):
+ *   Cmd 0  (optional): action call (e.g., Pado swap). Skipped for HOLD.
+ *   Cmd 1: baram::submit_proof_with_receipt → returns SettlementReceipt
+ *   Cmd 2: aer::create_report_with_receipt_capability(receipt, cap, ...)
+ *   Cmd 3/4 (existing): record_job_completion + refresh_tier_from_state
+ *
+ * The capability is referenced via `tx.sharedObjectRef({ mutable: false })`
+ * so the cap read stays off the consensus-serialized path. Code-review C-3.
+ *
+ * Aborts at Cmd 2 if cap is revoked / paused / owner mismatch / version
+ * mismatch / action_type not allowed / payment_amount > notional cap. PTB
+ * rollback means receipt is NOT consumed (no payout to executor) — correct
+ * incentive: if the AER never materialized, the inference is unsettled.
+ */
+export async function submitProofWithAERCapability(
+  input: SubmitProofWithCapabilityInput,
+): Promise<string> {
+  const sui = getClient();
+  const kp = getKeypair();
+  const cfg = getConfig();
+
+  console.log(
+    `[Sui] Submitting capability-gated PTB for request ${input.requestId} (` +
+      `action=${input.envelope.actionType} class=${input.envelope.eventClass})`,
+  );
+
+  const tx = new Transaction();
+
+  // Cmd 0: action call (execution only)
+  if (input.actionCall) {
+    const ac = input.actionCall;
+    tx.moveCall({
+      target: `${ac.targetPackage}::${ac.module}::${ac.fn}`,
+      typeArguments: ac.typeArguments,
+      arguments: ac.args.map((a) =>
+        a.kind === 'object' ? tx.object(a.id) : tx.pure(a.bytes),
+      ),
+    });
+  }
+
+  // Cmd 1: submit_proof_with_receipt (settlement)
+  const resultHashBytes = Array.from(Buffer.from(input.resultHash, 'hex'));
+  const [receipt] = tx.moveCall({
+    target: `${cfg.packageId}::baram::submit_proof_with_receipt`,
+    arguments: [
+      tx.object(cfg.registryId),
+      tx.pure.u64(input.requestId),
+      tx.pure.vector('u8', resultHashBytes),
+      tx.pure.u64(input.executionTimeMs),
+      tx.object('0x6'), // Clock
+    ],
+  });
+
+  // Cmd 2: capability-gated AER creation
+  const promptHashBytes = Array.isArray(input.request.promptHash)
+    ? (input.request.promptHash as unknown as number[])
+    : Array.from(Buffer.from(input.request.promptHash, 'hex'));
+
+  // Cap shared-object ref. Plan B C-3: mutable: false to keep the cap read off
+  // the consensus-serialized path. tx.sharedObjectRef requires the initial
+  // shared version we plumbed through fetchCapability.
+  // F9: pass initialSharedVersion as a string so a future devnet that has
+  // run long enough to push the version past 2^53 doesn't silently lose
+  // precision through Number(). `tx.sharedObjectRef` accepts bigint/string.
+  const capArg = tx.sharedObjectRef({
+    objectId: input.capRef.objectId,
+    initialSharedVersion: input.capRef.initialSharedVersion.toString(),
+    mutable: false,
+  });
+
+  // baram_registry is referenced immutably by the gated entry. The same
+  // shared object is mutably referenced by Cmd 1; Sui PTB scheduler upgrades
+  // to mut for the whole tx, which is fine — we just need the reference to
+  // resolve at all.
+  tx.moveCall({
+    target: `${cfg.aerPackageId}::aer::create_report_with_receipt_capability`,
+    arguments: [
+      tx.object(cfg.aerRegistryId),
+      tx.object(cfg.registryId),
+      receipt,
+      capArg,
+      tx.pure.u64(input.capRef.cap.version),
+
+      // Requester
+      tx.pure.address(input.request.requester),
+      tx.pure.vector('address', input.aer.delegationPath),
+      // Executor
+      tx.pure(bcs.option(bcs.Address).serialize(input.aer.executorPrincipal)),
+      // Payment
+      tx.pure(bcs.option(bcs.string()).serialize(input.aer.feeDetail)),
+      tx.pure(bcs.option(bcs.Address).serialize(input.aer.budgetId)),
+      tx.pure(
+        bcs
+          .option(bcs.u64())
+          .serialize(input.aer.budgetRemaining != null ? BigInt(input.aer.budgetRemaining) : null),
+      ),
+      // Inference
+      tx.pure(bcs.option(bcs.string()).serialize(input.aer.modelMetadata)),
+      tx.pure.vector('u8', promptHashBytes),
+      // Why
+      tx.pure(bcs.option(bcs.string()).serialize(input.aer.purpose)),
+      tx.pure(bcs.option(bcs.string()).serialize(input.aer.constraints)),
+      // Trust
+      tx.pure.u8(input.aer.executorTier),
+      tx.pure.u64(input.aer.executorReputation),
+      tx.pure.u64(input.aer.executorStakeAmount),
+      tx.pure.bool(input.aer.teeVerified),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(input.aer.teeAttestationHash)),
+      // Time
+      tx.pure.u64(input.request.createdAt),
+      // Chain
+      tx.pure(bcs.option(bcs.Address).serialize(input.aer.triggeredBy)),
+      tx.pure(bcs.option(bcs.Address).serialize(input.aer.triggeredAction)),
+      tx.pure.vector('u8', input.lineage.intentId),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(input.lineage.parentIntentId)),
+      tx.pure.u32(input.lineage.executionId),
+      // Envelope
+      tx.pure.u8(input.envelope.eventClass),
+      tx.pure.string(input.envelope.actionType),
+      tx.pure.u16(input.envelope.actionSchemaVersion),
+      tx.pure.string(input.envelope.payloadCodec),
+      tx.pure.vector('u8', input.envelope.payloadHash),
+      tx.pure.vector('u8', input.envelope.payloadBytes),
+      tx.pure.string(input.envelope.actionSummary),
+      tx.pure.u8(input.envelope.actionOutcome),
+      // Wake
+      tx.pure.u8(input.wake.triggeredByType),
+      tx.pure(bcs.option(bcs.string()).serialize(input.wake.triggeredByRef)),
+      // Replay
+      tx.pure.string(input.replay.modelVersion),
+      tx.pure.vector('u8', input.replay.promptTemplateHash),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(input.replay.marketSnapshotHash)),
+      tx.pure.vector('string', input.replay.replayExtras.map(([k]) => k)),
+      tx.pure(
+        bcs
+          .vector(bcs.vector(bcs.u8()))
+          .serialize(input.replay.replayExtras.map(([, v]) => v)),
+      ),
+    ],
+  });
+
+  // Cmd 3: record_job_completion (existing)
+  if (cfg.executorPackageId && cfg.executorRegistryId && cfg.processedRequestsId) {
+    tx.moveCall({
+      target: `${cfg.executorPackageId}::executor::record_job_completion`,
+      arguments: [
+        tx.object(cfg.executorRegistryId),
+        tx.object(cfg.processedRequestsId),
+        tx.pure.u64(input.requestId),
+        tx.object('0x6'),
+      ],
+    });
+  }
+
+  // Cmd 4: refresh_tier_from_state (existing)
+  if (
+    cfg.executorPackageId &&
+    cfg.tierRegistryId &&
+    cfg.executorRegistryId &&
+    cfg.executorStakeId
+  ) {
+    tx.moveCall({
+      target: `${cfg.executorPackageId}::executor_tier::refresh_tier_from_state`,
+      arguments: [
+        tx.object(cfg.tierRegistryId),
+        tx.object(cfg.executorRegistryId),
+        tx.object(cfg.executorStakeId),
+      ],
+    });
+  }
+
+  const result = await sui.signAndExecuteTransaction({
+    signer: kp,
+    transaction: tx,
+    options: { showEffects: true, showEvents: true },
+  });
+
+  if (result.effects?.status?.status !== 'success') {
+    const error = result.effects?.status?.error || 'Unknown error';
+    throw new Error(`Capability-gated PTB failed: ${error}`);
+  }
+
+  console.log(`[Sui] Capability-gated PTB submitted: ${result.digest}`);
+  return result.digest;
+}
+
+/**
+ * SHA-256 of (action_type bytes || payload_bytes) as a number[] for PTB pure args.
+ * Plan A D4: this binds the action_type label to the payload schema.
+ */
+export function actionPayloadHash(actionType: string, payloadBytes: Uint8Array | number[]): number[] {
+  const h = createHash('sha256');
+  h.update(Buffer.from(actionType, 'utf-8'));
+  h.update(Buffer.from(payloadBytes as Uint8Array));
+  return Array.from(h.digest());
+}
+
+/**
+ * Build a `noop.v1` cognition envelope for the HOLD path or for soft-rail
+ * rejections. The payload is the BCS encoding of `{ reason_code: u8,
+ * rationale_hash: vector<u8> }` per AER_V2_CODEC §7.
+ */
+export function defaultCognitionEnvelope(args: {
+  reasonCode: number;
+  rationaleHash: number[];
+  summary: string;
+}): AEREnvelopeMeta {
+  // BCS layout for noop.v1 payload — match the codec doc.
+  const payloadBytes = Array.from(
+    bcs
+      .struct('NoopV1', { reason_code: bcs.u8(), rationale_hash: bcs.vector(bcs.u8()) })
+      .serialize({ reason_code: args.reasonCode, rationale_hash: args.rationaleHash })
+      .toBytes(),
+  );
+  return {
+    eventClass: 1,
+    actionType: 'noop.v1',
+    actionSchemaVersion: 1,
+    payloadCodec: 'bcs',
+    payloadHash: actionPayloadHash('noop.v1', Uint8Array.from(payloadBytes)),
+    payloadBytes,
+    actionSummary: args.summary.slice(0, 280),
+    actionOutcome: 2, // hold-noop
+  };
 }

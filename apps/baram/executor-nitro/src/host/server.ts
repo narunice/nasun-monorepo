@@ -28,10 +28,26 @@ import {
   getExecutorStats,
   getAttestationBaseline,
   submitProofWithAERRetry,
+  submitProofWithAERCapability,
+  defaultCognitionEnvelope,
+  actionPayloadHash,
   sha256Bytes,
   type SuiConfig,
   type AERReportData,
+  type AEREnvelopeMeta,
+  type AERLineageMeta,
+  type AERWakeMeta,
+  type AERReplayMeta,
+  type ActionCallSpec,
 } from './sui-client.js';
+import {
+  preflight as capabilityPreflight,
+  recordCognitionPayout,
+  configureCognitionCap,
+  loadActionClasses,
+  type ActionProposal,
+} from './capability.js';
+import { SuiClient } from '@mysten/sui/client';
 
 /**
  * HTTP Server configuration
@@ -412,6 +428,373 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     }
   });
 
+  // ==========================================================================
+  // Plan B B2: capability-gated execute path.
+  //
+  // POST /execute-capability
+  // Body (additional fields on top of /execute):
+  //   capabilityId:        string  — shared Capability object id
+  //   walletAddress:       string  — cap.owner sanity check
+  //   envelope:            AEREnvelopeMeta
+  //   lineage:             AERLineageMeta
+  //   wake:                AERWakeMeta
+  //   replay:              AERReplayMeta
+  //   actionCall?:         ActionCallSpec | null  — execution action; null for HOLD
+  //   proposal:            ActionProposal — used for soft-rail preflight
+  //
+  // Behavior:
+  //   1. Run hard + soft rail preflight (host/capability.ts).
+  //   2. On deny → emit a noop.v1 cognition AER with the reason_code; the
+  //      enclave is NOT called and the inference is NOT performed.
+  //   3. On allow → forward to enclave for inference, then submit the
+  //      capability-gated PTB.
+  //
+  // The legacy `/execute` route above remains for non-capability-aware
+  // callers but the entry it targets no longer exists in the post-B1
+  // baram_aer package, so it will fail at the PTB step. Treat it as
+  // deprecated; remove in Plan C.
+  // ==========================================================================
+  const actionRegistry = (() => {
+    try {
+      return loadActionClasses();
+    } catch (err) {
+      console.warn(
+        '[Host/Server] Could not load action-classes.json:',
+        err instanceof Error ? err.message : err,
+      );
+      return {};
+    }
+  })();
+
+  // Configure cognition cap if env is set. Map of walletAddress -> cap is
+  // populated lazily on first request from that wallet.
+  const cognitionCapEnv = Number(process.env.DAILY_COGNITION_PAYOUT_CAP ?? '0');
+  const seenWallets = new Set<string>();
+
+  app.post('/execute-capability', rateLimit, async (req: Request, res: Response) => {
+    if (!suiEnabled || !serverConfig.sui) {
+      res.status(503).json({ success: false, error: 'Sui settlement disabled' });
+      return;
+    }
+
+    const {
+      requestId,
+      encryptedPrompt,
+      model,
+      budgetId,
+      capabilityId,
+      walletAddress,
+      envelope,
+      lineage,
+      wake,
+      replay,
+      actionCall,
+      proposal,
+      purpose,
+      constraints,
+      triggeredBy,
+      triggeredAction,
+    } = req.body as {
+      requestId: number;
+      encryptedPrompt: string;
+      model: string;
+      budgetId?: string;
+      capabilityId: string;
+      walletAddress: string;
+      envelope: AEREnvelopeMeta;
+      lineage: AERLineageMeta;
+      wake: AERWakeMeta;
+      replay: AERReplayMeta;
+      actionCall?: ActionCallSpec | null;
+      proposal: ActionProposal;
+      purpose?: string;
+      constraints?: string;
+      triggeredBy?: string;
+      triggeredAction?: string;
+    };
+
+    // Minimum validation. Detailed args are validated by the contract; we
+    // only short-circuit obvious shape errors here.
+    if (
+      typeof requestId !== 'number' ||
+      !Number.isInteger(requestId) ||
+      requestId < 0
+    ) {
+      res.status(400).json({ success: false, error: 'Invalid requestId' });
+      return;
+    }
+    if (!encryptedPrompt || typeof encryptedPrompt !== 'string') {
+      res.status(400).json({ success: false, error: 'Invalid encryptedPrompt' });
+      return;
+    }
+    if (!capabilityId || !walletAddress) {
+      res.status(400).json({
+        success: false,
+        error: 'capabilityId and walletAddress are required',
+      });
+      return;
+    }
+    if (!envelope || !lineage || !wake || !replay || !proposal) {
+      res.status(400).json({
+        success: false,
+        error: 'envelope/lineage/wake/replay/proposal are all required',
+      });
+      return;
+    }
+
+    // Shape validation on caller-controlled object ids (security review F5).
+    // Reject non-0x...64hex up front so a crafted shape doesn't burn an RPC
+    // round-trip or a `SuiClient.getObject` cycle on garbage input.
+    const OBJECT_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
+    if (!OBJECT_ID_RE.test(capabilityId) || !OBJECT_ID_RE.test(walletAddress)) {
+      res.status(400).json({
+        success: false,
+        error: 'capabilityId and walletAddress must be 0x<hex>',
+      });
+      return;
+    }
+
+    // Defense against F3 (twin-trust between proposal and envelope).
+    // proposal drives the soft-rail; envelope drives the PTB. If they
+    // disagree on action_type / event_class, the cognition cap and asset
+    // checks fire against different states. Refuse rather than reconcile.
+    if (
+      proposal.actionType !== envelope.actionType ||
+      proposal.eventClass !== envelope.eventClass
+    ) {
+      res.status(400).json({
+        success: false,
+        error: 'proposal must agree with envelope on (eventClass, actionType)',
+      });
+      return;
+    }
+
+    // Defense against F1/F7 (actionCall vs proposal.exec twin-trust). When
+    // an execution AER is requested, the actionCall the host emits in PTB
+    // Cmd 0 must be identical (target package, module, function) to the
+    // proposal.exec block the soft-rail validated.
+    if (proposal.eventClass === 2) {
+      if (!actionCall || !proposal.exec) {
+        res.status(400).json({
+          success: false,
+          error: 'execution AER requires both actionCall and proposal.exec',
+        });
+        return;
+      }
+      if (
+        actionCall.targetPackage !== proposal.exec.targetPackage ||
+        actionCall.module !== proposal.exec.module ||
+        actionCall.fn !== proposal.exec.fn
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'actionCall (target/module/fn) must match proposal.exec',
+        });
+        return;
+      }
+    } else if (actionCall) {
+      // cognition / settlement AERs must NOT carry an on-chain action call;
+      // the gated entry's PTB layout has no slot for it and the soft rail
+      // checks above skip the registry validation for non-execution events.
+      res.status(400).json({
+        success: false,
+        error: 'actionCall must be null for non-execution AERs',
+      });
+      return;
+    }
+
+    // Enum range validation (F-6). Contract aborts anyway, but burning gas
+    // for a malformed enum that the host could have caught is wasteful.
+    if (envelope.eventClass !== 1 && envelope.eventClass !== 2) {
+      res.status(400).json({
+        success: false,
+        error: 'envelope.eventClass must be 1 (cognition) or 2 (execution)',
+      });
+      return;
+    }
+    if (envelope.actionOutcome < 1 || envelope.actionOutcome > 3) {
+      res.status(400).json({
+        success: false,
+        error: 'envelope.actionOutcome must be 1, 2, or 3',
+      });
+      return;
+    }
+    if (wake.triggeredByType < 1 || wake.triggeredByType > 4) {
+      res.status(400).json({
+        success: false,
+        error: 'wake.triggeredByType must be 1..=4',
+      });
+      return;
+    }
+
+    // Register cognition cap for this wallet on first sight. F17:
+    // configureCognitionCap is idempotent (it resets the events ring on
+    // re-call), so we guard with `has` AND only add to seenWallets after a
+    // successful configure call. Two concurrent requests for a new wallet
+    // could both pass the `!has` check; the worst case is the second one
+    // resets a freshly-empty ring, which is a no-op.
+    if (!seenWallets.has(walletAddress)) {
+      configureCognitionCap(walletAddress, cognitionCapEnv);
+      seenWallets.add(walletAddress);
+    }
+
+    const rpcUrl = serverConfig.sui.rpcUrl;
+    const client = new SuiClient({ url: rpcUrl });
+
+    let pre;
+    try {
+      pre = await capabilityPreflight(client, actionRegistry, {
+        capId: capabilityId,
+        walletAddress,
+        proposal,
+      });
+    } catch (err) {
+      console.error('[Host/Server] Capability preflight failed:', err);
+      res.status(502).json({
+        success: false,
+        error: 'Capability preflight failed (fetch error)',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
+    if (!pre.ok) {
+      // Build a noop cognition AER explaining the rejection. We still
+      // attempt to forward the request to the enclave so the user's
+      // inference happens (their Budget pays for it), but the action
+      // outcome is hold-noop with the rejection reason in the payload.
+      //
+      // Wait — Plan B §4.1 says "If any check fails, host emits a cognition
+      // AER (noop.v1, reason_code = ?) explaining the rejection. The
+      // executor still gets paid for the inference." But running the
+      // inference for a rejected request is wasteful for failure modes
+      // like revoked/paused/owner_mismatch. Conservative: skip inference
+      // entirely and refuse the request. Plan B prose treats this as "no
+      // silent skips," not "must run the inference anyway."
+      res.status(403).json({
+        success: false,
+        error: 'Capability preflight denied',
+        reason: pre.reason,
+      });
+      return;
+    }
+
+    // Inference (same path as legacy /execute).
+    let response;
+    try {
+      response = await vsockClient.executeInference(encryptedPrompt, model, requestId);
+    } catch (err) {
+      res.status(502).json({
+        success: false,
+        error: 'Enclave forward failed',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
+    // Build AERReportData (same shape as legacy path).
+    const onChainRequest = await getRequest(requestId);
+    if (!onChainRequest) {
+      res.status(404).json({ success: false, error: 'On-chain request not found' });
+      return;
+    }
+
+    const executorAddress = getExecutorAddress();
+    const executorStats = await getExecutorStats(executorAddress);
+
+    const ID_RE = /^0x[0-9a-fA-F]{64}$/;
+    const aerData: AERReportData = {
+      delegationPath: [],
+      executorPrincipal: null,
+      feeDetail: null,
+      budgetId: typeof budgetId === 'string' && ID_RE.test(budgetId) ? budgetId : null,
+      budgetRemaining: null,
+      modelMetadata: null,
+      purpose:
+        typeof purpose === 'string' && purpose.length > 0 && purpose.length <= 256
+          ? purpose
+          : null,
+      constraints:
+        typeof constraints === 'string' &&
+        constraints.length > 0 &&
+        constraints.length <= 256
+          ? constraints
+          : null,
+      executorTier: executorStats.tier,
+      executorReputation: executorStats.reputation,
+      executorStakeAmount: executorStats.stakeAmount,
+      teeVerified: false, // simulation mode for B2 smoke; Plan E hardens
+      teeAttestationHash: response.payload.attestation.rawDocument
+        ? sha256Bytes(response.payload.attestation.rawDocument)
+        : null,
+      triggeredBy:
+        typeof triggeredBy === 'string' && ID_RE.test(triggeredBy) ? triggeredBy : null,
+      triggeredAction:
+        typeof triggeredAction === 'string' && ID_RE.test(triggeredAction)
+          ? triggeredAction
+          : null,
+    };
+
+    try {
+      const txDigest = await submitProofWithAERCapability({
+        requestId,
+        resultHash: response.payload.resultHash,
+        executionTimeMs: response.payload.executionTimeMs,
+        request: onChainRequest,
+        aer: aerData,
+        capRef: pre.capRef,
+        envelope,
+        lineage,
+        wake,
+        replay,
+        actionCall: actionCall ?? null,
+      });
+
+      if (envelope.eventClass === 1) {
+        recordCognitionPayout(walletAddress, capabilityId);
+      }
+
+      res.json({
+        success: true,
+        result: response.payload.result,
+        resultHash: response.payload.resultHash,
+        executionTimeMs: response.payload.executionTimeMs,
+        txDigest,
+        capabilityVersion: pre.capRef.cap.version.toString(),
+      });
+    } catch (err) {
+      console.error('[Host/Server] Capability-gated PTB failed:', err);
+      res.status(502).json({
+        success: false,
+        error: 'Settlement failed',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+    }
+  });
+
+  // Internal helper exposed for tests / debug: build a default cognition
+  // envelope so callers don't have to encode noop.v1 themselves.
+  app.post('/debug/default-cognition-envelope', (req: Request, res: Response) => {
+    const { reasonCode, rationaleHash, summary } = req.body as {
+      reasonCode: number;
+      rationaleHash: number[];
+      summary: string;
+    };
+    const env = defaultCognitionEnvelope({
+      reasonCode,
+      rationaleHash,
+      summary,
+    });
+    res.json({
+      ...env,
+      payloadHashHex: Buffer.from(env.payloadHash).toString('hex'),
+      payloadBytesHex: Buffer.from(env.payloadBytes).toString('hex'),
+    });
+  });
+
+  // Avoid "unused import" type errors when actionPayloadHash isn't used here.
+  void actionPayloadHash;
+
   /**
    * 404 handler
    */
@@ -463,6 +846,7 @@ function buildSuiConfigFromEnv(): SuiConfig | undefined {
     executorPackageId: process.env.EXECUTOR_PACKAGE_ID || '',
     processedRequestsId: process.env.PROCESSED_REQUESTS_ID || '',
     executorStakeId: process.env.EXECUTOR_STAKE_ID || '',
+    capabilityRegistryId: process.env.CAPABILITY_REGISTRY_ID || undefined,
   };
 }
 
