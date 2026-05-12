@@ -4,12 +4,13 @@
  * Plan B introduces the Capability primitive that gates AER creation. Import
  * as:
  *   import { capability } from '@nasun/baram-sdk';
- *   const cap = await capability.fetchCapability(client, capId);
+ *   const { cap, initialSharedVersion } = await capability.fetchCapability(client, capId);
  *   if (capability.preflight(cap, input).ok) { ... }
  */
 
 export type {
   Capability,
+  CapabilityRef,
   RiskLimits,
   PauseMode,
   MutationKind,

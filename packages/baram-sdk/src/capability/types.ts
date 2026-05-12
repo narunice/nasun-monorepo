@@ -89,3 +89,22 @@ export interface CapabilityRevokedEvent {
   capId: string;
   owner: string;
 }
+
+/**
+ * Capability paired with the shared-object reference fields the host needs to
+ * construct a PTB. `initialSharedVersion` is required by
+ * `tx.sharedObjectRef({ mutable: false })`; without it the SDK falls back to
+ * `tx.object(id)`, which lets the fullnode infer mutability and may upgrade the
+ * reference to mutable, putting the cap read on the consensus-serialized path.
+ *
+ * Plan B code-review C-3: the gated AER entry takes `&Capability` (immutable),
+ * so the host MUST pass `mutable: false`. That requires the
+ * initialSharedVersion to be plumbed through alongside the decoded body.
+ */
+export interface CapabilityRef {
+  cap: Capability;
+  /** Same as `cap.id` but repeated so callers don't accidentally reach in. */
+  objectId: string;
+  /** Version the object was first shared at. Stable for the object's lifetime. */
+  initialSharedVersion: bigint;
+}
