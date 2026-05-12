@@ -546,7 +546,20 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
   const availableBalance = parseFloat(getSelectedBalance() || '0');
   const enteredAmount = parseFloat(amount) || 0;
   const hasEnoughBalance = enteredAmount <= availableBalance;
-  const canSubmit = isValidChainAddress(recipient) && parseFloat(amount) > 0 && hasEnoughGas && hasEnoughBalance;
+  // Block self-transfers. The on-chain tx succeeds but nothing moves (recipient ==
+  // sender), leaving users with a "Transfer Complete" toast for a no-op send and
+  // burning gas. Compare against the active chain's connected address.
+  const senderAddress = isEVM ? storedEVMAddress : connectedAddress;
+  const isSelfTransfer =
+    isValidChainAddress(recipient) &&
+    !!senderAddress &&
+    recipient.toLowerCase() === senderAddress.toLowerCase();
+  const canSubmit =
+    isValidChainAddress(recipient) &&
+    !isSelfTransfer &&
+    parseFloat(amount) > 0 &&
+    hasEnoughGas &&
+    hasEnoughBalance;
 
   return (
     <div className="p-4 w-full">
@@ -613,7 +626,15 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
           {!isValidRecipient && (
             <p className="text-xs xl:text-sm text-red-400 mt-1">Invalid address format</p>
           )}
-          {isValidChainAddress(recipient) && addressStatus.isKnown && addressStatus.entry && (
+          {isSelfTransfer && (
+            <p className="text-xs xl:text-sm text-red-500 dark:text-red-400 mt-1 flex items-center gap-1">
+              <svg className="w-3 h-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              You cannot send to your own wallet address.
+            </p>
+          )}
+          {!isSelfTransfer && isValidChainAddress(recipient) && addressStatus.isKnown && addressStatus.entry && (
             <p className="text-xs xl:text-sm text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
@@ -622,7 +643,7 @@ export function SendTransaction({ onClose, onSuccess, defaultToken, initialRecip
               {addressStatus.entry.label && ` - ${addressStatus.entry.label}`}
             </p>
           )}
-          {isNewAddress && (
+          {!isSelfTransfer && isNewAddress && (
             <p className="text-xs xl:text-sm text-yellow-600 dark:text-yellow-400 mt-1 flex items-center gap-1">
               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
