@@ -44,6 +44,7 @@ import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 import {
   resolveHandle as svcResolveHandle,
+  resolveByIdentityId as svcResolveByIdentityId,
   applyBans as svcApplyBans,
   applyUnbans as svcApplyUnbans,
   refreshChatServerCache as svcRefreshChatServerCache,
@@ -87,6 +88,8 @@ const unban = has('--unban');
 const reason = getValue('--reason') || (unban ? 'unbanned via CLI' : '');
 const handlesArg = getMulti('--handles');
 const handlesFile = getValue('--handles-file');
+const identityIdsArg = getMulti('--identity-ids');
+const identityIdsFile = getValue('--identity-ids-file');
 
 // ===== DB =====
 
@@ -111,6 +114,27 @@ function loadHandles(): string[] {
     if (!n || seen.has(n)) continue;
     seen.add(n);
     out.push(n);
+  }
+  return out;
+}
+
+function loadIdentityIds(): string[] {
+  const raw: string[] = [...identityIdsArg];
+  if (identityIdsFile) {
+    const content = readFileSync(identityIdsFile, 'utf8');
+    for (const line of content.split('\n')) {
+      const t = line.trim();
+      if (!t || t.startsWith('#')) continue;
+      raw.push(t);
+    }
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const id of raw) {
+    const trimmed = id.trim();
+    if (!trimmed || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    out.push(trimmed);
   }
   return out;
 }
@@ -193,8 +217,9 @@ async function main() {
   }
 
   const handles = loadHandles();
-  if (handles.length === 0) {
-    console.error('No handles given. Use --handles a b c, --handles-file path, or --list');
+  const identityIds = loadIdentityIds();
+  if (handles.length === 0 && identityIds.length === 0) {
+    console.error('No inputs given. Use --handles, --handles-file, --identity-ids, --identity-ids-file, or --list');
     process.exit(1);
   }
   if (!unban && !reason) {
@@ -205,12 +230,16 @@ async function main() {
   console.log(`\n=== ${unban ? 'UNBAN' : 'BAN'} ${execute ? 'EXECUTE' : 'DRY-RUN'} ===`);
   console.log(`Actor: ${ADMIN_ACTOR}`);
   console.log(`Reason: ${reason}`);
-  console.log(`Handles: ${handles.length}\n`);
+  console.log(`Handles: ${handles.length}  IdentityIds: ${identityIds.length}\n`);
 
-  // Resolve all handles in sequence (low rate, ~1 RPS, simpler than parallel).
+  // Resolve all inputs in sequence (low rate, ~1 RPS, simpler than parallel).
   const allResolutions: Resolution[] = [];
   for (const handle of handles) {
     const rs = await svcResolveHandle(handle);
+    allResolutions.push(...rs);
+  }
+  for (const id of identityIds) {
+    const rs = await svcResolveByIdentityId(id);
     allResolutions.push(...rs);
   }
 
