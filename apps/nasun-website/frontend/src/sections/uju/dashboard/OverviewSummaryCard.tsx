@@ -2,6 +2,7 @@ import { UjuCard } from "../shared";
 import { UserInfoCard } from "./UserInfoCard";
 import { TotalPointsCard } from "./TotalPointsCard";
 import { HealthGaugeCard } from "./HealthGaugeCard";
+import { AllianceActivationCta } from "./AllianceActivationCta";
 
 // Combined dashboard summary card. Two-column layout:
 //   left:  user profile (avatar + name + join date), no extra surface.
@@ -23,11 +24,19 @@ export function OverviewSummaryCard() {
 
         {/* Right: nasun points + health status share a single tinted surface
             — 3/4 width. Symmetric padding on all four sides. */}
-        <div className="md:col-span-3 rounded-xl bg-pado-1/[0.12] p-3 sm:p-6">
+        <div className="md:col-span-3 rounded-xl bg-pado-1/[0.12] p-3 sm:p-6 flex flex-col">
+          {/* Onboarding CTA: only renders when Alliance/Genesis are not yet
+              active. Self-hides otherwise, so the layout below matches the
+              steady-state design once the user has activated. */}
+          <AllianceActivationCta />
           {/* 55/45 split. Inner gap (gap-6 / 24px) plus extra left-padding
               on the Health Status column give that side breathing room from
-              the Nasun Points number, which dominates visually on the left. */}
-          <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-5 sm:gap-6 items-stretch h-full">
+              the Nasun Points number, which dominates visually on the left.
+              flex-1 (not h-full) so the grid grows to consume remaining
+              vertical space after the optional CTA above — h-full would
+              resolve against the auto-height parent and collapse, letting
+              MultiplierBox's mt-auto push it out of the card. */}
+          <div className="grid grid-cols-1 md:grid-cols-[55fr_45fr] gap-5 sm:gap-6 items-stretch flex-1 min-h-0">
             <div className="flex">
               <TotalPointsCard bare />
             </div>
