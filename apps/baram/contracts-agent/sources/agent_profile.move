@@ -18,6 +18,8 @@ module baram_agent::agent_profile {
     const E_ROLE_TOO_LONG: u64 = 505;
     const E_ALREADY_ACTIVE: u64 = 506;
     const E_ALREADY_INACTIVE: u64 = 507;
+    const E_CAPABILITY_NOT_LINKED: u64 = 508;
+    const E_CAPABILITY_ALREADY_LINKED: u64 = 509;
 
     // ========== Constants ==========
     const MAX_CAPABILITIES: u64 = 10;
@@ -27,7 +29,7 @@ module baram_agent::agent_profile {
     // ========== Structs ==========
 
     /// On-chain identity for an AI agent.
-    /// Owned object — transferred to the human owner.
+    /// Owned object - transferred to the human owner.
     public struct AgentProfile has key, store {
         id: UID,
         // Identity
@@ -35,6 +37,8 @@ module baram_agent::agent_profile {
         agent_address: address,
         name: String,
         role: String,
+        // Free-text capability labels surfaced in the dashboard. Unrelated to
+        // the Plan B Capability object (see `capability` below).
         capabilities: vector<String>,
 
         // State
@@ -45,6 +49,14 @@ module baram_agent::agent_profile {
         // Stats (updated via increment_stats)
         total_executions: u64,
         total_spent: u64,
+
+        // Plan B: optional pointer to a baram_aer::capability::Capability
+        // shared object. Host reads this to fetch the capability for every
+        // wake. None = profile has no execution authority wired up yet.
+        // Stored as ID rather than the shared object itself; cap lifetime is
+        // independent of the profile and revoke flips a flag rather than
+        // destroying the object.
+        capability: Option<ID>,
     }
 
     /// Shared registry mapping agent addresses to profile IDs.
@@ -82,6 +94,20 @@ module baram_agent::agent_profile {
         agent_address: address,
         total_executions: u64,
         total_spent: u64,
+    }
+
+    public struct AgentCapabilityLinked has copy, drop {
+        profile_id: address,
+        agent_address: address,
+        owner: address,
+        capability_id: ID,
+    }
+
+    public struct AgentCapabilityUnlinked has copy, drop {
+        profile_id: address,
+        agent_address: address,
+        owner: address,
+        previous_capability_id: ID,
     }
 
     // ========== Init ==========
@@ -133,6 +159,7 @@ module baram_agent::agent_profile {
             last_active_at: now,
             total_executions: 0,
             total_spent: 0,
+            capability: option::none(),
         };
 
         let profile_id = object::id_address(&profile);
@@ -195,6 +222,57 @@ module baram_agent::agent_profile {
         });
     }
 
+    /// Link a Plan B Capability to this AgentProfile by id. Owner only.
+    ///
+    /// Stored as a bare ID so the cap's lifecycle stays independent: the
+    /// wallet revokes a cap by mutating the shared Capability object, not by
+    /// touching this profile. To swap caps the user calls unlink_capability
+    /// then link_capability with a new id; this keeps the audit trail (event
+    /// stream) clean rather than mutating the link in place.
+    public fun link_capability(
+        profile: &mut AgentProfile,
+        capability_id: ID,
+        ctx: &TxContext,
+    ) {
+        let sender = ctx.sender();
+        assert!(profile.owner == sender, E_NOT_OWNER);
+
+        // Force unlink-then-link discipline: if a capability is already linked
+        // the owner must explicitly unlink before linking a new one. This
+        // surfaces a CapabilityUnlinked event for the indexer so the swap is
+        // visible without diffing two link events.
+        assert!(option::is_none(&profile.capability), E_CAPABILITY_ALREADY_LINKED);
+
+        profile.capability = option::some(capability_id);
+
+        event::emit(AgentCapabilityLinked {
+            profile_id: object::id_address(profile),
+            agent_address: profile.agent_address,
+            owner: sender,
+            capability_id,
+        });
+    }
+
+    /// Unlink the currently-linked Capability. Owner only. Aborts if no cap
+    /// is linked (E_CAPABILITY_NOT_LINKED).
+    public fun unlink_capability(
+        profile: &mut AgentProfile,
+        ctx: &TxContext,
+    ) {
+        let sender = ctx.sender();
+        assert!(profile.owner == sender, E_NOT_OWNER);
+        assert!(option::is_some(&profile.capability), E_CAPABILITY_NOT_LINKED);
+
+        let previous = option::extract(&mut profile.capability);
+
+        event::emit(AgentCapabilityUnlinked {
+            profile_id: object::id_address(profile),
+            agent_address: profile.agent_address,
+            owner: sender,
+            previous_capability_id: previous,
+        });
+    }
+
     /// Update agent stats after a budget spend or execution.
     /// Called by anyone holding a mutable ref (typically in a PTB by the owner).
     public fun increment_stats(
@@ -225,6 +303,7 @@ module baram_agent::agent_profile {
     public fun get_total_spent(profile: &AgentProfile): u64 { profile.total_spent }
     public fun get_last_active_at(profile: &AgentProfile): u64 { profile.last_active_at }
     public fun get_created_at(profile: &AgentProfile): u64 { profile.created_at }
+    public fun get_capability(profile: &AgentProfile): Option<ID> { profile.capability }
 
     // ========== Registry View Functions ==========
 
