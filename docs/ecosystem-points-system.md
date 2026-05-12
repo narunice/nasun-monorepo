@@ -1,7 +1,7 @@
 # Nasun Ecosystem Points System Technical Specification
 
 **상태**: 운영 중 (Production, V3 단일 경로, post-2026-05-04 안정화)
-**최근 업데이트**: 2026-05-04 (live↔snapshot mission filter 일관성 fix, jsonb 인코딩 fix, 누적 anchor 일괄 재구축, DEFAULT_MISSION_IDS 단일화)
+**최근 업데이트**: 2026-05-11 (daily-mission tier/first-time bonus scanner 제거 — dead code였음)
 **핵심 경로**:
 - Backend API: `apps/network-explorer/api-server/src/routes/ecosystem.ts`
 - Multiplier Config: `apps/network-explorer/api-server/src/config/ecosystem.ts`
@@ -71,7 +71,7 @@ V3에서 변경된 핵심 원칙:
   - Indexer-SQL: `wallet-transfer` 등 대용량 카테고리는 인덱서의 `tx_affected_addresses` 직접 조회.
 - **포인트 카테고리 두 종류**:
   - **Base categories**: 카테고리당 하루 최대 1회 인정 (DEX 거래, 게임 참여, 지갑 전송, faucet 등). `final_points`는 항상 1, 점수 계산은 distinct 카테고리 가중합 (heavy categories `pado-dex`, `pado-prediction` = weight 2; 그 외 = 1). 가중치 단일 source는 `config/points.ts:HEAVY_BASE_CATEGORIES` + `baseWeightFor()` 헬퍼이며 SQL 측은 `category IN ('pado-dex','pado-prediction')` 패턴으로 lockstep.
-  - **Score categories**: `final_points`가 그대로 점수에 가산 (governance, referral-bonus, daily-mission, staking, ecosystem-bonus-*, staking-reward).
+  - **Score categories**: `final_points`가 그대로 점수에 가산 (governance, referral-bonus, staking, ecosystem-bonus-*, staking-reward). `daily-mission`도 historical SCORE_CATEGORIES 멤버지만 live writer는 없음 (아래 4절 참조).
 - **야간 정합성 검사 (Nightly Reconciliation)**: `rpc-reconcile.ts`가 매일 자정(UTC) 이후 RPC 직접 조회로 누락된 이벤트 복구. 신규 갭이 발견되면 **사용자별 미션 선택을 적용한** base_score를 다시 계산하여 snapshot 보정 + 누적 컬럼 forward-propagation.
 
 ### 2.2 Frontend (실시간 미션 체크)
@@ -191,7 +191,7 @@ allTime_live
 | `staking-daily` | 액티브 스테이크 일일 티어 | Score (티어제, 4.1) |
 | `staking-reward` | 일일 emission delta (LOG2 사전 적용) | Score → **Leaderboard score 전용**, ecosystem points에 직접 반영 X. 주간 leaderboard 정산 시 `ecosystem-bonus-leaderboard`로 환원. |
 | `governance` | 제안서 vote/delegate | Score (10/5) |
-| `daily-mission` | 첫 행동 보너스 + 티어 보너스 | Score (변동) |
+| `daily-mission` | (Deprecated, 2026-05-11) Live writer 없음. 과거 일회성 보상 스크립트가 INSERT한 historical row만 존재. SCORE_CATEGORIES에는 유지되어 누적 점수에 계속 가산됨 (단조 증가 불변식 보호) | Score (historical) |
 | `referral-bonus` | 추천인 보너스 | Score (변동, sf=0.5 적용) |
 | `ecosystem-bonus-creator-posts` | X 게시물 큐레이션 | Score (1–30) |
 | `ecosystem-bonus-bugreport` / `-feedback` | 버그/피드백 보너스 | Score (1–5) |
@@ -429,6 +429,23 @@ allTime_live
    - 사유: 2026-05-03 사고처럼 activity_points는 정상이지만 reader-side mission-decode 버그로 snapshot에 잘못된 base가 lock-in된 경우, 갭이 0이어서 보정이 트리거되지 않았음. 이제 reconcile이 매일 마지막 audit 단계를 겸함.
    - `correctSnapshotForReconciledDate`는 `fb.new_base > s.base_score` 조건으로 단조 증가 방향만 수정 (idempotent).
    - postgres.js 파라미터화 함정 (jsonb vs text[] COALESCE 충돌) 회피를 위해 default missions를 SQL fragment로 inline.
+
+### 2026-05-11 daily-mission scanner 제거
+
+**상황**: `scanner/daily-mission.ts`의 `calculateDailyMissions()`가 export만 되고 어디서도 import되지 않은 dead code였음. 첫 행동 보너스(5pt/category)와 tier bonus(+3/+5/+10pt)는 설계만 존재하고 실제로는 한 번도 운영 적립된 적이 없음. UI(`DailyMissionsCard`, `useDailyMissions`)도 tier 보너스를 표시하지 않음.
+
+**제거 범위**:
+1. `apps/network-explorer/api-server/src/scanner/daily-mission.ts` 파일 삭제.
+2. `apps/network-explorer/api-server/src/config/points.ts`의 `BASE_POINTS['daily-mission']` 항목 제거 (dex-first/tier-3/all-clear 등). 어떤 reader도 이 entry를 참조하지 않음.
+3. `SCORE_CATEGORIES`의 `'daily-mission'`은 **유지**. 과거 `grant-may4-outage-comp.ts` 등 일회성 보상 스크립트가 INSERT한 historical row가 SUM에 계속 포함되어 사용자별 all-time pts가 감소하지 않도록 보호.
+4. 다른 exclusion 리스트(`excluded-categories.ts`, `settle-ecosystem.ts`, `daily-snapshot.ts`, `rpc-reconcile.ts`, `nasun-metrics.ts`, `ecosystem-matview-migration.ts` 등)의 `'daily-mission'` 문자열도 그대로 유지.
+
+**불변식 보호**:
+- All-time ecosystem pts 단조 증가: historical `daily-mission` row가 그대로 합산되어 변동 없음.
+- UI today pts: live `/score`는 이미 `activity_points` 실시간 SUM (5.3절 참조). today categories 쿼리는 line 566에서 `daily-mission`을 이미 제외하고 있어 영향 없음.
+- 체크리스트 ✓: UI는 `useDailyMissions`가 직접 RPC로 검사하므로 backend scanner와 무관.
+
+**검증**: `pnpm tsc --noEmit`으로 api-server 타입 체크 통과. 다른 import 끊김 없음.
 
 ### 향후 개선 후보
 
