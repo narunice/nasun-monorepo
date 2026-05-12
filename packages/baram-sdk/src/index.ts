@@ -1,5 +1,5 @@
 /**
- * @nasun/baram-sdk — Read-only SDK for querying and analyzing AI Execution Reports.
+ * @nasun/baram-sdk - Read-only SDK for querying and analyzing AI Execution Reports.
  *
  * The "black box" for AI agents: capture, query, filter, and analyze
  * on-chain execution records without requiring a signer.
@@ -48,3 +48,7 @@ export { computeBudgetUtilization } from './services/budget-analytics';
 // Utils
 export { formatNusdc, formatNusdcValue, formatNasun, formatTimestamp, truncateHash, truncateAddress, formatDuration } from './utils/format';
 export { bytesToHex, hexToBytes } from './utils/bytes';
+
+// AER v2 canonical execution ledger (clean-slate schema).
+// Spec: apps/baram/docs/AER_V2_CODEC.md
+export * as aer from './aer';

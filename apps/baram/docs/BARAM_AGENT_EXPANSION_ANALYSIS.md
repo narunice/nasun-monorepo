@@ -1,11 +1,11 @@
-# Baram Agent Expansion Analysis — From Privacy Chat to AI Activity Audit Infrastructure
+# Baram Agent Expansion Analysis - From Privacy Chat to AI Activity Audit Infrastructure
 
 > Analysis of Baram's expansion path from TEE-based private AI chat to a universal AI activity audit and settlement layer for autonomous agents.
 > Generated from internal architecture review + strategic discussion, 2026-02-02.
 
 ---
 
-## 1. Current Implementation — Agent Readiness Gap Analysis
+## 1. Current Implementation - Agent Readiness Gap Analysis
 
 ### What's Already Agent-Compatible
 
@@ -13,7 +13,7 @@ Baram's on-chain contracts are **already agent-accessible** without modification
 
 | Component | Agent-Ready? | Evidence |
 |-----------|-------------|----------|
-| `baram::create_request` | Yes | No access restriction — any address can call |
+| `baram::create_request` | Yes | No access restriction - any address can call |
 | `baram::submit_proof` | Yes (Executor only) | Executor-only by design, correct for agents |
 | `compliance::create_record` | Yes | ECR created for every execution, regardless of requester type |
 | `executor::register` | Yes | Permissionless registration |
@@ -23,7 +23,7 @@ Baram's on-chain contracts are **already agent-accessible** without modification
 
 **Key finding**: The on-chain layer makes no distinction between human and agent requesters. An AI agent with a wallet can already use Baram's full pipeline today.
 
-### What's Missing — Off-Chain Gaps
+### What's Missing - Off-Chain Gaps
 
 | Gap | Current State | Required for Agents |
 |-----|--------------|-------------------|
@@ -59,7 +59,7 @@ useCreateRequest (React hook)
 
 ---
 
-## 2. SDK Design Proposal — `@nasun/baram-sdk`
+## 2. SDK Design Proposal - `@nasun/baram-sdk`
 
 ### Target API
 
@@ -99,22 +99,22 @@ console.log(result.ecr.txDigest);     // settlement transaction digest
 └── types.ts            # Shared types
 ```
 
-### Implementation Status — COMPLETED
+### Implementation Status - COMPLETED
 
 The SDK MVP has been implemented at `packages/baram-sdk/`:
 
 | SDK Module | File | Status |
 |-----------|------|--------|
-| Transaction builder | `src/services/transaction.ts` | Done — extracted from frontend |
-| Executor selection | `src/services/executor.ts` | Done — pure functions extracted |
-| ECR query | `src/services/ecr.ts` | Done — extracted from frontend |
-| Coin selection | `src/services/coin.ts` | Done — extracted from frontend |
-| Encoding utilities | `src/services/encoding.ts` | Done — sha256, hexToBytes |
-| Config (devnet preset) | `src/config.ts` | Done — reads from @nasun/devnet-config |
-| Types | `src/types.ts` | Done — all shared types, constants |
-| Client orchestration | `src/client.ts` | Done — BaramClient with execute/cancel/getECR |
-| CLI demo | `examples/agent-demo.ts` | Done — full pipeline demo |
-| Unit tests | `src/__tests__/*.test.ts` | Done — 23 tests passing |
+| Transaction builder | `src/services/transaction.ts` | Done - extracted from frontend |
+| Executor selection | `src/services/executor.ts` | Done - pure functions extracted |
+| ECR query | `src/services/ecr.ts` | Done - extracted from frontend |
+| Coin selection | `src/services/coin.ts` | Done - extracted from frontend |
+| Encoding utilities | `src/services/encoding.ts` | Done - sha256, hexToBytes |
+| Config (devnet preset) | `src/config.ts` | Done - reads from @nasun/devnet-config |
+| Types | `src/types.ts` | Done - all shared types, constants |
+| Client orchestration | `src/client.ts` | Done - BaramClient with execute/cancel/getECR |
+| CLI demo | `examples/agent-demo.ts` | Done - full pipeline demo |
+| Unit tests | `src/__tests__/*.test.ts` | Done - 23 tests passing |
 | **Total** | ~500 lines of new code | **Complete** |
 
 ---
@@ -134,19 +134,19 @@ The SDK MVP has been implemented at `packages/baram-sdk/`:
 The Host server validates `requestId` on-chain before forwarding to the Enclave:
 - Checks request exists on-chain (line 272-273 in `server.ts`)
 - Confirms escrow is locked (NUSDC already deposited)
-- This means spam requires real NUSDC — economic deterrent exists
+- This means spam requires real NUSDC - economic deterrent exists
 
 ### Recommended Improvements
 
-1. **API Key Registry** — On-chain registry mapping API keys to wallet addresses
-2. **Per-Key Rate Limiting** — Prevents single agent from monopolizing capacity
-3. **Signed Request Headers** — Agent signs request with its keypair, Executor verifies
+1. **API Key Registry** - On-chain registry mapping API keys to wallet addresses
+2. **Per-Key Rate Limiting** - Prevents single agent from monopolizing capacity
+3. **Signed Request Headers** - Agent signs request with its keypair, Executor verifies
 
 **Priority assessment**: For prototype, the on-chain escrow requirement is sufficient anti-spam. API keys become necessary at scale (Phase 2+).
 
 ---
 
-## 4. The Positioning Shift — From Privacy Chat to AI Activity Audit Infrastructure
+## 4. The Positioning Shift - From Privacy Chat to AI Activity Audit Infrastructure
 
 ### Current Positioning
 
@@ -164,10 +164,10 @@ Baram = Verifiable AI Activity Settlement Layer
          └── For Agents: Trustless AI inference with compliance records
 ```
 
-**The key insight**: The ExecutionComplianceRecord (ECR) provides identical value to agents as it does to humans — but agents need it **more**, because:
+**The key insight**: The ExecutionComplianceRecord (ECR) provides identical value to agents as it does to humans - but agents need it **more**, because:
 
 1. **Humans** can exercise judgment about whether an AI response is trustworthy
-2. **Agents** cannot — they need machine-verifiable proof of execution quality
+2. **Agents** cannot - they need machine-verifiable proof of execution quality
 3. **Regulators** need audit trails regardless of whether the requester was human or agent
 
 ### Why ECR is the Pivot Point
@@ -186,7 +186,7 @@ ExecutionComplianceRecord:
   TRUST SCORE: executor_reputation, executor_slash_count, executor_stake_amount
 ```
 
-No other platform — centralized (OpenAI, Anthropic) or decentralized (Bittensor, Akash) — provides this kind of per-inference audit trail.
+No other platform - centralized (OpenAI, Anthropic) or decentralized (Bittensor, Akash) - provides this kind of per-inference audit trail.
 
 ### TEE Becomes Premium, Not Core
 
@@ -201,7 +201,7 @@ This means Baram provides value at **two levels**:
 
 ---
 
-## 5. Agent Scenarios — ECR in Action
+## 5. Agent Scenarios - ECR in Action
 
 ### Scenario A: Trading Bot Audit Trail
 
@@ -251,11 +251,11 @@ Enterprise deploys Baram as internal AI gateway:
 
 ---
 
-## 6. ECR Chain Linking — Proposed Extension
+## 6. ECR Chain Linking - Proposed Extension
 
 ### Current ECR Structure
 
-Each ECR is independent — no link to related ECRs.
+Each ECR is independent - no link to related ECRs.
 
 ### Proposed Addition
 
@@ -281,17 +281,17 @@ This is a **post-prototype** enhancement. The current ECR structure is sufficien
 
 ---
 
-## 7. Competitive Position — Agent Economy
+## 7. Competitive Position - Agent Economy
 
 ### Market Context (2026)
 
 | Development | Relevance to Baram |
 |------------|-------------------|
-| Mastercard Agent Pay | Payment rails for agents — needs settlement layer |
-| Visa Trusted Agent Protocol | Trust framework for agents — needs verification layer |
-| x402 Protocol (Coinbase/Cloudflare) | HTTP 402 micropayments — protocol spec, not implementation |
-| Agent Payments Protocol (Google Cloud) | Centralized agent payments — no on-chain audit |
-| ERC-8004 ("Trustless Agents") | NFT-based agent ID — complementary to ECR |
+| Mastercard Agent Pay | Payment rails for agents - needs settlement layer |
+| Visa Trusted Agent Protocol | Trust framework for agents - needs verification layer |
+| x402 Protocol (Coinbase/Cloudflare) | HTTP 402 micropayments - protocol spec, not implementation |
+| Agent Payments Protocol (Google Cloud) | Centralized agent payments - no on-chain audit |
+| ERC-8004 ("Trustless Agents") | NFT-based agent ID - complementary to ECR |
 | AI Agent market: $52.62B by 2030 | Addressable market for Baram's agent settlement |
 
 ### Baram's Position
@@ -312,14 +312,14 @@ These protocols need an execution layer. Baram already has:
 | Need | Status | Priority |
 |------|--------|---------|
 | Node.js SDK (`@nasun/baram-sdk`) | **Done** (v0.1.0) | BaramClient, executor selection, ECR query, CLI demo |
-| Agent Wallet (Account Abstraction) | Not built | High — session keys, spending limits |
-| Streaming Payments (per-token) | Not built | Medium — currently fixed per-request |
-| Service Discovery | Not built | Medium — on-chain AI service registry |
-| ECR Chain Linking | Not built | Low — post-prototype enhancement |
+| Agent Wallet (Account Abstraction) | Not built | High - session keys, spending limits |
+| Streaming Payments (per-token) | Not built | Medium - currently fixed per-request |
+| Service Discovery | Not built | Medium - on-chain AI service registry |
+| ECR Chain Linking | Not built | Low - post-prototype enhancement |
 
 ---
 
-## 8. Summary — The Expansion Path
+## 8. Summary - The Expansion Path
 
 ```
 TODAY                           NEAR TERM                      FUTURE
@@ -339,8 +339,8 @@ Privacy focus            →      Audit + Privacy          →     Full settleme
 
 The SDK (`@nasun/baram-sdk` v0.1.0) has been implemented. It achieves two things simultaneously:
 
-1. **Enables agent access** — any Node.js agent can use Baram programmatically via `BaramClient`
-2. **Reframes the product** — Baram becomes "AI activity audit infrastructure" rather than "private AI chat"
+1. **Enables agent access** - any Node.js agent can use Baram programmatically via `BaramClient`
+2. **Reframes the product** - Baram becomes "AI activity audit infrastructure" rather than "private AI chat"
 
 The ECR is already implemented. The on-chain contracts are already agent-compatible. The SDK completes the off-chain gap. The expansion from "privacy chat" to "AI activity audit layer" is now **demonstrated, not just proposed**.
 

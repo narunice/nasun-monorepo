@@ -14,7 +14,7 @@
 4. [Part 3: Security Analysis](#part-3-security-analysis)
 5. [Cross-Review: Key Consensus Points](#cross-review)
 6. [7 Core Questions Answered](#7-core-questions)
-7. [Part 4: Market Research — AI Agent Autonomous Spending (2025-2026)](#part-4-market-research)
+7. [Part 4: Market Research - AI Agent Autonomous Spending (2025-2026)](#part-4-market-research)
 8. [Part 5: Pado DEX Integration Analysis](#part-5-pado-dex-integration-analysis)
 
 ---
@@ -700,7 +700,7 @@ public struct DelegatedBudget has key, store {
 
 ---
 
-# Part 4: Market Research — AI Agent Autonomous Spending (2025-2026)
+# Part 4: Market Research - AI Agent Autonomous Spending (2025-2026)
 
 > Research Date: 2026-02-10
 > Context: "에이전트 지갑 + 예산 관리 + 감사 기록" 대시보드 프로토타입에서 에이전트의 자율 지출을 가장 효과적으로 시연하는 방법 조사
@@ -710,9 +710,9 @@ public struct DelegatedBudget has key, store {
 ### 1-1. Coinbase AgentKit / x402 Protocol
 
 **자율 지출 방식:**
-- x402 HTTP 결제 프로토콜 — 에이전트가 API 호출 시 402 Payment Required 응답을 받으면 자동으로 USDC 결제
+- x402 HTTP 결제 프로토콜 - 에이전트가 API 호출 시 402 Payment Required 응답을 받으면 자동으로 USDC 결제
 - 2025년 12월 기준 75M+ 트랜잭션, $24M 처리량
-- "Pay-per-API-call" 모델 — 에이전트가 외부 서비스를 직접 구매
+- "Pay-per-API-call" 모델 - 에이전트가 외부 서비스를 직접 구매
 
 **데모 시나리오:**
 - 에이전트가 날씨 API, 주가 API 등 외부 데이터를 x402로 구매
@@ -735,7 +735,7 @@ public struct DelegatedBudget has key, store {
 - 토큰 스왑, 유동성 공급, 포트폴리오 리밸런싱
 
 **한계:**
-- 개발자 중심 CLI 도구 — 비개발자용 대시보드 UI 없음
+- 개발자 중심 CLI 도구 - 비개발자용 대시보드 UI 없음
 - 예산 한도, 지출 카테고리 등 관리 기능 미구현
 - 에이전트가 "얼마나" 쓸 수 있는지 제한 불가
 
@@ -751,7 +751,7 @@ public struct DelegatedBudget has key, store {
 - TikTok, X에서 에이전트가 자율적으로 컨텐츠 생성 + 토큰 홍보
 
 **한계:**
-- 투기/밈코인 성격이 강함 — 실용적 에이전트 관리 UX 부재
+- 투기/밈코인 성격이 강함 - 실용적 에이전트 관리 UX 부재
 - 에이전트 소유자가 예산/지출을 통제하는 메커니즘 없음
 - GAME Cloud 중단 → SDK만 남아 진입 장벽 상승
 
@@ -767,7 +767,7 @@ public struct DelegatedBudget has key, store {
 - 결제 → 서비스 이용 → 정산의 자동화
 
 **한계:**
-- 순수 결제 인프라 — 에이전트 관리 대시보드 없음
+- 순수 결제 인프라 - 에이전트 관리 대시보드 없음
 - 예산 한도, 카테고리 제한 등 관리 기능 없음
 - 중앙화된 에스크로 (온체인 감사 아님)
 
@@ -783,7 +783,7 @@ public struct DelegatedBudget has key, store {
 - 멀티에이전트 워크플로우에서 자동 결제
 
 **한계:**
-- 프로토콜 표준만 제공 — 구현체 없음
+- 프로토콜 표준만 제공 - 구현체 없음
 - 예산 관리, 감사 기록은 범위 밖
 - 웹2 중심 (온체인 아님)
 
@@ -798,7 +798,7 @@ public struct DelegatedBudget has key, store {
 - 법정화폐 결제 → 기존 상거래 생태계 활용
 
 **한계:**
-- 웹2 중심의 법정화폐 결제 — 온체인 감사 없음
+- 웹2 중심의 법정화폐 결제 - 온체인 감사 없음
 - 에이전트 예산 관리는 Stripe 측에서 처리 (투명하지 않음)
 - 온체인 증명 불가
 
@@ -810,7 +810,7 @@ public struct DelegatedBudget has key, store {
 
 **시사점:**
 - AI 에이전트의 자율 금융 활동이 실제 경제적 임팩트를 만들 수 있음을 증명
-- 그러나 **통제/감사 메커니즘 전무** — "블랙박스" 그 자체
+- 그러나 **통제/감사 메커니즘 전무** - "블랙박스" 그 자체
 - **Baram-AER의 존재 이유를 가장 잘 보여주는 사례**: "Truth Terminal에 Baram이 있었다면?"
 
 ## 2. VC 투자 트렌드 (AI Agent Finance, 2025-2026)
@@ -875,7 +875,7 @@ public struct DelegatedBudget has key, store {
    - "AI 트레이딩봇에게 50 NUSDC 예산을 줬습니다"
    - "봇이 BTC 가격을 분석하고, 매수 결정을 내리고, DEX에서 실제로 거래합니다"
    - "모든 결정이 AER(실행 보고서)로 기록되고, 대시보드에서 실시간으로 볼 수 있습니다"
-   - "일일 한도 20 NUSDC를 초과하려 하면? — 온체인에서 자동 거부됩니다"
+   - "일일 한도 20 NUSDC를 초과하려 하면? - 온체인에서 자동 거부됩니다"
 
 4. **기존 인프라 최대 활용**:
    - `@nasun/baram-sdk` → AI 추론 실행 + Budget 관리

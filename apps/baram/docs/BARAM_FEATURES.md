@@ -1,4 +1,4 @@
-# Baram: AI Compliance Settlement Layer — Features Overview
+# Baram: AI Compliance Settlement Layer - Features Overview
 
 > Last updated: 2026-02-23
 
@@ -6,7 +6,7 @@
 
 ## What Is Baram?
 
-Baram is an **AI Compliance Settlement Layer** built on the Nasun blockchain. Its purpose is to make AI agent activity **auditable, accountable, and financially governed** — on-chain.
+Baram is an **AI Compliance Settlement Layer** built on the Nasun blockchain. Its purpose is to make AI agent activity **auditable, accountable, and financially governed** - on-chain.
 
 When a person delegates tasks and money to an AI agent, three questions naturally arise:
 
@@ -14,7 +14,7 @@ When a person delegates tasks and money to an AI agent, three questions naturall
 - **Did it stay within the budget I set?**
 - **Can I prove, to anyone, what the agent did with my money?**
 
-Today, no AI provider — OpenAI, Anthropic, Google, or otherwise — offers a per-inference, tamper-proof audit record. Baram fills that gap. Every AI execution that passes through it produces an on-chain receipt called an **AIExecutionReport (AER)**. This receipt cannot be forged, cannot be omitted, and cannot be altered after the fact.
+Today, no AI provider - OpenAI, Anthropic, Google, or otherwise - offers a per-inference, tamper-proof audit record. Baram fills that gap. Every AI execution that passes through it produces an on-chain receipt called an **AIExecutionReport (AER)**. This receipt cannot be forged, cannot be omitted, and cannot be altered after the fact.
 
 > **Core promise**: Your agent works for you. Baram proves it.
 
@@ -29,7 +29,7 @@ Every AER captures four categories of truth about an AI execution:
 | **Authorization** | Who approved this execution, and under what budget and constraints? |
 | **Execution Claim** | Which provider ran this, on what hardware, with what model? |
 | **Economic Settlement** | Who got paid, how much, and what fees were taken? |
-| **Lineage** | How does this execution relate to others — what triggered it, what did it trigger? |
+| **Lineage** | How does this execution relate to others - what triggered it, what did it trigger? |
 
 ---
 
@@ -38,13 +38,13 @@ Every AER captures four categories of truth about an AI execution:
 Before describing individual features, these are the building blocks:
 
 ### AIExecutionReport (AER)
-An on-chain object that records everything about a single AI execution. Think of it as a **receipt that the blockchain issues** — not one that the AI provider self-reports. It has 31 fields organized into 8 categories. Once created, it is immutable and owned by the person who initiated the request.
+An on-chain object that records everything about a single AI execution. Think of it as a **receipt that the blockchain issues** - not one that the AI provider self-reports. It has 31 fields organized into 8 categories. Once created, it is immutable and owned by the person who initiated the request.
 
 ### Budget
-A controlled spending allowance that a human creates and assigns to an AI agent. The Budget is enforced by smart contracts — not by trusting the agent to behave. If the agent tries to exceed any limit, the blockchain rejects the transaction outright.
+A controlled spending allowance that a human creates and assigns to an AI agent. The Budget is enforced by smart contracts - not by trusting the agent to behave. If the agent tries to exceed any limit, the blockchain rejects the transaction outright.
 
 ### AgentProfile
-An on-chain identity for an AI agent. It links a human owner to an agent address, and includes a **kill switch** — a single flag that, when flipped, immediately prevents the agent from spending anything, regardless of remaining budget.
+An on-chain identity for an AI agent. It links a human owner to an agent address, and includes a **kill switch** - a single flag that, when flipped, immediately prevents the agent from spending anything, regardless of remaining budget.
 
 ### Executor
 An AI inference provider registered on-chain. An Executor picks up compute requests, runs AI models, and submits the results back to the blockchain. Executors are held accountable through reputation scores, financial stakes, and hardware attestation.
@@ -57,12 +57,12 @@ Cryptographic proof that a specific, unmodified version of the Executor software
 
 ---
 
-## Feature 1: AIExecutionReport — The On-Chain Receipt
+## Feature 1: AIExecutionReport - The On-Chain Receipt
 
 ### What It Is
 An AER is an NFT-like object that records the complete metadata of one AI execution. It is transferred directly to the person who initiated the request, making it a portable, verifiable proof that they own.
 
-The AER does **not** store the actual prompt or response — only cryptographic hashes of them (SHA-256). This means the content stays private, but the execution can be verified.
+The AER does **not** store the actual prompt or response - only cryptographic hashes of them (SHA-256). This means the content stays private, but the execution can be verified.
 
 ### What It Records
 The 31 fields are organized into 8 logical categories:
@@ -76,7 +76,7 @@ The 31 fields are organized into 8 logical categories:
 | **WHY** | Stated purpose, policy version, and constraints that governed the execution |
 | **HOW TRUSTWORTHY** | Executor's tier level, reputation score, staked amount, whether TEE was used, and the TEE attestation hash |
 | **WHEN** | Timestamps for when the request was made and when it was settled; settlement status |
-| **CHAIN** | The object ID that triggered this execution, and the action this execution triggered — enabling full decision chain reconstruction |
+| **CHAIN** | The object ID that triggered this execution, and the action this execution triggered - enabling full decision chain reconstruction |
 
 ### Why It Cannot Be Forged or Skipped
 The AER creation is enforced by a smart contract mechanism called the **hot-potato pattern**. Here is how it works:
@@ -86,16 +86,16 @@ When an Executor submits a result, the blockchain issues a temporary object call
 This means:
 - If a settlement happens, an AER **must** be created in the same transaction.
 - The older `create_report` function (which could create AERs without a settlement) is permanently disabled with a deprecation error (error code 405).
-- The AER's Executor field is verified to match the actual transaction sender — no one else can fabricate an AER on an Executor's behalf.
+- The AER's Executor field is verified to match the actual transaction sender - no one else can fabricate an AER on an Executor's behalf.
 
 The result is a system where **settlement and audit record are inseparable by design**, not just by policy.
 
 ---
 
-## Feature 2: Budget Delegation — Controlled AI Spending
+## Feature 2: Budget Delegation - Controlled AI Spending
 
 ### What It Is
-A Budget is an on-chain spending allowance. A human creates it, deposits NUSDC into it, and assigns it to a specific AI agent address. From that point, the agent can spend from the Budget — but only within the rules the human defined.
+A Budget is an on-chain spending allowance. A human creates it, deposits NUSDC into it, and assigns it to a specific AI agent address. From that point, the agent can spend from the Budget - but only within the rules the human defined.
 
 The key property: **enforcement is on-chain**. The agent cannot override limits by lying to an API. If a spend would violate any constraint, the Nasun blockchain aborts the transaction. There is no "I'll just handle it with a workaround" path.
 
@@ -115,7 +115,7 @@ In addition, **time-window spending limits** can be added:
 - **Weekly limit**: Maximum in any 7-day window
 - **Monthly limit**: Maximum in any 30-day window
 
-Each window resets automatically based on on-chain timestamps — no manual action required.
+Each window resets automatically based on on-chain timestamps - no manual action required.
 
 The owner can also restrict the Budget to:
 - A **whitelist of allowed AI models** (empty = no restriction)
@@ -130,7 +130,7 @@ This allows anyone to verify the spending history and remaining capacity of any 
 
 ---
 
-## Feature 3: AgentProfile & Kill Switch — Agent Identity Management
+## Feature 3: AgentProfile & Kill Switch - Agent Identity Management
 
 ### What It Is
 An AgentProfile is an on-chain object that a human creates to register their AI agent. It establishes a verifiable link between the human owner and the agent's blockchain address.
@@ -141,7 +141,7 @@ The most important field in an AgentProfile is `is_active`. This is a boolean th
 Setting `is_active = false` immediately disables the agent:
 - The Budget's spending check verifies `is_active` before processing any request
 - An inactive agent cannot spend from any Budget, regardless of how much remains
-- There is no delay — the effect is immediate on the next transaction attempt
+- There is no delay - the effect is immediate on the next transaction attempt
 
 This is the owner's emergency brake. If an AI agent behaves unexpectedly or the owner simply wants to stop activity, flipping this flag requires a single on-chain transaction and takes effect instantly.
 
@@ -150,7 +150,7 @@ All AgentProfiles are tracked in a shared `AgentProfileRegistry`. This makes it 
 
 ---
 
-## Feature 4: Executor System — AI Provider Trust Infrastructure
+## Feature 4: Executor System - AI Provider Trust Infrastructure
 
 ### What It Is
 An Executor is an entity that runs AI models and fulfills compute requests. Any party can register as an Executor by deploying an endpoint and registering it on-chain. What distinguishes Executors from each other is their **reputation**, **stake**, and **tier**.
@@ -164,9 +164,9 @@ Every Executor has a reputation score between 0 and 1000 (initial value: 500).
 | Failed job | -20 |
 | 30 days without activity | -50 (floor: 100) |
 
-Reputation changes are self-reported by the Executor, but protected by a deduplication table — the same job ID cannot be submitted twice, so an Executor cannot inflate its score by reporting the same job repeatedly.
+Reputation changes are self-reported by the Executor, but protected by a deduplication table - the same job ID cannot be submitted twice, so an Executor cannot inflate its score by reporting the same job repeatedly.
 
-The 30-day inactivity decay is **permissionless** — anyone can trigger it against an inactive Executor. This prevents reputation from becoming stale by accident.
+The 30-day inactivity decay is **permissionless** - anyone can trigger it against an inactive Executor. This prevents reputation from becoming stale by accident.
 
 ### Staking
 Executors can (and must, to reach higher tiers) stake NASUN tokens as economic collateral.
@@ -185,14 +185,14 @@ Executors can (and must, to reach higher tiers) stake NASUN tokens as economic c
 | Attestation mismatch (TEE fingerprint differs from registered baseline) | 10% of stake |
 | Fraud (forged attestation document) | 100% of stake |
 
-Slashed funds accumulate in an on-chain treasury. Slashing cannot be applied for subjective reasons — only for provable on-chain violations.
+Slashed funds accumulate in an on-chain treasury. Slashing cannot be applied for subjective reasons - only for provable on-chain violations.
 
 ### Tier System
 Tier is a **trust signal**, not a reward mechanism. It tells users at a glance whether an Executor has both the financial commitment and the operational track record to be considered trustworthy.
 
 Tier is calculated as: `effective_tier = min(stake_tier, reputation_tier)`
 
-Both dimensions must qualify — a high-stake Executor with poor reputation stays at a low tier, and vice versa.
+Both dimensions must qualify - a high-stake Executor with poor reputation stays at a low tier, and vice versa.
 
 | Tier | Name | Minimum Stake | Minimum Reputation |
 |------|------|--------------|-------------------|
@@ -201,26 +201,26 @@ Both dimensions must qualify — a high-stake Executor with poor reputation stay
 | 2 | Silver | 5,000 NASUN | 500 |
 | 3 | Gold | 10,000 NASUN | 700 |
 
-Tier recalculation is **permissionless** — anyone can trigger a refresh using the current on-chain state (stake balance and reputation score). Tiers cannot fall out of sync by remaining stale.
+Tier recalculation is **permissionless** - anyone can trigger a refresh using the current on-chain state (stake balance and reputation score). Tiers cannot fall out of sync by remaining stale.
 
 Tier is recorded in every AER, giving users a permanent record of how much they trusted the provider at the time of execution.
 
 ---
 
-## Feature 5: TEE Privacy — Confidential AI Execution
+## Feature 5: TEE Privacy - Confidential AI Execution
 
 ### What It Is
-The TEE (Trusted Execution Environment) Executor runs AI models inside an **AWS Nitro Enclave** — a hardware-isolated computing zone that is cryptographically separated from the rest of the machine, including the Executor operator's own operating system.
+The TEE (Trusted Execution Environment) Executor runs AI models inside an **AWS Nitro Enclave** - a hardware-isolated computing zone that is cryptographically separated from the rest of the machine, including the Executor operator's own operating system.
 
 The result: **the Executor operator cannot read your prompt**. The actual text never exists in a readable form outside the Enclave.
 
 ### How It Works
 
-**Encryption before entry**: Before a prompt is sent to the Executor, it is encrypted using the Enclave's public RSA key (RSA-OAEP). The encryption produces ciphertext that can only be decrypted by the corresponding private key — which lives exclusively inside the Enclave.
+**Encryption before entry**: Before a prompt is sent to the Executor, it is encrypted using the Enclave's public RSA key (RSA-OAEP). The encryption produces ciphertext that can only be decrypted by the corresponding private key - which lives exclusively inside the Enclave.
 
 **Decryption inside the Enclave**: The Enclave receives the encrypted prompt, decrypts it with its private key, passes it to the local LLM, and processes the output entirely within its isolated memory.
 
-**Key destruction on shutdown**: The RSA private key is generated fresh when the Enclave starts. When it stops, the key is destroyed. There is no persistent storage — no key file that could later be extracted.
+**Key destruction on shutdown**: The RSA private key is generated fresh when the Enclave starts. When it stops, the key is destroyed. There is no persistent storage - no key file that could later be extracted.
 
 **No network access from inside**: The Enclave has no direct internet connection. All external communication goes through a controlled vsock channel to the host. This prevents the Enclave from leaking data through side channels.
 
@@ -232,14 +232,14 @@ The local LLM model (LLaMA 3.2 3B) runs entirely within the Enclave, meaning inf
 - A compromised host machine cannot extract decrypted data from the Enclave.
 - The TEE model (`llama-3.2-3b-local`) is smaller than cloud-based alternatives as a consequence of this design.
 
-Each AER records `tee_verified: true/false` and `tee_attestation_hash` — so the audit record permanently reflects whether a given execution used TEE protection.
+Each AER records `tee_verified: true/false` and `tee_attestation_hash` - so the audit record permanently reflects whether a given execution used TEE protection.
 
 ---
 
-## Feature 6: Attestation — Proving the Code Was Not Tampered With
+## Feature 6: Attestation - Proving the Code Was Not Tampered With
 
 ### What It Is
-TEE privacy proves that the operator cannot read the prompt. Attestation proves that **the code running inside the TEE has not been modified** — that the Executor is actually running the published, trusted version of its software.
+TEE privacy proves that the operator cannot read the prompt. Attestation proves that **the code running inside the TEE has not been modified** - that the Executor is actually running the published, trusted version of its software.
 
 This is achieved through **PCR values** (Platform Configuration Registers), which are hardware-generated SHA-384 hashes of the Enclave's software components.
 
@@ -291,7 +291,7 @@ The system assigns the request to an eligible Executor (filtered by tier, weight
 If using TEE: the prompt arrives encrypted, is decrypted inside the Enclave, the LLM runs, and the output is hashed. The Enclave generates an attestation document. The host verifies it before proceeding.
 
 **6. Settlement and AER creation (atomic)**
-The Executor submits the result hash in a single blockchain transaction (PTB — Programmable Transaction Block) that executes four steps atomically:
+The Executor submits the result hash in a single blockchain transaction (PTB - Programmable Transaction Block) that executes four steps atomically:
 - Step 1: Submit the result hash → NUSDC is released from escrow to the Executor → `SettlementReceipt` is created
 - Step 2: Create the AER using the `SettlementReceipt` → AER is minted and sent to the initiator
 - Step 3: The Executor's reputation increases by +10
@@ -314,9 +314,9 @@ The Baram Dashboard shows:
 
 ---
 
-## Feature 7: Baram SDK — Programmatic Access to Audit Data
+## Feature 7: Baram SDK - Programmatic Access to Audit Data
 
-The `@nasun/baram-sdk` (package: `packages/baram-sdk/`) is a read-only TypeScript library for querying and analyzing AER data. It requires no signing keys or credentials — only a connection to the Nasun RPC. It supports dual-mode operation: indexer API (when available) with automatic RPC fallback.
+The `@nasun/baram-sdk` (package: `packages/baram-sdk/`) is a read-only TypeScript library for querying and analyzing AER data. It requires no signing keys or credentials - only a connection to the Nasun RPC. It supports dual-mode operation: indexer API (when available) with automatic RPC fallback.
 
 ### Query Capabilities
 
@@ -342,7 +342,7 @@ The `@nasun/baram-sdk` (package: `packages/baram-sdk/`) is a read-only TypeScrip
 Given a list of AER records, compute an `AERSummary`: total payments (broken out by NUSDC vs NASUN), average and median execution time, distribution by status / tier / model / executor, TEE verification rate, and the time window covered.
 
 **Grouping**
-Group any list of AERs by a single dimension — executor, model name, budget, initiator, tier, payment token, or status — returning a map of grouped results.
+Group any list of AERs by a single dimension - executor, model name, budget, initiator, tier, payment token, or status - returning a map of grouped results.
 
 **Spending Timeline**
 Produce a time-series of spending data at hourly, daily, or weekly granularity. Useful for charting budget burn rates over time.
@@ -357,15 +357,15 @@ For a given Budget, compute: total consumed NUSDC, remaining balance, burn rate 
 
 Because AERs record `triggeredBy` (which AER triggered this one) and `triggeredAction` (what action this AER subsequently triggered), it is possible to reconstruct the full decision chain of an AI agent across multiple executions.
 
-**Backward tracing**: Given an AER, walk backward through `triggeredBy` links to reconstruct the root cause — the original human action that started the chain.
+**Backward tracing**: Given an AER, walk backward through `triggeredBy` links to reconstruct the root cause - the original human action that started the chain.
 
-**Forward tracing**: Given an AER, walk forward through `triggeredAction` links to find everything downstream — all the follow-on actions the agent took.
+**Forward tracing**: Given an AER, walk forward through `triggeredAction` links to find everything downstream - all the follow-on actions the agent took.
 
 This allows auditors to reconstruct, after the fact, why a specific on-chain action happened and what the agent's full decision sequence was.
 
 ---
 
-## Feature 8: Dashboard — Admin Control Center
+## Feature 8: Dashboard - Admin Control Center
 
 ### What It Is
 The Baram Dashboard is a web-based admin interface that gives agent owners full visibility and control over their AI agents, budgets, and execution history. It is built with React 19 + Vite 7 and uses the Nasun blockchain as its sole source of truth.
@@ -382,12 +382,12 @@ The Baram Dashboard is a web-based admin interface that gives agent owners full 
 | `/callback` | AuthCallback | zkLogin OAuth callback |
 
 ### Dashboard Overview
-The main landing page shows summary statistics: total agents, active budgets, total balance, total AER records. Below, agent status cards show each agent's health at a glance — name, role, budget remaining, and recent activity.
+The main landing page shows summary statistics: total agents, active budgets, total balance, total AER records. Below, agent status cards show each agent's health at a glance - name, role, budget remaining, and recent activity.
 
 ### Agent Management
 - **Agent List**: Displays all registered agents with their status badges (Active/Inactive), associated budget gauges, and capability tags. Agents are fetched directly from the on-chain `AgentProfileRegistry`.
 - **Agent Registration**: A modal form that creates an `AgentProfile` on-chain. Validates the agent address format (0x + 64 hex chars), enforces character limits on name (64) and role (32), and provides a tag input for capabilities (max 10, max 64 chars each).
-- **Kill Switch**: Each agent detail page includes explicit Deactivate/Reactivate buttons with a confirmation modal. Deactivation is a high-risk action — the UI uses red-tinted warning panels and requires explicit confirmation. The effect is immediate: the agent loses Budget access on the next transaction.
+- **Kill Switch**: Each agent detail page includes explicit Deactivate/Reactivate buttons with a confirmation modal. Deactivation is a high-risk action - the UI uses red-tinted warning panels and requires explicit confirmation. The effect is immediate: the agent loses Budget access on the next transaction.
 
 ### Budget Management
 - **Budget List Page**: Shows all budgets with statistics (total balance, total spent, active count, total requests), pill-style filter tabs (All/Active/Inactive/Expired), and a card grid. Each card displays agent address, status badge, balance gauge bar with low-balance warning (< 20%), and summary stats.
@@ -401,14 +401,14 @@ The main landing page shows summary statistics: total agents, active budgets, to
 ### Security Measures in the Dashboard
 - **Object ID validation**: All transaction builders validate Sui object IDs (0x + 64 hex chars) before submitting transactions.
 - **String-based NUSDC conversion**: The `nusdcToRaw` function uses integer-only arithmetic (split decimal, pad fractional to 6 digits) to prevent IEEE-754 floating-point drift that could cause incorrect payment amounts.
-- **Input limits**: Enforced maximums on all free-text inputs — executor addresses (20), categories (20, 64 chars each), capabilities (10, 64 chars each).
+- **Input limits**: Enforced maximums on all free-text inputs - executor addresses (20), categories (20, 64 chars each), capabilities (10, 64 chars each).
 - **Past expiration prevention**: Budget constraint forms reject expiration dates in the past.
 
 ---
 
 ## Security Invariants
 
-These properties are guaranteed by the smart contracts — not by policy, trust, or configuration:
+These properties are guaranteed by the smart contracts - not by policy, trust, or configuration:
 
 **1. AER is always created when settlement occurs**
 The hot-potato `SettlementReceipt` cannot be dropped. If NUSDC moves out of escrow to an Executor, an AER is created in the same transaction. There is no way to settle without leaving an audit record.

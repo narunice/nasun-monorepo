@@ -4,7 +4,7 @@
 > Version: 1.2
 > Date: 2026-02-23
 > Author: protocol-architect (based on research by product-researcher, infra-researcher, security-researcher)
-> Status: **Implemented — Deployed on Devnet V7**
+> Status: **Implemented - Deployed on Devnet V7**
 > Deployment: contracts v0.0.6 (packageId `0x949af6...`), contracts-aer v0.0.3 (packageId `0x809f22...`), contracts-agent v0.0.1
 
 ---
@@ -255,7 +255,7 @@ module baram_agent::agent_profile {
     // ========== Structs ==========
 
     /// On-chain identity for an AI agent
-    /// Owned object — only the owner can modify
+    /// Owned object - only the owner can modify
     public struct AgentProfile has key, store {
         id: UID,
         // Identity
@@ -371,7 +371,7 @@ module baram_agent::agent_profile {
 현재 budget.move에 **시간 기반 지출 한도**를 추가한다. `max_fields_in_struct=32` 제약으로 인해 Dynamic Field 활용.
 
 ```move
-/// BudgetV2 — Extended with time-based spending limits
+/// BudgetV2 - Extended with time-based spending limits
 /// Uses Dynamic Fields to bypass max_fields_in_struct=32
 module baram::budget {
     use sui::dynamic_field;
@@ -463,7 +463,7 @@ module baram::budget {
 
     // ========== MODIFIED: spend_from_budget ==========
 
-    /// Spend from budget — NOW with time-based limits and rate limiting
+    /// Spend from budget - NOW with time-based limits and rate limiting
     public fun spend_from_budget(
         budget: &mut Budget,
         amount: u64,
@@ -560,7 +560,7 @@ const E_MONTHLY_LIMIT_EXCEEDED: u64 = 114;
 const E_RATE_LIMITED: u64 = 115;
 ```
 
-### 3.3 UPGRADE: `baram.move` — Atomic Settlement + AER Witness
+### 3.3 UPGRADE: `baram.move` - Atomic Settlement + AER Witness
 
 현재 `submit_proof`와 `create_report`가 별도 패키지에 있어 AER 없이 정산이 가능한 문제 (SEC-PTB1)를 해결한다.
 
@@ -572,7 +572,7 @@ baram.move가 정산 시 `SettlementReceipt` hot-potato 객체를 반환하고, 
 module baram::baram {
     // ... existing code ...
 
-    // NEW: Hot-potato receipt — MUST be consumed by aer::create_report
+    // NEW: Hot-potato receipt - MUST be consumed by aer::create_report
     // No `drop` ability → transaction aborts if not consumed
     public struct SettlementReceipt {
         request_id: u64,
@@ -641,7 +641,7 @@ module baram::baram {
     // KEEP existing submit_proof for backwards compatibility during transition
     // Mark as deprecated via comment
 
-    /// Create request with budget v2 (active path — replaces create_request_with_budget)
+    /// Create request with budget v2 (active path - replaces create_request_with_budget)
     public entry fun create_request_with_budget_v2(/* ... */) { /* ... */ }
 
     /// Claim timeout refund (requester can reclaim after timeout)
@@ -694,9 +694,9 @@ module baram_aer::aer {
 baram = { local = "../contracts" }
 ```
 
-이는 현재 "Standalone — no cross-package dependencies" 원칙을 깨지만, AER 생성 강제(AER Always-On)라는 보안 요구사항이 더 중요하다.
+이는 현재 "Standalone - no cross-package dependencies" 원칙을 깨지만, AER 생성 강제(AER Always-On)라는 보안 요구사항이 더 중요하다.
 
-> **[IMPLEMENTED — Security Upgrade v0.0.3]**
+> **[IMPLEMENTED - Security Upgrade v0.0.3]**
 >
 > - `create_report` 함수는 `abort E_DEPRECATED (405)`로 차단됨. 시그니처는 Sui compatible 업그레이드 정책을 위해 유지하되, 호출 시 항상 abort.
 > - `create_report_with_receipt`에 `assert!(initiator == requester, E_INVALID_INITIATOR (406))` 검증 추가. executor가 임의 주소로 AER을 전송하는 것을 방지.
@@ -854,7 +854,7 @@ baram = { local = "../contracts" }
 │  │ [Edit Budget Settings]                                   │ │
 │  └─────────────────────────────────────────────────────────┘ │
 │                                                               │
-│  Tab: Activity — 에이전트 활동 타임라인                  │
+│  Tab: Activity - 에이전트 활동 타임라인                  │
 │  ┌─────────────────────────────────────────────────────────┐ │
 │  │ 14:32 │ ● Settled │ gpt-4o │ 2.5 NUSDC │ Trading      │ │
 │  │       │ "Portfolio rebalance: BTC -5% trigger"          │ │
@@ -1169,7 +1169,7 @@ Step 4: [DONE] Update devnet-config
 [ ] Alert system (budget threshold warnings)
 [ ] AER filter & search
 [ ] Budget consumption chart (Recharts)
-[ ] Dynamic field pre-populate (SpendingLimits, Categories — on-chain RPC query)
+[ ] Dynamic field pre-populate (SpendingLimits, Categories - on-chain RPC query)
 [ ] Responsive design / mobile
 [ ] Move 단위 테스트 (sui move test)
 [ ] 프론트엔드 통합 테스트

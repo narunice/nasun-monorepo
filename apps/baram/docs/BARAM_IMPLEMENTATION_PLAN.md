@@ -7,15 +7,15 @@
 > "Trust through cryptography, not through reputation alone."
 
 **핵심 가치:**
-- **Privacy**: TEE(AWS Nitro Enclave) 내에서 프롬프트 복호화/처리 — Executor조차 원문을 볼 수 없음
+- **Privacy**: TEE(AWS Nitro Enclave) 내에서 프롬프트 복호화/처리 - Executor조차 원문을 볼 수 없음
 - **Payment Guarantee**: NUSDC 에스크로 + 온체인 정산
 - **Compliance**: AIExecutionReport(AER)로 모든 작업의 감사 추적 (8카테고리, 31필드)
 - **Trustless Settlement**: 양측 모두 상대방을 신뢰할 필요 없음
 
 **설계 원칙:**
-- "Executor는 Validator가 아니다" — Tier는 Compliance Eligibility Signal이지, 보상/할당 메커니즘이 아님
+- "Executor는 Validator가 아니다" - Tier는 Compliance Eligibility Signal이지, 보상/할당 메커니즘이 아님
 - Tier별 수수료/보상/job quota 차등 금지
-- Executor 자동 배정 (Weighted Random) — 사용자 결정 부담 제거
+- Executor 자동 배정 (Weighted Random) - 사용자 결정 부담 제거
 
 ---
 
@@ -40,15 +40,15 @@
 | **Phase F-7.1: zkLogin 호환 + Idle Timeout** | ✅ | Dual-mode 암호화 (zkLogin: address-only fallback) + 15분 idle timeout |
 | **Phase F-2: Admin 의존도 제거** | ✅ | Self-service 함수 5개 + ProcessedRequests dedup + permissionless decay/tier refresh |
 | **Phase F-9: Pipeline Atomicity** | ✅ | Settlement-gated response + retry, auto-cancel retry, AES key resilience |
-| **Phase F-10: @nasun/baram-sdk** | ✅ | Node.js SDK v0.1.0 — BaramClient, Executor 선택, ECR 조회, CLI demo |
-| **Phase F-11: Budget Delegation** | ✅ | budget.move — 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
-| **Phase F-12: BetaAccessNFT Gate** | ✅ | beta_access.move — 베타 테스터 NFT 게이팅 (민팅, 만료, 사용 횟수 제한) + Frontend useNFTGate hook |
-| **Phase F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) — 전체 파이프라인 + Budget 라이프사이클 검증 |
+| **Phase F-10: @nasun/baram-sdk** | ✅ | Node.js SDK v0.1.0 - BaramClient, Executor 선택, ECR 조회, CLI demo |
+| **Phase F-11: Budget Delegation** | ✅ | budget.move - 에이전트 예산 위임, 모델/Executor 화이트리스트, 만료, 건당 최대 금액 |
+| **Phase F-12: BetaAccessNFT Gate** | ✅ | beta_access.move - 베타 테스터 NFT 게이팅 (민팅, 만료, 사용 횟수 제한) + Frontend useNFTGate hook |
+| **Phase F-13: SDK E2E Tests** | ✅ | execute.e2e.ts (5/5), budget.e2e.ts (4/4) - 전체 파이프라인 + Budget 라이프사이클 검증 |
 | **Phase F-14: AER Implementation** | ✅ | aer.move 배포 (8카테고리, 31필드) + SettlementReceipt hot-potato 패턴 + SDK/Frontend 통합. [AER_DESIGN.md](AER_DESIGN.md) 참조 |
-| **Phase F-15: Agent Profile** | ✅ | agent_profile.move — AgentProfile + Registry + Kill Switch (deactivate/reactivate) + Frontend CRUD |
-| **Phase F-16: Dashboard UI** | ✅ | 6 routes — DashboardOverview, AgentList, AgentDetail (5 tabs), BudgetsPage (CRUD+필터+통계), AERTimeline, ChatPage |
-| **Phase F-17: API Server** | ✅ | Hono.js AER 인덱서 — PostgreSQL, 30초 RPC 이벤트 동기화, rate limiting, 포트 3201 |
-| **Phase F-18: Agent Runner** | ✅ | 자율 에이전트 실행기 — research/content/analysis 프리셋, Budget 잔액 체크, 체크포인팅 |
+| **Phase F-15: Agent Profile** | ✅ | agent_profile.move - AgentProfile + Registry + Kill Switch (deactivate/reactivate) + Frontend CRUD |
+| **Phase F-16: Dashboard UI** | ✅ | 6 routes - DashboardOverview, AgentList, AgentDetail (5 tabs), BudgetsPage (CRUD+필터+통계), AERTimeline, ChatPage |
+| **Phase F-17: API Server** | ✅ | Hono.js AER 인덱서 - PostgreSQL, 30초 RPC 이벤트 동기화, rate limiting, 포트 3201 |
+| **Phase F-18: Agent Runner** | ✅ | 자율 에이전트 실행기 - research/content/analysis 프리셋, Budget 잔액 체크, 체크포인팅 |
 
 ---
 
@@ -119,8 +119,8 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | 2 | Silver | 5,000 | 500 | `min(stake_tier, rep_tier)` |
 | 3 | Gold | 10,000 | 700 | `min(stake_tier, rep_tier)` |
 
-- Stake만으로 Gold 불가, Reputation만으로도 Gold 불가 — **양쪽 모두 충족** 필요
-- `effectiveScore = sqrt(staked_amount / 1e9) * (reputation / 1000)` — UI 정렬 전용, 비결정적
+- Stake만으로 Gold 불가, Reputation만으로도 Gold 불가 - **양쪽 모두 충족** 필요
+- `effectiveScore = sqrt(staked_amount / 1e9) * (reputation / 1000)` - UI 정렬 전용, 비결정적
 
 ### Activity Decay
 
@@ -180,13 +180,13 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | `get_tier` | View | 특정 Executor tier 조회 |
 | `calculate_tier` | Pure | stake + reputation → tier 계산 |
 
-### compliance.move (ECR — FROZEN, AER로 대체)
+### compliance.move (ECR - FROZEN, AER로 대체)
 
 > 기존 ECR 오브젝트는 보존되지만, 새 레코드는 더 이상 생성되지 않음. `contracts-aer/aer.move` 참조.
 
 | 함수 | 호출자 | 설명 |
 |------|--------|------|
-| `create_record` | Admin/Executor | ECR 생성 (**FROZEN — 호출하지 않음**) |
+| `create_record` | Admin/Executor | ECR 생성 (**FROZEN - 호출하지 않음**) |
 | `get_record` / `get_executor_records` | View | 기존 ECR 조회 (읽기 전용) |
 
 ### attestation_registry.move (PCR Baseline)
@@ -205,7 +205,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 > **Chain ID**: `272218f1` (V7, 2026-02-04 리셋)
 > 전체 주소: `packages/devnet-config/devnet-ids.json` 참조
 
-### Baram Contract (v6 — baram + budget + beta_access)
+### Baram Contract (v6 - baram + budget + beta_access)
 
 | 항목 | 주소 |
 |------|------|
@@ -253,7 +253,7 @@ Frontend → [RSA-OAEP 암호화] → Host (EC2) → [vsock] → Enclave (Nitro 
 | Package ID | `0x05edb7edec6e69af66e5d2564e6ca7cb46b60469a0897291c51f8d5c949424de` |
 | AgentProfileRegistry | `0x1e236dfab7e4c3df21651fa4b5dc846d8d1bed314a2615474dd1b805445b9f11` |
 
-### Compliance Registry (FROZEN — AER로 대체)
+### Compliance Registry (FROZEN - AER로 대체)
 
 | 항목 | 주소 |
 |------|------|
@@ -452,22 +452,22 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ## SDK E2E Test Results (2026-02-08)
 
-### execute.e2e.ts — 5/5 통과 (9s)
+### execute.e2e.ts - 5/5 통과 (9s)
 
 | 테스트 | 결과 | 비고 |
 |--------|------|------|
 | getBalance() | ✅ | 99989.3 NUSDC |
 | getExecutors() | ✅ | 1 executor (tier 0) |
-| execute() — AI 추론 + 정산 | ✅ | 응답 "4", Request ID: 16, 8.6s |
-| execute() — 알 수 없는 모델 거부 | ✅ | |
-| getECR() — requestId 재사용 | ✅ | ECR 0xbc60... (coin isolation fix 적용) |
+| execute() - AI 추론 + 정산 | ✅ | 응답 "4", Request ID: 16, 8.6s |
+| execute() - 알 수 없는 모델 거부 | ✅ | |
+| getECR() - requestId 재사용 | ✅ | ECR 0xbc60... (coin isolation fix 적용) |
 
-### budget.e2e.ts — 4/4 통과 (26s)
+### budget.e2e.ts - 4/4 통과 (26s)
 
 | 테스트 | 결과 | 비고 |
 |--------|------|------|
 | hasBudgetSupport() | ✅ | |
-| Full lifecycle (10 steps) | ✅ | 20.5s — 생성→조회→입금→**executeWithBudget**→제약조건→출금→비활성화 |
+| Full lifecycle (10 steps) | ✅ | 20.5s - 생성→조회→입금→**executeWithBudget**→제약조건→출금→비활성화 |
 | Non-existent Budget | ✅ | null 반환 |
 | Unauthorized agent 거부 | ✅ | 랜덤 keypair로 시도 → throw |
 
@@ -478,7 +478,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 - ECR 정상 생성
 
 **수정된 이슈:**
-- `execute.e2e.ts`: getECR() 테스트에서 execute()를 재호출하던 coin version conflict 수정 — requestId 재사용 방식으로 변경
+- `execute.e2e.ts`: getECR() 테스트에서 execute()를 재호출하던 coin version conflict 수정 - requestId 재사용 방식으로 변경
 - `budget.e2e.ts`: executeWithBudget() happy path 테스트 추가 (기존에는 제약조건 거부만 테스트)
 
 ---
@@ -541,10 +541,10 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 ### 4가지 기본 기능
 
-1. **Shared, Verifiable State** — 상태는 추론이나 사후 조합이 아니라, 현재 무엇이 유효하고 무엇이 변경되었는지 직접 검증 가능해야 한다.
-2. **Rules and Permissions That Move with Data** — 권한이 시스템 경계에서 재정의되는 것이 아니라 데이터와 함께 이동해야 한다.
-3. **Atomic Execution Across Workflows** — 다단계 작업이 하나의 완전한 단위로 실행되어야 하며, 전부 성공하거나 전부 실패해야 한다.
-4. **Proof of What Happened** — 로그나 best-effort 추적이 아니라, 어떤 행동이 어떤 권한으로 어떤 규칙에 따라 실행되었는지에 대한 확실한 증거가 필요하다.
+1. **Shared, Verifiable State** - 상태는 추론이나 사후 조합이 아니라, 현재 무엇이 유효하고 무엇이 변경되었는지 직접 검증 가능해야 한다.
+2. **Rules and Permissions That Move with Data** - 권한이 시스템 경계에서 재정의되는 것이 아니라 데이터와 함께 이동해야 한다.
+3. **Atomic Execution Across Workflows** - 다단계 작업이 하나의 완전한 단위로 실행되어야 하며, 전부 성공하거나 전부 실패해야 한다.
+4. **Proof of What Happened** - 로그나 best-effort 추적이 아니라, 어떤 행동이 어떤 권한으로 어떤 규칙에 따라 실행되었는지에 대한 확실한 증거가 필요하다.
 
 ### 평가 요약
 
@@ -563,52 +563,52 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 - `TierRegistry`에 tier 온체인 계산/저장, `AttestationRegistry`에 PCR baseline 등록
 
 **격차:**
-- ~~**Dual ExecutorRegistry**~~ — ✅ 해결: Frontend/Settlement 단일 registry 사용 (`network.ts` env fallback 제거, `update-executor.sh` 단일화)
-- **StakingRegistry/TierRegistry 실데이터 미연동** — Frontend가 스냅샷에 의존하는 부분 존재
-- ~~**상태 업데이트 Admin 의존**~~ — ✅ F-2로 해결: `record_job_completion/failure`, `decay_reputation_permissionless`, `refresh_tier_from_state` 추가
+- ~~**Dual ExecutorRegistry**~~ - ✅ 해결: Frontend/Settlement 단일 registry 사용 (`network.ts` env fallback 제거, `update-executor.sh` 단일화)
+- **StakingRegistry/TierRegistry 실데이터 미연동** - Frontend가 스냅샷에 의존하는 부분 존재
+- ~~**상태 업데이트 Admin 의존**~~ - ✅ F-2로 해결: `record_job_completion/failure`, `decay_reputation_permissionless`, `refresh_tier_from_state` 추가
 
 ### 2. Rules & Permissions That Move with Data (45%)
 
 **강점:**
-- Sui의 capability 패턴 활용 — `AdminCap`, `UpgradeCap`, `StakingAdminCap`
+- Sui의 capability 패턴 활용 - `AdminCap`, `UpgradeCap`, `StakingAdminCap`
 - `StakeObject` 소유권 기반 스테이킹 권한
 - TEE Attestation으로 Executor 실행 권한 암호학적 증명
 
 **격차:**
-- ~~**대부분의 핵심 함수가 Admin-only**~~ — ✅ F-2로 대폭 개선: `record_job_completion/failure`, `update_own_endpoint`, `decay_reputation_permissionless`, `refresh_tier_from_state`. 등록(`register_executor`)만 Admin 유지
-- ~~**Executor 자율성이 `submit_proof`에 한정**~~ — ✅ F-2로 stats/endpoint/tier 자율 업데이트 가능
-- **User도 `create_request`/`cancel_request`만 가능** — 에이전트로서의 자율적 워크플로우 구성 불가
+- ~~**대부분의 핵심 함수가 Admin-only**~~ - ✅ F-2로 대폭 개선: `record_job_completion/failure`, `update_own_endpoint`, `decay_reputation_permissionless`, `refresh_tier_from_state`. 등록(`register_executor`)만 Admin 유지
+- ~~**Executor 자율성이 `submit_proof`에 한정**~~ - ✅ F-2로 stats/endpoint/tier 자율 업데이트 가능
+- **User도 `create_request`/`cancel_request`만 가능** - 에이전트로서의 자율적 워크플로우 구성 불가
 
 **F-2 이전에는 Baram의 가장 큰 구조적 격차였으나**, F-2 구현으로 Executor의 자율적 상태 관리가 가능해짐. 등록(`register_executor`)만 Admin 화이트리스트로 유지.
 
 ### 3. Atomic Execution Across Workflows (80%)
 
 **강점:**
-- **submitProofWithCompliance PTB** (F-3) — 정산 + ECR 생성을 단일 PTB로 실행. Sui PTB의 장점을 잘 활용
-- **create_request** — NUSDC 에스크로 + 요청 생성이 아토믹
-- **Auto-cancel on failure** (F-6) — 실행 실패 시 에스크로 즉시 해제
-- **Settlement-gated response** (F-9) — 정산 PTB 성공 후에만 결과 반환. 정산 실패 시 HTTP 502 + Frontend auto-cancel
-- **Settlement retry with on-chain status check** (F-9) — 최대 3회 재시도, Sui RPC 타임아웃이지만 온체인 반영된 경우 감지
-- **Auto-cancel retry** (F-9) — 2회 재시도 + 실패 시 request ID와 timeout 안내 포함 명시적 에러
+- **submitProofWithCompliance PTB** (F-3) - 정산 + ECR 생성을 단일 PTB로 실행. Sui PTB의 장점을 잘 활용
+- **create_request** - NUSDC 에스크로 + 요청 생성이 아토믹
+- **Auto-cancel on failure** (F-6) - 실행 실패 시 에스크로 즉시 해제
+- **Settlement-gated response** (F-9) - 정산 PTB 성공 후에만 결과 반환. 정산 실패 시 HTTP 502 + Frontend auto-cancel
+- **Settlement retry with on-chain status check** (F-9) - 최대 3회 재시도, Sui RPC 타임아웃이지만 온체인 반영된 경우 감지
+- **Auto-cancel retry** (F-9) - 2회 재시도 + 실패 시 request ID와 timeout 안내 포함 명시적 에러
 
 **격차:**
-- **배정 → 실행 → 정산 파이프라인 비아토믹** — Frontend에서 Executor 선택 → HTTP /execute → Host 별도 TX 정산. 여러 독립 트랜잭션으로 구성. 다만 F-9로 "정산 실패 시 결과 미반환" 보장이 추가되어, 이전의 핵심 위험(결과+환불 동시 획득)은 제거됨
-- **Executor 선택이 오프체인** — `selectExecutorWeightedRandom`이 Frontend 로직. 온체인 비보장, 조작 가능
-- ~~**Reputation/Tier 업데이트가 정산과 분리**~~ — ✅ F-2로 PTB Call 3/4 추가: 정산 시 `record_job_completion` + `refresh_tier_from_state` 아토믹 실행
-- ~~**정산 실패 시 결과 반환 (Break A)**~~ — ✅ F-9로 해결: Settlement-gated response
-- ~~**Auto-cancel 무음 실패 (Break C)**~~ — ✅ F-9로 해결: 재시도 + 명시적 에러
+- **배정 → 실행 → 정산 파이프라인 비아토믹** - Frontend에서 Executor 선택 → HTTP /execute → Host 별도 TX 정산. 여러 독립 트랜잭션으로 구성. 다만 F-9로 "정산 실패 시 결과 미반환" 보장이 추가되어, 이전의 핵심 위험(결과+환불 동시 획득)은 제거됨
+- **Executor 선택이 오프체인** - `selectExecutorWeightedRandom`이 Frontend 로직. 온체인 비보장, 조작 가능
+- ~~**Reputation/Tier 업데이트가 정산과 분리**~~ - ✅ F-2로 PTB Call 3/4 추가: 정산 시 `record_job_completion` + `refresh_tier_from_state` 아토믹 실행
+- ~~**정산 실패 시 결과 반환 (Break A)**~~ - ✅ F-9로 해결: Settlement-gated response
+- ~~**Auto-cancel 무음 실패 (Break C)**~~ - ✅ F-9로 해결: 재시도 + 명시적 에러
 
 ### 4. Proof of What Happened (75%)
 
 **강점:**
-- **ECR** — 실행마다 request_id, executor, model, executor_tier 스냅샷, tee_type, attestation 결과 온체인 영구 기록
-- **TEE Attestation** — COSE_Sign1 + X.509 인증서 체인으로 Enclave 무결성 증명
+- **ECR** - 실행마다 request_id, executor, model, executor_tier 스냅샷, tee_type, attestation 결과 온체인 영구 기록
+- **TEE Attestation** - COSE_Sign1 + X.509 인증서 체인으로 Enclave 무결성 증명
 - **PCR Baseline 온체인 검증**, Frontend Audit Trail, `ComplianceRecordCreated` 이벤트
 
 **격차:**
-- **프롬프트/응답 내용 증명 부재** — `result_hash`만 제출. 실제 입출력 매핑은 TEE 신뢰에 의존
-- **Cloud 모델(Lambda) 실행은 ECR 미생성** — Groq 실행은 attestation 없음
-- **Executor 선택 근거 미기록** — eligible set, weight 계산이 온체인에 기록되지 않음
+- **프롬프트/응답 내용 증명 부재** - `result_hash`만 제출. 실제 입출력 매핑은 TEE 신뢰에 의존
+- **Cloud 모델(Lambda) 실행은 ECR 미생성** - Groq 실행은 attestation 없음
+- **Executor 선택 근거 미기록** - eligible set, weight 계산이 온체인에 기록되지 않음
 
 ### 개선 우선순위
 
@@ -617,8 +617,8 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 
 | 순위 | 항목 | 대상 기능 | 설명 |
 |------|------|-----------|------|
-| ~~**1**~~ | ~~**Admin 의존도 제거 (F-2)**~~ | ~~기능 2 + 3~~ | ✅ **완료** — `record_job_completion/failure` + `update_own_endpoint` + `decay_reputation_permissionless` + `refresh_tier_from_state`. PTB에 Call 3/4 추가로 정산 시 자동 stats+tier 업데이트 |
-| ~~**2**~~ | ~~**Dual ExecutorRegistry 통합**~~ | ~~기능 1~~ | ✅ **완료** — `network.ts`에서 env fallback 제거, `update-executor.sh`에서 frontend registry 제거. Frontend/Settlement 단일 registry (`0xcb6944...`) 사용 |
+| ~~**1**~~ | ~~**Admin 의존도 제거 (F-2)**~~ | ~~기능 2 + 3~~ | ✅ **완료** - `record_job_completion/failure` + `update_own_endpoint` + `decay_reputation_permissionless` + `refresh_tier_from_state`. PTB에 Call 3/4 추가로 정산 시 자동 stats+tier 업데이트 |
+| ~~**2**~~ | ~~**Dual ExecutorRegistry 통합**~~ | ~~기능 1~~ | ✅ **완료** - `network.ts`에서 env fallback 제거, `update-executor.sh`에서 frontend registry 제거. Frontend/Settlement 단일 registry (`0xcb6944...`) 사용 |
 | **3** | **Enclave 출력 서명 → 온체인 직접 검증** | 기능 4 | Oyster 패턴 차용: Enclave가 secp256k1로 출력에 직접 서명 → Move 컨트랙트에서 서명 검증. 현재 Host 오프체인 검증 → 온체인 기록 구조를 탈피하여 trustless 증명 달성 |
 | **4** | **Executor 배정 온체인화** | 기능 3 + 4 | `create_request` 시 온체인 eligible set 필터링 + Executor 배정 (Sui Random/VRF). 배정 결과를 Request에 바인딩. 구현 복잡도 높음 |
 | **5** | **Reproducible Build (Nix)** | 기능 4 | Oyster 패턴 차용: Nix 기반 결정론적 Docker/EIF 빌드 도입. 현재 빌드마다 PCR0 변경 가능성 → 해시 비교로 재현성 보장. baseline 등록 빈도 감소 |
@@ -630,7 +630,7 @@ IndexedDB version 1→2 업그레이드 시 기존 채팅 히스토리가 자동
 ### Oyster 비교 분석 (2026-01-31)
 
 > [Marlin Oyster](https://www.marlin.org/oyster)는 분산형 TEE 컴퓨팅 마켓플레이스. [sui-oyster-demo](https://github.com/marlinprotocol/sui-oyster-demo)는 Sui 가격 오라클 데모.
-> Oyster는 **인프라 레이어**, Baram은 **애플리케이션 레이어** — 경쟁 관계가 아니라 잠재적 보완 관계.
+> Oyster는 **인프라 레이어**, Baram은 **애플리케이션 레이어** - 경쟁 관계가 아니라 잠재적 보완 관계.
 
 #### 공통점
 

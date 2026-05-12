@@ -1,5 +1,5 @@
 /**
- * AER analytics service — pure synchronous functions operating on AERRecord[].
+ * AER analytics service - pure synchronous functions operating on AERRecord[].
  * No I/O; all aggregation happens in-memory.
  */
 
@@ -241,7 +241,7 @@ export function spendingTimeline(
 }
 
 /**
- * Compute trust profile — executor diversity, TEE rate, tier distribution.
+ * Compute trust profile - executor diversity, TEE rate, tier distribution.
  */
 export function trustProfile(records: AERRecord[]): TrustProfile {
   if (records.length === 0) {

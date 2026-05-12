@@ -1,7 +1,7 @@
 /**
  * E2E Test Setup for baram-sdk
  *
- * Read-only SDK — no signer or faucet needed.
+ * Read-only SDK - no signer or faucet needed.
  * Tests use existing AER records on devnet created by baram-sdk E2E tests.
  */
 

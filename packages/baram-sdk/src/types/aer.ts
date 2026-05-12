@@ -1,7 +1,7 @@
 /**
  * Core AER (AI Execution Report) types
  *
- * 8 categories, 31 on-chain fields — mirrors the Move struct AIExecutionReport.
+ * 8 categories, 31 on-chain fields - mirrors the Move struct AIExecutionReport.
  * JSON fields (feeDetail, modelMetadata, constraints) are parsed into typed objects,
  * unlike baram-sdk which stores them as raw strings.
  */
@@ -55,12 +55,12 @@ export interface AERRecord {
   objectId: string;
   requestId: number;
 
-  // 1. WHO — Requester (3 fields)
+  // 1. WHO - Requester (3 fields)
   initiator: string;
   authorizer: string;
   delegationPath: string[];
 
-  // 2. WHO — Executor (2 fields)
+  // 2. WHO - Executor (2 fields)
   executor: string;
   executorPrincipal: string | null;
 

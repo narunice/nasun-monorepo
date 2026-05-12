@@ -1,4 +1,4 @@
-# Baram Prototype Launch Plan — Integrated Timeline
+# Baram Prototype Launch Plan - Integrated Timeline
 
 > Unified launch plan combining SDK implementation, TEE demo, and community preparation.
 > Based on PROTOTYPE_LAUNCH_PRIORITIES.md, BARAM_VALUE_PROPOSITION_ANALYSIS.md, BARAM_AGENT_EXPANSION_ANALYSIS.md.
@@ -14,7 +14,7 @@
 - For Agents: Trustless AI inference with compliance records (SDK + ECR)
 - For Regulators: Tamper-proof audit trail for every AI inference
 
-TEE is the premium tier. ECR (ExecutionComplianceRecord) is the universal base — providing audit value to all three audiences.
+TEE is the premium tier. ECR (ExecutionComplianceRecord) is the universal base - providing audit value to all three audiences.
 
 ---
 
@@ -47,7 +47,7 @@ TEE is the premium tier. ECR (ExecutionComplianceRecord) is the universal base �
 
 ---
 
-## Remaining Work — Pre-Launch
+## Remaining Work - Pre-Launch
 
 ### Week 1: Infrastructure + Testing
 

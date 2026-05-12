@@ -1,5 +1,5 @@
 /**
- * Budget utilization analytics — computes spend rates, runway, and usage breakdown.
+ * Budget utilization analytics - computes spend rates, runway, and usage breakdown.
  * Pure synchronous functions operating on AERRecord[].
  */
 
