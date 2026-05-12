@@ -32,6 +32,11 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
 
 // PTB input-object cap is ~2048 on mainnet; keep conservative.
 const CLAIM_CHUNK_SIZE = 100;
+// Cross-market single-PTB cap. Each action contributes 1 command + up to 2
+// inputs (market + position). 150 actions = ~300 inputs, well under 2048,
+// and well under the 1024 command cap. Chunks above this re-prompt the
+// wallet for a second signature.
+const MULTI_MARKET_CHUNK_SIZE = 150;
 
 // Progressive load: avoids unbounded DOM for users holding positions across
 // many markets. Tuned against a typical viewport ~10 cards.
@@ -75,10 +80,21 @@ function actionsFor(actions: GroupActions, kind: ActionKind | 'all'): Position[]
 
 interface BulkProgress {
   kind: ActionKind | 'all';
-  marketsDone: number;
-  marketsTotal: number;
+  chunksDone: number;
+  chunksTotal: number;
   positionsDone: number;
   positionsTotal: number;
+}
+
+type MultiItem = { marketId: string; positionId: string; kind: ActionKind };
+
+function kindForPosition(group: MarketGroup, position: Position): ActionKind | null {
+  const { market } = group;
+  if (market.status === 'cancelled') return 'refund';
+  if (market.status === 'resolved' && market.outcome !== undefined) {
+    return position.isYes === market.outcome ? 'claim' : 'burn';
+  }
+  return null;
 }
 
 export function MyPredictionPositions() {
@@ -88,7 +104,7 @@ export function MyPredictionPositions() {
     refetch: refetchPositions,
   } = usePredictionPositions();
   const { markets, isLoading: marketsLoading } = useMarkets();
-  const { settlePositionsBatch, settleRefundsBatch } = usePredictionTrade();
+  const { settleMultiMarketBatch } = usePredictionTrade();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [displayMarketCount, setDisplayMarketCount] = useState(MARKETS_PER_PAGE);
   const [bulkPhase, setBulkPhase] = useState<'idle' | 'running' | 'syncing'>('idle');
@@ -164,62 +180,64 @@ export function MyPredictionPositions() {
   const runBulk = useCallback(
     async (kind: ActionKind | 'all') => {
       if (bulkPhase !== 'idle') return;
-      const targetGroups = groups
-        .map((g) => ({ group: g, items: actionsFor(classifyGroup(g), kind) }))
-        .filter((entry) => entry.items.length > 0);
-      const positionsTotal = targetGroups.reduce((s, e) => s + e.items.length, 0);
-      if (positionsTotal === 0) return;
+
+      // Flatten work across every group into a single list. Each item carries
+      // its own marketId so the PTB can settle positions from different markets
+      // in one signature — the prior per-market loop forced N wallet popups,
+      // and users who cancelled mid-flow ended up with the symptom this fix
+      // targets (positions still claimable after a "Settle All" run).
+      const items: MultiItem[] = [];
+      for (const g of groups) {
+        const targetPositions = actionsFor(classifyGroup(g), kind);
+        for (const p of targetPositions) {
+          const k = kindForPosition(g, p);
+          if (k === null) continue;
+          items.push({ marketId: g.market.id, positionId: p.id, kind: k });
+        }
+      }
+      if (items.length === 0) return;
+
+      const chunks: MultiItem[][] = [];
+      for (let i = 0; i < items.length; i += MULTI_MARKET_CHUNK_SIZE) {
+        chunks.push(items.slice(i, i + MULTI_MARKET_CHUNK_SIZE));
+      }
 
       setBulkPhase('running');
       setBulkProgress({
         kind,
-        marketsDone: 0,
-        marketsTotal: targetGroups.length,
+        chunksDone: 0,
+        chunksTotal: chunks.length,
         positionsDone: 0,
-        positionsTotal,
+        positionsTotal: items.length,
       });
 
       let positionsDone = 0;
       const startedAt = Date.now();
 
-      for (let gi = 0; gi < targetGroups.length; gi++) {
-        const { group, items } = targetGroups[gi];
-        const isCancelled = group.market.status === 'cancelled';
-        const outcome = group.market.outcome;
-
-        for (let i = 0; i < items.length; i += CLAIM_CHUNK_SIZE) {
-          const chunk = items.slice(i, i + CLAIM_CHUNK_SIZE);
-          const chunkStart = Date.now();
-          const result = isCancelled
-            ? await settleRefundsBatch(group.market.id, chunk.map((p) => p.id))
-            : await settlePositionsBatch(
-                group.market.id,
-                chunk.map((p) => ({ positionId: p.id, won: p.isYes === outcome })),
-              );
-          console.info(
-            `[bulk-${kind}] market ${gi + 1}/${targetGroups.length} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(items.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
-          );
-          if (!result.success) break; // hook surfaces toast; continue to next market
-          positionsDone += chunk.length;
-          setBulkProgress((prev) =>
-            prev ? { ...prev, positionsDone, marketsDone: gi } : prev,
-          );
-          refetchPositions();
-        }
-        setBulkProgress((prev) =>
-          prev ? { ...prev, marketsDone: gi + 1 } : prev,
+      for (let ci = 0; ci < chunks.length; ci++) {
+        const chunk = chunks[ci];
+        const chunkStart = Date.now();
+        const result = await settleMultiMarketBatch(chunk);
+        console.info(
+          `[bulk-${kind}] chunk ${ci + 1}/${chunks.length} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
         );
+        if (!result.success) break;
+        positionsDone += chunk.length;
+        setBulkProgress((prev) =>
+          prev ? { ...prev, chunksDone: ci + 1, positionsDone } : prev,
+        );
+        refetchPositions();
       }
 
       console.info(
-        `[bulk-${kind}] settled=${positionsDone}/${positionsTotal} elapsed=${Date.now() - startedAt}ms`,
+        `[bulk-${kind}] settled=${positionsDone}/${items.length} elapsed=${Date.now() - startedAt}ms`,
       );
       setBulkProgress(null);
       setBulkPhase('syncing');
       refetchPositions();
       setTimeout(() => setBulkPhase('idle'), 8_000);
     },
-    [bulkPhase, groups, settlePositionsBatch, settleRefundsBatch, refetchPositions],
+    [bulkPhase, groups, settleMultiMarketBatch, refetchPositions],
   );
 
   const bulkDisabled = bulkPhase !== 'idle';
@@ -335,7 +353,9 @@ function BulkActionBar({ totals, progress, phase, disabled, onRun }: BulkActionB
     phase === 'syncing'
       ? 'Syncing with blockchain...'
       : progress
-        ? `Settling ${progress.positionsDone}/${progress.positionsTotal} (market ${Math.min(progress.marketsDone + 1, progress.marketsTotal)}/${progress.marketsTotal})`
+        ? progress.chunksTotal > 1
+          ? `Settling ${progress.positionsDone}/${progress.positionsTotal} (chunk ${Math.min(progress.chunksDone + 1, progress.chunksTotal)}/${progress.chunksTotal})`
+          : `Settling ${progress.positionsTotal} position${progress.positionsTotal === 1 ? '' : 's'}...`
         : `${totals.total} position${totals.total === 1 ? '' : 's'} ready to settle across resolved and cancelled markets`;
 
   return (
@@ -343,7 +363,7 @@ function BulkActionBar({ totals, progress, phase, disabled, onRun }: BulkActionB
       <div>
         <p className="text-sm font-semibold text-theme-text-primary">{headline}</p>
         <p className="text-xs text-theme-text-muted mt-0.5">
-          Bundled in chunks of {CLAIM_CHUNK_SIZE} per signature. Each action signs one or more transactions.
+          All markets bundled into a single signature (up to {MULTI_MARKET_CHUNK_SIZE} positions per transaction).
         </p>
       </div>
       <div className="flex flex-wrap gap-2">

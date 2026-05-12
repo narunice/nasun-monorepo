@@ -92,6 +92,9 @@ interface UsePredictionTradeResult {
     marketId: string,
     positionIds: string[],
   ) => Promise<TradeResult>;
+  settleMultiMarketBatch: (
+    items: Array<{ marketId: string; positionId: string; kind: 'claim' | 'burn' | 'refund' }>,
+  ) => Promise<TradeResult>;
 
   placeBuyTaker: (
     marketId: string,
@@ -804,6 +807,46 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   /**
+   * Bulk-settle positions across multiple markets in a single PTB. One wallet
+   * signature handles claim/burn/refund operations regardless of which market
+   * each position belongs to. Sui's PTB dedupes shared-object inputs, so unique
+   * markets become unique input slots; 19 inputs for 6 markets + 13 positions
+   * is far under the ~2048 input cap. The caller is responsible for chunking
+   * if `items.length` exceeds the PTB command/input limit.
+   *
+   * Note: runOperation's optimistic update + per-market invalidation key off
+   * the *first* marketId, so optimistic UI is best-effort for the remaining
+   * markets — full correctness comes from the caller's refetchPositions().
+   */
+  const settleMultiMarketBatch = useCallback(
+    (items: Array<{ marketId: string; positionId: string; kind: 'claim' | 'burn' | 'refund' }>) => {
+      if (items.length === 0) {
+        return Promise.resolve({ success: true } as TradeResult);
+      }
+      return runOperation(
+        items[0].marketId,
+        `multi-settle:${items.length}`,
+        (tx) => {
+          const BASE_BUDGET = 50_000_000;
+          const PER_ACTION = 3_000_000;
+          tx.setGasBudget(BASE_BUDGET + PER_ACTION * items.length);
+          for (const it of items) {
+            if (it.kind === 'claim') {
+              buildClaimWinnings(tx, it.marketId, it.positionId);
+            } else if (it.kind === 'burn') {
+              buildBurnLosingPosition(tx, it.marketId, it.positionId);
+            } else {
+              buildClaimCancelledRefund(tx, it.marketId, it.positionId);
+            }
+          }
+        },
+        `Settled ${items.length} position${items.length === 1 ? '' : 's'}`,
+      );
+    },
+    [runOperation],
+  );
+
+  /**
    * Create a BalanceManager for the connected wallet (tx1 of first-trade two-tx flow).
    * Stores the new BM ID in localStorage and the shared Zustand store so subsequent
    * placeBuyTaker calls route through it automatically.
@@ -879,6 +922,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     claimRestingRefundsBatch,
     settlePositionsBatch,
     settleRefundsBatch,
+    settleMultiMarketBatch,
     requestNusdc,
   };
 }
