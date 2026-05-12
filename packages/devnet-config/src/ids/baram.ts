@@ -7,6 +7,7 @@ import { NUSDC_TYPE } from './tokens';
 
 export const BARAM_PACKAGE_ID = config.baram.packageId as ObjectId;
 export const BARAM_REGISTRY = config.baram.registry as ObjectId;
+export const BARAM_ADMIN_CAP = config.baram.adminCap as ObjectId;
 export const BARAM_UPGRADE_CAP = config.baram.upgradeCap as ObjectId;
 
 export const EXECUTOR_PACKAGE_ID = config.baram.executorPackageId as ObjectId;
@@ -63,6 +64,7 @@ export const BETA_ACCESS_ADMIN = (config.baram.betaAccessAdmin || '') as ObjectI
 export const BARAM: BaramConfig = {
   packageId: BARAM_PACKAGE_ID,
   registry: BARAM_REGISTRY,
+  adminCap: BARAM_ADMIN_CAP,
   upgradeCap: BARAM_UPGRADE_CAP,
   executorPackageId: EXECUTOR_PACKAGE_ID,
   executorRegistry: EXECUTOR_REGISTRY,

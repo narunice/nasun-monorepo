@@ -80,6 +80,8 @@ export interface GovernanceConfig {
 export interface BaramConfig {
   packageId: ObjectId;
   registry: ObjectId;
+  /// Admin capability granting authority to call set_aer_authority.
+  adminCap: ObjectId;
   upgradeCap: ObjectId;
   executorPackageId: ObjectId;
   executorRegistry: ObjectId;
