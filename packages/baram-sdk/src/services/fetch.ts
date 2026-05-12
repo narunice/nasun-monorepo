@@ -206,7 +206,7 @@ export async function fetchAERByAddress(
       result.push(...matching);
 
       if (!events.hasNextPage) break;
-      cursor = events.nextCursor;
+      cursor = events.nextCursor ?? undefined;
       scannedPages++;
     }
 
@@ -255,7 +255,7 @@ export async function fetchAERByBudgetId(
       result.push(...matching);
 
       if (!events.hasNextPage) break;
-      cursor = events.nextCursor;
+      cursor = events.nextCursor ?? undefined;
       scannedPages++;
     }
 
