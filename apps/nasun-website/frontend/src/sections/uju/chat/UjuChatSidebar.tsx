@@ -107,7 +107,9 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
           stays in normal flow (NOT display:none) so the iframe remains
           interactable. Previous display:none + appearance:'execute' combo
           trapped users on suspicious-IP networks (2026-05-09 outage). */}
-      {TURNSTILE_SITE_KEY && canChat && (
+      {/* Mount unconditionally (was gated by `canChat`) so the challenge
+          can start as soon as the sidebar opens, regardless of login state. */}
+      {TURNSTILE_SITE_KEY && (
         <Turnstile
           key={turnstileKey}
           siteKey={TURNSTILE_SITE_KEY}
