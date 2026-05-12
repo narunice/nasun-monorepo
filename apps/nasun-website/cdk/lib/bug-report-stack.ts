@@ -21,6 +21,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -244,6 +246,39 @@ export class BugReportStack extends cdk.Stack {
       actions: ['s3:GetObject'],
       resources: [`${screenshotBucket.bucketArn}/bug-screenshots/*`],
     }));
+
+    // ============================================
+    // Backfill Lambda + hourly schedule
+    // Reattempts stuck rewards: rewardStatus IN ('pending', 'pending-no-wallet', null)
+    // with status terminal and bonusPoints > 0. Idempotent via creditedAmount.
+    // ============================================
+
+    const bugReportBackfillFn = new NodejsFunction(this, 'BugReportBackfillFunction', {
+      entry: path.join(__dirname, '../lambda-src/bug-report-admin/src/backfill-pending.ts'),
+      handler: 'handler',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 256,
+      depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
+      environment: {
+        BUG_REPORTS_TABLE: bugReportsTable.tableName,
+        EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
+        BUG_REPORT_API_KEY: process.env.BUG_REPORT_API_KEY || '',
+      },
+      bundling: {
+        minify: true,
+        sourceMap: true,
+        target: 'node22',
+      },
+      logRetention: logs.RetentionDays.ONE_MONTH,
+    });
+    bugReportsTable.grantReadWriteData(bugReportBackfillFn);
+
+    new events.Rule(this, 'BugReportBackfillSchedule', {
+      schedule: events.Schedule.rate(cdk.Duration.hours(1)),
+      targets: [new targets.LambdaFunction(bugReportBackfillFn)],
+      description: 'Hourly retry of stuck bug-report rewards (rewardStatus pending/null)',
+    });
 
     // ============================================
     // API Gateway

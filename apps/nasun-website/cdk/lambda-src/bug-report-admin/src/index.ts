@@ -271,46 +271,83 @@ async function handleUpdate(
     ExpressionAttributeValues: exprValues,
   }));
 
-  // If status is "fixed" and bonusPoints > 0, trigger points reward
+  // Trigger reward when the report ends in a terminal status (fixed / accepted)
+  // AND the effective bonusPoints > 0. Effective bonusPoints = body value if
+  // present, else the value already stored on the report. This covers the
+  // split-PATCH case (status set in one call, bonusPoints in another).
   let rewardResult: { success: boolean; created?: boolean; finalPoints?: number; error?: string } | null = null;
 
-  if (body.status && REWARD_TRIGGER_STATUSES.has(body.status) && body.bonusPoints && body.bonusPoints > 0) {
-    // Prevent double reward: check if already rewarded
-    if (existing.Item.rewardStatus === 'rewarded') {
-      rewardResult = { success: true, created: false, error: 'Already rewarded' };
-    } else {
-      const walletAddress = existing.Item.walletAddress as string | undefined;
-      const identityId = existing.Item.identityId as string;
+  const effectiveStatus = body.status ?? (existing.Item.status as string | undefined);
+  const effectivePoints =
+    typeof body.bonusPoints === 'number' && body.bonusPoints > 0
+      ? body.bonusPoints
+      : typeof existing.Item.bonusPoints === 'number' && existing.Item.bonusPoints > 0
+        ? (existing.Item.bonusPoints as number)
+        : 0;
+  const creditedAmount = typeof existing.Item.creditedAmount === 'number'
+    ? (existing.Item.creditedAmount as number)
+    : 0;
 
-      if (!walletAddress) {
+  if (effectiveStatus && REWARD_TRIGGER_STATUSES.has(effectiveStatus) && effectivePoints > 0) {
+    const walletAddress = existing.Item.walletAddress as string | undefined;
+    const identityId = existing.Item.identityId as string;
+    const rewardType: 'feedback' | 'bug-report' =
+      FEEDBACK_CATEGORIES.has(existing.Item.category as string) ? 'feedback' : 'bug-report';
+
+    if (!walletAddress) {
+      if (existing.Item.rewardStatus !== 'rewarded') {
         await ddbClient.send(new UpdateCommand({
           TableName: BUG_REPORTS_TABLE,
           Key: { reportId, timestamp: body.timestamp },
           UpdateExpression: 'SET rewardStatus = :rs',
           ExpressionAttributeValues: { ':rs': 'pending-no-wallet' },
         }));
-        rewardResult = { success: false, error: 'User has no wallet address. Reward pending.' };
-      } else {
-        const rewardType: 'feedback' | 'bug-report' =
-          FEEDBACK_CATEGORIES.has(existing.Item.category as string) ? 'feedback' : 'bug-report';
+      }
+      rewardResult = { success: false, error: 'User has no wallet address. Reward pending.' };
+    } else if (creditedAmount >= effectivePoints) {
+      // Already credited the full amount on a prior PATCH.
+      rewardResult = { success: true, created: false, finalPoints: creditedAmount, error: 'Already rewarded' };
+    } else {
+      // Credit the delta. tx_digest carries `-delta-<n>` suffix on subsequent
+      // bumps so the activity_points UNIQUE constraint accepts the new row.
+      const delta = effectivePoints - creditedAmount;
+      const deltaSeq = typeof existing.Item.deltaSeq === 'number' ? (existing.Item.deltaSeq as number) : 0;
+      const isFirstCredit = creditedAmount === 0;
+      const deltaSuffix = isFirstCredit ? '' : `-delta-${deltaSeq + 1}`;
 
-        rewardResult = await sendRewardToExplorer({
-          walletAddress,
-          identityId,
-          reportId,
-          points: body.bonusPoints,
-          reason: `${rewardType === 'feedback' ? 'Feedback' : 'Bug report'} accepted: ${(existing.Item.title as string) || reportId}`,
-          type: rewardType,
-        });
+      rewardResult = await sendRewardToExplorer({
+        walletAddress,
+        identityId,
+        reportId: reportId + deltaSuffix,
+        points: delta,
+        reason: `${rewardType === 'feedback' ? 'Feedback' : 'Bug report'} accepted: ${(existing.Item.title as string) || reportId}` +
+          (isFirstCredit ? '' : ` (delta credit: ${creditedAmount} -> ${effectivePoints})`),
+        type: rewardType,
+      });
+
+      if (rewardResult.success) {
+        const updateExpr = isFirstCredit
+          ? 'SET rewardStatus = :rs, rewardType = :rt, creditedAmount = :ca'
+          : 'SET rewardStatus = :rs, rewardType = :rt, creditedAmount = :ca, deltaSeq = :ds';
+        const exprValues: Record<string, unknown> = {
+          ':rs': 'rewarded',
+          ':rt': rewardType,
+          ':ca': effectivePoints,
+        };
+        if (!isFirstCredit) exprValues[':ds'] = deltaSeq + 1;
 
         await ddbClient.send(new UpdateCommand({
           TableName: BUG_REPORTS_TABLE,
           Key: { reportId, timestamp: body.timestamp },
+          UpdateExpression: updateExpr,
+          ExpressionAttributeValues: exprValues,
+        }));
+      } else {
+        await ddbClient.send(new UpdateCommand({
+          TableName: BUG_REPORTS_TABLE,
+          Key: { reportId, timestamp: body.timestamp },
           UpdateExpression: 'SET rewardStatus = :rs, rewardType = :rt',
-          ExpressionAttributeValues: {
-            ':rs': rewardResult.success ? 'rewarded' : 'pending',
-            ':rt': rewardType,
-          },
+          ExpressionAttributeValues: { ':rs': 'pending', ':rt': rewardType },
         }));
       }
     }
