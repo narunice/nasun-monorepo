@@ -8,10 +8,11 @@ argument-hint: "[YYYY-MM-DD to YYYY-MM-DD] [--include-banned]"
 
 Nasun 전체 현황을 단일 실행으로 추출합니다.
 
-## 출력 파일 2개
+## 출력 파일 3개
 
 - `stats/nasun-stats-snapshot-YYYY-MM-DD.txt` - 실행 시점 스냅샷 (DAA 요약 + DynamoDB 소셜 현황 + 오늘 신규 유입 품질 + 소셜 유저 top 활동)
-- `stats/nasun-stats-YYYY-MM-DD.csv` - 날짜별 시계열
+- `stats/nasun-stats-YYYY-MM-DD.csv` - 날짜별 시계열 (raw)
+- `stats/nasun-stats-YYYY-MM-DD.xlsx` - 동일 시계열 + snapshot을 2개 시트로 포맷팅 (`daily` / `snapshot`)
 
 CSV 컬럼:
 ```
@@ -40,7 +41,7 @@ gostop 마이그레이션(2026-04-30~) 이후 pado-* 카테고리가 gostop-*로
 ## 실행
 
 ```bash
-set -euo pipefail
+set -eo pipefail  # -u dropped: shell snapshot references ZSH_VERSION which is unbound in bash subshells, causing false-positive failures in CSV integrity check
 
 ARGS="$ARGUMENTS"
 
@@ -82,6 +83,7 @@ mkdir -p stats
 BAN_SUFFIX=$([[ "$INCLUDE_BANNED" == "true" ]] && echo "-raw" || echo "")
 SNAPSHOT_FILE="stats/nasun-stats-snapshot-$TODAY${BAN_SUFFIX}.txt"
 CSV_FILE="stats/nasun-stats-$TODAY${BAN_SUFFIX}.csv"
+XLSX_FILE="stats/nasun-stats-$TODAY${BAN_SUFFIX}.xlsx"
 
 echo "=== Step 1: DynamoDB scan (24h cache check) ==="
 
@@ -761,6 +763,61 @@ with open("$SNAPSHOT_FILE", "w") as f:
 print(snapshot)
 PYEOF2
 
+echo "=== Step 5b: Build XLSX (daily + snapshot sheets) ==="
+python3 << PYEOF_XLSX
+import csv, sys
+try:
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill
+    from openpyxl.utils import get_column_letter
+except ImportError:
+    print("openpyxl not installed; skipping xlsx generation. Install with: pip3 install --user --break-system-packages openpyxl", file=sys.stderr)
+    sys.exit(0)
+
+csv_path = "$CSV_FILE"
+snap_path = "$SNAPSHOT_FILE"
+xlsx_path = "$XLSX_FILE"
+
+wb = Workbook()
+
+# Sheet 1: daily time series
+ws = wb.active
+ws.title = "daily"
+header_font = Font(bold=True, color="FFFFFF")
+header_fill = PatternFill("solid", fgColor="2F5496")
+with open(csv_path, newline="") as f:
+    reader = csv.reader(f)
+    for r_idx, row in enumerate(reader, 1):
+        for c_idx, val in enumerate(row, 1):
+            cell = ws.cell(row=r_idx, column=c_idx, value=val if r_idx == 1 else (int(val) if val.lstrip("-").isdigit() else (float(val) if val.replace(".", "", 1).lstrip("-").isdigit() else val)))
+            if r_idx == 1:
+                cell.font = header_font
+                cell.fill = header_fill
+                cell.alignment = Alignment(horizontal="center")
+            else:
+                if isinstance(cell.value, int):
+                    cell.number_format = "#,##0"
+                elif isinstance(cell.value, float):
+                    cell.number_format = "0.0"
+ws.freeze_panes = "B2"
+for col in range(1, ws.max_column + 1):
+    letter = get_column_letter(col)
+    max_len = max((len(str(ws.cell(row=r, column=col).value or "")) for r in range(1, ws.max_row + 1)), default=10)
+    ws.column_dimensions[letter].width = min(max(max_len + 2, 10), 28)
+
+# Sheet 2: snapshot text (one line per row, monospace-ish)
+ws2 = wb.create_sheet("snapshot")
+mono = Font(name="Consolas", size=11)
+with open(snap_path) as f:
+    for r_idx, line in enumerate(f.read().splitlines(), 1):
+        c = ws2.cell(row=r_idx, column=1, value=line)
+        c.font = mono
+ws2.column_dimensions["A"].width = 110
+
+wb.save(xlsx_path)
+print(f"XLSX saved: {xlsx_path}")
+PYEOF_XLSX
+
 echo "=== Step 6: Summary ==="
 python3 << PYEOF3
 import csv
@@ -794,6 +851,7 @@ print(f"Avg gamers/day:     {avg_g:.0f}")
 print(f"Avg social DAA/day: {avg_vs:.0f}")
 print(f"\nSaved: $SNAPSHOT_FILE")
 print(f"Saved: $CSV_FILE")
+print(f"Saved: $XLSX_FILE")
 PYEOF3
 
 echo "=== Step 7: Cleanup remote temp files ==="
