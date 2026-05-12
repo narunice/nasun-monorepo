@@ -231,6 +231,19 @@ export function useTokenFaucet(): UseTokenFaucetResult {
       const suiClient = getSuiClient();
       const keypair = getKeypair?.();
 
+      // Best-effort wait for the RPC to index the digest, but never let an
+      // indexing-side failure (slow polling, transient 503, or the outer
+      // withTimeout race) flip an already-successful transaction into a
+      // user-visible "failed" message. Status is determined by effects.
+      const waitBestEffort = async (digest: string) => {
+        try {
+          await suiClient.waitForTransaction({ digest });
+        } catch {
+          // Tx already committed (effects.status === 'success'); propagation
+          // wait is informational only.
+        }
+      };
+
       if (keypair) {
         const txResult = await suiClient.signAndExecuteTransaction({
           signer: keypair,
@@ -239,7 +252,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         });
         const success = txResult.effects?.status?.status === 'success';
         if (success && txResult.digest) {
-          await suiClient.waitForTransaction({ digest: txResult.digest });
+          await waitBestEffort(txResult.digest);
         }
         return { success, digest: txResult.digest };
       }
@@ -255,7 +268,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         });
         const success = txResult.effects?.status?.status === 'success';
         if (success && txResult.digest) {
-          await suiClient.waitForTransaction({ digest: txResult.digest });
+          await waitBestEffort(txResult.digest);
         }
         return { success, digest: txResult.digest };
       }
@@ -268,7 +281,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         });
         const success = txResult.effects?.status?.status === 'success';
         if (success && txResult.digest) {
-          await suiClient.waitForTransaction({ digest: txResult.digest });
+          await waitBestEffort(txResult.digest);
         }
         return { success, digest: txResult.digest };
       }
