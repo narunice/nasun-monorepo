@@ -7,8 +7,13 @@
 // Two groups:
 //   Base categories: ecosystem score uses COUNT(DISTINCT category)/day only.
 //     Values are 1 (existence marker) or 0 (skip). final_points is always 1.
-//   Score categories (governance, daily-mission): final_points are added
-//     directly to ecosystem score. Values are meaningful.
+//   Score categories (governance, referral-bonus, ecosystem-bonus-*, etc.):
+//     final_points are added directly to ecosystem score. Values are meaningful.
+//   `daily-mission` is retained as a historical SCORE_CATEGORIES member (for
+//     rows inserted by deprecated scanners and one-shot compensation scripts)
+//     but no live writer remains. Do not remove from SCORE_CATEGORIES; doing
+//     so would drop historical points and violate the all-time monotonic
+//     increase invariant.
 
 export const BASE_POINTS: Record<string, Record<string, number>> = {
   // Base categories (existence markers)
@@ -42,22 +47,10 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
 
   // Score categories (final_points used in ecosystem score)
   governance: { vote: 10, delegate: 5 },
-  'daily-mission': {
-    // Game first-time bonuses (lottery-first/scratchcard-first) removed when
-    // GoStop categories were split; games now only earn the 1pt/day cap per
-    // category. The remaining first-time entries are the non-game categories
-    // tracked by scanner/daily-mission.ts MISSION_MAP.
-    'dex-first': 5,
-    'prediction-first': 5,
-    'governance-first': 10,
-    'perp-first': 5,
-    'baram-first': 5,
-    'faucet-first': 5,
-    // Tier thresholds re-scaled for 6 qualifying categories (down from 8).
-    'tier-3': 3,
-    'tier-5': 5,
-    'all-clear': 10,
-  },
+  // `daily-mission` BASE_POINTS entry removed: the scanner that emitted
+  // first-time / tier rows was never wired into the scan loop. Historical rows
+  // (from one-shot compensation scripts such as grant-may4-outage-comp) remain
+  // in `activity_points` and continue to be aggregated via SCORE_CATEGORIES.
 } as const;
 
 // Categories whose final_points are added to ecosystem score.
