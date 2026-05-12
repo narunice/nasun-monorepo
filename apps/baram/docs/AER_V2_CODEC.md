@@ -24,6 +24,17 @@ AIExecutionReport {
 }
 ```
 
+`WhyContext` wire order (Plan B added one field):
+
+```
+WhyContext {
+  purpose,            // Option<String>
+  policy_version,     // Option<u64>  - snapshotted from registry.policy_version
+  capability_version, // Option<u64>  - Plan B: snapshotted from cap.version on gated path, None on ungated. Wire-position locked here.
+  constraints,        // Option<String>
+}
+```
+
 Each sub-struct's field order is fixed in the Move source. When in doubt,
 read `apps/baram/contracts-aer/sources/aer.move` directly - the declared
 field order there is the canonical wire order, full stop.
@@ -358,9 +369,13 @@ For PostgreSQL projections:
   - `CREATE INDEX idx_aer_parent_intent ON aer_records (parent_intent_id) WHERE parent_intent_id IS NOT NULL;`
   - `CREATE INDEX idx_aer_event_class ON aer_records (event_class, settled_at DESC);`
   - `CREATE INDEX idx_aer_action_type ON aer_records (action_type, settled_at DESC);`
+  - `CREATE INDEX idx_aer_capability_version ON aer_records (capability_version, settled_at DESC) WHERE capability_version IS NOT NULL;` (Plan B)
 - `payload_hash` and `payload_bytes`: store as `BYTEA`. Mark `payload_hash`
   `UNIQUE` only at the (request_id, payload_hash) pair level; the same
   reasoning can legitimately appear in distinct executions.
+- `capability_version` (Plan B): store as `BIGINT NULL`. Null distinguishes
+  ungated (settlement-only) AERs from gated AERs even when both come from
+  the same executor/agent pair.
 
 These hints are advisory. Plan A does not modify the indexer; subsequent
 plans wire up the projections.
@@ -371,6 +386,103 @@ plans wire up the projections.
 
 - Move source: `apps/baram/contracts-aer/sources/aer.move`
 - Move tests: `apps/baram/contracts-aer/tests/aer_test.move`
+
+---
+
+## 17. Capability gating (Plan B)
+
+Plan B adds a `baram_aer::capability::Capability` shared object that gates
+AER creation. The AER schema gains exactly one new field
+(`why.capability_version: Option<u64>`) and the package exposes two entry
+functions with disjoint event_class admittance.
+
+### 17.1 Two entry functions, two paths
+
+| Entry | Path | Admitted `event_class` | `why.capability_version` |
+|---|---|---|---|
+| `create_report_with_receipt` | ungated | settlement (3) ONLY | `None` |
+| `create_report_with_receipt_capability` | gated (takes `&Capability`) | cognition (1), execution (2) | `Some(cap.version)` |
+
+The ungated path is for system pseudo-actions: `executor.fee.v1`,
+`gas.refund.v1`. The gated path is for everything a user-owned agent does
+on the user's behalf. An executor that routes a non-settlement AER through
+the ungated path aborts with `E_UNGATED_REQUIRES_SETTLEMENT_CLASS` (554);
+the reverse (settlement AER through gated path) aborts with
+`E_GATED_REQUIRES_NON_SETTLEMENT_CLASS` (564).
+
+### 17.2 Hard rail vs soft rail (trust model)
+
+Plan B is explicit (D12): Baram 1차 is "trust-constrained delegated
+execution," NOT "trustless." Two layers of enforcement with asymmetric
+strength:
+
+| Layer | Enforced by | What it covers |
+|---|---|---|
+| Hard rail | Move contract (`capability::assert_can_execute`) | `action_type` membership, payment amount cap, pause state, owner match, cap version race |
+| Soft rail | Host (executor-nitro) | target package, function selector, asset exposure (input/output coin types), max_slippage, daily-loss rolling window |
+
+The soft rail is host-trusted. A malicious Nasun-run executor could let
+through an action that violates D4's off-chain checks if the hard rail's
+coarse checks (action_type string + payment cap) admit it. The 1차 trust
+assumption: the executor is operationally incentivized to refuse out-of-scope
+actions because its reputation and stake are at risk.
+
+**Wording discipline**: external narrative, dashboard UI, and whitepaper
+sections MUST describe Baram 1차 as "trust-constrained delegated execution,"
+NEVER "trustless" or "fully onchain enforced." Future plans (TEE attestation
+in execution path, third-party executor marketplace, onchain action class
+registry, selector-level capability granularity) progressively tighten the
+soft rail toward trust-minimized.
+
+### 17.3 Capability hard rail check order
+
+`capability::assert_can_execute` runs (in order, fail-fast cheapest first):
+
+1. `!cap.revoked` → else `E_CAPABILITY_REVOKED` (562).
+2. `cap.pause_mode == PAUSE_ACTIVE` → else `E_CAPABILITY_PAUSED` (550).
+3. `cap.owner == receipt.requester` → else `E_CAPABILITY_OWNER_MISMATCH` (553).
+4. `cap.version == expected_capability_version` → else
+   `E_INVALID_CAPABILITY_VERSION` (560). This catches in-flight wallet
+   mutations that race host PTB submission. The PTB rolls back (receipt is
+   NOT consumed); the host should detect this off-chain and resubmit with
+   the fresh `cap.version`.
+5. `action_type ∈ cap.allowed_actions` → else `E_ACTION_NOT_ALLOWED` (551).
+6. `payment_amount <= cap.risk_limits.max_notional_per_action` → else
+   `E_PAYMENT_EXCEEDS_NOTIONAL_CAP` (552).
+
+On success, `cap.version` is returned and the gated entry snapshots it into
+`AER.why.capability_version = Some(cap.version)`. Replay can therefore
+verify "was this action within scope at the moment it happened?" by
+comparing the snapshotted version against the `CapabilityMutated` event
+stream.
+
+### 17.4 Pause mode discipline (phase 1)
+
+Phase 1 contract honors `{ 0 = active, 2 = wake_blocked }`. Setting modes
+1 (`execution_only`) or 3 (`full_suspend`) via `set_pause_mode` aborts with
+`E_PAUSE_MODE_NOT_SUPPORTED` (559) even though the integers are reserved
+for forward compat. Rationale: a contract that accepts but the host
+doesn't honor diverges user mental model from reality. Decoders surface
+modes 1/3 faithfully if they ever appear on-chain in a phase 2 upgrade
+(see baram-sdk `pauseModeFromTag`).
+
+### 17.5 Revocation semantics
+
+`revoke(cap)` flips `revoked: true` (terminal). Version is NOT bumped
+(monotonic counter is meaningless past terminal state). All subsequent
+gated entries abort with `E_CAPABILITY_REVOKED`. The capability object is
+preserved (not destroyed) so indexers can read the final state without
+object-lookup failures. To recover: create a new Capability and call
+`agent_profile::unlink_capability` then `link_capability` with the new id.
+
+### 17.6 Mutation history replay
+
+`CapabilityCreated` / `CapabilityMutated` / `CapabilityRevoked` events are
+emitted on every state transition. Replay reconstructs the cap at any
+historical version by replaying events from the creation event up to the
+target version. Plan B requires the indexer to capture every mutation
+event - future hardening (state-snapshot events every N mutations) is
+listed as F2 in Plan B §11.
 - TypeScript codec: `packages/baram-sdk/src/aer/`
 - Plan A: `.claude/plans/fuzzy-growing-piglet.md`
 - Big picture (foundation decisions 1-7): `.claude/plans/pick-an-executor-majestic-thacker.md`
