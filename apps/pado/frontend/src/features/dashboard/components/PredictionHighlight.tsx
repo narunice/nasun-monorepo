@@ -271,7 +271,7 @@ function extractStockTicker(question: string): string | null {
   return match ? match[1] : null;
 }
 
-const STOCK_ICON_TICKERS = new Set(["AAPL", "NVDA", "005930.KS"]);
+const STOCK_ICON_TICKERS = new Set(["AAPL", "NVDA", "005930.KS", "000660.KS"]);
 function hasStockIcon(ticker: string): boolean {
   return STOCK_ICON_TICKERS.has(ticker);
 }
