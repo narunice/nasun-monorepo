@@ -36,7 +36,7 @@ module baram::beta_access {
         total_minted: u64,
     }
 
-    /// BetaAccessNFT — Gating token for beta testers
+    /// BetaAccessNFT - Gating token for beta testers
     public struct BetaAccessNFT has key, store {
         id: UID,
         issued_at: u64,

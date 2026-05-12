@@ -13,7 +13,10 @@ module baram::baram {
     use sui::clock::Clock;
     use sui::event;
     use sui::table::{Self, Table};
+    use sui::address as sui_address;
     use std::string::String;
+    use std::type_name;
+    use std::ascii;
     use devnet_tokens::nusdc::NUSDC;
 
     // ========== Error Codes ==========
@@ -29,6 +32,12 @@ module baram::baram {
     const E_TIMEOUT_REACHED: u64 = 8;
     const E_INVALID_RESULT_HASH: u64 = 9;
     const E_INVALID_PRICE: u64 = 10;
+    /// Settlement receipt was consumed by a module other than the registered
+    /// AER package. See `consume_receipt` for the witness-gate rationale.
+    const E_INVALID_AER_WITNESS: u64 = 11;
+    /// Caller does not hold a valid `AdminCap`.
+    #[allow(unused_const)]
+    const E_NOT_ADMIN: u64 = 12;
 
     // ========== Constants ==========
     const STATUS_PENDING: u8 = 0;
@@ -52,6 +61,17 @@ module baram::baram {
         total_volume: u64,      // Total NUSDC volume processed
         total_requests: u64,    // Total requests created
         total_completed: u64,   // Total requests completed
+        /// Original package id of the AER module authorized to consume
+        /// SettlementReceipts. Initialized to @0x0 (no module authorized) and
+        /// set post-publish by AdminCap via `set_aer_authority`. While zero,
+        /// `consume_receipt` aborts unconditionally - preventing any
+        /// settlement from completing until the operator wires AER in.
+        aer_original_id: address,
+    }
+
+    /// Admin capability for baram-side governance (currently: AER authority binding).
+    public struct AdminCap has key, store {
+        id: UID,
     }
 
     /// A single compute request with escrow
@@ -95,7 +115,7 @@ module baram::baram {
     }
 
     /// Hot-potato receipt proving a settlement occurred.
-    /// Has NO `drop` ability — must be consumed by AER module.
+    /// Has NO `drop` ability - must be consumed by AER module.
     /// Ensures every settlement generates an audit report.
     public struct SettlementReceipt {
         request_id: u64,
@@ -145,8 +165,34 @@ module baram::baram {
             total_volume: 0,
             total_requests: 0,
             total_completed: 0,
+            // Operator must call `set_aer_authority` after the AER package is
+            // published. Until then, `consume_receipt` aborts and no settlement
+            // can complete.
+            aer_original_id: @0x0,
         };
         transfer::share_object(registry);
+
+        let admin = AdminCap { id: object::new(ctx) };
+        transfer::transfer(admin, tx_context::sender(ctx));
+    }
+
+    // ========== Admin Functions ==========
+
+    /// Set the AER package's original id (Sui Move package address at first
+    /// publish). Must be called once after the AER package is published.
+    /// Can be re-called to migrate to a re-published AER package, but doing so
+    /// invalidates any unconsumed SettlementReceipts that bound to the previous
+    /// authority. AdminCap holder is responsible for coordinating cutover.
+    public fun set_aer_authority(
+        _admin: &AdminCap,
+        registry: &mut BaramRegistry,
+        aer_original_id: address,
+    ) {
+        registry.aer_original_id = aer_original_id;
+    }
+
+    public fun get_aer_authority(registry: &BaramRegistry): address {
+        registry.aer_original_id
     }
 
     // ========== User Functions ==========
@@ -454,11 +500,40 @@ module baram::baram {
     }
 
     /// Consume a SettlementReceipt and return its fields.
-    /// Called by the AER module to create an AIExecutionReport.
-    /// This destroys the hot-potato, satisfying Move's linearity requirement.
-    public fun consume_receipt(
-        receipt: SettlementReceipt
+    ///
+    /// Witness-gated: the generic witness `W` must be a type defined inside
+    /// the AER module that the operator registered via `set_aer_authority`.
+    /// This enforces the invariant
+    ///
+    ///   economic settlement <=> canonical AER existence
+    ///
+    /// - without it, any caller could destructure a SettlementReceipt directly
+    /// in a PTB (since the returned primitives all have `drop`) and pocket the
+    /// payout without ever creating an AER. The check uses
+    /// `type_name::with_original_ids` so the authority binding survives AER
+    /// package upgrades but breaks deliberately on a clean-slate AER republish
+    /// (admin must call `set_aer_authority` to migrate).
+    ///
+    /// The witness is consumed (it has `drop`); only its TypeName is inspected.
+    /// Callers from the authorized AER module pass `AERWitness {}`.
+    public fun consume_receipt<W: drop>(
+        registry: &BaramRegistry,
+        receipt: SettlementReceipt,
+        _witness: W,
     ): (u64, address, address, u64, String, vector<u8>, u64, u64) {
+        // Reject when no authority registered yet (operator forgot to wire AER).
+        assert!(registry.aer_original_id != @0x0, E_INVALID_AER_WITNESS);
+
+        // TypeName check: W must come from <registered aer original id>::aer::*.
+        // address_string() returns lowercase hex without 0x prefix, matching
+        // sui_address::to_ascii_string's format.
+        let tn = type_name::with_original_ids<W>();
+        let actual_addr = tn.address_string();
+        let expected_addr = sui_address::to_ascii_string(registry.aer_original_id);
+        assert!(actual_addr == expected_addr, E_INVALID_AER_WITNESS);
+        let actual_module = tn.module_string();
+        assert!(actual_module == ascii::string(b"aer"), E_INVALID_AER_WITNESS);
+
         let SettlementReceipt {
             request_id,
             requester,
@@ -471,6 +546,34 @@ module baram::baram {
         } = receipt;
 
         (request_id, requester, executor, price, model, result_hash, execution_time_ms, settled_at)
+    }
+
+    // ========== Test Helpers ==========
+
+    /// Mint a SettlementReceipt for unit tests without going through the full
+    /// escrow flow. Receipt remains a hot-potato (no drop) so callers must
+    /// still hand it to `aer::create_report_with_receipt` or `consume_receipt`.
+    #[test_only]
+    public fun new_settlement_receipt_for_testing(
+        request_id: u64,
+        requester: address,
+        executor: address,
+        price: u64,
+        model: String,
+        result_hash: vector<u8>,
+        execution_time_ms: u64,
+        settled_at: u64,
+    ): SettlementReceipt {
+        SettlementReceipt {
+            request_id,
+            requester,
+            executor,
+            price,
+            model,
+            result_hash,
+            execution_time_ms,
+            settled_at,
+        }
     }
 
     // ========== View Functions ==========

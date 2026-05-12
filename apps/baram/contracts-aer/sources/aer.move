@@ -1,30 +1,29 @@
-/// AI Execution Report (AER)
+/// AI Execution Report (AER) - Canonical Execution Ledger.
 ///
-/// Immutable on-chain proof of AI execution — the "black box" of AI economic activity.
-///
-/// Unlike the previous ECR (hardware-centric, 22 fields), AER answers the questions
-/// that matter for AI agent economy auditing:
-///   WHO requested and executed? HOW MUCH was paid and to whom?
-///   WHAT model ran and what were the I/O hashes? WHY was it executed?
-///   HOW TRUSTWORTHY was the executor? WHEN did it happen?
-///   What CHAIN of actions does this belong to?
+/// Immutable, BCS-canonical record of one AI execution event. Replaces the
+/// v1 "LLM call receipt" schema with an event-sourced design where every
+/// reported event carries:
+///   - 8 categorical sub-structs preserved from v1 (who/where/cost/inference/
+///     why/trust/when/chain)
+///   - Action envelope (event_class, action_type, payload, outcome)
+///   - Intent lineage (intent_id / parent_intent_id / execution_id)
+///   - Wake trigger metadata (heartbeat / user_message / price_alert / manual)
+///   - Replay metadata (model_version + hashes + extensible bag)
 ///
 /// Design principles:
-/// 1. No content — only process metadata and cryptographic anchors
-/// 2. Immutable after creation — reports cannot be altered
-/// 3. 8 categories, 31 fields — structured for programmatic audit
-/// 4. Standalone — no cross-package dependencies (data passed as parameters)
-/// 5. Option<T> for fields not always available — honest about what we know
-///
-/// Note: max_fields_in_struct=32 on Nasun devnet. Rarely-used fields
-/// (model metadata, fee breakdown) are consolidated into JSON strings.
-///
-/// Naming: Inspired by FIX Protocol Execution Report (MsgType=8)
+///   1. Field declaration order = canonical BCS wire order. Never reorder.
+///   2. Payload is opaque on-chain. `payload_hash = SHA256(action_type || payload_bytes)`
+///      gives a cryptographic action_type ↔ payload binding without semantic
+///      parsing in Move.
+///   3. AER is created via a hot-potato `SettlementReceipt` consumed from
+///      baram::baram. No standalone construction path.
+///   4. Forward-compat: enum values are append-only; unknown values surface
+///      as "unknown" off-chain rather than aborting.
 module baram_aer::aer {
-    use sui::clock::Clock;
     use sui::event;
     use sui::table::{Self, Table};
-    use std::string::String;
+    use sui::vec_map::{Self, VecMap};
+    use std::string::{Self, String};
 
     // ========== Error Codes ==========
     #[allow(unused_const)]
@@ -33,156 +32,246 @@ module baram_aer::aer {
     const E_INVALID_OUTPUT_HASH: u64 = 402;
     const E_DELEGATION_PATH_TOO_LONG: u64 = 403;
     const E_EXECUTOR_MISMATCH: u64 = 404;
+    #[allow(unused_const)]
     const E_DEPRECATED: u64 = 405;
     const E_INVALID_INITIATOR: u64 = 406;
+    const E_INVALID_PAYLOAD_HASH: u64 = 407;
+    const E_INVALID_PROMPT_TEMPLATE_HASH: u64 = 408;
+    const E_INVALID_INTENT_ID: u64 = 409;
+    const E_INVALID_ENUM_VALUE: u64 = 410;
+    const E_INVALID_PAYLOAD_CODEC: u64 = 411;
+    const E_INVALID_REPLAY_EXTRAS: u64 = 412;
+    const E_INVALID_MARKET_SNAPSHOT_HASH: u64 = 413;
+    const E_INVALID_ACTION_TYPE: u64 = 414;
+    const E_ACTION_SUMMARY_TOO_LONG: u64 = 415;
+    const E_PAYLOAD_TOO_LARGE: u64 = 416;
+    const E_DUPLICATE_REQUEST_ID: u64 = 417;
+    const E_INVALID_TEE_ATTESTATION_HASH: u64 = 418;
+    const E_INVALID_PARENT_INTENT_ID: u64 = 419;
 
     // ========== Constants ==========
-    const HASH_LENGTH: u64 = 32;          // SHA-256
-    const MAX_DELEGATION_DEPTH: u64 = 5;  // D-6: max delegation chain length
+    const HASH_LENGTH: u64 = 32;
+    const INTENT_ID_LENGTH: u64 = 16;
+    const MAX_DELEGATION_DEPTH: u64 = 5;
+    const MAX_PAYLOAD_BYTES: u64 = 8192;
+    const MAX_ACTION_SUMMARY: u64 = 280;
+    const MAX_ACTION_TYPE_LEN: u64 = 64;
+    const MAX_REPLAY_EXTRAS_KEYS: u64 = 16;
+    const MAX_REPLAY_EXTRAS_KEY_LEN: u64 = 64;
+    const MAX_REPLAY_EXTRAS_VAL_LEN: u64 = 4096;
+    const PAYLOAD_CODEC_BCS: vector<u8> = b"bcs";
 
-    // Status codes
+    // event_class enum
+    #[allow(unused_const)]
+    const EVENT_CLASS_COGNITION: u8 = 1;
+    #[allow(unused_const)]
+    const EVENT_CLASS_EXECUTION: u8 = 2;
+    #[allow(unused_const)]
+    const EVENT_CLASS_SETTLEMENT: u8 = 3;
+    #[allow(unused_const)]
+    const EVENT_CLASS_OBSERVATION: u8 = 4;
+    #[allow(unused_const)]
+    const EVENT_CLASS_COORDINATION: u8 = 5;
+    const EVENT_CLASS_MAX: u8 = 5;
+
+    // action_outcome enum
+    #[allow(unused_const)]
+    const OUTCOME_SUCCESS: u8 = 1;
+    #[allow(unused_const)]
+    const OUTCOME_HOLD_NOOP: u8 = 2;
+    #[allow(unused_const)]
+    const OUTCOME_FAILURE: u8 = 3;
+    const OUTCOME_MAX: u8 = 3;
+
+    // triggered_by_type enum
+    #[allow(unused_const)]
+    const TRIGGER_HEARTBEAT: u8 = 1;
+    #[allow(unused_const)]
+    const TRIGGER_USER_MESSAGE: u8 = 2;
+    #[allow(unused_const)]
+    const TRIGGER_PRICE_ALERT: u8 = 3;
+    #[allow(unused_const)]
+    const TRIGGER_MANUAL: u8 = 4;
+    const TRIGGER_MAX: u8 = 4;
+
+    // AER status
     const STATUS_SETTLED: u8 = 0;
     #[allow(unused_const)]
     const STATUS_DISPUTED: u8 = 1;
     #[allow(unused_const)]
     const STATUS_SLASHED: u8 = 2;
 
-    // Payment token types
-    #[allow(unused_const)]
+    // Payment token tag (mirrors v1 - full token registry is out of scope here)
     const TOKEN_NUSDC: u8 = 0;
     #[allow(unused_const)]
     const TOKEN_NASUN: u8 = 1;
 
-    // ========== Structs ==========
+    // ========== Witness ==========
 
-    /// Admin capability for AER registry operations
+    /// Capability witness that gates `baram::baram::consume_receipt`.
+    ///
+    /// Has only `drop` so it can be discarded at PTB end, but cannot be
+    /// constructed outside this module (no public constructor). Combined
+    /// with `baram::baram::consume_receipt`'s runtime TypeName check on
+    /// the supplied witness type, this enforces:
+    ///
+    ///   SettlementReceipt can only be consumed by code that runs inside
+    ///   `baram_aer::aer`, i.e. by `create_report_with_receipt`.
+    ///
+    /// Without this, the public `consume_receipt` would allow an executor
+    /// to call `submit_proof_with_receipt -> consume_receipt` directly in
+    /// a PTB, collect the payout, and silently drop the primitive return
+    /// values - never producing an AER. That bypass would break the core
+    /// "economic settlement <=> canonical AER existence" invariant.
+    ///
+    /// See `apps/baram/docs/AER_V2_CODEC.md` §9.5.
+    public struct AERWitness has drop {}
+
+    // ========== Admin & Registry ==========
+
     public struct AdminCap has key, store {
         id: UID,
     }
 
-    /// Shared registry tracking all AI Execution Reports
     public struct AERRegistry has key {
         id: UID,
-        /// Total reports created
         total_records: u64,
-        /// Reports indexed by request_id for lookup
+        // request_id -> AER object id (unique; v2 strict-aborts on duplicate)
         record_ids: Table<u64, address>,
-        /// Current policy version (snapshotted into reports)
         policy_version: u64,
     }
 
-    /// AI Execution Report — the "black box" record
-    ///
-    /// 8 categories, 31 fields. Transferred to the initiator as proof.
-    /// (max_fields_in_struct=32 on Nasun devnet; UID + 30 data fields = 31)
-    ///
-    /// Consolidated JSON fields:
-    /// - model_metadata: {"version":"1.0","hash":"abc...","quantization":"Q4_K_M"}
-    /// - fee_detail: {"model_creator":"0x...","royalty":1000,"protocol_fee":500}
-    ///
-    /// Option<T> fields are None when not applicable:
-    /// - executor_principal: None for direct execution
-    /// - budget_id/budget_remaining: None for direct payment
-    /// - model_metadata: None when executor doesn't report model details
-    /// - fee_detail: None until fee split is implemented
-    /// - purpose/constraints: None when not specified
-    /// - tee_attestation_hash: None for non-TEE execution
-    /// - triggered_by/triggered_action: None for standalone executions
+    // ========== Sub-structs ==========
+    //
+    // Field declaration order below is the canonical BCS wire order. Off-chain
+    // decoders in @nasun/baram-sdk follow the same order.
+
+    /// Authorization chain (who-acts-on-whose-behalf).
+    /// Distinct from `ChainContext.lineage` which encodes the causal/reasoning chain.
+    public struct RequesterContext has store, copy, drop {
+        initiator: address,
+        authorizer: address,
+        delegation_path: vector<address>,
+    }
+
+    public struct ExecutorContext has store, copy, drop {
+        executor: address,
+        executor_principal: Option<address>,
+    }
+
+    public struct PaymentContext has store, copy, drop {
+        payment_amount: u64,
+        payment_token: u8,
+        executor_received: u64,
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+    }
+
+    public struct InferenceContext has store, copy, drop {
+        model_name: String,
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        output_hash: vector<u8>,
+        execution_time_ms: u64,
+    }
+
+    public struct WhyContext has store, copy, drop {
+        purpose: Option<String>,
+        // Snapshotted from registry.policy_version at AER creation. Caller does not supply it.
+        policy_version: Option<u64>,
+        constraints: Option<String>,
+    }
+
+    public struct TrustContext has store, copy, drop {
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+    }
+
+    public struct TimeContext has store, copy, drop {
+        requested_at: u64,
+        settled_at: u64,
+        status: u8,
+    }
+
+    /// Lineage triple: intent_id (one user intent / heartbeat),
+    /// parent_intent_id (chained reasoning), execution_id (Nth retry).
+    public struct IntentLineage has store, copy, drop {
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+    }
+
+    /// Causal chain (what-reasoning-led-to-what). Independent from delegation_path.
+    public struct ChainContext has store, copy, drop {
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        lineage: IntentLineage,
+    }
+
+    /// Action envelope. payload_bytes is opaque on-chain; payload_hash binds
+    /// action_type and payload_bytes cryptographically.
+    public struct ActionEnvelope has store, copy, drop {
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        // SHA-256(action_type_bytes || payload_bytes). Off-chain decoder verifies.
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+    }
+
+    public struct WakeContext has store, copy, drop {
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+    }
+
+    public struct ReplayContext has store, copy, drop {
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        // Keys MUST be in strict-ascending UTF-8 byte order. Validated off-chain;
+        // contract only enforces length cap + duplicate-key abort via vec_map::insert.
+        replay_extras: VecMap<String, vector<u8>>,
+    }
+
+    // ========== Top-level AER ==========
+
     public struct AIExecutionReport has key, store {
         id: UID,
         request_id: u64,
-
-        // === 1. WHO — Requester Side (3) ===
-        /// Address that initiated the request (end user or agent)
-        initiator: address,
-        /// Address that authorized payment (= initiator for direct, = budget owner for delegated)
-        authorizer: address,
-        /// Delegation chain: [user] -> [agent1] -> [agent2] -> ... (empty for direct)
-        delegation_path: vector<address>,
-
-        // === 2. WHO — Executor Side (2) ===
-        /// Executor operator address that performed the computation
-        executor: address,
-        /// Entity the executor acts on behalf of (e.g., organization address)
-        executor_principal: Option<address>,
-
-        // === 3. HOW MUCH — Economic Facts (6) ===
-        /// Total payment amount (in payment_token smallest unit)
-        payment_amount: u64,
-        /// Payment token type: 0=NUSDC, 1=NASUN
-        payment_token: u8,
-        /// Amount the executor actually received after fees
-        executor_received: u64,
-        /// Fee breakdown as JSON: {model_creator, royalty_amount, protocol_fee}
-        fee_detail: Option<String>,
-        /// Budget object ID (if delegated execution)
-        budget_id: Option<ID>,
-        /// Budget remaining balance after this execution
-        budget_remaining: Option<u64>,
-
-        // === 4. WHAT — Execution Content (5) ===
-        /// Model identifier (e.g., "llama-3.3-70b-versatile")
-        model_name: String,
-        /// Model details as JSON: {version, hash, quantization}
-        model_metadata: Option<String>,
-        /// SHA-256 of encrypted prompt
-        input_hash: vector<u8>,
-        /// SHA-256 of AI output
-        output_hash: vector<u8>,
-        /// Wall-clock execution time in milliseconds
-        execution_time_ms: u64,
-
-        // === 5. WHY — Execution Purpose (3) ===
-        /// Declared purpose (e.g., "customer_support", "code_review")
-        purpose: Option<String>,
-        /// Policy version that governed this execution
-        policy_version: Option<u64>,
-        /// Constraints as JSON string (e.g., timeout, max_tokens, temperature)
-        constraints: Option<String>,
-
-        // === 6. HOW TRUSTWORTHY — Trust Snapshot (5) ===
-        /// Executor tier at execution time (0=Open, 1=Bronze, 2=Silver, 3=Gold)
-        executor_tier: u8,
-        /// Executor reputation score at execution time (0-1000)
-        executor_reputation: u64,
-        /// Executor staked NASUN amount at execution time (in SOE)
-        executor_stake_amount: u64,
-        /// Whether execution was TEE-verified
-        tee_verified: bool,
-        /// SHA-256 of TEE attestation document (None if no TEE)
-        tee_attestation_hash: Option<vector<u8>>,
-
-        // === 7. WHEN — Temporal (3) ===
-        /// When the original request was created (ms since epoch)
-        requested_at: u64,
-        /// When settlement was finalized (ms since epoch, set by Clock)
-        settled_at: u64,
-        /// Status: 0=settled, 1=disputed, 2=slashed
-        status: u8,
-
-        // === 8. CHAIN — Action Linkage (2) ===
-        /// AER that triggered this execution (for chained agent actions)
-        triggered_by: Option<ID>,
-        /// AER created as a result of this execution
-        triggered_action: Option<ID>,
+        requester: RequesterContext,
+        executor: ExecutorContext,
+        payment: PaymentContext,
+        inference: InferenceContext,
+        why: WhyContext,
+        trust: TrustContext,
+        time: TimeContext,
+        chain: ChainContext,
+        envelope: ActionEnvelope,
+        wake: WakeContext,
+        replay: ReplayContext,
     }
 
     // ========== Events ==========
 
-    /// Emitted when a new AI Execution Report is created
     public struct ExecutionReportCreated has copy, drop {
         request_id: u64,
         record_id: address,
         initiator: address,
         executor: address,
-        model_name: String,
+        event_class: u8,
+        action_type: String,
+        action_outcome: u8,
         payment_amount: u64,
-        executor_tier: u8,
-        tee_verified: bool,
         settled_at: u64,
     }
 
-    /// Emitted when policy version is updated
     public struct PolicyUpdated has copy, drop {
         new_version: u64,
     }
@@ -190,9 +279,7 @@ module baram_aer::aer {
     // ========== Init ==========
 
     fun init(ctx: &mut TxContext) {
-        let admin_cap = AdminCap {
-            id: object::new(ctx),
-        };
+        let admin_cap = AdminCap { id: object::new(ctx) };
         transfer::transfer(admin_cap, tx_context::sender(ctx));
 
         let registry = AERRegistry {
@@ -204,298 +291,311 @@ module baram_aer::aer {
         transfer::share_object(registry);
     }
 
-    // ========== Core Functions ==========
+    // ========== Core ==========
 
-    /// Create an AI Execution Report after settlement.
+    /// Create an AER by consuming a `SettlementReceipt` from baram::baram.
     ///
-    /// DEPRECATED: Always aborts with E_DEPRECATED (405).
-    /// Use create_report_with_receipt instead for receipt-verified audit trails.
-    /// Signature preserved for Sui compatible upgrade policy.
-    #[allow(unused_variable)]
-    public fun create_report(
-        registry: &mut AERRegistry,
-        // 1. WHO — Requester
-        request_id: u64,
-        initiator: address,
-        authorizer: address,
-        delegation_path: vector<address>,
-        // 2. WHO — Executor
-        executor: address,
-        executor_principal: Option<address>,
-        // 3. HOW MUCH
-        payment_amount: u64,
-        payment_token: u8,
-        executor_received: u64,
-        fee_detail: Option<String>,
-        budget_id: Option<ID>,
-        budget_remaining: Option<u64>,
-        // 4. WHAT
-        model_name: String,
-        model_metadata: Option<String>,
-        input_hash: vector<u8>,
-        output_hash: vector<u8>,
-        execution_time_ms: u64,
-        // 5. WHY
-        purpose: Option<String>,
-        policy_version: Option<u64>,
-        constraints: Option<String>,
-        // 6. HOW TRUSTWORTHY
-        executor_tier: u8,
-        executor_reputation: u64,
-        executor_stake_amount: u64,
-        tee_verified: bool,
-        tee_attestation_hash: Option<vector<u8>>,
-        // 7. WHEN
-        requested_at: u64,
-        // 8. CHAIN
-        triggered_by: Option<ID>,
-        triggered_action: Option<ID>,
-        // System
-        clock: &Clock,
-        ctx: &mut TxContext,
-    ) {
-        // DEPRECATED: Use create_report_with_receipt instead.
-        // This function has no access control — anyone can forge fake AER records.
-        abort E_DEPRECATED
-    }
-
-    /// Create an AI Execution Report by consuming a SettlementReceipt (hot-potato).
+    /// PTB flow:
+    ///   `baram::submit_proof_with_receipt` -> `aer::create_report_with_receipt`
     ///
-    /// Ensures every settlement produces an audit trail. The receipt is destroyed
-    /// here, satisfying Move's linearity requirement.
-    ///
-    /// PTB flow: submit_proof_with_receipt -> create_report_with_receipt
-    ///
-    /// Fields extracted from receipt: request_id, requester (-> authorizer),
-    /// executor, price (-> payment_amount), model (-> model_name),
-    /// result_hash (-> output_hash), execution_time_ms, settled_at
+    /// Fields drawn from the receipt: request_id, requester (=> authorizer),
+    /// executor, price (=> payment_amount/executor_received), model_name,
+    /// output_hash (=receipt.result_hash), execution_time_ms, settled_at.
+    /// Everything else is caller-supplied and validated below.
     public fun create_report_with_receipt(
         registry: &mut AERRegistry,
+        baram_registry: &baram::baram::BaramRegistry,
         receipt: baram::baram::SettlementReceipt,
-        // 1. WHO — Requester (authorizer comes from receipt as requester)
+        // Requester
         initiator: address,
         delegation_path: vector<address>,
-        // 2. WHO — Executor (executor comes from receipt; principal is optional)
+        // Executor
         executor_principal: Option<address>,
-        // 3. HOW MUCH (payment_amount comes from receipt price)
+        // Payment
         fee_detail: Option<String>,
         budget_id: Option<ID>,
         budget_remaining: Option<u64>,
-        // 4. WHAT (model_name, output_hash, execution_time_ms from receipt)
+        // Inference
         model_metadata: Option<String>,
         input_hash: vector<u8>,
-        // 5. WHY
+        // Why
         purpose: Option<String>,
         constraints: Option<String>,
-        // 6. HOW TRUSTWORTHY
+        // Trust
         executor_tier: u8,
         executor_reputation: u64,
         executor_stake_amount: u64,
         tee_verified: bool,
         tee_attestation_hash: Option<vector<u8>>,
-        // 7. WHEN (settled_at from receipt)
+        // When
         requested_at: u64,
-        // 8. CHAIN
+        // Chain
         triggered_by: Option<ID>,
         triggered_action: Option<ID>,
-        // System
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+        // Envelope
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+        // Wake
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+        // Replay
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        replay_extras_keys: vector<String>,
+        replay_extras_vals: vector<vector<u8>>,
         ctx: &mut TxContext,
     ) {
-        // Consume receipt — destroys the hot potato
-        let (request_id, requester, executor, price, model_name, output_hash, execution_time_ms, settled_at) =
-            baram::baram::consume_receipt(receipt);
+        // Consume receipt (destroys hot-potato). The witness gates the call
+        // in baram::baram so that no other module can destructure receipts
+        // and skip AER creation. See `AERWitness` doc comment.
+        let (
+            request_id,
+            requester,
+            receipt_executor,
+            price,
+            model_name,
+            output_hash,
+            execution_time_ms,
+            settled_at,
+        ) = baram::baram::consume_receipt(baram_registry, receipt, AERWitness {});
 
-        // Validate: caller must be the executor from the receipt
-        assert!(executor == tx_context::sender(ctx), E_EXECUTOR_MISMATCH);
-
-        // Validate: initiator must match the receipt's requester to prevent
-        // sending AER reports to arbitrary addresses
+        // The executor signing this tx must match the receipt.
+        assert!(receipt_executor == tx_context::sender(ctx), E_EXECUTOR_MISMATCH);
+        // The initiator must match the receipt's requester to prevent
+        // sending AER objects to arbitrary addresses.
         assert!(initiator == requester, E_INVALID_INITIATOR);
 
-        // Validate hashes
-        assert!(
-            vector::length(&input_hash) == HASH_LENGTH,
-            E_INVALID_INPUT_HASH,
-        );
-        assert!(
-            vector::length(&output_hash) == HASH_LENGTH,
-            E_INVALID_OUTPUT_HASH,
-        );
+        // Hash length checks
+        assert!(vector::length(&input_hash) == HASH_LENGTH, E_INVALID_INPUT_HASH);
+        assert!(vector::length(&output_hash) == HASH_LENGTH, E_INVALID_OUTPUT_HASH);
+        assert!(vector::length(&payload_hash) == HASH_LENGTH, E_INVALID_PAYLOAD_HASH);
+        assert!(vector::length(&prompt_template_hash) == HASH_LENGTH, E_INVALID_PROMPT_TEMPLATE_HASH);
+        if (option::is_some(&market_snapshot_hash)) {
+            assert!(
+                vector::length(option::borrow(&market_snapshot_hash)) == HASH_LENGTH,
+                E_INVALID_MARKET_SNAPSHOT_HASH,
+            );
+        };
+        if (option::is_some(&tee_attestation_hash)) {
+            assert!(
+                vector::length(option::borrow(&tee_attestation_hash)) == HASH_LENGTH,
+                E_INVALID_TEE_ATTESTATION_HASH,
+            );
+        };
 
-        // Validate delegation path depth
-        assert!(
-            vector::length(&delegation_path) <= MAX_DELEGATION_DEPTH,
-            E_DELEGATION_PATH_TOO_LONG,
-        );
+        // Intent id length
+        assert!(vector::length(&intent_id) == INTENT_ID_LENGTH, E_INVALID_INTENT_ID);
+        if (option::is_some(&parent_intent_id)) {
+            assert!(
+                vector::length(option::borrow(&parent_intent_id)) == INTENT_ID_LENGTH,
+                E_INVALID_PARENT_INTENT_ID,
+            );
+        };
+
+        // Enum range checks
+        assert!(event_class >= 1 && event_class <= EVENT_CLASS_MAX, E_INVALID_ENUM_VALUE);
+        assert!(action_outcome >= 1 && action_outcome <= OUTCOME_MAX, E_INVALID_ENUM_VALUE);
+        assert!(triggered_by_type >= 1 && triggered_by_type <= TRIGGER_MAX, E_INVALID_ENUM_VALUE);
+
+        // payload_codec must be exactly "bcs" in this schema version.
+        assert!(*string::as_bytes(&payload_codec) == PAYLOAD_CODEC_BCS, E_INVALID_PAYLOAD_CODEC);
+
+        // Size caps (DOS + PTB pure arg size protection)
+        assert!(vector::length(&payload_bytes) <= MAX_PAYLOAD_BYTES, E_PAYLOAD_TOO_LARGE);
+        assert!(string::length(&action_summary) <= MAX_ACTION_SUMMARY, E_ACTION_SUMMARY_TOO_LONG);
+
+        // action_type well-formedness: length 1..=64, ASCII printable, at least one dot.
+        validate_action_type(&action_type);
+
+        // Delegation depth
+        assert!(vector::length(&delegation_path) <= MAX_DELEGATION_DEPTH, E_DELEGATION_PATH_TOO_LONG);
+
+        // replay_extras length + per-entry caps. duplicate-key abort happens
+        // automatically inside vec_map::insert below.
+        let extras_len = vector::length(&replay_extras_keys);
+        assert!(extras_len == vector::length(&replay_extras_vals), E_INVALID_REPLAY_EXTRAS);
+        assert!(extras_len <= MAX_REPLAY_EXTRAS_KEYS, E_INVALID_REPLAY_EXTRAS);
+
+        // Build replay_extras VecMap. Caller is expected to have inserted keys
+        // in strict-ascending UTF-8 byte order; off-chain decoder verifies.
+        let mut replay_extras = vec_map::empty<String, vector<u8>>();
+        let mut i = 0;
+        while (i < extras_len) {
+            let key = *vector::borrow(&replay_extras_keys, i);
+            let val = *vector::borrow(&replay_extras_vals, i);
+            assert!(string::length(&key) <= MAX_REPLAY_EXTRAS_KEY_LEN, E_INVALID_REPLAY_EXTRAS);
+            assert!(vector::length(&val) <= MAX_REPLAY_EXTRAS_VAL_LEN, E_INVALID_REPLAY_EXTRAS);
+            // vec_map::insert aborts on duplicate key, providing canonical-set semantics.
+            vec_map::insert(&mut replay_extras, key, val);
+            i = i + 1;
+        };
+
+        // Strict-aborts on duplicate request_id (v1 silent-skip pattern intentionally dropped).
+        assert!(!table::contains(&registry.record_ids, request_id), E_DUPLICATE_REQUEST_ID);
 
         let report = AIExecutionReport {
             id: object::new(ctx),
             request_id,
-            // 1. WHO — Requester
-            initiator,
-            authorizer: requester,  // Budget owner or direct requester
-            delegation_path,
-            // 2. WHO — Executor
-            executor,
-            executor_principal,
-            // 3. HOW MUCH
-            payment_amount: price,
-            payment_token: TOKEN_NUSDC,  // Always NUSDC from baram escrow
-            executor_received: price,     // Full amount (no fee split yet)
-            fee_detail,
-            budget_id,
-            budget_remaining,
-            // 4. WHAT
-            model_name,
-            model_metadata,
-            input_hash,
-            output_hash,
-            execution_time_ms,
-            // 5. WHY
-            purpose,
-            policy_version: option::some(registry.policy_version),
-            constraints,
-            // 6. HOW TRUSTWORTHY
-            executor_tier,
-            executor_reputation,
-            executor_stake_amount,
-            tee_verified,
-            tee_attestation_hash,
-            // 7. WHEN
-            requested_at,
-            settled_at,
-            status: STATUS_SETTLED,
-            // 8. CHAIN
-            triggered_by,
-            triggered_action,
+            requester: RequesterContext {
+                initiator,
+                authorizer: requester,
+                delegation_path,
+            },
+            executor: ExecutorContext {
+                executor: receipt_executor,
+                executor_principal,
+            },
+            payment: PaymentContext {
+                payment_amount: price,
+                payment_token: TOKEN_NUSDC,
+                executor_received: price,
+                fee_detail,
+                budget_id,
+                budget_remaining,
+            },
+            inference: InferenceContext {
+                model_name,
+                model_metadata,
+                input_hash,
+                output_hash,
+                execution_time_ms,
+            },
+            why: WhyContext {
+                purpose,
+                policy_version: option::some(registry.policy_version),
+                constraints,
+            },
+            trust: TrustContext {
+                executor_tier,
+                executor_reputation,
+                executor_stake_amount,
+                tee_verified,
+                tee_attestation_hash,
+            },
+            time: TimeContext {
+                requested_at,
+                settled_at,
+                status: STATUS_SETTLED,
+            },
+            chain: ChainContext {
+                triggered_by,
+                triggered_action,
+                lineage: IntentLineage {
+                    intent_id,
+                    parent_intent_id,
+                    execution_id,
+                },
+            },
+            envelope: ActionEnvelope {
+                event_class,
+                action_type,
+                action_schema_version,
+                payload_codec,
+                payload_hash,
+                payload_bytes,
+                action_summary,
+                action_outcome,
+            },
+            wake: WakeContext {
+                triggered_by_type,
+                triggered_by_ref,
+            },
+            replay: ReplayContext {
+                model_version,
+                prompt_template_hash,
+                market_snapshot_hash,
+                replay_extras,
+            },
         };
 
         let record_id = object::id_address(&report);
 
-        // Track in registry
         registry.total_records = registry.total_records + 1;
-        if (!table::contains(&registry.record_ids, request_id)) {
-            table::add(&mut registry.record_ids, request_id, record_id);
-        };
+        table::add(&mut registry.record_ids, request_id, record_id);
 
-        // Emit event
         event::emit(ExecutionReportCreated {
             request_id,
             record_id,
             initiator,
-            executor,
-            model_name,
+            executor: receipt_executor,
+            event_class: report.envelope.event_class,
+            action_type: report.envelope.action_type,
+            action_outcome: report.envelope.action_outcome,
             payment_amount: price,
-            executor_tier,
-            tee_verified,
             settled_at,
         });
 
-        // Transfer to initiator as immutable proof
         transfer::transfer(report, initiator);
     }
 
-    // ========== Admin Functions ==========
+    // Validates that action_type is well-formed: 1..=64 bytes, all bytes in
+    // 0x20..=0x7E (ASCII printable), and contains at least one '.'.
+    fun validate_action_type(action_type: &String) {
+        let bytes = string::as_bytes(action_type);
+        let len = vector::length(bytes);
+        assert!(len >= 1 && len <= MAX_ACTION_TYPE_LEN, E_INVALID_ACTION_TYPE);
+        let mut dot_count: u64 = 0;
+        let mut i: u64 = 0;
+        while (i < len) {
+            let b = *vector::borrow(bytes, i);
+            assert!(b >= 0x20 && b <= 0x7E, E_INVALID_ACTION_TYPE);
+            if (b == 0x2E /* '.' */) {
+                dot_count = dot_count + 1;
+            };
+            i = i + 1;
+        };
+        assert!(dot_count >= 1, E_INVALID_ACTION_TYPE);
+    }
 
-    /// Increment policy version. Called when governance parameters change.
+    // ========== Admin ==========
+
+    /// Bump the registry's policy version. Snapshotted into future AERs' why.policy_version.
     public fun update_policy(
         _admin: &AdminCap,
         registry: &mut AERRegistry,
-        _ctx: &mut TxContext,
     ) {
         registry.policy_version = registry.policy_version + 1;
-
-        event::emit(PolicyUpdated {
-            new_version: registry.policy_version,
-        });
+        event::emit(PolicyUpdated { new_version: registry.policy_version });
     }
 
-    // ========== View Functions ==========
+    // ========== Registry views ==========
 
-    // --- Registry views ---
-
-    public fun get_total_records(registry: &AERRegistry): u64 {
-        registry.total_records
-    }
-
-    public fun get_policy_version(registry: &AERRegistry): u64 {
-        registry.policy_version
-    }
-
+    public fun get_total_records(registry: &AERRegistry): u64 { registry.total_records }
+    public fun get_policy_version(registry: &AERRegistry): u64 { registry.policy_version }
     public fun has_record(registry: &AERRegistry, request_id: u64): bool {
         table::contains(&registry.record_ids, request_id)
     }
-
     public fun get_record_id(registry: &AERRegistry, request_id: u64): address {
         *table::borrow(&registry.record_ids, request_id)
     }
 
-    // --- Report field accessors ---
+    // ========== AER views (per category) ==========
 
-    // 1. WHO — Requester
-    public fun get_request_id(report: &AIExecutionReport): u64 { report.request_id }
-    public fun get_initiator(report: &AIExecutionReport): address { report.initiator }
-    public fun get_authorizer(report: &AIExecutionReport): address { report.authorizer }
-    public fun get_delegation_path(report: &AIExecutionReport): &vector<address> { &report.delegation_path }
+    public fun request_id(r: &AIExecutionReport): u64 { r.request_id }
+    public fun requester(r: &AIExecutionReport): &RequesterContext { &r.requester }
+    public fun executor(r: &AIExecutionReport): &ExecutorContext { &r.executor }
+    public fun payment(r: &AIExecutionReport): &PaymentContext { &r.payment }
+    public fun inference(r: &AIExecutionReport): &InferenceContext { &r.inference }
+    public fun why(r: &AIExecutionReport): &WhyContext { &r.why }
+    public fun trust(r: &AIExecutionReport): &TrustContext { &r.trust }
+    public fun time(r: &AIExecutionReport): &TimeContext { &r.time }
+    public fun chain(r: &AIExecutionReport): &ChainContext { &r.chain }
+    public fun envelope(r: &AIExecutionReport): &ActionEnvelope { &r.envelope }
+    public fun wake(r: &AIExecutionReport): &WakeContext { &r.wake }
+    public fun replay(r: &AIExecutionReport): &ReplayContext { &r.replay }
 
-    // 2. WHO — Executor
-    public fun get_executor(report: &AIExecutionReport): address { report.executor }
-    public fun get_executor_principal(report: &AIExecutionReport): &Option<address> { &report.executor_principal }
-
-    // 3. HOW MUCH
-    public fun get_payment_amount(report: &AIExecutionReport): u64 { report.payment_amount }
-    public fun get_payment_token(report: &AIExecutionReport): u8 { report.payment_token }
-    public fun get_executor_received(report: &AIExecutionReport): u64 { report.executor_received }
-    public fun get_fee_detail(report: &AIExecutionReport): &Option<String> { &report.fee_detail }
-    public fun get_budget_id(report: &AIExecutionReport): &Option<ID> { &report.budget_id }
-    public fun get_budget_remaining(report: &AIExecutionReport): &Option<u64> { &report.budget_remaining }
-
-    // 4. WHAT
-    public fun get_model_name(report: &AIExecutionReport): String { report.model_name }
-    public fun get_model_metadata(report: &AIExecutionReport): &Option<String> { &report.model_metadata }
-    public fun get_execution_time_ms(report: &AIExecutionReport): u64 { report.execution_time_ms }
-
-    // 5. WHY
-    public fun get_purpose(report: &AIExecutionReport): &Option<String> { &report.purpose }
-    public fun get_constraints(report: &AIExecutionReport): &Option<String> { &report.constraints }
-
-    // 6. HOW TRUSTWORTHY
-    public fun get_executor_tier(report: &AIExecutionReport): u8 { report.executor_tier }
-    public fun get_executor_reputation(report: &AIExecutionReport): u64 { report.executor_reputation }
-    public fun get_executor_stake_amount(report: &AIExecutionReport): u64 { report.executor_stake_amount }
-    public fun get_tee_verified(report: &AIExecutionReport): bool { report.tee_verified }
-
-    // 7. WHEN
-    public fun get_requested_at(report: &AIExecutionReport): u64 { report.requested_at }
-    public fun get_settled_at(report: &AIExecutionReport): u64 { report.settled_at }
-    public fun get_status(report: &AIExecutionReport): u8 { report.status }
-
-    // --- Derived helpers ---
-
-    /// Check if this was a delegated (budget-funded) execution
-    public fun is_delegated(report: &AIExecutionReport): bool {
-        option::is_some(&report.budget_id)
-    }
-
-    /// Check if this was a TEE-verified execution
-    public fun is_tee_verified(report: &AIExecutionReport): bool {
-        report.tee_verified
-    }
-
-    /// Check if execution has delegation chain
-    public fun has_delegation(report: &AIExecutionReport): bool {
-        !vector::is_empty(&report.delegation_path)
-    }
-
-    /// Check if this execution is part of a chain
-    public fun is_chained(report: &AIExecutionReport): bool {
-        option::is_some(&report.triggered_by) || option::is_some(&report.triggered_action)
-    }
-
-    // ========== Test Functions ==========
+    // ========== Test helpers ==========
 
     #[test_only]
-    public fun init_for_testing(ctx: &mut TxContext) {
-        init(ctx);
-    }
+    public fun init_for_testing(ctx: &mut TxContext) { init(ctx); }
 }
