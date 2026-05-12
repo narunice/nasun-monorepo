@@ -13,7 +13,7 @@ import {
 } from "./usePadoScoreLeaderboard";
 
 const PAGE_SIZE = 50;
-const MAX_RANK = 2000;
+const MAX_RANK = 1000;
 
 const PROFILE_API = (import.meta.env.VITE_USER_PROFILE_API as string | undefined) ?? "";
 const PUBLIC_AVATARS_BASE_URL =

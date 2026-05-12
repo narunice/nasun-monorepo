@@ -830,12 +830,14 @@ function handleScoreLeaderboardWeekly(
   const totalTraders = Math.max(0, getWeeklyScoreCount(weekId) - filteredOut);
   const weekStartMs = weekIdToStartMs(weekId);
   const prevWeekStartMs = weekStartMs - 7 * 24 * 60 * 60 * 1000;
-  // Live count with current exclusion set (banned + admin + known bots).
-  // Previously cached at write time, which froze each week's count at the
-  // ban-list state when it was aggregated and made older weeks look inflated
-  // versus newer weeks as the ban list grew. trade_fills.timestamp_ms is
-  // indexed; window scans are cheap.
-  const totalParticipants = countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs, excluded);
+  // Participants count counts every real human who traded that week, including
+  // accounts that were later banned. Only admin/known-bot wallets are stripped
+  // since they are not participants. trade_fills.timestamp_ms is indexed;
+  // window scans are cheap.
+  const participantExcluded = new Set(
+    [...adminAddresses, ...KNOWN_BOT_ADDRESSES].map((a) => a.toLowerCase()),
+  );
+  const totalParticipants = countWeeklyUniqueTraders(prevWeekStartMs, weekStartMs, participantExcluded);
   const addresses = rows.map((r) => r.address);
   if (addresses.length > 0) ensureProfilesCached(addresses).catch((err: unknown) => {
     console.error('[ScoreLeaderboardWeekly] ensureProfilesCached error:', (err as Error).message);
