@@ -81,6 +81,7 @@ describe('Capability client preflight', () => {
     }).toBase64();
     const getObject = vi.fn().mockResolvedValue({
       data: {
+        type: '0xdeadbeef::capability::Capability',
         bcs: { dataType: 'moveObject', bcsBytes: capBytes },
         owner: { Shared: { initial_shared_version: 42 } },
       },
@@ -96,12 +97,56 @@ describe('Capability client preflight', () => {
   it('fetchCapability rejects non-Shared owners', async () => {
     const getObject = vi.fn().mockResolvedValue({
       data: {
+        type: '0xdeadbeef::capability::Capability',
         bcs: { dataType: 'moveObject', bcsBytes: 'AA==' },
         owner: { AddressOwner: '0xabc' },
       },
     });
     const client = { getObject } as unknown as Parameters<typeof fetchCapability>[0];
     await expect(fetchCapability(client, '0x01')).rejects.toThrow(/not a Shared object/);
+  });
+
+  it('fetchCapability rejects an object whose Move type is not ::capability::Capability', async () => {
+    const getObject = vi.fn().mockResolvedValue({
+      data: {
+        type: '0xdeadbeef::other_module::Imposter',
+        bcs: { dataType: 'moveObject', bcsBytes: 'AA==' },
+        owner: { Shared: { initial_shared_version: 1 } },
+      },
+    });
+    const client = { getObject } as unknown as Parameters<typeof fetchCapability>[0];
+    await expect(fetchCapability(client, '0x01')).rejects.toThrow(/unexpected type/);
+  });
+
+  it('fetchCapability rejects when expectedPackageId disagrees with on-chain type', async () => {
+    const capBytes = CapabilityBcs.serialize({
+      id: '0x0000000000000000000000000000000000000000000000000000000000000001',
+      owner: '0x0000000000000000000000000000000000000000000000000000000000000abc',
+      version: 1n,
+      pause_mode: 0,
+      revoked: false,
+      allowed_actions: ['trade.swap.v1'],
+      allowed_assets: [],
+      allowed_targets: [],
+      risk_limits: {
+        max_notional_per_action: 1n,
+        max_daily_loss: 1n,
+        max_slippage_bps: 1,
+        stop_loss_bps: 1,
+        take_profit_bps: 1,
+      },
+    }).toBase64();
+    const getObject = vi.fn().mockResolvedValue({
+      data: {
+        type: '0xrotated_pkg::capability::Capability',
+        bcs: { dataType: 'moveObject', bcsBytes: capBytes },
+        owner: { Shared: { initial_shared_version: 1 } },
+      },
+    });
+    const client = { getObject } as unknown as Parameters<typeof fetchCapability>[0];
+    await expect(
+      fetchCapability(client, '0x01', { expectedPackageId: '0xexpected_pkg' }),
+    ).rejects.toThrow(/does not match expected/);
   });
 
   it('preflight catches pause, owner mismatch, version, action, payment in order', () => {
