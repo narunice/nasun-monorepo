@@ -72,6 +72,7 @@ function happyAER(overrides?: Partial<AERReport>): AERReport {
     why: {
       purpose: null,
       policyVersion: 1n,
+      capabilityVersion: null,
       constraints: null,
     },
     trust: {

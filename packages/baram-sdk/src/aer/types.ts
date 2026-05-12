@@ -78,6 +78,10 @@ export interface InferenceContext {
 export interface WhyContext {
   purpose: string | null;
   policyVersion: bigint | null;
+  // Plan B: snapshotted from cap.version when the gated AER entry was used.
+  // null on the ungated (settlement-only) path. Wire-position: between
+  // policyVersion and constraints. Do not reorder.
+  capabilityVersion: bigint | null;
   constraints: string | null;
 }
 

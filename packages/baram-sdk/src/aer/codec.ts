@@ -85,6 +85,9 @@ const InferenceContext = bcs.struct('InferenceContext', {
 const WhyContext = bcs.struct('WhyContext', {
   purpose: OptionString,
   policy_version: OptionU64,
+  // Plan B: snapshotted cap.version on the gated path, None on ungated.
+  // Wire-position between policy_version and constraints - do not reorder.
+  capability_version: OptionU64,
   constraints: OptionString,
 });
 
@@ -324,6 +327,8 @@ function normalizeRaw(raw: ReturnType<typeof AIExecutionReportBcs.parse>): AERRe
     why: {
       purpose: raw.why.purpose,
       policyVersion: raw.why.policy_version === null ? null : BigInt(raw.why.policy_version),
+      capabilityVersion:
+        raw.why.capability_version === null ? null : BigInt(raw.why.capability_version),
       constraints: raw.why.constraints,
     },
     trust: {
@@ -425,6 +430,8 @@ export function encodeAER(aer: AERReport): Uint8Array {
     why: {
       purpose: aer.why.purpose,
       policy_version: aer.why.policyVersion === null ? null : aer.why.policyVersion.toString(),
+      capability_version:
+        aer.why.capabilityVersion === null ? null : aer.why.capabilityVersion.toString(),
       constraints: aer.why.constraints,
     },
     trust: {
