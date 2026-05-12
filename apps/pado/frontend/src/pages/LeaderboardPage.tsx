@@ -32,7 +32,7 @@ import type {
 } from "../features/leaderboard";
 
 const PAGE_SIZE = 50;
-const MAX_RANK = 2000;
+const MAX_RANK = 1000;
 const MAX_PAGES = Math.ceil(MAX_RANK / PAGE_SIZE); // 40
 
 const MODE_DESCRIPTIONS: Record<LeaderboardMode, string> = {

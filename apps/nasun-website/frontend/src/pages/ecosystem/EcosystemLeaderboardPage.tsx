@@ -29,7 +29,7 @@ import {
 } from "./useEcosystemLeaderboard";
 
 const PAGE_SIZE = 50;
-const MAX_RANK = 2000;
+const MAX_RANK = 1000;
 const X_HANDLE_RE = /^[A-Za-z0-9_]{1,50}$/;
 
 function isValidXHandle(h: string | null | undefined): h is string {
