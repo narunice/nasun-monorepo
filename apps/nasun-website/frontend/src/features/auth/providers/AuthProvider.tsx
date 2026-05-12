@@ -446,10 +446,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSessionCookie();
       setUser(userData);
 
-      // Auto-register first wallet (fire-and-forget; 409 = already registered = OK)
+      // Auto-register first wallet with retry. Non-blocking to the login UI
+      // (we don't await), but retried with backoff so a transient
+      // Lambda/API hiccup doesn't leave a freshly-signed-up user without a
+      // row in USER_WALLETS_TABLE — which would later block Alliance NFT
+      // mint with a confusing "Register a Nasun wallet in My Account" copy.
+      // 409 (already registered) is treated as success.
       if (walletProof && proofIssuedAt && cognitoToken) {
-        registerWallet(walletAddress.toLowerCase(), walletProof, proofIssuedAt, cognitoToken)
-          .catch((e) => logger.warn("Auto-register wallet failed (non-blocking):", e));
+        const addr = walletAddress.toLowerCase();
+        const proof = walletProof;
+        const issuedAt = proofIssuedAt;
+        const token = cognitoToken;
+        void (async () => {
+          const MAX_ATTEMPTS = 3;
+          for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            try {
+              await registerWallet(addr, proof, issuedAt, token);
+              if (attempt > 0) {
+                logger.log("Auto-register wallet succeeded on retry", { attempt });
+              }
+              return;
+            } catch (e) {
+              const msg = String((e as Error)?.message ?? e);
+              if (/\b409\b/.test(msg)) return;
+              if (attempt === MAX_ATTEMPTS - 1) {
+                logger.warn(`Auto-register wallet failed after ${MAX_ATTEMPTS} attempts:`, e);
+                return;
+              }
+              await new Promise((r) => setTimeout(r, 500 * 2 ** attempt));
+            }
+          }
+        })();
       }
 
       logger.log("Wallet sign-in successful:", { identityId, walletAddress, provider });

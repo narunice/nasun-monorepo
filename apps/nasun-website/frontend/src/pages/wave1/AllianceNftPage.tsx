@@ -23,6 +23,7 @@ import { SectionLayout } from "@/components/layout/SectionLayout";
 import { ButtonV3 } from "@/components/ui/button-v3";
 import { Spinner } from "@/components/ui";
 import { useEcosystemStatus } from "@/hooks/useEcosystemStatus";
+import { useUjuWalletRegistration } from "@/sections/uju/hooks/useUjuWalletRegistration";
 import AllianceNftHeroSection from "@/sections/wave1/alliance-nft/AllianceNftHeroSection";
 
 const AllianceNftPage = () => {
@@ -30,10 +31,43 @@ const AllianceNftPage = () => {
   const { user } = useAuth();
   const cognitoToken = user?.cognitoToken;
 
-  const { isMinted, isLoading, data, wallets, isConfigured } =
+  const { isMinted, isLoading, data, wallets, isConfigured, refetch: refetchAlliance } =
     useAllianceMintStatus(cognitoToken);
   const ecosystem = useEcosystemStatus(cognitoToken ?? undefined);
   const allianceIsActive = !!ecosystem.getActivation("alliance");
+
+  // Auto-recover when the user reaches this page logged-in but with no
+  // registered wallet (typically caused by the AuthProvider auto-register
+  // failing silently on signup). We attempt a re-registration once using
+  // the current wallet signer; on success we refetch alliance status so
+  // the page falls through to the normal mint UI without a manual round
+  // trip through My Account.
+  const walletReg = useUjuWalletRegistration();
+  const autoRegisterTriedRef = useRef(false);
+  const noWalletRegistered =
+    !!user && !isLoading && wallets.length === 0 && !isMinted && isConfigured;
+
+  useEffect(() => {
+    if (
+      noWalletRegistered &&
+      walletReg.hasSigner &&
+      !walletReg.isRegistering &&
+      !autoRegisterTriedRef.current
+    ) {
+      autoRegisterTriedRef.current = true;
+      void (async () => {
+        try {
+          await walletReg.registerCurrentWallet();
+          await refetchAlliance();
+        } catch (e) {
+          console.warn("Auto-register on AllianceNftPage failed:", e);
+        }
+      })();
+    }
+  }, [noWalletRegistered, walletReg, refetchAlliance]);
+
+  const autoRegisterInFlight =
+    noWalletRegistered && walletReg.hasSigner && walletReg.isRegistering;
 
   const [showMintDialog, setShowMintDialog] = useState(false);
   const [selectedImage, setSelectedImage] = useState<number | null>(null);
@@ -133,7 +167,9 @@ const AllianceNftPage = () => {
             </div>
           )}
 
-          {/* State 2: Logged in but no wallet */}
+          {/* State 2: Logged in but no wallet registered.
+              We try to auto-register the current wallet (see effect above)
+              before falling back to the manual My Account route. */}
           {user &&
             !isLoading &&
             wallets.length === 0 &&
@@ -151,17 +187,28 @@ const AllianceNftPage = () => {
                     />
                   ))}
                 </div>
-                <p className="text-nasun-white/80 text-sm text-center">
-                  Register a Nasun wallet in My Account to mint.
-                </p>
-                <ButtonV3
-                  variant="gradient"
-                  size="xl"
-                  className="!px-12 !py-4 !text-xl !font-medium"
-                  onClick={() => navigate("/my-account")}
-                >
-                  Go to My Account
-                </ButtonV3>
+                {autoRegisterInFlight ? (
+                  <div className="flex flex-col items-center gap-3">
+                    <Spinner size="md" />
+                    <p className="text-nasun-white/80 text-sm text-center">
+                      Registering your Nasun wallet...
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-nasun-white/80 text-sm text-center">
+                      Register a Nasun wallet in My Account to mint.
+                    </p>
+                    <ButtonV3
+                      variant="gradient"
+                      size="xl"
+                      className="!px-12 !py-4 !text-xl !font-medium"
+                      onClick={() => navigate("/my-account")}
+                    >
+                      Go to My Account
+                    </ButtonV3>
+                  </>
+                )}
               </div>
             )}
 
