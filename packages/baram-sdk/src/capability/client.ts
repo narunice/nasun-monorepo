@@ -14,19 +14,28 @@
 import type { SuiClient } from '@mysten/sui/client';
 
 import { CapabilityBcs, decodeCapability } from './codec';
-import type { Capability } from './types';
+import type { Capability, CapabilityRef } from './types';
 
 /**
- * Fetch + decode a Capability shared object by id.
+ * Fetch + decode a Capability shared object by id, plus the shared-object
+ * reference fields the host needs to compose a PTB with `mutable: false`.
  *
- * Uses `showBcs: true` so the SDK can decode deterministically rather than
- * going through Sui's JSON repr. Throws if the object is gone, not a
- * Capability, or BCS is missing in the response.
+ * Returns `{ cap, objectId, initialSharedVersion }`. `initialSharedVersion` is
+ * the version the object was first shared at; Sui needs it whenever the PTB
+ * wants an explicit `tx.sharedObjectRef({ mutable: false })` rather than the
+ * fullnode-inferred `tx.object(id)` form.
+ *
+ * Throws if the object is gone, not a Capability, BCS is missing, or the
+ * owner is not a Shared owner (defensive: a Capability that lost its Shared
+ * owner is unusable and likely indicates an indexer-side data error).
  */
-export async function fetchCapability(client: SuiClient, capId: string): Promise<Capability> {
+export async function fetchCapability(
+  client: SuiClient,
+  capId: string
+): Promise<CapabilityRef> {
   const resp = await client.getObject({
     id: capId,
-    options: { showBcs: true, showType: true },
+    options: { showBcs: true, showType: true, showOwner: true },
   });
   if (resp.error || !resp.data) {
     throw new Error(`Capability ${capId} not found: ${JSON.stringify(resp.error)}`);
@@ -35,11 +44,23 @@ export async function fetchCapability(client: SuiClient, capId: string): Promise
   if (!bcsData || bcsData.dataType !== 'moveObject') {
     throw new Error(`Capability ${capId} has no BCS data on response`);
   }
-  // `bcsBytes` is base64 in @mysten/sui's response. Convert via the same
-  // helper @mysten/sui ships internally; using atob+Uint8Array keeps the SDK
-  // dep-light.
+  const owner = resp.data.owner;
+  // Sui owner shape: 'Immutable' | 'AddressOwner' | 'ObjectOwner' |
+  // { Shared: { initial_shared_version: number } }. We only support Shared.
+  const sharedOwner =
+    owner && typeof owner === 'object' && 'Shared' in owner ? owner.Shared : null;
+  if (!sharedOwner) {
+    throw new Error(`Capability ${capId} is not a Shared object: ${JSON.stringify(owner)}`);
+  }
+  // `bcsBytes` is base64 in @mysten/sui's response. Convert via atob+Uint8Array
+  // to keep the SDK dep-light.
   const raw = base64ToBytes(bcsData.bcsBytes);
-  return decodeCapability(raw);
+  const cap = decodeCapability(raw);
+  return {
+    cap,
+    objectId: capId,
+    initialSharedVersion: BigInt(sharedOwner.initial_shared_version),
+  };
 }
 
 function base64ToBytes(b64: string): Uint8Array {

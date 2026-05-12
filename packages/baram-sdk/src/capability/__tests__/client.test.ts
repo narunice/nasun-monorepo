@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { checkActionAllowed, checkPaymentAllowed, preflight } from '../client';
+import { CapabilityBcs } from '../codec';
+import { checkActionAllowed, checkPaymentAllowed, fetchCapability, preflight } from '../client';
 import type { Capability } from '../types';
 
 function makeCap(overrides: Partial<Capability> = {}): Capability {
@@ -58,6 +59,49 @@ describe('Capability client preflight', () => {
       expectedVersion: 1n,
     });
     expect(res).toEqual({ ok: false, reason: 'revoked' });
+  });
+
+  it('fetchCapability returns cap body + initialSharedVersion from Shared owner', async () => {
+    const capBytes = CapabilityBcs.serialize({
+      id: '0x0000000000000000000000000000000000000000000000000000000000000001',
+      owner: '0x0000000000000000000000000000000000000000000000000000000000000abc',
+      version: 7n,
+      pause_mode: 0,
+      revoked: false,
+      allowed_actions: ['trade.swap.v1'],
+      allowed_assets: [{ name: 'pkg::nusdc::NUSDC' }],
+      allowed_targets: ['0x0000000000000000000000000000000000000000000000000000000000000def'],
+      risk_limits: {
+        max_notional_per_action: 100n,
+        max_daily_loss: 1000n,
+        max_slippage_bps: 100,
+        stop_loss_bps: 200,
+        take_profit_bps: 500,
+      },
+    }).toBase64();
+    const getObject = vi.fn().mockResolvedValue({
+      data: {
+        bcs: { dataType: 'moveObject', bcsBytes: capBytes },
+        owner: { Shared: { initial_shared_version: 42 } },
+      },
+    });
+    const client = { getObject } as unknown as Parameters<typeof fetchCapability>[0];
+    const ref = await fetchCapability(client, '0x01');
+    expect(ref.objectId).toBe('0x01');
+    expect(ref.initialSharedVersion).toBe(42n);
+    expect(ref.cap.version).toBe(7n);
+    expect(ref.cap.owner).toBe('0x0000000000000000000000000000000000000000000000000000000000000abc');
+  });
+
+  it('fetchCapability rejects non-Shared owners', async () => {
+    const getObject = vi.fn().mockResolvedValue({
+      data: {
+        bcs: { dataType: 'moveObject', bcsBytes: 'AA==' },
+        owner: { AddressOwner: '0xabc' },
+      },
+    });
+    const client = { getObject } as unknown as Parameters<typeof fetchCapability>[0];
+    await expect(fetchCapability(client, '0x01')).rejects.toThrow(/not a Shared object/);
   });
 
   it('preflight catches pause, owner mismatch, version, action, payment in order', () => {
