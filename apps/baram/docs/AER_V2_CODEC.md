@@ -24,9 +24,9 @@ AIExecutionReport {
 }
 ```
 
-Each sub-struct's order is fixed in §1.1-§1.4 of
-[fuzzy-growing-piglet.md](../../../.claude/plans/fuzzy-growing-piglet.md) and
-in the Move source. Re-read the Move source when in doubt.
+Each sub-struct's field order is fixed in the Move source. When in doubt,
+read `apps/baram/contracts-aer/sources/aer.move` directly - the declared
+field order there is the canonical wire order, full stop.
 
 ---
 
@@ -62,8 +62,13 @@ The off-chain codec MUST define both layers explicitly. `replay_extras` uses
 
 ### Canonical key ordering
 
-Writers MUST insert keys in **strict-ascending UTF-8 byte order**
-(`Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8')) < 0`).
+Writers MUST insert keys in **strict-ascending UTF-8 byte order**: encode
+each key as UTF-8 bytes, compare byte by byte, and require strictly less
+than. The reference implementation is `compareKeysCanonical(a, b)` in
+`@nasun/baram-sdk` (`packages/baram-sdk/src/aer/helpers.ts`), which uses
+`TextEncoder` to produce the UTF-8 byte sequence and does a manual byte
+comparison. In Node-style runtimes `Buffer.compare(Buffer.from(a, 'utf8'),
+Buffer.from(b, 'utf8'))` is equivalent.
 
 This is **not** enforced on-chain. The Move entry checks length cap + per-key
 size cap + duplicate-key abort (the latter falls out of `vec_map::insert`),
@@ -72,8 +77,7 @@ throw `AER_NONCANONICAL_REPLAY_EXTRAS` if violated. Indexers SHOULD drop the
 AER from canonical projections on violation and surface it as quarantined.
 
 `localeCompare`, JS `<`, and `Array.prototype.sort` (which uses locale by
-default in non-V8 environments) are forbidden. Use a byte-wise comparator
-helper such as `compareKeysCanonical(a, b)` (provided by `@nasun/baram-sdk`).
+default in non-V8 environments) are forbidden.
 
 ---
 
@@ -135,7 +139,7 @@ This lets the schema evolve additively without breaking deployed decoders.
 
 Recommended form: `<domain>.<verb>.v<n>` (e.g., `trade.swap.v1`). The Move
 layer does not enforce vendor prefixes; vendor namespace governance is
-deferred to Plan F (see §9 below).
+deferred to Plan F (see §9).
 
 ### Registry (Plan A - 1차 공개)
 
@@ -225,7 +229,7 @@ Nasun/Baram default namespace by convention.
 
 ---
 
-## 9.5. Witness-gated receipt consumption (M1 fix, 2026-05-12)
+## 10. Witness-gated receipt consumption (M1 fix, 2026-05-12)
 
 The invariant **economic settlement ⇔ canonical AER existence** is enforced at
 the Move contract layer:
@@ -255,7 +259,7 @@ intended fail-closed behavior.
 
 ---
 
-## 10. Canonical event boundary (Foundation 결정 7)
+## 11. Canonical event boundary (Foundation 결정 7)
 
 The host decides whether to emit an AER. AER MUST be emitted iff one or
 more of the following hold:
@@ -292,7 +296,7 @@ Per-event-class normative bindings:
 
 ---
 
-## 11. Enum append-only
+## 12. Enum append-only
 
 Re-emphasis (see §6): enum values for `event_class`, `action_outcome`, and
 `triggered_by_type` are append-only forever. Deprecating a value is
@@ -301,7 +305,7 @@ decoders and historic AERs.
 
 ---
 
-## 12. Object explosion + payload overflow future direction
+## 13. Object explosion + payload overflow future direction
 
 The current model is AER-per-event. If cognition density spikes or single
 reasoning bodies exceed the 8 KB `payload_bytes` cap, the following options
@@ -330,7 +334,7 @@ plus the off-chain blob.
 
 ---
 
-## 13. Forward-compat handling for decoders
+## 14. Forward-compat handling for decoders
 
 - Unknown `action_type` → return raw `payload_bytes`. Do not throw.
 - Unknown `event_class` → surface as `"unknown"`. Do not throw.
@@ -343,7 +347,7 @@ The contract is the source of truth for validation. Decoders should
 
 ---
 
-## 14. Indexer storage hints
+## 15. Indexer storage hints
 
 For PostgreSQL projections:
 
@@ -363,7 +367,7 @@ plans wire up the projections.
 
 ---
 
-## 15. References
+## 16. References
 
 - Move source: `apps/baram/contracts-aer/sources/aer.move`
 - Move tests: `apps/baram/contracts-aer/tests/aer_test.move`

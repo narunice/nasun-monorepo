@@ -26,14 +26,12 @@ module baram_aer::aer {
     use std::string::{Self, String};
 
     // ========== Error Codes ==========
-    #[allow(unused_const)]
-    const E_NOT_ADMIN: u64 = 400;
+    // Codes 400 and 405 are reserved (formerly E_NOT_ADMIN and E_DEPRECATED in
+    // v1) and intentionally left unused for forward-compat audit trails.
     const E_INVALID_INPUT_HASH: u64 = 401;
     const E_INVALID_OUTPUT_HASH: u64 = 402;
     const E_DELEGATION_PATH_TOO_LONG: u64 = 403;
     const E_EXECUTOR_MISMATCH: u64 = 404;
-    #[allow(unused_const)]
-    const E_DEPRECATED: u64 = 405;
     const E_INVALID_INITIATOR: u64 = 406;
     const E_INVALID_PAYLOAD_HASH: u64 = 407;
     const E_INVALID_PROMPT_TEMPLATE_HASH: u64 = 408;
@@ -124,7 +122,7 @@ module baram_aer::aer {
     /// values - never producing an AER. That bypass would break the core
     /// "economic settlement <=> canonical AER existence" invariant.
     ///
-    /// See `apps/baram/docs/AER_V2_CODEC.md` §9.5.
+    /// See `apps/baram/docs/AER_V2_CODEC.md` §10.
     public struct AERWitness has drop {}
 
     // ========== Admin & Registry ==========
@@ -161,6 +159,11 @@ module baram_aer::aer {
 
     public struct PaymentContext has store, copy, drop {
         payment_amount: u64,
+        // Reserved for future multi-token settlement. Currently always set to
+        // `TOKEN_NUSDC` by `create_report_with_receipt` since `SettlementReceipt`
+        // only carries NUSDC payments. Caller cannot supply this directly; do
+        // not interpret a non-NUSDC value as a real signal until the
+        // SettlementReceipt schema threads the tag through.
         payment_token: u8,
         executor_received: u64,
         fee_detail: Option<String>,
@@ -457,6 +460,8 @@ module baram_aer::aer {
             },
             payment: PaymentContext {
                 payment_amount: price,
+                // SettlementReceipt currently only carries NUSDC; revisit when
+                // the receipt schema threads a token tag (Plan B+ territory).
                 payment_token: TOKEN_NUSDC,
                 executor_received: price,
                 fee_detail,
@@ -598,4 +603,13 @@ module baram_aer::aer {
 
     #[test_only]
     public fun init_for_testing(ctx: &mut TxContext) { init(ctx); }
+
+    #[test_only]
+    public fun why_policy_version(w: &WhyContext): Option<u64> { w.policy_version }
+
+    #[test_only]
+    public fun time_requested_at(t: &TimeContext): u64 { t.requested_at }
+
+    #[test_only]
+    public fun time_settled_at(t: &TimeContext): u64 { t.settled_at }
 }

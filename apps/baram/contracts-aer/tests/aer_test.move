@@ -509,6 +509,11 @@ module baram_aer::aer_test {
     public struct ForeignWitness has drop {}
 
     #[test]
+    // abort_code 11 = baram::baram::E_INVALID_AER_WITNESS. Move 2024
+    // expected_failure attributes cannot resolve a constant from another
+    // module nor a `location = baram::baram` path when the package alias
+    // and module name collide. Keep this literal in sync with baram.move
+    // if E_INVALID_AER_WITNESS ever moves.
     #[expected_failure(abort_code = 11)]
     fun rejects_consume_receipt_with_foreign_witness() {
         let mut scenario = setup();
@@ -538,6 +543,7 @@ module baram_aer::aer_test {
     /// AERWitness path. This protects against a misconfigured deployment
     /// where settlement could complete before AER wiring is in place.
     #[test]
+    // abort_code 11 = baram::baram::E_INVALID_AER_WITNESS (see comment above).
     #[expected_failure(abort_code = 11)]
     fun rejects_consume_receipt_when_authority_unset() {
         let mut scenario = ts::begin(ADMIN);
@@ -577,6 +583,173 @@ module baram_aer::aer_test {
             option::some(option::some(bad)),
             option::none(), option::none(),
         );
+        ts::end(scenario);
+    }
+
+    // Issues an AER with overridable requested_at and settled_at. The settled_at
+    // is sourced from the SettlementReceipt; requested_at is a direct caller
+    // argument. Used by the timestamp-edge tests below.
+    fun call_create_with_timestamps(
+        scenario: &mut ts::Scenario,
+        request_id: u64,
+        requested_at: u64,
+        settled_at: u64,
+    ) {
+        ts::next_tx(scenario, EXECUTOR);
+        let mut registry = ts::take_shared<AERRegistry>(scenario);
+        let baram_registry = ts::take_shared<BaramRegistry>(scenario);
+        let ctx = ts::ctx(scenario);
+
+        let receipt = baram::new_settlement_receipt_for_testing(
+            request_id,
+            REQUESTER,
+            EXECUTOR,
+            1_000_000,
+            string::utf8(b"llama-3.3-70b"),
+            hash32(0xAA),
+            5_000,
+            settled_at,
+        );
+
+        aer::create_report_with_receipt(
+            &mut registry,
+            &baram_registry,
+            receipt,
+            REQUESTER,
+            vector::empty<address>(),
+            option::none<address>(),
+            option::none<string::String>(),
+            option::none<sui::object::ID>(),
+            option::none<u64>(),
+            option::none<string::String>(),
+            hash32(0x11),
+            option::none<string::String>(),
+            option::none<string::String>(),
+            1,
+            500,
+            0,
+            false,
+            option::none<vector<u8>>(),
+            requested_at,
+            option::none<sui::object::ID>(),
+            option::none<sui::object::ID>(),
+            uuidv7_bytes(0x77),
+            option::none<vector<u8>>(),
+            1,
+            2,
+            string::utf8(b"trade.swap.v1"),
+            1,
+            string::utf8(b"bcs"),
+            hash32(0xBB),
+            valid_payload_bytes(),
+            string::utf8(b"BUY 50 NUSDC -> NBTC"),
+            1,
+            1,
+            option::none<string::String>(),
+            string::utf8(b"llama-3.3-70b-v1"),
+            hash32(0xCC),
+            option::some(hash32(0xDD)),
+            vector::empty<string::String>(),
+            vector::empty<vector<u8>>(),
+            ctx,
+        );
+
+        ts::return_shared(registry);
+        ts::return_shared(baram_registry);
+    }
+
+    // INFO #14: document current clock-skew acceptance. The contract does NOT
+    // enforce settled_at >= requested_at today; a future plan may add a
+    // monotonicity assertion. This test pins current behavior so any added
+    // assertion will surface as a failing test that must be intentionally
+    // updated.
+    #[test]
+    fun timestamps_inverted_currently_accepted() {
+        let mut scenario = setup();
+        // settled_at strictly LESS than requested_at — physically nonsensical
+        // (settlement before request) but accepted by the present contract.
+        call_create_with_timestamps(
+            &mut scenario,
+            1,
+            1_700_000_000_000, // requested_at
+            1_699_999_000_000, // settled_at (1s earlier — clock-skew edge)
+        );
+
+        ts::next_tx(&mut scenario, REQUESTER);
+        let aer_obj = ts::take_from_sender<AIExecutionReport>(&scenario);
+        let t = aer::time(&aer_obj);
+        assert!(aer::time_requested_at(t) == 1_700_000_000_000, 14_001);
+        assert!(aer::time_settled_at(t) == 1_699_999_000_000, 14_002);
+        ts::return_to_sender(&scenario, aer_obj);
+
+        ts::end(scenario);
+    }
+
+    // INFO #14 cont: equal timestamps (settled_at == requested_at) is the
+    // boundary case. Also accepted.
+    #[test]
+    fun timestamps_equal_accepted() {
+        let mut scenario = setup();
+        call_create_with_timestamps(
+            &mut scenario,
+            1,
+            1_700_000_000_000,
+            1_700_000_000_000,
+        );
+
+        ts::next_tx(&mut scenario, REQUESTER);
+        let aer_obj = ts::take_from_sender<AIExecutionReport>(&scenario);
+        let t = aer::time(&aer_obj);
+        assert!(aer::time_requested_at(t) == aer::time_settled_at(t), 14_101);
+        ts::return_to_sender(&scenario, aer_obj);
+
+        ts::end(scenario);
+    }
+
+    // INFO #15: update_policy snapshot semantics. Each AER must snapshot the
+    // registry's policy_version AT THE MOMENT of its create_report call. A
+    // subsequent update_policy must not retroactively change earlier AERs.
+    #[test]
+    fun policy_version_is_snapshotted_per_aer() {
+        let mut scenario = setup();
+
+        // AER #1 created under policy_version = 1 (init default).
+        call_create_default(&mut scenario, 1);
+
+        // Bump registry policy to 2.
+        ts::next_tx(&mut scenario, ADMIN);
+        let admin_cap = ts::take_from_sender<aer::AdminCap>(&scenario);
+        let mut registry = ts::take_shared<AERRegistry>(&scenario);
+        aer::update_policy(&admin_cap, &mut registry);
+        assert!(aer::get_policy_version(&registry) == 2, 15_001);
+        ts::return_to_sender(&scenario, admin_cap);
+        ts::return_shared(registry);
+
+        // AER #2 created under policy_version = 2.
+        call_create_default(&mut scenario, 2);
+
+        // Verify AER #1 still carries Some(1), AER #2 carries Some(2).
+        ts::next_tx(&mut scenario, REQUESTER);
+        let aer_1 = ts::take_from_sender<AIExecutionReport>(&scenario);
+        let aer_2 = ts::take_from_sender<AIExecutionReport>(&scenario);
+
+        // The order in which take_from_sender returns objects is not
+        // request_id-ordered, so disambiguate by request_id.
+        let (older, newer) = if (aer::request_id(&aer_1) == 1) {
+            (aer_1, aer_2)
+        } else {
+            (aer_2, aer_1)
+        };
+        let pv_older = aer::why_policy_version(aer::why(&older));
+        let pv_newer = aer::why_policy_version(aer::why(&newer));
+        assert!(option::is_some(&pv_older), 15_002);
+        assert!(option::is_some(&pv_newer), 15_003);
+        assert!(*option::borrow(&pv_older) == 1, 15_004);
+        assert!(*option::borrow(&pv_newer) == 2, 15_005);
+
+        ts::return_to_sender(&scenario, older);
+        ts::return_to_sender(&scenario, newer);
+
         ts::end(scenario);
     }
 }
