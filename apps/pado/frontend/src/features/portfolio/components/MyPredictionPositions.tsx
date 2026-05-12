@@ -3,11 +3,12 @@
  *
  * Portfolio tab view of every Position NFT the user holds across prediction
  * markets. Groups positions by market, surfaces win/loss for resolved markets,
- * and exposes claim / burn / settle-all actions inline so users do not have to
- * navigate into each market to settle.
+ * and exposes split bulk-action controls (Claim All / Burn All / Refund All)
+ * so a holder with dozens of resolved markets can settle in one flow without
+ * scrolling through every row.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   useMarkets,
@@ -20,6 +21,7 @@ import { NUSDC_DECIMALS } from '../../prediction/constants';
 import { useTransactionSync } from '../../../hooks/useTransactionSync';
 
 type StatusFilter = 'all' | 'open' | 'resolved' | 'cancelled';
+type ActionKind = 'claim' | 'burn' | 'refund';
 
 const STATUS_TABS: { id: StatusFilter; label: string }[] = [
   { id: 'all', label: 'All' },
@@ -31,39 +33,66 @@ const STATUS_TABS: { id: StatusFilter; label: string }[] = [
 // PTB input-object cap is ~2048 on mainnet; keep conservative.
 const CLAIM_CHUNK_SIZE = 100;
 
+// Progressive load: avoids unbounded DOM for users holding positions across
+// many markets. Tuned against a typical viewport ~10 cards.
+const MARKETS_PER_PAGE = 10;
+const POSITIONS_PER_GROUP_DEFAULT = 5;
+
 interface MarketGroup {
   market: PredictionMarket;
   positions: Position[];
 }
 
-function buildSettleable(
-  positions: Position[],
-  market: PredictionMarket,
-): Array<{ positionId: string; won: boolean }> {
-  if (market.status !== 'resolved' || market.outcome === undefined) return [];
-  return positions.map((p) => ({ positionId: p.id, won: p.isYes === market.outcome }));
+interface GroupActions {
+  wins: Position[];
+  losses: Position[];
+  refunds: Position[];
 }
 
-function settleAllLabel(settleable: Array<{ positionId: string; won: boolean }>): string {
-  const wins = settleable.filter((p) => p.won).length;
-  const losses = settleable.length - wins;
-  const n = settleable.length;
-  if (wins > 0 && losses > 0) return `Settle All (${n})`;
-  if (wins > 0) return `Claim All (${n})`;
-  return `Burn All (${n})`;
+function classifyGroup(group: MarketGroup): GroupActions {
+  const { market, positions } = group;
+  if (market.status === 'cancelled') {
+    return { wins: [], losses: [], refunds: positions };
+  }
+  if (market.status === 'resolved' && market.outcome !== undefined) {
+    const wins: Position[] = [];
+    const losses: Position[] = [];
+    for (const p of positions) {
+      if (p.isYes === market.outcome) wins.push(p);
+      else losses.push(p);
+    }
+    return { wins, losses, refunds: [] };
+  }
+  return { wins: [], losses: [], refunds: [] };
+}
+
+function actionsFor(actions: GroupActions, kind: ActionKind | 'all'): Position[] {
+  if (kind === 'claim') return actions.wins;
+  if (kind === 'burn') return actions.losses;
+  if (kind === 'refund') return actions.refunds;
+  return [...actions.wins, ...actions.losses, ...actions.refunds];
+}
+
+interface BulkProgress {
+  kind: ActionKind | 'all';
+  marketsDone: number;
+  marketsTotal: number;
+  positionsDone: number;
+  positionsTotal: number;
 }
 
 export function MyPredictionPositions() {
-  const { positions, isLoading: positionsLoading, refetch: refetchPositions } = usePredictionPositions();
+  const {
+    positions,
+    isLoading: positionsLoading,
+    refetch: refetchPositions,
+  } = usePredictionPositions();
   const { markets, isLoading: marketsLoading } = useMarkets();
-  const { settlePositionsBatch } = usePredictionTrade();
+  const { settlePositionsBatch, settleRefundsBatch } = usePredictionTrade();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [globalPhase, setGlobalPhase] = useState<'idle' | 'settling' | 'syncing'>('idle');
-  const [globalProgress, setGlobalProgress] = useState<{
-    marketsDone: number;
-    marketsTotal: number;
-    label: string;
-  } | null>(null);
+  const [displayMarketCount, setDisplayMarketCount] = useState(MARKETS_PER_PAGE);
+  const [bulkPhase, setBulkPhase] = useState<'idle' | 'running' | 'syncing'>('idle');
+  const [bulkProgress, setBulkProgress] = useState<BulkProgress | null>(null);
 
   const marketsById = useMemo(() => {
     const map = new Map<string, MarketWithOrderbook>();
@@ -94,75 +123,106 @@ export function MyPredictionPositions() {
     return result;
   }, [positions, marketsById]);
 
+  const groupCounts = useMemo(() => {
+    const counts: Record<StatusFilter, number> = { all: groups.length, open: 0, resolved: 0, cancelled: 0 };
+    for (const g of groups) counts[g.market.status]++;
+    return counts;
+  }, [groups]);
+
   const filteredGroups = useMemo(
     () => (statusFilter === 'all' ? groups : groups.filter((g) => g.market.status === statusFilter)),
     [groups, statusFilter],
   );
 
-  // Resolved groups with at least one settleable position.
-  const resolvedGroups = useMemo(
-    () =>
-      groups.filter(
-        (g) => g.market.status === 'resolved' && g.positions.length > 0 && g.market.outcome !== undefined,
-      ),
-    [groups],
+  // Reset progressive load whenever filter changes so users don't see a stale
+  // "Load more" count from the previous tab.
+  useEffect(() => {
+    setDisplayMarketCount(MARKETS_PER_PAGE);
+  }, [statusFilter]);
+
+  const visibleGroups = useMemo(
+    () => filteredGroups.slice(0, displayMarketCount),
+    [filteredGroups, displayMarketCount],
   );
+  const remainingGroups = Math.max(0, filteredGroups.length - visibleGroups.length);
 
-  const totalSettleable = useMemo(
-    () => resolvedGroups.reduce((sum, g) => sum + g.positions.length, 0),
-    [resolvedGroups],
-  );
-
-  const globalButtonLabel =
-    globalPhase === 'syncing'
-      ? 'Syncing...'
-      : globalProgress
-        ? `Settling market ${globalProgress.marketsDone + 1}/${globalProgress.marketsTotal} — ${globalProgress.label}`
-        : (() => {
-            const wins = resolvedGroups.reduce(
-              (sum, g) => sum + g.positions.filter((p) => p.isYes === g.market.outcome).length,
-              0,
-            );
-            const losses = totalSettleable - wins;
-            if (wins > 0 && losses > 0) return `Settle All Resolved (${totalSettleable} positions)`;
-            if (wins > 0) return `Claim All Resolved (${totalSettleable} positions)`;
-            return `Burn All Resolved (${totalSettleable} positions)`;
-          })();
-
-  const handleSettleAllMarkets = useCallback(async () => {
-    if (globalPhase !== 'idle' || resolvedGroups.length === 0) return;
-    setGlobalPhase('settling');
-    const total = resolvedGroups.length;
-    const startedAt = Date.now();
-    let totalSettled = 0;
-
-    for (let gi = 0; gi < resolvedGroups.length; gi++) {
-      const { market, positions } = resolvedGroups[gi];
-      const work = buildSettleable(positions, market);
-      if (work.length === 0) continue;
-
-      setGlobalProgress({ marketsDone: gi, marketsTotal: total, label: settleAllLabel(work) });
-
-      for (let i = 0; i < work.length; i += CLAIM_CHUNK_SIZE) {
-        const chunk = work.slice(i, i + CLAIM_CHUNK_SIZE);
-        const chunkStart = Date.now();
-        const result = await settlePositionsBatch(market.id, chunk);
-        console.info(
-          `[settle-all-markets] market ${gi + 1}/${total} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(work.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
-        );
-        if (!result.success) break; // per-market error toast shown by hook; continue to next market
-        totalSettled += chunk.length;
-        refetchPositions();
-      }
+  // Bulk totals across ALL resolved + cancelled groups (regardless of filter)
+  // so the action bar reflects the wallet, not the current tab view.
+  const bulkTotals = useMemo(() => {
+    let wins = 0;
+    let losses = 0;
+    let refunds = 0;
+    for (const g of groups) {
+      const a = classifyGroup(g);
+      wins += a.wins.length;
+      losses += a.losses.length;
+      refunds += a.refunds.length;
     }
+    return { wins, losses, refunds, total: wins + losses + refunds };
+  }, [groups]);
 
-    console.info(`[settle-all-markets] total settled=${totalSettled} elapsed=${Date.now() - startedAt}ms`);
-    setGlobalProgress(null);
-    setGlobalPhase('syncing');
-    refetchPositions();
-    setTimeout(() => setGlobalPhase('idle'), 8_000);
-  }, [globalPhase, resolvedGroups, settlePositionsBatch, refetchPositions]);
+  const runBulk = useCallback(
+    async (kind: ActionKind | 'all') => {
+      if (bulkPhase !== 'idle') return;
+      const targetGroups = groups
+        .map((g) => ({ group: g, items: actionsFor(classifyGroup(g), kind) }))
+        .filter((entry) => entry.items.length > 0);
+      const positionsTotal = targetGroups.reduce((s, e) => s + e.items.length, 0);
+      if (positionsTotal === 0) return;
 
+      setBulkPhase('running');
+      setBulkProgress({
+        kind,
+        marketsDone: 0,
+        marketsTotal: targetGroups.length,
+        positionsDone: 0,
+        positionsTotal,
+      });
+
+      let positionsDone = 0;
+      const startedAt = Date.now();
+
+      for (let gi = 0; gi < targetGroups.length; gi++) {
+        const { group, items } = targetGroups[gi];
+        const isCancelled = group.market.status === 'cancelled';
+        const outcome = group.market.outcome;
+
+        for (let i = 0; i < items.length; i += CLAIM_CHUNK_SIZE) {
+          const chunk = items.slice(i, i + CLAIM_CHUNK_SIZE);
+          const chunkStart = Date.now();
+          const result = isCancelled
+            ? await settleRefundsBatch(group.market.id, chunk.map((p) => p.id))
+            : await settlePositionsBatch(
+                group.market.id,
+                chunk.map((p) => ({ positionId: p.id, won: p.isYes === outcome })),
+              );
+          console.info(
+            `[bulk-${kind}] market ${gi + 1}/${targetGroups.length} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(items.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+          );
+          if (!result.success) break; // hook surfaces toast; continue to next market
+          positionsDone += chunk.length;
+          setBulkProgress((prev) =>
+            prev ? { ...prev, positionsDone, marketsDone: gi } : prev,
+          );
+          refetchPositions();
+        }
+        setBulkProgress((prev) =>
+          prev ? { ...prev, marketsDone: gi + 1 } : prev,
+        );
+      }
+
+      console.info(
+        `[bulk-${kind}] settled=${positionsDone}/${positionsTotal} elapsed=${Date.now() - startedAt}ms`,
+      );
+      setBulkProgress(null);
+      setBulkPhase('syncing');
+      refetchPositions();
+      setTimeout(() => setBulkPhase('idle'), 8_000);
+    },
+    [bulkPhase, groups, settlePositionsBatch, settleRefundsBatch, refetchPositions],
+  );
+
+  const bulkDisabled = bulkPhase !== 'idle';
   const isLoading = positionsLoading || marketsLoading;
 
   if (isLoading && groups.length === 0) {
@@ -193,27 +253,14 @@ export function MyPredictionPositions() {
 
   return (
     <div className="space-y-4">
-      {/* Global settle button: visible whenever there are resolved positions to clear */}
-      {totalSettleable > 0 && (
-        <div className="rounded-xl border border-pd1/30 bg-pd1/10 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-theme-text-primary">
-              {resolvedGroups.length} resolved market{resolvedGroups.length === 1 ? '' : 's'} with{' '}
-              {totalSettleable} position{totalSettleable === 1 ? '' : 's'} to settle
-            </p>
-            <p className="text-xs text-theme-text-muted mt-0.5">
-              Settle across all resolved markets in one click. Bundled in chunks of {CLAIM_CHUNK_SIZE} per signature.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleSettleAllMarkets}
-            disabled={globalPhase !== 'idle'}
-            className="shrink-0 min-h-[44px] px-4 py-2.5 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium text-sm disabled:opacity-60 whitespace-nowrap"
-          >
-            {globalButtonLabel}
-          </button>
-        </div>
+      {bulkTotals.total > 0 && (
+        <BulkActionBar
+          totals={bulkTotals}
+          progress={bulkProgress}
+          phase={bulkPhase}
+          disabled={bulkDisabled}
+          onRun={runBulk}
+        />
       )}
 
       <div className="flex flex-wrap gap-2">
@@ -228,6 +275,7 @@ export function MyPredictionPositions() {
             }`}
           >
             {tab.label}
+            <span className="ml-1.5 text-xs opacity-80">{groupCounts[tab.id]}</span>
           </button>
         ))}
       </div>
@@ -237,14 +285,109 @@ export function MyPredictionPositions() {
           No positions match this filter.
         </div>
       ) : (
-        filteredGroups.map((group) => (
-          <MarketPositionGroup
-            key={group.market.id}
-            group={group}
-            onSettled={refetchPositions}
-          />
-        ))
+        <>
+          {visibleGroups.map((group) => (
+            <MarketPositionGroup
+              key={group.market.id}
+              group={group}
+              onSettled={refetchPositions}
+              externallyBusy={bulkDisabled}
+            />
+          ))}
+
+          {remainingGroups > 0 && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() =>
+                  setDisplayMarketCount((n) =>
+                    Math.min(n + MARKETS_PER_PAGE, filteredGroups.length),
+                  )
+                }
+                className="min-h-[40px] px-5 py-2 bg-theme-bg-secondary hover:bg-theme-bg-tertiary text-theme-text-primary rounded-lg text-sm font-medium"
+              >
+                Load {Math.min(MARKETS_PER_PAGE, remainingGroups)} more
+                <span className="ml-1.5 text-xs text-theme-text-muted">
+                  ({remainingGroups} remaining)
+                </span>
+              </button>
+            </div>
+          )}
+        </>
       )}
+    </div>
+  );
+}
+
+interface BulkActionBarProps {
+  totals: { wins: number; losses: number; refunds: number; total: number };
+  progress: BulkProgress | null;
+  phase: 'idle' | 'running' | 'syncing';
+  disabled: boolean;
+  onRun: (kind: ActionKind | 'all') => void;
+}
+
+function BulkActionBar({ totals, progress, phase, disabled, onRun }: BulkActionBarProps) {
+  const distinctKinds = [totals.wins > 0, totals.losses > 0, totals.refunds > 0].filter(Boolean).length;
+  const showCombined = distinctKinds >= 2;
+
+  const headline =
+    phase === 'syncing'
+      ? 'Syncing with blockchain...'
+      : progress
+        ? `Settling ${progress.positionsDone}/${progress.positionsTotal} (market ${Math.min(progress.marketsDone + 1, progress.marketsTotal)}/${progress.marketsTotal})`
+        : `${totals.total} position${totals.total === 1 ? '' : 's'} ready to settle across resolved and cancelled markets`;
+
+  return (
+    <div className="rounded-xl border border-pd1/30 bg-pd1/10 p-4 space-y-3">
+      <div>
+        <p className="text-sm font-semibold text-theme-text-primary">{headline}</p>
+        <p className="text-xs text-theme-text-muted mt-0.5">
+          Bundled in chunks of {CLAIM_CHUNK_SIZE} per signature. Each action signs one or more transactions.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {totals.wins > 0 && (
+          <button
+            type="button"
+            onClick={() => onRun('claim')}
+            disabled={disabled}
+            className="min-h-[40px] px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded-lg font-medium text-sm disabled:opacity-60"
+          >
+            Claim All Winnings ({totals.wins})
+          </button>
+        )}
+        {totals.losses > 0 && (
+          <button
+            type="button"
+            onClick={() => onRun('burn')}
+            disabled={disabled}
+            className="min-h-[40px] px-4 py-2 bg-pd2/60 hover:bg-pd2/80 text-theme-text-primary rounded-lg font-medium text-sm disabled:opacity-60"
+          >
+            Burn All Losing ({totals.losses})
+          </button>
+        )}
+        {totals.refunds > 0 && (
+          <button
+            type="button"
+            onClick={() => onRun('refund')}
+            disabled={disabled}
+            className="min-h-[40px] px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg font-medium text-sm disabled:opacity-60"
+          >
+            Refund All Cancelled ({totals.refunds})
+          </button>
+        )}
+        {showCombined && (
+          <button
+            type="button"
+            onClick={() => onRun('all')}
+            disabled={disabled}
+            className="min-h-[40px] px-4 py-2 bg-pd1 hover:bg-pd1/80 text-white rounded-lg font-medium text-sm disabled:opacity-60"
+          >
+            Settle Everything ({totals.total})
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -252,15 +395,24 @@ export function MyPredictionPositions() {
 interface MarketPositionGroupProps {
   group: MarketGroup;
   onSettled: () => void;
+  externallyBusy: boolean;
 }
 
-function MarketPositionGroup({ group, onSettled }: MarketPositionGroupProps) {
+function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositionGroupProps) {
   const { market, positions } = group;
-  const { isLoading, claimWinnings, burnLosingPosition, claimCancelledRefund, settlePositionsBatch } = usePredictionTrade();
+  const {
+    isLoading,
+    claimWinnings,
+    burnLosingPosition,
+    claimCancelledRefund,
+    settlePositionsBatch,
+    settleRefundsBatch,
+  } = usePredictionTrade();
   const { isSyncing, startSync } = useTransactionSync(onSettled);
   const [error, setError] = useState<string | null>(null);
   const [claimPhase, setClaimPhase] = useState<'idle' | 'claiming' | 'syncing'>('idle');
-  const [claimProgress, setClaimProgress] = useState<{ done: number; total: number } | null>(null);
+  const [claimProgress, setClaimProgress] = useState<{ done: number; total: number; kind: ActionKind | 'all' } | null>(null);
+  const [expanded, setExpanded] = useState(false);
 
   const divisor = Math.pow(10, NUSDC_DECIMALS);
   const totals = useMemo(() => {
@@ -279,40 +431,48 @@ function MarketPositionGroup({ group, onSettled }: MarketPositionGroupProps) {
     };
   }, [positions, divisor]);
 
-  const settleable = useMemo(() => buildSettleable(positions, market), [positions, market]);
-  const showSettleAll = market.status === 'resolved' && settleable.length >= 2;
+  const actions = useMemo(() => classifyGroup({ market, positions }), [market, positions]);
 
-  const handleSettleAll = useCallback(async () => {
-    if (settleable.length === 0 || claimPhase !== 'idle') return;
-    setClaimPhase('claiming');
-    setClaimProgress({ done: 0, total: settleable.length });
-    const startedAt = Date.now();
-    let done = 0;
-    for (let i = 0; i < settleable.length; i += CLAIM_CHUNK_SIZE) {
-      const chunk = settleable.slice(i, i + CLAIM_CHUNK_SIZE);
-      const chunkStart = Date.now();
-      const result = await settlePositionsBatch(market.id, chunk);
+  const runGroupBulk = useCallback(
+    async (kind: ActionKind | 'all') => {
+      if (claimPhase !== 'idle') return;
+      const items = actionsFor(actions, kind);
+      if (items.length === 0) return;
+      const isCancelled = market.status === 'cancelled';
+      const outcome = market.outcome;
+
+      setClaimPhase('claiming');
+      setClaimProgress({ done: 0, total: items.length, kind });
+      const startedAt = Date.now();
+      let done = 0;
+
+      for (let i = 0; i < items.length; i += CLAIM_CHUNK_SIZE) {
+        const chunk = items.slice(i, i + CLAIM_CHUNK_SIZE);
+        const chunkStart = Date.now();
+        const result = isCancelled
+          ? await settleRefundsBatch(market.id, chunk.map((p) => p.id))
+          : await settlePositionsBatch(
+              market.id,
+              chunk.map((p) => ({ positionId: p.id, won: p.isYes === outcome })),
+            );
+        console.info(
+          `[settle-group-${kind}] market=${market.id.slice(0, 8)} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(items.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+        );
+        if (!result.success) break;
+        done += chunk.length;
+        setClaimProgress({ done, total: items.length, kind });
+        onSettled();
+      }
       console.info(
-        `[settle-all] market=${market.id.slice(0, 8)} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(settleable.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+        `[settle-group-${kind}] market=${market.id.slice(0, 8)} total=${done}/${items.length} elapsed=${Date.now() - startedAt}ms`,
       );
-      if (!result.success) break;
-      done += chunk.length;
-      setClaimProgress({ done, total: settleable.length });
+      setClaimProgress(null);
+      setClaimPhase('syncing');
       onSettled();
-    }
-    console.info(`[settle-all] market=${market.id.slice(0, 8)} total=${done}/${settleable.length} elapsed=${Date.now() - startedAt}ms`);
-    setClaimProgress(null);
-    setClaimPhase('syncing');
-    onSettled();
-    setTimeout(() => setClaimPhase('idle'), 8_000);
-  }, [settleable, claimPhase, market.id, settlePositionsBatch, onSettled]);
-
-  const settleAllButtonLabel =
-    claimPhase === 'syncing'
-      ? 'Syncing...'
-      : claimProgress
-        ? `Settling ${claimProgress.done} / ${claimProgress.total}...`
-        : settleAllLabel(settleable);
+      setTimeout(() => setClaimPhase('idle'), 8_000);
+    },
+    [actions, claimPhase, market.id, market.status, market.outcome, settlePositionsBatch, settleRefundsBatch, onSettled],
+  );
 
   const handleSettle = useCallback(
     async (position: Position) => {
@@ -336,6 +496,27 @@ function MarketPositionGroup({ group, onSettled }: MarketPositionGroupProps) {
 
   const statusChip = renderStatusChip(market);
   const summaryChip = renderSummaryChip(market, totals);
+
+  const distinctKinds = [actions.wins.length > 0, actions.losses.length > 0, actions.refunds.length > 0].filter(Boolean).length;
+  const showCombined = distinctKinds >= 2;
+  const busy = claimPhase !== 'idle' || externallyBusy;
+
+  const groupActionLabel = (kind: ActionKind | 'all', n: number) => {
+    if (claimProgress && claimProgress.kind === kind) {
+      return claimPhase === 'syncing'
+        ? 'Syncing...'
+        : `Settling ${claimProgress.done}/${claimProgress.total}...`;
+    }
+    if (kind === 'claim') return `Claim All (${n})`;
+    if (kind === 'burn') return `Burn All (${n})`;
+    if (kind === 'refund') return `Refund All (${n})`;
+    return `Settle All (${n})`;
+  };
+
+  const visiblePositions = expanded
+    ? positions
+    : positions.slice(0, POSITIONS_PER_GROUP_DEFAULT);
+  const hiddenCount = positions.length - visiblePositions.length;
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4 space-y-3">
@@ -369,32 +550,81 @@ function MarketPositionGroup({ group, onSettled }: MarketPositionGroupProps) {
         </div>
       </div>
 
-      {/* Per-market Settle All button */}
-      {showSettleAll && (
-        <button
-          type="button"
-          onClick={handleSettleAll}
-          disabled={claimPhase !== 'idle'}
-          className={`w-full min-h-[40px] py-2 rounded-lg text-sm font-medium text-white disabled:opacity-60 ${
-            settleable.some((p) => p.won)
-              ? 'bg-green-600 hover:bg-green-500'
-              : 'bg-pd1 hover:bg-pd1/80'
-          }`}
-        >
-          {settleAllButtonLabel}
-        </button>
+      {/* Per-market split bulk buttons. Only render kinds that have items so the
+          row stays compact for markets with a single position. */}
+      {(actions.wins.length + actions.losses.length + actions.refunds.length) > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {actions.wins.length > 0 && (
+            <button
+              type="button"
+              onClick={() => runGroupBulk('claim')}
+              disabled={busy}
+              className="min-h-[40px] flex-1 min-w-[160px] py-2 px-3 rounded-lg text-sm font-medium text-white bg-green-600 hover:bg-green-500 disabled:opacity-60"
+            >
+              {groupActionLabel('claim', actions.wins.length)}
+            </button>
+          )}
+          {actions.losses.length > 0 && (
+            <button
+              type="button"
+              onClick={() => runGroupBulk('burn')}
+              disabled={busy}
+              className="min-h-[40px] flex-1 min-w-[160px] py-2 px-3 rounded-lg text-sm font-medium bg-pd2/40 hover:bg-pd2/60 text-theme-text-primary disabled:opacity-60"
+            >
+              {groupActionLabel('burn', actions.losses.length)}
+            </button>
+          )}
+          {actions.refunds.length > 0 && (
+            <button
+              type="button"
+              onClick={() => runGroupBulk('refund')}
+              disabled={busy}
+              className="min-h-[40px] flex-1 min-w-[160px] py-2 px-3 rounded-lg text-sm font-medium text-white bg-yellow-600 hover:bg-yellow-500 disabled:opacity-60"
+            >
+              {groupActionLabel('refund', actions.refunds.length)}
+            </button>
+          )}
+          {showCombined && (
+            <button
+              type="button"
+              onClick={() => runGroupBulk('all')}
+              disabled={busy}
+              className="min-h-[40px] flex-1 min-w-[160px] py-2 px-3 rounded-lg text-sm font-medium text-white bg-pd1 hover:bg-pd1/80 disabled:opacity-60"
+            >
+              {groupActionLabel('all', actions.wins.length + actions.losses.length + actions.refunds.length)}
+            </button>
+          )}
+        </div>
       )}
 
       <div className="space-y-2">
-        {positions.map((p) => (
+        {visiblePositions.map((p) => (
           <PositionRow
             key={p.id}
             position={p}
             market={market}
             onSettle={handleSettle}
-            isLoading={isLoading || isSyncing || claimPhase !== 'idle'}
+            isLoading={isLoading || isSyncing || busy}
           />
         ))}
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={() => setExpanded(true)}
+            className="w-full min-h-[36px] py-1.5 text-xs font-medium text-theme-text-secondary hover:text-theme-text-primary bg-theme-bg-tertiary/60 hover:bg-theme-bg-tertiary rounded-lg"
+          >
+            Show all {positions.length} positions ({hiddenCount} more)
+          </button>
+        )}
+        {expanded && positions.length > POSITIONS_PER_GROUP_DEFAULT && (
+          <button
+            type="button"
+            onClick={() => setExpanded(false)}
+            className="w-full min-h-[36px] py-1.5 text-xs font-medium text-theme-text-secondary hover:text-theme-text-primary bg-theme-bg-tertiary/60 hover:bg-theme-bg-tertiary rounded-lg"
+          >
+            Collapse
+          </button>
+        )}
       </div>
 
       {isSyncing && (
