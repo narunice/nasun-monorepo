@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@mysten/sui": "^1.21.0",
+    "@nasun/baram-sdk": "workspace:*",
     "dotenv": "^16.4.7"
   },
   "devDependencies": {

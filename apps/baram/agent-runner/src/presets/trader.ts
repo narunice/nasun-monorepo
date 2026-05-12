@@ -19,6 +19,8 @@ import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
+import type { StrategyPreset } from './strategies.js';
+
 // ===== Devnet constants (NBTC/NUSDC pool) =====
 export const TRADER_CONFIG = {
   pool: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
@@ -38,6 +40,27 @@ export interface TradeDecision {
   action: 'BUY' | 'SELL' | 'HOLD';
   sizeNUSDC: number;
   reason: string;
+  /** Soft-rail tag describing why a non-HOLD decision was demoted/clamped.
+   *  Set when the LLM's raw reply violated a risk limit and the runner
+   *  fixed it locally rather than failing the cycle. The original LLM
+   *  reason is preserved in `reason`; this string carries the
+   *  runner-side annotation so it can land in the AER's replay_extras. */
+  riskGate?: string;
+}
+
+/** Risk limits the trader applies to LLM output before passing it to
+ *  /execute-capability. These mirror the on-chain capability hard rails
+ *  (cap.risk_limits) but live client-side so out-of-range LLM replies are
+ *  demoted to a documented HOLD instead of bouncing off the host. */
+export interface TradeRiskLimits {
+  /** Per-trade cap in NUSDC raw units (u64). */
+  maxNotionalQuoteRaw: bigint;
+  /** Daily aggregate cap in NUSDC raw units (u64). */
+  dailyMaxQuoteRaw: bigint;
+  /** Max slippage the LLM is allowed to embed in trade.swap.v1 payloads;
+   *  not enforced on the agent-signed swap (which already passes 0) but
+   *  recorded in the cognition AER. */
+  maxSlippageBps: number;
 }
 
 export interface TradeRecord {
@@ -73,7 +96,7 @@ export async function fetchAgentBalances(
 }
 
 // ===== Prompt =====
-export function buildTraderPrompt(ctx: {
+export interface TraderPromptContext {
   agentAddr: string;
   nbtcRaw: bigint;
   nusdcRaw: bigint;
@@ -81,7 +104,17 @@ export function buildTraderPrompt(ctx: {
   dailyMaxQuoteRaw: bigint;
   dailySpentRaw: bigint;
   recent: TradeRecord[];
-}): string {
+  /** Strategy persona spliced as a system fragment ahead of the per-cycle
+   *  market context. Keeping the strategy fragment first makes the
+   *  prompt_template_hash sensitive to preset changes — a verifier can
+   *  attribute the AER to a specific preset without re-running the model. */
+  strategy: StrategyPreset;
+  /** Optional ISO timestamp override for deterministic test rendering.
+   *  Production uses Date.now(). */
+  nowIso?: string;
+}
+
+export function buildTraderPrompt(ctx: TraderPromptContext): string {
   const nbtc = (Number(ctx.nbtcRaw) / 1e8).toFixed(8);
   const nusdc = (Number(ctx.nusdcRaw) / 1e6).toFixed(6);
   const perTradeCap = Number(ctx.perTradeMaxQuoteRaw) / 1e6;
@@ -94,8 +127,12 @@ export function buildTraderPrompt(ctx: {
     .join('\n') || '  (none)';
 
   return [
-    `You are an autonomous DeFi trader on Pado DEX (Sui devnet, NBTC/NUSDC, DeepBook v3).`,
-    `Time: ${new Date().toISOString()}`,
+    `# Strategy preset: ${ctx.strategy.label} (${ctx.strategy.id})`,
+    ctx.strategy.systemPrompt,
+    ``,
+    `# Market context`,
+    `You are an autonomous DeFi trader on Pado DEX (Nasun devnet, NBTC/NUSDC, DeepBook v3).`,
+    `Time: ${ctx.nowIso ?? new Date().toISOString()}`,
     `Wallet: ${ctx.agentAddr}`,
     `Holdings: ${nbtc} NBTC, ${nusdc} NUSDC`,
     `Per-trade size cap: ${perTradeCap} NUSDC equivalent`,
@@ -116,8 +153,20 @@ export function buildTraderPrompt(ctx: {
 }
 
 // ===== Decision parsing =====
-export function parseTradeDecision(raw: string): TradeDecision {
-  // LLM may wrap in code fences; extract first {...} block
+/**
+ * Parse the LLM's JSON response and apply risk-limit validation. Out-of-range
+ * decisions are demoted to HOLD with a `riskGate` annotation rather than
+ * thrown — the trader still wants to issue an AER recording why the cycle
+ * produced no trade, otherwise the on-chain record loses the rejection signal.
+ *
+ * Throws ONLY on shape errors (no JSON, missing action, NaN size). The
+ * caller treats throws as "no AER" — same as before.
+ */
+export function parseTradeDecision(
+  raw: string,
+  limits?: TradeRiskLimits,
+  context?: { dailySpentQuoteRaw: bigint; nbtcBalanceRaw: bigint; nusdcBalanceRaw: bigint },
+): TradeDecision {
   const m = raw.match(/\{[\s\S]*?\}/);
   if (!m) throw new Error(`No JSON in LLM response: ${raw.slice(0, 200)}`);
   const obj = JSON.parse(m[0]);
@@ -128,11 +177,70 @@ export function parseTradeDecision(raw: string): TradeDecision {
   if (!Number.isFinite(sizeNUSDC) || sizeNUSDC < 0) {
     throw new Error(`Invalid sizeNUSDC: ${obj.sizeNUSDC}`);
   }
-  return {
+  const reason = String(obj.reason ?? '').slice(0, 200);
+
+  const decision: TradeDecision = {
     action: obj.action,
     sizeNUSDC,
-    reason: String(obj.reason ?? '').slice(0, 200),
+    reason,
   };
+
+  if (!limits || decision.action === 'HOLD') return decision;
+
+  const sizeRaw = BigInt(Math.floor(sizeNUSDC * 1_000_000));
+  const dailySpent = context?.dailySpentQuoteRaw ?? 0n;
+
+  // Notional cap. The on-chain hard rail also enforces this against
+  // payment_amount; we mirror it for the swap input the runner will sign.
+  if (sizeRaw > limits.maxNotionalQuoteRaw) {
+    return {
+      action: 'HOLD',
+      sizeNUSDC: 0,
+      reason,
+      riskGate: `size_exceeds_notional_cap: requested ${sizeNUSDC} > cap ${
+        Number(limits.maxNotionalQuoteRaw) / 1_000_000
+      }`,
+    };
+  }
+
+  // Daily aggregate cap. Demoting to HOLD rather than clamping — clamping
+  // a max-size decision down to the remaining daily window would put a
+  // tiny trade on the books that the LLM never asked for.
+  if (dailySpent + sizeRaw > limits.dailyMaxQuoteRaw) {
+    return {
+      action: 'HOLD',
+      sizeNUSDC: 0,
+      reason,
+      riskGate: `daily_cap_would_exceed: spent ${
+        Number(dailySpent) / 1_000_000
+      } + ${sizeNUSDC} > cap ${Number(limits.dailyMaxQuoteRaw) / 1_000_000}`,
+    };
+  }
+
+  // Balance feasibility. Same as the existing check in executeTrade(), but
+  // catches it at parse time so the AER outcome reflects the rejection.
+  if (context) {
+    if (decision.action === 'BUY' && context.nusdcBalanceRaw < sizeRaw) {
+      return {
+        action: 'HOLD',
+        sizeNUSDC: 0,
+        reason,
+        riskGate: `insufficient_quote_balance: have ${
+          Number(context.nusdcBalanceRaw) / 1_000_000
+        } NUSDC, need ${sizeNUSDC}`,
+      };
+    }
+    if (decision.action === 'SELL' && context.nbtcBalanceRaw <= 0n) {
+      return {
+        action: 'HOLD',
+        sizeNUSDC: 0,
+        reason,
+        riskGate: 'sell_with_zero_base_balance',
+      };
+    }
+  }
+
+  return decision;
 }
 
 // ===== Trade execution =====

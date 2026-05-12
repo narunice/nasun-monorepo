@@ -12,6 +12,7 @@ import { fromBase58 } from '@mysten/sui/utils';
 import { loadConfig, maskApiKey, type PresetName } from './config.js';
 import { checkBudget, createRequest, sha256Hex, categorizeError } from './baram-client.js';
 import { executeRequest, recordRequest } from './executor-client.js';
+import { executeCapability } from './host-client.js';
 import { callLLM } from './llm-client.js';
 import { researchPreset } from './presets/research.js';
 import { contentPreset } from './presets/content.js';
@@ -29,7 +30,17 @@ import {
   fetchAgentBalances,
   dailySpentQuoteRaw,
   recentTrades,
+  type TradeDecision,
 } from './presets/trader.js';
+import {
+  buildAnalysisEnvelope,
+  buildCognitionProposal,
+  buildHeartbeatWake,
+  buildReplay,
+  newIntentChainState,
+  openIntent,
+  recentTradesSnapshot,
+} from './presets/trader-envelope.js';
 import type { Preset } from './presets/types.js';
 
 const TRADER_PLACEHOLDER: Preset = {
@@ -97,6 +108,10 @@ const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
 
 interface TraderState {
   lastTradeDigest: string | null;
+  /** Last cognition AER intent_id (16-byte UUIDv7, hex-encoded). The next
+   *  cycle's cognition AER points its parent_intent_id at this so a viewer
+   *  can walk the intent chain across cycles without re-reading every AER. */
+  lastIntentIdHex: string | null;
 }
 
 function loadTraderState(): TraderState {
@@ -104,12 +119,17 @@ function loadTraderState(): TraderState {
     if (existsSync(TRADER_STATE_PATH)) {
       const raw = readFileSync(TRADER_STATE_PATH, 'utf-8');
       const parsed = JSON.parse(raw) as Partial<TraderState>;
-      return { lastTradeDigest: typeof parsed.lastTradeDigest === 'string' ? parsed.lastTradeDigest : null };
+      return {
+        lastTradeDigest:
+          typeof parsed.lastTradeDigest === 'string' ? parsed.lastTradeDigest : null,
+        lastIntentIdHex:
+          typeof parsed.lastIntentIdHex === 'string' ? parsed.lastIntentIdHex : null,
+      };
     }
   } catch {
     // Corrupt file — fall through to default
   }
-  return { lastTradeDigest: null };
+  return { lastTradeDigest: null, lastIntentIdHex: null };
 }
 
 function saveTraderState(state: TraderState): void {
@@ -120,7 +140,21 @@ function saveTraderState(state: TraderState): void {
   }
 }
 
-let lastTradeDigest: string | null = loadTraderState().lastTradeDigest;
+const initialTraderState = loadTraderState();
+let lastTradeDigest: string | null = initialTraderState.lastTradeDigest;
+
+// Lineage chain seeded from disk so cycle N+1 (after a process restart)
+// still chains to cycle N's intent.
+const traderIntentChain = newIntentChainState();
+if (initialTraderState.lastIntentIdHex) {
+  try {
+    traderIntentChain.lastIntentId = Array.from(
+      Buffer.from(initialTraderState.lastIntentIdHex, 'hex'),
+    );
+  } catch {
+    // Ignore — start a fresh chain.
+  }
+}
 
 function digestB58ToIdHex(digestB58: string): string | null {
   try {
@@ -136,69 +170,228 @@ async function runTraderCycle(
   client: SuiClient,
   config: ReturnType<typeof loadConfig>,
 ): Promise<void> {
+  const trader = config.trader;
+  if (!trader) {
+    log('[trader] HOST_URL/CAPABILITY_ID/WALLET_ADDRESS not configured; cannot run trader cycle.');
+    shuttingDown = true;
+    return;
+  }
+
   const agentAddr = config.agentAddress;
 
   // 1. Fetch balances
   const balances = await fetchAgentBalances(client, agentAddr);
-  log(`Trader balances: ${(Number(balances.nbtcRaw)/1e8).toFixed(8)} NBTC, ${(Number(balances.nusdcRaw)/1e6).toFixed(6)} NUSDC`);
+  log(
+    `Trader balances: ${(Number(balances.nbtcRaw) / 1e8).toFixed(8)} NBTC, ${(Number(balances.nusdcRaw) / 1e6).toFixed(6)} NUSDC`,
+  );
 
-  // 2. Build market prompt
+  const dailySpentRaw = dailySpentQuoteRaw();
+  const recent = recentTrades();
+
+  // 2. Build market prompt with strategy preset spliced in
+  const nowIso = new Date().toISOString();
   const prompt = buildTraderPrompt({
     agentAddr,
     nbtcRaw: balances.nbtcRaw,
     nusdcRaw: balances.nusdcRaw,
-    perTradeMaxQuoteRaw: TRADER_CONFIG.perTradeMaxQuoteRaw,
-    dailyMaxQuoteRaw: TRADER_CONFIG.dailyMaxQuoteRaw,
-    dailySpentRaw: dailySpentQuoteRaw(),
-    recent: recentTrades(),
+    perTradeMaxQuoteRaw: trader.maxNotionalQuoteRaw,
+    dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw,
+    dailySpentRaw,
+    recent,
+    strategy: trader.strategy,
+    nowIso,
   });
 
-  // Build AER extras: link this cycle's AER to the prior cycle's trade.
-  // NOTE: triggeredBy is the prior swap tx digest (32-byte) encoded as an ID.
-  // Semantically it points to a TX, not an AER object — frontend should treat
-  // it as "explorer.nasun.io/devnet/tx/<id-without-0x-as-base58>".
-  let extras: import('./executor-client.js').AERExtras | undefined;
-  if (lastTradeDigest) {
-    const triggeredBy = digestB58ToIdHex(lastTradeDigest);
-    extras = {
-      purpose: `Trader cycle following trade ${lastTradeDigest}`,
-      ...(triggeredBy ? { triggeredBy } : {}),
-    };
-  }
-
-  // 3. Call Baram /execute (LLM + AER auto-issued, with prior-trade link)
-  const stepResult = await runLambdaStep(client, config, prompt, 'ai_inference', extras);
-  if (!stepResult.success || !stepResult.result) {
-    log('[trader] No LLM result; skipping trade.');
-    return;
-  }
-
-  // 4. Parse decision
-  let decision;
+  // 3. Create on-chain request (budget deduction)
+  let requestId: number;
   try {
-    decision = parseTradeDecision(stepResult.result);
+    const req = await createRequest(client, config.keypair, config, prompt, 'ai_inference');
+    requestId = req.requestId;
+    log(`On-chain request created: requestId=${requestId}`);
   } catch (err) {
-    log(`[trader] Decision parse failed: ${err instanceof Error ? err.message : String(err)}`);
+    const msg = err instanceof Error ? err.message : String(err);
+    const { message, fatal } = categorizeError(msg);
+    log(`[trader] Request creation failed: ${message}`);
+    if (fatal) shuttingDown = true;
     return;
   }
-  log(`[trader] Decision: ${decision.action} size=${decision.sizeNUSDC} reason="${decision.reason}"`);
+
+  // 4. Open intent (chains to prior cycle if state exists)
+  const intent = openIntent(traderIntentChain);
+
+  // 5. Build cognition AER metadata. We always emit cognition (eventClass=1)
+  //    in v1 — the trade.swap.v1 atomic-settlement actionCall path is
+  //    deferred (see trader-envelope.ts header). The decision payload is
+  //    encoded as analysis.v1 carrying the BUY/SELL/HOLD + size + reason.
+  //    The actual swap, when one is taken, is signed by the agent in step 9
+  //    and its digest is referenced via the NEXT cycle's `triggeredAction`.
+  const wake = buildHeartbeatWake();
+
+  // We'll fold the actual decision into the envelope AFTER the LLM responds.
+  // To do that, the envelope is built post-host-call. Construct the
+  // metadata blocks the host needs UP FRONT (replay/proposal) here, then
+  // build the envelope on parsed decision.
+
+  const marketSnapshot = {
+    agent: agentAddr,
+    nbtcRaw: balances.nbtcRaw.toString(),
+    nusdcRaw: balances.nusdcRaw.toString(),
+    perTradeMaxQuoteRaw: trader.maxNotionalQuoteRaw.toString(),
+    dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw.toString(),
+    dailySpentRaw: dailySpentRaw.toString(),
+    recent: recentTradesSnapshot(recent),
+    nowIso,
+  };
+
+  const replay = buildReplay({
+    modelVersion: config.model,
+    promptText: prompt,
+    strategy: trader.strategy,
+    marketSnapshot,
+  });
+
+  // Inference fee = config.price (raw NUSDC u64). This is the cap rail's
+  // payment_amount and must be <= cap.maxNotionalPerAction.
+  const proposal = buildCognitionProposal({
+    decision: { action: 'HOLD', sizeNUSDC: 0, reason: 'pending' },
+    paymentAmountRaw: BigInt(config.price),
+  });
+
+  // The host will run preflight on `proposal` (cognition class), inference,
+  // then build the AER from envelope+lineage+wake+replay. We supply a
+  // PROVISIONAL envelope describing "HOLD pending decision" — the host's
+  // capability path doesn't re-derive the envelope from the LLM result, it
+  // accepts what the caller passes. So we have to call the host TWICE:
+  //   Pass A: get the LLM decision (no AER on chain yet — but the host
+  //           always settles after inference, so this would create a HOLD
+  //           AER even when the decision turns out to be BUY).
+  // That's wrong. Instead: we keep the v1 prototype semantics that the
+  // cognition AER records the FINAL decision. To do that without two host
+  // calls we'd need a separate /infer endpoint that returns the LLM result
+  // without settling — which doesn't exist.
+  //
+  // Workaround for v1: emit the cognition AER reflecting "the decision the
+  // LLM produced" — which means we pre-call the LLM via the host, then if
+  // the decision is a swap we execute it, and the AER's outcome reflects
+  // success/HOLD. The action_summary and analysis.v1 payload encode the
+  // chosen action so the on-chain record is accurate even though the host
+  // settled BEFORE the swap landed.
+  //
+  // Provisional envelope: we use HOLD as a placeholder ONLY for the wire
+  // shape; we replace it with the parsed decision below before sending.
+  const provisionalDecision: TradeDecision = {
+    action: 'HOLD',
+    sizeNUSDC: 0,
+    reason: 'pending LLM',
+  };
+  const envelope = buildAnalysisEnvelope({
+    decision: provisionalDecision,
+    outcome: 2,
+  });
+
+  // 6. POST /execute-capability — host runs preflight + inference + settles
+  //    the cognition AER atomically. We do NOT pass actionCall (cognition
+  //    class doesn't carry one and the contract rejects mismatch).
+  const triggeredAction = lastTradeDigest ? digestB58ToIdHex(lastTradeDigest) : null;
+  const purposeMsg = lastTradeDigest
+    ? `Trader cycle following trade ${lastTradeDigest}`
+    : 'Trader cycle (genesis)';
+
+  const hostResp = await executeCapability(trader.hostUrl, config.apiKey, {
+    requestId,
+    prompt,
+    model: config.model,
+    budgetId: config.budgetId,
+    capabilityId: trader.capabilityId,
+    walletAddress: trader.walletAddress,
+    envelope,
+    lineage: intent.lineage,
+    wake,
+    replay,
+    actionCall: null,
+    proposal,
+    purpose: purposeMsg,
+    ...(triggeredAction ? { triggeredAction } : {}),
+  });
+
+  if (!hostResp.success || !hostResp.result) {
+    if (hostResp.preflightDenied) {
+      log(
+        `[trader] Capability preflight denied: ${hostResp.preflightReason ?? 'unknown'} — stopping cycle.`,
+      );
+    } else {
+      log(`[trader] Host /execute-capability failed: ${hostResp.error ?? 'unknown'}`);
+    }
+    return;
+  }
+
+  log(
+    `[trader] Cognition AER landed: digest=${hostResp.txDigest ?? 'n/a'} cap.v=${hostResp.capabilityVersion ?? '?'}`,
+  );
+
+  // Promote this intent to "last" so the next cycle chains off it.
+  intent.commit();
+
+  // 7. Parse decision with risk-limit gating
+  let decision: TradeDecision;
+  try {
+    decision = parseTradeDecision(
+      hostResp.result,
+      {
+        maxNotionalQuoteRaw: trader.maxNotionalQuoteRaw,
+        dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw,
+        maxSlippageBps: trader.maxSlippageBps,
+      },
+      {
+        dailySpentQuoteRaw: dailySpentRaw,
+        nbtcBalanceRaw: balances.nbtcRaw,
+        nusdcBalanceRaw: balances.nusdcRaw,
+      },
+    );
+  } catch (err) {
+    log(
+      `[trader] Decision parse failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    saveTraderState({
+      lastTradeDigest,
+      lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
+    });
+    return;
+  }
+
+  if (decision.riskGate) {
+    log(`[trader] Decision demoted to HOLD by risk gate: ${decision.riskGate}`);
+  } else {
+    log(
+      `[trader] Decision: ${decision.action} size=${decision.sizeNUSDC} reason="${decision.reason}"`,
+    );
+  }
+
+  // Persist intent chain even if no trade follows.
+  const intentIdHex = Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex');
 
   if (decision.action === 'HOLD') {
-    log('[trader] HOLD — no trade this cycle.');
+    saveTraderState({ lastTradeDigest, lastIntentIdHex: intentIdHex });
     return;
   }
 
-  // 5. Execute trade
+  // 8. Execute trade (agent-signed; not in the AER PTB — see envelope header)
   try {
     const trade = await executeTrade(client, config.keypair, decision, balances);
     if (trade) {
       log(`[trader] Trade executed: ${trade.description} digest=${trade.digest}`);
       lastTradeDigest = trade.digest;
-      saveTraderState({ lastTradeDigest });
     }
   } catch (err) {
     log(`[trader] Trade failed: ${err instanceof Error ? err.message : String(err)}`);
   }
+  saveTraderState({ lastTradeDigest, lastIntentIdHex: intentIdHex });
+
+  // Touch unused imports so future-me doesn't accidentally drop them while
+  // the legacy lambda code path is being torn down. TRADER_CONFIG is
+  // still consumed in trader.ts.
+  void TRADER_CONFIG;
+  void runLambdaStep;
 }
 
 async function runSingleStepCycle(

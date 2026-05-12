@@ -5,6 +5,8 @@
 import 'dotenv/config';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
+import { resolveStrategyPreset, type StrategyPreset } from './presets/strategies.js';
+
 const MIN_INTERVAL_MINUTES = 5;
 const CLOCK_ID = '0x0000000000000000000000000000000000000000000000000000000000000006';
 
@@ -76,6 +78,78 @@ function parsePriceOrDefault(raw: string | undefined, defaultPrice: number): num
   return parsed;
 }
 
+// Trader-only env validators. Pulled out so the non-trader presets keep
+// booting unchanged when the trader-specific vars are absent.
+function requireObjectId(raw: string, name: string): string {
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(raw)) {
+    throw new Error(`${name} must be 0x<hex>: got "${raw.slice(0, 12)}..."`);
+  }
+  return raw;
+}
+
+function requireAddress(raw: string, name: string): string {
+  if (!/^0x[0-9a-fA-F]{64}$/.test(raw)) {
+    throw new Error(`${name} must be 0x<64-hex>: got "${raw.slice(0, 12)}..."`);
+  }
+  return raw;
+}
+
+function parseBigIntEnv(raw: string | undefined, name: string, fallback: bigint): bigint {
+  if (raw === undefined || raw === '') return fallback;
+  try {
+    const v = BigInt(raw);
+    if (v < 0n) throw new Error('negative');
+    return v;
+  } catch {
+    throw new Error(`${name} must be a non-negative integer (got "${raw}")`);
+  }
+}
+
+interface TraderConfig {
+  hostUrl: string;
+  capabilityId: string;
+  walletAddress: string;
+  strategy: StrategyPreset;
+  maxNotionalQuoteRaw: bigint;
+  dailyMaxQuoteRaw: bigint;
+  maxSlippageBps: number;
+}
+
+function loadTraderConfig(): TraderConfig {
+  const hostUrl = requireHttpsUrl(requireEnv('HOST_URL'), 'HOST_URL');
+  const capabilityId = requireObjectId(requireEnv('CAPABILITY_ID'), 'CAPABILITY_ID');
+  const walletAddress = requireAddress(requireEnv('WALLET_ADDRESS'), 'WALLET_ADDRESS');
+  const strategy = resolveStrategyPreset(process.env.STRATEGY);
+  const maxNotionalQuoteRaw = parseBigIntEnv(
+    process.env.MAX_NOTIONAL_QUOTE_RAW,
+    'MAX_NOTIONAL_QUOTE_RAW',
+    2_000_000n,
+  );
+  const dailyMaxQuoteRaw = parseBigIntEnv(
+    process.env.DAILY_MAX_QUOTE_RAW,
+    'DAILY_MAX_QUOTE_RAW',
+    20_000_000n,
+  );
+  const maxSlippageBpsRaw = process.env.MAX_SLIPPAGE_BPS;
+  let maxSlippageBps = 100;
+  if (maxSlippageBpsRaw) {
+    const parsed = Number(maxSlippageBpsRaw);
+    if (!Number.isInteger(parsed) || parsed < 0 || parsed > 10_000) {
+      throw new Error('MAX_SLIPPAGE_BPS must be an integer in [0, 10000]');
+    }
+    maxSlippageBps = parsed;
+  }
+  return {
+    hostUrl,
+    capabilityId,
+    walletAddress,
+    strategy,
+    maxNotionalQuoteRaw,
+    dailyMaxQuoteRaw,
+    maxSlippageBps,
+  };
+}
+
 export function loadConfig() {
   const preset = (process.env.PRESET ?? 'research') as PresetName;
   if (!(preset in PRESET_DEFAULTS)) {
@@ -106,6 +180,15 @@ export function loadConfig() {
   const llmApiKey = mode === 'record' ? requireEnv('LLM_API_KEY') : '';
   const llmModel = mode === 'record' ? (process.env.LLM_MODEL ?? 'llama-3.3-70b-versatile') : '';
 
+  // Trader preset uses the host /execute-capability path; everything else
+  // still routes through the Lambda /execute path (which is itself slated
+  // for retirement in Plan E but kept alive for non-trader presets in C2).
+  const trader = preset === 'trader' ? loadTraderConfig() : null;
+  const lambdaUrl =
+    preset === 'trader'
+      ? (process.env.LAMBDA_URL ? requireHttpsUrl(process.env.LAMBDA_URL, 'LAMBDA_URL') : '')
+      : requireHttpsUrl(requireEnv('LAMBDA_URL'), 'LAMBDA_URL');
+
   return {
     keypair,
     agentAddress: keypair.toSuiAddress(),
@@ -117,9 +200,12 @@ export function loadConfig() {
     clockId: CLOCK_ID,
 
     // Executor
-    lambdaUrl: requireHttpsUrl(requireEnv('LAMBDA_URL'), 'LAMBDA_URL'),
+    lambdaUrl,
     apiKey: requireEnv('BARAM_API_KEY'),
     executorAddress: requireEnv('EXECUTOR_ADDRESS'),
+
+    // Trader-only (host /execute-capability path). null for non-trader presets.
+    trader,
 
     // Agent behavior
     mode,
