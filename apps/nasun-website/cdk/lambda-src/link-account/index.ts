@@ -621,12 +621,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // Admin-link bypasses this gate (admin-driven identity merges).
     if (providerKey === 'twitter' && secondaryProfile.twitterId && !isAdminLink) {
       try {
+        // twitterId-index is KEYS_ONLY, so only identityId (base PK) + twitterId
+        // are projected. Fetch the full record via GetItem when a real conflict
+        // is identified.
         const dedupResult = await dynamoClient.send(new QueryCommand({
           TableName: tableName,
           IndexName: 'twitterId-index',
           KeyConditionExpression: 'twitterId = :tid',
           ExpressionAttributeValues: { ':tid': secondaryProfile.twitterId },
-          ProjectionExpression: 'identityId, walletAddress, username, customDisplayName',
+          ProjectionExpression: 'identityId',
         }));
 
         for (const item of dedupResult.Items || []) {
@@ -640,6 +643,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             .map((v) => v?.identityId)
             .filter(Boolean);
           if (linkedSelfIds.includes(dupId)) continue;
+
+          const dupRecord = await dynamoClient.send(new GetCommand({
+            TableName: tableName,
+            Key: { identityId: dupId },
+            ProjectionExpression: 'walletAddress, username, customDisplayName',
+          }));
+          const dupItem = dupRecord.Item || {};
 
           console.log(JSON.stringify({
             event: 'LINK_TWITTER_ALREADY_LINKED',
@@ -656,8 +666,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
               message: 'This X account is already linked to another wallet. Unlink it from the other wallet first.',
               existingPrimary: {
                 identityId: dupId,
-                walletAddress: typeof item.walletAddress === 'string' ? item.walletAddress : null,
-                username: (item.customDisplayName || item.username || null) as string | null,
+                walletAddress: typeof dupItem.walletAddress === 'string' ? dupItem.walletAddress : null,
+                username: (dupItem.customDisplayName || dupItem.username || null) as string | null,
               },
             }),
           };
