@@ -6,7 +6,8 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/components/common';
 import { useWallet, useZkLogin, useMultiBalance, usePasskeyStore } from '@nasun/wallet';
 import { OpenOrders } from './OpenOrders';
 import { OrderHistory } from './OrderHistory';
@@ -171,6 +172,8 @@ function TPSLTab() {
   const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
   const passkeyAddress = usePasskeyStore((s) => s.address);
+  const queryClient = useQueryClient();
+  const { showToast } = useToast();
   // Mirror TradingPanel walletAddress priority: zkLogin > local wallet > passkey
   const walletAddress = isZkLoggedIn
     ? zkState?.address
@@ -193,6 +196,7 @@ function TPSLTab() {
 
   const [localOrders, setLocalOrders] = useState<TPSLOrder[]>(() => getTPSLOrders());
   const [historyVisible, setHistoryVisible] = useState(TPSL_HISTORY_PAGE_SIZE);
+  const [cancellingIds, setCancellingIds] = useState<Set<string>>(new Set());
 
   const refreshLocal = () => setLocalOrders(getTPSLOrders());
 
@@ -203,10 +207,14 @@ function TPSLTab() {
 
   const handleCancel = async (id: string) => {
     if (isServerMode && walletAddress) {
+      setCancellingIds((prev) => new Set(prev).add(id));
       try {
         await cancelTPSLOrderKeeper(id, walletAddress);
-      } catch {
-        // error toast handled by caller; still refresh local for consistency
+        queryClient.invalidateQueries({ queryKey: ['keeperTPSLOrders', walletAddress] });
+      } catch (err) {
+        showToast(err instanceof Error ? err.message : 'Failed to cancel order', 'error');
+      } finally {
+        setCancellingIds((prev) => { const s = new Set(prev); s.delete(id); return s; });
       }
     } else {
       cancelTPSLOrder(id);
@@ -359,9 +367,10 @@ function TPSLTab() {
               <div className="text-right">
                 <button
                   onClick={() => handleCancel(order.id)}
-                  className="px-3 min-h-[44px] md:min-h-0 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors"
+                  disabled={cancellingIds.has(order.id)}
+                  className="px-3 min-h-[44px] md:min-h-0 md:px-1.5 md:py-0.5 text-trading-xs font-medium rounded bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Cancel
+                  {cancellingIds.has(order.id) ? '...' : 'Cancel'}
                 </button>
               </div>
             </div>
