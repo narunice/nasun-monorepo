@@ -576,3 +576,41 @@ describe('runTraderCycle — escrow caching + intent chain', () => {
     expect(cycle2Body.lineage.executionId).toBe(1);
   });
 });
+
+describe('runTraderCycle — isPendingActive lock (Plan D §A5\')', () => {
+  it('returns pending_lock and skips /infer when isPendingActive=true', async () => {
+    const deps = makeDeps({
+      isPendingActive: vi.fn().mockResolvedValue(true),
+    });
+    const config = makeConfig({ baramAerPackageId: '0x' + 'ae'.repeat(32) });
+    const runtime = newTraderCycleRuntime();
+    const result = await runTraderCycle(FAKE_CLIENT, config, runtime, deps);
+
+    expect(result.outcome).toBe('pending_lock');
+    expect(deps.checkBudget).not.toHaveBeenCalled();
+    expect(deps.infer).not.toHaveBeenCalled();
+    expect(deps.executeCapability).not.toHaveBeenCalled();
+  });
+
+  it('proceeds normally when isPendingActive=false', async () => {
+    const deps = makeDeps({
+      isPendingActive: vi.fn().mockResolvedValue(false),
+    });
+    const config = makeConfig({ baramAerPackageId: '0x' + 'ae'.repeat(32) });
+    const runtime = newTraderCycleRuntime();
+    const result = await runTraderCycle(FAKE_CLIENT, config, runtime, deps);
+
+    expect(result.outcome).toBe('succeeded');
+    expect(deps.infer).toHaveBeenCalledOnce();
+  });
+
+  it('does not call isPendingActive when baramAerPackageId is empty', async () => {
+    const mockPending = vi.fn().mockResolvedValue(true);
+    const deps = makeDeps({ isPendingActive: mockPending });
+    const config = makeConfig({ baramAerPackageId: '' });
+    const runtime = newTraderCycleRuntime();
+    await runTraderCycle(FAKE_CLIENT, config, runtime, deps);
+
+    expect(mockPending).not.toHaveBeenCalled();
+  });
+});

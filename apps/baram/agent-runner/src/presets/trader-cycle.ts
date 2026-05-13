@@ -31,6 +31,7 @@ import { join } from 'node:path';
 import {
   checkBudget as defaultCheckBudget,
   createRequest as defaultCreateRequest,
+  isPendingActive as defaultIsPendingActive,
   categorizeError,
 } from '../baram-client.js';
 import {
@@ -162,6 +163,9 @@ export interface TraderCycleDeps {
   executeCapability: typeof defaultExecuteCapability;
   checkBudget: typeof defaultCheckBudget;
   createRequest: typeof defaultCreateRequest;
+  /** Plan D §A5': skip cycle if an unconfirmed proposal lock is live. Optional
+   *  so tests that don't care can omit it. Defaults to the real devInspect call. */
+  isPendingActive?: typeof defaultIsPendingActive;
   fetchEscrow: typeof escrowSdk.fetchEscrow;
   fetchAgentBalances: typeof defaultFetchAgentBalances;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
@@ -179,6 +183,7 @@ const REAL_DEPS: TraderCycleDeps = {
   executeCapability: defaultExecuteCapability,
   checkBudget: defaultCheckBudget,
   createRequest: defaultCreateRequest,
+  isPendingActive: defaultIsPendingActive,
   fetchEscrow: escrowSdk.fetchEscrow,
   fetchAgentBalances: defaultFetchAgentBalances,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
@@ -198,6 +203,7 @@ export type TraderCycleOutcome =
   | 'budget_check_failed'
   | 'budget_inactive'
   | 'insufficient_balance'
+  | 'pending_lock'
   | 'request_failed'
   | 'infer_failed'
   | 'parse_failed'
@@ -236,6 +242,26 @@ export async function runTraderCycle(
     return { outcome: 'budget_check_failed', fatal: true, reason: 'trader config missing' };
   }
   const agentAddr = config.agentAddress;
+
+  // 0. Skip if an unconfirmed proposal is pending on-chain (Plan D §A5').
+  if (deps.isPendingActive && config.baramAerPackageId) {
+    let pending = false;
+    try {
+      pending = await deps.isPendingActive(
+        client,
+        config.baramAerPackageId,
+        trader.capabilityId,
+        Date.now(),
+        agentAddr,
+      );
+    } catch (err) {
+      deps.log(`[trader] isPendingActive check failed (proceeding): ${err instanceof Error ? err.message : err}`);
+    }
+    if (pending) {
+      deps.log('[trader] Pending proposal lock active — skipping heartbeat cycle.');
+      return { outcome: 'pending_lock' };
+    }
+  }
 
   // 1. Budget
   let budget;

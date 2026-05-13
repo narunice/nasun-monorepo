@@ -25,7 +25,9 @@ import {
   newTraderCycleRuntime,
   type TraderCycleResult,
 } from './presets/trader-cycle.js';
+import { runAnalystPreset } from './presets/analyst.js';
 import type { Preset } from './presets/types.js';
+import type { WakeContext, WakeOutcome } from './wake-router.js';
 import { notifyTraderAER } from './telegram.js';
 import { startWakeServer } from './wake-server.js';
 import { IdempotencyStore } from './idempotency.js';
@@ -114,6 +116,39 @@ async function runTraderCyclePresetEntry(
       });
     }
   }
+}
+
+// External heartbeat trigger (e.g., Telegram /wake-now command) — runs the
+// same trader cycle as the autonomous heartbeat but returns a WakeOutcome
+// for the idempotency store. Kept separate from the setTimeout loop so the
+// two paths can be driven independently in tests.
+async function runHeartbeatFromWake(
+  client: SuiClient,
+  config: ReturnType<typeof loadConfig>,
+  _ctx: WakeContext,
+): Promise<WakeOutcome> {
+  let result: TraderCycleResult;
+  try {
+    result = await runTraderCycle(client, config, traderRuntime);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    log(`[heartbeat-wake] Unexpected cycle error: ${reason}`);
+    return { ok: false, status: 'rejected', reason };
+  }
+  if (result.fatal) {
+    shuttingDown = true;
+  }
+  const succeeded = result.outcome === 'succeeded' || result.outcome === 'pending_lock';
+  const summary = result.decision
+    ? `${result.decision.action} ~${result.decision.sizeNUSDC} NUSDC: ${result.decision.reason}`
+    : result.outcome;
+  return {
+    ok: succeeded,
+    status: result.outcome === 'pending_lock' ? 'skipped' : 'processed',
+    reason: result.outcome,
+    aerDigest: result.txDigest,
+    summary,
+  };
 }
 
 async function runSingleStepCycle(
@@ -383,6 +418,9 @@ async function main(): Promise<void> {
       idempotency,
       port: config.wakePort,
       logger: (m) => log(m),
+      runAnalystCycle: (ctx) => runAnalystPreset(client, config, ctx),
+      runHeartbeatCycle: (ctx) => runHeartbeatFromWake(client, config, ctx),
+      // runManualExecution: D-5
     });
     wakeShutdownGlobal = wake.close;
     log(`Wake endpoint listening on http://127.0.0.1:${config.wakePort}/wake`);
