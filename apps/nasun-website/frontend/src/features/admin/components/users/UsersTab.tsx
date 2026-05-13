@@ -76,6 +76,27 @@ function RoleBadge({ role }: { role?: string }) {
   );
 }
 
+/**
+ * Two-step unban prompt. Returns { mode, reason } or null if cancelled.
+ *
+ * Mode choice matters:
+ *   - 'retroactive' restores every ban-period point the user accumulated.
+ *     Use when the ban was a mistake (false positive).
+ *   - 'forward-only' lifts the flag but keeps ban-period rows invisible.
+ *     Use when the ban was justified but you're granting a fresh start.
+ */
+function promptUnbanIntent(): { mode: 'retroactive' | 'forward-only'; reason?: string } | null {
+  const restorePoints = window.confirm(
+    'Restore ban-period points?\n\n' +
+    'OK = RESTORE  (the ban was a mistake; user gets back every point earned during the ban)\n' +
+    'Cancel = FORWARD-ONLY  (the ban was justified; user starts fresh from now; ban-period points stay invisible)',
+  );
+  const mode = restorePoints ? 'retroactive' : 'forward-only';
+  const reason = window.prompt(`Reason for ${mode} unban (optional):`, '');
+  if (reason === null) return null;
+  return { mode, reason: reason.trim() || undefined };
+}
+
 function RowBanButton({ user, banned }: { user: UserProfile; banned: boolean }) {
   const { cognitoToken } = useAdminAuth();
   const banMutation = useBanAccount(cognitoToken);
@@ -90,12 +111,18 @@ function RowBanButton({ user, banned }: { user: UserProfile; banned: boolean }) 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (banned) {
-      const reason = window.prompt("Reason for unban (optional):", "");
-      if (reason === null) return;
+      const intent = promptUnbanIntent();
+      if (!intent) return;
       unbanMutation.mutate(
-        { identityId: user.identityId, reason: reason.trim() || undefined },
+        { identityId: user.identityId, reason: intent.reason, mode: intent.mode },
         {
-          onSuccess: () => toast.success("Account unbanned"),
+          onSuccess: (res) => {
+            const r = res.applied?.[0];
+            const detail = r?.mode === 'forward-only'
+              ? `forward-only (${r.reflaggedRows ?? 0} rows kept invisible)`
+              : `points restored (${r?.unflaggedRows ?? 0} rows)`;
+            toast.success(`Account unbanned: ${detail}`);
+          },
           onError: (err: Error) => toast.error(`Unban failed: ${err.message}`),
         },
       );
@@ -191,12 +218,18 @@ function BanStatusPanel({ user, banEntry }: { user: UserProfile; banEntry?: Bann
           variant="outlineC5"
           size="sm"
           onClick={() => {
-            const reason = window.prompt("Reason for unban (optional):", "");
-            if (reason === null) return;
+            const intent = promptUnbanIntent();
+            if (!intent) return;
             unbanMutation.mutate(
-              { identityId: user.identityId, reason: reason.trim() || undefined },
+              { identityId: user.identityId, reason: intent.reason, mode: intent.mode },
               {
-                onSuccess: () => toast.success("Account unbanned"),
+                onSuccess: (res) => {
+                  const r = res.applied?.[0];
+                  const detail = r?.mode === 'forward-only'
+                    ? `forward-only (${r.reflaggedRows ?? 0} rows kept invisible)`
+                    : `points restored (${r?.unflaggedRows ?? 0} rows)`;
+                  toast.success(`Account unbanned: ${detail}`);
+                },
                 onError: (err: Error) => toast.error(`Unban failed: ${err.message}`),
               },
             );

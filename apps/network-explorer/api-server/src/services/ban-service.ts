@@ -249,11 +249,15 @@ export async function applyBans(
   return out;
 }
 
+export type UnbanMode = 'retroactive' | 'forward-only';
+
 export interface UnbanResult {
   identityId: string;
   handle: string;
   cleared: boolean;
   unflaggedRows: number;
+  reflaggedRows?: number; // forward-only only: pre-unban rows pushed back to flagged
+  mode: UnbanMode;
 }
 
 export async function applyUnbans(
@@ -261,28 +265,32 @@ export async function applyUnbans(
   resolutions: Resolution[],
   actor: string,
   reason: string,
+  mode: UnbanMode = 'retroactive',
 ): Promise<UnbanResult[]> {
   const mapped = resolutions.filter((r) => r.identityId);
   const out: UnbanResult[] = [];
+  const noteSuffix = mode === 'forward-only' ? ' (forward-only unban)' : '';
 
   for (const r of mapped) {
     await db.begin(async (tx) => {
       const sql = tx as unknown as typeof db;
       await sql`SET LOCAL app.allow_points_mutation = 'on'`;
-      const result = await sql<Array<{ identity_id: string }>>`
+      const result = await sql<Array<{ identity_id: string; unbanned_at: Date }>>`
         UPDATE banned_users
         SET unbanned_at = NOW(),
             unbanned_by = ${actor},
-            notes = COALESCE(notes || E'\n', '') || ${'unban reason: ' + reason}
+            notes = COALESCE(notes || E'\n', '') || ${'unban reason: ' + reason + noteSuffix}
         WHERE identity_id = ${r.identityId!}
           AND unbanned_at IS NULL
-        RETURNING identity_id
+        RETURNING identity_id, unbanned_at
       `;
       if (result.length === 0) {
-        out.push({ identityId: r.identityId!, handle: r.handle, cleared: false, unflaggedRows: 0 });
+        out.push({ identityId: r.identityId!, handle: r.handle, cleared: false, unflaggedRows: 0, mode });
         return;
       }
-      const updated = await sql<Array<{ count: string }>>`
+      const unbannedAt = result[0].unbanned_at;
+
+      const unflagged = await sql<Array<{ count: string }>>`
         WITH upd AS (
           UPDATE activity_points
           SET flagged = false
@@ -292,11 +300,34 @@ export async function applyUnbans(
         )
         SELECT COUNT(*)::text AS count FROM upd
       `;
+      const unflaggedRows = Number(unflagged[0]?.count ?? 0);
+
+      let reflaggedRows = 0;
+      if (mode === 'forward-only') {
+        // Re-flag rows that predate the unban moment, so ban-period activity
+        // stays invisible. Same transaction → outside observer never sees a
+        // points balance increase, preserving the monotonic-increase invariant.
+        const reflagged = await sql<Array<{ count: string }>>`
+          WITH upd AS (
+            UPDATE activity_points
+            SET flagged = true
+            WHERE identity_id = ${r.identityId!}
+              AND NOT flagged
+              AND tx_timestamp < ${unbannedAt}
+            RETURNING 1
+          )
+          SELECT COUNT(*)::text AS count FROM upd
+        `;
+        reflaggedRows = Number(reflagged[0]?.count ?? 0);
+      }
+
       out.push({
         identityId: r.identityId!,
         handle: r.handle,
         cleared: true,
-        unflaggedRows: Number(updated[0]?.count ?? 0),
+        unflaggedRows,
+        reflaggedRows: mode === 'forward-only' ? reflaggedRows : undefined,
+        mode,
       });
     });
   }

@@ -27,12 +27,30 @@ export interface BanResolution {
   note?: string;
 }
 
+export type UnbanMode = 'retroactive' | 'forward-only';
+
 export interface BanApplyResult {
   identityId: string;
   walletAddress?: string;
   handle: string;
   flaggedRows: number;
   source?: string;
+}
+
+export interface UnbanApplyResult {
+  identityId: string;
+  handle: string;
+  cleared: boolean;
+  unflaggedRows: number;
+  reflaggedRows?: number;
+  mode: UnbanMode;
+}
+
+export interface UnbanResponse {
+  success: boolean;
+  resolutions: BanResolution[];
+  applied: UnbanApplyResult[];
+  cacheRefresh: { ok: boolean; status?: number; error?: string };
 }
 
 export interface BanResponse {
@@ -86,8 +104,8 @@ export async function banAccount(
 
 export async function unbanAccount(
   cognitoToken: string,
-  params: { identityId?: string; handle?: string; reason?: string },
-): Promise<BanResponse> {
+  params: { identityId?: string; handle?: string; reason?: string; mode?: UnbanMode },
+): Promise<UnbanResponse> {
   const res = await fetch(ENDPOINT, {
     method: 'DELETE',
     headers: { ...authHeaders(cognitoToken), 'Content-Type': 'application/json' },
