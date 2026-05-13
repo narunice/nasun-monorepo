@@ -104,6 +104,13 @@ const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType 
     pattern: /quorum/i,
     message: 'Network consensus issue. Please wait a moment and retry.',
   },
+  // Owned-object version conflicts from rapid consecutive trades. Validators
+  // reject stale coin/object references; waiting a moment lets the RPC index
+  // the previous tx's effects before the next build.
+  {
+    pattern: /LockConflict|ObjectVersionMismatch|ObjectVersionUnavailable|is not available for consumption/i,
+    message: 'Transaction conflict. Wait a moment after your last trade and try again.',
+  },
 ];
 
 /**
