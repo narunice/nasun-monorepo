@@ -24,6 +24,8 @@ import {
   listActiveSessions,
   type BaramSessionRow,
 } from './baram-session.js';
+import { verifyWebhookToken, handleTelegramUpdate, type TelegramUpdate } from './baram-telegram.js';
+import { handleHeartbeat } from './baram-agent-registry.js';
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_CHALLENGES = 5_000;
@@ -323,11 +325,12 @@ async function handleListSessions(
   writeJson(res, 200, corsHeaders, { sessions });
 }
 
-const BARAM_PREFIX = '/api/baram/telegram/';
+const BARAM_TG_PREFIX = '/api/baram/telegram/';
+const BARAM_AGENT_PREFIX = '/api/baram/agent/';
 
 /**
- * Returns true if the URL matched a baram telegram route (whether or not the
- * handler succeeded). Caller should not continue routing.
+ * Returns true if the URL matched a baram route (telegram or agent).
+ * Caller should not continue routing.
  */
 export async function handleBaramTelegramRequest(
   req: import('node:http').IncomingMessage,
@@ -335,7 +338,9 @@ export async function handleBaramTelegramRequest(
   url: URL,
   baseCorsHeaders: Record<string, string>,
 ): Promise<boolean> {
-  if (!url.pathname.startsWith(BARAM_PREFIX)) return false;
+  const isTg = url.pathname.startsWith(BARAM_TG_PREFIX);
+  const isAgent = url.pathname.startsWith(BARAM_AGENT_PREFIX);
+  if (!isTg && !isAgent) return false;
 
   const corsHeaders: Record<string, string> = {
     ...baseCorsHeaders,
@@ -355,6 +360,37 @@ export async function handleBaramTelegramRequest(
   }
 
   try {
+    // Agent-runner heartbeat
+    if (url.pathname === '/api/baram/agent/heartbeat') {
+      await handleHeartbeat(req, res, { 'Content-Type': 'application/json' });
+      return true;
+    }
+
+    // Telegram webhook (inbound updates from Telegram Bot API)
+    if (url.pathname === '/api/baram/telegram/webhook') {
+      const secretHeader = req.headers['x-telegram-bot-api-secret-token'] as string | undefined;
+      if (!verifyWebhookToken(secretHeader)) {
+        writeJson(res, 401, corsHeaders, { error: 'bad_webhook_secret' });
+        return true;
+      }
+      // Respond 200 immediately; process update asynchronously.
+      let body: unknown;
+      try { body = await readJsonBody(req); } catch {
+        res.writeHead(200); res.end(); return true; // Telegram must always get 200
+      }
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+      // Fire-and-forget background processing
+      const update = body as TelegramUpdate;
+      setImmediate(() => {
+        handleTelegramUpdate(update).catch((err: Error) => {
+          console.error('[baram-tg] update handler error:', err.message);
+        });
+      });
+      return true;
+    }
+
+    // Telegram session management routes
     switch (url.pathname) {
       case '/api/baram/telegram/challenge':
         await handleChallenge(req, res, corsHeaders);
