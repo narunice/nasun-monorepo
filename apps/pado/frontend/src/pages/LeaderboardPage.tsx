@@ -271,59 +271,45 @@ export function LeaderboardPage() {
 
           {/* Stats Bar + Period/Scope Selector */}
           {mode === "score" ? (
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex flex-wrap items-center gap-2">
-                  <ScopeSelector
-                    selected={viewMode}
-                    onSelect={handleViewModeChange}
-                    pastDisabled={pastWeeks.length === 0}
-                  />
-                  {viewMode === "past" && pastWeeks.length > 0 && (
-                    <WeekPicker
-                      weeks={pastWeeks}
-                      selectedWeekId={selectedWeekId}
-                      onChange={(wId) => {
-                        setSelectedWeekId(wId);
-                        setPage(1);
-                      }}
-                    />
-                  )}
-                </div>
-                <LeaderboardSearchBox
-                  entries={allScoreTraders}
-                  filterFn={scoreFilterFn}
-                  toResult={scoreToResult}
-                  onSelect={handleSearchSelect}
-                  placeholder="Search by handle, name, or address..."
-                  disabled={scoreQuery.isLoading && allScoreTraders.length === 0}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <ScopeSelector
+                  selected={viewMode}
+                  onSelect={handleViewModeChange}
+                  pastDisabled={pastWeeks.length === 0}
                 />
-              </div>
-              {activeData && activeData.totalTraders > 0 && (
-                <div className="flex flex-wrap items-center gap-4 text-sm text-theme-text-muted">
-                  <span>{activeData.totalTraders} active traders</span>
-                  <span>
-                    Showing {offset + 1}-
-                    {Math.min(
-                      offset + PAGE_SIZE,
-                      Math.min(totalTraders, MAX_RANK),
+                {viewMode === "past" && pastWeeks.length > 0 && (
+                  <WeekPicker
+                    weeks={pastWeeks}
+                    selectedWeekId={selectedWeekId}
+                    onChange={(wId) => {
+                      setSelectedWeekId(wId);
+                      setPage(1);
+                    }}
+                  />
+                )}
+                {activeData && activeData.updatedAt > 0 && (
+                  <span className="text-sm text-theme-text-muted">
+                    Updated{" "}
+                    {new Date(activeData.updatedAt).toLocaleTimeString(
+                      "en-US",
+                      {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        hour12: false,
+                      },
                     )}
                   </span>
-                  {activeData.updatedAt > 0 && (
-                    <span>
-                      Updated{" "}
-                      {new Date(activeData.updatedAt).toLocaleTimeString(
-                        "en-US",
-                        {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                          hour12: false,
-                        },
-                      )}
-                    </span>
-                  )}
-                </div>
-              )}
+                )}
+              </div>
+              <LeaderboardSearchBox
+                entries={allScoreTraders}
+                filterFn={scoreFilterFn}
+                toResult={scoreToResult}
+                onSelect={handleSearchSelect}
+                placeholder="Search by handle, name, or address..."
+                disabled={scoreQuery.isLoading && allScoreTraders.length === 0}
+              />
             </div>
           ) : (
             <div className="flex items-center justify-between">
@@ -433,6 +419,16 @@ export function LeaderboardPage() {
               />
             )}
           </div>
+
+          {mode === "score" && activeData && activeData.totalTraders > 0 && (
+            <div className="flex flex-wrap items-center gap-4 text-sm text-theme-text-muted">
+              <span>{activeData.totalTraders} active traders</span>
+              <span>
+                Showing {offset + 1}-
+                {Math.min(offset + PAGE_SIZE, Math.min(totalTraders, MAX_RANK))}
+              </span>
+            </div>
+          )}
         </>
       )}
     </div>
