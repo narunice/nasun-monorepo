@@ -51,7 +51,7 @@ async function callInfer(requestId: number): Promise<InferOk> {
   const body = JSON.stringify({
     requestId,
     encryptedPrompt: Buffer.from('hello', 'utf-8').toString('base64'),
-    model: 'gpt-4',
+    model: process.env.MODEL ?? 'llama-3.3-70b-versatile',
     capabilityId: CAPABILITY_ID,
     walletAddress: WALLET_ADDRESS,
   });
@@ -75,7 +75,7 @@ function minimalCognitionBody(inf: InferOk, requestId: number) {
     spendToken: inf.spendToken,
     nonce: inf.nonce,
     expiresAt: inf.expiresAt,
-    model: 'gpt-4',
+    model: process.env.MODEL ?? 'llama-3.3-70b-versatile',
     capabilityId: CAPABILITY_ID,
     walletAddress: WALLET_ADDRESS,
     envelope: {
@@ -91,7 +91,7 @@ function minimalCognitionBody(inf: InferOk, requestId: number) {
     lineage: { intentId: new Array(16).fill(0), parentIntentId: null, executionId: 1 },
     wake: { triggeredByType: 1, triggeredByRef: null },
     replay: {
-      modelVersion: 'gpt-4',
+      modelVersion: process.env.MODEL ?? 'llama-3.3-70b-versatile',
       promptTemplateHash: new Array(32).fill(0),
       marketSnapshotHash: null,
       replayExtras: [],

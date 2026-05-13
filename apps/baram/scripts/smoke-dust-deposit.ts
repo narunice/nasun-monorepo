@@ -139,6 +139,8 @@ async function main(): Promise<void> {
     arguments: [escArg, capArg, obligation, tx.object(unauthRef.objectId)],
   });
 
+  tx.setSender(sender);
+  tx.setGasBudget(50_000_000);
   const txBytes = await tx.build({ client });
   const dry = await client.dryRunTransactionBlock({ transactionBlock: txBytes });
 

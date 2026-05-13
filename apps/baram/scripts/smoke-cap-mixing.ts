@@ -136,14 +136,19 @@ async function main(): Promise<void> {
     arguments: [escAArg, capAArg, tx.pure.u64(PROBE_AMOUNT), tx.pure.u64(capAVersion)],
   });
 
-  // Cap-mixing: feed Obligation_A into settle_action on (escrow_B, cap_B).
+  // Cap-mixing: feed Obligation_A into settle_action on (escrow_A, cap_B).
+  // Same escrow as withdraw → bypasses E_OBLIGATION_ESCROW_MISMATCH (575),
+  // forces the test through to E_OBLIGATION_CAP_MISMATCH (576).
   tx.moveCall({
     target: `${AER_PKG}::escrow::settle_action`,
     typeArguments: [NUSDC],
-    arguments: [escBArg, capBArg, obligationA, coinFromA],
+    arguments: [escAArg, capBArg, obligationA, coinFromA],
   });
   void capBVersion;
+  void escBArg;
 
+  tx.setSender(sender);
+  tx.setGasBudget(50_000_000);
   const txBytes = await tx.build({ client });
   const dry = await client.dryRunTransactionBlock({ transactionBlock: txBytes });
 
