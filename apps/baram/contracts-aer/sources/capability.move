@@ -21,6 +21,8 @@
 ///     match host behavior.
 module baram_aer::capability {
     use sui::event;
+    use sui::dynamic_field as df;
+    use sui::clock::{Self, Clock};
     use std::string::{Self, String};
     use std::type_name::TypeName;
 
@@ -41,6 +43,11 @@ module baram_aer::capability {
     const E_ALLOWED_ACTION_TOO_LONG: u64 = 563;
     // 564 is owned by aer::E_GATED_REQUIRES_NON_SETTLEMENT_CLASS (asserted in aer.move).
     const E_FINALIZE_LINK_AFTER_REVOKE: u64 = 565;
+    // Plan D D-0b pending lock (Foundation 결정 4·6). See module doc §Pending lock.
+    const E_PENDING_PROPOSAL_ACTIVE: u64 = 566;
+    const E_NO_PENDING_PROPOSAL: u64 = 567;
+    const E_INVALID_PENDING_TTL: u64 = 568;
+    const E_PENDING_ID_INVALID_LEN: u64 = 569;
 
     // ========== Constants ==========
     const MAX_ALLOWED_ACTIONS: u64 = 16;
@@ -65,6 +72,14 @@ module baram_aer::capability {
     const MUTATION_KIND_ASSETS: u8 = 4;
     const MUTATION_KIND_TARGETS: u8 = 5;
     const MUTATION_KIND_ESCROW: u8 = 6;
+
+    // Plan D D-0b pending lock constants.
+    /// Maximum permitted TTL on a pending proposal lock. Hosts that need
+    /// longer should issue a fresh `set_pending_proposal` rather than
+    /// minting indefinite locks.
+    const MAX_PENDING_TTL_MS: u64 = 24 * 60 * 60 * 1000;
+    /// ULID binary form (Plan D A4 + `intent-ids.ts`).
+    const PENDING_ID_LEN: u64 = 16;
 
     // ========== Structs ==========
 
@@ -606,6 +621,176 @@ module baram_aer::capability {
     public fun risk_limits_max_slippage_bps(r: &RiskLimits): u16 { r.max_slippage_bps }
     public fun risk_limits_stop_loss_bps(r: &RiskLimits): u16 { r.stop_loss_bps }
     public fun risk_limits_take_profit_bps(r: &RiskLimits): u16 { r.take_profit_bps }
+
+    // ========== Pending lock (Plan D D-0b, Foundation 결정 4 + 6) ==========
+    //
+    // Model: a pending lock is a single `PendingProposal` attached as a
+    // dynamic field on `cap.id` under the singleton `PendingProposalKey`.
+    //
+    // Why dynamic field, not a struct field:
+    //   Sui Move package upgrades cannot add fields to an existing struct
+    //   (`Capability` was published in v1.x and live shared objects --
+    //   including Pair A `0x69b3e885...` -- carry the v1 schema in their
+    //   serialized bytes). A dynamic field is the additive-only escape
+    //   hatch that lets us extend per-object state without invalidating
+    //   the upgrade compatibility check.
+    //
+    // Lifecycle:
+    //   set_pending_proposal   -- wallet sig, fails if an unexpired lock
+    //                              already exists. Silently replaces an
+    //                              expired one (cheaper than forcing a
+    //                              separate `clear`+`set` PTB).
+    //   clear_pending_proposal -- wallet sig anytime, OR anyone after
+    //                              `now_ms >= expires_at` (lets a stuck
+    //                              host self-heal).
+    //   is_pending_active      -- read-side view; heartbeat queries this
+    //                              every wake to decide skip vs proceed.
+    //
+    // The host writes both onchain (this lock) and off-chain (chat-server
+    // DB row in `baram_pending_proposals`). The chain-side lock is the
+    // truth (Foundation 결정 4); the DB row carries the artifact payload
+    // (Plan D §A10) but never substitutes for the lock when deciding
+    // whether to wake.
+
+    public struct PendingProposal has store, copy, drop {
+        proposal_id: vector<u8>,
+        expires_at: u64,
+    }
+
+    /// Singleton key for the pending-proposal dynamic field. Empty struct
+    /// has `copy + drop + store` required by `sui::dynamic_field`.
+    public struct PendingProposalKey has copy, drop, store {}
+
+    public struct PendingProposalSet has copy, drop {
+        cap_id: address,
+        proposal_id: vector<u8>,
+        expires_at: u64,
+        owner: address,
+    }
+
+    public struct PendingProposalCleared has copy, drop {
+        cap_id: address,
+        proposal_id: vector<u8>,
+        cleared_by_owner: bool,
+        owner: address,
+    }
+
+    /// Install or replace the pending-proposal lock. Wallet-signed only.
+    ///
+    /// Aborts with `E_PENDING_PROPOSAL_ACTIVE` if a lock is already
+    /// installed and has not yet expired. This is the cross-process
+    /// race guard described in Plan D §R3: the heartbeat cycle reads
+    /// `is_pending_active` at the start of every wake and skips when it
+    /// returns true, so we must not silently overwrite a live lock.
+    public fun set_pending_proposal(
+        cap: &mut Capability,
+        proposal_id: vector<u8>,
+        expires_at_ms: u64,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_owner(cap, ctx);
+        assert_not_revoked(cap);
+        assert!(proposal_id.length() == PENDING_ID_LEN, E_PENDING_ID_INVALID_LEN);
+        let now_ms = clock::timestamp_ms(clock);
+        assert!(expires_at_ms > now_ms, E_INVALID_PENDING_TTL);
+        assert!(expires_at_ms - now_ms <= MAX_PENDING_TTL_MS, E_INVALID_PENDING_TTL);
+
+        let cap_id_addr = object::id_address(cap);
+        let owner_addr = cap.owner;
+
+        if (df::exists_(&cap.id, PendingProposalKey {})) {
+            let existing: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+            assert!(now_ms >= existing.expires_at, E_PENDING_PROPOSAL_ACTIVE);
+            // Stale lock: drop and reinstall.
+            let _: PendingProposal = df::remove(&mut cap.id, PendingProposalKey {});
+        };
+
+        df::add(
+            &mut cap.id,
+            PendingProposalKey {},
+            PendingProposal { proposal_id, expires_at: expires_at_ms },
+        );
+        // Re-borrow for the event payload so we emit exactly what we
+        // stored. (The proposal_id moved into the field above; copy via
+        // borrow + dereference.)
+        let stored: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+        event::emit(PendingProposalSet {
+            cap_id: cap_id_addr,
+            proposal_id: stored.proposal_id,
+            expires_at: stored.expires_at,
+            owner: owner_addr,
+        });
+    }
+
+    /// Remove the pending-proposal lock.
+    ///
+    /// Permission model:
+    ///   - cap.owner can clear at any time (confirm/cancel path).
+    ///   - Anyone can clear once `now_ms >= expires_at` (self-heal path
+    ///     for a host that crashed before clearing a successful
+    ///     confirmation flow).
+    ///
+    /// Aborts with `E_NO_PENDING_PROPOSAL` if there is nothing to clear
+    /// (owner asking) -- keeps the contract honest about no-op detection.
+    /// Aborts with `E_PENDING_PROPOSAL_ACTIVE` if a non-owner tries to
+    /// clear a still-live lock.
+    public fun clear_pending_proposal(
+        cap: &mut Capability,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        assert_not_revoked(cap);
+        let now_ms = clock::timestamp_ms(clock);
+        let is_owner = cap.owner == tx_context::sender(ctx);
+        let cap_id_addr = object::id_address(cap);
+        let owner_addr = cap.owner;
+
+        assert!(df::exists_(&cap.id, PendingProposalKey {}), E_NO_PENDING_PROPOSAL);
+        let existing: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+        let expired = now_ms >= existing.expires_at;
+        assert!(is_owner || expired, E_PENDING_PROPOSAL_ACTIVE);
+
+        let removed: PendingProposal = df::remove(&mut cap.id, PendingProposalKey {});
+        event::emit(PendingProposalCleared {
+            cap_id: cap_id_addr,
+            proposal_id: removed.proposal_id,
+            cleared_by_owner: is_owner,
+            owner: owner_addr,
+        });
+    }
+
+    /// Heartbeat skip predicate. Returns true iff a lock is installed
+    /// AND `now_ms < expires_at`. False means the agent-runner is free
+    /// to enter a new wake cycle.
+    public fun is_pending_active(cap: &Capability, now_ms: u64): bool {
+        if (!df::exists_(&cap.id, PendingProposalKey {})) { return false };
+        let p: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+        now_ms < p.expires_at
+    }
+
+    /// Convenience view: returns `Some(proposal_id)` if a lock exists
+    /// (live or expired), else `None`. Use with `is_pending_active` to
+    /// distinguish live vs stale.
+    public fun pending_proposal_id(cap: &Capability): Option<vector<u8>> {
+        if (!df::exists_(&cap.id, PendingProposalKey {})) {
+            option::none()
+        } else {
+            let p: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+            option::some(p.proposal_id)
+        }
+    }
+
+    /// Convenience view: returns `expires_at` if a lock exists, else 0.
+    public fun pending_expires_at(cap: &Capability): u64 {
+        if (!df::exists_(&cap.id, PendingProposalKey {})) { return 0 };
+        let p: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
+        p.expires_at
+    }
+
+    public fun pending_proposal_payload(p: &PendingProposal): (vector<u8>, u64) {
+        (p.proposal_id, p.expires_at)
+    }
 
     // ========== Test helpers ==========
 

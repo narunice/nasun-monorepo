@@ -94,7 +94,9 @@ module baram_aer::aer {
     const TRIGGER_PRICE_ALERT: u8 = 3;
     #[allow(unused_const)]
     const TRIGGER_MANUAL: u8 = 4;
-    const TRIGGER_MAX: u8 = 4;
+    #[allow(unused_const)]
+    const TRIGGER_COORDINATION: u8 = 5;
+    const TRIGGER_MAX: u8 = 5;
 
     // AER status
     const STATUS_SETTLED: u8 = 0;

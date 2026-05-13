@@ -796,4 +796,122 @@ module baram_aer::capability_test {
         ts::return_shared(baram_registry);
         ts::return_shared(capability);
     }
+
+    // ===== Pending lock tests (Plan D D-0b, Foundation 결정 4 + 6) =====
+    //
+    // Four scenarios cover the full state machine:
+    //   1. set -> is_pending_active is true and view returns the id
+    //   2. set -> set again (still live) -> aborts E_PENDING_PROPOSAL_ACTIVE
+    //   3. owner clears live lock -> view collapses to None
+    //   4. lock expires (clock advanced) -> is_pending_active becomes
+    //      false AND a non-owner can clear (self-heal path)
+
+    /// Generates a 16-byte ULID-shaped id with `seed` repeated.
+    fun proposal_id(seed: u8): vector<u8> {
+        let mut v = vector::empty<u8>();
+        let mut i: u64 = 0;
+        while (i < 16) {
+            vector::push_back(&mut v, seed);
+            i = i + 1;
+        };
+        v
+    }
+
+    #[test]
+    fun pending_lock_set_then_view_reports_active() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        ts::next_tx(&mut scenario, OWNER);
+        let mut c = ts::take_shared<Capability>(&scenario);
+        let mut clk = sui::clock::create_for_testing(ts::ctx(&mut scenario));
+        sui::clock::set_for_testing(&mut clk, 1_000_000); // now = 1_000_000 ms
+
+        let id_a = proposal_id(0xAA);
+        cap::set_pending_proposal(&mut c, id_a, 1_900_000, &clk, ts::ctx(&mut scenario));
+
+        assert!(cap::is_pending_active(&c, 1_500_000), 1000);
+        let view = cap::pending_proposal_id(&c);
+        assert!(option::is_some(&view), 1001);
+        assert!(*option::borrow(&view) == proposal_id(0xAA), 1002);
+        assert!(cap::pending_expires_at(&c) == 1_900_000, 1003);
+        // After expiry timestamp -> reported as inactive but row still exists.
+        assert!(!cap::is_pending_active(&c, 1_900_000), 1004);
+
+        sui::clock::destroy_for_testing(clk);
+        ts::return_shared(c);
+        ts::end(scenario);
+    }
+
+    #[test]
+    #[expected_failure(abort_code = 566, location = baram_aer::capability)]
+    fun pending_lock_set_twice_while_live_aborts() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        ts::next_tx(&mut scenario, OWNER);
+        let mut c = ts::take_shared<Capability>(&scenario);
+        let mut clk = sui::clock::create_for_testing(ts::ctx(&mut scenario));
+        sui::clock::set_for_testing(&mut clk, 1_000_000);
+
+        cap::set_pending_proposal(&mut c, proposal_id(0xAA), 1_900_000, &clk, ts::ctx(&mut scenario));
+        // Second set while first still live (now < expires_at) -> abort.
+        cap::set_pending_proposal(&mut c, proposal_id(0xBB), 2_000_000, &clk, ts::ctx(&mut scenario));
+
+        // Unreachable, but Sui requires resource cleanup paths.
+        sui::clock::destroy_for_testing(clk);
+        ts::return_shared(c);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun pending_lock_owner_clears_live_lock() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        ts::next_tx(&mut scenario, OWNER);
+        let mut c = ts::take_shared<Capability>(&scenario);
+        let mut clk = sui::clock::create_for_testing(ts::ctx(&mut scenario));
+        sui::clock::set_for_testing(&mut clk, 1_000_000);
+
+        cap::set_pending_proposal(&mut c, proposal_id(0xCC), 1_900_000, &clk, ts::ctx(&mut scenario));
+        assert!(cap::is_pending_active(&c, 1_500_000), 1100);
+
+        // Clock has not advanced -- lock is live; owner still clears.
+        cap::clear_pending_proposal(&mut c, &clk, ts::ctx(&mut scenario));
+
+        assert!(!cap::is_pending_active(&c, 1_500_000), 1101);
+        assert!(option::is_none(&cap::pending_proposal_id(&c)), 1102);
+        assert!(cap::pending_expires_at(&c) == 0, 1103);
+
+        sui::clock::destroy_for_testing(clk);
+        ts::return_shared(c);
+        ts::end(scenario);
+    }
+
+    #[test]
+    fun pending_lock_expires_and_non_owner_can_clear() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        // Owner installs the lock.
+        ts::next_tx(&mut scenario, OWNER);
+        let mut c = ts::take_shared<Capability>(&scenario);
+        let mut clk = sui::clock::create_for_testing(ts::ctx(&mut scenario));
+        sui::clock::set_for_testing(&mut clk, 1_000_000);
+        cap::set_pending_proposal(&mut c, proposal_id(0xDD), 1_500_000, &clk, ts::ctx(&mut scenario));
+        ts::return_shared(c);
+
+        // Time jumps past expiry; OTHER (not the owner) clears it.
+        ts::next_tx(&mut scenario, OTHER);
+        let mut c2 = ts::take_shared<Capability>(&scenario);
+        sui::clock::set_for_testing(&mut clk, 1_500_001);
+        assert!(!cap::is_pending_active(&c2, 1_500_001), 1200);
+        cap::clear_pending_proposal(&mut c2, &clk, ts::ctx(&mut scenario));
+        assert!(option::is_none(&cap::pending_proposal_id(&c2)), 1201);
+
+        sui::clock::destroy_for_testing(clk);
+        ts::return_shared(c2);
+        ts::end(scenario);
+    }
 }

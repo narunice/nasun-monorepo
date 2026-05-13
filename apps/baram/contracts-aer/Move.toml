@@ -1,8 +1,8 @@
 [package]
 name = "baram_aer"
 edition = "2024"
-version = "1.3.0"
-published-at = "0xdb118fd931572cf42af8613dce1cc18471419d1ba937b63c832d4361aad5b8e5"
+version = "1.4.0"
+published-at = "0x646b4d020f4c0b7bd88e02b8f4c117ebd78ca617e5c510303bbe468df66ec9b5"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework", override = true }
