@@ -3,6 +3,7 @@ import { useNotificationStore } from "./notifications/notificationStore";
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "activity",  label: "Activity",  icon: ActivityIcon },
+  { id: "ai",        label: "AI",        icon: AIIcon },
   { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
@@ -132,6 +133,17 @@ function ActivityIcon({ active }: IconProps) {
   return (
     <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M3 12h4l3-8 4 16 3-8h4" />
+    </svg>
+  );
+}
+
+function AIIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5" />
+      <path d="M9.75 3.104A24 24 0 0114.25 3.104v5.714c0 .597.237 1.17.659 1.591L19.8 15.3" />
+      <circle cx="12" cy="18" r="1.5" />
+      <path d="M5 14.5l-1.57.393A9.065 9.065 0 0012 15a9.065 9.065 0 006.23-.7L19.8 15.3" />
     </svg>
   );
 }

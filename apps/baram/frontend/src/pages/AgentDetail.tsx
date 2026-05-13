@@ -17,7 +17,7 @@ import { useAgentProfiles } from '../features/agents/hooks/useAgentProfiles';
 import { useAgentBudgets, useSpendingLimits } from '../features/agents/hooks/useAgentBudgets';
 import { useAgentActions } from '../hooks/useAgentActions';
 import { suiClient } from '../config/client';
-import { TOKENS } from '../config/network';
+import { TOKENS, AER_CONFIG } from '../config/network';
 import { formatNusdcValue as formatNUSDC, truncateAddress as formatAddress, formatTimestamp } from '../utils/format';
 import { exportAgentKeypairBase64, hasAgentKey } from '../services/agentKeyStorage';
 import { useBudgets } from '../hooks/useBudgets';
@@ -26,7 +26,7 @@ import { useTraderScheduler } from '../hooks/useTraderScheduler';
 import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
 import { TraderConfigForm } from '../components/forms/TraderConfigForm';
 
-type Tab = 'overview' | 'budget' | 'activity' | 'trader';
+type Tab = 'overview' | 'budget' | 'activity' | 'trader' | 'escrow';
 
 const MAX_FUND_NASUN = 100;
 const MAX_FUND_NUSDC = 1000;
@@ -308,6 +308,7 @@ export function AgentDetail() {
     { key: 'budget', label: 'Budget' },
     { key: 'activity', label: 'Activity' },
     { key: 'trader', label: 'Trader' },
+    { key: 'escrow', label: 'Escrow' },
   ];
 
   return (
@@ -422,6 +423,9 @@ export function AgentDetail() {
       )}
       {activeTab === 'trader' && agent && (
         <TraderTab agentId={agent.id} agentAddress={agent.agentAddress} budgetId={budget?.id ?? ''} />
+      )}
+      {activeTab === 'escrow' && agent && (
+        <EscrowTab agentId={agent.id} walletAddress={walletAddress ?? ''} />
       )}
 
       {/* Deactivate confirmation modal */}
@@ -1098,6 +1102,383 @@ function TraderTab({ agentId, agentAddress, budgetId }: { agentId: string; agent
               >Unlock & Start</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// EscrowTab — deposit / withdraw NUSDC from AgentEscrow (C3-v2 shared object)
+// ---------------------------------------------------------------------------
+
+interface EscrowOnChain {
+  owner: string;
+  capabilityId: string;
+  initialSharedVersion: string;
+  nusdcBalance: bigint;
+}
+
+type OpStatus = 'idle' | 'pending' | 'success' | 'error';
+
+function EscrowTab({ agentId, walletAddress }: { agentId: string; walletAddress: string }) {
+  const { signer, address: signerAddress } = useSigner();
+
+  const storageKey = `baram:escrow-id:${walletAddress}:${agentId}`;
+
+  const [savedId, setSavedId] = useState<string>(() => localStorage.getItem(storageKey) ?? '');
+  const [inputId, setInputId] = useState(savedId);
+  const [escrow, setEscrow] = useState<EscrowOnChain | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositStatus, setDepositStatus] = useState<OpStatus>('idle');
+  const [depositError, setDepositError] = useState<string | null>(null);
+  const [depositDigest, setDepositDigest] = useState<string | null>(null);
+
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawAll, setWithdrawAll] = useState(false);
+  const [withdrawStatus, setWithdrawStatus] = useState<OpStatus>('idle');
+  const [withdrawError, setWithdrawError] = useState<string | null>(null);
+  const [withdrawDigest, setWithdrawDigest] = useState<string | null>(null);
+
+  const fetchEscrow = useCallback(async () => {
+    if (!savedId) { setEscrow(null); return; }
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const obj = await suiClient.getObject({ id: savedId, options: { showContent: true, showOwner: true } });
+      if (!obj.data) throw new Error('Object not found');
+      const ownerInfo = obj.data.owner;
+      if (!ownerInfo || typeof ownerInfo !== 'object' || !('Shared' in ownerInfo)) {
+        throw new Error('Not a shared object — check the escrow ID');
+      }
+      const initialSharedVersion = String(
+        (ownerInfo as { Shared: { initial_shared_version: number | string } }).Shared.initial_shared_version
+      );
+      if (obj.data.content?.dataType !== 'moveObject') throw new Error('Invalid content type');
+      const fields = obj.data.content.fields as Record<string, unknown>;
+      const owner = fields.owner as string;
+      const capabilityId = (fields.capability_id as Record<string, string>)?.id ?? String(fields.capability_id);
+
+      // Query NUSDC balance via dynamic field (key = TypeName, value = Balance<T>)
+      let nusdcBalance = 0n;
+      try {
+        const nusdcType = TOKENS.NUSDC.type;
+        const typeNameStr = nusdcType.startsWith('0x') ? nusdcType.slice(2) : nusdcType;
+        const df = await suiClient.getDynamicFieldObject({
+          parentId: savedId,
+          name: { type: '0x1::type_name::TypeName', value: { name: typeNameStr } },
+        });
+        if (df.data?.content?.dataType === 'moveObject') {
+          const dfFields = df.data.content.fields as Record<string, unknown>;
+          const val = dfFields.value as Record<string, unknown> | undefined;
+          const raw = val && 'fields' in val && val.fields
+            ? (val.fields as Record<string, unknown>).value
+            : undefined;
+          if (raw !== undefined) nusdcBalance = BigInt(String(raw));
+        }
+      } catch {
+        // No NUSDC balance yet
+      }
+
+      setEscrow({ owner, capabilityId, initialSharedVersion, nusdcBalance });
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Failed to load escrow');
+    } finally {
+      setLoading(false);
+    }
+  }, [savedId]);
+
+  useEffect(() => { void fetchEscrow(); }, [fetchEscrow]);
+
+  const handleSaveId = () => {
+    const trimmed = inputId.trim();
+    if (!trimmed.match(/^0x[0-9a-fA-F]{64}$/)) {
+      setLoadError('Invalid object ID format (0x + 64 hex chars)');
+      return;
+    }
+    localStorage.setItem(storageKey, trimmed);
+    setSavedId(trimmed);
+    setLoadError(null);
+  };
+
+  const handleClearId = () => {
+    localStorage.removeItem(storageKey);
+    setSavedId('');
+    setInputId('');
+    setEscrow(null);
+    setLoadError(null);
+  };
+
+  const buildSharedRef = (escrowData: EscrowOnChain) =>
+    ({ objectId: savedId, initialSharedVersion: escrowData.initialSharedVersion, mutable: true });
+
+  const handleDeposit = async () => {
+    if (!signer || !signerAddress || !escrow) return;
+    const amount = parseFloat(depositAmount);
+    if (isNaN(amount) || amount <= 0) { setDepositError('Invalid amount'); return; }
+    const amountRaw = BigInt(Math.round(amount * 1e6));
+
+    setDepositStatus('pending'); setDepositError(null); setDepositDigest(null);
+    try {
+      const coins = await suiClient.getCoins({ owner: signerAddress, coinType: TOKENS.NUSDC.type, limit: 50 });
+      if (coins.data.length === 0) throw new Error('No NUSDC in your wallet');
+      const total = coins.data.reduce((acc, c) => acc + BigInt(c.balance), 0n);
+      if (total < amountRaw) throw new Error(`Insufficient NUSDC: have ${Number(total) / 1e6}, need ${amount}`);
+
+      const tx = new Transaction();
+      const primary = coins.data[0].coinObjectId;
+      if (coins.data.length > 1) {
+        tx.mergeCoins(tx.object(primary), coins.data.slice(1).map(c => tx.object(c.coinObjectId)));
+      }
+      const [depositCoin] = tx.splitCoins(tx.object(primary), [tx.pure.u64(amountRaw)]);
+      tx.moveCall({
+        target: `${AER_CONFIG.packageId}::escrow::deposit`,
+        typeArguments: [TOKENS.NUSDC.type],
+        arguments: [tx.sharedObjectRef(buildSharedRef(escrow)), depositCoin],
+      });
+      tx.setSender(signerAddress);
+      tx.setGasBudget(30_000_000);
+
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes, signature, options: { showEffects: true },
+      });
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error ?? 'Transaction failed');
+      }
+      setDepositDigest(result.digest);
+      setDepositStatus('success');
+      setTimeout(fetchEscrow, 2000);
+    } catch (err) {
+      setDepositError(err instanceof Error ? err.message : 'Deposit failed');
+      setDepositStatus('error');
+    }
+  };
+
+  const handleWithdraw = async () => {
+    if (!signer || !signerAddress || !escrow) return;
+
+    if (escrow.owner.toLowerCase() !== signerAddress.toLowerCase()) {
+      setWithdrawError(`Only the escrow owner can withdraw. Owner: ${formatAddress(escrow.owner)}`);
+      return;
+    }
+
+    const amountRaw = withdrawAll
+      ? escrow.nusdcBalance
+      : BigInt(Math.round(parseFloat(withdrawAmount) * 1e6));
+    if (amountRaw <= 0n) { setWithdrawError('Nothing to withdraw'); return; }
+
+    setWithdrawStatus('pending'); setWithdrawError(null); setWithdrawDigest(null);
+    try {
+      const tx = new Transaction();
+      const [withdrawnCoin] = tx.moveCall({
+        target: `${AER_CONFIG.packageId}::escrow::withdraw_owner`,
+        typeArguments: [TOKENS.NUSDC.type],
+        arguments: [tx.sharedObjectRef(buildSharedRef(escrow)), tx.pure.u64(amountRaw)],
+      });
+      tx.transferObjects([withdrawnCoin], tx.pure.address(signerAddress));
+      tx.setSender(signerAddress);
+      tx.setGasBudget(30_000_000);
+
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes, signature, options: { showEffects: true },
+      });
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error ?? 'Transaction failed');
+      }
+      setWithdrawDigest(result.digest);
+      setWithdrawStatus('success');
+      setTimeout(fetchEscrow, 2000);
+    } catch (err) {
+      setWithdrawError(err instanceof Error ? err.message : 'Withdraw failed');
+      setWithdrawStatus('error');
+    }
+  };
+
+  const explorerUrl = (digest: string) => `https://explorer.nasun.io/devnet/tx/${digest}`;
+
+  return (
+    <div className="space-y-4">
+      {/* Escrow ID setup */}
+      <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)] space-y-3">
+        <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide">
+          AgentEscrow
+        </h4>
+        <p className="text-xs text-[var(--color-text-muted)]">
+          The AgentEscrow holds trading capital for this agent (separate from the Budget that pays AER fees).
+          Enter the shared object ID of your linked escrow.
+        </p>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            value={inputId}
+            onChange={e => setInputId(e.target.value)}
+            placeholder="0x..."
+            className="flex-1 px-3 py-2 text-xs font-mono rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+          />
+          <button
+            onClick={handleSaveId}
+            className="px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity"
+          >
+            {savedId ? 'Update' : 'Set'}
+          </button>
+          {savedId && (
+            <button
+              onClick={handleClearId}
+              className="px-3 py-1.5 text-xs rounded-lg border border-[var(--color-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-bg-tertiary)] transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+        {loadError && (
+          <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{loadError}</div>
+        )}
+      </div>
+
+      {/* Escrow info + balance */}
+      {savedId && (
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)] space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide">Balance</h4>
+            <button
+              onClick={() => void fetchEscrow()}
+              disabled={loading}
+              className="text-2xs text-[var(--color-accent)] hover:underline disabled:opacity-50"
+            >
+              {loading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+
+          {escrow ? (
+            <dl className="space-y-2 text-xs">
+              <div className="flex justify-between items-center">
+                <dt className="text-[var(--color-text-muted)]">NUSDC Balance</dt>
+                <dd className="text-[var(--color-text-primary)] font-semibold text-sm">
+                  {formatNUSDC(Number(escrow.nusdcBalance))} NUSDC
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[var(--color-text-muted)]">Escrow ID</dt>
+                <dd className="text-[var(--color-text-primary)] font-mono">{formatAddress(savedId)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[var(--color-text-muted)]">Owner</dt>
+                <dd className={`font-mono ${escrow.owner.toLowerCase() === (signerAddress ?? '').toLowerCase() ? 'text-[var(--color-success)]' : 'text-[var(--color-text-primary)]'}`}>
+                  {formatAddress(escrow.owner)}
+                  {escrow.owner.toLowerCase() === (signerAddress ?? '').toLowerCase() && ' (you)'}
+                </dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-[var(--color-text-muted)]">Linked Cap</dt>
+                <dd className="text-[var(--color-text-primary)] font-mono">{formatAddress(escrow.capabilityId)}</dd>
+              </div>
+            </dl>
+          ) : loading ? (
+            <p className="text-xs text-[var(--color-text-muted)]">Loading escrow…</p>
+          ) : null}
+        </div>
+      )}
+
+      {/* Deposit */}
+      {escrow && (
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)] space-y-3">
+          <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide">Deposit NUSDC</h4>
+          <p className="text-xs text-[var(--color-text-muted)]">
+            Transfer NUSDC from your wallet into the escrow. Anyone can fund an escrow.
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={depositAmount}
+              onChange={e => { setDepositAmount(e.target.value); setDepositStatus('idle'); setDepositError(null); }}
+              placeholder="Amount (NUSDC)"
+              className="flex-1 px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            />
+            <button
+              onClick={() => void handleDeposit()}
+              disabled={depositStatus === 'pending' || !depositAmount}
+              className="px-4 py-1.5 text-xs font-medium rounded-lg bg-[var(--color-accent)] text-white hover:opacity-90 transition-opacity disabled:opacity-50"
+            >
+              {depositStatus === 'pending' ? 'Sending…' : 'Deposit'}
+            </button>
+          </div>
+          {depositStatus === 'success' && depositDigest && (
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 flex items-center gap-2">
+              <span>Deposited</span>
+              <a href={explorerUrl(depositDigest)} target="_blank" rel="noopener noreferrer" className="underline">
+                View on Explorer
+              </a>
+            </div>
+          )}
+          {depositError && (
+            <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{depositError}</div>
+          )}
+        </div>
+      )}
+
+      {/* Withdraw */}
+      {escrow && (
+        <div className="bg-[var(--color-bg-secondary)] rounded-lg p-4 border border-[var(--color-border)] space-y-3">
+          <h4 className="text-xs lg:text-sm text-[var(--color-text-muted)] uppercase tracking-wide">Withdraw NUSDC</h4>
+          {escrow.owner.toLowerCase() !== (signerAddress ?? '').toLowerCase() && (
+            <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs text-amber-400">
+              Only the escrow owner ({formatAddress(escrow.owner)}) can withdraw.
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--color-text-secondary)] cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={withdrawAll}
+                onChange={e => { setWithdrawAll(e.target.checked); setWithdrawStatus('idle'); setWithdrawError(null); }}
+                className="rounded"
+              />
+              Withdraw all ({formatNUSDC(Number(escrow.nusdcBalance))} NUSDC)
+            </label>
+          </div>
+          {!withdrawAll && (
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={withdrawAmount}
+              onChange={e => { setWithdrawAmount(e.target.value); setWithdrawStatus('idle'); setWithdrawError(null); }}
+              placeholder="Amount (NUSDC)"
+              className="w-full px-3 py-2 text-xs rounded-lg bg-[var(--color-bg-primary)] border border-[var(--color-border)] text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+            />
+          )}
+          <button
+            onClick={() => void handleWithdraw()}
+            disabled={
+              withdrawStatus === 'pending' ||
+              escrow.nusdcBalance === 0n ||
+              (!withdrawAll && !withdrawAmount) ||
+              escrow.owner.toLowerCase() !== (signerAddress ?? '').toLowerCase()
+            }
+            className="w-full py-1.5 text-xs font-medium rounded-lg border border-[var(--color-border)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg-tertiary)] transition-colors disabled:opacity-50"
+          >
+            {withdrawStatus === 'pending' ? 'Withdrawing…' : 'Withdraw to Wallet'}
+          </button>
+          {withdrawStatus === 'success' && withdrawDigest && (
+            <div className="p-2 rounded-lg bg-emerald-500/10 text-xs text-emerald-400 flex items-center gap-2">
+              <span>Withdrawn</span>
+              <a href={explorerUrl(withdrawDigest)} target="_blank" rel="noopener noreferrer" className="underline">
+                View on Explorer
+              </a>
+            </div>
+          )}
+          {withdrawError && (
+            <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{withdrawError}</div>
+          )}
         </div>
       )}
     </div>
