@@ -300,7 +300,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     days,
   });
 
-  const { data: bonusHistory } = useQuery({
+  const { data: bonusHistory, isPending: bonusLoading } = useQuery({
     queryKey: ["ecosystem", "bonus-history-uju", identityId, days],
     queryFn: () => getBonusHistory(identityId!, days),
     enabled: !!identityId,
@@ -309,7 +309,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
   });
 
   const cognitoToken = user?.cognitoToken;
-  const { data: baseHistory } = useQuery({
+  const { data: baseHistory, isPending: baseLoading } = useQuery({
     queryKey: ["ecosystem", "base-history-uju", identityId, days],
     queryFn: () => getBaseHistory(identityId!, days, cognitoToken),
     enabled: !!identityId && !!cognitoToken,
@@ -317,7 +317,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     retry: 1,
   });
 
-  const isLoading = scoreLoading || historyLoading;
+  const isLoading = scoreLoading || historyLoading || bonusLoading || baseLoading;
 
   const chartData = useMemo(() => {
     if (snapshots.length === 0) return [];

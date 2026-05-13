@@ -68,6 +68,7 @@ export function useEcosystemScore(
     enabled: !!identityId,
     staleTime: 30_000,
     retry: 1,
+    refetchOnWindowFocus: false,
   });
 
   // Use refs to avoid stale closure in refresh
