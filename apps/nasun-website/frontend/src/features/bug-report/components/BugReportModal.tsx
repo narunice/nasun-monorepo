@@ -13,6 +13,15 @@ interface BugReportModalProps {
 const MAX_SCREENSHOTS = 3;
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const DRAFT_KEY = 'bug-report-draft';
+
+interface DraftData {
+  title: string;
+  app: string;
+  category: string;
+  description: string;
+  reproSteps: string;
+}
 
 export default function BugReportModal({ open, onOpenChange }: BugReportModalProps) {
   const [title, setTitle] = useState('');
@@ -26,6 +35,33 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
   const { mutate, isPending, walletConnected } = useBugReport();
   const user = useUserStore((s) => s.user);
 
+  // Restore draft when modal opens
+  useEffect(() => {
+    if (!open) return;
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if (!raw) return;
+      const draft: DraftData = JSON.parse(raw);
+      if (draft.title) setTitle(draft.title);
+      if (draft.app) setApp(draft.app);
+      if (draft.category) setCategory(draft.category);
+      if (draft.description) setDescription(draft.description);
+      if (draft.reproSteps) setReproSteps(draft.reproSteps);
+    } catch {
+      // ignore malformed draft
+    }
+  }, [open]);
+
+  // Persist draft on every keystroke
+  useEffect(() => {
+    if (!open) return;
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, app, category, description, reproSteps }));
+    } catch {
+      // ignore storage errors (private mode, quota, etc.)
+    }
+  }, [open, title, app, category, description, reproSteps]);
+
   const resetForm = () => {
     setTitle('');
     setApp('nasun');
@@ -34,6 +70,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
     setReproSteps('');
     setScreenshots([]);
     setIsUploading(false);
+    try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
