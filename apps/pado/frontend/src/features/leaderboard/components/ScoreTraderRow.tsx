@@ -13,6 +13,7 @@ const PROFILE_API = (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | und
 interface ScoreTraderRowProps {
   trader: ScoreLeaderboardTrader;
   isCurrentUser?: boolean;
+  isHighlighted?: boolean;
 }
 
 function shortenAddress(addr: string): string {
@@ -38,7 +39,7 @@ function formatVolume(volumeUsd: string): string {
   return `$${num.toFixed(2)}`;
 }
 
-export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
+export function ScoreTraderRow({ trader, isCurrentUser, isHighlighted }: ScoreTraderRowProps) {
   const navigate = useNavigate();
   const { isFollowing, toggleFollow } = useFollowedTraders();
   const { data: profile } = useProfile(trader.address, { endpoint: PROFILE_API });
@@ -48,11 +49,14 @@ export function ScoreTraderRow({ trader, isCurrentUser }: ScoreTraderRowProps) {
 
   return (
     <tr
+      data-address={trader.address}
       onClick={() => navigate(`/leaderboard/trader/${trader.address}`)}
       className={`transition-colors cursor-pointer ${
-        isCurrentUser
-          ? 'bg-pd3/5 hover:bg-pd3/10'
-          : 'hover:bg-theme-bg-tertiary/30'
+        isHighlighted
+          ? 'bg-pd3/15 ring-1 ring-pd3/40'
+          : isCurrentUser
+            ? 'bg-pd3/5 hover:bg-pd3/10'
+            : 'hover:bg-theme-bg-tertiary/30'
       }`}
     >
       <td className="py-3 px-3">
