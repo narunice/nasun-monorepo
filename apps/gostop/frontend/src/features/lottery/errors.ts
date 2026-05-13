@@ -15,7 +15,7 @@ const LOTTERY_ABORT_MAP: Record<number, string> = {
   5: 'Duplicate numbers detected. Pick five distinct numbers.',
   7: 'Prize already claimed for this ticket.',
   8: 'This ticket is not a winner.',
-  9: 'You have reached the per-address ticket limit (300 per round).',
+  9: 'You have reached the per-address ticket limit (500 per round).',
   10: 'Insufficient NUSDC balance for this purchase.',
   11: 'Ticket does not belong to this round.',
   12: 'Round is not yet settled.',
@@ -67,10 +67,9 @@ export function humanizeLotteryError(rawMessage: string): string {
     return 'Not enough NASUN for gas. Please top up your wallet and try again.'
   }
 
-  // MoveAbort(... , N) in command M
+  // MoveAbort(... , N) in command M — two patterns cover known SDK serialization formats
   const m = rawMessage.match(/MoveAbort.*?(\w+)\s*"\s*\}.*?,\s*(\d+)\s*\)/i)
     || rawMessage.match(/Identifier\("?(\w+)"?\).*?,\s*(\d+)\s*\)/i)
-    || rawMessage.match(/(lottery|bankroll_pool).*?(\d+)\s*\)/i)
   if (m) {
     const moduleName = m[1].toLowerCase()
     const code = Number(m[2])

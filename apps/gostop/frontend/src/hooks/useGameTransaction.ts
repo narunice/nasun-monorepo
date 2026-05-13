@@ -34,6 +34,13 @@ export interface GameTxOptions {
    * before the user has scratched the cards would spoil the outcome).
    */
   deferBalanceRefresh?: boolean;
+  /**
+   * Module-specific MoveAbort humanizer. When provided, its return value
+   * replaces the generic "Transaction rejected by smart contract" toast so
+   * users see the actionable abort-code message (e.g. "ticket limit reached")
+   * instead of a generic failure.
+   */
+  humanizeMoveAbort?: (raw: string) => string;
 }
 
 /**
@@ -139,7 +146,7 @@ export function useGameTransaction() {
         const RETRY_HINT = "Devnet hiccup. Give it a moment and try again.";
         let userMessage: string;
         if (message.includes('MoveAbort')) {
-          userMessage = 'Transaction rejected by smart contract.';
+          userMessage = options.humanizeMoveAbort?.(message) ?? 'Transaction rejected by smart contract.';
         } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted|LockConflict|ObjectVersionMismatch/i.test(message)) {
           userMessage = RETRY_HINT;
         } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {
