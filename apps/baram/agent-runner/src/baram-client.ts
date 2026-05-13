@@ -143,6 +143,77 @@ export async function isPendingActive(
 }
 
 /**
+ * Install a pending-proposal lock on the capability (Plan D §A5').
+ *
+ * Wallet-signed: only the capability.owner (agent keypair) may call this.
+ * The contract aborts with E_PENDING_PROPOSAL_ACTIVE if a live lock already
+ * exists, so callers should verify isPendingActive is false first.
+ *
+ * `proposalIdBytes` must be exactly 16 bytes (ULID decoded via intentIdToBytes).
+ */
+export async function setPendingProposal(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  aerPackageId: string,
+  capabilityId: string,
+  clockId: string,
+  proposalIdBytes: Uint8Array,
+  expiresAtMs: number,
+): Promise<string> {
+  if (proposalIdBytes.length !== 16) {
+    throw new Error(`proposal_id must be 16 bytes, got ${proposalIdBytes.length}`);
+  }
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${aerPackageId}::capability::set_pending_proposal`,
+    arguments: [
+      tx.object(capabilityId),
+      tx.pure.vector('u8', Array.from(proposalIdBytes)),
+      tx.pure.u64(expiresAtMs),
+      tx.object(clockId),
+    ],
+  });
+  const result = await client.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
+    options: { showEffects: true },
+  });
+  await client.waitForTransaction({ digest: result.digest });
+  return result.digest;
+}
+
+/**
+ * Remove the pending-proposal lock from the capability.
+ *
+ * Permission: owner can clear at any time. Non-owner can clear only after
+ * expiry (self-heal path). This caller always holds the keypair so it
+ * always clears as owner.
+ */
+export async function clearPendingProposal(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  aerPackageId: string,
+  capabilityId: string,
+  clockId: string,
+): Promise<string> {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${aerPackageId}::capability::clear_pending_proposal`,
+    arguments: [
+      tx.object(capabilityId),
+      tx.object(clockId),
+    ],
+  });
+  const result = await client.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
+    options: { showEffects: true },
+  });
+  await client.waitForTransaction({ digest: result.digest });
+  return result.digest;
+}
+
+/**
  * Categorize on-chain Move error codes into human-readable messages
  * Based on demo-agent.ts:categorizeError()
  */

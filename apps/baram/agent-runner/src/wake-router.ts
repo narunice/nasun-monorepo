@@ -10,7 +10,7 @@
  * `wake-server.ts` middleware before this function runs.
  */
 import type { SuiClient } from '@mysten/sui/client';
-import { ACTIVE_WAKE_TRIGGERS, type WakeTrigger } from '@nasun/baram-sdk';
+import { ACTIVE_WAKE_TRIGGERS, type WakeTrigger, type Proposal } from '@nasun/baram-sdk';
 import type { Config } from './config.js';
 import type { IdempotencyStore } from './idempotency.js';
 
@@ -31,6 +31,9 @@ export interface WakeOutcome {
   intentId?: string;
   aerDigest?: string;
   summary?: string;
+  /** Present when the analyst cycle produced a trade proposal (BUY/SELL).
+   *  Chat-server uses this to send an inline keyboard and store the artifact. */
+  proposal?: Proposal;
 }
 
 export interface WakeRouterDeps {

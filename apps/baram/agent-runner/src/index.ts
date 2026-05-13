@@ -27,6 +27,7 @@ import {
   type TraderCycleResult,
 } from './presets/trader-cycle.js';
 import { runAnalystPreset } from './presets/analyst.js';
+import { runManualExecution } from './presets/manual-execution.js';
 import type { Preset } from './presets/types.js';
 import type { WakeContext, WakeOutcome } from './wake-router.js';
 import { notifyTraderAER } from './telegram.js';
@@ -421,7 +422,7 @@ async function main(): Promise<void> {
       logger: (m) => log(m),
       runAnalystCycle: (ctx) => runAnalystPreset(client, config, ctx),
       runHeartbeatCycle: (ctx) => runHeartbeatFromWake(client, config, ctx),
-      // runManualExecution: D-5
+      runManualExecution: (ctx) => runManualExecution(client, config, ctx),
     });
     wakeShutdownGlobal = wake.close;
     log(`Wake endpoint listening on http://127.0.0.1:${config.wakePort}/wake`);

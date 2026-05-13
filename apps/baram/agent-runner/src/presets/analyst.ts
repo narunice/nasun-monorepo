@@ -25,12 +25,18 @@
 import { createHash } from 'node:crypto';
 
 import type { SuiClient } from '@mysten/sui/client';
-import { intentIdToBytes } from '@nasun/baram-sdk';
+import {
+  intentIdToBytes,
+  newIntentId,
+  DEFAULT_PROPOSAL_TTL_MS,
+  type Proposal,
+} from '@nasun/baram-sdk';
 
 import {
   checkBudget as defaultCheckBudget,
   createRequest as defaultCreateRequest,
   isPendingActive as defaultIsPendingActive,
+  setPendingProposal as defaultSetPendingProposal,
   categorizeError,
 } from '../baram-client.js';
 import {
@@ -81,6 +87,8 @@ export interface AnalystDeps {
   checkBudget: typeof defaultCheckBudget;
   createRequest: typeof defaultCreateRequest;
   isPendingActive: typeof defaultIsPendingActive;
+  /** Optional: if provided, sets the onchain pending lock for BUY/SELL proposals. */
+  setPendingProposal?: typeof defaultSetPendingProposal;
   fetchAgentBalances: typeof defaultFetchAgentBalances;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
   recentTrades: typeof defaultRecentTrades;
@@ -95,6 +103,7 @@ const REAL_DEPS: AnalystDeps = {
   checkBudget: defaultCheckBudget,
   createRequest: defaultCreateRequest,
   isPendingActive: defaultIsPendingActive,
+  setPendingProposal: defaultSetPendingProposal,
   fetchAgentBalances: defaultFetchAgentBalances,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
   recentTrades: defaultRecentTrades,
@@ -324,6 +333,70 @@ export async function runAnalystPreset(
 
   const summary = `${ACTION_TYPE_ANALYSIS}: ${decision.action} — ${decision.reason}`;
   deps.log(`[analyst] Cognition AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
+
+  // For BUY/SELL decisions: build a trade proposal artifact, set the onchain
+  // pending lock, and include the proposal in the WakeOutcome so the
+  // chat-server can send an inline keyboard for user confirmation (D-5 §A5).
+  if (decision.action !== 'HOLD' && deps.setPendingProposal && config.baramAerPackageId && config.trader) {
+    const proposalId = newIntentId();
+    const expiresAtMs = Date.now() + DEFAULT_PROPOSAL_TTL_MS;
+    const expiresAtIso = new Date(expiresAtMs).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const sizeQuoteRaw = String(Math.round(decision.sizeNUSDC * 1e6));
+
+    // reasoning_hash: hash of the cognition AER payload (use prompt hash as proxy).
+    const reasoningHash = '0x' + createHash('sha256').update(fullPrompt).digest('hex');
+    // market_snapshot_hash: same hash used in replay metadata.
+    const msBytes = replay.marketSnapshotHash;
+    const marketSnapshotHashHex = msBytes && msBytes.length > 0
+      ? '0x' + Buffer.from(msBytes).toString('hex')
+      : '0x' + '0'.repeat(64);
+    // prompt_template_hash: hash of system persona + strategy.
+    const ptHashHex = '0x' + Buffer.from(replay.promptTemplateHash).toString('hex');
+
+    const proposal: Proposal = {
+      proposal_id: proposalId,
+      intent_id: ctx.intentId,
+      action_type: 'trade.swap.v1',
+      summary: `${decision.action} ~${decision.sizeNUSDC} NUSDC: ${decision.reason}`,
+      side: decision.action as 'BUY' | 'SELL',
+      symbol: 'NBTC',
+      size_quote_raw: sizeQuoteRaw,
+      max_slippage_bps: trader.maxSlippageBps,
+      confidence: 0.8,
+      reasoning_hash: reasoningHash,
+      market_snapshot_hash: marketSnapshotHashHex,
+      model_version: config.model,
+      prompt_template_hash: ptHashHex,
+      expires_at: expiresAtIso,
+    };
+
+    try {
+      const proposalIdBytes = intentIdToBytes(proposalId);
+      await deps.setPendingProposal(
+        client,
+        config.keypair,
+        config.baramAerPackageId,
+        trader.capabilityId,
+        config.clockId,
+        proposalIdBytes,
+        expiresAtMs,
+      );
+      deps.log(`[analyst] Pending lock set: proposalId=${proposalId}`);
+
+      return {
+        ok: true,
+        status: 'processed',
+        intentId: ctx.intentId,
+        aerDigest: execResp.txDigest,
+        summary,
+        proposal,
+      };
+    } catch (err) {
+      // Non-fatal: if onchain lock fails, still return the AER result without
+      // the proposal so the chat-server sends a plain text response.
+      deps.log(`[analyst] setPendingProposal failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+    }
+  }
 
   return {
     ok: true,

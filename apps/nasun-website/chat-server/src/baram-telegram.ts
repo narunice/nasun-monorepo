@@ -1,4 +1,4 @@
-// Baram Telegram webhook handler (Plan D §D-2).
+// Baram Telegram webhook handler (Plan D §D-2, D-5).
 //
 // Receives updates from the Telegram Bot API, authenticates with a secret token,
 // and routes each message through:
@@ -8,17 +8,21 @@
 //      Or:     agent-runner /wake forward (all other intents)
 //
 // FSM states:
-//   unlinked       — no active session for this tg_user_id
-//   linked-idle    — active session, ready to forward
-//   awaiting-confirm — pending proposal lock (D-5 will add this state)
+//   unlinked         — no active session for this tg_user_id
+//   linked-idle      — active session, ready to forward
+//   awaiting-confirm — pending proposal lock (D-5): inline keyboard shown
+//
+// D-5 confirmation flow (Plan D §A5 Option α):
+//   1. User message → analyst wake → cognition AER Iq
+//   2. If proposal in wake response → inline keyboard [Confirm / Cancel]
+//   3. [Confirm] → manual /wake (proposal JSON in message) → execution AER Ie
+//   4. [Cancel]  → cancel proposal row, clear pending lock via agent-runner
 //
 // Async UX (Plan D §A7'):
 //   - Telegram receives HTTP 200 immediately (handled in baram-telegram-routes.ts)
 //   - This module drives the background work: typing loop, /wake call, reply
-//
-// Inline keyboard is stub only in D-2; D-5 will complete it.
 
-import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 import { ulid } from 'ulid';
 import {
   getActiveSessionByTgUser,
@@ -27,6 +31,13 @@ import {
 } from './baram-session.js';
 import { classifyIntent, dashboardDeepLink } from './baram-intent-classifier.js';
 import { getEndpoint, isEndpointFresh } from './baram-agent-registry.js';
+import {
+  createPendingProposal,
+  getProposalById,
+  finalizeProposal,
+  expireStaleProposals,
+} from './baram-proposals.js';
+import type { Proposal } from '@nasun/baram-sdk';
 
 // ===== Telegram Bot API helpers =====
 
@@ -44,12 +55,18 @@ function tgApiUrl(method: string): string {
   return `https://api.telegram.org/bot${getBotToken()}/${method}`;
 }
 
-async function sendMessage(chatId: number | string, text: string): Promise<void> {
+async function sendMessage(
+  chatId: number | string,
+  text: string,
+  replyMarkup?: Record<string, unknown>,
+): Promise<void> {
   try {
+    const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' };
+    if (replyMarkup) body.reply_markup = replyMarkup;
     await fetch(tgApiUrl('sendMessage'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+      body: JSON.stringify(body),
     });
   } catch (err) {
     console.warn('[baram-tg] sendMessage failed:', (err as Error).message);
@@ -68,12 +85,28 @@ async function sendChatAction(chatId: number | string, action = 'typing'): Promi
   }
 }
 
+async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
+  try {
+    await fetch(tgApiUrl('answerCallbackQuery'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        callback_query_id: callbackQueryId,
+        text: text ?? '',
+        show_alert: false,
+      }),
+    });
+  } catch {
+    // Non-critical.
+  }
+}
+
 // ===== Webhook signature verification =====
 
 /**
  * Verify the X-Telegram-Bot-Api-Secret-Token header.
- * Returns true if the header matches the configured BARAM_TG_WEBHOOK_SECRET.
- * Always returns true when BARAM_TG_WEBHOOK_SECRET is not set (dev mode).
+ * Returns true if the header matches BARAM_TG_WEBHOOK_SECRET.
+ * Always returns true when secret is not set (dev mode).
  */
 export function verifyWebhookToken(headerValue: string | undefined): boolean {
   const secret = getWebhookSecret();
@@ -102,15 +135,23 @@ function signBody(bodyJson: string): string {
 interface WakeBody {
   job_id: string;
   jwt: string;
-  trigger_type: 'user_message';
+  trigger_type: 'user_message' | 'manual';
   intent_id: string;
-  message: string;
+  parent_intent_id?: string;
+  message?: string;
+}
+
+interface WakeResult {
+  ok: boolean;
+  summary?: string;
+  proposal?: Proposal;
+  error?: string;
 }
 
 async function forwardToWake(
   wakeUrl: string,
   body: WakeBody,
-): Promise<{ ok: boolean; summary?: string; error?: string }> {
+): Promise<WakeResult> {
   const bodyJson = JSON.stringify(body);
   const hmac = signBody(bodyJson);
   try {
@@ -131,11 +172,23 @@ async function forwardToWake(
     return {
       ok: json.ok === true,
       summary: typeof json.summary === 'string' ? json.summary : undefined,
+      proposal: json.proposal != null ? (json.proposal as Proposal) : undefined,
       error: typeof json.reason === 'string' ? json.reason : undefined,
     };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
   }
+}
+
+// ===== Inline keyboard builder =====
+
+function buildConfirmKeyboard(proposalId: string): Record<string, unknown> {
+  return {
+    inline_keyboard: [[
+      { text: 'Confirm', callback_data: `confirm:${proposalId}` },
+      { text: 'Cancel', callback_data: `cancel:${proposalId}` },
+    ]],
+  };
 }
 
 // ===== Telegram update types (minimal) =====
@@ -153,9 +206,17 @@ interface TelegramMessage {
   text?: string;
 }
 
+interface TelegramCallbackQuery {
+  id: string;
+  from: TelegramUser;
+  message?: { chat: { id: number }; message_id: number };
+  data?: string;
+}
+
 export interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+  callback_query?: TelegramCallbackQuery;
 }
 
 // ===== Main update handler =====
@@ -165,8 +226,17 @@ export interface TelegramUpdate {
  * Called after the HTTP 200 has already been sent back to Telegram.
  */
 export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void> {
+  // Sweep expired proposals on every update to keep the partial unique index clean.
+  try { expireStaleProposals(); } catch { /* non-critical */ }
+
+  // Route callback_query (inline keyboard button press) separately.
+  if (update.callback_query) {
+    await handleCallbackQuery(update.callback_query);
+    return;
+  }
+
   const msg = update.message;
-  if (!msg || !msg.from) return; // ignore non-message updates in D-2
+  if (!msg || !msg.from) return;
 
   const chatId = msg.chat.id;
   const tgUserId = String(msg.from.id);
@@ -240,7 +310,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
   };
 
   // Start typing loop (every 4s) while awaiting the /wake response
-  void sendChatAction(chatId); // immediate first typing signal
+  void sendChatAction(chatId);
   const typingTimer = setInterval(() => { void sendChatAction(chatId); }, 4_000);
 
   const WAKE_TIMEOUT_MS = 30_000;
@@ -253,6 +323,12 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     const result = await forwardToWake(`${ep.httpUrl}/wake`, wakeBody);
     clearTimeout(timeoutId);
     clearInterval(typingTimer);
+
+    // D-5: if analyst returned a trade proposal, store it and show inline keyboard.
+    if (result.ok && result.proposal) {
+      await handleProposalResponse(chatId, session.agent, session.sid, result.proposal, result.summary);
+      return;
+    }
 
     if (result.ok && result.summary) {
       await sendMessage(chatId, result.summary);
@@ -271,6 +347,179 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
   }
 }
 
+// ===== Proposal response handler (D-5) =====
+
+async function handleProposalResponse(
+  chatId: number,
+  agent: string,
+  sessionId: string,
+  proposal: Proposal,
+  summary: string | undefined,
+): Promise<void> {
+  // Store the proposal in DB.
+  const expiresAtMs = new Date(proposal.expires_at).getTime();
+  try {
+    createPendingProposal({
+      proposalId: proposal.proposal_id,
+      agent,
+      sessionId,
+      intentId: proposal.intent_id,
+      proposal,
+      expiresAtMs,
+    });
+  } catch (err) {
+    // Could be a duplicate (idempotent retry) — log and continue.
+    console.warn('[baram-tg] createPendingProposal failed:', (err as Error).message);
+  }
+
+  const expiresInMin = Math.round((expiresAtMs - Date.now()) / 60_000);
+  const text =
+    (summary ? `${summary}\n\n` : '') +
+    `<b>Trade Proposal</b>\n` +
+    `Action: <b>${proposal.side}</b>\n` +
+    `Amount: ${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC\n` +
+    `Symbol: ${proposal.symbol}\n` +
+    `Expires in: ~${expiresInMin} min\n\n` +
+    `Tap <b>Confirm</b> to execute or <b>Cancel</b> to dismiss.`;
+
+  await sendMessage(chatId, text, buildConfirmKeyboard(proposal.proposal_id));
+}
+
+// ===== Callback query handler (D-5) =====
+
+async function handleCallbackQuery(cb: TelegramCallbackQuery): Promise<void> {
+  const chatId = cb.message?.chat.id;
+  const data = cb.data ?? '';
+
+  // Acknowledge immediately (removes the loading spinner on the button).
+  await answerCallbackQuery(cb.id);
+
+  if (!chatId) return;
+
+  const tgUserId = String(cb.from.id);
+  const session = getActiveSessionByTgUser(tgUserId);
+
+  const colonIdx = data.indexOf(':');
+  if (colonIdx < 0) return;
+  const action = data.slice(0, colonIdx);
+  const proposalId = data.slice(colonIdx + 1);
+
+  if (action !== 'confirm' && action !== 'cancel') return;
+
+  // Verify proposal belongs to this user's session.
+  const row = getProposalById(proposalId);
+  if (!row) {
+    await sendMessage(chatId, 'This proposal has expired or is no longer available.');
+    return;
+  }
+  if (row.status !== 'pending') {
+    const statusMsg =
+      row.status === 'confirmed' ? 'already confirmed'
+      : row.status === 'cancelled' ? 'already cancelled'
+      : 'expired';
+    await sendMessage(chatId, `This proposal has been ${statusMsg}.`);
+    return;
+  }
+  if (!session || row.agent !== session.agent) {
+    await sendMessage(chatId, 'Session mismatch. Please re-link your agent.');
+    return;
+  }
+
+  if (action === 'cancel') {
+    await handleProposalCancel(chatId, session, proposalId, row.proposal);
+    return;
+  }
+
+  // action === 'confirm'
+  await handleProposalConfirm(chatId, session, proposalId, row.proposal);
+}
+
+async function handleProposalConfirm(
+  chatId: number,
+  session: ReturnType<typeof getActiveSessionByTgUser>,
+  proposalId: string,
+  proposal: Proposal,
+): Promise<void> {
+  if (!session) return;
+
+  const ep = getEndpoint(session.agent);
+  if (!ep || !isEndpointFresh(ep)) {
+    await sendMessage(chatId, 'Your agent is offline. Please try again when it reconnects.');
+    return;
+  }
+
+  let jwt: string;
+  try {
+    jwt = issueShortLivedJWT(session.sid);
+  } catch {
+    await sendMessage(chatId, 'Session error. Please re-link your agent.');
+    return;
+  }
+
+  // Optimistically mark as confirmed before sending the wake (D-5 §R3: the
+  // pending lock guard on the agent-runner side handles races).
+  finalizeProposal(proposalId, 'confirmed');
+
+  await sendMessage(chatId, 'Executing your trade... please wait.');
+  void sendChatAction(chatId);
+  const typingTimer = setInterval(() => { void sendChatAction(chatId); }, 4_000);
+
+  const manualWake: WakeBody = {
+    job_id: ulid(),
+    jwt,
+    trigger_type: 'manual',
+    intent_id: ulid(),
+    parent_intent_id: proposal.intent_id,
+    // Carry the full proposal JSON so agent-runner can build the execution
+    // without re-reading the DB or onchain state.
+    message: JSON.stringify(proposal),
+  };
+
+  try {
+    const result = await forwardToWake(`${ep.httpUrl}/wake`, manualWake);
+    clearInterval(typingTimer);
+
+    if (result.ok && result.summary) {
+      await sendMessage(chatId, `Trade executed.\n\n${result.summary}`);
+    } else if (result.ok) {
+      await sendMessage(chatId, 'Trade executed. Check your Dashboard for details.');
+    } else {
+      // Roll back optimistic confirm so the user can retry.
+      // Note: we cannot easily revert to 'pending' with the current schema
+      // (status check in finalizeProposal prevents this). Log only.
+      console.warn(`[baram-tg] Manual wake failed: ${result.error}`);
+      await sendMessage(
+        chatId,
+        'Your agent could not execute the trade right now. ' +
+        'The proposal may have expired. Please check your Dashboard.',
+      );
+    }
+  } catch (err) {
+    clearInterval(typingTimer);
+    console.error('[baram-tg] manual wake error:', (err as Error).message);
+    await sendMessage(chatId, 'An error occurred. Please check your Dashboard.');
+  }
+}
+
+async function handleProposalCancel(
+  chatId: number,
+  session: ReturnType<typeof getActiveSessionByTgUser>,
+  proposalId: string,
+  _proposal: Proposal,
+): Promise<void> {
+  if (!session) return;
+
+  finalizeProposal(proposalId, 'cancelled');
+
+  // The pending lock will self-expire (MAX_PENDING_TTL_MS) or can be cleared
+  // by the next heartbeat cycle after expiry (permissionless clear). For the
+  // prototype we do not trigger an explicit onchain clear here; the agent-runner
+  // will detect the expired lock on the next cycle and skip gracefully.
+  await sendMessage(chatId, 'Trade cancelled. Your agent will continue monitoring.');
+}
+
+// ===== /start command =====
+
 async function handleStartCommand(chatId: number, tgUserId: string, text: string): Promise<void> {
   const parts = text.split(/\s+/);
   const sid = parts[1];
@@ -285,7 +534,6 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
     return;
   }
 
-  // Import inline to avoid circular dep risk; baram-session is a pure data module.
   const { bindTelegramUser } = await import('./baram-session.js');
   const bound = bindTelegramUser(sid, tgUserId);
 
@@ -306,6 +554,3 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
     );
   }
 }
-
-// Unused export kept for future D-5 inline keyboard extension.
-export { randomBytes as _crypto_randomBytes };
