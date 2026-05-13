@@ -35,6 +35,7 @@ import {
   refreshChatServerCache,
   normalizeHandle,
   type Resolution,
+  type UnbanMode,
 } from '../services/ban-service.js';
 
 const app = new Hono<{ Variables: { admin: AdminContext } }>();
@@ -51,6 +52,14 @@ interface UnbanRequest {
   identityId?: string;
   reason?: string;
   actor?: string;
+  /**
+   * 'retroactive' (default): unflag every flagged activity_points row, so the
+   *   user gets ban-period points back. Use when the ban was a mistake.
+   * 'forward-only': unflag, then immediately re-flag rows older than the
+   *   unban moment. Use when the ban was justified but admin grants a fresh
+   *   start. Ban-period points stay invisible.
+   */
+  mode?: UnbanMode;
 }
 
 function defaultActor(admin: AdminContext, override?: string): string {
@@ -129,6 +138,7 @@ app.delete('/', async (c) => {
   const identityId = body.identityId?.trim();
   const reason = body.reason?.trim() || 'unbanned via admin web';
   const actor = defaultActor(c.get('admin'), body.actor);
+  const mode: UnbanMode = body.mode === 'forward-only' ? 'forward-only' : 'retroactive';
 
   if (!handle && !identityId) {
     return c.json({ error: 'handle_or_identityId_required' }, 400);
@@ -147,7 +157,7 @@ app.delete('/', async (c) => {
 
   let applied;
   try {
-    applied = await applyUnbans(pointsDb, resolutions, actor, reason);
+    applied = await applyUnbans(pointsDb, resolutions, actor, reason, mode);
   } catch (err) {
     return c.json({ error: 'apply_failed', message: (err as Error).message }, 500);
   }

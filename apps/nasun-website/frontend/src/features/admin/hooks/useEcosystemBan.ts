@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { listBans, banAccount, unbanAccount, type BannedListResponse } from '../services/banApi';
+import { listBans, banAccount, unbanAccount, type BannedListResponse, type UnbanMode } from '../services/banApi';
 
 const QUERY_KEY = ['admin', 'ecosystem-ban'];
 
@@ -41,7 +41,7 @@ export function useBanAccount(cognitoToken: string | null) {
 export function useUnbanAccount(cognitoToken: string | null) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (params: { identityId?: string; handle?: string; reason?: string }) =>
+    mutationFn: (params: { identityId?: string; handle?: string; reason?: string; mode?: UnbanMode }) =>
       unbanAccount(cognitoToken!, params),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
