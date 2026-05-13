@@ -7,6 +7,7 @@
  * Usage: PRESET=research pnpm start
  */
 
+import { createHmac } from 'node:crypto';
 import { SuiClient } from '@mysten/sui/client';
 import { loadConfig, maskApiKey, type PresetName } from './config.js';
 import { checkBudget, createRequest, sha256Hex, categorizeError } from './baram-client.js';
@@ -424,6 +425,29 @@ async function main(): Promise<void> {
     });
     wakeShutdownGlobal = wake.close;
     log(`Wake endpoint listening on http://127.0.0.1:${config.wakePort}/wake`);
+
+    // Plan D D-2: register this agent's wake endpoint with the chat-server
+    // heartbeat every 60s so the Telegram webhook knows where to forward /wake.
+    if (config.chatServerBaseUrl) {
+      const wakeHttpUrl = `http://127.0.0.1:${config.wakePort}`;
+      const heartbeatUrl = `${config.chatServerBaseUrl}/api/baram/agent/heartbeat`;
+      const sendHeartbeat = (): void => {
+        const body = JSON.stringify({ agent: config.agentAddress, http_url: wakeHttpUrl });
+        const hmacSecret = process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
+        if (!hmacSecret) return;
+        const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex')).update(body, 'utf8').digest('hex');
+        fetch(heartbeatUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac },
+          body,
+          signal: AbortSignal.timeout(5000),
+        }).catch((err: Error) => log(`[heartbeat] registration failed: ${err.message}`));
+      };
+      sendHeartbeat(); // immediate first ping
+      const heartbeatTimer = setInterval(sendHeartbeat, 60_000);
+      heartbeatTimer.unref(); // don't block process exit
+      log(`[heartbeat] Registering ${wakeHttpUrl} with ${heartbeatUrl} every 60s`);
+    }
   }
 
   // Run first cycle immediately

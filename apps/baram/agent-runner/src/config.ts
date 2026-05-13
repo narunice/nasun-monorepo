@@ -249,6 +249,10 @@ export function loadConfig() {
     // Plan D D-3: inbound /wake HTTP server. 0 disables; default 4400 if env set.
     wakePort: parseWakePort(process.env.WAKE_PORT),
 
+    // Plan D D-2: chat-server base URL for heartbeat registration.
+    // e.g. http://127.0.0.1:3101 or https://nasun.io
+    chatServerBaseUrl: process.env.CHAT_SERVER_BASE_URL ?? '',
+
     // Plan D D-4: baram_aer v1.4.0 package (Plan A + D-0b publish). Optional
     // until D-4 wires cognition AER PTBs.
     baramAerPackageId: process.env.BARAM_AER_PACKAGE_ID ?? '',
