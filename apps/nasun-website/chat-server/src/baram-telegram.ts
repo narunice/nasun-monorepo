@@ -37,6 +37,8 @@ import {
   finalizeProposal,
   expireStaleProposals,
 } from './baram-proposals.js';
+import { reserveCognitionSlot } from './baram-message-caps.js';
+import { checkBudgetSufficient } from './baram-budget-guard.js';
 import type { Proposal } from '@nasun/baram-sdk';
 
 // ===== Telegram Bot API helpers =====
@@ -132,6 +134,14 @@ function signBody(bodyJson: string): string {
 
 // ===== Wake forwarding =====
 
+// D-6 async UX: a wake call may take longer than the perceived "wait" window.
+// We tell the user "still working" at 30s but keep awaiting up to 120s for the
+// real result. This avoids the previous bug where the fetch aborted at 28s
+// just before the "still working" notice fired, leaving the user with neither
+// the result nor a clear status.
+const WAKE_SOFT_NOTICE_MS = 30_000;
+const WAKE_HARD_TIMEOUT_MS = 120_000;
+
 interface WakeBody {
   job_id: string;
   jwt: string;
@@ -151,6 +161,7 @@ interface WakeResult {
 async function forwardToWake(
   wakeUrl: string,
   body: WakeBody,
+  timeoutMs: number = WAKE_HARD_TIMEOUT_MS,
 ): Promise<WakeResult> {
   const bodyJson = JSON.stringify(body);
   const hmac = signBody(bodyJson);
@@ -162,7 +173,7 @@ async function forwardToWake(
         'X-HMAC': hmac,
       },
       body: bodyJson,
-      signal: AbortSignal.timeout(28_000), // leave 2s margin under 30s total
+      signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) {
       const text = await res.text().catch(() => '');
@@ -286,6 +297,32 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     return;
   }
 
+  // D-6: daily message cap (50/day, UTC-reset). Atomically reserve a slot
+  // before any expensive downstream work; reject if the wallet hit the cap.
+  const reservation = reserveCognitionSlot(session.wallet);
+  if (!reservation.ok) {
+    await sendMessage(
+      chatId,
+      `Daily message limit reached (${reservation.cap}/day). ` +
+      `Limits reset at 00:00 UTC.`,
+    );
+    return;
+  }
+
+  // D-6: pre-check on-chain Budget. Avoids burning the user's cap on calls
+  // that will fail downstream with insufficient balance.
+  const budgetCheck = await checkBudgetSufficient(ep.budgetId);
+  if (!budgetCheck.ok) {
+    const reason = budgetCheck.reason ?? 'unknown';
+    const msg =
+      reason === 'insufficient' ? 'Your agent\'s Budget is too low to run a request. Please top it up from the Dashboard.'
+      : reason === 'inactive'   ? 'Your agent\'s Budget is inactive. Please reactivate it from the Dashboard.'
+      : reason === 'not_found'  ? 'Your agent\'s Budget could not be located on-chain. Please check the Dashboard.'
+      :                           'Could not verify your agent\'s Budget right now. Please try again shortly.';
+    await sendMessage(chatId, msg);
+    return;
+  }
+
   // Issue 5-min JWT for the session
   let jwt: string;
   try {
@@ -309,19 +346,18 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     message: text.slice(0, 4000),
   };
 
-  // Start typing loop (every 4s) while awaiting the /wake response
+  // Start typing loop (every 4s) while awaiting the /wake response. The loop
+  // continues past the soft notice so the indicator persists until we get a
+  // real result or hit the hard timeout.
   void sendChatAction(chatId);
   const typingTimer = setInterval(() => { void sendChatAction(chatId); }, 4_000);
-
-  const WAKE_TIMEOUT_MS = 30_000;
-  const timeoutId = setTimeout(() => {
-    clearInterval(typingTimer);
+  const softNoticeId = setTimeout(() => {
     void sendMessage(chatId, 'Your agent is still working on it. The response will arrive shortly.');
-  }, WAKE_TIMEOUT_MS);
+  }, WAKE_SOFT_NOTICE_MS);
 
   try {
     const result = await forwardToWake(`${ep.httpUrl}/wake`, wakeBody);
-    clearTimeout(timeoutId);
+    clearTimeout(softNoticeId);
     clearInterval(typingTimer);
 
     // D-5: if analyst returned a trade proposal, store it and show inline keyboard.
@@ -340,7 +376,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
       await sendMessage(chatId, 'Your agent could not process that right now. Please try again shortly.');
     }
   } catch (err) {
-    clearTimeout(timeoutId);
+    clearTimeout(softNoticeId);
     clearInterval(typingTimer);
     console.error('[baram-tg] forwardToWake error:', (err as Error).message);
     await sendMessage(chatId, 'An error occurred while reaching your agent. Please try again.');
