@@ -5,6 +5,7 @@ import { RankBadge } from './RankBadge';
 import { TraderAvatar } from './TraderAvatar';
 import { useFollowedTraders } from '../hooks/useFollowedTraders';
 import { isValidXHandle, xProfileUrl } from '../lib/x-handle';
+import { FaXTwitter } from 'react-icons/fa6';
 import { GenesisPassBadge } from '@nasun/wallet-ui';
 
 const PROFILE_API = (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | undefined) ?? '';
@@ -89,11 +90,7 @@ export function PnlTraderRow({ trader, isCurrentUser }: PnlTraderRowProps) {
                   title={`@${trader.twitterHandle} on X`}
                   aria-label={`Open @${trader.twitterHandle} on X`}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M15 3h6v6" />
-                    <path d="M10 14 21 3" />
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                  </svg>
+                  <FaXTwitter size={12} aria-hidden="true" />
                 </a>
               )}
             </div>
