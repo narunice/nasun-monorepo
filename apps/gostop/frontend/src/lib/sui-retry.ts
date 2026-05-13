@@ -13,7 +13,11 @@ export function isStaleObjectError(err: unknown): boolean {
     msg.includes('is not available for consumption') ||
     msg.includes('current version:') ||
     msg.includes('ObjectVersionUnavailableForConsumption') ||
-    msg.includes('ObjectNotFound')
+    msg.includes('ObjectNotFound') ||
+    // Object locked by a concurrent in-flight tx. Retry after backoff so the
+    // lock releases once the other tx commits.
+    msg.includes('LockConflict') ||
+    msg.includes('ObjectVersionMismatch')
   );
 }
 

@@ -140,7 +140,7 @@ export function useGameTransaction() {
         let userMessage: string;
         if (message.includes('MoveAbort')) {
           userMessage = 'Transaction rejected by smart contract.';
-        } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted/i.test(message)) {
+        } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted|LockConflict|ObjectVersionMismatch/i.test(message)) {
           userMessage = RETRY_HINT;
         } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {
           userMessage = 'Not enough NASUN for gas. Please top up your wallet and try again.';
