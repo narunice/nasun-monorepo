@@ -129,7 +129,7 @@ mkdir -p "$(dirname "$DEPLOY_STAGE_DIR")"
 
 log_info "pnpm deploy --filter @nasun/baram-agent-runner --prod ..."
 cd "$MONOREPO_ROOT"
-if ! pnpm deploy --filter @nasun/baram-agent-runner --prod --legacy "$DEPLOY_STAGE_DIR" 2>&1; then
+if ! pnpm --filter=@nasun/baram-agent-runner deploy --prod "$DEPLOY_STAGE_DIR" 2>&1; then
   log_error "pnpm deploy 실패. pnpm 버전 또는 workspace 설정 확인."
 fi
 
@@ -195,18 +195,40 @@ log_success "rsync 완료"
 # --- Step 5: pm2 startOrRestart + smoke ---
 log_step 5 $TOTAL_STEPS "pm2 기동 + healthz smoke"
 
-log_info "pm2 startOrRestart ecosystem.agent-runner.cjs"
+log_info "pm2 startOrRestart (via ecosystem.config.cjs symlink)"
 ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "set -e
   cd '$REMOTE_BASE'
   if [ ! -f .env ]; then
     echo 'ERR: .env 없음. 작성 후 다시 실행하세요.'; exit 1
   fi
-  export \$(grep -v '^#' .env | xargs -d '\n' -I{} echo {})
-  pm2 startOrRestart ecosystem.agent-runner.cjs --update-env
-  sleep 5
+  # pm2 requires the canonical 'ecosystem.config.cjs' name to recognise it as
+  # an ecosystem file. Symlink non-standard filename so we can use startOrRestart.
+  ln -sf ecosystem.agent-runner.cjs ecosystem.config.cjs
+  # Restore better-sqlite3 prebuilt binary if rsync overwrote with wrong ABI version.
+  # (Local build = Node v22 ABI 127; prod = Node v20 ABI 115)
+  NODE_VER=\$(node -e 'process.stdout.write(process.versions.modules)')
+  if [ \"\$NODE_VER\" != \"127\" ]; then
+    if [ ! -f node_modules/better-sqlite3/build/Release/better_sqlite3.node ] || \
+       file node_modules/better-sqlite3/build/Release/better_sqlite3.node 2>/dev/null | grep -q 'ELF'; then
+      # Re-download prebuilt binary for current Node ABI
+      BS3_VER=\$(node -e \"require('./node_modules/better-sqlite3/package.json')\" 2>/dev/null | grep -o '\"version\":\"[^\"]*\"' | cut -d'\"' -f4 || echo '11.10.0')
+      cd /tmp
+      wget -q \"https://github.com/WiseLibs/better-sqlite3/releases/download/v\${BS3_VER}/better-sqlite3-v\${BS3_VER}-node-v\${NODE_VER}-linux-x64.tar.gz\" -O bs3.tgz 2>/dev/null || true
+      if [ -f bs3.tgz ]; then
+        mkdir -p '$REMOTE_BASE/node_modules/better-sqlite3/build/Release'
+        tar -xzf bs3.tgz -C '$REMOTE_BASE/node_modules/better-sqlite3'
+        echo \"better-sqlite3 binary updated for ABI \${NODE_VER}\"
+      fi
+      cd '$REMOTE_BASE'
+    fi
+  fi
+  export \$(grep -v '^#' .env | grep -v '^$' | xargs -d '\n')
+  pm2 delete ${PM2_NAME} 2>/dev/null || true
+  pm2 start ecosystem.config.cjs
+  sleep 8
   pm2 list | grep -E '${PM2_NAME}|baram' || true
   echo '--- recent logs ---'
-  pm2 logs ${PM2_NAME} --lines 20 --nostream || true
+  pm2 logs ${PM2_NAME} --lines 25 --nostream || true
   echo '--- /healthz probe ---'
   curl -sS -m 5 ${WAKE_PROBE_URL} || echo '(healthz unreachable; check WAKE_PORT)'
 "

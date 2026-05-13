@@ -243,8 +243,10 @@ export function loadConfig() {
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
 
-    // Single-cycle: run one cycle then exit (legacy cron compatibility; tests).
-    singleCycle: process.env.SINGLE_CYCLE === 'true' || process.env.WAKE_MODEL === 'true',
+    // Single-cycle: run one cycle then exit. Ignored when WAKE_PORT is set
+    // (D-3 long-running wake server mode — WAKE_MODEL is not relevant there).
+    singleCycle: (process.env.SINGLE_CYCLE === 'true' || process.env.WAKE_MODEL === 'true')
+      && parseWakePort(process.env.WAKE_PORT) === 0,
 
     // Plan D D-3: inbound /wake HTTP server. 0 disables; default 4400 if env set.
     wakePort: parseWakePort(process.env.WAKE_PORT),
