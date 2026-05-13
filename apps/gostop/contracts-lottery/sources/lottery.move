@@ -24,7 +24,7 @@ module gostop_lottery::lottery {
     const NUMBERS_COUNT: u64 = 5;           // Numbers to select
     const MAX_NUMBER: u8 = 25;              // Range: 1-25
     const TICKET_PRICE: u64 = 5_000_000; // 5 NUSDC (6 decimals), same as Pado lottery
-    const MAX_TICKETS_PER_ADDRESS: u64 = 300;
+    const MAX_TICKETS_PER_ADDRESS: u64 = 500;
 
     // Prize distribution (basis points, total = 10000)
     const PRIZE_POOL_BPS: u64 = 7000;       // 70% to winners
