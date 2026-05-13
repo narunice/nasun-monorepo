@@ -5,7 +5,7 @@ import { UjuNavigation } from "../../sections/uju/UjuNavigation";
 import { DashboardTab, DashboardNftsSection } from "../../sections/uju/dashboard/DashboardTab";
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
-import { AiTab } from "../../sections/uju/ai/AiTab";
+// import { AiTab } from "../../sections/uju/ai/AiTab"; // Hidden in production until Plan D D-8 ships
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
@@ -13,8 +13,8 @@ import { useAuth } from "@/features/auth";
 import { ReferralWelcomeModal, REFERRAL_MODAL_DISMISSED_KEY } from "../../sections/uju/onboarding/ReferralWelcomeModal";
 import { getMyReferralStats } from "@/services/referralApi";
 
-type Tab = "dashboard" | "activity" | "ai" | "profile";
-const VALID_TABS = new Set<Tab>(["dashboard", "activity", "ai", "profile"]);
+type Tab = "dashboard" | "activity" | "profile"; // "ai" hidden in production until Plan D D-8 ships
+const VALID_TABS = new Set<Tab>(["dashboard", "activity", "profile"]);
 
 function parseTab(raw: string | null): Tab {
   return raw && VALID_TABS.has(raw as Tab) ? (raw as Tab) : "dashboard";
@@ -101,7 +101,7 @@ export default function UjuPage() {
           <div>
             {tab === "dashboard" && <DashboardTab chatSlot={inlineChatSlot} />}
             {tab === "activity" && <ActivityTab />}
-            {tab === "ai" && <AiTab />}
+            {/* {tab === "ai" && <AiTab />} */}
             {tab === "profile" && <ProfileTab />}
           </div>
 
