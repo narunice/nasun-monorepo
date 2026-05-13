@@ -29,7 +29,6 @@ import {
   submitProofWithAERCapability,
   defaultCognitionEnvelope,
   actionPayloadHash,
-  sha256Bytes,
   type SuiConfig,
   type AERReportData,
   type AEREnvelopeMeta,
@@ -37,14 +36,17 @@ import {
   type AERWakeMeta,
   type AERReplayMeta,
   type ActionCallSpec,
+  type ExecutionPlanInput,
 } from './sui-client.js';
 import {
   preflight as capabilityPreflight,
+  fetchCapability,
   recordCognitionPayout,
   configureCognitionCap,
-  loadActionClasses,
   type ActionProposal,
 } from './capability.js';
+import { loadActionClasses, findFunctionEntry } from './action-classes.js';
+import { mintToken, verifyToken } from './spend-token.js';
 import { SuiClient } from '@mysten/sui/client';
 
 /**
@@ -318,6 +320,109 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     return preflightClient;
   }
 
+  // ==========================================================================
+  // POST /infer (Plan C C3-v2 §4.2)
+  //
+  // Runs preflight + enclave inference and returns an HMAC-bound spend
+  // token. Does NOT mutate chain state. Trader echoes the token + result
+  // hash back via /execute-capability.
+  // ==========================================================================
+  app.post('/infer', rateLimit, async (req: Request, res: Response) => {
+    if (!suiEnabled || !serverConfig.sui) {
+      res.status(503).json({ success: false, error: 'Sui settlement disabled' });
+      return;
+    }
+    const { requestId, encryptedPrompt, model, capabilityId, walletAddress } =
+      req.body as {
+        requestId: number;
+        encryptedPrompt: string;
+        model: string;
+        capabilityId: string;
+        walletAddress: string;
+      };
+
+    if (typeof requestId !== 'number' || !Number.isInteger(requestId) || requestId < 0) {
+      res.status(400).json({ success: false, error: 'Invalid requestId' });
+      return;
+    }
+    if (!encryptedPrompt || typeof encryptedPrompt !== 'string') {
+      res.status(400).json({ success: false, error: 'Invalid encryptedPrompt' });
+      return;
+    }
+    if (!capabilityId || !walletAddress) {
+      res.status(400).json({
+        success: false,
+        error: 'capabilityId and walletAddress are required',
+      });
+      return;
+    }
+    const OBJECT_ID_RE = /^0x[0-9a-fA-F]{1,64}$/;
+    if (!OBJECT_ID_RE.test(capabilityId) || !OBJECT_ID_RE.test(walletAddress)) {
+      res.status(400).json({
+        success: false,
+        error: 'capabilityId and walletAddress must be 0x<hex>',
+      });
+      return;
+    }
+
+    // Lightweight preflight: cap state only. The full proposal-based
+    // preflight runs at /execute-capability where the host has the
+    // envelope + action shape. Here we just refuse to spend the
+    // enclave on a wallet that doesn't own the cap, or on a paused /
+    // revoked cap.
+    const client = getPreflightClient();
+    try {
+      const capRef = await fetchCapability(client, capabilityId);
+      if (capRef.cap.revoked) {
+        res.status(403).json({ success: false, error: 'preflight', reason: 'revoked' });
+        return;
+      }
+      if (capRef.cap.pauseMode !== 'active') {
+        res.status(403).json({ success: false, error: 'preflight', reason: 'paused' });
+        return;
+      }
+      if (capRef.cap.owner !== walletAddress) {
+        res.status(403).json({ success: false, error: 'preflight', reason: 'owner_mismatch' });
+        return;
+      }
+    } catch (err) {
+      res.status(502).json({
+        success: false,
+        error: 'Capability fetch failed',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
+    let inferResp;
+    try {
+      inferResp = await vsockClient.executeInference(encryptedPrompt, model, requestId);
+    } catch (err) {
+      res.status(502).json({
+        success: false,
+        error: 'Enclave forward failed',
+        detail: err instanceof Error ? err.message : String(err),
+      });
+      return;
+    }
+
+    const tok = mintToken({
+      requestId,
+      resultHash: inferResp.payload.resultHash,
+      walletAddress,
+    });
+
+    res.json({
+      success: true,
+      result: inferResp.payload.result,
+      resultHash: inferResp.payload.resultHash,
+      executionTimeMs: inferResp.payload.executionTimeMs,
+      spendToken: tok.spendToken,
+      nonce: tok.nonce,
+      expiresAt: tok.expiresAt,
+    });
+  });
+
   app.post('/execute-capability', rateLimit, async (req: Request, res: Response) => {
     if (!suiEnabled || !serverConfig.sui) {
       res.status(503).json({ success: false, error: 'Sui settlement disabled' });
@@ -326,8 +431,11 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
 
     const {
       requestId,
-      encryptedPrompt,
-      model,
+      resultHash,
+      executionTimeMs,
+      spendToken,
+      nonce,
+      expiresAt,
       budgetId,
       capabilityId,
       walletAddress,
@@ -336,6 +444,8 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       wake,
       replay,
       actionCall,
+      escrow,
+      spend,
       proposal,
       purpose,
       constraints,
@@ -343,8 +453,11 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       triggeredAction,
     } = req.body as {
       requestId: number;
-      encryptedPrompt: string;
-      model: string;
+      resultHash: string;
+      executionTimeMs: number;
+      spendToken: string;
+      nonce: string;
+      expiresAt: number;
       budgetId?: string;
       capabilityId: string;
       walletAddress: string;
@@ -353,6 +466,12 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       wake: AERWakeMeta;
       replay: AERReplayMeta;
       actionCall?: ActionCallSpec | null;
+      escrow?: {
+        objectId: string;
+        initialSharedVersion: string;
+        capabilityId: string;
+      } | null;
+      spend?: { coinAssetType: string; amount: string } | null;
       proposal: ActionProposal;
       purpose?: string;
       constraints?: string;
@@ -370,8 +489,20 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       res.status(400).json({ success: false, error: 'Invalid requestId' });
       return;
     }
-    if (!encryptedPrompt || typeof encryptedPrompt !== 'string') {
-      res.status(400).json({ success: false, error: 'Invalid encryptedPrompt' });
+    if (typeof resultHash !== 'string' || !/^[0-9a-fA-F]{64}$/.test(resultHash)) {
+      res.status(400).json({ success: false, error: 'Invalid resultHash' });
+      return;
+    }
+    if (typeof executionTimeMs !== 'number' || !Number.isFinite(executionTimeMs)) {
+      res.status(400).json({ success: false, error: 'Invalid executionTimeMs' });
+      return;
+    }
+    if (
+      typeof spendToken !== 'string' ||
+      typeof nonce !== 'string' ||
+      typeof expiresAt !== 'number'
+    ) {
+      res.status(400).json({ success: false, error: 'Missing spend token fields' });
       return;
     }
     if (!capabilityId || !walletAddress) {
@@ -428,6 +559,19 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         });
         return;
       }
+      // Reconstruct typed ActionCallArgs from the wire shape (base64
+      // pure bytes -> Uint8Array). Mutate in place so downstream PTB
+      // builder sees the strongly-typed form.
+      for (const arg of actionCall.args ?? []) {
+        if (arg && (arg as { kind: string }).kind === 'pure') {
+          const wire = arg as unknown as { kind: 'pure'; bytes: unknown };
+          if (typeof wire.bytes === 'string') {
+            (arg as unknown as { bytes: Uint8Array }).bytes = Uint8Array.from(
+              Buffer.from(wire.bytes, 'base64'),
+            );
+          }
+        }
+      }
       if (
         actionCall.targetPackage !== proposal.exec.targetPackage ||
         actionCall.module !== proposal.exec.module ||
@@ -439,13 +583,169 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         });
         return;
       }
-    } else if (actionCall) {
-      // cognition / settlement AERs must NOT carry an on-chain action call;
-      // the gated entry's PTB layout has no slot for it and the soft rail
-      // checks above skip the registry validation for non-execution events.
+      if (!escrow || !spend) {
+        res.status(400).json({
+          success: false,
+          error: 'execution AER requires escrow and spend blocks',
+        });
+        return;
+      }
+      if (
+        !OBJECT_ID_RE.test(escrow.objectId) ||
+        !OBJECT_ID_RE.test(escrow.capabilityId) ||
+        escrow.capabilityId !== capabilityId
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'escrow.objectId/capabilityId malformed or cap mismatch',
+        });
+        return;
+      }
+      if (
+        typeof escrow.initialSharedVersion !== 'string' ||
+        !/^[0-9]+$/.test(escrow.initialSharedVersion)
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'escrow.initialSharedVersion must be a non-negative integer string',
+        });
+        return;
+      }
+      if (typeof spend?.amount !== 'string' || !/^[0-9]+$/.test(spend.amount)) {
+        res.status(400).json({
+          success: false,
+          error: 'spend.amount must be a non-negative integer string',
+        });
+        return;
+      }
+      if (
+        typeof spend.coinAssetType !== 'string' ||
+        typeof spend.amount !== 'string' ||
+        spend.coinAssetType !== proposal.exec.inputAssetType
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'spend.coinAssetType must match proposal.exec.inputAssetType',
+        });
+        return;
+      }
+      // Cross-rail: `spend.amount` is what `withdraw_for_action<T>` actually
+      // pulls from the escrow in PTB Cmd 0. The soft rail evaluates
+      // `proposal.exec.inputAmount` against `cap.maxNotionalPerTrade`. If
+      // the two diverge, the notional cap is decorative and a compromised
+      // trader can drain up to the escrow balance in a single AER (security
+      // review 2026-05-13 finding #1). Enforce strict equality.
+      const proposalInputAmountStr = String(proposal.exec.inputAmount);
+      if (!/^[0-9]+$/.test(proposalInputAmountStr)) {
+        res.status(400).json({
+          success: false,
+          error: 'proposal.exec.inputAmount must be a non-negative integer',
+        });
+        return;
+      }
+      try {
+        if (BigInt(spend.amount) !== BigInt(proposalInputAmountStr)) {
+          res.status(400).json({
+            success: false,
+            error: 'spend.amount must equal proposal.exec.inputAmount',
+          });
+          return;
+        }
+      } catch {
+        res.status(400).json({
+          success: false,
+          error: 'spend.amount / proposal.exec.inputAmount not parseable as bigint',
+        });
+        return;
+      }
+
+      // Structural validation of actionCall.args (security review finding
+      // #2). The trader supplies the swap call's positional args; without
+      // this check, the `min_out` pure arg in `args[?]` would not be
+      // bounded by `proposal.exec.maxSlippageBps`. We pin the pipe wiring
+      // and the trusted-object positions; the `min_out` value itself
+      // remains caller-controlled in v1 (host has no price oracle yet)
+      // and is bounded only by `cap.maxNotionalPerTrade` × pool execution
+      // (Plan F / phase-2 mitigation: host-derived `min_out` against a
+      // mid-price reader before composing the swap).
+      const fnEntryForCheck = findFunctionEntry(
+        actionRegistry,
+        proposal.actionType,
+        proposal.exec.targetPackage,
+        proposal.exec.module,
+        proposal.exec.fn,
+      );
+      if (!fnEntryForCheck) {
+        res.status(400).json({
+          success: false,
+          error: 'action function not registered',
+        });
+        return;
+      }
+      if (fnEntryForCheck.poolId !== proposal.exec.poolId) {
+        res.status(400).json({
+          success: false,
+          error: 'proposal.exec.poolId does not match registry',
+        });
+        return;
+      }
+      const inputPipe = actionCall.args[fnEntryForCheck.inputCoinArg];
+      const deepPipe = actionCall.args[fnEntryForCheck.deepCoinArg];
+      if (
+        !inputPipe ||
+        (inputPipe as { kind: string }).kind !== 'pipe' ||
+        (inputPipe as { from: string }).from !== 'withdraw_coin'
+      ) {
+        res.status(400).json({
+          success: false,
+          error:
+            'actionCall.args[inputCoinArg] must be {kind:"pipe", from:"withdraw_coin"}',
+        });
+        return;
+      }
+      if (
+        !deepPipe ||
+        (deepPipe as { kind: string }).kind !== 'pipe' ||
+        (deepPipe as { from: string }).from !== 'zero_deep'
+      ) {
+        res.status(400).json({
+          success: false,
+          error:
+            'actionCall.args[deepCoinArg] must be {kind:"pipe", from:"zero_deep"}',
+        });
+        return;
+      }
+      // Any other pipe arg is illegal — only withdraw_coin and zero_deep
+      // are pipe sources, and they live at the two declared positions.
+      let poolObjectFound = false;
+      for (let i = 0; i < actionCall.args.length; i++) {
+        if (i === fnEntryForCheck.inputCoinArg || i === fnEntryForCheck.deepCoinArg) {
+          continue;
+        }
+        const a = actionCall.args[i] as { kind?: string; id?: string };
+        if (a && a.kind === 'pipe') {
+          res.status(400).json({
+            success: false,
+            error: `actionCall.args[${i}] must not be a pipe`,
+          });
+          return;
+        }
+        if (a && a.kind === 'object' && a.id === fnEntryForCheck.poolId) {
+          poolObjectFound = true;
+        }
+      }
+      if (!poolObjectFound) {
+        res.status(400).json({
+          success: false,
+          error: 'actionCall.args must include the registered pool object id',
+        });
+        return;
+      }
+    } else if (actionCall || escrow || spend) {
+      // cognition / settlement AERs must NOT carry execution-only fields.
       res.status(400).json({
         success: false,
-        error: 'actionCall must be null for non-execution AERs',
+        error: 'actionCall/escrow/spend must be omitted for non-execution AERs',
       });
       return;
     }
@@ -470,6 +770,29 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       res.status(400).json({
         success: false,
         error: 'wake.triggeredByType must be 1..=4',
+      });
+      return;
+    }
+
+    // HMAC token verification (Plan C C3-v2 DV8). The /infer endpoint
+    // minted (spendToken, nonce, expiresAt) bound to (requestId,
+    // resultHash, walletAddress); a tampered resultHash or replayed
+    // token fails closed here, before we even build the AER. This is
+    // the structural fix for the inference-hash gap at the
+    // /infer-/execute-capability split seam.
+    const tokenVerdict = verifyToken({
+      spendToken,
+      nonce,
+      expiresAt,
+      requestId,
+      resultHash,
+      walletAddress,
+    });
+    if (!tokenVerdict.ok) {
+      res.status(403).json({
+        success: false,
+        error: 'spend token invalid',
+        reason: tokenVerdict.reason,
       });
       return;
     }
@@ -538,20 +861,8 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       return;
     }
 
-    // Inference (same path as legacy /execute).
-    let response;
-    try {
-      response = await vsockClient.executeInference(encryptedPrompt, model, requestId);
-    } catch (err) {
-      res.status(502).json({
-        success: false,
-        error: 'Enclave forward failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
-      return;
-    }
-
-    // Build AERReportData (same shape as legacy path).
+    // Build AERReportData. Inference happened at /infer; resultHash +
+    // executionTimeMs are now caller-provided (HMAC-verified above).
     const onChainRequest = await getRequest(requestId);
     if (!onChainRequest) {
       res.status(404).json({ success: false, error: 'On-chain request not found' });
@@ -564,7 +875,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
     const ID_RE = /^0x[0-9a-fA-F]{64}$/;
     const aerData: AERReportData = {
       delegationPath: [],
-      executorPrincipal: null,
+      executorPrincipal: executorAddress,
       feeDetail: null,
       budgetId: typeof budgetId === 'string' && ID_RE.test(budgetId) ? budgetId : null,
       budgetRemaining: null,
@@ -582,10 +893,8 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
       executorTier: executorStats.tier,
       executorReputation: executorStats.reputation,
       executorStakeAmount: executorStats.stakeAmount,
-      teeVerified: false, // simulation mode for B2 smoke; Plan E hardens
-      teeAttestationHash: response.payload.attestation.rawDocument
-        ? sha256Bytes(response.payload.attestation.rawDocument)
-        : null,
+      teeVerified: false, // simulation mode; Plan E hardens
+      teeAttestationHash: null,
       triggeredBy:
         typeof triggeredBy === 'string' && ID_RE.test(triggeredBy) ? triggeredBy : null,
       triggeredAction:
@@ -594,11 +903,49 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
           : null,
     };
 
+    // Build execution plan from the action-classes registry for
+    // execution AERs. The PTB builder needs the type args + return
+    // positions + DEEP type. Done here so the builder stays a pure
+    // tx-composer with no registry knowledge.
+    let executionPlan: ExecutionPlanInput | null = null;
+    if (proposal.eventClass === 2 && proposal.exec && actionCall && escrow && spend) {
+      const fnEntry = findFunctionEntry(
+        actionRegistry,
+        proposal.actionType,
+        proposal.exec.targetPackage,
+        proposal.exec.module,
+        proposal.exec.fn,
+      );
+      const cls = actionRegistry[proposal.actionType];
+      if (!fnEntry || !cls) {
+        res.status(500).json({
+          success: false,
+          error: 'Action class not found post-preflight',
+        });
+        return;
+      }
+      executionPlan = {
+        escrow: {
+          objectId: escrow.objectId,
+          initialSharedVersion: BigInt(escrow.initialSharedVersion),
+          capabilityId: escrow.capabilityId,
+        },
+        spend: {
+          inputAssetType: spend.coinAssetType,
+          amount: BigInt(spend.amount),
+        },
+        outputAssetType: proposal.exec.outputAssetType,
+        deepType: cls.deepType,
+        outputCoinResult: fnEntry.outputCoinResult,
+        expectedCapabilityVersion: pre.capRef.cap.version,
+      };
+    }
+
     try {
       const txDigest = await submitProofWithAERCapability({
         requestId,
-        resultHash: response.payload.resultHash,
-        executionTimeMs: response.payload.executionTimeMs,
+        resultHash,
+        executionTimeMs,
         request: onChainRequest,
         aer: aerData,
         capRef: pre.capRef,
@@ -607,6 +954,7 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         wake,
         replay,
         actionCall: actionCall ?? null,
+        execution: executionPlan,
       });
 
       if (envelope.eventClass === 1) {
@@ -615,9 +963,6 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
 
       res.json({
         success: true,
-        result: response.payload.result,
-        resultHash: response.payload.resultHash,
-        executionTimeMs: response.payload.executionTimeMs,
         txDigest,
         capabilityVersion: pre.capRef.cap.version.toString(),
       });

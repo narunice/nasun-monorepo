@@ -12,7 +12,8 @@ import { fromBase58 } from '@mysten/sui/utils';
 import { loadConfig, maskApiKey, type PresetName } from './config.js';
 import { checkBudget, createRequest, sha256Hex, categorizeError } from './baram-client.js';
 import { executeRequest, recordRequest } from './executor-client.js';
-import { executeCapability } from './host-client.js';
+import { infer, executeCapability } from './host-client.js';
+import { escrow as escrowSdk } from '@nasun/baram-sdk';
 import { callLLM } from './llm-client.js';
 import { researchPreset } from './presets/research.js';
 import { contentPreset } from './presets/content.js';
@@ -26,7 +27,7 @@ import {
   TRADER_CONFIG,
   buildTraderPrompt,
   parseTradeDecision,
-  executeTrade,
+  buildSwapActionCall,
   fetchAgentBalances,
   dailySpentQuoteRaw,
   recentTrades,
@@ -107,10 +108,12 @@ import { join } from 'node:path';
 const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
 
 interface TraderState {
-  lastTradeDigest: string | null;
-  /** Last cognition AER intent_id (16-byte UUIDv7, hex-encoded). The next
-   *  cycle's cognition AER points its parent_intent_id at this so a viewer
-   *  can walk the intent chain across cycles without re-reading every AER. */
+  /** Plan C C3-v2 W10: digests split by event class. The previous
+   *  `lastTradeDigest` field is migrated to `lastExecutionDigest` on
+   *  first read; new writes use the split shape. */
+  lastCognitionDigest: string | null;
+  lastExecutionDigest: string | null;
+  /** Last cognition AER intent_id (16-byte UUIDv7, hex-encoded). */
   lastIntentIdHex: string | null;
 }
 
@@ -118,10 +121,23 @@ function loadTraderState(): TraderState {
   try {
     if (existsSync(TRADER_STATE_PATH)) {
       const raw = readFileSync(TRADER_STATE_PATH, 'utf-8');
-      const parsed = JSON.parse(raw) as Partial<TraderState>;
+      const parsed = JSON.parse(raw) as Partial<TraderState> & {
+        lastTradeDigest?: string | null;
+      };
+      // W10 backcompat: legacy `lastTradeDigest` carries the most recent
+      // settlement, which under the v1 trader was always agent-signed
+      // (execution-like). Migrate to lastExecutionDigest.
       return {
-        lastTradeDigest:
-          typeof parsed.lastTradeDigest === 'string' ? parsed.lastTradeDigest : null,
+        lastCognitionDigest:
+          typeof parsed.lastCognitionDigest === 'string'
+            ? parsed.lastCognitionDigest
+            : null,
+        lastExecutionDigest:
+          typeof parsed.lastExecutionDigest === 'string'
+            ? parsed.lastExecutionDigest
+            : typeof parsed.lastTradeDigest === 'string'
+              ? parsed.lastTradeDigest
+              : null,
         lastIntentIdHex:
           typeof parsed.lastIntentIdHex === 'string' ? parsed.lastIntentIdHex : null,
       };
@@ -129,7 +145,11 @@ function loadTraderState(): TraderState {
   } catch {
     // Corrupt file — fall through to default
   }
-  return { lastTradeDigest: null, lastIntentIdHex: null };
+  return {
+    lastCognitionDigest: null,
+    lastExecutionDigest: null,
+    lastIntentIdHex: null,
+  };
 }
 
 function saveTraderState(state: TraderState): void {
@@ -141,7 +161,8 @@ function saveTraderState(state: TraderState): void {
 }
 
 const initialTraderState = loadTraderState();
-let lastTradeDigest: string | null = initialTraderState.lastTradeDigest;
+let lastCognitionDigest: string | null = initialTraderState.lastCognitionDigest;
+let lastExecutionDigest: string | null = initialTraderState.lastExecutionDigest;
 
 // Lineage chain seeded from disk so cycle N+1 (after a process restart)
 // still chains to cycle N's intent.
@@ -164,6 +185,22 @@ function digestB58ToIdHex(digestB58: string): string | null {
   } catch {
     return null;
   }
+}
+
+// Cached escrow ref. The `initialSharedVersion` is stable for the
+// object's lifetime, so we fetch once and reuse across cycles.
+let cachedEscrowInitialSharedVersion: bigint | null = null;
+
+async function getEscrowInitialSharedVersion(
+  client: SuiClient,
+  escrowId: string,
+): Promise<bigint> {
+  if (cachedEscrowInitialSharedVersion !== null) {
+    return cachedEscrowInitialSharedVersion;
+  }
+  const ref = await escrowSdk.fetchEscrow(client, escrowId);
+  cachedEscrowInitialSharedVersion = ref.initialSharedVersion;
+  return cachedEscrowInitialSharedVersion;
 }
 
 async function runTraderCycle(
@@ -289,54 +326,28 @@ async function runTraderCycle(
     outcome: 2,
   });
 
-  // 6. POST /execute-capability — host runs preflight + inference + settles
-  //    the cognition AER atomically. We do NOT pass actionCall (cognition
-  //    class doesn't carry one and the contract rejects mismatch).
-  const triggeredAction = lastTradeDigest ? digestB58ToIdHex(lastTradeDigest) : null;
-  const purposeMsg = lastTradeDigest
-    ? `Trader cycle following trade ${lastTradeDigest}`
-    : 'Trader cycle (genesis)';
-
-  const hostResp = await executeCapability(trader.hostUrl, config.apiKey, {
+  // 5. POST /infer — enclave runs the LLM, returns spend token.
+  const inferResp = await infer(trader.hostUrl, config.apiKey, {
     requestId,
     prompt,
     model: config.model,
-    budgetId: config.budgetId,
     capabilityId: trader.capabilityId,
     walletAddress: trader.walletAddress,
-    envelope,
-    lineage: intent.lineage,
-    wake,
-    replay,
-    actionCall: null,
-    proposal,
-    purpose: purposeMsg,
-    ...(triggeredAction ? { triggeredAction } : {}),
   });
-
-  if (!hostResp.success || !hostResp.result) {
-    if (hostResp.preflightDenied) {
-      log(
-        `[trader] Capability preflight denied: ${hostResp.preflightReason ?? 'unknown'} — stopping cycle.`,
-      );
+  if (!inferResp.success || !inferResp.result || !inferResp.spendToken) {
+    if (inferResp.preflightDenied) {
+      log(`[trader] /infer preflight denied: ${inferResp.preflightReason ?? 'unknown'}`);
     } else {
-      log(`[trader] Host /execute-capability failed: ${hostResp.error ?? 'unknown'}`);
+      log(`[trader] /infer failed: ${inferResp.error ?? 'unknown'}`);
     }
     return;
   }
 
-  log(
-    `[trader] Cognition AER landed: digest=${hostResp.txDigest ?? 'n/a'} cap.v=${hostResp.capabilityVersion ?? '?'}`,
-  );
-
-  // Promote this intent to "last" so the next cycle chains off it.
-  intent.commit();
-
-  // 7. Parse decision with risk-limit gating
+  // 6. Parse LLM decision with risk-limit gating.
   let decision: TradeDecision;
   try {
     decision = parseTradeDecision(
-      hostResp.result,
+      inferResp.result,
       {
         maxNotionalQuoteRaw: trader.maxNotionalQuoteRaw,
         dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw,
@@ -353,7 +364,8 @@ async function runTraderCycle(
       `[trader] Decision parse failed: ${err instanceof Error ? err.message : String(err)}`,
     );
     saveTraderState({
-      lastTradeDigest,
+      lastCognitionDigest,
+      lastExecutionDigest,
       lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
     });
     return;
@@ -367,31 +379,140 @@ async function runTraderCycle(
     );
   }
 
-  // Persist intent chain even if no trade follows.
-  const intentIdHex = Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex');
+  // 7. Build envelope from FINAL decision (Plan C C3-v2 §DV11).
+  const finalEnvelope =
+    decision.action === 'HOLD'
+      ? buildAnalysisEnvelope({ decision, outcome: 2 })
+      : buildAnalysisEnvelope({ decision, outcome: 1 });
+  const finalEventClass: 1 | 2 = decision.action === 'HOLD' ? 1 : 2;
+  if (finalEventClass === 2) {
+    finalEnvelope.eventClass = 2;
+  }
 
-  if (decision.action === 'HOLD') {
-    saveTraderState({ lastTradeDigest, lastIntentIdHex: intentIdHex });
+  // 8. Build proposal that matches the envelope (twin-trust requirement
+  //    on host: proposal.eventClass + actionType must equal envelope's).
+  const buyOrSell = decision.action === 'BUY' || decision.action === 'SELL';
+  const sizeRaw = BigInt(Math.floor(decision.sizeNUSDC * 1_000_000));
+  const inputAssetType =
+    decision.action === 'BUY' ? trader.coinNusdcType : trader.coinNbtcType;
+  const outputAssetType =
+    decision.action === 'BUY' ? trader.coinNbtcType : trader.coinNusdcType;
+  const proposalForExec = buyOrSell
+    ? {
+        eventClass: 2 as const,
+        actionType: finalEnvelope.actionType,
+        paymentAmount: String(config.price),
+        exec: {
+          targetPackage: TRADER_CONFIG.deepbookPackage,
+          module: 'pool',
+          fn:
+            decision.action === 'BUY'
+              ? 'swap_exact_quote_for_base'
+              : 'swap_exact_base_for_quote',
+          inputAssetType,
+          outputAssetType,
+          inputAmount: sizeRaw.toString(),
+          maxSlippageBps: trader.maxSlippageBps,
+          poolId: TRADER_CONFIG.pool,
+        },
+      }
+    : {
+        eventClass: proposal.eventClass,
+        actionType: finalEnvelope.actionType,
+        paymentAmount: String(proposal.paymentAmount),
+      };
+
+  // 9. Build escrow ref + spend block + action call (execution only).
+  let escrowBlock: { objectId: string; initialSharedVersion: string; capabilityId: string } | null = null;
+  let spendBlock: { coinAssetType: string; amount: string } | null = null;
+  let actionCallBlock: ReturnType<typeof buildSwapActionCall> | null = null;
+  if (buyOrSell) {
+    try {
+      const initialSharedVersion = await getEscrowInitialSharedVersion(client, trader.escrowId);
+      escrowBlock = {
+        objectId: trader.escrowId,
+        initialSharedVersion: initialSharedVersion.toString(),
+        capabilityId: trader.capabilityId,
+      };
+      spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
+      actionCallBlock = buildSwapActionCall({
+        direction: decision.action as 'BUY' | 'SELL',
+      });
+    } catch (err) {
+      log(
+        `[trader] escrow fetch failed (cycle deferred to cognition): ${err instanceof Error ? err.message : err}`,
+      );
+    }
+  }
+
+  const triggeredAction = lastExecutionDigest
+    ? digestB58ToIdHex(lastExecutionDigest)
+    : null;
+  const purposeMsg = lastExecutionDigest
+    ? `Trader cycle following trade ${lastExecutionDigest}`
+    : 'Trader cycle (genesis)';
+
+  // 10. POST /execute-capability with FINAL envelope + (optional) execution.
+  const execResp = await executeCapability(trader.hostUrl, config.apiKey, {
+    requestId,
+    resultHash: inferResp.resultHash!,
+    executionTimeMs: inferResp.executionTimeMs ?? 0,
+    spendToken: inferResp.spendToken!,
+    nonce: inferResp.nonce!,
+    expiresAt: inferResp.expiresAt!,
+    model: config.model,
+    budgetId: config.budgetId,
+    capabilityId: trader.capabilityId,
+    walletAddress: trader.walletAddress,
+    envelope: finalEnvelope,
+    lineage: intent.lineage,
+    wake,
+    replay,
+    proposal: proposalForExec,
+    actionCall: actionCallBlock,
+    escrow: escrowBlock,
+    spend: spendBlock,
+    purpose: purposeMsg,
+    ...(triggeredAction ? { triggeredAction } : {}),
+  });
+
+  if (!execResp.success) {
+    if (execResp.preflightDenied) {
+      log(
+        `[trader] /execute-capability preflight denied: ${execResp.preflightReason ?? 'unknown'}`,
+      );
+    } else {
+      log(`[trader] /execute-capability failed: ${execResp.error ?? 'unknown'}`);
+    }
+    saveTraderState({
+      lastCognitionDigest,
+      lastExecutionDigest,
+      lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
+    });
     return;
   }
 
-  // 8. Execute trade (agent-signed; not in the AER PTB — see envelope header)
-  try {
-    const trade = await executeTrade(client, config.keypair, decision, balances);
-    if (trade) {
-      log(`[trader] Trade executed: ${trade.description} digest=${trade.digest}`);
-      lastTradeDigest = trade.digest;
-    }
-  } catch (err) {
-    log(`[trader] Trade failed: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  saveTraderState({ lastTradeDigest, lastIntentIdHex: intentIdHex });
+  log(
+    `[trader] AER landed: class=${finalEventClass} digest=${execResp.txDigest ?? 'n/a'} cap.v=${execResp.capabilityVersion ?? '?'}`,
+  );
 
-  // Touch unused imports so future-me doesn't accidentally drop them while
-  // the legacy lambda code path is being torn down. TRADER_CONFIG is
-  // still consumed in trader.ts.
+  // 11. Promote intent + persist digests by class.
+  intent.commit();
+  if (finalEventClass === 2 && execResp.txDigest) {
+    lastExecutionDigest = execResp.txDigest;
+  } else if (finalEventClass === 1 && execResp.txDigest) {
+    lastCognitionDigest = execResp.txDigest;
+  }
+  saveTraderState({
+    lastCognitionDigest,
+    lastExecutionDigest,
+    lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
+  });
+
+  // Touch unused imports so future-me doesn't accidentally drop them.
   void TRADER_CONFIG;
   void runLambdaStep;
+  void envelope;
 }
 
 async function runSingleStepCycle(

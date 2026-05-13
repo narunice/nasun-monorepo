@@ -1,16 +1,20 @@
 /**
- * Host /execute-capability HTTP client (Plan C C2 — replaces the legacy
- * Lambda /execute path for the trader preset).
+ * Host /infer + /execute-capability HTTP client (Plan C C3-v2 §5.1).
  *
- * The host (apps/baram/executor-nitro) accepts the encrypted prompt + the
- * AER metadata blocks (envelope/lineage/wake/replay) + an action proposal
- * for the soft-rail preflight + an optional actionCall for atomic
- * settlement. It returns the LLM result, the result hash, and the AER
- * settlement digest.
+ * Two-call shape:
  *
- * For the trader v1 prototype `actionCall` is always null — swaps stay
- * agent-signed; the AER is a cognition record. See trader-envelope.ts for
- * the rationale.
+ *   1. POST /infer        — encrypted prompt → enclave → result + HMAC token
+ *   2. POST /execute-capability — parsed decision → AER + (optional) atomic swap
+ *
+ * The HMAC token (spendToken, nonce, expiresAt) binds the LLM result to
+ * the (requestId, walletAddress) identity; a tampered resultHash or
+ * replayed token fails closed on the host side. See DV8.
+ *
+ * Trader cognition-only flow (HOLD): /infer → parse → /execute-capability
+ * with envelope=cognition, actionCall=null, escrow=undefined.
+ *
+ * Trader execution flow (BUY/SELL): same prefix + actionCall=swap spec,
+ * escrow={objectId, initialSharedVersion, capabilityId}, spend={asset, amount}.
  */
 
 import type {
@@ -24,60 +28,146 @@ const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 5000;
 const FETCH_TIMEOUT_MS = 60_000;
 
-export interface HostExecuteCapabilityInput {
+// ============================================================================
+// /infer
+// ============================================================================
+
+export interface InferRequest {
   requestId: number;
-  /** Plain prompt text. The host accepts this as a base64-encoded string —
-   *  TLS provides transport security in the non-TEE prototype. */
+  /** Plain prompt text. Wrapped as base64 for transport. TLS provides
+   *  transport security in the non-TEE prototype. */
   prompt: string;
+  model: string;
+  capabilityId: string;
+  walletAddress: string;
+}
+
+export interface InferResponse {
+  success: boolean;
+  result?: string;
+  resultHash?: string;
+  executionTimeMs?: number;
+  spendToken?: string;
+  nonce?: string;
+  expiresAt?: number;
+  preflightDenied?: boolean;
+  preflightReason?: string;
+  error?: string;
+}
+
+export async function infer(
+  hostUrl: string,
+  apiKey: string,
+  input: InferRequest,
+): Promise<InferResponse> {
+  const body = JSON.stringify({
+    requestId: input.requestId,
+    encryptedPrompt: Buffer.from(input.prompt, 'utf-8').toString('base64'),
+    model: input.model,
+    capabilityId: input.capabilityId,
+    walletAddress: input.walletAddress,
+  });
+  return postWithRetry<InferResponse>(`${hostUrl}/infer`, apiKey, body, (data) => ({
+    success: true,
+    result: typeof data.result === 'string' ? data.result : undefined,
+    resultHash: typeof data.resultHash === 'string' ? data.resultHash : undefined,
+    executionTimeMs:
+      typeof data.executionTimeMs === 'number' ? data.executionTimeMs : undefined,
+    spendToken: typeof data.spendToken === 'string' ? data.spendToken : undefined,
+    nonce: typeof data.nonce === 'string' ? data.nonce : undefined,
+    expiresAt: typeof data.expiresAt === 'number' ? data.expiresAt : undefined,
+  }));
+}
+
+// ============================================================================
+// /execute-capability
+// ============================================================================
+
+export interface ActionCallArg {
+  kind: 'object' | 'pure' | 'pipe';
+  /** kind=object */
+  id?: string;
+  /** kind=pure (base64) */
+  bytes?: string;
+  /** kind=pipe */
+  from?: 'withdraw_coin' | 'zero_deep';
+}
+
+export interface ActionCallSpecWire {
+  targetPackage: string;
+  module: string;
+  fn: string;
+  typeArguments: string[];
+  args: ActionCallArg[];
+}
+
+export interface ExecuteCapabilityRequest {
+  requestId: number;
+  resultHash: string;
+  executionTimeMs: number;
+  spendToken: string;
+  nonce: string;
+  expiresAt: number;
   model: string;
   budgetId?: string;
   capabilityId: string;
-  /** cap.owner — the user wallet, NOT the agent wallet. */
   walletAddress: string;
   envelope: TraderEnvelopeMeta;
   lineage: TraderLineageMeta;
   wake: TraderWakeMeta;
   replay: TraderReplayMeta;
-  /** Cognition AERs MUST pass null. Execution AERs require a non-null
-   *  actionCall; the trader prototype does not emit those yet. */
-  actionCall: null;
   proposal: {
     eventClass: 1 | 2 | 3;
     actionType: string;
-    /** bigint as decimal string — host parses to u64 server-side. */
     paymentAmount: string;
+    exec?: {
+      targetPackage: string;
+      module: string;
+      fn: string;
+      inputAssetType: string;
+      outputAssetType: string;
+      inputAmount: string;
+      maxSlippageBps: number;
+      poolId: string;
+    } | null;
   };
+  actionCall?: ActionCallSpecWire | null;
+  escrow?: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+  } | null;
+  spend?: { coinAssetType: string; amount: string } | null;
   purpose?: string | null;
   constraints?: string | null;
   triggeredBy?: string | null;
   triggeredAction?: string | null;
 }
 
-export interface HostExecuteCapabilityResult {
+export interface ExecuteCapabilityResponse {
   success: boolean;
-  result?: string;
-  resultHash?: string;
-  executionTimeMs?: number;
   txDigest?: string;
   capabilityVersion?: string;
   error?: string;
-  /** Set to true for HTTP 403 preflight denials (caller may want to log
-   *  the reason but should NOT retry). */
   preflightDenied?: boolean;
-  /** Host's preflight reason code when preflightDenied=true. */
   preflightReason?: string;
 }
 
-/** POST /execute-capability with retry. 4xx responses are NOT retried — they
- *  signal a caller / cap shape problem that won't fix itself. */
 export async function executeCapability(
   hostUrl: string,
   apiKey: string,
-  input: HostExecuteCapabilityInput,
-): Promise<HostExecuteCapabilityResult> {
+  input: ExecuteCapabilityRequest,
+): Promise<ExecuteCapabilityResponse> {
+  // Build wire body. Coerce bigint-ish fields that the consumer passes
+  // as strings already; we don't accept bigints at the interface to
+  // keep JSON serialisation honest.
   const body = JSON.stringify({
     requestId: input.requestId,
-    encryptedPrompt: Buffer.from(input.prompt, 'utf-8').toString('base64'),
+    resultHash: input.resultHash,
+    executionTimeMs: input.executionTimeMs,
+    spendToken: input.spendToken,
+    nonce: input.nonce,
+    expiresAt: input.expiresAt,
     model: input.model,
     ...(input.budgetId ? { budgetId: input.budgetId } : {}),
     capabilityId: input.capabilityId,
@@ -86,20 +176,44 @@ export async function executeCapability(
     lineage: input.lineage,
     wake: input.wake,
     replay: input.replay,
-    actionCall: input.actionCall,
     proposal: input.proposal,
+    ...(input.actionCall ? { actionCall: input.actionCall } : { actionCall: null }),
+    ...(input.escrow ? { escrow: input.escrow } : {}),
+    ...(input.spend ? { spend: input.spend } : {}),
     ...(input.purpose ? { purpose: input.purpose } : {}),
     ...(input.constraints ? { constraints: input.constraints } : {}),
     ...(input.triggeredBy ? { triggeredBy: input.triggeredBy } : {}),
     ...(input.triggeredAction ? { triggeredAction: input.triggeredAction } : {}),
   });
+  return postWithRetry<ExecuteCapabilityResponse>(
+    `${hostUrl}/execute-capability`,
+    apiKey,
+    body,
+    (data) => ({
+      success: true,
+      txDigest: typeof data.txDigest === 'string' ? data.txDigest : undefined,
+      capabilityVersion:
+        typeof data.capabilityVersion === 'string' ? data.capabilityVersion : undefined,
+    }),
+  );
+}
 
+// ============================================================================
+// Shared transport
+// ============================================================================
+
+async function postWithRetry<T extends { success: boolean; preflightDenied?: boolean; preflightReason?: string; error?: string }>(
+  url: string,
+  apiKey: string,
+  body: string,
+  successFromJson: (data: Record<string, unknown>) => T,
+): Promise<T> {
   let lastError: string | undefined;
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const response = await fetch(`${hostUrl}/execute-capability`, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -109,26 +223,20 @@ export async function executeCapability(
         signal: controller.signal,
       });
 
-      // 403 = preflight denial (cap revoked/paused/owner mismatch/etc.).
-      // The host already encoded the reason; surface it without retry.
       if (response.status === 403) {
         const data = await safeJson(response);
         return {
           success: false,
           preflightDenied: true,
           preflightReason: typeof data?.reason === 'string' ? data.reason : undefined,
-          error: typeof data?.error === 'string' ? data.error : 'Capability preflight denied',
-        };
+          error: typeof data?.error === 'string' ? data.error : 'preflight denied',
+        } as T;
       }
-
       if (response.status >= 400 && response.status < 500) {
-        // Other 4xx (400 shape error, 404 request not found, etc.) — these
-        // do not improve on retry.
         const text = await response.text().catch(() => 'Unknown error');
         const truncated = text.length > 200 ? text.slice(0, 200) + '...' : text;
-        return { success: false, error: `HTTP ${response.status}: ${truncated}` };
+        return { success: false, error: `HTTP ${response.status}: ${truncated}` } as T;
       }
-
       if (!response.ok) {
         const text = await response.text().catch(() => 'Unknown error');
         const truncated = text.length > 200 ? text.slice(0, 200) + '...' : text;
@@ -137,20 +245,10 @@ export async function executeCapability(
           await sleep(RETRY_DELAY_MS * attempt);
           continue;
         }
-        return { success: false, error: lastError };
+        return { success: false, error: lastError } as T;
       }
-
       const data = (await response.json()) as Record<string, unknown>;
-      return {
-        success: true,
-        result: typeof data.result === 'string' ? data.result : undefined,
-        resultHash: typeof data.resultHash === 'string' ? data.resultHash : undefined,
-        executionTimeMs:
-          typeof data.executionTimeMs === 'number' ? data.executionTimeMs : undefined,
-        txDigest: typeof data.txDigest === 'string' ? data.txDigest : undefined,
-        capabilityVersion:
-          typeof data.capabilityVersion === 'string' ? data.capabilityVersion : undefined,
-      };
+      return successFromJson(data);
     } catch (err) {
       lastError = err instanceof Error ? err.message : String(err);
       if (attempt < MAX_RETRIES) {
@@ -161,8 +259,7 @@ export async function executeCapability(
       clearTimeout(timeoutId);
     }
   }
-
-  return { success: false, error: lastError ?? 'All retries exhausted' };
+  return { success: false, error: lastError ?? 'All retries exhausted' } as T;
 }
 
 async function safeJson(response: Response): Promise<Record<string, unknown> | null> {

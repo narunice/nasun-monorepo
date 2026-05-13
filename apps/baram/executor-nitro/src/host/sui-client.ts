@@ -542,22 +542,62 @@ export interface AERReplayMeta {
   replayExtras: Array<[string, number[]]>;
 }
 
-/** The optional execution action the host appends as Cmd 0 of the PTB. For
+/** The optional execution action the host appends to the PTB. For
  *  HOLD/cognition AERs this is `null` — the PTB has just the settlement +
- *  AER commands. Plan B B2 ships this as the pre-Plan-C wiring; the trader
- *  preset (Plan C) will own constructing the args. */
+ *  AER commands. Plan C C3-v2 DV12 adds the `pipe` arg kind: the host
+ *  resolves pipe sentinels into PTB returns from the upstream escrow
+ *  withdraw + inline `coin::zero<DEEP>` commands when composing the
+ *  execution path. */
+export type ActionCallArg =
+  | { kind: 'object'; id: string }
+  | { kind: 'pure'; bytes: Uint8Array }
+  | { kind: 'pipe'; from: 'withdraw_coin' | 'zero_deep' };
+
 export interface ActionCallSpec {
   targetPackage: string;
   module: string;
   fn: string;
-  /** Type arguments for generic Move calls. Pado pool swap calls usually
-   *  parameterize on base/quote coin types. */
+  /** Type arguments for generic Move calls. Pado pool swap calls
+   *  parameterize on `<BaseAsset, QuoteAsset>`. */
   typeArguments: string[];
-  /** Each arg is either an object id (the host wraps with `tx.object`) or
-   *  BCS-encoded pure bytes (caller is responsible for matching the function
-   *  signature byte-for-byte). Keeping it raw here means this layer doesn't
-   *  need to know any swap-specific signatures. */
-  args: Array<{ kind: 'object'; id: string } | { kind: 'pure'; bytes: Uint8Array }>;
+  args: ActionCallArg[];
+}
+
+/** Plan C C3-v2 §4.3: execution-only PTB plumbing. When present together
+ *  with `actionCall`, the host emits the full 10-cmd execution path
+ *  (DV9: escrow withdraw + inline DEEP zero + swap + settle + leftover
+ *  deposit + DEEP destroy + receipt + AER + housekeeping). */
+export interface ExecutionPlanInput {
+  /** Shared `AgentEscrow` ref. */
+  escrow: {
+    objectId: string;
+    initialSharedVersion: bigint;
+    /** Reciprocal check: must equal capRef.objectId. Server enforces. */
+    capabilityId: string;
+  };
+  /** What to withdraw on Cmd 0. */
+  spend: {
+    /** Fully-qualified TypeName of the input coin (= type T for
+     *  `withdraw_for_action<T>` and `deposit_swap_leftover<T>`). */
+    inputAssetType: string;
+    amount: bigint;
+  };
+  /** Fully-qualified TypeName of the swap's primary output coin (= type
+   *  U for `settle_action<U>`). Derived from the action-classes function
+   *  entry given the input asset. */
+  outputAssetType: string;
+  /** Fully-qualified TypeName of DEEP (for inline `coin::zero<DEEP>`
+   *  and `coin::destroy_zero<DEEP>`). */
+  deepType: string;
+  /** Tuple positions in the swap's 3-coin return. */
+  outputCoinResult: {
+    primary: number;
+    leftoverInput: number;
+    leftoverDeep: number;
+  };
+  /** Expected `cap.version` for the contract's stale-cap guard
+   *  (`withdraw_for_action` aborts on mismatch). */
+  expectedCapabilityVersion: bigint;
 }
 
 export interface SubmitProofWithCapabilityInput {
@@ -573,16 +613,25 @@ export interface SubmitProofWithCapabilityInput {
   replay: AERReplayMeta;
   /** Optional execution action. Null for HOLD/cognition AERs. */
   actionCall?: ActionCallSpec | null;
+  /** Optional execution-path plumbing. Must be present iff
+   *  `envelope.eventClass === 2`. Server validates the invariant. */
+  execution?: ExecutionPlanInput | null;
 }
 
 /**
  * Submit the capability-gated atomic settlement PTB.
  *
- * PTB layout (Plan B §4.2):
- *   Cmd 0  (optional): action call (e.g., Pado swap). Skipped for HOLD.
- *   Cmd 1: baram::submit_proof_with_receipt → returns SettlementReceipt
- *   Cmd 2: aer::create_report_with_receipt_capability(receipt, cap, ...)
- *   Cmd 3/4 (existing): record_job_completion + refresh_tier_from_state
+ * PTB layout (Plan C C3-v2 §DV9):
+ *   Cmd 0 (exec only): escrow::withdraw_for_action<T> → (Coin<T>, Obligation)
+ *   Cmd 1 (exec only): coin::zero<DEEP> → Coin<DEEP>
+ *   Cmd 2 (exec only): pool::swap_exact_* → 3-coin tuple
+ *   Cmd 3 (exec only): escrow::settle_action<U> (consumes obligation,
+ *                       deposits primary output)
+ *   Cmd 4 (exec only): escrow::deposit_swap_leftover<T> (lot-size dust)
+ *   Cmd 5 (exec only): coin::destroy_zero<DEEP>
+ *   Cmd 6: baram::submit_proof_with_receipt → SettlementReceipt
+ *   Cmd 7: aer::create_report_with_receipt_capability(receipt, cap, ...)
+ *   Cmd 8/9: record_job_completion + refresh_tier_from_state
  *
  * The capability is referenced via `tx.sharedObjectRef({ mutable: false })`
  * so the cap read stays off the consensus-serialized path. Code-review C-3.
@@ -604,21 +653,140 @@ export async function submitProofWithAERCapability(
       `action=${input.envelope.actionType} class=${input.envelope.eventClass})`,
   );
 
-  const tx = new Transaction();
+  const tx = buildAERTransaction(input, cfg);
 
-  // Cmd 0: action call (execution only)
-  if (input.actionCall) {
-    const ac = input.actionCall;
-    tx.moveCall({
-      target: `${ac.targetPackage}::${ac.module}::${ac.fn}`,
-      typeArguments: ac.typeArguments,
-      arguments: ac.args.map((a) =>
-        a.kind === 'object' ? tx.object(a.id) : tx.pure(a.bytes),
-      ),
-    });
+  const result = await sui.signAndExecuteTransaction({
+    signer: kp,
+    transaction: tx,
+    options: { showEffects: true, showEvents: true },
+  });
+
+  if (result.effects?.status?.status !== 'success') {
+    const error = result.effects?.status?.error || 'Unknown error';
+    throw new Error(`Capability-gated PTB failed: ${error}`);
   }
 
-  // Cmd 1: submit_proof_with_receipt (settlement)
+  console.log(`[Sui] Capability-gated PTB submitted: ${result.digest}`);
+  return result.digest;
+}
+
+/**
+ * Pure PTB composer for the capability-gated AER tx. Extracted so
+ * tests can inspect the command graph without a live keypair / RPC.
+ * `cfg` is the same shape as SuiConfig (but without the executor key).
+ */
+export function buildAERTransaction(
+  input: SubmitProofWithCapabilityInput,
+  cfg: Pick<
+    SuiConfig,
+    | 'packageId'
+    | 'registryId'
+    | 'aerPackageId'
+    | 'aerRegistryId'
+    | 'executorPackageId'
+    | 'executorRegistryId'
+    | 'tierRegistryId'
+    | 'executorStakeId'
+    | 'processedRequestsId'
+  >,
+): Transaction {
+  const tx = new Transaction();
+
+  // Cap shared-object ref. Shared across both the execution path
+  // (read by withdraw_for_action / settle_action / deposit_swap_leftover)
+  // and the AER call. mutable:false because all three contract entries
+  // take cap as `&Capability` (immutable).
+  const capArg = tx.sharedObjectRef({
+    objectId: input.capRef.objectId,
+    initialSharedVersion: input.capRef.initialSharedVersion.toString(),
+    mutable: false,
+  });
+
+  // Execution path (Cmd 0–5). Only for execution-class AERs with a
+  // fully-resolved execution plan.
+  if (input.actionCall && input.execution) {
+    if (input.execution.escrow.capabilityId !== input.capRef.objectId) {
+      throw new Error(
+        `execution.escrow.capabilityId mismatch with capRef.objectId — refusing to compose PTB`,
+      );
+    }
+    const exec = input.execution;
+    const escrowArg = tx.sharedObjectRef({
+      objectId: exec.escrow.objectId,
+      initialSharedVersion: exec.escrow.initialSharedVersion.toString(),
+      mutable: true,
+    });
+
+    // Cmd 0: escrow::withdraw_for_action<T>(escrow, cap, amount, ver)
+    //          -> (Coin<T>, SpendObligation)
+    const withdrawRet = tx.moveCall({
+      target: `${cfg.aerPackageId}::escrow::withdraw_for_action`,
+      typeArguments: [exec.spend.inputAssetType],
+      arguments: [
+        escrowArg,
+        capArg,
+        tx.pure.u64(exec.spend.amount),
+        tx.pure.u64(exec.expectedCapabilityVersion),
+      ],
+    });
+    const withdrawCoin = withdrawRet[0];
+    const obligation = withdrawRet[1];
+
+    // Cmd 1: coin::zero<DEEP>(ctx) -> Coin<DEEP>
+    const [zeroDeep] = tx.moveCall({
+      target: '0x2::coin::zero',
+      typeArguments: [exec.deepType],
+    });
+
+    // Cmd 2: swap (substitutes pipe sentinels with Cmd 0.0 + Cmd 1)
+    const ac = input.actionCall;
+    const swapRet = tx.moveCall({
+      target: `${ac.targetPackage}::${ac.module}::${ac.fn}`,
+      typeArguments: ac.typeArguments,
+      arguments: ac.args.map((a) => {
+        if (a.kind === 'object') return tx.object(a.id);
+        if (a.kind === 'pure') return tx.pure(a.bytes);
+        // pipe substitution
+        if (a.from === 'withdraw_coin') return withdrawCoin;
+        if (a.from === 'zero_deep') return zeroDeep;
+        throw new Error(`Unknown pipe source: ${(a as { from: string }).from}`);
+      }),
+    });
+    const primaryOut = swapRet[exec.outputCoinResult.primary];
+    const leftoverInput = swapRet[exec.outputCoinResult.leftoverInput];
+    const leftoverDeep = swapRet[exec.outputCoinResult.leftoverDeep];
+
+    // Cmd 3: escrow::settle_action<U>(escrow, cap, obligation, primaryOut)
+    tx.moveCall({
+      target: `${cfg.aerPackageId}::escrow::settle_action`,
+      typeArguments: [exec.outputAssetType],
+      arguments: [escrowArg, capArg, obligation, primaryOut],
+    });
+
+    // Cmd 4: escrow::deposit_swap_leftover<T>(escrow, cap, leftoverInput)
+    tx.moveCall({
+      target: `${cfg.aerPackageId}::escrow::deposit_swap_leftover`,
+      typeArguments: [exec.spend.inputAssetType],
+      arguments: [escrowArg, capArg, leftoverInput],
+    });
+
+    // Cmd 5: coin::destroy_zero<DEEP>(leftoverDeep)
+    //   Predicated on Pado pools being DEEP-whitelisted. Smoke S14
+    //   verifies. Mitigation if pools drift: replace with
+    //   deposit_swap_leftover<DEEP> + add DEEP to cap.allowed_assets.
+    tx.moveCall({
+      target: '0x2::coin::destroy_zero',
+      typeArguments: [exec.deepType],
+      arguments: [leftoverDeep],
+    });
+  } else if (input.actionCall && !input.execution) {
+    // Plan C C3-v2 invariant: execution AERs MUST carry an execution
+    // plan. server.ts validates this before reaching us; the guard here
+    // is belt-and-suspenders. Refuse to compose a half-formed PTB.
+    throw new Error('actionCall present without execution plan');
+  }
+
+  // Cmd 6: submit_proof_with_receipt (settlement)
   const resultHashBytes = Array.from(Buffer.from(input.resultHash, 'hex'));
   const [receipt] = tx.moveCall({
     target: `${cfg.packageId}::baram::submit_proof_with_receipt`,
@@ -631,27 +799,11 @@ export async function submitProofWithAERCapability(
     ],
   });
 
-  // Cmd 2: capability-gated AER creation
+  // Cmd 7: capability-gated AER creation
   const promptHashBytes = Array.isArray(input.request.promptHash)
     ? (input.request.promptHash as unknown as number[])
     : Array.from(Buffer.from(input.request.promptHash, 'hex'));
 
-  // Cap shared-object ref. Plan B C-3: mutable: false to keep the cap read off
-  // the consensus-serialized path. tx.sharedObjectRef requires the initial
-  // shared version we plumbed through fetchCapability.
-  // F9: pass initialSharedVersion as a string so a future devnet that has
-  // run long enough to push the version past 2^53 doesn't silently lose
-  // precision through Number(). `tx.sharedObjectRef` accepts bigint/string.
-  const capArg = tx.sharedObjectRef({
-    objectId: input.capRef.objectId,
-    initialSharedVersion: input.capRef.initialSharedVersion.toString(),
-    mutable: false,
-  });
-
-  // baram_registry is referenced immutably by the gated entry. The same
-  // shared object is mutably referenced by Cmd 1; Sui PTB scheduler upgrades
-  // to mut for the whole tx, which is fine — we just need the reference to
-  // resolve at all.
   tx.moveCall({
     target: `${cfg.aerPackageId}::aer::create_report_with_receipt_capability`,
     arguments: [
@@ -719,7 +871,7 @@ export async function submitProofWithAERCapability(
     ],
   });
 
-  // Cmd 3: record_job_completion (existing)
+  // Cmd 8: record_job_completion (existing)
   if (cfg.executorPackageId && cfg.executorRegistryId && cfg.processedRequestsId) {
     tx.moveCall({
       target: `${cfg.executorPackageId}::executor::record_job_completion`,
@@ -732,7 +884,7 @@ export async function submitProofWithAERCapability(
     });
   }
 
-  // Cmd 4: refresh_tier_from_state (existing)
+  // Cmd 9: refresh_tier_from_state (existing)
   if (
     cfg.executorPackageId &&
     cfg.tierRegistryId &&
@@ -749,19 +901,7 @@ export async function submitProofWithAERCapability(
     });
   }
 
-  const result = await sui.signAndExecuteTransaction({
-    signer: kp,
-    transaction: tx,
-    options: { showEffects: true, showEvents: true },
-  });
-
-  if (result.effects?.status?.status !== 'success') {
-    const error = result.effects?.status?.error || 'Unknown error';
-    throw new Error(`Capability-gated PTB failed: ${error}`);
-  }
-
-  console.log(`[Sui] Capability-gated PTB submitted: ${result.digest}`);
-  return result.digest;
+  return tx;
 }
 
 /**

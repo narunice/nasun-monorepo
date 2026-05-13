@@ -113,12 +113,28 @@ interface TraderConfig {
   maxNotionalQuoteRaw: bigint;
   dailyMaxQuoteRaw: bigint;
   maxSlippageBps: number;
+  /** Plan C C3-v2 §5.4: shared AgentEscrow object id paired to the cap. */
+  escrowId: string;
+  /** Fully-qualified TypeName for the input/output coin pair. The trader
+   *  alternates which is input vs output per BUY/SELL. */
+  coinNusdcType: string;
+  coinNbtcType: string;
+}
+
+function requireTypeName(raw: string, name: string): string {
+  if (!/^0x[0-9a-fA-F]{1,64}::[A-Za-z_][A-Za-z0-9_]{0,254}::[A-Za-z_][A-Za-z0-9_]{0,254}(<.+>)?$/.test(raw)) {
+    throw new Error(`${name} must be a Move TypeName (<addr>::<mod>::<Type>): got "${raw.slice(0, 32)}..."`);
+  }
+  return raw;
 }
 
 function loadTraderConfig(): TraderConfig {
   const hostUrl = requireHttpsUrl(requireEnv('HOST_URL'), 'HOST_URL');
   const capabilityId = requireObjectId(requireEnv('CAPABILITY_ID'), 'CAPABILITY_ID');
   const walletAddress = requireAddress(requireEnv('WALLET_ADDRESS'), 'WALLET_ADDRESS');
+  const escrowId = requireObjectId(requireEnv('ESCROW_ID'), 'ESCROW_ID');
+  const coinNusdcType = requireTypeName(requireEnv('COIN_NUSDC_TYPE'), 'COIN_NUSDC_TYPE');
+  const coinNbtcType = requireTypeName(requireEnv('COIN_NBTC_TYPE'), 'COIN_NBTC_TYPE');
   const strategy = resolveStrategyPreset(process.env.STRATEGY);
   const maxNotionalQuoteRaw = parseBigIntEnv(
     process.env.MAX_NOTIONAL_QUOTE_RAW,
@@ -147,6 +163,9 @@ function loadTraderConfig(): TraderConfig {
     maxNotionalQuoteRaw,
     dailyMaxQuoteRaw,
     maxSlippageBps,
+    escrowId,
+    coinNusdcType,
+    coinNbtcType,
   };
 }
 

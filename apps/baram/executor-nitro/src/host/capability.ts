@@ -34,7 +34,9 @@ import type { SuiClient } from '@mysten/sui/client';
 
 import {
   loadActionClasses,
+  findFunctionEntry,
   type ActionClassRegistry,
+  type ActionFunctionEntry,
 } from './action-classes.js';
 
 // ============================================================================
@@ -101,6 +103,10 @@ export interface ActionProposal {
     outputAssetType: string;
     inputAmount: bigint;
     maxSlippageBps: number;
+    /** Shared Pool object id the swap will target. Validated against
+     *  the function entry's `poolId` so the host preflight refuses to
+     *  sign a PTB against an unregistered pool (Plan C C3-v2 §4.5). */
+    poolId: string;
   } | null;
 }
 
@@ -111,7 +117,8 @@ export type SoftRailReason =
   | 'output_asset_not_allowed'
   | 'slippage_exceeds_cap'
   | 'input_amount_exceeds_notional_cap'
-  | 'daily_loss_exceeds_cap';
+  | 'daily_loss_exceeds_cap'
+  | 'pool_id_not_in_registry';
 
 export type SoftRailResult = { ok: true } | { ok: false; reason: SoftRailReason };
 
@@ -156,23 +163,35 @@ export function checkSoftRail(
     return { ok: false, reason: 'target_not_allowed' };
   }
 
-  const cls = registry[proposal.actionType];
-  const targetEntry = cls?.targets.find((t) => t.package === exec.targetPackage);
-  if (!targetEntry) {
-    return { ok: false, reason: 'function_not_in_registry' };
-  }
-  if (targetEntry.module !== exec.module || !targetEntry.functions.includes(exec.fn)) {
+  const fnEntry: ActionFunctionEntry | undefined = findFunctionEntry(
+    registry,
+    proposal.actionType,
+    exec.targetPackage,
+    exec.module,
+    exec.fn,
+  );
+  if (!fnEntry) {
     return { ok: false, reason: 'function_not_in_registry' };
   }
 
-  // Asset exposure: the gated entry doesn't see types, so this is host-only.
-  // We accept the proposal's TypeName strings only if they are explicitly in
-  // cap.allowed_assets — the registry's assets list is a static UX hint, the
-  // cap is authoritative.
-  if (!cap.allowedAssets.includes(exec.inputAssetType)) {
+  if (fnEntry.poolId !== exec.poolId) {
+    return { ok: false, reason: 'pool_id_not_in_registry' };
+  }
+
+  // Asset exposure: cap.allowed_assets is the contract-level authority;
+  // the function entry's allowedInputAssets / allowedOutputAssets are a
+  // structural narrower (a swap fn that legally returns NUSDC can't be
+  // routed when the proposal claims NBTC output). Both must accept.
+  if (
+    !cap.allowedAssets.includes(exec.inputAssetType) ||
+    !fnEntry.allowedInputAssets.includes(exec.inputAssetType)
+  ) {
     return { ok: false, reason: 'input_asset_not_allowed' };
   }
-  if (!cap.allowedAssets.includes(exec.outputAssetType)) {
+  if (
+    !cap.allowedAssets.includes(exec.outputAssetType) ||
+    !fnEntry.allowedOutputAssets.includes(exec.outputAssetType)
+  ) {
     return { ok: false, reason: 'output_asset_not_allowed' };
   }
 

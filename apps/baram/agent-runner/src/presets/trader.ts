@@ -20,6 +20,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 import type { StrategyPreset } from './strategies.js';
+import type { ActionCallSpecWire } from '../host-client.js';
 
 // ===== Devnet constants (NBTC/NUSDC pool) =====
 export const TRADER_CONFIG = {
@@ -358,6 +359,59 @@ export async function executeTrade(
 
 export function recentTrades(): TradeRecord[] {
   return [...tradeHistory];
+}
+
+/**
+ * Build the wire shape of the swap ActionCallSpec the host PTB builder
+ * will consume on /execute-capability. Pipe sentinels mark where the
+ * host substitutes Cmd 0's withdraw_coin and Cmd 1's zero_deep returns.
+ *
+ * direction:
+ *   BUY  → swap_exact_quote_for_base (NUSDC -> NBTC), pool input is quote
+ *   SELL → swap_exact_base_for_quote (NBTC -> NUSDC), pool input is base
+ *
+ * minOut: u64 raw of the minimum acceptable output coin. For v1 we pass
+ * 0 (no slippage guard) consistent with the pre-Plan-C trader; phase 2
+ * mid-price + slippage_bps lift comes via pado-swap.ts on the host.
+ */
+export function buildSwapActionCall(args: {
+  direction: 'BUY' | 'SELL';
+  poolId?: string;
+  deepbookPackage?: string;
+  baseType?: string;
+  quoteType?: string;
+  minOut?: bigint;
+}): ActionCallSpecWire {
+  const poolId = args.poolId ?? TRADER_CONFIG.pool;
+  const pkg = args.deepbookPackage ?? TRADER_CONFIG.deepbookPackage;
+  const base = args.baseType ?? TRADER_CONFIG.baseType;
+  const quote = args.quoteType ?? TRADER_CONFIG.quoteType;
+  const minOut = args.minOut ?? 0n;
+  const fn =
+    args.direction === 'BUY' ? 'swap_exact_quote_for_base' : 'swap_exact_base_for_quote';
+  return {
+    targetPackage: pkg,
+    module: 'pool',
+    fn,
+    typeArguments: [base, quote],
+    args: [
+      { kind: 'object', id: poolId },
+      { kind: 'pipe', from: 'withdraw_coin' },
+      { kind: 'pipe', from: 'zero_deep' },
+      { kind: 'pure', bytes: bcsU64Base64(minOut) },
+      { kind: 'object', id: '0x6' },
+    ],
+  };
+}
+
+function bcsU64Base64(v: bigint): string {
+  const out = new Uint8Array(8);
+  let x = v;
+  for (let i = 0; i < 8; i++) {
+    out[i] = Number(x & 0xffn);
+    x >>= 8n;
+  }
+  return Buffer.from(out).toString('base64');
 }
 
 async function firstCoinId(client: SuiClient, owner: string, coinType: string): Promise<string> {
