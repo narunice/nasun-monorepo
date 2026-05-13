@@ -443,9 +443,11 @@ async function main(): Promise<void> {
         const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex')).update(body, 'utf8').digest('hex');
         fetch(heartbeatUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac },
+          headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac, 'Connection': 'close' },
           body,
-          signal: AbortSignal.timeout(5000),
+          signal: AbortSignal.timeout(15_000),
+        }).then((r) => {
+          if (!r.ok) log(`[heartbeat] registration rejected: HTTP ${r.status}`);
         }).catch((err: Error) => log(`[heartbeat] registration failed: ${err.message}`));
       };
       sendHeartbeat(); // immediate first ping
