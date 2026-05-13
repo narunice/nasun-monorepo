@@ -48,6 +48,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
           amount: LOTTERY_TICKET_PRICE,
           expireThisEpoch: true,
           validate: () => validateLotteryPicks(numbers, LOTTERY_NUMBERS_COUNT, LOTTERY_MAX_NUMBER),
+          humanizeMoveAbort: humanizeLotteryError,
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
@@ -76,6 +77,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         {
           amount: totalCost,
           expireThisEpoch: true,
+          humanizeMoveAbort: humanizeLotteryError,
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
@@ -96,6 +98,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         async () => buildClaimPrize(roundId, ticketId),
         {
           skipBalanceCheck: true,
+          humanizeMoveAbort: humanizeLotteryError,
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
@@ -115,6 +118,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         async () => buildBurnTicket(roundId, ticketId),
         {
           skipBalanceCheck: true,
+          humanizeMoveAbort: humanizeLotteryError,
           onError: (err) => setError(humanizeLotteryError(err.message)),
         }
       )
