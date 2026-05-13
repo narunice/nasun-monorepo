@@ -55,7 +55,7 @@ export const APP_REGISTRY: AppEntry[] = [
   },
   {
     id: 'baram',
-    name: 'Baram AI',
+    name: 'Nasun AI',
     description: 'AI-powered compliance and settlement layer.',
     url: '#',
     chain: 'nasun',

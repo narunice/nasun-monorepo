@@ -68,7 +68,7 @@ export function useTraderScheduler(): UseTraderSchedulerResult {
         hooks: {
           onLog: appendLog,
           onTrade: (t) => setTrades((prev) => [...prev, t].slice(-50)),
-          onRequest: (id) => appendLog(`Baram request id=${id}`),
+          onRequest: (id) => appendLog(`Nasun AI request id=${id}`),
         },
       });
       setLastResult(result);

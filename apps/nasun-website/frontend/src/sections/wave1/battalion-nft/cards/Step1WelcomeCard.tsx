@@ -24,7 +24,7 @@ const LIVE_TODAY = [
 ] as const;
 
 const UNLOCKS = [
-  "Early participation access to organized alpha testing for Pado, SPECTRA, and Baram",
+  "Early participation access to organized alpha testing for Pado, SPECTRA, and Nasun AI",
   "Eligibility for activity-based community programs earned through meaningful ecosystem participation. Not for passive holding.",
 ] as const;
 

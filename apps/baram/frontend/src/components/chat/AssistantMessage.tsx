@@ -73,7 +73,7 @@ export function AssistantMessage({
             </svg>
           )}
         </div>
-        <span className="text-sm font-medium text-[var(--color-text-primary)]">Baram AI</span>
+        <span className="text-sm font-medium text-[var(--color-text-primary)]">Nasun AI</span>
         {timeString && (
           <span className="text-xs text-[var(--color-text-muted)]">{timeString}</span>
         )}

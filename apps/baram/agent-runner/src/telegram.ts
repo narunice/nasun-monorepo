@@ -67,7 +67,7 @@ export async function notifyTraderAER(
   const ts = new Date().toLocaleString('en-US');
 
   let lines = [
-    `<b>[Baram Trader] ${emoji} ${action}</b>`,
+    `<b>[Nasun AI Trader] ${emoji} ${action}</b>`,
     `Agent: <code>${shortAddr}</code>`,
   ];
 

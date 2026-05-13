@@ -86,7 +86,7 @@ export function WelcomeScreen({ onSuggestionClick }: WelcomeScreenProps) {
         </p>
         <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
           Regular AI providers can read, store, and train on your prompts.
-          Baram processes inference inside a Trusted Execution Environment
+          Nasun AI processes inference inside a Trusted Execution Environment
           and records every execution as an on-chain Execution Report —
           a verifiable record that no party can tamper with.
         </p>

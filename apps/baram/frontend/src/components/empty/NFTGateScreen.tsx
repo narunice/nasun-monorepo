@@ -53,7 +53,7 @@ export function NFTGateScreen({ walletAddress, onRefresh }: NFTGateScreenProps) 
           Beta Access Required
         </h1>
         <p className="text-[var(--color-text-secondary)] max-w-md text-sm leading-relaxed">
-          Baram is currently in closed beta. You need a BetaAccessNFT to use the chat.
+          Nasun AI is currently in closed beta. You need a BetaAccessNFT to use the chat.
           Join our community to apply for access.
         </p>
       </div>

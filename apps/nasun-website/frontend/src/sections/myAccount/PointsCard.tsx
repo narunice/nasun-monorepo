@@ -42,7 +42,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   "pado-lottery": "Lottery",
   "pado-perp": "Perp",
   "pado-lending": "Lending",
-  "baram-ai": "Baram AI",
+  "baram-ai": "Nasun AI",
   "baram-executor": "Executor",
   "wallet-transfer": "Transfer",
   "referral-bonus": "Referral",

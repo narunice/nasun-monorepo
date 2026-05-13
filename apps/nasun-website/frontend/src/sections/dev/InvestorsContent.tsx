@@ -80,7 +80,7 @@ const PRODUCTS = [
     iconColor: "text-sf-yellow",
   },
   {
-    name: "Baram",
+    name: "Nasun AI",
     Icon: Wind,
     desc: "On-chain AI compliance settlement layer with TEE-based execution and auditable economic records.",
     iconColor: "text-br-1",
@@ -114,7 +114,7 @@ const LITEPAPER_FILE = "Nasun-Litepaper-2026.pdf";
 
 const HERO_PARAGRAPHS = [
   "Nasun is a Move-based Layer-1 blockchain built as infrastructure for finance, AI, and entertainment.",
-  "Three live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen Sol, a cinematic sci-fi universe spanning games, animation, and film; and Baram, on-chain governance for AI agents.",
+  "Three live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen Sol, a cinematic sci-fi universe spanning games, animation, and film; and Nasun AI, on-chain governance for AI agents.",
   "Nasun is a global network building from a strategic beachhead. South Korea offers more than 16 million crypto users, approximately $70 billion in held digital assets, and no Korean-native decentralized trading venue or compliant self-custody infrastructure, a gap that is large, specific, and unaddressed.",
   "Regulatory frameworks are actively opening: stablecoin legislation, RWA tokenization initiatives, a tripling of national AI investment, and mandatory compliance requirements under Korea's AI Basic Act, now in effect. Korea's cultural export machine, reaching across film, television, and gaming, also gives the Gen Sol IP universe direct access to global audiences from launch.",
 ];
@@ -392,7 +392,7 @@ const InvestorsContent = () => {
             </ButtonV3>
             <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
               <Link to="/ecosystem/baram">
-                Explore <span className="font-semibold ml-1">Baram</span>
+                Explore <span className="font-semibold ml-1">Nasun AI</span>
               </Link>
             </ButtonV3>
             <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
