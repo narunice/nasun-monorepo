@@ -245,7 +245,16 @@
       "Bash(aws dynamodb query \\\\ *)",
       "Bash(APPLY_DRY_RUN=0 bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)",
       "Bash(APPLY_DRY_RUN=0 BUG_ADMIN_FN=\"BugReportStack-BugReportAdminFunctionEDC83E0B-aOQXhINBTwqd\" bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)",
-      "Bash(APPLY_DRY_RUN=0 BUG_ADMIN_FN=BugReportStack-BugReportAdminFunctionEDC83E0B-aOQXhINBTwqd ADMIN_IDENTITY_ID=ap-northeast-2:6cb1e654-bacf-c1f4-dd7e-9e597940d6dd bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)"
+      "Bash(APPLY_DRY_RUN=0 BUG_ADMIN_FN=BugReportStack-BugReportAdminFunctionEDC83E0B-aOQXhINBTwqd ADMIN_IDENTITY_ID=ap-northeast-2:6cb1e654-bacf-c1f4-dd7e-9e597940d6dd bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)",
+      "Bash(# Get wallet addresses from the token claiming reports and check activity_points *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'cd ~/nasun-chat-server && grep -E \"^DATABASE_URL\" .env | head -1')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'ls ~/nasun-chat-server/.env* 2>/dev/null; ls ~/explorer-api/.env* 2>/dev/null')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'grep -E \"^\\(DATABASE_URL|PG_\\)\" ~/nasun-chat-server/.env | head -5')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'grep -i \"postgres\\\\|pg_\\\\|database\" ~/nasun-chat-server/.env | head -5')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'pm2 list | grep -i \"explorer\\\\|score\\\\|points\\\\|scanner\"')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'pm2 list 2>/dev/null | head -40')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'ls ~/ | head -20; ls ~/explorer-api/ 2>/dev/null | head -10')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -i BARAM_TG_WEBHOOK_SECRET ~/nasun-website/chat-server/.env 2>/dev/null || echo KEY_NOT_FOUND\")"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
