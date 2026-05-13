@@ -25,8 +25,9 @@ import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useTraderScheduler } from '../hooks/useTraderScheduler';
 import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
 import { TraderConfigForm } from '../components/forms/TraderConfigForm';
+import { SessionsTab } from './Agent/SessionsTab';
 
-type Tab = 'overview' | 'budget' | 'activity' | 'trader' | 'escrow';
+type Tab = 'overview' | 'budget' | 'activity' | 'trader' | 'escrow' | 'sessions';
 
 const MAX_FUND_NASUN = 100;
 const MAX_FUND_NUSDC = 1000;
@@ -309,6 +310,7 @@ export function AgentDetail() {
     { key: 'activity', label: 'Activity' },
     { key: 'trader', label: 'Trader' },
     { key: 'escrow', label: 'Escrow' },
+    { key: 'sessions', label: 'Sessions' },
   ];
 
   return (
@@ -426,6 +428,13 @@ export function AgentDetail() {
       )}
       {activeTab === 'escrow' && agent && (
         <EscrowTab agentId={agent.id} walletAddress={walletAddress ?? ''} />
+      )}
+      {activeTab === 'sessions' && agent && (
+        <SessionsTab
+          agentId={agent.id}
+          agentAddress={agent.agentAddress}
+          walletAddress={walletAddress ?? ''}
+        />
       )}
 
       {/* Deactivate confirmation modal */}

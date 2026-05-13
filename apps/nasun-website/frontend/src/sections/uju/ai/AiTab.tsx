@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { SuiClient } from "@mysten/sui/client";
 import { BARAM, NETWORK } from "@nasun/devnet-config";
 import { useAuth } from "@/features/auth";
+import { LinkTelegramCTA } from "./LinkTelegramCTA";
 
 const suiClient = new SuiClient({ url: NETWORK.rpcUrl });
 const BARAM_DASHBOARD_URL =
@@ -245,6 +246,15 @@ export function AiTab() {
                       Set escrow ID in Nasun AI dashboard to see balance
                     </span>
                   )}
+                </div>
+
+                {/* Telegram CTA */}
+                <div className="pt-1">
+                  <LinkTelegramCTA
+                    agentId={agent.id}
+                    agentAddress={agent.agentAddress}
+                    walletAddress={walletAddress}
+                  />
                 </div>
               </div>
             );
