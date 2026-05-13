@@ -20,9 +20,19 @@
  *     against the live pool.
  */
 
+import { Transaction } from '@mysten/sui/transactions';
+import type { SuiClient } from '@mysten/sui/client';
 import type { ActionCallSpec } from './sui-client.js';
+import type { SwapDirection } from './action-classes.js';
+
+export type { SwapDirection } from './action-classes.js';
 
 const CLOCK_OBJECT_ID = '0x6';
+
+/** Dummy sender for devInspect quote calls (`pool::get_quantity_out` is a
+ *  pure view; no real signer required). */
+const DEV_INSPECT_SENDER =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 export interface PadoSwapConfig {
   /** DeepBookV3 package id (e.g., `0xb4a1...`). */
@@ -37,8 +47,6 @@ export interface PadoSwapConfig {
    *  `0x71afcf8e...::deep::DEEP`). */
   deepType: string;
 }
-
-export type SwapDirection = 'BUY' | 'SELL';
 
 /**
  * Resolve a PadoSwapConfig from environment variables. Throws if any
@@ -158,4 +166,109 @@ function bcsU64(v: bigint): Uint8Array {
     x >>= 8n;
   }
   return out;
+}
+
+/**
+ * Decode an 8-byte LE u64 produced by `bcsU64`. Used by the server to
+ * re-read the trader-supplied `min_out` pure arg before comparing it
+ * against the on-chain slippage floor.
+ */
+export function decodeU64LE(bytes: Uint8Array): bigint {
+  if (bytes.length !== 8) {
+    throw new Error(`pado-swap: u64 LE expects 8 bytes, got ${bytes.length}`);
+  }
+  let v = 0n;
+  for (let i = 0; i < 8; i++) {
+    v |= BigInt(bytes[i]) << BigInt(i * 8);
+  }
+  return v;
+}
+
+/**
+ * Apply slippage tolerance to an on-chain-quoted expected output.
+ *   floor = floor(expected * (10_000 - slippageBps) / 10_000)
+ *
+ * Trader-supplied `min_out` below this floor would mean the swap is
+ * willing to absorb worse-than-cap slippage; the server rejects.
+ */
+export function applySlippageFloor(expected: bigint, slippageBps: number): bigint {
+  if (expected < 0n) {
+    throw new Error('pado-swap: expected must be >= 0');
+  }
+  if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > 10_000) {
+    throw new Error('pado-swap: slippageBps must be in [0, 10000]');
+  }
+  return (expected * BigInt(10_000 - slippageBps)) / 10_000n;
+}
+
+/**
+ * Quote the expected output of a swap of `sizeInRaw` units of the input
+ * asset against the live pool via `pool::get_quantity_out` devInspect.
+ *
+ * BUY (input=quote): calls `get_quantity_out(0, sizeInRaw, clock)` and
+ * returns the `base_quantity_out` field.
+ * SELL (input=base): calls `get_quantity_out(sizeInRaw, 0, clock)` and
+ * returns the `quote_quantity_out` field.
+ *
+ * The 3-tuple return is `(base_out, quote_out, deep_required)` per the
+ * Move signature at apps/pado/deepbookv3/.../pool.move:1180.
+ *
+ * Throws on devInspect failure (transport, pool-not-found, malformed
+ * return). Callers should treat this as a fail-closed signal: refuse
+ * the swap rather than fall back to the trader-supplied `min_out`.
+ */
+export async function quoteExpectedOutput(args: {
+  client: SuiClient;
+  config: PadoSwapConfig;
+  direction: SwapDirection;
+  sizeInRaw: bigint;
+}): Promise<bigint> {
+  const { client, config, direction, sizeInRaw } = args;
+  if (sizeInRaw <= 0n) {
+    throw new Error('pado-swap: quote sizeInRaw must be > 0');
+  }
+  const baseQuantity = direction === 'SELL' ? sizeInRaw : 0n;
+  const quoteQuantity = direction === 'BUY' ? sizeInRaw : 0n;
+
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${config.deepbookPackageId}::pool::get_quantity_out`,
+    typeArguments: [config.baseType, config.quoteType],
+    arguments: [
+      tx.object(config.poolId),
+      tx.pure.u64(baseQuantity),
+      tx.pure.u64(quoteQuantity),
+      tx.object(CLOCK_OBJECT_ID),
+    ],
+  });
+
+  const result = await client.devInspectTransactionBlock({
+    sender: DEV_INSPECT_SENDER,
+    transactionBlock: tx,
+  });
+
+  const status = result.effects?.status?.status;
+  if (status !== 'success') {
+    throw new Error(
+      `pado-swap: get_quantity_out devInspect failed: ${result.effects?.status?.error ?? 'unknown'}`,
+    );
+  }
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length < 3) {
+    throw new Error('pado-swap: get_quantity_out returned fewer than 3 values');
+  }
+  // Each return is [byteArray, typeName]. u64 = 8 LE bytes.
+  const decode = (idx: number): bigint => {
+    const entry = returnValues[idx];
+    const raw = entry?.[0];
+    if (!raw || raw.length !== 8) {
+      throw new Error(
+        `pado-swap: get_quantity_out[${idx}] expected 8-byte u64, got ${raw?.length}`,
+      );
+    }
+    return decodeU64LE(Uint8Array.from(raw));
+  };
+  const baseOut = decode(0);
+  const quoteOut = decode(1);
+  return direction === 'BUY' ? baseOut : quoteOut;
 }

@@ -9,9 +9,11 @@
         "functions": [
           {
             "name": "swap_exact_quote_for_base",
+            "direction": "BUY",
             "typeArgs": ["base", "quote"],
             "inputCoinArg": 1,
             "deepCoinArg": 2,
+            "minOutArg": 3,
             "outputCoinResult": {
               "primary": 0,
               "leftoverInput": 1,
@@ -23,9 +25,11 @@
           },
           {
             "name": "swap_exact_base_for_quote",
+            "direction": "SELL",
             "typeArgs": ["base", "quote"],
             "inputCoinArg": 1,
             "deepCoinArg": 2,
+            "minOutArg": 3,
             "outputCoinResult": {
               "primary": 1,
               "leftoverInput": 0,

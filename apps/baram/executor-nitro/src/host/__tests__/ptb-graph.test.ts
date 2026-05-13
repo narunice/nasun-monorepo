@@ -293,6 +293,94 @@ describe('buildAERTransaction (execution path)', () => {
     expect(destroyNested?.[1]).toBe(2);
   });
 
+  it('emits 10 commands matching the DV9 layout (SELL: NBTC -> NUSDC)', () => {
+    // SELL flips outputCoinResult.primary/leftoverInput vs BUY: the
+    // pool returns (Coin<Base>, Coin<Quote>, Coin<DEEP>) in fixed
+    // order, so when input=NBTC the leftover is `0` (base) and the
+    // primary output is `1` (quote). A regression that swaps these
+    // positions would silently deposit the swap output as "leftover"
+    // and refund nothing to the trader.
+    const actionCall: ActionCallSpec = {
+      targetPackage: DEEPBOOK_PKG,
+      module: 'pool',
+      fn: 'swap_exact_base_for_quote',
+      typeArguments: [NBTC, NUSDC],
+      args: [
+        { kind: 'object', id: POOL },
+        { kind: 'pipe', from: 'withdraw_coin' },
+        { kind: 'pipe', from: 'zero_deep' },
+        { kind: 'pure', bytes: new Uint8Array(8) },
+        { kind: 'object', id: '0x6' },
+      ],
+    };
+    const tx = buildAERTransaction(
+      {
+        ...baseInput(),
+        envelope: {
+          eventClass: 2,
+          actionType: 'trade.swap.v1',
+          actionSchemaVersion: 1,
+          payloadCodec: 'bcs',
+          payloadHash: new Array(32).fill(0),
+          payloadBytes: [],
+          actionSummary: '',
+          actionOutcome: 1,
+        },
+        actionCall,
+        execution: {
+          escrow: {
+            objectId: '0x' + 'ba'.repeat(32),
+            initialSharedVersion: 200n,
+            capabilityId: CAP_REF.objectId,
+          },
+          spend: { inputAssetType: NBTC, amount: 100_000n },
+          outputAssetType: NUSDC,
+          deepType: DEEP,
+          // Pool returns are positional: idx 0 = Coin<Base> (NBTC),
+          // idx 1 = Coin<Quote> (NUSDC), idx 2 = Coin<DEEP>.
+          // SELL primary = NUSDC = idx 1.
+          outputCoinResult: { primary: 1, leftoverInput: 0, leftoverDeep: 2 },
+          expectedCapabilityVersion: CAP_REF.cap.version,
+        },
+      },
+      CFG,
+    );
+    const cmds = getCommands(tx);
+    expect(cmds).toHaveLength(10);
+
+    // Cmd 0: withdraw_for_action<NBTC> — input asset is the base.
+    expect(isMoveCall(cmds[0])!.tyArgs).toEqual([NBTC]);
+    // Cmd 2: swap_exact_base_for_quote<NBTC, NUSDC>
+    expect(isMoveCall(cmds[2])!.target).toBe(
+      `${DEEPBOOK_PKG}::pool::swap_exact_base_for_quote`,
+    );
+    expect(isMoveCall(cmds[2])!.tyArgs).toEqual([NBTC, NUSDC]);
+
+    // Cmd 3: settle_action<NUSDC>; primaryOut is Cmd 2.<primary=1>
+    const settle = isMoveCall(cmds[3])!;
+    expect(settle.tyArgs).toEqual([NUSDC]);
+    const primaryArg = settle.args[3] as Record<string, unknown>;
+    const primaryNested = primaryArg.NestedResult as [number, number] | undefined;
+    expect(primaryNested?.[0]).toBe(2);
+    expect(primaryNested?.[1]).toBe(1);
+
+    // Cmd 4: deposit_swap_leftover<NBTC>; leftoverInput is Cmd 2.<0>
+    const dep = isMoveCall(cmds[4])!;
+    expect(dep.tyArgs).toEqual([NBTC]);
+    const leftoverInputArg = dep.args[2] as Record<string, unknown>;
+    const leftoverNested = leftoverInputArg.NestedResult as [number, number] | undefined;
+    expect(leftoverNested?.[0]).toBe(2);
+    expect(leftoverNested?.[1]).toBe(0);
+
+    // Cmd 5: coin::destroy_zero<DEEP>; Cmd 2.<2>
+    const destroy = isMoveCall(cmds[5])!;
+    expect(destroy.tyArgs).toEqual([DEEP]);
+    const destroyArg = destroy.args[0] as Record<string, unknown>;
+    const destroyNested = destroyArg.NestedResult as [number, number] | undefined;
+    expect(destroyNested?.[0]).toBe(2);
+    expect(destroyNested?.[1]).toBe(2);
+  });
+
   it('refuses to compose when actionCall present without execution plan', () => {
     expect(() =>
       buildAERTransaction(

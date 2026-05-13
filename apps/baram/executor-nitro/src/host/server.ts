@@ -47,6 +47,12 @@ import {
 } from './capability.js';
 import { loadActionClasses, findFunctionEntry } from './action-classes.js';
 import { mintToken, verifyToken } from './spend-token.js';
+import {
+  quoteExpectedOutput,
+  applySlippageFloor,
+  decodeU64LE,
+  type PadoSwapConfig,
+} from './pado-swap.js';
 import { SuiClient } from '@mysten/sui/client';
 
 /**
@@ -651,6 +657,18 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
           });
           return;
         }
+        // Zero-size swap is meaningless: the SpendObligation hot potato
+        // would still be minted but with no Coin<T> withdrawn; downstream
+        // quoter cannot evaluate slippage on size 0. Refuse explicitly
+        // here so the failure mode is 400 (caller error) rather than 502
+        // (transport failure) when the quote phase rejects.
+        if (BigInt(spend.amount) === 0n) {
+          res.status(400).json({
+            success: false,
+            error: 'spend.amount must be > 0',
+          });
+          return;
+        }
       } catch {
         res.status(400).json({
           success: false,
@@ -738,6 +756,119 @@ export function createServer(config: Partial<ServerConfig> = {}): express.Applic
         res.status(400).json({
           success: false,
           error: 'actionCall.args must include the registered pool object id',
+        });
+        return;
+      }
+
+      // Phase-2 mitigation for HIGH #2 (host-derived min_out floor).
+      // The trader controls the `min_out` u64 pure arg at
+      // `actionCall.args[minOutArg]`. Up to this point we have only
+      // bounded the swap by `cap.maxNotionalPerTrade`; without an
+      // on-chain quote the trader could pass `min_out = 0` and accept
+      // an arbitrarily worse fill than `proposal.exec.maxSlippageBps`
+      // allows. Re-quote the pool via devInspect and refuse any
+      // trader-supplied `min_out` below the slippage floor.
+      const minOutArgEntry = actionCall.args[fnEntryForCheck.minOutArg] as
+        | { kind?: string; bytes?: unknown }
+        | undefined;
+      if (
+        !minOutArgEntry ||
+        minOutArgEntry.kind !== 'pure' ||
+        !(minOutArgEntry.bytes instanceof Uint8Array)
+      ) {
+        res.status(400).json({
+          success: false,
+          error: `actionCall.args[minOutArg] must be {kind:"pure", bytes:Uint8Array}`,
+        });
+        return;
+      }
+      let traderMinOut: bigint;
+      try {
+        traderMinOut = decodeU64LE(minOutArgEntry.bytes);
+      } catch (err) {
+        res.status(400).json({
+          success: false,
+          error: 'actionCall.args[minOutArg] not a valid u64 LE',
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
+      const slippageBps = proposal.exec.maxSlippageBps;
+      if (
+        typeof slippageBps !== 'number' ||
+        !Number.isInteger(slippageBps) ||
+        slippageBps < 0 ||
+        slippageBps > 10_000
+      ) {
+        res.status(400).json({
+          success: false,
+          error: 'proposal.exec.maxSlippageBps must be an integer in [0, 10000]',
+        });
+        return;
+      }
+      const clsForQuote = actionRegistry[proposal.actionType];
+      if (!clsForQuote) {
+        res.status(500).json({
+          success: false,
+          error: 'Action class missing post-preflight (quote phase)',
+        });
+        return;
+      }
+      // Derive the pool's <Base, Quote> ordering from the function's
+      // declared direction so the quote call matches the swap call's
+      // type args 1:1. BUY: input=quote, output=base.
+      const swapConfig: PadoSwapConfig = {
+        deepbookPackageId: proposal.exec.targetPackage,
+        poolId: fnEntryForCheck.poolId,
+        baseType:
+          fnEntryForCheck.direction === 'BUY'
+            ? proposal.exec.outputAssetType
+            : proposal.exec.inputAssetType,
+        quoteType:
+          fnEntryForCheck.direction === 'BUY'
+            ? proposal.exec.inputAssetType
+            : proposal.exec.outputAssetType,
+        deepType: clsForQuote.deepType,
+      };
+      let expectedOut: bigint;
+      try {
+        expectedOut = await quoteExpectedOutput({
+          client: getPreflightClient(),
+          config: swapConfig,
+          direction: fnEntryForCheck.direction,
+          sizeInRaw: BigInt(proposal.exec.inputAmount),
+        });
+      } catch (err) {
+        // Fail-closed: if we cannot read the pool, refuse rather than
+        // accept the trader's min_out. The dual-rail Plan F binding is
+        // the long-term answer; this is the operational rail.
+        res.status(502).json({
+          success: false,
+          error: 'on-chain quote unavailable',
+          detail: err instanceof Error ? err.message : String(err),
+        });
+        return;
+      }
+      const floorMinOut = applySlippageFloor(expectedOut, slippageBps);
+      if (traderMinOut < floorMinOut) {
+        // High-signal: a compliant trader never trips this. Log enough
+        // context to attribute the attempt (wallet + capability) without
+        // leaking the inference content.
+        console.warn(
+          `[Host/Server] min_out floor violation: wallet=${walletAddress} ` +
+            `cap=${capabilityId} fn=${proposal.exec.fn} ` +
+            `direction=${fnEntryForCheck.direction} ` +
+            `inputAmount=${proposal.exec.inputAmount} ` +
+            `expected=${expectedOut} floor=${floorMinOut} ` +
+            `trader=${traderMinOut} bps=${slippageBps}`,
+        );
+        res.status(400).json({
+          success: false,
+          error: 'actionCall min_out below slippage floor',
+          floorMinOut: floorMinOut.toString(),
+          traderMinOut: traderMinOut.toString(),
+          expectedOut: expectedOut.toString(),
+          slippageBps,
         });
         return;
       }

@@ -20,8 +20,15 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+export type SwapDirection = 'BUY' | 'SELL';
+
 export interface ActionFunctionEntry {
   name: string;
+  /** Trade direction relative to the pool's (Base, Quote) pair. BUY
+   *  spends quote, receives base; SELL spends base, receives quote. The
+   *  host quoter uses this to call the right side of
+   *  `pool::get_quantity_out` when deriving the slippage floor. */
+  direction: SwapDirection;
   /** Symbolic placeholder names ("base", "quote", ...). The host PTB
    *  builder substitutes the actual TypeName strings at composition
    *  time using the input/output asset pair from the proposal. */
@@ -33,6 +40,11 @@ export interface ActionFunctionEntry {
   /** Positional index of the `Coin<DEEP>` fee arg. The host wires the
    *  `zero_deep` pipe here. */
   deepCoinArg: number;
+  /** Positional index of the `min_out` u64 pure arg. Host re-decodes
+   *  the trader-supplied bytes and rejects a value below the
+   *  on-chain-quoted slippage floor (phase-2 mitigation for the v1
+   *  caller-controlled min_out gap). */
+  minOutArg: number;
   /** Tuple return positions for the 3-coin swap return. */
   outputCoinResult: {
     primary: number;
@@ -138,11 +150,19 @@ function parseFunction(f: unknown, where: string): ActionFunctionEntry {
     );
   }
   const typeArgs = arrayOfStrings(ff.typeArgs, `${where}.typeArgs`);
+  const direction = ff.direction;
+  if (direction !== 'BUY' && direction !== 'SELL') {
+    throw new Error(
+      `action-classes.json: "${where}.direction" must be "BUY" or "SELL", got "${String(direction)}"`,
+    );
+  }
   const inputCoinArg = nonNegativeInt(ff.inputCoinArg, `${where}.inputCoinArg`);
   const deepCoinArg = nonNegativeInt(ff.deepCoinArg, `${where}.deepCoinArg`);
-  if (inputCoinArg === deepCoinArg) {
+  const minOutArg = nonNegativeInt(ff.minOutArg, `${where}.minOutArg`);
+  const positions = new Set([inputCoinArg, deepCoinArg, minOutArg]);
+  if (positions.size !== 3) {
     throw new Error(
-      `action-classes.json: "${where}" inputCoinArg and deepCoinArg must differ`,
+      `action-classes.json: "${where}" inputCoinArg/deepCoinArg/minOutArg must all differ`,
     );
   }
   const outRaw = ff.outputCoinResult;
@@ -181,9 +201,11 @@ function parseFunction(f: unknown, where: string): ActionFunctionEntry {
   }
   return {
     name,
+    direction,
     typeArgs,
     inputCoinArg,
     deepCoinArg,
+    minOutArg,
     outputCoinResult,
     allowedInputAssets,
     allowedOutputAssets,
