@@ -2,8 +2,9 @@
  * Tests for baram-client.ts — sha256, sha256Hex, categorizeError
  */
 
-import { describe, it, expect } from 'vitest';
-import { sha256, sha256Hex, categorizeError } from './baram-client.js';
+import { describe, it, expect, vi } from 'vitest';
+import { sha256, sha256Hex, categorizeError, isPendingActive } from './baram-client.js';
+import type { SuiClient } from '@mysten/sui/client';
 
 describe('sha256', () => {
   it('returns Uint8Array of 32 bytes', () => {
@@ -139,5 +140,63 @@ describe('categorizeError', () => {
     const result = categorizeError('Connection refused ECONNREFUSED');
     expect(result.code).toBe('');
     expect(result.fatal).toBe(false);
+  });
+});
+
+describe('isPendingActive (devInspect view)', () => {
+  const SENDER = '0x' + 'a'.repeat(64);
+  const CAP_ID = '0x' + 'b'.repeat(64);
+  const AER_PKG = '0x' + 'c'.repeat(64);
+
+  function clientReturning(bcsByte: number): Pick<SuiClient, 'devInspectTransactionBlock'> {
+    return {
+      devInspectTransactionBlock: vi.fn().mockResolvedValue({
+        results: [{ returnValues: [[[bcsByte], 'bool']] }],
+      }),
+    } as unknown as Pick<SuiClient, 'devInspectTransactionBlock'>;
+  }
+
+  it('returns false when aerPackageId is empty (legacy capability)', async () => {
+    const result = await isPendingActive(
+      {} as unknown as SuiClient,
+      '',
+      CAP_ID,
+      Date.now(),
+      SENDER,
+    );
+    expect(result).toBe(false);
+  });
+
+  it('parses bcs bool true', async () => {
+    const client = clientReturning(1);
+    const result = await isPendingActive(
+      client as SuiClient,
+      AER_PKG,
+      CAP_ID,
+      Date.now(),
+      SENDER,
+    );
+    expect(result).toBe(true);
+  });
+
+  it('parses bcs bool false', async () => {
+    const client = clientReturning(0);
+    const result = await isPendingActive(
+      client as SuiClient,
+      AER_PKG,
+      CAP_ID,
+      Date.now(),
+      SENDER,
+    );
+    expect(result).toBe(false);
+  });
+
+  it('throws when devInspect returns no values', async () => {
+    const client = {
+      devInspectTransactionBlock: vi.fn().mockResolvedValue({ results: [{ returnValues: [] }] }),
+    } as unknown as SuiClient;
+    await expect(
+      isPendingActive(client, AER_PKG, CAP_ID, Date.now(), SENDER),
+    ).rejects.toThrow(/no values/);
   });
 });

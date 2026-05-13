@@ -7,6 +7,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { bcs } from '@mysten/sui/bcs';
 import { createHash } from 'crypto';
 import type { Config } from './config.js';
 
@@ -102,6 +103,43 @@ export async function createRequest(
     throw new Error(`RequestCreated event has invalid request_id: ${JSON.stringify(raw)}`);
   }
   return { requestId, promptHashHex };
+}
+
+/**
+ * Heartbeat skip predicate (Plan D §A5'). devInspect query against the
+ * capability's `is_pending_active(cap, now_ms): bool` view. Returns false
+ * when no pending proposal is installed OR the lock has expired — agent-runner
+ * is free to enter a new wake cycle. Returns true when a live proposal lock
+ * blocks the cycle (the next confirm/cancel/expire frees it).
+ *
+ * `aerPackageId` is `BARAM_AER_PACKAGE_ID` (baram_aer v1.4.0 onwards).
+ * When unset, the function returns false (legacy: no lock concept) so
+ * heartbeat keeps running on old capabilities that pre-date Plan D §A5'.
+ */
+export async function isPendingActive(
+  client: SuiClient,
+  aerPackageId: string,
+  capabilityId: string,
+  nowMs: number,
+  senderAddress: string,
+): Promise<boolean> {
+  if (!aerPackageId) return false;
+  const tx = new Transaction();
+  tx.setSender(senderAddress);
+  tx.moveCall({
+    target: `${aerPackageId}::capability::is_pending_active`,
+    arguments: [tx.object(capabilityId), tx.pure.u64(nowMs)],
+  });
+  const result = await client.devInspectTransactionBlock({
+    sender: senderAddress,
+    transactionBlock: tx,
+  });
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length === 0) {
+    throw new Error('is_pending_active returned no values');
+  }
+  const [rawBytes] = returnValues[0];
+  return bcs.bool().parse(Uint8Array.from(rawBytes));
 }
 
 /**
