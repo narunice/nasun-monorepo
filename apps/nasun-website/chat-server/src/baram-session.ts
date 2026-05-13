@@ -134,6 +134,20 @@ export function revokeSession(sid: string, wallet: string): RevokeResult {
   return { changed: result.changes > 0 };
 }
 
+export function getActiveSessionByTgUser(tgUserId: string): BaramSessionRow | null {
+  const now = Date.now();
+  const row = getDb()
+    .prepare(
+      `SELECT sid, wallet, agent, capability_id, tg_user_id, expires_at, revoked_at, created_at
+       FROM baram_sessions
+       WHERE tg_user_id = ? AND revoked_at IS NULL AND expires_at > ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .get(tgUserId, now) as RawRow | undefined;
+  return row ? rowToSession(row) : null;
+}
+
 export function bindTelegramUser(sid: string, tgUserId: string): boolean {
   // Called after the user opens the deep link and the bot routes /start <sid>
   // through the Telegram webhook handler (D-2). One-shot bind: refuses if the

@@ -18,13 +18,16 @@
     "@nasun/profile-core": "workspace:*",
     "@noble/hashes": "^1.8.0",
     "better-sqlite3": "^11.7.0",
+    "ulid": "^3.0.2",
     "ws": "^8.18.0"
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.39.0"
   },
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",

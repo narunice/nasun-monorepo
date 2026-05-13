@@ -153,6 +153,11 @@ export function initStore(config: ChatServerConfig): void {
     CREATE INDEX IF NOT EXISTS idx_baram_sessions_wallet ON baram_sessions(wallet);
     CREATE INDEX IF NOT EXISTS idx_baram_sessions_tg_user
       ON baram_sessions(tg_user_id) WHERE tg_user_id IS NOT NULL;
+    CREATE TABLE IF NOT EXISTS baram_agent_endpoints (
+      agent TEXT PRIMARY KEY,
+      http_url TEXT NOT NULL,
+      last_seen INTEGER NOT NULL
+    );
   `);
 
   nasunProfileApiUrl = config.nasunProfileApiUrl;
