@@ -243,8 +243,12 @@ export function loadConfig() {
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
 
-    // Testing
-    singleCycle: process.env.SINGLE_CYCLE === 'true',
+    // Single-cycle / Wake Model: run one cycle then exit (cron handles schedule).
+    singleCycle: process.env.SINGLE_CYCLE === 'true' || process.env.WAKE_MODEL === 'true',
+
+    // Optional Telegram notifications (trader preset only).
+    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? null,
+    telegramChatId: process.env.TELEGRAM_CHAT_ID ?? null,
   } as const;
 }
 

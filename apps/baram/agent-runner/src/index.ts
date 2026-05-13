@@ -26,6 +26,7 @@ import {
   type TraderCycleResult,
 } from './presets/trader-cycle.js';
 import type { Preset } from './presets/types.js';
+import { notifyTraderAER } from './telegram.js';
 
 const TRADER_PLACEHOLDER: Preset = {
   name: 'Pado Trader Agent',
@@ -97,6 +98,19 @@ async function runTraderCyclePresetEntry(
   }
   if (result.fatal) {
     shuttingDown = true;
+  }
+  if (result.outcome === 'succeeded' && result.decision) {
+    const { telegramBotToken, telegramChatId } = config;
+    if (telegramBotToken && telegramChatId) {
+      await notifyTraderAER(telegramBotToken, telegramChatId, {
+        action: result.decision.action,
+        sizeNUSDC: result.decision.sizeNUSDC,
+        reason: result.decision.reason,
+        txDigest: result.txDigest,
+        agentAddress: config.agentAddress,
+        riskGate: result.decision.riskGate,
+      });
+    }
   }
 }
 
