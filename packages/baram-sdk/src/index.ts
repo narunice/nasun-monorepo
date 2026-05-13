@@ -60,3 +60,31 @@ export * as capability from './capability';
 // Plan C C3-v2: AgentEscrow paired with Capability for delegated-spend.
 // Spec: apps/baram/docs/AER_V2_CODEC.md §18
 export * as escrow from './escrow';
+
+// Plan D v3: Conversational wake + analytical AER shared primitives.
+// Spec: .claude/plans/plan-d-conversational-wake.md
+export {
+  WAKE_TRIGGER_VALUES,
+  ACTIVE_WAKE_TRIGGERS,
+  wakeTriggerToValue,
+  wakeTriggerFromValue,
+  isActiveWakeTrigger,
+} from './wake-trigger';
+export type { WakeTrigger, WakeTriggerValue } from './wake-trigger';
+
+export {
+  newIntentId,
+  isValidIntentId,
+  intentIdTimestamp,
+  intentIdToBytes,
+  intentIdFromBytes,
+} from './intent-ids';
+
+export {
+  proposalSchema,
+  proposalSideSchema,
+  proposalStatusSchema,
+  pendingProposalRowSchema,
+  DEFAULT_PROPOSAL_TTL_MS,
+} from './proposal';
+export type { Proposal, ProposalSide, ProposalStatus, PendingProposalRow } from './proposal';
