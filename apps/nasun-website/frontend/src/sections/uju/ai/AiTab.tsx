@@ -136,7 +136,7 @@ export function AiTab() {
             />
           </svg>
         </div>
-        <h3 className="text-base font-semibold text-white">Baram AI Settlement</h3>
+        <h3 className="text-base font-semibold text-white">Nasun AI Settlement</h3>
         <p className="text-sm text-uju-secondary max-w-sm mx-auto">
           Connect your Nasun wallet to manage AI agents, view escrow balances, and track on-chain
           execution reports.
@@ -153,7 +153,7 @@ export function AiTab() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h2 className="text-base font-semibold text-white">Baram AI Agents</h2>
+          <h2 className="text-base font-semibold text-white">Nasun AI Agents</h2>
           <p className="text-sm text-uju-secondary">
             AI agents delegated to execute on your behalf
           </p>
@@ -186,7 +186,7 @@ export function AiTab() {
             rel="noopener noreferrer"
             className="inline-block text-sm text-pado-2 hover:underline"
           >
-            Register your first agent in Baram
+            Register your first agent in Nasun AI
           </a>
         </div>
       ) : (
@@ -238,11 +238,11 @@ export function AiTab() {
                     rel="noopener noreferrer"
                     className="text-pado-2 hover:underline"
                   >
-                    Open in Baram
+                    Open in Nasun AI
                   </a>
                   {!escrowId && (
                     <span className="text-uju-secondary/60">
-                      Set escrow ID in Baram dashboard to see balance
+                      Set escrow ID in Nasun AI dashboard to see balance
                     </span>
                   )}
                 </div>
@@ -254,14 +254,14 @@ export function AiTab() {
 
       {/* Baram description card */}
       <div className="p-4 rounded-xl bg-uju-card/40 border border-uju-border/40 space-y-2">
-        <h4 className="text-sm font-semibold text-white">What is Baram?</h4>
+        <h4 className="text-sm font-semibold text-white">What is Nasun AI?</h4>
         <p className="text-xs text-uju-secondary leading-relaxed">
-          Baram is the AI compliance settlement layer on Nasun Network. Every AI execution
+          Nasun AI is the AI compliance settlement layer on Nasun Network. Every AI execution
           produces an on-chain receipt that proves what the agent did, what it cost, and who
           authorized it. All activity is transparent and auditable.
         </p>
         <a href="/ecosystem/baram" className="inline-block text-xs text-pado-2 hover:underline">
-          Learn more about Baram
+          Learn more about Nasun AI
         </a>
       </div>
     </div>

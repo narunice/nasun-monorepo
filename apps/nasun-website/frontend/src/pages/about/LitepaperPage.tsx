@@ -21,7 +21,7 @@ export default function LitepaperPage() {
 
             <p>
               Three live platforms power the ecosystem: Pado, a full-featured DeFi platform; Gen
-              Sol, a cinematic sci-fi universe spanning games, animation, and film; and Baram,
+              Sol, a cinematic sci-fi universe spanning games, animation, and film; and Nasun AI,
               on-chain governance for AI agents.
             </p>
 
@@ -66,7 +66,7 @@ export default function LitepaperPage() {
               </ButtonV2>
               <ButtonV2 variant="baram" size="md" asChild className="w-full !from-[#5e9e5c80] !to-[#a2d4a080] hover:!from-[#5e9e5c] hover:!to-[#a2d4a0] hover:shadow-lg transition-all duration-300">
                 <Link to="/ecosystem/baram">
-                  Explore <span className="font-semibold ml-1">Baram</span>
+                  Explore <span className="font-semibold ml-1">Nasun AI</span>
                 </Link>
               </ButtonV2>
               <ButtonV2 variant="pado" size="md" asChild className="w-full !from-[#1a8cbc80] !to-[#5ee1e480] hover:!from-[#1a8cbc] hover:!to-[#5ee1e4] hover:shadow-lg transition-all duration-300">

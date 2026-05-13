@@ -57,7 +57,7 @@ const AboutOverviewContent = () => {
             <OuterBox color="nw0" padding="sm">
               <div className="flex items-center gap-3 mb-3">
                 <Wind className="w-5 h-5 text-nasun-nw1 flex-shrink-0" />
-                <h6 className="font-bold text-nasun-white">Baram</h6>
+                <h6 className="font-bold text-nasun-white">Nasun AI</h6>
               </div>
               <p className="text-nasun-white/80">{t("flagships.baram")}</p>
             </OuterBox>

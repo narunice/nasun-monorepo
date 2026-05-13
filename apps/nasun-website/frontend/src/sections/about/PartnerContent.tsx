@@ -87,7 +87,7 @@ const PRODUCTS = [
     descColor: "text-sf-gray",
   },
   {
-    name: "Baram",
+    name: "Nasun AI",
     Icon: Wind,
     descKey: "products.baram" as const,
     boxColor: "br2" as const,

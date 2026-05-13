@@ -921,7 +921,7 @@ const DevGenesisPassPage = () => {
               {[
                 { name: "Pado", desc: "DeFi platform with social layer" },
                 {
-                  name: "Baram",
+                  name: "Nasun AI",
                   desc: "AI infra for governance and compliance",
                 },
                 {
