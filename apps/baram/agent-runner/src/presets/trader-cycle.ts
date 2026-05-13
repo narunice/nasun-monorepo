@@ -47,6 +47,7 @@ import {
   buildTraderPrompt,
   parseTradeDecision as defaultParseTradeDecision,
   buildSwapActionCall as defaultBuildSwapActionCall,
+  quoteMinOut as defaultQuoteMinOut,
   fetchAgentBalances as defaultFetchAgentBalances,
   dailySpentQuoteRaw as defaultDailySpentQuoteRaw,
   recentTrades as defaultRecentTrades,
@@ -167,6 +168,7 @@ export interface TraderCycleDeps {
   recentTrades: typeof defaultRecentTrades;
   parseTradeDecision: typeof defaultParseTradeDecision;
   buildSwapActionCall: typeof defaultBuildSwapActionCall;
+  quoteMinOut: typeof defaultQuoteMinOut;
   saveState: (s: TraderState) => void;
   log: (msg: string) => void;
   nowIso: () => string;
@@ -183,6 +185,7 @@ const REAL_DEPS: TraderCycleDeps = {
   recentTrades: defaultRecentTrades,
   parseTradeDecision: defaultParseTradeDecision,
   buildSwapActionCall: defaultBuildSwapActionCall,
+  quoteMinOut: defaultQuoteMinOut,
   saveState: (s) => saveTraderState(s),
   log: (msg) => {
     const ts = new Date().toLocaleString('en-US');
@@ -418,8 +421,19 @@ export async function runTraderCycle(
         capabilityId: trader.capabilityId,
       };
       spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
+      // Host's HIGH #2 floor rejects min_out < expected*(10000-bps)/10000.
+      // Quote off the live pool so the trader's submitted floor clears
+      // the server's recomputation on first try. Quote-then-submit race
+      // is acceptable on devnet (thin pool, single trader).
+      const minOut = await deps.quoteMinOut({
+        client,
+        direction: decision.action as 'BUY' | 'SELL',
+        sizeInRaw: sizeRaw,
+        slippageBps: trader.maxSlippageBps,
+      });
       actionCallBlock = deps.buildSwapActionCall({
         direction: decision.action as 'BUY' | 'SELL',
+        minOut,
       });
     } catch (err) {
       deps.log(

@@ -416,3 +416,65 @@ ESCROW_ID_A=0x62b7a9aa4912c6a32ab82be810b12d70cadc47188ccb9477694c2c48cea5ec1b  
 CAPABILITY_ID_B=0x9b10a6ec3fbce3e57a6001ac41c3d8fb588747d9095be6afff840a1b598c4b41
 ESCROW_ID_B=0xb8d0fc919cba9a585f0970c80cc80055c998ab491355068f06b3ee2365cc40d0  # empty
 ```
+
+## Run log appendix 2026-05-13 (DoD closer session)
+
+After the C3-v2d wiring fix landed on main, the trader cycle reached
+the host's PTB build step but two further blockers remained:
+(1) baram package republish ID drift (executor-nitro + agent-runner
+.env still pointed at the stale 0xd3c73f76 baram; canonical is
+0x734c42b8 with BaramRegistry 0x1645502e); (2) the trader passed
+`min_out=0` while the host's HIGH #2 floor mitigation rejected
+anything below the slippage cap.
+
+Steps executed:
+
+1. **env IDs sync** — updated `BARAM_PACKAGE_ID` and
+   `BARAM_REGISTRY_ID` in both `.env` files to the canonical
+   `0x734c42b8` / `0x1645502e`. PreToolUse hook auto-backed up
+   `.env.<ts>.bak` snapshots.
+2. **Trader Budget re-mint** — the existing budget was owned by the
+   active CLI address. Because `baram::budget::create_request_with_budget_v2`
+   captures `get_owner(budget)` as `receipt.requester`, and the on-chain
+   `capability::assert_can_execute` asserts
+   `cap.owner == receipt_requester`, the budget had to be re-minted
+   with the trader keypair as sender (owner). New Budget:
+   `0x77cfb0be89d38c43e4a6cb291520b6d3d726a50bede2d6a9938d9d4d38205df2`
+   (30 NUSDC).
+3. **`burn-request-ids.ts`** (new script) — chained 105
+   `create_request_with_budget_v2` calls in one PTB to bump
+   `BaramRegistry.next_request_id` past the global
+   `ProcessedRequests` high-water mark (executor singleton already
+   held entries 1..102 from the prior 0xd3c73f76 baram era). Without
+   this bump, `executor::record_job_completion` in the host's Cmd 8
+   aborts with E_REQUEST_ALREADY_PROCESSED (106). Tx
+   `3ui2VQ7x61wjd3n4xB2QaYwX4wBtH1MXCXWVkxkRtcHY`. Burned 10.5 NUSDC.
+4. **`quoteMinOut` helper** — added to `presets/trader.ts` mirroring
+   the host's `pado-swap.ts:quoteExpectedOutput` + `applySlippageFloor`.
+   Wired into `presets/trader-cycle.ts` between `parseTradeDecision`
+   and `buildSwapActionCall` for BUY/SELL; HOLD path doesn't touch
+   the helper. New vitest cases (BUY/SELL minOut wiring + HOLD
+   no-op): trader-cycle.test.ts +3 cases, 113 total green.
+5. **TypeName normalization** — added `normalizeTypeName` helper in
+   `executor-nitro/src/host/capability.ts` for the soft-rail asset
+   check. The on-chain `cap.allowed_assets` BCS-decodes without a
+   leading `0x` while the proposal/action-classes side preserves it;
+   a strict string match returned `input_asset_not_allowed` on
+   otherwise-valid swaps. Both sides now strip the `0x` prefix from
+   the address segment before comparing.
+
+Run results (after the above):
+
+| Step | Outcome | Notes |
+|---|---|---|
+| probe-deep-fee | **PASS** | pool whitelisted, deep_required=0 |
+| S1 HOLD cognition | **PASS** | digest `BDibNaRRRoKQa2hCHpbJzrCv1A5DFiVsR8B2Va9jpMzS`; AER event_class=1, action_type=`analysis.v1` |
+| S7 cognition cap exceeded | **PASS** | `DAILY_COGNITION_PAYOUT_CAP=1`, host restarted, 2nd HOLD cycle rejected with `preflight: cognition_cap_exceeded` |
+| S15 BUY happy path | **PASS** | digest `4JGZseb1BsNWRb2w8HDuCo3tfoBoKzinwaWHw9XXbUpN`; AER event_class=2, action_type=`trade.swap.v1`; escrow NUSDC 5,000,000 → 3,053,540 (-1.95 NUSDC); escrow NBTC 24,000 → 48,000 (+24,000); cap.version=2 unchanged |
+| S14 destroy_zero<DEEP> | **PASS** | confirmed at Cmd 5 in the S15 tx's PTB graph (pool DEEP-whitelisted, `coin::destroy_zero<DEEP>` succeeded) |
+| FAILURE measurement | **PASS** | `executor::record_job_completion(request_id=1)` re-submission via `execute-signed-tx` (bypassed CLI dry-run guard) landed on-chain with abort code 106. Tx `6AwwV8xr3fyGioYYhKPzCm3DbAyW9a8392ATfg1LhsNR`. Used to populate gas-budget-2026-05.md FAILURE row. |
+| SELL trade.swap.v1 | **DEFERRED** | LLM consistently picked HOLD across mean_reversion/trend_follower/aggressive_scalper cycles because the per-cycle prompt has no market data and `recentTrades` resets between agent-runner invocations. Forcing SELL requires either a market-data injection in the prompt or a dedicated `sell_only` preset. PTB shape is symmetric to BUY (different fn + asset arity), so gas is expected within 5% of the BUY row. |
+
+DoD complete except the SELL row in gas-budget-2026-05.md, which is
+left as TBD with explanation. The fix path for SELL is documented in
+the gas-budget doc.

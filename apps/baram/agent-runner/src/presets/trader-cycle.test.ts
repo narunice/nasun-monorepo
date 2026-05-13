@@ -147,6 +147,9 @@ function makeDeps(overrides: Partial<TraderCycleDeps> = {}): Partial<TraderCycle
         { kind: 'object', id: '0x6' },
       ],
     }) as unknown as TraderCycleDeps['buildSwapActionCall'],
+    quoteMinOut: vi
+      .fn()
+      .mockResolvedValue(987n) as unknown as TraderCycleDeps['quoteMinOut'],
     saveState: vi.fn() as unknown as TraderCycleDeps['saveState'],
     log: vi.fn() as unknown as TraderCycleDeps['log'],
     nowIso: () => '2026-05-13T00:00:00.000Z',
@@ -464,6 +467,86 @@ describe('runTraderCycle — failure modes', () => {
     const [, , body] = asMock(deps.executeCapability).mock.calls[0];
     expect(body.envelope.eventClass).toBe(1);
     expect(body.actionCall).toBeNull();
+  });
+});
+
+describe('runTraderCycle — quoteMinOut wiring (HIGH #2 floor)', () => {
+  it('BUY: quoteMinOut called with NUSDC sizeInRaw + result passed to buildSwapActionCall', async () => {
+    const QUOTED = 12345n;
+    const deps = makeDeps({
+      quoteMinOut: vi.fn().mockResolvedValue(QUOTED) as unknown as TraderCycleDeps['quoteMinOut'],
+    });
+    const runtime = newTraderCycleRuntime();
+
+    await runTraderCycle(FAKE_CLIENT, makeConfig(), runtime, deps);
+
+    expect(deps.quoteMinOut).toHaveBeenCalledTimes(1);
+    const quoteArgs = asMock(deps.quoteMinOut).mock.calls[0][0] as {
+      direction: 'BUY' | 'SELL';
+      sizeInRaw: bigint;
+      slippageBps: number;
+    };
+    expect(quoteArgs.direction).toBe('BUY');
+    // 1 NUSDC * 1e6 = 1_000_000 raw
+    expect(quoteArgs.sizeInRaw).toBe(1_000_000n);
+    expect(quoteArgs.slippageBps).toBe(100);
+    // buildSwapActionCall must receive the quoted floor.
+    const buildArgs = asMock(deps.buildSwapActionCall).mock.calls[0][0] as {
+      direction: 'BUY' | 'SELL';
+      minOut: bigint;
+    };
+    expect(buildArgs.direction).toBe('BUY');
+    expect(buildArgs.minOut).toBe(QUOTED);
+  });
+
+  it('SELL: quoteMinOut called with NBTC direction + result passed to buildSwapActionCall', async () => {
+    const QUOTED = 9_999_999n;
+    const deps = makeDeps({
+      parseTradeDecision: vi
+        .fn()
+        .mockReturnValue({ action: 'SELL', sizeNUSDC: 0.5, reason: 's' }),
+      quoteMinOut: vi.fn().mockResolvedValue(QUOTED) as unknown as TraderCycleDeps['quoteMinOut'],
+      buildSwapActionCall: vi.fn().mockReturnValue({
+        targetPackage: '0x' + 'ee'.repeat(32),
+        module: 'pool',
+        fn: 'swap_exact_base_for_quote',
+        typeArguments: [NBTC_TYPE, NUSDC_TYPE],
+        args: [
+          { kind: 'object', id: '0x' + 'ff'.repeat(32) },
+          { kind: 'pipe', from: 'withdraw_coin' },
+          { kind: 'pipe', from: 'zero_deep' },
+          { kind: 'pure', bytes: 'AAAAAAAAAAA=' },
+          { kind: 'object', id: '0x6' },
+        ],
+      }),
+    });
+
+    await runTraderCycle(FAKE_CLIENT, makeConfig(), newTraderCycleRuntime(), deps);
+
+    expect(deps.quoteMinOut).toHaveBeenCalledTimes(1);
+    const quoteArgs = asMock(deps.quoteMinOut).mock.calls[0][0] as {
+      direction: 'BUY' | 'SELL';
+    };
+    expect(quoteArgs.direction).toBe('SELL');
+    const buildArgs = asMock(deps.buildSwapActionCall).mock.calls[0][0] as {
+      direction: 'BUY' | 'SELL';
+      minOut: bigint;
+    };
+    expect(buildArgs.direction).toBe('SELL');
+    expect(buildArgs.minOut).toBe(QUOTED);
+  });
+
+  it('HOLD: quoteMinOut is NOT called (no swap)', async () => {
+    const deps = makeDeps({
+      parseTradeDecision: vi
+        .fn()
+        .mockReturnValue({ action: 'HOLD', sizeNUSDC: 0, reason: 'wait' }),
+    });
+
+    await runTraderCycle(FAKE_CLIENT, makeConfig(), newTraderCycleRuntime(), deps);
+
+    expect(deps.quoteMinOut).not.toHaveBeenCalled();
+    expect(deps.buildSwapActionCall).not.toHaveBeenCalled();
   });
 });
 

@@ -414,6 +414,75 @@ function bcsU64Base64(v: bigint): string {
   return Buffer.from(out).toString('base64');
 }
 
+const DEV_INSPECT_SENDER =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+/**
+ * Devnet-quote a `min_out` for the trader's swap. Mirrors the host's
+ * `pado-swap.ts:quoteExpectedOutput` + `applySlippageFloor` so a trader-
+ * supplied `min_out` clears the host's HIGH #2 floor check on the first
+ * try. devInspect-only; no real signer or gas needed.
+ *
+ *   BUY  (sizeInRaw=NUSDC): calls get_quantity_out(0, sizeInRaw, clock),
+ *                           returns baseOut * (10000-bps)/10000
+ *   SELL (sizeInRaw=NBTC):  calls get_quantity_out(sizeInRaw, 0, clock),
+ *                           returns quoteOut * (10000-bps)/10000
+ *
+ * Throws fail-closed on devInspect transport/shape error so the cycle
+ * defers rather than submitting a too-loose floor.
+ */
+export async function quoteMinOut(args: {
+  client: SuiClient;
+  direction: 'BUY' | 'SELL';
+  sizeInRaw: bigint;
+  slippageBps: number;
+}): Promise<bigint> {
+  const { client, direction, sizeInRaw, slippageBps } = args;
+  if (sizeInRaw <= 0n) throw new Error('quoteMinOut: sizeInRaw must be > 0');
+  if (!Number.isInteger(slippageBps) || slippageBps < 0 || slippageBps > 10_000) {
+    throw new Error('quoteMinOut: slippageBps must be in [0, 10000]');
+  }
+  const baseQuantity = direction === 'SELL' ? sizeInRaw : 0n;
+  const quoteQuantity = direction === 'BUY' ? sizeInRaw : 0n;
+
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${TRADER_CONFIG.deepbookPackage}::pool::get_quantity_out`,
+    typeArguments: [TRADER_CONFIG.baseType, TRADER_CONFIG.quoteType],
+    arguments: [
+      tx.object(TRADER_CONFIG.pool),
+      tx.pure.u64(baseQuantity),
+      tx.pure.u64(quoteQuantity),
+      tx.object(TRADER_CONFIG.clockId),
+    ],
+  });
+
+  const result = await client.devInspectTransactionBlock({
+    sender: DEV_INSPECT_SENDER,
+    transactionBlock: tx,
+  });
+  if (result.effects?.status?.status !== 'success') {
+    throw new Error(
+      `quoteMinOut: get_quantity_out devInspect failed: ${result.effects?.status?.error ?? 'unknown'}`,
+    );
+  }
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length < 3) {
+    throw new Error('quoteMinOut: get_quantity_out returned fewer than 3 values');
+  }
+  const decodeU64LE = (idx: number): bigint => {
+    const raw = returnValues[idx]?.[0];
+    if (!raw || raw.length !== 8) {
+      throw new Error(`quoteMinOut: return[${idx}] expected 8-byte u64, got ${raw?.length}`);
+    }
+    let v = 0n;
+    for (let i = 0; i < 8; i++) v |= BigInt(raw[i]) << BigInt(i * 8);
+    return v;
+  };
+  const expected = direction === 'BUY' ? decodeU64LE(0) : decodeU64LE(1);
+  return (expected * BigInt(10_000 - slippageBps)) / 10_000n;
+}
+
 async function firstCoinId(client: SuiClient, owner: string, coinType: string): Promise<string> {
   const r = await client.getCoins({ owner, coinType, limit: 1 });
   if (r.data.length === 0) {

@@ -123,6 +123,20 @@ export type SoftRailReason =
 export type SoftRailResult = { ok: true } | { ok: false; reason: SoftRailReason };
 
 /**
+ * Normalize a Move TypeName for cross-source comparison. The on-chain
+ * BCS-decoded form omits the `0x` prefix on the package address while
+ * the JSON-RPC / proposal side keeps it. Strip the prefix from the
+ * address part so the two forms compare equal.
+ */
+function normalizeTypeName(t: string): string {
+  const idx = t.indexOf('::');
+  if (idx < 0) return t.startsWith('0x') ? t.slice(2) : t;
+  const addr = t.slice(0, idx);
+  const rest = t.slice(idx);
+  return (addr.startsWith('0x') ? addr.slice(2) : addr) + rest;
+}
+
+/**
  * Daily-loss callback. The host doesn't own the PostgreSQL projection; the
  * api-server does. Callers pass in a function (typically a thin api-server
  * client) returning the rolling 24h realized loss for the agent's owner.
@@ -182,16 +196,20 @@ export function checkSoftRail(
   // the function entry's allowedInputAssets / allowedOutputAssets are a
   // structural narrower (a swap fn that legally returns NUSDC can't be
   // routed when the proposal claims NBTC output). Both must accept.
-  if (
-    !cap.allowedAssets.includes(exec.inputAssetType) ||
-    !fnEntry.allowedInputAssets.includes(exec.inputAssetType)
-  ) {
+  //
+  // The on-chain TypeName BCS-decodes without a leading "0x" while the
+  // proposal/action-classes side preserves it. Normalize both sides
+  // before comparing so a string-equality check doesn't reject a valid
+  // asset on a notation mismatch.
+  const capAllowed = cap.allowedAssets.map(normalizeTypeName);
+  const fnInputs = fnEntry.allowedInputAssets.map(normalizeTypeName);
+  const fnOutputs = fnEntry.allowedOutputAssets.map(normalizeTypeName);
+  const inputNorm = normalizeTypeName(exec.inputAssetType);
+  const outputNorm = normalizeTypeName(exec.outputAssetType);
+  if (!capAllowed.includes(inputNorm) || !fnInputs.includes(inputNorm)) {
     return { ok: false, reason: 'input_asset_not_allowed' };
   }
-  if (
-    !cap.allowedAssets.includes(exec.outputAssetType) ||
-    !fnEntry.allowedOutputAssets.includes(exec.outputAssetType)
-  ) {
+  if (!capAllowed.includes(outputNorm) || !fnOutputs.includes(outputNorm)) {
     return { ok: false, reason: 'output_asset_not_allowed' };
   }
 
