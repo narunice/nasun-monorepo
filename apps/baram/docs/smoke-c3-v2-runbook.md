@@ -243,10 +243,34 @@ spinning up a fresh cap rather than mutating the production-test cap.
 
 ---
 
-## Reference scripts (TODO before first smoke run)
+## Reference scripts (committed 2026-05-13)
 
-- [ ] `apps/baram/scripts/smoke-cap-mixing.ts`
-- [ ] `apps/baram/scripts/smoke-dust-deposit.ts`
-- [ ] `apps/baram/scripts/smoke-token-replay.ts` (helper for S10/S11)
-- [ ] `apps/baram/scripts/probe-deep-fee.ts` (verifies pool DEEP
-      whitelist before any smoke step; should be the first thing run)
+- [x] `apps/baram/scripts/probe-deep-fee.ts` — S14 gating probe.
+      `pool::whitelisted` + `pool::get_quantity_out` devInspect.
+      MUST be run BEFORE any S* step; exits non-zero if the pool
+      isn't DEEP-whitelisted (operational stop).
+- [x] `apps/baram/scripts/smoke-token-replay.ts` — drives S10
+      (resultHash tamper) and S11 (nonce replay). Pure HTTP, no
+      Sui RPC. Confirms host returns HTTP 403 with the right
+      reason codes.
+- [x] `apps/baram/scripts/smoke-cap-mixing.ts` — S9. Builds a PTB
+      that feeds Obligation_A into settle_action(cap_B). Dry-run
+      only; asserts abort code 576 (E_OBLIGATION_CAP_MISMATCH).
+      Requires two linked cap+escrow pairs owned by the operator.
+- [x] `apps/baram/scripts/smoke-dust-deposit.ts` — S12. Feeds an
+      unauthorized Coin<T> to settle_action; asserts abort code
+      572 (E_ASSET_NOT_ALLOWED). Dry-run only.
+
+Run via tsx with the executor-nitro `.env` loaded:
+
+```bash
+cd apps/baram/scripts
+npx tsx --env-file=../executor-nitro/.env probe-deep-fee.ts
+npx tsx --env-file=../executor-nitro/.env smoke-token-replay.ts
+npx tsx --env-file=../executor-nitro/.env smoke-cap-mixing.ts
+npx tsx --env-file=../executor-nitro/.env smoke-dust-deposit.ts
+```
+
+S10/S11/S9/S12 scripts each have additional env requirements over
+the executor-nitro defaults (e.g. `CAP_A_ID` / `UNAUTHORIZED_COIN_*`);
+each script's header documents the exact set.

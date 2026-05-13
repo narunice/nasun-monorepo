@@ -305,6 +305,42 @@ Per-event-class normative bindings:
   reconstruction.
 - `coordination` (Phase 2): multi-agent handoff messages.
 
+### 11.1 `triggered_action` auto-fill for execution-class AERs (Plan C C3-v2)
+
+Pre-C3-v2, `triggered_action` was caller-supplied and treated identically
+for cognition and execution AERs: the trader passed the digest of "the
+trade this analysis followed." For execution-class AERs (`event_class=2`)
+this is the wrong shape — the digest of the trade IS the digest of THIS
+PTB, which the caller cannot know before submission.
+
+C3-v2 introduces a contract-side auto-fill (`aer.move` §1.3 / DV10):
+
+- `event_class=1` (cognition): `triggered_action` is caller-supplied
+  (`Option<address>`). Trader passes the digest of the *prior settled
+  execution AER* (chains cognition to the trade it follows). Unchanged.
+- `event_class=2` (execution): `triggered_action` is **always**
+  overwritten with `tx_context::digest(ctx)` — the digest of the current
+  PTB. Any caller-supplied value is silently dropped to prevent the
+  trader from forging cross-tx attribution. Decoders MUST treat the
+  field as authoritative for execution AERs.
+- `event_class=3` (settlement): unchanged from Plan B. Caller-supplied;
+  typically `None` since fee/refund pseudo-actions don't reference a
+  preceding action.
+
+Replay implication: cognition→execution chains via `triggered_action`
+are forward-pointing for cognition (cognition AER points to its prior
+trade) and self-referential for execution (the trade AER's digest IS
+its own triggered_action). The combined chain is reconstructed by
+joining `aer.parent_intent_id` (lineage) AND `aer.triggered_action`
+(causation): cognition cycle N references trade N-1's digest, trade N
+references its own.
+
+`tx_context::digest` invariant: the digest is deterministic per PTB
+but only available inside the same Move call, so the host MUST emit
+the AER creation in the SAME PTB as the state-changing action (DV9
+Cmd 7 follows Cmd 0–6 within one tx). Splitting them defeats the
+auto-fill and was rejected during plan review.
+
 ---
 
 ## 12. Enum append-only
@@ -483,6 +519,164 @@ historical version by replaying events from the creation event up to the
 target version. Plan B requires the indexer to capture every mutation
 event - future hardening (state-snapshot events every N mutations) is
 listed as F2 in Plan B §11.
+
+### 17.7 `SpendObligation` hot-potato lifecycle (Plan C C3-v2)
+
+Plan B's capability gated AER creation but funds still moved through
+the trader's own wallet on the swap leg. Plan C C3-v2 moves the funds
+into a shared `AgentEscrow` and delegates spend authority via a
+single-use, non-storable, non-droppable `SpendObligation` struct (hot
+potato — Move type with no abilities).
+
+`withdraw_for_action<T>(escrow, &cap, amount, expected_cap_version)`
+returns `(Coin<T>, SpendObligation)`. The obligation:
+
+- Pins `cap.id` so it can only be settled by the same cap that minted
+  it (closes the cap-mixing attack: Cmd 0 with cap A, Cmd 4 with cap B
+  is rejected with `E_OBLIGATION_CAP_MISMATCH` 576).
+- Pins the `input_amount` so the swap consumes exactly what was
+  withdrawn — no partial spend leaks.
+- Pins `allowed_output_assets` so `settle_action<U>` (Cmd 3) refuses to
+  re-deposit a coin not on the cap's allow list
+  (`E_ASSET_NOT_ALLOWED` 572 — closes the dust-deposit attack).
+- Has no `key` / `store` / `copy` / `drop` abilities. The Move type
+  system forces it to be consumed by `settle_action` within the same
+  PTB; any unconsumed value at end-of-tx aborts the entire PTB.
+
+PTB layout (DV9, 10 commands; execution AER):
+
+```
+Cmd 0: escrow::withdraw_for_action<T>      → (Coin<T>, SpendObligation)
+Cmd 1: coin::zero<DEEP>                    → Coin<DEEP>  (whitelisted pool)
+Cmd 2: pool::swap_exact_*_for_*            → (Coin<Base>, Coin<Quote>, Coin<DEEP>)
+Cmd 3: escrow::settle_action<U>            → consumes obligation, deposits primary
+Cmd 4: escrow::deposit_swap_leftover<T>    → returns lot-size dust to escrow
+Cmd 5: coin::destroy_zero<DEEP>            → DEEP whitelist invariant (S14)
+Cmd 6: baram::submit_proof_with_receipt    → SettlementReceipt
+Cmd 7: aer::create_report_with_receipt_capability → AER (gated)
+Cmd 8: executor::record_job_completion
+Cmd 9: executor_tier::refresh_tier_from_state
+```
+
+Failure modes (any abort rolls back the entire PTB; escrow untouched):
+
+- Cmd 0: cap revoked / paused / version stale / amount > notional cap
+- Cmd 2: pool slippage exceeds host-derived floor (C3-v2c min_out)
+- Cmd 3: output type not in `cap.allowed_assets`, OR obligation cap
+  mismatch
+- Cmd 5: leftover DEEP non-zero (smoke S14 probe; phase-2 fix: switch
+  to `deposit_swap_leftover<DEEP>` + add DEEP to `cap.allowed_assets`)
+
+The wallet-signed atomic setup PTB (DV5 / `LinkWitness` hot potato)
+guarantees cap and escrow are created with reciprocal references in a
+single tx: `cap.escrow_id = Some(escrow.id)` AND
+`escrow.capability_id = cap.id`. A standalone `new_capability` /
+`new_escrow` flow is not exposed; the link is the only constructor.
+
+### 17.8 Inference token (Plan C C3-v2 DV8)
+
+Independent of the on-chain rails, the host splits the legacy
+`/execute` endpoint into:
+
+| Endpoint | Purpose | State mutation |
+|---|---|---|
+| `POST /infer` | Forward encrypted prompt to enclave, return result + HMAC token | None — no AER, no on-chain tx |
+| `POST /execute-capability` | Verify token, build PTB (Cmd 0–9 above), submit | Full AER + escrow mutation |
+
+The HMAC token binds `(requestId, resultHash, walletAddress)` with
+SHA-256 + 32-byte secret (`HOST_HMAC_KEY` env or random-at-boot).
+Single-use nonce, 30s expiry, LRU-bounded at 10k. A tampered
+`resultHash` between `/infer` and `/execute-capability` fails closed
+at the verify step (`reason: 'invalid'`); a replayed
+`(nonce, spendToken)` fails with `reason: 'replay'`.
+
+Residual risk (§12.1 in C3-v2 plan): HMAC binds inference *identity*,
+not envelope *semantics*. A compromised trader can claim a different
+BUY/SELL interpretation than what the LLM produced, attach the
+genuine token, and the host accepts because the token validates. The
+on-chain `resultHash` matches the enclave's signed output but the
+`analysis.v1` payload claims a different decision. Mitigation
+deferred to Plan F (envelope-hash binding on chain).
+
+---
+
+## 18. AgentEscrow shape (Plan C C3-v2)
+
+The `AgentEscrow` shared object replaces "trader signs the swap tx
+with their own private key" from Plan B. Funds live in a
+`Balance<T>`-per-asset map keyed by Move `TypeName`, accessible only
+through the cap + obligation rails defined in §17.7.
+
+### 18.1 Struct outline
+
+```move
+struct AgentEscrow has key {
+    id: UID,
+    capability_id: ID,              // reciprocal to cap.escrow_id
+    owner: address,                 // = cap.owner; doubles as withdraw_owner
+    // Balance<T> stored via dynamic_field keyed by TypeName
+    // (NOT dynamic_object_field — Balance has no key/store-key).
+}
+```
+
+Why `Balance<T> + dynamic_field` (DV2):
+
+- `Balance<T>` is `store`-only (no `key`). It cannot be top-level shared
+  or owned; it must live inside a parent object's field.
+- `dynamic_field<TypeName, Balance<T>>` lets a single shared escrow hold
+  arbitrary asset types without pre-declaring them in the struct
+  (multi-asset support without schema migration).
+- `dynamic_object_field` was considered and rejected: `Balance<T>` lacks
+  the required abilities, and the indirection adds an extra fetch per
+  read.
+
+### 18.2 Lifecycle entries
+
+| Entry | Caller | Effect |
+|---|---|---|
+| `new_capability_and_link` (atomic setup) | Wallet sig | Creates cap + escrow + reciprocal binding in one PTB |
+| `deposit<T>(escrow, coin)` | Anyone | Adds to `Balance<T>` for type `T` |
+| `withdraw_owner<T>(escrow, cap, amount)` | `cap.owner` sig | Wallet escape hatch — pulls funds out without going through the trader |
+| `withdraw_for_action<T>(escrow, &cap, amount, version)` | Host (executor key) | Mints `SpendObligation`; consumed by `settle_action` in same PTB |
+| `settle_action<U>(escrow, &cap, obligation, primary_out)` | Host | Consumes obligation, deposits primary swap output (type `U`) |
+| `deposit_swap_leftover<T>(escrow, &cap, leftover)` | Host | Returns lot-size dust (type `T`, same as withdraw input) |
+
+`withdraw_owner` is the only path that escapes the capability rails
+entirely — the wallet always retains the right to drain its own
+escrow without trader involvement. This is the core of Foundation
+결정 2's "recoverable delegated custody" framing.
+
+### 18.3 Indexer projection (advisory)
+
+| Field | Postgres type | Notes |
+|---|---|---|
+| `escrow_id` | `BYTEA NOT NULL` | from `AgentEscrowCreated` event |
+| `capability_id` | `BYTEA NOT NULL` | reciprocal lookup |
+| `owner` | `BYTEA NOT NULL` | for "my escrows" UI |
+| `balance_<asset>_raw` | `NUMERIC(78, 0)` | per-asset projection from `BalanceCredited` / `BalanceDebited` events; one column per known asset OR a side table |
+
+C3-v2 indexer change is minimal: add `escrow_id` to the `Capability`
+parser. Full escrow projection lives in Plan E.
+
+### 18.4 Wording discipline
+
+External narrative refers to this pattern as **"recoverable delegated
+custody"** — funds are held by the protocol (not the trader), but the
+wallet retains an unconditional withdrawal path. Forbidden framings:
+
+- "Non-custodial" — the protocol holds the funds; the wallet does not.
+- "Trustless escrow" — the host's soft rails still gate execution.
+- "Atomic settlement" alone is acceptable for the swap-leg description,
+  but does not characterize the custody model.
+
+The pattern is *trust-constrained delegated execution with recoverable
+custody* — same trust framing as Plan B (§17.2), with the additional
+guarantee that the wallet can always reclaim funds via
+`withdraw_owner`.
+
+---
+
 - TypeScript codec: `packages/baram-sdk/src/aer/`
 - Plan A: `.claude/plans/fuzzy-growing-piglet.md`
+- Plan C C3-v2: `.claude/plans/2026-05-12-baram-plan-c-c3-v2-delegated-spend.md`
 - Big picture (foundation decisions 1-7): `.claude/plans/pick-an-executor-majestic-thacker.md`
