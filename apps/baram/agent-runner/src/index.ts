@@ -27,6 +27,8 @@ import {
 } from './presets/trader-cycle.js';
 import type { Preset } from './presets/types.js';
 import { notifyTraderAER } from './telegram.js';
+import { startWakeServer } from './wake-server.js';
+import { IdempotencyStore } from './idempotency.js';
 
 const TRADER_PLACEHOLDER: Preset = {
   name: 'Pado Trader Agent',
@@ -319,14 +321,28 @@ async function runAnalysisCycle(
 let shuttingDown = false;
 let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 
+let wakeShutdownGlobal: (() => Promise<void>) | null = null;
+
+async function performShutdown(): Promise<void> {
+  if (wakeShutdownGlobal) {
+    try {
+      await wakeShutdownGlobal();
+    } catch (err) {
+      log(`[shutdown] Wake server close error: ${err instanceof Error ? err.message : err}`);
+    }
+    wakeShutdownGlobal = null;
+  }
+  log('[shutdown] Agent stopped gracefully.');
+  process.exit(0);
+}
+
 function handleShutdown(signal: string): void {
   log(`[shutdown] ${signal} received. Finishing current cycle...`);
   shuttingDown = true;
   if (pendingTimer) {
     clearTimeout(pendingTimer);
     pendingTimer = null;
-    log('[shutdown] Agent stopped gracefully.');
-    process.exit(0);
+    void performShutdown();
   }
 }
 
@@ -355,6 +371,21 @@ async function main(): Promise<void> {
   if (config.mode === 'record') {
     log(`LLM API: ${config.llmApiUrl}`);
     log(`LLM Key: ${maskApiKey(config.llmApiKey)}`);
+  }
+
+  // Plan D D-3: start /wake HTTP server (127.0.0.1) in parallel with the
+  // self-scheduling heartbeat loop. Disabled when WAKE_PORT is unset/0.
+  if (config.wakePort > 0) {
+    const idempotency = new IdempotencyStore();
+    const wake = startWakeServer({
+      client,
+      config,
+      idempotency,
+      port: config.wakePort,
+      logger: (m) => log(m),
+    });
+    wakeShutdownGlobal = wake.close;
+    log(`Wake endpoint listening on http://127.0.0.1:${config.wakePort}/wake`);
   }
 
   // Run first cycle immediately

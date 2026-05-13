@@ -243,13 +243,30 @@ export function loadConfig() {
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
 
-    // Single-cycle / Wake Model: run one cycle then exit (cron handles schedule).
+    // Single-cycle: run one cycle then exit (legacy cron compatibility; tests).
     singleCycle: process.env.SINGLE_CYCLE === 'true' || process.env.WAKE_MODEL === 'true',
+
+    // Plan D D-3: inbound /wake HTTP server. 0 disables; default 4400 if env set.
+    wakePort: parseWakePort(process.env.WAKE_PORT),
+
+    // Plan D D-4: baram_aer v1.4.0 package (Plan A + D-0b publish). Optional
+    // until D-4 wires cognition AER PTBs.
+    baramAerPackageId: process.env.BARAM_AER_PACKAGE_ID ?? '',
 
     // Optional Telegram notifications (trader preset only).
     telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? null,
     telegramChatId: process.env.TELEGRAM_CHAT_ID ?? null,
   } as const;
+}
+
+function parseWakePort(raw: string | undefined): number {
+  if (!raw) return 0;
+  const n = parseInt(raw, 10);
+  if (!Number.isFinite(n) || n < 1024 || n > 65535) {
+    console.warn(`[config] WAKE_PORT="${raw}" out of range; disabling wake server.`);
+    return 0;
+  }
+  return n;
 }
 
 export type Config = ReturnType<typeof loadConfig>;

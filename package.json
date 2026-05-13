@@ -52,7 +52,8 @@
   "packageManager": "pnpm@9.15.0",
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "esbuild",
+      "better-sqlite3"
     ],
     "overrides": {
       "react": "19.2.3",
