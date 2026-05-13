@@ -160,6 +160,25 @@ export function initStore(config: ChatServerConfig): void {
     );
   `);
 
+  // Baram pending proposals — one active pending per agent (partial unique index).
+  // proposal column stores the full Proposal JSON artifact (Plan D §A10).
+  // The on-chain capability.pending_proposal_id mirrors proposal_id as 16-byte binary.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS baram_pending_proposals (
+      proposal_id  TEXT PRIMARY KEY,
+      agent        TEXT NOT NULL,
+      session_id   TEXT NOT NULL,
+      intent_id    TEXT NOT NULL,
+      proposal     TEXT NOT NULL,
+      expires_at   INTEGER NOT NULL,
+      status       TEXT NOT NULL DEFAULT 'pending'
+                   CHECK (status IN ('pending','confirmed','cancelled','expired')),
+      created_at   INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS baram_pending_proposals_agent_pending
+      ON baram_pending_proposals (agent) WHERE status = 'pending';
+  `);
+
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
     console.log(`[nasun-profile] API URL: ${nasunProfileApiUrl}`);

@@ -15,6 +15,7 @@
     "@aws-sdk/lib-dynamodb": "^3.658.0",
     "@mysten/bcs": "^1.9.2",
     "@mysten/sui": "^1.45.0",
+    "@nasun/baram-sdk": "workspace:*",
     "@nasun/profile-core": "workspace:*",
     "@noble/hashes": "^1.8.0",
     "better-sqlite3": "^11.7.0",
