@@ -5,54 +5,58 @@ import { useTraderClassification } from '../features/leaderboard/hooks/useTrader
 import { PerformanceSummary } from '../features/leaderboard/components/PerformanceSummary';
 import { useBadges, BadgeGrid, BadgeNotification } from '../features/badges';
 import type { BadgeEvalContext } from '../features/badges';
+import { useActiveAddress } from '../hooks/useActiveAddress';
 
-function buildBadgeContext(stats: ReturnType<typeof useTraderStats>['data']): BadgeEvalContext {
+function buildBadgeContext(
+  stats: ReturnType<typeof useTraderStats>['data'],
+  isOwnProfile: boolean,
+): BadgeEvalContext {
   const allStats = stats?.stats['all'];
   const totalVolume = allStats ? parseFloat(allStats.volume) : 0;
   const totalTrades = allStats?.tradeCount ?? 0;
   const uniquePools = allStats?.uniquePools ?? 0;
 
-  let bestRank = 0;
-  if (stats) {
-    for (const periodStats of Object.values(stats.stats)) {
-      if (periodStats && (bestRank === 0 || periodStats.rank < bestRank)) {
-        bestRank = periodStats.rank;
-      }
-    }
-  }
+  // Use all-time rank only — short-period top ranks are too transient to be meaningful
+  const bestRank = stats?.stats['all']?.rank ?? 0;
 
-  // Check localStorage for feature usage
+  // localStorage-based feature flags are only valid for the profile owner;
+  // when viewing another trader these must default to false to avoid viewer bias
   let usedTpsl = false;
   let usedTrailingStop = false;
   let chatMessageCount = 0;
-  try {
-    const raw = localStorage.getItem('pado:tpsl:orders');
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        usedTpsl = parsed.some((o: { triggerType?: string }) =>
-          o.triggerType === 'tp' || o.triggerType === 'sl'
-        );
-        usedTrailingStop = parsed.some((o: { triggerType?: string }) =>
-          o.triggerType === 'trailing-stop'
-        );
+  if (isOwnProfile) {
+    try {
+      const raw = localStorage.getItem('pado:tpsl:orders');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          usedTpsl = parsed.some((o: { triggerType?: string }) =>
+            o.triggerType === 'tp' || o.triggerType === 'sl'
+          );
+          usedTrailingStop = parsed.some((o: { triggerType?: string }) =>
+            o.triggerType === 'trailing-stop'
+          );
+        }
       }
-    }
-    chatMessageCount = parseInt(localStorage.getItem('pado-chat-message-count') ?? '0', 10) || 0;
-  } catch { /* ignore */ }
+      chatMessageCount = parseInt(localStorage.getItem('pado-chat-message-count') ?? '0', 10) || 0;
+    } catch { /* ignore */ }
+  }
 
   return { totalTrades, totalVolume, bestRank, uniquePools, usedTpsl, usedTrailingStop, chatMessageCount };
 }
 
 export function TraderProfilePage() {
   const { address } = useParams<{ address: string }>();
+  const activeAddress = useActiveAddress();
+  const isOwnProfile = !!activeAddress && !!address &&
+    activeAddress.toLowerCase() === address.toLowerCase();
 
   const { data: stats, isLoading: statsLoading } = useTraderStats(address ?? null);
   const { data: fillsData, isLoading: fillsLoading } = useTraderFills(address ?? null);
   const fills = useMemo(() => fillsData?.fills ?? [], [fillsData]);
   const classification = useTraderClassification(fills, stats);
 
-  const badgeContext = useMemo(() => buildBadgeContext(stats), [stats]);
+  const badgeContext = useMemo(() => buildBadgeContext(stats, isOwnProfile), [stats, isOwnProfile]);
   const { badges, unlockedCount, totalCount, newlyUnlocked } = useBadges(badgeContext);
   const [showNotification, setShowNotification] = useState(true);
   const dismissNotification = useCallback(() => setShowNotification(false), []);
