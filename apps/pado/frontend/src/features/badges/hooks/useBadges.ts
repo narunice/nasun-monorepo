@@ -2,7 +2,18 @@ import { useMemo, useEffect, useState } from 'react';
 import { BADGES, BADGE_CONDITIONS } from '../constants';
 import type { BadgeDefinition, UnlockedBadge, BadgeEvalContext } from '../types';
 
-const STORAGE_KEY = 'pado-badges-unlocked';
+// Bump this version whenever badge thresholds change to invalidate stale caches
+const BADGE_VERSION = 2;
+const STORAGE_KEY = `pado-badges-unlocked-v${BADGE_VERSION}`;
+
+function purgeOldVersionKeys() {
+  try {
+    for (let v = 1; v < BADGE_VERSION; v++) {
+      localStorage.removeItem(`pado-badges-unlocked-v${v}`);
+    }
+    localStorage.removeItem('pado-badges-unlocked');
+  } catch { /* ignore */ }
+}
 
 function loadUnlocked(): Map<string, UnlockedBadge> {
   try {
@@ -70,8 +81,11 @@ function evaluateBadges(
 }
 
 export function useBadges(context: BadgeEvalContext): UseBadgesResult {
-  // Capture previously unlocked badges once on mount
-  const [prevUnlocked] = useState<Set<string>>(() => new Set(loadUnlocked().keys()));
+  // Capture previously unlocked badges once on mount, purging stale version keys first
+  const [prevUnlocked] = useState<Set<string>>(() => {
+    purgeOldVersionKeys();
+    return new Set(loadUnlocked().keys());
+  });
   const [newlyUnlocked, setNewlyUnlocked] = useState<BadgeDefinition[]>([]);
 
   // Pure computation -- no side effects
