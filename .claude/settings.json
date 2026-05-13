@@ -235,7 +235,17 @@
       "Bash(cp /tmp/check_user_cooldown.mjs /home/naru/my_apps/nasun-monorepo/_tmp_check_user_cooldown.mjs)",
       "Bash(mkdir -p /home/naru/my_apps/nasun-monorepo/_tmp)",
       "Bash(cp /tmp/check_user_cooldown.mjs /home/naru/my_apps/nasun-monorepo/_tmp/check_user_cooldown.mjs)",
-      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem -o StrictHostKeyChecking=no ubuntu@54.180.61.196 \"pm2 logs explorer-api --lines 30000 --nostream 2>&1 | grep -E '0x0a691aa0fbc3214807eef7fef351c61c349d09ec1d97a8a5be139a49307e8db0|0x6a1c24a9189393d0107818f7514a194d2f22415fe52b8868ed35cc6bb0e36030' | head -20\")"
+      "Bash(ssh -i ~/.ssh/.awskey/nasun-devnet-key.pem -o StrictHostKeyChecking=no ubuntu@54.180.61.196 \"pm2 logs explorer-api --lines 30000 --nostream 2>&1 | grep -E '0x0a691aa0fbc3214807eef7fef351c61c349d09ec1d97a8a5be139a49307e8db0|0x6a1c24a9189393d0107818f7514a194d2f22415fe52b8868ed35cc6bb0e36030' | head -20\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'tail -30 /home/ec2-user/pado-bots/logs/balance-watchdog-out.log 2>/dev/null || echo LOG_NOT_FOUND; echo '\\\\''--- keeper-gas-watchdog ---'\\\\''; tail -50 /home/ec2-user/pado-bots/logs/keeper-gas-watchdog-out.log 2>/dev/null | grep '\\\\''source='\\\\'' | tail -3')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -o StrictHostKeyChecking=no -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'echo \"=== nginx deny rules ===\" && sudo grep -rhE \"^\\\\s*deny\\\\s\" /etc/nginx/conf.d/ /etc/nginx/sites-enabled/ /etc/nginx/nginx.conf 2>/dev/null | sort -u | head -100')",
+      "WebFetch(domain:nasun-bug-reports-466841130170.s3.ap-northeast-2.amazonaws.com)",
+      "Bash(rm /home/naru/my_apps/nasun-monorepo/apps/baram/docs/HANDOFF_2026_05_13.md && echo \"deleted\")",
+      "Edit(/.claude/skills/bug-triage/**)",
+      "Bash(APPLY_DRY_RUN=1 bash scripts/apply-resolutions.sh)",
+      "Bash(aws dynamodb query \\\\ *)",
+      "Bash(APPLY_DRY_RUN=0 bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)",
+      "Bash(APPLY_DRY_RUN=0 BUG_ADMIN_FN=\"BugReportStack-BugReportAdminFunctionEDC83E0B-aOQXhINBTwqd\" bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)",
+      "Bash(APPLY_DRY_RUN=0 BUG_ADMIN_FN=BugReportStack-BugReportAdminFunctionEDC83E0B-aOQXhINBTwqd ADMIN_IDENTITY_ID=ap-northeast-2:6cb1e654-bacf-c1f4-dd7e-9e597940d6dd bash .claude/skills/bug-triage/scripts/apply-resolutions.sh)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
@@ -247,7 +257,8 @@
       "/home/naru/my_apps/nasun-monorepo/.claude/skills",
       "/home/naru/my_apps/nasun-monorepo/apps/gostop/frontend",
       "/home/naru/my_apps/nasun-monorepo/apps/pado/frontend",
-      "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk/lambda-src/_shared"
+      "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/cdk/lambda-src/_shared",
+      "/home/naru/my_apps/nasun-monorepo/apps/baram/docs"
     ]
   },
   "hooks": {
