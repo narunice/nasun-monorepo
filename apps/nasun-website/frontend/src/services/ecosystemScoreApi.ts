@@ -272,7 +272,10 @@ export async function getSnapshotHistory(
     `${API_BASE}/ecosystem/snapshot/history/${encoded}?days=${days}`,
   );
 
-  if (!res.ok) return [];
+  if (!res.ok) {
+    if (res.status >= 500) throw new Error(`snapshot history ${res.status}`);
+    return [];
+  }
 
   const json = await res.json();
   // API returns DESC order; reverse for chronological display
@@ -310,7 +313,10 @@ export async function getBonusHistory(
     `${API_BASE}/ecosystem/bonus-history/${encoded}?days=${days}`,
   );
 
-  if (!res.ok) return [];
+  if (!res.ok) {
+    if (res.status >= 500) throw new Error(`bonus history ${res.status}`);
+    return [];
+  }
   const json = await res.json();
   return json.data ?? [];
 }
@@ -398,7 +404,10 @@ export async function getBaseHistory(
     { headers: { Authorization: `Bearer ${token}` } },
   );
 
-  if (!res.ok) return [];
+  if (!res.ok) {
+    if (res.status >= 500) throw new Error(`base history ${res.status}`);
+    return [];
+  }
   const json = await res.json();
   return json.data ?? [];
 }
