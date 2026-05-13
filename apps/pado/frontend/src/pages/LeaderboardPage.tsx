@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   useWallet,
@@ -25,10 +25,13 @@ import {
 import { Pagination } from "../features/leaderboard/components/Pagination";
 import { CompetitionBanner } from "../features/competitions";
 import { ActivityFeed } from "../features/social/components/ActivityFeed";
+import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../components/ui/LeaderboardSearchBox";
+import { useHighlightRow } from "../hooks/useHighlightRow";
 import type {
   Period,
   LeaderboardMode,
   ViewMode,
+  ScoreLeaderboardTrader,
 } from "../features/leaderboard";
 
 const PAGE_SIZE = 50;
@@ -59,17 +62,28 @@ export function LeaderboardPage() {
   const offset = (page - 1) * PAGE_SIZE;
 
   const availableWeeksQuery = useAvailableWeeks();
+  // Pado DeFi leaderboard launched W17/2026; W16 and earlier are pre-launch noise.
+  const PADO_LEADERBOARD_LAUNCH_WEEK_ID = "2026-W17";
   const pastWeeks = (availableWeeksQuery.data?.weeks ?? []).filter(
-    (w) => w.weekId !== currentWeekId,
+    (w) =>
+      w.weekId !== currentWeekId &&
+      w.weekId >= PADO_LEADERBOARD_LAUNCH_WEEK_ID,
   );
 
   const volumeQuery = useLeaderboard(period, PAGE_SIZE, offset);
   const pnlQuery = usePnlLeaderboard(period, PAGE_SIZE, offset);
+  // Score mode fetches the full week (up to MAX_RANK) so client-side search
+  // can match against every trader, not just the current page.
   const scoreQuery = useScoreLeaderboard(
     viewMode,
     selectedWeekId,
-    PAGE_SIZE,
-    offset,
+    MAX_RANK,
+    0,
+  );
+  const allScoreTraders: ScoreLeaderboardTrader[] = scoreQuery.data?.traders ?? [];
+  const pagedScoreTraders = useMemo(
+    () => allScoreTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [allScoreTraders, page],
   );
 
   const activeData =
@@ -120,6 +134,47 @@ export function LeaderboardPage() {
   const isConnected =
     (status === "unlocked" && account) || isZkLoggedIn || isPasskeyUnlocked;
   const userAddress = signerAddress || null;
+
+  const { highlightedId, selectRow } = useHighlightRow({
+    dataAttribute: "data-address",
+    pageSize: PAGE_SIZE,
+    page,
+    setPage,
+  });
+
+  const scoreFilterFn = useCallback(
+    (entry: ScoreLeaderboardTrader, q: string): boolean => {
+      return (
+        entry.address.toLowerCase().includes(q) ||
+        (entry.twitterHandle ?? "").toLowerCase().includes(q) ||
+        (entry.nickname ?? "").toLowerCase().includes(q)
+      );
+    },
+    [],
+  );
+
+  const scoreToResult = useCallback(
+    (entry: ScoreLeaderboardTrader): LeaderboardSearchResult => {
+      const shortAddr = `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`;
+      const primary = entry.nickname ?? (entry.twitterHandle ? `@${entry.twitterHandle}` : shortAddr);
+      const secondary = entry.twitterHandle && entry.nickname ? `@${entry.twitterHandle}` : shortAddr;
+      return {
+        id: entry.address,
+        primaryLabel: primary,
+        secondaryLabel: secondary !== primary ? secondary : undefined,
+        rank: entry.rank,
+        profileImageUrl: entry.profileImageUrl,
+      };
+    },
+    [],
+  );
+
+  const handleSearchSelect = useCallback(
+    (result: LeaderboardSearchResult) => {
+      if (result.rank != null) selectRow(result.id, result.rank);
+    },
+    [selectRow],
+  );
 
   // Reset page to 1 when mode or period changes
   const handleModeChange = useCallback((m: LeaderboardMode) => {
@@ -215,56 +270,93 @@ export function LeaderboardPage() {
           )}
 
           {/* Stats Bar + Period/Scope Selector */}
-          <div className="flex items-center justify-between">
-            {activeData && activeData.totalTraders > 0 ? (
-              <div className="flex items-center gap-4 text-sm text-theme-text-muted">
-                <span>{activeData.totalTraders} active traders</span>
-                <span>
-                  Showing {offset + 1}-
-                  {Math.min(
-                    offset + PAGE_SIZE,
-                    Math.min(totalTraders, MAX_RANK),
-                  )}
-                </span>
-                {activeData.updatedAt > 0 && (
-                  <span>
-                    Updated{" "}
-                    {new Date(activeData.updatedAt).toLocaleTimeString(
-                      "en-US",
-                      {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        hour12: false,
-                      },
-                    )}
-                  </span>
-                )}
-              </div>
-            ) : (
-              <div />
-            )}
-            {mode === "score" ? (
-              <div className="flex items-center gap-2">
-                {viewMode === "past" && pastWeeks.length > 0 && (
-                  <WeekPicker
-                    weeks={pastWeeks}
-                    selectedWeekId={selectedWeekId}
-                    onChange={(wId) => {
-                      setSelectedWeekId(wId);
-                      setPage(1);
-                    }}
+          {mode === "score" ? (
+            <div className="space-y-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <ScopeSelector
+                    selected={viewMode}
+                    onSelect={handleViewModeChange}
+                    pastDisabled={pastWeeks.length === 0}
                   />
-                )}
-                <ScopeSelector
-                  selected={viewMode}
-                  onSelect={handleViewModeChange}
-                  pastDisabled={pastWeeks.length === 0}
+                  {viewMode === "past" && pastWeeks.length > 0 && (
+                    <WeekPicker
+                      weeks={pastWeeks}
+                      selectedWeekId={selectedWeekId}
+                      onChange={(wId) => {
+                        setSelectedWeekId(wId);
+                        setPage(1);
+                      }}
+                    />
+                  )}
+                </div>
+                <LeaderboardSearchBox
+                  entries={allScoreTraders}
+                  filterFn={scoreFilterFn}
+                  toResult={scoreToResult}
+                  onSelect={handleSearchSelect}
+                  placeholder="Search by handle, name, or address..."
+                  disabled={scoreQuery.isLoading && allScoreTraders.length === 0}
                 />
               </div>
-            ) : (
+              {activeData && activeData.totalTraders > 0 && (
+                <div className="flex flex-wrap items-center gap-4 text-sm text-theme-text-muted">
+                  <span>{activeData.totalTraders} active traders</span>
+                  <span>
+                    Showing {offset + 1}-
+                    {Math.min(
+                      offset + PAGE_SIZE,
+                      Math.min(totalTraders, MAX_RANK),
+                    )}
+                  </span>
+                  {activeData.updatedAt > 0 && (
+                    <span>
+                      Updated{" "}
+                      {new Date(activeData.updatedAt).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        },
+                      )}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              {activeData && activeData.totalTraders > 0 ? (
+                <div className="flex items-center gap-4 text-sm text-theme-text-muted">
+                  <span>{activeData.totalTraders} active traders</span>
+                  <span>
+                    Showing {offset + 1}-
+                    {Math.min(
+                      offset + PAGE_SIZE,
+                      Math.min(totalTraders, MAX_RANK),
+                    )}
+                  </span>
+                  {activeData.updatedAt > 0 && (
+                    <span>
+                      Updated{" "}
+                      {new Date(activeData.updatedAt).toLocaleTimeString(
+                        "en-US",
+                        {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          hour12: false,
+                        },
+                      )}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <div />
+              )}
               <PeriodSelector selected={period} onSelect={handlePeriodChange} />
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Leaderboard Table */}
           <div className="bg-theme-bg-secondary rounded-lg border border-theme-border overflow-hidden">
@@ -277,8 +369,8 @@ export function LeaderboardPage() {
                     </div>
                   );
                 }
-                const currentTraders = scoreData?.traders ?? [];
-                if (isNewWeek && currentTraders.length === 0) {
+                const currentTraders = pagedScoreTraders;
+                if (isNewWeek && allScoreTraders.length === 0) {
                   const prevWeekId = prevWeekQuery.data?.weekId;
                   const prevTraders = prevWeekQuery.data?.traders ?? [];
                   return (
@@ -308,10 +400,11 @@ export function LeaderboardPage() {
                 }
                 return (
                   <ScoreLeaderboardTable
-                    traders={currentTraders}
+                    traders={showFollowing ? allScoreTraders : currentTraders}
                     isLoading={activeLoading}
                     currentUserAddress={userAddress}
                     followFilter={showFollowing}
+                    highlightedAddress={highlightedId}
                   />
                 );
               })()

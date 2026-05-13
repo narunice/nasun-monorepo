@@ -8,9 +8,10 @@ interface ScoreLeaderboardTableProps {
   isLoading: boolean;
   currentUserAddress?: string | null;
   followFilter?: boolean;
+  highlightedAddress?: string | null;
 }
 
-export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, followFilter }: ScoreLeaderboardTableProps) {
+export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, followFilter, highlightedAddress }: ScoreLeaderboardTableProps) {
   const { isFollowing } = useFollowedTraders();
 
   if (isLoading) {
@@ -71,6 +72,7 @@ export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, 
               key={trader.address}
               trader={trader}
               isCurrentUser={currentUserAddress === trader.address}
+              isHighlighted={highlightedAddress === trader.address}
             />
           ))}
         </tbody>
