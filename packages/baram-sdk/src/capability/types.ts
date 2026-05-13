@@ -31,7 +31,14 @@ export const PAUSE_MODE_TAG = {
 } as const;
 
 /** Mutation kind enum (CapabilityMutated event). */
-export type MutationKind = 'pause' | 'risk' | 'actions' | 'assets' | 'targets' | 'unknown';
+export type MutationKind =
+  | 'pause'
+  | 'risk'
+  | 'actions'
+  | 'assets'
+  | 'targets'
+  | 'escrow'
+  | 'unknown';
 
 export const MUTATION_KIND_TAG = {
   pause: 1,
@@ -39,6 +46,9 @@ export const MUTATION_KIND_TAG = {
   actions: 3,
   assets: 4,
   targets: 5,
+  // Plan C C3-v2 DV5/DV6: emitted by `finalize_link_and_share` (atomic
+  // setup PTB Cmd 2) and `set_escrow` (post-creation rebind).
+  escrow: 6,
 } as const;
 
 export interface RiskLimits {
@@ -67,6 +77,16 @@ export interface Capability {
   /** Package addresses the agent's PTBs may target. */
   allowedTargets: string[];
   riskLimits: RiskLimits;
+  /**
+   * Object id of the `AgentEscrow` paired with this capability for
+   * delegated-spend execution (Plan C C3-v2 DV6). `null` for caps
+   * created via the legacy `new_capability` constructor or caps
+   * deliberately unlinked via `set_escrow(None)`. The atomic-setup
+   * PTB (`new_capability_and_link` + `new_escrow_linked` +
+   * `finalize_link_and_share`) leaves this `Some(escrowId)` from
+   * version 1.
+   */
+  escrowId: string | null;
 }
 
 // Events surfaced from on-chain mutations. Off-chain indexers project these

@@ -32,6 +32,7 @@ function makeRaw(): Parameters<typeof CapabilityBcs.serialize>[0] {
       stop_loss_bps: 200,
       take_profit_bps: 500,
     },
+    escrow_id: null,
   };
 }
 
@@ -51,6 +52,15 @@ describe('Capability codec', () => {
     expect(decoded.allowedTargets.length).toBe(1);
     expect(decoded.riskLimits.maxNotionalPerAction).toBe(100_000_000n);
     expect(decoded.riskLimits.maxSlippageBps).toBe(100);
+    expect(decoded.escrowId).toBeNull();
+  });
+
+  it('decodes Option<ID> escrow_id when Some', () => {
+    const raw = makeRaw();
+    raw.escrow_id = '0x00000000000000000000000000000000000000000000000000000000feedbeef';
+    const bytes = CapabilityBcs.serialize(raw).toBytes();
+    const decoded = decodeCapability(bytes);
+    expect(decoded.escrowId).toEqual(raw.escrow_id);
   });
 
   it('surfaces phase 2 pause modes (1, 3) faithfully when they appear on-chain', () => {
@@ -86,8 +96,8 @@ describe('Capability codec', () => {
     expect(pauseModeFromTag(7)).toBe('unknown');
   });
 
-  it('mutationKindFromTag / toTag round-trip the 5 kinds', () => {
-    const kinds = ['pause', 'risk', 'actions', 'assets', 'targets'] as const;
+  it('mutationKindFromTag / toTag round-trip the 6 kinds', () => {
+    const kinds = ['pause', 'risk', 'actions', 'assets', 'targets', 'escrow'] as const;
     for (const k of kinds) {
       expect(mutationKindFromTag(mutationKindToTag(k))).toBe(k);
     }

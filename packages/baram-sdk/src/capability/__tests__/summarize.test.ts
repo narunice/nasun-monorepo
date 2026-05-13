@@ -93,6 +93,39 @@ describe('Capability mutation summaries', () => {
     );
   });
 
+  it('set_escrow link emits "Link escrow" with truncated id', () => {
+    const summary = summarizeMutation({
+      kind: 'set_escrow',
+      newEscrowId: '0x00000000000000000000000000000000000000000000000000000000feedbeef',
+    });
+    expect(summary).toContain('Link escrow');
+    expect(summary).toContain('...beef');
+  });
+
+  it('set_escrow unlink to null emits "Unlink escrow"', () => {
+    expect(
+      summarizeMutation({ kind: 'set_escrow', newEscrowId: null }),
+    ).toContain('Unlink escrow');
+  });
+
+  it('set_escrow rebind shows old -> new', () => {
+    const summary = summarizeMutation({
+      kind: 'set_escrow',
+      previousEscrowId: '0x00000000000000000000000000000000000000000000000000000000aaaaaaaa',
+      newEscrowId: '0x00000000000000000000000000000000000000000000000000000000bbbbbbbb',
+    });
+    expect(summary).toContain('Rebind escrow');
+    expect(summary).toMatch(/aaaaaaaa|...aaaa/);
+    expect(summary).toMatch(/bbbbbbbb|...bbbb/);
+  });
+
+  it('set_escrow no-op when same id', () => {
+    const id = '0x00000000000000000000000000000000000000000000000000000000aaaaaaaa';
+    expect(
+      summarizeMutation({ kind: 'set_escrow', newEscrowId: id, previousEscrowId: id }),
+    ).toContain('no-op');
+  });
+
   it('determinism: identical args -> identical output', () => {
     const args = {
       kind: 'update_risk_limits' as const,
