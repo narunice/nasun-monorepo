@@ -160,6 +160,21 @@ export function initStore(config: ChatServerConfig): void {
     );
   `);
 
+  // Baram daily message caps (Plan D §D-6 §A6). Counts cognition wake forwards
+  // per wallet per UTC day; resets at UTC midnight via fresh row insert.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS baram_message_caps (
+      wallet           TEXT NOT NULL,
+      date             TEXT NOT NULL,
+      cognition_count  INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (wallet, date)
+    );
+  `);
+
+  // Plan D §D-6: budget_id column on agent_endpoints so chat-server can
+  // pre-check the on-chain Budget balance before forwarding a /wake call.
+  try { db.exec('ALTER TABLE baram_agent_endpoints ADD COLUMN budget_id TEXT'); } catch { /* already exists */ }
+
   // Baram pending proposals — one active pending per agent (partial unique index).
   // proposal column stores the full Proposal JSON artifact (Plan D §A10).
   // The on-chain capability.pending_proposal_id mirrors proposal_id as 16-byte binary.

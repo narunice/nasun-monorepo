@@ -16,32 +16,40 @@ interface RawEndpointRow {
   agent: string;
   http_url: string;
   last_seen: number;
+  budget_id: string | null;
 }
 
 export interface AgentEndpoint {
   agent: string;
   httpUrl: string;
   lastSeen: number;
+  budgetId: string | null;
 }
 
 function rowToEndpoint(row: RawEndpointRow): AgentEndpoint {
-  return { agent: row.agent, httpUrl: row.http_url, lastSeen: row.last_seen };
+  return {
+    agent: row.agent,
+    httpUrl: row.http_url,
+    lastSeen: row.last_seen,
+    budgetId: row.budget_id,
+  };
 }
 
-export function upsertEndpoint(agent: string, httpUrl: string): void {
+export function upsertEndpoint(agent: string, httpUrl: string, budgetId: string | null = null): void {
   getDb()
     .prepare(
-      `INSERT INTO baram_agent_endpoints (agent, http_url, last_seen)
-       VALUES (?, ?, ?)
+      `INSERT INTO baram_agent_endpoints (agent, http_url, last_seen, budget_id)
+       VALUES (?, ?, ?, ?)
        ON CONFLICT(agent) DO UPDATE SET http_url = excluded.http_url,
-                                        last_seen = excluded.last_seen`,
+                                        last_seen = excluded.last_seen,
+                                        budget_id = COALESCE(excluded.budget_id, budget_id)`,
     )
-    .run(agent.toLowerCase(), httpUrl, Date.now());
+    .run(agent.toLowerCase(), httpUrl, Date.now(), budgetId);
 }
 
 export function getEndpoint(agent: string): AgentEndpoint | null {
   const row = getDb()
-    .prepare(`SELECT agent, http_url, last_seen FROM baram_agent_endpoints WHERE agent = ?`)
+    .prepare(`SELECT agent, http_url, last_seen, budget_id FROM baram_agent_endpoints WHERE agent = ?`)
     .get(agent.toLowerCase()) as RawEndpointRow | undefined;
   return row ? rowToEndpoint(row) : null;
 }
@@ -134,6 +142,7 @@ export async function handleHeartbeat(
 
   const agent = typeof parsed.agent === 'string' ? parsed.agent : null;
   const httpUrl = typeof parsed.http_url === 'string' ? parsed.http_url : null;
+  const budgetId = typeof parsed.budget_id === 'string' ? parsed.budget_id : null;
 
   if (!agent || !/^0x[0-9a-fA-F]{40,64}$/.test(agent)) {
     res.writeHead(400, corsHeaders);
@@ -146,8 +155,13 @@ export async function handleHeartbeat(
     res.end(JSON.stringify({ error: 'invalid_http_url' }));
     return;
   }
+  if (budgetId !== null && !/^0x[0-9a-fA-F]{40,64}$/.test(budgetId)) {
+    res.writeHead(400, corsHeaders);
+    res.end(JSON.stringify({ error: 'invalid_budget_id' }));
+    return;
+  }
 
-  upsertEndpoint(agent, httpUrl);
+  upsertEndpoint(agent, httpUrl, budgetId);
   res.writeHead(200, { ...corsHeaders, 'Content-Type': 'application/json' });
   res.end(JSON.stringify({ ok: true, last_seen: Date.now() }));
 }

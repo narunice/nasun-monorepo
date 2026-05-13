@@ -433,7 +433,11 @@ async function main(): Promise<void> {
       const wakeHttpUrl = `http://127.0.0.1:${config.wakePort}`;
       const heartbeatUrl = `${config.chatServerBaseUrl}/api/baram/agent/heartbeat`;
       const sendHeartbeat = (): void => {
-        const body = JSON.stringify({ agent: config.agentAddress, http_url: wakeHttpUrl });
+        const body = JSON.stringify({
+          agent: config.agentAddress,
+          http_url: wakeHttpUrl,
+          budget_id: config.budgetId,
+        });
         const hmacSecret = process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
         if (!hmacSecret) return;
         const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex')).update(body, 'utf8').digest('hex');
