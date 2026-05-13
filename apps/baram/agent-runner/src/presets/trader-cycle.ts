@@ -54,6 +54,7 @@ import {
 } from './trader.js';
 import {
   buildAnalysisEnvelope,
+  buildTradeSwapEnvelope,
   buildHeartbeatWake,
   buildReplay,
   newIntentChainState,
@@ -359,14 +360,15 @@ export async function runTraderCycle(
   }
 
   // 7. Build envelope from FINAL decision (DV11).
+  // BUY/SELL must use trade.swap.v1 because the host action-class
+  // registry only registers the DeepBook swap functions under that
+  // label; emitting analysis.v1 on an exec body trips
+  // findFunctionEntry in /execute-capability.
   const finalEnvelope =
     decision.action === 'HOLD'
       ? buildAnalysisEnvelope({ decision, outcome: 2 })
-      : buildAnalysisEnvelope({ decision, outcome: 1 });
+      : buildTradeSwapEnvelope({ decision, outcome: 1 });
   const finalEventClass: 1 | 2 = decision.action === 'HOLD' ? 1 : 2;
-  if (finalEventClass === 2) {
-    finalEnvelope.eventClass = 2;
-  }
 
   // 8. Build proposal matching the envelope.
   const buyOrSell = decision.action === 'BUY' || decision.action === 'SELL';

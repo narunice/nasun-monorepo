@@ -202,6 +202,9 @@ describe('runTraderCycle — execution path (BUY)', () => {
     // If the envelope was built from the provisional HOLD shape (the
     // legacy bug), the tag byte would be 3 instead of 1.
     expect(body.envelope.payloadBytes[0]).toBe(1);
+    // BUY routes through trade.swap.v1 — host action-class registry
+    // looks up the DeepBook swap fn by this label.
+    expect(body.envelope.actionType).toBe('trade.swap.v1');
     // Proposal mirrors envelope.
     expect(body.proposal.eventClass).toBe(2);
     expect(body.proposal.actionType).toBe(body.envelope.actionType);
@@ -287,6 +290,9 @@ describe('runTraderCycle — execution path (SELL)', () => {
     expect(result.outcome).toBe('succeeded');
     expect(result.finalEventClass).toBe(2);
     const [, , body] = asMock(deps.executeCapability).mock.calls[0];
+    // SELL also routes through trade.swap.v1 (same label, different fn).
+    expect(body.envelope.actionType).toBe('trade.swap.v1');
+    expect(body.proposal.actionType).toBe('trade.swap.v1');
     expect(body.proposal.exec.fn).toBe('swap_exact_base_for_quote');
     expect(body.proposal.exec.inputAssetType).toBe(NBTC_TYPE);
     expect(body.proposal.exec.outputAssetType).toBe(NUSDC_TYPE);
@@ -313,7 +319,11 @@ describe('runTraderCycle — cognition path (HOLD)', () => {
     expect(result.finalEventClass).toBe(1);
     const [, , body] = asMock(deps.executeCapability).mock.calls[0];
     expect(body.envelope.eventClass).toBe(1);
+    // HOLD stays on analysis.v1 (cognition); it must NOT route through
+    // trade.swap.v1 even when the body is otherwise valid.
+    expect(body.envelope.actionType).toBe('analysis.v1');
     expect(body.proposal.eventClass).toBe(1);
+    expect(body.proposal.actionType).toBe('analysis.v1');
     expect(body.proposal.exec).toBeUndefined();
     expect(body.actionCall).toBeNull();
     // trader-cycle passes null (not omitted) so the host route can

@@ -57,12 +57,17 @@ export type {
   ReplayMeta as TraderReplayMeta,
 };
 
-// Action types we emit. trade.swap.v1 is reserved for the eventual atomic
-// settlement path; until that lands the trader uses analysis.v1 for the
-// per-cycle cognition AER and noop.v1 for explicit HOLDs that carry a
-// soft-rail rejection reason (mirrors the host's defaultCognitionEnvelope).
+// Action types we emit.
+//   analysis.v1   — per-cycle cognition AER (HOLD or unactionable decisions)
+//   noop.v1       — explicit no-op cognition (mirrors host defaultCognitionEnvelope)
+//   trade.swap.v1 — atomic-settlement execution AER. Required for BUY/SELL
+//                   because the host action-class registry only registers
+//                   the DeepBook swap functions under this label; emitting
+//                   analysis.v1 on an exec body trips the registry lookup
+//                   in /execute-capability and aborts the cycle.
 export const ACTION_TYPE_ANALYSIS = 'analysis.v1';
 export const ACTION_TYPE_NOOP = 'noop.v1';
+export const ACTION_TYPE_TRADE_SWAP = 'trade.swap.v1';
 
 const ACTION_SCHEMA_VERSION = 1;
 
@@ -179,6 +184,42 @@ export function buildAnalysisEnvelope(args: {
     actionSchemaVersion: ACTION_SCHEMA_VERSION,
     payloadCodec: 'bcs',
     payloadHash: payloadHash(ACTION_TYPE_ANALYSIS, payload),
+    payloadBytes: Array.from(payload),
+    actionSummary: summarizeDecision(args.decision).slice(0, 280),
+    actionOutcome: args.outcome,
+  };
+}
+
+/**
+ * Build the trade.swap.v1 envelope for an execution AER (BUY or SELL).
+ * Mirrors buildAnalysisEnvelope but emits ACTION_TYPE_TRADE_SWAP so the
+ * host action-class registry can find the registered DeepBook swap fn.
+ * HOLD must NOT route through here — the host's exec-path validation
+ * would still pass (the payload is well-formed) but the AER would be
+ * miscategorised on-chain. Caller (trader-cycle) enforces the gate.
+ *
+ * Payload schema is intentionally identical to analysis.v1 for the v1
+ * prototype: both encode the LLM's final decision plus size. The
+ * action-type label is what differentiates registry routing, not the
+ * payload shape (off-chain decoders pick the renderer by action_type).
+ */
+export function buildTradeSwapEnvelope(args: {
+  decision: TradeDecision;
+  outcome: 1 | 2 | 3;
+}): EnvelopeMeta {
+  const sizeQuoteRaw = BigInt(Math.floor(args.decision.sizeNUSDC * 1_000_000));
+  const payload = encodeAnalysisV1({
+    decision: args.decision.action,
+    sizeQuoteRaw,
+    reason: args.decision.reason,
+  });
+
+  return {
+    eventClass: 2,
+    actionType: ACTION_TYPE_TRADE_SWAP,
+    actionSchemaVersion: ACTION_SCHEMA_VERSION,
+    payloadCodec: 'bcs',
+    payloadHash: payloadHash(ACTION_TYPE_TRADE_SWAP, payload),
     payloadBytes: Array.from(payload),
     actionSummary: summarizeDecision(args.decision).slice(0, 280),
     actionOutcome: args.outcome,
