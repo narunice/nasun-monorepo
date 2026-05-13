@@ -21,6 +21,7 @@ function makeCap(overrides: Partial<Capability> = {}): Capability {
       stopLossBps: 200,
       takeProfitBps: 500,
     },
+    escrowId: null,
     ...overrides,
   };
 }
@@ -78,6 +79,7 @@ describe('Capability client preflight', () => {
         stop_loss_bps: 200,
         take_profit_bps: 500,
       },
+      escrow_id: null,
     }).toBase64();
     const getObject = vi.fn().mockResolvedValue({
       data: {
@@ -135,6 +137,7 @@ describe('Capability client preflight', () => {
         stop_loss_bps: 1,
         take_profit_bps: 1,
       },
+      escrow_id: null,
     }).toBase64();
     const getObject = vi.fn().mockResolvedValue({
       data: {

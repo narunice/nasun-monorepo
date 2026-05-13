@@ -56,3 +56,7 @@ export * as aer from './aer';
 // Plan B: Capability primitive that gates AER creation.
 // Spec: apps/baram/docs/AER_V2_CODEC.md §17
 export * as capability from './capability';
+
+// Plan C C3-v2: AgentEscrow paired with Capability for delegated-spend.
+// Spec: apps/baram/docs/AER_V2_CODEC.md §18
+export * as escrow from './escrow';

@@ -39,6 +39,8 @@ module baram_aer::capability {
     const E_DUPLICATE_ALLOWED_ENTRY: u64 = 561;
     const E_CAPABILITY_REVOKED: u64 = 562;
     const E_ALLOWED_ACTION_TOO_LONG: u64 = 563;
+    // 564 is owned by aer::E_GATED_REQUIRES_NON_SETTLEMENT_CLASS (asserted in aer.move).
+    const E_FINALIZE_LINK_AFTER_REVOKE: u64 = 565;
 
     // ========== Constants ==========
     const MAX_ALLOWED_ACTIONS: u64 = 16;
@@ -62,6 +64,7 @@ module baram_aer::capability {
     const MUTATION_KIND_ACTIONS: u8 = 3;
     const MUTATION_KIND_ASSETS: u8 = 4;
     const MUTATION_KIND_TARGETS: u8 = 5;
+    const MUTATION_KIND_ESCROW: u8 = 6;
 
     // ========== Structs ==========
 
@@ -83,6 +86,31 @@ module baram_aer::capability {
         allowed_assets: vector<TypeName>,
         allowed_targets: vector<address>,
         risk_limits: RiskLimits,
+        // Plan C C3-v2 DV6: the AgentEscrow paired with this capability for
+        // delegated-spend execution. `None` for cognition-only caps (escape
+        // hatch for legacy `new_capability` flows + caps created before
+        // setup PTB lands). Atomic setup PTB (DV5) stamps this in the same
+        // wallet-signed tx as the AgentEscrow is created, so the
+        // `escrow_id = None` window is zero blocks in the canonical path.
+        escrow_id: Option<ID>,
+    }
+
+    /// Hot-potato witness that ties together capability creation and escrow
+    /// creation across the two modules. Constructed only by
+    /// `new_capability_and_link` and consumed only by
+    /// `escrow::new_escrow_linked` (which calls `consume_link_witness` to
+    /// destructure it).
+    ///
+    /// No abilities (no `drop`, `store`, `copy`) -> the PTB cannot build
+    /// unless every produced witness is consumed within the same tx. This is
+    /// the Move type-system enforcement that closes the 2-tx setup race
+    /// (Plan C C3-v2 DV5): a malicious agent-runner cannot burn cognition
+    /// AERs against a cap whose escrow_id is still None, because there is
+    /// no path that mints a cap with linked-escrow intent without also
+    /// finalizing the link in the same PTB.
+    public struct LinkWitness {
+        capability_id: ID,
+        owner: address,
     }
 
     /// Marker shared object (Plan B D13). No counters. Exists so `new_capability`
@@ -159,11 +187,147 @@ module baram_aer::capability {
                 stop_loss_bps,
                 take_profit_bps,
             },
+            escrow_id: option::none(),
         };
 
         let cap_id = object::id_address(&cap);
         event::emit(CapabilityCreated { cap_id, owner });
         transfer::share_object(cap);
+    }
+
+    /// Atomic-setup constructor (Plan C C3-v2 DV5).
+    ///
+    /// Returns `(Capability, LinkWitness)` instead of sharing the cap
+    /// immediately. The PTB then:
+    ///   Cmd 1: `escrow::new_escrow_linked(witness, ctx) -> ID`
+    ///   Cmd 2: `capability::finalize_link_and_share(cap, escrow_id, ctx)`
+    /// All three commands sign as the wallet in a single tx. The cap
+    /// `escrow_id = None` window therefore lives only inside the PTB and
+    /// is invisible to any other tx, including pre-authorized agent-runner
+    /// wakes that would otherwise race the link.
+    ///
+    /// `LinkWitness` has no abilities -- it cannot be dropped, stored, or
+    /// copied, so the only way to build a valid PTB is to consume it via
+    /// `escrow::new_escrow_linked` (which calls `consume_link_witness`).
+    /// `Capability` likewise has no `drop`, so it MUST be either shared
+    /// (via `finalize_link_and_share`) or carried into another consumer.
+    public fun new_capability_and_link(
+        _registry: &CapabilityRegistry,
+        allowed_actions: vector<String>,
+        allowed_assets: vector<TypeName>,
+        allowed_targets: vector<address>,
+        max_notional_per_action: u64,
+        max_daily_loss: u64,
+        max_slippage_bps: u16,
+        stop_loss_bps: u16,
+        take_profit_bps: u16,
+        ctx: &mut TxContext,
+    ): (Capability, LinkWitness) {
+        validate_allowed_actions(&allowed_actions);
+        validate_allowed_assets(&allowed_assets);
+        validate_allowed_targets(&allowed_targets);
+        validate_risk_limits(max_slippage_bps, stop_loss_bps, take_profit_bps);
+
+        let owner = tx_context::sender(ctx);
+        let cap = Capability {
+            id: object::new(ctx),
+            owner,
+            version: 1,
+            pause_mode: PAUSE_ACTIVE,
+            revoked: false,
+            allowed_actions,
+            allowed_assets,
+            allowed_targets,
+            risk_limits: RiskLimits {
+                max_notional_per_action,
+                max_daily_loss,
+                max_slippage_bps,
+                stop_loss_bps,
+                take_profit_bps,
+            },
+            escrow_id: option::none(),
+        };
+        let cap_id_addr = object::id_address(&cap);
+        let cap_id = object::id(&cap);
+        event::emit(CapabilityCreated { cap_id: cap_id_addr, owner });
+        let witness = LinkWitness { capability_id: cap_id, owner };
+        (cap, witness)
+    }
+
+    /// Consumes a `LinkWitness` and returns `(capability_id, owner)`.
+    ///
+    /// Callable from any module in the same package; intended for use by
+    /// `escrow::new_escrow_linked`. Because `LinkWitness` has no abilities
+    /// and no other entry consumes it, this is the only escape hatch for
+    /// the hot-potato.
+    public fun consume_link_witness(witness: LinkWitness): (ID, address) {
+        let LinkWitness { capability_id, owner } = witness;
+        (capability_id, owner)
+    }
+
+    /// Atomic-setup finalizer (Plan C C3-v2 DV5 Cmd 2).
+    ///
+    /// Stamps `escrow_id` on a fresh cap (must still be at version=1 and
+    /// unrevoked) and shares the cap. Distinct from `set_escrow` -- this
+    /// path is for the initial atomic setup PTB only and does NOT bump
+    /// version (the AER replay graph should see this cap as "always at
+    /// version 1 with linked escrow," not "version 1, then mutated to
+    /// version 2 with escrow"). `set_escrow` is for any rebinding after
+    /// the cap is shared.
+    ///
+    /// Wallet-sig required.
+    ///
+    /// Suppressed lint: `share_owned` / `custom_state_change` fire because
+    /// the function shares a `Capability` that is taken by value from a
+    /// caller. The hot-potato pattern (`LinkWitness` cannot leave its
+    /// originating PTB) plus the absence of any external constructor for
+    /// `Capability` other than `new_capability` (always self-shares) and
+    /// `new_capability_and_link` (the one that fed THIS function) means
+    /// the only legitimate path into `finalize_link_and_share` is the
+    /// freshly-created cap from the same PTB.
+    #[allow(lint(share_owned), lint(custom_state_change))]
+    public fun finalize_link_and_share(
+        cap: Capability,
+        escrow_id: ID,
+        ctx: &TxContext,
+    ) {
+        assert!(cap.owner == tx_context::sender(ctx), E_NOT_CAPABILITY_OWNER);
+        assert!(!cap.revoked, E_FINALIZE_LINK_AFTER_REVOKE);
+        let mut cap = cap;
+        cap.escrow_id = option::some(escrow_id);
+        // Emit MUTATION_KIND_ESCROW so the indexer's CapabilityMutated
+        // stream captures the link without needing a separate event type.
+        // version stays at 1 (creation-time link, not a post-hoc mutation).
+        event::emit(CapabilityMutated {
+            cap_id: object::id_address(&cap),
+            new_version: cap.version,
+            mutation_kind: MUTATION_KIND_ESCROW,
+            owner: cap.owner,
+        });
+        transfer::share_object(cap);
+    }
+
+    /// Post-creation rebind of the escrow link (Plan C C3-v2 DV6).
+    ///
+    /// Wallet-sig only. `escrow_id` may be `None` (unlinks the cap; only
+    /// cognition AERs remain usable) or `Some(id)` (binds a fresh escrow).
+    /// Bumps version + emits MUTATION_KIND_ESCROW.
+    ///
+    /// No validation that the target escrow's reciprocal binding agrees
+    /// here -- the wallet is the ultimate authority. If they bind a stale
+    /// id, downstream `withdraw_for_action` aborts on the reciprocal
+    /// check (E_RECIPROCAL_BINDING_BROKEN in `escrow`). The failure mode
+    /// is the wallet shoots its own foot, not an attacker.
+    public fun set_escrow(
+        cap: &mut Capability,
+        escrow_id: Option<ID>,
+        ctx: &TxContext,
+    ) {
+        assert_owner(cap, ctx);
+        assert_not_revoked(cap);
+        cap.escrow_id = escrow_id;
+        bump_version(cap);
+        emit_mutated(cap, MUTATION_KIND_ESCROW);
     }
 
     // ========== Mutations (wallet-signed only) ==========
@@ -345,6 +509,24 @@ module baram_aer::capability {
     public fun allowed_actions(cap: &Capability): &vector<String> { &cap.allowed_actions }
     public fun allowed_assets(cap: &Capability): &vector<TypeName> { &cap.allowed_assets }
     public fun allowed_targets(cap: &Capability): &vector<address> { &cap.allowed_targets }
+    public fun escrow_id(cap: &Capability): Option<ID> { cap.escrow_id }
+
+    /// O(n) scan over `cap.allowed_assets`. n <= MAX_ALLOWED_ASSETS (16).
+    /// Used by `baram_aer::escrow::withdraw_for_action` /
+    /// `settle_action` / `deposit_swap_leftover` to enforce the asset
+    /// allowlist as a contract-level hard rail (DV7).
+    public fun is_asset_allowed(cap: &Capability, asset: &TypeName): bool {
+        let assets = &cap.allowed_assets;
+        let len = assets.length();
+        let mut i = 0;
+        while (i < len) {
+            if (&assets[i] == asset) { return true };
+            i = i + 1;
+        };
+        false
+    }
+
+    public fun pause_active(): u8 { PAUSE_ACTIVE }
 
     /// Returns true iff `action_type` is a member of `cap.allowed_actions`.
     /// O(n) scan; n <= MAX_ALLOWED_ACTIONS (16).

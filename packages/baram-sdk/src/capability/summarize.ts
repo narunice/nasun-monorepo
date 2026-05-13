@@ -36,6 +36,13 @@ export type MutationArgs =
       newTargets: string[];
       previousTargets?: string[];
     }
+  | {
+      // Plan C C3-v2 DV6: `set_escrow` rebinds the cap's paired escrow
+      // post-creation. `newEscrowId = null` unlinks (cognition-only mode).
+      kind: 'set_escrow';
+      newEscrowId: string | null;
+      previousEscrowId?: string | null;
+    }
   | { kind: 'revoke' };
 
 /**
@@ -54,9 +61,28 @@ export function summarizeMutation(args: MutationArgs): string {
       return summarizeList('assets', args.newAssets, args.previousAssets);
     case 'replace_allowed_targets':
       return summarizeList('targets', args.newTargets, args.previousTargets);
+    case 'set_escrow':
+      return summarizeEscrow(args.newEscrowId, args.previousEscrowId);
     case 'revoke':
       return 'Revoke capability (terminal). Agent execution will halt.';
   }
+}
+
+function summarizeEscrow(next: string | null, prev?: string | null): string {
+  const shortNext = next ? truncId(next) : 'NONE';
+  if (prev === undefined) {
+    return next
+      ? `Link escrow ${shortNext}`
+      : 'Unlink escrow (cognition-only). Agent cannot spend.';
+  }
+  if (prev === next) return 'Escrow change: no-op (same id)';
+  const shortPrev = prev ? truncId(prev) : 'NONE';
+  return `Rebind escrow: ${shortPrev} -> ${shortNext}`;
+}
+
+function truncId(id: string): string {
+  if (id.length <= 14) return id;
+  return `${id.slice(0, 8)}...${id.slice(-4)}`;
 }
 
 function summarizePause(next: PauseMode, prev?: PauseMode): string {

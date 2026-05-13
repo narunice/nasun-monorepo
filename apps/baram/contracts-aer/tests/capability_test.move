@@ -11,6 +11,7 @@ module baram_aer::capability_test {
         CapabilityRegistry,
         RiskLimits,
     };
+    use baram_aer::escrow::{Self as escrow_mod, AgentEscrow};
 
     const ADMIN: address = @0xA11CE;
     const OWNER: address = @0xB0B;          // Wallet that holds the cap + agent
@@ -583,5 +584,216 @@ module baram_aer::capability_test {
     #[expected_failure(abort_code = 556, location = baram_aer::capability)]
     fun risk_limits_constructor_rejects_bps_out_of_range() {
         let _r: RiskLimits = cap::new_risk_limits(100, 1_000, 10_001, 200, 500);
+    }
+
+    // ===== Plan C C3-v2 additions =====
+
+    /// `set_escrow` bumps version and emits MUTATION_KIND_ESCROW (6).
+    #[test]
+    fun set_escrow_bumps_version_and_records_link() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        ts::next_tx(&mut scenario, OWNER);
+        let mut c = ts::take_shared<Capability>(&scenario);
+        assert!(option::is_none(&cap::escrow_id(&c)), 700);
+        assert!(cap::version(&c) == 1, 701);
+
+        // Use an arbitrary id as a stand-in. The cap module doesn't
+        // validate the target object's reciprocal binding here; that
+        // happens at withdraw_for_action / settle_action time.
+        let fake_escrow_id = object::id_from_address(@0xE5C7);
+        cap::set_escrow(&mut c, option::some(fake_escrow_id), ts::ctx(&mut scenario));
+
+        assert!(cap::version(&c) == 2, 702);
+        let stamped = cap::escrow_id(&c);
+        assert!(option::is_some(&stamped), 703);
+        assert!(*option::borrow(&stamped) == fake_escrow_id, 704);
+        ts::return_shared(c);
+        ts::end(scenario);
+    }
+
+    /// Atomic setup PTB (3 commands) leaves cap.escrow_id linked AND
+    /// reciprocally bound by the escrow's capability_id field. Models
+    /// the wallet-signed setup tx described in DV5.
+    #[test]
+    fun atomic_setup_links_cap_and_escrow_in_one_tx() {
+        let mut scenario = setup();
+
+        ts::next_tx(&mut scenario, OWNER);
+        // Three commands compose in one tx-scenario step. In a real
+        // PTB these would be Cmd 0/1/2.
+        let registry = ts::take_shared<CapabilityRegistry>(&scenario);
+        let (cap_obj, witness) = cap::new_capability_and_link(
+            &registry,
+            default_allowed_actions(),
+            vector::empty(),
+            vector::empty(),
+            100_000_000,
+            10_000_000_000,
+            100, 200, 500,
+            ts::ctx(&mut scenario),
+        );
+        let cap_id = cap::id_address(&cap_obj);
+        let escrow_id = escrow_mod::new_escrow_linked(witness, ts::ctx(&mut scenario));
+        cap::finalize_link_and_share(cap_obj, escrow_id, ts::ctx(&mut scenario));
+        ts::return_shared(registry);
+
+        // The cap should now exist as a shared object with escrow_id stamped.
+        ts::next_tx(&mut scenario, OWNER);
+        let c = ts::take_shared<Capability>(&scenario);
+        let e = ts::take_shared<AgentEscrow>(&scenario);
+        assert!(cap::id_address(&c) == cap_id, 800);
+        // Reciprocal binding: cap.escrow_id == id(escrow), escrow.capability_id == id(cap).
+        let cap_escrow = cap::escrow_id(&c);
+        assert!(option::is_some(&cap_escrow), 801);
+        assert!(*option::borrow(&cap_escrow) == object::id(&e), 802);
+        assert!(escrow_mod::capability_id(&e) == object::id(&c), 803);
+        assert!(escrow_mod::owner(&e) == OWNER, 804);
+        // version still 1 (link is creation-time, not a post-hoc mutation).
+        assert!(cap::version(&c) == 1, 805);
+
+        ts::return_shared(c);
+        ts::return_shared(e);
+        ts::end(scenario);
+    }
+
+    /// Execution-class gated AER auto-fills `triggered_action` with the
+    /// current PTB digest, ignoring caller value (DV10). Cognition-class
+    /// preserves caller-supplied value.
+    #[test]
+    fun gated_execution_triggered_action_autofills_to_tx_digest() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        // Execution-class AER. Caller supplies a sentinel triggered_action
+        // that must be IGNORED in favor of the current tx digest.
+        let bogus_action_id = object::id_from_address(@0xDEAD);
+        call_gated_with_triggered_action(
+            &mut scenario,
+            1,
+            1_000_000,
+            trade_swap_action_type(),
+            2,
+            1,
+            1,
+            option::some(bogus_action_id),
+        );
+
+        ts::next_tx(&mut scenario, OWNER);
+        let aer_obj = ts::take_from_sender<AIExecutionReport>(&scenario);
+        let ch = aer::chain(&aer_obj);
+        let ta = aer::chain_triggered_action(ch);
+        assert!(option::is_some(&ta), 900);
+        // Must NOT equal the caller-supplied bogus id.
+        assert!(*option::borrow(&ta) != bogus_action_id, 901);
+        ts::return_to_sender(&scenario, aer_obj);
+        ts::end(scenario);
+    }
+
+    /// Cognition-class gated AER preserves caller-supplied
+    /// triggered_action (the prior cycle's swap digest pattern from DV11).
+    #[test]
+    fun gated_cognition_triggered_action_preserves_caller_value() {
+        let mut scenario = setup();
+        create_cap(&mut scenario, default_allowed_actions(), 100_000_000);
+
+        let prior_swap_id = object::id_from_address(@0xCAFE);
+        call_gated_with_triggered_action(
+            &mut scenario,
+            1,
+            1_000_000,
+            noop_action_type(),
+            1, // cognition
+            2, // hold-noop
+            1,
+            option::some(prior_swap_id),
+        );
+
+        ts::next_tx(&mut scenario, OWNER);
+        let aer_obj = ts::take_from_sender<AIExecutionReport>(&scenario);
+        let ch = aer::chain(&aer_obj);
+        let ta = aer::chain_triggered_action(ch);
+        assert!(option::is_some(&ta), 910);
+        assert!(*option::borrow(&ta) == prior_swap_id, 911);
+        ts::return_to_sender(&scenario, aer_obj);
+        ts::end(scenario);
+    }
+
+    /// Like `call_gated` but lets the test override the
+    /// `triggered_action` arg so DV10's caller-value-vs-auto-fill
+    /// behavior can be asserted directly.
+    fun call_gated_with_triggered_action(
+        scenario: &mut ts::Scenario,
+        request_id: u64,
+        price: u64,
+        action_type: String,
+        event_class: u8,
+        action_outcome: u8,
+        expected_cap_version: u64,
+        triggered_action: Option<sui::object::ID>,
+    ) {
+        ts::next_tx(scenario, EXECUTOR);
+        let mut registry = ts::take_shared<AERRegistry>(scenario);
+        let baram_registry = ts::take_shared<BaramRegistry>(scenario);
+        let capability = ts::take_shared<Capability>(scenario);
+        let ctx = ts::ctx(scenario);
+
+        let receipt = baram::new_settlement_receipt_for_testing(
+            request_id,
+            OWNER,
+            EXECUTOR,
+            price,
+            string::utf8(b"llama-3.3-70b"),
+            hash32(0xAA),
+            5_000,
+            1_700_000_000_000,
+        );
+
+        aer::create_report_with_receipt_capability(
+            &mut registry,
+            &baram_registry,
+            receipt,
+            &capability,
+            expected_cap_version,
+            OWNER,
+            vector::empty<address>(),
+            option::none<address>(),
+            option::none<string::String>(),
+            option::none<sui::object::ID>(),
+            option::none<u64>(),
+            option::none<string::String>(),
+            hash32(0x11),
+            option::none<string::String>(),
+            option::none<string::String>(),
+            1, 500, 0, false,
+            option::none<vector<u8>>(),
+            1_699_999_995_000,
+            option::none<sui::object::ID>(),
+            triggered_action,
+            uuidv7_bytes(0x77),
+            option::none<vector<u8>>(),
+            1,
+            event_class,
+            action_type,
+            1,
+            string::utf8(b"bcs"),
+            hash32(0xBB),
+            valid_payload_bytes(),
+            string::utf8(b"BUY 50 NUSDC -> NBTC"),
+            action_outcome,
+            1,
+            option::none<string::String>(),
+            string::utf8(b"llama-3.3-70b-v1"),
+            hash32(0xCC),
+            option::some(hash32(0xDD)),
+            vector::empty<string::String>(),
+            vector::empty<vector<u8>>(),
+            ctx,
+        );
+
+        ts::return_shared(registry);
+        ts::return_shared(baram_registry);
+        ts::return_shared(capability);
     }
 }

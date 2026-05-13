@@ -510,6 +510,29 @@ module baram_aer::aer {
             expected_capability_version,
         );
 
+        // Plan C C3-v2 DV10: triggered_action auto-fill for execution-class
+        // AERs. The replay-graph edge "the action this AER refers to" is
+        // self-referential for execution AERs -- the action IS the PTB the
+        // AER is created in. Caller-supplied value would let a malicious
+        // caller misattribute the edge (poison the replay graph) while
+        // still passing every other check.
+        //
+        // `tx_context::digest(ctx)` returns the current PTB's 32-byte
+        // transaction digest, available before effects are computed
+        // because it's derived from TransactionData (inputs + commands +
+        // signature commitment). The same value Sui SDK reports as
+        // `signAndExecuteTransaction().digest`.
+        //
+        // Cognition-class AERs preserve caller-supplied semantics: those
+        // reference a *prior* tx digest (e.g., last cycle's swap) that
+        // the caller legitimately knows.
+        let final_triggered_action = if (event_class == EVENT_CLASS_EXECUTION) {
+            let bytes = *tx_context::digest(ctx);
+            option::some(object::id_from_bytes(bytes))
+        } else {
+            triggered_action
+        };
+
         finalize_aer_from_receipt(
             registry,
             request_id, requester, receipt_executor, price, model_name, output_hash,
@@ -520,7 +543,7 @@ module baram_aer::aer {
             purpose, option::some(cap_version), constraints,
             executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
             requested_at,
-            triggered_by, triggered_action, intent_id, parent_intent_id, execution_id,
+            triggered_by, final_triggered_action, intent_id, parent_intent_id, execution_id,
             event_class, action_type, action_schema_version, payload_codec,
             payload_hash, payload_bytes, action_summary, action_outcome,
             triggered_by_type, triggered_by_ref,
@@ -845,4 +868,7 @@ module baram_aer::aer {
 
     #[test_only]
     public fun time_settled_at(t: &TimeContext): u64 { t.settled_at }
+
+    #[test_only]
+    public fun chain_triggered_action(c: &ChainContext): Option<ID> { c.triggered_action }
 }

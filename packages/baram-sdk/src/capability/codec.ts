@@ -58,6 +58,9 @@ export const CapabilityBcs = bcs.struct('Capability', {
   allowed_assets: bcs.vector(TypeNameBcs),
   allowed_targets: bcs.vector(bcs.Address),
   risk_limits: RiskLimitsBcs,
+  // Plan C C3-v2 DV6: Option<ID> of the linked AgentEscrow. BCS for
+  // Option<T> is a 1-byte tag (0=None, 1=Some) followed by T's bytes.
+  escrow_id: bcs.option(bcs.Address),
 });
 
 // ===== Enum mappings =====
@@ -75,6 +78,7 @@ const MUTATION_KIND_REVERSE: Record<number, MutationKind> = {
   3: 'actions',
   4: 'assets',
   5: 'targets',
+  6: 'escrow',
 };
 
 export function pauseModeFromTag(tag: number): PauseMode {
@@ -134,5 +138,7 @@ export function decodeCapability(bytes: Uint8Array): Capability {
     allowedAssets: raw.allowed_assets.map((t) => t.name),
     allowedTargets: raw.allowed_targets,
     riskLimits: risk,
+    // bcs.option() decodes Option<T> as `T | null`.
+    escrowId: raw.escrow_id ?? null,
   };
 }
