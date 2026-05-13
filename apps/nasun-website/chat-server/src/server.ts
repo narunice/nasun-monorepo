@@ -17,6 +17,7 @@ import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-ap
 import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
+import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
@@ -451,6 +452,12 @@ async function handleHttpRequest(
   // Delegate to leaderboard API handler first (handles its own OPTIONS with POST/PATCH)
   const url = new URL(req.url || '/', `http://localhost:${CONFIG.port}`);
   if (leaderboardEnabled && await handleLeaderboardRequest(req, res, url, corsHeaders, CONFIG, leaderboardDeps)) {
+    return;
+  }
+
+  // Baram (Nasun AI) Telegram session API — manages signed sessions between
+  // user wallets and the Telegram bot. Handles its own OPTIONS for POST.
+  if (await handleBaramTelegramRequest(req, res, url, corsHeaders)) {
     return;
   }
 

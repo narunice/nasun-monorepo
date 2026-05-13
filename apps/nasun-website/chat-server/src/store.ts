@@ -133,6 +133,28 @@ export function initStore(config: ChatServerConfig): void {
   try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN custom_avatar_key TEXT'); } catch { /* already exists */ }
   try { db.exec('ALTER TABLE nasun_profiles ADD COLUMN custom_avatar_banned INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
+  // Baram (Nasun AI) Telegram session tokens.
+  // sid is the source of truth; revoked_at NULL = active. JWTs issued from this
+  // table are short-lived (5 min) caches — sid lookup is authoritative on every
+  // sensitive op. tg_user_id is populated only after the user opens the bot
+  // deep link, so its index excludes NULL rows (most rows during the link
+  // pending window).
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS baram_sessions (
+      sid TEXT PRIMARY KEY,
+      wallet TEXT NOT NULL,
+      agent TEXT NOT NULL,
+      capability_id TEXT NOT NULL,
+      tg_user_id TEXT,
+      expires_at INTEGER NOT NULL,
+      revoked_at INTEGER,
+      created_at INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_baram_sessions_wallet ON baram_sessions(wallet);
+    CREATE INDEX IF NOT EXISTS idx_baram_sessions_tg_user
+      ON baram_sessions(tg_user_id) WHERE tg_user_id IS NOT NULL;
+  `);
+
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
     console.log(`[nasun-profile] API URL: ${nasunProfileApiUrl}`);
