@@ -34,8 +34,13 @@ export function useLotteryPage(celebrate: any) {
     clearError,
   } = useLotteryActions();
 
-  const { tickets, refresh: refreshTickets } = useMyTickets(walletAddress, round?.id);
+  const { tickets: rawTickets, refresh: refreshTickets } = useMyTickets(walletAddress, round?.id);
   const claimSummary = useClaimSummary(walletAddress);
+
+  // Optimistically hide tickets that have been claimed but whose on-chain state
+  // may not be reflected yet due to RPC indexer lag. Cleared when the round changes.
+  const [claimedTicketIds, setClaimedTicketIds] = useState<Set<string>>(new Set());
+  const tickets = rawTickets.filter((t) => !claimedTicketIds.has(t.id));
   const invalidateHistory = useInvalidateGameHistory();
 
   const closeMs = round?.closeTime ?? fallbackCloseAt.getTime();
@@ -102,8 +107,10 @@ export function useLotteryPage(celebrate: any) {
     const claimable = claimSummary.claimable.find((c) => c.round.id === roundId && c.ticket.id === ticketId);
     const ok = await claimPrize(roundId, ticketId);
     if (ok) {
+      setClaimedTicketIds((prev) => new Set([...prev, ticketId]));
       refreshRound();
       refreshTickets();
+      setTimeout(refreshTickets, 2_000);
       invalidateHistory();
       if (claimable) {
         celebrate({

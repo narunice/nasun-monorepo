@@ -37,6 +37,7 @@ export function useNumberMatchPage() {
     const r = await play(picks)
     if (r) {
       setResult(r)
+      setPicks([])
       invalidateHistory()
       if (r.isWin) {
         showToast(
