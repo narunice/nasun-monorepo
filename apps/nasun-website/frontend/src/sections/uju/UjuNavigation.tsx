@@ -3,7 +3,7 @@ import { useNotificationStore } from "./notifications/notificationStore";
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "activity",  label: "Activity",  icon: ActivityIcon },
-  // { id: "ai",        label: "AI",        icon: AIIcon }, // Hidden in production until Plan D D-8 ships
+  { id: "ai",        label: "AI",        icon: AIIcon },
   { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
