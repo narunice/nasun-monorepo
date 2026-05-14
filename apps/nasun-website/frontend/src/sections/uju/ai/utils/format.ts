@@ -51,6 +51,20 @@ export function nusdcToRaw(displayAmount: string): number {
   return raw;
 }
 
+export function formatMessageTime(ms: number): string {
+  if (!ms) return '';
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return 'now';
+  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86400_000) return `${Math.floor(diff / 3600_000)}h ago`;
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
 export function formatDate(ms: number): string {
   if (!ms) return '-';
   return new Date(ms).toLocaleString('en-US', {

@@ -22,7 +22,7 @@ const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
 const SUB_PARAM = 'sub';
 
-const VALID_SUBS: AgentSubTab[] = ['dashboard', 'activity', 'escrow', 'sessions'];
+const VALID_SUBS: AgentSubTab[] = ['dashboard', 'activity', 'escrow', 'sessions', 'chat'];
 
 function NotConnected() {
   return (
@@ -66,7 +66,7 @@ function AboutCard({ onOpenBudgets }: { onOpenBudgets: () => void }) {
         authorized it. All activity is transparent and auditable.
       </p>
       <div className="flex items-center gap-4">
-        <a href="/ecosystem/baram" className="inline-block text-sm text-pado-2 hover:underline">
+        <a href="/ecosystem/nasun-ai" className="inline-block text-sm text-pado-2 hover:underline">
           Learn more about Nasun AI
         </a>
         <button
