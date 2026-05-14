@@ -1,17 +1,28 @@
 /**
  * AiTab - root entry for the my-account "AI" sub-tab.
  *
- * Reads the `view` query param to drive sub-routes (S3 scope: list | register).
- * Future S4 sub-routes (detail, escrow, sessions) will key off `view=detail&agent=<id>`.
+ * Sub-routes are driven by the `view` query param:
+ *   view=list      (default) -> AgentsList
+ *   view=register           -> AgentsList + CreateAgentModal
+ *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<...>`)
+ *   view=budgets            -> Budgets page
+ *
+ * The AgentDetail sub-tab is held in the `sub` query param so deep links
+ * survive a refresh.
  */
 
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
 import { AgentsList } from './pages/AgentsList';
+import { AgentDetail, type AgentSubTab } from './pages/AgentDetail';
+import { Budgets } from './pages/Budgets';
 
 const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
+const SUB_PARAM = 'sub';
+
+const VALID_SUBS: AgentSubTab[] = ['dashboard', 'activity', 'escrow', 'sessions'];
 
 function NotConnected() {
   return (
@@ -45,7 +56,7 @@ function NotConnected() {
   );
 }
 
-function AboutCard() {
+function AboutCard({ onOpenBudgets }: { onOpenBudgets: () => void }) {
   return (
     <div className="p-4 rounded-xl bg-uju-card/40 border border-uju-border/40 space-y-2">
       <h4 className="text-sm font-semibold text-white">What is Nasun AI?</h4>
@@ -54,9 +65,18 @@ function AboutCard() {
         produces an on-chain receipt that proves what the agent did, what it cost, and who
         authorized it. All activity is transparent and auditable.
       </p>
-      <a href="/ecosystem/baram" className="inline-block text-sm text-pado-2 hover:underline">
-        Learn more about Nasun AI
-      </a>
+      <div className="flex items-center gap-4">
+        <a href="/ecosystem/baram" className="inline-block text-sm text-pado-2 hover:underline">
+          Learn more about Nasun AI
+        </a>
+        <button
+          type="button"
+          onClick={onOpenBudgets}
+          className="text-sm text-pado-2 hover:underline"
+        >
+          Manage Budgets
+        </button>
+      </div>
     </div>
   );
 }
@@ -66,10 +86,11 @@ export function AiTab() {
   const walletAddress = user?.walletAddress;
   const [searchParams, setSearchParams] = useSearchParams();
   const view = searchParams.get(VIEW_PARAM) ?? 'list';
-  // agent param reserved for S4 (AgentDetail). Read here only so AgentsList can hand
-  // off without us re-parsing.
-  const _agent = searchParams.get(AGENT_PARAM);
-  void _agent;
+  const agentId = searchParams.get(AGENT_PARAM);
+  const rawSub = searchParams.get(SUB_PARAM);
+  const sub: AgentSubTab = VALID_SUBS.includes(rawSub as AgentSubTab)
+    ? (rawSub as AgentSubTab)
+    : 'dashboard';
 
   const updateView = useCallback(
     (next: string | null, extra?: Record<string, string | null>) => {
@@ -90,8 +111,28 @@ export function AiTab() {
     [setSearchParams],
   );
 
-  if (!walletAddress) {
-    return <NotConnected />;
+  if (!walletAddress) return <NotConnected />;
+
+  if (view === 'detail' && agentId) {
+    return (
+      <div className="space-y-4">
+        <AgentDetail
+          walletAddress={walletAddress}
+          agentId={agentId}
+          subTab={sub}
+          onChangeSub={(next) => updateView('detail', { sub: next })}
+          onBack={() => updateView(null, { agent: null, sub: null })}
+        />
+      </div>
+    );
+  }
+
+  if (view === 'budgets') {
+    return (
+      <div className="space-y-4">
+        <Budgets walletAddress={walletAddress} onBack={() => updateView(null)} />
+      </div>
+    );
   }
 
   return (
@@ -101,10 +142,9 @@ export function AiTab() {
         showRegister={view === 'register'}
         onShowRegister={() => updateView('register')}
         onCloseRegister={() => updateView(null)}
-        // Selecting an agent is a no-op until S4 wires AgentDetail.
-        onSelectAgent={undefined}
+        onSelectAgent={(id) => updateView('detail', { agent: id, sub: 'dashboard' })}
       />
-      <AboutCard />
+      <AboutCard onOpenBudgets={() => updateView('budgets')} />
     </div>
   );
 }
