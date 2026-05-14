@@ -8,11 +8,14 @@
  *   4. Show QR code + copy/open buttons.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import QRCode from 'qrcode';
 import { useLinkSession } from '../../hooks/useNasunAiSessions';
 
-const QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=';
+// Telegram deep link (which embeds the session id) MUST be rendered locally.
+// A third-party QR service would leak the sid to that service and let anyone
+// holding it bind their own Telegram account to the user's agent.
 
 interface LinkTelegramModalProps {
   agentAddress: string;
@@ -29,8 +32,21 @@ export function LinkTelegramModal({
 }: LinkTelegramModalProps) {
   const { link, status, error, result, reset } = useLinkSession();
   const [copied, setCopied] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const deepLink = result?.deepLink ?? null;
+
+  useEffect(() => {
+    if (!deepLink || !canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, deepLink, {
+      width: 200,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#000000', light: '#ffffff' },
+    }).catch(() => {
+      // Surface failure quietly — the user can still tap "Open in Telegram".
+    });
+  }, [deepLink]);
   const isBusy = status === 'signing' || status === 'submitting';
 
   const handleStart = async () => {
@@ -131,9 +147,9 @@ export function LinkTelegramModal({
               <p className="text-sm text-uju-secondary text-center">
                 Scan the QR code with your phone or tap the link below to open Telegram.
               </p>
-              <img
-                src={`${QR_API}${encodeURIComponent(deepLink)}`}
-                alt="Telegram deep link QR code"
+              <canvas
+                ref={canvasRef}
+                aria-label="Telegram deep link QR code"
                 width={200}
                 height={200}
                 className="rounded-xl border border-uju-border/60 bg-white"

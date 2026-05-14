@@ -327,10 +327,17 @@ async function handleListSessions(
 
 const BARAM_TG_PREFIX = '/api/baram/telegram/';
 const BARAM_AGENT_PREFIX = '/api/baram/agent/';
+const NASUN_AI_TG_PREFIX = '/api/nasun-ai/telegram/';
+const NASUN_AI_AGENT_PREFIX = '/api/nasun-ai/agent/';
 
 /**
- * Returns true if the URL matched a baram route (telegram or agent).
+ * Returns true if the URL matched a baram/nasun-ai route (telegram or agent).
  * Caller should not continue routing.
+ *
+ * `/api/nasun-ai/*` is the canonical alias; `/api/baram/*` is kept for ~2 weeks
+ * to support already-deployed clients (Additive-first rename pattern). After
+ * cutover both frontend + runtime call /api/nasun-ai/*. Remove the legacy
+ * prefix only after telemetry confirms zero traffic on it.
  */
 export async function handleBaramTelegramRequest(
   req: import('node:http').IncomingMessage,
@@ -338,6 +345,13 @@ export async function handleBaramTelegramRequest(
   url: URL,
   baseCorsHeaders: Record<string, string>,
 ): Promise<boolean> {
+  // Normalize aliased prefix so the rest of routing stays in one place.
+  if (url.pathname.startsWith(NASUN_AI_TG_PREFIX)) {
+    url.pathname = BARAM_TG_PREFIX + url.pathname.slice(NASUN_AI_TG_PREFIX.length);
+  } else if (url.pathname.startsWith(NASUN_AI_AGENT_PREFIX)) {
+    url.pathname = BARAM_AGENT_PREFIX + url.pathname.slice(NASUN_AI_AGENT_PREFIX.length);
+  }
+
   const isTg = url.pathname.startsWith(BARAM_TG_PREFIX);
   const isAgent = url.pathname.startsWith(BARAM_AGENT_PREFIX);
   if (!isTg && !isAgent) return false;
