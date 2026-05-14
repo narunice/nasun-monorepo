@@ -27,12 +27,12 @@ const KOL_ACCOUNTS = [
 // Lowercase set for fast audience routing
 const KOL_LOOKUP = new Set(KOL_ACCOUNTS.map(a => a.toLowerCase()));
 
-// Per-audience queries. Splitting prevents the high-volume Pado media
-// outlets from crowding out KOL tweets in a single max_results=10 window
-// (which made the Uju feed swing between 0–10 items). Each search returns
-// up to 10 tweets, so each audience consistently gets ~10.
-const MEDIA_QUERY = '(' + MEDIA_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
-const KOL_QUERY = '(' + KOL_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
+// Single combined query with a wide max_results window so high-volume MEDIA
+// outlets can't crowd out KOL tweets — partitioning happens in-code after
+// fetch. Halves X API call count vs. the previous per-audience split.
+const ALL_ACCOUNTS = [...MEDIA_ACCOUNTS, ...KOL_ACCOUNTS];
+const COMBINED_QUERY = '(' + ALL_ACCOUNTS.map(a => `from:${a}`).join(' OR ') + ') -is:retweet -is:reply';
+const PER_AUDIENCE_CAP = 10;
 
 function audienceFor(username: string): 'pado' | 'uju' {
   return KOL_LOOKUP.has(username.toLowerCase()) ? 'uju' : 'pado';
@@ -91,10 +91,10 @@ function tweetToNewsItem(
   };
 }
 
-async function searchTweets(bearerToken: string, query: string): Promise<NewsItem[]> {
+async function searchTweets(bearerToken: string, query: string, maxResults: number): Promise<NewsItem[]> {
   const params = new URLSearchParams({
     query,
-    max_results: '10',
+    max_results: String(maxResults),
     'tweet.fields': 'created_at,author_id,attachments',
     expansions: 'author_id,attachments.media_keys',
     'user.fields': 'username,name',
@@ -139,18 +139,23 @@ export async function fetchTweets(): Promise<NewsItem[]> {
   try {
     const bearerToken = await getBearerToken();
 
-    // Run both searches in parallel. Each returns up to 10 tweets so the
-    // per-audience feed is stable regardless of relative posting volume.
-    const [mediaTweets, kolTweets] = await Promise.all([
-      searchTweets(bearerToken, MEDIA_QUERY).catch(err => {
-        console.error('Media tweet search failed:', err instanceof Error ? err.message : err);
-        return [] as NewsItem[];
-      }),
-      searchTweets(bearerToken, KOL_QUERY).catch(err => {
-        console.error('KOL tweet search failed:', err instanceof Error ? err.message : err);
-        return [] as NewsItem[];
-      }),
-    ]);
+    // One combined call with a wide window (max_results=50). MEDIA outlets
+    // post far more than KOLs, so without an in-code cap they would still
+    // crowd out KOLs. Cap each audience at PER_AUDIENCE_CAP, newest first.
+    const tweets = await searchTweets(bearerToken, COMBINED_QUERY, 50).catch(err => {
+      console.error('Tweet search failed:', err instanceof Error ? err.message : err);
+      return [] as NewsItem[];
+    });
+
+    const mediaTweets: NewsItem[] = [];
+    const kolTweets: NewsItem[] = [];
+    for (const t of tweets) {
+      if (t.audience === 'uju') {
+        if (kolTweets.length < PER_AUDIENCE_CAP) kolTweets.push(t);
+      } else {
+        if (mediaTweets.length < PER_AUDIENCE_CAP) mediaTweets.push(t);
+      }
+    }
 
     return [...mediaTweets, ...kolTweets];
   } catch (error) {
