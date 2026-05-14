@@ -1,5 +1,6 @@
 // src/routes/AppRoutes.tsx
 import { Routes, Route, Navigate } from "react-router-dom";
+import { ecosystemAiPath } from "@/config/featureFlags";
 import { Suspense, lazy } from "react";
 import React from "react";
 import PrivateRoute from "./PrivateRoute";
@@ -131,7 +132,7 @@ const AppRoutes = () => {
 
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
-        <Route path="/ecosystem/ai-economy" element={<Navigate to="/ecosystem/nasun-ai" replace />} />
+        <Route path="/ecosystem/ai-economy" element={<Navigate to={ecosystemAiPath} replace />} />
         <Route path="/ecosystem/finance" element={<Navigate to="/ecosystem/pado" replace />} />
         <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/ips" element={<Navigate to="/ecosystem" replace />} />

@@ -2,6 +2,7 @@
 import { EnhancedRouteConfigBuilder } from "../types/routes.d";
 import { TFunction } from "i18next";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
+import { NASUN_AI_ENABLED } from "./featureFlags";
 
 // 페이지 컴포넌트 lazy loading
 export const Pages = {
@@ -207,7 +208,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: Pages.NasunAi, // 기본 서브페이지: Nasun AI
+    component: NASUN_AI_ENABLED ? Pages.NasunAi : Pages.BaramDark,
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
@@ -223,18 +224,19 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.EcosystemLeaderboard,
           hidden: true,
         },
-        {
+        // /ecosystem/nasun-ai is only exposed when the feature flag is on.
+        ...(NASUN_AI_ENABLED ? [{
           name: "navigation.baramAi",
           path: "/ecosystem/nasun-ai",
           element: Pages.NasunAi,
-        },
-        // Legacy slug kept so external links keep resolving. Renders the same
-        // Nasun AI content; a 308 redirect at the CDN edge is a S7 follow-up.
+        }] : []),
+        // /ecosystem/baram: shows NasunAi content when flag is on (soft alias),
+        // or the original BaramDark content when flag is off (prod state).
         {
           name: "navigation.baramAi",
           path: "/ecosystem/baram",
-          element: Pages.NasunAi,
-          hidden: true,
+          element: NASUN_AI_ENABLED ? Pages.NasunAi : Pages.BaramDark,
+          hidden: !NASUN_AI_ENABLED,
         },
         {
           name: "navigation.gostop",

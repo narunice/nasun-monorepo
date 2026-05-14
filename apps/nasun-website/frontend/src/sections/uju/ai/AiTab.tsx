@@ -1,3 +1,5 @@
+import { ecosystemAiPath } from "@/config/featureFlags";
+
 /**
  * AiTab - root entry for the my-account "AI" sub-tab.
  *
@@ -66,7 +68,7 @@ function AboutCard({ onOpenBudgets }: { onOpenBudgets: () => void }) {
         authorized it. All activity is transparent and auditable.
       </p>
       <div className="flex items-center gap-4">
-        <a href="/ecosystem/nasun-ai" className="inline-block text-sm text-pado-2 hover:underline">
+        <a href={ecosystemAiPath} className="inline-block text-sm text-pado-2 hover:underline">
           Learn more about Nasun AI
         </a>
         <button

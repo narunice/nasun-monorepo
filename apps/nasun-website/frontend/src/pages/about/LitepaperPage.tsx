@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { ecosystemAiPath } from "@/config/featureFlags";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { PageTitle } from "@/components/ui/PageTitle";
@@ -65,7 +66,7 @@ export default function LitepaperPage() {
                 </Link>
               </ButtonV2>
               <ButtonV2 variant="baram" size="md" asChild className="w-full !from-[#5e9e5c80] !to-[#a2d4a080] hover:!from-[#5e9e5c] hover:!to-[#a2d4a0] hover:shadow-lg transition-all duration-300">
-                <Link to="/ecosystem/nasun-ai">
+                <Link to={ecosystemAiPath}>
                   Explore <span className="font-semibold ml-1">Nasun AI</span>
                 </Link>
               </ButtonV2>
