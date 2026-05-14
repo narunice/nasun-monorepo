@@ -390,7 +390,7 @@ process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 
 async function main(): Promise<void> {
   console.log('');
-  console.log('  Baram Agent Runner');
+  console.log('  Nasun AI Runtime');
   console.log('  Nasun Devnet (Chain ID: 272218f1)');
   console.log('');
 
@@ -431,7 +431,7 @@ async function main(): Promise<void> {
     // heartbeat every 60s so the Telegram webhook knows where to forward /wake.
     if (config.chatServerBaseUrl) {
       const wakeHttpUrl = `http://127.0.0.1:${config.wakePort}`;
-      const heartbeatUrl = `${config.chatServerBaseUrl}/api/baram/agent/heartbeat`;
+      const heartbeatUrl = `${config.chatServerBaseUrl}/api/nasun-ai/agent/heartbeat`;
       const sendHeartbeat = (): void => {
         const body = JSON.stringify({
           agent: config.agentAddress,

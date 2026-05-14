@@ -2,13 +2,13 @@
  * Telegram session management for Nasun AI agents.
  *
  * Two-step wallet-signature protocol against the unified chat-server:
- *   1. POST /api/baram/telegram/challenge          -> challenge string
- *   2. POST /api/baram/telegram/{link|revoke|list}-session
+ *   1. POST /api/nasun-ai/telegram/challenge          -> challenge string
+ *   2. POST /api/nasun-ai/telegram/{link|revoke|list}-session
  *      Body: { challenge, signature }
  *
- * The `/api/baram/*` URL slug is the legacy chat-server alias - S5 will rename
- * to `/api/nasun-ai/*` once the chat-server is migrated. signer.signPersonal()
- * produces the Sui personal-message signature the server verifies.
+ * The chat-server dual-mounts `/api/nasun-ai/*` and `/api/baram/*` for a 2-week
+ * cutover window. signer.signPersonal() produces the Sui personal-message
+ * signature the server verifies.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -33,7 +33,7 @@ async function fetchChallenge(
   purpose: 'link' | 'revoke' | 'list',
   extra?: { agent?: string; capabilityId?: string; sid?: string },
 ): Promise<string> {
-  const res = await fetch(`${CHAT_SERVER_URL}/api/baram/telegram/challenge`, {
+  const res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/telegram/challenge`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ wallet, purpose, ...extra }),
@@ -72,7 +72,7 @@ export function useLinkSession() {
         const { signature } = await signer.signPersonal(msgBytes);
 
         setStatus('submitting');
-        const res = await fetch(`${CHAT_SERVER_URL}/api/baram/telegram/link-session`, {
+        const res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/telegram/link-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challenge, signature }),
@@ -125,7 +125,7 @@ export function useNasunAiSessions() {
       const msgBytes = new TextEncoder().encode(challenge);
       const { signature } = await signer.signPersonal(msgBytes);
 
-      const res = await fetch(`${CHAT_SERVER_URL}/api/baram/telegram/sessions`, {
+      const res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/telegram/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ challenge, signature }),
@@ -161,7 +161,7 @@ export function useRevokeSession() {
         const msgBytes = new TextEncoder().encode(challenge);
         const { signature } = await signer.signPersonal(msgBytes);
 
-        const res = await fetch(`${CHAT_SERVER_URL}/api/baram/telegram/revoke-session`, {
+        const res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/telegram/revoke-session`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ challenge, signature }),
