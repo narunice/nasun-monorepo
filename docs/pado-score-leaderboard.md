@@ -1,7 +1,8 @@
 # Pado Score Leaderboard - Technical Reference
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 UTC → 00:00 UTC 변경; settle-pado cron 자동화 월요일 00:15 UTC; PnL 크로스-풀 decimal 버그 수정(풀별 독립 계산); DAILY_TRADE_CAP=24 SQL per-day 방식 도입; PER_TRADE 4→2; PER_600_PNL 100→25; PER_10PCT_RETURN 100→200)
+**최근 업데이트**: 2026-05-14 (prediction market PnL을 weekly score에 합산; `prediction_markets` 테이블 + `MarketResolved`/`MarketCancelled` 폴러 추가; `trade_fills.is_yes` 컬럼 추가; UI에 "Pred. Volume" + "Pred. Markets" 컬럼 노출; spot과 동일 가중치 적용, prediction loss penalty는 v1에서 미적용)
+이전: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 UTC → 00:00 UTC 변경; settle-pado cron 자동화 월요일 00:15 UTC; PnL 크로스-풀 decimal 버그 수정(풀별 독립 계산); DAILY_TRADE_CAP=24 SQL per-day 방식 도입; PER_TRADE 4→2; PER_600_PNL 100→25; PER_10PCT_RETURN 100→200)
 **관련 문서**: [ecosystem-points-system.md](ecosystem-points-system.md)
 
 ---
@@ -10,7 +11,13 @@
 
 Pado Score Leaderboard는 매주 **Pado 거래 활동**(스팟 DEX + 예측시장)을 기반으로 순위를 산정하고, 주간 종료 후 생태계 포인트(Ecosystem Points)로 환산 지급하는 경쟁 리더보드입니다.
 
-> **Prediction market 통합 (2026-05)**: Pado 예측시장의 `prediction_market::OrderFilled` 이벤트도 동일한 `trade_fills` 테이블에 적재됩니다. `pool_id`를 `prediction:${market_id}` prefix로 저장하여 source를 식별. `tradeCount` / `volumeUsd`(=NUSDC `cost`) / `unique_pools`에는 자연스럽게 합산되며, **PnL은 prediction 풀에서 격리**(`pool_id NOT LIKE 'prediction:%'`) — shares 단위가 spot의 base token decimals 모델과 호환되지 않고 binary outcome 시장이라 mark-to-market 의미가 모호하기 때문. perp/lending 도입 시에도 별도 venue ledger 권장.
+> **Prediction market 통합 (2026-05)**: Pado 예측시장의 `prediction_market::OrderFilled` 이벤트는 동일한 `trade_fills` 테이블에 적재됩니다 (`pool_id` prefix `prediction:${market_id}`로 식별). `tradeCount` / `volumeUsd`(=NUSDC `cost`) / `unique_pools`에는 자동 합산.
+>
+> **Spot PnL 격리**: spot `aggregateTraderPnlRaw`는 `pool_id NOT LIKE 'prediction:%'`로 prediction을 명시 격리 (shares 단위가 spot의 base token decimals 모델과 호환되지 않고 binary outcome이라 mark-to-market 의미가 모호).
+>
+> **Prediction PnL (2026-05-14 추가)**: `computeWeeklyPredictionPnl`이 별도 계산. 인덱서가 `MarketResolved`/`MarketCancelled`를 `prediction_markets` 테이블에 인덱싱하고, 해당 주에 resolved된 시장에 대해 per-user per-market position을 정산하여 spot과 동일 가중치(`PER_600_PNL=25`, `PER_10PCT_RETURN=200`)로 score에 합산. v1에서 prediction loss penalty는 적용하지 않음 (binary outcome -100% 빈발로 score 분포 왜곡 방지). perp/lending 도입 시에도 별도 venue ledger 권장.
+>
+> **`taker_is_bid` 컬럼 의미 양면성**: prediction OrderFilled의 `is_bid`는 maker 기준 (`prediction_market.move:202` 주석). 인덱서가 그대로 `taker_is_bid` 컬럼에 저장하므로 prediction row의 해당 컬럼은 사실상 `maker_is_bid`. prediction SQL을 작성할 때 반드시 명시 주석 + alias. spot+prediction을 이 컬럼으로 join하면 사일런트 버그 발생. 컬럼명/뷰 정리는 별도 cleanup PR.
 
 - 주 단위 리셋으로 신규 참여자에게 지속적 기회를 부여
 - 상위 2000위까지 Ecosystem Points 지급 (Genesis Pass 보유자 2x). 자격: 등록된 identityId + Alliance NFT 활성화. (소셜 계정 요건은 2026-04-27 정책 업데이트로 폐지)
@@ -45,7 +52,7 @@ PostgreSQL: activity_points (Ecosystem Points 지급)
 집계 주기마다 `apps/nasun-website/chat-server/src/aggregator.ts`의 `runWeeklyScoreAggregation()`이 실행되며 다음 공식으로 점수를 계산합니다.
 
 ```
-totalScore = tradePoints + volumePoints + diversityPoints + pnlScore
+totalScore = tradePoints + volumePoints + diversityPoints + pnlScore + predictionPnlScore
 
 tradePoints     = 50 (첫 거래 보너스, 1건 이상일 때)
                 + capped_trade_count * 2
@@ -54,14 +61,21 @@ tradePoints     = 50 (첫 거래 보너스, 1건 이상일 때)
 
 volumePoints    = floor(volume_raw / 1,000,000,000) * 5
                   (NUSDC 6 decimals 기준, $1K = 1e9 raw)
+                  (spot + prediction `cost` 자동 합산)
 
 diversityPoints = unique_pools * 25
+                  (spot 풀 + `prediction:${market_id}` 풀 합산)
 
-pnlScore        = floor(realizedPnl / 6e8) * 25    (실현 수익 > 0, $600당 25pt)
-                + floor(pnlPercent / 10) * 200      (수익률 > 0, 10%당 200pt)
-                - lossPenalty                        (floor 0)
+pnlScore        = floor(realizedPnl / 6e8) * 25    (spot 실현 수익 > 0, $600당 25pt)
+                + floor(pnlPercent / 10) * 200      (spot 수익률 > 0, 10%당 200pt)
+                - lossPenalty                        (floor 0; spot only)
 
-lossPenalty:
+predictionPnlScore = floor(predictionRealizedPnl / 6e8) * 25
+                   + floor(predictionPnlPercent / 10) * 200
+                   (v1: loss penalty 미적용. binary outcome -100% 빈발 → tier 최상단 페널티가 분포 왜곡)
+                   (시장이 해소된 주에 한해 합산; MarketCancelled 시장은 제외)
+
+lossPenalty (spot only):
   pnlPercent <= -5%  →  5pt
   pnlPercent <= -10% → 10pt
   pnlPercent <= -15% → 15pt

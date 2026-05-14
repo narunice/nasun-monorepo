@@ -137,6 +137,16 @@ export function ScoreTraderRow({ trader, isCurrentUser, isHighlighted }: ScoreTr
           {(trader.tradeCount ?? 0).toLocaleString()}
         </span>
       </td>
+      <td className="py-3 px-3 text-right hidden md:table-cell">
+        <span className="text-sm text-theme-text-secondary">
+          {formatVolume(trader.predictionVolumeUsd ?? '0')}
+        </span>
+      </td>
+      <td className="py-3 px-3 text-right hidden md:table-cell">
+        <span className="text-sm text-theme-text-secondary">
+          {(trader.predictionMarketCount ?? 0).toLocaleString()}
+        </span>
+      </td>
       <td className="py-3 px-3 text-center">
         <RankChangeIndicator change={trader.rankChange} />
       </td>

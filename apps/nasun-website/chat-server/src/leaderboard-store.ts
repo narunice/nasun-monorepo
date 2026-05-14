@@ -65,9 +65,24 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       base_quantity TEXT NOT NULL,
       quote_quantity TEXT NOT NULL,
       taker_is_bid INTEGER NOT NULL,
+      is_yes INTEGER,
       timestamp_ms INTEGER NOT NULL,
       UNIQUE(tx_digest, event_seq)
     );
+
+    -- Prediction-market resolution outcomes. Populated by the indexer's
+    -- MarketResolved/MarketCancelled pollers. computeWeeklyPredictionPnl joins
+    -- this against trade_fills filtered by pool_id LIKE 'prediction:%'.
+    CREATE TABLE IF NOT EXISTS prediction_markets (
+      market_id TEXT PRIMARY KEY,
+      status TEXT NOT NULL,
+      outcome INTEGER,
+      resolved_at_ms INTEGER NOT NULL,
+      updated_at INTEGER NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_pred_markets_resolved
+      ON prediction_markets(resolved_at_ms DESC);
 
     CREATE INDEX IF NOT EXISTS idx_fills_timestamp
       ON trade_fills(timestamp_ms DESC);
@@ -192,6 +207,12 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   if (!columnNames.has('taker_order_id')) {
     db.exec('ALTER TABLE trade_fills ADD COLUMN taker_order_id TEXT');
   }
+  // is_yes is nullable: NULL for spot fills (where the concept doesn't apply)
+  // and for prediction fills indexed before this column existed. Backfill those
+  // older prediction rows with a one-off script if PnL retroactivity matters.
+  if (!columnNames.has('is_yes')) {
+    db.exec('ALTER TABLE trade_fills ADD COLUMN is_yes INTEGER');
+  }
 
   // Migration: add points_from_pnl to trader_points
   const pointsCols = db.prepare("PRAGMA table_info('trader_points')").all() as Array<{ name: string }>;
@@ -210,8 +231,12 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       score_from_volume INTEGER NOT NULL DEFAULT 0,
       score_from_diversity INTEGER NOT NULL DEFAULT 0,
       score_from_pnl INTEGER NOT NULL DEFAULT 0,
+      score_from_prediction_pnl INTEGER NOT NULL DEFAULT 0,
       trade_count INTEGER NOT NULL DEFAULT 0,
       volume_quote TEXT NOT NULL DEFAULT '0',
+      prediction_volume_quote TEXT NOT NULL DEFAULT '0',
+      prediction_unique_markets INTEGER NOT NULL DEFAULT 0,
+      prediction_realized_pnl TEXT NOT NULL DEFAULT '0',
       rank INTEGER NOT NULL DEFAULT 0,
       prev_rank INTEGER NOT NULL DEFAULT 0,
       updated_at INTEGER NOT NULL,
@@ -229,11 +254,15 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
     -- settle-pado reads trader_points_weekly via GET /api/pado/internal/weekly-scores/:weekId.
   `);
 
-  // Migrate: add social badge columns if they don't exist yet (idempotent).
+  // Migrate: add social badge + prediction PnL columns if they don't exist yet (idempotent).
   const cols = (db!.prepare(`PRAGMA table_info(trader_points_weekly)`).all() as Array<{ name: string }>).map(c => c.name);
   if (!cols.includes('x_handle')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN x_handle TEXT`).run();
   if (!cols.includes('has_google')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN has_google INTEGER NOT NULL DEFAULT 0`).run();
   if (!cols.includes('has_telegram')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN has_telegram INTEGER NOT NULL DEFAULT 0`).run();
+  if (!cols.includes('score_from_prediction_pnl')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN score_from_prediction_pnl INTEGER NOT NULL DEFAULT 0`).run();
+  if (!cols.includes('prediction_volume_quote')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN prediction_volume_quote TEXT NOT NULL DEFAULT '0'`).run();
+  if (!cols.includes('prediction_unique_markets')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN prediction_unique_markets INTEGER NOT NULL DEFAULT 0`).run();
+  if (!cols.includes('prediction_realized_pnl')) db!.prepare(`ALTER TABLE trader_points_weekly ADD COLUMN prediction_realized_pnl TEXT NOT NULL DEFAULT '0'`).run();
 }
 
 export function getLeaderboardDb(): Database.Database {
@@ -383,15 +412,16 @@ export function insertTradeFill(fill: Omit<TradeFillRow, 'id'>): boolean {
       `INSERT OR IGNORE INTO trade_fills
          (tx_digest, event_seq, pool_id, maker_address, taker_address,
           maker_order_id, taker_order_id,
-          price, base_quantity, quote_quantity, taker_is_bid, timestamp_ms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          price, base_quantity, quote_quantity, taker_is_bid, is_yes, timestamp_ms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       fill.tx_digest, fill.event_seq, fill.pool_id,
       fill.maker_address, fill.taker_address,
       fill.maker_order_id ?? null, fill.taker_order_id ?? null,
       fill.price, fill.base_quantity, fill.quote_quantity,
-      fill.taker_is_bid, fill.timestamp_ms,
+      fill.taker_is_bid, fill.is_yes ?? null,
+      fill.timestamp_ms,
     );
   // changes === 0 means duplicate (INSERT OR IGNORE skipped)
   return result.changes > 0;
@@ -1187,6 +1217,215 @@ export function getCompetitionResults(
     .all(competitionId, limit) as CompetitionResultRow[];
 }
 
+// ===== Prediction Market Resolution =====
+
+export interface PredictionMarketRow {
+  market_id: string;
+  status: string;
+  outcome: number | null;
+  resolved_at_ms: number;
+}
+
+export function upsertPredictionMarket(row: {
+  market_id: string;
+  status: 'resolved' | 'cancelled';
+  outcome: number | null;
+  resolved_at_ms: number;
+}): void {
+  const now = Date.now();
+  // Once a market has been written, treat outcome as immutable: Move's
+  // resolve_market asserts STATUS_OPEN (prediction_market.move:343) so the
+  // chain itself cannot flip an outcome, but re-emission during indexer
+  // replay or a Sui RPC quirk could otherwise overwrite a known result and
+  // retroactively change weekly PnL. DO NOTHING preserves the first record;
+  // status='cancelled' → 'resolved' transitions are equally forbidden on-chain.
+  getLeaderboardDb()
+    .prepare(
+      `INSERT INTO prediction_markets (market_id, status, outcome, resolved_at_ms, updated_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(market_id) DO NOTHING`
+    )
+    .run(row.market_id, row.status, row.outcome, row.resolved_at_ms, now);
+}
+
+export function getResolvedMarketCount(): number {
+  const row = getLeaderboardDb()
+    .prepare(`SELECT COUNT(*) as cnt FROM prediction_markets WHERE status = 'resolved'`)
+    .get() as { cnt: number } | undefined;
+  return row?.cnt ?? 0;
+}
+
+interface PredictionFillRow {
+  market_id: string;
+  outcome: number;
+  maker_address: string;
+  taker_address: string;
+  is_yes: number;
+  // taker_is_bid in prediction rows actually stores maker_is_bid (see indexer.ts:447,
+  // prediction_market.move:202). Aliased here to make per-row math unambiguous.
+  maker_is_bid: number;
+  fill_shares: number;
+  cost: number;
+}
+
+export interface PredictionPnlResult {
+  realizedPnlRaw: number;     // signed, NUSDC raw (6 dec)
+  pnlPercent: number;
+  marketCount: number;
+  volumeQuoteRaw: number;     // NUSDC raw, unsigned (sum of |cost|)
+}
+
+/**
+ * Compute realized prediction-market PnL for every trader whose markets resolved
+ * in [weekStartMs, weekEndMs). Cancelled markets are excluded (status filter).
+ *
+ * Per-user per-market position model:
+ *   maker_is_bid = true  → maker buys long-shares of (market, is_yes),
+ *                          taker sells the same shares
+ *   maker_is_bid = false → maker sells, taker buys
+ * Payout per (user, market, side): if side == outcome, payout = net_shares * 1 NUSDC
+ *                                   else payout = 0
+ * realized_pnl = sum over (market, side) of (payout - net_cost)
+ *
+ * Note on the SQL column rename:
+ *   prediction OrderFilled's `is_bid` is emitted from the MAKER side
+ *   (prediction_market.move:202 comment). The indexer stores it in the
+ *   `taker_is_bid` column for backward compatibility with the spot schema.
+ *   This SQL aliases it back to `maker_is_bid` so the math below reads cleanly.
+ *   Do NOT join this with spot rows on that column.
+ */
+export function computeWeeklyPredictionPnl(
+  weekStartMs: number,
+  weekEndMs: number,
+  excludedAddresses: Set<string>,
+  washPairs?: Set<string>,
+): Map<string, PredictionPnlResult> {
+  const ldb = getLeaderboardDb();
+  const wash = buildWashPairsCte(washPairs);
+
+  const excludeList = [...excludedAddresses];
+  const excludeMaker = excludeList.length > 0
+    ? `AND tf.maker_address NOT IN (${excludeList.map(() => '?').join(',')})
+       AND tf.taker_address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+
+  // Single JOIN query: prediction_markets resolved in week × matching trade_fills.
+  // We CAST as REAL to stay consistent with spot's aggregateTraderPnlRaw (see
+  // leaderboard-store.ts:1236+); raw 6-dec NUSDC fits IEEE 754 safe range
+  // (Number.MAX_SAFE_INTEGER = 2^53 ≈ 9e15 ≈ $9B per single fill).
+  const sql = `
+    ${wash?.cte ?? ''}
+    SELECT
+      pm.market_id,
+      pm.outcome,
+      tf.maker_address,
+      tf.taker_address,
+      tf.is_yes,
+      tf.taker_is_bid AS maker_is_bid,
+      CAST(tf.base_quantity AS REAL) AS fill_shares,
+      CAST(tf.quote_quantity AS REAL) AS cost
+    FROM prediction_markets pm
+    JOIN trade_fills tf
+      ON tf.pool_id = 'prediction:' || pm.market_id
+      AND tf.timestamp_ms <= pm.resolved_at_ms
+      AND tf.is_yes IS NOT NULL
+    WHERE pm.status = 'resolved'
+      AND pm.resolved_at_ms >= ?
+      AND pm.resolved_at_ms <  ?
+      ${excludeMaker}
+      ${wash?.filterClause ?? ''}
+  `;
+
+  const params = [
+    ...(wash?.params ?? []),
+    weekStartMs,
+    weekEndMs,
+    ...excludeList, ...excludeList,
+  ];
+
+  const rows = ldb.prepare(sql).all(...params) as PredictionFillRow[];
+
+  // Per (address, market_id, is_yes) accumulator
+  interface PosKey { net_shares: number; net_cost: number; gross_cost: number }
+  const positions = new Map<string, PosKey>();
+  // Per address aggregator
+  const userMarkets = new Map<string, Set<string>>();
+  // Per (address, market_id) → outcome lookup
+  const marketOutcome = new Map<string, number>();
+
+  function key(addr: string, mid: string, isYes: number): string {
+    return `${addr}|${mid}|${isYes}`;
+  }
+
+  for (const row of rows) {
+    marketOutcome.set(row.market_id, row.outcome);
+    const signMaker = row.maker_is_bid === 1 ? 1 : -1;
+
+    const makerKey = key(row.maker_address, row.market_id, row.is_yes);
+    let m = positions.get(makerKey);
+    if (!m) { m = { net_shares: 0, net_cost: 0, gross_cost: 0 }; positions.set(makerKey, m); }
+    m.net_shares += signMaker * row.fill_shares;
+    m.net_cost   += signMaker * row.cost;
+    m.gross_cost += row.cost;
+
+    const takerKey = key(row.taker_address, row.market_id, row.is_yes);
+    let t = positions.get(takerKey);
+    if (!t) { t = { net_shares: 0, net_cost: 0, gross_cost: 0 }; positions.set(takerKey, t); }
+    t.net_shares -= signMaker * row.fill_shares;
+    t.net_cost   -= signMaker * row.cost;
+    t.gross_cost += row.cost;
+
+    let mSet = userMarkets.get(row.maker_address);
+    if (!mSet) { mSet = new Set(); userMarkets.set(row.maker_address, mSet); }
+    mSet.add(row.market_id);
+    let tSet = userMarkets.get(row.taker_address);
+    if (!tSet) { tSet = new Set(); userMarkets.set(row.taker_address, tSet); }
+    tSet.add(row.market_id);
+  }
+
+  // Roll positions up into per-user PnL + cost basis
+  const userAgg = new Map<string, { realizedPnlRaw: number; costBasis: number; volumeQuoteRaw: number }>();
+
+  for (const [k, pos] of positions) {
+    const [address, marketId, isYesStr] = k.split('|');
+    const isYes = Number(isYesStr);
+    const outcome = marketOutcome.get(marketId);
+    if (outcome === undefined) continue;
+    const isWinning = outcome === isYes;
+    // Move's fill_shares is already in NUSDC raw scale: at price=10000 (100%)
+    // mint gives `amount_nusdc * MAX_PRICE / price = amount_nusdc` shares
+    // (prediction_market.move:414), and `claim_winnings` pays
+    // `payout = shares` raw NUSDC (line 940). So 1 share = 1 raw NUSDC = 1e-6
+    // NUSDC. Multiplying by 1_000_000 would inflate PnL by 6 decimals.
+    const payout = isWinning ? pos.net_shares : 0;
+    const pnl = payout - pos.net_cost;
+    const costInvested = pos.net_cost > 0 ? pos.net_cost : 0;
+
+    let agg = userAgg.get(address);
+    if (!agg) { agg = { realizedPnlRaw: 0, costBasis: 0, volumeQuoteRaw: 0 }; userAgg.set(address, agg); }
+    agg.realizedPnlRaw += pnl;
+    agg.costBasis      += costInvested;
+    agg.volumeQuoteRaw += pos.gross_cost;
+  }
+
+  const out = new Map<string, PredictionPnlResult>();
+  for (const [address, agg] of userAgg) {
+    const marketSet = userMarkets.get(address);
+    const marketCount = marketSet ? marketSet.size : 0;
+    const pnlPercent = agg.costBasis > 0
+      ? Math.round((agg.realizedPnlRaw / agg.costBasis) * 10000) / 100
+      : 0;
+    out.set(address, {
+      realizedPnlRaw: Math.round(agg.realizedPnlRaw),
+      pnlPercent,
+      marketCount,
+      volumeQuoteRaw: Math.round(agg.volumeQuoteRaw),
+    });
+  }
+
+  return out;
+}
+
 // ===== PnL Aggregation =====
 
 interface RawPnlRow {
@@ -1595,8 +1834,12 @@ export interface WeeklyScoreRow {
   score_from_volume: number;
   score_from_diversity: number;
   score_from_pnl: number;
+  score_from_prediction_pnl: number;
   trade_count: number;
   volume_quote: string;
+  prediction_volume_quote: string;
+  prediction_unique_markets: number;
+  prediction_realized_pnl: string;
   rank: number;
   prev_rank: number;
   updated_at: number;
@@ -1626,8 +1869,12 @@ export function replaceWeeklyTraderScores(
     scoreFromVolume: number;
     scoreFromDiversity: number;
     scoreFromPnl: number;
+    scoreFromPredictionPnl: number;
     tradeCount: number;
     volumeQuote: string;
+    predictionVolumeQuote: string;
+    predictionUniqueMarkets: number;
+    predictionRealizedPnl: string;
     rank: number;
     prevRank: number;
     xHandle?: string | null;
@@ -1641,17 +1888,23 @@ export function replaceWeeklyTraderScores(
   const insertStmt = ldb.prepare(
     `INSERT INTO trader_points_weekly
        (week_id, address, total_score, score_from_trades, score_from_volume,
-        score_from_diversity, score_from_pnl, trade_count, volume_quote,
+        score_from_diversity, score_from_pnl, score_from_prediction_pnl,
+        trade_count, volume_quote,
+        prediction_volume_quote, prediction_unique_markets, prediction_realized_pnl,
         rank, prev_rank, updated_at, x_handle, has_google, has_telegram)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(week_id, address) DO UPDATE SET
        total_score = excluded.total_score,
        score_from_trades = excluded.score_from_trades,
        score_from_volume = excluded.score_from_volume,
        score_from_diversity = excluded.score_from_diversity,
        score_from_pnl = excluded.score_from_pnl,
+       score_from_prediction_pnl = excluded.score_from_prediction_pnl,
        trade_count = excluded.trade_count,
        volume_quote = excluded.volume_quote,
+       prediction_volume_quote = excluded.prediction_volume_quote,
+       prediction_unique_markets = excluded.prediction_unique_markets,
+       prediction_realized_pnl = excluded.prediction_realized_pnl,
        rank = excluded.rank,
        prev_rank = excluded.prev_rank,
        updated_at = excluded.updated_at,
@@ -1676,8 +1929,9 @@ export function replaceWeeklyTraderScores(
       insertStmt.run(
         weekId, t.address, t.totalScore,
         t.scoreFromTrades, t.scoreFromVolume,
-        t.scoreFromDiversity, t.scoreFromPnl,
+        t.scoreFromDiversity, t.scoreFromPnl, t.scoreFromPredictionPnl,
         t.tradeCount, t.volumeQuote,
+        t.predictionVolumeQuote, t.predictionUniqueMarkets, t.predictionRealizedPnl,
         t.rank, t.prevRank, now,
         t.xHandle ?? null, t.hasGoogle ? 1 : 0, t.hasTelegram ? 1 : 0,
       );
