@@ -29,6 +29,12 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   db.pragma('synchronous = FULL');
   db.pragma('auto_vacuum = INCREMENTAL');
 
+  // Performance pragmas (mmap_size, cache_size, temp_store) deliberately left at defaults.
+  // 2026-05-13: tried mmap=1GB+cache=100MB+temp=MEMORY → RSS exceeded max_memory_restart=700M
+  // and triggered OOM loop. Even temp_store=MEMORY alone pushed RSS past 432MB during initial
+  // aggregation. This 3.8GB RAM host has too little headroom for SQLite cache tuning until
+  // max_memory_restart is raised or aggregator is moved off the main process.
+
   // Recover leftover WAL frames from previous unclean shutdown.
   try { db.pragma('wal_checkpoint(TRUNCATE)'); } catch { /* ignore */ }
 
