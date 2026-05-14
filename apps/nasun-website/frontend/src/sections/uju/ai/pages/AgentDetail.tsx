@@ -19,12 +19,14 @@ import { DashboardTab } from './agent/DashboardTab';
 import { ActivityTab } from './agent/ActivityTab';
 import { EscrowTab } from './agent/EscrowTab';
 import { SessionsTab } from './agent/SessionsTab';
+import { ChatTab } from './agent/ChatTab';
 
-export type AgentSubTab = 'dashboard' | 'activity' | 'escrow' | 'sessions';
+export type AgentSubTab = 'dashboard' | 'activity' | 'escrow' | 'sessions' | 'chat';
 
 const SUB_TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'activity', label: 'Activity' },
+  { key: 'chat', label: 'Chat' },
   { key: 'escrow', label: 'Escrow' },
   { key: 'sessions', label: 'Sessions' },
 ];
@@ -130,6 +132,9 @@ export function AgentDetail({
         )}
         {subTab === 'sessions' && (
           <SessionsTab agentId={agent.id} agentAddress={agent.agentAddress} walletAddress={walletAddress} />
+        )}
+        {subTab === 'chat' && (
+          <ChatTab walletAddress={walletAddress} agentId={agent.id} />
         )}
       </div>
     </div>
