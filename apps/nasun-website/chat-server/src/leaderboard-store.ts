@@ -30,9 +30,10 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
   db.pragma('auto_vacuum = INCREMENTAL');
   // Multi-thread access (main indexer writer + aggregator worker writer): WAL allows
   // concurrent readers but serializes writers. Without busy_timeout the second writer
-  // gets SQLITE_BUSY immediately. 5s is enough for the longest aggregator transactions
-  // (replaceTraderStats DELETE+INSERT for 'all' period) to clear.
-  db.pragma('busy_timeout = 5000');
+  // gets SQLITE_BUSY immediately. 30s covers the worst-case worker transaction
+  // (replaceTraderPnlStats: 4 periods x DELETE + 20K INSERT inside one tx, observed
+  // ~4s each but variance is high. 5s margin was insufficient (2026-05-14 incident).
+  db.pragma('busy_timeout = 30000');
 
   // Performance pragmas (mmap_size, cache_size, temp_store) deliberately left at defaults.
   // 2026-05-13: tried mmap=1GB+cache=100MB+temp=MEMORY → RSS exceeded max_memory_restart=700M
