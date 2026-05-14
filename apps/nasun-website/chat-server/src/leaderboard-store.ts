@@ -71,7 +71,7 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
     );
 
     -- Prediction-market resolution outcomes. Populated by the indexer's
-    -- MarketResolved/MarketCancelled pollers. computeWeeklyPredictionPnl joins
+    -- MarketResolved/MarketCancelled pollers. computePredictionPnl joins
     -- this against trade_fills filtered by pool_id LIKE 'prediction:%'.
     CREATE TABLE IF NOT EXISTS prediction_markets (
       market_id TEXT PRIMARY KEY,
@@ -1294,9 +1294,9 @@ export interface PredictionPnlResult {
  *   This SQL aliases it back to `maker_is_bid` so the math below reads cleanly.
  *   Do NOT join this with spot rows on that column.
  */
-export function computeWeeklyPredictionPnl(
-  weekStartMs: number,
-  weekEndMs: number,
+export function computePredictionPnl(
+  startMs: number,
+  endMs: number,
   excludedAddresses: Set<string>,
   washPairs?: Set<string>,
 ): Map<string, PredictionPnlResult> {
@@ -1338,8 +1338,8 @@ export function computeWeeklyPredictionPnl(
 
   const params = [
     ...(wash?.params ?? []),
-    weekStartMs,
-    weekEndMs,
+    startMs,
+    endMs,
     ...excludeList, ...excludeList,
   ];
 

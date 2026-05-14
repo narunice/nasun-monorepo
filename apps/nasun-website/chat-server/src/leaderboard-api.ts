@@ -861,8 +861,6 @@ function handleScoreLeaderboardWeekly(
       totalScore: row.total_score,
       tradeCount: row.trade_count,
       volumeUsd: formatQuoteVolume(row.volume_quote),
-      predictionVolumeUsd: formatQuoteVolume(row.prediction_volume_quote),
-      predictionMarketCount: row.prediction_unique_markets,
       rankChange: row.prev_rank === 0 ? 0 : row.prev_rank - displayRank,
       hasGoogle: Boolean(row.has_google),
       hasTelegram: Boolean(row.has_telegram),

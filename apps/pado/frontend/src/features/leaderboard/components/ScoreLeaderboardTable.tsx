@@ -17,7 +17,7 @@ export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, 
   if (isLoading) {
     return (
       <div className="py-4 px-2">
-        <SkeletonTable rows={10} cols={11} />
+        <SkeletonTable rows={10} cols={9} />
       </div>
     );
   }
@@ -63,8 +63,6 @@ export function ScoreLeaderboardTable({ traders, isLoading, currentUserAddress, 
             </th>
             <th className="py-3 px-3 text-right font-medium hidden md:table-cell">Volume</th>
             <th className="py-3 px-3 text-right font-medium hidden md:table-cell">Trades</th>
-            <th className="py-3 px-3 text-right font-medium hidden md:table-cell" title="Prediction-market trade volume settled this week (NUSDC)">Pred. Volume</th>
-            <th className="py-3 px-3 text-right font-medium hidden md:table-cell" title="Distinct prediction markets resolved this week">Pred. Markets</th>
             <th className="py-3 px-3 text-center font-medium w-16">Change</th>
           </tr>
         </thead>
