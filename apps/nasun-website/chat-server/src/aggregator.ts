@@ -28,6 +28,10 @@ import { backgroundRefreshBannedCache, getBannedSnapshotSync, refreshBannedCache
 // PnL data cached during PnL aggregation, consumed by points aggregation
 let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
 
+// Volume data for 'all' period cached during runAggregation, consumed by runPointsAggregation
+// to avoid re-running the heaviest full-table scan twice per cycle.
+let cachedAllPeriodTraders: ReturnType<typeof aggregateTraderVolume> = [];
+
 // Same-identity wallet pairs for wash-trading detection (refreshed with identity cache)
 let sameIdentityPairs: Set<string> = new Set();
 
@@ -59,8 +63,11 @@ function runAggregation(): void {
   if (!config) return;
 
   const start = Date.now();
+  const phaseTimes: Record<string, number> = {};
+  const volumePerPeriod: Record<string, number> = {};
 
   for (const period of PERIODS) {
+    const periodStart = Date.now();
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
 
     // Get current ranks for prev_rank tracking
@@ -68,6 +75,12 @@ function runAggregation(): void {
 
     // Aggregate trader volumes
     const traders = aggregateTraderVolume(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
+
+    // Cache 'all' period result so runPointsAggregation can reuse it
+    // (saves one full-table UNION ALL scan per cycle).
+    if (period === 'all') {
+      cachedAllPeriodTraders = traders;
+    }
 
     // Build ranked entries
     const ranked = traders.map((t, index) => {
@@ -85,24 +98,36 @@ function runAggregation(): void {
     });
 
     replaceTraderStats(period, ranked);
+    volumePerPeriod[period] = Date.now() - periodStart;
   }
+  phaseTimes.volume = Object.values(volumePerPeriod).reduce((a, b) => a + b, 0);
 
   // Aggregate PnL rankings
+  const pnlStart = Date.now();
   runPnlAggregation();
+  phaseTimes.pnl = Date.now() - pnlStart;
 
   // Aggregate points
+  const pointsStart = Date.now();
   runPointsAggregation();
+  phaseTimes.points = Date.now() - pointsStart;
 
   // Aggregate active competitions
+  const compStart = Date.now();
   runCompetitionAggregation();
+  phaseTimes.competition = Date.now() - compStart;
 
   // Weekly score leaderboard (async: fetches social badges from DynamoDB in background)
+  // The function body runs synchronously up to the first await — that sync portion blocks
+  // the event loop and counts toward the cycle elapsed time. Capture it explicitly.
   const weeklyStart = Date.now();
-  runWeeklyScoreAggregation()
+  const weeklyPromise = runWeeklyScoreAggregation();
+  phaseTimes.weeklySync = Date.now() - weeklyStart;
+  weeklyPromise
     .then(() => {
       const wElapsed = Date.now() - weeklyStart;
       if (wElapsed > 5000) {
-        console.log(`[Aggregator] Weekly score completed in ${wElapsed}ms`);
+        console.log(`[Aggregator] Weekly score completed in ${wElapsed}ms (sync_portion=${phaseTimes.weeklySync}ms)`);
       }
     })
     .catch((err: unknown) => {
@@ -116,7 +141,18 @@ function runAggregation(): void {
   // Sync cycle time only — async weekly path logs separately above.
   const elapsed = Date.now() - start;
   if (elapsed > 1000) {
-    console.log(`[Aggregator] Completed in ${elapsed}ms`);
+    const volumeBreakdown = Object.entries(volumePerPeriod)
+      .map(([p, ms]) => `${p}=${ms}ms`).join(' ');
+    const measured = (phaseTimes.volume ?? 0) + (phaseTimes.pnl ?? 0) +
+      (phaseTimes.points ?? 0) + (phaseTimes.competition ?? 0) + (phaseTimes.weeklySync ?? 0);
+    const unmeasured = elapsed - measured;
+    console.log(
+      `[Aggregator] Completed in ${elapsed}ms ` +
+      `(volume=${phaseTimes.volume}ms [${volumeBreakdown}], ` +
+      `pnl=${phaseTimes.pnl}ms, points=${phaseTimes.points}ms, ` +
+      `comp=${phaseTimes.competition}ms, weeklySync=${phaseTimes.weeklySync}ms, ` +
+      `other=${unmeasured}ms)`,
+    );
   }
   if (config && elapsed > config.aggregationIntervalMs * 0.8) {
     console.warn(
@@ -179,8 +215,9 @@ function runPnlAggregation(): void {
 function runPointsAggregation(): void {
   if (!config) return;
 
-  // Use the "all" period volume data (already aggregated above)
-  const traders = aggregateTraderVolume(0, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
+  // Reuse 'all' period traders cached by runAggregation — avoids a duplicate
+  // full-table UNION ALL scan of trade_fills (the heaviest query in the cycle).
+  const traders = cachedAllPeriodTraders;
   if (traders.length === 0) return;
 
   const currentRanks = getPointsCurrentRanks();
