@@ -20,7 +20,7 @@ interface AgentsListProps {
   onSelectAgent?: (agentId: string) => void;
 }
 
-function AgentCard({
+export function AgentCard({
   agent,
   budget,
   onSelect,

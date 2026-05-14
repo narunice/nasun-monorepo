@@ -4,8 +4,8 @@ import { ecosystemAiPath } from "@/config/featureFlags";
  * AiTab - root entry for the my-account "AI" sub-tab.
  *
  * Sub-routes are driven by the `view` query param:
- *   view=list      (default) -> AgentsList
- *   view=register           -> AgentsList + CreateAgentModal
+ *   view=list      (default) -> QuickstartView
+ *   view=register           -> QuickstartView + CreateAgentModal
  *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<...>`)
  *   view=budgets            -> Budgets page
  *
@@ -16,9 +16,12 @@ import { ecosystemAiPath } from "@/config/featureFlags";
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { AgentsList } from './pages/AgentsList';
 import { AgentDetail, type AgentSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
+import { QuickstartView } from './pages/QuickstartView';
+import { CreateAgentModal } from './components/modals/CreateAgentModal';
+import { useCreateAgent } from './hooks/useCreateAgent';
+import { useAgentProfiles } from './hooks/useAgentProfiles';
 
 const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
@@ -58,31 +61,6 @@ function NotConnected() {
   );
 }
 
-function AboutCard({ onOpenBudgets }: { onOpenBudgets: () => void }) {
-  return (
-    <div className="p-4 rounded-xl bg-uju-card/40 border border-uju-border/40 space-y-2">
-      <h4 className="text-sm font-semibold text-white">What is Nasun AI?</h4>
-      <p className="text-sm text-uju-secondary leading-relaxed">
-        Nasun AI is the AI compliance settlement layer on Nasun Network. Every AI execution
-        produces an on-chain receipt that proves what the agent did, what it cost, and who
-        authorized it. All activity is transparent and auditable.
-      </p>
-      <div className="flex items-center gap-4">
-        <a href={ecosystemAiPath} className="inline-block text-sm text-pado-2 hover:underline">
-          Learn more about Nasun AI
-        </a>
-        <button
-          type="button"
-          onClick={onOpenBudgets}
-          className="text-sm text-pado-2 hover:underline"
-        >
-          Manage Budgets
-        </button>
-      </div>
-    </div>
-  );
-}
-
 export function AiTab() {
   const { user } = useAuth();
   const walletAddress = user?.walletAddress;
@@ -113,6 +91,19 @@ export function AiTab() {
     [setSearchParams],
   );
 
+  const { data: agents, refetch } = useAgentProfiles(walletAddress ?? '');
+  const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } =
+    useCreateAgent();
+
+  const handleCreate = useCallback(
+    async (params: Parameters<typeof createAgent>[0]) => {
+      const digest = await createAgent(params);
+      if (digest) refetch();
+      return digest;
+    },
+    [createAgent, refetch],
+  );
+
   if (!walletAddress) return <NotConnected />;
 
   if (view === 'detail' && agentId) {
@@ -139,14 +130,27 @@ export function AiTab() {
 
   return (
     <div className="space-y-4">
-      <AgentsList
+      <QuickstartView
         walletAddress={walletAddress}
-        showRegister={view === 'register'}
         onShowRegister={() => updateView('register')}
-        onCloseRegister={() => updateView(null)}
+        onOpenBudgets={() => updateView('budgets')}
         onSelectAgent={(id) => updateView('detail', { agent: id, sub: 'dashboard' })}
       />
-      <AboutCard onOpenBudgets={() => updateView('budgets')} />
+
+      {/* Registration modal — triggered by view=register */}
+      {view === 'register' && (
+        <CreateAgentModal
+          onClose={() => {
+            resetTxStatus();
+            updateView(null);
+          }}
+          onCreate={handleCreate}
+          txStatus={txStatus}
+          txError={txError}
+          generatedAddress={generatedAddress}
+          fallbackKey={fallbackKey}
+        />
+      )}
     </div>
   );
 }
