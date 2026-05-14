@@ -1,8 +1,9 @@
 # Pado Score Leaderboard - Technical Reference
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-05-14 (prediction market PnL을 weekly score에 합산; `prediction_markets` 테이블 + `MarketResolved`/`MarketCancelled` 폴러 추가; `trade_fills.is_yes` 컬럼 추가; spot과 동일 가중치 적용, prediction loss penalty는 v1에서 미적용. PnL 리더보드(`/api/pado/leaderboard/pnl`)도 spot + prediction 합산으로 변경. Score 리더보드 UI 컬럼은 기존 Volume/Trades 그대로 유지 — Pred. Volume/Markets는 도입 검토 후 제거; prediction 기여는 totalScore와 별도 PnL 리더보드에서 확인 가능.)
-이전: 2026-04-27 (W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 UTC → 00:00 UTC 변경; settle-pado cron 자동화 월요일 00:15 UTC; PnL 크로스-풀 decimal 버그 수정(풀별 독립 계산); DAILY_TRADE_CAP=24 SQL per-day 방식 도입; PER_TRADE 4→2; PER_600_PNL 100→25; PER_10PCT_RETURN 100→200)
+**최근 업데이트**:
+- **2026-05-14**: prediction market PnL을 Score 리더보드 `totalScore`와 PnL 리더보드(`/api/pado/leaderboard/pnl`) 양쪽에 합산. 신규 `prediction_markets` 테이블 + `MarketResolved`/`MarketCancelled` 폴러, `trade_fills.is_yes` 컬럼, `trader_points_weekly` 4개 prediction 컬럼 도입. `computePredictionPnl(startMs, endMs, ...)` 헬퍼가 Score(주간)와 PnL(4 period) 양쪽에서 재사용. Score UI는 기존 Volume/Trades 컬럼만 노출 (prediction 기여는 totalScore에 흡수, 시각 분해는 PnL 리더보드에서 확인). v1에서 prediction loss penalty는 미적용.
+- **2026-04-27**: W17 첫 정산 완료; 보상 테이블 top 2000 확장; wash-trading 필터 명시; 정산 자격에서 소셜 계정 요건 폐지; 주간 리셋 경계 00:10 UTC → 00:00 UTC 변경; settle-pado cron 자동화 월요일 00:15 UTC; PnL 크로스-풀 decimal 버그 수정(풀별 독립 계산); DAILY_TRADE_CAP=24 SQL per-day 방식 도입; PER_TRADE 4→2; PER_600_PNL 100→25; PER_10PCT_RETURN 100→200
 **관련 문서**: [ecosystem-points-system.md](ecosystem-points-system.md)
 
 ---
@@ -11,18 +12,17 @@
 
 Pado Score Leaderboard는 매주 **Pado 거래 활동**(스팟 DEX + 예측시장)을 기반으로 순위를 산정하고, 주간 종료 후 생태계 포인트(Ecosystem Points)로 환산 지급하는 경쟁 리더보드입니다.
 
-> **Prediction market 통합 (2026-05)**: Pado 예측시장의 `prediction_market::OrderFilled` 이벤트는 동일한 `trade_fills` 테이블에 적재됩니다 (`pool_id` prefix `prediction:${market_id}`로 식별). `tradeCount` / `volumeUsd`(=NUSDC `cost`) / `unique_pools`에는 자동 합산.
+> **Prediction market 통합 (2026-05)**: Pado 예측시장의 `prediction_market::OrderFilled` 이벤트는 동일한 `trade_fills` 테이블에 적재됩니다 (`pool_id` prefix `prediction:${market_id}`로 식별). 거래 활동성 지표(`tradeCount` / `volumeUsd` / `unique_pools`)는 자동 합산되어 Score 공식의 `tradePoints` / `volumePoints` / `diversityPoints`에 그대로 반영.
 >
-> **Spot PnL 격리**: spot `aggregateTraderPnlRaw`는 `pool_id NOT LIKE 'prediction:%'`로 prediction을 명시 격리 (shares 단위가 spot의 base token decimals 모델과 호환되지 않고 binary outcome이라 mark-to-market 의미가 모호).
+> **Spot PnL 격리**: spot `aggregateTraderPnlRaw`는 `pool_id NOT LIKE 'prediction:%'`로 prediction을 명시 격리. shares 단위가 spot의 base token decimals 모델과 호환되지 않고(prediction `fill_shares`는 raw NUSDC 스케일이라 1 share = 1e-6 NUSDC, spot base token과 결합 불가), binary outcome이라 mark-to-market 의미가 모호하기 때문.
 >
-> **Prediction PnL (2026-05-14 추가)**: `computePredictionPnl(startMs, endMs, ...)`이 별도 계산. 인덱서가 `MarketResolved`/`MarketCancelled`를 `prediction_markets` 테이블에 인덱싱하고, 윈도우 내 resolved된 시장에 대해 per-user per-market position을 정산. 사용 위치:
+> **Prediction PnL (2026-05-14)**: `computePredictionPnl(startMs, endMs, excluded, washPairs)`이 별도 계산. 인덱서가 `MarketResolved` / `MarketCancelled` 이벤트를 `prediction_markets` 테이블에 인덱싱하고, 윈도우 내 resolved된 시장에 대해 per-user per-market position을 정산(maker_is_bid 부호 규칙 + winning side payout = `net_shares` raw NUSDC). 사용 위치:
 >
-> - **Score 리더보드 (`runWeeklyScoreAggregation`)**: 해당 주 resolved 시장 PnL을 spot과 동일 가중치(`PER_600_PNL=25`, `PER_10PCT_RETURN=200`)로 `totalScore`에 합산.
-> - **PnL 리더보드 (`runPnlAggregation`)**: 4개 period(`24h`/`7d`/`30d`/`all`) 각각의 윈도우 내 resolved 시장 PnL을 spot PnL과 합산하여 단일 PnL/PnL% 컬럼에 표시. cost basis는 spot+prediction 합산 분모로 percent 재계산.
+> - **Score 리더보드 (`runWeeklyScoreAggregation`)**: 해당 주 resolved 시장 PnL을 spot과 동일 가중치(`PER_600_PNL=25`, `PER_10PCT_RETURN=200`)로 `totalScore`에 합산. UI는 별도 컬럼 없이 `totalScore` 단일 표현(Score 컬럼 + 정산 audit).
+> - **PnL 리더보드 (`runPnlAggregation`)**: 4개 period(`24h`/`7d`/`30d`/`all`) 각각의 윈도우 내 resolved 시장 PnL을 spot PnL과 합산하여 단일 PnL/PnL% 컬럼에 표시. cost basis는 각 leg `pnl / (pct/100)` 역산 후 분모 결합으로 percent 재계산.
+> - **알트타임 `trader_points`** (Score `scope=alltime`): spot-only PnL 유지 (`cachedPnlByAddress`가 spot 결과만 cache). 누적 포인트 시멘틱 보존.
 >
-> v1에서 prediction loss penalty는 적용하지 않음 (binary outcome -100% 빈발로 score 분포 왜곡 방지). perp/lending 도입 시에도 별도 venue ledger 권장.
->
-> **`taker_is_bid` 컬럼 의미 양면성**: prediction OrderFilled의 `is_bid`는 maker 기준 (`prediction_market.move:202` 주석). 인덱서가 그대로 `taker_is_bid` 컬럼에 저장하므로 prediction row의 해당 컬럼은 사실상 `maker_is_bid`. prediction SQL을 작성할 때 반드시 명시 주석 + alias. spot+prediction을 이 컬럼으로 join하면 사일런트 버그 발생. 컬럼명/뷰 정리는 별도 cleanup PR.
+> v1에서 prediction loss penalty는 적용하지 않음 (binary outcome -100% 빈발로 tier 최상단 페널티가 분포 왜곡). perp/lending 도입 시에도 별도 venue ledger 권장.
 
 - 주 단위 리셋으로 신규 참여자에게 지속적 기회를 부여
 - 상위 2000위까지 Ecosystem Points 지급 (Genesis Pass 보유자 2x). 자격: 등록된 identityId + Alliance NFT 활성화. (소셜 계정 요건은 2026-04-27 정책 업데이트로 폐지)
@@ -136,38 +136,66 @@ settle-pado.ts --week auto  → Ecosystem Points 지급
 **파일**: `apps/nasun-website/chat-server/` (런타임 로컬 DB)
 
 #### `trade_fills`
-DeepBook V3에서 인덱싱된 모든 거래 원장.
+DeepBook V3 + prediction market 모두에서 인덱싱된 거래 원장.
 
 | 컬럼 | 설명 |
 |------|------|
-| maker_address | 메이커 지갑 주소 |
-| taker_address | 테이커 지갑 주소 |
-| pool_id | 거래 풀 ID (다양성 점수 계산 기준) |
-| quote_quantity | 거래량 (NUSDC raw) |
-| timestamp | 거래 타임스탬프 |
+| maker_address | 메이커 지갑 주소 (prediction 인덱싱 시 lowercase 강제) |
+| taker_address | 테이커 지갑 주소 (prediction 인덱싱 시 lowercase 강제) |
+| pool_id | 거래 풀 ID (spot은 DeepBook pool ID, prediction은 `prediction:${market_id}`). 다양성 점수 계산 기준 |
+| base_quantity | spot: 베이스 토큰 raw 수량 / prediction: `fill_shares` (raw NUSDC 스케일) |
+| quote_quantity | NUSDC raw 6 decimals (spot=quote, prediction=`cost`) |
+| taker_is_bid | spot: taker가 bid면 1 / **prediction: maker가 bid면 1** (컬럼명과 실제 의미 양면성 — `taker_is_bid` 부채 섹션 참조) |
+| is_yes | spot: NULL / prediction: YES side면 1, NO면 0 |
+| timestamp_ms | 거래 타임스탬프 |
+
+#### `prediction_markets` (2026-05-14 신규)
+인덱서의 `MarketResolved` / `MarketCancelled` 폴러가 채우는 시장 해소 원장. `computePredictionPnl`가 `trade_fills`와 JOIN하여 PnL 계산.
+
+```sql
+CREATE TABLE prediction_markets (
+  market_id       TEXT PRIMARY KEY,
+  status          TEXT NOT NULL,             -- 'resolved' | 'cancelled'
+  outcome         INTEGER,                   -- 0=NO, 1=YES, NULL=cancelled
+  resolved_at_ms  INTEGER NOT NULL,          -- event.timestampMs (trade_fills와 동일 시계)
+  updated_at      INTEGER NOT NULL
+);
+CREATE INDEX idx_pred_markets_resolved ON prediction_markets(resolved_at_ms DESC);
+```
+
+**불변성 보장**: `upsertPredictionMarket`은 `ON CONFLICT(market_id) DO NOTHING`. Move 컨트랙트가 `resolve_market`에서 `STATUS_OPEN` assertion으로 outcome 변경을 막지만, 인덱서 replay나 RPC 이상으로 같은 시장이 재emit될 때 outcome flip이 일어나면 과거 주의 PnL이 retroactive하게 바뀌어 단조 증가 불변식이 깨진다. 첫 write 우선 정책으로 차단.
 
 #### `trader_points_weekly`
 주간 점수 집계 결과. 매 집계 주기마다 `replaceWeeklyTraderScores()`로 덮어씁니다.
 
 ```sql
 CREATE TABLE trader_points_weekly (
-  week_id              TEXT NOT NULL,
-  address              TEXT NOT NULL,
-  total_score          INTEGER NOT NULL DEFAULT 0,
-  score_from_trades    INTEGER NOT NULL DEFAULT 0,
-  score_from_volume    INTEGER NOT NULL DEFAULT 0,
-  score_from_diversity INTEGER NOT NULL DEFAULT 0,
-  score_from_pnl       INTEGER NOT NULL DEFAULT 0,
-  trade_count          INTEGER NOT NULL DEFAULT 0,
-  volume_quote         TEXT NOT NULL DEFAULT '0',
-  rank                 INTEGER NOT NULL DEFAULT 0,
-  prev_rank            INTEGER NOT NULL DEFAULT 0,
-  updated_at           INTEGER NOT NULL,
+  week_id                    TEXT NOT NULL,
+  address                    TEXT NOT NULL,
+  total_score                INTEGER NOT NULL DEFAULT 0,
+  score_from_trades          INTEGER NOT NULL DEFAULT 0,
+  score_from_volume          INTEGER NOT NULL DEFAULT 0,
+  score_from_diversity       INTEGER NOT NULL DEFAULT 0,
+  score_from_pnl             INTEGER NOT NULL DEFAULT 0,     -- spot PnL 점수
+  score_from_prediction_pnl  INTEGER NOT NULL DEFAULT 0,     -- prediction PnL 점수 (2026-05-14)
+  trade_count                INTEGER NOT NULL DEFAULT 0,
+  volume_quote               TEXT NOT NULL DEFAULT '0',      -- spot + prediction 합산 (UI "Volume")
+  prediction_volume_quote    TEXT NOT NULL DEFAULT '0',      -- prediction-only volume (audit/breakdown, UI 미노출)
+  prediction_unique_markets  INTEGER NOT NULL DEFAULT 0,     -- prediction-only market count (audit, UI 미노출)
+  prediction_realized_pnl    TEXT NOT NULL DEFAULT '0',      -- prediction realized PnL raw (audit)
+  rank                       INTEGER NOT NULL DEFAULT 0,
+  prev_rank                  INTEGER NOT NULL DEFAULT 0,
+  updated_at                 INTEGER NOT NULL,
+  x_handle                   TEXT,
+  has_google                 INTEGER NOT NULL DEFAULT 0,
+  has_telegram               INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (week_id, address)
 );
 
 CREATE INDEX idx_weekly_rank ON trader_points_weekly(week_id, rank ASC);
 ```
+
+`prediction_*` 컬럼은 weekly settlement audit + 차후 UI 재도입 시 재사용 목적으로 SQLite에 저장하되, 현재 API 응답과 UI 컬럼에는 노출하지 않음. `score_from_prediction_pnl`은 `totalScore`에 합산된 prediction 기여분을 추적하므로 settlement 검증에 필수.
 
 #### `indexer_state`
 | key | value |
@@ -283,14 +311,21 @@ setInterval(() => {
 ```
 
 집계 단계:
-1. `trade_fills`에서 `timestamp >= weekStart` 필터링
+1. `trade_fills`에서 `timestamp >= weekStart` 필터링 (spot + prediction:* 풀 합산)
 2. `aggregateWeeklyTraderVolume(weekStart, DAILY_TRADE_CAP)` - 거래량/풀 다양성 집계 + SQL ROW_NUMBER per-day cap 적용
 3. `resolveIdentityIds()` - 미등록 지갑 필터링
-4. `computeTraderPnl(weekStart)` - 풀별 독립 PnL 계산 후 합산 (cross-pool decimal 오염 방지)
-5. 점수 공식 적용 → `total_score` 산출
-6. `total_score DESC` 정렬 → `rank` 할당
-7. 이전 주(`prev_rank`) 비교 → `rankChange` 계산
-8. `replaceWeeklyTraderScores(weekId, rankedTraders)` - 덮어쓰기
+4. `computeTraderPnl(weekStart)` - **spot only** (SQL이 `pool_id NOT LIKE 'prediction:%'` 격리). 풀별 독립 PnL 계산 후 합산 (cross-pool decimal 오염 방지)
+5. `computePredictionPnl(weekStart, weekStart + 7d)` - 해당 주 resolved 시장 PnL 계산. `prediction_markets JOIN trade_fills`로 per-user per-market position 정산, payout = winning shares (1 share = 1 raw NUSDC)
+6. 점수 공식 적용 → `totalScore = ... + pnlScore + predictionPnlScore` 산출
+7. `total_score DESC` 정렬 → `rank` 할당
+8. 이전 주(`prev_rank`) 비교 → `rankChange` 계산
+9. `replaceWeeklyTraderScores(weekId, rankedTraders)` - 덮어쓰기 (트랜잭션 + ON CONFLICT UPDATE)
+
+### PnL 리더보드와의 관계
+
+`runPnlAggregation` (별도 함수)이 동일한 `computePredictionPnl(cutoff, now, ...)`을 호출하여 4개 period(`24h`/`7d`/`30d`/`all`)의 spot PnL과 prediction PnL을 합산. 응답 `realizedPnl` / `pnlPercent`는 합산값. cost basis는 각 leg의 `pnl / (pct/100)` 역산 후 분모로 결합하여 percent 재계산 (작은 cost prediction win이 큰 cost spot trader 수익률을 왜곡하지 않게).
+
+알트타임 `trader_points` (Score 리더보드의 alltime scope)는 spot-only PnL 유지 (`cachedPnlByAddress`가 spot 결과만 cache).
 
 ---
 
@@ -419,7 +454,8 @@ const isGracePeriod = Date.now() - weekStart < WEEK_GRACE_PERIOD_MS;
 ### Chat Server (`apps/nasun-website/chat-server/.env`)
 ```env
 AGGREGATION_INTERVAL_MS=60000       # 집계 주기 (기본 60초)
-DEEPBOOK_PACKAGE=0x<sui-package>    # 인덱싱 대상 패키지
+DEEPBOOK_PACKAGE=0x<sui-package>    # spot DEX 인덱싱 대상 패키지
+PREDICTION_PACKAGE=0x<sui-package>  # prediction market 인덱싱 (미설정 시 prediction 폴러 비활성)
 USER_WALLETS_TABLE=UserWallets      # DynamoDB 테이블명 (기본값)
 USER_PROFILES_TABLE=UserProfiles    # DynamoDB 테이블명 (기본값)
 WALLET_MAPPINGS_URL=...             # 전체 지갑-identityId 맵 엔드포인트 (1시간 캐시)
@@ -454,3 +490,7 @@ ECOSYSTEM_ACTIVATIONS_API_KEY=...               # 위 URL의 x-api-key (선택)
 - **Loss Penalty 격리**: PnL 패널티는 순위 계산에만 반영, Ecosystem Points 산출 시 제외
 - **Ecosystem Points 단조 증가**: `activity_points` 삽입만 허용, 삭제/수정 금지
 - **소셜 배지 표시**: 리더보드 응답에는 닉네임, 프로필 이미지, X 핸들, Google/Telegram 연동 여부를 DynamoDB UserProfiles BatchGetItem으로 실시간 조회하여 표시용으로만 포함 (정산 자격 판단에는 사용 안 함). UnprocessedKeys 지수 백오프 재시도(최대 3회).
+- **Prediction outcome 불변성**: `prediction_markets`는 `ON CONFLICT DO NOTHING`. Move 컨트랙트의 `STATUS_OPEN` 가드와 함께 이중 방어로 outcome retroactive 변경 차단.
+- **Prediction 주소 정규화**: `pollPredictionOrderFilled`가 `json.maker`/`json.taker`를 `String(x).toLowerCase()`로 강제 변환 후 `trade_fills`에 저장. wash-pair canonical key (`min(a,b):max(a,b)`)와 banned-list (lowercase) 매칭 일관성 확보.
+- **`taker_is_bid` 의미 양면성 (기술 부채)**: prediction `OrderFilled`의 `is_bid`는 maker 기준 (`prediction_market.move:202`). 인덱서가 그대로 `taker_is_bid` 컬럼에 저장하므로 prediction row의 해당 컬럼은 사실상 `maker_is_bid`. `computePredictionPnl`은 SQL alias (`taker_is_bid AS maker_is_bid`)로 의미 복원. **spot+prediction을 이 컬럼으로 join하면 사일런트 버그**. 컬럼명/뷰 정리는 별도 cleanup PR.
+- **Prediction PnL Number 정밀도**: cost/shares 누적은 IEEE 754 안전 범위(2^53 ≈ $9B per single fill) 안에서 동작. 단일 사용자 주간 PnL이 `Number.MAX_SAFE_INTEGER`에 근접하면 aggregator가 warn 로그. 정상 사용자에서는 발생 불가.
