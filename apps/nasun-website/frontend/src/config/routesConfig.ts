@@ -208,7 +208,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: NASUN_AI_ENABLED ? Pages.NasunAi : Pages.BaramDark,
+    component: Pages.BaramDark,
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
@@ -224,19 +224,10 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           element: Pages.EcosystemLeaderboard,
           hidden: true,
         },
-        // /ecosystem/nasun-ai is only exposed when the feature flag is on.
-        ...(NASUN_AI_ENABLED ? [{
-          name: "navigation.baramAi",
-          path: "/ecosystem/nasun-ai",
-          element: Pages.NasunAi,
-        }] : []),
-        // /ecosystem/baram: shows NasunAi content when flag is on (soft alias),
-        // or the original BaramDark content when flag is off (prod state).
         {
           name: "navigation.baramAi",
           path: "/ecosystem/baram",
-          element: NASUN_AI_ENABLED ? Pages.NasunAi : Pages.BaramDark,
-          hidden: !NASUN_AI_ENABLED,
+          element: Pages.BaramDark,
         },
         {
           name: "navigation.gostop",
