@@ -10,3 +10,11 @@ packages:
   - 'packages/*'
   # deepbookv3는 별도 관리 (외부 라이브러리)
   - '!apps/pado/deepbookv3'
+  # Baram is ARCHIVED. Code preserved in place but excluded from the workspace.
+  # Runtime moves to apps/nasun-ai-runtime/ in S2.
+  # See .claude/plans/nasun-ai-integration-mapping.md.
+  - '!apps/baram'
+  - '!apps/baram/frontend'
+  - '!apps/baram/agent-runner'
+  - '!apps/baram/api-server'
+  - '!apps/baram/executor-nitro'
