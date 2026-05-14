@@ -1,0 +1,27 @@
+{
+  "name": "@nasun/nasun-ai-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Nasun AI agent runtime (heartbeat + /wake server). Scaffold — actual code arrives in S2.",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@mysten/sui": "^1.21.0",
+    "@nasun/baram-sdk": "workspace:*",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^16.4.7",
+    "hono": "^4.7.5"
+  },
+  "devDependencies": {
+    "@nasun/tsconfig": "workspace:*",
+    "@types/better-sqlite3": "^7.6.12",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}
