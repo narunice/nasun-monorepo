@@ -61,6 +61,10 @@ export interface PointsLeaderboardTrader {
   followerCount?: number;
 }
 
+// MUST stay in sync with apps/nasun-website/chat-server/src/leaderboard-types.ts
+// (ScoreLeaderboardTrader). The two are duplicated because chat-server runs as
+// its own deploy unit. Adding a field here without the chat-server side leaves
+// `undefined` in the UI; both must change in one commit.
 export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
@@ -73,6 +77,8 @@ export interface ScoreLeaderboardTrader {
   totalScore: number;
   tradeCount: number;
   volumeUsd: string;
+  predictionVolumeUsd?: string;
+  predictionMarketCount?: number;
   rankChange: number;
   followerCount?: number;
 }

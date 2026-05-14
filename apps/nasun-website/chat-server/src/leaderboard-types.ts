@@ -27,7 +27,9 @@ export interface TradeFillRow {
   price: string;
   base_quantity: string;
   quote_quantity: string;
-  taker_is_bid: number; // 0 or 1
+  taker_is_bid: number; // 0 or 1. NOTE: for prediction:* pool_id rows, this stores
+                        // MAKER's is_bid (see indexer.ts/prediction_market.move:202).
+  is_yes: number | null; // YES side flag for prediction:* fills; NULL for spot.
   timestamp_ms: number;
 }
 
@@ -222,6 +224,10 @@ export interface TraderPointsResponse {
 export type ScoreScope = 'alltime' | 'weekly';
 export const VALID_SCORE_SCOPES = new Set<string>(['alltime', 'weekly']);
 
+// MUST stay in sync with apps/pado/frontend/src/features/leaderboard/types.ts
+// (ScoreLeaderboardTrader). The two are duplicated because chat-server runs as
+// its own deploy unit. Adding a field here without the frontend side leaves
+// `undefined` in the UI; both must change in one commit.
 export interface ScoreLeaderboardTrader {
   rank: number;
   address: string;
@@ -232,6 +238,8 @@ export interface ScoreLeaderboardTrader {
   totalScore: number;
   tradeCount: number;
   volumeUsd: string;
+  predictionVolumeUsd: string;
+  predictionMarketCount: number;
   rankChange: number;
   followerCount: number;
   hasGoogle?: boolean;
@@ -256,6 +264,7 @@ export interface TraderScoreResponse {
     volume: number;
     diversity: number;
     pnl: number;
+    predictionPnl?: number; // present on weekly scope; undefined for alltime (no per-week resolve table)
   };
   rank: number;
   scope: ScoreScope;

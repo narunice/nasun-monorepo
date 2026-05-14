@@ -10,6 +10,7 @@ import {
   replaceCompetitionResults,
   updateCompetition,
   computeTraderPnl,
+  computeWeeklyPredictionPnl,
   getPnlCurrentRanks,
   replaceTraderPnlStats,
   getPointsCurrentRanks,
@@ -22,6 +23,7 @@ import {
   countWeeklyUniqueTraders,
   setWeeklyParticipantCount,
 } from './leaderboard-store.js';
+import type { PredictionPnlResult } from './leaderboard-store.js';
 import { buildSameIdentityPairs, refreshIdentityCache, getIdentityMap, getSocialBadgesBatch } from './identity-resolver.js';
 import { backgroundRefreshBannedCache, getBannedSnapshotSync, refreshBannedCache } from './banned-loader.js';
 
@@ -319,12 +321,28 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   const traders = rawTraders.filter((t) => identityMap.has(t.address.toLowerCase()));
   if (traders.length === 0) return;
 
-  // PnL for this week only (wash pairs excluded)
+  // PnL for this week only (wash pairs excluded). Spot path only; prediction
+  // pools are isolated by `pool_id NOT LIKE 'prediction:%'` inside
+  // aggregateTraderPnlRaw (leaderboard-store.ts).
   const weeklyPnlList = computeTraderPnl(weekStart, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT, sameIdentityPairs);
   const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
   for (const t of weeklyPnlList) {
     weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
   }
+
+  // Prediction-market PnL: realized at MarketResolved time. Markets resolving
+  // during the current week contribute their settled outcome to weekly score.
+  // Uses same NUSDC raw unit as spot (6 decimals), same PER_600_PNL/PER_10PCT_RETURN
+  // weights. Loss penalty intentionally NOT applied in v1: binary outcomes
+  // produce -100% frequently and would max the tier on every loss, dominating
+  // the score distribution. Revisit after one week of production data.
+  const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
+  const predictionPnlMap = computeWeeklyPredictionPnl(
+    weekStart,
+    weekEnd,
+    getEffectiveExcludedAddresses(),
+    sameIdentityPairs,
+  );
 
   const prevWeekStart = getCurrentWeekStart() - 7 * 24 * 60 * 60 * 1000;
   const prevWeekId = getWeekId(prevWeekStart);
@@ -357,15 +375,36 @@ async function runWeeklyScoreAggregation(): Promise<void> {
       }
     }
 
+    const predPnl: PredictionPnlResult | undefined = predictionPnlMap.get(t.address);
+    let predictionPnlScore = 0;
+    if (predPnl) {
+      if (predPnl.realizedPnlRaw > 0) {
+        // IEEE 754 safe: single user's weekly prediction PnL fits well inside
+        // 2^53 ≈ 9e15 raw ≈ $9B; warn if we ever get close (signals an exploit).
+        if (Math.abs(predPnl.realizedPnlRaw) >= Number.MAX_SAFE_INTEGER) {
+          console.warn(`[Aggregator] prediction PnL near IEEE-754 limit address=${t.address} raw=${predPnl.realizedPnlRaw}`);
+        }
+        predictionPnlScore += Math.floor(predPnl.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
+      }
+      if (predPnl.pnlPercent > 0) {
+        predictionPnlScore += Math.floor(predPnl.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
+      }
+      // v1: no loss penalty for prediction (see comment above).
+    }
+
     return {
       address: t.address,
-      totalScore: tradePoints + volumePoints + diversityPoints + pnlScore,
+      totalScore: tradePoints + volumePoints + diversityPoints + pnlScore + predictionPnlScore,
       scoreFromTrades: tradePoints,
       scoreFromVolume: volumePoints,
       scoreFromDiversity: diversityPoints,
       scoreFromPnl: pnlScore,
+      scoreFromPredictionPnl: predictionPnlScore,
       tradeCount,
       volumeQuote: t.volume_quote,
+      predictionVolumeQuote: predPnl ? String(predPnl.volumeQuoteRaw) : '0',
+      predictionUniqueMarkets: predPnl ? predPnl.marketCount : 0,
+      predictionRealizedPnl: predPnl ? String(predPnl.realizedPnlRaw) : '0',
     };
   });
 
