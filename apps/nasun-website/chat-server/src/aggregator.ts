@@ -1,652 +1,115 @@
-import type { LeaderboardConfig, Period } from './leaderboard-types.js';
-import { PERIOD_MS, POINTS } from './leaderboard-types.js';
-import {
-  aggregateTraderVolume,
-  aggregateWeeklyTraderVolume,
-  getCurrentRanks,
-  replaceTraderStats,
-  getActiveCompetitions,
-  aggregateCompetitionVolume,
-  replaceCompetitionResults,
-  updateCompetition,
-  computeTraderPnl,
-  computePredictionPnl,
-  getPnlCurrentRanks,
-  replaceTraderPnlStats,
-  getPointsCurrentRanks,
-  replaceTraderPoints,
-  setIndexerState,
-  getCurrentWeekStart,
-  getWeekId,
-  getWeeklyCurrentRanks,
-  replaceWeeklyTraderScores,
-  countWeeklyUniqueTraders,
-  setWeeklyParticipantCount,
-} from './leaderboard-store.js';
-import type { PredictionPnlResult } from './leaderboard-store.js';
-import { buildSameIdentityPairs, refreshIdentityCache, getIdentityMap, getSocialBadgesBatch } from './identity-resolver.js';
-import { backgroundRefreshBannedCache, getBannedSnapshotSync, refreshBannedCache } from './banned-loader.js';
-
-// PnL data cached during PnL aggregation, consumed by points aggregation
-let cachedPnlByAddress: Map<string, { realizedPnlRaw: number; pnlPercent: number }> = new Map();
-
-// Volume data for 'all' period cached during runAggregation, consumed by runPointsAggregation
-// to avoid re-running the heaviest full-table scan twice per cycle.
-let cachedAllPeriodTraders: ReturnType<typeof aggregateTraderVolume> = [];
-
-// Same-identity wallet pairs for wash-trading detection (refreshed with identity cache)
-let sameIdentityPairs: Set<string> = new Set();
-
-let config: LeaderboardConfig | null = null;
-let timer: ReturnType<typeof setInterval> | null = null;
-
-const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
-const AGGREGATION_LIMIT = 20000;
-
 /**
- * Effective exclusion set: static config (team/test wallets) ∪ banned wallets.
- * Banned set is sourced from explorer api-server's banned-users feed and
- * refreshed every 5 minutes (or on-demand via /banned-cache/refresh).
- */
-function getEffectiveExcludedAddresses(): Set<string> {
-  if (!config) return new Set();
-  const banned = getBannedSnapshotSync().addresses;
-  if (banned.size === 0) return config.excludedAddresses;
-  const merged = new Set<string>(config.excludedAddresses);
-  for (const a of banned) merged.add(a);
-  return merged;
-}
-
-/**
- * Run aggregation for all periods.
- * Computes per-trader volume, ranks, and rank changes.
- */
-function runAggregation(): void {
-  if (!config) return;
-
-  const start = Date.now();
-  const phaseTimes: Record<string, number> = {};
-  const volumePerPeriod: Record<string, number> = {};
-
-  for (const period of PERIODS) {
-    const periodStart = Date.now();
-    const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
-
-    // Get current ranks for prev_rank tracking
-    const currentRanks = getCurrentRanks(period);
-
-    // Aggregate trader volumes
-    const traders = aggregateTraderVolume(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
-
-    // Cache 'all' period result so runPointsAggregation can reuse it
-    // (saves one full-table UNION ALL scan per cycle).
-    if (period === 'all') {
-      cachedAllPeriodTraders = traders;
-    }
-
-    // Build ranked entries
-    const ranked = traders.map((t, index) => {
-      const rank = index + 1;
-      const prevRank = currentRanks.get(t.address) ?? 0;
-      return {
-        address: t.address,
-        volumeQuote: t.volume_quote,
-        tradeCount: t.trade_count,
-        uniquePools: t.unique_pools,
-        lastTradeAt: t.last_trade_at,
-        rank,
-        prevRank: prevRank > 0 ? prevRank : rank, // First appearance = no change
-      };
-    });
-
-    replaceTraderStats(period, ranked);
-    volumePerPeriod[period] = Date.now() - periodStart;
-  }
-  phaseTimes.volume = Object.values(volumePerPeriod).reduce((a, b) => a + b, 0);
-
-  // Aggregate PnL rankings
-  const pnlStart = Date.now();
-  runPnlAggregation();
-  phaseTimes.pnl = Date.now() - pnlStart;
-
-  // Aggregate points
-  const pointsStart = Date.now();
-  runPointsAggregation();
-  phaseTimes.points = Date.now() - pointsStart;
-
-  // Aggregate active competitions
-  const compStart = Date.now();
-  runCompetitionAggregation();
-  phaseTimes.competition = Date.now() - compStart;
-
-  // Weekly score leaderboard (async: fetches social badges from DynamoDB in background)
-  // The function body runs synchronously up to the first await — that sync portion blocks
-  // the event loop and counts toward the cycle elapsed time. Capture it explicitly.
-  const weeklyStart = Date.now();
-  const weeklyPromise = runWeeklyScoreAggregation();
-  phaseTimes.weeklySync = Date.now() - weeklyStart;
-  weeklyPromise
-    .then(() => {
-      const wElapsed = Date.now() - weeklyStart;
-      if (wElapsed > 5000) {
-        console.log(`[Aggregator] Weekly score completed in ${wElapsed}ms (sync_portion=${phaseTimes.weeklySync}ms)`);
-      }
-    })
-    .catch((err: unknown) => {
-      console.error('[Aggregator] Weekly score aggregation error:', (err as Error).message);
-    });
-
-  // Mark cycle completion for pado score staleness guard (settle-pado consumer).
-  // Key is app-prefixed to avoid collision with future per-app aggregators.
-  setIndexerState('pado_aggregator_last_run_ms', String(Date.now()));
-
-  // Sync cycle time only — async weekly path logs separately above.
-  const elapsed = Date.now() - start;
-  if (elapsed > 1000) {
-    const volumeBreakdown = Object.entries(volumePerPeriod)
-      .map(([p, ms]) => `${p}=${ms}ms`).join(' ');
-    const measured = (phaseTimes.volume ?? 0) + (phaseTimes.pnl ?? 0) +
-      (phaseTimes.points ?? 0) + (phaseTimes.competition ?? 0) + (phaseTimes.weeklySync ?? 0);
-    const unmeasured = elapsed - measured;
-    console.log(
-      `[Aggregator] Completed in ${elapsed}ms ` +
-      `(volume=${phaseTimes.volume}ms [${volumeBreakdown}], ` +
-      `pnl=${phaseTimes.pnl}ms, points=${phaseTimes.points}ms, ` +
-      `comp=${phaseTimes.competition}ms, weeklySync=${phaseTimes.weeklySync}ms, ` +
-      `other=${unmeasured}ms)`,
-    );
-  }
-  if (config && elapsed > config.aggregationIntervalMs * 0.8) {
-    console.warn(
-      `[Aggregator] Cycle elapsed ${elapsed}ms is over 80% of interval ` +
-      `${config.aggregationIntervalMs}ms — next cycle may overlap or lag.`,
-    );
-  }
-}
-
-/**
- * Run PnL aggregation for all periods.
- * Uses weighted average cost basis to compute realized PnL per trader.
- */
-function runPnlAggregation(): void {
-  if (!config) return;
-
-  for (const period of PERIODS) {
-    const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
-    const now = Date.now();
-
-    const currentRanks = getPnlCurrentRanks(period);
-
-    // Spot PnL only (aggregateTraderPnlRaw isolates prediction via
-    // `pool_id NOT LIKE 'prediction:%'`). Merged with prediction PnL below
-    // so the public PnL leaderboard reflects both venues.
-    const spotTraders = computeTraderPnl(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
-    // Prediction PnL realized in the same window: markets that resolved
-    // between [cutoff, now]. For period='all' cutoff=0 → every resolved market.
-    const predictionMap = computePredictionPnl(cutoff, now, getEffectiveExcludedAddresses(), sameIdentityPairs);
-
-    // Merge: realizedPnlRaw and tradeCount additive; pnlPercent recomputed from
-    // combined cost basis so a small-cost prediction win doesn't artificially
-    // inflate a large-cost spot trader's return.
-    interface CombinedPnl { realizedPnlRaw: number; spotCostBasis: number; predCostBasis: number; tradeCount: number; spotPnlPercent: number; }
-    const combined = new Map<string, CombinedPnl>();
-
-    for (const t of spotTraders) {
-      // Spot cost basis isn't directly exposed; derive from PnL and percent:
-      // cost_basis ≈ realizedPnlRaw / (pnlPercent/100). Only meaningful when
-      // pnlPercent != 0; fall back to pnlPercent contribution alone otherwise.
-      const spotCostBasis = t.pnlPercent !== 0
-        ? Math.abs(t.realizedPnlRaw / (t.pnlPercent / 100))
-        : 0;
-      combined.set(t.address, {
-        realizedPnlRaw: t.realizedPnlRaw,
-        spotCostBasis,
-        predCostBasis: 0,
-        tradeCount: t.tradeCount,
-        spotPnlPercent: t.pnlPercent,
-      });
-    }
-
-    for (const [address, pred] of predictionMap) {
-      const predCostBasis = pred.pnlPercent !== 0
-        ? Math.abs(pred.realizedPnlRaw / (pred.pnlPercent / 100))
-        : 0;
-      const existing = combined.get(address);
-      if (existing) {
-        existing.realizedPnlRaw += pred.realizedPnlRaw;
-        existing.predCostBasis = predCostBasis;
-        // tradeCount stays spot-only here; PnL leaderboard's "Trades" column
-        // historically counts fills feeding the cost-basis model, and
-        // prediction fills already feed the volume leaderboard.
-      } else {
-        combined.set(address, {
-          realizedPnlRaw: pred.realizedPnlRaw,
-          spotCostBasis: 0,
-          predCostBasis,
-          tradeCount: 0,
-          spotPnlPercent: 0,
-        });
-      }
-    }
-
-    // Cache "all" period PnL data for points aggregation. Use spot-only PnL
-    // here so the alltime points table (trader_points) keeps spot semantics.
-    // Weekly score uses computePredictionPnl directly via aggregator below.
-    if (period === 'all') {
-      cachedPnlByAddress = new Map();
-      for (const t of spotTraders) {
-        cachedPnlByAddress.set(t.address, {
-          realizedPnlRaw: t.realizedPnlRaw,
-          pnlPercent: t.pnlPercent,
-        });
-      }
-    }
-
-    const merged = [...combined.entries()].map(([address, c]) => {
-      const totalCost = c.spotCostBasis + c.predCostBasis;
-      const pnlPercent = totalCost > 0
-        ? Math.round((c.realizedPnlRaw / totalCost) * 10000) / 100
-        : 0;
-      return {
-        address,
-        realizedPnlRaw: Math.round(c.realizedPnlRaw),
-        pnlPercent,
-        tradeCount: c.tradeCount,
-      };
-    });
-
-    // Same sort key the spot path used (absolute PnL descending).
-    merged.sort((a, b) => b.realizedPnlRaw - a.realizedPnlRaw);
-    const top = merged.slice(0, AGGREGATION_LIMIT);
-
-    const ranked = top.map((t, index) => {
-      const rank = index + 1;
-      const prevRank = currentRanks.get(t.address) ?? 0;
-      return {
-        address: t.address,
-        realizedPnlRaw: t.realizedPnlRaw,
-        pnlPercent: t.pnlPercent,
-        tradeCount: t.tradeCount,
-        rank,
-        prevRank: prevRank > 0 ? prevRank : rank,
-      };
-    });
-
-    replaceTraderPnlStats(period, ranked);
-  }
-}
-
-/**
- * Compute points for all traders based on lifetime ("all" period) volume stats.
+ * Aggregator (main-thread façade).
  *
- * Formula:
- *   trade_points   = FIRST_TRADE_BONUS (if any trades) + trade_count * PER_TRADE
- *   volume_points  = floor(volume_nusdc / 1_000_000_000) * PER_1K_VOLUME   (NUSDC has 6 decimals → raw/1e6 = USD, so 1K USD = 1e9 raw)
- *   diversity_pts  = unique_pools * PER_UNIQUE_POOL
- *   total          = trade_points + volume_points + diversity_pts
- */
-function runPointsAggregation(): void {
-  if (!config) return;
-
-  // Reuse 'all' period traders cached by runAggregation — avoids a duplicate
-  // full-table UNION ALL scan of trade_fills (the heaviest query in the cycle).
-  const traders = cachedAllPeriodTraders;
-  if (traders.length === 0) return;
-
-  const currentRanks = getPointsCurrentRanks();
-
-  // Compute points for each trader
-  const pointsData = traders.map((t) => {
-    const tradeCount = t.trade_count;
-    const volumeRaw = BigInt(t.volume_quote);
-    const uniquePools = t.unique_pools;
-
-    // Points calculation
-    const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
-    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    // volumeRaw is in NUSDC raw units (6 decimals). 1K USD = 1_000 * 1e6 = 1e9 raw
-    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
-    const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
-
-    // PnL points: realized profit amount + return rate (losses floored at 0)
-    const pnlData = cachedPnlByAddress.get(t.address);
-    let pnlPoints = 0;
-    if (pnlData) {
-      // Amount: per $1K profit. realizedPnlRaw is in NUSDC raw (6 decimals)
-      if (pnlData.realizedPnlRaw > 0) {
-        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
-      }
-      // Return rate: per 10% profit
-      if (pnlData.pnlPercent > 0) {
-        pnlPoints += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
-      }
-    }
-
-    return {
-      address: t.address,
-      totalPoints: tradePoints + volumePoints + diversityPoints + pnlPoints,
-      pointsFromTrades: tradePoints,
-      pointsFromVolume: volumePoints,
-      pointsFromDiversity: diversityPoints,
-      pointsFromPnl: pnlPoints,
-      tradeCount,
-      volumeQuote: t.volume_quote,
-    };
-  });
-
-  // Sort by total points descending
-  pointsData.sort((a, b) => b.totalPoints - a.totalPoints);
-
-  // Assign ranks
-  const ranked = pointsData.map((t, index) => {
-    const rank = index + 1;
-    const prevRank = currentRanks.get(t.address) ?? 0;
-    return {
-      ...t,
-      rank,
-      prevRank: prevRank > 0 ? prevRank : rank,
-    };
-  });
-
-  replaceTraderPoints(ranked);
-}
-
-/**
- * Weekly score leaderboard aggregation.
+ * The actual aggregation cycle runs in a worker thread (see aggregator-worker.ts).
+ * This module:
+ *   1. Spawns the worker on startAggregator(cfg).
+ *   2. Maintains the main-thread identity/banned caches so leaderboard-api hot reads
+ *      (which run on the main thread) stay fresh independent of the worker's cycle.
+ *   3. Forwards refresh signals (POST /banned-cache/refresh, identity invalidation)
+ *      to the worker so its caches stay in sync without waiting for the TTL tick.
+ *   4. Tears the worker down on stopAggregator().
  *
- * Uses trade_fills filtered to the current week (>= weekStart).
- * Computes PnL independently for the weekly window (does NOT reuse cachedPnlByAddress
- * which covers all-time data).
- * Applies wash-trading filter: fills where maker and taker share the same Identity
- * are excluded from volume and trade count.
- * Applies tiered loss penalty (LOSS_PENALTY_TIERS): -5/-10/-15/-20% → -5/-10/-15/-20 pts
- * from pnl score (floor 0). This penalty only affects trader_points_weekly and is
- * never propagated to Ecosystem Points.
+ * Background: prior to 2026-05-14 the aggregator ran in-process and blocked the main
+ * event loop ~22.7s every 60s, causing CF 5xx bursts. Moving it to a worker thread
+ * decouples the cycle from HTTP/WebSocket responsiveness. See project memory
+ * `project_2026_05_13_chat_aggregator_blocking.md`.
  */
-async function runWeeklyScoreAggregation(): Promise<void> {
-  if (!config) return;
 
-  if (POINTS.DAILY_TRADE_CAP < 1) {
-    throw new Error(`DAILY_TRADE_CAP must be >= 1, got ${POINTS.DAILY_TRADE_CAP}. Check leaderboard-types.ts POINTS config.`);
-  }
+import { Worker } from 'node:worker_threads';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
+import type { LeaderboardConfig } from './leaderboard-types.js';
+import { refreshIdentityCache, buildSameIdentityPairs } from './identity-resolver.js';
+import { refreshBannedCache, backgroundRefreshBannedCache } from './banned-loader.js';
 
-  const weekStart = getCurrentWeekStart();
-  const weekId = getWeekId(weekStart);
+const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000;
+const BANNED_CACHE_REFRESH_MS = 5 * 60 * 1000;
 
-  // Volume stats filtered to this week (wash pairs excluded).
-  // trade_count is capped per calendar day via SQL window function.
-  const rawTraders = aggregateWeeklyTraderVolume(weekStart, getEffectiveExcludedAddresses(), POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
-  if (rawTraders.length === 0) return;
-
-  // Filter out wallets not registered to nasun-website (no Cognito identityId).
-  // Uses the in-memory identity cache (WALLET_MAPPINGS_URL, refreshed hourly)
-  // instead of DynamoDB BatchGet — avoids 200+ sequential BatchGet calls per
-  // cycle when the trader count exceeds AGGREGATION_LIMIT scale (10K+).
-  const fullIdentityMap = await getIdentityMap();
-  const identityMap = new Map<string, string>();
-  for (const t of rawTraders) {
-    const addr = t.address.toLowerCase();
-    const id = fullIdentityMap.get(addr);
-    if (id) identityMap.set(addr, id);
-  }
-  const traders = rawTraders.filter((t) => identityMap.has(t.address.toLowerCase()));
-  if (traders.length === 0) return;
-
-  // PnL for this week only (wash pairs excluded). Spot path only; prediction
-  // pools are isolated by `pool_id NOT LIKE 'prediction:%'` inside
-  // aggregateTraderPnlRaw (leaderboard-store.ts).
-  const weeklyPnlList = computeTraderPnl(weekStart, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT, sameIdentityPairs);
-  const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
-  for (const t of weeklyPnlList) {
-    weeklyPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
-  }
-
-  // Prediction-market PnL: realized at MarketResolved time. Markets resolving
-  // during the current week contribute their settled outcome to weekly score.
-  // Uses same NUSDC raw unit as spot (6 decimals), same PER_600_PNL/PER_10PCT_RETURN
-  // weights. Loss penalty intentionally NOT applied in v1: binary outcomes
-  // produce -100% frequently and would max the tier on every loss, dominating
-  // the score distribution. Revisit after one week of production data.
-  const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
-  const predictionPnlMap = computePredictionPnl(
-    weekStart,
-    weekEnd,
-    getEffectiveExcludedAddresses(),
-    sameIdentityPairs,
-  );
-
-  const prevWeekStart = getCurrentWeekStart() - 7 * 24 * 60 * 60 * 1000;
-  const prevWeekId = getWeekId(prevWeekStart);
-  const baselineRanks = getWeeklyCurrentRanks(prevWeekId);
-
-  const scored = traders.map((t) => {
-    const tradeCount = t.trade_count;
-    const volumeRaw = BigInt(t.volume_quote);
-    const uniquePools = t.unique_pools;
-
-    // trade_count already reflects per-day cap (from aggregateWeeklyTraderVolume).
-    const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
-    const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    const rawVolumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
-    const volumePoints = Math.min(rawVolumePoints, POINTS.WEEKLY_VOLUME_SCORE_CAP);
-    const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
-
-    const pnlData = weeklyPnlMap.get(t.address);
-    let pnlScore = 0;
-    if (pnlData) {
-      if (pnlData.realizedPnlRaw > 0) {
-        pnlScore += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
-      }
-      if (pnlData.pnlPercent > 0) {
-        pnlScore += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
-      }
-      // Tiered loss penalty: highest matching tier wins, floor at 0
-      const tier = POINTS.LOSS_PENALTY_TIERS.find((t) => pnlData.pnlPercent <= t.threshold);
-      if (tier) {
-        pnlScore = Math.max(0, pnlScore - tier.penalty);
-      }
-    }
-
-    const predPnl: PredictionPnlResult | undefined = predictionPnlMap.get(t.address);
-    let predictionPnlScore = 0;
-    if (predPnl) {
-      if (predPnl.realizedPnlRaw > 0) {
-        // IEEE 754 safe: single user's weekly prediction PnL fits well inside
-        // 2^53 ≈ 9e15 raw ≈ $9B; warn if we ever get close (signals an exploit).
-        if (Math.abs(predPnl.realizedPnlRaw) >= Number.MAX_SAFE_INTEGER) {
-          console.warn(`[Aggregator] prediction PnL near IEEE-754 limit address=${t.address} raw=${predPnl.realizedPnlRaw}`);
-        }
-        predictionPnlScore += Math.floor(predPnl.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
-      }
-      if (predPnl.pnlPercent > 0) {
-        predictionPnlScore += Math.floor(predPnl.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
-      }
-      // Hybrid A+B prediction loss penalty: per-market amount tier, gated on
-      // net-negative weekly prediction PnL. Caps at WEEKLY_PREDICTION_LOSS_PENALTY_CAP.
-      // Percent tiers (used by spot) are unusable here — binary outcomes hit -100%
-      // routinely. Amount tiers target large reckless bets. Net-negative gate lets
-      // a winning week absorb the variance of a few losing markets.
-      if (predPnl.realizedPnlRaw < 0 && predPnl.marketLossesRaw.length > 0) {
-        let lossPenalty = 0;
-        for (const lossRaw of predPnl.marketLossesRaw) {
-          const lossUsd = lossRaw / 1_000_000;
-          const tier = POINTS.PREDICTION_LOSS_PENALTY_TIERS_USD.find((t) => lossUsd >= t.lossUsdAtLeast);
-          if (tier) lossPenalty += tier.penalty;
-        }
-        lossPenalty = Math.min(lossPenalty, POINTS.WEEKLY_PREDICTION_LOSS_PENALTY_CAP);
-        predictionPnlScore = Math.max(0, predictionPnlScore - lossPenalty);
-      }
-    }
-
-    return {
-      address: t.address,
-      totalScore: tradePoints + volumePoints + diversityPoints + pnlScore + predictionPnlScore,
-      scoreFromTrades: tradePoints,
-      scoreFromVolume: volumePoints,
-      scoreFromDiversity: diversityPoints,
-      scoreFromPnl: pnlScore,
-      scoreFromPredictionPnl: predictionPnlScore,
-      tradeCount,
-      volumeQuote: t.volume_quote,
-      predictionVolumeQuote: predPnl ? String(predPnl.volumeQuoteRaw) : '0',
-      predictionUniqueMarkets: predPnl ? predPnl.marketCount : 0,
-      predictionRealizedPnl: predPnl ? String(predPnl.realizedPnlRaw) : '0',
-    };
-  });
-
-  // Sort descending by total score
-  scored.sort((a, b) => b.totalScore - a.totalScore);
-
-  // Assign ranks; prev_rank from last week's final standings (0 = new entrant this week)
-  const ranked = scored.map((t, index) => {
-    const rank = index + 1;
-    const prevRank = baselineRanks.get(t.address) ?? 0;
-    return { ...t, rank, prevRank };
-  });
-
-  // Resolve social badges (xHandle, hasGoogle, hasTelegram). identityMap was
-  // already resolved above when filtering unregistered wallets; reuse it.
-  const identityIds = [...new Set(identityMap.values())];
-  const badgesByIdentity = identityIds.length > 0
-    ? await getSocialBadgesBatch(identityIds)
-    : new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
-
-  const rankedWithBadges = ranked.map((t) => {
-    const identityId = identityMap.get(t.address);
-    const badge = identityId ? badgesByIdentity.get(identityId) : undefined;
-    return {
-      ...t,
-      xHandle: badge?.xHandle ?? null,
-      hasGoogle: badge?.hasGoogle ?? false,
-      hasTelegram: badge?.hasTelegram ?? false,
-    };
-  });
-
-  replaceWeeklyTraderScores(weekId, rankedWithBadges);
-
-  // Cache previous week's participant count with excluded addresses applied.
-  // Stored in indexer_state so leaderboard-api can serve it without a live scan.
-  const prevWeekParticipants = countWeeklyUniqueTraders(
-    prevWeekStart,
-    weekStart,
-    getEffectiveExcludedAddresses(),
-  );
-  setWeeklyParticipantCount(prevWeekId, prevWeekParticipants);
-}
-
-/**
- * Aggregate results for active competitions and auto-transition statuses.
- */
-function runCompetitionAggregation(): void {
-  if (!config) return;
-
-  const now = Date.now();
-  const competitions = getActiveCompetitions();
-
-  for (const comp of competitions) {
-    // Auto-transition: upcoming -> active
-    if (comp.status === 'upcoming' && now >= comp.start_ms && now <= comp.end_ms) {
-      updateCompetition(comp.id, { status: 'active' });
-      comp.status = 'active';
-      console.log(`[Aggregator] Competition "${comp.title}" is now active`);
-    }
-
-    // Auto-transition: active -> ended
-    if (comp.status === 'active' && now > comp.end_ms) {
-      updateCompetition(comp.id, { status: 'ended' });
-      console.log(`[Aggregator] Competition "${comp.title}" has ended`);
-    }
-
-    // Aggregate results for active competitions
-    if (comp.status === 'active') {
-      const traders = aggregateCompetitionVolume(
-        comp.start_ms,
-        Math.min(now, comp.end_ms),
-        getEffectiveExcludedAddresses(),
-        AGGREGATION_LIMIT,
-      );
-
-      const ranked = traders.map((t, index) => ({
-        address: t.address,
-        volumeQuote: t.volume_quote,
-        tradeCount: t.trade_count,
-        rank: index + 1,
-      }));
-
-      replaceCompetitionResults(comp.id, ranked);
-    }
-  }
-}
-
-const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000; // 1 hour
-const BANNED_CACHE_REFRESH_MS = 5 * 60 * 1000;    // 5 minutes
+let worker: Worker | null = null;
+let identityTimer: ReturnType<typeof setInterval> | null = null;
+let bannedTimer: ReturnType<typeof setInterval> | null = null;
+let stopping = false;
 
 export function startAggregator(cfg: LeaderboardConfig): void {
-  config = cfg;
+  // Main-thread caches: leaderboard-api reads getBannedSnapshotSync()/getIdentityMap()
+  // on hot HTTP paths. These intervals keep main's copies fresh; the worker has its
+  // own independent copies refreshed on the same cadence.
+  refreshIdentityCache()
+    .then(async () => {
+      const pairs = await buildSameIdentityPairs();
+      console.log(`[Aggregator/main] Identity cache primed (${pairs.size} pairs)`);
+    })
+    .catch((err: Error) => {
+      console.error('[Aggregator/main] Identity cache load failed:', err.message);
+    });
+  refreshBannedCache().catch(() => { /* logged inside */ });
 
-  console.log(`[Aggregator] Starting (interval: ${cfg.aggregationIntervalMs}ms)`);
-
-  // Load identity map for wash-trading detection (non-blocking)
-  refreshIdentityCache().then(async () => {
-    sameIdentityPairs = await buildSameIdentityPairs();
-    console.log(`[Aggregator] Identity pairs loaded: ${sameIdentityPairs.size} pairs`);
-  }).catch((err: Error) => {
-    console.error('[Aggregator] Identity cache load failed:', err.message);
-  });
-
-  // Load banned-users cache on startup. Retry every 30s until first success,
-  // then switch to the normal 5-minute interval.
-  let bannedCacheLoaded = false;
-  const startupBannedRefresh = async () => {
-    if (bannedCacheLoaded) return;
-    try {
-      await refreshBannedCache();
-      bannedCacheLoaded = true;
-    } catch {
-      // error already logged in refreshBannedCache; retry after 30s
-      setTimeout(startupBannedRefresh, 30_000);
-    }
-  };
-  startupBannedRefresh();
-
-  // Schedule identity cache refresh every hour
-  setInterval(async () => {
-    try {
-      await refreshIdentityCache();
-      sameIdentityPairs = await buildSameIdentityPairs();
-    } catch (err) {
-      console.error('[Aggregator] Identity cache refresh error:', (err as Error).message);
-    }
+  identityTimer = setInterval(() => {
+    refreshIdentityCache().catch(() => { /* logged inside */ });
   }, IDENTITY_CACHE_REFRESH_MS);
-
-  // Schedule banned-users cache refresh every 5 minutes
-  setInterval(() => {
-    bannedCacheLoaded = true; // suppress startup retry once interval takes over
+  bannedTimer = setInterval(() => {
     backgroundRefreshBannedCache();
   }, BANNED_CACHE_REFRESH_MS);
 
-  // Run immediately on start
-  try {
-    runAggregation();
-    console.log('[Aggregator] Initial aggregation complete');
-  } catch (err) {
-    console.error('[Aggregator] Initial aggregation error:', (err as Error).message);
-  }
+  spawnWorker(cfg);
+}
 
-  // Schedule periodic runs
-  timer = setInterval(() => {
-    try {
-      runAggregation();
-    } catch (err) {
-      console.error('[Aggregator] Error:', (err as Error).message);
-    }
-  }, cfg.aggregationIntervalMs);
+function spawnWorker(cfg: LeaderboardConfig): void {
+  const __dirname = dirname(fileURLToPath(import.meta.url));
+  const workerPath = join(__dirname, 'aggregator-worker.js');
+
+  // Structured clone preserves Set/Map natively, so cfg.excludedAddresses survives intact.
+  worker = new Worker(workerPath, { workerData: cfg });
+
+  worker.on('error', (err: Error) => {
+    console.error('[Aggregator/main] Worker error:', err.message);
+  });
+  worker.on('exit', (code: number) => {
+    worker = null;
+    if (stopping) return;
+    console.warn(`[Aggregator/main] Worker exited unexpectedly code=${code}; respawning in 5s`);
+    setTimeout(() => {
+      if (!stopping) spawnWorker(cfg);
+    }, 5000);
+  });
+
+  console.log(`[Aggregator/main] Worker spawned (interval ${cfg.aggregationIntervalMs}ms)`);
 }
 
 export function stopAggregator(): void {
-  if (timer) {
-    clearInterval(timer);
-    timer = null;
+  stopping = true;
+  if (identityTimer) { clearInterval(identityTimer); identityTimer = null; }
+  if (bannedTimer) { clearInterval(bannedTimer); bannedTimer = null; }
+  if (worker) {
+    try { worker.postMessage({ type: 'shutdown' }); } catch { /* ignore */ }
+    worker.terminate().catch(() => { /* ignore */ });
+    worker = null;
   }
-  console.log('[Aggregator] Stopped');
+  console.log('[Aggregator/main] Stopped');
+}
+
+/**
+ * Forward an on-demand banned-cache refresh to the worker (called by the
+ * POST /api/pado/internal/banned-cache/refresh endpoint after an admin
+ * runs ban-users CLI so the worker doesn't have to wait the 5-min TTL).
+ *
+ * Main's own cache is refreshed inline by the caller via refreshBannedCache();
+ * this helper handles the worker side.
+ */
+export function notifyWorkerBannedRefresh(): void {
+  if (worker) {
+    try { worker.postMessage({ type: 'refresh-banned' }); } catch { /* worker may be down */ }
+  }
+}
+
+/**
+ * Forward an identity-cache invalidation to the worker. Pair with main-thread
+ * invalidateIdentityCache() when a wallet registration happens so both threads
+ * see the new mapping on their next read.
+ */
+export function notifyWorkerIdentityInvalidate(): void {
+  if (worker) {
+    try { worker.postMessage({ type: 'invalidate-identity' }); } catch { /* worker may be down */ }
+  }
 }

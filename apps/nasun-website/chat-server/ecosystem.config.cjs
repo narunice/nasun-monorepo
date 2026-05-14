@@ -3,8 +3,8 @@ module.exports = {
     {
       name: 'nasun-chat-server',
       script: 'dist/server.js',
-      max_memory_restart: '700M',
-      node_args: '--max-old-space-size=450',  // must be < max_memory_restart (RSS) so PM2 triggers before OOM crash
+      max_memory_restart: '1024M',
+      node_args: '--max-old-space-size=700',  // 2026-05-14: bumped from 450M after aggregator moved to worker_threads. Main + worker each respect this V8 cap; combined RSS ~530MB observed, 1024M RSS ceiling leaves headroom.
       kill_timeout: 105000,                   // crash drain budget 90s + parent grace 95s + 10s margin (see crash/constants.ts)
       wait_ready: false,
       max_restarts: 15,
