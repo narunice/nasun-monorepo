@@ -9,7 +9,7 @@
  * Ported from baram CreateAgentModal; CSS variable tokens swapped for uju tailwind tokens.
  */
 
-import { useState, type KeyboardEvent } from 'react';
+import { useEffect, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { AgentTxStatus, AgentCreationMode } from '../../hooks/useCreateAgent';
 
@@ -103,9 +103,18 @@ export function CreateAgentModal({
     setCapabilities((prev) => prev.filter((_, i) => i !== index));
   };
 
+  // Esc-to-close (parity with the other uju/ai modals)
+  useEffect(() => {
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key === 'Escape' && !isBusy) onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose, isBusy]);
+
   if (isSuccess) {
     return createPortal(
-      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-agent-success-title">
         <div className="absolute inset-0 bg-black/60" onClick={onClose} />
         <div className="relative w-full max-w-sm bg-uju-card border border-uju-border/60 rounded-xl shadow-2xl p-6 text-center space-y-3">
           <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 flex items-center justify-center">
@@ -113,7 +122,7 @@ export function CreateAgentModal({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-white">Agent Registered</p>
+          <p id="create-agent-success-title" className="text-sm font-medium text-white">Agent Registered</p>
           <p className="text-sm text-uju-secondary">{name} has been registered on-chain.</p>
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-uju-bg text-left space-y-1">
@@ -150,13 +159,13 @@ export function CreateAgentModal({
   }
 
   return createPortal(
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="create-agent-title">
       <div className="absolute inset-0 bg-black/60" onClick={isBusy ? undefined : onClose} />
 
       <div className="relative z-10 w-full max-w-md bg-uju-card border border-uju-border/60 rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-uju-border/60">
-          <h2 className="text-base font-semibold text-white">Register Agent</h2>
+          <h2 id="create-agent-title" className="text-base font-semibold text-white">Register Agent</h2>
           <button
             onClick={onClose}
             disabled={isBusy}

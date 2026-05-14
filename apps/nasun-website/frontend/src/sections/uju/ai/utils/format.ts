@@ -2,6 +2,27 @@
  * Shared formatting utilities for Nasun AI UI (ported from baram/frontend/src/utils/format.ts).
  */
 
+export function truncateHash(hash: string, chars = 8): string {
+  if (!hash || hash.length <= chars * 2 + 2) return hash || '-';
+  return `${hash.slice(0, chars)}...${hash.slice(-chars)}`;
+}
+
+export function formatTimestamp(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US');
+}
+
+export function formatTimeDetailed(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+}
+
 export function truncateAddress(addr: string): string {
   if (!addr || addr.length <= 12) return addr || '-';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -11,6 +32,25 @@ export function formatNusdcValue(amount: number): string {
   return (amount / 1e6).toFixed(2);
 }
 
+export function formatNusdc(amount: number): string {
+  return `${(amount / 1e6).toFixed(2)} NUSDC`;
+}
+
+export function formatNasun(amount: number): string {
+  return `${(amount / 1e9).toLocaleString('en-US')} NASUN`;
+}
+
+export function nusdcToRaw(displayAmount: string): number {
+  const trimmed = displayAmount.trim();
+  if (!trimmed) return 0;
+  if (!/^\d+(\.\d+)?$/.test(trimmed)) return 0;
+  const [wholePart, fracPart = ''] = trimmed.split('.');
+  const paddedFrac = (fracPart + '000000').slice(0, 6);
+  const raw = Number(wholePart) * 1_000_000 + Number(paddedFrac);
+  if (!Number.isSafeInteger(raw) || raw < 0) return 0;
+  return raw;
+}
+
 export function formatDate(ms: number): string {
   if (!ms) return '-';
   return new Date(ms).toLocaleString('en-US', {
@@ -18,4 +58,18 @@ export function formatDate(ms: number): string {
     day: 'numeric',
     year: 'numeric',
   });
+}
+
+export function formatDateTime(ms: number): string {
+  if (!ms) return '-';
+  return new Date(ms).toLocaleString('en-US');
+}
+
+export function parseOptionField<T>(field: unknown): T | null {
+  if (field == null) return null;
+  if (typeof field === 'object' && 'vec' in (field as Record<string, unknown>)) {
+    const vec = (field as { vec: T[] }).vec;
+    return vec.length > 0 ? vec[0] : null;
+  }
+  return field as T;
 }
