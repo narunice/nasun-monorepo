@@ -131,7 +131,7 @@ const AppRoutes = () => {
 
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
-        <Route path="/ecosystem/ai-economy" element={<Navigate to="/ecosystem/baram" replace />} />
+        <Route path="/ecosystem/ai-economy" element={<Navigate to="/ecosystem/nasun-ai" replace />} />
         <Route path="/ecosystem/finance" element={<Navigate to="/ecosystem/pado" replace />} />
         <Route path="/finance" element={<Navigate to="/ecosystem" replace />} />
         <Route path="/ips" element={<Navigate to="/ecosystem" replace />} />

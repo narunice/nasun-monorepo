@@ -391,7 +391,7 @@ const InvestorsContent = () => {
               </Link>
             </ButtonV3>
             <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
-              <Link to="/ecosystem/baram">
+              <Link to="/ecosystem/nasun-ai">
                 Explore <span className="font-semibold ml-1">Nasun AI</span>
               </Link>
             </ButtonV3>

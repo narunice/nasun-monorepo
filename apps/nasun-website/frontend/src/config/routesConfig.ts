@@ -71,6 +71,7 @@ export const Pages = {
   AboutTeam: lazyWithRetry(() => import("../pages/about/TeamPage")),
   // Ecosystem Pages
   BaramDark: lazyWithRetry(() => import("../pages/ecosystem/BaramDarkPage")),
+  NasunAi: lazyWithRetry(() => import("../pages/ecosystem/NasunAiPage")),
   EcosystemGostop: lazyWithRetry(
     () => import("../pages/ecosystem/GostopPage"),
   ),
@@ -206,7 +207,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
   // Ecosystem 섹션 (IP 통합)
   ecosystem: {
     path: "/ecosystem",
-    component: Pages.BaramDark, // 기본 서브페이지: Baram - AI
+    component: Pages.NasunAi, // 기본 서브페이지: Nasun AI
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
@@ -224,8 +225,16 @@ export const routesV2: EnhancedRouteConfigBuilder = {
         },
         {
           name: "navigation.baramAi",
+          path: "/ecosystem/nasun-ai",
+          element: Pages.NasunAi,
+        },
+        // Legacy slug kept so external links keep resolving. Renders the same
+        // Nasun AI content; a 308 redirect at the CDN edge is a S7 follow-up.
+        {
+          name: "navigation.baramAi",
           path: "/ecosystem/baram",
-          element: Pages.BaramDark,
+          element: Pages.NasunAi,
+          hidden: true,
         },
         {
           name: "navigation.gostop",
