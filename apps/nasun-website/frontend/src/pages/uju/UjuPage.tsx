@@ -10,11 +10,16 @@ import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 import { useAuth } from "@/features/auth";
+import { NASUN_AI_ENABLED } from "@/config/featureFlags";
 import { ReferralWelcomeModal, REFERRAL_MODAL_DISMISSED_KEY } from "../../sections/uju/onboarding/ReferralWelcomeModal";
 import { getMyReferralStats } from "@/services/referralApi";
 
 type Tab = "dashboard" | "activity" | "ai" | "profile";
-const VALID_TABS = new Set<Tab>(["dashboard", "activity", "ai", "profile"]);
+const VALID_TABS = new Set<Tab>(
+  NASUN_AI_ENABLED
+    ? ["dashboard", "activity", "ai", "profile"]
+    : ["dashboard", "activity", "profile"],
+);
 
 function parseTab(raw: string | null): Tab {
   return raw && VALID_TABS.has(raw as Tab) ? (raw as Tab) : "dashboard";

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { ecosystemAiPath } from "@/config/featureFlags";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
@@ -45,7 +46,7 @@ const SLIDES: SlideData[] = [
     buttonPrefix: "EXPLORE",
     projectName: "NASUN AI",
     buttonVariant: "baram",
-    link: "/ecosystem/nasun-ai",
+    link: ecosystemAiPath,
     video: baramVideo,
     poster: "/images/posters/baram-new-ui-video-smaller-fonts-web.webp",
   },

@@ -1,13 +1,16 @@
 import { useNotificationStore } from "./notifications/notificationStore";
+import { NASUN_AI_ENABLED } from "@/config/featureFlags";
 
-const TABS = [
+const ALL_TABS = [
   { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "activity",  label: "Activity",  icon: ActivityIcon },
   { id: "ai",        label: "AI",        icon: AIIcon },
   { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
-type TabId = typeof TABS[number]["id"];
+const TABS = ALL_TABS.filter((t) => t.id !== "ai" || NASUN_AI_ENABLED);
+
+type TabId = typeof ALL_TABS[number]["id"];
 
 interface UjuNavigationProps {
   activeTab: TabId;

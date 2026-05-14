@@ -1,4 +1,5 @@
 import { useState, FormEvent } from "react";
+import { ecosystemAiPath } from "@/config/featureFlags";
 import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -391,7 +392,7 @@ const InvestorsContent = () => {
               </Link>
             </ButtonV3>
             <ButtonV3 variant="nw4" outline size="md" asChild className="w-full bg-nasun-nw1/10">
-              <Link to="/ecosystem/nasun-ai">
+              <Link to={ecosystemAiPath}>
                 Explore <span className="font-semibold ml-1">Nasun AI</span>
               </Link>
             </ButtonV3>
