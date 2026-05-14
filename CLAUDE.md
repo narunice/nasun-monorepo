@@ -208,25 +208,27 @@ Security expectations:
 
 **nasun-monorepo**는 Nasun 프로젝트들을 통합 관리하는 pnpm 모노레포입니다.
 
-### 현재 상태 (2026-02-23)
+### 현재 상태 (2026-05-14)
 
-| 앱                             | 패키지명                | 상태      | 설명                                                  |
-| ------------------------------ | ----------------------- | --------- | ----------------------------------------------------- |
-| `apps/baram`                   | @nasun/baram            | Active    | Baram — AI Compliance Settlement Layer                |
-| `apps/network-explorer`        | @nasun/network-explorer | 완료      | Nasun Explorer (블록 탐색기)                          |
-| `apps/nasun-website`           | @nasun/nasun-website    | 완료      | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event) |
-| `apps/gensol-website`          | @nasun/gensol-website   | 완료      | GenSol 웹사이트                                       |
-| `apps/pado`                    | @nasun/pado             | 완료      | Pado 앱 (DEX + Prediction + Lottery + Chat)           |
-| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard    | Legacy    | Legacy Leaderboard V2                                 |
+| 앱                             | 패키지명                  | 상태      | 설명                                                                  |
+| ------------------------------ | ------------------------- | --------- | --------------------------------------------------------------------- |
+| `apps/nasun-ai-runtime`        | @nasun/nasun-ai-runtime   | Active    | AI agent runtime (heartbeat trader + /wake server, prod pm2)          |
+| `apps/network-explorer`        | @nasun/network-explorer   | 완료      | Nasun Explorer (블록 탐색기)                                          |
+| `apps/nasun-website`           | @nasun/nasun-website      | 완료      | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event, uju AI tab)    |
+| `apps/gensol-website`          | @nasun/gensol-website     | 완료      | GenSol 웹사이트                                                       |
+| `apps/pado`                    | @nasun/pado               | 완료      | Pado 앱 (DEX + Prediction + Lottery + Chat)                           |
+| `apps/baram`                   | (excluded from workspace) | Archived  | 이전 Baram 앱 (frontend → uju/ai/, agent-runner → nasun-ai-runtime)   |
+| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard      | Legacy    | Legacy Leaderboard V2                                                 |
 
 ## 프로젝트 구조
 
 ```
 nasun-monorepo/
 ├── apps/
-│   ├── baram/                     # Baram (frontend/ + contracts*/ + executor-nitro/ + cdk/)
+│   ├── nasun-ai-runtime/          # AI agent runtime (heartbeat + /wake; replaces baram/agent-runner)
+│   ├── baram/                     # ARCHIVED (excluded from workspace; reference only — onchain `baram::*` 모듈명 invariant)
 │   ├── network-explorer/          # Explorer (단일 레벨 + api-server/)
-│   ├── nasun-website/             # 공식 웹사이트 (frontend/)
+│   ├── nasun-website/             # 공식 웹사이트 (frontend/ + chat-server/ unified)
 │   ├── gensol-website/            # GenSol (frontend/)
 │   ├── pado/                      # Pado (frontend/ + bots/)
 │   └── x-leaderboard-v2-legacy/   # Legacy
