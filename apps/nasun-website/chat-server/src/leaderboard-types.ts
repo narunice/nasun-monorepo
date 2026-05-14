@@ -272,6 +272,7 @@ export interface TraderScoreResponse {
 export const POINTS = {
   PER_TRADE: 2,
   PER_1K_VOLUME: 2,              // per $1000 NUSDC volume
+  WEEKLY_VOLUME_SCORE_CAP: 18_000, // weekly volume score ceiling ($9M × 2pt/$1k); caps capital-advantage weight (same-identity wash already filtered upstream)
   PER_UNIQUE_POOL: 15,           // per unique pool traded
   FIRST_TRADE_BONUS: 50,         // one-time bonus for first trade
   DAILY_TRADE_CAP: 24,           // max trades counted per day toward trade points
@@ -284,6 +285,19 @@ export const POINTS = {
     { threshold: -10, penalty: 10 },
     { threshold: -5,  penalty: 5  },
   ],
+  // Prediction-market loss penalty: amount-based (not percent), per-market accumulating.
+  // Percent-based penalty is unusable here because binary outcomes produce -100% on
+  // nearly every loss, flattening any tier. Only activates when weekly net realized
+  // prediction PnL is negative (Hybrid A+B: per-market amount tier × net-negative gate).
+  // Penalty values are half of LOSS_PENALTY_TIERS — prediction is high-variance by design,
+  // discouraging it too hard would dry up market liquidity.
+  PREDICTION_LOSS_PENALTY_TIERS_USD: [
+    { lossUsdAtLeast: 10_000, penalty: 20 },
+    { lossUsdAtLeast:  2_000, penalty: 10 },
+    { lossUsdAtLeast:    500, penalty:  5 },
+    { lossUsdAtLeast:    100, penalty:  2 },
+  ],
+  WEEKLY_PREDICTION_LOSS_PENALTY_CAP: 100, // weekly max prediction loss penalty (spot has implicit single-tier max ~20)
 } as const;
 
 // Known bot wallet addresses - always excluded from leaderboards and points.
