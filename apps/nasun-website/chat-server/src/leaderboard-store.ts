@@ -1273,6 +1273,7 @@ export interface PredictionPnlResult {
   pnlPercent: number;
   marketCount: number;
   volumeQuoteRaw: number;     // NUSDC raw, unsigned (sum of |cost|)
+  marketLossesRaw: number[];  // per-market realized loss abs (NUSDC raw); only markets with net negative PnL
 }
 
 /**
@@ -1383,8 +1384,12 @@ export function computePredictionPnl(
     tSet.add(row.market_id);
   }
 
-  // Roll positions up into per-user PnL + cost basis
+  // Roll positions up into per-user PnL + cost basis.
+  // Also accumulate per-(address, marketId) PnL so we can extract per-market losses
+  // for the prediction loss penalty (Hybrid A+B). yes/no both sides on the same
+  // market are netted into a single per-market PnL.
   const userAgg = new Map<string, { realizedPnlRaw: number; costBasis: number; volumeQuoteRaw: number }>();
+  const perMarketPnl = new Map<string, number>(); // key: `${address}|${marketId}`
 
   for (const [k, pos] of positions) {
     const [address, marketId, isYesStr] = k.split('|');
@@ -1406,6 +1411,19 @@ export function computePredictionPnl(
     agg.realizedPnlRaw += pnl;
     agg.costBasis      += costInvested;
     agg.volumeQuoteRaw += pos.gross_cost;
+
+    const mKey = `${address}|${marketId}`;
+    perMarketPnl.set(mKey, (perMarketPnl.get(mKey) ?? 0) + pnl);
+  }
+
+  // Extract per-market losses per user (only net-negative markets).
+  const userMarketLosses = new Map<string, number[]>();
+  for (const [mKey, pnl] of perMarketPnl) {
+    if (pnl >= 0) continue;
+    const [address] = mKey.split('|');
+    let arr = userMarketLosses.get(address);
+    if (!arr) { arr = []; userMarketLosses.set(address, arr); }
+    arr.push(Math.abs(pnl));
   }
 
   const out = new Map<string, PredictionPnlResult>();
@@ -1420,6 +1438,7 @@ export function computePredictionPnl(
       pnlPercent,
       marketCount,
       volumeQuoteRaw: Math.round(agg.volumeQuoteRaw),
+      marketLossesRaw: userMarketLosses.get(address) ?? [],
     });
   }
 

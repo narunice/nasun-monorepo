@@ -427,7 +427,8 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     // trade_count already reflects per-day cap (from aggregateWeeklyTraderVolume).
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
     const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    const rawVolumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    const volumePoints = Math.min(rawVolumePoints, POINTS.WEEKLY_VOLUME_SCORE_CAP);
     const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
 
     const pnlData = weeklyPnlMap.get(t.address);
@@ -460,7 +461,21 @@ async function runWeeklyScoreAggregation(): Promise<void> {
       if (predPnl.pnlPercent > 0) {
         predictionPnlScore += Math.floor(predPnl.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
       }
-      // v1: no loss penalty for prediction (see comment above).
+      // Hybrid A+B prediction loss penalty: per-market amount tier, gated on
+      // net-negative weekly prediction PnL. Caps at WEEKLY_PREDICTION_LOSS_PENALTY_CAP.
+      // Percent tiers (used by spot) are unusable here — binary outcomes hit -100%
+      // routinely. Amount tiers target large reckless bets. Net-negative gate lets
+      // a winning week absorb the variance of a few losing markets.
+      if (predPnl.realizedPnlRaw < 0 && predPnl.marketLossesRaw.length > 0) {
+        let lossPenalty = 0;
+        for (const lossRaw of predPnl.marketLossesRaw) {
+          const lossUsd = lossRaw / 1_000_000;
+          const tier = POINTS.PREDICTION_LOSS_PENALTY_TIERS_USD.find((t) => lossUsd >= t.lossUsdAtLeast);
+          if (tier) lossPenalty += tier.penalty;
+        }
+        lossPenalty = Math.min(lossPenalty, POINTS.WEEKLY_PREDICTION_LOSS_PENALTY_CAP);
+        predictionPnlScore = Math.max(0, predictionPnlScore - lossPenalty);
+      }
     }
 
     return {
