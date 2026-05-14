@@ -10,7 +10,7 @@ import {
   replaceCompetitionResults,
   updateCompetition,
   computeTraderPnl,
-  computeWeeklyPredictionPnl,
+  computePredictionPnl,
   getPnlCurrentRanks,
   replaceTraderPnlStats,
   getPointsCurrentRanks,
@@ -173,14 +173,68 @@ function runPnlAggregation(): void {
 
   for (const period of PERIODS) {
     const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
+    const now = Date.now();
 
     const currentRanks = getPnlCurrentRanks(period);
-    const traders = computeTraderPnl(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
 
-    // Cache "all" period PnL data for points aggregation
+    // Spot PnL only (aggregateTraderPnlRaw isolates prediction via
+    // `pool_id NOT LIKE 'prediction:%'`). Merged with prediction PnL below
+    // so the public PnL leaderboard reflects both venues.
+    const spotTraders = computeTraderPnl(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
+    // Prediction PnL realized in the same window: markets that resolved
+    // between [cutoff, now]. For period='all' cutoff=0 → every resolved market.
+    const predictionMap = computePredictionPnl(cutoff, now, getEffectiveExcludedAddresses(), sameIdentityPairs);
+
+    // Merge: realizedPnlRaw and tradeCount additive; pnlPercent recomputed from
+    // combined cost basis so a small-cost prediction win doesn't artificially
+    // inflate a large-cost spot trader's return.
+    interface CombinedPnl { realizedPnlRaw: number; spotCostBasis: number; predCostBasis: number; tradeCount: number; spotPnlPercent: number; }
+    const combined = new Map<string, CombinedPnl>();
+
+    for (const t of spotTraders) {
+      // Spot cost basis isn't directly exposed; derive from PnL and percent:
+      // cost_basis ≈ realizedPnlRaw / (pnlPercent/100). Only meaningful when
+      // pnlPercent != 0; fall back to pnlPercent contribution alone otherwise.
+      const spotCostBasis = t.pnlPercent !== 0
+        ? Math.abs(t.realizedPnlRaw / (t.pnlPercent / 100))
+        : 0;
+      combined.set(t.address, {
+        realizedPnlRaw: t.realizedPnlRaw,
+        spotCostBasis,
+        predCostBasis: 0,
+        tradeCount: t.tradeCount,
+        spotPnlPercent: t.pnlPercent,
+      });
+    }
+
+    for (const [address, pred] of predictionMap) {
+      const predCostBasis = pred.pnlPercent !== 0
+        ? Math.abs(pred.realizedPnlRaw / (pred.pnlPercent / 100))
+        : 0;
+      const existing = combined.get(address);
+      if (existing) {
+        existing.realizedPnlRaw += pred.realizedPnlRaw;
+        existing.predCostBasis = predCostBasis;
+        // tradeCount stays spot-only here; PnL leaderboard's "Trades" column
+        // historically counts fills feeding the cost-basis model, and
+        // prediction fills already feed the volume leaderboard.
+      } else {
+        combined.set(address, {
+          realizedPnlRaw: pred.realizedPnlRaw,
+          spotCostBasis: 0,
+          predCostBasis,
+          tradeCount: 0,
+          spotPnlPercent: 0,
+        });
+      }
+    }
+
+    // Cache "all" period PnL data for points aggregation. Use spot-only PnL
+    // here so the alltime points table (trader_points) keeps spot semantics.
+    // Weekly score uses computePredictionPnl directly via aggregator below.
     if (period === 'all') {
       cachedPnlByAddress = new Map();
-      for (const t of traders) {
+      for (const t of spotTraders) {
         cachedPnlByAddress.set(t.address, {
           realizedPnlRaw: t.realizedPnlRaw,
           pnlPercent: t.pnlPercent,
@@ -188,7 +242,24 @@ function runPnlAggregation(): void {
       }
     }
 
-    const ranked = traders.map((t, index) => {
+    const merged = [...combined.entries()].map(([address, c]) => {
+      const totalCost = c.spotCostBasis + c.predCostBasis;
+      const pnlPercent = totalCost > 0
+        ? Math.round((c.realizedPnlRaw / totalCost) * 10000) / 100
+        : 0;
+      return {
+        address,
+        realizedPnlRaw: Math.round(c.realizedPnlRaw),
+        pnlPercent,
+        tradeCount: c.tradeCount,
+      };
+    });
+
+    // Same sort key the spot path used (absolute PnL descending).
+    merged.sort((a, b) => b.realizedPnlRaw - a.realizedPnlRaw);
+    const top = merged.slice(0, AGGREGATION_LIMIT);
+
+    const ranked = top.map((t, index) => {
       const rank = index + 1;
       const prevRank = currentRanks.get(t.address) ?? 0;
       return {
@@ -337,7 +408,7 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   // produce -100% frequently and would max the tier on every loss, dominating
   // the score distribution. Revisit after one week of production data.
   const weekEnd = weekStart + 7 * 24 * 60 * 60 * 1000;
-  const predictionPnlMap = computeWeeklyPredictionPnl(
+  const predictionPnlMap = computePredictionPnl(
     weekStart,
     weekEnd,
     getEffectiveExcludedAddresses(),

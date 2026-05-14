@@ -238,8 +238,6 @@ export interface ScoreLeaderboardTrader {
   totalScore: number;
   tradeCount: number;
   volumeUsd: string;
-  predictionVolumeUsd: string;
-  predictionMarketCount: number;
   rankChange: number;
   followerCount: number;
   hasGoogle?: boolean;
