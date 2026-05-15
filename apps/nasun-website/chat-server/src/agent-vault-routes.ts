@@ -53,7 +53,12 @@ const STATUS_RATE_LIMIT_PER_IP_PER_MINUTE = 30;
 
 let ssmClient: SSMClient | null = null;
 function getSsm(): SSMClient {
-  if (!ssmClient) ssmClient = new SSMClient({});
+  if (!ssmClient) {
+    // SDK v3 region resolution from EC2 metadata occasionally fails
+    // ("Region is missing"). Pin to ap-northeast-2 (the prod EC2 region)
+    // with env override.
+    ssmClient = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+  }
   return ssmClient;
 }
 
@@ -329,7 +334,16 @@ export async function handleVaultUpload(
       }));
     } catch (err) {
       // Do NOT include raw body or err.message that might echo body content.
-      console.error(`[vault-upload] SSM PutParameter failed for ${paramName}: ${(err as Error).name}`);
+      // SDK service errors carry a `$metadata` payload — surface the
+      // status + AWS error name without leaking the secret value.
+      const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number }; Code?: string };
+      console.error(
+        `[vault-upload] SSM PutParameter failed for ${paramName}: ` +
+        `name=${e.name ?? 'unknown'} ` +
+        `code=${e.Code ?? 'n/a'} ` +
+        `status=${e.$metadata?.httpStatusCode ?? 'n/a'} ` +
+        `msg=${(e.message ?? '').slice(0, 200)}`,
+      );
       writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
       return;
     }

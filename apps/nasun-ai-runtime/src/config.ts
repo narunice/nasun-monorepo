@@ -52,7 +52,7 @@ function requireHttpsUrl(raw: string, name: string): string {
 // for the legacy single-tenant nasun-ai-runtime PM2 process.
 async function loadKeypairFromParam(paramName: string): Promise<Ed25519Keypair> {
   const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
-  const client = new SSMClient({});
+  const client = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
   const resp = await client.send(new GetParameterCommand({
     Name: paramName,
     WithDecryption: true,
