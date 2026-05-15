@@ -11,8 +11,13 @@
     "build:all": "pnpm run build:lambda && pnpm run build",
     "watch": "tsc -w",
     "cdk": "cdk",
-    "deploy": "pnpm run build:all && cdk deploy",
-    "destroy": "cdk destroy"
+    "deploy": "echo 'Use deploy:dev or deploy:prod (NODE_ENV is required).' && exit 1",
+    "deploy:dev": "pnpm run build:all && NODE_ENV=development cdk deploy BaramStack",
+    "deploy:prod": "pnpm run build:all && NODE_ENV=production cdk deploy BaramStackProd --profile nasun-prod",
+    "diff:dev": "NODE_ENV=development cdk diff BaramStack",
+    "diff:prod": "NODE_ENV=production cdk diff BaramStackProd --profile nasun-prod",
+    "destroy:dev": "NODE_ENV=development cdk destroy BaramStack",
+    "destroy:prod": "NODE_ENV=production cdk destroy BaramStackProd --profile nasun-prod"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

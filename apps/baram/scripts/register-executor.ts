@@ -34,9 +34,10 @@ const ADMIN_CAP_ID = '0x5e3dca938ff22ec2445a9de84029924b37a5bc5e2fc815c9547c5472
 const NASUN_TRANSFER_AMOUNT = 1_010_000_000_000n; // 1,010 NASUN (1,000 stake + 10 gas buffer)
 const STAKE_AMOUNT = 1_000_000_000_000n;          // 1,000 NASUN
 
-// Executor metadata
-const EXECUTOR_NAME = 'naru-baram-executor';
-const EXECUTOR_ENDPOINT = 'http://localhost:3000';
+// Executor metadata (env-overridable so the same script registers multiple
+// keepairs without code edits)
+const EXECUTOR_NAME = process.env.EXECUTOR_NAME ?? 'naru-baram-executor';
+const EXECUTOR_ENDPOINT = process.env.EXECUTOR_ENDPOINT ?? 'http://localhost:3000';
 const TEE_TYPE_NONE = 0;
 const SUPPORTED_MODELS = [
   'llama-3.3-70b-versatile',

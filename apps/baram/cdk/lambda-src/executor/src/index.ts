@@ -13,6 +13,7 @@
 
 import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
+import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
@@ -21,8 +22,11 @@ import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, ResultR
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 
-// AWS Secrets Manager client
+// AWS Secrets Manager client (executor private key only)
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
+// SSM client. Groq API key is an SSM SecureString. Cheaper than Secrets Manager for
+// outbound API keys that do not carry asset-bearing risk.
+const ssmClient = new SSMClient({ region: process.env.AWS_REGION });
 
 // Cached secrets (cleared after initialization)
 let groqApiKey: string | null = null;
@@ -112,13 +116,17 @@ function maskSensitive<T>(obj: T): T {
 async function loadSecrets(): Promise<void> {
   if (initialized) return;
 
-  // Load Groq API key
-  const groqSecret = await secretsClient.send(
-    new GetSecretValueCommand({ SecretId: process.env.GROQ_SECRET_NAME || 'baram/groq' })
+  // Load Groq API key from SSM Parameter Store (SecureString).
+  const groqParameterName = process.env.GROQ_PARAMETER_NAME || '/baram/groq-api-key';
+  const groqParam = await ssmClient.send(
+    new GetParameterCommand({ Name: groqParameterName, WithDecryption: true })
   );
-  const groqData = JSON.parse(requireSecretString(groqSecret, 'baram/groq'));
-  groqApiKey = groqData.apiKey;
-  console.log('[Secrets] Groq API key loaded');
+  const groqValue = groqParam.Parameter?.Value;
+  if (!groqValue) {
+    throw new Error(`SSM parameter '${groqParameterName}' returned no value`);
+  }
+  groqApiKey = groqValue;
+  console.log('[Secrets] Groq API key loaded from SSM');
 
   // Load executor private key
   const executorSecret = await secretsClient.send(

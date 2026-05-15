@@ -1,12 +1,19 @@
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
 export interface BaramStackProps extends cdk.StackProps {
+  // Production vs development. Drives removal policies, log retention, and any
+  // future env-specific divergence. Resource *names* stay identical across
+  // accounts (function/secret/apiKey); different AWS accounts isolate them.
+  isProduction: boolean;
+
   // Contract addresses
   baramPackageId: string;
   baramRegistryId: string;
@@ -33,38 +40,51 @@ export class BaramStack extends cdk.Stack {
     super(scope, id, props);
 
     const {
+      isProduction,
       baramPackageId,
       baramRegistryId,
       aerPackageId = '',
       aerRegistryId = '',
       executorRegistryId = '',
       suiRpcUrl = 'https://rpc.devnet.nasun.io',
-      corsAllowedOrigins = ['https://baram.nasun.io', 'http://localhost:5177'],
+      // Default allowlist includes both the legacy baram subdomain and the
+      // nasun-website root (S5+ where Baram surfaces moved into uju/ai). Both
+      // staging and prod nasun-website call this Lambda's /execute endpoint.
+      corsAllowedOrigins = [
+        'https://baram.nasun.io',
+        'https://nasun.io',
+        'https://www.nasun.io',
+        'https://staging.nasun.io',
+        'http://localhost:5174',
+        'http://localhost:5177',
+      ],
     } = props;
 
-    // DynamoDB table for AI execution results (TTL: 7 days)
+    // DynamoDB table for AI execution results (TTL: 7 days). Prod retains the
+    // table on stack delete so accidental teardown can't wipe live result rows;
+    // dev keeps DESTROY for fast iteration.
     const resultTable = new dynamodb.Table(this, 'ResultTable', {
       tableName: 'baram-execution-results',
       partitionKey: { name: 'requestId', type: dynamodb.AttributeType.NUMBER },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       timeToLiveAttribute: 'ttl',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: isProduction
+        ? cdk.RemovalPolicy.RETAIN
+        : cdk.RemovalPolicy.DESTROY,
     });
 
-    // Import existing secrets (must be created manually in AWS Secrets Manager)
-    // Secret format: { "apiKey": "gsk_..." } for Groq
-    // Secret format: { "privateKey": "hex-encoded-32-bytes" } for Executor
+    // Executor private key stays in Secrets Manager (asset-bearing, audit/rotation).
+    // Format: { "privateKey": "hex-encoded-32-bytes" }
+    // Groq API key is provisioned as an SSM SecureString at the path below.
+    // Standard tier is free, which avoids the per-secret monthly fee for an
+    // outbound API key whose only risk is third-party billing/rate-limit.
     const executorSecret = secretsmanager.Secret.fromSecretNameV2(
       this,
       'ExecutorSecret',
       'baram/executor'
     );
 
-    const groqSecret = secretsmanager.Secret.fromSecretNameV2(
-      this,
-      'GroqSecret',
-      'baram/groq'
-    );
+    const groqParameterName = '/baram/groq-api-key';
 
     // Create Lambda function for executor
     this.executorLambda = new lambda.Function(this, 'ExecutorLambda', {
@@ -84,16 +104,24 @@ export class BaramStack extends cdk.Stack {
         AER_REGISTRY_ID: aerRegistryId,
         EXECUTOR_REGISTRY_ID: executorRegistryId,
         EXECUTOR_SECRET_NAME: 'baram/executor',
-        GROQ_SECRET_NAME: 'baram/groq',
+        GROQ_PARAMETER_NAME: groqParameterName,
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
         RESULT_TABLE_NAME: resultTable.tableName,
       },
-      description: 'Baram AI Executor - Processes AI requests and submits proofs on-chain',
+      logRetention: isProduction
+        ? logs.RetentionDays.ONE_MONTH
+        : logs.RetentionDays.ONE_WEEK,
+      description: `Baram AI Executor (${isProduction ? 'prod' : 'dev'}) - Processes AI requests and submits proofs on-chain`,
     });
 
-    // Grant Lambda access to secrets and DynamoDB
+    // Grant Lambda access to secrets, SSM parameter, and DynamoDB
     executorSecret.grantRead(this.executorLambda);
-    groqSecret.grantRead(this.executorLambda);
+    this.executorLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['ssm:GetParameter'],
+      resources: [
+        `arn:aws:ssm:${this.region}:${this.account}:parameter${groqParameterName}`,
+      ],
+    }));
     resultTable.grantReadWriteData(this.executorLambda);
 
     // Create API Gateway

@@ -11,10 +11,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('@aws-sdk/client-secrets-manager', () => ({
   SecretsManagerClient: class MockSecretsManagerClient {
     send = vi.fn().mockResolvedValue({
-      SecretString: JSON.stringify({ apiKey: 'mock-groq-key', privateKey: 'mock-key' }),
+      SecretString: JSON.stringify({ privateKey: 'mock-key' }),
     });
   },
   GetSecretValueCommand: class MockGetSecretValueCommand {
+    constructor(public input: Record<string, unknown>) {}
+  },
+}));
+
+vi.mock('@aws-sdk/client-ssm', () => ({
+  SSMClient: class MockSSMClient {
+    send = vi.fn().mockResolvedValue({
+      Parameter: { Value: 'mock-groq-key' },
+    });
+  },
+  GetParameterCommand: class MockGetParameterCommand {
     constructor(public input: Record<string, unknown>) {}
   },
 }));
