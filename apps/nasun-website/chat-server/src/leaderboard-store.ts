@@ -101,6 +101,13 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
       ON trade_fills(pool_id, maker_address, timestamp_ms DESC);
     CREATE INDEX IF NOT EXISTS idx_fills_pool_taker
       ON trade_fills(pool_id, taker_address, timestamp_ms DESC);
+    -- Covering indexes for runPnlAggregation maker/taker UNION ALL scans.
+    -- Created in prod 2026-05-13 after blocking incident; formalized here so
+    -- new environments get them automatically.
+    CREATE INDEX IF NOT EXISTS idx_fills_cover_maker
+      ON trade_fills(timestamp_ms, maker_address, pool_id, quote_quantity, base_quantity, taker_is_bid);
+    CREATE INDEX IF NOT EXISTS idx_fills_cover_taker
+      ON trade_fills(timestamp_ms, taker_address, pool_id, quote_quantity, base_quantity, taker_is_bid);
 
     CREATE TABLE IF NOT EXISTS trader_stats (
       address TEXT NOT NULL,
@@ -1602,6 +1609,181 @@ export function computeTraderPnl(
   results.sort((a, b) => b.realizedPnlRaw - a.realizedPnlRaw);
 
   return results.slice(0, limit);
+}
+
+/**
+ * Multi-period spot PnL in a single table scan.
+ *
+ * Replaces N separate calls to computeTraderPnl (one per period). The wash
+ * filter (NOT EXISTS over wash_pairs) is the dominant cost on a 774k-row
+ * trade_fills table; running it once instead of N times keeps the cycle
+ * within the 60s aggregation interval. Period bucketing is done inside the
+ * SQL via CASE WHEN aggregates against each period's cutoff, so the final
+ * row count stays bounded by (address × pool_id) and JS post-processing is
+ * cheap.
+ *
+ * Returns one entry per period in the input list, each containing the
+ * top-`limit` traders by realizedPnlRaw for that period.
+ */
+export function computeTraderPnlMultiPeriod(
+  periodCutoffs: ReadonlyArray<{ period: string; cutoffMs: number }>,
+  excludedAddresses: Set<string>,
+  limit: number = 100,
+  washPairs?: Set<string>,
+): Map<string, Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }>> {
+  const result = new Map<string, Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }>>();
+  if (periodCutoffs.length === 0) return result;
+
+  const ldb = getLeaderboardDb();
+
+  // Inline excluded addresses and wash pairs as SQL literals instead of bound
+  // parameters. With 14k+ banned addresses and up to 2k wash pairs the
+  // combined parameter count exceeds better-sqlite3's per-statement limit.
+  // Both inputs are normalized lowercase hex (UserProfiles canonical form,
+  // validated upstream by banned-loader / buildSameIdentityPairs); the strict
+  // regex below is defense-in-depth against future drift.
+  const HEX_ADDR_RE = /^0x[0-9a-f]+$/;
+  const excludeQuoted: string[] = [];
+  for (const addr of excludedAddresses) {
+    if (!HEX_ADDR_RE.test(addr)) {
+      throw new Error(`computeTraderPnlMultiPeriod: excluded address "${addr}" is not lowercase 0x-hex`);
+    }
+    excludeQuoted.push(`'${addr}'`);
+  }
+  const excludeClause = excludeQuoted.length > 0
+    ? `AND address NOT IN (${excludeQuoted.join(',')})`
+    : '';
+
+  const WASH_KEY_RE = /^0x[0-9a-f]+:0x[0-9a-f]+$/;
+  let washCte = '';
+  let washFilter = '';
+  if (washPairs && washPairs.size > 0 && washPairs.size <= MAX_WASH_PAIRS_CTE) {
+    const washValues: string[] = [];
+    for (const k of washPairs) {
+      if (!WASH_KEY_RE.test(k)) {
+        throw new Error(`computeTraderPnlMultiPeriod: wash pair "${k}" is not canonical`);
+      }
+      washValues.push(`('${k}')`);
+    }
+    washCte = `WITH wash_pairs(k) AS (VALUES ${washValues.join(', ')})`;
+    washFilter = `
+      AND NOT EXISTS (
+        SELECT 1 FROM wash_pairs
+        WHERE k = CASE WHEN maker_address < taker_address
+                       THEN maker_address || ':' || taker_address
+                       ELSE taker_address || ':' || maker_address
+                  END
+      )`;
+  } else if (washPairs && washPairs.size > MAX_WASH_PAIRS_CTE) {
+    console.warn(`[LeaderboardStore] computeTraderPnlMultiPeriod: washPairs.size=${washPairs.size} exceeds CTE limit (${MAX_WASH_PAIRS_CTE}), skipping wash filter`);
+  }
+
+  // Build per-period conditional aggregate columns. Column index ↔ periodCutoffs index.
+  const aggCols: string[] = [];
+  for (let i = 0; i < periodCutoffs.length; i++) {
+    aggCols.push(`SUM(CASE WHEN is_buy = 1 AND timestamp_ms >= ? THEN base_qty ELSE 0.0 END) as buy_base_${i}`);
+    aggCols.push(`SUM(CASE WHEN is_buy = 1 AND timestamp_ms >= ? THEN quote_qty ELSE 0.0 END) as buy_quote_${i}`);
+    aggCols.push(`SUM(CASE WHEN is_buy = 0 AND timestamp_ms >= ? THEN base_qty ELSE 0.0 END) as sell_base_${i}`);
+    aggCols.push(`SUM(CASE WHEN is_buy = 0 AND timestamp_ms >= ? THEN quote_qty ELSE 0.0 END) as sell_quote_${i}`);
+    aggCols.push(`SUM(CASE WHEN timestamp_ms >= ? THEN 1 ELSE 0 END) as count_${i}`);
+  }
+
+  // Lowest cutoff among periods bounds the unioned scan; for 'all' (cutoff=0)
+  // this is a no-op.
+  const minCutoff = Math.min(...periodCutoffs.map((p) => p.cutoffMs));
+
+  const query = `
+    ${washCte}
+    SELECT
+      address,
+      pool_id,
+      ${aggCols.join(',\n      ')}
+    FROM (
+      SELECT taker_address as address, pool_id,
+             CAST(base_quantity AS REAL) as base_qty, CAST(quote_quantity AS REAL) as quote_qty,
+             taker_is_bid as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
+      ${washFilter}
+      UNION ALL
+      SELECT maker_address as address, pool_id,
+             CAST(base_quantity AS REAL) as base_qty, CAST(quote_quantity AS REAL) as quote_qty,
+             CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
+      ${washFilter}
+    )
+    WHERE 1=1 ${excludeClause}
+    GROUP BY address, pool_id
+  `;
+
+  // Bound params: 5 cutoffs per period (CASE WHEN order), then UNION branch
+  // cutoffs (taker, maker). Wash and exclude lists are inlined as literals.
+  const selectCutoffParams: number[] = [];
+  for (const { cutoffMs } of periodCutoffs) {
+    for (let k = 0; k < 5; k++) selectCutoffParams.push(cutoffMs);
+  }
+
+  const params = [
+    ...selectCutoffParams,
+    minCutoff,
+    minCutoff,
+  ];
+
+  type RawRow = { address: string; pool_id: string } & Record<string, number>;
+  const rows = ldb.prepare(query).all(...params) as RawRow[];
+
+  // Per-period accumulator: address -> { realizedPnlRaw, totalCostBasis, tradeCount }
+  for (let i = 0; i < periodCutoffs.length; i++) {
+    const traderMap = new Map<string, { realizedPnlRaw: number; totalCostBasis: number; tradeCount: number }>();
+
+    for (const row of rows) {
+      const buyBase = row[`buy_base_${i}`] as number;
+      const sellBase = row[`sell_base_${i}`] as number;
+      if (buyBase <= 0 || sellBase <= 0) continue;
+
+      const buyQuote = row[`buy_quote_${i}`] as number;
+      const sellQuote = row[`sell_quote_${i}`] as number;
+      const tradeCount = row[`count_${i}`] as number;
+
+      const matchedBase = Math.min(buyBase, sellBase);
+      const buyRatio = matchedBase / buyBase;
+      const sellRatio = matchedBase / sellBase;
+
+      const costBasis = buyRatio * buyQuote;
+      const revenue = sellRatio * sellQuote;
+      const poolPnl = revenue - costBasis;
+
+      const existing = traderMap.get(row.address);
+      if (existing) {
+        existing.realizedPnlRaw += poolPnl;
+        existing.totalCostBasis += costBasis;
+        existing.tradeCount += tradeCount;
+      } else {
+        traderMap.set(row.address, {
+          realizedPnlRaw: poolPnl,
+          totalCostBasis: costBasis,
+          tradeCount,
+        });
+      }
+    }
+
+    const periodResults: Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> = [];
+    for (const [address, data] of traderMap) {
+      const pnlPercent = data.totalCostBasis > 0 ? (data.realizedPnlRaw / data.totalCostBasis) * 100 : 0;
+      periodResults.push({
+        address,
+        realizedPnlRaw: Math.round(data.realizedPnlRaw),
+        pnlPercent: Math.round(pnlPercent * 100) / 100,
+        tradeCount: data.tradeCount,
+      });
+    }
+
+    periodResults.sort((a, b) => b.realizedPnlRaw - a.realizedPnlRaw);
+    result.set(periodCutoffs[i].period, periodResults.slice(0, limit));
+  }
+
+  return result;
 }
 
 /**
