@@ -6,17 +6,17 @@
 // devInspect query for open orders, so we re-derive a thin shape here from
 // @nasun/devnet-config exports. Decimals match Pado's TOKENS table; if Pado
 // ever changes them this file must follow.
-//
-// NASUN_NUSDC pool is intentionally omitted: devnet-config only exposes the
-// three NUSDC-quoted pools that have ID exports today.
 
 import {
   NBTC_TYPE,
   NETH_TYPE,
+  NSN_TYPE,
+  NSN_DECIMALS,
   NSOL_TYPE,
   NUSDC_TYPE,
   POOL_NBTC_NUSDC,
   POOL_NETH_NUSDC,
+  POOL_NSN_NUSDC,
   POOL_NSOL_NUSDC,
 } from "@nasun/devnet-config";
 
@@ -48,6 +48,13 @@ export const PADO_SPOT_POOLS: PadoSpotPool[] = [
     baseType: NSOL_TYPE,
     quoteType: NUSDC_TYPE,
     baseDecimals: 9,
+    quoteDecimals: 6,
+  },
+  {
+    id: POOL_NSN_NUSDC,
+    baseType: NSN_TYPE,
+    quoteType: NUSDC_TYPE,
+    baseDecimals: NSN_DECIMALS,
     quoteDecimals: 6,
   },
 ];

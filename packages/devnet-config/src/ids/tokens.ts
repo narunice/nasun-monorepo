@@ -19,6 +19,10 @@ const coinTypePackage = TOKENS_ORIGINAL_PACKAGE_ID || TOKENS_PACKAGE_ID;
 export const NBTC_TYPE: CoinType = `${coinTypePackage}::nbtc::NBTC`;
 export const NUSDC_TYPE: CoinType = `${coinTypePackage}::nusdc::NUSDC`;
 
+// NSN is the native gas coin on Nasun Network (fork inherits 0x2::sui::SUI).
+export const NSN_TYPE: CoinType = '0x2::sui::SUI';
+export const NSN_DECIMALS = 9;
+
 export const TOKENS: TokensConfig = {
   packageId: TOKENS_PACKAGE_ID,
   tokenFaucet: TOKEN_FAUCET,

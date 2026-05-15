@@ -32,6 +32,7 @@ export interface TokensConfig {
 export interface DeepBookConfig {
   tokenPackageId: ObjectId;
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   registry: ObjectId;
   adminCap: ObjectId;
 }
