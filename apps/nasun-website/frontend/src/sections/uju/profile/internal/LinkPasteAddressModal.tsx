@@ -4,7 +4,6 @@ import { UjuButton } from "../../shared";
 import type { LinkPasteChain } from "@/services/userProfileApi";
 
 const SUI_RE = /^0x[0-9a-fA-F]{64}$/;
-const ETH_RE = /^0x[0-9a-fA-F]{40}$/;
 const SOL_RE = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
 
 const CHAIN_META: Record<
@@ -21,12 +20,6 @@ const CHAIN_META: Record<
     hint: "Paste your SUI mainnet address (0x + 64 hex characters).",
     example: "0xa1b2... (64 hex chars)",
     validate: (raw) => SUI_RE.test(raw.trim()),
-  },
-  ethereum: {
-    label: "Ethereum Wallet Address",
-    hint: "Paste any EVM address (mainnet or Sepolia testnet).",
-    example: "0xa1b2... (40 hex chars)",
-    validate: (raw) => ETH_RE.test(raw.trim()),
   },
   solana: {
     label: "Solana Wallet Address",

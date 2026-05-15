@@ -12,8 +12,9 @@ import {
 
 /**
  * Hook for managing paste-based external chain wallet addresses
- * (SUI / Solana / Ethereum). These are display-only links — no on-chain
- * actions originate from uju on these networks.
+ * (SUI / Solana). These are display-only links — no on-chain actions
+ * originate from uju on these networks. Ethereum is intentionally excluded;
+ * EVM wallets are linked via the verified MetaMask flow.
  *
  * Cross-account collisions return HTTP 409 from the PATCH handler; the
  * catch branch surfaces the server's `ADDRESS_ALREADY_LINKED` message.
@@ -27,7 +28,6 @@ export function useLinkedAddresses() {
 
   const sui = profile?.linkedSuiAddress ?? null;
   const solana = profile?.linkedSolanaAddress ?? null;
-  const ethereum = profile?.linkedEthereumAddress ?? null;
 
   const link = useCallback(
     async (chain: LinkPasteChain, address: string): Promise<boolean> => {
@@ -94,7 +94,7 @@ export function useLinkedAddresses() {
   );
 
   return {
-    addresses: { sui, solana, ethereum },
+    addresses: { sui, solana },
     link,
     unlink,
     pendingChain,

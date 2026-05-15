@@ -73,6 +73,18 @@ export const APP_REGISTRY: AppEntry[] = [
     status: 'coming-soon',
     isNative: true,
   },
+  // External dApps. The dashboard renders a positions card per pinned dApp
+  // once the user has a verified EVM wallet linked (useValidEvmAddress).
+  {
+    id: 'uniswap',
+    name: 'Uniswap',
+    description: 'Largest DEX on Ethereum. Surfaces your active V3 LP positions.',
+    url: 'https://app.uniswap.org',
+    chain: 'ethereum',
+    category: 'dex',
+    status: 'live',
+    isNative: false,
+  },
 ];
 
 export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
