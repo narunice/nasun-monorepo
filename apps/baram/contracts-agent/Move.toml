@@ -1,8 +1,8 @@
 [package]
 name = "baram_agent"
 edition = "2024"
-version = "0.1.0"
-published-at = "0x15b5ccf799312857d5a2f0320d4a7c3f3015eda4857ef9da3cb621e52ce53947"
+version = "0.2.0"
+published-at = "0x6e53972d4ebd922fed13cbe302be295e9d6fc000cc948992a9f87d708b954b5e"
 
 [dependencies]
 Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }

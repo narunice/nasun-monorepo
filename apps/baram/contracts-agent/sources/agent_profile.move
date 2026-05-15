@@ -181,6 +181,70 @@ module baram_agent::agent_profile {
         transfer::public_transfer(profile, sender);
     }
 
+    /// Variant of `create_agent` that pre-links a capability id in a
+    /// single tx. Used by the wallet's atomic-setup PTB so AgentProfile,
+    /// Capability, and AgentEscrow are all created and bound under one
+    /// user signature. Emits both `AgentCreated` and
+    /// `AgentCapabilityLinked` so indexers see the link without diffing
+    /// state.
+    public fun create_agent_with_capability(
+        registry: &mut AgentProfileRegistry,
+        agent_address: address,
+        name: String,
+        role: String,
+        capabilities: vector<String>,
+        capability_id: ID,
+        clock: &Clock,
+        ctx: &mut TxContext,
+    ) {
+        let sender = ctx.sender();
+
+        assert!(name.length() <= MAX_NAME_LENGTH, E_NAME_TOO_LONG);
+        assert!(role.length() <= MAX_ROLE_LENGTH, E_ROLE_TOO_LONG);
+        assert!(capabilities.length() <= MAX_CAPABILITIES, E_TOO_MANY_CAPABILITIES);
+        assert!(!table::contains(&registry.profiles, agent_address), E_AGENT_ALREADY_REGISTERED);
+
+        let now = clock.timestamp_ms();
+
+        let profile = AgentProfile {
+            id: object::new(ctx),
+            owner: sender,
+            agent_address,
+            name,
+            role,
+            capabilities,
+            is_active: true,
+            created_at: now,
+            last_active_at: now,
+            total_executions: 0,
+            total_spent: 0,
+            capability: option::some(capability_id),
+        };
+
+        let profile_id = object::id_address(&profile);
+
+        table::add(&mut registry.profiles, agent_address, object::id(&profile));
+        registry.total_agents = registry.total_agents + 1;
+        registry.active_agents = registry.active_agents + 1;
+
+        event::emit(AgentCreated {
+            profile_id,
+            owner: sender,
+            agent_address,
+            name: profile.name,
+            role: profile.role,
+        });
+
+        event::emit(AgentCapabilityLinked {
+            profile_id,
+            agent_address: profile.agent_address,
+            owner: sender,
+            capability_id,
+        });
+
+        transfer::public_transfer(profile, sender);
+    }
+
     /// Emergency deactivate agent. Owner only.
     /// Budget checks should respect is_active == false.
     public fun deactivate_agent(

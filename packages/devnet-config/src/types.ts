@@ -121,6 +121,13 @@ export interface BaramConfig {
   budgetV2TypeOrigin: ObjectId;
   // Agent Profile
   agentPackageId: ObjectId;
+  /**
+   * Original (pre-upgrade) package id where `agent_profile::AgentProfile`
+   * was first published. Sui struct type tags ALWAYS use the original
+   * package id even after upgrades, so any `StructType` / type-tag filter
+   * against `AgentProfile` must use this id (not the latest upgrade id).
+   */
+  agentOriginalPackageId: ObjectId;
   agentProfileRegistry: ObjectId;
   agentUpgradeCap: ObjectId;
   // Beta Access NFT
