@@ -18,13 +18,7 @@ export function GostopPositionsCard() {
   return (
     <UjuCard>
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-uju-primary">GoStop</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-sf-orange/15 px-2.5 py-0.5 text-sm text-sf-orange">
-            <span className="size-1.5 rounded-full bg-sf-orange" aria-hidden />
-            Active
-          </span>
-        </div>
+        <span className="text-lg font-semibold text-uju-primary">GoStop</span>
         <UjuButton
           as="a"
           href={GOSTOP_URL}

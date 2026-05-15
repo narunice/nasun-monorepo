@@ -1,5 +1,5 @@
 // Shared formatters for the Pado positions card. Both spot orders and
-// prediction bets denominate notionals in NUSDC, which Pado treats as
+// prediction positions denominate notionals in NUSDC, which Pado treats as
 // $1 throughout its UI; we mirror that convention here.
 
 const NUSDC_DECIMALS = 6;
