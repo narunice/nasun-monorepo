@@ -10,6 +10,7 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
 import { getDb } from './store.js';
+import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
 
 const exec = promisify(execFile);
 
@@ -69,8 +70,128 @@ export interface SpawnOptions {
   wakePort: number;
 }
 
+/**
+ * PR2.A.1 — shape of the trader config JSON mirrored from the browser
+ * (TraderConfigForm save → POST /api/nasun-ai/config). Source of truth:
+ * apps/nasun-website/frontend/src/sections/uju/ai/types/trader.ts.
+ * Only the fields the runtime cares about are typed here.
+ */
+interface TraderConfigJson {
+  budgetId?: string;
+  perTradeMaxQuoteRaw?: string;
+  dailyMaxQuoteRaw?: string;
+  intervalMinutes?: number;
+  maxSlippageBps?: number;
+  strategyPresetId?: string;
+  pair?: string;
+}
+
+/**
+ * Trader env vars that are identical across every spawned agent. Sourced
+ * from chat-server's process.env. AGENT_GLOBAL_ prefix is used for vars
+ * introduced for this orchestrator path so an operator looking at the
+ * chat-server .env can tell at a glance which vars feed the spawned
+ * agents vs. chat-server itself. Already-shared secrets (HMAC, JWT,
+ * RPC_URL) are inherited under their canonical names with no prefix.
+ */
+function globalTraderEnv(): NodeJS.ProcessEnv {
+  const pick = (name: string, opts: { required: boolean } = { required: true }): string => {
+    const val = process.env[`AGENT_GLOBAL_${name}`] ?? process.env[name] ?? '';
+    if (opts.required && !val) {
+      throw new Error(`missing_global_trader_env:AGENT_GLOBAL_${name}`);
+    }
+    return val;
+  };
+  const out: NodeJS.ProcessEnv = {
+    BARAM_PACKAGE_ID:     pick('BARAM_PACKAGE_ID'),
+    BARAM_REGISTRY_ID:    pick('BARAM_REGISTRY_ID'),
+    BARAM_AER_PACKAGE_ID: pick('BARAM_AER_PACKAGE_ID'),
+    BARAM_API_KEY:        pick('BARAM_API_KEY'),
+    EXECUTOR_ADDRESS:     pick('EXECUTOR_ADDRESS'),
+    HOST_URL:             pick('HOST_URL'),
+    COIN_NBTC_TYPE:       pick('COIN_NBTC_TYPE'),
+    COIN_NUSDC_TYPE:      pick('COIN_NUSDC_TYPE'),
+    CHAT_SERVER_BASE_URL: process.env.AGENT_GLOBAL_CHAT_SERVER_BASE_URL
+                          ?? 'http://127.0.0.1:3101',
+    RPC_URL:              process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
+    BARAM_CHAT_SERVER_HMAC_SECRET: pick('BARAM_CHAT_SERVER_HMAC_SECRET'),
+    BARAM_SESSION_JWT_SECRET:      pick('BARAM_SESSION_JWT_SECRET'),
+  };
+  // Optional trader-cycle Telegram notifications — distinct from
+  // BARAM_TG_* (chat-server's wake-forwarding bot). Only set when
+  // operator opts in via AGENT_TELEGRAM_*.
+  if (process.env.AGENT_TELEGRAM_BOT_TOKEN) {
+    out.TELEGRAM_BOT_TOKEN = process.env.AGENT_TELEGRAM_BOT_TOKEN;
+  }
+  if (process.env.AGENT_TELEGRAM_CHAT_ID) {
+    out.TELEGRAM_CHAT_ID = process.env.AGENT_TELEGRAM_CHAT_ID;
+  }
+  return out;
+}
+
+/**
+ * PR2.A.1 — assemble the per-agent env block from SQLite + on-chain
+ * fetch. Throws with a structured error code if any required piece is
+ * missing so the vault-routes caller can surface it to the UI.
+ */
+async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEnv> {
+  const lower = agentAddress.toLowerCase();
+  const keyRow = getDb().prepare(
+    `SELECT capability_id, wallet_address
+     FROM agent_keys
+     WHERE agent_address = ? AND deleted_at IS NULL`,
+  ).get(lower) as { capability_id: string | null; wallet_address: string } | undefined;
+  if (!keyRow) throw new Error(`agent_key_row_missing:${lower}`);
+  if (!keyRow.capability_id) {
+    throw new Error(`capability_id_missing_for_${lower}:re-upload required`);
+  }
+
+  const cfgRow = getDb().prepare(
+    `SELECT config_json FROM nasun_ai_trader_configs WHERE agent_address = ?`,
+  ).get(lower) as { config_json: string } | undefined;
+  if (!cfgRow) {
+    throw new Error(
+      `trader_config_missing_for_${lower}:save trader config from Dashboard first`,
+    );
+  }
+  let cfg: TraderConfigJson;
+  try {
+    cfg = JSON.parse(cfgRow.config_json) as TraderConfigJson;
+  } catch {
+    throw new Error(`trader_config_parse_failed:${lower}`);
+  }
+
+  if (!cfg.budgetId)              throw new Error(`trader_config_missing_field:budgetId`);
+  if (!cfg.perTradeMaxQuoteRaw)   throw new Error(`trader_config_missing_field:perTradeMaxQuoteRaw`);
+  if (!cfg.dailyMaxQuoteRaw)      throw new Error(`trader_config_missing_field:dailyMaxQuoteRaw`);
+
+  const escrowId = await fetchCapabilityEscrowId(keyRow.capability_id);
+
+  // Runtime trader-cycle hardcodes NBTC/NUSDC asset pair. Non-NBTC_NUSDC
+  // pairs are accepted by the form but unsupported by the cycle today;
+  // we still feed the global coin types so the agent boots and surfaces
+  // a clearer "asset mismatch" failure than a missing-env crash.
+  return {
+    CAPABILITY_ID:           keyRow.capability_id,
+    WALLET_ADDRESS:          keyRow.wallet_address,
+    BUDGET_ID:               cfg.budgetId,
+    ESCROW_ID:               escrowId,
+    STRATEGY:                cfg.strategyPresetId ?? 'conservative_dca',
+    MAX_NOTIONAL_QUOTE_RAW:  cfg.perTradeMaxQuoteRaw,
+    DAILY_MAX_QUOTE_RAW:     cfg.dailyMaxQuoteRaw,
+    MAX_SLIPPAGE_BPS:        String(cfg.maxSlippageBps ?? 50),
+    INTERVAL_MINUTES:        String(cfg.intervalMinutes ?? 30),
+  };
+}
+
 export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   assertSafeName(opts.pm2Name);
+
+  // Resolve all per-agent + global trader env BEFORE invoking pm2 so a
+  // partial-config row fails fast and pm2 never adopts an idle process.
+  const perAgent = await perAgentTraderEnv(opts.agentAddress);
+  const globalEnv = globalTraderEnv();
+
   await exec(PM2_BIN, [
     'start', ECOSYSTEM_TEMPLATE,
     '--name', opts.pm2Name,
@@ -84,6 +205,8 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
       WAKE_PORT: String(opts.wakePort),
       // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
       // the spawned process closure, fetched from SSM on startup.
+      ...globalEnv,
+      ...perAgent,
     }),
     timeout: 15_000,
   });

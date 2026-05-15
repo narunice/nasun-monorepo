@@ -8,6 +8,7 @@
 // disagrees.
 
 import { SuiClient } from '@mysten/sui/client';
+import { capability as capabilitySdk } from '@nasun/baram-sdk';
 import { getZkLoginClient } from './baram-telegram-routes.js';
 
 export interface CapabilityFields {
@@ -56,6 +57,28 @@ export async function getCapabilityFields(
  * before the victim wallet is asked to sign) and at upload (re-verify in
  * case ownership changed during the 5-minute challenge window).
  */
+/**
+ * PR2.A.1 — fetch the on-chain Capability's linked AgentEscrow id. The
+ * atomic-setup PTB stamps `escrow_id` onto the cap before sharing, so any
+ * cap created via the website's agent-creation flow has this set. Throws
+ * with a descriptive error if the cap exists but is unlinked (legacy
+ * `new_capability` flow) — the runtime trader cycle cannot proceed
+ * without an escrow.
+ */
+export async function fetchCapabilityEscrowId(
+  capabilityId: string,
+): Promise<string> {
+  const ref = await capabilitySdk.fetchCapability(getZkLoginClient(), capabilityId);
+  const escrowId = ref.cap.escrowId;
+  if (!escrowId) {
+    throw new Error(
+      `capability_escrow_unlinked:${capabilityId}: cap has no AgentEscrow ` +
+      `(legacy new_capability flow?). Re-create the agent via the atomic-setup PTB.`,
+    );
+  }
+  return escrowId;
+}
+
 export async function verifyCapabilityOwner(
   capabilityId: string,
   expectedWallet: string,
