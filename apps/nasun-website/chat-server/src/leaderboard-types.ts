@@ -271,13 +271,15 @@ export interface TraderScoreResponse {
 // Points formula constants
 export const POINTS = {
   PER_TRADE: 2,
-  PER_1K_VOLUME: 2,              // per $1000 NUSDC volume
-  WEEKLY_VOLUME_SCORE_CAP: 18_000, // weekly volume score ceiling ($9M × 2pt/$1k); caps capital-advantage weight (same-identity wash already filtered upstream)
+  PER_500_VOLUME: 1,             // per $500 NUSDC volume in the linear region (≤ VOLUME_LINEAR_SOFT_CAP_USD)
+  VOLUME_LINEAR_SOFT_CAP_USD: 1_000_000, // below this volume, score grows linearly (1pt/$500)
+  VOLUME_LOG_K: 6_500,           // above the soft cap, score grows as K · log10(vol / softCap); reaches ceiling near $100M
+  WEEKLY_VOLUME_SCORE_CAP: 15_000, // hard ceiling on volume score (hybrid linear+log; replaces former $9M cliff)
   PER_UNIQUE_POOL: 15,           // per unique pool traded
   FIRST_TRADE_BONUS: 50,         // one-time bonus for first trade
   DAILY_TRADE_CAP: 24,           // max trades counted per day toward trade points
-  PER_600_PNL: 50,               // per $600 realized profit (losses = 0)
-  PER_10PCT_RETURN: 200,         // per 10% return rate (negative = 0)
+  PER_10_PNL: 1,                 // per $10 realized profit (1pt/$10; 30x finer than $300/25pt — drastically reduces PnL-tier ties)
+  PER_5PCT_RETURN: 100,          // per 5% return rate (halved from 10%/200pt; same slope, 2x resolution)
   // Tiered loss penalty: applied to pnl score (floor 0). Highest matching tier wins.
   LOSS_PENALTY_TIERS: [
     { threshold: -20, penalty: 20 },
@@ -298,6 +300,9 @@ export const POINTS = {
     { lossUsdAtLeast:    100, penalty:  2 },
   ],
   WEEKLY_PREDICTION_LOSS_PENALTY_CAP: 100, // weekly max prediction loss penalty (spot has implicit single-tier max ~20)
+  WEEKLY_PREDICTION_GAIN_SCORE_CAP: 2_400, // weekly max prediction gain score (= 30 markets × 80pt cap; symmetric to loss cap scale)
+  PREDICTION_MARKET_GAIN_CAP_USD: 800,     // per-market net gain ceiling for PnL scoring (long-shot single-hit suppression; 80pt at $10/pt)
+  WEEKLY_SPOT_PNL_SCORE_CAP: 30_000,       // weekly max spot PnL score (prevents whale single-trade dominance; ~$300k profit ceiling)
 } as const;
 
 // Known bot wallet addresses - always excluded from leaderboards and points.

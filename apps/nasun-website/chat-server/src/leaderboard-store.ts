@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { POINTS } from './leaderboard-types.js';
 import type {
   LeaderboardConfig,
   TradeFillRow,
@@ -1430,6 +1431,22 @@ export function computePredictionPnl(
     let arr = userMarketLosses.get(address);
     if (!arr) { arr = []; userMarketLosses.set(address, arr); }
     arr.push(Math.abs(pnl));
+  }
+
+  // Rebuild per-user realizedPnlRaw with per-market gain clamped at
+  // PREDICTION_MARKET_GAIN_CAP_USD. A single long-shot market hit at low odds
+  // (e.g. price=1bp → 100x payout) otherwise dominates the leaderboard. Losses
+  // are NOT clamped here — penalty path uses tiered per-market loss amounts.
+  const marketGainCapRaw = POINTS.PREDICTION_MARKET_GAIN_CAP_USD * 1_000_000;
+  const clampedPnlByAddress = new Map<string, number>();
+  for (const [mKey, pnl] of perMarketPnl) {
+    const [address] = mKey.split('|');
+    const adjusted = pnl > 0 ? Math.min(pnl, marketGainCapRaw) : pnl;
+    clampedPnlByAddress.set(address, (clampedPnlByAddress.get(address) ?? 0) + adjusted);
+  }
+  for (const [address, agg] of userAgg) {
+    const clamped = clampedPnlByAddress.get(address);
+    if (clamped !== undefined) agg.realizedPnlRaw = clamped;
   }
 
   const out = new Map<string, PredictionPnlResult>();

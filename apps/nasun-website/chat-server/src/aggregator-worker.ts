@@ -285,17 +285,17 @@ function runPointsAggregation(): void {
 
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
     const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    const volumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    const volumePoints = Number(volumeRaw / BigInt(500_000_000)) * POINTS.PER_500_VOLUME;
     const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
 
     const pnlData = cachedPnlByAddress.get(t.address);
     let pnlPoints = 0;
     if (pnlData) {
       if (pnlData.realizedPnlRaw > 0) {
-        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
+        pnlPoints += Math.floor(pnlData.realizedPnlRaw / 10_000_000) * POINTS.PER_10_PNL;
       }
       if (pnlData.pnlPercent > 0) {
-        pnlPoints += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
+        pnlPoints += Math.floor(pnlData.pnlPercent / 5) * POINTS.PER_5PCT_RETURN;
       }
     }
 
@@ -311,7 +311,15 @@ function runPointsAggregation(): void {
     };
   });
 
-  pointsData.sort((a, b) => b.totalPoints - a.totalPoints);
+  // Deterministic tiebreaker chain (alltime points): totalPoints desc →
+  // volume desc → trade count desc → address asc.
+  pointsData.sort((a, b) => {
+    if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+    const av = BigInt(a.volumeQuote), bv = BigInt(b.volumeQuote);
+    if (bv !== av) return bv > av ? 1 : -1;
+    if (b.tradeCount !== a.tradeCount) return b.tradeCount - a.tradeCount;
+    return a.address < b.address ? -1 : a.address > b.address ? 1 : 0;
+  });
 
   const ranked = pointsData.map((t, index) => {
     const rank = index + 1;
@@ -372,7 +380,19 @@ async function runWeeklyScoreAggregation(): Promise<void> {
 
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
     const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    const rawVolumePoints = Number(volumeRaw / BigInt(1_000_000_000)) * POINTS.PER_1K_VOLUME;
+    // Hybrid volume scoring: linear up to VOLUME_LINEAR_SOFT_CAP_USD (preserves
+    // mid-tier resolution), then log10 above (whales keep earning small
+    // increments instead of slamming into a hard cliff). Final ceiling
+    // WEEKLY_VOLUME_SCORE_CAP guarantees a bounded contribution.
+    const softCapRaw = BigInt(POINTS.VOLUME_LINEAR_SOFT_CAP_USD) * BigInt(1_000_000); // USD → 6-dec NUSDC raw
+    const linearMaxScore = POINTS.VOLUME_LINEAR_SOFT_CAP_USD / 500 * POINTS.PER_500_VOLUME;
+    let rawVolumePoints: number;
+    if (volumeRaw <= softCapRaw) {
+      rawVolumePoints = Number(volumeRaw / BigInt(500_000_000)) * POINTS.PER_500_VOLUME;
+    } else {
+      const ratio = Number(volumeRaw) / Number(softCapRaw);
+      rawVolumePoints = linearMaxScore + Math.floor(POINTS.VOLUME_LOG_K * Math.log10(ratio));
+    }
     const volumePoints = Math.min(rawVolumePoints, POINTS.WEEKLY_VOLUME_SCORE_CAP);
     const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
 
@@ -380,28 +400,32 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     let pnlScore = 0;
     if (pnlData) {
       if (pnlData.realizedPnlRaw > 0) {
-        pnlScore += Math.floor(pnlData.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
+        pnlScore += Math.floor(pnlData.realizedPnlRaw / 10_000_000) * POINTS.PER_10_PNL;
       }
       if (pnlData.pnlPercent > 0) {
-        pnlScore += Math.floor(pnlData.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
+        pnlScore += Math.floor(pnlData.pnlPercent / 5) * POINTS.PER_5PCT_RETURN;
       }
       const tier = POINTS.LOSS_PENALTY_TIERS.find((t) => pnlData.pnlPercent <= t.threshold);
       if (tier) {
         pnlScore = Math.max(0, pnlScore - tier.penalty);
       }
+      // Weekly spot PnL cap: prevents a single large profitable trade from
+      // dominating the leaderboard. Mirrors the volume cap pattern.
+      pnlScore = Math.min(pnlScore, POINTS.WEEKLY_SPOT_PNL_SCORE_CAP);
     }
 
     const predPnl: PredictionPnlResult | undefined = predictionPnlMap.get(t.address);
     let predictionPnlScore = 0;
     if (predPnl) {
+      // Prediction PnL scoring: raw-profit term only.
+      // The percent-return term was removed because binary markets at low odds
+      // (e.g. price=1bp) produce arbitrarily large % returns from a single hit,
+      // turning the leaderboard into a lottery instead of a trading skill metric.
       if (predPnl.realizedPnlRaw > 0) {
         if (Math.abs(predPnl.realizedPnlRaw) >= Number.MAX_SAFE_INTEGER) {
           console.warn(`[Aggregator] prediction PnL near IEEE-754 limit address=${t.address} raw=${predPnl.realizedPnlRaw}`);
         }
-        predictionPnlScore += Math.floor(predPnl.realizedPnlRaw / 600_000_000) * POINTS.PER_600_PNL;
-      }
-      if (predPnl.pnlPercent > 0) {
-        predictionPnlScore += Math.floor(predPnl.pnlPercent / 10) * POINTS.PER_10PCT_RETURN;
+        predictionPnlScore += Math.floor(predPnl.realizedPnlRaw / 10_000_000) * POINTS.PER_10_PNL;
       }
       if (predPnl.realizedPnlRaw < 0 && predPnl.marketLossesRaw.length > 0) {
         let lossPenalty = 0;
@@ -413,6 +437,10 @@ async function runWeeklyScoreAggregation(): Promise<void> {
         lossPenalty = Math.min(lossPenalty, POINTS.WEEKLY_PREDICTION_LOSS_PENALTY_CAP);
         predictionPnlScore = Math.max(0, predictionPnlScore - lossPenalty);
       }
+      // Symmetric weekly cap on positive prediction score. Loss penalty already
+      // capped at WEEKLY_PREDICTION_LOSS_PENALTY_CAP; gain side must be bounded
+      // too, otherwise a single long-shot hit dominates the leaderboard.
+      predictionPnlScore = Math.min(predictionPnlScore, POINTS.WEEKLY_PREDICTION_GAIN_SCORE_CAP);
     }
 
     return {
@@ -431,7 +459,21 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     };
   });
 
-  scored.sort((a, b) => b.totalScore - a.totalScore);
+  // Deterministic tiebreaker chain so ranks are unique even on identical totalScore.
+  // Order: totalScore desc → spot volume desc → prediction realized PnL desc
+  //        → prediction volume desc → trade count desc → address asc.
+  // Uses BigInt for the NUSDC-raw string fields to avoid IEEE-754 loss.
+  scored.sort((a, b) => {
+    if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
+    const av = BigInt(a.volumeQuote), bv = BigInt(b.volumeQuote);
+    if (bv !== av) return bv > av ? 1 : -1;
+    const ap = BigInt(a.predictionRealizedPnl), bp = BigInt(b.predictionRealizedPnl);
+    if (bp !== ap) return bp > ap ? 1 : -1;
+    const apv = BigInt(a.predictionVolumeQuote), bpv = BigInt(b.predictionVolumeQuote);
+    if (bpv !== apv) return bpv > apv ? 1 : -1;
+    if (b.tradeCount !== a.tradeCount) return b.tradeCount - a.tradeCount;
+    return a.address < b.address ? -1 : a.address > b.address ? 1 : 0;
+  });
 
   const ranked = scored.map((t, index) => {
     const rank = index + 1;
