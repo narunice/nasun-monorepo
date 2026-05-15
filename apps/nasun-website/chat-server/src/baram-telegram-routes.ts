@@ -18,6 +18,7 @@
 import { randomBytes } from 'node:crypto';
 import { isValidSuiAddress } from './auth.js';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
+import { SuiClient } from '@mysten/sui/client';
 import {
   createSession,
   revokeSession,
@@ -26,6 +27,20 @@ import {
 } from './baram-session.js';
 import { verifyWebhookToken, handleTelegramUpdate, type TelegramUpdate } from './baram-telegram.js';
 import { handleHeartbeat } from './baram-agent-registry.js';
+
+// SuiClient is required to verify zkLogin personal-message signatures: the SDK
+// fetches the current epoch + Google JWK set off-chain to validate the proof.
+// Without `client`, verifyPersonalMessageSignature falls through to non-zkLogin
+// schemes only and rejects zkLogin sigs as bad_signature.
+let zkLoginClient: SuiClient | null = null;
+function getZkLoginClient(): SuiClient {
+  if (!zkLoginClient) {
+    zkLoginClient = new SuiClient({
+      url: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
+    });
+  }
+  return zkLoginClient;
+}
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_CHALLENGES = 5_000;
@@ -212,7 +227,9 @@ async function consumeChallenge(
 
   try {
     const messageBytes = new TextEncoder().encode(challenge);
-    const publicKey = await verifyPersonalMessageSignature(messageBytes, signature);
+    const publicKey = await verifyPersonalMessageSignature(messageBytes, signature, {
+      client: getZkLoginClient(),
+    });
     const recovered = normalize(publicKey.toSuiAddress());
     if (recovered !== entry.wallet) return { ok: false, reason: 'bad_signature' };
   } catch {
