@@ -46,7 +46,7 @@ function fillKey(f: Pick<RecentFill, 'marketId' | 'orderId' | 'maker' | 'taker'>
   return `${f.marketId}|${f.orderId}|${f.maker}|${f.taker}`;
 }
 
-function parseFillsFromEvents(events: SuiEvent[] | null | undefined, marketId: string): RecentFill[] {
+export function parseFillsFromEvents(events: SuiEvent[] | null | undefined, marketId: string): RecentFill[] {
   if (!events) return [];
   const out: RecentFill[] = [];
   for (const ev of events) {

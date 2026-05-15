@@ -373,15 +373,35 @@ export function OutcomeOrderForm({
           }
           setSetupStep(null);
           if (result.success) {
+            // shares & nusdc both u64 with 6 decimals on-chain.
+            const filledSharesUi =
+              result.filledShares != null
+                ? Number(result.filledShares) / 1_000_000
+                : estimatedShares;
+            const filledCostUi =
+              result.filledCost != null
+                ? Number(result.filledCost) / 1_000_000
+                : amountNum;
+            // For limit orders the unfilled remainder is locked in the resting
+            // order (not refunded), so the user's committed cost stays at
+            // `amountNum`. For market orders the remainder is refunded, so the
+            // actual cost is `filledCostUi`.
+            const displayCost = restOnNoFill ? amountNum : filledCostUi;
+            const isFullyFilled =
+              result.filledShares == null
+                ? true
+                : Math.abs(filledSharesUi - estimatedShares) < 0.01;
             const modalData: OrderSuccessData = {
               orderType: 'buy',
               outcomeType,
               orderMode,
               isResting: restOnNoFill,
-              shares: estimatedShares,
-              cost: amountNum,
+              shares: filledSharesUi,
+              cost: displayCost,
               priceBps: maxPriceBps,
               digest: result.digest!,
+              requestedShares: estimatedShares,
+              isFullyFilled,
             };
             if (isSimple && shouldShowOrderModal()) {
               setSuccessModal(modalData);
@@ -419,15 +439,29 @@ export function OutcomeOrderForm({
           const sellShares = pos ? Number(pos.shares) / 1_000_000 : 0;
           const result = await placeSellTaker(market.id, selectedPositionId, minPriceBps, restOnNoFill);
           if (result.success) {
+            const filledSharesUi =
+              result.filledShares != null
+                ? Number(result.filledShares) / 1_000_000
+                : sellShares;
+            const filledCostUi =
+              result.filledCost != null
+                ? Number(result.filledCost) / 1_000_000
+                : 0;
+            const isFullyFilled =
+              result.filledShares == null
+                ? true
+                : Math.abs(filledSharesUi - sellShares) < 0.01;
             const modalData: OrderSuccessData = {
               orderType: 'sell',
               outcomeType,
               orderMode,
               isResting: restOnNoFill,
-              shares: sellShares,
-              cost: 0,
+              shares: filledSharesUi,
+              cost: filledCostUi,
               priceBps: minPriceBps,
               digest: result.digest!,
+              requestedShares: sellShares,
+              isFullyFilled,
             };
             if (isSimple && shouldShowOrderModal()) {
               setSuccessModal(modalData);
