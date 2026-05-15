@@ -258,6 +258,29 @@ nasun.io는 CloudFront를 통해 글로벌 CDN으로 서빙됩니다.
 | Origin 인증 | Custom header `X-CloudFront-Secret` (nginx에서 검증) |
 | WAF WebACL | `nasun-cloudfront-waf` (us-east-1) |
 
+### Cache behaviors (Path → origin)
+
+CloudFront도 WAF와 마찬가지로 **CDK가 아닌 AWS CLI로 수동 관리**됩니다. precedence는 위에서 아래 순서.
+
+| PathPattern | Target origin | Methods | 용도 |
+|-------------|---------------|---------|------|
+| `/api/nasun-ai/*` | `nasun-ec2-origin` | All (incl. POST/OPTIONS) | Nasun AI canonical alias (S5+, chat-server `/api/nasun-ai/*` 라우트) |
+| `/api/baram/*` | `nasun-ec2-origin` | All | Legacy alias (chat-server에서 dual-mount, 향후 deprecate 예정) |
+| `/ws/chat*` | `nasun-ec2-origin` | All | nasun-chat-server WebSocket |
+| `/chat/*` | `nasun-ec2-origin` | All | chat-server REST API (leaderboard/feed) |
+| `/locales/*` | `nasun-ec2-origin` | GET/HEAD | i18n static |
+| `/assets/*` | `nasun-ec2-origin` | GET/HEAD | Vite build artifacts |
+| `/videos/*`, `/images/*` | `nasun-ec2-origin` | GET/HEAD | static media |
+| Default | `nasun-ec2-origin` | All | SPA fallback (`index.html`) |
+
+**새 백엔드 path 추가 시 체크리스트**:
+1. chat-server 코드에 라우트 등록 (`apps/nasun-website/chat-server/src/server.ts`)
+2. nginx `location` 블록 추가 ([infra/nginx/snapshots/conf.d/nasun.conf](../infra/nginx/snapshots/conf.d/nasun.conf))
+3. CloudFront cache behavior 추가 (AWS CLI: `update-distribution` + `/api/<path>/*` invalidation)
+4. chat-server `ALLOWED_ORIGINS` ([apps/nasun-website/chat-server/ecosystem.config.cjs](../apps/nasun-website/chat-server/ecosystem.config.cjs))에 cross-origin 호출자 추가
+
+위 4개를 일관되게 적용하지 않으면 staging origin이 SPA fallback에 빠지거나 CORS preflight가 실패합니다 (2026-05-14 staging.nasun.io → `/api/nasun-ai/*` 사고).
+
 ### AWS WAF (DDoS Protection)
 
 nasun.io와 explorer.nasun.io 모두 동일한 WAF WebACL로 보호됩니다.
