@@ -81,9 +81,13 @@ export function LeaderboardPage() {
     0,
   );
   const allScoreTraders: ScoreLeaderboardTrader[] = scoreQuery.data?.traders ?? [];
+  const cappedScoreTraders = useMemo(
+    () => allScoreTraders.slice(0, MAX_RANK),
+    [allScoreTraders],
+  );
   const pagedScoreTraders = useMemo(
-    () => allScoreTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [allScoreTraders, page],
+    () => cappedScoreTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [cappedScoreTraders, page],
   );
 
   const activeData =
@@ -303,12 +307,12 @@ export function LeaderboardPage() {
                 )}
               </div>
               <LeaderboardSearchBox
-                entries={allScoreTraders}
+                entries={cappedScoreTraders}
                 filterFn={scoreFilterFn}
                 toResult={scoreToResult}
                 onSelect={handleSearchSelect}
                 placeholder="Search by handle, name, or address..."
-                disabled={scoreQuery.isLoading && allScoreTraders.length === 0}
+                disabled={scoreQuery.isLoading && cappedScoreTraders.length === 0}
               />
             </div>
           ) : (
