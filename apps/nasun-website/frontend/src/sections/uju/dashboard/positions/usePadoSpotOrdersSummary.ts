@@ -169,13 +169,22 @@ async function fetchOpenOrders(
   return parseOrderVector(returnValues[0][0], pool.baseDecimals);
 }
 
+interface DirectionalSweep {
+  ids: string[];
+  // True iff we hit MAX_EVENT_PAGES without the RPC signalling end-of-history.
+  // The asc and desc walks union to a contiguous window from both ends; only
+  // when *both* walks truncate is there a middle gap that might hide a BM.
+  truncated: boolean;
+}
+
 async function sweepBmEventsOneDirection(
   client: SuiClient,
   owner: string,
   order: "ascending" | "descending",
-): Promise<string[]> {
+): Promise<DirectionalSweep> {
   const ids: string[] = [];
   let cursor: { txDigest: string; eventSeq: string } | null | undefined = undefined;
+  let truncated = true;
   for (let page = 0; page < MAX_EVENT_PAGES; page++) {
     const response = await client.queryEvents({
       query: { Sender: owner },
@@ -191,21 +200,27 @@ async function sweepBmEventsOneDirection(
         ids.push(id);
       }
     }
-    if (!response.hasNextPage || !response.nextCursor) break;
+    if (!response.hasNextPage || !response.nextCursor) {
+      truncated = false;
+      break;
+    }
     cursor = response.nextCursor;
   }
-  return ids;
+  return { ids, truncated };
 }
 
 async function findBalanceManagerIds(
   client: SuiClient,
   owner: string,
-): Promise<string[]> {
+): Promise<{ ids: string[]; partial: boolean }> {
   const [asc, desc] = await Promise.all([
     sweepBmEventsOneDirection(client, owner, "ascending"),
     sweepBmEventsOneDirection(client, owner, "descending"),
   ]);
-  return Array.from(new Set([...asc, ...desc]));
+  return {
+    ids: Array.from(new Set([...asc.ids, ...desc.ids])),
+    partial: asc.truncated && desc.truncated,
+  };
 }
 
 export interface PadoSpotOrdersSummary {
@@ -214,6 +229,11 @@ export interface PadoSpotOrdersSummary {
   // in NUSDC raw units (10^6). Quote is always NUSDC across the pools we
   // cover, so this is directly renderable via formatNusdcAsUsd.
   bidLockedNusdcRaw: bigint;
+  // True when at least one address's BM event sweep hit MAX_EVENT_PAGES on
+  // both directions without converging — a middle window of history is
+  // unscanned and may hide additional BMs. The card uses this to surface a
+  // "+" suffix and steer the user to Pado for the authoritative list.
+  partial: boolean;
   isLoading: boolean;
 }
 
@@ -248,16 +268,22 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
     // own UI is faster (10s) for users actively managing orders.
     staleTime: 60_000,
     refetchInterval: 120_000,
-    queryFn: async (): Promise<{ count: number; bidLockedNusdcRaw: bigint }> => {
-      if (allAddresses.length === 0) return { count: 0, bidLockedNusdcRaw: 0n };
+    queryFn: async (): Promise<{
+      count: number;
+      bidLockedNusdcRaw: bigint;
+      partial: boolean;
+    }> => {
+      if (allAddresses.length === 0)
+        return { count: 0, bidLockedNusdcRaw: 0n, partial: false };
 
       // Fan out BM lookup across every address in parallel. Each address's
       // sweep is internally bidirectional and capped at MAX_EVENT_PAGES.
-      const bmIdsPerAddress = await Promise.all(
+      const bmResults = await Promise.all(
         allAddresses.map((addr) => findBalanceManagerIds(suiClient, addr)),
       );
-      const bmIds = Array.from(new Set(bmIdsPerAddress.flat()));
-      if (bmIds.length === 0) return { count: 0, bidLockedNusdcRaw: 0n };
+      const bmIds = Array.from(new Set(bmResults.flatMap((r) => r.ids)));
+      const partial = bmResults.some((r) => r.partial);
+      if (bmIds.length === 0) return { count: 0, bidLockedNusdcRaw: 0n, partial };
 
       // Then fan out devInspect across (BM, pool) pairs.
       const requests: Promise<ParsedOrder[]>[] = [];
@@ -276,13 +302,14 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
           bidLockedNusdcRaw += order.bidLockedNusdcRaw;
         }
       }
-      return { count, bidLockedNusdcRaw };
+      return { count, bidLockedNusdcRaw, partial };
     },
   });
 
   return {
     count: data?.count ?? 0,
     bidLockedNusdcRaw: data?.bidLockedNusdcRaw ?? 0n,
+    partial: data?.partial ?? false,
     isLoading,
   };
 }

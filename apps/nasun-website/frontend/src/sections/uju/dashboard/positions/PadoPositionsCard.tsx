@@ -66,8 +66,10 @@ export function PadoPositionsCard() {
             spot.isLoading
               ? "—"
               : hasSpot
-                ? `${spot.count} open`
-                : "None open"
+                ? `${spot.count}${spot.partial ? "+" : ""} open`
+                : spot.partial
+                  ? "Open Pado to view"
+                  : "None open"
           }
           // Asks lock base tokens (NBTC etc.) and would need a price oracle
           // to render in dollars, so we only expose bid-side NUSDC for now.
@@ -75,6 +77,11 @@ export function PadoPositionsCard() {
             spot.isLoading || !hasSpot || spot.bidLockedNusdcRaw <= 0n
               ? ""
               : `${formatNusdcAsUsd(spot.bidLockedNusdcRaw)} locked`
+          }
+          countTitle={
+            spot.partial
+              ? "Your trading history exceeds the dashboard scan window. Open Pado for the authoritative list."
+              : undefined
           }
         />
       </div>
@@ -86,14 +93,17 @@ interface PositionRowProps {
   label: string;
   countText: string;
   valueText: string;
+  countTitle?: string;
 }
 
-function PositionRow({ label, countText, valueText }: PositionRowProps) {
+function PositionRow({ label, countText, valueText, countTitle }: PositionRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
       <span className="text-base text-uju-secondary">{label}</span>
       <div className="flex items-baseline gap-3 tabular-nums text-uju-primary">
-        <span className="text-base font-medium">{countText}</span>
+        <span className="text-base font-medium" title={countTitle}>
+          {countText}
+        </span>
         {valueText && (
           <span className="text-sm text-uju-secondary">{valueText}</span>
         )}
