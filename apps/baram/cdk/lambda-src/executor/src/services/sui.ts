@@ -6,6 +6,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { bcs } from '@mysten/sui/bcs';
+import { createHash } from 'crypto';
 import { ComputeRequestOnChain, STATUS } from '../types';
 
 const SUI_CLOCK_ID = '0x6';
@@ -218,11 +219,20 @@ export async function verifyRequest(
 }
 
 /**
- * AER report data for create_report_with_receipt call.
- * Fields extracted from SettlementReceipt: request_id, requester (authorizer),
- * executor, price (payment_amount), model_name, output_hash, execution_time_ms, settled_at.
+ * AER report data for v2 capability-gated create_report_with_receipt_capability.
+ *
+ * Fields extracted from the SettlementReceipt by the Move side: request_id,
+ * requester (authorizer), executor, price (payment_amount), model_name,
+ * output_hash, execution_time_ms, settled_at.
+ *
+ * Capability + envelope fields are required because v2 routes user-facing
+ * cognition/execution events through the gated entry (settlement-only events
+ * are out of scope for this Lambda). See contracts-aer/sources/aer.move.
  */
 export interface AERReportData {
+  // Capability gate (cap.owner == receipt.requester enforced on-chain).
+  capabilityId: string;
+  expectedCapabilityVersion: string; // bigint serialized as decimal string
   // WHO — Requester
   initiator: string;
   delegationPath: string[];
@@ -246,6 +256,61 @@ export interface AERReportData {
   // CHAIN
   triggeredBy: string | null;
   triggeredAction: string | null;
+  parentIntentId: string | null; // hex-encoded 16-byte intent id, or null
+  // Action envelope. Caller chooses event_class (1=cognition, 2=execution).
+  eventClass: number;
+  actionType: string;             // e.g. 'cognition.chat.v1'
+  actionSchemaVersion: number;    // u16
+  actionSummary: string;          // truncated reply, byte-capped on send
+  actionOutcome: number;          // 1=success, 2=hold, 3=failure
+  // Wake (1=heartbeat, 2=user_message, 3=price_alert, 4=manual, 5=coordination)
+  triggeredByType: number;
+  triggeredByRef: string | null;
+  // Replay
+  modelVersion: string;           // e.g. 'llama-3.3-70b-versatile@2025-01-08'
+}
+
+// Caps mirrored from contracts-aer/sources/aer.move. Keep in sync.
+const INTENT_ID_LENGTH = 16;
+const HASH_LENGTH = 32;
+const PAYLOAD_CODEC = 'bcs';
+const MAX_ACTION_SUMMARY_BYTES = 240; // contract cap 280; leave a safety margin
+const ZERO_HASH_32: number[] = Array(HASH_LENGTH).fill(0);
+
+function sha256Bytes(input: Buffer | Uint8Array): Buffer {
+  return createHash('sha256').update(input).digest();
+}
+
+/**
+ * Compute the 16-byte intent_id from request_id. Deterministic, replayable.
+ * Move enforces INTENT_ID_LENGTH=16 (not 32).
+ */
+function computeIntentId(requestId: number): number[] {
+  const requestIdBytes = Buffer.alloc(8);
+  requestIdBytes.writeBigUInt64BE(BigInt(requestId));
+  return Array.from(sha256Bytes(requestIdBytes).subarray(0, INTENT_ID_LENGTH));
+}
+
+/**
+ * Truncate a Move String payload so its UTF-8 byte length stays under cap.
+ * Move's string::length is byte-length, so JS char-slicing is unsafe for
+ * Korean/CJK responses. Iterate from the JS slice and re-encode until fit.
+ */
+function truncateToBytes(s: string, maxBytes: number): string {
+  const encoder = new TextEncoder();
+  if (encoder.encode(s).length <= maxBytes) return s;
+  let lo = 0;
+  let hi = s.length;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >>> 1;
+    const candidate = s.slice(0, mid);
+    if (encoder.encode(candidate).length <= maxBytes) {
+      lo = mid;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return s.slice(0, lo);
 }
 
 /**
@@ -296,40 +361,94 @@ export async function submitProofWithAER(
     ],
   });
 
-  // Call 2: create_report_with_receipt (consumes receipt → creates AER)
-  // Many fields are extracted from the receipt: request_id, authorizer,
-  // executor, payment_amount, model_name, output_hash, execution_time_ms, settled_at
+  // Call 2: create_report_with_receipt_capability (v2 gated entry).
+  //
+  // Routes cognition/execution events through the capability gate. The Move
+  // side extracts request_id, authorizer (=> initiator must match),
+  // executor, payment_amount, model_name, output_hash, execution_time_ms,
+  // settled_at from the receipt, then enforces:
+  //   - event_class IN {cognition, execution} (settlement reserved for ungated)
+  //   - cap.revoked == false, cap.pause_mode == active
+  //   - cap.owner == receipt.requester (initiator)
+  //   - cap.version == expected_capability_version (mid-flight rotation guard)
+  //   - action_type ∈ cap.allowed_actions
+  //   - payment_amount <= cap.risk_limits.max_notional_per_action
+  const intentId = computeIntentId(requestId);
+  const parentIntentBytes = aer.parentIntentId
+    ? Array.from(Buffer.from(aer.parentIntentId, 'hex'))
+    : null;
+  if (parentIntentBytes && parentIntentBytes.length !== INTENT_ID_LENGTH) {
+    throw new Error(`parentIntentId must be ${INTENT_ID_LENGTH} bytes hex`);
+  }
+
+  // payload_hash convention per aer.move §header: SHA-256(action_type || payload_bytes).
+  // payload_bytes is empty for v1 chat; opaque codec MUST equal "bcs".
+  const actionTypeBytes = Buffer.from(aer.actionType, 'utf-8');
+  const payloadBytes: number[] = [];
+  const payloadHash = Array.from(sha256Bytes(actionTypeBytes));
+
+  const summary = truncateToBytes(aer.actionSummary, MAX_ACTION_SUMMARY_BYTES);
+
   tx.moveCall({
-    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt`,
+    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
     arguments: [
-      tx.object(AER_REGISTRY_ID),
-      receipt,                                                                // SettlementReceipt (hot-potato)
-      // 1. WHO — Requester (authorizer extracted from receipt)
-      tx.pure.address(aer.initiator),                                        // initiator
-      tx.pure.vector('address', aer.delegationPath),                         // delegation_path
-      // 2. WHO — Executor (executor extracted from receipt)
-      tx.pure(bcs.option(bcs.Address).serialize(aer.executorPrincipal)),     // executor_principal
-      // 3. HOW MUCH (payment_amount extracted from receipt)
-      tx.pure(bcs.option(bcs.string()).serialize(aer.feeDetail)),            // fee_detail
-      tx.pure(bcs.option(bcs.Address).serialize(aer.budgetId)),              // budget_id
-      tx.pure(bcs.option(bcs.u64()).serialize(aer.budgetRemaining != null ? BigInt(aer.budgetRemaining) : null)), // budget_remaining
-      // 4. WHAT (model_name, output_hash, execution_time_ms extracted from receipt)
-      tx.pure(bcs.option(bcs.string()).serialize(aer.modelMetadata)),        // model_metadata
-      tx.pure.vector('u8', promptHashBytes),                                 // input_hash
-      // 5. WHY
-      tx.pure(bcs.option(bcs.string()).serialize(aer.purpose)),              // purpose
-      tx.pure(bcs.option(bcs.string()).serialize(aer.constraints)),          // constraints
-      // 6. HOW TRUSTWORTHY
-      tx.pure.u8(aer.executorTier),                                          // executor_tier
-      tx.pure.u64(aer.executorReputation),                                   // executor_reputation
-      tx.pure.u64(aer.executorStakeAmount),                                  // executor_stake_amount
-      tx.pure.bool(aer.teeVerified),                                         // tee_verified
-      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(aer.teeAttestationHash)), // tee_attestation_hash
-      // 7. WHEN (settled_at extracted from receipt)
-      tx.pure.u64(request.createdAt),                                        // requested_at
-      // 8. CHAIN
-      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),           // triggered_by
-      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),       // triggered_action
+      tx.object(AER_REGISTRY_ID),                                            // 1 registry (mut)
+      tx.object(BARAM_REGISTRY_ID),                                          // 2 baram_registry (imm)
+      receipt,                                                               // 3 SettlementReceipt (hot-potato)
+      tx.object(aer.capabilityId),                                           // 4 cap (imm shared)
+      tx.pure.u64(BigInt(aer.expectedCapabilityVersion)),                    // 5 expected_capability_version
+      // Requester
+      tx.pure.address(aer.initiator),                                        // 6 initiator
+      tx.pure.vector('address', aer.delegationPath),                         // 7 delegation_path
+      // Executor
+      tx.pure(bcs.option(bcs.Address).serialize(aer.executorPrincipal)),     // 8 executor_principal
+      // Payment
+      tx.pure(bcs.option(bcs.string()).serialize(aer.feeDetail)),            // 9 fee_detail
+      tx.pure(bcs.option(bcs.Address).serialize(aer.budgetId)),              // 10 budget_id
+      tx.pure(bcs.option(bcs.u64()).serialize(aer.budgetRemaining != null ? BigInt(aer.budgetRemaining) : null)), // 11 budget_remaining
+      // Inference
+      tx.pure(bcs.option(bcs.string()).serialize(aer.modelMetadata)),        // 12 model_metadata
+      tx.pure.vector('u8', promptHashBytes),                                 // 13 input_hash
+      // Why
+      tx.pure(bcs.option(bcs.string()).serialize(aer.purpose)),              // 14 purpose
+      tx.pure(bcs.option(bcs.string()).serialize(aer.constraints)),          // 15 constraints
+      // Trust
+      tx.pure.u8(aer.executorTier),                                          // 16 executor_tier
+      tx.pure.u64(aer.executorReputation),                                   // 17 executor_reputation
+      tx.pure.u64(aer.executorStakeAmount),                                  // 18 executor_stake_amount
+      tx.pure.bool(aer.teeVerified),                                         // 19 tee_verified
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(aer.teeAttestationHash)), // 20 tee_attestation_hash
+      // When
+      tx.pure.u64(request.createdAt),                                        // 21 requested_at
+      // Chain
+      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),           // 22 triggered_by
+      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),       // 23 triggered_action
+      tx.pure.vector('u8', intentId),                                        // 24 intent_id (16 bytes)
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(parentIntentBytes)), // 25 parent_intent_id
+      tx.pure.u32(requestId),                                                // 26 execution_id
+      // Envelope
+      tx.pure.u8(aer.eventClass),                                            // 27 event_class
+      tx.pure.string(aer.actionType),                                        // 28 action_type
+      tx.pure.u16(aer.actionSchemaVersion),                                  // 29 action_schema_version
+      tx.pure.string(PAYLOAD_CODEC),                                         // 30 payload_codec
+      tx.pure.vector('u8', payloadHash),                                     // 31 payload_hash
+      tx.pure.vector('u8', payloadBytes),                                    // 32 payload_bytes
+      tx.pure.string(summary),                                               // 33 action_summary
+      tx.pure.u8(aer.actionOutcome),                                         // 34 action_outcome
+      // Wake
+      tx.pure.u8(aer.triggeredByType),                                       // 35 triggered_by_type
+      tx.pure(bcs.option(bcs.string()).serialize(aer.triggeredByRef)),       // 36 triggered_by_ref
+      // Replay
+      tx.pure.string(aer.modelVersion),                                      // 37 model_version
+      tx.pure.vector('u8', ZERO_HASH_32),                                    // 38 prompt_template_hash
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(null)),             // 39 market_snapshot_hash
+      // replay_extras: capability_id raw 32 bytes. Single-key VecMap so no
+      // sort needed (contract requires strict-ascending UTF-8 byte order when
+      // we ever add a second key — keep this comment if extending).
+      tx.pure.vector('string', ['capability_id']),                           // 40 replay_extras_keys
+      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize([
+        Array.from(Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex')),
+      ])),                                                                   // 41 replay_extras_vals
     ],
   });
 

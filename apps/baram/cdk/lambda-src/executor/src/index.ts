@@ -18,9 +18,10 @@ import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
 import { initResultStore, saveResult, getResult } from './services/resultStore';
-import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, ResultRequest, DEFAULT_MODEL } from './types';
+import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, ResultRequest, DEFAULT_MODEL, type AerCapabilityFields } from './types';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
+import { parseSerializedSignature } from '@mysten/sui/cryptography';
 
 // AWS Secrets Manager client (executor private key only)
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -52,6 +53,39 @@ function isSafeRequestId(value: unknown): value is number {
     && Number.isInteger(value)
     && value >= 0
     && value <= Number.MAX_SAFE_INTEGER;
+}
+
+const SUI_OBJECT_ID_REGEX = /^0x[0-9a-fA-F]{1,64}$/;
+const U64_DECIMAL_REGEX = /^[0-9]+$/;
+const INTENT_ID_HEX_REGEX = /^[0-9a-fA-F]{32}$/; // 16 bytes = 32 hex chars
+
+/**
+ * Validate the v2 capability/envelope fields present on /execute and /record.
+ * Returns null on success or a 400-error message describing the bad field.
+ */
+function validateCapabilityFields(body: AerCapabilityFields): string | null {
+  if (typeof body.capabilityId !== 'string' || !SUI_OBJECT_ID_REGEX.test(body.capabilityId)) {
+    return 'capabilityId must be a valid Sui object id';
+  }
+  if (typeof body.expectedCapabilityVersion !== 'string' || !U64_DECIMAL_REGEX.test(body.expectedCapabilityVersion)) {
+    return 'expectedCapabilityVersion must be a decimal u64 string';
+  }
+  if (body.actionType !== undefined && (typeof body.actionType !== 'string' || body.actionType.length < 1 || body.actionType.length > 64)) {
+    return 'actionType must be 1..64 chars';
+  }
+  if (body.eventClass !== undefined && (!Number.isInteger(body.eventClass) || body.eventClass < 1 || body.eventClass > 5)) {
+    return 'eventClass must be an integer in [1,5]';
+  }
+  if (body.triggeredByType !== undefined && (!Number.isInteger(body.triggeredByType) || body.triggeredByType < 1 || body.triggeredByType > 5)) {
+    return 'triggeredByType must be an integer in [1,5]';
+  }
+  if (body.triggeredByRef !== undefined && (typeof body.triggeredByRef !== 'string' || body.triggeredByRef.length > 256)) {
+    return 'triggeredByRef must be a string under 256 chars';
+  }
+  if (body.parentIntentId !== undefined && (typeof body.parentIntentId !== 'string' || !INTENT_ID_HEX_REGEX.test(body.parentIntentId))) {
+    return 'parentIntentId must be 32 hex chars (16 bytes)';
+  }
+  return null;
 }
 
 /**
@@ -255,13 +289,29 @@ async function verifyResultOwnership(req: ResultRequest, expectedAddress: string
     // Full verification: SDK verifies signature and checks address match (throws on failure)
     await verifyPersonalMessageSignature(message, req.signature, { address: expectedAddress });
   } else if (req.signerType === 'zklogin') {
-    // Partial verification: verify ephemeral key signature
-    // Cannot fully bind ephemeral key to zkLogin address without ZK proof verification
+    // Partial verification: verify ephemeral key signature.
+    // Cannot fully bind ephemeral key to zkLogin address without ZK proof
+    // verification, so we trust the client-provided `address` after verifying
+    // the ephemeral signature matches.
     if (!req.ephemeralPubKey) {
       throw new Error('MISSING_EPHEMERAL_KEY');
     }
-    const pubKey = new Ed25519PublicKey(Buffer.from(req.ephemeralPubKey, 'base64'));
-    const isValid = await pubKey.verify(message, Buffer.from(req.signature, 'base64'));
+    // signWithEphemeralKey() returns the Sui-serialized signature
+    // (1 flag byte + 64 sig bytes + 32 pubkey bytes, base64). Parse it so we
+    // can (a) confirm the embedded pubkey equals the one the client sent and
+    // (b) use the SDK's intent-aware personal-message verifier.
+    const parsed = parseSerializedSignature(req.signature);
+    if (parsed.signatureScheme !== 'ED25519') {
+      throw new Error('UNSUPPORTED_SIGNATURE_SCHEME');
+    }
+    const clientPubKey = Buffer.from(req.ephemeralPubKey, 'base64');
+    if (!Buffer.from(parsed.publicKey).equals(clientPubKey)) {
+      throw new Error('EPHEMERAL_PUBKEY_MISMATCH');
+    }
+    const pubKey = new Ed25519PublicKey(clientPubKey);
+    // verifyPersonalMessage handles the IntentMessage(PersonalMessage(bcs(msg)))
+    // wrapping that signPersonalMessage applied on the client.
+    const isValid = await pubKey.verifyPersonalMessage(message, req.signature);
     if (!isValid) {
       throw new Error('INVALID_SIGNATURE');
     }
@@ -277,6 +327,16 @@ async function verifyResultOwnership(req: ResultRequest, expectedAddress: string
 /**
  * Handle execute request
  */
+/** Cloud model release date table — used to build AER.replay.model_version. */
+const MODEL_RELEASE: Record<string, string> = {
+  'llama-3.3-70b-versatile': '2025-01-08',
+};
+
+function modelVersionTag(model: string): string {
+  const release = MODEL_RELEASE[model];
+  return release ? `${model}@${release}` : model;
+}
+
 async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
   const { requestId, encryptedPrompt, model = DEFAULT_MODEL } = body;
   const startTime = Date.now();
@@ -336,6 +396,8 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
   const executorStats = await getExecutorStats(executorAddress);
 
   const aerData: AERReportData = {
+    capabilityId: body.capabilityId,
+    expectedCapabilityVersion: body.expectedCapabilityVersion,
     initiator: verification.request!.requester,
     delegationPath: [],
     executorPrincipal: null,
@@ -352,6 +414,15 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     teeAttestationHash: null,
     triggeredBy: null,
     triggeredAction: null,
+    parentIntentId: body.parentIntentId ?? null,
+    eventClass: body.eventClass ?? 1, // COGNITION
+    actionType: body.actionType ?? 'cognition.chat.v1',
+    actionSchemaVersion: 1,
+    actionSummary: result,
+    actionOutcome: 1, // SUCCESS
+    triggeredByType: body.triggeredByType ?? 4, // MANUAL (session-initiated chat)
+    triggeredByRef: body.triggeredByRef ?? null,
+    modelVersion: modelVersionTag(model),
   };
 
   try {
@@ -450,6 +521,8 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
   const executorStats = await getExecutorStats(executorAddress);
 
   const aerData: AERReportData = {
+    capabilityId: body.capabilityId,
+    expectedCapabilityVersion: body.expectedCapabilityVersion,
     initiator: verification.request!.requester,
     delegationPath: [],
     executorPrincipal: null,
@@ -466,6 +539,15 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
     teeAttestationHash: null,
     triggeredBy: null,
     triggeredAction: null,
+    parentIntentId: body.parentIntentId ?? null,
+    eventClass: body.eventClass ?? 2, // EXECUTION (self-reported trader settlement)
+    actionType: body.actionType ?? 'trade.swap.v1',
+    actionSchemaVersion: 1,
+    actionSummary: result,
+    actionOutcome: 1,
+    triggeredByType: body.triggeredByType ?? 1, // HEARTBEAT
+    triggeredByRef: body.triggeredByRef ?? null,
+    modelVersion: modelVersionTag(verification.request!.model || 'unknown'),
   };
 
   try {
@@ -608,6 +690,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         };
       }
 
+      const capFieldError = validateCapabilityFields(body);
+      if (capFieldError) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: capFieldError }),
+        };
+      }
+
       const response = await handleExecute(body);
 
       return {
@@ -659,6 +750,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'Missing or invalid promptHash' }),
+        };
+      }
+
+      const capFieldError = validateCapabilityFields(body);
+      if (capFieldError) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: capFieldError }),
         };
       }
 
