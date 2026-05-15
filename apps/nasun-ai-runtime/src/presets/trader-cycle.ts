@@ -90,7 +90,8 @@ export async function fetchBrowserConfig(
   agentAddress: string,
   hmacSecret: string,
 ): Promise<BrowserTraderConfig | null> {
-  if (!chatServerBaseUrl || !hmacSecret || hmacSecret.length < 32) return null;
+  // hmacSecret is hex-encoded; require >= 64 hex chars (32 bytes / 256 bits).
+  if (!chatServerBaseUrl || !hmacSecret || hmacSecret.length < 64) return null;
   try {
     const addr = agentAddress.toLowerCase();
     const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex'))

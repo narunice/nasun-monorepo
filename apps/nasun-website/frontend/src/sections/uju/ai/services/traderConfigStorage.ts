@@ -3,8 +3,13 @@
  * Schema: Database `nasun-ai-trader-{walletAddress}`, store `configs` (keyPath = id).
  * Plaintext storage; agent private key still lives in agentKeyStorage (encrypted).
  *
- * Each write also fires a fire-and-forget POST to the chat-server so the
- * nasun-ai-runtime can read the latest config at the start of each cycle.
+ * Each write also mirrors to the chat-server (POST /api/nasun-ai/config) so
+ * nasun-ai-runtime can read the latest config at the start of each cycle. The
+ * server requires a Sui personal-message signature over a canonical message
+ * bound to {walletAddress, agentAddress, configHash, ts}; saveConfig /
+ * deleteConfig take a `signer` so the caller's wallet can produce that
+ * signature. Server sync is best-effort: IndexedDB remains the local source
+ * of truth.
  */
 
 import type { TraderConfig } from '../types/trader';
@@ -16,28 +21,67 @@ const STORE = 'configs';
 const CHAT_SERVER_URL =
   (import.meta.env.VITE_CHAT_SERVER_URL as string | undefined) ?? 'https://nasun.io';
 
-function syncConfigToServer(config: TraderConfig): void {
-  fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      agentAddress: config.agentAddress,
-      walletAddress: config.walletAddress,
-      config,
-    }),
-  }).catch(() => {
-    // Fire-and-forget: IndexedDB is the local source of truth; server sync is best-effort.
-  });
+export interface ConfigSigner {
+  signPersonal(message: Uint8Array): Promise<{ signature: string }>;
 }
 
-function deleteConfigFromServer(agentAddress: string): void {
-  fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
-    method: 'DELETE',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ agentAddress }),
-  }).catch(() => {
+async function sha256Hex(s: string): Promise<string> {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s));
+  return Array.from(new Uint8Array(buf))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function syncConfigToServer(
+  config: TraderConfig,
+  signer: ConfigSigner | null,
+): Promise<void> {
+  if (!signer) return;
+  try {
+    const configPayload = config;
+    const configJson = JSON.stringify(configPayload);
+    const configHash = await sha256Hex(configJson);
+    const ts = Date.now();
+    const walletLower = config.walletAddress.toLowerCase();
+    const agentLower = config.agentAddress.toLowerCase();
+    const message = `nasun-ai-config:save:v1:${walletLower}:${agentLower}:${configHash}:${ts}`;
+    const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
+    await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        agentAddress: config.agentAddress,
+        walletAddress: config.walletAddress,
+        config: configPayload,
+        ts,
+        signature,
+      }),
+    });
+  } catch {
+    // Fire-and-forget: IndexedDB is the local source of truth.
+  }
+}
+
+async function deleteConfigFromServer(
+  agentAddress: string,
+  walletAddress: string,
+  signer: ConfigSigner | null,
+): Promise<void> {
+  if (!signer) return;
+  try {
+    const ts = Date.now();
+    const walletLower = walletAddress.toLowerCase();
+    const agentLower = agentAddress.toLowerCase();
+    const message = `nasun-ai-config:delete:v1:${walletLower}:${agentLower}:${ts}`;
+    const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
+    await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentAddress, walletAddress, ts, signature }),
+    });
+  } catch {
     // Fire-and-forget.
-  });
+  }
 }
 
 let db: IDBDatabase | null = null;
@@ -98,12 +142,18 @@ export async function getConfigByAgent(walletAddress: string, agentAddress: stri
   return all.find((c) => c.agentAddress === agentAddress) ?? null;
 }
 
-export async function saveConfig(config: TraderConfig): Promise<void> {
+export async function saveConfig(config: TraderConfig, signer: ConfigSigner | null): Promise<void> {
   await tx(config.walletAddress, 'readwrite', (s) => s.put(config));
-  syncConfigToServer(config);
+  // Don't block the local save on the server round-trip / signature.
+  void syncConfigToServer(config, signer);
 }
 
-export async function deleteConfig(walletAddress: string, id: string, agentAddress?: string): Promise<void> {
+export async function deleteConfig(
+  walletAddress: string,
+  id: string,
+  agentAddress: string | undefined,
+  signer: ConfigSigner | null,
+): Promise<void> {
   await tx(walletAddress, 'readwrite', (s) => s.delete(id));
-  if (agentAddress) deleteConfigFromServer(agentAddress);
+  if (agentAddress) void deleteConfigFromServer(agentAddress, walletAddress, signer);
 }
