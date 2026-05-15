@@ -27,6 +27,35 @@ export interface AERRecord {
   executorTier: number;
   budgetId: string;
   budgetRemaining: number;
+  // Plan C C3-v2 envelope + lineage + wake + replay. All optional —
+  // indexer API doesn't surface them yet (RPC fallback parses from
+  // nested struct fields). When undefined, UI falls back to legacy
+  // shape (purpose-as-summary, status-as-outcome).
+  eventClass?: number; // 1=cognition, 2=execution, 3=settlement
+  actionType?: string;
+  actionSchemaVersion?: number;
+  payloadCodec?: string;
+  payloadHash?: string;
+  payloadBytes?: string;
+  actionSummary?: string;
+  actionOutcome?: number; // 1=success, 2=hold/noop, 3=failure
+  intentId?: string;
+  parentIntentId?: string | null;
+  executionId?: number;
+  triggeredByType?: number; // 1=heartbeat, 4=manual session, ...
+  triggeredByRef?: string | null;
+  modelVersion?: string;
+  promptTemplateHash?: string;
+  marketSnapshotHash?: string | null;
+  strategyId?: string | null;
+  /**
+   * Capability object id this AER was gated by. Lambda writes it into
+   * `replay.replay_extras['capability_id']` as raw 32-byte address so the
+   * frontend can scope an agent's Activity tab to its own capability.
+   * Optional: indexer API doesn't surface it yet, and legacy records (and
+   * agent-runner heartbeat AERs without a chat capability) leave it unset.
+   */
+  capabilityId?: string | null;
 }
 
 interface IndexerApiResponse {
@@ -82,26 +111,143 @@ async function fetchFromIndexer(ownerAddress: string): Promise<AERRecord[]> {
   return json.data.map(mapIndexerRecord);
 }
 
+// Navigate `chain.fields.lineage.fields.intent_id`-style nesting Sui RPC
+// returns for nested move structs.
+function nested(obj: unknown, ...path: string[]): unknown {
+  let cur: unknown = obj;
+  for (const seg of path) {
+    if (!cur || typeof cur !== 'object') return undefined;
+    cur = (cur as Record<string, unknown>)[seg];
+  }
+  return cur;
+}
+
+function bytesToHex(v: unknown): string | undefined {
+  if (v === null || v === undefined) return undefined;
+  if (typeof v === 'string') return v.startsWith('0x') ? v.slice(2) : v;
+  if (Array.isArray(v)) return v.map((b) => Number(b).toString(16).padStart(2, '0')).join('');
+  return undefined;
+}
+
 function parseAERRecord(fields: Record<string, unknown>): AERRecord | null {
   try {
-    return {
+    // v2 AER nests the 8 categorical scalars under sub-structs
+    // (RequesterContext, ExecutorContext, PaymentContext, InferenceContext,
+    // WhyContext, TrustContext, TimeContext). Each lookup falls back to the
+    // flat key so a v1 record (if any survive) still parses.
+    const pick = <T = unknown>(
+      group: string | undefined,
+      key: string,
+    ): T | undefined => {
+      if (group) {
+        const sub = (nested(fields, group, 'fields') ?? fields[group]) as
+          | Record<string, unknown>
+          | undefined;
+        if (sub && key in sub) return sub[key] as T;
+      }
+      return fields[key] as T | undefined;
+    };
+
+    const base: AERRecord = {
       id: (fields.id as Record<string, string>)?.id ?? '',
       requestId: Number(fields.request_id ?? 0),
-      authorizer: (fields.authorizer as string) ?? '',
-      executor: (fields.executor as string) ?? '',
-      modelName: (fields.model_name as string) ?? '',
-      paymentAmount: Number(fields.payment_amount ?? 0),
-      executionTimeMs: Number(fields.execution_time_ms ?? 0),
-      status: Number(fields.status ?? 0),
-      statusName: AER_STATUS_NAMES[Number(fields.status ?? 0)] ?? 'Unknown',
-      settledAt: Number(fields.settled_at ?? 0),
-      requestedAt: Number(fields.requested_at ?? 0),
-      purpose: parseOptionField<string>(fields.purpose) ?? '',
-      teeVerified: (fields.tee_verified as boolean) ?? false,
-      executorTier: Number(fields.executor_tier ?? 0),
-      budgetId: parseOptionField<string>(fields.budget_id) ?? '',
-      budgetRemaining: Number(parseOptionField<string>(fields.budget_remaining) ?? 0),
+      authorizer: String(pick('requester', 'authorizer') ?? ''),
+      executor: String(pick('executor', 'executor') ?? ''),
+      modelName: String(pick('inference', 'model_name') ?? ''),
+      paymentAmount: Number(pick('payment', 'payment_amount') ?? 0),
+      executionTimeMs: Number(pick('inference', 'execution_time_ms') ?? 0),
+      status: Number(pick('time', 'status') ?? 0),
+      statusName: AER_STATUS_NAMES[Number(pick('time', 'status') ?? 0)] ?? 'Unknown',
+      settledAt: Number(pick('time', 'settled_at') ?? 0),
+      requestedAt: Number(pick('time', 'requested_at') ?? 0),
+      purpose: parseOptionField<string>(pick('why', 'purpose')) ?? '',
+      teeVerified: Boolean(pick('trust', 'tee_verified') ?? false),
+      executorTier: Number(pick('trust', 'executor_tier') ?? 0),
+      budgetId: parseOptionField<string>(pick('payment', 'budget_id')) ?? '',
+      budgetRemaining: Number(
+        parseOptionField<string>(pick('payment', 'budget_remaining')) ?? 0,
+      ),
     };
+
+    // Plan C C3-v2 nested fields (chain.lineage, envelope, wake, replay).
+    // Sui RPC returns nested struct fields under `<name>.fields`. We tolerate
+    // either shape (with or without fields wrapper) in case the indexer or
+    // a future RPC version flattens them.
+    const chain = (nested(fields, 'chain', 'fields') ?? fields.chain) as
+      | Record<string, unknown>
+      | undefined;
+    const lineage = chain
+      ? ((nested(chain, 'lineage', 'fields') ?? chain.lineage) as Record<string, unknown> | undefined)
+      : undefined;
+    const envelope = (nested(fields, 'envelope', 'fields') ?? fields.envelope) as
+      | Record<string, unknown>
+      | undefined;
+    const wake = (nested(fields, 'wake', 'fields') ?? fields.wake) as
+      | Record<string, unknown>
+      | undefined;
+    const replay = (nested(fields, 'replay', 'fields') ?? fields.replay) as
+      | Record<string, unknown>
+      | undefined;
+
+    if (envelope) {
+      base.eventClass = Number(envelope.event_class ?? 0);
+      base.actionType = String(envelope.action_type ?? '');
+      base.actionSchemaVersion = Number(envelope.action_schema_version ?? 0);
+      base.payloadCodec = String(envelope.payload_codec ?? '');
+      base.payloadHash = bytesToHex(envelope.payload_hash);
+      base.payloadBytes = bytesToHex(envelope.payload_bytes);
+      base.actionSummary = String(envelope.action_summary ?? '');
+      base.actionOutcome = Number(envelope.action_outcome ?? 0);
+    }
+    if (lineage) {
+      base.intentId = bytesToHex(lineage.intent_id);
+      base.parentIntentId = bytesToHex(parseOptionField(lineage.parent_intent_id)) ?? null;
+      base.executionId = Number(lineage.execution_id ?? 0);
+    }
+    if (wake) {
+      base.triggeredByType = Number(wake.triggered_by_type ?? 0);
+      base.triggeredByRef = parseOptionField<string>(wake.triggered_by_ref) ?? null;
+    }
+    if (replay) {
+      base.modelVersion = String(replay.model_version ?? '');
+      base.promptTemplateHash = bytesToHex(replay.prompt_template_hash);
+      base.marketSnapshotHash =
+        bytesToHex(parseOptionField(replay.market_snapshot_hash)) ?? null;
+      // strategy_id lives in `replay_extras: VecMap<String, vector<u8>>`.
+      // VecMap RPC shape: { contents: [ { fields: { key, value } }, ... ] }
+      const extras = nested(replay, 'replay_extras', 'fields', 'contents') as
+        | unknown[]
+        | undefined;
+      if (Array.isArray(extras)) {
+        for (const entry of extras) {
+          const f = (entry as Record<string, unknown>)?.fields as
+            | Record<string, unknown>
+            | undefined;
+          if (f && f.key === 'strategy_id') {
+            const valBytes = bytesToHex(f.value);
+            if (valBytes) {
+              try {
+                const u8 = new Uint8Array(
+                  valBytes.match(/.{2}/g)?.map((h) => parseInt(h, 16)) ?? [],
+                );
+                base.strategyId = new TextDecoder('utf-8').decode(u8);
+              } catch {
+                base.strategyId = null;
+              }
+            }
+          } else if (f && f.key === 'capability_id') {
+            // Lambda stores raw 32-byte address. Hex-encode with 0x prefix
+            // so it compares directly against AgentProfile.capabilityId.
+            const valBytes = bytesToHex(f.value);
+            if (valBytes && valBytes.length === 64) {
+              base.capabilityId = `0x${valBytes}`;
+            }
+          }
+        }
+      }
+    }
+
+    return base;
   } catch {
     return null;
   }

@@ -1,12 +1,16 @@
 /**
- * AgentDetail - per-agent management surface with four sub-tabs.
+ * AgentDetail - per-agent management surface.
  *
  * URL contract (AiTab routes):
  *   ?tab=ai&view=detail&agent=<profileId>
- *   ?tab=ai&view=detail&agent=<profileId>&sub=<dashboard|activity|escrow|sessions>
+ *   ?tab=ai&view=detail&agent=<profileId>&sub=<overview|activity|settings>
+ *
+ * Legacy `sub` values (dashboard|chat|escrow|sessions) are mapped to the new
+ * 3-tab IA via `normalizeSubTab()` so existing deep links continue to land on
+ * a reasonable surface.
  *
  * Heavy baram-specific concerns (in-browser scheduler, localStorage escrow id
- * fallback, NFT gate) are intentionally dropped here. The trader bot runs in
+ * fallback, NFT gate) are intentionally dropped here. The AI agent runs in
  * nasun-ai-runtime on the server; the UI surfaces only the config + on-chain
  * artifacts.
  */
@@ -15,20 +19,34 @@ import { useMemo } from 'react';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useBudgetsQuery } from '../hooks/useBudgets';
 import { truncateAddress } from '../utils/format';
-import { DashboardTab } from './agent/DashboardTab';
+import { OverviewTab } from './agent/OverviewTab';
 import { ActivityTab } from './agent/ActivityTab';
-import { EscrowTab } from './agent/EscrowTab';
-import { SessionsTab } from './agent/SessionsTab';
-import { ChatTab } from './agent/ChatTab';
+import { SettingsTab } from './agent/SettingsTab';
 
-export type AgentSubTab = 'dashboard' | 'activity' | 'escrow' | 'sessions' | 'chat';
+export type AgentSubTab = 'overview' | 'activity' | 'settings';
+
+/** Accepts legacy sub values and maps them onto the new 3-tab IA. */
+export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
+  switch (raw) {
+    case 'overview':
+    case 'activity':
+    case 'settings':
+      return raw;
+    case 'dashboard':
+    case 'chat':
+      return 'overview';
+    case 'escrow':
+    case 'sessions':
+      return 'settings';
+    default:
+      return 'overview';
+  }
+}
 
 const SUB_TABS: { key: AgentSubTab; label: string }[] = [
-  { key: 'dashboard', label: 'Dashboard' },
+  { key: 'overview', label: 'Overview' },
   { key: 'activity', label: 'Activity' },
-  { key: 'chat', label: 'Chat' },
-  { key: 'escrow', label: 'Escrow' },
-  { key: 'sessions', label: 'Sessions' },
+  { key: 'settings', label: 'Settings' },
 ];
 
 interface AgentDetailProps {
@@ -37,6 +55,8 @@ interface AgentDetailProps {
   subTab: AgentSubTab;
   onChangeSub: (sub: AgentSubTab) => void;
   onBack: () => void;
+  /** When true, the back link reads "Back to Quickstart" instead of "Back to agents". */
+  fromQuickstart?: boolean;
 }
 
 export function AgentDetail({
@@ -45,7 +65,9 @@ export function AgentDetail({
   subTab,
   onChangeSub,
   onBack,
+  fromQuickstart,
 }: AgentDetailProps) {
+  const backLabel = fromQuickstart ? '← Back to Quickstart' : '← Back to agents';
   const { data: agents, isLoading, refetch } = useAgentProfiles(walletAddress);
   const { data: budgets } = useBudgetsQuery(walletAddress);
 
@@ -71,7 +93,7 @@ export function AgentDetail({
           onClick={onBack}
           className="text-sm text-pado-2 hover:underline"
         >
-          ← Back to agents
+          {backLabel}
         </button>
         <div className="py-12 text-center rounded-xl border border-uju-border/60 border-dashed">
           <p className="text-sm text-uju-secondary">Agent not found in this wallet.</p>
@@ -92,7 +114,7 @@ export function AgentDetail({
             onClick={onBack}
             className="text-sm text-pado-2 hover:underline mb-1"
           >
-            ← Back to agents
+            {backLabel}
           </button>
           <h2 className="text-base font-semibold text-white truncate">{agent.name}</h2>
           <p className="text-sm text-uju-secondary mt-0.5">
@@ -121,20 +143,24 @@ export function AgentDetail({
       </div>
 
       <div>
-        {subTab === 'dashboard' && (
-          <DashboardTab agent={agent} budget={budget} onRefresh={() => void refetch()} />
+        {subTab === 'overview' && (
+          <OverviewTab
+            agent={agent}
+            walletAddress={walletAddress}
+            onRefresh={() => void refetch()}
+            onViewAllActivity={() => onChangeSub('activity')}
+            onOpenSettings={() => onChangeSub('settings')}
+          />
         )}
         {subTab === 'activity' && (
-          <ActivityTab walletAddress={walletAddress} agentAddress={agent.agentAddress} />
+          <ActivityTab
+            walletAddress={walletAddress}
+            agentAddress={agent.agentAddress}
+            agentCapabilityId={agent.capabilityId}
+          />
         )}
-        {subTab === 'escrow' && (
-          <EscrowTab walletAddress={walletAddress} agentAddress={agent.agentAddress} />
-        )}
-        {subTab === 'sessions' && (
-          <SessionsTab agentId={agent.id} agentAddress={agent.agentAddress} walletAddress={walletAddress} />
-        )}
-        {subTab === 'chat' && (
-          <ChatTab walletAddress={walletAddress} agentId={agent.id} />
+        {subTab === 'settings' && (
+          <SettingsTab agent={agent} budget={budget} walletAddress={walletAddress} />
         )}
       </div>
     </div>
