@@ -7,14 +7,9 @@
 // here — see the rationale in usePadoSpotOrdersSummary.ts.
 
 import { UjuButton, UjuCard } from "../../shared";
-import {
-  formatNusdcAsUsd,
-  usePadoPredictionSummary,
-} from "./usePadoPredictionSummary";
-import {
-  formatUsdNumber,
-  usePadoSpotOrdersSummary,
-} from "./usePadoSpotOrdersSummary";
+import { formatNusdcAsUsd } from "./format";
+import { usePadoPredictionSummary } from "./usePadoPredictionSummary";
+import { usePadoSpotOrdersSummary } from "./usePadoSpotOrdersSummary";
 
 const PADO_URL = "https://pado.finance";
 
@@ -77,9 +72,9 @@ export function PadoPositionsCard() {
           // Asks lock base tokens (NBTC etc.) and would need a price oracle
           // to render in dollars, so we only expose bid-side NUSDC for now.
           valueText={
-            spot.isLoading || !hasSpot || spot.bidLockedNusdc <= 0
+            spot.isLoading || !hasSpot || spot.bidLockedNusdcRaw <= 0n
               ? ""
-              : `${formatUsdNumber(spot.bidLockedNusdc)} locked`
+              : `${formatNusdcAsUsd(spot.bidLockedNusdcRaw)} locked`
           }
         />
       </div>
@@ -91,22 +86,13 @@ interface PositionRowProps {
   label: string;
   countText: string;
   valueText: string;
-  muted?: boolean;
 }
 
-function PositionRow({ label, countText, valueText, muted = false }: PositionRowProps) {
+function PositionRow({ label, countText, valueText }: PositionRowProps) {
   return (
     <div className="flex items-center justify-between gap-4 py-3 first:pt-0 last:pb-0">
-      <span
-        className={`text-base ${muted ? "text-uju-secondary/70" : "text-uju-secondary"}`}
-      >
-        {label}
-      </span>
-      <div
-        className={`flex items-baseline gap-3 tabular-nums ${
-          muted ? "text-uju-secondary/70" : "text-uju-primary"
-        }`}
-      >
+      <span className="text-base text-uju-secondary">{label}</span>
+      <div className="flex items-baseline gap-3 tabular-nums text-uju-primary">
         <span className="text-base font-medium">{countText}</span>
         {valueText && (
           <span className="text-sm text-uju-secondary">{valueText}</span>
