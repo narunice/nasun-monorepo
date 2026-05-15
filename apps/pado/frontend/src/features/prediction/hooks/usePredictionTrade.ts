@@ -34,13 +34,21 @@ import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../
 import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
-import { applyOptimisticTrade } from '../lib/optimistic-update';
+import { applyOptimisticTrade, parseFillsFromEvents } from '../lib/optimistic-update';
 import type { OpenOrderRow } from './useMyOpenOrders';
 
 interface TradeResult {
   success: boolean;
   digest?: string;
   error?: string;
+  /**
+   * Sum of `fill_shares` across OrderFilled events where the user was taker.
+   * u64 shares with 6 decimals (matching NUSDC). Undefined when the receipt
+   * had no events or the op was a non-trade (cancel/claim/burn).
+   */
+  filledShares?: bigint;
+  /** Sum of `cost` across the same user-taker fills (u64, 6 decimals). */
+  filledCost?: bigint;
 }
 
 /**
@@ -459,7 +467,26 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           }
           invalidateMarketScoped(marketId, opts.invalidateMarketsList);
           invalidateBalances();
-          return { success: true, digest: result.digest };
+          // Parse user-side filled shares from OrderFilled events so the
+          // success UI can show actual filled amount instead of pre-trade
+          // estimate. parseFillsFromEvents already drops zero-cost bookkeeping
+          // rows, so summing here matches what the indexer will eventually
+          // produce for `my-fills`.
+          let filledShares: bigint | undefined;
+          let filledCost: bigint | undefined;
+          if (walletAddress && result.events) {
+            const lc = walletAddress.toLowerCase();
+            const userFills = parseFillsFromEvents(result.events, marketId)
+              .filter((f) => f.taker.toLowerCase() === lc);
+            if (userFills.length > 0) {
+              filledShares = userFills.reduce((s, f) => s + f.fillShares, 0n);
+              filledCost = userFills.reduce((s, f) => s + f.cost, 0n);
+            } else {
+              filledShares = 0n;
+              filledCost = 0n;
+            }
+          }
+          return { success: true, digest: result.digest, filledShares, filledCost };
         } catch (err) {
           if (import.meta.env.DEV) console.error('[prediction trade] raw error:', err);
           if (isStaleVersionError(err)) {
@@ -483,7 +510,13 @@ export function usePredictionTrade(): UsePredictionTradeResult {
               invalidateMarketScoped(marketId, true);
             }
           }
-          return { success: first.success, digest: first.digest, error: first.error };
+          return {
+            success: first.success,
+            digest: first.digest,
+            error: first.error,
+            filledShares: first.filledShares,
+            filledCost: first.filledCost,
+          };
         }
         // Stale-version retry: invalidate caches, brief settle delay, then one more shot.
         invalidateBalances();
@@ -502,7 +535,12 @@ export function usePredictionTrade(): UsePredictionTradeResult {
           }
           return { success: false, error: msg };
         }
-        return { success: true, digest: second.digest };
+        return {
+          success: true,
+          digest: second.digest,
+          filledShares: second.filledShares,
+          filledCost: second.filledCost,
+        };
       };
 
       try {

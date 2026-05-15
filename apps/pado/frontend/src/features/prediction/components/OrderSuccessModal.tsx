@@ -39,10 +39,20 @@ export type OrderSuccessData = {
   outcomeType: 'yes' | 'no';
   orderMode: 'market' | 'limit';
   isResting: boolean;
+  /**
+   * Shares actually filled in the trade (UI scale, e.g. 12.5 = 12.5 shares).
+   * For buy: shares acquired. For sell: shares closed. Falls back to
+   * `requestedShares` if filled data is unavailable (legacy callers).
+   */
   shares: number;
+  /** Net NUSDC spent (buy) or received (sell) for the filled portion. */
   cost: number;
   priceBps: number;
   digest: string;
+  /** Pre-trade estimate of shares the user requested. */
+  requestedShares?: number;
+  /** True when filled ≈ requested (within rounding tolerance). */
+  isFullyFilled?: boolean;
 };
 
 interface OrderSuccessModalProps {
@@ -111,8 +121,8 @@ export function OrderSuccessModal({ onClose, market, data }: OrderSuccessModalPr
           {/* Subtitle — market question context */}
           <p className="text-sm text-theme-text-muted mb-5 leading-snug">{subtitle}</p>
 
-          {/* Payout breakdown */}
-          {data.orderType === 'buy' && (
+          {/* Payout breakdown — hidden when limit order rested with zero fill */}
+          {data.orderType === 'buy' && !(data.isResting && data.shares <= 0) && (
             <BuyBreakdown
               data={data}
               isYes={isYes}
@@ -123,13 +133,24 @@ export function OrderSuccessModal({ onClose, market, data }: OrderSuccessModalPr
             />
           )}
 
-          {data.orderType === 'sell' && !data.isResting && (
+          {data.orderType === 'sell' && data.shares > 0 && (
             <SellBreakdown data={data} pricePct={pricePct} />
           )}
 
-          {/* Resting explanation for limit orders */}
+          {/* Resting explanation for limit orders (and the zero-fill case) */}
           {data.isResting && (
-            <RestingNote orderType={data.orderType} pricePct={pricePct} outcomeType={data.outcomeType} />
+            <div className={data.shares > 0 ? 'mt-3' : ''}>
+              <RestingNote
+                orderType={data.orderType}
+                pricePct={pricePct}
+                outcomeType={data.outcomeType}
+                remainingShares={
+                  data.requestedShares != null
+                    ? Math.max(0, data.requestedShares - data.shares)
+                    : undefined
+                }
+              />
+            </div>
           )}
 
           {/* Tx reference */}
@@ -191,16 +212,30 @@ function BuyBreakdown({
   const outcomeLabel = data.outcomeType.toUpperCase();
   const loseLabel = isYes ? 'NO' : 'YES';
 
+  const hasFillData = data.requestedShares != null;
+  const isPartialFill =
+    hasFillData && data.isFullyFilled === false && data.shares > 0;
+  const sharesLabel = hasFillData ? 'Shares filled' : 'Shares (est.)';
+  const sharesPrefix = hasFillData ? '' : '~';
+
   return (
     <div className="space-y-2.5">
       {/* What you bought */}
       <div className="bg-theme-bg-tertiary rounded-xl p-3 space-y-1.5 text-sm">
         <div className="flex justify-between">
-          <span className="text-theme-text-muted">Shares (est.)</span>
+          <span className="text-theme-text-muted">{sharesLabel}</span>
           <span className="font-semibold text-theme-text-primary tabular-nums">
-            ~{data.shares.toFixed(2)} {outcomeLabel}
+            {sharesPrefix}{data.shares.toFixed(2)} {outcomeLabel}
           </span>
         </div>
+        {isPartialFill && data.requestedShares != null && (
+          <div className="text-xs text-amber-500">
+            Filled {data.shares.toFixed(2)} of {data.requestedShares.toFixed(2)} requested
+            {data.isResting
+              ? ` — remainder resting at ${pricePct}¢`
+              : ' — remainder refunded'}
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-theme-text-muted">Price per share</span>
           <span className="font-mono text-theme-text-secondary">{pricePct}¢</span>
@@ -251,7 +286,9 @@ function BuyBreakdown({
 }
 
 function SellBreakdown({ data, pricePct }: { data: OrderSuccessData; pricePct: string }) {
-  const estimatedReceive = data.shares * (data.priceBps / 10000);
+  const receive = data.cost > 0 ? data.cost : data.shares * (data.priceBps / 10000);
+  const receiveLabel = data.cost > 0 ? 'Received' : 'Estimated receive';
+  const isPartial = data.isFullyFilled === false && data.requestedShares != null;
   return (
     <div className="bg-theme-bg-tertiary rounded-xl p-3 space-y-1.5 text-sm">
       <div className="flex justify-between">
@@ -260,14 +297,22 @@ function SellBreakdown({ data, pricePct }: { data: OrderSuccessData; pricePct: s
           {data.shares.toFixed(2)} {data.outcomeType.toUpperCase()}
         </span>
       </div>
+      {isPartial && data.requestedShares != null && (
+        <div className="text-xs text-amber-500">
+          Closed {data.shares.toFixed(2)} of {data.requestedShares.toFixed(2)} requested
+          {data.isResting
+            ? ` — remainder resting at ${pricePct}¢`
+            : ' — no more bids available'}
+        </div>
+      )}
       <div className="flex justify-between">
         <span className="text-theme-text-muted">At price</span>
         <span className="font-mono text-theme-text-secondary">{pricePct}¢</span>
       </div>
       <div className="flex justify-between border-t border-theme-border pt-1.5">
-        <span className="text-theme-text-muted">Estimated receive</span>
+        <span className="text-theme-text-muted">{receiveLabel}</span>
         <span className="font-semibold text-theme-text-primary tabular-nums">
-          ~${estimatedReceive.toFixed(2)} NUSDC
+          {data.cost > 0 ? '$' : '~$'}{receive.toFixed(2)} NUSDC
         </span>
       </div>
     </div>
@@ -278,16 +323,23 @@ function RestingNote({
   orderType,
   pricePct,
   outcomeType,
+  remainingShares,
 }: {
   orderType: 'buy' | 'sell';
   pricePct: string;
   outcomeType: 'yes' | 'no';
+  remainingShares?: number;
 }) {
   const outcomeLabel = outcomeType.toUpperCase();
+  const remainderText =
+    remainingShares != null && remainingShares > 0.01
+      ? `${remainingShares.toFixed(2)} share${remainingShares >= 1.005 ? 's' : ''} remaining`
+      : null;
   return (
     <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-sm">
       <p className="font-medium text-yellow-400 mb-1">
         {orderType === 'buy' ? 'Waiting to fill' : 'Close order resting'}
+        {remainderText ? ` — ${remainderText}` : ''}
       </p>
       {orderType === 'buy' ? (
         <p className="text-theme-text-secondary leading-snug">
@@ -306,12 +358,22 @@ function RestingNote({
 
 function getModalCopy(data: OrderSuccessData, question: string): { title: string; subtitle: string } {
   const outcomeLabel = data.outcomeType.toUpperCase();
+  const isZeroFill = data.shares <= 0;
+  const isPartial = data.isFullyFilled === false && !isZeroFill;
 
   if (data.orderType === 'buy') {
-    if (data.isResting) {
+    if (data.isResting && isZeroFill) {
       return {
         title: 'Order Resting',
         subtitle: `Your limit buy is waiting to fill at ${(data.priceBps / 100).toFixed(0)}¢. You'll get ${outcomeLabel} shares when a seller matches your price.`,
+      };
+    }
+    if (isPartial) {
+      return {
+        title: 'Order Partially Filled',
+        subtitle: data.isResting
+          ? `Filled some ${outcomeLabel} shares. The remainder is resting at ${(data.priceBps / 100).toFixed(0)}¢.`
+          : `Filled some ${outcomeLabel} shares. The remainder was refunded (no more matching liquidity).`,
       };
     }
     return {
@@ -320,10 +382,18 @@ function getModalCopy(data: OrderSuccessData, question: string): { title: string
     };
   }
 
-  if (data.isResting) {
+  if (data.isResting && isZeroFill) {
     return {
       title: 'Close Order Resting',
       subtitle: `Your ${outcomeLabel} position close is waiting for a buyer at ${(data.priceBps / 100).toFixed(0)}¢.`,
+    };
+  }
+  if (isPartial) {
+    return {
+      title: 'Close Partially Filled',
+      subtitle: data.isResting
+        ? `Closed some ${outcomeLabel} shares. The remainder is resting at ${(data.priceBps / 100).toFixed(0)}¢.`
+        : `Closed some ${outcomeLabel} shares. No more bids available right now.`,
     };
   }
   return {
