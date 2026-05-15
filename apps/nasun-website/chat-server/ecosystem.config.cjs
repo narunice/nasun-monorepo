@@ -14,7 +14,7 @@ module.exports = {
       autorestart: true,
       env: {
         PORT: '3101',
-        ALLOWED_ORIGINS: 'https://nasun.io,https://www.nasun.io,https://pado.finance,https://www.pado.finance,https://gostop.app,https://www.gostop.app',
+        ALLOWED_ORIGINS: 'https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://pado.finance,https://www.pado.finance,https://staging.pado.finance,https://gostop.app,https://www.gostop.app,https://staging.gostop.app',
         TRUST_PROXY: 'true',
         CHAT_DB_PATH: './data/chat.db',
         LEADERBOARD_DB_PATH: './data/leaderboard.db',
