@@ -38,7 +38,7 @@ export function CreateBudgetModal({
 
   const depositRaw = nusdcToRaw(deposit);
   const maxPerRequestRaw = nusdcToRaw(maxPerRequest);
-  const isAgentValid = SUI_ADDRESS_RE.test(agent);
+  const isAgentValid = SUI_ADDRESS_RE.test(prefillAgent ?? agent);
   const isDepositValid = depositRaw >= BUDGET_CONFIG.MIN_DEPOSIT;
   const isFormValid = isAgentValid && isDepositValid && !isBusy;
 
@@ -58,7 +58,7 @@ export function CreateBudgetModal({
     if (!isFormValid) return;
     const expiresAt = expirationDate ? new Date(expirationDate).getTime() : 0;
     await onCreate({
-      agent,
+      agent: prefillAgent ?? agent,
       deposit: depositRaw,
       maxPerRequest: maxPerRequestRaw || undefined,
       allowedModels: selectedModels.length > 0 ? selectedModels : undefined,
@@ -117,19 +117,27 @@ export function CreateBudgetModal({
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
           <div className="space-y-1">
             <label className="text-xs uppercase tracking-wider text-uju-secondary">Agent Address *</label>
-            <input
-              type="text"
-              value={agent}
-              onChange={(e) => setAgent(e.target.value)}
-              placeholder="0x..."
-              className={`w-full px-3 py-2 text-sm font-mono rounded-lg bg-uju-bg border text-white placeholder:text-uju-secondary/60 focus:outline-none transition-colors ${
-                agent && !isAgentValid
-                  ? 'border-red-400 focus:border-red-400'
-                  : 'border-uju-border/60 focus:border-pado-2'
-              }`}
-            />
-            {agent && !isAgentValid && (
-              <p className="text-xs text-red-400">Invalid address (0x + 64 hex chars)</p>
+            {prefillAgent ? (
+              <div className="w-full px-3 py-2 text-sm font-mono rounded-lg bg-uju-bg/60 border border-uju-border/40 text-white/80 truncate select-all">
+                {prefillAgent}
+              </div>
+            ) : (
+              <>
+                <input
+                  type="text"
+                  value={agent}
+                  onChange={(e) => setAgent(e.target.value)}
+                  placeholder="0x..."
+                  className={`w-full px-3 py-2 text-sm font-mono rounded-lg bg-uju-bg border text-white placeholder:text-uju-secondary/60 focus:outline-none transition-colors ${
+                    agent && !isAgentValid
+                      ? 'border-red-400 focus:border-red-400'
+                      : 'border-uju-border/60 focus:border-pado-2'
+                  }`}
+                />
+                {agent && !isAgentValid && (
+                  <p className="text-xs text-red-400">Invalid address (0x + 64 hex chars)</p>
+                )}
+              </>
             )}
           </div>
 
@@ -156,7 +164,9 @@ export function CreateBudgetModal({
           </div>
 
           <div className="space-y-1">
-            <label className="text-xs uppercase tracking-wider text-uju-secondary">Max Per Request (NUSDC)</label>
+            <label className="text-xs uppercase tracking-wider text-uju-secondary">
+              Max per inference call (NUSDC)
+            </label>
             <input
               type="number"
               step="0.01"
@@ -166,6 +176,11 @@ export function CreateBudgetModal({
               placeholder="0 = unlimited"
               className="w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white placeholder:text-uju-secondary/60 focus:outline-none focus:border-pado-2 transition-colors"
             />
+            <p className="text-xs text-uju-secondary/70">
+              Hard cap on NUSDC the agent can spend paying the AI executor for one inference
+              request. Separate from the trader policy&apos;s per-trade swap cap (how much the agent
+              can buy/sell on the DEX in a single trade).
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -196,6 +211,7 @@ export function CreateBudgetModal({
               value={expirationDate}
               onChange={(e) => setExpirationDate(e.target.value)}
               min={new Date().toISOString().slice(0, 16)}
+              style={{ colorScheme: 'dark' }}
               className="w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white focus:outline-none focus:border-pado-2 transition-colors"
             />
             <p className="text-xs text-uju-secondary/70">Leave empty for no expiration</p>

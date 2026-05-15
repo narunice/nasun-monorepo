@@ -41,8 +41,31 @@ export interface RequestResult {
   attestationVerified?: boolean;
 }
 
+/**
+ * Capability + envelope hints forwarded to the Lambda /execute endpoint so it
+ * can call the v2 capability-gated AER entry. Required for cognition/execution
+ * event classes (the only ones routed through the Lambda today). Legacy agents
+ * (no on-chain Capability) must not reach this hook -- the chat surface gates
+ * the input upstream.
+ */
+export interface CreateRequestCapability {
+  /** Shared-object id of the agent's Capability. */
+  capabilityId: string;
+  /** Decimal-string cap.version snapshot. Lambda forwards as u64. */
+  expectedCapabilityVersion: string;
+  /** Defaults to 'cognition.chat.v1' on the Lambda side. */
+  actionType?: string;
+  /** 1=cognition (default), 2=execution. */
+  eventClass?: number;
+  /** 1=heartbeat, 4=manual (default for user chat), etc. */
+  triggeredByType?: number;
+  /** Optional session/correlation id. */
+  triggeredByRef?: string;
+}
+
 export interface CreateRequestOptions {
   previousMessages?: Message[];
+  capability: CreateRequestCapability;
 }
 
 export interface UseCreateRequestReturn {
@@ -53,7 +76,7 @@ export interface UseCreateRequestReturn {
     prompt: string,
     model: ModelId,
     executor: ExecutorInfo,
-    options?: CreateRequestOptions,
+    options: CreateRequestOptions,
   ) => Promise<void>;
   reset: () => void;
 }
@@ -75,7 +98,7 @@ export function useCreateRequest(): UseCreateRequestReturn {
       prompt: string,
       model: ModelId,
       executor: ExecutorInfo,
-      options: CreateRequestOptions = {},
+      options: CreateRequestOptions,
     ) => {
       if (!address || !signer) {
         setError('Wallet not connected');
@@ -90,13 +113,17 @@ export function useCreateRequest(): UseCreateRequestReturn {
         setError('No executor selected');
         return;
       }
+      if (!options?.capability?.capabilityId) {
+        setError('Agent capability is required for chat');
+        return;
+      }
 
       setStatus('creating');
       setError(null);
       setResult(null);
 
       try {
-        const { previousMessages } = options;
+        const { previousMessages, capability } = options;
         const textToSend =
           previousMessages && previousMessages.length > 0
             ? formatContextForTee(buildContextWithPrompt(previousMessages, prompt))
@@ -163,10 +190,21 @@ export function useCreateRequest(): UseCreateRequestReturn {
             if (isLambdaBackend && BARAM_CONFIG.apiKey) {
               headers['x-api-key'] = BARAM_CONFIG.apiKey;
             }
+            const executeBody: Record<string, unknown> = {
+              requestId,
+              encryptedPrompt: promptPayload,
+              model,
+              capabilityId: capability.capabilityId,
+              expectedCapabilityVersion: capability.expectedCapabilityVersion,
+            };
+            if (capability.actionType) executeBody.actionType = capability.actionType;
+            if (capability.eventClass != null) executeBody.eventClass = capability.eventClass;
+            if (capability.triggeredByType != null) executeBody.triggeredByType = capability.triggeredByType;
+            if (capability.triggeredByRef) executeBody.triggeredByRef = capability.triggeredByRef;
             executeResponse = await fetch(executorUrl + '/execute', {
               method: 'POST',
               headers,
-              body: JSON.stringify({ requestId, encryptedPrompt: promptPayload, model }),
+              body: JSON.stringify(executeBody),
               signal: controller.signal,
             });
           } finally {
@@ -199,10 +237,24 @@ export function useCreateRequest(): UseCreateRequestReturn {
               cancelTx.setSender(address);
               const cancelBytes = await cancelTx.build({ client: suiClient });
               const { signature: cancelSig } = await signer.sign(cancelBytes);
-              await suiClient.executeTransactionBlock({
+              const cancelResult = await suiClient.executeTransactionBlock({
                 transactionBlock: cancelBytes,
                 signature: cancelSig,
               });
+              // Wait for the RPC node to index the cancel tx before returning.
+              // Without this, useRequestWithRetry's next attempt calls
+              // getNusdcCoins() against a lagging RPC and receives a stale
+              // coin version, which the validator quorum then rejects as
+              // "Object ID ... Version ... not available for consumption"
+              // (2026-05-15 chat regression).
+              try {
+                await suiClient.waitForTransaction({
+                  digest: cancelResult.digest,
+                  timeout: 10_000,
+                });
+              } catch (waitErr) {
+                console.warn('[useCreateRequest] waitForTransaction post-cancel failed:', waitErr);
+              }
               cancelOk = true;
               break;
             } catch (cancelError) {

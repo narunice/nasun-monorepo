@@ -15,6 +15,13 @@ interface SessionsTabProps {
   agentId: string;
   agentAddress: string;
   walletAddress: string;
+  /**
+   * On-chain capability id, read from `AgentProfile.capability` Option<ID>.
+   * When set, the manual paste-in box is skipped entirely and Link Telegram
+   * is immediately enabled. The localStorage fallback only fires for legacy
+   * agents created before `create_agent_with_capability` shipped.
+   */
+  capabilityId: string | null;
 }
 
 function formatDate(ms: number): string {
@@ -31,13 +38,21 @@ function truncateSid(s: string): string {
   return s.length > 16 ? `${s.slice(0, 8)}...${s.slice(-4)}` : s;
 }
 
-export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTabProps) {
+export function SessionsTab({
+  agentId,
+  agentAddress,
+  walletAddress,
+  capabilityId,
+}: SessionsTabProps) {
   const storageKey = `nasun-ai:capability-id:${walletAddress}:${agentId}`;
 
+  // On-chain capability wins. Fall back to legacy localStorage only when
+  // the AgentProfile has no `capability` linked (pre-Plan-B agents).
   const [savedCapId, setSavedCapId] = useState<string>(
-    () => localStorage.getItem(storageKey) ?? '',
+    () => capabilityId ?? localStorage.getItem(storageKey) ?? '',
   );
   const [capIdInput, setCapIdInput] = useState(savedCapId);
+  const hasOnChainCap = !!capabilityId;
 
   const { sessions, loading, error, reload } = useNasunAiSessions();
   const { revoke, revoking, error: revokeError } = useRevokeSession();
@@ -61,36 +76,40 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
 
   return (
     <div className="space-y-5">
-      <div className="p-4 rounded-xl bg-uju-card border border-uju-border/60 space-y-3">
-        <div>
-          <p className="text-sm font-medium text-white">Capability ID</p>
-          <p className="text-sm text-uju-secondary mt-0.5">
-            Required to create a session. Find it in your on-chain Capability object.
-          </p>
+      {!hasOnChainCap && (
+        <div className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/30 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-white">Legacy agent: no capability linked</p>
+            <p className="text-sm text-uju-secondary mt-0.5">
+              This agent was registered before on-chain capability linking shipped. Telegram
+              sessions need a Capability object id. Either paste an existing one below, or register
+              a new agent and use that instead (capability is auto-linked at creation time).
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={capIdInput}
+              onChange={(e) => setCapIdInput(e.target.value)}
+              placeholder="0x..."
+              className="flex-1 px-3 py-2 text-sm font-mono rounded-lg bg-uju-bg border border-uju-border/60 text-white placeholder:text-uju-secondary/60 focus:outline-none focus:border-pado-2"
+            />
+            <button
+              type="button"
+              onClick={handleSaveCapId}
+              disabled={!SUI_ADDRESS_RE.test(capIdInput.trim())}
+              className="px-3 py-2 text-sm rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-40"
+            >
+              Save
+            </button>
+          </div>
+          {savedCapId && (
+            <p className="text-sm text-emerald-400">
+              Saved: {savedCapId.slice(0, 10)}...{savedCapId.slice(-6)}
+            </p>
+          )}
         </div>
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={capIdInput}
-            onChange={(e) => setCapIdInput(e.target.value)}
-            placeholder="0x..."
-            className="flex-1 px-3 py-2 text-sm font-mono rounded-lg bg-uju-bg border border-uju-border/60 text-white placeholder:text-uju-secondary/60 focus:outline-none focus:border-pado-2"
-          />
-          <button
-            type="button"
-            onClick={handleSaveCapId}
-            disabled={!SUI_ADDRESS_RE.test(capIdInput.trim())}
-            className="px-3 py-2 text-sm rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-40"
-          >
-            Save
-          </button>
-        </div>
-        {savedCapId && (
-          <p className="text-sm text-emerald-400">
-            Saved: {savedCapId.slice(0, 10)}...{savedCapId.slice(-6)}
-          </p>
-        )}
-      </div>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <div>

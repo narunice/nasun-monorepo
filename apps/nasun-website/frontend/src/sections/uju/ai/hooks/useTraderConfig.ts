@@ -67,7 +67,7 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
 
   const remove = useCallback(async () => {
     if (!walletAddress || !agentAddress) return;
-    await deleteConfig(walletAddress, agentAddress);
+    await deleteConfig(walletAddress, agentAddress, agentAddress);
     setConfig(null);
   }, [walletAddress, agentAddress]);
 

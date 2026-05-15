@@ -18,9 +18,11 @@ import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
+import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
+import { notifyWorkerIdentityInvalidate } from './aggregator.js';
 import { canonicalizeDisplayName } from '@nasun/profile-core';
 import { getBannedSnapshotSync } from './banned-loader.js';
 
@@ -461,6 +463,11 @@ async function handleHttpRequest(
     return;
   }
 
+  // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
+  if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
   // Crash API
   if (crashHttpHandler && url.pathname.startsWith('/api/crash/')) {
     if (crashHttpHandler(req, res, corsHeaders)) return;
@@ -583,6 +590,7 @@ async function handleHttpRequest(
       });
     } else {
       invalidateIdentityCache();
+      notifyWorkerIdentityInvalidate();
     }
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ ok: true }));

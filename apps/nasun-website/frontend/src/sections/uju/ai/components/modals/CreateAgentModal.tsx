@@ -27,6 +27,13 @@ interface CreateAgentModalProps {
   txError: string | null;
   generatedAddress: string | null;
   fallbackKey: string | null;
+  /**
+   * True when the wallet already has at least one active agent. The success
+   * footer flips from the Quickstart "Continue to Step 2" copy to an
+   * "Open agent and fund budget" CTA, since the parent navigates straight
+   * into the new agent's Settings tab instead of bouncing back to Quickstart.
+   */
+  isOnboarded?: boolean;
 }
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -46,6 +53,7 @@ export function CreateAgentModal({
   txError,
   generatedAddress,
   fallbackKey,
+  isOnboarded = false,
 }: CreateAgentModalProps) {
   const [mode, setMode] = useState<AgentCreationMode>('generate');
   const [agentAddress, setAgentAddress] = useState('');
@@ -124,6 +132,11 @@ export function CreateAgentModal({
           </div>
           <p id="create-agent-success-title" className="text-sm font-medium text-white">Agent Registered</p>
           <p className="text-sm text-uju-secondary">{name} has been registered on-chain.</p>
+          <p className="text-sm text-pado-2">
+            {isOnboarded
+              ? "Next: open this agent and fund its budget so it can pay executors."
+              : "Next: fund this agent's budget so it can pay executors."}
+          </p>
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-uju-bg text-left space-y-1">
               <div className="flex items-center justify-between">
@@ -150,7 +163,7 @@ export function CreateAgentModal({
             onClick={onClose}
             className="w-full py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
           >
-            Done
+            {isOnboarded ? 'Open agent and fund budget' : 'Continue to Step 2'}
           </button>
         </div>
       </div>,
@@ -179,6 +192,11 @@ export function CreateAgentModal({
 
         {/* Form */}
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          <div className="p-2 rounded-lg bg-pado-2/5 border border-pado-2/20">
+            <p className="text-xs text-uju-secondary">
+              A default capability and escrow will be created and linked to this agent. You can adjust risk limits and allowed actions in Settings later.
+            </p>
+          </div>
           {/* Mode toggle */}
           <div className="space-y-1.5">
             <label className="text-xs uppercase tracking-wider text-uju-secondary">Key mode</label>

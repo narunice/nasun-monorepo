@@ -30,7 +30,7 @@ export function EscrowTab({ walletAddress, agentAddress }: EscrowTabProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-white">Escrow Budgets</h3>
+          <h3 className="text-sm font-semibold text-white">Budget</h3>
           <p className="text-sm text-uju-secondary mt-0.5">
             Pre-funded NUSDC the agent draws from to pay executors.
           </p>
@@ -165,7 +165,7 @@ function BudgetCard({
 
       <div className="grid grid-cols-3 gap-3 text-sm">
         <div>
-          <p className="text-xs uppercase tracking-wider text-uju-secondary/70">Per request</p>
+          <p className="text-xs uppercase tracking-wider text-uju-secondary/70">Per inference call</p>
           <p className="text-white">
             {budget.maxPerRequest > 0 ? `${formatNusdcValue(budget.maxPerRequest)} NUSDC` : 'Unlimited'}
           </p>

@@ -113,6 +113,9 @@ export interface TraderPromptContext {
   /** Optional ISO timestamp override for deterministic test rendering.
    *  Production uses Date.now(). */
   nowIso?: string;
+  /** Optional user-provided prompt template (from browser TraderConfig).
+   *  When set, replaces the strategy.systemPrompt fragment entirely. */
+  customSystemPrompt?: string | null;
 }
 
 export function buildTraderPrompt(ctx: TraderPromptContext): string {
@@ -127,9 +130,12 @@ export function buildTraderPrompt(ctx: TraderPromptContext): string {
     .map((r) => `  - ${new Date(r.ts).toISOString()} ${r.action} ${(Number(r.sizeQuoteRaw)/1e6).toFixed(4)} NUSDC eq (${r.digest.slice(0,8)})`)
     .join('\n') || '  (none)';
 
+  const strategyBlock = ctx.customSystemPrompt
+    ? `# Custom policy (user-defined)\n${ctx.customSystemPrompt}`
+    : `# Strategy preset: ${ctx.strategy.label} (${ctx.strategy.id})\n${ctx.strategy.systemPrompt}`;
+
   return [
-    `# Strategy preset: ${ctx.strategy.label} (${ctx.strategy.id})`,
-    ctx.strategy.systemPrompt,
+    strategyBlock,
     ``,
     `# Market context`,
     `You are an autonomous DeFi trader on Pado DEX (Nasun devnet, NBTC/NUSDC, DeepBook v3).`,

@@ -427,6 +427,9 @@ importers:
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@nasun/baram-sdk':
+        specifier: workspace:*
+        version: link:../../../packages/baram-sdk
       '@nasun/devnet-config':
         specifier: workspace:*
         version: link:../../../packages/devnet-config

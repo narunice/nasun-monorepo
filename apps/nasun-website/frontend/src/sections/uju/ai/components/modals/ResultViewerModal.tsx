@@ -27,6 +27,95 @@ async function verifyResultHash(result: string, expectedHash: string): Promise<b
   return hashHex === expectedHash;
 }
 
+function truncateHash(hex: string | null | undefined, head = 8, tail = 6): string {
+  if (!hex) return '—';
+  if (hex.length <= head + tail + 3) return hex;
+  return `${hex.slice(0, head)}…${hex.slice(-tail)}`;
+}
+
+function eventClassLabel(cls?: number): string {
+  switch (cls) {
+    case 1: return 'cognition';
+    case 2: return 'execution';
+    case 3: return 'settlement';
+    default: return '—';
+  }
+}
+
+function outcomeLabel(o?: number): string {
+  switch (o) {
+    case 1: return 'success';
+    case 2: return 'hold';
+    case 3: return 'failure';
+    default: return '—';
+  }
+}
+
+function LineageReplaySection({ record }: { record: AERRecord }) {
+  // Hide entirely when no envelope/lineage/replay data was parsed
+  // (legacy record or indexer missing fields). Avoids visual noise.
+  const hasData =
+    record.eventClass !== undefined ||
+    record.intentId !== undefined ||
+    record.modelVersion !== undefined;
+  if (!hasData) return null;
+
+  return (
+    <div className="rounded-lg border border-uju-border/60 bg-uju-card/40 divide-y divide-uju-border/40">
+      {record.eventClass !== undefined && (
+        <KvSection title="On-chain">
+          <Kv label="Event class" value={eventClassLabel(record.eventClass)} />
+          {record.actionType && <Kv label="Action" value={record.actionType} mono />}
+          {record.actionOutcome !== undefined && (
+            <Kv label="Outcome" value={outcomeLabel(record.actionOutcome)} />
+          )}
+          {record.payloadCodec && <Kv label="Payload codec" value={record.payloadCodec} mono />}
+          <Kv label="Payload hash" value={truncateHash(record.payloadHash)} mono />
+        </KvSection>
+      )}
+      {record.intentId !== undefined && (
+        <KvSection title="Intent lineage">
+          <Kv label="Intent" value={truncateHash(record.intentId)} mono />
+          <Kv label="Parent" value={truncateHash(record.parentIntentId ?? null)} mono />
+          {record.executionId !== undefined && (
+            <Kv label="Execution #" value={String(record.executionId)} />
+          )}
+        </KvSection>
+      )}
+      {record.modelVersion !== undefined && (
+        <KvSection title="Replay metadata">
+          <Kv label="Model" value={record.modelVersion} />
+          <Kv label="Prompt hash" value={truncateHash(record.promptTemplateHash)} mono />
+          <Kv label="Market snapshot" value={truncateHash(record.marketSnapshotHash ?? null)} mono />
+          {record.strategyId !== undefined && record.strategyId !== null && (
+            <Kv label="Strategy" value={record.strategyId} />
+          )}
+        </KvSection>
+      )}
+    </div>
+  );
+}
+
+function KvSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="px-4 py-3 space-y-1.5">
+      <p className="text-xs uppercase tracking-wider text-uju-secondary/70">{title}</p>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-1">{children}</div>
+    </div>
+  );
+}
+
+function Kv({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-xs text-uju-secondary/60">{label}</p>
+      <p className={`text-sm text-white truncate ${mono ? 'font-mono' : ''}`} title={value}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 export function ResultViewerModal({ requestId, record, authorizer, onClose }: ResultViewerModalProps) {
   const { data, isLoading, error } = useAerResult(requestId, authorizer);
   const [copied, setCopied] = useState(false);
@@ -161,7 +250,8 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <LineageReplaySection record={record} />
           {isLoading && (
             <div className="flex items-center justify-center py-12 text-sm text-uju-secondary">
               Loading result...

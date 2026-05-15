@@ -1,9 +1,8 @@
 /**
- * Agent Dashboard tab - summary stats + on-chain status + TraderConfigForm.
- *
- * The trader bot is now run server-side by nasun-ai-runtime; the dashboard
- * shows the latest stored config and lets the owner adjust it. Browser-side
- * scheduler from baram is intentionally dropped (Plan D pivot).
+ * DashboardTab - legacy 5-tab surface. Kept for one session as a fallback for
+ * deep links arriving with ?sub=dashboard. New IA routes through OverviewTab +
+ * SettingsTab; this file will be removed after P0-2 devnet e2e confirms the
+ * cutover.
  */
 
 import { useState } from 'react';
@@ -12,6 +11,7 @@ import type { BudgetInfo } from '../../hooks/useBudgets';
 import { useAgentActions } from '../../hooks/useAgentActions';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
+import { DangerZoneCard } from '../../components/DangerZoneCard';
 import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
 
 interface DashboardTabProps {
@@ -84,7 +84,7 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
             disabled={busy}
             className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
           >
-            {agent.isActive ? 'Deactivate' : 'Reactivate'}
+            {agent.isActive ? 'Pause agent' : 'Activate agent'}
           </button>
           {txStatus === 'error' && txError && (
             <span className="text-sm text-red-400 self-center">{txError}</span>
@@ -93,13 +93,14 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
       </div>
 
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-white">Trader Bot</h3>
+        <h3 className="text-sm font-semibold text-white">AI Agent Config</h3>
         <p className="text-sm text-uju-secondary">
-          The bot is executed by Nasun AI runtime on the server. Update the config below and the
+          The agent is executed by Nasun AI runtime on the server. Update the config below and the
           runtime will pick it up on the next cycle.
         </p>
         <TraderConfigForm
           agentAddress={agent.agentAddress}
+          agentName={agent.name}
           agentBudgetId={budget?.id ?? ''}
           initial={config}
           onSave={async (values) => {
@@ -109,6 +110,8 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
           onDelete={config ? async () => { await remove(); } : undefined}
         />
       </div>
+
+      <DangerZoneCard capabilityId={agent.capabilityId} />
     </div>
   );
 }

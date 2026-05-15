@@ -20,6 +20,20 @@ export interface AgentProfile {
   totalExecutions: number;
   totalSpent: number;
   lastActiveAt: number;
+  // Move Option<ID> -> linked Capability shared object id, or null when the
+  // profile has no execution authority wired up (legacy / pre-Plan-B agents).
+  capabilityId: string | null;
+}
+
+function parseOptionId(field: unknown): string | null {
+  if (field == null) return null;
+  if (typeof field === 'string') return field;
+  if (typeof field === 'object' && field !== null && 'vec' in field) {
+    const vec = (field as { vec: unknown[] }).vec;
+    if (Array.isArray(vec) && vec.length > 0) return String(vec[0]);
+    return null;
+  }
+  return null;
 }
 
 function parseAgentProfile(fields: Record<string, unknown>): AgentProfile | null {
@@ -36,6 +50,7 @@ function parseAgentProfile(fields: Record<string, unknown>): AgentProfile | null
       totalExecutions: Number(fields.total_executions ?? 0),
       totalSpent: Number(fields.total_spent ?? 0),
       lastActiveAt: Number(fields.last_active_at ?? 0),
+      capabilityId: parseOptionId(fields.capability),
     };
   } catch {
     return null;
@@ -43,7 +58,10 @@ function parseAgentProfile(fields: Record<string, unknown>): AgentProfile | null
 }
 
 async function fetchAgentProfiles(ownerAddress: string): Promise<AgentProfile[]> {
-  const profileType = `${BARAM.agentPackageId}::agent_profile::AgentProfile`;
+  // Struct type tags always use the original publish package id, never the
+  // upgrade id. Filtering by the upgraded `agentPackageId` returns 0 rows
+  // and makes the freshly registered agent invisible to Quickstart.
+  const profileType = `${BARAM.agentOriginalPackageId}::agent_profile::AgentProfile`;
   const profiles: AgentProfile[] = [];
   let cursor: string | null | undefined = undefined;
 
