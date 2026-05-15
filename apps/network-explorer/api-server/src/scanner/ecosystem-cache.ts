@@ -116,22 +116,40 @@ export async function maybeRefreshActivationsCache(): Promise<void> {
 function applyActivationsData(
   activations: Record<string, Array<{ nftType: string; nftCount: number }>>,
 ): void {
-  if (activations && typeof activations === 'object') {
-    const newMap = new Map<string, NftActivation[]>();
-    for (const [id, acts] of Object.entries(activations)) {
-      if (Array.isArray(acts)) {
-        newMap.set(
-          id,
-          acts.map((a) => ({
-            nftType: a.nftType,
-            status: 'ACTIVE',
-            nftCount: a.nftCount ?? 1,
-          })),
-        );
-      }
-    }
-    activationsCache = newMap;
+  if (!activations || typeof activations !== 'object') return;
+
+  // Empty-payload guard: an upstream blip (admin-api Scan returning {}, S3
+  // gunzip silent failure, etc.) that hands us {} would otherwise atomic-swap
+  // the cache to an empty Map, which makes the NFT gate filter every row off
+  // the ecosystem leaderboard for the 5-min route cache TTL. Keep the prior
+  // populated cache and alert. See feedback_warn_on_empty_critical_cache.md
+  // (post 5/4 WALLET_MAPPINGS incident).
+  const incomingSize = Object.keys(activations).length;
+  if (incomingSize === 0 && activationsCache.size > 0) {
+    console.warn(
+      `[Ecosystem] refusing empty activations payload (incoming=0, current=${activationsCache.size}); keeping existing cache`,
+    );
+    void sendTelegramAlert(
+      `Ecosystem activations payload empty — rejected to prevent leaderboard blackout (current cache: ${activationsCache.size})`,
+      { dedupKey: 'ecosystem-empty-activations-payload' },
+    );
+    return;
   }
+
+  const newMap = new Map<string, NftActivation[]>();
+  for (const [id, acts] of Object.entries(activations)) {
+    if (Array.isArray(acts)) {
+      newMap.set(
+        id,
+        acts.map((a) => ({
+          nftType: a.nftType,
+          status: 'ACTIVE',
+          nftCount: a.nftCount ?? 1,
+        })),
+      );
+    }
+  }
+  activationsCache = newMap;
 }
 
 function tryLoadActivationsFallback(): void {
