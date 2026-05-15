@@ -1,26 +1,29 @@
 // PadoPositionsCard
 //
-// First slice of the ecosystem-positions dashboard surface. Shows just the
-// summary counts the user needs to know "do I have anything open on Pado
-// right now": prediction bets today, spot orders next, perp/lending once
-// those products launch publicly.
-//
-// Spot Orders is intentionally rendered as a "Coming" placeholder so the
-// card layout is final from day one — adding the spot row in a follow-up
-// PR is a single-row swap, not a re-layout.
+// Ecosystem-positions surface for Pado. Shows just the summary counts the
+// user needs to know "do I have anything open on Pado right now":
+// prediction bets and spot DeepBook orders today; perp and lending land
+// once those products launch publicly. TP/SL is not part of "spot orders"
+// here — see the rationale in usePadoSpotOrdersSummary.ts.
 
 import { UjuButton, UjuCard } from "../../shared";
 import {
   formatNusdcAsUsd,
   usePadoPredictionSummary,
 } from "./usePadoPredictionSummary";
+import {
+  formatUsdNumber,
+  usePadoSpotOrdersSummary,
+} from "./usePadoSpotOrdersSummary";
 
 const PADO_URL = "https://pado.finance";
 
 export function PadoPositionsCard() {
   const prediction = usePadoPredictionSummary();
+  const spot = usePadoSpotOrdersSummary();
 
   const hasPrediction = prediction.count > 0;
+  const hasSpot = spot.count > 0;
 
   return (
     <UjuCard>
@@ -64,9 +67,20 @@ export function PadoPositionsCard() {
         />
         <PositionRow
           label="Spot Orders"
-          countText="Coming"
-          valueText=""
-          muted
+          countText={
+            spot.isLoading
+              ? "—"
+              : hasSpot
+                ? `${spot.count} open`
+                : "None open"
+          }
+          // Asks lock base tokens (NBTC etc.) and would need a price oracle
+          // to render in dollars, so we only expose bid-side NUSDC for now.
+          valueText={
+            spot.isLoading || !hasSpot || spot.bidLockedNusdc <= 0
+              ? ""
+              : `${formatUsdNumber(spot.bidLockedNusdc)} locked`
+          }
         />
       </div>
     </UjuCard>
