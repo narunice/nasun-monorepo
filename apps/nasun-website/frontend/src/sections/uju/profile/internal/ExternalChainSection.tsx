@@ -2,6 +2,7 @@ import { FC, useEffect, useState } from "react";
 import { toast } from "react-toastify";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import { useAuth } from "@/features/auth";
+import { useWalletAuth } from "@/features/wallet/hooks/useWalletAuth";
 import type { LinkPasteChain } from "@/services/userProfileApi";
 import { useLinkedAddresses } from "../hooks/useLinkedAddresses";
 import {
@@ -12,10 +13,11 @@ import {
   useSolAddressStore,
   useSolAddressForIdentity,
 } from "../../stores/solAddressStore";
+import { useUjuAccountLinking } from "../../hooks/useUjuAccountLinking";
 import { UjuButton } from "../../shared";
 import { LinkPasteAddressModal } from "./LinkPasteAddressModal";
 
-type AddressSource = "paste" | "verified-metamask" | "nasun-wallet" | "legacy";
+type AddressSource = "paste" | "nasun-wallet" | "legacy";
 
 interface ChainConfig {
   chain: LinkPasteChain;
@@ -25,6 +27,10 @@ interface ChainConfig {
   iconText: string;
 }
 
+// SUI / Solana are paste-linked (display-only addresses). Ethereum is
+// rendered separately as EthereumVerifiedRow below — EVM requires an
+// ownership signature (RainbowKit + signed challenge) since the 2026-05-16
+// security fix; the paste flow was permanently deprecated for EVM.
 const CHAINS: ChainConfig[] = [
   {
     chain: "sui",
@@ -32,13 +38,6 @@ const CHAINS: ChainConfig[] = [
     symbol: "S",
     iconBg: "bg-pado-2/15",
     iconText: "text-pado-2",
-  },
-  {
-    chain: "ethereum",
-    label: "Ethereum",
-    symbol: "E",
-    iconBg: "bg-pado-1/20",
-    iconText: "text-pado-3",
   },
   {
     chain: "solana",
@@ -50,7 +49,6 @@ const CHAINS: ChainConfig[] = [
 ];
 
 const SOURCE_LABEL: Record<Exclude<AddressSource, "paste">, string> = {
-  "verified-metamask": "via MetaMask (verified)",
   "nasun-wallet": "via Nasun wallet",
   legacy: "via wallet adapter",
 };
@@ -62,10 +60,10 @@ function shorten(addr: string): string {
 
 /**
  * Profile-page section listing the user's external chain wallet addresses
- * (SUI / Ethereum / Solana). Reflects the same set of sources the dashboard's
- * Wallet Integration card uses, so the two surfaces stay in sync:
- *   - paste-linked address (`linkedSuiAddress`/`linkedEthereumAddress`/...)
- *   - verified MetaMask flow (`linkedAccounts.metamask`) for ETH
+ * (SUI / Solana). Ethereum is intentionally excluded — see CHAINS comment.
+ * Sources reflect the dashboard Wallet Integration card so the two surfaces
+ * stay in sync:
+ *   - paste-linked address (`linkedSuiAddress`/`linkedSolanaAddress`)
  *   - Nasun-derived address for SUI (since Nasun is a Sui fork)
  *   - legacy localStorage adapter address as last-resort fallback
  *
@@ -95,7 +93,6 @@ export const ExternalChainSection: FC = () => {
   const legacySui = useSuiExternalAddress(identityId);
   const sol = useSolAddressForIdentity(identityId);
   const legacySol = sol?.solAddress ?? null;
-  const verifiedEth = authUser?.linkedAccounts?.metamask?.walletAddress ?? null;
   const nasunDerivedSui = account?.address ?? zkState?.address ?? null;
 
   const [modalChain, setModalChain] = useState<LinkPasteChain | null>(null);
@@ -104,10 +101,9 @@ export const ExternalChainSection: FC = () => {
 
   // Per-source removal. Each source has a different backing store, so the
   // Remove button needs source-specific cleanup:
-  //   paste            → backend PATCH unlink (existing useLinkedAddresses)
-  //   legacy           → clear the localStorage Zustand store
-  //   verified-metamask → out of scope here (managed by verified flow elsewhere)
-  //   nasun-wallet     → out of scope (the address IS the user's identity)
+  //   paste        → backend PATCH unlink (existing useLinkedAddresses)
+  //   legacy       → clear the localStorage Zustand store
+  //   nasun-wallet → out of scope (the address IS the user's identity)
   function removeBySource(chain: LinkPasteChain, source: AddressSource) {
     if (source === "paste") {
       void unlink(chain);
@@ -122,12 +118,6 @@ export const ExternalChainSection: FC = () => {
         setSolForIdentity(identityId, null, null);
         toast.info("Solana address removed");
       }
-      return;
-    }
-    if (source === "verified-metamask") {
-      toast.info(
-        "Unlink the verified MetaMask wallet from the Connected Wallets section above.",
-      );
       return;
     }
     if (source === "nasun-wallet") {
@@ -152,13 +142,7 @@ export const ExternalChainSection: FC = () => {
         return { addr: nasunDerivedSui, source: "nasun-wallet" };
       return { addr: null, source: null };
     }
-    if (chain === "ethereum") {
-      if (addresses.ethereum)
-        return { addr: addresses.ethereum, source: "paste" };
-      if (verifiedEth) return { addr: verifiedEth, source: "verified-metamask" };
-      return { addr: null, source: null };
-    }
-    // solana
+    // solana (ethereum intentionally not surfaced here — see CHAINS comment)
     if (addresses.solana) return { addr: addresses.solana, source: "paste" };
     if (legacySol) return { addr: legacySol, source: "legacy" };
     return { addr: null, source: null };
@@ -170,11 +154,12 @@ export const ExternalChainSection: FC = () => {
         External Chain Addresses
       </div>
       <p className="text-sm text-uju-secondary leading-relaxed">
-        Display-only. Uju shows balances but never initiates transactions on
+        Display-only. Nasun shows balances but never initiates transactions on
         these networks.
       </p>
 
       <ul className="space-y-2">
+        <EthereumVerifiedRow />
         {CHAINS.map((c) => {
           const { addr, source } = resolve(c.chain);
           const isPending = pendingChain === c.chain;
@@ -236,11 +221,9 @@ export const ExternalChainSection: FC = () => {
                         onClick={() => removeBySource(c.chain, source)}
                         disabled={isPending}
                         title={
-                          source === "verified-metamask"
-                            ? "Managed in Connected Wallets section above"
-                            : source === "nasun-wallet"
-                              ? "Tied to your Nasun wallet"
-                              : undefined
+                          source === "nasun-wallet"
+                            ? "Tied to your Nasun wallet"
+                            : undefined
                         }
                       >
                         Remove
@@ -272,5 +255,86 @@ export const ExternalChainSection: FC = () => {
         onSubmit={link}
       />
     </div>
+  );
+};
+
+/**
+ * Ethereum row inside External Chain Addresses. Unlike SUI/Solana, EVM
+ * addresses require a signed challenge — the paste flow was deprecated
+ * 2026-05-16 (ownership-proof bypass). Link triggers RainbowKit's connect
+ * modal via `useWalletAuth({ mode: 'link' })`, which:
+ *   1. Connects an EVM wallet (MetaMask / Rainbow / Trust / WalletConnect)
+ *   2. Fetches a challenge from the server
+ *   3. Signs it, verifies on the server, and writes linkedAccounts.metamask
+ *
+ * The displayed address is `linkedAccounts.metamask.walletAddress`, but only
+ * when manualEntry !== true — legacy paste-linked records still carry that
+ * flag and must not be treated as verified.
+ */
+const EthereumVerifiedRow: FC = () => {
+  const { user } = useAuth();
+  const linking = useUjuAccountLinking({ user });
+  const wallet = useWalletAuth({
+    mode: "link",
+    onSuccess: () => toast.success("EVM wallet linked."),
+    onError: (e) => toast.error(e.message || "Failed to link wallet."),
+  });
+
+  const meta = user?.linkedAccounts?.metamask;
+  const isVerified = !!meta?.walletAddress && meta.manualEntry !== true;
+  const addr = isVerified ? meta!.walletAddress! : null;
+  const isMetaMaskPrimary = user?.provider === "MetaMask";
+
+  return (
+    <li className="flex items-center justify-between gap-3 p-3 bg-uju-bg/40 rounded-xl border border-uju-border/60">
+      <div className="flex items-center gap-3 min-w-0">
+        <span
+          className="w-9 h-9 rounded-xl flex items-center justify-center font-bold bg-pado-1/20 text-pado-3"
+          aria-hidden="true"
+        >
+          E
+        </span>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-base font-medium text-uju-primary">Ethereum</p>
+            {addr && (
+              <span className="text-xs text-uju-secondary px-1.5 py-0.5 rounded-md bg-uju-card/60 border border-uju-border/30">
+                verified
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-uju-secondary font-mono truncate">
+            {addr ? shorten(addr) : "Not linked"}
+          </p>
+          {wallet.error && (
+            <p className="text-sm text-red-400 mt-1">{wallet.error}</p>
+          )}
+        </div>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        {addr ? (
+          !isMetaMaskPrimary && (
+            <UjuButton
+              variant="secondary"
+              size="xs"
+              className="text-red-400 border-red-500/20 hover:border-red-500/40 !shadow-none hover:!shadow-none"
+              onClick={() => linking.unlinkAccount("metamask")}
+              disabled={linking.isLinking}
+            >
+              Unlink
+            </UjuButton>
+          )
+        ) : (
+          <UjuButton
+            variant="primary"
+            size="xs"
+            onClick={wallet.connect}
+            disabled={wallet.isAuthenticating}
+          >
+            {wallet.isAuthenticating ? "Linking..." : "Link"}
+          </UjuButton>
+        )}
+      </div>
+    </li>
   );
 };

@@ -24,6 +24,7 @@ import { UjuCard, UjuBadge, UjuButton, UjuSectionHeader } from "../shared";
 import { goToProfileConnectedAccounts } from "../shared/ujuNavigation";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { useLinkedAddresses } from "../profile/hooks/useLinkedAddresses";
+import { useValidEvmAddress } from "./positions/useValidEvmAddress";
 import {
   useSolAddressForIdentity,
   useSolAddressStore,
@@ -159,12 +160,11 @@ export function WalletBalanceCard() {
 
   const identityId = user?.identityId ?? undefined;
 
-  // ETH: prefer verified MetaMask flow, fall back to paste-linked address.
-  const verifiedEthAddress = user?.linkedAccounts?.metamask?.walletAddress;
-  const pastedEthAddress = linked.ethereum ?? null;
-  const ethAddress = (verifiedEthAddress ?? pastedEthAddress ?? undefined) as
-    | `0x${string}`
-    | undefined;
+  // ETH: only the verified MetaMask flow is accepted. Single source of truth
+  // (useValidEvmAddress) enforces manualEntry !== true so legacy paste-link
+  // records cannot drive an EVM read here.
+  const verifiedEthAddress = useValidEvmAddress();
+  const ethAddress = verifiedEthAddress ?? undefined;
   const ethVerified = !!verifiedEthAddress;
   const { data: ethBalance } = useEthBalance({
     address: ethAddress,

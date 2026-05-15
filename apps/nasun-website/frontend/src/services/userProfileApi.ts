@@ -51,7 +51,7 @@ export async function getMyProfile(token: string, identityId: string): Promise<E
   return res.json() as Promise<EcosystemProfile>;
 }
 
-export type LinkPasteChain = 'sui' | 'solana' | 'ethereum';
+export type LinkPasteChain = 'sui' | 'solana';
 
 export interface PatchProfileBody {
   displayName?: string;
@@ -62,12 +62,12 @@ export interface PatchProfileBody {
    * The user must unlink the address from the other account first; the
    * server no longer silently displaces a prior owner.
    *
-   * NOT for verified MetaMask — that flow continues through the auth-metamask
-   * Lambda and writes to `linkedAccounts.metamask`.
+   * EVM addresses are intentionally absent — paste-link was deprecated
+   * 2026-05-16. EVM wallets are linked via the verified MetaMask flow
+   * (auth-metamask Lambda → linkedAccounts.metamask) only.
    */
   linkedSuiAddress?: string | null;
   linkedSolanaAddress?: string | null;
-  linkedEthereumAddress?: string | null;
 }
 
 export type PatchProfileResponse = EcosystemProfile;
@@ -104,12 +104,7 @@ export async function linkPasteAddress(
   chain: LinkPasteChain,
   address: string | null,
 ): Promise<PatchProfileResponse> {
-  const field =
-    chain === 'sui'
-      ? 'linkedSuiAddress'
-      : chain === 'solana'
-        ? 'linkedSolanaAddress'
-        : 'linkedEthereumAddress';
+  const field = chain === 'sui' ? 'linkedSuiAddress' : 'linkedSolanaAddress';
   return patchProfile(token, { [field]: address });
 }
 
