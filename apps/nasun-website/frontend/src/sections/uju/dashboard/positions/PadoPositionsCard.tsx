@@ -2,7 +2,7 @@
 //
 // Ecosystem-positions surface for Pado. Shows just the summary counts the
 // user needs to know "do I have anything open on Pado right now":
-// prediction bets and spot DeepBook orders today; perp and lending land
+// prediction positions and spot DeepBook orders today; perp and lending land
 // once those products launch publicly. TP/SL is not part of "spot orders"
 // here — see the rationale in usePadoSpotOrdersSummary.ts.
 
@@ -23,13 +23,7 @@ export function PadoPositionsCard() {
   return (
     <UjuCard>
       <div className="flex items-start justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-lg font-semibold text-uju-primary">Pado</span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-pado-3/15 px-2.5 py-0.5 text-sm text-pado-4">
-            <span className="size-1.5 rounded-full bg-pado-4" aria-hidden />
-            Active
-          </span>
-        </div>
+        <span className="text-lg font-semibold text-uju-primary">Pado</span>
         <UjuButton
           as="a"
           href={PADO_URL}
@@ -44,7 +38,7 @@ export function PadoPositionsCard() {
 
       <div className="mt-5 flex flex-col divide-y divide-uju-border/40">
         <PositionRow
-          label="Prediction Bets"
+          label="Prediction Positions"
           countText={
             prediction.isLoading
               ? "—"

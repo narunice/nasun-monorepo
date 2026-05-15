@@ -20,7 +20,7 @@ export function EcosystemPositionsSection() {
     <section
       data-uju-anchor="ecosystem-positions"
       aria-label="Ecosystem positions"
-      className="grid grid-cols-1 gap-4 sm:gap-5"
+      className="grid grid-cols-1 gap-4 sm:gap-5 lg:grid-cols-2"
     >
       {showPado && <PadoPositionsCard />}
       {showGostop && <GostopPositionsCard />}
