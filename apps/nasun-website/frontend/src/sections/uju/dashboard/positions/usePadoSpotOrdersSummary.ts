@@ -20,10 +20,17 @@
 // (often primary, balance-holding) BMs, descending catches the most
 // recent ones.
 //
+// Multi-wallet: nasun-website lets a user register additional Sui wallets
+// alongside their primary signer. We fan out across the union of (signer
+// address, registered wallet addresses) so a user trading from a wallet
+// other than their current login still sees their full order surface.
+//
 // Locked NUSDC is summed only over bid orders: bids lock quote (NUSDC) at
 // price * quantity, asks lock base (NBTC/NETH/NSOL) which would need a
 // spot-price oracle to render in dollars. Asks still count toward the open
-// count so the user sees their full activity surface.
+// count so the user sees their full activity surface. The notional is
+// accumulated as a `bigint` in NUSDC raw units (10^6) to keep cent-level
+// precision under accumulation, matching the prediction hook's pattern.
 //
 // TP/SL is intentionally not counted here. Pado's TP/SL is a conditional
 // order monitored by an off-chain keeper bot (see apps/pado/bots/tpsl-
@@ -33,6 +40,7 @@
 // orders, so excluding it here matches Pado's own semantic split.
 // Re-evaluate once TP/SL gains a canonical on-chain record.
 
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { useWallet, useZkLogin } from "@nasun/wallet";
@@ -40,6 +48,7 @@ import { DEEPBOOK_PACKAGE_ID } from "@nasun/devnet-config";
 import { Transaction } from "@mysten/sui/transactions";
 import type { SuiClient } from "@mysten/sui/client";
 import { PADO_SPOT_POOLS, type PadoSpotPool } from "./padoSpotConfig";
+import { useUjuWalletRegistration } from "../../hooks/useUjuWalletRegistration";
 
 const BM_EVENT_TYPE = `${DEEPBOOK_PACKAGE_ID}::balance_manager::BalanceManagerEvent`;
 const ZERO_ADDRESS =
@@ -48,17 +57,19 @@ const ZERO_ADDRESS =
 // apps/pado/frontend/src/lib/deepbook.ts L705-L716 for the layout.
 const ORDER_BYTES = 99;
 const MAX_ULEB128_BYTES = 5;
-// Worst case ~5,000 events scanned per refetch (50 pages * 50 events *
-// two directions). Heavy traders need this depth to surface their primary
-// BM; lighter wallets short-circuit on the first response with no next page.
+// Worst case ~5,000 events scanned per refetch per address (50 pages * 50
+// events * two directions). Heavy traders need this depth to surface their
+// primary BM; lighter wallets short-circuit on the first response with no
+// next page.
 const MAX_EVENT_PAGES = 50;
 
 interface ParsedOrder {
   isBid: boolean;
-  // Both already converted from on-chain raw integers to human-readable
-  // floats using each pool's base/quote decimals.
-  price: number;
-  quantity: number;
+  // For bid orders, NUSDC locked in raw units (10^6). Always 0 for asks
+  // since we don't render their dollar notional without a price oracle.
+  // Carried as `bigint` so the parent can sum across pools and addresses
+  // without losing cent precision to float drift.
+  bidLockedNusdcRaw: bigint;
 }
 
 interface BalanceManagerEventPayload {
@@ -87,12 +98,15 @@ function readUleb128(
 function parseOrderVector(
   bytes: number[],
   baseDecimals: number,
-  quoteDecimals: number,
 ): ParsedOrder[] {
   if (!bytes || bytes.length === 0) return [];
   const orders: ParsedOrder[] = [];
   const { value: length, bytesRead } = readUleb128(bytes, 0);
   let offset = bytesRead;
+  // For bid notional: notional_quote_raw = price_raw * qty_raw / 10^baseDecimals.
+  // Quote is always NUSDC across the pools we cover, so the result is in
+  // NUSDC raw (10^6).
+  const baseScale = BigInt(10 ** baseDecimals);
 
   for (let i = 0; i < length && offset + ORDER_BYTES <= bytes.length; i++) {
     // Skip balance_manager_id (32 bytes ID).
@@ -121,10 +135,9 @@ function parseOrderVector(
     // epoch (8) + status (1) + expire_timestamp (8).
     offset += 35;
 
-    const quantity = Number(rawQuantity) / Math.pow(10, baseDecimals);
-    const price = Number(rawPrice) / Math.pow(10, quoteDecimals);
-    if (quantity > 0) {
-      orders.push({ isBid, price, quantity });
+    if (rawQuantity > 0n) {
+      const bidLockedNusdcRaw = isBid ? (rawPrice * rawQuantity) / baseScale : 0n;
+      orders.push({ isBid, bidLockedNusdcRaw });
     }
   }
   return orders;
@@ -135,27 +148,25 @@ async function fetchOpenOrders(
   pool: PadoSpotPool,
   balanceManagerId: string,
 ): Promise<ParsedOrder[]> {
-  try {
-    const tx = new Transaction();
-    tx.moveCall({
-      target: `${DEEPBOOK_PACKAGE_ID}::pool::get_account_order_details`,
-      typeArguments: [pool.baseType, pool.quoteType],
-      arguments: [tx.object(pool.id), tx.object(balanceManagerId)],
-    });
-    const result = await client.devInspectTransactionBlock({
-      sender: ZERO_ADDRESS,
-      transactionBlock: tx,
-    });
-    if (result.error) return [];
-    const returnValues = result.results?.[0]?.returnValues;
-    if (!returnValues || returnValues.length === 0) return [];
-    return parseOrderVector(returnValues[0][0], pool.baseDecimals, pool.quoteDecimals);
-  } catch {
-    // devInspect can fail when the BM has never traded this pair; treat as
-    // "no orders here" rather than surfacing the error. A pool-level outage
-    // would silently zero this row, which is acceptable for a summary.
-    return [];
-  }
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${DEEPBOOK_PACKAGE_ID}::pool::get_account_order_details`,
+    typeArguments: [pool.baseType, pool.quoteType],
+    arguments: [tx.object(pool.id), tx.object(balanceManagerId)],
+  });
+  const result = await client.devInspectTransactionBlock({
+    sender: ZERO_ADDRESS,
+    transactionBlock: tx,
+  });
+  // The expected "no orders here" path: devInspect succeeds but the BM has
+  // never traded this pair, so deepbook returns an explicit error in
+  // `result.error` rather than throwing. Treat that as zero orders. Real
+  // transport / parse failures still bubble up so they can be surfaced to
+  // the user as an error rather than a misleading "None open".
+  if (result.error) return [];
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length === 0) return [];
+  return parseOrderVector(returnValues[0][0], pool.baseDecimals);
 }
 
 async function sweepBmEventsOneDirection(
@@ -199,10 +210,10 @@ async function findBalanceManagerIds(
 
 export interface PadoSpotOrdersSummary {
   count: number;
-  // Sum of bid-side `price * quantity` across every BM and pool, in NUSDC.
-  // Stored as a plain JS number (bid orders are always quote-denominated so
-  // there is no precision concern up to ~2^53 NUSDC, which is ~$9 * 10^15).
-  bidLockedNusdc: number;
+  // Sum of bid-side `price * quantity` across every BM, pool, and address,
+  // in NUSDC raw units (10^6). Quote is always NUSDC across the pools we
+  // cover, so this is directly renderable via formatNusdcAsUsd.
+  bidLockedNusdcRaw: bigint;
   isLoading: boolean;
 }
 
@@ -210,30 +221,45 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
   const suiClient = useSuiClient();
   const { status, account } = useWallet();
   const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const walletReg = useUjuWalletRegistration();
 
-  const address = isZkConnected
+  const signerAddress = isZkConnected
     ? zkState?.address
     : status === "unlocked"
       ? account?.address
       : undefined;
-  const isConnected = !!address;
+
+  // Same pattern as the prediction hook: dedup, sort for stable queryKey.
+  const allAddresses = useMemo(() => {
+    const set = new Set<string>();
+    if (signerAddress) set.add(signerAddress);
+    for (const w of walletReg.registeredWallets) {
+      if (w.walletAddress) set.add(w.walletAddress);
+    }
+    return Array.from(set).sort();
+  }, [signerAddress, walletReg.registeredWallets]);
+
+  const addressesKey = allAddresses.join(",");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["pado-spot-orders-summary", address],
-    enabled: isConnected,
+    queryKey: ["pado-spot-orders-summary", addressesKey],
+    enabled: allAddresses.length > 0,
     // Dashboard summary only — we do not need single-trade latency. Pado's
     // own UI is faster (10s) for users actively managing orders.
     staleTime: 60_000,
     refetchInterval: 120_000,
-    queryFn: async (): Promise<{ count: number; bidLockedNusdc: number }> => {
-      if (!address) return { count: 0, bidLockedNusdc: 0 };
+    queryFn: async (): Promise<{ count: number; bidLockedNusdcRaw: bigint }> => {
+      if (allAddresses.length === 0) return { count: 0, bidLockedNusdcRaw: 0n };
 
-      const bmIds = await findBalanceManagerIds(suiClient, address);
-      if (bmIds.length === 0) return { count: 0, bidLockedNusdc: 0 };
+      // Fan out BM lookup across every address in parallel. Each address's
+      // sweep is internally bidirectional and capped at MAX_EVENT_PAGES.
+      const bmIdsPerAddress = await Promise.all(
+        allAddresses.map((addr) => findBalanceManagerIds(suiClient, addr)),
+      );
+      const bmIds = Array.from(new Set(bmIdsPerAddress.flat()));
+      if (bmIds.length === 0) return { count: 0, bidLockedNusdcRaw: 0n };
 
-      // Fan out across (BM, pool) pairs in parallel. Even an active trader
-      // with ~20 BMs across all 3 pools stays under 60 devInspect calls
-      // per refetch, well within the RPC's batch limit.
+      // Then fan out devInspect across (BM, pool) pairs.
       const requests: Promise<ParsedOrder[]>[] = [];
       for (const bmId of bmIds) {
         for (const pool of PADO_SPOT_POOLS) {
@@ -243,30 +269,20 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
       const results = await Promise.all(requests);
 
       let count = 0;
-      let bidLockedNusdc = 0;
+      let bidLockedNusdcRaw = 0n;
       for (const orders of results) {
         for (const order of orders) {
           count += 1;
-          if (order.isBid) {
-            bidLockedNusdc += order.price * order.quantity;
-          }
+          bidLockedNusdcRaw += order.bidLockedNusdcRaw;
         }
       }
-      return { count, bidLockedNusdc };
+      return { count, bidLockedNusdcRaw };
     },
   });
 
   return {
     count: data?.count ?? 0,
-    bidLockedNusdc: data?.bidLockedNusdc ?? 0,
+    bidLockedNusdcRaw: data?.bidLockedNusdcRaw ?? 0n,
     isLoading,
   };
-}
-
-// Format a JS number as a USD-style string with 2 decimal places. Pado
-// treats NUSDC as $1 throughout the UI, mirrored here.
-export function formatUsdNumber(value: number): string {
-  const fixed = value.toFixed(2);
-  const [whole, cents] = fixed.split(".");
-  return `$${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${cents}`;
 }
