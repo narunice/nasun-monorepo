@@ -80,3 +80,10 @@ data-exports/
 
 # nginx infra secrets (rendered into snapshots at deploy time)
 infra/nginx/secrets.env
+
+# Deploy staging area (rsynced build trees + node_modules)
+.deploy-stage/
+
+# Ad-hoc security review reports emitted at repo root
+/SECURITY_FIX_GUIDE.md
+/SECURITY_REVIEW_*.md

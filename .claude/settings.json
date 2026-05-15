@@ -317,7 +317,19 @@
       "Bash(ls /home/naru/my_apps/nasun-monorepo/.claude/handoffs/ 2>/dev/null || mkdir -p /home/naru/my_apps/nasun-monorepo/.claude/handoffs && echo \"created\")",
       "Bash(sed -n '82,100p' /home/naru/my_apps/nasun-monorepo/apps/pado/frontend/src/features/leaderboard/components/TraderRow.tsx)",
       "Bash(sed -n '80,98p' /home/naru/my_apps/nasun-monorepo/apps/pado/frontend/src/features/leaderboard/components/PnlTraderRow.tsx)",
-      "Bash(sed -n '85,103p' /home/naru/my_apps/nasun-monorepo/apps/pado/frontend/src/features/leaderboard/components/ScoreTraderRow.tsx)"
+      "Bash(sed -n '85,103p' /home/naru/my_apps/nasun-monorepo/apps/pado/frontend/src/features/leaderboard/components/ScoreTraderRow.tsx)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'grep -r '\\\\''aggregationIntervalMs\\\\|AGGREGATION_INTERVAL'\\\\'' /home/ec2-user/nasun-chat-server/.env 2>/dev/null;   grep '\\\\''aggregationIntervalMs\\\\|AGGREGATION_INTERVAL'\\\\'' /home/ec2-user/nasun-chat-server/ecosystem.config.cjs 2>/dev/null')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'cat /home/ec2-user/nasun-chat-server/ecosystem.config.cjs')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=60 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'which psql; ls ~/explorer-api/.env 2>/dev/null && echo exists')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'ls ~/explorer-api/ 2>/dev/null | head -5; ls /home/ec2-user/ | head -10')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls ~/ | grep -i chat\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'cat ~/nasun-chat-server/.env | grep -E \"^\\(DATABASE_URL|POSTGRES\\)\" | head -5')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'cat ~/nasun-chat-server/.env | grep -vE \"^#|^$\" | cut -d= -f1 | sort')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'ls ~/ | head -20; pm2 list --no-color 2>/dev/null | grep -E \"name|online\" | head -20')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=15 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
+      "Bash(ALLOW_PROD_DIRECT=1 rsync -av -e 'ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no' /home/naru/my_apps/nasun-monorepo/apps/nasun-website/chat-server/dist/leaderboard-store.js ec2-user@43.200.67.52:/home/ec2-user/nasun-chat-server/dist/leaderboard-store.js)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=600 -o ServerAliveInterval=15 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
