@@ -9,7 +9,7 @@
 
 import { createHmac } from 'node:crypto';
 import { SuiClient } from '@mysten/sui/client';
-import { loadConfig, maskApiKey, type PresetName } from './config.js';
+import { loadConfig, maskApiKey, type Config, type PresetName } from './config.js';
 import { checkBudget, createRequest, sha256Hex, categorizeError } from './nasun-ai-client.js';
 import { executeRequest, recordRequest } from './executor-client.js';
 import { callLLM } from './llm-client.js';
@@ -52,7 +52,7 @@ function log(msg: string): void {
   console.log(`[${ts}] ${msg}`);
 }
 
-async function runCycle(client: SuiClient, config: ReturnType<typeof loadConfig>): Promise<void> {
+async function runCycle(client: SuiClient, config: Config): Promise<void> {
   const preset = PRESETS[config.preset];
   log(`--- Cycle start: ${preset.name} ---`);
 
@@ -93,7 +93,7 @@ const traderRuntime = newTraderCycleRuntime();
 
 async function runTraderCyclePresetEntry(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>,
+  config: Config,
 ): Promise<void> {
   let result: TraderCycleResult;
   try {
@@ -126,7 +126,7 @@ async function runTraderCyclePresetEntry(
 // two paths can be driven independently in tests.
 async function runHeartbeatFromWake(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>,
+  config: Config,
   _ctx: WakeContext,
 ): Promise<WakeOutcome> {
   let result: TraderCycleResult;
@@ -155,7 +155,7 @@ async function runHeartbeatFromWake(
 
 async function runSingleStepCycle(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>,
+  config: Config,
   preset: Preset
 ): Promise<void> {
   const steps = preset.generateSteps();
@@ -170,7 +170,7 @@ async function runSingleStepCycle(
 
 async function runLambdaStep(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>,
+  config: Config,
   prompt: string,
   category: string,
   extras?: import('./executor-client.js').AERExtras,
@@ -218,7 +218,7 @@ async function runLambdaStep(
 
 async function runRecordStep(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>,
+  config: Config,
   prompt: string,
   category: string,
 ): Promise<{ success: boolean; result?: string }> {
@@ -290,7 +290,7 @@ async function runRecordStep(
 
 async function runAnalysisCycle(
   client: SuiClient,
-  config: ReturnType<typeof loadConfig>
+  config: Config
 ): Promise<void> {
   // Load checkpoint if resuming
   let checkpoint = loadCheckpoint();
@@ -394,7 +394,7 @@ async function main(): Promise<void> {
   console.log('  Nasun Devnet (Chain ID: 272218f1)');
   console.log('');
 
-  const config = loadConfig();
+  const config = await loadConfig();
   const client = new SuiClient({ url: config.rpcUrl });
   const preset = PRESETS[config.preset];
 
@@ -440,10 +440,24 @@ async function main(): Promise<void> {
         });
         const hmacSecret = process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
         if (!hmacSecret) return;
-        const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex')).update(body, 'utf8').digest('hex');
+        // PR2.A: HMAC binds X-Timestamp + body to prevent replay. Input
+        // canonicalization is `${ts}\n${hex(body)}` — chat-server matches.
+        const ts = String(Date.now());
+        const bodyBuf = Buffer.from(body, 'utf8');
+        const hmacInput = Buffer.concat([
+          Buffer.from(ts + '\n', 'utf8'),
+          Buffer.from(bodyBuf.toString('hex'), 'utf8'),
+        ]);
+        const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex'))
+          .update(hmacInput).digest('hex');
         fetch(heartbeatUrl, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac, 'Connection': 'close' },
+          headers: {
+            'Content-Type': 'application/json',
+            'X-HMAC': hmac,
+            'X-Timestamp': ts,
+            'Connection': 'close',
+          },
           body,
           signal: AbortSignal.timeout(15_000),
         }).then((r) => {

@@ -204,6 +204,29 @@ export function initStore(config: ChatServerConfig): void {
       ON baram_pending_proposals (agent) WHERE status = 'pending';
   `);
 
+  // PR2.A — Per-agent vault metadata. Secrets themselves live in AWS SSM
+  // Parameter Store (SecureString /nasun/ai-agent/<agent_address>); this
+  // table only tracks the parameter name + PM2 process bookkeeping.
+  // deleted_at is a soft-delete tombstone with a 7-day grace window;
+  // agent-vault-purge.ts removes the SSM Parameter and the row after.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS agent_keys (
+      agent_address  TEXT PRIMARY KEY,
+      wallet_address TEXT NOT NULL,
+      capability_id  TEXT,
+      param_name     TEXT NOT NULL,
+      pm2_name       TEXT NOT NULL,
+      wake_port      INTEGER NOT NULL,
+      created_at     INTEGER NOT NULL,
+      last_used_at   INTEGER,
+      deleted_at     INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS idx_agent_keys_wallet_active
+      ON agent_keys(wallet_address) WHERE deleted_at IS NULL;
+    CREATE INDEX IF NOT EXISTS idx_agent_keys_purge
+      ON agent_keys(deleted_at) WHERE deleted_at IS NOT NULL;
+  `);
+
   nasunProfileApiUrl = config.nasunProfileApiUrl;
   if (nasunProfileApiUrl) {
     console.log(`[nasun-profile] API URL: ${nasunProfileApiUrl}`);

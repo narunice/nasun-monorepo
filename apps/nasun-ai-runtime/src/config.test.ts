@@ -3,6 +3,11 @@
  *
  * loadConfig reads process.env at call time, so we simply
  * set/delete env vars between calls — no module re-import needed.
+ *
+ * PR2.A: loadConfig() became async (SSM Parameter Store fetch). All
+ * non-keypair env validation lives in loadConfigBaseSync(), which is
+ * still sync and what these tests target. AGENT_PRIVATE_KEY parsing
+ * lives in enrichWithKeypair() — covered separately if needed.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -10,7 +15,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // Mock dotenv/config to prevent side-effect .env file loading
 vi.mock('dotenv/config', () => ({}));
 
-import { maskApiKey, loadConfig } from './config.js';
+import { maskApiKey, loadConfigBaseSync as loadConfig } from './config.js';
 
 describe('maskApiKey', () => {
   it('masks long keys showing first 4 and last 4 chars', () => {
