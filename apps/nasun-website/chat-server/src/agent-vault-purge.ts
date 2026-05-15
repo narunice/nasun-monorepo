@@ -20,7 +20,9 @@ const PURGE_INTERVAL_MS = 60 * 60 * 1000;
 
 let ssmClient: SSMClient | null = null;
 function getSsm(): SSMClient {
-  if (!ssmClient) ssmClient = new SSMClient({});
+  if (!ssmClient) {
+    ssmClient = new SSMClient({ region: process.env.AWS_REGION ?? 'ap-northeast-2' });
+  }
   return ssmClient;
 }
 

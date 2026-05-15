@@ -12,12 +12,16 @@ import { getZkLoginClient } from './baram-telegram-routes.js';
 
 export interface CapabilityFields {
   owner: string;       // 0x… normalized lowercase
-  agent: string;       // 0x… normalized lowercase
 }
 
 /**
- * Fetch a Baram capability object and return its owner+agent fields.
- * Returns null if the object is missing, mistyped, or unparseable.
+ * Fetch a Baram capability object and return its owner field. The
+ * Move struct does NOT carry the agent address (the agent is identified
+ * by the keypair signing AERs against this capability), so chat-server
+ * only verifies cap.owner against the wallet that initiated the vault
+ * operation.
+ *
+ * Returns null on RPC failure or schema mismatch.
  */
 export async function getCapabilityFields(
   client: SuiClient,
@@ -31,10 +35,16 @@ export async function getCapabilityFields(
     const content = obj.data?.content;
     if (!content || content.dataType !== 'moveObject') return null;
     const fields = (content as { fields: Record<string, unknown> }).fields;
-    const owner = typeof fields.owner === 'string' ? fields.owner.toLowerCase() : null;
-    const agent = typeof fields.agent === 'string' ? fields.agent.toLowerCase() : null;
-    if (!owner || !agent) return null;
-    return { owner, agent };
+    const ownerRaw = fields.owner;
+    if (typeof ownerRaw !== 'string') return null;
+    // Mirror the canonical Lambda normalization
+    // (apps/baram/cdk/lambda-src/executor/src/services/sui.ts:580): the Sui
+    // RPC sometimes returns addresses without the 0x prefix, so we add it
+    // before lowercasing for comparison.
+    const owner = ownerRaw.toLowerCase().startsWith('0x')
+      ? ownerRaw.toLowerCase()
+      : `0x${ownerRaw.toLowerCase()}`;
+    return { owner };
   } catch {
     return null;
   }
@@ -51,6 +61,15 @@ export async function verifyCapabilityOwner(
   expectedWallet: string,
 ): Promise<boolean> {
   const cap = await getCapabilityFields(getZkLoginClient(), capabilityId);
-  if (!cap) return false;
-  return cap.owner === expectedWallet.toLowerCase();
+  if (!cap) {
+    console.warn(`[vault] verifyCapabilityOwner: capability not found ${capabilityId}`);
+    return false;
+  }
+  const expected = expectedWallet.toLowerCase().startsWith('0x')
+    ? expectedWallet.toLowerCase()
+    : `0x${expectedWallet.toLowerCase()}`;
+  if (cap.owner !== expected) {
+    console.warn(`[vault] verifyCapabilityOwner: owner mismatch capability=${capabilityId} chainOwner=${cap.owner} expected=${expected}`);
+  }
+  return cap.owner === expected;
 }
