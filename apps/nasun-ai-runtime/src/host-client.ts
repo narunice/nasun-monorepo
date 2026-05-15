@@ -1,20 +1,22 @@
 /**
- * Host /infer + /execute-capability HTTP client (Plan C C3-v2 §5.1).
+ * Host /infer + /execute-capability HTTP client (PR1.A: split-inference +
+ * agent-signed settlement, HOLD-only).
  *
  * Two-call shape:
  *
- *   1. POST /infer        — encrypted prompt → enclave → result + HMAC token
- *   2. POST /execute-capability — parsed decision → AER + (optional) atomic swap
+ *   1. POST /infer              — encrypted prompt → LLM → result + cap version
+ *   2. POST /execute-capability — agent-signed settlement intent → AER
  *
- * The HMAC token (spendToken, nonce, expiresAt) binds the LLM result to
- * the (requestId, walletAddress) identity; a tampered resultHash or
- * replayed token fails closed on the host side. See DV8.
+ * The HMAC spend-token shape from C3-v2 has been retired. PR1.A binds the
+ * settlement via:
+ *   - L1 API key (x-api-key, both calls)
+ *   - L2 agent wallet signature over the canonical settlement string (sig2,
+ *     /execute-capability only — see sig.ts)
+ *   - L3 chain verifyRequest (both calls)
+ *   - L4 capability owner/version assertion (both calls)
  *
- * Trader cognition-only flow (HOLD): /infer → parse → /execute-capability
- * with envelope=cognition, actionCall=null, escrow=undefined.
- *
- * Trader execution flow (BUY/SELL): same prefix + actionCall=swap spec,
- * escrow={objectId, initialSharedVersion, capabilityId}, spend={asset, amount}.
+ * actionCall/escrow/spend are reserved (must be null) — PR1.5 will re-enable
+ * the atomic swap path once the 5-call PTB is wired.
  */
 
 import type {
@@ -39,17 +41,25 @@ export interface InferRequest {
   prompt: string;
   model: string;
   capabilityId: string;
-  walletAddress: string;
+  /** Cap owner address (also the request requester) — Lambda asserts
+   *  cap.owner === principalAddress. In the current prod topology this
+   *  equals the agent keypair's address; the schema keeps them distinct
+   *  for forward compat. */
+  principalAddress: string;
+  /** sha256 of the prompt, 0x-prefixed 64-char lower hex. Lambda re-checks
+   *  this against the on-chain ComputeRequest AND against the locally
+   *  decoded encryptedPrompt. */
+  promptHash: string;
+  /** Caller-asserted cap.version snapshotted at cycle start (u64 decimal). */
+  expectedCapabilityVersion: string;
 }
 
 export interface InferResponse {
   success: boolean;
   result?: string;
   resultHash?: string;
+  capabilityVersion?: string;
   executionTimeMs?: number;
-  spendToken?: string;
-  nonce?: string;
-  expiresAt?: number;
   preflightDenied?: boolean;
   preflightReason?: string;
   error?: string;
@@ -65,17 +75,18 @@ export async function infer(
     encryptedPrompt: Buffer.from(input.prompt, 'utf-8').toString('base64'),
     model: input.model,
     capabilityId: input.capabilityId,
-    walletAddress: input.walletAddress,
+    principalAddress: input.principalAddress,
+    promptHash: input.promptHash,
+    expectedCapabilityVersion: input.expectedCapabilityVersion,
   });
   return postWithRetry<InferResponse>(`${hostUrl}/infer`, apiKey, body, (data) => ({
     success: true,
     result: typeof data.result === 'string' ? data.result : undefined,
     resultHash: typeof data.resultHash === 'string' ? data.resultHash : undefined,
+    capabilityVersion:
+      typeof data.capabilityVersion === 'string' ? data.capabilityVersion : undefined,
     executionTimeMs:
       typeof data.executionTimeMs === 'number' ? data.executionTimeMs : undefined,
-    spendToken: typeof data.spendToken === 'string' ? data.spendToken : undefined,
-    nonce: typeof data.nonce === 'string' ? data.nonce : undefined,
-    expiresAt: typeof data.expiresAt === 'number' ? data.expiresAt : undefined,
   }));
 }
 
@@ -103,15 +114,16 @@ export interface ActionCallSpecWire {
 
 export interface ExecuteCapabilityRequest {
   requestId: number;
-  resultHash: string;
+  promptHash: string;                   // 0x<64 hex lower>
+  resultHash: string;                   // 0x<64 hex lower>
+  result: string;                       // Lambda re-hashes to guard host bugs
   executionTimeMs: number;
-  spendToken: string;
-  nonce: string;
-  expiresAt: number;
   model: string;
   budgetId?: string;
   capabilityId: string;
-  walletAddress: string;
+  agentAddress: string;                 // 0x<64 hex> — sig recover target
+  principalAddress: string;             // 0x<64 hex> — cap.owner
+  expectedCapabilityVersion: string;    // u64 decimal
   envelope: TraderEnvelopeMeta;
   lineage: TraderLineageMeta;
   wake: TraderWakeMeta;
@@ -131,13 +143,16 @@ export interface ExecuteCapabilityRequest {
       poolId: string;
     } | null;
   };
-  actionCall?: ActionCallSpecWire | null;
-  escrow?: {
-    objectId: string;
-    initialSharedVersion: string;
-    capabilityId: string;
-  } | null;
-  spend?: { coinAssetType: string; amount: string } | null;
+  envelopeHash: string;                 // 0x<64 hex lower> sha256(canonicalJson(envelope))
+  actionCallHash: string;               // PR1.A: 0x00..00 — sig-covered slot for PR1.5 swap path
+  sig2: string;                         // base64 personal-message signature over canonicalSettle()
+  // PR1.A: callers MUST pass null. Lambda 400s on non-null actionCall with
+  // reason='swap_in_pr1_5'. Typed as optional/nullable so the dead PR1.5
+  // swap path in manual-execution still compiles; the runtime guard at
+  // entry blocks reaching the Lambda anyway.
+  actionCall: ActionCallSpecWire | null;
+  escrow: { objectId: string; initialSharedVersion: string; capabilityId: string } | null;
+  spend: { coinAssetType: string; amount: string } | null;
   purpose?: string | null;
   constraints?: string | null;
   triggeredBy?: string | null;
@@ -148,6 +163,8 @@ export interface ExecuteCapabilityResponse {
   success: boolean;
   txDigest?: string;
   capabilityVersion?: string;
+  resultHash?: string;
+  executionTimeMs?: number;
   error?: string;
   preflightDenied?: boolean;
   preflightReason?: string;
@@ -158,28 +175,29 @@ export async function executeCapability(
   apiKey: string,
   input: ExecuteCapabilityRequest,
 ): Promise<ExecuteCapabilityResponse> {
-  // Build wire body. Coerce bigint-ish fields that the consumer passes
-  // as strings already; we don't accept bigints at the interface to
-  // keep JSON serialisation honest.
   const body = JSON.stringify({
     requestId: input.requestId,
+    promptHash: input.promptHash,
     resultHash: input.resultHash,
+    result: input.result,
     executionTimeMs: input.executionTimeMs,
-    spendToken: input.spendToken,
-    nonce: input.nonce,
-    expiresAt: input.expiresAt,
     model: input.model,
     ...(input.budgetId ? { budgetId: input.budgetId } : {}),
     capabilityId: input.capabilityId,
-    walletAddress: input.walletAddress,
+    agentAddress: input.agentAddress,
+    principalAddress: input.principalAddress,
+    expectedCapabilityVersion: input.expectedCapabilityVersion,
     envelope: input.envelope,
     lineage: input.lineage,
     wake: input.wake,
     replay: input.replay,
     proposal: input.proposal,
-    ...(input.actionCall ? { actionCall: input.actionCall } : { actionCall: null }),
-    ...(input.escrow ? { escrow: input.escrow } : {}),
-    ...(input.spend ? { spend: input.spend } : {}),
+    envelopeHash: input.envelopeHash,
+    actionCallHash: input.actionCallHash,
+    sig2: input.sig2,
+    actionCall: null,
+    escrow: null,
+    spend: null,
     ...(input.purpose ? { purpose: input.purpose } : {}),
     ...(input.constraints ? { constraints: input.constraints } : {}),
     ...(input.triggeredBy ? { triggeredBy: input.triggeredBy } : {}),
@@ -194,6 +212,9 @@ export async function executeCapability(
       txDigest: typeof data.txDigest === 'string' ? data.txDigest : undefined,
       capabilityVersion:
         typeof data.capabilityVersion === 'string' ? data.capabilityVersion : undefined,
+      resultHash: typeof data.resultHash === 'string' ? data.resultHash : undefined,
+      executionTimeMs:
+        typeof data.executionTimeMs === 'number' ? data.executionTimeMs : undefined,
     }),
   );
 }

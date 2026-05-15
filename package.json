@@ -34,6 +34,7 @@
     "deploy:gostop:prod": "./scripts/deploy-gostop-production.sh",
     "deploy:gostop:bots:prod": "./scripts/deploy-gostop-bots.sh",
     "deploy:nasun-chat-server:prod": "./scripts/deploy-nasun-chat-server-production.sh",
+    "deploy:nasun-ai-runtime:prod": "./scripts/deploy-nasun-ai-runtime-production.sh",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "clean": "pnpm -r clean && rm -rf node_modules",

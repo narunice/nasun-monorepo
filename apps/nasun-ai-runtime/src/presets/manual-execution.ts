@@ -44,6 +44,7 @@ import {
   infer as defaultInfer,
   executeCapability as defaultExecuteCapability,
 } from '../host-client.js';
+import { signSettle, canonicalJsonSha256, ZERO_ACTION_CALL_HASH } from '../sig.js';
 import { escrow as escrowSdk } from '@nasun/baram-sdk';
 import {
   TRADER_CONFIG,
@@ -129,6 +130,17 @@ export async function runManualExecution(
     return { ok: false, status: 'rejected', reason: 'trader_config_missing' };
   }
 
+  // PR1.A: swap execution path is disabled at the platform level until the
+  // 5-call atomic PTB lands in PR1.5. Trader cycle never produces a proposal
+  // (BUY/SELL is demoted to HOLD upstream), so this short-circuit is mostly
+  // defensive — it stops a stale chat-server confirmation from re-entering
+  // the deleted swap path. Operators can flip PR1A_SWAP_DISABLED=false when
+  // PR1.5 ships.
+  if ((process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false') {
+    deps.log('[manual] PR1.A swap-disabled — rejecting manual execution wake.');
+    return { ok: false, status: 'rejected', reason: 'pr1a_swap_disabled' };
+  }
+
   // 1. Parse Proposal from ctx.message.
   let proposal: Proposal;
   try {
@@ -191,9 +203,11 @@ export async function runManualExecution(
 
   // 5. On-chain request (budget deduction).
   let requestId: number;
+  let promptHashHex: string;
   try {
     const req = await deps.createRequest(client, config.keypair, config, prompt, 'ai_inference');
     requestId = req.requestId;
+    promptHashHex = req.promptHashHex;
     deps.log(`[manual] On-chain request created: requestId=${requestId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -202,15 +216,45 @@ export async function runManualExecution(
     return { ok: false, status: 'rejected', reason: `request_failed: ${message}`, ...(fatal ? {} : {}) };
   }
 
+  // 5a. Snapshot capability owner+version (same pattern as trader-cycle).
+  const principalAddressMe = trader.walletAddress.toLowerCase();
+  const agentAddressMe = config.agentAddress.toLowerCase();
+  let expectedCapabilityVersionMe: string;
+  try {
+    const obj = await client.getObject({ id: trader.capabilityId, options: { showContent: true } });
+    if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+      throw new Error('capability not found');
+    }
+    const f = obj.data.content.fields as Record<string, unknown>;
+    if (typeof f.owner !== 'string' || typeof f.version !== 'string') {
+      throw new Error('capability owner/version missing');
+    }
+    expectedCapabilityVersionMe = f.version;
+    const ownerNormalized = (f.owner as string).toLowerCase().startsWith('0x')
+      ? (f.owner as string).toLowerCase()
+      : `0x${(f.owner as string).toLowerCase()}`;
+    if (ownerNormalized !== principalAddressMe) {
+      deps.log(`[manual] capability owner ${ownerNormalized} != trader.walletAddress; aborting.`);
+      return { ok: false, status: 'rejected', reason: 'capability_owner_mismatch' };
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    deps.log(`[manual] capability fetch failed: ${msg}`);
+    return { ok: false, status: 'rejected', reason: `capability_fetch_failed: ${msg}` };
+  }
+
   // 6. POST /infer.
+  const promptHashWireMe = `0x${promptHashHex}`;
   const inferResp = await deps.infer(trader.hostUrl, config.apiKey, {
     requestId,
     prompt,
     model: config.model,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    principalAddress: principalAddressMe,
+    promptHash: promptHashWireMe,
+    expectedCapabilityVersion: expectedCapabilityVersionMe,
   });
-  if (!inferResp.success || !inferResp.result || !inferResp.spendToken) {
+  if (!inferResp.success || !inferResp.result || !inferResp.resultHash) {
     const reason = inferResp.preflightDenied
       ? (inferResp.preflightReason ?? 'preflight denied')
       : (inferResp.error ?? 'unknown');
@@ -309,22 +353,45 @@ export async function runManualExecution(
   }
 
   // 10. POST /execute-capability (execution AER).
+  // PR1.A: this path is unreachable (entry guard short-circuits). PR1.5
+  // will sign actionCallHash = sha256(canonical(actionCall||spend||escrow))
+  // and the Lambda will accept non-null actionCall. For now we sign with
+  // ZERO_ACTION_CALL_HASH so the type-checker stays happy on the dead path.
+  const envelopeHashMe = canonicalJsonSha256(envelope);
+  const actionCallHashMe = ZERO_ACTION_CALL_HASH; // PR1.5: replace with action-call hash
+  const sig2Me = await signSettle(config.keypair, {
+    v: 1,
+    kind: 'nasun-ai-settle',
+    requestId: String(requestId),
+    promptHash: promptHashWireMe,
+    resultHash: inferResp.resultHash,
+    agentAddress: agentAddressMe,
+    principalAddress: principalAddressMe,
+    capabilityId: trader.capabilityId,
+    expectedCapabilityVersion: expectedCapabilityVersionMe,
+    envelopeHash: envelopeHashMe,
+    actionCallHash: actionCallHashMe,
+  });
   const execResp = await deps.executeCapability(trader.hostUrl, config.apiKey, {
     requestId,
-    resultHash: inferResp.resultHash!,
+    promptHash: promptHashWireMe,
+    resultHash: inferResp.resultHash,
+    result: inferResp.result,
     executionTimeMs: inferResp.executionTimeMs ?? 0,
-    spendToken: inferResp.spendToken!,
-    nonce: inferResp.nonce!,
-    expiresAt: inferResp.expiresAt!,
     model: config.model,
     budgetId: config.budgetId,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    agentAddress: agentAddressMe,
+    principalAddress: principalAddressMe,
+    expectedCapabilityVersion: expectedCapabilityVersionMe,
     envelope,
     lineage,
     wake,
     replay,
     proposal: proposalForExec,
+    envelopeHash: envelopeHashMe,
+    actionCallHash: actionCallHashMe,
+    sig2: sig2Me,
     actionCall: actionCallBlock,
     escrow: escrowBlock,
     spend: spendBlock,
