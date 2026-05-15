@@ -1328,6 +1328,13 @@ export function computePredictionPnl(
   // We CAST as REAL to stay consistent with spot's aggregateTraderPnlRaw (see
   // leaderboard-store.ts:1236+); raw 6-dec NUSDC fits IEEE 754 safe range
   // (Number.MAX_SAFE_INTEGER = 2^53 ≈ 9e15 ≈ $9B per single fill).
+  //
+  // CROSS JOIN forces SQLite to use prediction_markets as the driving table
+  // (https://sqlite.org/optoverview.html#crossjoin). Default INNER JOIN picked
+  // SCAN tf (full 774k-row scan) instead of 64 pool_id lookups via
+  // idx_fills_pool_maker, because the 'prediction:' || pm.market_id concat
+  // predicate hides the index opportunity from the planner. CROSS JOIN keeps
+  // SQL semantics identical to INNER JOIN.
   const sql = `
     ${wash?.cte ?? ''}
     SELECT
@@ -1340,7 +1347,7 @@ export function computePredictionPnl(
       CAST(tf.base_quantity AS REAL) AS fill_shares,
       CAST(tf.quote_quantity AS REAL) AS cost
     FROM prediction_markets pm
-    JOIN trade_fills tf
+    CROSS JOIN trade_fills tf
       ON tf.pool_id = 'prediction:' || pm.market_id
       AND tf.timestamp_ms <= pm.resolved_at_ms
       AND tf.is_yes IS NOT NULL
