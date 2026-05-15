@@ -7,7 +7,7 @@
 
 import type { SignerAdapter, SignerCapabilities, SignatureResult } from '../types';
 import type { ZkLoginState } from '../../../types/zklogin';
-import { signWithZkLogin } from '../../zklogin';
+import { signWithZkLogin, signPersonalWithZkLogin } from '../../zklogin';
 import { DEFAULT_CAPABILITIES } from '../types';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
@@ -64,11 +64,25 @@ export class ZkLoginSigner implements SignerAdapter {
   }
 
   /**
-   * Sign a personal message
-   * @throws zkLogin does not support personal message signing
+   * Sign a personal message with zkLogin.
+   *
+   * Uses the ephemeral keypair to produce a PersonalMessage-intent (scope=3)
+   * signature, then wraps it with the zkLogin proof + maxEpoch. The result
+   * verifies against `verifyPersonalMessageSignature` on the server when a
+   * SuiClient is passed (needed for zkLogin epoch / JWK lookup).
    */
-  async signPersonal(_message: Uint8Array): Promise<SignatureResult> {
-    throw new Error('zkLogin does not support personal message signing');
+  async signPersonal(message: Uint8Array): Promise<SignatureResult> {
+    if (!this.zkState.proof) {
+      throw new Error('ZK proof not available');
+    }
+    const signature = await signPersonalWithZkLogin({
+      message,
+      ephemeralPrivateKey: this.zkState.ephemeralPrivateKey,
+      proof: this.zkState.proof,
+      maxEpoch: this.zkState.maxEpoch,
+      addressSeed: this.zkState.addressSeed,
+    });
+    return { signature };
   }
 
   /**

@@ -760,6 +760,58 @@ export async function fetchZkProof(params: {
 // ============================================
 
 /**
+ * Sign a personal message with zkLogin.
+ *
+ * Mirrors signWithZkLogin but applies the PersonalMessage intent prefix
+ * (intent_scope = 3) via `keypair.signPersonalMessage`, so the resulting
+ * zkLogin signature verifies against `verifyPersonalMessageSignature` on the
+ * server. The same zk proof / ephemeral keypair / maxEpoch wrapper applies:
+ * zkLogin signatures are intent-agnostic at the wrapping layer.
+ */
+export async function signPersonalWithZkLogin(params: {
+  message: Uint8Array;
+  ephemeralPrivateKey: string;
+  proof: ZkLoginProof;
+  maxEpoch: number;
+  addressSeed: string;
+}): Promise<string> {
+  const { message, ephemeralPrivateKey, proof, maxEpoch, addressSeed } = params;
+
+  try {
+    const client = getSuiClient();
+    const { epoch } = await client.getLatestSuiSystemState();
+    const currentEpoch = Number(epoch);
+    if (currentEpoch >= maxEpoch) {
+      throw new ZkLoginError(
+        'SESSION_EXPIRED',
+        `zkLogin session expired. Current epoch ${currentEpoch} >= max epoch ${maxEpoch}`,
+      );
+    }
+  } catch (err) {
+    if (err instanceof ZkLoginError) throw err;
+    // Continue even if epoch check fails (network issue)
+  }
+
+  const { secretKey } = decodeSuiPrivateKey(ephemeralPrivateKey);
+  const keypair = Ed25519Keypair.fromSecretKey(secretKey);
+
+  // signPersonalMessage applies the PersonalMessage intent prefix (scope=3)
+  // + blake2b hash + ed25519 signature + serialised 97-byte signature.
+  const { signature: userSignature } = await keypair.signPersonalMessage(message);
+
+  const inputs = {
+    ...proof,
+    addressSeed,
+  };
+
+  return getZkLoginSignature({
+    inputs,
+    maxEpoch,
+    userSignature,
+  });
+}
+
+/**
  * Sign transaction bytes with zkLogin (Step 6)
  */
 export async function signWithZkLogin(params: {
