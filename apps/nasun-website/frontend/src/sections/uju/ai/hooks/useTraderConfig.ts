@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth';
+import { useSigner } from '@nasun/wallet';
 import type { TraderConfig } from '../types/trader';
 import { getConfigByAgent, saveConfig, deleteConfig } from '../services/traderConfigStorage';
 
@@ -16,6 +17,7 @@ export interface UseTraderConfigResult {
 
 export function useTraderConfig(agentAddress: string | null): UseTraderConfigResult {
   const { user } = useAuth();
+  const { signer } = useSigner();
   const walletAddress = user?.walletAddress ?? null;
   const [config, setConfig] = useState<TraderConfig | null>(null);
   const [loading, setLoading] = useState(false);
@@ -54,7 +56,7 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
         ...next,
       };
       try {
-        await saveConfig(merged);
+        await saveConfig(merged, signer ?? null);
         setConfig(merged);
         return merged;
       } catch (err) {
@@ -62,14 +64,14 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
         return null;
       }
     },
-    [walletAddress, agentAddress, config?.createdAt],
+    [walletAddress, agentAddress, config?.createdAt, signer],
   );
 
   const remove = useCallback(async () => {
     if (!walletAddress || !agentAddress) return;
-    await deleteConfig(walletAddress, agentAddress, agentAddress);
+    await deleteConfig(walletAddress, agentAddress, agentAddress, signer ?? null);
     setConfig(null);
-  }, [walletAddress, agentAddress]);
+  }, [walletAddress, agentAddress, signer]);
 
   return { config, loading, error, save, remove, refetch: load };
 }
