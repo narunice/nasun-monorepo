@@ -55,6 +55,11 @@ export const BUDGET_V2_TYPE_ORIGIN = config.baram.budgetV2TypeOrigin as ObjectId
 
 // Agent Profile
 export const AGENT_PACKAGE_ID = config.baram.agentPackageId as ObjectId;
+// Original package id, required for struct-type filters since struct type
+// tags always reference the package where the type was first published,
+// not the upgraded package id. Used by `getOwnedObjects` filters.
+export const AGENT_ORIGINAL_PACKAGE_ID = (config.baram.agentOriginalPackageId ??
+  config.baram.agentPackageId) as ObjectId;
 export const AGENT_PROFILE_REGISTRY = config.baram.agentProfileRegistry as ObjectId;
 export const AGENT_UPGRADE_CAP = config.baram.agentUpgradeCap as ObjectId;
 
@@ -95,6 +100,7 @@ export const BARAM: BaramConfig = {
   budgetTypeOrigin: BUDGET_TYPE_ORIGIN,
   budgetV2TypeOrigin: BUDGET_V2_TYPE_ORIGIN,
   agentPackageId: AGENT_PACKAGE_ID,
+  agentOriginalPackageId: AGENT_ORIGINAL_PACKAGE_ID,
   agentProfileRegistry: AGENT_PROFILE_REGISTRY,
   agentUpgradeCap: AGENT_UPGRADE_CAP,
   betaAccessRegistry: BETA_ACCESS_REGISTRY,
