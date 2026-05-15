@@ -1257,6 +1257,16 @@ app.get('/leaderboard', async (c) => {
           )
         )
       );
+
+      // Cache-poisoning guard: if the SQL returned candidates but the NFT gate
+      // eliminated every one of them, the activations cache is almost certainly
+      // empty/stale (an empty Map produces this exact outcome). Returning [] here
+      // would get persisted in `cached()` for 5 min, making the leaderboard look
+      // blank to all users. Throw instead — `cached()` skips storage on rejection
+      // and the route catches this to return 503 (transient).
+      if (identityIds.length > 0 && nftEligibleSet.size === 0) {
+        throw new Error('LEADERBOARD_NFT_GATE_EMPTY');
+      }
       const genesisPassSet = new Set(
         identityIds.filter((id: string) =>
           getActivationsForUser(id).some((a: any) => a.nftType === 'genesis-pass')
@@ -1557,11 +1567,28 @@ app.get('/leaderboard', async (c) => {
       )
     : null;
 
-  const [all, total, prevTotal] = await Promise.all([
-    getScoredLeaderboard(),
-    getTotalCount(),
-    getPrevTotal ? getPrevTotal() : Promise.resolve(0),
-  ]);
+  let all: Awaited<ReturnType<typeof getScoredLeaderboard>>;
+  let total: number;
+  let prevTotal: number;
+  try {
+    [all, total, prevTotal] = await Promise.all([
+      getScoredLeaderboard(),
+      getTotalCount(),
+      getPrevTotal ? getPrevTotal() : Promise.resolve(0),
+    ]);
+  } catch (err) {
+    const msg = (err as Error).message;
+    // Transient activations-cache outage: surface 503 so the frontend retries
+    // instead of caching an empty render. See ecosystem-cache empty-payload guard.
+    if (msg === 'LEADERBOARD_NFT_GATE_EMPTY') {
+      console.warn('[leaderboard] NFT gate eliminated every candidate — activations cache likely empty');
+      return c.json(
+        { error: 'activations_cache_unavailable', retryAfterMs: 30_000 },
+        503,
+      );
+    }
+    throw err;
+  }
 
   const page = all.slice(offset, offset + limit);
   const ranked = page.map((entry, i) => {
