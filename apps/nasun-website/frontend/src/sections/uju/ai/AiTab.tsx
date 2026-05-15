@@ -10,13 +10,14 @@ import { ecosystemAiPath } from "@/config/featureFlags";
  *   view=budgets            -> Budgets page
  *
  * The AgentDetail sub-tab is held in the `sub` query param so deep links
- * survive a refresh.
+ * survive a refresh. An optional `from=quickstart` flag tells AgentDetail
+ * to swap the back-link label so Quickstart-driven users know the round trip.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { AgentDetail, type AgentSubTab } from './pages/AgentDetail';
+import { AgentDetail, normalizeSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
 import { QuickstartView } from './pages/QuickstartView';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
@@ -26,8 +27,10 @@ import { useAgentProfiles } from './hooks/useAgentProfiles';
 const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
 const SUB_PARAM = 'sub';
+const PREFILL_PARAM = 'prefill';
+const FROM_PARAM = 'from';
+const FROM_QUICKSTART = 'quickstart';
 
-const VALID_SUBS: AgentSubTab[] = ['dashboard', 'activity', 'escrow', 'sessions', 'chat'];
 
 function NotConnected() {
   return (
@@ -67,10 +70,8 @@ export function AiTab() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = searchParams.get(VIEW_PARAM) ?? 'list';
   const agentId = searchParams.get(AGENT_PARAM);
-  const rawSub = searchParams.get(SUB_PARAM);
-  const sub: AgentSubTab = VALID_SUBS.includes(rawSub as AgentSubTab)
-    ? (rawSub as AgentSubTab)
-    : 'dashboard';
+  const sub = normalizeSubTab(searchParams.get(SUB_PARAM));
+  const fromQuickstart = searchParams.get(FROM_PARAM) === FROM_QUICKSTART;
 
   const updateView = useCallback(
     (next: string | null, extra?: Record<string, string | null>) => {
@@ -95,14 +96,68 @@ export function AiTab() {
   const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } =
     useCreateAgent();
 
+  // Captured at "Register" submit time so the post-modal navigation reflects
+  // the wallet's state *before* the new agent landed, not after.
+  const wasOnboardedRef = useRef(false);
+  // Profile id of the agent the user just registered, resolved by matching
+  // generatedAddress against the refetched profile list. Used to deep-link
+  // straight into the new agent's Settings tab when the wallet is already
+  // onboarded (Setup guide collapsed scenario).
+  const newProfileIdRef = useRef<string | null>(null);
+
   const handleCreate = useCallback(
     async (params: Parameters<typeof createAgent>[0]) => {
+      wasOnboardedRef.current = !!agents && agents.some((a) => a.isActive);
+      newProfileIdRef.current = null;
       const digest = await createAgent(params);
-      if (digest) refetch();
+      if (digest) {
+        // Sui RPC's owned-objects index can lag waitForTransaction by a beat,
+        // so a single refetch sometimes returns stale "no agents" data and
+        // QuickstartView keeps showing the hero / Step 1 active. Poll up to
+        // ~3s until the new profile surfaces, then Step 1 flips to done and
+        // Step 2 (Fund Budget) becomes the active call to action naturally.
+        const prevCount = agents?.length ?? 0;
+        for (let i = 0; i < 6; i++) {
+          const { data: next } = await refetch();
+          if ((next?.length ?? 0) > prevCount) {
+            // For 'generate' mode, the new profile's agentAddress equals the
+            // freshly generated Ed25519 pubkey we exposed as generatedAddress
+            // on useCreateAgent. For 'import' mode params.agentAddress holds
+            // the user-supplied address. Either way we can resolve the new
+            // profile id from the polled list.
+            const newAddr = (params.agentAddress ?? '').toLowerCase();
+            const match = (next ?? []).find((a) => {
+              const addr = a.agentAddress.toLowerCase();
+              return addr === newAddr || (!newAddr && !agents?.some((p) => p.id === a.id));
+            });
+            if (match) newProfileIdRef.current = match.id;
+            break;
+          }
+          await new Promise((r) => setTimeout(r, 500));
+        }
+      }
       return digest;
     },
-    [createAgent, refetch],
+    [createAgent, refetch, agents],
   );
+
+  const handleRegisterModalClose = useCallback(() => {
+    resetTxStatus();
+    // Onboarded power-user path: skip the Quickstart bounce-back and drop
+    // the user straight into the new agent's Settings tab, where the Budget
+    // section is the next clearly visible action.
+    if (wasOnboardedRef.current && newProfileIdRef.current) {
+      updateView('detail', {
+        agent: newProfileIdRef.current,
+        sub: 'settings',
+        [FROM_PARAM]: null,
+      });
+    } else {
+      updateView(null);
+    }
+    wasOnboardedRef.current = false;
+    newProfileIdRef.current = null;
+  }, [resetTxStatus, updateView]);
 
   if (!walletAddress) return <NotConnected />;
 
@@ -113,17 +168,23 @@ export function AiTab() {
           walletAddress={walletAddress}
           agentId={agentId}
           subTab={sub}
+          fromQuickstart={fromQuickstart}
           onChangeSub={(next) => updateView('detail', { sub: next })}
-          onBack={() => updateView(null, { agent: null, sub: null })}
+          onBack={() => updateView(null, { agent: null, sub: null, [FROM_PARAM]: null })}
         />
       </div>
     );
   }
 
   if (view === 'budgets') {
+    const prefillAgent = searchParams.get(PREFILL_PARAM) ?? undefined;
     return (
       <div className="space-y-4">
-        <Budgets walletAddress={walletAddress} onBack={() => updateView(null)} />
+        <Budgets
+          walletAddress={walletAddress}
+          onBack={() => updateView(null, { [PREFILL_PARAM]: null })}
+          prefillAgent={prefillAgent}
+        />
       </div>
     );
   }
@@ -133,22 +194,28 @@ export function AiTab() {
       <QuickstartView
         walletAddress={walletAddress}
         onShowRegister={() => updateView('register')}
-        onOpenBudgets={() => updateView('budgets')}
-        onSelectAgent={(id) => updateView('detail', { agent: id, sub: 'dashboard' })}
+        onOpenBudgets={(agentAddress) =>
+          updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
+        }
+        onSelectAgent={(id, opts) =>
+          updateView('detail', {
+            agent: id,
+            sub: opts?.sub ?? 'overview',
+            [FROM_PARAM]: opts?.fromQuickstart ? FROM_QUICKSTART : null,
+          })
+        }
       />
 
       {/* Registration modal — triggered by view=register */}
       {view === 'register' && (
         <CreateAgentModal
-          onClose={() => {
-            resetTxStatus();
-            updateView(null);
-          }}
+          onClose={handleRegisterModalClose}
           onCreate={handleCreate}
           txStatus={txStatus}
           txError={txError}
           generatedAddress={generatedAddress}
           fallbackKey={fallbackKey}
+          isOnboarded={!!agents && agents.some((a) => a.isActive)}
         />
       )}
     </div>

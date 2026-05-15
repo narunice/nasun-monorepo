@@ -27,6 +27,7 @@ import { fromBase58 } from '@mysten/sui/utils';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { createHmac } from 'node:crypto';
 
 import {
   checkBudget as defaultCheckBudget,
@@ -64,7 +65,57 @@ import {
   recentTradesSnapshot,
   type IntentChainState,
 } from './trader-envelope.js';
+import { resolveStrategyPreset } from './strategies.js';
 import type { Config } from '../config.js';
+
+// ===== Browser config sync (read from chat-server) =====
+
+export interface BrowserTraderConfig {
+  model: string;
+  perTradeMaxQuoteRaw: string;
+  dailyMaxQuoteRaw: string;
+  promptTemplate: string | null;
+  /** Optional strategy preset id (matches `strategies.ts` keys). When
+   * unset or unknown, the runtime falls back to `STRATEGY` env. */
+  strategyPresetId: string | null;
+}
+
+/**
+ * Fetch the browser-saved TraderConfig from chat-server.
+ * Returns null if unavailable (network error, 404, or auth failure) so the
+ * caller can fall back to the .env defaults without aborting the cycle.
+ */
+export async function fetchBrowserConfig(
+  chatServerBaseUrl: string,
+  agentAddress: string,
+  hmacSecret: string,
+): Promise<BrowserTraderConfig | null> {
+  if (!chatServerBaseUrl || !hmacSecret || hmacSecret.length < 32) return null;
+  try {
+    const addr = agentAddress.toLowerCase();
+    const hmac = createHmac('sha256', Buffer.from(hmacSecret, 'hex'))
+      .update(Buffer.from(addr, 'utf8'))
+      .digest('hex');
+    const url = `${chatServerBaseUrl.replace(/\/+$/, '')}/api/nasun-ai/config/${addr}`;
+    const res = await fetch(url, {
+      headers: { 'X-HMAC': hmac },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return null;
+    const body = await res.json() as { config?: Record<string, unknown> };
+    const cfg = body.config;
+    if (!cfg || typeof cfg !== 'object') return null;
+    return {
+      model: typeof cfg.model === 'string' ? cfg.model : '',
+      perTradeMaxQuoteRaw: typeof cfg.perTradeMaxQuoteRaw === 'string' ? cfg.perTradeMaxQuoteRaw : '',
+      dailyMaxQuoteRaw: typeof cfg.dailyMaxQuoteRaw === 'string' ? cfg.dailyMaxQuoteRaw : '',
+      promptTemplate: typeof cfg.promptTemplate === 'string' ? cfg.promptTemplate : null,
+      strategyPresetId: typeof cfg.strategyPresetId === 'string' ? cfg.strategyPresetId : null,
+    };
+  } catch {
+    return null;
+  }
+}
 
 export const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
 
@@ -243,6 +294,34 @@ export async function runTraderCycle(
   }
   const agentAddr = config.agentAddress;
 
+  // 0a. Fetch browser-saved config from chat-server (best-effort, falls back to .env defaults).
+  const browserCfg = await fetchBrowserConfig(
+    config.chatServerBaseUrl,
+    agentAddr,
+    process.env.BARAM_CHAT_SERVER_HMAC_SECRET ?? '',
+  );
+  const effectiveModel = (browserCfg?.model || config.model) as string;
+  const effectiveMaxNotional = browserCfg?.perTradeMaxQuoteRaw
+    ? BigInt(browserCfg.perTradeMaxQuoteRaw)
+    : trader.maxNotionalQuoteRaw;
+  const effectiveDailyMax = browserCfg?.dailyMaxQuoteRaw
+    ? BigInt(browserCfg.dailyMaxQuoteRaw)
+    : trader.dailyMaxQuoteRaw;
+  // If the browser config specifies a strategy preset, resolve it.
+  // resolveStrategyPreset returns the conservative_dca fallback when the
+  // id is missing or unknown, so we keep the env-derived `trader.strategy`
+  // only when the browser didn't provide one at all.
+  const effectiveStrategy = browserCfg?.strategyPresetId
+    ? resolveStrategyPreset(browserCfg.strategyPresetId)
+    : trader.strategy;
+  if (browserCfg) {
+    deps.log(
+      `[trader] Browser config loaded: model=${effectiveModel}, perTrade=${effectiveMaxNotional}, dailyMax=${effectiveDailyMax}, strategy=${effectiveStrategy.id}`,
+    );
+  } else {
+    deps.log('[trader] Browser config unavailable — using .env defaults');
+  }
+
   // 0. Skip if an unconfirmed proposal is pending on-chain (Plan D §A5').
   if (deps.isPendingActive && config.baramAerPackageId) {
     let pending = false;
@@ -296,12 +375,13 @@ export async function runTraderCycle(
     agentAddr,
     nbtcRaw: balances.nbtcRaw,
     nusdcRaw: balances.nusdcRaw,
-    perTradeMaxQuoteRaw: trader.maxNotionalQuoteRaw,
-    dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw,
+    perTradeMaxQuoteRaw: effectiveMaxNotional,
+    dailyMaxQuoteRaw: effectiveDailyMax,
     dailySpentRaw,
     recent,
-    strategy: trader.strategy,
+    strategy: effectiveStrategy,
     nowIso,
+    customSystemPrompt: browserCfg?.promptTemplate ?? null,
   });
 
   // 3. Create on-chain request (budget deduction).
@@ -324,16 +404,16 @@ export async function runTraderCycle(
     agent: agentAddr,
     nbtcRaw: balances.nbtcRaw.toString(),
     nusdcRaw: balances.nusdcRaw.toString(),
-    perTradeMaxQuoteRaw: trader.maxNotionalQuoteRaw.toString(),
-    dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw.toString(),
+    perTradeMaxQuoteRaw: effectiveMaxNotional.toString(),
+    dailyMaxQuoteRaw: effectiveDailyMax.toString(),
     dailySpentRaw: dailySpentRaw.toString(),
     recent: recentTradesSnapshot(recent),
     nowIso,
   };
   const replay = buildReplay({
-    modelVersion: config.model,
+    modelVersion: effectiveModel,
     promptText: prompt,
-    strategy: trader.strategy,
+    strategy: effectiveStrategy,
     marketSnapshot,
   });
 
@@ -341,7 +421,7 @@ export async function runTraderCycle(
   const inferResp = await deps.infer(trader.hostUrl, config.apiKey, {
     requestId,
     prompt,
-    model: config.model,
+    model: effectiveModel,
     capabilityId: trader.capabilityId,
     walletAddress: trader.walletAddress,
   });
@@ -360,8 +440,8 @@ export async function runTraderCycle(
     decision = deps.parseTradeDecision(
       inferResp.result,
       {
-        maxNotionalQuoteRaw: trader.maxNotionalQuoteRaw,
-        dailyMaxQuoteRaw: trader.dailyMaxQuoteRaw,
+        maxNotionalQuoteRaw: effectiveMaxNotional,
+        dailyMaxQuoteRaw: effectiveDailyMax,
         maxSlippageBps: trader.maxSlippageBps,
       },
       {
@@ -483,7 +563,7 @@ export async function runTraderCycle(
     spendToken: inferResp.spendToken!,
     nonce: inferResp.nonce!,
     expiresAt: inferResp.expiresAt!,
-    model: config.model,
+    model: effectiveModel,
     budgetId: config.budgetId,
     capabilityId: trader.capabilityId,
     walletAddress: trader.walletAddress,

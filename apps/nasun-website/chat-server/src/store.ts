@@ -175,6 +175,16 @@ export function initStore(config: ChatServerConfig): void {
   // pre-check the on-chain Budget balance before forwarding a /wake call.
   try { db.exec('ALTER TABLE baram_agent_endpoints ADD COLUMN budget_id TEXT'); } catch { /* already exists */ }
 
+  // Nasun AI trader configs — synced from browser on form save, read by runtime at cycle start.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS nasun_ai_trader_configs (
+      agent_address  TEXT PRIMARY KEY,
+      wallet_address TEXT NOT NULL,
+      config_json    TEXT NOT NULL,
+      updated_at     INTEGER NOT NULL
+    );
+  `);
+
   // Baram pending proposals — one active pending per agent (partial unique index).
   // proposal column stores the full Proposal JSON artifact (Plan D §A10).
   // The on-chain capability.pending_proposal_id mirrors proposal_id as 16-byte binary.

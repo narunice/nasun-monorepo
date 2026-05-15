@@ -12,19 +12,22 @@
  * Escrow sub-tab handles funding).
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useRequestWithRetry } from '../../hooks/request/useRequestWithRetry';
+import { useCapability } from '../../hooks/useCapability';
 import { MODEL_PRICING } from '../../services/network';
 import { ChatInput } from '../../components/input/ChatInput';
 import { MessageList } from '../../components/chat/MessageList';
+import type { CreateRequestCapability } from '../../hooks/request/useCreateRequest';
 
 interface ChatTabProps {
   walletAddress: string;
   agentId: string;
+  capabilityId: string | null;
 }
 
-export function ChatTab({ walletAddress, agentId }: ChatTabProps) {
+export function ChatTab({ walletAddress, agentId, capabilityId }: ChatTabProps) {
   const load = useChatStore((s) => s.load);
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
@@ -35,6 +38,22 @@ export function ChatTab({ walletAddress, agentId }: ChatTabProps) {
     void load(walletAddress, agentId);
   }, [walletAddress, agentId, load]);
 
+  // Read the live cap.version every mount. The Lambda asserts it server-side
+  // and aborts on mismatch, which protects against a stale snapshot racing
+  // with a wallet-side mutation (pause / risk-limit update / revoke).
+  const { data: capabilityData, isLoading: capabilityLoading } = useCapability(capabilityId);
+
+  const capability: CreateRequestCapability | null = useMemo(() => {
+    if (!capabilityId || !capabilityData) return null;
+    return {
+      capabilityId,
+      expectedCapabilityVersion: capabilityData.version.toString(),
+      actionType: 'cognition.chat.v1',
+      eventClass: 1,
+      triggeredByType: 4,
+    };
+  }, [capabilityId, capabilityData]);
+
   const {
     submit,
     isProcessing,
@@ -42,20 +61,30 @@ export function ChatTab({ walletAddress, agentId }: ChatTabProps) {
     requestStatus,
     executorsLoading,
     executorsError,
-  } = useRequestWithRetry();
+  } = useRequestWithRetry({ capability });
 
   const isTeeExecutor =
     (selectedExecutor?.teeType ?? 0) > 0 && MODEL_PRICING[selectedModel]?.provider === 'tee';
 
   const hasMessages = messages.length > 0 || isProcessing;
 
-  const placeholder = executorsLoading
-    ? 'Loading executors...'
-    : executorsError
-      ? 'Failed to load executors'
-      : !selectedExecutor
-        ? 'No eligible executors available'
-        : 'Ask anything...';
+  const isLegacy = capabilityId === null;
+  const capabilityNotReady = !isLegacy && (capabilityLoading || !capabilityData);
+
+  const placeholder = isLegacy
+    ? 'Legacy agent — re-register to enable chat'
+    : capabilityNotReady
+      ? 'Loading capability...'
+      : executorsLoading
+        ? 'Loading executors...'
+        : executorsError
+          ? 'Failed to load executors'
+          : !selectedExecutor
+            ? 'No eligible executors available'
+            : 'Ask anything...';
+
+  const inputDisabled =
+    isProcessing || !selectedExecutor || isLegacy || capabilityNotReady;
 
   return (
     <div className="flex flex-col h-[calc(100vh-280px)] min-h-[480px]">
@@ -85,7 +114,7 @@ export function ChatTab({ walletAddress, agentId }: ChatTabProps) {
         <div className="max-w-3xl mx-auto px-1">
           <ChatInput
             onSubmit={submit}
-            disabled={isProcessing || !selectedExecutor}
+            disabled={inputDisabled}
             placeholder={placeholder}
             selectedModel={selectedModel}
             onSelectModel={(modelId) => {

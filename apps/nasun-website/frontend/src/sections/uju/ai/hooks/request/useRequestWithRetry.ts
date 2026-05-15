@@ -10,7 +10,7 @@
 import { useEffect, useCallback, useMemo, useState } from 'react';
 import { useChatStore } from '../../stores/chatStore';
 import { useExecutors, selectExecutorWeightedRandom, type ExecutorInfo } from '../useExecutors';
-import { useCreateRequest, type RequestResult } from './useCreateRequest';
+import { useCreateRequest, type RequestResult, type CreateRequestCapability } from './useCreateRequest';
 import { useAttestation, type AttestationState } from './useAttestation';
 import {
   EXECUTOR_SELECTION,
@@ -18,6 +18,15 @@ import {
   type ModelId,
   type TierLevel,
 } from '../../services/network';
+
+export interface UseRequestWithRetryOptions {
+  /**
+   * Capability + envelope hints forwarded to the Lambda. `null` disables
+   * submission entirely -- a legacy agent (no on-chain Capability) cannot
+   * route through the gated AER entry, so chat is unavailable for them.
+   */
+  capability: CreateRequestCapability | null;
+}
 
 function classifyError(rawError: string | null): string {
   if (!rawError) return 'Something went wrong. Please try again.';
@@ -28,19 +37,33 @@ function classifyError(rawError: string | null): string {
   if (lower.includes('abort') || lower.includes('timeout') || lower.includes('timed out')) {
     return 'The request timed out. The executor may be busy. Please try again in a moment.';
   }
+  // Object version / coin consumption conflicts surface when the RPC node has
+  // not yet indexed a previous tx (e.g. an auto-cancel from a prior failed
+  // attempt). Surface as a transient RPC-sync issue, not a wallet failure.
+  if (
+    lower.includes('not available for consumption') ||
+    lower.includes('object id') ||
+    lower.includes('version') && lower.includes('current version')
+  ) {
+    return 'Network just out of sync. Please try again in a moment.';
+  }
   if (lower.includes('network') || lower.includes('fetch') || lower.includes('failed to fetch')) {
     return 'Network connection issue. Please check your connection and try again.';
   }
   if (lower.includes('refund')) return rawError;
+  // Only match wallet-side denials. Plain "rejected" can also describe a
+  // validator-side rejection (e.g. stale object version), which is unrelated.
   if (
-    lower.includes('signer') ||
-    lower.includes('wallet') ||
-    lower.includes('rejected') ||
-    lower.includes('denied')
+    lower.includes('user rejected') ||
+    lower.includes('user denied') ||
+    lower.includes('rejected by user') ||
+    lower.includes('wallet rejected') ||
+    lower.includes('signature rejected') ||
+    lower.includes('signing rejected')
   ) {
     return 'Transaction was not signed. Please approve the wallet prompt to continue.';
   }
-  if (lower.includes('execution failed')) {
+  if (lower.includes('execution failed') || lower.includes('not valid json')) {
     return 'The AI executor encountered an error. Please try again.';
   }
   return `Request failed: ${rawError}`;
@@ -58,7 +81,8 @@ export interface UseRequestWithRetryReturn {
   attestation: AttestationState & { refetch: () => Promise<void> };
 }
 
-export function useRequestWithRetry(): UseRequestWithRetryReturn {
+export function useRequestWithRetry(options: UseRequestWithRetryOptions): UseRequestWithRetryReturn {
+  const { capability } = options;
   const { executors, isLoading: executorsLoading, error: executorsError } = useExecutors();
   const { status: requestStatus, error, result, createRequest, reset } = useCreateRequest();
 
@@ -125,6 +149,17 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
   const submit = useCallback(
     async (prompt: string) => {
       if (!prompt.trim() || isProcessing || !selectedExecutor) return;
+      if (!capability) {
+        // Surface as a failed assistant turn so the gate is visible. The chat
+        // input is already disabled upstream when capability is null; this
+        // branch only fires if something races past that gate.
+        addMessage({
+          role: 'assistant',
+          content: 'This agent has no on-chain capability. Re-register the agent to enable chat.',
+          failed: true,
+        });
+        return;
+      }
 
       const previousMessages = [...useChatStore.getState().messages];
 
@@ -140,6 +175,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
         try {
           await createRequest(prompt.trim(), selectedModel as ModelId, currentExecutor, {
             previousMessages,
+            capability,
           });
           return;
         } catch (err) {
@@ -176,6 +212,7 @@ export function useRequestWithRetry(): UseRequestWithRetryReturn {
       requiredMinTier,
       updateMessage,
       needsAttestation,
+      capability,
     ],
   );
 

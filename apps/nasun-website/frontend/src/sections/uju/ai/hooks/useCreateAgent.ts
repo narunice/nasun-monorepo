@@ -1,16 +1,19 @@
 /**
- * Register an AgentProfile on-chain. Two modes:
+ * Register an AgentProfile on-chain together with a delegated Capability
+ * and AgentEscrow, all in a single atomic PTB. Backed by the
+ * `agent_profile::create_agent_with_capability` entry added in the
+ * baram_agent v0.2 upgrade so the wallet signs once.
+ *
+ * Two modes:
  *   - generate: create a new Ed25519 keypair, encrypt with passphrase, store in IndexedDB
  *   - import:   user supplies an existing agent address (no key stored locally)
- *
- * Ported from baram/frontend/src/hooks/useCreateAgent.ts; uses nasun-website's
- * shared SuiClient and `@nasun/wallet` useSigner (same primitive baram used).
  */
 
 import { useCallback, useRef, useState } from 'react';
 import { useSigner } from '@nasun/wallet';
+import { DEEPBOOK_PACKAGE_ID, NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
 import { suiClient } from '@/lib/sui-client';
-import { buildCreateAgentTransaction } from '../services/transactionBuilder';
+import { buildAtomicAgentSetupTransaction } from '../services/transactionBuilder';
 import { generateAgentKeypair, encryptAndStoreAgentKey } from '../services/agentKeyStorage';
 
 export type AgentTxStatus = 'idle' | 'signing' | 'executing' | 'success' | 'error';
@@ -25,13 +28,37 @@ export interface CreateAgentParams {
   capabilities: string[];
 }
 
+// Defaults for the auto-linked Capability. Mirrors Plan E1 Slice 1 spec.
+// `trade.swap.v1`, `analysis.v1`, `noop.v1` are the action_types the
+// trader cycle emits today; assets are the only spot pair the heartbeat
+// loop trades; targets is the DeepBook package (only allowed callee).
+// `cognition.chat.v1` is required by the Overview chat surface: the v2
+// gated AER entry asserts action_type ∈ cap.allowed_actions, so a freshly
+// created agent must already permit chat without a follow-up mutation tx.
+const DEFAULT_ALLOWED_ACTIONS = ['trade.swap.v1', 'analysis.v1', 'noop.v1', 'cognition.chat.v1'];
+const DEFAULT_ALLOWED_ASSETS = [NBTC_TYPE, NUSDC_TYPE];
+const DEFAULT_ALLOWED_TARGETS = [DEEPBOOK_PACKAGE_ID];
+const DEFAULT_RISK_LIMITS = {
+  maxNotionalPerAction: 2_000_000n, // 2 NUSDC raw
+  maxDailyLoss: 20_000_000n, // 20 NUSDC raw
+  maxSlippageBps: 50,
+  stopLossBps: 500,
+  takeProfitBps: 1000,
+};
+
 function extractProfileId(result: {
   objectChanges?: Array<{ type: string; objectType?: string; objectId?: string }> | null;
 }): string | null {
-  const created = result.objectChanges?.find(
-    (c) => c.type === 'created' && c.objectType?.includes('AgentProfile') && !c.objectType?.includes('Registry'),
-  );
-  return created?.objectId ?? null;
+  for (const change of result.objectChanges ?? []) {
+    if (
+      change.type === 'created' &&
+      change.objectType?.includes('::agent_profile::AgentProfile') &&
+      change.objectId
+    ) {
+      return change.objectId;
+    }
+  }
+  return null;
 }
 
 export function useCreateAgent() {
@@ -59,53 +86,67 @@ export function useCreateAgent() {
 
       try {
         let agentAddress: string;
+        let keypair: ReturnType<typeof generateAgentKeypair> | null = null;
 
         if (params.mode === 'generate') {
           if (!params.passphrase || params.passphrase.length < 6) {
             throw new Error('Agent passphrase must be at least 6 characters');
           }
-          const keypair = generateAgentKeypair();
+          keypair = generateAgentKeypair();
           agentAddress = keypair.toSuiAddress();
           setGeneratedAddress(agentAddress);
-
-          const tx = buildCreateAgentTransaction({
-            agentAddress,
-            name: params.name,
-            role: params.role,
-            capabilities: params.capabilities,
-          });
-          tx.setSender(address);
-          const txBytes = await tx.build({ client: suiClient });
-          const { signature } = await signer.sign(txBytes);
-
-          setTxStatus('executing');
-          const result = await suiClient.executeTransactionBlock({
-            transactionBlock: txBytes,
-            signature,
-            options: { showEffects: true, showObjectChanges: true },
-          });
-
-          if (result.effects?.status?.status !== 'success') {
-            throw new Error(result.effects?.status?.error || 'Transaction failed');
+        } else {
+          if (!params.agentAddress) {
+            throw new Error('Agent address is required for import mode');
           }
+          agentAddress = params.agentAddress;
+        }
 
-          const profileId = extractProfileId(result);
-          if (!profileId) {
-            // Agent registered on-chain but objectChanges did not surface the new
-            // AgentProfile id, so we cannot key the IndexedDB record. Surface the
-            // secret via state so the modal can show it; never log it.
+        const tx = buildAtomicAgentSetupTransaction({
+          agentAddress,
+          name: params.name,
+          role: params.role,
+          capabilities: params.capabilities,
+          allowedActions: DEFAULT_ALLOWED_ACTIONS,
+          allowedAssets: DEFAULT_ALLOWED_ASSETS,
+          allowedTargets: DEFAULT_ALLOWED_TARGETS,
+          ...DEFAULT_RISK_LIMITS,
+        });
+        tx.setSender(address);
+        const txBytes = await tx.build({ client: suiClient });
+        const { signature } = await signer.sign(txBytes);
+
+        setTxStatus('executing');
+        const result = await suiClient.executeTransactionBlock({
+          transactionBlock: txBytes,
+          signature,
+          options: { showEffects: true, showObjectChanges: true },
+        });
+
+        if (result.effects?.status?.status !== 'success') {
+          throw new Error(result.effects?.status?.error || 'Setup transaction failed');
+        }
+
+        const profileId = extractProfileId(result);
+        if (!profileId) {
+          if (keypair) {
+            // On-chain tx succeeded but we cannot find the new AgentProfile
+            // in objectChanges, so we cannot key the IndexedDB record.
+            // Surface the secret so the modal can show it.
             setFallbackKey(keypair.getSecretKey());
-            setTxError('Key storage failed. Copy the key below before closing this dialog.');
+            setTxError('Setup tx succeeded but profile id could not be parsed. Copy the key below.');
             setTxStatus('error');
             return null;
           }
+          throw new Error('Setup tx succeeded but could not parse profile id');
+        }
 
-          // Storage failure here (IndexedDB quota, denied, private-mode, deriveKey
-          // crypto error) is unrecoverable: the on-chain tx already executed, so
-          // the agent exists but its private key would be lost. Catch separately
-          // and surface fallbackKey so the user can copy the secret out of band.
+        // For 'generate' mode, persist the encrypted key now that we
+        // know the profile_id. Storage failure here is unrecoverable
+        // (on-chain agent already exists), so surface fallbackKey.
+        if (keypair && params.mode === 'generate') {
           try {
-            await encryptAndStoreAgentKey(profileId, keypair, address, params.passphrase);
+            await encryptAndStoreAgentKey(profileId, keypair, address, params.passphrase!);
           } catch (storageErr) {
             setFallbackKey(keypair.getSecretKey());
             setTxError(
@@ -116,38 +157,8 @@ export function useCreateAgent() {
             setTxStatus('error');
             return null;
           }
-
-          await suiClient.waitForTransaction({ digest: result.digest });
-
-          setTxStatus('success');
-          return result.digest;
         }
 
-        if (!params.agentAddress) {
-          throw new Error('Agent address is required for import mode');
-        }
-        agentAddress = params.agentAddress;
-
-        const tx = buildCreateAgentTransaction({
-          agentAddress,
-          name: params.name,
-          role: params.role,
-          capabilities: params.capabilities,
-        });
-        tx.setSender(address);
-        const txBytes = await tx.build({ client: suiClient });
-        const { signature } = await signer.sign(txBytes);
-
-        setTxStatus('executing');
-        const result = await suiClient.executeTransactionBlock({
-          transactionBlock: txBytes,
-          signature,
-          options: { showEffects: true },
-        });
-
-        if (result.effects?.status?.status !== 'success') {
-          throw new Error(result.effects?.status?.error || 'Transaction failed');
-        }
         await suiClient.waitForTransaction({ digest: result.digest });
 
         setTxStatus('success');

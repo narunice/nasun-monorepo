@@ -1,12 +1,13 @@
 /**
- * TraderConfigForm — define/edit a Trader Bot's preset.
+ * TraderConfigForm — define/edit an AI agent's trading preset.
  *
- * Used inside AgentDetail's "Trader" tab. One config per agent in 2A-1.
- * Saving stores to IndexedDB; the Web Worker scheduler (2A-2) reads it.
+ * Used inside AgentDetail's "Trader" tab. One config per agent.
+ * Saving stores to IndexedDB + mirrors to chat-server's
+ * nasun_ai_trader_configs.config_json so the runtime can fetch it.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import type { TraderConfig, TraderPair } from '../../types/trader';
+import type { TraderConfig, TraderPair, StrategyPresetId } from '../../types/trader';
 import { useExecutors } from '../../hooks/useExecutors';
 
 const PAIRS: { value: TraderPair; label: string }[] = [
@@ -22,7 +23,18 @@ const MODELS = [
   'mixtral-8x7b-32768',
 ];
 
+// Mirror of `apps/nasun-ai-runtime/src/presets/strategies.ts`. Kept
+// inline so the frontend doesn't pull the runtime as a dep.
+const STRATEGY_PRESETS: { value: StrategyPresetId; label: string }[] = [
+  { value: 'conservative_dca',   label: 'Conservative DCA' },
+  { value: 'aggressive_scalper', label: 'Aggressive Scalper' },
+  { value: 'mean_reversion',     label: 'Mean Reversion' },
+  { value: 'trend_follower',     label: 'Trend Follower' },
+  { value: 'hold_only',          label: 'Hold Only (smoke)' },
+];
+
 const MIN_INTERVAL = 5;
+const MAX_BPS = 10000; // Move contract's MAX_BPS for risk limits.
 const RAW_PER_NUSDC = 1_000_000;
 
 export interface TraderConfigFormValues {
@@ -40,6 +52,7 @@ export interface TraderConfigFormValues {
 
 interface Props {
   agentAddress: string;
+  agentName: string;
   /** Auto-resolved Budget shared object id for this agent (empty if not yet created) */
   agentBudgetId: string;
   initial: TraderConfig | null;
@@ -56,6 +69,10 @@ interface Props {
     budgetId: string;
     enabled: boolean;
     agentAddress: string;
+    strategyPresetId: StrategyPresetId;
+    maxSlippageBps: number;
+    stopLossBps: number;
+    takeProfitBps: number;
   }) => Promise<void>;
   onDelete?: () => Promise<void>;
 }
@@ -63,14 +80,13 @@ interface Props {
 const ADDR_RE = /^0x[0-9a-fA-F]{64}$/;
 const URL_RE = /^https?:\/\/.+/i;
 
-export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave, onDelete }: Props) {
+export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initial, onSave, onDelete }: Props) {
   const { executors, isLoading: executorsLoading } = useExecutors();
   const activeExecutors = useMemo(
     () => executors.filter((e) => e.isActive && !e.isDormant),
     [executors],
   );
 
-  const [name, setName] = useState('');
   const [pair, setPair] = useState<TraderPair>('NBTC_NUSDC');
   const [perTrade, setPerTrade] = useState('2');
   const [daily, setDaily] = useState('20');
@@ -79,6 +95,10 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
   const [promptTemplate, setPromptTemplate] = useState('');
   const [executorAddress, setExecutorAddress] = useState('');
   const [executorEndpoint, setExecutorEndpoint] = useState('');
+  const [strategyPresetId, setStrategyPresetId] = useState<StrategyPresetId>('conservative_dca');
+  const [maxSlippageBps, setMaxSlippageBps] = useState('50');
+  const [stopLossBps, setStopLossBps] = useState('500');
+  const [takeProfitBps, setTakeProfitBps] = useState('1000');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -99,7 +119,6 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
   // Hydrate when initial loads
   useEffect(() => {
     if (!initial) return;
-    setName(initial.name);
     setPair(initial.pair);
     setPerTrade((Number(BigInt(initial.perTradeMaxQuoteRaw)) / RAW_PER_NUSDC).toString());
     setDaily((Number(BigInt(initial.dailyMaxQuoteRaw)) / RAW_PER_NUSDC).toString());
@@ -108,6 +127,10 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
     setPromptTemplate(initial.promptTemplate ?? '');
     setExecutorAddress(initial.executorAddress);
     setExecutorEndpoint(initial.executorEndpoint);
+    if (initial.strategyPresetId) setStrategyPresetId(initial.strategyPresetId);
+    if (typeof initial.maxSlippageBps === 'number') setMaxSlippageBps(String(initial.maxSlippageBps));
+    if (typeof initial.stopLossBps === 'number') setStopLossBps(String(initial.stopLossBps));
+    if (typeof initial.takeProfitBps === 'number') setTakeProfitBps(String(initial.takeProfitBps));
   }, [initial]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -115,27 +138,27 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
     setErr(null);
     setSaved(false);
 
-    const trimmedName = name.trim();
-    if (trimmedName.length < 1 || trimmedName.length > 64) {
-      setErr('Name must be 1–64 chars');
-      return;
-    }
     const pt = parseFloat(perTrade);
     const dy = parseFloat(daily);
     const iv = parseInt(interval, 10);
+    const slip = parseInt(maxSlippageBps, 10);
+    const sl = parseInt(stopLossBps, 10);
+    const tp = parseInt(takeProfitBps, 10);
     if (!Number.isFinite(pt) || pt <= 0 || pt > 100) { setErr('Per-trade size: 0 < x ≤ 100 NUSDC'); return; }
     if (!Number.isFinite(dy) || dy < pt || dy > 1000) { setErr('Daily size: per-trade ≤ x ≤ 1000'); return; }
     if (!Number.isInteger(iv) || iv < MIN_INTERVAL || iv > 1440) { setErr(`Interval must be integer between ${MIN_INTERVAL} and 1440 minutes`); return; }
     if (promptTemplate.length > 10_000) { setErr('Custom prompt must be ≤ 10000 chars'); return; }
     if (!ADDR_RE.test(executorAddress)) { setErr('Pick an executor from the list'); return; }
-    if (!ADDR_RE.test(budgetId)) { setErr('No Budget linked to this agent — create one in the Budget tab first'); return; }
     if (!URL_RE.test(executorEndpoint)) { setErr('Executor endpoint must start with http(s)://'); return; }
+    if (!Number.isInteger(slip) || slip < 0 || slip > MAX_BPS) { setErr(`Max slippage must be 0..${MAX_BPS} bps`); return; }
+    if (!Number.isInteger(sl) || sl < 0 || sl > MAX_BPS) { setErr(`Stop loss must be 0..${MAX_BPS} bps`); return; }
+    if (!Number.isInteger(tp) || tp < 0 || tp > MAX_BPS) { setErr(`Take profit must be 0..${MAX_BPS} bps`); return; }
 
     setBusy(true);
     try {
       await onSave({
         agentAddress,
-        name: trimmedName,
+        name: agentName,
         pair,
         perTradeMaxQuoteRaw: String(BigInt(Math.round(pt * RAW_PER_NUSDC))),
         dailyMaxQuoteRaw: String(BigInt(Math.round(dy * RAW_PER_NUSDC))),
@@ -146,6 +169,10 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
         executorEndpoint,
         budgetId,
         enabled: initial?.enabled ?? false,
+        strategyPresetId,
+        maxSlippageBps: slip,
+        stopLossBps: sl,
+        takeProfitBps: tp,
       });
       setSaved(true);
     } catch (e2) {
@@ -160,11 +187,6 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
-      <div className="space-y-1">
-        <label className={labelClass}>Bot Name</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="My NBTC Trader" className={inputClass} />
-      </div>
-
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className={labelClass}>Trading Pair</label>
@@ -180,19 +202,62 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <label className={labelClass}>Per-trade (NUSDC)</label>
-          <input type="number" step="0.01" min="0.01" max="100" value={perTrade} onChange={(e) => setPerTrade(e.target.value)} className={inputClass} />
+      <div className="space-y-1">
+        <label className={labelClass}>Strategy preset</label>
+        <select
+          value={strategyPresetId}
+          onChange={(e) => setStrategyPresetId(e.target.value as StrategyPresetId)}
+          className={inputClass}
+        >
+          {STRATEGY_PRESETS.map((s) => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <p className="text-xs text-uju-secondary/70">
+          Biases the AI agent's decisions when a custom prompt is not set.
+        </p>
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-xs text-uju-secondary/70">
+          Trade caps below limit how much NUSDC the agent will <em>swap on the DEX per trade</em>,
+          and per day. They are separate from the Budget&apos;s &quot;Max per inference call&quot; cap, which
+          limits NUSDC spent paying the AI executor per request.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className={labelClass}>Per-trade swap cap (NUSDC)</label>
+            <input type="number" step="0.01" min="0.01" max="100" value={perTrade} onChange={(e) => setPerTrade(e.target.value)} className={inputClass} />
+          </div>
+          <div className="space-y-1">
+            <label className={labelClass}>Daily swap cap (NUSDC)</label>
+            <input type="number" step="0.01" min="0.01" max="1000" value={daily} onChange={(e) => setDaily(e.target.value)} className={inputClass} />
+          </div>
+          <div className="space-y-1">
+            <label className={labelClass}>Interval (min)</label>
+            <input type="number" step="1" min={MIN_INTERVAL} value={interval} onChange={(e) => setInterval(e.target.value)} className={inputClass} />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className={labelClass}>Daily cap (NUSDC)</label>
-          <input type="number" step="0.01" min="0.01" max="1000" value={daily} onChange={(e) => setDaily(e.target.value)} className={inputClass} />
+      </div>
+
+      <div className="space-y-1">
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <label className={labelClass}>Max slippage (bps)</label>
+            <input type="number" step="1" min="0" max={MAX_BPS} value={maxSlippageBps} onChange={(e) => setMaxSlippageBps(e.target.value)} className={inputClass} />
+          </div>
+          <div className="space-y-1">
+            <label className={labelClass}>Stop loss (bps)</label>
+            <input type="number" step="1" min="0" max={MAX_BPS} value={stopLossBps} onChange={(e) => setStopLossBps(e.target.value)} className={inputClass} />
+          </div>
+          <div className="space-y-1">
+            <label className={labelClass}>Take profit (bps)</label>
+            <input type="number" step="1" min="0" max={MAX_BPS} value={takeProfitBps} onChange={(e) => setTakeProfitBps(e.target.value)} className={inputClass} />
+          </div>
         </div>
-        <div className="space-y-1">
-          <label className={labelClass}>Interval (min)</label>
-          <input type="number" step="1" min={MIN_INTERVAL} value={interval} onChange={(e) => setInterval(e.target.value)} className={inputClass} />
-        </div>
+        <p className="text-xs text-uju-secondary/70">
+          These guide the AI agent's prompt. To enforce a hard onchain rail, edit capability risk limits in the danger zone.
+        </p>
       </div>
 
       <div className="space-y-1">
@@ -262,7 +327,7 @@ export function TraderConfigForm({ agentAddress, agentBudgetId, initial, onSave,
           <button
             type="button"
             disabled={busy}
-            onClick={async () => { if (confirm('Delete this trader bot config?')) await onDelete(); }}
+            onClick={async () => { if (confirm('Delete this agent config?')) await onDelete(); }}
             className="px-4 py-2 text-xs rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
           >
             Delete

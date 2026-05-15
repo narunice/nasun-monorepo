@@ -18,6 +18,223 @@ function validateObjectId(id: string, label: string): void {
   }
 }
 
+// `vector<std::type_name::TypeName>` cannot be passed as a pure PTB arg
+// (TypeName is a struct, not a primitive — Sui rejects with
+// `InvalidUsageOfPureArg`). Build the vector via inline
+// `0x1::type_name::get<T>()` moveCalls + makeMoveVec, matching the encoding
+// the on-chain `capability::is_asset_allowed` comparisons rely on. This
+// mirrors `apps/baram/scripts/setup-atomic-cap-escrow.ts`.
+function typeNameVectorArg(tx: Transaction, typeStrings: string[]) {
+  const elements = typeStrings.map((t) =>
+    tx.moveCall({
+      target: '0x1::type_name::get',
+      typeArguments: [t],
+    }),
+  );
+  return tx.makeMoveVec({
+    type: '0x1::type_name::TypeName',
+    elements,
+  });
+}
+
+export interface AtomicAgentSetupParams {
+  // Agent profile fields
+  agentAddress: string;
+  name: string;
+  role: string;
+  capabilities: string[];
+  // Capability fields
+  allowedActions: string[];
+  allowedAssets: string[]; // fully-qualified Move TypeName strings
+  allowedTargets: string[];
+  maxNotionalPerAction: bigint;
+  maxDailyLoss: bigint;
+  maxSlippageBps: number;
+  stopLossBps: number;
+  takeProfitBps: number;
+}
+
+/**
+ * Single 5-command atomic PTB that creates and links Capability,
+ * AgentEscrow, and AgentProfile under one user signature:
+ *
+ *   Cmd 0: capability::new_capability_and_link  -> (Capability, LinkWitness)
+ *   Cmd 1: escrow::new_escrow_linked(witness)   -> escrow_id (ID)
+ *   Cmd 2: object::id<Capability>(&cap)         -> capability_id (ID)
+ *   Cmd 3: agent_profile::create_agent_with_capability(..., capability_id, clock)
+ *   Cmd 4: capability::finalize_link_and_share(cap, escrow_id)
+ *
+ * After execution, effects expose three created objects: Capability and
+ * AgentEscrow (both shared, reciprocally bound), and AgentProfile
+ * (owned by sender, capability == Some(cap_id) already set).
+ *
+ * Atomicity guarantee: any failure rolls back the whole PTB, so an
+ * agent-runner cannot observe a transient state (e.g. profile created
+ * without cap_id, or cap created without escrow_id).
+ */
+export function buildAtomicAgentSetupTransaction(params: AtomicAgentSetupParams): Transaction {
+  validateObjectId(params.agentAddress, 'agentAddress');
+  const tx = new Transaction();
+  const aerPackageId = BARAM.aerPackageId;
+  const capabilityRegistry = BARAM.capabilityRegistry;
+  const capabilityType = `${aerPackageId}::capability::Capability`;
+
+  // Cmd 0: create capability + emit LinkWitness.
+  const [cap, witness] = tx.moveCall({
+    target: `${aerPackageId}::capability::new_capability_and_link`,
+    arguments: [
+      tx.object(capabilityRegistry),
+      tx.pure.vector('string', params.allowedActions),
+      typeNameVectorArg(tx, params.allowedAssets),
+      tx.pure.vector('address', params.allowedTargets),
+      tx.pure.u64(params.maxNotionalPerAction),
+      tx.pure.u64(params.maxDailyLoss),
+      tx.pure.u16(params.maxSlippageBps),
+      tx.pure.u16(params.stopLossBps),
+      tx.pure.u16(params.takeProfitBps),
+    ],
+  });
+
+  // Cmd 1: create AgentEscrow, consume witness.
+  const escrowId = tx.moveCall({
+    target: `${aerPackageId}::escrow::new_escrow_linked`,
+    arguments: [witness],
+  });
+
+  // Cmd 2: read cap's ID via 0x2::object::id<Capability>(&cap).
+  // This lets us pass the cap_id into create_agent_with_capability
+  // without a cross-package Move dep from baram_agent to baram_aer.
+  const capabilityId = tx.moveCall({
+    target: `0x2::object::id`,
+    typeArguments: [capabilityType],
+    arguments: [cap],
+  });
+
+  // Cmd 3: create AgentProfile already linked to capability_id.
+  tx.moveCall({
+    target: `${BARAM.agentPackageId}::agent_profile::create_agent_with_capability`,
+    arguments: [
+      tx.object(BARAM.agentProfileRegistry),
+      tx.pure.address(params.agentAddress),
+      tx.pure.string(params.name),
+      tx.pure.string(params.role),
+      tx.pure.vector('string', params.capabilities),
+      capabilityId,
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+
+  // Cmd 4: stamp escrow_id onto cap + share cap. Must run last because
+  // it consumes cap by value.
+  tx.moveCall({
+    target: `${aerPackageId}::capability::finalize_link_and_share`,
+    arguments: [cap, escrowId],
+  });
+
+  return tx;
+}
+
+// ========== Capability mutations (wallet-signed) ==========
+
+export type CapabilityPauseMode = 0 | 2;
+
+/** RiskLimits shape mirrors `@nasun/baram-sdk` capability::RiskLimits but
+ * kept local to avoid pulling the full SDK type surface for one struct. */
+export interface CapabilityRiskLimits {
+  maxNotionalPerAction: bigint;
+  maxDailyLoss: bigint;
+  maxSlippageBps: number;
+  stopLossBps: number;
+  takeProfitBps: number;
+}
+
+export function buildSetPauseModeTransaction(
+  capabilityId: string,
+  newMode: CapabilityPauseMode,
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::set_pause_mode`,
+    arguments: [tx.object(capabilityId), tx.pure.u8(newMode)],
+  });
+  return tx;
+}
+
+export function buildUpdateRiskLimitsTransaction(
+  capabilityId: string,
+  limits: CapabilityRiskLimits,
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  // `update_risk_limits` takes a `RiskLimits` value, which is built via
+  // the `new_risk_limits` constructor. Chain the two calls in one PTB.
+  const riskLimits = tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::new_risk_limits`,
+    arguments: [
+      tx.pure.u64(limits.maxNotionalPerAction),
+      tx.pure.u64(limits.maxDailyLoss),
+      tx.pure.u16(limits.maxSlippageBps),
+      tx.pure.u16(limits.stopLossBps),
+      tx.pure.u16(limits.takeProfitBps),
+    ],
+  });
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::update_risk_limits`,
+    arguments: [tx.object(capabilityId), riskLimits],
+  });
+  return tx;
+}
+
+export function buildReplaceAllowedActionsTransaction(
+  capabilityId: string,
+  actions: string[],
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::replace_allowed_actions`,
+    arguments: [tx.object(capabilityId), tx.pure.vector('string', actions)],
+  });
+  return tx;
+}
+
+export function buildReplaceAllowedAssetsTransaction(
+  capabilityId: string,
+  assetTypeNames: string[],
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::replace_allowed_assets`,
+    arguments: [tx.object(capabilityId), typeNameVectorArg(tx, assetTypeNames)],
+  });
+  return tx;
+}
+
+export function buildReplaceAllowedTargetsTransaction(
+  capabilityId: string,
+  targets: string[],
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::replace_allowed_targets`,
+    arguments: [tx.object(capabilityId), tx.pure.vector('address', targets)],
+  });
+  return tx;
+}
+
+export function buildRevokeCapabilityTransaction(capabilityId: string): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::revoke`,
+    arguments: [tx.object(capabilityId)],
+  });
+  return tx;
+}
+
 // ========== Agent Profile ==========
 
 export function buildCreateAgentTransaction(params: {

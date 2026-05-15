@@ -5,7 +5,7 @@
  * controls scoped to one agent.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useBudgets, type BudgetInfo } from '../hooks/useBudgets';
 import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
 import { BudgetSettingsModal } from '../components/modals/BudgetSettingsModal';
@@ -15,12 +15,24 @@ import { getBudgetStatus } from '../utils/budget';
 interface BudgetsProps {
   walletAddress: string;
   onBack: () => void;
+  /** If set, pre-fills the agent address in CreateBudgetModal and auto-opens it when no budget exists for this agent. */
+  prefillAgent?: string;
 }
 
-export function Budgets({ walletAddress, onBack }: BudgetsProps) {
+export function Budgets({ walletAddress, onBack, prefillAgent }: BudgetsProps) {
   const b = useBudgets(walletAddress);
   const [showCreate, setShowCreate] = useState(false);
   const [settingsTarget, setSettingsTarget] = useState<BudgetInfo | null>(null);
+
+  // Auto-open create modal when arriving from Quickstart Step 2 with a specific agent
+  useEffect(() => {
+    if (!prefillAgent || b.isLoading) return;
+    const alreadyHas = b.budgets.some((bud) => bud.agent === prefillAgent);
+    if (!alreadyHas) {
+      b.resetTxStatus();
+      setShowCreate(true);
+    }
+  }, [prefillAgent, b.isLoading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="space-y-4">
@@ -127,6 +139,7 @@ export function Budgets({ walletAddress, onBack }: BudgetsProps) {
           onCreate={(params) => b.createBudget(params)}
           txStatus={b.txStatus}
           txError={b.txError}
+          prefillAgent={prefillAgent}
         />
       )}
 

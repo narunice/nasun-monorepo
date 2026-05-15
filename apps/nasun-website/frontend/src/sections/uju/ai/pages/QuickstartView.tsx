@@ -1,16 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useAgentBudgets } from '../hooks/useAgentBudgets';
 import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useExecutors } from '../hooks/useExecutors';
 import { AgentCard } from './AgentsList';
+import type { AgentSubTab } from './AgentDetail';
 import { truncateAddress, formatNusdcValue } from '../utils/format';
+
+interface SelectAgentOptions {
+  sub?: AgentSubTab;
+  fromQuickstart?: boolean;
+}
 
 interface QuickstartViewProps {
   walletAddress: string;
   onShowRegister: () => void;
-  onOpenBudgets: () => void;
-  onSelectAgent: (id: string) => void;
+  onOpenBudgets: (agentAddress?: string) => void;
+  onSelectAgent: (id: string, opts?: SelectAgentOptions) => void;
 }
 
 function CheckIcon() {
@@ -140,7 +146,7 @@ export function QuickstartView({
   const defaultExecutor = activeExecutors[0];
 
   const hasAgents = !!agents && agents.length > 0;
-  const hasBudget = !!budgets && budgets.some((b) => b.balance > 0);
+  const hasBudget = !!budgets && budgets.some((b) => b.agent === firstAgent?.agentAddress);
   const hasPolicy = !!traderConfig;
   const isRunning = !!agents && agents.some((a) => a.isActive);
 
@@ -150,6 +156,12 @@ export function QuickstartView({
   );
 
   const completedCount = [hasAgents, hasBudget, hasAgents, hasPolicy, isRunning].filter(Boolean).length;
+
+  // Once any agent has reached Step 5 (isRunning), treat the wallet as
+  // onboarded and let the user collapse the Setup guide. The `Show setup
+  // guide` toggle re-expands it on demand.
+  const isOnboarded = isRunning;
+  const [showGuide, setShowGuide] = useState(false);
 
   // Determine per-step state
   function stepState(stepIdx: number): StepState {
@@ -193,7 +205,7 @@ export function QuickstartView({
       action: stepState(1) !== 'done' ? (
         <button
           type="button"
-          onClick={onOpenBudgets}
+          onClick={() => onOpenBudgets(firstAgent?.agentAddress)}
           disabled={stepState(1) === 'locked'}
           className="px-3 py-1.5 text-sm font-medium rounded-lg border border-pado-2 text-pado-2 hover:bg-pado-2/10 transition-colors disabled:pointer-events-none whitespace-nowrap"
         >
@@ -228,7 +240,9 @@ export function QuickstartView({
       action: (
         <button
           type="button"
-          onClick={() => firstAgent && onSelectAgent(firstAgent.id)}
+          onClick={() =>
+            firstAgent && onSelectAgent(firstAgent.id, { sub: 'settings', fromQuickstart: true })
+          }
           disabled={stepState(3) === 'locked' || !firstAgent}
           className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
         >
@@ -244,11 +258,18 @@ export function QuickstartView({
       action: (
         <button
           type="button"
-          onClick={() => firstAgent && onSelectAgent(firstAgent.id)}
+          onClick={() =>
+            firstAgent && onSelectAgent(firstAgent.id, { sub: 'overview', fromQuickstart: true })
+          }
           disabled={stepState(4) === 'locked' || !firstAgent}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
+          className={[
+            'px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:pointer-events-none whitespace-nowrap',
+            stepState(4) === 'active'
+              ? 'bg-pado-2 text-uju-bg hover:bg-pado-3'
+              : 'border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2',
+          ].join(' ')}
         >
-          {isRunning ? 'View agent' : 'Go to agent'}
+          {isRunning ? 'View agent' : stepState(4) === 'active' ? 'Activate agent' : 'Go to agent'}
         </button>
       ),
     },
@@ -294,33 +315,101 @@ export function QuickstartView({
         </div>
       )}
 
-      {/* Setup guide */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-white">Setup guide</span>
-          <span className="text-xs px-2 py-0.5 rounded-full bg-pado-2/10 text-pado-2 border border-pado-2/20 font-medium">
-            {completedCount} / 5 complete
-          </span>
-        </div>
+      {/* Setup guide.
+       *
+       * Visible while the user is still onboarding (no agent has reached
+       * Step 5 / isRunning yet). Once any agent is fully active, the guide
+       * collapses behind a small "Show setup guide" link so power users
+       * registering additional agents aren't forced to scroll past it.
+       */}
+      {(!isOnboarded || showGuide) && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-semibold text-white">Setup guide</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-pado-2/10 text-pado-2 border border-pado-2/20 font-medium">
+                {completedCount} / 5 complete
+              </span>
+              {isOnboarded && (
+                <button
+                  type="button"
+                  onClick={() => setShowGuide(false)}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:bg-uju-bg transition-colors"
+                  aria-expanded="true"
+                  aria-controls="setup-guide-steps"
+                >
+                  Hide setup guide
+                  <svg
+                    width={12}
+                    height={12}
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={1.75}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M9 7L6 4L3 7" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
 
-        {agentsLoading ? (
-          <div className="space-y-2">
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {steps.map((step) => (
-              <StepCard key={step.num} step={step} />
-            ))}
-          </div>
-        )}
-      </div>
+          {agentsLoading ? (
+            <div id="setup-guide-steps" className="space-y-2">
+              <SkeletonCard />
+              <SkeletonCard />
+            </div>
+          ) : (
+            <div id="setup-guide-steps" className="space-y-2">
+              {steps.map((step) => (
+                <StepCard key={step.num} step={step} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isOnboarded && !showGuide && (
+        <button
+          type="button"
+          onClick={() => setShowGuide(true)}
+          className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:bg-uju-bg transition-colors"
+          aria-expanded="false"
+          aria-controls="setup-guide-steps"
+        >
+          Show setup guide
+          <svg
+            width={12}
+            height={12}
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.75}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M3 5L6 8L9 5" />
+          </svg>
+        </button>
+      )}
 
       {/* Agent grid — only when agents exist */}
       {hasAgents && (
         <div className="space-y-3">
-          <h2 className="text-base font-semibold text-white">Your agents</h2>
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <h2 className="text-base font-semibold text-white">Your agents</h2>
+            <button
+              type="button"
+              onClick={onShowRegister}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors whitespace-nowrap"
+            >
+              + New agent
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {agents!.map((agent) => (
               <AgentCard

@@ -591,6 +591,9 @@ async function handleBannedCacheRefresh(
     return true;
   }
   await refreshBannedCache();
+  // Forward to aggregator worker so it doesn't have to wait the 5-min TTL.
+  const { notifyWorkerBannedRefresh } = await import('./aggregator.js');
+  notifyWorkerBannedRefresh();
   const snap = getBannedSnapshotSync();
   res.writeHead(200, corsHeaders);
   res.end(JSON.stringify({

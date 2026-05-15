@@ -26,6 +26,7 @@
     "@metamask/sdk": "^0.34.0",
     "@mysten/dapp-kit": "^0.19.11",
     "@mysten/sui": "^1.45.2",
+    "@nasun/baram-sdk": "workspace:*",
     "@nasun/devnet-config": "workspace:*",
     "@nasun/profile-core": "workspace:*",
     "@nasun/profile-react": "workspace:*",

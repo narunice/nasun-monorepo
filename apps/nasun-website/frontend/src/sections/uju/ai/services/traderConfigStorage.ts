@@ -1,7 +1,10 @@
 /**
- * Trader Config Storage - IndexedDB wrapper for trader bot definitions.
+ * Trader Config Storage - IndexedDB wrapper for trader agent definitions.
  * Schema: Database `nasun-ai-trader-{walletAddress}`, store `configs` (keyPath = id).
  * Plaintext storage; agent private key still lives in agentKeyStorage (encrypted).
+ *
+ * Each write also fires a fire-and-forget POST to the chat-server so the
+ * nasun-ai-runtime can read the latest config at the start of each cycle.
  */
 
 import type { TraderConfig } from '../types/trader';
@@ -9,6 +12,33 @@ import type { TraderConfig } from '../types/trader';
 const DB_PREFIX = 'nasun-ai-trader-';
 const DB_VERSION = 1;
 const STORE = 'configs';
+
+const CHAT_SERVER_URL =
+  (import.meta.env.VITE_CHAT_SERVER_URL as string | undefined) ?? 'https://nasun.io';
+
+function syncConfigToServer(config: TraderConfig): void {
+  fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      agentAddress: config.agentAddress,
+      walletAddress: config.walletAddress,
+      config,
+    }),
+  }).catch(() => {
+    // Fire-and-forget: IndexedDB is the local source of truth; server sync is best-effort.
+  });
+}
+
+function deleteConfigFromServer(agentAddress: string): void {
+  fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ agentAddress }),
+  }).catch(() => {
+    // Fire-and-forget.
+  });
+}
 
 let db: IDBDatabase | null = null;
 let currentWalletAddress: string | null = null;
@@ -70,8 +100,10 @@ export async function getConfigByAgent(walletAddress: string, agentAddress: stri
 
 export async function saveConfig(config: TraderConfig): Promise<void> {
   await tx(config.walletAddress, 'readwrite', (s) => s.put(config));
+  syncConfigToServer(config);
 }
 
-export async function deleteConfig(walletAddress: string, id: string): Promise<void> {
+export async function deleteConfig(walletAddress: string, id: string, agentAddress?: string): Promise<void> {
   await tx(walletAddress, 'readwrite', (s) => s.delete(id));
+  if (agentAddress) deleteConfigFromServer(agentAddress);
 }
