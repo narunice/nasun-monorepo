@@ -9,13 +9,17 @@ import { NewsEventsCard } from "./NewsEventsCard";
 import { UjuSectionHeader } from "../shared";
 import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
 import { UjuFeedCarousel } from "./feed/UjuFeedCarousel";
+import { EcosystemPositionsSection } from "./positions/EcosystemPositionsSection";
 
 // Top portion: rendered full-width across the dashboard. The Overview card
 // (profile + points + health) is the most important hero section and must
-// span the entire container.
+// span the entire container. The ecosystem-positions section sits above the
+// hero so the user's "do I have anything open right now" answer is the
+// first thing on the page; it self-hides when no supported app is pinned.
 export function DashboardTabTop() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5">
+      <EcosystemPositionsSection />
       <OverviewSummaryCard />
     </div>
   );
