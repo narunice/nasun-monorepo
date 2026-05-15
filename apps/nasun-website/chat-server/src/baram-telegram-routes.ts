@@ -33,7 +33,7 @@ import { handleHeartbeat } from './baram-agent-registry.js';
 // Without `client`, verifyPersonalMessageSignature falls through to non-zkLogin
 // schemes only and rejects zkLogin sigs as bad_signature.
 let zkLoginClient: SuiClient | null = null;
-function getZkLoginClient(): SuiClient {
+export function getZkLoginClient(): SuiClient {
   if (!zkLoginClient) {
     zkLoginClient = new SuiClient({
       url: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
@@ -46,18 +46,25 @@ const CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const MAX_PENDING_CHALLENGES = 5_000;
 const MAX_BODY_BYTES = 16 * 1024;
 
-type Purpose = 'link' | 'revoke' | 'list';
+// PR2.A: 'vault-upload'/'vault-delete'/'vault-restore' added for the
+// SSM Parameter Store agent-key vault. Entries carry agent + pubkeyHash
+// so a phisher cannot reuse a victim-signed challenge to bind a different
+// keypair (challenge text includes the agent address explicitly).
+export type Purpose =
+  | 'link' | 'revoke' | 'list'
+  | 'vault-upload' | 'vault-delete' | 'vault-restore';
 
-interface ChallengeEntry {
+export interface ChallengeEntry {
   wallet: string;
   purpose: Purpose;
   agent?: string;
   capabilityId?: string;
   sid?: string;
+  pubkeyHash?: string;        // vault-upload only
   expiresAt: number;
 }
 
-const pendingChallenges = new Map<string, ChallengeEntry>();
+export const pendingChallenges = new Map<string, ChallengeEntry>();
 
 function cleanupExpiredChallenges(): void {
   const now = Date.now();
@@ -77,7 +84,7 @@ function isValidUuid(s: unknown): s is string {
     && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(s);
 }
 
-function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, nonce: string, issuedIso: string): string {
+export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, nonce: string, issuedIso: string): string {
   const lines: string[] = [];
   switch (entry.purpose) {
     case 'link':
@@ -95,11 +102,33 @@ function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, nonce: str
       lines.push('Nasun AI: List Telegram sessions');
       lines.push(`Wallet: ${entry.wallet}`);
       break;
+    // PR2.A vault challenges. The Agent address is shown explicitly so the
+    // signing UI in the user's wallet displays it — this is the user-visible
+    // anti-phishing guarantee.
+    case 'vault-upload':
+      lines.push('Nasun AI: Upload agent key to server vault');
+      lines.push(`Wallet: ${entry.wallet}`);
+      lines.push(`Agent:  ${entry.agent}`);
+      lines.push(`PubkeyHash: ${entry.pubkeyHash}`);
+      break;
+    case 'vault-delete':
+      lines.push('Nasun AI: Deactivate agent (server vault)');
+      lines.push(`Wallet: ${entry.wallet}`);
+      lines.push(`Agent:  ${entry.agent}`);
+      break;
+    case 'vault-restore':
+      lines.push('Nasun AI: Restore agent (server vault)');
+      lines.push(`Wallet: ${entry.wallet}`);
+      lines.push(`Agent:  ${entry.agent}`);
+      break;
   }
   lines.push(`Nonce: ${nonce}`);
   lines.push(`Issued: ${issuedIso}`);
   return lines.join('\n');
 }
+
+export const VAULT_CHALLENGE_TTL_MS = CHALLENGE_TTL_MS;
+export const VAULT_MAX_PENDING_CHALLENGES = MAX_PENDING_CHALLENGES;
 
 async function readJsonBody(req: import('node:http').IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
@@ -207,7 +236,7 @@ interface ConsumeChallengeResult {
 
 type ConsumeFailReason = 'missing_fields' | 'unknown_challenge' | 'expired' | 'bad_signature' | 'wrong_purpose';
 
-async function consumeChallenge(
+export async function consumeChallenge(
   body: Record<string, unknown>,
   expectedPurpose: Purpose,
 ): Promise<ConsumeChallengeResult | { ok: false; reason: ConsumeFailReason }> {

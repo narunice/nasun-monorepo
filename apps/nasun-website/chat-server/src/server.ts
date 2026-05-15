@@ -18,6 +18,14 @@ import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
+import {
+  handleVaultChallenge,
+  handleVaultUpload,
+  handleVaultDelete,
+  handleVaultRestore,
+  handleVaultStatus,
+} from './agent-vault-routes.js';
+import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
@@ -465,6 +473,43 @@ async function handleHttpRequest(
 
   // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
   if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
+  // PR2.A — Agent vault routes (SSM Parameter Store keypair custody +
+  // per-agent PM2 spawn). Handles its own OPTIONS for POST/DELETE.
+  if (url.pathname.startsWith('/api/nasun-ai/vault/')) {
+    const vaultCors = {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'POST, DELETE, GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204, vaultCors); res.end(); return;
+    }
+    if (url.pathname === '/api/nasun-ai/vault/challenge' && req.method === 'POST') {
+      await handleVaultChallenge(req, res, vaultCors); return;
+    }
+    if (url.pathname === '/api/nasun-ai/vault/upload' && req.method === 'POST') {
+      await handleVaultUpload(req, res, vaultCors); return;
+    }
+    // /api/nasun-ai/vault/agent/<addr>[/restore|/status]
+    const m = url.pathname.match(/^\/api\/nasun-ai\/vault\/agent\/(0x[0-9a-fA-F]{40,64})(?:\/(restore|status))?$/);
+    if (m) {
+      const agentAddr = m[1];
+      const sub = m[2];
+      if (req.method === 'DELETE' && !sub) {
+        await handleVaultDelete(req, res, vaultCors, agentAddr); return;
+      }
+      if (req.method === 'POST' && sub === 'restore') {
+        await handleVaultRestore(req, res, vaultCors, agentAddr); return;
+      }
+      if (req.method === 'GET' && sub === 'status') {
+        await handleVaultStatus(req, res, vaultCors, agentAddr); return;
+      }
+    }
+    res.writeHead(404, vaultCors);
+    res.end(JSON.stringify({ error: 'not_found' }));
     return;
   }
 
@@ -1253,6 +1298,8 @@ const retentionTimer = setInterval(() => {
 try {
   initStore(CONFIG);
   setProfileApiUrl(CONFIG.nasunProfileApiUrl);
+  // PR2.A — boot catch-up + hourly purge of soft-deleted agent_keys rows.
+  startVaultPurgeCron();
 } catch (err) {
   console.error('FATAL: Failed to initialize database:', err);
   process.exit(1);

@@ -78,9 +78,22 @@ function getHmacSecret(): Buffer {
   return Buffer.from(raw, 'hex');
 }
 
-function verifyHmac(body: Buffer, header: string): boolean {
+// PR2.A: HMAC now binds the request body AND the X-Timestamp header.
+// HMAC input is `${ts}\n${hex(body)}` — the explicit length-bounded
+// canonicalization avoids hash boundary ambiguity. Skew tolerance: 60s.
+// Legacy body-only path is removed; runtime + chat-server cutover together.
+const HMAC_SKEW_MS = 60_000;
+
+function verifyHmacWithTs(body: Buffer, ts: string | undefined, header: string): boolean {
+  if (!ts) return false;
+  const tsNum = Number.parseInt(ts, 10);
+  if (!Number.isFinite(tsNum) || Math.abs(Date.now() - tsNum) > HMAC_SKEW_MS) return false;
   try {
-    const expected = createHmac('sha256', getHmacSecret()).update(body).digest('hex');
+    const hmacInput = Buffer.concat([
+      Buffer.from(ts + '\n', 'utf8'),
+      Buffer.from(body.toString('hex'), 'utf8'),
+    ]);
+    const expected = createHmac('sha256', getHmacSecret()).update(hmacInput).digest('hex');
     const expectedBuf = Buffer.from(expected, 'hex');
     const providedBuf = Buffer.from(header.slice(0, expected.length * 2), 'hex');
     if (providedBuf.length !== expectedBuf.length) return false;
@@ -125,7 +138,12 @@ export async function handleHeartbeat(
   }
 
   const hmacHeader = req.headers['x-hmac'];
-  if (typeof hmacHeader !== 'string' || !verifyHmac(body, hmacHeader)) {
+  const tsHeader = req.headers['x-timestamp'];
+  if (
+    typeof hmacHeader !== 'string'
+    || typeof tsHeader !== 'string'
+    || !verifyHmacWithTs(body, tsHeader, hmacHeader)
+  ) {
     res.writeHead(401, corsHeaders);
     res.end(JSON.stringify({ error: 'bad_hmac' }));
     return;

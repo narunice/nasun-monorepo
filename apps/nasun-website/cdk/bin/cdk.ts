@@ -40,6 +40,7 @@ import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
 import { BugReportStack } from '../lib/bug-report-stack';
 import { SharedWafStack } from '../lib/shared-waf-stack';
+import { AgentVaultStack } from '../lib/agent-vault-stack';
 
 const app = new cdk.App();
 
@@ -133,6 +134,18 @@ const bugReportStack = new BugReportStack(app, 'BugReportStack', {
   sharedWafArn,
 });
 bugReportStack.addDependency(sharedWafStack);
+
+// Agent Vault stack (PR2.A) — grants chat-server EC2 instance role permission
+// to read/write SSM Parameter Store SecureString under /nasun/ai-agent/*.
+// Only deployed when AGENT_VAULT_CHAT_SERVER_ROLE_ARN is set (prod-only for now;
+// dev currently has no chat-server EC2).
+const agentVaultRoleArn = process.env.AGENT_VAULT_CHAT_SERVER_ROLE_ARN;
+if (agentVaultRoleArn) {
+  new AgentVaultStack(app, 'AgentVaultStack', {
+    env: cdkEnv,
+    chatServerRoleArn: agentVaultRoleArn,
+  });
+}
 
 // Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {

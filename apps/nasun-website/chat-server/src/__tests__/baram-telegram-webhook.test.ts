@@ -27,8 +27,15 @@ const CAPABILITY = '0x' + 'b2'.repeat(32);
 const WALLET = '0x' + 'c3'.repeat(32);
 const HMAC_SECRET_HEX = 'a'.repeat(64); // 32-byte key in hex
 
-function signBody(body: string): string {
-  return createHmac('sha256', Buffer.from(HMAC_SECRET_HEX, 'hex')).update(body, 'utf8').digest('hex');
+// PR2.A: HMAC binds X-Timestamp + body. Tests must call signBodyWithTs
+// and pass both X-HMAC + X-Timestamp headers; legacy body-only signing
+// (signBody) is rejected by chat-server.
+function signBodyWithTs(body: string, ts: string): string {
+  const hmacInput = Buffer.concat([
+    Buffer.from(ts + '\n', 'utf8'),
+    Buffer.from(Buffer.from(body, 'utf8').toString('hex'), 'utf8'),
+  ]);
+  return createHmac('sha256', Buffer.from(HMAC_SECRET_HEX, 'hex')).update(hmacInput).digest('hex');
 }
 
 async function post(url: string, body: unknown, extraHeaders: Record<string, string> = {}): Promise<Response> {
@@ -214,10 +221,11 @@ describe('POST /api/baram/agent/heartbeat', () => {
 
   it('rejects non-loopback http_url', async () => {
     const body = JSON.stringify({ agent: AGENT, http_url: 'http://evil.com/wake' });
-    const hmac = signBody(body);
+    const ts = String(Date.now());
+    const hmac = signBodyWithTs(body, ts);
     const res = await fetch(`${baseUrl}/api/baram/agent/heartbeat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac },
+      headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac, 'X-Timestamp': ts },
       body,
     });
     expect(res.status).toBe(400);
@@ -227,10 +235,11 @@ describe('POST /api/baram/agent/heartbeat', () => {
 
   it('accepts valid heartbeat and upserts endpoint', async () => {
     const body = JSON.stringify({ agent: AGENT, http_url: 'http://127.0.0.1:4400' });
-    const hmac = signBody(body);
+    const ts = String(Date.now());
+    const hmac = signBodyWithTs(body, ts);
     const res = await fetch(`${baseUrl}/api/baram/agent/heartbeat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac },
+      headers: { 'Content-Type': 'application/json', 'X-HMAC': hmac, 'X-Timestamp': ts },
       body,
     });
     expect(res.status).toBe(200);

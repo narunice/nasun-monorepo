@@ -47,6 +47,21 @@ function requireHttpsUrl(raw: string, name: string): string {
   return raw;
 }
 
+// PR2.A: when AGENT_SECRET_PARAM is set, fetch the bech32 keypair from
+// AWS SSM Parameter Store at startup. Falls back to AGENT_PRIVATE_KEY
+// for the legacy single-tenant nasun-ai-runtime PM2 process.
+async function loadKeypairFromParam(paramName: string): Promise<Ed25519Keypair> {
+  const { SSMClient, GetParameterCommand } = await import('@aws-sdk/client-ssm');
+  const client = new SSMClient({});
+  const resp = await client.send(new GetParameterCommand({
+    Name: paramName,
+    WithDecryption: true,
+  }));
+  const value = resp.Parameter?.Value;
+  if (!value) throw new Error(`vault: empty parameter ${paramName}`);
+  return loadKeypair(value);
+}
+
 function loadKeypair(raw: string): Ed25519Keypair {
   // Bech32 format from Dashboard "Export Key" (suiprivkey1q...)
   if (raw.startsWith('suiprivkey1')) {
@@ -169,7 +184,17 @@ function loadTraderConfig(): TraderConfig {
   };
 }
 
-export function loadConfig() {
+// PR2.A: split into two phases. loadConfigBaseSync() returns everything
+// that does NOT need the keypair; enrichWithKeypair() awaits the SSM
+// fetch (or falls back to AGENT_PRIVATE_KEY env) and returns the full
+// Config. loadConfig() preserves the legacy single-call API for tests
+// and existing callers, but is now async.
+export async function loadConfig(): Promise<Config> {
+  const base = loadConfigBaseSync();
+  return enrichWithKeypair(base);
+}
+
+export function loadConfigBaseSync() {
   const preset = (process.env.PRESET ?? 'research') as PresetName;
   if (!(preset in PRESET_DEFAULTS)) {
     throw new Error(`Invalid PRESET: ${preset}. Must be: research, content, analysis, trader`);
@@ -185,8 +210,6 @@ export function loadConfig() {
   } else if (rawInterval < MIN_INTERVAL_MINUTES) {
     console.warn(`[config] INTERVAL_MINUTES=${rawInterval} is below minimum (${MIN_INTERVAL_MINUTES}). Using ${intervalMinutes}.`);
   }
-
-  const keypair = loadKeypair(requireEnv('AGENT_PRIVATE_KEY'));
 
   // Run mode: lambda (Model A) or record (Model B)
   const mode = (process.env.MODE ?? 'lambda') as RunMode;
@@ -209,9 +232,6 @@ export function loadConfig() {
       : requireHttpsUrl(requireEnv('LAMBDA_URL'), 'LAMBDA_URL');
 
   return {
-    keypair,
-    agentAddress: keypair.toSuiAddress(),
-
     // Baram contracts
     packageId: requireEnv('BARAM_PACKAGE_ID'),
     registryId: requireEnv('BARAM_REGISTRY_ID'),
@@ -265,6 +285,19 @@ export function loadConfig() {
   } as const;
 }
 
+/**
+ * Resolve the agent keypair (SSM Parameter Store if AGENT_SECRET_PARAM is
+ * set, else AGENT_PRIVATE_KEY env) and merge it into the base config.
+ */
+export async function enrichWithKeypair(
+  base: ReturnType<typeof loadConfigBaseSync>,
+): Promise<Config> {
+  const keypair = process.env.AGENT_SECRET_PARAM
+    ? await loadKeypairFromParam(process.env.AGENT_SECRET_PARAM)
+    : loadKeypair(requireEnv('AGENT_PRIVATE_KEY'));
+  return { ...base, keypair, agentAddress: keypair.toSuiAddress() } as const;
+}
+
 function parseWakePort(raw: string | undefined): number {
   if (!raw) return 0;
   const n = parseInt(raw, 10);
@@ -275,7 +308,9 @@ function parseWakePort(raw: string | undefined): number {
   return n;
 }
 
-export type Config = ReturnType<typeof loadConfig>;
+export type Config =
+  ReturnType<typeof loadConfigBaseSync>
+  & { keypair: Ed25519Keypair; agentAddress: string };
 
 /**
  * Mask API key for safe logging: show first 4 + last 4 chars
