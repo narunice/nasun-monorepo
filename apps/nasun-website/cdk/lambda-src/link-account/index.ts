@@ -235,91 +235,23 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         body: JSON.stringify({ success: true, message: 'Account unlinked successfully.' }),
       };
     } else if (isRegisterEvm) {
-      // Manual EVM address registration (for mobile users who cannot use MetaMask SDK)
-      const { primaryIdentityId, evmAddress } = JSON.parse(event.body || '{}');
-
-      if (!primaryIdentityId || !evmAddress) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ message: 'primaryIdentityId and evmAddress are required' }),
-        };
-      }
-
-      // Authorization: only the authenticated user can register for their own account
-      if (primaryIdentityId !== authenticatedIdentityId) {
-        console.warn(`Authorization failed: ${authenticatedIdentityId} attempted to register EVM for ${primaryIdentityId}`);
-        return {
-          statusCode: 403,
-          headers: corsHeaders,
-          body: JSON.stringify({ message: 'Forbidden. You can only register an EVM address for your own account.' }),
-        };
-      }
-
-      // Validate EVM address format (0x + 40 hex chars)
-      const evmAddressRegex = /^0x[a-fA-F0-9]{40}$/;
-      if (!evmAddressRegex.test(evmAddress)) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ message: 'Invalid EVM address format. Must be 0x followed by 40 hex characters.' }),
-        };
-      }
-
-      const normalizedAddress = evmAddress.toLowerCase();
-
-      // Get primary profile
-      const getPrimaryCommand = new GetCommand({
-        TableName: tableName,
-        Key: { identityId: primaryIdentityId },
-      });
-      const primaryProfileResult = await dynamoClient.send(getPrimaryCommand);
-      const primaryProfile = primaryProfileResult.Item;
-
-      if (!primaryProfile) {
-        return {
-          statusCode: 404,
-          headers: corsHeaders,
-          body: JSON.stringify({ message: 'User profile not found.' }),
-        };
-      }
-
-      // Check if MetaMask is already linked
-      const existingLinkedAccounts = primaryProfile.linkedAccounts || {};
-      if (existingLinkedAccounts.metamask) {
-        return {
-          statusCode: 409,
-          headers: corsHeaders,
-          body: JSON.stringify({ message: 'EVM wallet already linked. Unlink the existing wallet first.' }),
-        };
-      }
-
-      // Store manual EVM address in linkedAccounts.metamask (Read-Modify-Write pattern)
-      existingLinkedAccounts.metamask = {
-        walletAddress: normalizedAddress,
-        username: normalizedAddress,
-        linkedAt: new Date().toISOString(),
-        manualEntry: true,
-      };
-
-      const updatePrimaryCommand = new UpdateCommand({
-        TableName: tableName,
-        Key: { identityId: primaryIdentityId },
-        UpdateExpression: 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt',
-        ExpressionAttributeValues: {
-          ':linkedAccounts': existingLinkedAccounts,
-          ':updatedAt': new Date().toISOString(),
-        },
-      });
-
-      await dynamoClient.send(updatePrimaryCommand);
-
-      console.log(`Manual EVM address registered: ${normalizedAddress} for ${primaryIdentityId}`);
-
+      // Manual EVM address registration is permanently disabled. Pasting an
+      // address without an ownership proof let any logged-in user attach an
+      // arbitrary wallet (including high-value third-party addresses) to
+      // their profile, contaminating NFT allowlists, leaderboards, and
+      // dashboards that key off `linkedAccounts.metamask.walletAddress`.
+      // All mobile flows now go through the MetaMask SDK with a signed
+      // challenge (see /metamask/challenge + /metamask/connect-verify).
+      console.warn(
+        `Blocked manual EVM registration attempt by ${authenticatedIdentityId} (endpoint deprecated).`,
+      );
       return {
-        statusCode: 200,
+        statusCode: 410,
         headers: corsHeaders,
-        body: JSON.stringify({ success: true, message: 'EVM wallet address registered successfully.' }),
+        body: JSON.stringify({
+          message:
+            'Manual EVM wallet registration has been disabled. Link your wallet through MetaMask so we can verify ownership.',
+        }),
       };
     }
 

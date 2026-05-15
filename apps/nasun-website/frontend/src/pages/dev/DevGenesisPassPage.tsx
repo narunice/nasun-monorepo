@@ -356,76 +356,6 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
     await connect();
   }, [connect, dispatch]);
 
-  // Manual EVM address entry (mobile fallback)
-  const [manualAddress, setManualAddress] = useState("");
-  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
-  const [manualError, setManualError] = useState("");
-  const isValidEvmAddress = (addr: string) => /^0x[a-fA-F0-9]{40}$/.test(addr);
-
-  useEffect(() => {
-    if (state.step === "connect") {
-      setManualAddress("");
-      setManualError("");
-    }
-  }, [state.step]);
-
-  const handleManualSubmit = useCallback(async () => {
-    const token = getCognitoToken();
-    const linkAccountApi = import.meta.env.VITE_LINK_ACCOUNT_API;
-    if (!token || !user?.identityId) {
-      dispatch({
-        type: "ERROR",
-        message: "Session expired. Please sign in again.",
-      });
-      return;
-    }
-    if (!linkAccountApi) {
-      dispatch({ type: "ERROR", message: "Service unavailable." });
-      return;
-    }
-    const trimmed = manualAddress.trim();
-    setIsSubmittingManual(true);
-    setManualError("");
-    try {
-      const res = await fetch(`${linkAccountApi}/register-evm`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          primaryIdentityId: user.identityId,
-          evmAddress: trimmed,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        if (res.status === 409) {
-          setManualError(
-            "EVM wallet already linked. Unlink first on My Account page.",
-          );
-        } else if (res.status === 401) {
-          dispatch({
-            type: "ERROR",
-            message: "Session expired. Please sign in again.",
-          });
-        } else {
-          setManualError(data.message || "Failed to connect address.");
-        }
-        return;
-      }
-      await refreshAndSaveUserProfile(user.identityId);
-      dispatch({ type: "WALLET_LINKED", walletAddress: trimmed });
-    } catch {
-      dispatch({
-        type: "ERROR",
-        message: "Failed to connect address. Please try again.",
-      });
-    } finally {
-      setIsSubmittingManual(false);
-    }
-  }, [manualAddress, getCognitoToken, user?.identityId, dispatch]);
-
   // Render modal content based on current step
   const renderContent = () => {
     switch (state.step) {
@@ -538,57 +468,23 @@ function GenesisPassModal({ state, dispatch }: GenesisPassModalProps) {
               first.
             </p>
 
-            {/* Desktop, MetaMask In-App, or iOS Safari: direct connect */}
-            {(!isMobileBrowser() ||
-              isMetaMaskInAppBrowser() ||
-              isIOSSafari()) && (
-              <ButtonV3
-                variant="nw2"
-                size="lg"
-                className="w-full"
-                onClick={handleConnectWallet}
-              >
-                Link Wallet
-              </ButtonV3>
-            )}
-
-            {/* Mobile (except iOS Safari and MetaMask in-app): manual address entry */}
+            <ButtonV3
+              variant="nw2"
+              size="lg"
+              className="w-full"
+              onClick={handleConnectWallet}
+            >
+              Link Wallet
+            </ButtonV3>
             {isMobileBrowser() &&
               !isIOSSafari() &&
               !isMetaMaskInAppBrowser() && (
-                <div className="flex flex-col gap-3 w-full">
-                  <input
-                    type="text"
-                    placeholder="0x..."
-                    maxLength={42}
-                    value={manualAddress}
-                    onChange={(e) => {
-                      setManualAddress(e.target.value);
-                      setManualError("");
-                    }}
-                    className="w-full px-4 py-3 bg-gray-800 border border-nasun-white/20 rounded-sm text-nasun-white font-mono text-sm placeholder:text-nasun-white/30 focus:border-nasun-nw2 focus:outline-none disabled:opacity-50"
-                    disabled={isSubmittingManual}
-                  />
-                  {manualAddress && !isValidEvmAddress(manualAddress) && (
-                    <p className="text-red-400 text-xs">
-                      Invalid EVM address format (0x + 40 hex characters)
-                    </p>
-                  )}
-                  {manualError && (
-                    <p className="text-red-400 text-xs">{manualError}</p>
-                  )}
-                  <ButtonV3
-                    variant="nw2"
-                    size="lg"
-                    className="w-full"
-                    onClick={handleManualSubmit}
-                    disabled={
-                      !isValidEvmAddress(manualAddress) || isSubmittingManual
-                    }
-                  >
-                    {isSubmittingManual ? "Linking..." : "Link Address"}
-                  </ButtonV3>
-                </div>
+                <p className="text-nasun-white/60 text-xs text-center leading-relaxed">
+                  If wallet linking does not work on your mobile browser,
+                  please retry from a desktop browser or the MetaMask
+                  in-app browser. Manual address entry was removed because
+                  it cannot verify wallet ownership.
+                </p>
               )}
           </div>
         );
