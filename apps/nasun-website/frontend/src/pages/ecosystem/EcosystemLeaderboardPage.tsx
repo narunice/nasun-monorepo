@@ -59,9 +59,9 @@ const EcosystemLeaderboardPage = () => {
 
   const allEntries: EcosystemLeaderboardEntry[] =
     leaderboardQuery.data?.data ?? [];
-  const displayedCount = Math.min(allEntries.length, MAX_RANK);
-  const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
-  const pagedEntries = allEntries.slice(
+  const cappedEntries = allEntries.slice(0, MAX_RANK);
+  const totalPages = Math.ceil(cappedEntries.length / PAGE_SIZE);
+  const pagedEntries = cappedEntries.slice(
     (page - 1) * PAGE_SIZE,
     page * PAGE_SIZE,
   );
@@ -225,7 +225,7 @@ const EcosystemLeaderboardPage = () => {
               </span>
             )}
             <LeaderboardSearchBox
-              entries={allEntries}
+              entries={cappedEntries}
               filterFn={filterFn}
               toResult={toResult}
               onSelect={handleUserSelect}
@@ -497,8 +497,8 @@ const EcosystemLeaderboardPage = () => {
           <div className="mt-4 flex items-center justify-between gap-3">
             <p className="text-sm text-nasun-white/50">
               Showing {(page - 1) * PAGE_SIZE + 1}-
-              {Math.min(page * PAGE_SIZE, displayedCount)} of top{" "}
-              {displayedCount.toLocaleString("en-US")}
+              {Math.min(page * PAGE_SIZE, cappedEntries.length)} of top{" "}
+              {cappedEntries.length.toLocaleString("en-US")}
               {(leaderboardQuery.data?.meta.prevTotal ?? 0) > 0 && (
                 <>
                   {" "}

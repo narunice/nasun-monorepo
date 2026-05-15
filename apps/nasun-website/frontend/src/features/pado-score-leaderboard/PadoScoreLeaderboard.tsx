@@ -307,9 +307,9 @@ export function PadoScoreLeaderboard() {
     !currentQuery.isLoading &&
     allTraders.length === 0;
 
-  const displayedCount = Math.min(allTraders.length, MAX_RANK);
-  const totalPages = Math.ceil(displayedCount / PAGE_SIZE);
-  const pagedTraders = allTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const cappedTraders = allTraders.slice(0, MAX_RANK);
+  const totalPages = Math.ceil(cappedTraders.length / PAGE_SIZE);
+  const pagedTraders = cappedTraders.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   const { highlightedId, selectRow } = useHighlightRow({
     dataAttribute: "data-address",
@@ -436,7 +436,7 @@ export function PadoScoreLeaderboard() {
           )}
           {/* Search box */}
           <LeaderboardSearchBox
-            entries={allTraders}
+            entries={cappedTraders}
             filterFn={filterFn}
             toResult={toResult}
             onSelect={handleUserSelect}
@@ -469,7 +469,7 @@ export function PadoScoreLeaderboard() {
         <LeaderboardTable
           traders={pagedTraders}
           isLoading={currentQuery.isLoading}
-          displayedCount={displayedCount}
+          displayedCount={cappedTraders.length}
           totalParticipants={currentQuery.data?.totalParticipants ?? 0}
           totalPages={totalPages}
           page={page}
