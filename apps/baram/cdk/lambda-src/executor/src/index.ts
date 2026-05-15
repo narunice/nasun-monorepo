@@ -16,12 +16,26 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
-import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, type AERReportData } from './services/sui';
+import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, getCapabilityFields, type AERReportData } from './services/sui';
 import { initResultStore, saveResult, getResult } from './services/resultStore';
-import { ExecuteRequest, ExecuteResponse, RecordRequest, RecordResponse, ResultRequest, DEFAULT_MODEL, type AerCapabilityFields } from './types';
+import {
+  ExecuteRequest,
+  ExecuteResponse,
+  RecordRequest,
+  RecordResponse,
+  ResultRequest,
+  DEFAULT_MODEL,
+  type AerCapabilityFields,
+  type InferRequest,
+  type InferResponse,
+  type ExecuteCapabilityRequest,
+  type ExecuteCapabilityResponse,
+} from './types';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 import { parseSerializedSignature } from '@mysten/sui/cryptography';
+import { verifySettleSig, type SettleSigFields } from './_shared/sig-verify';
+import { canonicalJsonSha256, sha256Hex0x } from './_shared/canonical-hash';
 
 // AWS Secrets Manager client (executor private key only)
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -126,7 +140,7 @@ function maskSensitive<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
   if (typeof obj !== 'object') return obj;
 
-  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret', 'result', 'signature', 'ephemeralPubKey'];
+  const sensitiveFields = ['encryptedPrompt', 'prompt', 'privateKey', 'apiKey', 'secret', 'result', 'signature', 'ephemeralPubKey', 'sig2', 'envelope'];
 
   if (Array.isArray(obj)) {
     return obj.map((item) => maskSensitive(item)) as T;
@@ -590,6 +604,376 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
   }
 }
 
+// ============================================================================
+// /infer + /execute-capability (PR1.A HOLD-only)
+// ============================================================================
+
+const HEX32_LOWER = /^0x[0-9a-f]{64}$/;
+const HEX_OBJECT_ID = /^0x[0-9a-fA-F]{1,64}$/;
+const U64_DECIMAL = /^[0-9]+$/;
+const ADDR_HEX = /^0x[0-9a-fA-F]{64}$/;
+const ZERO_ACTION_CALL_HASH = '0x' + '00'.repeat(32);
+
+interface FieldError { field: string; reason: string; }
+
+/**
+ * Validate /infer body fields. Returns a string reason on failure, null on
+ * success. Field-level errors map to 400. Address case-insensitive: lower
+ * before semantic checks.
+ */
+function validateInferBody(body: InferRequest): FieldError | null {
+  if (!isSafeRequestId(body.requestId)) return { field: 'requestId', reason: 'invalid_request_id' };
+  if (typeof body.encryptedPrompt !== 'string' || body.encryptedPrompt.length === 0) {
+    return { field: 'encryptedPrompt', reason: 'missing_encrypted_prompt' };
+  }
+  if (body.encryptedPrompt.length > 1 * 1024 * 1024) {
+    return { field: 'encryptedPrompt', reason: 'encrypted_prompt_too_large' };
+  }
+  if (typeof body.model !== 'string') return { field: 'model', reason: 'invalid_body' };
+  if (typeof body.capabilityId !== 'string' || !HEX_OBJECT_ID.test(body.capabilityId)) {
+    return { field: 'capabilityId', reason: 'invalid_capability_id' };
+  }
+  if (typeof body.principalAddress !== 'string' || !ADDR_HEX.test(body.principalAddress)) {
+    return { field: 'principalAddress', reason: 'invalid_principal_address' };
+  }
+  if (typeof body.promptHash !== 'string' || !HEX32_LOWER.test(body.promptHash.toLowerCase())) {
+    return { field: 'promptHash', reason: 'invalid_prompt_hash' };
+  }
+  if (typeof body.expectedCapabilityVersion !== 'string' || !U64_DECIMAL.test(body.expectedCapabilityVersion)) {
+    return { field: 'expectedCapabilityVersion', reason: 'invalid_capability_version' };
+  }
+  return null;
+}
+
+/**
+ * Validate /execute-capability body. Returns first failure.
+ *
+ * PR1.A: actionCall/escrow/spend MUST be null. If any are present, callers
+ * get 400 with reason='swap_in_pr1_5' so PR1.5 enablement is visible.
+ */
+function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldError | null {
+  if (!isSafeRequestId(body.requestId)) return { field: 'requestId', reason: 'invalid_request_id' };
+  if (typeof body.promptHash !== 'string' || !HEX32_LOWER.test(body.promptHash.toLowerCase())) {
+    return { field: 'promptHash', reason: 'invalid_prompt_hash' };
+  }
+  if (typeof body.resultHash !== 'string' || !HEX32_LOWER.test(body.resultHash.toLowerCase())) {
+    return { field: 'resultHash', reason: 'invalid_result_hash' };
+  }
+  if (typeof body.result !== 'string' || body.result.length === 0 || body.result.length > 64_000) {
+    return { field: 'result', reason: 'invalid_result' };
+  }
+  if (typeof body.executionTimeMs !== 'number' || !Number.isFinite(body.executionTimeMs) || body.executionTimeMs < 0) {
+    return { field: 'executionTimeMs', reason: 'invalid_execution_time' };
+  }
+  if (typeof body.model !== 'string') return { field: 'model', reason: 'invalid_body' };
+  if (typeof body.capabilityId !== 'string' || !HEX_OBJECT_ID.test(body.capabilityId)) {
+    return { field: 'capabilityId', reason: 'invalid_capability_id' };
+  }
+  if (typeof body.agentAddress !== 'string' || !ADDR_HEX.test(body.agentAddress)) {
+    return { field: 'agentAddress', reason: 'invalid_agent_address' };
+  }
+  if (typeof body.principalAddress !== 'string' || !ADDR_HEX.test(body.principalAddress)) {
+    return { field: 'principalAddress', reason: 'invalid_principal_address' };
+  }
+  if (typeof body.expectedCapabilityVersion !== 'string' || !U64_DECIMAL.test(body.expectedCapabilityVersion)) {
+    return { field: 'expectedCapabilityVersion', reason: 'invalid_capability_version' };
+  }
+  if (typeof body.envelopeHash !== 'string' || !HEX32_LOWER.test(body.envelopeHash.toLowerCase())) {
+    return { field: 'envelopeHash', reason: 'invalid_envelope_hash' };
+  }
+  if (typeof body.actionCallHash !== 'string' || !HEX32_LOWER.test(body.actionCallHash.toLowerCase())) {
+    return { field: 'actionCallHash', reason: 'invalid_action_call_hash' };
+  }
+  if (typeof body.sig2 !== 'string' || body.sig2.length < 16 || body.sig2.length > 512) {
+    return { field: 'sig2', reason: 'invalid_signature' };
+  }
+  if (body.actionCall !== null || body.escrow !== null || body.spend !== null) {
+    return { field: 'actionCall', reason: 'swap_in_pr1_5' };
+  }
+  if (!body.envelope || typeof body.envelope !== 'object') {
+    return { field: 'envelope', reason: 'invalid_envelope' };
+  }
+  if (!body.lineage || typeof body.lineage !== 'object') {
+    return { field: 'lineage', reason: 'invalid_lineage' };
+  }
+  if (!body.wake || typeof body.wake !== 'object') return { field: 'wake', reason: 'invalid_wake' };
+  if (!body.replay || typeof body.replay !== 'object') return { field: 'replay', reason: 'invalid_replay' };
+  if (!body.proposal || typeof body.proposal !== 'object') return { field: 'proposal', reason: 'invalid_proposal' };
+  return null;
+}
+
+/**
+ * /infer — runs inference bound to a pre-created on-chain request.
+ *
+ * Trust layers (no caller signature here — sig is at /execute-capability):
+ *   L1 API key (apiKeyRequired)
+ *   L3 chain: verifyRequest checks (requester != executor, status, timeout, promptHash)
+ *   L4 cap:  cap.owner == principalAddress && cap.version == expectedVersion
+ *           + !revoked + pause_mode == active
+ *
+ * 20s Groq budget — caller (runtime) must accommodate; SDK retries disabled
+ * to keep the abort budget honest (services/ai.ts initGroq).
+ */
+async function handleInfer(body: InferRequest): Promise<{ statusCode: number; body: InferResponse }> {
+  const startTime = Date.now();
+  const { requestId, model, capabilityId, principalAddress, expectedCapabilityVersion } = body;
+  const promptHash = body.promptHash.toLowerCase();
+  const promptHashRaw = promptHash.startsWith('0x') ? promptHash.slice(2) : promptHash;
+
+  console.log(`[Infer] requestId=${requestId} cap=${capabilityId} v=${expectedCapabilityVersion}`);
+
+  // L4a: cap fetch first — cheaper than chain request lookup.
+  let cap;
+  try {
+    cap = await getCapabilityFields(capabilityId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[Infer] capability fetch failed', msg);
+    return { statusCode: 503, body: { success: false, error: 'capability_fetch_failed', reason: 'capability_fetch_failed' } };
+  }
+  if (cap.revoked) {
+    return { statusCode: 403, body: { success: false, error: 'capability revoked', reason: 'capability_revoked' } };
+  }
+  if (cap.pauseMode !== 0) {
+    return { statusCode: 403, body: { success: false, error: 'capability paused', reason: 'capability_paused' } };
+  }
+  if (cap.owner.toLowerCase() !== principalAddress.toLowerCase()) {
+    return { statusCode: 403, body: { success: false, error: 'capability owner mismatch', reason: 'capability_owner_mismatch' } };
+  }
+  if (cap.version !== expectedCapabilityVersion) {
+    return { statusCode: 403, body: { success: false, error: 'capability version mismatch', reason: 'capability_version_mismatch' } };
+  }
+
+  // L3: on-chain request verification (Lambda executor == request.executor,
+  // promptHash match, status, timeout).
+  const verification = await verifyRequest(requestId, promptHashRaw);
+  if (!verification.valid) {
+    const v = verification.error ?? '';
+    const reason =
+      v.includes('not found') ? 'request_not_found'
+        : v.includes('Prompt hash mismatch') ? 'prompt_hash_mismatch'
+        : v.includes('Executor mismatch') ? 'executor_mismatch'
+        : v.includes('timeout') ? 'request_timeout'
+        : 'request_invalid';
+    return { statusCode: reason === 'request_not_found' ? 404 : 403, body: { success: false, error: v, reason } };
+  }
+
+  // Model gate AFTER chain checks so an invalid model can't be probed for
+  // chain state.
+  if (!isValidModel(model)) {
+    return { statusCode: 400, body: { success: false, error: `Unsupported model: ${model}`, reason: 'invalid_body' } };
+  }
+
+  // Decrypt + integrity check the supplied promptHash against the decoded
+  // bytes (catches a buggy host sending mismatched hash + prompt).
+  const prompt = decryptPrompt(body.encryptedPrompt);
+  const localPromptHash = sha256(prompt);
+  if (localPromptHash !== promptHashRaw) {
+    return { statusCode: 403, body: { success: false, error: 'prompt hash mismatch (decoded)', reason: 'prompt_hash_mismatch' } };
+  }
+
+  // Inference with 20s budget. SDK retries disabled (services/ai.ts).
+  let completion;
+  try {
+    completion = await generateCompletion(prompt, model, { signal: AbortSignal.timeout(20_000) });
+  } catch (err) {
+    const e = err as Error;
+    const msg = (e?.message ?? '').toLowerCase();
+    if (msg.includes('abort') || (e as { name?: string })?.name === 'AbortError') {
+      return { statusCode: 503, body: { success: false, error: 'inference timeout', reason: 'inference_timeout' } };
+    }
+    const classified = classifyError(e);
+    return { statusCode: classified.status, body: { success: false, error: classified.message, reason: 'inference_error' } };
+  }
+
+  const result = completion.content;
+  const resultHash = sha256Hex0x(result);
+  const executionTimeMs = Date.now() - startTime;
+  console.log(`[Infer] requestId=${requestId} ok tokens=${completion.totalTokens} elapsed=${executionTimeMs}ms`);
+
+  return {
+    statusCode: 200,
+    body: {
+      success: true,
+      result,
+      resultHash,
+      capabilityVersion: cap.version,
+      executionTimeMs,
+    },
+  };
+}
+
+/**
+ * /execute-capability — agent-signed settlement.
+ *
+ * PR1.A HOLD-only. actionCall/escrow/spend must be null (validated above).
+ * Settlement PTB is the existing cognition path (submit_proof_with_receipt
+ * + create_report_with_receipt_capability) — same call used by /execute.
+ */
+async function handleExecuteCapability(
+  body: ExecuteCapabilityRequest,
+): Promise<{ statusCode: number; body: ExecuteCapabilityResponse }> {
+  const startTime = Date.now();
+  const { requestId, model, capabilityId, agentAddress, principalAddress, expectedCapabilityVersion } = body;
+  const promptHash = body.promptHash.toLowerCase();
+  const promptHashRaw = promptHash.startsWith('0x') ? promptHash.slice(2) : promptHash;
+  const resultHash = body.resultHash.toLowerCase();
+  const resultHashRaw = resultHash.startsWith('0x') ? resultHash.slice(2) : resultHash;
+
+  console.log(`[Exec] requestId=${requestId} cap=${capabilityId} v=${expectedCapabilityVersion}`);
+
+  // Anti-tamper: result text must hash to the claimed resultHash.
+  const localResultHash = sha256Hex0x(body.result);
+  if (localResultHash.toLowerCase() !== resultHash) {
+    return { statusCode: 400, body: { success: false, error: 'result hash mismatch', reason: 'result_hash_mismatch' } };
+  }
+
+  // Envelope anti-tamper: recompute against canonical JSON.
+  const computedEnvelopeHash = canonicalJsonSha256(body.envelope);
+  if (computedEnvelopeHash.toLowerCase() !== body.envelopeHash.toLowerCase()) {
+    return { statusCode: 403, body: { success: false, error: 'envelope tampered', reason: 'envelope_tampered' } };
+  }
+
+  // PR1.A reserve: actionCallHash MUST be zero-bytes since actionCall=null.
+  if (body.actionCallHash.toLowerCase() !== ZERO_ACTION_CALL_HASH) {
+    return { statusCode: 400, body: { success: false, error: 'actionCallHash must be zero in PR1.A', reason: 'invalid_action_call_hash' } };
+  }
+
+  // L2: agent signature over the full settlement intent.
+  const sigFields: SettleSigFields = {
+    v: 1,
+    kind: 'nasun-ai-settle',
+    requestId: String(requestId),
+    promptHash,
+    resultHash,
+    agentAddress: agentAddress.toLowerCase(),
+    principalAddress: principalAddress.toLowerCase(),
+    capabilityId: capabilityId.toLowerCase(),
+    expectedCapabilityVersion,
+    envelopeHash: body.envelopeHash.toLowerCase(),
+    actionCallHash: body.actionCallHash.toLowerCase(),
+  };
+  const sigRes = await verifySettleSig(sigFields, body.sig2, agentAddress);
+  if (!sigRes.ok) {
+    return { statusCode: 403, body: { success: false, error: 'signature verification failed', reason: sigRes.reason } };
+  }
+
+  // L4: cap fetch + owner/version assert.
+  let cap;
+  try {
+    cap = await getCapabilityFields(capabilityId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[Exec] capability fetch failed', msg);
+    return { statusCode: 503, body: { success: false, error: 'capability_fetch_failed', reason: 'capability_fetch_failed' } };
+  }
+  if (cap.revoked) {
+    return { statusCode: 403, body: { success: false, error: 'capability revoked', reason: 'capability_revoked' } };
+  }
+  if (cap.pauseMode !== 0) {
+    return { statusCode: 403, body: { success: false, error: 'capability paused', reason: 'capability_paused' } };
+  }
+  if (cap.owner.toLowerCase() !== principalAddress.toLowerCase()) {
+    return { statusCode: 403, body: { success: false, error: 'capability owner mismatch', reason: 'capability_owner_mismatch' } };
+  }
+  if (cap.version !== expectedCapabilityVersion) {
+    return { statusCode: 403, body: { success: false, error: 'capability version mismatch', reason: 'capability_version_mismatch' } };
+  }
+
+  // L3: on-chain request still valid.
+  const verification = await verifyRequest(requestId, promptHashRaw);
+  if (!verification.valid) {
+    const v = verification.error ?? '';
+    const reason =
+      v.includes('not found') ? 'request_not_found'
+        : v.includes('Prompt hash mismatch') ? 'prompt_hash_mismatch'
+        : v.includes('Executor mismatch') ? 'executor_mismatch'
+        : v.includes('status is not') || v.includes('already') ? 'already_settled'
+        : v.includes('timeout') ? 'request_timeout'
+        : 'request_invalid';
+    return { statusCode: 403, body: { success: false, error: v, reason } };
+  }
+
+  // Settlement PTB. Reuses the existing 2-call cognition path
+  // (submit_proof_with_receipt + create_report_with_receipt_capability).
+  // The envelope shape from the runtime tells the AER what cognition/
+  // execution class to record; PR1.A forces HOLD via the runtime so this
+  // path stays purely cognition.
+  const executorAddress = getExecutorAddress();
+  const executorStats = await getExecutorStats(executorAddress);
+
+  const envelope = body.envelope as {
+    actionType?: string;
+    actionSummary?: string;
+    actionOutcome?: number;
+    eventClass?: number;
+  };
+  const wake = body.wake as { triggeredByType?: number; triggeredByRef?: string | null };
+  const lineage = body.lineage as { parentIntentId?: number[] | null };
+  const replay = body.replay as { modelVersion?: string };
+
+  const aerData: AERReportData = {
+    capabilityId: body.capabilityId,
+    expectedCapabilityVersion: body.expectedCapabilityVersion,
+    initiator: verification.request!.requester,
+    delegationPath: [],
+    executorPrincipal: null,
+    feeDetail: null,
+    budgetId: body.budgetId ?? null,
+    budgetRemaining: null,
+    modelMetadata: null,
+    purpose: body.purpose ?? 'trader_cycle',
+    constraints: body.constraints ?? null,
+    executorTier: executorStats.tier,
+    executorReputation: executorStats.reputation,
+    executorStakeAmount: executorStats.stakeAmount,
+    teeVerified: false,
+    teeAttestationHash: null,
+    triggeredBy: body.triggeredBy ?? null,
+    triggeredAction: body.triggeredAction ?? null,
+    parentIntentId: lineage?.parentIntentId
+      ? Buffer.from(Uint8Array.from(lineage.parentIntentId)).toString('hex')
+      : null,
+    eventClass: envelope?.eventClass ?? 1,
+    actionType: envelope?.actionType ?? 'analysis.v1',
+    actionSchemaVersion: 1,
+    actionSummary: envelope?.actionSummary ?? body.result.slice(0, 240),
+    actionOutcome: envelope?.actionOutcome ?? 2,            // HOLD-noop default
+    triggeredByType: wake?.triggeredByType ?? 1,            // HEARTBEAT default
+    triggeredByRef: wake?.triggeredByRef ?? null,
+    modelVersion: replay?.modelVersion ?? modelVersionTag(model),
+  };
+
+  try {
+    const txDigest = await submitProofWithAER(
+      requestId,
+      resultHashRaw,
+      body.executionTimeMs,
+      verification.request!,
+      aerData,
+    );
+    const executionTimeMs = Date.now() - startTime;
+    console.log(`[Exec] requestId=${requestId} settled tx=${txDigest} cap.v=${cap.version}`);
+    return {
+      statusCode: 200,
+      body: {
+        success: true,
+        requestId,
+        resultHash,
+        txDigest,
+        capabilityVersion: cap.version,
+        executionTimeMs,
+      },
+    };
+  } catch (err) {
+    const e = err as Error;
+    console.error('[Exec] proof submission failed:', e.message);
+    const classified = classifyError(e);
+    const reason = classified.status === 409 ? 'already_settled' : 'settlement_failed';
+    return { statusCode: classified.status, body: { success: false, error: classified.message, reason } };
+  }
+}
+
 /**
  * Lambda handler
  */
@@ -706,6 +1090,42 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         headers: corsHeaders,
         body: JSON.stringify(response),
       };
+    }
+
+    // POST /infer (PR1.A: split-inference for trader heartbeat)
+    if (path.endsWith('/infer') && event.httpMethod === 'POST') {
+      if (!event.body) {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Request body is required', reason: 'missing_body' }) };
+      }
+      const parsed = safeJsonParse(event.body);
+      if (!parsed || typeof parsed !== 'object') {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON body', reason: 'invalid_json' }) };
+      }
+      const body = parsed as InferRequest;
+      const fieldErr = validateInferBody(body);
+      if (fieldErr) {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: fieldErr.field, reason: fieldErr.reason }) };
+      }
+      const result = await handleInfer(body);
+      return { statusCode: result.statusCode, headers: corsHeaders, body: JSON.stringify(result.body) };
+    }
+
+    // POST /execute-capability (PR1.A: agent-signed settlement, HOLD-only)
+    if (path.endsWith('/execute-capability') && event.httpMethod === 'POST') {
+      if (!event.body) {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Request body is required', reason: 'missing_body' }) };
+      }
+      const parsed = safeJsonParse(event.body);
+      if (!parsed || typeof parsed !== 'object') {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Invalid JSON body', reason: 'invalid_json' }) };
+      }
+      const body = parsed as ExecuteCapabilityRequest;
+      const fieldErr = validateExecuteCapabilityBody(body);
+      if (fieldErr) {
+        return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: fieldErr.field, reason: fieldErr.reason }) };
+      }
+      const result = await handleExecuteCapability(body);
+      return { statusCode: result.statusCode, headers: corsHeaders, body: JSON.stringify(result.body) };
     }
 
     // POST /record (Model B: self-reported settlement)

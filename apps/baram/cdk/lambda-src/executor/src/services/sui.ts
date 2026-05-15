@@ -534,6 +534,61 @@ export async function getExecutorStats(executorAddress: string): Promise<{
 }
 
 /**
+ * Capability hard-rail fields needed for /infer + /execute-capability gating.
+ *
+ * Mirrors `baram_aer::capability::Capability` shape (owner, version) plus
+ * the runtime-relevant gate booleans. Owner is normalized to lower-case 0x
+ * for case-insensitive comparison against principalAddress.
+ */
+export interface CapabilityFields {
+  owner: string;        // 0x<64 hex lower>
+  version: string;      // u64 decimal
+  pauseMode: number;    // 0=active, 2=wake_blocked
+  revoked: boolean;
+}
+
+/**
+ * Fetch live capability fields from a shared `Capability` object.
+ *
+ * Used by /infer + /execute-capability to enforce:
+ *   - cap.owner == principalAddress      (caller is delegating from their own cap)
+ *   - cap.version == expectedVersion     (no mid-flight rotation)
+ *   - !cap.revoked && pauseMode == 0     (operational gates; on-chain enforces too)
+ *
+ * Throws on RPC failure or schema mismatch so the caller can map to a 503.
+ */
+export async function getCapabilityFields(capabilityId: string): Promise<CapabilityFields> {
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(capabilityId)) {
+    throw new Error(`Invalid capabilityId: ${capabilityId}`);
+  }
+  const client = getClient();
+  const obj = await client.getObject({
+    id: capabilityId,
+    options: { showContent: true },
+  });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new Error(`Capability ${capabilityId} not found or non-Move object`);
+  }
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const ownerRaw = fields.owner;
+  const versionRaw = fields.version;
+  const pauseRaw = fields.pause_mode;
+  const revokedRaw = fields.revoked;
+  if (typeof ownerRaw !== 'string' || typeof versionRaw !== 'string') {
+    throw new Error('Capability fields owner/version missing or not strings');
+  }
+  const ownerNormalized = ownerRaw.toLowerCase().startsWith('0x')
+    ? ownerRaw.toLowerCase()
+    : `0x${ownerRaw.toLowerCase()}`;
+  return {
+    owner: ownerNormalized,
+    version: versionRaw,
+    pauseMode: typeof pauseRaw === 'number' ? pauseRaw : Number(pauseRaw ?? 0),
+    revoked: revokedRaw === true,
+  };
+}
+
+/**
  * Mark request as executing (optional status update)
  */
 export async function markExecuting(requestId: number): Promise<string> {

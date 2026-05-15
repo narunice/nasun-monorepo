@@ -5,6 +5,7 @@ import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -94,7 +95,11 @@ export class BaramStack extends cdk.Stack {
       code: lambda.Code.fromAsset(
         path.join(__dirname, '../lambda-src/executor/dist')
       ),
-      timeout: cdk.Duration.seconds(60), // AI calls can take time
+      // 90s gives PR1.A /execute-capability room for cold-start + cap fetch +
+      // verifyRequest + PTB submission. /infer is internally budgeted to 20s
+      // for Groq, so it never approaches this ceiling. Chat /execute is
+      // unaffected (Groq abort budget unchanged at 60s).
+      timeout: cdk.Duration.seconds(90),
       memorySize: 512,
       environment: {
         SUI_RPC_URL: suiRpcUrl,
@@ -183,6 +188,18 @@ export class BaramStack extends cdk.Stack {
       apiKeyRequired: true,
     });
 
+    // POST /infer — PR1.A split-inference for the trader heartbeat
+    const inferResource = this.apiGateway.root.addResource('infer');
+    inferResource.addMethod('POST', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
+
+    // POST /execute-capability — PR1.A agent-signed settlement (HOLD-only)
+    const execCapResource = this.apiGateway.root.addResource('execute-capability');
+    execCapResource.addMethod('POST', lambdaIntegration, {
+      apiKeyRequired: true,
+    });
+
     // /result — requires API key (fetch stored AI result text)
     const resultResource = this.apiGateway.root.addResource('result');
     resultResource.addMethod('GET', lambdaIntegration, {
@@ -190,6 +207,35 @@ export class BaramStack extends cdk.Stack {
     });
     resultResource.addMethod('POST', lambdaIntegration, {
       apiKeyRequired: true,
+    });
+
+    // CloudWatch alarm — fires when daily API key usage crosses 50% of quota
+    // (2500 of 5000). PR1.A motivation: if chat traffic saturates the usage
+    // plan, the trader's /infer + /execute-capability calls silently 429 and
+    // the cycle goes dark again. The alarm exposes that case before anyone
+    // reads the runtime logs. Free tier; no SNS target wired yet (log-watcher
+    // on prod EC2 carries the page-out duty for now).
+    //
+    // Period is 1 day so a single bucket reflects the quota window. A shorter
+    // period with the same threshold would fire on innocuous hourly bursts.
+    new cloudwatch.Alarm(this, 'ApiKeyDailyQuotaHalfAlarm', {
+      alarmName: `baram-executor-${isProduction ? 'prod' : 'dev'}-api-quota-50pct`,
+      alarmDescription: 'Daily API key usage crossed 50% of quota (5000/day).',
+      metric: new cloudwatch.Metric({
+        namespace: 'AWS/ApiGateway',
+        metricName: 'Count',
+        dimensionsMap: {
+          ApiName: 'Baram Executor API',
+          Stage: this.apiGateway.deploymentStage.stageName,
+        },
+        statistic: 'Sum',
+        period: cdk.Duration.days(1),
+      }),
+      threshold: 2500,
+      evaluationPeriods: 1,
+      datapointsToAlarm: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
     // Outputs

@@ -43,6 +43,32 @@ import {
   infer as defaultInfer,
   executeCapability as defaultExecuteCapability,
 } from '../host-client.js';
+import { signSettle, canonicalJsonSha256, ZERO_ACTION_CALL_HASH } from '../sig.js';
+
+/**
+ * Inline cap fetch — kept local to avoid an extra module import. Mirrors
+ * trader-cycle.ts:fetchCapabilityFields. Both paths target the same
+ * Capability shape (baram_aer::capability::Capability).
+ */
+async function fetchCapabilityFieldsAnalyst(
+  client: SuiClient,
+  capabilityId: string,
+): Promise<{ owner: string; version: string }> {
+  const obj = await client.getObject({ id: capabilityId, options: { showContent: true } });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new Error(`Capability ${capabilityId} not found or non-Move`);
+  }
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const ownerRaw = fields.owner;
+  const versionRaw = fields.version;
+  if (typeof ownerRaw !== 'string' || typeof versionRaw !== 'string') {
+    throw new Error('Capability owner/version missing');
+  }
+  const owner = ownerRaw.toLowerCase().startsWith('0x')
+    ? ownerRaw.toLowerCase()
+    : `0x${ownerRaw.toLowerCase()}`;
+  return { owner, version: versionRaw };
+}
 import {
   fetchAgentBalances as defaultFetchAgentBalances,
   dailySpentQuoteRaw as defaultDailySpentQuoteRaw,
@@ -89,6 +115,8 @@ export interface AnalystDeps {
   isPendingActive: typeof defaultIsPendingActive;
   /** Optional: if provided, sets the onchain pending lock for BUY/SELL proposals. */
   setPendingProposal?: typeof defaultSetPendingProposal;
+  /** PR1.A: cap owner+version snapshot. Mirrors trader-cycle. */
+  fetchCapabilityFields: typeof fetchCapabilityFieldsAnalyst;
   fetchAgentBalances: typeof defaultFetchAgentBalances;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
   recentTrades: typeof defaultRecentTrades;
@@ -104,6 +132,7 @@ const REAL_DEPS: AnalystDeps = {
   createRequest: defaultCreateRequest,
   isPendingActive: defaultIsPendingActive,
   setPendingProposal: defaultSetPendingProposal,
+  fetchCapabilityFields: fetchCapabilityFieldsAnalyst,
   fetchAgentBalances: defaultFetchAgentBalances,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
   recentTrades: defaultRecentTrades,
@@ -206,9 +235,11 @@ export async function runAnalystPreset(
 
   // 4. On-chain request (budget deduction).
   let requestId: number;
+  let promptHashHex: string;
   try {
     const req = await deps.createRequest(client, config.keypair, config, fullPrompt, 'ai_inference');
     requestId = req.requestId;
+    promptHashHex = req.promptHashHex;
     deps.log(`[analyst] On-chain request created: requestId=${requestId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -217,15 +248,35 @@ export async function runAnalystPreset(
     return { ok: false, status: 'rejected', reason: `request_failed: ${message}` };
   }
 
+  // 4a. Snapshot capability owner+version (same pattern as trader-cycle).
+  const principalAddress = trader.walletAddress.toLowerCase();
+  const agentAddress = config.agentAddress.toLowerCase();
+  let expectedCapabilityVersion: string;
+  try {
+    const capFields = await deps.fetchCapabilityFields(client, trader.capabilityId);
+    expectedCapabilityVersion = capFields.version;
+    if (capFields.owner !== principalAddress) {
+      deps.log(`[analyst] capability owner ${capFields.owner} != trader.walletAddress; aborting.`);
+      return { ok: false, status: 'rejected', reason: 'capability_owner_mismatch' };
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    deps.log(`[analyst] capability fetch failed: ${msg}`);
+    return { ok: false, status: 'rejected', reason: `capability_fetch_failed: ${msg}` };
+  }
+
   // 5. POST /infer.
+  const promptHashWire = `0x${promptHashHex}`;
   const inferResp = await deps.infer(trader.hostUrl, config.apiKey, {
     requestId,
     prompt: fullPrompt,
     model: config.model,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    principalAddress,
+    promptHash: promptHashWire,
+    expectedCapabilityVersion,
   });
-  if (!inferResp.success || !inferResp.result || !inferResp.spendToken) {
+  if (!inferResp.success || !inferResp.result || !inferResp.resultHash) {
     const reason = inferResp.preflightDenied
       ? (inferResp.preflightReason ?? 'preflight denied')
       : (inferResp.error ?? 'unknown');
@@ -302,24 +353,45 @@ export async function runAnalystPreset(
     paymentAmountRaw: BigInt(config.price),
   });
 
-  // 9. POST /execute-capability (cognition mode: actionCall=null, escrow=undefined).
+  // 9. POST /execute-capability (cognition AER, agent-signed settlement intent).
+  const envelopeHash = canonicalJsonSha256(envelope);
+  const actionCallHash = ZERO_ACTION_CALL_HASH;
+  const sig2 = await signSettle(config.keypair, {
+    v: 1,
+    kind: 'nasun-ai-settle',
+    requestId: String(requestId),
+    promptHash: promptHashWire,
+    resultHash: inferResp.resultHash,
+    agentAddress,
+    principalAddress,
+    capabilityId: trader.capabilityId,
+    expectedCapabilityVersion,
+    envelopeHash,
+    actionCallHash,
+  });
   const execResp = await deps.executeCapability(trader.hostUrl, config.apiKey, {
     requestId,
-    resultHash: inferResp.resultHash!,
+    promptHash: promptHashWire,
+    resultHash: inferResp.resultHash,
+    result: inferResp.result,
     executionTimeMs: inferResp.executionTimeMs ?? 0,
-    spendToken: inferResp.spendToken!,
-    nonce: inferResp.nonce!,
-    expiresAt: inferResp.expiresAt!,
     model: config.model,
     budgetId: config.budgetId,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    agentAddress,
+    principalAddress,
+    expectedCapabilityVersion,
     envelope,
     lineage,
     wake,
     replay,
     proposal,
+    envelopeHash,
+    actionCallHash,
+    sig2,
     actionCall: null,
+    escrow: null,
+    spend: null,
     purpose: `Analyst response to user message (sid=${ctx.sid.slice(0, 8)}...)`,
   });
 

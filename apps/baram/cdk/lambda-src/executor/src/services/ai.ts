@@ -27,11 +27,19 @@ const MODEL_PROVIDER_MAP: Record<string, string> = {
 };
 
 /**
- * Initialize Groq provider (OpenAI-compatible)
+ * Initialize Groq provider (OpenAI-compatible).
+ *
+ * maxRetries:0 disables the SDK's internal exponential-backoff retry. Lambda
+ * callers race a hard AbortSignal (e.g. /infer's 20s budget) and SDK-side
+ * retries would silently extend wall time past that budget.
  */
 export function initGroq(apiKey: string): void {
   providers['groq'] = {
-    client: new OpenAI({ apiKey, baseURL: 'https://api.groq.com/openai/v1' }),
+    client: new OpenAI({
+      apiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
+      maxRetries: 0,
+    }),
     name: 'groq',
   };
   console.log('[AI] Provider initialized: groq');
@@ -66,11 +74,16 @@ export function isProviderInitialized(providerName: string): boolean {
 }
 
 /**
- * Generate AI completion
+ * Generate AI completion.
+ *
+ * When `opts.signal` is provided, that signal races the internal 60s timeout
+ * so the caller can enforce a tighter budget (e.g. /infer's 20s window).
+ * Chat path callers omit `opts` and inherit the original 60s default.
  */
 export async function generateCompletion(
   prompt: string,
-  model: string
+  model: string,
+  opts?: { signal?: AbortSignal }
 ): Promise<CompletionResult> {
   const providerName = MODEL_PROVIDER_MAP[model];
   if (!providerName) {
@@ -85,10 +98,20 @@ export async function generateCompletion(
   const startTime = Date.now();
   console.log(`[AI] Starting completion with model: ${model} (provider: ${providerName})`);
 
-  // 60s timeout to prevent Lambda resource waste on API hangs
+  // 60s default timeout to prevent Lambda resource waste on API hangs.
+  // A caller-supplied AbortSignal races this; the earliest abort wins.
   const AI_TIMEOUT_MS = 60_000;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+  const onCallerAbort = () => controller.abort();
+  if (opts?.signal) {
+    if (opts.signal.aborted) {
+      clearTimeout(timeout);
+      controller.abort();
+    } else {
+      opts.signal.addEventListener('abort', onCallerAbort, { once: true });
+    }
+  }
 
   let response;
   try {
@@ -112,6 +135,7 @@ export async function generateCompletion(
     );
   } finally {
     clearTimeout(timeout);
+    if (opts?.signal) opts.signal.removeEventListener('abort', onCallerAbort);
   }
 
   const elapsed = Date.now() - startTime;

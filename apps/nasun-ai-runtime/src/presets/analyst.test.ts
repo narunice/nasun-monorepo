@@ -34,6 +34,10 @@ const WALLET = '0x' + 'cc'.repeat(32);
 const AGENT_ADDR = '0x' + 'dd'.repeat(32);
 const AER_PKG_ID = '0x' + 'ae'.repeat(32);
 
+// PR1.A: signSettle needs a real keypair. Override the test stub.
+import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+const ANALYST_TEST_KEYPAIR = new Ed25519Keypair();
+
 function makeConfig(overrides: Partial<Config> = {}): Config {
   return {
     preset: 'trader',
@@ -45,7 +49,7 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     price: 100_000,
     model: 'llama-3.3-70b-versatile',
     apiKey: 'test-api-key',
-    keypair: {} as Config['keypair'],
+    keypair: ANALYST_TEST_KEYPAIR as Config['keypair'],
     agentAddress: AGENT_ADDR,
     rpcUrl: 'http://localhost',
     lambdaUrl: 'http://localhost',
@@ -99,11 +103,9 @@ function makeInferOk(action = 'HOLD') {
   return {
     success: true as const,
     result: JSON.stringify({ action, sizeNUSDC: action === 'HOLD' ? 0 : 1, reason: 'test reason' }),
-    resultHash: 'a'.repeat(64),
+    resultHash: '0x' + 'a'.repeat(64),
     executionTimeMs: 100,
-    spendToken: 'spend-token',
-    nonce: 'nonce-val',
-    expiresAt: Date.now() + 30_000,
+    capabilityVersion: '3',
   };
 }
 
@@ -116,6 +118,7 @@ function makeDeps(overrides: Partial<AnalystDeps> = {}): Partial<AnalystDeps> {
     checkBudget: vi.fn().mockResolvedValue({ balance: 1_000_000_000, totalSpent: 0, requestCount: 0, isActive: true }),
     createRequest: vi.fn().mockResolvedValue({ requestId: 42, promptHashHex: 'h' }),
     isPendingActive: vi.fn().mockResolvedValue(false),
+    fetchCapabilityFields: vi.fn().mockResolvedValue({ owner: WALLET.toLowerCase(), version: '3' }),
     fetchAgentBalances: vi.fn().mockResolvedValue({ nbtcRaw: 100_000_000n, nusdcRaw: 50_000_000n }),
     dailySpentQuoteRaw: vi.fn().mockReturnValue(0n),
     recentTrades: vi.fn().mockReturnValue([]),
@@ -161,9 +164,11 @@ describe('runAnalystPreset — envelope invariants', () => {
     await runAnalystPreset(FAKE_CLIENT, makeConfig(), makeCtx(), deps);
 
     const req = (deps.executeCapability as ReturnType<typeof vi.fn>).mock.calls[0][2];
+    // PR1.A wire schema: explicit null instead of undefined so the Lambda
+    // sees a deterministic shape every cycle.
     expect(req.actionCall).toBeNull();
-    expect(req.escrow).toBeUndefined();
-    expect(req.spend).toBeUndefined();
+    expect(req.escrow).toBeNull();
+    expect(req.spend).toBeNull();
   });
 });
 

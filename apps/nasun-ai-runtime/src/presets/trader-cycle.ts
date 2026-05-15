@@ -44,6 +44,7 @@ import {
   type ExecuteCapabilityResponse,
 } from '../host-client.js';
 import { escrow as escrowSdk } from '@nasun/baram-sdk';
+import { signSettle, canonicalJsonSha256, ZERO_ACTION_CALL_HASH } from '../sig.js';
 import {
   TRADER_CONFIG,
   buildTraderPrompt,
@@ -116,6 +117,40 @@ export async function fetchBrowserConfig(
   } catch {
     return null;
   }
+}
+
+/**
+ * PR1.A: HOLD-only operation. Any BUY/SELL decision is demoted to HOLD
+ * before envelope construction so /execute-capability never receives an
+ * actionCall (the Lambda 400s on swap_in_pr1_5 anyway, but demoting on
+ * the runtime side keeps cycles green and the AER chain coherent).
+ * PR1.5 will flip this default to false.
+ */
+const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false';
+
+/**
+ * Inline cap fetch — Lambda has the same logic in services/sui.ts. Returns
+ * the owner address (lower-cased 0x) and version (u64 decimal string).
+ * Exported so the analyst preset reuses the same shape and tests can inject.
+ */
+export async function fetchCapabilityFields(
+  client: SuiClient,
+  capabilityId: string,
+): Promise<{ owner: string; version: string }> {
+  const obj = await client.getObject({ id: capabilityId, options: { showContent: true } });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new Error(`Capability ${capabilityId} not found or non-Move`);
+  }
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const ownerRaw = fields.owner;
+  const versionRaw = fields.version;
+  if (typeof ownerRaw !== 'string' || typeof versionRaw !== 'string') {
+    throw new Error('Capability owner/version missing');
+  }
+  const owner = ownerRaw.toLowerCase().startsWith('0x')
+    ? ownerRaw.toLowerCase()
+    : `0x${ownerRaw.toLowerCase()}`;
+  return { owner, version: versionRaw };
 }
 
 export const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
@@ -219,6 +254,9 @@ export interface TraderCycleDeps {
    *  so tests that don't care can omit it. Defaults to the real devInspect call. */
   isPendingActive?: typeof defaultIsPendingActive;
   fetchEscrow: typeof escrowSdk.fetchEscrow;
+  /** PR1.A: snapshot cap owner+version for /infer + sig2 binding. Injected
+   *  so tests can short-circuit the SuiClient. */
+  fetchCapabilityFields: typeof fetchCapabilityFields;
   fetchAgentBalances: typeof defaultFetchAgentBalances;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
   recentTrades: typeof defaultRecentTrades;
@@ -237,6 +275,7 @@ const REAL_DEPS: TraderCycleDeps = {
   createRequest: defaultCreateRequest,
   isPendingActive: defaultIsPendingActive,
   fetchEscrow: escrowSdk.fetchEscrow,
+  fetchCapabilityFields,
   fetchAgentBalances: defaultFetchAgentBalances,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
   recentTrades: defaultRecentTrades,
@@ -387,15 +426,42 @@ export async function runTraderCycle(
 
   // 3. Create on-chain request (budget deduction).
   let requestId: number;
+  let promptHashHex: string;
   try {
     const req = await deps.createRequest(client, config.keypair, config, prompt, 'ai_inference');
     requestId = req.requestId;
+    promptHashHex = req.promptHashHex;
     deps.log(`On-chain request created: requestId=${requestId}`);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const { message, fatal } = categorizeError(msg);
     deps.log(`[trader] Request creation failed: ${message}`);
     return { outcome: 'request_failed', fatal, reason: message };
+  }
+
+  // 3a. Snapshot capability owner+version. The Lambda enforces both, so we
+  // fetch once at cycle start; any mid-flight wallet rotation aborts cleanly
+  // and the next cycle picks up the new version. agentAddress vs
+  // principalAddress are split conceptually — in the current prod topology
+  // they coincide, but we warn (not fail) if they don't so the operator
+  // sees the schism instead of silently signing as the wrong identity.
+  const principalAddress = trader.walletAddress.toLowerCase();
+  const agentAddress = config.agentAddress.toLowerCase();
+  let expectedCapabilityVersion: string;
+  try {
+    const capFields = await deps.fetchCapabilityFields(client, trader.capabilityId);
+    expectedCapabilityVersion = capFields.version;
+    if (capFields.owner !== principalAddress) {
+      deps.log(`[trader] capability owner ${capFields.owner} != trader.walletAddress ${principalAddress}; aborting cycle.`);
+      return { outcome: 'execute_failed', reason: 'capability_owner_mismatch' };
+    }
+    if (agentAddress !== principalAddress) {
+      deps.log(`[trader] WARN: agentAddress=${agentAddress} differs from principalAddress=${principalAddress}. Lambda will verify the agent signature; cap.owner is the principal.`);
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    deps.log(`[trader] capability fetch failed: ${msg}`);
+    return { outcome: 'execute_failed', reason: 'capability_fetch_failed' };
   }
 
   // 4. Open intent + replay metadata.
@@ -419,14 +485,17 @@ export async function runTraderCycle(
   });
 
   // 5. POST /infer.
+  const promptHashWire = `0x${promptHashHex}`;
   const inferResp = await deps.infer(trader.hostUrl, config.apiKey, {
     requestId,
     prompt,
     model: effectiveModel,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    principalAddress,
+    promptHash: promptHashWire,
+    expectedCapabilityVersion,
   });
-  if (!inferResp.success || !inferResp.result || !inferResp.spendToken) {
+  if (!inferResp.success || !inferResp.result || !inferResp.resultHash) {
     if (inferResp.preflightDenied) {
       deps.log(`[trader] /infer preflight denied: ${inferResp.preflightReason ?? 'unknown'}`);
       return { outcome: 'infer_failed', reason: inferResp.preflightReason ?? 'preflight denied' };
@@ -467,6 +536,19 @@ export async function runTraderCycle(
     deps.log(
       `[trader] Decision: ${decision.action} size=${decision.sizeNUSDC} reason="${decision.reason}"`,
     );
+  }
+
+  // PR1.A swap-disabled guard: BUY/SELL collapses to HOLD before envelope
+  // construction so the cycle always emits a cognition AER. The trader's
+  // recent-trades record stays untouched because no swap is executed.
+  if (PR1A_SWAP_DISABLED && (decision.action === 'BUY' || decision.action === 'SELL')) {
+    deps.log(`[trader] PR1.A swap-disabled: demoting ${decision.action} to HOLD (reason="${decision.reason}")`);
+    decision = {
+      ...decision,
+      action: 'HOLD',
+      sizeNUSDC: 0,
+      riskGate: 'pr1a_swap_disabled',
+    };
   }
 
   // 7. Build envelope from FINAL decision (DV11).
@@ -512,42 +594,15 @@ export async function runTraderCycle(
         paymentAmount: String(config.price),
       };
 
-  // 9. Build escrow ref + spend block + action call (execution only).
-  let escrowBlock: { objectId: string; initialSharedVersion: string; capabilityId: string } | null = null;
-  let spendBlock: { coinAssetType: string; amount: string } | null = null;
-  let actionCallBlock: ReturnType<typeof defaultBuildSwapActionCall> | null = null;
-  if (buyOrSell) {
-    try {
-      if (runtime.cachedEscrowInitialSharedVersion.value === null) {
-        const ref = await deps.fetchEscrow(client, trader.escrowId);
-        runtime.cachedEscrowInitialSharedVersion.value = ref.initialSharedVersion;
-      }
-      escrowBlock = {
-        objectId: trader.escrowId,
-        initialSharedVersion: runtime.cachedEscrowInitialSharedVersion.value.toString(),
-        capabilityId: trader.capabilityId,
-      };
-      spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
-      // Host's HIGH #2 floor rejects min_out < expected*(10000-bps)/10000.
-      // Quote off the live pool so the trader's submitted floor clears
-      // the server's recomputation on first try. Quote-then-submit race
-      // is acceptable on devnet (thin pool, single trader).
-      const minOut = await deps.quoteMinOut({
-        client,
-        direction: decision.action as 'BUY' | 'SELL',
-        sizeInRaw: sizeRaw,
-        slippageBps: trader.maxSlippageBps,
-      });
-      actionCallBlock = deps.buildSwapActionCall({
-        direction: decision.action as 'BUY' | 'SELL',
-        minOut,
-      });
-    } catch (err) {
-      deps.log(
-        `[trader] escrow fetch failed (cycle deferred to cognition): ${err instanceof Error ? err.message : err}`,
-      );
-    }
-  }
+  // 9. PR1.A: swap path is disabled. escrowBlock/spendBlock/actionCallBlock
+  // stay null. PR1.5 will reintroduce the 5-call atomic PTB and lift
+  // the PR1A_SWAP_DISABLED guard above. `buyOrSell` is preserved as a
+  // local for any future audit but cannot reach this branch under
+  // PR1A_SWAP_DISABLED=true because the decision was demoted upstream.
+  void buyOrSell;
+  void inputAssetType;
+  void outputAssetType;
+  void sizeRaw;
 
   const triggeredAction = runtime.state.lastExecutionDigest
     ? digestB58ToIdHex(runtime.state.lastExecutionDigest)
@@ -556,26 +611,46 @@ export async function runTraderCycle(
     ? `Trader cycle following trade ${runtime.state.lastExecutionDigest}`
     : 'Trader cycle (genesis)';
 
-  // 10. POST /execute-capability.
+  // 10. POST /execute-capability with the agent-signed settlement intent.
+  const envelopeHash = canonicalJsonSha256(finalEnvelope);
+  const actionCallHash = ZERO_ACTION_CALL_HASH;
+  const sig2 = await signSettle(config.keypair, {
+    v: 1,
+    kind: 'nasun-ai-settle',
+    requestId: String(requestId),
+    promptHash: promptHashWire,
+    resultHash: inferResp.resultHash,
+    agentAddress,
+    principalAddress,
+    capabilityId: trader.capabilityId,
+    expectedCapabilityVersion,
+    envelopeHash,
+    actionCallHash,
+  });
+
   const execReq: ExecuteCapabilityRequest = {
     requestId,
-    resultHash: inferResp.resultHash!,
+    promptHash: promptHashWire,
+    resultHash: inferResp.resultHash,
+    result: inferResp.result,
     executionTimeMs: inferResp.executionTimeMs ?? 0,
-    spendToken: inferResp.spendToken!,
-    nonce: inferResp.nonce!,
-    expiresAt: inferResp.expiresAt!,
     model: effectiveModel,
     budgetId: config.budgetId,
     capabilityId: trader.capabilityId,
-    walletAddress: trader.walletAddress,
+    agentAddress,
+    principalAddress,
+    expectedCapabilityVersion,
     envelope: finalEnvelope,
     lineage: intent.lineage,
     wake,
     replay,
     proposal: proposalForExec,
-    actionCall: actionCallBlock,
-    escrow: escrowBlock,
-    spend: spendBlock,
+    envelopeHash,
+    actionCallHash,
+    sig2,
+    actionCall: null,
+    escrow: null,
+    spend: null,
     purpose: purposeMsg,
     ...(triggeredAction ? { triggeredAction } : {}),
   };

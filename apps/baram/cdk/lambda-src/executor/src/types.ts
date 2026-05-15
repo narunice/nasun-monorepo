@@ -108,3 +108,73 @@ export interface ResultRequest {
   signerType: 'standard' | 'zklogin';
   ephemeralPubKey?: string;
 }
+
+// ============================================================================
+// /infer + /execute-capability — split-inference + settlement (PR1.A HOLD-only).
+//
+// Two-call shape: the trader runtime first POSTs /infer to get the LLM
+// completion bound to a pre-created on-chain request, then POSTs
+// /execute-capability with the agent-signed settlement intent. PR1.A
+// rejects any actionCall (swap) — those land in PR1.5.
+// ============================================================================
+
+export interface InferRequest {
+  requestId: number;
+  encryptedPrompt: string;              // base64 (MVP: plain text encoded)
+  model: string;
+  capabilityId: string;                 // 0x<hex>
+  principalAddress: string;             // 0x<64 hex> — must match cap.owner
+  promptHash: string;                   // 0x<64 hex lower>
+  expectedCapabilityVersion: string;    // u64 decimal
+}
+
+export interface InferResponse {
+  success: boolean;
+  result?: string;
+  resultHash?: string;                  // 0x<64 hex lower>
+  capabilityVersion?: string;           // u64 decimal (echoed from on-chain)
+  executionTimeMs?: number;
+  error?: string;
+  reason?: string;                      // structured reason on 4xx (e.g. 'prompt_hash_mismatch')
+}
+
+export interface ExecuteCapabilityRequest {
+  requestId: number;
+  promptHash: string;                   // 0x<64 hex lower>
+  resultHash: string;                   // 0x<64 hex lower>
+  result: string;                       // full result text — Lambda re-hashes to guard against host bugs
+  executionTimeMs: number;
+  model: string;
+  budgetId?: string | null;
+  capabilityId: string;
+  agentAddress: string;                 // 0x<64 hex> — sig recover target
+  principalAddress: string;             // 0x<64 hex> — must match cap.owner
+  expectedCapabilityVersion: string;    // u64 decimal
+  envelope: Record<string, unknown>;    // TraderEnvelopeMeta from runtime
+  lineage: Record<string, unknown>;
+  wake: Record<string, unknown>;
+  replay: Record<string, unknown>;
+  proposal: Record<string, unknown>;
+  envelopeHash: string;                 // 0x<64 hex lower> sha256(canonicalJson(envelope))
+  actionCallHash: string;               // 0x<64 hex lower>  PR1.A: 0x00...00 (zero bytes)
+  sig2: string;                         // base64 Sui personal-message signature
+  // PR1.A: MUST be null. PR1.5 will enable.
+  actionCall: null;
+  escrow: null;
+  spend: null;
+  purpose?: string | null;
+  constraints?: string | null;
+  triggeredBy?: string | null;
+  triggeredAction?: string | null;
+}
+
+export interface ExecuteCapabilityResponse {
+  success: boolean;
+  requestId?: number;
+  resultHash?: string;
+  txDigest?: string;
+  capabilityVersion?: string;
+  executionTimeMs?: number;
+  error?: string;
+  reason?: string;
+}

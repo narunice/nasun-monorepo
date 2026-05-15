@@ -18,13 +18,17 @@ import { resolveStrategyPreset } from './presets/strategies.js';
 
 const STRATEGY = resolveStrategyPreset('hold_only');
 
+const TEST_ADDR = '0x' + 'a'.repeat(64);
+
 function buildInferInput(): InferRequest {
   return {
     requestId: 1,
     prompt: 'hi',
     model: 'llama-3.3-70b-versatile',
     capabilityId: '0xabc',
-    walletAddress: '0x' + 'a'.repeat(64),
+    principalAddress: TEST_ADDR,
+    promptHash: '0x' + 'a'.repeat(64),
+    expectedCapabilityVersion: '1',
   };
 }
 
@@ -34,14 +38,15 @@ function buildExecInput(extra: Partial<ExecuteCapabilityRequest> = {}): ExecuteC
   const proposal = buildCognitionProposal({ decision, paymentAmountRaw: 1_000_000n });
   return {
     requestId: 1,
-    resultHash: 'a'.repeat(64),
+    promptHash: '0x' + 'a'.repeat(64),
+    resultHash: '0x' + 'a'.repeat(64),
+    result: 'HOLD',
     executionTimeMs: 12,
-    spendToken: 'token',
-    nonce: 'b'.repeat(32),
-    expiresAt: Date.now() + 30_000,
     model: 'llama-3.3-70b-versatile',
     capabilityId: '0xabc',
-    walletAddress: '0x' + 'a'.repeat(64),
+    agentAddress: TEST_ADDR,
+    principalAddress: TEST_ADDR,
+    expectedCapabilityVersion: '1',
     envelope: buildAnalysisEnvelope({ decision, outcome: 2 }),
     lineage: intent.lineage,
     wake: buildHeartbeatWake(),
@@ -55,7 +60,12 @@ function buildExecInput(extra: Partial<ExecuteCapabilityRequest> = {}): ExecuteC
       actionType: proposal.actionType,
       paymentAmount: proposal.paymentAmount.toString(),
     },
+    envelopeHash: '0x' + 'c'.repeat(64),
+    actionCallHash: '0x' + '00'.repeat(32),
+    sig2: 'fake-sig-base64',
     actionCall: null,
+    escrow: null,
+    spend: null,
     ...extra,
   };
 }
@@ -72,29 +82,30 @@ describe('infer', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('posts /infer with base64 prompt and returns token fields', async () => {
+  it('posts /infer with base64 prompt + cap snapshot fields', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({
           success: true,
           result: '{"action":"HOLD","sizeNUSDC":0,"reason":"flat"}',
-          resultHash: 'a'.repeat(64),
+          resultHash: '0x' + 'a'.repeat(64),
           executionTimeMs: 11,
-          spendToken: 'tok',
-          nonce: 'b'.repeat(32),
-          expiresAt: 9_999_999_999,
+          capabilityVersion: '1',
         }),
         { status: 200, headers: { 'Content-Type': 'application/json' } },
       ),
     );
     const r = await infer('https://h', 'k', buildInferInput());
     expect(r.success).toBe(true);
-    expect(r.spendToken).toBe('tok');
-    expect(r.resultHash).toMatch(/^a+$/);
+    expect(r.capabilityVersion).toBe('1');
+    expect(r.resultHash).toMatch(/^0x[a]+$/);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('https://h/infer');
     const body = JSON.parse(init.body as string);
     expect(body.encryptedPrompt).toBe(Buffer.from('hi').toString('base64'));
+    expect(body.principalAddress).toBe(TEST_ADDR);
+    expect(body.promptHash).toBe('0x' + 'a'.repeat(64));
+    expect(body.expectedCapabilityVersion).toBe('1');
   });
 
   it('surfaces 403 preflight denial without retry', async () => {
@@ -123,7 +134,7 @@ describe('executeCapability', () => {
     globalThis.fetch = originalFetch;
   });
 
-  it('serialises cognition body with token fields and null actionCall', async () => {
+  it('serialises HOLD body with sig2 + null actionCall/escrow/spend', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(
         JSON.stringify({ success: true, txDigest: 'd', capabilityVersion: '3' }),
@@ -135,11 +146,16 @@ describe('executeCapability', () => {
     expect(r.txDigest).toBe('d');
     expect(r.capabilityVersion).toBe('3');
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.spendToken).toBe('token');
-    expect(body.resultHash).toMatch(/^a+$/);
+    expect(body.sig2).toBe('fake-sig-base64');
+    expect(body.resultHash).toMatch(/^0x[a]+$/);
+    expect(body.envelopeHash).toBe('0x' + 'c'.repeat(64));
+    expect(body.actionCallHash).toBe('0x' + '00'.repeat(32));
     expect(body.actionCall).toBeNull();
-    expect(body.escrow).toBeUndefined();
-    expect(body.spend).toBeUndefined();
+    expect(body.escrow).toBeNull();
+    expect(body.spend).toBeNull();
+    expect(body.agentAddress).toBe(TEST_ADDR);
+    expect(body.principalAddress).toBe(TEST_ADDR);
+    expect(body.expectedCapabilityVersion).toBe('1');
   });
 
   it('forwards execution payload (actionCall + escrow + spend)', async () => {
@@ -149,6 +165,10 @@ describe('executeCapability', () => {
         headers: { 'Content-Type': 'application/json' },
       }),
     );
+    // PR1.A: actionCall/escrow/spend are always null on the wire. The
+    // request-shape accepts non-null values for PR1.5 forward-compat but
+    // the host-client serialiser hard-codes null so a regression cannot
+    // accidentally bypass the demotion guard.
     await executeCapability('https://h', 'k', buildExecInput({
       actionCall: {
         targetPackage: '0xabc',
@@ -165,9 +185,9 @@ describe('executeCapability', () => {
       spend: { coinAssetType: 'T1', amount: '1000' },
     }));
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
-    expect(body.actionCall.fn).toBe('swap_exact_quote_for_base');
-    expect(body.escrow.objectId).toBe('0xescrow');
-    expect(body.spend.amount).toBe('1000');
+    expect(body.actionCall).toBeNull();
+    expect(body.escrow).toBeNull();
+    expect(body.spend).toBeNull();
   });
 
   it('surfaces 403 preflight denial without retry', async () => {
