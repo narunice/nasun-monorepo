@@ -196,11 +196,23 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
         </div>
         <div className="space-y-1">
           <label className={labelClass}>Model</label>
-          <select value={model} onChange={(e) => setModel(e.target.value)} className={inputClass}>
-            {MODELS.map((m) => <option key={m} value={m}>{m}</option>)}
-          </select>
+          <div
+            className={`${inputClass} flex items-center justify-between cursor-default`}
+            aria-readonly="true"
+          >
+            <span className="text-uju-secondary">Auto</span>
+            <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
+              Lambda Verified
+            </span>
+          </div>
         </div>
       </div>
+
+      <p className="text-sm text-uju-secondary/70 -mt-2">
+        Model and executor are auto-selected from a Lambda-verified pool for this
+        prototype. In a future iteration you&apos;ll be able to pick your own
+        model and executor directly.
+      </p>
 
       <div className="space-y-1">
         <label className={labelClass}>Strategy preset</label>
@@ -275,34 +287,15 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
 
       <div className="space-y-1">
         <label className={labelClass}>Executor</label>
-        {executorsLoading && activeExecutors.length === 0 ? (
-          <div className="px-3 py-2 text-xs rounded-lg bg-uju-bg/60 text-uju-secondary/70">Loading executors…</div>
-        ) : activeExecutors.length === 0 ? (
-          <div className="px-3 py-2 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            No active executors registered on the network.
-          </div>
-        ) : (
-          <select
-            value={executorAddress}
-            onChange={(e) => {
-              const op = e.target.value;
-              setExecutorAddress(op);
-              const found = activeExecutors.find((x) => x.operator === op);
-              setExecutorEndpoint(found?.endpointUrl || executorEndpoint);
-            }}
-            className={inputClass}
-          >
-            <option value="">— select an executor —</option>
-            {activeExecutors.map((ex) => (
-              <option key={ex.operator} value={ex.operator}>
-                {ex.name} · {ex.tierName} · rep {ex.reputation} · {ex.operator.slice(0, 8)}…
-              </option>
-            ))}
-          </select>
-        )}
-        {executorAddress && executorEndpoint && (
-          <p className="text-xs text-uju-secondary/70 font-mono">endpoint: {executorEndpoint}</p>
-        )}
+        <div
+          className={`${inputClass} flex items-center justify-between cursor-default`}
+          aria-readonly="true"
+        >
+          <span className="text-uju-secondary">Auto (weighted-random from Bronze+ pool)</span>
+          <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
+            Lambda Verified
+          </span>
+        </div>
       </div>
 
       <div className="space-y-1">

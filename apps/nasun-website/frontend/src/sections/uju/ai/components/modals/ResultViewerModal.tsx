@@ -10,6 +10,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAerResult } from '../../hooks/useAerResult';
 import type { AERRecord } from '../../hooks/useAerRecords';
 import { formatTimeDetailed } from '../../utils/format';
+import { NETWORK_CONFIG } from '../../services/network';
 
 interface ResultViewerModalProps {
   requestId: number;
@@ -193,9 +194,23 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between p-4 border-b border-uju-border/60 shrink-0">
-          <h2 id="result-viewer-title" className="text-sm font-semibold text-white">
-            AI Execution Result - #{requestId}
-          </h2>
+          <div className="flex items-center gap-2 min-w-0">
+            <h2 id="result-viewer-title" className="text-sm font-semibold text-white">
+              AI Execution Result - #{requestId}
+            </h2>
+            <a
+              href={`${NETWORK_CONFIG.explorerUrl}/object/${record.id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded border border-uju-border/60 text-uju-secondary hover:text-white hover:border-pado-2/50 transition-colors"
+              title="View AER object on Nasun Explorer"
+            >
+              Explorer
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          </div>
           <button
             type="button"
             onClick={onClose}
