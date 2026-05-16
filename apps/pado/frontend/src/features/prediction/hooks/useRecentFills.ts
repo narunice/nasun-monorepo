@@ -12,6 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import type { EventId } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { ORDER_FILLED_EVENT } from '../constants';
 import type { RecentFill } from '../types';
@@ -24,7 +25,7 @@ const DUST_COST_THRESHOLD = 500_000n; // 0.5 NUSDC at 6 decimals
 async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
   const client = getSuiClient();
   const fills: RecentFill[] = [];
-  let cursor: string | null | undefined = undefined;
+  let cursor: EventId | null | undefined = undefined;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const result = await client.queryEvents({

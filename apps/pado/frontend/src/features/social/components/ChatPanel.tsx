@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useRef } from 'react';
 import { useSignerAddress } from '@nasun/wallet';
 import { useChat } from '../hooks/useChat';
 import { ChatMessageList } from './ChatMessageList';

@@ -122,7 +122,6 @@ interface UsePredictionTradeResult {
     maxPriceBps: number,
     restOnNoFill: boolean,
     amountUnits: bigint,
-    shortfallUnits: bigint,
   ) => Promise<TradeResult>;
   placeSellTaker: (
     marketId: string,
