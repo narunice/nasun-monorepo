@@ -27,10 +27,12 @@ interface ChainConfig {
   iconText: string;
 }
 
-// SUI / Solana are paste-linked (display-only addresses). Ethereum is
-// rendered separately as EthereumVerifiedRow below — EVM requires an
-// ownership signature (RainbowKit + signed challenge) since the 2026-05-16
-// security fix; the paste flow was permanently deprecated for EVM.
+// SUI is paste-linked (display-only address). Ethereum and Solana are
+// rendered separately (EthereumVerifiedRow + the verified Solana section
+// inside AdditionalWalletsCard) -- both require an ownership signature.
+// The Solana paste flow was retired from this surface on 2026-05-17 once
+// the auth-solana-additional Lambda landed; legacy `linkedSolanaAddress`
+// values keep rendering in WalletBalanceCard but cannot be added here.
 const CHAINS: ChainConfig[] = [
   {
     chain: "sui",
@@ -38,13 +40,6 @@ const CHAINS: ChainConfig[] = [
     symbol: "S",
     iconBg: "bg-pado-2/15",
     iconText: "text-pado-2",
-  },
-  {
-    chain: "solana",
-    label: "Solana",
-    symbol: "◎",
-    iconBg: "bg-pado-4/15",
-    iconText: "text-pado-4",
   },
 ];
 

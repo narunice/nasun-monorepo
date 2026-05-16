@@ -92,13 +92,16 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ classNam
   }, [removingAddress]);
 
   const solVerified = useVerifiedSolanaAddresses();
+  const user = useUserStore((s) => s.user);
 
-  // Hide entirely when there's no verified primary of either chain.
-  // Primary verification flows live in the chain-specific entry points
-  // (UjuConnectedAccountsCard for EVM, and the Solana wallet picker for
-  // Solana). This card is the management surface once at least one
-  // verified primary exists.
-  if (verified.length === 0 && solVerified.length === 0) return null;
+  // Require a signed-in user but otherwise always render. The EVM section
+  // is internally gated on `verified.length > 0` (its primary is set up by
+  // EthereumVerifiedRow in the profile Connected Accounts card), so for
+  // users with no EVM verified primary the EVM block stays hidden. The
+  // Solana section, in contrast, hosts BOTH the first-verify CTA and the
+  // additional-wallet management, so it must always be reachable -- the
+  // legacy paste flow for Solana was retired here on 2026-05-17.
+  if (!user) return null;
 
   const extras = verified.filter((e) => !e.isPrimary);
   const cap = 5;
