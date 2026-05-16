@@ -54,19 +54,21 @@ export const wagmiConfig = createConfig({
   connectors,
   chains,
   transports: {
+    // Alchemy is intentionally last (safety net) to minimize paid CU consumption.
+    // viem fallback tries transports in order; Alchemy is only hit when every public RPC fails.
     [mainnet.id]: fallback([
-      ...(alchemyKey ? [http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
       http("https://cloudflare-eth.com"),
       http("https://eth.merkle.io"),
       http("https://eth.drpc.org"),
       http("https://rpc.mevblocker.io"),
+      ...(alchemyKey ? [http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
     ]),
     [sepolia.id]: fallback([
-      ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
       http("https://ethereum-sepolia-rpc.publicnode.com"),
       http("https://sepolia.drpc.org"),
       http("https://1rpc.io/sepolia"),
       http("https://rpc.sepolia.org"),
+      ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
     ]),
   },
 });
