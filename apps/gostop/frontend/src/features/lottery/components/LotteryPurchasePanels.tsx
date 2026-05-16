@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { LOTTERY_MAX_NUMBER, LOTTERY_NUMBERS_COUNT } from "../../../lib/gostop-config";
 import { Spinner } from "../../../components/shared/GameUI";
 
@@ -158,6 +159,16 @@ export function QuickBuyPanel({
       : isBuying
         ? "Submitting transaction"
         : "Auto-picks 5 unique numbers per ticket and buys in one transaction";
+
+  // Track which specific quantity the user clicked so the spinner shows
+  // only on that button. Without this the parent's `isBuying` flag would
+  // light up the spinner on all three Buy buttons simultaneously and the
+  // user loses track of which count they actually triggered.
+  const [pendingCount, setPendingCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (!isBuying) setPendingCount(null);
+  }, [isBuying]);
+
   return (
     <section className="panel p-7">
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3 mb-5">
@@ -168,19 +179,30 @@ export function QuickBuyPanel({
         <p className="text-sm text-neutral-200">5.00 NUSDC each</p>
       </div>
       <div className="flex flex-wrap gap-3">
-        {options.map((n) => (
-          <button
-            key={n}
-            onClick={() => onQuickBuy(n)}
-            disabled={disabled}
-            className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
-            title={hint}
-          >
-            {isBuying && <Spinner className="h-4 w-4" />}
-            <span className="font-semibold">Buy {n}</span>
-            <span className="ml-2 font-mono text-gold-200">{(n * 5).toFixed(2)} NUSDC</span>
-          </button>
-        ))}
+        {options.map((n) => {
+          const thisPending = isBuying && pendingCount === n;
+          return (
+            <button
+              key={n}
+              onClick={() => {
+                // Re-entry guard: parent's `isBuying` flips asynchronously,
+                // so between the click and the parent commit there's a
+                // window where a second rapid click would queue another
+                // tx. Local pendingCount short-circuits that race.
+                if (pendingCount !== null) return;
+                setPendingCount(n);
+                onQuickBuy(n);
+              }}
+              disabled={disabled || pendingCount !== null}
+              className="btn-ghost !py-3 !px-5 text-sm disabled:opacity-70 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              title={hint}
+            >
+              {thisPending && <Spinner className="h-4 w-4" />}
+              <span className="font-semibold">Buy {n}</span>
+              <span className="ml-2 font-mono text-gold-200">{(n * 5).toFixed(2)} NUSDC</span>
+            </button>
+          );
+        })}
       </div>
     </section>
   );

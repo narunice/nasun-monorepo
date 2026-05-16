@@ -16,6 +16,7 @@ const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   { value: 'numbermatch', label: 'Match' },
   { value: 'lottery', label: 'Lottery' },
   { value: 'mines', label: 'Mines' },
+  { value: 'wheel', label: 'Wheel' },
   // Crash chip is shown whenever the build flag is on so users with prod
   // history can filter to it. v2.3 dropped the per-environment chip-gate.
   ...(ENABLE_CRASH ? [{ value: 'crash' as const, label: 'Crash' }] : []),

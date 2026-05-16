@@ -60,7 +60,7 @@ async function loadConfetti(): Promise<ConfettiFn | null> {
   }
 }
 
-async function fireSmall(colors: string[]) {
+async function fireSmall(colors: string[], zIndex: number) {
   const confetti = await loadConfetti()
   if (!confetti) return
   await confetti({
@@ -68,13 +68,13 @@ async function fireSmall(colors: string[]) {
     spread: 90,
     origin: { x: 0.5, y: 0.6 },
     colors,
-    zIndex: Z_INDEX,
+    zIndex,
     scalar: 1.1,
     disableForReducedMotion: true,
   })
 }
 
-async function fireMedium(colors: string[]) {
+async function fireMedium(colors: string[], zIndex: number) {
   const confetti = await loadConfetti()
   if (!confetti) return
 
@@ -84,7 +84,7 @@ async function fireMedium(colors: string[]) {
     origin: { x: 0.5, y: 0.5 },
     colors,
     scalar: 1.15,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 
@@ -98,7 +98,7 @@ async function fireMedium(colors: string[]) {
     colors,
     scalar: 1.15,
     startVelocity: 55,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 
@@ -110,12 +110,12 @@ async function fireMedium(colors: string[]) {
     colors,
     scalar: 1.15,
     startVelocity: 55,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 }
 
-async function fireLarge(colors: string[]) {
+async function fireLarge(colors: string[], zIndex: number) {
   const confetti = await loadConfetti()
   if (!confetti) return
 
@@ -126,7 +126,7 @@ async function fireLarge(colors: string[]) {
     colors,
     scalar: 1.3,
     startVelocity: 55,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 
@@ -139,7 +139,7 @@ async function fireLarge(colors: string[]) {
     colors,
     scalar: 1.25,
     startVelocity: 60,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 
@@ -152,7 +152,7 @@ async function fireLarge(colors: string[]) {
     colors,
     scalar: 1.25,
     startVelocity: 60,
-    zIndex: Z_INDEX,
+    zIndex,
     disableForReducedMotion: true,
   })
 
@@ -163,7 +163,7 @@ async function fireLarge(colors: string[]) {
     origin: { x: 0.5, y: 0 },
     shapes: ['star'],
     colors,
-    zIndex: Z_INDEX,
+    zIndex,
     scalar: 1.5,
     gravity: 0.7,
     disableForReducedMotion: true,
@@ -177,7 +177,7 @@ async function fireLarge(colors: string[]) {
     origin: { x: 0.5, y: 0.5 },
     shapes: ['circle'],
     colors,
-    zIndex: Z_INDEX,
+    zIndex,
     scalar: 1.4,
     disableForReducedMotion: true,
   })
@@ -186,22 +186,24 @@ async function fireLarge(colors: string[]) {
 export async function fireCelebration(
   preset: CelebrationPreset,
   colors?: string[],
+  zIndex: number = Z_INDEX,
 ): Promise<void> {
   if (prefersReducedMotion()) return
   const resolvedColors = colors ?? GOLD
   switch (preset) {
     case 'small':
-      return fireSmall(resolvedColors)
+      return fireSmall(resolvedColors, zIndex)
     case 'medium':
-      return fireMedium(resolvedColors)
+      return fireMedium(resolvedColors, zIndex)
     case 'large':
-      return fireLarge(resolvedColors)
+      return fireLarge(resolvedColors, zIndex)
   }
 }
 
 export async function fireConfettiRain(
   intensity: ConfettiRainIntensity = 'medium',
   colors?: string[],
+  zIndex: number = Z_INDEX,
 ): Promise<void> {
   if (prefersReducedMotion()) return
   const confetti = await loadConfetti()
@@ -235,7 +237,7 @@ export async function fireConfettiRain(
         gravity: 0.85,
         decay: 0.95,
         ticks: 420,
-        zIndex: Z_INDEX,
+        zIndex,
         scalar: isLarge ? 1.2 : 1.0,
         disableForReducedMotion: true,
       })
