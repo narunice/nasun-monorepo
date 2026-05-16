@@ -160,15 +160,14 @@ export const WheelCanvas = forwardRef<SVGGElement, WheelCanvasProps>(
             filter="url(#goldShadow)"
           />
 
-          {/* Rotating group — animation hook mutates style.transform here. */}
-          <g
-            ref={ref}
-            style={{
-              transformOrigin: `${CENTER}px ${CENTER}px`,
-              transform: 'rotate(0deg)',
-              willChange: 'transform',
-            }}
-          >
+          {/* Rotating group — animation hook mutates the SVG `transform`
+              attribute here via setAttribute. The attribute is intentionally
+              NOT controlled by React props: if we passed `transform={...}` on
+              every render, React's reconciler would reset the inline value
+              every time the parent re-renders, wiping the rAF mutation. SVG
+              defaults to the identity transform when the attribute is
+              missing, which matches our zero starting rotation. */}
+          <g ref={ref} style={{ willChange: 'transform' }}>
             {slices.map((s) => {
               const pulsing = pulseSegmentIndex === s.i;
               return (
@@ -204,7 +203,9 @@ export const WheelCanvas = forwardRef<SVGGElement, WheelCanvasProps>(
               );
             })}
 
-            {/* Hub */}
+            {/* Hub — mirrors apps/gostop/frontend/public/favicon.svg
+                (gold disc + italic Playfair "G"). Stays inside the
+                rotating <g> so the brand mark spins with the wheel. */}
             <circle
               cx={CENTER}
               cy={CENTER}
@@ -213,18 +214,27 @@ export const WheelCanvas = forwardRef<SVGGElement, WheelCanvasProps>(
               stroke="#5d4710"
               strokeWidth={2}
             />
+            <circle
+              cx={CENTER}
+              cy={CENTER}
+              r={HUB_R - 2}
+              fill="none"
+              stroke="#fef3c2"
+              strokeOpacity={0.4}
+              strokeWidth={1.5}
+            />
             <text
               x={CENTER}
-              y={CENTER + 2}
+              y={CENTER + 6}
               textAnchor="middle"
               dominantBaseline="middle"
               fontFamily="Playfair Display, Georgia, serif"
               fontStyle="italic"
               fontWeight={700}
-              fontSize={22}
-              fill="#0b0b10"
+              fontSize={62}
+              fill="#07070a"
             >
-              nasun
+              G
             </text>
           </g>
 
