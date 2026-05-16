@@ -8,6 +8,7 @@ import {
 } from "./appRegistry";
 import { APP_MISSION_MAP, MAX_DAILY_MISSIONS } from "../missions/missionRegistry";
 import { useUjuAppDirectory } from "./UjuAppDirectoryProvider";
+import { AppWalletBindingSection, isEvmBindableChain } from "./AppWalletBindingSection";
 
 interface UjuAppDetailsModalProps {
   app: AppEntry | null;
@@ -189,6 +190,19 @@ export const UjuAppDetailsModal: FC<UjuAppDetailsModalProps> = ({
                 No active engagement options available for this app yet.
               </p>
             </div>
+          )}
+
+          {/* Per-app wallet binding picker — EVM chains only. Mounted in
+              both this mission modal and the activity-tab info modal so
+              the user can switch the bound wallet from wherever they
+              opened the app's surface. Section self-gates on chain and on
+              whether the user has verified additional wallets. */}
+          {!isComingSoon && isEvmBindableChain(app.chain) && (
+            <AppWalletBindingSection
+              appId={app.id}
+              appName={app.name}
+              chain={app.chain}
+            />
           )}
         </div>
       </div>

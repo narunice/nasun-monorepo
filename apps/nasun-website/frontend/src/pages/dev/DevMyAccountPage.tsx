@@ -44,6 +44,7 @@ import { EcosystemPointsCard } from "../../sections/myAccount/EcosystemPointsCar
 import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
+import { AdditionalWalletsCard } from "../../sections/myAccount/AdditionalWalletsCard";
 import { NftShowcaseCard } from "../../sections/myAccount/NftShowcaseCard";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
 // import { GenesisDropCard } from "../../sections/myAccount/GenesisDropCard";
@@ -383,6 +384,15 @@ const DevMyAccountPage = () => {
           </ErrorBoundary>
 
           <BugReportsCard className="order-9 lg:order-none col-span-1" />
+
+          {/* Additional verified EVM wallets (hidden when none verified) */}
+          <ErrorBoundary
+            fallback={<div>{t("error.generic", { ns: "common" })}</div>}
+          >
+            <Suspense fallback={<SectionLoading showLayout={false} />}>
+              <AdditionalWalletsCard className="order-10 lg:order-none col-span-1 md:col-span-2 lg:col-span-3" />
+            </Suspense>
+          </ErrorBoundary>
 
           {/* DangerZone (full width) */}
           <ErrorBoundary

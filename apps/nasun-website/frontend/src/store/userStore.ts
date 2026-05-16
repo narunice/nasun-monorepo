@@ -1,6 +1,18 @@
 import { create } from 'zustand';
 import logger from '../lib/logger';
 
+/**
+ * A signature-verified secondary EVM address bound to the user's primary
+ * MetaMask link. Each entry is proven via EIP-191 personal_sign with a
+ * message that embeds the address and optional appId (replay-resistant).
+ * Mirrors `VerifiedAdditionalEvmAddress` in `@nasun/profile-core`.
+ */
+export interface VerifiedAdditionalEvmAddress {
+  walletAddress: string;
+  verifiedAt: number;
+  label?: string;
+}
+
 // Linked account information
 export interface LinkedAccount {
   identityId?: string;
@@ -17,6 +29,15 @@ export interface LinkedAccount {
   walletAddress?: string;
   // Manual EVM address entry (no signature verification)
   manualEntry?: boolean;
+  // MetaMask-only: unix epoch ms of primary signature verification.
+  verifiedAt?: number;
+  // MetaMask-only: secondary EVM addresses, each independently
+  // signature-verified. Capped at 5 entries server-side.
+  additionalAddresses?: VerifiedAdditionalEvmAddress[];
+  // MetaMask-only: per-dApp address binding. Key is a short app id
+  // (e.g. "uniswap", "hyperliquid"); value is one of the verified
+  // wallet addresses (primary or an additionalAddresses entry).
+  appBindings?: Record<string, string>;
 }
 
 // Simplified UserData interface for Identity Pool logins

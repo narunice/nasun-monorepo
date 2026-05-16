@@ -258,6 +258,80 @@ export class AuthStack extends cdk.Stack {
     });
 
     // ========================================
+    // MetaMask Additional Address API (per-app verified EVM binding)
+    // ========================================
+    //
+    // Separate Lambda from auth-metamask: this surface requires a Cognito
+    // JWT (user must already be logged in) and only mutates the existing
+    // profile's metamask map. The auth-metamask Lambda above is unauth and
+    // mints new identities — different threat model, different IAM scope.
+    // Nonce table is shared via key prefix `additional:{nonce}`.
+
+    const metamaskAdditionalFunction = new NodejsFunction(this, 'MetaMaskAdditionalFunction', {
+      functionName: 'nasun-auth-metamask-additional',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'auth-metamask-additional', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions,
+      timeout: cdk.Duration.seconds(15),
+      environment: {
+        NONCE_TABLE_NAME: nonceTable.tableName,
+        USER_PROFILES_TABLE: props.userProfilesTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: (() => {
+          const poolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+          if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for additional-address JWT auth');
+          return poolId;
+        })(),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logGroup: new logs.LogGroup(this, 'MetaMaskAdditionalLambdaLogGroup', {
+        logGroupName: '/aws/lambda/nasun-auth-metamask-additional',
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    nonceTable.grantReadWriteData(metamaskAdditionalFunction);
+    props.userProfilesTable.grantReadWriteData(metamaskAdditionalFunction);
+
+    const metamaskAdditionalApi = new apigw.RestApi(this, 'MetaMaskAdditionalApi', {
+      restApiName: 'MetaMask Additional Address API',
+      description: 'JWT-authed endpoints for verifying secondary EVM addresses and per-app bindings',
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      deployOptions: {
+        throttlingBurstLimit: 100,
+        throttlingRateLimit: 50,
+      },
+    });
+
+    // Path layout mirrors the handoff spec (`/additional-address/challenge`
+    // etc.). The Lambda's internal router matches on path suffix so the
+    // same code works regardless of mount depth.
+    const additional = metamaskAdditionalApi.root.addResource('additional-address');
+    additional.addMethod('DELETE', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    const additionalChallenge = additional.addResource('challenge');
+    additionalChallenge.addMethod('POST', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    const additionalVerify = additional.addResource('verify');
+    additionalVerify.addMethod('POST', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    const additionalLabel = additional.addResource('label');
+    additionalLabel.addMethod('PATCH', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+
+    const appBinding = metamaskAdditionalApi.root.addResource('app-binding');
+    appBinding.addMethod('PATCH', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+
+    new cdk.CfnOutput(this, 'MetaMaskAdditionalApiUrl', {
+      value: metamaskAdditionalApi.url,
+      description: 'The URL of the MetaMask Additional Address API',
+      exportName: 'MetaMaskAdditionalApiUrl',
+    });
+
+    // ========================================
     // zkLogin Authentication (2026-01-01 추가)
     // ========================================
 
@@ -449,6 +523,7 @@ export class AuthStack extends cdk.Stack {
     const wafTargets: { id: string; api: apigw.RestApi }[] = [
       { id: 'TwitterAuthWafAssociation', api: twitterAuthApi },
       { id: 'MetaMaskAuthWafAssociation', api: this.metamaskAuthApi },
+      { id: 'MetaMaskAdditionalWafAssociation', api: metamaskAdditionalApi },
       { id: 'ZkLoginAuthWafAssociation', api: this.zkLoginAuthApi },
       { id: 'SuiAuthWafAssociation', api: this.suiAuthApi },
     ];

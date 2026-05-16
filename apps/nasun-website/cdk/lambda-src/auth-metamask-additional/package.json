@@ -1,0 +1,21 @@
+{
+  "name": "auth-metamask-additional",
+  "version": "1.0.0",
+  "description": "JWT-authed Lambda for verifying additional EVM addresses + per-app binding (Nasun website)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.x",
+    "@aws-sdk/lib-dynamodb": "^3.x",
+    "ethers": "^6.11.0",
+    "jose": "^5.x"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.x",
+    "@types/node": "^20.x",
+    "typescript": "^5.x"
+  }
+}
