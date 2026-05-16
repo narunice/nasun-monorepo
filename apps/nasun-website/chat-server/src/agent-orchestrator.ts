@@ -17,7 +17,12 @@ const exec = promisify(execFile);
 const PM2_BIN = process.env.PM2_BIN ?? '/usr/bin/pm2';
 const PM2_HOME = process.env.PM2_HOME ?? '/home/ec2-user/.pm2';
 const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD ?? '/home/ec2-user/nasun-ai-runtime';
-const ECOSYSTEM_TEMPLATE = `${RUNTIME_CWD}/ecosystem.agent-template.cjs`;
+// Filename must end in `.config.cjs` so pm2 auto-detects it as an ecosystem
+// config. With any other suffix pm2 falls back to script mode, runs the file
+// as a regular Node script (apps[] just becomes module.exports), and never
+// executes src/index.ts — so the wake server never binds and the agent never
+// registers in baram_agent_endpoints.
+const ECOSYSTEM_TEMPLATE = `${RUNTIME_CWD}/agent-template.config.cjs`;
 
 const PORT_BASE = 4401;          // 4400 reserved for legacy nasun-ai-runtime
 const PORT_MAX = 4500;
