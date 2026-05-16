@@ -5,6 +5,7 @@ import lotteryThumb from '../assets/images/lottery.webp'
 import scratchThumb from '../assets/images/scratchcard.webp'
 import numberMatchThumb from '../assets/images/number-match.webp'
 import minesThumb from '../assets/images/mines.webp'
+import wheelThumb from '../assets/images/wheel.webp'
 
 interface LiveGame {
   title: string
@@ -63,6 +64,14 @@ const LIVE_GAMES: LiveGame[] = [
     thumb: crashThumb,
     maintenance: !ENABLE_CRASH,
   },
+  {
+    title: 'Wheel',
+    tagline:
+      'A 20-segment wheel of fortune. Place your bet, pull once, and a VRF roll picks your segment. Payouts up to 5x land in the same transaction. RTP 97.5%.',
+    cta: 'Spin',
+    to: '/wheel',
+    thumb: wheelThumb,
+  },
 ]
 
 const UPCOMING_GAMES: UpcomingGame[] = [
@@ -77,12 +86,6 @@ const UPCOMING_GAMES: UpcomingGame[] = [
     tagline:
       'Classic European single-zero roulette settled fully on chain. Bet on numbers, splits, colors, columns, or dozens, then watch the wheel decide. Multiplayer table coming.',
     eta: 'Phase 4',
-  },
-  {
-    title: 'Wheel',
-    tagline:
-      'A nightly community wheel. Stake to enter, spin together at the daily cutoff, and split a pooled prize. Bigger stakes, bigger slices, with weekly mega rounds layered on top.',
-    eta: 'Phase 5',
   },
 ]
 
