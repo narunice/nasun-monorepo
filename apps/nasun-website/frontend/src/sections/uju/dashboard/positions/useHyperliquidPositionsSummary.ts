@@ -5,9 +5,10 @@
 // EVM address from useValidEvmAddress is the user identifier.
 //
 // Aggregates the bits the dashboard card needs: open perp count, total
-// notional in USD, summed unrealized PnL, account value, and the count of
-// non-zero spot balances. Per-position detail is intentionally not surfaced
-// here (v1 scope); follow-up PR can add a modal that re-fetches on demand.
+// notional in USD, summed unrealized PnL, account value, count of non-zero
+// spot balances, and (2026-05-16 handoff) total spot holdings in USD via
+// spotMetaAndAssetCtxs mid prices — this is the Capital row that lets the
+// user compare Hyperliquid against Pado at a glance.
 //
 // Rate-limit hygiene: 5-minute staleTime, 10-minute refetch interval, no
 // window-focus refetch. Hyperliquid's per-IP limit is generous but a
@@ -21,7 +22,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { HYPERLIQUID_INFO_URL } from "./hyperliquidConfig";
-import { useValidEvmAddress } from "./useValidEvmAddress";
+import { useValidEvmAddressForApp } from "./useValidEvmAddressForApp";
 
 export interface HyperliquidPositionsSummary {
   isLoading: boolean;
@@ -32,6 +33,10 @@ export interface HyperliquidPositionsSummary {
   unrealizedPnlUsd: number;
   accountValueUsd: number;
   spotCount: number;
+  // USD value of all non-zero spot balances, valued at mid prices from
+  // spotMetaAndAssetCtxs. USDC contributes at $1; any token whose USDC pair
+  // is not in the meta is skipped (treated as 0 USD) rather than guessed.
+  spotHoldingsUsd: number;
   error: string | null;
 }
 
@@ -47,11 +52,38 @@ interface ClearinghouseStateResponse {
   }>;
 }
 
-interface SpotClearinghouseStateResponse {
-  balances?: Array<{
-    total?: string;
-  }>;
+interface SpotBalance {
+  coin?: string;
+  total?: string;
 }
+
+interface SpotClearinghouseStateResponse {
+  balances?: SpotBalance[];
+}
+
+interface SpotMetaToken {
+  name: string;
+  index: number;
+}
+
+interface SpotMetaUniverse {
+  name: string;
+  tokens: [number, number];
+}
+
+interface SpotMetaResponse {
+  tokens?: SpotMetaToken[];
+  universe?: SpotMetaUniverse[];
+}
+
+interface SpotAssetCtx {
+  midPx?: string;
+  markPx?: string;
+}
+
+// `spotMetaAndAssetCtxs` returns a 2-tuple: [meta, ctxs[]] where ctxs is
+// index-aligned with meta.universe.
+type SpotMetaAndAssetCtxs = [SpotMetaResponse, SpotAssetCtx[]];
 
 async function postInfo<T>(body: object): Promise<T> {
   const res = await fetch(HYPERLIQUID_INFO_URL, {
@@ -71,8 +103,39 @@ function safeParseFloat(s: string | undefined): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// Build a {tokenName -> midPriceUsd} map from spotMetaAndAssetCtxs.
+// USDC implicitly maps to $1 since it is the quote in every pair the user
+// can realistically hold balance in on HyperCore spot.
+function buildMidPriceMap(
+  meta: SpotMetaResponse,
+  ctxs: SpotAssetCtx[],
+): Map<string, number> {
+  const map = new Map<string, number>();
+  map.set("USDC", 1);
+  const tokens = meta.tokens ?? [];
+  const universe = meta.universe ?? [];
+  for (let i = 0; i < universe.length; i++) {
+    const entry = universe[i];
+    const ctx = ctxs[i];
+    if (!entry || !ctx) continue;
+    const baseTok = tokens[entry.tokens[0]];
+    const quoteTok = tokens[entry.tokens[1]];
+    if (!baseTok || !quoteTok) continue;
+    // Only USDC-quoted pairs are directly usable as a USD valuation source.
+    // Other quote tokens (rare on HyperCore spot) would need a graph walk;
+    // skip them for v1 — the affected balance just renders at 0 USD which
+    // matches "we don't know what it's worth" better than guessing.
+    if (quoteTok.name !== "USDC") continue;
+    const mid = safeParseFloat(ctx.midPx) || safeParseFloat(ctx.markPx);
+    if (mid > 0 && !map.has(baseTok.name)) {
+      map.set(baseTok.name, mid);
+    }
+  }
+  return map;
+}
+
 export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
-  const owner = useValidEvmAddress();
+  const owner = useValidEvmAddressForApp("hyperliquid");
 
   const query = useQuery({
     queryKey: ["hyperliquid-positions", owner],
@@ -89,13 +152,14 @@ export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
           unrealizedPnlUsd: 0,
           accountValueUsd: 0,
           spotCount: 0,
+          spotHoldingsUsd: 0,
         };
       }
 
       // allSettled so a single failing endpoint (rate-limit, transient
       // network) doesn't blank the whole card — the surviving half still
       // renders. Each side defaults to "no data" on failure.
-      const [perpResult, spotResult] = await Promise.allSettled([
+      const [perpResult, spotResult, spotMetaResult] = await Promise.allSettled([
         postInfo<ClearinghouseStateResponse>({
           type: "clearinghouseState",
           user: owner,
@@ -104,12 +168,15 @@ export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
           type: "spotClearinghouseState",
           user: owner,
         }),
+        postInfo<SpotMetaAndAssetCtxs>({ type: "spotMetaAndAssetCtxs" }),
       ]);
 
       const perp =
         perpResult.status === "fulfilled" ? perpResult.value : undefined;
       const spot =
         spotResult.status === "fulfilled" ? spotResult.value : undefined;
+      const spotMetaPair =
+        spotMetaResult.status === "fulfilled" ? spotMetaResult.value : undefined;
 
       const positions = perp?.assetPositions ?? [];
       const unrealizedPnlUsd = positions.reduce(
@@ -118,12 +185,25 @@ export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
       );
 
       const balances = spot?.balances ?? [];
-      const spotCount = balances.filter(
+      const nonZeroBalances = balances.filter(
         (b) => safeParseFloat(b.total) > 0,
-      ).length;
+      );
+      const spotCount = nonZeroBalances.length;
 
-      // Only treat as a hard error when both halves failed — partial
-      // success still renders something useful.
+      let spotHoldingsUsd = 0;
+      if (spotMetaPair) {
+        const [meta, ctxs] = spotMetaPair;
+        const midPrices = buildMidPriceMap(meta, ctxs);
+        for (const b of nonZeroBalances) {
+          const total = safeParseFloat(b.total);
+          const price = b.coin ? (midPrices.get(b.coin) ?? 0) : 0;
+          spotHoldingsUsd += total * price;
+        }
+      }
+
+      // Treat as hard error only when the user-state endpoints both failed.
+      // Mid-price meta failing on its own just drops the USD valuation to 0
+      // and we still render the holding count.
       if (
         perpResult.status === "rejected" &&
         spotResult.status === "rejected"
@@ -139,6 +219,7 @@ export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
         unrealizedPnlUsd,
         accountValueUsd: safeParseFloat(perp?.marginSummary?.accountValue),
         spotCount,
+        spotHoldingsUsd,
       };
     },
   });
@@ -156,6 +237,7 @@ export function useHyperliquidPositionsSummary(): HyperliquidPositionsSummary {
     unrealizedPnlUsd: data?.unrealizedPnlUsd ?? 0,
     accountValueUsd: data?.accountValueUsd ?? 0,
     spotCount,
+    spotHoldingsUsd: data?.spotHoldingsUsd ?? 0,
     error: query.isError
       ? query.error instanceof Error
         ? query.error.message

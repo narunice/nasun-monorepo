@@ -1,22 +1,25 @@
 // PadoPositionsCard
 //
-// Ecosystem-positions surface for Pado. Shows just the summary counts the
-// user needs to know "do I have anything open on Pado right now":
-// prediction positions and spot DeepBook orders today; perp and lending land
-// once those products launch publicly. TP/SL is not part of "spot orders"
-// here — see the rationale in usePadoSpotOrdersSummary.ts.
+// Ecosystem-positions surface for Pado. The card now leads with a "Pado
+// Balance" Capital row (BM NUSDC + MarginAccount NUSDC) so the user can
+// compare capital parked in Pado against other dApps at a glance — see the
+// 2026-05-16 handoff for the unification rationale. Activity (prediction
+// positions, spot orders) follows as secondary rows.
 
 import { UjuButton, UjuCard } from "../../shared";
 import { formatNusdcAsUsd } from "./format";
+import { usePadoBalanceSummary } from "./usePadoBalanceSummary";
 import { usePadoPredictionSummary } from "./usePadoPredictionSummary";
 import { usePadoSpotOrdersSummary } from "./usePadoSpotOrdersSummary";
 
 const PADO_URL = "https://pado.finance";
 
 export function PadoPositionsCard() {
+  const balance = usePadoBalanceSummary();
   const prediction = usePadoPredictionSummary();
   const spot = usePadoSpotOrdersSummary();
 
+  const hasBalance = balance.totalNusdcRaw > 0n;
   const hasPrediction = prediction.count > 0;
   const hasSpot = spot.count > 0;
 
@@ -37,6 +40,19 @@ export function PadoPositionsCard() {
       </div>
 
       <div className="mt-5 flex flex-col divide-y divide-uju-border/40">
+        <PositionRow
+          label="Pado Balance"
+          countText={
+            balance.isLoading
+              ? "—"
+              : hasBalance
+                ? formatNusdcAsUsd(balance.totalNusdcRaw)
+                : "$0.00"
+          }
+          // Base-token (NBTC/NETH/NSOL) balances are not included; see
+          // usePadoBalanceSummary for the scope note.
+          valueText=""
+        />
         <PositionRow
           label="Prediction Positions"
           countText={

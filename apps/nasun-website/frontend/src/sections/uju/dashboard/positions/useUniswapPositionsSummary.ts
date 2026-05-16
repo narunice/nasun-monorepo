@@ -24,7 +24,7 @@ import {
   NPM_ADDRESS,
   UNISWAP_POSITIONS_CHAIN_ID,
 } from "./uniswapConfig";
-import { useValidEvmAddress } from "./useValidEvmAddress";
+import { useValidEvmAddressForApp } from "./useValidEvmAddressForApp";
 
 export interface UniswapPositionsSummary {
   isLoading: boolean;
@@ -36,7 +36,7 @@ export interface UniswapPositionsSummary {
 }
 
 export function useUniswapPositionsSummary(): UniswapPositionsSummary {
-  const owner = useValidEvmAddress();
+  const owner = useValidEvmAddressForApp("uniswap");
   const publicClient = usePublicClient({ chainId: UNISWAP_POSITIONS_CHAIN_ID });
 
   const query = useQuery({
