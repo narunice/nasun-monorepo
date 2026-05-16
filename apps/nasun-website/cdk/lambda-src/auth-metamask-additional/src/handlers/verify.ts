@@ -37,7 +37,7 @@ export async function handleVerify(
   // A different caller cannot consume someone else's nonce.
   if (record.identityId !== identityId) {
     console.warn(
-      `[verify] identity mismatch — nonce.identityId=${record.identityId} caller=${identityId}`,
+      `[verify] identity mismatch -- nonce.identityId=${record.identityId} caller=${identityId}`,
     );
     return badRequest('Nonce identity mismatch', headers);
   }
