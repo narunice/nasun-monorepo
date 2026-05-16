@@ -239,8 +239,13 @@ function SolanaWalletsSection({ verified }: SolanaWalletsSectionProps) {
     addState.phase === "verifying";
 
   const installed = addState.installed;
+  // Only render a chain-specific CTA when the matching extension is
+  // actually installed. The previous fallback (`|| !showSolflareButton`)
+  // rendered a Phantom button when neither extension was present, which
+  // would always fail with "Phantom not installed". The hint at the
+  // bottom of the row covers the empty case instead.
+  const showPhantomButton = installed.includes("phantom");
   const showSolflareButton = installed.includes("solflare");
-  const showPhantomButton = installed.includes("phantom") || !showSolflareButton;
 
   return (
     <div className="mt-6 border-t border-uju-border/40 pt-5">

@@ -67,6 +67,16 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
         // 1) Connect to the picked wallet to learn the public key. We do
         // NOT trust this for ownership proof -- the actual proof is the
         // Ed25519 signature verified against the address server-side.
+        //
+        // INTENTIONAL: useSolanaSignMessage also calls adapter.connect()
+        // internally when `adapter.publicKey` is missing. Both Phantom
+        // and Solflare treat connect() as idempotent (the second call
+        // returns the cached pubkey with no second user-facing popup),
+        // so this is not a UX regression. We connect here separately
+        // so the local `signed.publicKey !== pubkey` check at L88 has
+        // a known-good baseline that the wallet did not silently switch
+        // accounts between connect and sign. Do NOT remove the outer
+        // connect call without also restructuring that defense.
         const pubkey = await connect(walletName);
         if (!pubkey) {
           // useSolanaWalletAdapter sets its own error; surface a generic
