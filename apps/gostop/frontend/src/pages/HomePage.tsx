@@ -6,10 +6,11 @@ import lotteryThumb from "../assets/images/lottery.webp";
 import scratchThumb from "../assets/images/scratchcard.webp";
 import numberMatchThumb from "../assets/images/number-match.webp";
 import minesThumb from "../assets/images/mines.webp";
+import wheelThumb from "../assets/images/wheel.webp";
 
 // Hero stat values — update manually
 const HERO_STATS = [
-  { value: "5", label: "Live Games" },
+  { value: "6", label: "Live Games" },
   { value: "3,347", label: "DAU with social accounts" },
   { value: "8m 42s", label: "Avg. Session" },
 ] as const;
@@ -30,7 +31,6 @@ const UPCOMING = [
     tagline: "The European wheel, on-chain.",
     eta: "Phase 4",
   },
-  { name: "Wheel", tagline: "A nightly spin, a daily chance.", eta: "Phase 5" },
 ];
 
 export default function HomePage() {
@@ -238,6 +238,14 @@ function Live() {
           to="/mines"
           accent="gold"
           thumb={minesThumb}
+        />
+        <GameCard
+          title="Wheel"
+          tagline="One pull, one VRF roll. Up to 5×."
+          cta="Spin"
+          to="/wheel"
+          accent="gold"
+          thumb={wheelThumb}
         />
       </div>
     </section>

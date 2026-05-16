@@ -2,7 +2,7 @@
  * Game History types.
  */
 
-export type GameType = 'scratch' | 'numbermatch' | 'lottery' | 'mines' | 'crash'
+export type GameType = 'scratch' | 'numbermatch' | 'lottery' | 'mines' | 'crash' | 'wheel'
 
 export type HistoryWindow = '7d' | '2w' | '4w' | '3m'
 

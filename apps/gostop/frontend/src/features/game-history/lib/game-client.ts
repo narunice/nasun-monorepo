@@ -15,6 +15,7 @@ import {
   NM_PLAYED_EVENT_TYPE,
   TICKET_PURCHASED_EVENT_TYPE,
   MINES_SESSION_FINISHED_EVENT_TYPE,
+  WHEEL_RESULT_EVENT_TYPE,
   ENABLE_CRASH,
 } from '../../../lib/gostop-config'
 import {
@@ -47,6 +48,7 @@ const EVENT_TYPES = {
   nm: NM_PLAYED_EVENT_TYPE,
   ticket: TICKET_PURCHASED_EVENT_TYPE,
   minesFinished: MINES_SESSION_FINISHED_EVENT_TYPE,
+  wheel: WHEEL_RESULT_EVENT_TYPE,
 }
 const ALL_EVENT_TYPES = new Set(Object.values(EVENT_TYPES).filter((s) => s.length > 0))
 
@@ -55,6 +57,7 @@ interface RawEvents {
   numbermatch: SuiEvent[]
   lottery: SuiEvent[]
   mines: SuiEvent[]
+  wheel: SuiEvent[]
   /** Safety-cap hit before reaching cutoff. Normal completion = false. */
   isTruncated: boolean
 }
@@ -69,6 +72,7 @@ async function fetchUserGameEvents(
     numbermatch: [],
     lottery: [],
     mines: [],
+    wheel: [],
     isTruncated: false,
   }
   let cursor: { txDigest: string; eventSeq: string } | null = null
@@ -92,6 +96,7 @@ async function fetchUserGameEvents(
       else if (event.type === EVENT_TYPES.nm) out.numbermatch.push(event)
       else if (event.type === EVENT_TYPES.ticket) out.lottery.push(event)
       else if (event.type === EVENT_TYPES.minesFinished) out.mines.push(event)
+      else if (event.type === EVENT_TYPES.wheel) out.wheel.push(event)
     }
 
     // Page contains an event older than cutoff → fully covered the window.
@@ -321,6 +326,44 @@ function mapMines(event: SuiEvent): GameActivity | null {
   }
 }
 
+function mapWheel(event: SuiEvent): GameActivity | null {
+  const d = event.parsedJson as
+    | {
+        game_id?: string
+        bet?: string
+        segment_index?: string
+        multiplier_bps?: string
+        payout?: string
+        timestamp_ms?: string
+      }
+    | undefined
+  if (
+    typeof d?.bet !== 'string' ||
+    typeof d?.payout !== 'string' ||
+    typeof d?.multiplier_bps !== 'string' ||
+    typeof d?.segment_index !== 'string'
+  ) {
+    console.warn('[history] malformed wheel event', event)
+    return null
+  }
+  const bet = BigInt(d.bet)
+  const payout = BigInt(d.payout)
+  const multBps = Number(d.multiplier_bps)
+  const multStr = (multBps / 10_000).toFixed(2)
+  const isWin = payout > 0n
+  return {
+    id: `wheel-${event.id.txDigest}-${event.id.eventSeq}`,
+    gameType: 'wheel',
+    timestampMs: Number(d.timestamp_ms ?? event.timestampMs ?? 0),
+    spent: bet,
+    payout,
+    result: isWin ? 'win' : 'loss',
+    detail: isWin ? `Seg #${d.segment_index} @${multStr}×` : `Seg #${d.segment_index}`,
+    txDigest: event.id.txDigest,
+    source: 'final',
+  }
+}
+
 // === Crash backend client ===
 
 interface CrashHistoryRow {
@@ -413,6 +456,9 @@ async function mapRawEvents(raw: RawEvents): Promise<GameActivity[]> {
   const minesItems = raw.mines
     .map(mapMines)
     .filter((x): x is GameActivity => x !== null)
+  const wheelItems = raw.wheel
+    .map(mapWheel)
+    .filter((x): x is GameActivity => x !== null)
 
   const tickets = raw.lottery
     .map(parseTicketEvent)
@@ -421,7 +467,7 @@ async function mapRawEvents(raw: RawEvents): Promise<GameActivity[]> {
   const rounds = await fetchRoundsByIds(roundIds)
   const lotteryItems = resolveTicketResults(tickets, rounds)
 
-  return [...scratchItems, ...nmItems, ...minesItems, ...lotteryItems]
+  return [...scratchItems, ...nmItems, ...minesItems, ...wheelItems, ...lotteryItems]
 }
 
 export async function fetchAllGameHistory(

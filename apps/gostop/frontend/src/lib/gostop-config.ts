@@ -117,6 +117,39 @@ export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
 // import from here instead of reading the env var locally.
 export const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true';
 
+// ===== Wheel =====
+// Same defensive-typed pattern as crash: devnet-ids.json's `wheel` block
+// may not exist on older snapshots, so look it up via optional chaining
+// and fall back to safe zero/empty values.
+const wheelIds = (devnetIds as { wheel?: Record<string, unknown> }).wheel;
+function wheelStr(key: string): string {
+  const v = wheelIds?.[key];
+  return typeof v === 'string' ? v : '';
+}
+function wheelNum(key: string): number {
+  const v = wheelIds?.[key];
+  return typeof v === 'number' ? v : 0;
+}
+function wheelBig(key: string): bigint {
+  const v = wheelIds?.[key];
+  if (typeof v === 'string' || typeof v === 'number') {
+    try { return BigInt(v); } catch { return 0n; }
+  }
+  return 0n;
+}
+export const WHEEL_PACKAGE_ID = wheelStr('packageId');
+export const WHEEL_ORIGINAL_PACKAGE_ID =
+  wheelStr('originalPackageId') || wheelStr('packageId');
+export const WHEEL_REGISTRY_ID = wheelStr('registry');
+export const WHEEL_GAME_ID = wheelNum('gameId');
+export const WHEEL_MIN_BET = wheelBig('minBet'); // 1_000_000 (1 NUSDC)
+export const WHEEL_MAX_BET = wheelBig('maxBet'); // 100_000_000 (100 NUSDC)
+export const WHEEL_RTP_BPS = wheelNum('rtpBps'); // 9750
+export const WHEEL_SEGMENTS: number[] = Array.isArray(wheelIds?.segments)
+  ? (wheelIds!.segments as number[])
+  : [];
+export const WHEEL_RESULT_EVENT_TYPE = wheelStr('resultEventType');
+
 export const SUI_CLOCK_ID = '0x6';
 export const SUI_RANDOM_ID = '0x8';
 

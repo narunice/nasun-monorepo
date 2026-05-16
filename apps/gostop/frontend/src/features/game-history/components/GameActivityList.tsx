@@ -37,6 +37,10 @@ const GAME_BADGE: Record<GameType, { label: string; className: string }> = {
     label: "Crash",
     className: "bg-orange-900/40 text-orange-200 border border-orange-700/50",
   },
+  wheel: {
+    label: "Wheel",
+    className: "bg-yellow-900/40 text-yellow-200 border border-yellow-700/50",
+  },
 };
 
 function ResultBadge({

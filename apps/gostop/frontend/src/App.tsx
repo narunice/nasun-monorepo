@@ -9,6 +9,7 @@ import LotteryHistoryPage from './pages/LotteryHistoryPage'
 import ScratchCardPage from './pages/ScratchCardPage'
 import NumberMatchPage from './pages/NumberMatchPage'
 import MinesPage from './pages/MinesPage'
+import WheelPage from './pages/WheelPage'
 import HomePage from './pages/HomePage'
 import FloorPage from './pages/FloorPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
@@ -83,6 +84,7 @@ export default function App() {
           <Route path="/scratch" element={<ScratchCardPage />} />
           <Route path="/numbermatch" element={<NumberMatchPage />} />
           <Route path="/mines" element={<MinesPage />} />
+          <Route path="/wheel" element={<WheelPage />} />
           {ENABLE_CRASH && <Route path="/crash" element={<CrashRouteElement />} />}
           <Route path="/games/history" element={<GameHistoryPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />

@@ -66,6 +66,53 @@ const GAME_SOUND_DEFS: Record<GameSound, ToneParams[]> = {
   ],
 }
 
+// Per-call rate limit for the wheel tick: at most every 33ms (~30/s) so a
+// fast spin can't queue dozens of oscillators per frame.
+let lastWheelTickMs = 0
+
+/**
+ * Short procedural tick used by the wheel peg crossings. Rate-limited to
+ * 30/s and silently no-ops when sound is muted or the tab is hidden.
+ */
+export function playWheelTick(): void {
+  const { soundEnabled, soundVolume: volume } = useSettingsStore.getState()
+  if (!soundEnabled) return
+  if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return
+
+  const now = (typeof performance !== 'undefined' ? performance.now() : Date.now())
+  if (now - lastWheelTickMs < 33) return
+  lastWheelTickMs = now
+
+  const ctx = getAudioContext()
+  if (!ctx) return
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+
+  playTone(
+    ctx,
+    { frequency: 1200, duration: 0.03, type: 'square' },
+    volume * 0.5,
+    ctx.currentTime,
+  )
+}
+
+/**
+ * Short downward sweep that plays once when the spin button is pressed.
+ * Cheap audio cue that the wheel started moving before the tx confirms.
+ */
+export function playWheelSpinStart(): void {
+  const { soundEnabled, soundVolume: volume } = useSettingsStore.getState()
+  if (!soundEnabled) return
+  const ctx = getAudioContext()
+  if (!ctx) return
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+  playTone(
+    ctx,
+    { frequency: 220, duration: 0.4, type: 'sine', rampTo: 110 },
+    volume,
+    ctx.currentTime,
+  )
+}
+
 export function playGameSound(sound: GameSound): void {
   const { soundEnabled, soundVolume: volume } = useSettingsStore.getState()
   if (!soundEnabled) return
