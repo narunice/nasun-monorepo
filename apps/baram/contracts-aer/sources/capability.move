@@ -433,6 +433,29 @@ module baram_aer::capability {
         assert!(cap.owner == tx_context::sender(ctx), E_NOT_CAPABILITY_OWNER);
     }
 
+    /// Permission gate for actions the *spawned agent* should be able to
+    /// perform without the owner's wallet co-signing every call. The
+    /// canonical example is `set_pending_proposal`: the agent runtime
+    /// generates a trade proposal from a user's chat message and needs to
+    /// install the on-chain race lock with its *own* keypair (the user
+    /// wallet is offline). Owner remains permitted so existing UI flows
+    /// (e.g. manual operator override) keep working.
+    ///
+    /// The delegated agent is opt-in -- owner must call
+    /// `set_delegated_agent` once after spawning a new agent. There is no
+    /// default delegation, so v1-era capabilities issued before this
+    /// upgrade behave identically to before until the owner explicitly
+    /// authorizes one.
+    fun assert_owner_or_delegated_agent(cap: &Capability, ctx: &TxContext) {
+        let sender = tx_context::sender(ctx);
+        if (cap.owner == sender) return;
+        if (df::exists_(&cap.id, DelegatedAgentKey {})) {
+            let d: &DelegatedAgent = df::borrow(&cap.id, DelegatedAgentKey {});
+            if (d.address == sender) return;
+        };
+        abort E_NOT_CAPABILITY_OWNER
+    }
+
     fun assert_not_revoked(cap: &Capability) {
         assert!(!cap.revoked, E_CAPABILITY_REVOKED);
     }
@@ -661,6 +684,45 @@ module baram_aer::capability {
     /// has `copy + drop + store` required by `sui::dynamic_field`.
     public struct PendingProposalKey has copy, drop, store {}
 
+    /// Agent address authorized to call a fixed set of capability mutations
+    /// on the owner's behalf. Today: `set_pending_proposal` and
+    /// `clear_pending_proposal`. Same dynamic-field rationale as
+    /// `PendingProposal` -- v1 schema cannot be extended in-place.
+    public struct DelegatedAgent has store, copy, drop {
+        address: address,
+    }
+
+    public struct DelegatedAgentKey has copy, drop, store {}
+
+    public struct DelegatedAgentSet has copy, drop {
+        cap_id: address,
+        owner: address,
+        agent: address,
+    }
+
+    public struct DelegatedAgentCleared has copy, drop {
+        cap_id: address,
+        owner: address,
+        agent: address,
+    }
+
+    /// Sidecar dynamic field recording the address that installed the
+    /// currently-active pending proposal. Stored separately from
+    /// `PendingProposal` so this field could be added in v4 without
+    /// breaking v3 upgrade compatibility (Move forbids field-additions
+    /// to existing public structs across upgrades).
+    ///
+    /// Read by `clear_pending_proposal`: a delegated agent may only clear
+    /// a lock IT installed. Without this gate the agent keypair (held in
+    /// an EC2 process) could unilaterally clear an owner-installed lock,
+    /// silently overriding a user-issued UI action and racing the swap
+    /// boundary. See AER v4 security review (2026-05-16).
+    public struct PendingProposalInstaller has store, copy, drop {
+        installer: address,
+    }
+
+    public struct PendingProposalInstallerKey has copy, drop, store {}
+
     public struct PendingProposalSet has copy, drop {
         cap_id: address,
         proposal_id: vector<u8>,
@@ -682,6 +744,57 @@ module baram_aer::capability {
     /// race guard described in Plan D §R3: the heartbeat cycle reads
     /// `is_pending_active` at the start of every wake and skips when it
     /// returns true, so we must not silently overwrite a live lock.
+    /// Authorize the spawned agent's address to call delegated mutations
+    /// (currently `set_pending_proposal` and `clear_pending_proposal`).
+    /// Owner-signed. Replaces any prior delegation atomically.
+    public fun set_delegated_agent(
+        cap: &mut Capability,
+        agent: address,
+        ctx: &TxContext,
+    ) {
+        assert_owner(cap, ctx);
+        assert_not_revoked(cap);
+        if (df::exists_(&cap.id, DelegatedAgentKey {})) {
+            let _: DelegatedAgent = df::remove(&mut cap.id, DelegatedAgentKey {});
+        };
+        df::add(&mut cap.id, DelegatedAgentKey {}, DelegatedAgent { address: agent });
+        event::emit(DelegatedAgentSet {
+            cap_id: object::id_address(cap),
+            owner: cap.owner,
+            agent,
+        });
+    }
+
+    /// Revoke the current delegation. Owner-signed. No-op if nothing
+    /// installed (Move's `option`-style: silent absence rather than abort).
+    public fun clear_delegated_agent(cap: &mut Capability, ctx: &TxContext) {
+        assert_owner(cap, ctx);
+        if (df::exists_(&cap.id, DelegatedAgentKey {})) {
+            let removed: DelegatedAgent = df::remove(&mut cap.id, DelegatedAgentKey {});
+            event::emit(DelegatedAgentCleared {
+                cap_id: object::id_address(cap),
+                owner: cap.owner,
+                agent: removed.address,
+            });
+        };
+    }
+
+    /// View: address currently authorized as the delegated agent (if any).
+    /// Returns `0x0` sentinel when no delegation is installed; callers
+    /// should pair with `has_delegated_agent` for explicit presence.
+    public fun delegated_agent(cap: &Capability): address {
+        if (df::exists_(&cap.id, DelegatedAgentKey {})) {
+            let d: &DelegatedAgent = df::borrow(&cap.id, DelegatedAgentKey {});
+            d.address
+        } else {
+            @0x0
+        }
+    }
+
+    public fun has_delegated_agent(cap: &Capability): bool {
+        df::exists_(&cap.id, DelegatedAgentKey {})
+    }
+
     public fun set_pending_proposal(
         cap: &mut Capability,
         proposal_id: vector<u8>,
@@ -689,7 +802,7 @@ module baram_aer::capability {
         clock: &Clock,
         ctx: &TxContext,
     ) {
-        assert_owner(cap, ctx);
+        assert_owner_or_delegated_agent(cap, ctx);
         assert_not_revoked(cap);
         assert!(proposal_id.length() == PENDING_ID_LEN, E_PENDING_ID_INVALID_LEN);
         let now_ms = clock::timestamp_ms(clock);
@@ -702,14 +815,29 @@ module baram_aer::capability {
         if (df::exists_(&cap.id, PendingProposalKey {})) {
             let existing: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
             assert!(now_ms >= existing.expires_at, E_PENDING_PROPOSAL_ACTIVE);
-            // Stale lock: drop and reinstall.
+            // Stale lock: drop and reinstall. Also drop the sidecar
+            // installer record so the next clear is gated on the NEW
+            // installer, not the stale one.
             let _: PendingProposal = df::remove(&mut cap.id, PendingProposalKey {});
+            if (df::exists_(&cap.id, PendingProposalInstallerKey {})) {
+                let _: PendingProposalInstaller = df::remove(&mut cap.id, PendingProposalInstallerKey {});
+            };
         };
 
         df::add(
             &mut cap.id,
             PendingProposalKey {},
             PendingProposal { proposal_id, expires_at: expires_at_ms },
+        );
+        // Record who installed the lock. Same tx as PendingProposal
+        // install so the two are atomically coherent: a clear that
+        // checks `PendingProposalInstallerKey` after observing
+        // `PendingProposalKey` is guaranteed to see the correct
+        // installer (or the field is absent for pre-v4 legacy locks).
+        df::add(
+            &mut cap.id,
+            PendingProposalInstallerKey {},
+            PendingProposalInstaller { installer: tx_context::sender(ctx) },
         );
         // Re-borrow for the event payload so we emit exactly what we
         // stored. (The proposal_id moved into the field above; copy via
@@ -742,16 +870,45 @@ module baram_aer::capability {
     ) {
         assert_not_revoked(cap);
         let now_ms = clock::timestamp_ms(clock);
-        let is_owner = cap.owner == tx_context::sender(ctx);
+        let sender = tx_context::sender(ctx);
+        let is_owner = cap.owner == sender;
+        // Delegated agent authority to clear is narrower than owner's:
+        // the agent may clear ONLY a lock IT installed (recorded in
+        // `PendingProposalInstallerKey`). Without this restriction, a
+        // compromised agent keypair could clear an owner-installed lock
+        // and immediately reinstall its own, silently overriding a
+        // user-issued UI action and racing the swap boundary.
+        //
+        // Legacy v3 locks have no installer record; for those, delegated
+        // clears are denied (the owner must clear or the lock must
+        // expire). The agent runtime should call `clear_pending_proposal`
+        // only after itself calling `set_pending_proposal`, so this is a
+        // narrow operational change limited to the v3→v4 transition.
+        let is_delegated_authorized = if (df::exists_(&cap.id, DelegatedAgentKey {})) {
+            let d: &DelegatedAgent = df::borrow(&cap.id, DelegatedAgentKey {});
+            if (d.address == sender) {
+                if (df::exists_(&cap.id, PendingProposalInstallerKey {})) {
+                    let installer: &PendingProposalInstaller = df::borrow(&cap.id, PendingProposalInstallerKey {});
+                    installer.installer == sender
+                } else { false }
+            } else { false }
+        } else { false };
         let cap_id_addr = object::id_address(cap);
         let owner_addr = cap.owner;
 
         assert!(df::exists_(&cap.id, PendingProposalKey {}), E_NO_PENDING_PROPOSAL);
         let existing: &PendingProposal = df::borrow(&cap.id, PendingProposalKey {});
         let expired = now_ms >= existing.expires_at;
-        assert!(is_owner || expired, E_PENDING_PROPOSAL_ACTIVE);
+        assert!(is_owner || is_delegated_authorized || expired, E_PENDING_PROPOSAL_ACTIVE);
 
         let removed: PendingProposal = df::remove(&mut cap.id, PendingProposalKey {});
+        // Drop the installer sidecar in lockstep with the lock itself.
+        // Use `if exists` because v3 legacy locks have no installer
+        // record; this branch is only entered when the v3 lock is being
+        // cleared by owner or via expiry path.
+        if (df::exists_(&cap.id, PendingProposalInstallerKey {})) {
+            let _: PendingProposalInstaller = df::remove(&mut cap.id, PendingProposalInstallerKey {});
+        };
         event::emit(PendingProposalCleared {
             cap_id: cap_id_addr,
             proposal_id: removed.proposal_id,
