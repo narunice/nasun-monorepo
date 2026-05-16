@@ -1,22 +1,30 @@
 /**
- * Host /infer + /execute-capability HTTP client (PR1.A: split-inference +
- * agent-signed settlement, HOLD-only).
+ * Host /infer + /execute-capability HTTP client (PR1.A heartbeat + PR1.5
+ * atomic-swap path).
  *
  * Two-call shape:
  *
  *   1. POST /infer              — encrypted prompt → LLM → result + cap version
  *   2. POST /execute-capability — agent-signed settlement intent → AER
+ *      (HOLD: no swap; or 6-call PTB atomic swap → AER)
  *
- * The HMAC spend-token shape from C3-v2 has been retired. PR1.A binds the
- * settlement via:
+ * The HMAC spend-token shape from C3-v2 has been retired. PR1.A/PR1.5 binds
+ * the settlement via:
  *   - L1 API key (x-api-key, both calls)
  *   - L2 agent wallet signature over the canonical settlement string (sig2,
  *     /execute-capability only — see sig.ts)
  *   - L3 chain verifyRequest (both calls)
  *   - L4 capability owner/version assertion (both calls)
  *
- * actionCall/escrow/spend are reserved (must be null) — PR1.5 will re-enable
- * the atomic swap path once the 5-call PTB is wired.
+ * actionCall/escrow/spend are sig2-covered via actionCallHash:
+ *   - HOLD: callers pass null and use ZERO_ACTION_CALL_HASH
+ *   - swap: callers pass concrete values + computeActionCallHash(...)
+ *
+ * Kill switches:
+ *   - L1 (runtime): PR1A_SWAP_DISABLED=true forces HOLD-only at the caller
+ *   - L2 (Lambda, canonical): LAMBDA_SWAP_DISABLED=true rejects non-null
+ *     actionCall at the cryptographic boundary
+ *   - Nuclear: wallet-signed capability::set_pause_mode(PAUSE_WAKE_BLOCKED)
  */
 
 import type {
@@ -144,14 +152,23 @@ export interface ExecuteCapabilityRequest {
     } | null;
   };
   envelopeHash: string;                 // 0x<64 hex lower> sha256(canonicalJson(envelope))
-  actionCallHash: string;               // PR1.A: 0x00..00 — sig-covered slot for PR1.5 swap path
-  sig2: string;                         // base64 personal-message signature over canonicalSettle()
-  // PR1.A: callers MUST pass null. Lambda 400s on non-null actionCall with
-  // reason='swap_in_pr1_5'. Typed as optional/nullable so the dead PR1.5
-  // swap path in manual-execution still compiles; the runtime guard at
-  // entry blocks reaching the Lambda anyway.
+  actionCallHash: string;                // HOLD: ZERO_ACTION_CALL_HASH; swap: computeActionCallHash({actionCall, escrow, spend})
+  sig2: string;                          // base64 personal-message signature over canonicalSettle()
+  // HOLD branch: all three null. Swap branch (PR1.5): all three set; Lambda
+  // recomputes actionCallHash and rejects on mismatch. Lambda also enforces
+  // LAMBDA_SWAP_DISABLED, DEEPBOOK_PACKAGE_ALLOWLIST, DEEPBOOK_POOL_ALLOWLIST,
+  // and cap.allowed_assets coverage at the boundary.
   actionCall: ActionCallSpecWire | null;
-  escrow: { objectId: string; initialSharedVersion: string; capabilityId: string } | null;
+  escrow: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    /** Initial shared version of the Capability shared object — Lambda uses
+     *  this to build the immutable shared object ref for the 6-call PTB
+     *  without an extra getObject roundtrip. Immutable post-creation; the
+     *  runtime can cache long-term. */
+    capabilityInitialSharedVersion: string;
+  } | null;
   spend: { coinAssetType: string; amount: string } | null;
   purpose?: string | null;
   constraints?: string | null;
@@ -195,9 +212,9 @@ export async function executeCapability(
     envelopeHash: input.envelopeHash,
     actionCallHash: input.actionCallHash,
     sig2: input.sig2,
-    actionCall: null,
-    escrow: null,
-    spend: null,
+    actionCall: input.actionCall,
+    escrow: input.escrow,
+    spend: input.spend,
     ...(input.purpose ? { purpose: input.purpose } : {}),
     ...(input.constraints ? { constraints: input.constraints } : {}),
     ...(input.triggeredBy ? { triggeredBy: input.triggeredBy } : {}),

@@ -325,7 +325,12 @@ export async function runManualExecution(
     },
   };
 
-  let escrowBlock: { objectId: string; initialSharedVersion: string; capabilityId: string } | null = null;
+  let escrowBlock: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    capabilityInitialSharedVersion: string;
+  } | null = null;
   let spendBlock: { coinAssetType: string; amount: string } | null = null;
   let actionCallBlock: ReturnType<typeof defaultBuildSwapActionCall> | null = null;
 
@@ -338,6 +343,9 @@ export async function runManualExecution(
       objectId: trader.escrowId,
       initialSharedVersion: cachedEscrowVersion.toString(),
       capabilityId: trader.capabilityId,
+      // PR1.5 next session: replace placeholder with fetched cap initialSharedVersion
+      // (immutable post-creation, runtime caches across cycles).
+      capabilityInitialSharedVersion: '0',
     };
     spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
     const minOut = await deps.quoteMinOut({

@@ -158,32 +158,42 @@ describe('executeCapability', () => {
     expect(body.expectedCapabilityVersion).toBe('1');
   });
 
-  it('forwards execution payload (actionCall + escrow + spend)', async () => {
+  it('forwards execution payload (actionCall + escrow + spend) for PR1.5 swap branch', async () => {
     fetchMock.mockResolvedValueOnce(
       new Response(JSON.stringify({ success: true, txDigest: 'd' }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' },
       }),
     );
-    // PR1.A: actionCall/escrow/spend are always null on the wire. The
-    // request-shape accepts non-null values for PR1.5 forward-compat but
-    // the host-client serialiser hard-codes null so a regression cannot
-    // accidentally bypass the demotion guard.
-    await executeCapability('https://h', 'k', buildExecInput({
-      actionCall: {
-        targetPackage: '0xabc',
-        module: 'pool',
-        fn: 'swap_exact_quote_for_base',
-        typeArguments: ['T1', 'T2'],
-        args: [{ kind: 'object', id: '0xpool' }],
-      },
-      escrow: {
-        objectId: '0xescrow',
-        initialSharedVersion: '100',
-        capabilityId: '0xabc',
-      },
-      spend: { coinAssetType: 'T1', amount: '1000' },
-    }));
+    const actionCall = {
+      targetPackage: '0xabc',
+      module: 'pool',
+      fn: 'swap_exact_quote_for_base',
+      typeArguments: ['T1', 'T2'],
+      args: [{ kind: 'object' as const, id: '0xpool' }],
+    };
+    const escrow = {
+      objectId: '0xescrow',
+      initialSharedVersion: '100',
+      capabilityId: '0xcap',
+      capabilityInitialSharedVersion: '90',
+    };
+    const spend = { coinAssetType: 'T1', amount: '1000' };
+    await executeCapability('https://h', 'k', buildExecInput({ actionCall, escrow, spend }));
+    const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
+    expect(body.actionCall).toEqual(actionCall);
+    expect(body.escrow).toEqual(escrow);
+    expect(body.spend).toEqual(spend);
+  });
+
+  it('forwards null actionCall/escrow/spend for HOLD branch', async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ success: true, txDigest: 'd' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await executeCapability('https://h', 'k', buildExecInput());
     const body = JSON.parse((fetchMock.mock.calls[0][1] as RequestInit).body as string);
     expect(body.actionCall).toBeNull();
     expect(body.escrow).toBeNull();
