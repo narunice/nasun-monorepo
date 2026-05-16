@@ -129,6 +129,14 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
     RPC_URL:              process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',
     BARAM_CHAT_SERVER_HMAC_SECRET: pick('BARAM_CHAT_SERVER_HMAC_SECRET'),
     BARAM_SESSION_JWT_SECRET:      pick('BARAM_SESSION_JWT_SECRET'),
+    // PR1.5 swap path gate (L1 / runtime side). Defaults to 'true' so a
+    // chat-server with no override still spawns HOLD-only agents. Operator
+    // flips AGENT_GLOBAL_PR1A_SWAP_DISABLED=false in chat-server .env to
+    // enable BUY/SELL submission against the Lambda swap path.
+    PR1A_SWAP_DISABLED:
+      process.env.AGENT_GLOBAL_PR1A_SWAP_DISABLED
+      ?? process.env.PR1A_SWAP_DISABLED
+      ?? 'true',
   };
   // Optional trader-cycle Telegram notifications — distinct from
   // BARAM_TG_* (chat-server's wake-forwarding bot). Only set when

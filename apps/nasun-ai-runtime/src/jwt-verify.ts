@@ -79,8 +79,15 @@ export function verifyJWT(token: string): VerifyJwtResult {
 export function verifyHmac(body: Buffer | string, received: string): boolean {
   const secret = process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
   if (!secret || secret.length < 32) return false;
+  // Match chat-server's encoding: BARAM_CHAT_SERVER_HMAC_SECRET is a hex
+  // string and must be decoded to raw bytes before being used as the HMAC
+  // key. Passing the hex string straight through createHmac would use its
+  // UTF-8 ASCII bytes (~2x longer) as the key and silently produce
+  // different signatures than chat-server's signer. See
+  // apps/nasun-website/chat-server/src/baram-telegram.ts:getHmacSecret.
+  const secretKey = Buffer.from(secret, 'hex');
   const bodyBuf = typeof body === 'string' ? Buffer.from(body, 'utf8') : body;
-  const expected = createHmac('sha256', secret).update(bodyBuf).digest();
+  const expected = createHmac('sha256', secretKey).update(bodyBuf).digest();
   let provided: Buffer;
   try {
     provided = Buffer.from(received, 'hex');

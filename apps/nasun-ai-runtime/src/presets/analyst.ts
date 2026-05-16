@@ -81,7 +81,6 @@ import {
   buildReplay,
   buildCognitionProposal,
   recentTradesSnapshot,
-  ACTION_TYPE_ANALYSIS,
 } from './trader-envelope.js';
 import type { Config } from '../config.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
@@ -403,7 +402,11 @@ export async function runAnalystPreset(
     return { ok: false, status: 'rejected', reason: `execute_failed: ${reason}` };
   }
 
-  const summary = `${ACTION_TYPE_ANALYSIS}: ${decision.action} -- ${decision.reason}`;
+  // User-facing summary surfaced via Telegram / chat-server response.
+  // Friendly verb instead of the raw action_type tag (`analysis.v1:`) which
+  // leaked internal AER plumbing into the operator's chat.
+  const VERB: Record<string, string> = { BUY: 'Buying', SELL: 'Selling', HOLD: 'Holding' };
+  const summary = `${VERB[decision.action] ?? decision.action}: ${decision.reason}`;
   deps.log(`[analyst] Cognition AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
 
   // For BUY/SELL decisions: build a trade proposal artifact, set the onchain
