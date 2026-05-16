@@ -1,14 +1,17 @@
 /**
- * Settlement signing helpers for the trader heartbeat path (PR1.A).
+ * Settlement signing helpers for the trader heartbeat path (PR1.A + PR1.5).
  *
- * Companion of `apps/baram/cdk/lambda-src/executor/src/_shared/sig-verify.ts`.
- * The two files must stay byte-for-byte aligned on canonical message
- * construction — fixed field order, lowercase hex, pipe delimiter, no
- * whitespace.
+ * Companion of `apps/baram/cdk/lambda-src/executor/src/_shared/sig-verify.ts`
+ * and `_shared/canonical-hash.ts`. The two sides must stay byte-for-byte
+ * aligned on canonical message construction (fixed field order, lowercase
+ * hex, pipe delimiter, no whitespace) and on canonical JSON hashing
+ * (lexicographic key sort at every depth, no whitespace).
  *
- * actionCallHash is reserved in PR1.A. The runtime emits the zero-bytes
- * value when no swap is attached; PR1.5 will compute
- * sha256(canonicalJson({actionCall, escrow, spend})) and fill it in.
+ * actionCallHash:
+ *   - HOLD branch  : ZERO_ACTION_CALL_HASH (0x00..00)
+ *   - swap branch  : computeActionCallHash({actionCall, escrow, spend})
+ *     == sha256(canonicalJson(...)). Lambda recomputes from the wire body
+ *     and asserts equality before signing the PTB.
  */
 
 import { createHash } from 'node:crypto';
@@ -77,6 +80,50 @@ export function sha256Hex0x(input: string | Uint8Array): string {
 
 export function canonicalJsonSha256(value: unknown): string {
   return sha256Hex0x(canonicalJson(value));
+}
+
+// ============================================================================
+// PR1.5 swap action-call hashing
+// ============================================================================
+
+/**
+ * Wire-level input bound by `actionCallHash`. Must match exactly what the
+ * runtime sends to Lambda in the `/execute-capability` body (see
+ * host-client.ts `ExecuteCapabilityRequest.{actionCall,escrow,spend}`).
+ * Field ordering is irrelevant — canonicalJson sorts at every depth.
+ */
+export interface ActionCallHashInput {
+  actionCall: {
+    targetPackage: string;
+    module: string;
+    fn: string;
+    typeArguments: string[];
+    args: Array<{
+      kind: 'object' | 'pure' | 'pipe';
+      id?: string;
+      bytes?: string;
+      from?: 'withdraw_coin' | 'zero_deep';
+    }>;
+  };
+  escrow: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    capabilityInitialSharedVersion: string;
+  };
+  spend: {
+    coinAssetType: string;
+    amount: string;
+  };
+}
+
+/**
+ * sha256(canonicalJson({actionCall, escrow, spend})). Bound to sig2 via the
+ * SettleSigFields.actionCallHash slot. Lambda recomputes from the wire body
+ * and asserts byte-equality before signing the PTB.
+ */
+export function computeActionCallHash(input: ActionCallHashInput): string {
+  return canonicalJsonSha256(input);
 }
 
 function sortKeys(value: unknown): unknown {
