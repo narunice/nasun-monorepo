@@ -34,11 +34,26 @@ From `apps/baram/contracts-aer/sources/capability.move`:
 
 ### 1.3 DeepBook v3 swap ABI
 
+Confirmed via `sui_getNormalizedMoveFunction` against `0xb4a100f2…78134::pool` on devnet (2026-05-16).
+
 | fn | typeArguments | args (in PTB order) |
 |---|---|---|
 | `swap_exact_quote_for_base<Base, Quote>` | `[Base, Quote]` | `[pool: &mut Pool<Base,Quote>, quote_in: Coin<Quote>, deep_in: Coin<DEEP>, min_base_out: u64, clock: &Clock]` |
 | `swap_exact_base_for_quote<Base, Quote>` | `[Base, Quote]` | `[pool, base_in: Coin<Base>, deep_in: Coin<DEEP>, min_quote_out: u64, clock]` |
 | Returns | `(Coin<Base>, Coin<Quote>, Coin<DEEP>)` | One of base/quote is zero-coin (leftover side), the other is the swap output; `Coin<DEEP>` is always zero in whitelisted-pool config. |
+| `get_quantity_out` (optional dry-run quote) | `[Base, Quote]` | `(pool: &Pool, base_qty: u64, quote_qty: u64, clock: &Clock) -> (u64 base_out, u64 quote_out, u64 deep_required)` |
+
+**Operating pool (NBTC/NUSDC) — confirmed**
+
+| field | value |
+|---|---|
+| `objectId` | `0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0` |
+| `type` | `Pool<NBTC, NUSDC>` (base=NBTC, quote=NUSDC) |
+| `owner` | `Shared { initial_shared_version: 144448 }` |
+| `deepbookPackage` | `0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134` |
+| `DEEP type` | `0x71afcf8e…1c3e::deep::DEEP` (always `0x2::coin::zero<DEEP>()` — Pado pool whitelisted, fee=0) |
+
+Lambda raw PTB builder MUST encode the pool input as `SharedObjectRef { objectId, initialSharedVersion: 144448, mutable: true }`. Runtime path uses `tx.object(poolId)` which the SDK resolves to the same shared ref. Reference implementation already in production: [trader.ts:299-310](../../nasun-ai-runtime/src/presets/trader.ts#L299-L310).
 
 ---
 
@@ -266,4 +281,4 @@ L2 is canonical authority. L1 is operational default but not the safety net.
 | R10 | AER is not a cryptographic witness of swap success | PR1.6 candidate: extend `SettleReceipt` |
 | — | Single BCS-PTB blob wire format (replace ActionCallSpec) | Post-PR1.5 design retro |
 | — | sig2 cover for `capabilityInitialSharedVersion` | Out of scope (Lambda self-check sufficient) |
-| — | AER_DESIGN.md mentions "5-call" historically | Follow-up PR: update doc to 6-call |
+| — | "5-call" doc drift (resolved 2026-05-16) | Verified: AER_DESIGN.md has no "5-call" string; manual-execution.ts comment updated to 6-call |

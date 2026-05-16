@@ -16,7 +16,7 @@ import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-sec
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { createHash } from 'crypto';
 import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
-import { initSui, verifyRequest, submitProofWithAER, getExecutorAddress, getExecutorStats, getCapabilityFields, type AERReportData } from './services/sui';
+import { initSui, verifyRequest, submitProofWithAER, submitSwapPTBWithAER, getExecutorAddress, getExecutorStats, getCapabilityFields, getCapabilityFieldsFull, type AERReportData } from './services/sui';
 import { initResultStore, saveResult, getResult } from './services/resultStore';
 import {
   ExecuteRequest,
@@ -30,12 +30,16 @@ import {
   type InferResponse,
   type ExecuteCapabilityRequest,
   type ExecuteCapabilityResponse,
+  type ActionCallSpecWire,
+  type EscrowBlock,
+  type SpendBlock,
 } from './types';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { Ed25519PublicKey } from '@mysten/sui/keypairs/ed25519';
 import { parseSerializedSignature } from '@mysten/sui/cryptography';
 import { verifySettleSig, type SettleSigFields } from './_shared/sig-verify';
-import { canonicalJsonSha256, sha256Hex0x } from './_shared/canonical-hash';
+import { canonicalJsonSha256, computeActionCallHash, sha256Hex0x, type ActionCallHashInput } from './_shared/canonical-hash';
 
 // AWS Secrets Manager client (executor private key only)
 const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION });
@@ -687,8 +691,18 @@ function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldErr
   if (typeof body.sig2 !== 'string' || body.sig2.length < 16 || body.sig2.length > 512) {
     return { field: 'sig2', reason: 'invalid_signature' };
   }
-  if (body.actionCall !== null || body.escrow !== null || body.spend !== null) {
-    return { field: 'actionCall', reason: 'swap_in_pr1_5' };
+  // PR1.5: actionCall/escrow/spend must be ALL-null (HOLD) or ALL-non-null
+  // (swap). Per-shape validation lives in validateSwapWireShape() — this only
+  // enforces the XOR invariant.
+  const swapFieldsPresent = (body.actionCall !== null ? 1 : 0)
+    + (body.escrow !== null ? 1 : 0)
+    + (body.spend !== null ? 1 : 0);
+  if (swapFieldsPresent !== 0 && swapFieldsPresent !== 3) {
+    return { field: 'actionCall', reason: 'swap_blocks_partial' };
+  }
+  if (swapFieldsPresent === 3) {
+    const shapeErr = validateSwapWireShape(body.actionCall!, body.escrow!, body.spend!);
+    if (shapeErr) return shapeErr;
   }
   if (!body.envelope || typeof body.envelope !== 'object') {
     return { field: 'envelope', reason: 'invalid_envelope' };
@@ -700,6 +714,220 @@ function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldErr
   if (!body.replay || typeof body.replay !== 'object') return { field: 'replay', reason: 'invalid_replay' };
   if (!body.proposal || typeof body.proposal !== 'object') return { field: 'proposal', reason: 'invalid_proposal' };
   return null;
+}
+
+// ============================================================================
+// PR1.5 swap-path validation (spec §4 + §5)
+// ============================================================================
+
+const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
+
+/**
+ * Structural validation of the swap wire blocks. Field shapes only — semantic
+ * checks (allow-list, asset coverage, slippage cap, hash recompute, cap fetch)
+ * live in validateSwapAtBoundary(). Keeping these split lets us reject obvious
+ * malformed bodies with 400 before any RPC roundtrip.
+ */
+function validateSwapWireShape(
+  actionCall: ActionCallSpecWire,
+  escrow: EscrowBlock,
+  spend: SpendBlock,
+): FieldError | null {
+  if (!actionCall || typeof actionCall !== 'object') return { field: 'actionCall', reason: 'invalid_action_call' };
+  if (typeof actionCall.targetPackage !== 'string' || !HEX_OBJECT_ID.test(actionCall.targetPackage)) {
+    return { field: 'actionCall.targetPackage', reason: 'invalid_target_package' };
+  }
+  if (actionCall.module !== 'pool') return { field: 'actionCall.module', reason: 'invalid_module' };
+  if (actionCall.fn !== 'swap_exact_quote_for_base' && actionCall.fn !== 'swap_exact_base_for_quote') {
+    return { field: 'actionCall.fn', reason: 'invalid_swap_fn' };
+  }
+  if (!Array.isArray(actionCall.typeArguments) || actionCall.typeArguments.length !== 2) {
+    return { field: 'actionCall.typeArguments', reason: 'invalid_type_arguments' };
+  }
+  for (const t of actionCall.typeArguments) {
+    if (typeof t !== 'string' || t.length === 0 || t.length > 512) {
+      return { field: 'actionCall.typeArguments', reason: 'invalid_type_arguments' };
+    }
+  }
+  if (!Array.isArray(actionCall.args) || actionCall.args.length !== 5) {
+    // DeepBook v3 swap signature: [pool, coin_in, deep_in, min_out, clock]
+    return { field: 'actionCall.args', reason: 'invalid_args_length' };
+  }
+  const [a0, a1, a2, a3, a4] = actionCall.args;
+  if (a0?.kind !== 'object' || typeof a0.id !== 'string' || !HEX_OBJECT_ID.test(a0.id)) {
+    return { field: 'actionCall.args[0]', reason: 'invalid_pool_arg' };
+  }
+  if (a1?.kind !== 'pipe' || a1.from !== 'withdraw_coin') {
+    return { field: 'actionCall.args[1]', reason: 'invalid_coin_in_pipe' };
+  }
+  if (a2?.kind !== 'pipe' || a2.from !== 'zero_deep') {
+    return { field: 'actionCall.args[2]', reason: 'invalid_deep_in_pipe' };
+  }
+  // Step 11: clientMinOut sanity — must decode as 8-byte BCS u64.
+  if (a3?.kind !== 'pure' || typeof a3.bytes !== 'string' || !BASE64_REGEX.test(a3.bytes)) {
+    return { field: 'actionCall.args[3]', reason: 'invalid_min_out_bytes' };
+  }
+  try {
+    const decoded = Buffer.from(a3.bytes, 'base64');
+    if (decoded.length !== 8) return { field: 'actionCall.args[3]', reason: 'min_out_not_u64' };
+  } catch {
+    return { field: 'actionCall.args[3]', reason: 'min_out_not_u64' };
+  }
+  if (a4?.kind !== 'object' || a4.id !== '0x6') {
+    return { field: 'actionCall.args[4]', reason: 'invalid_clock_arg' };
+  }
+
+  if (typeof escrow.objectId !== 'string' || !HEX_OBJECT_ID.test(escrow.objectId)) {
+    return { field: 'escrow.objectId', reason: 'invalid_escrow_id' };
+  }
+  if (typeof escrow.initialSharedVersion !== 'string' || !U64_DECIMAL.test(escrow.initialSharedVersion)) {
+    return { field: 'escrow.initialSharedVersion', reason: 'invalid_escrow_initial_shared_version' };
+  }
+  if (typeof escrow.capabilityId !== 'string' || !HEX_OBJECT_ID.test(escrow.capabilityId)) {
+    return { field: 'escrow.capabilityId', reason: 'invalid_escrow_capability_id' };
+  }
+  if (typeof escrow.capabilityInitialSharedVersion !== 'string' || !U64_DECIMAL.test(escrow.capabilityInitialSharedVersion)) {
+    return { field: 'escrow.capabilityInitialSharedVersion', reason: 'invalid_cap_initial_shared_version' };
+  }
+  if (typeof spend.coinAssetType !== 'string' || spend.coinAssetType.length === 0 || spend.coinAssetType.length > 512) {
+    return { field: 'spend.coinAssetType', reason: 'invalid_spend_asset_type' };
+  }
+  if (typeof spend.amount !== 'string' || !U64_DECIMAL.test(spend.amount) || spend.amount === '0') {
+    return { field: 'spend.amount', reason: 'invalid_spend_amount' };
+  }
+  return null;
+}
+
+/**
+ * Spec §4 boundary validation: 12 ordered checks. Returns `null` on success
+ * or `{ statusCode, reason }` on first failure. Order matters — fail-fast on
+ * cheap checks before the cap RPC roundtrip.
+ *
+ * Steps 1, 2 (XOR), 3 (actionCallHash), 4 (sig2) run upstream in the handler.
+ * This function covers steps 5–12: address normalize, allow-lists, cap
+ * fetch/assertions, asset coverage, slippage cap, cap initialSharedVersion.
+ *
+ * Step 11 (clientMinOut decode) is in validateSwapWireShape() since it is
+ * purely structural.
+ */
+interface BoundaryFailure { statusCode: number; reason: string; }
+
+// Spec §5 env-driven allow-lists. Read fresh per request — Lambda env updates
+// are atomic (deploy or env-update) so the value at first read is canonical.
+function readSwapEnv(): {
+  disabled: boolean;
+  packageAllowlist: Set<string>;
+  poolAllowlist: Set<string>;
+  deepType: string;
+  maxSlippageBpsCap: number;
+} {
+  const disabled = (process.env.LAMBDA_SWAP_DISABLED ?? 'true') !== 'false';
+  const packageAllowlist = new Set(
+    (process.env.DEEPBOOK_PACKAGE_ALLOWLIST ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => normalizeSuiAddress(s).toLowerCase()),
+  );
+  const poolAllowlist = new Set(
+    (process.env.DEEPBOOK_POOL_ALLOWLIST ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean)
+      .map((s) => normalizeSuiAddress(s).toLowerCase()),
+  );
+  const deepType = (process.env.DEEP_TYPE ?? '').trim();
+  const maxSlippageBpsCap = Number(process.env.MAX_SLIPPAGE_BPS_CAP ?? '500');
+  return { disabled, packageAllowlist, poolAllowlist, deepType, maxSlippageBpsCap };
+}
+
+function canonicalTypeString(raw: string): string {
+  // Normalize the address prefix of an `0x<addr>::module::Type` string by
+  // running normalizeSuiAddress on the address portion. Fall back to a
+  // lowercased input if it's malformed (the allow-list compare will reject).
+  const colonIdx = raw.indexOf('::');
+  if (colonIdx < 0) return raw.toLowerCase();
+  const addr = raw.slice(0, colonIdx);
+  const rest = raw.slice(colonIdx);
+  try {
+    return `${normalizeSuiAddress(addr).toLowerCase()}${rest}`;
+  } catch {
+    return raw.toLowerCase();
+  }
+}
+
+async function validateSwapAtBoundary(
+  actionCall: ActionCallSpecWire,
+  escrow: EscrowBlock,
+  spend: SpendBlock,
+  principalAddress: string,
+  expectedCapabilityVersion: string,
+  env: ReturnType<typeof readSwapEnv>,
+): Promise<{ ok: true; cap: Awaited<ReturnType<typeof getCapabilityFieldsFull>> } | { ok: false; failure: BoundaryFailure }> {
+  // Step 5: address normalize.
+  const packageNorm = normalizeSuiAddress(actionCall.targetPackage).toLowerCase();
+  const poolNorm = normalizeSuiAddress(actionCall.args[0].id!).toLowerCase();
+
+  // Step 6: package allow-list.
+  if (env.packageAllowlist.size === 0 || !env.packageAllowlist.has(packageNorm)) {
+    return { ok: false, failure: { statusCode: 403, reason: 'package_not_allowed' } };
+  }
+
+  // Step 7: pool allow-list. Only boundary that blocks attacker-pool routing.
+  if (env.poolAllowlist.size === 0 || !env.poolAllowlist.has(poolNorm)) {
+    return { ok: false, failure: { statusCode: 403, reason: 'pool_not_allowed' } };
+  }
+
+  // Step 8: capability fetch + assertions (owner / version / pause / revoked).
+  let cap: Awaited<ReturnType<typeof getCapabilityFieldsFull>>;
+  try {
+    cap = await getCapabilityFieldsFull(escrow.capabilityId);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[Swap] capability fetch failed:', msg);
+    return { ok: false, failure: { statusCode: 503, reason: 'capability_fetch_failed' } };
+  }
+  if (cap.revoked) return { ok: false, failure: { statusCode: 403, reason: 'capability_revoked' } };
+  if (cap.pauseMode !== 0) return { ok: false, failure: { statusCode: 403, reason: 'capability_paused' } };
+  if (cap.owner.toLowerCase() !== principalAddress.toLowerCase()) {
+    return { ok: false, failure: { statusCode: 403, reason: 'capability_owner_mismatch' } };
+  }
+  if (cap.version !== expectedCapabilityVersion) {
+    return { ok: false, failure: { statusCode: 403, reason: 'capability_version_mismatch' } };
+  }
+
+  // Step 9: cap.allowed_assets covers spend + both swap typeArguments.
+  const spendType = canonicalTypeString(spend.coinAssetType);
+  const baseType = canonicalTypeString(actionCall.typeArguments[0]);
+  const quoteType = canonicalTypeString(actionCall.typeArguments[1]);
+  const allowed = new Set(cap.allowedAssets.map((a) => a.toLowerCase()));
+  if (!allowed.has(spendType)) {
+    return { ok: false, failure: { statusCode: 403, reason: 'spend_asset_not_allowed' } };
+  }
+  if (!allowed.has(baseType) || !allowed.has(quoteType)) {
+    return { ok: false, failure: { statusCode: 403, reason: 'swap_asset_not_allowed' } };
+  }
+
+  // Step 10: slippage cap. cap.risk_limits.max_slippage_bps must stay under
+  // the Lambda-side ceiling so a cap with a runaway slippage tolerance can't
+  // be used to bypass the prototype's MEV defenses.
+  if (!Number.isFinite(env.maxSlippageBpsCap) || env.maxSlippageBpsCap <= 0) {
+    console.error('[Swap] MAX_SLIPPAGE_BPS_CAP env missing or non-positive');
+    return { ok: false, failure: { statusCode: 500, reason: 'misconfigured_slippage_cap' } };
+  }
+  if (cap.maxSlippageBps > env.maxSlippageBpsCap) {
+    return { ok: false, failure: { statusCode: 403, reason: 'slippage_cap_exceeded' } };
+  }
+
+  // Step 12: cap initialSharedVersion self-check. The wire value is
+  // sig2-uncovered (see spec §3.3), so we reconcile against the on-chain
+  // owner descriptor here. Immutable post-creation, so any mismatch is a
+  // tamper or a stale runtime cache — fail closed.
+  if (cap.initialSharedVersion !== escrow.capabilityInitialSharedVersion) {
+    return { ok: false, failure: { statusCode: 403, reason: 'capability_initial_shared_version_mismatch' } };
+  }
+
+  return { ok: true, cap };
 }
 
 /**
@@ -834,9 +1062,37 @@ async function handleExecuteCapability(
     return { statusCode: 403, body: { success: false, error: 'envelope tampered', reason: 'envelope_tampered' } };
   }
 
-  // PR1.A reserve: actionCallHash MUST be zero-bytes since actionCall=null.
-  if (body.actionCallHash.toLowerCase() !== ZERO_ACTION_CALL_HASH) {
-    return { statusCode: 400, body: { success: false, error: 'actionCallHash must be zero in PR1.A', reason: 'invalid_action_call_hash' } };
+  // PR1.5 branch detection. validateExecuteCapabilityBody() has already
+  // enforced the ALL-null XOR ALL-non-null invariant + swap wire shape.
+  const isSwap = body.actionCall !== null;
+
+  // Spec §4 step 1: L2 kill switch. Read env once per request so an in-flight
+  // env update flips the next call without restart. HOLD branch is unaffected.
+  const swapEnv = readSwapEnv();
+  if (isSwap && swapEnv.disabled) {
+    return { statusCode: 403, body: { success: false, error: 'swap path disabled', reason: 'swap_disabled' } };
+  }
+  if (isSwap && !swapEnv.deepType) {
+    console.error('[Swap] DEEP_TYPE env missing — cannot build PTB');
+    return { statusCode: 500, body: { success: false, error: 'misconfigured', reason: 'deep_type_missing' } };
+  }
+
+  // actionCallHash binding (spec §3.1). HOLD: zero-bytes. Swap: recomputed
+  // canonical-JSON hash of {actionCall, escrow, spend}.
+  if (isSwap) {
+    const hashInput: ActionCallHashInput = {
+      actionCall: body.actionCall!,
+      escrow: body.escrow!,
+      spend: body.spend!,
+    };
+    const recomputed = computeActionCallHash(hashInput);
+    if (recomputed.toLowerCase() !== body.actionCallHash.toLowerCase()) {
+      return { statusCode: 403, body: { success: false, error: 'actionCallHash mismatch', reason: 'action_call_hash_mismatch' } };
+    }
+  } else {
+    if (body.actionCallHash.toLowerCase() !== ZERO_ACTION_CALL_HASH) {
+      return { statusCode: 400, body: { success: false, error: 'actionCallHash must be zero in HOLD', reason: 'invalid_action_call_hash' } };
+    }
   }
 
   // L2: agent signature over the full settlement intent.
@@ -858,26 +1114,49 @@ async function handleExecuteCapability(
     return { statusCode: 403, body: { success: false, error: 'signature verification failed', reason: sigRes.reason } };
   }
 
-  // L4: cap fetch + owner/version assert.
-  let cap;
-  try {
-    cap = await getCapabilityFields(capabilityId);
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn('[Exec] capability fetch failed', msg);
-    return { statusCode: 503, body: { success: false, error: 'capability_fetch_failed', reason: 'capability_fetch_failed' } };
-  }
-  if (cap.revoked) {
-    return { statusCode: 403, body: { success: false, error: 'capability revoked', reason: 'capability_revoked' } };
-  }
-  if (cap.pauseMode !== 0) {
-    return { statusCode: 403, body: { success: false, error: 'capability paused', reason: 'capability_paused' } };
-  }
-  if (cap.owner.toLowerCase() !== principalAddress.toLowerCase()) {
-    return { statusCode: 403, body: { success: false, error: 'capability owner mismatch', reason: 'capability_owner_mismatch' } };
-  }
-  if (cap.version !== expectedCapabilityVersion) {
-    return { statusCode: 403, body: { success: false, error: 'capability version mismatch', reason: 'capability_version_mismatch' } };
+  // L4: cap fetch + assertions. Swap path runs the full spec §4 5–12
+  // boundary validation (allow-lists, asset coverage, slippage cap,
+  // initialSharedVersion self-check); HOLD keeps the lightweight 4-field
+  // fetch since it can't touch escrow.
+  let capVersion: string;
+  if (isSwap) {
+    const boundary = await validateSwapAtBoundary(
+      body.actionCall!,
+      body.escrow!,
+      body.spend!,
+      principalAddress,
+      expectedCapabilityVersion,
+      swapEnv,
+    );
+    if (!boundary.ok) {
+      return {
+        statusCode: boundary.failure.statusCode,
+        body: { success: false, error: boundary.failure.reason, reason: boundary.failure.reason },
+      };
+    }
+    capVersion = boundary.cap.version;
+  } else {
+    let cap;
+    try {
+      cap = await getCapabilityFields(capabilityId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[Exec] capability fetch failed', msg);
+      return { statusCode: 503, body: { success: false, error: 'capability_fetch_failed', reason: 'capability_fetch_failed' } };
+    }
+    if (cap.revoked) {
+      return { statusCode: 403, body: { success: false, error: 'capability revoked', reason: 'capability_revoked' } };
+    }
+    if (cap.pauseMode !== 0) {
+      return { statusCode: 403, body: { success: false, error: 'capability paused', reason: 'capability_paused' } };
+    }
+    if (cap.owner.toLowerCase() !== principalAddress.toLowerCase()) {
+      return { statusCode: 403, body: { success: false, error: 'capability owner mismatch', reason: 'capability_owner_mismatch' } };
+    }
+    if (cap.version !== expectedCapabilityVersion) {
+      return { statusCode: 403, body: { success: false, error: 'capability version mismatch', reason: 'capability_version_mismatch' } };
+    }
+    capVersion = cap.version;
   }
 
   // L3: on-chain request still valid.
@@ -945,15 +1224,30 @@ async function handleExecuteCapability(
   };
 
   try {
-    const txDigest = await submitProofWithAER(
-      requestId,
-      resultHashRaw,
-      body.executionTimeMs,
-      verification.request!,
-      aerData,
-    );
+    const txDigest = isSwap
+      ? await submitSwapPTBWithAER(
+          requestId,
+          resultHashRaw,
+          body.executionTimeMs,
+          verification.request!,
+          aerData,
+          {
+            actionCall: body.actionCall!,
+            escrow: body.escrow!,
+            spend: body.spend!,
+            expectedCapabilityVersion,
+          },
+          swapEnv.deepType,
+        )
+      : await submitProofWithAER(
+          requestId,
+          resultHashRaw,
+          body.executionTimeMs,
+          verification.request!,
+          aerData,
+        );
     const executionTimeMs = Date.now() - startTime;
-    console.log(`[Exec] requestId=${requestId} settled tx=${txDigest} cap.v=${cap.version}`);
+    console.log(`[Exec] requestId=${requestId} settled tx=${txDigest} cap.v=${capVersion} swap=${isSwap}`);
     return {
       statusCode: 200,
       body: {
@@ -961,7 +1255,7 @@ async function handleExecuteCapability(
         requestId,
         resultHash,
         txDigest,
-        capabilityVersion: cap.version,
+        capabilityVersion: capVersion,
         executionTimeMs,
       },
     };

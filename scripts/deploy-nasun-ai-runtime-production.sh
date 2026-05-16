@@ -289,6 +289,32 @@ ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "set -e
   # Make sure log-watcher + dead-man are executable after rsync.
   chmod +x scripts/log-watcher.sh scripts/dead-man.sh 2>/dev/null || true
 
+  # better-sqlite3 ABI guard. pnpm deploy stages a prebuilt binary for the
+  # builder's Node ABI; the prod EC2 runs a different Node version, so the
+  # binary fails to load with NODE_MODULE_VERSION mismatch. Re-download the
+  # prebuilt for prod's Node ABI from the better-sqlite3 release page.
+  echo '[bs3] checking better-sqlite3 ABI...'
+  NODE_ABI=\$(node -p 'process.versions.modules' 2>/dev/null || echo unknown)
+  BS3_VER=\$(node -p 'require(\"./node_modules/better-sqlite3/package.json\").version' 2>/dev/null || echo unknown)
+  echo \"[bs3] Node ABI=\$NODE_ABI  better-sqlite3 pkg v=\$BS3_VER\"
+  if node -e 'require(\"./node_modules/better-sqlite3\")(\":memory:\").prepare(\"select 1\").get()' 2>/dev/null; then
+    echo '[bs3] binary loads cleanly — skipping refresh.'
+  elif [ \"\$NODE_ABI\" != 'unknown' ] && [ \"\$BS3_VER\" != 'unknown' ]; then
+    URL=\"https://github.com/WiseLibs/better-sqlite3/releases/download/v\${BS3_VER}/better-sqlite3-v\${BS3_VER}-node-v\${NODE_ABI}-linux-x64.tar.gz\"
+    echo \"[bs3] downloading prebuilt: \$URL\"
+    TMP=\$(mktemp -d)
+    if curl -sSL --fail -o \"\$TMP/bs3.tgz\" \"\$URL\"; then
+      mkdir -p node_modules/better-sqlite3/build/Release
+      tar -xzf \"\$TMP/bs3.tgz\" -C node_modules/better-sqlite3
+      echo '[bs3] binary refreshed.'
+    else
+      echo \"[bs3] WARN: download failed — runtime may fail to boot.\"
+    fi
+    rm -rf \"\$TMP\"
+  else
+    echo '[bs3] WARN: could not determine ABI or pkg version — skipping refresh.'
+  fi
+
   # The runtime calls \`import 'dotenv/config'\` at module load (src/config.ts:5),
   # which reads .env from cwd at boot. Shell-side export of the file is unsafe
   # for values that contain '=', spaces, or quotes (e.g. JWT secrets).

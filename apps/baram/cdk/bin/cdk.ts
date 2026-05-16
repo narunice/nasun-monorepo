@@ -39,6 +39,14 @@ const aerRegistryId = process.env.AER_REGISTRY_ID || '';
 const executorRegistryId = process.env.EXECUTOR_REGISTRY_ID || '';
 const suiRpcUrl = process.env.SUI_RPC_URL || 'https://rpc.devnet.nasun.io';
 
+// PR1.5 swap path gates. Default LAMBDA_SWAP_DISABLED to "true" so a deploy
+// without explicit env values cannot accidentally enable the swap path.
+const lambdaSwapDisabled = process.env.LAMBDA_SWAP_DISABLED || 'true';
+const deepbookPackageAllowlist = process.env.DEEPBOOK_PACKAGE_ALLOWLIST || '';
+const deepbookPoolAllowlist = process.env.DEEPBOOK_POOL_ALLOWLIST || '';
+const deepType = process.env.DEEP_TYPE || '';
+const maxSlippageBpsCap = process.env.MAX_SLIPPAGE_BPS_CAP || '500';
+
 if (!baramPackageId || !baramRegistryId) {
   console.error('[CDK] ERROR: BARAM_PACKAGE_ID and BARAM_REGISTRY_ID must be set.');
   console.error(`[CDK] Edit apps/baram/cdk/${envFile} to set:`);
@@ -61,6 +69,11 @@ console.log(`  AER Package: ${aerPackageId || '(not set - AER disabled)'}`);
 console.log(`  AER Registry: ${aerRegistryId || '(not set)'}`);
 console.log(`  Executor Registry: ${executorRegistryId || '(not set)'}`);
 console.log(`  RPC URL: ${suiRpcUrl}`);
+console.log(`  Swap path: LAMBDA_SWAP_DISABLED=${lambdaSwapDisabled}`);
+console.log(`    DeepBook pkg allowlist: ${deepbookPackageAllowlist || '(empty)'}`);
+console.log(`    DeepBook pool allowlist: ${deepbookPoolAllowlist || '(empty)'}`);
+console.log(`    DEEP type: ${deepType || '(empty)'}`);
+console.log(`    Max slippage cap: ${maxSlippageBpsCap} bps`);
 
 new BaramStack(app, stackId, {
   env: cdkEnv,
@@ -71,4 +84,9 @@ new BaramStack(app, stackId, {
   aerRegistryId,
   executorRegistryId,
   suiRpcUrl,
+  lambdaSwapDisabled,
+  deepbookPackageAllowlist,
+  deepbookPoolAllowlist,
+  deepType,
+  maxSlippageBpsCap,
 });

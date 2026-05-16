@@ -589,6 +589,385 @@ export async function getCapabilityFields(capabilityId: string): Promise<Capabil
 }
 
 /**
+ * Extended capability fields for the PR1.5 swap path. Adds `allowed_assets`,
+ * `risk_limits.max_slippage_bps`, and the `initial_shared_version` of the
+ * Capability shared object. Used by spec §4 steps 8–12 (asset coverage,
+ * slippage cap, initialSharedVersion self-check).
+ *
+ * Asset type strings are normalized to the canonical `0x<addr>::module::Type`
+ * form so the wire body's `spend.coinAssetType` and `actionCall.typeArguments`
+ * can be compared by simple lower-case string equality. TypeName JSON shape
+ * is `{ name: "addr::module::Type" }` — Sui returns the address WITHOUT the
+ * leading 0x and WITHOUT zero-padding, so we prepend `0x` and let the caller
+ * normalize via `normalizeSuiAddress` for full-length comparison.
+ */
+export interface CapabilityFieldsFull extends CapabilityFields {
+  /** Canonicalized type strings in the form `0x<addr>::module::Type`. */
+  allowedAssets: string[];
+  maxSlippageBps: number;
+  initialSharedVersion: string;
+}
+
+function normalizeTypeName(raw: unknown): string | null {
+  // TypeName JSON in Move objects: `{ name: "addr::mod::Type" }` OR
+  // `{ fields: { name: "addr::mod::Type" } }`. Address is hex w/o 0x.
+  if (!raw || typeof raw !== 'object') return null;
+  const direct = (raw as { name?: unknown }).name;
+  const nested = (raw as { fields?: { name?: unknown } }).fields?.name;
+  const name = typeof direct === 'string' ? direct : typeof nested === 'string' ? nested : null;
+  if (!name) return null;
+  const colonIdx = name.indexOf('::');
+  if (colonIdx < 0) return null;
+  const addr = name.slice(0, colonIdx);
+  const rest = name.slice(colonIdx);
+  const addrLower = addr.toLowerCase();
+  return `0x${addrLower}${rest}`;
+}
+
+export async function getCapabilityFieldsFull(capabilityId: string): Promise<CapabilityFieldsFull> {
+  if (!/^0x[0-9a-fA-F]{1,64}$/.test(capabilityId)) {
+    throw new Error(`Invalid capabilityId: ${capabilityId}`);
+  }
+  const client = getClient();
+  const obj = await client.getObject({
+    id: capabilityId,
+    options: { showContent: true, showOwner: true },
+  });
+  if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
+    throw new Error(`Capability ${capabilityId} not found or non-Move object`);
+  }
+  const fields = obj.data.content.fields as Record<string, unknown>;
+  const ownerRaw = fields.owner;
+  const versionRaw = fields.version;
+  const pauseRaw = fields.pause_mode;
+  const revokedRaw = fields.revoked;
+  if (typeof ownerRaw !== 'string' || typeof versionRaw !== 'string') {
+    throw new Error('Capability fields owner/version missing or not strings');
+  }
+  const ownerNormalized = ownerRaw.toLowerCase().startsWith('0x')
+    ? ownerRaw.toLowerCase()
+    : `0x${ownerRaw.toLowerCase()}`;
+
+  // allowed_assets: vector<TypeName>. Each element is the wrapped struct shape
+  // described in normalizeTypeName(). Filter nulls but treat decode failure as
+  // a hard error — better to fail closed than silently allow a type through.
+  const rawAssets = fields.allowed_assets;
+  if (!Array.isArray(rawAssets)) {
+    throw new Error('Capability allowed_assets is not an array');
+  }
+  const allowedAssets: string[] = [];
+  for (const entry of rawAssets) {
+    const norm = normalizeTypeName(entry);
+    if (!norm) {
+      throw new Error('Capability allowed_assets contains unparseable TypeName entry');
+    }
+    allowedAssets.push(norm);
+  }
+
+  // risk_limits: struct. Shape: { fields: { max_slippage_bps, ... } } or flat.
+  const rl = fields.risk_limits;
+  const rlFields = rl && typeof rl === 'object'
+    ? ((rl as { fields?: Record<string, unknown> }).fields ?? (rl as Record<string, unknown>))
+    : null;
+  const slipRaw = rlFields ? rlFields.max_slippage_bps : null;
+  const maxSlippageBps = typeof slipRaw === 'number'
+    ? slipRaw
+    : typeof slipRaw === 'string' ? Number(slipRaw) : NaN;
+  if (!Number.isFinite(maxSlippageBps)) {
+    throw new Error('Capability risk_limits.max_slippage_bps missing or non-numeric');
+  }
+
+  // owner descriptor → initial_shared_version. Cap must be a shared object.
+  const ownerDesc = obj.data.owner;
+  const sharedRaw = ownerDesc && typeof ownerDesc === 'object' && 'Shared' in ownerDesc
+    ? (ownerDesc as { Shared: { initial_shared_version: number | string } }).Shared.initial_shared_version
+    : null;
+  if (sharedRaw === null || sharedRaw === undefined) {
+    throw new Error(`Capability ${capabilityId} is not a shared object`);
+  }
+  const initialSharedVersion = String(sharedRaw);
+
+  return {
+    owner: ownerNormalized,
+    version: versionRaw,
+    pauseMode: typeof pauseRaw === 'number' ? pauseRaw : Number(pauseRaw ?? 0),
+    revoked: revokedRaw === true,
+    allowedAssets,
+    maxSlippageBps,
+    initialSharedVersion,
+  };
+}
+
+// ============================================================================
+// PR1.5 — 6-call atomic swap PTB (Cmd 0–5) + AER (Cmd 6+)
+// ============================================================================
+
+const DEEP_TYPE_DEFAULT_ENV = 'DEEP_TYPE';
+
+interface SwapPTBInput {
+  // Wire blocks (already validated by spec §4 1–12)
+  actionCall: {
+    targetPackage: string;
+    module: string;
+    fn: string;
+    typeArguments: string[];      // [Base, Quote]
+    args: Array<{
+      kind: 'object' | 'pure' | 'pipe';
+      id?: string;
+      bytes?: string;
+      from?: 'withdraw_coin' | 'zero_deep';
+    }>;
+  };
+  escrow: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    capabilityInitialSharedVersion: string;
+  };
+  spend: {
+    coinAssetType: string;        // canonicalized 0x<addr>::mod::Type
+    amount: string;               // u64 decimal
+  };
+  expectedCapabilityVersion: string;
+}
+
+/**
+ * Submit the 6-call swap PTB + AER (Cmd 6+) atomically, signed by the Lambda
+ * executor keypair. Reference layout: spec §2.1.
+ *
+ * Cmd 0  aer::escrow::withdraw_for_action<T_in>  → (Coin<T_in>, ActionObligation)
+ * Cmd 1  0x2::coin::zero<DEEP>                   → Coin<DEEP>
+ * Cmd 2  <deepbookPackage>::pool::<swap_fn>      → (Coin<Base>, Coin<Quote>, Coin<DEEP>)
+ * Cmd 3  0x2::coin::destroy_zero<DEEP>           (S14 whitelist invariant)
+ * Cmd 4  aer::escrow::deposit_swap_leftover<T_in>
+ * Cmd 5  aer::escrow::settle_action<T_out>       (consumes obligation)
+ * Cmd 6+ baram::submit_proof_with_receipt + aer::create_report_with_receipt_capability
+ *
+ * Direction encoding follows the swap fn name:
+ *   BUY  (swap_exact_quote_for_base): T_in=Quote, T_out=Base, leftover=quoteOut, primary=baseOut
+ *   SELL (swap_exact_base_for_quote): T_in=Base,  T_out=Quote, leftover=baseOut, primary=quoteOut
+ *
+ * Any abort in the swap portion rolls back the entire PTB — escrow untouched
+ * and ActionObligation auto-aborts (no `drop`/`store` abilities).
+ */
+export async function submitSwapPTBWithAER(
+  requestId: number,
+  resultHash: string,
+  executionTimeMs: number,
+  request: ComputeRequestOnChain,
+  aer: AERReportData,
+  swap: SwapPTBInput,
+  deepType: string,
+): Promise<string> {
+  if (!AER_PACKAGE_ID || !AER_REGISTRY_ID) {
+    throw new Error('AER not configured: AER_PACKAGE_ID and AER_REGISTRY_ID required');
+  }
+  if (resultHash.length !== 64 || !/^[0-9a-f]+$/i.test(resultHash)) {
+    throw new Error(`Invalid result hash: expected 64 hex chars, got ${resultHash.length}`);
+  }
+  if (!deepType) {
+    throw new Error(`Missing ${DEEP_TYPE_DEFAULT_ENV} env`);
+  }
+
+  const direction = swap.actionCall.fn === 'swap_exact_quote_for_base'
+    ? 'BUY'
+    : swap.actionCall.fn === 'swap_exact_base_for_quote' ? 'SELL' : null;
+  if (!direction) {
+    throw new Error(`Unsupported swap fn: ${swap.actionCall.fn}`);
+  }
+  if (swap.actionCall.typeArguments.length !== 2) {
+    throw new Error('actionCall.typeArguments must have exactly [Base, Quote]');
+  }
+  const [baseType, quoteType] = swap.actionCall.typeArguments;
+
+  const client = getClient();
+  const keypair = getKeypair();
+  console.log(`[Sui] Submitting swap PTB + AER for request ${requestId} (${direction})`);
+
+  const tx = new Transaction();
+
+  // Shared object refs — escrow mutable (withdraw/leftover/settle take &mut),
+  // capability immutable (all swap-path entries take &Capability).
+  const escrowRef = tx.sharedObjectRef({
+    objectId: swap.escrow.objectId,
+    initialSharedVersion: swap.escrow.initialSharedVersion,
+    mutable: true,
+  });
+  const capArg = tx.sharedObjectRef({
+    objectId: swap.escrow.capabilityId,
+    initialSharedVersion: swap.escrow.capabilityInitialSharedVersion,
+    mutable: false,
+  });
+
+  // Cmd 0: withdraw_for_action<T_in>(escrow, &cap, amount, expected_cap_version)
+  //        → (Coin<T_in>, ActionObligation)
+  const [coinIn, obligation] = tx.moveCall({
+    target: `${AER_PACKAGE_ID}::escrow::withdraw_for_action`,
+    typeArguments: [swap.spend.coinAssetType],
+    arguments: [
+      escrowRef,
+      capArg,
+      tx.pure.u64(BigInt(swap.spend.amount)),
+      tx.pure.u64(BigInt(swap.expectedCapabilityVersion)),
+    ],
+  });
+
+  // Cmd 1: 0x2::coin::zero<DEEP>() — whitelisted-pool DEEP is always zero.
+  const [zeroDeep] = tx.moveCall({
+    target: '0x2::coin::zero',
+    typeArguments: [deepType],
+  });
+
+  // Cmd 2: <deepbookPackage>::pool::<swap_fn>(pool, coin_in, deep_in, min_out, clock)
+  //        → (Coin<Base>, Coin<Quote>, Coin<DEEP>)
+  // Resolve runtime-provided args list. kind=object → tx.object/tx.sharedObjectRef
+  // is left to the SDK via tx.object (pool is shared; SDK auto-resolves).
+  // kind=pipe → pipe from prior commands. kind=pure → raw base64 BCS bytes.
+  const swapArgs = swap.actionCall.args.map((a, idx) => {
+    if (a.kind === 'object') {
+      if (!a.id) throw new Error(`actionCall.args[${idx}].id missing for kind=object`);
+      return tx.object(a.id);
+    }
+    if (a.kind === 'pipe') {
+      if (a.from === 'withdraw_coin') return coinIn;
+      if (a.from === 'zero_deep') return zeroDeep;
+      throw new Error(`actionCall.args[${idx}] unknown pipe.from=${a.from}`);
+    }
+    if (a.kind === 'pure') {
+      if (!a.bytes) throw new Error(`actionCall.args[${idx}].bytes missing for kind=pure`);
+      return tx.pure(Buffer.from(a.bytes, 'base64'));
+    }
+    throw new Error(`actionCall.args[${idx}] unknown kind=${(a as { kind: string }).kind}`);
+  });
+
+  const [baseOut, quoteOut, deepOut] = tx.moveCall({
+    target: `${swap.actionCall.targetPackage}::${swap.actionCall.module}::${swap.actionCall.fn}`,
+    typeArguments: swap.actionCall.typeArguments,
+    arguments: swapArgs,
+  });
+
+  // Cmd 3: 0x2::coin::destroy_zero<DEEP>(deep_out) — S14 invariant on
+  //        whitelisted Pado pool. Aborts the PTB if DEEP ever becomes non-zero.
+  tx.moveCall({
+    target: '0x2::coin::destroy_zero',
+    typeArguments: [deepType],
+    arguments: [deepOut],
+  });
+
+  // Cmd 4: deposit_swap_leftover<T_in>(escrow, &cap, leftoverInput) — returns
+  //        the unspent input-side dust back to the agent's escrow.
+  const leftoverInput = direction === 'BUY' ? quoteOut : baseOut;
+  tx.moveCall({
+    target: `${AER_PACKAGE_ID}::escrow::deposit_swap_leftover`,
+    typeArguments: [swap.spend.coinAssetType],
+    arguments: [escrowRef, capArg, leftoverInput],
+  });
+
+  // Cmd 5: settle_action<T_out>(escrow, &cap, obligation, primary) — consumes
+  //        the hot-potato obligation. Move enforces cap.allowed_assets cover
+  //        T_out at this entry (E_ASSET_NOT_ALLOWED 572) as defense in depth.
+  const outputType = direction === 'BUY' ? baseType : quoteType;
+  const primaryOutput = direction === 'BUY' ? baseOut : quoteOut;
+  tx.moveCall({
+    target: `${AER_PACKAGE_ID}::escrow::settle_action`,
+    typeArguments: [outputType],
+    arguments: [escrowRef, capArg, obligation, primaryOutput],
+  });
+
+  // Cmd 6+: AER (submit_proof_with_receipt + create_report_with_receipt_capability).
+  // Mirrors submitProofWithAER() — same 41-arg AER call inlined here so the
+  // entire swap + report is one atomic PTB. Any AER abort rolls back the swap.
+  const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
+  const promptHashBytes = Array.isArray(request.promptHash)
+    ? request.promptHash
+    : Array.from(Buffer.from(request.promptHash, 'hex'));
+
+  const [receipt] = tx.moveCall({
+    target: `${BARAM_PACKAGE_ID}::baram::submit_proof_with_receipt`,
+    arguments: [
+      tx.object(BARAM_REGISTRY_ID),
+      tx.pure.u64(requestId),
+      tx.pure.vector('u8', resultHashBytes),
+      tx.pure.u64(executionTimeMs),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+
+  const intentId = computeIntentId(requestId);
+  const parentIntentBytes = aer.parentIntentId
+    ? Array.from(Buffer.from(aer.parentIntentId, 'hex'))
+    : null;
+  if (parentIntentBytes && parentIntentBytes.length !== INTENT_ID_LENGTH) {
+    throw new Error(`parentIntentId must be ${INTENT_ID_LENGTH} bytes hex`);
+  }
+  const actionTypeBytes = Buffer.from(aer.actionType, 'utf-8');
+  const payloadBytes: number[] = [];
+  const payloadHash = Array.from(sha256Bytes(actionTypeBytes));
+  const summary = truncateToBytes(aer.actionSummary, MAX_ACTION_SUMMARY_BYTES);
+
+  tx.moveCall({
+    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
+    arguments: [
+      tx.object(AER_REGISTRY_ID),
+      tx.object(BARAM_REGISTRY_ID),
+      receipt,
+      capArg,
+      tx.pure.u64(BigInt(aer.expectedCapabilityVersion)),
+      tx.pure.address(aer.initiator),
+      tx.pure.vector('address', aer.delegationPath),
+      tx.pure(bcs.option(bcs.Address).serialize(aer.executorPrincipal)),
+      tx.pure(bcs.option(bcs.string()).serialize(aer.feeDetail)),
+      tx.pure(bcs.option(bcs.Address).serialize(aer.budgetId)),
+      tx.pure(bcs.option(bcs.u64()).serialize(aer.budgetRemaining != null ? BigInt(aer.budgetRemaining) : null)),
+      tx.pure(bcs.option(bcs.string()).serialize(aer.modelMetadata)),
+      tx.pure.vector('u8', promptHashBytes),
+      tx.pure(bcs.option(bcs.string()).serialize(aer.purpose)),
+      tx.pure(bcs.option(bcs.string()).serialize(aer.constraints)),
+      tx.pure.u8(aer.executorTier),
+      tx.pure.u64(aer.executorReputation),
+      tx.pure.u64(aer.executorStakeAmount),
+      tx.pure.bool(aer.teeVerified),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(aer.teeAttestationHash)),
+      tx.pure.u64(request.createdAt),
+      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredBy)),
+      tx.pure(bcs.option(bcs.Address).serialize(aer.triggeredAction)),
+      tx.pure.vector('u8', intentId),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(parentIntentBytes)),
+      tx.pure.u32(requestId),
+      tx.pure.u8(aer.eventClass),
+      tx.pure.string(aer.actionType),
+      tx.pure.u16(aer.actionSchemaVersion),
+      tx.pure.string(PAYLOAD_CODEC),
+      tx.pure.vector('u8', payloadHash),
+      tx.pure.vector('u8', payloadBytes),
+      tx.pure.string(summary),
+      tx.pure.u8(aer.actionOutcome),
+      tx.pure.u8(aer.triggeredByType),
+      tx.pure(bcs.option(bcs.string()).serialize(aer.triggeredByRef)),
+      tx.pure.string(aer.modelVersion),
+      tx.pure.vector('u8', ZERO_HASH_32),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(null)),
+      tx.pure.vector('string', ['capability_id']),
+      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize([
+        Array.from(Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex')),
+      ])),
+    ],
+  });
+
+  const result = await client.signAndExecuteTransaction({
+    signer: keypair,
+    transaction: tx,
+    options: { showEffects: true, showEvents: true },
+  });
+  if (result.effects?.status?.status !== 'success') {
+    const error = result.effects?.status?.error || 'Unknown error';
+    throw new Error(`Swap PTB failed: ${error}`);
+  }
+  console.log(`[Sui] Swap PTB + AER submitted: ${result.digest}`);
+  return result.digest;
+}
+
+/**
  * Mark request as executing (optional status update)
  */
 export async function markExecuting(requestId: number): Promise<string> {

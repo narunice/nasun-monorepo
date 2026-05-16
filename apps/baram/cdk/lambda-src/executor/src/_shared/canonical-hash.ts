@@ -24,6 +24,53 @@ export function canonicalJsonSha256(value: unknown): string {
   return sha256Hex0x(canonicalJson(value));
 }
 
+// ============================================================================
+// PR1.5 swap action-call hashing
+// ============================================================================
+
+export const ZERO_ACTION_CALL_HASH = '0x' + '00'.repeat(32);
+
+/**
+ * Wire-level input bound by `actionCallHash`. Must mirror runtime's
+ * `ActionCallHashInput` in apps/nasun-ai-runtime/src/sig.ts exactly — drift
+ * here means every swap-path sig2 verify fails. Field ordering is irrelevant;
+ * canonicalJson sorts at every depth. The matching golden vector test pins
+ * the SAMPLE → GOLDEN_HASH contract on both sides.
+ */
+export interface ActionCallHashInput {
+  actionCall: {
+    targetPackage: string;
+    module: string;
+    fn: string;
+    typeArguments: string[];
+    args: Array<{
+      kind: 'object' | 'pure' | 'pipe';
+      id?: string;
+      bytes?: string;
+      from?: 'withdraw_coin' | 'zero_deep';
+    }>;
+  };
+  escrow: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    capabilityInitialSharedVersion: string;
+  };
+  spend: {
+    coinAssetType: string;
+    amount: string;
+  };
+}
+
+/**
+ * sha256(canonicalJson({actionCall, escrow, spend})). Lambda recomputes from
+ * the wire body and asserts byte-equality against the runtime-provided
+ * `actionCallHash` (sig2-covered) before signing the PTB.
+ */
+export function computeActionCallHash(input: ActionCallHashInput): string {
+  return canonicalJsonSha256(input);
+}
+
 function sortKeys(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return value.map(sortKeys);

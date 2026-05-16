@@ -31,6 +31,16 @@ export interface BaramStackProps extends cdk.StackProps {
 
   // CORS allowed origins (defaults to Baram frontend URLs)
   corsAllowedOrigins?: string[];
+
+  // PR1.5 swap path gates (spec §1.3 / §4). Safe defaults: swap disabled,
+  // empty allow-lists, DEEP type unset, slippage cap 500 bps. dev/prod must
+  // populate via .env to enable the swap path; flipping LAMBDA_SWAP_DISABLED
+  // to "false" is the cutover switch.
+  lambdaSwapDisabled?: string;
+  deepbookPackageAllowlist?: string;
+  deepbookPoolAllowlist?: string;
+  deepType?: string;
+  maxSlippageBpsCap?: string;
 }
 
 export class BaramStack extends cdk.Stack {
@@ -59,6 +69,11 @@ export class BaramStack extends cdk.Stack {
         'http://localhost:5174',
         'http://localhost:5177',
       ],
+      lambdaSwapDisabled = 'true',
+      deepbookPackageAllowlist = '',
+      deepbookPoolAllowlist = '',
+      deepType = '',
+      maxSlippageBpsCap = '500',
     } = props;
 
     // DynamoDB table for AI execution results (TTL: 7 days). Prod retains the
@@ -112,6 +127,15 @@ export class BaramStack extends cdk.Stack {
         GROQ_PARAMETER_NAME: groqParameterName,
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
         RESULT_TABLE_NAME: resultTable.tableName,
+        // PR1.5 swap path gates. handleExecuteCapability reads these on every
+        // request (no cold-start cache) so env flips take effect immediately
+        // without redeploy. LAMBDA_SWAP_DISABLED=true short-circuits at the
+        // boundary with reason="swap_disabled".
+        LAMBDA_SWAP_DISABLED: lambdaSwapDisabled,
+        DEEPBOOK_PACKAGE_ALLOWLIST: deepbookPackageAllowlist,
+        DEEPBOOK_POOL_ALLOWLIST: deepbookPoolAllowlist,
+        DEEP_TYPE: deepType,
+        MAX_SLIPPAGE_BPS_CAP: maxSlippageBpsCap,
       },
       logRetention: isProduction
         ? logs.RetentionDays.ONE_MONTH

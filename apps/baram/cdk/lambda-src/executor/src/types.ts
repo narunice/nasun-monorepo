@@ -138,6 +138,42 @@ export interface InferResponse {
   reason?: string;                      // structured reason on 4xx (e.g. 'prompt_hash_mismatch')
 }
 
+/**
+ * Wire-level swap-path blocks. PR1.5: present iff actionCall !== null,
+ * absent (all three null) for HOLD/cognition. Lambda enforces the XOR.
+ *
+ * Mirrors runtime `host-client.ts:ActionCallSpecWire` byte-for-byte —
+ * canonical JSON of {actionCall, escrow, spend} is hashed and bound to sig2
+ * via SettleSigFields.actionCallHash, so any field-name/order drift here
+ * breaks sig2 verification on every swap.
+ */
+export interface ActionCallArg {
+  kind: 'object' | 'pure' | 'pipe';
+  id?: string;                         // kind=object
+  bytes?: string;                      // kind=pure, base64-encoded BCS
+  from?: 'withdraw_coin' | 'zero_deep'; // kind=pipe
+}
+
+export interface ActionCallSpecWire {
+  targetPackage: string;
+  module: string;                      // PR1.5: 'pool'
+  fn: string;                          // 'swap_exact_quote_for_base' | 'swap_exact_base_for_quote'
+  typeArguments: string[];             // [Base, Quote] full 0x<addr>::module::Type
+  args: ActionCallArg[];
+}
+
+export interface EscrowBlock {
+  objectId: string;
+  initialSharedVersion: string;
+  capabilityId: string;
+  capabilityInitialSharedVersion: string;
+}
+
+export interface SpendBlock {
+  coinAssetType: string;               // 0x<addr>::module::Type
+  amount: string;                      // u64 decimal
+}
+
 export interface ExecuteCapabilityRequest {
   requestId: number;
   promptHash: string;                   // 0x<64 hex lower>
@@ -156,12 +192,14 @@ export interface ExecuteCapabilityRequest {
   replay: Record<string, unknown>;
   proposal: Record<string, unknown>;
   envelopeHash: string;                 // 0x<64 hex lower> sha256(canonicalJson(envelope))
-  actionCallHash: string;               // 0x<64 hex lower>  PR1.A: 0x00...00 (zero bytes)
+  actionCallHash: string;               // HOLD: 0x00...00 ; swap: sha256(canonicalJson({actionCall, escrow, spend}))
   sig2: string;                         // base64 Sui personal-message signature
-  // PR1.A: MUST be null. PR1.5 will enable.
-  actionCall: null;
-  escrow: null;
-  spend: null;
+  // PR1.5: HOLD branch leaves all three null; swap branch sets all three.
+  // Lambda enforces the all-null XOR all-non-null invariant and recomputes
+  // actionCallHash before signing the PTB.
+  actionCall: ActionCallSpecWire | null;
+  escrow: EscrowBlock | null;
+  spend: SpendBlock | null;
   purpose?: string | null;
   constraints?: string | null;
   triggeredBy?: string | null;

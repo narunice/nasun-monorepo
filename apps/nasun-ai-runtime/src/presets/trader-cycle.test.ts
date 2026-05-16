@@ -130,6 +130,7 @@ function makeDeps(overrides: Partial<TraderCycleDeps> = {}): Partial<TraderCycle
     fetchCapabilityFields: vi.fn().mockResolvedValue({
       owner: WALLET.toLowerCase(),
       version: '7',
+      initialSharedVersion: '99',
     }) as unknown as TraderCycleDeps['fetchCapabilityFields'],
     fetchAgentBalances: vi
       .fn()
@@ -179,7 +180,7 @@ beforeEach(() => {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe.skip('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
+describe('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
   it('emits eventClass=2 with FINAL parsed decision (not provisional HOLD)', async () => {
     const deps = makeDeps();
     const runtime = newTraderCycleRuntime({
@@ -241,6 +242,7 @@ describe.skip('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
       objectId: ESCROW_ID,
       initialSharedVersion: '200',
       capabilityId: CAP_ID,
+      capabilityInitialSharedVersion: '99',
     });
     expect(body.spend.coinAssetType).toBe(NUSDC_TYPE);
     expect(body.spend.amount).toBe('1000000'); // 1 NUSDC * 1e6
@@ -269,7 +271,7 @@ describe.skip('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
   });
 });
 
-describe.skip('runTraderCycle — execution path (SELL) [PR1.5 swap]', () => {
+describe('runTraderCycle — execution path (SELL) [PR1.5 swap]', () => {
   it('flips input/output assets and fn name when decision is SELL', async () => {
     const deps = makeDeps({
       parseTradeDecision: vi
@@ -477,7 +479,7 @@ describe('runTraderCycle — failure modes', () => {
   });
 });
 
-describe.skip('runTraderCycle — quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap]', () => {
+describe('runTraderCycle — quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap]', () => {
   it('BUY: quoteMinOut called with NUSDC sizeInRaw + result passed to buildSwapActionCall', async () => {
     const QUOTED = 12345n;
     const deps = makeDeps({
@@ -557,7 +559,7 @@ describe.skip('runTraderCycle — quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap
   });
 });
 
-describe.skip('runTraderCycle — escrow caching + intent chain [PR1.5 swap]', () => {
+describe('runTraderCycle — escrow caching + intent chain [PR1.5 swap]', () => {
   it('fetchEscrow is called once even across two BUY cycles', async () => {
     const deps = makeDeps();
     const runtime = newTraderCycleRuntime();
