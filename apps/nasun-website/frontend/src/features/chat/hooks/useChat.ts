@@ -7,7 +7,6 @@ import { useUserStore } from '../../../store/userStore';
 import { SignerManager, ZkLoginSigner, NsaSigner } from '@nasun/wallet';
 
 const WS_URL = import.meta.env.VITE_NASUN_CHAT_WS_URL || 'ws://localhost:3101';
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 // Short notification beep via Web Audio API (no external file needed)
 let audioCtx: AudioContext | null = null;
@@ -38,16 +37,6 @@ export function useChat() {
   const activeRoomState = useChatStore((s) => s.roomStates.get(s.activeRoomId));
   const connectedRef = useRef(false);
 
-  // If Turnstile is configured, wait for token before connecting
-  const [turnstileReady, setTurnstileReady] = useState(!TURNSTILE_SITE_KEY);
-  // Incremented to force Turnstile widget remount when a new token is needed
-  const [turnstileKey, setTurnstileKey] = useState(0);
-  // True after captcha_required fires (mid-session re-verification), false once token arrives
-  const [captchaRequired, setCaptchaRequired] = useState(false);
-  // Permanent Turnstile failure (after MAX_TURNSTILE_RETRIES) — stops showing "Connecting..." forever
-  const [turnstilePermanentlyFailed, setTurnstilePermanentlyFailed] = useState(false);
-  // Retry counter for invisible Turnstile errors (privacy browsers, script blockers, etc.)
-  const turnstileRetryRef = useRef(0);
   // Latched when ChatService emits session_expired. Cleared by an explicit
   // "Re-login" action (handled via the global nasun:open-login flow). Gates
   // the 30s periodic reconnect so we don't churn against a known-bad signer.
@@ -73,9 +62,9 @@ export function useChat() {
 
   useEffect(() => {
     const walletAddress = user?.walletAddress;
-    if (!walletAddress || !turnstileReady) {
+    if (!walletAddress) {
       signFnRef.current = null;
-      if (!walletAddress && connectedRef.current) {
+      if (connectedRef.current) {
         getChatService().disconnect();
         connectedRef.current = false;
       }
@@ -165,12 +154,6 @@ export function useChat() {
       }
     };
 
-    const onCaptchaRequired = () => {
-      setCaptchaRequired(true);
-      setTurnstileReady(false);
-      setTurnstileKey((k) => k + 1);
-    };
-
     const onSessionExpired = () => {
       setSessionExpired(true);
       useChatStore.getState().setAuthError('Chat session expired. Please re-authenticate to continue.');
@@ -192,7 +175,6 @@ export function useChat() {
     service.on('rooms_list', onRoomsList);
     service.on('reaction_update', onReactionUpdate);
     service.on('error', onError);
-    service.on('captcha_required', onCaptchaRequired);
     service.on('session_expired', onSessionExpired);
 
     service.connect(WS_URL, signFn);
@@ -206,14 +188,13 @@ export function useChat() {
       service.off('rooms_list', onRoomsList);
       service.off('reaction_update', onReactionUpdate);
       service.off('error', onError);
-      service.off('captcha_required', onCaptchaRequired);
       service.off('session_expired', onSessionExpired);
     };
-  }, [user?.walletAddress, turnstileReady]);
+  }, [user?.walletAddress]);
 
   // Clear the session_expired latch only when the user genuinely re-authenticates
   // (wallet address change). Re-running the main effect for unrelated reasons —
-  // turnstile remount, StrictMode double-mount, ref churn — must NOT clear the
+  // StrictMode double-mount, ref churn — must NOT clear the
   // latch, otherwise the silent reconnect loop this latch prevents would resume.
   useEffect(() => {
     if (!user?.walletAddress) return;
@@ -226,7 +207,7 @@ export function useChat() {
   // Skipped when sessionExpired is latched — re-login flips the wallet effect
   // which re-creates the signer and re-runs this effect from a clean state.
   useEffect(() => {
-    if (!user?.walletAddress || !turnstileReady || sessionExpired) return;
+    if (!user?.walletAddress || sessionExpired) return;
 
     const checkInterval = setInterval(() => {
       const fn = signFnRef.current;
@@ -238,7 +219,7 @@ export function useChat() {
     }, 30_000);
 
     return () => clearInterval(checkInterval);
-  }, [user?.walletAddress, turnstileReady, sessionExpired]);
+  }, [user?.walletAddress, sessionExpired]);
 
   // Load history for active room when switching
   useEffect(() => {
@@ -298,58 +279,12 @@ export function useChat() {
     useChatStore.getState().setActiveRoomId(roomId);
   }, []);
 
-  const setTurnstileToken = useCallback((token: string) => {
-    getChatService().setTurnstileToken(token);
-    turnstileRetryRef.current = 0;
-    if (turnstilePermanentlyFailed) setTurnstilePermanentlyFailed(false);
-    if (!turnstileReady) setTurnstileReady(true);
-    if (captchaRequired) setCaptchaRequired(false);
-  }, [turnstileReady, captchaRequired, turnstilePermanentlyFailed]);
-
-  const onTurnstileError = useCallback(() => {
-    const MAX_TURNSTILE_RETRIES = 3;
-    const RELOAD_FLAG = 'chat_turnstile_reloaded';
-    turnstileRetryRef.current += 1;
-    if (turnstileRetryRef.current < MAX_TURNSTILE_RETRIES) {
-      // Auto-retry with remount after a short delay
-      setTurnstileReady(false);
-      setTimeout(() => {
-        setTurnstileKey((k) => k + 1);
-      }, 500);
-      return;
-    }
-    // Cap exceeded — try a silent page reload once per session (fixes SES timing race)
-    if (!sessionStorage.getItem(RELOAD_FLAG)) {
-      sessionStorage.setItem(RELOAD_FLAG, '1');
-      window.location.reload();
-      return;
-    }
-    // Already reloaded and still failing — surface error
-    useChatStore.getState().setAuthError(
-      'Security check failed. Reload the page or disable tracker-blocking extensions to use chat.'
-    );
-    setTurnstileReady(false);
-    setTurnstilePermanentlyFailed(true);
-  }, []);
-
-  const onTurnstileExpire = useCallback(() => {
-    // Token expired before auth completed — remount widget to get a fresh one
-    if (status !== 'connected') {
-      setTurnstileKey((k) => k + 1);
-      setTurnstileReady(false);
-    }
-  }, [status]);
-
-  const displayStatus: ChatConnectionStatus =
-    turnstilePermanentlyFailed ? 'disconnected'
-      : (!!user?.walletAddress && !turnstileReady) ? 'connecting'
-      : status;
+  const displayStatus: ChatConnectionStatus = status;
 
   return {
     messages,
     status,
     displayStatus,
-    captchaRequired,
     onlineCount,
     isOpen,
     hasMore,
@@ -361,9 +296,5 @@ export function useChat() {
     switchRoom,
     toggleReaction,
     canChat: !!user?.walletAddress,
-    setTurnstileToken,
-    onTurnstileError,
-    onTurnstileExpire,
-    turnstileKey,
   };
 }

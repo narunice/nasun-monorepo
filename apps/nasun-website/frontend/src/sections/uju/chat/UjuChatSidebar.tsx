@@ -1,12 +1,10 @@
 import { useRef, useMemo } from "react";
-import { Turnstile } from "@marsidev/react-turnstile";
 import { useUserStore } from "@/store/userStore";
 import { useChatStore } from "@/store/chatStore";
 import { useChat } from "@/features/chat";
 import MessageList from "@/features/chat/components/MessageList";
 import MessageInput, { type MessageInputHandle } from "@/features/chat/components/MessageInput";
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 const SIDEBAR_ROOM_IDS = new Set([0, 10]); // GM + General only (Pado is for Pado app)
 
 export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
@@ -17,7 +15,6 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
     rooms, activeRoomId,
     sendMessage, loadMore, switchRoom, toggleReaction,
     canChat,
-    setTurnstileToken, turnstileKey, onTurnstileError, onTurnstileExpire,
   } = useChat();
 
   const inputRef = useRef<MessageInputHandle>(null);
@@ -101,24 +98,6 @@ export function UjuChatSidebar({ onClose }: { onClose?: () => void } = {}) {
 
       {/* Nickname modal is hoisted to UjuPage so it survives sidebar
           conditional unmount on tab switches. */}
-
-      {/* size:'invisible' renders nothing for clean IPs; CF auto-escalates
-          with its own modal when interactive challenge is needed. Host element
-          stays in normal flow (NOT display:none) so the iframe remains
-          interactable. Previous display:none + appearance:'execute' combo
-          trapped users on suspicious-IP networks (2026-05-09 outage). */}
-      {/* Mount unconditionally (was gated by `canChat`) so the challenge
-          can start as soon as the sidebar opens, regardless of login state. */}
-      {TURNSTILE_SITE_KEY && (
-        <Turnstile
-          key={turnstileKey}
-          siteKey={TURNSTILE_SITE_KEY}
-          options={{ size: "invisible" }}
-          onSuccess={setTurnstileToken}
-          onError={onTurnstileError}
-          onExpire={onTurnstileExpire}
-        />
-      )}
     </div>
   );
 }

@@ -11,9 +11,6 @@ import ErrorBoundary from "./components/layout/ErrorBoundary";
 import { Button } from "./components/ui/button";
 import { useReferralCapture } from "./hooks/useReferralCapture";
 import { useCrossAppArrival } from "./hooks/useCrossAppArrival";
-// Eager-mounted (was lazy) so the Turnstile widget inside ChatWidget can
-// pre-warm the CF challenge at page load instead of waiting for the user
-// to log in. Trade-off: ~3KB gzip absorbed into the main chunk.
 import ChatWidget from "./features/chat/components/ChatWidget";
 
 /**

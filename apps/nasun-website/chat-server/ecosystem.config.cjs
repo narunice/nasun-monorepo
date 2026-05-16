@@ -35,7 +35,7 @@ module.exports = {
         // placeholder previously shadowed the .env value and silently no-op'd
         // bot exclusion (2026-05-05 — discovered when prediction-market LP bot
         // pair kept appearing on the weekly leaderboard despite .env update).
-        // Secrets (TURNSTILE_SECRET_KEY, INTERNAL_API_KEY, ANTHROPIC_API_KEY): set in .env on server
+        // Secrets (INTERNAL_API_KEY, ANTHROPIC_API_KEY): set in .env on server
       },
     },
   ],

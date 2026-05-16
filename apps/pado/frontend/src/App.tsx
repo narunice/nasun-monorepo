@@ -3,45 +3,11 @@
  * App 컴포넌트: 레이아웃 + 라우팅만 담당
  */
 
-import { Turnstile } from '@marsidev/react-turnstile';
 import { Header, Footer, MobileBottomNav } from './components/layout';
 import { AppRoutes } from './routes';
 import { OfflineBanner } from './components/common/OfflineBanner';
-import { useChatMode, FloatingChatPopup, MobileChatDrawer, useChatTurnstilePrewarm } from './features/social';
+import { useChatMode, FloatingChatPopup, MobileChatDrawer } from './features/social';
 import { useCrossAppArrival } from './hooks/useCrossAppArrival';
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-
-/**
- * Pre-warm the invisible Turnstile challenge at the App root so it completes
- * in the background before the user clicks the chat button. Turnstile tokens
- * are site-bound (not user-bound), so we start the challenge at page load —
- * independent of wallet connection — to eliminate the multi-second
- * "Connecting..." delay that would otherwise occur the first time the chat
- * panel mounts.
- */
-function ChatTurnstilePrewarm() {
-  const { turnstileKey, onSuccess, onError } = useChatTurnstilePrewarm();
-
-  if (!TURNSTILE_SITE_KEY) return null;
-
-  // size:'invisible' renders nothing for clean IPs; CF auto-escalates with
-  // its own modal overlay when interactive challenge is needed. The host
-  // element stays in the normal flow (NOT display:none) so the iframe is
-  // interactable in the rare interactive-fallback case. The previous
-  // display:none + appearance:'execute' combo trapped users on
-  // suspicious-IP networks (2026-05-09 outage).
-  return (
-    <Turnstile
-      key={turnstileKey}
-      siteKey={TURNSTILE_SITE_KEY}
-      options={{ size: 'invisible' }}
-      onSuccess={onSuccess}
-      onError={onError}
-      onExpire={onError}
-    />
-  );
-}
 
 function ChatLayer() {
   const { chatMode, setChatMode, isOnTradePage } = useChatMode();
@@ -99,10 +65,6 @@ export default function App() {
 
       {/* Chat layer: outside <main>, uses position:fixed so no padding issue */}
       <ChatLayer />
-
-      {/* Invisible Turnstile that completes the bot challenge in the
-          background so opening the chat panel doesn't block on it. */}
-      <ChatTurnstilePrewarm />
     </div>
   );
 }

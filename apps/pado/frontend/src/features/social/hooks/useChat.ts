@@ -5,93 +5,9 @@ import { useSigner, ZkLoginSigner } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../../../config/network';
 import type { ChatMessage, ChatConnectionStatus, RoomInfo } from '../types';
 
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
-
 // Module-level: shared across all useChat instances so mode switching
 // (docked ↔ floating) doesn't trigger disconnect/reconnect cycles.
 let connectedAddress: string | null = null;
-
-// Module-level Turnstile state shared across all useChat instances + the
-// pre-warmed widget mounted at the App level. Single source of truth so
-// every consumer sees a consistent ready/key/captcha-required value.
-let sharedTurnstileReady = !TURNSTILE_SITE_KEY;
-let sharedTurnstileKey = 0;
-let sharedCaptchaRequired = false;
-const turnstileSubscribers = new Set<() => void>();
-
-function notifyTurnstileSubscribers(): void {
-  for (const sub of turnstileSubscribers) sub();
-}
-
-function markTurnstileSuccess(token: string): void {
-  getChatService().setTurnstileToken(token);
-  sharedTurnstileReady = true;
-  sharedCaptchaRequired = false;
-  notifyTurnstileSubscribers();
-}
-
-function markCaptchaRequired(): void {
-  sharedCaptchaRequired = true;
-  sharedTurnstileReady = false;
-  sharedTurnstileKey++;
-  notifyTurnstileSubscribers();
-}
-
-// CF onError/onExpire handler: bump the key to remount the widget. Bounded
-// by the natural cadence of CF error events, unlike per-action remounts.
-function markTurnstileError(): void {
-  sharedTurnstileReady = false;
-  sharedTurnstileKey++;
-  notifyTurnstileSubscribers();
-}
-
-/**
- * Reset Turnstile shared state on logout so the next login starts with a
- * fresh challenge instead of relying on a stale `ready=true` flag whose
- * backing pending token may have already been consumed.
- */
-function resetTurnstileShared(): void {
-  sharedTurnstileReady = !TURNSTILE_SITE_KEY;
-  sharedCaptchaRequired = false;
-  sharedTurnstileKey++;
-  notifyTurnstileSubscribers();
-}
-
-// Ensure the captcha_required event is handled exactly once at module scope
-// (rather than in every useChat instance), since the shared state already
-// drives all subscribers.
-let captchaEventSubscribed = false;
-function ensureCaptchaEventSubscription(): void {
-  if (captchaEventSubscribed) return;
-  captchaEventSubscribed = true;
-  getChatService().on('captcha_required', markCaptchaRequired);
-}
-
-/**
- * Lightweight hook for pre-warming the Turnstile challenge.
- * Mount the returned widget props at the App root so the challenge completes
- * in the background before the user opens the chat panel.
- */
-export function useChatTurnstilePrewarm() {
-  const [turnstileKey, setKey] = useState(sharedTurnstileKey);
-
-  useEffect(() => {
-    ensureCaptchaEventSubscription();
-    const sub = () => setKey(sharedTurnstileKey);
-    turnstileSubscribers.add(sub);
-    return () => { turnstileSubscribers.delete(sub); };
-  }, []);
-
-  const onSuccess = useCallback((token: string) => {
-    markTurnstileSuccess(token);
-  }, []);
-
-  const onError = useCallback(() => {
-    markTurnstileError();
-  }, []);
-
-  return { turnstileKey, onSuccess, onError };
-}
 
 // Reference count of active useChat instances.
 // Only disconnect when the last instance unmounts (e.g. page navigation).
@@ -149,7 +65,6 @@ export interface UseChatResult {
   isConnected: boolean;
   status: ChatConnectionStatus;
   displayStatus: ChatConnectionStatus;
-  captchaRequired: boolean;
   onlineCount: number;
   hasMore: boolean;
   error: string | null;
@@ -167,8 +82,6 @@ export interface UseChatResult {
   selectedLanguageRoomId: number;
   setLanguageRoom: (roomId: number) => void;
   unreadCounts: Record<number, number>;
-  setTurnstileToken: (token: string) => void;
-  turnstileKey: number;
 }
 
 
@@ -191,24 +104,6 @@ export function useChat(): UseChatResult {
   const [rooms, setRooms] = useState<RoomInfo[]>(cachedRooms);
   const [languageRoomId, setLanguageRoomIdState] = useState(selectedLanguageRoomId);
   const [unreadCounts, setUnreadCounts] = useState<Record<number, number>>({});
-  // Turnstile state is module-shared so every useChat instance and the
-  // pre-warmed widget see the same ready/key/captcha-required values.
-  const [turnstileReady, setTurnstileReady] = useState(sharedTurnstileReady);
-  const [turnstileKey, setTurnstileKey] = useState(sharedTurnstileKey);
-  const [captchaRequired, setCaptchaRequired] = useState(sharedCaptchaRequired);
-
-  useEffect(() => {
-    ensureCaptchaEventSubscription();
-    const sub = () => {
-      setTurnstileReady(sharedTurnstileReady);
-      setTurnstileKey(sharedTurnstileKey);
-      setCaptchaRequired(sharedCaptchaRequired);
-    };
-    turnstileSubscribers.add(sub);
-    // Sync immediately in case module state changed between initial render and subscription
-    sub();
-    return () => { turnstileSubscribers.delete(sub); };
-  }, []);
 
   const marketRooms = useMemo(() => rooms.filter((r) => r.id === 20), [rooms]);
   const languageRooms = useMemo(() => rooms.filter((r) => r.id === 0 || r.id === 10), [rooms]);
@@ -231,15 +126,11 @@ export function useChat(): UseChatResult {
     const chatService = getChatService();
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
 
-    // Should disconnect: no signer, no wsUrl, or Turnstile not yet ready
-    if (!wsUrl || !signerAddress || !signerType || !turnstileReady) {
+    // Should disconnect: no signer or no wsUrl
+    if (!wsUrl || !signerAddress || !signerType) {
       if (connectedAddress) {
         chatService.disconnect();
         connectedAddress = null;
-        // On logout (signer cleared), reset shared Turnstile state so the
-        // next login gets a fresh challenge rather than reusing a flag whose
-        // token may have already been consumed.
-        if (!signerAddress) resetTurnstileShared();
       }
       return;
     }
@@ -280,7 +171,7 @@ export function useChat(): UseChatResult {
 
     chatService.connect(wsUrl, chatSigner);
     connectedAddress = signerAddress;
-  }, [signerAddress, signerType, turnstileReady]);
+  }, [signerAddress, signerType]);
 
   // Track active useChat instances. Debounced disconnect prevents brief
   // WebSocket drop during page transitions (old ChatPanel unmounts before
@@ -307,7 +198,7 @@ export function useChat(): UseChatResult {
   // network failures, and race conditions during page load.
   useEffect(() => {
     const wsUrl = NETWORK_CONFIG.chatWebSocketUrl;
-    if (!wsUrl || !signerAddress || !signerType || !turnstileReady) return;
+    if (!wsUrl || !signerAddress || !signerType) return;
 
     const checkInterval = setInterval(() => {
       const chatService = getChatService();
@@ -317,7 +208,7 @@ export function useChat(): UseChatResult {
     }, 30_000);
 
     return () => clearInterval(checkInterval);
-  }, [signerAddress, signerType, turnstileReady]);
+  }, [signerAddress, signerType]);
 
   // HTTP polling for unauthenticated users is disabled.
   // Chat uses nasun-chat-server (WebSocket only), which does not expose a REST /api/messages endpoint.
@@ -443,10 +334,6 @@ export function useChat(): UseChatResult {
       }
     });
 
-    // captcha_required is handled once at module scope via
-    // ensureCaptchaEventSubscription(); subscribers are notified via
-    // turnstileSubscribers, so we don't subscribe per-instance here.
-
     // If already connected (e.g. re-mount after docked↔floating switch),
     // request history to populate the fresh empty messages state.
     if (chatService.getStatus() === 'connected') {
@@ -562,13 +449,8 @@ export function useChat(): UseChatResult {
 
   const needsNickname = false;
 
-  const setTurnstileToken = useCallback((token: string) => {
-    markTurnstileSuccess(token);
-  }, []);
-
-
   const displayStatus: ChatConnectionStatus =
-    (!!signerAddress && (!turnstileReady || !signerType)) ? 'connecting' : status;
+    (!!signerAddress && !signerType) ? 'connecting' : status;
 
   return {
     messages,
@@ -577,7 +459,6 @@ export function useChat(): UseChatResult {
     isConnected: status === 'connected',
     status,
     displayStatus,
-    captchaRequired,
     onlineCount,
     hasMore,
     error,
@@ -595,7 +476,5 @@ export function useChat(): UseChatResult {
     selectedLanguageRoomId: languageRoomId,
     setLanguageRoom,
     unreadCounts,
-    setTurnstileToken,
-    turnstileKey,
   };
 }

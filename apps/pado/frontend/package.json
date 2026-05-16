@@ -13,7 +13,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@marsidev/react-turnstile": "^1.5.0",
     "@mysten/sui": "1.45.2",
     "@nasun/devnet-config": "workspace:*",
     "@nasun/profile-core": "workspace:*",

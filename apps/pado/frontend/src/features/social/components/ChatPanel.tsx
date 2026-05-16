@@ -24,7 +24,7 @@ function StatusDot({ status, loggedIn }: { status: string; loggedIn: boolean }) 
 export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
   const address = useSignerAddress();
   const {
-    messages, sendMessage, loadMore, isConnected, displayStatus, captchaRequired, onlineCount, hasMore,
+    messages, sendMessage, loadMore, isConnected, displayStatus, onlineCount, hasMore,
     toggleReaction,
     marketRooms, languageRooms, activeRoomId, setActiveRoom,
     unreadCounts,
@@ -43,9 +43,7 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
             <span className="text-trading-sm font-medium text-theme-text-primary">Chat</span>
             <StatusDot status={displayStatus} loggedIn={!!address} />
             {!address ? null :
-              captchaRequired ? (
-                <span className="text-trading-xs text-yellow-500">Verifying...</span>
-              ) : displayStatus === 'connecting' || displayStatus === 'authenticating' ? (
+              displayStatus === 'connecting' || displayStatus === 'authenticating' ? (
                 <span className="text-trading-xs text-yellow-500">Connecting...</span>
               ) : displayStatus === 'reconnecting' ? (
                 <span className="text-trading-xs text-yellow-500">Reconnecting...</span>
@@ -144,8 +142,6 @@ export function ChatPanel({ onMinimize, onPopOut, hideHeader }: Props) {
         disabled={!isConnected}
         disabledPlaceholder={!address ? 'Connect wallet to chat' : 'Connecting...'}
       />
-      {/* Turnstile widget is mounted at the App root (ChatLayer) so the
-          challenge completes in the background before the panel opens. */}
     </div>
   );
 }
