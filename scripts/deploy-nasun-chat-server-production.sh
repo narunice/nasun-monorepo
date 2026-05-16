@@ -29,15 +29,24 @@ TOTAL_STEPS=5
 
 DRY_RUN=false
 FORCE=false
+CLEAR_TURNSTILE=false
+SKIP_BUILD=false
 
 for arg in "$@"; do
   case $arg in
     --dry-run) DRY_RUN=true ;;
     --force) FORCE=true ;;
+    --clear-turnstile) CLEAR_TURNSTILE=true ;;
+    --skip-build) SKIP_BUILD=true ;;
     --help|-h)
       echo "Usage: ./scripts/deploy-nasun-chat-server-production.sh [options]"
-      echo "  --dry-run   Build only, no deploy"
-      echo "  --force     Skip confirmation prompt"
+      echo "  --dry-run           Build only, no deploy"
+      echo "  --force             Skip confirmation prompt"
+      echo "  --clear-turnstile   Blank TURNSTILE_SECRET_KEY on remote .env"
+      echo "                      and hard-restart pm2 to drop the value"
+      echo "                      (delete + start, not startOrRestart)."
+      echo "                      One-off helper for chat Turnstile removal."
+      echo "  --skip-build        Skip the local build step (use existing dist)"
       exit 0
       ;;
   esac
@@ -63,15 +72,22 @@ log_success "SSH 키 확인됨: $SSH_KEY_PATH"
 # --- Step 2: 빌드 ---
 log_step 2 $TOTAL_STEPS "chat-server 빌드"
 
-log_info "빌드 중..."
-cd "$CHAT_SERVER_DIR"
-if ! pnpm build 2>&1; then
-  log_error "빌드 실패!"
-fi
-cd "$MONOREPO_ROOT"
+if [ "$SKIP_BUILD" = true ]; then
+  log_warning "--skip-build: 빌드 단계 건너뜀 (기존 dist 재사용)"
+  if [ ! -d "$LOCAL_DIST" ] || [ ! -f "$LOCAL_DIST/crash/index.js" ]; then
+    log_error "기존 dist가 없습니다. --skip-build를 떼고 다시 실행하세요."
+  fi
+else
+  log_info "빌드 중..."
+  cd "$CHAT_SERVER_DIR"
+  if ! pnpm build 2>&1; then
+    log_error "빌드 실패!"
+  fi
+  cd "$MONOREPO_ROOT"
 
-if [ ! -d "$LOCAL_DIST" ] || [ ! -f "$LOCAL_DIST/crash/index.js" ]; then
-  log_error "빌드 결과물을 찾을 수 없습니다: $LOCAL_DIST"
+  if [ ! -d "$LOCAL_DIST" ] || [ ! -f "$LOCAL_DIST/crash/index.js" ]; then
+    log_error "빌드 결과물을 찾을 수 없습니다: $LOCAL_DIST"
+  fi
 fi
 
 BUILD_SIZE=$(du -sh "$LOCAL_DIST" | cut -f1)
@@ -111,12 +127,43 @@ rsync -az --delete \
 
 log_success "rsync 완료"
 
+# --- Step 5a (optional): TURNSTILE_SECRET_KEY 비우기 ---
+if [ "$CLEAR_TURNSTILE" = true ]; then
+  log_info "원격 .env 의 TURNSTILE_SECRET_KEY 를 비우는 중..."
+  # Pattern guarded: only edit a line that already starts with TURNSTILE_SECRET_KEY=.
+  # Backup the file under .env.bak.<TS> before in-place edit.
+  ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "
+    set -e
+    cd '$REMOTE_BASE'
+    if [ ! -f .env ]; then echo 'No .env on remote'; exit 1; fi
+    cp .env .env.bak.${TIMESTAMP}
+    if grep -q '^TURNSTILE_SECRET_KEY=' .env; then
+      sed -i 's|^TURNSTILE_SECRET_KEY=.*|TURNSTILE_SECRET_KEY=|' .env
+      echo 'TURNSTILE_SECRET_KEY blanked. Backup: .env.bak.${TIMESTAMP}'
+    else
+      echo 'TURNSTILE_SECRET_KEY line not found, nothing to clear'
+    fi
+    grep '^TURNSTILE_SECRET_KEY=' .env || echo '(no TURNSTILE_SECRET_KEY line after edit)'
+  "
+  log_success "원격 .env 갱신 완료"
+fi
+
 # --- Step 5: pm2 재시작 + 헬스 체크 ---
 log_step 5 $TOTAL_STEPS "pm2 재시작 + 헬스 체크"
 
-log_info "pm2 재시작 중..."
-ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
-  "cd '$REMOTE_BASE' && pm2 startOrRestart ecosystem.config.cjs --update-env && sleep 3 && pm2 list | grep nasun-chat-server"
+if [ "$CLEAR_TURNSTILE" = true ]; then
+  # Hard restart: delete + start so pm2 daemon re-parses ecosystem.config.cjs
+  # against the freshly edited .env. startOrRestart --update-env does NOT
+  # re-evaluate ecosystem CJS, so the dropped env var would persist in the
+  # daemon's cached parse (feedback_pm2_daemon_env_resolution).
+  log_info "pm2 hard restart (delete + start) 중..."
+  ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
+    "cd '$REMOTE_BASE' && pm2 delete nasun-chat-server || true; pm2 start ecosystem.config.cjs && sleep 3 && pm2 list | grep nasun-chat-server"
+else
+  log_info "pm2 재시작 중..."
+  ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" \
+    "cd '$REMOTE_BASE' && pm2 startOrRestart ecosystem.config.cjs --update-env && sleep 3 && pm2 list | grep nasun-chat-server"
+fi
 
 log_success "pm2 재시작 완료"
 
