@@ -83,31 +83,36 @@ export async function findOtherOwnerOfAddress(
   selfIdentityId: string
 ): Promise<string | null> {
   const lower = address.toLowerCase();
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: tableName,
-      // Filter at the server: primary match OR `additionalAddresses` present.
-      // We cannot deeply filter on list-of-map elements server-side, so we
-      // pull candidates and check in JS.
-      FilterExpression:
-        'linkedAccounts.metamask.walletAddress = :addr OR attribute_exists(linkedAccounts.metamask.additionalAddresses)',
-      ExpressionAttributeValues: { ':addr': lower },
-      ProjectionExpression: 'identityId, linkedAccounts.metamask.walletAddress, linkedAccounts.metamask.additionalAddresses',
-    })
-  );
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: tableName,
+        // Filter at the server: primary match OR `additionalAddresses` present.
+        // We cannot deeply filter on list-of-map elements server-side, so we
+        // pull candidates and check in JS.
+        FilterExpression:
+          'linkedAccounts.metamask.walletAddress = :addr OR attribute_exists(linkedAccounts.metamask.additionalAddresses)',
+        ExpressionAttributeValues: { ':addr': lower },
+        ProjectionExpression: 'identityId, linkedAccounts.metamask.walletAddress, linkedAccounts.metamask.additionalAddresses',
+        ExclusiveStartKey: exclusiveStartKey,
+      })
+    );
 
-  for (const item of result.Items ?? []) {
-    const candidateId = item.identityId as string | undefined;
-    if (!candidateId || candidateId === selfIdentityId) continue;
+    for (const item of result.Items ?? []) {
+      const candidateId = item.identityId as string | undefined;
+      if (!candidateId || candidateId === selfIdentityId) continue;
 
-    const meta = (item.linkedAccounts as Record<string, MetaMaskLinkedAccount> | undefined)?.metamask;
-    if (!meta) continue;
+      const meta = (item.linkedAccounts as Record<string, MetaMaskLinkedAccount> | undefined)?.metamask;
+      if (!meta) continue;
 
-    if (addrEq(meta.walletAddress, lower)) return candidateId;
-    for (const entry of meta.additionalAddresses ?? []) {
-      if (addrEq(entry?.walletAddress, lower)) return candidateId;
+      if (addrEq(meta.walletAddress, lower)) return candidateId;
+      for (const entry of meta.additionalAddresses ?? []) {
+        if (addrEq(entry?.walletAddress, lower)) return candidateId;
+      }
     }
-  }
+    exclusiveStartKey = result.LastEvaluatedKey;
+  } while (exclusiveStartKey);
   return null;
 }
 

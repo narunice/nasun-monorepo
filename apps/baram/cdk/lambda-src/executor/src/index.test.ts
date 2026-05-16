@@ -1,5 +1,5 @@
 /**
- * Tests for Lambda executor index.ts — handleRecord, classifyError, input validation, maskSensitive
+ * Tests for Lambda executor index.ts -- handleRecord, classifyError, input validation, maskSensitive
  *
  * Tests extracted pure functions and route-level validation.
  * On-chain calls (verifyRequest, submitProofWithAER) are mocked.
@@ -89,7 +89,7 @@ beforeEach(() => {
   vi.clearAllMocks();
 });
 
-describe('POST /record — route-level validation', () => {
+describe('POST /record -- route-level validation', () => {
 
   it('rejects missing body', async () => {
     const event = makeEvent({ path: '/record', body: null });
@@ -208,7 +208,7 @@ describe('POST /record — route-level validation', () => {
   });
 });
 
-describe('handleRecord — result length validation', () => {
+describe('handleRecord -- result length validation', () => {
   it('rejects result shorter than 50 chars', async () => {
     const event = makeEvent({
       path: '/record',
@@ -272,7 +272,7 @@ describe('handleRecord — result length validation', () => {
   });
 });
 
-describe('handleRecord — promptHash validation', () => {
+describe('handleRecord -- promptHash validation', () => {
   it('rejects promptHash shorter than 64 chars', async () => {
     const event = makeEvent({
       path: '/record',
@@ -332,7 +332,7 @@ describe('handleRecord — promptHash validation', () => {
   });
 });
 
-describe('handleRecord — executionTimeMs validation', () => {
+describe('handleRecord -- executionTimeMs validation', () => {
   it('defaults executionTimeMs to 0 when omitted', async () => {
     const event = makeEvent({
       path: '/record',
@@ -398,7 +398,7 @@ describe('handleRecord — executionTimeMs validation', () => {
   });
 });
 
-describe('handleRecord — on-chain verification failure', () => {
+describe('handleRecord -- on-chain verification failure', () => {
   it('returns failure when request verification fails', async () => {
     vi.mocked(verifyRequest).mockResolvedValueOnce({
       valid: false,
@@ -441,7 +441,7 @@ describe('handleRecord — on-chain verification failure', () => {
   });
 });
 
-describe('handleRecord — successful settlement', () => {
+describe('handleRecord -- successful settlement', () => {
   it('returns resultHash and txDigest on success', async () => {
     const event = makeEvent({
       path: '/record',
@@ -482,7 +482,7 @@ describe('handleRecord — successful settlement', () => {
   });
 });
 
-describe('classifyError — via thrown errors', () => {
+describe('classifyError -- via thrown errors', () => {
   it('maps "Result too short" to 400', async () => {
     const event = makeEvent({
       path: '/record',
@@ -540,7 +540,7 @@ describe('classifyError — via thrown errors', () => {
   });
 });
 
-describe('POST /record — 404 for wrong method/path', () => {
+describe('POST /record -- 404 for wrong method/path', () => {
   it('returns 404 for GET /record', async () => {
     const event = makeEvent({ httpMethod: 'GET', path: '/record' });
     const result = await handler(event, mockContext, mockCallback);

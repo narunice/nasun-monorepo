@@ -32,7 +32,7 @@ export const ZERO_ACTION_CALL_HASH = '0x' + '00'.repeat(32);
 
 /**
  * Wire-level input bound by `actionCallHash`. Must mirror runtime's
- * `ActionCallHashInput` in apps/nasun-ai-runtime/src/sig.ts exactly — drift
+ * `ActionCallHashInput` in apps/nasun-ai-runtime/src/sig.ts exactly -- drift
  * here means every swap-path sig2 verify fails. Field ordering is irrelevant;
  * canonicalJson sorts at every depth. The matching golden vector test pins
  * the SAMPLE → GOLDEN_HASH contract on both sides.

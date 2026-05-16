@@ -7,7 +7,7 @@
 // with the same library it uses for verification.
 //
 // The signing wallet does NOT have to be the currently "connected"
-// Solana adapter — we re-connect against the requested wallet right
+// Solana adapter -- we re-connect against the requested wallet right
 // before signing so the user can pick a different account in the
 // extension popup if they want.
 
@@ -67,7 +67,7 @@ export function useSolanaSignMessage() {
       }
 
       // Ensure the wallet is unlocked + has a public key. `connect()` is
-      // idempotent — Phantom returns the already-connected pubkey when the
+      // idempotent -- Phantom returns the already-connected pubkey when the
       // user has previously approved this origin.
       let pubkey = adapter.publicKey?.toString?.();
       if (!pubkey) {
@@ -101,7 +101,7 @@ export function useSolanaSignMessage() {
       if (!result?.signature || !(result.signature instanceof Uint8Array)) {
         throw new SolanaSignMessageError("Wallet did not return a signature");
       }
-      // Some Phantom versions return only `signature` — fall back to the
+      // Some Phantom versions return only `signature` -- fall back to the
       // adapter's pubkey. Either way the publicKey we forward must equal
       // the pubkey we asked the user to verify (server enforces this).
       const signerPubkey = result.publicKey?.toString?.() ?? pubkey;

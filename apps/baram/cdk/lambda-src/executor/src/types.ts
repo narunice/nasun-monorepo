@@ -71,7 +71,7 @@ export const MODEL_PRICING: Record<string, number> = {
 
 export const DEFAULT_MODEL = 'llama-3.3-70b-versatile';
 
-// /record endpoint — Model B (self-reported LLM results)
+// /record endpoint -- Model B (self-reported LLM results)
 export interface RecordRequest extends AerCapabilityFields {
   requestId: number;
   result: string;              // LLM output (50–10,000 chars)
@@ -99,7 +99,7 @@ export interface ResultRecord {
   ttl: number; // Unix epoch seconds
 }
 
-// POST /result — wallet-signature-authenticated result fetch
+// POST /result -- wallet-signature-authenticated result fetch
 export interface ResultRequest {
   requestId: number;
   timestamp: number;
@@ -110,12 +110,12 @@ export interface ResultRequest {
 }
 
 // ============================================================================
-// /infer + /execute-capability — split-inference + settlement (PR1.A HOLD-only).
+// /infer + /execute-capability -- split-inference + settlement (PR1.A HOLD-only).
 //
 // Two-call shape: the trader runtime first POSTs /infer to get the LLM
 // completion bound to a pre-created on-chain request, then POSTs
 // /execute-capability with the agent-signed settlement intent. PR1.A
-// rejects any actionCall (swap) — those land in PR1.5.
+// rejects any actionCall (swap) -- those land in PR1.5.
 // ============================================================================
 
 export interface InferRequest {
@@ -123,7 +123,7 @@ export interface InferRequest {
   encryptedPrompt: string;              // base64 (MVP: plain text encoded)
   model: string;
   capabilityId: string;                 // 0x<hex>
-  principalAddress: string;             // 0x<64 hex> — must match cap.owner
+  principalAddress: string;             // 0x<64 hex> -- must match cap.owner
   promptHash: string;                   // 0x<64 hex lower>
   expectedCapabilityVersion: string;    // u64 decimal
 }
@@ -142,7 +142,7 @@ export interface InferResponse {
  * Wire-level swap-path blocks. PR1.5: present iff actionCall !== null,
  * absent (all three null) for HOLD/cognition. Lambda enforces the XOR.
  *
- * Mirrors runtime `host-client.ts:ActionCallSpecWire` byte-for-byte —
+ * Mirrors runtime `host-client.ts:ActionCallSpecWire` byte-for-byte --
  * canonical JSON of {actionCall, escrow, spend} is hashed and bound to sig2
  * via SettleSigFields.actionCallHash, so any field-name/order drift here
  * breaks sig2 verification on every swap.
@@ -178,13 +178,13 @@ export interface ExecuteCapabilityRequest {
   requestId: number;
   promptHash: string;                   // 0x<64 hex lower>
   resultHash: string;                   // 0x<64 hex lower>
-  result: string;                       // full result text — Lambda re-hashes to guard against host bugs
+  result: string;                       // full result text -- Lambda re-hashes to guard against host bugs
   executionTimeMs: number;
   model: string;
   budgetId?: string | null;
   capabilityId: string;
-  agentAddress: string;                 // 0x<64 hex> — sig recover target
-  principalAddress: string;             // 0x<64 hex> — must match cap.owner
+  agentAddress: string;                 // 0x<64 hex> -- sig recover target
+  principalAddress: string;             // 0x<64 hex> -- must match cap.owner
   expectedCapabilityVersion: string;    // u64 decimal
   envelope: Record<string, unknown>;    // TraderEnvelopeMeta from runtime
   lineage: Record<string, unknown>;

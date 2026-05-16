@@ -38,7 +38,7 @@ const CAP_ID = '0x' + 'aa'.repeat(32);
 const ESCROW_ID = '0x' + 'bb'.repeat(32);
 const WALLET = '0x' + 'cc'.repeat(32);
 // A real Ed25519Keypair so signSettle() in trader-cycle works under test.
-// agentAddress in the config still uses the stub AGENT_ADDR for assertions —
+// agentAddress in the config still uses the stub AGENT_ADDR for assertions --
 // the keypair only needs to provide a working signPersonalMessage.
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 const TEST_KEYPAIR = new Ed25519Keypair();
@@ -180,7 +180,7 @@ beforeEach(() => {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
+describe('runTraderCycle -- execution path (BUY) [PR1.5 swap]', () => {
   it('emits eventClass=2 with FINAL parsed decision (not provisional HOLD)', async () => {
     const deps = makeDeps();
     const runtime = newTraderCycleRuntime({
@@ -213,7 +213,7 @@ describe('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
     // If the envelope was built from the provisional HOLD shape (the
     // legacy bug), the tag byte would be 3 instead of 1.
     expect(body.envelope.payloadBytes[0]).toBe(1);
-    // BUY routes through trade.swap.v1 — host action-class registry
+    // BUY routes through trade.swap.v1 -- host action-class registry
     // looks up the DeepBook swap fn by this label.
     expect(body.envelope.actionType).toBe('trade.swap.v1');
     // Proposal mirrors envelope.
@@ -271,7 +271,7 @@ describe('runTraderCycle — execution path (BUY) [PR1.5 swap]', () => {
   });
 });
 
-describe('runTraderCycle — execution path (SELL) [PR1.5 swap]', () => {
+describe('runTraderCycle -- execution path (SELL) [PR1.5 swap]', () => {
   it('flips input/output assets and fn name when decision is SELL', async () => {
     const deps = makeDeps({
       parseTradeDecision: vi
@@ -312,7 +312,7 @@ describe('runTraderCycle — execution path (SELL) [PR1.5 swap]', () => {
   });
 });
 
-describe('runTraderCycle — cognition path (HOLD)', () => {
+describe('runTraderCycle -- cognition path (HOLD)', () => {
   it('emits eventClass=1 with no actionCall/escrow/spend in body', async () => {
     const deps = makeDeps({
       parseTradeDecision: vi
@@ -366,7 +366,7 @@ describe('runTraderCycle — cognition path (HOLD)', () => {
   });
 });
 
-describe('runTraderCycle — failure modes', () => {
+describe('runTraderCycle -- failure modes', () => {
   it('does not call /execute-capability when /infer fails', async () => {
     const deps = makeDeps({
       infer: vi.fn().mockResolvedValue({ success: false, error: 'enclave down' }),
@@ -479,7 +479,7 @@ describe('runTraderCycle — failure modes', () => {
   });
 });
 
-describe('runTraderCycle — quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap]', () => {
+describe('runTraderCycle -- quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap]', () => {
   it('BUY: quoteMinOut called with NUSDC sizeInRaw + result passed to buildSwapActionCall', async () => {
     const QUOTED = 12345n;
     const deps = makeDeps({
@@ -559,7 +559,7 @@ describe('runTraderCycle — quoteMinOut wiring (HIGH #2 floor) [PR1.5 swap]', (
   });
 });
 
-describe('runTraderCycle — escrow caching + intent chain [PR1.5 swap]', () => {
+describe('runTraderCycle -- escrow caching + intent chain [PR1.5 swap]', () => {
   it('fetchEscrow is called once even across two BUY cycles', async () => {
     const deps = makeDeps();
     const runtime = newTraderCycleRuntime();
@@ -586,7 +586,7 @@ describe('runTraderCycle — escrow caching + intent chain [PR1.5 swap]', () => 
   });
 });
 
-describe('runTraderCycle — isPendingActive lock (Plan D §A5\')', () => {
+describe('runTraderCycle -- isPendingActive lock (Plan D §A5\')', () => {
   it('returns pending_lock and skips /infer when isPendingActive=true', async () => {
     const deps = makeDeps({
       isPendingActive: vi.fn().mockResolvedValue(true),

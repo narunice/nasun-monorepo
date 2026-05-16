@@ -8,8 +8,8 @@ import {
   findOtherOwnerOfAddress,
   MAX_ADDITIONAL_ADDRESSES,
 } from '../utils/userProfile';
-import { putAdditionalNonce, NONCE_TTL_SECONDS } from '../utils/nonceStore';
-import { badRequest, conflict, json, methodNotAllowed } from '../utils/responses';
+import { putAdditionalNonce, NONCE_TTL_SECONDS } from '../../../_shared/additional-link/nonceStore';
+import { badRequest, conflict, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleChallenge(
   event: APIGatewayProxyEvent,
@@ -77,7 +77,7 @@ export async function handleChallenge(
     `Nonce: ${nonce}`;
   const expiresAt = Math.floor(Date.now() / 1000) + NONCE_TTL_SECONDS;
 
-  await putAdditionalNonce(nonce, {
+  await putAdditionalNonce('additional:', nonce, {
     identityId,
     walletAddress,
     appId: rawAppId,

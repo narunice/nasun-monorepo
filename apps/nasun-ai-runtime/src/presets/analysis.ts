@@ -1,5 +1,5 @@
 /**
- * Analysis preset — 3-step sequential analysis (collect → analyze → report)
+ * Analysis preset -- 3-step sequential analysis (collect → analyze → report)
  *
  * Runs every 24 hours (default), 3 LLM calls per cycle.
  * Each step produces a separate on-chain request + AER.

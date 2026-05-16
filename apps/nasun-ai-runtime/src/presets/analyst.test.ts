@@ -141,7 +141,7 @@ beforeEach(() => {
 // Tests
 // ---------------------------------------------------------------------------
 
-describe('runAnalystPreset — envelope invariants', () => {
+describe('runAnalystPreset -- envelope invariants', () => {
   it('always emits analysis.v1 with outcome=hold-noop even when LLM says BUY', async () => {
     const deps = makeDeps({
       parseTradeDecision: vi.fn().mockReturnValue({ action: 'BUY', sizeNUSDC: 1, reason: 'bullish' }),
@@ -172,7 +172,7 @@ describe('runAnalystPreset — envelope invariants', () => {
   });
 });
 
-describe('runAnalystPreset — lineage', () => {
+describe('runAnalystPreset -- lineage', () => {
   it('lineage.intentId matches ctx.intentId ULID bytes', async () => {
     const deps = makeDeps();
     const intentId = newIntentId();
@@ -213,7 +213,7 @@ describe('runAnalystPreset — lineage', () => {
   });
 });
 
-describe('runAnalystPreset — wake metadata', () => {
+describe('runAnalystPreset -- wake metadata', () => {
   it('wake.triggeredByType=2 (user_message) and triggeredByRef=sid', async () => {
     const deps = makeDeps();
     const sid = 'my-session-id-xyz';
@@ -226,7 +226,7 @@ describe('runAnalystPreset — wake metadata', () => {
   });
 });
 
-describe('runAnalystPreset — replay metadata', () => {
+describe('runAnalystPreset -- replay metadata', () => {
   it('replay has modelVersion, non-empty promptTemplateHash, and marketSnapshotHash', async () => {
     const deps = makeDeps();
     await runAnalystPreset(FAKE_CLIENT, makeConfig({ model: 'llama-3.3-70b-versatile' }), makeCtx(), deps);
@@ -238,7 +238,7 @@ describe('runAnalystPreset — replay metadata', () => {
   });
 });
 
-describe('runAnalystPreset — pending lock', () => {
+describe('runAnalystPreset -- pending lock', () => {
   it('returns skipped with reason=pending_lock when isPendingActive=true', async () => {
     const deps = makeDeps({
       isPendingActive: vi.fn().mockResolvedValue(true),
@@ -270,7 +270,7 @@ describe('runAnalystPreset — pending lock', () => {
   });
 });
 
-describe('runAnalystPreset — failure modes', () => {
+describe('runAnalystPreset -- failure modes', () => {
   it('rejects when trader config is null', async () => {
     const deps = makeDeps();
     const config = makeConfig({ trader: null } as Partial<Config>);

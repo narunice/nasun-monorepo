@@ -7,8 +7,8 @@ import {
   findOtherOwnerOfAddress,
   MAX_ADDITIONAL_ADDRESSES,
 } from '../utils/userProfile';
-import { consumeAdditionalSolNonce } from '../utils/nonceStore';
-import { badRequest, conflict, json, methodNotAllowed } from '../utils/responses';
+import { consumeAdditionalNonce } from '../../../_shared/additional-link/nonceStore';
+import { badRequest, conflict, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleVerify(
   event: APIGatewayProxyEvent,
@@ -17,18 +17,19 @@ export async function handleVerify(
 ): Promise<APIGatewayProxyResult> {
   if (event.httpMethod !== 'POST') return methodNotAllowed(headers);
 
-  const body = JSON.parse(event.body || '{}');
-  const { signature, nonce, publicKey } = body as {
-    signature?: string;
-    nonce?: string;
-    publicKey?: string;
-  };
+  let body: { signature?: string; nonce?: string; publicKey?: string };
+  try {
+    body = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return badRequest('Invalid JSON body', headers);
+  }
+  const { signature, nonce, publicKey } = body;
   if (!signature || !nonce || !publicKey) {
     return badRequest('signature, nonce, and publicKey are required', headers);
   }
 
   // 1) Atomic get+delete. Reusable nonces would be a forgery vector.
-  const record = await consumeAdditionalSolNonce(nonce);
+  const record = await consumeAdditionalNonce('solana_additional:', nonce);
   if (!record) {
     return badRequest('Nonce not found or already used', headers);
   }
@@ -40,7 +41,7 @@ export async function handleVerify(
   // 2) Nonce-to-identity binding: the caller must match the challenger.
   if (record.identityId !== identityId) {
     console.warn(
-      `[verify] identity mismatch — nonce.identityId=${record.identityId} caller=${identityId}`,
+      `[verify] identity mismatch -- nonce.identityId=${record.identityId} caller=${identityId}`,
     );
     return badRequest('Nonce identity mismatch', headers);
   }
@@ -57,7 +58,7 @@ export async function handleVerify(
   if (publicKey !== canonicalAddr) {
     return badRequest('publicKey does not match challenged address', headers);
   }
-  const ok = verifySolSignature(record.message, signature, publicKey, canonicalAddr);
+  const ok = verifySolSignature(record.message, signature, publicKey);
   if (!ok) {
     return badRequest('Invalid signature', headers);
   }

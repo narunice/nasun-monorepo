@@ -7,7 +7,7 @@
  *
  * Flow:
  *   1. Parse Proposal from ctx.message
- *   2. isPendingActive guard (abort if lock already gone — race/replay)
+ *   2. isPendingActive guard (abort if lock already gone -- race/replay)
  *   3. Budget check
  *   4. Build a minimal confirmation prompt (LLM re-confirms the direction)
  *   5. createRequest (budget deduction)
@@ -135,18 +135,18 @@ export async function runManualExecution(
   const trader = config.trader;
 
   if (!trader) {
-    deps.log('[manual] Trader config not set — cannot run manual execution.');
+    deps.log('[manual] Trader config not set -- cannot run manual execution.');
     return { ok: false, status: 'rejected', reason: 'trader_config_missing' };
   }
 
   // PR1.A: swap execution path is disabled at the platform level until the
   // 6-call atomic PTB lands in PR1.5. Trader cycle never produces a proposal
   // (BUY/SELL is demoted to HOLD upstream), so this short-circuit is mostly
-  // defensive — it stops a stale chat-server confirmation from re-entering
+  // defensive -- it stops a stale chat-server confirmation from re-entering
   // the deleted swap path. Operators can flip PR1A_SWAP_DISABLED=false when
   // PR1.5 ships.
   if ((process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false') {
-    deps.log('[manual] PR1.A swap-disabled — rejecting manual execution wake.');
+    deps.log('[manual] PR1.A swap-disabled -- rejecting manual execution wake.');
     return { ok: false, status: 'rejected', reason: 'pr1a_swap_disabled' };
   }
 
@@ -166,7 +166,7 @@ export async function runManualExecution(
   deps.log(`[manual] Executing confirmed proposal: ${proposal.side} ${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC (${proposal.proposal_id})`);
 
   // 2. isPendingActive guard. If the lock is gone (expired or already cleared),
-  //    do not execute — the proposal may have been cancelled or already executed.
+  //    do not execute -- the proposal may have been cancelled or already executed.
   if (config.baramAerPackageId) {
     let pending = false;
     try {
@@ -182,7 +182,7 @@ export async function runManualExecution(
       return { ok: false, status: 'rejected', reason: 'pending_check_failed' };
     }
     if (!pending) {
-      deps.log('[manual] Pending lock is not active — proposal may have expired or been cleared. Aborting.');
+      deps.log('[manual] Pending lock is not active -- proposal may have expired or been cleared. Aborting.');
       return { ok: false, status: 'rejected', reason: 'pending_lock_not_active' };
     }
   }
@@ -279,7 +279,7 @@ export async function runManualExecution(
   };
   const envelope = buildTradeSwapEnvelope({ decision: fakeDecision, outcome: 1 });
 
-  // 8. Lineage — parent points to the cognition AER that proposed the trade.
+  // 8. Lineage -- parent points to the cognition AER that proposed the trade.
   const confirmIntentId = newIntentId();
   const confirmIntentIdBytes = Array.from(intentIdToBytes(confirmIntentId));
   const parentBytes: number[] | null = ctx.parentIntentId
@@ -433,7 +433,7 @@ export async function runManualExecution(
 
   deps.log(`[manual] Execution AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
 
-  // 11. clearPendingProposal — always runs after successful execution.
+  // 11. clearPendingProposal -- always runs after successful execution.
   if (config.baramAerPackageId) {
     try {
       const clearDigest = await deps.clearPendingProposal(

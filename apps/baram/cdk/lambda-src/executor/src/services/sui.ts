@@ -6,6 +6,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { bcs } from '@mysten/sui/bcs';
+import { normalizeSuiAddress } from '@mysten/sui/utils';
 import { createHash } from 'crypto';
 import { ComputeRequestOnChain, STATUS } from '../types';
 
@@ -233,10 +234,10 @@ export interface AERReportData {
   // Capability gate (cap.owner == receipt.requester enforced on-chain).
   capabilityId: string;
   expectedCapabilityVersion: string; // bigint serialized as decimal string
-  // WHO — Requester
+  // WHO -- Requester
   initiator: string;
   delegationPath: string[];
-  // WHO — Executor
+  // WHO -- Executor
   executorPrincipal: string | null;
   // HOW MUCH (payment_amount from receipt)
   feeDetail: string | null;
@@ -444,7 +445,7 @@ export async function submitProofWithAER(
       tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(null)),             // 39 market_snapshot_hash
       // replay_extras: capability_id raw 32 bytes. Single-key VecMap so no
       // sort needed (contract requires strict-ascending UTF-8 byte order when
-      // we ever add a second key — keep this comment if extending).
+      // we ever add a second key -- keep this comment if extending).
       tx.pure.vector('string', ['capability_id']),                           // 40 replay_extras_keys
       tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize([
         Array.from(Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex')),
@@ -524,8 +525,8 @@ export async function getExecutorStats(executorAddress: string): Promise<{
     return {
       reputation: Number(v['reputation'] || 0),
       slashCount: Number(v['failed_jobs'] || 0),
-      stakeAmount: 0, // StakingRegistry lookup deferred — requires separate query
-      tier: 0,        // TierRegistry lookup deferred — requires separate query
+      stakeAmount: 0, // StakingRegistry lookup deferred -- requires separate query
+      tier: 0,        // TierRegistry lookup deferred -- requires separate query
     };
   } catch (error) {
     console.warn('[Sui] Failed to fetch executor stats:', error);
@@ -597,7 +598,7 @@ export async function getCapabilityFields(capabilityId: string): Promise<Capabil
  * Asset type strings are normalized to the canonical `0x<addr>::module::Type`
  * form so the wire body's `spend.coinAssetType` and `actionCall.typeArguments`
  * can be compared by simple lower-case string equality. TypeName JSON shape
- * is `{ name: "addr::module::Type" }` — Sui returns the address WITHOUT the
+ * is `{ name: "addr::module::Type" }` -- Sui returns the address WITHOUT the
  * leading 0x and WITHOUT zero-padding, so we prepend `0x` and let the caller
  * normalize via `normalizeSuiAddress` for full-length comparison.
  */
@@ -650,7 +651,7 @@ export async function getCapabilityFieldsFull(capabilityId: string): Promise<Cap
 
   // allowed_assets: vector<TypeName>. Each element is the wrapped struct shape
   // described in normalizeTypeName(). Filter nulls but treat decode failure as
-  // a hard error — better to fail closed than silently allow a type through.
+  // a hard error -- better to fail closed than silently allow a type through.
   const rawAssets = fields.allowed_assets;
   if (!Array.isArray(rawAssets)) {
     throw new Error('Capability allowed_assets is not an array');
@@ -699,7 +700,7 @@ export async function getCapabilityFieldsFull(capabilityId: string): Promise<Cap
 }
 
 // ============================================================================
-// PR1.5 — 6-call atomic swap PTB (Cmd 0–5) + AER (Cmd 6+)
+// PR1.5 -- 6-call atomic swap PTB (Cmd 0–5) + AER (Cmd 6+)
 // ============================================================================
 
 const DEEP_TYPE_DEFAULT_ENV = 'DEEP_TYPE';
@@ -747,7 +748,7 @@ interface SwapPTBInput {
  *   BUY  (swap_exact_quote_for_base): T_in=Quote, T_out=Base, leftover=quoteOut, primary=baseOut
  *   SELL (swap_exact_base_for_quote): T_in=Base,  T_out=Quote, leftover=baseOut, primary=quoteOut
  *
- * Any abort in the swap portion rolls back the entire PTB — escrow untouched
+ * Any abort in the swap portion rolls back the entire PTB -- escrow untouched
  * and ActionObligation auto-aborts (no `drop`/`store` abilities).
  */
 export async function submitSwapPTBWithAER(
@@ -786,7 +787,7 @@ export async function submitSwapPTBWithAER(
 
   const tx = new Transaction();
 
-  // Shared object refs — escrow mutable (withdraw/leftover/settle take &mut),
+  // Shared object refs -- escrow mutable (withdraw/leftover/settle take &mut),
   // capability immutable (all swap-path entries take &Capability).
   const escrowRef = tx.sharedObjectRef({
     objectId: swap.escrow.objectId,
@@ -812,7 +813,7 @@ export async function submitSwapPTBWithAER(
     ],
   });
 
-  // Cmd 1: 0x2::coin::zero<DEEP>() — whitelisted-pool DEEP is always zero.
+  // Cmd 1: 0x2::coin::zero<DEEP>() -- whitelisted-pool DEEP is always zero.
   const [zeroDeep] = tx.moveCall({
     target: '0x2::coin::zero',
     typeArguments: [deepType],
@@ -826,7 +827,9 @@ export async function submitSwapPTBWithAER(
   const swapArgs = swap.actionCall.args.map((a, idx) => {
     if (a.kind === 'object') {
       if (!a.id) throw new Error(`actionCall.args[${idx}].id missing for kind=object`);
-      return tx.object(a.id);
+      // Normalize so short-form ids do not resolve to a different object than
+      // the allow-list match (which compares against normalizeSuiAddress).
+      return tx.object(normalizeSuiAddress(a.id));
     }
     if (a.kind === 'pipe') {
       if (a.from === 'withdraw_coin') return coinIn;
@@ -846,7 +849,7 @@ export async function submitSwapPTBWithAER(
     arguments: swapArgs,
   });
 
-  // Cmd 3: 0x2::coin::destroy_zero<DEEP>(deep_out) — S14 invariant on
+  // Cmd 3: 0x2::coin::destroy_zero<DEEP>(deep_out) -- S14 invariant on
   //        whitelisted Pado pool. Aborts the PTB if DEEP ever becomes non-zero.
   tx.moveCall({
     target: '0x2::coin::destroy_zero',
@@ -854,7 +857,7 @@ export async function submitSwapPTBWithAER(
     arguments: [deepOut],
   });
 
-  // Cmd 4: deposit_swap_leftover<T_in>(escrow, &cap, leftoverInput) — returns
+  // Cmd 4: deposit_swap_leftover<T_in>(escrow, &cap, leftoverInput) -- returns
   //        the unspent input-side dust back to the agent's escrow.
   const leftoverInput = direction === 'BUY' ? quoteOut : baseOut;
   tx.moveCall({
@@ -863,7 +866,7 @@ export async function submitSwapPTBWithAER(
     arguments: [escrowRef, capArg, leftoverInput],
   });
 
-  // Cmd 5: settle_action<T_out>(escrow, &cap, obligation, primary) — consumes
+  // Cmd 5: settle_action<T_out>(escrow, &cap, obligation, primary) -- consumes
   //        the hot-potato obligation. Move enforces cap.allowed_assets cover
   //        T_out at this entry (E_ASSET_NOT_ALLOWED 572) as defense in depth.
   const outputType = direction === 'BUY' ? baseType : quoteType;
@@ -875,7 +878,7 @@ export async function submitSwapPTBWithAER(
   });
 
   // Cmd 6+: AER (submit_proof_with_receipt + create_report_with_receipt_capability).
-  // Mirrors submitProofWithAER() — same 41-arg AER call inlined here so the
+  // Mirrors submitProofWithAER() -- same 41-arg AER call inlined here so the
   // entire swap + report is one atomic PTB. Any AER abort rolls back the swap.
   const resultHashBytes = Array.from(Buffer.from(resultHash, 'hex'));
   const promptHashBytes = Array.isArray(request.promptHash)

@@ -305,8 +305,13 @@ export class AuthStack extends cdk.Stack {
         allowHeaders: ['Content-Type', 'Authorization'],
       },
       deployOptions: {
-        throttlingBurstLimit: 100,
-        throttlingRateLimit: 50,
+        // Challenge endpoint does a Scan for cross-account uniqueness; keep
+        // gateway-wide rate low until the SolAddressOwnership lookup table
+        // lands (see findOtherOwnerOfAddress comment). 10 RPS sustained is
+        // plenty for the auth flow (challenge -> verify -> binding = ~3 reqs
+        // per user attempt).
+        throttlingBurstLimit: 20,
+        throttlingRateLimit: 10,
       },
     });
 
@@ -331,19 +336,9 @@ export class AuthStack extends cdk.Stack {
       exportName: 'MetaMaskAdditionalApiUrl',
     });
 
-    // ========================================
-    // Solana Additional Address API (per-app verified Solana binding)
-    // ========================================
-    //
-    // Mirror of the MetaMask additional flow but using Ed25519 signatures
-    // (Phantom/Solflare signMessage). Drift, Jupiter, and future Solana
-    // dApps pull data from `linkedAccounts.solana.appBindings[appId]`.
-    //
-    // Separate Lambda from the EVM one: independent deploy, smaller blast
-    // radius, and Ed25519 verification deps (tweetnacl + bs58) stay scoped
-    // to this surface. Nonce table shared via `solana_additional:{nonce}`
-    // key prefix so it cannot collide with EVM nonces.
-
+    // Solana additional-address binding (Ed25519). Mirrors MetaMask flow;
+    // separate Lambda + bundled tweetnacl/bs58. Nonces share the EVM table
+    // under a `solana_additional:` key prefix to avoid collision.
     const solanaAdditionalFunction = new NodejsFunction(this, 'SolanaAdditionalFunction', {
       functionName: 'nasun-auth-solana-additional',
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -382,8 +377,13 @@ export class AuthStack extends cdk.Stack {
         allowHeaders: ['Content-Type', 'Authorization'],
       },
       deployOptions: {
-        throttlingBurstLimit: 100,
-        throttlingRateLimit: 50,
+        // Challenge endpoint does a Scan for cross-account uniqueness; keep
+        // gateway-wide rate low until the SolAddressOwnership lookup table
+        // lands (see findOtherOwnerOfAddress comment). 10 RPS sustained is
+        // plenty for the auth flow (challenge -> verify -> binding = ~3 reqs
+        // per user attempt).
+        throttlingBurstLimit: 20,
+        throttlingRateLimit: 10,
       },
     });
 

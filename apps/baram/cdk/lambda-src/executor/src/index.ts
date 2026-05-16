@@ -53,7 +53,7 @@ let executorPrivateKey: string | null = null;
 let initialized = false;
 
 /**
- * Safely parse JSON without throwing — returns null on failure.
+ * Safely parse JSON without throwing -- returns null on failure.
  */
 function safeJsonParse(input: string): unknown {
   try {
@@ -116,7 +116,7 @@ function requireSecretString(secret: { SecretString?: string }, name: string): s
   return secret.SecretString;
 }
 
-// CORS — multi-origin support. Fail-secure: no header if unset.
+// CORS -- multi-origin support. Fail-secure: no header if unset.
 const CORS_ALLOWED_ORIGINS = (process.env.CORS_ALLOWED_ORIGINS ?? '')
   .split(',')
   .map(o => o.trim())
@@ -217,7 +217,7 @@ async function initialize(): Promise<void> {
     initResultStore({ tableName: process.env.RESULT_TABLE_NAME });
   }
 
-  // Clear raw secrets from memory — SDKs hold their own copies internally
+  // Clear raw secrets from memory -- SDKs hold their own copies internally
   groqApiKey = null;
   executorPrivateKey = null;
 
@@ -345,7 +345,7 @@ async function verifyResultOwnership(req: ResultRequest, expectedAddress: string
 /**
  * Handle execute request
  */
-/** Cloud model release date table — used to build AER.replay.model_version. */
+/** Cloud model release date table -- used to build AER.replay.model_version. */
 const MODEL_RELEASE: Record<string, string> = {
   'llama-3.3-70b-versatile': '2025-01-08',
 };
@@ -428,7 +428,7 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     executorTier: executorStats.tier,
     executorReputation: executorStats.reputation,
     executorStakeAmount: executorStats.stakeAmount,
-    teeVerified: false, // Lambda executor — no TEE
+    teeVerified: false, // Lambda executor -- no TEE
     teeAttestationHash: null,
     triggeredBy: null,
     triggeredAction: null,
@@ -486,7 +486,7 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
 
 /**
  * Handle record request (Model B: self-reported LLM results)
- * Lambda performs settlement only — no AI inference.
+ * Lambda performs settlement only -- no AI inference.
  */
 async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
   const { requestId, result, promptHash, executionTimeMs = 0 } = body;
@@ -692,7 +692,7 @@ function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldErr
     return { field: 'sig2', reason: 'invalid_signature' };
   }
   // PR1.5: actionCall/escrow/spend must be ALL-null (HOLD) or ALL-non-null
-  // (swap). Per-shape validation lives in validateSwapWireShape() — this only
+  // (swap). Per-shape validation lives in validateSwapWireShape() -- this only
   // enforces the XOR invariant.
   const swapFieldsPresent = (body.actionCall !== null ? 1 : 0)
     + (body.escrow !== null ? 1 : 0)
@@ -723,12 +723,12 @@ function validateExecuteCapabilityBody(body: ExecuteCapabilityRequest): FieldErr
 const BASE64_REGEX = /^[A-Za-z0-9+/]*={0,2}$/;
 
 /**
- * Structural validation of the swap wire blocks. Field shapes only — semantic
+ * Structural validation of the swap wire blocks. Field shapes only -- semantic
  * checks (allow-list, asset coverage, slippage cap, hash recompute, cap fetch)
  * live in validateSwapAtBoundary(). Keeping these split lets us reject obvious
  * malformed bodies with 400 before any RPC roundtrip.
  */
-function validateSwapWireShape(
+export function validateSwapWireShape(
   actionCall: ActionCallSpecWire,
   escrow: EscrowBlock,
   spend: SpendBlock,
@@ -763,7 +763,7 @@ function validateSwapWireShape(
   if (a2?.kind !== 'pipe' || a2.from !== 'zero_deep') {
     return { field: 'actionCall.args[2]', reason: 'invalid_deep_in_pipe' };
   }
-  // Step 11: clientMinOut sanity — must decode as 8-byte BCS u64.
+  // Step 11: clientMinOut sanity -- must decode as 8-byte BCS u64.
   if (a3?.kind !== 'pure' || typeof a3.bytes !== 'string' || !BASE64_REGEX.test(a3.bytes)) {
     return { field: 'actionCall.args[3]', reason: 'invalid_min_out_bytes' };
   }
@@ -800,7 +800,7 @@ function validateSwapWireShape(
 
 /**
  * Spec §4 boundary validation: 12 ordered checks. Returns `null` on success
- * or `{ statusCode, reason }` on first failure. Order matters — fail-fast on
+ * or `{ statusCode, reason }` on first failure. Order matters -- fail-fast on
  * cheap checks before the cap RPC roundtrip.
  *
  * Steps 1, 2 (XOR), 3 (actionCallHash), 4 (sig2) run upstream in the handler.
@@ -812,7 +812,7 @@ function validateSwapWireShape(
  */
 interface BoundaryFailure { statusCode: number; reason: string; }
 
-// Spec §5 env-driven allow-lists. Read fresh per request — Lambda env updates
+// Spec §5 env-driven allow-lists. Read fresh per request -- Lambda env updates
 // are atomic (deploy or env-update) so the value at first read is canonical.
 function readSwapEnv(): {
   disabled: boolean;
@@ -907,6 +907,16 @@ async function validateSwapAtBoundary(
   if (!allowed.has(baseType) || !allowed.has(quoteType)) {
     return { ok: false, failure: { statusCode: 403, reason: 'swap_asset_not_allowed' } };
   }
+  // Step 9b: spend.coinAssetType must match T_in for the swap direction.
+  // BUY  (swap_exact_quote_for_base): T_in=Quote
+  // SELL (swap_exact_base_for_quote): T_in=Base
+  // Without this check, a malicious runtime could withdraw the wrong asset
+  // (Move boundary would still abort, but this surfaces the issue earlier
+  // with a clearer reason and avoids burning an on-chain attempt).
+  const expectedSpendType = actionCall.fn === 'swap_exact_quote_for_base' ? quoteType : baseType;
+  if (spendType !== expectedSpendType) {
+    return { ok: false, failure: { statusCode: 403, reason: 'spend_asset_direction_mismatch' } };
+  }
 
   // Step 10: slippage cap. cap.risk_limits.max_slippage_bps must stay under
   // the Lambda-side ceiling so a cap with a runaway slippage tolerance can't
@@ -922,7 +932,7 @@ async function validateSwapAtBoundary(
   // Step 12: cap initialSharedVersion self-check. The wire value is
   // sig2-uncovered (see spec §3.3), so we reconcile against the on-chain
   // owner descriptor here. Immutable post-creation, so any mismatch is a
-  // tamper or a stale runtime cache — fail closed.
+  // tamper or a stale runtime cache -- fail closed.
   if (cap.initialSharedVersion !== escrow.capabilityInitialSharedVersion) {
     return { ok: false, failure: { statusCode: 403, reason: 'capability_initial_shared_version_mismatch' } };
   }
@@ -931,15 +941,15 @@ async function validateSwapAtBoundary(
 }
 
 /**
- * /infer — runs inference bound to a pre-created on-chain request.
+ * /infer -- runs inference bound to a pre-created on-chain request.
  *
- * Trust layers (no caller signature here — sig is at /execute-capability):
+ * Trust layers (no caller signature here -- sig is at /execute-capability):
  *   L1 API key (apiKeyRequired)
  *   L3 chain: verifyRequest checks (requester != executor, status, timeout, promptHash)
  *   L4 cap:  cap.owner == principalAddress && cap.version == expectedVersion
  *           + !revoked + pause_mode == active
  *
- * 20s Groq budget — caller (runtime) must accommodate; SDK retries disabled
+ * 20s Groq budget -- caller (runtime) must accommodate; SDK retries disabled
  * to keep the abort budget honest (services/ai.ts initGroq).
  */
 async function handleInfer(body: InferRequest): Promise<{ statusCode: number; body: InferResponse }> {
@@ -950,7 +960,7 @@ async function handleInfer(body: InferRequest): Promise<{ statusCode: number; bo
 
   console.log(`[Infer] requestId=${requestId} cap=${capabilityId} v=${expectedCapabilityVersion}`);
 
-  // L4a: cap fetch first — cheaper than chain request lookup.
+  // L4a: cap fetch first -- cheaper than chain request lookup.
   let cap;
   try {
     cap = await getCapabilityFields(capabilityId);
@@ -1032,11 +1042,11 @@ async function handleInfer(body: InferRequest): Promise<{ statusCode: number; bo
 }
 
 /**
- * /execute-capability — agent-signed settlement.
+ * /execute-capability -- agent-signed settlement.
  *
  * PR1.A HOLD-only. actionCall/escrow/spend must be null (validated above).
  * Settlement PTB is the existing cognition path (submit_proof_with_receipt
- * + create_report_with_receipt_capability) — same call used by /execute.
+ * + create_report_with_receipt_capability) -- same call used by /execute.
  */
 async function handleExecuteCapability(
   body: ExecuteCapabilityRequest,
@@ -1073,7 +1083,7 @@ async function handleExecuteCapability(
     return { statusCode: 403, body: { success: false, error: 'swap path disabled', reason: 'swap_disabled' } };
   }
   if (isSwap && !swapEnv.deepType) {
-    console.error('[Swap] DEEP_TYPE env missing — cannot build PTB');
+    console.error('[Swap] DEEP_TYPE env missing -- cannot build PTB');
     return { statusCode: 500, body: { success: false, error: 'misconfigured', reason: 'deep_type_missing' } };
   }
 
@@ -1489,9 +1499,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // GET /result?requestId=N&authorizer=0x... (DEPRECATED — use POST /result)
+    // GET /result?requestId=N&authorizer=0x... (DEPRECATED -- use POST /result)
     if (path.endsWith('/result') && event.httpMethod === 'GET') {
-      console.warn('[DEPRECATED] GET /result used — migrate to POST /result with wallet signature');
+      console.warn('[DEPRECATED] GET /result used -- migrate to POST /result with wallet signature');
 
       const qp = event.queryStringParameters || {};
       const requestId = Number(qp.requestId);
@@ -1538,7 +1548,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       };
     }
 
-    // POST /result — authenticated result retrieval with wallet signature
+    // POST /result -- authenticated result retrieval with wallet signature
     if (path.endsWith('/result') && event.httpMethod === 'POST') {
       if (!event.body) {
         return {

@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { verifyJwtIdentity } from './utils/identity';
-import { corsHeaders, methodNotAllowed, serverError, unauthorized, json } from './utils/responses';
+import { verifyJwtIdentity } from '../../_shared/additional-link/identity';
+import { corsHeaders, methodNotAllowed, serverError, unauthorized, json } from '../../_shared/additional-link/responses';
 import { handleChallenge } from './handlers/challenge';
 import { handleVerify } from './handlers/verify';
 import { handleAppBinding } from './handlers/app-binding';

@@ -56,7 +56,7 @@ export async function saveResult(params: {
 
 export async function getResult(requestId: number): Promise<ResultRecord | null> {
   if (!docClient) {
-    console.warn('[ResultStore] Not initialized — RESULT_TABLE_NAME may not be set');
+    console.warn('[ResultStore] Not initialized -- RESULT_TABLE_NAME may not be set');
     return null;
   }
 

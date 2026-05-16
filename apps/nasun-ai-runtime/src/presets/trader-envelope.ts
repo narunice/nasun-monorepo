@@ -4,7 +4,7 @@
  * Builds the four AER metadata blocks the host /execute-capability handler
  * requires (envelope, lineage, wake, replay) for the trader's per-cycle
  * cognition AER. Action-execution AERs (with on-chain `actionCall`) are
- * deferred — the prototype keeps the swap PTB agent-signed and the
+ * deferred -- the prototype keeps the swap PTB agent-signed and the
  * trade digest is referenced from the NEXT cycle's cognition AER via
  * `triggered_action`. See the C2 handoff for the rationale.
  *
@@ -58,9 +58,9 @@ export type {
 };
 
 // Action types we emit.
-//   analysis.v1   — per-cycle cognition AER (HOLD or unactionable decisions)
-//   noop.v1       — explicit no-op cognition (mirrors host defaultCognitionEnvelope)
-//   trade.swap.v1 — atomic-settlement execution AER. Required for BUY/SELL
+//   analysis.v1   -- per-cycle cognition AER (HOLD or unactionable decisions)
+//   noop.v1       -- explicit no-op cognition (mirrors host defaultCognitionEnvelope)
+//   trade.swap.v1 -- atomic-settlement execution AER. Required for BUY/SELL
 //                   because the host action-class registry only registers
 //                   the DeepBook swap functions under this label; emitting
 //                   analysis.v1 on an exec body trips the registry lookup
@@ -85,7 +85,7 @@ function sha256Bytes(input: string | Uint8Array): number[] {
   return Array.from(h.digest());
 }
 
-/** SHA-256(action_type_bytes || payload_bytes) — must match the on-chain
+/** SHA-256(action_type_bytes || payload_bytes) -- must match the on-chain
  *  decoder so the contract's hash check passes. The SDK helper is the
  *  source of truth; we wrap it to convert to the number[] PTB shape. */
 function payloadHash(actionType: string, payloadBytes: Uint8Array): number[] {
@@ -113,7 +113,7 @@ const ANALYSIS_V1_DECISION_TAG: Record<AnalysisV1Payload['decision'], number> = 
 
 /**
  * Encode an analysis.v1 payload. The on-chain schema for analysis.v1 is
- * defined in apps/baram/docs/AER_V2_CODEC.md §7 (deferred entry — until
+ * defined in apps/baram/docs/AER_V2_CODEC.md §7 (deferred entry -- until
  * the SDK ships an `encodeAnalysisV1`, this module owns the canonical BCS
  * shape so all per-cycle AERs encode identically).
  *
@@ -194,7 +194,7 @@ export function buildAnalysisEnvelope(args: {
  * Build the trade.swap.v1 envelope for an execution AER (BUY or SELL).
  * Mirrors buildAnalysisEnvelope but emits ACTION_TYPE_TRADE_SWAP so the
  * host action-class registry can find the registered DeepBook swap fn.
- * HOLD must NOT route through here — the host's exec-path validation
+ * HOLD must NOT route through here -- the host's exec-path validation
  * would still pass (the payload is well-formed) but the AER would be
  * miscategorised on-chain. Caller (trader-cycle) enforces the gate.
  *
@@ -232,13 +232,13 @@ function summarizeDecision(d: TradeDecision): string {
 }
 
 // ============================================================================
-// Lineage chain — UUIDv7 intent ids with parent linkage across cycles
+// Lineage chain -- UUIDv7 intent ids with parent linkage across cycles
 // ============================================================================
 
 export interface IntentChainState {
   /** Last intent id this runner emitted; becomes parent of the next one. */
   lastIntentId: number[] | null;
-  /** Retry counter within the current intent — first attempt is 1. */
+  /** Retry counter within the current intent -- first attempt is 1. */
   executionId: number;
 }
 
@@ -304,7 +304,7 @@ export interface ReplayInputs {
   /** Strategy preset used; recorded as a replay extra so a decoder can pick
    *  the right preset at re-render time. */
   strategy: StrategyPreset;
-  /** Optional canonical market snapshot — JSON-serialisable. Hashed and
+  /** Optional canonical market snapshot -- JSON-serialisable. Hashed and
    *  also embedded as a replay extra so a verifier can recompute the hash. */
   marketSnapshot?: Record<string, unknown> | null;
   /** Caller-supplied additional extras (e.g. risk gate notes). Keys must
@@ -343,7 +343,7 @@ export function buildReplay(inputs: ReplayInputs): ReplayMeta {
   }
 
   // Sort canonically (UTF-8 byte order) and reject duplicates. The SDK
-  // helper enforces strict ascending — anything else is a programming bug
+  // helper enforces strict ascending -- anything else is a programming bug
   // we want to surface loudly here, not at the host's PTB step.
   extras.sort((a, b) => aerSdk.compareKeysCanonical(a[0], b[0]));
   for (let i = 1; i < extras.length; i++) {
@@ -383,7 +383,7 @@ function stableJsonStringify(value: unknown): string {
 }
 
 // ============================================================================
-// Action proposal — for the host's preflight rail
+// Action proposal -- for the host's preflight rail
 // ============================================================================
 
 export interface ProposalInputs {
