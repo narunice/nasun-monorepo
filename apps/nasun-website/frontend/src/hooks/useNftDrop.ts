@@ -15,7 +15,7 @@ export function useNftDropRead() {
     abi: GENESIS_PASS_ABI,
     functionName: "currentStage",
     chainId: GENESIS_PASS_CHAIN_ID,
-    query: { refetchInterval: 30_000, refetchOnWindowFocus: true },
+    query: { refetchInterval: 60_000, refetchOnWindowFocus: false },
   });
 
   const { data: currentMintPrice } = useReadContract({
@@ -23,7 +23,7 @@ export function useNftDropRead() {
     abi: GENESIS_PASS_ABI,
     functionName: "currentMintPrice",
     chainId: GENESIS_PASS_CHAIN_ID,
-    query: { refetchInterval: 30_000 },
+    query: { refetchInterval: 60_000 },
   });
 
   const { data: mintDeadline } = useReadContract({

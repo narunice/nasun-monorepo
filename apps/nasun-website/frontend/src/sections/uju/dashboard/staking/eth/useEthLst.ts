@@ -71,8 +71,8 @@ export function useEthLst(user: `0x${string}` | undefined): UseEthLstResult {
       : [],
     query: {
       enabled: !!user,
-      staleTime: 60_000,
-      refetchInterval: 120_000,
+      staleTime: 300_000,
+      refetchInterval: 300_000,
       refetchIntervalInBackground: false,
       retry: 2,
       retryDelay: (i: number) => Math.min(1000 * 2 ** i, 30_000),

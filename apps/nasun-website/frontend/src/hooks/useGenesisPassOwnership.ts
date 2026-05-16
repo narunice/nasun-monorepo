@@ -29,8 +29,8 @@ export function useGenesisPassOwnership(walletAddress: string | undefined) {
     chainId: GENESIS_PASS_CHAIN_ID,
     query: {
       enabled: !!walletAddress,
-      staleTime: 60_000,
-      refetchOnWindowFocus: true,
+      staleTime: 300_000,
+      refetchOnWindowFocus: false,
     },
   });
 
