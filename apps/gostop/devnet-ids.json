@@ -178,6 +178,34 @@
     ]
   },
 
+  "wheel": {
+    "packageId": "0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d",
+    "originalPackageId": "0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d",
+    "registry": "0x0e22790c3afa5518f8a8f048a7eb031c543239156ca211f7ffd0c29fcbefd95a",
+    "adminCap": "0x1f79959be49f1af2e6d20beb5814dcff531534f4ba8bc6f20ed564a9bdb891b2",
+    "upgradeCap": "0xd6b8f39b76ff1f140a8a7e4153acf043d6b9c1d80b60dfd14ded933778c8c73b",
+    "publishTxDigest": "CviYZVBZ9zaz4RUjAYYSUXca8dg1CaCR3NBqPtbsBsdB",
+    "gameCapInstalled": "0xad2bcdbeca00c9cf1709981c5c75d2df7fe9f4298ab0048f4386965076f369a6 (consumed into registry.game_cap)",
+    "gameCapIssueTxDigest": "CLuccFb1jzWmfgGtCkjT4CpjhMsBbSCsnk6cNWKK8bq2",
+    "gameCapInstallTxDigest": "247A1ETQq9nf1PAM9eL3BF51brWi4kCSsiBH155gQsMZ",
+    "gameId": 6,
+    "minBet": "1000000",
+    "maxBet": "100000000",
+    "maxMultBps": 50000,
+    "rtpBps": 9750,
+    "segmentCount": 20,
+    "segments": [0, 15000, 0, 20000, 0, 15000, 0, 0, 50000, 0, 15000, 0, 20000, 0, 15000, 0, 30000, 0, 15000, 0],
+    "maxSinglePayout": "500000000",
+    "resultEventType": "0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d::wheel::WheelResultEvent",
+    "smokeSpinDigests": [
+      "F8F4d2CuYPE4sA1GZrcy8d6Gy1e66Fjxhaw3cwxL4EE4",
+      "Fr3ViPicW5NxhLvrfH1u93ZtVRSrhtjqCpAzPYrQp8bx",
+      "FTedg3S9UXUwMnHhYCNt6KsHMznwRJwwCqtx5CM4fPUT",
+      "B8Zx1kmRUCvcf4cKZ9hwXkBNehuoWBnxBjuSbHGdqShs",
+      "6mstex8WPSAknYH8XERmzYbExeRMMaPSSpcYcKSTcX1M"
+    ]
+  },
+
   "deprecated": {
     "v3": {
       "lotteryPackageId": "0x48e23db58f02f077b46aef98aa0fcfce86aaa65046fdc7e0db302a6fc670ec14",
