@@ -8,6 +8,7 @@
 
 import { useUjuAppDirectory } from "../../apps/UjuAppDirectoryProvider";
 import { GostopPositionsCard } from "./GostopPositionsCard";
+import { HyperliquidPositionsCard } from "./HyperliquidPositionsCard";
 import { PadoPositionsCard } from "./PadoPositionsCard";
 import { UniswapPositionsCard } from "./UniswapPositionsCard";
 import { useValidEvmAddress } from "./useValidEvmAddress";
@@ -19,7 +20,8 @@ export function EcosystemPositionsSection() {
   const showPado = isPinned("pado");
   const showGostop = isPinned("gostop");
   const showUniswap = isPinned("uniswap") && !!evmAddress;
-  if (!showPado && !showGostop && !showUniswap) return null;
+  const showHyperliquid = isPinned("hyperliquid") && !!evmAddress;
+  if (!showPado && !showGostop && !showUniswap && !showHyperliquid) return null;
 
   return (
     <section
@@ -30,6 +32,9 @@ export function EcosystemPositionsSection() {
       {showPado && <PadoPositionsCard />}
       {showGostop && <GostopPositionsCard />}
       {showUniswap && <UniswapPositionsCard />}
+      {showHyperliquid && evmAddress && (
+        <HyperliquidPositionsCard evmAddress={evmAddress} />
+      )}
     </section>
   );
 }

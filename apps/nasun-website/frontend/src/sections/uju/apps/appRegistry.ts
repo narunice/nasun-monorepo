@@ -1,6 +1,13 @@
-export type AppChain = 'nasun' | 'solana' | 'sui' | 'ethereum';
-export type AppCategory = 'dex' | 'staking' | 'nft' | 'game' | 'ai' | 'analytics' | 'utility';
-export type AppStatus = 'live' | 'coming-soon';
+export type AppChain = "nasun" | "solana" | "sui" | "ethereum" | "hyperliquid";
+export type AppCategory =
+  | "dex"
+  | "staking"
+  | "nft"
+  | "game"
+  | "ai"
+  | "analytics"
+  | "utility";
+export type AppStatus = "live" | "coming-soon";
 
 export interface AppEntry {
   id: string;
@@ -20,69 +27,80 @@ export interface AppEntry {
 export const APP_REGISTRY: AppEntry[] = [
   // Nasun ecosystem
   {
-    id: 'nasun-devnet',
-    name: 'Nasun Devnet',
-    description: 'Faucet and on-chain transfers on the Nasun devnet.',
-    url: 'https://explorer.nasun.io/devnet/',
-    chain: 'nasun',
-    category: 'utility',
-    status: 'live',
+    id: "nasun-devnet",
+    name: "Nasun Devnet",
+    description: "Faucet and on-chain transfers on the Nasun devnet.",
+    url: "https://explorer.nasun.io/devnet/",
+    chain: "nasun",
+    category: "utility",
+    status: "live",
     isNative: true,
     // Explorer hosts its favicon under /devnet/favicon.svg (Vite base); the
     // root /favicon.ico is 404, so Google's s2/favicons service returns its
     // default globe. Point at the actual deployed icon directly.
-    iconUrl: 'https://explorer.nasun.io/devnet/favicon.svg',
+    iconUrl: "https://explorer.nasun.io/devnet/favicon.svg",
   },
   {
-    id: 'pado',
-    name: 'Pado',
-    description: 'Spot DEX and perp markets on Nasun.',
-    url: 'https://pado.finance',
-    chain: 'nasun',
-    category: 'dex',
-    status: 'live',
+    id: "pado",
+    name: "Pado",
+    description: "Spot DEX and perp markets on Nasun.",
+    url: "https://pado.finance",
+    chain: "nasun",
+    category: "dex",
+    status: "live",
     isNative: true,
   },
   {
-    id: 'gostop',
-    name: 'GoStop',
-    description: 'On-chain casino: lottery, scratch cards, mines, crash, and more.',
-    url: 'https://gostop.app',
-    chain: 'nasun',
-    category: 'game',
-    status: 'live',
+    id: "gostop",
+    name: "GoStop",
+    description:
+      "On-chain casino: lottery, scratch cards, mines, crash, and more.",
+    url: "https://gostop.app",
+    chain: "nasun",
+    category: "game",
+    status: "live",
     isNative: true,
   },
   {
-    id: 'baram',
-    name: 'Nasun AI',
-    description: 'AI-powered compliance and settlement layer.',
-    url: '#',
-    chain: 'nasun',
-    category: 'ai',
-    status: 'coming-soon',
+    id: "baram",
+    name: "Nasun AI",
+    description: "AI-powered compliance and settlement layer.",
+    url: "#",
+    chain: "nasun",
+    category: "ai",
+    status: "coming-soon",
     isNative: true,
   },
   {
-    id: 'spectra',
-    name: 'Spectra',
-    description: 'Ecosystem analytics and portfolio dashboard.',
-    url: '#',
-    chain: 'nasun',
-    category: 'analytics',
-    status: 'coming-soon',
+    id: "spectra",
+    name: "Spectra",
+    description: "Ecosystem analytics and portfolio dashboard.",
+    url: "#",
+    chain: "nasun",
+    category: "analytics",
+    status: "coming-soon",
     isNative: true,
   },
   // External dApps. The dashboard renders a positions card per pinned dApp
   // once the user has a verified EVM wallet linked (useValidEvmAddress).
   {
-    id: 'uniswap',
-    name: 'Uniswap',
-    description: 'Largest DEX on Ethereum. Surfaces your active V3 LP positions.',
-    url: 'https://app.uniswap.org',
-    chain: 'ethereum',
-    category: 'dex',
-    status: 'live',
+    id: "uniswap",
+    name: "Uniswap",
+    description: "Largest DEX on Ethereum.",
+    url: "https://app.uniswap.org",
+    chain: "ethereum",
+    category: "dex",
+    status: "live",
+    isNative: false,
+  },
+  {
+    id: "hyperliquid",
+    name: "Hyperliquid",
+    description: "On-chain perpetuals and spot trading.",
+    url: "https://app.hyperliquid.xyz",
+    chain: "hyperliquid",
+    category: "dex",
+    status: "live",
     isNative: false,
   },
 ];
@@ -96,19 +114,25 @@ export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
 // one slot under the 7-mission cap for the user to add mines or crash.
 // Once a user takes any directory action their explicit state wins; we
 // never re-seed.
-export const DEFAULT_PINNED_APPS: readonly string[] = ['nasun-devnet', 'pado', 'gostop'];
+export const DEFAULT_PINNED_APPS: readonly string[] = [
+  "nasun-devnet",
+  "pado",
+  "gostop",
+];
 
 export const CHAIN_LABEL: Record<AppChain, string> = {
-  nasun:    'Nasun',
-  solana:   'Solana',
-  sui:      'SUI',
-  ethereum: 'Ethereum',
+  nasun: "Nasun",
+  solana: "Solana",
+  sui: "SUI",
+  ethereum: "Ethereum",
+  hyperliquid: "Hyperliquid",
 };
 
 // Full Tailwind class literals for JIT scanning
 export const CHAIN_BADGE_CLASS: Record<AppChain, string> = {
-  nasun:    'text-pado-3 bg-pado-3/10',
-  solana:   'text-nasun-c3 bg-nasun-c3/10',
-  sui:      'text-pado-4 bg-pado-4/10',
-  ethereum: 'text-nasun-c1 bg-nasun-c1/10',
+  nasun: "text-pado-3 bg-pado-3/10",
+  solana: "text-nasun-c3 bg-nasun-c3/10",
+  sui: "text-pado-4 bg-pado-4/10",
+  ethereum: "text-nasun-c1 bg-nasun-c1/10",
+  hyperliquid: "text-nasun-c2 bg-nasun-c2/10",
 };
