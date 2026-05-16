@@ -14,7 +14,11 @@ import { useSigner } from '@nasun/wallet';
 import { DEEPBOOK_PACKAGE_ID, NBTC_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
 import { suiClient } from '@/lib/sui-client';
 import { buildAtomicAgentSetupTransaction } from '../services/transactionBuilder';
-import { generateAgentKeypair, encryptAndStoreAgentKey } from '../services/agentKeyStorage';
+import {
+  generateAgentKeypair,
+  generateAgentMnemonicAndKeypair,
+  encryptAndStoreAgentKey,
+} from '../services/agentKeyStorage';
 
 export type AgentTxStatus = 'idle' | 'signing' | 'executing' | 'success' | 'error';
 export type AgentCreationMode = 'generate' | 'import';
@@ -87,12 +91,17 @@ export function useCreateAgent() {
       try {
         let agentAddress: string;
         let keypair: ReturnType<typeof generateAgentKeypair> | null = null;
+        let mnemonic: string | null = null;
 
         if (params.mode === 'generate') {
           if (!params.passphrase || params.passphrase.length < 6) {
             throw new Error('Agent passphrase must be at least 6 characters');
           }
-          keypair = generateAgentKeypair();
+          // Generate via BIP39 mnemonic so the user can later export a recovery
+          // phrase alongside the raw private key (Export Key modal).
+          const generated = generateAgentMnemonicAndKeypair();
+          keypair = generated.keypair;
+          mnemonic = generated.mnemonic;
           agentAddress = keypair.toSuiAddress();
           setGeneratedAddress(agentAddress);
         } else {
@@ -146,7 +155,13 @@ export function useCreateAgent() {
         // (on-chain agent already exists), so surface fallbackKey.
         if (keypair && params.mode === 'generate') {
           try {
-            await encryptAndStoreAgentKey(profileId, keypair, address, params.passphrase!);
+            await encryptAndStoreAgentKey(
+              profileId,
+              keypair,
+              address,
+              params.passphrase!,
+              mnemonic ?? undefined,
+            );
           } catch (storageErr) {
             setFallbackKey(keypair.getSecretKey());
             setTxError(
