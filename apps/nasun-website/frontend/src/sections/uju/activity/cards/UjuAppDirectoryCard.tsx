@@ -23,6 +23,13 @@ import {
   UjuComingSoonTag,
 } from "../../shared";
 import { goToDashboardActivatedApps } from "../../shared/ujuNavigation";
+import { UJU_ECOSYSTEM_POSITIONS_ENABLED } from "@/config/featureFlags";
+
+// External EVM dApps gated behind UJU_ECOSYSTEM_POSITIONS_ENABLED — their
+// only value-add (positions cards on the dashboard) lives behind the same
+// flag, so listing them in the directory while the cards are hidden would
+// dead-end the user.
+const GATED_EVM_APPS = new Set(["uniswap", "hyperliquid"]);
 
 const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
   { value: "all", label: "All" },
@@ -53,13 +60,14 @@ export function UjuAppDirectoryCard() {
   const [activeChain, setActiveChain] = useState<AppChain | "all">("all");
   const [detailsApp, setDetailsApp] = useState<AppEntry | null>(null);
 
-  const filtered = useMemo(
-    () =>
-      activeChain === "all"
-        ? APP_REGISTRY
-        : APP_REGISTRY.filter((a) => a.chain === activeChain),
-    [activeChain],
-  );
+  const filtered = useMemo(() => {
+    const base = UJU_ECOSYSTEM_POSITIONS_ENABLED
+      ? APP_REGISTRY
+      : APP_REGISTRY.filter((a) => !GATED_EVM_APPS.has(a.id));
+    return activeChain === "all"
+      ? base
+      : base.filter((a) => a.chain === activeChain);
+  }, [activeChain]);
 
   const counterClass =
     directory.selectedTotal >= MAX_DAILY_MISSIONS

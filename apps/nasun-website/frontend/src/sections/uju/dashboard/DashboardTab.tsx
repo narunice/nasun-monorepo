@@ -10,6 +10,7 @@ import { UjuSectionHeader } from "../shared";
 import { useUjuAppDirectory } from "../apps/UjuAppDirectoryProvider";
 import { UjuFeedCarousel } from "./feed/UjuFeedCarousel";
 import { EcosystemPositionsSection } from "./positions/EcosystemPositionsSection";
+import { UJU_ECOSYSTEM_POSITIONS_ENABLED } from "@/config/featureFlags";
 
 // Top portion: rendered full-width across the dashboard. The Overview card
 // (profile + points + health) is the most important hero section and must
@@ -19,7 +20,7 @@ import { EcosystemPositionsSection } from "./positions/EcosystemPositionsSection
 export function DashboardTabTop() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-5">
-      <EcosystemPositionsSection />
+      {UJU_ECOSYSTEM_POSITIONS_ENABLED && <EcosystemPositionsSection />}
       <OverviewSummaryCard />
     </div>
   );
