@@ -5,9 +5,6 @@ import { useUserStore } from "../../../store/userStore";
 import type { RoomInfo } from "../../../lib/chat-service";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
-import { Turnstile } from "@marsidev/react-turnstile";
-
-const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
 
 const VISIBLE_ROOM_IDS = new Set([0, 10, 20]);
 
@@ -26,7 +23,6 @@ export default function ChatWidget() {
     messages,
     status,
     displayStatus,
-    captchaRequired,
     onlineCount,
     hasMore,
     sendMessage,
@@ -36,10 +32,6 @@ export default function ChatWidget() {
     switchRoom,
     toggleReaction,
     canChat,
-    setTurnstileToken,
-    onTurnstileError,
-    onTurnstileExpire,
-    turnstileKey,
   } = useChat();
   const visibleRooms = useMemo(
     () => rooms.filter((r) => VISIBLE_ROOM_IDS.has(r.id)),
@@ -309,10 +301,7 @@ export default function ChatWidget() {
             <div className="flex items-center gap-2">
               <StatusDot status={displayStatus} />
               <span className="text-sm font-medium text-white">Chat</span>
-              {captchaRequired && (
-                <span className="text-xs text-yellow-400/70">Verifying...</span>
-              )}
-              {!captchaRequired && onlineCount > 0 && (
+              {onlineCount > 0 && (
                 <span className="text-xs text-white/40">{onlineCount}</span>
               )}
             </div>
@@ -474,27 +463,6 @@ export default function ChatWidget() {
           )}
         </svg>
       </button>
-
-      {/* size:'invisible' renders nothing for clean IPs; CF auto-escalates
-          with its own modal overlay when interactive challenge is needed.
-          Host element stays in the normal flow (NOT display:none) so the
-          iframe is interactable in the rare interactive-fallback case.
-          The previous display:none + appearance:'execute' combo trapped
-          users on suspicious-IP networks (2026-05-09 outage). */}
-      {/* Mount unconditionally (was gated by `canChat`) so the CF challenge
-          starts solving at page load instead of waiting for wallet login.
-          Token is stored in chat-service singleton until the WebSocket
-          auth_response consumes it. */}
-      {TURNSTILE_SITE_KEY && (
-        <Turnstile
-          key={turnstileKey}
-          siteKey={TURNSTILE_SITE_KEY}
-          options={{ size: 'invisible' }}
-          onSuccess={setTurnstileToken}
-          onError={onTurnstileError}
-          onExpire={onTurnstileExpire}
-        />
-      )}
     </>
   );
 }

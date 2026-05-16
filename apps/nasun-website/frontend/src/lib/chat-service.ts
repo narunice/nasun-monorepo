@@ -87,7 +87,7 @@ export interface RoomInfo {
 
 export type ChatConnectionStatus = 'disconnected' | 'connecting' | 'connected';
 
-export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list' | 'captcha_required' | 'session_expired';
+export type ChatEventType = 'message' | 'history' | 'status' | 'online_count' | 'error' | 'rooms_list' | 'reaction_update' | 'follow_result' | 'following_list' | 'session_expired';
 
 export interface ChatEventMap {
   message: ChatMessage;
@@ -99,7 +99,6 @@ export interface ChatEventMap {
   reaction_update: { messageId: number; roomId: number; reactions: Record<string, number>; myReaction: string | null };
   follow_result: { target: string; following: boolean; followerCount: number; error?: string };
   following_list: { addresses: string[] };
-  captcha_required: undefined;
   session_expired: undefined;
 }
 
@@ -136,25 +135,11 @@ export class ChatService {
   private connectionTimer: ReturnType<typeof setTimeout> | null = null;
   private listeners = new Map<ChatEventType, Set<ChatListener<ChatEventType>>>();
   private seenMessageIds = new Set<number>();
-  private pendingTurnstileToken: string | null = null;
-  private captchaRequired = false;
   // Set when the session is detected as unrecoverable without re-login
   // (ZkLogin expired, or server closed with 4401 Auth failed).
   // Cleared only by an explicit connect() with a fresh signFn (post re-login)
   // or by disconnect().
   private sessionExpired = false;
-  // Once the Turnstile widget has delivered any token to us, every subsequent
-  // connect needs a fresh one. Flipping this on token receipt (not on first
-  // server-bound use) closes the race where an early auth_challenge fires
-  // before pendingTurnstileToken is populated, causing an empty auth_response
-  // to slip through the guard.
-  private turnstileEverUsed = false;
-
-  setTurnstileToken(token: string): void {
-    this.pendingTurnstileToken = token;
-    this.turnstileEverUsed = true;
-    this.captchaRequired = false;
-  }
 
   on<T extends ChatEventType>(event: T, listener: ChatListener<T>): void {
     if (!this.listeners.has(event)) {
@@ -220,7 +205,6 @@ export class ChatService {
 
   disconnect(): void {
     this.reconnectAttempts = 0;
-    this.captchaRequired = false;
     this.sessionExpired = false;
     this.signFn = null;
     if (this.reconnectTimer) {
@@ -303,7 +287,7 @@ export class ChatService {
       }
       if (this.status !== 'disconnected') {
         this.setStatus('disconnected');
-        if (this.captchaRequired || this.sessionExpired) {
+        if (this.sessionExpired) {
           return;
         }
         this.scheduleReconnect();
@@ -321,20 +305,9 @@ export class ChatService {
           this.ws?.close();
           break;
         }
-        const turnstileToken = this.pendingTurnstileToken ?? undefined;
-        this.pendingTurnstileToken = null;
-        // If Turnstile was used before but no fresh token is pending (typical on
-        // reconnect after server restart or transient drop), don't send an empty
-        // auth_response. Trigger widget remount through captcha_required instead.
-        if (this.turnstileEverUsed && !turnstileToken) {
-          this.captchaRequired = true;
-          this.emit('captcha_required', undefined);
-          this.ws?.close(4403, 'Captcha refresh');
-          break;
-        }
         this.signFn(msg.challenge)
           .then(({ signature, address, authMethod, ephemeralPubKey, displayName }) => {
-            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName, turnstileToken });
+            this.sendRaw({ type: 'auth_response', signature, address, authMethod, ephemeralPubKey, displayName });
           })
           .catch((err: unknown) => {
             const isExpired = err instanceof Error && err.name === CHAT_SESSION_EXPIRED_ERROR;
@@ -357,10 +330,7 @@ export class ChatService {
 
       case 'auth_error':
         console.warn('Chat auth error:', msg.reason);
-        if (msg.reason === 'Captcha required' || msg.reason === 'Captcha verification failed') {
-          this.captchaRequired = true;
-          this.emit('captcha_required', undefined);
-        } else if (msg.reason === 'Invalid signature') {
+        if (msg.reason === 'Invalid signature') {
           // Server rejected the signature — retrying with the same signer state
           // produces an identical reject. Latch session_expired so the user is
           // routed to re-login instead of churning in a reconnect loop.

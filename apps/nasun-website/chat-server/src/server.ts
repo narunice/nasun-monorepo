@@ -2,7 +2,7 @@ import './env.js'; // Must be first: loads .env before any module reads process.
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'node:http';
 import { generateChallenge, verifySignature, isValidSuiAddress, setProfileApiUrl, addrTag } from './auth.js';
-import { randomBytes, timingSafeEqual, createHmac } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { initStore, insertMessage, getRecentMessages, purgeOldMessages, upsertUser, closeStore, toggleReaction, getReactionSummaries, getMessageRoomId, getUserReactionsBatch, toggleFollow, getFollowing, getFollowerCounts, getChatParticipants, setGenesisPassStatus, getGenesisPassStatus, getGenesisPassCheckedAt, getGenesisPassBatch, getProfileImagesBatch, ensureProfilesCached, upsertNasunProfile, getDisplayNamesBatch, invalidateNasunProfile, getNasunProfileCached } from './store.js';
 import { stripControlChars, hasReservedPrefix } from './sanitize.js';
 import type { AuthenticatedClient, ClientMessage, ServerMessage, ChatMessagePayload, StoredMessage } from './types.js';
@@ -75,12 +75,6 @@ const AUTH_FAIL_WINDOW_MS = 60_000;
 const AUTH_FAIL_THRESHOLD = 10;
 const MAX_AUTH_FAIL_ENTRIES = 5_000;
 
-// Turnstile fail-open budget — prevents unbounded captcha bypass when siteverify times out at scale
-const FAIL_OPEN_WINDOW_MS = 60_000;
-const FAIL_OPEN_MAX = 20;
-let failOpenCount = 0;
-let failOpenWindowStart = Date.now();
-
 // ===== Helpers =====
 
 function recordAuthFailure(ip: string): void {
@@ -107,73 +101,6 @@ function isAuthRateLimited(ip: string): boolean {
     return false;
   }
   return entry.count >= AUTH_FAIL_THRESHOLD;
-}
-
-async function verifyTurnstileToken(token: string, secretKey: string): Promise<boolean> {
-  if (token.length > 2048) return false;
-  try {
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ secret: secretKey, response: token }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) {
-      console.warn('[turnstile] siteverify returned', res.status);
-      return false;
-    }
-    const data = await res.json() as { success: boolean };
-    return data.success === true;
-  } catch (err) {
-    console.warn('[turnstile] verification error:', (err as Error).message);
-    // Fail-open on timeout: blocking legitimate users is worse than a brief bot-protection gap.
-    // Check err.name first (DOMException from AbortSignal.timeout throws TimeoutError/AbortError).
-    const errName = (err as DOMException).name;
-    if (errName === 'TimeoutError' || errName === 'AbortError') {
-      // Budget: if timeouts exceed threshold within window, switch to fail-closed
-      // to block attacker-induced bypass (botnet-driven siteverify timeouts).
-      const now = Date.now();
-      if (now - failOpenWindowStart >= FAIL_OPEN_WINDOW_MS) {
-        failOpenWindowStart = now;
-        failOpenCount = 0;
-      }
-      if (failOpenCount >= FAIL_OPEN_MAX) {
-        console.warn('[turnstile] Fail-open budget exhausted — rejecting (fail-closed)');
-        return false;
-      }
-      failOpenCount++;
-      console.warn(`[turnstile] Timeout — fail-open (${failOpenCount}/${FAIL_OPEN_MAX} in window)`);
-      return true;
-    }
-    return false;
-  }
-}
-
-// ===== Gostop session pass (HMAC-signed) =====
-//
-// Issued after a successful Turnstile challenge. Stored client-side in
-// localStorage and presented in subsequent requests as proof-of-passage.
-// Format: base64url(JSON({ iat, exp, nonce })) + '.' + base64url(HMAC).
-// Stateless: server holds no per-pass state, just the signing secret.
-
-function b64urlEncode(buf: Buffer): string {
-  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function b64urlDecode(s: string): Buffer {
-  const pad = (4 - (s.length % 4)) % 4;
-  return Buffer.from(s.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat(pad), 'base64');
-}
-
-function signGostopPass(secret: string, ttlSec: number): { token: string; expiresAt: number } {
-  const now = Math.floor(Date.now() / 1000);
-  const exp = now + ttlSec;
-  const nonce = randomBytes(8).toString('hex');
-  const payload = JSON.stringify({ iat: now, exp, nonce });
-  const payloadB64 = b64urlEncode(Buffer.from(payload, 'utf8'));
-  const sig = createHmac('sha256', secret).update(payloadB64).digest();
-  const sigB64 = b64urlEncode(sig);
-  return { token: `${payloadB64}.${sigB64}`, expiresAt: exp };
 }
 
 function send(ws: WebSocket, msg: ServerMessage): void {
@@ -523,80 +450,6 @@ async function handleHttpRequest(
     if (crashHttpHandler(req, res, corsHeaders)) return;
   }
 
-  // Gostop session pass — issued after a successful Turnstile challenge,
-  // presented by gostop frontend on subsequent mission claims so the captcha
-  // is only seen on the first action of a session. Handles its own OPTIONS
-  // preflight to advertise POST.
-  if (url.pathname === '/api/turnstile/gostop-pass') {
-    const passCors = {
-      ...corsHeaders,
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-    if (req.method === 'OPTIONS') {
-      res.writeHead(204, passCors);
-      res.end();
-      return;
-    }
-    if (req.method !== 'POST') {
-      res.writeHead(405, passCors);
-      res.end(JSON.stringify({ error: 'method_not_allowed' }));
-      return;
-    }
-    if (!CONFIG.gostopPassSecret || CONFIG.gostopPassSecret.length < 32) {
-      console.warn('[gostop-pass] GOSTOP_PASS_SECRET missing or too short — rejecting');
-      res.writeHead(503, passCors);
-      res.end(JSON.stringify({ error: 'pass_unavailable' }));
-      return;
-    }
-    if (!CONFIG.turnstileSecretKey) {
-      console.warn('[gostop-pass] TURNSTILE_SECRET_KEY not set — rejecting');
-      res.writeHead(503, passCors);
-      res.end(JSON.stringify({ error: 'turnstile_disabled' }));
-      return;
-    }
-    let body = '';
-    req.on('data', (chunk) => {
-      body += chunk;
-      if (body.length > 4096) req.destroy();
-    });
-    req.on('end', async () => {
-      try {
-        let data: { turnstileToken?: string };
-        try {
-          data = body ? (JSON.parse(body) as { turnstileToken?: string }) : {};
-        } catch {
-          res.writeHead(400, passCors);
-          res.end(JSON.stringify({ error: 'invalid_json' }));
-          return;
-        }
-        if (!data.turnstileToken || typeof data.turnstileToken !== 'string') {
-          res.writeHead(400, passCors);
-          res.end(JSON.stringify({ error: 'missing_token' }));
-          return;
-        }
-        const ok = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
-        if (!ok) {
-          // 400 (not 403) so CloudFront's Custom Error Response for 4xx/5xx
-          // doesn't intercept and replace with the SPA index.html. The error
-          // is communicated via the JSON body, which the frontend reads.
-          res.writeHead(400, passCors);
-          res.end(JSON.stringify({ error: 'turnstile_failed' }));
-          return;
-        }
-        const { token, expiresAt } = signGostopPass(CONFIG.gostopPassSecret, CONFIG.gostopPassTtlSec);
-        res.writeHead(200, passCors);
-        res.end(JSON.stringify({ pass: token, expiresAt }));
-      } catch (err) {
-        console.warn('[gostop-pass] handler error:', (err as Error).message);
-        if (!res.headersSent) {
-          res.writeHead(500, passCors);
-          res.end(JSON.stringify({ error: 'internal_error' }));
-        }
-      }
-    });
-    return;
-  }
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
@@ -769,24 +622,6 @@ wss.on('connection', (ws, req) => {
           send(ws, { type: 'auth_error', reason: 'Invalid address' });
           ws.close(4401, 'Invalid address');
           return;
-        }
-
-        if (CONFIG.turnstileSecretKey) {
-          if (!data.turnstileToken) {
-            recordAuthFailure(ip);
-            console.warn(`[Auth] captcha token missing ip=${ip}`);
-            send(ws, { type: 'auth_error', reason: 'Captcha required' });
-            ws.close(4403, 'Captcha required');
-            return;
-          }
-          const turnstileOk = await verifyTurnstileToken(data.turnstileToken, CONFIG.turnstileSecretKey);
-          if (!turnstileOk) {
-            recordAuthFailure(ip);
-            console.warn(`[Auth] captcha failed ip=${ip}`);
-            send(ws, { type: 'auth_error', reason: 'Captcha verification failed' });
-            ws.close(4403, 'Captcha failed');
-            return;
-          }
         }
 
         const verifyResult = await verifySignature(
@@ -1451,10 +1286,6 @@ if (process.env.ANTHROPIC_API_KEY) {
   console.log('[Chatbot] Disabled (ANTHROPIC_API_KEY not set)');
 }
 
-if (!CONFIG.turnstileSecretKey) {
-  console.warn('[turnstile] TURNSTILE_SECRET_KEY not set — WebSocket bot protection is DISABLED');
-}
-
 // ===== Crash Game Module =====
 
 let crashHttpHandler: ((req: import('node:http').IncomingMessage, res: import('node:http').ServerResponse, corsHeaders: Record<string, string>) => boolean) | null = null;
@@ -1481,9 +1312,9 @@ if (process.env.CRASH_ENABLED === 'true') {
 }
 
 // Cold-start gate: ensure banned-users cache is loaded before accepting WS
-// traffic. Required because Turnstile captcha enforcement is being removed
-// (see plans/2026-05-16-chat-turnstile-removal.md) and shadow-ban becomes
-// the primary spam defense. If BANNED_USERS_URL is configured but the
+// traffic. Shadow-ban is the only spam defense at the auth layer, so a
+// boot-time race where the cache is empty would let banned wallets through
+// for the first few seconds. If BANNED_USERS_URL is configured but the
 // initial fetch fails, refuse to listen (fail-closed) — pm2 will restart.
 await refreshBannedCache();
 if (isBannedCacheConfigured() && !isBannedCacheReady()) {
