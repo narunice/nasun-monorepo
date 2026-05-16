@@ -42,9 +42,15 @@ import {
   type InferResponse,
   type ExecuteCapabilityRequest,
   type ExecuteCapabilityResponse,
+  type ActionCallSpecWire,
 } from '../host-client.js';
 import { escrow as escrowSdk } from '@nasun/baram-sdk';
-import { signSettle, canonicalJsonSha256, ZERO_ACTION_CALL_HASH } from '../sig.js';
+import {
+  signSettle,
+  canonicalJsonSha256,
+  computeActionCallHash,
+  ZERO_ACTION_CALL_HASH,
+} from '../sig.js';
 import {
   TRADER_CONFIG,
   buildTraderPrompt,
@@ -120,11 +126,11 @@ export async function fetchBrowserConfig(
 }
 
 /**
- * PR1.A: HOLD-only operation. Any BUY/SELL decision is demoted to HOLD
- * before envelope construction so /execute-capability never receives an
- * actionCall (the Lambda 400s on swap_in_pr1_5 anyway, but demoting on
- * the runtime side keeps cycles green and the AER chain coherent).
- * PR1.5 will flip this default to false.
+ * Runtime kill-switch L1 (Spec §5.4). When true, BUY/SELL decisions are
+ * demoted to HOLD before envelope construction so the cycle ships only a
+ * cognition AER. Default stays `true` until the Phase E prod cutover flips
+ * it. When false, the swap branch builds escrow/spend/actionCall + signs an
+ * actionCallHash-bound sig2; the Lambda is the canonical kill-switch L2.
  */
 const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false';
 
@@ -136,8 +142,11 @@ const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false
 export async function fetchCapabilityFields(
   client: SuiClient,
   capabilityId: string,
-): Promise<{ owner: string; version: string }> {
-  const obj = await client.getObject({ id: capabilityId, options: { showContent: true } });
+): Promise<{ owner: string; version: string; initialSharedVersion: string }> {
+  const obj = await client.getObject({
+    id: capabilityId,
+    options: { showContent: true, showOwner: true },
+  });
   if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') {
     throw new Error(`Capability ${capabilityId} not found or non-Move`);
   }
@@ -147,10 +156,24 @@ export async function fetchCapabilityFields(
   if (typeof ownerRaw !== 'string' || typeof versionRaw !== 'string') {
     throw new Error('Capability owner/version missing');
   }
+  // Capability is a Shared object; initial_shared_version is on the on-chain
+  // owner descriptor, not in `fields`. Lambda needs it to build the immutable
+  // shared object ref for the 6-call PTB. Immutable post-creation so the
+  // runtime caches across cycles.
+  const ownerDesc = obj.data.owner;
+  const sharedRaw =
+    ownerDesc && typeof ownerDesc === 'object' && 'Shared' in ownerDesc
+      ? (ownerDesc as { Shared: { initial_shared_version: number | string } }).Shared
+          .initial_shared_version
+      : null;
+  if (sharedRaw === null || sharedRaw === undefined) {
+    throw new Error(`Capability ${capabilityId} is not a shared object`);
+  }
+  const initialSharedVersion = String(sharedRaw);
   const owner = ownerRaw.toLowerCase().startsWith('0x')
     ? ownerRaw.toLowerCase()
     : `0x${ownerRaw.toLowerCase()}`;
-  return { owner, version: versionRaw };
+  return { owner, version: versionRaw, initialSharedVersion };
 }
 
 export const TRADER_STATE_PATH = join(homedir(), '.baram-trader-state.json');
@@ -226,6 +249,10 @@ export interface TraderCycleRuntime {
   /** Cached `initialSharedVersion` for the AgentEscrow. Stable for the
    *  object's lifetime; we fetch once and reuse across cycles. */
   cachedEscrowInitialSharedVersion: { value: bigint | null };
+  /** Cached `initialSharedVersion` for the Capability shared object. Same
+   *  rationale as escrow: immutable post-creation. Lambda also caches this
+   *  but the runtime needs it to embed in the execReq.escrow block. */
+  cachedCapabilityInitialSharedVersion: { value: bigint | null };
 }
 
 export function newTraderCycleRuntime(state?: TraderState): TraderCycleRuntime {
@@ -242,6 +269,7 @@ export function newTraderCycleRuntime(state?: TraderState): TraderCycleRuntime {
     intentChain: chain,
     state: initial,
     cachedEscrowInitialSharedVersion: { value: null },
+    cachedCapabilityInitialSharedVersion: { value: null },
   };
 }
 
@@ -458,6 +486,11 @@ export async function runTraderCycle(
     if (agentAddress !== principalAddress) {
       deps.log(`[trader] WARN: agentAddress=${agentAddress} differs from principalAddress=${principalAddress}. Lambda will verify the agent signature; cap.owner is the principal.`);
     }
+    // Cap initialSharedVersion is immutable; cache once for the swap-path
+    // execReq.escrow.capabilityInitialSharedVersion slot. We always refresh
+    // from the latest getObject result rather than first-write-wins because
+    // the cost is amortized into the version-snapshot fetch above.
+    runtime.cachedCapabilityInitialSharedVersion.value = BigInt(capFields.initialSharedVersion);
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deps.log(`[trader] capability fetch failed: ${msg}`);
@@ -594,15 +627,53 @@ export async function runTraderCycle(
         paymentAmount: String(config.price),
       };
 
-  // 9. PR1.A: swap path is disabled. escrowBlock/spendBlock/actionCallBlock
-  // stay null. PR1.5 will reintroduce the 5-call atomic PTB and lift
-  // the PR1A_SWAP_DISABLED guard above. `buyOrSell` is preserved as a
-  // local for any future audit but cannot reach this branch under
-  // PR1A_SWAP_DISABLED=true because the decision was demoted upstream.
-  void buyOrSell;
-  void inputAssetType;
+  // 9. Swap-path blocks (PR1.5). For BUY/SELL we build escrow + spend +
+  // actionCall and compute actionCallHash; HOLD leaves all three null and
+  // uses the zero hash. Any fetch/quote failure aborts the cycle (no AER
+  // is emitted) so the Lambda never receives a half-filled body.
+  let escrowBlock: {
+    objectId: string;
+    initialSharedVersion: string;
+    capabilityId: string;
+    capabilityInitialSharedVersion: string;
+  } | null = null;
+  let spendBlock: { coinAssetType: string; amount: string } | null = null;
+  let actionCallBlock: ActionCallSpecWire | null = null;
+  if (buyOrSell) {
+    try {
+      if (runtime.cachedEscrowInitialSharedVersion.value === null) {
+        const ref = await deps.fetchEscrow(client, trader.escrowId);
+        runtime.cachedEscrowInitialSharedVersion.value = ref.initialSharedVersion;
+      }
+      const capInitial = runtime.cachedCapabilityInitialSharedVersion.value;
+      if (capInitial === null) {
+        // Should be primed at step 3a; treat as fatal.
+        throw new Error('capabilityInitialSharedVersion missing from runtime cache');
+      }
+      const minOut = await deps.quoteMinOut({
+        client,
+        direction: decision.action as 'BUY' | 'SELL',
+        sizeInRaw: sizeRaw,
+        slippageBps: trader.maxSlippageBps,
+      });
+      actionCallBlock = deps.buildSwapActionCall({
+        direction: decision.action as 'BUY' | 'SELL',
+        minOut,
+      });
+      escrowBlock = {
+        objectId: trader.escrowId,
+        initialSharedVersion: runtime.cachedEscrowInitialSharedVersion.value.toString(),
+        capabilityId: trader.capabilityId,
+        capabilityInitialSharedVersion: capInitial.toString(),
+      };
+      spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[trader] swap-block setup failed: ${msg}`);
+      return { outcome: 'execute_failed', reason: 'swap_setup_failed' };
+    }
+  }
   void outputAssetType;
-  void sizeRaw;
 
   const triggeredAction = runtime.state.lastExecutionDigest
     ? digestB58ToIdHex(runtime.state.lastExecutionDigest)
@@ -613,7 +684,14 @@ export async function runTraderCycle(
 
   // 10. POST /execute-capability with the agent-signed settlement intent.
   const envelopeHash = canonicalJsonSha256(finalEnvelope);
-  const actionCallHash = ZERO_ACTION_CALL_HASH;
+  const actionCallHash =
+    actionCallBlock && escrowBlock && spendBlock
+      ? computeActionCallHash({
+          actionCall: actionCallBlock,
+          escrow: escrowBlock,
+          spend: spendBlock,
+        })
+      : ZERO_ACTION_CALL_HASH;
   const sig2 = await signSettle(config.keypair, {
     v: 1,
     kind: 'nasun-ai-settle',
@@ -648,9 +726,9 @@ export async function runTraderCycle(
     envelopeHash,
     actionCallHash,
     sig2,
-    actionCall: null,
-    escrow: null,
-    spend: null,
+    actionCall: actionCallBlock,
+    escrow: escrowBlock,
+    spend: spendBlock,
     purpose: purposeMsg,
     ...(triggeredAction ? { triggeredAction } : {}),
   };

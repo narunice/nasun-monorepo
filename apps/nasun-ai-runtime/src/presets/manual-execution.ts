@@ -44,7 +44,12 @@ import {
   infer as defaultInfer,
   executeCapability as defaultExecuteCapability,
 } from '../host-client.js';
-import { signSettle, canonicalJsonSha256, ZERO_ACTION_CALL_HASH } from '../sig.js';
+import {
+  signSettle,
+  canonicalJsonSha256,
+  computeActionCallHash,
+  ZERO_ACTION_CALL_HASH,
+} from '../sig.js';
 import { escrow as escrowSdk } from '@nasun/baram-sdk';
 import {
   TRADER_CONFIG,
@@ -52,6 +57,7 @@ import {
   quoteMinOut as defaultQuoteMinOut,
   dailySpentQuoteRaw as defaultDailySpentQuoteRaw,
 } from './trader.js';
+import { fetchCapabilityFields as defaultFetchCapabilityFields } from './trader-cycle.js';
 import {
   buildTradeSwapEnvelope,
   buildReplay,
@@ -88,6 +94,7 @@ export interface ManualExecutionDeps {
   isPendingActive: typeof defaultIsPendingActive;
   clearPendingProposal: typeof defaultClearPendingProposal;
   fetchEscrow: typeof escrowSdk.fetchEscrow;
+  fetchCapabilityFields: typeof defaultFetchCapabilityFields;
   buildSwapActionCall: typeof defaultBuildSwapActionCall;
   quoteMinOut: typeof defaultQuoteMinOut;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
@@ -103,6 +110,7 @@ const REAL_DEPS: ManualExecutionDeps = {
   isPendingActive: defaultIsPendingActive,
   clearPendingProposal: defaultClearPendingProposal,
   fetchEscrow: escrowSdk.fetchEscrow,
+  fetchCapabilityFields: defaultFetchCapabilityFields,
   buildSwapActionCall: defaultBuildSwapActionCall,
   quoteMinOut: defaultQuoteMinOut,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
@@ -113,8 +121,9 @@ const REAL_DEPS: ManualExecutionDeps = {
   nowIso: () => new Date().toISOString(),
 };
 
-/** Cached escrow initial shared version (stable across restarts). */
+/** Cached escrow + capability initial shared versions (immutable post-creation). */
 let cachedEscrowVersion: bigint | null = null;
+let cachedCapabilityInitialSharedVersion: bigint | null = null;
 
 export async function runManualExecution(
   client: SuiClient,
@@ -131,7 +140,7 @@ export async function runManualExecution(
   }
 
   // PR1.A: swap execution path is disabled at the platform level until the
-  // 5-call atomic PTB lands in PR1.5. Trader cycle never produces a proposal
+  // 6-call atomic PTB lands in PR1.5. Trader cycle never produces a proposal
   // (BUY/SELL is demoted to HOLD upstream), so this short-circuit is mostly
   // defensive — it stops a stale chat-server confirmation from re-entering
   // the deleted swap path. Operators can flip PR1A_SWAP_DISABLED=false when
@@ -339,13 +348,15 @@ export async function runManualExecution(
       const ref = await deps.fetchEscrow(client, trader.escrowId);
       cachedEscrowVersion = ref.initialSharedVersion;
     }
+    if (cachedCapabilityInitialSharedVersion === null) {
+      const capFields = await deps.fetchCapabilityFields(client, trader.capabilityId);
+      cachedCapabilityInitialSharedVersion = BigInt(capFields.initialSharedVersion);
+    }
     escrowBlock = {
       objectId: trader.escrowId,
       initialSharedVersion: cachedEscrowVersion.toString(),
       capabilityId: trader.capabilityId,
-      // PR1.5 next session: replace placeholder with fetched cap initialSharedVersion
-      // (immutable post-creation, runtime caches across cycles).
-      capabilityInitialSharedVersion: '0',
+      capabilityInitialSharedVersion: cachedCapabilityInitialSharedVersion.toString(),
     };
     spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
     const minOut = await deps.quoteMinOut({
@@ -360,13 +371,19 @@ export async function runManualExecution(
     return { ok: false, status: 'rejected', reason: 'escrow_setup_failed' };
   }
 
-  // 10. POST /execute-capability (execution AER).
-  // PR1.A: this path is unreachable (entry guard short-circuits). PR1.5
-  // will sign actionCallHash = sha256(canonical(actionCall||spend||escrow))
-  // and the Lambda will accept non-null actionCall. For now we sign with
-  // ZERO_ACTION_CALL_HASH so the type-checker stays happy on the dead path.
+  // 10. POST /execute-capability (execution AER). actionCallHash is bound to
+  // sig2 so the Lambda can recompute and reject any swap-block tamper after
+  // the agent signature. HOLD branch is unreachable here (proposal already
+  // implies swap) but we fall back to ZERO_ACTION_CALL_HASH defensively.
   const envelopeHashMe = canonicalJsonSha256(envelope);
-  const actionCallHashMe = ZERO_ACTION_CALL_HASH; // PR1.5: replace with action-call hash
+  const actionCallHashMe =
+    actionCallBlock && escrowBlock && spendBlock
+      ? computeActionCallHash({
+          actionCall: actionCallBlock,
+          escrow: escrowBlock,
+          spend: spendBlock,
+        })
+      : ZERO_ACTION_CALL_HASH;
   const sig2Me = await signSettle(config.keypair, {
     v: 1,
     kind: 'nasun-ai-settle',
