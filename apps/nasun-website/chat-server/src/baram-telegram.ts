@@ -153,6 +153,8 @@ interface WakeBody {
 
 interface WakeResult {
   ok: boolean;
+  status?: string;
+  reason?: string;
   summary?: string;
   proposal?: Proposal;
   error?: string;
@@ -180,11 +182,15 @@ async function forwardToWake(
       return { ok: false, error: `wake_http_${res.status}: ${text.slice(0, 100)}` };
     }
     const json = (await res.json()) as Record<string, unknown>;
+    const reason = typeof json.reason === 'string' ? json.reason : undefined;
+    const status = typeof json.status === 'string' ? json.status : undefined;
     return {
       ok: json.ok === true,
+      status,
+      reason,
       summary: typeof json.summary === 'string' ? json.summary : undefined,
       proposal: json.proposal != null ? (json.proposal as Proposal) : undefined,
-      error: typeof json.reason === 'string' ? json.reason : undefined,
+      error: json.ok === true ? undefined : reason,
     };
   } catch (err) {
     return { ok: false, error: (err as Error).message };
@@ -368,6 +374,14 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
 
     if (result.ok && result.summary) {
       await sendMessage(chatId, result.summary);
+    } else if (result.ok && result.status === 'skipped' && result.reason === 'pending_lock') {
+      // Defense-in-depth: a stranded lock should be impossible after the
+      // 2026-05-16 finally/cancel fixes, but if one ever slips through the
+      // user should at least understand why their message is being ignored.
+      await sendMessage(
+        chatId,
+        'Your previous trade is still being processed. Please wait a moment and try again.',
+      );
     } else if (result.ok) {
       await sendMessage(chatId, 'Done. Check your Dashboard for the latest activity.');
     } else {
@@ -541,16 +555,38 @@ async function handleProposalCancel(
   chatId: number,
   session: ReturnType<typeof getActiveSessionByTgUser>,
   proposalId: string,
-  _proposal: Proposal,
+  proposal: Proposal,
 ): Promise<void> {
   if (!session) return;
 
   finalizeProposal(proposalId, 'cancelled');
 
-  // The pending lock will self-expire (MAX_PENDING_TTL_MS) or can be cleared
-  // by the next heartbeat cycle after expiry (permissionless clear). For the
-  // prototype we do not trigger an explicit onchain clear here; the agent-runner
-  // will detect the expired lock on the next cycle and skip gracefully.
+  // Fire a manual wake with a cancel sentinel so the agent-runner clears the
+  // on-chain pending lock immediately. Without this the lock would survive
+  // up to MAX_PENDING_TTL_MS (15 min), during which every analyst/heartbeat
+  // cycle is skipped -- effectively freezing the agent. See 2026-05-16 handoff.
+  const ep = getEndpoint(session.agent);
+  if (ep && isEndpointFresh(ep)) {
+    try {
+      const jwt = issueShortLivedJWT(session.sid);
+      const cancelWake: WakeBody = {
+        job_id: ulid(),
+        jwt,
+        trigger_type: 'manual',
+        intent_id: ulid(),
+        parent_intent_id: proposal.intent_id,
+        message: JSON.stringify({ __nasun_cancel__: true, proposal_id: proposalId }),
+      };
+      // Fire-and-forget with a short timeout: user gets immediate feedback
+      // regardless of clear outcome, and the lock will self-expire as fallback.
+      void forwardToWake(`${ep.httpUrl}/wake`, cancelWake, 15_000).catch((err) => {
+        console.warn('[baram-tg] cancel wake failed (lock will self-expire):', (err as Error).message);
+      });
+    } catch (err) {
+      console.warn('[baram-tg] cancel wake setup failed:', (err as Error).message);
+    }
+  }
+
   await sendMessage(chatId, 'Trade cancelled. Your agent will continue monitoring.');
 }
 

@@ -19,10 +19,12 @@
  *  11. clearPendingProposal (onchain)
  *  12. Return WakeOutcome
  *
- * On any failure BEFORE /execute-capability, the pending lock is left intact
- * so the user can retry or let it expire. On /execute-capability failure, the
- * lock is also left intact (the host's preflight might have a transient issue).
- * Once /execute-capability succeeds, the lock is always cleared.
+ * The pending lock is cleared in a finally-style block once isPendingActive
+ * has passed. From the user's POV the proposal is "done" whether the swap
+ * settled, the boundary rejected it, or any later step failed -- leaving the
+ * lock in place would block all subsequent analyst/heartbeat cycles for up
+ * to 15 minutes (the on-chain TTL). Stranded locks were the root cause of
+ * the 2026-05-16 "agent stops responding after a failed Confirm" incident.
  */
 
 import type { SuiClient } from '@mysten/sui/client';
@@ -150,17 +152,54 @@ export async function runManualExecution(
     return { ok: false, status: 'rejected', reason: 'pr1a_swap_disabled' };
   }
 
-  // 1. Parse Proposal from ctx.message.
+  // 1. Parse Proposal from ctx.message. A cancel sentinel
+  // ({"__nasun_cancel__": true, "proposal_id": "..."}) routes to the
+  // lock-clear-only path below; otherwise the body is a full Proposal.
   let proposal: Proposal;
+  let isCancel = false;
+  let cancelProposalId: string | null = null;
   try {
     if (!ctx.message) throw new Error('message is empty');
-    proposal = JSON.parse(ctx.message) as Proposal;
-    if (!proposal.proposal_id || !proposal.side || !proposal.size_quote_raw) {
-      throw new Error('proposal missing required fields');
+    const parsed = JSON.parse(ctx.message) as Record<string, unknown>;
+    if (parsed.__nasun_cancel__ === true) {
+      isCancel = true;
+      cancelProposalId = typeof parsed.proposal_id === 'string' ? parsed.proposal_id : null;
+      // Synthesise a placeholder so downstream code paths that never run
+      // for cancel still type-check. None of its fields are read on the
+      // cancel branch.
+      proposal = { proposal_id: cancelProposalId ?? '' } as Proposal;
+    } else {
+      proposal = parsed as unknown as Proposal;
+      if (!proposal.proposal_id || !proposal.side || !proposal.size_quote_raw) {
+        throw new Error('proposal missing required fields');
+      }
     }
   } catch (err) {
     deps.log(`[manual] Failed to parse proposal from message: ${err instanceof Error ? err.message : err}`);
     return { ok: false, status: 'rejected', reason: 'invalid_proposal_message' };
+  }
+
+  if (isCancel) {
+    deps.log(`[manual] Cancel signal received for proposal=${cancelProposalId ?? 'n/a'} -- clearing pending lock.`);
+    if (!config.baramAerPackageId) {
+      return { ok: true, status: 'processed', summary: 'Proposal cancelled.' };
+    }
+    try {
+      const digest = await deps.clearPendingProposal(
+        client,
+        config.keypair,
+        config.baramAerPackageId,
+        trader.capabilityId,
+        config.clockId,
+      );
+      deps.log(`[manual] Pending lock cleared (cancel): ${digest}`);
+    } catch (err) {
+      // E_NO_PENDING_PROPOSAL is the expected outcome when the lock has
+      // already expired or been cleared by a prior cycle -- treat as success.
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[manual] clearPendingProposal (cancel) reported: ${msg}`);
+    }
+    return { ok: true, status: 'processed', summary: 'Proposal cancelled.' };
   }
 
   deps.log(`[manual] Executing confirmed proposal: ${proposal.side} ${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC (${proposal.proposal_id})`);
@@ -187,6 +226,32 @@ export async function runManualExecution(
     }
   }
 
+  // From here on, the on-chain pending lock is known to be active. Any exit
+  // path -- success, validation failure, infer failure, swap failure -- must
+  // release the lock; otherwise the next analyst/heartbeat cycle will skip
+  // for up to 15 minutes (the on-chain TTL). Wrap the rest in try/finally.
+  let lockReleased = false;
+  const releaseLock = async (label: string) => {
+    if (lockReleased) return;
+    lockReleased = true;
+    if (!config.baramAerPackageId) return;
+    try {
+      const digest = await deps.clearPendingProposal(
+        client,
+        config.keypair,
+        config.baramAerPackageId,
+        trader.capabilityId,
+        config.clockId,
+      );
+      deps.log(`[manual] Pending lock cleared (${label}): ${digest}`);
+    } catch (err) {
+      // Non-fatal: the lock auto-expires at the on-chain TTL anyway. Log so
+      // operators can see the lock survived this cycle.
+      deps.log(`[manual] clearPendingProposal failed (non-fatal, ${label}): ${err instanceof Error ? err.message : err}`);
+    }
+  };
+
+  try {
   // 3. Budget check.
   let budget;
   try {
@@ -433,22 +498,7 @@ export async function runManualExecution(
 
   deps.log(`[manual] Execution AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
 
-  // 11. clearPendingProposal -- always runs after successful execution.
-  if (config.baramAerPackageId) {
-    try {
-      const clearDigest = await deps.clearPendingProposal(
-        client,
-        config.keypair,
-        config.baramAerPackageId,
-        trader.capabilityId,
-        config.clockId,
-      );
-      deps.log(`[manual] Pending lock cleared: ${clearDigest}`);
-    } catch (err) {
-      // Non-fatal: the AER already landed. The lock will self-expire.
-      deps.log(`[manual] clearPendingProposal failed (non-fatal, will self-expire): ${err instanceof Error ? err.message : err}`);
-    }
-  }
+  // Pending lock cleanup runs in the finally block below.
 
   const summaryText = `Executed ${proposal.side} ~${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC (confirmed). ${fakeDecision.reason}`;
 
@@ -459,4 +509,7 @@ export async function runManualExecution(
     aerDigest: execResp.txDigest,
     summary: summaryText,
   };
+  } finally {
+    await releaseLock('post-exec');
+  }
 }
