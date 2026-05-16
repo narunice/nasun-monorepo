@@ -4,7 +4,7 @@
  * Backend endpoints for the per-app verified Solana binding flow. Mirror of
  * `additionalEvmApi.ts` but signs over UTF-8 bytes with Ed25519 (Phantom /
  * Solflare signMessage) instead of secp256k1 ECDSA. These endpoints require
- * a Cognito JWT — the user must already be signed in.
+ * a Cognito JWT -- the user must already be signed in.
  *
  * Flow for adding a new wallet:
  *   1. requestAdditionalSolChallenge(addr, appId?) -> { nonce, message }

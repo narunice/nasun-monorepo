@@ -8,8 +8,8 @@ import {
   findOtherOwnerOfAddress,
   MAX_ADDITIONAL_ADDRESSES,
 } from '../utils/userProfile';
-import { putAdditionalSolNonce, NONCE_TTL_SECONDS } from '../utils/nonceStore';
-import { badRequest, conflict, json, methodNotAllowed } from '../utils/responses';
+import { putAdditionalNonce, NONCE_TTL_SECONDS } from '../../../_shared/additional-link/nonceStore';
+import { badRequest, conflict, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleChallenge(
   event: APIGatewayProxyEvent,
@@ -18,8 +18,13 @@ export async function handleChallenge(
 ): Promise<APIGatewayProxyResult> {
   if (event.httpMethod !== 'POST') return methodNotAllowed(headers);
 
-  const body = JSON.parse(event.body || '{}');
-  const walletAddress = toSolAddress(body.walletAddress);
+  let body: { walletAddress?: unknown; appId?: unknown };
+  try {
+    body = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return badRequest('Invalid JSON body', headers);
+  }
+  const walletAddress = toSolAddress(body.walletAddress as string | undefined);
   const rawAppId: string | undefined = typeof body.appId === 'string' ? body.appId.toLowerCase() : undefined;
 
   if (!walletAddress) return badRequest('walletAddress must be a valid Solana address', headers);
@@ -30,7 +35,7 @@ export async function handleChallenge(
   const profile = await getProfile(identityId);
   const sol = getSolanaLink(profile);
 
-  // Unlike EVM, the first verified Solana link IS the primary — no
+  // Unlike EVM, the first verified Solana link IS the primary -- no
   // precondition that a primary already exist. The duplicate guards below
   // still fire if the user is re-verifying an address they already own.
   if (sol && sol.manualEntry !== true && sol.walletAddress) {
@@ -50,7 +55,7 @@ export async function handleChallenge(
 
   // Cross-account uniqueness: 1 Solana address can only be bound to 1
   // Nasun account. The owning identityId is intentionally NOT echoed in
-  // the response — same threat model as EVM (probing).
+  // the response -- same threat model as EVM (probing).
   const otherOwner = await findOtherOwnerOfAddress(walletAddress, identityId);
   if (otherOwner) {
     console.warn(
@@ -74,7 +79,7 @@ export async function handleChallenge(
     `Nonce: ${nonce}`;
   const expiresAt = Math.floor(Date.now() / 1000) + NONCE_TTL_SECONDS;
 
-  await putAdditionalSolNonce(nonce, {
+  await putAdditionalNonce('solana_additional:', nonce, {
     identityId,
     walletAddress,
     appId: rawAppId,

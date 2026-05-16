@@ -8,7 +8,7 @@ import {
   setAppBinding,
   removeAppBinding,
 } from '../utils/userProfile';
-import { badRequest, json, methodNotAllowed } from '../utils/responses';
+import { badRequest, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleAppBinding(
   event: APIGatewayProxyEvent,
@@ -17,10 +17,16 @@ export async function handleAppBinding(
 ): Promise<APIGatewayProxyResult> {
   if (event.httpMethod !== 'PATCH') return methodNotAllowed(headers);
 
-  const body = JSON.parse(event.body || '{}');
+  let body: { appId?: unknown; walletAddress?: unknown };
+  try {
+    body = event.body ? JSON.parse(event.body) : {};
+  } catch {
+    return badRequest('Invalid JSON body', headers);
+  }
   const appId: string | undefined =
     typeof body.appId === 'string' ? body.appId.toLowerCase() : undefined;
-  const walletAddressRaw: string | null | undefined = body.walletAddress;
+  const walletAddressRaw: string | null | undefined =
+    typeof body.walletAddress === 'string' ? body.walletAddress : (body.walletAddress as null | undefined);
 
   if (!appId || !isAppIdValid(appId)) {
     return badRequest('appId must match /^[a-z][a-z0-9-]{0,31}$/', headers);

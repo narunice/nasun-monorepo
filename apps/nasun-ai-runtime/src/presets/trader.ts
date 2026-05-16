@@ -1,5 +1,5 @@
 /**
- * Trader preset — autonomous NBTC/NUSDC trading on Pado (DeepBook v3).
+ * Trader preset -- autonomous NBTC/NUSDC trading on Pado (DeepBook v3).
  *
  * Cycle:
  *   1. Fetch agent NBTC/NUSDC balances
@@ -107,7 +107,7 @@ export interface TraderPromptContext {
   recent: TradeRecord[];
   /** Strategy persona spliced as a system fragment ahead of the per-cycle
    *  market context. Keeping the strategy fragment first makes the
-   *  prompt_template_hash sensitive to preset changes — a verifier can
+   *  prompt_template_hash sensitive to preset changes -- a verifier can
    *  attribute the AER to a specific preset without re-running the model. */
   strategy: StrategyPreset;
   /** Optional ISO timestamp override for deterministic test rendering.
@@ -163,11 +163,11 @@ export function buildTraderPrompt(ctx: TraderPromptContext): string {
 /**
  * Parse the LLM's JSON response and apply risk-limit validation. Out-of-range
  * decisions are demoted to HOLD with a `riskGate` annotation rather than
- * thrown — the trader still wants to issue an AER recording why the cycle
+ * thrown -- the trader still wants to issue an AER recording why the cycle
  * produced no trade, otherwise the on-chain record loses the rejection signal.
  *
  * Throws ONLY on shape errors (no JSON, missing action, NaN size). The
- * caller treats throws as "no AER" — same as before.
+ * caller treats throws as "no AER" -- same as before.
  */
 export function parseTradeDecision(
   raw: string,
@@ -210,7 +210,7 @@ export function parseTradeDecision(
     };
   }
 
-  // Daily aggregate cap. Demoting to HOLD rather than clamping — clamping
+  // Daily aggregate cap. Demoting to HOLD rather than clamping -- clamping
   // a max-size decision down to the remaining daily window would put a
   // tiny trade on the books that the LLM never asked for.
   if (dailySpent + sizeRaw > limits.dailyMaxQuoteRaw) {

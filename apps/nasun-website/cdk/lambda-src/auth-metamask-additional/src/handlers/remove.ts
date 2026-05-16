@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { toChecksum } from '../utils/ethereum';
 import { removeAdditionalAddress } from '../utils/userProfile';
-import { badRequest, json, methodNotAllowed } from '../utils/responses';
+import { badRequest, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleRemove(
   event: APIGatewayProxyEvent,

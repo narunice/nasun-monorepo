@@ -5,7 +5,7 @@
  * flow is testable in isolation. The cycle is otherwise unchanged from
  * the prior C3-v2b shape:
  *
- *   1. checkBudget — abort fatal if inactive, defer if insufficient
+ *   1. checkBudget -- abort fatal if inactive, defer if insufficient
  *   2. fetchAgentBalances + buildTraderPrompt
  *   3. createRequest (on-chain budget deduction)
  *   4. openIntent (chains lineage)
@@ -135,7 +135,7 @@ export async function fetchBrowserConfig(
 const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false';
 
 /**
- * Inline cap fetch — Lambda has the same logic in services/sui.ts. Returns
+ * Inline cap fetch -- Lambda has the same logic in services/sui.ts. Returns
  * the owner address (lower-cased 0x) and version (u64 decimal string).
  * Exported so the analyst preset reuses the same shape and tests can inject.
  */
@@ -214,7 +214,7 @@ export function loadTraderState(path: string = TRADER_STATE_PATH): TraderState {
       };
     }
   } catch {
-    // Corrupt file — fall through to default
+    // Corrupt file -- fall through to default
   }
   return {
     lastCognitionDigest: null,
@@ -262,7 +262,7 @@ export function newTraderCycleRuntime(state?: TraderState): TraderCycleRuntime {
     try {
       chain.lastIntentId = Array.from(Buffer.from(initial.lastIntentIdHex, 'hex'));
     } catch {
-      // Ignore — start a fresh chain.
+      // Ignore -- start a fresh chain.
     }
   }
   return {
@@ -387,7 +387,7 @@ export async function runTraderCycle(
       `[trader] Browser config loaded: model=${effectiveModel}, perTrade=${effectiveMaxNotional}, dailyMax=${effectiveDailyMax}, strategy=${effectiveStrategy.id}`,
     );
   } else {
-    deps.log('[trader] Browser config unavailable — using .env defaults');
+    deps.log('[trader] Browser config unavailable -- using .env defaults');
   }
 
   // 0. Skip if an unconfirmed proposal is pending on-chain (Plan D §A5').
@@ -405,7 +405,7 @@ export async function runTraderCycle(
       deps.log(`[trader] isPendingActive check failed (proceeding): ${err instanceof Error ? err.message : err}`);
     }
     if (pending) {
-      deps.log('[trader] Pending proposal lock active — skipping heartbeat cycle.');
+      deps.log('[trader] Pending proposal lock active -- skipping heartbeat cycle.');
       return { outcome: 'pending_lock' };
     }
   }
@@ -470,7 +470,7 @@ export async function runTraderCycle(
   // 3a. Snapshot capability owner+version. The Lambda enforces both, so we
   // fetch once at cycle start; any mid-flight wallet rotation aborts cleanly
   // and the next cycle picks up the new version. agentAddress vs
-  // principalAddress are split conceptually — in the current prod topology
+  // principalAddress are split conceptually -- in the current prod topology
   // they coincide, but we warn (not fail) if they don't so the operator
   // sees the schism instead of silently signing as the wrong identity.
   const principalAddress = trader.walletAddress.toLowerCase();

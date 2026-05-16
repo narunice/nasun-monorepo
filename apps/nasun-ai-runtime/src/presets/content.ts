@@ -1,5 +1,5 @@
 /**
- * Content preset — social media post generation
+ * Content preset -- social media post generation
  *
  * Runs every 24 hours (default), 1 LLM call per cycle
  */

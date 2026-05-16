@@ -19,7 +19,7 @@ describe('strategy presets', () => {
 
   it('every preset systemPrompt is byte-stable (no Date.now / random / per-cycle data)', () => {
     // Hash twice; identical hashes confirm the prompt is deterministic.
-    // We don't import sha256 here — string equality is sufficient and cheaper.
+    // We don't import sha256 here -- string equality is sufficient and cheaper.
     for (const p of listStrategyPresets()) {
       const a = p.systemPrompt;
       const b = p.systemPrompt;

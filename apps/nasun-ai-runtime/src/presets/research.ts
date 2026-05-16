@@ -1,5 +1,5 @@
 /**
- * Research preset — AI regulation and blockchain news summary
+ * Research preset -- AI regulation and blockchain news summary
  *
  * Runs every 30 minutes (default), 1 LLM call per cycle
  */

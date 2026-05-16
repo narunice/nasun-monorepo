@@ -7,8 +7,8 @@ import {
   findOtherOwnerOfAddress,
   MAX_ADDITIONAL_ADDRESSES,
 } from '../utils/userProfile';
-import { consumeAdditionalNonce } from '../utils/nonceStore';
-import { badRequest, conflict, json, methodNotAllowed } from '../utils/responses';
+import { consumeAdditionalNonce } from '../../../_shared/additional-link/nonceStore';
+import { badRequest, conflict, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleVerify(
   event: APIGatewayProxyEvent,
@@ -24,7 +24,7 @@ export async function handleVerify(
   }
 
   // 1) Atomic get+delete. Reusable nonces would be a forgery vector.
-  const record = await consumeAdditionalNonce(nonce);
+  const record = await consumeAdditionalNonce('additional:', nonce);
   if (!record) {
     return badRequest('Nonce not found or already used', headers);
   }

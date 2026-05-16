@@ -1,5 +1,5 @@
 /**
- * Trader strategy presets — Plan C §"Agent 차별화 축" (작업 4).
+ * Trader strategy presets -- Plan C §"Agent 차별화 축" (작업 4).
  *
  * Each preset is a fixed system-prompt fragment that the trader splices into
  * the per-cycle market prompt. Because the fragment text is byte-stable for
@@ -9,7 +9,7 @@
  * model.
  *
  * Naming follows the big-picture v4 spec ("작업 4") rather than the
- * placeholder names from the C1 handoff (momentum / mean_revert / etc.) —
+ * placeholder names from the C1 handoff (momentum / mean_revert / etc.) --
  * we map the C1 names to the canonical persona ids so any operator using
  * the handoff names still gets the right preset.
  */
@@ -75,7 +75,7 @@ const PRESETS: Record<StrategyPresetId, StrategyPreset> = {
     systemPrompt: [
       'Persona: passive holder. Never opens positions in this prototype.',
       'Bias: ALWAYS return HOLD. Use the reason field to explain market conditions briefly.',
-      'Risk discipline: zero — no trades issued.',
+      'Risk discipline: zero -- no trades issued.',
       'This preset exists for safe smoke runs (cognition-only AERs, no on-chain swap).',
     ].join('\n'),
   },

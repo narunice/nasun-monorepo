@@ -3,7 +3,7 @@
 // Solana counterpart to `useAddVerifiedAddress` (EVM). Drives the
 // challenge -> signMessage -> verify round-trip for adding a verified
 // Solana address. The signing wallet does NOT have to be the user's
-// currently-connected Solana adapter — the user picks Phantom or
+// currently-connected Solana adapter -- the user picks Phantom or
 // Solflare before triggering this hook.
 
 import { useCallback, useRef, useState } from "react";
@@ -65,7 +65,7 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
         setErrorMessage(null);
 
         // 1) Connect to the picked wallet to learn the public key. We do
-        // NOT trust this for ownership proof — the actual proof is the
+        // NOT trust this for ownership proof -- the actual proof is the
         // Ed25519 signature verified against the address server-side.
         const pubkey = await connect(walletName);
         if (!pubkey) {
@@ -109,7 +109,7 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
         return verified;
       } catch (err) {
         if (err instanceof SolanaSignMessageError && err.code === "rejected") {
-          // User cancelled — silent return to idle, no toast.
+          // User cancelled -- silent return to idle, no toast.
           setPhase("idle");
           setErrorMessage(null);
           return null;

@@ -1,5 +1,5 @@
 /**
- * Preset interface — defines the shape of each agent preset
+ * Preset interface -- defines the shape of each agent preset
  */
 
 export interface PresetStep {

@@ -5,7 +5,7 @@ import {
   setAdditionalAddressLabel,
   MAX_LABEL_LENGTH,
 } from '../utils/userProfile';
-import { badRequest, json, methodNotAllowed } from '../utils/responses';
+import { badRequest, json, methodNotAllowed } from '../../../_shared/additional-link/responses';
 
 export async function handleLabel(
   event: APIGatewayProxyEvent,

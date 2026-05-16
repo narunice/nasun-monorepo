@@ -100,7 +100,7 @@ describe('intent chain', () => {
   it('uncommitted intent does NOT become parent of the next', () => {
     const state = newIntentChainState();
     const i1 = openIntent(state);
-    // host call failed — do not commit
+    // host call failed -- do not commit
     const i2 = openIntent(state);
     expect(i2.lineage.parentIntentId).toBeNull();
     void i1;
@@ -112,7 +112,7 @@ describe('intent chain', () => {
     nextRetry(state);
     const i2 = openIntent(state);
     expect(i2.lineage.executionId).toBe(2);
-    // Different intent id (still a fresh UUIDv7) — nextRetry only bumps the
+    // Different intent id (still a fresh UUIDv7) -- nextRetry only bumps the
     // counter, openIntent always mints a new id.
     expect(i2.lineage.intentId).not.toEqual(i1.lineage.intentId);
   });

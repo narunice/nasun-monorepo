@@ -62,7 +62,7 @@ export function collectVerifiedAddresses(sol: SolanaLinkedAccount | null): Set<s
   if (sol.manualEntry === true) return null;
   if (!sol.walletAddress) return null;
 
-  // Base58 is case-sensitive — store and compare as-is.
+  // Base58 is case-sensitive -- store and compare as-is.
   const set = new Set<string>([sol.walletAddress]);
   for (const entry of sol.additionalAddresses ?? []) {
     if (entry?.walletAddress) set.add(entry.walletAddress);
@@ -81,41 +81,46 @@ export function isAppIdValid(appId: string): boolean {
  *
  * Scope note: legacy paste-only addresses live at root `linkedSolanaAddress`
  * (not under `linkedAccounts.solana`). Those are intentionally NOT considered
- * for the uniqueness check here — paste-link does not prove ownership and is
+ * for the uniqueness check here -- paste-link does not prove ownership and is
  * planned for retirement (handoff v2). Including them would let an attacker
  * who pasted a target address block the real owner from later verifying.
  *
  * COST NOTE: full-table scan with server-side filter. Today
  * `linkedAccounts.solana` exists on ~0 profiles so the filter is cheap.
  * Migration path: SolAddressOwnership table keyed by walletAddress with a
- * conditional PutItem on verify — then this scan becomes a single GetItem.
+ * conditional PutItem on verify -- then this scan becomes a single GetItem.
  */
 export async function findOtherOwnerOfAddress(
   address: string,
   selfIdentityId: string,
 ): Promise<string | null> {
-  const result = await docClient.send(
-    new ScanCommand({
-      TableName: tableName,
-      FilterExpression:
-        'linkedAccounts.solana.walletAddress = :addr OR attribute_exists(linkedAccounts.solana.additionalAddresses)',
-      ExpressionAttributeValues: { ':addr': address },
-      ProjectionExpression: 'identityId, linkedAccounts.solana.walletAddress, linkedAccounts.solana.additionalAddresses',
-    })
-  );
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const result = await docClient.send(
+      new ScanCommand({
+        TableName: tableName,
+        FilterExpression:
+          'linkedAccounts.solana.walletAddress = :addr OR attribute_exists(linkedAccounts.solana.additionalAddresses)',
+        ExpressionAttributeValues: { ':addr': address },
+        ProjectionExpression: 'identityId, linkedAccounts.solana.walletAddress, linkedAccounts.solana.additionalAddresses',
+        ExclusiveStartKey: exclusiveStartKey,
+      })
+    );
 
-  for (const item of result.Items ?? []) {
-    const candidateId = item.identityId as string | undefined;
-    if (!candidateId || candidateId === selfIdentityId) continue;
+    for (const item of result.Items ?? []) {
+      const candidateId = item.identityId as string | undefined;
+      if (!candidateId || candidateId === selfIdentityId) continue;
 
-    const sol = (item.linkedAccounts as Record<string, SolanaLinkedAccount> | undefined)?.solana;
-    if (!sol) continue;
+      const sol = (item.linkedAccounts as Record<string, SolanaLinkedAccount> | undefined)?.solana;
+      if (!sol) continue;
 
-    if (addrEq(sol.walletAddress, address)) return candidateId;
-    for (const entry of sol.additionalAddresses ?? []) {
-      if (addrEq(entry?.walletAddress, address)) return candidateId;
+      if (addrEq(sol.walletAddress, address)) return candidateId;
+      for (const entry of sol.additionalAddresses ?? []) {
+        if (addrEq(entry?.walletAddress, address)) return candidateId;
+      }
     }
-  }
+    exclusiveStartKey = result.LastEvaluatedKey;
+  } while (exclusiveStartKey);
   return null;
 }
 
@@ -123,7 +128,7 @@ export async function findOtherOwnerOfAddress(
  * Initialize a verified primary Solana link or append to additionalAddresses.
  *
  * Unlike the EVM flow (which requires a primary metamask link to exist before
- * adding extras), the Solana flow uses the FIRST verify as the primary —
+ * adding extras), the Solana flow uses the FIRST verify as the primary --
  * legacy `linkedSolanaAddress` paste-links are NOT promoted automatically.
  * Cap applies only to additionalAddresses (primary is its own slot).
  */
@@ -142,7 +147,7 @@ export async function appendVerifiedAddress(
 
   const sol = getSolanaLink(profile);
 
-  // Case A: no verified primary yet — set this entry as primary.
+  // Case A: no verified primary yet -- set this entry as primary.
   if (!sol || !sol.walletAddress || sol.manualEntry === true) {
     const nextSolana: SolanaLinkedAccount = {
       walletAddress: entry.walletAddress,
@@ -182,7 +187,7 @@ export async function appendVerifiedAddress(
     };
   }
 
-  // Case B: primary exists — append to additionalAddresses.
+  // Case B: primary exists -- append to additionalAddresses.
   const existing = sol.additionalAddresses ?? [];
 
   if (addrEq(sol.walletAddress, entry.walletAddress)) {
@@ -295,7 +300,7 @@ export function sanitizeLabel(raw: unknown): string | null | undefined {
   if (raw === null || raw === undefined) return null;
   if (typeof raw !== 'string') return undefined;
   // eslint-disable-next-line no-control-regex
-  const cleaned = raw.replace(/[ -]/g, '').trim();
+  const cleaned = raw.replace(/[\u0000-\u001F\u007F]/g, '').trim();
   if (cleaned.length === 0) return null;
   if (cleaned.length > MAX_LABEL_LENGTH) return undefined;
   return cleaned;
