@@ -42,6 +42,7 @@ export function HyperliquidPositionsCard({
     totalNotionalUsd,
     unrealizedPnlUsd,
     spotCount,
+    spotHoldingsUsd,
     error,
   } = summary;
 
@@ -75,6 +76,26 @@ export function HyperliquidPositionsCard({
       </div>
 
       <div className="mt-5 flex flex-col divide-y divide-uju-border/40">
+        {/* Capital row — leads the card to match Pado's "Balance" row so the
+            user can compare USD parked in each dApp at a glance. Renders
+            even when zero so the user sees the unified shape; the parent
+            section already hides the whole card when the user has never
+            touched Hyperliquid. */}
+        <PositionRow
+          label="Spot Holdings"
+          countText={
+            isLoading
+              ? "—"
+              : error
+                ? "—"
+                : formatUsd(spotHoldingsUsd)
+          }
+          valueText={
+            !isLoading && !error && hasSpot
+              ? `${spotCount} ${spotCount === 1 ? "token" : "tokens"}`
+              : ""
+          }
+        />
         <PositionRow
           label="Perp Positions"
           countText={
@@ -100,19 +121,6 @@ export function HyperliquidPositionsCard({
             valueText=""
           />
         )}
-        <PositionRow
-          label="Spot Balances"
-          countText={
-            isLoading
-              ? "—"
-              : error
-                ? "—"
-                : hasSpot
-                  ? `${spotCount} held`
-                  : "None"
-          }
-          valueText=""
-        />
       </div>
     </UjuCard>
   );

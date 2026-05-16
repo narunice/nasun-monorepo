@@ -5,25 +5,9 @@
 // locked across bid orders). Talks to Sui RPC directly so we don't drag
 // Pado's MarketContext / BalanceManager provider into nasun-website.
 //
-// BalanceManager discovery: Pado mints a BalanceManager and immediately
-// shares it with `transfer::public_share_object` (apps/pado/frontend/src/
-// lib/unified-margin.ts ~L340). Shared objects don't appear under
-// `getOwnedObjects`, and Pado's localStorage cache of the BM ID is scoped
-// to the pado.finance origin and so unreachable from nasun.io. The only
-// portable on-chain handle is the creation event: `balance_manager::new`
-// emits BalanceManagerEvent with `balance_manager_id` and the creator's
-// address. We sweep the user's events with a Sender filter (the devnet
-// RPC rejects compound `{ All: [...] }` filters with "Invalid params") and
-// post-filter by event type. Active traders accumulate many BMs spaced
-// across thousands of events, so we walk both ends of the history in
-// parallel and union the results — ascending catches the wallet's first
-// (often primary, balance-holding) BMs, descending catches the most
-// recent ones.
-//
-// Multi-wallet: nasun-website lets a user register additional Sui wallets
-// alongside their primary signer. We fan out across the union of (signer
-// address, registered wallet addresses) so a user trading from a wallet
-// other than their current login still sees their full order surface.
+// BalanceManager discovery is handled by usePadoBalanceManagers (shared
+// with usePadoBalanceSummary) — see that file for the long-form rationale
+// on event sweeping + bidirectional walks.
 //
 // Locked NUSDC is summed only over bid orders: bids lock quote (NUSDC) at
 // price * quantity, asks lock base (NBTC/NETH/NSOL) which would need a
@@ -40,28 +24,20 @@
 // orders, so excluding it here matches Pado's own semantic split.
 // Re-evaluate once TP/SL gains a canonical on-chain record.
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSuiClient } from "@mysten/dapp-kit";
-import { useWallet, useZkLogin } from "@nasun/wallet";
 import { DEEPBOOK_PACKAGE_ID } from "@nasun/devnet-config";
 import { Transaction } from "@mysten/sui/transactions";
 import type { SuiClient } from "@mysten/sui/client";
 import { PADO_SPOT_POOLS, type PadoSpotPool } from "./padoSpotConfig";
-import { useUjuWalletRegistration } from "../../hooks/useUjuWalletRegistration";
+import { usePadoBalanceManagers } from "./usePadoBalanceManagers";
 
-const BM_EVENT_TYPE = `${DEEPBOOK_PACKAGE_ID}::balance_manager::BalanceManagerEvent`;
 const ZERO_ADDRESS =
   "0x0000000000000000000000000000000000000000000000000000000000000000";
 // Each Order in the BCS-encoded vector is exactly 99 bytes — see
 // apps/pado/frontend/src/lib/deepbook.ts L705-L716 for the layout.
 const ORDER_BYTES = 99;
 const MAX_ULEB128_BYTES = 5;
-// Worst case ~5,000 events scanned per refetch per address (50 pages * 50
-// events * two directions). Heavy traders need this depth to surface their
-// primary BM; lighter wallets short-circuit on the first response with no
-// next page.
-const MAX_EVENT_PAGES = 50;
 
 interface ParsedOrder {
   isBid: boolean;
@@ -70,11 +46,6 @@ interface ParsedOrder {
   // Carried as `bigint` so the parent can sum across pools and addresses
   // without losing cent precision to float drift.
   bidLockedNusdcRaw: bigint;
-}
-
-interface BalanceManagerEventPayload {
-  balance_manager_id?: string;
-  owner?: string;
 }
 
 function readUleb128(
@@ -169,60 +140,6 @@ async function fetchOpenOrders(
   return parseOrderVector(returnValues[0][0], pool.baseDecimals);
 }
 
-interface DirectionalSweep {
-  ids: string[];
-  // True iff we hit MAX_EVENT_PAGES without the RPC signalling end-of-history.
-  // The asc and desc walks union to a contiguous window from both ends; only
-  // when *both* walks truncate is there a middle gap that might hide a BM.
-  truncated: boolean;
-}
-
-async function sweepBmEventsOneDirection(
-  client: SuiClient,
-  owner: string,
-  order: "ascending" | "descending",
-): Promise<DirectionalSweep> {
-  const ids: string[] = [];
-  let cursor: { txDigest: string; eventSeq: string } | null | undefined = undefined;
-  let truncated = true;
-  for (let page = 0; page < MAX_EVENT_PAGES; page++) {
-    const response = await client.queryEvents({
-      query: { Sender: owner },
-      cursor,
-      limit: 50,
-      order,
-    });
-    for (const event of response.data) {
-      if (event.type !== BM_EVENT_TYPE) continue;
-      const json = event.parsedJson as BalanceManagerEventPayload | undefined;
-      const id = json?.balance_manager_id;
-      if (id && (!json?.owner || json.owner === owner)) {
-        ids.push(id);
-      }
-    }
-    if (!response.hasNextPage || !response.nextCursor) {
-      truncated = false;
-      break;
-    }
-    cursor = response.nextCursor;
-  }
-  return { ids, truncated };
-}
-
-async function findBalanceManagerIds(
-  client: SuiClient,
-  owner: string,
-): Promise<{ ids: string[]; partial: boolean }> {
-  const [asc, desc] = await Promise.all([
-    sweepBmEventsOneDirection(client, owner, "ascending"),
-    sweepBmEventsOneDirection(client, owner, "descending"),
-  ]);
-  return {
-    ids: Array.from(new Set([...asc.ids, ...desc.ids])),
-    partial: asc.truncated && desc.truncated,
-  };
-}
-
 export interface PadoSpotOrdersSummary {
   count: number;
   // Sum of bid-side `price * quantity` across every BM, pool, and address,
@@ -239,31 +156,13 @@ export interface PadoSpotOrdersSummary {
 
 export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
   const suiClient = useSuiClient();
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
-  const walletReg = useUjuWalletRegistration();
+  const bm = usePadoBalanceManagers();
 
-  const signerAddress = isZkConnected
-    ? zkState?.address
-    : status === "unlocked"
-      ? account?.address
-      : undefined;
-
-  // Same pattern as the prediction hook: dedup, sort for stable queryKey.
-  const allAddresses = useMemo(() => {
-    const set = new Set<string>();
-    if (signerAddress) set.add(signerAddress);
-    for (const w of walletReg.registeredWallets) {
-      if (w.walletAddress) set.add(w.walletAddress);
-    }
-    return Array.from(set).sort();
-  }, [signerAddress, walletReg.registeredWallets]);
-
-  const addressesKey = allAddresses.join(",");
+  const bmKey = bm.bmIds.join(",");
 
   const { data, isLoading } = useQuery({
-    queryKey: ["pado-spot-orders-summary", addressesKey],
-    enabled: allAddresses.length > 0,
+    queryKey: ["pado-spot-orders-summary", bmKey],
+    enabled: !bm.isLoading,
     // Dashboard summary only — we do not need single-trade latency. Pado's
     // own UI is faster (10s) for users actively managing orders.
     staleTime: 60_000,
@@ -271,23 +170,13 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
     queryFn: async (): Promise<{
       count: number;
       bidLockedNusdcRaw: bigint;
-      partial: boolean;
     }> => {
-      if (allAddresses.length === 0)
-        return { count: 0, bidLockedNusdcRaw: 0n, partial: false };
+      if (bm.bmIds.length === 0)
+        return { count: 0, bidLockedNusdcRaw: 0n };
 
-      // Fan out BM lookup across every address in parallel. Each address's
-      // sweep is internally bidirectional and capped at MAX_EVENT_PAGES.
-      const bmResults = await Promise.all(
-        allAddresses.map((addr) => findBalanceManagerIds(suiClient, addr)),
-      );
-      const bmIds = Array.from(new Set(bmResults.flatMap((r) => r.ids)));
-      const partial = bmResults.some((r) => r.partial);
-      if (bmIds.length === 0) return { count: 0, bidLockedNusdcRaw: 0n, partial };
-
-      // Then fan out devInspect across (BM, pool) pairs.
+      // Fan out devInspect across (BM, pool) pairs.
       const requests: Promise<ParsedOrder[]>[] = [];
-      for (const bmId of bmIds) {
+      for (const bmId of bm.bmIds) {
         for (const pool of PADO_SPOT_POOLS) {
           requests.push(fetchOpenOrders(suiClient, pool, bmId));
         }
@@ -302,14 +191,14 @@ export function usePadoSpotOrdersSummary(): PadoSpotOrdersSummary {
           bidLockedNusdcRaw += order.bidLockedNusdcRaw;
         }
       }
-      return { count, bidLockedNusdcRaw, partial };
+      return { count, bidLockedNusdcRaw };
     },
   });
 
   return {
     count: data?.count ?? 0,
     bidLockedNusdcRaw: data?.bidLockedNusdcRaw ?? 0n,
-    partial: data?.partial ?? false,
-    isLoading,
+    partial: bm.partial,
+    isLoading: bm.isLoading || isLoading,
   };
 }
