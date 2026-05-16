@@ -32,7 +32,12 @@ import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
 import { notifyWorkerIdentityInvalidate } from './aggregator.js';
 import { canonicalizeDisplayName } from '@nasun/profile-core';
-import { getBannedSnapshotSync } from './banned-loader.js';
+import {
+  getBannedSnapshotSync,
+  refreshBannedCache,
+  isBannedCacheConfigured,
+  isBannedCacheReady,
+} from './banned-loader.js';
 
 // ===== State =====
 
@@ -1474,6 +1479,20 @@ if (process.env.CRASH_ENABLED === 'true') {
 } else {
   console.log('[Crash] Disabled (CRASH_ENABLED not set to true)');
 }
+
+// Cold-start gate: ensure banned-users cache is loaded before accepting WS
+// traffic. Required because Turnstile captcha enforcement is being removed
+// (see plans/2026-05-16-chat-turnstile-removal.md) and shadow-ban becomes
+// the primary spam defense. If BANNED_USERS_URL is configured but the
+// initial fetch fails, refuse to listen (fail-closed) — pm2 will restart.
+await refreshBannedCache();
+if (isBannedCacheConfigured() && !isBannedCacheReady()) {
+  console.error(
+    '[banned-loader] BANNED_USERS_URL is set but initial load failed — refusing to listen (fail-closed)',
+  );
+  process.exit(1);
+}
+console.log('[banned-loader] cold-start gate passed');
 
 httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
