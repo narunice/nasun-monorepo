@@ -84,7 +84,7 @@ export function useValidEvmAddressForApp(
  * Returns all verified EVM addresses for the signed-in user, primary
  * first. Empty array (NOT null) when the user has no verified metamask
  * link, so callers can render a single empty-state branch. Use this for
- * the binding picker UI (WalletBindingChip) and the my-account
+ * the binding picker UI (AppWalletBindingSection) and the my-account
  * "Additional Wallets" section.
  */
 export function useVerifiedEvmAddresses(): VerifiedEvmAddressEntry[] {

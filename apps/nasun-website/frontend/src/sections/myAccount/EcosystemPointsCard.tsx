@@ -409,16 +409,16 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
                   <XAxis
                     dataKey="displayDate"
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
-                    stroke="rgba(59, 130, 246, 0.15)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={true}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
-                    stroke="rgba(59, 130, 246, 0.15)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={true}
                     width={35}
                   />
                   <Tooltip content={<ScoreTooltip />} />
@@ -471,18 +471,18 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
                   <XAxis
                     dataKey="displayDate"
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
-                    stroke="rgba(59, 130, 246, 0.15)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={true}
                     interval="preserveStartEnd"
                   />
                   <YAxis
                     reversed
                     domain={rankDomain}
                     tick={{ fill: "#9ca3af", fontSize: 12 }}
-                    stroke="rgba(59, 130, 246, 0.15)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     tickLine={false}
-                    axisLine={false}
+                    axisLine={true}
                     width={35}
                   />
                   <Tooltip content={<RankTooltip />} />

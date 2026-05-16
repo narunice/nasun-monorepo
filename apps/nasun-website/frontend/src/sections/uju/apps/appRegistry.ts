@@ -1,6 +1,7 @@
 export type AppChain = "nasun" | "solana" | "sui" | "ethereum" | "hyperliquid";
 export type AppCategory =
   | "dex"
+  | "lending"
   | "staking"
   | "nft"
   | "game"
@@ -100,6 +101,16 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.hyperliquid.xyz",
     chain: "hyperliquid",
     category: "dex",
+    status: "live",
+    isNative: false,
+  },
+  {
+    id: "aave",
+    name: "Aave",
+    description: "Multi-chain lending and borrowing.",
+    url: "https://app.aave.com",
+    chain: "ethereum",
+    category: "lending",
     status: "live",
     isNative: false,
   },

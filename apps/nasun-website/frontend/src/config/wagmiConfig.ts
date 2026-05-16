@@ -14,7 +14,7 @@ import {
   walletConnectWallet,
 } from "@rainbow-me/rainbowkit/wallets";
 import { createConfig, http, fallback } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { arbitrum, base, mainnet, optimism, polygon, sepolia } from "wagmi/chains";
 
 const projectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 if (!projectId) {
@@ -29,7 +29,12 @@ const alchemyKey = import.meta.env.VITE_ALCHEMY_API_KEY;
 // Always include mainnet so Genesis Pass ownership/drop hooks can read it
 // regardless of VITE_ETHEREUM_CHAIN_ID (which drives MetaMask auth default).
 const chainId = Number(import.meta.env.VITE_ETHEREUM_CHAIN_ID);
-const chains = chainId === 1 ? ([mainnet] as const) : ([mainnet, sepolia] as const);
+// Multi-chain read transports (Aave v3 spans mainnet + arbitrum/base/polygon/optimism).
+// MetaMask auth still defaults to mainnet/sepolia; the extra chains are read-only.
+const chains =
+  chainId === 1
+    ? ([mainnet, arbitrum, base, polygon, optimism] as const)
+    : ([mainnet, sepolia, arbitrum, base, polygon, optimism] as const);
 
 const isMobile =
   typeof window !== "undefined" &&
@@ -69,6 +74,34 @@ export const wagmiConfig = createConfig({
       http("https://1rpc.io/sepolia"),
       http("https://rpc.sepolia.org"),
       ...(alchemyKey ? [http(`https://eth-sepolia.g.alchemy.com/v2/${alchemyKey}`)] : []),
+    ]),
+    [arbitrum.id]: fallback([
+      http("https://arbitrum-one-rpc.publicnode.com"),
+      http("https://arb1.arbitrum.io/rpc"),
+      http("https://arbitrum.drpc.org"),
+      http("https://1rpc.io/arb"),
+      ...(alchemyKey ? [http(`https://arb-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
+    ]),
+    [base.id]: fallback([
+      http("https://base-rpc.publicnode.com"),
+      http("https://mainnet.base.org"),
+      http("https://base.drpc.org"),
+      http("https://1rpc.io/base"),
+      ...(alchemyKey ? [http(`https://base-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
+    ]),
+    [polygon.id]: fallback([
+      http("https://polygon-bor-rpc.publicnode.com"),
+      http("https://polygon-rpc.com"),
+      http("https://polygon.drpc.org"),
+      http("https://1rpc.io/matic"),
+      ...(alchemyKey ? [http(`https://polygon-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
+    ]),
+    [optimism.id]: fallback([
+      http("https://optimism-rpc.publicnode.com"),
+      http("https://mainnet.optimism.io"),
+      http("https://optimism.drpc.org"),
+      http("https://1rpc.io/op"),
+      ...(alchemyKey ? [http(`https://opt-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
     ]),
   },
 });

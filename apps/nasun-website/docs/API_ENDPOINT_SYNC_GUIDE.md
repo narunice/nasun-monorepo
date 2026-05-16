@@ -497,6 +497,7 @@ NftEventStack.RegisterEndpoint = https://jrrge0lqtk.execute-api.ap-northeast-2.a
 | **NftEventStack** | `ApiGatewayUrl` | `VITE_BATTALION_NFT_API` | `https://jrrge0lqtk.../prod` |
 | **AuthStack** | `TwitterAuthApiUrl` | `VITE_TWITTER_AUTH_API` | `https://br30jspm8j.../prod/auth/twitter` |
 | **AuthStack** | `MetaMaskAuthApiUrl` | `VITE_METAMASK_AUTH_API` | `https://gtzq164xhb.../prod/auth/metamask` |
+| **AuthStack** | `MetaMaskAdditionalApiUrl` | `VITE_METAMASK_ADDITIONAL_API` | `https://<id>.execute-api.ap-northeast-2.amazonaws.com/prod` (root, no path suffix) |
 | **CommonStack** | `JoinWhitelistApiUrl` | `VITE_JOIN_WHITELIST_API` | `https://shx1fpd8qi.../prod/` |
 | **CommonStack** | `UserProfileApiUrl` | `VITE_USER_PROFILE_API` | `https://aanboqet5i.../prod/` |
 

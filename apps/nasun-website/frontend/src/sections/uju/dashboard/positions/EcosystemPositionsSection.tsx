@@ -7,6 +7,7 @@
 // (useValidEvmAddress) so an unverified address can never drive a read.
 
 import { useUjuAppDirectory } from "../../apps/UjuAppDirectoryProvider";
+import { AavePositionsCard } from "./AavePositionsCard";
 import { GostopPositionsCard } from "./GostopPositionsCard";
 import { HyperliquidPositionsCard } from "./HyperliquidPositionsCard";
 import { PadoPositionsCard } from "./PadoPositionsCard";
@@ -21,7 +22,15 @@ export function EcosystemPositionsSection() {
   const showGostop = isPinned("gostop");
   const showUniswap = isPinned("uniswap") && !!evmAddress;
   const showHyperliquid = isPinned("hyperliquid") && !!evmAddress;
-  if (!showPado && !showGostop && !showUniswap && !showHyperliquid) return null;
+  const showAave = isPinned("aave") && !!evmAddress;
+  if (
+    !showPado &&
+    !showGostop &&
+    !showUniswap &&
+    !showHyperliquid &&
+    !showAave
+  )
+    return null;
 
   return (
     <section
@@ -35,6 +44,7 @@ export function EcosystemPositionsSection() {
       {showHyperliquid && evmAddress && (
         <HyperliquidPositionsCard evmAddress={evmAddress} />
       )}
+      {showAave && <AavePositionsCard />}
     </section>
   );
 }

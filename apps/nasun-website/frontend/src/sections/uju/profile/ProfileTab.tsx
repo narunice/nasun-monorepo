@@ -5,6 +5,7 @@ import { NotificationsPanel } from "./NotificationsPanel";
 import { UjuCard, UjuSectionHeader } from "../shared";
 import { useConsumeScrollTarget } from "../shared/ujuNavigation";
 import { ProfileIdentityBlock } from "@/components/profile/ProfileIdentityBlock";
+import { AdditionalWalletsCard } from "@/sections/myAccount/AdditionalWalletsCard";
 
 export const ProfileTab: FC = () => {
   // Honor the dashboard's "Manage in Connected Wallets..." CTA: when set,
@@ -26,7 +27,12 @@ export const ProfileTab: FC = () => {
       {/* 3. Connected Accounts & Socials */}
       <UjuConnectedAccountsCard />
 
-      {/* 4. Account Deletion & Irreversible Actions */}
+      {/* 4. Additional verified EVM wallets — appears only after the user
+          has linked a primary metamask above. Lets users verify extra
+          addresses for per-app bindings (Uniswap, Hyperliquid, …). */}
+      <AdditionalWalletsCard />
+
+      {/* 5. Account Deletion & Irreversible Actions */}
       <UjuDangerZoneCard />
     </div>
   );

@@ -12,6 +12,7 @@
     "@aws-sdk/client-dynamodb": "^3.523.0",
     "@aws-sdk/client-s3": "^3.658.0",
     "@aws-sdk/s3-presigned-post": "^3.658.0",
+    "@aws-sdk/util-dynamodb": "^3.996.2",
     "jose": "^5.2.0"
   },
   "devDependencies": {

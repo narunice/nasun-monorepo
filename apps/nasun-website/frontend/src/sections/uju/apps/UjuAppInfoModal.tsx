@@ -6,6 +6,7 @@ import {
   CHAIN_BADGE_CLASS,
   type AppEntry,
 } from "./appRegistry";
+import { AppWalletBindingSection, isEvmBindableChain } from "./AppWalletBindingSection";
 
 interface UjuAppInfoModalProps {
   app: AppEntry | null;
@@ -149,6 +150,18 @@ export const UjuAppInfoModal: FC<UjuAppInfoModalProps> = ({
                 </svg>
               </a>
             </section>
+          )}
+
+          {/* Per-app wallet binding picker — EVM chains only. Self-gates on
+              chain and on whether the user has verified additional wallets,
+              so we can mount unconditionally. Hidden for coming-soon apps
+              to keep the modal lean before the app actually goes live. */}
+          {!isComingSoon && isEvmBindableChain(app.chain) && (
+            <AppWalletBindingSection
+              appId={app.id}
+              appName={app.name}
+              chain={app.chain}
+            />
           )}
         </div>
       </div>
