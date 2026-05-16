@@ -30,17 +30,21 @@ export function lazyWithRetry<T extends ComponentType<any>>(
           continue;
         }
 
-        const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
-        const now = Date.now();
-        if (now - last < 60_000) {
-          // Already reloaded recently; surface the error to the boundary
-          throw error;
-        }
-        sessionStorage.setItem(RELOAD_KEY, String(now));
-        const url = new URL(window.location.href);
-        url.searchParams.set("_r", String(now));
-        window.location.replace(url.toString());
-        return new Promise<{ default: T }>(() => {});
+        // TEMP DISABLED for reload-loop diagnosis. Originally reloads with ?_r
+        // cache-bust query when retry exhausts; for now we surface to the
+        // ErrorBoundary so the real chunk failure is visible in the console.
+        // Re-enable after root cause confirmed.
+        // const last = Number(sessionStorage.getItem(RELOAD_KEY) ?? 0);
+        // const now = Date.now();
+        // if (now - last < 60_000) {
+        //   throw error;
+        // }
+        // sessionStorage.setItem(RELOAD_KEY, String(now));
+        // const url = new URL(window.location.href);
+        // url.searchParams.set("_r", String(now));
+        // window.location.replace(url.toString());
+        // return new Promise<{ default: T }>(() => {});
+        throw error;
       }
     }
     throw new Error("Failed to load component after retries");

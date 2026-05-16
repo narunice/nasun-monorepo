@@ -45,9 +45,10 @@ class ErrorBoundary extends Component<Props, State> {
     // ChunkLoadError detected - auto reload after brief spinner display
     if (isChunkLoadError(error)) {
       logger.warn("ChunkLoadError detected. Reloading page...");
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
+      // TEMP DISABLED for reload-loop diagnosis. Re-enable after root cause confirmed.
+      // setTimeout(() => {
+      //   window.location.reload();
+      // }, 1000);
     }
   }
 
