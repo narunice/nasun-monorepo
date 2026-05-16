@@ -114,6 +114,16 @@ export const APP_REGISTRY: AppEntry[] = [
     status: "live",
     isNative: false,
   },
+  {
+    id: "drift",
+    name: "Drift",
+    description: "Solana perps, spot, and lending.",
+    url: "https://app.drift.trade",
+    chain: "solana",
+    category: "dex",
+    status: "live",
+    isNative: false,
+  },
 ];
 
 export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
