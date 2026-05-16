@@ -115,3 +115,21 @@ export function backgroundRefreshBannedCache(): void {
     /* errors already logged in refreshBannedCache */
   });
 }
+
+/**
+ * Whether the ban list endpoint is configured. When unset (dev/staging),
+ * the cache populates with empty sets and ban enforcement is a no-op.
+ */
+export function isBannedCacheConfigured(): boolean {
+  return BANNED_USERS_URL !== '';
+}
+
+/**
+ * Whether the in-memory snapshot has been populated at least once.
+ * Used by the chat-server cold-start gate: if BANNED_USERS_URL is set
+ * but the initial fetch failed, the server should refuse to listen rather
+ * than accepting traffic with an empty (fail-open) ban set.
+ */
+export function isBannedCacheReady(): boolean {
+  return cache !== null;
+}
