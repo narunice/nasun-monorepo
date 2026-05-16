@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2054044897725071714';
+const TWEET_ID = '2054368251577249803';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@0hmybo @0x_nonol @0xaiaiai @0xAzk27 @1Minicio @4seazons263 @6brother9 @__Jayden007 @Abe_qearo @acahandi @AdeaLeka90820 @AdeyemoYusupha @AdlieI46077 @afrizal_jmb @AiGenz_user @AliVeer433872 @anggadwy82 @AnsenMarko26257 @Anton4599262075 @AronZaned50130 @aswgo227919 @BernadetaD70810 @BLVCK707 @BornG69 @BossWhatsNew @BrownNoahh97570 @budie4167 @ChristiauI82390 @Coy2024 @Crypto_Moon_88 @Danzeronero @Diamondcryptx @DisyaBolon @EdiDemim61036 @Emiola_gangan @emroyd1 @evrenbaba031900 @FakreZakre44676 @FlavioKola48681 @GenCryptoooo @hashafifi @hyonggoo93 @I_BlockFive @IdaM2509 @indah_ye99 @invest_sometime @Jonny_KX @JulioFarmerl800 @juni96469 @JuniorArchej59 @kija888 @KodraU34979 @larionewlife @Le290788 @liaoyong90 @louisvansubang @LuisgU30820 @MAfche51808 @MAlfeya45792 @mezzadd @msaqlainfcma @MTown134056 @MYakumbur @naro0ck @ngedream @NgocNguyen63053 @NguynL615156 @NurRohm22672781 @Nyancatoypf @Obidestiny247 @OjoPhilemo17247 @PemburuCuan069 @Putri_dhone @readnrest0 @Realmary_jann @ReopaahScrin @ring_ft35279 @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @sinmoxzo @Skymoon201095 @Snobersoul @SotUicHua @StevenS14229 @StoryMofi @sucodautroc @Sumon4447s @SuriyamKum32125 @SuvadipG28441 @sven_336 @tayanh1993 @tensyonado18 @The___rapper @thejediworld77 @TonBoy187 @TopCendol @TradeTraine @trainedhustler @VJBillionz1 @VongVuot88444 @wind_catcher23 @WJacobh65317 @zainiyeni @zare_obi
+@0hmybo @0x_nonol @0xaiaiai @0xAzk27 @1Minicio @4seazons263 @6brother9 @__Jayden007 @Abe_qearo @AdlieI46077 @Anton4599262075 @ashrai78 @babupengu @BernadetaD70810 @BLVCK707 @BossWhatsNew @Cobalt_Duck @Coy2024 @Daddypresh20 @Danzeronero @Diamondcryptx @eglebai @elmeweb3 @elonunmk @Emiola_gangan @erengyegah @GenCryptoooo @grom60345 @hashafifi @Hwang_Zi1 @hyonggoo93 @I_BlockFive @indah_ye99 @Jonny_KX @JulioFarmerl800 @kija888 @kizoemmapet @larionewlife @lavanyalakshma2 @Le290788 @LegoJL5 @masud2633 @msaqlainfcma @MTown134056 @naro0ck @ngedream @NgocNguyen63053 @NguynL615156 @NurRohm22672781 @Obidestiny247 @OjoPhilemo17247 @OmCrypt168 @only_son_twitte @PemburuCuan069 @pijushdutta7 @Putri_dhone @readnrest0 @Realmary_jann @ReopaahScrin @Richarduwah2 @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @shu_bomi @Staunch_idool64 @StoryMofi @sucodautroc @SuvadipG28441 @Tamashi86249441 @tayanh1993 @tensyonado18 @The___rapper @thejediworld77 @TonBoy187 @TradeTraine @TueThuan20 @VJBillionz1 @VongVuot88444 @wind_catcher23 @zare_obi
 `;
 
 const BONUS_POINTS = 3;
