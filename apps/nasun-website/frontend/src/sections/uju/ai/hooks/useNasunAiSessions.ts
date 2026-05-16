@@ -143,6 +143,17 @@ export function useNasunAiSessions() {
     }
   }, [signer, address]);
 
+  // Auto-fetch on mount and on wallet switch. This triggers exactly one
+  // wallet signature prompt per wallet change. Without it, sessions appear
+  // empty until the user performs a link/revoke action — at which point
+  // the surprise reveal of pre-existing sessions misleads users into
+  // thinking new sessions appeared from nowhere.
+  useEffect(() => {
+    if (signer && address) {
+      void load();
+    }
+  }, [signer, address, load]);
+
   return { sessions, loading, error, reload: load };
 }
 

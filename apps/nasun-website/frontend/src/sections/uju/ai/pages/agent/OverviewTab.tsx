@@ -10,8 +10,10 @@
  */
 
 import { useState } from 'react';
+import { useSigner } from '@nasun/wallet';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
+import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
 import { ActivityTab } from './ActivityTab';
 import { ChatTab } from './ChatTab';
@@ -32,7 +34,40 @@ export function OverviewTab({
   onOpenSettings,
 }: OverviewTabProps) {
   const { deactivateAgent, reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
+  const { signer } = useSigner();
   const [busy, setBusy] = useState(false);
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authMsg, setAuthMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+
+  const handleAuthorizeOnChain = async () => {
+    if (authBusy) return;
+    if (!signer) {
+      setAuthMsg({ kind: 'err', text: 'Wallet not connected.' });
+      return;
+    }
+    if (!agent.capabilityId) {
+      setAuthMsg({ kind: 'err', text: 'This agent has no on-chain capability.' });
+      return;
+    }
+    setAuthBusy(true);
+    setAuthMsg(null);
+    try {
+      const digest = await authorizeAgentOnChain(
+        signer,
+        walletAddress,
+        agent.capabilityId,
+        agent.agentAddress,
+      );
+      setAuthMsg({ kind: 'ok', text: `Authorized. tx=${digest.slice(0, 12)}...` });
+    } catch (err) {
+      setAuthMsg({
+        kind: 'err',
+        text: err instanceof Error ? err.message : 'Authorization failed',
+      });
+    } finally {
+      setAuthBusy(false);
+    }
+  };
 
   const handleToggleActive = async () => {
     if (busy) return;
@@ -102,8 +137,22 @@ export function OverviewTab({
           >
             Settings
           </button>
+          <button
+            type="button"
+            onClick={handleAuthorizeOnChain}
+            disabled={authBusy || !agent.capabilityId}
+            title="One-time on-chain authorization that lets this agent install pending-proposal locks with its own keypair (required for chat-message proposal flow)."
+            className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
+          >
+            {authBusy ? 'Authorizing...' : 'Authorize on-chain'}
+          </button>
           {txStatus === 'error' && txError && (
             <span className="text-sm text-red-400 self-center">{txError}</span>
+          )}
+          {authMsg && (
+            <span className={`text-sm self-center ${authMsg.kind === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
+              {authMsg.text}
+            </span>
           )}
         </div>
       </div>

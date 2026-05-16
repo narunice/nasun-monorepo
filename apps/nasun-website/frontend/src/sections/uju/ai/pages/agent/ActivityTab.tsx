@@ -104,8 +104,13 @@ export function ActivityTab({
     //      capability is shared); ANDing the authorizer keeps the tab
     //      private to its owner. /result then succeeds because the same
     //      wallet signs the retrieval challenge.
-    //   2) wallet/agent address fallback for legacy records that don't
-    //      carry a capability_id (pre-F2 chats, agent-runner heartbeats).
+    //   2) agent-keypair fallback for records without capability_id
+    //      (nasun-ai-runtime heartbeats sign as the agent itself). A prior
+    //      revision also accepted `authorizer == walletAddress` to cover
+    //      legacy agent-runner heartbeats, but that leaked owner-signed
+    //      chat AERs (e.g. cognition.chat.v1 from another agent's chat)
+    //      into every agent tab. Owner-signed records without a
+    //      capability_id are intentionally not surfaced here.
     const walletLower = walletAddress.toLowerCase();
     const agentLower = agentAddress.toLowerCase();
     const capLower = agentCapabilityId ? agentCapabilityId.toLowerCase() : null;
@@ -116,7 +121,7 @@ export function ActivityTab({
         return capLower != null && recCap === capLower && a === walletLower;
       }
       const e = typeof r.executor === 'string' ? r.executor.toLowerCase() : '';
-      return a === walletLower || a === agentLower || e === agentLower;
+      return a === agentLower || e === agentLower;
     });
     const filtered =
       eventFilter === 'all'

@@ -21,6 +21,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { useSigner } from '@nasun/wallet';
 import { exportAgentSecrets } from '../../services/agentKeyStorage';
 import { uploadAgentKeyToVault } from '../../services/agentVaultClient';
+import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 
 interface ActivateAgentModalProps {
   agentId: string;
@@ -47,7 +48,7 @@ export function ActivateAgentModal({
   const { signer } = useSigner();
   const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
-  const [phase, setPhase] = useState<'idle' | 'decrypting' | 'signing' | 'uploading'>('idle');
+  const [phase, setPhase] = useState<'idle' | 'decrypting' | 'signing' | 'uploading' | 'authorizing'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = useCallback(() => {
@@ -83,6 +84,24 @@ export function ActivateAgentModal({
       // signer.signPersonal is invoked inside uploadAgentKeyToVault after challenge fetch.
       setPhase('uploading');
       await uploadAgentKeyToVault(signer, walletAddress, agentAddress, capabilityId, keypair);
+
+      // On-chain delegation: lets the spawned agent call
+      // `capability::set_pending_proposal` with its own keypair (needed
+      // for the chat-message proposal flow's race-lock). The cap was
+      // created before delegation support shipped, so this is a one-time
+      // catch-up signature. Non-fatal — vault upload already committed,
+      // so the agent boots either way; without delegation it just can't
+      // surface inline Confirm/Cancel keyboards.
+      setPhase('authorizing');
+      try {
+        await authorizeAgentOnChain(signer, walletAddress, capabilityId, agentAddress);
+      } catch (err) {
+        console.warn(
+          '[ActivateAgentModal] authorizeAgentOnChain failed (non-fatal):',
+          err instanceof Error ? err.message : err,
+        );
+      }
+
       onActivated();
       handleClose();
     } catch (err) {
@@ -100,6 +119,7 @@ export function ActivateAgentModal({
     decrypting: 'Decrypting key...',
     signing: 'Signing with wallet...',
     uploading: 'Uploading to vault...',
+    authorizing: 'Authorizing agent on-chain...',
   };
 
   return createPortal(
