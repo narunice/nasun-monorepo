@@ -9,6 +9,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash } from 'node:crypto';
+import { writeFile, unlink } from 'node:fs/promises';
 import { getDb } from './store.js';
 import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
 
@@ -17,12 +18,19 @@ const exec = promisify(execFile);
 const PM2_BIN = process.env.PM2_BIN ?? '/usr/bin/pm2';
 const PM2_HOME = process.env.PM2_HOME ?? '/home/ec2-user/.pm2';
 const RUNTIME_CWD = process.env.NASUN_AI_RUNTIME_CWD ?? '/home/ec2-user/nasun-ai-runtime';
-// Filename must end in `.config.cjs` so pm2 auto-detects it as an ecosystem
-// config. With any other suffix pm2 falls back to script mode, runs the file
-// as a regular Node script (apps[] just becomes module.exports), and never
-// executes src/index.ts — so the wake server never binds and the agent never
-// registers in baram_agent_endpoints.
-const ECOSYSTEM_TEMPLATE = `${RUNTIME_CWD}/agent-template.config.cjs`;
+// Per-spawn ecosystem config files are written to RUNTIME_CWD at spawn time
+// with env values baked in as JSON literals (not process.env[k] references).
+// Reason: pm2's daemon — not the CLI — resolves the env block at spawn time.
+// Even though execFile passes env to the pm2 CLI subprocess, the daemon
+// re-evaluates the config file in its own context, where the orchestrator's
+// per-agent secrets are absent. Baking literals into the config sidesteps
+// pm2's env-propagation gotcha entirely.
+//
+// Filename must end in `.config.cjs` so pm2 auto-detects ecosystem mode;
+// otherwise pm2 falls back to script mode, runs the file as a regular Node
+// module (apps[] becomes module.exports), and never executes src/index.ts.
+const spawnConfigPath = (pm2Name: string): string =>
+  `${RUNTIME_CWD}/spawn-${pm2Name}.config.cjs`;
 
 const PORT_BASE = 4401;          // 4400 reserved for legacy nasun-ai-runtime
 const PORT_MAX = 4500;
@@ -197,24 +205,70 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   const perAgent = await perAgentTraderEnv(opts.agentAddress);
   const globalEnv = globalTraderEnv();
 
-  await exec(PM2_BIN, [
-    'start', ECOSYSTEM_TEMPLATE,
-    '--name', opts.pm2Name,
-    '--update-env',
-  ], {
-    cwd: RUNTIME_CWD,
-    env: pm2Env({
-      PM2_AGENT_NAME: opts.pm2Name,
-      AGENT_SECRET_PARAM: opts.paramName,
-      AGENT_ADDRESS: opts.agentAddress,
-      WAKE_PORT: String(opts.wakePort),
-      // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
-      // the spawned process closure, fetched from SSM on startup.
-      ...globalEnv,
-      ...perAgent,
-    }),
-    timeout: 15_000,
-  });
+  const envBlock: Record<string, string> = {
+    NODE_ENV: 'production',
+    PRESET: 'trader',
+    // SSM keypair fetch requires AWS_REGION on the agent's process.env.
+    // chat-server itself has it; we forward explicitly because the baked-
+    // env approach (vs the prior process.env-passthrough template) means
+    // nothing leaks in by accident.
+    AWS_REGION: process.env.AWS_REGION ?? 'ap-northeast-2',
+    PM2_AGENT_NAME: opts.pm2Name,
+    AGENT_SECRET_PARAM: opts.paramName,
+    AGENT_ADDRESS: opts.agentAddress,
+    WAKE_PORT: String(opts.wakePort),
+    // AGENT_PRIVATE_KEY intentionally absent — keypair lives only inside
+    // the spawned process closure, fetched from SSM on startup.
+    ...globalEnv,
+    ...perAgent,
+  };
+
+  const configBody = `// Auto-generated per-spawn pm2 ecosystem file. Safe to delete after pm2\n`
+    + `// has adopted the process. Env values are baked in as literals so the\n`
+    + `// pm2 daemon does not need to resolve process.env at parse time (see\n`
+    + `// agent-orchestrator.ts header comment for context).\n`
+    + `'use strict';\n`
+    + `const path = require('node:path');\n`
+    + `module.exports = ${JSON.stringify({
+      apps: [{
+        name: opts.pm2Name,
+        script: 'src/index.ts',
+        interpreter: 'npx',
+        interpreter_args: 'tsx',
+        cwd: RUNTIME_CWD,
+        autorestart: true,
+        watch: false,
+        max_memory_restart: '512M',
+        min_uptime: '30s',
+        max_restarts: 5,
+        // PR2.A.1.b debug: stdout captured to a per-agent file while we
+        // verify env propagation end-to-end. Original template suppressed
+        // stdout to keep keypair-adjacent log lines off the pm2 daemon's
+        // log stream; revisit once dogfood is stable.
+        out_file: `${PM2_HOME}/logs/${opts.pm2Name}-out.log`,
+        error_file: `${PM2_HOME}/logs/${opts.pm2Name}-error.log`,
+        env: envBlock,
+      }],
+    }, null, 2)};\n`;
+
+  const configPath = spawnConfigPath(opts.pm2Name);
+  // mode 0600 — file contains BARAM_API_KEY and JWT/HMAC secrets while it
+  // lives. pm2 reads it once at start; we unlink in finally.
+  await writeFile(configPath, configBody, { mode: 0o600 });
+
+  try {
+    await exec(PM2_BIN, [
+      'start', configPath,
+      '--update-env',
+    ], {
+      cwd: RUNTIME_CWD,
+      env: pm2Env(),
+      timeout: 15_000,
+    });
+  } finally {
+    await unlink(configPath).catch(() => { /* best-effort cleanup */ });
+  }
+
   // Sanity check: did pm2 actually adopt the process?
   const list = await pm2List();
   if (!list.some(p => p.name === opts.pm2Name)) {
