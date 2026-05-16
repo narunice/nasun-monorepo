@@ -45,7 +45,15 @@ export function DriftPositionsCard() {
     cumulativeRealizedPnlUsd,
     subAccountCount,
     error,
+    hasAny,
   } = summary;
+
+  // Hide the card once the fetch settles to an empty/no-activity state.
+  // The parent section gates only on isPinned + verified Solana address,
+  // so without this self-hide a brand-new authority would render an
+  // all-zeros card. Keep the card visible while loading or on error so
+  // we don't flash empty content during transient states.
+  if (!isLoading && !error && !hasAny) return null;
 
   const hasUnrealized = unrealizedPnlUsd !== 0;
   const hasRealized = cumulativeRealizedPnlUsd !== 0;

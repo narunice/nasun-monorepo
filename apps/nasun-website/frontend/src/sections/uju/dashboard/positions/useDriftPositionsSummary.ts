@@ -123,7 +123,18 @@ export function useDriftPositionsSummary(): DriftPositionsSummary {
         throw new Error("Invalid Solana authority for Drift fetch");
       }
       const url = `${DRIFT_DATA_API_URL}/authority/${encodeURIComponent(owner)}/snapshots/overview?days=1`;
-      const res = await fetch(url);
+      // 10s hard cap on the Drift Data API call. Without it a slow CDN
+      // response would leave the React Query in "loading" forever (no
+      // window-focus refetch, 10-min refetchInterval), so the card row
+      // would stay on em-dashes well past any reasonable user patience.
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 10_000);
+      let res: Response;
+      try {
+        res = await fetch(url, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeout);
+      }
       if (!res.ok) {
         throw new Error(`Drift Data API ${res.status}`);
       }
