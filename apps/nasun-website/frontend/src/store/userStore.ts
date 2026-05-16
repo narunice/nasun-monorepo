@@ -13,6 +13,34 @@ export interface VerifiedAdditionalEvmAddress {
   label?: string;
 }
 
+/**
+ * A signature-verified Solana address (primary or one of additionalAddresses).
+ * Mirrors `VerifiedAdditionalEvmAddress` but lives under
+ * `linkedAccounts.solana`. Base58 strings are case-sensitive — store and
+ * compare exactly.
+ */
+export interface VerifiedAdditionalSolanaAddress {
+  walletAddress: string;
+  verifiedAt: number;
+  label?: string;
+}
+
+/**
+ * Solana counterpart to LinkedAccount.metamask. Created on the user's
+ * first Ed25519 signMessage verify. Legacy paste-linked addresses live at
+ * the root `linkedSolanaAddress` field (not here) and are treated as
+ * unverified by selectors like `useValidSolanaAddress`.
+ */
+export interface LinkedSolanaAccount {
+  walletAddress: string;
+  verifiedAt: number;
+  /** True for legacy paste-only entries. The verified flow writes false (or omits). */
+  manualEntry?: boolean;
+  additionalAddresses?: VerifiedAdditionalSolanaAddress[];
+  appBindings?: Record<string, string>;
+  linkedAt?: string;
+}
+
 // Linked account information
 export interface LinkedAccount {
   identityId?: string;
@@ -71,6 +99,7 @@ export interface UserData {
     google?: LinkedAccount;
     twitter?: LinkedAccount;
     metamask?: LinkedAccount;
+    solana?: LinkedSolanaAccount;
     'nasun wallet'?: LinkedAccount;
   };
 }

@@ -332,6 +332,80 @@ export class AuthStack extends cdk.Stack {
     });
 
     // ========================================
+    // Solana Additional Address API (per-app verified Solana binding)
+    // ========================================
+    //
+    // Mirror of the MetaMask additional flow but using Ed25519 signatures
+    // (Phantom/Solflare signMessage). Drift, Jupiter, and future Solana
+    // dApps pull data from `linkedAccounts.solana.appBindings[appId]`.
+    //
+    // Separate Lambda from the EVM one: independent deploy, smaller blast
+    // radius, and Ed25519 verification deps (tweetnacl + bs58) stay scoped
+    // to this surface. Nonce table shared via `solana_additional:{nonce}`
+    // key prefix so it cannot collide with EVM nonces.
+
+    const solanaAdditionalFunction = new NodejsFunction(this, 'SolanaAdditionalFunction', {
+      functionName: 'nasun-auth-solana-additional',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'auth-solana-additional', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions, // tweetnacl + bs58 bundled (only @aws-sdk/* is external)
+      timeout: cdk.Duration.seconds(15),
+      environment: {
+        NONCE_TABLE_NAME: nonceTable.tableName,
+        USER_PROFILES_TABLE: props.userProfilesTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: (() => {
+          const poolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+          if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for solana additional-address JWT auth');
+          return poolId;
+        })(),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logGroup: new logs.LogGroup(this, 'SolanaAdditionalLambdaLogGroup', {
+        logGroupName: '/aws/lambda/nasun-auth-solana-additional',
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    nonceTable.grantReadWriteData(solanaAdditionalFunction);
+    props.userProfilesTable.grantReadWriteData(solanaAdditionalFunction);
+
+    const solanaAdditionalApi = new apigw.RestApi(this, 'SolanaAdditionalApi', {
+      restApiName: 'Solana Additional Address API',
+      description: 'JWT-authed endpoints for verifying Solana addresses (Ed25519) and per-app bindings',
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      deployOptions: {
+        throttlingBurstLimit: 100,
+        throttlingRateLimit: 50,
+      },
+    });
+
+    const solAdditional = solanaAdditionalApi.root.addResource('additional-address');
+    solAdditional.addMethod('DELETE', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    const solChallenge = solAdditional.addResource('challenge');
+    solChallenge.addMethod('POST', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    const solVerify = solAdditional.addResource('verify');
+    solVerify.addMethod('POST', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    const solLabel = solAdditional.addResource('label');
+    solLabel.addMethod('PATCH', new apigw.LambdaIntegration(solanaAdditionalFunction));
+
+    const solAppBinding = solanaAdditionalApi.root.addResource('app-binding');
+    solAppBinding.addMethod('PATCH', new apigw.LambdaIntegration(solanaAdditionalFunction));
+
+    new cdk.CfnOutput(this, 'SolanaAdditionalApiUrl', {
+      value: solanaAdditionalApi.url,
+      description: 'The URL of the Solana Additional Address API',
+      exportName: 'SolanaAdditionalApiUrl',
+    });
+
+    // ========================================
     // zkLogin Authentication (2026-01-01 추가)
     // ========================================
 
@@ -524,6 +598,7 @@ export class AuthStack extends cdk.Stack {
       { id: 'TwitterAuthWafAssociation', api: twitterAuthApi },
       { id: 'MetaMaskAuthWafAssociation', api: this.metamaskAuthApi },
       { id: 'MetaMaskAdditionalWafAssociation', api: metamaskAdditionalApi },
+      { id: 'SolanaAdditionalWafAssociation', api: solanaAdditionalApi },
       { id: 'ZkLoginAuthWafAssociation', api: this.zkLoginAuthApi },
       { id: 'SuiAuthWafAssociation', api: this.suiAuthApi },
     ];

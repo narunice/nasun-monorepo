@@ -11,6 +11,11 @@ interface SolanaWalletPublicKey {
   toBase58?(): string;
 }
 
+interface SolanaSignedMessage {
+  signature: Uint8Array;
+  publicKey: SolanaWalletPublicKey;
+}
+
 interface SolanaWalletAdapter {
   isPhantom?: boolean;
   isSolflare?: boolean;
@@ -18,6 +23,11 @@ interface SolanaWalletAdapter {
   publicKey?: SolanaWalletPublicKey | null;
   connect(options?: { onlyIfTrusted?: boolean }): Promise<{ publicKey: SolanaWalletPublicKey }>;
   disconnect(): Promise<void>;
+  // Phantom and Solflare both expose signMessage; both accept UTF-8 bytes
+  // and return { signature: Uint8Array, publicKey }. Some older Phantom
+  // versions returned only the signature — we treat the publicKey as
+  // optional and fall back to adapter.publicKey at call sites.
+  signMessage?(message: Uint8Array, encoding?: string): Promise<SolanaSignedMessage>;
 }
 
 declare global {
