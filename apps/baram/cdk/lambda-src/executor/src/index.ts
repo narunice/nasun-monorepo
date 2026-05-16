@@ -15,7 +15,7 @@ import { APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { SSMClient, GetParameterCommand } from '@aws-sdk/client-ssm';
 import { createHash } from 'crypto';
-import { initGroq, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
+import { initProviders, generateCompletion, isValidModel, getSupportedModels } from './services/ai';
 import { initSui, verifyRequest, submitProofWithAER, submitSwapPTBWithAER, getExecutorAddress, getExecutorStats, getCapabilityFields, getCapabilityFieldsFull, type AERReportData } from './services/sui';
 import { initResultStore, saveResult, getResult } from './services/resultStore';
 import {
@@ -48,9 +48,25 @@ const secretsClient = new SecretsManagerClient({ region: process.env.AWS_REGION 
 const ssmClient = new SSMClient({ region: process.env.AWS_REGION });
 
 // Cached secrets (cleared after initialization)
-let groqApiKey: string | null = null;
+let providerApiKeys: Record<string, string | null> = {};
 let executorPrivateKey: string | null = null;
 let initialized = false;
+
+// AI provider catalog → SSM parameter env var name. Missing env (or
+// missing SSM value) silently skips that provider — the AI fallback
+// chain narrows to whichever subset has keys. Groq stays the canonical
+// default for backward-compat with `GROQ_PARAMETER_NAME`; others use a
+// uniform `<provider>_PARAMETER_NAME` convention.
+const AI_PROVIDER_SSM_ENV: Record<string, string> = {
+  groq:       'GROQ_PARAMETER_NAME',
+  cerebras:   'CEREBRAS_PARAMETER_NAME',
+  openrouter: 'OPENROUTER_PARAMETER_NAME',
+  together:   'TOGETHER_PARAMETER_NAME',
+  deepseek:   'DEEPSEEK_PARAMETER_NAME',
+  mistral:    'MISTRAL_PARAMETER_NAME',
+  sambanova:  'SAMBANOVA_PARAMETER_NAME',
+  gemini:     'GEMINI_PARAMETER_NAME',
+};
 
 /**
  * Safely parse JSON without throwing -- returns null on failure.
@@ -168,17 +184,52 @@ function maskSensitive<T>(obj: T): T {
 async function loadSecrets(): Promise<void> {
   if (initialized) return;
 
-  // Load Groq API key from SSM Parameter Store (SecureString).
-  const groqParameterName = process.env.GROQ_PARAMETER_NAME || '/baram/groq-api-key';
-  const groqParam = await ssmClient.send(
-    new GetParameterCommand({ Name: groqParameterName, WithDecryption: true })
+  // Load AI provider API keys from SSM Parameter Store (SecureString).
+  // Each provider key is fetched in parallel. Missing env vars or missing
+  // SSM parameters silently skip that provider; the fallback chain in
+  // ai.ts handles a shorter provider list gracefully. At least one
+  // provider key must resolve, enforced by initProviders().
+  const fetched: Record<string, string | null> = {};
+  await Promise.all(
+    Object.entries(AI_PROVIDER_SSM_ENV).map(async ([providerName, envVar]) => {
+      const paramName = process.env[envVar];
+      if (!paramName) {
+        fetched[providerName] = null;
+        return;
+      }
+      try {
+        const param = await ssmClient.send(
+          new GetParameterCommand({ Name: paramName, WithDecryption: true })
+        );
+        const value = param.Parameter?.Value;
+        if (value) {
+          fetched[providerName] = value;
+          console.log(`[Secrets] ${providerName} API key loaded from SSM`);
+        } else {
+          fetched[providerName] = null;
+        }
+      } catch (err) {
+        // Classify the SSM error so silent degradation cannot hide a
+        // misconfigured deploy. ParameterNotFound is the expected "operator
+        // hasn't created this key yet" path and stays at info. AccessDenied
+        // and ThrottlingException are loud because they mean the intended
+        // provider IS configured but the Lambda can't reach it — left
+        // unannounced this would silently route inference to a fallback
+        // provider that the deploy never intended to use.
+        const errName = (err as { name?: string }).name ?? '';
+        const msg = err instanceof Error ? err.message : String(err);
+        if (errName === 'ParameterNotFound') {
+          console.log(`[Secrets] ${providerName} key not yet provisioned (${paramName}); skipping.`);
+        } else if (errName === 'AccessDeniedException' || errName === 'ThrottlingException') {
+          console.error(`[Secrets] ${providerName} key UNREACHABLE (${errName}, ${paramName}): ${msg} — provider will be skipped despite being configured.`);
+        } else {
+          console.warn(`[Secrets] ${providerName} key fetch failed (${errName || 'unknown'}, ${paramName}): ${msg}`);
+        }
+        fetched[providerName] = null;
+      }
+    })
   );
-  const groqValue = groqParam.Parameter?.Value;
-  if (!groqValue) {
-    throw new Error(`SSM parameter '${groqParameterName}' returned no value`);
-  }
-  groqApiKey = groqValue;
-  console.log('[Secrets] Groq API key loaded from SSM');
+  providerApiKeys = fetched;
 
   // Load executor private key
   const executorSecret = await secretsClient.send(
@@ -198,8 +249,10 @@ async function initialize(): Promise<void> {
 
   await loadSecrets();
 
-  // Initialize Groq
-  initGroq(groqApiKey!);
+  // Initialize all configured AI providers. The chain in ai.ts will use
+  // whatever subset returned a key from SSM; if zero providers got a key,
+  // initProviders throws (cold start fails fast).
+  initProviders(providerApiKeys);
 
   // Initialize Sui client
   initSui({
@@ -218,7 +271,7 @@ async function initialize(): Promise<void> {
   }
 
   // Clear raw secrets from memory -- SDKs hold their own copies internally
-  groqApiKey = null;
+  providerApiKeys = {};
   executorPrivateKey = null;
 
   initialized = true;
@@ -352,6 +405,12 @@ const MODEL_RELEASE: Record<string, string> = {
 
 function modelVersionTag(model: string): string {
   const release = MODEL_RELEASE[model];
+  // Canonical commitment only: identical (prompt, model) MUST produce
+  // identical `modelVersion` regardless of which fallback provider
+  // served the inference. Baking the provider into this field would
+  // make AER replay non-deterministic across cold starts. The provider
+  // identity is surfaced separately via InferResponse.provider for
+  // off-chain audit trails.
   return release ? `${model}@${release}` : model;
 }
 
@@ -897,10 +956,14 @@ async function validateSwapAtBoundary(
   }
 
   // Step 9: cap.allowed_assets covers spend + both swap typeArguments.
+  // Both sides MUST go through canonicalTypeString so the address portion is
+  // padded identically and the module/type case is preserved -- a prior
+  // `.toLowerCase()` on the cap side lowercased "NUSDC" → "nusdc" while the
+  // wire side preserved case, silently failing every comparison.
   const spendType = canonicalTypeString(spend.coinAssetType);
   const baseType = canonicalTypeString(actionCall.typeArguments[0]);
   const quoteType = canonicalTypeString(actionCall.typeArguments[1]);
-  const allowed = new Set(cap.allowedAssets.map((a) => a.toLowerCase()));
+  const allowed = new Set(cap.allowedAssets.map(canonicalTypeString));
   if (!allowed.has(spendType)) {
     return { ok: false, failure: { statusCode: 403, reason: 'spend_asset_not_allowed' } };
   }
@@ -1037,6 +1100,11 @@ async function handleInfer(body: InferRequest): Promise<{ statusCode: number; bo
       resultHash,
       capabilityVersion: cap.version,
       executionTimeMs,
+      // Additive: actual provider that served the inference. Older runtime
+      // versions ignore this field; PR2.B+ runtimes propagate it into
+      // replay.modelVersion so the AER records `<model>+<provider>`.
+      provider: completion.provider,
+      modelUsed: completion.model,
     },
   };
 }

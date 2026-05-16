@@ -100,7 +100,22 @@ export class BaramStack extends cdk.Stack {
       'baram/executor'
     );
 
-    const groqParameterName = '/baram/groq-api-key';
+    // AI provider SSM parameter paths. Groq retains its historical path
+    // for backward-compat; new providers follow `/baram/<provider>-api-key`.
+    // Operators populate values manually (SecureString) — CDK does not
+    // create the parameters themselves to avoid putting plaintext keys
+    // into CloudFormation templates.
+    const aiProviderParameters: Record<string, string> = {
+      GROQ_PARAMETER_NAME:       '/baram/groq-api-key',
+      CEREBRAS_PARAMETER_NAME:   '/baram/cerebras-api-key',
+      OPENROUTER_PARAMETER_NAME: '/baram/openrouter-api-key',
+      TOGETHER_PARAMETER_NAME:   '/baram/together-api-key',
+      DEEPSEEK_PARAMETER_NAME:   '/baram/deepseek-api-key',
+      MISTRAL_PARAMETER_NAME:    '/baram/mistral-api-key',
+      SAMBANOVA_PARAMETER_NAME:  '/baram/sambanova-api-key',
+      GEMINI_PARAMETER_NAME:     '/baram/gemini-api-key',
+    };
+    const groqParameterName = aiProviderParameters.GROQ_PARAMETER_NAME;
 
     // Create Lambda function for executor
     this.executorLambda = new lambda.Function(this, 'ExecutorLambda', {
@@ -124,7 +139,11 @@ export class BaramStack extends cdk.Stack {
         AER_REGISTRY_ID: aerRegistryId,
         EXECUTOR_REGISTRY_ID: executorRegistryId,
         EXECUTOR_SECRET_NAME: 'baram/executor',
-        GROQ_PARAMETER_NAME: groqParameterName,
+        // AI provider SSM paths — Lambda's loadSecrets() fetches each in
+        // parallel. Missing values silently degrade the fallback chain
+        // (see services/ai.ts). Operators add API keys to SSM after the
+        // first deploy; no rebuild needed when a new key gets added.
+        ...aiProviderParameters,
         CORS_ALLOWED_ORIGINS: corsAllowedOrigins.join(','),
         RESULT_TABLE_NAME: resultTable.tableName,
         // PR1.5 swap path gates. handleExecuteCapability reads these on every
@@ -147,9 +166,10 @@ export class BaramStack extends cdk.Stack {
     executorSecret.grantRead(this.executorLambda);
     this.executorLambda.addToRolePolicy(new iam.PolicyStatement({
       actions: ['ssm:GetParameter'],
-      resources: [
-        `arn:aws:ssm:${this.region}:${this.account}:parameter${groqParameterName}`,
-      ],
+      resources: Object.values(aiProviderParameters).map(
+        (paramPath) =>
+          `arn:aws:ssm:${this.region}:${this.account}:parameter${paramPath}`,
+      ),
     }));
     resultTable.grantReadWriteData(this.executorLambda);
 

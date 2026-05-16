@@ -134,6 +134,12 @@ export interface InferResponse {
   resultHash?: string;                  // 0x<64 hex lower>
   capabilityVersion?: string;           // u64 decimal (echoed from on-chain)
   executionTimeMs?: number;
+  // Multi-provider fallback chain: which provider served this response
+  // and what model id it advertised. Optional/additive — older callers
+  // ignore. Newer runtimes pass `provider` through replay.modelVersion
+  // so the AER on-chain records `<canonical_model>+<provider>`.
+  provider?: string;
+  modelUsed?: string;
   error?: string;
   reason?: string;                      // structured reason on 4xx (e.g. 'prompt_hash_mismatch')
 }
