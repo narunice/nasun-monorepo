@@ -42,8 +42,8 @@ export function useUniswapPositionsSummary(): UniswapPositionsSummary {
   const query = useQuery({
     queryKey: ["uniswap-v3-positions", owner],
     enabled: !!owner && !!publicClient,
-    staleTime: 60_000,
-    refetchInterval: 300_000,
+    staleTime: 300_000,
+    refetchInterval: 900_000,
     refetchIntervalInBackground: false,
     queryFn: async () => {
       if (!owner || !publicClient) {
