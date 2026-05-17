@@ -130,6 +130,17 @@ export const UjuConnectedWalletsCard: FC<UjuConnectedWalletsCardProps> = ({
         subtitle="Wallets linked to your Nasun identity"
       />
 
+      <div className="mt-4 mb-2 rounded-xl border border-pado-2/20 bg-pado-2/5 px-4 py-3">
+        <p className="text-sm text-uju-secondary">
+          <span className="font-medium text-pado-2 uppercase tracking-wider text-sm">
+            Read-only ·{" "}
+          </span>
+          External wallets (Ethereum, Solana, Sui) are linked by signature
+          only. Nasun reads balances and positions but never signs or sends
+          transactions from these wallets.
+        </p>
+      </div>
+
       <div className="mt-6 space-y-6 sm:space-y-8">
         <section>
           <div className="flex items-start justify-between gap-3 mb-3">
