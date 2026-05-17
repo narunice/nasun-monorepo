@@ -14,6 +14,7 @@ import HomePage from './pages/HomePage'
 import FloorPage from './pages/FloorPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import DashboardPage from './pages/DashboardPage'
+import LeaderboardPage from './pages/LeaderboardPage'
 import TransparencyPage from './pages/TransparencyPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
 
@@ -28,6 +29,7 @@ interface NavEntry {
 const NAV_ITEMS: NavEntry[] = [
   { to: '/floor', label: 'Floor' },
   { to: '/suite', label: 'Suite' },
+  { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/transparency', label: 'Transparency' },
 ]
 
@@ -91,6 +93,7 @@ export default function App() {
           <Route path="/suite" element={<DashboardPage />} />
           <Route path="/me" element={<Navigate to="/suite" replace />} />
           <Route path="/games/history" element={<Navigate to="/suite?tab=history" replace />} />
+          <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
