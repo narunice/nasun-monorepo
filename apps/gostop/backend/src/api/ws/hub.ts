@@ -19,7 +19,7 @@ import { env } from '../../env.js';
 
 export type FeedTopic = 'live' | 'whales';
 
-export type FeedEventKind = 'round' | 'whale' | 'streak';
+export type FeedEventKind = 'round' | 'whale' | 'streak' | 'ticket_bought';
 
 export interface FeedEvent {
   kind: FeedEventKind;
@@ -31,9 +31,11 @@ export interface FeedEvent {
   player: string;
   // Bet/payout in raw units (USDC 6 decimals on devnet). String to avoid
   // BigInt JSON serialization issues.
+  // payout/multiplier_bps are nullable for 'ticket_bought' events where the
+  // round is not yet resolved (lottery tickets emit at purchase time).
   bet_amount: string;
-  payout: string;
-  multiplier_bps: string;
+  payout: string | null;
+  multiplier_bps: string | null;
   // Source tx digest + event seq — lets clients dedupe across reconnect.
   tx_digest: string;
   event_seq: number;

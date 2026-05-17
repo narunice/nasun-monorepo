@@ -26,8 +26,9 @@ export interface FeedNotifyPayload {
   game_id: number;
   player: string;
   bet_amount: string;
-  payout: string;
-  multiplier_bps: string;
+  // Nullable for 'ticket_bought' (round not yet resolved at purchase time).
+  payout: string | null;
+  multiplier_bps: string | null;
   tx_digest: string;
   event_seq: number;
   ts: number;
@@ -91,9 +92,16 @@ export function payloadFromGameRound(row: {
 }
 
 export function isWhalePayload(p: FeedNotifyPayload): boolean {
+  // ticket_bought is broadcast-only context; it is never a "whale round"
+  // because the outcome is unresolved. Guard at the producer so a stray
+  // call to `isWhalePayload({kind:'ticket_bought',...})` cannot leak into
+  // the whales topic.
+  if (p.kind === 'ticket_bought') return false;
   try {
-    return BigInt(p.bet_amount) >= env.feed.whaleBetThresholdRaw
-        || BigInt(p.payout)     >= env.feed.whalePayoutThresholdRaw;
+    const bet = BigInt(p.bet_amount);
+    const payout = p.payout === null ? 0n : BigInt(p.payout);
+    return bet >= env.feed.whaleBetThresholdRaw
+        || payout >= env.feed.whalePayoutThresholdRaw;
   } catch {
     return false;
   }
