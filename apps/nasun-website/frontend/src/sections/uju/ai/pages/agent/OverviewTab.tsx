@@ -16,6 +16,7 @@ import { useAgentActions } from '../../hooks/useAgentActions';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
+import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { ActivityTab } from './ActivityTab';
 import { ChatTab } from './ChatTab';
 
@@ -37,9 +38,10 @@ export function OverviewTab({
   onOpenSettings,
   onOpenInferenceTab,
 }: OverviewTabProps) {
-  const { deactivateAgent, reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
+  const { reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const { signer } = useSigner();
   const [busy, setBusy] = useState(false);
+  const [showPauseModal, setShowPauseModal] = useState(false);
   const [authBusy, setAuthBusy] = useState(false);
   const [authMsg, setAuthMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -73,13 +75,11 @@ export function OverviewTab({
     }
   };
 
-  const handleToggleActive = async () => {
+  const handleActivate = async () => {
     if (busy) return;
     setBusy(true);
     try {
-      const ok = agent.isActive
-        ? await deactivateAgent(agent.id)
-        : await reactivateAgent(agent.id);
+      const ok = await reactivateAgent(agent.id);
       if (ok) onRefresh();
     } finally {
       setBusy(false);
@@ -126,14 +126,24 @@ export function OverviewTab({
         </div>
 
         <div className="flex flex-wrap gap-2 pt-3 border-t border-uju-border/60">
-          <button
-            type="button"
-            onClick={handleToggleActive}
-            disabled={busy}
-            className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
-          >
-            {agent.isActive ? 'Pause agent' : 'Activate agent'}
-          </button>
+          {agent.isActive ? (
+            <button
+              type="button"
+              onClick={() => setShowPauseModal(true)}
+              className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors"
+            >
+              Pause agent
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => void handleActivate()}
+              disabled={busy}
+              className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
+            >
+              {busy ? 'Activating...' : 'Activate agent'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onOpenSettings}
@@ -185,6 +195,16 @@ export function OverviewTab({
           capabilityId={agent.capabilityId}
         />
       </div>
+
+      {showPauseModal && (
+        <DeactivateAgentModal
+          agentAddress={agent.agentAddress}
+          agentName={agent.name}
+          walletAddress={walletAddress}
+          onDeactivated={() => { setShowPauseModal(false); onRefresh(); }}
+          onClose={() => setShowPauseModal(false)}
+        />
+      )}
     </div>
   );
 }
