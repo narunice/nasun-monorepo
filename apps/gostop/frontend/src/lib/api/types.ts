@@ -111,6 +111,31 @@ export interface MeLeaderboardRank {
   row: LeaderboardRankRow | null;
 }
 
+// GET /api/gostop/leaderboard query/response.
+// `game` matches the backend GameFilter enum: 'all' | 1..6.
+export type LeaderboardPeriod = '24h' | '7d' | '30d' | 'all';
+export type LeaderboardGame = 'all' | 1 | 2 | 3 | 4 | 5 | 6;
+export type LeaderboardMetric = 'net_pnl' | 'volume' | 'rounds';
+
+export interface LeaderboardRow {
+  rank: number;
+  player: string;
+  rounds: number;
+  total_bet: string;
+  total_payout: string;
+  net_pnl: string;
+  last_played_ms: number | null;
+}
+
+export interface LeaderboardResponse {
+  period: LeaderboardPeriod;
+  game: LeaderboardGame;
+  metric: LeaderboardMetric;
+  limit: number;
+  rows: LeaderboardRow[];
+  generated_at: number;
+}
+
 export interface StreakSummary {
   player: string;
   // null = no streak (no rounds yet, or most recent round was a push).

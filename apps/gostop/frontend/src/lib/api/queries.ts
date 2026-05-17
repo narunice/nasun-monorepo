@@ -27,6 +27,10 @@ import type {
   FeedVisibility,
   RoundDetail,
   GameKey,
+  LeaderboardResponse,
+  LeaderboardPeriod,
+  LeaderboardGame,
+  LeaderboardMetric,
 } from './types';
 
 const STALE = {
@@ -40,6 +44,7 @@ const STALE = {
   lotteryDraws: 5_000,
   round: 60_000,
   rank: 60_000,
+  leaderboard: 10_000,
 } as const;
 
 // Shared query key roots — exported so components can invalidate by surface
@@ -54,6 +59,12 @@ export const QK = {
   meRank: () => [...QK.me, 'rank'] as const,
   meStreak: () => [...QK.me, 'streak'] as const,
   streak: (player: string) => ['gostop', 'streak', player.toLowerCase()] as const,
+  leaderboard: (
+    period: LeaderboardPeriod,
+    game: LeaderboardGame,
+    metric: LeaderboardMetric,
+    limit: number,
+  ) => ['gostop', 'leaderboard', period, game, metric, limit] as const,
   transparency: () => ['gostop', 'transparency'] as const,
   lotteryDraws: (limit: number) => ['gostop', 'lottery', 'draws', limit] as const,
   round: (game: GameKey, sessionIdHex: string) =>
@@ -178,6 +189,27 @@ export function useMeLeaderboardRank() {
 // ──────────────────────────────────────────────────────────────────────────
 // Public (no auth)
 // ──────────────────────────────────────────────────────────────────────────
+
+export function useLeaderboard(
+  period: LeaderboardPeriod,
+  game: LeaderboardGame,
+  metric: LeaderboardMetric,
+  limit = 100,
+) {
+  return useQuery({
+    queryKey: QK.leaderboard(period, game, metric, limit),
+    staleTime: STALE.leaderboard,
+    queryFn: () => {
+      const params = new URLSearchParams({
+        period,
+        game: String(game),
+        metric,
+        limit: String(limit),
+      });
+      return apiRequest<LeaderboardResponse>(`/api/gostop/leaderboard?${params.toString()}`);
+    },
+  });
+}
 
 export function useStreak(player: string | undefined) {
   return useQuery({
