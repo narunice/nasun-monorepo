@@ -33,6 +33,41 @@ function bool(name: string, fallback: boolean): boolean {
   return raw === '1' || raw.toLowerCase() === 'true';
 }
 
+// Two ways to enable production-grade salt enforcement, so a missing
+// NODE_ENV in pm2/ecosystem.cjs can't silently fail-open. Either signal
+// (or both) is treated as "this is prod".
+const IS_PRODUCTION =
+  process.env.NODE_ENV === 'production' ||
+  process.env.GOSTOP_REQUIRE_PROD_SALT === '1';
+const ANON_SALT_FALLBACK = 'fallback-anon-salt';
+const ANON_SALT_MIN_LENGTH = 32;
+
+/**
+ * Resolves FEED_ANON_SALT with a JWT-secret fallback in dev/test, but in
+ * production refuses to start if the salt is missing, too short, or equals
+ * the literal fallback. The salt feeds visibility-mask's anonId() — a weak
+ * or default value would let anyone recompute every anonymous player's
+ * pseudonym back to the raw address. It must also never rotate once any
+ * anon_id has been published (anon-id grouping contract).
+ */
+function resolveAnonSalt(): string {
+  const explicit = process.env.FEED_ANON_SALT ?? '';
+  if (explicit.length > 0) {
+    if (IS_PRODUCTION && explicit === ANON_SALT_FALLBACK) {
+      throw new Error('[gostop-backend] FEED_ANON_SALT must not equal the dev fallback literal in production');
+    }
+    if (IS_PRODUCTION && explicit.length < ANON_SALT_MIN_LENGTH) {
+      throw new Error(`[gostop-backend] FEED_ANON_SALT must be >= ${ANON_SALT_MIN_LENGTH} chars in production (got ${explicit.length})`);
+    }
+    return explicit;
+  }
+  if (IS_PRODUCTION) {
+    throw new Error('[gostop-backend] FEED_ANON_SALT is required in production (no fallback)');
+  }
+  const jwt = process.env.AUTH_JWT_SECRET ?? '';
+  return jwt.length > 0 ? jwt : ANON_SALT_FALLBACK;
+}
+
 export const env = {
   role: opt('ROLE', 'api'),
 
@@ -65,9 +100,9 @@ export const env = {
     streakMin: num('STREAK_FEED_MIN', 5),
     // Salt for anon_id derivation in visibility-mask. Must be stable across
     // restarts so an opted-in-then-anonymous wallet keeps the same anon_id.
-    // Fall back to the JWT secret to avoid an extra deploy footgun, but a
-    // dedicated value is preferred so rotating one doesn't unmask the other.
-    anonSalt: opt('FEED_ANON_SALT', '') || opt('AUTH_JWT_SECRET', 'fallback-anon-salt'),
+    // Production requires a dedicated FEED_ANON_SALT >= 32 chars; dev/test
+    // falls back to AUTH_JWT_SECRET or a known literal. See resolveAnonSalt().
+    anonSalt: resolveAnonSalt(),
     // Channel name for Postgres LISTEN/NOTIFY fan-out. Indexer NOTIFYs here
     // after committing INSERTs; API process LISTENs and broadcasts via hub.
     channel: opt('FEED_PG_CHANNEL', 'gostop_feed'),

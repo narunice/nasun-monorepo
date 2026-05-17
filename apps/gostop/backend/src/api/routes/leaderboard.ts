@@ -10,14 +10,21 @@
 
 import { Hono } from 'hono';
 import { reader } from '../../db/client.js';
+import { env } from '../../env.js';
 import {
   queryLeaderboard,
   queryLeaderboardForPlayer,
   type GameFilter,
+  type LeaderboardRow,
   type Metric,
   type Period,
 } from '../lib/leaderboard-query.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
+import {
+  loadVisibilityClassification,
+  type VisibilityClassification,
+} from '../lib/visibility-lookup.js';
+import { anonId } from '../lib/visibility-mask.js';
 import { requireAuth, type AuthVars } from '../auth/middleware.js';
 
 const PERIODS = new Set<Period>(['24h', '7d', '30d', 'all']);
@@ -25,8 +32,6 @@ const METRICS = new Set<Metric>(['net_pnl', 'volume', 'rounds']);
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 const CACHE_TTL_SECONDS = 10;
-const OPT_OUT_CACHE_KEY = 'leaderboard:opt-out-set';
-const OPT_OUT_TTL_SECONDS = 30;
 
 function parsePeriod(s: string | undefined): Period | null {
   return s && PERIODS.has(s as Period) ? (s as Period) : null;
@@ -50,16 +55,32 @@ function parseLimit(s: string | undefined): number {
   return Math.min(n, MAX_LIMIT);
 }
 
-async function loadOptOutSet(): Promise<string[]> {
-  const cached = cacheGet<string[]>(OPT_OUT_CACHE_KEY);
-  if (cached) return cached.value;
-  const sql = reader();
-  const rows = await sql<{ player: string }[]>`
-    SELECT player FROM gostop.user_settings WHERE feed_visibility = 'opt-out'
-  `;
-  const players = rows.map((r) => r.player);
-  cacheSet(OPT_OUT_CACHE_KEY, players, OPT_OUT_TTL_SECONDS);
-  return players;
+function applyAnonymousMask(
+  rows: LeaderboardRow[],
+  anonymous: Set<string>,
+): LeaderboardRow[] {
+  if (anonymous.size === 0) return rows;
+  const salt = env.feed.anonSalt;
+  return rows.map((row) => {
+    if (!anonymous.has(row.player.toLowerCase())) return row;
+    return { ...row, player: anonId(row.player, salt) };
+  });
+}
+
+/**
+ * Players the public leaderboard must hide via SQL exclusion: opt-out (full
+ * removal) and delayed (24h-rolling activity is treated as not-yet-public, so
+ * the safe Tier 0 default is to exclude from leaderboard entirely rather than
+ * leak a "row exists but is delayed" signal).
+ */
+function buildExcludeList(
+  vis: VisibilityClassification,
+  keepPlayer?: string,
+): string[] {
+  const set = new Set<string>(vis.optOut);
+  for (const p of vis.delayed) set.add(p);
+  if (keepPlayer) set.delete(keepPlayer.toLowerCase());
+  return Array.from(set);
 }
 
 export const leaderboardRoutes = new Hono<{ Variables: AuthVars }>();
@@ -87,14 +108,15 @@ leaderboardRoutes.get('/', async (c) => {
     return c.json(cached.value);
   }
 
-  const excludePlayers = await loadOptOutSet();
-  const rows = await queryLeaderboard(reader(), {
+  const visibility = await loadVisibilityClassification(reader());
+  const rawRows = await queryLeaderboard(reader(), {
     period,
     game,
     metric,
     limit,
-    excludePlayers,
+    excludePlayers: buildExcludeList(visibility),
   });
+  const rows = applyAnonymousMask(rawRows, visibility.anonymous);
 
   const payload = {
     period,
@@ -118,14 +140,18 @@ leaderboardRoutes.get('/me', requireAuth, async (c) => {
   if (game === null) return c.json({ error: 'bad_request', reason: 'invalid_game' }, 400);
   if (!metric) return c.json({ error: 'bad_request', reason: 'invalid_metric' }, 400);
 
-  const wallet = c.get('wallet');
-  const excludePlayers = await loadOptOutSet();
+  // DB stores `player` lowercased; normalize at the route boundary so a
+  // mixed-case JWT claim doesn't silently miss self-row + exclude matching.
+  const wallet = c.get('wallet').toLowerCase();
+  const visibility = await loadVisibilityClassification(reader());
+  // The caller's /me view always returns their own stats even if they are
+  // delayed/anonymous — visibility is about how OTHERS see them, not self.
   const row = await queryLeaderboardForPlayer(reader(), {
     player: wallet,
     period,
     game,
     metric,
-    excludePlayers,
+    excludePlayers: buildExcludeList(visibility, wallet),
   });
   c.header('Cache-Control', 'no-store');
   return c.json({ period, game, metric, row });

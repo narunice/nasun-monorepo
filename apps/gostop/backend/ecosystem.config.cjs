@@ -25,6 +25,7 @@ module.exports = {
       autorestart: true,
       env: {
         ROLE: 'indexer',
+        NODE_ENV: 'production',
       },
     },
     {
@@ -39,6 +40,7 @@ module.exports = {
       autorestart: true,
       env: {
         ROLE: 'api',
+        NODE_ENV: 'production',
         // PORT mirrors .env API_PORT; pm2 logs only.
       },
     },
