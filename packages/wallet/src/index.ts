@@ -344,6 +344,7 @@ export {
   computeAddressSeed,
   fetchZkProof,
   signWithZkLogin,
+  signPersonalWithZkLogin,
   startZkLogin,
   completeZkLogin,
   isZkLoginSessionValid,
@@ -359,6 +360,10 @@ export {
 
 // Passkey Store (Zustand)
 export { usePasskeyStore } from './stores/passkeyStore';
+
+// Wallet activity tracker (auto-installs DOM listeners that refresh
+// useWallet + passkey lastActivityAt so auto-lock counts real idle time)
+export { installWalletActivityTracker } from './core/activityTracker';
 
 // Passkey Hooks
 export { usePasskey, hasPasskeyWallet } from './hooks/usePasskey';

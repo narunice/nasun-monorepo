@@ -16,6 +16,10 @@ interface InsufficientBalancePromptProps {
   message?: string;
   /** Token decimals for display precision (default: 2) */
   decimals?: number;
+  /** When provided, renders an inline button that snaps the order size to the max affordable amount. */
+  onAdjustToMax?: () => void;
+  /** Disable the adjust button (e.g. when a buy price has not been set). */
+  adjustDisabled?: boolean;
 }
 
 export function InsufficientBalancePrompt({
@@ -24,6 +28,8 @@ export function InsufficientBalancePrompt({
   availableAmount,
   message,
   decimals,
+  onAdjustToMax,
+  adjustDisabled,
 }: InsufficientBalancePromptProps) {
   const shortfall = requiredAmount - availableAmount;
 
@@ -59,6 +65,16 @@ export function InsufficientBalancePrompt({
           <p className="text-xs xl:text-sm text-theme-text-muted mt-1">
             Get {tokenSymbol} from Faucet in your wallet.
           </p>
+          {onAdjustToMax && (
+            <button
+              type="button"
+              onClick={onAdjustToMax}
+              disabled={adjustDisabled || availableAmount <= 0}
+              className="mt-2 px-2.5 py-1 text-xs xl:text-sm font-medium rounded bg-red-500/30 text-red-200 hover:bg-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Adjust to max ({availableAmount.toFixed(displayDecimals)} {tokenSymbol})
+            </button>
+          )}
         </div>
       </div>
     </div>

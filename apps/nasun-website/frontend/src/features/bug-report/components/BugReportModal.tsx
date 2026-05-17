@@ -62,6 +62,9 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
     }
   }, [open, title, app, category, description, reproSteps]);
 
+  // Keep localStorage draft so accidental close (Cancel / Escape / outside
+  // click) does not wipe a long report in progress. Only successful submit
+  // clears the saved draft (see handleSubmit onSuccess).
   const resetForm = () => {
     setTitle('');
     setApp('nasun');
@@ -70,6 +73,9 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
     setReproSteps('');
     setScreenshots([]);
     setIsUploading(false);
+  };
+
+  const clearSavedDraft = () => {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
   };
 
@@ -156,6 +162,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
         {
           onSuccess: () => {
             toast.success('Bug report submitted. Thank you!');
+            clearSavedDraft();
             resetForm();
             onOpenChange(false);
           },

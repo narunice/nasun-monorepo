@@ -184,7 +184,7 @@ allTime_live
 | `wallet-transfer` | 다른 지갑으로 자산 전송 (linked wallet 자동 제외) | Base (1) |
 | `faucet` | Faucet 토큰 청구 | Base (1) |
 | `pado-perp`, `pado-lending` | Pado 파생/대출 | Base (1) |
-| `gostop-lottery`, `gostop-scratchcard`, `gostop-numbermatch`, `gostop-mines`, `gostop-crash` | GoStop 게임 | Base (1) — 게임당 독립 카운트 |
+| `gostop-lottery`, `gostop-scratchcard`, `gostop-numbermatch`, `gostop-mines`, `gostop-crash`, `gostop-wheel` | GoStop 게임 | Base (1) — 게임당 독립 카운트 |
 | `chat` | 채팅 참여 | Base (1) |
 | `baram-ai`, `baram-executor` | Baram AI 정산 | Base (1) |
 | `staking` | 첫 위임 | Base (1) |

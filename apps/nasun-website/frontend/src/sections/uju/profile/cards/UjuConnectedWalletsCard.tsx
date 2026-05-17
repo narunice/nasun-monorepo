@@ -91,8 +91,8 @@ const DevnetNoticeInline: FC = () => {
             permanent identity on Nasun.
           </li>
           <li className="flex gap-2">
-            <span className="text-pado-2">•</span> Back up your Nasun Wallet
-            now to ensure recovery.
+            <span className="text-pado-2">•</span> Back up your Nasun Wallet now
+            to ensure recovery.
           </li>
         </ul>
       )}
@@ -130,17 +130,6 @@ export const UjuConnectedWalletsCard: FC<UjuConnectedWalletsCardProps> = ({
         subtitle="Wallets linked to your Nasun identity"
       />
 
-      <div className="mt-4 mb-2 rounded-xl border border-pado-2/20 bg-pado-2/5 px-4 py-3">
-        <p className="text-sm text-uju-secondary">
-          <span className="font-medium text-pado-2 uppercase tracking-wider text-sm">
-            Read-only ·{" "}
-          </span>
-          External wallets (Ethereum, Solana, Sui) are linked by signature
-          only. Nasun reads balances and positions but never signs or sends
-          transactions from these wallets.
-        </p>
-      </div>
-
       <div className="mt-6 space-y-6 sm:space-y-8">
         <section>
           <div className="flex items-start justify-between gap-3 mb-3">
@@ -155,6 +144,16 @@ export const UjuConnectedWalletsCard: FC<UjuConnectedWalletsCardProps> = ({
         {user.cognitoToken && (
           <>
             <SectionDivider />
+            <div className="mt-4 mb-2 rounded-xl border border-pado-2/20 bg-pado-2/20 px-4 py-3">
+              <p className="text-sm text-uju-secondary">
+                <span className="font-medium text-pado-2 uppercase tracking-wider text-sm">
+                  Read-only ·{" "}
+                </span>
+                External wallets (Ethereum, Solana, Sui) are linked by signature
+                only. Nasun reads balances and positions but never signs or
+                sends transactions from these wallets.
+              </p>
+            </div>
             <EthereumSubsection />
 
             <SectionDivider />
@@ -356,7 +355,11 @@ const SuiSubsection: FC = () => {
               entry={entry}
               removing={removingAddress === entry.walletAddress}
               disabled={!!removingAddress}
-              onRemove={entry.isPrimary ? undefined : () => onRemove(entry.walletAddress)}
+              onRemove={
+                entry.isPrimary
+                  ? undefined
+                  : () => onRemove(entry.walletAddress)
+              }
             />
           ))}
         </ul>
@@ -411,7 +414,12 @@ interface SuiWalletRowProps {
   onRemove?: () => void;
 }
 
-function SuiWalletRow({ entry, removing, disabled, onRemove }: SuiWalletRowProps) {
+function SuiWalletRow({
+  entry,
+  removing,
+  disabled,
+  onRemove,
+}: SuiWalletRowProps) {
   return (
     <li className="rounded-lg border border-uju-border/60 bg-uju-bg/40 px-3 py-2">
       <div className="flex items-center justify-between gap-3">

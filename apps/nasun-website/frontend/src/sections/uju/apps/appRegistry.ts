@@ -1,3 +1,5 @@
+import { UJU_EXTERNAL_CHAIN_APPS_ENABLED } from "../../../config/featureFlags";
+
 export type AppChain = "nasun" | "solana" | "sui" | "ethereum" | "hyperliquid";
 export type AppCategory =
   | "dex"
@@ -9,6 +11,12 @@ export type AppCategory =
   | "analytics"
   | "utility";
 export type AppStatus = "live" | "coming-soon";
+
+// External-chain dApps are not yet user-facing in prod. When the feature flag
+// is off they render as "coming-soon" in the directory and cannot be activated.
+const externalChainStatus: AppStatus = UJU_EXTERNAL_CHAIN_APPS_ENABLED
+  ? "live"
+  : "coming-soon";
 
 export interface AppEntry {
   id: string;
@@ -91,7 +99,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.uniswap.org",
     chain: "ethereum",
     category: "dex",
-    status: "live",
+    status: externalChainStatus,
     isNative: false,
   },
   {
@@ -101,7 +109,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.hyperliquid.xyz",
     chain: "hyperliquid",
     category: "dex",
-    status: "live",
+    status: externalChainStatus,
     isNative: false,
   },
   {
@@ -111,7 +119,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.aave.com",
     chain: "ethereum",
     category: "lending",
-    status: "live",
+    status: externalChainStatus,
     isNative: false,
   },
   {
@@ -121,7 +129,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.drift.trade",
     chain: "solana",
     category: "dex",
-    status: "live",
+    status: externalChainStatus,
     isNative: false,
   },
 ];

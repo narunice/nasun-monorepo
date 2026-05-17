@@ -194,13 +194,13 @@ export function QuickstartView({
     },
     {
       num: 2,
-      title: 'Fund the agent\'s budget',
-      desc: 'Your agent spends from a Budget you control. Top up with NASUN for gas and NUSDC for trading. You can withdraw any time.',
+      title: 'Fund the agent\'s inference balance',
+      desc: 'Your agent pays AI executors from an Inference Balance you control. Top up with NUSDC. You can withdraw any time.',
       state: stepState(1),
       subtext: hasAgents && totalBalance > 0
         ? `Current: ${formatNusdcValue(totalBalance)} NUSDC`
         : hasAgents
-        ? 'No budget funded yet'
+        ? 'No inference balance funded yet'
         : undefined,
       action: stepState(1) !== 'done' ? (
         <button
@@ -209,7 +209,7 @@ export function QuickstartView({
           disabled={stepState(1) === 'locked'}
           className="px-3 py-1.5 text-sm font-medium rounded-lg border border-pado-2 text-pado-2 hover:bg-pado-2/10 transition-colors disabled:pointer-events-none whitespace-nowrap"
         >
-          Fund Budget
+          Fund Inference
         </button>
       ) : (
         <span className="text-xs px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 whitespace-nowrap">

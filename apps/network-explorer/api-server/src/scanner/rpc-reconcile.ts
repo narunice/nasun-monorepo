@@ -58,6 +58,8 @@ const PKG = {
   // events emitted by older upgrade variants still resolved via the linker.
   gostopMines: '0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54',
   gostopCrash: '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
+  // Wheel: 2026-05-17 onboarding. packageId == originalPackageId (no upgrade yet).
+  gostopWheel: '0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d',
   lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
   baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
   baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
@@ -108,6 +110,8 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   // CashOutRecorded = successful cashout. Daily 1pt cap dedups bet + cashout combos.)
   { moveEventType: `${PKG.gostopCrash}::crash::BetPlaced`, category: 'gostop-crash', activityType: 'crash-bet' },
   { moveEventType: `${PKG.gostopCrash}::crash::CashOutRecorded`, category: 'gostop-crash', activityType: 'crash-cashout' },
+  // Gostop Wheel (one WheelResultEvent per spin; 1pt/day cap via category)
+  { moveEventType: `${PKG.gostopWheel}::wheel::WheelResultEvent`, category: 'gostop-wheel', activityType: 'wheel-spin' },
   // Lending
   { moveEventType: `${PKG.lending}::lending::DepositEvent`, category: 'pado-lending', activityType: 'deposit' },
   { moveEventType: `${PKG.lending}::lending::WithdrawEvent`, category: 'pado-lending', activityType: 'withdraw' },

@@ -134,8 +134,8 @@ export function CreateAgentModal({
           <p className="text-sm text-uju-secondary">{name} has been registered on-chain.</p>
           <p className="text-sm text-pado-2">
             {isOnboarded
-              ? "Next: open this agent and fund its budget so it can pay executors."
-              : "Next: fund this agent's budget so it can pay executors."}
+              ? "Next: open this agent and fund its inference balance so it can pay executors."
+              : "Next: fund this agent's inference balance so it can pay executors."}
           </p>
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-uju-bg text-left space-y-1">

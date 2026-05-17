@@ -273,14 +273,14 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       </div>
 
       <div className="space-y-1">
-        <label className={labelClass}>Budget (auto-linked to this agent)</label>
+        <label className={labelClass}>Inference Balance (auto-linked to this agent)</label>
         {budgetId ? (
           <div className="px-3 py-2 text-xs rounded-lg bg-uju-bg/60 border border-uju-border/60 text-uju-secondary font-mono">
             {budgetId.slice(0, 16)}…{budgetId.slice(-10)}
           </div>
         ) : (
           <div className="px-3 py-2 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            No Budget linked. Open the <strong>Budget</strong> tab and create one for this agent first.
+            No Inference Balance linked. Open the <strong>Inference Balance</strong> section in Settings and create one for this agent first.
           </div>
         )}
       </div>

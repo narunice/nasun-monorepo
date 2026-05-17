@@ -7,7 +7,17 @@
  * (ARCHIVED but not renamed); we expose them under nasun-ai-friendly names here.
  */
 
-import { NETWORK, BARAM, TOKENS as DEVNET_TOKENS } from '@nasun/devnet-config';
+import {
+  NETWORK,
+  BARAM,
+  TOKENS as DEVNET_TOKENS,
+  NBTC_TYPE,
+  NBTC_DECIMALS,
+  NUSDC_TYPE,
+  NUSDC_DECIMALS,
+  NSN_TYPE,
+  NSN_DECIMALS,
+} from '@nasun/devnet-config';
 
 export const NETWORK_CONFIG = {
   rpcUrl: import.meta.env.VITE_SUI_RPC_URL || NETWORK.rpcUrl,
@@ -93,9 +103,11 @@ export const TEE_TYPES = {
 } as const;
 export type TeeType = keyof typeof TEE_TYPES;
 
+// Canonical token types come from @nasun/devnet-config (single source of truth).
+// VITE_* overrides remain available for local devnet experiments.
 export const TOKEN_CONFIG = {
-  nusdcType: import.meta.env.VITE_NUSDC_TYPE || BARAM.nusdcType,
-  nbtcType: import.meta.env.VITE_NBTC_TYPE || `${BARAM_CONFIG.packageId}::nbtc::NBTC`,
+  nusdcType: import.meta.env.VITE_NUSDC_TYPE || NUSDC_TYPE,
+  nbtcType: import.meta.env.VITE_NBTC_TYPE || NBTC_TYPE,
 } as const;
 
 export const FAUCET_CONFIG = {
@@ -104,10 +116,15 @@ export const FAUCET_CONFIG = {
   claimRecordId: import.meta.env.VITE_CLAIM_RECORD_ID || DEVNET_TOKENS.claimRecord,
 } as const;
 
+// Display name "NASUN" === devnet-config NSN === Move `0x2::sui::SUI`.
+// Three-way naming is intentional: NASUN = user-facing brand, NSN = package id, SUI = Move type.
 export const TOKENS = {
-  NASUN: { symbol: 'NASUN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
-  NUSDC: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: TOKEN_CONFIG.nusdcType },
+  NASUN: { symbol: 'NASUN', name: 'Nasun', decimals: NSN_DECIMALS, type: NSN_TYPE },
+  NUSDC: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: NUSDC_DECIMALS, type: TOKEN_CONFIG.nusdcType },
+  NBTC: { symbol: 'NBTC', name: 'Nasun BTC', decimals: NBTC_DECIMALS, type: TOKEN_CONFIG.nbtcType },
 } as const;
+
+export type TokenSymbol = keyof typeof TOKENS;
 
 export type ModelCategory = 'cloud' | 'private' | 'fast';
 

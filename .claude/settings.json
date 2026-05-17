@@ -329,7 +329,13 @@
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'ls ~/ | head -20; pm2 list --no-color 2>/dev/null | grep -E \"name|online\" | head -20')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=15 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
       "Bash(ALLOW_PROD_DIRECT=1 rsync -av -e 'ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no' /home/naru/my_apps/nasun-monorepo/apps/nasun-website/chat-server/dist/leaderboard-store.js ec2-user@43.200.67.52:/home/ec2-user/nasun-chat-server/dist/leaderboard-store.js)",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=600 -o ServerAliveInterval=15 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=600 -o ServerAliveInterval=15 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 bash -s)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 'aws ec2 describe-instances --instance-ids i-01b39553e9ef34b04 --query \"Reservations[0].Instances[0].{Type:InstanceType,AZ:Placement.AvailabilityZone}\" --output text --region ap-northeast-2 2>/dev/null || cat /sys/devices/virtual/dmi/id/product_name 2>/dev/null || echo \"instance type unknown\"')",
+      "Skill(handoff)",
+      "Skill(handoff:*)",
+      "Bash(awk '{print $2}')",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo status --short -- packages/devnet-config/)",
+      "Bash(git -C /home/naru/my_apps/nasun-monorepo diff --stat HEAD -- packages/devnet-config/)"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",

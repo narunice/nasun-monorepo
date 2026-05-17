@@ -86,7 +86,7 @@ export function BudgetSettingsModal({
       <div className="relative w-full max-w-lg bg-uju-card border border-uju-border/60 rounded-xl shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-uju-border/60">
-          <h2 id="budget-settings-title" className="text-sm font-semibold text-white">Budget Settings</h2>
+          <h2 id="budget-settings-title" className="text-sm font-semibold text-white">Inference Balance Settings</h2>
           <button
             onClick={onClose}
             disabled={isBusy}
