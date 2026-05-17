@@ -464,3 +464,31 @@ export function buildSetCategoriesTransaction(params: {
   });
   return tx;
 }
+
+export interface DepositToAgentWalletParams {
+  signerAddress: string;
+  toAgentAddress: string;
+  coinType: string;
+  amountRaw: bigint;
+  ownerCoins: CoinRef[];
+}
+
+export function buildDepositToAgentWalletTransaction(
+  params: DepositToAgentWalletParams,
+): Transaction {
+  if (!SUI_OBJECT_ID_RE.test(params.toAgentAddress)) {
+    throw new Error('Invalid agent address');
+  }
+  const tx = new Transaction();
+  tx.setSender(params.signerAddress);
+  const [primary, ...rest] = params.ownerCoins;
+  if (rest.length > 0) {
+    tx.mergeCoins(
+      tx.object(primary.objectId),
+      rest.map((c) => tx.object(c.objectId)),
+    );
+  }
+  const [out] = tx.splitCoins(tx.object(primary.objectId), [tx.pure.u64(params.amountRaw)]);
+  tx.transferObjects([out], tx.pure.address(params.toAgentAddress));
+  return tx;
+}

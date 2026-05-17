@@ -36,7 +36,16 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
 
   const signAndExecute = useCallback<SignAndExecuteFn>(
     async (tx) => {
-      if (!address) throw new Error('Wallet not connected');
+      if (!address) {
+        // The wallet may exist locally but be locked (passkey idle auto-lock,
+        // session expiry, or a mobile browser tab kill that wiped the
+        // in-memory keypair). Signal the app to open the unlock UI instead
+        // of failing silently from the call site.
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('nasun:wallet-reconnect-required'));
+        }
+        throw new Error('Wallet is locked. Please unlock to continue.');
+      }
       const client = getSuiClient();
       tx.setSender(address);
       const bytes = await tx.build({ client });

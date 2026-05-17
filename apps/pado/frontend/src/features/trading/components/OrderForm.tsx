@@ -760,6 +760,8 @@ export function OrderForm({
             requiredAmount={isBuy ? total + fee : amountNum}
             availableAmount={isBuy ? availableQuote : availableBase}
             decimals={isBuy ? currentPool.quoteToken.decimals : currentPool.baseToken.decimals}
+            onAdjustToMax={() => handlePercentAmount(100)}
+            adjustDisabled={isBuy && effectivePrice <= 0}
           />
         )}
       </div>

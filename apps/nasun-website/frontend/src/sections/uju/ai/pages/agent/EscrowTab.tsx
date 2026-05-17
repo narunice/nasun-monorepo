@@ -30,9 +30,9 @@ export function EscrowTab({ walletAddress, agentAddress }: EscrowTabProps) {
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-white">Budget</h3>
+          <h3 className="text-sm font-semibold text-white">Inference Balance</h3>
           <p className="text-sm text-uju-secondary mt-0.5">
-            Pre-funded NUSDC the agent draws from to pay executors.
+            NUSDC the agent uses to pay inference fees. Separate from trading funds.
           </p>
         </div>
         <button
@@ -43,7 +43,7 @@ export function EscrowTab({ walletAddress, agentAddress }: EscrowTabProps) {
           }}
           className="shrink-0 px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
         >
-          + New Budget
+          + New Inference Balance
         </button>
       </div>
 
@@ -55,9 +55,9 @@ export function EscrowTab({ walletAddress, agentAddress }: EscrowTabProps) {
         </div>
       ) : agentBudgets.length === 0 ? (
         <div className="py-8 text-center rounded-xl border border-uju-border/60 border-dashed">
-          <p className="text-sm text-uju-secondary">No budget linked to this agent.</p>
+          <p className="text-sm text-uju-secondary">No inference balance linked to this agent.</p>
           <p className="text-sm text-uju-secondary/70 mt-1">
-            Create one to authorize NUSDC spending.
+            Create one to authorize NUSDC spending on AI fees.
           </p>
         </div>
       ) : (
@@ -73,7 +73,7 @@ export function EscrowTab({ walletAddress, agentAddress }: EscrowTabProps) {
                 await b.withdrawFromBudget(budget.id, amt);
               }}
               onDeactivate={async () => {
-                if (confirm('Deactivate this budget? Pending agent calls will fail.')) {
+                if (confirm('Deactivate this inference balance? Pending agent calls will fail.')) {
                   await b.deactivateBudget(budget.id);
                 }
               }}

@@ -85,6 +85,8 @@ export interface BrowserTraderConfig {
   /** Optional strategy preset id (matches `strategies.ts` keys). When
    * unset or unknown, the runtime falls back to `STRATEGY` env. */
   strategyPresetId: string | null;
+  /** Heartbeat cycle interval in minutes. Null if not set in browser config. */
+  intervalMin: number | null;
 }
 
 /**
@@ -113,12 +115,17 @@ export async function fetchBrowserConfig(
     const body = await res.json() as { config?: Record<string, unknown> };
     const cfg = body.config;
     if (!cfg || typeof cfg !== 'object') return null;
+    const rawIntervalMin =
+      typeof cfg.intervalMinutes === 'number' && cfg.intervalMinutes >= 5
+        ? cfg.intervalMinutes
+        : null;
     return {
       model: typeof cfg.model === 'string' ? cfg.model : '',
       perTradeMaxQuoteRaw: typeof cfg.perTradeMaxQuoteRaw === 'string' ? cfg.perTradeMaxQuoteRaw : '',
       dailyMaxQuoteRaw: typeof cfg.dailyMaxQuoteRaw === 'string' ? cfg.dailyMaxQuoteRaw : '',
       promptTemplate: typeof cfg.promptTemplate === 'string' ? cfg.promptTemplate : null,
       strategyPresetId: typeof cfg.strategyPresetId === 'string' ? cfg.strategyPresetId : null,
+      intervalMin: rawIntervalMin,
     };
   } catch {
     return null;
@@ -128,11 +135,11 @@ export async function fetchBrowserConfig(
 /**
  * Runtime kill-switch L1 (Spec §5.4). When true, BUY/SELL decisions are
  * demoted to HOLD before envelope construction so the cycle ships only a
- * cognition AER. Default stays `true` until the Phase E prod cutover flips
- * it. When false, the swap branch builds escrow/spend/actionCall + signs an
- * actionCallHash-bound sig2; the Lambda is the canonical kill-switch L2.
+ * cognition AER. Phase E prod cutover is complete; default is now `false`
+ * (swaps enabled). Set PR1A_SWAP_DISABLED=true in env to re-engage the gate.
+ * The Lambda is the canonical kill-switch L2.
  */
-const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'true') !== 'false';
+const PR1A_SWAP_DISABLED = (process.env.PR1A_SWAP_DISABLED ?? 'false') !== 'false';
 
 /**
  * Inline cap fetch -- Lambda has the same logic in services/sui.ts. Returns
@@ -339,6 +346,10 @@ export interface TraderCycleResult {
   fatal?: boolean;
   /** Captured rejection reason for non-fatal failures. */
   reason?: string;
+  /** Effective heartbeat interval in ms, from browser config. Undefined if
+   * fetchBrowserConfig failed or intervalMin was not set. Caller uses this
+   * to override config.intervalMs for the next scheduleNext() call. */
+  effectiveIntervalMs?: number;
 }
 
 /**
@@ -382,9 +393,15 @@ export async function runTraderCycle(
   const effectiveStrategy = browserCfg?.strategyPresetId
     ? resolveStrategyPreset(browserCfg.strategyPresetId)
     : trader.strategy;
+  // intervalMin from browser config overrides the startup env value. The 5-min
+  // floor is already enforced in fetchBrowserConfig; undefined falls back to
+  // config.intervalMs in index.ts scheduleNext().
+  const effectiveIntervalMs = browserCfg?.intervalMin
+    ? browserCfg.intervalMin * 60_000
+    : undefined;
   if (browserCfg) {
     deps.log(
-      `[trader] Browser config loaded: model=${effectiveModel}, perTrade=${effectiveMaxNotional}, dailyMax=${effectiveDailyMax}, strategy=${effectiveStrategy.id}`,
+      `[trader] Browser config loaded: model=${effectiveModel}, perTrade=${effectiveMaxNotional}, dailyMax=${effectiveDailyMax}, strategy=${effectiveStrategy.id}, intervalMin=${browserCfg.intervalMin ?? 'env'}`,
     );
   } else {
     deps.log('[trader] Browser config unavailable -- using .env defaults');
@@ -406,7 +423,7 @@ export async function runTraderCycle(
     }
     if (pending) {
       deps.log('[trader] Pending proposal lock active -- skipping heartbeat cycle.');
-      return { outcome: 'pending_lock' };
+      return { outcome: 'pending_lock', effectiveIntervalMs };
     }
   }
 
@@ -417,15 +434,15 @@ export async function runTraderCycle(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deps.log(`[error] Budget check failed: ${msg}`);
-    return { outcome: 'budget_check_failed', reason: msg };
+    return { outcome: 'budget_check_failed', reason: msg, effectiveIntervalMs };
   }
   if (!budget.isActive) {
     deps.log('[fatal] Budget is inactive. Stopping agent.');
-    return { outcome: 'budget_inactive', fatal: true };
+    return { outcome: 'budget_inactive', fatal: true, effectiveIntervalMs };
   }
   if (budget.balance < config.price) {
     deps.log(`[wait] Insufficient balance: ${budget.balance} < ${config.price}. Will retry next cycle.`);
-    return { outcome: 'insufficient_balance' };
+    return { outcome: 'insufficient_balance', effectiveIntervalMs };
   }
   deps.log(
     `Budget: ${budget.balance} balance, ${budget.totalSpent} spent, ${budget.requestCount} requests`,
@@ -464,7 +481,7 @@ export async function runTraderCycle(
     const msg = err instanceof Error ? err.message : String(err);
     const { message, fatal } = categorizeError(msg);
     deps.log(`[trader] Request creation failed: ${message}`);
-    return { outcome: 'request_failed', fatal, reason: message };
+    return { outcome: 'request_failed', fatal, reason: message, effectiveIntervalMs };
   }
 
   // 3a. Snapshot capability owner+version. The Lambda enforces both, so we
@@ -481,7 +498,7 @@ export async function runTraderCycle(
     expectedCapabilityVersion = capFields.version;
     if (capFields.owner !== principalAddress) {
       deps.log(`[trader] capability owner ${capFields.owner} != trader.walletAddress ${principalAddress}; aborting cycle.`);
-      return { outcome: 'execute_failed', reason: 'capability_owner_mismatch' };
+      return { outcome: 'execute_failed', reason: 'capability_owner_mismatch', effectiveIntervalMs };
     }
     if (agentAddress !== principalAddress) {
       deps.log(`[trader] WARN: agentAddress=${agentAddress} differs from principalAddress=${principalAddress}. Lambda will verify the agent signature; cap.owner is the principal.`);
@@ -494,7 +511,7 @@ export async function runTraderCycle(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     deps.log(`[trader] capability fetch failed: ${msg}`);
-    return { outcome: 'execute_failed', reason: 'capability_fetch_failed' };
+    return { outcome: 'execute_failed', reason: 'capability_fetch_failed', effectiveIntervalMs };
   }
 
   // 4. Open intent + replay metadata.
@@ -531,10 +548,10 @@ export async function runTraderCycle(
   if (!inferResp.success || !inferResp.result || !inferResp.resultHash) {
     if (inferResp.preflightDenied) {
       deps.log(`[trader] /infer preflight denied: ${inferResp.preflightReason ?? 'unknown'}`);
-      return { outcome: 'infer_failed', reason: inferResp.preflightReason ?? 'preflight denied' };
+      return { outcome: 'infer_failed', reason: inferResp.preflightReason ?? 'preflight denied', effectiveIntervalMs };
     }
     deps.log(`[trader] /infer failed: ${inferResp.error ?? 'unknown'}`);
-    return { outcome: 'infer_failed', reason: inferResp.error ?? 'unknown' };
+    return { outcome: 'infer_failed', reason: inferResp.error ?? 'unknown', effectiveIntervalMs };
   }
 
   // 6. Parse decision (risk-gate locally).
@@ -561,7 +578,7 @@ export async function runTraderCycle(
       lastExecutionDigest: runtime.state.lastExecutionDigest,
       lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
     });
-    return { outcome: 'parse_failed', reason: msg };
+    return { outcome: 'parse_failed', reason: msg, effectiveIntervalMs };
   }
   if (decision.riskGate) {
     deps.log(`[trader] Decision demoted to HOLD by risk gate: ${decision.riskGate}`);
@@ -670,7 +687,7 @@ export async function runTraderCycle(
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       deps.log(`[trader] swap-block setup failed: ${msg}`);
-      return { outcome: 'execute_failed', reason: 'swap_setup_failed' };
+      return { outcome: 'execute_failed', reason: 'swap_setup_failed', effectiveIntervalMs };
     }
   }
   void outputAssetType;
@@ -744,7 +761,7 @@ export async function runTraderCycle(
       lastExecutionDigest: runtime.state.lastExecutionDigest,
       lastIntentIdHex: Buffer.from(Uint8Array.from(intent.lineage.intentId)).toString('hex'),
     });
-    return { outcome: 'execute_failed', reason, decision, finalEventClass };
+    return { outcome: 'execute_failed', reason, decision, finalEventClass, effectiveIntervalMs };
   }
 
   deps.log(
@@ -769,6 +786,7 @@ export async function runTraderCycle(
     txDigest: execResp.txDigest,
     decision,
     finalEventClass,
+    effectiveIntervalMs,
   };
 }
 

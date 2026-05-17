@@ -80,9 +80,9 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
             <JsonFields value={aer.feeDetail} />
           </Row>
         )}
-        {aer.budgetId && <Row label="Budget">{truncateAddress(aer.budgetId)}</Row>}
+        {aer.budgetId && <Row label="Inference Balance">{truncateAddress(aer.budgetId)}</Row>}
         {aer.budgetRemaining !== null && (
-          <Row label="Budget Remaining">{formatNusdc(aer.budgetRemaining)}</Row>
+          <Row label="Inference Balance Remaining">{formatNusdc(aer.budgetRemaining)}</Row>
         )}
       </Section>
 

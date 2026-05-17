@@ -15,6 +15,7 @@ import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
+import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { ActivityTab } from './ActivityTab';
 import { ChatTab } from './ChatTab';
 
@@ -24,6 +25,8 @@ interface OverviewTabProps {
   onRefresh: () => void;
   onViewAllActivity: () => void;
   onOpenSettings: () => void;
+  /** Optional override; defaults to the Settings tab handler. */
+  onOpenInferenceTab?: () => void;
 }
 
 export function OverviewTab({
@@ -32,6 +35,7 @@ export function OverviewTab({
   onRefresh,
   onViewAllActivity,
   onOpenSettings,
+  onOpenInferenceTab,
 }: OverviewTabProps) {
   const { deactivateAgent, reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const { signer } = useSigner();
@@ -156,6 +160,12 @@ export function OverviewTab({
           )}
         </div>
       </div>
+
+      <AgentFundsCard
+        agent={agent}
+        walletAddress={walletAddress}
+        onOpenInferenceTab={onOpenInferenceTab ?? onOpenSettings}
+      />
 
       <div>
         <ActivityTab

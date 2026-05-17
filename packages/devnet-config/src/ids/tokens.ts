@@ -17,7 +17,9 @@ export const TOKENS_UPGRADE_CAP = config.tokens.upgradeCap as ObjectId | undefin
 // Coin types use original package ID (types don't change after upgrade)
 const coinTypePackage = TOKENS_ORIGINAL_PACKAGE_ID || TOKENS_PACKAGE_ID;
 export const NBTC_TYPE: CoinType = `${coinTypePackage}::nbtc::NBTC`;
+export const NBTC_DECIMALS = 8;
 export const NUSDC_TYPE: CoinType = `${coinTypePackage}::nusdc::NUSDC`;
+export const NUSDC_DECIMALS = 6;
 
 // NSN is the native gas coin on Nasun Network (fork inherits 0x2::sui::SUI).
 export const NSN_TYPE: CoinType = '0x2::sui::SUI';

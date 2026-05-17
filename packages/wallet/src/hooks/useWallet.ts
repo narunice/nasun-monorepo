@@ -371,6 +371,11 @@ export const useWallet = create<WalletStore>((set, get) => ({
 
   // Keypair accessor
   getKeypair: () => {
+    if (!currentKeypair && get().status === 'locked' && typeof window !== 'undefined') {
+      // Surface reconnect UI; the in-memory keypair is gone (lock or tab kill)
+      // but the encrypted keystore is still on disk and can be unlocked.
+      window.dispatchEvent(new CustomEvent('nasun:wallet-reconnect-required'));
+    }
     return currentKeypair;
   },
 }));

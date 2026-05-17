@@ -35,7 +35,8 @@ export type MissionId =
   | "gostop-scratchcard"
   | "gostop-numbermatch"
   | "gostop-mines"
-  | "gostop-crash";
+  | "gostop-crash"
+  | "gostop-wheel";
 
 const KNOWN_MISSION_IDS: ReadonlySet<MissionId> = new Set<MissionId>([
   "faucet",
@@ -47,6 +48,7 @@ const KNOWN_MISSION_IDS: ReadonlySet<MissionId> = new Set<MissionId>([
   "gostop-numbermatch",
   "gostop-mines",
   "gostop-crash",
+  "gostop-wheel",
 ]);
 
 export interface UseDailyMissionsResult {

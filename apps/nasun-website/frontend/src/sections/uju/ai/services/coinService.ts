@@ -33,3 +33,24 @@ export async function getNusdcCoins(
 
   return selected;
 }
+
+export async function getCoinsByType(
+  client: SuiClient,
+  owner: string,
+  coinType: string,
+  minAmount: bigint,
+): Promise<CoinRef[]> {
+  const coins: CoinRef[] = [];
+  let total = 0n;
+  let cursor: string | null | undefined = undefined;
+  do {
+    const page = await client.getCoins({ owner, coinType, cursor });
+    for (const c of page.data) {
+      coins.push({ objectId: c.coinObjectId, digest: c.digest, version: c.version });
+      total += BigInt(c.balance);
+      if (total >= minAmount) return coins;
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+  return coins;
+}

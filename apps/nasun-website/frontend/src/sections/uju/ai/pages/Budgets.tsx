@@ -45,9 +45,9 @@ export function Budgets({ walletAddress, onBack, prefillAgent }: BudgetsProps) {
           >
             ← Back to agents
           </button>
-          <h2 className="text-base font-semibold text-white">Budgets</h2>
+          <h2 className="text-base font-semibold text-white">Inference Balance</h2>
           <p className="text-sm text-uju-secondary mt-0.5">
-            NUSDC escrows that authorize AI agents to spend on your behalf.
+            NUSDC pools that fund your AI agents' inference fees.
           </p>
         </div>
         <button
@@ -58,7 +58,7 @@ export function Budgets({ walletAddress, onBack, prefillAgent }: BudgetsProps) {
           }}
           className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
         >
-          + New Budget
+          + New Inference Balance
         </button>
       </div>
 
@@ -70,7 +70,7 @@ export function Budgets({ walletAddress, onBack, prefillAgent }: BudgetsProps) {
         </div>
       ) : b.budgets.length === 0 ? (
         <div className="py-8 text-center rounded-xl border border-uju-border/60 border-dashed">
-          <p className="text-sm text-uju-secondary">No budgets yet.</p>
+          <p className="text-sm text-uju-secondary">No inference balances yet.</p>
           <p className="text-sm text-uju-secondary/70 mt-1">
             Create one to authorize an agent to spend NUSDC.
           </p>

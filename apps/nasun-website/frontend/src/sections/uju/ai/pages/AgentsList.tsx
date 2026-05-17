@@ -72,7 +72,7 @@ export function AgentCard({
       {budget && (
         <div className="mt-4">
           <div className="flex justify-between text-xs text-uju-secondary mb-1">
-            <span>Budget</span>
+            <span>Inference Balance</span>
             <span className={isLow ? 'text-amber-400' : ''}>
               {formatNusdcValue(budget.balance)} / {formatNusdcValue(budget.balance + budget.totalSpent)} NUSDC
             </span>

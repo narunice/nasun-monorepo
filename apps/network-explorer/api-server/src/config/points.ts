@@ -43,6 +43,7 @@ export const BASE_POINTS: Record<string, Record<string, number>> = {
   'gostop-numbermatch': { 'numbermatch-play': 1 },
   'gostop-mines': { 'mines-session': 1 },
   'gostop-crash': { 'crash-bet': 1, 'crash-cashout': 1 },
+  'gostop-wheel': { 'wheel-spin': 1 },
   chat: { participation: 1 },
 
   // Score categories (final_points used in ecosystem score)
@@ -205,6 +206,10 @@ const PKG = {
   gostopCrash: stripHex(
     '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
   ),
+  // Wheel: 2026-05-17 onboarding. packageId == originalPackageId (no upgrade yet).
+  gostopWheel: stripHex(
+    '0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d',
+  ),
   tokens: stripHex(
     '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
   ),
@@ -284,6 +289,7 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.gostopNumbermatch,
   PKG.gostopMines,
   PKG.gostopCrash,
+  PKG.gostopWheel,
   PKG.sui, // 0x3 Sui system (staking)
 ]);
 
@@ -355,6 +361,13 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   // gostop-crash so a bet+cashout combo only credits 1pt/day.
   [PKG.gostopCrash, 'crash', 'BetPlaced', { category: 'gostop-crash', activityType: 'crash-bet' }],
   [PKG.gostopCrash, 'crash', 'CashOutRecorded', { category: 'gostop-crash', activityType: 'crash-cashout' }],
+
+  // Gostop Wheel: WheelResultEvent fires once per spin() call (game-specific
+  // event consumed by the gostop frontend history list; bankroll_pool's
+  // standardized GameResult event is also emitted but intentionally skipped
+  // here to avoid double-counting via a second category mapping). One spin
+  // = one event = 1pt/day via category cap.
+  [PKG.gostopWheel, 'wheel', 'WheelResultEvent', { category: 'gostop-wheel', activityType: 'wheel-spin' }],
 
   // Pado Lending
   [PKG.lending, 'lending', 'DepositEvent', { category: 'pado-lending', activityType: 'deposit' }],

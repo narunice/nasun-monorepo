@@ -52,28 +52,34 @@ function log(msg: string): void {
   console.log(`[${ts}] ${msg}`);
 }
 
-async function runCycle(client: SuiClient, config: Config): Promise<void> {
+// Returns effectiveIntervalMs from browser config for trader preset, else undefined.
+async function runCycle(client: SuiClient, config: Config): Promise<number | undefined> {
   const preset = PRESETS[config.preset];
   log(`--- Cycle start: ${preset.name} ---`);
 
-  // 1. Check budget
+  if (config.preset === 'trader') {
+    // Trader cycle handles its own budget check internally.
+    return runTraderCyclePresetEntry(client, config);
+  }
+
+  // 1. Check budget (non-trader presets)
   let budget;
   try {
     budget = await checkBudget(client, config.budgetId);
   } catch (err) {
     log(`[error] Budget check failed: ${err instanceof Error ? err.message : String(err)}`);
-    return;
+    return undefined;
   }
 
   if (!budget.isActive) {
     log('[fatal] Budget is inactive. Stopping agent.');
     shuttingDown = true;
-    return;
+    return undefined;
   }
 
   if (budget.balance < config.price) {
     log(`[wait] Insufficient balance: ${budget.balance} < ${config.price}. Will retry next cycle.`);
-    return;
+    return undefined;
   }
 
   log(`Budget: ${budget.balance} balance, ${budget.totalSpent} spent, ${budget.requestCount} requests`);
@@ -81,11 +87,10 @@ async function runCycle(client: SuiClient, config: Config): Promise<void> {
   // 2. Generate steps
   if (config.preset === 'analysis') {
     await runAnalysisCycle(client, config);
-  } else if (config.preset === 'trader') {
-    await runTraderCyclePresetEntry(client, config);
   } else {
     await runSingleStepCycle(client, config, preset);
   }
+  return undefined;
 }
 
 // Cross-cycle runtime owned by this process; tests construct their own.
@@ -94,13 +99,13 @@ const traderRuntime = newTraderCycleRuntime();
 async function runTraderCyclePresetEntry(
   client: SuiClient,
   config: Config,
-): Promise<void> {
+): Promise<number | undefined> {
   let result: TraderCycleResult;
   try {
     result = await runTraderCycle(client, config, traderRuntime);
   } catch (err) {
     log(`[trader] Unexpected cycle error: ${err instanceof Error ? err.message : err}`);
-    return;
+    return undefined;
   }
   if (result.fatal) {
     shuttingDown = true;
@@ -118,6 +123,7 @@ async function runTraderCyclePresetEntry(
       });
     }
   }
+  return result.effectiveIntervalMs;
 }
 
 // External heartbeat trigger (e.g., Telegram /wake-now command) — runs the
@@ -472,10 +478,12 @@ async function main(): Promise<void> {
   }
 
   // Run first cycle immediately
-  await runCycle(client, config);
+  const firstIntervalMs = await runCycle(client, config);
 
-  // Schedule subsequent cycles using setTimeout to prevent overlap
-  function scheduleNext(): void {
+  // Schedule subsequent cycles using setTimeout to prevent overlap.
+  // overrideIntervalMs: effectiveIntervalMs from browser config (trader preset
+  // only). Falls back to config.intervalMs (env / PRESET_DEFAULTS) when absent.
+  function scheduleNext(overrideIntervalMs?: number): void {
     if (shuttingDown) {
       log('[shutdown] Agent stopped gracefully.');
       process.exit(0);
@@ -484,23 +492,26 @@ async function main(): Promise<void> {
       log('[done] SINGLE_CYCLE=true. Exiting after first cycle.');
       process.exit(0);
     }
-    log(`Next cycle in ${config.intervalMinutes} minutes.`);
+    const nextMs = overrideIntervalMs ?? config.intervalMs;
+    const nextMin = Math.round(nextMs / 60_000);
+    log(`Next cycle in ${nextMin} minutes.`);
     pendingTimer = setTimeout(async () => {
       pendingTimer = null;
       if (shuttingDown) {
         log('[shutdown] Agent stopped gracefully.');
         process.exit(0);
       }
+      let nextIntervalMs: number | undefined;
       try {
-        await runCycle(client, config);
+        nextIntervalMs = await runCycle(client, config);
       } catch (err) {
         log(`[error] Unexpected error: ${err instanceof Error ? err.message : String(err)}`);
       }
-      scheduleNext();
-    }, config.intervalMs);
+      scheduleNext(nextIntervalMs);
+    }, nextMs);
   }
 
-  scheduleNext();
+  scheduleNext(firstIntervalMs);
 }
 
 main().catch((err) => {

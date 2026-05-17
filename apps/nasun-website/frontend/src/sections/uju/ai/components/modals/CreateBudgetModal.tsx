@@ -77,7 +77,7 @@ export function CreateBudgetModal({
       <div className="fixed inset-0 z-[60] flex items-center justify-center p-4" role="dialog" aria-modal="true">
         <div className="absolute inset-0 bg-black/60" onClick={onClose} />
         <div className="relative w-full max-w-sm bg-uju-card border border-uju-border/60 rounded-xl shadow-2xl p-6 text-center space-y-3">
-          <p className="text-sm font-medium text-white">Budget Created</p>
+          <p className="text-sm font-medium text-white">Inference Balance Created</p>
           <p className="text-sm text-uju-secondary">
             {formatNusdcValue(depositRaw)} NUSDC deposited for agent
           </p>
@@ -99,7 +99,7 @@ export function CreateBudgetModal({
       <div className="relative w-full max-w-md bg-uju-card border border-uju-border/60 rounded-xl shadow-2xl overflow-hidden">
         <div className="flex items-center justify-between p-4 border-b border-uju-border/60">
           <h2 id="create-budget-title" className="text-sm font-semibold text-white">
-            Create Budget
+            Create Inference Balance
           </h2>
           <button
             type="button"
@@ -237,7 +237,7 @@ export function CreateBudgetModal({
             disabled={!isFormValid}
             className="flex-1 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50"
           >
-            {isBusy ? 'Processing...' : `Create Budget (${formatNusdcValue(depositRaw)} NUSDC)`}
+            {isBusy ? 'Processing...' : `Create Inference Balance (${formatNusdcValue(depositRaw)} NUSDC)`}
           </button>
         </div>
       </div>

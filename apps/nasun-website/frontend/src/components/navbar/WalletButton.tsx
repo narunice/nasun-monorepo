@@ -34,7 +34,11 @@ export default function WalletButton() {
 
     const handler = () => setModalOpen(true);
     window.addEventListener('nasun:wallet-backup-pending', handler);
-    return () => window.removeEventListener('nasun:wallet-backup-pending', handler);
+    window.addEventListener('nasun:wallet-reconnect-required', handler);
+    return () => {
+      window.removeEventListener('nasun:wallet-backup-pending', handler);
+      window.removeEventListener('nasun:wallet-reconnect-required', handler);
+    };
   }, []);
 
   const handleSignOut = async () => {

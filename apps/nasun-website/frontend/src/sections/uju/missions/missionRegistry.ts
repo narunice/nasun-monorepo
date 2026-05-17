@@ -96,7 +96,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Buy Lottery Ticket',
       description: 'Pick 5 numbers and try your luck',
-      externalUrl: 'https://gostop.app/lottery',
+      externalUrl: 'https://gostop.app/floor',
     },
     {
       id: 'gostop-scratchcard',
@@ -105,7 +105,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Play Scratch Card',
       description: 'Scratch and win instant prizes',
-      externalUrl: 'https://gostop.app/scratch',
+      externalUrl: 'https://gostop.app/floor',
     },
     {
       id: 'gostop-numbermatch',
@@ -114,7 +114,7 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Play Number Match',
       description: 'Pick numbers for a quick game',
-      externalUrl: 'https://gostop.app/numbermatch',
+      externalUrl: 'https://gostop.app/floor',
     },
     {
       id: 'gostop-mines',
@@ -123,7 +123,16 @@ export const APP_MISSION_MAP: Record<string, UjuMission[]> = {
       points: 1,
       label: 'Play Mines',
       description: 'Reveal cells, dodge mines, cash out before you bust',
-      externalUrl: 'https://gostop.app/mines',
+      externalUrl: 'https://gostop.app/floor',
+    },
+    {
+      id: 'gostop-wheel',
+      appId: 'gostop',
+      completionType: 'onchain',
+      points: 1,
+      label: 'Spin the Wheel',
+      description: 'Spin the 20-segment wheel for payouts up to 5x',
+      externalUrl: 'https://gostop.app/floor',
     },
   ],
 };
