@@ -1,0 +1,31 @@
+{
+  "name": "@nasun/gostop-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev:indexer": "tsx watch src/indexer/index.ts",
+    "dev:api": "tsx watch src/api/server.ts",
+    "start:indexer": "node dist/indexer/index.js",
+    "start:api": "node dist/api/server.js",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "migrate": "tsx scripts/run-migrations.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@mysten/bcs": "^1.9.2",
+    "@mysten/sui": "^1.45.0",
+    "@noble/hashes": "^1.8.0",
+    "hono": "^4.7.5",
+    "jose": "^5.2.0",
+    "postgres": "^3.4.5",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.16.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.4",
+    "typescript": "~5.9.3"
+  }
+}
