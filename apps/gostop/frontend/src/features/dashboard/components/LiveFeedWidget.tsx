@@ -1,7 +1,11 @@
 import { useState } from 'react';
 import type { FeedTopic } from '../../../lib/api/wsHub';
-import { useFeed } from '../../../lib/api/wsHub';
+import { useFeed, useFeedLastEventTs } from '../../../lib/api/wsHub';
 import { fmtTimeAgo, fmtUsdc, gameLabel, multiplierBpsToX, shortWallet } from '../format';
+
+// Mirrors backend env.feed.liveWindowMs default. Used only for the empty-state
+// copy when the server hasn't yet sent a hello (initial paint).
+const LIVE_WINDOW_LABEL = '30 minutes';
 
 const GAME_ID_TO_KEY: Record<number, string> = {
   1: 'lottery',
@@ -20,6 +24,7 @@ const TABS: { value: FeedTopic; label: string }[] = [
 export function LiveFeedWidget() {
   const [topic, setTopic] = useState<FeedTopic>('live');
   const events = useFeed(topic, 30);
+  const lastEventTs = useFeedLastEventTs(topic);
 
   return (
     <div className="panel p-5">
@@ -44,7 +49,9 @@ export function LiveFeedWidget() {
 
       {events.length === 0 ? (
         <p className="text-sm text-neutral-300">
-          Waiting for {topic === 'live' ? 'rounds' : 'whale-sized rounds'}…
+          {lastEventTs > 0
+            ? `Quiet right now · last ${topic === 'whales' ? 'whale round' : 'round'} ${fmtTimeAgo(lastEventTs)}`
+            : `Waiting for ${topic === 'whales' ? 'whale-sized rounds' : 'rounds'} in the last ${LIVE_WINDOW_LABEL}…`}
         </p>
       ) : (
         <ul className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
