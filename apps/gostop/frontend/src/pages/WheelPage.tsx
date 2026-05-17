@@ -109,7 +109,7 @@ export default function WheelPage() {
             Wheel
           </p>
           <h1 className="font-display text-4xl md:text-5xl text-gold italic">
-            Wheel of Fortune
+            Golden Wheel
           </h1>
           <p className="text-base text-neutral-200 mt-3 max-w-2xl leading-relaxed">
             Spin a 20-segment wheel. One pull, one VRF roll, one payout — all

@@ -56,6 +56,14 @@ const LIVE_GAMES: LiveGame[] = [
     thumb: numberMatchThumb,
   },
   {
+    title: 'Wheel',
+    tagline:
+      'A 20-segment golden wheel. Place your bet, pull once, and a VRF roll picks your segment. Payouts up to 5x land in the same transaction. RTP 97.5%.',
+    cta: 'Spin',
+    to: '/wheel',
+    thumb: wheelThumb,
+  },
+  {
     title: 'Crash',
     tagline:
       'A live multiplier climbs from 1.00x and crashes at a random point. Cash out before the crash to lock in your payout, hesitate too long and you lose the bet. Provably fair, salted commit-reveal each round.',
@@ -63,14 +71,6 @@ const LIVE_GAMES: LiveGame[] = [
     to: '/crash',
     thumb: crashThumb,
     maintenance: !ENABLE_CRASH,
-  },
-  {
-    title: 'Wheel',
-    tagline:
-      'A 20-segment wheel of fortune. Place your bet, pull once, and a VRF roll picks your segment. Payouts up to 5x land in the same transaction. RTP 97.5%.',
-    cta: 'Spin',
-    to: '/wheel',
-    thumb: wheelThumb,
   },
 ]
 
