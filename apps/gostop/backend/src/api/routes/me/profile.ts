@@ -90,10 +90,13 @@ type Visibility = (typeof VISIBILITY_VALUES)[number];
 const VISIBILITY_SET = new Set<string>(VISIBILITY_VALUES);
 
 // Cache keys busted by PATCH /settings so feed-server snapshot and
-// leaderboard opt-out filter pick up the new visibility within one cycle
-// instead of waiting 30s/60s for natural TTL expiry. Resolves PR2 F2.
+// leaderboard responses pick up the new visibility within one cycle instead of
+// waiting 10s/30s for natural TTL expiry. `cacheDel` is a prefix delete, so
+// 'leaderboard:' wipes the visibility-class snapshot AND every cached
+// (period,game,metric,limit) response payload — required to honor an
+// anonymous→public toggle without a 10s stale window.
 const FEED_VISIBILITY_CACHE_KEY = 'feed:visibility-map';
-const LEADERBOARD_OPT_OUT_CACHE_KEY = 'leaderboard:opt-out-set';
+const LEADERBOARD_CACHE_PREFIX = 'leaderboard:';
 
 // ----- GET /me/profile ------------------------------------------------------
 
@@ -248,12 +251,13 @@ meProfileRoutes.patch('/settings', async (c) => {
   `;
 
   // Bust dependent caches so the new visibility takes effect immediately:
-  //   - feed-server snapshot (WS mask decisions)
-  //   - leaderboard opt-out filter (list inclusion)
-  // Without this the user has to wait the longer of the two TTLs (60s) for
-  // their setting to be reflected. PR2 F2 follow-up.
+  //   - feed-server + leaderboard visibility-classification snapshot (mask decisions)
+  //   - every cached leaderboard response that may now contain a stale anon_id
+  //     or an excluded-but-no-longer-delayed player
+  // Without this a public→anonymous toggle would leak the raw address for up
+  // to CACHE_TTL_SECONDS (10s) via stale leaderboard payloads.
   cacheDel(FEED_VISIBILITY_CACHE_KEY);
-  cacheDel(LEADERBOARD_OPT_OUT_CACHE_KEY);
+  cacheDel(LEADERBOARD_CACHE_PREFIX);
 
   c.header('Cache-Control', 'no-store');
   return c.json({
