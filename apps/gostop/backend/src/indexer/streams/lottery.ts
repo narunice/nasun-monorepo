@@ -213,7 +213,10 @@ export async function tickLotteryTicketPurchased(): Promise<number> {
       };
     });
 
-    const grRes = await sql`
+    // Cast result type after the helper-driven INSERT — postgres.js Helper
+    // typing fights with the generic form when both sql<T>` and sql(rows,...)
+    // are combined.
+    const grRes = (await sql`
       INSERT INTO gostop.game_round ${sql(
         grRows,
         'tx_digest', 'event_seq', 'game_id', 'player',
@@ -221,8 +224,38 @@ export async function tickLotteryTicketPurchased(): Promise<number> {
         'session_id', 'timestamp_ms', 'status'
       )}
       ON CONFLICT (tx_digest, event_seq) DO NOTHING
-    `;
-    inserted += grRes.count;
+      RETURNING tx_digest, event_seq, game_id, player,
+                bet_amount::text AS bet_amount,
+                timestamp_ms::text AS timestamp_ms
+    `) as unknown as Array<{
+      tx_digest: string;
+      event_seq: number;
+      game_id: number;
+      player: string;
+      bet_amount: string;
+      timestamp_ms: string;
+    }>;
+    inserted += grRes.length;
+
+    // Live feed: ticket_bought NOTIFY for newly-inserted rows only. RETURNING
+    // ensures cursor replay (same INSERT re-runs) emits zero broadcasts.
+    // Aggregation invariant: this row is status='pending_resolve', not
+    // 'final', so leaderboard SUM(bet_amount) WHERE status='final' is
+    // unaffected — the round only contributes to aggregates when
+    // PrizeClaimed / reconciler flips it to terminal status.
+    for (const row of grRes) {
+      await notifyFeed(sql, {
+        kind: 'ticket_bought',
+        game_id: Number(row.game_id),
+        player: row.player.toLowerCase(),
+        bet_amount: String(row.bet_amount),
+        payout: null,
+        multiplier_bps: null,
+        tx_digest: row.tx_digest,
+        event_seq: Number(row.event_seq),
+        ts: Number(row.timestamp_ms),
+      });
+    }
     return inserted;
   });
 }

@@ -55,40 +55,55 @@ export function LiveFeedWidget() {
         </p>
       ) : (
         <ul className="space-y-1.5 max-h-80 overflow-y-auto pr-1">
-          {events.map((ev) => {
-            const wonRaw = (() => {
-              try { return BigInt(ev.payout) - BigInt(ev.bet_amount); }
-              catch { return 0n; }
-            })();
-            const won = wonRaw > 0n;
-            return (
-              <li
-                key={`${ev.tx_digest}:${ev.event_seq}`}
-                className="flex items-center justify-between gap-3 py-1.5 px-2 rounded hover:bg-gold-400/5 text-sm"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="font-mono text-neutral-300 truncate">
-                    {ev.anonymous ? `~${ev.player.slice(0, 8)}` : shortWallet(ev.player)}
-                  </span>
-                  <span className="text-xs text-neutral-300">
-                    {gameLabel(GAME_ID_TO_KEY[ev.game_id] ?? '?')}
-                  </span>
-                </div>
+          {events.map((ev) => (
+            <li
+              key={`${ev.tx_digest}:${ev.event_seq}`}
+              className="flex items-center justify-between gap-3 py-1.5 px-2 rounded hover:bg-gold-400/5 text-sm"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="font-mono text-neutral-300 truncate">
+                  {ev.anonymous ? `~${ev.player.slice(0, 8)}` : shortWallet(ev.player)}
+                </span>
+                <span className="text-xs text-neutral-300">
+                  {gameLabel(GAME_ID_TO_KEY[ev.game_id] ?? '?')}
+                </span>
+              </div>
+              {ev.kind === 'ticket_bought' ? (
                 <div className="flex items-center gap-3 shrink-0">
-                  <span className="font-mono text-xs text-neutral-300">
-                    {multiplierBpsToX(ev.multiplier_bps)}
-                  </span>
-                  <span className={`font-mono ${won ? 'text-emerald-300' : 'text-rose-300'}`}>
-                    {won ? '+' : ''}
-                    {fmtUsdc(wonRaw)}
+                  <span className="text-xs text-neutral-300">bought ticket</span>
+                  <span className="font-mono text-neutral-200">
+                    {fmtUsdc(BigInt(ev.bet_amount))}
                   </span>
                   <span className="text-xs text-neutral-300 w-14 text-right">
                     {fmtTimeAgo(ev.ts)}
                   </span>
                 </div>
-              </li>
-            );
-          })}
+              ) : (
+                (() => {
+                  const wonRaw = (() => {
+                    if (ev.payout === null) return 0n;
+                    try { return BigInt(ev.payout) - BigInt(ev.bet_amount); }
+                    catch { return 0n; }
+                  })();
+                  const won = wonRaw > 0n;
+                  return (
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="font-mono text-xs text-neutral-300">
+                        {ev.multiplier_bps === null ? '—' : multiplierBpsToX(ev.multiplier_bps)}
+                      </span>
+                      <span className={`font-mono ${won ? 'text-emerald-300' : 'text-rose-300'}`}>
+                        {won ? '+' : ''}
+                        {fmtUsdc(wonRaw)}
+                      </span>
+                      <span className="text-xs text-neutral-300 w-14 text-right">
+                        {fmtTimeAgo(ev.ts)}
+                      </span>
+                    </div>
+                  );
+                })()
+              )}
+            </li>
+          ))}
         </ul>
       )}
     </div>

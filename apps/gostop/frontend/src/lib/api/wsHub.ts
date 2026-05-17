@@ -24,7 +24,11 @@
 import { useEffect, useState } from 'react';
 
 export type FeedTopic = 'live' | 'whales';
-export type FeedEventKind = 'round' | 'whale' | 'streak';
+export type FeedEventKind = 'round' | 'whale' | 'streak' | 'ticket_bought';
+
+const KNOWN_KINDS: ReadonlySet<string> = new Set([
+  'round', 'whale', 'streak', 'ticket_bought',
+]);
 
 export interface FeedEvent {
   kind: FeedEventKind;
@@ -34,8 +38,9 @@ export interface FeedEvent {
   player: string;
   anonymous: boolean;
   bet_amount: string;
-  payout: string;
-  multiplier_bps: string;
+  // null for 'ticket_bought' (unresolved round). UI must branch.
+  payout: string | null;
+  multiplier_bps: string | null;
   tx_digest: string;
   event_seq: number;
   ts: number;
@@ -162,6 +167,10 @@ function openSocket(ch: TopicChannel): void {
     }
     const ev = parsed as FeedEvent;
     if (!ev || typeof ev.tx_digest !== 'string') return;
+    // Forward-compat: if backend ships a new kind before frontend is
+    // redeployed, silently drop instead of rendering broken rows. Also
+    // prevents the dedupe set from getting churned by unrenderable frames.
+    if (!KNOWN_KINDS.has(ev.kind)) return;
     // Update lastEventTs from observed live events too, so the empty-state
     // copy keeps rolling even on long-lived sockets that never re-hello.
     if (ch.lastHello && typeof ev.ts === 'number' && ev.ts > ch.lastHello.lastEventTs) {
