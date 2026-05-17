@@ -38,7 +38,7 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const inFlight = useRef(false);
 
-  const { installed, connect } = useSolanaWalletAdapter();
+  const { installed, connect, disconnect } = useSolanaWalletAdapter();
   const signMessage = useSolanaSignMessage();
 
   const reset = useCallback(() => {
@@ -64,6 +64,20 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
         setPhase("connecting");
         setErrorMessage(null);
 
+        // 0) Force a clean reconnect. Phantom (and Solflare) auto-resolve
+        // `connect()` silently with the previously trusted account when
+        // the dapp is already connected, which means the picked wallet
+        // would just return the address that is *already* registered as
+        // primary -- and the server rejects with "address already
+        // verified" before the user ever sees a popup. Disconnecting
+        // first forces the extension to prompt again, giving the user a
+        // chance to switch to a different account in the extension UI.
+        try {
+          await disconnect(walletName);
+        } catch {
+          /* ignore — best effort */
+        }
+
         // 1) Connect to the picked wallet to learn the public key. We do
         // NOT trust this for ownership proof -- the actual proof is the
         // Ed25519 signature verified against the address server-side.
@@ -82,6 +96,27 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
           // useSolanaWalletAdapter sets its own error; surface a generic
           // message since the hook user already saw the picker error.
           throw new AdditionalSolanaApiError("Wallet connection failed.");
+        }
+
+        // 1.5) Local pre-check: Phantom/Solflare often auto-resolve
+        // connect() with the previously trusted account and there is no
+        // dapp-side API to force the user to pick a different one. If
+        // the returned pubkey is already linked, fail fast with a
+        // message that names the offending address so the user can spot
+        // it in the extension UI and switch.
+        const sol = useUserStore.getState().user?.linkedAccounts?.solana;
+        const linked = new Set<string>();
+        if (sol?.walletAddress) linked.add(sol.walletAddress);
+        if (Array.isArray(sol?.additionalAddresses)) {
+          for (const e of sol.additionalAddresses) {
+            if (e?.walletAddress) linked.add(e.walletAddress);
+          }
+        }
+        if (linked.has(pubkey)) {
+          const short = `${pubkey.slice(0, 4)}…${pubkey.slice(-4)}`;
+          throw new AdditionalSolanaApiError(
+            `${walletName === "phantom" ? "Phantom" : "Solflare"} returned ${short}, which is already linked. Open the extension, switch to a different account, then click Add again.`,
+          );
         }
 
         // 2) Server issues nonce + message bound to (identityId, pubkey, appId).
@@ -124,20 +159,30 @@ export function useAddVerifiedSolanaAddress(): UseAddVerifiedSolanaAddressApi {
           setErrorMessage(null);
           return null;
         }
-        const msg =
+        const rawMsg =
           err instanceof AdditionalSolanaApiError
             ? err.message
             : err instanceof Error
               ? err.message
               : "Failed to add Solana wallet.";
+        const msg = /already verified/i.test(rawMsg)
+          ? "That account is already linked. Open Phantom or Solflare, switch to a different account, and try again."
+          : rawMsg;
         setPhase("error");
         setErrorMessage(msg);
         return null;
       } finally {
+        // Leave the wallet disconnected so the next add() reliably
+        // re-prompts instead of silently reusing the same account.
+        try {
+          await disconnect(walletName);
+        } catch {
+          /* ignore */
+        }
         inFlight.current = false;
       }
     },
-    [connect, signMessage],
+    [connect, disconnect, signMessage],
   );
 
   return { phase, errorMessage, installed, reset, add };
