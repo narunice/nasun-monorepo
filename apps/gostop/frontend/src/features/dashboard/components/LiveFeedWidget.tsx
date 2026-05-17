@@ -1,11 +1,19 @@
 import { useState } from 'react';
 import type { FeedTopic } from '../../../lib/api/wsHub';
-import { useFeed, useFeedLastEventTs } from '../../../lib/api/wsHub';
+import { useFeed, useFeedLastEventTs, useFeedLiveWindowMs } from '../../../lib/api/wsHub';
 import { fmtTimeAgo, fmtUsdc, gameLabel, multiplierBpsToX, shortWallet } from '../format';
 
-// Mirrors backend env.feed.liveWindowMs default. Used only for the empty-state
-// copy when the server hasn't yet sent a hello (initial paint).
-const LIVE_WINDOW_LABEL = '30 minutes';
+// Fallback used only before the first hello frame arrives. Matches the backend
+// default (FEED_LIVE_WINDOW_MS=1800000) so the initial paint stays accurate.
+const DEFAULT_LIVE_WINDOW_LABEL = '30 minutes';
+
+function formatLiveWindowLabel(ms: number | null): string {
+  if (!ms || ms <= 0) return DEFAULT_LIVE_WINDOW_LABEL;
+  const minutes = Math.round(ms / 60_000);
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  const hours = Math.round(minutes / 60);
+  return `${hours} hour${hours === 1 ? '' : 's'}`;
+}
 
 const GAME_ID_TO_KEY: Record<number, string> = {
   1: 'lottery',
@@ -25,6 +33,8 @@ export function LiveFeedWidget() {
   const [topic, setTopic] = useState<FeedTopic>('live');
   const events = useFeed(topic, 30);
   const lastEventTs = useFeedLastEventTs(topic);
+  const liveWindowMs = useFeedLiveWindowMs(topic);
+  const liveWindowLabel = formatLiveWindowLabel(liveWindowMs);
 
   return (
     <div className="panel p-5">
@@ -51,7 +61,7 @@ export function LiveFeedWidget() {
         <p className="text-sm text-neutral-300">
           {lastEventTs > 0
             ? `Quiet right now · last ${topic === 'whales' ? 'whale round' : 'round'} ${fmtTimeAgo(lastEventTs)}`
-            : `Waiting for ${topic === 'whales' ? 'whale-sized rounds' : 'rounds'} in the last ${LIVE_WINDOW_LABEL}…`}
+            : `Waiting for ${topic === 'whales' ? 'whale-sized rounds' : 'rounds'} in the last ${liveWindowLabel}…`}
         </p>
       ) : (
         <ul className="space-y-1.5 max-h-80 overflow-y-auto pr-1">

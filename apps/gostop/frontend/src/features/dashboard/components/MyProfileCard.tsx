@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useMeProfile } from '../../../lib/api/queries';
+import { useMeProfile, useMeStreak } from '../../../lib/api/queries';
 import { fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, shortWallet } from '../format';
 
 interface HealthBarProps {
@@ -52,6 +52,7 @@ function Avatar({ url, name }: { url: string | null; name: string | null }) {
 
 export function MyProfileCard() {
   const { data, isLoading, isError, error, refetch } = useMeProfile();
+  const { data: streak } = useMeStreak();
 
   if (isLoading) return <SkeletonCard />;
   if (isError) {
@@ -126,6 +127,27 @@ export function MyProfileCard() {
         <div className="space-y-3 pt-2">
           <HealthBar label="Alliance Health" value={data.nft_health?.alliance ?? null} />
           <HealthBar label="Genesis Pass" value={data.nft_health?.genesis_pass ?? null} />
+        </div>
+      )}
+
+      {streak && streak.length > 0 && (streak.kind === 'win' || streak.kind === 'loss') && (
+        <div
+          className="flex items-center gap-2 text-sm"
+          role="status"
+          aria-live="polite"
+        >
+          <span
+            aria-hidden
+            className={`w-2 h-2 rounded-full ${streak.kind === 'win' ? 'bg-emerald-400' : 'bg-rose-400'}`}
+          />
+          <span
+            className={`font-mono font-semibold ${streak.kind === 'win' ? 'text-emerald-300' : 'text-rose-300'}`}
+          >
+            {streak.length}
+          </span>
+          <span className="text-xs uppercase tracking-widest text-neutral-300">
+            {streak.kind === 'win' ? 'Win streak' : 'Loss streak'}
+          </span>
         </div>
       )}
 

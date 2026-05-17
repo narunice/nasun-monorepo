@@ -113,7 +113,8 @@ export interface MeLeaderboardRank {
 
 export interface StreakSummary {
   player: string;
-  kind: 'win' | 'loss' | 'none';
+  // null = no streak (no rounds yet, or most recent round was a push).
+  kind: 'win' | 'loss' | null;
   length: number;
   started_ts_ms: number | null;
   generated_at: number;
