@@ -19,6 +19,9 @@ import { env } from '../env.js';
 import { closeAll } from '../db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { leaderboardRoutes } from './routes/leaderboard.js';
+import { transparencyRoutes } from './routes/transparency.js';
+import { roundRoutes } from './routes/round.js';
+import { streakRoutes } from './routes/streak.js';
 import { createFeedWsServer, isFeedUpgrade } from './ws/feed-server.js';
 import { startFeedListener, stopFeedListener } from './ws/listen-notify.js';
 
@@ -43,6 +46,9 @@ app.get('/health', (c) =>
 
 app.route('/api/gostop/auth', authRoutes);
 app.route('/api/gostop/leaderboard', leaderboardRoutes);
+app.route('/api/gostop', transparencyRoutes);
+app.route('/api/gostop/round', roundRoutes);
+app.route('/api/gostop/streak', streakRoutes);
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 app.onError((err, c) => {
