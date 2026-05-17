@@ -69,8 +69,10 @@ export async function handleChallenge(
   const nonce = randomBytes(32).toString('hex');
   const purpose = rawAppId || 'generic';
   const message =
-    `Add Sui wallet to Nasun.\n\n` +
-    `Address: ${walletAddress}\n` +
+    `Nasun — link wallet (read-only).\n\n` +
+    `By signing, you prove ownership of:\n` +
+    `${walletAddress}\n\n` +
+    `Nasun will never request a transaction signature from this wallet. This is a one-time link only.\n\n` +
     `Purpose: ${purpose}\n` +
     `Nonce: ${nonce}`;
   const expiresAt = Math.floor(Date.now() / 1000) + NONCE_TTL_SECONDS;
