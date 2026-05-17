@@ -52,11 +52,17 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA gostop
 -- Cross-schema read access for ecosystem points integration (gostop_reader only).
 -- gostop_writer intentionally has NO access to public schema artifacts —
 -- preserves integrity-guard protection on activity_points.
+--
+-- Note: identity_id ↔ wallet mapping is not a Postgres table on node-3 (lives
+-- in DynamoDB UserProfiles in the nasun-website backend). Cross-references
+-- from gostop wallet -> identity_id will use a small lookup helper at the
+-- API layer rather than a SQL join. We therefore grant SELECT only on the
+-- four Postgres-resident tables the User Dashboard actually needs.
 GRANT USAGE ON SCHEMA public TO gostop_reader;
 GRANT SELECT ON public.activity_points TO gostop_reader;
-GRANT SELECT ON public.identity_to_wallet_map TO gostop_reader;
 GRANT SELECT ON public.nft_health_state TO gostop_reader;
 GRANT SELECT ON public.user_active_missions TO gostop_reader;
+GRANT SELECT ON public.ecosystem_score_snapshots TO gostop_reader;
 
 -- =============================================================================
 -- 3. Canonical tables
