@@ -15,6 +15,70 @@ import { cacheDel } from '../../lib/cache.js';
 import { resolveIdentityId } from '../../lib/identity-resolver.js';
 import type { AuthVars } from '../../auth/middleware.js';
 import { requireAuth } from '../../auth/middleware.js';
+import { env } from '../../../env.js';
+
+// Process-level mini-cache for explorer-api responses to avoid per-request overhead.
+const EXPLORER_TTL = 60_000;
+
+interface LiveScoreEntry { score: number; expiresAt: number }
+interface LiveProfileEntry {
+  displayName: string | null;
+  xHandle: string | null;
+  profileImageUrl: string | null;
+  expiresAt: number;
+}
+const liveScoreCache = new Map<string, LiveScoreEntry>();
+const liveProfileCache = new Map<string, LiveProfileEntry>();
+
+async function fetchLiveScore(identityId: string): Promise<number | null> {
+  const hit = liveScoreCache.get(identityId);
+  if (hit && Date.now() < hit.expiresAt) return hit.score;
+  if (!env.explorerApiUrl) return null;
+  try {
+    const res = await fetch(
+      `${env.explorerApiUrl}/api/v1/ecosystem/score/${encodeURIComponent(identityId)}`,
+      { signal: AbortSignal.timeout(3000) },
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as { data?: { allTime?: { ecosystemScore?: number } } };
+    const score = data?.data?.allTime?.ecosystemScore;
+    if (typeof score !== 'number') return null;
+    liveScoreCache.set(identityId, { score, expiresAt: Date.now() + EXPLORER_TTL });
+    return score;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchNasunProfile(
+  identityId: string,
+): Promise<Omit<LiveProfileEntry, 'expiresAt'> | null> {
+  const hit = liveProfileCache.get(identityId);
+  if (hit && Date.now() < hit.expiresAt) return hit;
+  if (!env.explorerApiUrl) return null;
+  try {
+    const res = await fetch(
+      `${env.explorerApiUrl}/api/v1/ecosystem/profile/${encodeURIComponent(identityId)}`,
+      { signal: AbortSignal.timeout(3000) },
+    );
+    if (!res.ok) return null;
+    const data = await res.json() as {
+      displayName?: string | null;
+      xHandle?: string | null;
+      profileImageUrl?: string | null;
+    };
+    const entry: LiveProfileEntry = {
+      displayName: data?.displayName ?? null,
+      xHandle: data?.xHandle ?? null,
+      profileImageUrl: data?.profileImageUrl ?? null,
+      expiresAt: Date.now() + EXPLORER_TTL,
+    };
+    liveProfileCache.set(identityId, entry);
+    return entry;
+  } catch {
+    return null;
+  }
+}
 
 export const meProfileRoutes = new Hono<{ Variables: AuthVars }>();
 
@@ -104,10 +168,17 @@ meProfileRoutes.get('/profile', async (c) => {
         { alliance: null, genesis_pass: null },
       );
 
+  // Fetch live data from explorer-api in parallel (fall back gracefully on failure).
+  const [liveScore, nasunProfile] = identityId
+    ? await Promise.all([fetchLiveScore(identityId), fetchNasunProfile(identityId)])
+    : [null, null];
+
+  const snapshotScore = eco ? parseFloat(eco.all_time_score) : 0;
+
   c.header('Cache-Control', 'no-store');
   return c.json({
     wallet,
-    ecosystem_points: eco ? parseFloat(eco.all_time_score) : 0,
+    ecosystem_points: liveScore ?? snapshotScore,
     last_snapshot_date: eco?.snapshot_date ?? null,
     nft_health: nftHealth,
     total_rounds: stats ? Number(stats.rounds) : 0,
@@ -116,6 +187,9 @@ meProfileRoutes.get('/profile', async (c) => {
     net_pnl: stats?.net_pnl ?? '0',
     first_played_ms: firstRows[0]?.first_played_ms ? Number(firstRows[0].first_played_ms) : null,
     last_played_ms: stats?.last_played_ms ? Number(stats.last_played_ms) : null,
+    display_name: nasunProfile?.displayName ?? null,
+    x_handle: nasunProfile?.xHandle ?? null,
+    profile_image_url: nasunProfile?.profileImageUrl ?? null,
     generated_at: Date.now(),
   });
 });

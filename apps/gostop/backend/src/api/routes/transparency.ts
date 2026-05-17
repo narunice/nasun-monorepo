@@ -112,6 +112,7 @@ type LotteryDrawRow = {
   treasury_amount: string | null;
   claim_deadline_ms: string | null;
   fully_claimed_at_ms: string | null;
+  draw_tx_digest: string | null;
 };
 
 transparencyRoutes.get('/lottery/draws', async (c) => {
@@ -153,7 +154,8 @@ transparencyRoutes.get('/lottery/draws', async (c) => {
       tier3_payout::text,
       treasury_amount::text,
       claim_deadline_ms::text,
-      fully_claimed_at_ms::text
+      fully_claimed_at_ms::text,
+      draw_tx_digest
     FROM gostop.lottery_round
     WHERE settled = true
     ORDER BY round_number DESC
@@ -174,6 +176,7 @@ transparencyRoutes.get('/lottery/draws', async (c) => {
     treasury_amount: r.treasury_amount ?? '0',
     claim_deadline_ms: r.claim_deadline_ms ? Number(r.claim_deadline_ms) : null,
     fully_claimed_at_ms: r.fully_claimed_at_ms ? Number(r.fully_claimed_at_ms) : null,
+    draw_tx_digest: r.draw_tx_digest,
   }));
 
   const payload = { draws, limit, generated_at: Date.now() };

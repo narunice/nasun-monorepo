@@ -17,19 +17,27 @@ export function MinesActiveSession({
   onReveal: (i: number) => void;
   onCashout: () => void;
 }) {
-  const currentMul = computeMultiplierBps(session.mineCount, session.safeReveals) / 10_000;
-  const rawPayout = (session.betAmount * BigInt(Math.floor(currentMul * 10_000))) / 10_000n;
+  const rawMul = computeMultiplierBps(session.mineCount, session.safeReveals) / 10_000;
+  const rawPayout = (session.betAmount * BigInt(Math.floor(rawMul * 10_000))) / 10_000n;
   const currentPayout = rawPayout > MINES_MAX_SINGLE_PAYOUT ? MINES_MAX_SINGLE_PAYOUT : rawPayout;
   const isCapped = rawPayout > MINES_MAX_SINGLE_PAYOUT;
-  const nextMul = computeMultiplierBps(session.mineCount, session.safeReveals + 1) / 10_000;
+  // When capped, the theoretical multiplier overstates the actual win.
+  // Show the effective multiplier (payout / bet) so users do not think
+  // their position keeps growing past the per-game payout limit.
+  const effectiveMul = session.betAmount > 0n
+    ? Number((currentPayout * 10_000n) / session.betAmount) / 10_000
+    : rawMul;
+  const currentMul = isCapped ? effectiveMul : rawMul;
+  const rawNextMul = computeMultiplierBps(session.mineCount, session.safeReveals + 1) / 10_000;
+  const nextMul = isCapped ? effectiveMul : rawNextMul;
   const canCashout = session.safeReveals > 0 && phase === "idle" && pendingCells.size === 0;
 
   return (
     <section className="panel p-5 sm:p-7 space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatBox label="Bet" value={`${formatNusdcFixed(session.betAmount)} NUSDC`} />
-        <StatBox label="Current" value={`${currentMul.toFixed(2)}×`} emphasis />
-        <StatBox label="Next reveal" value={`${nextMul.toFixed(2)}×`} />
+        <StatBox label="Current" value={isCapped ? `${currentMul.toFixed(2)}× (max)` : `${currentMul.toFixed(2)}×`} emphasis />
+        <StatBox label="Next reveal" value={isCapped ? "Capped" : `${nextMul.toFixed(2)}×`} />
       </div>
 
       <div className="grid grid-cols-5 gap-2 sm:gap-3 max-w-md mx-auto">

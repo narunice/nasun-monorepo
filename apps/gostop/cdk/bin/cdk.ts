@@ -39,6 +39,9 @@ new GostopSiteStack(app, isProd ? 'GostopSiteStack' : 'GostopSiteStagingStack', 
   // Prod also serves www.gostop.app. Staging is apex-only (no www.staging).
   subdomains: isProd ? ['www'] : [],
   basicAuthTokens: isProd ? undefined : BASIC_AUTH_TOKENS,
+  // Direct A record for gostop-backend on node-3. Only the prod zone owns the
+  // api subdomain; staging frontend will point at https://api.gostop.app.
+  apiBackendIp: isProd ? '__INDEXER_NODE_HOST__' : undefined,
   description: isProd
     ? 'gostop.app static SPA hosting (S3 + CloudFront + Route53)'
     : 'staging.gostop.app static SPA hosting (S3 + CloudFront + Route53)',

@@ -1,6 +1,6 @@
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { lazyWithRetry } from './utils/lazyWithRetry'
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom'
+import { Routes, Route, NavLink, Navigate, useLocation } from 'react-router-dom'
 import { WalletConnect } from '@nasun/wallet-ui'
 import { HeaderSoundToggle } from './components/HeaderSoundToggle'
 import { HeaderBalance } from './components/HeaderBalance'
@@ -13,7 +13,8 @@ import WheelPage from './pages/WheelPage'
 import HomePage from './pages/HomePage'
 import FloorPage from './pages/FloorPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
-import GameHistoryPage from './pages/GameHistoryPage'
+import DashboardPage from './pages/DashboardPage'
+import TransparencyPage from './pages/TransparencyPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
 
 // Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
@@ -26,7 +27,8 @@ interface NavEntry {
 
 const NAV_ITEMS: NavEntry[] = [
   { to: '/floor', label: 'Floor' },
-  { to: '/games/history', label: 'History' },
+  { to: '/suite', label: 'Suite' },
+  { to: '/transparency', label: 'Transparency' },
 ]
 
 // Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
@@ -86,7 +88,10 @@ export default function App() {
           <Route path="/mines" element={<MinesPage />} />
           <Route path="/wheel" element={<WheelPage />} />
           {ENABLE_CRASH && <Route path="/crash" element={<CrashRouteElement />} />}
-          <Route path="/games/history" element={<GameHistoryPage />} />
+          <Route path="/suite" element={<DashboardPage />} />
+          <Route path="/me" element={<Navigate to="/suite" replace />} />
+          <Route path="/games/history" element={<Navigate to="/suite?tab=history" replace />} />
+          <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -1703,6 +1703,30 @@ app.post('/sync/:identityId', async (c) => {
   });
 });
 
+// GET /api/v1/ecosystem/profile/:identityId
+// Returns display name, X handle, and profile image URL for a single identity.
+// Reuses the leaderboard profileCache (5-min TTL, DynamoDB-backed).
+// Intended for server-to-server calls from gostop-backend.
+app.get('/profile/:identityId', async (c) => {
+  const identityId = c.req.param('identityId');
+  if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
+    return c.json({ error: 'invalid_identity_id' }, 400);
+  }
+  try {
+    const profiles = await fetchProfilesBatch([identityId]);
+    const entry = profiles.get(identityId);
+    return c.json({
+      identityId,
+      displayName: entry?.displayName ?? null,
+      xHandle: entry?.xHandle ?? null,
+      profileImageUrl: entry?.profileImageUrl ?? null,
+    });
+  } catch (err) {
+    console.error('[ecosystem/profile] fetch error', err instanceof Error ? err.message : String(err));
+    return c.json({ error: 'internal_error' }, 500);
+  }
+});
+
 // GET /api/v1/ecosystem/score/wallet/:address
 // Wallet-based score lookup (for Pado frontend, no Cognito identity).
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{1,64}$/;

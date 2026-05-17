@@ -17,6 +17,12 @@ export interface GostopSiteStackProps extends cdk.StackProps {
    * Omit to disable basic auth.
    */
   basicAuthTokens?: string[];
+  /**
+   * Optional IPv4 of the gostop-backend host. When set, creates an A record
+   * `api.${domainName}` so the SPA can reach the backend over HTTPS
+   * (host serves its own LE cert directly; not fronted by CloudFront).
+   */
+  apiBackendIp?: string;
 }
 
 /**
@@ -42,7 +48,7 @@ export class GostopSiteStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: GostopSiteStackProps) {
     super(scope, id, props);
 
-    const { domainName, subdomains = ['www'], basicAuthTokens } = props;
+    const { domainName, subdomains = ['www'], basicAuthTokens, apiBackendIp } = props;
 
     // ---- Hosted zone ----
     // Created here so apex + subdomains share one zone. Porkbun NS records
@@ -179,6 +185,16 @@ function handler(event) {
         target: route53.RecordTarget.fromAlias(
           new targets.CloudFrontTarget(distribution),
         ),
+      });
+    }
+
+    // ---- api.${domainName} -> backend host (direct A record, not CloudFront) ----
+    if (apiBackendIp) {
+      new route53.ARecord(this, 'ApiBackendARecord', {
+        zone: hostedZone,
+        recordName: `api.${domainName}`,
+        target: route53.RecordTarget.fromIpAddresses(apiBackendIp),
+        ttl: cdk.Duration.minutes(5),
       });
     }
 
