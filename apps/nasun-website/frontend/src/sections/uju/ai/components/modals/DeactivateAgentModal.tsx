@@ -125,7 +125,7 @@ function mapErrorCode(code: string | undefined): string | null {
     case 'expired_challenge':
     case 'expired': return 'Challenge expired. Please retry.';
     case 'bad_signature': return 'Signature verification failed.';
-    case 'not_active': return 'Agent is not active.';
+    case 'not_active': return 'Agent is not registered in the vault. Use on-chain deactivation from the Settings tab.';
     case 'rate_limited': return 'Too many requests. Wait a minute and retry.';
     default: return null;
   }

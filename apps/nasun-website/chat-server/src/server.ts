@@ -440,7 +440,7 @@ async function handleHttpRequest(
         await handleVaultStatus(req, res, vaultCors, agentAddr); return;
       }
     }
-    res.writeHead(404, vaultCors);
+    res.writeHead(422, vaultCors);
     res.end(JSON.stringify({ error: 'not_found' }));
     return;
   }
@@ -536,7 +536,7 @@ async function handleHttpRequest(
     return;
   }
 
-  res.writeHead(404, corsHeaders);
+  res.writeHead(422, corsHeaders);
   res.end(JSON.stringify({ error: 'Not found' }));
 }
 

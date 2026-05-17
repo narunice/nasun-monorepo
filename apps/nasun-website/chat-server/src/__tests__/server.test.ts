@@ -57,7 +57,7 @@ function setupServer(): void {
       res.end(JSON.stringify({ status: 'ok' }));
       return;
     }
-    res.writeHead(404);
+    res.writeHead(422);
     res.end();
   });
 
@@ -688,9 +688,9 @@ describe('Health Check', () => {
     expect(body.status).toBe('ok');
   });
 
-  it('returns 404 for unknown paths', async () => {
+  it('returns 422 for unknown paths (not 404 to avoid CloudFront SPA fallback)', async () => {
     const res = await fetch(`http://localhost:${serverPort}/unknown`);
-    expect(res.status).toBe(404);
+    expect(res.status).toBe(422);
   });
 });
 

@@ -195,12 +195,28 @@ export async function handleVaultChallenge(
   // PR2.A A3: chain ownership pre-check at challenge issue. For
   // vault-upload, capabilityId is fresh (user-provided). For delete/restore,
   // resolve from the agent_keys row.
+  //
+  // vault-delete needs an active row (deleted_at IS NULL).
+  // vault-restore needs a soft-deleted row (deleted_at IS NOT NULL) — use a
+  // separate query so that capability_id can still be resolved and verified.
   let resolvedCapId = capabilityId;
   if (purpose !== 'vault-upload') {
+    const isDelete = purpose === 'vault-delete';
     const row = getDb()
-      .prepare(`SELECT capability_id FROM agent_keys WHERE agent_address = ?`)
+      .prepare(
+        isDelete
+          ? `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NULL`
+          : `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1`,
+      )
       .get(agentAddress.toLowerCase()) as { capability_id: string | null } | undefined;
-    resolvedCapId = row?.capability_id ?? null;
+    // Fail fast at challenge time: no point prompting the user to sign a
+    // challenge that the action handler will immediately reject.
+    if (!row) {
+      writeJson(res, 422, corsHeaders, {
+        error: isDelete ? 'not_active' : 'not_vaulted',
+      }); return;
+    }
+    resolvedCapId = row.capability_id;
   }
   if (resolvedCapId) {
     const ok = await verifyCapabilityOwner(resolvedCapId, ownerWallet);
@@ -426,7 +442,7 @@ export async function handleVaultDelete(
     )
     .get(agentAddress.toLowerCase(), result.entry.wallet) as
       { pm2_name: string } | undefined;
-  if (!row) { writeJson(res, 404, corsHeaders, { error: 'not_active' }); return; }
+  if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_active' }); return; }
 
   await withAgentLock(agentAddress.toLowerCase(), async () => {
     try {
@@ -476,7 +492,7 @@ export async function handleVaultRestore(
      WHERE agent_address = ? AND wallet_address = ?`
   ).get(agentAddress.toLowerCase(), result.entry.wallet) as
     { param_name: string; pm2_name: string; deleted_at: number | null } | undefined;
-  if (!row) { writeJson(res, 404, corsHeaders, { error: 'not_vaulted' }); return; }
+  if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_vaulted' }); return; }
   if (row.deleted_at === null) { writeJson(res, 409, corsHeaders, { error: 'still_active' }); return; }
   const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
   if (Date.now() - row.deleted_at > sevenDaysMs) {
