@@ -15,6 +15,7 @@ import FloorPage from './pages/FloorPage'
 import AuthCallbackPage from './pages/AuthCallbackPage'
 import DashboardPage from './pages/DashboardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
+import ReplayPage from './pages/ReplayPage'
 import TransparencyPage from './pages/TransparencyPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
 
@@ -94,6 +95,7 @@ export default function App() {
           <Route path="/me" element={<Navigate to="/suite" replace />} />
           <Route path="/games/history" element={<Navigate to="/suite?tab=history" replace />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/replay/lottery/:sessionId" element={<ReplayPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />

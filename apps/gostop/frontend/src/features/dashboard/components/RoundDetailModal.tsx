@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useRound } from '../../../lib/api/queries';
 import type { RecentRound, RoundDetail } from '../../../lib/api/types';
+import { normalizeSessionHex } from '../../replay/sessionId';
 import {
   fmtAbsoluteTime,
   fmtUsdc,
@@ -61,7 +63,36 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
         )}
 
         {data && <RoundBody data={data} />}
+
+        {data && data.extras.kind === 'lottery' && (
+          <ReplayFooterLink game="lottery" sessionIdHex={data.session_id} />
+        )}
       </div>
+    </div>
+  );
+}
+
+function ReplayFooterLink({
+  game,
+  sessionIdHex,
+}: {
+  game: 'lottery';
+  sessionIdHex: string;
+}) {
+  // Backend echoes the canonical (lowercase, no-0x) session_id from the URL
+  // it received, but normalize defensively so a future format tweak does not
+  // produce a broken link silently.
+  const normalized = normalizeSessionHex(sessionIdHex);
+  if (!normalized) return null;
+  return (
+    <div className="pt-3 border-t border-gold-subtle flex justify-end">
+      <Link
+        to={`/replay/${game}/${normalized}`}
+        className="inline-flex items-center gap-1 text-sm text-gold-200 hover:text-gold-100"
+      >
+        View full replay
+        <span aria-hidden>→</span>
+      </Link>
     </div>
   );
 }
