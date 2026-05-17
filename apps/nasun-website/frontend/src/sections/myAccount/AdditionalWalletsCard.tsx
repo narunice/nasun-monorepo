@@ -227,14 +227,20 @@ function SolanaWalletsSection({
   const addState = useAddVerifiedSolanaAddress();
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeWallet, setActiveWallet] = useState<SolWalletName | null>(null);
 
   const onAdd = useCallback(
     async (walletName: SolWalletName) => {
       setError(null);
       addState.reset();
-      const result = await addState.add(walletName);
-      if (!result && addState.phase === "error") {
-        setError(addState.errorMessage);
+      setActiveWallet(walletName);
+      try {
+        const result = await addState.add(walletName);
+        if (!result && addState.phase === "error") {
+          setError(addState.errorMessage);
+        }
+      } finally {
+        setActiveWallet(null);
       }
     },
     [addState],
@@ -332,7 +338,7 @@ function SolanaWalletsSection({
             onClick={() => onAdd("phantom")}
             disabled={!canAdd || busy}
           >
-            {busy
+            {activeWallet === "phantom" && busy
               ? addState.phase === "signing"
                 ? "Sign in wallet…"
                 : addState.phase === "verifying"
@@ -350,7 +356,15 @@ function SolanaWalletsSection({
             onClick={() => onAdd("solflare")}
             disabled={!canAdd || busy}
           >
-            {busy ? "Working…" : hasPrimary ? "Add via Solflare" : "Verify with Solflare"}
+            {activeWallet === "solflare" && busy
+              ? addState.phase === "signing"
+                ? "Sign in wallet…"
+                : addState.phase === "verifying"
+                  ? "Verifying…"
+                  : "Connecting…"
+              : hasPrimary
+                ? "Add via Solflare"
+                : "Verify with Solflare"}
           </UjuButton>
         )}
         {installed.length === 0 && (

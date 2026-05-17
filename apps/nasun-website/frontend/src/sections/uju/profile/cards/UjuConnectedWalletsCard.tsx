@@ -265,14 +265,20 @@ const SuiSubsection: FC = () => {
   const addState = useAddVerifiedSuiAddress();
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [activeWallet, setActiveWallet] = useState<string | null>(null);
 
   const onAdd = useCallback(
     async (walletName: string) => {
       setError(null);
       addState.reset();
-      const result = await addState.add(walletName);
-      if (!result && addState.phase === "error") {
-        setError(addState.errorMessage);
+      setActiveWallet(walletName);
+      try {
+        const result = await addState.add(walletName);
+        if (!result && addState.phase === "error") {
+          setError(addState.errorMessage);
+        }
+      } finally {
+        setActiveWallet(null);
       }
     },
     [addState],
@@ -331,7 +337,7 @@ const SuiSubsection: FC = () => {
         )}
       </div>
 
-      {hasPrimary ? (
+      {hasPrimary && (
         <ul className="space-y-2">
           {verified.map((entry) => (
             <SuiWalletRow
@@ -343,12 +349,6 @@ const SuiSubsection: FC = () => {
             />
           ))}
         </ul>
-      ) : (
-        <p className="text-sm text-uju-secondary font-light">
-          Connect a Sui wallet and sign a one-time message to register an
-          external address. Display-only — Nasun never initiates Sui
-          transactions on your behalf.
-        </p>
       )}
 
       <div className="mt-3 flex items-center gap-2 flex-wrap">
@@ -357,25 +357,26 @@ const SuiSubsection: FC = () => {
             Install Slush, Suiet, or Sui Wallet to register a Sui address.
           </span>
         )}
-        {installed.map((name) => (
-          <UjuButton
-            key={name}
-            variant="secondary"
-            size="xs"
-            onClick={() => onAdd(name)}
-            disabled={!canAdd || busy}
-          >
-            {busy
-              ? addState.phase === "signing"
-                ? "Sign in wallet…"
-                : addState.phase === "verifying"
-                  ? "Verifying…"
-                  : "Connecting…"
-              : hasPrimary
-                ? `Add via ${name}`
-                : `Verify with ${name}`}
-          </UjuButton>
-        ))}
+        {installed.map((name) => {
+          const isActive = activeWallet === name;
+          return (
+            <UjuButton
+              key={name}
+              variant="secondary"
+              size="xs"
+              onClick={() => onAdd(name)}
+              disabled={!canAdd || busy}
+            >
+              {isActive && busy
+                ? addState.phase === "signing"
+                  ? "Sign in wallet…"
+                  : addState.phase === "verifying"
+                    ? "Verifying…"
+                    : "Connecting…"
+                : `Add via ${name}`}
+            </UjuButton>
+          );
+        })}
         {hasPrimary && !canAdd && (
           <span className="text-sm text-uju-secondary">
             Maximum reached. Remove one to add another.
