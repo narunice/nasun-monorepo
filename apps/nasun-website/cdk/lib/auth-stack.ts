@@ -405,6 +405,72 @@ export class AuthStack extends cdk.Stack {
       exportName: 'SolanaAdditionalApiUrl',
     });
 
+    // Sui additional-address binding. Mirrors the Solana flow but uses
+    // `@mysten/sui/verify` (BCS personal-message intent + Ed25519). Nonces
+    // share the EVM table under a `sui_additional:` key prefix.
+    const suiAdditionalFunction = new NodejsFunction(this, 'SuiAdditionalFunction', {
+      functionName: 'nasun-auth-sui-additional',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      entry: path.join(lambdaSrcPath, 'auth-sui-additional', 'src', 'index.ts'),
+      handler: 'handler',
+      depsLockFilePath,
+      bundling: bundlingOptions, // @mysten/sui bundled (only @aws-sdk/* is external)
+      timeout: cdk.Duration.seconds(15),
+      environment: {
+        NONCE_TABLE_NAME: nonceTable.tableName,
+        USER_PROFILES_TABLE: props.userProfilesTable.tableName,
+        COGNITO_IDENTITY_POOL_ID: (() => {
+          const poolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
+          if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for sui additional-address JWT auth');
+          return poolId;
+        })(),
+        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        NODE_OPTIONS: '--enable-source-maps',
+      },
+      logGroup: new logs.LogGroup(this, 'SuiAdditionalLambdaLogGroup', {
+        logGroupName: '/aws/lambda/nasun-auth-sui-additional',
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+    });
+
+    nonceTable.grantReadWriteData(suiAdditionalFunction);
+    props.userProfilesTable.grantReadWriteData(suiAdditionalFunction);
+
+    const suiAdditionalApi = new apigw.RestApi(this, 'SuiAdditionalApi', {
+      restApiName: 'Sui Additional Address API',
+      description: 'JWT-authed endpoints for verifying Sui addresses (personal-message signature) and per-app bindings',
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ['POST', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+      deployOptions: {
+        // Challenge endpoint does a Scan for cross-account uniqueness; same
+        // throttling profile as the Solana sibling.
+        throttlingBurstLimit: 20,
+        throttlingRateLimit: 10,
+      },
+    });
+
+    const suiAdditional = suiAdditionalApi.root.addResource('additional-address');
+    suiAdditional.addMethod('DELETE', new apigw.LambdaIntegration(suiAdditionalFunction));
+    const suiAddChallenge = suiAdditional.addResource('challenge');
+    suiAddChallenge.addMethod('POST', new apigw.LambdaIntegration(suiAdditionalFunction));
+    const suiAddVerify = suiAdditional.addResource('verify');
+    suiAddVerify.addMethod('POST', new apigw.LambdaIntegration(suiAdditionalFunction));
+    const suiAddLabel = suiAdditional.addResource('label');
+    suiAddLabel.addMethod('PATCH', new apigw.LambdaIntegration(suiAdditionalFunction));
+
+    const suiAddAppBinding = suiAdditionalApi.root.addResource('app-binding');
+    suiAddAppBinding.addMethod('PATCH', new apigw.LambdaIntegration(suiAdditionalFunction));
+
+    new cdk.CfnOutput(this, 'SuiAdditionalApiUrl', {
+      value: suiAdditionalApi.url,
+      description: 'The URL of the Sui Additional Address API',
+      exportName: 'SuiAdditionalApiUrl',
+    });
+
     // ========================================
     // zkLogin Authentication (2026-01-01 추가)
     // ========================================
@@ -599,6 +665,7 @@ export class AuthStack extends cdk.Stack {
       { id: 'MetaMaskAuthWafAssociation', api: this.metamaskAuthApi },
       { id: 'MetaMaskAdditionalWafAssociation', api: metamaskAdditionalApi },
       { id: 'SolanaAdditionalWafAssociation', api: solanaAdditionalApi },
+      { id: 'SuiAdditionalWafAssociation', api: suiAdditionalApi },
       { id: 'ZkLoginAuthWafAssociation', api: this.zkLoginAuthApi },
       { id: 'SuiAuthWafAssociation', api: this.suiAuthApi },
     ];
