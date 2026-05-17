@@ -19,6 +19,8 @@ import { env } from '../env.js';
 import { closeAll } from '../db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { leaderboardRoutes } from './routes/leaderboard.js';
+import { createFeedWsServer, isFeedUpgrade } from './ws/feed-server.js';
+import { startFeedListener, stopFeedListener } from './ws/listen-notify.js';
 
 const app = new Hono();
 
@@ -52,9 +54,31 @@ const server = serve({ fetch: app.fetch, port: env.api.port }, (info) => {
   console.log('[gostop-api] listening', { port: info.port });
 });
 
+// WS feed wiring (PR2). Attached to the same http.Server so a single TCP port
+// serves both Hono HTTP and ws upgrades. Disabled entirely when FEED_ENABLED=false.
+if (env.feed.enabled) {
+  const wss = createFeedWsServer();
+  server.on('upgrade', (req, socket, head) => {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    if (isFeedUpgrade(url.pathname)) {
+      wss.handleUpgrade(req, socket, head, (ws) => {
+        wss.emit('connection', ws, req);
+      });
+    } else {
+      // Anything else on this port has no WS handler — close cleanly so a
+      // misrouted client doesn't hang.
+      socket.destroy();
+    }
+  });
+  startFeedListener().catch((err) => {
+    console.error('[gostop-api] feed listener failed to start', err);
+  });
+}
+
 async function shutdown(signal: string): Promise<void> {
   console.log('[gostop-api] shutting down', { signal });
   server.close();
+  if (env.feed.enabled) await stopFeedListener();
   await closeAll();
   process.exit(0);
 }

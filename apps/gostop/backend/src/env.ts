@@ -63,6 +63,18 @@ export const env = {
     whaleBetThresholdRaw: BigInt(opt('WHALE_BET_THRESHOLD_RAW', '100000000')),
     whalePayoutThresholdRaw: BigInt(opt('WHALE_PAYOUT_THRESHOLD_RAW', '500000000')),
     streakMin: num('STREAK_FEED_MIN', 5),
+    // Salt for anon_id derivation in visibility-mask. Must be stable across
+    // restarts so an opted-in-then-anonymous wallet keeps the same anon_id.
+    // Fall back to the JWT secret to avoid an extra deploy footgun, but a
+    // dedicated value is preferred so rotating one doesn't unmask the other.
+    anonSalt: opt('FEED_ANON_SALT', '') || opt('AUTH_JWT_SECRET', 'fallback-anon-salt'),
+    // Channel name for Postgres LISTEN/NOTIFY fan-out. Indexer NOTIFYs here
+    // after committing INSERTs; API process LISTENs and broadcasts via hub.
+    channel: opt('FEED_PG_CHANNEL', 'gostop_feed'),
+    // Ring buffer size per topic for replay-on-connect.
+    ringSize: num('FEED_RING_SIZE', 20),
+    // Disable WS feed entirely (kill-switch for incident response).
+    enabled: bool('FEED_ENABLED', true),
   },
 
   alerts: {
