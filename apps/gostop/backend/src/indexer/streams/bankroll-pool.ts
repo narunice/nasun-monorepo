@@ -13,6 +13,11 @@
 import { STREAMS } from '../../config/contracts.js';
 import { writer } from '../../db/client.js';
 import { runStream, normalizeAddr } from './_runner.js';
+import {
+  notifyFeed,
+  payloadFromGameRound,
+  isWhalePayload,
+} from '../notify-feed.js';
 
 const GAME_RESULT_STREAM = STREAMS.find((s) => s.key === 'bankroll_pool::GameResult')!;
 const BET_REFUNDED_STREAM = STREAMS.find((s) => s.key === 'bankroll_pool::BetRefunded')!;
@@ -49,7 +54,20 @@ export async function tickGameResult(): Promise<number> {
       session_id: Buffer.from(evt.parsedJson.session_id),
       timestamp_ms: evt.parsedJson.timestamp_ms,
     }));
-    const result = await sql`
+    type InsertedRow = {
+      tx_digest: string;
+      event_seq: number;
+      game_id: number;
+      player: string;
+      bet_amount: string;
+      payout: string;
+      multiplier_bps: string;
+      timestamp_ms: string;
+    };
+    // Note: leaving the sql template generic unbound — combining an explicit
+    // generic with the bulk-INSERT helper (sql(rows, 'col', ...)) breaks
+    // overload resolution. Cast the result instead.
+    const insertedRaw = await sql`
       INSERT INTO gostop.game_round ${sql(
         rows,
         'tx_digest', 'event_seq', 'game_id', 'player',
@@ -57,8 +75,22 @@ export async function tickGameResult(): Promise<number> {
         'session_id', 'timestamp_ms'
       )}
       ON CONFLICT (tx_digest, event_seq) DO NOTHING
+      RETURNING tx_digest, event_seq, game_id, player,
+                bet_amount::text AS bet_amount,
+                payout::text AS payout,
+                multiplier_bps::text AS multiplier_bps,
+                timestamp_ms::text AS timestamp_ms
     `;
-    return result.count;
+    const inserted = insertedRaw as unknown as InsertedRow[];
+    // Fan out only NEWLY inserted rows so cursor replays don't double-notify.
+    for (const row of inserted) {
+      const payload = payloadFromGameRound(row, 'round');
+      await notifyFeed(sql, payload);
+      if (isWhalePayload(payload)) {
+        await notifyFeed(sql, { ...payload, kind: 'whale' });
+      }
+    }
+    return inserted.length;
   });
 }
 

@@ -24,6 +24,11 @@
 import { GAMES, STREAMS } from '../../config/contracts.js';
 import { writer } from '../../db/client.js';
 import { runStream, normalizeAddr } from './_runner.js';
+import {
+  notifyFeed,
+  payloadFromGameRound,
+  isWhalePayload,
+} from '../notify-feed.js';
 
 // Mirror of lottery::CLAIM_WINDOW_MS / SWEEP_GRACE_MS (devnet-ids.json) so the
 // indexer doesn't have to fetch the constant from chain. Keep in sync at
@@ -306,7 +311,16 @@ export async function tickLotteryPrizeClaimed(): Promise<number> {
       const payout = BigInt(p.amount);
       const mulBps = bet > 0n ? Number((payout * 10000n) / bet) : 0;
 
-      const r = await sql`
+      const finalized = await sql<Array<{
+        tx_digest: string;
+        event_seq: number;
+        game_id: number;
+        player: string;
+        bet_amount: string;
+        payout: string;
+        multiplier_bps: string;
+        timestamp_ms: string;
+      }>>`
         UPDATE gostop.game_round
         SET payout = ${p.amount}::numeric,
             multiplier_bps = ${mulBps},
@@ -315,8 +329,23 @@ export async function tickLotteryPrizeClaimed(): Promise<number> {
         WHERE game_id = ${LOTTERY_GAME_ID}
           AND session_id = ${sessionId}
           AND status IN ('pending_resolve', 'pending_claim')
+        RETURNING tx_digest, event_seq, game_id, player,
+                  bet_amount::text AS bet_amount,
+                  payout::text AS payout,
+                  multiplier_bps::text AS multiplier_bps,
+                  timestamp_ms::text AS timestamp_ms
       `;
-      touched += r.count;
+      touched += finalized.length;
+      // Feed events: only emit for rows the UPDATE actually transitioned this
+      // call. Status guard above means a replay of the same PrizeClaimed
+      // returns 0 rows and produces no NOTIFY (idempotent fan-out).
+      for (const row of finalized) {
+        const payload = payloadFromGameRound(row, 'round');
+        await notifyFeed(sql, payload);
+        if (isWhalePayload(payload)) {
+          await notifyFeed(sql, { ...payload, kind: 'whale' });
+        }
+      }
     }
     return touched;
   });
