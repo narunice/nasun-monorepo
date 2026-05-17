@@ -106,8 +106,16 @@ export const env = {
     // Channel name for Postgres LISTEN/NOTIFY fan-out. Indexer NOTIFYs here
     // after committing INSERTs; API process LISTENs and broadcasts via hub.
     channel: opt('FEED_PG_CHANNEL', 'gostop_feed'),
-    // Ring buffer size per topic for replay-on-connect.
-    ringSize: num('FEED_RING_SIZE', 20),
+    // Ring buffer size per topic for replay-on-connect. 500 rows × ~250 bytes
+    // = ~125 KB per topic, negligible. Sized to comfortably cover a 30 min
+    // window even during a burst.
+    ringSize: num('FEED_RING_SIZE', 500),
+    // Single source of truth for live-feed window. Used by:
+    //   - indexer notify-feed (suppress historical NOTIFY)
+    //   - hub.replay() cutoff
+    //   - boot-time hydrate query
+    //   - frontend empty-state copy
+    liveWindowMs: num('FEED_LIVE_WINDOW_MS', 30 * 60 * 1000),
     // Disable WS feed entirely (kill-switch for incident response).
     enabled: bool('FEED_ENABLED', true),
   },

@@ -27,6 +27,31 @@ export async function getVisibility(
 export const VISIBILITY_MAP_CACHE_KEY = 'feed:visibility-map';
 const VISIBILITY_MAP_TTL_SECONDS = 30;
 
+/** Raw cached entry array — shared shape for both Map and classification views. */
+async function loadVisibilityEntries(
+  sql: Sql,
+): Promise<Array<[string, FeedVisibility]>> {
+  const cached = cacheGet<Array<[string, FeedVisibility]>>(VISIBILITY_MAP_CACHE_KEY);
+  if (cached) return cached.value;
+  const rows = await sql<Array<{ player: string; feed_visibility: FeedVisibility }>>`
+    SELECT player, feed_visibility
+    FROM gostop.user_settings
+    WHERE feed_visibility <> 'public'
+  `;
+  const entries: Array<[string, FeedVisibility]> = rows.map(
+    (r) => [r.player.toLowerCase(), r.feed_visibility],
+  );
+  cacheSet(VISIBILITY_MAP_CACHE_KEY, entries, VISIBILITY_MAP_TTL_SECONDS);
+  return entries;
+}
+
+/** Map<lowercase player, FeedVisibility> for per-event lookup on the WS path. */
+export async function loadVisibilityMap(
+  sql: Sql,
+): Promise<Map<string, FeedVisibility>> {
+  return new Map(await loadVisibilityEntries(sql));
+}
+
 export type VisibilityClassification = {
   optOut: string[];
   delayed: Set<string>;
@@ -41,19 +66,7 @@ export type VisibilityClassification = {
 export async function loadVisibilityClassification(
   sql: Sql,
 ): Promise<VisibilityClassification> {
-  const cached = cacheGet<Array<[string, FeedVisibility]>>(VISIBILITY_MAP_CACHE_KEY);
-  let entries: Array<[string, FeedVisibility]>;
-  if (cached) {
-    entries = cached.value;
-  } else {
-    const rows = await sql<Array<{ player: string; feed_visibility: FeedVisibility }>>`
-      SELECT player, feed_visibility
-      FROM gostop.user_settings
-      WHERE feed_visibility <> 'public'
-    `;
-    entries = rows.map((r) => [r.player.toLowerCase(), r.feed_visibility]);
-    cacheSet(VISIBILITY_MAP_CACHE_KEY, entries, VISIBILITY_MAP_TTL_SECONDS);
-  }
+  const entries = await loadVisibilityEntries(sql);
   const optOut: string[] = [];
   const delayed = new Set<string>();
   const anonymous = new Set<string>();

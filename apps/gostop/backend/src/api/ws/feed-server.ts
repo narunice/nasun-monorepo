@@ -21,32 +21,14 @@ import type { IncomingMessage } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
 import { reader } from '../../db/client.js';
 import { env } from '../../env.js';
-import { cacheGet, cacheSet } from '../lib/cache.js';
 import { applyMask, type FeedVisibility } from '../lib/visibility-mask.js';
+import { loadVisibilityMap } from '../lib/visibility-lookup.js';
 import { hub, type FeedEvent, type FeedTopic } from './hub.js';
 
 const HEARTBEAT_MS = 30_000;
 const IDLE_TIMEOUT_MS = 60_000;
-const VISIBILITY_CACHE_KEY = 'feed:visibility-map';
-const VISIBILITY_TTL_SECONDS = 30;
 
 type VisibilityMap = Map<string, FeedVisibility>;
-
-async function loadVisibilityMap(): Promise<VisibilityMap> {
-  const cached = cacheGet<Array<[string, FeedVisibility]>>(VISIBILITY_CACHE_KEY);
-  if (cached) return new Map(cached.value);
-  const sql = reader();
-  const rows = await sql<Array<{ player: string; feed_visibility: FeedVisibility }>>`
-    SELECT player, feed_visibility
-    FROM gostop.user_settings
-    WHERE feed_visibility <> 'public'
-  `;
-  const entries: Array<[string, FeedVisibility]> = rows.map(
-    (r) => [r.player.toLowerCase(), r.feed_visibility],
-  );
-  cacheSet(VISIBILITY_CACHE_KEY, entries, VISIBILITY_TTL_SECONDS);
-  return new Map(entries);
-}
 
 function topicFromPath(pathname: string): FeedTopic | null {
   if (pathname === '/api/gostop/feed/live')   return 'live';
@@ -107,12 +89,24 @@ export function createFeedWsServer(): WebSocketServer {
     // new connections see fresh policy within 30s.
     let visibility: VisibilityMap;
     try {
-      visibility = await loadVisibilityMap();
+      visibility = await loadVisibilityMap(reader());
     } catch (err) {
       console.error('[feed-ws] visibility load failed', err);
       ws.close(1011, 'visibility_load_failed');
       return;
     }
+
+    // Hello frame: gives the client `lastEventTs` so it can render
+    // "last round Xm ago" copy even when the live window is currently empty.
+    // `kind: 'hello'` is distinct from any FeedEventKind so clients can
+    // discriminate without ambiguity.
+    safeSend(ws, JSON.stringify({
+      kind: 'hello',
+      topic,
+      lastEventTs: hub.getLastEventTs(topic),
+      liveWindowMs: env.feed.liveWindowMs,
+      now: Date.now(),
+    }));
 
     // Replay-on-connect: serve the ring buffer through the same mask the
     // live stream uses so the policy is consistent across replay+live edge.

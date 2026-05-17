@@ -45,6 +45,10 @@ const TOPICS: readonly FeedTopic[] = ['live', 'whales'] as const;
 
 class FeedHub extends EventEmitter {
   private readonly rings: Map<FeedTopic, FeedEvent[]> = new Map();
+  // Per-topic max event timestamp ever observed. Preserved independent of
+  // ring contents so the frontend can render "last round 12m ago" even after
+  // the ring has been filtered down to zero rows by the live-window cutoff.
+  private readonly lastEventTs: Map<FeedTopic, number> = new Map();
 
   constructor() {
     super();
@@ -59,6 +63,8 @@ class FeedHub extends EventEmitter {
       ring.push(event);
       if (ring.length > env.feed.ringSize) ring.shift();
     }
+    const prev = this.lastEventTs.get(topic) ?? 0;
+    if (event.ts > prev) this.lastEventTs.set(topic, event.ts);
     this.emit(topic, event);
   }
 
@@ -67,12 +73,38 @@ class FeedHub extends EventEmitter {
     return () => this.off(topic, fn);
   }
 
-  /** Snapshot of recent events for replay-on-connect.
-   *  Filters out events older than LIVE_WINDOW_MS so stale catch-up data
-   *  from a previous indexer run is never served to new subscribers. */
+  /** Boot-time seed. Push historical events into the ring without re-emitting
+   *  on the topic — subscribers do not exist yet and we only need replay() to
+   *  return non-empty for the first connection. Caller passes events in
+   *  ascending ts order; we still maintain lastEventTs and ring cap.
+   *
+   *  Idempotent: only seeds when the ring is empty. This also avoids racing
+   *  with live NOTIFY events that may have already populated the ring while
+   *  the hydrate query was in flight — live always wins over historical. */
+  seed(topic: FeedTopic, events: FeedEvent[]): void {
+    const ring = this.rings.get(topic);
+    if (!ring || ring.length > 0) return;
+    for (const ev of events) {
+      ring.push(ev);
+      if (ring.length > env.feed.ringSize) ring.shift();
+      const prev = this.lastEventTs.get(topic) ?? 0;
+      if (ev.ts > prev) this.lastEventTs.set(topic, ev.ts);
+    }
+  }
+
+  /** Snapshot of recent events for replay-on-connect. Filters out events
+   *  older than env.feed.liveWindowMs so stale catch-up data from a previous
+   *  indexer run is never served to new subscribers. */
   replay(topic: FeedTopic): FeedEvent[] {
-    const cutoff = Date.now() - 5 * 60 * 1000;
+    const cutoff = Date.now() - env.feed.liveWindowMs;
     return (this.rings.get(topic) ?? []).filter((ev) => ev.ts > cutoff);
+  }
+
+  /** Last event timestamp ever seen on this topic (independent of live window),
+   *  or 0 if none. Used in the WS hello frame so the client can show
+   *  "last round Xm ago" even during quiet periods. */
+  getLastEventTs(topic: FeedTopic): number {
+    return this.lastEventTs.get(topic) ?? 0;
   }
 }
 

@@ -25,6 +25,7 @@ import { streakRoutes } from './routes/streak.js';
 import { meProfileRoutes } from './routes/me/profile.js';
 import { meDashboardRoutes } from './routes/me/dashboard.js';
 import { createFeedWsServer, isFeedUpgrade } from './ws/feed-server.js';
+import { hydrateFeedRings } from './ws/hydrate.js';
 import { startFeedListener, stopFeedListener } from './ws/listen-notify.js';
 
 const app = new Hono();
@@ -82,6 +83,11 @@ if (env.feed.enabled) {
   });
   startFeedListener().catch((err) => {
     console.error('[gostop-api] feed listener failed to start', err);
+  });
+  // Hydrate ring buffers from the last live-window of game_round so the
+  // first cold-open subscribers don't see an empty feed after a restart.
+  hydrateFeedRings().catch((err) => {
+    console.error('[gostop-api] feed hydrate failed', err);
   });
 }
 

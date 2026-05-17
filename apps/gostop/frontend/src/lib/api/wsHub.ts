@@ -48,10 +48,24 @@ const STABLE_OPEN_MS = 10_000;
 
 type Listener = (ev: FeedEvent) => void;
 
+export interface HelloFrame {
+  kind: 'hello';
+  topic: FeedTopic;
+  // Most recent event timestamp the server has ever observed on this topic
+  // (0 if none since boot). Independent of the current live-window cutoff
+  // so the UI can show "last round 12m ago" during quiet periods.
+  lastEventTs: number;
+  liveWindowMs: number;
+  now: number;
+}
+type HelloListener = (msg: HelloFrame) => void;
+
 interface TopicChannel {
   topic: FeedTopic;
   socket: WebSocket | null;
   listeners: Set<Listener>;
+  helloListeners: Set<HelloListener>;
+  lastHello: HelloFrame | null;
   dedupe: Set<string>;
   // FIFO of dedupe keys to bound the set.
   dedupeOrder: string[];
@@ -137,8 +151,25 @@ function openSocket(ch: TopicChannel): void {
     } catch {
       return;
     }
+    const msg = parsed as { kind?: string };
+    if (msg && msg.kind === 'hello') {
+      const hello = parsed as HelloFrame;
+      ch.lastHello = hello;
+      for (const fn of ch.helloListeners) {
+        try { fn(hello); } catch (err) { console.error('[gostop-ws] hello listener', err); }
+      }
+      return;
+    }
     const ev = parsed as FeedEvent;
     if (!ev || typeof ev.tx_digest !== 'string') return;
+    // Update lastEventTs from observed live events too, so the empty-state
+    // copy keeps rolling even on long-lived sockets that never re-hello.
+    if (ch.lastHello && typeof ev.ts === 'number' && ev.ts > ch.lastHello.lastEventTs) {
+      ch.lastHello = { ...ch.lastHello, lastEventTs: ev.ts };
+      for (const fn of ch.helloListeners) {
+        try { fn(ch.lastHello); } catch (err) { console.error('[gostop-ws] hello listener', err); }
+      }
+    }
     const key = `${ev.tx_digest}:${ev.event_seq}`;
     if (!rememberKey(ch, key)) return;
     for (const fn of ch.listeners) {
@@ -168,6 +199,8 @@ function getChannel(topic: FeedTopic): TopicChannel {
       topic,
       socket: null,
       listeners: new Set(),
+      helloListeners: new Set(),
+      lastHello: null,
       dedupe: new Set(),
       dedupeOrder: [],
       backoffIndex: 0,
@@ -188,6 +221,7 @@ function teardown(ch: TopicChannel): void {
     try { ch.socket.close(1000, 'unsubscribed'); } catch { /* ignore */ }
     ch.socket = null;
   }
+  ch.lastHello = null;
   channels.delete(ch.topic);
 }
 
@@ -228,10 +262,44 @@ export function subscribeFeed(topic: FeedTopic, listener: Listener): () => void 
   }
   return () => {
     ch.listeners.delete(listener);
-    if (ch.listeners.size === 0) {
+    if (ch.listeners.size === 0 && ch.helloListeners.size === 0) {
       teardown(ch);
     }
   };
+}
+
+/**
+ * Subscribe to the per-topic hello/heartbeat frame carrying lastEventTs.
+ * Fires immediately with the cached hello if one is already known, then on
+ * every fresh hello or live-event-derived update.
+ */
+export function subscribeHello(topic: FeedTopic, listener: HelloListener): () => void {
+  installVisibilityHook();
+  const ch = getChannel(topic);
+  ch.helloListeners.add(listener);
+  if (ch.lastHello) listener(ch.lastHello);
+  if (!ch.socket) {
+    openSocket(ch);
+  }
+  return () => {
+    ch.helloListeners.delete(listener);
+    if (ch.listeners.size === 0 && ch.helloListeners.size === 0) {
+      teardown(ch);
+    }
+  };
+}
+
+/** React hook: lastEventTs for a topic (0 if unknown yet). */
+export function useFeedLastEventTs(topic: FeedTopic): number {
+  const [ts, setTs] = useState<number>(0);
+  useEffect(() => {
+    const unsub = subscribeHello(topic, (msg) => setTs(msg.lastEventTs));
+    return () => {
+      unsub();
+      setTs(0);
+    };
+  }, [topic]);
+  return ts;
 }
 
 /**
