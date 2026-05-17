@@ -52,6 +52,7 @@ export const QK = {
   meSettings: () => [...QK.me, 'settings'] as const,
   meEcosystem: () => [...QK.me, 'ecosystem'] as const,
   meRank: () => [...QK.me, 'rank'] as const,
+  meStreak: () => [...QK.me, 'streak'] as const,
   streak: (player: string) => ['gostop', 'streak', player.toLowerCase()] as const,
   transparency: () => ['gostop', 'transparency'] as const,
   lotteryDraws: (limit: number) => ['gostop', 'lottery', 'draws', limit] as const,
@@ -147,6 +148,17 @@ export function useMeEcosystem() {
     staleTime: STALE.ecosystem,
     queryFn: () =>
       apiRequest<MeEcosystem>('/api/gostop/me/ecosystem', { authWallet: walletAddress! }),
+  });
+}
+
+export function useMeStreak() {
+  const { walletAddress, tokenReady } = useGostopAuth();
+  return useQuery({
+    queryKey: QK.meStreak(),
+    enabled: !!walletAddress && tokenReady,
+    staleTime: STALE.streak,
+    queryFn: () =>
+      apiRequest<StreakSummary>('/api/gostop/me/streak', { authWallet: walletAddress! }),
   });
 }
 

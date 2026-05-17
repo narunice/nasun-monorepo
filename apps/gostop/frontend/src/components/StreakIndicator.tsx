@@ -19,7 +19,7 @@ export function StreakIndicator({ player, minLength = 3 }: StreakIndicatorProps)
   const { data } = useStreak(player);
 
   if (!player || !data) return null;
-  if (data.kind === 'none') return null;
+  if (data.kind === null) return null;
   if (data.length < minLength) return null;
 
   const isWin = data.kind === 'win';

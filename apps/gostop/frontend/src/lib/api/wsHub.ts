@@ -50,6 +50,11 @@ const WS_BASE = import.meta.env.VITE_GOSTOP_WS_URL ?? '';
 const DEDUPE_CAP = 1000;
 const BACKOFF_MS = [1_000, 2_000, 4_000, 8_000, 30_000] as const;
 const STABLE_OPEN_MS = 10_000;
+// Throttle live-event-derived hello broadcasts: only fire helloListeners when
+// lastEventTs advances by >= this delta, so "time since last round" UI does
+// not re-render once per event during high-traffic periods. Initial hello
+// frames are always delivered (this only guards the per-event refresh path).
+const HELLO_FIRE_MIN_DELTA_MS = 5_000;
 
 type Listener = (ev: FeedEvent) => void;
 
@@ -71,6 +76,10 @@ interface TopicChannel {
   listeners: Set<Listener>;
   helloListeners: Set<HelloListener>;
   lastHello: HelloFrame | null;
+  // lastEventTs value at which we last broadcast to helloListeners. Tracked
+  // separately from lastHello.lastEventTs so the cached frame stays accurate
+  // for late subscribers even while between-broadcast ticks are skipped.
+  lastFiredEventTs: number;
   dedupe: Set<string>;
   // FIFO of dedupe keys to bound the set.
   dedupeOrder: string[];
@@ -160,6 +169,7 @@ function openSocket(ch: TopicChannel): void {
     if (msg && msg.kind === 'hello') {
       const hello = parsed as HelloFrame;
       ch.lastHello = hello;
+      ch.lastFiredEventTs = hello.lastEventTs;
       for (const fn of ch.helloListeners) {
         try { fn(hello); } catch (err) { console.error('[gostop-ws] hello listener', err); }
       }
@@ -173,10 +183,15 @@ function openSocket(ch: TopicChannel): void {
     if (!KNOWN_KINDS.has(ev.kind)) return;
     // Update lastEventTs from observed live events too, so the empty-state
     // copy keeps rolling even on long-lived sockets that never re-hello.
+    // Broadcast only when the timestamp moved beyond the throttle window;
+    // the cached frame still advances so a late subscriber gets the latest.
     if (ch.lastHello && typeof ev.ts === 'number' && ev.ts > ch.lastHello.lastEventTs) {
       ch.lastHello = { ...ch.lastHello, lastEventTs: ev.ts };
-      for (const fn of ch.helloListeners) {
-        try { fn(ch.lastHello); } catch (err) { console.error('[gostop-ws] hello listener', err); }
+      if (ev.ts - ch.lastFiredEventTs >= HELLO_FIRE_MIN_DELTA_MS) {
+        ch.lastFiredEventTs = ev.ts;
+        for (const fn of ch.helloListeners) {
+          try { fn(ch.lastHello); } catch (err) { console.error('[gostop-ws] hello listener', err); }
+        }
       }
     }
     const key = `${ev.tx_digest}:${ev.event_seq}`;
@@ -210,6 +225,7 @@ function getChannel(topic: FeedTopic): TopicChannel {
       listeners: new Set(),
       helloListeners: new Set(),
       lastHello: null,
+      lastFiredEventTs: 0,
       dedupe: new Set(),
       dedupeOrder: [],
       backoffIndex: 0,
@@ -309,6 +325,23 @@ export function useFeedLastEventTs(topic: FeedTopic): number {
     };
   }, [topic]);
   return ts;
+}
+
+/**
+ * React hook: live-window length (ms) for the topic, as advertised by the
+ * server in its hello frame. Returns null until the hello arrives so callers
+ * can fall back to a static label during initial paint.
+ */
+export function useFeedLiveWindowMs(topic: FeedTopic): number | null {
+  const [ms, setMs] = useState<number | null>(null);
+  useEffect(() => {
+    const unsub = subscribeHello(topic, (msg) => setMs(msg.liveWindowMs));
+    return () => {
+      unsub();
+      setMs(null);
+    };
+  }, [topic]);
+  return ms;
 }
 
 /**

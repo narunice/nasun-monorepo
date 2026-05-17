@@ -13,6 +13,7 @@ import { Hono } from 'hono';
 import { reader, writer } from '../../../db/client.js';
 import { cacheDel } from '../../lib/cache.js';
 import { resolveIdentityId } from '../../lib/identity-resolver.js';
+import { reduceStreak, type StreakRoundInput } from '../../lib/streak.js';
 import type { AuthVars } from '../../auth/middleware.js';
 import { requireAuth } from '../../auth/middleware.js';
 import { env } from '../../../env.js';
@@ -193,6 +194,43 @@ meProfileRoutes.get('/profile', async (c) => {
     display_name: nasunProfile?.displayName ?? null,
     x_handle: nasunProfile?.xHandle ?? null,
     profile_image_url: nasunProfile?.profileImageUrl ?? null,
+    generated_at: Date.now(),
+  });
+});
+
+// ----- GET /me/streak -------------------------------------------------------
+
+// Mirrors the public /streak/:player handler but trusts c.var.wallet (JWT) so
+// the caller's own streak is always available regardless of feed_visibility
+// (anonymous/opt-out players still see their own progress). No path param
+// avoids impersonation; auth middleware on the meProfileRoutes group covers
+// authn. Visibility lookup is intentionally skipped.
+
+type StreakSqlRow = { payout: string; bet_amount: string; timestamp_ms: string };
+const STREAK_ROUND_LOOKBACK = 200;
+
+meProfileRoutes.get('/streak', async (c) => {
+  const wallet = c.get('wallet').toLowerCase();
+  const sql = reader();
+  const rows = await sql<StreakSqlRow[]>`
+    SELECT payout::text, bet_amount::text, timestamp_ms::text
+    FROM gostop.game_round
+    WHERE player = ${wallet} AND status = 'final'
+    ORDER BY timestamp_ms DESC
+    LIMIT ${STREAK_ROUND_LOOKBACK}
+  `;
+  const inputs: StreakRoundInput[] = rows.map((r) => ({
+    payout: BigInt(r.payout),
+    bet_amount: BigInt(r.bet_amount),
+    timestamp_ms: Number(r.timestamp_ms),
+  }));
+  const streak = reduceStreak(inputs);
+  c.header('Cache-Control', 'no-store');
+  return c.json({
+    player: wallet,
+    kind: streak.kind,
+    length: streak.length,
+    started_ts_ms: streak.started_ts_ms,
     generated_at: Date.now(),
   });
 });
