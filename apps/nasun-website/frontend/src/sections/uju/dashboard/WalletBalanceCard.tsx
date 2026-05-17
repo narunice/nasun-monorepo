@@ -25,14 +25,11 @@ import { goToProfileConnectedAccounts } from "../shared/ujuNavigation";
 import { useMyProfile } from "@/features/profile/useMyProfile";
 import { useLinkedAddresses } from "../profile/hooks/useLinkedAddresses";
 import { useValidEvmAddress } from "./positions/useValidEvmAddress";
+import { useValidSuiAddress } from "./positions/useValidSuiAddress";
 import {
   useSolAddressForIdentity,
   useSolAddressStore,
 } from "../stores/solAddressStore";
-import {
-  useSuiAddressStore,
-  useSuiExternalAddress,
-} from "../stores/suiAddressStore";
 import { linkPasteAddress } from "@/services/userProfileApi";
 
 // Plan v5+: read-only testnet for all external chains.
@@ -121,25 +118,13 @@ function useSolTestnetBalance(address: string | null) {
 function useMigrateLegacyLocalStorageAddresses(args: {
   identityId: string | undefined;
   cognitoToken: string | undefined;
-  serverSui: string | null | undefined;
   serverSolana: string | null | undefined;
-  legacySuiExternal: string | undefined;
   legacySol: string | null;
 }) {
-  const {
-    identityId,
-    cognitoToken,
-    serverSui,
-    serverSolana,
-    legacySuiExternal,
-    legacySol,
-  } = args;
+  const { identityId, cognitoToken, serverSolana, legacySol } = args;
 
   useEffect(() => {
     if (!identityId || !cognitoToken) return;
-    if (legacySuiExternal && !serverSui) {
-      linkPasteAddress(cognitoToken, "sui", legacySuiExternal).catch(() => {});
-    }
     if (legacySol && !serverSolana) {
       linkPasteAddress(cognitoToken, "solana", legacySol).catch(() => {});
     }
@@ -171,13 +156,14 @@ export function WalletBalanceCard() {
     chainId: ACTIVE_EVM_CHAIN.id,
   });
 
-  // SUI: backend `linkedSuiAddress` > legacy localStorage external > Nasun-derived.
-  const legacySuiExternal = useSuiExternalAddress(identityId);
-  const suiNasunDerived = account?.address ?? zkState?.address;
-  const suiDisplayAddress =
-    linked.sui ?? legacySuiExternal ?? suiNasunDerived ?? null;
-  const isExternalSui = !!(linked.sui || legacySuiExternal);
-  const hydrateSuiStorage = useSuiAddressStore((s) => s.hydrateFromStorage);
+  // SUI: only the signature-verified primary is accepted. Legacy paste
+  // (root `linkedSuiAddress`) and Nasun-derived fallback are intentionally
+  // NOT surfaced here -- Nasun is currently devnet, so reusing that key
+  // on Sui mainnet is unsafe and was never proven to belong to the user.
+  // Users must register an external Sui wallet via signature.
+  const verifiedSuiAddress = useValidSuiAddress();
+  const suiDisplayAddress = verifiedSuiAddress;
+  const isExternalSui = !!verifiedSuiAddress;
   const {
     data: suiBalance,
     isPending: suiPending,
@@ -195,20 +181,19 @@ export function WalletBalanceCard() {
     isError: solFetchError,
   } = useSolTestnetBalance(solAddress);
 
-  // Hydrate legacy stores on identity change (still needed during migration).
+  // Hydrate legacy Solana store on identity change. SUI's legacy paste flow
+  // was retired alongside the signature-based verify rollout -- see
+  // useValidSuiAddress for the new reader contract.
   useEffect(() => {
     if (identityId) {
       hydrateFromStorage(identityId);
-      hydrateSuiStorage(identityId);
     }
-  }, [identityId, hydrateFromStorage, hydrateSuiStorage]);
+  }, [identityId, hydrateFromStorage]);
 
   useMigrateLegacyLocalStorageAddresses({
     identityId,
     cognitoToken: user?.cognitoToken,
-    serverSui: serverProfile?.linkedSuiAddress,
     serverSolana: serverProfile?.linkedSolanaAddress,
-    legacySuiExternal: legacySuiExternal ?? undefined,
     legacySol: legacySolAddress,
   });
 

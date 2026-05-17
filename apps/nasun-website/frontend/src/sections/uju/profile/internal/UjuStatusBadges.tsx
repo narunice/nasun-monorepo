@@ -28,6 +28,14 @@ export const UjuConnectedBadge: FC = () => (
   </span>
 );
 
+export const UjuPrimaryBadge: FC = () => (
+  <span
+    className="inline-flex items-center px-2 py-0.5 rounded-lg bg-pado-3/15 text-pado-4 text-sm font-medium uppercase tracking-wider border border-pado-3/20"
+  >
+    Primary
+  </span>
+);
+
 export const UjuRegisteredBadge: FC = () => (
   <span
     className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-blue-500/10 text-blue-300 text-sm font-normal uppercase tracking-wider border border-blue-400/20"

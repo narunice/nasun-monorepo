@@ -16,7 +16,7 @@
  */
 
 import { FC, useCallback, useEffect, useRef, useState } from "react";
-import { Trash2, Plus, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
+import { Trash2, Loader2, Pencil, Check, X as XIcon } from "lucide-react";
 import { useUserStore } from "@/store/userStore";
 import {
   useVerifiedEvmAddresses,
@@ -46,9 +46,33 @@ import { UjuCard, UjuSectionHeader, UjuButton } from "@/sections/uju/shared";
 
 interface AdditionalWalletsCardProps {
   className?: string;
+  // When true, render the inner content without the UjuCard wrapper and
+  // section header so the parent (e.g. the unified Connected Wallets card)
+  // can compose this block as a sub-section. The legacy DevMyAccountPage
+  // continues to use the default card-wrapped form.
+  bare?: boolean;
+  evmTitle?: string;
+  solanaTitle?: string;
+  // When false, suppress rendering of the corresponding sub-block so the
+  // parent (e.g. the unified Connected Wallets card) can compose EVM and
+  // Solana sections independently. Both default to true to preserve the
+  // legacy DevMyAccountPage behavior.
+  showEvm?: boolean;
+  showSolana?: boolean;
+  // When false, suppress the section header (used inside the unified card
+  // where each subsection has its own title rendered by the parent).
+  showHeader?: boolean;
 }
 
-export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ className = "" }) => {
+export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({
+  className = "",
+  bare = false,
+  evmTitle = "Ethereum (EVM)",
+  solanaTitle = "Solana",
+  showEvm = true,
+  showSolana = true,
+  showHeader = true,
+}) => {
   const verified = useVerifiedEvmAddresses();
   const meta = useUserStore((s) => s.user?.linkedAccounts?.metamask);
   const addState = useAddVerifiedAddress();
@@ -111,19 +135,21 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ classNam
     addState.phase === "signing" ||
     addState.phase === "verifying";
 
-  return (
-    <UjuCard className={className}>
-      <UjuSectionHeader
-        accent
-        title="Additional Wallets"
-        subtitle="Verify extra wallets so each dApp can pull data from a different address than your primary link."
-      />
+  const inner = (
+    <>
+      {!bare && showHeader && (
+        <UjuSectionHeader
+          accent
+          title="Additional Wallets"
+          subtitle="Verify extra wallets so each dApp can pull data from a different address than your primary link."
+        />
+      )}
 
-      {verified.length > 0 && (
-        <div className="mt-4">
+      {showEvm && verified.length > 0 && (
+        <div className={bare ? "" : "mt-4"}>
           <div className="flex items-baseline justify-between gap-3">
             <h3 className="text-sm font-semibold uppercase tracking-wider text-uju-secondary">
-              Ethereum (EVM)
+              {evmTitle}
             </h3>
             <span className="text-sm text-uju-secondary">{extras.length} / {cap}</span>
           </div>
@@ -144,11 +170,10 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ classNam
 
           <div className="mt-3 flex items-center gap-3 flex-wrap">
             <UjuButton
-              variant="accent"
-              size="sm"
+              variant="secondary"
+              size="xs"
               onClick={onAdd}
               disabled={!canAdd || busy}
-              leadingIcon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             >
               {busy
                 ? addState.phase === "signing"
@@ -156,7 +181,7 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ classNam
                   : addState.phase === "verifying"
                     ? "Verifying…"
                     : "Connecting…"
-                : "Add EVM wallet"}
+                : "Add"}
             </UjuButton>
             {!canAdd && (
               <span className="text-sm text-uju-secondary">
@@ -171,16 +196,33 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({ classNam
         </div>
       )}
 
-      <SolanaWalletsSection verified={solVerified} />
-    </UjuCard>
+      {showSolana && (
+        <SolanaWalletsSection
+          verified={solVerified}
+          title={solanaTitle}
+          bare={bare}
+        />
+      )}
+    </>
   );
+
+  if (bare) return <div className={className}>{inner}</div>;
+  return <UjuCard className={className}>{inner}</UjuCard>;
 };
 
 interface SolanaWalletsSectionProps {
   verified: VerifiedSolanaAddressEntry[];
+  title?: string;
+  // When true, drop the top border-divider since the parent already places
+  // this subsection in a structured stack with its own separators.
+  bare?: boolean;
 }
 
-function SolanaWalletsSection({ verified }: SolanaWalletsSectionProps) {
+function SolanaWalletsSection({
+  verified,
+  title = "Solana",
+  bare = false,
+}: SolanaWalletsSectionProps) {
   const sol = useUserStore((s) => s.user?.linkedAccounts?.solana);
   const addState = useAddVerifiedSolanaAddress();
   const [removingAddress, setRemovingAddress] = useState<string | null>(null);
@@ -251,10 +293,10 @@ function SolanaWalletsSection({ verified }: SolanaWalletsSectionProps) {
   const showSolflareButton = installed.includes("solflare");
 
   return (
-    <div className="mt-6 border-t border-uju-border/40 pt-5">
+    <div className={bare ? "" : "mt-6 border-t border-uju-border/40 pt-5"}>
       <div className="flex items-baseline justify-between gap-3">
         <h3 className="text-sm font-semibold uppercase tracking-wider text-uju-secondary">
-          Solana
+          {title}
         </h3>
         {hasPrimary && <span className="text-sm text-uju-secondary">{extras.length} / {cap}</span>}
       </div>
@@ -285,11 +327,10 @@ function SolanaWalletsSection({ verified }: SolanaWalletsSectionProps) {
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         {showPhantomButton && (
           <UjuButton
-            variant="accent"
-            size="sm"
+            variant="secondary"
+            size="xs"
             onClick={() => onAdd("phantom")}
             disabled={!canAdd || busy}
-            leadingIcon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           >
             {busy
               ? addState.phase === "signing"
@@ -304,11 +345,10 @@ function SolanaWalletsSection({ verified }: SolanaWalletsSectionProps) {
         )}
         {showSolflareButton && (
           <UjuButton
-            variant="accent"
-            size="sm"
+            variant="secondary"
+            size="xs"
             onClick={() => onAdd("solflare")}
             disabled={!canAdd || busy}
-            leadingIcon={busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
           >
             {busy ? "Working…" : hasPrimary ? "Add via Solflare" : "Verify with Solflare"}
           </UjuButton>

@@ -1,19 +1,18 @@
 import { FC } from "react";
-import { UjuConnectedAccountsCard } from "./cards/UjuConnectedAccountsCard";
+import { UjuConnectedWalletsCard } from "./cards/UjuConnectedWalletsCard";
+import { UjuConnectedSocialsCard } from "./cards/UjuConnectedSocialsCard";
 import { UjuDangerZoneCard } from "./cards/UjuDangerZoneCard";
 import { NotificationsPanel } from "./NotificationsPanel";
 import { UjuCard, UjuSectionHeader } from "../shared";
 import { useConsumeScrollTarget } from "../shared/ujuNavigation";
 import { ProfileIdentityBlock } from "@/components/profile/ProfileIdentityBlock";
-import { AdditionalWalletsCard } from "@/sections/myAccount/AdditionalWalletsCard";
 
 export const ProfileTab: FC = () => {
   // Honor the dashboard's "Manage in Connected Wallets..." CTA: when set,
-  // scroll to the Connected Accounts card on mount.
+  // scroll to the Connected Wallets card on mount.
   useConsumeScrollTarget("connected-accounts");
   return (
     <div className="space-y-6 sm:space-y-8 max-w-5xl mx-auto pb-12">
-      {/* 1. Profile Identity (avatar + display name + edit) */}
       <UjuCard>
         <UjuSectionHeader accent title="Profile" subtitle="Change your profile picture and display name" />
         <div className="pt-2">
@@ -21,18 +20,12 @@ export const ProfileTab: FC = () => {
         </div>
       </UjuCard>
 
-      {/* 2. Notifications */}
       <NotificationsPanel />
 
-      {/* 3. Connected Accounts & Socials */}
-      <UjuConnectedAccountsCard />
+      <UjuConnectedWalletsCard />
 
-      {/* 4. Additional verified EVM wallets — appears only after the user
-          has linked a primary metamask above. Lets users verify extra
-          addresses for per-app bindings (Uniswap, Hyperliquid, …). */}
-      <AdditionalWalletsCard />
+      <UjuConnectedSocialsCard />
 
-      {/* 5. Account Deletion & Irreversible Actions */}
       <UjuDangerZoneCard />
     </div>
   );
