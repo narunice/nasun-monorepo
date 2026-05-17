@@ -12,6 +12,7 @@ import {
   WHEEL_RTP_BPS,
 } from '../lib/gostop-config';
 import { useActiveAddress } from '../hooks/useActiveAddress';
+import { StreakIndicator } from '../components/StreakIndicator';
 import { useOptimisticBalance } from '../store/useBalanceStore';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { formatNusdc } from '../lib/format';
@@ -118,6 +119,7 @@ export default function WheelPage() {
           </p>
         </div>
       </header>
+      <div className="flex justify-end"><StreakIndicator player={viewer} /></div>
 
       {error && (
         <div className="panel p-4 border-red-500/50 bg-red-950/40 flex items-center justify-between gap-3">

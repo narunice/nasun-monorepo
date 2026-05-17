@@ -38,8 +38,13 @@ export interface FeedNotifyPayload {
 // payload is ~250 bytes. 4 KB is a generous safety margin.
 const MAX_PAYLOAD_BYTES = 4096;
 
+// Suppress NOTIFY for historical events during indexer catch-up. Only events
+// within this window are broadcast to live subscribers.
+const LIVE_WINDOW_MS = 5 * 60 * 1000;
+
 export async function notifyFeed(sql: Sql, payload: FeedNotifyPayload): Promise<void> {
   if (!env.feed.enabled) return;
+  if (Date.now() - payload.ts > LIVE_WINDOW_MS) return;
   let json: string;
   try {
     json = JSON.stringify(payload);

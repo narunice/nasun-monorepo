@@ -1,8 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { countMatchingNumbers, getTicketTier } from "../lottery-client";
 import { formatNusdc } from "../../../lib/format";
 import { ROUND_STATUS } from "../../../lib/gostop-config";
 import type { Ticket, LotteryRound } from "../lottery-client";
+
+const TICKETS_PER_PAGE = 10;
 
 export function PurchaseConfirmModal({
   count,
@@ -90,6 +92,19 @@ export function MyTickets({
   burningTicketId?: string | null;
   isWalletConnected: boolean;
 }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(tickets.length / TICKETS_PER_PAGE));
+  // Clamp current page when the list shrinks (e.g. after burn/claim).
+  const safePage = Math.min(page, totalPages);
+  const pageTickets = useMemo(
+    () => tickets.slice((safePage - 1) * TICKETS_PER_PAGE, safePage * TICKETS_PER_PAGE),
+    [tickets, safePage],
+  );
+  // Sync state when clamped.
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
   if (!isWalletConnected) {
     return (
       <section className="panel p-7">
@@ -106,11 +121,24 @@ export function MyTickets({
       </section>
     );
   }
+  const showPager = tickets.length > TICKETS_PER_PAGE;
   return (
     <section className="panel p-7">
-      <h2 className="font-display text-2xl text-gold mb-5">My Tickets</h2>
+      <div className="flex items-baseline justify-between gap-3 mb-5 flex-wrap">
+        <h2 className="font-display text-2xl text-gold">My Tickets</h2>
+        <span className="text-sm text-neutral-300">
+          {tickets.length} total
+          {showPager && (
+            <>
+              {" · showing "}
+              {(safePage - 1) * TICKETS_PER_PAGE + 1}–
+              {Math.min(safePage * TICKETS_PER_PAGE, tickets.length)}
+            </>
+          )}
+        </span>
+      </div>
       <ul className="space-y-3">
-        {tickets.map((t) => {
+        {pageTickets.map((t) => {
           const matches = round ? countMatchingNumbers(t.numbers, round.drawnNumbers) : 0;
           const tier = getTicketTier(matches);
           const settled = round?.status === ROUND_STATUS.SETTLED && round.id === t.roundId;
@@ -180,6 +208,33 @@ export function MyTickets({
           );
         })}
       </ul>
+      {showPager && (
+        <nav
+          role="navigation"
+          aria-label="Tickets pagination"
+          className="mt-5 flex items-center justify-center gap-2"
+        >
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={safePage === 1}
+            className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            ← Prev
+          </button>
+          <span className="font-mono text-sm text-neutral-200 min-w-[80px] text-center">
+            {safePage} / {totalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={safePage === totalPages}
+            className="btn-ghost !py-2 !px-4 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Next →
+          </button>
+        </nav>
+      )}
     </section>
   );
 }

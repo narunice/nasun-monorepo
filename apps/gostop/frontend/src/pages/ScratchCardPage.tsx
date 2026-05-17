@@ -8,11 +8,14 @@ import { ScratchResultsGrid } from "../features/scratchcard/components/ScratchRe
 import { ScratchPrizeTable } from "../features/scratchcard/components/ScratchPrizeTable";
 import { NoWinSummaryModal } from "../features/scratchcard/components/ScratchNoWinSummaryModal";
 import { NUSDC_UNIT } from "../lib/constants/assets";
+import { StreakIndicator } from "../components/StreakIndicator";
+import { useActiveAddress } from "../hooks/useActiveAddress";
 
 const CARD_PRICE_NUSDC = 5;
 
 export default function ScratchCardPage() {
   const celebrate = useCelebrate();
+  const walletAddress = useActiveAddress();
   const {
     isWalletConnected,
     isBuying,
@@ -35,6 +38,7 @@ export default function ScratchCardPage() {
   return (
     <div className="space-y-8 min-h-screen">
       <ScratchHeader />
+      <div className="flex justify-end"><StreakIndicator player={walletAddress} /></div>
 
       {error && (
         <div className="panel p-4 border-red-500/50 bg-red-950/40 flex items-center justify-between gap-3">

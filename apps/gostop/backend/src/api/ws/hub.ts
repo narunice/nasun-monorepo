@@ -67,9 +67,12 @@ class FeedHub extends EventEmitter {
     return () => this.off(topic, fn);
   }
 
-  /** Snapshot of recent events for replay-on-connect. */
+  /** Snapshot of recent events for replay-on-connect.
+   *  Filters out events older than LIVE_WINDOW_MS so stale catch-up data
+   *  from a previous indexer run is never served to new subscribers. */
   replay(topic: FeedTopic): FeedEvent[] {
-    return (this.rings.get(topic) ?? []).slice();
+    const cutoff = Date.now() - 5 * 60 * 1000;
+    return (this.rings.get(topic) ?? []).filter((ev) => ev.ts > cutoff);
   }
 }
 

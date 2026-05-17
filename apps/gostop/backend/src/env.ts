@@ -87,4 +87,8 @@ export const env = {
     offPeakStartHour: num('MATVIEW_REFRESH_OFF_PEAK_START_HOUR', 3),
     offPeakEndHour: num('MATVIEW_REFRESH_OFF_PEAK_END_HOUR', 4),
   },
+
+  // Optional: explorer-api base URL for live ecosystem scores + Nasun profiles.
+  // When unset, /me/profile falls back to the daily ecosystem_score_snapshots table.
+  explorerApiUrl: opt('EXPLORER_API_URL', '').replace(/\/+$/, ''),
 } as const;

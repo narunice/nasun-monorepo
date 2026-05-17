@@ -373,6 +373,23 @@
     "aws:cdk:path": "GostopSiteStack/WwwAliasAAAA/Resource"
    }
   },
+  "ApiBackendARecordC79236EE": {
+   "Type": "AWS::Route53::RecordSet",
+   "Properties": {
+    "HostedZoneId": {
+     "Ref": "HostedZoneDB99F866"
+    },
+    "Name": "api.gostop.app.",
+    "ResourceRecords": [
+     "54.180.61.196"
+    ],
+    "TTL": "300",
+    "Type": "A"
+   },
+   "Metadata": {
+    "aws:cdk:path": "GostopSiteStack/ApiBackendARecord/Resource"
+   }
+  },
   "CDKMetadata": {
    "Type": "AWS::CDK::Metadata",
    "Properties": {

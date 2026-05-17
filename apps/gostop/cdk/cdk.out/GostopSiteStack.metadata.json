@@ -120,6 +120,12 @@
       "data": "WwwAliasAAAAE1599A9F"
     }
   ],
+  "/GostopSiteStack/ApiBackendARecord/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiBackendARecordC79236EE"
+    }
+  ],
   "/GostopSiteStack/CDKMetadata/Default": [
     {
       "type": "aws:cdk:logicalId",

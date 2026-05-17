@@ -1,45 +1,45 @@
 {
   "version": "53.0.0",
   "artifacts": {
-    "GostopSiteStack.assets": {
+    "GostopSiteStagingStack.assets": {
       "type": "cdk:asset-manifest",
       "properties": {
-        "file": "GostopSiteStack.assets.json",
+        "file": "GostopSiteStagingStack.assets.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
       }
     },
-    "GostopSiteStack": {
+    "GostopSiteStagingStack": {
       "type": "aws:cloudformation:stack",
-      "environment": "aws://466841130170/us-east-1",
+      "environment": "aws://135808943968/us-east-1",
       "properties": {
-        "templateFile": "GostopSiteStack.template.json",
+        "templateFile": "GostopSiteStagingStack.template.json",
         "terminationProtection": false,
         "tags": {
-          "Environment": "production",
+          "Environment": "staging",
           "ManagedBy": "cdk",
           "Project": "gostop"
         },
         "validateOnSynth": false,
-        "assumeRoleArn": "arn:${AWS::Partition}:iam::466841130170:role/cdk-hnb659fds-deploy-role-466841130170-us-east-1",
-        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::466841130170:role/cdk-hnb659fds-cfn-exec-role-466841130170-us-east-1",
-        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-466841130170-us-east-1/c64ef7cf375620d5858a63e7c904a291d5816669686d8d29c1550a4a6621b5c5.json",
+        "assumeRoleArn": "arn:${AWS::Partition}:iam::135808943968:role/cdk-hnb659fds-deploy-role-135808943968-us-east-1",
+        "cloudFormationExecutionRoleArn": "arn:${AWS::Partition}:iam::135808943968:role/cdk-hnb659fds-cfn-exec-role-135808943968-us-east-1",
+        "stackTemplateAssetObjectUrl": "s3://cdk-hnb659fds-assets-135808943968-us-east-1/8db8ef32703fec888beae572b6ace549dac6e7612d51ea0bf5e68d2f50c46e8c.json",
         "requiresBootstrapStackVersion": 6,
         "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version",
         "additionalDependencies": [
-          "GostopSiteStack.assets"
+          "GostopSiteStagingStack.assets"
         ],
         "lookupRole": {
-          "arn": "arn:${AWS::Partition}:iam::466841130170:role/cdk-hnb659fds-lookup-role-466841130170-us-east-1",
+          "arn": "arn:${AWS::Partition}:iam::135808943968:role/cdk-hnb659fds-lookup-role-135808943968-us-east-1",
           "requiresBootstrapStackVersion": 8,
           "bootstrapStackVersionSsmParameter": "/cdk-bootstrap/hnb659fds/version"
         }
       },
       "dependencies": [
-        "GostopSiteStack.assets"
+        "GostopSiteStagingStack.assets"
       ],
-      "additionalMetadataFile": "GostopSiteStack.metadata.json",
-      "displayName": "GostopSiteStack"
+      "additionalMetadataFile": "GostopSiteStagingStack.metadata.json",
+      "displayName": "GostopSiteStagingStack"
     },
     "Tree": {
       "type": "cdk:tree",

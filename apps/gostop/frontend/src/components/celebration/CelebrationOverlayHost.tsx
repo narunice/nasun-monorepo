@@ -35,15 +35,19 @@ export function CelebrationOverlayHost({ onComplete }: Props) {
   // Mount via portal so the celebration sits above modals (z-90) but below
   // canvas-confetti (z-80). We use a higher layer (z-90) for the overlay so
   // the share button is interactive.
+  // Backdrop catches outside clicks and dismisses immediately so users do not
+  // have to wait out the auto-dismiss timer (loss = 6s, wins = 4.2-7.5s).
+  // Inner panel uses stopPropagation so clicks on the panel itself stay.
   return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-start justify-center p-4 pt-[12vh] pointer-events-none"
+      className="fixed inset-0 z-[90] flex items-start justify-center p-4 pt-[12vh] pointer-events-auto"
       role="status"
       aria-live="polite"
       aria-atomic="true"
+      onClick={onComplete}
     >
       {config.variant === 'loss' ? (
-        <div key={config.key} className="pointer-events-auto panel p-6 sm:p-10 md:p-12 w-full max-w-xl border-red-500/40 backdrop-blur-md relative overflow-hidden">
+        <div key={config.key} onClick={(e) => e.stopPropagation()} className="pointer-events-auto panel p-6 sm:p-10 md:p-12 w-full max-w-xl border-red-500/40 backdrop-blur-md relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(220,38,38,0.22),transparent_60%)] pointer-events-none" />
           <p className="relative text-xs uppercase tracking-[0.3em] text-red-300/80 text-center mb-2">
             {config.gameLabel}
@@ -51,9 +55,13 @@ export function CelebrationOverlayHost({ onComplete }: Props) {
           <LossReaction onComplete={onComplete} />
         </div>
       ) : config.variant === 'slam' ? (
-        <SlamWinCelebration key={config.key} config={config} onComplete={onComplete} />
+        <div onClick={(e) => e.stopPropagation()}>
+          <SlamWinCelebration key={config.key} config={config} onComplete={onComplete} />
+        </div>
       ) : (
-        <TieredWinCelebration key={config.key} config={config} onComplete={onComplete} />
+        <div onClick={(e) => e.stopPropagation()}>
+          <TieredWinCelebration key={config.key} config={config} onComplete={onComplete} />
+        </div>
       )}
     </div>,
     document.body,

@@ -235,16 +235,20 @@ export async function tickLotteryNumbersDrawn(): Promise<number> {
     // lottery_ticket holds. Reconciler will fix the rest.
     for (const evt of envs) {
       const drawnTs = evt.timestampMs ?? '0';
+      const drawTx = evt.id.txDigest;
       await sql`
         INSERT INTO gostop.lottery_round (round_number, round_id, draw_time_ms, close_time_ms,
-                                          drawn_numbers, drawn_at_ms, claim_deadline_ms)
+                                          drawn_numbers, drawn_at_ms, claim_deadline_ms,
+                                          draw_tx_digest)
         VALUES (${evt.parsedJson.round_number}, ${evt.parsedJson.round_id},
                 ${drawnTs}, ${drawnTs},
                 ${evt.parsedJson.drawn_numbers}, ${drawnTs},
-                ${String(BigInt(drawnTs) + BigInt(CLAIM_WINDOW_MS))})
+                ${String(BigInt(drawnTs) + BigInt(CLAIM_WINDOW_MS))},
+                ${drawTx})
         ON CONFLICT (round_number) DO UPDATE
-          SET drawn_numbers = EXCLUDED.drawn_numbers,
-              drawn_at_ms   = EXCLUDED.drawn_at_ms
+          SET drawn_numbers  = EXCLUDED.drawn_numbers,
+              drawn_at_ms    = EXCLUDED.drawn_at_ms,
+              draw_tx_digest = EXCLUDED.draw_tx_digest
       `;
     }
     return envs.length;
