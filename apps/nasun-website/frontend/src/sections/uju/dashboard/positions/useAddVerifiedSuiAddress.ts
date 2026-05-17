@@ -6,7 +6,7 @@
 // other dapp-kit-detected wallet) before triggering this hook.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useSignPersonalMessage } from "@mysten/dapp-kit";
+import { useSignPersonalMessage, useCurrentAccount } from "@mysten/dapp-kit";
 import {
   AdditionalSuiApiError,
   requestAdditionalSuiChallenge,
@@ -45,6 +45,19 @@ export function useAddVerifiedSuiAddress(): UseAddVerifiedSuiAddressApi {
 
   const { installed, connect, disconnect } = useSuiWalletAdapter();
   const { mutateAsync: signPersonalMessageAsync } = useSignPersonalMessage();
+  const currentAccount = useCurrentAccount();
+
+  // Slush (and other Wallet-Standard-strict wallets) refuse to sign a
+  // personal message without an explicit chain identifier. dapp-kit's
+  // `useCurrentAccount` exposes the chains the connected account supports;
+  // we forward the first one, falling back to mainnet since this is a
+  // pure ownership proof (no transaction is submitted).
+  const accountChainsRef = useRef<readonly string[] | undefined>(
+    currentAccount?.chains,
+  );
+  useEffect(() => {
+    accountChainsRef.current = currentAccount?.chains;
+  }, [currentAccount]);
 
   // Latest signer captured by `add()`; the rest of the flow only references
   // the ref so the message-signing closure doesn't go stale across renders.
@@ -130,7 +143,12 @@ export function useAddVerifiedSuiAddress(): UseAddVerifiedSuiAddressApi {
         // The Sui personal-message intent prefix is added by the wallet.
         setPhase("signing");
         const messageBytes = new TextEncoder().encode(challenge.message);
-        const signed = await signerRef.current({ message: messageBytes });
+        const chain = (accountChainsRef.current?.[0] ?? "sui:mainnet") as
+          | `${string}:${string}`;
+        const signed = await signerRef.current({
+          message: messageBytes,
+          chain,
+        });
 
         // 4) Verify. The server recovers the signer address from the
         // signature bytes and asserts equality with `canonical`.
