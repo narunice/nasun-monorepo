@@ -22,6 +22,8 @@ import { leaderboardRoutes } from './routes/leaderboard.js';
 import { transparencyRoutes } from './routes/transparency.js';
 import { roundRoutes } from './routes/round.js';
 import { streakRoutes } from './routes/streak.js';
+import { meProfileRoutes } from './routes/me/profile.js';
+import { meDashboardRoutes } from './routes/me/dashboard.js';
 import { createFeedWsServer, isFeedUpgrade } from './ws/feed-server.js';
 import { startFeedListener, stopFeedListener } from './ws/listen-notify.js';
 
@@ -49,6 +51,8 @@ app.route('/api/gostop/leaderboard', leaderboardRoutes);
 app.route('/api/gostop', transparencyRoutes);
 app.route('/api/gostop/round', roundRoutes);
 app.route('/api/gostop/streak', streakRoutes);
+app.route('/api/gostop/me', meProfileRoutes);
+app.route('/api/gostop/me', meDashboardRoutes);
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 app.onError((err, c) => {
