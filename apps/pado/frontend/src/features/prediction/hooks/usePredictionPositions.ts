@@ -50,8 +50,26 @@ export function formatPositionAmount(amount: bigint): string {
   return `${whole}.${trimmedFraction}`;
 }
 
+/**
+ * Bucket key for grouping Positions by (marketId, isYes). Same-bucket
+ * Positions are merge-eligible — they represent the same economic exposure
+ * fragmented across multiple on-chain Position NFT objects (which happens
+ * when a resting buy maker is filled by multiple taker sells over time).
+ */
+export type PositionBucketKey = string;
+
+export function positionBucketKey(marketId: string, isYes: boolean): PositionBucketKey {
+  return `${marketId}:${isYes ? 'Y' : 'N'}`;
+}
+
 export interface UsePredictionPositionsResult {
   positions: Position[];
+  /**
+   * Positions grouped by (marketId, isYes). Use this when emitting a sell or
+   * claim PTB to detect fragmentation and prepend a `merge_positions` call
+   * (see `buildBucketPositionArg` / `buildMergePositionsChained`).
+   */
+  positionsByBucket: Map<PositionBucketKey, Position[]>;
   isLoading: boolean;
   error: Error | null;
   refetch: () => void;
@@ -134,8 +152,21 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
     refetchInterval: adaptiveInterval,
   });
 
+  const positions = data || [];
+  const positionsByBucket = new Map<PositionBucketKey, Position[]>();
+  for (const p of positions) {
+    const key = positionBucketKey(p.marketId, p.isYes);
+    const arr = positionsByBucket.get(key);
+    if (arr) {
+      arr.push(p);
+    } else {
+      positionsByBucket.set(key, [p]);
+    }
+  }
+
   return {
-    positions: data || [],
+    positions,
+    positionsByBucket,
     isLoading,
     error: error as Error | null,
     refetch,

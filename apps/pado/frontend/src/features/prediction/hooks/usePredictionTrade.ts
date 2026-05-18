@@ -26,7 +26,27 @@ import {
   buildClaimCancelledRefund,
   buildClaimWinnings,
   buildBurnLosingPosition,
+  buildBucketPositionArg,
+  type PositionArg,
 } from '../transactions';
+
+/**
+ * Bucket spec — a list of Position NFT IDs in the same (marketId, isYes)
+ * bucket. When length > 1, the caller wants auto-merge: a `merge_positions`
+ * call is prepended to the PTB and the chained Position is consumed by the
+ * action (sell/claim/burn). When length === 1, behavior is identical to the
+ * pre-merge API.
+ */
+export type PositionRef = string | readonly string[];
+
+function resolvePositionRef(
+  tx: Transaction,
+  marketId: string,
+  ref: PositionRef,
+): PositionArg {
+  if (typeof ref === 'string') return ref;
+  return buildBucketPositionArg(tx, marketId, ref);
+}
 import { buildCreateBalanceManager } from '../../trading/transactions';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
@@ -94,14 +114,14 @@ interface UsePredictionTradeResult {
   ) => Promise<TradeResult>;
   settlePositionsBatch: (
     marketId: string,
-    positions: Array<{ positionId: string; won: boolean }>,
+    positions: Array<{ position: PositionRef; won: boolean }>,
   ) => Promise<TradeResult>;
   settleRefundsBatch: (
     marketId: string,
-    positionIds: string[],
+    positions: PositionRef[],
   ) => Promise<TradeResult>;
   settleMultiMarketBatch: (
-    items: Array<{ marketId: string; positionId: string; kind: 'claim' | 'burn' | 'refund' }>,
+    items: Array<{ marketId: string; position: PositionRef; kind: 'claim' | 'burn' | 'refund' }>,
   ) => Promise<TradeResult>;
 
   placeBuyTaker: (
@@ -125,7 +145,7 @@ interface UsePredictionTradeResult {
   ) => Promise<TradeResult>;
   placeSellTaker: (
     marketId: string,
-    positionId: string,
+    position: PositionRef,
     minPriceBps: number,
     restOnNoFill: boolean,
   ) => Promise<TradeResult>;
@@ -137,7 +157,7 @@ interface UsePredictionTradeResult {
   ) => Promise<TradeResult>;
   placeSellMaker: (
     marketId: string,
-    positionId: string,
+    position: PositionRef,
     priceBps: number,
   ) => Promise<TradeResult>;
   mintTokens: (marketId: string, amountUnits: bigint) => Promise<TradeResult>;
@@ -156,9 +176,9 @@ interface UsePredictionTradeResult {
     orderId: number | bigint,
   ) => Promise<TradeResult>;
   cancelExpiredMarket: (marketId: string) => Promise<TradeResult>;
-  claimCancelledRefund: (marketId: string, positionId: string) => Promise<TradeResult>;
-  claimWinnings: (marketId: string, positionId: string) => Promise<TradeResult>;
-  burnLosingPosition: (marketId: string, positionId: string) => Promise<TradeResult>;
+  claimCancelledRefund: (marketId: string, position: PositionRef) => Promise<TradeResult>;
+  claimWinnings: (marketId: string, position: PositionRef) => Promise<TradeResult>;
+  burnLosingPosition: (marketId: string, position: PositionRef) => Promise<TradeResult>;
   requestNusdc: () => Promise<TradeResult>;
 }
 
@@ -609,15 +629,18 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   const placeSellTaker = useCallback(
-    (marketId: string, positionId: string, minPriceBps: number, restOnNoFill: boolean) =>
-      runOperation(
+    (marketId: string, position: PositionRef, minPriceBps: number, restOnNoFill: boolean) => {
+      const opKey = typeof position === 'string' ? position : position[0] ?? 'empty';
+      return runOperation(
         marketId,
-        `sell-taker:${positionId}`,
+        `sell-taker:${opKey}`,
         (tx) => {
-          buildPlaceSellTaker(tx, marketId, positionId, minPriceBps, restOnNoFill);
+          const posArg = resolvePositionRef(tx, marketId, position);
+          buildPlaceSellTaker(tx, marketId, posArg, minPriceBps, restOnNoFill);
         },
         restOnNoFill ? 'Limit sell submitted' : 'Sell filled',
-      ),
+      );
+    },
     [runOperation],
   );
 
@@ -642,13 +665,18 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   const placeSellMaker = useCallback(
-    (marketId: string, positionId: string, priceBps: number) =>
-      runOperation(
+    (marketId: string, position: PositionRef, priceBps: number) => {
+      const opKey = typeof position === 'string' ? position : position[0] ?? 'empty';
+      return runOperation(
         marketId,
-        `sell-maker:${positionId}:${priceBps}`,
-        (tx) => buildPlaceSellMaker(tx, marketId, positionId, priceBps),
+        `sell-maker:${opKey}:${priceBps}`,
+        (tx) => {
+          const posArg = resolvePositionRef(tx, marketId, position);
+          buildPlaceSellMaker(tx, marketId, posArg, priceBps);
+        },
         'Limit sell resting',
-      ),
+      );
+    },
     [runOperation],
   );
 
@@ -726,35 +754,50 @@ export function usePredictionTrade(): UsePredictionTradeResult {
   );
 
   const claimCancelledRefund = useCallback(
-    (marketId: string, positionId: string) =>
-      runOperation(
+    (marketId: string, position: PositionRef) => {
+      const opKey = typeof position === 'string' ? position : position[0] ?? 'empty';
+      return runOperation(
         marketId,
-        `claim-cancelled:${positionId}`,
-        (tx) => buildClaimCancelledRefund(tx, marketId, positionId),
+        `claim-cancelled:${opKey}`,
+        (tx) => {
+          const posArg = resolvePositionRef(tx, marketId, position);
+          buildClaimCancelledRefund(tx, marketId, posArg);
+        },
         'Cancelled-market refund claimed',
-      ),
+      );
+    },
     [runOperation],
   );
 
   const claimWinnings = useCallback(
-    (marketId: string, positionId: string) =>
-      runOperation(
+    (marketId: string, position: PositionRef) => {
+      const opKey = typeof position === 'string' ? position : position[0] ?? 'empty';
+      return runOperation(
         marketId,
-        `claim-winnings:${positionId}`,
-        (tx) => buildClaimWinnings(tx, marketId, positionId),
+        `claim-winnings:${opKey}`,
+        (tx) => {
+          const posArg = resolvePositionRef(tx, marketId, position);
+          buildClaimWinnings(tx, marketId, posArg);
+        },
         'Winnings claimed',
-      ),
+      );
+    },
     [runOperation],
   );
 
   const burnLosingPosition = useCallback(
-    (marketId: string, positionId: string) =>
-      runOperation(
+    (marketId: string, position: PositionRef) => {
+      const opKey = typeof position === 'string' ? position : position[0] ?? 'empty';
+      return runOperation(
         marketId,
-        `burn:${positionId}`,
-        (tx) => buildBurnLosingPosition(tx, marketId, positionId),
+        `burn:${opKey}`,
+        (tx) => {
+          const posArg = resolvePositionRef(tx, marketId, position);
+          buildBurnLosingPosition(tx, marketId, posArg);
+        },
         'Losing position cleared',
-      ),
+      );
+    },
     [runOperation],
   );
 
@@ -795,22 +838,29 @@ export function usePredictionTrade(): UsePredictionTradeResult {
    * freshly-minted Positions from ask-side refunds) and passes them all here.
    */
   const settlePositionsBatch = useCallback(
-    (marketId: string, positions: Array<{ positionId: string; won: boolean }>) =>
+    (marketId: string, positions: Array<{ position: PositionRef; won: boolean }>) =>
       runOperation(
         marketId,
         'recover:phase-b',
         (tx) => {
           // Gas budget scales with chunk size so a 100-Position chunk does not
           // get capped at the default dry-run estimate. Numbers are conservative
-          // first-cut; tune from `[claim-all]` console telemetry.
+          // first-cut; tune from `[claim-all]` console telemetry. Per-bucket
+          // merge_positions adds ~1 moveCall per bucket; we treat it as part of
+          // the per-position cost (negligible vs the dominant claim/burn cost).
           const BASE_BUDGET = 50_000_000;
           const PER_POSITION = 3_000_000;
-          tx.setGasBudget(BASE_BUDGET + PER_POSITION * positions.length);
+          const totalLots = positions.reduce(
+            (sum, p) => sum + (typeof p.position === 'string' ? 1 : p.position.length),
+            0,
+          );
+          tx.setGasBudget(BASE_BUDGET + PER_POSITION * totalLots);
           for (const p of positions) {
+            const posArg = resolvePositionRef(tx, marketId, p.position);
             if (p.won) {
-              buildClaimWinnings(tx, marketId, p.positionId);
+              buildClaimWinnings(tx, marketId, posArg);
             } else {
-              buildBurnLosingPosition(tx, marketId, p.positionId);
+              buildBurnLosingPosition(tx, marketId, posArg);
             }
           }
         },
@@ -826,16 +876,21 @@ export function usePredictionTrade(): UsePredictionTradeResult {
    * positions afterwards.
    */
   const settleRefundsBatch = useCallback(
-    (marketId: string, positionIds: string[]) =>
+    (marketId: string, positions: PositionRef[]) =>
       runOperation(
         marketId,
         'refund:batch',
         (tx) => {
           const BASE_BUDGET = 50_000_000;
           const PER_POSITION = 3_000_000;
-          tx.setGasBudget(BASE_BUDGET + PER_POSITION * positionIds.length);
-          for (const id of positionIds) {
-            buildClaimCancelledRefund(tx, marketId, id);
+          const totalLots = positions.reduce(
+            (sum, p) => sum + (typeof p === 'string' ? 1 : p.length),
+            0,
+          );
+          tx.setGasBudget(BASE_BUDGET + PER_POSITION * totalLots);
+          for (const p of positions) {
+            const posArg = resolvePositionRef(tx, marketId, p);
+            buildClaimCancelledRefund(tx, marketId, posArg);
           }
         },
         'Refunds claimed',
@@ -856,7 +911,7 @@ export function usePredictionTrade(): UsePredictionTradeResult {
    * markets — full correctness comes from the caller's refetchPositions().
    */
   const settleMultiMarketBatch = useCallback(
-    (items: Array<{ marketId: string; positionId: string; kind: 'claim' | 'burn' | 'refund' }>) => {
+    (items: Array<{ marketId: string; position: PositionRef; kind: 'claim' | 'burn' | 'refund' }>) => {
       if (items.length === 0) {
         return Promise.resolve({ success: true } as TradeResult);
       }
@@ -866,14 +921,19 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         (tx) => {
           const BASE_BUDGET = 50_000_000;
           const PER_ACTION = 3_000_000;
-          tx.setGasBudget(BASE_BUDGET + PER_ACTION * items.length);
+          const totalLots = items.reduce(
+            (sum, it) => sum + (typeof it.position === 'string' ? 1 : it.position.length),
+            0,
+          );
+          tx.setGasBudget(BASE_BUDGET + PER_ACTION * totalLots);
           for (const it of items) {
+            const posArg = resolvePositionRef(tx, it.marketId, it.position);
             if (it.kind === 'claim') {
-              buildClaimWinnings(tx, it.marketId, it.positionId);
+              buildClaimWinnings(tx, it.marketId, posArg);
             } else if (it.kind === 'burn') {
-              buildBurnLosingPosition(tx, it.marketId, it.positionId);
+              buildBurnLosingPosition(tx, it.marketId, posArg);
             } else {
-              buildClaimCancelledRefund(tx, it.marketId, it.positionId);
+              buildClaimCancelledRefund(tx, it.marketId, posArg);
             }
           }
         },

@@ -38,44 +38,59 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
   // to catch up (~5-8s lag) before re-enabling the button.
   const [claimPhase, setClaimPhase] = useState<'idle' | 'claiming' | 'syncing'>('idle');
 
-  const { winningShares, settleable } = useMemo(() => {
+  const { winningShares, settleable, totalLots } = useMemo(() => {
     if (market.status !== 'resolved' || market.outcome === undefined) {
-      return { winningShares: 0n, settleable: [] as Array<{ positionId: string; won: boolean }> };
+      return {
+        winningShares: 0n,
+        settleable: [] as Array<{ position: readonly string[]; won: boolean }>,
+        totalLots: 0,
+      };
     }
     const outcome = market.outcome;
     let wonShares = 0n;
-    const work: Array<{ positionId: string; won: boolean }> = [];
+    // Bucket by isYes — same-side Position lots are auto-merged in the PTB so
+    // they consume one claim/burn moveCall per bucket (not per lot).
+    const yesIds: string[] = [];
+    const noIds: string[] = [];
     for (const p of positions) {
-      const won = p.isYes === outcome;
-      if (won) wonShares += p.shares;
-      work.push({ positionId: p.id, won });
+      if (p.isYes) {
+        yesIds.push(p.id);
+        if (outcome) wonShares += p.shares;
+      } else {
+        noIds.push(p.id);
+        if (!outcome) wonShares += p.shares;
+      }
     }
-    return { winningShares: wonShares, settleable: work };
+    const work: Array<{ position: readonly string[]; won: boolean }> = [];
+    if (yesIds.length > 0) work.push({ position: yesIds, won: outcome === true });
+    if (noIds.length > 0) work.push({ position: noIds, won: outcome === false });
+    return { winningShares: wonShares, settleable: work, totalLots: yesIds.length + noIds.length };
   }, [positions, market.status, market.outcome]);
 
   const handleClaimAll = useCallback(async () => {
     if (settleable.length === 0 || claimPhase !== 'idle') return;
     setClaimPhase('claiming');
-    setProgress({ done: 0, total: settleable.length });
+    setProgress({ done: 0, total: totalLots });
     const startedAt = Date.now();
     let done = 0;
     for (let i = 0; i < settleable.length; i += CLAIM_CHUNK_SIZE) {
       const chunk = settleable.slice(i, i + CLAIM_CHUNK_SIZE);
       const chunkStart = Date.now();
       const result = await settlePositionsBatch(market.id, chunk);
+      const chunkLots = chunk.reduce((sum, c) => sum + c.position.length, 0);
       console.info(
-        `[claim-all] chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(settleable.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+        `[claim-all] chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(settleable.length / CLAIM_CHUNK_SIZE)} buckets=${chunk.length} lots=${chunkLots} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
       );
       if (!result.success) {
         // settlePositionsBatch already showed an error toast. Enter syncing
         // phase so the button stays disabled while the indexer catches up.
         break;
       }
-      done += chunk.length;
-      setProgress({ done, total: settleable.length });
+      done += chunkLots;
+      setProgress({ done, total: totalLots });
       onSettled?.();
     }
-    console.info(`[claim-all] total settled=${done}/${settleable.length} elapsed=${Date.now() - startedAt}ms`);
+    console.info(`[claim-all] total settled=${done}/${totalLots} elapsed=${Date.now() - startedAt}ms`);
 
     // Gate the button for 8s while the owned-object indexer catches up (5-8s
     // typical lag). Without this, a refetch still showing settled positions as
@@ -91,7 +106,9 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
   const hasWinnings = winningShares > 0n;
   const payout = Number(winningShares) / Math.pow(10, NUSDC_DECIMALS);
   const outcomeLabel = market.outcome ? 'YES' : 'NO';
-  const showClaimAll = settleable.length >= 2;
+  // settleable.length is bucket count (≤ 2: YES + NO); totalLots is the
+  // underlying Position NFT count visible to the user.
+  const showClaimAll = totalLots >= 2;
   const isBusy = claimPhase !== 'idle';
 
   const buttonLabel =
@@ -99,7 +116,7 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
       ? 'Syncing...'
       : progress
         ? `Settling ${progress.done} / ${progress.total}…`
-        : `Claim All (${settleable.length} position${settleable.length === 1 ? '' : 's'})`;
+        : `Claim All (${totalLots} position${totalLots === 1 ? '' : 's'})`;
 
   return (
     <div

@@ -77,8 +77,19 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
     [positions, yesProbability, noProbability],
   );
 
+  // Lots in the same (market, side) bucket as the selected Position. When the
+  // user fires a sell, we feed *all* of them to `placeSellTaker` so the PTB
+  // auto-merges them first (single signature). If the bucket already has one
+  // Position, this is a no-op (string-typed positionId, identical behavior).
+  const sellBucketIds = useMemo(() => {
+    if (!sellingPosition) return null;
+    return positions
+      .filter((p) => p.marketId === sellingPosition.marketId && p.isYes === sellingPosition.isYes)
+      .map((p) => p.id);
+  }, [sellingPosition, positions]);
+
   const handleSellConfirm = useCallback(async () => {
-    if (!sellModalPosition || !sellingPosition) return;
+    if (!sellModalPosition || !sellingPosition || !sellBucketIds) return;
     setError(null);
 
     const priceNusdc = parseFloat(sellPriceNusdc);
@@ -90,7 +101,9 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
     // NUSDC price -> bps (0.65 NUSDC = 6500 bps).
     const minPriceBps = Math.floor(priceNusdc * 10000);
     // Limit-style sell: rest the unfilled remainder as a maker order.
-    const result = await placeSellTaker(market.id, sellModalPosition, minPriceBps, true);
+    // Pass the full bucket so fragmented Position NFTs auto-merge inside the
+    // same PTB (single signature).
+    const result = await placeSellTaker(market.id, sellBucketIds, minPriceBps, true);
     if (result.success) {
       setSellModalPosition(null);
       setSellPriceNusdc('');
@@ -98,7 +111,7 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
     } else {
       setError(result.error || 'Failed to place sell order');
     }
-  }, [sellModalPosition, sellingPosition, sellPriceNusdc, market.id, placeSellTaker, startSync]);
+  }, [sellModalPosition, sellingPosition, sellBucketIds, sellPriceNusdc, market.id, placeSellTaker, startSync]);
 
   const handleClaim = useCallback(
     async (positionId: string) => {
@@ -106,9 +119,16 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
       const position = positions.find((p) => p.id === positionId);
       if (!position) return;
 
+      // Auto-merge sibling lots in the same (market, side) bucket so the
+      // claim/burn/refund consumes a single merged Position. Single signature
+      // for the user even when their wallet holds many fragments.
+      const bucketIds = positions
+        .filter((p) => p.marketId === position.marketId && p.isYes === position.isYes)
+        .map((p) => p.id);
+
       // Cancelled markets: claim collateral refund regardless of side.
       if (market.status === 'cancelled') {
-        const result = await claimCancelledRefund(market.id, positionId);
+        const result = await claimCancelledRefund(market.id, bucketIds);
         if (!result.success) setError(result.error || 'Failed to claim refund');
         else startSync();
         return;
@@ -116,8 +136,8 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
 
       const isWinning = market.status === 'resolved' && position.isYes === market.outcome;
       const result = isWinning
-        ? await claimWinnings(market.id, positionId)
-        : await burnLosingPosition(market.id, positionId);
+        ? await claimWinnings(market.id, bucketIds)
+        : await burnLosingPosition(market.id, bucketIds);
       if (!result.success) setError(result.error || 'Failed to settle position');
       else startSync();
     },

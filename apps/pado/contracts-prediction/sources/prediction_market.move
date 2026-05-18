@@ -43,6 +43,8 @@ const ECapacityExceeded: u64 = 18;
 const ENoFillsAtMarketPrice: u64 = 19;
 const EOrderNotFound: u64 = 20;
 const EWrongMarket: u64 = 21;
+const EMergeEmpty: u64 = 22;
+const EMergeMismatch: u64 = 23;
 
 // ===== Constants =====
 const MAX_PRICE: u64 = 10000;                       // 100% in basis points (NUSDC = 6 decimals)
@@ -248,6 +250,15 @@ public struct RestingOrderRefunded has copy, drop {
     owner: address,
     locked_nusdc: u64,
     shares: u64,
+}
+
+public struct PositionsMerged has copy, drop {
+    market_id: ID,
+    owner: address,
+    is_yes: bool,
+    count: u64,                                     // number of input Positions consumed
+    total_shares: u64,
+    total_cost_basis: u64,
 }
 
 // ===== Init =====
@@ -979,6 +990,85 @@ public fun burn_losing_position(
     } else {
         market.no_supply = market.no_supply - shares;
     };
+}
+
+// ===== Position Merge =====
+
+/// Merge N >= 1 same-(market, side) Position NFTs into a single Position.
+/// All inputs are consumed; the resulting Position is returned by value so
+/// callers can chain it into the next moveCall (e.g. place_sell_taker) within
+/// the same PTB. For a standalone "just merge and keep" flow, use
+/// `merge_positions_entry` which transfers the merged Position to the sender.
+///
+/// Lossless: Position carries only (market_id, is_yes, shares, cost_basis);
+/// shares and cost_basis are additively combined, identifiers unchanged.
+///
+/// Safety:
+/// - All inputs must share market_id and is_yes (else EMergeMismatch).
+/// - The passed &Market must match market_id (else EWrongMarket); prevents
+///   cross-market consolidation within a single tx.
+/// - Owned-object semantics guarantee only the sender can supply their own
+///   Position values; no transfer-redirection vector.
+public fun merge_positions(
+    market: &Market,
+    mut positions: vector<Position>,
+    ctx: &mut TxContext,
+): Position {
+    let n = vector::length(&positions);
+    assert!(n >= 1, EMergeEmpty);
+
+    let first = vector::pop_back(&mut positions);
+    let Position { id: first_id, market_id, is_yes, mut shares, mut cost_basis } = first;
+    object::delete(first_id);
+
+    assert!(market_id == object::id(market), EWrongMarket);
+
+    while (!vector::is_empty(&positions)) {
+        let p = vector::pop_back(&mut positions);
+        let Position {
+            id,
+            market_id: m2,
+            is_yes: y2,
+            shares: s2,
+            cost_basis: c2,
+        } = p;
+        assert!(m2 == market_id, EMergeMismatch);
+        assert!(y2 == is_yes, EMergeMismatch);
+        shares = shares + s2;
+        cost_basis = cost_basis + c2;
+        object::delete(id);
+    };
+    vector::destroy_empty(positions);
+
+    event::emit(PositionsMerged {
+        market_id,
+        owner: tx_context::sender(ctx),
+        is_yes,
+        count: n,
+        total_shares: shares,
+        total_cost_basis: cost_basis,
+    });
+
+    Position {
+        id: object::new(ctx),
+        market_id,
+        is_yes,
+        shares,
+        cost_basis,
+    }
+}
+
+/// Standalone "merge and keep" entry — wraps `merge_positions` and transfers
+/// the resulting Position to the sender. Used when the frontend wants to tidy
+/// up positions without chaining into a sell/claim.
+public fun merge_positions_entry(
+    market: &Market,
+    positions: vector<Position>,
+    ctx: &mut TxContext,
+) {
+    let sender = tx_context::sender(ctx);
+    let merged = merge_positions(market, positions, ctx);
+    transfer::transfer(merged, sender);
 }
 
 // ===== Admin: Extend Deadline / Void Market =====

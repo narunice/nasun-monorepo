@@ -14,14 +14,20 @@ use prediction::prediction_market::{
     place_buy_maker,
     place_sell_maker,
     place_buy_taker,
+    place_sell_taker,
     cancel_order,
     cancel_expired_market,
     claim_resting_order_refund,
+    claim_cancelled_refund,
     resolve_market,
     claim_winnings,
+    burn_losing_position,
+    merge_positions,
+    merge_positions_entry,
     get_position_shares,
     is_position_yes,
     get_position_cost_basis,
+    get_position_market,
     get_yes_supply,
     get_no_supply,
     get_total_volume,
@@ -583,6 +589,709 @@ fun test_cancel_bid_returns_nusdc() {
         let received = ts::take_from_sender<Coin<NUSDC>>(scenario);
         assert!(coin::value(&received) == 30 * NUSDC_UNIT, 22);
         ts::return_to_sender(scenario, received);
+    };
+
+    ts::end(scenario_val);
+}
+
+// ============================================
+// Position Merge Tests
+// ============================================
+
+/// Helper — take all Positions in sender's inventory filtered by is_yes.
+fun take_positions_by_side(scenario: &Scenario, want_yes: bool): vector<Position> {
+    let ids = ts::ids_for_sender<Position>(scenario);
+    let mut out = vector::empty<Position>();
+    let mut i = 0;
+    while (i < vector::length(&ids)) {
+        let pos = ts::take_from_sender_by_id<Position>(scenario, *vector::borrow(&ids, i));
+        if (is_position_yes(&pos) == want_yes) {
+            vector::push_back(&mut out, pos);
+        } else {
+            ts::return_to_sender(scenario, pos);
+        };
+        i = i + 1;
+    };
+    out
+}
+
+/// Merge with a single input must be the identity on shares/cost_basis.
+#[test]
+fun test_merge_single_position_identity() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 50 * NUSDC_UNIT);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let (yes_pos, no_pos) = take_yes_no_positions(scenario);
+        ts::return_to_sender(scenario, no_pos);
+
+        let mut inputs = vector::empty<Position>();
+        vector::push_back(&mut inputs, yes_pos);
+
+        let merged = merge_positions(&market, inputs, ts::ctx(scenario));
+        assert!(is_position_yes(&merged) == true, 1);
+        assert!(get_position_shares(&merged) == 50 * NUSDC_UNIT, 2);
+        assert!(get_position_cost_basis(&merged) == 50 * NUSDC_UNIT, 3);
+
+        // Return merged to sender so scenario can drop it.
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Merge 3 same-side Positions → sums of shares and cost_basis.
+#[test]
+fun test_merge_three_same_side() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    // Mint 3 times → 3 YES + 3 NO positions for USER1.
+    user_mints(scenario, USER1, 30 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 70 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 100 * NUSDC_UNIT);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 3, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        assert!(is_position_yes(&merged) == true, 2);
+        assert!(get_position_shares(&merged) == 200 * NUSDC_UNIT, 3);
+        assert!(get_position_cost_basis(&merged) == 200 * NUSDC_UNIT, 4);
+
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// merge_positions_entry — standalone "merge and keep" path, leaves a single
+/// Position in sender's inventory.
+#[test]
+fun test_merge_positions_entry_consolidates_inventory() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 25 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 75 * NUSDC_UNIT);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let no_positions = take_positions_by_side(scenario, false);
+        assert!(vector::length(&no_positions) == 2, 1);
+
+        merge_positions_entry(&market, no_positions, ts::ctx(scenario));
+        ts::return_shared(market);
+    };
+
+    // After entry call, USER1's inventory contains: 2 YES (untouched) + 1 merged NO.
+    ts::next_tx(scenario, USER1);
+    {
+        let no_after = take_positions_by_side(scenario, false);
+        assert!(vector::length(&no_after) == 1, 2);
+        let merged = vector::borrow(&no_after, 0);
+        assert!(get_position_shares(merged) == 100 * NUSDC_UNIT, 3);
+        assert!(get_position_cost_basis(merged) == 100 * NUSDC_UNIT, 4);
+        let mut leftover = no_after;
+        let m = vector::pop_back(&mut leftover);
+        vector::destroy_empty(leftover);
+        ts::return_to_sender(scenario, m);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Mixing YES and NO Positions must abort with EMergeMismatch (23).
+#[test]
+#[expected_failure(abort_code = 23, location = prediction::prediction_market)]
+fun test_merge_mixed_sides_aborts() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 50 * NUSDC_UNIT);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let (yes_pos, no_pos) = take_yes_no_positions(scenario);
+
+        let mut inputs = vector::empty<Position>();
+        vector::push_back(&mut inputs, yes_pos);
+        vector::push_back(&mut inputs, no_pos);
+
+        let merged = merge_positions(&market, inputs, ts::ctx(scenario));
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Empty vector input must abort with EMergeEmpty (22).
+#[test]
+#[expected_failure(abort_code = 22, location = prediction::prediction_market)]
+fun test_merge_empty_vector_aborts() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let inputs = vector::empty<Position>();
+        let merged = merge_positions(&market, inputs, ts::ctx(scenario));
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Passing a Market reference whose ID does not match the Positions' market_id
+/// must abort with EWrongMarket (21). Set up two markets, then try to merge a
+/// market-1 Position while passing market-2 as the &Market arg.
+///
+/// Deterministic: market2 is identified by ID; we mint in market1 and then
+/// take_shared_by_id(market2) for the merge call.
+#[test]
+#[expected_failure(abort_code = 21, location = prediction::prediction_market)]
+fun test_merge_wrong_market_aborts() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+
+    let market1_id = setup_market(scenario);
+
+    // Create market 2.
+    ts::next_tx(scenario, CREATOR);
+    {
+        let admin_cap = ts::take_from_sender<AdminCap>(scenario);
+        let clock = setup_clock(scenario);
+        create_market(
+            &admin_cap,
+            b"Second market?".to_string(),
+            b"Another test".to_string(),
+            b"sports".to_string(),
+            b"https://example.com/source2".to_string(),
+            b"Resolves YES if Y happens".to_string(),
+            START_TIME_MS + CLOSE_OFFSET_MS,
+            START_TIME_MS + RESOLVE_OFFSET_MS,
+            RESOLVER,
+            &clock,
+            ts::ctx(scenario),
+        );
+        ts::return_to_sender(scenario, admin_cap);
+        clock::destroy_for_testing(clock);
+    };
+
+    // Capture market 2's ID (it is the only shared Market not equal to market1_id).
+    let market2_id: ID = {
+        ts::next_tx(scenario, USER1);
+        let m1 = ts::take_shared_by_id<Market>(scenario, market1_id);
+        let m2 = ts::take_shared<Market>(scenario);
+        let id2 = object::id(&m2);
+        ts::return_shared(m1);
+        ts::return_shared(m2);
+        id2
+    };
+
+    // Mint in market 1 (user_mints uses generic take_market — which is fine when
+    // only one shared Market is open; ensure deterministic mint into market1 by
+    // returning market2 first via explicit take.)
+    ts::next_tx(scenario, USER1);
+    {
+        // Park market2 out of the way (already returned above, no-op here).
+        let mut market1 = ts::take_shared_by_id<Market>(scenario, market1_id);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 40 * NUSDC_UNIT);
+        mint_outcome_tokens(&mut market1, payment, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market1);
+    };
+
+    // Take market2 explicitly, attempt to merge market-1 Position against it.
+    ts::next_tx(scenario, USER1);
+    {
+        let market2 = ts::take_shared_by_id<Market>(scenario, market2_id);
+        let (yes_pos, no_pos) = take_yes_no_positions(scenario);
+        ts::return_to_sender(scenario, no_pos);
+
+        let mut inputs = vector::empty<Position>();
+        vector::push_back(&mut inputs, yes_pos);
+
+        // yes_pos.market_id == market1_id; passing market2 must abort EWrongMarket.
+        let merged = merge_positions(&market2, inputs, ts::ctx(scenario));
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market2);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Integration: merge two YES positions, then claim_winnings on the merged NFT.
+/// Payout must equal Σ shares.
+#[test]
+fun test_merge_then_claim_winnings() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 40 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 60 * NUSDC_UNIT);
+
+    // Resolve YES.
+    ts::next_tx(scenario, RESOLVER);
+    {
+        let mut market = take_market(scenario);
+        let mut clock = clock::create_for_testing(ts::ctx(scenario));
+        clock::set_for_testing(&mut clock, START_TIME_MS + CLOSE_OFFSET_MS + 1_000);
+        resolve_market(&mut market, true, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // Merge then claim in the same tx.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        claim_winnings(&mut market, merged, ts::ctx(scenario));
+
+        // U1 minted 40 + 60 = 100 NUSDC total. Pool starts at 100. Claim of 100
+        // (shares = 40 + 60) drains it to 0. NO positions remain unburned but
+        // are losers and carry no claim on the pool.
+        assert!(get_collateral_balance(&market) == 0, 2);
+        assert!(get_yes_supply(&market) == 0, 3);
+
+        ts::return_shared(market);
+    };
+
+    ts::next_tx(scenario, USER1);
+    {
+        let payout = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        assert!(coin::value(&payout) == 100 * NUSDC_UNIT, 4);
+        ts::return_to_sender(scenario, payout);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Integration: merge two NO positions, then burn_losing_position on the merged NFT.
+#[test]
+fun test_merge_then_burn_losing() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 20 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 30 * NUSDC_UNIT);
+
+    // Resolve YES (so NO positions lose).
+    ts::next_tx(scenario, RESOLVER);
+    {
+        let mut market = take_market(scenario);
+        let mut clock = clock::create_for_testing(ts::ctx(scenario));
+        clock::set_for_testing(&mut clock, START_TIME_MS + CLOSE_OFFSET_MS + 1_000);
+        resolve_market(&mut market, true, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // Merge 2 NO positions then burn.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let no_positions = take_positions_by_side(scenario, false);
+        assert!(vector::length(&no_positions) == 2, 1);
+
+        let merged = merge_positions(&market, no_positions, ts::ctx(scenario));
+        burn_losing_position(&mut market, merged, ts::ctx(scenario));
+
+        // NO supply drops by Σ = 50 NUSDC. Two mints created NO supply 50 total.
+        assert!(get_no_supply(&market) == 0, 2);
+
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+// ============================================
+// Position Merge — Edge Cases
+// ============================================
+
+/// Merging Positions with *different* cost_basis values must sum (not average).
+/// Without this guard a naive "merge identical positions" test would pass even
+/// if the implementation averaged or copied first-only.
+#[test]
+fun test_merge_preserves_cost_basis_sum_distinct_values() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    // U1 mints YES via place_sell_maker pattern is awkward; we just use
+    // mint_outcome_tokens which yields equal shares == cost_basis. To get
+    // distinct cost_basis per Position we need fills at different prices.
+    // Easiest: U1 sells YES at 60¢ to U2 (cost_basis=60 for 100 shares), then
+    // U1 sells YES at 80¢ to U3 (cost_basis=80 for 100 shares). U2 then
+    // receives YES from U3 reselling... too complex.
+    //
+    // Simpler: mint twice with different amounts, both yielding identical
+    // cost_basis/shares per Position. To exercise *summation* (not averaging)
+    // we mint amounts that produce distinct numerical values per Position.
+    user_mints(scenario, USER1, 30 * NUSDC_UNIT);   // YES_a: shares=30, cost=30
+    user_mints(scenario, USER1, 70 * NUSDC_UNIT);   // YES_b: shares=70, cost=70
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        // Sum: shares = 30 + 70 = 100; cost_basis = 30 + 70 = 100. Average
+        // would be 50/50, half. Sum is the correct invariant.
+        assert!(get_position_shares(&merged) == 100 * NUSDC_UNIT, 2);
+        assert!(get_position_cost_basis(&merged) == 100 * NUSDC_UNIT, 3);
+
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Merge a larger batch (20 positions) to ensure the loop scales and gas
+/// budget headroom is OK. Conservative — production cap is 256 per call.
+#[test]
+fun test_merge_large_batch_20_same_side() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    let mut i: u64 = 0;
+    while (i < 20) {
+        user_mints(scenario, USER1, 5 * NUSDC_UNIT);
+        i = i + 1;
+    };
+
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 20, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        // 20 × 5 NUSDC = 100 NUSDC total shares + cost.
+        assert!(get_position_shares(&merged) == 100 * NUSDC_UNIT, 2);
+        assert!(get_position_cost_basis(&merged) == 100 * NUSDC_UNIT, 3);
+
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Two-market disagreement at the input vector level (not just &Market vs
+/// inputs). When the first Position has market_id A and a subsequent Position
+/// has market_id B, the merge must abort EMergeMismatch (23) even if &Market
+/// matches the first Position's market.
+#[test]
+#[expected_failure(abort_code = 23, location = prediction::prediction_market)]
+fun test_merge_positions_disagree_on_market_id() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+
+    let market1_id = setup_market(scenario);
+
+    // Create market 2.
+    ts::next_tx(scenario, CREATOR);
+    {
+        let admin_cap = ts::take_from_sender<AdminCap>(scenario);
+        let clock = setup_clock(scenario);
+        create_market(
+            &admin_cap,
+            b"M2".to_string(),
+            b"Test".to_string(),
+            b"sports".to_string(),
+            b"https://ex.com/s2".to_string(),
+            b"Resolves YES".to_string(),
+            START_TIME_MS + CLOSE_OFFSET_MS,
+            START_TIME_MS + RESOLVE_OFFSET_MS,
+            RESOLVER,
+            &clock,
+            ts::ctx(scenario),
+        );
+        ts::return_to_sender(scenario, admin_cap);
+        clock::destroy_for_testing(clock);
+    };
+
+    let market2_id: ID = {
+        ts::next_tx(scenario, USER1);
+        let m1 = ts::take_shared_by_id<Market>(scenario, market1_id);
+        let m2 = ts::take_shared<Market>(scenario);
+        let id2 = object::id(&m2);
+        ts::return_shared(m1);
+        ts::return_shared(m2);
+        id2
+    };
+
+    // Mint a YES Position in market1.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market1 = ts::take_shared_by_id<Market>(scenario, market1_id);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 50 * NUSDC_UNIT);
+        mint_outcome_tokens(&mut market1, payment, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market1);
+    };
+    // Mint a YES Position in market2.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market2 = ts::take_shared_by_id<Market>(scenario, market2_id);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 50 * NUSDC_UNIT);
+        mint_outcome_tokens(&mut market2, payment, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market2);
+    };
+
+    // Deterministically partition Positions by market using get_position_market
+    // (we don't rely on inventory iteration order, which isn't guaranteed).
+    // Construct inputs so &Market = market1 AND the first popped Position is
+    // from market1 (passes the EWrongMarket guard), then the next iteration
+    // sees a market2 Position → EMergeMismatch (23).
+    ts::next_tx(scenario, USER1);
+    {
+        let market1 = ts::take_shared_by_id<Market>(scenario, market1_id);
+        let market2 = ts::take_shared_by_id<Market>(scenario, market2_id);
+
+        let all = take_positions_by_side(scenario, true);
+        assert!(vector::length(&all) == 2, 50);
+
+        // Partition by reading market_id via the public getter.
+        let mut m1_pos_opt = option::none<Position>();
+        let mut m2_pos_opt = option::none<Position>();
+        let mut bag = all;
+        while (!vector::is_empty(&bag)) {
+            let p = vector::pop_back(&mut bag);
+            if (get_position_market(&p) == market1_id) {
+                option::fill(&mut m1_pos_opt, p);
+            } else {
+                option::fill(&mut m2_pos_opt, p);
+            };
+        };
+        vector::destroy_empty(bag);
+        let m1_pos = option::extract(&mut m1_pos_opt);
+        let m2_pos = option::extract(&mut m2_pos_opt);
+        option::destroy_none(m1_pos_opt);
+        option::destroy_none(m2_pos_opt);
+
+        // pop_back is LIFO. To set m1_pos as the anchor (first popped), push
+        // m2_pos first, then m1_pos. Anchor passes &Market check (market1
+        // matches); next iteration sees m2_pos with disagreeing market_id →
+        // aborts EMergeMismatch.
+        let mut inputs = vector::empty<Position>();
+        vector::push_back(&mut inputs, m2_pos);
+        vector::push_back(&mut inputs, m1_pos);
+
+        let merged = merge_positions(&market1, inputs, ts::ctx(scenario));
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market1);
+        ts::return_shared(market2);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// merge → place_sell_taker chained within a single tx. Verifies the chained-
+/// form (returning Position by value) integrates with downstream consumers
+/// that take Position by value.
+#[test]
+fun test_merge_then_place_sell_taker_chained() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    // U1 mints YES + NO (two mints → two YES, two NO).
+    user_mints(scenario, USER1, 40 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 60 * NUSDC_UNIT);
+
+    // U2 places a buy maker at 6000 (60¢) for 50 NUSDC (≈ 83 YES at 60¢ floor).
+    ts::next_tx(scenario, USER2);
+    {
+        let mut market = take_market(scenario);
+        let clock = setup_clock(scenario);
+        let payment = mint_nusdc(scenario, 50 * NUSDC_UNIT);
+        place_buy_maker(&mut market, true, 6000, payment, &clock, ts::ctx(scenario));
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // U1 merges YES positions then sells into the resting bid.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let clock = setup_clock(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        // Limit sell at 6000; rest=true so leftover stays as ask.
+        place_sell_taker(&mut market, merged, 6000, true, &clock, ts::ctx(scenario));
+
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // U1 should have received NUSDC proportional to filled shares; total
+    // shares = 100, fills against U2's 50 NUSDC bid at 6000 (≈ 83.33 shares
+    // floor = 83 shares ≈ 49.8 NUSDC). The remainder rests as a maker ask.
+    ts::next_tx(scenario, USER1);
+    {
+        let received = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        // Lower bound: at least some payment received.
+        assert!(coin::value(&received) > 0, 2);
+        ts::return_to_sender(scenario, received);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// merge → place_sell_maker chained: rest the entire merged Position as a
+/// resting ask. Verifies the chained form composes with the maker entry.
+#[test]
+fun test_merge_then_place_sell_maker_chained() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 25 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 75 * NUSDC_UNIT);
+
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let clock = setup_clock(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        place_sell_maker(&mut market, merged, 7500, &clock, ts::ctx(scenario));
+
+        // U1's YES side now sits as a resting ask. Volume hasn't moved (no fill).
+        assert!(get_total_volume(&market) == 0, 2);
+
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// merge after market cancelled, then claim_cancelled_refund. Verifies the
+/// downstream claim path on cancelled markets composes with merge.
+#[test]
+fun test_merge_after_cancel_then_claim_refund() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 20 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 30 * NUSDC_UNIT);
+
+    // Cancel the market by advancing past resolve_deadline.
+    ts::next_tx(scenario, USER2);
+    {
+        let mut market = take_market(scenario);
+        let mut clock = clock::create_for_testing(ts::ctx(scenario));
+        clock::set_for_testing(&mut clock, START_TIME_MS + RESOLVE_OFFSET_MS + 1_000);
+        cancel_expired_market(&mut market, &clock);
+        clock::destroy_for_testing(clock);
+        ts::return_shared(market);
+    };
+
+    // U1 merges YES positions then claims refund on the merged NFT.
+    ts::next_tx(scenario, USER1);
+    {
+        let mut market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1);
+
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        claim_cancelled_refund(&mut market, merged, ts::ctx(scenario));
+
+        ts::return_shared(market);
+    };
+
+    // U1 received cancellation refund proportional to merged shares
+    // (50 NUSDC across both sides via formula; merged YES alone covers part).
+    // Lower bound: refund > 0 since merged shares > 0.
+    ts::next_tx(scenario, USER1);
+    {
+        let received = ts::take_from_sender<Coin<NUSDC>>(scenario);
+        assert!(coin::value(&received) > 0, 2);
+        ts::return_to_sender(scenario, received);
+    };
+
+    ts::end(scenario_val);
+}
+
+/// Sanity that the merged Position's shares + cost_basis sum is preserved
+/// across a second merge in a subsequent tx (idempotency under composition).
+#[test]
+fun test_merge_idempotent_across_subsequent_merge() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+    let _ = setup_market(scenario);
+
+    user_mints(scenario, USER1, 10 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 20 * NUSDC_UNIT);
+    user_mints(scenario, USER1, 30 * NUSDC_UNIT);
+
+    // First tx: merge the three into one (60 NUSDC YES).
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        let merged = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        transfer::public_transfer(merged, USER1);
+        ts::return_shared(market);
+    };
+
+    // Second tx: mint one more (15 NUSDC), merge the new YES with the
+    // already-merged 60. Result must equal 75 NUSDC sum.
+    user_mints(scenario, USER1, 15 * NUSDC_UNIT);
+    ts::next_tx(scenario, USER1);
+    {
+        let market = take_market(scenario);
+        let yes_positions = take_positions_by_side(scenario, true);
+        assert!(vector::length(&yes_positions) == 2, 1); // prior-merged + new
+
+        let merged2 = merge_positions(&market, yes_positions, ts::ctx(scenario));
+        assert!(get_position_shares(&merged2) == 75 * NUSDC_UNIT, 2);
+        assert!(get_position_cost_basis(&merged2) == 75 * NUSDC_UNIT, 3);
+
+        transfer::public_transfer(merged2, USER1);
+        ts::return_shared(market);
     };
 
     ts::end(scenario_val);

@@ -39,7 +39,9 @@ export interface DeepBookConfig {
 
 export interface PredictionConfig {
   packageId: ObjectId;
+  originalPackageId?: ObjectId;
   adminCap: ObjectId;
+  upgradeCap?: ObjectId;
 }
 
 export interface LotteryConfig {

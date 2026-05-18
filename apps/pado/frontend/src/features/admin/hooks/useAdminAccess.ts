@@ -7,10 +7,8 @@
 import { useState, useEffect } from 'react';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { getSuiClient } from '../../../lib/sui-client';
-import { PREDICTION_PACKAGE_ID } from '../../prediction/constants';
+import { ADMIN_CAP_TYPE as PREDICTION_ADMIN_CAP_TYPE } from '../../prediction/constants';
 import { ADMIN_EMAILS, ADMIN_ADDRESSES } from '../../../config/admin';
-
-const PREDICTION_ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
 
 export interface AdminCapInfo {
   predictionAdminCapId: string | null;

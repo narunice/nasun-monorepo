@@ -10,7 +10,19 @@
  */
 
 import type { Transaction, TransactionArgument } from '@mysten/sui/transactions';
-import { PREDICTION_PACKAGE_ID, CLOCK_ID, MAX_PRICE } from './constants';
+import { PREDICTION_PACKAGE_ID, POSITION_TYPE, CLOCK_ID, MAX_PRICE } from './constants';
+
+/**
+ * Position argument — either a freshly-owned ObjectID string (e.g. an existing
+ * Position NFT in the user's wallet) or a chained TransactionArgument produced
+ * by an earlier moveCall in the same PTB (e.g. the return value of
+ * merge_positions). Builders that consume a Position accept either form.
+ */
+export type PositionArg = string | TransactionArgument;
+
+function toPositionArg(tx: Transaction, arg: PositionArg): TransactionArgument {
+  return typeof arg === 'string' ? tx.object(arg) : arg;
+}
 
 // ============================================
 // Validation
@@ -115,7 +127,7 @@ export function buildPlaceBuyMaker(
 export function buildPlaceSellMaker(
   tx: Transaction,
   marketId: string,
-  positionId: string,
+  positionId: PositionArg,
   priceBps: number,
 ): void {
   validatePriceBps(priceBps);
@@ -123,7 +135,7 @@ export function buildPlaceSellMaker(
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_sell_maker`,
     arguments: [
       tx.object(marketId),
-      tx.object(positionId),
+      toPositionArg(tx, positionId),
       tx.pure.u64(priceBps),
       tx.object(CLOCK_ID),
     ],
@@ -161,7 +173,7 @@ export function buildPlaceBuyTaker(
 export function buildPlaceSellTaker(
   tx: Transaction,
   marketId: string,
-  positionId: string,
+  positionId: PositionArg,
   minPriceBps: number,
   restOnNoFill: boolean,
 ): void {
@@ -170,7 +182,7 @@ export function buildPlaceSellTaker(
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_sell_taker`,
     arguments: [
       tx.object(marketId),
-      tx.object(positionId),
+      toPositionArg(tx, positionId),
       tx.pure.u64(minPriceBps),
       tx.pure.bool(restOnNoFill),
       tx.object(CLOCK_ID),
@@ -230,13 +242,13 @@ export function buildClaimRestingOrderRefund(
 export function buildClaimWinnings(
   tx: Transaction,
   marketId: string,
-  positionId: string,
+  positionId: PositionArg,
 ): void {
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::claim_winnings`,
     arguments: [
       tx.object(marketId),
-      tx.object(positionId),
+      toPositionArg(tx, positionId),
     ],
   });
 }
@@ -244,13 +256,13 @@ export function buildClaimWinnings(
 export function buildBurnLosingPosition(
   tx: Transaction,
   marketId: string,
-  positionId: string,
+  positionId: PositionArg,
 ): void {
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::burn_losing_position`,
     arguments: [
       tx.object(marketId),
-      tx.object(positionId),
+      toPositionArg(tx, positionId),
     ],
   });
 }
@@ -275,15 +287,103 @@ export function buildCancelExpiredMarket(
 export function buildClaimCancelledRefund(
   tx: Transaction,
   marketId: string,
-  positionId: string,
+  positionId: PositionArg,
 ): void {
   tx.moveCall({
     target: `${PREDICTION_PACKAGE_ID}::prediction_market::claim_cancelled_refund`,
     arguments: [
       tx.object(marketId),
-      tx.object(positionId),
+      toPositionArg(tx, positionId),
     ],
   });
+}
+
+// ============================================
+// Position Merge
+// ============================================
+
+/**
+ * Soft cap on input vector size for a single merge_positions call. The Sui PTB
+ * input limit is well above this, but we keep merge ops compact to bound gas
+ * per call. Callers with more than this should batch merges (uncommon path).
+ */
+const MAX_MERGE_BATCH = 256;
+
+function validateMergeInputs(positionIds: readonly string[]): void {
+  if (positionIds.length === 0) {
+    throw new Error('[Security] merge_positions requires at least one position');
+  }
+  if (positionIds.length > MAX_MERGE_BATCH) {
+    throw new Error(
+      `[Security] merge_positions batch size ${positionIds.length} exceeds cap ${MAX_MERGE_BATCH}; ` +
+        `split into multiple merges`,
+    );
+  }
+}
+
+/**
+ * Chained variant — calls `merge_positions` and returns the merged Position as
+ * a `TransactionArgument` so it can be threaded into the next moveCall within
+ * the same PTB (e.g. place_sell_taker, claim_winnings).
+ *
+ * Use this for auto-merge-then-action flows where the user expects a single
+ * signature. If you need a standalone "merge and keep" tx, use
+ * `buildMergePositionsEntry` instead.
+ */
+export function buildMergePositionsChained(
+  tx: Transaction,
+  marketId: string,
+  positionIds: readonly string[],
+): TransactionArgument {
+  validateMergeInputs(positionIds);
+  const positionsVec = tx.makeMoveVec({
+    elements: positionIds.map((id) => tx.object(id)),
+    type: POSITION_TYPE,
+  });
+  return tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::merge_positions`,
+    arguments: [tx.object(marketId), positionsVec],
+  });
+}
+
+/**
+ * Standalone "merge and keep" — calls `merge_positions_entry` which transfers
+ * the merged Position back to the sender's wallet. Use for explicit user-
+ * triggered tidy-up; for auto-merge piggybacked onto a sell/claim, prefer
+ * `buildMergePositionsChained`.
+ */
+export function buildMergePositionsEntry(
+  tx: Transaction,
+  marketId: string,
+  positionIds: readonly string[],
+): void {
+  validateMergeInputs(positionIds);
+  const positionsVec = tx.makeMoveVec({
+    elements: positionIds.map((id) => tx.object(id)),
+    type: POSITION_TYPE,
+  });
+  tx.moveCall({
+    target: `${PREDICTION_PACKAGE_ID}::prediction_market::merge_positions_entry`,
+    arguments: [tx.object(marketId), positionsVec],
+  });
+}
+
+/**
+ * Helper: given a list of Position IDs in the same (market, side) bucket,
+ * return a `PositionArg` suitable for passing to any Position-consuming
+ * builder. If the bucket has one element, returns it as a plain string (no
+ * moveCall needed). If two or more, emits a `merge_positions` and returns the
+ * chained argument.
+ */
+export function buildBucketPositionArg(
+  tx: Transaction,
+  marketId: string,
+  positionIds: readonly string[],
+): PositionArg {
+  if (positionIds.length === 1) {
+    return positionIds[0];
+  }
+  return buildMergePositionsChained(tx, marketId, positionIds);
 }
 
 // ============================================

@@ -25,6 +25,7 @@
   },
   "prediction": {
     "packageId": "0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d",
+    "originalPackageId": "0xafd5b6eda4432e6910d8d8029d23ea1a16f73cbafcd9a9532fc302a2e6984afa",
     "adminCap": "0x63ddeb9b82df1b7ef373a421920623a07c9e64b0eea5fc6d7f9fcaa742b06fc8",
     "upgradeCap": "0xc6d1492efe2ac4cde7cdb9a14aa8e180981b98327a2b483d610c007daac7831c"
   },
