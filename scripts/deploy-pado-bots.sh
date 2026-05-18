@@ -24,7 +24,7 @@ declare -A STAGING=(
 )
 
 declare -A PRODUCTION=(
-  [PEM_KEY]="$HOME/.ssh/nasun-prod-key.pem"
+  [PEM_KEY]="$HOME/.ssh/.awskey/nasun-prod-key"
   [USER]="ec2-user"
   [HOST]="43.200.67.52"
   [REMOTE_DIR]="/home/ec2-user/pado-bots"
