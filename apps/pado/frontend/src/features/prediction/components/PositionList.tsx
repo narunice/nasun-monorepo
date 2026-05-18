@@ -61,10 +61,68 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
     return { totalYes: yesSum, totalNo: noSum, hedgedShares: hedge, hasHedge: yesSum > 0n && noSum > 0n };
   }, [positions]);
 
-  const sellingPosition = useMemo(
-    () => positions.find((p) => p.id === sellModalPosition) ?? null,
-    [sellModalPosition, positions],
-  );
+  /**
+   * Aggregate same-(market, isYes) Position NFTs into a single visual card.
+   *
+   * Fragmentation is structural to Sui's owned-object model when a resting
+   * maker order is filled by multiple taker sells — each fill mints a fresh
+   * Position NFT for the maker. The sell/claim/burn flows already auto-merge
+   * the full bucket inside a single PTB (see handleSellClick / handleClaim),
+   * but the *display* still showed every lot as a separate card. Sunominq's
+   * "hundreds of positions" complaint was about viewing, not selling.
+   *
+   * Aggregation strategy: one synthetic Position per bucket, carrying summed
+   * shares + cost_basis. The first lot's id is used so the explorer link
+   * resolves to a real NFT (clicking opens one of the underlying lots). The
+   * lots count is surfaced as a small badge so the user sees the underlying
+   * fragmentation is real, just consolidated for action.
+   */
+  const aggregatedPositions = useMemo(() => {
+    const buckets = new Map<string, { sample: Position; lots: Position[]; sharesSum: bigint; costSum: bigint }>();
+    for (const p of positions) {
+      const key = `${p.marketId}:${p.isYes ? 'Y' : 'N'}`;
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.lots.push(p);
+        existing.sharesSum += p.shares;
+        existing.costSum += p.costBasis;
+      } else {
+        buckets.set(key, {
+          sample: p,
+          lots: [p],
+          sharesSum: p.shares,
+          costSum: p.costBasis,
+        });
+      }
+    }
+    // Order: YES first then NO, mirroring the natural buy/sell mental model.
+    // Within a side the bucket's first-seen lot ordering is preserved
+    // (usePredictionPositions already sorts by Sui object version desc).
+    return Array.from(buckets.values())
+      .map((b) => ({
+        synthetic: {
+          ...b.sample,
+          shares: b.sharesSum,
+          costBasis: b.costSum,
+        } as Position,
+        lotsCount: b.lots.length,
+      }))
+      .sort((a, b) => (a.synthetic.isYes === b.synthetic.isYes ? 0 : a.synthetic.isYes ? -1 : 1));
+  }, [positions]);
+
+  // Resolve the sell modal's "selling" position to the aggregated bucket
+  // synthetic (shares/cost_basis are sums across all lots in the bucket).
+  // Without this, the modal would show one lot's shares while the actual
+  // sell consumes the whole bucket via auto-merge — misleading for the user.
+  const sellingPosition = useMemo(() => {
+    if (!sellModalPosition) return null;
+    const lot = positions.find((p) => p.id === sellModalPosition);
+    if (!lot) return null;
+    const bucket = aggregatedPositions.find(
+      (b) => b.synthetic.marketId === lot.marketId && b.synthetic.isYes === lot.isYes,
+    );
+    return bucket?.synthetic ?? lot;
+  }, [sellModalPosition, positions, aggregatedPositions]);
 
   const handleSellClick = useCallback(
     (positionId: string) => {
@@ -236,27 +294,31 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
           </div>
         )}
 
-        {/* Per-position rows so each Position NFT can be sold/claimed individually.
-            Positions are pre-sorted newest-first by Sui object version in
-            usePredictionPositions, so a recent buy renders at the top. */}
-        {positions.slice(0, visibleCount).map((position) => (
+        {/* One card per (market, side) bucket. Fragmented Position NFTs are
+            aggregated into a single visual position; the underlying lots
+            count is exposed via the "N lots merged" badge in PayoffCard.
+            Sell/claim/burn callbacks already handle the full bucket via
+            handleSellClick / handleClaim, so any lot's id passed as the
+            "primary" works — the synthetic position uses the first lot's id. */}
+        {aggregatedPositions.slice(0, visibleCount).map(({ synthetic, lotsCount }) => (
           <PayoffCard
-            key={position.id}
-            position={position}
+            key={`${synthetic.marketId}:${synthetic.isYes ? 'Y' : 'N'}`}
+            position={synthetic}
             market={market}
             onSell={handleSellClick}
             onClaim={handleClaim}
             isLoading={isLoading}
+            lotsCount={lotsCount}
           />
         ))}
 
-        {positions.length > visibleCount && (
+        {aggregatedPositions.length > visibleCount && (
           <button
             type="button"
             onClick={() => setVisibleCount((c) => c + POSITIONS_PAGE_SIZE)}
             className="w-full min-h-[44px] py-2.5 bg-theme-bg-tertiary hover:bg-theme-bg-primary text-theme-text-primary rounded-lg text-sm font-medium border border-theme-border"
           >
-            Load more ({positions.length - visibleCount} remaining)
+            Load more ({aggregatedPositions.length - visibleCount} remaining)
           </button>
         )}
       </div>
