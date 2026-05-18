@@ -19,6 +19,7 @@ import { ExportAgentKeyModal } from '../../components/modals/ExportAgentKeyModal
 import { ActivateAgentModal } from '../../components/modals/ActivateAgentModal';
 import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { RestoreAgentModal } from '../../components/modals/RestoreAgentModal';
+import { TosAcknowledgementModal, hasAcceptedTos } from '../../components/modals/TosAcknowledgementModal';
 import { useAgentVaultStatus } from '../../hooks/useAgentVaultStatus';
 import { EscrowTab } from './EscrowTab';
 import { SessionsTab } from './SessionsTab';
@@ -33,9 +34,21 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
   const { config, save, remove, refetch } = useTraderConfig(agent.agentAddress);
   const [exportOpen, setExportOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
+  const [tosOpen, setTosOpen] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const [restoreOpen, setRestoreOpen] = useState(false);
   const vault = useAgentVaultStatus(agent.agentAddress);
+
+  // Activation is gated by a one-time consent. If the user has already
+  // accepted the alpha disclosure (localStorage key), skip straight to
+  // the activation modal; otherwise show the ToS first.
+  const requestActivate = () => {
+    if (hasAcceptedTos()) {
+      setActivateOpen(true);
+    } else {
+      setTosOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -76,10 +89,14 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
         <ServerStatusCard
           state={vault.state}
           graceEndsAt={vault.graceEndsAt}
-          onActivate={() => setActivateOpen(true)}
+          onActivate={requestActivate}
           onDeactivate={() => setDeactivateOpen(true)}
           onRestore={() => setRestoreOpen(true)}
         />
+      </section>
+
+      <section>
+        <DangerZoneCard capabilityId={agent.capabilityId} />
       </section>
 
       <section className="space-y-2">
@@ -102,16 +119,21 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
         </div>
       </section>
 
-      <section>
-        <DangerZoneCard capabilityId={agent.capabilityId} />
-      </section>
-
       {exportOpen && (
         <ExportAgentKeyModal
           agentId={agent.id}
           agentAddress={agent.agentAddress}
           walletAddress={walletAddress}
           onClose={() => setExportOpen(false)}
+        />
+      )}
+      {tosOpen && (
+        <TosAcknowledgementModal
+          onAccept={() => {
+            setTosOpen(false);
+            setActivateOpen(true);
+          }}
+          onCancel={() => setTosOpen(false)}
         />
       )}
       {activateOpen && (

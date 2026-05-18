@@ -16,6 +16,7 @@ import { useAgentActions } from '../../hooks/useAgentActions';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
+import { FirstRunChecklist } from '../../components/FirstRunChecklist';
 import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { ActivityTab } from './ActivityTab';
 import { ChatTab } from './ChatTab';
@@ -89,6 +90,8 @@ export function OverviewTab({
 
   return (
     <div className="space-y-6">
+      <FirstRunChecklist onJumpToActivity={onViewAllActivity} />
+
       <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
