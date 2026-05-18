@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview --port 5178"
+    "preview": "vite preview --port 5178",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@mysten/sui": "1.45.2",
@@ -30,6 +32,7 @@
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "~5.9.2",
-    "vite": "^7.0.0"
+    "vite": "^7.0.0",
+    "vitest": "^3.2.4"
   }
 }
