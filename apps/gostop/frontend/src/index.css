@@ -15,6 +15,19 @@
     color: #f5f5f5;
   }
 
+  /* Page-level horizontal scroll safety net.
+   *
+   * Some hero patterns (full-bleed sections, edge glows, decorative offsets)
+   * can leak a pixel or two past the viewport, especially on viewports where
+   * the scrollbar takes width (`100vw` returns viewport-including-scrollbar).
+   * `overflow-x: clip` quietly trims that overflow without creating a scroll
+   * container, so `position: sticky` on the header keeps working.
+   */
+  html,
+  body {
+    overflow-x: clip;
+  }
+
   body {
     font-family: 'Inter', system-ui, sans-serif;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
