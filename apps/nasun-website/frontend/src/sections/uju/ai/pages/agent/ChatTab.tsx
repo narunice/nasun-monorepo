@@ -72,7 +72,7 @@ export function ChatTab({ walletAddress, agentId, capabilityId }: ChatTabProps) 
   const capabilityNotReady = !isLegacy && (capabilityLoading || !capabilityData);
 
   const placeholder = isLegacy
-    ? 'Legacy agent — re-register to enable chat'
+    ? 'Legacy agent: re-register to enable chat'
     : capabilityNotReady
       ? 'Loading capability...'
       : executorsLoading

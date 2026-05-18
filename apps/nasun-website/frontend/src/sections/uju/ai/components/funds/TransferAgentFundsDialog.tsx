@@ -368,7 +368,7 @@ export function TransferAgentFundsDialog({
               >
                 {activeBudgets.map((b) => (
                   <option key={b.id} value={b.id}>
-                    {truncateAddress(b.id)} — {(b.balance / 1e6).toFixed(2)} NUSDC
+                    {truncateAddress(b.id)} · {(b.balance / 1e6).toFixed(2)} NUSDC
                   </option>
                 ))}
               </select>
@@ -397,7 +397,7 @@ export function TransferAgentFundsDialog({
                   const display = formatRawAmount(raw, TOKENS[sym].decimals);
                   return (
                     <option key={sym} value={sym}>
-                      {sym} — {display}
+                      {sym} · {display}
                     </option>
                   );
                 })}

@@ -1,5 +1,5 @@
 /**
- * TraderConfigForm — define/edit an AI agent's trading preset.
+ * TraderConfigForm: define/edit an AI agent's trading preset.
  *
  * Used inside AgentDetail's "Trader" tab. One config per agent.
  * Saving stores to IndexedDB + mirrors to chat-server's
@@ -103,7 +103,7 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
   const [err, setErr] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Budget is auto-resolved from the agent — user doesn't need to know its id.
+  // Inference Balance is auto-resolved from the agent; user does not need to know its id.
   const budgetId = agentBudgetId;
 
   // Auto-pick executor: prefer existing config; else first active.
@@ -299,7 +299,7 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       </div>
 
       <div className="space-y-1">
-        <label className={labelClass}>Custom Prompt (optional — leave blank for built-in trader prompt)</label>
+        <label className={labelClass}>Custom Prompt (optional; leave blank for built-in trader prompt)</label>
         <textarea
           value={promptTemplate}
           onChange={(e) => setPromptTemplate(e.target.value)}
