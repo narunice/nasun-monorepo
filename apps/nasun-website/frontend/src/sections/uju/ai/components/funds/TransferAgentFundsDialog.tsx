@@ -13,15 +13,19 @@ import {
   buildDepositToBudgetTransaction,
 } from '../../services/transactionBuilder';
 import { isGasInsufficientError } from '../../services/txErrors';
-import { executeTradingWithdraw, computeNasunMaxWithdraw } from '../../services/agentWithdrawTx';
+import { executeTradingWithdraw } from '../../services/agentWithdrawTx';
 import { truncateAddress } from '../../utils/format';
+import {
+  parseRawAmount,
+  formatRawAmount,
+  computeMaxForMode,
+  OWNER_NASUN_GAS_RESERVE_MIST,
+  type TransferMode,
+} from '../../utils/transferAmount';
 
 type TxStep = 'idle' | 'signing' | 'executing' | 'done' | 'error';
 
-export type TransferMode = 'deposit' | 'withdraw-trading' | 'top-up-inference';
-
-/** Owner must keep this much NASUN to sponsor the deposit tx itself when depositing NASUN. */
-const OWNER_NASUN_GAS_RESERVE_MIST = 50_000_000n;
+export type { TransferMode };
 
 interface TransferAgentFundsDialogProps {
   agent: AgentProfile;
@@ -34,27 +38,6 @@ interface TransferAgentFundsDialogProps {
 }
 
 const AGENT_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
-
-function parseRawAmount(display: string, decimals: number): bigint {
-  const trimmed = display.trim();
-  if (!trimmed || !/^\d*\.?\d*$/.test(trimmed) || trimmed === '.') return 0n;
-  const [whole = '0', frac = ''] = trimmed.split('.');
-  const paddedFrac = (frac + '0'.repeat(decimals)).slice(0, decimals);
-  try {
-    return BigInt(whole) * (10n ** BigInt(decimals)) + BigInt(paddedFrac);
-  } catch {
-    return 0n;
-  }
-}
-
-function formatRawAmount(raw: bigint, decimals: number): string {
-  const divisor = 10n ** BigInt(decimals);
-  const whole = raw / divisor;
-  const frac = raw % divisor;
-  if (frac === 0n) return whole.toString();
-  const fracStr = frac.toString().padStart(decimals, '0').replace(/0+$/, '');
-  return `${whole}.${fracStr}`;
-}
 
 const inputBase =
   'w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white placeholder:text-uju-secondary/60 focus:outline-none focus:border-pado-2 transition-colors';
@@ -114,21 +97,18 @@ export function TransferAgentFundsDialog({
 
   const amountRaw = parseRawAmount(amount, effectiveMeta.decimals);
 
-  // Max for each mode
-  const maxForMode: bigint = useMemo(() => {
-    if (mode === 'top-up-inference') return ownerNusdcRaw;
-    if (mode === 'deposit') {
-      if (effectiveCoin === 'NASUN') {
-        return ownerSelectedRaw > OWNER_NASUN_GAS_RESERVE_MIST
-          ? ownerSelectedRaw - OWNER_NASUN_GAS_RESERVE_MIST
-          : 0n;
-      }
-      return ownerSelectedRaw;
-    }
-    // withdraw-trading
-    if (effectiveCoin === 'NASUN') return computeNasunMaxWithdraw(agentNasunRaw);
-    return agentSelectedRaw;
-  }, [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw]);
+  const maxForMode: bigint = useMemo(
+    () =>
+      computeMaxForMode({
+        mode,
+        effectiveCoin,
+        ownerSelectedRaw,
+        ownerNusdcRaw,
+        agentNasunRaw,
+        agentSelectedRaw,
+      }),
+    [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw],
+  );
 
   const maxDecimals = effectiveMeta.decimals;
 
