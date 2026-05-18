@@ -66,6 +66,7 @@ import {
 } from './trader-envelope.js';
 import type { Config } from '../config.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
+import { recordAerLanded } from '../aer-heartbeat.js';
 
 // Minimal prompt used for the confirmation LLM call. The user has already
 // confirmed the trade direction; we ask the LLM to "endorse" the decision so
@@ -497,6 +498,7 @@ export async function runManualExecution(
   }
 
   deps.log(`[manual] Execution AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
+  recordAerLanded();
 
   // Pending lock cleanup runs in the finally block below.
 

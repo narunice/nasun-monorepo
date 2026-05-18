@@ -147,6 +147,22 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
   if (process.env.AGENT_TELEGRAM_CHAT_ID) {
     out.TELEGRAM_CHAT_ID = process.env.AGENT_TELEGRAM_CHAT_ID;
   }
+  // Operator-facing AER heartbeat watchdog alerts. Independent from
+  // TELEGRAM_CHAT_ID above (which is the user-facing trade notification
+  // channel). When ALERT_CHAT_ID is unset the runtime logs stalls but
+  // does not send a Telegram message.
+  if (process.env.AGENT_TELEGRAM_ALERT_BOT_TOKEN) {
+    out.TELEGRAM_ALERT_BOT_TOKEN = process.env.AGENT_TELEGRAM_ALERT_BOT_TOKEN;
+  }
+  if (process.env.AGENT_TELEGRAM_ALERT_CHAT_ID) {
+    out.TELEGRAM_ALERT_CHAT_ID = process.env.AGENT_TELEGRAM_ALERT_CHAT_ID;
+  }
+  if (process.env.AGENT_AER_HEARTBEAT_STALE_MIN) {
+    out.AER_HEARTBEAT_STALE_MIN = process.env.AGENT_AER_HEARTBEAT_STALE_MIN;
+  }
+  if (process.env.AGENT_AER_HEARTBEAT_COOLDOWN_MIN) {
+    out.AER_HEARTBEAT_COOLDOWN_MIN = process.env.AGENT_AER_HEARTBEAT_COOLDOWN_MIN;
+  }
   return out;
 }
 

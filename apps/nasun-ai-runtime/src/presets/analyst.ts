@@ -84,6 +84,7 @@ import {
 } from './trader-envelope.js';
 import type { Config } from '../config.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
+import { recordAerLanded } from '../aer-heartbeat.js';
 
 // Byte-stable analyst persona system prompt fragment. Changing this text
 // will change prompt_template_hash in all subsequent cognition AERs, which
@@ -408,6 +409,7 @@ export async function runAnalystPreset(
   const VERB: Record<string, string> = { BUY: 'Buying', SELL: 'Selling', HOLD: 'Holding' };
   const summary = `${VERB[decision.action] ?? decision.action}: ${decision.reason}`;
   deps.log(`[analyst] Cognition AER landed: digest=${execResp.txDigest ?? 'n/a'}`);
+  recordAerLanded();
 
   // For BUY/SELL decisions: build a trade proposal artifact, set the onchain
   // pending lock, and include the proposal in the WakeOutcome so the
