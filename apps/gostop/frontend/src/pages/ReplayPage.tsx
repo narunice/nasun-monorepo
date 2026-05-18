@@ -5,12 +5,17 @@
  * `GET /api/gostop/round/lottery/:session_id`. Backend masks anonymous and
  * 404s opt-out / delayed-within-24h rounds; this page mirrors those states.
  *
+ * Tier 0.5 (Share Button, 2026-05-18): won rounds owned by the viewing user
+ * surface X/Telegram/Copy share affordances. shareUrl is built from the
+ * server-validated session_id (not window.location.href) so non-owner viewers
+ * cannot claim referral credit on someone else's round. Anonymous rounds are
+ * never marked as own (the masked player string never matches a wallet).
+ *
  * scratch/numbermatch/mines/wheel replay is Tier 1 backlog (RoundDetailModal
  * stays the only surface for non-lottery games until then). crash is
  * indefinitely shut down.
  */
 
-import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useRound } from '../lib/api/queries';
 import { ApiError } from '../lib/api/client';
@@ -26,6 +31,13 @@ import {
   multiplierBpsToX,
   shortWallet,
 } from '../features/dashboard/format';
+import ShareIntentButtons from '../features/share/ShareIntentButtons';
+import {
+  buildShareMessage,
+  buildShareUrlForGame,
+  canShareRound,
+} from '../features/share/shareUrl';
+import { useGostopAuth } from '../hooks/useGostopAuth';
 
 export default function ReplayPage() {
   const { sessionId: rawSessionId } = useParams<{ sessionId: string }>();
@@ -131,6 +143,14 @@ function LotteryReplay({ data }: { data: RoundDetail }) {
   if (data.extras.kind !== 'lottery') return null;
   const { ticket, round } = data.extras;
   const r = data.round;
+  const { walletAddress } = useGostopAuth();
+  // Share buttons only render for the round owner on a won round.
+  // - Server already 404s opt-out + delayed-within-24h, so we never reach
+  //   here for those; isOwn gating keeps anonymous & non-owner viewers from
+  //   spoofing referral credit on someone else's link (review C1).
+  const isOwnWin = canShareRound(r, walletAddress);
+  const shareUrl = buildShareUrlForGame(data.game, data.session_id);
+  const shareMessage = buildShareMessage(r, data.game);
 
   return (
     <div className="space-y-5">
@@ -183,6 +203,19 @@ function LotteryReplay({ data }: { data: RoundDetail }) {
         )}
       </section>
 
+      {isOwnWin && (
+        <section
+          className="panel p-5 space-y-3"
+          aria-label="Share this win"
+        >
+          <h2 className="font-display text-xl text-gold">Share this win</h2>
+          <p className="text-sm text-neutral-300">
+            Post your verified round to X or Telegram — anyone can replay it on chain.
+          </p>
+          <ShareIntentButtons shareUrl={shareUrl} message={shareMessage} />
+        </section>
+      )}
+
       <VerificationPanel txDigest={r.tx_digest} />
     </div>
   );
@@ -193,12 +226,9 @@ function CommonHeader({ data }: { data: RoundDetail }) {
   const player = r.anonymous ? r.player : shortWallet(r.player);
   return (
     <section className="panel p-5 space-y-3">
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-widest text-neutral-300">Player</p>
-          <p className="font-mono text-base text-neutral-100">{player}</p>
-        </div>
-        <CopyLinkButton />
+      <div className="space-y-1">
+        <p className="text-xs uppercase tracking-widest text-neutral-300">Player</p>
+        <p className="font-mono text-base text-neutral-100">{player}</p>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-gold-subtle">
@@ -312,36 +342,6 @@ function VerificationPanel({ txDigest }: { txDigest: string }) {
         <ExternalIcon />
       </a>
     </section>
-  );
-}
-
-function CopyLinkButton() {
-  const [copied, setCopied] = useState(false);
-  const onClick = async () => {
-    if (typeof window === 'undefined') return;
-    const url = window.location.href;
-    try {
-      if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        // Fallback: best-effort prompt() so users still get the URL.
-        window.prompt('Copy this round link:', url);
-      }
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
-    } catch {
-      window.prompt('Copy this round link:', url);
-    }
-  };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-live="polite"
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border border-gold-subtle text-neutral-200 hover:text-gold-200 hover:border-gold-300/40 min-h-[36px]"
-    >
-      {copied ? 'Link copied' : 'Copy link to round'}
-    </button>
   );
 }
 

@@ -10,6 +10,14 @@ import {
   multiplierBpsToX,
   shortWallet,
 } from '../format';
+import ShareIntentButtons from '../../share/ShareIntentButtons';
+import {
+  buildShareMessage,
+  buildShareUrlForGame,
+  canShareRound,
+} from '../../share/shareUrl';
+import { useGostopAuth } from '../../../hooks/useGostopAuth';
+import { getExplorerTxUrl } from '../../../lib/explorer';
 
 interface RoundDetailModalProps {
   round: RecentRound | null;
@@ -29,6 +37,12 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
   const game = round?.key as RoundDetail['game'] | undefined;
   const sessionId = round?.session_id_hex;
   const { data, isLoading, isError, error } = useRound(game, sessionId);
+  const { walletAddress } = useGostopAuth();
+  // Share buttons render for won rounds owned by the viewing user. Anonymous
+  // rounds short-circuit to false because the masked player string never
+  // matches a wallet. Caller (RecentRoundsTable) only opens this modal for
+  // the user's own history, but we still gate defensively (review C1).
+  const canShare = data ? canShareRound(data.round, walletAddress) : false;
 
   if (!round) return null;
 
@@ -64,35 +78,120 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
 
         {data && <RoundBody data={data} />}
 
-        {data && data.extras.kind === 'lottery' && (
-          <ReplayFooterLink game="lottery" sessionIdHex={data.session_id} />
+        {data && canShare && (
+          <ShareSection
+            shareUrl={buildShareUrlForGame(data.game, data.session_id)}
+            message={buildShareMessage(data.round, data.game)}
+            txDigest={data.round.tx_digest}
+          />
+        )}
+
+        {data && (
+          <ModalFooter
+            txDigest={data.round.tx_digest}
+            replaySessionIdHex={
+              data.extras.kind === 'lottery' ? data.session_id : null
+            }
+            // View on Explorer is rendered inline next to the share buttons
+            // when the share section is visible, so hide the footer duplicate
+            // to keep a single canonical placement.
+            hideExplorerLink={canShare}
+          />
         )}
       </div>
     </div>
   );
 }
 
-function ReplayFooterLink({
-  game,
-  sessionIdHex,
+function ModalFooter({
+  txDigest,
+  replaySessionIdHex,
+  hideExplorerLink,
 }: {
-  game: 'lottery';
-  sessionIdHex: string;
+  txDigest: string;
+  replaySessionIdHex: string | null;
+  hideExplorerLink?: boolean;
 }) {
   // Backend echoes the canonical (lowercase, no-0x) session_id from the URL
   // it received, but normalize defensively so a future format tweak does not
   // produce a broken link silently.
-  const normalized = normalizeSessionHex(sessionIdHex);
-  if (!normalized) return null;
+  const normalizedReplay = replaySessionIdHex
+    ? normalizeSessionHex(replaySessionIdHex)
+    : null;
+  if (!normalizedReplay && hideExplorerLink) {
+    // Nothing left to render — collapse the footer entirely so we don't
+    // emit an empty bordered div.
+    return null;
+  }
   return (
-    <div className="pt-3 border-t border-gold-subtle flex justify-end">
-      <Link
-        to={`/replay/${game}/${normalized}`}
-        className="inline-flex items-center gap-1 text-sm text-gold-200 hover:text-gold-100"
-      >
-        View full replay
-        <span aria-hidden>→</span>
-      </Link>
+    <div className="pt-3 border-t border-gold-subtle flex flex-wrap justify-end items-center gap-4">
+      {normalizedReplay && (
+        <Link
+          to={`/replay/lottery/${normalizedReplay}`}
+          className="inline-flex items-center gap-1 text-sm text-gold-200 hover:text-gold-100"
+        >
+          View full replay
+          <span aria-hidden>→</span>
+        </Link>
+      )}
+      {!hideExplorerLink && <ViewOnExplorerLink txDigest={txDigest} />}
+    </div>
+  );
+}
+
+function ViewOnExplorerLink({ txDigest }: { txDigest: string }) {
+  return (
+    <a
+      href={getExplorerTxUrl(txDigest)}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label="View transaction on Nasun Explorer"
+      className="inline-flex items-center gap-1.5 text-sm text-gold-200 hover:text-gold-100"
+    >
+      View on Explorer
+      <ExternalLinkIcon />
+    </a>
+  );
+}
+
+function ExternalLinkIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <polyline points="15 3 21 3 21 9" />
+      <line x1="10" y1="14" x2="21" y2="3" />
+    </svg>
+  );
+}
+
+function ShareSection({
+  shareUrl,
+  message,
+  txDigest,
+}: {
+  shareUrl: string;
+  message: string;
+  txDigest: string;
+}) {
+  return (
+    <div className="pt-3 border-t border-gold-subtle space-y-2">
+      <h3 className="text-xs uppercase tracking-widest text-neutral-300">
+        Share this win
+      </h3>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ShareIntentButtons shareUrl={shareUrl} message={message} />
+        <ViewOnExplorerLink txDigest={txDigest} />
+      </div>
     </div>
   );
 }

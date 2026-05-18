@@ -229,17 +229,23 @@ export function useTransparency() {
 }
 
 export function useRound(game: GameKey | undefined, sessionIdHex: string | undefined) {
-  const enabled = !!game && !!sessionIdHex && /^[0-9a-f]+$/i.test(sessionIdHex);
+  // Callers pass session_id_hex from various sources — backend recent-rounds
+  // currently emits `0x`-prefixed hex while ReplayPage already strips it via
+  // normalizeSessionHex. Normalize defensively here so both code paths agree
+  // and RoundDetailModal works for non-lottery games (previous regex rejected
+  // `0x...` and silently disabled the query).
+  const normalized = sessionIdHex
+    ? sessionIdHex.toLowerCase().replace(/^0x/, '')
+    : undefined;
+  const enabled = !!game && !!normalized && /^[0-9a-f]+$/.test(normalized);
   return useQuery({
     queryKey: enabled
-      ? QK.round(game!, sessionIdHex!)
+      ? QK.round(game!, normalized!)
       : ['gostop', 'round', 'disabled'],
     enabled,
     staleTime: STALE.round,
     queryFn: () =>
-      apiRequest<RoundDetail>(
-        `/api/gostop/round/${game}/${sessionIdHex!.toLowerCase()}`,
-      ),
+      apiRequest<RoundDetail>(`/api/gostop/round/${game}/${normalized}`),
   });
 }
 
