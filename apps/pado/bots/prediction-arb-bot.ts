@@ -39,6 +39,13 @@ const NUSDC_TYPE = `${TOKENS_PACKAGE}::nusdc::NUSDC`;
 const MARKET_STATUS_OPEN = 0;
 
 const PACKAGE_ID = process.env.PREDICTION_PACKAGE_ID ?? '';
+// Dual-scan support: see prediction-keeper.ts for the rationale.
+const LEGACY_PACKAGE_IDS = (process.env.PREDICTION_PACKAGE_ID_LEGACY ?? '')
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
+const DISCOVERY_PKGS: string | string[] =
+  LEGACY_PACKAGE_IDS.length > 0 ? [PACKAGE_ID, ...LEGACY_PACKAGE_IDS] : PACKAGE_ID;
 const INTERVAL_MS = Number(process.env.PREDICTION_ARB_INTERVAL_MS ?? '15000');
 const MAX_NUSDC_PER_ARB = Number(process.env.PREDICTION_ARB_MAX_NUSDC ?? '10');
 const MIN_PROFIT_BPS = Number(process.env.PREDICTION_ARB_MIN_PROFIT_BPS ?? '100');
@@ -422,10 +429,13 @@ async function main(): Promise<void> {
   console.log(`[arb-bot] address=${arbAddress}`);
   console.log(`[arb-bot] package=${PACKAGE_ID}`);
   console.log(
+    `[arb-bot] legacy packages=${LEGACY_PACKAGE_IDS.length > 0 ? LEGACY_PACKAGE_IDS.join(',') : '(none)'}`,
+  );
+  console.log(
     `[arb-bot] interval=${INTERVAL_MS}ms maxNusdc=${MAX_NUSDC_PER_ARB} minProfitBps=${MIN_PROFIT_BPS}`,
   );
 
-  let markets = await discoverMarketIds(client, PACKAGE_ID);
+  let markets = await discoverMarketIds(client, DISCOVERY_PKGS);
   console.log(`[arb-bot] discovered ${markets.length} markets`);
 
   const runOnce = process.argv.includes('--once');
@@ -446,7 +456,7 @@ async function main(): Promise<void> {
     if (shuttingDown) break;
 
     if (Date.now() - lastDiscoveryAt >= DISCOVERY_INTERVAL_MS) {
-      markets = await discoverMarketIds(client, PACKAGE_ID);
+      markets = await discoverMarketIds(client, DISCOVERY_PKGS);
       console.log(`[arb-bot] rediscovered ${markets.length} markets`);
       lastDiscoveryAt = Date.now();
     }

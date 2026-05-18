@@ -920,8 +920,10 @@ async function buildMarketList(
   client: SuiClient,
   packageId: string,
   pinnedMarkets: string[],
+  legacyPackageIds: string[] = [],
 ): Promise<string[]> {
-  const discovered = await discoverMarketIds(client, packageId);
+  const pkgs = legacyPackageIds.length > 0 ? [packageId, ...legacyPackageIds] : packageId;
+  const discovered = await discoverMarketIds(client, pkgs);
   const merged = new Map<string, true>();
   for (const id of [...pinnedMarkets, ...discovered]) {
     merged.set(id.toLowerCase(), true);
@@ -961,6 +963,12 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const packageId = packageIdRaw.toLowerCase();
+
+  // Dual-scan support: see prediction-keeper.ts for the rationale.
+  const legacyPackageIds = (process.env.PREDICTION_PACKAGE_ID_LEGACY || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
   const pinnedMarkets = (process.env.PREDICTION_LP_MARKETS || '')
     .split(',')
@@ -1012,6 +1020,7 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] LP wallet: ${lpAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
+  console.log(`[${timestamp()}] Legacy packages: ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
   console.log(
     `[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none — auto-discover only)'}`,
   );
@@ -1023,7 +1032,7 @@ async function main(): Promise<void> {
     `[${timestamp()}] EMA λ=${emaLambda} invSkewα=${invSkewAlphaBps}bps invCap=${invCapSharesNum} minRepost=${minRepostBps}bps tick=${intervalMs}ms`,
   );
 
-  let markets = await buildMarketList(client, packageId, pinnedMarkets);
+  let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
   let lastDiscoverAt = Date.now();
   console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
 
@@ -1066,7 +1075,7 @@ async function main(): Promise<void> {
 
     if (Date.now() - lastDiscoverAt >= discoverIntervalMs) {
       try {
-        const fresh = await buildMarketList(client, packageId, pinnedMarkets);
+        const fresh = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
         const added = fresh.filter((id) => !markets.includes(id));
         if (added.length > 0) {
           console.log(`[${timestamp()}] Discovery: +${added.length} new market(s): ${added.join(', ')}`);

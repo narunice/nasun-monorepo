@@ -35,6 +35,12 @@ const PREDICTION_PACKAGE_ID =
   process.env.PREDICTION_PACKAGE_ID ||
   '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef';
 
+// Previous publish ids for MarketCreated event dual-scan. Sui pins an event's
+// type tag to the emitter package id, so pre-upgrade markets remain queryable
+// only at their original publish. Comma-separated list (most recent legacy
+// first). Empty string disables dual-scan.
+const PREDICTION_PACKAGE_ID_LEGACY = process.env.PREDICTION_PACKAGE_ID_LEGACY || '';
+
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
   // Tiered grid is configured in lib/config.ts (DEFAULT_ZONES: 10@3 / 15@8 / 15@22).
@@ -256,6 +262,7 @@ module.exports = {
         // PREDICTION_RESOLVER_KEY + PREDICTION_KEEPER_MARKETS loaded from .env
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
+        PREDICTION_PACKAGE_ID_LEGACY,
         PREDICTION_KEEPER_INTERVAL_MS: '60000',
         // 4-category resolvers — bake from .env so pm2 daemon picks them up
         // even when ecosystem is re-parsed without reloading the .env file.
@@ -299,6 +306,7 @@ module.exports = {
         // PREDICTION_LP_PRIVATE_KEY + PREDICTION_LP_MARKETS loaded from .env
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
+        PREDICTION_PACKAGE_ID_LEGACY,
         // Tightened ladder for richer top-of-book and gentler small-trade impact.
         // Top quote sits 100 bps from mid; 10 levels per side; gaps grow gently
         // (30 bps base × 1.3 geometric) so the middle band is dense and outer
@@ -354,6 +362,7 @@ module.exports = {
         // PREDICTION_ARB_PRIVATE_KEY loaded from .env
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
+        PREDICTION_PACKAGE_ID_LEGACY,
         PREDICTION_ARB_INTERVAL_MS: '15000',
         PREDICTION_ARB_MAX_NUSDC: '10',
         PREDICTION_ARB_MIN_PROFIT_BPS: '100',
