@@ -1,4 +1,4 @@
-/// GoStop BankrollPool Module (v2)
+/// GoStop BankrollPool Module (v3)
 ///
 /// Shared NUSDC bankroll for all gostop games.
 /// Treasury-seeded on devnet; optional community LP (soulbound, 24h cooldown).
@@ -12,12 +12,23 @@
 /// - LPToken is soulbound (no store); redeem recipient is tx sender.
 /// - emit_game_result uses cap.game_id (no caller spoof); session_id is vector<u8>
 ///   so ephemeral games (crash, plinko) do not need a per-round object.
+///
+/// Tier 1.0 spike finding 5.3 fix (2026-05-18):
+/// - seed_pool_shares: admin-only, idempotent. Locks pre-existing pool.balance
+///   (e.g. treasury_deposit seed) into total_shares so the first public LP cannot
+///   absorb the unshared seed via the `total_shares == 0` fast-path.
+/// - set_utilization_cap + collect_bet check: admin-set advisory cap that
+///   rejects new bets when a GameCap's max_single_payout exceeds cap_bps of
+///   current pool balance. cap_bps == 0 disables (default). Stored in a
+///   sui::dynamic_field so BankrollPool struct layout is unchanged, keeping
+///   the v0.0.2 -> v0.0.3 path safe under UpgradeCap compatible policy.
 module bankroll_pool::bankroll_pool {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
     use sui::event;
     use sui::clock::{Self, Clock};
     use sui::table::{Self, Table};
+    use sui::dynamic_field as df;
     use devnet_tokens::nusdc::NUSDC;
 
     // ===== Constants =====
@@ -25,6 +36,12 @@ module bankroll_pool::bankroll_pool {
     const MIN_POOL_BALANCE: u64 = 100_000_000; // 100 NUSDC safety margin (6 decimals)
     const MIN_LP_DEPOSIT: u64 = 10_000_000;    // 10 NUSDC minimum LP deposit
     const SHARE_PRICE_SCALE: u128 = 1_000_000_000; // 1e9 fixed-point for share math
+    const CAP_BPS_DENOM: u128 = 10_000;        // basis-point denominator (100% = 10000)
+    const MAX_CAP_BPS: u64 = 10_000;           // utilization cap upper bound (100%)
+
+    // dynamic_field key for utilization_cap_bps (u64). v0.0.3 addition; absent on
+    // freshly initialized v0.0.2 pools (read defaults to 0 = disabled).
+    const UTILIZATION_KEY: vector<u8> = b"utilization_cap_bps";
 
     // ===== Errors =====
     const EInsufficientPoolBalance: u64 = 1;
@@ -35,6 +52,11 @@ module bankroll_pool::bankroll_pool {
     const EInvalidAmount: u64 = 6;
     const EPayoutExceedsCap: u64 = 7;
     const EDepositTooSmall: u64 = 8;
+    // v0.0.3 additions
+    const EAlreadySeeded: u64 = 9;
+    const EEmptyPool: u64 = 10;
+    const EInvalidCapBps: u64 = 11;
+    const EUtilizationCapExceeded: u64 = 12;
 
     // ===== Capabilities =====
 
@@ -147,6 +169,19 @@ module bankroll_pool::bankroll_pool {
         timestamp_ms: u64,
     }
 
+    // v0.0.3: one-shot seed lock and admin utilization cap updates.
+    public struct PoolSharesSeeded has copy, drop {
+        seed_amount: u64,
+        seed_shares: u128,
+        timestamp_ms: u64,
+    }
+
+    public struct UtilizationCapUpdated has copy, drop {
+        old_cap_bps: u64,
+        new_cap_bps: u64,
+        timestamp_ms: u64,
+    }
+
     /// Standardized cross-game result. Leaderboard subscribes to this single type.
     public struct GameResult has copy, drop {
         game_id: u8,
@@ -239,6 +274,74 @@ module bankroll_pool::bankroll_pool {
         });
     }
 
+    /// v0.0.3: lock the pre-existing pool balance into total_shares so the
+    /// first public LP cannot absorb unshared seed via the
+    /// `total_shares == 0` fast-path of provide_liquidity (Tier 1.0 finding 5.3).
+    ///
+    /// Constraints:
+    /// - admin-only via AdminCap
+    /// - requires pool.total_shares == 0 (idempotent: a second call aborts)
+    /// - requires pool.balance > 0 (no point seeding an empty pool)
+    ///
+    /// Effect: total_shares := pool.balance (as u128). No LPToken is minted,
+    /// so the seed shares are permanently un-redeemable -- effectively burned.
+    /// After this call share_price_scaled returns SHARE_PRICE_SCALE (1.0 pps).
+    ///
+    /// Once any real LP has provided liquidity, total_shares can never return
+    /// to 0 without burning all LPTokens, so EAlreadySeeded permanently locks
+    /// re-seeding.
+    public fun seed_pool_shares(
+        _admin: &AdminCap,
+        pool: &mut BankrollPool,
+        clock: &Clock,
+    ) {
+        let bal = balance::value(&pool.balance);
+        assert!(bal > 0, EEmptyPool);
+        assert!(pool.total_shares == 0, EAlreadySeeded);
+        let seed_shares = bal as u128;
+        pool.total_shares = seed_shares;
+        event::emit(PoolSharesSeeded {
+            seed_amount: bal,
+            seed_shares,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// v0.0.3: set the global utilization cap (basis points). cap_bps == 0
+    /// disables the cap (default state on freshly-published v0.0.3 pools).
+    /// When non-zero, collect_bet rejects bets whose calling GameCap's
+    /// max_single_payout exceeds cap_bps of current pool.balance.
+    public fun set_utilization_cap(
+        _admin: &AdminCap,
+        pool: &mut BankrollPool,
+        cap_bps: u64,
+        clock: &Clock,
+    ) {
+        assert!(cap_bps <= MAX_CAP_BPS, EInvalidCapBps);
+        let old_cap_bps = read_utilization_cap_bps(pool);
+        if (df::exists_(&pool.id, UTILIZATION_KEY)) {
+            let stored: &mut u64 = df::borrow_mut(&mut pool.id, UTILIZATION_KEY);
+            *stored = cap_bps;
+        } else {
+            df::add(&mut pool.id, UTILIZATION_KEY, cap_bps);
+        };
+        event::emit(UtilizationCapUpdated {
+            old_cap_bps,
+            new_cap_bps: cap_bps,
+            timestamp_ms: clock::timestamp_ms(clock),
+        });
+    }
+
+    /// Internal helper: returns 0 when the dynamic_field is absent
+    /// (i.e. cap never set, including all freshly-initialized pools).
+    fun read_utilization_cap_bps(pool: &BankrollPool): u64 {
+        if (df::exists_(&pool.id, UTILIZATION_KEY)) {
+            *df::borrow<vector<u8>, u64>(&pool.id, UTILIZATION_KEY)
+        } else {
+            0
+        }
+    }
+
     // ===== Game Interface (callable by GameCap holders) =====
 
     public fun collect_bet(
@@ -253,6 +356,21 @@ module bankroll_pool::bankroll_pool {
 
         let amount = coin::value(&bet);
         assert!(amount > 0, EInvalidAmount);
+
+        // v0.0.3: advisory utilization cap. When set (cap_bps > 0), reject
+        // bets from any GameCap whose max_single_payout exceeds cap_bps of
+        // current pool.balance. This is a precondition on new exposure, not
+        // an aggregate-exposure check — proper open_exposure tracking is
+        // out of scope for v0.0.3.
+        let cap_bps = read_utilization_cap_bps(pool);
+        if (cap_bps > 0) {
+            let pool_balance_u128 = balance::value(&pool.balance) as u128;
+            let max_payout_u128 = cap.max_single_payout as u128;
+            assert!(
+                max_payout_u128 * CAP_BPS_DENOM <= pool_balance_u128 * (cap_bps as u128),
+                EUtilizationCapExceeded,
+            );
+        };
 
         balance::join(&mut pool.balance, coin::into_balance(bet));
         update_game_bet_stats(pool, cap.game_id, amount);
@@ -487,6 +605,17 @@ module bankroll_pool::bankroll_pool {
     public fun share_price_scaled(pool: &BankrollPool): u128 {
         if (pool.total_shares == 0) return SHARE_PRICE_SCALE;
         ((balance::value(&pool.balance) as u128) * SHARE_PRICE_SCALE) / pool.total_shares
+    }
+
+    /// v0.0.3: utilization cap in basis points (0 = disabled).
+    public fun utilization_cap_bps(pool: &BankrollPool): u64 {
+        read_utilization_cap_bps(pool)
+    }
+
+    /// v0.0.3: true once seed_pool_shares (or any LP) has minted shares.
+    /// Off-chain consumers use this to gate the public LP UI.
+    public fun is_seeded(pool: &BankrollPool): bool {
+        pool.total_shares > 0
     }
 
     public fun game_cap_id(cap: &GameCap): u8 { cap.game_id }
