@@ -7,7 +7,7 @@
  * connected wallet (no extra request — match by `row.player === wallet`).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLeaderboard } from '../lib/api/queries';
 import type {
   LeaderboardGame,
@@ -21,8 +21,9 @@ import {
   fmtTimeAgo,
   fmtUsdc,
   fmtUsdcSigned,
-  shortWallet,
 } from '../features/dashboard/format';
+import { PlayerIdentity } from '../features/shared/PlayerIdentity';
+import { Pagination } from '../features/shared/Pagination';
 
 const PERIOD_OPTIONS: { value: LeaderboardPeriod; label: string }[] = [
   { value: '24h', label: '24h' },
@@ -53,25 +54,35 @@ const GAME_OPTIONS = ENABLE_CRASH
   ? GAME_OPTIONS_BASE
   : GAME_OPTIONS_BASE.filter((g) => g.value !== 4);
 
-const DEFAULT_LIMIT = 100;
-const MASK_PREFIX = '~';
-
-function isAnonymous(player: string): boolean {
-  return player.startsWith(MASK_PREFIX);
-}
+// Server caps `limit` at 500. UI shows 5 pages of 100 rows.
+const TOTAL_LIMIT = 500;
+const PAGE_SIZE = 100;
 
 export default function LeaderboardPage() {
   const [period, setPeriod] = useState<LeaderboardPeriod>('7d');
   const [game, setGame] = useState<LeaderboardGame>('all');
   const [metric, setMetric] = useState<LeaderboardMetric>('net_pnl');
+  const [page, setPage] = useState(1);
+
+  // Reset to page 1 when filters change — a 7d net_pnl page 4 is meaningless
+  // once the user flips to 24h volume.
+  useEffect(() => {
+    setPage(1);
+  }, [period, game, metric]);
 
   const { walletAddress } = useGostopAuth();
   const { data, isLoading, isError, error, refetch } = useLeaderboard(
     period,
     game,
     metric,
-    DEFAULT_LIMIT,
+    TOTAL_LIMIT,
   );
+
+  const allRows = data?.rows ?? [];
+  const totalPages = Math.max(1, Math.ceil(allRows.length / PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages);
+  const pageStart = (clampedPage - 1) * PAGE_SIZE;
+  const pageRows = allRows.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -79,8 +90,8 @@ export default function LeaderboardPage() {
         <h1 className="font-display text-3xl text-gold">Leaderboard</h1>
         <p className="text-base text-neutral-200 max-w-2xl">
           Live rankings across every GoStop table. Anonymous players show as
-          masked handles; opt-out players are hidden. Refreshed every 10
-          seconds.
+          masked handles; opt-out and banned players are hidden. Refreshed
+          every 10 seconds.
         </p>
       </header>
 
@@ -95,10 +106,33 @@ export default function LeaderboardPage() {
         />
 
         {isLoading && (
-          <div className="animate-pulse space-y-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-10 bg-ink-800 rounded" />
-            ))}
+          <div
+            role="status"
+            aria-live="polite"
+            className="flex items-center justify-center gap-3 py-16 text-gold-200"
+          >
+            <svg
+              className="w-5 h-5 animate-spin"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                stroke="currentColor"
+                strokeOpacity="0.25"
+                strokeWidth="2.5"
+              />
+              <path
+                d="M21 12a9 9 0 0 0-9-9"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+              />
+            </svg>
+            <span className="text-sm uppercase tracking-widest">Loading…</span>
           </div>
         )}
 
@@ -116,18 +150,22 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        {data && data.rows.length === 0 && (
+        {data && allRows.length === 0 && (
           <p className="text-sm text-neutral-200">No rounds in this window yet.</p>
         )}
 
-        {data && data.rows.length > 0 && (
-          <LeaderboardTable rows={data.rows} wallet={walletAddress} metric={metric} />
-        )}
-
-        {data && (
-          <p className="text-xs text-neutral-300">
-            Top {data.rows.length} of {DEFAULT_LIMIT} · refreshed every 10s.
-          </p>
+        {data && pageRows.length > 0 && (
+          <>
+            <LeaderboardTable rows={pageRows} wallet={walletAddress} metric={metric} />
+            <Pagination
+              currentPage={clampedPage}
+              totalPages={totalPages}
+              onPageChange={setPage}
+            />
+            <p className="text-xs text-neutral-300 text-center">
+              Showing {pageStart + 1}–{pageStart + pageRows.length} of {allRows.length} · refreshed every 10s.
+            </p>
+          </>
         )}
       </section>
     </div>
@@ -281,8 +319,6 @@ function Row({
   isMe: boolean;
   metric: LeaderboardMetric;
 }) {
-  const anon = isAnonymous(row.player);
-  const playerLabel = anon ? row.player : shortWallet(row.player);
   const pnlPositive = (() => {
     try { return BigInt(row.net_pnl) >= 0n; }
     catch { return true; }
@@ -296,12 +332,7 @@ function Row({
     >
       <td className="py-2 pr-3 font-mono text-gold-200">{row.rank}</td>
       <td className="py-2 px-3">
-        <span className={`font-mono ${anon ? 'text-neutral-300' : 'text-neutral-100'}`}>
-          {playerLabel}
-        </span>
-        {isMe && (
-          <span className="ml-2 text-xs uppercase tracking-widest text-gold-300">You</span>
-        )}
+        <PlayerIdentity player={row.player} isMe={isMe} dense />
       </td>
       <td
         className={`py-2 px-3 text-right font-mono ${
