@@ -167,13 +167,26 @@ async function findMintedPositions(
     return null;
   }
 
-  const [objA, objB] = await Promise.all([
-    client.getObject({ id: created[0].objectId, options: { showContent: true } }),
-    client.getObject({ id: created[1].objectId, options: { showContent: true } }),
-  ]);
+  // Retry getObject: executeAndWait returns when the executing fullnode has the
+  // tx, but a subsequent client.getObject can route to a different read replica
+  // that has not yet indexed the new owned object, returning content=null. This
+  // produced 32 "could not identify YES/NO" aborts between 14:59 and 15:06 UTC
+  // on 2026-05-18, each one stranding a YES+NO pair in the arb wallet until the
+  // market resolves.
+  const fetchWithRetry = async (objectId: string) => {
+    for (let attempt = 1; attempt <= 4; attempt++) {
+      const obj = await client.getObject({ id: objectId, options: { showContent: true } });
+      const fields = (obj.data?.content as { fields?: { is_yes?: boolean } } | undefined)?.fields;
+      if (fields && typeof fields.is_yes === 'boolean') return fields;
+      if (attempt < 4) await new Promise((r) => setTimeout(r, 300 * attempt));
+    }
+    return undefined;
+  };
 
-  const aFields = (objA.data?.content as { fields?: { is_yes?: boolean } } | undefined)?.fields;
-  const bFields = (objB.data?.content as { fields?: { is_yes?: boolean } } | undefined)?.fields;
+  const [aFields, bFields] = await Promise.all([
+    fetchWithRetry(created[0].objectId),
+    fetchWithRetry(created[1].objectId),
+  ]);
   if (!aFields || !bFields) return null;
 
   return aFields.is_yes
