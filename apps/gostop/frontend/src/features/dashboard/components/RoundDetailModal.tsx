@@ -48,7 +48,7 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div

@@ -4,7 +4,9 @@ import {
   resolveAvatarUrl,
   useProfile,
 } from '@nasun/profile-react';
+import { GenesisPassBadge } from '@nasun/wallet-ui';
 import { shortWallet } from '../dashboard/format';
+import { useGenesisPassFor } from '../../hooks/useGenesisPassFor';
 
 const PROFILE_API =
   (import.meta.env.VITE_NASUN_USER_PROFILE_API as string | undefined) ?? '';
@@ -54,6 +56,9 @@ export const PlayerIdentity = memo(function PlayerIdentity({
     ? resolveAvatarUrl(profile, { baseUrl: PUBLIC_AVATARS_BASE_URL })
     : null;
   const xHandle = profile?.twitterHandle ?? null;
+  // Anonymous rows must never hit the GP check Lambda (the mask id is not a
+  // valid Nasun address; passing null short-circuits the hook).
+  const hasGenesisPass = useGenesisPassFor(anon ? null : player);
 
   // Primary line falls back through: display name -> truncated wallet ->
   // mask id (anon rows render the mask id as-is, never the real wallet).
@@ -83,6 +88,9 @@ export const PlayerIdentity = memo(function PlayerIdentity({
           >
             {primary}
           </span>
+          {!anon && hasGenesisPass && (
+            <GenesisPassBadge variant="compact" className="shrink-0" />
+          )}
           {!anon && isValidXHandle(xHandle) && (
             <a
               href={`https://x.com/${xHandle}`}
