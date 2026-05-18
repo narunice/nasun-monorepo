@@ -30,7 +30,8 @@ import { requireAuth, type AuthVars } from '../auth/middleware.js';
 const PERIODS = new Set<Period>(['24h', '7d', '30d', 'all']);
 const METRICS = new Set<Metric>(['net_pnl', 'volume', 'rounds']);
 const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
+// 500 is the public board's hard cap (5 pages x 100 rows in the UI).
+const MAX_LIMIT = 500;
 const CACHE_TTL_SECONDS = 10;
 
 function parsePeriod(s: string | undefined): Period | null {

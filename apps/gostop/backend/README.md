@@ -127,6 +127,9 @@ psql -d nasun_points -f migrations/002_idx_gr_final_ts_player.sql
 # indexer + /lottery/draws + transparency / replay frontend (without this the
 # first NumbersDrawn event crashes the indexer):
 psql -d nasun_points -f migrations/003_lottery_round_draw_tx_digest.sql
+# Ban filter integration: leaderboard SQL joins public.banned_users for
+# ecosystem-wide ban semantics (settle-pado / chat-server share this table).
+psql -d nasun_points -c "GRANT SELECT ON public.banned_users TO gostop_reader;"
 ```
 
 Current prod has 001 + 002 + the 003 column (003 was applied manually by
