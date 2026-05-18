@@ -172,7 +172,7 @@ export function LinkTelegramModal({
                 </button>
               </div>
               <p className="text-sm text-uju-secondary/70 text-center">
-                After opening the link, the bot will confirm the connection. This session expires
+                After opening the link, Nasun AI will confirm the connection. This session expires
                 in 90 days.
               </p>
             </div>

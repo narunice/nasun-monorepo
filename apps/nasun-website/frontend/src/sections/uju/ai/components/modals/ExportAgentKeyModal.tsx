@@ -230,7 +230,7 @@ export function ExportAgentKeyModal({
 
               {activeTab === 'privateKey' && secretKey && (
                 <SecretBox
-                  label="Sui private key (bech32)"
+                  label="Agent private key (bech32)"
                   value={secretKey}
                   revealed={revealed}
                   copied={copied === 'privateKey'}

@@ -29,7 +29,7 @@ async function verifyResultHash(result: string, expectedHash: string): Promise<b
 }
 
 function truncateHash(hex: string | null | undefined, head = 8, tail = 6): string {
-  if (!hex) return '—';
+  if (!hex) return '-';
   if (hex.length <= head + tail + 3) return hex;
   return `${hex.slice(0, head)}…${hex.slice(-tail)}`;
 }
@@ -39,7 +39,7 @@ function eventClassLabel(cls?: number): string {
     case 1: return 'cognition';
     case 2: return 'execution';
     case 3: return 'settlement';
-    default: return '—';
+    default: return '-';
   }
 }
 
@@ -48,7 +48,7 @@ function outcomeLabel(o?: number): string {
     case 1: return 'success';
     case 2: return 'hold';
     case 3: return 'failure';
-    default: return '—';
+    default: return '-';
   }
 }
 

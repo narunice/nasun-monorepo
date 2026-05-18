@@ -228,7 +228,7 @@ export function QuickstartView({
         </span>
       ) : (
         <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/40 text-uju-secondary/60 font-mono whitespace-nowrap">
-          {defaultExecutor ? truncateAddress(defaultExecutor.operator) : '—'}
+          {defaultExecutor ? truncateAddress(defaultExecutor.operator) : '-'}
         </span>
       ),
     },
@@ -277,7 +277,7 @@ export function QuickstartView({
 
   return (
     <div className="space-y-6">
-      {/* Hero — only when no agents yet */}
+      {/* Hero: only when no agents yet */}
       {!agentsLoading && !hasAgents && (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-uju-bg via-pado-4/10 to-uju-card border border-pado-2/20 p-6 md:p-8">
           {/* Subtle grid texture */}
@@ -298,7 +298,7 @@ export function QuickstartView({
             </h2>
             <p className="text-sm text-uju-secondary leading-relaxed">
               Your agent runs on Nasun, a Move-based Layer 1. Every decision it makes
-              — authority, model, cost, reasoning, action — is recorded onchain, forever.
+              (authority, model, cost, reasoning, action) is recorded onchain, forever.
               The first available agent is an autonomous trader on Pado DEX.
             </p>
             <button
@@ -397,7 +397,7 @@ export function QuickstartView({
         </button>
       )}
 
-      {/* Agent grid — only when agents exist */}
+      {/* Agent grid: only when agents exist */}
       {hasAgents && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3 flex-wrap">
