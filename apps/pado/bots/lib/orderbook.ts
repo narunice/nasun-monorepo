@@ -211,7 +211,9 @@ function parseU64Vector(bytes: number[]): bigint[] {
 }
 
 function formatPrice(rawPrice: bigint): number {
-  return Number(rawPrice) / Math.pow(10, MARKET.quoteDecimals);
+  // DeepBook V3 encodes price as quote_raw_per_base_unit_at_9_decimals.
+  const exp = MARKET.quoteDecimals + 9 - MARKET.baseDecimals;
+  return Number(rawPrice) / Math.pow(10, exp);
 }
 
 function formatQuantity(rawQuantity: bigint): number {

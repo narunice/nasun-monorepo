@@ -68,9 +68,15 @@ const MARKETS = {
     baseThreshold: 300,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
-    faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
-    faucetV2Object: TOKEN_FAUCET_V2,
-    faucetV2Function: 'request_neth',
+    // Current NETH TreasuryCap lives in NETH_FAUCET_V2, not TOKEN_FAUCET_V2 (which
+    // still holds the legacy 0xcc65...::neth::NETH cap that mints unusable coins).
+    faucetV2Package: NETH_FAUCET_PACKAGE,
+    faucetV2Object: NETH_FAUCET_V2,
+    // The dedicated NETH faucet exposes `request_tokens` (no cooldown, mints
+    // NETH + NSOL together) and `request_neth_with_cooldown`. It does NOT have
+    // a no-cooldown `request_neth` — that only exists on the shared faucet,
+    // which mints the wrong (legacy) NETH type.
+    faucetV2Function: 'request_tokens',
     basePerRound: 0.5,
     quotePerRound: 100_000,
   },
@@ -297,6 +303,26 @@ async function main() {
   console.log('');
 
   assertUniqueWallets();
+
+  // Preflight: every v2 market's faucet must mint its configured baseType.
+  // Without this guard, a misconfigured faucet (or a token re-publish that
+  // forgets to update the wiring) silently mints the wrong coin type forever
+  // and the LP bot's "trading inventory" never refills.
+  const { verifyMarketFaucets } = await import('../lib/preflight.js');
+  const checkables = (['NBTC', 'NETH', 'NSOL'] as const).map((m) => ({
+    name: m,
+    baseType: MARKETS[m].baseType,
+    faucetType: MARKETS[m].faucetType,
+    faucetV2Object: 'faucetV2Object' in MARKETS[m] ? MARKETS[m].faucetV2Object : undefined,
+  }));
+  try {
+    await verifyMarketFaucets(checkables, { rpcUrl: RPC_URL });
+    console.log('[preflight] all faucets ↔ baseTypes verified');
+  } catch (err) {
+    console.error('PREFLIGHT FAILED — refusing to start watchdog.');
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
 
   await checkAll(client);
 

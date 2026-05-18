@@ -1,6 +1,51 @@
 # Pado Bots (Automation)
 
-> Last Updated: 2026-03-26
+> Last Updated: 2026-05-18
+
+## Token / Faucet Invariant (READ BEFORE EDITING `lib/config.ts`)
+
+For every market the bots trade, the faucet object the bot calls must hold a
+`TreasuryCap` whose minted coin type **equals** the market's configured
+`baseType`. If they diverge (most commonly after a token package re-publish
+that forgets to update faucet wiring), the bot mints stale-type coins forever,
+DeepBook refuses them, and trading inventory never refills even though the
+logs cheerfully say `REFILLED: +N TOKEN`.
+
+The 2026-05-18 NETH liquidity incident is exactly that failure: `MARKETS.NETH`
+was pointed at the shared `TOKEN_FAUCET_V2` (which still holds the legacy
+`0xcc65…::neth::NETH` TreasuryCap from before the NETH republish), so 11 days
+of refills landed in the wrong coin type while the orderbook stayed empty.
+
+### Current pairings (all three MUST stay aligned)
+
+| Market | `baseType` package         | Faucet package           | Faucet object         | No-cooldown fn   |
+|--------|----------------------------|--------------------------|-----------------------|------------------|
+| NBTC   | `TOKENS_PACKAGE`           | `TOKENS_PACKAGE` (v1)    | `TOKEN_FAUCET`        | `request_tokens` |
+| NETH   | `NETH_PACKAGE`             | `NETH_FAUCET_PACKAGE`    | `NETH_FAUCET_V2`      | `request_tokens` |
+| NSOL   | `TOKENS_V2_PACKAGE`        | `TOKENS_V2_FAUCET_PACKAGE` | `TOKEN_FAUCET_V2`   | `request_nsol`   |
+
+> NETH's dedicated faucet does NOT expose a no-cooldown `request_neth`; use
+> `request_tokens` (mints NETH + NSOL together). The shared `TOKEN_FAUCET_V2`
+> does expose `request_neth` but mints the legacy NETH type — never use it for
+> NETH.
+
+### Enforcement: startup preflight
+
+`lib/preflight.ts::verifyMarketFaucet` reads the on-chain faucet object,
+extracts every `TreasuryCap<…>` type it holds, and aborts the bot if the
+market's `baseType` is not among them. The check is wired into:
+
+- `lp-bot.ts` (per-market, after the address banner)
+- `scripts/balance-watchdog.ts` (all three markets, before the first cycle)
+- `scripts/prefund-bot.ts` (the targeted market, before submitting any TX)
+
+When you re-publish a token package or add a new market, run
+`pnpm tsx scripts/prefund-bot.ts --market <X> --rounds 1 --dry-run` (or just
+boot the bot in staging) — preflight will fail with a diff of expected vs.
+actual TreasuryCap types if the wiring is wrong. Do not bypass it.
+
+---
+
 
 ## Bot Overview
 

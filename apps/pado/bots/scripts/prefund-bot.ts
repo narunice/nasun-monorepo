@@ -28,15 +28,29 @@ const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70
 const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
 
-const MARKET_CONFIGS: Record<string, {
+const NBTC_TYPE = `${TOKENS_PACKAGE}::nbtc::NBTC`;
+const NETH_TYPE = `${NETH_PACKAGE}::neth::NETH`;
+// NSOL coin type comes from the ORIGINAL (pre-upgrade) v2 tokens package.
+const NSOL_TYPE = `0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL`;
+
+interface PrefundMarketConfig {
+  baseType: string;
   faucetType: 'v1' | 'v2';
   faucetV2Package?: string;
   faucetV2Object?: string;
   faucetV2Function?: string;
-}> = {
-  NBTC: { faucetType: 'v1' },
-  NETH: { faucetType: 'v2', faucetV2Package: TOKENS_V2_FAUCET_PACKAGE, faucetV2Object: TOKEN_FAUCET_V2, faucetV2Function: 'request_neth' },
-  NSOL: { faucetType: 'v2', faucetV2Package: TOKENS_V2_FAUCET_PACKAGE, faucetV2Object: TOKEN_FAUCET_V2, faucetV2Function: 'request_nsol' },
+}
+
+// See packages/devnet-tokens-v2 + lib/config.ts INVARIANT block for the
+// faucet/baseType pairing rules. Adding a new market here REQUIRES verifying
+// the faucet object holds a TreasuryCap of the matching baseType.
+const MARKET_CONFIGS: Record<string, PrefundMarketConfig> = {
+  NBTC: { baseType: NBTC_TYPE, faucetType: 'v1' },
+  // NETH uses its dedicated faucet (NETH_FAUCET_*) not the shared TOKEN_FAUCET_V2.
+  // The shared faucet holds the legacy 0xcc65...::neth::NETH TreasuryCap, which
+  // mints coins of a type DeepBook pools do not accept.
+  NETH: { baseType: NETH_TYPE, faucetType: 'v2', faucetV2Package: NETH_FAUCET_PACKAGE, faucetV2Object: NETH_FAUCET_V2, faucetV2Function: 'request_tokens' },
+  NSOL: { baseType: NSOL_TYPE, faucetType: 'v2', faucetV2Package: TOKENS_V2_FAUCET_PACKAGE, faucetV2Object: TOKEN_FAUCET_V2, faucetV2Function: 'request_nsol' },
 };
 
 function parseArgs(): { market: string; rounds: number } {
@@ -133,6 +147,23 @@ async function main() {
 
   if (gasBalance < 1) {
     console.error('Insufficient gas. Request gas first via HTTP faucet.');
+    process.exit(1);
+  }
+
+  // Preflight: confirm the faucet we are about to call actually mints the
+  // expected baseType for this market. Stops the 2026-05-18-style silent
+  // wrong-type mint at the script boundary, before 100s of useless rounds.
+  const cfg = MARKET_CONFIGS[market];
+  try {
+    const { verifyMarketFaucet } = await import('../lib/preflight.js');
+    await verifyMarketFaucet(
+      { name: market, baseType: cfg.baseType, faucetType: cfg.faucetType, faucetV2Object: cfg.faucetV2Object },
+      { rpcUrl: RPC_URL },
+    );
+    console.log(`  Preflight: ${market} faucet ↔ baseType verified`);
+  } catch (err) {
+    console.error('PREFLIGHT FAILED — refusing to mint.');
+    console.error(err instanceof Error ? err.message : err);
     process.exit(1);
   }
 
