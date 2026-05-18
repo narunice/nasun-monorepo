@@ -9,8 +9,15 @@
 
 import { PREDICTION, NUSDC_TYPE as DEVNET_NUSDC_TYPE } from '@nasun/devnet-config';
 
-// Deployed contract addresses (from @nasun/devnet-config)
+// Deployed contract addresses (from @nasun/devnet-config).
+// - PREDICTION_PACKAGE_ID  = latest published-at; used as moveCall target.
+// - PREDICTION_ORIGINAL_PACKAGE_ID = first publish (Immutable); used to identify
+//   Position / Market / event types since Sui anchors object types to the
+//   original Package ID. After an upgrade, existing NFTs still report the
+//   original ID in their type signature.
 export const PREDICTION_PACKAGE_ID = PREDICTION.packageId;
+export const PREDICTION_ORIGINAL_PACKAGE_ID =
+  PREDICTION.originalPackageId ?? PREDICTION.packageId;
 export const PREDICTION_ADMIN_CAP = PREDICTION.adminCap;
 
 // Admin multisig address (acts as resolver for all markets). For dev, use the
@@ -19,18 +26,19 @@ export const PREDICTION_ADMIN_CAP = PREDICTION.adminCap;
 import { ADMIN_ADDRESS } from '@nasun/devnet-config';
 export const ADMIN_MULTISIG_ADDRESS: string = ADMIN_ADDRESS;
 
-// Type names
-export const MARKET_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Market`;
-export const POSITION_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::Position`;
-export const ADMIN_CAP_TYPE = `${PREDICTION_PACKAGE_ID}::prediction_market::AdminCap`;
+// Type names — anchored to original package ID so existing on-chain objects
+// from any prior package version still match these filters after upgrades.
+export const MARKET_TYPE = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::Market`;
+export const POSITION_TYPE = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::Position`;
+export const ADMIN_CAP_TYPE = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::AdminCap`;
 
-// Event type identifiers
-export const MARKET_CREATED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::MarketCreated`;
-export const ORDER_PLACED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::OrderPlaced`;
-export const ORDER_FILLED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::OrderFilled`;
-export const ORDER_CANCELLED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::OrderCancelled`;
-export const MARKET_RESOLVED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::MarketResolved`;
-export const MARKET_CANCELLED_EVENT = `${PREDICTION_PACKAGE_ID}::prediction_market::MarketCancelled`;
+// Event type identifiers — also anchored to original package ID.
+export const MARKET_CREATED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::MarketCreated`;
+export const ORDER_PLACED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::OrderPlaced`;
+export const ORDER_FILLED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::OrderFilled`;
+export const ORDER_CANCELLED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::OrderCancelled`;
+export const MARKET_RESOLVED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::MarketResolved`;
+export const MARKET_CANCELLED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::MarketCancelled`;
 
 // Price constants (basis points)
 export const MAX_PRICE = 10000;       // 100%

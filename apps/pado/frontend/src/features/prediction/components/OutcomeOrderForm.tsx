@@ -435,9 +435,16 @@ export function OutcomeOrderForm({
             minPriceBps = userPriceBps;
           }
 
-          const pos = filteredPositions.find((p) => p.id === selectedPositionId);
-          const sellShares = pos ? Number(pos.shares) / 1_000_000 : 0;
-          const result = await placeSellTaker(market.id, selectedPositionId, minPriceBps, restOnNoFill);
+          // Sell the whole (market, side) bucket. `filteredPositions` is already
+          // filtered to the active side; positions feeding this component are
+          // pre-filtered to the active market upstream, so the array IS the bucket.
+          // Pre-merge inside the PTB so fragmented lots become a single Position
+          // (single signature). `sellShares` is sized to the merged total for
+          // the success modal "fully filled?" comparison.
+          const sellShares =
+            filteredPositions.reduce((sum, p) => sum + Number(p.shares), 0) / 1_000_000;
+          const bucketIds = filteredPositions.map((p) => p.id);
+          const result = await placeSellTaker(market.id, bucketIds, minPriceBps, restOnNoFill);
           if (result.success) {
             const filledSharesUi =
               result.filledShares != null
@@ -491,7 +498,6 @@ export function OutcomeOrderForm({
       bestAskBps,
       bestBidBps,
       market.id,
-      selectedPositionId,
       bmId,
       isSimple,
       filteredPositions,

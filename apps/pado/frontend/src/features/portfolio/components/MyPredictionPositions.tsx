@@ -86,7 +86,7 @@ interface BulkProgress {
   positionsTotal: number;
 }
 
-type MultiItem = { marketId: string; positionId: string; kind: ActionKind };
+type MultiItem = { marketId: string; position: readonly string[]; kind: ActionKind };
 
 function kindForPosition(group: MarketGroup, position: Position): ActionKind | null {
   const { market } = group;
@@ -186,13 +186,32 @@ export function MyPredictionPositions() {
       // in one signature — the prior per-market loop forced N wallet popups,
       // and users who cancelled mid-flow ended up with the symptom this fix
       // targets (positions still claimable after a "Settle All" run).
+      //
+      // Within each market group, lots are bucketed by (marketId, isYes) so the
+      // PTB auto-merges each bucket into a single Position before claim/burn/
+      // refund. This collapses N fragmented Position NFTs into one moveCall pair
+      // per bucket (one merge + one claim) instead of N separate claims.
       const items: MultiItem[] = [];
       for (const g of groups) {
         const targetPositions = actionsFor(classifyGroup(g), kind);
+        // Group by (isYes, kind) — the kind is determined per Position via
+        // `kindForPosition`, but for a given market it depends only on isYes
+        // (winning vs losing vs refund), so bucketing by isYes implicitly
+        // bucket by kind too.
+        const buckets = new Map<string, { ids: string[]; kind: ActionKind }>();
         for (const p of targetPositions) {
           const k = kindForPosition(g, p);
           if (k === null) continue;
-          items.push({ marketId: g.market.id, positionId: p.id, kind: k });
+          const bucketKey = `${p.isYes ? 'Y' : 'N'}`;
+          const existing = buckets.get(bucketKey);
+          if (existing) {
+            existing.ids.push(p.id);
+          } else {
+            buckets.set(bucketKey, { ids: [p.id], kind: k });
+          }
+        }
+        for (const { ids, kind: k } of buckets.values()) {
+          items.push({ marketId: g.market.id, position: ids, kind: k });
         }
       }
       if (items.length === 0) return;
@@ -202,13 +221,17 @@ export function MyPredictionPositions() {
         chunks.push(items.slice(i, i + MULTI_MARKET_CHUNK_SIZE));
       }
 
+      // Track underlying lot count (not bucket count) for the user-facing
+      // progress bar — each bucket may contain N fragmented Positions.
+      const totalLots = items.reduce((sum, it) => sum + it.position.length, 0);
+
       setBulkPhase('running');
       setBulkProgress({
         kind,
         chunksDone: 0,
         chunksTotal: chunks.length,
         positionsDone: 0,
-        positionsTotal: items.length,
+        positionsTotal: totalLots,
       });
 
       let positionsDone = 0;
@@ -218,11 +241,12 @@ export function MyPredictionPositions() {
         const chunk = chunks[ci];
         const chunkStart = Date.now();
         const result = await settleMultiMarketBatch(chunk);
+        const chunkLots = chunk.reduce((sum, it) => sum + it.position.length, 0);
         console.info(
-          `[bulk-${kind}] chunk ${ci + 1}/${chunks.length} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+          `[bulk-${kind}] chunk ${ci + 1}/${chunks.length} buckets=${chunk.length} lots=${chunkLots} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
         );
         if (!result.success) break;
-        positionsDone += chunk.length;
+        positionsDone += chunkLots;
         setBulkProgress((prev) =>
           prev ? { ...prev, chunksDone: ci + 1, positionsDone } : prev,
         );
@@ -230,7 +254,7 @@ export function MyPredictionPositions() {
       }
 
       console.info(
-        `[bulk-${kind}] settled=${positionsDone}/${items.length} elapsed=${Date.now() - startedAt}ms`,
+        `[bulk-${kind}] settled=${positionsDone}/${totalLots} elapsed=${Date.now() - startedAt}ms`,
       );
       setBulkProgress(null);
       setBulkPhase('syncing');
@@ -466,17 +490,35 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
       const startedAt = Date.now();
       let done = 0;
 
+      // Bucket the chunk by isYes so each side's fragmented lots get one merge
+      // + one claim/burn/refund, instead of N separate consumed Positions.
+      function bucketChunk(chunk: Position[]) {
+        const yesIds: string[] = [];
+        const noIds: string[] = [];
+        for (const p of chunk) {
+          (p.isYes ? yesIds : noIds).push(p.id);
+        }
+        return { yesIds, noIds };
+      }
+
       for (let i = 0; i < items.length; i += CLAIM_CHUNK_SIZE) {
         const chunk = items.slice(i, i + CLAIM_CHUNK_SIZE);
         const chunkStart = Date.now();
-        const result = isCancelled
-          ? await settleRefundsBatch(market.id, chunk.map((p) => p.id))
-          : await settlePositionsBatch(
-              market.id,
-              chunk.map((p) => ({ positionId: p.id, won: p.isYes === outcome })),
-            );
+        const { yesIds, noIds } = bucketChunk(chunk);
+        let result;
+        if (isCancelled) {
+          const buckets: string[][] = [];
+          if (yesIds.length > 0) buckets.push(yesIds);
+          if (noIds.length > 0) buckets.push(noIds);
+          result = await settleRefundsBatch(market.id, buckets);
+        } else {
+          const batch: Array<{ position: readonly string[]; won: boolean }> = [];
+          if (yesIds.length > 0) batch.push({ position: yesIds, won: true === outcome });
+          if (noIds.length > 0) batch.push({ position: noIds, won: false === outcome });
+          result = await settlePositionsBatch(market.id, batch);
+        }
         console.info(
-          `[settle-group-${kind}] market=${market.id.slice(0, 8)} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(items.length / CLAIM_CHUNK_SIZE)} size=${chunk.length} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
+          `[settle-group-${kind}] market=${market.id.slice(0, 8)} chunk ${Math.floor(i / CLAIM_CHUNK_SIZE) + 1}/${Math.ceil(items.length / CLAIM_CHUNK_SIZE)} lots=${chunk.length} buckets=${(yesIds.length > 0 ? 1 : 0) + (noIds.length > 0 ? 1 : 0)} elapsed=${Date.now() - chunkStart}ms ok=${result.success}`,
         );
         if (!result.success) break;
         done += chunk.length;
@@ -497,8 +539,14 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
   const handleSettle = useCallback(
     async (position: Position) => {
       setError(null);
+      // Auto-merge sibling lots in the same (market, side) bucket so the
+      // claim/burn/refund acts on one Position instead of N.
+      const bucketIds = positions
+        .filter((p) => p.isYes === position.isYes)
+        .map((p) => p.id);
+
       if (market.status === 'cancelled') {
-        const result = await claimCancelledRefund(market.id, position.id);
+        const result = await claimCancelledRefund(market.id, bucketIds);
         if (!result.success) setError(result.error || 'Failed to claim refund');
         else startSync();
         return;
@@ -506,12 +554,12 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
       if (market.status !== 'resolved') return;
       const isWinning = position.isYes === market.outcome;
       const result = isWinning
-        ? await claimWinnings(market.id, position.id)
-        : await burnLosingPosition(market.id, position.id);
+        ? await claimWinnings(market.id, bucketIds)
+        : await burnLosingPosition(market.id, bucketIds);
       if (!result.success) setError(result.error || 'Failed to settle position');
       else startSync();
     },
-    [market.id, market.status, market.outcome, claimWinnings, burnLosingPosition, claimCancelledRefund, startSync],
+    [market.id, market.status, market.outcome, positions, claimWinnings, burnLosingPosition, claimCancelledRefund, startSync],
   );
 
   const statusChip = renderStatusChip(market);
