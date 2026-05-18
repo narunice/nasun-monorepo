@@ -1,7 +1,7 @@
 /**
  * Leaderboard route — Tier 0 §0.1.1.
  *
- *   GET /api/gostop/leaderboard?period=24h|7d|30d|all&game=all|1..6&metric=net_pnl|volume|rounds&limit=N
+ *   GET /api/gostop/leaderboard?period=24h|7d|all&game=all|1..6&metric=net_pnl|volume|rounds&limit=N
  *   GET /api/gostop/leaderboard/me  (auth required)
  *
  * Caching: 10s in-memory TTL keyed on (period, game, metric, limit) + ETag.
@@ -27,7 +27,8 @@ import {
 import { anonId } from '../lib/visibility-mask.js';
 import { requireAuth, type AuthVars } from '../auth/middleware.js';
 
-const PERIODS = new Set<Period>(['24h', '7d', '30d', 'all']);
+// '30d' deliberately omitted — see leaderboard-query.ts header comment.
+const PERIODS = new Set<Period>(['24h', '7d', 'all']);
 const METRICS = new Set<Metric>(['net_pnl', 'volume', 'rounds']);
 const DEFAULT_LIMIT = 50;
 // 500 is the public board's hard cap (5 pages x 100 rows in the UI).

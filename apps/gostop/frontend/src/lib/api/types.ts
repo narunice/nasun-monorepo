@@ -113,7 +113,9 @@ export interface MeLeaderboardRank {
 
 // GET /api/gostop/leaderboard query/response.
 // `game` matches the backend GameFilter enum: 'all' | 1..6.
-export type LeaderboardPeriod = '24h' | '7d' | '30d' | 'all';
+// '30d' deliberately omitted — backend rejects it (cost ~25x the matview-backed
+// 'all' path while returning the same data at current history < 30 days).
+export type LeaderboardPeriod = '24h' | '7d' | 'all';
 export type LeaderboardGame = 'all' | 1 | 2 | 3 | 4 | 5 | 6;
 export type LeaderboardMetric = 'net_pnl' | 'volume' | 'rounds';
 
