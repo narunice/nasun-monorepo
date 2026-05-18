@@ -212,7 +212,19 @@ function LotteryReplay({ data }: { data: RoundDetail }) {
           <p className="text-sm text-neutral-300">
             Post your verified round to X or Telegram — anyone can replay it on chain.
           </p>
-          <ShareIntentButtons shareUrl={shareUrl} message={shareMessage} />
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <ShareIntentButtons shareUrl={shareUrl} message={shareMessage} />
+            <a
+              href={getExplorerTxUrl(r.tx_digest)}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View transaction on Nasun Explorer"
+              className="inline-flex items-center gap-1.5 text-sm text-gold-200 hover:text-gold-100"
+            >
+              View on Explorer
+              <ExternalIcon />
+            </a>
+          </div>
         </section>
       )}
 
