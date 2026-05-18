@@ -149,6 +149,8 @@ export interface GameTransparency {
   game_id: number;
   key: string;
   rtp_bps: number;
+  total_bet_raw: string;
+  total_payout_raw: string;
   house_pnl_raw: string;
   commit_proof_count: number;
 }
