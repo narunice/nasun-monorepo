@@ -2,7 +2,16 @@
 # ==============================================================================
 # gostop-backend 프로덕션 배포 스크립트
 # ==============================================================================
-# 대상: EC2 43.200.67.52 /home/ec2-user/gostop-backend
+# !!! 현 상태 경고 (2026-05-18) !!!
+#   이 스크립트는 prod EC2 (43.200.67.52)에 배포하도록 작성되었지만,
+#   현재 운영 중인 gostop-backend는 **node-3 (54.180.61.196)** 에 있다.
+#   READ apps/gostop/backend/README.md §"Production deploy → Current runtime".
+#   monorepo ecosystem.config.cjs도 prod의 실제 모드(api는 tsx-src)와 다르다.
+#   reconcile PR 전에 이 스크립트를 그냥 실행하면 잘못된 호스트에 빈 디렉토리만
+#   만들고 끝난다 (실 운영에는 영향 없지만 운영자 혼란 야기).
+# ------------------------------------------------------------------------------
+# (의도된) 대상: EC2 43.200.67.52 /home/ec2-user/gostop-backend
+# (의도된) 사용자/키: ec2-user + ~/.ssh/.awskey/nasun-prod-key
 # 빌드: pnpm --filter @nasun/gostop-backend build (apps/gostop/backend/dist)
 # 재시작: export $(cat .env | xargs) && pm2 startOrRestart ecosystem.config.cjs
 #
