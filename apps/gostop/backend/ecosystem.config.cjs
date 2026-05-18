@@ -1,48 +1,55 @@
-// pm2 deploy units for gostop-backend on prod EC2 (__PROD_EC2_HOST__, shared with
-// nasun-website / pado / explorer-api). Two processes, separate concerns:
-//   - gostop-indexer: chain event -> Postgres (gostop_writer role)
-//   - gostop-api:     REST + WS for frontend (gostop_reader role)
+// pm2 deploy units for gostop-backend. Two processes, separate concerns:
+//   - gostop-indexer:  chain event -> Postgres (gostop_writer role)
+//   - gostop-backend:  REST + WS for frontend (gostop_reader role)
 //
-// Operational notes:
-//   - .env is sourced explicitly before pm2 startOrRestart so per-run env keys
-//     reach the process. Do NOT enumerate env values here that you want to
-//     override from .env (see chat-server ecosystem comments).
-//   - max_memory_restart sized for 1500 DAU peak; revisit after Tier 0 launch.
-//   - Restart cadence kept gentle (max_restarts 15, exp backoff) so RPC 503
-//     storms don't flap-loop the process.
+// Current runtime (verified 2026-05-18, node-3 /home/ubuntu/gostop-backend):
+//   - api runs tsx-live from src/api/server.ts (port 3202)
+//   - indexer runs compiled dist/indexer/index.js
+//   - env is loaded by Node itself via `--env-file=.env` (Node >=20.6); the
+//     deploy script also `set -a; source .env; set +a` before
+//     pm2 startOrRestart so per-run env keys reach the daemon parse step
+//     (feedback_pm2_daemon_env_resolution).
+//
+// Hot-fix pattern:
+//   - api: in-place edit under src/api/** + `pm2 restart gostop-backend`
+//     (tsx re-imports on restart, no rebuild needed)
+//   - indexer: `pnpm build` then `pm2 restart gostop-indexer`
 
 module.exports = {
   apps: [
     {
-      name: 'gostop-indexer',
-      script: 'dist/indexer/index.js',
-      max_memory_restart: '512M',
-      node_args: '--max-old-space-size=384',
+      name: 'gostop-backend',
+      script: 'node',
+      args: '--env-file=.env --import tsx src/api/server.ts',
+      cwd: '/home/ubuntu/gostop-backend',
+      max_memory_restart: '1024M',
+      autorestart: true,
       max_restarts: 15,
       min_uptime: '30s',
       restart_delay: 5000,
       exp_backoff_restart_delay: 1000,
-      autorestart: true,
-      env: {
-        ROLE: 'indexer',
-        NODE_ENV: 'production',
-      },
+      kill_timeout: 5000,
+      out_file: '/home/ubuntu/.pm2/logs/gostop-backend-out.log',
+      error_file: '/home/ubuntu/.pm2/logs/gostop-backend-error.log',
+      merge_logs: true,
+      time: true,
     },
     {
-      name: 'gostop-api',
-      script: 'dist/api/server.js',
+      name: 'gostop-indexer',
+      script: 'node',
+      args: '--env-file=.env dist/indexer/index.js',
+      cwd: '/home/ubuntu/gostop-backend',
       max_memory_restart: '512M',
-      node_args: '--max-old-space-size=384',
+      autorestart: true,
       max_restarts: 15,
       min_uptime: '30s',
       restart_delay: 5000,
       exp_backoff_restart_delay: 1000,
-      autorestart: true,
-      env: {
-        ROLE: 'api',
-        NODE_ENV: 'production',
-        // PORT mirrors .env API_PORT; pm2 logs only.
-      },
+      kill_timeout: 5000,
+      out_file: '/home/ubuntu/.pm2/logs/gostop-indexer-out.log',
+      error_file: '/home/ubuntu/.pm2/logs/gostop-indexer-error.log',
+      merge_logs: true,
+      time: true,
     },
   ],
 };
