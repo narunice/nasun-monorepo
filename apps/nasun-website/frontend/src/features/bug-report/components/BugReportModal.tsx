@@ -31,22 +31,29 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
   const [reproSteps, setReproSteps] = useState('');
   const [screenshots, setScreenshots] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutate, isPending, walletConnected } = useBugReport();
   const user = useUserStore((s) => s.user);
 
-  // Restore draft when modal opens
+  // Restore draft when modal opens. Surface a dismissable notice so the user
+  // knows their previous text was preserved (and can discard it).
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setDraftRestored(false);
+      return;
+    }
     try {
       const raw = localStorage.getItem(DRAFT_KEY);
       if (!raw) return;
       const draft: DraftData = JSON.parse(raw);
+      const hasContent = !!(draft.title || draft.description || draft.reproSteps);
       if (draft.title) setTitle(draft.title);
       if (draft.app) setApp(draft.app);
       if (draft.category) setCategory(draft.category);
       if (draft.description) setDescription(draft.description);
       if (draft.reproSteps) setReproSteps(draft.reproSteps);
+      if (hasContent) setDraftRestored(true);
     } catch {
       // ignore malformed draft
     }
@@ -61,6 +68,21 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
       // ignore storage errors (private mode, quota, etc.)
     }
   }, [open, title, app, category, description, reproSteps]);
+
+  // Warn before the page unloads while the form has unsaved content. The draft
+  // is also persisted to localStorage, but a refresh on mobile easily wipes
+  // the user's mental state, so a native confirm prompt is the clearest signal.
+  useEffect(() => {
+    if (!open) return;
+    const dirty = !!(title.trim() || description.trim() || reproSteps.trim() || screenshots.length);
+    if (!dirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [open, title, description, reproSteps, screenshots]);
 
   // Keep localStorage draft so accidental close (Cancel / Escape / outside
   // click) does not wipe a long report in progress. Only successful submit
@@ -77,6 +99,12 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
 
   const clearSavedDraft = () => {
     try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  };
+
+  const discardDraft = () => {
+    clearSavedDraft();
+    resetForm();
+    setDraftRestored(false);
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -193,6 +221,19 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
           <Dialog.Description className="sr-only">
             Submit a bug report or feedback for the Nasun website
           </Dialog.Description>
+
+          {draftRestored && (
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-lg border border-nasun-c4/40 bg-nasun-c4/10 px-3 py-2 text-sm text-white/80">
+              <span>Draft restored from your previous session.</span>
+              <button
+                type="button"
+                onClick={discardDraft}
+                className="px-2 py-1 text-xs font-medium text-white/70 hover:text-white underline decoration-dotted underline-offset-2"
+              >
+                Discard
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Title */}
