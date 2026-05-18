@@ -54,6 +54,11 @@ function metricExpr(metric: Metric): string {
  * Build & execute a leaderboard query. Returns rows ordered by metric DESC,
  * including a server-side rank starting at 1. `excludePlayers` lets the API
  * drop `feed_visibility='opt-out'` wallets without baking the join into SQL.
+ *
+ * Ban filter: every row is filtered against `public.banned_users` (rows with
+ * `unbanned_at IS NULL`). gostop_reader role must have SELECT on that table.
+ * Matches the ban semantics used by settle-pado / ecosystem leaderboards so
+ * banned wallets disappear ecosystem-wide on the next refresh.
  */
 export async function queryLeaderboard(
   sql: Sql,
@@ -82,8 +87,13 @@ export async function queryLeaderboard(
           (total_payout - total_bet)::text AS net_pnl,
           last_played_ms,
           ROW_NUMBER() OVER (ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC)::int AS rank
-        FROM gostop.player_stats
-        WHERE ${exclude.length > 0 ? sql`player NOT IN ${sql(exclude)}` : sql`TRUE`}
+        FROM gostop.player_stats ps
+        WHERE ${exclude.length > 0 ? sql`ps.player NOT IN ${sql(exclude)}` : sql`TRUE`}
+          AND NOT EXISTS (
+            SELECT 1 FROM public.banned_users bu
+            WHERE bu.wallet_address = ps.player
+              AND bu.unbanned_at IS NULL
+          )
         ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC
         LIMIT ${limit}
       `;
@@ -99,17 +109,22 @@ export async function queryLeaderboard(
   const rows = await sql<LeaderboardRow[]>`
     WITH agg AS (
       SELECT
-        player,
+        gr.player,
         COUNT(*)::bigint                       AS rounds,
-        COALESCE(SUM(bet_amount), 0)           AS total_bet,
-        COALESCE(SUM(payout), 0)               AS total_payout,
-        MAX(timestamp_ms)                      AS last_played_ms
-      FROM gostop.game_round
-      WHERE status = 'final'
-        AND timestamp_ms >= ${sinceMs}
-        ${game === 'all' ? sql`` : sql`AND game_id = ${game}`}
-        ${exclude.length > 0 ? sql`AND player NOT IN ${sql(exclude)}` : sql``}
-      GROUP BY player
+        COALESCE(SUM(gr.bet_amount), 0)        AS total_bet,
+        COALESCE(SUM(gr.payout), 0)            AS total_payout,
+        MAX(gr.timestamp_ms)                   AS last_played_ms
+      FROM gostop.game_round gr
+      WHERE gr.status = 'final'
+        AND gr.timestamp_ms >= ${sinceMs}
+        ${game === 'all' ? sql`` : sql`AND gr.game_id = ${game}`}
+        ${exclude.length > 0 ? sql`AND gr.player NOT IN ${sql(exclude)}` : sql``}
+        AND NOT EXISTS (
+          SELECT 1 FROM public.banned_users bu
+          WHERE bu.wallet_address = gr.player
+            AND bu.unbanned_at IS NULL
+        )
+      GROUP BY gr.player
     )
     SELECT
       player,
@@ -180,21 +195,30 @@ export async function queryLeaderboardForPlayer(
   //
   // The caller is always included in the ranking window even if their own
   // wallet is in `exclude`: /me shows "where you would rank if visible".
-  // Only OTHER opt-out players are filtered out.
+  // Only OTHER opt-out players are filtered out. Banned players are excluded
+  // from the ranking pool (same semantics as the public board).
   const otherExclude = exclude.filter((p) => p !== player);
   const rankRows = await sql<{ rank: number }[]>`
     WITH agg AS (
       SELECT
-        player,
-        COALESCE(SUM(bet_amount), 0)           AS total_bet,
-        COALESCE(SUM(payout), 0)               AS total_payout,
+        gr.player,
+        COALESCE(SUM(gr.bet_amount), 0)        AS total_bet,
+        COALESCE(SUM(gr.payout), 0)            AS total_payout,
         COUNT(*)::bigint                       AS rounds
-      FROM gostop.game_round
-      WHERE status = 'final'
-        AND timestamp_ms >= ${sinceMs}
-        ${game === 'all' ? sql`` : sql`AND game_id = ${game}`}
-        ${otherExclude.length > 0 ? sql`AND player NOT IN ${sql(otherExclude)}` : sql``}
-      GROUP BY player
+      FROM gostop.game_round gr
+      WHERE gr.status = 'final'
+        AND gr.timestamp_ms >= ${sinceMs}
+        ${game === 'all' ? sql`` : sql`AND gr.game_id = ${game}`}
+        ${otherExclude.length > 0 ? sql`AND gr.player NOT IN ${sql(otherExclude)}` : sql``}
+        AND (
+          gr.player = ${player}
+          OR NOT EXISTS (
+            SELECT 1 FROM public.banned_users bu
+            WHERE bu.wallet_address = gr.player
+              AND bu.unbanned_at IS NULL
+          )
+        )
+      GROUP BY gr.player
     ), me AS (
       SELECT ${sql.unsafe(metricSql)} AS m FROM agg WHERE player = ${player}
     )
