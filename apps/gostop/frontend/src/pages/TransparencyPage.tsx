@@ -1,8 +1,10 @@
+import { useState } from 'react';
 import { useTransparency, useLotteryDraws } from '../lib/api/queries';
 import type { GameTransparency, LotteryDraw } from '../lib/api/types';
 import { bpsToPct, fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { ENABLE_CRASH } from '../lib/gostop-config';
+import { Pagination } from '../features/shared/Pagination';
 
 function TxLink({ digest, label = 'View on explorer' }: { digest: string; label?: string }) {
   return (
@@ -111,10 +113,10 @@ function GameRow({ g }: { g: GameTransparency }) {
           <span>{gameLabel(g.key)}</span>
           {crashSuspended && (
             <span
-              title="Crash is temporarily suspended. Historical figures shown."
-              className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider bg-rose-500/15 text-rose-200 border border-rose-400/30"
+              title="Crash is under maintenance. Historical figures shown."
+              className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider bg-amber-500/15 text-amber-200 border border-amber-400/30"
             >
-              Suspended
+              Maintenance
             </span>
           )}
         </span>
@@ -138,8 +140,17 @@ function GameRow({ g }: { g: GameTransparency }) {
   );
 }
 
+const DRAWS_PAGE_SIZE = 3;
+
 function LotterySection() {
   const { data, isLoading, isError, error, refetch } = useLotteryDraws(20);
+  const [page, setPage] = useState(1);
+
+  const draws = data?.draws ?? [];
+  const totalPages = Math.max(1, Math.ceil(draws.length / DRAWS_PAGE_SIZE));
+  const clampedPage = Math.min(page, totalPages);
+  const pageStart = (clampedPage - 1) * DRAWS_PAGE_SIZE;
+  const pageDraws = draws.slice(pageStart, pageStart + DRAWS_PAGE_SIZE);
 
   return (
     <section className="panel p-5">
@@ -147,7 +158,7 @@ function LotterySection() {
 
       {isLoading && (
         <div className="animate-pulse space-y-2">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {Array.from({ length: DRAWS_PAGE_SIZE }).map((_, i) => (
             <div key={i} className="h-16 bg-ink-800 rounded" />
           ))}
         </div>
@@ -161,16 +172,26 @@ function LotterySection() {
         </div>
       )}
 
-      {data && data.draws.length === 0 && (
+      {data && draws.length === 0 && (
         <p className="text-sm text-neutral-200">No draws yet.</p>
       )}
 
-      {data && data.draws.length > 0 && (
-        <ul className="space-y-3">
-          {data.draws.map((d) => (
-            <DrawCard key={d.round_number} d={d} />
-          ))}
-        </ul>
+      {data && pageDraws.length > 0 && (
+        <>
+          <ul className="space-y-3">
+            {pageDraws.map((d) => (
+              <DrawCard key={d.round_number} d={d} />
+            ))}
+          </ul>
+          <Pagination
+            currentPage={clampedPage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+          />
+          <p className="text-xs text-neutral-300 text-center">
+            Showing {pageStart + 1}–{pageStart + pageDraws.length} of {draws.length} recent draws.
+          </p>
+        </>
       )}
     </section>
   );
