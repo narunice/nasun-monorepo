@@ -6,9 +6,10 @@
  * and we render a hint card explaining the gap.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCapability } from '../hooks/useCapability';
 import { formatNusdc } from '../utils/format';
+import { RevokeCapabilityModal } from './modals/RevokeCapabilityModal';
 
 interface DangerZoneCardProps {
   capabilityId: string | null;
@@ -25,8 +26,17 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
     revoke,
     resetTxStatus,
   } = useCapability(capabilityId);
-  const [confirmRevoke, setConfirmRevoke] = useState(false);
+  const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [pendingMode, setPendingMode] = useState<number | null>(null);
+
+  // Auto-close the modal once the on-chain revoke is reflected in the
+  // refreshed capability state. The modal stays open while the tx is in
+  // flight so the user can see "Revoking..." progress and any tx error.
+  useEffect(() => {
+    if (revokeModalOpen && cap?.revoked) {
+      setRevokeModalOpen(false);
+    }
+  }, [revokeModalOpen, cap?.revoked]);
 
   if (!capabilityId) {
     return (
@@ -67,11 +77,15 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
     }
   };
 
-  const handleRevoke = async () => {
+  const handleOpenRevoke = () => {
     if (txBusy) return;
     resetTxStatus();
+    setRevokeModalOpen(true);
+  };
+
+  const handleConfirmRevoke = async () => {
+    if (txBusy) return;
     await revoke();
-    setConfirmRevoke(false);
   };
 
   return (
@@ -148,37 +162,28 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
             </p>
             {cap.revoked ? (
               <p className="text-sm text-red-400">Capability has been revoked.</p>
-            ) : confirmRevoke ? (
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleRevoke}
-                  disabled={txBusy}
-                  className="px-4 py-2 text-sm rounded-lg bg-red-500/20 border border-red-500/40 text-red-300 hover:bg-red-500/30 transition-colors disabled:opacity-50"
-                >
-                  {txBusy ? 'Revoking...' : 'Yes, revoke permanently'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmRevoke(false)}
-                  disabled={txBusy}
-                  className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
             ) : (
               <button
                 type="button"
-                onClick={() => setConfirmRevoke(true)}
+                onClick={handleOpenRevoke}
                 disabled={txBusy}
                 className="px-4 py-2 text-sm rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50"
               >
-                Revoke capability
+                Revoke capability...
               </button>
             )}
           </div>
         </>
+      )}
+
+      {revokeModalOpen && capabilityId && (
+        <RevokeCapabilityModal
+          capabilityId={capabilityId}
+          txBusy={txBusy}
+          txError={txStatus === 'error' ? txError : null}
+          onConfirm={handleConfirmRevoke}
+          onClose={() => setRevokeModalOpen(false)}
+        />
       )}
     </div>
   );
