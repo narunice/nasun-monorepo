@@ -83,10 +83,10 @@ function MarketRow({ market }: MarketRowProps) {
             />
           </svg>
         );
-      case "politics":
+      case "space":
         return (
           <svg
-            className="w-8 h-8 text-blue-500 opacity-80"
+            className="w-8 h-8 text-purple-500 opacity-80"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -95,7 +95,39 @@ function MarketRow({ market }: MarketRowProps) {
               strokeLinecap="round"
               strokeLinejoin="round"
               strokeWidth={1.5}
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+              d="M4.5 16.5L12 4l7.5 12.5M8 14h8M9.5 20l1-2h3l1 2"
+            />
+          </svg>
+        );
+      case "music":
+        return (
+          <svg
+            className="w-8 h-8 text-pink-500 opacity-80"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M9 19V6l12-3v13M9 19a3 3 0 11-6 0 3 3 0 016 0zm12-3a3 3 0 11-6 0 3 3 0 016 0z"
+            />
+          </svg>
+        );
+      case "weather":
+        return (
+          <svg
+            className="w-8 h-8 text-sky-500 opacity-80"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M3 15a4 4 0 014-4 5 5 0 019.9-1A4.5 4.5 0 1119 21H7a4 4 0 01-4-4z"
             />
           </svg>
         );
