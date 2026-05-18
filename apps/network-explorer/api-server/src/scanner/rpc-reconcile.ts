@@ -42,9 +42,15 @@ interface ReconcileQuery {
 
 // Package IDs (original, for RPC MoveEventType queries)
 const PKG = {
-  // SYNC WARNING: mirrors PKG.prediction in config/points.ts. Old package
-  // 0x98765cc3... is dead; current package 0xbe6d8f69... per devnet-ids.json.
-  prediction: '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
+  // SYNC WARNING: mirrors PKG.prediction + PKG.predictionLegacy in
+  // config/points.ts. Sui upgrade emit-type pinning means we have to query
+  // each upgrade variant. Add the new id when upgrading, keep the previous
+  // one so older events still reconcile.
+  //   0x98765cc3... — dead (pre-2026-05)
+  //   0xbe6d8f... — superseded 2026-05-18
+  //   0x0b4f89... — current
+  prediction: '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
+  predictionLegacy: '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   lottery: '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
   perp: '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
   scratchcard: '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
@@ -91,6 +97,12 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.prediction}::prediction_market::OrderFilled`, category: 'pado-prediction', activityType: 'fill-order' },
   { moveEventType: `${PKG.prediction}::prediction_market::OrderCancelled`, category: 'pado-prediction', activityType: 'cancel-order' },
   { moveEventType: `${PKG.prediction}::prediction_market::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
+  // Legacy publish (0xbe6d8f...) — pre-upgrade events still emit under this id.
+  { moveEventType: `${PKG.predictionLegacy}::prediction_market::TokensMinted`, category: 'pado-prediction', activityType: 'mint-tokens' },
+  { moveEventType: `${PKG.predictionLegacy}::prediction_market::OrderPlaced`, category: 'pado-prediction', activityType: 'place-order' },
+  { moveEventType: `${PKG.predictionLegacy}::prediction_market::OrderFilled`, category: 'pado-prediction', activityType: 'fill-order' },
+  { moveEventType: `${PKG.predictionLegacy}::prediction_market::OrderCancelled`, category: 'pado-prediction', activityType: 'cancel-order' },
+  { moveEventType: `${PKG.predictionLegacy}::prediction_market::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
   // Gostop Lottery (own category; pado-side lottery PKG kept in EXCLUDED_PACKAGES
   // but no longer mapped to a points category since pado-side traffic is 0)
   { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'gostop-lottery', activityType: 'buy-ticket' },

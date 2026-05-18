@@ -149,9 +149,18 @@ const PKG = {
   allianceNft: stripHex(
     '0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b',
   ),
-  // Prediction package: superseded 2026-05 (was 0x98765cc3..., now 0xbe6d8f69...).
-  // Mirrors packages/devnet-config/devnet-ids.json prediction.packageId.
+  // Prediction package — current publish (mirrors devnet-ids.json packageId).
+  // Sui upgrade: emit type of an event is the packageId of the *upgrade
+  // variant* that emitted it, NOT originalPackageId. So after every package
+  // upgrade we have to add the new id and keep the previous one(s) around to
+  // catch in-flight history.
+  //   0x98765cc3... — dead (pre-2026-05, history already aggregated)
+  //   0xbe6d8f... — superseded 2026-05-18 by upgrade to 0x0b4f89...
+  //   0x0b4f89... — current
   prediction: stripHex(
+    '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
+  ),
+  predictionLegacy: stripHex(
     '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   ),
   lottery: stripHex(
@@ -274,6 +283,7 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.tokensV2,
   PKG.deepbook,
   PKG.prediction,
+  PKG.predictionLegacy,
   PKG.lottery,
   PKG.governance,
   PKG.governanceMultiChoice,
@@ -325,6 +335,13 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.prediction, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
   [PKG.prediction, 'prediction_market', 'OrderCancelled', { category: 'pado-prediction', activityType: 'cancel-order' }],
   [PKG.prediction, 'prediction_market', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
+  // Legacy publish (0xbe6d8f...): dual-mapped so events emitted before the
+  // 2026-05-18 upgrade still credit the same category/activityType.
+  [PKG.predictionLegacy, 'prediction_market', 'TokensMinted', { category: 'pado-prediction', activityType: 'mint-tokens' }],
+  [PKG.predictionLegacy, 'prediction_market', 'OrderPlaced', { category: 'pado-prediction', activityType: 'place-order' }],
+  [PKG.predictionLegacy, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
+  [PKG.predictionLegacy, 'prediction_market', 'OrderCancelled', { category: 'pado-prediction', activityType: 'cancel-order' }],
+  [PKG.predictionLegacy, 'prediction_market', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
 
   // GoStop games: split into per-game categories so each carries its own
   // 1pt/day cap (up to 5pt/day across the suite). Pado-side lottery /
