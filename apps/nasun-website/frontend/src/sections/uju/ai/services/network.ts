@@ -130,7 +130,7 @@ export type ModelCategory = 'cloud' | 'private' | 'fast';
 
 export const MODEL_CATEGORY_LABELS: Record<ModelCategory, string> = {
   cloud: 'Cloud Models',
-  private: 'Private (TEE)',
+  private: 'Private (TEE roadmap)',
   fast: 'Fast',
 };
 
@@ -159,9 +159,9 @@ export const MODEL_PRICING = {
     category: 'cloud' as ModelCategory,
   },
   'llama-3.2-3b-local': {
-    name: 'Llama 3.2 3B (TEE)',
+    name: 'Llama 3.2 3B (TEE roadmap)',
     price: 100_000,
-    description: 'Private inference in TEE enclave',
+    description: 'Private inference; TEE attestation is on the roadmap and is not delivered in this alpha.',
     provider: 'tee',
     category: 'private' as ModelCategory,
   },

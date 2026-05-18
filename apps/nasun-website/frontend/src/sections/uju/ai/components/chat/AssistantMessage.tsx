@@ -31,11 +31,15 @@ function getProcessingLabel(requestStatus?: RequestStatus, isTeeExecutor?: boole
     case 'creating':
       return 'Signing transaction...';
     case 'executing':
-      return isTeeExecutor ? 'Executing with TEE protection...' : 'Running AI model...';
+      // The isTeeExecutor branch is kept for forward compatibility. Alpha
+      // runs every model on a general LLM; TEE attestation is roadmap
+      // (project_baram_no_tee_v1.md) so the copy must not claim active
+      // protection even when the future TEE provider is selected.
+      return isTeeExecutor ? 'Executing on a private-inference executor (TEE roadmap)...' : 'Running AI model...';
     case 'cancelling':
       return 'Cancelling and refunding...';
     default:
-      return isTeeExecutor ? 'Processing with TEE protection...' : 'Processing your request...';
+      return isTeeExecutor ? 'Processing on a private-inference executor (TEE roadmap)...' : 'Processing your request...';
   }
 }
 
