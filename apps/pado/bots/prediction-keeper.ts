@@ -534,8 +534,10 @@ async function buildMarketList(
   client: SuiClient,
   packageId: string,
   pinnedMarkets: string[],
+  legacyPackageIds: string[] = [],
 ): Promise<string[]> {
-  const discovered = await discoverMarketIds(client, packageId);
+  const pkgs = legacyPackageIds.length > 0 ? [packageId, ...legacyPackageIds] : packageId;
+  const discovered = await discoverMarketIds(client, pkgs);
   const merged = new Map<string, true>();
   for (const id of [...pinnedMarkets, ...discovered]) {
     merged.set(id.toLowerCase(), true);
@@ -556,6 +558,15 @@ async function main(): Promise<void> {
     process.exit(1);
   }
   const packageId = packageIdRaw.toLowerCase();
+
+  // Optional: previous publish id(s) for dual-scan of MarketCreated events
+  // across an upgrade boundary. Sui pins event type tags to the emitter package
+  // id, so markets created before the most recent upgrade can only be found by
+  // querying their original publish. Multiple legacy ids are comma-separated.
+  const legacyPackageIds = (process.env.PREDICTION_PACKAGE_ID_LEGACY || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
   // Pinned markets (optional): merged with auto-discovered list.
   const pinnedMarkets = (process.env.PREDICTION_KEEPER_MARKETS || '')
@@ -585,13 +596,14 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] Resolver: ${resolverAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
+  console.log(`[${timestamp()}] Legacy packages: ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
   console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none)'}`);
   console.log(`[${timestamp()}] Tick interval: ${intervalMs}ms  Discover interval: ${discoverIntervalMs}ms`);
   console.log(`[${timestamp()}] DRY_RUN: ${DRY_RUN ? 'ENABLED (no on-chain writes)' : 'disabled (live)'}`);
   console.log(`[${timestamp()}] Resolvers: space=${process.env.SPACE_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} music=${process.env.MUSIC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} sports=${process.env.SPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} weather=${process.env.WEATHER_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'}`);
 
   // Initial market discovery.
-  let markets = await buildMarketList(client, packageId, pinnedMarkets);
+  let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
   let lastDiscoverAt = Date.now();
   console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
 
@@ -635,7 +647,7 @@ async function main(): Promise<void> {
     // Periodically refresh market list.
     if (Date.now() - lastDiscoverAt >= discoverIntervalMs) {
       try {
-        const fresh = await buildMarketList(client, packageId, pinnedMarkets);
+        const fresh = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
         const added = fresh.filter((id) => !markets.includes(id));
         if (added.length > 0) {
           console.log(`[${timestamp()}] Discovery: +${added.length} new market(s): ${added.join(', ')}`);
