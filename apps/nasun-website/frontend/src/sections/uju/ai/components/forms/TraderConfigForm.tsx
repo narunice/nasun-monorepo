@@ -233,8 +233,8 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       <div className="space-y-1">
         <p className="text-xs text-uju-secondary/70">
           Trade caps below limit how much NUSDC the agent will <em>swap on the DEX per trade</em>,
-          and per day. They are separate from the Budget&apos;s &quot;Max per inference call&quot; cap, which
-          limits NUSDC spent paying the AI executor per request.
+          and per day. They are separate from the Inference Balance&apos;s &quot;Max per inference call&quot; cap,
+          which limits NUSDC spent paying the AI executor per request.
         </p>
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">

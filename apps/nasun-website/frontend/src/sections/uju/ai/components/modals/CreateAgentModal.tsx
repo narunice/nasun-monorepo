@@ -163,7 +163,7 @@ export function CreateAgentModal({
             onClick={onClose}
             className="w-full py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
           >
-            {isOnboarded ? 'Open agent and fund budget' : 'Continue to Step 2'}
+            {isOnboarded ? 'Open agent and fund inference balance' : 'Continue to Step 2'}
           </button>
         </div>
       </div>,
