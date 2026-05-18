@@ -43,15 +43,28 @@ Current alpha defaults (verify before relying):
 
 Demotes every agent's BUY/SELL intent to HOLD. AER still lands, runtime stays up, only the swap branch is short-circuited.
 
-### Flip
+### Critical: spawned agents capture env at spawn time
+
+The orchestrator daemon reads the env when it parses `ecosystem.config.cjs`, and each per-user agent (`agent-*` pm2 entries) captures `PR1A_SWAP_DISABLED` at spawn. **Restarting the orchestrator alone does NOT update running agents**; they keep submitting BUY/SELL until they respawn. For an immediate global flip you must sweep the agents too.
+
+### Flip (orchestrator + agents)
 
 ```bash
 ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52
 cd ~/nasun-chat-server
 # Edit .env: AGENT_GLOBAL_PR1A_SWAP_DISABLED=true
+
+# 1) Refresh the orchestrator daemon
 pm2 delete nasun-chat-server
 export $(grep -v '^#' .env | xargs)
 pm2 startOrRestart ecosystem.config.cjs
+
+# 2) Sweep running per-user agents so they pick up the new env on respawn.
+#    Replace with a targeted list if you only want to flip a subset.
+pm2 ls | awk '/^.*agent-/ {print $4}' | xargs -r -n1 pm2 delete
+# The orchestrator re-spawns vault-active agents on its next reconciliation
+# tick, picking up the fresh PR1A_SWAP_DISABLED value.
+
 pm2 logs nasun-chat-server --lines 30
 ```
 
@@ -157,7 +170,11 @@ nasun client object "$CAP_ID" --json | jq '.content.fields.pause_mode'
 # Expect: 2
 ```
 
-The runtime reads `pause_mode` via `sui-capability-utils.ts` before issuing an action. Pause is honored on the next cycle (~5 min for default cadence).
+Where the pause is enforced (be precise; do not over-rely on this layer):
+
+- `baram-executor` Lambda preflight reads the capability object and rejects on `pause_mode != 0` before submitting any swap. This is the primary off-chain gate.
+- On chain, the Move `aer::create_with_capability` / settle entry paths abort on `pause_mode != 0`, so a Lambda bypass still fails at the chain.
+- The nasun-ai-runtime itself does NOT poll `pause_mode` today; it observes the pause indirectly when `/execute-capability` returns an error and the cycle records a failed AER. Treat L3 as "best-effort with one cycle of latency" rather than instantaneous.
 
 ### Rollback
 

@@ -78,7 +78,32 @@ if [ ${#BUNDLES[@]} -eq 0 ]; then
   exit 2
 fi
 
-# Load env files in Vite priority order (low to high — later wins).
+# Staleness check: if any .env* file was modified after the newest bundle,
+# the build is stale relative to current env regardless of whether grep can
+# find each value. This catches boolean-valued flag flips (true/false) that
+# the per-value grep cannot reliably verify because Vite dead-code-eliminates
+# `import.meta.env.VITE_*` boolean comparisons at build time.
+newest_env_file=""
+for f in "$ENV_DIR"/.env "$ENV_DIR"/.env.local "$ENV_DIR"/.env.$MODE "$ENV_DIR"/.env.$MODE.local; do
+  [ -f "$f" ] || continue
+  if [ -z "$newest_env_file" ] || [ "$f" -nt "$newest_env_file" ]; then
+    newest_env_file="$f"
+  fi
+done
+newest_bundle="${BUNDLES[0]}"
+for b in "${BUNDLES[@]}"; do
+  if [ "$b" -nt "$newest_bundle" ]; then
+    newest_bundle="$b"
+  fi
+done
+if [ -n "$newest_env_file" ] && [ "$newest_env_file" -nt "$newest_bundle" ]; then
+  echo "env-verify: STALE BUILD" >&2
+  echo "  $(basename "$newest_env_file") was modified after $(basename "$newest_bundle")" >&2
+  echo "  Rebuild before deploying: pnpm build:$APP" >&2
+  exit 1
+fi
+
+# Load env files in Vite priority order (low to high; later wins).
 # Per Vite docs: .env.[mode] takes higher priority than .env.local.
 # Order: .env → .env.local → .env.[mode] → .env.[mode].local
 declare -A ENV_MAP
@@ -109,8 +134,9 @@ echo "  env dir: $ENV_DIR"
 echo "  dist:    $DIST/assets/ (${#BUNDLES[@]} bundle$([ ${#BUNDLES[@]} -gt 1 ] && echo s))"
 echo ""
 
-MATCH=0; MISS=0; SKIP=0; UNUSED=0
+MATCH=0; MISS=0; SKIP=0; UNUSED=0; BOOL_FLAG=0
 MISSING_LIST=""
+BOOL_LIST=""
 
 # Build set of VITE_ keys actually referenced in source (import.meta.env.VITE_*)
 declare -A SRC_REFS
@@ -125,6 +151,16 @@ for k in $(echo "${!ENV_MAP[@]}" | tr ' ' '\n' | sort); do
   v="${ENV_MAP[$k]}"
   src="${ENV_SOURCE[$k]}"
   vlen=${#v}
+  # Boolean-ish values cannot be reliably grepped in a Vite bundle because
+  # Vite dead-code-eliminates `import.meta.env.VITE_FOO === 'true'` at build
+  # time. The pre-flight staleness check above is the real guard for these
+  # keys; here we surface them explicitly so the operator knows to confirm.
+  if [[ "$v" =~ ^(true|false|0|1)$ ]]; then
+    printf "  %-40s BOOL     %s [%s] (staleness pre-check is authoritative)\n" "$k" "$v" "$src"
+    BOOL_FLAG=$((BOOL_FLAG+1))
+    BOOL_LIST="${BOOL_LIST}    - ${k}=${v} (${src})"$'\n'
+    continue
+  fi
   if [ "$vlen" -lt 10 ]; then
     printf "  %-40s SKIP     (short value, %d chars) [%s]\n" "$k" "$vlen" "$src"
     SKIP=$((SKIP+1))
@@ -151,17 +187,26 @@ for k in $(echo "${!ENV_MAP[@]}" | tr ' ' '\n' | sort); do
 done
 
 echo ""
-echo "  summary: $MATCH match, $MISS missing, $SKIP skipped, $UNUSED unused(not in src)"
+echo "  summary: $MATCH match, $MISS missing, $SKIP skipped, $UNUSED unused(not in src), $BOOL_FLAG boolean"
 
 if [ "$MISS" -gt 0 ]; then
   echo ""
-  echo "MISSING keys — referenced in src but value not found in dist bundles:"
+  echo "MISSING keys: referenced in src but value not found in dist bundles:"
   printf '%s' "$MISSING_LIST"
   echo ""
   echo "  Likely causes:"
-  echo "    1. Stale build (most common) — rebuild, then re-run env-verify"
+  echo "    1. Stale build (most common): rebuild, then re-run env-verify"
   echo "    2. .env.$MODE.local overriding .env.$MODE with a different value"
   exit 1
+fi
+
+if [ "$BOOL_FLAG" -gt 0 ]; then
+  echo ""
+  echo "BOOLEAN keys present (Vite DCE makes grep unreliable):"
+  printf '%s' "$BOOL_LIST"
+  echo "  These pass IFF the staleness pre-check passed, which guarantees the"
+  echo "  bundle was built from the current .env. If you just flipped a flag,"
+  echo "  rebuild before deploying."
 fi
 
 exit 0
