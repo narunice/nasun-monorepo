@@ -16,11 +16,12 @@ import { usePredictionAdmin } from '../hooks/usePredictionAdmin';
 
 const CATEGORIES = [
   'Crypto',
-  'Politics',
-  'Entertainment',
+  'Space',
+  'Music',
   'Sports',
+  'Weather',
+  'Entertainment',
   'Technology',
-  'Geopolitics',
   'Finance',
   'Science',
   'Other',

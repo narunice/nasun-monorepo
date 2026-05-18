@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { PredictionMarket, Orderbook } from '../../types';
 import {
   calculateProbabilityFromOrderbook,
@@ -26,6 +26,9 @@ function formatTimeRemaining(closeTime: number): string {
 }
 
 export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: FeaturedMarketCardProps) {
+  // Carry the current filter / sort / status search params into the detail
+  // link so the detail page's "Back to Markets" preserves the user's view.
+  const location = useLocation();
   const { data: fills = [], isLoading: fillsLoading } = useRecentFills(market.id);
   const lastTradePriceBps = fills.length > 0
     ? (fills[0].isYes ? fills[0].price : 10000 - fills[0].price)
@@ -41,7 +44,7 @@ export function FeaturedMarketCard({ market, yesOrderbook, noOrderbook }: Featur
 
   return (
     <Link
-      to={`/predict/${market.id}`}
+      to={`/predict/${market.id}${location.search}`}
       className="flex flex-col w-full h-full rounded-2xl bg-theme-bg-secondary p-4 sm:p-6 transition-all cursor-pointer"
     >
       {/* Header: category + time */}

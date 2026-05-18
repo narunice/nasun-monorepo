@@ -3,7 +3,7 @@
  * Displays a prediction market in card format
  */
 
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import type { PredictionMarket, Orderbook, Position } from '../types';
 import {
   calculateProbabilityFromOrderbook,
@@ -20,6 +20,9 @@ interface MarketCardProps {
 }
 
 export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: MarketCardProps) {
+  // Propagate the current filter / sort / status search so the detail page's
+  // "Back to Markets" link can restore the exact list view (e.g. ?category=sports).
+  const location = useLocation();
   // List page does not pre-fetch full orderbooks (lazy on detail page only),
   // but the Market struct itself stores sorted price-level vectors inline —
   // `fetchMarket` already pulled them via showContent at zero extra RPC cost,
@@ -58,7 +61,7 @@ export function MarketCard({ market, yesOrderbook, noOrderbook, myPositions }: M
 
   return (
     <Link
-      to={`/predict/${market.id}`}
+      to={`/predict/${market.id}${location.search}`}
       className="block bg-theme-bg-secondary rounded-xl p-4 hover:bg-theme-bg-tertiary transition-colors"
     >
       {/* Header: Category & Status */}

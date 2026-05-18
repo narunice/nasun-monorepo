@@ -12,7 +12,7 @@
  * `clickVersion` so user typing is not clobbered.
  */
 
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useState, useCallback, useMemo } from 'react';
 import {
   useMarket,
@@ -47,6 +47,12 @@ export function PredictMarketPage() {
   usePredictionEventBridge();
 
   const { marketId } = useParams<{ marketId: string }>();
+  // Preserve the filter / sort / status query params when going back to the
+  // markets list so a user who drilled in from "Sports" lands on Sports again,
+  // not the unfiltered All view. The search string starts with '?' when
+  // non-empty so it's safe to concatenate directly.
+  const location = useLocation();
+  const backToMarketsHref = `/predict${location.search}`;
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
   const { yesOrderbook, noOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
   const { positions, isLoading: isPositionsLoading, refetch: refetchPositions } = usePredictionPositions(marketId);
@@ -103,7 +109,7 @@ export function PredictMarketPage() {
     return (
       <div className="text-center py-12">
         <p className="text-red-500 mb-4">Failed to load market</p>
-        <Link to="/predict" className="text-pd3 hover:text-pd3 underline">
+        <Link to={backToMarketsHref} className="text-pd3 hover:text-pd3 underline">
           Back to Markets
         </Link>
       </div>
@@ -126,7 +132,7 @@ export function PredictMarketPage() {
       <meta name="twitter:card" content="summary_large_image" />
 
       <Link
-        to="/predict"
+        to={backToMarketsHref}
         className="inline-flex items-center gap-2 text-sm text-theme-text-secondary hover:text-theme-text-primary transition-colors min-h-[40px]"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

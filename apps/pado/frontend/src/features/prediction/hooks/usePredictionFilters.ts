@@ -18,8 +18,10 @@ import type { PredictionMarket } from '../types';
 export type MarketCategory =
   | 'All'
   | 'Crypto'
+  | 'Space'
+  | 'Music'
   | 'Sports'
-  | 'Politics'
+  | 'Weather'
   | 'Finance'
   | 'Other';
 
@@ -31,10 +33,10 @@ const DEFAULT_CATEGORY: MarketCategory = 'All';
 const DEFAULT_SORT: MarketSort = 'closing-soon';
 
 const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'mine', 'all']);
-const VALID_CATEGORIES = new Set<MarketCategory>(['All', 'Crypto', 'Sports', 'Politics', 'Finance', 'Other']);
+const VALID_CATEGORIES = new Set<MarketCategory>(['All', 'Crypto', 'Space', 'Music', 'Sports', 'Weather', 'Finance', 'Other']);
 const VALID_SORTS = new Set<MarketSort>(['most-liquid', 'newest', 'closing-soon']);
 
-const CANONICAL = ['crypto', 'sports', 'politics', 'finance'] as const;
+const CANONICAL = ['crypto', 'space', 'music', 'sports', 'weather', 'finance'] as const;
 
 function bucketCategory(raw: string): MarketCategory {
   const lower = raw.toLowerCase();

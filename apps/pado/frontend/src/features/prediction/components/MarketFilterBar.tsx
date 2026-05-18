@@ -22,16 +22,17 @@ const CATEGORY_OPTIONS: ReadonlyArray<MarketCategory> = [
   "All",
   "Crypto",
   "Finance",
+  "Space",
+  "Music",
   "Sports",
-  "Politics",
+  "Weather",
   "Other",
 ];
 
 // Categories with no live markets — kept visible for product-shape clarity
 // but disabled until at least one market in that category is created.
+// Space/Music/Sports/Weather all received seed markets on 2026-05-18.
 const DISABLED_CATEGORIES = new Set<MarketCategory>([
-  "Sports",
-  "Politics",
   "Other",
 ]);
 
