@@ -477,6 +477,44 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
 
   const actions = useMemo(() => classifyGroup({ market, positions }), [market, positions]);
 
+  /**
+   * Aggregate positions by side so the portfolio shows one row per
+   * (market, side) bucket, not per underlying Position NFT. Fragmentation is
+   * structural to Sui's owned-object model and the sell/claim/burn flows
+   * already auto-merge in the PTB — display aggregation completes the UX so
+   * users with many lots see a clean list. See PositionList.tsx for the same
+   * pattern at the per-market detail view.
+   */
+  const aggregatedPositions = useMemo(() => {
+    const buckets = new Map<string, { sample: Position; lots: Position[]; sharesSum: bigint; costSum: bigint }>();
+    for (const p of positions) {
+      const key = p.isYes ? 'Y' : 'N';
+      const existing = buckets.get(key);
+      if (existing) {
+        existing.lots.push(p);
+        existing.sharesSum += p.shares;
+        existing.costSum += p.costBasis;
+      } else {
+        buckets.set(key, {
+          sample: p,
+          lots: [p],
+          sharesSum: p.shares,
+          costSum: p.costBasis,
+        });
+      }
+    }
+    return Array.from(buckets.values())
+      .map((b) => ({
+        synthetic: {
+          ...b.sample,
+          shares: b.sharesSum,
+          costBasis: b.costSum,
+        } as Position,
+        lotsCount: b.lots.length,
+      }))
+      .sort((a, b) => (a.synthetic.isYes === b.synthetic.isYes ? 0 : a.synthetic.isYes ? -1 : 1));
+  }, [positions]);
+
   const runGroupBulk = useCallback(
     async (kind: ActionKind | 'all') => {
       if (claimPhase !== 'idle') return;
@@ -581,10 +619,12 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
     return `Settle All (${n})`;
   };
 
+  // Render one row per aggregated bucket (≤ 2: YES + NO). The underlying lot
+  // count is surfaced via the row's `lotsCount` badge.
   const visiblePositions = expanded
-    ? positions
-    : positions.slice(0, POSITIONS_PER_GROUP_DEFAULT);
-  const hiddenCount = positions.length - visiblePositions.length;
+    ? aggregatedPositions
+    : aggregatedPositions.slice(0, POSITIONS_PER_GROUP_DEFAULT);
+  const hiddenCount = aggregatedPositions.length - visiblePositions.length;
 
   return (
     <div className="bg-theme-bg-secondary rounded-xl p-4 space-y-3">
@@ -666,13 +706,14 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
       )}
 
       <div className="space-y-2">
-        {visiblePositions.map((p) => (
+        {visiblePositions.map(({ synthetic, lotsCount }) => (
           <PositionRow
-            key={p.id}
-            position={p}
+            key={`${synthetic.marketId}:${synthetic.isYes ? 'Y' : 'N'}`}
+            position={synthetic}
             market={market}
             onSettle={handleSettle}
             isLoading={isLoading || isSyncing || busy}
+            lotsCount={lotsCount}
           />
         ))}
         {hiddenCount > 0 && (
@@ -681,7 +722,7 @@ function MarketPositionGroup({ group, onSettled, externallyBusy }: MarketPositio
             onClick={() => setExpanded(true)}
             className="w-full min-h-[36px] py-1.5 text-xs font-medium text-theme-text-secondary hover:text-theme-text-primary bg-theme-bg-tertiary/60 hover:bg-theme-bg-tertiary rounded-lg"
           >
-            Show all {positions.length} positions ({hiddenCount} more)
+            Show all {aggregatedPositions.length} positions ({hiddenCount} more)
           </button>
         )}
         {expanded && positions.length > POSITIONS_PER_GROUP_DEFAULT && (
@@ -712,11 +753,14 @@ function PositionRow({
   market,
   onSettle,
   isLoading,
+  lotsCount,
 }: {
   position: Position;
   market: PredictionMarket;
   onSettle: (position: Position) => void;
   isLoading: boolean;
+  /** When > 1, the row represents an aggregate of N Position NFTs. */
+  lotsCount?: number;
 }) {
   const divisor = Math.pow(10, NUSDC_DECIMALS);
   const shares = Number(position.shares) / divisor;
@@ -734,7 +778,7 @@ function PositionRow({
 
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-3 py-2.5 bg-theme-bg-tertiary rounded-lg">
-      <div className="flex items-center gap-3 text-sm min-w-0">
+      <div className="flex items-center gap-3 text-sm min-w-0 flex-wrap">
         <span className={`font-bold w-10 shrink-0 ${sideColor}`}>{sideLabel}</span>
         <span className="text-theme-text-primary font-mono">
           {formatShares(shares)} shares
@@ -742,6 +786,14 @@ function PositionRow({
         <span className="text-theme-text-muted">
           @ {avgPrice.toFixed(2)} NUSDC
         </span>
+        {lotsCount !== undefined && lotsCount > 1 && (
+          <span
+            className="text-[10px] px-1.5 py-0.5 rounded-full bg-theme-bg-secondary text-theme-text-muted border border-theme-border"
+            title={`${lotsCount} Position NFTs aggregated. Sell/claim merges them in a single transaction.`}
+          >
+            {lotsCount} lots
+          </span>
+        )}
       </div>
       <div className="flex items-center gap-2">
         {market.status === 'open' && (

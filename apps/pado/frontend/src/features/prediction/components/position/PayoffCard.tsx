@@ -18,9 +18,17 @@ interface PayoffCardProps {
   onSell: (positionId: string) => void;
   onClaim: (positionId: string) => void;
   isLoading: boolean;
+  /**
+   * When this card represents an aggregate of multiple Position NFTs in the
+   * same (market, side) bucket, set to the count. The card surfaces a small
+   * "N lots merged" label so the user sees that fragmentation exists on-chain
+   * even though the UI shows one consolidated card. Sell/claim already auto-
+   * merges via the parent's bucket-aware callbacks.
+   */
+  lotsCount?: number;
 }
 
-export function PayoffCard({ position, market, onSell, onClaim, isLoading }: PayoffCardProps) {
+export function PayoffCard({ position, market, onSell, onClaim, isLoading, lotsCount }: PayoffCardProps) {
   const shares = Number(position.shares) / Math.pow(10, NUSDC_DECIMALS);
   const costBasis = Number(position.costBasis) / Math.pow(10, NUSDC_DECIMALS);
   const avgPrice = position.shares > 0n ? costBasis / shares : 0;
@@ -47,7 +55,7 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
       }${pendingClass}`}
     >
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <span className={`w-3 h-3 rounded-full ${position.isYes ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className={`font-bold ${
             position.isYes
@@ -56,6 +64,14 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading }: Pay
           }`}>
             {outcomeLabel} Position
           </span>
+          {lotsCount !== undefined && lotsCount > 1 && (
+            <span
+              className="text-xs px-2 py-0.5 rounded-full bg-theme-bg-tertiary text-theme-text-muted border border-theme-border"
+              title={`This card aggregates ${lotsCount} Position NFTs in your wallet. Selling or claiming will merge them on-chain in a single transaction.`}
+            >
+              {lotsCount} lots merged
+            </span>
+          )}
         </div>
         <a
           href={getExplorerObjectUrl(position.id)}
