@@ -294,7 +294,7 @@ export function QuickstartView({
               Nasun AI
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight">
-              Give your AI agent a wallet, a budget, and a permanent audit trail.
+              Give your AI agent a trading wallet, an inference balance, and a permanent audit trail.
             </h2>
             <p className="text-sm text-uju-secondary leading-relaxed">
               Your agent runs on Nasun, a Move-based Layer 1. Every decision it makes

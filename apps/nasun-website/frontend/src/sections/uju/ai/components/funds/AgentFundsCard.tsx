@@ -27,6 +27,14 @@ import {
 /** 0.05 NASUN. Below this, owner cannot reliably sponsor a deposit/withdraw tx. */
 const LOW_NASUN_THRESHOLD_MIST = 50_000_000n;
 
+/**
+ * 0.05 NASUN. Below this, the agent cannot reliably pay gas for trade
+ * transactions and the runtime will fail with "No valid gas coins". Distinct
+ * from the owner-side threshold above: the owner sponsors deposits, but the
+ * agent must hold its own NASUN to trade.
+ */
+const AGENT_LOW_GAS_THRESHOLD_MIST = 50_000_000n;
+
 interface AgentFundsCardProps {
   agent: AgentProfile;
   walletAddress: string;
@@ -39,6 +47,15 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
   const { data: ownerNasun } = useOwnerNasunBalance(walletAddress);
   const isLowGas = ownerNasun !== undefined && ownerNasun < LOW_NASUN_THRESHOLD_MIST;
   const [dialogMode, setDialogMode] = useState<TransferMode | null>(null);
+
+  // Agent-side NASUN. The agent pays its own gas when trading; if this is
+  // empty the runtime fails with "No valid gas coins" before any swap lands.
+  const agentNasunRaw = useMemo(
+    () => balances.data?.find((b) => b.symbol === 'NASUN')?.totalBalanceRaw ?? 0n,
+    [balances.data],
+  );
+  const isAgentLowGas =
+    balances.data !== undefined && agentNasunRaw < AGENT_LOW_GAS_THRESHOLD_MIST;
 
   const inference = useMemo(() => {
     if (!allBudgets) return { primary: null as BudgetInfo | null, count: 0 };
@@ -62,7 +79,13 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
 
       {isLowGas && (
         <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
-          Low NASUN for gas. Use the wallet faucet before depositing or withdrawing.
+          Your wallet has low NASUN for gas. Use the wallet faucet before depositing or withdrawing.
+        </div>
+      )}
+
+      {isAgentLowGas && (
+        <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
+          Agent has low NASUN for trading gas. Deposit NASUN to the trading wallet so the agent can execute trades.
         </div>
       )}
 

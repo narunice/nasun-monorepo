@@ -20,6 +20,9 @@ type TxStep = 'idle' | 'signing' | 'executing' | 'done' | 'error';
 
 export type TransferMode = 'deposit' | 'withdraw-trading' | 'top-up-inference';
 
+/** Owner must keep this much NASUN to sponsor the deposit tx itself when depositing NASUN. */
+const OWNER_NASUN_GAS_RESERVE_MIST = 50_000_000n;
+
 interface TransferAgentFundsDialogProps {
   agent: AgentProfile;
   walletAddress: string;
@@ -92,31 +95,42 @@ export function TransferAgentFundsDialog({
 
   const ownerNasunRaw = ownerBalanceMap.get(TOKENS.NASUN.type) ?? 0n;
   const ownerNusdcRaw = ownerBalanceMap.get(TOKENS.NUSDC.type) ?? 0n;
-  const isLowOwnerGas = ownerNasunRaw < 10_000_000n;
+  // Use the same reserve threshold the NASUN-deposit Max formula relies on,
+  // so the "low gas" warning fires before a user enters an amount that
+  // would leave them unable to sponsor follow-up txs.
+  const isLowOwnerGas = ownerNasunRaw < OWNER_NASUN_GAS_RESERVE_MIST;
 
   const agentNasunRaw =
     agentBalances.find((b) => b.symbol === 'NASUN')?.totalBalanceRaw ?? 0n;
   const agentHasGas = agentNasunRaw > 0n;
 
-  const selectedMeta = TOKENS[selectedCoin];
+  // top-up-inference is locked to NUSDC (budget is NUSDC-denominated).
+  // deposit + withdraw-trading use the selected token.
+  const effectiveCoin: TokenSymbol = mode === 'top-up-inference' ? 'NUSDC' : selectedCoin;
+  const effectiveMeta = TOKENS[effectiveCoin];
   const agentSelectedRaw =
-    agentBalances.find((b) => b.symbol === selectedCoin)?.totalBalanceRaw ?? 0n;
+    agentBalances.find((b) => b.symbol === effectiveCoin)?.totalBalanceRaw ?? 0n;
+  const ownerSelectedRaw = ownerBalanceMap.get(effectiveMeta.type) ?? 0n;
 
-  const amountRaw = parseRawAmount(amount, selectedMeta.decimals);
-
-  // For deposit, coin is always NUSDC
-  const depositAmountRaw = parseRawAmount(amount, TOKENS.NUSDC.decimals);
+  const amountRaw = parseRawAmount(amount, effectiveMeta.decimals);
 
   // Max for each mode
   const maxForMode: bigint = useMemo(() => {
-    if (mode === 'deposit' || mode === 'top-up-inference') return ownerNusdcRaw;
+    if (mode === 'top-up-inference') return ownerNusdcRaw;
+    if (mode === 'deposit') {
+      if (effectiveCoin === 'NASUN') {
+        return ownerSelectedRaw > OWNER_NASUN_GAS_RESERVE_MIST
+          ? ownerSelectedRaw - OWNER_NASUN_GAS_RESERVE_MIST
+          : 0n;
+      }
+      return ownerSelectedRaw;
+    }
     // withdraw-trading
-    if (selectedCoin === 'NASUN') return computeNasunMaxWithdraw(agentNasunRaw);
+    if (effectiveCoin === 'NASUN') return computeNasunMaxWithdraw(agentNasunRaw);
     return agentSelectedRaw;
-  }, [mode, selectedCoin, ownerNusdcRaw, agentNasunRaw, agentSelectedRaw]);
+  }, [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw]);
 
-  const maxDecimals =
-    mode === 'withdraw-trading' ? selectedMeta.decimals : TOKENS.NUSDC.decimals;
+  const maxDecimals = effectiveMeta.decimals;
 
   const handleMax = () => {
     setAmount(formatRawAmount(maxForMode, maxDecimals));
@@ -172,32 +186,36 @@ export function TransferAgentFundsDialog({
 
     try {
       if (mode === 'deposit') {
-        if (depositAmountRaw <= 0n) {
+        if (amountRaw <= 0n) {
           setError('Enter an amount greater than 0.');
           setStep('idle');
           return;
         }
-        if (depositAmountRaw > ownerNusdcRaw) {
-          setError('Amount exceeds your NUSDC balance.');
+        if (amountRaw > maxForMode) {
+          setError(
+            effectiveCoin === 'NASUN'
+              ? `Amount would leave you with less than ${formatRawAmount(OWNER_NASUN_GAS_RESERVE_MIST, TOKENS.NASUN.decimals)} NASUN for gas. Use Max to see the safe maximum.`
+              : `Amount exceeds your ${effectiveCoin} balance.`,
+          );
           setStep('idle');
           return;
         }
         const coins = await getCoinsByType(
           suiClient,
           walletAddress,
-          TOKENS.NUSDC.type,
-          depositAmountRaw,
+          effectiveMeta.type,
+          amountRaw,
         );
         if (coins.length === 0) {
-          setError('No NUSDC coins found in your wallet.');
+          setError(`No ${effectiveCoin} coins found in your wallet.`);
           setStep('idle');
           return;
         }
         const tx = buildDepositToAgentWalletTransaction({
           signerAddress: walletAddress,
           toAgentAddress: agent.agentAddress,
-          coinType: TOKENS.NUSDC.type,
-          amountRaw: depositAmountRaw,
+          coinType: effectiveMeta.type,
+          amountRaw,
           ownerCoins: coins,
         });
         await signAndExecuteOwner(tx);
@@ -205,7 +223,7 @@ export function TransferAgentFundsDialog({
           queryKey: ['nasun-ai', 'agentWalletBalances', agent.agentAddress],
         });
       } else if (mode === 'top-up-inference') {
-        if (depositAmountRaw <= 0n) {
+        if (amountRaw <= 0n) {
           setError('Enter an amount greater than 0.');
           setStep('idle');
           return;
@@ -215,12 +233,12 @@ export function TransferAgentFundsDialog({
           setStep('idle');
           return;
         }
-        if (depositAmountRaw > ownerNusdcRaw) {
+        if (amountRaw > ownerNusdcRaw) {
           setError('Amount exceeds your NUSDC balance.');
           setStep('idle');
           return;
         }
-        const rawNum = Number(depositAmountRaw);
+        const rawNum = Number(amountRaw);
         const coins = await getNusdcCoins(suiClient, walletAddress, rawNum);
         const tx = buildDepositToBudgetTransaction(selectedBudgetId, coins, rawNum);
         await signAndExecuteOwner(tx);
@@ -288,14 +306,14 @@ export function TransferAgentFundsDialog({
 
   const title =
     mode === 'deposit'
-      ? 'Send NUSDC to agent\'s trading wallet'
+      ? `Send ${effectiveCoin} to agent's trading wallet`
       : mode === 'top-up-inference'
       ? 'Top up inference balance'
       : 'Withdraw from agent\'s trading wallet';
 
   const subtitle =
     mode === 'deposit'
-      ? `Your wallet to ${truncateAddress(agent.agentAddress)}. The agent uses this balance to execute trades.`
+      ? `Your wallet to ${truncateAddress(agent.agentAddress)}. The agent uses this balance to execute trades${effectiveCoin === 'NASUN' ? ' and pay its own gas' : ''}.`
       : mode === 'top-up-inference'
       ? 'Add NUSDC to cover this agent\'s AI executor fees.'
       : `${truncateAddress(agent.agentAddress)} to your wallet. Enter your agent passphrase to authorize.`;
@@ -357,10 +375,14 @@ export function TransferAgentFundsDialog({
             </div>
           )}
 
-          {/* Coin select for withdraw-trading */}
-          {mode === 'withdraw-trading' && (
+          {/* Coin select for deposit + withdraw-trading. top-up-inference is NUSDC-only. */}
+          {(mode === 'deposit' || mode === 'withdraw-trading') && (
             <div className="space-y-1.5">
-              <label className="text-sm text-uju-secondary">Token</label>
+              <label className="text-sm text-uju-secondary">
+                {mode === 'deposit'
+                  ? 'Token to send (balances shown are from your wallet)'
+                  : 'Token to withdraw (balances shown are agent\'s)'}
+              </label>
               <select
                 value={selectedCoin}
                 onChange={(e) => setSelectedCoin(e.target.value as TokenSymbol)}
@@ -368,8 +390,10 @@ export function TransferAgentFundsDialog({
                 disabled={busy}
               >
                 {(Object.keys(TOKENS) as TokenSymbol[]).map((sym) => {
-                  const bal = agentBalances.find((b) => b.symbol === sym);
-                  const raw = bal?.totalBalanceRaw ?? 0n;
+                  const raw =
+                    mode === 'deposit'
+                      ? ownerBalanceMap.get(TOKENS[sym].type) ?? 0n
+                      : agentBalances.find((b) => b.symbol === sym)?.totalBalanceRaw ?? 0n;
                   const display = formatRawAmount(raw, TOKENS[sym].decimals);
                   return (
                     <option key={sym} value={sym}>
@@ -391,8 +415,7 @@ export function TransferAgentFundsDialog({
                 disabled={busy || maxForMode === 0n}
                 className="text-xs text-pado-2 hover:text-pado-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Max: {formatRawAmount(maxForMode, maxDecimals)}{' '}
-                {mode === 'withdraw-trading' ? selectedCoin : 'NUSDC'}
+                Max: {formatRawAmount(maxForMode, maxDecimals)} {effectiveCoin}
               </button>
             </div>
             <input
