@@ -85,7 +85,9 @@ pnpm deploy:nasun-ai-runtime:prod    # → scripts/deploy-nasun-ai-runtime-produ
 - `BARAM_API_KEY`, `BARAM_CHAT_SERVER_HMAC_SECRET`
 - `CHAT_SERVER_BASE_URL`, `LLM_API_KEY`, `LLM_API_URL`
 - `RPC_URL` (기본 `https://rpc.devnet.nasun.io`)
-- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (선택)
+- `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` (선택, 사용자 facing trader 알림)
+- `TELEGRAM_ALERT_BOT_TOKEN`, `TELEGRAM_ALERT_CHAT_ID` (선택, operator facing AER heartbeat 알림). `TELEGRAM_ALERT_BOT_TOKEN` 미설정 시 `TELEGRAM_BOT_TOKEN`로 fallback. `TELEGRAM_ALERT_CHAT_ID` 미설정 시 stall은 로그만 남고 Telegram 발송 안 함
+- `AER_HEARTBEAT_STALE_MIN` (override; 기본은 `max(2 * INTERVAL_MINUTES, 5)` 으로 cycle cadence에 맞춰 자동 산정), `AER_HEARTBEAT_COOLDOWN_MIN` (기본 30): heartbeat watchdog 임계/cooldown 분
 
 **Behavior**:
 - `PRESET`: research | content | analysis | trader (기본 research)

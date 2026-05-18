@@ -73,6 +73,7 @@ import {
   type IntentChainState,
 } from './trader-envelope.js';
 import { resolveStrategyPreset } from './strategies.js';
+import { recordAerLanded } from '../aer-heartbeat.js';
 import type { Config } from '../config.js';
 
 // ===== Browser config sync (read from chat-server) =====
@@ -767,6 +768,7 @@ export async function runTraderCycle(
   deps.log(
     `[trader] AER landed: class=${finalEventClass} digest=${execResp.txDigest ?? 'n/a'} cap.v=${execResp.capabilityVersion ?? '?'}`,
   );
+  recordAerLanded();
 
   // 11. Promote intent + persist digests by class.
   intent.commit();

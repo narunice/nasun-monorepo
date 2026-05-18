@@ -31,6 +31,7 @@ import { runManualExecution } from './presets/manual-execution.js';
 import type { Preset } from './presets/types.js';
 import type { WakeContext, WakeOutcome } from './wake-router.js';
 import { notifyTraderAER } from './telegram.js';
+import { startAerHeartbeatWatchdog } from './aer-heartbeat.js';
 import { startWakeServer } from './wake-server.js';
 import { IdempotencyStore } from './idempotency.js';
 
@@ -408,6 +409,12 @@ async function main(): Promise<void> {
   log(`Mode: ${config.mode} (${config.mode === 'record' ? 'Model B — self-reported' : 'Model A — Lambda verified'})`);
   log(`Preset: ${preset.name} (${config.preset})`);
   log(`Interval: ${config.intervalMinutes} minutes`);
+
+  startAerHeartbeatWatchdog({
+    agentAddress: config.agentAddress,
+    intervalMinutes: config.intervalMinutes,
+    log,
+  });
   log(`Model: ${config.mode === 'record' ? config.llmModel : config.model}`);
   log(`Price per request: ${config.price / 1e6} NUSDC`);
   log(`API Key: ${maskApiKey(config.apiKey)}`);
