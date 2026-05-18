@@ -74,14 +74,18 @@ check_script() {
     ok "$base" "skipped (S3/CloudFront, not EC2 rsync)"
     return
   fi
-  if [ -z "$remote_dir" ]; then
-    fail "$base" "REMOTE_DIR not found"
-    return
-  fi
 
+  # Manifest membership check comes BEFORE REMOTE_DIR existence: this linter
+  # only targets the /var/www/* cross-app-overwrite class. Backend pm2 scripts
+  # (rsync to ~/<app>, ssh + pm2 reload) don't share that risk -- they don't
+  # use REMOTE_DIR and shouldn't be flagged.
   local manifest_entry="${MANIFEST[$app_name]:-}"
   if [ -z "$manifest_entry" ]; then
-    warn "$base" "APP_NAME='$app_name' not in linter manifest -- add it to scripts/lint-deploy-scripts.sh MANIFEST"
+    ok "$base" "skipped (APP_NAME='$app_name' not a /var/www/* frontend; add to MANIFEST if it ever becomes one)"
+    return
+  fi
+  if [ -z "$remote_dir" ]; then
+    fail "$base" "REMOTE_DIR not found"
     return
   fi
 
