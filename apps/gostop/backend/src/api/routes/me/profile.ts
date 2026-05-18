@@ -14,6 +14,7 @@ import { reader, writer } from '../../../db/client.js';
 import { cacheDel } from '../../lib/cache.js';
 import { resolveIdentityId } from '../../lib/identity-resolver.js';
 import { reduceStreak, type StreakRoundInput } from '../../lib/streak.js';
+import { primeVisibilityCache } from '../../lib/visibility-lookup.js';
 import type { AuthVars } from '../../auth/middleware.js';
 import { requireAuth } from '../../auth/middleware.js';
 import { env } from '../../../env.js';
@@ -90,13 +91,11 @@ const VISIBILITY_VALUES = ['public', 'anonymous', 'delayed', 'opt-out'] as const
 type Visibility = (typeof VISIBILITY_VALUES)[number];
 const VISIBILITY_SET = new Set<string>(VISIBILITY_VALUES);
 
-// Cache keys busted by PATCH /settings so feed-server snapshot and
-// leaderboard responses pick up the new visibility within one cycle instead of
-// waiting 10s/30s for natural TTL expiry. `cacheDel` is a prefix delete, so
-// 'leaderboard:' wipes the visibility-class snapshot AND every cached
-// (period,game,metric,limit) response payload — required to honor an
-// anonymous→public toggle without a 10s stale window.
-const FEED_VISIBILITY_CACHE_KEY = 'feed:visibility-map';
+// Leaderboard response cache prefix busted by PATCH /settings so cached
+// (period,game,metric,limit) payloads pick up the new visibility within one
+// cycle instead of waiting 10 s for natural TTL expiry. The visibility-map
+// snapshot itself is invalidated and re-primed by `primeVisibilityCache`
+// (see PATCH handler).
 const LEADERBOARD_CACHE_PREFIX = 'leaderboard:';
 
 // ----- GET /me/profile ------------------------------------------------------
@@ -288,13 +287,16 @@ meProfileRoutes.patch('/settings', async (c) => {
     RETURNING feed_visibility, updated_at::text
   `;
 
-  // Bust dependent caches so the new visibility takes effect immediately:
-  //   - feed-server + leaderboard visibility-classification snapshot (mask decisions)
-  //   - every cached leaderboard response that may now contain a stale anon_id
-  //     or an excluded-but-no-longer-delayed player
+  // Refresh dependent caches so the new visibility takes effect immediately:
+  //   - visibility snapshot used by feed-server + leaderboard mask decisions
+  //     (primeVisibilityCache invalidates AND reloads from writer() so the
+  //     refilled cache is coherent with this PATCH even when a reader replica
+  //     is lagging — see visibility-lookup.ts file header)
+  //   - every cached leaderboard response that may now contain a stale
+  //     anon_id or an excluded-but-no-longer-delayed player
   // Without this a public→anonymous toggle would leak the raw address for up
-  // to CACHE_TTL_SECONDS (10s) via stale leaderboard payloads.
-  cacheDel(FEED_VISIBILITY_CACHE_KEY);
+  // to CACHE_TTL_SECONDS (10 s) via stale leaderboard payloads.
+  await primeVisibilityCache();
   cacheDel(LEADERBOARD_CACHE_PREFIX);
 
   c.header('Cache-Control', 'no-store');

@@ -21,12 +21,14 @@ const OPTIONS: { value: FeedVisibility; label: string; description: string }[] =
   {
     value: 'delayed',
     label: 'Delayed (24h)',
-    description: 'Your rounds appear on the feed only after a 24-hour delay.',
+    description:
+      'Your rounds appear on the public feed only after a 24-hour delay, and are excluded from public leaderboards entirely. Your own profile and standing still update immediately.',
   },
   {
     value: 'opt-out',
     label: 'Opt out',
-    description: 'Your rounds never appear on the public feed. Leaderboards still credit you.',
+    description:
+      'Your rounds never appear on the public feed or leaderboards. Your own profile and standing still update immediately.',
   },
 ];
 

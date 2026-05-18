@@ -19,7 +19,6 @@
 
 import type { IncomingMessage } from 'node:http';
 import { WebSocketServer, type WebSocket } from 'ws';
-import { reader } from '../../db/client.js';
 import { env } from '../../env.js';
 import { applyMask, type FeedVisibility } from '../lib/visibility-mask.js';
 import { loadVisibilityMap } from '../lib/visibility-lookup.js';
@@ -86,10 +85,12 @@ export function createFeedWsServer(): WebSocketServer {
     }
 
     // Per-connection snapshot. Mutations server-side bump the cache TTL so
-    // new connections see fresh policy within 30s.
+    // new connections see fresh policy within 30s. Loader reads from
+    // writer() (see visibility-lookup file header) to stay coherent with
+    // the last PATCH even when a replica is lagging.
     let visibility: VisibilityMap;
     try {
-      visibility = await loadVisibilityMap(reader());
+      visibility = await loadVisibilityMap();
     } catch (err) {
       console.error('[feed-ws] visibility load failed', err);
       ws.close(1011, 'visibility_load_failed');
