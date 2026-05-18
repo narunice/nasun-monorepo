@@ -29,6 +29,8 @@ type GameTransparency = {
   game_id: number;
   key: GameKey;
   rtp_bps: number;          // realized RTP in basis points (10_000 = 100%)
+  total_bet_raw: string;    // SUM(bet), bigint string (NUSDC base units)
+  total_payout_raw: string; // SUM(payout), bigint string
   house_pnl_raw: string;    // SUM(bet) - SUM(payout), bigint string
   commit_proof_count: number;
 };
@@ -85,6 +87,8 @@ transparencyRoutes.get('/transparency', async (c) => {
       game_id: cfg.gameId,
       key: cfg.key,
       rtp_bps: rtpBps,
+      total_bet_raw: totalBet.toString(),
+      total_payout_raw: totalPayout.toString(),
       house_pnl_raw: housePnl.toString(),
       commit_proof_count: cfg.key === 'crash' ? crashCommitCount : 0,
     });
