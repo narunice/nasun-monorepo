@@ -4,8 +4,13 @@
  *
  * Period semantics:
  *   - 'all' uses the gostop.player_stats matview (lifetime aggregates).
- *   - 24h/7d/30d run an on-the-fly aggregate against gostop.game_round with a
+ *   - 24h / 7d run an on-the-fly aggregate against gostop.game_round with a
  *     timestamp_ms BETWEEN window (matview is lifetime-only by design).
+ *   - '30d' is intentionally not in the enum: at current data scale 30d == all
+ *     (history < 30 days) so it was redundant UX, and the raw scan ran ~25x
+ *     more expensive than the matview-backed 'all' path (~15s warm, timeout
+ *     risk under cold cache). Reintroduce with a window-specific matview when
+ *     game history grows past 30 days.
  *
  * Game semantics:
  *   - 'all' = no game_id filter
@@ -22,7 +27,7 @@
 
 import type { Sql } from 'postgres';
 
-export type Period = '24h' | '7d' | '30d' | 'all';
+export type Period = '24h' | '7d' | 'all';
 export type GameFilter = 'all' | 1 | 2 | 3 | 4 | 5 | 6;
 export type Metric = 'net_pnl' | 'volume' | 'rounds';
 
@@ -39,7 +44,6 @@ export type LeaderboardRow = {
 const PERIOD_WINDOW_MS: Record<Exclude<Period, 'all'>, number> = {
   '24h': 24 * 60 * 60 * 1000,
   '7d':  7  * 24 * 60 * 60 * 1000,
-  '30d': 30 * 24 * 60 * 60 * 1000,
 };
 
 function metricExpr(metric: Metric): string {

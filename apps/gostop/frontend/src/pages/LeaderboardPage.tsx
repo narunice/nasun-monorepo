@@ -28,7 +28,6 @@ import { Pagination } from '../features/shared/Pagination';
 const PERIOD_OPTIONS: { value: LeaderboardPeriod; label: string }[] = [
   { value: '24h', label: '24h' },
   { value: '7d', label: '7 days' },
-  { value: '30d', label: '30 days' },
   { value: 'all', label: 'All time' },
 ];
 
