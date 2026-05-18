@@ -108,7 +108,7 @@ leaderboardRoutes.get('/', async (c) => {
     return c.json(cached.value);
   }
 
-  const visibility = await loadVisibilityClassification(reader());
+  const visibility = await loadVisibilityClassification();
   const rawRows = await queryLeaderboard(reader(), {
     period,
     game,
@@ -143,7 +143,7 @@ leaderboardRoutes.get('/me', requireAuth, async (c) => {
   // DB stores `player` lowercased; normalize at the route boundary so a
   // mixed-case JWT claim doesn't silently miss self-row + exclude matching.
   const wallet = c.get('wallet').toLowerCase();
-  const visibility = await loadVisibilityClassification(reader());
+  const visibility = await loadVisibilityClassification();
   // The caller's /me view always returns their own stats even if they are
   // delayed/anonymous — visibility is about how OTHERS see them, not self.
   const row = await queryLeaderboardForPlayer(reader(), {
