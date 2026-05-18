@@ -104,7 +104,7 @@ export function GostopActivityCard() {
                 key={m}
                 className="px-2 py-1 rounded-full text-xs bg-gold-400/10 text-gold-200 border border-gold-subtle"
               >
-                {m}
+                {formatMissionLabel(m)}
               </span>
             ))}
           </div>
@@ -163,6 +163,17 @@ interface StatProps {
   value: string;
   suffix?: string;
   tone?: 'positive' | 'negative';
+}
+
+function formatMissionLabel(key: string): string {
+  // Strip "gostop-" prefix and capitalize remaining segments.
+  // e.g. "gostop-scratch-card-daily" -> "Scratch Card Daily"
+  const stripped = key.replace(/^gostop-/, '');
+  return stripped
+    .split('-')
+    .filter(Boolean)
+    .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
+    .join(' ');
 }
 
 function Stat({ label, value, suffix, tone }: StatProps) {
