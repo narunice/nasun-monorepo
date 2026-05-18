@@ -1,10 +1,24 @@
-# CLAUDE.md (Baram App)
+# CLAUDE.md (Baram App) — ARCHIVED
 
+> Last Updated: 2026-05-18 (archived header)
 > 공통 원칙은 [루트 CLAUDE.md](../../CLAUDE.md)를 참조하세요.
+
+> ## ⚠️ ARCHIVED — 활성 개발 종료
+>
+> **이 앱은 archived 상태입니다** (`pnpm-workspace.yaml`에서 `!apps/baram` 로 제외됨). 현재 활용:
+> - **Onchain `baram::*` Move 모듈명 invariant**: 체인 위에 배포된 패키지명/모듈명은 영구 유지. rename 시 호환성 깨짐. nasun-ai-runtime의 `BARAM_*` env var는 이 invariant를 그대로 사용.
+> - **AER 코덱 / contracts reference**: [docs/AER_DESIGN.md](docs/AER_DESIGN.md), [docs/AER_V2_CODEC.md](docs/AER_V2_CODEC.md), [docs/contracts.md](docs/contracts.md). nasun-ai-runtime에서 AER 처리할 때 참고.
+> - **baram-executor Lambda**: 별도 배포로 운영 중. env update 시 REPLACE-not-MERGE 주의 (project_2026_05_17_baram_executor_phase_e_drift.md).
+>
+> **이전 자산의 행방**:
+> - `apps/baram/frontend/` → `apps/nasun-website/sections/uju/` 로 흡수
+> - `apps/baram/agent-runner/` → `apps/nasun-ai-runtime/` 로 분리 (별도 앱)
+>
+> **사용자 facing branding 규칙**: 외부 narrative/UI에서 "Baram" 금지, "Nasun AI"로 통일 (feedback_no_baram_branding.md). "bot" 대신 "AI agent" (feedback_agent_not_bot.md). 내부 코드/패키지/Move 모듈명은 예외.
 
 ---
 
-## Overview
+## Overview (legacy reference)
 
 **Baram**은 나선 네트워크의 AI Compliance Settlement Layer다.
 
