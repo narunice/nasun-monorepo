@@ -4,10 +4,9 @@ Tier 0+ backend for Gostop casino: chain event indexer + REST/WS API powering
 leaderboard, live feed, transparency dashboard, session replay, and the user
 dashboard (`/me`).
 
-Two pm2 processes, both deployed on **prod EC2 __PROD_EC2_HOST__** (shared with
-nasun-website / pado / explorer-api). Stateful data lives in the **shared
-`nasun_points` Postgres** under the **`gostop` schema**, with isolated roles so
-this service cannot touch explorer artifacts (`activity_points` etc.).
+Stateful data lives in the **shared `nasun_points` Postgres** under the
+**`gostop` schema**, with isolated roles so this service cannot touch
+explorer artifacts (`activity_points` etc.).
 
 | Process | Source | Role | Purpose |
 |---|---|---|---|
@@ -32,33 +31,72 @@ pnpm --filter @nasun/gostop-backend dev:indexer
 pnpm --filter @nasun/gostop-backend dev:api
 ```
 
-## Production deploy (prod EC2)
+## Production deploy
 
-Canonical path: `pnpm deploy:gostop-backend:prod` (calls
-`scripts/deploy-gostop-backend-production.sh`). The script handles:
+### Current runtime (verified 2026-05-18)
 
-- typecheck + `tsc -p tsconfig.build.json` (test files excluded from dist)
-- `.app-id` marker check — refuses to overwrite `${REMOTE_BASE}` if it's
-  hosting a different app, preventing the cross-app overwrite class of
-  incident (2026-05-03 pado → nasun-website precedent)
-- backup of the current remote `dist` to `dist.bak.<TS>` (also the source
-  for `--rollback`)
-- rsync of `dist/`, `.app-id`, `ecosystem.config.cjs`, `package.json`, and
-  `src/db/migrations/` (migrations land in `~/gostop-backend/migrations/`
-  for manual application, never auto-applied)
-- pm2 `startOrRestart` with `set -a; source .env; set +a` so the pm2
-  daemon re-parses ecosystem.config.cjs against the freshly sourced .env
-  (see `feedback_pm2_daemon_env_resolution.md` — `--update-env` alone
-  does not re-evaluate ecosystem CJS)
-- loopback health check against `gostop-api`
+**The service is already live on node-3 (__INDEXER_NODE_HOST__), not the prod EC2
+the original PR-C plan targeted.** A manual rsync deploy by the operator
+brought it up around 2026-05-17; pm2 has carried both processes for 15+ h
+at the time this section was written. Re-deploys must continue to target
+node-3 until the operator decides otherwise (see "Drift" below).
 
-`pnpm deploy:gostop-backend:prod -- --rollback` restores the most recent
-`dist.bak.<TS>` and hard-restarts pm2 against it.
+| Field | Value |
+|---|---|
+| Host | node-3 (__INDEXER_NODE_HOST__), user `ubuntu`, SSH key `~/.ssh/<your-devnet-key>.pem` |
+| App dir | `/home/ubuntu/gostop-backend/` |
+| pm2 processes | `gostop-backend` (api, port **3202**), `gostop-indexer` |
+| pm2 mode | api runs `node --import tsx src/api/server.ts` (live src); indexer runs `node dist/indexer/index.js` |
+| Public URL | https://api.gostop.app (Let's Encrypt) |
+| WS | wss://api.gostop.app/api/gostop/feed/{live,whales} |
+| nginx | `/etc/nginx/sites-enabled/api.gostop.app` → 127.0.0.1:3202, `limit_req zone=gostop_api burst=30 nodelay` |
+| DB | colocated on the same host — `nasun_points` Postgres, `gostop` schema |
+| Deploy method | manual rsync (no git checkout, no `.app-id` marker, no `migrations/` dir on box) |
+| ecosystem.config.cjs | divergent from monorepo (api uses tsx-src, api `max_memory_restart=1024M`) |
 
-### First-deploy checklist (run on prod EC2 once, before the script)
+### Drift between monorepo and the live runtime
 
-The script assumes `~/gostop-backend/.env` already exists with the
-production values. The most consequential entry is `FEED_ANON_SALT`:
+These DO NOT match what's running on node-3 today — reconcile before
+running any automated deploy:
+
+- `apps/gostop/backend/ecosystem.config.cjs` declares `script: 'dist/api/server.js'`,
+  but prod runs api from `src/` via tsx. Following the monorepo version
+  would change pm2 behavior (and break if `dist/api/server.js` is stale
+  relative to `src/`).
+- `apps/gostop/backend/ecosystem.config.cjs` sets api
+  `max_memory_restart: '512M'`; prod uses 1024M.
+- `scripts/deploy-gostop-backend-production.sh` (PR-C) targets
+  **prod EC2 __PROD_EC2_HOST__** with `ec2-user` + `<your-prod-key>`. Pointing
+  it at node-3 requires changing the host, user, SSH key, and adjusting
+  the ecosystem template before any first run.
+
+The script + monorepo ecosystem are preserved as-is so a future cleanup PR
+can reconcile them in one commit; do not run `pnpm deploy:gostop-backend:prod`
+against current prod until that's done.
+
+### Re-deploying the current runtime (manual until reconciliation lands)
+
+```bash
+ssh -i ~/.ssh/<your-devnet-key>.pem ubuntu@__INDEXER_NODE_HOST__
+# on node-3:
+cd ~/gostop-backend
+# rsync new src/ + dist/ + package.json + pnpm-lock.yaml from monorepo
+# then:
+pnpm install --frozen-lockfile
+pnpm build                                # produces dist/ used by indexer
+pm2 restart gostop-backend gostop-indexer # api re-imports src via tsx on restart
+pm2 logs gostop-backend --lines 50 --nostream
+pm2 logs gostop-indexer --lines 50 --nostream
+```
+
+The api process re-imports `src/` on every restart (tsx live), so an in-place
+src edit on the box plus `pm2 restart gostop-backend` is enough for an api
+hotfix. Indexer requires a `pnpm build` because it loads compiled JS.
+
+### First-deploy checklist (for a fresh environment, NOT current prod)
+
+If you ever bring up a new gostop-backend host (migration off node-3,
+staging clone, disaster recovery), do this once before the deploy script:
 
 ```bash
 # Generate a fresh 64-char hex salt. NEVER rotate this value once any
@@ -92,6 +130,11 @@ psql -d nasun_points -f migrations/002_idx_gr_final_ts_player.sql
 # first NumbersDrawn event crashes the indexer):
 psql -d nasun_points -f migrations/003_lottery_round_draw_tx_digest.sql
 ```
+
+Current prod has 001 + 002 + the 003 column (003 was applied manually by
+the operator before the migration file existed in the repo). `gostop`
+schema is fully bootstrapped on node-3; no schema work needed for the
+in-place re-deploy path.
 
 ## Operational guardrails
 
