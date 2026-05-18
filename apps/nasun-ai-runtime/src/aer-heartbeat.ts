@@ -130,15 +130,26 @@ async function tick(ctx: TickContext): Promise<void> {
     `Time: ${ts}`,
   ].join('\n');
 
+  // Update lastAlertAt regardless of send result. If the send failed
+  // (Telegram unreachable, bot blocked, chat archived), the cooldown
+  // still applies so the next 60s tick does not re-attempt and hammer
+  // the Telegram API. The stall is already logged above; an extended
+  // outage will simply skip alerts until the cooldown elapses.
   const ok = await sendTelegramMessage(ctx.botToken, ctx.chatId, text);
-  if (ok) lastAlertAt = ctx.now;
+  if (!ok) {
+    ctx.log('[heartbeat-watchdog] Telegram alert send failed; suppressing retries until cooldown elapses');
+  }
+  lastAlertAt = ctx.now;
 }
 
 function parseMinutesEnv(name: string, defaultMin: number | null): number | null {
   const raw = process.env[name];
   if (!raw) return defaultMin === null ? null : defaultMin * 60_000;
   const n = Number(raw);
-  if (!Number.isFinite(n) || n <= 0) {
+  // Reject sub-minute and non-finite values; `Number("1e-3")` is 0.001
+  // which would otherwise produce a 60ms watchdog interval and spam the
+  // alert path. One minute is the floor for any operator-tunable value.
+  if (!Number.isFinite(n) || n < 1) {
     return defaultMin === null ? null : defaultMin * 60_000;
   }
   return n * 60_000;

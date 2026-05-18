@@ -6,7 +6,7 @@ import { suiClient } from '@/lib/sui-client';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import type { BudgetInfo } from '../../hooks/useBudgets';
 import type { AgentTokenBalance } from '../../hooks/useAgentWalletBalances';
-import { TOKENS, type TokenSymbol } from '../../services/network';
+import { TOKENS, BUDGET_CONFIG, type TokenSymbol } from '../../services/network';
 import { getCoinsByType, getNusdcCoins } from '../../services/coinService';
 import {
   buildDepositToAgentWalletTransaction,
@@ -233,6 +233,15 @@ export function TransferAgentFundsDialog({
           setStep('idle');
           return;
         }
+        // Move contract enforces MIN_DEPOSIT (0.1 NUSDC). Validate client-
+        // side so the user gets an actionable error before signing.
+        const minDeposit = BigInt(BUDGET_CONFIG.MIN_DEPOSIT);
+        if (amountRaw < minDeposit) {
+          const minDisplay = (BUDGET_CONFIG.MIN_DEPOSIT / 1e6).toFixed(2);
+          setError(`Minimum top-up is ${minDisplay} NUSDC.`);
+          setStep('idle');
+          return;
+        }
         if (amountRaw > ownerNusdcRaw) {
           setError('Amount exceeds your NUSDC balance.');
           setStep('idle');
@@ -289,7 +298,19 @@ export function TransferAgentFundsDialog({
       setTimeout(onSuccess, 600);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (mode === 'withdraw-trading' && (msg.includes('Decryption') || msg.includes('passphrase') || msg.includes('does not match'))) {
+      // WebCrypto crypto.subtle.decrypt throws a DOMException with
+      // name='OperationError' and a generic message that does not include
+      // any of the substrings below, so name-check first before falling
+      // back to message-substring matching.
+      const isWebCryptoDecryptFailure =
+        err instanceof Error && err.name === 'OperationError';
+      if (
+        mode === 'withdraw-trading' &&
+        (isWebCryptoDecryptFailure ||
+          msg.includes('Decryption') ||
+          msg.includes('passphrase') ||
+          msg.includes('does not match'))
+      ) {
         setError('Wrong passphrase. Try the one you set when creating this agent.');
       } else if (isGasInsufficientError(err)) {
         setError('Not enough NASUN for gas. Use the in-wallet faucet to claim NASUN.');
@@ -352,6 +373,11 @@ export function TransferAgentFundsDialog({
         {mode === 'withdraw-trading' && !agentHasGas && selectedCoin !== 'NASUN' && (
           <div className="px-3 py-2 text-sm rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
             Agent has no NASUN for gas. Deposit a small amount of NASUN first to recover other tokens.
+          </div>
+        )}
+        {mode === 'withdraw-trading' && selectedCoin === 'NASUN' && agentHasGas && maxForMode === 0n && (
+          <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
+            Agent NASUN is below the gas reserve. Withdrawing now would leave nothing for trade gas. Deposit more NASUN before withdrawing, or use another token.
           </div>
         )}
 
@@ -477,7 +503,8 @@ export function TransferAgentFundsDialog({
               busy ||
               step === 'done' ||
               (mode !== 'withdraw-trading' && isLowOwnerGas) ||
-              (mode === 'withdraw-trading' && !agentHasGas && selectedCoin !== 'NASUN')
+              (mode === 'withdraw-trading' && !agentHasGas && selectedCoin !== 'NASUN') ||
+              (mode === 'withdraw-trading' && maxForMode === 0n)
             }
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-pado-2 text-black font-medium hover:bg-pado-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
