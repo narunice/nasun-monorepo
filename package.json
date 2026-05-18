@@ -33,6 +33,7 @@
     "deploy:gostop:staging": "./scripts/deploy-gostop-staging.sh",
     "deploy:gostop:prod": "./scripts/deploy-gostop-production.sh",
     "deploy:gostop:bots:prod": "./scripts/deploy-gostop-bots.sh",
+    "deploy:gostop-backend:prod": "./scripts/deploy-gostop-backend-production.sh",
     "deploy:nasun-chat-server:prod": "./scripts/deploy-nasun-chat-server-production.sh",
     "deploy:nasun-ai-runtime:prod": "./scripts/deploy-nasun-ai-runtime-production.sh",
     "lint": "pnpm -r lint",

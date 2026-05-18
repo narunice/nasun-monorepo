@@ -34,24 +34,58 @@ pnpm --filter @nasun/gostop-backend dev:api
 
 ## Production deploy (prod EC2)
 
-```bash
-# on prod EC2, repo root
-pnpm install
-pnpm --filter @nasun/gostop-backend build
+Canonical path: `pnpm deploy:gostop-backend:prod` (calls
+`scripts/deploy-gostop-backend-production.sh`). The script handles:
 
-cd apps/gostop/backend
-set -a && source .env && set +a
-pm2 startOrRestart ecosystem.config.cjs
-pm2 save
+- typecheck + `tsc -p tsconfig.build.json` (test files excluded from dist)
+- `.app-id` marker check — refuses to overwrite `${REMOTE_BASE}` if it's
+  hosting a different app, preventing the cross-app overwrite class of
+  incident (2026-05-03 pado → nasun-website precedent)
+- backup of the current remote `dist` to `dist.bak.<TS>` (also the source
+  for `--rollback`)
+- rsync of `dist/`, `.app-id`, `ecosystem.config.cjs`, `package.json`, and
+  `src/db/migrations/` (migrations land in `~/gostop-backend/migrations/`
+  for manual application, never auto-applied)
+- pm2 `startOrRestart` with `set -a; source .env; set +a` so the pm2
+  daemon re-parses ecosystem.config.cjs against the freshly sourced .env
+  (see `feedback_pm2_daemon_env_resolution.md` — `--update-env` alone
+  does not re-evaluate ecosystem CJS)
+- loopback health check against `gostop-api`
+
+`pnpm deploy:gostop-backend:prod -- --rollback` restores the most recent
+`dist.bak.<TS>` and hard-restarts pm2 against it.
+
+### First-deploy checklist (run on prod EC2 once, before the script)
+
+The script assumes `~/gostop-backend/.env` already exists with the
+production values. The most consequential entry is `FEED_ANON_SALT`:
+
+```bash
+# Generate a fresh 64-char hex salt. NEVER rotate this value once any
+# anon_id has been published — every anonymous wallet's pseudonym is
+# derived from it and rotation breaks identity continuity on the feed
+# and leaderboard.
+openssl rand -hex 32
 ```
 
-DB bootstrap (once, as `postgres` superuser):
+`src/env.ts` refuses to boot in production when `FEED_ANON_SALT` is
+unset, equals the dev fallback literal, or is shorter than 32 chars
+(see `resolveAnonSalt()` and the two production signals
+`NODE_ENV=production` / `GOSTOP_REQUIRE_PROD_SALT=1`).
+
+Other required env vars per `.env.example`: `GOSTOP_DATABASE_URL` (writer
+DSN, must reach the `nasun_points` Postgres on node-3), `GOSTOP_READ_URL`
+(reader DSN, may fall back to writer), `SUI_RPC_URL`, `AUTH_JWT_SECRET`,
+`FEED_PG_CHANNEL`.
+
+DB bootstrap (once, as `postgres` superuser on node-3):
 
 ```bash
-psql -d nasun_points -f src/db/migrations/001_initial.sql
-# then set role passwords:
+psql -d nasun_points -f migrations/001_initial.sql
 psql -d nasun_points -c "ALTER ROLE gostop_writer PASSWORD '<from .env>';"
 psql -d nasun_points -c "ALTER ROLE gostop_reader PASSWORD '<from .env>';"
+# Tier 0 PR-4 leaderboard window-scan index:
+psql -d nasun_points -f migrations/002_idx_gr_final_ts_player.sql
 ```
 
 ## Operational guardrails
