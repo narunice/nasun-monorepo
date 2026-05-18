@@ -53,6 +53,11 @@ import {
   type StockQuote,
 } from './lib/stock-price.js';
 import { localDateString, sessionCloseUtc } from './lib/market-holidays.js';
+import { EXPIRE_GRACE_MS, detectKind, type ResolveResult } from './lib/resolvers/types.js';
+import { parseSpaceCriteria, resolveSpace, SpaceParseError } from './lib/resolvers/space.js';
+import { parseMusicCriteria, resolveMusic, MusicParseError } from './lib/resolvers/music.js';
+import { parseSportsCriteria, resolveSports, SportsParseError } from './lib/resolvers/sports.js';
+import { parseWeatherCriteria, resolveWeather, WeatherParseError } from './lib/resolvers/weather.js';
 
 // ========================================
 // Configuration
@@ -258,9 +263,27 @@ function buildResolveTx(packageId: string, marketId: string, outcome: boolean): 
   return tx;
 }
 
+function buildCancelExpiredTx(packageId: string, marketId: string): Transaction {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${packageId}::prediction_market::cancel_expired_market`,
+    arguments: [tx.object(marketId), tx.object(CLOCK_ID)],
+  });
+  return tx;
+}
+
+// Stderr-only operator alert. `pm2 logs prediction-keeper --err` is the
+// current channel until a Telegram client is wired in. Per-market dedupe
+// is handled by the surrounding logOnce() helper.
+function alertOps(message: string): void {
+  console.error(`[ALERT] ${new Date().toISOString()} ${message}`);
+}
+
+const DRY_RUN = process.env.PREDICTION_KEEPER_DRY_RUN === 'true';
+
 // Per-market log-once flags so deadline / resolver-mismatch warnings don't spam
 // every tick. Reset only when the bot restarts (acceptable: alerts are sticky).
-type AlertKind = 'deadline' | 'resolver' | 'criteria' | 'price';
+type AlertKind = 'deadline' | 'resolver' | 'criteria' | 'price' | 'pending-near-deadline' | 'expired-cancelled' | 'parse-error';
 const alertedOnce = new Map<string, Set<AlertKind>>();
 
 function logOnce(marketId: string, kind: AlertKind, message: string): void {
@@ -312,15 +335,6 @@ async function processMarket(
   const now = Date.now();
   if (now < market.closeTime) return;
 
-  if (now > market.resolveDeadline) {
-    logOnce(
-      marketId,
-      'deadline',
-      `[${timestamp()}] ${marketId}: deadline passed, manual cancel_expired_market required`,
-    );
-    return;
-  }
-
   if (market.resolver !== resolverAddress) {
     logOnce(
       marketId,
@@ -330,45 +344,71 @@ async function processMarket(
     return;
   }
 
-  const criteria = parseResolutionCriteria(market.resolutionCriteria);
-  if (!criteria) {
-    logOnce(
-      marketId,
-      'criteria',
-      `[${timestamp()}] ${marketId}: non-standard resolution criteria, manual resolve required`,
-    );
+  // Deadline elapsed: keeper auto-calls permissionless cancel_expired_market.
+  // The Move side asserts `now > resolve_deadline` strictly; EXPIRE_GRACE_MS
+  // absorbs RPC clock skew so the first attempt does not abort.
+  if (now > market.resolveDeadline + EXPIRE_GRACE_MS) {
+    if (DRY_RUN) {
+      logOnce(marketId, 'expired-cancelled',
+        `[${timestamp()}] [DRY_RUN] ${marketId}: would call cancel_expired_market`);
+      return;
+    }
+    try {
+      await withRetry(
+        async () => {
+          const fresh = await fetchMarket(client, marketId);
+          if (fresh && fresh.status !== STATUS_OPEN) {
+            return { digest: 'noop' };
+          }
+          return executeAndWait(client, keypair, buildCancelExpiredTx(packageId, marketId), 'cancel_expired_market');
+        },
+        { label: `cancel_expired_market(${marketId})` },
+      );
+      alertOps(`${marketId} expired past deadline, auto-cancelled`);
+      clearAlerts(marketId);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logOnce(marketId, 'expired-cancelled',
+        `[${timestamp()}] ${marketId}: cancel_expired_market failed: ${msg}`);
+    }
     return;
   }
 
-  let price: number;
+  // Dispatch to a resolver. Try the new Kind:-based path first; otherwise
+  // fall back to the legacy crypto/stock parser (host-based classification).
+  let result: ResolveResult;
   try {
-    if (criteria.kind === 'stock') {
-      price = await fetchStockPriceForCriteria(criteria, market.closeTime);
-    } else {
-      price = await fetchPriceWithFallback(criteria.symbol);
-    }
+    result = await dispatchResolve(market, now);
   } catch (err) {
-    // PriceIntegrityError (currency mismatch / cross-source disagreement) is
-    // non-transient: retrying will not help, and silently warning would risk
-    // the resolve_deadline elapsing on a market that needs human inspection.
-    // Let it propagate as a hard error so the tick-loop counter escalates.
-    if (err instanceof PriceIntegrityError) throw err;
+    if (err instanceof PriceIntegrityError) throw err;     // hard escalation
+    if (err instanceof PriceFetchError) throw err;          // transient warn
     const msg = err instanceof Error ? err.message : String(err);
-    // Wrap transient upstream failures so the tick loop treats them as price
-    // warnings rather than bumping the chain-error counter (a pm2 restart
-    // would not recover Twelve Data / Yahoo / Binance outages).
-    throw new PriceFetchError(msg);
+    logOnce(marketId, 'parse-error',
+      `[${timestamp()}] ${marketId}: criteria parse/dispatch error: ${msg}`);
+    return;
   }
 
-  const outcome = evaluateOutcome(criteria, price);
-  console.log(
-    `[${timestamp()}] ${marketId}: price=${price} ${criteria.comparison} threshold=${criteria.threshold} -> outcome=${outcome ? 'YES' : 'NO'}`,
-  );
+  if (result.state === 'pending') {
+    // Quiet log: pending is normal flow, do not bump consecutiveErrors.
+    console.log(`[${timestamp()}] ${marketId}: pending (${result.reason})`);
+    if (now > market.resolveDeadline - 3600_000) {
+      logOnce(marketId, 'pending-near-deadline',
+        `${marketId} still pending within 1h of resolve_deadline: ${result.reason}`);
+      alertOps(`${marketId} pending within 1h of deadline: ${result.reason}`);
+    }
+    return;
+  }
+
+  const outcome = result.outcome;
+  console.log(`[${timestamp()}] ${marketId}: ${result.evidence} -> outcome=${outcome ? 'YES' : 'NO'}`);
+
+  if (DRY_RUN) {
+    logOnce(marketId, 'deadline', `[${timestamp()}] [DRY_RUN] ${marketId}: would resolve as ${outcome ? 'YES' : 'NO'}`);
+    return;
+  }
 
   // Wrap the resolve call in a status re-check so an RPC drop after a successful
-  // tx doesn't trigger a double-resolve on retry. If the market is already
-  // RESOLVED, the second submit would revert with EMarketAlreadyResolved anyway,
-  // but this preempts the wasted gas + log noise.
+  // tx doesn't trigger a double-resolve on retry.
   await withRetry(
     async () => {
       const fresh = await fetchMarket(client, marketId);
@@ -384,6 +424,57 @@ async function processMarket(
   );
   console.log(`[${timestamp()}] ${marketId}: resolved as ${outcome ? 'YES' : 'NO'}`);
   clearAlerts(marketId);
+}
+
+interface MarketLite {
+  resolutionCriteria: string;
+  closeTime: number;
+}
+
+async function dispatchResolve(market: MarketLite, now: number): Promise<ResolveResult> {
+  const text = market.resolutionCriteria;
+  const kind = detectKind(text);
+
+  if (kind === 'space') {
+    const criteria = parseSpaceCriteria(text);
+    return await resolveSpace(criteria, now);
+  }
+  if (kind === 'music') {
+    const criteria = parseMusicCriteria(text);
+    return await resolveMusic(criteria, now);
+  }
+  if (kind === 'sports') {
+    const criteria = parseSportsCriteria(text);
+    return await resolveSports(criteria, now);
+  }
+  if (kind === 'weather') {
+    const criteria = parseWeatherCriteria(text);
+    return await resolveWeather(criteria, now);
+  }
+
+  // Legacy path: crypto/stock via existing parseResolutionCriteria + evaluateOutcome.
+  const legacy = parseResolutionCriteria(text);
+  if (!legacy) {
+    return { state: 'pending', reason: 'non-standard resolution criteria (no Kind: and no recognised Source)' };
+  }
+  let price: number;
+  try {
+    if (legacy.kind === 'stock') {
+      price = await fetchStockPriceForCriteria(legacy, market.closeTime);
+    } else {
+      price = await fetchPriceWithFallback(legacy.symbol);
+    }
+  } catch (err) {
+    if (err instanceof PriceIntegrityError) throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new PriceFetchError(msg);
+  }
+  const outcome = evaluateOutcome(legacy, price);
+  return {
+    state: 'resolved',
+    outcome,
+    evidence: `price=${price} ${legacy.comparison} threshold=${legacy.threshold}`,
+  };
 }
 
 // ========================================
@@ -496,6 +587,8 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] Package: ${packageId}`);
   console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none)'}`);
   console.log(`[${timestamp()}] Tick interval: ${intervalMs}ms  Discover interval: ${discoverIntervalMs}ms`);
+  console.log(`[${timestamp()}] DRY_RUN: ${DRY_RUN ? 'ENABLED (no on-chain writes)' : 'disabled (live)'}`);
+  console.log(`[${timestamp()}] Resolvers: space=${process.env.SPACE_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} music=${process.env.MUSIC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} sports=${process.env.SPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} weather=${process.env.WEATHER_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'}`);
 
   // Initial market discovery.
   let markets = await buildMarketList(client, packageId, pinnedMarkets);

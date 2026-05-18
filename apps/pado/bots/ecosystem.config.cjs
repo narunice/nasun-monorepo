@@ -257,6 +257,18 @@ module.exports = {
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
         PREDICTION_KEEPER_INTERVAL_MS: '60000',
+        // 4-category resolvers — bake from .env so pm2 daemon picks them up
+        // even when ecosystem is re-parsed without reloading the .env file.
+        // See feedback_pm2_daemon_env_resolution.md.
+        PREDICTION_KEEPER_DRY_RUN: process.env.PREDICTION_KEEPER_DRY_RUN || 'false',
+        LL2_BASE: process.env.LL2_BASE || 'https://ll.thespacedevs.com/2.2.0',
+        LL2_API_KEY: process.env.LL2_API_KEY || '',
+        ITUNES_RSS_BASE: process.env.ITUNES_RSS_BASE || 'https://rss.marketingtools.apple.com',
+        SPACE_RESOLVER_DISABLED: process.env.SPACE_RESOLVER_DISABLED || 'false',
+        MUSIC_RESOLVER_DISABLED: process.env.MUSIC_RESOLVER_DISABLED || 'false',
+        SPORTS_RESOLVER_DISABLED: process.env.SPORTS_RESOLVER_DISABLED || 'false',
+        WEATHER_RESOLVER_DISABLED: process.env.WEATHER_RESOLVER_DISABLED || 'false',
+        THESPORTSDB_API_KEY: process.env.THESPORTSDB_API_KEY || '',
       },
       max_restarts: 10,
       min_uptime: '30s',
