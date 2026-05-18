@@ -84,8 +84,13 @@ DB bootstrap (once, as `postgres` superuser on node-3):
 psql -d nasun_points -f migrations/001_initial.sql
 psql -d nasun_points -c "ALTER ROLE gostop_writer PASSWORD '<from .env>';"
 psql -d nasun_points -c "ALTER ROLE gostop_reader PASSWORD '<from .env>';"
-# Tier 0 PR-4 leaderboard window-scan index:
+# Tier 0 PR-4 leaderboard window-scan index (apply in autocommit / outside a tx
+# because CREATE INDEX CONCURRENTLY cannot run inside BEGIN/COMMIT):
 psql -d nasun_points -f migrations/002_idx_gr_final_ts_player.sql
+# Tier 0 e2e gap fix: lottery_round.draw_tx_digest column referenced by
+# indexer + /lottery/draws + transparency / replay frontend (without this the
+# first NumbersDrawn event crashes the indexer):
+psql -d nasun_points -f migrations/003_lottery_round_draw_tx_digest.sql
 ```
 
 ## Operational guardrails
