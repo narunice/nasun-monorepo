@@ -1,6 +1,7 @@
-import { Fragment } from "react";
+import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ENABLE_CRASH } from "../lib/gostop-config";
+import { useTransparency } from "../lib/api/queries";
 import crashThumb from "../assets/images/crash.webp";
 import lotteryThumb from "../assets/images/lottery.webp";
 import scratchThumb from "../assets/images/scratchcard.webp";
@@ -8,12 +9,24 @@ import numberMatchThumb from "../assets/images/number-match.webp";
 import minesThumb from "../assets/images/mines.webp";
 import wheelThumb from "../assets/images/wheel.webp";
 
-// Hero stat values — update manually
-const HERO_STATS = [
-  { value: "6", label: "Live Games" },
-  { value: "3,347", label: "DAU with social accounts" },
-  { value: "8m 42s", label: "Avg. Session" },
-] as const;
+// Compact NUSDC formatting for the hero counter.
+//   raw 5_047_123_456_789 (6-decimal base units)  -> "5.05M"
+//   raw     123_456_789   -> "123"
+// Stays a bigint until the final compactor to avoid `Number` precision loss
+// on the >2^53 raw values that already live in the DB.
+function compactNusdc(rawSum: bigint): string {
+  const whole = rawSum / 1_000_000n;
+  if (whole >= 1_000_000n) {
+    // millions, 2 decimals
+    const millions = Number((whole * 100n) / 1_000_000n) / 100;
+    return `${millions.toFixed(2)}M`;
+  }
+  if (whole >= 1_000n) {
+    const k = Number((whole * 10n) / 1_000n) / 10;
+    return `${k.toFixed(1)}K`;
+  }
+  return whole.toLocaleString("en-US");
+}
 
 const UPCOMING = [
   ...(ENABLE_CRASH
@@ -47,8 +60,11 @@ export default function HomePage() {
 function Hero() {
   return (
     <section
-      className="-mt-6 sm:-mt-10"
-      style={{ width: "100vw", marginLeft: "calc(-50vw + 50%)" }}
+      // Full-bleed only at lg+ where the desktop composition (text left,
+      // image bleeding to the viewport edge) needs the extra width.
+      // Below lg, the section uses its natural container width so nothing
+      // exceeds the viewport (mobile horizontal-scroll fix).
+      className="-mt-6 sm:-mt-10 lg:w-screen lg:ml-[calc(-50vw+50%)]"
     >
       <div className="relative overflow-hidden max-w-[1600px] mx-auto">
         {/* Dot grid texture */}
@@ -95,31 +111,15 @@ function Hero() {
                 </h1>
 
                 {/* Stat strip */}
-                <div className="flex items-center gap-5 md:gap-7">
-                  {HERO_STATS.map((stat, i) => (
-                    <Fragment key={stat.label}>
-                      {i > 0 && (
-                        <div className="w-px h-7 bg-gold-400/20 shrink-0" />
-                      )}
-                      <div>
-                        <div className="text-base md:text-xl font-medium text-gold-200">
-                          {stat.value}
-                        </div>
-                        <div className="text-sm text-neutral-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">
-                          {stat.label}
-                        </div>
-                      </div>
-                    </Fragment>
-                  ))}
-                </div>
+                <HeroStats />
 
                 {/* CTAs */}
                 <div className="flex items-center gap-3 flex-wrap">
                   <Link to="/floor" className="btn-gold !py-2 !px-5 text-sm">
                     See the Floor
                   </Link>
-                  <Link to="/lottery" className="btn-ghost !py-2 !px-5 text-sm">
-                    Enter the Lottery
+                  <Link to="/leaderboard" className="btn-ghost !py-2 !px-5 text-sm">
+                    Leaderboard
                   </Link>
                 </div>
               </div>
@@ -184,6 +184,101 @@ function Hero() {
         </div>
       </div>
     </section>
+  );
+}
+
+function HeroStats() {
+  const { data } = useTransparency();
+
+  const wagered = (() => {
+    if (!data?.games?.length) return null;
+    try {
+      let sum = 0n;
+      for (const g of data.games) sum += BigInt(g.total_bet_raw);
+      return sum;
+    } catch {
+      return null;
+    }
+  })();
+
+  const wageredLabel = wagered === null ? "···" : compactNusdc(wagered);
+
+  return (
+    <div className="flex items-center gap-3 sm:gap-5 md:gap-7 min-w-0">
+      <Stat value="5" label="Live Games" />
+      <Divider />
+      <Stat
+        value={<ProofMark />}
+        label="Provably Fair"
+        // Override value alignment so the icon centers under the digit baseline
+        // of the neighboring "5" without growing the stat column.
+        valueClassName="flex items-center text-gold-200"
+      />
+      <Divider />
+      <Stat
+        value={wageredLabel}
+        label="NUSDC Wagered"
+        valueClassName="text-base md:text-xl font-medium text-gold-200 tabular-nums"
+      />
+    </div>
+  );
+}
+
+function Stat({
+  value,
+  label,
+  valueClassName,
+}: {
+  value: ReactNode;
+  label: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="min-w-0">
+      <div
+        className={
+          valueClassName ??
+          "text-base md:text-xl font-medium text-gold-200"
+        }
+      >
+        {value}
+      </div>
+      <div className="text-[11px] sm:text-xs md:text-sm text-neutral-400 uppercase tracking-wider mt-0.5 whitespace-nowrap">
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div aria-hidden className="w-px h-7 bg-gold-400/20 shrink-0" />;
+}
+
+// Hexagonal seal with an interior checkmark.
+// Same visual weight as a 20px digit, so it sits cleanly inside the stat strip
+// alongside the "5" and the NUSDC counter. Uses currentColor so it inherits
+// the gold-200 tint from the parent stat row.
+function ProofMark() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      aria-hidden
+      className="w-5 h-5 md:w-6 md:h-6"
+      fill="none"
+      stroke="currentColor"
+    >
+      <path
+        d="M12 2.5 20.5 7v10L12 21.5 3.5 17V7L12 2.5z"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m8.5 12.4 2.5 2.5 4.5-5"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 

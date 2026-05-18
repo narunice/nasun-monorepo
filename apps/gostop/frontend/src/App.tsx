@@ -29,9 +29,9 @@ interface NavEntry {
 
 const NAV_ITEMS: NavEntry[] = [
   { to: '/floor', label: 'Floor' },
-  { to: '/suite', label: 'Suite' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/transparency', label: 'Transparency' },
+  { to: '/suite', label: 'Suite' },
 ]
 
 // Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
@@ -130,11 +130,14 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-50 backdrop-blur-md bg-ink-950/80 border-b border-gold-subtle">
-      <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between gap-3">
-        <NavLink to="/" className="flex items-center gap-3 group">
+      {/* min-w-0 + flex-wrap on the row prevents the right-side cluster
+       * (balance + sound + wallet + hamburger) from pushing past the viewport
+       * on narrow phones. */}
+      <div className="max-w-7xl mx-auto px-3 sm:px-5 h-16 flex items-center justify-between gap-2 sm:gap-3 min-w-0">
+        <NavLink to="/" className="flex items-center gap-2 sm:gap-3 group min-w-0">
           <LogoMark />
-          <span className="font-display text-2xl tracking-wide text-gold">GoStop</span>
-          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border border-amber-400/40 bg-amber-950/30 text-amber-300/90">
+          <span className="font-display text-xl sm:text-2xl tracking-wide text-gold truncate">GoStop</span>
+          <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-xs uppercase tracking-[0.15em] border border-amber-400/40 bg-amber-950/30 text-amber-300/90 whitespace-nowrap">
             Nasun Devnet
           </span>
         </NavLink>
@@ -146,7 +149,7 @@ function Header() {
           ))}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           <HeaderBalance />
           <HeaderSoundToggle />
           <div className="shrink-0">

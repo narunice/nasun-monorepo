@@ -2,6 +2,7 @@ import { useTransparency, useLotteryDraws } from '../lib/api/queries';
 import type { GameTransparency, LotteryDraw } from '../lib/api/types';
 import { bpsToPct, fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
 import { getExplorerTxUrl } from '../lib/explorer';
+import { ENABLE_CRASH } from '../lib/gostop-config';
 
 function TxLink({ digest, label = 'View on explorer' }: { digest: string; label?: string }) {
   return (
@@ -98,9 +99,26 @@ function GameRow({ g }: { g: GameTransparency }) {
     try { return BigInt(g.house_pnl_raw) >= 0n; }
     catch { return true; }
   })();
+  // Crash is the only game that uses commit/reveal VRF, so it's the only
+  // one with a non-zero commit-proof count. The other games use immediate
+  // RNG and have no proof concept (column shows 0 by design).
+  const isCrash = g.key === 'crash';
+  const crashSuspended = isCrash && !ENABLE_CRASH;
   return (
     <tr className="border-b border-ink-800/60 last:border-0">
-      <td className="py-2 pr-3 text-neutral-100">{gameLabel(g.key)}</td>
+      <td className="py-2 pr-3 text-neutral-100">
+        <span className="inline-flex items-center gap-2">
+          <span>{gameLabel(g.key)}</span>
+          {crashSuspended && (
+            <span
+              title="Crash is temporarily suspended. Historical figures shown."
+              className="px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider bg-rose-500/15 text-rose-200 border border-rose-400/30"
+            >
+              Suspended
+            </span>
+          )}
+        </span>
+      </td>
       <td className="py-2 px-3 text-right font-mono text-gold-200">{bpsToPct(g.rtp_bps)}</td>
       <td
         className={`py-2 px-3 text-right font-mono ${
@@ -110,7 +128,11 @@ function GameRow({ g }: { g: GameTransparency }) {
         {fmtUsdcSigned(g.house_pnl_raw)} <span className="text-xs text-neutral-300">NUSDC</span>
       </td>
       <td className="py-2 pl-3 text-right font-mono text-neutral-200">
-        {g.commit_proof_count.toLocaleString('en-US')}
+        {isCrash ? (
+          g.commit_proof_count.toLocaleString('en-US')
+        ) : (
+          <span className="text-neutral-400" title="This game uses immediate RNG, not commit/reveal — no proof count.">—</span>
+        )}
       </td>
     </tr>
   );
