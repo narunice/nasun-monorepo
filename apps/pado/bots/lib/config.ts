@@ -24,17 +24,45 @@ export const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet
 export const DEEPBOOK_PACKAGE = '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134';
 export const DEEPBOOK_REGISTRY = '0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Token / faucet package map  (INVARIANT — read before editing)
+//
+// Each MarketConfig.faucetV2Object MUST hold a TreasuryCap whose minted coin
+// type EQUALS MarketConfig.baseType. If the faucet is wired to a stale package's
+// TreasuryCap, the bot will mint a token of the wrong type that DeepBook pools
+// will refuse to accept, and the bot will appear to refill while its trading
+// inventory stays empty (2026-05-18 NETH liquidity incident).
+//
+// Pairings (must stay consistent):
+//
+//   Market | baseType package          | faucet package             | faucet object
+//   -------|---------------------------|----------------------------|-----------------
+//   NBTC   | TOKENS_PACKAGE            | TOKENS_PACKAGE             | TOKEN_FAUCET (v1)
+//   NETH   | NETH_PACKAGE              | NETH_FAUCET_PACKAGE        | NETH_FAUCET_V2
+//   NSOL   | TOKENS_V2_PACKAGE         | TOKENS_V2_FAUCET_PACKAGE   | TOKEN_FAUCET_V2
+//
+// `verifyMarketFaucet()` in lib/preflight.ts enforces this at bot startup; do
+// NOT bypass it. When re-publishing a token package, update BOTH the *_PACKAGE
+// constant AND its dedicated faucet object below, and confirm preflight passes.
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Tokens V1 (NBTC, NUSDC)
 export const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
 export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
 
-// Tokens V2 - NSOL (original package, 9 decimals)
+// Tokens V2 - NSOL (original package, 9 decimals).
+// The shared v2 faucet (TOKEN_FAUCET_V2) was created with NSOL's TreasuryCap
+// AND a now-legacy NETH TreasuryCap; the legacy NETH is NOT the current NETH —
+// see the NETH block below.
 export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-// Upgraded package (v7) — adds request_neth (no cooldown)
 export const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
 export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
 
-// Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention)
+// Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention).
+// NETH lives in its OWN package and has its OWN faucet — the shared
+// TOKEN_FAUCET_V2 still mints the obsolete pre-republish NETH type and must
+// not be used for NETH. The current NETH faucet exposes `request_tokens`
+// (no cooldown, mints NETH + NSOL together) and `request_neth_with_cooldown`.
 export const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
 export const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
 export const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
@@ -146,8 +174,11 @@ export const MARKETS: Record<string, MarketConfig> = {
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
     startupDelayMs: 20000,
     faucetType: 'v2',
-    faucetV2Package: TOKENS_V2_FAUCET_PACKAGE,
-    faucetV2Object: TOKEN_FAUCET_V2,
+    // Current NETH (type 0xe672...::neth::NETH) is minted by the dedicated NETH
+    // faucet, not the shared TOKEN_FAUCET_V2. The shared faucet holds the
+    // legacy 0xcc65...::neth::NETH TreasuryCap and produces unusable coins.
+    faucetV2Package: NETH_FAUCET_PACKAGE,
+    faucetV2Object: NETH_FAUCET_V2,
     faucetV2Function: 'request_neth',
     defaultZones: DEFAULT_ZONES,
   },
@@ -418,11 +449,19 @@ export interface BotState {
 // Helpers
 // ========================================
 
+// DeepBook V3 encodes price as quote_raw_per_base_unit_at_9_decimals, so the
+// scaling for human → raw is 10^(quoteDecimals + 9 - baseDecimals). With
+// baseDecimals=9 (NSOL) this collapses to 10^quoteDecimals; with baseDecimals=8
+// (NBTC, NETH) it is 10× the naive quoteDecimals scaling.
+function priceScaleExp(): number {
+  return MARKET.quoteDecimals + 9 - MARKET.baseDecimals;
+}
+
 /**
- * Convert human-readable price to raw quote token units
+ * Convert human-readable price to raw quote token units (DeepBook V3 encoding)
  */
 export function priceToRaw(price: number): bigint {
-  return BigInt(Math.round(price * Math.pow(10, MARKET.quoteDecimals)));
+  return BigInt(Math.round(price * Math.pow(10, priceScaleExp())));
 }
 
 /**
@@ -440,10 +479,10 @@ export function rawToQuantity(raw: bigint): number {
 }
 
 /**
- * Convert raw quote token units to human-readable
+ * Convert DeepBook V3 raw price to human-readable USD price
  */
 export function rawToPrice(raw: bigint): number {
-  return Number(raw) / Math.pow(10, MARKET.quoteDecimals);
+  return Number(raw) / Math.pow(10, priceScaleExp());
 }
 
 /**

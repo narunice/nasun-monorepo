@@ -285,9 +285,11 @@ async function runBot(
   let cumQuoteRaw = 0n;
   const cappedBids = [] as typeof bids;
   for (const bid of bids) {
-    // Cost = quantity (base raw) * price (quote raw / base unit)
-    // Both already in raw units; divide by 10^baseDecimals to align units.
-    const costRaw = (bid.quantity * bid.price) / BigInt(Math.pow(10, MARKET.baseDecimals));
+    // DeepBook V3 settles each bid at: quote_raw = (price_raw * base_raw) / 10^9.
+    // The 10^9 is the protocol-level price float scaling, not the base token's
+    // decimals — this used to be confused with 10^baseDecimals, which made the
+    // cost estimate diverge from on-chain settlement on baseDecimals != 9 pools.
+    const costRaw = (bid.quantity * bid.price) / 1_000_000_000n;
     if (cumQuoteRaw + costRaw > safeQuoteRaw) break;
     cumQuoteRaw += costRaw;
     cappedBids.push(bid);
@@ -509,6 +511,19 @@ async function main() {
   const address = keypair.getPublicKey().toSuiAddress();
 
   console.log(`[${timestamp()}] Bot address: ${address.slice(0, 16)}...`);
+
+  // Preflight: confirm this market's faucet actually mints the configured
+  // baseType. Catches the 2026-05-18 NETH liquidity incident class (faucet
+  // pointing at a stale TreasuryCap → silent wrong-type mints).
+  const { verifyMarketFaucet } = await import('./lib/preflight.js');
+  try {
+    await verifyMarketFaucet(MARKET, { rpcUrl: RPC_URL });
+    console.log(`[${timestamp()}] Preflight: ${MARKET.name} faucet ↔ baseType verified`);
+  } catch (err) {
+    console.error(`[${timestamp()}] PREFLIGHT FAILED — refusing to start.`);
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
+  }
   console.log('');
 
   // Stagger bot startup to avoid gas coin contention when running multiple bots

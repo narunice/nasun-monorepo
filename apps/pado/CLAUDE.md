@@ -1,6 +1,6 @@
 # CLAUDE.md (apps/pado)
 
-> Last Updated: 2026-03-26
+> Last Updated: 2026-05-18
 > Common rules (language, UI language rules): see root [CLAUDE.md](../../CLAUDE.md)
 
 ---
@@ -76,14 +76,36 @@ cd apps/pado/frontend && pnpm test:coverage
 
 ---
 
-## Known Issues & Pending Work
+## Operational Invariants (자주 까먹는 것)
 
-1. **Env var mismatch**: Some `.env.local` addresses may differ from `devnet-ids.json` (partial update after V7 reset)
-2. **Staging Chain ID difference**: Staging uses a separate chain, development uses `272218f1`
-3. **Lending UI activation pending**: Contract V7 deployed, pool creation + .env integration + pool UI needed
-4. **Market Narrator pool name hardcoding**: `formatAlert` hardcodes "NBTC", needs update when adding other pools
-5. **Sui SDK version split**: Frontend uses @mysten/sui 1.45.2, bots use 1.21.1 (intentional for bot stability)
-6. **Single-instance constraint**: price-updater and tpsl-keeper must run as single instances (LockConflict on shared AdminCap/TradeCap)
+1. **Bot 단일 인스턴스 강제** (CRITICAL): `price-updater`, `tpsl-keeper`, `lottery-keeper`, `prediction-keeper`, `prediction-arb`는 **prod에서만 실행**. staging `.env`에 동일 ADMIN_KEY/TradeCap이 있어도 PM2 stopped 유지. 중복 실행 시 owned object LockConflict로 fullnode 크래시 (project_pado_bot_single_instance.md).
+2. **TP/SL keeper 주소 invariant**: prod keeper=`0x74a7daf4...`. `VITE_TPSL_KEEPER_ADDRESS` ↔ `KEEPER_PRIVATE_KEY` pubkey 동기화 필수. 불일치 시 keeper가 사용자 주문을 보지 못함 (project_pado_tpsl_keeper_address.md).
+3. **envDir 패턴**: vite config에 `envDir: '../'` 적용. `.env.production`은 `apps/pado/`에 위치 (`apps/pado/frontend/.env` 아님). env 변경 시 빌드 후 [/env-verify](../../scripts/env-verify.sh)로 `VITE_*` embed 검증 필수.
+4. **Prediction-keeper 자동 정산 (stock markets)**: Twelve Data 1차 + Yahoo cross-check. `TWELVEDATA_API_KEY` 없으면 awaiting resolution이 deadline까지 stall (project_pado_prediction_keeper.md).
+5. **Sui SDK 버전 분리**: Frontend @mysten/sui 1.45.2, bots 1.21.1. 의도적 분리 (봇 안정성 vs frontend 최신 기능). 같이 올리지 말 것.
+6. **Keeper gas auto-refill**: `keeper-gas-watchdog` pm2 process가 1h마다 점검, threshold 미만이면 treasury에서 PTB 충전. 2026-04-29 operator gas 고갈 사고 후 도입 (project_keeper_gas_watchdog.md).
+7. **Turnstile 영구 제거 (2026-05-16)**: pado 채팅/idea-submission에서 CF Turnstile 완전 제거. 봇 방어는 banned list shadow-ban 단독 (project_chat_turnstile_removed.md).
+8. **Chat-server는 unified**: pado-chat-server(3100) 운영 중단됨. nasun-chat-server(3101)가 nasun + pado 공용 (project_unified_chat_server.md). `/api/pado/*` prefix가 pado 전용 라우트.
+9. **Bot faucet ↔ baseType invariant**: 각 마켓의 `faucetV2Object`는 그 마켓의 `baseType`을 mint하는 `TreasuryCap`을 들고 있어야 한다. 토큰 패키지를 재배포하면 `_PACKAGE` 상수와 그 토큰 전용 faucet object 둘 다 갱신해야 한다. `lib/preflight.ts::verifyMarketFaucet`이 lp-bot/prefund-bot/balance-watchdog 부팅 시 강제. 2026-05-18 NETH 사고 후 도입 — NETH가 11일간 잘못된 패키지의 faucet을 호출해 trading에 쓸 수 없는 타입을 mint해온 게 ask 고갈의 진짜 원인이었음. 자세한 페어링은 `apps/pado/docs/bots.md`의 "Token / Faucet Invariant" 표 참조.
+
+## Pending / Partial
+
+- **Lending UI**: contract V7 deployed, pool creation + .env integration + pool UI 미완 (2026-05-18 기준 변경 없음)
+- **Perp**: `features/perp/` 디렉토리 존재하나 주요 기능 비활성. unified-margin 우선 (archived 분류 검토)
+- **Market Narrator pool hardcoding**: `formatAlert`가 "NBTC" hardcode. NETH/NSOL 추가 시 갱신 필요
+- **Env var mismatch**: 일부 `.env.local` 주소가 `devnet-ids.json`과 어긋날 수 있음 (V7 리셋 후 부분 갱신)
+- **Staging Chain ID**: staging은 별도 체인, dev는 `272218f1`
+
+## 최근 30일 주요 변경 (요약)
+
+- **Prediction market 확장**: SK Hynix 마켓 (3/5/7/9d horizons, 2026-05-15 추가), prediction PnL → PnL leaderboard 통합, bulk Claim All, optimistic UI, settle all single-PTB refactor
+- **Prediction LP 확장**: MVP single-level → **10-level ladder** (1.3 geometric, 100 bps spread)
+- **Prediction Arb 봇 추가**: yes_bid + no_bid > 10000 bps 캡처
+- **Leaderboard 고도화**: rank cap (MAX_RANK), search, badge thresholds 상향, light theme + hover tooltip
+- **Keeper 안정화**: LockConflict/ObjectVersionMismatch handling, RPC retry/backoff, gas watchdog
+- **News feed X API 50% 호출 감소**
+- **Cloudflare Turnstile 제거** (2026-05-14): chat/pado/nasun 일괄
+- **Portfolio settle all + indexer-lag sync**: 시장 정산 후 UI 즉시 반영
 
 ---
 

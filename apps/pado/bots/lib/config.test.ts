@@ -57,7 +57,7 @@ describe('MARKETS', () => {
 
   it('each market has valid decimals', () => {
     expect(MARKETS.NBTC.baseDecimals).toBe(8);
-    expect(MARKETS.NETH.baseDecimals).toBe(18);
+    expect(MARKETS.NETH.baseDecimals).toBe(8);
     expect(MARKETS.NSOL.baseDecimals).toBe(9);
   });
 
@@ -86,25 +86,38 @@ describe('MARKET singleton', () => {
 // ========================================
 
 describe('priceToRaw', () => {
-  it('converts BTC price to raw NUSDC units', () => {
-    // $100,000 → 100000 * 10^6 = 100,000,000,000
-    expect(priceToRaw(100000)).toBe(100000000000n);
+  // Default test market is NBTC (baseDecimals=8, quoteDecimals=6).
+  // DeepBook V3: raw price = human_price * 10^(quoteDecimals + 9 - baseDecimals) = * 10^7.
+  it('converts BTC price to DeepBook raw price', () => {
+    // $100,000 → 100000 * 10^7 = 1_000_000_000_000
+    expect(priceToRaw(100000)).toBe(1_000_000_000_000n);
   });
 
   it('converts fractional price correctly', () => {
-    // $99,999.50 → 99999500000
-    expect(priceToRaw(99999.5)).toBe(99999500000n);
+    // $99,999.50 → 99999.5 * 10^7 = 999_995_000_000
+    expect(priceToRaw(99999.5)).toBe(999_995_000_000n);
   });
 
-  it('handles very small prices (SOL range)', () => {
-    // $150.25 → 150250000
-    expect(priceToRaw(150.25)).toBe(150250000n);
+  it('handles very small prices (SOL-range)', () => {
+    // $150.25 → 150.25 * 10^7 = 1_502_500_000
+    expect(priceToRaw(150.25)).toBe(1_502_500_000n);
+  });
+
+  it('settles to correct quote raw via DeepBook formula', () => {
+    // For 1 BTC (1 * 10^baseDecimals=10^8 base raw) at $100,000:
+    //   quote_raw = priceRaw * baseRaw / 10^9
+    //   = 1e12 * 1e8 / 1e9 = 1e11
+    //   = 100,000 NUSDC at 6 decimals → 100_000 * 10^6 = 1e11 ✓
+    const priceRaw = priceToRaw(100000);
+    const baseRaw = 100_000_000n; // 1 BTC
+    const quoteRaw = (priceRaw * baseRaw) / 1_000_000_000n;
+    expect(quoteRaw).toBe(100_000_000_000n);
   });
 });
 
 describe('rawToPrice', () => {
-  it('converts raw NUSDC units to human price', () => {
-    expect(rawToPrice(100000000000n)).toBe(100000);
+  it('converts raw price back to human USD', () => {
+    expect(rawToPrice(1_000_000_000_000n)).toBe(100000);
   });
 
   it('is inverse of priceToRaw', () => {
