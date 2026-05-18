@@ -186,11 +186,11 @@ function ScoreTooltip({
             {d.baseScore}
           </span>
         </p>
-        {d.stakingDeltaScaled > 0 && (
+        {d.stakingDeltaScaled > 0 && d.multiplier > 0 && (
           <p className="text-sm text-uju-secondary flex justify-between">
             Staking
             <span className="text-sm text-pado-4 font-normal">
-              +{d.stakingDeltaScaled.toFixed(0)}
+              +{Math.round(d.stakingDeltaScaled / d.multiplier)}
             </span>
           </p>
         )}
@@ -860,6 +860,9 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                               </span>
                             ) : (
                               <>
+                                {(entry.stakingDeltaScaled ?? 0) > 0 && (
+                                  <span className="text-uju-secondary">(</span>
+                                )}
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-uju-bg border border-uju-border/10">
                                   <span className="text-uju-secondary text-xs uppercase tracking-wider">
                                     Base
@@ -868,23 +871,28 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                                     {entry.baseScore}
                                   </span>
                                 </div>
-                                {(entry.stakingDeltaScaled ?? 0) > 0 && (
-                                  <>
-                                    <span className="text-uju-secondary">
-                                      +
-                                    </span>
-                                    <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
-                                      <span className="text-pado-4/80 text-xs uppercase tracking-wider">
-                                        Staking
+                                {(entry.stakingDeltaScaled ?? 0) > 0 &&
+                                  entry.multiplier > 0 && (
+                                    <>
+                                      <span className="text-uju-secondary">
+                                        +
                                       </span>
-                                      <span className="text-pado-4 tabular-nums">
-                                        {(
-                                          entry.stakingDeltaScaled ?? 0
-                                        ).toFixed(0)}
+                                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-4/5 border border-pado-4/20">
+                                        <span className="text-pado-4/80 text-xs uppercase tracking-wider">
+                                          Staking
+                                        </span>
+                                        <span className="text-pado-4 tabular-nums">
+                                          {Math.round(
+                                            (entry.stakingDeltaScaled ?? 0) /
+                                              entry.multiplier,
+                                          )}
+                                        </span>
+                                      </div>
+                                      <span className="text-uju-secondary">
+                                        )
                                       </span>
-                                    </div>
-                                  </>
-                                )}
+                                    </>
+                                  )}
                                 <span className="text-uju-secondary">×</span>
                                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-pado-2/5 border border-pado-2/20">
                                   <span className="text-pado-2/80 text-xs uppercase tracking-wider">
