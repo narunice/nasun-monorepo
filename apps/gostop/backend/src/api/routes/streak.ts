@@ -8,9 +8,15 @@
  * post-bet UX responsive while still absorbing burst polling.
  *
  * Visibility:
- *   - opt-out → 404 (player has chosen full exclusion)
+ *   - opt-out   → 404 (player has chosen full exclusion)
  *   - anonymous → 404 (keyed lookup by raw address would defeat anonymity)
- *   - delayed → allowed (delayed only restricts fresh feed events, not aggregates)
+ *   - delayed   → 404 (matches the leaderboard's full-exclusion policy and
+ *                 honors the user-facing "rounds appear after 24h" promise.
+ *                 The endpoint would otherwise leak kind / length /
+ *                 started_ts_ms in real time, which lets any observer
+ *                 reconstruct the wallet's activity rhythm — the exact
+ *                 concern raised in Tier 0 plan v2 §3. Self-view stays
+ *                 available via the JWT-bound /me/streak route.)
  */
 
 import { Hono } from 'hono';
@@ -50,7 +56,8 @@ streakRoutes.get('/:player', async (c) => {
   const sql = reader();
 
   const visibility = await getVisibility(sql, player);
-  if (visibility === 'opt-out' || visibility === 'anonymous') {
+  if (visibility !== 'public') {
+    // opt-out / anonymous / delayed all 404 here. Self-view is /me/streak.
     return c.json({ error: 'not_found' }, 404);
   }
 
