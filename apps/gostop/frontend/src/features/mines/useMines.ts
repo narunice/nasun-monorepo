@@ -192,7 +192,7 @@ export function useMines(): UseMinesResult {
           // Surface the forfeit as a closed-out session so the UI's
           // finish banner reads "forfeited" rather than lingering as
           // active. payout=0 mirrors the on-chain SessionFinished event.
-          setLastFinish({ kind: 'exploded', payout: 0n, bet: session.bet })
+          setLastFinish({ kind: 'exploded', payout: 0n, bet: session.betAmount })
           setSession(null)
         },
         onError: (err) => setError(humanizeMinesError(err.message)),

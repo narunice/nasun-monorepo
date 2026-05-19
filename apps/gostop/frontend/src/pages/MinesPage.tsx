@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useCelebrate, useForceTierDebug } from "../components/celebration";
 import { useMinesPage } from "../features/mines/hooks/useMinesPage";
 
@@ -33,6 +34,8 @@ export default function MinesPage() {
     onCashout,
     onForfeit,
   } = useMinesPage(celebrate);
+
+  const [stuckHelpOpen, setStuckHelpOpen] = useState(false);
 
   useForceTierDebug("Mines");
 
@@ -72,7 +75,49 @@ export default function MinesPage() {
           onCreate={onCreate}
         />
       ) : (
-        <MinesActiveSession session={session} pendingCells={pendingCells} phase={phase} onReveal={onReveal} onCashout={onCashout} onForfeit={onForfeit} />
+        <>
+          <MinesActiveSession session={session} pendingCells={pendingCells} phase={phase} onReveal={onReveal} onCashout={onCashout} />
+
+          {/* Stuck-session escape hatch. Hidden behind a small disclosure
+              so it doesn't compete visually with the Cashout button during
+              normal play. Forfeit irreversibly loses the bet. */}
+          <div className="text-center text-xs text-neutral-500">
+            {!stuckHelpOpen ? (
+              <button
+                onClick={() => setStuckHelpOpen(true)}
+                className="hover:text-neutral-300 underline-offset-4 hover:underline"
+              >
+                Session stuck?
+              </button>
+            ) : (
+              <div className="space-y-2 max-w-md mx-auto">
+                <p className="text-neutral-400">
+                  Only forfeit if the game is unresponsive. Your bet will be lost.
+                </p>
+                <div className="flex justify-center gap-3">
+                  <button
+                    onClick={() => setStuckHelpOpen(false)}
+                    className="px-3 py-1 text-neutral-400 hover:text-neutral-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (window.confirm('Forfeit this session? Your bet will be lost.')) {
+                        onForfeit();
+                        setStuckHelpOpen(false);
+                      }
+                    }}
+                    disabled={phase !== "idle"}
+                    className="px-3 py-1 text-red-300 hover:text-red-200 disabled:opacity-50"
+                  >
+                    {phase === "forfeiting" ? "Forfeiting…" : "Forfeit session"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
