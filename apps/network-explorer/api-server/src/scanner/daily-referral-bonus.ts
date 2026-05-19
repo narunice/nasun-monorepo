@@ -99,9 +99,19 @@ export async function runDailyReferralBonus(yesterdayDateStr: string): Promise<n
     totalsByReferred.set(e.referredId, Number(sumRows[0]?.total) || 0);
   }
 
-  // For each eligible referee, compose two bonus rows (referrer + referred).
-  // Tx digest format: ref-daily-l1:{referrerId}:{date}, ref-daily-rcv:{referredId}:{date}.
-  // ON CONFLICT DO NOTHING relies on UNIQUE (tx_digest, activity_type, event_seq).
+  // Compose bonus rows. Referee rows are per-referee (digest includes
+  // referredId, so unique). Referrer rows are AGGREGATED per referrer:
+  // a single row with the SUM of capped bonuses across all that referrer's
+  // eligible referees. This matches the stated "N × CAP per day" model
+  // while keeping the existing per-(referrer, date) digest schema.
+  //
+  // Previous implementation emitted one referrer row per referee with the
+  // same `ref-daily-l1:{referrerId}:{date}` digest, relying on the per-row
+  // insert. The unique constraint `(tx_digest, activity_type, event_seq)`
+  // then silently collapsed all of them via ON CONFLICT DO NOTHING — every
+  // referrer with N>=2 active referees was credited for only the FIRST
+  // referee processed. Discovered 2026-05-18 when post-fix audit showed
+  // 13 l1-referred-bonus rows but only 6 l1-bonus rows for the same date.
   const inserts: Array<{
     wallet_address: string;
     identity_id: string;
@@ -121,46 +131,45 @@ export async function runDailyReferralBonus(yesterdayDateStr: string): Promise<n
   // bucket in any later daily aggregations / leaderboards.
   const txTimestamp = new Date(`${yesterdayDateStr}T23:59:59.000Z`);
 
-  let referrerCount = 0;
+  // Per-referrer accumulator: identityId -> { wallet, totalBonus, refereeCount }.
+  // Populated by walking each eligible referee once; the per-referee cap is
+  // applied BEFORE summing so the aggregate can exceed CAP (deliberate —
+  // matches the N × CAP-per-day intent).
+  const referrerAcc = new Map<string, { wallet: string; bonus: number; refereeCount: number }>();
   let referredCount = 0;
+  const yesterdayStartMs = Date.parse(`${yesterdayDateStr}T00:00:00.000Z`);
+  const yesterdayEndMs = yesterdayStartMs + 24 * 60 * 60 * 1000 - 1;
+
   for (const e of eligible) {
     // Skip days before activation (shouldn't happen since activatedAt
     // filtered above, but covers same-day boundary edge cases).
-    const yesterdayStartMs = Date.parse(`${yesterdayDateStr}T00:00:00.000Z`);
-    const yesterdayEndMs = yesterdayStartMs + 24 * 60 * 60 * 1000 - 1;
     if (e.activatedMs > yesterdayEndMs) continue;
 
     const total = totalsByReferred.get(e.referredId) || 0;
     if (total <= 0) continue;
-    const rawBonus = total * REFERRAL_L1_BONUS_RATE; // both rates are 0.10
-    const bonus = Math.min(rawBonus, REFERRAL_DAILY_BONUS_CAP);
-    const bonusFixed = Number(bonus.toFixed(2));
-    if (bonusFixed <= 0) continue;
 
-    // Referrer row
-    const referrerWallet = identityToWallet.get(e.referrerId);
-    if (referrerWallet) {
-      inserts.push({
-        wallet_address: referrerWallet,
-        identity_id: e.referrerId,
-        tx_digest: `ref-daily-l1:${e.referrerId}:${yesterdayDateStr}`,
-        tx_sequence_number: 0,
-        category: 'referral-bonus',
-        activity_type: 'l1-bonus',
-        base_points: bonusFixed,
-        volume_tier: 1.0,
-        genesis_multiplier: 1.0,
-        final_points: bonusFixed.toFixed(2),
-        tx_timestamp: txTimestamp,
-        // Compose event_seq from the date so multiple referrers with the
-        // same digest prefix never collide (digest already includes id).
-        event_seq: 0,
-      });
-      referrerCount++;
+    // Per-referee cap on the referrer side.
+    const refBonus = Math.min(total * REFERRAL_L1_BONUS_RATE, REFERRAL_DAILY_BONUS_CAP);
+    const refBonusFixed = Number(refBonus.toFixed(2));
+    if (refBonusFixed > 0) {
+      const referrerWallet = identityToWallet.get(e.referrerId);
+      if (referrerWallet) {
+        const prev = referrerAcc.get(e.referrerId);
+        if (prev) {
+          prev.bonus = Number((prev.bonus + refBonusFixed).toFixed(2));
+          prev.refereeCount += 1;
+        } else {
+          referrerAcc.set(e.referrerId, {
+            wallet: referrerWallet,
+            bonus: refBonusFixed,
+            refereeCount: 1,
+          });
+        }
+      }
     }
 
-    // Referred user row — same calc since both rates are 0.10. If rates
-    // ever diverge, recompute separately here.
+    // Referee row: per-referee, no aggregation needed (digest already
+    // includes referredId so each row is unique).
     const referredBonus = Math.min(total * REFERRAL_L1_REFERRED_BONUS_RATE, REFERRAL_DAILY_BONUS_CAP);
     const referredFixed = Number(referredBonus.toFixed(2));
     const referredWallet = identityToWallet.get(e.referredId);
@@ -182,6 +191,25 @@ export async function runDailyReferralBonus(yesterdayDateStr: string): Promise<n
       referredCount++;
     }
   }
+
+  // Flush per-referrer aggregates as single rows.
+  for (const [referrerId, acc] of referrerAcc) {
+    inserts.push({
+      wallet_address: acc.wallet,
+      identity_id: referrerId,
+      tx_digest: `ref-daily-l1:${referrerId}:${yesterdayDateStr}`,
+      tx_sequence_number: 0,
+      category: 'referral-bonus',
+      activity_type: 'l1-bonus',
+      base_points: acc.bonus,
+      volume_tier: 1.0,
+      genesis_multiplier: 1.0,
+      final_points: acc.bonus.toFixed(2),
+      tx_timestamp: txTimestamp,
+      event_seq: 0,
+    });
+  }
+  const referrerCount = referrerAcc.size;
 
   if (inserts.length === 0) {
     console.log(`[Referral-Daily] ${yesterdayDateStr}: nothing to insert (no eligible activity)`);
