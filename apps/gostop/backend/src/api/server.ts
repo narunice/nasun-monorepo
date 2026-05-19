@@ -20,6 +20,7 @@ import { closeAll } from '../db/client.js';
 import { authRoutes } from './routes/auth.js';
 import { leaderboardRoutes } from './routes/leaderboard.js';
 import { transparencyRoutes } from './routes/transparency.js';
+import { lpRoutes } from './routes/lp.js';
 import { roundRoutes } from './routes/round.js';
 import { streakRoutes } from './routes/streak.js';
 import { meProfileRoutes } from './routes/me/profile.js';
@@ -50,6 +51,7 @@ app.get('/health', (c) =>
 app.route('/api/gostop/auth', authRoutes);
 app.route('/api/gostop/leaderboard', leaderboardRoutes);
 app.route('/api/gostop', transparencyRoutes);
+app.route('/api/gostop/lp', lpRoutes);
 app.route('/api/gostop/round', roundRoutes);
 app.route('/api/gostop/streak', streakRoutes);
 app.route('/api/gostop/me', meProfileRoutes);
