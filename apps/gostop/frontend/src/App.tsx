@@ -17,6 +17,7 @@ import DashboardPage from './pages/DashboardPage'
 import LeaderboardPage from './pages/LeaderboardPage'
 import ReplayPage from './pages/ReplayPage'
 import TransparencyPage from './pages/TransparencyPage'
+import LiquidityPoolPage from './pages/LiquidityPoolPage'
 import { ENABLE_CRASH } from './lib/gostop-config'
 
 // Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
@@ -31,6 +32,7 @@ const NAV_ITEMS: NavEntry[] = [
   { to: '/floor', label: 'Floor' },
   { to: '/leaderboard', label: 'Leaderboard' },
   { to: '/transparency', label: 'Transparency' },
+  { to: '/lp', label: 'Liquidity' },
   { to: '/suite', label: 'Suite' },
 ]
 
@@ -97,6 +99,7 @@ export default function App() {
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/replay/lottery/:sessionId" element={<ReplayPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
+          <Route path="/lp" element={<LiquidityPoolPage />} />
           <Route path="/callback" element={<AuthCallbackPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

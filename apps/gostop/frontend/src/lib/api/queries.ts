@@ -31,6 +31,10 @@ import type {
   LeaderboardPeriod,
   LeaderboardGame,
   LeaderboardMetric,
+  LpPoolState,
+  LpApy,
+  LpPositions,
+  LpCooldown,
 } from './types';
 
 const STALE = {
@@ -45,6 +49,10 @@ const STALE = {
   round: 60_000,
   rank: 60_000,
   leaderboard: 10_000,
+  lpPoolState: 15_000,
+  lpApy: 30_000,
+  lpPositions: 10_000,
+  lpCooldown: 5_000,
 } as const;
 
 // Shared query key roots — exported so components can invalidate by surface
@@ -257,5 +265,48 @@ export function useLotteryDraws(limit = 20) {
       apiRequest<LotteryDrawsResponse>(
         `/api/gostop/lottery/draws?limit=${encodeURIComponent(limit)}`,
       ),
+  });
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// LP endpoints (Tier 1.2)
+// ──────────────────────────────────────────────────────────────────────────
+
+export function useLpPoolState() {
+  return useQuery({
+    queryKey: ['gostop', 'lp', 'pool-state'] as const,
+    staleTime: STALE.lpPoolState,
+    queryFn: () => apiRequest<LpPoolState>('/api/gostop/lp/pool-state'),
+  });
+}
+
+export function useLpApy() {
+  return useQuery({
+    queryKey: ['gostop', 'lp', 'apy'] as const,
+    staleTime: STALE.lpApy,
+    queryFn: () => apiRequest<LpApy>('/api/gostop/lp/apy'),
+  });
+}
+
+export function useLpPositions(address: string | undefined) {
+  return useQuery({
+    queryKey: address
+      ? (['gostop', 'lp', 'positions', address.toLowerCase()] as const)
+      : (['gostop', 'lp', 'positions', 'disabled'] as const),
+    enabled: !!address,
+    staleTime: STALE.lpPositions,
+    queryFn: () =>
+      apiRequest<LpPositions>(`/api/gostop/lp/positions/${address!}`),
+  });
+}
+
+export function useLpCooldown(lpTokenId: string | undefined) {
+  return useQuery({
+    queryKey: lpTokenId
+      ? (['gostop', 'lp', 'cooldown', lpTokenId] as const)
+      : (['gostop', 'lp', 'cooldown', 'disabled'] as const),
+    enabled: !!lpTokenId,
+    staleTime: STALE.lpCooldown,
+    queryFn: () => apiRequest<LpCooldown>(`/api/gostop/lp/cooldown/${lpTokenId!}`),
   });
 }

@@ -193,6 +193,65 @@ export interface TransparencyResponse {
   generated_at: number;
 }
 
+// ──────────────────────────────────────────────────────────────────────────
+// LP endpoints (Tier 1.2)
+// ──────────────────────────────────────────────────────────────────────────
+
+export interface LpPoolState {
+  data_quality: DataQuality;
+  /** NUSDC base units (6 decimals), bigint-compatible string. */
+  pool_balance: string;
+  /** u128 raw — may exceed Number.MAX_SAFE_INTEGER, treat as BigInt. */
+  total_shares: string;
+  /** Raw scaled int; 1e9 = 1.0 pps. */
+  share_price_scaled: string;
+  /** false until admin calls seed_pool_shares. v0.0.3 live pool: true. */
+  is_seeded: boolean;
+  paused: boolean;
+  generated_at: number;
+}
+
+export interface LpApy {
+  window_days: number;
+  /** Null when data_quality !== 'fresh'. UI must label as estimate. */
+  apy_pct: number | null;
+  net_pnl: string;
+  tvl_approx: string;
+  data_quality: DataQuality;
+  cursor_lag_ms: number;
+  note: string;
+  generated_at: number;
+}
+
+export interface LpPosition {
+  lp_token_id: string;
+  shares: string;
+  estimated_value_nusdc: string;
+  deposit_time_ms: string;
+  /** Null if user has not yet called request_withdraw on this LPToken. */
+  withdraw_requested_at_ms: string | null;
+  /** null mirrors withdraw_requested_at_ms; non-null = withdraw_requested + 24h. */
+  claimable_at_ms: string | null;
+}
+
+export interface LpPositions {
+  address: string;
+  positions: LpPosition[];
+  data_quality: DataQuality;
+  generated_at: number;
+}
+
+export interface LpCooldown {
+  lp_token_id: string;
+  shares: string;
+  withdraw_requested_at_ms: string | null;
+  claimable_at_ms: string | null;
+  /** Convenience: claimable_at - now, clamped to 0. */
+  remaining_ms: string;
+  /** Server clock at response time; UI compares to its own clock for skew detection. */
+  server_now_ms: string;
+}
+
 export interface LotteryDraw {
   round_number: number;
   draw_time_ms: number | null;
