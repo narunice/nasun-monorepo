@@ -13,6 +13,7 @@ interface BalanceState {
   addPendingBet: (amount: bigint) => void
   removePendingBet: (amount: bigint) => void
   resetPending: () => void
+  reset: () => void
 }
 
 /**
@@ -35,6 +36,8 @@ export const useBalanceStore = create<BalanceState>((set) => ({
   })),
   
   resetPending: () => set({ pendingBetsNusdc: 0n }),
+
+  reset: () => set({ totalNusdc: 0n, pendingBetsNusdc: 0n, isInitialized: false }),
 }))
 
 /**
