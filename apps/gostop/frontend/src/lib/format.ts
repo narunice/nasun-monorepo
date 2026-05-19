@@ -24,3 +24,18 @@ export function formatNusdcFixed(amount: bigint): string {
   const value = Number(whole) + fracMicros / Number(NUSDC_UNIT)
   return `${negative ? '-' : ''}${value.toFixed(2)}`
 }
+
+/**
+ * Format SOE (9 decimals — the smallest NASUN unit, same as Sui's MIST) as
+ * a NASUN amount. Used for gas figures like storage rebates that come back
+ * from tx effects in their raw smallest-unit form.
+ */
+const SOE_PER_NASUN = 1_000_000_000n
+export function formatSoeAsNasun(soe: bigint, fractionDigits = 6): string {
+  const negative = soe < 0n
+  const abs = negative ? -soe : soe
+  const whole = abs / SOE_PER_NASUN
+  const frac = Number(abs % SOE_PER_NASUN) / Number(SOE_PER_NASUN)
+  const value = Number(whole) + frac
+  return `${negative ? '-' : ''}${value.toFixed(fractionDigits)}`
+}

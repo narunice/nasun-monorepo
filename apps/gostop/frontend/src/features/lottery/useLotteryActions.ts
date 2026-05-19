@@ -13,6 +13,14 @@ import { autoPickNumbers } from './lottery-utils'
 import { humanizeLotteryError } from './errors'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
 
+export interface BulkBurnResult {
+  burned: number
+  failedChunks: number
+  /** Aggregate storage rebate across successful chunks, in SOE (1e9 = 1 NASUN). */
+  storageRebateSoe: bigint
+  digests: string[]
+}
+
 export interface UseLotteryActionsResult {
   walletAddress: string | undefined
   isWalletConnected: boolean
@@ -20,7 +28,7 @@ export interface UseLotteryActionsResult {
   buyTicketBulk: (roundId: string, count: number) => Promise<boolean>
   claimPrize: (roundId: string, ticketId: string) => Promise<boolean>
   burnTicket: (roundId: string, ticketId: string) => Promise<boolean>
-  burnTicketsBulk: (items: ReadonlyArray<{ roundId: string; ticketId: string }>) => Promise<{ burned: number; failedChunks: number }>
+  burnTicketsBulk: (items: ReadonlyArray<{ roundId: string; ticketId: string }>) => Promise<BulkBurnResult>
   isBuying: boolean
   isBulkBurning: boolean
   bulkBurnProgress: { done: number; total: number } | null
@@ -142,8 +150,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const burnTicketsBulk = useCallback(
     async (
       items: ReadonlyArray<{ roundId: string; ticketId: string }>,
-    ): Promise<{ burned: number; failedChunks: number }> => {
-      if (items.length === 0) return { burned: 0, failedChunks: 0 }
+    ): Promise<BulkBurnResult> => {
+      if (items.length === 0) return { burned: 0, failedChunks: 0, storageRebateSoe: 0n, digests: [] }
       setError(null)
       setIsBulkBurning(true)
       setBulkBurnProgress({ done: 0, total: items.length })
@@ -151,6 +159,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
       const CHUNK = 50
       let burned = 0
       let failedChunks = 0
+      let storageRebateSoe = 0n
+      const digests: string[] = []
 
       try {
         for (let i = 0; i < items.length; i += CHUNK) {
@@ -158,7 +168,21 @@ export function useLotteryActions(): UseLotteryActionsResult {
           const ok = await executeGameTx(async () => buildBurnTicketBulk(chunk), {
             skipBalanceCheck: true,
             humanizeMoveAbort: humanizeLotteryError,
-            // Don't surface chunk-level errors as a banner — we aggregate.
+            // Capture storage rebate from this chunk's effects. The Sui effects
+            // shape is `{ gasUsed: { storageRebate: string, ... } }` — both the
+            // raw rebate and the digest are needed for the result modal.
+            onSuccess: (result: unknown) => {
+              const r = result as { digest?: string; effects?: { gasUsed?: { storageRebate?: string | number } } } | undefined
+              if (r?.digest) digests.push(r.digest)
+              const raw = r?.effects?.gasUsed?.storageRebate
+              if (raw !== undefined && raw !== null) {
+                try {
+                  storageRebateSoe += BigInt(raw)
+                } catch {
+                  // ignore malformed value
+                }
+              }
+            },
           })
           if (ok) burned += chunk.length
           else failedChunks += 1
@@ -170,7 +194,7 @@ export function useLotteryActions(): UseLotteryActionsResult {
         setTimeout(() => setBulkBurnProgress(null), 500)
       }
 
-      return { burned, failedChunks }
+      return { burned, failedChunks, storageRebateSoe, digests }
     },
     [executeGameTx],
   )
