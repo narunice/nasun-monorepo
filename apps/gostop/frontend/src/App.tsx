@@ -18,7 +18,7 @@ import LeaderboardPage from './pages/LeaderboardPage'
 import ReplayPage from './pages/ReplayPage'
 import TransparencyPage from './pages/TransparencyPage'
 import LiquidityPoolPage from './pages/LiquidityPoolPage'
-import { ENABLE_CRASH } from './lib/gostop-config'
+import { ENABLE_CRASH, isLpNavVisible } from './lib/gostop-config'
 
 // Build-time gate (C2). dev/staging dist에서는 CrashPage 코드 자체가 tree-shake로 제거됨.
 const CrashPage = ENABLE_CRASH ? lazyWithRetry(() => import('./pages/CrashPage')) : null
@@ -28,13 +28,16 @@ interface NavEntry {
   label: string
 }
 
-const NAV_ITEMS: NavEntry[] = [
-  { to: '/floor', label: 'Floor' },
-  { to: '/leaderboard', label: 'Leaderboard' },
-  { to: '/transparency', label: 'Transparency' },
-  { to: '/lp', label: 'Liquidity' },
-  { to: '/suite', label: 'Suite' },
-]
+function getNavItems(): NavEntry[] {
+  const items: NavEntry[] = [
+    { to: '/floor', label: 'Floor' },
+    { to: '/leaderboard', label: 'Leaderboard' },
+    { to: '/transparency', label: 'Transparency' },
+  ]
+  if (isLpNavVisible()) items.push({ to: '/lp', label: 'Liquidity' })
+  items.push({ to: '/suite', label: 'Suite' })
+  return items
+}
 
 // Runtime second-layer (A-W3): build-time gate가 정상 동작하면 dev/staging dist에 코드 자체 없음.
 // runtime guard는 prod dist를 다른 hostname에서 재서빙하는 우회 시나리오 한정 방어.
@@ -113,6 +116,7 @@ function Header() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
   const menuRef = useRef<HTMLDivElement>(null)
+  const navItems = getNavItems()
 
   // Close the mobile menu on route change.
   useEffect(() => {
@@ -147,7 +151,7 @@ function Header() {
 
         {/* Desktop nav (md+) */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV_ITEMS.map((item) => (
+          {navItems.map((item) => (
             <NavItem key={item.to} to={item.to} label={item.label} />
           ))}
         </nav>
@@ -182,7 +186,7 @@ function Header() {
             </button>
             {menuOpen && (
               <div className="absolute right-0 top-12 w-44 panel p-2 flex flex-col gap-1 animate-slide-in">
-                {NAV_ITEMS.map((item) => (
+                {navItems.map((item) => (
                   <NavItem
                     key={item.to}
                     to={item.to}

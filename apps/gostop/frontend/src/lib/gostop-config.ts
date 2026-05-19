@@ -117,6 +117,18 @@ export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
 // import from here instead of reading the env var locally.
 export const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true';
 
+// Hostname-based runtime gate for the Liquidity NAV entry.
+// The /lp route stays live everywhere (URL still works in prod), but the NAV
+// label is hidden on the production host so most users do not reach it until
+// staging validation completes. Staging and dev share the same prod dist, so
+// the gate has to read window.location at runtime rather than a build env.
+export function isLpNavVisible(): boolean {
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  const isProdHost = host === 'gostop.app' || host === 'www.gostop.app';
+  return !isProdHost;
+}
+
 // ===== Wheel =====
 // Same defensive-typed pattern as crash: devnet-ids.json's `wheel` block
 // may not exist on older snapshots, so look it up via optional chaining
