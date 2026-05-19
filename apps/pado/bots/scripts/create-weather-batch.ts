@@ -19,8 +19,6 @@ import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Transaction } from '@mysten/sui/transactions';
-import { Agent, setGlobalDispatcher } from 'undici';
-setGlobalDispatcher(new Agent({ connect: { family: 4, timeout: 8000 } }));
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 if (RPC_URL.includes('mainnet')) { console.error('mainnet refused'); process.exit(1); }
