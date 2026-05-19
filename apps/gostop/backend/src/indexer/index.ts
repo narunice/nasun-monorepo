@@ -47,6 +47,7 @@ import {
 import { maybeRefreshMatviews } from './matview-refresh.js';
 import { reconcileBankrollSnapshots } from './bankroll-reconciler.js';
 import { startRiskAlertLoop } from './risk-alert.js';
+import { startDriftKeeperLoop } from './drift-keeper.js';
 
 const POLL_INTERVAL_MS = 1_000;
 
@@ -187,6 +188,8 @@ async function main(): Promise<void> {
   // Tier 1.3 risk alerting. No-op when TELEGRAM_BOT_TOKEN / _CHAT_ID unset, so
   // ship-before-env-populated is safe. Operator flips env on node-3 to enable.
   startRiskAlertLoop();
+  // Tier 1 post-cleanup §10.D drift keeper. Same env gate as risk-alert.
+  startDriftKeeperLoop();
 
   while (running) {
     await tick();
