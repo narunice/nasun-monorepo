@@ -59,6 +59,7 @@ module gostop_mines::mines {
     const STATUS_ACTIVE: u8 = 0;
     const STATUS_CASHED_OUT: u8 = 1;
     const STATUS_EXPLODED: u8 = 2;
+    const STATUS_FORFEITED: u8 = 3;
 
     // ===== Error Codes =====
 
@@ -135,7 +136,7 @@ module gostop_mines::mines {
         player: address,
         bet_amount: u64,
         payout: u64,
-        outcome: u8, // STATUS_CASHED_OUT or STATUS_EXPLODED
+        outcome: u8, // STATUS_CASHED_OUT, STATUS_EXPLODED, or STATUS_FORFEITED
         timestamp_ms: u64,
     }
 
@@ -413,6 +414,59 @@ module gostop_mines::mines {
 
         table::remove(&mut registry.active_sessions, session.player);
         registry.total_cashouts = registry.total_cashouts + 1;
+
+        destroy_session(session);
+    }
+
+    /// Voluntary session forfeit. The bet has already been collected to the
+    /// bankroll at create_session time; forfeit just clears the
+    /// active_sessions table entry and destroys the owned session so the
+    /// player can start a new game. The bet is treated as fully lost (no
+    /// refund), which is consistent with the player abandoning a session
+    /// they could have continued revealing or cashed out from.
+    ///
+    /// Primary use case: recover from a stuck active_sessions entry after
+    /// the player's tab/wallet aborted mid-reveal. Without this, the
+    /// 1-session-per-address invariant would lock them out of mines
+    /// permanently.
+    entry fun forfeit_session(
+        session: MinesSession,
+        registry: &mut MinesRegistry,
+        clock: &Clock,
+        ctx: &TxContext,
+    ) {
+        let sender = tx_context::sender(ctx);
+        assert!(session.player == sender, ENotSessionOwner);
+        assert!(session.status == STATUS_ACTIVE, ESessionNotActive);
+        assert!(option::is_some(&registry.game_cap), EGameCapNotInstalled);
+
+        let cap = option::borrow(&registry.game_cap);
+        let sid = object::id(&session);
+        let sid_bytes = sui::bcs::to_bytes(&sid);
+        let now = clock::timestamp_ms(clock);
+
+        // Cross-game result feed: forfeit is a complete loss (bet collected,
+        // zero payout). Leaderboards and stats consumers can count it like
+        // any other losing round.
+        bankroll_pool::emit_game_result(
+            cap,
+            session.player,
+            session.bet_amount,
+            0,
+            sid_bytes,
+            clock,
+        );
+
+        event::emit(SessionFinished {
+            session_id: sid,
+            player: session.player,
+            bet_amount: session.bet_amount,
+            payout: 0,
+            outcome: STATUS_FORFEITED,
+            timestamp_ms: now,
+        });
+
+        table::remove(&mut registry.active_sessions, session.player);
 
         destroy_session(session);
     }

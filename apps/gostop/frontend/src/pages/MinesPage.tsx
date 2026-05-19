@@ -31,6 +31,7 @@ export default function MinesPage() {
     onCreate,
     onReveal,
     onCashout,
+    onForfeit,
   } = useMinesPage(celebrate);
 
   useForceTierDebug("Mines");
@@ -71,7 +72,7 @@ export default function MinesPage() {
           onCreate={onCreate}
         />
       ) : (
-        <MinesActiveSession session={session} pendingCells={pendingCells} phase={phase} onReveal={onReveal} onCashout={onCashout} />
+        <MinesActiveSession session={session} pendingCells={pendingCells} phase={phase} onReveal={onReveal} onCashout={onCashout} onForfeit={onForfeit} />
       )}
     </div>
   );

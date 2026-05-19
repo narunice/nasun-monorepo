@@ -18,6 +18,7 @@ export function useMinesPage(celebrate: any) {
     createSession,
     revealCell,
     cashout,
+    forfeit,
     error,
     clearError,
     lastFinish,
@@ -81,6 +82,13 @@ export function useMinesPage(celebrate: any) {
     }
   }, [cashout, session, showToast]);
 
+  const onForfeit = useCallback(async () => {
+    const ok = await forfeit();
+    if (ok) {
+      showToast("Session forfeited. You can start a new game.", "info");
+    }
+  }, [forfeit, showToast]);
+
   return {
     isWalletConnected,
     session,
@@ -100,5 +108,6 @@ export function useMinesPage(celebrate: any) {
     onCreate,
     onReveal,
     onCashout,
+    onForfeit,
   };
 }

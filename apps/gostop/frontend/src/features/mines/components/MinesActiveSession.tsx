@@ -10,12 +10,14 @@ export function MinesActiveSession({
   phase,
   onReveal,
   onCashout,
+  onForfeit,
 }: {
   session: MinesSession;
   pendingCells: Set<number>;
-  phase: "idle" | "creating" | "cashing_out" | "busy";
+  phase: "idle" | "creating" | "cashing_out" | "forfeiting" | "busy";
   onReveal: (i: number) => void;
   onCashout: () => void;
+  onForfeit: () => void;
 }) {
   const rawMul = computeMultiplierBps(session.mineCount, session.safeReveals) / 10_000;
   const rawPayout = (session.betAmount * BigInt(Math.floor(rawMul * 10_000))) / 10_000n;
@@ -31,6 +33,7 @@ export function MinesActiveSession({
   const rawNextMul = computeMultiplierBps(session.mineCount, session.safeReveals + 1) / 10_000;
   const nextMul = isCapped ? effectiveMul : rawNextMul;
   const canCashout = session.safeReveals > 0 && phase === "idle" && pendingCells.size === 0;
+  const canForfeit = phase === "idle" && pendingCells.size === 0;
 
   return (
     <section className="panel p-5 sm:p-7 space-y-6">
@@ -82,6 +85,18 @@ export function MinesActiveSession({
             : session.safeReveals === 0
               ? "Reveal a cell first"
               : `Cash Out · ${formatNusdcFixed(currentPayout)} NUSDC`}
+        </button>
+
+        <button
+          onClick={() => {
+            if (window.confirm('Forfeit this session? Your bet will be lost. Use this only if the game appears stuck.')) {
+              onForfeit();
+            }
+          }}
+          disabled={!canForfeit}
+          className="btn-ghost !py-2 !px-4 text-xs text-neutral-300 hover:text-neutral-100 disabled:opacity-50"
+        >
+          {phase === "forfeiting" ? "Forfeiting…" : "Forfeit session"}
         </button>
       </div>
     </section>
