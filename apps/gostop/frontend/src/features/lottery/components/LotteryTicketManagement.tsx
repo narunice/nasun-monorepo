@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { countMatchingNumbers, getTicketTier } from "../lottery-client";
 import { formatNusdc } from "../../../lib/format";
 import { ROUND_STATUS } from "../../../lib/gostop-config";
@@ -29,9 +30,9 @@ export function PurchaseConfirmModal({
 
   const roundLabel = roundNumber != null ? `Round ${String(roundNumber).padStart(3, "0")}` : "this round";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center px-5 bg-ink-950/65 backdrop-blur-sm animate-slide-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center px-5 bg-ink-950/65 backdrop-blur-sm animate-slide-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -69,7 +70,8 @@ export function PurchaseConfirmModal({
           Got it
         </button>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

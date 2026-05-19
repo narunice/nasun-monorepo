@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useMeSettings, useUpdateMeSettings } from '../../../lib/api/queries';
 import type { FeedVisibility } from '../../../lib/api/types';
 
@@ -55,9 +56,9 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
   const dirty = selected !== null && data !== undefined && selected !== data.feed_visibility;
   const saving = mutate.isPending;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -154,6 +155,7 @@ export function SettingsModal({ open, onClose }: SettingsModalProps) {
           </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

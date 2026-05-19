@@ -1,4 +1,5 @@
 import { useRef } from "react";
+import { createPortal } from "react-dom";
 import { formatNusdcFixed } from "../../../lib/format";
 
 type Headline = { emoji: string; title: string; subtitle: string };
@@ -51,9 +52,9 @@ export function NoWinSummaryModal({
   const border = isPartial ? "border-amber-500/30" : "border-red-500/30";
   const eyebrowColor = isPartial ? "text-amber-300/80" : "text-red-300/80";
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-ink-950/65 backdrop-blur-sm p-4 animate-slide-in"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-ink-950/65 backdrop-blur-sm p-4 animate-slide-in"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -107,6 +108,7 @@ export function NoWinSummaryModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

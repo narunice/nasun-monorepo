@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import { useRound } from '../../../lib/api/queries';
 import type { RecentRound, RoundDetail } from '../../../lib/api/types';
@@ -46,9 +47,9 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
 
   if (!round) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-ink-950/80 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
@@ -99,7 +100,8 @@ export function RoundDetailModal({ round, onClose }: RoundDetailModalProps) {
           />
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
@@ -189,7 +191,7 @@ function ShareSection({
         Share this win
       </h3>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <ShareIntentButtons shareUrl={shareUrl} message={message} />
+        <ShareIntentButtons shareUrl={shareUrl} message={message} hideCopy />
         <ViewOnExplorerLink txDigest={txDigest} />
       </div>
     </div>
