@@ -11,27 +11,26 @@ import { describe, expect, it } from 'vitest';
 import { classifyDataQuality } from './bankroll-pnl.js';
 
 describe('classifyDataQuality', () => {
-  it("returns 'fresh' when lag is small AND unreconciled rows are few AND chain is reachable", () => {
+  it("returns 'fresh' when chain is reachable AND unreconciled rows are few", () => {
     expect(classifyDataQuality(0, 0, true)).toBe('fresh');
     expect(classifyDataQuality(60_000, 50, true)).toBe('fresh');
-    // Just under both thresholds.
-    expect(classifyDataQuality(5 * 60_000 - 1, 100, true)).toBe('fresh');
+    // PnL streams are sparse — cursor lag is NOT a freshness input even at
+    // very large values. Live indexer with sparse streams legitimately sees
+    // last_ts_ms of "1 week ago" for TreasuryDeposited etc.
+    expect(classifyDataQuality(7 * 86_400_000, 0, true)).toBe('fresh');
   });
 
-  it("returns 'lagging' when cursor lag crosses 5min OR unreconciled crosses 100", () => {
-    expect(classifyDataQuality(5 * 60_000 + 1, 0, true)).toBe('lagging');
+  it("returns 'lagging' when unreconciled rows cross 100", () => {
     expect(classifyDataQuality(0, 101, true)).toBe('lagging');
-    // Still in 'lagging' range under the unreliable thresholds.
-    expect(classifyDataQuality(29 * 60_000, 999, true)).toBe('lagging');
+    expect(classifyDataQuality(0, 999, true)).toBe('lagging');
   });
 
-  it("returns 'unreliable' once cursor lag crosses 30min OR unreconciled crosses 1000", () => {
-    expect(classifyDataQuality(30 * 60_000 + 1, 0, true)).toBe('unreliable');
+  it("returns 'unreliable' when unreconciled rows cross 1000", () => {
     expect(classifyDataQuality(0, 1001, true)).toBe('unreliable');
-    expect(classifyDataQuality(60 * 60_000, 5000, true)).toBe('unreliable');
+    expect(classifyDataQuality(0, 5000, true)).toBe('unreliable');
   });
 
-  it("returns 'unreliable' whenever the chain read fails, regardless of cursor health", () => {
+  it("returns 'unreliable' whenever the chain read fails, regardless of other inputs", () => {
     // share_price_current depends on a successful sui_getObject. Without it
     // the result is incomplete by definition; UI must hide the numeric pps.
     expect(classifyDataQuality(0, 0, false)).toBe('unreliable');
