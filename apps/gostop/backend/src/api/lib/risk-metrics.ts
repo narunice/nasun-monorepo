@@ -78,11 +78,15 @@ export interface RiskMetricsResult {
   /** 24h / 7d / 30d net PnL with per-call data_quality. */
   pnl: Record<PnlWindowKey, RiskWindowPnl>;
   /**
-   * Active exposure = SUM(bet_amount) over game_round rows with status IN
-   * ('pending_resolve','pending_claim') AND game_id BETWEEN 2 AND 6.
-   * v1 honest naming: "pending round commitments" — NOT max liability.
-   * Move v0.0.4 open_exposure (plan §10.B) would track true max-payout
-   * exposure; out of scope here.
+   * Open exposure (max house liability) = chain-authoritative reading from
+   * bankroll_pool v0.0.4 `open_exposure` field, surfaced via the
+   * OpenExposureSnapshot event. Equal to SUM(cap.max_single_payout) across
+   * all in-flight rounds (those whose collect_bet has fired but whose
+   * pay_winner / refund_bet has not yet). 0 when no snapshot has been
+   * indexed (pre-v0.0.4 pool or fresh pool pre-first-bet).
+   *
+   * Pre-§10.B this field was a "pending round commitments" proxy; the v0.0.4
+   * switch upgraded the source to chain truth.
    */
   active_exposure_raw: string;
   /**
@@ -164,19 +168,31 @@ async function latestUtilizationCapBps(): Promise<number | null> {
 }
 
 /**
- * Pending committed bets — single SUM over game_round non-final statuses.
- * Status filter matches the partial index `idx_gr_status` so this query is
- * O(open_rounds), not O(all_rounds).
+ * Live open_exposure — chain-authoritative max-liability reading.
+ *
+ * v0.0.4 (§10.B): bankroll_pool emits OpenExposureSnapshot after every
+ * collect_bet / pay_winner / refund_bet. Indexer writes one row with
+ * event_type='open_exposure_snapshot' carrying chain's open_exposure_after.
+ * We read the latest snapshot row (by timestamp_ms DESC, id DESC).
+ *
+ * Falls back to 0 when no snapshot has ever been indexed — true for pools
+ * still on v0.0.3 OR fresh v0.0.4 pools whose first bet hasn't landed yet.
+ * The Risk Dashboard treats this 0 reading honestly ("no in-flight rounds")
+ * rather than the v0.0.3 "pending_resolve count" proxy.
  */
 async function pendingCommitments(): Promise<bigint> {
   const sql = reader();
-  const rows = await sql<{ exposure: string }[]>`
-    SELECT COALESCE(SUM(bet_amount), 0)::text AS exposure
-    FROM gostop.game_round
-    WHERE status IN ('pending_resolve', 'pending_claim')
-      AND game_id BETWEEN 2 AND 6
+  const rows = await sql<{ exposure: string | null }[]>`
+    SELECT open_exposure_after::text AS exposure
+    FROM gostop.bankroll_event
+    WHERE event_type = 'open_exposure_snapshot'
+      AND open_exposure_after IS NOT NULL
+    ORDER BY timestamp_ms DESC, id DESC
+    LIMIT 1
   `;
-  return BigInt(rows[0]?.exposure ?? '0');
+  const raw = rows[0]?.exposure;
+  if (raw === null || raw === undefined) return 0n;
+  return BigInt(raw);
 }
 
 /** Sui address pretty-print: 0xabcd…1234 (6 prefix + 4 suffix). */

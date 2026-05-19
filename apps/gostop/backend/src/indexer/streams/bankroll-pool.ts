@@ -44,6 +44,8 @@ const WITHDRAW_REQUESTED_STREAM    = streamDef('bankroll_pool::WithdrawRequested
 const LIQUIDITY_REDEEMED_STREAM    = streamDef('bankroll_pool::LiquidityRedeemed');
 const POOL_SHARES_SEEDED_STREAM    = streamDef('bankroll_pool::PoolSharesSeeded');
 const UTILIZATION_CAP_UPDATED_STREAM = streamDef('bankroll_pool::UtilizationCapUpdated');
+// v0.0.4 — live max-liability snapshot, written as its own bankroll_event row.
+const OPEN_EXPOSURE_SNAPSHOT_STREAM = streamDef('bankroll_pool::OpenExposureSnapshot');
 
 // ---------- bankroll_event INSERT scaffolding -------------------------------
 
@@ -54,7 +56,11 @@ type EventTypeName =
   | 'withdraw_requested'
   | 'liquidity_redeemed'
   | 'shares_seeded'
-  | 'cap_updated';
+  | 'cap_updated'
+  // v0.0.4: per-tx snapshot of bankroll_pool.open_exposure (max-liability).
+  // Snapshot row has open_exposure_after populated at INSERT time (no
+  // reconciler dependency — value is in the event itself).
+  | 'open_exposure_snapshot';
 
 /**
  * Indexer-enforced allowlist for event_type. DB column is plain TEXT (no
@@ -69,6 +75,7 @@ const ALLOWED_EVENT_TYPES = new Set<EventTypeName>([
   'liquidity_redeemed',
   'shares_seeded',
   'cap_updated',
+  'open_exposure_snapshot',
 ]);
 
 interface BankrollEventRow {
@@ -84,6 +91,9 @@ interface BankrollEventRow {
   claimable_at_ms: string | null;
   treasury_reason: string | null;
   cap_bps: number | null;
+  // v0.0.4: open_exposure_after is populated ONLY on event_type=
+  // 'open_exposure_snapshot' rows; NULL on every other event type.
+  open_exposure_after: string | null;
 }
 
 function assertEventType(t: string): asserts t is EventTypeName {
@@ -133,7 +143,8 @@ async function insertBankrollEvents(rows: BankrollEventRow[]): Promise<number> {
     INSERT INTO gostop.bankroll_event ${sql(rows,
       'tx_digest', 'event_seq', 'timestamp_ms', 'event_type',
       'game_id', 'actor', 'amount', 'shares',
-      'reason_code', 'claimable_at_ms', 'treasury_reason', 'cap_bps'
+      'reason_code', 'claimable_at_ms', 'treasury_reason', 'cap_bps',
+      'open_exposure_after'
     )}
     ON CONFLICT (tx_digest, event_seq) DO NOTHING
     RETURNING id
@@ -160,6 +171,7 @@ function emptyRow(
     claimable_at_ms: null,
     treasury_reason: null,
     cap_bps: null,
+    open_exposure_after: null,
   };
 }
 
@@ -266,6 +278,7 @@ export async function tickBetRefunded(): Promise<number> {
           claimable_at_ms: null,
           treasury_reason: null,
           cap_bps: null,
+          open_exposure_after: null,
         };
       });
       return await insertBankrollEvents(rows);
@@ -301,6 +314,7 @@ export async function tickTreasuryDeposited(): Promise<number> {
           claimable_at_ms: null,
           treasury_reason: cls.treasury_reason,
           cap_bps: null,
+          open_exposure_after: null,
         };
       });
       return await insertBankrollEvents(rows);
@@ -337,6 +351,7 @@ export async function tickLiquidityProvided(): Promise<number> {
         claimable_at_ms: null,
         treasury_reason: null,
         cap_bps: null,
+        open_exposure_after: null,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -372,6 +387,7 @@ export async function tickWithdrawRequested(): Promise<number> {
         claimable_at_ms: e.parsedJson.claimable_at,
         treasury_reason: null,
         cap_bps: null,
+        open_exposure_after: null,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -405,6 +421,7 @@ export async function tickLiquidityRedeemed(): Promise<number> {
         claimable_at_ms: null,
         treasury_reason: null,
         cap_bps: null,
+        open_exposure_after: null,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -437,6 +454,7 @@ export async function tickPoolSharesSeeded(): Promise<number> {
         claimable_at_ms: null,
         treasury_reason: null,
         cap_bps: null,
+        open_exposure_after: null,
       }));
       return await insertBankrollEvents(rows);
     },
@@ -466,5 +484,61 @@ export async function tickUtilizationCapUpdated(): Promise<number> {
       return await insertBankrollEvents(rows);
     },
     // Not in PNL_STREAMS — admin visibility only. Watermark unused.
+  );
+}
+
+// ---------- OpenExposureSnapshot (v0.0.4 Liability-aware NAV) ----------------
+
+interface OpenExposureSnapshotJson {
+  game_id: number;
+  delta_is_release: boolean;
+  delta_abs: string;            // u64 → string
+  open_exposure_after: string;  // u64 → string (NUMERIC(30,0) safe)
+  timestamp_ms: string;
+}
+
+/**
+ * Snapshot of bankroll_pool.open_exposure after every collect_bet / pay_winner
+ * / refund_bet. Stored as its own bankroll_event row (event_type=
+ * 'open_exposure_snapshot') with the chain-authoritative value pre-populated
+ * in `open_exposure_after` — no reconciler dependency for this column.
+ *
+ * `amount` holds `delta_abs` (absolute reservation/release magnitude); the
+ * sign is encoded via reason_code (1=release, 0=reserve) so we can use the
+ * existing column without a schema change. game_id is the game that drove
+ * the snapshot (1..6 from chain). actor is null (it's a pool-level reading,
+ * not user-attributed).
+ *
+ * risk-metrics.ts reads the latest row by (timestamp_ms DESC, id DESC) to
+ * get live max-liability exposure for the Risk Dashboard.
+ */
+export async function tickOpenExposureSnapshot(): Promise<number> {
+  return runStream<OpenExposureSnapshotJson>(
+    OPEN_EXPOSURE_SNAPSHOT_STREAM,
+    async (envelopes) => {
+      const rows: BankrollEventRow[] = envelopes.map((e) => {
+        const r = emptyRow(
+          e.id.txDigest,
+          e.id.eventSeq,
+          e.parsedJson.timestamp_ms,
+          'open_exposure_snapshot',
+        );
+        const gid = Number(e.parsedJson.game_id);
+        // game_id BETWEEN 2 AND 6 per gostop.bankroll_event CHECK constraint.
+        // Surface unexpected ids as NULL with a log breadcrumb (lottery=1 cannot
+        // emit OpenExposureSnapshot — bankroll_pool only emits this for
+        // collect_bet / pay_winner / refund_bet which lottery does not call).
+        r.game_id = gid >= 2 && gid <= 6 ? gid : null;
+        if (r.game_id === null) {
+          console.warn(`[bankroll-pool] OpenExposureSnapshot unexpected game_id=${gid}`);
+        }
+        r.amount = e.parsedJson.delta_abs;
+        r.reason_code = e.parsedJson.delta_is_release ? 1 : 0;
+        r.open_exposure_after = e.parsedJson.open_exposure_after;
+        return r;
+      });
+      return await insertBankrollEvents(rows);
+    },
+    // No watermark gating: open_exposure_after is self-contained per row.
   );
 }

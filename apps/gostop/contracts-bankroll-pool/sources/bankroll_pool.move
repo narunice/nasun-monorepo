@@ -22,6 +22,21 @@
 ///   current pool balance. cap_bps == 0 disables (default). Stored in a
 ///   sui::dynamic_field so BankrollPool struct layout is unchanged, keeping
 ///   the v0.0.2 -> v0.0.3 path safe under UpgradeCap compatible policy.
+///
+/// Tier 1 post-cleanup §10.B Liability-aware NAV (v0.0.4, 2026-05-19):
+/// - open_exposure: live sum of max_single_payouts reserved across in-flight
+///   rounds. collect_bet adds cap.max_single_payout; pay_winner and refund_bet
+///   release the same amount. Stored as a dynamic_field (b"open_exposure")
+///   so BankrollPool layout stays compatible with v0.0.2/v0.0.3 instances.
+/// - utilization cap semantics tighten: now compares the cumulative reservation
+///   (open_exposure + new cap.max_single_payout) to pool.balance, instead of
+///   only the new bet's max. Cap_bps == 0 still disables.
+/// - Game contracts (scratchcard, numbermatch, mines, wheel) need no changes —
+///   they already pass `cap: &GameCap` to collect_bet/pay_winner/refund_bet,
+///   and the reservation unit is taken from cap.max_single_payout internally.
+/// - OpenExposureSnapshot event emitted after every collect/pay/refund so the
+///   indexer can backfill the per-event open_exposure_after column (Migration
+///   006). Reconciler pattern mirrors total_shares_after (PR-A).
 module bankroll_pool::bankroll_pool {
     use sui::coin::{Self, Coin};
     use sui::balance::{Self, Balance};
@@ -42,6 +57,11 @@ module bankroll_pool::bankroll_pool {
     // dynamic_field key for utilization_cap_bps (u64). v0.0.3 addition; absent on
     // freshly initialized v0.0.2 pools (read defaults to 0 = disabled).
     const UTILIZATION_KEY: vector<u8> = b"utilization_cap_bps";
+
+    // v0.0.4 dynamic_field key for open_exposure (u64). Absent on v0.0.3 and
+    // older pools (read defaults to 0). First call to collect_bet on an
+    // upgraded pool initializes the field via df::add.
+    const OPEN_EXPOSURE_KEY: vector<u8> = b"open_exposure";
 
     // ===== Errors =====
     const EInsufficientPoolBalance: u64 = 1;
@@ -179,6 +199,19 @@ module bankroll_pool::bankroll_pool {
     public struct UtilizationCapUpdated has copy, drop {
         old_cap_bps: u64,
         new_cap_bps: u64,
+        timestamp_ms: u64,
+    }
+
+    /// v0.0.4: emitted after every collect_bet / pay_winner / refund_bet so
+    /// the indexer can snapshot live max-liability exposure per bankroll event.
+    /// `delta_signed` is +N for collect_bet (reserve), -N for pay_winner /
+    /// refund_bet (release). `open_exposure_after` is the post-event total.
+    public struct OpenExposureSnapshot has copy, drop {
+        game_id: u8,
+        // Move has no signed primitive; encode sign in a flag + abs delta.
+        delta_is_release: bool,
+        delta_abs: u64,
+        open_exposure_after: u64,
         timestamp_ms: u64,
     }
 
@@ -342,6 +375,28 @@ module bankroll_pool::bankroll_pool {
         }
     }
 
+    /// v0.0.4: live max-liability exposure (sum of reserved max_single_payouts
+    /// across in-flight rounds). Returns 0 when the dynamic_field is absent
+    /// (pre-v0.0.4 pool that has never collected a bet under v0.0.4 logic).
+    fun read_open_exposure(pool: &BankrollPool): u64 {
+        if (df::exists_(&pool.id, OPEN_EXPOSURE_KEY)) {
+            *df::borrow<vector<u8>, u64>(&pool.id, OPEN_EXPOSURE_KEY)
+        } else {
+            0
+        }
+    }
+
+    /// v0.0.4: idempotent setter for the open_exposure dynamic_field. Creates
+    /// the field on first use, otherwise overwrites in place.
+    fun write_open_exposure(pool: &mut BankrollPool, new_val: u64) {
+        if (df::exists_(&pool.id, OPEN_EXPOSURE_KEY)) {
+            let stored: &mut u64 = df::borrow_mut(&mut pool.id, OPEN_EXPOSURE_KEY);
+            *stored = new_val;
+        } else {
+            df::add(&mut pool.id, OPEN_EXPOSURE_KEY, new_val);
+        }
+    }
+
     // ===== Game Interface (callable by GameCap holders) =====
 
     public fun collect_bet(
@@ -357,29 +412,42 @@ module bankroll_pool::bankroll_pool {
         let amount = coin::value(&bet);
         assert!(amount > 0, EInvalidAmount);
 
-        // v0.0.3: advisory utilization cap. When set (cap_bps > 0), reject
-        // bets from any GameCap whose max_single_payout exceeds cap_bps of
-        // current pool.balance. This is a precondition on new exposure, not
-        // an aggregate-exposure check — proper open_exposure tracking is
-        // out of scope for v0.0.3.
+        // v0.0.4: reserve cap.max_single_payout against open_exposure. The
+        // utilization cap now compares CUMULATIVE reservation (existing
+        // open_exposure + new bet's max_single_payout) against pool.balance,
+        // a tighter check than v0.0.3's per-bet-only precondition. Cap_bps==0
+        // still disables enforcement.
+        let reserve = cap.max_single_payout;
+        let current_open = read_open_exposure(pool);
+        let new_open = current_open + reserve;
+
         let cap_bps = read_utilization_cap_bps(pool);
         if (cap_bps > 0) {
             let pool_balance_u128 = balance::value(&pool.balance) as u128;
-            let max_payout_u128 = cap.max_single_payout as u128;
+            let new_open_u128 = new_open as u128;
             assert!(
-                max_payout_u128 * CAP_BPS_DENOM <= pool_balance_u128 * (cap_bps as u128),
+                new_open_u128 * CAP_BPS_DENOM <= pool_balance_u128 * (cap_bps as u128),
                 EUtilizationCapExceeded,
             );
         };
 
         balance::join(&mut pool.balance, coin::into_balance(bet));
         update_game_bet_stats(pool, cap.game_id, amount);
+        write_open_exposure(pool, new_open);
 
+        let ts = clock::timestamp_ms(clock);
         event::emit(BetCollected {
             game_id: cap.game_id,
             player,
             amount,
-            timestamp_ms: clock::timestamp_ms(clock),
+            timestamp_ms: ts,
+        });
+        event::emit(OpenExposureSnapshot {
+            game_id: cap.game_id,
+            delta_is_release: false,
+            delta_abs: reserve,
+            open_exposure_after: new_open,
+            timestamp_ms: ts,
         });
     }
 
@@ -404,11 +472,30 @@ module bankroll_pool::bankroll_pool {
         let out = coin::from_balance(balance::split(&mut pool.balance, amount), ctx);
         update_game_payout_stats(pool, cap.game_id, amount);
 
+        // v0.0.4: release the reservation taken by the matching collect_bet.
+        // Each round maps to exactly one pay_winner OR refund_bet, so the
+        // release unit is cap.max_single_payout (same value collect_bet
+        // reserved). Saturating subtraction defends against a pre-v0.0.4 pool
+        // upgraded mid-flight where some collect_bets happened before the
+        // open_exposure dynamic_field existed.
+        let release = cap.max_single_payout;
+        let current_open = read_open_exposure(pool);
+        let new_open = if (current_open >= release) { current_open - release } else { 0 };
+        write_open_exposure(pool, new_open);
+
+        let ts = clock::timestamp_ms(clock);
         event::emit(WinnerPaid {
             game_id: cap.game_id,
             player,
             amount,
-            timestamp_ms: clock::timestamp_ms(clock),
+            timestamp_ms: ts,
+        });
+        event::emit(OpenExposureSnapshot {
+            game_id: cap.game_id,
+            delta_is_release: true,
+            delta_abs: release,
+            open_exposure_after: new_open,
+            timestamp_ms: ts,
         });
         out
     }
@@ -433,12 +520,28 @@ module bankroll_pool::bankroll_pool {
 
         let out = coin::from_balance(balance::split(&mut pool.balance, amount), ctx);
 
+        // v0.0.4: refund also closes the round, so release the reservation
+        // (same unit as the matching collect_bet). Saturating subtract for
+        // the same pre-v0.0.4 upgrade defense as pay_winner.
+        let release = cap.max_single_payout;
+        let current_open = read_open_exposure(pool);
+        let new_open = if (current_open >= release) { current_open - release } else { 0 };
+        write_open_exposure(pool, new_open);
+
+        let ts = clock::timestamp_ms(clock);
         event::emit(BetRefunded {
             game_id: cap.game_id,
             player,
             amount,
             reason_code,
-            timestamp_ms: clock::timestamp_ms(clock),
+            timestamp_ms: ts,
+        });
+        event::emit(OpenExposureSnapshot {
+            game_id: cap.game_id,
+            delta_is_release: true,
+            delta_abs: release,
+            open_exposure_after: new_open,
+            timestamp_ms: ts,
         });
         out
     }
@@ -610,6 +713,14 @@ module bankroll_pool::bankroll_pool {
     /// v0.0.3: utilization cap in basis points (0 = disabled).
     public fun utilization_cap_bps(pool: &BankrollPool): u64 {
         read_utilization_cap_bps(pool)
+    }
+
+    /// v0.0.4: live reserved max-payout across in-flight rounds. Equal to
+    /// SUM(cap.max_single_payout) over rounds whose collect_bet has fired
+    /// but whose pay_winner/refund_bet has not yet. Returns 0 on pools that
+    /// have never collected a bet under v0.0.4 logic.
+    public fun open_exposure(pool: &BankrollPool): u64 {
+        read_open_exposure(pool)
     }
 
     /// v0.0.3: true once seed_pool_shares (or any LP) has minted shares.
