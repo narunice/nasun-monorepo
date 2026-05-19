@@ -47,14 +47,32 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
-  // PSG vs Arsenal: 0xa552f5823975f1fa84e5390a78eae5fb2f30e0490d0aeb4b1191f89673ddfd17 (created)
-  // Man City vs Aston Villa: 0x72a685f7e7b5d34f2e6e1f84c2276f33e584128e6bf8246c0c404234b508c0a9 (created)
+  // 2026-05-19 reissue: original markets (eventId 2267447 / 2267448 / 2470477)
+  // shipped with `Will <home> beat <away>?` questions that omitted sport +
+  // league context — viewers couldn't tell soccer from another team-sports
+  // discipline at a glance. Same TheSportsDB EventIds, but question now
+  // carries the ⚽ + league prefix; original three are admin-cancelled in a
+  // follow-up sweep so the new ones are the canonical entries.
   {
     eventId: '2267447',
     homeTeam: 'Liverpool',
     awayTeam: 'Brentford',
-    league: 'Premier League Round 38',
+    league: 'Premier League',
     kickoffUtc: '2026-05-24 15:00:00 UTC',
+  },
+  {
+    eventId: '2267448',
+    homeTeam: 'Manchester City',
+    awayTeam: 'Aston Villa',
+    league: 'Premier League',
+    kickoffUtc: '2026-05-24 15:00:00 UTC',
+  },
+  {
+    eventId: '2470477',
+    homeTeam: 'Paris Saint-Germain',
+    awayTeam: 'Arsenal',
+    league: 'Champions League',
+    kickoffUtc: '2026-05-30 16:00:00 UTC',
   },
 ];
 
@@ -119,7 +137,10 @@ function buildMarket(spec: Spec): Market {
     `TieBreak: NO\n`;
   return {
     spec,
-    question: `Will ${spec.homeTeam} beat ${spec.awayTeam}?`,
+    // ⚽ + league prefix makes the discipline + competition legible at a
+    // glance on the market list. MAX_QUESTION_LEN=500, so even the longest
+    // current EPL fixture (~65 bytes) is well within budget.
+    question: `⚽ ${spec.league} — Will ${spec.homeTeam} beat ${spec.awayTeam}?`,
     description:
       `Binary outcome on the regulation/full-time score of the ${spec.league} fixture ` +
       `${spec.homeTeam} vs ${spec.awayTeam} (kickoff ${spec.kickoffUtc}). ` +
