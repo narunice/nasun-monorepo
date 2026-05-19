@@ -8,6 +8,7 @@ import { GostopActivityCard } from '../features/dashboard/components/GostopActiv
 import { LiveFeedWidget } from '../features/dashboard/components/LiveFeedWidget';
 import { SettingsModal } from '../features/dashboard/components/SettingsModal';
 import { RoundDetailModal } from '../features/dashboard/components/RoundDetailModal';
+import { WalletCleanupTab } from '../features/dashboard/components/WalletCleanupTab';
 import {
   useGameHistory,
   GameSummaryCards,
@@ -19,7 +20,17 @@ import {
 import { ENABLE_CRASH } from '../lib/gostop-config';
 import type { RecentRound } from '../lib/api/types';
 
-type SuiteTab = 'overview' | 'history';
+type SuiteTab = 'overview' | 'history' | 'cleanup';
+
+const SUITE_TABS: { id: SuiteTab; label: string }[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'history', label: 'History' },
+  { id: 'cleanup', label: 'Cleanup' },
+];
+
+function isSuiteTab(value: string | null): value is SuiteTab {
+  return value === 'overview' || value === 'history' || value === 'cleanup';
+}
 
 const FILTER_OPTIONS: { value: GameType | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -123,8 +134,8 @@ export default function DashboardPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [activeRound, setActiveRound] = useState<RecentRound | null>(null);
 
-  const activeTab: SuiteTab =
-    searchParams.get('tab') === 'history' ? 'history' : 'overview';
+  const tabParam = searchParams.get('tab');
+  const activeTab: SuiteTab = isSuiteTab(tabParam) ? tabParam : 'overview';
 
   const setTab = (tab: SuiteTab) => {
     if (tab === 'overview') {
@@ -178,19 +189,19 @@ export default function DashboardPage() {
         <h1 className="font-display text-3xl text-gold">Suite</h1>
         <div className="flex items-center gap-3">
           <div role="tablist" className="flex rounded-full border border-gold-subtle overflow-hidden">
-            {(['overview', 'history'] as SuiteTab[]).map((tab) => (
+            {SUITE_TABS.map(({ id, label }) => (
               <button
-                key={tab}
+                key={id}
                 role="tab"
-                aria-selected={activeTab === tab}
-                onClick={() => setTab(tab)}
-                className={`px-4 py-1.5 text-sm font-medium transition-all min-h-[36px] capitalize ${
-                  activeTab === tab
+                aria-selected={activeTab === id}
+                onClick={() => setTab(id)}
+                className={`px-4 py-1.5 text-sm font-medium transition-all min-h-[36px] ${
+                  activeTab === id
                     ? 'bg-gold-400/15 text-gold-200'
                     : 'text-neutral-300 hover:text-gold-200'
                 }`}
               >
-                {tab === 'overview' ? 'Overview' : 'History'}
+                {label}
               </button>
             ))}
           </div>
@@ -205,7 +216,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {activeTab === 'overview' ? (
+      {activeTab === 'overview' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           <div className="lg:col-span-2 space-y-5">
             <MyProfileCard />
@@ -217,9 +228,9 @@ export default function DashboardPage() {
             <LiveFeedWidget />
           </div>
         </div>
-      ) : (
-        <HistoryTabContent />
       )}
+      {activeTab === 'history' && <HistoryTabContent />}
+      {activeTab === 'cleanup' && <WalletCleanupTab />}
 
       <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <RoundDetailModal

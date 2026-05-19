@@ -97,6 +97,37 @@ export function ClaimBanner({
   );
 }
 
+/**
+ * Past-rounds nudge. Shown when the user owns losing tickets from rounds
+ * other than the current one. Routes them to the Suite cleanup tab where
+ * bulk burning is exposed.
+ */
+export function PastRoundCleanupBanner({
+  pastRoundTicketCount,
+  pastRoundCount,
+}: {
+  pastRoundTicketCount: number;
+  pastRoundCount: number;
+}) {
+  if (pastRoundTicketCount === 0) return null;
+  return (
+    <section className="panel p-4 border-neutral-700/60 bg-ink-900/60">
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <p className="text-sm text-neutral-200">
+          You have {pastRoundTicketCount} non-winning ticket{pastRoundTicketCount === 1 ? '' : 's'} from{' '}
+          {pastRoundCount} earlier round{pastRoundCount === 1 ? '' : 's'} sitting in your wallet.
+        </p>
+        <a
+          href="/suite?tab=cleanup"
+          className="btn-ghost !py-2 !px-4 text-sm shrink-0 text-center"
+        >
+          Manage in Suite →
+        </a>
+      </div>
+    </section>
+  );
+}
+
 export function ExpiredBanner({ expired }: { expired: ClaimableTicket[] }) {
   if (expired.length === 0) return null;
   const total = expired.reduce((s, c) => s + c.payout, 0n);
