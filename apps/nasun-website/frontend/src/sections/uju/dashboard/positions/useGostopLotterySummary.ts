@@ -1,43 +1,53 @@
 // useGostopLotterySummary
 //
-// Cross-app read of the user's GoStop lottery tickets. Returns the total
-// count of owned Ticket objects across every registered wallet so the
-// dashboard card can answer "do I have anything riding on the lottery
-// right now". Talks to Sui RPC directly so we don't drag GoStop's lottery
-// client into nasun-website.
+// Cross-app read of the user's GoStop lottery tickets in the *current*
+// round. Tickets are `has key, store` and transferred to the buyer on
+// purchase (apps/gostop/contracts-lottery/sources/lottery.move ~L156).
+// Losing tickets and unclaimed-expired winners linger as zombie objects
+// across rounds, so a naive owned-objects count over-reports dramatically
+// (a heavy player can accumulate hundreds of stale Ticket objects). The
+// gostop lottery page restricts "My Tickets" to the current round and
+// this card should match — anything else makes the dashboard look like
+// the user has active stake when they don't.
 //
-// Discovery: Ticket is `has key, store` and transferred to the buyer on
-// purchase (apps/gostop/contracts-lottery/sources/lottery.move ~L156), so
-// `getOwnedObjects` with a StructType filter on the lottery's original
-// package id is the canonical lookup. The original package id is stable
-// across upgrades — see gostopLotteryConfig.ts for the sync rule.
+// Strategy: query the most recent RoundCreated event to derive the
+// current round id, then per registered wallet pull owned Ticket objects
+// (with content) and count those whose `round_id` field matches. A
+// `round_id` filter cannot be expressed in `getOwnedObjects`, so we read
+// content and filter client-side.
 //
-// What "active" means here: any Ticket the wallet still holds. Tickets are
-// consumed (object destroyed) by `claim_prize` for winning tiers; losing
-// tickets and unclaimed-expired winners linger as zombie objects. We do
-// not currently distinguish those — surfacing the raw count keeps this PR
-// scoped and leaves the user one click away from gostop.app, which is the
-// authoritative source for round status and claimable amounts. A future
-// PR can fetch the matching LotteryRound per ticket to derive a
-// "claimable now" number, but that adds N round fetches + tier-matching
-// math and is not justified by a summary card.
-//
-// Multi-wallet: same pattern as the Pado hooks — union of (signer address,
-// registered wallet addresses), dedup, sort for a stable React Query key.
+// Multi-wallet: same pattern as the Pado hooks — union of (signer
+// address, registered wallet addresses), dedup, sort for a stable React
+// Query key.
 
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useSuiClient } from "@mysten/dapp-kit";
 import { useWallet, useZkLogin } from "@nasun/wallet";
 import type { SuiClient } from "@mysten/sui/client";
-import { GOSTOP_LOTTERY_TICKET_TYPE } from "./gostopLotteryConfig";
+import {
+  GOSTOP_LOTTERY_ROUND_CREATED_EVENT_TYPE,
+  GOSTOP_LOTTERY_TICKET_TYPE,
+} from "./gostopLotteryConfig";
 import { useUjuWalletRegistration } from "../../hooks/useUjuWalletRegistration";
 
 const MAX_PAGES = 20;
 
-async function countTicketsForAddress(
+async function fetchCurrentRoundId(client: SuiClient): Promise<string | null> {
+  const events = await client.queryEvents({
+    query: { MoveEventType: GOSTOP_LOTTERY_ROUND_CREATED_EVENT_TYPE },
+    limit: 1,
+    order: "descending",
+  });
+  if (events.data.length === 0) return null;
+  const p = events.data[0].parsedJson as { round_id?: string };
+  return p?.round_id ?? null;
+}
+
+async function countCurrentRoundTicketsForAddress(
   client: SuiClient,
   owner: string,
+  currentRoundId: string,
 ): Promise<number> {
   let total = 0;
   let cursor: string | null | undefined = null;
@@ -45,12 +55,15 @@ async function countTicketsForAddress(
     const resp = await client.getOwnedObjects({
       owner,
       filter: { StructType: GOSTOP_LOTTERY_TICKET_TYPE },
-      // We only need the count; skip showContent to keep payloads light.
-      options: { showType: false, showContent: false },
+      options: { showContent: true },
       cursor,
       limit: 50,
     });
-    total += resp.data.length;
+    for (const o of resp.data) {
+      if (!o.data?.content || o.data.content.dataType !== "moveObject") continue;
+      const f = o.data.content.fields as Record<string, unknown>;
+      if (String(f.round_id ?? "") === currentRoundId) total += 1;
+    }
     if (!resp.hasNextPage || !resp.nextCursor) break;
     cursor = resp.nextCursor;
   }
@@ -92,8 +105,12 @@ export function useGostopLotterySummary(): GostopLotterySummary {
     refetchInterval: 120_000,
     queryFn: async (): Promise<number> => {
       if (allAddresses.length === 0) return 0;
+      const currentRoundId = await fetchCurrentRoundId(suiClient);
+      if (!currentRoundId) return 0;
       const counts = await Promise.all(
-        allAddresses.map((addr) => countTicketsForAddress(suiClient, addr)),
+        allAddresses.map((addr) =>
+          countCurrentRoundTicketsForAddress(suiClient, addr, currentRoundId),
+        ),
       );
       return counts.reduce((sum, n) => sum + n, 0);
     },

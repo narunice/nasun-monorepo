@@ -17,4 +17,6 @@ const GOSTOP_LOTTERY_ORIGINAL_PACKAGE_ID =
 
 export const GOSTOP_LOTTERY_TICKET_TYPE = `${GOSTOP_LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::Ticket`;
 
+export const GOSTOP_LOTTERY_ROUND_CREATED_EVENT_TYPE = `${GOSTOP_LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::RoundCreated`;
+
 export const GOSTOP_URL = "https://gostop.app";
