@@ -153,6 +153,7 @@ async function fetchMarketSnapshot(
   client: SuiClient,
   marketId: string,
   packageId: string,
+  legacyPackageIds: string[] = [],
 ): Promise<MarketSnapshot | null> {
   const obj = await client.getObject({
     id: marketId,
@@ -163,13 +164,18 @@ async function fetchMarketSnapshot(
     return null;
   }
 
-  // Guard against stale-package markets: a Market object from an older deployed
-  // package will not match the current package's `cancel_order` / `place_*`
-  // signatures and would fail with `CommandArgumentError TypeMismatch arg_idx 0`.
-  // Drop these silently (one-time warn) so the bot doesn't loop on them.
-  const expectedType = `${packageId}::prediction_market::Market`;
+  // Guard against stale-package markets: Sui anchors a struct's type tag to
+  // the publish that DEFINED the struct, not to the upgrade variant emitting
+  // it, so an upgrade leaves existing Market objects with the prior publish's
+  // type id. The bot is fine calling Move entries via PREDICTION_PACKAGE_ID
+  // (latest) — Sui resolves the upgrade — but accepts the canonical struct
+  // type from any id in PREDICTION_PACKAGE_ID_LEGACY too. A market with a
+  // type from somewhere outside this list is genuinely stale.
+  const acceptedTypes = new Set(
+    [packageId, ...legacyPackageIds].map((p) => `${p}::prediction_market::Market`),
+  );
   const actualType = obj.data.type ?? '';
-  if (actualType !== expectedType) {
+  if (!acceptedTypes.has(actualType)) {
     const key = marketId.toLowerCase();
     if (!warnedStaleMarkets.has(key)) {
       warnedStaleMarkets.add(key);
@@ -268,33 +274,44 @@ async function fetchAllPositions(
   owner: string,
   packageId: string,
   marketId: string,
+  legacyPackageIds: string[] = [],
 ): Promise<{ yes: OutcomePosition[]; no: OutcomePosition[] }> {
-  const positionType = `${packageId}::prediction_market::Position`;
+  // Position struct type identity follows the original-publish rule (see
+  // fetchMarketSnapshot). getOwnedObjects's StructType filter accepts only
+  // one type per call, so iterate across the accepted type ids and merge.
+  // Sui returns the seen-objects-per-page so duplicate suppression via the
+  // objectId set is sufficient.
   const target = marketId.toLowerCase();
   const yes: OutcomePosition[] = [];
   const no: OutcomePosition[] = [];
-  let cursor: string | null | undefined = null;
-  while (true) {
-    const page = await client.getOwnedObjects({
-      owner,
-      filter: { StructType: positionType },
-      options: { showContent: true },
-      cursor: cursor ?? null,
-    });
-    for (const item of page.data) {
-      if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
-      const fields = item.data.content.fields as Record<string, unknown>;
-      const itsMarket = String(fields.market_id ?? '').toLowerCase();
-      if (itsMarket !== target) continue;
-      const shares = BigInt(String(fields.shares ?? 0));
-      if (shares <= 0n) continue;
-      const isYes = Boolean(fields.is_yes ?? false);
-      const entry = { id: item.data.objectId, shares };
-      if (isYes) yes.push(entry);
-      else no.push(entry);
+  const seen = new Set<string>();
+  for (const pkg of [packageId, ...legacyPackageIds]) {
+    const positionType = `${pkg}::prediction_market::Position`;
+    let cursor: string | null | undefined = null;
+    while (true) {
+      const page = await client.getOwnedObjects({
+        owner,
+        filter: { StructType: positionType },
+        options: { showContent: true },
+        cursor: cursor ?? null,
+      });
+      for (const item of page.data) {
+        if (!item.data?.content || item.data.content.dataType !== 'moveObject') continue;
+        if (seen.has(item.data.objectId)) continue;
+        const fields = item.data.content.fields as Record<string, unknown>;
+        const itsMarket = String(fields.market_id ?? '').toLowerCase();
+        if (itsMarket !== target) continue;
+        const shares = BigInt(String(fields.shares ?? 0));
+        if (shares <= 0n) continue;
+        const isYes = Boolean(fields.is_yes ?? false);
+        seen.add(item.data.objectId);
+        const entry = { id: item.data.objectId, shares };
+        if (isYes) yes.push(entry);
+        else no.push(entry);
+      }
+      if (!page.hasNextPage || !page.nextCursor) break;
+      cursor = page.nextCursor;
     }
-    if (!page.hasNextPage || !page.nextCursor) break;
-    cursor = page.nextCursor;
   }
   return { yes, no };
 }
@@ -378,9 +395,10 @@ async function ensureInventory(
   packageId: string,
   marketId: string,
   ladderParams: LadderParams,
+  legacyPackageIds: string[] = [],
 ): Promise<{ yes: OutcomePosition[]; no: OutcomePosition[] }> {
   const owner = keypair.toSuiAddress();
-  let positions = await fetchAllPositions(client, owner, packageId, marketId);
+  let positions = await fetchAllPositions(client, owner, packageId, marketId, legacyPackageIds);
   const target = ladderParams.levels;
 
   // We mint until both sides have >= K Positions. Each mint adds one to each.
@@ -424,7 +442,7 @@ async function ensureInventory(
   );
 
   // Re-fetch fresh state.
-  positions = await fetchAllPositions(client, owner, packageId, marketId);
+  positions = await fetchAllPositions(client, owner, packageId, marketId, legacyPackageIds);
   return positions;
 }
 
@@ -595,9 +613,10 @@ async function reconcileMarket(
   packageId: string,
   marketId: string,
   cfg: ReconcileConfig,
+  legacyPackageIds: string[] = [],
 ): Promise<void> {
   const myAddress = keypair.toSuiAddress();
-  const market = await fetchMarketSnapshot(client, marketId, packageId);
+  const market = await fetchMarketSnapshot(client, marketId, packageId, legacyPackageIds);
   if (!market) {
     // Either object missing or stale-package; both already log inside the helper.
     return;
@@ -647,7 +666,7 @@ async function reconcileMarket(
   }
 
   // Ensure inventory before quoting (mints up to K Position pairs).
-  const positions = await ensureInventory(client, keypair, packageId, marketId, cfg.ladder);
+  const positions = await ensureInventory(client, keypair, packageId, marketId, cfg.ladder, legacyPackageIds);
 
   // Compute YES midpoint using 4-book complementary view to prevent skew when
   // external YES bids are abnormally high (e.g. crossed market from user orders).
@@ -767,7 +786,7 @@ async function reconcileMarket(
 
   // Re-fetch positions in case cancels above returned new Positions to us.
   const positionsAfterCancel = (yesAskPlan.toCancel.length > 0 || noAskPlan.toCancel.length > 0)
-    ? await fetchAllPositions(client, keypair.toSuiAddress(), packageId, marketId)
+    ? await fetchAllPositions(client, keypair.toSuiAddress(), packageId, marketId, legacyPackageIds)
     : positions;
 
   // ===== Place YES asks (consume YES Positions) =====
@@ -887,6 +906,7 @@ async function tick(
   packageId: string,
   markets: string[],
   cfg: ReconcileConfig,
+  legacyPackageIds: string[] = [],
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
@@ -894,7 +914,7 @@ async function tick(
     for (const marketId of markets) {
       if (shuttingDown) break;
       try {
-        await reconcileMarket(client, keypair, packageId, marketId, cfg);
+        await reconcileMarket(client, keypair, packageId, marketId, cfg, legacyPackageIds);
         consecutiveErrors = 0;
       } catch (err) {
         consecutiveErrors++;
@@ -1066,7 +1086,7 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, cfg);
+  await tick(client, keypair, packageId, markets, cfg, legacyPackageIds);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
@@ -1088,7 +1108,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await tick(client, keypair, packageId, markets, cfg);
+    await tick(client, keypair, packageId, markets, cfg, legacyPackageIds);
   }
 }
 

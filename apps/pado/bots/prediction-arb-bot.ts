@@ -164,10 +164,20 @@ async function findMintedPositions(
   client: SuiClient,
   objectChanges: Array<{ type: string; objectType?: string; objectId: string }>,
   packageId: string,
+  legacyPackageIds: string[] = [],
 ): Promise<Positions | null> {
-  const positionPrefix = `${packageId}::prediction_market::Position`;
+  // Sui anchors a struct's type tag to the publish that defined the struct,
+  // so a Position object minted via the latest package id still carries the
+  // type prefix of the publish where Position was originally introduced
+  // (see prediction-lp-bot's stale-package guard). Accept any prefix that
+  // matches an upgrade-chain id we know about.
+  const positionPrefixes = [packageId, ...legacyPackageIds].map(
+    (p) => `${p}::prediction_market::Position`,
+  );
+  const matchesAnyPrefix = (ot?: string): boolean =>
+    typeof ot === 'string' && positionPrefixes.some((p) => ot.startsWith(p));
   const created = objectChanges.filter(
-    (c) => c.type === 'created' && c.objectType?.startsWith(positionPrefix),
+    (c) => c.type === 'created' && matchesAnyPrefix(c.objectType),
   );
   if (created.length < 2) {
     console.error(`[arb] expected 2 created Positions, got ${created.length}`);
@@ -254,6 +264,7 @@ async function executeArb(
       objectId: string;
     }>,
     PACKAGE_ID,
+    LEGACY_PACKAGE_IDS,
   );
   if (!positions) {
     console.error('[arb] aborting: could not identify YES/NO positions after mint');
