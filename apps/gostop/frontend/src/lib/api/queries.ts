@@ -35,6 +35,7 @@ import type {
   LpApy,
   LpPositions,
   LpCooldown,
+  MeLpPosition,
 } from './types';
 
 const STALE = {
@@ -66,6 +67,7 @@ export const QK = {
   meEcosystem: () => [...QK.me, 'ecosystem'] as const,
   meRank: () => [...QK.me, 'rank'] as const,
   meStreak: () => [...QK.me, 'streak'] as const,
+  meLpPosition: () => [...QK.me, 'lp', 'position'] as const,
   streak: (player: string) => ['gostop', 'streak', player.toLowerCase()] as const,
   leaderboard: (
     period: LeaderboardPeriod,
@@ -178,6 +180,18 @@ export function useMeStreak() {
     staleTime: STALE.streak,
     queryFn: () =>
       apiRequest<StreakSummary>('/api/gostop/me/streak', { authWallet: walletAddress! }),
+  });
+}
+
+export function useMeLpPosition() {
+  const { walletAddress, tokenReady } = useGostopAuth();
+  return useQuery({
+    queryKey: QK.meLpPosition(),
+    enabled: !!walletAddress && tokenReady,
+    // Same TTL as risk dashboard 30s — they render together.
+    staleTime: 30_000,
+    queryFn: () =>
+      apiRequest<MeLpPosition>('/api/gostop/me/lp/position', { authWallet: walletAddress! }),
   });
 }
 

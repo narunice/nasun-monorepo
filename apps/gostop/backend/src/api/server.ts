@@ -25,6 +25,7 @@ import { roundRoutes } from './routes/round.js';
 import { streakRoutes } from './routes/streak.js';
 import { meProfileRoutes } from './routes/me/profile.js';
 import { meDashboardRoutes } from './routes/me/dashboard.js';
+import { meLpRoutes } from './routes/me/lp-position.js';
 import { createFeedWsServer, isFeedUpgrade } from './ws/feed-server.js';
 import { hydrateFeedRings } from './ws/hydrate.js';
 import { startFeedListener, stopFeedListener } from './ws/listen-notify.js';
@@ -56,6 +57,7 @@ app.route('/api/gostop/round', roundRoutes);
 app.route('/api/gostop/streak', streakRoutes);
 app.route('/api/gostop/me', meProfileRoutes);
 app.route('/api/gostop/me', meDashboardRoutes);
+app.route('/api/gostop/me', meLpRoutes);
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 app.onError((err, c) => {
