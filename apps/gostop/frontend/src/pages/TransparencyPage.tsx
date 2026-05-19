@@ -1,10 +1,41 @@
 import { useState } from 'react';
 import { useTransparency, useLotteryDraws } from '../lib/api/queries';
-import type { GameTransparency, LotteryDraw } from '../lib/api/types';
+import type { BankrollSummary, DataQuality, GameTransparency, LotteryDraw } from '../lib/api/types';
 import { bpsToPct, fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { ENABLE_CRASH } from '../lib/gostop-config';
 import { Pagination } from '../features/shared/Pagination';
+
+/**
+ * Format a chain `share_price_scaled` integer string into a human pps figure.
+ * Chain convention: 1_000_000_000 = 1.0 pps. We render 4 decimals.
+ */
+function fmtSharePrice(scaled: string): string {
+  let n: bigint;
+  try { n = BigInt(scaled); } catch { return '—'; }
+  const whole = n / 1_000_000_000n;
+  const frac = (n % 1_000_000_000n) / 100_000n; // → 4-decimal precision
+  return `${whole.toString()}.${frac.toString().padStart(4, '0')}`;
+}
+
+function DataQualityBadge({ quality }: { quality: DataQuality }) {
+  // Plan v3 §4.D UI contract.
+  if (quality === 'fresh') return null;
+  const text = quality === 'lagging' ? 'Data sync delayed' : 'Data unavailable';
+  const cls = quality === 'lagging'
+    ? 'bg-amber-500/15 text-amber-200 border-amber-400/30'
+    : 'bg-rose-500/15 text-rose-200 border-rose-400/30';
+  return (
+    <span
+      title={quality === 'lagging'
+        ? 'Indexer is catching up. Numbers may be slightly behind chain head.'
+        : 'Indexer or chain RPC is currently unreachable. Numbers hidden until data quality recovers.'}
+      className={`px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider border ${cls}`}
+    >
+      {text}
+    </span>
+  );
+}
 
 function TxLink({ digest, label = 'View on explorer' }: { digest: string; label?: string }) {
   return (
@@ -41,8 +72,99 @@ export default function TransparencyPage() {
         </p>
       </header>
 
+      <BankrollSection />
       <GamesSection />
       <LotterySection />
+    </div>
+  );
+}
+
+function BankrollSection() {
+  const { data, isLoading } = useTransparency();
+  const bankroll: BankrollSummary | undefined = data?.bankroll;
+
+  if (isLoading || !bankroll) {
+    return (
+      <section className="panel p-5">
+        <h2 className="font-display text-xl text-gold mb-3">House Bankroll (7d)</h2>
+        <div className="animate-pulse space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-10 bg-ink-800 rounded" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  const dq = bankroll.data_quality;
+  const hideNumbers = dq === 'unreliable';
+  const netPositive = (() => {
+    try { return BigInt(bankroll.net_pnl) >= 0n; }
+    catch { return true; }
+  })();
+
+  return (
+    <section className="panel p-5">
+      <div className="flex items-center gap-2 mb-3">
+        <h2 className="font-display text-xl text-gold">House Bankroll ({bankroll.window_days}d)</h2>
+        <DataQualityBadge quality={dq} />
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+        <Stat
+          label="Net house PnL"
+          value={hideNumbers ? '—' : `${fmtUsdcSigned(bankroll.net_pnl)} NUSDC`}
+          valueClass={hideNumbers ? 'text-neutral-300' : netPositive ? 'text-emerald-300' : 'text-rose-300'}
+        />
+        <Stat
+          label="Share price"
+          value={hideNumbers ? '—' : fmtSharePrice(bankroll.share_price_current_scaled)}
+          valueClass={hideNumbers ? 'text-neutral-300' : 'text-gold-200'}
+        />
+        <Stat
+          label="Bets routed"
+          value={hideNumbers ? '—' : `${fmtUsdc(bankroll.bets)} NUSDC`}
+        />
+        <Stat
+          label="Payouts"
+          value={hideNumbers ? '—' : `${fmtUsdc(bankroll.payouts)} NUSDC`}
+        />
+      </div>
+
+      <div className="text-xs text-neutral-300 space-y-1">
+        <p>
+          Net PnL covers settled bets in the last {bankroll.window_days} days
+          across {hideNumbers ? '—' : 'all'} non-lottery games. Excludes lottery
+          (its prize_pool flow is separate) and excludes capital deposits from
+          treasury cuts.
+        </p>
+        {!hideNumbers && bankroll.lottery_treasury_inflow !== '0' && (
+          <p>
+            Lottery treasury inflow (cut + unclaimed sweep) in window:&nbsp;
+            <span className="font-mono text-neutral-100">
+              {fmtUsdc(bankroll.lottery_treasury_inflow)} NUSDC
+            </span>
+          </p>
+        )}
+        {dq === 'lagging' && (
+          <p className="text-amber-200">
+            Indexer cursor lag: {Math.round(bankroll.cursor_lag_ms / 1000)} s. Numbers will catch up shortly.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function Stat({ label, value, valueClass = 'text-neutral-100' }: {
+  label: string;
+  value: string;
+  valueClass?: string;
+}) {
+  return (
+    <div>
+      <span className="block text-xs uppercase tracking-widest text-neutral-300">{label}</span>
+      <span className={`block font-mono text-base ${valueClass}`}>{value}</span>
     </div>
   );
 }
@@ -106,6 +228,12 @@ function GameRow({ g }: { g: GameTransparency }) {
   // RNG and have no proof concept (column shows 0 by design).
   const isCrash = g.key === 'crash';
   const crashSuspended = isCrash && !ENABLE_CRASH;
+  // Lottery (game_id=1) routes ticket payments + prizes through its own
+  // LotteryRound.prize_pool, not the BankrollPool. The raw bet/payout sum
+  // here is therefore not comparable to the other games' house PnL. Show a
+  // dash + tooltip and point the reader at the lottery draws section, which
+  // is the SoT for lottery accounting.
+  const isLottery = g.key === 'lottery';
   return (
     <tr className="border-b border-ink-800/60 last:border-0">
       <td className="py-2 pr-3 text-neutral-100">
@@ -124,10 +252,20 @@ function GameRow({ g }: { g: GameTransparency }) {
       <td className="py-2 px-3 text-right font-mono text-gold-200">{bpsToPct(g.rtp_bps)}</td>
       <td
         className={`py-2 px-3 text-right font-mono ${
-          housePositive ? 'text-emerald-300' : 'text-rose-300'
+          isLottery
+            ? 'text-neutral-400'
+            : housePositive ? 'text-emerald-300' : 'text-rose-300'
         }`}
       >
-        {fmtUsdcSigned(g.house_pnl_raw)} <span className="text-xs text-neutral-300">NUSDC</span>
+        {isLottery ? (
+          <span title="Lottery prize payments flow through the lottery's own prize_pool, not the shared bankroll. See the Recent Lottery Draws section below for tier-by-tier accounting.">
+            — <span className="text-xs">(see lottery draws)</span>
+          </span>
+        ) : (
+          <>
+            {fmtUsdcSigned(g.house_pnl_raw)} <span className="text-xs text-neutral-300">NUSDC</span>
+          </>
+        )}
       </td>
       <td className="py-2 pl-3 text-right font-mono text-neutral-200">
         {isCrash ? (

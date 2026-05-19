@@ -157,8 +157,39 @@ export interface GameTransparency {
   commit_proof_count: number;
 }
 
+export type DataQuality = 'fresh' | 'lagging' | 'unreliable';
+
+export interface BankrollSummary {
+  /** Rolling window length in days. UI label. */
+  window_days: number;
+  /** All amounts are NUSDC base-units (6 decimals), bigint-compatible strings. */
+  bets: string;
+  payouts: string;
+  refunds: string;
+  /** bets - payouts - refunds. Excludes treasury inflow (which is capital, not PnL). */
+  net_pnl: string;
+  treasury_deposits: string;
+  /** Subset of treasury_deposits attributable to lottery (cut + sweep, conflated v1). */
+  lottery_treasury_inflow: string;
+  /**
+   * Raw share_price_scaled from chain. Divide by 1e9 for display.
+   * 1e9 = 1.0 pps. Pre-seed pools also return 1e9.
+   */
+  share_price_current_scaled: string;
+  /**
+   * UI contract:
+   *   'fresh'      — render numerics normally.
+   *   'lagging'    — render numerics + "data sync delayed" subnote.
+   *   'unreliable' — replace numerics with em-dash, show "data unavailable".
+   */
+  data_quality: DataQuality;
+  /** Debug. UI drives on data_quality, not this. */
+  cursor_lag_ms: number;
+}
+
 export interface TransparencyResponse {
   games: GameTransparency[];
+  bankroll: BankrollSummary;
   generated_at: number;
 }
 
