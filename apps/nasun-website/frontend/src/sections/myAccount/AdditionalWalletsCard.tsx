@@ -88,32 +88,36 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({
     }
   }, [addState]);
 
-  const onRemove = useCallback(async (walletAddress: string) => {
-    if (removingAddress) return;
-    setError(null);
-    const ok = window.confirm(
-      `Remove ${walletAddress} from your verified wallets?\n\n` +
-      `Any per-dApp bindings that point at this address will be cleared.`,
-    );
-    if (!ok) return;
-    setRemovingAddress(walletAddress);
-    try {
-      const token = useUserStore.getState().user?.cognitoToken;
-      const identityId = useUserStore.getState().user?.identityId;
-      if (!token || !identityId) throw new Error("Please sign in again.");
-      await removeAdditionalAddress(walletAddress, token);
-      await refreshAndSaveUserProfile(identityId);
-    } catch (err) {
-      const msg = err instanceof AdditionalEvmApiError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : "Failed to remove wallet.";
-      setError(msg);
-    } finally {
-      setRemovingAddress(null);
-    }
-  }, [removingAddress]);
+  const onRemove = useCallback(
+    async (walletAddress: string) => {
+      if (removingAddress) return;
+      setError(null);
+      const ok = window.confirm(
+        `Remove ${walletAddress} from your verified wallets?\n\n` +
+          `Any per-dApp bindings that point at this address will be cleared.`,
+      );
+      if (!ok) return;
+      setRemovingAddress(walletAddress);
+      try {
+        const token = useUserStore.getState().user?.cognitoToken;
+        const identityId = useUserStore.getState().user?.identityId;
+        if (!token || !identityId) throw new Error("Please sign in again.");
+        await removeAdditionalAddress(walletAddress, token);
+        await refreshAndSaveUserProfile(identityId);
+      } catch (err) {
+        const msg =
+          err instanceof AdditionalEvmApiError
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : "Failed to remove wallet.";
+        setError(msg);
+      } finally {
+        setRemovingAddress(null);
+      }
+    },
+    [removingAddress],
+  );
 
   const solVerified = useVerifiedSolanaAddresses();
   const user = useUserStore((s) => s.user);
@@ -151,7 +155,9 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({
             <h3 className="text-sm font-semibold uppercase tracking-wider text-uju-secondary">
               {evmTitle}
             </h3>
-            <span className="text-sm text-uju-secondary">{extras.length} / {cap}</span>
+            <span className="text-sm text-uju-secondary">
+              {extras.length} / {cap}
+            </span>
           </div>
 
           <ul className="mt-2 space-y-2">
@@ -162,7 +168,11 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({
                 bindings={meta?.appBindings}
                 removing={removingAddress === entry.walletAddress}
                 disabled={!!removingAddress}
-                onRemove={entry.isPrimary ? undefined : () => onRemove(entry.walletAddress)}
+                onRemove={
+                  entry.isPrimary
+                    ? undefined
+                    : () => onRemove(entry.walletAddress)
+                }
                 canEditLabel={!entry.isPrimary}
               />
             ))}
@@ -191,7 +201,9 @@ export const AdditionalWalletsCard: FC<AdditionalWalletsCardProps> = ({
           </div>
 
           {(error || addState.errorMessage) && (
-            <p className="mt-2 text-sm text-nasun-coral">{error || addState.errorMessage}</p>
+            <p className="mt-2 text-sm text-nasun-coral">
+              {error || addState.errorMessage}
+            </p>
           )}
         </div>
       )}
@@ -304,7 +316,11 @@ function SolanaWalletsSection({
         <h3 className="text-sm font-semibold uppercase tracking-wider text-uju-secondary">
           {title}
         </h3>
-        {hasPrimary && <span className="text-sm text-uju-secondary">{extras.length} / {cap}</span>}
+        {hasPrimary && (
+          <span className="text-sm text-uju-secondary">
+            {extras.length} / {cap}
+          </span>
+        )}
       </div>
 
       {hasPrimary && (
@@ -316,19 +332,18 @@ function SolanaWalletsSection({
               bindings={sol?.appBindings}
               removing={removingAddress === entry.walletAddress}
               disabled={!!removingAddress}
-              onRemove={entry.isPrimary ? undefined : () => onRemove(entry.walletAddress)}
+              onRemove={
+                entry.isPrimary
+                  ? undefined
+                  : () => onRemove(entry.walletAddress)
+              }
               canEditLabel={!entry.isPrimary}
             />
           ))}
         </ul>
       )}
 
-      {!hasPrimary && (
-        <p className="mt-2 text-sm text-uju-secondary">
-          Connect Phantom or Solflare and verify ownership with a signature to surface
-          Drift / Jupiter / Marinade positions inside Nasun.
-        </p>
-      )}
+      {!hasPrimary && <p className="mt-2 text-sm text-uju-secondary"></p>}
 
       <div className="mt-3 flex items-center gap-2 flex-wrap">
         {showPhantomButton && (
@@ -380,7 +395,9 @@ function SolanaWalletsSection({
       </div>
 
       {(error || addState.errorMessage) && (
-        <p className="mt-2 text-sm text-nasun-coral">{error || addState.errorMessage}</p>
+        <p className="mt-2 text-sm text-nasun-coral">
+          {error || addState.errorMessage}
+        </p>
       )}
     </div>
   );
@@ -395,11 +412,20 @@ interface WalletRowProps {
   onRemove?: () => void;
 }
 
-function WalletRow({ entry, bindings, removing, disabled, canEditLabel, onRemove }: WalletRowProps) {
+function WalletRow({
+  entry,
+  bindings,
+  removing,
+  disabled,
+  canEditLabel,
+  onRemove,
+}: WalletRowProps) {
   // Reverse-lookup which appIds resolve to this wallet so the user can
   // see at a glance which dApps would be affected by a removal.
   const boundApps = Object.entries(bindings ?? {})
-    .filter(([, addr]) => addr.toLowerCase() === entry.walletAddress.toLowerCase())
+    .filter(
+      ([, addr]) => addr.toLowerCase() === entry.walletAddress.toLowerCase(),
+    )
     .map(([appId]) => appId);
 
   const [editingLabel, setEditingLabel] = useState(false);
@@ -439,11 +465,12 @@ function WalletRow({ entry, bindings, removing, disabled, canEditLabel, onRemove
       await refreshAndSaveUserProfile(identityId);
       setEditingLabel(false);
     } catch (err) {
-      const msg = err instanceof AdditionalEvmApiError
-        ? err.message
-        : err instanceof Error
+      const msg =
+        err instanceof AdditionalEvmApiError
           ? err.message
-          : "Failed to save label.";
+          : err instanceof Error
+            ? err.message
+            : "Failed to save label.";
       setLabelError(msg);
     } finally {
       setSavingLabel(false);
@@ -501,7 +528,11 @@ function WalletRow({ entry, bindings, removing, disabled, canEditLabel, onRemove
                     className="text-pado-3 hover:text-pado-4 disabled:opacity-40"
                     aria-label="Save label"
                   >
-                    {savingLabel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {savingLabel ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -515,7 +546,13 @@ function WalletRow({ entry, bindings, removing, disabled, canEditLabel, onRemove
                 </>
               ) : (
                 <>
-                  <span className={entry.label ? "text-uju-primary" : "text-uju-secondary italic"}>
+                  <span
+                    className={
+                      entry.label
+                        ? "text-uju-primary"
+                        : "text-uju-secondary italic"
+                    }
+                  >
                     {entry.label || "No label"}
                   </span>
                   <button
@@ -549,7 +586,11 @@ function WalletRow({ entry, bindings, removing, disabled, canEditLabel, onRemove
             className="shrink-0 text-uju-secondary hover:text-nasun-coral disabled:opacity-40 transition-colors"
             aria-label={`Remove ${entry.walletAddress}`}
           >
-            {removing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+            {removing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Trash2 className="h-5 w-5" />
+            )}
           </button>
         )}
       </div>
@@ -679,7 +720,11 @@ function SolanaWalletRow({
                     className="text-pado-3 hover:text-pado-4 disabled:opacity-40"
                     aria-label="Save label"
                   >
-                    {savingLabel ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                    {savingLabel ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
                   </button>
                   <button
                     type="button"
@@ -693,7 +738,13 @@ function SolanaWalletRow({
                 </>
               ) : (
                 <>
-                  <span className={entry.label ? "text-uju-primary" : "text-uju-secondary italic"}>
+                  <span
+                    className={
+                      entry.label
+                        ? "text-uju-primary"
+                        : "text-uju-secondary italic"
+                    }
+                  >
                     {entry.label || "No label"}
                   </span>
                   <button
@@ -727,7 +778,11 @@ function SolanaWalletRow({
             className="shrink-0 text-uju-secondary hover:text-nasun-coral disabled:opacity-40 transition-colors"
             aria-label={`Remove ${entry.walletAddress}`}
           >
-            {removing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+            {removing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Trash2 className="h-5 w-5" />
+            )}
           </button>
         )}
       </div>

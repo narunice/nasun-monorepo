@@ -24,13 +24,22 @@ import {
 } from "../../shared";
 import { goToDashboardActivatedApps } from "../../shared/ujuNavigation";
 
-const CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
+const ALL_CHAIN_FILTERS: Array<{ value: AppChain | "all"; label: string }> = [
   { value: "all", label: "All" },
   { value: "nasun", label: "Nasun" },
   { value: "ethereum", label: "Ethereum" },
   { value: "hyperliquid", label: "Hyperliquid" },
   { value: "solana", label: "Solana" },
 ];
+
+// Drop chain tabs that have no apps in the current registry. When external
+// chain apps are hidden in prod via the feature flag, the registry contains
+// only Nasun entries — showing empty Ethereum/Hyperliquid/Solana tabs would
+// imply support that isn't there.
+const PRESENT_CHAINS = new Set<AppChain>(APP_REGISTRY.map((a) => a.chain));
+const CHAIN_FILTERS = ALL_CHAIN_FILTERS.filter(
+  (f) => f.value === "all" || PRESENT_CHAINS.has(f.value as AppChain),
+);
 
 // Resolve the icon URL for an app row. Prefers an explicit override
 // (AppEntry.iconUrl) when set — required for sites whose favicon is hosted

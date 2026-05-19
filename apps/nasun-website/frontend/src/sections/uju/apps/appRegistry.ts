@@ -12,12 +12,6 @@ export type AppCategory =
   | "utility";
 export type AppStatus = "live" | "coming-soon";
 
-// External-chain dApps are not yet user-facing in prod. When the feature flag
-// is off they render as "coming-soon" in the directory and cannot be activated.
-const externalChainStatus: AppStatus = UJU_EXTERNAL_CHAIN_APPS_ENABLED
-  ? "live"
-  : "coming-soon";
-
 export interface AppEntry {
   id: string;
   name: string;
@@ -33,7 +27,9 @@ export interface AppEntry {
   iconUrl?: string;
 }
 
-export const APP_REGISTRY: AppEntry[] = [
+// Source list — all apps, including external-chain entries that may be hidden
+// in prod via the feature flag.
+const ALL_APPS: AppEntry[] = [
   // Nasun ecosystem
   {
     id: "nasun-devnet",
@@ -99,7 +95,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.uniswap.org",
     chain: "ethereum",
     category: "dex",
-    status: externalChainStatus,
+    status: "live",
     isNative: false,
   },
   {
@@ -109,7 +105,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.hyperliquid.xyz",
     chain: "hyperliquid",
     category: "dex",
-    status: externalChainStatus,
+    status: "live",
     isNative: false,
   },
   {
@@ -119,7 +115,7 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.aave.com",
     chain: "ethereum",
     category: "lending",
-    status: externalChainStatus,
+    status: "live",
     isNative: false,
   },
   {
@@ -129,10 +125,18 @@ export const APP_REGISTRY: AppEntry[] = [
     url: "https://app.drift.trade",
     chain: "solana",
     category: "dex",
-    status: externalChainStatus,
+    status: "live",
     isNative: false,
   },
 ];
+
+// External-chain dApps are hidden entirely (not just marked "coming-soon")
+// when the feature flag is off, so prod's Activity > Apps Directory only
+// shows Nasun-native apps. Staging/dev flip the flag on to continue
+// integration work without polluting the prod surface.
+export const APP_REGISTRY: AppEntry[] = UJU_EXTERNAL_CHAIN_APPS_ENABLED
+  ? ALL_APPS
+  : ALL_APPS.filter((a) => a.isNative);
 
 export const VALID_APP_IDS = new Set(APP_REGISTRY.map((a) => a.id));
 
