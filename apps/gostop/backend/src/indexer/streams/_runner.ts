@@ -25,10 +25,23 @@ export const MAX_PAGES_PER_TICK = 20;
  * handler throws, the cursor is not advanced and the same page replays on the
  * next tick. Handlers therefore MUST be idempotent (ON CONFLICT DO NOTHING or
  * explicit UPSERT).
+ *
+ * Optional `opts.onWatermark` is invoked on EVERY poll:
+ *   - non-empty page: tsMs = last envelope's chain timestamp (or Date.now()
+ *     when missing).
+ *   - empty page: tsMs = Date.now() (heartbeat). This lets sparse streams
+ *     (no events yet — e.g. LiquidityProvided pre-LP-UI) contribute to a
+ *     reconciler watermark without freezing it. See
+ *     apps/gostop/backend/src/indexer/bankroll-watermark.ts.
  */
+export interface RunStreamOpts {
+  onWatermark?: (tsMs: bigint) => void;
+}
+
 export async function runStream<T>(
   def: StreamDef,
-  handler: (envelopes: SuiEventEnvelope<T>[]) => Promise<number>
+  handler: (envelopes: SuiEventEnvelope<T>[]) => Promise<number>,
+  opts: RunStreamOpts = {}
 ): Promise<number> {
   const cursor = await readCursor(def.key);
   let rpcCursor: EventCursor | null =
@@ -41,18 +54,21 @@ export async function runStream<T>(
 
   for (let page = 0; page < MAX_PAGES_PER_TICK; page++) {
     const res = await queryEventsByType<T>(tag, rpcCursor, PAGE_SIZE, false);
-    if (res.data.length === 0) break;
+    if (res.data.length === 0) {
+      // Heartbeat: this stream has caught up to chain head.
+      opts.onWatermark?.(BigInt(Date.now()));
+      break;
+    }
 
     total += await handler(res.data);
 
     const last = res.data[res.data.length - 1];
     rpcCursor = res.nextCursor ?? { txDigest: last.id.txDigest, eventSeq: last.id.eventSeq };
-    await writeCursor(
-      def.key,
-      last.id.txDigest,
-      Number(last.id.eventSeq),
-      last.timestampMs ? Number(last.timestampMs) : Date.now()
-    );
+    const lastTsMs = last.timestampMs ? Number(last.timestampMs) : Date.now();
+    await writeCursor(def.key, last.id.txDigest, Number(last.id.eventSeq), lastTsMs);
+
+    // Watermark advances with the event's own timestamp on non-empty pages.
+    opts.onWatermark?.(BigInt(lastTsMs));
 
     if (!res.hasNextPage) break;
   }
