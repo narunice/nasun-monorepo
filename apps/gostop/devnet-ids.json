@@ -6,7 +6,27 @@
   "version": "v4",
   "deployer": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "versionNotes": [
-    "bankroll v0.0.3 (current, 2026-05-18) - Tier 1.0 spike finding 5.3 fix (top-level cohort still v4; this entry covers a bankroll-only upgrade, not a cross-game cohort bump):",
+    "bankroll v0.0.4 (current, 2026-05-19) - Tier 1 post-cleanup §10.B Liability-aware NAV (top-level cohort still v4; bankroll-only upgrade):",
+    "  - bankroll_pool: open_exposure dynamic_field tracks live max-liability",
+    "    (SUM of cap.max_single_payout across in-flight rounds). collect_bet",
+    "    reserves; pay_winner / refund_bet release. UpgradeCap-compatible",
+    "    in-place upgrade (no struct change).",
+    "  - bankroll_pool: utilization cap check now compares cumulative",
+    "    reservation (existing open_exposure + new bet's max_payout) against",
+    "    pool.balance × cap_bps, tighter than v0.0.3's per-bet-only precondition.",
+    "  - bankroll_pool: new OpenExposureSnapshot event emitted per collect/pay/",
+    "    refund. Indexer writes one bankroll_event row per snapshot with",
+    "    event_type='open_exposure_snapshot' and open_exposure_after pre-",
+    "    populated (no reconciler dependency). Migration 006 adds the column.",
+    "  - risk-metrics.active_exposure_raw now reads chain-authoritative",
+    "    open_exposure (latest snapshot row), replacing v0.0.3's 'pending_resolve",
+    "    count' proxy. Frontend label upgraded to 'Open exposure (max liability)'.",
+    "  - Game contracts unchanged: scratchcard/numbermatch/mines/wheel already",
+    "    pass GameCap to collect_bet, so the new reservation unit is read",
+    "    internally from cap.max_single_payout. Crash excluded (game shut down",
+    "    indefinitely, no relaunch date).",
+    "",
+    "bankroll v0.0.3 (2026-05-18) - Tier 1.0 spike finding 5.3 fix (top-level cohort still v4; this entry covers a bankroll-only upgrade, not a cross-game cohort bump):",
     "  - bankroll_pool: seed_pool_shares (idempotent, admin-only) locks pre-existing",
     "    pool.balance into total_shares so the first public LP cannot absorb the",
     "    unshared seed via the total_shares==0 fast-path.",
@@ -60,7 +80,7 @@
   },
 
   "bankrollPool": {
-    "packageId": "0x23fa5fcac7bd1cacfbf8421e9d5be31d9de660b7bfe5251a93b2779e4e349496",
+    "packageId": "0x4bc06710d15aa0ae235e5f9c69b01dec63afab929d0257586d5f2ecad72f0386",
     "originalPackageId": "0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82",
     "bankrollPool": "0xf74e8c3c16ee077651f82459f350e96027c82319686395679d10f08ed0cd306d",
     "adminCap": "0x6c9c504ac631b967ff576e39f643153f3a503a16d4360c1820575d15802b41ba",
@@ -69,9 +89,10 @@
     "seedTxDigest": "AsnpvnaDQ3VyRCe71ZTGVTKxHUTvQFAD1RdR9Tmeg7hJ",
     "upgradeTxDigest": "GssZiwYFchY6vXvHP3c9UdShoFeSbrwDofC4VZ646Mh7",
     "upgradeTxDigestV0_0_3": "DMzrCdKSBx8AT7tqpb7xmKzviDUsP1DQzn8t5ELicq81",
+    "upgradeTxDigestV0_0_4": "93n6pQKybgX1oh3bW5mAUNcbJyMGiNWUHVXWvTBYSNUP",
     "seedSharesTxDigest": "B29mvxri1UBRRC6phmBk5z1P6B4qYrGdtTkLh789WqCg",
-    "version": "v0.0.3",
-    "upgradeNotes": "v0.0.3 upgrade 2026-05-18 (Tier 1.0 spike finding 5.3 fix): seed_pool_shares + set_utilization_cap + collect_bet advisory cap check + is_seeded/utilization_cap_bps views. utilization_cap_bps stored as dynamic_field on BankrollPool.id (no struct change). Live BankrollPool seed_pool_shares called once on the same day; total_shares now locked >= initial 100K seed + accrued PnL at seed time. v0.0.2 upgrade 2026-04-24 (H3 fix) preserved in history."
+    "version": "v0.0.4",
+    "upgradeNotes": "v0.0.4 upgrade 2026-05-19 (Tier 1 post-cleanup §10.B Liability-aware NAV): open_exposure stored as dynamic_field on BankrollPool.id (no struct change). collect_bet now reserves cap.max_single_payout into open_exposure; pay_winner and refund_bet release the same unit. Utilization cap check tightened to compare CUMULATIVE reservation (open_exposure + new reserve) against pool.balance × cap_bps. New event OpenExposureSnapshot emitted per collect/pay/refund — indexer writes a bankroll_event row with event_type='open_exposure_snapshot' carrying open_exposure_after. risk-metrics.active_exposure_raw now reads chain-authoritative max-liability (replacing the v0.0.3 'pending_resolve count' proxy). Game contracts (scratchcard/numbermatch/mines/wheel) unchanged — they already pass cap to collect_bet so the new reservation unit is read internally. Crash excluded (game shut down indefinitely). v0.0.3 upgrade 2026-05-18 (Tier 1.0 spike finding 5.3 fix): seed_pool_shares + set_utilization_cap + collect_bet advisory cap check + is_seeded/utilization_cap_bps views. utilization_cap_bps stored as dynamic_field on BankrollPool.id (no struct change). Live BankrollPool seed_pool_shares called once on the same day; total_shares now locked >= initial 100K seed + accrued PnL at seed time. v0.0.2 upgrade 2026-04-24 (H3 fix) preserved in history."
   },
 
   "lottery": {

@@ -80,6 +80,8 @@ export type StreamKey =
   | 'bankroll_pool::LiquidityRedeemed'
   | 'bankroll_pool::PoolSharesSeeded'
   | 'bankroll_pool::UtilizationCapUpdated'
+  // v0.0.4 — open_exposure (max-liability) snapshot per collect/pay/refund.
+  | 'bankroll_pool::OpenExposureSnapshot'
   | 'lottery::RoundCreated'
   | 'lottery::TicketPurchased'
   | 'lottery::NumbersDrawn'
@@ -114,6 +116,11 @@ export const STREAMS: StreamDef[] = [
   // point this row must be updated and the stream's cursor must be reset.
   { key: 'bankroll_pool::PoolSharesSeeded',    module: 'bankroll_pool', eventName: 'PoolSharesSeeded',    originalPackageId: BANKROLL_POOL.packageId },
   { key: 'bankroll_pool::UtilizationCapUpdated', module: 'bankroll_pool', eventName: 'UtilizationCapUpdated', originalPackageId: BANKROLL_POOL.packageId },
+  // v0.0.4: like PoolSharesSeeded/UtilizationCapUpdated, this event's type
+  // tag binds to the package that introduced the struct — v0.0.4's packageId,
+  // NOT the originalPackageId. The same caveat as line 115 applies: a future
+  // upgrade that re-touches OpenExposureSnapshot will shift the type tag.
+  { key: 'bankroll_pool::OpenExposureSnapshot', module: 'bankroll_pool', eventName: 'OpenExposureSnapshot', originalPackageId: BANKROLL_POOL.packageId },
   { key: 'lottery::RoundCreated',      module: 'lottery',       eventName: 'RoundCreated',     originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::TicketPurchased',   module: 'lottery',       eventName: 'TicketPurchased',  originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::NumbersDrawn',      module: 'lottery',       eventName: 'NumbersDrawn',     originalPackageId: GAMES.lottery.originalPackageId },

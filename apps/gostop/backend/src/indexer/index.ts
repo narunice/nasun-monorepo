@@ -27,6 +27,7 @@ import {
   tickLiquidityRedeemed,
   tickPoolSharesSeeded,
   tickUtilizationCapUpdated,
+  tickOpenExposureSnapshot,
 } from './streams/bankroll-pool.js';
 import {
   tickLotteryRoundCreated,
@@ -70,6 +71,7 @@ const HANDLERS: StreamHandler[] = [
   { name: 'LiquidityRedeemed',   stream: 'bankroll_pool::LiquidityRedeemed',  run: tickLiquidityRedeemed },
   { name: 'PoolSharesSeeded',    stream: 'bankroll_pool::PoolSharesSeeded',   run: tickPoolSharesSeeded },
   { name: 'UtilizationCapUpdated', stream: 'bankroll_pool::UtilizationCapUpdated', run: tickUtilizationCapUpdated },
+  { name: 'OpenExposureSnapshot', stream: 'bankroll_pool::OpenExposureSnapshot', run: tickOpenExposureSnapshot },
   { name: 'LotteryRoundCreated', stream: 'lottery::RoundCreated',      run: tickLotteryRoundCreated },
   { name: 'LotteryTicket',       stream: 'lottery::TicketPurchased',   run: tickLotteryTicketPurchased },
   { name: 'LotteryNumbersDrawn', stream: 'lottery::NumbersDrawn',      run: tickLotteryNumbersDrawn },

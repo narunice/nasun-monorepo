@@ -109,9 +109,9 @@ export function RiskMetrics({ risk }: Props) {
           valueClass="text-neutral-100"
         />
         <Metric
-          label="Pending commitments"
+          label="Open exposure (max liability)"
           value={exposureDisplay}
-          hint="SUM of bet amounts for rounds with status pending_resolve or pending_claim (game_id 2..6). Honest v1 figure: this is not max liability. Move v0.0.4 open_exposure would track true max payout."
+          hint="Chain-authoritative reading of bankroll_pool.open_exposure: sum of max_single_payout reserved across all in-flight rounds. Released back when each round settles via pay_winner or refund_bet. This is true max house liability, not a proxy."
           valueClass={qualityClass(risk.data_quality)}
         />
       </div>
