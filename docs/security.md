@@ -1,5 +1,28 @@
 # Security Reference
 
+> Last Updated: 2026-05-18
+
+## 봇 방어 정책 (2026-05-16 영구 변경)
+
+**Cloudflare Turnstile 완전 제거**. nasun/pado/chat-server 모든 endpoint에서 Turnstile 위젯/검증 코드 삭제. 봇 방어는 **`banned_users` shadow-ban 단독** 으로 처리.
+
+- 신규 가입/상호작용 차단 게이트: chat-server cold-start gate (fail-open hole 차단)
+- 의심 패턴 탐지: nginx access.log + DynamoDB UserProfiles + 행동 분석 (등록 시각·IP ASN·mission 패턴)
+- 적발 후 처리: `ban-users.ts --identity-ids` 또는 `--identity-ids-file`로 batch ban. PG `banned_users` + DDB UserProfiles 동시 갱신 필수
+
+> **Why Turnstile 제거**: 정상 사용자(특히 KT/SKT/LGU+ residential ISP) preflight/challenge 실패가 누적되면서 false positive 비율이 봇 차단 효과를 압도. shadow-ban + 행동 분석이 false positive 0에 가깝게 운영 가능함이 5/12 SpeedyPage 봇팜 적발 사례로 검증됨 (project_2026_05_12_speedypage_bot_ban.md, project_chat_turnstile_removed.md).
+
+> **Why IP-deny는 datacenter ASN만**: residential ISP(KT/SKT/LGU+/SHATEL) IP는 사용자 본인 가능성이 높음. nginx 로그에서 한국 KT IP가 high RPS로 보여도 사용자 본인일 수 있음 (reference_dev_external_ip.md). datacenter ASN(Latitude.sh/Datacamp/OVH/Hetzner/DO/EC2)만 IP-deny 후보, residential은 계정 단위 ban으로 대응.
+
+## WAF (CloudFront)
+
+상세 운영은 [infrastructure.md §WAF](infrastructure.md#aws-waf-ddos-protection) 참조. 핵심만:
+
+- **3-rule**: AllowTrustedIPs, DenyKnownScanners, RateLimit8000Per5Min
+- **OPTIONS preflight 제외 필수**: `scopeDownStatement`에 `NOT(method=OPTIONS)`. 누락 시 admin/SPA 페이지가 차단 (feedback_waf_exclude_options_preflight.md)
+- **Country blacklist**: KP, CU, SY
+- **8000/5min cap의 근거**: 2000은 SPA 다중 endpoint 호출 + CloudFront viewer→edge IP fanout과 충돌해 정상 차단 유발. 5/5 collateral block 사고 후 5000 → 8000 안정화 (project_2026_05_05_waf_collateral_block.md)
+
 ## 지갑 암호화
 
 - **암호화**: Web Crypto API (AES-256-GCM + PBKDF2 100,000 iterations)

@@ -304,10 +304,12 @@ curl -s -m 10 -X POST https://rpc.devnet.nasun.io \
 
 ### 2.5단계: 로컬 백업 검증
 
+> **참고 (2026-04-09 이후)**: `leaderboard-v3-snapshots`는 4/9 운영 중단으로 4/10부터 신규 스냅샷 없음. 백업 대상에서 제외. 기존 스냅샷은 reference_leaderboard_backup.md의 S3 영구 백업으로 보존.
+
 ```bash
 BACKUP_DIR="/home/naru/nasun-backups/dynamodb"
 TODAY=$(date +%Y%m%d); YESTERDAY=$(date -d '1 day ago' +%Y%m%d)
-for prefix in ZkLoginUsers UserProfiles UserWallets zklogin-salts leaderboard-v3-snapshots; do
+for prefix in ZkLoginUsers UserProfiles UserWallets zklogin-salts; do
   file="${BACKUP_DIR}/${prefix}-${TODAY}.json.gz"
   [ ! -f "$file" ] && file="${BACKUP_DIR}/${prefix}-${YESTERDAY}.json.gz"
   if [ -f "$file" ]; then

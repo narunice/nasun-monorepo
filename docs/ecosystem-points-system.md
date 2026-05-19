@@ -337,6 +337,8 @@ allTime_live
 | `scripts/repair-v2-ecosystem-score.ts` | reconcile이 V1 컬럼만 갱신했던 시기에 stale된 `ecosystem_score_v2` 재계산 (idempotent) |
 | `scripts/repair-v2-cumulative.ts` | 같은 시기에 stale된 `all_time_*` 누적 컬럼 재계산 (idempotent, 부분적) |
 | `repair_cumulative_anchors.sql` (2026-05-04 ad-hoc) | `all_time_*` 전체 ledger를 running SUM으로 재구축. 615,737 rows fix. |
+| `scripts/backfill-referral-bonus-day.ts` (2026-05-18 신규) | snapshot은 정상이나 daily-referral-bonus 누락된 날짜를 독립적으로 재실행. `--date YYYY-MM-DD`. fetchWithOffload로 wallet-mappings 조회. |
+| `scripts/repair-referral-aggregate-bug.ts` (2026-05-18 신규) | 5/11~17 referral aggregate ON CONFLICT silent dedup으로 부분 적립된 referrer-day pair를 `ref-daily-l1-catchup:{referrerId}:{date}` suffix row로 복구. `--date --dry-run` 옵션. |
 | `scripts/repair-snapshots.ts` | (legacy V1) 2026-04-01 ~ 04-05 활성화 캐시 outage 시기 V1 multiplier=0 복구 |
 | `scripts/restore-alliance-penalty*.sql` | (legacy V1) 알리언스 penalty 시대 인시던트 복구 |
 
@@ -480,6 +482,35 @@ allTime_live
 
 **미해결 anomaly (별도 추적)**:
 - 정각(:00) 503 burst의 진짜 트리거는 `check-fullnode-memory.sh` watchdog일 가능성. Fix 2로 14k getStakes 메모리 burst가 약해지면 자정 burst도 사라질 것. 다음 자정(00:00 UTC = KST 09:00) 측정이 결정적
+
+### 2026-05-17 DDB ↔ PostgreSQL ban 비동기화 재발
+
+**증상**: 사용자가 alliance health 0% / mission 입력 안 됨을 보고. UserProfiles(DynamoDB)에는 `banned=false`이지만 PostgreSQL `activity_points.flagged=true` + `banned_users` row 존재. health-update가 flagged row를 제외해 health 가 점진적 decay.
+
+**Root cause**: 2026-05-07 false-positive PG-only ban (UserProfiles 동기 없이 `ban-users.ts`가 PG 측에만 row 작성)이 누적되어 silent degrade. ban 진단 시 항상 양쪽을 봐야 했으나 운영 매뉴얼은 DDB만 강조.
+
+**복구**: 229 rows unflag + banned_users 해제. 향후 ban 진단 체크리스트에 `SELECT * FROM banned_users WHERE identity_id=...` 강제 (project_2026_05_17_ddb_pg_ban_async_recurrence.md).
+
+> **Why this keeps coming back**: ban 작업이 2개 storage layer(DDB UserProfiles + PG banned_users + PG activity_points.flagged)에 걸쳐있고, 어느 쪽 한 곳만 갱신하면 silent inconsistency가 health/leaderboard로 새어나옴. 단일 트랜잭션 보장이 불가능한 cross-store 구조에서 매뉴얼 체크리스트로 보완하는 것이 현재 차선.
+
+### 2026-05-18 Referral / Snapshot lockout (P0)
+
+**증상**: 사용자 sunominq가 referee 활성화 후 referrer bonus 0건 보고. 조사 결과 system-wide referral-bonus가 며칠간 0건이었음.
+
+**Root cause (이중 결함)**:
+1. **5/17 snapshot fail-safe lockout**: 10명의 신규 NFT holder가 mid-day에 activate되어 health-update가 그날 unlock 상태였음에도 takeDailySnapshot이 fail-safe로 abort 후 `lastSnapshotDate`를 영구 set. daily-referral-bonus가 snapshot dependency로 인해 영구 block.
+2. **`REFERRAL_REWARD_ENABLED=false`** 환경변수가 따로 발견됨. true로 토글 안 됨.
+
+**복구**:
+- daily-snapshot에 self-heal 로직 추가 (mid-day activation으로 holder count가 증가하면 다음 cycle에서 회복 시도)
+- 환경 flag flip
+- 5/16, 5/17 backfill을 신규 `backfill-referral-bonus-day.ts` 스크립트로 idempotent 재실행
+
+> **Why a brand new "backfill-referral-bonus-day" script**: 기존 backfill 스크립트들은 snapshot 자체를 재계산하는데, 이번 케이스는 snapshot은 정상이나 referral batch만 누락이었음. snapshot을 건드리면 단조 증가 invariant 위반 위험. snapshot-readonly + referral-write-only 분리가 더 안전 (project_2026_05_18_referral_snapshot_lockout.md, feedback_no_speculation_drift.md).
+
+> **Why a "repair-referral-aggregate-bug.ts"**: 5/11 daily-referral-bonus 도입 시 `tx_digest = ref-daily-l1:{referrerId}:{date}` 형식이었는데 referee가 여러 명일 때 같은 unique-key tuple로 INSERT가 들어가 ON CONFLICT DO NOTHING이 silent dedup. 첫 referee만 살고 나머지 무시. `ref-daily-l1-catchup:{referrerId}:{date}` suffix로 catchup row를 분리 작성하는 repair 스크립트 추가 (feedback_unique_conflict_silent_dedup.md).
+
+---
 
 - **Monotonic-increase watermark**: 사용자별 historical max allTime을 별도 테이블에 유지하고 라이브 응답이 그보다 작아지지 않도록 floor 적용 (deploy 시 단발성 정상화 충격 흡수용).
 - **snapshot 컬럼 명 통일**: V1 컬럼이 archival-only가 된 만큼, 새 컬럼명(`multiplier`, `ecosystem_score`)으로 V3 데이터를 재정의하는 마이그레이션을 검토. 단, 라이브 데이터 마이그레이션이라 별도 sprint 필요.

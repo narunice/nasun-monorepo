@@ -1,13 +1,15 @@
 # Nasun Bug Report & Feedback System Technical Specification
 
 **상태**: 운영 중 (Production)
-**최근 업데이트**: 2026-05-11
+**최근 업데이트**: 2026-05-18
 **핵심 경로**:
-- Frontend Submission: `apps/nasun-website/frontend/src/sections/myAccount/BugReportsCard.tsx`
+- Frontend Submission (Nasun): `apps/nasun-website/frontend/src/sections/myAccount/BugReportsCard.tsx`
+- Frontend Submission (Pado): chat-server 직접 호출 (`/api/pado/idea-submit`)
 - Admin UI: `apps/nasun-website/frontend/src/features/admin/pages/BugReportAdmin.tsx`
-- Backend Lambda (User): `apps/nasun-website/cdk/lambda-src/bug-report/`
-- Backend Lambda (Admin): `apps/nasun-website/cdk/lambda-src/bug-report-admin/`
-- Reward API: `apps/network-explorer/api-server/src/routes/points.ts`
+- Backend Lambda (User): `apps/nasun-website/cdk/lambda-src/bug-report/src/index.ts` (+ `creator-posts.ts` dual submission)
+- Backend Lambda (Admin): `apps/nasun-website/cdk/lambda-src/bug-report-admin/src/index.ts` (+ `backfill-pending.ts`, `creator-posts-admin.ts`)
+- Pado feedback shortcut: `apps/nasun-website/chat-server/src/pado-idea-api.ts` (Lambda 없이 DynamoDB 직접 write)
+- Reward API: `apps/network-explorer/api-server/src/routes/points.ts` (`POST /api/v1/points/bug-report-reward`)
 
 ---
 
@@ -73,3 +75,29 @@
 ## 4. 프론트엔드 구현 특징
 - **Screenshot Support**: `react-dropzone`을 사용하여 드래그 앤 드롭으로 스크린샷을 첨부하며, Lambda가 생성한 Pre-signed URL을 통해 안전하게 S3에 업로드합니다.
 - **Real-time Status**: 사용자는 본인의 계정 페이지에서 제출한 리포트의 처리 상태와 획득한 포인트를 실시간으로 확인할 수 있습니다.
+
+---
+
+## 5. Pado Feedback 통합 (chat-server direct write)
+
+Pado 앱의 사용자 피드백/아이디어는 별도 Lambda를 거치지 않고 **chat-server에서 DynamoDB `nasun-bug-reports` 테이블에 직접 write** 합니다 (`apps/nasun-website/chat-server/src/pado-idea-api.ts`).
+
+- 라우트: `POST /api/pado/idea-submit` (WebSocket session token 인증)
+- Origin 강제: `PADO_PREDICT_ORIGINS` 허용 목록 검증 → 모두 `Feedback` 카테고리로 자동 분류 (사용자가 카테고리 선택 불가)
+- 다운스트림: 동일 admin 대시보드 큐 + reward 파이프라인 공유. admin 입장에서 출처(`app=pado`)만 다름
+
+> **Why direct write (Lambda hop 없음)**: Pado 채팅 세션의 WebSocket 연결이 이미 chat-server에 활성 상태이므로 추가 Lambda 호출은 콜드스타트와 cross-service IAM/auth만 늘리고 가치는 없음. chat-server는 같은 DynamoDB 테이블에 쓸 IAM 권한을 이미 가지고 있고, origin 강제로 cross-app 오용 위험도 막혀 있음. 단점은 Pado feedback이 추가 카테고리(Feature Request 등) 선택을 못 한다는 점 — 운영상 Pado 사용자는 자유서술 단일 채널이면 충분하다는 판단.
+> **Why same table for both apps**: 양쪽 모두 admin 큐레이션 + ecosystem-bonus reward 적용이므로 테이블 분리 시 admin이 두 큐를 번갈아 봐야 함. 통합 큐 + `app` 필드 분류가 운영 부담 최소화 (reference_pado_feedback_schema.md).
+
+---
+
+## 6. 운영 invariants (자주 까먹는 것)
+
+- **adminNote 1000자 hard limit**: 초과 시 HTTP 400. bilingual 답장은 ~950자 soft cap으로 설계 (reference_bug_report_admin_note_limit.md).
+- **Status enum 8개 + "rejected" 없음**: `new | investigating | in-progress | fixed | wont-fix | accepted | declined | duplicate`. 노이즈 리포트는 `declined` 사용 (reference_bug_report_admin_statuses.md).
+- **REWARD_TRIGGER_STATUSES = `['fixed', 'accepted']`**: 둘 다 reward를 트리거함. `bonusPoints > 0` 동시 만족 시에만 실제 지급.
+- **declined / wont-fix는 bonusPoints=0**: 1pt도 지급 금지 (feedback_no_points_for_declined_wontfix.md).
+- **포인트 지급 멘트 금지**: "포인트 N점 지급합니다" 같은 문구를 리포트 답장 본문에 쓰지 않는다. 포인트는 별도 시스템이 수치로 처리 (feedback_no_points_mention_in_replies.md).
+- **Pado feedback은 후한 포인트**: 짧으면 3, 중간 구체적이면 4, 길고 full spec이면 5pt (feedback_pado_generous_points.md).
+- **포인트 누락 의심 시 ban 먼저 확인**: 사람 작성 어필 + `banned=true`면 unban 후 "automated bot filtering system flag → unblocked" 답장 (feedback_points_report_ban_check_first.md). PostgreSQL `banned_users` 와 DynamoDB `UserProfiles.banned` 가 비동기화될 수 있으니 양쪽 모두 확인 (project_2026_05_17_ddb_pg_ban_async_recurrence.md).
+- **bug-report 보상 누락 audit cron**: 2026-05-12 audit에서 29pt/5건/5명 silent 누락 발견 후 hourly backfill cron 추가됨 (project_2026_05_12_bug_report_points_audit.md).

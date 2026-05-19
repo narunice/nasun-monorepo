@@ -1,56 +1,71 @@
 # CLAUDE.md (apps/nasun-website)
 
+> Last Updated: 2026-05-18
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
 
 ## 기본 규칙
 
 - 문서로 저장해달라는 프롬프트를 받으면 별도의 주문이 없는 이상 항상 `doc/` 경로에 저장하세요.
 - 변경 이력은 [doc/CHANGELOG.md](doc/CHANGELOG.md) 참조
+- **i18n 폐기**: runtime 다국어는 폐기됨. UI 텍스트는 영어 하드코딩이 원칙. `src/assets/locales/`는 잔존하나 `StaticTranslationProvider`로 빌드타임 정적 lookup만 수행 (key fallback). 다국어 추가 작업 금지.
 
 ---
 
 ## 프로젝트 개요
 
-**NASUN Website (nasun.io)** 는 Web3 프로젝트 "NASUN"의 공식 플랫폼입니다.
+**NASUN Website (nasun.io)** 는 Nasun 에코시스템의 **identity / community / governance / NFT 이벤트 / Uju AI 허브** 입니다. 단순 사이트가 아니라 다른 모든 앱(Pado, Gostop, Network Explorer)이 의존하는 **인증·프로필·소셜·채팅 기반 레이어**.
 
-- **Production**: https://nasun.io
+- **Production**: https://nasun.io (CloudFront `E362CCGDH7WA7C` → prod EC2)
 - **Staging**: https://staging.nasun.io
-- **인프라**: AWS 서버리스 스택 (Lambda, DynamoDB, API Gateway, Step Functions)
-- **아키텍처**: V3 통합 파이프라인 기반
+- **인프라**: AWS 서버리스 (Lambda, DynamoDB, API Gateway, Step Functions, S3) + frontend(Vite/React) + chat-server(Hono/WS, port 3101) 멀티 컴포넌트
 - **위치**: `/home/naru/my_apps/nasun-monorepo/apps/nasun-website`
-- **브랜치**: `main`
+- **서브패키지**: `@nasun/nasun-website` (frontend), `@nasun/nasun-chat-server` (chat-server). 둘 다 같은 디렉토리 내 별도 deploy 사이클
+
+> **Why this is the identity hub (not just a marketing site)**: 부트스트랩 자금 한계 + community-driven fundraising sequence(Vision → Prototype → Community → NFT → VC) 전략상, Nasun 사용자의 single source of truth(identity / linked accounts / NFT health / leaderboard rank / governance vote / agent vault)을 한 곳에 두는 게 비용·트러스트 양면에서 가장 효율적. Pado/Gostop은 nasun-website의 UserProfiles + chat-server identity-resolver에 의존.
 
 ---
 
 ## 주요 기능
 
 ### 1. Community Leaderboard (V3)
-- 관리자 큐레이션 기반 커뮤니티 참여 순위 시스템
-- 시즌 기반 독립 리더보드
-- Top Climbers Spotlight, Rank Change Indicators
-- 라우트: `/wave1/leaderboard`
+- 관리자 큐레이션 기반 커뮤니티 참여 순위
+- 시즌 기반 독립 리더보드, Top Climbers Spotlight, Rank Change Indicators
+- 라우트: `/community/creators-leaderboard` (구 `/wave1/leaderboard`는 redirect)
 
 ### 2. 다중 인증 시스템
 - **Google OAuth 2.0** - Cognito Federated Identity
-- **Twitter OAuth 2.0** - Developer Identity
-- **MetaMask Web3** - Developer Identity
+- **Twitter OAuth 2.0** - Developer Identity (현재는 my-account 별도 등록 전용. 레거시 로그인 흐름은 폐기, project_twitter_oauth_legacy.md)
+- **MetaMask Web3** - Developer Identity (현재 실질 활용은 Genesis Pass NFT ownership 확인뿐. leaderboard/score/points 무관, reference_evm_link_scope.md)
 - **Telegram** - Login Widget + Channel Membership Verification
+- **Nasun 지갑 로그인** (primary)
+- **Solana / SUI 추가 지갑 링킹** (2026-05 신규) — 외부 DeFi 포지션(Drift, Hyperliquid, Uniswap V3, Aave) 표시용. 읽기 전용 공시
 
 ### 3. 계정 연결 (Account Linking)
-- 여러 인증 방식을 하나의 계정으로 통합
-- 양방향 연결 (Primary ↔ Secondary)
-- Telegram 채널 멤버십 검증 (Connect/Disconnect)
+- 여러 인증 방식 + 외부 지갑(EVM/Solana/SUI)을 하나의 계정으로 통합
+- 최소 1개의 인증 방법 유지 필요
+- Telegram 채널 멤버십 검증 (Connect/Disconnect, 신호 토큰 GSI `telegramUserId-index` 활용)
 
 ### 4. Governance
-- Proposal 생성 및 투표
-- VotingPower Certificate (Ed25519 서명)
+- Proposal 생성 + 투표 + VotingPower Certificate (Ed25519 서명)
 - Sponsored Transaction (Poll 유형)
+- 라우트: `/community/governance`
 
 ### 5. Battalion NFT Event
 - Wave 1 Battalion NFT Free Mint Allowlist 등록 이벤트
 - 라우트: `/wave1/battalion-nft`
-- X (Twitter) 연동 태스크 검증 (Follow, Like, Retweet)
-- Allowlist 등록/철회 + 관리자 대시보드
+- X 연동 태스크 검증 (Follow, Like, Retweet)
+- 3-tier verification 아키텍처 (아래 별도 절)
+
+### 6. Uju AI Tab (`/my-account/*`)
+- Nasun AI agent(=Baram의 후신)의 사용자 노출 면. Agent 생성, 설정, 활동, 미션, dashboard, chat, profile, apps registry, agent vault
+- 실제 agent 실행은 별도 앱 `apps/nasun-ai-runtime/`이 담당. 본 앱은 UI + chat-server orchestration만
+- 향후 `apps/uju/`로 1급 앱 분리 예정 (project_uju_independent_app.md). 현재는 nasun-website 섹션
+- v1은 **TEE 없이 일반 LLM** 으로 운영. TEE/Nitro Enclave는 장기 로드맵 (project_baram_no_tee_v1.md)
+- 외부 narrative/UI에서 "Baram" 금지, "Nasun AI"로 통일 (feedback_no_baram_branding.md). "bot" 대신 "AI agent" (feedback_agent_not_bot.md)
+
+### 7. Genesis Pass / NFT Event 잔여
+- Genesis Pass Drop은 영구 종료. admin 페이지는 read-only로 축소 예정 (project_genesis_pass_decommission.md). register/check Lambda는 my-account/link-account 의존으로 유지
+- April Airdrop 인프라는 2026-04-25 디커미션 (project_airdrop_decommission.md)
 
 ---
 
@@ -276,6 +291,73 @@ Response: { "identityId": "...", "token": "..." }
 
 ---
 
+## chat-server (apps/nasun-website/chat-server)
+
+같은 앱 디렉토리 하위에 별도 서브패키지(`@nasun/nasun-chat-server`)로 존재. **nasun + pado + (필요 시) gostop 공용** unified chat server. port 3101. systemd 또는 pm2로 prod EC2(43.200.67.52) 단일 인스턴스 운영. staging은 의도적 off (project_staging_chat_server_off.md).
+
+| 책임 | 모듈 |
+|------|------|
+| Entry + Hono mount | `server.ts` |
+| 메시지/룸 | `rooms.ts`, `store.ts` (SQLite WAL) |
+| 인증/봇 차단 | `auth.ts`, `banned-loader.ts`, `admin-loader.ts` |
+| Aggregator (worker_threads 분리) | `aggregator.ts` (main), `aggregator-worker.ts` (worker) |
+| Identity ↔ wallet 매핑 | `identity-resolver.ts` (WALLET_MAPPINGS_URL fetch + S3 presigned offload + gzip 감지) |
+| AI chatbot | `ai-chatbot.ts`, `market-narrator.ts` |
+| Uju AI agent | `agent-orchestrator.ts`, `agent-vault-routes.ts`, `agent-vault-killswitch.ts`, `nasun-ai-config-routes.ts` |
+| Baram (legacy alias) | `baram-session.ts`, `baram-intent-classifier.ts`, `baram-agent-registry.ts`, `baram-message-caps.ts`, `baram-proposals.ts`, `baram-telegram.ts`, `baram-telegram-routes.ts` |
+| Leaderboard API | `leaderboard-api.ts`, `leaderboard-store.ts`, `leaderboard-mapper.ts`, `leaderboard-types.ts` |
+| Pado 전용 | `pado-idea-api.ts`, `/api/pado/*` 라우트 |
+| 가격 | `price-tracker.ts` |
+| Crash 게임 (운영 중단) | `crash/` (CRASH_ENABLED=false 영구 유지, project_crash_game_indefinite_shutdown.md) |
+| Sanitization | `sanitize.ts` |
+| SUI capability | `sui-capability-utils.ts` |
+
+> **Why crash 게임 무기한 중단**: race condition fix가 negative ROI라 우선순위 0. CRASH_ENABLED=false 영구 유지 (.env + ecosystem.cjs). 재개 결정 시 fix 선행 필수 (project_crash_game_indefinite_shutdown.md).
+
+> **Why WALLET_MAPPINGS 빈 캐시는 warn 이상 로깅**: 5/4 W19 weekly DeFi 리더보드가 비어 있던 사고가 새 env var 의존 + S3 gzip 미해제 + 빈 캐시 info 로그 조합으로 silent하게 발생. 외부 fetch로 로드하는 critical 캐시가 0건이면 warn 이상으로 로깅 (feedback_warn_on_empty_critical_cache.md).
+
+## CDK 스택 (apps/nasun-website/cdk/lib)
+
+| 스택 | 역할 |
+|------|------|
+| `common-stack.ts` | VPC, 보안, 기본 |
+| `auth-stack.ts` | Cognito + Google/Twitter/MetaMask/Telegram Lambda |
+| `leaderboard-v3-stack.ts` | 리더보드 V3 DynamoDB/Lambda/API GW |
+| `nft-event-stack.ts` | Battalion NFT 3-tier verification |
+| `nft-snapshot-stack.ts` | NFT 스냅샷 스케줄러 |
+| `governance-stack.ts` | 거버넌스 (제안/투표/VotingPower) |
+| `admin-stack.ts` | 관리자 (whitelist export, user mgmt) |
+| `referral-stack.ts` | 리퍼럴 |
+| `bug-report-stack.ts` | 버그 리포트 수집/관리 (Pado feedback도 같은 테이블 공유) |
+| `ecosystem-stack.ts` | 에코시스템 |
+| `devnet-metrics-stack.ts` | Devnet 메트릭 대시보드 |
+| `genesis-pass-stack.ts` | Genesis Pass (디커미션 진행 중) |
+| `agent-vault-stack.ts` | Uju AI agent 자산 보관 |
+| `monitoring-stack.ts` | CloudWatch + 알림 |
+| `shared-waf-stack.ts` | CloudFront WAF (3-rule, 8000/5min cap, OPTIONS 제외, KP/CU/SY blacklist) |
+
+## Operational Invariants (자주 까먹는 것)
+
+1. **Prod 배포는 항상 pnpm 스크립트**: `pnpm deploy:nasun-website:prod`. raw rsync 금지 (같은 EC2에 pado/gostop 공존, app-id marker로 cross-app 덮어쓰기 차단). 5/3 사고 후 강제 (feedback_no_raw_rsync_to_prod.md).
+2. **빌드 후 env-verify 필수**: `/env-verify nasun-website`로 `dist/assets/*.js`에 `VITE_*` 값이 embed되었는지 검증. 누락/stale 시 재빌드.
+3. **chat-server prod 재시작은 delete+start**: 새 env 키 도입 시 `pm2 startOrRestart` 부족, delete+start 필요 (feedback_pm2_hard_restart_for_new_env.md, feedback_pm2_daemon_env_resolution.md).
+4. **Stateless i18n**: `useStaticTranslation()` hook은 빌드타임에 fix. 새 key는 `src/assets/locales/en/`에 추가하지만 runtime 언어 전환 코드 추가 금지.
+5. **외부 지갑 (MetaMask/Solana) 링킹은 읽기 전용 공시**: 트랜잭션 권한 없음. Genesis Pass NFT 확인 + 외부 DeFi 포지션 표시용. 보안 논의는 이 좁은 범위로 (reference_evm_link_scope.md).
+6. **Twitter OAuth Lambda 빌드는 반드시 npm 사용** (pnpm 금지): `auth-twitter` Lambda는 node_modules 포함 zip이어야 정상 동작.
+7. **버그 리포트 답장 정책**: declined/wont-fix는 0pt, positive-feedback은 accepted/2pt, Pado feedback은 후한 3-5pt. 답장 본문에 포인트 언급 금지. 자세한 규칙은 [docs/bug-report-system.md](docs/bug-report-system.md) §6 운영 invariants.
+
+## 최근 30일 주요 변경 (요약)
+
+- **Solana / SUI 추가 지갑 링킹**: signature-verified linking + Connected Wallets card (외부 DeFi 포지션 표시용)
+- **Drift / Hyperliquid / Uniswap V3 / Aave 포지션 카드**: Uju dashboard에 통합
+- **Uju AI dogfood UX 개선**: trader config 동기화, Quickstart-aware UX, PR1A_SWAP_DISABLED 전파
+- **Nasun AI route 추가**: `/ecosystem/nasun-ai`, Baram 소프트 리다이렉트, VITE_NASUN_AI_ENABLED feature flag
+- **chat-server CORS 확장**: nasun/pado/gostop 스테이징 origin 허용
+- **Turnstile 완전 제거** (2026-05-16): chat + pado + nasun
+- **Per-app 지갑 binding**: external wallet → per-app scope (security boundary)
+
+---
+
 ## 참조 문서
 
 | 문서 | 설명 |
@@ -283,3 +365,8 @@ Response: { "identityId": "...", "token": "..." }
 | [doc/architecture.md](doc/architecture.md) | 기술 스택 + 프로젝트 구조 |
 | [doc/deployment.md](doc/deployment.md) | 개발 워크플로우 + 배포 프로세스 + 트러블슈팅 |
 | [doc/CHANGELOG.md](doc/CHANGELOG.md) | 변경 이력 |
+| [docs/bug-report-system.md](docs/bug-report-system.md) | 버그/피드백 시스템 (Pado feedback 공유 포함) |
+| [doc/ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md](doc/ECOSYSTEM_LEADERBOARD_IMPLEMENTATION.md) | Ecosystem 리더보드 구현 (점수 공식, 주간 정산, 인시던트 학습) |
+| [../../docs/ecosystem-points-system.md](../../docs/ecosystem-points-system.md) | 포인트 시스템 전반 (단조 증가 불변식, 인시던트 학습) |
+| [../../docs/pado-score-leaderboard.md](../../docs/pado-score-leaderboard.md) | Pado Score 리더보드 (chat-server 통합) |
+| [../../docs/infrastructure.md](../../docs/infrastructure.md) | 인프라 (EC2, CloudFront, WAF, chat-server, PM2) |

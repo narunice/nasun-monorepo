@@ -301,14 +301,20 @@ CREATE INDEX idx_wss_unsettled ON weekly_score_snapshots(week_id, settled);
 
 ## 7. 집계 프로세스 (Aggregation)
 
-**파일**: `apps/nasun-website/chat-server/src/aggregator.ts`
+**파일**:
+- `apps/nasun-website/chat-server/src/aggregator.ts` (main thread façade — worker lifecycle 관리, identity/banned cache hot read)
+- `apps/nasun-website/chat-server/src/aggregator-worker.ts` (worker_threads 격리된 실제 집계 — V8 isolation)
 
 ```typescript
-// 60초(기본값) 간격 setInterval
+// 120s(현재) 간격. 이전 60s에서 후퇴
 setInterval(() => {
-  runAggregation();  // runWeeklyScoreAggregation() 포함
+  runAggregation();  // runWeeklyScoreAggregation() 포함, 실제 작업은 worker로 위임
 }, AGGREGATION_INTERVAL_MS);
 ```
+
+> **Why worker_threads로 분리 (2026-05-14)**: 이전 in-process aggregator의 60s 동기 SQLite 풀스캔이 main 이벤트 루프를 22.7s 블로킹 → CloudFront 5xx 15% bursts 유발 (2026-05-13 인시던트). worker_threads 도입으로 main HTTP/WebSocket 응답성이 분리되어 블로킹 0으로 떨어짐. busy_timeout 30s + max_memory_restart 1024M 설정. interval 60s 복귀 시도했으나 cycle 자체가 55~68s로 늘어나 다음 cycle이 겹쳐서 누적, 120s로 후퇴. 근본 해결은 vCPU 증설 또는 prediction-PnL 쿼리 최적화 (project_2026_05_14_aggregator_worker_threads.md). PRAGMA mmap/cache 튜닝은 OOM 트리거로 폐기.
+
+> **Wash-trading filter 위치**: `identity-resolver.ts:buildSameIdentityPairs()` — 같은 identityId가 보유한 여러 wallet 쌍을 미리 계산해 거래량 합산에서 self-trade를 제외. WALLET_MAPPINGS_URL fetch는 1h TTL이며 S3 presigned offload + gzip 자동 감지를 수행 (feedback_internal_api_use_offload_helper.md, project_chat_server_wallet_mappings_incident.md).
 
 집계 단계:
 1. `trade_fills`에서 `timestamp >= weekStart` 필터링 (spot + prediction:* 풀 합산)

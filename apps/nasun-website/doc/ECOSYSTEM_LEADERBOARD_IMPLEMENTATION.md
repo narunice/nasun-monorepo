@@ -1,10 +1,17 @@
 # Nasun Ecosystem Leaderboard - Implementation Reference
 
-Last updated: 2026-05-12 (RPC 503 mitigation: rpc.ts centralized retry+backoff + daily-nft-check RPC_CONCURRENCY 50→20 + fullnode-restart cron 0 */6 → 30 */6 UTC. Reduces staking-reward partial-failure rate; settlement timing unchanged.)
+Last updated: 2026-05-18 (referral/snapshot lockout P0: 5/17 health-update missed 10 mid-day NFT activations → daily-snapshot fail-safe abort + lastSnapshotDate write → daily-referral-bonus permanently blocked + REFERRAL_REWARD_ENABLED=false discovered concurrently. Recovery: daily-snapshot self-heal logic + flag flip + 5/16/5/17 referral backfill via new `backfill-referral-bonus-day.ts` script. Repair tool `repair-referral-aggregate-bug.ts` handles ON CONFLICT silent-dedup for 5/11~17 partial credit.)
+
+Earlier: 2026-05-17 (DDB ↔ PG ban async recurrence: 229 PG-only-flagged rows degraded user health silently; ban diagnostic checklist now requires both stores.)
+
+Earlier: 2026-05-12 (RPC 503 mitigation: rpc.ts centralized retry+backoff + daily-nft-check RPC_CONCURRENCY 50→20 + fullnode-restart cron 0 */6 → 30 */6 UTC. Reduces staking-reward partial-failure rate; settlement timing unchanged.)
 
 Earlier: 2026-05-11 (referrer_bonus_score added: l1-bonus rows × 2/3 contribute to weekly_score; l1-referred-bonus excluded to prevent double-counting referee activity)
 
 Earlier: 2026-04-27 (W17 first settlement complete; social account requirement removed; staking-daily vs staking-reward distinction clarified; week boundary changed Mon 00:10 UTC → 00:00 UTC; settle-ecosystem automated via cron Mon 00:20 UTC)
+
+> **Why l1-bonus × 2/3 (not × 1.0)**: referee의 daily_score × 10%로 referrer에게 지급되는 l1-bonus는 referee의 on-chain base + multiplier가 이미 반영된 값. 이를 다시 weekly_score에 1.0 가중치로 합치면 referee의 활동이 leaderboard에서 사실상 2회 카운트됨. 2/3 scale로 일부 흡수하되 referral 유인을 완전히 죽이지 않는 균형. l1-referred-bonus(referee 측에 주는 1x)는 weekly_score에서 제외 (double-counting 정의상 더 명확).
+> **Why staking-daily 와 staking-reward를 분리**: staking-daily는 tier-based 미션 형태(1~3pt), staking-reward는 emission LOG2 누적치. tier 보너스는 미션 체크리스트 UX의 일부고 emission은 자본량을 반영하는 점수. 한 카테고리로 합치면 (i) UI 미션 표시가 회계 점수와 혼동되고 (ii) emission이 미션 weight를 압도해서 다른 카테고리 mission 선택 인센티브를 죽임. 두 점수가 동일 storage에 들어가도 reader 측에서 분리 처리하는 이유.
 
 ## Overview
 

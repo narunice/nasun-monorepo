@@ -208,57 +208,75 @@ Security expectations:
 
 **nasun-monorepo**는 Nasun 프로젝트들을 통합 관리하는 pnpm 모노레포입니다.
 
-### 현재 상태 (2026-05-14)
+### 현재 상태 (2026-05-18)
 
-| 앱                             | 패키지명                  | 상태      | 설명                                                                  |
-| ------------------------------ | ------------------------- | --------- | --------------------------------------------------------------------- |
-| `apps/nasun-ai-runtime`        | @nasun/nasun-ai-runtime   | Active    | AI agent runtime (heartbeat trader + /wake server, prod pm2)          |
-| `apps/network-explorer`        | @nasun/network-explorer   | 완료      | Nasun Explorer (블록 탐색기)                                          |
-| `apps/nasun-website`           | @nasun/nasun-website      | 완료      | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event, uju AI tab)    |
-| `apps/gensol-website`          | @nasun/gensol-website     | 완료      | GenSol 웹사이트                                                       |
-| `apps/pado`                    | @nasun/pado               | 완료      | Pado 앱 (DEX + Prediction + Lottery + Chat)                           |
-| `apps/baram`                   | (excluded from workspace) | Archived  | 이전 Baram 앱 (frontend → uju/ai/, agent-runner → nasun-ai-runtime)   |
-| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard      | Legacy    | Legacy Leaderboard V2                                                 |
+| 앱                             | 패키지명                  | 상태       | 설명                                                                  |
+| ------------------------------ | ------------------------- | ---------- | --------------------------------------------------------------------- |
+| `apps/nasun-website`           | @nasun/nasun-website      | Active     | 공식 웹사이트 (Leaderboard V3, Governance, NFT Event, Uju AI tab). frontend/ + chat-server/ (port 3101 unified, nasun + pado 공용) |
+| `apps/network-explorer`        | @nasun/network-explorer   | Active     | Nasun Explorer (블록 탐색기 + ecosystem snapshot scanner). 단일 레벨 + api-server/ |
+| `apps/pado`                    | @nasun/pado               | Active     | Pado 앱 (Spot DEX + Prediction + Lottery + Scratch + NumberMatch). frontend/ + bots/ + 4종 keepers |
+| `apps/gostop`                  | @nasun/gostop             | Active     | gostop.app 카지노 게임 허브 (Lottery/Scratch/NumberMatch/Crash/Plinko/Mines/Roulette/Wheel). frontend/ + backend/ + bots/ + cdk/ + contracts-*/ |
+| `apps/nasun-ai-runtime`        | @nasun/nasun-ai-runtime   | Active     | AI agent runtime (heartbeat trader + `/wake` 서버). pm2로 prod 운영. baram/agent-runner의 후신 |
+| `apps/gensol-website`          | @nasun/gensol-website     | Prelaunch  | GenSol 웹사이트 (런칭 전, staging만 배포). prod deploy 명령 없음 |
+| `apps/baram`                   | (workspace 제외)          | Archived   | 이전 Baram 앱. frontend는 uju/ai/, agent-runner는 nasun-ai-runtime으로 이전. **onchain `baram::*` Move 모듈명은 invariant** (rename 시 체인 호환성 깨짐) |
+| `apps/x-leaderboard-v2-legacy` | @nasun/x-leaderboard      | Legacy     | Legacy Leaderboard V2 (참조용)                                        |
+
+> **Why this matrix**: Pado/Gostop은 게임/금융 프로토타입, nasun-website는 community/identity 허브, nasun-ai-runtime은 Baram TEE 출시 전 일반 LLM으로 운영되는 v1 (project_baram_no_tee_v1.md). baram을 archive한 것은 frontend가 uju 섹션으로 흡수되고 agent-runner가 별도 앱으로 분리되었기 때문이지, Move 모듈 자체는 여전히 체인 위에 살아있음.
 
 ## 프로젝트 구조
 
 ```
 nasun-monorepo/
 ├── apps/
+│   ├── nasun-website/             # 공식 웹사이트 (frontend/ + chat-server/ unified, port 3101)
+│   ├── network-explorer/          # Explorer (단일 레벨 + api-server/, node-3 colocation)
+│   ├── pado/                      # Pado (frontend/ + bots/ + 4종 keepers)
+│   ├── gostop/                    # gostop.app 카지노 허브 (frontend/ + backend/ + bots/ + cdk/ + contracts-*/)
 │   ├── nasun-ai-runtime/          # AI agent runtime (heartbeat + /wake; replaces baram/agent-runner)
-│   ├── baram/                     # ARCHIVED (excluded from workspace; reference only — onchain `baram::*` 모듈명 invariant)
-│   ├── network-explorer/          # Explorer (단일 레벨 + api-server/)
-│   ├── nasun-website/             # 공식 웹사이트 (frontend/ + chat-server/ unified)
-│   ├── gensol-website/            # GenSol (frontend/)
-│   ├── pado/                      # Pado (frontend/ + bots/)
+│   ├── gensol-website/            # GenSol (frontend/, prelaunch)
+│   ├── baram/                     # ARCHIVED (workspace 제외; onchain `baram::*` Move 모듈명 invariant)
 │   └── x-leaderboard-v2-legacy/   # Legacy
 ├── packages/
 │   ├── wallet/                    # @nasun/wallet — 지갑 핵심 로직 + hooks
 │   ├── wallet-ui/                 # @nasun/wallet-ui — React UI 컴포넌트
-│   ├── devnet-config/             # @nasun/devnet-config — 컨트랙트 주소 관리
-│   ├── baram-sdk/                 # @nasun/baram-sdk — Baram AER SDK
-│   ├── devnet-tokens/             # Move 스마트계약 (NBTC, NUSDC)
+│   ├── devnet-config/             # @nasun/devnet-config — 컨트랙트 주소 관리 (devnet-ids.json)
+│   ├── baram-sdk/                 # @nasun/baram-sdk — Baram AER SDK (published npm, v0.3.0)
+│   ├── profile-core/              # @nasun/profile-core — 사용자 프로필 핵심 로직
+│   ├── profile-react/             # @nasun/profile-react — 프로필 React hooks (profile-core 의존)
+│   ├── devnet-tokens/             # Move 스마트계약 v1 (NBTC, NUSDC)
+│   ├── devnet-tokens-v2/          # Move v2 (consolidated coin types)
+│   ├── devnet-tokens-v2-neth/     # Move v2-neth (ETH-pegged 변형)
 │   ├── tsconfig/                  # 공유 TypeScript 설정
 │   └── tailwind-config/           # Nasun 브랜드 색상
+├── apps/_shared/                  # 앱간 공유 자산 (예: kill-switch SW template)
+├── scripts/                       # 운영 스크립트 (deploy-*, env-verify, env-duplicate-check, _common.sh)
 ├── docs/                          # 참조 문서 (아래 "참조 문서" 섹션 참고)
 └── CLAUDE.md
 ```
 
+> **Workspace 규칙**: `pnpm-workspace.yaml`은 `apps/*`, `apps/*/{frontend,chat-server,scripts,executor-nitro,agent-runner,api-server,backend,contracts/*}`, `packages/*` 패턴을 흡수하되 **`!apps/baram`** 와 `!apps/pado/deepbookv3`를 제외. baram이 빠진 이유는 archived 코드가 워크스페이스 의존성 그래프를 오염시키지 않게 하기 위함.
+
 ### Chat Server 규약 (2026-04-13 unified)
 
 - `apps/nasun-website/chat-server/` — **nasun + pado 공용** unified chat server (포트 3101)
+- 패키지 이름은 별도: `@nasun/nasun-chat-server` (deploy: `pnpm deploy:nasun-chat-server:prod`)
 - API prefix: `/api/` = 공용, `/api/pado/` = pado 전용 (Score API 등)
 - Additive-first rename pattern: keep → add → cutover → remove
+- Aggregator는 worker_threads로 main 이벤트 루프와 분리 (2026-05-14, 22.7s → 0). interval 120s. cycle 단축 한계는 vCPU/PG 쿼리 최적화 의존
+- **Why unified**: 단일 EC2(43.200.67.52)에 nasun.io + pado.finance 공존 + 리더보드/identity 데이터가 cross-app 공유되므로 두 채팅 서버 분리 시 동일 데이터를 두 곳에서 fetch하는 비효율. project_unified_chat_server.md 참조
+- Legacy pado-chat-server(3100)는 운영 중단됨
 
 ### 앱별 구조 차이
 
-| 앱               | 구조              | package.json 위치                           |
-| ---------------- | ----------------- | ------------------------------------------- |
-| baram            | frontend 서브폴더 | `apps/baram/frontend/package.json`          |
-| network-explorer | 단일 레벨         | `apps/network-explorer/package.json`        |
-| nasun-website    | frontend 서브폴더 | `apps/nasun-website/frontend/package.json`  |
-| gensol-website   | frontend 서브폴더 | `apps/gensol-website/frontend/package.json` |
-| pado             | frontend 서브폴더 | `apps/pado/frontend/package.json`           |
+| 앱               | 구조                        | package.json 위치                           |
+| ---------------- | --------------------------- | ------------------------------------------- |
+| baram            | frontend 서브폴더 (archived) | `apps/baram/frontend/package.json`          |
+| network-explorer | 단일 레벨 + api-server/     | `apps/network-explorer/package.json`        |
+| nasun-website    | frontend/ + chat-server/    | `apps/nasun-website/frontend/package.json`  |
+| gensol-website   | frontend 서브폴더           | `apps/gensol-website/frontend/package.json` |
+| pado             | frontend/ + bots/           | `apps/pado/frontend/package.json`           |
+| gostop           | frontend/ + backend/ + bots/ + cdk/ + contracts-*/ | `apps/gostop/frontend/package.json` (`@nasun/gostop`) + `apps/gostop/backend/package.json` (`@nasun/gostop-backend`) |
+| nasun-ai-runtime | 단일 레벨                   | `apps/nasun-ai-runtime/package.json`        |
 
 ## 개발 명령어
 
@@ -267,21 +285,48 @@ nasun-monorepo/
 pnpm install
 
 # 개발 서버 (개별)
-pnpm dev:network-explorer    # 포트 5175
 pnpm dev:nasun-website       # 포트 5174
+pnpm dev:network-explorer    # 포트 5175
 pnpm dev:gensol-website      # 포트 5173
 pnpm dev:pado                # 포트 5176
-pnpm dev:pado:with-bot       # 포트 5176 + LP Bot + Chat Server
+pnpm dev:pado:with-bot       # 포트 5176 + LP Bot + Price Updater + TP/SL Keeper
+pnpm dev:gostop              # 포트 5178
 
 # 전체 빌드
 pnpm build
 
 # 특정 앱 빌드
-pnpm build:network-explorer
 pnpm build:nasun-website
+pnpm build:network-explorer
 pnpm build:gensol-website
 pnpm build:pado
+pnpm build:gostop
+
+# 프로덕션 배포 (raw rsync 금지, 항상 pnpm 사용)
+pnpm deploy:nasun-website:prod          # nasun.io
+pnpm deploy:network-explorer:prod       # explorer.nasun.io
+pnpm deploy:pado:prod                   # pado.finance
+pnpm deploy:pado:bots:prod              # pado bots (price-updater/tpsl/lottery/prediction keepers)
+pnpm deploy:gostop:prod                 # gostop.app (CloudFront us-east-1)
+pnpm deploy:gostop-backend:prod         # gostop-backend (node-3 colocation)
+pnpm deploy:gostop:bots:prod            # gostop bots
+pnpm deploy:nasun-chat-server:prod      # unified chat-server (port 3101)
+pnpm deploy:nasun-ai-runtime:prod       # AI runtime
+
+# Staging
+pnpm deploy:nasun-website:staging
+pnpm deploy:gensol-website:staging      # gensol은 prod 없음
+pnpm deploy:network-explorer:staging
+pnpm deploy:pado:staging
+pnpm deploy:pado:bots:staging
+pnpm deploy:gostop:staging
+
+# CDN 무효화
+pnpm invalidate:nasun-website:cdn
+pnpm invalidate:pado:cdn
 ```
+
+> **Why no raw rsync**: 같은 EC2(43.200.67.52)에 nasun.io와 pado.finance가 공존하므로 source/dest 한 글자 오타로 다른 앱을 덮어쓴 사고가 있었음 (2026-05-03). canonical pnpm 스크립트는 app-id marker(`public/.app-id`)·백업·롤백·헬스체크·CDN 무효화를 한 단계로 묶음.
 
 ## 기술 스택
 
@@ -318,7 +363,10 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 아래 문서는 특정 작업 시 Read tool로 참조:
 
-- [docs/infrastructure.md](docs/infrastructure.md) — 인덱서 인프라, Devnet 노드, 배포, DB 리셋
-- [docs/packages.md](docs/packages.md) — 패키지 API 레퍼런스 (@nasun/wallet, wallet-ui, devnet-config, baram-sdk 등)
+- [docs/infrastructure.md](docs/infrastructure.md) — 인덱서 인프라, EC2/Devnet 노드, 배포, CloudFront/WAF, DB 리셋
+- [docs/packages.md](docs/packages.md) — 패키지 API 레퍼런스 (@nasun/wallet, wallet-ui, devnet-config, baram-sdk, profile-*, devnet-tokens-*)
 - [docs/smart-contracts.md](docs/smart-contracts.md) — Move CLI, 컨트랙트 위치, 배포 상태
 - [docs/security.md](docs/security.md) — 지갑 암호화, Rate Limiting, zkLogin 구현
+- [docs/ecosystem-points-system.md](docs/ecosystem-points-system.md) — 에코시스템 포인트 (단조 증가 불변식, 인시던트 학습, snapshot/aggregation)
+- [docs/pado-score-leaderboard.md](docs/pado-score-leaderboard.md) — Pado Score 리더보드 (chat-server 통합, WALLET_MAPPINGS 의존성)
+- 앱별 CLAUDE.md: [nasun-website](apps/nasun-website/CLAUDE.md), [network-explorer](apps/network-explorer/CLAUDE.md), [pado](apps/pado/CLAUDE.md), [gostop](apps/gostop/CLAUDE.md), [nasun-ai-runtime](apps/nasun-ai-runtime/CLAUDE.md)

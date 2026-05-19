@@ -96,7 +96,7 @@ const baramRegistry = DEVNET_IDS.baram.baramRegistry;
 
 ## @nasun/baram-sdk
 
-Baram AER 분석 및 조회를 위한 Node.js SDK (v0.1.0).
+Baram AER(AI Execution Report) 분석 및 조회를 위한 Node.js SDK. **유일하게 npm published 패키지** (v0.3.0, MIT). 다른 모든 워크스페이스 패키지는 `private: true`.
 
 **주요 기능:**
 
@@ -121,6 +121,53 @@ const analytics = await client.getAERAnalytics({ period: '7d' });
 ```
 
 **빌드:** ESM/CJS dual build via tsup.
+
+---
+
+## @nasun/profile-core
+
+사용자 프로필(identity, X/Telegram/Google 연결, NFT health, wallet linkage 등) 핵심 로직. 프레임워크 비의존(순수 TS).
+
+**주요 영역:**
+
+- Profile fetch/normalize (DynamoDB `UserProfiles` 기반)
+- Identity resolution (identityId ↔ walletAddress ↔ social handle)
+- Linked accounts (X / Google / Telegram / MetaMask)
+- NFT ownership 조회 (Genesis Pass 등)
+
+**빌드:** `dist/index.js` 번들. 다른 패키지(`@nasun/profile-react`)와 앱(`apps/nasun-website`, `apps/gostop`)이 의존.
+
+> **Why a separate package**: chat-server, frontend, scripts가 모두 동일한 identity 모델을 공유해야 하지만 React를 안 쓰는 환경(chat-server는 Hono, scripts는 Node CLI)도 있어서 React 의존성을 분리. EVM link 영향 범위는 매우 좁다 — `linkedAccounts.metamask`는 leaderboard/score/points와 무관하며 현재 실질 활용은 Genesis Pass NFT ownership 확인 뿐 (reference_evm_link_scope.md). 함부로 범위를 넓히지 말 것.
+
+---
+
+## @nasun/profile-react
+
+`@nasun/profile-react` — `@nasun/profile-core` 위에 얹은 React hooks 레이어. Zustand로 client-side 캐싱.
+
+**주요 exports:**
+
+- `useProfile()` - 현재 사용자 프로필 + 로딩 상태
+- `useLinkedAccounts()` - 연결된 소셜 계정 목록
+- `ProfileProvider` - context 주입 (앱 root에 한 번)
+
+**사용처:** `apps/nasun-website/frontend`, `apps/gostop/frontend`, 향후 `apps/uju/`.
+
+---
+
+## devnet-tokens / devnet-tokens-v2 / devnet-tokens-v2-neth
+
+Move 스마트컨트랙트 패키지들 (TypeScript 패키지 아님, `Move.toml` + `sources/`).
+
+| 패키지 | 용도 |
+|--------|------|
+| `devnet-tokens` | v1. NBTC, NUSDC 초기 토큰 (published-at: `0x1c9357...362e7`) |
+| `devnet-tokens-v2` | v2. coin type 통합/정리 후 재배포 (TOKEN_CONSOLIDATION_PLAN.md) |
+| `devnet-tokens-v2-neth` | v2의 ETH-pegged 변형 (NETH) |
+
+배포 주소는 `packages/devnet-config/devnet-ids.json`에서 중앙 관리. Devnet 리셋 시 `pnpm devnet:sync`로 동기화.
+
+> **Why three versions**: v1은 초기 prototype 토큰 구조. v2는 거래쌍 단순화 위해 coin type을 한 곳에서 통합. v2-neth는 Pado의 ETH 마켓 도입 시 별도 NETH가 필요해 추가. v1을 삭제하지 않은 이유는 이미 배포된 컨트랙트가 v1 published-at을 참조하기 때문 — Move 모듈명/published-at은 사실상 invariant.
 
 ---
 
