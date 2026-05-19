@@ -27,6 +27,7 @@
  *   Total ≈ 100-150ms wall clock @ node-3 colocation.
  */
 
+import { createHash } from 'node:crypto';
 import { reader } from '../../db/client.js';
 import { bankrollPnl, type DataQuality } from './bankroll-pnl.js';
 
@@ -52,6 +53,23 @@ export interface RiskWindowPnl {
   net_pnl_raw: string;
   /** Per-call data_quality (chain + reconciler health). */
   data_quality: DataQuality;
+}
+
+export interface TopLpEntry {
+  /** 1..5 */
+  rank: number;
+  /** Display address with middle bytes elided. Never the raw address. */
+  address_masked: string;
+  /**
+   * SHA-256(wallet_lowercase) first 16 hex chars. Lets the frontend match
+   * "is this me?" without ever transmitting raw addresses through the public
+   * payload. The viewer's own wallet is in their JWT, never in this list.
+   */
+  address_hash: string;
+  /** Net shares = liquidity_provided cumulative - liquidity_redeemed cumulative. BigInt string. */
+  shares: string;
+  /** shares × 10_000 / total_positive_shares. Basis points. */
+  share_pct_bps: number;
 }
 
 export interface RiskMetricsResult {
@@ -97,6 +115,12 @@ export interface RiskMetricsResult {
   daily_pnl_volatility_30d_raw: string;
   /** Max consecutive days where bankroll_daily_pnl.net_pnl_raw < 0. */
   longest_house_losing_streak_days: number;
+  /**
+   * Top 5 LP positions by net shares, masked. Always public — N7 compliance
+   * means raw addresses never appear here. Authenticated viewers learn their
+   * own rank via /api/gostop/me/lp/position. Order is rank ASC.
+   */
+  top_lp_5: TopLpEntry[];
   /** Aggregate data quality: worst of bankrollPnl + matview age. */
   data_quality: DataQuality;
   /** Matview freshness debug. */
@@ -153,6 +177,92 @@ async function pendingCommitments(): Promise<bigint> {
       AND game_id BETWEEN 2 AND 6
   `;
   return BigInt(rows[0]?.exposure ?? '0');
+}
+
+/** Sui address pretty-print: 0xabcd…1234 (6 prefix + 4 suffix). */
+export function maskAddress(addr: string): string {
+  if (typeof addr !== 'string' || addr.length < 12) return '0x…';
+  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
+}
+
+/** Stable 16-hex-char digest of a wallet for client-side self-match. */
+export function walletHash(addr: string): string {
+  return createHash('sha256').update(addr.toLowerCase()).digest('hex').slice(0, 16);
+}
+
+interface TopLpRow {
+  actor: string;
+  net_shares: string;
+}
+
+/**
+ * Top-5 LP positions by net shares.
+ *
+ * Aggregates `liquidity_provided` minus `liquidity_redeemed` shares per actor
+ * over the full `bankroll_event` history. Filters positive net only (zero or
+ * negative shouldn't happen given chain invariants, but defensive). Returns
+ * up to 5 entries with masked addresses + hash for client-side self-match.
+ *
+ * Total denominator for share_pct uses the sum of positive net shares across
+ * all actors (NOT chain total_shares) so percentages always sum to ≤ 100%.
+ * Chain total_shares may differ slightly during indexer catch-up windows;
+ * within-query consistency is more important than chain-alignment here.
+ */
+async function topLp5(): Promise<TopLpEntry[]> {
+  const sql = reader();
+  const rows = await sql<TopLpRow[]>`
+    WITH per_actor AS (
+      SELECT actor,
+             COALESCE(SUM(CASE WHEN event_type='liquidity_provided' THEN shares ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN event_type='liquidity_redeemed' THEN shares ELSE 0 END), 0)
+             AS net_shares
+      FROM gostop.bankroll_event
+      WHERE actor IS NOT NULL
+        AND event_type IN ('liquidity_provided','liquidity_redeemed')
+      GROUP BY actor
+    ),
+    positive AS (
+      SELECT actor, net_shares FROM per_actor WHERE net_shares > 0
+    ),
+    totals AS (
+      SELECT COALESCE(SUM(net_shares), 0) AS total_shares FROM positive
+    )
+    SELECT positive.actor,
+           positive.net_shares::text AS net_shares
+    FROM positive
+    ORDER BY positive.net_shares DESC
+    LIMIT 5
+  `;
+  // Recompute the denominator client-side to keep the SQL output single-row-per-actor
+  // (avoids window functions complicating the response shape).
+  const totalRows = await sql<{ total: string }[]>`
+    WITH per_actor AS (
+      SELECT actor,
+             COALESCE(SUM(CASE WHEN event_type='liquidity_provided' THEN shares ELSE 0 END), 0)
+             - COALESCE(SUM(CASE WHEN event_type='liquidity_redeemed' THEN shares ELSE 0 END), 0)
+             AS net_shares
+      FROM gostop.bankroll_event
+      WHERE actor IS NOT NULL
+        AND event_type IN ('liquidity_provided','liquidity_redeemed')
+      GROUP BY actor
+    )
+    SELECT COALESCE(SUM(net_shares), 0)::text AS total
+    FROM per_actor
+    WHERE net_shares > 0
+  `;
+  const totalShares = BigInt(totalRows[0]?.total ?? '0');
+
+  return rows.map((r, i) => {
+    const shares = BigInt(r.net_shares);
+    const pctBps = totalShares > 0n ? Number((shares * 10_000n) / totalShares) : 0;
+    return {
+      rank: i + 1,
+      address_masked: maskAddress(r.actor),
+      address_hash: walletHash(r.actor),
+      shares: shares.toString(),
+      share_pct_bps: pctBps,
+    };
+  });
 }
 
 /**
@@ -282,7 +392,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
 
   // Three windows in parallel — each is its own bankrollPnl call (chain RPC
   // + DB CTE). bankrollPnl has no internal cache so parallel is safe.
-  const [pnl24h, pnl7d, pnl30d, cap, exposure, largest, mv] = await Promise.all([
+  const [pnl24h, pnl7d, pnl30d, cap, exposure, largest, mv, topLps] = await Promise.all([
     bankrollPnl({ fromMs: now - PNL_WINDOWS['24h'], toMs: now }),
     bankrollPnl({ fromMs: now - PNL_WINDOWS['7d'],  toMs: now }),
     bankrollPnl({ fromMs: now - PNL_WINDOWS['30d'], toMs: now }),
@@ -290,6 +400,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     pendingCommitments(),
     largestSinglePayout(),
     matviewStats(),
+    topLp5(),
   ]);
 
   // TVL + cumulative LP yield reuse the 7d bankrollPnl chain read.
@@ -347,6 +458,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     max_drawdown_pct_bps: mv.maxDrawdownBps,
     daily_pnl_volatility_30d_raw: mv.volatility30dRaw,
     longest_house_losing_streak_days: mv.longestLosingStreakDays,
+    top_lp_5: topLps,
     data_quality: aggQuality,
     matview_age_ms: mv.ageMs,
     generated_at_ms: now,

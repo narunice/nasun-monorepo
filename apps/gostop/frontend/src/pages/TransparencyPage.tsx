@@ -7,6 +7,7 @@ import { ENABLE_CRASH } from '../lib/gostop-config';
 import { Pagination } from '../features/shared/Pagination';
 import { RiskMetrics } from '../features/transparency/RiskMetrics';
 import { StressIndicators } from '../features/transparency/StressIndicators';
+import { TopLpConcentration } from '../features/transparency/TopLpConcentration';
 
 /**
  * Format a chain `share_price_scaled` integer string into a human pps figure.
@@ -124,6 +125,8 @@ function RiskSection() {
         <h3 className="font-display text-base text-gold-200">Stress indicators</h3>
         <StressIndicators risk={risk} />
       </div>
+
+      <TopLpConcentration risk={risk} />
 
       <p className="text-xs text-neutral-300">
         Snapshot generated {fmtAbsoluteTime(risk.generated_at_ms)}.

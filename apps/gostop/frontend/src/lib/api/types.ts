@@ -230,12 +230,43 @@ export interface RiskMetricsBlock {
   daily_pnl_volatility_30d_raw: string;
   /** Max consecutive days with negative net_pnl. */
   longest_house_losing_streak_days: number;
+  /**
+   * Top 5 LP positions by net shares. Public payload — addresses are
+   * always masked (N7). Authenticated viewers learn their own rank via
+   * /api/gostop/me/lp/position and match against `address_hash`.
+   */
+  top_lp_5: TopLpEntry[];
   /** Worst of bankrollPnl + matview-age qualities. */
   data_quality: DataQuality;
   /** Matview age debug (ms). */
   matview_age_ms: number;
   /** Snapshot timestamp (epoch ms). */
   generated_at_ms: number;
+}
+
+export interface TopLpEntry {
+  /** 1..5 */
+  rank: number;
+  /** Masked display, e.g. "0x1234…5678". Raw addresses never appear in public payloads. */
+  address_masked: string;
+  /** SHA-256(wallet_lowercase) first 16 hex chars. Frontend self-match key. */
+  address_hash: string;
+  /** Net shares as a BigInt-compatible string. */
+  shares: string;
+  /** Share of total positive net shares, in basis points (10_000 = 100%). */
+  share_pct_bps: number;
+}
+
+/**
+ * /api/gostop/me/lp/position — authenticated, never edge-cached. Wallet
+ * comes from JWT, not URL/query.
+ */
+export interface MeLpPosition {
+  wallet: string;
+  net_shares: string;
+  share_pct_bps: number;
+  /** 1..5 when caller is a top-5 LP, null otherwise. */
+  rank_in_top_5: number | null;
 }
 
 export interface TransparencyResponse {

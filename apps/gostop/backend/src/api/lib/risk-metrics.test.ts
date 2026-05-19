@@ -9,7 +9,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { worstQuality, matviewQuality } from './risk-metrics.js';
+import { worstQuality, matviewQuality, maskAddress, walletHash } from './risk-metrics.js';
 
 describe('worstQuality', () => {
   it('returns fresh when both inputs are fresh', () => {
@@ -58,5 +58,39 @@ describe('matviewQuality', () => {
     // unreliable case here represents indexer stalled for > 6h, NOT empty
     // matview at boot. Documented to avoid future regression interpretation.
     expect(matviewQuality(24 * 60 * 60_000)).toBe('unreliable');
+  });
+});
+
+describe('maskAddress (N7 compliance)', () => {
+  it('renders 6-prefix + 4-suffix with an ellipsis', () => {
+    expect(maskAddress('0x1234567890abcdef1234567890abcdef12345678')).toBe('0x1234…5678');
+  });
+
+  it('falls back gracefully on too-short inputs (defensive, should not happen for Sui)', () => {
+    expect(maskAddress('0xabc')).toBe('0x…');
+    expect(maskAddress('')).toBe('0x…');
+  });
+
+  it('handles non-string inputs without throwing', () => {
+    // The Postgres reader sometimes returns NUMERIC fields as strings but
+    // text fields can be null on bad joins. Mask must degrade, not crash.
+    expect(maskAddress(null as unknown as string)).toBe('0x…');
+    expect(maskAddress(undefined as unknown as string)).toBe('0x…');
+  });
+});
+
+describe('walletHash (frontend self-match key)', () => {
+  it('is deterministic and 16 hex chars', () => {
+    const h = walletHash('0xabc');
+    expect(h).toMatch(/^[0-9a-f]{16}$/);
+    expect(walletHash('0xabc')).toBe(h);
+  });
+
+  it('is case-insensitive on the input wallet (Sui addresses are typically lowercase but normalize)', () => {
+    expect(walletHash('0xABC')).toBe(walletHash('0xabc'));
+  });
+
+  it('distinguishes different wallets', () => {
+    expect(walletHash('0xaaa')).not.toBe(walletHash('0xbbb'));
   });
 });
