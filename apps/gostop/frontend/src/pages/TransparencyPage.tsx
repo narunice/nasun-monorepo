@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useTransparency, useLotteryDraws } from '../lib/api/queries';
-import type { BankrollSummary, DataQuality, GameTransparency, LotteryDraw } from '../lib/api/types';
+import type { BankrollSummary, DataQuality, GameTransparency, LotteryDraw, RiskMetricsBlock } from '../lib/api/types';
 import { bpsToPct, fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { ENABLE_CRASH } from '../lib/gostop-config';
 import { Pagination } from '../features/shared/Pagination';
+import { RiskMetrics } from '../features/transparency/RiskMetrics';
+import { StressIndicators } from '../features/transparency/StressIndicators';
 
 /**
  * Format a chain `share_price_scaled` integer string into a human pps figure.
@@ -72,10 +74,66 @@ export default function TransparencyPage() {
         </p>
       </header>
 
+      <RiskSection />
       <BankrollSection />
       <GamesSection />
       <LotterySection />
     </div>
+  );
+}
+
+function RiskSection() {
+  const { data, isLoading } = useTransparency();
+  const risk: RiskMetricsBlock | undefined = data?.risk;
+
+  if (isLoading || !risk) {
+    return (
+      <section className="panel p-5 space-y-4">
+        <header className="space-y-1">
+          <h2 className="font-display text-xl text-gold">Risk Dashboard</h2>
+          <p className="text-sm text-neutral-300">
+            Live protocol risk: pool exposure, drawdown, volatility, and on-chain utilization
+            cap. Treat these as you would the risk page of any DeFi protocol.
+          </p>
+        </header>
+        <div className="animate-pulse space-y-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-14 bg-ink-800 rounded" />
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="panel p-5 space-y-5">
+      <header className="space-y-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h2 className="font-display text-xl text-gold">Risk Dashboard</h2>
+          <DataQualityBadge quality={risk.data_quality} />
+        </div>
+        <p className="text-sm text-neutral-300">
+          Live protocol risk: pool exposure, drawdown, volatility, and on-chain utilization
+          cap. Treat these as you would the risk page of any DeFi protocol.
+        </p>
+      </header>
+
+      <RiskMetrics risk={risk} />
+
+      <div className="space-y-2">
+        <h3 className="font-display text-base text-gold-200">Stress indicators</h3>
+        <StressIndicators risk={risk} />
+      </div>
+
+      <p className="text-xs text-neutral-300">
+        Snapshot generated {fmtAbsoluteTime(risk.generated_at_ms)}.
+        {risk.data_quality === 'lagging' && (
+          <span className="ml-2 text-amber-200">
+            Per-day series catching up — matview age {Math.round(risk.matview_age_ms / 60_000)} min.
+          </span>
+        )}
+      </p>
+    </section>
   );
 }
 

@@ -1,13 +1,14 @@
 /**
  * Materialized view refresh scheduler.
  *
- * Two matviews back the leaderboard / transparency endpoints:
- *   - gostop.player_stats: per-player lifetime aggregates
- *   - gostop.game_daily:   per-game-per-day RTP + volume
+ * Three matviews back the leaderboard / transparency / risk dashboard endpoints:
+ *   - gostop.player_stats:        per-player lifetime aggregates
+ *   - gostop.game_daily:          per-game-per-day RTP + volume
+ *   - gostop.bankroll_daily_pnl:  per-day bankroll net PnL (Risk Dashboard, Tier 1.3)
  *
  * Refresh cadence (env-tunable, conservative defaults):
  *   - Inside the off-peak window (UTC 03:00–04:00 by default): every tick
- *     until both have been refreshed once that day. This catches up after
+ *     until all have been refreshed once that day. This catches up after
  *     downtime cheaply.
  *   - Outside the off-peak window: every MATVIEW_REFRESH_INTERVAL_MIN minutes,
  *     starting after the indexer has been running long enough for the first
@@ -16,19 +17,26 @@
  *     settle-ecosystem cron jobs (00:00–00:30 UTC).
  *
  * Uses REFRESH MATERIALIZED VIEW CONCURRENTLY so readers see a consistent old
- * snapshot during the refresh. The UNIQUE indexes on both matviews satisfy the
+ * snapshot during the refresh. The UNIQUE indexes on each matview satisfy the
  * CONCURRENTLY precondition.
  *
  * Advisory lock guards against duplicate refresh attempts in case two indexer
  * processes briefly overlap (deploy bounce). The lock is *try*-acquired so
  * lock contention does not block the tick.
+ *
+ * W5 reservation: keys 91_003-91_009 reserved for Risk Dashboard matviews.
+ * 91_003 is bankroll_daily_pnl; 91_004-91_009 remain available for future
+ * Tier 1.3+ matviews.
  */
 
 import { env } from '../env.js';
 import { writer } from '../db/client.js';
 
-const LOCK_KEY_PLAYER_STATS = 91_001;
-const LOCK_KEY_GAME_DAILY   = 91_002;
+const LOCK_KEY_PLAYER_STATS       = 91_001;
+const LOCK_KEY_GAME_DAILY         = 91_002;
+const LOCK_KEY_BANKROLL_DAILY_PNL = 91_003;
+
+type MatviewName = 'player_stats' | 'game_daily' | 'bankroll_daily_pnl';
 
 interface RefreshState {
   lastRefreshMs: number;
@@ -38,9 +46,10 @@ interface RefreshState {
 // INTERVAL_MIN rather than on the very first tick. Avoids restart-storm of
 // REFRESH CONCURRENTLY when a crash-loop happens.
 const bootMs = Date.now();
-const state: Record<string, RefreshState> = {
-  player_stats: { lastRefreshMs: bootMs },
-  game_daily:   { lastRefreshMs: bootMs },
+const state: Record<MatviewName, RefreshState> = {
+  player_stats:       { lastRefreshMs: bootMs },
+  game_daily:         { lastRefreshMs: bootMs },
+  bankroll_daily_pnl: { lastRefreshMs: bootMs },
 };
 
 function isOffPeak(now: Date): boolean {
@@ -48,7 +57,7 @@ function isOffPeak(now: Date): boolean {
   return h >= env.matview.offPeakStartHour && h < env.matview.offPeakEndHour;
 }
 
-async function refresh(name: 'player_stats' | 'game_daily', lockKey: number): Promise<boolean> {
+async function refresh(name: MatviewName, lockKey: number): Promise<boolean> {
   const sql = writer();
   // Advisory lock is session-scoped, so it MUST be acquired and released on
   // the same physical connection — otherwise the lock survives on an orphan
@@ -60,10 +69,18 @@ async function refresh(name: 'player_stats' | 'game_daily', lockKey: number): Pr
     if (!got[0]?.ok) return false;
     try {
       const start = Date.now();
-      if (name === 'player_stats') {
-        await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY gostop.player_stats`;
-      } else {
-        await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY gostop.game_daily`;
+      // Switch on matview name to issue the exact REFRESH statement. SQL identifiers
+      // cannot be parameterized, so each branch hard-codes the FQ name.
+      switch (name) {
+        case 'player_stats':
+          await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY gostop.player_stats`;
+          break;
+        case 'game_daily':
+          await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY gostop.game_daily`;
+          break;
+        case 'bankroll_daily_pnl':
+          await conn`REFRESH MATERIALIZED VIEW CONCURRENTLY gostop.bankroll_daily_pnl`;
+          break;
       }
       state[name].lastRefreshMs = Date.now();
       const took = Date.now() - start;
@@ -78,7 +95,7 @@ async function refresh(name: 'player_stats' | 'game_daily', lockKey: number): Pr
 }
 
 /**
- * Call from the indexer tick. Decides whether to refresh either matview based
+ * Call from the indexer tick. Decides whether to refresh any matview based
  * on the cadence policy. Returns true if a refresh ran (for log breadcrumbs).
  */
 export async function maybeRefreshMatviews(): Promise<boolean> {
@@ -87,10 +104,12 @@ export async function maybeRefreshMatviews(): Promise<boolean> {
   const off = isOffPeak(now);
 
   let ran = false;
-  for (const [name, key] of [
-    ['player_stats', LOCK_KEY_PLAYER_STATS],
-    ['game_daily',   LOCK_KEY_GAME_DAILY],
-  ] as const) {
+  const matviews: Array<[MatviewName, number]> = [
+    ['player_stats',       LOCK_KEY_PLAYER_STATS],
+    ['game_daily',         LOCK_KEY_GAME_DAILY],
+    ['bankroll_daily_pnl', LOCK_KEY_BANKROLL_DAILY_PNL],
+  ];
+  for (const [name, key] of matviews) {
     const sinceMs = now.getTime() - state[name].lastRefreshMs;
     const due = off
       ? sinceMs >= 10 * 60_000     // off-peak: tighter 10m floor to refill any gap
@@ -98,7 +117,7 @@ export async function maybeRefreshMatviews(): Promise<boolean> {
 
     if (due) {
       try {
-        const did = await refresh(name as 'player_stats' | 'game_daily', key);
+        const did = await refresh(name, key);
         ran = ran || did;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);

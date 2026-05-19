@@ -12,6 +12,7 @@ import { reader } from '../../db/client.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 import { GAMES, type GameKey } from '../../config/contracts.js';
 import { bankrollPnl, type DataQuality } from '../lib/bankroll-pnl.js';
+import { riskMetrics, type RiskMetricsResult } from '../lib/risk-metrics.js';
 
 const TRANSPARENCY_TTL_SECONDS = 30;
 // Cache-key quantization: window toMs is floored to 30 s so the cache key
@@ -173,7 +174,39 @@ transparencyRoutes.get('/transparency', async (c) => {
     };
   }
 
-  const payload = { games, bankroll, generated_at: Date.now() };
+  // Risk Dashboard (Tier 1.3). Same TTL as the parent block; computed in
+  // parallel with bankrollPnl so total latency tracks the slower of the two.
+  // Failure is non-fatal: degrade `risk.data_quality='unreliable'` instead
+  // of returning a 5xx, mirroring the bankroll fallback above.
+  let risk: RiskMetricsResult;
+  try {
+    risk = await riskMetrics({ asOfMs: toMs });
+  } catch (err) {
+    console.warn(
+      `[transparency] riskMetrics failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    risk = {
+      tvl_raw: '0',
+      pnl: {
+        '24h': { window_ms: 86_400_000,        net_pnl_raw: '0', data_quality: 'unreliable' },
+        '7d':  { window_ms: 7 * 86_400_000,    net_pnl_raw: '0', data_quality: 'unreliable' },
+        '30d': { window_ms: 30 * 86_400_000,   net_pnl_raw: '0', data_quality: 'unreliable' },
+      },
+      active_exposure_raw: '0',
+      utilization_ratio_bps: 0,
+      utilization_cap_bps: null,
+      largest_single_payout_raw: '0',
+      cumulative_lp_distributions_raw: '0',
+      max_drawdown_pct_bps: 0,
+      daily_pnl_volatility_30d_raw: '0',
+      longest_house_losing_streak_days: 0,
+      data_quality: 'unreliable',
+      matview_age_ms: 0,
+      generated_at_ms: toMs,
+    };
+  }
+
+  const payload = { games, bankroll, risk, generated_at: Date.now() };
   const etag = cacheSet(cacheKey, payload, TRANSPARENCY_TTL_SECONDS);
   c.header('ETag', etag);
   c.header('Cache-Control', `public, max-age=${TRANSPARENCY_TTL_SECONDS}`);
