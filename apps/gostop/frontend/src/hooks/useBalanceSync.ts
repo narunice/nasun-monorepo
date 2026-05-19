@@ -12,6 +12,7 @@ import { useActiveAddress } from './useActiveAddress'
 export function useBalanceSync() {
   const address = useActiveAddress()
   const setBalance = useBalanceStore((s) => s.setBalance)
+  const reset = useBalanceStore((s) => s.reset)
 
   const { data: balance, refetch } = useQuery({
     queryKey: ['nusdc-balance', address],
@@ -29,10 +30,16 @@ export function useBalanceSync() {
   })
 
   useEffect(() => {
+    if (!address) {
+      // Logout / no wallet — clear stale balance so consumers don't show
+      // a previous session's number.
+      reset()
+      return
+    }
     if (balance !== undefined) {
       setBalance(balance)
     }
-  }, [balance, setBalance])
+  }, [address, balance, setBalance, reset])
 
   // Return trigger for manual refresh after transactions
   return { refetch }

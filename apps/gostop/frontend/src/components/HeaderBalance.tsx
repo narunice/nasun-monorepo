@@ -1,9 +1,15 @@
 import { useOptimisticBalance } from '../store/useBalanceStore'
+import { useActiveAddress } from '../hooks/useActiveAddress'
 import { formatNusdcFixed } from '../lib/format'
 
 export function HeaderBalance() {
+  const address = useActiveAddress()
   const { balance, isInitialized } = useOptimisticBalance()
 
+  // Hide for logged-out users. Without this guard, a stale balance from a
+  // prior session (store has isInitialized=true but no active wallet) keeps
+  // rendering until the page is reloaded.
+  if (!address) return null
   if (!isInitialized) return null
 
   return (
