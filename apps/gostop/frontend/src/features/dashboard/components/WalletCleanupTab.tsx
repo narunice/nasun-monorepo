@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useActiveAddress } from '../../../hooks/useActiveAddress';
 import { useBurnableTickets } from '../../lottery/useBurnableTickets';
 import { useLotteryActions } from '../../lottery/useLotteryActions';
-import { useToastStore } from '../../../store/useToastStore';
+import { BurnResultModal, type BurnResultDetails } from './BurnResultModal';
 
 /**
  * Wallet cleanup hub. v1 lists losing lottery tickets grouped by round and
@@ -13,12 +13,12 @@ export function WalletCleanupTab() {
   const owner = useActiveAddress();
   const { groups, totalTickets, loading, refresh } = useBurnableTickets(owner);
   const { burnTicketsBulk, isBulkBurning, bulkBurnProgress } = useLotteryActions();
-  const showToast = useToastStore((s) => s.showToast);
   const [selectedRounds, setSelectedRounds] = useState<Set<string>>(new Set());
   // Tracks which action is in flight: a single round id (per-round button)
   // or the sentinel 'all' (bulk Burn-all button). Used to scope the spinner
   // and disabled state to the actual clicked button instead of every button.
   const [activeBurn, setActiveBurn] = useState<string | null>(null);
+  const [resultModal, setResultModal] = useState<BurnResultDetails | null>(null);
 
   const allItems = useMemo(
     () =>
@@ -42,13 +42,8 @@ export function WalletCleanupTab() {
     const total = selectedItems.length;
     setActiveBurn('all');
     try {
-      const { burned, failedChunks } = await burnTicketsBulk(selectedItems);
-      if (burned > 0) {
-        showToast(`Burned ${burned} of ${total} ticket${total === 1 ? '' : 's'}`, 'success');
-      }
-      if (failedChunks > 0) {
-        showToast(`${total - burned} ticket${total - burned === 1 ? '' : 's'} could not be burned — try again`, 'warning');
-      }
+      const { burned, storageRebateSoe, digests } = await burnTicketsBulk(selectedItems);
+      setResultModal({ total, burned, storageRebateSoe, digests });
       setSelectedRounds(new Set());
       refresh();
     } finally {
@@ -64,13 +59,14 @@ export function WalletCleanupTab() {
     const total = items.length;
     setActiveBurn(roundId);
     try {
-      const { burned, failedChunks } = await burnTicketsBulk(items);
-      if (burned > 0) {
-        showToast(`Burned ${burned} of ${total} ticket${total === 1 ? '' : 's'} from round #${group.round.roundNumber}`, 'success');
-      }
-      if (failedChunks > 0) {
-        showToast(`${total - burned} ticket${total - burned === 1 ? '' : 's'} could not be burned — try again`, 'warning');
-      }
+      const { burned, storageRebateSoe, digests } = await burnTicketsBulk(items);
+      setResultModal({
+        total,
+        burned,
+        storageRebateSoe,
+        digests,
+        roundNumber: group.round.roundNumber,
+      });
       refresh();
     } finally {
       setActiveBurn(null);
@@ -86,10 +82,17 @@ export function WalletCleanupTab() {
     });
   };
 
+  // Modal must render alongside every branch so a bulk burn that empties the
+  // groups list still shows its rebate summary before the user dismisses it.
+  const modal = (
+    <BurnResultModal result={resultModal} onClose={() => setResultModal(null)} />
+  );
+
   if (!owner) {
     return (
       <section className="panel p-6">
         <p className="text-sm text-neutral-300">Connect your wallet to manage stored objects.</p>
+        {modal}
       </section>
     );
   }
@@ -98,6 +101,7 @@ export function WalletCleanupTab() {
     return (
       <section className="panel p-6">
         <p className="text-sm text-neutral-300">Scanning your wallet…</p>
+        {modal}
       </section>
     );
   }
@@ -109,6 +113,7 @@ export function WalletCleanupTab() {
         <p className="mt-2 text-sm text-neutral-300">
           Nothing to clean up — every settled lottery ticket in your wallet either won a prize or has already been burned.
         </p>
+        {modal}
       </section>
     );
   }
@@ -188,6 +193,8 @@ export function WalletCleanupTab() {
           );
         })}
       </ul>
+
+      {modal}
     </div>
   );
 }
