@@ -18,6 +18,7 @@ import {
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR } from '../config/referral.js';
 import { STAKING_V2_CUTOFF_DATE, baseWeightFor } from '../config/points.js';
 import { sendTelegramAlert } from '../utils/alert.js';
+import { updateHealthForAllNftHolders } from './health-update.js';
 
 import { DEFAULT_MISSION_IDS as DEFAULT_MISSION_IDS_ARR } from '../config/points.js';
 // Set view of the canonical default mission list. Mutating the source array
@@ -170,8 +171,41 @@ export async function takeDailySnapshot(
     return false;
   }
 
-  // 5. Load health state for V3 multiplier. Fail-safe: bail if any NFT
-  // holder is missing a health row, so we don't lock in a broken snapshot.
+  // 5. Self-heal: ensure a health row exists for every current NFT holder.
+  //
+  // Race condition this closes: `runDailyNftChecks` advances the global
+  // health watermark to `snapshotDate` early in the UTC day, so subsequent
+  // scanLoop ticks skip re-running health-update for that date. Any NFT
+  // activation that lands AFTER health-update ran but BEFORE this snapshot
+  // therefore has no row for `snapshotDate`, even though it sits in the
+  // activations cache used by the fail-safe below. Without this call the
+  // fail-safe pins the snapshot indefinitely (root cause of the 2026-05-17
+  // referral-bonus / snapshot lockout: 10 mid-day activations blocked the
+  // snapshot, which in turn blocked `runDailyReferralBonus` for every
+  // referrer in the system).
+  //
+  // Idempotent: `updateHealthForAllNftHolders`'s upsert is gated by
+  // `last_evaluated_day < EXCLUDED.last_evaluated_day`, so users already
+  // evaluated for `snapshotDate` are no-ops. For genuinely fresh holders
+  // with no prior row, it inserts the correct default (100% — no decay yet
+  // for a same-day activation).
+  try {
+    const heal = await updateHealthForAllNftHolders(activationsCache, snapshotDate);
+    if (heal.updated > 0) {
+      console.warn(
+        `[Snapshot] Self-heal: wrote ${heal.updated} health rows for ${snapshotDate} ` +
+        `(activations after health-update watermark; ${heal.skipped} no-ops).`,
+      );
+    }
+  } catch (err) {
+    // Non-fatal — fall through to the fail-safe below. If self-heal failed
+    // *and* rows are missing, we still want to block the snapshot.
+    console.error('[Snapshot] Self-heal health update error (non-fatal):', (err as Error).message);
+  }
+
+  // 6. Load health state for V3 multiplier. Fail-safe: bail if any NFT
+  // holder is *still* missing a health row after self-heal, so we don't
+  // lock in a broken snapshot.
   const allIdsArr = [...allIds];
   const healthMap = new Map<string, { alliance: number; gp: number }>();
 
@@ -255,7 +289,7 @@ export async function takeDailySnapshot(
     return false;
   }
 
-  // 6. Batch bonus + referral + governance queries (date-filtered: today's delta only).
+  // 7. Batch bonus + referral + governance queries (date-filtered: today's delta only).
   // bonusRows EXCLUDES synthetic rows (maintains the existing per-day column semantics).
   // bonusCumRows INCLUDES synthetic — needed for cumulative math to match LIVE.
   // stakingRows: tier pts from post-cutoff staking-daily (v2).
@@ -346,7 +380,7 @@ export async function takeDailySnapshot(
     stakingMap.set(sr.identity_id as string, sr.staking as number);
   }
 
-  // 6b. Previous cumulative per identity (anchor propagation).
+  // 7b. Previous cumulative per identity (anchor propagation).
   // Uses the latest snapshot row that already has all_time_score filled
   // (bootstrap anchor or prior cumulative-enabled snapshot).
   // Users without a prev cumulative start fresh from 0 today.
@@ -388,7 +422,7 @@ export async function takeDailySnapshot(
     });
   }
 
-  // 7. Calculate scores and rank.
+  // 8. Calculate scores and rank.
   interface SnapshotRow {
     identityId: string;
     baseScore: number;
@@ -496,7 +530,7 @@ export async function takeDailySnapshot(
     }
   }
 
-  // 8. Batch INSERT. Cumulative ledger columns computed in SQL (numeric, exact)
+  // 9. Batch INSERT. Cumulative ledger columns computed in SQL (numeric, exact)
   // so JS float drift can't accumulate across the long anchor chain. all_time_score
   // is the row-level sum of the five components, stored once.
   // Writes to _v2 columns; legacy multiplier/ecosystem_score stay NULL on new rows
