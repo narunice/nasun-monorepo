@@ -67,3 +67,23 @@ export function buildCashout(sessionId: string): Transaction {
   });
   return tx;
 }
+
+/**
+ * Voluntarily forfeit an active mines session. The bet is treated as fully
+ * lost (already collected to bankroll at create_session). This unblocks the
+ * 1-session-per-address invariant so the player can start a new game after
+ * a stuck session (tab close mid-reveal, dropped wallet signature, etc.).
+ */
+export function buildForfeitSession(sessionId: string): Transaction {
+  const tx = new Transaction();
+  tx.setGasBudget(50_000_000);
+  tx.moveCall({
+    target: `${MINES_PACKAGE_ID}::mines::forfeit_session`,
+    arguments: [
+      tx.object(sessionId),
+      tx.object(MINES_REGISTRY_ID),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+  return tx;
+}

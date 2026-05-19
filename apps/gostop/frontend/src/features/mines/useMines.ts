@@ -9,12 +9,13 @@ import {
   buildCreateSession,
   buildRevealCell,
   buildCashout,
+  buildForfeitSession,
 } from './transactions'
 import { useGameTransaction } from '../../hooks/useGameTransaction'
 import { MINES_MIN_BET, MINES_MAX_BET, MINES_MIN_MINES, MINES_MAX_MINES } from '../../lib/gostop-config'
 import { validateBetAmount, validateMinesConfig } from '../../lib/validation/game-rules'
 
-export type MinesPhase = 'idle' | 'creating' | 'cashing_out' | 'busy'
+export type MinesPhase = 'idle' | 'creating' | 'cashing_out' | 'forfeiting' | 'busy'
 
 export interface UseMinesResult {
   walletAddress: string | undefined
@@ -25,6 +26,7 @@ export interface UseMinesResult {
   createSession: (betAmount: bigint, mineCount: number) => Promise<boolean>
   revealCell: (cellIndex: number) => Promise<void>
   cashout: () => Promise<boolean>
+  forfeit: () => Promise<boolean>
   refresh: () => Promise<void>
   error: string | null
   clearError: () => void
@@ -177,6 +179,30 @@ export function useMines(): UseMinesResult {
     return success
   }, [session, executeGameTx])
 
+  const forfeit = useCallback(async (): Promise<boolean> => {
+    if (!session) return false
+    setLocalPhase('forfeiting')
+    setError(null)
+
+    const success = await executeGameTx(
+      async () => buildForfeitSession(session.id),
+      {
+        skipBalanceCheck: true,
+        onSuccess: () => {
+          // Surface the forfeit as a closed-out session so the UI's
+          // finish banner reads "forfeited" rather than lingering as
+          // active. payout=0 mirrors the on-chain SessionFinished event.
+          setLastFinish({ kind: 'exploded', payout: 0n, bet: session.bet })
+          setSession(null)
+        },
+        onError: (err) => setError(humanizeMinesError(err.message)),
+      }
+    )
+
+    setLocalPhase('idle')
+    return success
+  }, [session, executeGameTx])
+
   return {
     walletAddress,
     isWalletConnected,
@@ -186,6 +212,7 @@ export function useMines(): UseMinesResult {
     createSession,
     revealCell,
     cashout,
+    forfeit,
     refresh,
     error,
     clearError: () => setError(null),
