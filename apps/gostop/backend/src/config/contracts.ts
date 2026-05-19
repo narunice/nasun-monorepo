@@ -71,6 +71,15 @@ export function eventType(originalPackageId: string, module: string, name: strin
 export type StreamKey =
   | 'bankroll_pool::GameResult'
   | 'bankroll_pool::BetRefunded'
+  // Tier 1 LP (Sub-Plan B Tier 1.1 Chunk 2). Plan v3 §3.C.
+  // BetCollected/WinnerPaid intentionally NOT streamed — derived from
+  // game_round (game_id IN 2..6) per lp-gap-analysis §5.1 1:1 evidence.
+  | 'bankroll_pool::TreasuryDeposited'
+  | 'bankroll_pool::LiquidityProvided'
+  | 'bankroll_pool::WithdrawRequested'
+  | 'bankroll_pool::LiquidityRedeemed'
+  | 'bankroll_pool::PoolSharesSeeded'
+  | 'bankroll_pool::UtilizationCapUpdated'
   | 'lottery::RoundCreated'
   | 'lottery::TicketPurchased'
   | 'lottery::NumbersDrawn'
@@ -90,8 +99,14 @@ export interface StreamDef {
 }
 
 export const STREAMS: StreamDef[] = [
-  { key: 'bankroll_pool::GameResult',  module: 'bankroll_pool', eventName: 'GameResult',  originalPackageId: BANKROLL_POOL.originalPackageId },
-  { key: 'bankroll_pool::BetRefunded', module: 'bankroll_pool', eventName: 'BetRefunded', originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::GameResult',          module: 'bankroll_pool', eventName: 'GameResult',          originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::BetRefunded',         module: 'bankroll_pool', eventName: 'BetRefunded',         originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::TreasuryDeposited',   module: 'bankroll_pool', eventName: 'TreasuryDeposited',   originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::LiquidityProvided',   module: 'bankroll_pool', eventName: 'LiquidityProvided',   originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::WithdrawRequested',   module: 'bankroll_pool', eventName: 'WithdrawRequested',   originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::LiquidityRedeemed',   module: 'bankroll_pool', eventName: 'LiquidityRedeemed',   originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::PoolSharesSeeded',    module: 'bankroll_pool', eventName: 'PoolSharesSeeded',    originalPackageId: BANKROLL_POOL.originalPackageId },
+  { key: 'bankroll_pool::UtilizationCapUpdated', module: 'bankroll_pool', eventName: 'UtilizationCapUpdated', originalPackageId: BANKROLL_POOL.originalPackageId },
   { key: 'lottery::RoundCreated',      module: 'lottery',       eventName: 'RoundCreated',     originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::TicketPurchased',   module: 'lottery',       eventName: 'TicketPurchased',  originalPackageId: GAMES.lottery.originalPackageId },
   { key: 'lottery::NumbersDrawn',      module: 'lottery',       eventName: 'NumbersDrawn',     originalPackageId: GAMES.lottery.originalPackageId },

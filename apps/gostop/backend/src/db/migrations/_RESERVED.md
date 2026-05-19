@@ -7,7 +7,7 @@ Number selection rule: take the next available integer; do not skip or reuse ret
 
 | #   | Owner / Plan                          | Filename (when materialized)        | Status   | Notes |
 |-----|---------------------------------------|-------------------------------------|----------|-------|
-| 004 | Tier 1 LP Pool (Sub-Plan B / Tier 1.1)| `004_bankroll_event.sql`            | reserved | Unified bankroll event log (bet_collected / winner_paid / bet_refunded / treasury_deposited / liquidity_provided / withdraw_requested / liquidity_redeemed) with running pool_balance + total_shares snapshots. Renamed from `004_lp_history.sql` on 2026-05-18 per Tier 1.0 spike finding §5.2 (single table covers LP history + bankroll PnL SoT). Reserved 2026-05-18. |
+| 004 | Tier 1 LP Pool (Sub-Plan B / Tier 1.1)| `004_bankroll_event.sql`            | materialized | Bankroll event log: bet_refunded / treasury_deposited / liquidity_provided / withdraw_requested / liquidity_redeemed / shares_seeded / cap_updated with running total_shares_after snapshot. Bet/payout sides derived from gostop.game_round JOIN (lp-gap-analysis.md §5.1, plan v3 §3.A — 1:1 byte-equivalence in 5 non-lottery games). pool.balance read from chain at query time (plan v3 §3.F). Embeds BetRefunded cursor reset for historical replay. Status flips to `applied` on prod merge. Materialized 2026-05-18. |
 
 ## Deferred plans (no number assigned)
 

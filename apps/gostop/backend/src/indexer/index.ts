@@ -16,9 +16,18 @@
 
 import type { StreamKey } from '../config/contracts.js';
 import { env } from '../env.js';
-import { closeAll } from '../db/client.js';
+import { closeAll, reader } from '../db/client.js';
 import { readCursor } from '../db/cursor.js';
-import { tickGameResult, tickBetRefunded } from './streams/bankroll-pool.js';
+import {
+  tickGameResult,
+  tickBetRefunded,
+  tickTreasuryDeposited,
+  tickLiquidityProvided,
+  tickWithdrawRequested,
+  tickLiquidityRedeemed,
+  tickPoolSharesSeeded,
+  tickUtilizationCapUpdated,
+} from './streams/bankroll-pool.js';
 import {
   tickLotteryRoundCreated,
   tickLotteryTicketPurchased,
@@ -35,6 +44,7 @@ import {
   tickCrashRoundRefunded,
 } from './streams/crash.js';
 import { maybeRefreshMatviews } from './matview-refresh.js';
+import { reconcileBankrollSnapshots } from './bankroll-reconciler.js';
 
 const POLL_INTERVAL_MS = 1_000;
 
@@ -51,8 +61,14 @@ interface StreamHandler {
 // Ordered by lottery dependency chain + crash auxiliary tail. The reconciler
 // runs after all streams so it sees the freshest state.
 const HANDLERS: StreamHandler[] = [
-  { name: 'GameResult',          stream: 'bankroll_pool::GameResult',  run: tickGameResult },
-  { name: 'BetRefunded',         stream: 'bankroll_pool::BetRefunded', run: tickBetRefunded },
+  { name: 'GameResult',          stream: 'bankroll_pool::GameResult',         run: tickGameResult },
+  { name: 'BetRefunded',         stream: 'bankroll_pool::BetRefunded',        run: tickBetRefunded },
+  { name: 'TreasuryDeposited',   stream: 'bankroll_pool::TreasuryDeposited',  run: tickTreasuryDeposited },
+  { name: 'LiquidityProvided',   stream: 'bankroll_pool::LiquidityProvided',  run: tickLiquidityProvided },
+  { name: 'WithdrawRequested',   stream: 'bankroll_pool::WithdrawRequested',  run: tickWithdrawRequested },
+  { name: 'LiquidityRedeemed',   stream: 'bankroll_pool::LiquidityRedeemed',  run: tickLiquidityRedeemed },
+  { name: 'PoolSharesSeeded',    stream: 'bankroll_pool::PoolSharesSeeded',   run: tickPoolSharesSeeded },
+  { name: 'UtilizationCapUpdated', stream: 'bankroll_pool::UtilizationCapUpdated', run: tickUtilizationCapUpdated },
   { name: 'LotteryRoundCreated', stream: 'lottery::RoundCreated',      run: tickLotteryRoundCreated },
   { name: 'LotteryTicket',       stream: 'lottery::TicketPurchased',   run: tickLotteryTicketPurchased },
   { name: 'LotteryNumbersDrawn', stream: 'lottery::NumbersDrawn',      run: tickLotteryNumbersDrawn },
@@ -92,6 +108,17 @@ async function tick(): Promise<void> {
       console.warn(`[indexer] reconcileLottery failed: ${msg}`);
     }
 
+    // BankrollPool total_shares snapshot fill. Watermark-gated: only acts
+    // once every PnL stream has reported (in-memory MIN). Bounded 1000 rows
+    // per tick across 20 mini-transactions; statement_timeout safe.
+    try {
+      const r = await reconcileBankrollSnapshots();
+      if (r > 0) console.log(`[indexer] reconcileBankrollSnapshots touched=${r}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[indexer] reconcileBankrollSnapshots failed: ${msg}`);
+    }
+
     // Matview refresh. Cadence-aware; advisory-locked so deploy bounces
     // don't double-fire concurrent REFRESH CONCURRENTLY.
     try {
@@ -127,6 +154,18 @@ function installShutdownHandlers(): void {
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
+/**
+ * Boot-time guard for bankroll-reconciler's UPDATE columns. schema-audit
+ * only scans INSERT column lists (db/schema-audit.test.ts:16 scope note),
+ * so a column rename in a future migration would slip through and surface
+ * as a runtime crash later. Fail fast at boot instead.
+ */
+async function assertReconcilerColumns(): Promise<void> {
+  const sql = reader();
+  // Probe with LIMIT 0 so the optimizer skips the table scan.
+  await sql`SELECT total_shares_after FROM gostop.bankroll_event LIMIT 0`;
+}
+
 async function main(): Promise<void> {
   console.log('[indexer] boot', {
     rpc: env.rpc.url,
@@ -134,6 +173,12 @@ async function main(): Promise<void> {
     streams: HANDLERS.map((h) => h.name),
     matviewIntervalMin: env.matview.intervalMin,
   });
+  try {
+    await assertReconcilerColumns();
+  } catch (err) {
+    console.error('[indexer] reconciler column probe failed — migration 004 may be missing', err);
+    throw err;
+  }
   installShutdownHandlers();
 
   while (running) {
