@@ -173,16 +173,19 @@ lpRoutes.get('/apy', async (c) => {
   const tvl = poolFields?.balance ? BigInt(String(poolFields.balance)) : 0n;
   const netPnl = BigInt(pnl.net_pnl);
 
-  // Annualized APY: (net_pnl / tvl) * (365 / 7) * 100. Compute in BigInt
-  // basis points to keep precision, then convert to fixed-point string.
-  // Returns null when tvl = 0 or data_quality is not 'fresh' (we cannot
-  // claim an annualized number while data is stale).
+  // Annualized APY as percent with two-decimal precision:
+  //   annual_fraction = (net_pnl / tvl) * (365 / window_days)
+  //   percent         = annual_fraction * 100
+  //
+  // To keep integer math in bigint until the final cast, compute
+  //   apy_pct_times_100 = (net_pnl * 10_000 * 365) / (tvl * window_days)
+  // then divide by 100 in JS Number space. NUSDC base units cancel between
+  // net_pnl and tvl so the result is unit-free.
   let apyPct: number | null = null;
   if (pnl.data_quality === 'fresh' && tvl > 0n) {
-    // ratio_bps = net_pnl * 10000 / tvl  (NUSDC base units cancel)
-    const ratioBpsScaled = (netPnl * 10_000n * 36_500n) / (tvl * BigInt(APY_WINDOW_DAYS));
-    // ratioBpsScaled is now (apy * 10000) — divide by 100 for percent.
-    apyPct = Number(ratioBpsScaled) / 100;
+    const apyPctTimes100 =
+      (netPnl * 10_000n * 365n) / (tvl * BigInt(APY_WINDOW_DAYS));
+    apyPct = Number(apyPctTimes100) / 100;
   }
 
   const payload = {
