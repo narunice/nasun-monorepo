@@ -11,8 +11,16 @@ import { Hono } from 'hono';
 import { reader } from '../../db/client.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 import { GAMES, type GameKey } from '../../config/contracts.js';
+import { bankrollPnl, type DataQuality } from '../lib/bankroll-pnl.js';
 
 const TRANSPARENCY_TTL_SECONDS = 30;
+// Cache-key quantization: window toMs is floored to 30 s so the cache key
+// rotates exactly when the endpoint TTL expires. Picking 60 s (plan v3 §5.C
+// first draft) instead would have flipped the key mid-TTL and caused a
+// stampede; 30 s aligns the two.
+const WINDOW_QUANTUM_MS = 30_000;
+const PNL_WINDOW_DAYS = 7;
+const PNL_WINDOW_MS = PNL_WINDOW_DAYS * 86_400_000;
 const DRAWS_TTL_SECONDS = 60;
 const DRAWS_DEFAULT_LIMIT = 20;
 const DRAWS_MAX_LIMIT = 100;
@@ -31,12 +39,46 @@ type GameTransparency = {
   rtp_bps: number;          // realized RTP in basis points (10_000 = 100%)
   total_bet_raw: string;    // SUM(bet), bigint string (NUSDC base units)
   total_payout_raw: string; // SUM(payout), bigint string
-  house_pnl_raw: string;    // SUM(bet) - SUM(payout), bigint string
+  // For game_id=1 (lottery): bet/payout flow through lottery's prize_pool,
+  // NOT BankrollPool. The number is still aggregated for consistency but the
+  // UI should rely on the `bankroll` block (game_id 2..6 only) and the
+  // existing lottery_round draws view for lottery-specific PnL.
+  house_pnl_raw: string;
   commit_proof_count: number;
 };
 
+type BankrollSummary = {
+  /** Rolling window length in days (UI label). Matches PNL_WINDOW_DAYS. */
+  window_days: number;
+  /** SUM(bet_amount) for game_round (status='final', game_id 2..6) in window. */
+  bets: string;
+  payouts: string;
+  refunds: string;
+  /** bets - payouts - refunds. Excludes treasury inflow. */
+  net_pnl: string;
+  /** All treasury_deposited events in window. */
+  treasury_deposits: string;
+  /** Subset attributable to lottery (cut + unclaimed sweep, v1 conflated). */
+  lottery_treasury_inflow: string;
+  /** Current share price (raw scaled int; divide by 1e9 for display). */
+  share_price_current_scaled: string;
+  /**
+   * UI contract:
+   *   'fresh'      — render all numbers normally.
+   *   'lagging'    — render numbers with a "data sync delayed" subnote.
+   *   'unreliable' — replace numerics with em-dash + "data unavailable" notice.
+   * See plan v3 §4.D + bankroll-pnl.ts:classifyDataQuality.
+   */
+  data_quality: DataQuality;
+  /** Debug field; UI must drive on data_quality, not raw lag. */
+  cursor_lag_ms: number;
+};
+
 transparencyRoutes.get('/transparency', async (c) => {
-  const cacheKey = `transparency:summary`;
+  // Window is quantized to 30 s so the cache key is stable across the TTL.
+  const toMs = Math.floor(Date.now() / WINDOW_QUANTUM_MS) * WINDOW_QUANTUM_MS;
+  const fromMs = toMs - PNL_WINDOW_MS;
+  const cacheKey = `transparency:summary:${toMs}`;
   const cached = cacheGet<unknown>(cacheKey);
   if (cached) {
     const ifNoneMatch = c.req.header('if-none-match');
@@ -95,7 +137,43 @@ transparencyRoutes.get('/transparency', async (c) => {
   }
   games.sort((a, b) => a.game_id - b.game_id);
 
-  const payload = { games, generated_at: Date.now() };
+  // BankrollPool PnL for the rolling 7d window. Failure here must not break
+  // the per-game block; the v3 contract is "data_quality = 'unreliable'"
+  // when chain or DB is unreachable, not a 5xx.
+  let bankroll: BankrollSummary;
+  try {
+    const r = await bankrollPnl({ fromMs, toMs });
+    bankroll = {
+      window_days: PNL_WINDOW_DAYS,
+      bets: r.bets,
+      payouts: r.payouts,
+      refunds: r.refunds,
+      net_pnl: r.net_pnl,
+      treasury_deposits: r.treasury_deposits,
+      lottery_treasury_inflow: r.lottery_treasury_inflow,
+      share_price_current_scaled: r.share_price_current_scaled,
+      data_quality: r.data_quality,
+      cursor_lag_ms: r.cursor_lag_ms,
+    };
+  } catch (err) {
+    console.warn(
+      `[transparency] bankrollPnl failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
+    bankroll = {
+      window_days: PNL_WINDOW_DAYS,
+      bets: '0',
+      payouts: '0',
+      refunds: '0',
+      net_pnl: '0',
+      treasury_deposits: '0',
+      lottery_treasury_inflow: '0',
+      share_price_current_scaled: '1000000000', // 1.0 pps fallback
+      data_quality: 'unreliable',
+      cursor_lag_ms: 0,
+    };
+  }
+
+  const payload = { games, bankroll, generated_at: Date.now() };
   const etag = cacheSet(cacheKey, payload, TRANSPARENCY_TTL_SECONDS);
   c.header('ETag', etag);
   c.header('Cache-Control', `public, max-age=${TRANSPARENCY_TTL_SECONDS}`);
@@ -190,4 +268,4 @@ transparencyRoutes.get('/lottery/draws', async (c) => {
   return c.json(payload);
 });
 
-export type { GameTransparency };
+export type { GameTransparency, BankrollSummary };
