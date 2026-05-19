@@ -1,6 +1,12 @@
-# CLAUDE.md (apps/gensol-website)
+# CLAUDE.md (apps/gensol-website) — PRELAUNCH
 
+> Last Updated: 2026-05-18 (prelaunch header)
 > 공통 규칙(언어 설정, UI 언어 규칙)은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
+
+> ## ⏳ PRELAUNCH — 활성 개발 최소
+>
+> 런칭 전 상태. 현재 staging 배포만 운영 (`pnpm deploy:gensol-website:staging`). **prod deploy 스크립트 없음**.
+> 본 문서의 운영/배포 절은 staging 환경 기준으로 읽을 것. prod 출시 시점에 본 헤더 제거 + 운영 invariant 추가 필요.
 
 ## Project Overview
 
