@@ -8,7 +8,8 @@ import { useLotteryPage } from "../features/lottery/hooks/useLotteryPage";
 
 // New extractions
 import { LotteryRoundHeader } from "../features/lottery/components/LotteryRoundHeader";
-import { ClaimBanner, ExpiredBanner } from "../features/lottery/components/LotteryBanners";
+import { ClaimBanner, ExpiredBanner, PastRoundCleanupBanner } from "../features/lottery/components/LotteryBanners";
+import { useBurnableTickets } from "../features/lottery/useBurnableTickets";
 import { PickPanel, BuyPanel, QuickBuyPanel } from "../features/lottery/components/LotteryPurchasePanels";
 import { MyTickets, PurchaseConfirmModal } from "../features/lottery/components/LotteryTicketManagement";
 import { PrizeTable } from "../features/lottery/components/LotteryPrizeTable";
@@ -48,6 +49,12 @@ export default function LotteryPage() {
 
   useForceTierDebug("Lottery");
 
+  // Past-round losing tickets the user could clean up. Filter out the current
+  // round so the inline per-row Burn buttons remain the primary UX for it.
+  const { groups: burnableGroups } = useBurnableTickets(walletAddress);
+  const pastRoundGroups = burnableGroups.filter((g) => g.round.id !== round?.id);
+  const pastRoundTicketCount = pastRoundGroups.reduce((s, g) => s + g.tickets.length, 0);
+
   return (
     <div className="space-y-8 min-h-screen">
       <LotteryRoundHeader
@@ -76,6 +83,10 @@ export default function LotteryPage() {
         claimingTicketId={claimingTicketId}
       />
       <ExpiredBanner expired={claimSummary.expired} />
+      <PastRoundCleanupBanner
+        pastRoundTicketCount={pastRoundTicketCount}
+        pastRoundCount={pastRoundGroups.length}
+      />
 
       <section className="grid grid-cols-1 md:grid-cols-[1.3fr_1fr] gap-6">
         <PickPanel

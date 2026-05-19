@@ -156,6 +156,33 @@ export function buildBurnTicket(roundId: string, ticketId: string): Transaction 
 }
 
 /**
+ * Bulk burn losing tickets in a single PTB. Each item targets one
+ * (round, ticket) pair; rounds may repeat (PTB serializes mutations on
+ * `&mut LotteryRound` within the same tx, so multiple burns on the same
+ * round are safe).
+ *
+ * Keep chunk sizes modest (≤ ~50) — gas budget scales linearly with N and
+ * wallet UX degrades on very large PTBs.
+ */
+export function buildBurnTicketBulk(
+  items: ReadonlyArray<{ roundId: string; ticketId: string }>,
+): Transaction {
+  if (items.length === 0) {
+    throw new Error('[Security] No tickets to burn');
+  }
+  const tx = new Transaction();
+  // ~5M per call is generous (burn is cheap — single object delete + event).
+  tx.setGasBudget(Math.max(20_000_000, items.length * 5_000_000));
+  for (const { roundId, ticketId } of items) {
+    tx.moveCall({
+      target: `${LOTTERY_PACKAGE_ID}::lottery::burn_ticket`,
+      arguments: [tx.object(roundId), tx.object(ticketId)],
+    });
+  }
+  return tx;
+}
+
+/**
  * Permissionless: forfeit unclaimed prize balance to the gostop BankrollPool
  * once the 30-day window after draw_time has elapsed. Anyone can call.
  */

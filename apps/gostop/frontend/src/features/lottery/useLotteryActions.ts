@@ -6,6 +6,7 @@ import {
   buildBuyTicket,
   buildBuyTicketBulk,
   buildBurnTicket,
+  buildBurnTicketBulk,
   buildClaimPrize,
 } from './transactions'
 import { autoPickNumbers } from './lottery-utils'
@@ -19,7 +20,10 @@ export interface UseLotteryActionsResult {
   buyTicketBulk: (roundId: string, count: number) => Promise<boolean>
   claimPrize: (roundId: string, ticketId: string) => Promise<boolean>
   burnTicket: (roundId: string, ticketId: string) => Promise<boolean>
+  burnTicketsBulk: (items: ReadonlyArray<{ roundId: string; ticketId: string }>) => Promise<{ burned: number; failedChunks: number }>
   isBuying: boolean
+  isBulkBurning: boolean
+  bulkBurnProgress: { done: number; total: number } | null
   isClaiming: boolean
   claimingTicketId: string | null
   burningTicketId: string | null
@@ -34,6 +38,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const [localPhase, setLocalPhase] = useState<'buying' | 'claiming' | 'idle'>('idle')
   const [claimingTicketId, setClaimingTicketId] = useState<string | null>(null)
   const [burningTicketId, setBurningTicketId] = useState<string | null>(null)
+  const [isBulkBurning, setIsBulkBurning] = useState(false)
+  const [bulkBurnProgress, setBulkBurnProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { executeGameTx, isPending } = useGameTransaction()
 
@@ -128,6 +134,47 @@ export function useLotteryActions(): UseLotteryActionsResult {
     [executeGameTx]
   )
 
+  /**
+   * Bulk burn losing tickets in chunks. Chunk size 50 keeps PTB gas budget
+   * predictable and wallet UX snappy. On chunk failure, accumulates the count
+   * and keeps going (one bad ticket should not strand the rest).
+   */
+  const burnTicketsBulk = useCallback(
+    async (
+      items: ReadonlyArray<{ roundId: string; ticketId: string }>,
+    ): Promise<{ burned: number; failedChunks: number }> => {
+      if (items.length === 0) return { burned: 0, failedChunks: 0 }
+      setError(null)
+      setIsBulkBurning(true)
+      setBulkBurnProgress({ done: 0, total: items.length })
+
+      const CHUNK = 50
+      let burned = 0
+      let failedChunks = 0
+
+      try {
+        for (let i = 0; i < items.length; i += CHUNK) {
+          const chunk = items.slice(i, i + CHUNK)
+          const ok = await executeGameTx(async () => buildBurnTicketBulk(chunk), {
+            skipBalanceCheck: true,
+            humanizeMoveAbort: humanizeLotteryError,
+            // Don't surface chunk-level errors as a banner — we aggregate.
+          })
+          if (ok) burned += chunk.length
+          else failedChunks += 1
+          setBulkBurnProgress({ done: Math.min(i + CHUNK, items.length), total: items.length })
+        }
+      } finally {
+        setIsBulkBurning(false)
+        // Leave the final progress visible for one tick so the caller can read it.
+        setTimeout(() => setBulkBurnProgress(null), 500)
+      }
+
+      return { burned, failedChunks }
+    },
+    [executeGameTx],
+  )
+
   return {
     walletAddress,
     isWalletConnected,
@@ -135,10 +182,13 @@ export function useLotteryActions(): UseLotteryActionsResult {
     buyTicketBulk,
     claimPrize,
     burnTicket,
+    burnTicketsBulk,
     isBuying: isPending && localPhase === 'buying',
     isClaiming: isPending && localPhase === 'claiming',
     claimingTicketId,
     burningTicketId,
+    isBulkBurning,
+    bulkBurnProgress,
     error,
     clearError: () => setError(null),
   }
