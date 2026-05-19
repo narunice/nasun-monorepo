@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2054752976670257307';
+const TWEET_ID = '2055594845969035587';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@0x_nonol @0xaiaiai @4seazons263 @6brother9 @__Jayden007 @Abe_qearo @AdlieI46077 @afrizal_jmb @anhm86178 @Anton4599262075 @ashrai78 @BernadetaD70810 @bliss_rh @BLVCK707 @BossWhatsNew @budie4167 @Cobalt_Duck @Coy2024 @Diamondcryptx @eglebai @elonunmk @Emiola_gangan @emroyd1 @hashafifi @Hwang_Zi1 @hyonggoo93 @I_BlockFive @indah_ye99 @invest_sometime @jaypolaris7 @Jonny_KX @JuniorArchej59 @kija888 @larionewlife @Le290788 @Mihawku154776 @msaqlainfcma @MTown134056 @naro0ck @NFT_AdidaPhat @NguynL615156 @Obidestiny247 @OjoPhilemo17247 @Olakunmi92 @PemburuCuan069 @Putri_dhone @quoccuong0984 @readnrest0 @Realmary_jann @ReopaahScrin @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @Skymoon201095 @sucodautroc @tav_web3 @tensyonado18 @The___rapper @TonBoy187 @TradeTraine @van_hien12243 @VJBillionz1 @VongVuot88444 @zainiyeni @zare_obi
+@0hmybo @0xAzk27 @1Minicio @4seazons263 @__Jayden007 @Abe_qearo @AdeyemoYusupha @AdlieI46077 @Anton4599262075 @baegseungh7061 @BernadetaD70810 @budie4167 @Cobalt_Duck @Daddypresh20 @eglebai @elonunmk @emroyd1 @evrenbaba031900 @goldvcoin @hashafifi @hyonggoo93 @indah_ye99 @Jonny_KX @kija888 @larionewlife @msaqlainfcma @MTown134056 @naro0ck @ngedream @NgocNguyen63053 @OjoPhilemo17247 @only_son_twitte @pedamtac @PemburuCuan069 @Putri_dhone @readnrest0 @ReopaahScrin @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @shu_bomi @skybluenalpha @StoryMofi @sucodautroc @tayanh1993 @The___rapper @tranbao_2610 @VJBillionz1 @web3_eyes @zare_obi
 `;
 
 const BONUS_POINTS = 3;
