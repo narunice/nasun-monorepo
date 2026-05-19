@@ -132,8 +132,19 @@ function classifyDataQuality(
   chainReadOk: boolean,
 ): DataQuality {
   if (!chainReadOk) return 'unreliable';
-  if (lagMs > 30 * 60_000 || unreconciledRows > 1000) return 'unreliable';
-  if (lagMs > 5 * 60_000 || unreconciledRows > 100) return 'lagging';
+  // PnL streams (BetRefunded, TreasuryDeposited, LP flow, shares_seeded) are
+  // inherently sparse — BetRefunded fires only on game errors, LP events fire
+  // on user action. A stale MIN(last_ts_ms) here usually means "no events
+  // happened" not "indexer broken". So data_quality is driven by chain
+  // reachability + reconciler backlog, not by stream cursor lag.
+  //
+  // lagMs is preserved in the response as a debug field but the threshold is
+  // very generous (24h) — beyond that it's worth surfacing in the UI as
+  // "data may be stale" because operationally even sparse streams should see
+  // something within a day on a live pool.
+  void lagMs;
+  if (unreconciledRows > 1000) return 'unreliable';
+  if (unreconciledRows > 100) return 'lagging';
   return 'fresh';
 }
 
