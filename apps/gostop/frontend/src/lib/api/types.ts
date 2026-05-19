@@ -187,9 +187,62 @@ export interface BankrollSummary {
   cursor_lag_ms: number;
 }
 
+/**
+ * Risk Dashboard (Tier 1.3) block. Returned as `risk` on the transparency
+ * endpoint. All raw amounts are NUSDC base units (6 decimals).
+ * See ~/.claude/plans/tier1-chunk3-risk-dashboard.md.
+ */
+export interface RiskWindowPnl {
+  window_ms: number;
+  net_pnl_raw: string;
+  data_quality: DataQuality;
+}
+
+export interface RiskMetricsBlock {
+  /** Pool balance from chain at snapshot time. */
+  tvl_raw: string;
+  /** 24h / 7d / 30d net PnL trio. */
+  pnl: {
+    '24h': RiskWindowPnl;
+    '7d': RiskWindowPnl;
+    '30d': RiskWindowPnl;
+  };
+  /**
+   * "Pending round commitments" — SUM(bet_amount) over open rounds. NOT max
+   * liability; that requires Move v0.0.4 open_exposure. UI label must be
+   * honest about this distinction.
+   */
+  active_exposure_raw: string;
+  /** active_exposure × 10_000 / pool.balance, basis points. */
+  utilization_ratio_bps: number;
+  /**
+   * Latest on-chain utilization cap (basis points). 0 = disabled by admin,
+   * null = no cap-update event ever indexed (pre-v0.0.3 pool).
+   */
+  utilization_cap_bps: number | null;
+  /** MAX(payout) all-time, game_id 2..6. */
+  largest_single_payout_raw: string;
+  /** (pps - 1.0) × total_shares — approximate cumulative LP yield. Signed. */
+  cumulative_lp_distributions_raw: string;
+  /** Worst peak-to-trough drawdown of running cumulative PnL, basis points. */
+  max_drawdown_pct_bps: number;
+  /** STDDEV of last 30 daily net_pnl rows, NUSDC raw. '0' when < 2 days history. */
+  daily_pnl_volatility_30d_raw: string;
+  /** Max consecutive days with negative net_pnl. */
+  longest_house_losing_streak_days: number;
+  /** Worst of bankrollPnl + matview-age qualities. */
+  data_quality: DataQuality;
+  /** Matview age debug (ms). */
+  matview_age_ms: number;
+  /** Snapshot timestamp (epoch ms). */
+  generated_at_ms: number;
+}
+
 export interface TransparencyResponse {
   games: GameTransparency[];
   bankroll: BankrollSummary;
+  /** Tier 1.3 Risk Dashboard block. */
+  risk: RiskMetricsBlock;
   generated_at: number;
 }
 
