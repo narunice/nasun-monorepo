@@ -18,12 +18,12 @@ module.exports = {
       colors: {
         // Luxury dark palette — Vegas high-roller
         ink: {
-          950: '#07070a',
-          900: '#0b0b10',
-          800: '#141420',
-          700: '#1c1c2b',
-          600: '#2a2a3a',
-          500: '#3a3a4c',
+          950: '#0a0a0f',
+          900: '#121219',
+          800: '#1e1e2c',
+          700: '#2a2a3c',
+          600: '#383850',
+          500: '#494962',
         },
         gold: {
           50: '#fdf6e3',
@@ -53,11 +53,11 @@ module.exports = {
         'gold-glow': '0 0 20px -5px rgba(212, 175, 55, 0.4), 0 0 40px -20px rgba(212, 175, 55, 0.3)',
         'gold-glow-lg': '0 0 30px -5px rgba(212, 175, 55, 0.5), 0 0 60px -20px rgba(212, 175, 55, 0.4)',
         'emerald-glow': '0 0 20px -5px rgba(16, 185, 129, 0.4)',
-        'panel': '0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.08) inset',
+        'panel': '0 1px 3px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.14) inset',
       },
       backgroundImage: {
         'gold-gradient': 'linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #b68d22 100%)',
-        'luxury-panel': 'linear-gradient(180deg, rgba(20, 20, 32, 0.9) 0%, rgba(11, 11, 16, 0.95) 100%)',
+        'luxury-panel': 'linear-gradient(180deg, rgba(34, 34, 52, 0.95) 0%, rgba(22, 22, 32, 0.97) 100%)',
       },
       keyframes: {
         'shimmer': {

@@ -21,11 +21,14 @@ export interface ShareIntentButtonsProps {
   shareUrl: string;
   /** Plain text used as the tweet/TG message body. */
   message: string;
+  /** Hide the Copy link button (e.g. inside the round detail modal). */
+  hideCopy?: boolean;
 }
 
 export default function ShareIntentButtons({
   shareUrl,
   message,
+  hideCopy = false,
 }: ShareIntentButtonsProps) {
   const [copied, setCopied] = useState(false);
   const { showToast } = useToast();
@@ -78,16 +81,18 @@ export default function ShareIntentButtons({
         <TelegramIcon />
         <span>Telegram</span>
       </a>
-      <button
-        type="button"
-        onClick={handleCopy}
-        aria-label="Copy round link to clipboard"
-        aria-live="polite"
-        className={buttonClass}
-      >
-        <CopyIcon />
-        <span>{copied ? 'Link copied' : 'Copy link'}</span>
-      </button>
+      {!hideCopy && (
+        <button
+          type="button"
+          onClick={handleCopy}
+          aria-label="Copy round link to clipboard"
+          aria-live="polite"
+          className={buttonClass}
+        >
+          <CopyIcon />
+          <span>{copied ? 'Link copied' : 'Copy link'}</span>
+        </button>
+      )}
     </div>
   );
 }
