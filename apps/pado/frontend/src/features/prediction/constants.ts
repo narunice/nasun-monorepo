@@ -75,6 +75,16 @@ export const MARKET_TYPES: readonly string[] = dedupe([MARKET_TYPE, LEGACY_MARKE
 export const POSITION_TYPES: readonly string[] = dedupe([POSITION_TYPE, LEGACY_POSITION_TYPE]);
 
 // Event type identifiers — also anchored to original package ID.
+//
+// DO NOT use the singular `*_EVENT` constants below for runtime filtering of
+// SuiEvent.type or SuiObjectChange.objectType. They cover v5 only, so any
+// comparison against legacy markets silently drops events. Always use the
+// plural `*_EVENTS` arrays (or `POSITION_TYPES` / `MARKET_TYPES`) defined
+// below; they include both v5 and legacy originalIds. The singulars exist
+// only to compose those arrays and to build moveCall targets for v5-only
+// admin paths. (Lesson from the 2026-05-21 silent-drop incident, where
+// `parseFillsFromEvents` filtered with the singular constant and zeroed out
+// every legacy-market trade's success modal.)
 export const MARKET_CREATED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::MarketCreated`;
 export const ORDER_PLACED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::OrderPlaced`;
 export const ORDER_FILLED_EVENT = `${PREDICTION_ORIGINAL_PACKAGE_ID}::prediction_market::OrderFilled`;
