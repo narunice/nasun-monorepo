@@ -87,6 +87,12 @@ cd apps/pado/frontend && pnpm test:coverage
 7. **Turnstile 영구 제거 (2026-05-16)**: pado 채팅/idea-submission에서 CF Turnstile 완전 제거. 봇 방어는 banned list shadow-ban 단독 (project_chat_turnstile_removed.md).
 8. **Chat-server는 unified**: pado-chat-server(3100) 운영 중단됨. nasun-chat-server(3101)가 nasun + pado 공용 (project_unified_chat_server.md). `/api/pado/*` prefix가 pado 전용 라우트.
 9. **Bot faucet ↔ baseType invariant**: 각 마켓의 `faucetV2Object`는 그 마켓의 `baseType`을 mint하는 `TreasuryCap`을 들고 있어야 한다. 토큰 패키지를 재배포하면 `_PACKAGE` 상수와 그 토큰 전용 faucet object 둘 다 갱신해야 한다. `lib/preflight.ts::verifyMarketFaucet`이 lp-bot/prefund-bot/balance-watchdog 부팅 시 강제. 2026-05-18 NETH 사고 후 도입 — NETH가 11일간 잘못된 패키지의 faucet을 호출해 trading에 쓸 수 없는 타입을 mint해온 게 ask 고갈의 진짜 원인이었음. 자세한 페어링은 `apps/pado/docs/bots.md`의 "Token / Faucet Invariant" 표 참조.
+10. **Prediction v5/legacy dual-package dispatch** (2026-05-20 cutover): prediction_market은 두 패키지가 공존한다. v5 fresh-publish `0x86595464...` (모든 신규 마켓 + admin paths) + legacy v1~v4 `0x9b2361fe...` (만료 전 ~117 in-flight). 코드 분기점:
+    - `packages/devnet-config/devnet-ids.json`: `prediction` (v5 canonical) + `prediction_legacy` (frozen v1~v4) 두 블록.
+    - `@nasun/devnet-config`: `PREDICTION_*` + `PREDICTION_LEGACY_*` + `PREDICTION_ORIGINAL_IDS` + `packageIdForMarketType()` / `adminCapForMarketType()`.
+    - Frontend: `apps/pado/frontend/src/features/prediction/constants.ts`의 `marketPackageRegistry` (fetchMarket이 populate) — builders는 `packageForMarket(marketId)`로 dispatch.
+    - Bots: `.env`에 `PREDICTION_PACKAGE_ID`(v5) + `PREDICTION_PACKAGE_ID_LEGACY`(v1originalId,v4latest) + `PREDICTION_ADMIN_CAP`(v5) + `PREDICTION_ADMIN_CAP_LEGACY` 모두 필요. **신규 키 추가 시 `pm2 restart`로 부족 — `pm2 delete + start` 필수** ([feedback_pm2_hard_restart_for_new_env](../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_pm2_hard_restart_for_new_env.md)).
+    - 자세: [docs/CUTOVER_v5_HANDOFF.md](docs/CUTOVER_v5_HANDOFF.md) "Completion Record" 섹션.
 
 ## Pending / Partial
 
