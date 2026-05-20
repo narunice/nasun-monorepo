@@ -5,7 +5,8 @@
 
 import type { AERData } from '../../services/aerService';
 import { NETWORK_CONFIG } from '../../services/network';
-import { formatNusdc, formatNasun, formatTimestamp, truncateAddress } from '../../utils/format';
+import { formatNusdc, formatNasun, formatTimestamp } from '../../utils/format';
+import { HashRef } from '../HashRef';
 import { TierBadge } from '../badges/TierBadge';
 import { Section } from './Section';
 import { Row } from './Row';
@@ -46,9 +47,9 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
   return (
     <>
       <Section title="Who Requested">
-        <Row label="Initiator">{truncateAddress(aer.initiator)}</Row>
+        <Row label="Initiator"><HashRef value={aer.initiator} kind="address" /></Row>
         {aer.authorizer !== aer.initiator && (
-          <Row label="Authorizer">{truncateAddress(aer.authorizer)}</Row>
+          <Row label="Authorizer"><HashRef value={aer.authorizer} kind="address" /></Row>
         )}
         {aer.delegationPath.length > 0 && (
           <Row label="Delegation">
@@ -58,9 +59,9 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
       </Section>
 
       <Section title="Who Executed">
-        <Row label="Executor">{truncateAddress(aer.executor)}</Row>
+        <Row label="Executor"><HashRef value={aer.executor} kind="address" /></Row>
         {aer.executorPrincipal && (
-          <Row label="Principal">{truncateAddress(aer.executorPrincipal)}</Row>
+          <Row label="Principal"><HashRef value={aer.executorPrincipal} kind="address" /></Row>
         )}
         <Row label="Tier">
           <TierBadge
@@ -80,7 +81,7 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
             <JsonFields value={aer.feeDetail} />
           </Row>
         )}
-        {aer.budgetId && <Row label="Inference Balance">{truncateAddress(aer.budgetId)}</Row>}
+        {aer.budgetId && <Row label="Inference Balance"><HashRef value={aer.budgetId} kind="object" /></Row>}
         {aer.budgetRemaining !== null && (
           <Row label="Inference Balance Remaining">{formatNusdc(aer.budgetRemaining)}</Row>
         )}
@@ -152,9 +153,9 @@ export function OnChainReceiptContent({ aer, onClose }: OnChainReceiptContentPro
 
       {(aer.triggeredBy || aer.triggeredAction) && (
         <Section title="Chain">
-          {aer.triggeredBy && <Row label="Triggered By">{truncateAddress(aer.triggeredBy)}</Row>}
+          {aer.triggeredBy && <Row label="Triggered By"><HashRef value={aer.triggeredBy} kind="address" /></Row>}
           {aer.triggeredAction && (
-            <Row label="Triggered Action">{truncateAddress(aer.triggeredAction)}</Row>
+            <Row label="Triggered Action"><HashRef value={aer.triggeredAction} kind="object" /></Row>
           )}
         </Section>
       )}

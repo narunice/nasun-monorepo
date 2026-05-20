@@ -14,9 +14,10 @@ import { useSigner } from '@nasun/wallet';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
-import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
+import { formatNusdc, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { FirstRunChecklist } from '../../components/FirstRunChecklist';
+import { HashRef } from '../../components/HashRef';
 import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { ActivityTab } from './ActivityTab';
 import { ChatTab } from './ChatTab';
@@ -90,14 +91,15 @@ export function OverviewTab({
 
   return (
     <div className="space-y-6">
-      <FirstRunChecklist onJumpToActivity={onViewAllActivity} />
+      <FirstRunChecklist agent={agent} onJumpToActivity={onViewAllActivity} />
 
       <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white truncate">{agent.name}</h3>
-            <p className="text-sm text-uju-secondary mt-0.5">
-              {agent.role} - {truncateAddress(agent.agentAddress)}
+            <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>{agent.role} -</span>
+              <HashRef value={agent.agentAddress} kind="address" />
             </p>
           </div>
           <span

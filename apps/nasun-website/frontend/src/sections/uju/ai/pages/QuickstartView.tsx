@@ -5,7 +5,8 @@ import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useExecutors } from '../hooks/useExecutors';
 import { AgentCard } from './AgentsList';
 import type { AgentSubTab } from './AgentDetail';
-import { truncateAddress, formatNusdcValue } from '../utils/format';
+import { formatNusdcValue } from '../utils/format';
+import { HashRef } from '../components/HashRef';
 
 interface SelectAgentOptions {
   sub?: AgentSubTab;
@@ -223,12 +224,30 @@ export function QuickstartView({
       desc: 'The executor runs your agent\'s inference and signs the onchain settlement. For the prototype, Nasun operates a single shared executor. (Coming later: a marketplace of competing executors, bring-your-own AI API key, and self-hosted inference with locally-served models.)',
       state: stepState(2),
       action: stepState(2) === 'done' ? (
-        <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/60 text-uju-secondary font-mono whitespace-nowrap">
-          {defaultExecutor ? truncateAddress(defaultExecutor.operator) : '0x286d…9b78'}
+        defaultExecutor ? (
+          <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/60 text-uju-secondary whitespace-nowrap">
+            <HashRef
+              value={defaultExecutor.operator}
+              kind="address"
+              valueClassName="font-mono"
+            />
+          </span>
+        ) : (
+          <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/60 text-uju-secondary font-mono whitespace-nowrap">
+            0x286d…9b78
+          </span>
+        )
+      ) : defaultExecutor ? (
+        <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/40 text-uju-secondary/60 whitespace-nowrap">
+          <HashRef
+            value={defaultExecutor.operator}
+            kind="address"
+            valueClassName="font-mono"
+          />
         </span>
       ) : (
         <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/40 text-uju-secondary/60 font-mono whitespace-nowrap">
-          {defaultExecutor ? truncateAddress(defaultExecutor.operator) : '-'}
+          -
         </span>
       ),
     },
