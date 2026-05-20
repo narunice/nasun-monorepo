@@ -18,7 +18,7 @@
 import { useMemo } from 'react';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useBudgetsQuery } from '../hooks/useBudgets';
-import { truncateAddress } from '../utils/format';
+import { HashRef } from '../components/HashRef';
 import { OverviewTab } from './agent/OverviewTab';
 import { ActivityTab } from './agent/ActivityTab';
 import { SettingsTab } from './agent/SettingsTab';
@@ -117,8 +117,9 @@ export function AgentDetail({
             {backLabel}
           </button>
           <h2 className="text-base font-semibold text-white truncate">{agent.name}</h2>
-          <p className="text-sm text-uju-secondary mt-0.5">
-            {agent.role} - {truncateAddress(agent.agentAddress)}
+          <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
+            <span>{agent.role} -</span>
+            <HashRef value={agent.agentAddress} kind="address" />
           </p>
         </div>
       </div>

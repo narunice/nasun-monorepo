@@ -9,8 +9,9 @@ import { useState } from 'react';
 import { useBudgets, type BudgetInfo } from '../../hooks/useBudgets';
 import { CreateBudgetModal } from '../../components/modals/CreateBudgetModal';
 import { BudgetSettingsModal } from '../../components/modals/BudgetSettingsModal';
-import { formatNusdcValue, formatTimestamp, nusdcToRaw, truncateAddress } from '../../utils/format';
+import { formatNusdcValue, formatTimestamp, nusdcToRaw } from '../../utils/format';
 import { getBudgetStatus } from '../../utils/budget';
+import { HashRef } from '../../components/HashRef';
 
 interface EscrowTabProps {
   walletAddress: string;
@@ -139,8 +140,12 @@ function BudgetCard({
     <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-sm font-mono text-uju-secondary truncate">{truncateAddress(budget.id)}</p>
-          <p className="text-sm text-uju-secondary/70 mt-0.5">
+          <HashRef
+            value={budget.id}
+            kind="object"
+            valueClassName="font-mono text-sm text-uju-secondary"
+          />
+          <p className="text-sm text-uju-secondary/70 mt-1">
             Created {formatTimestamp(budget.createdAt)}
             {budget.expiresAt > 0 ? ` - expires ${formatTimestamp(budget.expiresAt)}` : ''}
           </p>

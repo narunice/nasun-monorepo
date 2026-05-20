@@ -9,7 +9,8 @@ import { useState, useEffect } from 'react';
 import { useBudgets, type BudgetInfo } from '../hooks/useBudgets';
 import { CreateBudgetModal } from '../components/modals/CreateBudgetModal';
 import { BudgetSettingsModal } from '../components/modals/BudgetSettingsModal';
-import { formatNusdcValue, formatTimestamp, truncateAddress } from '../utils/format';
+import { formatNusdcValue, formatTimestamp } from '../utils/format';
+import { HashRef } from '../components/HashRef';
 import { getBudgetStatus } from '../utils/budget';
 
 interface BudgetsProps {
@@ -88,9 +89,15 @@ export function Budgets({ walletAddress, onBack, prefillAgent }: BudgetsProps) {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm font-mono text-white truncate">{truncateAddress(budget.id)}</p>
-                    <p className="text-sm text-uju-secondary/70 mt-0.5">
-                      Agent {truncateAddress(budget.agent)} - created {formatTimestamp(budget.createdAt)}
+                    <HashRef
+                      value={budget.id}
+                      kind="object"
+                      valueClassName="font-mono text-sm text-white"
+                    />
+                    <p className="text-sm text-uju-secondary/70 mt-1 flex items-center gap-1.5 flex-wrap">
+                      <span>Agent</span>
+                      <HashRef value={budget.agent} kind="address" />
+                      <span>- created {formatTimestamp(budget.createdAt)}</span>
                     </p>
                   </div>
                   <span className={`text-xs px-1.5 py-0.5 rounded ${status.color}`}>{status.label}</span>

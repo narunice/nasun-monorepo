@@ -12,7 +12,8 @@ import { useAgentActions } from '../../hooks/useAgentActions';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
-import { formatNusdc, truncateAddress, formatTimestamp } from '../../utils/format';
+import { formatNusdc, formatTimestamp } from '../../utils/format';
+import { HashRef } from '../../components/HashRef';
 
 interface DashboardTabProps {
   agent: AgentProfile;
@@ -45,8 +46,9 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold text-white truncate">{agent.name}</h3>
-            <p className="text-sm text-uju-secondary mt-0.5">
-              {agent.role} - {truncateAddress(agent.agentAddress)}
+            <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>{agent.role} -</span>
+              <HashRef value={agent.agentAddress} kind="address" />
             </p>
           </div>
           <span
