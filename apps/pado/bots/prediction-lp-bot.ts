@@ -96,6 +96,40 @@ const MAX_CONSECUTIVE_ERRORS = 10;
 const NUSDC_FAUCET_OBJECT = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
 const DEFAULT_LP_MIN_NUSDC = 200;          // refill trigger (units of NUSDC)
 const DEFAULT_LP_NUSDC_REFILL_ROUNDS = 50; // request_nusdc moveCalls per PTB
+
+// ========================================
+// Package dispatch (v5 + legacy)
+// ========================================
+
+// Sui anchors object types to the publish's originalPackageId, so a Market's
+// type-tag prefix identifies which package family owns it. Every PTB target
+// (mint_outcome_tokens, place_buy_maker, place_sell_maker, cancel_order)
+// must use the family-correct latest packageId; crossing yields
+// CommandArgumentError{TypeMismatch} at dry-run, which is exactly the prod
+// 2026-05-20 v5-cutover regression where lp-bot stopped quoting all legacy
+// markets.
+//
+// Mirrors prediction-keeper.ts's buildPackageDispatch — kept inline (not a
+// shared lib) because deploy scripts only rsync apps/pado/bots/.
+function buildPackageDispatch(
+  v5PackageId: string,
+  legacyOriginalId: string,
+  legacyLatestPackageId: string,
+): (marketObjectType: string) => string {
+  return (marketObjectType: string): string => {
+    if (marketObjectType.startsWith(`${v5PackageId}::`)) return v5PackageId;
+    if (
+      legacyOriginalId &&
+      legacyLatestPackageId &&
+      marketObjectType.startsWith(`${legacyOriginalId}::`)
+    ) {
+      return legacyLatestPackageId;
+    }
+    throw new Error(
+      `Unknown prediction market package origin in type: ${marketObjectType}`,
+    );
+  };
+}
 const ORDERBOOK_PAGE = 50;
 const MAX_ORDERBOOK_LEVELS = 200;
 
@@ -148,6 +182,11 @@ function nusdcToRaw(human: number): bigint {
 interface MarketSnapshot {
   status: number;
   closeTime: number;
+  // Full Sui type tag (e.g. "0xbe6d8f69...::prediction_market::Market"). The
+  // originalPackageId prefix carries the market's package family, which
+  // packageIdForMarketType() maps to the correct moveCall target. Crossing
+  // families produces CommandArgumentError{TypeMismatch} at dry-run.
+  objectType: string;
   yesBidsTableId: string | null;
   yesAsksTableId: string | null;
   noBidsTableId: string | null;
@@ -200,6 +239,7 @@ async function fetchMarketSnapshot(
   return {
     status: Number(fields.status ?? 0),
     closeTime: Number(fields.close_time ?? 0),
+    objectType: actualType,
     yesBidsTableId: extractTableId(fields.yes_bids),
     yesAsksTableId: extractTableId(fields.yes_asks),
     noBidsTableId: extractTableId(fields.no_bids),
@@ -623,12 +663,36 @@ async function reconcileMarket(
   marketId: string,
   cfg: ReconcileConfig,
   legacyPackageIds: string[] = [],
+  packageIdForMarketType?: (marketObjectType: string) => string,
 ): Promise<void> {
   const myAddress = keypair.toSuiAddress();
   const market = await fetchMarketSnapshot(client, marketId, packageId, legacyPackageIds);
   if (!market) {
     // Either object missing or stale-package; both already log inside the helper.
     return;
+  }
+
+  // Dispatch every PTB target by the market's type-tag originalPackageId.
+  // Without this, a v5-only PREDICTION_PACKAGE_ID hits TypeMismatch on every
+  // legacy market (2026-05-20 prod regression). Falls back to the bot's
+  // canonical packageId when no dispatcher is wired (e.g. dispatch env unset).
+  let marketPackageId: string;
+  if (packageIdForMarketType) {
+    try {
+      marketPackageId = packageIdForMarketType(market.objectType);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const key = marketId.toLowerCase();
+      if (!warnedStaleMarkets.has(key)) {
+        warnedStaleMarkets.add(key);
+        console.warn(
+          `[${timestamp()}] ${marketId}: package dispatch failed (type=${market.objectType}): ${msg}`,
+        );
+      }
+      return;
+    }
+  } else {
+    marketPackageId = packageId;
   }
 
   const closing = market.status !== STATUS_OPEN || Date.now() >= market.closeTime;
@@ -663,7 +727,7 @@ async function reconcileMarket(
       `[${timestamp()}] ${marketId}: market closing/closed, cancelling ${allMine.length} order(s)`,
     );
     try {
-      const tx = buildBatchedCancel(packageId, marketId, allMine);
+      const tx = buildBatchedCancel(marketPackageId, marketId, allMine);
       const digest = await executeAndWait(client, keypair, tx, 'cancel_all');
       console.log(`[${timestamp()}] ${marketId}: cancelled ${allMine.length} (${digest.slice(0, 12)})`);
     } catch (err) {
@@ -675,7 +739,7 @@ async function reconcileMarket(
   }
 
   // Ensure inventory before quoting (mints up to K Position pairs).
-  const positions = await ensureInventory(client, keypair, packageId, marketId, cfg.ladder, legacyPackageIds);
+  const positions = await ensureInventory(client, keypair, marketPackageId, marketId, cfg.ladder, legacyPackageIds);
 
   // Compute YES midpoint using 4-book complementary view to prevent skew when
   // external YES bids are abnormally high (e.g. crossed market from user orders).
@@ -769,7 +833,7 @@ async function reconcileMarket(
     if (shuttingDown) return;
     try {
       const tx = buildBatchedCancel(
-        packageId,
+        marketPackageId,
         marketId,
         task.orders.map((o) => ({ isYes: o.isYes, isBid: o.isBid, price: o.price, orderId: o.orderId })),
       );
@@ -786,29 +850,34 @@ async function reconcileMarket(
 
   // ===== Place YES bids =====
   if (!truncated.yesBid && yesBidPlan.toPlace.length > 0) {
-    await placeBidLadder(client, keypair, packageId, marketId, true, yesBidPlan.toPlace);
+    await placeBidLadder(client, keypair, marketPackageId, marketId, true, yesBidPlan.toPlace);
   }
   // ===== Place NO bids =====
   if (!truncated.noBid && noBidPlan.toPlace.length > 0) {
-    await placeBidLadder(client, keypair, packageId, marketId, false, noBidPlan.toPlace);
+    await placeBidLadder(client, keypair, marketPackageId, marketId, false, noBidPlan.toPlace);
   }
 
   // Re-fetch positions in case cancels above returned new Positions to us.
+  // fetchAllPositions's `packageId` arg is the family-canonical id used for
+  // the StructType filter; legacy markets carry Positions typed under the
+  // legacy originalId so we pass marketPackageId (the latest publish of the
+  // market's family) and let fetchAllPositions's existing legacy-fallback
+  // covers the type-tag variant.
   const positionsAfterCancel = (yesAskPlan.toCancel.length > 0 || noAskPlan.toCancel.length > 0)
-    ? await fetchAllPositions(client, keypair.toSuiAddress(), packageId, marketId, legacyPackageIds)
+    ? await fetchAllPositions(client, keypair.toSuiAddress(), marketPackageId, marketId, legacyPackageIds)
     : positions;
 
   // ===== Place YES asks (consume YES Positions) =====
   if (!truncated.yesAsk && yesAskPlan.toPlace.length > 0) {
     await placeAskLadder(
-      client, keypair, packageId, marketId, true,
+      client, keypair, marketPackageId, marketId, true,
       yesAskPlan.toPlace, positionsAfterCancel.yes,
     );
   }
   // ===== Place NO asks (consume NO Positions) =====
   if (!truncated.noAsk && noAskPlan.toPlace.length > 0) {
     await placeAskLadder(
-      client, keypair, packageId, marketId, false,
+      client, keypair, marketPackageId, marketId, false,
       noAskPlan.toPlace, positionsAfterCancel.no,
     );
   }
@@ -1049,6 +1118,7 @@ async function tick(
   cfg: ReconcileConfig,
   legacyPackageIds: string[] = [],
   refill?: { minNusdc: number; rounds: number },
+  packageIdForMarketType?: (marketObjectType: string) => string,
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
@@ -1089,7 +1159,7 @@ async function tick(
     for (const marketId of orderedMarkets) {
       if (shuttingDown) break;
       try {
-        await reconcileMarket(client, keypair, packageId, marketId, cfg, legacyPackageIds);
+        await reconcileMarket(client, keypair, packageId, marketId, cfg, legacyPackageIds, packageIdForMarketType);
         consecutiveErrors = 0;
       } catch (err) {
         consecutiveErrors++;
@@ -1165,6 +1235,26 @@ async function main(): Promise<void> {
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
+  // Legacy family identity for the 2026-05-20 v5 fresh-publish cutover (see
+  // prediction-keeper.ts for full rationale). Both must be set together or
+  // both empty. Without this, every legacy market PTB aborts with
+  // CommandArgumentError{TypeMismatch} and the bot silently stops quoting.
+  const legacyOriginalRaw = (process.env.PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL || '').toLowerCase();
+  const legacyLatestRaw = (process.env.PREDICTION_PACKAGE_ID_LEGACY_LATEST || '').toLowerCase();
+  const legacyOriginalId = /^0x[0-9a-f]{64}$/.test(legacyOriginalRaw) ? legacyOriginalRaw : '';
+  const legacyLatestPackageId = /^0x[0-9a-f]{64}$/.test(legacyLatestRaw) ? legacyLatestRaw : '';
+  if (Boolean(legacyOriginalId) !== Boolean(legacyLatestPackageId)) {
+    console.error(
+      'PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL and PREDICTION_PACKAGE_ID_LEGACY_LATEST must both be set (or both empty)',
+    );
+    process.exit(1);
+  }
+  const packageIdForMarketType = buildPackageDispatch(
+    packageId,
+    legacyOriginalId,
+    legacyLatestPackageId,
+  );
+
   const pinnedMarkets = (process.env.PREDICTION_LP_MARKETS || '')
     .split(',')
     .map((s) => s.trim().toLowerCase())
@@ -1226,7 +1316,8 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] LP wallet: ${lpAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
-  console.log(`[${timestamp()}] Legacy packages: ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
+  console.log(`[${timestamp()}] Legacy emitter packages (discovery): ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
+  console.log(`[${timestamp()}] Legacy dispatch: ${legacyOriginalId && legacyLatestPackageId ? `${legacyOriginalId} -> ${legacyLatestPackageId}` : '(none)'}`);
   console.log(
     `[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none — auto-discover only)'}`,
   );
@@ -1275,7 +1366,7 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill);
+  await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill, packageIdForMarketType);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
@@ -1297,7 +1388,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill);
+    await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill, packageIdForMarketType);
   }
 }
 
