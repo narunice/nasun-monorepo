@@ -9,6 +9,7 @@ import { describe, it, expect } from 'vitest';
 import {
   MARKETS,
   MARKET,
+  priceScaleExp,
   priceToRaw,
   quantityToRaw,
   rawToPrice,
@@ -17,6 +18,7 @@ import {
   roundToLotSize,
   loadConfig,
 } from './config.js';
+import { PRICE_SCALE_FIXTURES } from '../../_shared/price-scale.fixture.js';
 
 // ========================================
 // MARKETS Configuration
@@ -213,4 +215,20 @@ describe('loadConfig', () => {
       }
     }
   });
+});
+
+// ========================================
+// priceScaleExp lockstep with frontend
+// ========================================
+// Shared fixture also asserted in apps/pado/frontend/src/lib/deepbook.test.ts.
+// If somebody changes the formula on one side without touching the other, the
+// untouched side's locally computed exp no longer matches the shared fixture
+// and breaks. See project_2026_05_19_pado_price_10x_regression.
+
+describe('priceScaleExp lockstep with frontend/src/lib/deepbook.ts', () => {
+  for (const c of PRICE_SCALE_FIXTURES) {
+    it(`${c.label}: priceScaleExp(${c.quoteDecimals}, ${c.baseDecimals}) === ${c.expectedExp}`, () => {
+      expect(priceScaleExp(c.quoteDecimals, c.baseDecimals)).toBe(c.expectedExp);
+    });
+  }
 });

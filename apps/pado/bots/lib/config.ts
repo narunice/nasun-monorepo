@@ -453,8 +453,19 @@ export interface BotState {
 // scaling for human → raw is 10^(quoteDecimals + 9 - baseDecimals). With
 // baseDecimals=9 (NSOL) this collapses to 10^quoteDecimals; with baseDecimals=8
 // (NBTC, NETH) it is 10× the naive quoteDecimals scaling.
-function priceScaleExp(): number {
-  return MARKET.quoteDecimals + 9 - MARKET.baseDecimals;
+//
+// TODO(SSOT): A duplicate of this function lives at
+// apps/pado/frontend/src/lib/deepbook.ts::priceScaleExp. When the next pool
+// with a new baseDecimals is added, extract both into a shared package
+// (e.g. packages/deepbook-scale) and have both sides import it. Until then,
+// any change here MUST be mirrored in the frontend copy. See
+// project_2026_05_19_pado_price_10x_regression for the asymmetry incident.
+// A lockstep test against the shared fixture file is in config.test.ts.
+export function priceScaleExp(
+  quoteDecimals: number = MARKET.quoteDecimals,
+  baseDecimals: number = MARKET.baseDecimals,
+): number {
+  return quoteDecimals + 9 - baseDecimals;
 }
 
 /**
