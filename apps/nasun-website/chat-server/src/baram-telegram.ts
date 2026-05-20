@@ -155,6 +155,51 @@ function signBody(bodyJson: string): string {
   return createHmac('sha256', getHmacSecret()).update(bodyJson, 'utf8').digest('hex');
 }
 
+// Map a runtime/Lambda wake-failure reason to an actionable user-facing
+// message. Generic "could not process that right now" is unhelpful when the
+// real fix is on the user's side (top up NSN gas, top up inference balance,
+// reactivate a paused capability, etc.). Patterns matched against the
+// `reason` string the runtime returns in the `/wake` response body.
+function formatWakeFailureMessage(reason: string): string {
+  const r = reason.toLowerCase();
+  if (r.includes('no valid gas coins') || r.includes('gas coin') || r.includes('gasbalancetoolow')) {
+    return (
+      'Your agent has no NSN for gas, so it cannot sign transactions. ' +
+      'Open the Funds card on your Dashboard and deposit a small amount of NSN ' +
+      "to the agent's wallet, then try again."
+    );
+  }
+  if (r.includes('e_escrow_no_balance') || r.includes('e_insufficient_escrow_balance') || r.includes('abort code 579') || r.includes('abort code 573')) {
+    return (
+      'Your agent has no trade capital in its escrow. ' +
+      'Open the Funds card on your Dashboard and deposit NUSDC (and/or NBTC) ' +
+      'as trading capital, then try again.'
+    );
+  }
+  if (r.includes('e_payment_exceeds_notional_cap') || r.includes('abort code 552')) {
+    return (
+      "Your agent tried to trade more than its per-action cap allows. " +
+      'Increase the cap in Capability settings on your Dashboard, or wait for the next cycle to retry with a smaller size.'
+    );
+  }
+  if (r.includes('http 429') || r.includes('rate limit')) {
+    return 'The AI provider is rate-limited right now. Your agent will retry on the next cycle.';
+  }
+  if (r.includes('http 404') && r.includes('request not found')) {
+    return 'Your agent could not finalize the last request. Please try again in a moment.';
+  }
+  if (r.includes('infer_failed') || r.includes('inference')) {
+    return 'Your agent could not complete an inference call. Please try again shortly.';
+  }
+  if (r.includes('budget') || r.includes('inference balance')) {
+    return (
+      "Your agent's inference balance is empty. " +
+      'Open the Funds card on your Dashboard and top up the Inference Balance, then try again.'
+    );
+  }
+  return 'Your agent could not process that right now. Please try again shortly.';
+}
+
 // ===== Wake forwarding =====
 
 // D-6 async UX: a wake call may take longer than the perceived "wait" window.
@@ -410,7 +455,7 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     } else {
       const reason = result.error ?? 'unknown';
       console.warn(`[baram-tg] /wake returned not-ok: ${reason}`);
-      await sendMessage(chatId, 'Your agent could not process that right now. Please try again shortly.');
+      await sendMessage(chatId, formatWakeFailureMessage(reason));
     }
   } catch (err) {
     clearTimeout(softNoticeId);
