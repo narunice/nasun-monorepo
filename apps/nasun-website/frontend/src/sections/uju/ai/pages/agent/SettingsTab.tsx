@@ -13,6 +13,7 @@ import { useState } from 'react';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import type { BudgetInfo } from '../../hooks/useBudgets';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
+import { useCapability } from '../../hooks/useCapability';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
 import { ExportAgentKeyModal } from '../../components/modals/ExportAgentKeyModal';
@@ -32,6 +33,14 @@ interface SettingsTabProps {
 
 export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) {
   const { config, save, remove, refetch } = useTraderConfig(agent.agentAddress);
+  // Capability is the on-chain trust boundary the trader operates within.
+  // When the user raises trader perTrade/dailyMax in the form, we mirror the
+  // change onto the capability so the next swap PTB does not hit
+  // E_PAYMENT_EXCEEDS_NOTIONAL_CAP (552). Lowering trader limits below the
+  // capability cap is also safe (no on-chain mutation needed) — the cap
+  // simply becomes a looser outer envelope, which the trader already
+  // respects via its own size hint.
+  const capability = useCapability(agent.capabilityId);
   const [exportOpen, setExportOpen] = useState(false);
   const [activateOpen, setActivateOpen] = useState(false);
   const [tosOpen, setTosOpen] = useState(false);
@@ -65,6 +74,34 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           initial={config}
           onSave={async (values) => {
             await save(values);
+            // Sync capability risk limits if the trader's new size hints
+            // exceed the on-chain cap. Without this, a user who raises
+            // perTrade in the form will hit abort 552 the next time the
+            // trader tries to swap. We only raise the cap (never lower it
+            // here) because lowering is a separate trust decision the user
+            // should make through an explicit "tighten" action.
+            const newPerTrade = BigInt(values.perTradeMaxQuoteRaw);
+            const newDailyMax = BigInt(values.dailyMaxQuoteRaw);
+            const cap = capability.data;
+            if (
+              cap &&
+              (newPerTrade > cap.riskLimits.maxNotionalPerAction ||
+                newDailyMax > cap.riskLimits.maxDailyLoss)
+            ) {
+              await capability.updateRiskLimits({
+                maxNotionalPerAction:
+                  newPerTrade > cap.riskLimits.maxNotionalPerAction
+                    ? newPerTrade
+                    : cap.riskLimits.maxNotionalPerAction,
+                maxDailyLoss:
+                  newDailyMax > cap.riskLimits.maxDailyLoss
+                    ? newDailyMax
+                    : cap.riskLimits.maxDailyLoss,
+                maxSlippageBps: cap.riskLimits.maxSlippageBps,
+                stopLossBps: cap.riskLimits.stopLossBps,
+                takeProfitBps: cap.riskLimits.takeProfitBps,
+              });
+            }
             await refetch();
           }}
           onDelete={config ? async () => { await remove(); } : undefined}

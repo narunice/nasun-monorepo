@@ -167,6 +167,12 @@ export function TransferAgentFundsDialog({
       if (result.effects?.status?.status !== 'success') {
         throw new Error(result.effects?.status?.error ?? 'Transaction failed');
       }
+      // Without this, the immediate refetch after deposit/withdraw hits the
+      // RPC before the fullnode has propagated the new balance, so the funds
+      // card still shows the stale pre-tx number until the user reloads.
+      // waitForTransaction blocks until the fullnode marks the tx finalized,
+      // making the subsequent getBalance return the new state.
+      await suiClient.waitForTransaction({ digest: result.digest });
       return result.digest;
     },
     [signer, address],
