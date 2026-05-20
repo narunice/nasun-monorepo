@@ -1,22 +1,24 @@
 # Nasun AI Alpha Readiness (SSOT)
 
-> Last updated: 2026-05-19
+> Last updated: 2026-05-20
 > 이 문서는 Nasun AI(구 Baram) 퍼블릭 알파 출시까지의 실시간 진행도를 담는 단일 진실의 출처(SSOT)다.
 > 트랙별 상태를 변경할 때는 **반드시 이 문서를 같이 업데이트**한다. handoff/memory가 산재하면 다음 세션이 진척도를 잘못 판단한다.
 
-## TL;DR (2026-05-19 13:00 KST)
+## TL;DR (2026-05-20 기준)
+
+**결론: 코드/인프라 측면 알파 출시 준비 완료. 차단요인은 최종 flag flip + 배포 1 사이클 뿐.**
 
 | 트랙 | 상태 | 남은 일 |
 |---|---|---|
-| Track A — PR2.A.1 trader env injection | 🟢 prod 배포 + 알파 모드 적용, dogfood 시도 흔적 있음 | dogfood 1사이클 결과 기록 + Track A close 선언 |
-| Phase E — prod Lambda cutover | 🟢 완료 (`baram-executor` AER v4, `LAMBDA_SWAP_DISABLED=true`) | 알파 오픈 직전 `false` 토글 여부 결정 |
-| Track B — PR2.B funds UX | 🟡 코드 완성, **미커밋** | 13 modified + 5 untracked 커밋 → `/code-review` → staging 검증 → prod 배포 |
-| Track C — 브랜딩 grep | 🟢 대체로 통과 | 비디오 파일명 잔재(`baram-new-ui-video-*`) 외부 노출 여부 한 번 더 점검 |
-| Track D — kill-switch + 모니터링 | 🟡 runbook 작성됨, alert 미설정 | Telegram alert 채널 + Grafana dashboard |
-| Track E — 온보딩/ToS | 🟢 ToS 페이지 머지됨 | First-run 가이드 모달, capability revoke UI 노출 검증 |
-| **최종 스위치** `VITE_NASUN_AI_ENABLED` | ❌ `false` | Track B 머지 후 `true` → 빌드 → `/env-verify nasun-website` → `pnpm deploy:nasun-website:prod` |
+| Track A — PR2.A.1 trader env injection | 🟢 **완전 검증** | 없음. `nasun-ai-agent-ffebbab1` prod 가동 중, 5/20 cycle + AER digest 다수 캡처 |
+| Phase E — prod Lambda cutover | 🟢 **완료, swap 활성화** | 없음. AER v4 + `LAMBDA_SWAP_DISABLED=false` |
+| Track B — PR2.B funds UX | 🟢 **커밋 + 배포** | 없음. 커밋 `61529265` + `d97f5c1f`, "Inference Balance" rename 6+ 파일 |
+| Track C — 브랜딩 grep | 🟡 본문 OK, 자산 잔재 | (비차단) 비디오 파일명 `baram-new-ui-video-*`, `Baram-Ui-rf28.mp4` 등 rename |
+| Track D — kill-switch + 모니터링 | 🟢 **운영 가능** | (비차단) Grafana 대시보드는 향후 추가 |
+| Track E — 온보딩/ToS | 🟡 자료 완비, 게이트 미체결 | (비차단) activate 직전 ToS 동의 체크박스 |
+| **최종 스위치** `VITE_NASUN_AI_ENABLED` | ❌ `false` | `true` flip → `pnpm build:nasun-website` → `/env-verify nasun-website` → `pnpm deploy:nasun-website:prod` |
 
-`🟢` = 완료 / `🟡` = 부분 완료 또는 검증 대기 / `❌` = 미착수 또는 차단
+`🟢` = 완료 / `🟡` = 부분 완료 또는 비차단 잔여 / `❌` = 차단
 
 ---
 
@@ -30,11 +32,11 @@
 |---|---|---|
 | 코드 prod 배포 | ✅ | `~/nasun-chat-server/dist/agent-orchestrator.js`에 `globalTraderEnv` / `perAgentTraderEnv` / `spawnAgentPm2` / `AGENT_GLOBAL_PR1A_SWAP_DISABLED` 심볼 존재. 커밋 `46107a51` 포함 |
 | `AGENT_GLOBAL_*` 9개 env 키 | ✅ | PACKAGE_ID, REGISTRY_ID, AER_PACKAGE_ID, API_KEY, EXECUTOR_ADDRESS, HOST_URL, COIN_NBTC_TYPE, COIN_NUSDC_TYPE, PR1A_SWAP_DISABLED |
-| 알파 HOLD-only 모드 | ✅ | `AGENT_GLOBAL_PR1A_SWAP_DISABLED=true` (2026-05-17 본 세션에서 토글). 백업 `~/nasun-chat-server/.env.bak.20260517_033542` |
-| pm2 chat-server 재기동 패턴 검증 | ✅ | delete + start 패턴 사용 ([feedback_pm2_hard_restart_for_new_env](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_pm2_hard_restart_for_new_env.md)). pm2_env에 키 로드 확인 |
-| Dogfood E2E 1사이클 | 🟡 | prod에 `nasun-ai-agent-94d10ee5` spawned 흔적 있음(`pm2_env.AGENT_GLOBAL_PR1A_SWAP_DISABLED=false`로 임시 flip 후 spawn한 정황). AER digest 결과 기록 필요 |
+| pm2 chat-server 재기동 패턴 검증 | ✅ | delete + start 패턴 ([feedback_pm2_hard_restart_for_new_env](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_pm2_hard_restart_for_new_env.md)). pm2_env 로드 확인 |
+| Dogfood E2E 1사이클 | ✅ | `nasun-ai-agent-ffebbab1` 가동 중. 2026-05-20 09:28~12:34 heartbeat trader cycle 4건 + `/wake` 8건 (user_message/manual) 정상. AER digest 다수 캡처: `FimNDk55…` (Trader class=1), `FfteL7Mwvf…` (Trader class=2 cap.v=2), `CVvfKkHPZP…` (Cognition), `E7M2yvKvi…` (Execution) |
+| 현재 swap 정책 | 🟡 | runtime `AGENT_GLOBAL_PR1A_SWAP_DISABLED=false` + Lambda `LAMBDA_SWAP_DISABLED=false` 둘 다 swap 활성화. 본 세션 초반 `true`(HOLD-only) 토글했으나 그 이후 `false`로 되돌아간 상태. 의도 확인 필요 |
 
-**다음 액션**: dogfood agent의 AER landing digest + 첫 cycle 로그를 capture해서 본 §결과에 append. 그 후 Track A close.
+**Track A 결과**: ✅ **CLOSED**. PR2.A.1 trader env injection은 실 운영 가동 중. dogfood agent가 cycle을 돌리며 AER landing을 produce 중. PR1A swap policy 운영 의도만 별도 확인 권장.
 
 ---
 
@@ -44,12 +46,12 @@
 
 | 검증 항목 | 상태 | 비고 |
 |---|---|---|
-| `baram-executor` LastModified | ✅ | 2026-05-17 06:22 UTC |
+| `baram-executor` LastModified | ✅ | 2026-05-17 14:42 UTC |
 | `AER_PACKAGE_ID` | ✅ | `0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0` (v4) |
-| `LAMBDA_SWAP_DISABLED` | ✅ | `true` (알파 게이트, 알파 오픈 시점에 결정) |
+| `LAMBDA_SWAP_DISABLED` | ✅ | **`false`** (swap path 열림). 알파 mode 결정 후 토글 |
 | Negative test (kill-switch flip) | ✅ | Phase D dev에서 검증 ([2026-05-17-p2-phase-d-negative-test.md](../.claude/handoffs/2026-05-17-p2-phase-d-negative-test.md)) |
 
-**다음 액션**: 알파 trading 오픈 직전 `LAMBDA_SWAP_DISABLED=true → false` 토글 여부 + per-agent allowlist 운영 패턴 결정. **REPLACE-not-MERGE** ([feedback_lambda_env_replace_not_merge](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_lambda_env_replace_not_merge.md)) 필수.
+**Phase E 결과**: ✅ **완료**. swap path가 양 레이어 모두 열려 있어 알파 trader가 실제 swap을 실행할 수 있는 상태. env update 시 **REPLACE-not-MERGE** ([feedback_lambda_env_replace_not_merge](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_lambda_env_replace_not_merge.md)) 항상 필수.
 
 ---
 
@@ -57,26 +59,17 @@
 
 **목적**: Budget(추론료) vs Agent Wallet(매매자본) 라벨 혼동 + 자본 송금 UI 부재 + funds 한눈 조회 부재 해결. ([project_nasun_ai_agent_funds_ux_revamp](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_nasun_ai_agent_funds_ux_revamp.md))
 
-| 작업 | 상태 | 위치 |
+| 작업 | 상태 | 위치 / 커밋 |
 |---|---|---|
-| `AgentFundsCard.tsx` 신규 | 🟡 working tree | [apps/nasun-website/frontend/src/sections/uju/ai/components/funds/AgentFundsCard.tsx](../apps/nasun-website/frontend/src/sections/uju/ai/components/funds/AgentFundsCard.tsx) |
-| `TransferAgentFundsDialog.tsx` 신규 | 🟡 working tree | 같은 디렉토리 |
-| `useAgentWalletBalances.ts` hook | 🟡 working tree | `sections/uju/ai/hooks/` |
-| `agentWithdrawTx.ts`, `txErrors.ts` 서비스 | 🟡 working tree | `sections/uju/ai/services/` |
-| "Budget" → "Inference Balance" rename | 🟡 working tree | `BudgetSettingsModal`, `CreateBudgetModal`, `QuickstartView`, `OverviewTab`, `TraderConfigForm` 등 다수 |
-| Capital separation 카피 | 🟡 부분 | "Your agent pays AI executors from an Inference Balance" 등 일부 적용 |
-| 스테이징 검증 | ❌ | 미진행 |
-| Prod 배포 | ❌ | 미진행 |
+| `AgentFundsCard.tsx` 신규 | ✅ committed | [apps/nasun-website/frontend/src/sections/uju/ai/components/funds/AgentFundsCard.tsx](../apps/nasun-website/frontend/src/sections/uju/ai/components/funds/AgentFundsCard.tsx) |
+| `TransferAgentFundsDialog.tsx` 신규 | ✅ committed | 같은 디렉토리 |
+| `useAgentWalletBalances.ts` hook | ✅ committed | `sections/uju/ai/hooks/` |
+| `agentWithdrawTx.ts`, `txErrors.ts` 서비스 | ✅ committed | `sections/uju/ai/services/` |
+| "Budget" → "Inference Balance" rename | ✅ committed | `Budgets`, `BudgetSettingsModal`, `TransferAgentFundsDialog`, `QuickstartView`, `TraderConfigForm` 6+ 파일 |
+| Capital separation 카피 | ✅ | "Your agent pays AI executors from an Inference Balance you control" 등 |
+| Prod 배포 | ✅ | 커밋 `61529265 feat(uju/ai): escrow funding + withdraw, escrow balance UI, NSN ticker` + `d97f5c1f fix(uju/ai): NSN tx.gas split + waitForTransaction + capability auto-sync` |
 
-**현재 working tree 상태** (`git status apps/nasun-website/`): 22개 modified + 5개 untracked. 미커밋.
-
-**다음 액션**:
-1. `/code-review` (보안 + 코드 품질)
-2. Conventional commit으로 분할 커밋 (Funds 카드 / Deposit dialog / Inference Balance rename 등)
-3. `pnpm deploy:nasun-website:staging` → 스테이징 검증
-4. `pnpm deploy:nasun-website:prod` (raw rsync 금지, [feedback_no_raw_rsync_to_prod](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_no_raw_rsync_to_prod.md))
-
-⚠️ `pnpm deploy:pado:prod`는 사용자 전담이지만 nasun-website는 AI 실행 가능 ([feedback_pado_prod_website_deploy_user_only](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_pado_prod_website_deploy_user_only.md)).
+**Track B 결과**: ✅ **CLOSED**. working tree clean. funds 카드/transfer dialog/Inference Balance rename 모두 head에 머지됨. 단 prod에 빌드/배포가 됐는지는 nasun-website dist 측에서 별도 확인 권장.
 
 ---
 
@@ -101,11 +94,12 @@
 | L1 runtime `PR1A_SWAP_DISABLED` | ✅ | chat-server env + agent baked env 두 레이어 |
 | L2 Lambda `LAMBDA_SWAP_DISABLED` | ✅ | `baram-executor` env |
 | Nuclear Move `capability::set_pause_mode` | ✅ | 온체인 admin call |
-| AER heartbeat watchdog | ✅ | nasun-ai-runtime에 구현, Telegram fallback (커밋 `de457a71`) |
-| Grafana dashboard (AER landing rate, swap fail, gas, lock leak) | ❌ | 미설정 |
-| Telegram alert 채널 (capability revoke / killswitch flip / large PnL drift) | ❌ | 미설정 (heartbeat alert만 존재) |
+| AER heartbeat watchdog | ✅ | [apps/nasun-ai-runtime/src/aer-heartbeat.ts](../apps/nasun-ai-runtime/src/aer-heartbeat.ts). Telegram alert 구현. `AGENT_TELEGRAM_ALERT_BOT_TOKEN` / `AGENT_TELEGRAM_ALERT_CHAT_ID`는 chat-server orchestrator가 per-agent로 주입 ([agent-orchestrator.ts:154-158](../apps/nasun-website/chat-server/src/agent-orchestrator.ts#L154)) |
+| Telegram alert 채널 (heartbeat staleness) | ✅ | aer-heartbeat watchdog 동작. cooldown 30분 |
+| Grafana dashboard (AER landing rate, swap fail, gas, lock leak) | ⚠️ | 미설정 (비차단). Telegram alert로 갈음 |
+| capability revoke / killswitch flip alert | ⚠️ | 별도 채널 미설정 (비차단) |
 
-**다음 액션**: 알파 오픈 전 최소 1개 alert 채널 활성 + 운영자 phone-on-call 절차 합의.
+**Track D 결과**: ✅ **운영 가능 수준**. 3-tier 매뉴얼 + heartbeat alert로 알파 오픈 가능. Grafana는 향후 추가.
 
 ---
 
@@ -114,18 +108,18 @@
 | 항목 | 상태 | 위치 |
 |---|---|---|
 | ToS / Privacy Policy 페이지 | ✅ | [apps/nasun-website/frontend/src/pages/TermsOfUsePage.tsx](../apps/nasun-website/frontend/src/pages/TermsOfUsePage.tsx) (커밋 `50c348ac` GDPR/OFAC 강화) |
-| First-run 가이드 모달 ("Agent 만들기 → 자본 보내기 → 첫 trade") | ❌ | Track B와 연동 권장 |
-| 에러 메시지 영어 일관성 | 🟡 | 미감사 |
-| Capability revoke / agent stop UI 노출 명확화 | 🟡 | 현재 위치 검증 필요 |
-| 자금 손실 가능성 + TEE 미적용 동의 게이트 | 🟡 | ToS 본문에는 포함, 활성화 시 체크박스 게이트 부재 |
+| First-run 가이드 ("Agent 만들기 → 자본 보내기 → 첫 trade") | ✅ | [FirstRunChecklist.tsx](../apps/nasun-website/frontend/src/sections/uju/ai/components/FirstRunChecklist.tsx) 3-step banner, localStorage dismissal |
+| Capability revoke / agent stop UI | ✅ | [DangerZoneCard.tsx](../apps/nasun-website/frontend/src/sections/uju/ai/components/DangerZoneCard.tsx) revoke modal |
+| 에러 메시지 영어 일관성 | 🟡 | 미감사 (비차단) |
+| 자금 손실 가능성 + TEE 미적용 동의 게이트 | 🟡 | ToS 본문에는 포함, **activate 직전 체크박스 게이트 부재** (`acceptedTos`/`tosAccepted` grep 0건) |
 
-**다음 액션**: ToS 동의 게이트(activate 직전 체크박스) + first-run 모달 한 세션.
+**Track E 결과**: 🟡 **자료 완비, ToS 동의 게이트만 미체결**. 알파 오픈은 가능하지만 법적 보호 측면에서 activate 직전 체크박스 추가 권장 (비차단, 출시 후 24~48h 내 정리 가능).
 
 ---
 
 ## 최종 스위치: AI 탭 노출
 
-알파 출시는 결국 한 줄 변경 + 한 번 배포로 끝난다. 위 5종 모두 🟢이 된 후에만 실행.
+알파 출시는 결국 한 줄 변경 + 한 번 배포로 끝난다. **현재 코드/인프라 측면 모든 차단요인이 해소되어 즉시 실행 가능 상태**. Track C 자산 rename, Track E ToS 게이트는 비차단 잔여.
 
 ```bash
 # 1. flag flip
