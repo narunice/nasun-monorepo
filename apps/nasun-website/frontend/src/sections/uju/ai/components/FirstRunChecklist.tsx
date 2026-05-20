@@ -84,7 +84,7 @@ export function FirstRunChecklist({ onJumpToActivity }: FirstRunChecklistProps) 
           <div>
             <p className="text-white">Fund the trading wallet</p>
             <p className="text-uju-secondary">
-              Use the Funds card below. The agent needs NUSDC to trade and NASUN to pay its own gas.
+              Use the Funds card below. The agent needs NUSDC to trade and NSN to pay its own gas.
             </p>
           </div>
         </li>

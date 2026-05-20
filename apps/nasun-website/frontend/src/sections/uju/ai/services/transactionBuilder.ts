@@ -492,3 +492,89 @@ export function buildDepositToAgentWalletTransaction(
   tx.transferObjects([out], tx.pure.address(params.toAgentAddress));
   return tx;
 }
+
+export interface DepositToAgentEscrowParams {
+  signerAddress: string;
+  escrowId: string;
+  /** Fully-qualified Move TypeName, e.g. `${pkg}::nusdc::NUSDC`. Used both as
+   * the PTB type argument and (implicitly) as the dynamic_field key inside
+   * the on-chain escrow. Must be in `cap.allowed_assets` for later spend, but
+   * deposit itself is permissionless and accepts any T. */
+  coinType: string;
+  amountRaw: bigint;
+  ownerCoins: CoinRef[];
+}
+
+/** Wallet-signed PTB that tops up an `AgentEscrow` (NOT the agent's owned
+ * wallet). Without this the trading escrow stays empty after
+ * `buildAtomicAgentSetupTransaction` and every `withdraw_for_action` aborts
+ * with E_ESCROW_NO_BALANCE (579) — the failure mode discovered in the
+ * 2026-05-19 incident where 1200 NUSDC sat in the agent's owned wallet but
+ * trade settlement still failed because the on-chain spend path only sources
+ * from the escrow.
+ *
+ * `escrow::deposit<T>` is permissionless and skips both cap pause/revoke and
+ * the asset allowlist (deposit is a recovery-friendly path; allowlist gates
+ * spend, not credit). That is intentional and matches the on-chain comment in
+ * `escrow.move` "Public top-ups". Callers should still ensure the asset is in
+ * `cap.allowed_assets` so the deposit is actually spendable later.
+ */
+export function buildDepositToAgentEscrowTransaction(
+  params: DepositToAgentEscrowParams,
+): Transaction {
+  validateObjectId(params.escrowId, 'escrowId');
+  if (params.ownerCoins.length === 0) {
+    throw new Error('No coins of the requested type to deposit');
+  }
+  const tx = new Transaction();
+  tx.setSender(params.signerAddress);
+  const [primary, ...rest] = params.ownerCoins;
+  if (rest.length > 0) {
+    tx.mergeCoins(
+      tx.object(primary.objectId),
+      rest.map((c) => tx.object(c.objectId)),
+    );
+  }
+  const [depositCoin] = tx.splitCoins(
+    tx.object(primary.objectId),
+    [tx.pure.u64(params.amountRaw)],
+  );
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::escrow::deposit`,
+    typeArguments: [params.coinType],
+    arguments: [tx.object(params.escrowId), depositCoin],
+  });
+  return tx;
+}
+
+export interface WithdrawOwnerFromAgentEscrowParams {
+  signerAddress: string;
+  escrowId: string;
+  /** Fully-qualified Move TypeName for the coin to withdraw. */
+  coinType: string;
+  amountRaw: bigint;
+}
+
+/** Owner-signed PTB that pulls a coin out of the agent's `AgentEscrow` and
+ * transfers it to the signer. Calls `escrow::withdraw_owner<T>` which checks
+ * `tx_context::sender == escrow.owner` and ignores cap pause/revoke state.
+ * This is the wallet-side recovery path documented in escrow.move; trade
+ * assets (NUSDC/NBTC) live in the escrow, so this is the only way to get
+ * them back to the owner wallet without going through the agent. NSN gas
+ * sitting in the agent's owned wallet still uses the agent-signed
+ * `executeTradingWithdraw` flow.
+ */
+export function buildWithdrawOwnerFromAgentEscrowTransaction(
+  params: WithdrawOwnerFromAgentEscrowParams,
+): Transaction {
+  validateObjectId(params.escrowId, 'escrowId');
+  const tx = new Transaction();
+  tx.setSender(params.signerAddress);
+  const [out] = tx.moveCall({
+    target: `${BARAM.aerPackageId}::escrow::withdraw_owner`,
+    typeArguments: [params.coinType],
+    arguments: [tx.object(params.escrowId), tx.pure.u64(params.amountRaw)],
+  });
+  tx.transferObjects([out], tx.pure.address(params.signerAddress));
+  return tx;
+}

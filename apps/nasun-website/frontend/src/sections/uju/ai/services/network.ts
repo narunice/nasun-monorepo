@@ -116,10 +116,11 @@ export const FAUCET_CONFIG = {
   claimRecordId: import.meta.env.VITE_CLAIM_RECORD_ID || DEVNET_TOKENS.claimRecord,
 } as const;
 
-// Display name "NASUN" === devnet-config NSN === Move `0x2::sui::SUI`.
-// Three-way naming is intentional: NASUN = user-facing brand, NSN = package id, SUI = Move type.
+// Internal key "NASUN" is kept for code-identifier stability (TOKENS.NASUN,
+// effectiveCoin === 'NASUN', etc.) but the user-visible ticker is "NSN".
+// "Nasun" remains the network/project brand; "NSN" is the gas token symbol.
 export const TOKENS = {
-  NASUN: { symbol: 'NASUN', name: 'Nasun', decimals: NSN_DECIMALS, type: NSN_TYPE },
+  NASUN: { symbol: 'NSN', name: 'NSN', decimals: NSN_DECIMALS, type: NSN_TYPE },
   NUSDC: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: NUSDC_DECIMALS, type: TOKEN_CONFIG.nusdcType },
   NBTC: { symbol: 'NBTC', name: 'Nasun BTC', decimals: NBTC_DECIMALS, type: TOKEN_CONFIG.nbtcType },
 } as const;

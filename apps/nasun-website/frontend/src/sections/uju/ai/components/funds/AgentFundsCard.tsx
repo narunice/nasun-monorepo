@@ -17,6 +17,8 @@ import {
   useOwnerNasunBalance,
   formatTokenBalance,
 } from '../../hooks/useAgentWalletBalances';
+import { useAgentEscrowBalances } from '../../hooks/useAgentEscrowBalances';
+import { useCapability } from '../../hooks/useCapability';
 import { useBudgetsQuery, type BudgetInfo } from '../../hooks/useBudgets';
 import { formatNusdcValue, truncateAddress } from '../../utils/format';
 import {
@@ -43,6 +45,12 @@ interface AgentFundsCardProps {
 
 export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: AgentFundsCardProps) {
   const balances = useAgentWalletBalances(agent.agentAddress);
+  // Capability resolves agent -> escrow_id. Trading deposits (NUSDC/NBTC) land
+  // in the escrow shared object, not in agent.agentAddress. Without this hook
+  // the funds card would show 0 right after a successful deposit, which is
+  // exactly the user-visible bug from the 2026-05-20 incident.
+  const capability = useCapability(agent.capabilityId);
+  const escrowBalances = useAgentEscrowBalances(capability.data?.escrowId ?? null);
   const { data: allBudgets } = useBudgetsQuery(walletAddress);
   const { data: ownerNasun } = useOwnerNasunBalance(walletAddress);
   const isLowGas = ownerNasun !== undefined && ownerNasun < LOW_NASUN_THRESHOLD_MIST;
@@ -79,13 +87,13 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
 
       {isLowGas && (
         <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
-          Your wallet has low NASUN for gas. Use the wallet faucet before depositing or withdrawing.
+          Your wallet has low NSN for gas. Use the wallet faucet before depositing or withdrawing.
         </div>
       )}
 
       {isAgentLowGas && (
         <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
-          Agent has low NASUN for trading gas. Deposit NASUN to the trading wallet so the agent can execute trades.
+          Agent has low NSN for trading gas. Deposit NSN to the agent wallet so the agent can execute trades.
         </div>
       )}
 
@@ -93,9 +101,9 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
         <div className="rounded-lg border border-uju-border/60 bg-uju-bg/40 p-3 space-y-3">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <p className="text-sm font-medium text-white">Trading Wallet</p>
-              <p className="text-xs font-mono text-uju-secondary mt-0.5 truncate">
-                {truncateAddress(agent.agentAddress)}
+              <p className="text-sm font-medium text-white">Trading Capital</p>
+              <p className="text-xs text-uju-secondary mt-0.5">
+                Agent wallet (NSN gas) + Escrow (trade funds)
               </p>
             </div>
           </div>
@@ -104,12 +112,52 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             <div className="h-16 rounded bg-uju-bg/60 animate-pulse" />
           ) : (
             <ul className="space-y-1.5">
-              {balances.data.map((b) => (
-                <li key={b.symbol} className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className="text-uju-secondary">{b.symbol}</span>
-                  <span className="text-white font-mono">{formatTokenBalance(b)}</span>
-                </li>
-              ))}
+              {/* Agent wallet (gas + any stray non-gas coins). NSN here is what
+                 lets the agent sign trade PTBs at all. Non-gas tokens shown
+                 here are "stuck" — they exist but cannot be spent by trades
+                 (only Escrow funds spend); user should withdraw them. */}
+              {balances.data
+                .filter((b) => b.totalBalanceRaw > 0n)
+                .map((b) => (
+                  <li key={`w-${b.symbol}`} className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="text-uju-secondary">
+                      {b.symbol === 'NASUN' ? 'NSN' : b.symbol}
+                      <span className="ml-1 text-xs text-uju-secondary/60">
+                        {b.symbol === 'NASUN' ? '(gas)' : '(wallet)'}
+                      </span>
+                    </span>
+                    <span className="text-white font-mono">{formatTokenBalance(b)}</span>
+                  </li>
+                ))}
+              {/* Escrow balances. These are what `withdraw_for_action` actually
+                 sources from. Non-zero entries are the trade-spendable capital. */}
+              {escrowBalances.isLoading ? (
+                <li className="text-xs text-uju-secondary/70 italic">Loading escrow…</li>
+              ) : escrowBalances.data && escrowBalances.data.length > 0 ? (
+                escrowBalances.data
+                  .filter((b) => b.totalBalanceRaw > 0n)
+                  .map((b) => (
+                    <li key={`e-${b.type}`} className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="text-uju-secondary">
+                        {b.label}
+                        <span className="ml-1 text-xs text-uju-secondary/60">(escrow)</span>
+                      </span>
+                      <span className="text-white font-mono">
+                        {formatTokenBalance({
+                          symbol: b.symbol ?? 'NUSDC',
+                          name: b.label,
+                          decimals: b.decimals,
+                          type: b.type,
+                          totalBalanceRaw: b.totalBalanceRaw,
+                        })}
+                      </span>
+                    </li>
+                  ))
+              ) : null}
+              {!balances.data.some((b) => b.totalBalanceRaw > 0n) &&
+                (!escrowBalances.data || escrowBalances.data.every((b) => b.totalBalanceRaw === 0n)) && (
+                  <li className="text-sm text-uju-secondary/70 italic">No funds yet.</li>
+                )}
             </ul>
           )}
 
@@ -124,7 +172,10 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             <button
               type="button"
               onClick={() => setDialogMode('withdraw-trading')}
-              disabled={!balances.data?.some((b) => b.totalBalanceRaw > 0n)}
+              disabled={
+                !balances.data?.some((b) => b.totalBalanceRaw > 0n) &&
+                !escrowBalances.data?.some((b) => b.totalBalanceRaw > 0n)
+              }
               className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Withdraw

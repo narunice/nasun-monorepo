@@ -10,10 +10,14 @@ import { TOKENS, BUDGET_CONFIG, type TokenSymbol } from '../../services/network'
 import { getCoinsByType, getNusdcCoins } from '../../services/coinService';
 import {
   buildDepositToAgentWalletTransaction,
+  buildDepositToAgentEscrowTransaction,
+  buildWithdrawOwnerFromAgentEscrowTransaction,
   buildDepositToBudgetTransaction,
 } from '../../services/transactionBuilder';
 import { isGasInsufficientError } from '../../services/txErrors';
 import { executeTradingWithdraw } from '../../services/agentWithdrawTx';
+import { useCapability } from '../../hooks/useCapability';
+import { useAgentEscrowBalances } from '../../hooks/useAgentEscrowBalances';
 import { truncateAddress } from '../../utils/format';
 import {
   parseRawAmount,
@@ -53,6 +57,17 @@ export function TransferAgentFundsDialog({
 }: TransferAgentFundsDialogProps) {
   const { signer, address } = useSigner();
   const queryClient = useQueryClient();
+
+  // Capability fetch resolves agent.capabilityId -> escrowId so trade-asset
+  // deposits route into the on-chain AgentEscrow (the only path `withdraw_for_action`
+  // sources from). NASUN deposits stay routed to the agent's owned wallet because
+  // gas must live on the agent for it to sign PTBs at all.
+  const capability = useCapability(agent.capabilityId);
+  const escrowId = capability.data?.escrowId ?? null;
+  // Escrow balances are the source of truth for trade assets. Used both for
+  // the withdraw Max calculation (escrow only, legacy stuck wallet balance is
+  // intentionally excluded) and to refetch after deposit/withdraw mutations.
+  const escrowBalances = useAgentEscrowBalances(escrowId);
 
   const [amount, setAmount] = useState('');
   const [selectedCoin, setSelectedCoin] = useState<TokenSymbol>('NUSDC');
@@ -94,6 +109,10 @@ export function TransferAgentFundsDialog({
   const agentSelectedRaw =
     agentBalances.find((b) => b.symbol === effectiveCoin)?.totalBalanceRaw ?? 0n;
   const ownerSelectedRaw = ownerBalanceMap.get(effectiveMeta.type) ?? 0n;
+  // Escrow balance of the selected coin (NSN escrow row will be 0n since
+  // gas-only token never gets escrowed). Used for withdraw-trading Max.
+  const agentEscrowSelectedRaw =
+    escrowBalances.data?.find((b) => b.type === effectiveMeta.type)?.totalBalanceRaw ?? 0n;
 
   const amountRaw = parseRawAmount(amount, effectiveMeta.decimals);
 
@@ -106,8 +125,9 @@ export function TransferAgentFundsDialog({
         ownerNusdcRaw,
         agentNasunRaw,
         agentSelectedRaw,
+        agentEscrowSelectedRaw,
       }),
-    [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw],
+    [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw, agentEscrowSelectedRaw],
   );
 
   const maxDecimals = effectiveMeta.decimals;
@@ -174,8 +194,8 @@ export function TransferAgentFundsDialog({
         if (amountRaw > maxForMode) {
           setError(
             effectiveCoin === 'NASUN'
-              ? `Amount would leave you with less than ${formatRawAmount(OWNER_NASUN_GAS_RESERVE_MIST, TOKENS.NASUN.decimals)} NASUN for gas. Use Max to see the safe maximum.`
-              : `Amount exceeds your ${effectiveCoin} balance.`,
+              ? `Amount would leave you with less than ${formatRawAmount(OWNER_NASUN_GAS_RESERVE_MIST, TOKENS.NASUN.decimals)} ${TOKENS.NASUN.symbol} for gas. Use Max to see the safe maximum.`
+              : `Amount exceeds your ${effectiveMeta.symbol} balance.`,
           );
           setStep('idle');
           return;
@@ -187,21 +207,65 @@ export function TransferAgentFundsDialog({
           amountRaw,
         );
         if (coins.length === 0) {
-          setError(`No ${effectiveCoin} coins found in your wallet.`);
+          setError(`No ${effectiveMeta.symbol} coins found in your wallet.`);
           setStep('idle');
           return;
         }
-        const tx = buildDepositToAgentWalletTransaction({
-          signerAddress: walletAddress,
-          toAgentAddress: agent.agentAddress,
-          coinType: effectiveMeta.type,
-          amountRaw,
-          ownerCoins: coins,
-        });
-        await signAndExecuteOwner(tx);
-        await queryClient.refetchQueries({
-          queryKey: ['nasun-ai', 'agentWalletBalances', agent.agentAddress],
-        });
+        // Token-type routing: NASUN funds the agent's gas wallet (PTB signer
+        // pays gas from there). Every other token is trading capital and MUST
+        // land in the AgentEscrow because `withdraw_for_action` only sources
+        // from the escrow — coins sitting in the agent's owned wallet are
+        // dead capital w.r.t. trade settlement (2026-05-19 incident: 1200
+        // NUSDC in agent wallet, every trade aborted with E_ESCROW_NO_BALANCE).
+        if (effectiveCoin === 'NASUN') {
+          const tx = buildDepositToAgentWalletTransaction({
+            signerAddress: walletAddress,
+            toAgentAddress: agent.agentAddress,
+            coinType: effectiveMeta.type,
+            amountRaw,
+            ownerCoins: coins,
+          });
+          await signAndExecuteOwner(tx);
+        } else {
+          // Capability fetch is async. If it hasn't resolved yet, do NOT show
+          // the "no trading escrow linked" error — that message tells the user
+          // to recreate the agent, which is wrong when capability is merely
+          // still loading. Surface a transient hint and let them retry.
+          if (capability.isLoading || (!capability.data && !capability.fetchError)) {
+            setError('Loading trading escrow info... try again in a moment.');
+            setStep('idle');
+            return;
+          }
+          if (!escrowId) {
+            setError(
+              capability.fetchError
+                ? `Could not load the trading escrow for this agent (${capability.fetchError}). Refresh and try again.`
+                : 'This agent has no trading escrow linked. Was it created before escrow support? Recreate the agent to enable trading deposits.',
+            );
+            setStep('idle');
+            return;
+          }
+          const tx = buildDepositToAgentEscrowTransaction({
+            signerAddress: walletAddress,
+            escrowId,
+            coinType: effectiveMeta.type,
+            amountRaw,
+            ownerCoins: coins,
+          });
+          await signAndExecuteOwner(tx);
+        }
+        // Refetch BOTH wallet and escrow balances. Escrow is where NUSDC/NBTC
+        // actually lands now; missing this refetch leaves the funds card
+        // showing stale 0 for up to 60s, reintroducing the exact UX bug the
+        // escrow display was added to solve.
+        await Promise.all([
+          queryClient.refetchQueries({
+            queryKey: ['nasun-ai', 'agentWalletBalances', agent.agentAddress],
+          }),
+          queryClient.refetchQueries({
+            queryKey: ['nasun-ai', 'agentEscrowBalances', escrowId],
+          }),
+        ]);
       } else if (mode === 'top-up-inference') {
         if (amountRaw <= 0n) {
           setError('Enter an amount greater than 0.');
@@ -239,39 +303,66 @@ export function TransferAgentFundsDialog({
           setStep('idle');
           return;
         }
-        if (!passphrase) {
-          setError('Enter the passphrase you set when creating this agent.');
-          setStep('idle');
-          return;
-        }
-        if (selectedCoin !== 'NASUN' && !agentHasGas) {
-          setError(
-            'Agent has no NASUN for gas. Deposit a small amount of NASUN first to recover other tokens.',
-          );
-          setStep('idle');
-          return;
-        }
         if (amountRaw > maxForMode) {
           setError(
             selectedCoin === 'NASUN'
               ? 'Amount would leave insufficient gas reserve. Use Max to see the maximum withdrawable amount.'
-              : 'Amount exceeds agent balance.',
+              : 'Amount exceeds escrow balance.',
           );
           setStep('idle');
           return;
         }
-        await executeTradingWithdraw({
-          walletAddress,
-          agentAddress: agent.agentAddress,
-          agentId: agent.id,
-          passphrase,
-          coinType: TOKENS[selectedCoin].type,
-          amountRaw,
-        });
-        setPassphrase('');
-        await queryClient.refetchQueries({
-          queryKey: ['nasun-ai', 'agentWalletBalances', agent.agentAddress],
-        });
+        // Trade assets (NUSDC/NBTC/...): pull from the on-chain AgentEscrow
+        // via `escrow::withdraw_owner` (owner-signed, ignores cap state). No
+        // passphrase needed — the owner wallet is the signer, so the agent
+        // key is irrelevant for this path. NSN gas still uses the
+        // agent-signed flow that requires the passphrase.
+        if (selectedCoin === 'NASUN') {
+          if (!passphrase) {
+            setError('Enter the passphrase you set when creating this agent.');
+            setStep('idle');
+            return;
+          }
+          await executeTradingWithdraw({
+            walletAddress,
+            agentAddress: agent.agentAddress,
+            agentId: agent.id,
+            passphrase,
+            coinType: TOKENS[selectedCoin].type,
+            amountRaw,
+          });
+          setPassphrase('');
+        } else {
+          if (capability.isLoading || (!capability.data && !capability.fetchError)) {
+            setError('Loading trading escrow info... try again in a moment.');
+            setStep('idle');
+            return;
+          }
+          if (!escrowId) {
+            setError(
+              capability.fetchError
+                ? `Could not load the trading escrow for this agent (${capability.fetchError}). Refresh and try again.`
+                : 'This agent has no trading escrow linked. Was it created before escrow support?',
+            );
+            setStep('idle');
+            return;
+          }
+          const tx = buildWithdrawOwnerFromAgentEscrowTransaction({
+            signerAddress: walletAddress,
+            escrowId,
+            coinType: effectiveMeta.type,
+            amountRaw,
+          });
+          await signAndExecuteOwner(tx);
+        }
+        await Promise.all([
+          queryClient.refetchQueries({
+            queryKey: ['nasun-ai', 'agentWalletBalances', agent.agentAddress],
+          }),
+          queryClient.refetchQueries({
+            queryKey: ['nasun-ai', 'agentEscrowBalances', escrowId],
+          }),
+        ]);
       }
 
       setStep('done');
@@ -293,7 +384,7 @@ export function TransferAgentFundsDialog({
       ) {
         setError('Wrong passphrase. Try the one you set when creating this agent.');
       } else if (isGasInsufficientError(err)) {
-        setError('Not enough NASUN for gas. Use the in-wallet faucet to claim NASUN.');
+        setError('Not enough NSN for gas. Use the in-wallet faucet to claim NSN.');
       } else {
         setError(msg);
       }
@@ -307,7 +398,7 @@ export function TransferAgentFundsDialog({
 
   const title =
     mode === 'deposit'
-      ? `Send ${effectiveCoin} to agent's trading wallet`
+      ? `Send ${effectiveMeta.symbol} to agent's trading wallet`
       : mode === 'top-up-inference'
       ? 'Top up inference balance'
       : 'Withdraw from agent\'s trading wallet';
@@ -315,6 +406,7 @@ export function TransferAgentFundsDialog({
   const subtitle =
     mode === 'deposit'
       ? `Your wallet to ${truncateAddress(agent.agentAddress)}. The agent uses this balance to execute trades${effectiveCoin === 'NASUN' ? ' and pay its own gas' : ''}.`
+
       : mode === 'top-up-inference'
       ? 'Add NUSDC to cover this agent\'s AI executor fees.'
       : `${truncateAddress(agent.agentAddress)} to your wallet. Enter your agent passphrase to authorize.`;
@@ -347,17 +439,17 @@ export function TransferAgentFundsDialog({
         {/* Gas warnings */}
         {(mode === 'deposit' || mode === 'top-up-inference') && isLowOwnerGas && (
           <div className="px-3 py-2 text-sm rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
-            Not enough NASUN for gas. Use the in-wallet faucet to claim NASUN.
+            Not enough NSN for gas. Use the in-wallet faucet to claim NSN.
           </div>
         )}
         {mode === 'withdraw-trading' && !agentHasGas && selectedCoin !== 'NASUN' && (
           <div className="px-3 py-2 text-sm rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
-            Agent has no NASUN for gas. Deposit a small amount of NASUN first to recover other tokens.
+            Agent has no NSN for gas. Deposit a small amount of NSN first to recover other tokens.
           </div>
         )}
         {mode === 'withdraw-trading' && selectedCoin === 'NASUN' && agentHasGas && maxForMode === 0n && (
           <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
-            Agent NASUN is below the gas reserve. Withdrawing now would leave nothing for trade gas. Deposit more NASUN before withdrawing, or use another token.
+            Agent NSN is below the gas reserve. Withdrawing now would leave nothing for trade gas. Deposit more NSN before withdrawing, or use another token.
           </div>
         )}
 
@@ -403,7 +495,7 @@ export function TransferAgentFundsDialog({
                   const display = formatRawAmount(raw, TOKENS[sym].decimals);
                   return (
                     <option key={sym} value={sym}>
-                      {sym} · {display}
+                      {TOKENS[sym].symbol} · {display}
                     </option>
                   );
                 })}
@@ -421,7 +513,7 @@ export function TransferAgentFundsDialog({
                 disabled={busy || maxForMode === 0n}
                 className="text-xs text-pado-2 hover:text-pado-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                Max: {formatRawAmount(maxForMode, maxDecimals)} {effectiveCoin}
+                Max: {formatRawAmount(maxForMode, maxDecimals)} {effectiveMeta.symbol}
               </button>
             </div>
             <input
@@ -432,11 +524,27 @@ export function TransferAgentFundsDialog({
               onChange={(e) => setAmount(e.target.value)}
               disabled={busy}
               className={inputBase}
+              // Chrome's built-in password manager kept autofilling "admin" into
+              // this field on dialog open (2026-05-20 incident) even with
+              // autocomplete="off" + named field + 1Password/LastPass ignore
+              // attributes — Chrome ignores all of those heuristically. The
+              // readOnly-then-release trick works because the password manager
+              // only fills on page load, when the input is read-only and
+              // therefore skipped; user click removes the attribute so typing
+              // still works.
+              readOnly
+              onFocus={(e) => e.currentTarget.removeAttribute('readonly')}
+              autoComplete="one-time-code"
+              name="transfer-amount"
+              data-1p-ignore="true"
+              data-lpignore="true"
             />
           </div>
 
-          {/* Passphrase for withdraw-trading */}
-          {mode === 'withdraw-trading' && (
+          {/* Passphrase only required for withdrawing NSN gas (agent-signed
+              flow). Trade-asset withdraw goes through escrow::withdraw_owner
+              which uses the owner wallet signature — no agent key needed. */}
+          {mode === 'withdraw-trading' && selectedCoin === 'NASUN' && (
             <div className="space-y-1.5">
               <label className="text-sm text-uju-secondary">Agent passphrase</label>
               <input
@@ -449,7 +557,7 @@ export function TransferAgentFundsDialog({
                 autoComplete="off"
               />
               <p className="text-xs text-uju-secondary/60">
-                Passphrase is required to decrypt this agent's key. There is no recovery if lost.
+                Passphrase is required to decrypt this agent's key for NSN gas withdrawal. There is no recovery if lost.
               </p>
             </div>
           )}
