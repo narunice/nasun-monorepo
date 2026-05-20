@@ -90,6 +90,7 @@ describe('computeMaxForMode: deposit', () => {
     ownerNusdcRaw: 0n,
     agentNasunRaw: 0n,
     agentSelectedRaw: 0n,
+    agentEscrowSelectedRaw: 0n,
   };
 
   it('NUSDC deposit returns full owner NUSDC balance', () => {
@@ -145,6 +146,7 @@ describe('computeMaxForMode: top-up-inference', () => {
       ownerNusdcRaw: 100_000_000n,
       agentNasunRaw: 0n,
       agentSelectedRaw: 0n,
+      agentEscrowSelectedRaw: 0n,
     });
     expect(max).toBe(100_000_000n);
   });
@@ -157,12 +159,15 @@ describe('computeMaxForMode: withdraw-trading', () => {
     ownerNusdcRaw: 0n,
   };
 
-  it('NUSDC withdraw returns full agent balance', () => {
+  it('NUSDC withdraw sources from escrow (legacy wallet stuck is ignored on purpose)', () => {
     const max = computeMaxForMode({
       ...base,
       effectiveCoin: 'NUSDC',
       agentNasunRaw: 0n,
-      agentSelectedRaw: 1_000_000_000_000n,
+      // Legacy stuck capital in agent wallet must NOT show up as Max — recovery
+      // is a separate flow. 2026-05-20 design choice.
+      agentSelectedRaw: 9_999_999n,
+      agentEscrowSelectedRaw: 1_000_000_000_000n,
     });
     expect(max).toBe(1_000_000_000_000n);
   });
@@ -174,6 +179,7 @@ describe('computeMaxForMode: withdraw-trading', () => {
       effectiveCoin: 'NASUN',
       agentNasunRaw: agentNasun,
       agentSelectedRaw: agentNasun,
+      agentEscrowSelectedRaw: 0n,
     });
     expect(max).toBe(agentNasun - AGENT_MIN_GAS_RESERVE);
   });
@@ -187,6 +193,7 @@ describe('computeMaxForMode: withdraw-trading', () => {
       effectiveCoin: 'NASUN',
       agentNasunRaw: AGENT_MIN_GAS_RESERVE - 1n,
       agentSelectedRaw: AGENT_MIN_GAS_RESERVE - 1n,
+      agentEscrowSelectedRaw: 0n,
     });
     expect(max).toBe(0n);
   });
@@ -197,16 +204,21 @@ describe('computeMaxForMode: withdraw-trading', () => {
       effectiveCoin: 'NASUN',
       agentNasunRaw: AGENT_MIN_GAS_RESERVE,
       agentSelectedRaw: AGENT_MIN_GAS_RESERVE,
+      agentEscrowSelectedRaw: 0n,
     });
     expect(max).toBe(0n);
   });
 
-  it('non-NASUN withdraw returns 0n when agent has no balance', () => {
+  it('non-NASUN withdraw returns 0n when escrow is empty (even if wallet has dust)', () => {
     const max = computeMaxForMode({
       ...base,
       effectiveCoin: 'NUSDC',
       agentNasunRaw: 100_000_000n, // has gas, just no NUSDC
-      agentSelectedRaw: 0n,
+      // Legacy stuck wallet capital is invisible to Max so users do not get
+      // confused; recovery is a separate path. Verified: agentSelectedRaw is
+      // ignored even when non-zero.
+      agentSelectedRaw: 1_000_000n,
+      agentEscrowSelectedRaw: 0n,
     });
     expect(max).toBe(0n);
   });

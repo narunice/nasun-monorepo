@@ -53,6 +53,11 @@ interface MaxForModeInput {
   agentNasunRaw: bigint;
   /** Agent-side balance of the effective coin (used by withdraw non-NASUN). */
   agentSelectedRaw: bigint;
+  /** Escrow-side balance of the effective coin. Non-NASUN withdraws source
+   * from the escrow (the only place trade capital actually lives after the
+   * 2026-05-20 escrow-funding fix). Pass 0n when escrow is empty or for the
+   * NASUN gas case where escrow is irrelevant. */
+  agentEscrowSelectedRaw: bigint;
 }
 
 /**
@@ -67,7 +72,15 @@ interface MaxForModeInput {
  * - withdraw-trading + other coin: full agent balance.
  */
 export function computeMaxForMode(input: MaxForModeInput): bigint {
-  const { mode, effectiveCoin, ownerSelectedRaw, ownerNusdcRaw, agentNasunRaw, agentSelectedRaw } = input;
+  const {
+    mode,
+    effectiveCoin,
+    ownerSelectedRaw,
+    ownerNusdcRaw,
+    agentNasunRaw,
+    agentSelectedRaw,
+    agentEscrowSelectedRaw,
+  } = input;
 
   if (mode === 'top-up-inference') return ownerNusdcRaw;
 
@@ -80,7 +93,16 @@ export function computeMaxForMode(input: MaxForModeInput): bigint {
     return ownerSelectedRaw;
   }
 
-  // withdraw-trading
+  // withdraw-trading. NSN gas: agent wallet (with gas reserve). Trade assets:
+  // escrow (where they actually live; agent-wallet positions of trade assets
+  // exist only for legacy agents created before the escrow-funding fix and
+  // remain a separate recovery track — not surfaced as Max here on purpose
+  // so the UX stays single-source).
   if (effectiveCoin === 'NASUN') return computeNasunMaxWithdraw(agentNasunRaw);
-  return agentSelectedRaw;
+  // agentSelectedRaw intentionally not added: legacy stuck balance recovery
+  // requires the agent-signed `executeTradingWithdraw`, which is a different
+  // PTB shape from `escrow::withdraw_owner`. Mixing them in a single Max
+  // would require two signs and confuse the unified amount input.
+  void agentSelectedRaw;
+  return agentEscrowSelectedRaw;
 }
