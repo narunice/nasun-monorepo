@@ -6,7 +6,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { BARAM } from '@nasun/devnet-config';
+import { BARAM, NSN_TYPE } from '@nasun/devnet-config';
 import type { CoinRef } from './coinService';
 
 const SUI_CLOCK_ID = '0x6';
@@ -481,6 +481,23 @@ export function buildDepositToAgentWalletTransaction(
   }
   const tx = new Transaction();
   tx.setSender(params.signerAddress);
+
+  // NSN is both the gas token AND the asset being transferred. Splitting
+  // ownerCoins[0] for a transfer while the SDK also tries to reserve gas
+  // from the same coin set is what produced "No valid gas coins" /
+  // GasBalanceTooLow on the 2026-05-20 NSN deposit attempt (owner held
+  // 217 NSN — far above the gas reserve, but PTB build failed because
+  // the only candidate coin was already committed to the transfer). Use
+  // `tx.gas` here: the SDK reserves gas from the gas-coin pool first,
+  // then splits the rest of the user's NSN for the transfer. For every
+  // other token, the original split-from-ownerCoins shape still applies
+  // because gas (NSN) and transferred coin are different objects.
+  if (params.coinType === NSN_TYPE) {
+    const [out] = tx.splitCoins(tx.gas, [tx.pure.u64(params.amountRaw)]);
+    tx.transferObjects([out], tx.pure.address(params.toAgentAddress));
+    return tx;
+  }
+
   const [primary, ...rest] = params.ownerCoins;
   if (rest.length > 0) {
     tx.mergeCoins(
