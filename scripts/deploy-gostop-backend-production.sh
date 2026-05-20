@@ -247,6 +247,18 @@ rsync -az -e "ssh -i $SSH_KEY_EXPANDED" \
   "$BACKEND_DIR/tsconfig.build.json" \
   "${EC2_USER}@${EC2_HOST}:${REMOTE_BASE}/"
 
+# devnet-ids.json is the SSOT for chain identifiers. It is read at runtime via
+# `import devnetIds from '../../../devnet-ids.json'`, which resolves to
+# /home/ubuntu/devnet-ids.json on the deploy host (relative to dist/config/).
+# Skipping this rsync silently breaks the indexer whenever a Move package is
+# upgraded — the bundle keeps using the prior packageId for event subscription
+# (verified 2026-05-20 P1 lockstep upgrade incident, where stale v0.0.3
+# packageId prevented OpenExposureSnapshot ingestion).
+log_info "rsync devnet-ids.json (SSOT for chain ids — runtime read) ..."
+rsync -az -e "ssh -i $SSH_KEY_EXPANDED" \
+  "$MONOREPO_ROOT/apps/gostop/devnet-ids.json" \
+  "${EC2_USER}@${EC2_HOST}:${REMOTE_BASE}/../devnet-ids.json"
+
 # Migration 파일은 별도 디렉토리에 두어 운영자가 수동 적용. 절대 자동 실행 X.
 log_info "rsync src/db/migrations/ (수동 적용용) ..."
 rsync -az --delete -e "ssh -i $SSH_KEY_EXPANDED" \

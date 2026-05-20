@@ -96,8 +96,10 @@
   },
 
   "lottery": {
-    "packageId": "0x765a0511f53521168f28aa0c72a33634916b523236314690560ee45a1e47bdfc",
+    "packageId": "0x607eca4fce15fc704d64700443c6cb4df822315b0427b929b0e63b0b65853766",
     "originalPackageId": "0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3",
+    "v3UpgradeTxDigest": "iZHT2Kx3xpX7y2i4kLpDENi16S9g43JZ1NuLhFWFhbZ",
+    "v3Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0x1069c4acb26233de518b2e7f072ccac3bdc7da4428a95e20e54432c0b08d596c",
     "adminCap": "0x4f2ca8c69b5098d0e255467f8cc6bae1db8abcae254b01c373a02f2528745c89",
     "upgradeCap": "0x01b40d08a86e8b32956f9955dfdab608325532588bd81388e79472d85e427a15",
@@ -122,12 +124,14 @@
   },
 
   "scratchcard": {
-    "packageId": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e",
+    "packageId": "0xac30806c5a28105d8477636afc8c08ea7f92bbf46fd5617bd3cab509141a2501",
     "originalPackageId": "0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e",
     "registry": "0x80bd11609a0706960507df28c164a84b0b84921a3018a98731958db614a1a014",
     "adminCap": "0x0a4772d64e08016a1b84e6bbba7c0790111cb998ded348d2e0489362007e5c0c",
     "upgradeCap": "0xecc153c3f115db5e164883722a246ed77eb4c5931a7d32ef3abab8fd2e570c21",
     "publishTxDigest": "C52dnFaDVXVdQHr87z41DrY7J7fsDkPtF5YUsyuBqoUu",
+    "v2UpgradeTxDigest": "XVDpWs9AKrdLy4xeWfP8C2MenAFRwNPz3N1JVVcPn2s",
+    "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4 (chain-authoritative open_exposure tracking). Module source unchanged.",
     "gameCapInstalled": "0x7448d89c8aa3841b132a13e2237551ae5d01f883d074e2d2253aefeebad6fefb (consumed into registry.game_cap)",
     "gameCapInstallTxDigest": "52aQknhwM9ssVhFbS8oX5SGVHULkadz4CWXdKsWzHhAD",
     "gameId": 2,
@@ -140,8 +144,10 @@
   },
 
   "numbermatch": {
-    "packageId": "0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314",
+    "packageId": "0x8c84872f7bb85f318602d534ac82e307e94eef72962c69431f892cde19e45897",
     "originalPackageId": "0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314",
+    "v2UpgradeTxDigest": "Cn27pNCbtDHMNvujAaTeJT1WnELhxM5bw2HQauWXSzei",
+    "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0xb412009d5738d340821f3614c7141424692bf09c4025e6a45387d364021a79a9",
     "adminCap": "0x66cf819c6dac2dd0e3d5663bf0a334876fd6fe007b330d27d1ceb4e566477b2c",
     "upgradeCap": "0xb7ee298d6a8b36c69b7325dc8ea1c2349648e60481d0a67895aa409ae3f2149a",
@@ -159,8 +165,10 @@
   },
 
   "mines": {
-    "packageId": "0x52694ab5e427159f709613f7ecf4d3d696479c86ae39eaf992499220b9a632b2",
+    "packageId": "0x6f8e04fbfb294602a82be5d974f8e6c1fbe6657ec1ad915d7be3c66146874ca7",
     "originalPackageId": "0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54",
+    "v5UpgradeTxDigest": "9ftBeFKssfhPrgmoWZrTJ5yaCWzTutM292gXnW4y8Rnt",
+    "v5Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "upgradeTxDigest": "7W88Y4qSGSShrbkJEDdMw3NKSREBzqTUT6sRXzVe8oY1",
     "registry": "0x7b0574b78206bd5141a0afb59ac4e8c33bbdb4c48f626ca81596714e3f1f8795",
     "adminCap": "0x47d469ddac1a0a6ebd8ae997004118a7e3fde0b75718baf854c851eefe67da9a",
@@ -216,8 +224,10 @@
   },
 
   "wheel": {
-    "packageId": "0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d",
+    "packageId": "0x367b46d93f0fca65f105b6f840a28b2ee42021610890cda9d177aeba711bc70d",
     "originalPackageId": "0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d",
+    "v2UpgradeTxDigest": "2zVBVd3zXgP9Qe1grcLcuNNmD13LYJae2MMki1pjrbUy",
+    "v2Notes": "Lockstep upgrade rebinding bankroll_pool dep to v0.0.4. Module source unchanged.",
     "registry": "0x0e22790c3afa5518f8a8f048a7eb031c543239156ca211f7ffd0c29fcbefd95a",
     "adminCap": "0x1f79959be49f1af2e6d20beb5814dcff531534f4ba8bc6f20ed564a9bdb891b2",
     "upgradeCap": "0xd6b8f39b76ff1f140a8a7e4153acf043d6b9c1d80b60dfd14ded933778c8c73b",
