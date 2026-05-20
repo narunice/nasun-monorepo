@@ -9,6 +9,7 @@ import { useState } from 'react';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import type { BudgetInfo } from '../../hooks/useBudgets';
 import { useAgentActions } from '../../hooks/useAgentActions';
+import { useAgentAerStats } from '../../hooks/useAgentAerStats';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
@@ -24,6 +25,7 @@ interface DashboardTabProps {
 export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
   const { deactivateAgent, reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const { config, save, remove, refetch } = useTraderConfig(agent.agentAddress);
+  const aerStats = useAgentAerStats(agent.owner, agent.agentAddress, agent.capabilityId);
   const [busy, setBusy] = useState(false);
 
   const handleToggleActive = async () => {
@@ -73,9 +75,12 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-uju-border/60">
-          <Stat label="Executions" value={agent.totalExecutions.toLocaleString()} />
-          <Stat label="Spent" value={formatNusdc(agent.totalSpent)} />
-          <Stat label="Last active" value={formatTimestamp(agent.lastActiveAt)} />
+          <Stat label="Executions" value={aerStats.executions.toLocaleString()} />
+          <Stat label="Spent" value={formatNusdc(aerStats.totalSpent)} />
+          <Stat
+            label="Last active"
+            value={aerStats.lastActiveAt > 0 ? formatTimestamp(aerStats.lastActiveAt) : '-'}
+          />
           <Stat label="Created" value={formatTimestamp(agent.createdAt)} />
         </div>
 
