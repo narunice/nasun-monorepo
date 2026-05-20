@@ -13,6 +13,7 @@ import { NETWORK_CONFIG } from '../../../config/network';
 import { isTradeApiAvailable } from '../../../lib/pado-api';
 import { useMarket } from '../context/MarketContext';
 import { useSenderEvents } from './useSenderEvents';
+import { priceScaleExp } from '../../../lib/deepbook';
 
 export interface MyTradeItem {
   id: string;
@@ -139,7 +140,7 @@ export function useMyTrades(
       const isBid = t.side === 'buy';
       return {
         id: `${t.tx_digest}_${t.event_seq}`,
-        price: Number(safeBigInt(t.price)) / Math.pow(10, quoteDecimals),
+        price: Number(safeBigInt(t.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals)),
         quantity: Number(safeBigInt(t.base_quantity)) / Math.pow(10, baseDecimals),
         isBid,
         role: t.role as 'maker' | 'taker',
@@ -176,7 +177,7 @@ export function useMyTrades(
 
         trades.push({
           id,
-          price: Number(BigInt(String(json.price || 0))) / Math.pow(10, quoteDecimals),
+          price: Number(BigInt(String(json.price || 0))) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals)),
           quantity: Number(BigInt(String(json.base_quantity || json.quantity || 0))) / Math.pow(10, baseDecimals),
           isBid,
           role: isTaker ? 'taker' : 'maker',

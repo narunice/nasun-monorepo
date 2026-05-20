@@ -16,6 +16,7 @@ import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { getUnifiedPrice, type TokenSymbol } from '../../../lib/prices';
 import { fetchCostBasisFromApi, isTradeApiAvailable } from '../../../lib/pado-api';
+import { priceScaleExp } from '../../../lib/deepbook';
 
 export interface CostBasisEntry {
   symbol: TokenSymbol;
@@ -102,7 +103,7 @@ async function fetchCostBasisRpc(
       const takerIsBid = Boolean(json.taker_is_bid);
       const isBid = isTaker ? takerIsBid : !takerIsBid;
 
-      const price = Number(safeBigInt(json.price)) / Math.pow(10, quoteDecimals);
+      const price = Number(safeBigInt(json.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals));
       const qty = Number(safeBigInt(json.base_quantity || json.quantity)) / Math.pow(10, baseDecimals);
 
       if (qty === 0) continue;

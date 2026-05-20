@@ -17,6 +17,7 @@ import {
 } from '../../../lib/pado-api';
 import { useMarket } from '../context/MarketContext';
 import { useSenderEvents } from './useSenderEvents';
+import { priceScaleExp } from '../../../lib/deepbook';
 
 /** Safely convert unknown RPC value to BigInt, defaulting to 0n on invalid input */
 function safeBigInt(value: unknown): bigint {
@@ -97,7 +98,7 @@ function processOrderHistoryFromApi(
     orders.push({
       orderId,
       type: 'limit',
-      price: Number(safeBigInt(event.price)) / Math.pow(10, quoteDecimals),
+      price: Number(safeBigInt(event.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals)),
       quantity,
       executedQuantity,
       isBid: !!event.is_bid,
@@ -147,7 +148,7 @@ function processOrderHistoryFromApi(
 
   for (const [orderId, data] of takerOrderMap) {
     const avgPrice = data.totalQuantity > 0n
-      ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, quoteDecimals)
+      ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals))
       : 0;
     const qty = Number(data.totalQuantity) / Math.pow(10, baseDecimals);
 
@@ -262,7 +263,7 @@ function processOrderHistoryFromRpc(
     orders.push({
       orderId,
       type: 'limit',
-      price: Number(safeBigInt(json.price)) / Math.pow(10, quoteDecimals),
+      price: Number(safeBigInt(json.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals)),
       quantity,
       executedQuantity,
       isBid: Boolean(json.is_bid),
@@ -314,7 +315,7 @@ function processOrderHistoryFromRpc(
 
   for (const [orderId, data] of takerOrderMap) {
     const avgPrice = data.totalQuantity > 0n
-      ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, quoteDecimals)
+      ? Number(data.weightedPrice / data.totalQuantity) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals))
       : 0;
     const qty = Number(data.totalQuantity) / Math.pow(10, baseDecimals);
 

@@ -292,7 +292,7 @@ export function useOrderActions(): UseOrderActionsResult {
               arguments: [tx.object(bmId), coinArg],
             });
           };
-          const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals);
+          const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals, currentPool.baseToken.decimals);
           const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
           const result = await placeLimitOrder({ price: rawPrice, quantity: rawQuantity, isBid: true, orderType, preSteps });
           if (result.success) {

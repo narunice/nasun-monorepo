@@ -9,6 +9,7 @@ import { NETWORK_CONFIG, POOLS } from '../config/network';
 import type { UserTrade } from '../features/portfolio/hooks/useTradeHistory';
 import type { CostBasisEntry } from '../features/portfolio/hooks/useCostBasis';
 import type { TokenSymbol } from './prices';
+import { priceScaleExp } from './deepbook';
 
 // ===== Types =====
 
@@ -116,7 +117,7 @@ function adaptTradeFill(fill: ApiTradeFill): UserTrade | null {
   const baseDecimals = pool.baseToken.decimals;
   const quoteDecimals = pool.quoteToken.decimals;
 
-  const price = Number(safeBigInt(fill.price)) / Math.pow(10, quoteDecimals);
+  const price = Number(safeBigInt(fill.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals));
   const qty = Number(safeBigInt(fill.base_quantity)) / Math.pow(10, baseDecimals);
   const total = price * qty;
 

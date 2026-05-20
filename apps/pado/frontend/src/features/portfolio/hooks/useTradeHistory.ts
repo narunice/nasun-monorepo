@@ -15,6 +15,7 @@ import { NETWORK_CONFIG, POOLS } from '../../../config/network';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
 import { fetchTradeHistoryFromApi, isTradeApiAvailable } from '../../../lib/pado-api';
 import type { TradeHistoryPage as ApiPage } from '../../../lib/pado-api';
+import { priceScaleExp } from '../../../lib/deepbook';
 
 export interface UserTrade {
   id: string;
@@ -152,7 +153,7 @@ async function fetchRealTradesPageRpc(
     const takerIsBid = Boolean(json.taker_is_bid);
     const isBid = isTaker ? takerIsBid : !takerIsBid;
 
-    const price = Number(safeBigInt(json.price)) / Math.pow(10, quoteDecimals);
+    const price = Number(safeBigInt(json.price)) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals));
     const qty = Number(safeBigInt(json.base_quantity || json.quantity)) / Math.pow(10, baseDecimals);
     const total = price * qty;
 
