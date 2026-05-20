@@ -125,6 +125,17 @@ rsync -az --delete \
   "$LOCAL_DIST/" \
   "${EC2_USER}@${EC2_HOST}:${REMOTE_DIST}/"
 
+# Sync ecosystem.config.cjs separately (NOT under --delete from REMOTE_BASE; that
+# would wipe sibling files like .env, data/, dist.bak.*). pm2 daemon parses this
+# file at delete+start time, so the new copy must be on disk before Step 5.
+# 2026-05-19: cron_restart added here is the source of truth for prod's daily
+# 18:00 UTC restart cap on accumulated workload (pnl phase ballooning).
+log_info "ecosystem.config.cjs 동기화 중..."
+rsync -az \
+  -e "ssh -i $SSH_KEY_EXPANDED" \
+  "$CHAT_SERVER_DIR/ecosystem.config.cjs" \
+  "${EC2_USER}@${EC2_HOST}:${REMOTE_BASE}/ecosystem.config.cjs"
+
 log_success "rsync 완료"
 
 # --- Step 5a (optional): TURNSTILE_SECRET_KEY 비우기 ---
