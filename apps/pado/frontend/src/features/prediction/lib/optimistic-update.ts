@@ -26,7 +26,7 @@ import type {
   SuiEvent,
 } from '@mysten/sui/client';
 
-import { ORDER_FILLED_EVENT, POSITION_TYPE } from '../constants';
+import { ORDER_FILLED_EVENTS, POSITION_TYPES } from '../constants';
 import type { Position, RecentFill } from '../types';
 
 /** Eviction window: pending rows that the indexer never confirms are wiped. */
@@ -50,7 +50,7 @@ export function parseFillsFromEvents(events: SuiEvent[] | null | undefined, mark
   if (!events) return [];
   const out: RecentFill[] = [];
   for (const ev of events) {
-    if (ev.type !== ORDER_FILLED_EVENT) continue;
+    if (!ORDER_FILLED_EVENTS.includes(ev.type)) continue;
     const j = ev.parsedJson as Record<string, unknown> | null;
     if (!j || j.market_id !== marketId) continue;
     // Drop zero-fill bookkeeping events (cost=0 fill_shares=0) — same rule as
@@ -96,7 +96,7 @@ function parseNewPositionIds(
   const ids: string[] = [];
   for (const c of changes) {
     if (c.type !== 'created') continue;
-    if (c.objectType !== POSITION_TYPE) continue;
+    if (!POSITION_TYPES.includes(c.objectType)) continue;
     const owner = c.owner;
     const addressOwner = typeof owner === 'object' && owner && 'AddressOwner' in owner
       ? owner.AddressOwner
