@@ -18,6 +18,19 @@ export function fmtUsdc(raw: string | bigint | null | undefined): string {
   }
 }
 
+/**
+ * Render a raw scaled share-price integer as a 4-decimal human number.
+ * 1_000_000_000 = 1.0 pps (chain convention; mirrors bankroll_pool.move).
+ * Bad input returns '—' so the UI never throws on a malformed string.
+ */
+export function fmtSharePrice(scaled: string): string {
+  let n: bigint;
+  try { n = BigInt(scaled); } catch { return '—'; }
+  const whole = n / 1_000_000_000n;
+  const frac = (n % 1_000_000_000n) / 100_000n; // → 4-decimal precision
+  return `${whole.toString()}.${frac.toString().padStart(4, '0')}`;
+}
+
 /** Signed variant for PnL columns. Fixed 2-decimal to prevent cell overflow. */
 export function fmtUsdcSigned(raw: string | bigint | null | undefined): string {
   if (raw === null || raw === undefined) return '—';
