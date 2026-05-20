@@ -97,6 +97,32 @@
   --color-ask: #991b1b;
   --color-ask-muted: rgba(153, 27, 27, 0.75);
   --color-ask-bg: rgba(153, 27, 27, 0.1);
+
+  /* Prediction market YES/NO — Tailwind green-500 / red-500 family */
+  --color-predict-yes: #15803d;            /* green-700 */
+  --color-predict-yes-strong: #14532d;     /* green-900 */
+  --color-predict-yes-bar: #22c55e;        /* green-500 */
+  --color-predict-yes-bar-hover: #16a34a;  /* green-600 */
+  --color-predict-yes-bg-soft: rgba(34, 197, 94, 0.10);
+  --color-predict-yes-bg: rgba(34, 197, 94, 0.20);
+  --color-predict-yes-bg-strong: rgba(34, 197, 94, 0.30);
+  --color-predict-yes-border: rgba(34, 197, 94, 0.40);
+  --color-predict-no: #b91c1c;             /* red-700 */
+  --color-predict-no-strong: #7f1d1d;      /* red-900 */
+  --color-predict-no-bar: #ef4444;         /* red-500 */
+  --color-predict-no-bar-hover: #dc2626;   /* red-600 */
+  --color-predict-no-bg-soft: rgba(239, 68, 68, 0.10);
+  --color-predict-no-bg: rgba(239, 68, 68, 0.20);
+  --color-predict-no-bg-strong: rgba(239, 68, 68, 0.30);
+  --color-predict-no-border: rgba(239, 68, 68, 0.40);
+
+  /* Notice (used by "Market Closed — Awaiting Resolution" card) */
+  --color-notice-text: #7a5a14;
+  --color-notice-text-muted: #8f6a1c;
+  --color-notice-bg: rgba(245, 158, 11, 0.14);
+  --color-notice-bg-strong: rgba(245, 158, 11, 0.28);
+  --color-notice-border: rgba(245, 158, 11, 0.45);
+  --color-notice-track: rgba(245, 158, 11, 0.18);
 }
 
 .dark {
@@ -133,6 +159,32 @@
   --color-ask: #dc2626;
   --color-ask-muted: rgba(220, 38, 38, 0.6);
   --color-ask-bg: rgba(220, 38, 38, 0.08);
+
+  /* Prediction market YES/NO — Tailwind green/red family, lifted for dark bg */
+  --color-predict-yes: #4ade80;            /* green-400 */
+  --color-predict-yes-strong: #86efac;     /* green-300 */
+  --color-predict-yes-bar: #22c55e;        /* green-500 */
+  --color-predict-yes-bar-hover: #16a34a;  /* green-600 */
+  --color-predict-yes-bg-soft: rgba(34, 197, 94, 0.10);
+  --color-predict-yes-bg: rgba(34, 197, 94, 0.20);
+  --color-predict-yes-bg-strong: rgba(34, 197, 94, 0.30);
+  --color-predict-yes-border: rgba(34, 197, 94, 0.40);
+  --color-predict-no: #f87171;             /* red-400 */
+  --color-predict-no-strong: #fca5a5;      /* red-300 */
+  --color-predict-no-bar: #ef4444;         /* red-500 */
+  --color-predict-no-bar-hover: #dc2626;   /* red-600 */
+  --color-predict-no-bg-soft: rgba(239, 68, 68, 0.10);
+  --color-predict-no-bg: rgba(239, 68, 68, 0.20);
+  --color-predict-no-bg-strong: rgba(239, 68, 68, 0.30);
+  --color-predict-no-border: rgba(239, 68, 68, 0.40);
+
+  /* Notice — amber tones lifted for dark bg */
+  --color-notice-text: #fbbf24;
+  --color-notice-text-muted: rgba(251, 191, 36, 0.80);
+  --color-notice-bg: rgba(245, 158, 11, 0.18);
+  --color-notice-bg-strong: rgba(245, 158, 11, 0.32);
+  --color-notice-border: rgba(245, 158, 11, 0.45);
+  --color-notice-track: rgba(245, 158, 11, 0.22);
 }
 
 :root {

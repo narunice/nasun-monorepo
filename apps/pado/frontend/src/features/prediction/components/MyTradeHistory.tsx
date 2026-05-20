@@ -24,8 +24,10 @@ function Row({ row }: { row: TradeHistoryRow }) {
     : row.isYes ? 'SELL YES' : 'SELL NO';
   const price = (row.priceBps / 10000).toFixed(2);
   const shares = (Number(row.fillShares) / 1_000_000).toFixed(2);
-  const borderColor = row.isBuy ? 'rgb(22 163 74)' : 'rgb(220 38 38)';
-  const sideColor = row.isBuy ? 'text-green-500' : 'text-red-500';
+  const borderColor = row.isBuy
+    ? 'var(--color-predict-yes-bar)'
+    : 'var(--color-predict-no-bar)';
+  const sideColor = row.isBuy ? 'text-predict-yes' : 'text-predict-no';
   const txUrl = row.txDigest ? getExplorerTxUrl(row.txDigest) : null;
 
   return (

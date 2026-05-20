@@ -97,7 +97,7 @@ export function OrderSuccessModal({ onClose, market, data }: OrderSuccessModalPr
 
       <div className="relative w-full max-w-sm bg-theme-bg-secondary rounded-2xl shadow-xl overflow-hidden">
         {/* Header stripe */}
-        <div className={`h-1.5 w-full ${isYes ? 'bg-green-500' : 'bg-red-500'}`} />
+        <div className={`h-1.5 w-full ${isYes ? 'bg-predict-yes-bar' : 'bg-predict-no-bar'}`} />
 
         <div className="p-6">
           {/* Title */}
@@ -173,7 +173,7 @@ export function OrderSuccessModal({ onClose, market, data }: OrderSuccessModalPr
               type="button"
               onClick={onClose}
               className={`py-2.5 rounded-lg text-sm font-semibold text-white transition-colors ${
-                isYes ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+                isYes ? 'bg-predict-yes-bar hover:bg-predict-yes-bar-hover' : 'bg-predict-no-bar hover:bg-predict-no-bar-hover'
               } ${data.orderType === 'buy' && !data.isResting ? 'flex-1' : 'w-full'}`}
             >
               Got it
@@ -252,16 +252,16 @@ function BuyBreakdown({
       {!data.isResting && (
         <div className="space-y-1.5">
           <p className="text-xs text-theme-text-muted uppercase tracking-wide font-medium">Payout scenarios</p>
-          <div className={`rounded-xl p-3 border ${isYes ? 'bg-green-500/10 border-green-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
+          <div className={`rounded-xl p-3 border ${isYes ? 'bg-predict-yes-bg-soft border-predict-yes-border' : 'bg-predict-no-bg-soft border-predict-no-border'}`}>
             <div className="flex justify-between items-baseline">
               <span className="text-sm text-theme-text-secondary">
                 If {outcomeLabel} wins
               </span>
               <div className="text-right">
-                <span className={`text-lg font-bold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-lg font-bold ${isYes ? 'text-predict-yes' : 'text-predict-no'}`}>
                   ${payout.toFixed(2)}
                 </span>
-                <span className={`text-xs ml-1 ${isYes ? 'text-green-500' : 'text-red-500'}`}>
+                <span className={`text-xs ml-1 ${isYes ? 'text-predict-yes' : 'text-predict-no'}`}>
                   (+{returnPct >= 0 ? Math.min(returnPct, 9999).toFixed(0) : '0'}%)
                 </span>
               </div>
@@ -336,8 +336,8 @@ function RestingNote({
       ? `${remainingShares.toFixed(2)} share${remainingShares >= 1.005 ? 's' : ''} remaining`
       : null;
   return (
-    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3 text-sm">
-      <p className="font-medium text-yellow-400 mb-1">
+    <div className="bg-notice-bg border border-notice-border rounded-xl p-3 text-sm">
+      <p className="font-medium text-notice-text mb-1">
         {orderType === 'buy' ? 'Waiting to fill' : 'Close order resting'}
         {remainderText ? ` — ${remainderText}` : ''}
       </p>

@@ -81,8 +81,8 @@ export function AdminResolveModal({
         </div>
 
         {/* Warning */}
-        <div className="bg-yellow-500/25 border border-yellow-500/50 rounded-lg p-3 mb-4">
-          <p className="text-yellow-500 text-sm">
+        <div className="bg-notice-bg border border-notice-border rounded-lg p-3 mb-4">
+          <p className="text-notice-text text-sm">
             This action is irreversible. Once resolved, the outcome cannot be changed.
           </p>
         </div>
@@ -97,8 +97,8 @@ export function AdminResolveModal({
               onClick={() => setSelectedOutcome(true)}
               className={`flex-1 py-3 rounded-lg font-semibold text-white transition-all ${
                 selectedOutcome === true
-                  ? 'bg-green-600 ring-2 ring-green-400 ring-offset-2 ring-offset-theme-bg-secondary'
-                  : 'bg-green-600/50 hover:bg-green-600/70'
+                  ? 'bg-predict-yes-bar ring-2 ring-predict-yes-strong ring-offset-2 ring-offset-theme-bg-secondary'
+                  : 'bg-predict-yes-bar/60 hover:bg-predict-yes-bar/80'
               }`}
             >
               YES Wins
@@ -107,8 +107,8 @@ export function AdminResolveModal({
               onClick={() => setSelectedOutcome(false)}
               className={`flex-1 py-3 rounded-lg font-semibold text-white transition-all ${
                 selectedOutcome === false
-                  ? 'bg-red-600 ring-2 ring-red-400 ring-offset-2 ring-offset-theme-bg-secondary'
-                  : 'bg-red-600/50 hover:bg-red-600/70'
+                  ? 'bg-predict-no-bar ring-2 ring-predict-no-strong ring-offset-2 ring-offset-theme-bg-secondary'
+                  : 'bg-predict-no-bar/60 hover:bg-predict-no-bar/80'
               }`}
             >
               NO Wins
@@ -118,12 +118,12 @@ export function AdminResolveModal({
 
         {/* Error/Success Messages */}
         {error && (
-          <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2 mb-4">
+          <div className="text-predict-no-strong text-sm bg-predict-no-bg rounded-lg p-2 mb-4">
             {error}
           </div>
         )}
         {success && (
-          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2 mb-4">
+          <div className="text-predict-yes-strong text-sm bg-predict-yes-bg rounded-lg p-2 mb-4">
             {success}
           </div>
         )}

@@ -122,14 +122,14 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
     <div
       className={`rounded-xl border p-4 md:p-5 ${
         hasWinnings
-          ? 'border-green-500/40 bg-green-500/10'
+          ? 'border-predict-yes-border bg-predict-yes-bg-soft'
           : 'border-theme-border bg-theme-bg-secondary'
       }`}
     >
       <div className="flex items-start gap-3">
         <div
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-            hasWinnings ? 'bg-green-500/20 text-green-400' : 'bg-theme-bg-tertiary text-theme-text-secondary'
+            hasWinnings ? 'bg-predict-yes-bg text-predict-yes' : 'bg-theme-bg-tertiary text-theme-text-secondary'
           }`}
         >
           {hasWinnings ? (
@@ -169,7 +169,7 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
         <div className="flex-1 min-w-0">
           <h3
             className={`text-base md:text-lg font-semibold ${
-              hasWinnings ? 'text-green-500 dark:text-green-400' : 'text-theme-text-primary'
+              hasWinnings ? 'text-predict-yes' : 'text-theme-text-primary'
             }`}
           >
             {hasWinnings ? 'You won this market' : 'Settle your positions'}
@@ -202,7 +202,7 @@ export function WinningClaimBanner({ market, positions, onSettled }: WinningClai
                 onClick={handleClaimAll}
                 disabled={isBusy}
                 className={`min-h-[44px] px-4 py-2.5 rounded-lg font-medium text-white disabled:opacity-60 ${
-                  hasWinnings ? 'bg-green-600 hover:bg-green-500' : 'bg-pd1 hover:bg-pd1/80'
+                  hasWinnings ? 'bg-predict-yes-bar hover:bg-predict-yes-bar-hover' : 'bg-pd1 hover:bg-pd1/80'
                 }`}
               >
                 {buttonLabel}

@@ -88,9 +88,10 @@ describe('calculateProbabilityFromOrderbook (Polymarket + Kalshi reciprocal)', (
     const yesOb = makeOrderbook([], [6000]); // YES ask 60, no YES bid
     const noOb = makeOrderbook([], [3000]); // NO ask 30 → implied YES bid = 70
     const r = calculateProbabilityFromOrderbook(yesOb, noOb);
-    // implied bid=7000 vs no yes bid → effective bid=7000, ask=6000 (crossed)
-    // spread = -1000 ≤ 1000 → mid = 6500
-    expect(r.yesProbability).toBe(65);
+    // implied bid=7000 vs no yes bid → effective bid=7000, ask=6000 (crossed
+    // by -1000). Cross branch prefers the ask (taker-facing) over the mid,
+    // because a taker buying YES meets 6000 (60%), not 6500.
+    expect(r.yesProbability).toBe(60);
   });
 
   it('picks the tighter side when both YES and NO orderbooks contribute', () => {
@@ -107,6 +108,27 @@ describe('calculateProbabilityFromOrderbook (Polymarket + Kalshi reciprocal)', (
     // mid = 6500
     const r = calculateProbabilityFromOrderbook(null, noOb);
     expect(r.yesProbability).toBe(65);
+  });
+
+  it('uses ask (not mid) when book is crossed', () => {
+    // Symmetric cross from 2026-05-20 incident on legacy market
+    // 0xe2b5327c...: yesBid 6100, yesAsk 5100, noBid 6100, noAsk 5000.
+    // effective bid = max(6100, 10000-5000=5000) = 6100
+    // effective ask = min(5100, 10000-6100=3900) = 3900
+    // spread = -2200 (crossed); mid would collapse to 50, pinned regardless
+    // of taker activity. Expect the effective ask (39%) instead.
+    const yesOb = makeOrderbook([6100], [5100]);
+    const noOb = makeOrderbook([6100], [5000]);
+    const r = calculateProbabilityFromOrderbook(yesOb, noOb);
+    expect(r.yesProbability).toBe(39);
+    expect(r.hasRealQuotes).toBe(true);
+  });
+
+  it('prefers last trade over ask when crossed and last trade is known', () => {
+    const yesOb = makeOrderbook([6100], [5100]);
+    const noOb = makeOrderbook([6100], [5000]);
+    const r = calculateProbabilityFromOrderbook(yesOb, noOb, 5500);
+    expect(r.yesProbability).toBe(55);
   });
 });
 

@@ -261,15 +261,15 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
         <div
           className={`mb-4 p-3 rounded-lg text-sm border ${
             market.outcome
-              ? 'bg-green-50 border-green-300 text-green-700 dark:bg-green-500/20 dark:border-green-500/30 dark:text-green-400'
-              : 'bg-red-50 border-red-300 text-red-700 dark:bg-red-500/20 dark:border-red-500/30 dark:text-red-400'
+              ? 'bg-predict-yes-bg border-predict-yes-border text-predict-yes'
+              : 'bg-predict-no-bg border-predict-no-border text-predict-no'
           }`}
         >
           Market Resolved: <strong>{market.outcome ? 'YES' : 'NO'}</strong> wins
         </div>
       )}
       {market.status === 'cancelled' && (
-        <div className="mb-4 p-3 rounded-lg text-sm border bg-yellow-50 border-yellow-300 text-yellow-800 dark:bg-yellow-500/20 dark:border-yellow-500/30 dark:text-yellow-400">
+        <div className="mb-4 p-3 rounded-lg text-sm border bg-notice-bg border-notice-border text-notice-text">
           Market cancelled. Claim your collateral refund below.
         </div>
       )}
@@ -338,7 +338,7 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
       )}
 
       {error && (
-        <div className="mt-4 text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>
+        <div className="mt-4 text-predict-no-strong text-sm bg-predict-no-bg rounded-lg p-2">{error}</div>
       )}
 
       {sellModalPosition && sellingPosition && (
@@ -385,7 +385,7 @@ export function PositionList({ market, positions, isLoading: isPositionsLoading,
                 </div>
                 <div className="flex justify-between">
                   <span className="text-theme-text-muted">You will receive</span>
-                  <span className="text-green-500 font-mono font-medium">
+                  <span className="text-predict-yes font-mono font-medium">
                     {sellOrderSummary.receiveAmount.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
                   </span>
                 </div>

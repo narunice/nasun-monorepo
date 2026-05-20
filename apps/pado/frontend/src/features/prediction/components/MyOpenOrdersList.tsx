@@ -76,7 +76,7 @@ export function MyOpenOrdersList({ market }: Props) {
             const priceLabel = formatCents(o.priceBps, 2);
             const sideLabel = o.isBid ? 'Buy' : 'Sell';
             const outcomeLabel = o.isYes ? 'YES' : 'NO';
-            const outcomeColor = o.isYes ? 'text-green-500' : 'text-red-500';
+            const outcomeColor = o.isYes ? 'text-predict-yes' : 'text-predict-no';
             return (
               <div
                 key={`${o.isYes}-${o.isBid}-${o.priceBps}-${o.orderId}`}
@@ -95,7 +95,7 @@ export function MyOpenOrdersList({ market }: Props) {
                 <button
                   onClick={() => handleCancel(o)}
                   disabled={isTrading}
-                  className="shrink-0 px-3 py-1.5 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded font-medium disabled:opacity-50"
+                  className="shrink-0 px-3 py-1.5 text-xs bg-predict-no-bg hover:bg-predict-no-bg-strong text-predict-no rounded font-medium disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -105,7 +105,7 @@ export function MyOpenOrdersList({ market }: Props) {
         </div>
       )}
 
-      {error && <div className="mt-3 text-red-500 text-sm bg-red-500/25 rounded-lg p-2">{error}</div>}
+      {error && <div className="mt-3 text-predict-no-strong text-sm bg-predict-no-bg rounded-lg p-2">{error}</div>}
     </div>
   );
 }

@@ -70,7 +70,7 @@ export function PredictPage() {
   if (error) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-500">Failed to load markets</p>
+        <p className="text-theme-error">Failed to load markets</p>
         <p className="text-sm text-theme-text-muted mt-2">
           {error.message}
         </p>
@@ -93,7 +93,7 @@ export function PredictPage() {
         {isResolver && (
           <Link
             to="/predict/admin"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-theme-warning hover:opacity-90 text-white font-medium rounded-lg transition-opacity w-full sm:w-auto"
           >
             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />

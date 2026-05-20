@@ -46,10 +46,10 @@ export function MobileTradeStickyBar({
         <div className="flex gap-2">
           <button
             onClick={() => scrollToForm('yes')}
-            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-green-600/30 border border-green-500/60 hover:border-green-400 active:scale-[0.98] transition-all duration-150 group"
+            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-predict-yes-bg-strong border border-predict-yes-border hover:border-predict-yes active:scale-[0.98] transition-all duration-150 group"
           >
             <div
-              className="absolute inset-y-0 left-0 bg-green-500/50 group-hover:bg-green-500/60 transition-all duration-300"
+              className="absolute inset-y-0 left-0 bg-predict-yes-bar group-hover:brightness-110 transition-all duration-300"
               style={{ width: `${yesProbability}%` }}
             />
             <div className="relative flex items-center justify-center gap-2 h-full">
@@ -62,10 +62,10 @@ export function MobileTradeStickyBar({
 
           <button
             onClick={() => scrollToForm('no')}
-            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-red-600/30 border border-red-500/60 hover:border-red-400 active:scale-[0.98] transition-all duration-150 group"
+            className="relative flex-1 h-12 rounded-lg overflow-hidden bg-predict-no-bg-strong border border-predict-no-border hover:border-predict-no active:scale-[0.98] transition-all duration-150 group"
           >
             <div
-              className="absolute inset-y-0 left-0 bg-red-500/50 group-hover:bg-red-500/60 transition-all duration-300"
+              className="absolute inset-y-0 left-0 bg-predict-no-bar group-hover:brightness-110 transition-all duration-300"
               style={{ width: `${noProbability}%` }}
             />
             <div className="relative flex items-center justify-center gap-2 h-full">
@@ -79,9 +79,9 @@ export function MobileTradeStickyBar({
       )}
 
       {marketStatus === 'open' && isTradingFrozen && (
-        <div className="flex items-center justify-center gap-2 h-12 rounded-lg bg-yellow-500/25 border border-yellow-500/50">
+        <div className="flex items-center justify-center gap-2 h-12 rounded-lg bg-notice-bg border border-notice-border">
           <svg
-            className="h-3.5 w-3.5 text-yellow-500"
+            className="h-3.5 w-3.5 text-notice-text"
             style={{ animation: 'spin 8s linear infinite' }}
             viewBox="0 0 24 24"
             fill="none"
@@ -91,7 +91,7 @@ export function MobileTradeStickyBar({
             <circle cx="12" cy="12" r="10" />
             <polyline points="12 6 12 12 16 14" strokeLinecap="round" />
           </svg>
-          <span className="text-sm font-medium text-yellow-400">Awaiting Resolution</span>
+          <span className="text-sm font-medium text-notice-text">Awaiting Resolution</span>
         </div>
       )}
 

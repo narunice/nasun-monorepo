@@ -50,17 +50,15 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading, lotsC
     <div
       className={`p-4 rounded-xl border ${
         position.isYes
-          ? 'bg-green-50 border-green-300 dark:bg-green-500/25 dark:border-green-500/50'
-          : 'bg-red-50 border-red-300 dark:bg-red-500/25 dark:border-red-500/50'
+          ? 'bg-predict-yes-bg-soft border-predict-yes-border'
+          : 'bg-predict-no-bg-soft border-predict-no-border'
       }${pendingClass}`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`w-3 h-3 rounded-full ${position.isYes ? 'bg-green-500' : 'bg-red-500'}`} />
+          <span className={`w-3 h-3 rounded-full ${position.isYes ? 'bg-predict-yes-bar' : 'bg-predict-no-bar'}`} />
           <span className={`font-bold ${
-            position.isYes
-              ? 'text-green-700 dark:text-green-500'
-              : 'text-red-700 dark:text-red-500'
+            position.isYes ? 'text-predict-yes' : 'text-predict-no'
           }`}>
             {outcomeLabel} Position
           </span>
@@ -108,13 +106,13 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading, lotsC
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-theme-text-secondary">If {outcomeLabel} wins →</span>
-            <span className="text-green-500 font-mono">
+            <span className="text-predict-yes font-mono">
               {shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
             </span>
           </div>
           <div className="flex justify-between">
             <span className="text-theme-text-secondary">If {oppositeLabel} wins →</span>
-            <span className="text-red-500 font-mono">0 NUSDC</span>
+            <span className="text-predict-no font-mono">0 NUSDC</span>
           </div>
         </div>
       </div>
@@ -134,7 +132,7 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading, lotsC
           <button
             onClick={() => onClaim(position.id)}
             disabled={isLoading}
-            className="w-full py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="w-full py-2 bg-predict-yes-bar hover:bg-predict-yes-bar-hover text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
           >
             {isLoading ? 'Claiming...' : `Claim ${shares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC`}
           </button>
@@ -154,7 +152,7 @@ export function PayoffCard({ position, market, onSell, onClaim, isLoading, lotsC
           <button
             onClick={() => onClaim(position.id)}
             disabled={isLoading}
-            className="w-full py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+            className="w-full py-2 bg-theme-warning hover:opacity-90 text-white rounded-lg text-sm font-medium transition-opacity disabled:opacity-50"
           >
             {isLoading
               ? 'Claiming...'

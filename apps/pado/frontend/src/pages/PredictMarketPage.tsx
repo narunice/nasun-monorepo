@@ -108,7 +108,7 @@ export function PredictMarketPage() {
   if (error || !market) {
     return (
       <div className="text-center py-12">
-        <p className="text-red-500 mb-4">Failed to load market</p>
+        <p className="text-theme-error mb-4">Failed to load market</p>
         <Link to={backToMarketsHref} className="text-pd3 hover:text-pd3 underline">
           Back to Markets
         </Link>
@@ -164,7 +164,7 @@ export function PredictMarketPage() {
             <RecentTradesFeed marketId={market.id} />
 
             {isResolver && (
-              <div className="bg-theme-bg-secondary rounded-xl p-4 border border-yellow-500/30">
+              <div className="bg-theme-bg-secondary rounded-xl p-4 border border-notice-border">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
                     <h3 className="text-lg font-semibold text-theme-text-primary">Admin Actions</h3>
@@ -175,7 +175,7 @@ export function PredictMarketPage() {
                   <button
                     onClick={() => setShowResolveModal(true)}
                     disabled={now < market.closeTime || now > market.resolveDeadline}
-                    className="w-full sm:w-auto px-4 py-2.5 bg-yellow-600 hover:bg-yellow-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full sm:w-auto px-4 py-2.5 bg-theme-warning hover:opacity-90 text-white font-medium rounded-lg transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {now < market.closeTime
                       ? 'Wait for Close Time'

@@ -58,7 +58,11 @@ function FeedSlide({ item }: { item: PadoFeedItem }) {
   );
 }
 
-export function PadoFeedCarousel() {
+interface PadoFeedCarouselProps {
+  fallback?: React.ReactNode;
+}
+
+export function PadoFeedCarousel({ fallback }: PadoFeedCarouselProps = {}) {
   const { data, isLoading, error } = usePadoFeed(20);
   const items = data?.items ?? [];
   const { currentIndex, goTo, snapTo, setPaused, skipTransition } = useCarousel(items.length, 9000);
@@ -79,6 +83,7 @@ export function PadoFeedCarousel() {
   }
 
   if (error || items.length === 0) {
+    if (fallback) return <>{fallback}</>;
     return (
       <div className="w-full bg-theme-bg-secondary border border-theme-border/40 rounded-2xl h-full flex items-center justify-center">
         <span className="text-sm text-theme-text-muted">No feed available</span>

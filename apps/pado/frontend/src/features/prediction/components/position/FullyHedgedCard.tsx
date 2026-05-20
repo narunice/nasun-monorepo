@@ -36,7 +36,7 @@ export function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, on
       <div className="bg-theme-bg-secondary rounded-lg p-3 mb-4">
         <div className="flex justify-between items-center">
           <span className="text-theme-text-muted">Guaranteed Payout</span>
-          <span className="font-bold text-green-500">
+          <span className="font-bold text-predict-yes">
             {hedgedShares.toLocaleString('en-US', { maximumFractionDigits: 2 })} NUSDC
           </span>
         </div>
@@ -66,14 +66,14 @@ export function FullyHedgedCard({ yesPosition, noPosition, market, onSellYes, on
             <button
               onClick={onSellYes}
               disabled={isLoading}
-              className="flex-1 min-h-[44px] py-2.5 px-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex-1 min-h-[44px] py-2.5 px-2 bg-predict-no-bg hover:bg-predict-no-bg-strong text-predict-no rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               Sell YES → Bet NO
             </button>
             <button
               onClick={onSellNo}
               disabled={isLoading}
-              className="flex-1 min-h-[44px] py-2.5 px-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex-1 min-h-[44px] py-2.5 px-2 bg-predict-yes-bg hover:bg-predict-yes-bg-strong text-predict-yes rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
             >
               Sell NO → Bet YES
             </button>

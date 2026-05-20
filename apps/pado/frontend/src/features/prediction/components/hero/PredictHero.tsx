@@ -3,6 +3,7 @@ import type { MarketWithOrderbook } from '../../hooks/useMarkets';
 import { HeroStatsRow } from './HeroStatsRow';
 import { FeaturedMarketCarousel } from './FeaturedMarketCarousel';
 import { PadoFeedCarousel } from './PadoFeedCarousel';
+import { MarketRailPanel } from './MarketRailPanel';
 
 interface PredictHeroProps {
   markets: MarketWithOrderbook[];
@@ -23,32 +24,49 @@ export function PredictHero({ markets, myPositionCount }: PredictHeroProps) {
   const featured = useMemo(() => {
     if (openMarkets.length === 0) return [];
 
+    const SLOTS = 5;
+
+    // Bucket by category; within each bucket, sort by volume desc so the
+    // top pick from any category is its most-active market. Falls back to
+    // closeTime asc when no market has volume yet.
     const hasVolume = openMarkets.some(({ market }) => market.totalVolume > 0n);
+    const sortFn = hasVolume
+      ? (a: MarketWithOrderbook, b: MarketWithOrderbook) =>
+          b.market.totalVolume > a.market.totalVolume ? 1 : -1
+      : (a: MarketWithOrderbook, b: MarketWithOrderbook) =>
+          a.market.closeTime - b.market.closeTime;
 
-    const sorted = hasVolume
-      ? [...openMarkets].sort((a, b) =>
-          b.market.totalVolume > a.market.totalVolume ? 1 : -1,
-        )
-      : [...openMarkets].sort(
-          (a, b) => a.market.closeTime - b.market.closeTime,
-        );
-
-    // Pick up to 3, preferring category diversity
-    const result: MarketWithOrderbook[] = [];
-    const usedCategories = new Set<string>();
-
-    for (const entry of sorted) {
-      if (result.length >= 3) break;
-      if (!usedCategories.has(entry.market.category)) {
-        result.push(entry);
-        usedCategories.add(entry.market.category);
-      }
+    const byCategory = new Map<string, MarketWithOrderbook[]>();
+    for (const entry of openMarkets) {
+      const cat = entry.market.category;
+      if (!byCategory.has(cat)) byCategory.set(cat, []);
+      byCategory.get(cat)!.push(entry);
     }
-    // Fill remaining slots if diversity couldn't reach 3
-    const addedIds = new Set(result.map((r) => r.market.id));
-    for (const entry of sorted) {
-      if (result.length >= 3) break;
-      if (!addedIds.has(entry.market.id)) result.push(entry);
+    for (const list of byCategory.values()) list.sort(sortFn);
+
+    // Category order: most-active category first (by its top market's
+    // volume) so the first carousel slide is still the headliner.
+    const categories = [...byCategory.keys()].sort((a, b) => {
+      const va = byCategory.get(a)![0].market.totalVolume;
+      const vb = byCategory.get(b)![0].market.totalVolume;
+      return vb > va ? 1 : -1;
+    });
+
+    // Round-robin: pass 0 takes the top market from each category, pass 1
+    // takes #2, etc. Guarantees every category appears before any
+    // category gets a second slot.
+    const result: MarketWithOrderbook[] = [];
+    for (let pass = 0; result.length < SLOTS; pass++) {
+      let addedThisPass = false;
+      for (const cat of categories) {
+        if (result.length >= SLOTS) break;
+        const list = byCategory.get(cat)!;
+        if (pass < list.length) {
+          result.push(list[pass]);
+          addedThisPass = true;
+        }
+      }
+      if (!addedThisPass) break;
     }
 
     return result;
@@ -63,12 +81,12 @@ export function PredictHero({ markets, myPositionCount }: PredictHeroProps) {
         totalVolumeRaw={totalVolumeRaw}
         myPositionCount={myPositionCount}
       />
-      <div className="flex gap-4 h-[360px]">
+      <div className="flex gap-4 h-[420px]">
         <div className="flex-1 min-w-0 h-full">
           <FeaturedMarketCarousel featured={featured} />
         </div>
         <div className="hidden lg:flex w-1/3 shrink-0 h-full">
-          <PadoFeedCarousel />
+          <PadoFeedCarousel fallback={<MarketRailPanel markets={markets} />} />
         </div>
       </div>
     </div>
