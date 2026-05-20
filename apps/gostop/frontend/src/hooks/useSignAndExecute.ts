@@ -22,6 +22,13 @@ export interface UseSignAndExecuteResult {
   signAndExecute: (tx: Transaction, opts?: SignAndExecuteOptions) => Promise<SignAndExecuteResult>;
 }
 
+// Wallclock cap for the executeTransactionBlock RPC. Without this, a stalled
+// fullnode HTTP response leaves the user staring at a permanently-spinning
+// game UI (reported as "wheel never stops"). Writes are intentionally never
+// auto-retried (double-spend risk), so timeout simply fails the call and
+// surfaces a calm retry-hint via useGameTransaction's error mapper.
+const EXECUTE_RPC_TIMEOUT_MS = 30_000;
+
 export function useSignAndExecute(): UseSignAndExecuteResult {
   const { status, account, getKeypair } = useWallet();
   const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
@@ -60,7 +67,7 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
         signature = signResult.signature;
       }
 
-      const result = await client.executeTransactionBlock({
+      const execPromise = client.executeTransactionBlock({
         transactionBlock: bytes,
         signature,
         options: {
@@ -69,6 +76,18 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
           showObjectChanges: opts.showObjectChanges ?? false,
         },
       });
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error('RPC execute timed out'));
+        }, EXECUTE_RPC_TIMEOUT_MS);
+      });
+      let result;
+      try {
+        result = await Promise.race([execPromise, timeoutPromise]);
+      } finally {
+        if (timeoutHandle !== undefined) clearTimeout(timeoutHandle);
+      }
 
       if (result.effects?.status?.status !== 'success') {
         throw new Error(result.effects?.status?.error || 'Transaction failed');
