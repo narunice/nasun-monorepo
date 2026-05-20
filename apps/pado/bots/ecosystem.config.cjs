@@ -334,6 +334,14 @@ module.exports = {
         // Repost on ≥0.25% mid shift so quotes track volume aggressively after
         // a sweep instead of waiting for a larger natural drift.
         PREDICTION_LP_MIN_REPOST_BPS: '25',
+        // NUSDC self-refill (added 2026-05-20). Before this, the LP wallet
+        // running dry caused silent stalls — most visibly the Man City vs
+        // Aston Villa market sitting with yes_ask=[] for 30+ min on 5/20.
+        // 200 trigger / 50 rounds per cycle is enough to keep the ladder
+        // funded for ~50 mint pairs (10 NUSDC/round × 50 = 500 NUSDC top-up).
+        // Set min=0 to revert to manual prefund.
+        PREDICTION_LP_MIN_NUSDC: '200',
+        PREDICTION_LP_NUSDC_REFILL_ROUNDS: '50',
       },
       max_restarts: 10,
       min_uptime: '30s',
