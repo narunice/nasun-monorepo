@@ -6,7 +6,7 @@ import {
   useLpPositions,
 } from '../lib/api/queries';
 import type { DataQuality, LpPosition } from '../lib/api/types';
-import { useSignAndExecute } from '../hooks/useSignAndExecute';
+import { useSignAndExecute, type SignAndExecuteResult } from '../hooks/useSignAndExecute';
 import { useToast } from '../store/useToastStore';
 import { useBalanceStore } from '../store/useBalanceStore';
 import { getSuiClient } from '../lib/sui-client';
@@ -218,6 +218,74 @@ function DepositSection() {
   const [busy, setBusy] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
+  // Optimistic insert of a freshly-minted LPToken so the "My positions" list
+  // updates without a reload. Source of truth is the tx response itself:
+  //   - events: bankroll_pool::LiquidityProvided gives shares + timestamp
+  //   - objectChanges (type='created'): the new LPToken object id
+  // We deliberately leave deposit_amount_nusdc null and let the backend fill
+  // it in once the indexer catches up — flashing "10 NUSDC" then "awaiting
+  // indexer match" would be a worse UX than waiting for chain truth once.
+  const applyOptimisticDeposit = (result: SignAndExecuteResult) => {
+    const events = Array.isArray(result.events) ? result.events : [];
+    const liquidityEvent = events.find((e): e is { type: string; parsedJson: Record<string, unknown> } => {
+      if (!e || typeof e !== 'object') return false;
+      const t = (e as { type?: unknown }).type;
+      const j = (e as { parsedJson?: unknown }).parsedJson;
+      return typeof t === 'string'
+        && t.endsWith('::bankroll_pool::LiquidityProvided')
+        && !!j && typeof j === 'object';
+    });
+
+    const changes = Array.isArray(result.objectChanges) ? result.objectChanges : [];
+    const createdLpToken = changes.find((c): c is { type: 'created'; objectId: string; objectType: string } => {
+      if (!c || typeof c !== 'object') return false;
+      const type = (c as { type?: unknown }).type;
+      const objectType = (c as { objectType?: unknown }).objectType;
+      const objectId = (c as { objectId?: unknown }).objectId;
+      return type === 'created'
+        && typeof objectType === 'string'
+        && objectType.endsWith('::bankroll_pool::LPToken')
+        && typeof objectId === 'string';
+    });
+
+    if (!liquidityEvent || !createdLpToken) return;
+
+    const shares = String(liquidityEvent.parsedJson.shares ?? '');
+    const depositTime = String(liquidityEvent.parsedJson.timestamp_ms ?? Date.now());
+    if (!shares) return;
+
+    // est. value ≈ shares × share_price / 1e9. Tracks PoolOverview's quote so
+    // the new row's "Est. value" lines up with the user's intuition pre-tx.
+    let estimatedValue = '0';
+    try {
+      const pps = pool?.share_price_scaled ? BigInt(pool.share_price_scaled) : 0n;
+      if (pps > 0n) {
+        estimatedValue = ((BigInt(shares) * pps) / SHARE_PRICE_SCALE).toString();
+      }
+    } catch { /* fall through with '0' */ }
+
+    const newPosition: LpPosition = {
+      lp_token_id: createdLpToken.objectId,
+      shares,
+      estimated_value_nusdc: estimatedValue,
+      deposit_amount_nusdc: null,
+      deposit_time_ms: depositTime,
+      withdraw_requested_at_ms: null,
+      claimable_at_ms: null,
+    };
+
+    queryClient.setQueriesData<LpPositions>(
+      { queryKey: ['gostop', 'lp', 'positions'] },
+      (old) => {
+        if (!old) return old;
+        if (old.positions.some((pos) => pos.lp_token_id === newPosition.lp_token_id)) {
+          return old;
+        }
+        return { ...old, positions: [newPosition, ...old.positions] };
+      },
+    );
+  };
+
   // Parse user input as decimal NUSDC and convert to base units. Returns null
   // when malformed. We accept up to 6 decimal places (chain precision).
   const amountBaseUnits = useMemo(() => {
@@ -265,9 +333,13 @@ function DepositSection() {
       // fresh object refs (plan v3 §5.5). Build a fresh Transaction on retry
       // — the previous one carries pre-fetched object versions.
       let attempt = 0;
+      let result: SignAndExecuteResult | null = null;
       while (true) {
         try {
-          await signAndExecute(attempt === 0 ? tx : buildProvideLiquidity(amountBaseUnits, coins.primary, coins.extra));
+          result = await signAndExecute(
+            attempt === 0 ? tx : buildProvideLiquidity(amountBaseUnits, coins.primary, coins.extra),
+            { showObjectChanges: true },
+          );
           break;
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -283,7 +355,11 @@ function DepositSection() {
       showToast('Liquidity deposited. LP token issued to your wallet.', 'success');
       setAmountText('');
       setConfirmOpen(false);
-      // Refresh pool state, positions, balance.
+      // Patch the positions cache so the new LPToken appears immediately,
+      // then invalidate so the next refetch overwrites with chain truth.
+      // Background refetch must follow optimistic insert (not race it) —
+      // otherwise the empty refetch result can land before our patch.
+      if (result) applyOptimisticDeposit(result);
       queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
