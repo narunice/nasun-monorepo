@@ -30,6 +30,11 @@
 import { createHash } from 'node:crypto';
 import { reader } from '../../db/client.js';
 import { bankrollPnl, type DataQuality } from './bankroll-pnl.js';
+import {
+  computeTvl,
+  computeCumulativeLpDist,
+  computeUtilizationBps,
+} from './bankroll-pool-math.js';
 
 const PNL_WINDOWS = {
   '24h': 86_400_000,
@@ -542,18 +547,14 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
   `;
   const totalShares = BigInt(sharesRow[0]?.shares ?? '0');
   const ppsScaled = BigInt(pnl7d.share_price_current_scaled);
-  const SHARE_PRICE_SCALE = 1_000_000_000n;
-  const tvlRaw = (ppsScaled * totalShares) / SHARE_PRICE_SCALE;
+  const tvlRaw = computeTvl(ppsScaled, totalShares);
 
   // Cumulative LP distributions ≈ (pps - 1.0) × total_shares / SCALE.
   // Negative when the pool is underwater; clamped to 0 in UI but kept signed
   // here so the API is honest.
-  const ppsExcess = ppsScaled - SHARE_PRICE_SCALE;
-  const cumulativeLpDist = (ppsExcess * totalShares) / SHARE_PRICE_SCALE;
+  const cumulativeLpDist = computeCumulativeLpDist(ppsScaled, totalShares);
 
-  const utilizationBps = tvlRaw > 0n
-    ? Number((exposure.raw * BigInt(BPS_FULL)) / tvlRaw)
-    : 0;
+  const utilizationBps = computeUtilizationBps(exposure.raw, tvlRaw);
 
   const mvQuality = matviewQuality(mv.ageMs);
   const aggQuality = worstQuality(
