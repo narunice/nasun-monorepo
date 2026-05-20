@@ -1,10 +1,24 @@
 # Baram Codebase Map
 
+> ## ⚠️ STALE (as of 2026-05-19)
+>
+> Last updated 2026-05-07. **Predates the Baram app archive** (`pnpm-workspace.yaml` excludes `apps/baram`).
+> The directory tree below is no longer authoritative:
+> - `apps/baram/frontend/` was absorbed into [apps/nasun-website/src/sections/uju/](../../nasun-website/src/sections/uju/)
+> - `apps/baram/agent-runner/` was split out into [apps/nasun-ai-runtime/](../../nasun-ai-runtime/)
+> - Onchain `baram::*` Move modules under `apps/baram/contracts*/` remain canonical (rename would break chain compatibility)
+>
+> Current map for active code:
+> - [apps/nasun-ai-runtime/CLAUDE.md](../../nasun-ai-runtime/CLAUDE.md) - runtime directory structure (current)
+> - [apps/baram/CLAUDE.md](../CLAUDE.md) - archive header + what still lives where
+>
+> Treat sections below as historical.
+
 ## Directory Structure
 
 ```
 apps/baram/
-├── frontend/                    # React 19 + Vite 7 (포트 5177)
+├── frontend/                    # React 19 + Vite 7 (포트 5177) [moved to nasun-website/sections/uju/]
 │   └── src/
 │       ├── features/
 │       │   ├── request/         # 요청 생성 UI + hooks (useExecutors, useCreateRequest, selectExecutorWeightedRandom)

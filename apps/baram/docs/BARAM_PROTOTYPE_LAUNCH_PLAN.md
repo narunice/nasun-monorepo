@@ -1,5 +1,16 @@
 # Baram Prototype Launch Plan - Integrated Timeline
 
+> ## ⚠️ STALE (as of 2026-05-19)
+>
+> Generated 2026-02-02. **Predates PR1.5 swap path, AER v4, PR2.A trader env injection, PR2.B funds UX, and the Nasun AI rebrand.**
+> The timeline, milestones, and "TEE demo" framing in this doc no longer match the v1 launch plan.
+>
+> Current alpha launch state lives in [docs/nasun-ai-alpha-readiness.md](../../../docs/nasun-ai-alpha-readiness.md) (SSOT).
+> v1 ships **without TEE** ([project_baram_no_tee_v1](../../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_baram_no_tee_v1.md)); `tee_verified=false` is the normal state.
+> External branding is "Nasun AI", not "Baram" ([feedback_no_baram_branding](../../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_no_baram_branding.md)).
+>
+> Sections below remain readable as historical rationale; do not use them to plan the alpha cutover.
+
 > Unified launch plan combining SDK implementation, TEE demo, and community preparation.
 > Based on PROTOTYPE_LAUNCH_PRIORITIES.md, BARAM_VALUE_PROPOSITION_ANALYSIS.md, BARAM_AGENT_EXPANSION_ANALYSIS.md.
 > Generated 2026-02-02.

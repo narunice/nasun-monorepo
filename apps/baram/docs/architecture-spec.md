@@ -1,11 +1,28 @@
 # Baram Architecture Specification
 # AI Agent Admin Dashboard + AER
 
+> ## ⚠️ STALE (as of 2026-05-19)
+>
+> This document was authored on 2026-02-23 and **the deployment coordinates below are pre-v4 and incorrect**.
+> Do not trust packageId / AER versions in this file when integrating.
+>
+> Current SSOT for runtime + deployment state:
+> - [apps/nasun-ai-runtime/CLAUDE.md](../../nasun-ai-runtime/CLAUDE.md) - runtime, presets, env vars
+> - [apps/baram/CLAUDE.md](../CLAUDE.md) - archived-app guide + onchain `baram::*` invariants
+> - [docs/nasun-ai-killswitch-runbook.md](../../../docs/nasun-ai-killswitch-runbook.md) - 3-tier kill-switch ops
+> - [docs/nasun-ai-alpha-readiness.md](../../../docs/nasun-ai-alpha-readiness.md) - alpha launch checklist (live status)
+>
+> Current deployment (2026-05-19):
+> - AER package: `0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0` (v4)
+> - The "Devnet V7 + v0.0.6 / v0.0.3" coordinates below are 4 months old.
+>
+> §1 Vision and §3 On-Chain Architecture remain useful as design rationale, but treat all version/packageId text as historical.
+
 > Version: 1.2
 > Date: 2026-02-23
 > Author: protocol-architect (based on research by product-researcher, infra-researcher, security-researcher)
-> Status: **Implemented - Deployed on Devnet V7**
-> Deployment: contracts v0.0.6 (packageId `0x949af6...`), contracts-aer v0.0.3 (packageId `0x809f22...`), contracts-agent v0.0.1
+> Status: **Implemented - Deployed on Devnet V7** (stale; see warning above)
+> Deployment: contracts v0.0.6 (packageId `0x949af6...`), contracts-aer v0.0.3 (packageId `0x809f22...`), contracts-agent v0.0.1 (stale; see warning above)
 
 ---
 
