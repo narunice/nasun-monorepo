@@ -3,13 +3,22 @@
  * overview on first visit. Persists dismissal in localStorage so it
  * does not return for the same wallet on the same browser.
  *
+ * Auto-dismiss: once the agent has any positive balance in its wallet
+ * (gas) or escrow (trade capital), the onboarding has done its job —
+ * we hide the banner and persist the dismissal so it stays gone even
+ * if the balance later drains.
+ *
  * Intentionally lightweight: no DOM-anchored tour, no overlay coach
  * marks. The three steps map to where the user should look next:
  * the Funds card below this banner, and the Activity tab on the
  * sidebar. The user dismisses when ready.
  */
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { AgentProfile } from '../hooks/useAgentProfiles';
+import { useAgentWalletBalances } from '../hooks/useAgentWalletBalances';
+import { useAgentEscrowBalances } from '../hooks/useAgentEscrowBalances';
+import { useCapability } from '../hooks/useCapability';
 
 const STORAGE_KEY = 'nasun-ai-first-run-dismissed-v1';
 
@@ -32,13 +41,43 @@ function markDismissed(): void {
 }
 
 interface FirstRunChecklistProps {
+  agent: AgentProfile;
   onJumpToActivity: () => void;
 }
 
-export function FirstRunChecklist({ onJumpToActivity }: FirstRunChecklistProps) {
+export function FirstRunChecklist({ agent, onJumpToActivity }: FirstRunChecklistProps) {
   const [dismissed, setDismissed] = useState<boolean>(isDismissed());
 
+  const balances = useAgentWalletBalances(agent.agentAddress);
+  const capability = useCapability(agent.capabilityId);
+  const escrowBalances = useAgentEscrowBalances(capability.data?.escrowId ?? null);
+
+  const walletReady = balances.data !== undefined;
+  // If the agent has no capability, escrow doesn't apply. Otherwise, wait
+  // until both capability and escrow balances have resolved before deciding.
+  const escrowReady = !agent.capabilityId
+    ? true
+    : capability.data !== undefined && escrowBalances.data !== undefined;
+  const dataReady = walletReady && escrowReady;
+
+  const isFunded = useMemo(() => {
+    const walletFunded = balances.data?.some((b) => b.totalBalanceRaw > 0n) ?? false;
+    const escrowFunded = escrowBalances.data?.some((b) => b.totalBalanceRaw > 0n) ?? false;
+    return walletFunded || escrowFunded;
+  }, [balances.data, escrowBalances.data]);
+
+  useEffect(() => {
+    if (dataReady && isFunded && !dismissed) {
+      markDismissed();
+      setDismissed(true);
+    }
+  }, [dataReady, isFunded, dismissed]);
+
   if (dismissed) return null;
+  // Suppress the initial render until balances resolve so a funded user
+  // never sees the banner flash before auto-dismissal kicks in.
+  if (!dataReady) return null;
+  if (isFunded) return null;
 
   const handleDismiss = () => {
     markDismissed();
