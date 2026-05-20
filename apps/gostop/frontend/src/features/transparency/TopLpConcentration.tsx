@@ -62,6 +62,7 @@ export function TopLpConcentration({ risk }: Props) {
   const unreliable = risk.data_quality === 'unreliable';
   const entries = unreliable ? [] : risk.top_lp_5;
   const empty = entries.length === 0;
+  const concentration = unreliable ? undefined : risk.lp_concentration;
 
   const selfRow = useMemo(() => {
     if (!viewerHash) return null;
@@ -71,8 +72,11 @@ export function TopLpConcentration({ risk }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between gap-3 flex-wrap">
-        <h3 className="font-display text-base text-gold-200">Top LP concentration</h3>
-        <span className="text-xs text-neutral-300">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-display text-base text-gold-200">Top LP concentration</h3>
+          <ConcentrationBadge concentration={concentration} />
+        </div>
+        <span className="text-sm text-neutral-300">
           Top 5 by share, public + masked.
         </span>
       </div>
@@ -106,6 +110,30 @@ export function TopLpConcentration({ risk }: Props) {
         </p>
       )}
     </div>
+  );
+}
+
+function ConcentrationBadge({
+  concentration,
+}: {
+  concentration: RiskMetricsBlock['lp_concentration'];
+}) {
+  if (!concentration || concentration.status === 'unknown' || concentration.status === 'healthy') {
+    return null;
+  }
+  const isExtreme = concentration.status === 'extreme';
+  const palette = isExtreme
+    ? 'border-rose-400/70 bg-rose-500/15 text-rose-100'
+    : 'border-amber-400/70 bg-amber-500/15 text-amber-100';
+  const label = isExtreme ? 'Extreme concentration' : 'Concentrated';
+  const pct = bpsToPct(concentration.top1_share_pct_bps);
+  return (
+    <span
+      className={`text-sm uppercase tracking-wider px-2 py-0.5 rounded border ${palette}`}
+      title={`Rank-1 LP holds ${pct} of all LP shares. Single-LP withdraw can move share_price.`}
+    >
+      {label} · top1 {pct}
+    </span>
   );
 }
 
