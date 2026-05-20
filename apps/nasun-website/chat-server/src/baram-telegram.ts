@@ -63,13 +63,21 @@ function tgApiUrl(method: string): string {
 // chat-server event loop. A 10s ceiling is well above Telegram p99 latency.
 const TG_TIMEOUT_MS = 10_000;
 
+// Cap for honoring Telegram's `parameters.retry_after`. Per-chat 429
+// cooldowns are usually single-digit seconds; per-bot global cooldowns can
+// be longer. Capping at 10s keeps concurrent webhook handlers from piling
+// up — chat-server has no per-chat send concurrency limit, so a 30s wait
+// across N concurrent sends multiplies cost.
+const TG_429_RETRY_CAP_MS = 10_000;
+
 // Single fetch helper for every Telegram outbound. Retry policy is explicit
 // per call site: sendMessage retries once on transport error (user-visible,
 // must arrive), but sendChatAction / answerCallbackQuery do not retry
 // (non-critical, idempotency on Telegram side is unclear). On final failure
 // we log err.cause so the next incident is diagnosable instead of an opaque
 // "fetch failed" — the 2026-05-19 incident burned 8h precisely because the
-// underlying TypeError cause was never surfaced.
+// underlying TypeError cause was never surfaced. 429 handling added 2026-05-20
+// after silent-drop audit (sendMessage was returning 429 with no log).
 async function tgPost(
   method: string,
   body: Record<string, unknown>,
@@ -89,6 +97,49 @@ async function tgPost(
       });
       if (!res.ok && res.status >= 500 && i < attempts - 1) {
         continue;
+      }
+      // 429: honor Telegram-supplied retry_after when a retry is allowed.
+      // Guard against NaN/negative/0 so setTimeout(NaN) (Node coerces to
+      // 1ms) doesn't bypass the wait. Body parsing uses res.clone() so the
+      // stream stays intact for fallthrough paths if needed.
+      if (res.status === 429 && retry && i < attempts - 1) {
+        let waitMs = 1000;
+        try {
+          const parsed = (await res
+            .clone()
+            .json()) as { parameters?: { retry_after?: number } };
+          const ra = parsed?.parameters?.retry_after;
+          if (typeof ra === 'number' && Number.isFinite(ra) && ra > 0) {
+            waitMs = Math.min(ra * 1000, TG_429_RETRY_CAP_MS);
+          }
+        } catch {
+          const ra = Number(res.headers.get('retry-after'));
+          if (Number.isFinite(ra) && ra > 0) {
+            waitMs = Math.min(ra * 1000, TG_429_RETRY_CAP_MS);
+          }
+        }
+        console.warn(`[baram-tg] ${label} 429 retry in ${waitMs}ms`);
+        await new Promise<void>((resolve) => {
+          // unref so SIGTERM / cron_restart during sleep doesn't delay exit
+          setTimeout(resolve, waitMs).unref();
+        });
+        continue;
+      }
+      // 429 with no retry possible — either retry=false caller or last
+      // attempt after retry. Label-branch so operators can distinguish
+      // "policy says no retry" vs "retried once and still 429".
+      if (res.status === 429) {
+        const reason = retry ? 'final after retry' : 'no-retry policy';
+        console.warn(`[baram-tg] ${label} 429 dropped (${reason})`);
+        return;
+      }
+      // Uniform non-2xx warn for every other dropped response (400/401/403/
+      // 5xx-after-final-retry). The pre-2026-05-20 code silently returned on
+      // any non-2xx, which is the same silent-drop class the 429 branch was
+      // added to close. One log line per dropped outbound is cheap and the
+      // only handle operators have for HTTP-level Telegram regressions.
+      if (!res.ok) {
+        console.warn(`[baram-tg] ${label} HTTP ${res.status} dropped`);
       }
       return;
     } catch (err) {
