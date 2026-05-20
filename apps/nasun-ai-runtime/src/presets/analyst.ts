@@ -201,9 +201,11 @@ export async function runAnalystPreset(
     return { ok: false, status: 'rejected', reason: 'insufficient_balance' };
   }
 
-  // 3. Market context for prompt.
+  // 3. Market context for prompt. Include escrow balances so the LLM does
+  // not refuse trades right after a successful escrow deposit ("0 NUSDC"
+  // false-negative reported in the 2026-05-20 Santa-agent chat).
   const agentAddr = config.agentAddress;
-  const balances = await deps.fetchAgentBalances(client, agentAddr);
+  const balances = await deps.fetchAgentBalances(client, agentAddr, trader.escrowId);
   const dailySpentRaw = deps.dailySpentQuoteRaw();
   const recent = deps.recentTrades();
   const nowIso = deps.nowIso();
