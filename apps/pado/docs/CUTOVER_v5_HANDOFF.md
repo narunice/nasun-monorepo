@@ -1,5 +1,6 @@
 # Prediction Market v5 Fresh-Publish Cutover — Handoff
 
+> **Status:** **COMPLETED 2026-05-20** (commit `7da8f7f5`). See [Completion Record](#completion-record-2026-05-20) at the bottom.
 > **Date:** 2026-05-20
 > **Source session:** Admin recovery + UFC + multi-category batch launch
 > **Goal:** Permanently close the v3 `mint_admin_cap_via_upgrade*` privilege-escalation path by publishing a **fresh** prediction_market package (new originalId, new AdminCap, new type identity). Existing v1~v4 markets keep running until natural resolution.
@@ -451,3 +452,59 @@ You can publish v5 with the abort-body recovery functions still present. They're
 - `d0aff30b` — v2 upgrade publish state (merge_positions)
 - `b7eb40ac` — Move.lock bump
 - `f3cc775f` — merge_positions feature itself
+
+---
+
+## Completion Record (2026-05-20)
+
+Cutover landed in a single session on 2026-05-20 ~03:30 UTC. Final state on chain and in code:
+
+### Captured IDs
+
+| Slot | Value |
+|---|---|
+| v5 packageId (== originalId for fresh publish) | `0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2` |
+| v5 AdminCap | `0x06f263829f9f84951280e2fa16d32d2729c28aca2600e4e77ec54a86d00f8fa1` |
+| v5 UpgradeCap | `0x58cc21a22c5931511441701608954f85c4886ac8e2f5d38013d0113e1bc92fff` |
+| Publish tx digest | `83QWe8eofKSJwKDQfSFc9eeudCNA62J892iuEWpK18Bw` |
+| v5 smoke market (BTC $100k @ 2026-05-23 04:00 UTC) | `0x058c3930ac9e5ff55d5bd91c1b7e95fa4fb1d0b94541be22faa0b383b6d662f2` |
+| Legacy packageId (latest v4, used as moveCall target for legacy markets) | `0x9b2361feee43b5912efc21918fd8c8cc94c40ed443bb34bea0d7dc9775a37d00` |
+| Legacy originalId (v1, type anchor for ~117 legacy markets) | `0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d` |
+| Legacy AdminCap (still owned, kept for legacy admin paths) | `0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8` |
+
+Owner of v5 caps + admin wallet: `0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90`.
+
+### Step-by-step outcomes (mapped to the original sequence above)
+
+- **Steps 0~6 (on-chain + config + bot scripts):** all done. `Published.toml` auto-rewrote to v5 (CLI manages this in the newer toolchain; the legacy block was preserved to `.legacy.bak` during the publish run and deleted post-commit). 19 bot scripts had `DEFAULT_ADMIN_CAP` bulk-sed legacy → v5.
+- **Step 7 (frontend):** implemented as a `marketPackageRegistry` populated by `fetchMarket` (single source-of-truth for `marketId → packageId` dispatch). Every transaction builder reads from it via `packageForMarket(marketId, override?)`. Discovery + event polling + position filters all accept both originalIds. Typecheck clean. 63/63 prediction unit tests pass.
+- **Step 8 (legacy verify):** user manually verified two legacy markets — BNB market `0x6d3c8236...` and `0xe10ea517...`. NO buy succeeded on the second; the first had NO ask side empty (operational, not cutover-related — see below).
+- **Step 9 (v5 smoke):** market created, on-chain type confirmed as `0x86595464...::prediction_market::Market`.
+- **Step 10 (v5 category batches):** deferred. Legacy 175 markets remain in flight, no urgent need.
+- **Step 11 (frontend deploy):** user-only step. `pnpm deploy:pado:prod -- --force` completed and verified by user.
+- **Step 12 (commit):** single commit `7da8f7f5`, 35 files, +909/-167. Push deferred (CLAUDE.md "never push without explicit instruction"). User-side dirty files (74 unrelated to cutover) deliberately left unstaged.
+
+### Production bot reconcile (post-cutover follow-up)
+
+`apps/pado/bots/.env` on prod EC2 (`/home/ec2-user/pado-bots/.env`) was updated in-place via SSH:
+- `PREDICTION_PACKAGE_ID` → v5
+- `PREDICTION_ADMIN_CAP` → v5 cap (replaced a **stranded** AdminCap `0x63ddeb9b...` that had been in prod env since at least 2026-05-19, undetected; bot's admin paths would have failed silently if invoked)
+- `PREDICTION_PACKAGE_ID_LEGACY` → v1 originalId + v4 latest comma-separated
+- `PREDICTION_ADMIN_CAP_LEGACY` → legacy live cap `0xd90ae72d...`
+
+Then `pm2 delete prediction-{arb,keeper,lp} && pm2 start ecosystem.config.cjs --only ...` per `feedback_pm2_hard_restart_for_new_env.md` (new env keys need delete+start, not restart, because the pm2 daemon caches env at parse time).
+
+LP bot startup log line `Legacy packages: 0xbe6d8f69..., 0x9b2361fe...` and `Watching 176 market(s) after discovery` confirmed both originalIds were recognized. ARB resumed arb cycles within seconds. v5 smoke market auto-mint + 4-side × 10-level ladder seeded within ~1 minute.
+
+### Unexpected findings (worth memory pinning)
+
+1. **Stranded AdminCap in prod env.** `/home/ec2-user/pado-bots/.env` had `PREDICTION_ADMIN_CAP=0x63ddeb9b...` — the original v1 init AdminCap that was transferred via `rotate-prediction-admin-wallet.ts` on 2026-05-19 with the recipient key written to `/tmp` (since cleaned). Any admin call (`admin_cancel_market`, `extend_resolve_deadline`, etc.) would have aborted with `ENotOwner`. The v5 cutover surfaced this only because the env got compared key-by-key during reconcile. Pinned to memory as `project_pado_prediction_v5_cutover` for future audits.
+2. **ARB bot signs transactions with the admin keypair (`0xe1c4c90b…`), not `PREDICTION_ARB_PRIVATE_KEY`.** Initial audit using `Sender: ARB_ADDR` event filter returned 0 events and looked like a 12-day-stale bot; the real evidence (`[arb] done. estimated profit: ...`) was in the pm2 log. When auditing bot heartbeat by on-chain events, query by `address=0xe1c4c90b...` for arb activity, not by the bot's nominal address.
+3. **The `seed-no-asks-adhoc.ts` workflow.** When a new market has empty ask side because LP bot hasn't picked up inventory yet, the simplest fix is to restart the LP bot (it self-mints + ladders). The ad-hoc script (`apps/pado/bots/scripts/seed-no-asks-adhoc.ts`) is a fallback for cases where the bot is paused. Includes LockConflict safety warning in its docstring per `project_pado_bot_single_instance.md`.
+
+### Known follow-ups (out of session)
+
+- **v5 category batch markets.** Optional. Make `create-*-batch-2026-MM-DD.ts` per category if you want fresh v5 inventory before legacy 175 close out.
+- **Retire `PREDICTION_PACKAGE_ID_LEGACY` env / `prediction_legacy` json block.** When all legacy markets resolve or cancel (~3-6 months out). Frontend will collapse `MARKET_TYPES`/`POSITION_TYPES` to single-element arrays automatically (dedup logic in `constants.ts`).
+- **`Move.toml` `published-at` line was already stale** (pointed at v2) before this session. Commented out for fresh publish. The newer Sui toolchain manages `Published.toml` instead — `Move.toml` no longer needs `published-at` for upgrades.
+- **`/tmp` cleanup eating recipient keys** — the same root cause that stranded the v3 admin cap. Any future `rotate-prediction-admin-wallet.ts` runs should write the recipient key to `~/.sui/sui_config/` or `~/.nasun/nasun_config/`, not `/tmp`.
