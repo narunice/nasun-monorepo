@@ -1,10 +1,10 @@
 ---
 name: health-check
 description: |
-  nasun-website, network-explorer, pado, gostop.app의 프로덕션 인프라 헬스를 체크합니다.
-  CloudFront CDN, Lambda API, EC2 nginx, Explorer API, Chat Server, AWS 서비스를 점검합니다.
+  nasun-website, network-explorer, pado, gostop.app, nasun-ai-runtime의 프로덕션 인프라 헬스를 체크합니다.
+  CloudFront CDN, Lambda API, EC2 nginx, Explorer API, Chat Server, gostop-backend(node-3:3202), nasun-ai-runtime(/wake), AWS 서비스를 점검합니다.
   "헬스체크", "상태 확인", "health check", "사이트 상태" 등의 요청에 사용합니다.
-  인자: quick | full | website | explorer | pado | gostop
+  인자: quick | full | website | explorer | pado | gostop | nasun-ai
 ---
 
 # Health Check: Nasun Production 웹 인프라
@@ -14,11 +14,13 @@ description: |
 ## 인프라 참조
 
 ### EC2
-| 용도 | IP | 사용자 | SSH 키 |
-|------|-----|--------|--------|
-| Production (web origin) | 43.200.67.52 | ec2-user | `~/.ssh/.awskey/nasun-prod-key` |
-| Staging (dev + Umami) | 15.165.19.180 | ubuntu | `~/.ssh/.awskey/naru_seoul.pem` |
-| Node-3 (Explorer API) | 54.180.61.196 | ubuntu | `~/.ssh/.awskey/nasun-devnet-key.pem` |
+| 용도 | IP | 사용자 | SSH 키 | Colocation |
+|------|-----|--------|--------|------------|
+| Production (web origin) | 43.200.67.52 | ec2-user | `~/.ssh/.awskey/nasun-prod-key` | nginx, chat-server(3101), pado bots/keepers, nasun-ai-runtime(127.0.0.1:4400) |
+| Staging (dev + Umami) | 15.165.19.180 | ubuntu | `~/.ssh/.awskey/naru_seoul.pem` | nginx, Umami(Docker) |
+| Node-3 (devnet RPC) | 54.180.61.196 | ubuntu | `~/.ssh/.awskey/nasun-devnet-key.pem` | explorer-api(3200), **gostop-backend(3202) + gostop-indexer** (2026-05-18~) |
+
+> **Node-3 colocation**: 2026-05-18부터 gostop-backend가 prod EC2가 아닌 node-3에서 가동. 상세는 `reference_gostop_backend_endpoints.md` / `project_gostop_backend_node3_runtime.md` 참조.
 
 ### CloudFront
 | 도메인 | Distribution ID | Region | Origin | CustomErrorResp qty (expected) |
@@ -45,7 +47,8 @@ description: |
 | `website` | 1a-d,1f-g + 2a,2b + 2.5 + 3 + 5a,5b,5c,5d + 6W,A,B,S,WF |
 | `explorer` | 1a-e + 2c + 3 + 4 + 5a,5b,5c,5d + 6E,A,S,WF |
 | `pado` | 1a-d,1h + 2a,2b + 2.5 + 3e + 5a,5b,5c,5d + 6P,A,B,S,WF |
-| `gostop` | 1a,1b,1c + 3e(gostop only) + 5a,5b,5c (gostop only) + 6GS,S,WF |
+| `gostop` | 1a,1b,1c,1i + 2c(gostop only) + 3e(gostop only) + 5a,5b,5c (gostop only) + 6GS,S,WF |
+| `nasun-ai` | 1j + 2a(nasun-ai-runtime only) + 6AI,S |
 
 ---
 
@@ -75,7 +78,7 @@ done
 ```bash
 for domain in nasun.io staging.nasun.io explorer.nasun.io rpc.devnet.nasun.io \
   faucet.devnet.nasun.io analytics.nasun.io pado.finance staging.pado.finance \
-  gostop.app www.gostop.app; do
+  gostop.app www.gostop.app api.gostop.app; do
   expiry=$(echo | openssl s_client -servername "$domain" -connect "$domain":443 2>/dev/null \
     | openssl x509 -noout -enddate 2>/dev/null | cut -d= -f2)
   days=$(( ($(date -d "$expiry" +%s 2>/dev/null || echo 0) - $(date +%s)) / 86400 ))
@@ -90,7 +93,7 @@ done
 ```bash
 for domain in nasun.io explorer.nasun.io pado.finance staging.pado.finance \
   rpc.devnet.nasun.io analytics.nasun.io staging.nasun.io faucet.devnet.nasun.io \
-  gostop.app www.gostop.app; do
+  gostop.app www.gostop.app api.gostop.app; do
   result=$(getent hosts "$domain" 2>/dev/null)
   echo "$domain: ${result:-FAILED}"
 done
@@ -172,6 +175,42 @@ curl -s -m 10 -o /dev/null -w "staging_health:%{http_code}|%{time_total}" \
 
 - prod 200=OK, 502=CRITICAL. staging 401/502=OK (의도적 비활성화)
 
+#### 1i. gostop-backend API (api.gostop.app, node-3:3202)
+
+> 상세 엔드포인트/nginx 구성: `reference_gostop_backend_endpoints.md`. 여기서는 라이브 surface만 빠르게 점검.
+
+```bash
+curl -s -m 10 -o /dev/null -w "health:%{http_code}|%{time_total}\n" https://api.gostop.app/health
+curl -s -m 10 -o /dev/null -w "lp_pool:%{http_code}|%{time_total}\n" \
+  https://api.gostop.app/api/gostop/lp/pool-state
+curl -s -m 10 -o /dev/null -w "leaderboard:%{http_code}|%{time_total}\n" \
+  "https://api.gostop.app/api/gostop/leaderboard?period=all&limit=3"
+curl -s -m 10 -o /dev/null -w "transparency:%{http_code}|%{time_total}\n" \
+  https://api.gostop.app/api/gostop/transparency
+curl -s -m 10 -o /dev/null -w "risk_dashboard:%{http_code}|%{time_total}\n" \
+  https://api.gostop.app/api/gostop/risk-dashboard
+# WS upgrade probe (Upgrade: websocket 헤더 필수, CF/nginx SPA fallback 오진 방지)
+curl -s -m 10 -o /dev/null -w "ws_feed:%{http_code}\n" \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" \
+  https://api.gostop.app/api/gostop/feed/live
+```
+
+- /health 200=OK, 5xx/timeout=CRITICAL. /lp/pool-state, /leaderboard, /transparency, /risk-dashboard는 200=OK (Tier 1.2/1.3 기능, GS6 패턴 트리거 후보)
+- ws_feed 101=OK, 200=WARNING (SPA fallback로 잘못 떨어짐), 4xx=CRITICAL
+- time>5s=WARNING (warm 15s cap, project_gostop_leaderboard_30d_removed.md)
+
+#### 1j. nasun-ai-runtime (외부 surface — chat-server proxy)
+
+> /wake는 `127.0.0.1:WAKE_PORT` (외부 비노출). 외부에서 직접 probe 불가. 내부 점검은 2a SSH로 위임.
+
+```bash
+# chat-server가 nasun-ai-runtime을 spawn/proxy하므로 chat-server health가 1차 신호 (1h와 중복 OK)
+curl -s -m 10 -o /dev/null -w "chat_health:%{http_code}|%{time_total}\n" https://nasun.io/chat/health
+```
+
+- chat-server 다운 = AI agent orchestrator 다운 (project_nasun_ai_agent_funds_ux_revamp.md, project_2026_05_15_pr2a_cutover_hotfixes.md)
+
 ---
 
 ### 2단계: EC2 Internal (2a, 2b, 2c, 2d 병렬 실행)
@@ -198,7 +237,10 @@ try:
     print(f'{a[\"name\"]}: status={a[\"pm2_env\"][\"status\"]}, restarts={a[\"pm2_env\"][\"restart_time\"]}, mem={round(a[\"monit\"][\"memory\"]/1024/1024,1)}MB, cpu={a[\"monit\"][\"cpu\"]}%')
 except Exception as e: print(f'error:{e}')
 "
-ss -tlnp 2>/dev/null | grep -E "3101|4001" | head -5
+ss -tlnp 2>/dev/null | grep -E "3101|4001|4400" | head -10
+echo "=== NASUN-AI /wake (127.0.0.1) ==="
+# WAKE_PORT 기본 4400. per-agent spawn은 다른 포트 사용 가능 → pm2 jlist에서 확인
+curl -s -m 5 -o /dev/null -w "wake_health:%{http_code}|%{time_total}\n" http://127.0.0.1:4400/health 2>&1 || echo "wake_health:UNREACHABLE"
 echo "=== SYS ==="
 df -h / | tail -1; free -m | grep Mem; cat /proc/loadavg
 echo "=== NGINX ERRORS (10min) ==="
@@ -212,6 +254,7 @@ EOF
 판정:
 - nginx inactive=CRITICAL. index.html 없음=CRITICAL. assets=0=CRITICAL
 - nasun-chat-server/price-updater/lp-bots online 필수. port 3101 리스닝 필수
+- **nasun-ai-runtime online 필수** (single daemon mode) 또는 chat-server orchestrator가 per-agent spawn 운영 중. /health 200=OK, UNREACHABLE=CRITICAL (AI1 패턴)
 - disk>80%=WARNING, >90%=CRITICAL. load>2.0=WARNING. nginx 5xx>5%=WARNING
 
 #### 2b. Staging EC2 (15.165.19.180)
@@ -264,11 +307,20 @@ echo ""
 curl -s -m 5 http://localhost:3200/api/v1/stats/network-summary \
   | python3 -c "import sys,json; d=json.load(sys.stdin); print('totalTx:', d.get('data',{}).get('totalTransactions','N/A'))" 2>/dev/null
 echo -n "health_time: "; curl -s -m 5 -o /dev/null -w "%{time_total}s\n" http://localhost:3200/api/v1/health
+echo "=== GOSTOP-BACKEND (3202) ==="
+ss -tlnp 2>/dev/null | grep -E ":3202" | head -3
+curl -s -m 5 -o /dev/null -w "gostop_health:%{http_code}|%{time_total}\n" http://localhost:3202/health
+# gostop-indexer 내부 loop 상태: drift-keeper + risk-alert 최근 로그 (10분)
+echo "--- gostop-indexer drift/risk (10min) ---"
+pm2 logs gostop-indexer --lines 200 --nostream --raw 2>/dev/null \
+  | grep -E "\[(drift|risk-alert)\]" | tail -10
 df -h / | tail -1; free -m | grep Mem; uptime
 EOF
 ```
 
 - explorer-api online 필수. restart>10=WARNING. mem>500MB=WARNING
+- **gostop-backend/gostop-indexer online 필수** (2026-05-18~ node-3 colocation). port 3202 리스닝 필수
+- gostop-indexer 로그에 `[drift] reconciler_stall_severe` / `chain_divergence` / `[risk-alert] utilization>60%` 출현 = WARNING~CRITICAL (project_gostop_drift_keeper.md, project_gostop_tier1_3_risk_dashboard.md)
 
 #### 2d. Pado Bot Gas (Watchdog Log)
 
@@ -609,6 +661,26 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 | GS2 | EPRUC29V8YRN3 Disabled or !Deployed | CRITICAL | AWS 콘솔 us-east-1 CloudFormation 확인 |
 | GS3 | gostop.app SSL <30일 | WARNING | ACM 자동갱신 확인 (us-east-1) |
 | GS4 | EPRUC29V8YRN3 CustomErrorResp qty != 11 or max_ttl > 0 | WARNING | 2026-05-05 적용 정책 회귀. 11개 모두 TTL=0이어야 cascade 차단 (이전 60s 캐시로 사고) |
+| GS5 | api.gostop.app /health != 200 or unreachable | CRITICAL | node-3 SSH 후 `pm2 restart gostop-backend`. nginx `sites-enabled/api.gostop.app` + Let's Encrypt 점검 |
+| GS6 | api.gostop.app /lp/pool-state, /transparency, /leaderboard, /risk-dashboard 중 5xx | CRITICAL | pm2 logs gostop-backend + Postgres `nasun_points.gostop` 점검. matview lock (`reference_gostop_matview_lock_keys.md`) |
+| GS7 | gostop-backend or gostop-indexer != online (node-3) | CRITICAL | `pm2 restart gostop-backend` / `pm2 delete gostop-indexer && pm2 start ecosystem.config.cjs --only gostop-indexer` (env 갱신 시 hard restart 필수, feedback_pm2_hard_restart_for_new_env.md) |
+| GS8 | gostop-indexer 로그에 `[drift] reconciler_stall_severe` 또는 `cursor_lag_severe` 최근 30min | WARNING | unreconciled rows>500 또는 oldest age>1h. `pm2 logs gostop-indexer` stream tick 실패 추적 (project_gostop_drift_keeper.md) |
+| GS9 | gostop-indexer 로그에 `[drift] chain_divergence` | CRITICAL | 자동 복구 불가. chain `total_shares` vs DB latest 비교, originalPackageId/UpgradeCap type tag drift 의심 (project_gostop_drift_keeper.md) |
+| GS10 | gostop-indexer 로그에 `[risk-alert] utilization>60%` | WARNING | bankroll utilization spike. project_gostop_tier1_3_risk_dashboard.md 참조. 7d PnL 트렌드 + open exposure 함께 점검 |
+| GS11 | api.gostop.app WS `/api/gostop/feed/live` 101 응답 아님 | WARNING | nginx WS upgrade location 확인. feedback_cf_spa_ws_diagnosis.md (Upgrade 헤더 누락 시 SPA fallback로 오진 가능) |
+| GS12 | gostop-lottery-keeper stopped (prod EC2) | WARNING | `pm2 restart gostop-lottery-keeper`. LOTTERY_ADMIN_KEY/PACKAGE_ID/REGISTRY_ID/BANKROLL_POOL_ID .env 점검 |
+| GS13 | gostop-backend `/home/ubuntu/devnet-ids.json` stale | WARNING | indexer matching silent failure 가능 (project_2026_05_20_p1_lockstep_upgrade.md). deploy 시 별도 rsync 필수 (feedback_devnet_ids_runtime_resolve.md) |
+
+#### Nasun AI Runtime (AI)
+| ID | 조건 | 심각도 | 조치 |
+|----|------|--------|------|
+| AI1 | nasun-ai-runtime PM2 != online (prod EC2) | CRITICAL | `pm2 restart nasun-ai-runtime`. 환경변수 `BARAM_PACKAGE_ID/BUDGET_ID/CAPABILITY_ID` 누락 시 즉시 exit. project_2026_05_17_baram_executor_phase_e_drift.md (env wipe 회귀 경계) |
+| AI2 | /wake `http://127.0.0.1:4400/health` UNREACHABLE | CRITICAL | wake-server 바인딩 실패 가능. `pm2 logs nasun-ai-runtime --lines 100` Hono start error 확인 |
+| AI3 | nasun-ai-runtime restart>10 AND uptime<1h | WARNING | crash loop. SSM `AGENT_SECRET_PARAM` resolve 실패 or sqlite ABI 미스매치 가능 (project_2026_05_15_pr2a_cutover_hotfixes.md) |
+| AI4 | nasun-ai-runtime 로그에 `[heartbeat] stale` 또는 `AER_HEARTBEAT_STALE_MIN exceeded` | WARNING | AER 정착 실패 누적. operator Telegram alert(`TELEGRAM_ALERT_*`) 발사 여부 + Baram on-chain capability 잔액 확인 |
+| AI5 | chat-server `agent-orchestrator` 로그에 `wake spawn failed` or `dispatch failed` 반복 | CRITICAL | per-agent spawn 실패. chat-server SSM 권한 / agent template config 점검. `fix(chat-server): actionable Telegram wake-failure messages` (7e7d8316) 메시지 참고 |
+| AI6 | nasun-ai-runtime escrow balance 0 or below MIN_NOTIONAL_QUOTE_RAW | WARNING | trader cycle skip 누적. agent funds UX (project_nasun_ai_agent_funds_ux_revamp.md) — Budget vs Agent Wallet 구분 |
+| AI7 | nasun-ai-runtime sqlite `~/.nasun-ai-runtime/processed_jobs.db` 없음/0 byte | CRITICAL | idempotency 손실. 백업에서 복구 필요 (마이그레이션 시 보존 필수) |
 
 #### Backup (B)
 | ID | 조건 | 심각도 | 조치 |
@@ -656,7 +728,7 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 ### 8. Chat Server (nasun/pado 공용)
 | Endpoint | HTTP | Time | Status |
 
-### 9. gostop.app
+### 9. gostop.app (frontend CF + backend api)
 | Item | Value | Status |
 |------|-------|--------|
 | https://gostop.app | HTTP 200 | OK |
@@ -664,6 +736,20 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 | SSL gostop.app | days_left | OK/WARN |
 | CF EPRUC29V8YRN3 (us-east-1) | Deployed+Enabled | OK/CRIT |
 | x-cache | Hit/Miss/Error | OK/CRIT |
+| api.gostop.app /health | HTTP 200 / time | OK/CRIT |
+| api.gostop.app /lp/pool-state, /transparency, /leaderboard, /risk-dashboard | HTTP per endpoint | OK/CRIT |
+| api.gostop.app WS /feed/live | HTTP 101 | OK/WARN |
+| gostop-backend pm2 (node-3:3202) | online/stopped, restart, mem | OK/CRIT |
+| gostop-indexer pm2 (node-3) | online + drift/risk-alert tail | OK/WARN/CRIT |
+| gostop-lottery-keeper pm2 (prod) | online/stopped | OK/WARN |
+
+### 9.5. Nasun AI Runtime
+| Item | Value | Status |
+|------|-------|--------|
+| nasun-ai-runtime pm2 (prod EC2) | online/stopped, restart, uptime | OK/CRIT |
+| /wake http://127.0.0.1:4400/health (SSH) | HTTP 200 | OK/CRIT |
+| heartbeat staleness | last AER landing | OK/WARN |
+| sqlite idempotency DB | file size, age | OK/CRIT |
 
 ### 10. Pado Bot Gas (Watchdog)
 | Bot | Gas | Token | Status |
