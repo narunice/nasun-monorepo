@@ -32,8 +32,20 @@ export function formatNusdcValue(amount: number): string {
   return (amount / 1e6).toFixed(2);
 }
 
-export function formatNusdc(amount: number): string {
-  return `${(amount / 1e6).toFixed(2)} NUSDC`;
+/**
+ * Format raw NUSDC (1e6 minor units) as a display string with `NUSDC` suffix.
+ * Null/undefined/NaN return `-`; default precision is 2 decimals but callers
+ * that need more precision (e.g. fee receipts in the AER viewer) can override
+ * via `opts.decimals`. PaymentContext.payment_token is reserved for future
+ * multi-token settlement; until that lands the suffix stays hardcoded.
+ */
+export function formatNusdc(
+  amount: number | null | undefined,
+  opts?: { decimals?: number },
+): string {
+  if (amount == null || !Number.isFinite(amount)) return '-';
+  const decimals = opts?.decimals ?? 2;
+  return `${(amount / 1e6).toFixed(decimals)} NUSDC`;
 }
 
 export function formatNasun(amount: number): string {
