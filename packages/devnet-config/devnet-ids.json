@@ -1,6 +1,6 @@
 {
-  "version": "V8",
-  "lastUpdated": "2026-03-27",
+  "version": "V9",
+  "lastUpdated": "2026-05-20",
   "admin": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
   "network": {
     "chainId": "272218f1",
@@ -24,10 +24,18 @@
     "adminCap": "0xe0b017bb62d572415c447e37008cea68bc8bb5bd4e47f12e672924b05ba651eb"
   },
   "prediction": {
+    "packageId": "0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2",
+    "originalPackageId": "0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2",
+    "adminCap": "0x06f263829f9f84951280e2fa16d32d2729c28aca2600e4e77ec54a86d00f8fa1",
+    "upgradeCap": "0x58cc21a22c5931511441701608954f85c4886ac8e2f5d38013d0113e1bc92fff"
+  },
+  "prediction_legacy": {
     "packageId": "0x9b2361feee43b5912efc21918fd8c8cc94c40ed443bb34bea0d7dc9775a37d00",
     "originalPackageId": "0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d",
     "adminCap": "0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8",
-    "upgradeCap": "0xc6d1492efe2ac4cde7cdb9a14aa8e180981b98327a2b483d610c007daac7831c"
+    "upgradeCap": "0xc6d1492efe2ac4cde7cdb9a14aa8e180981b98327a2b483d610c007daac7831c",
+    "cutoverDate": "2026-05-20",
+    "notes": "Read-only after v5 cutover. Legacy markets resolve naturally; admin paths (admin_cancel, extend_resolve_deadline) intentionally not used. v3 unsafe mint_admin_cap path callable forever via direct packageId invocation -- accepted risk."
   },
   "lottery": {
     "packageId": "0xaacac6314103aa2337774090d3e4a01059b2a12ccfe40442da838dc769d8debe",

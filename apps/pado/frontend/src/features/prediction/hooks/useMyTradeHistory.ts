@@ -12,7 +12,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
-import { ORDER_FILLED_EVENT } from '../constants';
+import { ORDER_FILLED_EVENTS } from '../constants';
 import type { TradeHistoryRow } from '../types';
 
 const PAGE_LIMIT = 200;
@@ -22,15 +22,21 @@ async function fetchMyTradeHistory(
   owner: string,
 ): Promise<TradeHistoryRow[]> {
   const client = getSuiClient();
-  const page = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_EVENT },
-    limit: PAGE_LIMIT,
-    order: 'descending',
-  });
+  // 2026-05-20 v5 cutover: walk both event streams in parallel and merge.
+  const pages = await Promise.all(
+    ORDER_FILLED_EVENTS.map((eventType) =>
+      client.queryEvents({
+        query: { MoveEventType: eventType },
+        limit: PAGE_LIMIT,
+        order: 'descending',
+      }),
+    ),
+  );
 
   const ownerLc = owner.toLowerCase();
   const rows: TradeHistoryRow[] = [];
-  for (const event of page.data) {
+  const allEvents = pages.flatMap((p) => p.data);
+  for (const event of allEvents) {
     const j = event.parsedJson as Record<string, unknown> | null;
     if (!j) continue;
     if (String(j.market_id ?? '').toLowerCase() !== marketId.toLowerCase()) continue;
@@ -59,6 +65,8 @@ async function fetchMyTradeHistory(
       txDigest: event.id?.txDigest,
     });
   }
+  // Sort by timestamp desc so the merged feed matches single-stream ordering.
+  rows.sort((a, b) => b.timestamp - a.timestamp);
   return rows;
 }
 

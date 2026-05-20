@@ -47,7 +47,7 @@ if (RPC_URL.includes('mainnet')) {
 }
 
 const CLOCK_ID = '0x6';
-const DEFAULT_ADMIN_CAP = '0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8';
+const DEFAULT_ADMIN_CAP = '0x06f263829f9f84951280e2fa16d32d2729c28aca2600e4e77ec54a86d00f8fa1';
 const HEX_64 = /^0x[0-9a-fA-F]{64}$/;
 
 const RESOLVE_BUFFER_MS = 7 * 24 * 60 * 60_000;

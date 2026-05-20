@@ -10,10 +10,21 @@
  * One singleton per tab. Hooks call `getPredictionEventService().subscribe(...)`
  * and unsubscribe on unmount; the service connects/disconnects implicitly based
  * on subscriber count. Page Visibility pauses polling when the tab is hidden.
+ *
+ * 2026-05-20 v5 cutover: runs N parallel pollers (one per unique originalId)
+ * with per-package cursors so v1~v4 in-flight markets keep emitting live
+ * events even after the fresh v5 publish. Subscribers are package-agnostic —
+ * the dispatch normalizes by struct name, not by full event type, so a
+ * subscriber to `OrderFilled` receives both legacy and v5 fills as a single
+ * stream.
  */
 
 import { getSuiClient } from '../../../lib/sui-client';
-import { PREDICTION_PACKAGE_ID } from '../constants';
+import {
+  PREDICTION_ORIGINAL_PACKAGE_ID,
+  LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID,
+  PREDICTION_LEGACY,
+} from '../constants';
 
 // Event type names mirror Move struct names so subscribers can read parsedJson
 // without translation. Add new ones here as new events are introduced.
@@ -33,6 +44,12 @@ export interface PredictionEventEnvelope {
   timestampMs: number;
   txDigest: string;
   eventSeq: string;
+  /**
+   * 2026-05-20 v5 cutover: which originalId emitted this event. Subscribers
+   * that care about the v5/legacy split (e.g. UI badges) can branch on this;
+   * most don't need to.
+   */
+  sourcePackage: string;
 }
 
 export type PredictionEventCallback = (event: PredictionEventEnvelope) => void;
@@ -52,14 +69,32 @@ const STRUCT_TO_TYPE: Record<string, PredictionEventType> = {
   WinningsClaimed: 'WinningsClaimed',
 };
 
+interface PerPackageState {
+  packageId: string;
+  cursor: { txDigest: string; eventSeq: string } | null;
+  bootstrapDone: boolean;
+}
+
 class PredictionEventService {
   private subscribers: Map<PredictionEventType, Set<PredictionEventCallback>> = new Map();
-  private pollingCursor: { txDigest: string; eventSeq: string } | null = null;
+  private packages: PerPackageState[] = this.buildPackageList();
   private pollingTimer: ReturnType<typeof setTimeout> | null = null;
   private consecutiveFailures = 0;
   private isConnected = false;
   private visibilityHandler: (() => void) | null = null;
-  private bootstrapDone = false;
+
+  private buildPackageList(): PerPackageState[] {
+    const pkgs = new Set<string>();
+    if (PREDICTION_ORIGINAL_PACKAGE_ID) pkgs.add(PREDICTION_ORIGINAL_PACKAGE_ID);
+    if (PREDICTION_LEGACY && LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID) {
+      pkgs.add(LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID);
+    }
+    return Array.from(pkgs).map((packageId) => ({
+      packageId,
+      cursor: null,
+      bootstrapDone: false,
+    }));
+  }
 
   subscribe(eventType: PredictionEventType, callback: PredictionEventCallback): () => void {
     let bucket = this.subscribers.get(eventType);
@@ -90,9 +125,11 @@ class PredictionEventService {
     if (this.isConnected) return;
     this.isConnected = true;
     this.attachVisibilityHandler();
-    // Bootstrap cursor: first poll only delivers events newer than the bootstrap
-    // tick to avoid replaying old history on every page load.
-    this.bootstrapDone = false;
+    // Bootstrap each package's cursor on first poll.
+    for (const pkg of this.packages) {
+      pkg.bootstrapDone = false;
+      pkg.cursor = null;
+    }
     this.scheduleNextPoll(0);
   }
 
@@ -106,9 +143,11 @@ class PredictionEventService {
       document.removeEventListener('visibilitychange', this.visibilityHandler);
       this.visibilityHandler = null;
     }
-    this.pollingCursor = null;
+    for (const pkg of this.packages) {
+      pkg.cursor = null;
+      pkg.bootstrapDone = false;
+    }
     this.consecutiveFailures = 0;
-    this.bootstrapDone = false;
   }
 
   private attachVisibilityHandler(): void {
@@ -140,52 +179,64 @@ class PredictionEventService {
   }
 
   private async poll(): Promise<void> {
-    if (!PREDICTION_PACKAGE_ID) return;
+    if (this.packages.length === 0) return;
     const client = getSuiClient();
 
-    try {
-      // First poll seeds the cursor at "tip" without firing callbacks for
-      // historical events. Subsequent polls walk forward from the cursor.
-      if (!this.bootstrapDone) {
-        const tip = await client.queryEvents({
-          query: {
-            MoveEventModule: { package: PREDICTION_PACKAGE_ID, module: 'prediction_market' },
-          },
-          limit: 1,
-          order: 'descending',
-        });
-        if (tip.data[0]?.id) {
-          this.pollingCursor = {
-            txDigest: tip.data[0].id.txDigest,
-            eventSeq: tip.data[0].id.eventSeq,
-          };
+    // Poll every package in parallel; share a single failure counter so any
+    // partial network blip backs everyone off together (RPC is shared too).
+    const results = await Promise.allSettled(
+      this.packages.map(async (pkg) => {
+        if (!pkg.bootstrapDone) {
+          const tip = await client.queryEvents({
+            query: {
+              MoveEventModule: { package: pkg.packageId, module: 'prediction_market' },
+            },
+            limit: 1,
+            order: 'descending',
+          });
+          if (tip.data[0]?.id) {
+            pkg.cursor = {
+              txDigest: tip.data[0].id.txDigest,
+              eventSeq: tip.data[0].id.eventSeq,
+            };
+          }
+          pkg.bootstrapDone = true;
+          return [] as unknown[];
         }
-        this.bootstrapDone = true;
-        this.consecutiveFailures = 0;
-        return;
+
+        const result = await client.queryEvents({
+          query: {
+            MoveEventModule: { package: pkg.packageId, module: 'prediction_market' },
+          },
+          cursor: pkg.cursor as { txDigest: string; eventSeq: string } | undefined,
+          limit: MAX_EVENTS_PER_POLL,
+          order: 'ascending',
+        });
+
+        if (result.nextCursor) {
+          pkg.cursor = result.nextCursor as { txDigest: string; eventSeq: string };
+        }
+
+        return result.data;
+      }),
+    );
+
+    let anyFailure = false;
+    for (const r of results) {
+      if (r.status === 'rejected') {
+        anyFailure = true;
+        console.warn('[PredictionEventService] poll error:', r.reason);
+        continue;
       }
-
-      const result = await client.queryEvents({
-        query: {
-          MoveEventModule: { package: PREDICTION_PACKAGE_ID, module: 'prediction_market' },
-        },
-        cursor: this.pollingCursor as { txDigest: string; eventSeq: string } | undefined,
-        limit: MAX_EVENTS_PER_POLL,
-        order: 'ascending',
-      });
-
-      if (result.nextCursor) {
-        this.pollingCursor = result.nextCursor as { txDigest: string; eventSeq: string };
-      }
-
-      this.consecutiveFailures = 0;
-
-      for (const ev of result.data) {
+      for (const ev of r.value) {
         this.dispatch(ev);
       }
-    } catch (error) {
+    }
+
+    if (anyFailure) {
       this.consecutiveFailures += 1;
-      console.warn('[PredictionEventService] poll error:', error);
+    } else {
+      this.consecutiveFailures = 0;
     }
   }
 
@@ -199,7 +250,9 @@ class PredictionEventService {
     if (!ev.id || !ev.type || !ev.parsedJson) return;
 
     // ev.type is the full Move event path: <package>::prediction_market::<Struct>
-    const lastSeg = ev.type.split('::').pop() ?? '';
+    const segments = ev.type.split('::');
+    const lastSeg = segments[segments.length - 1] ?? '';
+    const sourcePackage = segments[0] ?? '';
     const eventType = STRUCT_TO_TYPE[lastSeg];
     if (!eventType) return;
 
@@ -209,6 +262,7 @@ class PredictionEventService {
       timestampMs: Number(ev.timestampMs) || Date.now(),
       txDigest: ev.id.txDigest,
       eventSeq: ev.id.eventSeq,
+      sourcePackage,
     };
 
     const bucket = this.subscribers.get(eventType);

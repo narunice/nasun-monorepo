@@ -4,11 +4,26 @@
  * Reads the v1 CLOB market struct + orderbook tables. Each FIFO entry
  * carries direction (isYes/isBid), locked NUSDC, and cost basis so
  * cancellation/refund flows have full information without table scans.
+ *
+ * 2026-05-20 v5 cutover: discovery accepts markets from either originalId
+ * (legacy v1~v4 OR v5). Every fetched market is registered in the
+ * marketPackageRegistry so downstream transaction builders dispatch to the
+ * right `packageId` without thread-through plumbing.
  */
 
 import type { EventId } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
-import { MARKET_CREATED_EVENT, ORDER_FILLED_EVENT, TEST_MARKETS } from '../constants';
+import {
+  MARKET_CREATED_EVENTS,
+  ORDER_FILLED_EVENTS,
+  TEST_MARKETS,
+  PREDICTION_PACKAGE_ID,
+  PREDICTION_ORIGINAL_PACKAGE_ID,
+  LEGACY_PREDICTION_PACKAGE_ID,
+  LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID,
+  PREDICTION_LEGACY,
+  registerMarketPackage,
+} from '../constants';
 import type { Order, OrderbookLevel, PredictionMarket, RecentFill } from '../types';
 import { parseMarketStatus } from '../types';
 
@@ -50,14 +65,48 @@ export async function fetchMarket(marketId: string): Promise<PredictionMarket | 
     }
 
     const fields = object.data.content.fields as Record<string, unknown>;
-    return parseMarketFields(marketId, fields);
+    const objectType = object.data.type ?? '';
+    return parseMarketFields(marketId, fields, objectType);
   } catch (error) {
     console.error(`Failed to fetch market ${marketId}:`, error);
     return null;
   }
 }
 
-function parseMarketFields(id: string, fields: Record<string, unknown>): PredictionMarket {
+function resolvePackageFromType(objectType: string): {
+  packageId: string;
+  originalPackageId: string;
+  isLegacy: boolean;
+} {
+  // objectType looks like `<originalId>::prediction_market::Market`. Compare
+  // the originalId prefix to determine which package universe this market
+  // belongs to. Default to v5 when nothing matches (e.g. test envs).
+  if (
+    PREDICTION_LEGACY &&
+    objectType.startsWith(`${LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID}::`)
+  ) {
+    return {
+      packageId: LEGACY_PREDICTION_PACKAGE_ID,
+      originalPackageId: LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID,
+      isLegacy: true,
+    };
+  }
+  return {
+    packageId: PREDICTION_PACKAGE_ID,
+    originalPackageId: PREDICTION_ORIGINAL_PACKAGE_ID,
+    isLegacy: false,
+  };
+}
+
+function parseMarketFields(
+  id: string,
+  fields: Record<string, unknown>,
+  objectType: string,
+): PredictionMarket {
+  const { packageId, originalPackageId, isLegacy } = resolvePackageFromType(objectType);
+  // Register the dispatch ASAP so concurrent transaction builders that look
+  // up this marketId before the React Query cache settles will route correctly.
+  registerMarketPackage(id, packageId);
   return {
     id,
     question: String(fields.question ?? ''),
@@ -86,6 +135,9 @@ function parseMarketFields(id: string, fields: Record<string, unknown>): Predict
       noBid: extractBestPrice(fields.no_bid_prices),
       noAsk: extractBestPrice(fields.no_ask_prices),
     },
+    packageId,
+    originalPackageId,
+    isLegacy,
   };
 }
 
@@ -245,17 +297,20 @@ export async function fetchMarketsWithOrderbooks(): Promise<
 
 /**
  * Discover markets via MarketCreated events.
- * Cursor walk capped at MAX_MARKETS_DISCOVERY (round-6 plan §2.7).
+ *
+ * 2026-05-20 v5 cutover: walks BOTH originalIds in parallel so v1~v4 in-
+ * flight markets remain discoverable alongside any v5 markets. Cap is
+ * applied per-side and re-applied to the merged result.
  */
 export async function fetchMarketsByEvents(): Promise<string[]> {
   const client = getSuiClient();
 
-  try {
+  async function walkOne(eventType: string): Promise<string[]> {
     const ids: string[] = [];
     let cursor: EventId | null | undefined = null;
     while (ids.length < MAX_MARKETS_DISCOVERY) {
       const page = await client.queryEvents({
-        query: { MoveEventType: MARKET_CREATED_EVENT },
+        query: { MoveEventType: eventType },
         cursor: cursor ?? null,
         limit: 50,
         order: 'descending',
@@ -268,6 +323,29 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
       cursor = page.nextCursor;
     }
     return ids;
+  }
+
+  try {
+    const perEventResults = await Promise.all(MARKET_CREATED_EVENTS.map(walkOne));
+    // Dedupe preserving first-seen ordering (descending = newest first).
+    const seen = new Set<string>();
+    const merged: string[] = [];
+    // Interleave: take from each event stream in turn so v5 newest beats
+    // legacy newest by recency rather than by event-type ordering.
+    const maxLen = Math.max(...perEventResults.map((r) => r.length), 0);
+    for (let i = 0; i < maxLen && merged.length < MAX_MARKETS_DISCOVERY; i++) {
+      for (const arr of perEventResults) {
+        if (i < arr.length) {
+          const id = arr[i];
+          if (!seen.has(id)) {
+            seen.add(id);
+            merged.push(id);
+            if (merged.length >= MAX_MARKETS_DISCOVERY) break;
+          }
+        }
+      }
+    }
+    return merged;
   } catch (error) {
     console.error('Failed to fetch market events:', error);
     return TEST_MARKETS;
@@ -277,26 +355,40 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
 /**
  * Fetch the most recent fills for a market in descending order.
  * Used as the seed for cursor-based polling.
+ *
+ * 2026-05-20 v5 cutover: walks both v5 and legacy OrderFilled event streams
+ * so initial seed includes legacy fills. Pagination cursors are kept
+ * per-stream; callers that subscribe to live updates rely on
+ * `PredictionEventService` which has its own dual-cursor poller.
  */
 export async function fetchRecentFillsInitial(
   marketId: string,
   limit = 50,
 ): Promise<{ fills: RecentFill[]; oldestEventId: EventId | null }> {
   const client = getSuiClient();
-  const page = await client.queryEvents({
-    query: { MoveEventType: ORDER_FILLED_EVENT },
-    limit,
-    order: 'descending',
-  });
+  const perEvent = await Promise.all(
+    ORDER_FILLED_EVENTS.map((eventType) =>
+      client.queryEvents({
+        query: { MoveEventType: eventType },
+        limit,
+        order: 'descending',
+      }),
+    ),
+  );
+
   const fills: RecentFill[] = [];
   let oldestEventId: EventId | null = null;
-  for (const event of page.data) {
-    const parsed = parseFillEvent(event.parsedJson, Number(event.timestampMs ?? 0));
-    if (parsed && parsed.marketId === marketId) {
-      fills.push(parsed);
+  for (const page of perEvent) {
+    for (const event of page.data) {
+      const parsed = parseFillEvent(event.parsedJson, Number(event.timestampMs ?? 0));
+      if (parsed && parsed.marketId === marketId) {
+        fills.push(parsed);
+      }
+      oldestEventId = event.id;
     }
-    oldestEventId = event.id;
   }
+  // Sort merged feed by timestamp descending so seed matches expected ordering.
+  fills.sort((a, b) => b.timestamp - a.timestamp);
   return { fills, oldestEventId };
 }
 

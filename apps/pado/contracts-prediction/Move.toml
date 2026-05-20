@@ -2,7 +2,7 @@
 name = "pado_prediction"
 edition = "2024"
 version = "0.0.1"
-published-at = "0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef"
+# published-at removed for v5 fresh publish (2026-05-20)
 
 [dependencies]
 devnet_tokens = { local = "../../../packages/devnet-tokens" }

@@ -38,6 +38,14 @@ export interface PredictionMarket {
   // to display accurate probability without walking the dynamic-field
   // orderbook tables.
   bestPrices: BestPrices;
+
+  // 2026-05-20 v5 cutover: packageId for moveCall dispatch + isLegacy flag for
+  // UI badges / read-only-mode gating. `originalPackageId` is the type anchor
+  // (used for object type filters); `packageId` is the latest publish (used
+  // as moveCall target).
+  packageId: string;
+  originalPackageId: string;
+  isLegacy: boolean;
 }
 
 export interface BestPrices {
