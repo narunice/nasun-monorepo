@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import type { RiskMetricsBlock, TopLpEntry, MeLpPosition } from '../../lib/api/types';
+import type { RiskMetricsBlock, TopLpEntry, OtherLpSummary, MeLpPosition } from '../../lib/api/types';
 import { useMeLpPosition } from '../../lib/api/queries';
 import { useGostopAuth } from '../../hooks/useGostopAuth';
 import { bpsToPct, fmtUsdc } from '../dashboard/format';
@@ -61,6 +61,7 @@ export function TopLpConcentration({ risk }: Props) {
 
   const unreliable = risk.data_quality === 'unreliable';
   const entries = unreliable ? [] : risk.top_lp_5;
+  const other = unreliable ? null : (risk.other_lp_summary ?? null);
   const empty = entries.length === 0;
   const concentration = unreliable ? undefined : risk.lp_concentration;
 
@@ -94,6 +95,7 @@ export function TopLpConcentration({ risk }: Props) {
           {entries.map((e) => (
             <LpRow key={e.address_hash} entry={e} isSelf={!!selfRow && selfRow.address_hash === e.address_hash} />
           ))}
+          {other && other.lp_count > 0 && <OtherRow summary={other} />}
         </ul>
       )}
 
@@ -134,6 +136,22 @@ function ConcentrationBadge({
     >
       {label} · top1 {pct}
     </span>
+  );
+}
+
+function OtherRow({ summary }: { summary: OtherLpSummary }) {
+  const lpLabel = summary.lp_count === 1 ? '1 LP' : `${summary.lp_count} LPs`;
+  return (
+    <li className="flex items-center justify-between gap-3 px-3 py-2 rounded-md border border-gold-subtle/40 bg-ink-900/20">
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-mono text-sm text-neutral-400 w-6 text-right">·</span>
+        <span className="text-sm text-neutral-300 truncate">Other ({lpLabel})</span>
+      </div>
+      <div className="flex items-baseline gap-3 shrink-0">
+        <span className="font-mono text-sm text-neutral-200">{bpsToPct(summary.share_pct_bps)}</span>
+        <span className="font-mono text-xs text-neutral-400">{fmtUsdc(summary.shares)} sh</span>
+      </div>
+    </li>
   );
 }
 

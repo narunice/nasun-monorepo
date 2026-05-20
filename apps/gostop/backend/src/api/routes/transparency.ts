@@ -203,6 +203,7 @@ transparencyRoutes.get('/transparency', async (c) => {
       daily_pnl_volatility_30d_raw: '0',
       longest_house_losing_streak_days: 0,
       top_lp_5: [],
+      other_lp_summary: null,
       lp_concentration: { top1_share_pct_bps: 0, status: 'unknown', lp_count: 0 },
       data_quality: 'unreliable',
       matview_age_ms: 0,
