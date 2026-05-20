@@ -5,6 +5,7 @@ import { MyProfileCard } from '../features/dashboard/components/MyProfileCard';
 import { RecentRoundsTable } from '../features/dashboard/components/RecentRoundsTable';
 import { StatsCard } from '../features/dashboard/components/StatsCard';
 import { GostopActivityCard } from '../features/dashboard/components/GostopActivityCard';
+import { MyLiquidityCard } from '../features/dashboard/components/MyLiquidityCard';
 import { LiveFeedWidget } from '../features/dashboard/components/LiveFeedWidget';
 import { SettingsModal } from '../features/dashboard/components/SettingsModal';
 import { RoundDetailModal } from '../features/dashboard/components/RoundDetailModal';
@@ -225,6 +226,7 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-5">
             <GostopActivityCard />
+            <MyLiquidityCard />
             <LiveFeedWidget />
           </div>
         </div>
