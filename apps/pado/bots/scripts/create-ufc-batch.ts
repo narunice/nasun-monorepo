@@ -39,7 +39,7 @@ const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 if (RPC_URL.includes('mainnet')) { console.error('mainnet refused'); process.exit(1); }
 
 const CLOCK_ID = '0x6';
-const DEFAULT_ADMIN_CAP = '0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8';
+const DEFAULT_ADMIN_CAP = '0x06f263829f9f84951280e2fa16d32d2729c28aca2600e4e77ec54a86d00f8fa1';
 const HEX_64 = /^0x[0-9a-fA-F]{64}$/;
 const ESPN_BASE = 'https://sports.core.api.espn.com/v2/sports/mma/leagues/ufc';
 
@@ -324,7 +324,11 @@ async function createOnChain(
           tx.object(cap),
           tx.pure.string(m.question),
           tx.pure.string(m.description),
-          tx.pure.string('ufc'),
+          // Use 'sports' so the frontend's bucketCategory() picks it up
+          // (CANONICAL list is fixed at crypto/space/music/sports/weather/
+          // finance). UFC-specific subcategory can be added in a future
+          // frontend pass; until then surface inside the Sports tab.
+          tx.pure.string('sports'),
           tx.pure.string(m.resolutionSource),
           tx.pure.string(m.resolutionCriteria),
           tx.pure.u64(BigInt(m.closeTimeMs)),
