@@ -46,11 +46,19 @@ const PERIOD_WINDOW_MS: Record<Exclude<Period, 'all'>, number> = {
   '7d':  7  * 24 * 60 * 60 * 1000,
 };
 
-function metricExpr(metric: Metric): string {
+// Qualify column references with the source alias. Without the prefix the
+// ORDER BY / ROW_NUMBER expressions resolve to the SELECT-list aliases
+// (`total_bet::text AS total_bet`, etc.), which makes Postgres sort the
+// projected TEXT instead of the underlying numeric column. That is what
+// produced the volume-rank bug: "9998000000" sorted lexically ahead of
+// "102485000000". Qualifying with `ps.` / `agg.` forces resolution to the
+// numeric source column even though the SELECT shadows the name.
+function metricExpr(metric: Metric, alias: string): string {
+  const a = alias ? `${alias}.` : '';
   switch (metric) {
-    case 'net_pnl': return '(total_payout - total_bet)';
-    case 'volume':  return 'total_bet';
-    case 'rounds':  return 'rounds';
+    case 'net_pnl': return `(${a}total_payout - ${a}total_bet)`;
+    case 'volume':  return `${a}total_bet`;
+    case 'rounds':  return `${a}rounds`;
   }
 }
 
@@ -76,21 +84,21 @@ export async function queryLeaderboard(
 ): Promise<LeaderboardRow[]> {
   const { period, game, metric, limit } = opts;
   const exclude = opts.excludePlayers ?? [];
-  const metricSql = metricExpr(metric);
 
   // Period filter: matview for 'all', range query otherwise.
   if (period === 'all') {
     // Pull from matview; apply game filter via re-aggregation if needed.
     if (game === 'all') {
+      const metricSqlPs = metricExpr(metric, 'ps');
       const rows = await sql<LeaderboardRow[]>`
         SELECT
-          player,
-          rounds::int                     AS rounds,
-          total_bet::text                 AS total_bet,
-          total_payout::text              AS total_payout,
-          (total_payout - total_bet)::text AS net_pnl,
-          last_played_ms,
-          ROW_NUMBER() OVER (ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC)::int AS rank
+          ps.player                          AS player,
+          ps.rounds::int                     AS rounds,
+          ps.total_bet::text                 AS total_bet,
+          ps.total_payout::text              AS total_payout,
+          (ps.total_payout - ps.total_bet)::text AS net_pnl,
+          ps.last_played_ms                  AS last_played_ms,
+          ROW_NUMBER() OVER (ORDER BY ${sql.unsafe(metricSqlPs)} DESC, ps.player ASC)::int AS rank
         FROM gostop.player_stats ps
         WHERE ${exclude.length > 0 ? sql`ps.player NOT IN ${sql(exclude)}` : sql`TRUE`}
           AND NOT EXISTS (
@@ -98,7 +106,7 @@ export async function queryLeaderboard(
             WHERE bu.wallet_address = ps.player
               AND bu.unbanned_at IS NULL
           )
-        ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC
+        ORDER BY ${sql.unsafe(metricSqlPs)} DESC, ps.player ASC
         LIMIT ${limit}
       `;
       return rows;
@@ -109,6 +117,7 @@ export async function queryLeaderboard(
 
   const nowMs = Date.now();
   const sinceMs = period === 'all' ? 0 : nowMs - PERIOD_WINDOW_MS[period];
+  const metricSqlAgg = metricExpr(metric, 'agg');
 
   const rows = await sql<LeaderboardRow[]>`
     WITH agg AS (
@@ -131,15 +140,15 @@ export async function queryLeaderboard(
       GROUP BY gr.player
     )
     SELECT
-      player,
-      rounds::int                       AS rounds,
-      total_bet::text                   AS total_bet,
-      total_payout::text                AS total_payout,
-      (total_payout - total_bet)::text  AS net_pnl,
-      last_played_ms,
-      ROW_NUMBER() OVER (ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC)::int AS rank
+      agg.player                          AS player,
+      agg.rounds::int                     AS rounds,
+      agg.total_bet::text                 AS total_bet,
+      agg.total_payout::text              AS total_payout,
+      (agg.total_payout - agg.total_bet)::text AS net_pnl,
+      agg.last_played_ms                  AS last_played_ms,
+      ROW_NUMBER() OVER (ORDER BY ${sql.unsafe(metricSqlAgg)} DESC, agg.player ASC)::int AS rank
     FROM agg
-    ORDER BY ${sql.unsafe(metricSql)} DESC, player ASC
+    ORDER BY ${sql.unsafe(metricSqlAgg)} DESC, agg.player ASC
     LIMIT ${limit}
   `;
   return rows;
@@ -165,7 +174,7 @@ export async function queryLeaderboardForPlayer(
 ): Promise<LeaderboardRow | null> {
   const { player, period, game, metric } = opts;
   const exclude = opts.excludePlayers ?? [];
-  const metricSql = metricExpr(metric);
+  const metricSql = metricExpr(metric, 'agg');
 
   const nowMs = Date.now();
   const sinceMs = period === 'all' ? 0 : nowMs - PERIOD_WINDOW_MS[period];
