@@ -25,7 +25,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAerResult } from '../../hooks/useAerResult';
 import type { AERRecord } from '../../hooks/useAerRecords';
-import { formatTimeDetailed } from '../../utils/format';
+import { formatNusdc, formatTimeDetailed } from '../../utils/format';
 import { NETWORK_CONFIG } from '../../services/network';
 
 interface ResultViewerModalProps {
@@ -35,13 +35,52 @@ interface ResultViewerModalProps {
   onClose: () => void;
 }
 
-async function verifyResultHash(result: string, expectedHash: string): Promise<boolean> {
+/**
+ * Compare `sha256(result)` to an expected hash. The expected hash should come
+ * from the on-chain `Inference.output_hash` (record.outputHash) so the check
+ * is truly trustless. Falling back to Lambda's self-reported `resultHash`
+ * would only catch Lambda being internally inconsistent — not a tampered
+ * Lambda. We expose which source was used via `verifyResultHashAgainst` so
+ * the caller can label the badge accordingly.
+ */
+async function sha256Hex(result: string): Promise<string> {
   const data = new TextEncoder().encode(result);
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
+  return Array.from(new Uint8Array(hashBuffer))
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('');
-  return hashHex === expectedHash;
+}
+
+function normalizeHash(h: string | null | undefined): string | null {
+  if (!h) return null;
+  const lower = h.toLowerCase();
+  return lower.startsWith('0x') ? lower.slice(2) : lower;
+}
+
+type HashVerificationSource = 'onchain' | 'lambda';
+
+interface HashVerificationResult {
+  valid: boolean;
+  source: HashVerificationSource;
+}
+
+async function verifyResultHashAgainst(
+  result: string,
+  onchainHash: string | null | undefined,
+  lambdaHash: string | null | undefined,
+): Promise<HashVerificationResult | null> {
+  const onchain = normalizeHash(onchainHash);
+  const lambda = normalizeHash(lambdaHash);
+  // Prefer the on-chain hash. If only the Lambda-reported hash is available
+  // (legacy AERs missing outputHash, or RPC parse miss), degrade gracefully
+  // and label the badge so the user knows the check is weaker.
+  const expected = onchain ?? lambda;
+  if (!expected) return null;
+  const actual = await sha256Hex(result);
+  return {
+    valid: actual === expected,
+    source: onchain ? 'onchain' : 'lambda',
+  };
 }
 
 // ===== Display helpers =====
@@ -95,11 +134,6 @@ function tierLabel(t?: number): string {
     case 3: return 'Gold';
     default: return '-';
   }
-}
-
-function formatNusdc(raw?: number): string {
-  if (raw == null || !Number.isFinite(raw)) return '-';
-  return `${(raw / 1e6).toFixed(4)} NUSDC`;
 }
 
 function formatMs(ms?: number): string {
@@ -229,11 +263,48 @@ function HeroSection({ record }: { record: AERRecord }) {
 
 function TrustSection({
   record,
-  hashValid,
+  verification,
 }: {
   record: AERRecord;
-  hashValid: boolean | null;
+  verification: HashVerificationResult | null;
 }) {
+  // Three states for the Result-hash row:
+  //  - no verification yet (no text body loaded, or no hash available)
+  //  - verified against on-chain output_hash (strongest signal)
+  //  - verified against Lambda's self-reported hash (degraded — explain why)
+  //  - mismatch (warn loudly)
+  let resultHashBadge: React.ReactNode;
+  if (verification === null) {
+    resultHashBadge = <span className="text-uju-secondary/70">-</span>;
+  } else if (!verification.valid) {
+    resultHashBadge = (
+      <Badge tone="text-red-400 bg-red-500/10 border-red-500/30">
+        <span title={
+          verification.source === 'onchain'
+            ? 'sha256(result) does not match on-chain output_hash — the off-chain text may have been tampered with'
+            : 'sha256(result) does not match Lambda-reported hash'
+        }>
+          Mismatch
+        </span>
+      </Badge>
+    );
+  } else if (verification.source === 'onchain') {
+    resultHashBadge = (
+      <Badge tone="text-emerald-400 bg-emerald-500/10 border-emerald-500/30">
+        <span title="sha256(result) matches the on-chain output_hash sealed at AER creation">
+          Verified on-chain
+        </span>
+      </Badge>
+    );
+  } else {
+    resultHashBadge = (
+      <Badge tone="text-amber-400 bg-amber-500/10 border-amber-500/30">
+        <span title="On-chain output_hash unavailable; compared against Lambda-reported hash instead. This only catches Lambda being internally inconsistent.">
+          Verified (off-chain only)
+        </span>
+      </Badge>
+    );
+  }
   return (
     <SectionCard
       title="Trust signals"
@@ -243,19 +314,7 @@ function TrustSection({
         <Row label="Payload hash">
           <CopyableHash hex={record.payloadHash} label="payload hash" />
         </Row>
-        <Row label="Result hash">
-          {hashValid === null ? (
-            <span className="text-uju-secondary/70">-</span>
-          ) : hashValid ? (
-            <Badge tone="text-emerald-400 bg-emerald-500/10 border-emerald-500/30">
-              Verified
-            </Badge>
-          ) : (
-            <Badge tone="text-red-400 bg-red-500/10 border-red-500/30">
-              Mismatch
-            </Badge>
-          )}
-        </Row>
+        <Row label="Result hash">{resultHashBadge}</Row>
         <Row label="Executor tier">
           <span>{tierLabel(record.executorTier)}</span>
         </Row>
@@ -311,10 +370,10 @@ function CostSection({ record }: { record: AERRecord }) {
     >
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         <Row label="Inference fee">
-          <span className="font-mono">{formatNusdc(record.paymentAmount)}</span>
+          <span className="font-mono">{formatNusdc(record.paymentAmount, { decimals: 4 })}</span>
         </Row>
         <Row label="Budget remaining">
-          <span className="font-mono">{formatNusdc(record.budgetRemaining)}</span>
+          <span className="font-mono">{formatNusdc(record.budgetRemaining, { decimals: 4 })}</span>
         </Row>
         <Row label="Execution time">
           <span>{formatMs(record.executionTimeMs)}</span>
@@ -436,7 +495,7 @@ function RawAuditSection({ record }: { record: AERRecord }) {
 export function ResultViewerModal({ requestId, record, authorizer, onClose }: ResultViewerModalProps) {
   const { data, isLoading, error } = useAerResult(requestId, authorizer);
   const [copied, setCopied] = useState(false);
-  const [hashValid, setHashValid] = useState<boolean | null>(null);
+  const [verification, setVerification] = useState<HashVerificationResult | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
 
   const handleKeyDown = useCallback(
@@ -453,10 +512,22 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
   }, [handleKeyDown]);
 
   useEffect(() => {
-    if (data?.result && data?.resultHash) {
-      verifyResultHash(data.result, data.resultHash).then(setHashValid);
+    if (!data?.result) {
+      setVerification(null);
+      return;
     }
-  }, [data?.result, data?.resultHash]);
+    let cancelled = false;
+    verifyResultHashAgainst(data.result, record.outputHash, data.resultHash)
+      .then((res) => {
+        if (!cancelled) setVerification(res);
+      })
+      .catch(() => {
+        if (!cancelled) setVerification(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [data?.result, data?.resultHash, record.outputHash]);
 
   const handleCopy = () => {
     if (!data?.result) return;
@@ -561,7 +632,7 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           <HeroSection record={record} />
-          <TrustSection record={record} hashValid={hashValid} />
+          <TrustSection record={record} verification={verification} />
           <AISection record={record} />
           <CostSection record={record} />
           <LineageSection record={record} />
@@ -612,11 +683,13 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
             <SectionCard
               title="AI text body"
               hint={
-                hashValid === true
-                  ? 'Hash matches on-chain record'
-                  : hashValid === false
+                verification === null
+                  ? 'Verifying hash...'
+                  : !verification.valid
                   ? 'WARNING: hash mismatch'
-                  : 'Verifying hash...'
+                  : verification.source === 'onchain'
+                  ? 'Hash matches on-chain output_hash'
+                  : 'Hash matches Lambda-reported value (on-chain output_hash unavailable)'
               }
             >
               <pre className="whitespace-pre-wrap break-words text-sm text-white/90 leading-relaxed font-sans">

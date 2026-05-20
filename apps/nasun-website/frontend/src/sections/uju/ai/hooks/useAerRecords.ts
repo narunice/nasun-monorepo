@@ -27,10 +27,18 @@ export interface AERRecord {
   executorTier: number;
   budgetId: string;
   budgetRemaining: number;
-  // Plan C C3-v2 envelope + lineage + wake + replay. All optional —
-  // indexer API doesn't surface them yet (RPC fallback parses from
-  // nested struct fields). When undefined, UI falls back to legacy
-  // shape (purpose-as-summary, status-as-outcome).
+  /**
+   * On-chain `Inference.output_hash` (SHA-256 over the LLM response bytes,
+   * sealed at AER creation). The ResultViewerModal compares this against
+   * `sha256(data.result)` from Lambda; mismatch means the off-chain text
+   * doesn't match what the AER cryptographically committed to.
+   * Optional only because legacy AERs / fetch failures may leave it unset.
+   */
+  outputHash?: string;
+  // Plan C C3-v2 envelope + lineage + wake + replay. Both indexer + RPC paths
+  // surface these (the indexer API was extended in the 2026-05-20 follow-up).
+  // Legacy v1 rows still leave them undefined; the UI falls back to legacy
+  // shape (purpose-as-summary, status-as-outcome) in that case.
   eventClass?: number; // 1=cognition, 2=execution, 3=settlement
   actionType?: string;
   actionSchemaVersion?: number;
@@ -76,12 +84,42 @@ interface IndexerApiResponse {
     executorTier: number;
     budgetId: string | null;
     budgetRemaining: number | null;
+    // On-chain hash committed to LLM response bytes.
+    outputHash?: string | null;
+    // Plan C v2 envelope + lineage + wake + replay (added to formatRow on
+    // 2026-05-20). Legacy v1 rows surface as null for all of these.
+    intentId?: string | null;
+    parentIntentId?: string | null;
+    executionId?: number | null;
+    eventClass?: number | null;
+    actionType?: string | null;
+    actionSchemaVersion?: number | null;
+    payloadCodec?: string | null;
+    payloadHash?: string | null;
+    payloadBytes?: string | null;
+    actionSummary?: string | null;
+    actionOutcome?: number | null;
+    triggeredByType?: number | null;
+    triggeredByRef?: string | null;
+    modelVersion?: string | null;
+    promptTemplateHash?: string | null;
+    marketSnapshotHash?: string | null;
+    strategyId?: string | null;
+    capabilityId?: string | null;
   }>;
   hasNextPage: boolean;
   nextCursor: string | null;
 }
 
 function mapIndexerRecord(row: IndexerApiResponse['data'][number]): AERRecord {
+  // Coerce server-side nulls back to `undefined` so a record loaded via the
+  // indexer is shape-identical to one parsed from RPC (which leaves
+  // unparseable nested fields as undefined). Two exceptions:
+  // - parentIntentId, marketSnapshotHash: kept `| null` in AERRecord because
+  //   the RPC path also distinguishes "explicit None" from "missing".
+  // - capabilityId, strategyId: same — explicit `| null` is part of the type.
+  const u = <T>(v: T | null | undefined): T | undefined =>
+    v == null ? undefined : v;
   return {
     id: row.objectId,
     requestId: row.requestId,
@@ -99,6 +137,25 @@ function mapIndexerRecord(row: IndexerApiResponse['data'][number]): AERRecord {
     executorTier: row.executorTier,
     budgetId: row.budgetId ?? '',
     budgetRemaining: row.budgetRemaining ?? 0,
+    outputHash: u(row.outputHash),
+    eventClass: u(row.eventClass),
+    actionType: u(row.actionType),
+    actionSchemaVersion: u(row.actionSchemaVersion),
+    payloadCodec: u(row.payloadCodec),
+    payloadHash: u(row.payloadHash),
+    payloadBytes: u(row.payloadBytes),
+    actionSummary: u(row.actionSummary),
+    actionOutcome: u(row.actionOutcome),
+    intentId: u(row.intentId),
+    parentIntentId: row.parentIntentId ?? null,
+    executionId: u(row.executionId),
+    triggeredByType: u(row.triggeredByType),
+    triggeredByRef: row.triggeredByRef ?? null,
+    modelVersion: u(row.modelVersion),
+    promptTemplateHash: u(row.promptTemplateHash),
+    marketSnapshotHash: row.marketSnapshotHash ?? null,
+    strategyId: row.strategyId ?? null,
+    capabilityId: row.capabilityId ?? null,
   };
 }
 
@@ -156,6 +213,9 @@ function parseAERRecord(fields: Record<string, unknown>): AERRecord | null {
       modelName: String(pick('inference', 'model_name') ?? ''),
       paymentAmount: Number(pick('payment', 'payment_amount') ?? 0),
       executionTimeMs: Number(pick('inference', 'execution_time_ms') ?? 0),
+      // On-chain SHA-256 over LLM response bytes. The viewer modal uses this
+      // to verify the off-chain text body from Lambda hasn't been tampered.
+      outputHash: bytesToHex(pick('inference', 'output_hash')),
       status: Number(pick('time', 'status') ?? 0),
       statusName: AER_STATUS_NAMES[Number(pick('time', 'status') ?? 0)] ?? 'Unknown',
       settledAt: Number(pick('time', 'settled_at') ?? 0),
