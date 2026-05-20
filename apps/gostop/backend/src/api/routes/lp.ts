@@ -19,6 +19,7 @@ import { rpcCall } from '../../rpc.js';
 import { BANKROLL_POOL } from '../../config/contracts.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 import { bankrollPnl, type DataQuality } from '../lib/bankroll-pnl.js';
+import { reader } from '../../db/client.js';
 
 const POOL_STATE_TTL_SECONDS = 30;
 const APY_TTL_SECONDS = 60;
@@ -274,6 +275,24 @@ lpRoutes.get('/positions/:address', async (c) => {
   const poolShares = poolFields?.total_shares ? BigInt(String(poolFields.total_shares)) : 0n;
   const dataQuality: DataQuality = poolFields ? 'fresh' : 'unreliable';
 
+  // Resolve original deposit amount per LPToken so the UI can show PnL. The
+  // chain LPToken object stores only shares + deposit_time, so we join on
+  // (actor, timestamp_ms, shares) against bankroll_event.liquidity_provided.
+  // The triple is effectively unique — two deposits at the same ms with the
+  // exact same share count is astronomically unlikely.
+  const depositRows = await reader()<{ ts: string; shares: string; amount: string }[]>`
+    SELECT timestamp_ms::text AS ts,
+           shares::text       AS shares,
+           amount::text       AS amount
+    FROM gostop.bankroll_event
+    WHERE event_type = 'liquidity_provided'
+      AND actor = ${address}
+  `;
+  const depositLookup = new Map<string, string>();
+  for (const row of depositRows) {
+    depositLookup.set(`${row.ts}:${row.shares}`, row.amount);
+  }
+
   const positions = owned.flatMap((o) => {
     const fields = o.data?.content?.fields;
     const id = o.data?.objectId ?? fields?.id?.id;
@@ -292,11 +311,13 @@ lpRoutes.get('/positions/:address', async (c) => {
         ? (shares * (poolBalance + 1n)) / (poolShares + 1n)
         : 0n;
     const claimableAt = requestedAt !== null ? requestedAt + BigInt(EXIT_COOLDOWN_MS) : null;
+    const depositAmount = depositLookup.get(`${depositTime.toString()}:${shares.toString()}`) ?? null;
     return [
       {
         lp_token_id: id,
         shares: shares.toString(),
         estimated_value_nusdc: estNusdc.toString(),
+        deposit_amount_nusdc: depositAmount,
         deposit_time_ms: depositTime.toString(),
         withdraw_requested_at_ms: requestedAt !== null ? requestedAt.toString() : null,
         claimable_at_ms: claimableAt !== null ? claimableAt.toString() : null,

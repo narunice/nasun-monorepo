@@ -19,6 +19,12 @@ import {
   buildRedeemLiquidity,
   MIN_LP_DEPOSIT_NUSDC,
 } from '../features/lp/transactions';
+import { RequestWithdrawModal } from '../features/lp/components/RequestWithdrawModal';
+import { ProvideLiquidityModal } from '../features/lp/components/ProvideLiquidityModal';
+import type { LpPositions } from '../lib/api/types';
+
+/** Match the on-chain WITHDRAW_COOLDOWN_MS constant in bankroll_pool.move. */
+const WITHDRAW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 
 const SHARE_PRICE_SCALE = 1_000_000_000n;
 
@@ -162,6 +168,41 @@ function Stat({ label, value, valueClass = 'text-neutral-100', subnote }: {
   );
 }
 
+/**
+ * PnL = estimated_value - deposit_amount (signed NUSDC raw).
+ * Shows '—' when the deposit row hasn't been indexed yet so we don't lie
+ * with a 100% loss when really we just don't know yet.
+ */
+function PnlStat({ depositRaw, estimatedRaw }: { depositRaw: string | null; estimatedRaw: string }) {
+  if (depositRaw === null) {
+    return <Stat label="PnL" value="—" subnote="awaiting indexer match" />;
+  }
+  let pnlSigned: bigint;
+  let depositBn: bigint;
+  let estBn: bigint;
+  try {
+    depositBn = BigInt(depositRaw);
+    estBn = BigInt(estimatedRaw);
+    pnlSigned = estBn - depositBn;
+  } catch {
+    return <Stat label="PnL" value="—" />;
+  }
+  const isNegative = pnlSigned < 0n;
+  const absRaw = isNegative ? -pnlSigned : pnlSigned;
+  // PnL % with 2 decimal places. depositBn > 0 enforced by MIN_LP_DEPOSIT (10 NUSDC).
+  const pctBps = depositBn > 0n ? Number((pnlSigned * 10_000n) / depositBn) : 0;
+  const pctStr = (pctBps / 100).toFixed(2);
+  const sign = isNegative ? '−' : '+';
+  return (
+    <Stat
+      label="PnL"
+      value={`${sign}${fmtUsdc(absRaw.toString())} NUSDC`}
+      valueClass={isNegative ? 'text-rose-300' : 'text-emerald-300'}
+      subnote={`${sign}${pctStr}% vs deposit`}
+    />
+  );
+}
+
 // ──────────────────────────────────────────────────────────────────────────
 // Deposit
 // ──────────────────────────────────────────────────────────────────────────
@@ -175,6 +216,7 @@ function DepositSection() {
 
   const [amountText, setAmountText] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // Parse user input as decimal NUSDC and convert to base units. Returns null
   // when malformed. We accept up to 6 decimal places (chain precision).
@@ -240,6 +282,7 @@ function DepositSection() {
 
       showToast('Liquidity deposited. LP token issued to your wallet.', 'success');
       setAmountText('');
+      setConfirmOpen(false);
       // Refresh pool state, positions, balance.
       queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
     } catch (err) {
@@ -306,13 +349,23 @@ function DepositSection() {
           )}
 
           <button
-            onClick={submit}
+            onClick={() => setConfirmOpen(true)}
             disabled={!canSubmit}
             className="w-full px-4 py-2 rounded-md bg-gold-400/90 hover:bg-gold-400 text-ink-950 font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            {busy ? 'Submitting…' : 'Deposit NUSDC'}
+            Deposit NUSDC
           </button>
         </div>
+      )}
+      {amountBaseUnits !== null && (
+        <ProvideLiquidityModal
+          open={confirmOpen}
+          onClose={() => setConfirmOpen(false)}
+          onConfirm={submit}
+          amountBaseUnits={amountBaseUnits}
+          sharePriceScaled={pool?.share_price_scaled}
+          submitting={busy}
+        />
       )}
     </section>
   );
@@ -376,6 +429,41 @@ function PositionCard({ position: p }: { position: LpPosition }) {
   const remainingMs = claimableAtMs !== null ? Math.max(0, claimableAtMs - now) : 0;
   const cooldownElapsed = claimableAtMs !== null && remainingMs === 0;
 
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // Optimistic cache patch: update the row in every cached LP positions query
+  // so the My Positions card flips to "Cooldown" immediately on success.
+  // Backend re-fetch follows via invalidateQueries — when the fullnode catches
+  // up, the cache is overwritten with chain truth.
+  const applyOptimisticWithdrawRequested = () => {
+    const nowMs = Date.now();
+    queryClient.setQueriesData<LpPositions>(
+      { queryKey: ['gostop', 'lp', 'positions'] },
+      (old) => old && {
+        ...old,
+        positions: old.positions.map((pos) =>
+          pos.lp_token_id === p.lp_token_id
+            ? {
+                ...pos,
+                withdraw_requested_at_ms: String(nowMs),
+                claimable_at_ms: String(nowMs + WITHDRAW_COOLDOWN_MS),
+              }
+            : pos,
+        ),
+      },
+    );
+  };
+
+  const applyOptimisticRedeemed = () => {
+    queryClient.setQueriesData<LpPositions>(
+      { queryKey: ['gostop', 'lp', 'positions'] },
+      (old) => old && {
+        ...old,
+        positions: old.positions.filter((pos) => pos.lp_token_id !== p.lp_token_id),
+      },
+    );
+  };
+
   const callRequestWithdraw = async () => {
     setBusy(true);
     try {
@@ -391,7 +479,9 @@ function PositionCard({ position: p }: { position: LpPosition }) {
           attempt++;
         }
       }
+      applyOptimisticWithdrawRequested();
       showToast('Cooldown started. Redeem available in 24h.', 'success');
+      setConfirmOpen(false);
       queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -416,6 +506,7 @@ function PositionCard({ position: p }: { position: LpPosition }) {
           attempt++;
         }
       }
+      applyOptimisticRedeemed();
       showToast('Redeem complete. NUSDC sent to your wallet.', 'success');
       queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
     } catch (err) {
@@ -476,8 +567,17 @@ function PositionCard({ position: p }: { position: LpPosition }) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
         <Stat label="Shares" value={p.shares} />
         <Stat
+          label="Deposited"
+          value={p.deposit_amount_nusdc !== null ? `${fmtUsdc(p.deposit_amount_nusdc)} NUSDC` : '—'}
+          subnote={p.deposit_amount_nusdc === null ? 'awaiting indexer match' : undefined}
+        />
+        <Stat
           label="Est. value"
           value={`${fmtUsdc(p.estimated_value_nusdc)} NUSDC`}
+        />
+        <PnlStat
+          depositRaw={p.deposit_amount_nusdc}
+          estimatedRaw={p.estimated_value_nusdc}
         />
         <Stat
           label="Stage"
@@ -503,21 +603,21 @@ function PositionCard({ position: p }: { position: LpPosition }) {
       <div className="flex gap-2 pt-1">
         {stage === 'idle' && (
           <button
-            onClick={callRequestWithdraw}
+            onClick={() => setConfirmOpen(true)}
             disabled={busy}
             className="px-4 py-2 rounded-md bg-ink-700 hover:bg-ink-600 text-neutral-100 text-sm border border-gold-subtle disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {busy ? 'Submitting…' : 'Request withdraw'}
+            Request withdraw
           </button>
         )}
         {stage === 'cooling' && (
           <button
-            onClick={callRequestWithdraw}
+            onClick={() => setConfirmOpen(true)}
             disabled={busy}
             title="Calling again restarts the 24h cooldown timer."
-            className="px-3 py-2 rounded-md bg-ink-800 hover:bg-ink-700 text-neutral-300 text-xs border border-gold-subtle disabled:opacity-40 disabled:cursor-not-allowed"
+            className="px-3 py-2 rounded-md bg-ink-800 hover:bg-ink-700 text-neutral-300 text-sm border border-gold-subtle disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            {busy ? 'Submitting…' : 'Restart cooldown'}
+            Restart cooldown
           </button>
         )}
         {stage === 'claimable' && (
@@ -530,6 +630,14 @@ function PositionCard({ position: p }: { position: LpPosition }) {
           </button>
         )}
       </div>
+      <RequestWithdrawModal
+        open={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        onConfirm={callRequestWithdraw}
+        position={p}
+        restart={stage === 'cooling'}
+        submitting={busy}
+      />
     </li>
   );
 }

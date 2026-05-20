@@ -329,6 +329,14 @@ export interface LpPosition {
   lp_token_id: string;
   shares: string;
   estimated_value_nusdc: string;
+  /**
+   * Original deposit amount (NUSDC raw, 6 decimals). Backend joins on
+   * (actor, deposit_time, shares) against bankroll_event.liquidity_provided.
+   * `null` when the indexer has not yet caught up to the deposit event or
+   * the (ts, shares) tuple did not match (extreme edge cases). UI falls
+   * back to omitting PnL when null.
+   */
+  deposit_amount_nusdc: string | null;
   deposit_time_ms: string;
   /** Null if user has not yet called request_withdraw on this LPToken. */
   withdraw_requested_at_ms: string | null;
