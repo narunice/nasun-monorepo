@@ -20,6 +20,7 @@ import { BANKROLL_POOL } from '../../config/contracts.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 import { bankrollPnl, type DataQuality } from '../lib/bankroll-pnl.js';
 import { reader } from '../../db/client.js';
+import { isValidSuiAddress } from '../auth/wallet-sig.js';
 
 const POOL_STATE_TTL_SECONDS = 30;
 const APY_TTL_SECONDS = 60;
@@ -35,8 +36,6 @@ const LP_TOKEN_TYPE = `${BANKROLL_POOL.originalPackageId}::bankroll_pool::LPToke
 const EXIT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // mirrors bankroll_pool.move:EXIT_COOLDOWN_MS
 
 const SHARE_PRICE_SCALE = 1_000_000_000n;
-
-const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{1,64}$/;
 
 export const lpRoutes = new Hono();
 
@@ -225,7 +224,7 @@ interface OwnedObject {
 
 lpRoutes.get('/positions/:address', async (c) => {
   const address = c.req.param('address');
-  if (!SUI_ADDRESS_RE.test(address)) {
+  if (!isValidSuiAddress(address)) {
     return c.json({ error: 'bad_request', reason: 'invalid_address' }, 400);
   }
 
@@ -337,7 +336,7 @@ lpRoutes.get('/positions/:address', async (c) => {
 
 lpRoutes.get('/cooldown/:lpTokenId', async (c) => {
   const id = c.req.param('lpTokenId');
-  if (!SUI_ADDRESS_RE.test(id)) {
+  if (!isValidSuiAddress(id)) {
     return c.json({ error: 'bad_request', reason: 'invalid_object_id' }, 400);
   }
 
