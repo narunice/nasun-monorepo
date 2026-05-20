@@ -66,4 +66,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_bdp_day
 COMMENT ON MATERIALIZED VIEW gostop.bankroll_daily_pnl IS
   'Per-day BankrollPool flows (game_id 2..6, lottery excluded). Backs Risk Dashboard drawdown/volatility/streak. See ~/.claude/plans/tier1-chunk3-risk-dashboard.md.';
 
+-- REFRESH MATERIALIZED VIEW requires owner privilege. Indexer connects as
+-- gostop_writer, so the matview must be owned by gostop_writer regardless of
+-- which role ran the migration (e.g. postgres superuser during prod deploy).
+-- Idempotent: PG silently succeeds when current owner already matches.
+ALTER MATERIALIZED VIEW gostop.bankroll_daily_pnl OWNER TO gostop_writer;
+
 GRANT SELECT ON gostop.bankroll_daily_pnl TO gostop_reader;
