@@ -117,16 +117,16 @@ export const CRASH_HOUSE_EDGE_BPS = crashNum('houseEdgeBps');
 // import from here instead of reading the env var locally.
 export const ENABLE_CRASH = import.meta.env.VITE_ENABLE_CRASH === 'true';
 
-// Hostname-based runtime gate for the Liquidity NAV entry.
-// The /lp route stays live everywhere (URL still works in prod), but the NAV
-// label is hidden on the production host so most users do not reach it until
-// staging validation completes. Staging and dev share the same prod dist, so
-// the gate has to read window.location at runtime rather than a build env.
+// LP NAV is now visible on every host. The staging-only gate was used during
+// Tier 1.2 UI rollout and removed after Tier 1 closed (2026-05-20): P1
+// lockstep upgrade made bankroll v0.0.4 dispatch live across all 5 games,
+// Risk Dashboard surfaces chain-authoritative open_exposure + LP
+// concentration alerts, so the LP page is safe to expose to general users.
+// Kept as a function (rather than inlining `true`) so the call sites in
+// App.tsx don't need to change and a future staging-only gate can re-use the
+// same name.
 export function isLpNavVisible(): boolean {
-  if (typeof window === 'undefined') return false;
-  const host = window.location.hostname;
-  const isProdHost = host === 'gostop.app' || host === 'www.gostop.app';
-  return !isProdHost;
+  return true;
 }
 
 // ===== Wheel =====
