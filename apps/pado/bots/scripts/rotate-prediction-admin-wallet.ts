@@ -40,7 +40,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import { writeFileSync } from 'node:fs';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
-const DEFAULT_ADMIN_CAP = '0x63ddeb9b82df1b7ef373a421920623a07c9e64b0eea5fc6d7f9fcaa742b06fc8';
+const DEFAULT_ADMIN_CAP = '0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8';
 const HEX_64 = /^0x[0-9a-fA-F]{64}$/;
 
 // Fund the new admin with 100 NASUN (100 * 1e9 SOE). Enough for many tens of

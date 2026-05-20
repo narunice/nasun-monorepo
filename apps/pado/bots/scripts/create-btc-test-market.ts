@@ -34,7 +34,7 @@ import { Transaction } from '@mysten/sui/transactions';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 const CLOCK_ID = '0x6';
-const DEFAULT_ADMIN_CAP = '0x63ddeb9b82df1b7ef373a421920623a07c9e64b0eea5fc6d7f9fcaa742b06fc8';
+const DEFAULT_ADMIN_CAP = '0xd90ae72defe2c4e2b149611c72885a1ebf679ae7bda778b35644f0e3946aedf8';
 
 // Hardcoded for the BTC $100k launch test market (handoff §T5).
 // Compressed timeline for E2E validation (~24h trade + 24h resolve window).

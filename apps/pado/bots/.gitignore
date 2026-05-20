@@ -1,6 +1,9 @@
 # Bot state (contains BalanceManager IDs per address)
 .lp-bot-state*.json
 
+# Admin-recovery abuse monitor: holds last-seen tx cursor for the v3 unsafe path
+.monitor-admin-recovery.state
+
 # TP/SL order data (contains user addresses and trade cap IDs)
 data/
 

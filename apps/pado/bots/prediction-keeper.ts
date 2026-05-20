@@ -58,6 +58,7 @@ import { parseSpaceCriteria, resolveSpace, SpaceParseError } from './lib/resolve
 import { parseMusicCriteria, resolveMusic, MusicParseError } from './lib/resolvers/music.js';
 import { parseSportsCriteria, resolveSports, SportsParseError } from './lib/resolvers/sports.js';
 import { parseWeatherCriteria, resolveWeather, WeatherParseError } from './lib/resolvers/weather.js';
+import { parseUfcCriteria, resolveUfc, UfcParseError } from './lib/resolvers/ufc.js';
 
 // ========================================
 // Configuration
@@ -450,6 +451,10 @@ async function dispatchResolve(market: MarketLite, now: number): Promise<Resolve
   if (kind === 'weather') {
     const criteria = parseWeatherCriteria(text);
     return await resolveWeather(criteria, now);
+  }
+  if (kind === 'ufc') {
+    const criteria = parseUfcCriteria(text);
+    return await resolveUfc(criteria, now);
   }
 
   // Legacy path: crypto/stock via existing parseResolutionCriteria + evaluateOutcome.

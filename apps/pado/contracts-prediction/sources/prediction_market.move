@@ -18,6 +18,7 @@ use sui::balance::{Self, Balance};
 use sui::table::{Self, Table};
 use sui::clock::{Self, Clock};
 use sui::event;
+use sui::package::UpgradeCap;
 use std::string::String;
 use devnet_tokens::nusdc::NUSDC;
 
@@ -45,6 +46,10 @@ const EOrderNotFound: u64 = 20;
 const EWrongMarket: u64 = 21;
 const EMergeEmpty: u64 = 22;
 const EMergeMismatch: u64 = 23;
+/// Deprecated recovery path. The original `mint_admin_cap_via_upgrade*` accepted
+/// any `&UpgradeCap`, which let any caller mint an AdminCap by publishing a
+/// trivial Move package. Bodies were rewritten to abort with this code in v4.
+const EAdminRecoveryDeprecated: u64 = 24;
 
 // ===== Constants =====
 const MAX_PRICE: u64 = 10000;                       // 100% in basis points (NUSDC = 6 decimals)
@@ -269,6 +274,31 @@ fun init(ctx: &mut TxContext) {
         tx_context::sender(ctx),
     );
     // No GlobalState created (round-5 C6: per-Market next_order_id).
+}
+
+// ===== Admin Recovery (DEPRECATED in v4) =====
+
+/// DEPRECATED. The original implementation accepted any `&UpgradeCap`, which
+/// did not actually bind the recovery to *this* package's UpgradeCap. A
+/// caller could publish a trivial Move package, receive a generic UpgradeCap,
+/// and mint a prediction_market AdminCap (full admin compromise).
+///
+/// Signature preserved for Sui upgrade compatibility; body now aborts.
+/// Future admin recovery must either come from a fresh publish or be
+/// reintroduced with a SharedConfig-anchored package-id assertion.
+public fun mint_admin_cap_via_upgrade(
+    _upgrade_cap: &UpgradeCap,
+    _ctx: &mut TxContext,
+): AdminCap {
+    abort EAdminRecoveryDeprecated
+}
+
+/// DEPRECATED. See `mint_admin_cap_via_upgrade`.
+public fun mint_admin_cap_via_upgrade_entry(
+    _upgrade_cap: &UpgradeCap,
+    _ctx: &mut TxContext,
+) {
+    abort EAdminRecoveryDeprecated
 }
 
 // ===== Admin: Create / Resolve =====

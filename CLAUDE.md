@@ -359,6 +359,22 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 
 > 스마트컨트랙트 위치, 빌드/배포 명령어, 배포 상태는 [docs/smart-contracts.md](docs/smart-contracts.md) 참조
 
+### Unified keystore (2026-05-20 통합)
+
+`sui`와 `nasun` 두 CLI는 **단일 keystore**를 공유합니다.
+
+| 경로 | 종류 |
+|---|---|
+| `~/.sui/sui_config/sui.keystore` | **canonical** (30 keys, mode 0600) |
+| `~/.sui/sui_config/sui.aliases` | **canonical** alias 매핑 |
+| `~/.nasun/nasun_config/nasun.keystore` | symlink → 위 sui.keystore |
+| `~/.nasun/nasun_config/nasun.aliases` | symlink → 위 sui.aliases |
+
+- 어느 CLI로 키 생성/삭제해도 단일 파일에 반영됨
+- "address not in keystore" 디버깅 시 canonical 파일만 보면 됨
+- `client.yaml`은 두 CLI 각자 유지 (envs/active_address는 분리 운영)
+- 통합 직전 백업: `~/.keystore-consolidation-backup-1779239394/`
+
 ## 참조 문서
 
 아래 문서는 특정 작업 시 Read tool로 참조:
@@ -369,4 +385,6 @@ alias nasun="/home/naru/my_apps/nasun-devnet/sui/target/release/sui"
 - [docs/security.md](docs/security.md) — 지갑 암호화, Rate Limiting, zkLogin 구현
 - [docs/ecosystem-points-system.md](docs/ecosystem-points-system.md) — 에코시스템 포인트 (단조 증가 불변식, 인시던트 학습, snapshot/aggregation)
 - [docs/pado-score-leaderboard.md](docs/pado-score-leaderboard.md) — Pado Score 리더보드 (chat-server 통합, WALLET_MAPPINGS 의존성)
+- [docs/nasun-ai-alpha-readiness.md](docs/nasun-ai-alpha-readiness.md) — Nasun AI 알파 출시 진행도 SSOT (Track A~E + 최종 flag flip 체크리스트)
+- [docs/nasun-ai-killswitch-runbook.md](docs/nasun-ai-killswitch-runbook.md) — Nasun AI 3-tier kill-switch 운영 매뉴얼
 - 앱별 CLAUDE.md: [nasun-website](apps/nasun-website/CLAUDE.md), [network-explorer](apps/network-explorer/CLAUDE.md), [pado](apps/pado/CLAUDE.md), [gostop](apps/gostop/CLAUDE.md), [nasun-ai-runtime](apps/nasun-ai-runtime/CLAUDE.md)

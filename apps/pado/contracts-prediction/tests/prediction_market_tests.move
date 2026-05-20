@@ -10,6 +10,8 @@ use prediction::prediction_market::{
     Position,
     init_for_testing,
     create_market,
+    mint_admin_cap_via_upgrade,
+    mint_admin_cap_via_upgrade_entry,
     mint_outcome_tokens,
     place_buy_maker,
     place_sell_maker,
@@ -1294,5 +1296,43 @@ fun test_merge_idempotent_across_subsequent_merge() {
         ts::return_shared(market);
     };
 
+    ts::end(scenario_val);
+}
+
+// ===== Admin Recovery (deprecated in v4 — aborts) =====
+
+// Error code mirrors EAdminRecoveryDeprecated in the source module (24).
+const EAdminRecoveryDeprecated: u64 = 24;
+
+#[test]
+#[expected_failure(abort_code = EAdminRecoveryDeprecated, location = prediction::prediction_market)]
+fun test_admin_recovery_via_upgrade_aborts() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+
+    let upgrade_cap = sui::package::test_publish(
+        object::id_from_address(@0xDEAD),
+        ts::ctx(scenario),
+    );
+    let _admin_cap = mint_admin_cap_via_upgrade(&upgrade_cap, ts::ctx(scenario));
+    // Unreachable.
+    transfer::public_transfer(_admin_cap, CREATOR);
+    transfer::public_transfer(upgrade_cap, CREATOR);
+    ts::end(scenario_val);
+}
+
+#[test]
+#[expected_failure(abort_code = EAdminRecoveryDeprecated, location = prediction::prediction_market)]
+fun test_admin_recovery_entry_aborts() {
+    let mut scenario_val = ts::begin(CREATOR);
+    let scenario = &mut scenario_val;
+
+    let upgrade_cap = sui::package::test_publish(
+        object::id_from_address(@0xDEAD),
+        ts::ctx(scenario),
+    );
+    mint_admin_cap_via_upgrade_entry(&upgrade_cap, ts::ctx(scenario));
+    // Unreachable.
+    transfer::public_transfer(upgrade_cap, CREATOR);
     ts::end(scenario_val);
 }
