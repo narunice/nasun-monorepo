@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useSigner } from '@nasun/wallet';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
+import { useAgentAerStats } from '../../hooks/useAgentAerStats';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
@@ -41,6 +42,7 @@ export function OverviewTab({
   onOpenInferenceTab,
 }: OverviewTabProps) {
   const { reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
+  const aerStats = useAgentAerStats(walletAddress, agent.agentAddress, agent.capabilityId);
   const { signer } = useSigner();
   const [busy, setBusy] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
@@ -124,9 +126,12 @@ export function OverviewTab({
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-uju-border/60">
-          <Stat label="Executions" value={agent.totalExecutions.toLocaleString()} />
-          <Stat label="Spent" value={formatNusdc(agent.totalSpent)} />
-          <Stat label="Last active" value={formatTimestamp(agent.lastActiveAt)} />
+          <Stat label="Executions" value={aerStats.executions.toLocaleString()} />
+          <Stat label="Spent" value={formatNusdc(aerStats.totalSpent)} />
+          <Stat
+            label="Last active"
+            value={aerStats.lastActiveAt > 0 ? formatTimestamp(aerStats.lastActiveAt) : '-'}
+          />
           <Stat label="Created" value={formatTimestamp(agent.createdAt)} />
         </div>
 

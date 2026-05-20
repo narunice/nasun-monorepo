@@ -7,6 +7,7 @@
 import { useEffect } from 'react';
 import { useAgentProfiles, type AgentProfile } from '../hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../hooks/useAgentBudgets';
+import { useAgentAerStats } from '../hooks/useAgentAerStats';
 import { useCreateAgent } from '../hooks/useCreateAgent';
 import { CreateAgentModal } from '../components/modals/CreateAgentModal';
 import { formatNusdcValue, truncateAddress, formatDate } from '../utils/format';
@@ -34,6 +35,9 @@ export function AgentCard({
     ? Math.max(0, Math.min(100, (budget.totalSpent / budgetTotal) * 100))
     : 0;
   const isLow = budget && budget.balance > 0 ? budget.balance / budgetTotal < 0.2 : false;
+  // On-chain AgentProfile.total_executions is never incremented (the Move
+  // function exists but no caller wires it). Derive from AER records instead.
+  const { executions } = useAgentAerStats(agent.owner, agent.agentAddress, agent.capabilityId);
 
   return (
     <button
@@ -92,7 +96,7 @@ export function AgentCard({
 
       <div className="flex items-center gap-4 mt-3 pt-3 border-t border-uju-border/60">
         <span className="text-xs text-uju-secondary/60">Created {formatDate(agent.createdAt)}</span>
-        <span className="text-xs text-uju-secondary/60">{agent.totalExecutions} executions</span>
+        <span className="text-xs text-uju-secondary/60">{executions} executions</span>
       </div>
     </button>
   );
