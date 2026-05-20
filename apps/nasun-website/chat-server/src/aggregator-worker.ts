@@ -35,6 +35,7 @@ import {
   replaceCompetitionResults,
   updateCompetition,
   computeTraderPnl,
+  computeTraderPnlMultiPeriod,
   computePredictionPnl,
   getPnlCurrentRanks,
   replaceTraderPnlStats,
@@ -185,14 +186,27 @@ function runAggregation(): void {
 }
 
 function runPnlAggregation(): void {
+  // Spot PnL: single union-all scan that buckets all PERIODS via CASE WHEN
+  // aggregates, replacing N per-period computeTraderPnl calls. wash filter
+  // intentionally NOT passed to preserve equivalence with the prior per-call
+  // path which also omitted it (weekly path at line 358 keeps wash filter
+  // separately). This is the 2026-05-19 incident's structural fix — the
+  // function existed (leaderboard-store.ts:1635) but had never been wired in.
+  const now = Date.now();
+  const excluded = getEffectiveExcludedAddresses();
+  const periodCutoffs = PERIODS.map((period) => ({
+    period,
+    cutoffMs: PERIOD_MS[period] > 0 ? now - PERIOD_MS[period] : 0,
+  }));
+  const spotByPeriod = computeTraderPnlMultiPeriod(periodCutoffs, excluded, AGGREGATION_LIMIT);
+
   for (const period of PERIODS) {
-    const cutoff = PERIOD_MS[period] > 0 ? Date.now() - PERIOD_MS[period] : 0;
-    const now = Date.now();
+    const cutoff = PERIOD_MS[period] > 0 ? now - PERIOD_MS[period] : 0;
 
     const currentRanks = getPnlCurrentRanks(period);
 
-    const spotTraders = computeTraderPnl(cutoff, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT);
-    const predictionMap = computePredictionPnl(cutoff, now, getEffectiveExcludedAddresses(), sameIdentityPairs);
+    const spotTraders = spotByPeriod.get(period) ?? [];
+    const predictionMap = computePredictionPnl(cutoff, now, excluded, sameIdentityPairs);
 
     interface CombinedPnl { realizedPnlRaw: number; spotCostBasis: number; predCostBasis: number; tradeCount: number; spotPnlPercent: number; }
     const combined = new Map<string, CombinedPnl>();
