@@ -11,7 +11,7 @@ import { useToast } from '../store/useToastStore';
 import { useBalanceStore } from '../store/useBalanceStore';
 import { getSuiClient } from '../lib/sui-client';
 import { findNusdcCoins } from '../features/shared/coin-utils';
-import { fmtUsdc } from '../features/dashboard/format';
+import { fmtSharePrice, fmtUsdc } from '../features/dashboard/format';
 import { getExplorerObjectUrl } from '../lib/explorer';
 import {
   buildProvideLiquidity,
@@ -19,22 +19,13 @@ import {
   buildRedeemLiquidity,
   MIN_LP_DEPOSIT_NUSDC,
 } from '../features/lp/transactions';
+import { previewValueForShares } from '../features/lp/share-math';
 import { RequestWithdrawModal } from '../features/lp/components/RequestWithdrawModal';
 import { ProvideLiquidityModal } from '../features/lp/components/ProvideLiquidityModal';
 import type { LpPositions } from '../lib/api/types';
 
 /** Match the on-chain WITHDRAW_COOLDOWN_MS constant in bankroll_pool.move. */
 const WITHDRAW_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-
-const SHARE_PRICE_SCALE = 1_000_000_000n;
-
-function fmtSharePrice(scaled: string): string {
-  let n: bigint;
-  try { n = BigInt(scaled); } catch { return '—'; }
-  const whole = n / SHARE_PRICE_SCALE;
-  const frac = (n % SHARE_PRICE_SCALE) / 100_000n;
-  return `${whole.toString()}.${frac.toString().padStart(4, '0')}`;
-}
 
 function fmtRemaining(ms: number): string {
   if (ms <= 0) return '00:00:00';
@@ -254,13 +245,14 @@ function DepositSection() {
     const depositTime = String(liquidityEvent.parsedJson.timestamp_ms ?? Date.now());
     if (!shares) return;
 
-    // est. value ≈ shares × share_price / 1e9. Tracks PoolOverview's quote so
-    // the new row's "Est. value" lines up with the user's intuition pre-tx.
+    // Estimated value preview tracks PoolOverview's quote so the new row's
+    // "Est. value" lines up with the user's intuition pre-tx.
+    // previewValueForShares handles the pps<=0 case.
     let estimatedValue = '0';
     try {
       const pps = pool?.share_price_scaled ? BigInt(pool.share_price_scaled) : 0n;
       if (pps > 0n) {
-        estimatedValue = ((BigInt(shares) * pps) / SHARE_PRICE_SCALE).toString();
+        estimatedValue = previewValueForShares(BigInt(shares), pps).toString();
       }
     } catch { /* fall through with '0' */ }
 
