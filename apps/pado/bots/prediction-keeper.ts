@@ -25,7 +25,15 @@
  *   PREDICTION_KEEPER_MARKETS               Optional comma-separated market IDs (static pin).
  *   PREDICTION_KEEPER_INTERVAL_MS           Polling interval (default 60000).
  *   PREDICTION_KEEPER_DISCOVER_INTERVAL_MS  Market list refresh interval (default 600000).
- *   PREDICTION_PACKAGE_ID                   Deployed package id (required).
+ *   PREDICTION_PACKAGE_ID                   v5 (canonical) package id (required). Used as
+ *                                           both originalId and moveCall target for v5 markets.
+ *   PREDICTION_PACKAGE_ID_LEGACY            Optional comma-separated emitter package ids for
+ *                                           dual-scan discovery of pre-cutover markets.
+ *   PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL   Optional legacy family originalId; matched against
+ *                                           Market object type prefix to dispatch resolves.
+ *   PREDICTION_PACKAGE_ID_LEGACY_LATEST     Optional legacy family latest published-at; moveCall
+ *                                           target for legacy markets. Must be set together with
+ *                                           _LEGACY_ORIGINAL or both empty.
  *   NASUN_RPC_URL                           RPC endpoint (default devnet).
  *
  * Usage:
@@ -76,6 +84,43 @@ const STATUS_RESOLVED = 2;
 const STATUS_CANCELLED = 3;
 
 // ========================================
+// Package dispatch (v5 + legacy)
+// ========================================
+
+// Sui anchors object types to the publish's originalPackageId, so a Market's
+// type-tag prefix identifies which package family owns it. `resolve_market`
+// and `cancel_expired_market` only accept Markets from their own family --
+// crossing yields CommandArgumentError{TypeMismatch} at execution time.
+//
+// After the 2026-05-20 v5 fresh-publish cutover, two families coexist:
+//   v5      originalId == latest == PREDICTION_PACKAGE_ID
+//   legacy  originalId  = PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL  (e.g. 0xbe6d8f699...)
+//           latest      = PREDICTION_PACKAGE_ID_LEGACY_LATEST    (e.g. 0x9b2361fe...)
+//
+// The frontend uses the equivalent helper in @nasun/devnet-config; we keep this
+// inline to avoid pulling a workspace dep into the bot deploy bundle. SSOT is
+// the .env file (sourced from devnet-ids.json by deploy tooling).
+function buildPackageDispatch(
+  v5PackageId: string,
+  legacyOriginalId: string,
+  legacyLatestPackageId: string,
+): (marketObjectType: string) => string {
+  return (marketObjectType: string): string => {
+    if (marketObjectType.startsWith(`${v5PackageId}::`)) return v5PackageId;
+    if (
+      legacyOriginalId &&
+      legacyLatestPackageId &&
+      marketObjectType.startsWith(`${legacyOriginalId}::`)
+    ) {
+      return legacyLatestPackageId;
+    }
+    throw new Error(
+      `Unknown prediction market package origin in type: ${marketObjectType}`,
+    );
+  };
+}
+
+// ========================================
 // Helpers
 // ========================================
 
@@ -120,6 +165,7 @@ async function executeAndWait(
 
 interface PredictionMarket {
   id: string;
+  objectType: string;
   status: number;
   closeTime: number;
   resolveDeadline: number;
@@ -130,12 +176,18 @@ interface PredictionMarket {
 async function fetchMarket(client: SuiClient, marketId: string): Promise<PredictionMarket | null> {
   const obj = await client.getObject({
     id: marketId,
-    options: { showContent: true },
+    options: { showContent: true, showType: true },
   });
   if (!obj.data?.content || obj.data.content.dataType !== 'moveObject') return null;
   const fields = obj.data.content.fields as Record<string, unknown>;
+  // Object type carries the market's originalPackageId family; required by
+  // packageIdForMarketType() to dispatch resolve/cancel to the right publish
+  // after the 2026-05-20 v5 fresh-publish cutover (markets created pre-cutover
+  // live under the legacy originalId and only the legacy `packageId` accepts
+  // them as Move args; calling v5 yields TypeMismatch).
   return {
     id: marketId,
+    objectType: String(obj.data.type ?? obj.data.content.type ?? ''),
     status: Number(fields.status ?? 0),
     closeTime: Number(fields.close_time ?? 0),
     resolveDeadline: Number(fields.resolve_deadline ?? 0),
@@ -312,9 +364,9 @@ class PriceFetchError extends Error {
 async function processMarket(
   client: SuiClient,
   keypair: Ed25519Keypair,
-  packageId: string,
   marketId: string,
   resolverAddress: string,
+  packageIdForMarketType: (marketObjectType: string) => string,
 ): Promise<void> {
   const market = await fetchMarket(client, marketId);
   if (!market) {
@@ -345,13 +397,25 @@ async function processMarket(
     return;
   }
 
+  // Dispatch moveCall target by the market's type-tag originalPackageId.
+  // See buildPackageDispatch() at the top of the file for the rationale.
+  let marketPackageId: string;
+  try {
+    marketPackageId = packageIdForMarketType(market.objectType);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logOnce(marketId, 'parse-error',
+      `[${timestamp()}] ${marketId}: cannot dispatch package for type=${market.objectType}: ${msg}`);
+    return;
+  }
+
   // Deadline elapsed: keeper auto-calls permissionless cancel_expired_market.
   // The Move side asserts `now > resolve_deadline` strictly; EXPIRE_GRACE_MS
   // absorbs RPC clock skew so the first attempt does not abort.
   if (now > market.resolveDeadline + EXPIRE_GRACE_MS) {
     if (DRY_RUN) {
       logOnce(marketId, 'expired-cancelled',
-        `[${timestamp()}] [DRY_RUN] ${marketId}: would call cancel_expired_market`);
+        `[${timestamp()}] [DRY_RUN] ${marketId}: would call cancel_expired_market via ${marketPackageId}`);
       return;
     }
     try {
@@ -361,7 +425,7 @@ async function processMarket(
           if (fresh && fresh.status !== STATUS_OPEN) {
             return { digest: 'noop' };
           }
-          return executeAndWait(client, keypair, buildCancelExpiredTx(packageId, marketId), 'cancel_expired_market');
+          return executeAndWait(client, keypair, buildCancelExpiredTx(marketPackageId, marketId), 'cancel_expired_market');
         },
         { label: `cancel_expired_market(${marketId})` },
       );
@@ -419,7 +483,7 @@ async function processMarket(
         );
         return { digest: 'noop' };
       }
-      return executeAndWait(client, keypair, buildResolveTx(packageId, marketId, outcome), 'resolve_market');
+      return executeAndWait(client, keypair, buildResolveTx(marketPackageId, marketId, outcome), 'resolve_market');
     },
     { label: `resolve_market(${marketId})` },
   );
@@ -493,9 +557,9 @@ let shuttingDown = false;
 async function tick(
   client: SuiClient,
   keypair: Ed25519Keypair,
-  packageId: string,
   markets: string[],
   resolverAddress: string,
+  packageIdForMarketType: (marketObjectType: string) => string,
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
@@ -503,7 +567,7 @@ async function tick(
     for (const marketId of markets) {
       if (shuttingDown) break;
       try {
-        await processMarket(client, keypair, packageId, marketId, resolverAddress);
+        await processMarket(client, keypair, marketId, resolverAddress, packageIdForMarketType);
         consecutiveErrors = 0;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -573,6 +637,29 @@ async function main(): Promise<void> {
     .map((s) => s.trim().toLowerCase())
     .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 
+  // Optional: legacy family identity for the 2026-05-20 v5 fresh-publish
+  // cutover. Both must be set together (or both empty when no legacy markets
+  // remain). ORIGINAL is the originalPackageId carried in pre-cutover Market
+  // object types; LATEST is the most recent published-at id that owns those
+  // Markets at moveCall time. Frontend's @nasun/devnet-config holds the
+  // canonical values; bot deploys read them from .env (sourced from
+  // devnet-ids.json by the deploy pipeline).
+  const legacyOriginalRaw = (process.env.PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL || '').toLowerCase();
+  const legacyLatestRaw = (process.env.PREDICTION_PACKAGE_ID_LEGACY_LATEST || '').toLowerCase();
+  const legacyOriginalId = /^0x[0-9a-f]{64}$/.test(legacyOriginalRaw) ? legacyOriginalRaw : '';
+  const legacyLatestPackageId = /^0x[0-9a-f]{64}$/.test(legacyLatestRaw) ? legacyLatestRaw : '';
+  if (Boolean(legacyOriginalId) !== Boolean(legacyLatestPackageId)) {
+    console.error(
+      'PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL and PREDICTION_PACKAGE_ID_LEGACY_LATEST must both be set (or both empty)',
+    );
+    process.exit(1);
+  }
+  const packageIdForMarketType = buildPackageDispatch(
+    packageId,
+    legacyOriginalId,
+    legacyLatestPackageId,
+  );
+
   // Pinned markets (optional): merged with auto-discovered list.
   const pinnedMarkets = (process.env.PREDICTION_KEEPER_MARKETS || '')
     .split(',')
@@ -601,7 +688,8 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] Resolver: ${resolverAddress}`);
   console.log(`[${timestamp()}] RPC: ${RPC_URL}`);
   console.log(`[${timestamp()}] Package: ${packageId}`);
-  console.log(`[${timestamp()}] Legacy packages: ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
+  console.log(`[${timestamp()}] Legacy emitter packages (discovery): ${legacyPackageIds.length > 0 ? legacyPackageIds.join(', ') : '(none)'}`);
+  console.log(`[${timestamp()}] Legacy dispatch: ${legacyOriginalId && legacyLatestPackageId ? `${legacyOriginalId} -> ${legacyLatestPackageId}` : '(none)'}`);
   console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none)'}`);
   console.log(`[${timestamp()}] Tick interval: ${intervalMs}ms  Discover interval: ${discoverIntervalMs}ms`);
   console.log(`[${timestamp()}] DRY_RUN: ${DRY_RUN ? 'ENABLED (no on-chain writes)' : 'disabled (live)'}`);
@@ -642,7 +730,7 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, resolverAddress);
+  await tick(client, keypair, markets, resolverAddress, packageIdForMarketType);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
@@ -665,7 +753,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await tick(client, keypair, packageId, markets, resolverAddress);
+    await tick(client, keypair, markets, resolverAddress, packageIdForMarketType);
   }
 }
 

@@ -46,6 +46,33 @@ const LEGACY_PACKAGE_IDS = (process.env.PREDICTION_PACKAGE_ID_LEGACY ?? '')
   .filter((s) => /^0x[0-9a-f]{64}$/.test(s));
 const DISCOVERY_PKGS: string | string[] =
   LEGACY_PACKAGE_IDS.length > 0 ? [PACKAGE_ID, ...LEGACY_PACKAGE_IDS] : PACKAGE_ID;
+
+// Legacy family identity for the 2026-05-20 v5 fresh-publish cutover (see
+// prediction-keeper.ts for full rationale). Both must be set together or
+// both empty. Without this, every legacy market PTB aborts with TypeMismatch.
+const LEGACY_ORIGINAL_RAW = (process.env.PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL ?? '').toLowerCase();
+const LEGACY_LATEST_RAW = (process.env.PREDICTION_PACKAGE_ID_LEGACY_LATEST ?? '').toLowerCase();
+const LEGACY_ORIGINAL_ID = /^0x[0-9a-f]{64}$/.test(LEGACY_ORIGINAL_RAW) ? LEGACY_ORIGINAL_RAW : '';
+const LEGACY_LATEST_PACKAGE_ID = /^0x[0-9a-f]{64}$/.test(LEGACY_LATEST_RAW) ? LEGACY_LATEST_RAW : '';
+if (Boolean(LEGACY_ORIGINAL_ID) !== Boolean(LEGACY_LATEST_PACKAGE_ID)) {
+  throw new Error(
+    'PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL and PREDICTION_PACKAGE_ID_LEGACY_LATEST must both be set (or both empty)',
+  );
+}
+
+// Mirrors prediction-keeper.ts's buildPackageDispatch — kept inline because
+// deploy scripts only rsync apps/pado/bots/ (no shared lib resolution).
+function packageIdForMarketType(marketObjectType: string): string {
+  if (marketObjectType.startsWith(`${PACKAGE_ID}::`)) return PACKAGE_ID;
+  if (
+    LEGACY_ORIGINAL_ID &&
+    LEGACY_LATEST_PACKAGE_ID &&
+    marketObjectType.startsWith(`${LEGACY_ORIGINAL_ID}::`)
+  ) {
+    return LEGACY_LATEST_PACKAGE_ID;
+  }
+  throw new Error(`Unknown prediction market package origin in type: ${marketObjectType}`);
+}
 const INTERVAL_MS = Number(process.env.PREDICTION_ARB_INTERVAL_MS ?? '15000');
 const MAX_NUSDC_PER_ARB = Number(process.env.PREDICTION_ARB_MAX_NUSDC ?? '10');
 const MIN_PROFIT_BPS = Number(process.env.PREDICTION_ARB_MIN_PROFIT_BPS ?? '100');
@@ -100,6 +127,12 @@ async function executeAndWait(
 interface MarketBook {
   status: number;
   closeTime: number;
+  // Full Sui type tag — packageIdForMarketType() maps the originalPackageId
+  // prefix to the correct moveCall target. v5-on-legacy or vice versa
+  // produces CommandArgumentError{TypeMismatch} on dry-run (2026-05-20
+  // prod regression: arb-bot looped on TypeMismatch until consecutiveErrors
+  // hit MAX and the process exited).
+  objectType: string;
   yesBestBid: number | null;
   noBestBid: number | null;
 }
@@ -109,7 +142,7 @@ async function fetchMarketBook(
   marketId: string,
 ): Promise<MarketBook | null> {
   try {
-    const obj = await client.getObject({ id: marketId, options: { showContent: true } });
+    const obj = await client.getObject({ id: marketId, options: { showContent: true, showType: true } });
     const fields = (obj.data?.content as { fields?: Record<string, unknown> } | undefined)?.fields;
     if (!fields) return null;
 
@@ -119,6 +152,7 @@ async function fetchMarketBook(
     return {
       status: Number(fields.status),
       closeTime: Number(fields.close_time),
+      objectType: String(obj.data?.type ?? ''),
       // yes_bid_prices is sorted descending (highest first)
       yesBestBid: yesPrices.length > 0 ? Number(yesPrices[0]) : null,
       noBestBid: noPrices.length > 0 ? Number(noPrices[0]) : null,
@@ -219,6 +253,7 @@ async function executeArb(
   client: SuiClient,
   keypair: Ed25519Keypair,
   marketId: string,
+  marketPackageId: string,
   yesBid: number,
   noBid: number,
 ): Promise<void> {
@@ -250,12 +285,15 @@ async function executeArb(
     mintTx.pure.u64(mintRaw),
   ]);
   mintTx.moveCall({
-    target: `${PACKAGE_ID}::prediction_market::mint_outcome_tokens`,
+    target: `${marketPackageId}::prediction_market::mint_outcome_tokens`,
     arguments: [mintTx.object(marketId), mintCoin, mintTx.object(CLOCK_ID)],
   });
 
   const mintResult = await executeAndWait(client, keypair, mintTx, 'mint');
 
+  // findMintedPositions's `packageId` arg is for the StructType-prefix filter,
+  // not a moveCall target — its dual-prefix accept list already covers both v5
+  // and legacy Position types, so passing the latest is fine.
   const positions = await findMintedPositions(
     client,
     (mintResult.objectChanges ?? []) as Array<{
@@ -275,7 +313,7 @@ async function executeArb(
   // min_price=1 = accept any positive price; rest_on_no_fill=true = don't abort if partial
   const sellTx = new Transaction();
   sellTx.moveCall({
-    target: `${PACKAGE_ID}::prediction_market::place_sell_taker`,
+    target: `${marketPackageId}::prediction_market::place_sell_taker`,
     arguments: [
       sellTx.object(marketId),
       sellTx.object(positions.yesId),
@@ -285,7 +323,7 @@ async function executeArb(
     ],
   });
   sellTx.moveCall({
-    target: `${PACKAGE_ID}::prediction_market::place_sell_taker`,
+    target: `${marketPackageId}::prediction_market::place_sell_taker`,
     arguments: [
       sellTx.object(marketId),
       sellTx.object(positions.noId),
@@ -319,7 +357,20 @@ async function checkMarket(
   const profitBps = yesBestBid + noBestBid - MAX_PRICE_BPS;
   if (profitBps < MIN_PROFIT_BPS) return;
 
-  await executeArb(client, keypair, marketId, yesBestBid, noBestBid);
+  // Dispatch every moveCall by the market's type-tag originalPackageId.
+  // Without this, a legacy market against a v5-only PACKAGE_ID fires
+  // TypeMismatch every tick until consecutiveErrors hits MAX and the bot
+  // crashes (2026-05-20 prod regression).
+  let marketPackageId: string;
+  try {
+    marketPackageId = packageIdForMarketType(book.objectType);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[arb] skipping ${marketId.slice(0, 16)}: ${msg}`);
+    return;
+  }
+
+  await executeArb(client, keypair, marketId, marketPackageId, yesBestBid, noBestBid);
 }
 
 // ========================================
@@ -440,7 +491,10 @@ async function main(): Promise<void> {
   console.log(`[arb-bot] address=${arbAddress}`);
   console.log(`[arb-bot] package=${PACKAGE_ID}`);
   console.log(
-    `[arb-bot] legacy packages=${LEGACY_PACKAGE_IDS.length > 0 ? LEGACY_PACKAGE_IDS.join(',') : '(none)'}`,
+    `[arb-bot] legacy emitter packages (discovery)=${LEGACY_PACKAGE_IDS.length > 0 ? LEGACY_PACKAGE_IDS.join(',') : '(none)'}`,
+  );
+  console.log(
+    `[arb-bot] legacy dispatch=${LEGACY_ORIGINAL_ID && LEGACY_LATEST_PACKAGE_ID ? `${LEGACY_ORIGINAL_ID} -> ${LEGACY_LATEST_PACKAGE_ID}` : '(none)'}`,
   );
   console.log(
     `[arb-bot] interval=${INTERVAL_MS}ms maxNusdc=${MAX_NUSDC_PER_ARB} minProfitBps=${MIN_PROFIT_BPS}`,

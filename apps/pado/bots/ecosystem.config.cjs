@@ -41,6 +41,16 @@ const PREDICTION_PACKAGE_ID =
 // first). Empty string disables dual-scan.
 const PREDICTION_PACKAGE_ID_LEGACY = process.env.PREDICTION_PACKAGE_ID_LEGACY || '';
 
+// Legacy family identity for the 2026-05-20 v5 fresh-publish cutover.
+// _ORIGINAL is matched against pre-cutover Market object-type prefixes;
+// _LATEST is the current published-at id used as the moveCall target for
+// legacy markets. Both required together; empty string disables legacy
+// resolve dispatch (v5-only mode).
+const PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL =
+  process.env.PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL || '';
+const PREDICTION_PACKAGE_ID_LEGACY_LATEST =
+  process.env.PREDICTION_PACKAGE_ID_LEGACY_LATEST || '';
+
 const COMMON_LP_ENV = {
   NODE_ENV: 'production',
   // Tiered grid is configured in lib/config.ts (DEFAULT_ZONES: 10@3 / 15@8 / 15@22).
@@ -263,6 +273,8 @@ module.exports = {
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
+        PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
+        PREDICTION_PACKAGE_ID_LEGACY_LATEST,
         PREDICTION_KEEPER_INTERVAL_MS: '60000',
         // 4-category resolvers — bake from .env so pm2 daemon picks them up
         // even when ecosystem is re-parsed without reloading the .env file.
@@ -307,6 +319,8 @@ module.exports = {
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
+        PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
+        PREDICTION_PACKAGE_ID_LEGACY_LATEST,
         // Tightened ladder for richer top-of-book and gentler small-trade impact.
         // Top quote sits 100 bps from mid; 10 levels per side; gaps grow gently
         // (30 bps base × 1.3 geometric) so the middle band is dense and outer
@@ -371,6 +385,8 @@ module.exports = {
         NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
+        PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
+        PREDICTION_PACKAGE_ID_LEGACY_LATEST,
         PREDICTION_ARB_INTERVAL_MS: '15000',
         PREDICTION_ARB_MAX_NUSDC: '10',
         PREDICTION_ARB_MIN_PROFIT_BPS: '100',
