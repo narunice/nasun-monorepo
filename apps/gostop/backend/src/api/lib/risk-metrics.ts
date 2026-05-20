@@ -78,17 +78,25 @@ export interface RiskMetricsResult {
   /** 24h / 7d / 30d net PnL with per-call data_quality. */
   pnl: Record<PnlWindowKey, RiskWindowPnl>;
   /**
-   * Open exposure (max house liability) = chain-authoritative reading from
+   * Open exposure (max house liability) — chain-authoritative reading from
    * bankroll_pool v0.0.4 `open_exposure` field, surfaced via the
    * OpenExposureSnapshot event. Equal to SUM(cap.max_single_payout) across
    * all in-flight rounds (those whose collect_bet has fired but whose
-   * pay_winner / refund_bet has not yet). 0 when no snapshot has been
-   * indexed (pre-v0.0.4 pool or fresh pool pre-first-bet).
+   * pay_winner / refund_bet has not yet).
    *
-   * Pre-§10.B this field was a "pending round commitments" proxy; the v0.0.4
-   * switch upgraded the source to chain truth.
+   * Pair with `active_exposure_chain_status` before rendering: when status
+   * is 'dormant' the raw value is meaningless (v0.0.4 published but game
+   * contracts still linkage-frozen to v0.0.2/v0.0.3) and the UI must show a
+   * provisional placeholder rather than 0 NUSDC.
    */
   active_exposure_raw: string;
+  /**
+   * 'live'    → recent OpenExposureSnapshot event present, raw value usable.
+   * 'dormant' → no snapshot or stale (>1h). Treat the raw value as N/A.
+   */
+  active_exposure_chain_status: 'live' | 'dormant';
+  /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
+  active_exposure_last_snapshot_ms: number | null;
   /**
    * utilization_ratio_bps = active_exposure × 10_000 / pool.balance.
    * Returned in basis points (matches on-chain cap units). 0 when balance=0.
@@ -125,6 +133,24 @@ export interface RiskMetricsResult {
    * own rank via /api/gostop/me/lp/position. Order is rank ASC.
    */
   top_lp_5: TopLpEntry[];
+  /**
+   * Single-LP concentration signal. `top1_share_pct_bps` is the rank-1 LP's
+   * share of *total positive net shares* (NOT including the operator seed);
+   * `concentration_status` buckets it for the dashboard badge.
+   *
+   * Thresholds (basis points):
+   *   ≥ 8000 (80%)  → 'extreme'    — single LP can move share_price on exit
+   *   ≥ 5000 (50%)  → 'concentrated' — material single-LP risk
+   *   <  5000       → 'healthy'    — diversified
+   *
+   * `0` when no LP rows exist yet. Same denominator as top_lp_5 share_pct
+   * (sum of positive LP net_shares) so the two numbers align.
+   */
+  lp_concentration: {
+    top1_share_pct_bps: number;
+    status: 'healthy' | 'concentrated' | 'extreme' | 'unknown';
+    lp_count: number;
+  };
   /** Aggregate data quality: worst of bankrollPnl + matview age. */
   data_quality: DataQuality;
   /** Matview freshness debug. */
@@ -168,31 +194,50 @@ async function latestUtilizationCapBps(): Promise<number | null> {
 }
 
 /**
- * Live open_exposure — chain-authoritative max-liability reading.
+ * Active exposure status + raw value from indexed OpenExposureSnapshot events.
  *
  * v0.0.4 (§10.B): bankroll_pool emits OpenExposureSnapshot after every
  * collect_bet / pay_winner / refund_bet. Indexer writes one row with
  * event_type='open_exposure_snapshot' carrying chain's open_exposure_after.
- * We read the latest snapshot row (by timestamp_ms DESC, id DESC).
  *
- * Falls back to 0 when no snapshot has ever been indexed — true for pools
- * still on v0.0.3 OR fresh v0.0.4 pools whose first bet hasn't landed yet.
- * The Risk Dashboard treats this 0 reading honestly ("no in-flight rounds")
- * rather than the v0.0.3 "pending_resolve count" proxy.
+ * Status semantics (used by the UI to avoid silently misleading "0 NUSDC"
+ * readings when v0.0.4 is published but dormant — i.e. dependent game
+ * contracts are still linkage-frozen to v0.0.2 / v0.0.3 of bankroll_pool):
+ *   - 'live'    → at least one snapshot in the last DORMANT_THRESHOLD_MS
+ *   - 'dormant' → no snapshot ever, or latest snapshot older than threshold
+ *                  while games are presumed active
+ *
+ * The UI renders 'dormant' as a provisional state ('—' with explanatory hint)
+ * so neither LPs nor investors mistake "no v0.0.4 plumbing" for "no
+ * in-flight house liability".
  */
-async function pendingCommitments(): Promise<bigint> {
+const DORMANT_THRESHOLD_MS = 60 * 60_000; // 1h since last OpenExposureSnapshot
+
+interface ActiveExposure {
+  raw: bigint;
+  status: 'live' | 'dormant';
+  last_snapshot_ms: number | null;
+}
+
+async function activeExposure(asOfMs: number): Promise<ActiveExposure> {
   const sql = reader();
-  const rows = await sql<{ exposure: string | null }[]>`
-    SELECT open_exposure_after::text AS exposure
+  const rows = await sql<{ exposure: string | null; ts: string | null }[]>`
+    SELECT open_exposure_after::text AS exposure,
+           timestamp_ms::text       AS ts
     FROM gostop.bankroll_event
     WHERE event_type = 'open_exposure_snapshot'
       AND open_exposure_after IS NOT NULL
     ORDER BY timestamp_ms DESC, id DESC
     LIMIT 1
   `;
-  const raw = rows[0]?.exposure;
-  if (raw === null || raw === undefined) return 0n;
-  return BigInt(raw);
+  if (rows.length === 0) {
+    return { raw: 0n, status: 'dormant', last_snapshot_ms: null };
+  }
+  const ts = Number(rows[0]!.ts ?? '0');
+  const raw = BigInt(rows[0]!.exposure ?? '0');
+  const status: 'live' | 'dormant' =
+    asOfMs - ts > DORMANT_THRESHOLD_MS ? 'dormant' : 'live';
+  return { raw, status, last_snapshot_ms: ts };
 }
 
 /** Sui address pretty-print: 0xabcd…1234 (6 prefix + 4 suffix). */
@@ -224,7 +269,18 @@ interface TopLpRow {
  * Chain total_shares may differ slightly during indexer catch-up windows;
  * within-query consistency is more important than chain-alignment here.
  */
-async function topLp5(): Promise<TopLpEntry[]> {
+/** Concentration bucket thresholds, basis points (10_000 = 100%). */
+const CONCENTRATION_EXTREME_BPS = 8_000;
+const CONCENTRATION_WARN_BPS    = 5_000;
+
+interface TopLp5Result {
+  entries: TopLpEntry[];
+  top1_share_pct_bps: number;
+  status: 'healthy' | 'concentrated' | 'extreme' | 'unknown';
+  lp_count: number;
+}
+
+async function topLp5(): Promise<TopLp5Result> {
   const sql = reader();
   const rows = await sql<TopLpRow[]>`
     WITH per_actor AS (
@@ -249,9 +305,9 @@ async function topLp5(): Promise<TopLpEntry[]> {
     ORDER BY positive.net_shares DESC
     LIMIT 5
   `;
-  // Recompute the denominator client-side to keep the SQL output single-row-per-actor
-  // (avoids window functions complicating the response shape).
-  const totalRows = await sql<{ total: string }[]>`
+  // Recompute the denominator + lp_count client-side to keep the SQL output
+  // single-row-per-actor (avoids window functions complicating the shape).
+  const totalRows = await sql<{ total: string; lp_count: string }[]>`
     WITH per_actor AS (
       SELECT actor,
              COALESCE(SUM(CASE WHEN event_type='liquidity_provided' THEN shares ELSE 0 END), 0)
@@ -262,13 +318,15 @@ async function topLp5(): Promise<TopLpEntry[]> {
         AND event_type IN ('liquidity_provided','liquidity_redeemed')
       GROUP BY actor
     )
-    SELECT COALESCE(SUM(net_shares), 0)::text AS total
+    SELECT COALESCE(SUM(net_shares), 0)::text AS total,
+           COUNT(*)::text AS lp_count
     FROM per_actor
     WHERE net_shares > 0
   `;
   const totalShares = BigInt(totalRows[0]?.total ?? '0');
+  const lpCount = Number(totalRows[0]?.lp_count ?? '0');
 
-  return rows.map((r, i) => {
+  const entries = rows.map((r, i) => {
     const shares = BigInt(r.net_shares);
     const pctBps = totalShares > 0n ? Number((shares * 10_000n) / totalShares) : 0;
     return {
@@ -279,6 +337,15 @@ async function topLp5(): Promise<TopLpEntry[]> {
       share_pct_bps: pctBps,
     };
   });
+
+  const top1 = entries[0]?.share_pct_bps ?? 0;
+  let status: TopLp5Result['status'];
+  if (lpCount === 0)                            status = 'unknown';
+  else if (top1 >= CONCENTRATION_EXTREME_BPS)   status = 'extreme';
+  else if (top1 >= CONCENTRATION_WARN_BPS)      status = 'concentrated';
+  else                                          status = 'healthy';
+
+  return { entries, top1_share_pct_bps: top1, status, lp_count: lpCount };
 }
 
 /**
@@ -413,7 +480,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     bankrollPnl({ fromMs: now - PNL_WINDOWS['7d'],  toMs: now }),
     bankrollPnl({ fromMs: now - PNL_WINDOWS['30d'], toMs: now }),
     latestUtilizationCapBps(),
-    pendingCommitments(),
+    activeExposure(now),
     largestSinglePayout(),
     matviewStats(),
     topLp5(),
@@ -450,7 +517,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
   const cumulativeLpDist = (ppsExcess * totalShares) / SHARE_PRICE_SCALE;
 
   const utilizationBps = tvlRaw > 0n
-    ? Number((exposure * BigInt(BPS_FULL)) / tvlRaw)
+    ? Number((exposure.raw * BigInt(BPS_FULL)) / tvlRaw)
     : 0;
 
   const mvQuality = matviewQuality(mv.ageMs);
@@ -466,7 +533,9 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
       '7d':  { window_ms: PNL_WINDOWS['7d'],  net_pnl_raw: pnl7d.net_pnl,  data_quality: pnl7d.data_quality },
       '30d': { window_ms: PNL_WINDOWS['30d'], net_pnl_raw: pnl30d.net_pnl, data_quality: pnl30d.data_quality },
     },
-    active_exposure_raw: exposure.toString(),
+    active_exposure_raw: exposure.raw.toString(),
+    active_exposure_chain_status: exposure.status,
+    active_exposure_last_snapshot_ms: exposure.last_snapshot_ms,
     utilization_ratio_bps: utilizationBps,
     utilization_cap_bps: cap,
     largest_single_payout_raw: largest.toString(),
@@ -474,7 +543,12 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     max_drawdown_pct_bps: mv.maxDrawdownBps,
     daily_pnl_volatility_30d_raw: mv.volatility30dRaw,
     longest_house_losing_streak_days: mv.longestLosingStreakDays,
-    top_lp_5: topLps,
+    top_lp_5: topLps.entries,
+    lp_concentration: {
+      top1_share_pct_bps: topLps.top1_share_pct_bps,
+      status: topLps.status,
+      lp_count: topLps.lp_count,
+    },
     data_quality: aggQuality,
     matview_age_ms: mv.ageMs,
     generated_at_ms: now,

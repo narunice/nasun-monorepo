@@ -43,7 +43,7 @@ const RISK_ALERT_COOLDOWN_MS = 30 * 60_000;
 /** Telegram HTTP timeout. Short — outage should not back up the indexer. */
 const TELEGRAM_TIMEOUT_MS = 5_000;
 
-type AlertKey = 'utilization_high';
+type AlertKey = 'utilization_high' | 'lp_concentration_extreme';
 
 const lastFired = new Map<AlertKey, number>();
 
@@ -144,6 +144,33 @@ export async function runRiskAlertOnce(): Promise<void> {
         console.log(`[risk-alert] utilization_high fired at ${fmtBpsPct(risk.utilization_ratio_bps)}`);
       }
       // If send failed, do NOT update lastFired — retry on next tick.
+    }
+  }
+
+  // LP concentration: fire only on 'extreme' (top1 ≥ 80%). 'concentrated'
+  // surfaces as a dashboard badge but does not page — most prototypes will
+  // sit there for weeks while the LP base broadens, and paging on that band
+  // is operationally useless. Recovery does not send "all clear" (same v1
+  // low-noise policy as utilization_high).
+  if (risk.lp_concentration && risk.lp_concentration.status === 'extreme') {
+    if (shouldFire('lp_concentration_extreme', now)) {
+      const c = risk.lp_concentration;
+      const text = [
+        '*GoStop Bankroll — single-LP concentration EXTREME*',
+        '',
+        `Rank-1 LP holds: *${fmtBpsPct(c.top1_share_pct_bps)}* of all LP shares`,
+        `Total positive LP wallets: ${c.lp_count}`,
+        '',
+        'Risk: this LP\'s withdraw can materially move share_price; on-chain pool resilience depends on a single counterparty.',
+        '',
+        `Cooldown ${Math.round(RISK_ALERT_COOLDOWN_MS / 60_000)} min before re-fire.`,
+      ].join('\n');
+
+      const ok = await sendTelegram(text);
+      if (ok) {
+        lastFired.set('lp_concentration_extreme', now);
+        console.log(`[risk-alert] lp_concentration_extreme fired at top1=${fmtBpsPct(c.top1_share_pct_bps)}`);
+      }
     }
   }
 }

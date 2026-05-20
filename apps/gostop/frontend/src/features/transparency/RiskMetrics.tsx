@@ -7,9 +7,11 @@
  * restraint — no neon, no emoji, gold accents only where they earn their keep.
  *
  * Honest naming guard rails:
- *   - "Pending round commitments" (NOT max liability) — Move v0.0.4
- *     open_exposure would lift this. Spell it out so the reader does not
- *     misread the number.
+ *   - Open exposure (max liability) uses chain-authoritative bankroll_pool
+ *     v0.0.4 open_exposure. When `active_exposure_chain_status === 'dormant'`
+ *     (v0.0.4 published but dependent game contracts still linkage-frozen
+ *     to v0.0.2/v0.0.3, lockstep upgrade pending) we render a provisional
+ *     placeholder instead of a misleading 0.
  *   - "Cumulative LP yield" allows negative values when the pool is
  *     underwater; the sign is preserved.
  */
@@ -60,7 +62,19 @@ export function RiskMetrics({ risk }: Props) {
   const tvlDisplay = unreliable ? '—' : `${fmtUsdc(risk.tvl_raw)} NUSDC`;
   const cap = capLabel(risk.utilization_cap_bps);
   const utilDisplay = utilizationLabel(risk.utilization_ratio_bps, risk.data_quality);
-  const exposureDisplay = unreliable ? '—' : `${fmtUsdc(risk.active_exposure_raw)} NUSDC`;
+  // chain_status='dormant' means v0.0.4 is published but the dependent game
+  // contracts are still linkage-frozen to v0.0.2/v0.0.3. The raw value will
+  // be 0 (or stale) and must not be rendered as if it were a chain reading.
+  const exposureDormant = risk.active_exposure_chain_status === 'dormant';
+  const exposureLabel = exposureDormant
+    ? 'Open exposure (provisional)'
+    : 'Open exposure (max liability)';
+  const exposureDisplay = unreliable || exposureDormant
+    ? '—'
+    : `${fmtUsdc(risk.active_exposure_raw)} NUSDC`;
+  const exposureHint = exposureDormant
+    ? 'Awaiting v0.0.4 lockstep upgrade across dependent game contracts. The on-chain open_exposure dynamic field has not yet been initialized, so this number is provisional and rendered as a placeholder rather than a misleading 0 NUSDC. Will reflect chain truth once each game contract is rebound to bankroll_pool v0.0.4.'
+    : 'Chain-authoritative reading of bankroll_pool.open_exposure: sum of max_single_payout reserved across all in-flight rounds. Released back when each round settles via pay_winner or refund_bet. This is true max house liability, not a proxy.';
   const largestPayoutDisplay = unreliable ? '—' : `${fmtUsdc(risk.largest_single_payout_raw)} NUSDC`;
   const lpDistDisplay = unreliable ? '—' : `${fmtUsdcSigned(risk.cumulative_lp_distributions_raw)} NUSDC`;
 
@@ -109,10 +123,10 @@ export function RiskMetrics({ risk }: Props) {
           valueClass="text-neutral-100"
         />
         <Metric
-          label="Open exposure (max liability)"
+          label={exposureLabel}
           value={exposureDisplay}
-          hint="Chain-authoritative reading of bankroll_pool.open_exposure: sum of max_single_payout reserved across all in-flight rounds. Released back when each round settles via pay_winner or refund_bet. This is true max house liability, not a proxy."
-          valueClass={qualityClass(risk.data_quality)}
+          hint={exposureHint}
+          valueClass={exposureDormant ? 'text-neutral-400' : qualityClass(risk.data_quality)}
         />
       </div>
 

@@ -208,11 +208,18 @@ export interface RiskMetricsBlock {
     '30d': RiskWindowPnl;
   };
   /**
-   * "Pending round commitments" — SUM(bet_amount) over open rounds. NOT max
-   * liability; that requires Move v0.0.4 open_exposure. UI label must be
-   * honest about this distinction.
+   * Open exposure (max house liability) from bankroll_pool v0.0.4
+   * `open_exposure`, surfaced via OpenExposureSnapshot. Pair with
+   * `active_exposure_chain_status`: when 'dormant' the raw value is N/A
+   * (v0.0.4 published but game contracts linkage-frozen to v0.0.2/v0.0.3,
+   * lockstep upgrade pending). The dashboard then renders a provisional
+   * placeholder rather than a misleading 0.
    */
   active_exposure_raw: string;
+  /** 'live' = recent snapshot present; 'dormant' = no snapshot or stale. */
+  active_exposure_chain_status?: 'live' | 'dormant';
+  /** Epoch ms of the latest indexed OpenExposureSnapshot, null when none. */
+  active_exposure_last_snapshot_ms?: number | null;
   /** active_exposure × 10_000 / pool.balance, basis points. */
   utilization_ratio_bps: number;
   /**
@@ -236,6 +243,17 @@ export interface RiskMetricsBlock {
    * /api/gostop/me/lp/position and match against `address_hash`.
    */
   top_lp_5: TopLpEntry[];
+  /**
+   * Single-LP concentration signal for the rank-1 LP. Thresholds: ≥8000 bps =
+   * 'extreme', ≥5000 bps = 'concentrated', else 'healthy'. 'unknown' when no
+   * LP rows yet. Used by the dashboard to surface a badge when one wallet
+   * controls a disproportionate share of pool liquidity.
+   */
+  lp_concentration?: {
+    top1_share_pct_bps: number;
+    status: 'healthy' | 'concentrated' | 'extreme' | 'unknown';
+    lp_count: number;
+  };
   /** Worst of bankrollPnl + matview-age qualities. */
   data_quality: DataQuality;
   /** Matview age debug (ms). */
