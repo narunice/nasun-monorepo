@@ -377,7 +377,8 @@
       "Skill(review)",
       "Skill(review:*)",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no -o ConnectTimeout=15 ec2-user@43.200.67.52 ' *)",
-      "Bash(ALLOW_PROD_DIRECT=1 pnpm deploy:nasun-ai-runtime:prod -- --force)"
+      "Bash(ALLOW_PROD_DIRECT=1 pnpm deploy:nasun-ai-runtime:prod -- --force)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no -o ConnectTimeout=15 ec2-user@43.200.67.52 'sqlite3 ~/nasun-chat-server/data/chat.db \"SELECT agent_address, json_extract\\(config_json,\\\\\"\\\\$.name\\\\\"\\) FROM nasun_ai_trader_configs WHERE agent_address LIKE \\\\\"0xe0c488%\\\\\";\"')"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",

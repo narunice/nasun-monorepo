@@ -74,7 +74,7 @@ cd apps/pado/contracts
 | 카테고리   | 컨트랙트                                      | 상태           |
 | ---------- | --------------------------------------------- | -------------- |
 | Tokens     | devnet_tokens (NBTC, NUSDC, Faucet)           | V7             |
-| Prediction | prediction (GlobalState)                      | V7             |
+| Prediction | prediction_market (v5 fresh-publish, 2026-05-20) | V7 (originalId == packageId = `0x86595464...`); legacy v1~v4 in-flight markets still resolved via `prediction_legacy` block in devnet-ids.json (originalId `0xbe6d8f69...`, latest `0x9b2361fe...`). v3 unsafe `mint_admin_cap_via_upgrade` path retired by type identity, not bytecode. See [apps/pado/docs/CUTOVER_v5_HANDOFF.md](../apps/pado/docs/CUTOVER_v5_HANDOFF.md) |
 | Lottery    | lottery (LotteryRegistry)                     | V7             |
 | Governance | governance (Dashboard)                        | V7             |
 | DeepBook   | DeepBook V3 (CLOB)                            | V7             |
