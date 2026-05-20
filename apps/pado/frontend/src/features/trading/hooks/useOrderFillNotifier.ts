@@ -12,6 +12,7 @@ import { playSound } from '../../../lib/sounds';
 import { sendBrowserNotification } from '../../../lib/browser-notify';
 import { useToast } from '@/components/common';
 import type { DeepBookEvent, OrderFilledEvent } from '../types/events';
+import { priceScaleExp } from '../../../lib/deepbook';
 
 // Custom event for cross-component fill notification (Orderbook highlight, chart markers)
 export const ORDER_FILL_EVENT = 'pado:order-filled';
@@ -72,7 +73,7 @@ export function useOrderFillNotifier({
         ? (data.takerIsBid ? 'Buy' : 'Sell')
         : (data.takerIsBid ? 'Sell' : 'Buy');
 
-      const price = Number(data.price) / Math.pow(10, quoteDecRef.current);
+      const price = Number(data.price) / Math.pow(10, priceScaleExp(quoteDecRef.current, baseDecRef.current));
       const qty = Number(data.quantity) / Math.pow(10, baseDecRef.current);
 
       const priceStr = price.toLocaleString('en-US', { maximumFractionDigits: 2 });

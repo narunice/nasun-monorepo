@@ -316,7 +316,7 @@ export function useTrading(): UseTrading {
     amount: number,
     orderType?: OrderType,
   ): Promise<TradeResult> => {
-    const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals);
+    const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals, currentPool.baseToken.decimals);
     const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
 
     const result = await placeLimitOrder({
@@ -343,7 +343,7 @@ export function useTrading(): UseTrading {
     amount: number,
     orderType?: OrderType,
   ): Promise<TradeResult> => {
-    const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals);
+    const rawPrice = priceToRaw(price, currentPool.quoteToken.decimals, currentPool.baseToken.decimals);
     const rawQuantity = quantityToRaw(amount, currentPool.baseToken.decimals);
 
     const result = await placeLimitOrder({
