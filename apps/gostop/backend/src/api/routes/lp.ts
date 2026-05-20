@@ -19,6 +19,12 @@ import { rpcCall } from '../../rpc.js';
 import { BANKROLL_POOL } from '../../config/contracts.js';
 import { cacheGet, cacheSet } from '../lib/cache.js';
 import { bankrollPnl, type DataQuality } from '../lib/bankroll-pnl.js';
+import {
+  SHARE_PRICE_SCALE,
+  calcSharePriceScaled,
+  computeApyPct,
+  computeRedeemQuoteRaw,
+} from '../lib/bankroll-pool-math.js';
 import { reader } from '../../db/client.js';
 import { isValidSuiAddress } from '../auth/wallet-sig.js';
 
@@ -34,8 +40,6 @@ const WINDOW_QUANTUM_MS = 30_000;
 const LP_TOKEN_TYPE = `${BANKROLL_POOL.originalPackageId}::bankroll_pool::LPToken`;
 
 const EXIT_COOLDOWN_MS = 24 * 60 * 60 * 1000; // mirrors bankroll_pool.move:EXIT_COOLDOWN_MS
-
-const SHARE_PRICE_SCALE = 1_000_000_000n;
 
 export const lpRoutes = new Hono();
 
@@ -62,11 +66,6 @@ async function fetchPoolFields(): Promise<PoolFields | null> {
     );
     return null;
   }
-}
-
-function calcSharePriceScaled(balance: bigint, shares: bigint): bigint {
-  if (shares === 0n) return SHARE_PRICE_SCALE;
-  return (balance * SHARE_PRICE_SCALE) / shares;
 }
 
 // ---------- GET /pool-state ------------------------------------------------
@@ -173,20 +172,13 @@ lpRoutes.get('/apy', async (c) => {
   const tvl = poolFields?.balance ? BigInt(String(poolFields.balance)) : 0n;
   const netPnl = BigInt(pnl.net_pnl);
 
-  // Annualized APY as percent with two-decimal precision:
-  //   annual_fraction = (net_pnl / tvl) * (365 / window_days)
-  //   percent         = annual_fraction * 100
-  //
-  // To keep integer math in bigint until the final cast, compute
-  //   apy_pct_times_100 = (net_pnl * 10_000 * 365) / (tvl * window_days)
-  // then divide by 100 in JS Number space. NUSDC base units cancel between
-  // net_pnl and tvl so the result is unit-free.
-  let apyPct: number | null = null;
-  if (pnl.data_quality === 'fresh' && tvl > 0n) {
-    const apyPctTimes100 =
-      (netPnl * 10_000n * 365n) / (tvl * BigInt(APY_WINDOW_DAYS));
-    apyPct = Number(apyPctTimes100) / 100;
-  }
+  // Annualized APY as percent with two-decimal precision. The arithmetic
+  // lives in bankroll-pool-math::computeApyPct; the route owns the upstream
+  // data-quality gate so a 'lagging' or 'unreliable' pnl never leaks an
+  // APY estimate the user could anchor on.
+  const apyPct = pnl.data_quality === 'fresh'
+    ? computeApyPct(netPnl, tvl, APY_WINDOW_DAYS)
+    : null;
 
   const payload = {
     window_days: APY_WINDOW_DAYS,
@@ -302,13 +294,9 @@ lpRoutes.get('/positions/:address', async (c) => {
       fields.withdraw_requested_at !== null && fields.withdraw_requested_at !== undefined
         ? BigInt(String(fields.withdraw_requested_at))
         : null;
-    // Estimated current NUSDC: shares * (pool_balance + 1) / (total_shares + 1)
-    // Mirrors bankroll_pool::redeem_liquidity math so the UI quote matches
-    // what redeem would actually pay (modulo rounding).
-    const estNusdc =
-      poolShares > 0n
-        ? (shares * (poolBalance + 1n)) / (poolShares + 1n)
-        : 0n;
+    // Estimated current NUSDC mirrors bankroll_pool::redeem_liquidity so the
+    // UI quote matches what redeem would actually pay (modulo rounding).
+    const estNusdc = computeRedeemQuoteRaw(shares, poolBalance, poolShares);
     const claimableAt = requestedAt !== null ? requestedAt + BigInt(EXIT_COOLDOWN_MS) : null;
     const depositAmount = depositLookup.get(`${depositTime.toString()}:${shares.toString()}`) ?? null;
     return [
