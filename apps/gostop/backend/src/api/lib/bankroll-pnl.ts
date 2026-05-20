@@ -33,8 +33,11 @@
 import { reader } from '../../db/client.js';
 import { rpcCall } from '../../rpc.js';
 import { BANKROLL_POOL } from '../../config/contracts.js';
-
-const SHARE_PRICE_SCALE = 1_000_000_000n; // matches bankroll_pool.move:SHARE_PRICE_SCALE
+import {
+  SHARE_PRICE_SCALE,
+  calcSharePriceScaled,
+  computeNetPnl,
+} from './bankroll-pool-math.js';
 
 // Stream keys whose watermark gates the reconciler. Mirrors
 // indexer/bankroll-watermark.ts PNL_STREAMS exactly — duplicated here as a
@@ -228,13 +231,14 @@ export async function bankrollPnl(window: BankrollPnlWindow): Promise<BankrollPn
   const bets = BigInt(row.bets);
   const payouts = BigInt(row.payouts);
   const refunds = BigInt(row.refunds);
-  const netPnl = bets - payouts - refunds;
+  const netPnl = computeNetPnl(bets, payouts, refunds);
 
   const chain = await fetchChainShares();
-  const sharePriceScaled =
-    chain && chain.shares > 0n
-      ? (chain.balance * SHARE_PRICE_SCALE) / chain.shares
-      : SHARE_PRICE_SCALE; // Move convention: pps = 1.0 when shares==0.
+  // Move convention: pps = 1.0 when shares==0 (calcSharePriceScaled handles
+  // the shares==0 case internally). The outer ternary guards null chain reads.
+  const sharePriceScaled = chain
+    ? calcSharePriceScaled(chain.balance, chain.shares)
+    : SHARE_PRICE_SCALE;
 
   const cursorLagMs = Number(row.cursor_lag_ms);
   const unreconciled = Number(row.unreconciled_rows);
