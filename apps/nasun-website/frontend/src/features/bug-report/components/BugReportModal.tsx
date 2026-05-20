@@ -33,6 +33,12 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
   const [isUploading, setIsUploading] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Synchronous double-submit guard. isPending updates on the next render so
+  // a same-frame multi-tap could fire two requests before React re-renders
+  // the disabled button. The server cooldown rejects the second one, but we
+  // close the gap on the client so users don't see a "wait 5 minutes" toast
+  // they didn't cause.
+  const submitInFlight = useRef(false);
   const { mutate, isPending, walletConnected } = useBugReport();
   const user = useUserStore((s) => s.user);
 
@@ -165,6 +171,10 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !description.trim() || !user?.cognitoToken) return;
+    // Synchronous guard: short-circuit a same-frame double submit before the
+    // disabled-button render lands.
+    if (submitInFlight.current) return;
+    submitInFlight.current = true;
 
     try {
       // Upload screenshots first
@@ -193,14 +203,17 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
             clearSavedDraft();
             resetForm();
             onOpenChange(false);
+            submitInFlight.current = false;
           },
           onError: (err) => {
             toast.error(`Failed to submit: ${err.message}`);
+            submitInFlight.current = false;
           },
         },
       );
     } catch (err) {
       setIsUploading(false);
+      submitInFlight.current = false;
       toast.error(`Screenshot upload failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
