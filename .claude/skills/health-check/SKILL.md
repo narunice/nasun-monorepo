@@ -180,24 +180,25 @@ curl -s -m 10 -o /dev/null -w "staging_health:%{http_code}|%{time_total}" \
 > 상세 엔드포인트/nginx 구성: `reference_gostop_backend_endpoints.md`. 여기서는 라이브 surface만 빠르게 점검.
 
 ```bash
-curl -s -m 10 -o /dev/null -w "health:%{http_code}|%{time_total}\n" https://api.gostop.app/health
+# nginx는 /api/gostop/* 만 backend로 proxy함. 루트 /health는 외부 비노출 (404 정상) — 내부 health는 2c SSH로 점검
 curl -s -m 10 -o /dev/null -w "lp_pool:%{http_code}|%{time_total}\n" \
   https://api.gostop.app/api/gostop/lp/pool-state
 curl -s -m 10 -o /dev/null -w "leaderboard:%{http_code}|%{time_total}\n" \
   "https://api.gostop.app/api/gostop/leaderboard?period=all&limit=3"
-curl -s -m 10 -o /dev/null -w "transparency:%{http_code}|%{time_total}\n" \
-  https://api.gostop.app/api/gostop/transparency
-curl -s -m 10 -o /dev/null -w "risk_dashboard:%{http_code}|%{time_total}\n" \
-  https://api.gostop.app/api/gostop/risk-dashboard
-# WS upgrade probe (Upgrade: websocket 헤더 필수, CF/nginx SPA fallback 오진 방지)
-curl -s -m 10 -o /dev/null -w "ws_feed:%{http_code}\n" \
+# /transparency 응답에 risk 필드(Tier 1.3 Risk Dashboard 데이터) embed됨. 별도 /risk-dashboard 엔드포인트는 없음
+curl -s -m 10 -w "transparency:%{http_code}|%{time_total}\n" \
+  https://api.gostop.app/api/gostop/transparency \
+  | python3 -c "import sys,json; d=json.load(sys.stdin); r=d.get('risk',{}); print(f'  risk.data_quality={r.get(\"data_quality\",\"MISSING\")} utilization={r.get(\"utilization\",\"N/A\")}')" 2>/dev/null || echo "  risk: parse_failed"
+# WS upgrade probe: --http1.1 필수 (HTTP/2 default는 Upgrade 안 됨, 404로 오진)
+curl -s --http1.1 -m 10 -o /dev/null -w "ws_feed:%{http_code}\n" \
   -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
-  -H "Sec-WebSocket-Key: $(openssl rand -base64 16)" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
   https://api.gostop.app/api/gostop/feed/live
 ```
 
-- /health 200=OK, 5xx/timeout=CRITICAL. /lp/pool-state, /leaderboard, /transparency, /risk-dashboard는 200=OK (Tier 1.2/1.3 기능, GS6 패턴 트리거 후보)
-- ws_feed 101=OK, 200=WARNING (SPA fallback로 잘못 떨어짐), 4xx=CRITICAL
+- /lp/pool-state, /leaderboard, /transparency 모두 200=OK (Tier 1.2/1.3, GS6 트리거 후보)
+- transparency 응답의 `risk.data_quality` 값: `live`=OK, `lagging`=WARNING, `unreliable`=CRITICAL (리콘실러 stall로 자동 degrade 중, GS8과 교차)
+- ws_feed 101=OK (Switching Protocols), 4xx/5xx=CRITICAL. **`--http1.1` 누락 시 404 오진 주의**
 - time>5s=WARNING (warm 15s cap, project_gostop_leaderboard_30d_removed.md)
 
 #### 1j. nasun-ai-runtime (외부 surface — chat-server proxy)
@@ -631,7 +632,7 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 | P5 | chat-server restart >10 AND uptime <1h | WARNING | `pm2 logs nasun-chat-server --lines 50 --nostream` |
 | P5b | chat-server error.log `[Crash] HALTED.*manual intervention required` 최근 발생 | WARNING | Crash registry stuck → 자가복구 시도 중. 1h 후에도 hot loop면 P5c |
 | P5c | chat-server CPU >80% AND `crash-child.*exited` 반복 (1h내 5건+) | CRITICAL | LockConflict hot loop. Crash registry object 강제 finalize 필요. 코드 수정은 handoff `2026-05-05-outage-followup-code-fixes.md` 참고 |
-| P6 | chat-server mem >350MB / >500MB | WARNING / CRITICAL | 500MB=PM2 auto-restart |
+| P6 | chat-server mem >700MB / >900MB | WARNING / CRITICAL | PM2 `max_memory_restart`=1GB. worker_threads 분리 + cron_restart 후 정상 400-600MB. >700MB=주시, >900MB=auto-restart 임박 |
 | P7 | price-updater stopped | CRITICAL | prod 전용 단일 인스턴스. `pm2 restart price-updater` |
 | P8 | lp-bot-* stopped | WARNING | `pm2 restart lp-bot-nbtc` 등 |
 | P9 | tpsl-keeper stopped or port 4001 없음 | WARNING | `pm2 restart tpsl-keeper` |
@@ -661,8 +662,9 @@ echo "blocked_max(5min sum, 1h): cloudfront=${cf_blocked:-0} regional=${rg_block
 | GS2 | EPRUC29V8YRN3 Disabled or !Deployed | CRITICAL | AWS 콘솔 us-east-1 CloudFormation 확인 |
 | GS3 | gostop.app SSL <30일 | WARNING | ACM 자동갱신 확인 (us-east-1) |
 | GS4 | EPRUC29V8YRN3 CustomErrorResp qty != 11 or max_ttl > 0 | WARNING | 2026-05-05 적용 정책 회귀. 11개 모두 TTL=0이어야 cascade 차단 (이전 60s 캐시로 사고) |
-| GS5 | api.gostop.app /health != 200 or unreachable | CRITICAL | node-3 SSH 후 `pm2 restart gostop-backend`. nginx `sites-enabled/api.gostop.app` + Let's Encrypt 점검 |
-| GS6 | api.gostop.app /lp/pool-state, /transparency, /leaderboard, /risk-dashboard 중 5xx | CRITICAL | pm2 logs gostop-backend + Postgres `nasun_points.gostop` 점검. matview lock (`reference_gostop_matview_lock_keys.md`) |
+| GS5 | api.gostop.app `/api/gostop/lp/pool-state` 또는 `/api/gostop/transparency` 5xx/timeout, 또는 node-3 `curl localhost:3202/health` != 200 | CRITICAL | node-3 SSH 후 `pm2 restart gostop-backend`. nginx `sites-enabled/api.gostop.app` + Let's Encrypt 점검 |
+| GS6 | api.gostop.app `/lp/pool-state`, `/transparency`, `/leaderboard` 중 5xx | CRITICAL | pm2 logs gostop-backend + Postgres `nasun_points.gostop` 점검. matview lock (`reference_gostop_matview_lock_keys.md`) |
+| GS6b | `/transparency` 응답 `risk.data_quality=='unreliable'` | WARNING | 리콘실러 stall → risk-alert 자동 degrade. GS8/GS9 교차 점검 |
 | GS7 | gostop-backend or gostop-indexer != online (node-3) | CRITICAL | `pm2 restart gostop-backend` / `pm2 delete gostop-indexer && pm2 start ecosystem.config.cjs --only gostop-indexer` (env 갱신 시 hard restart 필수, feedback_pm2_hard_restart_for_new_env.md) |
 | GS8 | gostop-indexer 로그에 `[drift] reconciler_stall_severe` 또는 `cursor_lag_severe` 최근 30min | WARNING | unreconciled rows>500 또는 oldest age>1h. `pm2 logs gostop-indexer` stream tick 실패 추적 (project_gostop_drift_keeper.md) |
 | GS9 | gostop-indexer 로그에 `[drift] chain_divergence` | CRITICAL | 자동 복구 불가. chain `total_shares` vs DB latest 비교, originalPackageId/UpgradeCap type tag drift 의심 (project_gostop_drift_keeper.md) |
