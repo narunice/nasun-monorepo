@@ -244,7 +244,7 @@ function buildPriceLevels(
   let cumulativeTotal = 0;
 
   for (let i = 0; i < prices.length && i < quantities.length; i++) {
-    const price = formatPrice(prices[i], quoteDecimals);
+    const price = formatPrice(prices[i], quoteDecimals, baseDecimals);
     const quantity = formatQuantity(quantities[i], baseDecimals);
     cumulativeTotal += quantity;
 
@@ -259,12 +259,32 @@ function buildPriceLevels(
 }
 
 /**
- * Format price from raw value (accounting for decimals)
- * @param rawPrice - Raw price value
- * @param decimals - Quote token decimals (default: NUSDC = 6)
+ * DeepBook V3 raw-price scaling exponent.
+ * Raw price = human_price * 10^(quoteDecimals + 9 - baseDecimals).
+ * NSOL / NSN (baseDecimals = 9) collapse to 10^quoteDecimals.
+ * NBTC / NETH (baseDecimals = 8) need an extra factor of 10.
+ *
+ * TODO(SSOT): A duplicate of this function lives at
+ * apps/pado/bots/lib/config.ts::priceScaleExp. When the next pool with a new
+ * baseDecimals is added, extract both into a shared package (e.g.
+ * packages/deepbook-scale) and have both sides import it. Until then, any
+ * change here MUST be mirrored in the bots copy. See
+ * project_2026_05_19_pado_price_10x_regression for the asymmetry incident.
+ * A lockstep test against the shared fixture file is in deepbook.test.ts.
  */
-export function formatPrice(rawPrice: bigint, decimals: number = TOKENS.NUSDC.decimals): number {
-  return Number(rawPrice) / Math.pow(10, decimals);
+export function priceScaleExp(quoteDecimals: number, baseDecimals: number): number {
+  return quoteDecimals + 9 - baseDecimals;
+}
+
+/**
+ * Decode a DeepBook V3 raw price into a human USD price.
+ */
+export function formatPrice(
+  rawPrice: bigint,
+  quoteDecimals: number = TOKENS.NUSDC.decimals,
+  baseDecimals: number = TOKENS.NBTC.decimals,
+): number {
+  return Number(rawPrice) / Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals));
 }
 
 /**
@@ -277,13 +297,15 @@ export function formatQuantity(rawQuantity: bigint, decimals: number = TOKENS.NB
 }
 
 /**
- * Convert price to raw value
- * @param price - Human-readable price
- * @param decimals - Quote token decimals (default: NUSDC = 6)
+ * Encode a human USD price into a DeepBook V3 raw price.
  */
-export function priceToRaw(price: number, decimals: number = TOKENS.NUSDC.decimals): bigint {
+export function priceToRaw(
+  price: number,
+  quoteDecimals: number = TOKENS.NUSDC.decimals,
+  baseDecimals: number = TOKENS.NBTC.decimals,
+): bigint {
   // Use Math.round to avoid floating-point precision errors
-  return BigInt(Math.round(price * Math.pow(10, decimals)));
+  return BigInt(Math.round(price * Math.pow(10, priceScaleExp(quoteDecimals, baseDecimals))));
 }
 
 /**
@@ -617,7 +639,7 @@ export async function getPoolMidPrice(pool: PoolConfig = DEFAULT_POOL): Promise<
       // Parse u64 from bytes
       const bytes = result.results[0].returnValues[0][0];
       const price = parseU64FromBytes(bytes);
-      return formatPrice(BigInt(price), pool.quoteToken.decimals);
+      return formatPrice(BigInt(price), pool.quoteToken.decimals, pool.baseToken.decimals);
     }
 
     return 0;
@@ -775,7 +797,7 @@ function parseOrderVector(
 
       // 수량이 0이면 이미 체결된 주문이므로 제외
       const quantity = formatQuantity(rawQuantity, baseDecimals);
-      const price = formatPrice(rawPrice, quoteDecimals);
+      const price = formatPrice(rawPrice, quoteDecimals, baseDecimals);
 
       if (quantity > 0) {
         orders.push({
@@ -879,19 +901,20 @@ export function getMinQuantity(pool: PoolConfig): number {
  * @example NASUN/NUSDC 풀: $0.001
  */
 export function getMinPrice(pool: PoolConfig): number {
-  return pool.tickSize / Math.pow(10, pool.quoteToken.decimals);
+  const exp = priceScaleExp(pool.quoteToken.decimals, pool.baseToken.decimals);
+  return pool.tickSize / Math.pow(10, exp);
 }
 
 /** Snap price down to nearest tick multiple (integer arithmetic to avoid float errors) */
 export function snapToTick(price: number, pool: PoolConfig): number {
   if (price <= 0) return 0;
-  const decimals = pool.quoteToken.decimals;
-  const priceRaw = Math.round(price * Math.pow(10, decimals));
+  const exp = priceScaleExp(pool.quoteToken.decimals, pool.baseToken.decimals);
+  const priceRaw = Math.round(price * Math.pow(10, exp));
   const snapped = priceRaw - (priceRaw % pool.tickSize);
   if (snapped === 0 && priceRaw > 0) {
-    return pool.tickSize / Math.pow(10, decimals);
+    return pool.tickSize / Math.pow(10, exp);
   }
-  return snapped / Math.pow(10, decimals);
+  return snapped / Math.pow(10, exp);
 }
 
 /** Snap quantity down to nearest lot-size multiple (integer arithmetic to avoid float errors) */
@@ -960,7 +983,8 @@ export function validatePrice(price: number, pool: PoolConfig): ValidationResult
 
   // Integer arithmetic to avoid floating-point modulo errors
   // e.g. 64900.0 % 0.1 in JS produces 0.0999... instead of 0
-  const priceRaw = Math.round(price * Math.pow(10, pool.quoteToken.decimals));
+  const exp = priceScaleExp(pool.quoteToken.decimals, pool.baseToken.decimals);
+  const priceRaw = Math.round(price * Math.pow(10, exp));
   if (priceRaw % pool.tickSize !== 0) {
     const minPrice = getMinPrice(pool);
     return {
