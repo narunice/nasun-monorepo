@@ -82,17 +82,66 @@ export function dailySpentQuoteRaw(now = Date.now()): bigint {
 }
 
 // ===== Balance fetch =====
+//
+// Returned totals are the union of:
+//   - the agent's owned wallet (used for NSN gas; legacy stuck trade coins
+//     for pre-escrow-funding agents also live here)
+//   - the on-chain AgentEscrow's `dynamic_field<TypeName, Balance<T>>` (where
+//     `withdraw_for_action` actually sources from)
+//
+// Without merging the escrow side, the trader/analyst prompt would report
+// "0 NUSDC" right after a successful escrow deposit and refuse to BUY — the
+// exact behaviour the 2026-05-20 Santa-agent Telegram chat exposed:
+//
+//   "you have NUSDC in escrow" -> agent: "NUSDC balance is 0, cannot trade"
+//
+// On-chain spend authority lives on the escrow side, so it is the truth for
+// decision making. Wallet positions are added on top because legacy agents
+// (created before phase-1 escrow funding shipped) hold trade coins there.
 export async function fetchAgentBalances(
   client: SuiClient,
   agentAddr: string,
+  escrowId?: string | null,
 ): Promise<{ nbtcRaw: bigint; nusdcRaw: bigint }> {
   const [nbtc, nusdc] = await Promise.all([
     client.getBalance({ owner: agentAddr, coinType: TRADER_CONFIG.baseType }),
     client.getBalance({ owner: agentAddr, coinType: TRADER_CONFIG.quoteType }),
   ]);
+  let escrowNbtcRaw = 0n;
+  let escrowNusdcRaw = 0n;
+  if (escrowId) {
+    try {
+      const dfs = await client.getDynamicFields({ parentId: escrowId, limit: 50 });
+      if (dfs.data.length > 0) {
+        const objs = await client.multiGetObjects({
+          ids: dfs.data.map((d) => d.objectId),
+          options: { showContent: true },
+        });
+        for (const obj of objs) {
+          const content = obj.data?.content as
+            | { fields?: { value?: string | number; name?: { fields?: { name?: string } } } }
+            | undefined;
+          const rawName = content?.fields?.name?.fields?.name;
+          if (!rawName) continue;
+          const typeName = rawName.startsWith('0x') ? rawName : `0x${rawName}`;
+          const value = BigInt(content?.fields?.value ?? '0');
+          if (typeName === TRADER_CONFIG.baseType) {
+            escrowNbtcRaw = value;
+          } else if (typeName === TRADER_CONFIG.quoteType) {
+            escrowNusdcRaw = value;
+          }
+        }
+      }
+    } catch (err) {
+      // Soft-fail: escrow read failure should not break the cycle, but it
+      // does degrade the decision quality. Log so it's diagnosable.
+      // eslint-disable-next-line no-console
+      console.warn(`[trader] escrow balance read failed: ${(err as Error).message}`);
+    }
+  }
   return {
-    nbtcRaw: BigInt(nbtc.totalBalance),
-    nusdcRaw: BigInt(nusdc.totalBalance),
+    nbtcRaw: BigInt(nbtc.totalBalance) + escrowNbtcRaw,
+    nusdcRaw: BigInt(nusdc.totalBalance) + escrowNusdcRaw,
   };
 }
 

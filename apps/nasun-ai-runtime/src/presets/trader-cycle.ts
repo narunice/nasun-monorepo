@@ -449,10 +449,14 @@ export async function runTraderCycle(
     `Budget: ${budget.balance} balance, ${budget.totalSpent} spent, ${budget.requestCount} requests`,
   );
 
-  // 2. Balances + market context
-  const balances = await deps.fetchAgentBalances(client, agentAddr);
+  // 2. Balances + market context. Pass escrowId so the helper unions the
+  // on-chain AgentEscrow side (where trade capital actually lives) with the
+  // agent wallet (gas + any legacy stuck coins). Without this the prompt
+  // reports 0 NUSDC right after a successful escrow deposit and the LLM
+  // refuses to BUY — the 2026-05-20 Santa-agent reproduction.
+  const balances = await deps.fetchAgentBalances(client, agentAddr, trader.escrowId);
   deps.log(
-    `Trader balances: ${(Number(balances.nbtcRaw) / 1e8).toFixed(8)} NBTC, ${(Number(balances.nusdcRaw) / 1e6).toFixed(6)} NUSDC`,
+    `Trader balances: ${(Number(balances.nbtcRaw) / 1e8).toFixed(8)} NBTC, ${(Number(balances.nusdcRaw) / 1e6).toFixed(6)} NUSDC (wallet+escrow)`,
   );
   const dailySpentRaw = deps.dailySpentQuoteRaw();
   const recent = deps.recentTrades();
