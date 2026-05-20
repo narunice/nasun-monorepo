@@ -12,6 +12,7 @@ import { useBalanceStore } from '../store/useBalanceStore';
 import { getSuiClient } from '../lib/sui-client';
 import { findNusdcCoins } from '../features/shared/coin-utils';
 import { fmtUsdc } from '../features/dashboard/format';
+import { getExplorerObjectUrl } from '../lib/explorer';
 import {
   buildProvideLiquidity,
   buildRequestWithdraw,
@@ -439,10 +440,36 @@ function PositionCard({ position: p }: { position: LpPosition }) {
   return (
     <li className="rounded-lg border border-gold-subtle bg-ink-900/40 p-4 space-y-2">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs font-mono text-neutral-300 break-all">
-          {p.lp_token_id.slice(0, 14)}…{p.lp_token_id.slice(-6)}
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-mono text-neutral-100 break-all">
+            {p.lp_token_id.slice(0, 14)}…{p.lp_token_id.slice(-6)}
+          </span>
+          <a
+            href={getExplorerObjectUrl(p.lp_token_id)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="View LPToken on Nasun Explorer"
+            aria-label="View LPToken on Nasun Explorer"
+            className="inline-flex items-center text-neutral-300 hover:text-gold-200 transition-colors"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="w-4 h-4"
+              aria-hidden="true"
+            >
+              <path d="M14 3h7v7" />
+              <path d="M10 14L21 3" />
+              <path d="M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5" />
+            </svg>
+          </a>
         </div>
-        <div className="text-xs text-neutral-300">
+        <div className="text-sm text-neutral-300">
           Soulbound · not transferable
         </div>
       </div>
