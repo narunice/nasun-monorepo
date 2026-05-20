@@ -244,6 +244,13 @@ export interface RiskMetricsBlock {
    */
   top_lp_5: TopLpEntry[];
   /**
+   * Aggregate residual for LPs ranked outside top 5. Null (or absent) when
+   * lp_count ≤ 5. share_pct_bps is computed as `10_000 - sum(top5.share_pct_bps)`
+   * so the UI's top5 + Other stack sums to exactly 100%. Aggregate-only, no
+   * per-wallet attribution.
+   */
+  other_lp_summary?: OtherLpSummary | null;
+  /**
    * Single-LP concentration signal for the rank-1 LP. Thresholds: ≥8000 bps =
    * 'extreme', ≥5000 bps = 'concentrated', else 'healthy'. 'unknown' when no
    * LP rows yet. Used by the dashboard to surface a badge when one wallet
@@ -272,6 +279,15 @@ export interface TopLpEntry {
   /** Net shares as a BigInt-compatible string. */
   shares: string;
   /** Share of total positive net shares, in basis points (10_000 = 100%). */
+  share_pct_bps: number;
+}
+
+export interface OtherLpSummary {
+  /** Number of LPs not in top 5 (= total positive LP count − top5 entries). */
+  lp_count: number;
+  /** Sum of net shares across all non-top5 LPs. BigInt-compatible string. */
+  shares: string;
+  /** Residual share in basis points so top5 + Other sums to exactly 10_000. */
   share_pct_bps: number;
 }
 

@@ -72,6 +72,15 @@ export interface TopLpEntry {
   share_pct_bps: number;
 }
 
+export interface OtherLpSummary {
+  /** Number of LPs not in top 5 (= total positive LP count − top5 entries). */
+  lp_count: number;
+  /** Sum of net shares across all non-top5 LPs. BigInt string. */
+  shares: string;
+  /** Residual share in basis points so top5 + Other sums to exactly 10_000. */
+  share_pct_bps: number;
+}
+
 export interface RiskMetricsResult {
   /** Pool balance from chain (NUSDC raw units), echoed from bankrollPnl 7d call. */
   tvl_raw: string;
@@ -133,6 +142,14 @@ export interface RiskMetricsResult {
    * own rank via /api/gostop/me/lp/position. Order is rank ASC.
    */
   top_lp_5: TopLpEntry[];
+  /**
+   * Aggregate residual for LPs ranked outside top 5. Present only when more
+   * than 5 LPs exist; absent or null when total LP count ≤ 5. share_pct_bps
+   * is computed as `10_000 - SUM(top_lp_5.share_pct_bps)` so the UI's visual
+   * stack (top5 + Other) always sums to exactly 100%. N7-safe because it is
+   * an aggregate, never a single-wallet attribution.
+   */
+  other_lp_summary: OtherLpSummary | null;
   /**
    * Single-LP concentration signal. `top1_share_pct_bps` is the rank-1 LP's
    * share of *total positive net shares* (NOT including the operator seed);
@@ -275,6 +292,8 @@ const CONCENTRATION_WARN_BPS    = 5_000;
 
 interface TopLp5Result {
   entries: TopLpEntry[];
+  /** Aggregate residual for LPs ranked outside top 5. Null when lp_count ≤ 5. */
+  other: OtherLpSummary | null;
   top1_share_pct_bps: number;
   status: 'healthy' | 'concentrated' | 'extreme' | 'unknown';
   lp_count: number;
@@ -338,6 +357,22 @@ async function topLp5(): Promise<TopLp5Result> {
     };
   });
 
+  // Residual "Other" bucket so the UI's top5 + Other stack sums to 100%.
+  // share_pct_bps is derived from `10_000 - sum(top5.share_pct_bps)` rather
+  // than recomputing from (other_shares * 10_000 / totalShares) — the former
+  // absorbs all per-row truncation losses into Other, guaranteeing visual
+  // closure. Without this, 7 LPs at ~98.8% top1 round to 9997 bps total.
+  let other: OtherLpSummary | null = null;
+  if (lpCount > entries.length && totalShares > 0n) {
+    const top5SharesSum = entries.reduce((acc, e) => acc + BigInt(e.shares), 0n);
+    const top5PctSum = entries.reduce((acc, e) => acc + e.share_pct_bps, 0);
+    other = {
+      lp_count: lpCount - entries.length,
+      shares: (totalShares - top5SharesSum).toString(),
+      share_pct_bps: Math.max(0, 10_000 - top5PctSum),
+    };
+  }
+
   const top1 = entries[0]?.share_pct_bps ?? 0;
   let status: TopLp5Result['status'];
   if (lpCount === 0)                            status = 'unknown';
@@ -345,7 +380,7 @@ async function topLp5(): Promise<TopLp5Result> {
   else if (top1 >= CONCENTRATION_WARN_BPS)      status = 'concentrated';
   else                                          status = 'healthy';
 
-  return { entries, top1_share_pct_bps: top1, status, lp_count: lpCount };
+  return { entries, other, top1_share_pct_bps: top1, status, lp_count: lpCount };
 }
 
 /**
@@ -544,6 +579,7 @@ export async function riskMetrics(opts: { asOfMs?: number } = {}): Promise<RiskM
     daily_pnl_volatility_30d_raw: mv.volatility30dRaw,
     longest_house_losing_streak_days: mv.longestLosingStreakDays,
     top_lp_5: topLps.entries,
+    other_lp_summary: topLps.other,
     lp_concentration: {
       top1_share_pct_bps: topLps.top1_share_pct_bps,
       status: topLps.status,
