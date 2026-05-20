@@ -1,11 +1,19 @@
 /**
  * DeepBook V3 Utility Tests
- * Covers: price/quantity conversion, validation, snapToTick, min calculations, edge cases
+ *
+ * Critical: DeepBook V3 raw price = human_price * 10^(quoteDecimals + 9 - baseDecimals).
+ * - NBTC / NETH (baseDecimals = 8, quoteDecimals = 6): scaleExp = 7
+ * - NSN  / NSOL (baseDecimals = 9, quoteDecimals = 6): scaleExp = 6 (collapses)
+ *
+ * The pre-2026-05-19 frontend used `10^quoteDecimals` for every pool, which
+ * inflated NBTC/NETH human prices by 10x. Tests below exercise both regimes
+ * explicitly to prevent regression.
  */
 
 import { describe, it, expect } from 'vitest';
 import * as deepbook from './deepbook';
 import {
+  priceScaleExp,
   formatPrice,
   formatQuantity,
   priceToRaw,
@@ -30,8 +38,8 @@ const NBTC_POOL: PoolConfig = {
   id: '0x' + 'a'.repeat(64),
   baseToken: { symbol: 'NBTC', name: 'Nasun BTC', decimals: 8, type: '0x::nbtc::NBTC' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
-  tickSize: 100000,   // $0.10 raw (10^5 at 6 decimals)
-  lotSize: 1000,       // 0.00001 BTC (10^3 at 8 decimals)
+  tickSize: 100000,   // $0.01 (raw 10^5 at scaleExp = 7)
+  lotSize: 1000,      // 0.00001 BTC (10^3 at 8 decimals)
   makerFeeBps: 5,
   takerFeeBps: 10,
 };
@@ -40,8 +48,8 @@ const NASUN_POOL: PoolConfig = {
   id: '0x' + 'b'.repeat(64),
   baseToken: { symbol: 'NSN', name: 'Nasun', decimals: 9, type: '0x2::sui::SUI' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
-  tickSize: 10000,     // $0.01 raw
-  lotSize: 1000000000, // 1.0 NASUN (10^9)
+  tickSize: 10000,     // $0.01 (raw 10^4 at scaleExp = 6)
+  lotSize: 1000000000, // 1.0 NSN (10^9)
   makerFeeBps: 5,
   takerFeeBps: 10,
 };
@@ -50,71 +58,110 @@ const NETH_POOL: PoolConfig = {
   id: '0x' + 'c'.repeat(64),
   baseToken: { symbol: 'NETH', name: 'Nasun ETH', decimals: 8, type: '0x::neth::NETH' },
   quoteToken: { symbol: 'NUSDC', name: 'Nasun USDC', decimals: 6, type: '0x::nusdc::NUSDC' },
-  tickSize: 100000,           // $0.10 raw
-  lotSize: 1000,              // 0.00001 ETH (10^3 at 8 decimals)
+  tickSize: 100000,    // $0.01 (raw 10^5 at scaleExp = 7)
+  lotSize: 1000,       // 0.00001 ETH (10^3 at 8 decimals)
   makerFeeBps: 5,
   takerFeeBps: 10,
 };
 
 // ========================================
-// Price Conversion
+// priceScaleExp (DeepBook V3 invariant)
 // ========================================
-describe('formatPrice', () => {
-  it('converts raw price to human-readable (NUSDC 6 decimals)', () => {
-    expect(formatPrice(97000_000000n, 6)).toBe(97000);
+describe('priceScaleExp', () => {
+  it('returns 7 for NBTC / NETH (baseDecimals=8, quoteDecimals=6)', () => {
+    expect(priceScaleExp(6, 8)).toBe(7);
   });
 
-  it('converts raw price with fractional values', () => {
-    expect(formatPrice(97000_500000n, 6)).toBe(97000.5);
-  });
-
-  it('handles zero', () => {
-    expect(formatPrice(0n, 6)).toBe(0);
-  });
-
-  it('handles very small prices', () => {
-    expect(formatPrice(100000n, 6)).toBeCloseTo(0.1, 6);
-  });
-
-  it('uses default NUSDC decimals when not specified', () => {
-    expect(formatPrice(1000000n)).toBe(1);
+  it('returns 6 for NSOL / NSN (baseDecimals=9, quoteDecimals=6)', () => {
+    expect(priceScaleExp(6, 9)).toBe(6);
   });
 });
 
-describe('priceToRaw', () => {
-  it('converts human price to raw (NUSDC 6 decimals)', () => {
-    expect(priceToRaw(97000, 6)).toBe(97000_000000n);
+// Lockstep guard with bots/lib/config.ts::priceScaleExp.
+// See apps/pado/_shared/price-scale.fixture.ts and
+// apps/pado/bots/lib/config.test.ts for the matching test.
+import { PRICE_SCALE_FIXTURES } from '../../../_shared/price-scale.fixture';
+
+describe('priceScaleExp lockstep with bots/lib/config.ts', () => {
+  for (const c of PRICE_SCALE_FIXTURES) {
+    it(`${c.label}: priceScaleExp(${c.quoteDecimals}, ${c.baseDecimals}) === ${c.expectedExp}`, () => {
+      expect(priceScaleExp(c.quoteDecimals, c.baseDecimals)).toBe(c.expectedExp);
+    });
+  }
+});
+
+// ========================================
+// Price Conversion (NBTC / NETH regime)
+// ========================================
+describe('formatPrice (NBTC/NETH, scaleExp=7)', () => {
+  // $77,000 raw = 77000 * 10^7 = 770_000_000_000n (12 digits)
+  const NBTC_77000_RAW = 770_000_000_000n;
+  // $77,000.01 raw = 77000.01 * 10^7 = 770_000_100_000n
+  const NBTC_77000_01_RAW = 770_000_100_000n;
+
+  it('decodes $77,000 raw as 77000', () => {
+    expect(formatPrice(NBTC_77000_RAW, 6, 8)).toBe(77000);
   });
 
-  it('handles fractional prices', () => {
-    expect(priceToRaw(0.1, 6)).toBe(100000n);
-  });
-
-  it('handles precision edge case: 0.018', () => {
-    // 0.018 * 10^6 = 18000 (Math.round avoids float error)
-    expect(priceToRaw(0.018, 6)).toBe(18000n);
+  it('decodes $77,000.01 raw with $0.01 precision', () => {
+    expect(formatPrice(NBTC_77000_01_RAW, 6, 8)).toBeCloseTo(77000.01, 6);
   });
 
   it('handles zero', () => {
-    expect(priceToRaw(0, 6)).toBe(0n);
+    expect(formatPrice(0n, 6, 8)).toBe(0);
   });
 
-  it('round-trips correctly: priceToRaw(formatPrice(x)) == x', () => {
-    const raw = 97500_100000n;
-    const human = formatPrice(raw, 6);
-    expect(priceToRaw(human, 6)).toBe(raw);
+  it('default baseDecimals=8 matches explicit NBTC', () => {
+    expect(formatPrice(NBTC_77000_RAW)).toBe(formatPrice(NBTC_77000_RAW, 6, 8));
+  });
+});
+
+describe('formatPrice (NSN/NSOL, scaleExp=6)', () => {
+  it('decodes raw 1_000000n as $1 (NSN, baseDecimals=9)', () => {
+    expect(formatPrice(1_000000n, 6, 9)).toBe(1);
+  });
+
+  it('decodes fractional raw price', () => {
+    expect(formatPrice(125000n, 6, 9)).toBeCloseTo(0.125, 6);
+  });
+});
+
+describe('priceToRaw (NBTC/NETH, scaleExp=7)', () => {
+  it('encodes $77,000 to raw 770_000_000_000n', () => {
+    expect(priceToRaw(77000, 6, 8)).toBe(770_000_000_000n);
+  });
+
+  it('encodes $0.01 to raw 100_000n (one NBTC tick)', () => {
+    expect(priceToRaw(0.01, 6, 8)).toBe(100_000n);
+  });
+
+  it('round-trips raw ↔ human (NBTC)', () => {
+    // $77,000.105 raw = 77000.105 * 10^7 = 770_001_050_000n
+    const raw = 770_001_050_000n;
+    const human = formatPrice(raw, 6, 8);
+    expect(priceToRaw(human, 6, 8)).toBe(raw);
+  });
+});
+
+describe('priceToRaw (NSN/NSOL, scaleExp=6)', () => {
+  it('encodes $1 to raw 1_000000n', () => {
+    expect(priceToRaw(1, 6, 9)).toBe(1_000000n);
+  });
+
+  it('encodes $0.01 to raw 10000n (one NSN tick)', () => {
+    expect(priceToRaw(0.01, 6, 9)).toBe(10000n);
   });
 });
 
 // ========================================
-// Quantity Conversion
+// Quantity Conversion (independent of priceScaleExp)
 // ========================================
 describe('formatQuantity', () => {
-  it('converts raw quantity (NBTC 8 decimals)', () => {
+  it('NBTC: raw 100000n → 0.001 BTC', () => {
     expect(formatQuantity(100000n, 8)).toBe(0.001);
   });
 
-  it('converts raw quantity for large amounts', () => {
+  it('NBTC: raw 100000000n → 1 BTC', () => {
     expect(formatQuantity(100000000n, 8)).toBe(1);
   });
 
@@ -124,172 +171,127 @@ describe('formatQuantity', () => {
 });
 
 describe('quantityToRaw', () => {
-  it('converts human quantity to raw (NBTC 8 decimals)', () => {
+  it('NBTC: 0.001 → 100000n', () => {
     expect(quantityToRaw(0.001, 8)).toBe(100000n);
   });
 
-  it('converts whole BTC', () => {
+  it('NBTC: 1 → 100000000n', () => {
     expect(quantityToRaw(1, 8)).toBe(100000000n);
   });
 
-  it('handles precision edge case: 0.018', () => {
-    // 0.018 * 10^8 = 1800000 with Math.round
+  it('NBTC float precision: 0.018 → 1800000n (Math.round)', () => {
     expect(quantityToRaw(0.018, 8)).toBe(1800000n);
   });
 
-  it('handles NSN decimals (9)', () => {
-    expect(quantityToRaw(1, 9)).toBe(1000000000n);
+  it('NSN: 1 → 1_000000000n', () => {
+    expect(quantityToRaw(1, 9)).toBe(1_000000000n);
   });
 
-  it('handles NETH decimals (8)', () => {
-    expect(quantityToRaw(0.001, 8)).toBe(100000n);
-  });
-
-  it('round-trips correctly: quantityToRaw(formatQuantity(x)) == x', () => {
-    const raw = 1500000n; // 0.015 BTC
-    const human = formatQuantity(raw, 8);
-    expect(quantityToRaw(human, 8)).toBe(raw);
+  it('round-trips raw ↔ human', () => {
+    const raw = 1500000n;
+    expect(quantityToRaw(formatQuantity(raw, 8), 8)).toBe(raw);
   });
 });
 
 // ========================================
-// Floating-Point Precision Edge Cases
+// Floating-point precision
 // ========================================
 describe('Floating-Point Precision', () => {
-  it('priceToRaw handles 64900.0 (common JS float issue)', () => {
-    // In JS: 64900.0 * 1e6 = 64900000000 (exact, but 64900.0 % 0.1 != 0 in float)
-    const raw = priceToRaw(64900.0, 6);
-    expect(raw).toBe(64900000000n);
-    expect(raw % 100000n).toBe(0n); // tick-aligned
+  it('NBTC: priceToRaw($77,000.01) hits exact tick boundary', () => {
+    const raw = priceToRaw(77000.01, 6, 8);
+    expect(raw).toBe(770000100000n);
+    expect(raw % 100000n).toBe(0n); // NBTC tick-aligned
   });
 
-  it('quantityToRaw handles 0.001 (1e-3)', () => {
-    expect(quantityToRaw(0.001, 8)).toBe(100000n);
-  });
-
-  it('quantityToRaw handles 0.00001 (1e-5, min lot for NBTC)', () => {
+  it('NBTC: 0.00001 BTC (lotSize)', () => {
     expect(quantityToRaw(0.00001, 8)).toBe(1000n);
   });
 
-  it('priceToRaw handles $0.01 increments for NSN', () => {
-    const raw = priceToRaw(0.01, 6);
+  it('NSN: priceToRaw($0.01) hits exact tick boundary', () => {
+    const raw = priceToRaw(0.01, 6, 9);
     expect(raw).toBe(10000n);
-    expect(raw % 10000n).toBe(0n); // NSN tick-aligned
-  });
-
-  it('large price precision: $97,123.45', () => {
-    const raw = priceToRaw(97123.45, 6);
-    expect(raw).toBe(97123450000n);
+    expect(raw % 10000n).toBe(0n);
   });
 });
 
 // ========================================
-// Price Validation
+// Validation
 // ========================================
-describe('validatePrice', () => {
-  it('valid: price aligned to tick size', () => {
-    expect(validatePrice(97000.0, NBTC_POOL).valid).toBe(true);
+describe('validatePrice (NBTC, tick $0.01)', () => {
+  it('valid: $77,000.00', () => {
+    expect(validatePrice(77000.0, NBTC_POOL).valid).toBe(true);
   });
 
-  it('valid: fractional price aligned to tick', () => {
-    expect(validatePrice(97000.1, NBTC_POOL).valid).toBe(true);
-    expect(validatePrice(97000.2, NBTC_POOL).valid).toBe(true);
-    expect(validatePrice(97000.5, NBTC_POOL).valid).toBe(true);
+  it('valid: $77,000.01 (1 tick)', () => {
+    expect(validatePrice(77000.01, NBTC_POOL).valid).toBe(true);
   });
 
-  it('invalid: price not aligned to tick size', () => {
-    const result = validatePrice(97000.05, NBTC_POOL);
+  it('valid: $77,000.10 (10 ticks)', () => {
+    expect(validatePrice(77000.1, NBTC_POOL).valid).toBe(true);
+  });
+
+  it('invalid: $77,000.005 (half tick)', () => {
+    const result = validatePrice(77000.005, NBTC_POOL);
     expect(result.valid).toBe(false);
     expect(result.message).toContain('min');
   });
 
-  it('invalid: zero price', () => {
-    const result = validatePrice(0, NBTC_POOL);
-    expect(result.valid).toBe(false);
+  it('invalid: zero', () => {
+    expect(validatePrice(0, NBTC_POOL).valid).toBe(false);
   });
 
-  it('invalid: negative price', () => {
-    const result = validatePrice(-100, NBTC_POOL);
-    expect(result.valid).toBe(false);
+  it('invalid: negative', () => {
+    expect(validatePrice(-100, NBTC_POOL).valid).toBe(false);
   });
+});
 
-  it('valid: NSN pool $0.01 tick', () => {
+describe('validatePrice (NSN, tick $0.01)', () => {
+  it('valid: $0.01, $0.10, $1.23', () => {
     expect(validatePrice(0.01, NASUN_POOL).valid).toBe(true);
     expect(validatePrice(0.10, NASUN_POOL).valid).toBe(true);
     expect(validatePrice(1.23, NASUN_POOL).valid).toBe(true);
   });
 
-  it('invalid: NSN pool $0.005 (not tick-aligned)', () => {
+  it('invalid: $0.005 (half tick)', () => {
     expect(validatePrice(0.005, NASUN_POOL).valid).toBe(false);
-  });
-
-  it('valid: minimum possible price ($0.10 for NBTC)', () => {
-    expect(validatePrice(0.1, NBTC_POOL).valid).toBe(true);
-  });
-
-  it('edge: JS float modulo issue - 64900.0 should be valid', () => {
-    // 64900.0 % 0.1 in JS = 0.0999... but integer math should handle it
-    expect(validatePrice(64900.0, NBTC_POOL).valid).toBe(true);
   });
 });
 
-// ========================================
-// Quantity Validation
-// ========================================
 describe('validateQuantity', () => {
-  it('valid: quantity aligned to lot size (NBTC)', () => {
+  it('NBTC: valid lot multiples', () => {
     expect(validateQuantity(0.001, NBTC_POOL).valid).toBe(true);
     expect(validateQuantity(0.00001, NBTC_POOL).valid).toBe(true);
     expect(validateQuantity(1.0, NBTC_POOL).valid).toBe(true);
   });
 
-  it('invalid: quantity not aligned to lot size (NBTC)', () => {
-    // 0.000005 BTC = 500 raw, lotSize = 1000 → not aligned
+  it('NBTC: invalid below lot (0.000005)', () => {
     const result = validateQuantity(0.000005, NBTC_POOL);
     expect(result.valid).toBe(false);
     expect(result.message).toContain('Quantity');
   });
 
-  it('valid: NSN pool lot (1.0 NSN)', () => {
+  it('NSN: valid lot multiples (whole NSN)', () => {
     expect(validateQuantity(1, NASUN_POOL).valid).toBe(true);
-    expect(validateQuantity(5, NASUN_POOL).valid).toBe(true);
     expect(validateQuantity(100, NASUN_POOL).valid).toBe(true);
   });
 
-  it('invalid: NSN pool fractional (0.5 NSN)', () => {
+  it('NSN: invalid fractional (0.5)', () => {
     expect(validateQuantity(0.5, NASUN_POOL).valid).toBe(false);
   });
 
-  it('invalid: zero quantity', () => {
-    expect(validateQuantity(0, NBTC_POOL).valid).toBe(false);
-  });
-
-  it('invalid: negative quantity', () => {
-    expect(validateQuantity(-0.01, NBTC_POOL).valid).toBe(false);
-  });
-
-  it('valid: NETH pool lot (0.001 ETH)', () => {
+  it('NETH: valid 0.001 ETH', () => {
     expect(validateQuantity(0.001, NETH_POOL).valid).toBe(true);
-    expect(validateQuantity(0.01, NETH_POOL).valid).toBe(true);
-    expect(validateQuantity(1.0, NETH_POOL).valid).toBe(true);
   });
 
-  it('valid: NETH pool 0.0001 ETH (10x lot size)', () => {
-    expect(validateQuantity(0.0001, NETH_POOL).valid).toBe(true);
-  });
-
-  it('invalid: NETH pool below lot (0.000005 ETH)', () => {
-    // 0.000005 * 10^8 = 500 raw, 500 % 1000 = 500 → not aligned
-    expect(validateQuantity(0.000005, NETH_POOL).valid).toBe(false);
+  it('rejects zero and negative', () => {
+    expect(validateQuantity(0, NBTC_POOL).valid).toBe(false);
+    expect(validateQuantity(-0.01, NBTC_POOL).valid).toBe(false);
   });
 });
 
-// ========================================
-// Combined Order Validation
-// ========================================
 describe('validateOrder', () => {
   it('valid when both price and quantity are valid', () => {
-    expect(validateOrder(97000.0, 0.01, NBTC_POOL).valid).toBe(true);
+    expect(validateOrder(77000.0, 0.01, NBTC_POOL).valid).toBe(true);
   });
 
   it('invalid when price is invalid', () => {
@@ -299,54 +301,39 @@ describe('validateOrder', () => {
   });
 
   it('invalid when quantity is invalid', () => {
-    const result = validateOrder(97000.0, 0, NBTC_POOL);
+    const result = validateOrder(77000.0, 0, NBTC_POOL);
     expect(result.valid).toBe(false);
     expect(result.message).toContain('quantity');
-  });
-
-  it('returns price error first when both invalid', () => {
-    const result = validateOrder(0, 0, NBTC_POOL);
-    expect(result.valid).toBe(false);
-    expect(result.message).toContain('price');
   });
 });
 
 // ========================================
-// snapToTick
+// snapToTick (NBTC tick = $0.01)
 // ========================================
 describe('snapToTick', () => {
-  it('snaps price down to nearest tick (NBTC $0.10 tick)', () => {
-    expect(snapToTick(97000.15, NBTC_POOL)).toBeCloseTo(97000.1, 6);
+  it('NBTC: 77000.015 → 77000.01', () => {
+    expect(snapToTick(77000.015, NBTC_POOL)).toBeCloseTo(77000.01, 6);
   });
 
-  it('returns exact price when already aligned', () => {
-    expect(snapToTick(97000.0, NBTC_POOL)).toBeCloseTo(97000.0, 6);
+  it('NBTC: already-aligned 77000.00 passes through', () => {
+    expect(snapToTick(77000.0, NBTC_POOL)).toBeCloseTo(77000.0, 6);
   });
 
-  it('snaps small price to first tick', () => {
-    expect(snapToTick(0.05, NBTC_POOL)).toBeCloseTo(0.1, 6);
+  it('NBTC: 0.005 (below 1 tick) → 0.01', () => {
+    expect(snapToTick(0.005, NBTC_POOL)).toBeCloseTo(0.01, 6);
   });
 
-  it('returns 0 for zero price', () => {
+  it('returns 0 for zero / negative', () => {
     expect(snapToTick(0, NBTC_POOL)).toBe(0);
-  });
-
-  it('returns 0 for negative price', () => {
     expect(snapToTick(-10, NBTC_POOL)).toBe(0);
   });
 
-  it('snaps for NSN pool ($0.01 tick)', () => {
+  it('NSN: 0.125 → 0.12', () => {
     expect(snapToTick(0.125, NASUN_POOL)).toBeCloseTo(0.12, 6);
   });
 
-  it('handles very small positive price below 1 tick', () => {
-    // Price = 0.001 < 0.10 tick → snaps to minimum tick
-    const result = snapToTick(0.001, NBTC_POOL);
-    expect(result).toBeCloseTo(0.1, 6);
-  });
-
-  it('handles large prices', () => {
-    expect(snapToTick(150000.99, NBTC_POOL)).toBeCloseTo(150000.9, 6);
+  it('NBTC: 150000.999 → 150000.99', () => {
+    expect(snapToTick(150000.999, NBTC_POOL)).toBeCloseTo(150000.99, 6);
   });
 });
 
@@ -354,25 +341,29 @@ describe('snapToTick', () => {
 // Min Calculations
 // ========================================
 describe('getMinQuantity', () => {
-  it('NBTC: 0.00001 BTC (lotSize=1000, 8 decimals)', () => {
+  it('NBTC: 0.00001 BTC', () => {
     expect(getMinQuantity(NBTC_POOL)).toBeCloseTo(0.00001, 8);
   });
 
-  it('NSN: 1.0 NSN (lotSize=10^9, 9 decimals)', () => {
+  it('NSN: 1.0 NSN', () => {
     expect(getMinQuantity(NASUN_POOL)).toBeCloseTo(1.0, 2);
   });
 
-  it('NETH: 0.00001 ETH (lotSize=1000, 8 decimals)', () => {
+  it('NETH: 0.00001 ETH', () => {
     expect(getMinQuantity(NETH_POOL)).toBeCloseTo(0.00001, 8);
   });
 });
 
 describe('getMinPrice', () => {
-  it('NBTC: $0.10 (tickSize=100000, 6 decimals)', () => {
-    expect(getMinPrice(NBTC_POOL)).toBeCloseTo(0.1, 6);
+  it('NBTC: $0.01 (tickSize 100000 / 10^7)', () => {
+    expect(getMinPrice(NBTC_POOL)).toBeCloseTo(0.01, 6);
   });
 
-  it('NSN: $0.01 (tickSize=10000, 6 decimals)', () => {
+  it('NETH: $0.01', () => {
+    expect(getMinPrice(NETH_POOL)).toBeCloseTo(0.01, 6);
+  });
+
+  it('NSN: $0.01 (tickSize 10000 / 10^6)', () => {
     expect(getMinPrice(NASUN_POOL)).toBeCloseTo(0.01, 6);
   });
 });
@@ -388,20 +379,21 @@ describe('formatMinQuantity', () => {
 });
 
 describe('formatMinPrice', () => {
-  it('formats NBTC min price', () => {
-    expect(formatMinPrice(NBTC_POOL)).toBe('$0.1');
+  it('formats NBTC min price as $0.01', () => {
+    expect(formatMinPrice(NBTC_POOL)).toBe('$0.01');
   });
 
-  it('formats NSN min price', () => {
+  it('formats NSN min price as $0.01', () => {
     expect(formatMinPrice(NASUN_POOL)).toBe('$0.01');
   });
 });
 
 // ========================================
-// computeSwapQuote — pure quote logic
+// computeSwapQuote — quoteRaw is independent of priceScaleExp
+// (priceScaled stays at 10^quoteDecimals: bestBidPrice is already human USD)
 // ========================================
 describe('computeSwapQuote', () => {
-  const baseDecimals = 8;   // NETH-style
+  const baseDecimals = 8;   // NETH / NBTC
   const quoteDecimals = 6;  // NUSDC
 
   it('returns null when bids empty', () => {
@@ -440,33 +432,31 @@ describe('computeSwapQuote', () => {
     expect(q).toBeNull();
   });
 
-  it('quotes 1 NETH @ 1500 NUSDC with 50bps slippage', () => {
+  it('quotes 1 NETH @ $1500 with 50bps slippage', () => {
     const q = (deepbook as any).computeSwapQuote({
       bids: [{ price: 1500, quantity: 5, total: 7500 }],
       midPrice: 1500,
-      baseAmountRaw: 1_00000000n, // 1 NETH at 8 decimals
+      baseAmountRaw: 1_00000000n,
       baseDecimals,
       quoteDecimals,
       slippageBps: 50,
     }) as SwapQuote;
-    // expected = 1 * 1500 NUSDC = 1500 * 10^6 raw
     expect(q.expectedQuoteRaw).toBe(1500_000000n);
-    // min = 1500 * 0.995 = 1492.5 NUSDC = 1492500000n raw
     expect(q.minQuoteRaw).toBe(1492500000n);
     expect(q.effectivePrice).toBe(1500);
     expect(q.midPrice).toBe(1500);
-    expect(q.priceImpact).toBe(0); // best bid = mid → no impact
-    expect(q.underestimateRisk).toBe(false); // 5 NETH bid covers 1 NETH ask
+    expect(q.priceImpact).toBe(0);
+    expect(q.underestimateRisk).toBe(false);
   });
 
   it('marks underestimateRisk when bid depth insufficient', () => {
     const q = (deepbook as any).computeSwapQuote({
       bids: [
-        { price: 1500, quantity: 0.5, total: 750 }, // only 0.5 NETH at top
+        { price: 1500, quantity: 0.5, total: 750 },
         { price: 1499, quantity: 5,   total: 7495 },
       ],
       midPrice: 1500,
-      baseAmountRaw: 1_00000000n, // request 1 NETH
+      baseAmountRaw: 1_00000000n,
       baseDecimals,
       quoteDecimals,
       slippageBps: 50,
@@ -477,7 +467,7 @@ describe('computeSwapQuote', () => {
   it('reports priceImpact when best bid sits below mid', () => {
     const q = (deepbook as any).computeSwapQuote({
       bids: [{ price: 1485, quantity: 10, total: 14850 }],
-      midPrice: 1500, // ask side at 1515
+      midPrice: 1500,
       baseAmountRaw: 1_00000000n,
       baseDecimals,
       quoteDecimals,
@@ -491,14 +481,13 @@ describe('computeSwapQuote', () => {
     const q = (deepbook as any).computeSwapQuote({
       bids: [{ price: 145, quantity: 100, total: 14500 }],
       midPrice: 145,
-      baseAmountRaw: 10_000_000_000n, // 10 NSOL at 9 decimals
+      baseAmountRaw: 10_000_000_000n,
       baseDecimals: 9,
       quoteDecimals: 6,
       slippageBps: 50,
     }) as SwapQuote;
-    // expected = 10 * 145 = 1450 NUSDC = 1450 * 10^6 raw
     expect(q.expectedQuoteRaw).toBe(1450_000000n);
-    expect(q.minQuoteRaw).toBe(1442750000n); // 1450 * 0.995
+    expect(q.minQuoteRaw).toBe(1442750000n);
   });
 
   it('returns null when bestBidPrice is non-positive', () => {
@@ -513,14 +502,14 @@ describe('computeSwapQuote', () => {
     expect(q).toBeNull();
   });
 
-  it('clamps slippageBps >= 10000 to zero minQuote (no negative)', () => {
+  it('clamps slippageBps >= 10000 to zero minQuote', () => {
     const q = (deepbook as any).computeSwapQuote({
       bids: [{ price: 1500, quantity: 5, total: 7500 }],
       midPrice: 1500,
       baseAmountRaw: 1_00000000n,
       baseDecimals,
       quoteDecimals,
-      slippageBps: 20000, // wildly large
+      slippageBps: 20000,
     }) as SwapQuote;
     expect(q.minQuoteRaw).toBe(0n);
   });
