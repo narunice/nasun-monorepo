@@ -14,6 +14,7 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { fmtUsdc } from '../../dashboard/format';
+import { previewSharesForDeposit } from '../share-math';
 
 interface Props {
   open: boolean;
@@ -25,8 +26,6 @@ interface Props {
   sharePriceScaled: string | undefined;
   submitting: boolean;
 }
-
-const SHARE_PRICE_SCALE = 1_000_000_000n;
 
 export function ProvideLiquidityModal({
   open,
@@ -47,13 +46,14 @@ export function ProvideLiquidityModal({
 
   if (!open) return null;
 
-  // Expected shares = amount * 1e9 / share_price. Matches the bankroll_pool
-  // Move math (compute_shares_to_mint) so the preview lines up with chain.
+  // Expected shares preview. Simplified vs Move compute_shares_to_mint
+  // (no +1 virtual offset); the chain returns the authoritative count on
+  // tx confirm. previewSharesForDeposit handles the pps<=0 case.
   let expectedShares: string | null = null;
   try {
     const pps = sharePriceScaled ? BigInt(sharePriceScaled) : 0n;
     if (pps > 0n) {
-      expectedShares = ((amountBaseUnits * SHARE_PRICE_SCALE) / pps).toString();
+      expectedShares = previewSharesForDeposit(amountBaseUnits, pps).toString();
     }
   } catch {
     expectedShares = null;
