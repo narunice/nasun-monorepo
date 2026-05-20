@@ -55,6 +55,19 @@ export default function WheelPage() {
     WHEEL_SEGMENTS.length || 20,
   );
 
+  // Safety watchdog: if the spin animation stays in the 'loop' phase (waiting
+  // for tx confirm) longer than the RPC wallclock cap, force a graceful stop
+  // so the wheel cannot appear to spin forever. The underlying RPC path is
+  // bounded by useSignAndExecute's 30s timeout; this is a belt-and-braces
+  // catch for any unrelated stall (coin discovery, sign step, etc.).
+  useEffect(() => {
+    if (phase !== 'loop') return;
+    const id = setTimeout(() => {
+      void gracefulStop();
+    }, 40_000);
+    return () => clearTimeout(id);
+  }, [phase, gracefulStop]);
+
   const betDisplayNum = Math.max(
     MIN_NUSDC,
     Math.min(MAX_NUSDC, parseFloat(betDisplay) || MIN_NUSDC),

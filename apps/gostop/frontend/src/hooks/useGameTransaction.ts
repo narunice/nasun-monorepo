@@ -152,6 +152,7 @@ export function useGameTransaction() {
         } else if (message.includes('GasBalanceTooLow') || /Balance of gas object.*lower than the needed amount/i.test(message)) {
           userMessage = 'Not enough NASUN for gas. Please top up your wallet and try again.';
         } else if (
+          /RPC execute timed out/i.test(message) ||
           /(?:status code|HTTP)\s*:?\s*(?:0|5\d\d)/i.test(message) ||
           /Service (?:Temporarily )?Unavailable|Bad Gateway|Gateway Timeout/i.test(message) ||
           /ETIMEDOUT|ECONNRESET|ECONNREFUSED|EHOSTUNREACH|ENETUNREACH|EAI_AGAIN/i.test(message) ||

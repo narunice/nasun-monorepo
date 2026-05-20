@@ -124,6 +124,7 @@ NODE_ENV=production npx cdk deploy
 7. **visibility cache는 replica-coherent**: 사용자 visibility 변경 즉시 read replica에 반영 보장 (PR-0 follow-up).
 8. **LockConflict/ObjectVersionMismatch handling**: 다중 사용자가 동시에 같은 게임 round에 진입하면 owned object 경쟁 발생. retry 또는 명확한 user-facing error로 처리 (gostop/pado 공통 패턴).
 9. **Crash race condition fix는 negative ROI 평가됨**: nasun-website 측 crash와는 다른 코드베이스. gostop 측 crash는 운영 상태 — 단, 사고 발생 시 [admin-finalize-stuck-crash-round.ts](bots/admin-finalize-stuck-crash-round.ts)로 수동 복구.
+10. **Write RPC는 wallclock timeout, NEVER auto-retry**: `useSignAndExecute.signAndExecute()`가 `executeTransactionBlock` 호출을 30s `Promise.race`로 감싼다 ([useSignAndExecute.ts:25-30](frontend/src/hooks/useSignAndExecute.ts)). timeout 시 `"RPC execute timed out"` throw → `useGameTransaction` 에러 매퍼가 `RETRY_HINT` 토스트로 노출. **재시도는 절대 추가 금지** — 첫 호출이 실제로는 fullnode에 도달했을 수 있어 double-spend 위험. 이는 `packages/wallet/createRetryFetch`가 write를 retry 제외 정규식에 두는 이유와 같음. WheelPage는 추가로 phase=loop 40s 초과 시 `gracefulStop` watchdog을 돌려, RPC 외 stall(coin discovery·sign 단계 등)에서도 wheel이 영원히 회전하지 않도록 belt-and-braces 처리한다.
 
 ## 최근 30일 주요 변경 (요약)
 
