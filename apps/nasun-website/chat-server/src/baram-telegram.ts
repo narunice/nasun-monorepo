@@ -39,6 +39,7 @@ import {
 } from './baram-proposals.js';
 import { reserveCognitionSlot } from './baram-message-caps.js';
 import { checkBudgetSufficient } from './baram-budget-guard.js';
+import { describeFetchError } from './fetch-error.js';
 import type { Proposal } from '@nasun/baram-sdk';
 
 // ===== Telegram Bot API helpers =====
@@ -57,50 +58,72 @@ function tgApiUrl(method: string): string {
   return `https://api.telegram.org/bot${getBotToken()}/${method}`;
 }
 
+// Telegram outbound timeout. Without this, a stuck global undici dispatcher
+// could hang sendMessage indefinitely and pile up unhandled work on the
+// chat-server event loop. A 10s ceiling is well above Telegram p99 latency.
+const TG_TIMEOUT_MS = 10_000;
+
+// Single fetch helper for every Telegram outbound. Retry policy is explicit
+// per call site: sendMessage retries once on transport error (user-visible,
+// must arrive), but sendChatAction / answerCallbackQuery do not retry
+// (non-critical, idempotency on Telegram side is unclear). On final failure
+// we log err.cause so the next incident is diagnosable instead of an opaque
+// "fetch failed" — the 2026-05-19 incident burned 8h precisely because the
+// underlying TypeError cause was never surfaced.
+async function tgPost(
+  method: string,
+  body: Record<string, unknown>,
+  retry: boolean,
+  label: string,
+): Promise<void> {
+  const url = tgApiUrl(method);
+  const bodyJson = JSON.stringify(body);
+  const attempts = retry ? 2 : 1;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: bodyJson,
+        signal: AbortSignal.timeout(TG_TIMEOUT_MS),
+      });
+      if (!res.ok && res.status >= 500 && i < attempts - 1) {
+        continue;
+      }
+      return;
+    } catch (err) {
+      if (i < attempts - 1) continue;
+      console.warn(`[baram-tg] ${label} failed: ${describeFetchError(err)}`);
+    }
+  }
+}
+
+
 async function sendMessage(
   chatId: number | string,
   text: string,
   replyMarkup?: Record<string, unknown>,
 ): Promise<void> {
-  try {
-    const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' };
-    if (replyMarkup) body.reply_markup = replyMarkup;
-    await fetch(tgApiUrl('sendMessage'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    console.warn('[baram-tg] sendMessage failed:', (err as Error).message);
-  }
+  const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' };
+  if (replyMarkup) body.reply_markup = replyMarkup;
+  await tgPost('sendMessage', body, true, 'sendMessage');
 }
 
 async function sendChatAction(chatId: number | string, action = 'typing'): Promise<void> {
-  try {
-    await fetch(tgApiUrl('sendChatAction'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, action }),
-    });
-  } catch {
-    // Non-critical — typing indicator failing silently is acceptable.
-  }
+  await tgPost('sendChatAction', { chat_id: chatId, action }, false, 'sendChatAction');
 }
 
 async function answerCallbackQuery(callbackQueryId: string, text?: string): Promise<void> {
-  try {
-    await fetch(tgApiUrl('answerCallbackQuery'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        callback_query_id: callbackQueryId,
-        text: text ?? '',
-        show_alert: false,
-      }),
-    });
-  } catch {
-    // Non-critical.
-  }
+  await tgPost(
+    'answerCallbackQuery',
+    {
+      callback_query_id: callbackQueryId,
+      text: text ?? '',
+      show_alert: false,
+    },
+    false,
+    'answerCallbackQuery',
+  );
 }
 
 // ===== Webhook signature verification =====
@@ -193,7 +216,7 @@ async function forwardToWake(
       error: json.ok === true ? undefined : reason,
     };
   } catch (err) {
-    return { ok: false, error: (err as Error).message };
+    return { ok: false, error: describeFetchError(err) };
   }
 }
 

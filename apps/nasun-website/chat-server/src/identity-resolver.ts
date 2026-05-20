@@ -17,6 +17,7 @@
 import { gunzipSync } from 'zlib';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
+import { describeFetchError } from './fetch-error.js';
 
 // ===== DynamoDB client (shared, lazy init) =====
 
@@ -116,7 +117,7 @@ export async function refreshIdentityCache(): Promise<void> {
         console.log(`[identity-resolver] Cache refreshed: ${map.size} wallets`);
       }
     } catch (err) {
-      console.error('[identity-resolver] Cache refresh failed:', (err as Error).message);
+      console.error(`[identity-resolver] Cache refresh failed: ${describeFetchError(err)}`);
     } finally {
       refreshPromise = null;
     }

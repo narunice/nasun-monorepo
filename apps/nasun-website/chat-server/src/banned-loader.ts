@@ -14,6 +14,8 @@
  *     ban-users CLI right after a write) so admins don't have to wait the TTL.
  */
 
+import { describeFetchError } from './fetch-error.js';
+
 const BANNED_USERS_URL = process.env.BANNED_USERS_URL || '';
 const BANNED_USERS_KEY = process.env.BANNED_USERS_API_KEY || process.env.WALLET_MAPPINGS_API_KEY || '';
 
@@ -62,7 +64,7 @@ export async function refreshBannedCache(): Promise<void> {
         `[banned-loader] Cache refreshed: ${addresses.size} addresses, ${identityIds.size} identities`,
       );
     } catch (err) {
-      console.warn('[banned-loader] refresh failed:', (err as Error).message);
+      console.warn(`[banned-loader] refresh failed: ${describeFetchError(err)}`);
       // Keep stale cache rather than wiping. Empty cache fails-open
       // (banned users would briefly reappear), but holding stale data is the
       // safer default.
