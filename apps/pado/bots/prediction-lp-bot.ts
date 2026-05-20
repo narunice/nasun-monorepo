@@ -46,7 +46,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Transaction } from '@mysten/sui/transactions';
-import { MARKETS } from './lib/config.js';
+import { MARKETS, TOKENS_PACKAGE } from './lib/config.js';
 import {
   applyEma,
   applyInventorySkew,
@@ -87,6 +87,15 @@ const DEFAULT_MIN_REPOST_BPS = 25;
 const DEFAULT_INTERVAL_MS = 10_000;
 const DEFAULT_DISCOVER_INTERVAL_MS = 10 * 60_000;
 const MAX_CONSECUTIVE_ERRORS = 10;
+
+// NUSDC auto-refill (mirrors arb-bot's pattern; without it the bot silently
+// stalls when the LP wallet runs dry — 2026-05-20 Man City vs Aston Villa
+// incident: yes_ask sat at [] for 30+ min because ensureInventory could not
+// mint a single Position pair). balance-watchdog covers only spot LP wallets
+// (NBTC/NETH/NSOL), so prediction-lp is self-served.
+const NUSDC_FAUCET_OBJECT = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
+const DEFAULT_LP_MIN_NUSDC = 200;          // refill trigger (units of NUSDC)
+const DEFAULT_LP_NUSDC_REFILL_ROUNDS = 50; // request_nusdc moveCalls per PTB
 const ORDERBOOK_PAGE = 50;
 const MAX_ORDERBOOK_LEVELS = 200;
 
@@ -893,6 +902,138 @@ async function placeAskLadder(
 }
 
 // ========================================
+// Stale-priority prefetch
+// ========================================
+
+/**
+ * Quickly classify every market the bot watches by:
+ *   - is it actually OPEN and pre-close (closed/cancelled/resolved → skip)?
+ *   - how many of the 4 sides (yes_bid, yes_ask, no_bid, no_ask) are empty?
+ *
+ * Markets with empty sides are reposted first so a depleted side does not have
+ * to wait one full round-robin cycle (~30 min with 175 markets) before being
+ * refilled. Closed markets are dropped entirely so reconcile time scales with
+ * live inventory, not lifetime market count.
+ *
+ * Uses `multiGetObjects` in batches of 50 to keep RPC fan-out low — concurrent
+ * single getObject calls would re-introduce the 2026-05-12 RPC 503 burst
+ * pattern (see project_rpc_503_mitigation_2026_05_12.md).
+ *
+ * Returns `null` to signal "classification unreliable, fall back to legacy
+ * round-robin order". This avoids the silent-empty-tick failure mode where
+ * a degraded RPC returns nothing for every batch and the bot stops quoting
+ * without bumping consecutiveErrors.
+ */
+interface StaleScore {
+  marketId: string;
+  emptySides: number;          // 0–4
+  origIdx: number;
+}
+
+const MULTI_GET_BATCH = 50;
+
+async function classifyMarketsByStaleness(
+  client: SuiClient,
+  markets: string[],
+): Promise<StaleScore[] | null> {
+  const now = Date.now();
+  const out: StaleScore[] = [];
+  let succeededBatches = 0;
+  const totalBatches = Math.ceil(markets.length / MULTI_GET_BATCH);
+
+  for (let i = 0; i < markets.length; i += MULTI_GET_BATCH) {
+    const batch = markets.slice(i, i + MULTI_GET_BATCH);
+    try {
+      const objs = await client.multiGetObjects({ ids: batch, options: { showContent: true } });
+      succeededBatches++;
+      for (let j = 0; j < objs.length; j++) {
+        const o = objs[j];
+        const fields = (o.data?.content as { fields?: Record<string, unknown> } | undefined)?.fields;
+        if (!fields) continue;
+        if (Number(fields.status ?? -1) !== STATUS_OPEN) continue;
+        if (now >= Number(fields.close_time ?? 0)) continue;
+        const yb = (fields.yes_bid_prices as unknown[] | undefined)?.length ?? 0;
+        const ya = (fields.yes_ask_prices as unknown[] | undefined)?.length ?? 0;
+        const nb = (fields.no_bid_prices as unknown[] | undefined)?.length ?? 0;
+        const na = (fields.no_ask_prices as unknown[] | undefined)?.length ?? 0;
+        const emptySides = (yb === 0 ? 1 : 0) + (ya === 0 ? 1 : 0) + (nb === 0 ? 1 : 0) + (na === 0 ? 1 : 0);
+        out.push({ marketId: batch[j], emptySides, origIdx: i + j });
+      }
+    } catch (err) {
+      // Continue with other batches; a single bad batch should not kill the
+      // whole tick. The success-ratio guard below handles widespread failure.
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[${timestamp()}] classifyMarketsByStaleness: batch ${i}-${i + batch.length} failed: ${msg}`);
+    }
+  }
+
+  // Guard: if half or more batches failed, classification is unreliable.
+  // Signal fall-back to legacy round-robin so the bot keeps quoting under RPC
+  // degradation instead of silently emitting an empty tick.
+  if (totalBatches > 0 && succeededBatches < totalBatches / 2) {
+    console.warn(
+      `[${timestamp()}] classifyMarketsByStaleness: only ${succeededBatches}/${totalBatches} ` +
+      `batches succeeded — falling back to legacy round-robin order`,
+    );
+    return null;
+  }
+
+  // Most-stale first; preserve original index as tiebreaker so equal-stale
+  // markets are reconciled in deterministic discovery order (no race-induced
+  // starvation of consistently-late markets).
+  out.sort((a, b) => (b.emptySides - a.emptySides) || (a.origIdx - b.origIdx));
+  return out;
+}
+
+// ========================================
+// NUSDC auto-refill
+// ========================================
+
+/**
+ * Top up the LP wallet's NUSDC via the devnet faucet when the on-hand balance
+ * drops below `minNusdc`. Mirrors prediction-arb-bot's `ensureNusdc`. A single
+ * PTB batches `rounds` × `request_nusdc(faucet)` moveCalls. Best-effort:
+ * faucet outages return silently with a warning so the bot does not crash on
+ * an off-chain failure.
+ */
+async function ensureLpNusdc(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  owner: string,
+  minNusdc: number,
+  rounds: number,
+): Promise<void> {
+  const bal = await client.getBalance({ owner, coinType: NUSDC_TYPE });
+  const current = Number(bal.totalBalance) / 10 ** NUSDC_DECIMALS;
+  if (current >= minNusdc) return;
+
+  console.log(
+    `[${timestamp()}] [refill] NUSDC low (${current.toFixed(2)} < ${minNusdc}), ` +
+    `claiming ${rounds} faucet rounds`,
+  );
+
+  const tx = new Transaction();
+  tx.setGasBudget(500_000_000);
+  for (let i = 0; i < rounds; i++) {
+    tx.moveCall({
+      target: `${TOKENS_PACKAGE}::faucet::request_nusdc`,
+      arguments: [tx.object(NUSDC_FAUCET_OBJECT)],
+    });
+  }
+  try {
+    const digest = await executeAndWait(client, keypair, tx, 'nusdc_faucet_refill');
+    const after = await client.getBalance({ owner, coinType: NUSDC_TYPE });
+    const newBal = Number(after.totalBalance) / 10 ** NUSDC_DECIMALS;
+    console.log(
+      `[${timestamp()}] [refill] NUSDC refilled ${current.toFixed(2)} -> ${newBal.toFixed(2)} (${digest.slice(0, 12)})`,
+    );
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[${timestamp()}] [refill] NUSDC faucet failed: ${msg}`);
+  }
+}
+
+// ========================================
 // Tick + main loop
 // ========================================
 
@@ -907,11 +1048,45 @@ async function tick(
   markets: string[],
   cfg: ReconcileConfig,
   legacyPackageIds: string[] = [],
+  refill?: { minNusdc: number; rounds: number },
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
   try {
-    for (const marketId of markets) {
+    if (refill) {
+      try {
+        await ensureLpNusdc(client, keypair, keypair.toSuiAddress(), refill.minNusdc, refill.rounds);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[${timestamp()}] [refill] precheck failed: ${msg}`);
+      }
+    }
+
+    // Stale-priority pass: classify all watched markets, drop closed ones,
+    // surface depleted books first. Without this, a market whose top-of-book
+    // got swept waits one full round-robin (30+ min with 175 markets) before
+    // its quotes are reposted (Man City vs Aston Villa, 2026-05-20).
+    //
+    // Fall back to legacy round-robin if (a) the env disables it or (b) the
+    // classifier returned null (widespread RPC failure). Either path keeps
+    // quoting under degraded RPC instead of emitting a silent empty tick.
+    let orderedMarkets: string[];
+    if (process.env.PREDICTION_LP_STALE_PRIORITY === 'false') {
+      orderedMarkets = markets;
+    } else {
+      const stale = await classifyMarketsByStaleness(client, markets);
+      if (stale === null) {
+        orderedMarkets = markets;
+      } else {
+        const empties = stale.filter((s) => s.emptySides > 0).length;
+        console.log(
+          `[${timestamp()}] tick: ${stale.length} open of ${markets.length} watched; ${empties} have ≥1 empty side`,
+        );
+        orderedMarkets = stale.map((s) => s.marketId);
+      }
+    }
+
+    for (const marketId of orderedMarkets) {
       if (shuttingDown) break;
       try {
         await reconcileMarket(client, keypair, packageId, marketId, cfg, legacyPackageIds);
@@ -1030,6 +1205,17 @@ async function main(): Promise<void> {
     ladder, emaLambda, invSkewAlphaBps, invCapShares, minRepostBps,
   };
 
+  // NUSDC self-refill. Setting min=0 disables it (keep manual prefund model).
+  const refillMinNusdc = readNumberEnv(
+    'PREDICTION_LP_MIN_NUSDC', DEFAULT_LP_MIN_NUSDC, 0,
+  );
+  const refillRounds = Math.round(readNumberEnv(
+    'PREDICTION_LP_NUSDC_REFILL_ROUNDS', DEFAULT_LP_NUSDC_REFILL_ROUNDS, 1, 200,
+  ));
+  const refill = refillMinNusdc > 0
+    ? { minNusdc: refillMinNusdc, rounds: refillRounds }
+    : undefined;
+
   const keypair = parseKeypair(keyInput);
   const lpAddress = keypair.toSuiAddress();
   const client = new SuiClient({ url: RPC_URL });
@@ -1050,6 +1236,9 @@ async function main(): Promise<void> {
   );
   console.log(
     `[${timestamp()}] EMA λ=${emaLambda} invSkewα=${invSkewAlphaBps}bps invCap=${invCapSharesNum} minRepost=${minRepostBps}bps tick=${intervalMs}ms`,
+  );
+  console.log(
+    `[${timestamp()}] NUSDC self-refill: ${refill ? `minNusdc=${refill.minNusdc} rounds=${refill.rounds}` : 'DISABLED (PREDICTION_LP_MIN_NUSDC=0)'}`,
   );
 
   let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
@@ -1086,7 +1275,7 @@ async function main(): Promise<void> {
 
   const runOnce = process.argv.includes('--once');
 
-  await tick(client, keypair, packageId, markets, cfg, legacyPackageIds);
+  await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill);
   if (runOnce) process.exit(0);
 
   while (!shuttingDown) {
@@ -1108,7 +1297,7 @@ async function main(): Promise<void> {
       }
     }
 
-    await tick(client, keypair, packageId, markets, cfg, legacyPackageIds);
+    await tick(client, keypair, packageId, markets, cfg, legacyPackageIds, refill);
   }
 }
 
