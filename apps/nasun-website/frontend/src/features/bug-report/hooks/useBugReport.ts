@@ -46,6 +46,7 @@ export function useBugReport() {
   const user = useUserStore((s) => s.user);
   const walletAddress = getWalletAddress(user);
   const walletConnected = !!walletAddress;
+  const queryClient = useQueryClient();
 
   const mutation = useMutation({
     mutationFn: (data: Omit<BugReportData, 'displayName' | 'walletAddress'>) => {
@@ -63,6 +64,9 @@ export function useBugReport() {
         },
         user.cognitoToken
       );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bug-reports', 'my-reports'] });
     },
   });
 

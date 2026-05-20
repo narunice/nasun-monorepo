@@ -96,12 +96,21 @@ export const UjuBugReportsCard: FC<UjuBugReportsCardProps> = ({ className = "" }
                   }
                   className="w-full text-left p-4"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-base font-normal text-uju-primary truncate flex-1">
+                  <div
+                    className={`flex flex-col gap-2 sm:flex-row sm:justify-between sm:gap-3 ${
+                      isExpanded ? "sm:items-start" : "sm:items-center"
+                    }`}
+                  >
+                    <span
+                      className={`text-base font-normal text-uju-primary flex-1 break-words ${
+                        isExpanded ? "sm:whitespace-normal" : "sm:truncate"
+                      }`}
+                      title={isExpanded ? undefined : report.title}
+                    >
                       {report.title}
                     </span>
                     <span
-                      className={`text-sm font-normal px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap ${UJU_STATUS_COLORS[report.status]}`}
+                      className={`text-sm font-normal px-2 py-0.5 rounded-lg uppercase tracking-wider whitespace-nowrap self-start sm:self-auto ${UJU_STATUS_COLORS[report.status]}`}
                     >
                       {STATUS_LABELS[report.status]}
                     </span>
