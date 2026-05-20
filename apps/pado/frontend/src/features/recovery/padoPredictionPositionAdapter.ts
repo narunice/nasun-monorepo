@@ -9,7 +9,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import type { RecoveryAdapter, RecoverableItem, RecoveryAction } from '@nasun/wallet-ui';
 import { getSuiClient } from '../../lib/sui-client';
-import { POSITION_TYPE, NUSDC_DECIMALS } from '../prediction/constants';
+import { POSITION_TYPES, NUSDC_DECIMALS } from '../prediction/constants';
 import { fetchMarket } from '../prediction/lib/prediction-market';
 import {
   buildClaimWinnings,
@@ -51,12 +51,17 @@ export function createPadoPredictionPositionAdapter(
     async discover(address) {
       const client = getSuiClient();
       // Paginate through all owned Position NFTs (50/page cap).
+      // 2026-05-20 v5 cutover: accept both legacy and v5 Position types.
+      const filter =
+        POSITION_TYPES.length === 1
+          ? { StructType: POSITION_TYPES[0] }
+          : { MatchAny: POSITION_TYPES.map((t) => ({ StructType: t })) };
       const positions: ParsedPosition[] = [];
       let cursor: string | null | undefined;
       do {
         const page = await client.getOwnedObjects({
           owner: address,
-          filter: { StructType: POSITION_TYPE },
+          filter,
           options: { showContent: true },
           cursor,
         });

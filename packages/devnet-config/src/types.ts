@@ -44,6 +44,15 @@ export interface PredictionConfig {
   upgradeCap?: ObjectId;
 }
 
+export interface PredictionLegacyConfig {
+  packageId: ObjectId;
+  originalPackageId: ObjectId;
+  adminCap: ObjectId;
+  upgradeCap: ObjectId;
+  cutoverDate: string;
+  notes?: string;
+}
+
 export interface LotteryConfig {
   packageId: ObjectId;
   originalPackageId?: ObjectId;
@@ -177,6 +186,7 @@ export interface DevnetConfig {
   tokens: Omit<TokensConfig, 'nbtcType' | 'nusdcType'>;
   deepbook: DeepBookConfig;
   prediction: PredictionConfig;
+  prediction_legacy?: PredictionLegacyConfig;
   lottery: LotteryConfig;
   scratchcard: ScratchcardConfig;
   numbermatch: NumberMatchConfig;

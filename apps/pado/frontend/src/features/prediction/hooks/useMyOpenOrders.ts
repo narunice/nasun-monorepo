@@ -19,7 +19,7 @@ import { useQuery } from '@tanstack/react-query';
 import { bcs } from '@mysten/sui/bcs';
 import { deriveDynamicFieldID } from '@mysten/sui/utils';
 import { getSuiClient } from '../../../lib/sui-client';
-import { ORDER_PLACED_EVENT } from '../constants';
+import { ORDER_PLACED_EVENTS } from '../constants';
 import type { Order } from '../types';
 
 const PAGE_LIMIT = 50;
@@ -41,14 +41,21 @@ async function fetchMyOpenOrders(marketId: string, owner: string): Promise<OpenO
 
   // Step 1: discover candidate orders via OrderPlaced events. Sender filter is
   // not part of the event query API; we paginate descending and filter by maker.
-  const page = await client.queryEvents({
-    query: { MoveEventType: ORDER_PLACED_EVENT },
-    limit: PAGE_LIMIT * 4, // overscan since we filter by owner client-side
-    order: 'descending',
-  });
+  //
+  // 2026-05-20 v5 cutover: walks both legacy and v5 OrderPlaced streams.
+  const pages = await Promise.all(
+    ORDER_PLACED_EVENTS.map((eventType) =>
+      client.queryEvents({
+        query: { MoveEventType: eventType },
+        limit: PAGE_LIMIT * 4, // overscan since we filter by owner client-side
+        order: 'descending',
+      }),
+    ),
+  );
+  const allEvents = pages.flatMap((p) => p.data);
 
   const candidates: Array<{ priceBps: number; orderId: number; isYes: boolean; isBid: boolean }> = [];
-  for (const event of page.data) {
+  for (const event of allEvents) {
     const j = event.parsedJson as Record<string, unknown> | null;
     if (!j) continue;
     // OrderPlaced event emits `user` (not `owner`) per the Move struct definition.

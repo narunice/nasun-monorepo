@@ -7,10 +7,26 @@
  *   which handles inline mergeCoins + splitCoins for fragmented wallets).
  * - Direction-first naming: place_buy_taker, place_sell_taker, place_buy_maker,
  *   place_sell_maker — matches Move on-chain entry function names.
+ *
+ * 2026-05-20 v5 cutover:
+ * Every builder dispatches `packageId` via `packageForMarket(marketId)`, which
+ * reads from the in-memory registry populated by `fetchMarket`. A wrong-
+ * package call aborts at dryRun (not silently), so the worst case for a miss
+ * is a clear error rather than incorrect on-chain state. Callers may pass an
+ * explicit override for cases where the registry hasn't been populated yet
+ * (e.g. brand-new admin-created v5 markets before the first fetch).
  */
 
 import type { Transaction, TransactionArgument } from '@mysten/sui/transactions';
-import { PREDICTION_PACKAGE_ID, POSITION_TYPE, CLOCK_ID, MAX_PRICE } from './constants';
+import {
+  PREDICTION_PACKAGE_ID,
+  POSITION_TYPE,
+  LEGACY_PREDICTION_PACKAGE_ID,
+  LEGACY_POSITION_TYPE,
+  CLOCK_ID,
+  MAX_PRICE,
+  packageForMarket,
+} from './constants';
 
 /**
  * Position argument — either a freshly-owned ObjectID string (e.g. an existing
@@ -86,10 +102,12 @@ export function buildMintOutcomeTokens(
   marketId: string,
   amountBase: bigint,
   paymentArg: TransactionArgument,
+  packageIdOverride?: string,
 ): void {
   validateAmountBase(amountBase, MAX_MINT_BASE, 'Mint amount');
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::mint_outcome_tokens`,
+    target: `${pkg}::prediction_market::mint_outcome_tokens`,
     arguments: [
       tx.object(marketId),
       paymentArg,
@@ -109,11 +127,13 @@ export function buildPlaceBuyMaker(
   priceBps: number,
   amountBase: bigint,
   paymentArg: TransactionArgument,
+  packageIdOverride?: string,
 ): void {
   validatePriceBps(priceBps);
   validateAmountBase(amountBase, MAX_PAYMENT_BASE, 'Buy maker amount');
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_buy_maker`,
+    target: `${pkg}::prediction_market::place_buy_maker`,
     arguments: [
       tx.object(marketId),
       tx.pure.bool(isYes),
@@ -129,10 +149,12 @@ export function buildPlaceSellMaker(
   marketId: string,
   positionId: PositionArg,
   priceBps: number,
+  packageIdOverride?: string,
 ): void {
   validatePriceBps(priceBps);
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_sell_maker`,
+    target: `${pkg}::prediction_market::place_sell_maker`,
     arguments: [
       tx.object(marketId),
       toPositionArg(tx, positionId),
@@ -154,11 +176,13 @@ export function buildPlaceBuyTaker(
   restOnNoFill: boolean,
   amountBase: bigint,
   paymentArg: TransactionArgument,
+  packageIdOverride?: string,
 ): void {
   validatePriceBps(maxPriceBps);
   validateAmountBase(amountBase, MAX_PAYMENT_BASE, 'Buy taker amount');
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_buy_taker`,
+    target: `${pkg}::prediction_market::place_buy_taker`,
     arguments: [
       tx.object(marketId),
       tx.pure.bool(isYes),
@@ -176,10 +200,12 @@ export function buildPlaceSellTaker(
   positionId: PositionArg,
   minPriceBps: number,
   restOnNoFill: boolean,
+  packageIdOverride?: string,
 ): void {
   validatePriceBps(minPriceBps);
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::place_sell_taker`,
+    target: `${pkg}::prediction_market::place_sell_taker`,
     arguments: [
       tx.object(marketId),
       toPositionArg(tx, positionId),
@@ -201,9 +227,11 @@ export function buildCancelOrder(
   isBid: boolean,
   priceBps: number,
   orderId: number | bigint,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::cancel_order`,
+    target: `${pkg}::prediction_market::cancel_order`,
     arguments: [
       tx.object(marketId),
       tx.pure.bool(isYes),
@@ -222,9 +250,11 @@ export function buildClaimRestingOrderRefund(
   isBid: boolean,
   priceBps: number,
   orderId: number | bigint,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::claim_resting_order_refund`,
+    target: `${pkg}::prediction_market::claim_resting_order_refund`,
     arguments: [
       tx.object(marketId),
       tx.pure.bool(isYes),
@@ -243,9 +273,11 @@ export function buildClaimWinnings(
   tx: Transaction,
   marketId: string,
   positionId: PositionArg,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::claim_winnings`,
+    target: `${pkg}::prediction_market::claim_winnings`,
     arguments: [
       tx.object(marketId),
       toPositionArg(tx, positionId),
@@ -257,9 +289,11 @@ export function buildBurnLosingPosition(
   tx: Transaction,
   marketId: string,
   positionId: PositionArg,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::burn_losing_position`,
+    target: `${pkg}::prediction_market::burn_losing_position`,
     arguments: [
       tx.object(marketId),
       toPositionArg(tx, positionId),
@@ -274,9 +308,11 @@ export function buildBurnLosingPosition(
 export function buildCancelExpiredMarket(
   tx: Transaction,
   marketId: string,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::cancel_expired_market`,
+    target: `${pkg}::prediction_market::cancel_expired_market`,
     arguments: [
       tx.object(marketId),
       tx.object(CLOCK_ID),
@@ -288,9 +324,11 @@ export function buildClaimCancelledRefund(
   tx: Transaction,
   marketId: string,
   positionId: PositionArg,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::claim_cancelled_refund`,
+    target: `${pkg}::prediction_market::claim_cancelled_refund`,
     arguments: [
       tx.object(marketId),
       toPositionArg(tx, positionId),
@@ -329,19 +367,33 @@ function validateMergeInputs(positionIds: readonly string[]): void {
  * Use this for auto-merge-then-action flows where the user expects a single
  * signature. If you need a standalone "merge and keep" tx, use
  * `buildMergePositionsEntry` instead.
+ *
+ * NOTE: `merge_positions` was added in v2 of the legacy package and lives in
+ * v5 too. Type-vec uses the POSITION_TYPE (v5 originalId) — legacy positions
+ * have a different type tag, so a merge that mixes v5 and legacy positions
+ * would fail on dryRun. This is fine because positions can only originate
+ * from a single market, and a market belongs to exactly one package.
  */
 export function buildMergePositionsChained(
   tx: Transaction,
   marketId: string,
   positionIds: readonly string[],
+  packageIdOverride?: string,
 ): TransactionArgument {
   validateMergeInputs(positionIds);
+  const pkg = packageForMarket(marketId, packageIdOverride);
+  // Vec type tag is anchored to the originalPackageId of the package that
+  // owns this market. Derive from `pkg` (the latest published-at) by reading
+  // the same originalId convention as the Move source.
+  // For v5 fresh publish, originalId == latest so this collapses to `pkg`.
+  // For legacy, callers must pass a positionTypePackage override if they
+  // ever mix sides — but that's unreachable per the docstring above.
   const positionsVec = tx.makeMoveVec({
     elements: positionIds.map((id) => tx.object(id)),
-    type: POSITION_TYPE,
+    type: positionTypeFor(pkg),
   });
   return tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::merge_positions`,
+    target: `${pkg}::prediction_market::merge_positions`,
     arguments: [tx.object(marketId), positionsVec],
   });
 }
@@ -356,16 +408,36 @@ export function buildMergePositionsEntry(
   tx: Transaction,
   marketId: string,
   positionIds: readonly string[],
+  packageIdOverride?: string,
 ): void {
   validateMergeInputs(positionIds);
+  const pkg = packageForMarket(marketId, packageIdOverride);
   const positionsVec = tx.makeMoveVec({
     elements: positionIds.map((id) => tx.object(id)),
-    type: POSITION_TYPE,
+    type: positionTypeFor(pkg),
   });
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::merge_positions_entry`,
+    target: `${pkg}::prediction_market::merge_positions_entry`,
     arguments: [tx.object(marketId), positionsVec],
   });
+}
+
+/**
+ * Map a package's *latest* publish id (used as moveCall target) to the
+ * `Position` struct type-tag anchored to that package's originalId. Sui's
+ * type system tags structs at the originalId, NOT the latest publish, so
+ * `${pkg}::prediction_market::Position` would only be correct for fresh
+ * publishes (where pkg == originalId).
+ *
+ * For the cutover, v5 is a fresh publish (pkg == originalId), and legacy
+ * has a known originalId/published-at split that we encode here.
+ */
+function positionTypeFor(latestPkg: string): string {
+  if (latestPkg === LEGACY_PREDICTION_PACKAGE_ID) return LEGACY_POSITION_TYPE;
+  if (latestPkg === PREDICTION_PACKAGE_ID) return POSITION_TYPE;
+  // Unknown package — fall through to v5 type. dryRun will surface mismatch
+  // immediately if the assumption was wrong.
+  return POSITION_TYPE;
 }
 
 /**
@@ -379,11 +451,12 @@ export function buildBucketPositionArg(
   tx: Transaction,
   marketId: string,
   positionIds: readonly string[],
+  packageIdOverride?: string,
 ): PositionArg {
   if (positionIds.length === 1) {
     return positionIds[0];
   }
-  return buildMergePositionsChained(tx, marketId, positionIds);
+  return buildMergePositionsChained(tx, marketId, positionIds, packageIdOverride);
 }
 
 // ============================================
@@ -394,9 +467,11 @@ export function buildResolveMarket(
   tx: Transaction,
   marketId: string,
   outcome: boolean,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::resolve_market`,
+    target: `${pkg}::prediction_market::resolve_market`,
     arguments: [
       tx.object(marketId),
       tx.pure.bool(outcome),
@@ -410,9 +485,11 @@ export function buildExtendResolveDeadline(
   adminCapId: string,
   marketId: string,
   newDeadline: bigint,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::extend_resolve_deadline`,
+    target: `${pkg}::prediction_market::extend_resolve_deadline`,
     arguments: [
       tx.object(adminCapId),
       tx.object(marketId),
@@ -426,9 +503,11 @@ export function buildAdminCancelMarket(
   tx: Transaction,
   adminCapId: string,
   marketId: string,
+  packageIdOverride?: string,
 ): void {
+  const pkg = packageForMarket(marketId, packageIdOverride);
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::admin_cancel_market`,
+    target: `${pkg}::prediction_market::admin_cancel_market`,
     arguments: [
       tx.object(adminCapId),
       tx.object(marketId),
@@ -437,6 +516,12 @@ export function buildAdminCancelMarket(
   });
 }
 
+/**
+ * Create a brand-new market on v5. Always targets PREDICTION_PACKAGE_ID
+ * (legacy is read-only post-cutover; admin should not create new legacy
+ * markets — admin-cancelling expired legacy ones is fine via
+ * buildAdminCancelMarket).
+ */
 export function buildCreateMarket(
   tx: Transaction,
   adminCapId: string,
@@ -448,13 +533,15 @@ export function buildCreateMarket(
   closeTime: bigint,
   resolveDeadline: bigint,
   resolver: string,
+  packageIdOverride?: string,
 ): void {
   validateMarketStrings(question, description, category, resolutionSource, resolutionCriteria);
   if (resolveDeadline <= closeTime) {
     throw new Error('[Security] Resolve deadline must be after close time');
   }
+  const pkg = packageIdOverride ?? PREDICTION_PACKAGE_ID;
   tx.moveCall({
-    target: `${PREDICTION_PACKAGE_ID}::prediction_market::create_market`,
+    target: `${pkg}::prediction_market::create_market`,
     arguments: [
       tx.object(adminCapId),
       tx.pure.string(question),
@@ -476,3 +563,7 @@ export function buildCreateMarket(
 
 export const TX_MAX_PAYMENT_BASE = MAX_PAYMENT_BASE;
 export const TX_MAX_MINT_BASE = MAX_MINT_BASE;
+
+// Re-export the dispatch helper so external consumers can use it for custom
+// PTB construction without re-importing from './constants'.
+export { packageForMarket };

@@ -13,7 +13,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getSuiClient } from '../../../lib/sui-client';
-import { ORDER_FILLED_EVENT } from '../constants';
+import { ORDER_FILLED_EVENTS } from '../constants';
 import type { RecentFill } from '../types';
 
 const PAGE_LIMIT = 50;
@@ -30,8 +30,12 @@ async function fetchMyMarketFills(marketId: string, owner: string): Promise<Rece
   });
 
   const fills: RecentFill[] = [];
+  const orderFilledEventSet = new Set<string>(ORDER_FILLED_EVENTS);
   for (const event of page.data) {
-    if (event.type !== ORDER_FILLED_EVENT) continue;
+    // 2026-05-20 v5 cutover: accept both legacy and v5 OrderFilled event
+    // types so users who hold positions across the cutover see all their
+    // fills in one feed.
+    if (!orderFilledEventSet.has(event.type)) continue;
     const j = event.parsedJson as Record<string, unknown> | null;
     if (!j || j.market_id !== marketId) continue;
     // The contract emits one OrderFilled per maker-side level walked, but only

@@ -8,7 +8,7 @@ import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-import { POSITION_TYPE, NUSDC_DECIMALS } from '../constants';
+import { POSITION_TYPES, NUSDC_DECIMALS } from '../constants';
 import type { Position } from '../types';
 
 /**
@@ -109,10 +109,18 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       const all: ReturnType<typeof parsePosition>[] = [];
       let cursor: string | null | undefined = undefined;
       const MAX_PAGES = 20;
+      // 2026-05-20 v5 cutover: filter accepts BOTH legacy and v5 Position
+      // types so users with positions split across the cutover see them all.
+      // When there is no legacy block (e.g. tests), POSITION_TYPES is a
+      // single-element array and MatchAny collapses to StructType behavior.
+      const filter =
+        POSITION_TYPES.length === 1
+          ? { StructType: POSITION_TYPES[0] }
+          : { MatchAny: POSITION_TYPES.map((t) => ({ StructType: t })) };
       for (let page = 0; page < MAX_PAGES; page++) {
         const response = await client.getOwnedObjects({
           owner: address,
-          filter: { StructType: POSITION_TYPE },
+          filter,
           options: { showContent: true },
           cursor,
         });
