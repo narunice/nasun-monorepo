@@ -268,12 +268,42 @@ app.get('/:objectId/chain', async (c) => {
 /**
  * Format a DB row to camelCase API response.
  * Maps snake_case columns to camelCase matching AERRecord type.
+ *
+ * Plan C v2 surfaces (envelope, lineage, wake, replay) flow through to the
+ * frontend so it does not need a separate code path for indexer-backed vs
+ * RPC-backed records. strategy_id and capability_id live inside the
+ * `replay_extras` JSONB blob as raw hex; we decode them here so the client
+ * receives them in the same shape as the RPC fallback path
+ * (utf-8 string for strategy_id, 0x-prefixed 32-byte address for
+ * capability_id).
  */
 function formatRow(row: Record<string, unknown>) {
   const status = Number(row.status ?? 0);
   const executorTier = Number(row.executor_tier ?? 0);
   const tierNames = ['Open', 'Bronze', 'Silver', 'Gold'];
   const statusNames: Record<number, string> = { 0: 'Settled', 1: 'Disputed', 2: 'Slashed' };
+
+  let strategyId: string | null = null;
+  let capabilityId: string | null = null;
+  const replayExtras = row.replay_extras as Record<string, string> | null | undefined;
+  if (replayExtras && typeof replayExtras === 'object') {
+    const rawStrategy = replayExtras.strategy_id;
+    if (typeof rawStrategy === 'string' && rawStrategy.length > 0) {
+      try {
+        const bytes = rawStrategy.match(/.{2}/g)?.map((h) => parseInt(h, 16)) ?? [];
+        const decoded = Buffer.from(bytes).toString('utf8');
+        strategyId = decoded.length > 0 ? decoded : null;
+      } catch {
+        strategyId = null;
+      }
+    }
+    const rawCap = replayExtras.capability_id;
+    // Lambda writes raw 32-byte address; only emit when shape matches so we
+    // never surface a half-decoded value the client treats as a real id.
+    if (typeof rawCap === 'string' && rawCap.length === 64) {
+      capabilityId = `0x${rawCap}`;
+    }
+  }
 
   return {
     objectId: row.object_id,
@@ -301,6 +331,7 @@ function formatRow(row: Record<string, unknown>) {
     // 5. WHY
     purpose: row.purpose ?? null,
     policyVersion: row.policy_version != null ? Number(row.policy_version) : null,
+    capabilityVersion: row.capability_version != null ? Number(row.capability_version) : null,
     constraints: row.constraints ?? null,
     // 6. HOW TRUSTWORTHY
     executorTier,
@@ -317,6 +348,30 @@ function formatRow(row: Record<string, unknown>) {
     // 8. CHAIN
     triggeredBy: row.triggered_by ?? null,
     triggeredAction: row.triggered_action ?? null,
+    // 8b. LINEAGE
+    intentId: row.intent_id ?? null,
+    parentIntentId: row.parent_intent_id ?? null,
+    executionId: row.execution_id != null ? Number(row.execution_id) : null,
+    // 9. ENVELOPE
+    eventClass: row.event_class != null ? Number(row.event_class) : null,
+    actionType: row.action_type ?? null,
+    actionSchemaVersion:
+      row.action_schema_version != null ? Number(row.action_schema_version) : null,
+    payloadCodec: row.payload_codec ?? null,
+    payloadHash: row.payload_hash ?? null,
+    payloadBytes: row.payload_bytes ?? null,
+    actionSummary: row.action_summary ?? null,
+    actionOutcome: row.action_outcome != null ? Number(row.action_outcome) : null,
+    // 10. WAKE
+    triggeredByType:
+      row.triggered_by_type != null ? Number(row.triggered_by_type) : null,
+    triggeredByRef: row.triggered_by_ref ?? null,
+    // 11. REPLAY
+    modelVersion: row.model_version ?? null,
+    promptTemplateHash: row.prompt_template_hash ?? null,
+    marketSnapshotHash: row.market_snapshot_hash ?? null,
+    strategyId,
+    capabilityId,
   };
 }
 
