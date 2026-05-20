@@ -82,35 +82,35 @@ export function MarketHeader({
         <>
           {/* Probability Display */}
           <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
-            <div className="bg-green-100 dark:bg-green-900/20 border border-green-300 dark:border-green-500/30 rounded-lg p-3 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-green-700 dark:text-green-400 tabular-nums">
+            <div className="bg-predict-yes-bg-soft border border-predict-yes-border rounded-lg p-3 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-predict-yes tabular-nums">
                 {yesProbability.toFixed(1)}%
               </div>
-              <div className="text-xs sm:text-sm font-medium text-green-700 dark:text-green-400">
+              <div className="text-xs sm:text-sm font-medium text-predict-yes">
                 YES
               </div>
             </div>
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/30 rounded-lg p-3 text-center">
-              <div className="text-xl sm:text-2xl font-bold text-red-600 dark:text-red-400 tabular-nums">
+            <div className="bg-predict-no-bg-soft border border-predict-no-border rounded-lg p-3 text-center">
+              <div className="text-xl sm:text-2xl font-bold text-predict-no tabular-nums">
                 {noProbability.toFixed(1)}%
               </div>
-              <div className="text-xs sm:text-sm font-medium text-red-600 dark:text-red-400">
+              <div className="text-xs sm:text-sm font-medium text-predict-no">
                 NO
               </div>
             </div>
           </div>
 
           {!hasRealQuotes && (
-            <div className="text-center text-sm text-yellow-600 dark:text-yellow-400 mb-4">
+            <div className="text-center text-sm text-notice-text mb-4">
               No orders yet — showing default 50/50
             </div>
           )}
 
           {/* Probability Bar */}
           <div className="mb-4">
-            <div className="h-3 bg-red-500 rounded-full overflow-hidden">
+            <div className="h-3 bg-predict-no-bar rounded-full overflow-hidden">
               <div
-                className="h-full bg-green-500 transition-all duration-300"
+                className="h-full bg-predict-yes-bar transition-all duration-300"
                 style={{ width: `${yesProbability}%` }}
               />
             </div>
@@ -164,20 +164,18 @@ function OutcomeDisplay({
       <div
         className={`rounded-xl p-5 text-center border ${
           isYes
-            ? "bg-green-50 border-green-300 dark:bg-green-900/50 dark:border-green-500/50"
-            : "bg-red-50 border-red-300 dark:bg-red-900/50 dark:border-red-500/50"
+            ? "bg-predict-yes-bg border-predict-yes-border"
+            : "bg-predict-no-bg border-predict-no-border"
         }`}
       >
         <div
           className={`text-3xl font-bold mb-1 ${
-            isYes
-              ? "text-green-700 dark:text-green-400"
-              : "text-red-700 dark:text-red-400"
+            isYes ? "text-predict-yes" : "text-predict-no"
           }`}
         >
           {isYes ? "YES" : "NO"} Won
         </div>
-        <div className="text-sm text-gray-600 dark:text-theme-text-muted">
+        <div className="text-sm text-theme-text-muted">
           Total supply: {formatNumber(supply)} shares
         </div>
       </div>
@@ -185,11 +183,11 @@ function OutcomeDisplay({
   }
 
   return (
-    <div className="rounded-xl p-5 text-center bg-yellow-50 border border-yellow-300 dark:bg-yellow-900/50 dark:border-yellow-500/50">
-      <div className="text-2xl font-bold text-yellow-700 dark:text-yellow-400 mb-1">
+    <div className="rounded-xl p-5 text-center bg-notice-bg border border-notice-border">
+      <div className="text-2xl font-bold text-notice-text mb-1">
         Cancelled
       </div>
-      <div className="text-sm text-gray-600 dark:text-theme-text-muted">
+      <div className="text-sm text-theme-text-muted">
         All collateral is refundable
       </div>
     </div>
@@ -206,8 +204,8 @@ function StatusBadge({
   if (status === "resolved") {
     const label = outcome ? "YES Won" : "NO Won";
     const color = outcome
-      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400";
+      ? "bg-predict-yes-bg text-predict-yes"
+      : "bg-predict-no-bg text-predict-no";
     return (
       <span className={`text-xs font-medium px-2 py-1 rounded ${color}`}>
         {label}
@@ -217,14 +215,14 @@ function StatusBadge({
 
   if (status === "closed") {
     return (
-      <span className="text-xs font-medium px-2 py-1 rounded bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
+      <span className="text-xs font-medium px-2 py-1 rounded bg-notice-bg text-notice-text">
         Awaiting Result
       </span>
     );
   }
 
   return (
-    <span className="text-xs font-medium px-2 py-1 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+    <span className="text-xs font-medium px-2 py-1 rounded bg-predict-yes-bg text-predict-yes">
       Open
     </span>
   );

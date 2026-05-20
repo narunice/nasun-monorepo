@@ -212,7 +212,18 @@ export function calculateProbabilityFromBestPrices(
   let yesProbability = 50;
   if (effectiveBid !== null && effectiveAsk !== null) {
     const spread = effectiveAsk - effectiveBid;
-    if (spread <= SPREAD_THRESHOLD_BPS) {
+    if (spread < 0) {
+      // Crossed book: best bid > best ask. The CLOB only matches on taker
+      // entry, so resting makers on opposite sides can sit crossed
+      // indefinitely. Under a symmetric cross (e.g. yesBid 6100 +
+      // impliedYesAsk 3900 = 10000-noBid 6100) the (bid+ask)/2 collapses
+      // to exactly 50 and stays pinned regardless of taker activity, which
+      // reads as "stuck 50/50" to the user. Prefer last trade; fall back
+      // to the ask (the price a taker actually meets).
+      yesProbability = lastTradePriceBps != null
+        ? lastTradePriceBps / 100
+        : effectiveAsk / 100;
+    } else if (spread <= SPREAD_THRESHOLD_BPS) {
       yesProbability = (effectiveBid + effectiveAsk) / 2 / 100;
     } else if (lastTradePriceBps != null) {
       yesProbability = lastTradePriceBps / 100;

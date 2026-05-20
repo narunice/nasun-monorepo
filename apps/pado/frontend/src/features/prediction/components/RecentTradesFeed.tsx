@@ -46,8 +46,10 @@ function TradeRow({ fill, isMine }: { fill: RecentFill; isMine: boolean }) {
   const price = (fill.price / 10000).toFixed(2);
   const shares = formatShares(fill.fillShares);
   const cost = formatCost(fill.cost);
-  const borderColor = isBuy ? 'rgb(22 163 74)' : 'rgb(220 38 38)';
-  const sideColor = isBuy ? 'text-green-500' : 'text-red-500';
+  const borderColor = isBuy
+    ? 'var(--color-predict-yes-bar)'
+    : 'var(--color-predict-no-bar)';
+  const sideColor = isBuy ? 'text-predict-yes' : 'text-predict-no';
 
   // `_pending` row is synthesized from a tx receipt before the global event
   // index has surfaced this OrderFilled. Subtle pulse so the user sees the
@@ -123,8 +125,8 @@ export function RecentTradesFeed({ marketId }: RecentTradesFeedProps) {
       <div className="flex items-center justify-between px-3 py-2 border-b border-theme-border/50">
         <div className="flex items-center gap-2">
           <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-500" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-predict-yes-bar opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-predict-yes-bar" />
           </span>
           <span className="text-xs font-medium text-theme-text-secondary tracking-wide uppercase">
             Recent Trades

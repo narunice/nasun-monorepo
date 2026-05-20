@@ -638,7 +638,7 @@ export function OutcomeOrderForm({
               type="button"
               onClick={() => setAutoDepositEnabled(!autoDepositEnabled)}
               className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 ${
-                autoDepositEnabled ? 'bg-green-500' : 'bg-theme-toggle-off'
+                autoDepositEnabled ? 'bg-predict-yes-bar' : 'bg-theme-toggle-off'
               }`}
             >
               <span
@@ -683,14 +683,14 @@ export function OutcomeOrderForm({
           aria-hidden
           className={`absolute top-1 bottom-1 left-1 w-[calc(50%-0.25rem)] rounded-md transition-transform duration-200 ease-out ${
             outcomeType === 'yes'
-              ? 'translate-x-0 bg-green-500/25 ring-1 ring-green-500/60'
-              : 'translate-x-full bg-red-500/25 ring-1 ring-red-500/60'
+              ? 'translate-x-0 bg-predict-yes-bg ring-1 ring-predict-yes-border'
+              : 'translate-x-full bg-predict-no-bg ring-1 ring-predict-no-border'
           }`}
         />
         <button
           onClick={() => setOutcomeType('yes')}
           className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
-            outcomeType === 'yes' ? 'text-green-700 dark:text-green-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
+            outcomeType === 'yes' ? 'text-predict-yes' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           YES
@@ -698,7 +698,7 @@ export function OutcomeOrderForm({
         <button
           onClick={() => setOutcomeType('no')}
           className={`relative z-10 min-h-[44px] py-2 font-semibold text-sm transition-colors ${
-            outcomeType === 'no' ? 'text-red-700 dark:text-red-300' : 'text-theme-text-muted hover:text-theme-text-secondary'
+            outcomeType === 'no' ? 'text-predict-no' : 'text-theme-text-muted hover:text-theme-text-secondary'
           }`}
         >
           NO
@@ -754,7 +754,7 @@ export function OutcomeOrderForm({
           <div>
             <label className="block text-sm text-theme-text-muted mb-1">Position to close</label>
             {filteredPositions.length === 0 ? (
-              <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
+              <div className="text-sm text-notice-text bg-notice-bg rounded-lg p-2">
                 No {outcomeType.toUpperCase()} shares to close.
                 {positions.length > 0 && ' Try the other outcome.'}
               </div>
@@ -820,12 +820,12 @@ export function OutcomeOrderForm({
 
         {/* No-liquidity warnings: Advanced only (Simple gets inline error on submit) */}
         {isAdvanced && orderMode === 'market' && bestAskBps == null && orderType === 'buy' && (
-          <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
+          <div className="text-sm text-notice-text bg-notice-bg rounded-lg p-2">
             No matching asks. Switch to Limit mode and set your price.
           </div>
         )}
         {isAdvanced && orderMode === 'market' && bestBidBps == null && orderType === 'sell' && (
-          <div className="text-sm text-yellow-500 bg-yellow-500/25 rounded-lg p-2">
+          <div className="text-sm text-notice-text bg-notice-bg rounded-lg p-2">
             No bids. Switch to Limit mode and set your price.
           </div>
         )}
@@ -839,16 +839,16 @@ export function OutcomeOrderForm({
           const isYes = outcomeType === 'yes';
           const loseOutcome = isYes ? 'NO' : 'YES';
           return (
-            <div className={`rounded-xl p-4 border ${isYes ? 'bg-green-500/25 border-green-500/50' : 'bg-red-500/25 border-red-500/50'}`}>
+            <div className={`rounded-xl p-4 border ${isYes ? 'bg-predict-yes-bg border-predict-yes-border' : 'bg-predict-no-bg border-predict-no-border'}`}>
               {/* Win row */}
               <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-xs text-theme-text-muted w-24 shrink-0">
                   If {outcomeType.toUpperCase()} wins
                 </span>
-                <span className={`text-xl font-bold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-xl font-bold ${isYes ? 'text-predict-yes' : 'text-predict-no'}`}>
                   ${potentialPayout.toFixed(2)}
                 </span>
-                <span className={`text-sm font-semibold ${isYes ? 'text-green-400' : 'text-red-400'}`}>
+                <span className={`text-sm font-semibold ${isYes ? 'text-predict-yes' : 'text-predict-no'}`}>
                   ({returnPct >= 0 ? '+' : ''}{cappedReturn.toFixed(0)}%)
                 </span>
               </div>
@@ -892,7 +892,7 @@ export function OutcomeOrderForm({
         })()}
 
         {error && (
-          <div className="text-red-500 text-sm bg-red-500/25 rounded-lg p-2">
+          <div className="text-predict-no-strong text-sm bg-predict-no-bg rounded-lg p-2">
             {error === NO_ASKS_SIMPLE_ERROR ? (
               <>
                 No sellers at any price right now. Try again later, or{' '}
@@ -909,7 +909,7 @@ export function OutcomeOrderForm({
           </div>
         )}
         {success && (
-          <div className="text-green-500 text-sm bg-green-500/25 rounded-lg p-2">
+          <div className="text-predict-yes-strong text-sm bg-predict-yes-bg rounded-lg p-2">
             {success}
           </div>
         )}
@@ -942,7 +942,7 @@ export function OutcomeOrderForm({
           type="submit"
           disabled={isDisabled}
           className={`w-full py-3 min-h-[48px] rounded-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-            outcomeType === 'yes' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'
+            outcomeType === 'yes' ? 'bg-predict-yes-bar hover:bg-predict-yes-bar-hover' : 'bg-predict-no-bar hover:bg-predict-no-bar-hover'
           }`}
         >
           {isLoading

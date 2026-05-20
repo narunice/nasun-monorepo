@@ -32,9 +32,7 @@ const CATEGORY_OPTIONS: ReadonlyArray<MarketCategory> = [
 // Categories with no live markets — kept visible for product-shape clarity
 // but disabled until at least one market in that category is created.
 // Space/Music/Sports/Weather all received seed markets on 2026-05-18.
-const DISABLED_CATEGORIES = new Set<MarketCategory>([
-  "Other",
-]);
+const DISABLED_CATEGORIES = new Set<MarketCategory>(["Other"]);
 
 const SORT_OPTIONS: ReadonlyArray<{ value: MarketSort; label: string }> = [
   { value: "closing-soon", label: "Closing Soon" },
@@ -81,10 +79,10 @@ function TabButton({
       title={title}
       className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors whitespace-nowrap ${
         active
-          ? "bg-pd1 text-white shadow-sm"
+          ? "bg-gray-700 text-white dark:bg-sky-200 dark:text-gray-900 shadow-sm"
           : disabled
-            ? "text-gray-400 dark:text-theme-text-muted dark:opacity-25 cursor-not-allowed"
-            : "text-gray-700 dark:text-theme-text-muted dark:opacity-50 hover:text-gray-900 dark:hover:text-theme-text-primary dark:hover:opacity-100"
+            ? "text-gray-400 dark:text-gray-600 cursor-not-allowed"
+            : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
       }`}
     >
       {children}
