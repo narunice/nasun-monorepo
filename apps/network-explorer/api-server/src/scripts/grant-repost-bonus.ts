@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2055594845969035587';
+const TWEET_ID = '2056186832942219674';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@0hmybo @0xAzk27 @1Minicio @4seazons263 @__Jayden007 @Abe_qearo @AdeyemoYusupha @AdlieI46077 @Anton4599262075 @baegseungh7061 @BernadetaD70810 @budie4167 @Cobalt_Duck @Daddypresh20 @eglebai @elonunmk @emroyd1 @evrenbaba031900 @goldvcoin @hashafifi @hyonggoo93 @indah_ye99 @Jonny_KX @kija888 @larionewlife @msaqlainfcma @MTown134056 @naro0ck @ngedream @NgocNguyen63053 @OjoPhilemo17247 @only_son_twitte @pedamtac @PemburuCuan069 @Putri_dhone @readnrest0 @ReopaahScrin @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @shu_bomi @skybluenalpha @StoryMofi @sucodautroc @tayanh1993 @The___rapper @tranbao_2610 @VJBillionz1 @web3_eyes @zare_obi
+@0x_nonol @0xaiaiai @0xarayeth @0xAzk27 @0xOluwafemi @4seazons263 @__Jayden007 @Abe_qearo @acahandi @AdeyemoYusupha @Anton4599262075 @ashrai78 @BernadetaD70810 @BornG69 @budie4167 @Daddypresh20 @Danzeronero @DisyaBolon @eglebai @Emiola_gangan @emroyd1 @enchainblack @erengyegah @fcbetass234 @gerockkk @hashafifi @hyonggoo93 @I_BlockFive @indah_ye99 @invest_sometime @JulioFarmerl800 @kija888 @larionewlife @lavanyalakshma2 @masud2633 @msaqlainfcma @MTown134056 @naro0ck @ngedream @NgocNguyen63053 @NguynL615156 @noxo_noxon @Obidestiny247 @OjoPhilemo17247 @only_son_twitte @PemburuCuan069 @Putri_dhone @qirat112211 @quoccuong0984 @readnrest0 @RealTucker77 @ReopaahScrin @Richarduwah2 @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @sintsarinan @skybluenalpha @Skymoon201095 @sothh84 @Staunch_idool64 @StoryMofi @sucodautroc @sven_336 @tensyonado18 @The___rapper @TranHa1273612 @VJBillionz1 @vodkamq @web3_eyes @zare_obi
 `;
 
 const BONUS_POINTS = 3;
