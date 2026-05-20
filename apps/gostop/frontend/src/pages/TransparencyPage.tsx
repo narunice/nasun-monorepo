@@ -1,25 +1,13 @@
 import { useState } from 'react';
 import { useTransparency, useLotteryDraws } from '../lib/api/queries';
 import type { BankrollSummary, DataQuality, GameTransparency, LotteryDraw, RiskMetricsBlock } from '../lib/api/types';
-import { bpsToPct, fmtAbsoluteTime, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
+import { bpsToPct, fmtAbsoluteTime, fmtSharePrice, fmtUsdc, fmtUsdcSigned, gameLabel } from '../features/dashboard/format';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { ENABLE_CRASH } from '../lib/gostop-config';
 import { Pagination } from '../features/shared/Pagination';
 import { RiskMetrics } from '../features/transparency/RiskMetrics';
 import { StressIndicators } from '../features/transparency/StressIndicators';
 import { TopLpConcentration } from '../features/transparency/TopLpConcentration';
-
-/**
- * Format a chain `share_price_scaled` integer string into a human pps figure.
- * Chain convention: 1_000_000_000 = 1.0 pps. We render 4 decimals.
- */
-function fmtSharePrice(scaled: string): string {
-  let n: bigint;
-  try { n = BigInt(scaled); } catch { return '—'; }
-  const whole = n / 1_000_000_000n;
-  const frac = (n % 1_000_000_000n) / 100_000n; // → 4-decimal precision
-  return `${whole.toString()}.${frac.toString().padStart(4, '0')}`;
-}
 
 function DataQualityBadge({ quality }: { quality: DataQuality }) {
   // Plan v3 §4.D UI contract.
