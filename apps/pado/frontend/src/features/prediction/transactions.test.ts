@@ -194,6 +194,31 @@ describe('buildBucketPositionArg — short-circuit behavior', () => {
     const tx = new Transaction();
     expect(() => buildBucketPositionArg(tx, MARKET_ID, [])).toThrow();
   });
+
+  it('does NOT throw on a bucket larger than the per-call 256 cap (chunked path)', () => {
+    const tx = new Transaction();
+    const ids = Array.from({ length: 998 }, (_, i) => fakeId(i + 1));
+    expect(() => buildBucketPositionArg(tx, MARKET_ID, ids)).not.toThrow();
+  });
+
+  it('emits chained merges (4 calls) for N=998: 256 + 255*3 = 256+255+255+232', () => {
+    const { tx, moveCalls } = spyTransaction();
+    const ids = Array.from({ length: 998 }, (_, i) => fakeId(i + 1));
+    const arg = buildBucketPositionArg(tx, MARKET_ID, ids);
+    expect(typeof arg).not.toBe('string');
+    // First merge consumes 256 raw IDs. Each subsequent merge consumes
+    // [running_merged] + up to 255 new IDs. ceil((998-256)/255) + 1 = 4.
+    expect(moveCalls.filter((c) => c.target.endsWith('::merge_positions'))).toHaveLength(4);
+  });
+
+  it('emits a single merge for N=257 via the chunked path (256 + 1)', () => {
+    const { tx, moveCalls } = spyTransaction();
+    const ids = Array.from({ length: 257 }, (_, i) => fakeId(i + 1));
+    expect(() => buildBucketPositionArg(tx, MARKET_ID, ids)).not.toThrow();
+    // 257 > MAX_MERGE_BATCH triggers the chunked path: first 256 raw IDs,
+    // then [running, 1 new]. Two merges total.
+    expect(moveCalls.filter((c) => c.target.endsWith('::merge_positions'))).toHaveLength(2);
+  });
 });
 
 describe('downstream builders accept both string and chained args', () => {

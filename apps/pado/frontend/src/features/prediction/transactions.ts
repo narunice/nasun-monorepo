@@ -443,9 +443,20 @@ function positionTypeFor(latestPkg: string): string {
 /**
  * Helper: given a list of Position IDs in the same (market, side) bucket,
  * return a `PositionArg` suitable for passing to any Position-consuming
- * builder. If the bucket has one element, returns it as a plain string (no
- * moveCall needed). If two or more, emits a `merge_positions` and returns the
- * chained argument.
+ * builder.
+ *
+ * Behavior by bucket size:
+ *   - 0:           throws (no positions to merge).
+ *   - 1:           returns the lone ID as a plain string (no moveCall added).
+ *   - 2..256:      emits one `merge_positions` and returns the chained arg.
+ *   - 257..MAX:    emits a chain of `merge_positions` calls (each ≤256 inputs)
+ *                  threaded through a running merged Position. The final
+ *                  merged Position is returned as the chained arg.
+ *
+ * The chunked path keeps single-signature UX for users with deep position
+ * lists (e.g. a taker order that hit many maker fills produced 998 Position
+ * NFTs in one (market, side) bucket — without this path, the per-call 256
+ * cap would force the Claim All UI to throw on the first attempt).
  */
 export function buildBucketPositionArg(
   tx: Transaction,
@@ -453,10 +464,71 @@ export function buildBucketPositionArg(
   positionIds: readonly string[],
   packageIdOverride?: string,
 ): PositionArg {
+  if (positionIds.length === 0) {
+    throw new Error('[Security] buildBucketPositionArg requires at least one position');
+  }
   if (positionIds.length === 1) {
     return positionIds[0];
   }
-  return buildMergePositionsChained(tx, marketId, positionIds, packageIdOverride);
+  if (positionIds.length <= MAX_MERGE_BATCH) {
+    return buildMergePositionsChained(tx, marketId, positionIds, packageIdOverride);
+  }
+  return buildChunkedChainedMerge(tx, marketId, positionIds, packageIdOverride);
+}
+
+/**
+ * Large-bucket path: chain N merge_positions calls so each one stays within
+ * the per-call 256-input cap while the entire merge completes inside a single
+ * PTB / single user signature.
+ *
+ * Strategy: first merge takes a full chunk of up to MAX_MERGE_BATCH raw IDs.
+ * Subsequent merges take `[running_merged, ...next chunk]` so the prior
+ * result threads through. Each subsequent chunk holds up to
+ * `MAX_MERGE_BATCH - 1` new IDs (one slot reserved for the running merged
+ * Position).
+ *
+ * Total moveCalls = ceil((N - MAX_MERGE_BATCH) / (MAX_MERGE_BATCH - 1)) + 1.
+ * For N=998: ceil(742 / 255) + 1 = 4 merge calls.
+ */
+function buildChunkedChainedMerge(
+  tx: Transaction,
+  marketId: string,
+  positionIds: readonly string[],
+  packageIdOverride?: string,
+): TransactionArgument {
+  const pkg = packageForMarket(marketId, packageIdOverride);
+  const posType = positionTypeFor(pkg);
+
+  // First merge: full batch of raw IDs (no running result yet).
+  const firstChunkSize = Math.min(MAX_MERGE_BATCH, positionIds.length);
+  const firstVec = tx.makeMoveVec({
+    elements: positionIds.slice(0, firstChunkSize).map((id) => tx.object(id)),
+    type: posType,
+  });
+  let merged: TransactionArgument = tx.moveCall({
+    target: `${pkg}::prediction_market::merge_positions`,
+    arguments: [tx.object(marketId), firstVec],
+  });
+  let cursor = firstChunkSize;
+
+  // Subsequent merges: prepend the running merged Position to each chunk so
+  // the chain consumes it. One vector slot is reserved for the prior result,
+  // leaving MAX_MERGE_BATCH - 1 slots for new IDs.
+  while (cursor < positionIds.length) {
+    const remaining = positionIds.length - cursor;
+    const chunkSize = Math.min(MAX_MERGE_BATCH - 1, remaining);
+    const nextIds = positionIds.slice(cursor, cursor + chunkSize);
+    const vec = tx.makeMoveVec({
+      elements: [merged, ...nextIds.map((id) => tx.object(id))],
+      type: posType,
+    });
+    merged = tx.moveCall({
+      target: `${pkg}::prediction_market::merge_positions`,
+      arguments: [tx.object(marketId), vec],
+    });
+    cursor += chunkSize;
+  }
+  return merged;
 }
 
 // ============================================
