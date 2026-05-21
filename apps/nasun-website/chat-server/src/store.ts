@@ -487,9 +487,24 @@ export function getChatParticipants(dateStr: string): string[] {
 // ===== Genesis Pass Badge =====
 
 export function setGenesisPassStatus(address: string, hasPass: boolean): void {
+  // UPSERT so callers that touch GP before the wallet has ever connected to
+  // chat (e.g. alpha /alpha/join Genesis Pass gate) still get a cached row.
+  // Otherwise the UPDATE would silently match 0 rows, `gp_checked_at` would
+  // stay 0, and every subsequent call would re-hit the Lambda. Display name
+  // is a placeholder (`0xab...cd`) that the next real chat connect will
+  // overwrite via `upsertUser`.
+  const fallbackDisplayName = address.length >= 10
+    ? `${address.slice(0, 6)}#${address.slice(-4)}`
+    : address;
   getDb()
-    .prepare('UPDATE users SET has_genesis_pass = ?, gp_checked_at = ? WHERE address = ?')
-    .run(hasPass ? 1 : 0, Date.now(), address);
+    .prepare(
+      `INSERT INTO users (address, display_name, has_genesis_pass, gp_checked_at, last_seen_at)
+       VALUES (?, ?, ?, ?, ?)
+       ON CONFLICT(address) DO UPDATE SET
+         has_genesis_pass = excluded.has_genesis_pass,
+         gp_checked_at = excluded.gp_checked_at`,
+    )
+    .run(address, fallbackDisplayName, hasPass ? 1 : 0, Date.now(), Date.now());
 }
 
 export function getGenesisPassCheckedAt(address: string): number {

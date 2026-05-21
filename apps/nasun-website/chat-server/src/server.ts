@@ -28,6 +28,8 @@ import {
 import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
+import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
+import { isAlphaGateEnabled } from './alpha-guards.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
@@ -1147,6 +1149,14 @@ try {
   setProfileApiUrl(CONFIG.nasunProfileApiUrl);
   // PR2.A — boot catch-up + hourly purge of soft-deleted agent_keys rows.
   startVaultPurgeCron();
+  // PR-2 alpha tick — single 60s cron for warn/expire/invite/re-queue.
+  // Gated on ALPHA_GATE_ENABLED so a pre-launch chat-server has no
+  // background timer touching the alpha schema.
+  if (isAlphaGateEnabled()) {
+    startAlphaCron();
+  } else {
+    console.log('[alpha-cron] skipped (ALPHA_GATE_ENABLED != true)');
+  }
 } catch (err) {
   console.error('FATAL: Failed to initialize database:', err);
   process.exit(1);
@@ -1363,6 +1373,7 @@ async function shutdown(): Promise<void> {
   if (profileSyncTimer) clearInterval(profileSyncTimer);
 
   stopChatbot();
+  stopAlphaCron();
   if (leaderboardEnabled) {
     stopIndexer();
     stopAggregator();
