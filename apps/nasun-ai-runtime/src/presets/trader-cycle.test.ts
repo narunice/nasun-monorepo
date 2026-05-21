@@ -158,6 +158,16 @@ function makeDeps(overrides: Partial<TraderCycleDeps> = {}): Partial<TraderCycle
     quoteMinOut: vi
       .fn()
       .mockResolvedValue(987n) as unknown as TraderCycleDeps['quoteMinOut'],
+    // SELL conversion default: identity (returns the requested quote raw).
+    // Tests that exercise SELL pre-flight override with a realistic base raw.
+    quoteBaseInForQuoteOut: vi
+      .fn()
+      .mockImplementation(async (args: { quoteOutRaw: bigint }) => args.quoteOutRaw) as unknown as TraderCycleDeps['quoteBaseInForQuoteOut'],
+    // SELL pre-flight default: pretend escrow is sufficiently funded.
+    // Tests that exercise the insufficient_escrow path override with a low value.
+    fetchEscrowAssetBalance: vi
+      .fn()
+      .mockResolvedValue(2n ** 63n - 1n) as unknown as TraderCycleDeps['fetchEscrowAssetBalance'],
     saveState: vi.fn() as unknown as TraderCycleDeps['saveState'],
     log: vi.fn() as unknown as TraderCycleDeps['log'],
     nowIso: () => '2026-05-13T00:00:00.000Z',

@@ -538,6 +538,114 @@ export async function quoteMinOut(args: {
   return (expected * BigInt(10_000 - slippageBps)) / 10_000n;
 }
 
+/**
+ * SELL helper: invert the pool's mid-price to compute the NBTC (base) raw
+ * input needed to receive `quoteOutRaw` NUSDC. AI decisions express size in
+ * quote (NUSDC) for consistency with BUY + cap enforcement, but the SELL
+ * swap PTB withdraws BASE from escrow -- a raw quote number used as a base
+ * amount overshoots the actual NBTC need by orders of magnitude (NBTC 8-dec
+ * vs NUSDC 6-dec + price ratio), which is what caused the 2026-05-21
+ * `E_INSUFFICIENT_ESCROW_BALANCE` (abort 573) incident.
+ *
+ * Strategy: probe `get_quantity_out(probeBaseRaw, 0, clock)` to read the
+ * live ratio, then invert: `baseIn = quoteOut * probeBase / probeQuote`.
+ * Adds a small `extraBufferBps` (default 50 = +0.5%) so price drift between
+ * quote-time and execution doesn't push the swap above the escrow ceiling.
+ *
+ * Throws fail-closed on devInspect transport/shape error so the cycle
+ * defers rather than guessing.
+ */
+export async function quoteBaseInForQuoteOut(args: {
+  client: SuiClient;
+  quoteOutRaw: bigint;
+  extraBufferBps?: number;
+}): Promise<bigint> {
+  const { client, quoteOutRaw } = args;
+  const extraBufferBps = args.extraBufferBps ?? 50;
+  if (quoteOutRaw <= 0n) {
+    throw new Error('quoteBaseInForQuoteOut: quoteOutRaw must be > 0');
+  }
+  if (!Number.isInteger(extraBufferBps) || extraBufferBps < 0 || extraBufferBps > 10_000) {
+    throw new Error('quoteBaseInForQuoteOut: extraBufferBps must be in [0, 10000]');
+  }
+
+  // 1 NBTC = 1e8 SOE -- large enough to amortize tick/fee rounding, small
+  // enough for any non-trivial pool.
+  const probeBaseRaw = 100_000_000n;
+
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${TRADER_CONFIG.deepbookPackage}::pool::get_quantity_out`,
+    typeArguments: [TRADER_CONFIG.baseType, TRADER_CONFIG.quoteType],
+    arguments: [
+      tx.object(TRADER_CONFIG.pool),
+      tx.pure.u64(probeBaseRaw),
+      tx.pure.u64(0n),
+      tx.object(TRADER_CONFIG.clockId),
+    ],
+  });
+
+  const result = await client.devInspectTransactionBlock({
+    sender: DEV_INSPECT_SENDER,
+    transactionBlock: tx,
+  });
+  if (result.effects?.status?.status !== 'success') {
+    throw new Error(
+      `quoteBaseInForQuoteOut: get_quantity_out devInspect failed: ${result.effects?.status?.error ?? 'unknown'}`,
+    );
+  }
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length < 3) {
+    throw new Error('quoteBaseInForQuoteOut: get_quantity_out returned fewer than 3 values');
+  }
+  const probeQuoteRaw = (() => {
+    const raw = returnValues[1]?.[0];
+    if (!raw || raw.length !== 8) {
+      throw new Error(`quoteBaseInForQuoteOut: return[1] expected 8-byte u64, got ${raw?.length}`);
+    }
+    let v = 0n;
+    for (let i = 0; i < 8; i++) v |= BigInt(raw[i]) << BigInt(i * 8);
+    return v;
+  })();
+  if (probeQuoteRaw <= 0n) {
+    throw new Error('quoteBaseInForQuoteOut: probe returned zero quote -- pool empty or fee swallowed');
+  }
+  const baseIn = (quoteOutRaw * probeBaseRaw) / probeQuoteRaw;
+  return (baseIn * BigInt(10_000 + extraBufferBps)) / 10_000n;
+}
+
+/**
+ * Read a single asset's raw balance from the agent escrow's dynamic fields.
+ * Returns 0n when the DOF is absent (asset never deposited or fully drained
+ * + removed by split_balance_internal's residual-zero path). Used for
+ * SELL pre-flight so the runtime can return a clear `insufficient_escrow_balance`
+ * before the on-chain swap dry-run aborts with the opaque abort 573.
+ */
+export async function fetchEscrowAssetBalance(
+  client: SuiClient,
+  escrowId: string,
+  assetType: string,
+): Promise<bigint> {
+  const normAsset = assetType.startsWith('0x') ? assetType : `0x${assetType}`;
+  const dfs = await client.getDynamicFields({ parentId: escrowId, limit: 50 });
+  for (const df of dfs.data) {
+    const dfName = df.name?.value as { name?: string } | undefined;
+    const rawName = dfName?.name;
+    if (!rawName) continue;
+    const typeName = rawName.startsWith('0x') ? rawName : `0x${rawName}`;
+    if (typeName !== normAsset) continue;
+    const obj = await client.getObject({
+      id: df.objectId,
+      options: { showContent: true },
+    });
+    const content = obj.data?.content as
+      | { fields?: { value?: string | number } }
+      | undefined;
+    return BigInt(content?.fields?.value ?? '0');
+  }
+  return 0n;
+}
+
 async function firstCoinId(client: SuiClient, owner: string, coinType: string): Promise<string> {
   const r = await client.getCoins({ owner, coinType, limit: 1 });
   if (r.data.length === 0) {

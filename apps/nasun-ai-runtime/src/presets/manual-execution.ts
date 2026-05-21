@@ -57,6 +57,8 @@ import {
   TRADER_CONFIG,
   buildSwapActionCall as defaultBuildSwapActionCall,
   quoteMinOut as defaultQuoteMinOut,
+  quoteBaseInForQuoteOut as defaultQuoteBaseInForQuoteOut,
+  fetchEscrowAssetBalance as defaultFetchEscrowAssetBalance,
   dailySpentQuoteRaw as defaultDailySpentQuoteRaw,
 } from './trader.js';
 import { fetchCapabilityFields as defaultFetchCapabilityFields } from './trader-cycle.js';
@@ -100,6 +102,8 @@ export interface ManualExecutionDeps {
   fetchCapabilityFields: typeof defaultFetchCapabilityFields;
   buildSwapActionCall: typeof defaultBuildSwapActionCall;
   quoteMinOut: typeof defaultQuoteMinOut;
+  quoteBaseInForQuoteOut: typeof defaultQuoteBaseInForQuoteOut;
+  fetchEscrowAssetBalance: typeof defaultFetchEscrowAssetBalance;
   dailySpentQuoteRaw: typeof defaultDailySpentQuoteRaw;
   log: (msg: string) => void;
   nowIso: () => string;
@@ -116,6 +120,8 @@ const REAL_DEPS: ManualExecutionDeps = {
   fetchCapabilityFields: defaultFetchCapabilityFields,
   buildSwapActionCall: defaultBuildSwapActionCall,
   quoteMinOut: defaultQuoteMinOut,
+  quoteBaseInForQuoteOut: defaultQuoteBaseInForQuoteOut,
+  fetchEscrowAssetBalance: defaultFetchEscrowAssetBalance,
   dailySpentQuoteRaw: defaultDailySpentQuoteRaw,
   log: (msg) => {
     const ts = new Date().toLocaleString('en-US');
@@ -378,11 +384,56 @@ export async function runManualExecution(
   });
 
   // 9. Build escrow + actionCall.
-  const sizeRaw = BigInt(proposal.size_quote_raw);
+  const sizeQuoteRaw = BigInt(proposal.size_quote_raw);
   const inputAssetType =
     proposal.side === 'BUY' ? trader.coinNusdcType : trader.coinNbtcType;
   const outputAssetType =
     proposal.side === 'BUY' ? trader.coinNbtcType : trader.coinNusdcType;
+
+  // SELL: proposal.size_quote_raw is the desired NUSDC quote out, but the
+  // swap PTB withdraws BASE (NBTC) from escrow. Convert quote -> base via
+  // live pool mid; BUY keeps quote raw as-is (input asset = quote).
+  // Pre-flight the escrow balance for a clear `insufficient_escrow_base_balance`
+  // reason rather than the opaque on-chain abort 573 mask. See 2026-05-21
+  // incident.
+  let spendAmountRaw: bigint = sizeQuoteRaw;
+  if (proposal.side === 'SELL') {
+    try {
+      spendAmountRaw = await deps.quoteBaseInForQuoteOut({
+        client,
+        quoteOutRaw: sizeQuoteRaw,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[manual] SELL quote->base conversion failed: ${msg}`);
+      return { ok: false, status: 'rejected', reason: 'sell_size_conversion_failed' };
+    }
+    if (spendAmountRaw <= 0n) {
+      deps.log('[manual] SELL conversion yielded zero base size; aborting.');
+      return { ok: false, status: 'rejected', reason: 'sell_size_zero' };
+    }
+    try {
+      const escrowBaseBalance = await deps.fetchEscrowAssetBalance(
+        client,
+        trader.escrowId,
+        inputAssetType,
+      );
+      if (escrowBaseBalance < spendAmountRaw) {
+        deps.log(
+          `[manual] SELL pre-flight: escrow NBTC ${escrowBaseBalance} < required ${spendAmountRaw}; aborting.`,
+        );
+        return {
+          ok: false,
+          status: 'rejected',
+          reason: 'insufficient_escrow_base_balance',
+        };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[manual] SELL pre-flight balance read failed: ${msg}`);
+      return { ok: false, status: 'rejected', reason: 'escrow_balance_read_failed' };
+    }
+  }
 
   const proposalForExec = {
     eventClass: 2 as const,
@@ -394,7 +445,7 @@ export async function runManualExecution(
       fn: proposal.side === 'BUY' ? 'swap_exact_quote_for_base' : 'swap_exact_base_for_quote',
       inputAssetType,
       outputAssetType,
-      inputAmount: sizeRaw.toString(),
+      inputAmount: spendAmountRaw.toString(),
       maxSlippageBps: proposal.max_slippage_bps,
       poolId: TRADER_CONFIG.pool,
     },
@@ -424,11 +475,11 @@ export async function runManualExecution(
       capabilityId: trader.capabilityId,
       capabilityInitialSharedVersion: cachedCapabilityInitialSharedVersion.toString(),
     };
-    spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
+    spendBlock = { coinAssetType: inputAssetType, amount: spendAmountRaw.toString() };
     const minOut = await deps.quoteMinOut({
       client,
       direction: proposal.side,
-      sizeInRaw: sizeRaw,
+      sizeInRaw: spendAmountRaw,
       slippageBps: proposal.max_slippage_bps,
     });
     actionCallBlock = deps.buildSwapActionCall({ direction: proposal.side, minOut });
