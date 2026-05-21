@@ -316,6 +316,50 @@ async function forwardToWake(
   }
 }
 
+// ===== Failure-reason mapping =====
+//
+// The agent-runner returns structured `reason` codes for every rejected
+// manual execution (see manual-execution.ts). The earlier UX collapsed
+// every failure into "the proposal may have expired", which was actively
+// misleading -- e.g., the 2026-05-21 incident where a quote->base unit
+// mismatch caused `insufficient_escrow_base_balance` but the user was
+// told the proposal expired. Surface the actual class so the user can
+// take the right next step (top up escrow, retry, wait).
+export function manualExecFailureMessage(reason: string | undefined): string {
+  const tail = 'Please check your Dashboard.';
+  if (!reason) return `Your agent could not execute the trade right now. ${tail}`;
+  // Match prefix-style codes (e.g. "infer_failed: rate limit").
+  const code = reason.split(':')[0].trim();
+  switch (code) {
+    case 'pending_lock_not_active':
+      return `The trade proposal has expired or was already executed. ${tail}`;
+    case 'pending_check_failed':
+      return `Could not verify the proposal lock on-chain (RPC error). Please try again in a moment.`;
+    case 'budget_check_failed':
+    case 'budget_inactive':
+      return `Your agent's inference budget is inactive. Top it up from the Dashboard.`;
+    case 'insufficient_balance':
+      return `Your agent's inference balance is too low to cover this execution.`;
+    case 'capability_owner_mismatch':
+    case 'capability_fetch_failed':
+      return `Capability authorization check failed. The agent may need to be re-authorized.`;
+    case 'sell_size_conversion_failed':
+    case 'sell_size_zero':
+      return `Could not price the SELL against the live pool. Please retry shortly.`;
+    case 'insufficient_escrow_base_balance':
+      return `Not enough NBTC in your agent's escrow to fill this SELL. Deposit more from the Dashboard.`;
+    case 'escrow_balance_read_failed':
+    case 'escrow_setup_failed':
+      return `Could not read your agent's escrow balance. Please try again in a moment.`;
+    case 'infer_failed':
+      return `The AI provider could not generate a confirmation for this trade. Please try again shortly.`;
+    case 'request_failed':
+      return `Could not create the on-chain request for this trade. Please try again in a moment.`;
+    default:
+      return `Your agent could not execute the trade (${code}). ${tail}`;
+  }
+}
+
 // ===== Inline keyboard builder =====
 
 function buildConfirmKeyboard(proposalId: string): Record<string, unknown> {
@@ -657,11 +701,7 @@ async function handleProposalConfirm(
       // Note: we cannot easily revert to 'pending' with the current schema
       // (status check in finalizeProposal prevents this). Log only.
       console.warn(`[baram-tg] Manual wake failed: ${result.error}`);
-      await sendMessage(
-        chatId,
-        'Your agent could not execute the trade right now. ' +
-        'The proposal may have expired. Please check your Dashboard.',
-      );
+      await sendMessage(chatId, manualExecFailureMessage(result.error));
     }
   } catch (err) {
     clearInterval(typingTimer);
