@@ -27,6 +27,7 @@ import {
 } from './agent-vault-routes.js';
 import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
+import { handleAlphaRequest } from './alpha-routes.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
@@ -405,6 +406,12 @@ async function handleHttpRequest(
 
   // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
   if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
+  // Nasun AI alpha · slot + waitlist read-only endpoints (PR-1).
+  // PR-2/PR-3에서 join/leave/status + cron 추가.
+  if (await handleAlphaRequest(req, res, url, corsHeaders)) {
     return;
   }
 
