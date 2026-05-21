@@ -24,6 +24,7 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { ulid } from 'ulid';
+import { getDb } from './store.js';
 import {
   getActiveSessionByTgUser,
   issueShortLivedJWT,
@@ -158,6 +159,44 @@ async function sendMessage(
   const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' };
   if (replyMarkup) body.reply_markup = replyMarkup;
   await tgPost('sendMessage', body, true, 'sendMessage');
+}
+
+/**
+ * PR-2 alpha — push an operator-initiated message to a wallet's bound
+ * Telegram chat. Caller does not get a chat_id — we re-resolve it from
+ * `baram_sessions` at send time so a session revoked / rotated between
+ * scheduling and delivery is reflected.
+ *
+ * Returns `true` if the row was found AND the HTTP send was attempted
+ * (delivery is fire-and-forget — Telegram 4xx/5xx still returns true
+ * because `tgPost` does its own retry and warn-log). Returns `false`
+ * only when no live session is bound (most common case: user never
+ * opened the bot deep link, or revoked the session).
+ *
+ * NOT for /wake-flow user messages — those run through `handleTelegramUpdate`
+ * and need the FSM + JWT path. This helper is the thin push channel for
+ * alpha lifecycle events (invite / warning / expiry / re-queue).
+ */
+export async function pushUserMessage(walletAddress: string, html: string): Promise<boolean> {
+  const wallet = walletAddress.toLowerCase();
+  const session = getDb()
+    .prepare(
+      `SELECT tg_user_id FROM baram_sessions
+       WHERE wallet = ? AND revoked_at IS NULL AND expires_at > ?
+         AND tg_user_id IS NOT NULL
+       ORDER BY created_at DESC LIMIT 1`,
+    )
+    .get(wallet, Date.now()) as { tg_user_id: string } | undefined;
+  if (!session?.tg_user_id) return false;
+  // sendMessage already handles 429/transient/timeout — we don't need
+  // additional retry here; the caller already accepted best-effort.
+  try {
+    await sendMessage(session.tg_user_id, html);
+    return true;
+  } catch (err) {
+    console.warn(`[alpha-tg] pushUserMessage failed for ${wallet.slice(0, 10)}: ${(err as Error).message}`);
+    return false;
+  }
 }
 
 async function sendChatAction(chatId: number | string, action = 'typing'): Promise<void> {

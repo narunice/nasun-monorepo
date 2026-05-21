@@ -50,9 +50,14 @@ const MAX_BODY_BYTES = 16 * 1024;
 // SSM Parameter Store agent-key vault. Entries carry agent + pubkeyHash
 // so a phisher cannot reuse a victim-signed challenge to bind a different
 // keypair (challenge text includes the agent address explicitly).
+//
+// PR-2 alpha: 'alpha-join'/'alpha-leave' added for the public alpha
+// slot/waitlist. The challenge text binds wallet+intent so a phished
+// signature for one cannot be replayed for the other.
 export type Purpose =
   | 'link' | 'revoke' | 'list'
-  | 'vault-upload' | 'vault-delete' | 'vault-restore';
+  | 'vault-upload' | 'vault-delete' | 'vault-restore'
+  | 'alpha-join' | 'alpha-leave';
 
 export interface ChallengeEntry {
   wallet: string;
@@ -120,6 +125,14 @@ export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, non
       lines.push('Nasun AI: Restore agent (server vault)');
       lines.push(`Wallet: ${entry.wallet}`);
       lines.push(`Agent:  ${entry.agent}`);
+      break;
+    case 'alpha-join':
+      lines.push('Nasun AI: Join alpha waitlist');
+      lines.push(`Wallet: ${entry.wallet}`);
+      break;
+    case 'alpha-leave':
+      lines.push('Nasun AI: Leave alpha waitlist');
+      lines.push(`Wallet: ${entry.wallet}`);
       break;
   }
   lines.push(`Nonce: ${nonce}`);

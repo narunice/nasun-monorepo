@@ -45,6 +45,15 @@ import {
   pm2NameForAgent,
   hasLegacyNasunAiRuntime,
 } from './agent-orchestrator.js';
+import {
+  enforceAlphaGuards,
+  withSlotReservation,
+  consumeWaitlistInvite,
+  getAgentTtlMs,
+  isAlphaGateEnabled,
+  GuardError,
+} from './alpha-guards.js';
+import { processQueueTick } from './alpha-cron.js';
 
 const PARAM_PREFIX = process.env.AGENT_VAULT_PARAM_PREFIX || '/nasun/ai-agent';
 const RATE_LIMIT_PER_WALLET_PER_MINUTE = 5;
@@ -320,6 +329,22 @@ export async function handleVaultUpload(
     return;
   }
 
+  // PR-2 alpha gate. Returns slotExempt=true for santa-class agents,
+  // which makes withSlotReservation a no-op and skips the expires_at
+  // stamp below. When ALPHA_GATE_ENABLED=false the helper short-circuits
+  // and reports slotExempt=false, which is correct (no TTL is applied
+  // because we only stamp expires_at when the gate is on).
+  let guard;
+  try {
+    guard = enforceAlphaGuards(ownerWallet, agentAddress);
+  } catch (err) {
+    if (err instanceof GuardError) {
+      writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+      return;
+    }
+    throw err;
+  }
+
   await withAgentLock(agentAddress, async () => {
     // Already-active short-circuit
     const existing = getDb()
@@ -333,74 +358,104 @@ export async function handleVaultUpload(
       return;
     }
 
-    const paramName = paramNameFor(agentAddress);
-
-    // SSM PutParameter (Overwrite=false catches concurrent uploads).
+    // Wrap SSM + INSERT + spawn in a slot reservation so the in-memory
+    // pendingSlots counter holds across the SSM await — see alpha-guards.ts.
+    // No-op when slotExempt=true (santa) or when the gate is OFF.
     try {
-      await getSsm().send(new PutParameterCommand({
-        Name: paramName,
-        Type: 'SecureString',
-        Value: agentSecretKey,
-        Overwrite: existing ? true : false,  // restore-after-purge case
-        Tier: 'Standard',
-        Tags: existing ? undefined : [
-          { Key: 'ownerWallet', Value: ownerWallet },
-          { Key: 'agentAddress', Value: agentAddress },
-        ],
-      }));
+      await withSlotReservation(guard.slotExempt, async () => {
+        const paramName = paramNameFor(agentAddress);
+
+        // SSM PutParameter (Overwrite=false catches concurrent uploads).
+        try {
+          await getSsm().send(new PutParameterCommand({
+            Name: paramName,
+            Type: 'SecureString',
+            Value: agentSecretKey,
+            Overwrite: existing ? true : false,  // restore-after-purge case
+            Tier: 'Standard',
+            Tags: existing ? undefined : [
+              { Key: 'ownerWallet', Value: ownerWallet },
+              { Key: 'agentAddress', Value: agentAddress },
+            ],
+          }));
+        } catch (err) {
+          // Do NOT include raw body or err.message that might echo body content.
+          // SDK service errors carry a `$metadata` payload — surface the
+          // status + AWS error name without leaking the secret value.
+          const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number }; Code?: string };
+          console.error(
+            `[vault-upload] SSM PutParameter failed for ${paramName}: ` +
+            `name=${e.name ?? 'unknown'} ` +
+            `code=${e.Code ?? 'n/a'} ` +
+            `status=${e.$metadata?.httpStatusCode ?? 'n/a'} ` +
+            `msg=${(e.message ?? '').slice(0, 200)}`,
+          );
+          writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
+          return;
+        }
+
+        const wakePort = existing ? existing.wake_port : allocatePort();
+        const pm2Name = existing ? existing.pm2_name : pm2NameForAgent(agentAddress);
+        const now = Date.now();
+        // PR-2 alpha TTL: stamp a 36h expiry on non-exempt agents only when
+        // the gate is on. When the gate flips off later, existing stamps stay
+        // and the cron stops sweeping (no tick runs), so the agent keeps
+        // running until the user deactivates — that matches "rollback = no
+        // forced expiries" in v2 §11.
+        const stampExpiry = !guard.slotExempt && isAlphaGateEnabled();
+        const expiresAt = stampExpiry ? now + getAgentTtlMs() : null;
+
+        if (existing) {
+          getDb().prepare(
+            `UPDATE agent_keys
+             SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
+                 wake_port = ?, last_used_at = ?,
+                 expires_at = ?, paused_at = NULL, warned_at = NULL
+             WHERE agent_address = ?`
+          ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, agentAddress);
+        } else {
+          getDb().prepare(
+            `INSERT INTO agent_keys
+               (agent_address, wallet_address, capability_id, param_name, pm2_name,
+                wake_port, created_at, expires_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt);
+        }
+
+        // Spawn PM2. Failure here should not orphan the SSM parameter — leave it
+        // (status endpoint will show 'inactive') and surface the error to the
+        // caller so they can retry.
+        try {
+          await spawnAgentPm2({ agentAddress, pm2Name, paramName, wakePort });
+        } catch (err) {
+          console.error(`[vault-upload] spawn failed for ${pm2Name}: ${(err as Error).message}`);
+          writeJson(res, 500, corsHeaders, { error: 'spawn_failed', pm2Name, wakePort });
+          return;
+        }
+
+        // Consume the waitlist invite so this slot is no longer "promised"
+        // to the user. Idempotent — santa / gate-off paths have nothing to
+        // remove. Trigger an in-process queue tick so the next user gets
+        // promoted immediately instead of waiting up to 60s.
+        consumeWaitlistInvite(ownerWallet);
+        void processQueueTick().catch((err) => {
+          console.warn('[alpha] processQueueTick after upload failed:', (err as Error).message);
+        });
+
+        writeJson(res, 200, corsHeaders, {
+          ok: true,
+          paramName,
+          pm2Name,
+          wakePort,
+        });
+      });
     } catch (err) {
-      // Do NOT include raw body or err.message that might echo body content.
-      // SDK service errors carry a `$metadata` payload — surface the
-      // status + AWS error name without leaking the secret value.
-      const e = err as { name?: string; message?: string; $metadata?: { httpStatusCode?: number }; Code?: string };
-      console.error(
-        `[vault-upload] SSM PutParameter failed for ${paramName}: ` +
-        `name=${e.name ?? 'unknown'} ` +
-        `code=${e.Code ?? 'n/a'} ` +
-        `status=${e.$metadata?.httpStatusCode ?? 'n/a'} ` +
-        `msg=${(e.message ?? '').slice(0, 200)}`,
-      );
-      writeJson(res, 500, corsHeaders, { error: 'vault_store_failed' });
-      return;
+      if (err instanceof GuardError) {
+        writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+        return;
+      }
+      throw err;
     }
-
-    const wakePort = existing ? existing.wake_port : allocatePort();
-    const pm2Name = existing ? existing.pm2_name : pm2NameForAgent(agentAddress);
-    const now = Date.now();
-
-    if (existing) {
-      getDb().prepare(
-        `UPDATE agent_keys
-         SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
-             wake_port = ?, last_used_at = ?
-         WHERE agent_address = ?`
-      ).run(ownerWallet, capabilityId, wakePort, now, agentAddress);
-    } else {
-      getDb().prepare(
-        `INSERT INTO agent_keys
-           (agent_address, wallet_address, capability_id, param_name, pm2_name,
-            wake_port, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
-      ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now);
-    }
-
-    // Spawn PM2. Failure here should not orphan the SSM parameter — leave it
-    // (status endpoint will show 'inactive') and surface the error to the
-    // caller so they can retry.
-    try {
-      await spawnAgentPm2({ agentAddress, pm2Name, paramName, wakePort });
-    } catch (err) {
-      console.error(`[vault-upload] spawn failed for ${pm2Name}: ${(err as Error).message}`);
-      writeJson(res, 500, corsHeaders, { error: 'spawn_failed', pm2Name, wakePort });
-      return;
-    }
-
-    writeJson(res, 200, corsHeaders, {
-      ok: true,
-      paramName,
-      pm2Name,
-      wakePort,
-    });
   });
 }
 
@@ -456,6 +511,12 @@ export async function handleVaultDelete(
       .run(now, agentAddress.toLowerCase());
     getDb().prepare(`DELETE FROM baram_agent_endpoints WHERE agent = ?`)
       .run(agentAddress.toLowerCase());
+    // PR-2 alpha: user-initiated deactivate frees a cap slot. Run an
+    // immediate invite pass so the next queued user gets promoted now
+    // instead of waiting up to 60s for the next cron tick.
+    void processQueueTick().catch((err) => {
+      console.warn('[alpha] processQueueTick after delete failed:', (err as Error).message);
+    });
     const recoveryWindowEndsAt = now + 7 * 24 * 60 * 60 * 1000;
     writeJson(res, 200, corsHeaders, { ok: true, recoveryWindowEndsAt });
   });
@@ -510,30 +571,66 @@ export async function handleVaultRestore(
     writeJson(res, 500, corsHeaders, { error: 'vault_lookup_failed' }); return;
   }
 
+  // PR-2 alpha gate. Restore is functionally a fresh activation from the
+  // cap accounting perspective (the row was soft-deleted, so it was
+  // already freed from `countActiveAgents`), so it must re-acquire a slot
+  // via the same guard path as upload.
+  let restoreGuard;
+  try {
+    restoreGuard = enforceAlphaGuards(result.entry.wallet, agentAddress);
+  } catch (err) {
+    if (err instanceof GuardError) {
+      writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+      return;
+    }
+    throw err;
+  }
+
   await withAgentLock(agentAddress.toLowerCase(), async () => {
-    // Wake port may have been reassigned to another agent during the grace
-    // window. Reallocate (UX: "wake port may change" — surfaced in response).
-    let newPort: number;
-    try { newPort = allocatePort(); }
-    catch { writeJson(res, 503, corsHeaders, { error: 'no_free_port' }); return; }
-
-    getDb().prepare(
-      `UPDATE agent_keys SET deleted_at = NULL, wake_port = ?, last_used_at = ?
-       WHERE agent_address = ?`
-    ).run(newPort, Date.now(), agentAddress.toLowerCase());
-
     try {
-      await spawnAgentPm2({
-        agentAddress: agentAddress.toLowerCase(),
-        pm2Name: row.pm2_name,
-        paramName: row.param_name,
-        wakePort: newPort,
+      await withSlotReservation(restoreGuard.slotExempt, async () => {
+        // Wake port may have been reassigned to another agent during the grace
+        // window. Reallocate (UX: "wake port may change" — surfaced in response).
+        let newPort: number;
+        try { newPort = allocatePort(); }
+        catch { writeJson(res, 503, corsHeaders, { error: 'no_free_port' }); return; }
+
+        const stampExpiry = !restoreGuard.slotExempt && isAlphaGateEnabled();
+        const expiresAt = stampExpiry ? Date.now() + getAgentTtlMs() : null;
+
+        getDb().prepare(
+          `UPDATE agent_keys
+              SET deleted_at = NULL, wake_port = ?, last_used_at = ?,
+                  expires_at = ?, paused_at = NULL, warned_at = NULL
+            WHERE agent_address = ?`
+        ).run(newPort, Date.now(), expiresAt, agentAddress.toLowerCase());
+
+        try {
+          await spawnAgentPm2({
+            agentAddress: agentAddress.toLowerCase(),
+            pm2Name: row.pm2_name,
+            paramName: row.param_name,
+            wakePort: newPort,
+          });
+        } catch (err) {
+          console.error(`[vault-restore] spawn failed: ${(err as Error).message}`);
+          writeJson(res, 500, corsHeaders, { error: 'spawn_failed' }); return;
+        }
+
+        consumeWaitlistInvite(result.entry.wallet);
+        void processQueueTick().catch((err) => {
+          console.warn('[alpha] processQueueTick after restore failed:', (err as Error).message);
+        });
+
+        writeJson(res, 200, corsHeaders, { ok: true, wakePort: newPort });
       });
     } catch (err) {
-      console.error(`[vault-restore] spawn failed: ${(err as Error).message}`);
-      writeJson(res, 500, corsHeaders, { error: 'spawn_failed' }); return;
+      if (err instanceof GuardError) {
+        writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+        return;
+      }
+      throw err;
     }
-    writeJson(res, 200, corsHeaders, { ok: true, wakePort: newPort });
   });
 }
 
