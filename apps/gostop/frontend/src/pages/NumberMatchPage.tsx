@@ -5,11 +5,8 @@ import { NMPickPanel } from '../features/numbermatch/components/NMPickPanel'
 import { NMPlayPanel } from '../features/numbermatch/components/NMPlayPanel'
 import { NMResultCard } from '../features/numbermatch/components/NMResultCard'
 import { NMPayoutTable } from '../features/numbermatch/components/NMPayoutTable'
-import { StreakIndicator } from '../components/StreakIndicator'
-import { useActiveAddress } from '../hooks/useActiveAddress'
 
 export default function NumberMatchPage() {
-  const walletAddress = useActiveAddress()
   const {
     isWalletConnected,
     isPlaying,
@@ -28,7 +25,6 @@ export default function NumberMatchPage() {
   return (
     <div className="space-y-8 min-h-screen">
       <NMHeader />
-      <div className="flex justify-end"><StreakIndicator player={walletAddress} /></div>
 
       {error && (
         <div className="panel p-4 border-red-500/50 bg-red-950/40 flex items-center justify-between gap-3">

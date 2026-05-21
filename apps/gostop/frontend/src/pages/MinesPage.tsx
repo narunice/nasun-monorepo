@@ -7,12 +7,9 @@ import { MinesHeader } from "../features/mines/components/MinesHeader";
 import { MinesBetPanel } from "../features/mines/components/MinesBetPanel";
 import { MinesActiveSession } from "../features/mines/components/MinesActiveSession";
 import { MinesFinishCard } from "../features/mines/components/MinesFinishCard";
-import { StreakIndicator } from "../components/StreakIndicator";
-import { useActiveAddress } from "../hooks/useActiveAddress";
 
 export default function MinesPage() {
   const celebrate = useCelebrate();
-  const walletAddress = useActiveAddress();
   const {
     isWalletConnected,
     session,
@@ -50,7 +47,6 @@ export default function MinesPage() {
   return (
     <div className="space-y-8 min-h-screen">
       <MinesHeader />
-      <div className="flex justify-end"><StreakIndicator player={walletAddress} /></div>
 
       {error && (
         <div className="panel p-4 border-red-500/50 bg-red-950/40 flex items-center justify-between gap-3">
