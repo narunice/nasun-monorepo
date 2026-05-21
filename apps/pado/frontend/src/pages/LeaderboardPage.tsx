@@ -388,6 +388,28 @@ export function LeaderboardPage() {
                     </div>
                   );
                 }
+                // Current week past the 2h "new week" grace window with no
+                // traders at all almost always means the chat-server scoring
+                // pipeline is mid-cycle or briefly unavailable, NOT that the
+                // viewer has stopped trading. Showing "No score data yet /
+                // Trade on any pool" misleads active players (a real example:
+                // the current week's rank-1 trader saw this banner during a
+                // chat-server aggregator stall). Surface the transient nature
+                // explicitly so the user retries instead of doubting their
+                // own activity.
+                if (
+                  isCurrentWeek &&
+                  !isNewWeek &&
+                  !showFollowing &&
+                  allScoreTraders.length === 0
+                ) {
+                  return (
+                    <div className="flex flex-col items-center justify-center py-12 text-theme-text-muted">
+                      <p className="text-sm">Leaderboard data is temporarily unavailable.</p>
+                      <p className="text-sm mt-1 opacity-70">Please refresh in a moment.</p>
+                    </div>
+                  );
+                }
                 return (
                   <ScoreLeaderboardTable
                     traders={showFollowing ? allScoreTraders : currentTraders}
