@@ -164,7 +164,11 @@ function PositionCard({ position: p }: { position: LpPosition }) {
       applyOptimisticWithdrawRequested();
       showToast('Cooldown started. Redeem available in 24h.', 'success');
       setConfirmOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
+      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'pool-state'] });
+      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'apy'] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'positions'] });
+      }, 8000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`Request withdraw failed: ${msg}`, 'error');
@@ -190,7 +194,15 @@ function PositionCard({ position: p }: { position: LpPosition }) {
       }
       applyOptimisticRedeemed();
       showToast('Redeem complete. NUSDC sent to your wallet.', 'success');
-      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp'] });
+      // Refresh pool-wide stats immediately; positions list is delayed because
+      // the backend indexer needs a few seconds to pick up the LPToken burn
+      // event. An immediate refetch would return the still-owned position
+      // and overwrite the optimistic removal, forcing the user to reload.
+      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'pool-state'] });
+      queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'apy'] });
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['gostop', 'lp', 'positions'] });
+      }, 8000);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       showToast(`Redeem failed: ${msg}`, 'error');
