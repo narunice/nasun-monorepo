@@ -57,6 +57,8 @@ import {
   parseTradeDecision as defaultParseTradeDecision,
   buildSwapActionCall as defaultBuildSwapActionCall,
   quoteMinOut as defaultQuoteMinOut,
+  quoteBaseInForQuoteOut as defaultQuoteBaseInForQuoteOut,
+  fetchEscrowAssetBalance as defaultFetchEscrowAssetBalance,
   fetchAgentBalances as defaultFetchAgentBalances,
   dailySpentQuoteRaw as defaultDailySpentQuoteRaw,
   recentTrades as defaultRecentTrades,
@@ -299,6 +301,8 @@ export interface TraderCycleDeps {
   parseTradeDecision: typeof defaultParseTradeDecision;
   buildSwapActionCall: typeof defaultBuildSwapActionCall;
   quoteMinOut: typeof defaultQuoteMinOut;
+  quoteBaseInForQuoteOut: typeof defaultQuoteBaseInForQuoteOut;
+  fetchEscrowAssetBalance: typeof defaultFetchEscrowAssetBalance;
   saveState: (s: TraderState) => void;
   log: (msg: string) => void;
   nowIso: () => string;
@@ -318,6 +322,8 @@ const REAL_DEPS: TraderCycleDeps = {
   parseTradeDecision: defaultParseTradeDecision,
   buildSwapActionCall: defaultBuildSwapActionCall,
   quoteMinOut: defaultQuoteMinOut,
+  quoteBaseInForQuoteOut: defaultQuoteBaseInForQuoteOut,
+  fetchEscrowAssetBalance: defaultFetchEscrowAssetBalance,
   saveState: (s) => saveTraderState(s),
   log: (msg) => {
     const ts = new Date().toLocaleString('en-US');
@@ -619,11 +625,58 @@ export async function runTraderCycle(
 
   // 8. Build proposal matching the envelope.
   const buyOrSell = decision.action === 'BUY' || decision.action === 'SELL';
-  const sizeRaw = BigInt(Math.floor(decision.sizeNUSDC * 1_000_000));
+  const sizeQuoteRaw = BigInt(Math.floor(decision.sizeNUSDC * 1_000_000));
   const inputAssetType =
     decision.action === 'BUY' ? trader.coinNusdcType : trader.coinNbtcType;
   const outputAssetType =
     decision.action === 'BUY' ? trader.coinNbtcType : trader.coinNusdcType;
+
+  // SELL: sizeNUSDC is the desired quote out, but the swap PTB withdraws
+  // BASE from escrow. Convert quote -> base via live pool mid before sizing
+  // spendBlock/actionCall. BUY's input is already quote, no conversion.
+  // See 2026-05-21 abort 573 incident.
+  let spendAmountRaw: bigint = sizeQuoteRaw;
+  if (decision.action === 'SELL') {
+    try {
+      spendAmountRaw = await deps.quoteBaseInForQuoteOut({
+        client,
+        quoteOutRaw: sizeQuoteRaw,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[trader] SELL quote->base conversion failed: ${msg}`);
+      return { outcome: 'execute_failed', reason: 'sell_size_conversion_failed', effectiveIntervalMs };
+    }
+    if (spendAmountRaw <= 0n) {
+      deps.log('[trader] SELL conversion yielded zero base size; skipping cycle.');
+      return { outcome: 'execute_failed', reason: 'sell_size_zero', effectiveIntervalMs };
+    }
+    // Pre-flight: confirm escrow can satisfy the withdraw before we sign.
+    // Spares the user an opaque on-chain abort 573 and gives the chat-server
+    // a clear reason to surface.
+    try {
+      const escrowBaseBalance = await deps.fetchEscrowAssetBalance(
+        client,
+        trader.escrowId,
+        inputAssetType,
+      );
+      if (escrowBaseBalance < spendAmountRaw) {
+        deps.log(
+          `[trader] SELL pre-flight: escrow NBTC ${escrowBaseBalance} < required ${spendAmountRaw}; aborting.`,
+        );
+        return {
+          outcome: 'execute_failed',
+          reason: 'insufficient_escrow_base_balance',
+          effectiveIntervalMs,
+        };
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      deps.log(`[trader] SELL pre-flight balance read failed: ${msg}`);
+      return { outcome: 'execute_failed', reason: 'escrow_balance_read_failed', effectiveIntervalMs };
+    }
+  }
+
   const proposalForExec = buyOrSell
     ? {
         eventClass: 2 as const,
@@ -638,7 +691,7 @@ export async function runTraderCycle(
               : 'swap_exact_base_for_quote',
           inputAssetType,
           outputAssetType,
-          inputAmount: sizeRaw.toString(),
+          inputAmount: spendAmountRaw.toString(),
           maxSlippageBps: trader.maxSlippageBps,
           poolId: TRADER_CONFIG.pool,
         },
@@ -675,7 +728,7 @@ export async function runTraderCycle(
       const minOut = await deps.quoteMinOut({
         client,
         direction: decision.action as 'BUY' | 'SELL',
-        sizeInRaw: sizeRaw,
+        sizeInRaw: spendAmountRaw,
         slippageBps: trader.maxSlippageBps,
       });
       actionCallBlock = deps.buildSwapActionCall({
@@ -688,7 +741,7 @@ export async function runTraderCycle(
         capabilityId: trader.capabilityId,
         capabilityInitialSharedVersion: capInitial.toString(),
       };
-      spendBlock = { coinAssetType: inputAssetType, amount: sizeRaw.toString() };
+      spendBlock = { coinAssetType: inputAssetType, amount: spendAmountRaw.toString() };
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       deps.log(`[trader] swap-block setup failed: ${msg}`);
