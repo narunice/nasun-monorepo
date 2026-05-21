@@ -7,9 +7,9 @@
  * TELEGRAM_ALERT_CHAT_ID. Repeated alerts are gated by COOLDOWN_MS so a
  * stuck agent does not flood the channel.
  *
- * Distinct from telegram.ts notifyTraderAER, which sends user-facing
- * trade notifications to a per-user TELEGRAM_CHAT_ID. The alert channel
- * is operator-facing and shared across agents.
+ * Operator-facing and shared across agents. User-facing trade
+ * notifications are not emitted by the runtime; the wake-forwarding bot
+ * (chat-server BARAM_TG_*) is the sole user channel.
  *
  * Failure mode: if TELEGRAM_ALERT_CHAT_ID is unset, the watchdog still
  * runs and logs stalls locally, but no Telegram message is sent. This
@@ -61,9 +61,7 @@ export function startAerHeartbeatWatchdog(opts: HeartbeatWatchdogOptions): void 
   const checkIntervalMs = opts.checkIntervalMs ?? 60_000;
   const startupGraceMs = Math.max(staleMs * 2, intervalMs * 2, MIN_STARTUP_GRACE_MS);
 
-  // Token falls back to the user-facing trader bot token so a single bot
-  // can carry both channels. Chat ID must always be explicit.
-  const botToken = process.env.TELEGRAM_ALERT_BOT_TOKEN ?? process.env.TELEGRAM_BOT_TOKEN ?? '';
+  const botToken = process.env.TELEGRAM_ALERT_BOT_TOKEN ?? '';
   const chatId = process.env.TELEGRAM_ALERT_CHAT_ID ?? '';
 
   if (watchdogTimer) clearInterval(watchdogTimer);

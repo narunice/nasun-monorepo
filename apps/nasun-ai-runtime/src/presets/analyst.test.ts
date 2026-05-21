@@ -57,8 +57,6 @@ function makeConfig(overrides: Partial<Config> = {}): Config {
     llmApiKey: '',
     llmModel: '',
     baramAerPackageId: AER_PKG_ID,
-    telegramBotToken: null,
-    telegramChatId: null,
     wakePort: 0,
     packageId: '0x' + '22'.repeat(32),
     registryId: '0x' + '33'.repeat(32),

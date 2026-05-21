@@ -138,19 +138,10 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
       ?? process.env.PR1A_SWAP_DISABLED
       ?? 'true',
   };
-  // Optional trader-cycle Telegram notifications — distinct from
-  // BARAM_TG_* (chat-server's wake-forwarding bot). Only set when
-  // operator opts in via AGENT_TELEGRAM_*.
-  if (process.env.AGENT_TELEGRAM_BOT_TOKEN) {
-    out.TELEGRAM_BOT_TOKEN = process.env.AGENT_TELEGRAM_BOT_TOKEN;
-  }
-  if (process.env.AGENT_TELEGRAM_CHAT_ID) {
-    out.TELEGRAM_CHAT_ID = process.env.AGENT_TELEGRAM_CHAT_ID;
-  }
-  // Operator-facing AER heartbeat watchdog alerts. Independent from
-  // TELEGRAM_CHAT_ID above (which is the user-facing trade notification
-  // channel). When ALERT_CHAT_ID is unset the runtime logs stalls but
-  // does not send a Telegram message.
+  // Operator-facing AER heartbeat watchdog alerts. When ALERT_CHAT_ID is
+  // unset the runtime logs stalls but does not send a Telegram message.
+  // User-facing trade notifications are delivered via the wake-forwarding
+  // bot (BARAM_TG_*), not from the agent runtime directly.
   if (process.env.AGENT_TELEGRAM_ALERT_BOT_TOKEN) {
     out.TELEGRAM_ALERT_BOT_TOKEN = process.env.AGENT_TELEGRAM_ALERT_BOT_TOKEN;
   }
