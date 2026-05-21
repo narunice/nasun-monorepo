@@ -36,7 +36,6 @@ import {
   newTraderCycleRuntime,
   type TraderCycleResult,
 } from '../presets/trader-cycle.js';
-import { notifyTraderAER } from '../telegram.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
 
 // Cross-cycle runtime owned by this process; tests construct their own.
@@ -55,19 +54,6 @@ export async function runTraderCyclePresetEntry(
   }
   if (result.fatal) {
     requestShutdown();
-  }
-  if (result.outcome === 'succeeded' && result.decision) {
-    const { telegramBotToken, telegramChatId } = config;
-    if (telegramBotToken && telegramChatId) {
-      await notifyTraderAER(telegramBotToken, telegramChatId, {
-        action: result.decision.action,
-        sizeNUSDC: result.decision.sizeNUSDC,
-        reason: result.decision.reason,
-        txDigest: result.txDigest,
-        agentAddress: config.agentAddress,
-        riskGate: result.decision.riskGate,
-      });
-    }
   }
   return result.effectiveIntervalMs;
 }

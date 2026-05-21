@@ -249,21 +249,13 @@ describe('Telegram channel and fallback chain', () => {
     expect(staleLog).toBeDefined();
   });
 
-  it('falls back to TELEGRAM_BOT_TOKEN when TELEGRAM_ALERT_BOT_TOKEN is unset', async () => {
-    process.env.TELEGRAM_BOT_TOKEN = 'fallback-bot-token';
+  it('logs but does not send when TELEGRAM_ALERT_BOT_TOKEN is unset', async () => {
     process.env.TELEGRAM_ALERT_CHAT_ID = '-100abc';
-    startWatchdog({ intervalMinutes: 5 });
+    const log = startWatchdog({ intervalMinutes: 5 });
     await vi.advanceTimersByTimeAsync(21 * 60_000);
-    expect(sendMock).toHaveBeenCalledWith('fallback-bot-token', '-100abc', expect.any(String));
-  });
-
-  it('prefers TELEGRAM_ALERT_BOT_TOKEN over TELEGRAM_BOT_TOKEN', async () => {
-    process.env.TELEGRAM_ALERT_BOT_TOKEN = 'alert-token';
-    process.env.TELEGRAM_BOT_TOKEN = 'trader-token';
-    process.env.TELEGRAM_ALERT_CHAT_ID = '-100abc';
-    startWatchdog({ intervalMinutes: 5 });
-    await vi.advanceTimersByTimeAsync(21 * 60_000);
-    expect(sendMock).toHaveBeenCalledWith('alert-token', '-100abc', expect.any(String));
+    expect(sendMock).not.toHaveBeenCalled();
+    const staleLog = log.mock.calls.find((c) => String(c[0]).includes('STALE'));
+    expect(staleLog).toBeDefined();
   });
 });
 

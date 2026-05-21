@@ -278,10 +278,6 @@ export function loadConfigBaseSync() {
     // Plan D D-4: baram_aer v1.4.0 package (Plan A + D-0b publish). Optional
     // until D-4 wires cognition AER PTBs.
     baramAerPackageId: process.env.BARAM_AER_PACKAGE_ID ?? '',
-
-    // Optional Telegram notifications (trader preset only).
-    telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? null,
-    telegramChatId: process.env.TELEGRAM_CHAT_ID ?? null,
   } as const;
 }
 
