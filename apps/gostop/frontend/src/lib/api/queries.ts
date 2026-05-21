@@ -233,15 +233,6 @@ export function useLeaderboard(
   });
 }
 
-export function useStreak(player: string | undefined) {
-  return useQuery({
-    queryKey: player ? QK.streak(player) : ['gostop', 'streak', 'disabled'],
-    enabled: !!player,
-    staleTime: STALE.streak,
-    queryFn: () => apiRequest<StreakSummary>(`/api/gostop/streak/${player}`),
-  });
-}
-
 export function useTransparency() {
   return useQuery({
     queryKey: QK.transparency(),

@@ -13,7 +13,6 @@ import { useBurnableTickets } from "../features/lottery/useBurnableTickets";
 import { PickPanel, BuyPanel, QuickBuyPanel } from "../features/lottery/components/LotteryPurchasePanels";
 import { MyTickets, PurchaseConfirmModal } from "../features/lottery/components/LotteryTicketManagement";
 import { PrizeTable } from "../features/lottery/components/LotteryPrizeTable";
-import { StreakIndicator } from "../components/StreakIndicator";
 import { useActiveAddress } from "../hooks/useActiveAddress";
 
 export default function LotteryPage() {
@@ -63,7 +62,6 @@ export default function LotteryPage() {
         statusText={round ? statusLabel(round.status) : roundLoading ? "Loading" : "Not started"}
         prizePoolNusdc={round ? formatNusdc(round.prizePool + round.rolloverIn) : "0.00"}
       />
-      <div className="flex justify-end"><StreakIndicator player={walletAddress} /></div>
 
       {error && (
         <div className="panel p-4 border-red-500/50 bg-red-950/40 flex items-center justify-between gap-3">
