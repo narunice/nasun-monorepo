@@ -46,6 +46,13 @@ module.exports = {
         POOL_NASUN_NUSDC: '0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e',
         POOL_NETH_NUSDC: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
         POOL_NSOL_NUSDC: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
+        // Nasun AI alpha (PR-1: read-only endpoints exposed; cron/guards land
+        // in PR-2/PR-3). Keep ALPHA_GATE_ENABLED=false until the alpha-migration
+        // SQL has been applied AND PR-2 code is deployed.
+        ALPHA_GATE_ENABLED: 'false',
+        NASUN_AI_ALPHA_SYSTEM_CAP: '8',
+        NASUN_AI_ALPHA_AGENT_TTL_MS: '129600000',      // 36h
+        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '21600000',    // 6h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
         // sourced from .env (via `set -a && source .env && set +a` before
         // `pm2 startOrRestart`) reaches the process. Listing it with a
