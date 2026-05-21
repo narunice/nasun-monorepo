@@ -30,6 +30,11 @@ const EVENT_ID_RE = /^[0-9]{5,12}$/;
 const ISO_UTC_RE = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) UTC$/;
 // Empty strStatus is treated as final when both scores are present (TheSportsDB
 // returns "" for historic events). In-play statuses below are explicit.
+// NOTE: terminal-classification is an implicit whitelist (anything not in
+// NON_FINAL/VOID is treated as final). Safe for football (FT/AET/AP all fall
+// through correctly) but if non-football sports are added (period-based like
+// hockey 'P1'/'P2' or basketball quarter codes) flip to an explicit
+// TERMINAL_STATUSES set.
 const NON_FINAL_STATUSES = new Set([
   'Not Started', 'Scheduled', 'NS', '1H', '2H', 'HT', 'ET', 'P', 'BT',
   'In Play', 'Live',
@@ -154,8 +159,21 @@ async function fetchEvent(eventId: string): Promise<SportsDbEvent | null> {
   failureBackoff.delete(eventId);
   const event = body.events?.[0] ?? null;
 
-  if (event && event.intHomeScore !== null && event.intAwayScore !== null) {
-    finalCache.set(eventId, event);
+  // Promote to finalCache only when the event is genuinely terminal: scores
+  // populated AND strStatus is not in-play/void. TheSportsDB starts updating
+  // intHomeScore/intAwayScore mid-match (e.g. "2H" with 0-3 already set), so
+  // a score-only check freezes the in-play snapshot forever and the resolver
+  // never sees the final whistle. 2026-05-20 Freiburg-Aston Villa stalled
+  // ~8h on `pending (status not final: 2H)` because of this.
+  const status = (event?.strStatus ?? '').trim();
+  const isTerminal =
+    event !== null
+    && event.intHomeScore !== null
+    && event.intAwayScore !== null
+    && !NON_FINAL_STATUSES.has(status)
+    && !VOID_STATUSES.has(status);
+  if (isTerminal) {
+    finalCache.set(eventId, event!);
     recentCache.delete(eventId);
   } else {
     recentCache.set(eventId, { value: event, ts: now });
