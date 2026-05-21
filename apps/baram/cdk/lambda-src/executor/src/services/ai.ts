@@ -43,34 +43,51 @@ interface InitializedProvider {
 }
 
 // Static catalog of supported providers. Add new entries here to enable.
-// Order is irrelevant for the catalog — the FALLBACK_CHAIN below decides
+// Order is irrelevant for the catalog -- the FALLBACK_CHAIN below decides
 // runtime priority.
+//
+// `together` was intentionally removed (2026-05-21): operator decision to
+// not rely on Together's free tier. Re-add if their pricing changes.
 const PROVIDER_CATALOG: Record<string, ProviderConfig> = {
   groq:       { name: 'groq',       baseURL: 'https://api.groq.com/openai/v1',         apiKeyEnvHint: 'GROQ_API_KEY' },
-  cerebras:   { name: 'cerebras',   baseURL: 'https://api.cerebras.ai/v1',             apiKeyEnvHint: 'CEREBRAS_API_KEY' },
-  openrouter: { name: 'openrouter', baseURL: 'https://openrouter.ai/api/v1',           apiKeyEnvHint: 'OPENROUTER_API_KEY' },
-  together:   { name: 'together',   baseURL: 'https://api.together.xyz/v1',            apiKeyEnvHint: 'TOGETHER_API_KEY' },
-  deepseek:   { name: 'deepseek',   baseURL: 'https://api.deepseek.com/v1',            apiKeyEnvHint: 'DEEPSEEK_API_KEY' },
   mistral:    { name: 'mistral',    baseURL: 'https://api.mistral.ai/v1',              apiKeyEnvHint: 'MISTRAL_API_KEY' },
-  sambanova:  { name: 'sambanova',  baseURL: 'https://api.sambanova.ai/v1',            apiKeyEnvHint: 'SAMBANOVA_API_KEY' },
   gemini:     { name: 'gemini',     baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/', apiKeyEnvHint: 'GEMINI_API_KEY' },
+  openrouter: { name: 'openrouter', baseURL: 'https://openrouter.ai/api/v1',           apiKeyEnvHint: 'OPENROUTER_API_KEY' },
+  sambanova:  { name: 'sambanova',  baseURL: 'https://api.sambanova.ai/v1',            apiKeyEnvHint: 'SAMBANOVA_API_KEY' },
+  cerebras:   { name: 'cerebras',   baseURL: 'https://api.cerebras.ai/v1',             apiKeyEnvHint: 'CEREBRAS_API_KEY' },
+  deepseek:   { name: 'deepseek',   baseURL: 'https://api.deepseek.com/v1',            apiKeyEnvHint: 'DEEPSEEK_API_KEY' },
 };
 
-// Canonical model name → ordered list of (provider, provider-model) attempts.
-// Speed-tier providers first (Groq, Cerebras), then larger-quota fallbacks,
-// then last-resort smaller-context providers. Provider-specific model ids
-// chosen to match Llama 3.3 70B (or closest) when possible — quality drift
-// between providers exists but is acceptable for prototype-grade decisions.
+// Canonical model name -> ordered list of (provider, provider-model) attempts.
+//
+// 2026-05-21 audit (rebuilt after live trace showed 7/7 providers failing
+// simultaneously at 12:44 KST):
+//   - groq        kept first: fastest when within 100k TPD free quota.
+//   - mistral     promoted: most reliable free completion in the 5/20 window.
+//   - gemini      promoted + model id refreshed (`2.0-flash` is deprecated,
+//                 use `2.5-flash`); huge free RPD quota.
+//   - openrouter  flaky 429 but free Llama 70B; mid-chain.
+//   - sambanova   needs key refresh (5/20 logs show `D41c3e*****5e36` =>
+//                 401). Kept in chain so it self-heals once key is rotated.
+//   - cerebras    DOWNGRADED from `llama3.3-70b` (chronic 404 -- no longer
+//                 in public catalog) to `llama3.1-8b`. 8B quality drift is
+//                 acceptable as a last-quality fallback; better than a
+//                 hard-skip slot.
+//   - deepseek    last: paid balance required (chronic 402); only useful
+//                 if operator funds it.
+//
+// All providers map to a Llama-3.3-70B-class output (or closest available);
+// gemini-2.5-flash and llama3.1-8b are quality-degraded fallbacks. The
+// chain is the safety net -- one bad slot is fine, the next succeeds.
 const FALLBACK_CHAIN: Record<string, ProviderModel[]> = {
   'llama-3.3-70b-versatile': [
     { provider: 'groq',       model: 'llama-3.3-70b-versatile' },
-    { provider: 'cerebras',   model: 'llama3.3-70b' },
-    { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct:free' },
-    { provider: 'together',   model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo-Free' },
-    { provider: 'sambanova',  model: 'Meta-Llama-3.3-70B-Instruct' },
-    { provider: 'deepseek',   model: 'deepseek-chat' },
     { provider: 'mistral',    model: 'mistral-small-latest' },
-    { provider: 'gemini',     model: 'gemini-2.0-flash' },
+    { provider: 'gemini',     model: 'gemini-2.5-flash' },
+    { provider: 'openrouter', model: 'meta-llama/llama-3.3-70b-instruct:free' },
+    { provider: 'sambanova',  model: 'Meta-Llama-3.3-70B-Instruct' },
+    { provider: 'cerebras',   model: 'llama3.1-8b' },
+    { provider: 'deepseek',   model: 'deepseek-chat' },
   ],
 };
 
@@ -102,9 +119,21 @@ export function initProviders(keys: Record<string, string | null | undefined>): 
   }
   const initializedCount = Object.keys(providers).length;
   if (initializedCount === 0) {
-    throw new Error('No AI providers initialized — at least one API key required');
+    throw new Error('No AI providers initialized -- at least one API key required');
   }
   console.log(`[AI] ${initializedCount} provider(s) ready: ${Object.keys(providers).join(', ')}`);
+  // Surface the actual runtime chain per canonical model so operators can
+  // audit "what will be tried in what order" without grepping source. Slots
+  // whose provider has no SSM key are tagged `(skip)` so a missing key is
+  // visible at cold start, not only when chain exhaustion happens.
+  for (const [canonicalModel, chain] of Object.entries(FALLBACK_CHAIN)) {
+    const planned = chain
+      .map(({ provider, model }) =>
+        providers[provider] ? `${provider}:${model}` : `${provider}:${model}(skip)`,
+      )
+      .join(' -> ');
+    console.log(`[AI] Chain for ${canonicalModel}: ${planned}`);
+  }
 }
 
 export function isValidModel(model: string): boolean {
@@ -247,11 +276,30 @@ export async function generateCompletion(
     }
   }
 
+  // Distinguish "every configured provider failed" from "no providers
+  // configured at all". The classifyError() path in index.ts matches the
+  // substring "429" or "rate_limit"; when chain exhaustion is dominated by
+  // non-429 errors (auth, chronic 404, etc.) the rate-limit user message is
+  // misleading. Include the status histogram so operators can triage from
+  // the user-visible error string.
   const summary = errors
     .map((e) => `${e.provider}=${(e.err as { status?: number }).status ?? 'err'}`)
     .join(', ');
+  const dominantStatus = (() => {
+    const counts = new Map<string | number, number>();
+    for (const e of errors) {
+      const s = (e.err as { status?: number }).status ?? 'err';
+      counts.set(s, (counts.get(s) ?? 0) + 1);
+    }
+    let best: string | number | undefined;
+    let bestN = 0;
+    for (const [s, n] of counts) {
+      if (n > bestN) { bestN = n; best = s; }
+    }
+    return best;
+  })();
   throw new Error(
-    `All AI providers exhausted for model=${model}. Tried: ${summary || 'none'}`,
+    `All AI providers exhausted for model=${model} (n=${errors.length}, dominant=${dominantStatus ?? 'n/a'}). Tried: ${summary || 'none'}`,
   );
 }
 

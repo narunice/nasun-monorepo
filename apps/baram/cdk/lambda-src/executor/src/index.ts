@@ -57,11 +57,11 @@ let initialized = false;
 // chain narrows to whichever subset has keys. Groq stays the canonical
 // default for backward-compat with `GROQ_PARAMETER_NAME`; others use a
 // uniform `<provider>_PARAMETER_NAME` convention.
+// `together` removed 2026-05-21 (operator decision).
 const AI_PROVIDER_SSM_ENV: Record<string, string> = {
   groq:       'GROQ_PARAMETER_NAME',
   cerebras:   'CEREBRAS_PARAMETER_NAME',
   openrouter: 'OPENROUTER_PARAMETER_NAME',
-  together:   'TOGETHER_PARAMETER_NAME',
   deepseek:   'DEEPSEEK_PARAMETER_NAME',
   mistral:    'MISTRAL_PARAMETER_NAME',
   sambanova:  'SAMBANOVA_PARAMETER_NAME',
