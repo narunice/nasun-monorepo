@@ -345,7 +345,11 @@ ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "set -e
   else
     AGENT_COUNT=\$(echo \"\$AGENT_NAMES\" | wc -l)
     echo \"[pm2] restarting \$AGENT_COUNT per-agent process(es) to load new code...\"
-    for name in \$AGENT_NAMES; do
+    # Word-split via \$IFS is fragile if a pm2 name ever contains whitespace.
+    # identityIds today are URL-safe so this is defensive only. printf-pipe
+    # keeps the loop POSIX-safe regardless of which shell ssh invokes.
+    printf '%s\n' \"\$AGENT_NAMES\" | while IFS= read -r name; do
+      [ -z \"\$name\" ] && continue
       pm2 restart \"\$name\" >/dev/null 2>&1 || echo \"WARN: pm2 restart \$name failed\"
       echo \"  restarted: \$name\"
     done
