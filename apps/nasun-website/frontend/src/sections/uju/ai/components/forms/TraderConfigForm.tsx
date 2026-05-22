@@ -299,14 +299,19 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       </div>
 
       <div className="space-y-1">
-        <label className={labelClass}>Custom Prompt (optional; leave blank for built-in trader prompt)</label>
+        <label className={labelClass}>Custom Strategy (optional; leave blank to use the selected preset)</label>
         <textarea
           value={promptTemplate}
           onChange={(e) => setPromptTemplate(e.target.value)}
-          rows={4}
-          placeholder="Use placeholders: {{nbtc}}, {{nusdc}}, {{perTradeCap}}, {{dailyCap}}, {{recent}}"
-          className={`${inputClass} font-mono`}
+          rows={5}
+          placeholder={`Describe your trading strategy in plain English. Example:
+
+You are a cautious swing trader. Only BUY when the most recent trade was a SELL, and only SELL when the last trade was a BUY. Prefer HOLD when uncertain. Never risk more than half of the per-trade cap on a single cycle.`}
+          className={`${inputClass} text-sm leading-relaxed`}
         />
+        <p className="text-xs text-uju-secondary/70 leading-relaxed">
+          Write in natural language. The runtime automatically appends your current holdings, per-trade cap, daily cap, recent trades, and the required JSON output format, so you only need to describe the <em>strategy</em> (how to decide BUY / SELL / HOLD).
+        </p>
       </div>
 
       {err && <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{err}</div>}
