@@ -46,6 +46,10 @@ function claimWindowMs(): number {
 }
 
 const PER_WALLET_CAP = 1;
+
+export function getPerWalletCap(): number {
+  return PER_WALLET_CAP;
+}
 // Slop so that a freshly-invited user whose `invite_expires_at` just ticked
 // past while their wallet was signing the upload challenge still passes the
 // guard. Picked to be > worst-case sig-sign + body roundtrip (~30s on slow
@@ -129,7 +133,7 @@ export function countActiveAgents(): number {
   return row?.n ?? 0;
 }
 
-function countMyActiveAgents(walletAddress: string): number {
+export function countMyActiveAgents(walletAddress: string): number {
   const row = getDb()
     .prepare(
       `SELECT COUNT(*) AS n FROM agent_keys

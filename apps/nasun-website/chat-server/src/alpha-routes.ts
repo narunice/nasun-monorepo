@@ -39,6 +39,8 @@ import {
   checkGenesisPassEligibility,
   getSystemCap,
   getAgentTtlMs,
+  getPerWalletCap,
+  countMyActiveAgents,
 } from './alpha-guards.js';
 import { processQueueTick } from './alpha-cron.js';
 
@@ -475,6 +477,12 @@ async function handleAlphaLeave(
 type AlphaUserState =
   | 'none' | 'waiting' | 'invited' | 'active' | 'paused' | 'expired' | 'exempt';
 
+interface PerWalletSnapshot {
+  activeCount: number;
+  cap: number;
+  canCreate: boolean;
+}
+
 interface StatusResponse {
   state: AlphaUserState;
   eligible: boolean | null;
@@ -488,6 +496,30 @@ interface StatusResponse {
   queue_depth?: number;
   paused_at?: number | null;
   capacity: CapacitySnapshot;
+  // Per-wallet cap snapshot. Frontend uses this to gate the Create Agent
+  // entry points before any on-chain PTB is signed, so a user with an
+  // existing active alpha agent doesn't burn gas just to hit the
+  // `per_wallet_cap_reached` 409 at vault upload time. The vault upload
+  // guard remains the authoritative defense (race safety).
+  perWallet: PerWalletSnapshot;
+}
+
+// Computes the per-wallet snapshot. slot_exempt callers always canCreate
+// because they bypass enforceAlphaGuards entirely; gate-disabled environments
+// likewise have no cap to enforce. SQL failure (column missing on pre-migrated
+// DBs) falls back to canCreate=true so a stale schema can't lock out the UI
+// before the migration has been applied.
+function computePerWallet(wallet: string, isExempt: boolean): PerWalletSnapshot {
+  const cap = getPerWalletCap();
+  if (!isAlphaGateEnabled() || isExempt) {
+    return { activeCount: 0, cap, canCreate: true };
+  }
+  try {
+    const activeCount = countMyActiveAgents(wallet);
+    return { activeCount, cap, canCreate: activeCount < cap };
+  } catch {
+    return { activeCount: 0, cap, canCreate: true };
+  }
 }
 
 async function handleAlphaStatus(
@@ -504,6 +536,8 @@ async function handleAlphaStatus(
 
   const capacity = computeCapacity();
   const schema = probeSchema();
+  const isExempt = lookupExemptWallets().has(wallet);
+  const perWallet = computePerWallet(wallet, isExempt);
 
   // Without the migration, every wallet is effectively 'none' from the
   // alpha system's perspective. Surface the schema_ready=false flag in
@@ -513,16 +547,18 @@ async function handleAlphaStatus(
       state: 'none',
       eligible: null,
       capacity,
+      perWallet,
     } satisfies StatusResponse);
     return;
   }
 
   // 1. exempt (santa)
-  if (lookupExemptWallets().has(wallet)) {
+  if (isExempt) {
     writeJson(res, 200, corsHeaders, {
       state: 'exempt',
       eligible: true,
       capacity,
+      perWallet,
     } satisfies StatusResponse);
     return;
   }
@@ -548,6 +584,7 @@ async function handleAlphaStatus(
         agent_address: agent.agent_address,
         paused_at: agent.paused_at,
         capacity,
+        perWallet,
       } satisfies StatusResponse);
       return;
     }
@@ -558,6 +595,7 @@ async function handleAlphaStatus(
       expires_at: agent.expires_at,
       warned: agent.warned_at !== null,
       capacity,
+      perWallet,
     } satisfies StatusResponse);
     return;
   }
@@ -592,6 +630,7 @@ async function handleAlphaStatus(
       queue_position: queuePosition,
       queue_depth: queueDepth,
       capacity,
+      perWallet,
     } satisfies StatusResponse);
     return;
   }
@@ -604,6 +643,7 @@ async function handleAlphaStatus(
     state: 'none',
     eligible: eligible ?? null,
     capacity,
+    perWallet,
   } satisfies StatusResponse);
 }
 
