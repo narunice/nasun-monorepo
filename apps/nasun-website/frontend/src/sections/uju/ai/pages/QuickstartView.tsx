@@ -2,11 +2,8 @@ import { useMemo, useState } from 'react';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useAgentBudgets } from '../hooks/useAgentBudgets';
 import { useTraderConfig } from '../hooks/useTraderConfig';
-import { useExecutors } from '../hooks/useExecutors';
 import { AgentCard } from './AgentsList';
 import type { AgentSubTab } from './AgentDetail';
-import { formatNusdcValue } from '../utils/format';
-import { HashRef } from '../components/HashRef';
 
 interface SelectAgentOptions {
   sub?: AgentSubTab;
@@ -133,18 +130,11 @@ export function QuickstartView({
 }: QuickstartViewProps) {
   const { data: agents, isLoading: agentsLoading } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
-  const { executors } = useExecutors();
 
   const firstAgent = agents?.[0] ?? null;
 
   // useTraderConfig must be called unconditionally at the top level.
   const { config: traderConfig } = useTraderConfig(firstAgent?.agentAddress ?? null);
-
-  const activeExecutors = useMemo(
-    () => executors.filter((e) => e.isActive && !e.isDormant),
-    [executors],
-  );
-  const defaultExecutor = activeExecutors[0];
 
   const hasAgents = !!agents && agents.length > 0;
   const hasBudget = !!budgets && budgets.some((b) => b.agent === firstAgent?.agentAddress);
@@ -182,79 +172,58 @@ export function QuickstartView({
       title: 'Register your agent',
       desc: 'Pick a name and a passphrase. The passphrase encrypts your agent\'s keypair locally. Lose it and the agent is gone forever, so back up the recovery key shown next.',
       state: stepState(0),
-      action: stepState(0) !== 'done' ? (
+      action: (
         <button
           type="button"
           onClick={onShowRegister}
           disabled={stepState(0) === 'locked'}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:pointer-events-none whitespace-nowrap"
+          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
         >
-          Register Agent
+          Open registration
         </button>
-      ) : null,
+      ),
     },
     {
       num: 2,
       title: 'Fund the agent\'s inference balance',
-      desc: 'Your agent pays AI executors from an Inference Balance you control. Top up with NUSDC. You can withdraw any time.',
+      desc: 'Your agent pays for every AI inference it runs. Top up NUSDC here to cover that cost. You can withdraw any time.',
       state: stepState(1),
-      subtext: hasAgents && totalBalance > 0
-        ? `Current: ${formatNusdcValue(totalBalance)} NUSDC`
-        : hasAgents
+      subtext: hasAgents && totalBalance === 0
         ? 'No inference balance funded yet'
         : undefined,
-      action: stepState(1) !== 'done' ? (
+      action: (
         <button
           type="button"
           onClick={() => onOpenBudgets(firstAgent?.agentAddress)}
           disabled={stepState(1) === 'locked'}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-pado-2 text-pado-2 hover:bg-pado-2/10 transition-colors disabled:pointer-events-none whitespace-nowrap"
+          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
         >
-          Fund Inference
+          Open inference balance
         </button>
-      ) : (
-        <span className="text-xs px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 whitespace-nowrap">
-          {formatNusdcValue(totalBalance)} NUSDC
-        </span>
       ),
     },
     {
       num: 3,
       title: 'Pick an executor',
-      desc: 'The executor runs your agent\'s inference and signs the onchain settlement. For the prototype, Nasun operates a single shared executor. (Coming later: a marketplace of competing executors, bring-your-own AI API key, and self-hosted inference with locally-served models.)',
+      desc: 'The executor runs your agent\'s inference and signs the onchain settlement. For this prototype, Nasun operates a single shared executor. On the roadmap, more executors will join and you\'ll be able to choose by model, reputation, price, or TEE-backed execution.',
       state: stepState(2),
-      action: stepState(2) === 'done' ? (
-        defaultExecutor ? (
-          <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/60 text-uju-secondary whitespace-nowrap">
-            <HashRef
-              value={defaultExecutor.operator}
-              kind="address"
-              valueClassName="font-mono"
-            />
-          </span>
-        ) : (
-          <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/60 text-uju-secondary font-mono whitespace-nowrap">
-            0x286d…9b78
-          </span>
-        )
-      ) : defaultExecutor ? (
-        <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/40 text-uju-secondary/60 whitespace-nowrap">
-          <HashRef
-            value={defaultExecutor.operator}
-            kind="address"
-            valueClassName="font-mono"
-          />
-        </span>
-      ) : (
-        <span className="text-xs px-2 py-1 rounded bg-uju-bg border border-uju-border/40 text-uju-secondary/60 font-mono whitespace-nowrap">
-          -
-        </span>
+      action: (
+        <button
+          type="button"
+          onClick={() =>
+            firstAgent && onSelectAgent(firstAgent.id, { sub: 'settings', fromQuickstart: true })
+          }
+          disabled={stepState(2) === 'locked' || !firstAgent}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
+        >
+          Open executor
+        </button>
       ),
     },
     {
       num: 4,
-      title: 'Write the policy',
-      desc: 'Tell the agent how to think. Trading pair, max position, risk constraints, cadence. Plain text. The policy is part of every onchain report.',
+      title: 'Configure the agent',
+      desc: 'Open the agent\'s Settings to choose the trading pair, position and risk caps, cadence, and a custom prompt that tells the agent how to think. Every value is included in each onchain report.',
       state: stepState(3),
       action: (
         <button
@@ -274,7 +243,7 @@ export function QuickstartView({
       title: 'Start',
       desc: 'The agent wakes on your cadence, reads the market, reasons, trades, and writes an Agent Execution Report onchain. You see every report, every trade, every cost, in real time below.',
       state: stepState(4),
-      action: (
+      action: isRunning ? null : (
         <button
           type="button"
           onClick={() =>
@@ -288,7 +257,7 @@ export function QuickstartView({
               : 'border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2',
           ].join(' ')}
         >
-          {isRunning ? 'View agent' : stepState(4) === 'active' ? 'Activate agent' : 'Go to agent'}
+          {stepState(4) === 'active' ? 'Activate agent' : 'Go to agent'}
         </button>
       ),
     },
@@ -344,36 +313,35 @@ export function QuickstartView({
       {(!isOnboarded || showGuide) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-sm font-semibold text-white">Setup guide</span>
-            <div className="flex items-center gap-2">
-              <span className="text-xs px-2 py-0.5 rounded-full bg-pado-2/10 text-pado-2 border border-pado-2/20 font-medium">
-                {completedCount} / 5 complete
-              </span>
-              {isOnboarded && (
-                <button
-                  type="button"
-                  onClick={() => setShowGuide(false)}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:bg-uju-bg transition-colors"
-                  aria-expanded="true"
-                  aria-controls="setup-guide-steps"
+            {isOnboarded ? (
+              <button
+                type="button"
+                onClick={() => setShowGuide(false)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:bg-uju-bg transition-colors"
+                aria-expanded="true"
+                aria-controls="setup-guide-steps"
+              >
+                Hide setup guide
+                <svg
+                  width={12}
+                  height={12}
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
                 >
-                  Hide setup guide
-                  <svg
-                    width={12}
-                    height={12}
-                    viewBox="0 0 12 12"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={1.75}
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M9 7L6 4L3 7" />
-                  </svg>
-                </button>
-              )}
-            </div>
+                  <path d="M9 7L6 4L3 7" />
+                </svg>
+              </button>
+            ) : (
+              <span className="text-sm font-semibold text-white">Setup guide</span>
+            )}
+            <span className="text-xs px-2 py-0.5 rounded-full bg-pado-2/10 text-pado-2 border border-pado-2/20 font-medium">
+              {completedCount} / 5 complete
+            </span>
           </div>
 
           {agentsLoading ? (
@@ -418,27 +386,85 @@ export function QuickstartView({
 
       {/* Agent grid: only when agents exist */}
       {hasAgents && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <h2 className="text-base font-semibold text-white">Your agents</h2>
-            <button
-              type="button"
-              onClick={onShowRegister}
-              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors whitespace-nowrap"
-            >
-              + New agent
-            </button>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {agents!.map((agent) => (
-              <AgentCard
-                key={agent.id}
-                agent={agent}
-                budget={budgets?.find((b) => b.agent === agent.agentAddress)}
-                onSelect={() => onSelectAgent(agent.id)}
-              />
-            ))}
-          </div>
+        <AgentsSection
+          agents={agents!}
+          budgets={budgets}
+          onShowRegister={onShowRegister}
+          onSelectAgent={onSelectAgent}
+        />
+      )}
+    </div>
+  );
+}
+
+interface AgentsSectionProps {
+  agents: NonNullable<ReturnType<typeof useAgentProfiles>['data']>;
+  budgets: ReturnType<typeof useAgentBudgets>['data'];
+  onShowRegister: () => void;
+  onSelectAgent: (agentId: string) => void;
+}
+
+// Lifted into its own component so the all/active/inactive filter chip state
+// is scoped to the agent grid instead of leaking into QuickstartView's
+// already-busy top-level state. Counts label each chip so the user can see
+// the partition without flipping through filters.
+function AgentsSection({ agents, budgets, onShowRegister, onSelectAgent }: AgentsSectionProps) {
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('active');
+  const counts = useMemo(() => {
+    const active = agents.filter((a) => a.isActive).length;
+    return { all: agents.length, active, inactive: agents.length - active };
+  }, [agents]);
+  const filtered = useMemo(() => {
+    if (statusFilter === 'active') return agents.filter((a) => a.isActive);
+    if (statusFilter === 'inactive') return agents.filter((a) => !a.isActive);
+    return agents;
+  }, [agents, statusFilter]);
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <h2 className="text-base font-semibold text-white">Your agents</h2>
+        <button
+          type="button"
+          onClick={onShowRegister}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors whitespace-nowrap"
+        >
+          + New agent
+        </button>
+      </div>
+
+      <div className="flex items-center gap-1 p-0.5 rounded-lg bg-uju-card/60 border border-uju-border/60 w-fit">
+        {(['all', 'active', 'inactive'] as const).map((key) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setStatusFilter(key)}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              statusFilter === key
+                ? 'bg-pado-2 text-uju-bg'
+                : 'text-uju-secondary hover:text-white'
+            }`}
+          >
+            {key === 'all' ? 'All' : key === 'active' ? 'Active' : 'Inactive'}
+            <span className="ml-1.5 text-xs opacity-70">{counts[key]}</span>
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="py-10 text-center bg-uju-card/40 rounded-xl border border-uju-border/40">
+          <p className="text-sm text-uju-secondary">No {statusFilter} agents.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {filtered.map((agent) => (
+            <AgentCard
+              key={agent.id}
+              agent={agent}
+              budget={budgets?.find((b) => b.agent === agent.agentAddress)}
+              onSelect={() => onSelectAgent(agent.id)}
+            />
+          ))}
         </div>
       )}
     </div>
