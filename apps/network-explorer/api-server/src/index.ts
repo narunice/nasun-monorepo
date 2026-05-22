@@ -13,6 +13,7 @@ import nasunMetricsRoutes from './routes/nasun-metrics.js';
 import internalInvalidateRoutes from './routes/internal-invalidate.js';
 import bannedUsersRoutes from './routes/banned-users.js';
 import ecosystemBanRoutes from './routes/ecosystem-ban.js';
+import standingRoutes from './routes/standing.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -44,6 +45,7 @@ app.use('/api/v1/stats/*', rateLimiter({ windowMs: 60_000, max: 120 }));
 app.use('/api/v1/points/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 app.use('/api/v1/ecosystem/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 app.use('/api/v1/creators-appreciation/*', rateLimiter({ windowMs: 60_000, max: 30 }));
+app.use('/api/v1/standing/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 
 // Routes
 app.route('/api/v1/health', healthRoutes);
@@ -52,6 +54,7 @@ app.route('/api/v1/stats/nasun-metrics', nasunMetricsRoutes);
 app.route('/api/v1/points', pointsRoutes);
 app.route('/api/v1/ecosystem', ecosystemRoutes);
 app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
+app.route('/api/v1/standing', standingRoutes);
 
 // Internal-only routes (auth via shared secret). Used by nasun-website Lambda
 // PATCH /user-profile to invalidate the leaderboard's profile cache when a

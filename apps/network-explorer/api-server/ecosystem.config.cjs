@@ -40,5 +40,23 @@ module.exports = {
       instances: 1,
       autorestart: true,
     },
+    {
+      // Isolated NSI compute worker. Keeps the main explorer-api scanLoop
+      // free of any tier logic. Cron jobs are individually gated by
+      // ENABLE_* env flags so each can be rolled out independently.
+      name: 'tier-worker',
+      script: 'node',
+      args: 'dist/workers/tier-worker.js',
+      env: {
+        NODE_ENV: 'production',
+        CHAIN_ID: '272218f1',
+        ...loadDotenv(),
+      },
+      max_memory_restart: '512M',
+      kill_timeout: 8000,
+      exec_mode: 'fork',
+      instances: 1,
+      autorestart: true,
+    },
   ],
 };
