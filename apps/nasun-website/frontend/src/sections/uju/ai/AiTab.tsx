@@ -242,7 +242,7 @@ export function AiTab() {
         />
       )}
 
-      {/* Registration modal — triggered by view=register */}
+      {/* Registration modal, triggered by view=register */}
       {view === 'register' && (
         <CreateAgentModal
           onClose={handleRegisterModalClose}
@@ -252,6 +252,7 @@ export function AiTab() {
           generatedAddress={generatedAddress}
           fallbackKey={fallbackKey}
           isOnboarded={!!agents && agents.some((a) => a.isActive)}
+          walletAddress={walletAddress}
         />
       )}
     </div>

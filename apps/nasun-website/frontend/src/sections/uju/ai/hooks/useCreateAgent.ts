@@ -23,6 +23,33 @@ import {
   encryptAndStoreAgentKey,
   parseImportedAgentSecret,
 } from '../services/agentKeyStorage';
+import { fetchAlphaStatus, type AlphaUserState } from '../alpha/alphaApiClient';
+
+// States that may proceed to create a new AgentProfile on-chain when the
+// public alpha gate is enabled. `active` is included so a user who already
+// has an alpha slot can register additional agents within their per-wallet
+// cap; `exempt` covers admin/santa wallets. Everything else (`none`,
+// `waiting`, `expired`, `paused`) must go through the alpha waitlist first.
+const ALPHA_ALLOWED_STATES: ReadonlySet<AlphaUserState> = new Set<AlphaUserState>([
+  'invited',
+  'active',
+  'exempt',
+]);
+
+function alphaBlockedMessage(state: AlphaUserState): string {
+  switch (state) {
+    case 'none':
+      return 'Public alpha is gated. Join the waitlist from the AI tab to request a slot.';
+    case 'waiting':
+      return 'You are on the alpha waitlist. We will invite you when a slot opens.';
+    case 'expired':
+      return 'Your alpha access has expired. Re-join the waitlist from the AI tab.';
+    case 'paused':
+      return 'Your existing agent is paused. Resume it instead of creating a new one.';
+    default:
+      return `Public alpha gate denied this action (state: ${state}).`;
+  }
+}
 
 export type AgentTxStatus = 'idle' | 'signing' | 'executing' | 'success' | 'error';
 export type AgentCreationMode = 'generate' | 'import';
@@ -100,6 +127,29 @@ export function useCreateAgent() {
       setFallbackKey(null);
 
       try {
+        // Public-alpha preflight. The on-chain entry function has no GP
+        // ownership check, so without this gate a non-invited user can land
+        // an AgentProfile on Nasun network but never get the inference
+        // layer (chat-server vault upload is gated separately), leaving a
+        // dormant profile. See 2026-05-22 incident.
+        let alphaState: AlphaUserState;
+        let gateEnabled: boolean;
+        try {
+          const alpha = await fetchAlphaStatus(address);
+          alphaState = alpha.state;
+          gateEnabled = alpha.capacity.gate_enabled;
+        } catch (statusErr) {
+          // Fail-closed when the alpha API cannot be reached: the gate is
+          // currently ON in prod and a transient failure must not silently
+          // open the create path.
+          throw new Error(
+            `Alpha status check failed (${(statusErr as Error).message || 'unknown'}). Please try again.`,
+          );
+        }
+        if (gateEnabled && !ALPHA_ALLOWED_STATES.has(alphaState)) {
+          throw new Error(alphaBlockedMessage(alphaState));
+        }
+
         let agentAddress: string;
         let keypair: ReturnType<typeof generateAgentKeypair> | null = null;
         let mnemonic: string | null = null;

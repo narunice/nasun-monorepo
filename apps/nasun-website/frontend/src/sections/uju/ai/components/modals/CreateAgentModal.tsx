@@ -13,6 +13,7 @@ import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { AgentTxStatus, AgentCreationMode } from '../../hooks/useCreateAgent';
 import { parseImportedAgentSecret } from '../../services/agentKeyStorage';
+import { useCreateAgentBlocked } from '../../alpha/useCreateAgentBlocked';
 
 interface CreateAgentModalProps {
   onClose: () => void;
@@ -36,6 +37,13 @@ interface CreateAgentModalProps {
    * into the new agent's Settings tab instead of bouncing back to Quickstart.
    */
   isOnboarded?: boolean;
+  /**
+   * Connected wallet, used to surface the public-alpha gate state inline so
+   * the user sees the block before filling out the form. The hook in
+   * useCreateAgent enforces the same gate at submit time as the source of
+   * truth, so a missing/undefined wallet here only degrades UX, not safety.
+   */
+  walletAddress?: string | null;
 }
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -56,7 +64,13 @@ export function CreateAgentModal({
   generatedAddress,
   fallbackKey,
   isOnboarded = false,
+  walletAddress,
 }: CreateAgentModalProps) {
+  // Surface the public-alpha gate as an inline notice before the user
+  // bothers filling out the form. The functional gate lives in
+  // useCreateAgent.ts so any future modal entry points stay safe.
+  const alphaBlock = useCreateAgentBlocked(walletAddress ?? null);
+  const alphaBlocked = alphaBlock.message;
   const [mode, setMode] = useState<AgentCreationMode>('generate');
   const [importMethod, setImportMethod] = useState<'key' | 'address'>('key');
   const [agentAddress, setAgentAddress] = useState('');
@@ -100,7 +114,8 @@ export function CreateAgentModal({
     isNameValid &&
     isRoleValid &&
     isImportSecretValid &&
-    !isBusy;
+    !isBusy &&
+    alphaBlocked === null;
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
@@ -221,6 +236,17 @@ export function CreateAgentModal({
 
         {/* Form */}
         <div className="p-4 space-y-4 max-h-[70vh] overflow-y-auto">
+          {alphaBlocked && (
+            <div
+              className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 space-y-1"
+              role="status"
+            >
+              <p className="text-sm font-medium text-amber-300">
+                Public alpha gate active
+              </p>
+              <p className="text-sm text-amber-200/90">{alphaBlocked}</p>
+            </div>
+          )}
           <div className="p-2 rounded-lg bg-pado-2/5 border border-pado-2/20">
             <p className="text-xs text-uju-secondary">
               A default capability and escrow will be created and linked to this agent. You can adjust risk limits and allowed actions in Settings later.
