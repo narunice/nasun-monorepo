@@ -86,18 +86,37 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                 </div>
                 {group.models.map(([modelId, model]) => {
                   const isSelected = modelId === selectedModel;
+                  const isAvailable = model.available;
+                  // TEE category gets the "Roadmap" label; everything else
+                  // gets "Soon" so the catalog tier (private vs cloud/fast)
+                  // remains legible at a glance.
+                  const unavailableTag =
+                    model.category === 'private' ? 'Roadmap' : 'Soon';
                   return (
                     <button
                       type="button"
                       key={modelId}
                       role="option"
                       aria-selected={isSelected}
+                      disabled={!isAvailable}
+                      title={
+                        !isAvailable
+                          ? model.category === 'private'
+                            ? 'TEE-backed private inference is on the roadmap. Not available in this alpha.'
+                            : 'This model is not yet wired into the executor. Coming soon.'
+                          : undefined
+                      }
                       onClick={() => {
+                        if (!isAvailable) return;
                         onSelectModel(modelId);
                         setIsOpen(false);
                       }}
                       className={`w-full flex items-center justify-between px-3 py-2 text-left transition-colors ${
-                        isSelected ? 'bg-uju-bg border-l-2 border-l-pado-2' : 'hover:bg-uju-bg border-l-2 border-l-transparent'
+                        isAvailable
+                          ? isSelected
+                            ? 'bg-uju-bg border-l-2 border-l-pado-2'
+                            : 'hover:bg-uju-bg border-l-2 border-l-transparent'
+                          : 'opacity-50 cursor-not-allowed border-l-2 border-l-transparent'
                       }`}
                     >
                       <div className="flex flex-col min-w-0">
@@ -106,9 +125,16 @@ export function ModelSelector({ selectedModel, onSelectModel }: ModelSelectorPro
                         </span>
                         <span className="text-xs text-uju-secondary/70">{model.description}</span>
                       </div>
-                      <span className="text-xs text-uju-secondary/70 bg-uju-bg px-1.5 py-0.5 rounded shrink-0 ml-2">
-                        {formatPrice(model.price)}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {!isAvailable && (
+                          <span className="text-[10px] uppercase tracking-wider font-medium text-amber-300/90 bg-amber-500/10 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                            {unavailableTag}
+                          </span>
+                        )}
+                        <span className="text-xs text-uju-secondary/70 bg-uju-bg px-1.5 py-0.5 rounded">
+                          {formatPrice(model.price)}
+                        </span>
+                      </div>
                     </button>
                   );
                 })}
