@@ -6,7 +6,10 @@
  *
  * Two modes:
  *   - generate: create a new Ed25519 keypair, encrypt with passphrase, store in IndexedDB
- *   - import:   user supplies an existing agent address (no key stored locally)
+ *   - import:   user supplies an existing agent. They can either paste the
+ *               private key / mnemonic (encrypted and stored locally with a
+ *               passphrase, same as generate) or provide just the address
+ *               and keep the key in an external signer.
  */
 
 import { useCallback, useRef, useState } from 'react';
@@ -18,6 +21,7 @@ import {
   generateAgentKeypair,
   generateAgentMnemonicAndKeypair,
   encryptAndStoreAgentKey,
+  parseImportedAgentSecret,
 } from '../services/agentKeyStorage';
 
 export type AgentTxStatus = 'idle' | 'signing' | 'executing' | 'success' | 'error';
@@ -30,6 +34,13 @@ export interface CreateAgentParams {
   name: string;
   role: string;
   capabilities: string[];
+  /** Import mode only. Bech32 private key (`suiprivkey1...`) or 12/24-word
+   *  BIP39 mnemonic. When present, the address is derived from the secret
+   *  (overriding `agentAddress`) and the key is encrypted with `passphrase`
+   *  and stored locally so Nasun AI can sign on behalf of the agent. When
+   *  omitted, only the address is registered on-chain and the user keeps the
+   *  key externally. */
+  importedSecret?: string;
 }
 
 // Defaults for the auto-linked Capability. Mirrors Plan E1 Slice 1 spec.
@@ -104,6 +115,21 @@ export function useCreateAgent() {
           mnemonic = generated.mnemonic;
           agentAddress = keypair.toSuiAddress();
           setGeneratedAddress(agentAddress);
+        } else if (params.importedSecret) {
+          // Import-with-key: parse the secret, derive the address, and treat
+          // the rest of the flow the same as generate so the key gets
+          // encrypted and stored locally for in-browser signing.
+          if (!params.passphrase || params.passphrase.length < 6) {
+            throw new Error('Agent passphrase must be at least 6 characters');
+          }
+          const parsed = parseImportedAgentSecret(params.importedSecret);
+          if (!parsed) {
+            throw new Error('Could not parse the imported secret. Expecting a bech32 private key (suiprivkey1...) or a 12/24-word recovery phrase.');
+          }
+          keypair = parsed.keypair;
+          mnemonic = parsed.mnemonic ?? null;
+          agentAddress = parsed.address;
+          setGeneratedAddress(agentAddress);
         } else {
           if (!params.agentAddress) {
             throw new Error('Agent address is required for import mode');
@@ -150,10 +176,11 @@ export function useCreateAgent() {
           throw new Error('Setup tx succeeded but could not parse profile id');
         }
 
-        // For 'generate' mode, persist the encrypted key now that we
-        // know the profile_id. Storage failure here is unrecoverable
+        // Persist the encrypted key now that we know the profile_id.
+        // This applies to both 'generate' mode and 'import' mode when the
+        // user supplied a secret. Storage failure here is unrecoverable
         // (on-chain agent already exists), so surface fallbackKey.
-        if (keypair && params.mode === 'generate') {
+        if (keypair) {
           try {
             await encryptAndStoreAgentKey(
               profileId,

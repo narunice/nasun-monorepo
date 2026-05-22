@@ -9,9 +9,10 @@
  * Ported from baram CreateAgentModal; CSS variable tokens swapped for uju tailwind tokens.
  */
 
-import { useEffect, useState, type KeyboardEvent } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import type { AgentTxStatus, AgentCreationMode } from '../../hooks/useCreateAgent';
+import { parseImportedAgentSecret } from '../../services/agentKeyStorage';
 
 interface CreateAgentModalProps {
   onClose: () => void;
@@ -22,6 +23,7 @@ interface CreateAgentModalProps {
     name: string;
     role: string;
     capabilities: string[];
+    importedSecret?: string;
   }) => Promise<string | null>;
   txStatus: AgentTxStatus;
   txError: string | null;
@@ -56,7 +58,9 @@ export function CreateAgentModal({
   isOnboarded = false,
 }: CreateAgentModalProps) {
   const [mode, setMode] = useState<AgentCreationMode>('generate');
+  const [importMethod, setImportMethod] = useState<'key' | 'address'>('key');
   const [agentAddress, setAgentAddress] = useState('');
+  const [importedSecret, setImportedSecret] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [passphraseConfirm, setPassphraseConfirm] = useState('');
   const [name, setName] = useState('');
@@ -68,21 +72,45 @@ export function CreateAgentModal({
   const isBusy = txStatus === 'signing' || txStatus === 'executing';
   const isSuccess = txStatus === 'success';
 
-  const isAddressValid = mode === 'import' ? SUI_ADDRESS_RE.test(agentAddress) : true;
-  const isPassphraseValid =
-    mode === 'generate'
-      ? passphrase.length >= MIN_PASSPHRASE && passphrase === passphraseConfirm
-      : true;
+  const parsedImport = useMemo(
+    () => (mode === 'import' && importMethod === 'key' ? parseImportedAgentSecret(importedSecret) : null),
+    [mode, importMethod, importedSecret],
+  );
+  const importSecretTouched = importedSecret.trim().length > 0;
+  const isImportSecretValid = !importSecretTouched || !!parsedImport;
+
+  // A passphrase is required whenever the app will hold the agent's key
+  // locally: i.e. generate mode, or import-with-key.
+  const needsPassphrase =
+    mode === 'generate' || (mode === 'import' && importMethod === 'key');
+
+  const isAddressValid = mode === 'import'
+    ? importMethod === 'key'
+      ? !!parsedImport
+      : SUI_ADDRESS_RE.test(agentAddress)
+    : true;
+  const isPassphraseValid = needsPassphrase
+    ? passphrase.length >= MIN_PASSPHRASE && passphrase === passphraseConfirm
+    : true;
   const isNameValid = name.length > 0 && name.length <= MAX_NAME;
   const isRoleValid = role.length > 0 && role.length <= MAX_ROLE;
-  const isFormValid = isAddressValid && isPassphraseValid && isNameValid && isRoleValid && !isBusy;
+  const isFormValid =
+    isAddressValid &&
+    isPassphraseValid &&
+    isNameValid &&
+    isRoleValid &&
+    isImportSecretValid &&
+    !isBusy;
 
   const handleSubmit = async () => {
     if (!isFormValid) return;
     const result = await onCreate({
       mode,
-      agentAddress: mode === 'import' ? agentAddress : undefined,
-      passphrase: mode === 'generate' ? passphrase : undefined,
+      agentAddress:
+        mode === 'import' && importMethod === 'address' ? agentAddress : undefined,
+      passphrase: needsPassphrase ? passphrase : undefined,
+      importedSecret:
+        mode === 'import' && importMethod === 'key' ? importedSecret.trim() : undefined,
       name,
       role,
       capabilities,
@@ -90,6 +118,7 @@ export function CreateAgentModal({
     if (result) {
       setPassphrase('');
       setPassphraseConfirm('');
+      setImportedSecret('');
     }
   };
 
@@ -140,7 +169,7 @@ export function CreateAgentModal({
           {generatedAddress && (
             <div className="p-2 rounded-lg bg-uju-bg text-left space-y-1">
               <div className="flex items-center justify-between">
-                <p className="text-[11px] text-uju-secondary uppercase tracking-wide">Generated address</p>
+                <p className="text-[11px] text-uju-secondary uppercase tracking-wide">Agent address</p>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(generatedAddress).then(() => {
@@ -221,12 +250,43 @@ export function CreateAgentModal({
             <p className="text-xs text-uju-secondary">
               {mode === 'generate'
                 ? 'A new Ed25519 keypair will be generated and encrypted with your passphrase when you register.'
-                : 'Use an existing agent address. The private key stays outside Nasun AI.'}
+                : 'Register an existing agent. You can paste its key for in-browser signing, or just the address if the key lives elsewhere.'}
             </p>
           </div>
 
           {/* Mode-specific fields */}
-          {mode === 'import' ? (
+          {mode === 'import' && (
+            <div className="space-y-1.5">
+              <label className="text-xs uppercase tracking-wider text-uju-secondary">Import method</label>
+              <div className="flex gap-1 p-0.5 rounded-lg bg-uju-bg">
+                <button
+                  type="button"
+                  onClick={() => setImportMethod('key')}
+                  className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
+                    importMethod === 'key' ? 'bg-pado-2 text-uju-bg' : 'text-uju-secondary hover:text-white'
+                  }`}
+                >
+                  Paste key
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportMethod('address')}
+                  className={`flex-1 py-1.5 text-sm rounded-md transition-colors ${
+                    importMethod === 'address' ? 'bg-pado-2 text-uju-bg' : 'text-uju-secondary hover:text-white'
+                  }`}
+                >
+                  Address only
+                </button>
+              </div>
+              <p className="text-xs text-uju-secondary">
+                {importMethod === 'key'
+                  ? "Nasun AI encrypts and stores the key locally so it can sign on the agent's behalf."
+                  : 'Register the address on-chain only. You keep the key in an external signer.'}
+              </p>
+            </div>
+          )}
+
+          {mode === 'import' && importMethod === 'address' && (
             <div className="space-y-1">
               <label className="text-xs uppercase tracking-wider text-uju-secondary">Agent address *</label>
               <input
@@ -244,7 +304,37 @@ export function CreateAgentModal({
                 <p className="text-xs text-red-400">Invalid address (0x + 64 hex chars)</p>
               )}
             </div>
-          ) : (
+          )}
+
+          {mode === 'import' && importMethod === 'key' && (
+            <div className="space-y-1">
+              <label className="text-xs uppercase tracking-wider text-uju-secondary">Private key or recovery phrase *</label>
+              <textarea
+                value={importedSecret}
+                onChange={(e) => setImportedSecret(e.target.value)}
+                placeholder="suiprivkey1... or 12-word recovery phrase"
+                rows={3}
+                className={`${inputBase} font-mono resize-none ${
+                  importSecretTouched && !parsedImport
+                    ? 'border-red-400 focus:border-red-400'
+                    : 'border-uju-border/60 focus:border-pado-2'
+                }`}
+              />
+              {importSecretTouched && !parsedImport && (
+                <p className="text-xs text-red-400">
+                  Expecting a bech32 private key (suiprivkey1...) or a 12/24-word phrase.
+                </p>
+              )}
+              {parsedImport && (
+                <div className="p-2 rounded-lg bg-uju-bg text-xs space-y-0.5">
+                  <p className="text-[11px] uppercase tracking-wider text-uju-secondary">Derived address</p>
+                  <p className="font-mono text-white break-all">{parsedImport.address}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {needsPassphrase && (
             <>
               <div className="space-y-1">
                 <label className="text-xs uppercase tracking-wider text-uju-secondary">Agent passphrase *</label>
@@ -284,7 +374,7 @@ export function CreateAgentModal({
               </div>
               <div className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20">
                 <p className="text-xs text-amber-400">
-                  This passphrase encrypts the agent's private key. You'll need it to export the key for the agent runner. If lost, the key cannot be recovered.
+                  This passphrase encrypts the agent's private key. You'll need it to export the key later. If lost, the key cannot be recovered.
                 </p>
               </div>
             </>
@@ -324,14 +414,17 @@ export function CreateAgentModal({
             />
           </div>
 
-          {/* Capabilities */}
+          {/* Tags */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <label className="text-xs uppercase tracking-wider text-uju-secondary">Capabilities</label>
+              <label className="text-xs uppercase tracking-wider text-uju-secondary">Tags (optional)</label>
               <span className="text-xs text-uju-secondary">
                 {capabilities.length} / {MAX_CAPABILITIES}
               </span>
             </div>
+            <p className="text-xs text-uju-secondary/70 leading-relaxed">
+              Public labels shown on your agent card (e.g. "spot-trading", "momentum"). Descriptive only. They do not grant permissions or affect what the agent can do.
+            </p>
 
             {capabilities.length > 0 && (
               <div className="flex flex-wrap gap-1.5">
@@ -362,8 +455,8 @@ export function CreateAgentModal({
               disabled={capabilities.length >= MAX_CAPABILITIES}
               placeholder={
                 capabilities.length >= MAX_CAPABILITIES
-                  ? 'Max capabilities reached'
-                  : 'Type and press Enter to add'
+                  ? 'Max tags reached'
+                  : 'Type a tag and press Enter'
               }
               className={`${inputBase} border-uju-border/60 focus:border-pado-2 disabled:opacity-50`}
             />

@@ -73,6 +73,46 @@ export function generateAgentKeypair(): Ed25519Keypair {
   return new Ed25519Keypair();
 }
 
+export interface ParsedImportedSecret {
+  keypair: Ed25519Keypair;
+  /** Sui address derived from the secret. */
+  address: string;
+  /** Present only when the input was a BIP39 mnemonic. */
+  mnemonic?: string;
+}
+
+/** Parse a user-supplied secret as either a bech32 Sui private key
+ *  (`suiprivkey1...`) or a 12/24-word BIP39 mnemonic. Returns `null` if the
+ *  input is empty or does not decode. Used by the import flow so the user can
+ *  let Nasun AI hold the agent's signing key (encrypted) instead of registering
+ *  address-only.
+ */
+export function parseImportedAgentSecret(input: string): ParsedImportedSecret | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+
+  const words = trimmed.split(/\s+/);
+  if (words.length === 12 || words.length === 24) {
+    try {
+      const keypair = Ed25519Keypair.deriveKeypair(trimmed);
+      return { keypair, address: keypair.toSuiAddress(), mnemonic: trimmed };
+    } catch {
+      return null;
+    }
+  }
+
+  if (trimmed.startsWith('suiprivkey1')) {
+    try {
+      const keypair = Ed25519Keypair.fromSecretKey(trimmed);
+      return { keypair, address: keypair.toSuiAddress() };
+    } catch {
+      return null;
+    }
+  }
+
+  return null;
+}
+
 /** Generate a BIP39 mnemonic and the Ed25519 keypair it derives. The mnemonic
  *  is the human-recoverable form; the keypair is what signs on-chain ops. */
 export function generateAgentMnemonicAndKeypair(): { mnemonic: string; keypair: Ed25519Keypair } {
