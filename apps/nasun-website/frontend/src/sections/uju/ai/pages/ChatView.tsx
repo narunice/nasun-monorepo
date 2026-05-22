@@ -168,11 +168,17 @@ export function ChatView({ walletAddress, onRegisterAgent }: ChatViewProps) {
   // Their past sessions still show up in the sidebar (read-only).
   const billingOptions = (agents ?? []).filter((a) => a.isActive);
 
+  // Layout strategy: outer container is normal flow (no fixed height) so the
+  // page never overflows the viewport on its own. Sidebar is sticky-top so the
+  // session list stays in view while the main pane scrolls; the input bar is
+  // sticky-bottom so the textarea is always anchored to the viewport bottom
+  // regardless of how tall the message list grows. Without this, the input
+  // sat below the fold and focusing it forced the browser to scroll the page,
+  // which dragged the footer up into the middle of the viewport.
   return (
-    <div className="grid grid-cols-[240px_1fr] gap-6 h-[calc(100vh-260px)] min-h-[480px]">
-      {/* Sidebar — borderless panel; the divider with the main pane is
-          provided by the gap, not a card frame. */}
-      <aside className="flex flex-col min-h-0 border-r border-uju-border/60 pr-3">
+    <div className="grid grid-cols-[240px_1fr] gap-6 min-h-[480px]">
+      {/* Sidebar sticks to the top of the viewport while the chat scrolls. */}
+      <aside className="sticky top-[58px] self-start h-[calc(100dvh-72px)] flex flex-col min-h-0 border-r border-uju-border/60 pr-3">
         <div className="space-y-2 pb-3 border-b border-uju-border/60">
           <div className="space-y-1">
             <label className="text-[10px] tracking-wider text-uju-secondary/70">
@@ -211,8 +217,9 @@ export function ChatView({ walletAddress, onRegisterAgent }: ChatViewProps) {
         </div>
       </aside>
 
-      {/* Main pane */}
-      <div className="flex flex-col min-w-0 min-h-0">
+      {/* Main pane: message list grows naturally; the prompt bar below uses
+          sticky bottom-0 to lock against the viewport bottom. */}
+      <div className="flex flex-col min-w-0">
         {billingAgent && (
           <div className="mb-2 text-xs text-uju-secondary/70 px-1">
             Billed via <span className="text-white">{billingAgent.name}</span>
@@ -227,7 +234,7 @@ export function ChatView({ walletAddress, onRegisterAgent }: ChatViewProps) {
             chats stay readable.
           </div>
         )}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1">
           <div className="max-w-3xl mx-auto px-1 py-4">
             {isLoading && messages.length === 0 ? (
               <div className="h-32 rounded-xl bg-uju-card/60 animate-pulse" />
@@ -251,8 +258,8 @@ export function ChatView({ walletAddress, onRegisterAgent }: ChatViewProps) {
           </div>
         </div>
 
-        <div className="border-t border-uju-border/60 bg-uju-bg/40 pt-3">
-          <div className="max-w-3xl mx-auto px-1">
+        <div className="sticky bottom-0 z-10 -mx-1 border-t border-uju-border/60 bg-uju-bg/95 backdrop-blur-sm px-1 pt-3 pb-3">
+          <div className="max-w-3xl mx-auto">
             <ChatInput
               onSubmit={submit}
               disabled={inputDisabled}
