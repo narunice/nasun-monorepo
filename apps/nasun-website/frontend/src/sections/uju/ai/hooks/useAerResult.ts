@@ -18,8 +18,13 @@ export interface AERResultData {
   expiresAt: number;
 }
 
-export function useAerResult(requestId: number | null, authorizer: string | null) {
+export function useAerResult(
+  requestId: number | null,
+  authorizer: string | null,
+  options?: { enabled?: boolean },
+) {
   const { signer } = useSigner();
+  const callerEnabled = options?.enabled ?? true;
 
   return useQuery({
     queryKey: ['nasun-ai', 'aer', 'result', requestId, authorizer],
@@ -65,7 +70,7 @@ export function useAerResult(requestId: number | null, authorizer: string | null
       if (!res.ok) throw new Error(`HTTP_${res.status}`);
       return res.json();
     },
-    enabled: !!requestId && !!authorizer && !!signer,
+    enabled: callerEnabled && !!requestId && !!authorizer && !!signer,
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     retry: (count, error) => {
