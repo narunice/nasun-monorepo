@@ -9,6 +9,7 @@ import { useAgentProfiles, type AgentProfile } from '../hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../hooks/useAgentBudgets';
 import { useAgentAerStats } from '../hooks/useAgentAerStats';
 import { useCreateAgent } from '../hooks/useCreateAgent';
+import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
 import { CreateAgentModal } from '../components/modals/CreateAgentModal';
 import { formatNusdcValue, truncateAddress, formatDate } from '../utils/format';
 
@@ -112,6 +113,10 @@ export function AgentsList({
   const { data: agents, isLoading, refetch } = useAgentProfiles(walletAddress);
   const { data: budgets } = useAgentBudgets(walletAddress);
   const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } = useCreateAgent();
+  // Public-alpha gate. Disables Register CTAs upfront so non-invited
+  // users see the block before opening the modal. The functional gate is
+  // enforced in useCreateAgent at submit time.
+  const createBlock = useCreateAgentBlocked(walletAddress);
 
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
 
@@ -151,7 +156,9 @@ export function AgentsList({
         </div>
         <button
           onClick={onShowRegister}
-          className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
+          disabled={createBlock.blocked}
+          title={createBlock.message ?? undefined}
+          className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
           Register Agent
         </button>
@@ -166,12 +173,16 @@ export function AgentsList({
       ) : !agents || agents.length === 0 ? (
         <div className="py-10 text-center space-y-3 bg-uju-card/40 rounded-xl border border-uju-border/40">
           <p className="text-sm text-uju-secondary">No AI agents found for this wallet.</p>
-          <button
-            onClick={onShowRegister}
-            className="inline-block text-sm text-pado-2 hover:underline"
-          >
-            Register your first agent
-          </button>
+          {createBlock.blocked ? (
+            <p className="text-sm text-amber-300 px-4">{createBlock.message}</p>
+          ) : (
+            <button
+              onClick={onShowRegister}
+              className="inline-block text-sm text-pado-2 hover:underline"
+            >
+              Register your first agent
+            </button>
+          )}
         </div>
       ) : (
         <>
@@ -222,6 +233,7 @@ export function AgentsList({
           txError={txError}
           generatedAddress={generatedAddress}
           fallbackKey={fallbackKey}
+          walletAddress={walletAddress}
         />
       )}
     </div>
