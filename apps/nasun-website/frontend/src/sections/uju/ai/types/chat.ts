@@ -31,9 +31,37 @@ export interface Message {
 export interface EncryptedMessage {
   id: string;
   agentId: string;
+  /** Session this message belongs to. Optional for back-compat with v1 records
+   * stored before the multi-session schema; the loader migrates such rows into
+   * a synthetic "Imported chat" session on first read. */
+  sessionId?: string;
   encrypted: string;
   iv: string;
   timestamp: number;
+}
+
+export interface ChatSession {
+  id: string;
+  agentId: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messageCount: number;
+}
+
+export interface EncryptedSession {
+  id: string;
+  agentId: string;
+  encrypted: string;
+  iv: string;
+  updatedAt: number;
+}
+
+/** Derive a 30-char one-line title from the first user message. */
+export function generateSessionTitle(firstUserMessage: string): string {
+  const flat = firstUserMessage.replace(/\s+/g, ' ').trim();
+  if (!flat) return 'New chat';
+  return flat.length > 30 ? `${flat.slice(0, 30)}...` : flat;
 }
 
 export interface TeeContext {

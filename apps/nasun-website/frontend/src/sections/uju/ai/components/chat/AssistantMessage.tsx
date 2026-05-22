@@ -24,6 +24,8 @@ interface AssistantMessageProps {
   isTeeExecutor?: boolean;
   failed?: boolean;
   requestStatus?: RequestStatus;
+  /** Open the AER details modal for this turn's `requestId`. Wired by ChatTab. */
+  onOpenAer?: (requestId: number) => void;
 }
 
 function getProcessingLabel(requestStatus?: RequestStatus, isTeeExecutor?: boolean): string {
@@ -37,7 +39,12 @@ function getProcessingLabel(requestStatus?: RequestStatus, isTeeExecutor?: boole
       // protection even when the future TEE provider is selected.
       return isTeeExecutor ? 'Executing on a private-inference executor (TEE roadmap)...' : 'Running AI model...';
     case 'cancelling':
-      return 'Cancelling and refunding...';
+      // The executor that owned this attempt failed; we refund its escrow and
+      // re-roll to another executor. From the user's POV this is a single
+      // retry, not a payment cancellation — they will be charged once for the
+      // run that actually completes. Phrase accordingly so the visible status
+      // never reads "refunded" while a subsequent attempt is mid-flight.
+      return 'Executor failed. Retrying with another...';
     default:
       return isTeeExecutor ? 'Processing on a private-inference executor (TEE roadmap)...' : 'Processing your request...';
   }
@@ -51,6 +58,7 @@ export function AssistantMessage({
   isTeeExecutor = false,
   failed = false,
   requestStatus,
+  onOpenAer,
 }: AssistantMessageProps) {
   const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
   const explorerUrl = metadata?.txDigest
@@ -164,6 +172,24 @@ export function AssistantMessage({
                   </svg>
                   Copy
                 </button>
+                {onOpenAer && metadata.requestId !== undefined && (
+                  <button
+                    type="button"
+                    onClick={() => onOpenAer(metadata.requestId!)}
+                    className="flex items-center gap-1 text-xs text-uju-secondary hover:text-pado-2 transition-colors"
+                    title="Open the AI Execution Report for this turn"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M9 12h6m-6 4h6M9 8h6M5 21h14a2 2 0 002-2V7l-5-5H5a2 2 0 00-2 2v15a2 2 0 002 2z"
+                      />
+                    </svg>
+                    AER
+                  </button>
+                )}
                 {explorerUrl && (
                   <a
                     href={explorerUrl}

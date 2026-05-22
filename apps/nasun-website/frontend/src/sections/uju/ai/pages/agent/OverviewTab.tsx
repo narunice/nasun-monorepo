@@ -21,7 +21,6 @@ import { FirstRunChecklist } from '../../components/FirstRunChecklist';
 import { HashRef } from '../../components/HashRef';
 import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { ActivityTab } from './ActivityTab';
-import { ChatTab } from './ChatTab';
 
 interface OverviewTabProps {
   agent: AgentProfile;
@@ -192,17 +191,8 @@ export function OverviewTab({
           walletAddress={walletAddress}
           agentAddress={agent.agentAddress}
           agentCapabilityId={agent.capabilityId}
-          limit={5}
+          limit={2}
           onViewAll={onViewAllActivity}
-        />
-      </div>
-
-      <div className="space-y-2">
-        <h3 className="text-sm font-semibold text-white">Chat</h3>
-        <ChatTab
-          walletAddress={walletAddress}
-          agentId={agent.id}
-          capabilityId={agent.capabilityId}
         />
       </div>
 

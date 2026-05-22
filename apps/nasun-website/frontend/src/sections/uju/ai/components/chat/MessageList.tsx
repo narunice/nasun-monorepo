@@ -9,6 +9,7 @@ interface MessageListProps {
   isProcessing?: boolean;
   isTeeExecutor?: boolean;
   requestStatus?: RequestStatus;
+  onOpenAer?: (requestId: number) => void;
 }
 
 export function MessageList({
@@ -16,6 +17,7 @@ export function MessageList({
   isProcessing,
   isTeeExecutor,
   requestStatus,
+  onOpenAer,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -42,6 +44,7 @@ export function MessageList({
             timestamp={message.timestamp}
             metadata={message.metadata}
             failed={message.failed}
+            onOpenAer={onOpenAer}
           />
         ),
       )}

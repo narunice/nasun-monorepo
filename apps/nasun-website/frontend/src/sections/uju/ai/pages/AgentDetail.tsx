@@ -25,7 +25,7 @@ import { SettingsTab } from './agent/SettingsTab';
 
 export type AgentSubTab = 'overview' | 'activity' | 'settings';
 
-/** Accepts legacy sub values and maps them onto the new 3-tab IA. */
+/** Accepts legacy sub values and maps them onto the current 3-tab IA. */
 export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
   switch (raw) {
     case 'overview':
@@ -34,6 +34,8 @@ export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
       return raw;
     case 'dashboard':
     case 'chat':
+      // Chat moved to the top-level Agents/Chat split; per-agent chat surface
+      // is gone. Land legacy deep-links on the overview to keep them usable.
       return 'overview';
     case 'escrow':
     case 'sessions':
