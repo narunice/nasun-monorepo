@@ -20,7 +20,11 @@ let BARAM_PACKAGE_ID = '';
 let BARAM_REGISTRY_ID = '';
 let AER_PACKAGE_ID = '';
 let AER_REGISTRY_ID = '';
+let EXECUTOR_PACKAGE_ID = '';
 let EXECUTOR_REGISTRY_ID = '';
+// Executor-module ProcessedRequests shared object (distinct from baram::ProcessedRequests).
+// Required for the inline record_job_completion heartbeat in AER PTBs.
+let EXECUTOR_PROCESSED_REQUESTS_ID = '';
 
 /**
  * Initialize Sui client and executor keypair
@@ -32,14 +36,18 @@ export function initSui(config: {
   executorPrivateKey: string;
   aerPackageId?: string;
   aerRegistryId?: string;
+  executorPackageId?: string;
   executorRegistryId?: string;
+  executorProcessedRequestsId?: string;
 }): void {
   suiClient = new SuiClient({ url: config.rpcUrl });
   BARAM_PACKAGE_ID = config.packageId;
   BARAM_REGISTRY_ID = config.registryId;
   AER_PACKAGE_ID = config.aerPackageId || '';
   AER_REGISTRY_ID = config.aerRegistryId || '';
+  EXECUTOR_PACKAGE_ID = config.executorPackageId || '';
   EXECUTOR_REGISTRY_ID = config.executorRegistryId || '';
+  EXECUTOR_PROCESSED_REQUESTS_ID = config.executorProcessedRequestsId || '';
 
   // Private key is hex-encoded 32-byte seed
   executorKeypair = Ed25519Keypair.fromSecretKey(
@@ -74,6 +82,36 @@ function getKeypair(): Ed25519Keypair {
  */
 export function getExecutorAddress(): string {
   return getKeypair().getPublicKey().toSuiAddress();
+}
+
+/**
+ * Append executor::record_job_completion to an AER PTB so ExecutorRegistry's
+ * last_active_at / completed_jobs / reputation advance whenever the Lambda
+ * actually does work. Without this, the registry's freshness counters never
+ * move and the frontend dormant filter (7d) silently strands the Lambda
+ * outside the Auto-pick pool even while AER submission is healthy.
+ *
+ * No-op if EXECUTOR_PACKAGE_ID / EXECUTOR_PROCESSED_REQUESTS_ID are not
+ * configured (graceful rollout — AER submission stays intact).
+ *
+ * Dedup safety: executor::ProcessedRequests is a separate shared object from
+ * baram::ProcessedRequests, and submit_proof_with_receipt's own dedup
+ * guarantees request_id is only ever processed once end-to-end, so the
+ * executor-side guard cannot abort a valid PTB.
+ */
+function appendExecutorHeartbeat(tx: Transaction, requestId: number): void {
+  if (!EXECUTOR_PACKAGE_ID || !EXECUTOR_PROCESSED_REQUESTS_ID || !EXECUTOR_REGISTRY_ID) {
+    return;
+  }
+  tx.moveCall({
+    target: `${EXECUTOR_PACKAGE_ID}::executor::record_job_completion`,
+    arguments: [
+      tx.object(EXECUTOR_REGISTRY_ID),
+      tx.object(EXECUTOR_PROCESSED_REQUESTS_ID),
+      tx.pure.u64(requestId),
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
 }
 
 /**
@@ -269,6 +307,19 @@ export interface AERReportData {
   triggeredByRef: string | null;
   // Replay
   modelVersion: string;           // e.g. 'llama-3.3-70b-versatile@2025-01-08'
+  /** SHA-256 of the prompt text the agent committed to. Defaults to 32 zero
+   *  bytes when the caller (chat /execute, /record) doesn't track a prompt
+   *  template hash. */
+  promptTemplateHash?: number[];
+  /** SHA-256 of the canonical market snapshot JSON. null when the caller
+   *  didn't snapshot any market context (e.g. chat). */
+  marketSnapshotHash?: number[] | null;
+  /** Caller-supplied replay extras (e.g. strategy_id, market_snapshot,
+   *  cycle_at_ms from the trader runtime). MUST NOT include capability_id --
+   *  the PTB builder always injects that key. Final VecMap is sorted
+   *  canonically (UTF-8 byte order) and rejected on duplicates by the
+   *  contract. */
+  replayExtras?: Array<[string, number[]]>;
 }
 
 // Caps mirrored from contracts-aer/sources/aer.move. Keep in sync.
@@ -277,6 +328,69 @@ const HASH_LENGTH = 32;
 const PAYLOAD_CODEC = 'bcs';
 const MAX_ACTION_SUMMARY_BYTES = 240; // contract cap 280; leave a safety margin
 const ZERO_HASH_32: number[] = Array(HASH_LENGTH).fill(0);
+const MAX_REPLAY_EXTRAS_KEYS = 16;
+const MAX_REPLAY_EXTRAS_KEY_LEN = 64;
+const MAX_REPLAY_EXTRAS_VAL_LEN = 4096;
+
+/**
+ * Validate a hash field against the on-chain HASH_LENGTH constant. Returns the
+ * input unchanged when valid so the caller can chain directly into PTB args.
+ * Falls back to all-zero bytes when the value is missing -- preserves the
+ * legacy behavior for code paths (chat /execute, /record) that don't track a
+ * prompt template / market snapshot hash.
+ */
+function hashOrZero(label: string, bytes: number[] | null | undefined): number[] {
+  if (bytes == null) return ZERO_HASH_32;
+  if (bytes.length !== HASH_LENGTH) {
+    throw new Error(`${label} must be ${HASH_LENGTH} bytes, got ${bytes.length}`);
+  }
+  return bytes;
+}
+
+function optionalHash(label: string, bytes: number[] | null | undefined): number[] | null {
+  if (bytes == null) return null;
+  if (bytes.length !== HASH_LENGTH) {
+    throw new Error(`${label} must be ${HASH_LENGTH} bytes when present, got ${bytes.length}`);
+  }
+  return bytes;
+}
+
+/**
+ * Merge `capability_id` (always-on) with caller-supplied extras, sort by
+ * UTF-8 byte order (contract requires strict ascending), and validate
+ * count + per-entry caps. Throws before PTB construction so the Lambda
+ * surfaces a clean error instead of an opaque Move abort.
+ */
+function buildReplayExtrasArgs(aer: AERReportData): { keys: string[]; vals: number[][] } {
+  const capIdBytes = Array.from(
+    Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex'),
+  );
+  const entries: Array<[string, number[]]> = [['capability_id', capIdBytes]];
+  for (const [k, v] of aer.replayExtras ?? []) {
+    if (k === 'capability_id') {
+      throw new Error('replayExtras must not include capability_id (Lambda injects it)');
+    }
+    if (k.length === 0 || Buffer.byteLength(k, 'utf-8') > MAX_REPLAY_EXTRAS_KEY_LEN) {
+      throw new Error(`replay_extras key "${k}" exceeds ${MAX_REPLAY_EXTRAS_KEY_LEN} bytes`);
+    }
+    if (v.length > MAX_REPLAY_EXTRAS_VAL_LEN) {
+      throw new Error(
+        `replay_extras["${k}"] value ${v.length}B exceeds ${MAX_REPLAY_EXTRAS_VAL_LEN}`,
+      );
+    }
+    entries.push([k, v]);
+  }
+  if (entries.length > MAX_REPLAY_EXTRAS_KEYS) {
+    throw new Error(`replay_extras count ${entries.length} exceeds ${MAX_REPLAY_EXTRAS_KEYS}`);
+  }
+  entries.sort((a, b) => Buffer.from(a[0], 'utf-8').compare(Buffer.from(b[0], 'utf-8')));
+  for (let i = 1; i < entries.length; i++) {
+    if (entries[i][0] === entries[i - 1][0]) {
+      throw new Error(`duplicate replay_extras key: ${entries[i][0]}`);
+    }
+  }
+  return { keys: entries.map((e) => e[0]), vals: entries.map((e) => e[1]) };
+}
 
 function sha256Bytes(input: Buffer | Uint8Array): Buffer {
   return createHash('sha256').update(input).digest();
@@ -389,6 +503,9 @@ export async function submitProofWithAER(
   const payloadHash = Array.from(sha256Bytes(actionTypeBytes));
 
   const summary = truncateToBytes(aer.actionSummary, MAX_ACTION_SUMMARY_BYTES);
+  const promptTemplateHashBytes = hashOrZero('promptTemplateHash', aer.promptTemplateHash);
+  const marketSnapshotHashBytes = optionalHash('marketSnapshotHash', aer.marketSnapshotHash);
+  const { keys: replayExtraKeys, vals: replayExtraVals } = buildReplayExtrasArgs(aer);
 
   tx.moveCall({
     target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
@@ -441,17 +558,18 @@ export async function submitProofWithAER(
       tx.pure(bcs.option(bcs.string()).serialize(aer.triggeredByRef)),       // 36 triggered_by_ref
       // Replay
       tx.pure.string(aer.modelVersion),                                      // 37 model_version
-      tx.pure.vector('u8', ZERO_HASH_32),                                    // 38 prompt_template_hash
-      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(null)),             // 39 market_snapshot_hash
-      // replay_extras: capability_id raw 32 bytes. Single-key VecMap so no
-      // sort needed (contract requires strict-ascending UTF-8 byte order when
-      // we ever add a second key -- keep this comment if extending).
-      tx.pure.vector('string', ['capability_id']),                           // 40 replay_extras_keys
-      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize([
-        Array.from(Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex')),
-      ])),                                                                   // 41 replay_extras_vals
+      tx.pure.vector('u8', promptTemplateHashBytes),                         // 38 prompt_template_hash
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(marketSnapshotHashBytes)), // 39 market_snapshot_hash
+      // replay_extras: capability_id (Lambda-injected) + caller-supplied
+      // extras (e.g. strategy_id, market_snapshot, cycle_at_ms from trader
+      // runtime). Merged + sorted canonically by buildReplayExtrasArgs;
+      // contract aborts on duplicate keys via vec_map::insert.
+      tx.pure.vector('string', replayExtraKeys),                             // 40 replay_extras_keys
+      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize(replayExtraVals)),  // 41 replay_extras_vals
     ],
   });
+
+  appendExecutorHeartbeat(tx, requestId);
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,
@@ -907,6 +1025,9 @@ export async function submitSwapPTBWithAER(
   const payloadBytes: number[] = [];
   const payloadHash = Array.from(sha256Bytes(actionTypeBytes));
   const summary = truncateToBytes(aer.actionSummary, MAX_ACTION_SUMMARY_BYTES);
+  const swapPromptTemplateHashBytes = hashOrZero('promptTemplateHash', aer.promptTemplateHash);
+  const swapMarketSnapshotHashBytes = optionalHash('marketSnapshotHash', aer.marketSnapshotHash);
+  const { keys: swapReplayExtraKeys, vals: swapReplayExtraVals } = buildReplayExtrasArgs(aer);
 
   tx.moveCall({
     target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
@@ -948,14 +1069,14 @@ export async function submitSwapPTBWithAER(
       tx.pure.u8(aer.triggeredByType),
       tx.pure(bcs.option(bcs.string()).serialize(aer.triggeredByRef)),
       tx.pure.string(aer.modelVersion),
-      tx.pure.vector('u8', ZERO_HASH_32),
-      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(null)),
-      tx.pure.vector('string', ['capability_id']),
-      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize([
-        Array.from(Buffer.from(aer.capabilityId.replace(/^0x/, ''), 'hex')),
-      ])),
+      tx.pure.vector('u8', swapPromptTemplateHashBytes),
+      tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(swapMarketSnapshotHashBytes)),
+      tx.pure.vector('string', swapReplayExtraKeys),
+      tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize(swapReplayExtraVals)),
     ],
   });
+
+  appendExecutorHeartbeat(tx, requestId);
 
   const result = await client.signAndExecuteTransaction({
     signer: keypair,

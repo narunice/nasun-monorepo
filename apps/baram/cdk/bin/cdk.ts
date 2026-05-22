@@ -36,7 +36,9 @@ const baramPackageId = process.env.VITE_BARAM_PACKAGE_ID || process.env.BARAM_PA
 const baramRegistryId = process.env.VITE_BARAM_REGISTRY_ID || process.env.BARAM_REGISTRY_ID || '';
 const aerPackageId = process.env.AER_PACKAGE_ID || '';
 const aerRegistryId = process.env.AER_REGISTRY_ID || '';
+const executorPackageId = process.env.EXECUTOR_PACKAGE_ID || '';
 const executorRegistryId = process.env.EXECUTOR_REGISTRY_ID || '';
+const executorProcessedRequestsId = process.env.EXECUTOR_PROCESSED_REQUESTS_ID || '';
 const suiRpcUrl = process.env.SUI_RPC_URL || 'https://rpc.devnet.nasun.io';
 
 // PR1.5 swap path gates. Default LAMBDA_SWAP_DISABLED to "true" so a deploy
@@ -67,7 +69,9 @@ console.log(`  Package ID: ${baramPackageId}`);
 console.log(`  Registry ID: ${baramRegistryId}`);
 console.log(`  AER Package: ${aerPackageId || '(not set - AER disabled)'}`);
 console.log(`  AER Registry: ${aerRegistryId || '(not set)'}`);
+console.log(`  Executor Package: ${executorPackageId || '(not set - heartbeat disabled)'}`);
 console.log(`  Executor Registry: ${executorRegistryId || '(not set)'}`);
+console.log(`  Executor ProcessedRequests: ${executorProcessedRequestsId || '(not set - heartbeat disabled)'}`);
 console.log(`  RPC URL: ${suiRpcUrl}`);
 console.log(`  Swap path: LAMBDA_SWAP_DISABLED=${lambdaSwapDisabled}`);
 console.log(`    DeepBook pkg allowlist: ${deepbookPackageAllowlist || '(empty)'}`);
@@ -82,7 +86,9 @@ new BaramStack(app, stackId, {
   baramRegistryId,
   aerPackageId,
   aerRegistryId,
+  executorPackageId,
   executorRegistryId,
+  executorProcessedRequestsId,
   suiRpcUrl,
   lambdaSwapDisabled,
   deepbookPackageAllowlist,

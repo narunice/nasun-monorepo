@@ -262,7 +262,9 @@ async function initialize(): Promise<void> {
     executorPrivateKey: executorPrivateKey!,
     aerPackageId: process.env.AER_PACKAGE_ID || '',
     aerRegistryId: process.env.AER_REGISTRY_ID || '',
+    executorPackageId: process.env.EXECUTOR_PACKAGE_ID || '',
     executorRegistryId: process.env.EXECUTOR_REGISTRY_ID || '',
+    executorProcessedRequestsId: process.env.EXECUTOR_PROCESSED_REQUESTS_ID || '',
   });
 
   // Initialize DynamoDB result store (if configured)
@@ -500,6 +502,11 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     triggeredByType: body.triggeredByType ?? 4, // MANUAL (session-initiated chat)
     triggeredByRef: body.triggeredByRef ?? null,
     modelVersion: modelVersionTag(model),
+    // promptTemplateHash / marketSnapshotHash / replayExtras intentionally
+    // omitted: the chat /execute path doesn't track a prompt-template or
+    // market snapshot, so the PTB builder falls back to ZERO/null/[]
+    // (matches pre-2026-05 behavior). Trader cycles go through
+    // /execute-capability where the runtime supplies these.
   };
 
   try {
@@ -625,6 +632,10 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
     triggeredByType: body.triggeredByType ?? 1, // HEARTBEAT
     triggeredByRef: body.triggeredByRef ?? null,
     modelVersion: modelVersionTag(verification.request!.model || 'unknown'),
+    // promptTemplateHash / marketSnapshotHash / replayExtras intentionally
+    // omitted: /record is Model B (self-reported) and the caller doesn't
+    // ship replay metadata in this schema. PTB builder defaults to
+    // ZERO/null/[] which matches pre-2026-05 on-chain shape.
   };
 
   try {
@@ -1267,7 +1278,47 @@ async function handleExecuteCapability(
   };
   const wake = body.wake as { triggeredByType?: number; triggeredByRef?: string | null };
   const lineage = body.lineage as { parentIntentId?: number[] | null };
-  const replay = body.replay as { modelVersion?: string };
+  const replay = body.replay as {
+    modelVersion?: string;
+    promptTemplateHash?: number[];
+    marketSnapshotHash?: number[] | null;
+    replayExtras?: Array<[string, number[]]>;
+  };
+
+  // Replay metadata from the agent runtime's buildReplay(). The runtime
+  // hashes the actual prompt + market snapshot and packs `strategy_id`,
+  // `market_snapshot`, `cycle_at_ms` into replayExtras; Lambda forwards
+  // these straight into the AER PTB instead of hardcoding zero/null.
+  // Validation is single-sourced in sui.ts buildReplayExtrasArgs (length
+  // caps, duplicate-key, capability_id collision); we only structurally
+  // validate here so a malformed body surfaces as a 400 instead of an
+  // opaque BCS serialize throw mid-PTB.
+  let runtimeExtras: Array<[string, number[]]> | undefined;
+  if (replay?.replayExtras !== undefined) {
+    if (!Array.isArray(replay.replayExtras)) {
+      return { statusCode: 400, body: { success: false, error: 'replay.replayExtras must be an array', reason: 'invalid_replay_extras' } };
+    }
+    runtimeExtras = [];
+    for (const entry of replay.replayExtras) {
+      if (!Array.isArray(entry) || entry.length !== 2 || typeof entry[0] !== 'string' || !Array.isArray(entry[1])) {
+        return { statusCode: 400, body: { success: false, error: 'replay.replayExtras entry must be [string, number[]]', reason: 'invalid_replay_extras' } };
+      }
+      if (entry[0] === 'capability_id') {
+        // Lambda always injects capability_id in buildReplayExtrasArgs;
+        // surfacing this as 400 beats letting the builder throw a 500.
+        return { statusCode: 400, body: { success: false, error: 'replay.replayExtras must not include capability_id (Lambda-injected)', reason: 'invalid_replay_extras' } };
+      }
+      // Reject non-byte values up-front so the contract abort path stays
+      // theoretical; otherwise bcs.vector(bcs.u8()) throws an SDK error
+      // partway through PTB construction.
+      for (const b of entry[1]) {
+        if (!Number.isInteger(b) || b < 0 || b > 255) {
+          return { statusCode: 400, body: { success: false, error: `replay.replayExtras["${entry[0]}"] contains non-byte value`, reason: 'invalid_replay_extras' } };
+        }
+      }
+      runtimeExtras.push([entry[0], entry[1]]);
+    }
+  }
 
   const aerData: AERReportData = {
     capabilityId: body.capabilityId,
@@ -1299,6 +1350,13 @@ async function handleExecuteCapability(
     triggeredByType: wake?.triggeredByType ?? 1,            // HEARTBEAT default
     triggeredByRef: wake?.triggeredByRef ?? null,
     modelVersion: replay?.modelVersion ?? modelVersionTag(model),
+    promptTemplateHash: Array.isArray(replay?.promptTemplateHash)
+      ? replay.promptTemplateHash
+      : undefined,
+    marketSnapshotHash: Array.isArray(replay?.marketSnapshotHash)
+      ? replay.marketSnapshotHash
+      : null,
+    replayExtras: runtimeExtras,
   };
 
   try {

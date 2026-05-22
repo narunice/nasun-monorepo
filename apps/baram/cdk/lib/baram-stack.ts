@@ -26,6 +26,13 @@ export interface BaramStackProps extends cdk.StackProps {
   // Executor registry address
   executorRegistryId?: string;
 
+  // Executor package + ProcessedRequests shared object — required for the
+  // inline executor::record_job_completion heartbeat in AER PTBs. If either
+  // is missing, the heartbeat moveCall is silently skipped (graceful rollout)
+  // and ExecutorRegistry.last_active_at stays stale.
+  executorPackageId?: string;
+  executorProcessedRequestsId?: string;
+
   // Sui RPC URL
   suiRpcUrl?: string;
 
@@ -57,6 +64,8 @@ export class BaramStack extends cdk.Stack {
       aerPackageId = '',
       aerRegistryId = '',
       executorRegistryId = '',
+      executorPackageId = '',
+      executorProcessedRequestsId = '',
       suiRpcUrl = 'https://rpc.devnet.nasun.io',
       // Default allowlist includes both the legacy baram subdomain and the
       // nasun-website root (S5+ where Baram surfaces moved into uju/ai). Both
@@ -137,7 +146,9 @@ export class BaramStack extends cdk.Stack {
         BARAM_REGISTRY_ID: baramRegistryId,
         AER_PACKAGE_ID: aerPackageId,
         AER_REGISTRY_ID: aerRegistryId,
+        EXECUTOR_PACKAGE_ID: executorPackageId,
         EXECUTOR_REGISTRY_ID: executorRegistryId,
+        EXECUTOR_PROCESSED_REQUESTS_ID: executorProcessedRequestsId,
         EXECUTOR_SECRET_NAME: 'baram/executor',
         // AI provider SSM paths — Lambda's loadSecrets() fetches each in
         // parallel. Missing values silently degrade the fallback chain
