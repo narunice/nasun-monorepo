@@ -29,10 +29,28 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { SuiClient } from '@mysten/sui/client';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TPSLStore, type TPSLOrder } from './lib/tpsl-store.js';
+import { TPSLStore, type TPSLOrder, MAX_TRANSIENT_FAILURES } from './lib/tpsl-store.js';
 import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor.js';
 import { withRetry } from './lib/retry.js';
 import { MARKETS } from './lib/config.js';
+
+// Fire-and-forget Telegram alert. Silent no-op when TELEGRAM_BOT_TOKEN /
+// TELEGRAM_ALERT_CHAT_ID are unset (dev/staging).
+async function tgAlert(text: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chat = process.env.TELEGRAM_ALERT_CHAT_ID;
+  if (!token || !chat) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ chat_id: chat, text, parse_mode: 'HTML' }),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (err) {
+    console.error('[keeper] Telegram alert failed:', err);
+  }
+}
 
 // ========================================
 // Configuration
@@ -206,14 +224,16 @@ async function checkAndExecuteOrders(
       } else {
         const msg = result.error || 'Unknown error';
         const permanent = isPermanentFailure(msg);
-        store.markFailed(order.id, msg, permanent);
+        const { promoted } = store.markFailed(order.id, msg, permanent);
         console.error(`[keeper] Order ${order.id} execution failed (permanent=${permanent}): ${msg}`);
+        if (promoted) await handlePromotedToStuck(order, msg);
       }
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       const permanent = isPermanentFailure(msg);
-      store.markFailed(order.id, msg, permanent);
+      const { promoted } = store.markFailed(order.id, msg, permanent);
       console.error(`[keeper] Order ${order.id} error (permanent=${permanent}): ${msg}`);
+      if (promoted) await handlePromotedToStuck(order, msg);
     }
   }
 }
@@ -239,7 +259,33 @@ function isPermanentFailure(msg: string): boolean {
   if (msg.includes('balance_manager') && msg.includes('withdraw_with_proof')) {
     return true;
   }
+  // EInvalidTrader (MoveAbort code 1) from balance_manager::validate_trader: the user has
+  // removed this keeper's TradeCap from their BalanceManager allow_list, so every future
+  // PTB against that BM will abort here. Retrying is pure waste.
+  if (msg.includes('balance_manager') && msg.includes('validate_trader')) {
+    return true;
+  }
   return false;
+}
+
+// Fire a Telegram alert + structured console log when a TP/SL order trips the
+// transient-failure ceiling and gets force-promoted to 'failed'. The order in this
+// callback is the snapshot at execution time — store has already updated the on-disk
+// row, so consecutiveFailures is at least MAX_TRANSIENT_FAILURES.
+async function handlePromotedToStuck(order: TPSLOrder, reason: string): Promise<void> {
+  const summary = `tpsl-keeper: order STUCK after ${MAX_TRANSIENT_FAILURES} transient failures`;
+  console.error(
+    `[keeper] ${summary} — id=${order.id} user=${order.userAddress} ` +
+      `symbol=${order.marketSymbol} ${order.side}/${order.triggerType}@${order.triggerPrice}`,
+  );
+  await tgAlert(
+    `<b>${summary}</b>\n` +
+      `id: <code>${order.id}</code>\n` +
+      `user: <code>${order.userAddress}</code>\n` +
+      `symbol: ${order.marketSymbol} ${order.side} ${order.triggerType} @ ${order.triggerPrice}\n` +
+      `qty: ${order.quantity}\n` +
+      `reason: ${reason.slice(0, 400)}`,
+  );
 }
 
 function checkTriggerCondition(order: TPSLOrder, currentPrice: number): boolean {

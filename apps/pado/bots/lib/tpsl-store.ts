@@ -13,6 +13,12 @@ export type OrderSide = 'buy' | 'sell';
 export type TriggerType = 'take_profit' | 'stop_loss';
 export type OrderStatus = 'active' | 'executing' | 'filled' | 'canceled' | 'failed';
 
+// Cap how many transient failures we tolerate before promoting an order to permanent
+// 'failed'. Without this, owned-object version-mismatch races (e.g. keeper's own gas coin
+// stuck behind a stale ref) can pin a single order in retry-forever loops — observed
+// 2,700+ retries per order over 5 days in the 2026-05-22 incident.
+export const MAX_TRANSIENT_FAILURES = 50;
+
 export interface TPSLOrder {
   id: string;
   userAddress: string;
@@ -29,6 +35,9 @@ export interface TPSLOrder {
   updatedAt: number;
   txDigest?: string;
   error?: string;
+  consecutiveFailures?: number;
+  lastFailureReason?: string;
+  lastFailureAt?: number;
 }
 
 interface StoreData {
@@ -124,18 +133,39 @@ export class TPSLStore {
     order.status = 'filled';
     order.txDigest = txDigest;
     order.updatedAt = Date.now();
+    order.consecutiveFailures = 0;
     this.save();
   }
 
-  // Mark order as failed (back to active for retry, or failed permanently)
-  markFailed(id: string, error: string, permanent = false): void {
+  // Mark order as failed. Permanent failures go to 'failed' immediately. Transient
+  // failures bump a counter and return to 'active'; if the counter hits
+  // MAX_TRANSIENT_FAILURES the order is promoted to 'failed' (caller fires alert).
+  markFailed(id: string, error: string, permanent = false): { promoted: boolean } {
     const order = this.data.orders.find((o) => o.id === id);
-    if (!order) return;
+    if (!order) return { promoted: false };
 
-    order.status = permanent ? 'failed' : 'active';
+    const now = Date.now();
     order.error = error;
-    order.updatedAt = Date.now();
+    order.lastFailureReason = error;
+    order.lastFailureAt = now;
+    order.updatedAt = now;
+
+    if (permanent) {
+      order.status = 'failed';
+      this.save();
+      return { promoted: false };
+    }
+
+    order.consecutiveFailures = (order.consecutiveFailures ?? 0) + 1;
+    if (order.consecutiveFailures >= MAX_TRANSIENT_FAILURES) {
+      order.status = 'failed';
+      this.save();
+      return { promoted: true };
+    }
+
+    order.status = 'active';
     this.save();
+    return { promoted: false };
   }
 
   // Cancel an order
