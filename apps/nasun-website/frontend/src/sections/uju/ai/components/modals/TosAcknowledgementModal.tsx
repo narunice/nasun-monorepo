@@ -10,14 +10,17 @@
  * three commitments visible before the first activation, not to bind.
  */
 
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
-export const TOS_LOCALSTORAGE_KEY = 'nasun-ai-tos-accepted-v1';
+export const TOS_LOCALSTORAGE_KEY = "nasun-ai-tos-accepted-v1";
 
 export function hasAcceptedTos(): boolean {
   try {
-    return typeof window !== 'undefined' && window.localStorage.getItem(TOS_LOCALSTORAGE_KEY) === '1';
+    return (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(TOS_LOCALSTORAGE_KEY) === "1"
+    );
   } catch {
     return false;
   }
@@ -25,8 +28,8 @@ export function hasAcceptedTos(): boolean {
 
 function markTosAccepted(): void {
   try {
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(TOS_LOCALSTORAGE_KEY, '1');
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TOS_LOCALSTORAGE_KEY, "1");
     }
   } catch {
     // localStorage unavailable (private mode, quota); silently ignore so
@@ -42,39 +45,39 @@ interface TosAcknowledgementModalProps {
 
 const ACK_ITEMS = [
   {
-    id: 'prototype',
-    text:
-      'I understand this is a prototype and there is a real risk of losing the funds I send to the agent.',
+    id: "devnet-no-value",
+    text: "I understand Nasun is running on devnet and all on-chain assets have no monetary value.",
   },
   {
-    id: 'unaudited',
-    text:
-      'I understand the smart contracts and runtime code have not undergone an external security audit.',
+    id: "prototype",
+    text: "I understand Nasun AI is a proof-of-concept prototype, not a finished product.",
   },
   {
-    id: 'no-tee',
-    text:
-      'I understand TEE / Nitro Enclave attestation is on the long-term roadmap and is not part of this alpha.',
+    id: "devnet-reset",
+    text: "I understand the devnet can be reset at any time without notice, wiping all balances, agents, and history.",
   },
 ] as const;
 
-type AckId = (typeof ACK_ITEMS)[number]['id'];
+type AckId = (typeof ACK_ITEMS)[number]["id"];
 
-export function TosAcknowledgementModal({ onAccept, onCancel }: TosAcknowledgementModalProps) {
+export function TosAcknowledgementModal({
+  onAccept,
+  onCancel,
+}: TosAcknowledgementModalProps) {
   const [acks, setAcks] = useState<Record<AckId, boolean>>({
     prototype: false,
-    unaudited: false,
-    'no-tee': false,
+    "devnet-no-value": false,
+    "devnet-reset": false,
   });
 
   const allChecked = ACK_ITEMS.every((item) => acks[item.id]);
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
-      if (e.key === 'Escape') onCancel();
+      if (e.key === "Escape") onCancel();
     };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [onCancel]);
 
   const handleConfirm = () => {
@@ -95,9 +98,12 @@ export function TosAcknowledgementModal({ onAccept, onCancel }: TosAcknowledgeme
     >
       <div className="w-full max-w-md bg-uju-card rounded-xl border border-uju-border/60 shadow-2xl p-5 space-y-4">
         <div className="space-y-1">
-          <h2 id="tos-ack-title" className="text-sm font-semibold text-white">Before activating this agent</h2>
+          <h2 id="tos-ack-title" className="text-sm font-semibold text-white">
+            Before activating this agent
+          </h2>
           <p className="text-sm text-uju-secondary">
-            Nasun AI is an alpha prototype. Read each statement and tick the boxes if you agree.
+            Nasun AI is an alpha prototype. Read each statement and tick the
+            boxes if you agree.
           </p>
         </div>
 
@@ -109,11 +115,16 @@ export function TosAcknowledgementModal({ onAccept, onCancel }: TosAcknowledgeme
                   type="checkbox"
                   checked={acks[item.id]}
                   onChange={(e) =>
-                    setAcks((prev) => ({ ...prev, [item.id]: e.target.checked }))
+                    setAcks((prev) => ({
+                      ...prev,
+                      [item.id]: e.target.checked,
+                    }))
                   }
                   className="mt-0.5 w-4 h-4 accent-pado-2"
                 />
-                <span className="text-sm text-white leading-snug">{item.text}</span>
+                <span className="text-sm text-white leading-snug">
+                  {item.text}
+                </span>
               </label>
             </li>
           ))}
