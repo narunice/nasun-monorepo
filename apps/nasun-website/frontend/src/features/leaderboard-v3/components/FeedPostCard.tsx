@@ -5,7 +5,7 @@
  */
 
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
-import { Tweet } from "react-tweet";
+import { SafeTweet } from "@/components/SafeTweet";
 import type { FeaturedFeedItem, BadgeType } from "../types";
 
 interface FeedPostCardProps {
@@ -101,7 +101,7 @@ export function FeedPostCard({ item }: FeedPostCardProps) {
     <div className="relative">
       {/* Tweet Embed */}
       <div className="w-full nasun-tweet-container relative max-h-[750px] overflow-hidden" data-theme="dark">
-        <Tweet id={tweetId} />
+        <SafeTweet id={tweetId} />
         {/* Bottom gradient fade for long posts (e.g. quote tweets) */}
         <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-[rgba(30,30,30,0.95)] to-transparent pointer-events-none" />
       </div>
