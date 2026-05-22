@@ -493,7 +493,18 @@ function RawAuditSection({ record }: { record: AERRecord }) {
 // ===== Main =====
 
 export function ResultViewerModal({ requestId, record, authorizer, onClose }: ResultViewerModalProps) {
-  const { data, isLoading, error } = useAerResult(requestId, authorizer);
+  // Only Cognition (eventClass=1) records carry an AI text body. For
+  // Execution / Settlement / Observation / Coordination events the Lambda
+  // either has no result at all (404) or the on-chain `requester` is the
+  // agent — not the owner viewing the modal — so /result returns 403 and
+  // the modal would render a misleading "Access denied" surface. Skip the
+  // fetch entirely for these and fall through to the "on-chain only by
+  // design" branch below. Legacy records without eventClass are treated
+  // as cognition for back-compat.
+  const isCognition = record.eventClass === undefined || record.eventClass === 1;
+  const { data, isLoading, error } = useAerResult(requestId, authorizer, {
+    enabled: isCognition,
+  });
   const [copied, setCopied] = useState(false);
   const [verification, setVerification] = useState<HashVerificationResult | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
@@ -577,7 +588,10 @@ export function ResultViewerModal({ requestId, record, authorizer, onClose }: Re
   const isNonTextEvent =
     record.eventClass !== undefined && record.eventClass !== 1;
   const isExpiredCognition = isLambda404 && !isNonTextEvent;
-  const isExecutionNoText = isLambda404 && isNonTextEvent;
+  // For non-Cognition events we never call /result (see isCognition gate
+  // above), so error is null. Surface the "on-chain only by design" copy
+  // directly from the event class instead of relying on a Lambda 404.
+  const isExecutionNoText = isNonTextEvent;
 
   return (
     <div
