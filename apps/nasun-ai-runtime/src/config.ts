@@ -253,7 +253,7 @@ export function loadConfigBaseSync() {
     category: defaults.category,
     intervalMinutes,
     intervalMs: intervalMinutes * 60 * 1000,
-    price: parsePriceOrDefault(process.env.PRICE, 1000000),
+    price: parsePriceOrDefault(process.env.PRICE, 100000),
 
     // Record mode (Model B) — LLM configuration
     llmApiUrl,
