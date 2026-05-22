@@ -1,4 +1,5 @@
 import { useMarket } from '../context/MarketContext';
+import { getMinPrice } from '../../../lib/deepbook';
 
 interface PoolInfoProps {
   variant?: 'card' | 'inline' | 'header';
@@ -7,7 +8,10 @@ interface PoolInfoProps {
 export function PoolInfo({ variant = 'card' }: PoolInfoProps) {
   const { currentPool } = useMarket();
 
-  const tickSize = (currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals)).toFixed(4);
+  // tickSize decode goes through getMinPrice which uses priceScaleExp = quote + 9 - base.
+  // baseDecimals=8 pools (NBTC, NETH) would inflate 10x with a naive 10^quoteDecimals
+  // divide; see project_2026_05_19_pado_price_10x_regression.
+  const tickSize = getMinPrice(currentPool).toFixed(4);
   const lotSize = (currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals)).toFixed(6);
   const baseSymbol = currentPool.baseToken.symbol;
   const makerFee = (currentPool.makerFeeBps / 100).toFixed(2);

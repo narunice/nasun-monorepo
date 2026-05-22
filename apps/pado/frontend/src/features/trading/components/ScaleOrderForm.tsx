@@ -86,7 +86,9 @@ export function ScaleOrderForm({
   const minPrice = useMemo(() => getMinPrice(currentPool), [currentPool]);
   const minQuantity = useMemo(() => getMinQuantity(currentPool), [currentPool]);
 
-  const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
+  // tickSize human value reuses getMinPrice (priceScaleExp-aware) to avoid the
+  // 10x inflation for baseDecimals=8 pools; see project_2026_05_19_pado_price_10x_regression.
+  const tickSizeUsd = minPrice;
   const priceDecimals = Math.max(0, -Math.floor(Math.log10(tickSizeUsd)));
   const lotSizeBase = currentPool.lotSize / Math.pow(10, currentPool.baseToken.decimals);
   const qtyDecimals = Math.max(0, -Math.floor(Math.log10(lotSizeBase)));
