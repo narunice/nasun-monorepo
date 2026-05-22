@@ -38,7 +38,15 @@ interface ProviderModel {
 }
 
 interface InitializedProvider {
-  client: OpenAI;
+  /**
+   * One OpenAI-compatible client per configured key. Multi-key support
+   * (2026-05-21) lets a single provider survive its per-key daily/minute
+   * quota -- e.g. two Groq free-tier keys give effectively 2x the 100k
+   * TPD ceiling. Keys are tried in order on each call; rotation only
+   * persists for the duration of a single completion attempt (no
+   * cross-call key stickiness yet).
+   */
+  clients: OpenAI[];
   name: string;
 }
 
@@ -95,27 +103,53 @@ const FALLBACK_CHAIN: Record<string, ProviderModel[]> = {
 const providers: Record<string, InitializedProvider> = {};
 
 /**
- * Initialize all providers for which an API key is available. Missing keys
- * silently skip that provider; the fallback chain just gets shorter. At
- * least one provider must end up initialized.
+ * Split a raw SSM value into one-or-more API keys. Convention: a single
+ * comma-separated string `key1,key2,...` so an operator can pack extra
+ * keys into the existing parameter without provisioning new SSM names per
+ * provider. Empty entries (extra commas / trailing space) are dropped.
+ *
+ * Returns [] when no valid key remains, so the caller can skip the
+ * provider silently.
+ */
+function splitKeyList(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
+/**
+ * Initialize all providers for which at least one API key is available.
+ * Missing keys silently skip that provider; the fallback chain just gets
+ * shorter. At least one provider must end up initialized.
+ *
+ * 2026-05-21: multi-key per provider. Each provider gets an OpenAI client
+ * per key so the call-time loop can rotate keys on rate-limit / transient
+ * error before moving to the next provider.
  *
  * maxRetries:0 disables OpenAI SDK's internal exponential-backoff so the
  * outer fallback loop owns retry semantics. Without this, a 5xx would
- * burn budget on internal retries before advancing to the next provider.
+ * burn budget on internal retries before advancing to the next key /
+ * provider.
  */
 export function initProviders(keys: Record<string, string | null | undefined>): void {
   for (const [providerName, config] of Object.entries(PROVIDER_CATALOG)) {
-    const apiKey = keys[providerName];
-    if (!apiKey) continue;
+    const keyList = splitKeyList(keys[providerName]);
+    if (keyList.length === 0) continue;
     providers[providerName] = {
-      client: new OpenAI({
-        apiKey,
-        baseURL: config.baseURL,
-        maxRetries: 0,
-      }),
+      clients: keyList.map(
+        (apiKey) =>
+          new OpenAI({
+            apiKey,
+            baseURL: config.baseURL,
+            maxRetries: 0,
+          }),
+      ),
       name: providerName,
     };
-    console.log(`[AI] Provider initialized: ${providerName}`);
+    const suffix = keyList.length > 1 ? ` (${keyList.length} keys)` : '';
+    console.log(`[AI] Provider initialized: ${providerName}${suffix}`);
   }
   const initializedCount = Object.keys(providers).length;
   if (initializedCount === 0) {
@@ -124,13 +158,17 @@ export function initProviders(keys: Record<string, string | null | undefined>): 
   console.log(`[AI] ${initializedCount} provider(s) ready: ${Object.keys(providers).join(', ')}`);
   // Surface the actual runtime chain per canonical model so operators can
   // audit "what will be tried in what order" without grepping source. Slots
-  // whose provider has no SSM key are tagged `(skip)` so a missing key is
-  // visible at cold start, not only when chain exhaustion happens.
+  // whose provider has no SSM key are tagged `(skip)`; slots with >1 key
+  // are tagged `xN` so multi-key configuration is visible at cold start.
   for (const [canonicalModel, chain] of Object.entries(FALLBACK_CHAIN)) {
     const planned = chain
-      .map(({ provider, model }) =>
-        providers[provider] ? `${provider}:${model}` : `${provider}:${model}(skip)`,
-      )
+      .map(({ provider, model }) => {
+        const p = providers[provider];
+        if (!p) return `${provider}:${model}(skip)`;
+        return p.clients.length > 1
+          ? `${provider}:${model}x${p.clients.length}`
+          : `${provider}:${model}`;
+      })
       .join(' -> ');
     console.log(`[AI] Chain for ${canonicalModel}: ${planned}`);
   }
@@ -197,7 +235,7 @@ export async function generateCompletion(
   }
 
   const startTime = Date.now();
-  const errors: { provider: string; err: unknown }[] = [];
+  const errors: { provider: string; keyIndex: number; err: unknown }[] = [];
 
   for (const { provider: providerName, model: providerModel } of chain) {
     if (opts?.signal?.aborted) {
@@ -205,74 +243,96 @@ export async function generateCompletion(
     }
     const provider = providers[providerName];
     if (!provider) {
-      // Key not configured — silently skip. Logged at init time.
+      // Key not configured -- silently skip. Logged at init time.
       continue;
     }
 
-    console.log(`[AI] Trying ${providerName} (model=${providerModel})`);
-    const AI_TIMEOUT_MS = 60_000;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
-    const onCallerAbort = () => controller.abort();
-    if (opts?.signal) {
-      if (opts.signal.aborted) {
+    // Multi-key rotation within a single provider. On rate-limit / transient
+    // failure on key A we try key B before falling over to the next provider
+    // -- this is the whole point of multi-key support, since the most common
+    // failure mode (groq 100k TPD) is per-key, not per-provider.
+    const totalKeys = provider.clients.length;
+    for (let keyIndex = 0; keyIndex < totalKeys; keyIndex++) {
+      if (opts?.signal?.aborted) {
+        throw new Error('AI completion aborted by caller before chain exhaustion');
+      }
+      const keyLabel = totalKeys > 1 ? `${providerName}[${keyIndex + 1}/${totalKeys}]` : providerName;
+      console.log(`[AI] Trying ${keyLabel} (model=${providerModel})`);
+      const AI_TIMEOUT_MS = 60_000;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+      const onCallerAbort = () => controller.abort();
+      if (opts?.signal) {
+        if (opts.signal.aborted) {
+          clearTimeout(timeout);
+          controller.abort();
+        } else {
+          opts.signal.addEventListener('abort', onCallerAbort, { once: true });
+        }
+      }
+
+      try {
+        const response = await provider.clients[keyIndex].chat.completions.create(
+          {
+            model: providerModel,
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.',
+              },
+              {
+                role: 'user',
+                content: prompt,
+              },
+            ],
+            max_tokens: 2048,
+            temperature: 0.7,
+          },
+          { signal: controller.signal },
+        );
+
+        const message = response.choices[0]?.message;
+        if (!message?.content) {
+          throw new Error(`Provider ${keyLabel} returned empty content`);
+        }
+
+        const elapsed = Date.now() - startTime;
+        console.log(`[AI] Completion via ${keyLabel} finished in ${elapsed}ms (after ${errors.length} fallback(s))`);
+
+        return {
+          content: message.content,
+          model: response.model || providerModel,
+          provider: providerName,
+          promptTokens: response.usage?.prompt_tokens ?? 0,
+          completionTokens: response.usage?.completion_tokens ?? 0,
+          totalTokens: response.usage?.total_tokens ?? 0,
+        };
+      } catch (err) {
+        const status = (err as { status?: number }).status;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[AI] ${keyLabel} failed (status=${status ?? 'n/a'}): ${msg}`);
+        errors.push({ provider: providerName, keyIndex, err });
+        if (!isFallbackEligibleError(err)) {
+          // Auth or hard error -- re-throw so operator notices the
+          // misconfigured key instead of silently masking it.
+          throw err;
+        }
+        // Single-key-bad short-circuit. If the *first* key returned a hard
+        // per-account error (401 invalid key, 404 model not on this account,
+        // 402 paid-balance), rotating to another key under the same provider
+        // is unlikely to help and burns latency budget. Skip remaining keys
+        // for this provider and advance to the next one. 429 keeps rotating
+        // because that IS per-key (quota).
+        if (status === 401 || status === 402 || status === 404) {
+          // Per-account hard error; rotating keys won't help. Skip this
+          // provider's remaining keys and fall through to the next provider.
+          break;
+        }
+        // else continue to next key in this provider
+      } finally {
         clearTimeout(timeout);
-        controller.abort();
-      } else {
-        opts.signal.addEventListener('abort', onCallerAbort, { once: true });
+        if (opts?.signal) opts.signal.removeEventListener('abort', onCallerAbort);
       }
-    }
-
-    try {
-      const response = await provider.client.chat.completions.create(
-        {
-          model: providerModel,
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful AI assistant. Provide clear, concise, and accurate responses.',
-            },
-            {
-              role: 'user',
-              content: prompt,
-            },
-          ],
-          max_tokens: 2048,
-          temperature: 0.7,
-        },
-        { signal: controller.signal },
-      );
-
-      const message = response.choices[0]?.message;
-      if (!message?.content) {
-        throw new Error(`Provider ${providerName} returned empty content`);
-      }
-
-      const elapsed = Date.now() - startTime;
-      console.log(`[AI] Completion via ${providerName} finished in ${elapsed}ms (after ${errors.length} fallback(s))`);
-
-      return {
-        content: message.content,
-        model: response.model || providerModel,
-        provider: providerName,
-        promptTokens: response.usage?.prompt_tokens ?? 0,
-        completionTokens: response.usage?.completion_tokens ?? 0,
-        totalTokens: response.usage?.total_tokens ?? 0,
-      };
-    } catch (err) {
-      const status = (err as { status?: number }).status;
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[AI] ${providerName} failed (status=${status ?? 'n/a'}): ${msg}`);
-      errors.push({ provider: providerName, err });
-      if (!isFallbackEligibleError(err)) {
-        // Auth or hard error — re-throw so operator notices the
-        // misconfigured key instead of silently masking it.
-        throw err;
-      }
-      // else fall through to next provider
-    } finally {
-      clearTimeout(timeout);
-      if (opts?.signal) opts.signal.removeEventListener('abort', onCallerAbort);
     }
   }
 
@@ -283,7 +343,11 @@ export async function generateCompletion(
   // misleading. Include the status histogram so operators can triage from
   // the user-visible error string.
   const summary = errors
-    .map((e) => `${e.provider}=${(e.err as { status?: number }).status ?? 'err'}`)
+    .map((e) => {
+      const status = (e.err as { status?: number }).status ?? 'err';
+      const keyTag = e.keyIndex > 0 ? `#${e.keyIndex + 1}` : '';
+      return `${e.provider}${keyTag}=${status}`;
+    })
     .join(', ');
   const dominantStatus = (() => {
     const counts = new Map<string | number, number>();
