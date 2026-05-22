@@ -226,6 +226,14 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             </button>
             <button
               type="button"
+              onClick={() => setDialogMode('withdraw-inference')}
+              disabled={!inference.primary || inference.primary.balance <= 0}
+              className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Withdraw
+            </button>
+            <button
+              type="button"
               onClick={onOpenInferenceTab}
               className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
             >

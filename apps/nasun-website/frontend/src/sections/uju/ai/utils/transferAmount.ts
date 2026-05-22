@@ -9,7 +9,11 @@
 
 import { computeNasunMaxWithdraw } from '../services/agentWithdrawTx';
 
-export type TransferMode = 'deposit' | 'withdraw-trading' | 'top-up-inference';
+export type TransferMode =
+  | 'deposit'
+  | 'withdraw-trading'
+  | 'top-up-inference'
+  | 'withdraw-inference';
 
 /** Owner must keep this much NASUN to sponsor the deposit tx itself when depositing NASUN. */
 export const OWNER_NASUN_GAS_RESERVE_MIST = 50_000_000n;
@@ -58,6 +62,8 @@ interface MaxForModeInput {
    * 2026-05-20 escrow-funding fix). Pass 0n when escrow is empty or for the
    * NASUN gas case where escrow is irrelevant. */
   agentEscrowSelectedRaw: bigint;
+  /** Budget balance for withdraw-inference. NUSDC raw (6 decimals). */
+  budgetBalanceRaw?: bigint;
 }
 
 /**
@@ -83,6 +89,8 @@ export function computeMaxForMode(input: MaxForModeInput): bigint {
   } = input;
 
   if (mode === 'top-up-inference') return ownerNusdcRaw;
+
+  if (mode === 'withdraw-inference') return input.budgetBalanceRaw ?? 0n;
 
   if (mode === 'deposit') {
     if (effectiveCoin === 'NASUN') {

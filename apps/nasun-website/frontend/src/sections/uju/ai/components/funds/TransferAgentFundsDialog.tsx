@@ -13,6 +13,7 @@ import {
   buildDepositToAgentEscrowTransaction,
   buildWithdrawOwnerFromAgentEscrowTransaction,
   buildDepositToBudgetTransaction,
+  buildWithdrawFromBudgetTransaction,
 } from '../../services/transactionBuilder';
 import { isGasInsufficientError } from '../../services/txErrors';
 import { executeTradingWithdraw } from '../../services/agentWithdrawTx';
@@ -102,9 +103,10 @@ export function TransferAgentFundsDialog({
     agentBalances.find((b) => b.symbol === 'NASUN')?.totalBalanceRaw ?? 0n;
   const agentHasGas = agentNasunRaw > 0n;
 
-  // top-up-inference is locked to NUSDC (budget is NUSDC-denominated).
-  // deposit + withdraw-trading use the selected token.
-  const effectiveCoin: TokenSymbol = mode === 'top-up-inference' ? 'NUSDC' : selectedCoin;
+  // top-up-inference and withdraw-inference are locked to NUSDC (budget is
+  // NUSDC-denominated). deposit + withdraw-trading use the selected token.
+  const effectiveCoin: TokenSymbol =
+    mode === 'top-up-inference' || mode === 'withdraw-inference' ? 'NUSDC' : selectedCoin;
   const effectiveMeta = TOKENS[effectiveCoin];
   const agentSelectedRaw =
     agentBalances.find((b) => b.symbol === effectiveCoin)?.totalBalanceRaw ?? 0n;
@@ -116,6 +118,15 @@ export function TransferAgentFundsDialog({
 
   const amountRaw = parseRawAmount(amount, effectiveMeta.decimals);
 
+  // Selected budget for inference top-up / withdraw. Source of truth for
+  // withdraw-inference Max so the user sees exactly what's currently in the
+  // budget object they're about to drain.
+  const selectedBudget = useMemo(
+    () => activeBudgets.find((b) => b.id === selectedBudgetId) ?? activeBudgets[0],
+    [activeBudgets, selectedBudgetId],
+  );
+  const budgetBalanceRaw = selectedBudget ? BigInt(selectedBudget.balance) : 0n;
+
   const maxForMode: bigint = useMemo(
     () =>
       computeMaxForMode({
@@ -126,8 +137,9 @@ export function TransferAgentFundsDialog({
         agentNasunRaw,
         agentSelectedRaw,
         agentEscrowSelectedRaw,
+        budgetBalanceRaw,
       }),
-    [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw, agentEscrowSelectedRaw],
+    [mode, effectiveCoin, ownerNusdcRaw, ownerSelectedRaw, agentNasunRaw, agentSelectedRaw, agentEscrowSelectedRaw, budgetBalanceRaw],
   );
 
   const maxDecimals = effectiveMeta.decimals;
@@ -272,6 +284,28 @@ export function TransferAgentFundsDialog({
             queryKey: ['nasun-ai', 'agentEscrowBalances', escrowId],
           }),
         ]);
+      } else if (mode === 'withdraw-inference') {
+        if (amountRaw <= 0n) {
+          setError('Enter an amount greater than 0.');
+          setStep('idle');
+          return;
+        }
+        if (!selectedBudgetId) {
+          setError('No active inference balance found for this agent.');
+          setStep('idle');
+          return;
+        }
+        if (amountRaw > budgetBalanceRaw) {
+          setError('Amount exceeds inference balance.');
+          setStep('idle');
+          return;
+        }
+        // Owner-signed withdraw. Move asserts budget.owner == sender so the
+        // owner wallet must sign; agent key is not involved. No min check
+        // (only deposit enforces MIN_DEPOSIT).
+        const tx = buildWithdrawFromBudgetTransaction(selectedBudgetId, Number(amountRaw));
+        await signAndExecuteOwner(tx);
+        await queryClient.invalidateQueries({ queryKey: ['nasun-ai', 'budgets', walletAddress] });
       } else if (mode === 'top-up-inference') {
         if (amountRaw <= 0n) {
           setError('Enter an amount greater than 0.');
@@ -407,6 +441,8 @@ export function TransferAgentFundsDialog({
       ? `Send ${effectiveMeta.symbol} to agent's trading wallet`
       : mode === 'top-up-inference'
       ? 'Top up inference balance'
+      : mode === 'withdraw-inference'
+      ? 'Withdraw inference balance'
       : 'Withdraw from agent\'s trading wallet';
 
   const subtitle =
@@ -415,6 +451,8 @@ export function TransferAgentFundsDialog({
 
       : mode === 'top-up-inference'
       ? 'Add NUSDC to cover this agent\'s AI executor fees.'
+      : mode === 'withdraw-inference'
+      ? 'Withdraw remaining NUSDC from this agent\'s inference balance back to your wallet.'
       : `${truncateAddress(agent.agentAddress)} to your wallet. Enter your agent passphrase to authorize.`;
 
   return createPortal(
@@ -443,7 +481,7 @@ export function TransferAgentFundsDialog({
         </div>
 
         {/* Gas warnings */}
-        {(mode === 'deposit' || mode === 'top-up-inference') && isLowOwnerGas && (
+        {(mode === 'deposit' || mode === 'top-up-inference' || mode === 'withdraw-inference') && isLowOwnerGas && (
           <div className="px-3 py-2 text-sm rounded-lg bg-red-500/10 border border-red-500/30 text-red-300">
             Not enough NSN for gas. Use the in-wallet faucet to claim NSN.
           </div>
@@ -460,8 +498,8 @@ export function TransferAgentFundsDialog({
         )}
 
         <div className="space-y-3">
-          {/* Budget select for top-up-inference */}
-          {mode === 'top-up-inference' && activeBudgets.length > 1 && (
+          {/* Budget select for top-up-inference and withdraw-inference */}
+          {(mode === 'top-up-inference' || mode === 'withdraw-inference') && activeBudgets.length > 1 && (
             <div className="space-y-1.5">
               <label className="text-sm text-uju-secondary">Inference Balance</label>
               <select
@@ -509,19 +547,16 @@ export function TransferAgentFundsDialog({
             </div>
           )}
 
-          {/* Amount input */}
+          {/* Amount input. Max shown as a prominent chip beside the input
+              (the earlier text-link form was easy to miss). */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <label className="text-sm text-uju-secondary">Amount</label>
-              <button
-                type="button"
-                onClick={handleMax}
-                disabled={busy || maxForMode === 0n}
-                className="text-xs text-pado-2 hover:text-pado-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                Max: {formatRawAmount(maxForMode, maxDecimals)} {effectiveMeta.symbol}
-              </button>
+              <span className="text-xs text-uju-secondary/70">
+                Available: {formatRawAmount(maxForMode, maxDecimals)} {effectiveMeta.symbol}
+              </span>
             </div>
+            <div className="relative">
             <input
               type="text"
               inputMode="decimal"
@@ -529,7 +564,7 @@ export function TransferAgentFundsDialog({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               disabled={busy}
-              className={inputBase}
+              className={`${inputBase} pr-16`}
               // Chrome's built-in password manager kept autofilling "admin" into
               // this field on dialog open (2026-05-20 incident) even with
               // autocomplete="off" + named field + 1Password/LastPass ignore
@@ -545,6 +580,15 @@ export function TransferAgentFundsDialog({
               data-1p-ignore="true"
               data-lpignore="true"
             />
+            <button
+              type="button"
+              onClick={handleMax}
+              disabled={busy || maxForMode === 0n}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-1 text-xs rounded-md bg-pado-2/15 border border-pado-2/40 text-pado-2 hover:bg-pado-2/25 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Max
+            </button>
+            </div>
           </div>
 
           {/* Passphrase only required for withdrawing NSN gas (agent-signed
@@ -598,7 +642,7 @@ export function TransferAgentFundsDialog({
               step === 'done' ||
               (mode !== 'withdraw-trading' && isLowOwnerGas) ||
               (mode === 'withdraw-trading' && !agentHasGas && selectedCoin !== 'NASUN') ||
-              (mode === 'withdraw-trading' && maxForMode === 0n)
+              ((mode === 'withdraw-trading' || mode === 'withdraw-inference') && maxForMode === 0n)
             }
             className="flex-1 px-3 py-2 text-sm rounded-lg bg-pado-2 text-black font-medium hover:bg-pado-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
