@@ -5,6 +5,7 @@
  */
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { getMinPrice } from '../../../lib/deepbook';
 import type { Orderbook as OrderbookType, PriceLevel } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
 import { getPriceImpactColorClass } from '../utils/priceImpact';
@@ -149,7 +150,10 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
 
 export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact = false, isError = false }: OrderbookProps) {
   const { currentPool } = useMarket();
-  const tickSizeUsd = currentPool.tickSize / Math.pow(10, currentPool.quoteToken.decimals);
+  // tickSize decode must use priceScaleExp = quote + 9 - base (via getMinPrice),
+  // not raw 10^quoteDecimals. baseDecimals=8 pools (NBTC, NETH) need 10^7 not 10^6;
+  // see project_2026_05_19_pado_price_10x_regression.
+  const tickSizeUsd = getMinPrice(currentPool);
   const groupOptions = useMemo(() => getGroupOptions(tickSizeUsd), [tickSizeUsd]);
 
   const poolKey = `${currentPool.baseToken.symbol}_${currentPool.quoteToken.symbol}`;

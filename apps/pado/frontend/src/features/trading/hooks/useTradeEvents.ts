@@ -5,6 +5,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { getEventService } from '../../../lib/event-service';
+import { formatPrice, formatQuantity } from '../../../lib/deepbook';
 import { useMarket } from '../context/MarketContext';
 import { useToast } from '@/components/common';
 import type { Trade } from '../types/trade';
@@ -43,12 +44,19 @@ export function useTradeEvents(
   );
 
   // Convert OrderFilledEvent to Trade
+  // Price decode goes through formatPrice which uses priceScaleExp = quote + 9 - base.
+  // Direct `/ 10^quoteDecimals` is the 5/19 10x regression bug for baseDecimals=8 pools
+  // (NBTC, NETH); see project_2026_05_19_pado_price_10x_regression.
   const parseOrderFilledToTrade = useCallback(
     (event: OrderFilledEvent): Trade => {
       return {
         id: event.txDigest + event.makerOrderId,
-        price: Number(event.price) / Math.pow(10, currentPool.quoteToken.decimals),
-        quantity: Number(event.quantity) / Math.pow(10, currentPool.baseToken.decimals),
+        price: formatPrice(
+          event.price,
+          currentPool.quoteToken.decimals,
+          currentPool.baseToken.decimals,
+        ),
+        quantity: formatQuantity(event.quantity, currentPool.baseToken.decimals),
         isBuy: event.takerIsBid,
         timestamp: event.timestamp,
       };
