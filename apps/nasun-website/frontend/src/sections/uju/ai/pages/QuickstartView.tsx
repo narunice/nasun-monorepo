@@ -1,7 +1,14 @@
 import { useMemo, useState } from 'react';
+import { useSigner } from '@nasun/wallet';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useAgentBudgets } from '../hooks/useAgentBudgets';
 import { useTraderConfig } from '../hooks/useTraderConfig';
+import { useAlphaStatus } from '../alpha/useAlphaStatus';
+import {
+  joinAlphaWaitlist,
+  leaveAlphaWaitlist,
+  AlphaApiError,
+} from '../alpha/alphaApiClient';
 import { AgentCard } from './AgentsList';
 import type { AgentSubTab } from './AgentDetail';
 
@@ -156,6 +163,53 @@ export function QuickstartView({
   const isOnboarded = completedCount === 5;
   const [showGuide, setShowGuide] = useState(false);
 
+  // Inline alpha waitlist join. The notice below shows a Join button when
+  // the wallet is GP-eligible but does not yet hold (or queue for) a slot;
+  // for other states the notice shows status text instead. This is the
+  // only surface that lets non-invited users reach the waitlist, since
+  // AlphaGate/AlphaStatusPanel are not wired into the AI tab.
+  const alpha = useAlphaStatus(walletAddress);
+  const { signer } = useSigner();
+  const [waitlistBusy, setWaitlistBusy] = useState<'join' | 'leave' | null>(null);
+  const [waitlistError, setWaitlistError] = useState<string | null>(null);
+  const alphaState = alpha.status?.state;
+  const alphaEligible = alpha.status?.eligible;
+  const alphaGateOn = alpha.status?.capacity.gate_enabled ?? false;
+  const queuePos = alpha.status?.queue_position;
+  const queueDepth = alpha.status?.queue_depth;
+  const inviteExpiresAt = alpha.status?.invite_expires_at ?? null;
+
+  const handleJoinWaitlist = async () => {
+    if (!signer) { setWaitlistError('Connect your wallet first.'); return; }
+    setWaitlistBusy('join');
+    setWaitlistError(null);
+    try {
+      await joinAlphaWaitlist(signer, walletAddress);
+      alpha.refetch();
+    } catch (err) {
+      const code = err instanceof AlphaApiError ? err.code : (err as Error).message;
+      setWaitlistError(joinErrorMessage(code));
+    } finally {
+      setWaitlistBusy(null);
+    }
+  };
+
+  const handleLeaveWaitlist = async () => {
+    if (!signer) return;
+    if (!window.confirm('Leave the alpha waitlist? You can re-join later but lose your spot.')) return;
+    setWaitlistBusy('leave');
+    setWaitlistError(null);
+    try {
+      await leaveAlphaWaitlist(signer, walletAddress);
+      alpha.refetch();
+    } catch (err) {
+      const code = err instanceof AlphaApiError ? err.code : (err as Error).message;
+      setWaitlistError(`Could not leave the waitlist (${code}).`);
+    } finally {
+      setWaitlistBusy(null);
+    }
+  };
+
   // Determine per-step state
   function stepState(stepIdx: number): StepState {
     // Completion status array for each step (0-indexed)
@@ -305,6 +359,34 @@ export function QuickstartView({
         </div>
       )}
 
+      {/* Public alpha capacity notice with inline waitlist join.
+       *
+       * Lives above the setup guide so every visitor sees it regardless of
+       * onboarding state. The 8-tester cap is enforced backend-side
+       * (NASUN_AI_ALPHA_SYSTEM_CAP=6 public + 2 admin/dev exempt slots);
+       * users can browse the UI freely but agent activation queues when
+       * the public pool is full.
+       *
+       * This is the only UI surface that exposes the waitlist join + status
+       * to non-invited users. AlphaGate / AlphaStatusPanel exist but are
+       * not wired anywhere, so without this inline panel the activation
+       * error ("Open the AI tab to join the waitlist") would have nowhere
+       * to land. */}
+      <AlphaNotice
+        gateOn={alphaGateOn}
+        state={alphaState}
+        eligible={alphaEligible}
+        inviteExpiresAt={inviteExpiresAt}
+        queuePos={queuePos}
+        queueDepth={queueDepth}
+        busy={waitlistBusy}
+        error={waitlistError}
+        hasSigner={!!signer}
+        onJoin={handleJoinWaitlist}
+        onLeave={handleLeaveWaitlist}
+      />
+
+
       {/* Setup guide.
        *
        * Visible while the user is still onboarding (no agent has reached
@@ -397,6 +479,165 @@ export function QuickstartView({
       )}
     </div>
   );
+}
+
+interface AlphaNoticeProps {
+  gateOn: boolean;
+  state: string | undefined;
+  eligible: boolean | null | undefined;
+  inviteExpiresAt: number | null;
+  queuePos: number | undefined;
+  queueDepth: number | undefined;
+  busy: 'join' | 'leave' | null;
+  error: string | null;
+  hasSigner: boolean;
+  onJoin: () => void;
+  onLeave: () => void;
+}
+
+function AlphaNotice({
+  gateOn,
+  state,
+  eligible,
+  inviteExpiresAt,
+  queuePos,
+  queueDepth,
+  busy,
+  error,
+  hasSigner,
+  onJoin,
+  onLeave,
+}: AlphaNoticeProps) {
+  const baseLine = 'Public alpha. Up to 8 testers can run an agent at the same time. If every slot is taken, your agent joins a waitlist and rotates in when one frees up (every 36 hours). Genesis Pass holders are invited first; Alliance-only holders get a testing window in a later round.';
+
+  // active / exempt / unknown gate-off → static notice only.
+  if (!gateOn || state === 'active' || state === 'exempt') {
+    return (
+      <div className="rounded-lg border border-pado-2/30 bg-pado-2/5 px-3 py-2 text-sm text-uju-secondary">
+        {baseLine}
+      </div>
+    );
+  }
+
+  let statusLine: React.ReactNode = null;
+  let action: React.ReactNode = null;
+
+  if (state === 'none') {
+    if (eligible === false) {
+      statusLine = (
+        <span className="text-amber-200">
+          Genesis Pass not detected on this wallet. Link your MetaMask on My Account and confirm the NFT to qualify for this round.
+        </span>
+      );
+    } else if (eligible === true) {
+      action = (
+        <button
+          type="button"
+          onClick={onJoin}
+          disabled={busy !== null || !hasSigner}
+          className="shrink-0 px-3 py-1.5 text-sm rounded-md bg-pado-2 text-uju-bg font-medium hover:bg-pado-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          {busy === 'join' ? 'Signing...' : 'Join waitlist'}
+        </button>
+      );
+    } else {
+      statusLine = (
+        <span className="text-uju-secondary/70">
+          Checking Genesis Pass eligibility...
+        </span>
+      );
+    }
+  } else if (state === 'waiting') {
+    statusLine = (
+      <span className="text-pado-2">
+        On the waitlist · position #{queuePos ?? '?'}
+        {queueDepth ? ` of ${queueDepth}` : ''}. We'll notify you when a slot opens.
+      </span>
+    );
+    action = (
+      <button
+        type="button"
+        onClick={onLeave}
+        disabled={busy !== null}
+        className="shrink-0 px-3 py-1.5 text-sm rounded-md border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 disabled:opacity-50 transition-colors"
+      >
+        {busy === 'leave' ? 'Leaving...' : 'Leave waitlist'}
+      </button>
+    );
+  } else if (state === 'invited') {
+    statusLine = (
+      <span className="text-pado-2 font-medium">
+        Your alpha slot is ready! Activate an agent within {fmtRemaining(inviteExpiresAt)} to claim it.
+      </span>
+    );
+  } else if (state === 'paused') {
+    statusLine = (
+      <span className="text-amber-200">
+        Your 36-hour session ended and the agent is paused. Funds and signing key are preserved.
+      </span>
+    );
+  } else if (state === 'expired') {
+    statusLine = (
+      <span className="text-uju-secondary/80">
+        You missed two slot windows. Re-join below to try again from a fresh position.
+      </span>
+    );
+    action = (
+      <button
+        type="button"
+        onClick={onJoin}
+        disabled={busy !== null || !hasSigner}
+        className="shrink-0 px-3 py-1.5 text-sm rounded-md bg-pado-2 text-uju-bg font-medium hover:bg-pado-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {busy === 'join' ? 'Signing...' : 'Re-join waitlist'}
+      </button>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-pado-2/30 bg-pado-2/5 px-3 py-2.5 text-sm text-uju-secondary space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          <p>{baseLine}</p>
+          {statusLine && <p>{statusLine}</p>}
+        </div>
+        {action}
+      </div>
+      {error && <p className="text-sm text-red-400">{error}</p>}
+    </div>
+  );
+}
+
+function fmtRemaining(expiresAt: number | null): string {
+  if (!expiresAt) return '6 hours';
+  const ms = expiresAt - Date.now();
+  if (ms <= 0) return '0m';
+  const totalMin = Math.floor(ms / 60_000);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  if (h <= 0) return `${m}m`;
+  return `${h}h ${m}m`;
+}
+
+function joinErrorMessage(code: string): string {
+  switch (code) {
+    case 'genesis_pass_required':
+      return 'Genesis Pass NFT is required. Alliance-only holders get a testing window in a later round.';
+    case 'eligibility_check_unavailable':
+      return 'Eligibility check is temporarily unavailable. Try again in a moment.';
+    case 'already_active':
+      return 'Your agent is already active on the alpha.';
+    case 'slot_exempt':
+      return 'This wallet is administratively exempt and does not use the waitlist.';
+    case 'alpha_gate_disabled':
+      return 'The public alpha is not open yet.';
+    case 'bad_signature':
+      return 'Signature verification failed. Please try again.';
+    case 'rate_limited':
+      return 'Too many attempts. Please wait a few minutes and try again.';
+    default:
+      return `Could not join the waitlist (${code}).`;
+  }
 }
 
 interface AgentsSectionProps {

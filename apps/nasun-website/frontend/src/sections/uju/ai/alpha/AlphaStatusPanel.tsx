@@ -258,11 +258,15 @@ function renderNone(args: {
 
   if (status.eligible === false) {
     return (
-      <PanelShell title="Genesis Pass required">
+      <PanelShell title="Genesis Pass required for this round">
         <Paragraph>
-          The alpha is open to Genesis Pass holders only. Link your
-          MetaMask wallet on the My Account page and confirm your NFT to
-          continue.
+          This alpha round invites Genesis Pass holders first. Alliance-only
+          holders will get a testing window in a later round — watch the
+          announcements channel for the schedule.
+        </Paragraph>
+        <Paragraph>
+          If you do hold a Genesis Pass, link your MetaMask wallet on the
+          My Account page and confirm your NFT to continue.
         </Paragraph>
         <CapacityLine status={status} />
       </PanelShell>
@@ -272,9 +276,12 @@ function renderNone(args: {
   return (
     <PanelShell title="Join the Nasun AI alpha" highlight>
       <Paragraph>
-        Genesis Pass holders can claim one of {status.capacity.total} active
-        slots. Each slot runs for 36 hours; when it ends your agent pauses
-        and your funds stay safe.
+        Genesis Pass holders are invited first and can claim one of{' '}
+        {status.capacity.total} active slots. Each slot runs for 36 hours;
+        when it ends your agent pauses and your funds stay safe.
+      </Paragraph>
+      <Paragraph>
+        Alliance-only holders will get a testing window in a later round.
       </Paragraph>
       <CapacityLine status={status} />
       <ActionRow>

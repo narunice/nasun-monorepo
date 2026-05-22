@@ -216,6 +216,24 @@ function mapErrorCode(code: string | undefined): string | null {
     case 'rate_limited': return 'Too many requests. Wait a minute and retry.';
     case 'spawn_failed': return 'Server failed to start the agent process. Try Deactivate then Activate again.';
     case 'vault_store_failed': return 'Server vault write failed.';
+    // Public alpha gate codes (chat-server alpha-guards.ts). Surfaced when
+    // a non-invited user reaches Activate. The activation modal is a
+    // "do it now" surface, so the messages describe the next concrete
+    // action rather than the underlying mechanics.
+    case 'not_invited':
+      return 'Public alpha is full. Open the AI tab to join the waitlist; your agent activates automatically when a slot opens.';
+    case 'invite_expired':
+      return 'Your alpha slot invite expired. Re-join the waitlist on the AI tab to try again.';
+    case 'alpha_full':
+      return 'All public alpha slots are taken right now. Try again in a moment, or join the waitlist to be promoted automatically.';
+    case 'per_wallet_cap_reached':
+      return 'You already have an active alpha agent on this wallet. Deactivate it first if you want to swap to a different agent.';
+    case 'eligibility_check_unavailable':
+      return 'Genesis Pass eligibility check is temporarily unavailable. Please try again in a moment.';
+    case 'genesis_pass_required':
+      return 'Genesis Pass NFT is required to claim an alpha slot. Link your MetaMask on My Account and confirm the pass first.';
+    case 'alpha_gate_disabled':
+      return 'The public alpha is not open yet.';
     default: return null;
   }
 }
