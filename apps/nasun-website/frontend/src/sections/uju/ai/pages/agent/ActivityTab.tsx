@@ -11,7 +11,7 @@
  * legacy purpose-as-summary, status-as-outcome rendering.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAerRecords, type AERRecord } from '../../hooks/useAerRecords';
 import { ResultViewerModal } from '../../components/modals/ResultViewerModal';
 import { TierBadge } from '../../components/badges/TierBadge';
@@ -35,6 +35,8 @@ interface ActivityTabProps {
 }
 
 type EventClassFilter = 'all' | 'cognition' | 'execution';
+
+const PAGE_SIZE = 20;
 
 const EVENT_CLASS = {
   cognition: 1,
@@ -93,7 +95,14 @@ export function ActivityTab({
   const { data, isLoading, error } = useAerRecords(walletAddress);
   const [selected, setSelected] = useState<AERRecord | null>(null);
   const [eventFilter, setEventFilter] = useState<EventClassFilter>('all');
+  const [page, setPage] = useState(0);
   const isPreview = typeof limit === 'number';
+
+  // Filter changes shrink the pool, so a deep page may overshoot. Reset to
+  // the first page whenever the user flips between event classes.
+  useEffect(() => {
+    setPage(0);
+  }, [eventFilter]);
 
   const { records, totalScoped } = useMemo(() => {
     if (!data) return { records: [], totalScoped: 0 };
@@ -131,11 +140,18 @@ export function ActivityTab({
               r.eventClass ===
               (eventFilter === 'cognition' ? EVENT_CLASS.cognition : EVENT_CLASS.execution),
           );
-    return {
-      records: typeof limit === 'number' ? filtered.slice(0, limit) : filtered,
-      totalScoped: filtered.length,
-    };
-  }, [data, walletAddress, agentAddress, agentCapabilityId, eventFilter, limit]);
+    // Preview mode caps to `limit`; full view paginates client-side. The AER
+    // dataset for a single wallet is small enough (low hundreds) that we
+    // don't need server-side pagination.
+    const records = typeof limit === 'number'
+      ? filtered.slice(0, limit)
+      : filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    return { records, totalScoped: filtered.length };
+  }, [data, walletAddress, agentAddress, agentCapabilityId, eventFilter, limit, page]);
+
+  const pageCount = isPreview ? 1 : Math.max(1, Math.ceil(totalScoped / PAGE_SIZE));
+  const rangeStart = isPreview ? 1 : page * PAGE_SIZE + 1;
+  const rangeEnd = isPreview ? records.length : Math.min(totalScoped, (page + 1) * PAGE_SIZE);
 
   if (isLoading) {
     return (
@@ -258,6 +274,35 @@ export function ActivityTab({
         >
           View all {totalScoped} events
         </button>
+      )}
+
+      {!isPreview && totalScoped > PAGE_SIZE && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <span className="text-xs text-uju-secondary/70">
+            {rangeStart}-{rangeEnd} of {totalScoped}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="px-2.5 py-1 text-sm rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:border-pado-2/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Prev
+            </button>
+            <span className="text-xs text-uju-secondary/70 px-1">
+              {page + 1} / {pageCount}
+            </span>
+            <button
+              type="button"
+              onClick={() => setPage((p) => Math.min(pageCount - 1, p + 1))}
+              disabled={page >= pageCount - 1}
+              className="px-2.5 py-1 text-sm rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:border-pado-2/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
       )}
 
       {selected && (
