@@ -91,7 +91,7 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
   return (
     <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-4">
       <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold text-white">Authority / Danger zone</h3>
+        <h3 className="text-sm font-semibold text-white">Agent controls</h3>
         {cap?.revoked && (
           <span className="text-xs px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">Revoked</span>
         )}
@@ -154,22 +154,52 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
             )}
           </div>
 
-          <div className="space-y-2 pt-3 border-t border-uju-border/60">
-            <p className="text-xs uppercase tracking-wider text-uju-secondary/70">Revoke</p>
-            <p className="text-sm text-uju-secondary">
-              Revoking the capability disables this agent permanently. The next runtime cycle will
-              abort with E_CAPABILITY_REVOKED. This action cannot be undone.
-            </p>
+          {/* Kill switch. Treated as a distinct surface from Wake Mode so the
+              irreversible action is visually unmissable but framed as a
+              calm safety control, not a warning siren. Amber/coral accents
+              over the standard card chrome carry the seriousness without
+              the alarm-red tone of a destructive prompt. */}
+          <div className="mt-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-3">
+            <div className="flex items-start gap-3">
+              <div
+                className="shrink-0 w-9 h-9 rounded-full bg-amber-500/15 border border-amber-500/40 flex items-center justify-center"
+                aria-hidden="true"
+              >
+                {/* Power icon — universal "stop" signal without the skull/⚠ */}
+                <svg className="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v10" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.5 7a8 8 0 1 0 13 0" />
+                </svg>
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-amber-100">Kill switch</p>
+                <p className="text-sm text-amber-100/70 mt-0.5">
+                  Permanently revokes this agent's on-chain authority. The next runtime cycle
+                  will abort before any trade signs. Use this if you suspect the agent has been
+                  compromised or you want to retire it. It cannot be undone — to run the agent
+                  again you would re-register a new capability.
+                </p>
+              </div>
+            </div>
             {cap.revoked ? (
-              <p className="text-sm text-red-400">Capability has been revoked.</p>
+              <div className="flex items-center gap-2 text-sm text-amber-100/80 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                <svg className="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                <span>Kill switch engaged. This agent can no longer execute on-chain actions.</span>
+              </div>
             ) : (
               <button
                 type="button"
                 onClick={handleOpenRevoke}
                 disabled={txBusy}
-                className="px-4 py-2 text-sm rounded-lg border border-red-500/40 text-red-300 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Revoke capability...
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v10" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.5 7a8 8 0 1 0 13 0" />
+                </svg>
+                Engage kill switch
               </button>
             )}
           </div>
