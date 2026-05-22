@@ -4,7 +4,7 @@
  * can drive sub-route changes via the `view` query param without pulling in react-router here.
  */
 
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAgentProfiles, type AgentProfile } from '../hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../hooks/useAgentBudgets';
 import { useAgentAerStats } from '../hooks/useAgentAerStats';
@@ -113,6 +113,23 @@ export function AgentsList({
   const { data: budgets } = useAgentBudgets(walletAddress);
   const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } = useCreateAgent();
 
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+
+  // Pre-compute counts so the filter chips can label themselves with the
+  // size of each bucket. Falls back to 0 while agents are loading.
+  const counts = useMemo(() => {
+    const list = agents ?? [];
+    const active = list.filter((a) => a.isActive).length;
+    return { all: list.length, active, inactive: list.length - active };
+  }, [agents]);
+
+  const filteredAgents = useMemo(() => {
+    if (!agents) return [];
+    if (statusFilter === 'active') return agents.filter((a) => a.isActive);
+    if (statusFilter === 'inactive') return agents.filter((a) => !a.isActive);
+    return agents;
+  }, [agents, statusFilter]);
+
   // Reset tx state each time the modal opens so a stale 'success' from a prior
   // run does not flash the success view immediately on re-open.
   useEffect(() => {
@@ -157,16 +174,44 @@ export function AgentsList({
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {agents.map((agent) => (
-            <AgentCard
-              key={agent.id}
-              agent={agent}
-              budget={budgets?.find((b) => b.agent === agent.agentAddress)}
-              onSelect={onSelectAgent ? () => onSelectAgent(agent.id) : undefined}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex items-center gap-1 p-0.5 rounded-lg bg-uju-card/60 border border-uju-border/60 w-fit">
+            {(['all', 'active', 'inactive'] as const).map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setStatusFilter(key)}
+                className={`px-3 py-1 text-sm rounded-md transition-colors ${
+                  statusFilter === key
+                    ? 'bg-pado-2 text-uju-bg'
+                    : 'text-uju-secondary hover:text-white'
+                }`}
+              >
+                {key === 'all' ? 'All' : key === 'active' ? 'Active' : 'Inactive'}
+                <span className="ml-1.5 text-xs opacity-70">{counts[key]}</span>
+              </button>
+            ))}
+          </div>
+
+          {filteredAgents.length === 0 ? (
+            <div className="py-10 text-center bg-uju-card/40 rounded-xl border border-uju-border/40">
+              <p className="text-sm text-uju-secondary">
+                No {statusFilter} agents.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {filteredAgents.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  agent={agent}
+                  budget={budgets?.find((b) => b.agent === agent.agentAddress)}
+                  onSelect={onSelectAgent ? () => onSelectAgent(agent.id) : undefined}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {showRegister && (
