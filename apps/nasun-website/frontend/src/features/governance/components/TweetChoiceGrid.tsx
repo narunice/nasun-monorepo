@@ -1,5 +1,5 @@
-import { FC, useState } from "react";
-import { Tweet } from "react-tweet";
+import { FC } from "react";
+import { SafeTweet } from "@/components/SafeTweet";
 import { extractTweetId, getChoiceLabel } from "../utils/proposalHelpers";
 import { ExternalLink, Check } from "lucide-react";
 
@@ -122,8 +122,6 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
   disabled,
   displayNames,
 }) => {
-  const [errorIds, setErrorIds] = useState<Set<number>>(new Set());
-
   return (
     <>
       <style>{TWEET_DARK_THEME_CSS}</style>
@@ -135,7 +133,6 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
         {choices.map((choice, idx) => {
           const tweetId = extractTweetId(choice);
           const isSelected = selectedChoice === idx;
-          const hasError = errorIds.has(idx);
 
           return (
             <div
@@ -150,11 +147,11 @@ export const TweetChoiceGrid: FC<TweetChoiceGridProps> = ({
               {/* Tweet embed area with height limit */}
               <div className="max-h-[380px] overflow-hidden relative">
                 <div className="governance-tweet-card" data-theme="dark">
-                  {tweetId && !hasError ? (
-                    <Tweet
+                  {tweetId ? (
+                    <SafeTweet
                       id={tweetId}
                       fallback={<TweetSkeleton />}
-                      onError={() => setErrorIds((prev) => new Set(prev).add(idx))}
+                      notFoundFallback={<TweetErrorFallback url={choice} />}
                     />
                   ) : (
                     <TweetErrorFallback url={choice} />
