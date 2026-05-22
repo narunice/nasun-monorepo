@@ -36,6 +36,15 @@ export interface AlphaCapacity {
   gate_enabled: boolean;
 }
 
+export interface AlphaPerWallet {
+  /** Non-exempt active agents already owned by this wallet. */
+  activeCount: number;
+  /** Server-side PER_WALLET_CAP. Treat as authoritative; do not duplicate the constant on the client. */
+  cap: number;
+  /** activeCount < cap (or wallet is slot-exempt, or gate is disabled). */
+  canCreate: boolean;
+}
+
 export interface AlphaStatusResponse {
   state: AlphaUserState;
   /** null until the server has checked Genesis Pass at least once for this wallet. */
@@ -49,6 +58,13 @@ export interface AlphaStatusResponse {
   queue_depth?: number;
   paused_at?: number | null;
   capacity: AlphaCapacity;
+  /**
+   * Per-wallet cap snapshot. Optional for forward compatibility: a chat-server
+   * deployed without the perWallet patch will omit it, in which case the
+   * frontend falls back to its prior behavior (no extra block; vault upload
+   * still defends at submit time).
+   */
+  perWallet?: AlphaPerWallet;
 }
 
 interface SignerLike {

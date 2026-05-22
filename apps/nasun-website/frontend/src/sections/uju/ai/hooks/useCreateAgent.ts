@@ -134,10 +134,15 @@ export function useCreateAgent() {
         // dormant profile. See 2026-05-22 incident.
         let alphaState: AlphaUserState;
         let gateEnabled: boolean;
+        let perWalletCanCreate: boolean;
         try {
           const alpha = await fetchAlphaStatus(address);
           alphaState = alpha.state;
           gateEnabled = alpha.capacity.gate_enabled;
+          // Optional field: a chat-server that predates the perWallet patch
+          // will omit it. Treat as canCreate=true so we don't regress on
+          // older deploys; the vault upload guard is still authoritative.
+          perWalletCanCreate = alpha.perWallet ? alpha.perWallet.canCreate : true;
         } catch (statusErr) {
           // Fail-closed when the alpha API cannot be reached: the gate is
           // currently ON in prod and a transient failure must not silently
@@ -148,6 +153,16 @@ export function useCreateAgent() {
         }
         if (gateEnabled && !ALPHA_ALLOWED_STATES.has(alphaState)) {
           throw new Error(alphaBlockedMessage(alphaState));
+        }
+        // Defense-in-depth against the per-wallet cap. Catches a user who
+        // bypassed `useCreateAgentBlocked` (stale React tree, race between
+        // tabs, devtools edit) before they sign the on-chain PTB. Mirrors
+        // the message in useCreateAgentBlocked / ActivateAgentModal so the
+        // user sees a consistent reason across surfaces.
+        if (gateEnabled && !perWalletCanCreate) {
+          throw new Error(
+            'You already have an active alpha agent on this wallet. Deactivate it first to register a new one.',
+          );
         }
 
         let agentAddress: string;

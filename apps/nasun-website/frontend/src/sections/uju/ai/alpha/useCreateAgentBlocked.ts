@@ -53,7 +53,22 @@ export function useCreateAgentBlocked(
       status.state === 'invited' ||
       status.state === 'active' ||
       status.state === 'exempt';
-    if (ok) return { blocked: false, message: null, loading };
-    return { blocked: true, message: messageForState(status.state), loading };
+    if (!ok) {
+      return { blocked: true, message: messageForState(status.state), loading };
+    }
+    // State allows creation, but the wallet may have already filled its
+    // per-wallet cap. The backend re-checks at vault upload (race-safe), but
+    // blocking here prevents the user from signing the on-chain
+    // create_agent_with_capability PTB and paying gas only to hit
+    // `per_wallet_cap_reached` (HTTP 409) at activation time.
+    if (status.perWallet && !status.perWallet.canCreate) {
+      return {
+        blocked: true,
+        message:
+          'You already have an active alpha agent on this wallet. Deactivate it first to register a new one.',
+        loading,
+      };
+    }
+    return { blocked: false, message: null, loading };
   }, [status, loading]);
 }
