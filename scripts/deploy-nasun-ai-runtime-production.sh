@@ -7,13 +7,18 @@
 # 노드_modules: pnpm deploy로 self-contained 디렉토리 생성 후 rsync
 # ==============================================================================
 #
-# PR1.A 목표: 26h+ 침묵 중인 trader heartbeat 복구. /infer + /execute-capability
-# 라우트가 prod Lambda에 존재하지 않아 trader cycle이 silent fail. 이 배포는
-# Lambda 라우트(별도 CDK 배포)와 짝을 이룬다. CDK 배포 후 실행할 것.
+# 2026-05-21: standalone single-daemon (pm2 app name `nasun-ai-runtime`,
+# was id 89) is no longer auto-started by this script. Canonical runtime
+# is per-user agents (`nasun-ai-agent-*`) spawned on demand by the
+# chat-server's agent-orchestrator. This script restarts whatever
+# per-agent processes are currently running so they pick up the new code
+# bundle. To bring the standalone back manually:
+#     ssh ec2-user@<host> 'pm2 start /home/ec2-user/nasun-ai-runtime/ecosystem.config.cjs'
 #
 # 첫 배포 시:
 #   1. 원격 .env를 수동으로 작성. --print-env-template 으로 표시.
-#   2. --first-time 으로 ecosystem.config.cjs를 강제 rsync.
+#   2. --first-time 으로 ecosystem.config.cjs를 강제 rsync (standalone 운용
+#      을 다시 부활시킬 때만 필요. per-agent만 쓸 거면 불필요).
 #
 # 일반 배포:
 #   ./scripts/deploy-nasun-ai-runtime-production.sh
@@ -257,8 +262,18 @@ rsync -az --delete-after \
 
 log_success "rsync 완료"
 
-# --- Step 5: stale HOST_URL fix (PR1.A root cause) + pm2 restart ---
-log_step 5 $TOTAL_STEPS "HOST_URL 점검 + pm2 startOrRestart"
+# --- Step 5: stale HOST_URL fix + per-agent pm2 restart ---
+log_step 5 $TOTAL_STEPS "HOST_URL 점검 + per-agent pm2 restart"
+
+# Standalone single-daemon mode (legacy `nasun-ai-runtime` pm2 app, was
+# id 89) was retired 2026-05-21: per-user agents spawned by chat-server's
+# agent-orchestrator are the canonical runtime. This script no longer
+# `startOrRestart`s ecosystem.config.cjs -- if you need the standalone for
+# operator-side dogfooding, start it manually:
+#     pm2 start /home/ec2-user/nasun-ai-runtime/ecosystem.config.cjs
+# Per-agent processes (`nasun-ai-agent-*`) keep the OLD code in-memory
+# after rsync (tsx imports src/index.ts at process boot), so we explicitly
+# restart them here to pick up the new bundle.
 
 ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "set -e
   cd '$REMOTE_BASE'
@@ -315,23 +330,34 @@ ssh -i "$SSH_KEY_EXPANDED" "${EC2_USER}@${EC2_HOST}" "set -e
     echo '[bs3] WARN: could not determine ABI or pkg version — skipping refresh.'
   fi
 
-  # The runtime calls \`import 'dotenv/config'\` at module load (src/config.ts:5),
-  # which reads .env from cwd at boot. Shell-side export of the file is unsafe
-  # for values that contain '=', spaces, or quotes (e.g. JWT secrets).
-  if [ '$FIRST_TIME' = 'true' ]; then
-    pm2 delete $PM2_NAME 2>/dev/null || true
-    pm2 start ecosystem.config.cjs
+  # Enumerate currently-running per-agent processes and restart each so they
+  # re-import the new src/index.ts bundle. Use pm2 jlist (JSON) for a stable
+  # parse; fall back to a name-grep through 'pm2 ls' text if jq is missing.
+  AGENT_NAMES=\$(pm2 jlist 2>/dev/null | (jq -r '.[].name | select(startswith(\"nasun-ai-agent-\"))' 2>/dev/null || true))
+  if [ -z \"\$AGENT_NAMES\" ]; then
+    # jq unavailable or jlist empty; try text-list parse.
+    AGENT_NAMES=\$(pm2 ls 2>/dev/null | awk -F'│' '/nasun-ai-agent-/ {gsub(/^ +| +\$/,\"\",\$3); print \$3}')
+  fi
+  if [ -z \"\$AGENT_NAMES\" ]; then
+    echo 'INFO: no per-agent (nasun-ai-agent-*) processes found; nothing to restart.'
+    echo 'Per-user agents are spawned on demand by chat-server agent-orchestrator;'
+    echo 'if you expected agents here, check that orchestrator has spawned any.'
   else
-    pm2 startOrRestart ecosystem.config.cjs
+    AGENT_COUNT=\$(echo \"\$AGENT_NAMES\" | wc -l)
+    echo \"[pm2] restarting \$AGENT_COUNT per-agent process(es) to load new code...\"
+    for name in \$AGENT_NAMES; do
+      pm2 restart \"\$name\" >/dev/null 2>&1 || echo \"WARN: pm2 restart \$name failed\"
+      echo \"  restarted: \$name\"
+    done
   fi
   pm2 save 2>/dev/null || true
-  sleep 5
-  pm2 list | grep -E '$PM2_NAME' || echo 'WARN: $PM2_NAME not in pm2 list.'
-  echo '--- recent logs ---'
-  pm2 logs $PM2_NAME --lines 25 --nostream || true
+  sleep 4
+
+  echo '--- pm2 list (nasun-ai-*) ---'
+  pm2 ls | awk -F'│' '/nasun-ai-/ || /^.+id +.+name/' || true
 "
 
-log_success "pm2 기동 완료"
+log_success "per-agent restart 완료"
 
 # --- Step 6: cron 안내 (log-watcher + dead-man) ---
 log_step 6 $TOTAL_STEPS "cron 안내"
