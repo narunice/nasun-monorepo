@@ -227,7 +227,7 @@ function mapErrorCode(code: string | undefined): string | null {
     case 'alpha_full':
       return 'All public alpha slots are taken right now. Try again in a moment, or join the waitlist to be promoted automatically.';
     case 'per_wallet_cap_reached':
-      return 'You already have an active alpha agent on this wallet. Deactivate it first if you want to swap to a different agent.';
+      return 'You already have an active alpha agent on this wallet. Deactivate it first to register a new one.';
     case 'eligibility_check_unavailable':
       return 'Genesis Pass eligibility check is temporarily unavailable. Please try again in a moment.';
     case 'genesis_pass_required':
