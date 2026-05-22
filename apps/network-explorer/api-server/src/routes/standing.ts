@@ -30,11 +30,17 @@ function nextThreshold(tier: number): number | null {
   return null;
 }
 
+// Sui addresses are exactly 32 bytes -> 64 hex chars -> 66-char "0x..." string.
+// Enforcing both pattern + length blocks log-spam and memory-pressure vectors
+// from oversized path params (open-ended `^0x[0-9a-f]+$` would otherwise
+// accept multi-MB strings).
+const SUI_ADDRESS_RE = /^0x[0-9a-f]{64}$/;
+
 app.get('/by-address/:address', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_db_unavailable' }, 503);
 
   const address = c.req.param('address').toLowerCase();
-  if (!/^0x[0-9a-f]+$/.test(address)) {
+  if (!SUI_ADDRESS_RE.test(address)) {
     return c.json({ error: 'invalid_address' }, 400);
   }
 

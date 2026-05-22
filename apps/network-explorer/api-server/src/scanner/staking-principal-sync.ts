@@ -144,6 +144,7 @@ async function runSync(): Promise<void> {
       try {
         await sendTelegramAlert(
           `staking-principal-sync failed (${errorCount24h}x in 24h): ${(err as Error).message}`,
+          { dedupKey: 'staking-principal-sync-fail' },
         );
       } catch {
         // Telegram failure itself is non-fatal.
