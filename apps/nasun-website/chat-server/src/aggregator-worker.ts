@@ -21,6 +21,8 @@
  */
 
 import { parentPort, workerData } from 'node:worker_threads';
+import path from 'node:path';
+import Database from 'better-sqlite3';
 import type { LeaderboardConfig, Period } from './leaderboard-types.js';
 import { PERIOD_MS, POINTS } from './leaderboard-types.js';
 import {
@@ -79,6 +81,46 @@ let bannedInterval: ReturnType<typeof setInterval> | null = null;
 
 const PERIODS: Period[] = ['24h', '7d', '30d', 'all'];
 const AGGREGATION_LIMIT = 20000;
+
+// W21-only anomaly guard for 5/19 NBTC/NETH 10x regression. Deactivates
+// automatically when W21 ends. See project_2026_05_19_pado_price_10x_regression
+// and leaderboard-store::aggregateTraderPnlRawExcludingW21Anomaly.
+const W21_WEEK_ID = '2026-W21';
+const W21_PRESERVE_RATE_GP = 0.70;   // GP holders: keep 70% of anomaly-induced PnL score
+const W21_PRESERVE_RATE_SOC = 0.55;  // any social (X/Google/Telegram): keep 55%
+const W21_PRESERVE_RATE_NONE = 0.10; // no GP, no social: keep 10%
+
+// Lazy read-only handle to chat.db for Genesis Pass lookups (W21 guard only).
+// chat.db lives next to leaderboard.db under the same data/ dir.
+let gpReadDb: Database.Database | null = null;
+function getW21GenesisPassSet(addresses: string[]): Set<string> {
+  if (addresses.length === 0) return new Set();
+  if (!gpReadDb) {
+    const chatDbPath = path.join(path.dirname(config.leaderboardDbPath), 'chat.db');
+    gpReadDb = new Database(chatDbPath, { readonly: true, fileMustExist: true });
+  }
+  const placeholders = addresses.map(() => '?').join(',');
+  const rows = gpReadDb
+    .prepare(`SELECT address FROM users WHERE address IN (${placeholders}) AND has_genesis_pass = 1`)
+    .all(...addresses) as { address: string }[];
+  return new Set(rows.map((r) => r.address));
+}
+
+// Encapsulates the weekly spot PnL → score formula so the W21 guard can
+// recompute it on anomaly-excluded PnL without duplicating logic.
+function computeWeeklySpotPnlScore(pnlData: { realizedPnlRaw: number; pnlPercent: number } | undefined): number {
+  if (!pnlData) return 0;
+  let s = 0;
+  if (pnlData.realizedPnlRaw > 0) {
+    s += Math.floor(pnlData.realizedPnlRaw / 10_000_000) * POINTS.PER_10_PNL;
+  }
+  if (pnlData.pnlPercent > 0) {
+    s += Math.floor(pnlData.pnlPercent / 5) * POINTS.PER_5PCT_RETURN;
+  }
+  const tier = POINTS.LOSS_PENALTY_TIERS.find((t) => pnlData.pnlPercent <= t.threshold);
+  if (tier) s = Math.max(0, s - tier.penalty);
+  return Math.min(s, POINTS.WEEKLY_SPOT_PNL_SCORE_CAP);
+}
 
 const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000; // 1 hour
 const BANNED_CACHE_REFRESH_MS = 5 * 60 * 1000;    // 5 minutes
@@ -476,6 +518,64 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     };
   });
 
+  // Fetch social badges once — used by both W21 guard (for tier classification)
+  // and the final rankedWithBadges projection below.
+  const identityIds = [...new Set(identityMap.values())];
+  const badgesByIdentity = identityIds.length > 0
+    ? await getSocialBadgesBatch(identityIds)
+    : new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
+
+  // W21-only: 5/19 NBTC/NETH 10x anomaly fills inflated some traders' PnL by
+  // ~10x. Recompute their spot PnL score against an anomaly-excluded baseline
+  // and preserve a tier-dependent fraction of the anomaly contribution:
+  //   GP holder       → 70% preserved (30% trim)
+  //   Any social      → 55% preserved (45% trim)
+  //   No GP/social    → 10% preserved (90% trim)
+  // Normal post-fix trades are not flagged by the SQL filter (raw price
+  // thresholds 200/10 sit far above market), so any new W21 activity scores
+  // by the unmodified formula. Block deactivates automatically when weekId
+  // moves to W22.
+  if (weekId === W21_WEEK_ID) {
+    const cleanPnlList = computeTraderPnl(
+      weekStart,
+      getEffectiveExcludedAddresses(),
+      AGGREGATION_LIMIT,
+      sameIdentityPairs,
+      true, // excludeW21Anomaly
+    );
+    const cleanPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
+    for (const t of cleanPnlList) {
+      cleanPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
+    }
+
+    const gpSet = getW21GenesisPassSet(scored.map((t) => t.address));
+
+    let adjustedCount = 0;
+    for (const trader of scored) {
+      const origScore = trader.scoreFromPnl;
+      const cleanScore = computeWeeklySpotPnlScore(cleanPnlMap.get(trader.address));
+      if (origScore === cleanScore) continue; // no anomaly contribution → no change
+
+      const identityId = identityMap.get(trader.address.toLowerCase());
+      const badge = identityId ? badgesByIdentity.get(identityId) : undefined;
+      const hasGp = gpSet.has(trader.address);
+      const hasSocial = !!(badge && (badge.xHandle || badge.hasGoogle || badge.hasTelegram));
+      const preserveRate = hasGp
+        ? W21_PRESERVE_RATE_GP
+        : hasSocial
+          ? W21_PRESERVE_RATE_SOC
+          : W21_PRESERVE_RATE_NONE;
+
+      const blendedScore = Math.round(cleanScore + (origScore - cleanScore) * preserveRate);
+      trader.totalScore = trader.totalScore - origScore + blendedScore;
+      trader.scoreFromPnl = blendedScore;
+      adjustedCount++;
+    }
+    if (adjustedCount > 0) {
+      console.log(`[Aggregator] W21 anomaly guard: adjusted ${adjustedCount} traders`);
+    }
+  }
+
   // Deterministic tiebreaker chain so ranks are unique even on identical totalScore.
   // Order: totalScore desc → spot volume desc → prediction realized PnL desc
   //        → prediction volume desc → trade count desc → address asc.
@@ -497,11 +597,6 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     const prevRank = baselineRanks.get(t.address) ?? 0;
     return { ...t, rank, prevRank };
   });
-
-  const identityIds = [...new Set(identityMap.values())];
-  const badgesByIdentity = identityIds.length > 0
-    ? await getSocialBadgesBatch(identityIds)
-    : new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
 
   const rankedWithBadges = ranked.map((t) => {
     const identityId = identityMap.get(t.address);
