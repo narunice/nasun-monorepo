@@ -65,10 +65,17 @@ const NFT_SCALE = 5;
 const NSN_DECIMALS = 9n;
 const NSN_DIVISOR = 10n ** NSN_DECIMALS;
 
-const PHASE1_LAUNCH_DATE = new Date('2026-05-22T00:00:00Z');
-const MONOTONE_UP_PERIOD_MS = 7 * 24 * 60 * 60 * 1000;
+// Monotone-up window: during launch we suppress tier downgrades to give the
+// formula time to stabilize. Set via env (`NSI_MONOTONE_UP_UNTIL=2026-05-29T00:00:00Z`)
+// so a misconfigured launch date doesn't auto-flip to "everyone can drop" without
+// notice. When the env is unset the policy is OFF (sliding-window from day one).
+const MONOTONE_UP_UNTIL = process.env.NSI_MONOTONE_UP_UNTIL
+  ? new Date(process.env.NSI_MONOTONE_UP_UNTIL)
+  : null;
+
 const BATCH_SIZE = 500;
 const STALE_SNAPSHOT_GUARD_DAYS = 2;
+let monotoneUpExpiryAlertSent = false;
 
 let lastSuccessAt: Date | null = null;
 let errorCount24h = 0;
@@ -118,21 +125,44 @@ async function runCompute(): Promise<void> {
   const started = Date.now();
 
   try {
-    // Sanity gate: if staking snapshots are stale, computing NSI yields a
-    // misleading staking sub-score. Alert and skip rather than write bad data.
+    // Sanity gate: if staking snapshots are stale or missing, computing NSI yields
+    // a misleading staking sub-score (all-zero). Alert and skip rather than write
+    // bad data — first-run case (table empty) is treated as stale.
     const staleCheck = await pointsDb<Array<{ latest: Date | null }>>`
       SELECT MAX(day)::timestamptz AS latest FROM user_staking_daily_snapshots
     `;
     const latestStakingDay = staleCheck[0]?.latest ?? null;
-    if (latestStakingDay) {
-      const ageDays = (Date.now() - latestStakingDay.getTime()) / (24 * 60 * 60 * 1000);
-      if (ageDays > STALE_SNAPSHOT_GUARD_DAYS) {
-        console.warn(`[nsi-compute] staking snapshots stale (${ageDays.toFixed(1)}d) — skipping cycle`);
+    if (!latestStakingDay) {
+      console.warn('[nsi-compute] no staking snapshots yet — skipping cycle (waiting for staking-principal-sync bootstrap)');
+      await sendTelegramAlert(
+        'nsi-compute skipped: user_staking_daily_snapshots empty (first-run bootstrap)',
+        { dedupKey: 'nsi-compute-bootstrap' },
+      );
+      return;
+    }
+    const ageDays = (Date.now() - latestStakingDay.getTime()) / (24 * 60 * 60 * 1000);
+    if (ageDays > STALE_SNAPSHOT_GUARD_DAYS) {
+      console.warn(`[nsi-compute] staking snapshots stale (${ageDays.toFixed(1)}d) — skipping cycle`);
+      await sendTelegramAlert(
+        `nsi-compute skipped: staking snapshots stale (${ageDays.toFixed(1)} days)`,
+        { dedupKey: 'nsi-compute-stale-staking' },
+      );
+      return;
+    }
+
+    // Monotone-up expiry alert: when the window transitions off, fire once so
+    // operators know mass tier movements may follow. Suppressed on subsequent
+    // cycles via the module-level latch.
+    const monotoneActive = MONOTONE_UP_UNTIL !== null && Date.now() < MONOTONE_UP_UNTIL.getTime();
+    if (!monotoneActive && MONOTONE_UP_UNTIL !== null && !monotoneUpExpiryAlertSent) {
+      monotoneUpExpiryAlertSent = true;
+      try {
         await sendTelegramAlert(
-          `nsi-compute skipped: staking snapshots stale (${ageDays.toFixed(1)} days)`,
-          { dedupKey: 'nsi-compute-stale-staking' },
+          `[nsi-compute] monotone-up window expired at ${MONOTONE_UP_UNTIL.toISOString()} — tier downgrades now possible`,
+          { dedupKey: 'nsi-monotone-expired' },
         );
-        return;
+      } catch {
+        // ignore
       }
     }
 
@@ -166,12 +196,18 @@ async function runCompute(): Promise<void> {
       if (Number.isFinite(v)) lpMap.set(r.identity_id, v);
     }
 
-    // Stage C: tx activity from indexer's tx_affected_addresses (sender BYTEA).
-    // Phase 1 uses lifetime count (matches stats.ts:275 pattern); 30-day window
-    // requires joining `checkpoints` and is deferred to Phase 1.5.
+    // Stage C: tx activity from indexer's tx_affected_addresses.
+    // Schema: (tx_sequence_number BIGINT, affected BYTEA, sender BYTEA, PK(affected, tx_sequence_number))
+    // — there is one row per (tx, affected_address), so plain COUNT(*) per sender
+    // would over-count by the number of addresses touched per tx. Use DISTINCT
+    // tx_sequence_number for the true unique-tx count.
+    // 30-day window requires joining `checkpoints` (no time column on this table)
+    // and is deferred to Phase 1.5. Phase 1 uses lifetime distinct-tx count.
     const txCounts = await indexerDb<Array<{ sender_hex: string; tx_count: string }>>`
-      SELECT encode(sender, 'hex') AS sender_hex, COUNT(*)::text AS tx_count
+      SELECT encode(sender, 'hex') AS sender_hex,
+             COUNT(DISTINCT tx_sequence_number)::text AS tx_count
       FROM tx_affected_addresses
+      WHERE sender IS NOT NULL
       GROUP BY sender
     `;
     const txMap = new Map<string, number>(); // wallet (0x-prefixed, lowercase) -> tx count
@@ -243,7 +279,7 @@ async function runCompute(): Promise<void> {
       ...identityToWallet.keys(),
     ]);
 
-    const isMonotoneUpPeriod = Date.now() - PHASE1_LAUNCH_DATE.getTime() < MONOTONE_UP_PERIOD_MS;
+    const isMonotoneUpPeriod = monotoneActive;
     const computed: ComputedRow[] = [];
 
     for (const identityId of allIdentities) {
@@ -289,8 +325,17 @@ async function runCompute(): Promise<void> {
       const previousTier = prev?.tier ?? null;
       const prevMaxSeen = prev?.max_seen_tier ?? 1;
 
+      // `max_seen_tier` tracks the highest *earned* tier — based on `nsiTier`
+      // (the score-derived tier before GP floor), NOT `computedTier` or
+      // `finalTier`. Otherwise a GP holder's max_seen jumps to 2 just from
+      // holding the NFT and never reflects whether the user actually earned it.
+      // After NFT loss, max_seen should reflect the user's own onchain history.
+      const newMaxSeen = Math.max(prevMaxSeen, nsiTier);
+
+      // Monotone-up window: display the higher of "what we just computed" vs
+      // "highest earned tier ever". GP holders' floor (`gpFloor`) is already
+      // baked into `computedTier`, so this also preserves the floor automatically.
       const finalTier = isMonotoneUpPeriod ? Math.max(computedTier, prevMaxSeen) : computedTier;
-      const newMaxSeen = Math.max(prevMaxSeen, computedTier);
 
       computed.push({
         identity_id: identityId,
@@ -345,7 +390,10 @@ async function runCompute(): Promise<void> {
             wallet_address = EXCLUDED.wallet_address,
             previous_tier = user_nsi.tier,
             tier = EXCLUDED.tier,
-            max_seen_tier = GREATEST(user_nsi.max_seen_tier, EXCLUDED.tier),
+            -- max_seen_tier is computed in JS as max(prev, nsiTier) and passed
+            -- in EXCLUDED. Do not re-blend with EXCLUDED.tier (which is the
+            -- display tier with GP floor + monotone-up applied).
+            max_seen_tier = EXCLUDED.max_seen_tier,
             nsi_score = EXCLUDED.nsi_score,
             sub_scores = EXCLUDED.sub_scores,
             has_gp = EXCLUDED.has_gp,

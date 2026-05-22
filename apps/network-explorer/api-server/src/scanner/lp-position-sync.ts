@@ -50,25 +50,27 @@ async function runSync(): Promise<void> {
 
   try {
     // Net LP USD per actor from raw event log.
-    // Schema reference: apps/gostop/backend/src/api/routes/lp.ts:278
+    // Schema reference: apps/gostop/backend/src/indexer/streams/bankroll-pool.ts:73-75
     //   gostop.bankroll_event(event_type text, actor text, amount numeric, ...)
-    //   event_type ∈ {'liquidity_provided', 'liquidity_withdrawn', ...}
+    //   event_type values include 'liquidity_provided' / 'liquidity_redeemed' (NOT 'liquidity_withdrawn').
     //   amount is in NUSDC micro-units (6 decimals).
+    //   Phase 1 uses NUSDC `amount` as the LP USD proxy (≈ shares at launch NAV). Phase 2
+    //   should switch to shares × current NAV via gostop.bankroll_share_price when NAV diverges.
     const lpPositions = await pointsDb<Array<{ actor: string; net_lp_usd: string }>>`
       SELECT
         actor,
         (SUM(CASE
               WHEN event_type = 'liquidity_provided' THEN amount
-              WHEN event_type = 'liquidity_withdrawn' THEN -amount
+              WHEN event_type = 'liquidity_redeemed' THEN -amount
               ELSE 0
             END) / ${NUSDC_MICRO_PER_USD}::numeric
         )::text AS net_lp_usd
       FROM gostop.bankroll_event
-      WHERE event_type IN ('liquidity_provided', 'liquidity_withdrawn')
+      WHERE event_type IN ('liquidity_provided', 'liquidity_redeemed')
       GROUP BY actor
       HAVING SUM(CASE
                   WHEN event_type = 'liquidity_provided' THEN amount
-                  WHEN event_type = 'liquidity_withdrawn' THEN -amount
+                  WHEN event_type = 'liquidity_redeemed' THEN -amount
                   ELSE 0
                 END) > 0
     `;
