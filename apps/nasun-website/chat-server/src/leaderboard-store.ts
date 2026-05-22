@@ -1614,18 +1614,101 @@ export function aggregateTraderPnlRaw(
   return ldb.prepare(query).all(...params) as RawPnlRow[];
 }
 
+// W21 (2026-05-18 ~ 2026-05-24) 5/19 NBTC/NETH 10x 가격 회귀 anomaly 식별 상수.
+// 정상 raw price NBTC ~77 (BTC ~$77K), NETH ~3 (ETH ~$3K). threshold 200/10이면
+// false positive 0. 시간 윈도우 없이 풀 + raw price 조건만으로 식별 — anomaly가
+// 5/19~5/22 prod fix 사이 다수 시점에 발생했고, prod fix 후엔 정상가가 threshold
+// 안 넘어 자연스럽게 안 잡힘. project_2026_05_19_pado_price_10x_regression 참조.
+const W21_NBTC_NUSDC_POOL_ID = '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0';
+const W21_NETH_NUSDC_POOL_ID = '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7';
+const W21_NBTC_ANOMALY_RAW_PRICE_THRESHOLD = 200;
+const W21_NETH_ANOMALY_RAW_PRICE_THRESHOLD = 10;
+
+/**
+ * Same as aggregateTraderPnlRaw but with W21 anomaly fills excluded.
+ * Used only by the W21-specific scoring guard in aggregator-worker. Drop this
+ * function when W21 ends (the weekId gate in the caller deactivates it first,
+ * but keeping the function makes the intent clear and auditable).
+ */
+export function aggregateTraderPnlRawExcludingW21Anomaly(
+  cutoffMs: number,
+  excludedAddresses: Set<string>,
+  washPairs?: Set<string>,
+): RawPnlRow[] {
+  const ldb = getLeaderboardDb();
+  const excludeList = [...excludedAddresses];
+  const excludePlaceholders = excludeList.length > 0
+    ? `AND address NOT IN (${excludeList.map(() => '?').join(',')})`
+    : '';
+  const wash = buildWashPairsCte(washPairs);
+
+  const anomalyClause = `
+    AND NOT (
+      base_quantity > 0
+      AND (
+        (pool_id = '${W21_NBTC_NUSDC_POOL_ID}' AND CAST(quote_quantity AS REAL) / base_quantity > ${W21_NBTC_ANOMALY_RAW_PRICE_THRESHOLD})
+        OR (pool_id = '${W21_NETH_NUSDC_POOL_ID}' AND CAST(quote_quantity AS REAL) / base_quantity > ${W21_NETH_ANOMALY_RAW_PRICE_THRESHOLD})
+      )
+    )`;
+
+  const query = `
+    ${wash?.cte ?? ''}
+    SELECT
+      address,
+      pool_id,
+      SUM(CASE WHEN is_buy = 1 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as buy_base,
+      SUM(CASE WHEN is_buy = 1 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as buy_quote,
+      SUM(CASE WHEN is_buy = 0 THEN CAST(base_qty AS REAL) ELSE 0.0 END) as sell_base,
+      SUM(CASE WHEN is_buy = 0 THEN CAST(quote_qty AS REAL) ELSE 0.0 END) as sell_quote,
+      COUNT(*) as trade_count
+    FROM (
+      SELECT taker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
+             taker_is_bid as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
+        ${anomalyClause}
+      ${wash?.filterClause ?? ''}
+      UNION ALL
+      SELECT maker_address as address, pool_id, base_quantity as base_qty, quote_quantity as quote_qty,
+             CASE WHEN taker_is_bid = 1 THEN 0 ELSE 1 END as is_buy, timestamp_ms
+      FROM trade_fills WHERE timestamp_ms >= ?
+        AND pool_id NOT LIKE 'prediction:%'
+        ${anomalyClause}
+      ${wash?.filterClause ?? ''}
+    )
+    WHERE 1=1 ${excludePlaceholders}
+    GROUP BY address, pool_id
+    HAVING MIN(buy_base, sell_base) > 0
+  `;
+
+  const params = [
+    ...(wash?.params ?? []),
+    cutoffMs, cutoffMs,
+    ...excludeList,
+  ];
+  return ldb.prepare(query).all(...params) as RawPnlRow[];
+}
+
 /**
  * Compute realized PnL per pool then aggregate per trader.
  * Per-pool isolation prevents decimal mismatch between different base tokens
  * (e.g. NSOL raw units vs NBTC raw units) from producing phantom profit.
+ *
+ * When `excludeW21Anomaly` is true, 5/19 NBTC/NETH 10x regression fills are
+ * dropped from the per-pool aggregate so the resulting PnL reflects only
+ * normal-priced trades. Used by the W21 weekly score guard to compute the
+ * "clean" baseline that anomaly score is blended against.
  */
 export function computeTraderPnl(
   cutoffMs: number,
   excludedAddresses: Set<string>,
   limit: number = 100,
   washPairs?: Set<string>,
+  excludeW21Anomaly: boolean = false,
 ): Array<{ address: string; realizedPnlRaw: number; pnlPercent: number; tradeCount: number }> {
-  const rawRows = aggregateTraderPnlRaw(cutoffMs, excludedAddresses, washPairs);
+  const rawRows = excludeW21Anomaly
+    ? aggregateTraderPnlRawExcludingW21Anomaly(cutoffMs, excludedAddresses, washPairs)
+    : aggregateTraderPnlRaw(cutoffMs, excludedAddresses, washPairs);
 
   // Accumulate per-pool PnL into per-trader totals
   const traderMap = new Map<string, { realizedPnlRaw: number; totalCostBasis: number; tradeCount: number }>();
