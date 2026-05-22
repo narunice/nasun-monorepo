@@ -137,50 +137,29 @@ export const MODEL_CATEGORY_LABELS: Record<ModelCategory, string> = {
 
 export const MODEL_CATEGORY_ORDER: ModelCategory[] = ['cloud', 'private', 'fast'];
 
+// Only models the executor Lambda actually routes are listed. The TEE entry
+// is kept as an explicit Roadmap placeholder so the catalog reflects the
+// private-inference direction without misleading users into picking
+// "soon" cloud models that 100% fail (executor's FALLBACK_CHAIN currently
+// only routes `llama-3.3-70b-versatile`).
 export const MODEL_PRICING = {
-  'gpt-4o': {
-    name: 'GPT-4o',
-    price: 500_000,
-    description: 'OpenAI flagship multimodal model',
-    provider: 'openai',
-    category: 'cloud' as ModelCategory,
-  },
-  'claude-3.5-sonnet': {
-    name: 'Claude 3.5 Sonnet',
-    price: 300_000,
-    description: 'Anthropic balanced model',
-    provider: 'anthropic',
-    category: 'cloud' as ModelCategory,
-  },
   'llama-3.3-70b-versatile': {
     name: 'Llama 3.3 70B',
     price: 100_000,
     description: 'Large model via Groq Cloud',
     provider: 'groq',
     category: 'cloud' as ModelCategory,
+    available: true,
   },
   'llama-3.2-3b-local': {
-    name: 'Llama 3.2 3B (TEE roadmap)',
+    name: 'Llama 3.2 3B (TEE)',
     price: 100_000,
-    description: 'Private inference; TEE attestation is on the roadmap and is not delivered in this alpha.',
+    description: 'Private inference inside a TEE. On the roadmap, not available in this alpha.',
     provider: 'tee',
     category: 'private' as ModelCategory,
+    available: false,
   },
-  'gpt-4o-mini': {
-    name: 'GPT-4o Mini',
-    price: 50_000,
-    description: 'Fast and affordable',
-    provider: 'openai',
-    category: 'fast' as ModelCategory,
-  },
-  'llama-3.1-8b-instant': {
-    name: 'Llama 3.1 8B',
-    price: 50_000,
-    description: 'Ultra-fast via Groq Cloud',
-    provider: 'groq',
-    category: 'fast' as ModelCategory,
-  },
-} satisfies Record<string, { name: string; price: number; description: string; provider: string; category: ModelCategory }>;
+} satisfies Record<string, { name: string; price: number; description: string; provider: string; category: ModelCategory; available: boolean }>;
 
 export type ModelId = keyof typeof MODEL_PRICING;
 export const DEFAULT_MODEL: ModelId = 'llama-3.3-70b-versatile';

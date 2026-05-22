@@ -61,7 +61,32 @@ export function ChatInput({
 
   return (
     <div className="space-y-2">
-      <ModelSelector selectedModel={selectedModel} onSelectModel={onSelectModel} />
+      <div className="flex items-center gap-2 flex-wrap">
+        <ModelSelector selectedModel={selectedModel} onSelectModel={onSelectModel} />
+        {/* Native `title` tooltip is delayed and invisible on touch, so we
+            render an always-visible hint with a custom hover popover for the
+            longer explanation. */}
+        <span className="relative group inline-flex items-center gap-1 text-xs text-uju-secondary/70 cursor-help">
+          for chat only
+          <svg
+            className="w-3 h-3 text-uju-secondary/60"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="9" strokeWidth={1.5} />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8h.01M11 12h1v4h1" />
+          </svg>
+          <span
+            role="tooltip"
+            className="pointer-events-none absolute bottom-full left-0 mb-2 w-64 rounded-lg border border-uju-border/60 bg-uju-card px-3 py-2 text-xs text-uju-secondary opacity-0 translate-y-1 transition-all duration-150 group-hover:opacity-100 group-hover:translate-y-0 z-20 shadow-lg"
+          >
+            The agent's autonomous trading cycle uses a separately managed model from the Settings tab.
+            This selector only affects chat turns you send here.
+          </span>
+        </span>
+      </div>
 
       <div className="relative rounded-xl border border-uju-border/60 bg-uju-card/60 overflow-hidden focus-within:ring-2 focus-within:ring-pado-2 focus-within:border-transparent">
         <textarea
