@@ -189,6 +189,7 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           agentAddress={agent.agentAddress}
           agentName={agent.name}
           walletAddress={walletAddress}
+          agentProfileId={agent.id}
           onDeactivated={() => void vault.refresh()}
           onClose={() => setDeactivateOpen(false)}
         />
