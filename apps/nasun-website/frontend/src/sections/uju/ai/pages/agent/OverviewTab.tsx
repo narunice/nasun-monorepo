@@ -17,6 +17,7 @@ import { useAgentAerStats } from '../../hooks/useAgentAerStats';
 import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
+import { TradingPerformanceCard } from '../../components/performance/TradingPerformanceCard';
 import { FirstRunChecklist } from '../../components/FirstRunChecklist';
 import { HashRef } from '../../components/HashRef';
 import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
@@ -185,6 +186,8 @@ export function OverviewTab({
         walletAddress={walletAddress}
         onOpenInferenceTab={onOpenInferenceTab ?? onOpenSettings}
       />
+
+      <TradingPerformanceCard agent={agent} />
 
       <div>
         <ActivityTab
