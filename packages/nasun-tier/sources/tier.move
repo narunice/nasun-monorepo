@@ -25,11 +25,18 @@ const TIER_3: u8 = 3;
 const DEFAULT_MAX_BATCH_SIZE: u64 = 500;
 const DEFAULT_MAX_UPDATES_PER_EPOCH: u64 = 50_000;
 
+// Hard ceilings on the rate-limit setters. Even with a compromised AdminCap an
+// attacker cannot raise the rate limits past these — caps the blast radius of
+// a single-key compromise.
+const HARD_CEILING_BATCH_SIZE: u64 = 2_000;
+const HARD_CEILING_UPDATES_PER_EPOCH: u64 = 200_000;
+
 // === Errors ===
 const EInvalidTier: u64 = 1;
 const EBatchLengthMismatch: u64 = 2;
 const EBatchTooLarge: u64 = 3;
 const EEpochCapExceeded: u64 = 4;
+const EAboveHardCeiling: u64 = 5;
 
 // === Shared object holding tier state ===
 public struct TierRegistry has key {
@@ -161,6 +168,7 @@ public fun set_max_batch_size(
     registry: &mut TierRegistry,
     new_max: u64,
 ) {
+    assert!(new_max <= HARD_CEILING_BATCH_SIZE, EAboveHardCeiling);
     registry.max_batch_size = new_max;
 }
 
@@ -169,6 +177,7 @@ public fun set_max_updates_per_epoch(
     registry: &mut TierRegistry,
     new_max: u64,
 ) {
+    assert!(new_max <= HARD_CEILING_UPDATES_PER_EPOCH, EAboveHardCeiling);
     registry.max_updates_per_epoch = new_max;
 }
 

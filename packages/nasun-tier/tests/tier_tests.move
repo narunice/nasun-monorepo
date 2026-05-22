@@ -200,3 +200,25 @@ fun policy_values_match_design() {
 fun version_is_exported() {
     assert!(tier::version() == 1, 0);
 }
+
+#[test, expected_failure(abort_code = nasun_tier::tier::EAboveHardCeiling)]
+fun set_max_batch_size_rejects_above_ceiling() {
+    let mut scenario = ts::begin(ADMIN);
+    let (mut registry, cap) = tier::new_for_testing(scenario.ctx());
+
+    tier::set_max_batch_size(&cap, &mut registry, 2_001);  // > 2000 ceiling
+
+    tier::destroy_for_testing(registry, cap);
+    scenario.end();
+}
+
+#[test, expected_failure(abort_code = nasun_tier::tier::EAboveHardCeiling)]
+fun set_max_updates_per_epoch_rejects_above_ceiling() {
+    let mut scenario = ts::begin(ADMIN);
+    let (mut registry, cap) = tier::new_for_testing(scenario.ctx());
+
+    tier::set_max_updates_per_epoch(&cap, &mut registry, 200_001);  // > 200000 ceiling
+
+    tier::destroy_for_testing(registry, cap);
+    scenario.end();
+}
