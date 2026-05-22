@@ -153,6 +153,13 @@ export function ActivityTab({
   const rangeStart = isPreview ? 1 : page * PAGE_SIZE + 1;
   const rangeEnd = isPreview ? records.length : Math.min(totalScoped, (page + 1) * PAGE_SIZE);
 
+  // Refetches can shrink the pool out from under the current page (e.g.
+  // season rollover, AERs aging out, indexer rewind). Clamp page down so
+  // we never render an empty deep page with the pagination footer hidden.
+  useEffect(() => {
+    if (page >= pageCount) setPage(Math.max(0, pageCount - 1));
+  }, [pageCount, page]);
+
   if (isLoading) {
     return (
       <div className="space-y-2">
