@@ -15,6 +15,7 @@ import type { BudgetInfo } from '../../hooks/useBudgets';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { useCapability } from '../../hooks/useCapability';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
+import { TradingCapitalCard } from '../../components/funds/TradingCapitalCard';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
 import { ExportAgentKeyModal } from '../../components/modals/ExportAgentKeyModal';
 import { ActivateAgentModal } from '../../components/modals/ActivateAgentModal';
@@ -108,8 +109,12 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
         />
       </section>
 
-      <section>
+      <section id="settings-inference-balance">
         <EscrowTab walletAddress={walletAddress} agentAddress={agent.agentAddress} />
+      </section>
+
+      <section>
+        <TradingCapitalCard agent={agent} walletAddress={walletAddress} />
       </section>
 
       <section>
