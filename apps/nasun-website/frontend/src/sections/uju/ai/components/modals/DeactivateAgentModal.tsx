@@ -9,11 +9,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useSigner } from '@nasun/wallet';
 import { deactivateAgent } from '../../services/agentVaultClient';
+import { useAgentActions } from '../../hooks/useAgentActions';
 
 interface DeactivateAgentModalProps {
   agentAddress: string;
   agentName: string;
   walletAddress: string;
+  /** Profile object id, needed for on-chain fallback when the agent is not vaulted. */
+  agentProfileId: string;
   onDeactivated: () => void;
   onClose: () => void;
 }
@@ -22,11 +25,14 @@ export function DeactivateAgentModal({
   agentAddress,
   agentName,
   walletAddress,
+  agentProfileId,
   onDeactivated,
   onClose,
 }: DeactivateAgentModalProps) {
   const { signer } = useSigner();
+  const { deactivateAgent: deactivateOnChain } = useAgentActions();
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleClose = useCallback(() => { onClose(); }, [onClose]);
@@ -37,17 +43,50 @@ export function DeactivateAgentModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [handleClose, busy]);
 
+  // Two-step deactivate:
+  //   1. vault delete  → stops the PM2 process + soft-deletes the SSM Parameter
+  //   2. on-chain flip → flips AgentProfile.is_active=false, the SSOT for
+  //      every runtime gate AND the field useAgentProfiles reads back into
+  //      the UI badge / button label. Without step 2 the badge stays "Active"
+  //      after the 15s refetch and the toggle never flips, which is exactly
+  //      the "did it actually pause?" confusion users reported.
+  const finishWithSuccess = () => {
+    setDone(true);
+    onDeactivated();
+    window.setTimeout(handleClose, 900);
+  };
+
   const handleConfirm = async () => {
     setError(null);
     if (!signer) { setError('Wallet not connected.'); return; }
     setBusy(true);
     try {
-      await deactivateAgent(signer, walletAddress, agentAddress);
-      onDeactivated();
-      handleClose();
-    } catch (err) {
-      const code = (err as { code?: string }).code;
-      setError(mapErrorCode(code) ?? (err instanceof Error ? err.message : 'unknown'));
+      let vaultSkipped = false;
+      try {
+        await deactivateAgent(signer, walletAddress, agentAddress);
+      } catch (err) {
+        const code = (err as { code?: string }).code;
+        // Agent was never vaulted (legacy / pre-vault). Nothing to stop on the
+        // server; on-chain flip alone satisfies the user's intent.
+        if (code === 'not_active') {
+          vaultSkipped = true;
+        } else {
+          setError(mapErrorCode(code) ?? (err instanceof Error ? err.message : 'unknown'));
+          return;
+        }
+      }
+
+      const ok = await deactivateOnChain(agentProfileId);
+      if (!ok) {
+        setError(
+          vaultSkipped
+            ? 'On-chain deactivation failed. See wallet popup for details.'
+            : 'Runtime stopped, but on-chain status flip failed. Retry to finish; the agent is already not running.',
+        );
+        return;
+      }
+
+      finishWithSuccess();
     } finally {
       setBusy(false);
     }
@@ -94,6 +133,12 @@ export function DeactivateAgentModal({
             </div>
           )}
 
+          {done && !error && (
+            <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-300" role="status">
+              Agent paused. Runtime stopped and on-chain status updated.
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               type="button"
@@ -101,15 +146,15 @@ export function DeactivateAgentModal({
               disabled={busy}
               className="flex-1 py-2.5 rounded-xl border border-uju-border/60 text-sm text-uju-secondary hover:bg-uju-bg/60 transition-colors disabled:opacity-40"
             >
-              Cancel
+              {done ? 'Close' : 'Cancel'}
             </button>
             <button
               type="button"
               onClick={() => void handleConfirm()}
-              disabled={busy}
+              disabled={busy || done}
               className="flex-1 py-2.5 rounded-xl bg-red-500/80 text-white text-sm font-medium hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {busy ? 'Deactivating...' : 'Confirm deactivate'}
+              {done ? 'Paused' : busy ? 'Deactivating...' : 'Confirm deactivate'}
             </button>
           </div>
         </div>
@@ -125,7 +170,7 @@ function mapErrorCode(code: string | undefined): string | null {
     case 'expired_challenge':
     case 'expired': return 'Challenge expired. Please retry.';
     case 'bad_signature': return 'Signature verification failed.';
-    case 'not_active': return 'Agent is not registered in the vault. Use on-chain deactivation from the Settings tab.';
+    case 'not_active': return null;
     case 'rate_limited': return 'Too many requests. Wait a minute and retry.';
     default: return null;
   }

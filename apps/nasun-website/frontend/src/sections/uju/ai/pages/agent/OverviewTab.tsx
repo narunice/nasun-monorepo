@@ -201,6 +201,7 @@ export function OverviewTab({
           agentAddress={agent.agentAddress}
           agentName={agent.name}
           walletAddress={walletAddress}
+          agentProfileId={agent.id}
           onDeactivated={() => { setShowPauseModal(false); onRefresh(); }}
           onClose={() => setShowPauseModal(false)}
         />
