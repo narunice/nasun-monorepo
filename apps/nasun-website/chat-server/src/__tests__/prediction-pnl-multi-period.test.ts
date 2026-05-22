@@ -18,6 +18,9 @@ function makeCfg(): LeaderboardConfig {
   tempDir = mkdtempSync(join(tmpdir(), 'pred-pnl-multi-'));
   return {
     leaderboardDbPath: join(tempDir, 'leaderboard.db'),
+    deepbookPackage: '0x0',
+    rpcUrl: 'http://localhost:0',
+    indexerPollIntervalMs: 0,
     aggregationIntervalMs: 60_000,
     excludedAddresses: new Set(),
   };
