@@ -37,6 +37,7 @@ import {
   computeTraderPnl,
   computeTraderPnlMultiPeriod,
   computePredictionPnl,
+  computePredictionPnlMultiPeriod,
   getPnlCurrentRanks,
   replaceTraderPnlStats,
   getPointsCurrentRanks,
@@ -199,14 +200,16 @@ function runPnlAggregation(): void {
     cutoffMs: PERIOD_MS[period] > 0 ? now - PERIOD_MS[period] : 0,
   }));
   const spotByPeriod = computeTraderPnlMultiPeriod(periodCutoffs, excluded, AGGREGATION_LIMIT);
+  // Single SQL scan over the broadest window, then per-period bucketing in JS.
+  // Replaces N per-period CROSS JOIN scans against prediction_markets x
+  // trade_fills that dominated the pnl phase before 2026-05-22.
+  const predictionByPeriod = computePredictionPnlMultiPeriod(periodCutoffs, now, excluded, sameIdentityPairs);
 
   for (const period of PERIODS) {
-    const cutoff = PERIOD_MS[period] > 0 ? now - PERIOD_MS[period] : 0;
-
     const currentRanks = getPnlCurrentRanks(period);
 
     const spotTraders = spotByPeriod.get(period) ?? [];
-    const predictionMap = computePredictionPnl(cutoff, now, excluded, sameIdentityPairs);
+    const predictionMap = predictionByPeriod.get(period) ?? new Map();
 
     interface CombinedPnl { realizedPnlRaw: number; spotCostBasis: number; predCostBasis: number; tradeCount: number; spotPnlPercent: number; }
     const combined = new Map<string, CombinedPnl>();

@@ -11,6 +11,17 @@ module.exports = {
       // sendMessage. Daily 18:00 UTC (03:00 KST) restart caps accumulated
       // workload growth. Distance from weekly-settlement window (Mon 00:15 UTC)
       // is wide enough that they cannot interleave.
+      //
+      // 2026-05-22: pnl is no longer a slow-cycle outlier — it is the steady
+      // state. Every cycle now measures pnl 53-80s, volume 36-92s,
+      // weeklySync 21-25s, total 118-185s. With AGGREGATION_INTERVAL_MS=60000
+      // the worker ran back-to-back continuously, holding a SQLite write/read
+      // lock on leaderboard.db long enough for main-thread heartbeat handlers
+      // to hit better-sqlite3 busy_timeout (30s) and exceed the 15s client
+      // timeout — surfaced as 4 agents simultaneously failing wake-registration
+      // POSTs. Bumped to 240000 to force an idle gap (~60-120s) per cycle so
+      // main-thread queries get a contention-free window. Steady-state data
+      // freshness drops from ~2-3 min (effective due to overlap) to ~4-5 min.
       cron_restart: '0 18 * * *',
       node_args: '--max-old-space-size=700',  // 2026-05-14: bumped from 450M after aggregator moved to worker_threads. Main + worker each respect this V8 cap; combined RSS ~530MB observed, 1024M RSS ceiling leaves headroom.
       kill_timeout: 105000,                   // crash drain budget 90s + parent grace 95s + 10s margin (see crash/constants.ts)
@@ -38,7 +49,7 @@ module.exports = {
         CRASH_HISTORY_DB_PATH: './data/crash-history.db',
         RPC_URL: 'https://rpc.devnet.nasun.io',
         INDEXER_POLL_INTERVAL_MS: '5000',
-        AGGREGATION_INTERVAL_MS: '60000',
+        AGGREGATION_INTERVAL_MS: '240000',
         NASUN_PROFILE_API_URL: 'https://aanboqet5i.execute-api.ap-northeast-2.amazonaws.com/prod',
         GENESIS_PASS_API_URL: 'https://hntjvkuyvk.execute-api.ap-northeast-2.amazonaws.com/prod',
         DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',

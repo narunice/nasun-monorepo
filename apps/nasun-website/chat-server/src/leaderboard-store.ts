@@ -1272,6 +1272,7 @@ export function getResolvedMarketCount(): number {
 interface PredictionFillRow {
   market_id: string;
   outcome: number;
+  resolved_at_ms: number;
   maker_address: string;
   taker_address: string;
   is_yes: number;
@@ -1315,6 +1316,59 @@ export function computePredictionPnl(
   excludedAddresses: Set<string>,
   washPairs?: Set<string>,
 ): Map<string, PredictionPnlResult> {
+  const rows = fetchPredictionFillRows(startMs, endMs, excludedAddresses, washPairs);
+  // SQL has already filtered to [startMs, endMs); helper accepts rows as-is
+  // by passing cutoffMs=startMs so the in-memory predicate matches.
+  return aggregatePredictionRows(rows, startMs);
+}
+
+/**
+ * Multi-period variant: one SQL scan over the broadest window, then per-period
+ * in-memory bucketing by `resolved_at_ms`. Saves N-1 redundant CROSS JOIN
+ * scans compared to calling `computePredictionPnl` once per period from
+ * `runPnlAggregation` (2026-05-22 chat-server saturation analysis).
+ *
+ * Periods are assumed to share the same `endMs` (e.g. `now`). The lowest
+ * `cutoffMs` (typically 0 for 'all') bounds the SQL scan; per-period results
+ * include rows where `resolved_at_ms >= cutoffMs`.
+ */
+export function computePredictionPnlMultiPeriod(
+  periodCutoffs: ReadonlyArray<{ period: string; cutoffMs: number }>,
+  endMs: number,
+  excludedAddresses: Set<string>,
+  washPairs?: Set<string>,
+): Map<string, Map<string, PredictionPnlResult>> {
+  const result = new Map<string, Map<string, PredictionPnlResult>>();
+  if (periodCutoffs.length === 0) return result;
+
+  const minCutoff = Math.min(...periodCutoffs.map((p) => p.cutoffMs));
+  const rows = fetchPredictionFillRows(minCutoff, endMs, excludedAddresses, washPairs);
+
+  for (const { period, cutoffMs } of periodCutoffs) {
+    result.set(period, aggregatePredictionRows(rows, cutoffMs));
+  }
+  return result;
+}
+
+/**
+ * Run the prediction-market CROSS JOIN scan. CROSS JOIN forces SQLite to use
+ * prediction_markets as the driving table
+ * (https://sqlite.org/optoverview.html#crossjoin). Default INNER JOIN picked
+ * SCAN tf (full 774k-row scan) instead of pool_id lookups via
+ * idx_fills_pool_maker, because the 'prediction:' || pm.market_id concat
+ * predicate hides the index opportunity from the planner. CROSS JOIN keeps
+ * SQL semantics identical to INNER JOIN.
+ *
+ * CAST as REAL to stay consistent with spot's aggregateTraderPnlRaw (see
+ * leaderboard-store.ts:1236+); raw 6-dec NUSDC fits IEEE 754 safe range
+ * (Number.MAX_SAFE_INTEGER = 2^53 ≈ 9e15 ≈ $9B per single fill).
+ */
+function fetchPredictionFillRows(
+  startMs: number,
+  endMs: number,
+  excludedAddresses: Set<string>,
+  washPairs?: Set<string>,
+): PredictionFillRow[] {
   const ldb = getLeaderboardDb();
   const wash = buildWashPairsCte(washPairs);
 
@@ -1324,22 +1378,12 @@ export function computePredictionPnl(
        AND tf.taker_address NOT IN (${excludeList.map(() => '?').join(',')})`
     : '';
 
-  // Single JOIN query: prediction_markets resolved in week × matching trade_fills.
-  // We CAST as REAL to stay consistent with spot's aggregateTraderPnlRaw (see
-  // leaderboard-store.ts:1236+); raw 6-dec NUSDC fits IEEE 754 safe range
-  // (Number.MAX_SAFE_INTEGER = 2^53 ≈ 9e15 ≈ $9B per single fill).
-  //
-  // CROSS JOIN forces SQLite to use prediction_markets as the driving table
-  // (https://sqlite.org/optoverview.html#crossjoin). Default INNER JOIN picked
-  // SCAN tf (full 774k-row scan) instead of 64 pool_id lookups via
-  // idx_fills_pool_maker, because the 'prediction:' || pm.market_id concat
-  // predicate hides the index opportunity from the planner. CROSS JOIN keeps
-  // SQL semantics identical to INNER JOIN.
   const sql = `
     ${wash?.cte ?? ''}
     SELECT
       pm.market_id,
       pm.outcome,
+      pm.resolved_at_ms,
       tf.maker_address,
       tf.taker_address,
       tf.is_yes,
@@ -1365,8 +1409,18 @@ export function computePredictionPnl(
     ...excludeList, ...excludeList,
   ];
 
-  const rows = ldb.prepare(sql).all(...params) as PredictionFillRow[];
+  return ldb.prepare(sql).all(...params) as PredictionFillRow[];
+}
 
+/**
+ * Aggregate fetched prediction fill rows into per-address PnL results,
+ * filtered to rows whose market resolved at or after `cutoffMs`. The upper
+ * bound is enforced by the SQL fetch.
+ */
+function aggregatePredictionRows(
+  rows: ReadonlyArray<PredictionFillRow>,
+  cutoffMs: number,
+): Map<string, PredictionPnlResult> {
   // Per (address, market_id, is_yes) accumulator
   interface PosKey { net_shares: number; net_cost: number; gross_cost: number }
   const positions = new Map<string, PosKey>();
@@ -1380,6 +1434,7 @@ export function computePredictionPnl(
   }
 
   for (const row of rows) {
+    if (row.resolved_at_ms < cutoffMs) continue;
     marketOutcome.set(row.market_id, row.outcome);
     const signMaker = row.maker_is_bid === 1 ? 1 : -1;
 
