@@ -56,12 +56,25 @@ export function useCapability(capabilityId: string | null): UseCapabilityResult 
       setFetchError(null);
       return;
     }
+    // Clear stale data synchronously so consumers can't observe one frame
+    // where `data` is from the previous capabilityId. Without this, switching
+    // chat sessions between agents could build a PTB with `capabilityId`
+    // pointing at agent B and `expectedCapabilityVersion` taken from agent
+    // A's cached cap, which on-chain would revert (the user just sees an
+    // error, no funds at risk, but the failure is confusing).
+    const requestedId = capabilityId;
+    setData(null);
     setIsLoading(true);
     setFetchError(null);
     try {
-      const ref = await capabilitySdk.fetchCapability(suiClient, capabilityId);
+      const ref = await capabilitySdk.fetchCapability(suiClient, requestedId);
+      // Guard against races: if capabilityId changed underneath us during
+      // the await, drop the response so we never publish data tagged with
+      // the wrong id.
+      if (requestedId !== capabilityId) return;
       setData(ref.cap);
     } catch (err) {
+      if (requestedId !== capabilityId) return;
       setFetchError(err instanceof Error ? err.message : 'Failed to fetch capability');
       setData(null);
     } finally {

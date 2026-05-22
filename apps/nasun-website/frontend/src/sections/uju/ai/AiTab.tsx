@@ -20,6 +20,7 @@ import { useAuth } from '@/features/auth';
 import { AgentDetail, normalizeSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
 import { QuickstartView } from './pages/QuickstartView';
+import { ChatView } from './pages/ChatView';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { useCreateAgent } from './hooks/useCreateAgent';
 import { useAgentProfiles } from './hooks/useAgentProfiles';
@@ -189,22 +190,57 @@ export function AiTab() {
     );
   }
 
+  const isChatView = view === 'chat';
+
   return (
     <div className="space-y-4">
-      <QuickstartView
-        walletAddress={walletAddress}
-        onShowRegister={() => updateView('register')}
-        onOpenBudgets={(agentAddress) =>
-          updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
-        }
-        onSelectAgent={(id, opts) =>
-          updateView('detail', {
-            agent: id,
-            sub: opts?.sub ?? 'overview',
-            [FROM_PARAM]: opts?.fromQuickstart ? FROM_QUICKSTART : null,
-          })
-        }
-      />
+      <div
+        className="flex gap-1 border-b border-uju-border/60"
+        role="tablist"
+        aria-label="AI section"
+      >
+        {(['list', 'chat'] as const).map((key) => {
+          const active = key === 'chat' ? isChatView : !isChatView;
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => updateView(key === 'list' ? null : 'chat')}
+              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+                active
+                  ? 'border-pado-2 text-pado-2'
+                  : 'border-transparent text-uju-secondary hover:text-white'
+              }`}
+            >
+              {key === 'list' ? 'Agents' : 'Chat'}
+            </button>
+          );
+        })}
+      </div>
+
+      {isChatView ? (
+        <ChatView
+          walletAddress={walletAddress}
+          onRegisterAgent={() => updateView('register')}
+        />
+      ) : (
+        <QuickstartView
+          walletAddress={walletAddress}
+          onShowRegister={() => updateView('register')}
+          onOpenBudgets={(agentAddress) =>
+            updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
+          }
+          onSelectAgent={(id, opts) =>
+            updateView('detail', {
+              agent: id,
+              sub: opts?.sub ?? 'overview',
+              [FROM_PARAM]: opts?.fromQuickstart ? FROM_QUICKSTART : null,
+            })
+          }
+        />
+      )}
 
       {/* Registration modal — triggered by view=register */}
       {view === 'register' && (
