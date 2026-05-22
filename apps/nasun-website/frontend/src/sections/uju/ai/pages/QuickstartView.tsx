@@ -148,10 +148,12 @@ export function QuickstartView({
 
   const completedCount = [hasAgents, hasBudget, hasAgents, hasPolicy, isRunning].filter(Boolean).length;
 
-  // Once any agent has reached Step 5 (isRunning), treat the wallet as
-  // onboarded and let the user collapse the Setup guide. The `Show setup
-  // guide` toggle re-expands it on demand.
-  const isOnboarded = isRunning;
+  // Keep the Setup guide expanded until every step for the first agent is
+  // explicitly done. isRunning alone is insufficient — useAgentProfiles can
+  // flip isActive to true the moment the agent's pm2 process is spawned,
+  // before the user has funded the inference balance, set a trader policy,
+  // or clicked Start, which collapsed the guide mid-onboarding.
+  const isOnboarded = completedCount === 5;
   const [showGuide, setShowGuide] = useState(false);
 
   // Determine per-step state

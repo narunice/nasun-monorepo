@@ -9,6 +9,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { TraderConfig, TraderPair, StrategyPresetId } from '../../types/trader';
 import { useExecutors } from '../../hooks/useExecutors';
+import { isValidEndpointUrl } from '../../utils/executor';
 
 const PAIRS: { value: TraderPair; label: string }[] = [
   { value: 'NBTC_NUSDC', label: 'NBTC / NUSDC' },
@@ -82,10 +83,22 @@ const URL_RE = /^https?:\/\/.+/i;
 
 export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initial, onSave, onDelete }: Props) {
   const { executors, isLoading: executorsLoading } = useExecutors();
-  const activeExecutors = useMemo(
-    () => executors.filter((e) => e.isActive && !e.isDormant),
-    [executors],
-  );
+  // Pool the Auto-pick draws from. Two filters:
+  //   1. reachable endpoint (skip placeholder rows with empty endpoint_url
+  //      and dev-only http://localhost stubs in prod builds).
+  //   2. prefer non-dormant; if every reachable executor has stale heartbeat
+  //      (>DORMANT_THRESHOLD_MS since last_active_at), fall back to dormant
+  //      ones so the Auto UI is not stranded behind a misleading
+  //      "Pick an executor" save error. The on-chain dormant flag is a
+  //      heartbeat heuristic, not a reachability check — the Lambda
+  //      executor stays callable even when its last_active_at lags.
+  const activeExecutors = useMemo(() => {
+    const reachable = executors.filter(
+      (e) => e.isActive && isValidEndpointUrl(e.endpointUrl, import.meta.env.DEV),
+    );
+    const live = reachable.filter((e) => !e.isDormant);
+    return live.length > 0 ? live : reachable;
+  }, [executors]);
 
   const [pair, setPair] = useState<TraderPair>('NBTC_NUSDC');
   const [perTrade, setPerTrade] = useState('2');
@@ -148,7 +161,16 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
     if (!Number.isFinite(dy) || dy < pt || dy > 1000) { setErr('Daily size: per-trade ≤ x ≤ 1000'); return; }
     if (!Number.isInteger(iv) || iv < MIN_INTERVAL || iv > 1440) { setErr(`Interval must be integer between ${MIN_INTERVAL} and 1440 minutes`); return; }
     if (promptTemplate.length > 10_000) { setErr('Custom prompt must be ≤ 10000 chars'); return; }
-    if (!ADDR_RE.test(executorAddress)) { setErr('Pick an executor from the list'); return; }
+    if (!ADDR_RE.test(executorAddress)) {
+      setErr(
+        executorsLoading
+          ? 'Loading executors, please wait a moment and try again'
+          : activeExecutors.length === 0
+            ? 'No verified executors available right now. Try again shortly.'
+            : 'Executor auto-selection failed. Reload the page and try again.',
+      );
+      return;
+    }
     if (!URL_RE.test(executorEndpoint)) { setErr('Executor endpoint must start with http(s)://'); return; }
     if (!Number.isInteger(slip) || slip < 0 || slip > MAX_BPS) { setErr(`Max slippage must be 0..${MAX_BPS} bps`); return; }
     if (!Number.isInteger(sl) || sl < 0 || sl > MAX_BPS) { setErr(`Stop loss must be 0..${MAX_BPS} bps`); return; }
