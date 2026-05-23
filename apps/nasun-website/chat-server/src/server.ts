@@ -402,6 +402,19 @@ async function handleHttpRequest(
     return;
   }
 
+  // Heartbeat push: runtime → chat-server thin relay → user Telegram via
+  // existing pushUserMessage. HMAC scheme is /push-domain-prefixed (see
+  // agent-push-routes.ts header comment for the asymmetry rationale).
+  //
+  // MUST be mounted BEFORE handleBaramTelegramRequest: that handler claims
+  // the entire `/api/nasun-ai/agent/` prefix and emits 404 for any sub-route
+  // it does not recognize (baram-telegram-routes.ts:422-494). Without this
+  // ordering, /push gets swallowed with `{"error":"not_found"}` before
+  // reaching handleAgentPushRequest.
+  if (await handleAgentPushRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
   // Baram (Nasun AI) Telegram session API — manages signed sessions between
   // user wallets and the Telegram bot. Handles its own OPTIONS for POST.
   if (await handleBaramTelegramRequest(req, res, url, corsHeaders)) {
@@ -418,13 +431,6 @@ async function handleHttpRequest(
 
   // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
   if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
-    return;
-  }
-
-  // Heartbeat push: runtime → chat-server thin relay → user Telegram via
-  // existing pushUserMessage. HMAC scheme is /push-domain-prefixed (see
-  // agent-push-routes.ts header comment for the asymmetry rationale).
-  if (await handleAgentPushRequest(req, res, url, corsHeaders)) {
     return;
   }
 
