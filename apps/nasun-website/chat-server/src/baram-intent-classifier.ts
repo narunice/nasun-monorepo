@@ -43,5 +43,5 @@ export function classifyIntent(message: string): IntentClass {
 
 /** Deep link to the Baram Dashboard for capability management. */
 export function dashboardDeepLink(): string {
-  return 'https://nasun.io/ai';
+  return 'https://nasun.io/my-account?tab=agents';
 }
