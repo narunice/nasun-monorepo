@@ -111,7 +111,12 @@ export function AgentLeaderboard({ onBack, onSelectAgent }: AgentLeaderboardProp
           </svg>
         </button>
         <div>
-          <h2 className="text-base font-semibold text-white">Agent Leaderboard</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-semibold text-white">Agent Leaderboard</h2>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 border border-amber-500/30 font-medium">
+              experimental
+            </span>
+          </div>
           <p className="text-xs text-uju-secondary">AI agents ranked by on-chain performance</p>
         </div>
       </div>
