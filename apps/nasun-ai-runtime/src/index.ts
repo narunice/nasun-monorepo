@@ -43,6 +43,7 @@ import { runAnalystPreset } from './presets/analyst.js';
 import { runChatPreset } from './presets/chat.js';
 import { runManualExecution } from './presets/manual-execution.js';
 import { RateLimiter } from './rate-limit.js';
+import { assertEnabledOrExit } from './self-config.js';
 
 // ========== Graceful Shutdown ==========
 
@@ -84,6 +85,17 @@ async function main(): Promise<void> {
   console.log('');
 
   const config = await loadConfig();
+
+  // Phase 1 safety net: refuse to start if chat-server says this agent is
+  // disabled. Cheap (single GET) and runs before SuiClient construction so
+  // a disabled agent doesn't even spin up RPC connections. Fail-open on
+  // network errors; orchestrator side (Phase 6) will be fail-closed.
+  await assertEnabledOrExit({
+    chatServerBaseUrl: config.chatServerBaseUrl,
+    agentAddress: config.agentAddress,
+    log,
+  });
+
   const client = new SuiClient({ url: config.rpcUrl });
   const preset = PRESETS[config.preset];
 
@@ -165,6 +177,14 @@ async function main(): Promise<void> {
         log('[shutdown] Agent stopped gracefully.');
         process.exit(0);
       }
+      // Phase 1 safety net: re-check enabled state every cycle so a
+      // disabled toggle in the UI takes effect within at most one
+      // interval, even if the orchestrator failed to pm2-stop us.
+      await assertEnabledOrExit({
+        chatServerBaseUrl: config.chatServerBaseUrl,
+        agentAddress: config.agentAddress,
+        log,
+      });
       let nextIntervalMs: number | undefined;
       try {
         nextIntervalMs = await runCycle(client, config);
