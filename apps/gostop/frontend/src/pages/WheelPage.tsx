@@ -168,13 +168,34 @@ export default function WheelPage() {
 
           <div className="w-full md:w-[320px] md:flex-shrink-0 flex flex-col gap-6">
             <div className="space-y-3">
-              <div className="flex items-baseline justify-between">
-                <label className="text-sm uppercase tracking-[0.18em] text-gold-200">
+              <div className="flex items-center justify-between gap-3">
+                <label
+                  htmlFor="wheel-bet-input"
+                  className="text-sm uppercase tracking-[0.18em] text-gold-200 shrink-0"
+                >
                   Bet
                 </label>
-                <span className="font-mono text-lg text-gold">
-                  {betDisplayNum.toFixed(betDisplayNum < 10 ? 2 : 0)} NUSDC
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    id="wheel-bet-input"
+                    type="number"
+                    min={MIN_NUSDC}
+                    max={MAX_NUSDC}
+                    step={1}
+                    value={betDisplay}
+                    disabled={animating || isSpinning}
+                    onChange={(e) => setBetDisplay(e.target.value)}
+                    onBlur={(e) => {
+                      const v = parseFloat(e.target.value);
+                      const clamped = isNaN(v)
+                        ? MIN_NUSDC
+                        : Math.max(MIN_NUSDC, Math.min(MAX_NUSDC, v));
+                      setBetDisplay(String(clamped));
+                    }}
+                    className="w-20 text-right font-mono text-base text-gold bg-ink-900 border border-gold-subtle rounded px-2 py-1 focus:outline-none focus:border-gold-300 disabled:opacity-40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span className="text-sm text-gold-200/70 shrink-0">NUSDC</span>
+                </div>
               </div>
               <BetSlider
                 value={betDisplay}
