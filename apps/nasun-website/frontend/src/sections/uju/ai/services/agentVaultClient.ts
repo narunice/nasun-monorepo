@@ -106,6 +106,7 @@ export async function uploadAgentKeyToVault(
   agentAddress: string,
   capabilityId: string,
   keypair: Ed25519Keypair,
+  profileId?: string | null,
 ): Promise<VaultUploadResult> {
   const pubkeyHash = pubkeyHashHex(keypair.getPublicKey().toRawBytes());
   const challenge = await fetchChallenge({
@@ -120,6 +121,7 @@ export async function uploadAgentKeyToVault(
     challenge,
     signature,
     agentSecretKey: keypair.getSecretKey(),
+    ...(profileId ? { profileId } : {}),
   });
 }
 

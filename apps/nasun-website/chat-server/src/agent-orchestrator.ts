@@ -195,10 +195,10 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
 async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEnv> {
   const lower = agentAddress.toLowerCase();
   const keyRow = getDb().prepare(
-    `SELECT capability_id, wallet_address
+    `SELECT capability_id, wallet_address, profile_id
      FROM agent_keys
      WHERE agent_address = ? AND deleted_at IS NULL`,
-  ).get(lower) as { capability_id: string | null; wallet_address: string } | undefined;
+  ).get(lower) as { capability_id: string | null; wallet_address: string; profile_id: string | null } | undefined;
   if (!keyRow) throw new Error(`agent_key_row_missing:${lower}`);
   if (!keyRow.capability_id) {
     throw new Error(`capability_id_missing_for_${lower}:re-upload required`);
@@ -248,6 +248,9 @@ async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEn
     // Standalone single-daemon (ecosystem.nasun-ai-runtime.cjs) leaves this
     // unset so operator daemons do not accidentally push to a user chat.
     HEARTBEAT_PUSH_ENABLED:  'true',
+    // AER v3 attribution. Optional: omit when not stored so the runtime falls
+    // back to agent_profile_id=null (backward-compatible with v2 rows).
+    ...(keyRow.profile_id ? { AGENT_PROFILE_ID: keyRow.profile_id } : {}),
   };
 }
 

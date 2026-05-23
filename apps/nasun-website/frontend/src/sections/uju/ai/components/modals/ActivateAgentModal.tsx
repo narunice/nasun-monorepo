@@ -83,7 +83,7 @@ export function ActivateAgentModal({
       setPhase('signing');
       // signer.signPersonal is invoked inside uploadAgentKeyToVault after challenge fetch.
       setPhase('uploading');
-      await uploadAgentKeyToVault(signer, walletAddress, agentAddress, capabilityId, keypair);
+      await uploadAgentKeyToVault(signer, walletAddress, agentAddress, capabilityId, keypair, agentId);
 
       // On-chain delegation: lets the spawned agent call
       // `capability::set_pending_proposal` with its own keypair (needed
