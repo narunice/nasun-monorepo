@@ -12,8 +12,8 @@
  * with `venue='pado-spot'`.
  */
 
-import { pointsDb } from '../db';
-import { sendTelegramAlert } from '../utils/alert';
+import { pointsDb } from '../db.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const VENUE = 'gostop-bankroll';
