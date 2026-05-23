@@ -19,6 +19,8 @@ import {
   getConfigByAgentDetailed,
   saveConfig,
   deleteConfig,
+  reconcileLocalCacheWithServer,
+  reconcileLocalCacheOnce,
   TraderConfigSyncError,
   type ConfigSigner,
 } from './traderConfigStorage';
@@ -252,5 +254,57 @@ describe('deleteConfig — server-first contract', () => {
     await expect(
       deleteConfig(WALLET, AGENT, AGENT, stubSigner()),
     ).resolves.toBeUndefined();
+  });
+});
+
+// Phase 5 (2026-05-23) — orphan IndexedDB cleanup. The cleanup work
+// itself needs a real IndexedDB; jsdom does not provide one and
+// fake-indexeddb isn't installed in this repo. The tests below cover
+// the no-IDB and localStorage-gate paths that don't require IDB.
+
+describe('reconcileLocalCacheWithServer (no-IDB path)', () => {
+  it('returns zeroed summary when IndexedDB is unavailable', async () => {
+    // listConfigs throws in jsdom (no real IDB); the function catches
+    // and returns the empty summary so callers never see a rejection.
+    const summary = await reconcileLocalCacheWithServer(WALLET);
+    expect(summary).toEqual({
+      refreshed: 0,
+      deletedOrphans: 0,
+      skipped: 0,
+      total: 0,
+    });
+  });
+});
+
+describe('reconcileLocalCacheOnce (localStorage gate)', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('runs reconciliation on first call', async () => {
+    const summary = await reconcileLocalCacheOnce(WALLET);
+    // No IDB → summary present but zeroed. Crucially, the call returned
+    // a summary (not null), proving the gate did not skip.
+    expect(summary).not.toBeNull();
+  });
+
+  it('returns null on second call for the same wallet', async () => {
+    await reconcileLocalCacheOnce(WALLET);
+    const second = await reconcileLocalCacheOnce(WALLET);
+    expect(second).toBeNull();
+  });
+
+  it('runs again for a different wallet (gate is per-wallet)', async () => {
+    await reconcileLocalCacheOnce(WALLET);
+    const otherWallet = '0x' + 'b'.repeat(64);
+    const second = await reconcileLocalCacheOnce(otherWallet);
+    expect(second).not.toBeNull();
+  });
+
+  it('persists the gate key into localStorage', async () => {
+    expect(localStorage.length).toBe(0);
+    await reconcileLocalCacheOnce(WALLET);
+    const keys = Object.keys(localStorage);
+    expect(keys.some((k) => k.startsWith('nasun-ai-trader-cache-reconciled:'))).toBe(true);
   });
 });

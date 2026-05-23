@@ -274,6 +274,142 @@ export async function getConfigByAgent(
   return r.config;
 }
 
+// Phase 5 (2026-05-23) — one-shot local cache reconciliation.
+//
+// Before Phase 4 saves were fire-and-forget. Browsers that lived through
+// a failed sync (network blip, expired signer) ended up with TraderConfig
+// rows in IndexedDB that the chat-server never received — visible only
+// in the UI, never operated by the runtime. The Jane (0xe78a43f2...)
+// agent on 2026-05-23 was a concrete example.
+//
+// reconcileLocalCacheWithServer runs once per wallet (gated by a
+// localStorage flag) and brings the local cache into agreement with
+// chat-server truth:
+//   - server 200 → refresh local row from server payload
+//   - server 404 → delete local row (orphan)
+//   - server 5xx / network error → skip this row (keep cache; try again next session)
+//
+// Idempotent and safe to call repeatedly; the localStorage flag just
+// prevents repeating work on every render.
+
+const RECONCILE_FLAG_VERSION = 'v1';
+const reconcileLocalStorageKey = (walletAddress: string): string =>
+  `nasun-ai-trader-cache-reconciled:${RECONCILE_FLAG_VERSION}:${walletAddress.toLowerCase()}`;
+
+export interface ReconcileSummary {
+  refreshed: number;
+  deletedOrphans: number;
+  skipped: number;
+  total: number;
+}
+
+const RECONCILE_CONCURRENCY = 4;
+const RECONCILE_PER_ROW_TIMEOUT_MS = 10_000;
+
+async function reconcileOne(
+  walletAddress: string,
+  row: TraderConfig,
+): Promise<'refreshed' | 'deletedOrphans' | 'skipped'> {
+  const agentLower = row.agentAddress.toLowerCase();
+  let res: Response;
+  try {
+    res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config/${agentLower}`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(RECONCILE_PER_ROW_TIMEOUT_MS),
+    });
+  } catch {
+    return 'skipped';
+  }
+  if (res.status === 200) {
+    try {
+      const body = (await res.json()) as { config?: TraderConfig };
+      if (!body.config) return 'skipped';
+      await tx(walletAddress, 'readwrite', (s) => s.put(body.config!));
+      return 'refreshed';
+    } catch {
+      return 'skipped';
+    }
+  }
+  if (res.status === 404) {
+    try {
+      await tx(walletAddress, 'readwrite', (s) => s.delete(row.id));
+      return 'deletedOrphans';
+    } catch {
+      return 'skipped';
+    }
+  }
+  return 'skipped';
+}
+
+export async function reconcileLocalCacheWithServer(
+  walletAddress: string,
+): Promise<ReconcileSummary> {
+  let local: TraderConfig[];
+  try {
+    local = await listConfigs(walletAddress);
+  } catch {
+    return { refreshed: 0, deletedOrphans: 0, skipped: 0, total: 0 };
+  }
+
+  const summary: ReconcileSummary = {
+    refreshed: 0,
+    deletedOrphans: 0,
+    skipped: 0,
+    total: local.length,
+  };
+
+  // Bounded-concurrency fan-out so a wallet with many ghosts doesn't
+  // serialise N * 10s of timeouts in a flaky-network session. Picks
+  // off a shared queue so fast rows don't wait for slow ones.
+  let cursor = 0;
+  const workers: Promise<void>[] = [];
+  const workerCount = Math.min(RECONCILE_CONCURRENCY, local.length);
+  for (let w = 0; w < workerCount; w++) {
+    workers.push((async () => {
+      while (true) {
+        const i = cursor++;
+        if (i >= local.length) return;
+        const outcome = await reconcileOne(walletAddress, local[i]);
+        summary[outcome] += 1;
+      }
+    })());
+  }
+  await Promise.all(workers);
+
+  return summary;
+}
+
+/**
+ * Run reconciliation at most once per wallet per browser. Returns the
+ * summary on the first run, null when already reconciled. localStorage
+ * unavailable (e.g. SSR) treated as "already done" so no surprise work.
+ */
+export async function reconcileLocalCacheOnce(
+  walletAddress: string,
+): Promise<ReconcileSummary | null> {
+  let store: Storage | null;
+  try {
+    store = typeof localStorage !== 'undefined' ? localStorage : null;
+  } catch {
+    store = null;
+  }
+  if (!store) return null;
+  const key = reconcileLocalStorageKey(walletAddress);
+  if (store.getItem(key)) return null;
+
+  // Set the gate BEFORE the walk so a tab close mid-reconcile does not
+  // make the next session re-walk every row. Worst case: we leave a few
+  // orphans for the manual cleanup path. Better than the previous "all
+  // or nothing" failure where a flaky network meant the walk repeated
+  // every session.
+  try {
+    store.setItem(key, String(Date.now()));
+  } catch {
+    /* quota / disabled → next session retries */
+  }
+  return reconcileLocalCacheWithServer(walletAddress);
+}
+
 /**
  * Phase 4: server is the source of truth, so save MUST hit the server
  * before we mutate IndexedDB. If the server rejects (timeout, 4xx, 5xx)
