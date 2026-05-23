@@ -1,5 +1,8 @@
 /**
- * Agent Activity tab — AER timeline filtered to this agent's executions.
+ * Renders the "AER" sub-tab (formerly "Activity"; renamed 2026-05-23).
+ * File name kept as ActivityTab.tsx to avoid import churn.
+ *
+ * Agent AER timeline filtered to this agent's executions.
  *
  * Each row renders an event-class glyph (cognition/execution/settlement),
  * an outcome dot (success/hold/failure), and a wake-trigger icon
@@ -182,7 +185,7 @@ export function ActivityTab({
     <>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold text-white">
-          {isPreview ? 'Recent activity' : 'Activity'}
+          {isPreview ? 'Recent activity' : 'AER'}
         </h3>
         {!isPreview && (
           <div className="flex gap-1 p-0.5 rounded-lg bg-uju-card/60 border border-uju-border/60">
