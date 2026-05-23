@@ -65,6 +65,19 @@ psql "$POINTS_DATABASE_URL" -c "SHOW timezone;"
 # Expect 'UTC' or 'Etc/UTC'. Otherwise add `SET timezone='UTC'` to scripts.
 ```
 
+### Pre-flight checklist for any new cron / scanner / worker
+
+Day 1 deploy에서 3 production-only 이슈를 발견한 후 (commits `d0a020fa`, `a79b5faf`, `782f80b4`) 추가된 체크리스트. 새 `.ts` cron/scanner 작성 시 PR merge 전 모두 확인.
+
+- [ ] **ESM `.js` extension** — sibling/relative import 라인 `from '../foo';` → `from '../foo.js';`. tsc bundler 모드는 typecheck pass시키지만 Node runtime 거부 ([feedback_esm_js_extension_required](.claude memory))
+- [ ] **postgres.js bulk insert chunking** — `INSERT ... ${db(rows, cols...)}` 는 row 수 × col 수가 65535 미만이어야 함. 안전한 batch size: `Math.floor(65535 / cols / 2)`. 5K rows 시점에 동작해도 50K 시점에 abort 가능 ([feedback_postgres_js_param_cap](.claude memory))
+- [ ] **activity_points query plan** — 신규 query는 `idx_ap_identity_timestamp (identity_id, tx_timestamp)`, `idx_ap_timestamp (tx_timestamp)`, `idx_ap_wallet (wallet_address)` 셋 중 하나 활용. `processed_at` ORDER/WHERE, `LOWER(wallet_address)`, `DISTINCT (identity_id, wallet_address)` 모두 sequential scan ([feedback_activity_points_index_usage](.claude memory))
+- [ ] **신규 cron은 env flag로 gate** — `if (process.env.ENABLE_X !== 'true') return;` 패턴. .env에서 즉시 disable 가능
+- [ ] **Telegram alert에 dedupKey 명시** — `sendTelegramAlert(msg, { dedupKey: 'foo-fail' })`. 누락 시 6h마다 spam 반복
+- [ ] **pm2 start 후 1분 logs 모니터링 필수** — typecheck/lint 모두 통과해도 ESM runtime 또는 DB query plan 차원의 silent breakage 가능
+- [ ] **첫 cycle row count 확인** — 예상 N rows ± 30% 범위. partial-failure ratio < 5%
+- [ ] **prod EC2와 격리된 pm2 fork mode 권장** — `pm2 start --only <new-worker>`. `pm2 reload ecosystem.config.cjs` 금지 (다른 process도 재시작됨)
+
 ### Day 1 — staking-principal-sync only
 
 ```bash
