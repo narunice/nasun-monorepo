@@ -15,7 +15,6 @@ import type { BudgetInfo } from '../../hooks/useBudgets';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { useCapability } from '../../hooks/useCapability';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
-import { TradingCapitalCard } from '../../components/funds/TradingCapitalCard';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
 import { ExportAgentKeyModal } from '../../components/modals/ExportAgentKeyModal';
 import { ActivateAgentModal } from '../../components/modals/ActivateAgentModal';
@@ -23,7 +22,6 @@ import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentMod
 import { RestoreAgentModal } from '../../components/modals/RestoreAgentModal';
 import { TosAcknowledgementModal, hasAcceptedTos } from '../../components/modals/TosAcknowledgementModal';
 import { useAgentVaultStatus } from '../../hooks/useAgentVaultStatus';
-import { EscrowTab } from './EscrowTab';
 import { SessionsTab } from './SessionsTab';
 
 interface SettingsTabProps {
@@ -107,14 +105,6 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           }}
           onDelete={config ? async () => { await remove(); } : undefined}
         />
-      </section>
-
-      <section id="settings-inference-balance">
-        <EscrowTab walletAddress={walletAddress} agentAddress={agent.agentAddress} />
-      </section>
-
-      <section>
-        <TradingCapitalCard agent={agent} walletAddress={walletAddress} />
       </section>
 
       <section>

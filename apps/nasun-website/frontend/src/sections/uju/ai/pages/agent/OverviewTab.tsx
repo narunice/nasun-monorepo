@@ -26,9 +26,6 @@ interface OverviewTabProps {
   walletAddress: string;
   onRefresh: () => void;
   onViewAllActivity: () => void;
-  onOpenSettings: () => void;
-  /** Optional override; defaults to the Settings tab handler. */
-  onOpenInferenceTab?: () => void;
 }
 
 export function OverviewTab({
@@ -36,8 +33,6 @@ export function OverviewTab({
   walletAddress,
   onRefresh,
   onViewAllActivity,
-  onOpenSettings,
-  onOpenInferenceTab,
 }: OverviewTabProps) {
   const { reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const aerStats = useAgentAerStats(walletAddress, agent.agentAddress, agent.capabilityId);
@@ -127,11 +122,7 @@ export function OverviewTab({
 
       <TradingPerformanceCard agent={agent} />
 
-      <AgentFundsCard
-        agent={agent}
-        walletAddress={walletAddress}
-        onOpenInferenceTab={onOpenInferenceTab ?? onOpenSettings}
-      />
+      <AgentFundsCard agent={agent} walletAddress={walletAddress} />
 
       <div>
         <ActivityTab
