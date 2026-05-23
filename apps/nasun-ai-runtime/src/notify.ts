@@ -219,7 +219,12 @@ function shouldNotify(result: TraderCycleResult, env: NotifyEnv): boolean {
   if (!env.BARAM_CHAT_SERVER_HMAC_SECRET) return false;
   if (result.outcome !== 'succeeded') return false;
   const action = result.decision?.action;
-  if (action !== 'BUY' && action !== 'SELL') return false;
+  // Push for any settled decision (BUY/SELL/HOLD). User wanted per-cycle
+  // visibility: every successful cycle lands an AER on-chain, and they want
+  // the TG mirror of that proof-of-life. Action must still be present —
+  // a null decision means the cycle bailed before settling and should not
+  // produce a message.
+  if (action !== 'BUY' && action !== 'SELL' && action !== 'HOLD') return false;
   return true;
 }
 
