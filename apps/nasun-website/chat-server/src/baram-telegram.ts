@@ -478,6 +478,11 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     return;
   }
 
+  // Resolve agent name for reply header so the user knows which agent is
+  // responding (Option D — important when multiple agents exist).
+  const { getAgentNameByAddress } = await import('./nasun-ai-config-routes.js');
+  const agentReplyName = getAgentNameByAddress(session.agent);
+
   // Issue 5-min JWT for the session
   let jwt: string;
   try {
@@ -522,7 +527,10 @@ export async function handleTelegramUpdate(update: TelegramUpdate): Promise<void
     }
 
     if (result.ok && result.summary) {
-      await sendMessage(chatId, result.summary);
+      const prefixed = agentReplyName
+        ? `[${escapeTgHtml(agentReplyName)}] ${result.summary}`
+        : result.summary;
+      await sendMessage(chatId, prefixed);
     } else if (result.ok && result.status === 'skipped' && result.reason === 'pending_lock') {
       // Defense-in-depth: a stranded lock should be impossible after the
       // 2026-05-16 finally/cancel fixes, but if one ever slips through the

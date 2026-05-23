@@ -61,12 +61,11 @@ export function SessionsTab({
   const agentSessions = sessions.filter(
     (s) => s.agent.toLowerCase() === agentAddress.toLowerCase(),
   );
-  // Push routing currently picks the most-recent active session per wallet
-  // (LIMIT 1 in chat-server). A second link doesn't double the notifications,
-  // it just silently supersedes the previous one — so the +Link button is
-  // disabled while a linked session already exists. Pending (tgUserId=null)
-  // rows don't count: those are sessions the user created but never opened
-  // in Telegram, and re-linking is the natural way to recover from them.
+  // One active TG link per Telegram account (enforced in chat-server): linking
+  // this agent revokes any existing link across all agents. Disable the button
+  // while this agent already has a linked session — the user must revoke first
+  // to create a fresh link. Pending rows (tgUserId=null) don't count: those
+  // were never opened in Telegram and re-linking is the natural recovery.
   const hasLinkedSession = agentSessions.some((s) => s.tgUserId !== null);
 
   const handleSaveCapId = () => {
@@ -121,8 +120,8 @@ export function SessionsTab({
       <div>
         <h3 className="text-sm font-semibold text-white">Active Telegram Session</h3>
         <p className="text-sm text-uju-secondary mt-0.5">
-          Lets @nasun_ai_bot notify you about this agent. One active session per
-          agent — linking a new one supersedes the existing link.
+          Lets @nasun_ai_bot send trade alerts for this agent. One active link
+          per account — linking here replaces any existing link across your agents.
         </p>
       </div>
 
