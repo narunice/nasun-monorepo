@@ -77,20 +77,27 @@ async function runSync(): Promise<void> {
                 END) > 0
     `;
 
-    // Map wallet → identity. activity_points.wallet_address is stored
-    // lowercased by the main scanner (referral-bonus.ts:184 convention), so we
-    // can use the raw column and ride the idx_ap_wallet index instead of
-    // `LOWER(wallet_address)` which forces a sequential scan on the 18M-row
-    // table and hits the 30s statement_timeout.
-    const walletRows = await pointsDb<Array<{ wallet_address: string; identity_id: string }>>`
-      SELECT DISTINCT ON (wallet_address) wallet_address, identity_id
-      FROM activity_points
-      WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-      ORDER BY wallet_address, tx_timestamp DESC
-    `;
+    // Map wallet → identity, but ONLY for the small set of LP actors (~100
+    // on launch, three-digit thousands at scale). The previous shape did
+    // `DISTINCT ON (wallet_address)` over the full 18M-row activity_points
+    // table just to keep 99 mappings, which scanned every index entry and
+    // blew past the 30s statement_timeout. Filtering to the actor set first
+    // turns this into ~100 indexed point lookups on idx_ap_wallet.
+    // (activity_points.wallet_address is stored lowercased by the main
+    // scanner; referral-bonus.ts:184 convention.)
+    const actorList = [...new Set(lpPositions.map((r) => r.actor.toLowerCase()))];
     const walletToIdentity = new Map<string, string>();
-    for (const { wallet_address, identity_id } of walletRows) {
-      walletToIdentity.set(wallet_address.toLowerCase(), identity_id);
+    if (actorList.length > 0) {
+      const walletRows = await pointsDb<Array<{ wallet_address: string; identity_id: string }>>`
+        SELECT DISTINCT ON (wallet_address) wallet_address, identity_id
+        FROM activity_points
+        WHERE wallet_address = ANY(${actorList})
+          AND identity_id IS NOT NULL
+        ORDER BY wallet_address, tx_timestamp DESC
+      `;
+      for (const { wallet_address, identity_id } of walletRows) {
+        walletToIdentity.set(wallet_address.toLowerCase(), identity_id);
+      }
     }
 
     // Some identities may control multiple wallets; sum across them.

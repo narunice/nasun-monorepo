@@ -26,6 +26,7 @@
 
 import { sql as indexerDb, pointsDb } from '../db.js';
 import { sendTelegramAlert } from '../utils/alert.js';
+import { getLatestWalletPerIdentity } from './identity-wallet.js';
 
 const COMPUTE_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
@@ -37,7 +38,10 @@ const W_DIVERSITY = 0.15;
 const W_NFT = 0.1;
 
 // === Tier thresholds (NSI 0-1000 range) ===
-const TIER_3_THRESHOLD = 600;
+// T3 lowered 600→500 (2026-05-23) after first-cycle distribution showed only
+// 14 users ≥600 (target ~500). NSI cold start: 30d sliding window has 1 day
+// of data; revisit after window fully populates (~2026-06-22).
+const TIER_3_THRESHOLD = 500;
 const TIER_2_THRESHOLD = 250;
 
 // === Sub-score normalization constants ===
@@ -250,19 +254,9 @@ async function runCompute(): Promise<void> {
       }
     }
 
-    // Stage F: latest wallet per identity.
-    // `idx_ap_identity_timestamp (identity_id, tx_timestamp)` is the only
-    // composite index that supports this DISTINCT ON; ordering by
-    // `processed_at` (no index) would force a sequential scan on the 18M-row
-    // table and hit the 30s statement_timeout.
-    const walletRows = await pointsDb<Array<{ identity_id: string; wallet_address: string }>>`
-      SELECT DISTINCT ON (identity_id) identity_id, wallet_address
-      FROM activity_points
-      WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-      ORDER BY identity_id, tx_timestamp DESC
-    `;
-    const identityToWallet = new Map<string, string>();
-    for (const r of walletRows) identityToWallet.set(r.identity_id, r.wallet_address);
+    // Stage F: latest wallet per identity. See identity-wallet.ts for why
+    // the loose index scan helper replaces the naive DISTINCT ON.
+    const identityToWallet = await getLatestWalletPerIdentity();
 
     // Stage G: existing user_nsi rows (for previous_tier + max_seen_tier).
     const existing = await pointsDb<
