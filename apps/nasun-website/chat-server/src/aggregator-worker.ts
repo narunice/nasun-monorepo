@@ -22,6 +22,7 @@
 
 import { parentPort, workerData } from 'node:worker_threads';
 import path from 'node:path';
+import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import type { LeaderboardConfig, Period } from './leaderboard-types.js';
 import { PERIOD_MS, POINTS } from './leaderboard-types.js';
@@ -104,6 +105,18 @@ function getW21GenesisPassSet(addresses: string[]): Set<string> {
     .prepare(`SELECT address FROM users WHERE address IN (${placeholders}) AND has_genesis_pass = 1`)
     .all(...addresses) as { address: string }[];
   return new Set(rows.map((r) => r.address));
+}
+
+// Disk-based debug logger for W21 guard — bypasses any async/promise state
+// issues that swallow console.log in the worker_thread. Safe to call from
+// inside an unhandled-rejection path.
+const W21_DEBUG_LOG_PATH = '/tmp/w21-debug.log';
+function w21debug(msg: string): void {
+  try {
+    fs.appendFileSync(W21_DEBUG_LOG_PATH, `${new Date().toISOString()} ${msg}\n`);
+  } catch {
+    // intentionally swallow — never let debug log break the aggregator
+  }
 }
 
 // Encapsulates the weekly spot PnL → score formula so the W21 guard can
@@ -400,11 +413,33 @@ async function runWeeklyScoreAggregation(): Promise<void> {
 
   const weekStart = getCurrentWeekStart();
   const weekId = getWeekId(weekStart);
+  w21debug(`enter weekId=${weekId} weekStart=${weekStart}`);
 
-  const rawTraders = aggregateWeeklyTraderVolume(weekStart, getEffectiveExcludedAddresses(), POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
-  if (rawTraders.length === 0) return;
+  const excludedAddrs = getEffectiveExcludedAddresses();
+  w21debug(`excluded=${excludedAddrs.size} samePairs=${sameIdentityPairs.size} dailyCap=${POINTS.DAILY_TRADE_CAP} limit=${AGGREGATION_LIMIT}`);
 
-  const fullIdentityMap = await getIdentityMap();
+  const rawTraders = aggregateWeeklyTraderVolume(weekStart, excludedAddrs, POINTS.DAILY_TRADE_CAP, AGGREGATION_LIMIT, sameIdentityPairs);
+  w21debug(`rawTraders=${rawTraders.length}`);
+  if (rawTraders.length === 0) {
+    w21debug('early-return-rawTraders-empty');
+    return;
+  }
+
+  let fullIdentityMap = await getIdentityMap();
+  // Identity cache initial population on worker startup can fail (WALLET_MAPPINGS_URL
+  // timeout), which leaves the cache empty until the hourly refresh interval. With
+  // an empty cache, every trader gets filtered out and the weekly score writeback
+  // silently no-ops. Retry up to 3 times here so a single transient timeout doesn't
+  // freeze the leaderboard for an hour.
+  for (let attempt = 0; attempt < 3 && fullIdentityMap.size === 0; attempt++) {
+    w21debug(`identity-empty-retry attempt=${attempt + 1}`);
+    await refreshIdentityCache();
+    fullIdentityMap = await getIdentityMap();
+    if (fullIdentityMap.size === 0) {
+      await new Promise((r) => setTimeout(r, 2000));
+    }
+  }
+  w21debug(`identityMap=${fullIdentityMap.size}`);
   const identityMap = new Map<string, string>();
   for (const t of rawTraders) {
     const addr = t.address.toLowerCase();
@@ -412,7 +447,11 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     if (id) identityMap.set(addr, id);
   }
   const traders = rawTraders.filter((t) => identityMap.has(t.address.toLowerCase()));
-  if (traders.length === 0) return;
+  w21debug(`traders-after-identity=${traders.length}`);
+  if (traders.length === 0) {
+    w21debug('early-return-traders-empty');
+    return;
+  }
 
   const weeklyPnlList = computeTraderPnl(weekStart, getEffectiveExcludedAddresses(), AGGREGATION_LIMIT, sameIdentityPairs);
   const weeklyPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
@@ -518,12 +557,25 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     };
   });
 
+  w21debug(`cycle-start weekId=${weekId} scored=${scored.length} identityMap=${identityMap.size}`);
+
   // Fetch social badges once — used by both W21 guard (for tier classification)
-  // and the final rankedWithBadges projection below.
+  // and the final rankedWithBadges projection below. DynamoDB BatchGetItem
+  // occasionally hits EPIPE/Timeout; without the try/catch a single transient
+  // failure crashes the entire weekly score writeback.
   const identityIds = [...new Set(identityMap.values())];
-  const badgesByIdentity = identityIds.length > 0
-    ? await getSocialBadgesBatch(identityIds)
-    : new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
+  let badgesByIdentity = new Map<string, { xHandle: string | null; hasGoogle: boolean; hasTelegram: boolean }>();
+  if (identityIds.length > 0) {
+    try {
+      badgesByIdentity = await getSocialBadgesBatch(identityIds);
+      w21debug(`badges-ok size=${badgesByIdentity.size}`);
+    } catch (err) {
+      w21debug(`badges-fail msg=${(err as Error).message}`);
+      console.error(`[Aggregator] getSocialBadgesBatch failed (${(err as Error).message}); proceeding with empty badge map.`);
+    }
+  } else {
+    w21debug('badges-skip identityIds=0');
+  }
 
   // W21-only: 5/19 NBTC/NETH 10x anomaly fills inflated some traders' PnL by
   // ~10x. Recompute their spot PnL score against an anomaly-excluded baseline
@@ -531,50 +583,65 @@ async function runWeeklyScoreAggregation(): Promise<void> {
   //   GP holder       → 70% preserved (30% trim)
   //   Any social      → 55% preserved (45% trim)
   //   No GP/social    → 10% preserved (90% trim)
-  // Normal post-fix trades are not flagged by the SQL filter (raw price
-  // thresholds 200/10 sit far above market), so any new W21 activity scores
-  // by the unmodified formula. Block deactivates automatically when weekId
+  // Wrapped in try/catch so any guard failure logs but does NOT abort the
+  // weekly score writeback. Block deactivates automatically when weekId
   // moves to W22.
   if (weekId === W21_WEEK_ID) {
-    const cleanPnlList = computeTraderPnl(
-      weekStart,
-      getEffectiveExcludedAddresses(),
-      AGGREGATION_LIMIT,
-      sameIdentityPairs,
-      true, // excludeW21Anomaly
-    );
-    const cleanPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
-    for (const t of cleanPnlList) {
-      cleanPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
-    }
+    try {
+      w21debug('guard-enter');
+      const cleanPnlList = computeTraderPnl(
+        weekStart,
+        getEffectiveExcludedAddresses(),
+        AGGREGATION_LIMIT,
+        sameIdentityPairs,
+        true, // excludeW21Anomaly
+      );
+      w21debug(`clean-pnl-list=${cleanPnlList.length}`);
+      const cleanPnlMap = new Map<string, { realizedPnlRaw: number; pnlPercent: number }>();
+      for (const t of cleanPnlList) {
+        cleanPnlMap.set(t.address, { realizedPnlRaw: t.realizedPnlRaw, pnlPercent: t.pnlPercent });
+      }
 
-    const gpSet = getW21GenesisPassSet(scored.map((t) => t.address));
+      const gpSet = getW21GenesisPassSet(scored.map((t) => t.address));
+      w21debug(`gp-set=${gpSet.size}`);
 
-    let adjustedCount = 0;
-    for (const trader of scored) {
-      const origScore = trader.scoreFromPnl;
-      const cleanScore = computeWeeklySpotPnlScore(cleanPnlMap.get(trader.address));
-      if (origScore === cleanScore) continue; // no anomaly contribution → no change
+      let adjustedCount = 0;
+      let probedFirst = false;
+      for (const trader of scored) {
+        const origScore = trader.scoreFromPnl;
+        const cleanScore = computeWeeklySpotPnlScore(cleanPnlMap.get(trader.address));
+        if (!probedFirst && origScore > 1000) {
+          probedFirst = true;
+          w21debug(`probe addr=${trader.address.slice(0,12)} orig=${origScore} clean=${cleanScore} hasClean=${cleanPnlMap.has(trader.address)}`);
+        }
+        if (origScore === cleanScore) continue;
 
-      const identityId = identityMap.get(trader.address.toLowerCase());
-      const badge = identityId ? badgesByIdentity.get(identityId) : undefined;
-      const hasGp = gpSet.has(trader.address);
-      const hasSocial = !!(badge && (badge.xHandle || badge.hasGoogle || badge.hasTelegram));
-      const preserveRate = hasGp
-        ? W21_PRESERVE_RATE_GP
-        : hasSocial
-          ? W21_PRESERVE_RATE_SOC
-          : W21_PRESERVE_RATE_NONE;
+        const identityId = identityMap.get(trader.address.toLowerCase());
+        const badge = identityId ? badgesByIdentity.get(identityId) : undefined;
+        const hasGp = gpSet.has(trader.address);
+        const hasSocial = !!(badge && (badge.xHandle || badge.hasGoogle || badge.hasTelegram));
+        const preserveRate = hasGp
+          ? W21_PRESERVE_RATE_GP
+          : hasSocial
+            ? W21_PRESERVE_RATE_SOC
+            : W21_PRESERVE_RATE_NONE;
 
-      const blendedScore = Math.round(cleanScore + (origScore - cleanScore) * preserveRate);
-      trader.totalScore = trader.totalScore - origScore + blendedScore;
-      trader.scoreFromPnl = blendedScore;
-      adjustedCount++;
-    }
-    if (adjustedCount > 0) {
-      console.log(`[Aggregator] W21 anomaly guard: adjusted ${adjustedCount} traders`);
+        const blendedScore = Math.round(cleanScore + (origScore - cleanScore) * preserveRate);
+        trader.totalScore = trader.totalScore - origScore + blendedScore;
+        trader.scoreFromPnl = blendedScore;
+        adjustedCount++;
+      }
+      w21debug(`guard-done adjusted=${adjustedCount}`);
+      if (adjustedCount > 0) {
+        console.log(`[Aggregator] W21 anomaly guard: adjusted ${adjustedCount} traders`);
+      }
+    } catch (err) {
+      w21debug(`guard-error msg=${(err as Error).message} stack=${(err as Error).stack?.split('\n').slice(0, 5).join('|')}`);
+      console.error('[Aggregator] W21 guard error:', (err as Error).message);
     }
   }
+
+  w21debug('about-to-sort');
 
   // Deterministic tiebreaker chain so ranks are unique even on identical totalScore.
   // Order: totalScore desc → spot volume desc → prediction realized PnL desc
@@ -609,7 +676,9 @@ async function runWeeklyScoreAggregation(): Promise<void> {
     };
   });
 
+  w21debug(`about-to-write-store rows=${rankedWithBadges.length}`);
   replaceWeeklyTraderScores(weekId, rankedWithBadges);
+  w21debug('store-written');
 
   const prevWeekParticipants = countWeeklyUniqueTraders(
     prevWeekStart,
