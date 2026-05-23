@@ -181,7 +181,19 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           agentName={agent.name}
           capabilityId={agent.capabilityId}
           walletAddress={walletAddress}
-          onActivated={() => void vault.refresh()}
+          onActivated={() => {
+            // Phase 6 wiring: flip enabled=true in the trader config so the
+            // chat-server orchestrator's reconcile step actually spawns
+            // PM2. Without this, vault upload would succeed but the
+            // runtime would never start (enabled gate refuses spawn).
+            void (async () => {
+              if (config) {
+                const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;
+                await save({ ...rest, enabled: true });
+              }
+              void vault.refresh();
+            })();
+          }}
           onClose={() => setActivateOpen(false)}
         />
       )}
@@ -191,7 +203,19 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           agentName={agent.name}
           walletAddress={walletAddress}
           agentProfileId={agent.id}
-          onDeactivated={() => void vault.refresh()}
+          onDeactivated={() => {
+            // Phase 6 wiring: flip enabled=false in the trader config so
+            // the chat-server orchestrator's reconcile stops PM2 and the
+            // runtime's per-cycle self-suicide gate honors the user
+            // intent immediately on next cycle.
+            void (async () => {
+              if (config) {
+                const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;
+                await save({ ...rest, enabled: false });
+              }
+              void vault.refresh();
+            })();
+          }}
           onClose={() => setDeactivateOpen(false)}
         />
       )}
