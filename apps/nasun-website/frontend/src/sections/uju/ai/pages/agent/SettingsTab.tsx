@@ -31,7 +31,7 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) {
-  const { config, save, remove, refetch } = useTraderConfig(agent.agentAddress);
+  const { config, source, save, remove, refetch } = useTraderConfig(agent.agentAddress);
   // Capability is the on-chain trust boundary the trader operates within.
   // When the user raises trader perTrade/dailyMax in the form, we mirror the
   // change onto the capability so the next swap PTB does not hit
@@ -66,6 +66,12 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           The agent is executed by Nasun AI runtime on the server. Update the config below and the
           runtime will pick it up on the next cycle.
         </p>
+        {source === 'cache' && (
+          <p className="text-xs text-amber-400">
+            Showing locally cached values. Could not reach the server; what the runtime is actually
+            using may differ. Retry to load the authoritative version.
+          </p>
+        )}
         <TraderConfigForm
           agentAddress={agent.agentAddress}
           agentName={agent.name}
