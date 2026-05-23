@@ -37,6 +37,27 @@ setGlobalDispatcher(
   }),
 );
 
+/**
+ * Strip wrapping single or double quotes that bash-style .env files
+ * commonly use to delimit a value containing whitespace, brackets, or
+ * embedded quotes. dotenv does this automatically; our hand-rolled
+ * parser did not, so values like `CHAT_LLM_PROVIDERS='[{...}]'` leaked
+ * the literal `'` into process.env and downstream `JSON.parse` blew up
+ * (chat preset silently fell back, observed 2026-05-24 staging Santa
+ * chat). Matching pair only — odd `it's` or unclosed `"...` is left
+ * as-is rather than corrupting the value.
+ */
+function unwrapEnvValue(v: string): string {
+  if (v.length >= 2) {
+    const first = v[0];
+    const last = v[v.length - 1];
+    if ((first === "'" || first === '"') && first === last) {
+      return v.slice(1, -1);
+    }
+  }
+  return v;
+}
+
 try {
   const content = readFileSync('.env', 'utf-8');
   for (const line of content.split('\n')) {
@@ -45,7 +66,7 @@ try {
     const eqIdx = trimmed.indexOf('=');
     if (eqIdx === -1) continue;
     const key = trimmed.slice(0, eqIdx).trim();
-    const val = trimmed.slice(eqIdx + 1).trim();
+    const val = unwrapEnvValue(trimmed.slice(eqIdx + 1).trim());
     if (!process.env[key]) process.env[key] = val;
   }
 } catch {
