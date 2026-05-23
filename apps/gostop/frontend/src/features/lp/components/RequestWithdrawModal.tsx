@@ -48,13 +48,13 @@ export function RequestWithdrawModal({ open, onClose, onConfirm, position, resta
       onClick={() => { if (!submitting) onClose(); }}
     >
       <div
-        className="panel max-w-lg w-full p-6 space-y-5"
+        className="panel max-w-lg w-full flex flex-col max-h-[calc(100dvh-2rem)]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="request-withdraw-modal-title"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-3 px-6 pt-6 pb-4 shrink-0">
           <h2 id="request-withdraw-modal-title" className="font-display text-2xl text-gold">
             {title}
           </h2>
@@ -68,70 +68,72 @@ export function RequestWithdrawModal({ open, onClose, onConfirm, position, resta
           </button>
         </div>
 
-        <p className="text-sm text-neutral-200">
-          Withdrawing liquidity is a <span className="text-gold-200">two-step process</span>. This
-          confirmation only starts the cooldown — your NUSDC stays in the pool until you redeem
-          after the 24-hour wait.
-        </p>
-
-        <ol className="space-y-2 text-sm text-neutral-200">
-          <Step
-            n={1}
-            done
-            label="Request"
-            desc="On confirm, your LPToken records a withdraw_requested_at timestamp on chain and the 24h timer starts. No NUSDC moves yet."
-          />
-          <Step
-            n={2}
-            label="Wait 24h"
-            desc="During this window the pool can absorb live betting PnL. The card shows a live countdown."
-          />
-          <Step
-            n={3}
-            label="Redeem"
-            desc="After the cooldown, click 'Redeem NUSDC' on this same card. Your LPToken is burned and NUSDC lands in your wallet."
-          />
-        </ol>
-
-        <div className="rounded-md border border-amber-400/30 bg-amber-500/5 px-3 py-3 space-y-1">
-          <p className="text-sm font-medium text-amber-100">Redeem-time pricing</p>
+        <div className="overflow-y-auto px-6 space-y-5 pb-2">
           <p className="text-sm text-neutral-200">
-            NUSDC received = your shares × <em>share price at redeem time</em>, not now. If the
-            pool wins or loses during the cooldown, your payout moves with it. Partial withdraws
-            are not supported — redeem returns the full LPToken value.
+            Withdrawing liquidity is a <span className="text-gold-200">two-step process</span>. This
+            confirmation only starts the cooldown — your NUSDC stays in the pool until you redeem
+            after the 24-hour wait.
           </p>
-        </div>
 
-        {restart && (
-          <div className="rounded-md border border-rose-400/30 bg-rose-500/5 px-3 py-3 space-y-1">
-            <p className="text-sm font-medium text-rose-200">You are restarting an active cooldown</p>
+          <ol className="space-y-2 text-sm text-neutral-200">
+            <Step
+              n={1}
+              done
+              label="Request"
+              desc="On confirm, your LPToken records a withdraw_requested_at timestamp on chain and the 24h timer starts. No NUSDC moves yet."
+            />
+            <Step
+              n={2}
+              label="Wait 24h"
+              desc="During this window the pool can absorb live betting PnL. The card shows a live countdown."
+            />
+            <Step
+              n={3}
+              label="Redeem"
+              desc="After the cooldown, click 'Redeem NUSDC' on this same card. Your LPToken is burned and NUSDC lands in your wallet."
+            />
+          </ol>
+
+          <div className="rounded-md border border-amber-400/30 bg-amber-500/5 px-3 py-3 space-y-1">
+            <p className="text-sm font-medium text-amber-100">Redeem-time pricing</p>
             <p className="text-sm text-neutral-200">
-              This position is already in cooldown. Confirming will reset the timer back to a full
-              24 hours, and any time already accrued is lost.
+              NUSDC received = your shares × <em>share price at redeem time</em>, not now. If the
+              pool wins or loses during the cooldown, your payout moves with it. Partial withdraws
+              are not supported — redeem returns the full LPToken value.
             </p>
           </div>
-        )}
 
-        <div className="rounded-md border border-gold-subtle bg-ink-900/40 px-3 py-3 space-y-1">
-          <p className="text-sm uppercase tracking-widest text-neutral-300">This position</p>
-          <p className="text-sm font-mono text-neutral-100 break-all">
-            {position.lp_token_id.slice(0, 16)}…{position.lp_token_id.slice(-8)}
-          </p>
-          <div className="grid grid-cols-2 gap-3 pt-1">
-            <div>
-              <p className="text-sm text-neutral-300">Shares</p>
-              <p className="text-sm font-mono text-neutral-100">{position.shares}</p>
-            </div>
-            <div>
-              <p className="text-sm text-neutral-300">Est. value now</p>
-              <p className="text-sm font-mono text-gold-200">
-                {fmtUsdc(position.estimated_value_nusdc)} NUSDC
+          {restart && (
+            <div className="rounded-md border border-rose-400/30 bg-rose-500/5 px-3 py-3 space-y-1">
+              <p className="text-sm font-medium text-rose-200">You are restarting an active cooldown</p>
+              <p className="text-sm text-neutral-200">
+                This position is already in cooldown. Confirming will reset the timer back to a full
+                24 hours, and any time already accrued is lost.
               </p>
+            </div>
+          )}
+
+          <div className="rounded-md border border-gold-subtle bg-ink-900/40 px-3 py-3 space-y-1">
+            <p className="text-sm uppercase tracking-widest text-neutral-300">This position</p>
+            <p className="text-sm font-mono text-neutral-100 break-all">
+              {position.lp_token_id.slice(0, 16)}…{position.lp_token_id.slice(-8)}
+            </p>
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div>
+                <p className="text-sm text-neutral-300">Shares</p>
+                <p className="text-sm font-mono text-neutral-100">{position.shares}</p>
+              </div>
+              <div>
+                <p className="text-sm text-neutral-300">Est. value now</p>
+                <p className="text-sm font-mono text-gold-200">
+                  {fmtUsdc(position.estimated_value_nusdc)} NUSDC
+                </p>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-1">
+        <div className="flex items-center justify-end gap-3 px-6 py-4 shrink-0 border-t border-gold-subtle/20">
           <button
             onClick={onClose}
             disabled={submitting}
