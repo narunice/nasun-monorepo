@@ -103,7 +103,16 @@ export function useLinkSession() {
   return { link, status, error, result, reset };
 }
 
-export function useNasunAiSessions() {
+export interface UseNasunAiSessionsOpts {
+  // When false, suppresses the mount-time signature prompt. Quickstart needs
+  // this so opening the AI tab does not pop up a Telegram-link signature
+  // before the user has even reached Step 4. Default true preserves the
+  // existing behavior for Settings/Sessions surfaces.
+  autoLoad?: boolean;
+}
+
+export function useNasunAiSessions(opts: UseNasunAiSessionsOpts = {}) {
+  const { autoLoad = true } = opts;
   const { signer, address } = useSigner();
   const [sessions, setSessions] = useState<NasunAiSession[]>([]);
   const [loading, setLoading] = useState(false);
@@ -145,14 +154,15 @@ export function useNasunAiSessions() {
 
   // Auto-fetch on mount and on wallet switch. This triggers exactly one
   // wallet signature prompt per wallet change. Without it, sessions appear
-  // empty until the user performs a link/revoke action — at which point
-  // the surprise reveal of pre-existing sessions misleads users into
-  // thinking new sessions appeared from nowhere.
+  // empty until the user performs a link/revoke action and the surprise
+  // reveal of pre-existing sessions misleads users into thinking new
+  // sessions appeared from nowhere. Quickstart opts out via autoLoad=false
+  // so the AI tab does not pop a signature before Step 4.
   useEffect(() => {
-    if (signer && address) {
+    if (autoLoad && signer && address) {
       void load();
     }
-  }, [signer, address, load]);
+  }, [autoLoad, signer, address, load]);
 
   return { sessions, loading, error, reload: load };
 }

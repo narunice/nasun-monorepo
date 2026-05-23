@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useSigner } from "@nasun/wallet";
+import { NUSDC_TYPE } from "@nasun/devnet-config";
+import { suiClient } from "@/lib/sui-client";
 import { useAgentProfiles } from "../hooks/useAgentProfiles";
 import { useAgentBudgets } from "../hooks/useAgentBudgets";
 import { useTraderConfig } from "../hooks/useTraderConfig";
@@ -10,8 +13,37 @@ import {
   leaveAlphaWaitlist,
   AlphaApiError,
 } from "../alpha/alphaApiClient";
+import { buildAgentFundTransaction } from "../services/transactionBuilder";
+import { getNusdcCoins } from "../services/coinService";
+import { useAgentVaultStatus } from "../hooks/useAgentVaultStatus";
+import { ActivateAgentModal } from "../components/modals/ActivateAgentModal";
+import { LinkTelegramModal } from "../components/modals/LinkTelegramModal";
+import { QuickStartWizardModal } from "../components/modals/QuickStartWizardModal";
 import { AgentCard } from "./AgentsList";
 import type { AgentSubTab } from "./AgentDetail";
+
+// Quickstart "Telegram linked" is tracked client-side via localStorage so a
+// page reload between Step 4 and Step 5 does not re-prompt for sig. The
+// authoritative check still lives on chat-server (`baram_sessions`) and is
+// implicit in the agent's first wake; this flag only drives stepState UI.
+function tgLinkedKey(wallet: string, agent: string): string {
+  return `nasun-ai-quickstart-tg-linked:${wallet.toLowerCase()}:${agent.toLowerCase()}`;
+}
+function readTgLinked(wallet: string, agent: string | null | undefined): boolean {
+  if (!agent) return false;
+  try {
+    return localStorage.getItem(tgLinkedKey(wallet, agent)) === "1";
+  } catch {
+    return false;
+  }
+}
+function writeTgLinked(wallet: string, agent: string): void {
+  try {
+    localStorage.setItem(tgLinkedKey(wallet, agent), "1");
+  } catch {
+    // localStorage may be disabled in private windows; ignore.
+  }
+}
 
 interface SelectAgentOptions {
   sub?: AgentSubTab;
@@ -21,7 +53,6 @@ interface SelectAgentOptions {
 interface QuickstartViewProps {
   walletAddress: string;
   onShowRegister: () => void;
-  onOpenBudgets: (agentAddress?: string) => void;
   onSelectAgent: (id: string, opts?: SelectAgentOptions) => void;
 }
 
@@ -76,9 +107,13 @@ type StepState = "done" | "active" | "locked";
 interface StepDef {
   num: number;
   title: string;
+  // Terse hint, <= 60 chars per UX rule (label + 1-line hint + Confirm).
   desc: string;
   state: StepState;
-  action?: React.ReactNode;
+  // Active step renders this inline body inside the card. Done/locked steps
+  // hide it. External actions (e.g. "+ New agent") are not needed when the
+  // body provides the full form + Confirm.
+  body?: React.ReactNode;
   subtext?: string;
 }
 
@@ -119,24 +154,22 @@ function StepCard({ step }: { step: StepDef }) {
 
         {/* Content */}
         <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div className="min-w-0">
-              <h3 className="text-sm font-semibold text-white leading-snug">
-                Step {step.num}. {step.title}
-              </h3>
-              <p className="mt-1 text-sm text-uju-secondary leading-relaxed">
-                {step.desc}
-              </p>
-              {step.subtext && (
-                <p className="mt-1.5 text-xs text-pado-2/80 font-medium">
-                  {step.subtext}
-                </p>
-              )}
+          <h3 className="text-sm font-semibold text-white leading-snug">
+            Step {step.num}. {step.title}
+          </h3>
+          <p className="mt-1 text-sm text-uju-secondary leading-snug">
+            {step.desc}
+          </p>
+          {step.subtext && (
+            <p className="mt-1.5 text-xs text-pado-2/80 font-medium">
+              {step.subtext}
+            </p>
+          )}
+          {isActive && step.body && (
+            <div className="mt-3 pt-3 border-t border-uju-border/40">
+              {step.body}
             </div>
-            {step.action && (
-              <div className="shrink-0 mt-0.5">{step.action}</div>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
@@ -161,7 +194,6 @@ function SkeletonCard() {
 export function QuickstartView({
   walletAddress,
   onShowRegister,
-  onOpenBudgets,
   onSelectAgent,
 }: QuickstartViewProps) {
   const { data: agents, isLoading: agentsLoading } =
@@ -176,10 +208,35 @@ export function QuickstartView({
   );
 
   const hasAgents = !!agents && agents.length > 0;
+  // hasBudget proxies "Fund step done" for both first-fund and resume cases:
+  // the new Step ② Fund PTB always creates the budget object together with
+  // the escrow trading-capital deposit, so a budget row implies both
+  // balances were funded. A power user who manually creates a budget
+  // without the trading deposit would still see Step ② marked done but
+  // Step ⑤ Activate checks vault-side preconditions on chain.
   const hasBudget =
     !!budgets && budgets.some((b) => b.agent === firstAgent?.agentAddress);
   const hasPolicy = !!traderConfig;
-  const isRunning = !!agents && agents.some((a) => a.isActive);
+  // Telegram link is tracked client-side. Set to true after LinkTelegramModal
+  // closes with status='success' (deep link was generated, user signed).
+  // Trust-on-confirm matches the plan v3 UX rule and avoids a second sig
+  // for a session-list read every time the AI tab is opened.
+  const [tgLinkedFlag, setTgLinkedFlag] = useState(() =>
+    readTgLinked(walletAddress, firstAgent?.agentAddress ?? null),
+  );
+  useEffect(() => {
+    setTgLinkedFlag(readTgLinked(walletAddress, firstAgent?.agentAddress ?? null));
+  }, [walletAddress, firstAgent?.agentAddress]);
+  const hasTelegram = tgLinkedFlag;
+  // Setup guide Step 5 done signal. AgentProfile.is_active defaults to true
+  // at create_agent time, so `agents.some(a => a.isActive)` would mark
+  // Step 5 done for any wallet that has registered an agent — including
+  // an agent that never reached vault upload. Track the first agent's
+  // chat-server vault state instead; 'active' means the keypair landed in
+  // SSM and pm2 spawned the runtime. Matches the wizard's Step 5 signal.
+  const firstAgentAddress = firstAgent?.agentAddress ?? null;
+  const firstAgentVault = useAgentVaultStatus(firstAgentAddress);
+  const isRunning = firstAgentVault.state === "active";
 
   const totalBalance = useMemo(
     () => (budgets ?? []).reduce((sum, b) => sum + b.balance, 0),
@@ -189,10 +246,24 @@ export function QuickstartView({
   const completedCount = [
     hasAgents,
     hasBudget,
-    hasAgents,
     hasPolicy,
+    hasTelegram,
     isRunning,
   ].filter(Boolean).length;
+
+  // Modal toggles for steps that still open a focused secondary surface:
+  // Telegram link (deep link + QR) and Activate (passphrase decrypt + vault
+  // upload). Both modals report success via callbacks that flip our local
+  // hasTelegram/refresh-isRunning state so the stepper advances without a
+  // page reload.
+  const [tgModalOpen, setTgModalOpen] = useState(false);
+  const [activateModalOpen, setActivateModalOpen] = useState(false);
+  // Standalone wizard for end-to-end create-and-configure flow. Independent
+  // of the Setup guide cards above. Existing wallet users use this to add
+  // a new agent without scrolling through the guide; new users use it as
+  // a single-modal alternative to the cards.
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   // Keep the Setup guide expanded until every step for the first agent is
   // explicitly done. isRunning alone is insufficient — useAgentProfiles can
@@ -265,126 +336,137 @@ export function QuickstartView({
     }
   };
 
-  // Determine per-step state
+  // Determine per-step state. The 5-step Quickstart order is:
+  //   0: Register agent (PTB ① atomic setup)
+  //   1: Fund agent (PTB ② create_budget + escrow::deposit, single sign)
+  //   2: Set policy (TraderConfig save, off-chain signed)
+  //   3: Link Telegram (deep link + bot bind, client-side trust)
+  //   4: Activate (vault upload + spawn)
+  // "Pick executor" from the previous layout is dropped — alpha runs a
+  // single shared executor and the choice is not yet a user-facing one.
   function stepState(stepIdx: number): StepState {
-    // Completion status array for each step (0-indexed)
-    const done = [hasAgents, hasBudget, hasAgents, hasPolicy, isRunning];
+    const done = [hasAgents, hasBudget, hasPolicy, hasTelegram, isRunning];
     if (done[stepIdx]) return "done";
-    // A step is active if all previous steps are done
     for (let i = 0; i < stepIdx; i++) {
       if (!done[i]) return "locked";
     }
     return "active";
   }
 
+  // Refetch agents + budgets right after Step ② Fund or Step ⑤ Activate so
+  // the stepper advances without a manual page reload. Both mutations
+  // change the on-chain state the StepState reads from. Query keys must
+  // match the hooks: ['nasun-ai', 'agentProfiles', wallet] and
+  // ['nasun-ai', 'budgets', wallet].
+  const refetchAgentState = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ["nasun-ai", "agentProfiles", walletAddress],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["nasun-ai", "budgets", walletAddress],
+    });
+  }, [queryClient, walletAddress]);
+
+  // Step ② Fund body: NUSDC inputs + single PTB (create_budget +
+  // escrow::deposit). The active alpha blocker we're fixing — every other
+  // step previously had a working path but Step ② was split across the
+  // Budgets page + a separate trading-capital deposit that nobody found.
+  // capabilityId is required to resolve the escrow object on chain when
+  // the just-minted lastSetup state is no longer available (e.g. after a
+  // page reload between Step ① and Step ②).
+  const step2Body =
+    stepState(1) === "active" && signer && firstAgent && firstAgent.capabilityId ? (
+      <Step2FundBody
+        signer={signer}
+        walletAddress={walletAddress}
+        agentAddress={firstAgent.agentAddress}
+        capabilityId={firstAgent.capabilityId}
+        onFunded={refetchAgentState}
+      />
+    ) : null;
+
   const steps: StepDef[] = [
     {
       num: 1,
       title: "Register your agent",
-      desc: "Pick a name and a passphrase. The passphrase encrypts your agent's keypair locally. Lose it and the agent is gone forever, so back up the recovery key shown next.",
+      desc: "Pick a name and a passphrase that encrypts the key locally.",
       state: stepState(0),
-      action: (
-        <button
-          type="button"
-          onClick={onShowRegister}
-          disabled={stepState(0) === "locked" || createBlock.blocked}
-          title={createBlock.message ?? undefined}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none disabled:opacity-50 whitespace-nowrap"
-        >
-          Open registration
-        </button>
-      ),
+      body:
+        stepState(0) === "active" ? (
+          <button
+            type="button"
+            onClick={onShowRegister}
+            disabled={createBlock.blocked}
+            title={createBlock.message ?? undefined}
+            className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Open registration
+          </button>
+        ) : undefined,
     },
     {
       num: 2,
-      title: "Fund the agent's inference balance",
-      desc: "Your agent pays for every AI inference it runs. Top up NUSDC here to cover that cost. You can withdraw any time.",
+      title: "Fund the agent",
+      desc: "Deposit NUSDC for inference and trading capital.",
       state: stepState(1),
       subtext:
         hasAgents && totalBalance === 0
           ? "No inference balance funded yet"
           : undefined,
-      action: (
-        <button
-          type="button"
-          onClick={() => onOpenBudgets(firstAgent?.agentAddress)}
-          disabled={stepState(1) === "locked"}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
-        >
-          Open inference balance
-        </button>
-      ),
+      body: step2Body ?? undefined,
     },
     {
       num: 3,
-      title: "Pick an executor",
-      desc: "The executor runs your agent's inference and signs the onchain settlement. For this prototype, Nasun operates a single shared executor. On the roadmap, more executors will join and you'll be able to choose by model, reputation, price, or TEE-backed execution.",
+      title: "Set trading policy",
+      desc: "Trading pair, per-trade and daily caps, strategy preset.",
       state: stepState(2),
-      action: (
-        <button
-          type="button"
-          onClick={() =>
-            firstAgent &&
-            onSelectAgent(firstAgent.id, {
-              sub: "settings",
-              fromQuickstart: true,
-            })
-          }
-          disabled={stepState(2) === "locked" || !firstAgent}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
-        >
-          Open executor
-        </button>
-      ),
+      body:
+        stepState(2) === "active" && firstAgent ? (
+          <button
+            type="button"
+            onClick={() =>
+              onSelectAgent(firstAgent.id, {
+                sub: "settings",
+                fromQuickstart: true,
+              })
+            }
+            className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
+          >
+            Open policy editor
+          </button>
+        ) : undefined,
     },
     {
       num: 4,
-      title: "Configure the agent",
-      desc: "Open the agent's Settings to choose the trading pair, position and risk caps, cadence, and a custom prompt that tells the agent how to think. Every value is included in each onchain report.",
+      title: "Link Telegram",
+      desc: "Receive alerts and confirm trades from your phone.",
       state: stepState(3),
-      action: (
-        <button
-          type="button"
-          onClick={() =>
-            firstAgent &&
-            onSelectAgent(firstAgent.id, {
-              sub: "settings",
-              fromQuickstart: true,
-            })
-          }
-          disabled={stepState(3) === "locked" || !firstAgent}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2 transition-colors disabled:pointer-events-none whitespace-nowrap"
-        >
-          Open editor
-        </button>
-      ),
+      body:
+        stepState(3) === "active" && firstAgent ? (
+          <button
+            type="button"
+            onClick={() => setTgModalOpen(true)}
+            className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
+          >
+            Link Telegram
+          </button>
+        ) : undefined,
     },
     {
       num: 5,
-      title: "Start",
-      desc: "The agent wakes on your cadence, reads the market, reasons, trades, and writes an Agent Execution Report onchain. You see every report, every trade, every cost, in real time below.",
+      title: "Activate",
+      desc: "Upload the encrypted key. Trading starts within ~5 minutes.",
       state: stepState(4),
-      action: isRunning ? null : (
-        <button
-          type="button"
-          onClick={() =>
-            firstAgent &&
-            onSelectAgent(firstAgent.id, {
-              sub: "overview",
-              fromQuickstart: true,
-            })
-          }
-          disabled={stepState(4) === "locked" || !firstAgent}
-          className={[
-            "px-3 py-1.5 text-sm font-medium rounded-lg transition-colors disabled:pointer-events-none whitespace-nowrap",
-            stepState(4) === "active"
-              ? "bg-pado-2 text-uju-bg hover:bg-pado-3"
-              : "border border-uju-border/60 text-uju-secondary hover:border-pado-2/60 hover:text-pado-2",
-          ].join(" ")}
-        >
-          {stepState(4) === "active" ? "Activate agent" : "Go to agent"}
-        </button>
-      ),
+      body:
+        stepState(4) === "active" && firstAgent ? (
+          <button
+            type="button"
+            onClick={() => setActivateModalOpen(true)}
+            className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
+          >
+            Activate agent
+          </button>
+        ) : undefined,
     },
   ];
 
@@ -455,6 +537,29 @@ export function QuickstartView({
        * not wired anywhere, so without this inline panel the activation
        * error ("Open the AI tab to join the waitlist") would have nowhere
        * to land. */}
+      {/* Quick Start: always-visible end-to-end wizard. Distinct from the
+       *  Setup guide cards below — those track the first agent's progress;
+       *  Quick Start always operates on a freshly-created (or freshly
+       *  selected) agent inside a single modal. Useful for both new
+       *  wallets and existing users adding additional agents. */}
+      <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-pado-2/30 bg-pado-2/5 px-4 py-3">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-white">Quick Start</p>
+          <p className="text-xs text-uju-secondary">
+            Create and configure an agent end-to-end in one flow.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setWizardOpen(true)}
+          disabled={createBlock.blocked}
+          title={createBlock.message ?? undefined}
+          className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+        >
+          Start Quick Start
+        </button>
+      </div>
+
       <AlphaNotice
         gateOn={alphaGateOn}
         state={alphaState}
@@ -561,6 +666,52 @@ export function QuickstartView({
           onSelectAgent={onSelectAgent}
           createBlocked={createBlock.blocked}
           createBlockedMessage={createBlock.message}
+        />
+      )}
+
+      {/* Step ④ Telegram link modal. Trust-on-confirm: setting tgLinkedFlag
+       *  after the LinkTelegramModal close (with deepLink generated) is the
+       *  client-side signal that the user has gone through /start in
+       *  Telegram. The agent's first wake will surface an error if the user
+       *  closed without actually completing the bot bind; they can re-open
+       *  Step ④ to retry. Avoids a second wallet sig for sessions/list. */}
+      {tgModalOpen && firstAgent && firstAgent.capabilityId && (
+        <LinkTelegramModal
+          agentAddress={firstAgent.agentAddress}
+          capabilityId={firstAgent.capabilityId}
+          onClose={() => setTgModalOpen(false)}
+          onLinked={() => {
+            writeTgLinked(walletAddress, firstAgent.agentAddress);
+            setTgLinkedFlag(true);
+          }}
+        />
+      )}
+
+      {/* Step ⑤ Activate modal. Reuses the existing ActivateAgentModal so
+       *  passphrase decrypt + vault upload + on-chain delegation stay in
+       *  one well-tested code path. onActivated triggers an agent refetch
+       *  so Step ⑤ flips to "done" without a page reload. */}
+      {activateModalOpen && firstAgent && firstAgent.capabilityId && (
+        <ActivateAgentModal
+          agentId={firstAgent.id}
+          agentAddress={firstAgent.agentAddress}
+          agentName={firstAgent.name}
+          capabilityId={firstAgent.capabilityId}
+          walletAddress={walletAddress}
+          onClose={() => setActivateModalOpen(false)}
+          onActivated={refetchAgentState}
+        />
+      )}
+
+      {wizardOpen && (
+        <QuickStartWizardModal
+          walletAddress={walletAddress}
+          onClose={() => {
+            setWizardOpen(false);
+            // Pick up any new agent created inside the wizard so the
+            // Setup guide / Your agents grid refresh without a reload.
+            refetchAgentState();
+          }}
         />
       )}
     </div>
@@ -821,4 +972,231 @@ function AgentsSection({
       )}
     </div>
   );
+}
+
+// =========================================================================
+// Step ② Fund body — single PTB combines budget::create_budget (inference
+// balance) and escrow::deposit<NUSDC> (trading capital). The active alpha
+// blocker: the previous flow required users to (a) go to the Budgets page
+// to create a budget, and separately (b) figure out where to top up the
+// escrow trading capital. Users completed neither cleanly; 9 alpha day-1
+// agents but zero spot trades.
+// =========================================================================
+
+export interface Step2FundBodyProps {
+  // useSigner.signer is `unknown` to React types but `WalletSigner` at
+  // runtime. We treat it opaquely and let buildAgentFundTransaction +
+  // executeTransactionBlock unwrap as needed.
+  signer: NonNullable<ReturnType<typeof useSigner>["signer"]>;
+  walletAddress: string;
+  agentAddress: string;
+  capabilityId: string;
+  onFunded: () => void;
+}
+
+// NUSDC has 6 decimal places (mirrors usdc::DECIMALS in the move module).
+const NUSDC_DECIMALS = 6n;
+const NUSDC_UNIT = 10n ** NUSDC_DECIMALS;
+
+export function Step2FundBody({
+  signer,
+  walletAddress,
+  agentAddress,
+  capabilityId,
+  onFunded,
+}: Step2FundBodyProps) {
+  // Defaults: 5 NUSDC inference balance + 500 NUSDC trading capital. nasun
+  // devnet NUSDC has no monetary value so users can fund generously, and
+  // 500 is enough capital for the first trades to feel real instead of
+  // dust-sized.
+  const [budgetInput, setBudgetInput] = useState("5");
+  const [tradingInput, setTradingInput] = useState("500");
+  const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
+  const [status, setStatus] = useState<"idle" | "submitting" | "executing" | "error">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  // Wallet NUSDC balance, refreshed when capabilityId or walletAddress
+  // changes (i.e. a different agent enters Step ②). suiClient.getBalance
+  // is a single RPC call; no need for a heavier hook.
+  useEffect(() => {
+    let cancelled = false;
+    void suiClient
+      .getBalance({ owner: walletAddress, coinType: NUSDC_TYPE })
+      .then((b) => {
+        if (!cancelled) setWalletBalance(BigInt(b.totalBalance));
+      })
+      .catch(() => {
+        if (!cancelled) setWalletBalance(0n);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [walletAddress, capabilityId]);
+
+  const budgetRaw = parseDecimalNusdc(budgetInput);
+  const tradingRaw = parseDecimalNusdc(tradingInput);
+  const totalRaw =
+    budgetRaw !== null && tradingRaw !== null ? budgetRaw + tradingRaw : null;
+
+  // Validation: both fields parse, both >= MIN_DEPOSIT (0.1 NUSDC per the
+  // move module assertion in budget.move L41), and wallet has enough.
+  const minDeposit = 100_000n; // 0.1 NUSDC raw
+  let validationError: string | null = null;
+  if (budgetRaw === null || tradingRaw === null) {
+    validationError = "Enter a positive number for each field.";
+  } else if (budgetRaw < minDeposit) {
+    validationError = "Inference balance must be at least 0.1 NUSDC.";
+  } else if (tradingRaw <= 0n) {
+    validationError = "Trading capital must be greater than 0.";
+  } else if (walletBalance !== null && totalRaw !== null && walletBalance < totalRaw) {
+    const need = formatNusdc(totalRaw);
+    const have = formatNusdc(walletBalance);
+    validationError = `Insufficient NUSDC. Need ${need}, have ${have}. Use the faucet.`;
+  }
+
+  const handleConfirm = async () => {
+    if (validationError || budgetRaw === null || tradingRaw === null) return;
+    setError(null);
+    setStatus("submitting");
+    try {
+      // Resolve the escrow id from the capability object so a page reload
+      // between Step ① and Step ② still works (lastSetup in useCreateAgent
+      // may be cleared). capability.escrow_id is set by Cmd 4 of the
+      // atomic setup PTB and persists for the life of the agent.
+      const capObj = await suiClient.getObject({
+        id: capabilityId,
+        options: { showContent: true },
+      });
+      const fields = (capObj.data?.content as { fields?: Record<string, unknown> })?.fields;
+      const escrowIdField = fields?.["escrow_id"];
+      let escrowId: string | null = null;
+      if (typeof escrowIdField === "string") {
+        escrowId = escrowIdField;
+      } else if (
+        escrowIdField &&
+        typeof escrowIdField === "object" &&
+        "fields" in (escrowIdField as Record<string, unknown>)
+      ) {
+        // Option<ID> sometimes serializes as { fields: { id: '0x..' } }.
+        const inner = (escrowIdField as { fields?: { id?: string } }).fields;
+        if (typeof inner?.id === "string") escrowId = inner.id;
+      }
+      if (!escrowId) {
+        throw new Error(
+          "Could not resolve escrow id from capability. Try reloading the page.",
+        );
+      }
+
+      // Coins selection: NUSDC type assertion is enforced inside
+      // getNusdcCoins by reading coinType from each entry. Insufficient
+      // balance throws before signing so the user does not see a wallet
+      // popup that's doomed to fail.
+      const coins = await getNusdcCoins(suiClient, walletAddress, Number(budgetRaw + tradingRaw));
+
+      const tx = buildAgentFundTransaction({
+        coins,
+        agentAddress,
+        escrowId,
+        budgetDeposit: budgetRaw,
+        tradingCapitalDeposit: tradingRaw,
+      });
+      tx.setSender(walletAddress);
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+
+      setStatus("executing");
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes,
+        signature,
+        options: { showEffects: true, showObjectChanges: true },
+      });
+      if (result.effects?.status?.status !== "success") {
+        throw new Error(result.effects?.status?.error ?? "Fund transaction failed");
+      }
+      await suiClient.waitForTransaction({ digest: result.digest });
+      onFunded();
+      setStatus("idle");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Fund failed");
+      setStatus("error");
+    }
+  };
+
+  const busy = status === "submitting" || status === "executing";
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <label className="block">
+          <span className="text-xs text-uju-secondary">Inference (NUSDC)</span>
+          <input
+            type="number"
+            min="0.1"
+            step="0.1"
+            value={budgetInput}
+            onChange={(e) => setBudgetInput(e.target.value)}
+            disabled={busy}
+            className="mt-1 w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white focus:outline-none focus:border-pado-2 transition-colors"
+          />
+        </label>
+        <label className="block">
+          <span className="text-xs text-uju-secondary">Trading (NUSDC)</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={tradingInput}
+            onChange={(e) => setTradingInput(e.target.value)}
+            disabled={busy}
+            className="mt-1 w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white focus:outline-none focus:border-pado-2 transition-colors"
+          />
+        </label>
+      </div>
+      <p className="text-xs text-uju-secondary/80">
+        Wallet:{" "}
+        {walletBalance === null ? "..." : `${formatNusdc(walletBalance)} NUSDC`}
+      </p>
+      {validationError && (
+        <p className="text-sm text-amber-300">{validationError}</p>
+      )}
+      {error && <p className="text-sm text-red-400">{error}</p>}
+      <button
+        type="button"
+        disabled={busy || !!validationError}
+        onClick={() => void handleConfirm()}
+        className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+      >
+        {status === "submitting"
+          ? "Signing..."
+          : status === "executing"
+            ? "Submitting..."
+            : "Confirm and sign"}
+      </button>
+    </div>
+  );
+}
+
+// Decimal NUSDC string → raw u64 bigint. Returns null on parse failure or
+// when the value would round to <= 0. Accepts up to 6 decimals; extras are
+// truncated (not rounded) to match how the wallet would split the coin.
+function parseDecimalNusdc(s: string): bigint | null {
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+  const m = /^(\d*)(?:\.(\d{0,6}))?\d*$/.exec(trimmed);
+  if (!m) return null;
+  const whole = m[1] || "0";
+  const frac = (m[2] || "").padEnd(6, "0");
+  if (!/^\d+$/.test(whole) || !/^\d+$/.test(frac)) return null;
+  const raw = BigInt(whole) * NUSDC_UNIT + BigInt(frac);
+  if (raw <= 0n) return null;
+  return raw;
+}
+
+function formatNusdc(raw: bigint): string {
+  const whole = raw / NUSDC_UNIT;
+  const frac = raw % NUSDC_UNIT;
+  if (frac === 0n) return whole.toString();
+  // Trim trailing zeros so 5.000000 → 5, 5.500000 → 5.5.
+  const fracStr = frac.toString().padStart(6, "0").replace(/0+$/, "");
+  return fracStr ? `${whole}.${fracStr}` : whole.toString();
 }

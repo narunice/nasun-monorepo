@@ -57,6 +57,12 @@ interface Props {
   /** Auto-resolved Budget shared object id for this agent (empty if not yet created) */
   agentBudgetId: string;
   initial: TraderConfig | null;
+  /** When true (Quick Start wizard mode), hide the read-only Auto fields
+   *  (Model, Executor, Inference Balance display, "auto-selected" notice)
+   *  so the wizard surface stays terse. The hidden state is still wired —
+   *  model/executor/budgetId defaults are applied on save. The full
+   *  Settings page passes false (default) to show every knob. */
+  hideAutoFields?: boolean;
   onSave: (values: {
     name: string;
     pair: TraderPair;
@@ -81,7 +87,7 @@ interface Props {
 const ADDR_RE = /^0x[0-9a-fA-F]{64}$/;
 const URL_RE = /^https?:\/\/.+/i;
 
-export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initial, onSave, onDelete }: Props) {
+export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initial, onSave, onDelete, hideAutoFields = false }: Props) {
   const { executors, isLoading: executorsLoading } = useExecutors();
   // Pool the Auto-pick draws from. Two filters:
   //   1. reachable endpoint (skip placeholder rows with empty endpoint_url
@@ -209,32 +215,43 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
-      <div className="grid grid-cols-2 gap-3">
+      {hideAutoFields ? (
         <div className="space-y-1">
           <label className={labelClass}>Trading Pair</label>
           <select value={pair} onChange={(e) => setPair(e.target.value as TraderPair)} className={inputClass}>
             {PAIRS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
-        <div className="space-y-1">
-          <label className={labelClass}>Model</label>
-          <div
-            className={`${inputClass} flex items-center justify-between cursor-default`}
-            aria-readonly="true"
-          >
-            <span className="text-uju-secondary">Auto</span>
-            <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
-              Lambda Verified
-            </span>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className={labelClass}>Trading Pair</label>
+              <select value={pair} onChange={(e) => setPair(e.target.value as TraderPair)} className={inputClass}>
+                {PAIRS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className={labelClass}>Model</label>
+              <div
+                className={`${inputClass} flex items-center justify-between cursor-default`}
+                aria-readonly="true"
+              >
+                <span className="text-uju-secondary">Auto</span>
+                <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
+                  Lambda Verified
+                </span>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      <p className="text-sm text-uju-secondary/70 -mt-2">
-        Model and executor are auto-selected from a Lambda-verified pool for this
-        prototype. In a future iteration you&apos;ll be able to pick your own
-        model and executor directly.
-      </p>
+          <p className="text-sm text-uju-secondary/70 -mt-2">
+            Model and executor are auto-selected from a Lambda-verified pool for this
+            prototype. In a future iteration you&apos;ll be able to pick your own
+            model and executor directly.
+          </p>
+        </>
+      )}
 
       <div className="space-y-1">
         <label className={labelClass}>Strategy preset</label>
@@ -253,11 +270,13 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       </div>
 
       <div className="space-y-1">
-        <p className="text-xs text-uju-secondary/70">
-          Trade caps below limit how much NUSDC the agent will <em>swap on the DEX per trade</em>,
-          and per day. They are separate from the Inference Balance&apos;s &quot;Max per inference call&quot; cap,
-          which limits NUSDC spent paying the AI executor per request.
-        </p>
+        {!hideAutoFields && (
+          <p className="text-xs text-uju-secondary/70">
+            Trade caps below limit how much NUSDC the agent will <em>swap on the DEX per trade</em>,
+            and per day. They are separate from the Inference Balance&apos;s &quot;Max per inference call&quot; cap,
+            which limits NUSDC spent paying the AI executor per request.
+          </p>
+        )}
         <div className="grid grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className={labelClass}>Per-trade swap cap (NUSDC)</label>
@@ -289,51 +308,64 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
             <input type="number" step="1" min="0" max={MAX_BPS} value={takeProfitBps} onChange={(e) => setTakeProfitBps(e.target.value)} className={inputClass} />
           </div>
         </div>
-        <p className="text-xs text-uju-secondary/70">
-          These guide the AI agent's prompt. To enforce a hard onchain rail, edit capability risk limits in the danger zone.
-        </p>
-      </div>
-
-      <div className="space-y-1">
-        <label className={labelClass}>Inference Balance (auto-linked to this agent)</label>
-        {budgetId ? (
-          <div className="px-3 py-2 text-xs rounded-lg bg-uju-bg/60 border border-uju-border/60 text-uju-secondary font-mono">
-            {budgetId.slice(0, 16)}…{budgetId.slice(-10)}
-          </div>
-        ) : (
-          <div className="px-3 py-2 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
-            No Inference Balance linked. Open the <strong>Inference Balance</strong> section in Settings and create one for this agent first.
-          </div>
+        {!hideAutoFields && (
+          <p className="text-xs text-uju-secondary/70">
+            These guide the AI agent's prompt. To enforce a hard onchain rail, edit capability risk limits in the danger zone.
+          </p>
         )}
       </div>
 
-      <div className="space-y-1">
-        <label className={labelClass}>Executor</label>
-        <div
-          className={`${inputClass} flex items-center justify-between cursor-default`}
-          aria-readonly="true"
-        >
-          <span className="text-uju-secondary">Auto (weighted-random from Bronze+ pool)</span>
-          <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
-            Lambda Verified
-          </span>
+      {!hideAutoFields && (
+        <div className="space-y-1">
+          <label className={labelClass}>Inference Balance (auto-linked to this agent)</label>
+          {budgetId ? (
+            <div className="px-3 py-2 text-xs rounded-lg bg-uju-bg/60 border border-uju-border/60 text-uju-secondary font-mono">
+              {budgetId.slice(0, 16)}…{budgetId.slice(-10)}
+            </div>
+          ) : (
+            <div className="px-3 py-2 text-xs rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              No Inference Balance linked. Open the <strong>Inference Balance</strong> section in Settings and create one for this agent first.
+            </div>
+          )}
         </div>
-      </div>
+      )}
+
+      {!hideAutoFields && (
+        <div className="space-y-1">
+          <label className={labelClass}>Executor</label>
+          <div
+            className={`${inputClass} flex items-center justify-between cursor-default`}
+            aria-readonly="true"
+          >
+            <span className="text-uju-secondary">Auto (weighted-random from Bronze+ pool)</span>
+            <span className="text-sm px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400">
+              Lambda Verified
+            </span>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-1">
-        <label className={labelClass}>Custom Strategy (optional; leave blank to use the selected preset)</label>
+        <label className={labelClass}>
+          Custom Strategy
+          <span className="block text-xs normal-case tracking-normal text-uju-secondary/60 mt-0.5">
+            (optional; leave blank to use the selected preset)
+          </span>
+        </label>
         <textarea
           value={promptTemplate}
           onChange={(e) => setPromptTemplate(e.target.value)}
           rows={5}
-          placeholder={`Describe your trading strategy in plain English. Example:
+          placeholder={`Describe your trading strategy in plain natural language. Example:
 
 You are a cautious swing trader. Only BUY when the most recent trade was a SELL, and only SELL when the last trade was a BUY. Prefer HOLD when uncertain. Never risk more than half of the per-trade cap on a single cycle.`}
           className={`${inputClass} text-sm leading-relaxed`}
         />
-        <p className="text-xs text-uju-secondary/70 leading-relaxed">
-          Write in natural language. The runtime automatically appends your current holdings, per-trade cap, daily cap, recent trades, and the required JSON output format, so you only need to describe the <em>strategy</em> (how to decide BUY / SELL / HOLD).
-        </p>
+        {!hideAutoFields && (
+          <p className="text-xs text-uju-secondary/70 leading-relaxed">
+            Write in natural language. The runtime automatically appends your current holdings, per-trade cap, daily cap, recent trades, and the required JSON output format, so you only need to describe the <em>strategy</em> (how to decide BUY / SELL / HOLD).
+          </p>
+        )}
       </div>
 
       {err && <div className="p-2 rounded-lg bg-red-500/10 text-xs text-red-400">{err}</div>}

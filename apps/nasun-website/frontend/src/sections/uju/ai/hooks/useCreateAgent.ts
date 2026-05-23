@@ -88,9 +88,13 @@ const DEFAULT_RISK_LIMITS = {
   takeProfitBps: 1000,
 };
 
-function extractProfileId(result: {
-  objectChanges?: Array<{ type: string; objectType?: string; objectId?: string }> | null;
-}): string | null {
+interface ObjectChange {
+  type: string;
+  objectType?: string;
+  objectId?: string;
+}
+
+function extractProfileId(result: { objectChanges?: ObjectChange[] | null }): string | null {
   for (const change of result.objectChanges ?? []) {
     if (
       change.type === 'created' &&
@@ -103,12 +107,56 @@ function extractProfileId(result: {
   return null;
 }
 
+// Step ② Fund needs the escrow id to call escrow::deposit. The escrow is
+// share_object'd inside escrow::new_escrow_linked (Cmd 1 of the atomic
+// setup), so it shows up in objectChanges as a created shared object whose
+// type ends with `::escrow::AgentEscrow`.
+function extractEscrowId(result: { objectChanges?: ObjectChange[] | null }): string | null {
+  for (const change of result.objectChanges ?? []) {
+    if (
+      change.type === 'created' &&
+      change.objectType?.endsWith('::escrow::AgentEscrow') &&
+      change.objectId
+    ) {
+      return change.objectId;
+    }
+  }
+  return null;
+}
+
+// Capability is share_object'd in Cmd 4 of the atomic setup. Resume flows
+// derive the escrow id from `capability.escrow_id` so the wallet only needs
+// to remember the capability address, not both.
+function extractCapabilityId(result: { objectChanges?: ObjectChange[] | null }): string | null {
+  for (const change of result.objectChanges ?? []) {
+    if (
+      change.type === 'created' &&
+      change.objectType?.endsWith('::capability::Capability') &&
+      change.objectId
+    ) {
+      return change.objectId;
+    }
+  }
+  return null;
+}
+
+export interface AgentSetupIds {
+  profileId: string;
+  escrowId: string;
+  capabilityId: string;
+  digest: string;
+}
+
 export function useCreateAgent() {
   const { signer, address } = useSigner();
   const [txStatus, setTxStatus] = useState<AgentTxStatus>('idle');
   const [txError, setTxError] = useState<string | null>(null);
   const [generatedAddress, setGeneratedAddress] = useState<string | null>(null);
   const [fallbackKey, setFallbackKey] = useState<string | null>(null);
+  // Quickstart Step ② reads escrowId from here to build the fund PTB.
+  // Persists across renders so a remount (e.g. modal close) does not lose
+  // the just-minted escrow address before IndexedDB / chain query is ready.
+  const [lastSetup, setLastSetup] = useState<AgentSetupIds | null>(null);
   const txInFlight = useRef(false);
 
   const createAgent = useCallback(
@@ -268,6 +316,17 @@ export function useCreateAgent() {
 
         await suiClient.waitForTransaction({ digest: result.digest });
 
+        // Surface the freshly-minted ids so Step ② Fund can build its PTB
+        // without re-querying chain. extractEscrowId/CapabilityId are best-
+        // effort: a parse miss does not fail the setup (Resume can recover
+        // via capability.escrow_id chain lookup), but logging helps detect
+        // contract upgrade regressions.
+        const escrowId = extractEscrowId(result);
+        const capabilityId = extractCapabilityId(result);
+        if (escrowId && capabilityId) {
+          setLastSetup({ profileId, escrowId, capabilityId, digest: result.digest });
+        }
+
         setTxStatus('success');
         return result.digest;
       } catch (err) {
@@ -286,7 +345,16 @@ export function useCreateAgent() {
     setTxError(null);
     setGeneratedAddress(null);
     setFallbackKey(null);
+    setLastSetup(null);
   }, []);
 
-  return { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus };
+  return {
+    createAgent,
+    txStatus,
+    txError,
+    generatedAddress,
+    fallbackKey,
+    lastSetup,
+    resetTxStatus,
+  };
 }

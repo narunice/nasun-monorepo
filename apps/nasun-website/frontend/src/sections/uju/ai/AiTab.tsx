@@ -200,9 +200,6 @@ export function AiTab() {
       <QuickstartView
         walletAddress={walletAddress}
         onShowRegister={() => updateView('register')}
-        onOpenBudgets={(agentAddress) =>
-          updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
-        }
         onSelectAgent={(id, opts) =>
           updateView('detail', {
             agent: id,
