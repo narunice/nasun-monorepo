@@ -4,7 +4,7 @@
  * Sub-routes are driven by the `view` query param:
  *   view=list      (default) -> QuickstartView (agent list + onboarding)
  *   view=register           -> QuickstartView + CreateAgentModal
- *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<overview|activity|chat|settings>`)
+ *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<overview|aer|chat|settings>`)
  *   view=budgets            -> Budgets page
  *
  * Generic LLM chat (the legacy useRequestWithRetry path) is NOT mounted here
@@ -12,19 +12,33 @@
  * is mounted inside AgentDetail as `sub=chat`.
  */
 
-import { useCallback, useRef } from 'react';
+import { memo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/features/auth';
-import { AgentDetail, normalizeSubTab } from './pages/AgentDetail';
+import { AgentDetail, SUB_TABS, normalizeSubTab, type AgentSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
 import { QuickstartView } from './pages/QuickstartView';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
+import { AgentsSidebar } from './components/AgentsSidebar';
+import { AlphaNoticePanel } from './components/AlphaNoticePanel';
 import { useCreateAgent } from './hooks/useCreateAgent';
 import { useAgentProfiles } from './hooks/useAgentProfiles';
 import { useAlphaStatus } from './alpha/useAlphaStatus';
+import { useCreateAgentBlocked } from './alpha/useCreateAgentBlocked';
+
+// Memoized AgentDetail keeps the heavy sub-tab body (charts, tables) from
+// re-rendering on every sidebar search keystroke. Sidebar lives next to
+// AgentDetail under the same grid, so without memo every parent render
+// (including local search state changes) would cascade.
+const MemoAgentDetail = memo(AgentDetail);
 
 const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
+// Registration sub-mode. Quickstart triggers default ('generate'); sidebar's
+// Import button passes 'import' so the modal opens directly on the import
+// path without an extra tab click. Treated as best-effort UX hint only —
+// useCreateAgent still validates the actual mode at submit time.
+const MODE_PARAM = 'mode';
 const SUB_PARAM = 'sub';
 const PREFILL_PARAM = 'prefill';
 const FROM_PARAM = 'from';
@@ -156,50 +170,76 @@ export function AiTab() {
         agent: newProfileIdRef.current,
         sub: 'settings',
         [FROM_PARAM]: null,
+        [MODE_PARAM]: null,
       });
     } else {
-      updateView(null);
+      updateView(null, { [MODE_PARAM]: null });
     }
     wasOnboardedRef.current = false;
     newProfileIdRef.current = null;
   }, [resetTxStatus, updateView]);
 
+  const createBlock = useCreateAgentBlocked(walletAddress);
+
+  const handleSelectAgent = useCallback(
+    (id: string) =>
+      updateView('detail', {
+        agent: id,
+        sub: 'overview',
+        [FROM_PARAM]: null,
+      }),
+    [updateView],
+  );
+  const handleClearSelection = useCallback(
+    () => updateView(null, { agent: null, sub: null, [FROM_PARAM]: null }),
+    [updateView],
+  );
+  const handleShowRegister = useCallback(
+    () => updateView('register', { [MODE_PARAM]: null }),
+    [updateView],
+  );
+  const handleShowImport = useCallback(
+    () => updateView('register', { [MODE_PARAM]: 'import' }),
+    [updateView],
+  );
+  const handleChangeSub = useCallback(
+    (next: AgentSubTab) => updateView('detail', { sub: next }),
+    [updateView],
+  );
+
   if (!walletAddress) return <NotConnected />;
 
+  const prefillAgent =
+    view === 'budgets' ? (searchParams.get(PREFILL_PARAM) ?? undefined) : undefined;
+
+  // Body for the right column. AgentDetail when a real agent is in URL,
+  // Budgets when its dedicated view is requested, otherwise the grid view.
+  let body: React.ReactNode;
   if (view === 'detail' && agentId) {
-    return (
-      <div className="space-y-4">
-        <AgentDetail
-          walletAddress={walletAddress}
-          agentId={agentId}
-          subTab={sub}
-          fromQuickstart={fromQuickstart}
-          alphaStatus={alphaStatus}
-          onChangeSub={(next) => updateView('detail', { sub: next })}
-          onBack={() => updateView(null, { agent: null, sub: null, [FROM_PARAM]: null })}
-        />
-      </div>
+    body = (
+      <MemoAgentDetail
+        walletAddress={walletAddress}
+        agentId={agentId}
+        subTab={sub}
+        fromQuickstart={fromQuickstart}
+        alphaStatus={alphaStatus}
+        onChangeSub={handleChangeSub}
+        onBack={handleClearSelection}
+      />
     );
-  }
-
-  if (view === 'budgets') {
-    const prefillAgent = searchParams.get(PREFILL_PARAM) ?? undefined;
-    return (
-      <div className="space-y-4">
-        <Budgets
-          walletAddress={walletAddress}
-          onBack={() => updateView(null, { [PREFILL_PARAM]: null })}
-          prefillAgent={prefillAgent}
-        />
-      </div>
+  } else if (view === 'budgets') {
+    body = (
+      <Budgets
+        walletAddress={walletAddress}
+        onBack={() => updateView(null, { [PREFILL_PARAM]: null })}
+        prefillAgent={prefillAgent}
+      />
     );
-  }
-
-  return (
-    <div className="space-y-4">
+  } else {
+    body = (
       <QuickstartView
         walletAddress={walletAddress}
-        onShowRegister={() => updateView('register')}
+        onShowRegister={handleShowRegister}
         onSelectAgent={(id, opts) =>
           updateView('detail', {
             agent: id,
@@ -208,6 +248,39 @@ export function AiTab() {
           })
         }
       />
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <AlphaNoticePanel walletAddress={walletAddress} />
+
+      <div className="md:flex md:gap-4">
+        <AgentsSidebar
+          agents={agents ?? []}
+          selectedAgentId={view === 'detail' ? agentId : null}
+          onSelectAgent={handleSelectAgent}
+          onClearSelection={handleClearSelection}
+          onShowImport={handleShowImport}
+          createBlocked={createBlock.blocked}
+          createBlockedMessage={createBlock.message}
+        />
+        <main className="flex-1 min-w-0 space-y-4">
+          {view !== 'budgets' && (
+            <SubTabBar
+              agentName={
+                view === 'detail' && agentId
+                  ? (agents?.find((a) => a.id === agentId)?.name ?? null)
+                  : null
+              }
+              subTab={view === 'detail' ? sub : null}
+              disabled={view !== 'detail' || !agentId}
+              onChangeSub={handleChangeSub}
+            />
+          )}
+          {body}
+        </main>
+      </div>
 
       {/* Registration modal, triggered by view=register */}
       {view === 'register' && (
@@ -220,8 +293,65 @@ export function AiTab() {
           fallbackKey={fallbackKey}
           isOnboarded={!!agents && agents.some((a) => a.isActive)}
           walletAddress={walletAddress}
+          initialMode={
+            searchParams.get(MODE_PARAM) === 'import' ? 'import' : 'generate'
+          }
         />
       )}
+    </div>
+  );
+}
+
+interface SubTabBarProps {
+  agentName: string | null;
+  subTab: AgentSubTab | null;
+  disabled: boolean;
+  onChangeSub: (next: AgentSubTab) => void;
+}
+
+// Always-visible sub-tab row. Lives at the top of the AI tab's right column
+// so the user can always see Overview / AER / Settings, even before they
+// pick an agent. The currently selected agent's name is rendered on the left
+// as the primary identity cue; when no agent is selected the tabs render
+// disabled and the label reads "No agent selected".
+function SubTabBar({ agentName, subTab, disabled, onChangeSub }: SubTabBarProps) {
+  return (
+    <div
+      className="flex items-stretch gap-4 border-b border-uju-border/60 overflow-x-auto"
+      role="tablist"
+    >
+      <div
+        className={`px-3 py-2 text-base font-semibold whitespace-nowrap self-center ${
+          agentName ? 'text-white' : 'text-uju-secondary/60 italic font-medium'
+        }`}
+      >
+        {agentName ?? 'No agent selected'}
+      </div>
+      {SUB_TABS.map((t) => {
+        const isSelected = !disabled && subTab === t.key;
+        return (
+          <button
+            type="button"
+            key={t.key}
+            role="tab"
+            aria-selected={isSelected}
+            aria-disabled={disabled}
+            disabled={disabled}
+            onClick={() => {
+              if (!disabled) onChangeSub(t.key);
+            }}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+              isSelected
+                ? 'border-pado-2 text-pado-2'
+                : disabled
+                  ? 'border-transparent text-uju-secondary/40 cursor-not-allowed'
+                  : 'border-transparent text-uju-secondary hover:text-white'
+            }`}
+          >
+            {t.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

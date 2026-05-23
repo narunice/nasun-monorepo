@@ -44,6 +44,12 @@ interface CreateAgentModalProps {
    * truth, so a missing/undefined wallet here only degrades UX, not safety.
    */
   walletAddress?: string | null;
+  /**
+   * Initial creation mode. The Quickstart card uses 'generate' (default);
+   * the sidebar "Import agent" entry passes 'import' so the modal opens
+   * directly on the import path without an extra click on the tab.
+   */
+  initialMode?: AgentCreationMode;
 }
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -65,13 +71,14 @@ export function CreateAgentModal({
   fallbackKey,
   isOnboarded = false,
   walletAddress,
+  initialMode = 'generate',
 }: CreateAgentModalProps) {
   // Surface the public-alpha gate as an inline notice before the user
   // bothers filling out the form. The functional gate lives in
   // useCreateAgent.ts so any future modal entry points stay safe.
   const alphaBlock = useCreateAgentBlocked(walletAddress ?? null);
   const alphaBlocked = alphaBlock.message;
-  const [mode, setMode] = useState<AgentCreationMode>('generate');
+  const [mode, setMode] = useState<AgentCreationMode>(initialMode);
   const [importMethod, setImportMethod] = useState<'key' | 'address'>('key');
   const [agentAddress, setAgentAddress] = useState('');
   const [importedSecret, setImportedSecret] = useState('');

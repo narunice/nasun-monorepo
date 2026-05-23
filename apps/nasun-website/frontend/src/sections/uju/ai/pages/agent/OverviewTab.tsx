@@ -10,11 +10,9 @@
  */
 
 import { useState } from 'react';
-import { useSigner } from '@nasun/wallet';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
 import { useAgentAerStats } from '../../hooks/useAgentAerStats';
-import { authorizeAgentOnChain } from '../../services/agentAuthorizeOnChain';
 import { formatNusdc, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { TradingPerformanceCard } from '../../components/performance/TradingPerformanceCard';
@@ -43,41 +41,8 @@ export function OverviewTab({
 }: OverviewTabProps) {
   const { reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const aerStats = useAgentAerStats(walletAddress, agent.agentAddress, agent.capabilityId);
-  const { signer } = useSigner();
   const [busy, setBusy] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
-  const [authBusy, setAuthBusy] = useState(false);
-  const [authMsg, setAuthMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
-
-  const handleAuthorizeOnChain = async () => {
-    if (authBusy) return;
-    if (!signer) {
-      setAuthMsg({ kind: 'err', text: 'Wallet not connected.' });
-      return;
-    }
-    if (!agent.capabilityId) {
-      setAuthMsg({ kind: 'err', text: 'This agent has no on-chain capability.' });
-      return;
-    }
-    setAuthBusy(true);
-    setAuthMsg(null);
-    try {
-      const digest = await authorizeAgentOnChain(
-        signer,
-        walletAddress,
-        agent.capabilityId,
-        agent.agentAddress,
-      );
-      setAuthMsg({ kind: 'ok', text: `Authorized. tx=${digest.slice(0, 12)}...` });
-    } catch (err) {
-      setAuthMsg({
-        kind: 'err',
-        text: err instanceof Error ? err.message : 'Authorization failed',
-      });
-    } finally {
-      setAuthBusy(false);
-    }
-  };
 
   const handleActivate = async () => {
     if (busy) return;
@@ -104,15 +69,35 @@ export function OverviewTab({
               <HashRef value={agent.agentAddress} kind="address" />
             </p>
           </div>
-          <span
-            className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
-              agent.isActive
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-uju-secondary/10 text-uju-secondary'
-            }`}
-          >
-            {agent.isActive ? 'Active' : 'Inactive'}
-          </span>
+          <div className="shrink-0 flex items-center gap-2">
+            <span
+              className={`text-xs px-1.5 py-0.5 rounded ${
+                agent.isActive
+                  ? 'bg-emerald-500/10 text-emerald-400'
+                  : 'bg-uju-secondary/10 text-uju-secondary'
+              }`}
+            >
+              {agent.isActive ? 'Active' : 'Inactive'}
+            </span>
+            {agent.isActive ? (
+              <button
+                type="button"
+                onClick={() => setShowPauseModal(true)}
+                className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors"
+              >
+                Pause agent
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => void handleActivate()}
+                disabled={busy}
+                className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
+              >
+                {busy ? 'Activating...' : 'Activate agent'}
+              </button>
+            )}
+          </div>
         </div>
 
         {agent.capabilities.length > 0 && (
@@ -135,59 +120,18 @@ export function OverviewTab({
           <Stat label="Created" value={formatTimestamp(agent.createdAt)} />
         </div>
 
-        <div className="flex flex-wrap gap-2 pt-3 border-t border-uju-border/60">
-          {agent.isActive ? (
-            <button
-              type="button"
-              onClick={() => setShowPauseModal(true)}
-              className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors"
-            >
-              Pause agent
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => void handleActivate()}
-              disabled={busy}
-              className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
-            >
-              {busy ? 'Activating...' : 'Activate agent'}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onOpenSettings}
-            className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors"
-          >
-            Settings
-          </button>
-          <button
-            type="button"
-            onClick={handleAuthorizeOnChain}
-            disabled={authBusy || !agent.capabilityId}
-            title="One-time on-chain authorization that lets this agent install pending-proposal locks with its own keypair (required for chat-message proposal flow)."
-            className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
-          >
-            {authBusy ? 'Authorizing...' : 'Authorize on-chain'}
-          </button>
-          {txStatus === 'error' && txError && (
-            <span className="text-sm text-red-400 self-center">{txError}</span>
-          )}
-          {authMsg && (
-            <span className={`text-sm self-center ${authMsg.kind === 'ok' ? 'text-emerald-400' : 'text-red-400'}`}>
-              {authMsg.text}
-            </span>
-          )}
-        </div>
+        {txStatus === 'error' && txError && (
+          <p className="text-sm text-red-400">{txError}</p>
+        )}
       </div>
+
+      <TradingPerformanceCard agent={agent} />
 
       <AgentFundsCard
         agent={agent}
         walletAddress={walletAddress}
         onOpenInferenceTab={onOpenInferenceTab ?? onOpenSettings}
       />
-
-      <TradingPerformanceCard agent={agent} />
 
       <div>
         <ActivityTab

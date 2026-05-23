@@ -140,7 +140,7 @@ export function FirstRunChecklist({ agent, onJumpToActivity }: FirstRunChecklist
                 onClick={onJumpToActivity}
                 className="text-pado-2 hover:underline"
               >
-                Activity
+                AER
               </button>{' '}
               to follow it live.
             </p>

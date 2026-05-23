@@ -3,11 +3,11 @@
  *
  * URL contract (AiTab routes):
  *   ?tab=ai&view=detail&agent=<profileId>
- *   ?tab=ai&view=detail&agent=<profileId>&sub=<overview|activity|settings>
+ *   ?tab=ai&view=detail&agent=<profileId>&sub=<overview|aer|settings>
  *
- * Legacy `sub` values (dashboard|chat|escrow|sessions) are mapped to the new
- * 3-tab IA via `normalizeSubTab()` so existing deep links continue to land on
- * a reasonable surface.
+ * Legacy `sub` values (activity|dashboard|chat|escrow|sessions) are mapped to
+ * the current IA via `normalizeSubTab()` so existing deep links continue to
+ * land on a reasonable surface.
  *
  * Heavy baram-specific concerns (in-browser scheduler, localStorage escrow id
  * fallback, NFT gate) are intentionally dropped here. The AI agent runs in
@@ -18,23 +18,25 @@
 import { useMemo } from 'react';
 import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { useBudgetsQuery } from '../hooks/useBudgets';
-import { HashRef } from '../components/HashRef';
 import { OverviewTab } from './agent/OverviewTab';
 import { ActivityTab } from './agent/ActivityTab';
 import { SettingsTab } from './agent/SettingsTab';
 import { AgentChat } from './agent/AgentChat';
 import type { AlphaStatusResponse } from '../alpha/alphaApiClient';
 
-export type AgentSubTab = 'overview' | 'activity' | 'chat' | 'settings';
+export type AgentSubTab = 'overview' | 'aer' | 'chat' | 'settings';
 
 /** Accepts legacy sub values and maps them onto the current 4-tab IA. */
 export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
   switch (raw) {
     case 'overview':
-    case 'activity':
+    case 'aer':
     case 'chat':
     case 'settings':
       return raw;
+    case 'activity':
+      // Renamed 2026-05-23. Old deep links keep working.
+      return 'aer';
     case 'dashboard':
       return 'overview';
     case 'escrow':
@@ -45,15 +47,15 @@ export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
   }
 }
 
-const SUB_TABS: { key: AgentSubTab; label: string }[] = [
+export const SUB_TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
-  { key: 'activity', label: 'Activity' },
   // Chat sub-tab hidden pending proposal-confirm UX redesign — see
   // UjuNavigation.tsx for the corresponding top-level AI Chat tab. The
   // wake path itself remains operational on chat-server (PR1) but the
   // user can't confirm proposals from the web yet.
   // { key: 'chat', label: 'Chat' },
   { key: 'settings', label: 'Settings' },
+  { key: 'aer', label: 'AER' },
 ];
 
 interface AgentDetailProps {
@@ -118,53 +120,17 @@ export function AgentDetail({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="text-sm text-pado-2 hover:underline mb-1"
-          >
-            {backLabel}
-          </button>
-          <h2 className="text-base font-semibold text-white truncate">{agent.name}</h2>
-          <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
-            <span>{agent.role} -</span>
-            <HashRef value={agent.agentAddress} kind="address" />
-          </p>
-        </div>
-      </div>
-
-      <div className="flex gap-1 border-b border-uju-border/60 overflow-x-auto" role="tablist">
-        {SUB_TABS.map((t) => (
-          <button
-            type="button"
-            key={t.key}
-            role="tab"
-            aria-selected={subTab === t.key}
-            onClick={() => onChangeSub(t.key)}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              subTab === t.key
-                ? 'border-pado-2 text-pado-2'
-                : 'border-transparent text-uju-secondary hover:text-white'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
       <div>
         {subTab === 'overview' && (
           <OverviewTab
             agent={agent}
             walletAddress={walletAddress}
             onRefresh={() => void refetch()}
-            onViewAllActivity={() => onChangeSub('activity')}
+            onViewAllActivity={() => onChangeSub('aer')}
             onOpenSettings={() => onChangeSub('settings')}
           />
         )}
-        {subTab === 'activity' && (
+        {subTab === 'aer' && (
           <ActivityTab
             walletAddress={walletAddress}
             agentAddress={agent.agentAddress}
