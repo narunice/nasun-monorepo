@@ -77,16 +77,20 @@ async function runSync(): Promise<void> {
                 END) > 0
     `;
 
-    // Map wallet → identity (latest seen in activity_points).
+    // Map wallet → identity. activity_points.wallet_address is stored
+    // lowercased by the main scanner (referral-bonus.ts:184 convention), so we
+    // can use the raw column and ride the idx_ap_wallet index instead of
+    // `LOWER(wallet_address)` which forces a sequential scan on the 18M-row
+    // table and hits the 30s statement_timeout.
     const walletRows = await pointsDb<Array<{ wallet_address: string; identity_id: string }>>`
-      SELECT DISTINCT ON (LOWER(wallet_address)) LOWER(wallet_address) AS wallet_address, identity_id
+      SELECT DISTINCT ON (wallet_address) wallet_address, identity_id
       FROM activity_points
       WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-      ORDER BY LOWER(wallet_address), processed_at DESC
+      ORDER BY wallet_address, tx_timestamp DESC
     `;
     const walletToIdentity = new Map<string, string>();
     for (const { wallet_address, identity_id } of walletRows) {
-      walletToIdentity.set(wallet_address, identity_id);
+      walletToIdentity.set(wallet_address.toLowerCase(), identity_id);
     }
 
     // Some identities may control multiple wallets; sum across them.
