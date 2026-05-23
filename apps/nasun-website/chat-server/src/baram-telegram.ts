@@ -766,7 +766,7 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
       chatId,
       `Hi! I'm <b>${displayName}</b>, your Nasun AI trading agent.\n\n` +
       `Here's what I can do for you:\n` +
-      `• <b>Heartbeat trading</b> — I scan the market and execute trades on the interval you configured\n` +
+      `• <b>Heartbeat trading</b> — I scan the market and execute trades on the interval you configured (default: every 30 min)\n` +
       `• <b>Balance check</b> — Ask me "what's my balance?" or "show my portfolio"\n` +
       `• <b>Manual trades</b> — Tell me to buy or sell, and I'll execute it\n` +
       `• <b>Strategy chat</b> — Discuss market conditions, review my recent trades, or adjust my approach\n\n` +
