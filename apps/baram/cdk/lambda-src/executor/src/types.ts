@@ -25,6 +25,15 @@ export interface AerCapabilityFields {
   triggeredByRef?: string;
   /** Optional 16-byte hex intent id linking back to a prior AER. */
   parentIntentId?: string;
+  /**
+   * v3 attribution: AgentProfile shared object id (0x-prefixed hex). When
+   * present, the Lambda routes through `create_report_with_receipt_capability_v3`
+   * and the id is emitted in `ExecutionReportCreatedV3`. When omitted, the
+   * legacy v2 entry is used and v3 event carries agent_profile_id=None.
+   * Sourced from the caller (analyst / manual-execution / heartbeat) which
+   * holds the AgentProfile that authored the action.
+   */
+  agentProfileId?: string;
 }
 
 export interface ExecuteRequest extends AerCapabilityFields {

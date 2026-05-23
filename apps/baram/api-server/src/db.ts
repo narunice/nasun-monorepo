@@ -146,8 +146,16 @@ export async function initSchema(): Promise<void> {
       ADD COLUMN IF NOT EXISTS model_version         TEXT,
       ADD COLUMN IF NOT EXISTS prompt_template_hash  TEXT,
       ADD COLUMN IF NOT EXISTS market_snapshot_hash  TEXT,
-      ADD COLUMN IF NOT EXISTS replay_extras         JSONB
+      ADD COLUMN IF NOT EXISTS replay_extras         JSONB,
+      -- v3 agent attribution: AgentProfile object id, sourced from the
+      -- ExecutionReportCreatedV3 event. NULL for legacy v2 callers.
+      ADD COLUMN IF NOT EXISTS agent_profile_id      TEXT
   `;
+
+  // v3 attribution lookup: "all AERs settled by agent X in window".
+  await sql.unsafe(
+    `CREATE INDEX IF NOT EXISTS idx_aer_agent_profile_id ON aer_records(agent_profile_id, settled_at DESC) WHERE agent_profile_id IS NOT NULL`,
+  );
 
   await sql`
     CREATE TABLE IF NOT EXISTS aer_sync_state (

@@ -1,6 +1,10 @@
+
 /**
- * AER Sync Worker — polls RPC queryEvents for new ExecutionReportCreated events,
- * fetches full AER objects, parses fields, and stores in aer_records table.
+ * AER Sync Worker — polls RPC queryEvents for new ExecutionReportCreatedV3
+ * events (the v3 superset is co-emitted alongside the legacy v2 event from
+ * every finalize call, so listening to v3 only loses nothing and gains the
+ * agent_profile_id attribution field), fetches full AER objects, parses
+ * fields, and stores in aer_records table.
  *
  * Uses event cursor as watermark (stored in aer_sync_state).
  * Avoids BCS deserialization by using RPC parsedJson.
@@ -8,6 +12,36 @@
 
 import { SuiClient } from '@mysten/sui/client';
 import { sql } from '../db.js';
+
+/**
+ * Surface the underlying cause of a Node fetch / undici error chain. By
+ * default `error.message` is just "fetch failed" which makes RPC blips
+ * impossible to triage in pm2 logs. Walks the .cause chain to pull out the
+ * concrete network code (ECONNREFUSED, ENOTFOUND, ETIMEDOUT, ECONNRESET)
+ * plus errno / hostname when present. Safe to call on non-Error values.
+ */
+function describeFetchError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const parts: string[] = [err.message];
+  type ErrWithCause = Error & {
+    name?: string;
+    code?: string;
+    errno?: number | string;
+    cause?: unknown;
+  };
+  let cur: unknown = (err as ErrWithCause).cause;
+  let depth = 0;
+  while (cur && cur instanceof Error && depth < 4) {
+    const c = cur as ErrWithCause;
+    const tags: string[] = [];
+    if (c.code) tags.push(`code=${c.code}`);
+    if (c.errno !== undefined) tags.push(`errno=${c.errno}`);
+    parts.push(`cause(${c.name || 'Error'}): ${c.message}${tags.length ? ` [${tags.join(' ')}]` : ''}`);
+    cur = c.cause;
+    depth++;
+  }
+  return parts.join(' | ');
+}
 
 const SYNC_INTERVAL_MS = 30_000;
 const MAX_BACKOFF_MS = 300_000; // 5 minutes
@@ -39,6 +73,10 @@ interface EventJson {
   executor_tier?: number;
   tee_verified?: boolean;
   settled_at?: string | number;
+  // v3 only: AgentProfile object id. Sui parsedJson represents Option<ID> as
+  // either the bare hex string or { vec: [hex] } depending on RPC version;
+  // parseOptionString handles both shapes.
+  agent_profile_id?: unknown;
 }
 
 // Queue for records that failed to fetch (object not yet available)
@@ -187,6 +225,9 @@ interface AERRow {
   prompt_template_hash: string | null;
   market_snapshot_hash: string | null;
   replay_extras: unknown;
+  // v3 attribution (event-sourced, not present on the AIExecutionReport
+  // struct). NULL for legacy v2 callers.
+  agent_profile_id: string | null;
   // Sync metadata
   source_tx_digest: string | null;
 }
@@ -210,6 +251,7 @@ function parseObjectToRow(
   fields: Record<string, unknown>,
   objectId: string,
   txDigest: string | null,
+  agentProfileId: string | null,
 ): AERRow {
   const requester = getSubStruct(fields, 'requester') ?? {};
   const executor = getSubStruct(fields, 'executor') ?? {};
@@ -300,6 +342,7 @@ function parseObjectToRow(
         : null,
     market_snapshot_hash: parseOptionBytesHex(replay.market_snapshot_hash),
     replay_extras: parseReplayExtras(replay.replay_extras),
+    agent_profile_id: agentProfileId,
     source_tx_digest: txDigest,
   };
 }
@@ -347,6 +390,7 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           payload_hash, payload_bytes, action_summary, action_outcome,
           triggered_by_type, triggered_by_ref,
           model_version, prompt_template_hash, market_snapshot_hash, replay_extras,
+          agent_profile_id,
           source_tx_digest
         ) VALUES (
           ${row.object_id}, ${row.request_id},
@@ -370,6 +414,7 @@ async function insertRecords(rows: AERRow[]): Promise<number> {
           ${row.triggered_by_type}, ${row.triggered_by_ref},
           ${row.model_version}, ${row.prompt_template_hash}, ${row.market_snapshot_hash},
           ${row.replay_extras ? JSON.stringify(row.replay_extras) : null}::jsonb,
+          ${row.agent_profile_id},
           ${row.source_tx_digest}
         )
         ON CONFLICT (object_id) DO NOTHING
@@ -401,13 +446,15 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
       return;
     }
 
-    // 2. Extract record_ids from events + add retry queue
+    // 2. Extract record_ids + agent_profile_id from events + add retry queue
     const recordMap = new Map<string, string | null>(); // record_id -> txDigest
+    const agentProfileMap = new Map<string, string | null>(); // record_id -> agent_profile_id
     for (const event of events.data) {
       const json = event.parsedJson as EventJson;
       const recordId = json?.record_id;
       if (recordId) {
         recordMap.set(recordId, event.id.txDigest);
+        agentProfileMap.set(recordId, parseOptionString(json?.agent_profile_id));
       }
     }
 
@@ -415,6 +462,10 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
     for (const [recordId] of retryQueue) {
       if (!recordMap.has(recordId)) {
         recordMap.set(recordId, null);
+        // Retry-queue entries lost the original event; agent_profile_id stays
+        // null. Acceptable because the retry path is rare (object not yet
+        // visible to RPC) and the row backfills on the next legit event.
+        agentProfileMap.set(recordId, null);
       }
     }
 
@@ -464,7 +515,14 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
       }
 
       const fields = obj.data.content.fields as Record<string, unknown>;
-      rows.push(parseObjectToRow(fields, objectId, recordMap.get(objectId) ?? null));
+      rows.push(
+        parseObjectToRow(
+          fields,
+          objectId,
+          recordMap.get(objectId) ?? null,
+          agentProfileMap.get(objectId) ?? null,
+        ),
+      );
     }
 
     const inserted = await insertRecords(rows);
@@ -505,7 +563,7 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
     if (consecutiveFailures <= 3 || consecutiveFailures % 10 === 0) {
       console.error(
         `[sync] Sync cycle error (failure #${consecutiveFailures}, next retry in ${nextSec}s):`,
-        err instanceof Error ? err.message : err,
+        describeFetchError(err),
       );
     }
   } finally {
@@ -521,7 +579,10 @@ async function syncCycle(client: SuiClient, eventType: string): Promise<void> {
  */
 export function startSyncWorker(rpcUrl: string, aerPackageId: string): void {
   const client = new SuiClient({ url: rpcUrl });
-  const eventType = `${aerPackageId}::aer::ExecutionReportCreated`;
+  // v3 superset. Every finalize call in aer.move co-emits both the legacy v2
+  // ExecutionReportCreated and ExecutionReportCreatedV3, so V3-only listening
+  // captures all AERs (with agent_profile_id=null for pre-v3 entry callers).
+  const eventType = `${aerPackageId}::aer::ExecutionReportCreatedV3`;
 
   console.log(`[sync] Starting AER sync worker (interval: ${SYNC_INTERVAL_MS / 1000}s)`);
   console.log(`[sync] Event type: ${eventType}`);

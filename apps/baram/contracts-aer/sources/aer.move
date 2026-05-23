@@ -287,6 +287,29 @@ module baram_aer::aer {
         settled_at: u64,
     }
 
+    /// v3 superset event. Always co-emitted alongside ExecutionReportCreated so
+    /// the on-chain wire is fully backwards-compatible: legacy indexers keep
+    /// reading the v2 event, the agent-attribution indexer reads only the v3
+    /// event. The sole additional field is `agent_profile_id`, which is `Some`
+    /// when the AER was created via a *_v3 entry (caller wired the
+    /// AgentProfile object id from baram_agent) and `None` for the existing
+    /// legacy entry callers. Reason: AER Move-level invariant is
+    /// `authorizer == initiator == requester` (= human wallet); without this
+    /// dedicated field there is no way to disambiguate which agent owned by
+    /// that human actually executed the action when one owner runs N agents.
+    public struct ExecutionReportCreatedV3 has copy, drop {
+        request_id: u64,
+        record_id: address,
+        initiator: address,
+        executor: address,
+        event_class: u8,
+        action_type: String,
+        action_outcome: u8,
+        payment_amount: u64,
+        settled_at: u64,
+        agent_profile_id: Option<ID>,
+    }
+
     public struct PolicyUpdated has copy, drop {
         new_version: u64,
     }
@@ -406,6 +429,7 @@ module baram_aer::aer {
             triggered_by_type, triggered_by_ref,
             model_version, prompt_template_hash, market_snapshot_hash,
             replay_extras_keys, replay_extras_vals,
+            option::none<ID>(),
             ctx,
         );
     }
@@ -551,6 +575,191 @@ module baram_aer::aer {
             triggered_by_type, triggered_by_ref,
             model_version, prompt_template_hash, market_snapshot_hash,
             replay_extras_keys, replay_extras_vals,
+            option::none<ID>(),
+            ctx,
+        );
+    }
+
+    // ========== v3 entries (agent attribution) ==========
+
+    /// v3 ungated entry. Mirrors `create_report_with_receipt` and additionally
+    /// records the AgentProfile object id that authored the action. The id is
+    /// emitted only in `ExecutionReportCreatedV3`; the on-chain AIExecutionReport
+    /// struct is unchanged (Sui compatible-upgrade forbids adding fields to
+    /// existing structs).
+    public fun create_report_with_receipt_v3(
+        registry: &mut AERRegistry,
+        baram_registry: &baram::baram::BaramRegistry,
+        receipt: baram::baram::SettlementReceipt,
+        initiator: address,
+        delegation_path: vector<address>,
+        executor_principal: Option<address>,
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        purpose: Option<String>,
+        constraints: Option<String>,
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+        requested_at: u64,
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        replay_extras_keys: vector<String>,
+        replay_extras_vals: vector<vector<u8>>,
+        agent_profile_id: Option<ID>,
+        ctx: &mut TxContext,
+    ) {
+        assert!(event_class == EVENT_CLASS_SETTLEMENT, E_UNGATED_REQUIRES_SETTLEMENT_CLASS);
+
+        let (
+            request_id,
+            requester,
+            receipt_executor,
+            price,
+            model_name,
+            output_hash,
+            execution_time_ms,
+            settled_at,
+        ) = baram::baram::consume_receipt(baram_registry, receipt, AERWitness {});
+
+        finalize_aer_from_receipt(
+            registry,
+            request_id, requester, receipt_executor, price, model_name, output_hash,
+            execution_time_ms, settled_at,
+            initiator, delegation_path, executor_principal,
+            fee_detail, budget_id, budget_remaining,
+            model_metadata, input_hash,
+            purpose, option::none<u64>(), constraints,
+            executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
+            requested_at,
+            triggered_by, triggered_action, intent_id, parent_intent_id, execution_id,
+            event_class, action_type, action_schema_version, payload_codec,
+            payload_hash, payload_bytes, action_summary, action_outcome,
+            triggered_by_type, triggered_by_ref,
+            model_version, prompt_template_hash, market_snapshot_hash,
+            replay_extras_keys, replay_extras_vals,
+            agent_profile_id,
+            ctx,
+        );
+    }
+
+    /// v3 capability-gated entry. Mirrors `create_report_with_receipt_capability`
+    /// with the same `agent_profile_id` addition. All capability + execution-class
+    /// gating semantics are preserved.
+    public fun create_report_with_receipt_capability_v3(
+        registry: &mut AERRegistry,
+        baram_registry: &baram::baram::BaramRegistry,
+        receipt: baram::baram::SettlementReceipt,
+        cap: &Capability,
+        expected_capability_version: u64,
+        initiator: address,
+        delegation_path: vector<address>,
+        executor_principal: Option<address>,
+        fee_detail: Option<String>,
+        budget_id: Option<ID>,
+        budget_remaining: Option<u64>,
+        model_metadata: Option<String>,
+        input_hash: vector<u8>,
+        purpose: Option<String>,
+        constraints: Option<String>,
+        executor_tier: u8,
+        executor_reputation: u64,
+        executor_stake_amount: u64,
+        tee_verified: bool,
+        tee_attestation_hash: Option<vector<u8>>,
+        requested_at: u64,
+        triggered_by: Option<ID>,
+        triggered_action: Option<ID>,
+        intent_id: vector<u8>,
+        parent_intent_id: Option<vector<u8>>,
+        execution_id: u32,
+        event_class: u8,
+        action_type: String,
+        action_schema_version: u16,
+        payload_codec: String,
+        payload_hash: vector<u8>,
+        payload_bytes: vector<u8>,
+        action_summary: String,
+        action_outcome: u8,
+        triggered_by_type: u8,
+        triggered_by_ref: Option<String>,
+        model_version: String,
+        prompt_template_hash: vector<u8>,
+        market_snapshot_hash: Option<vector<u8>>,
+        replay_extras_keys: vector<String>,
+        replay_extras_vals: vector<vector<u8>>,
+        agent_profile_id: Option<ID>,
+        ctx: &mut TxContext,
+    ) {
+        assert!(
+            event_class == EVENT_CLASS_COGNITION || event_class == EVENT_CLASS_EXECUTION,
+            E_GATED_REQUIRES_NON_SETTLEMENT_CLASS,
+        );
+
+        let (
+            request_id,
+            requester,
+            receipt_executor,
+            price,
+            model_name,
+            output_hash,
+            execution_time_ms,
+            settled_at,
+        ) = baram::baram::consume_receipt(baram_registry, receipt, AERWitness {});
+
+        let cap_version = capability::assert_can_execute(
+            cap,
+            requester,
+            &action_type,
+            price,
+            expected_capability_version,
+        );
+
+        let final_triggered_action = if (event_class == EVENT_CLASS_EXECUTION) {
+            let bytes = *tx_context::digest(ctx);
+            option::some(object::id_from_bytes(bytes))
+        } else {
+            triggered_action
+        };
+
+        finalize_aer_from_receipt(
+            registry,
+            request_id, requester, receipt_executor, price, model_name, output_hash,
+            execution_time_ms, settled_at,
+            initiator, delegation_path, executor_principal,
+            fee_detail, budget_id, budget_remaining,
+            model_metadata, input_hash,
+            purpose, option::some(cap_version), constraints,
+            executor_tier, executor_reputation, executor_stake_amount, tee_verified, tee_attestation_hash,
+            requested_at,
+            triggered_by, final_triggered_action, intent_id, parent_intent_id, execution_id,
+            event_class, action_type, action_schema_version, payload_codec,
+            payload_hash, payload_bytes, action_summary, action_outcome,
+            triggered_by_type, triggered_by_ref,
+            model_version, prompt_template_hash, market_snapshot_hash,
+            replay_extras_keys, replay_extras_vals,
+            agent_profile_id,
             ctx,
         );
     }
@@ -623,6 +832,11 @@ module baram_aer::aer {
         market_snapshot_hash: Option<vector<u8>>,
         replay_extras_keys: vector<String>,
         replay_extras_vals: vector<vector<u8>>,
+        // v3 attribution: AgentProfile object id (None for legacy callers).
+        // Never stored on the AIExecutionReport struct (Sui compatible-upgrade
+        // forbids adding fields to existing structs); only carried in the v3
+        // event for off-chain indexers.
+        agent_profile_id: Option<ID>,
         ctx: &mut TxContext,
     ) {
         // The executor signing this tx must match the receipt.
@@ -793,6 +1007,21 @@ module baram_aer::aer {
             action_outcome: report.envelope.action_outcome,
             payment_amount: price,
             settled_at,
+        });
+
+        // v3 superset event, always co-emitted. agent_profile_id is None for
+        // legacy callers and Some for the *_v3 entry callers.
+        event::emit(ExecutionReportCreatedV3 {
+            request_id,
+            record_id,
+            initiator,
+            executor: receipt_executor,
+            event_class: report.envelope.event_class,
+            action_type: report.envelope.action_type,
+            action_outcome: report.envelope.action_outcome,
+            payment_amount: price,
+            settled_at,
+            agent_profile_id,
         });
 
         transfer::transfer(report, initiator);

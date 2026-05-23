@@ -508,7 +508,11 @@ export async function submitProofWithAER(
   const { keys: replayExtraKeys, vals: replayExtraVals } = buildReplayExtrasArgs(aer);
 
   tx.moveCall({
-    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
+    // v3 entry — same gating semantics as v2 plus agent_profile_id attribution
+    // appended at the tail of the argument list. Lambda always routes v3 so
+    // ExecutionReportCreatedV3 indexer sees uniform shape; aer.agentProfileId
+    // is None when the caller did not surface an AgentProfile id.
+    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability_v3`,
     arguments: [
       tx.object(AER_REGISTRY_ID),                                            // 1 registry (mut)
       tx.object(BARAM_REGISTRY_ID),                                          // 2 baram_registry (imm)
@@ -566,6 +570,8 @@ export async function submitProofWithAER(
       // contract aborts on duplicate keys via vec_map::insert.
       tx.pure.vector('string', replayExtraKeys),                             // 40 replay_extras_keys
       tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize(replayExtraVals)),  // 41 replay_extras_vals
+      // v3 attribution. AgentProfile object id (encoded as Option<ID>).
+      tx.pure(bcs.option(bcs.Address).serialize(aer.agentProfileId ?? null)), // 42 agent_profile_id
     ],
   });
 
@@ -1030,7 +1036,8 @@ export async function submitSwapPTBWithAER(
   const { keys: swapReplayExtraKeys, vals: swapReplayExtraVals } = buildReplayExtrasArgs(aer);
 
   tx.moveCall({
-    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability`,
+    // v3 entry — see /execute callsite above for routing rationale.
+    target: `${AER_PACKAGE_ID}::aer::create_report_with_receipt_capability_v3`,
     arguments: [
       tx.object(AER_REGISTRY_ID),
       tx.object(BARAM_REGISTRY_ID),
@@ -1073,6 +1080,8 @@ export async function submitSwapPTBWithAER(
       tx.pure(bcs.option(bcs.vector(bcs.u8())).serialize(swapMarketSnapshotHashBytes)),
       tx.pure.vector('string', swapReplayExtraKeys),
       tx.pure(bcs.vector(bcs.vector(bcs.u8())).serialize(swapReplayExtraVals)),
+      // v3 attribution. AgentProfile object id (encoded as Option<ID>).
+      tx.pure(bcs.option(bcs.Address).serialize(aer.agentProfileId ?? null)),
     ],
   });
 
