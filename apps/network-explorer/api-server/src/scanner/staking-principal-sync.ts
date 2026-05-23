@@ -67,30 +67,24 @@ async function runSync(): Promise<void> {
     // Latest wallet per identity. See identity-wallet.ts for why the loose
     // index scan (skip scan) helper is required over the naive DISTINCT ON.
     const latestWallet = await getLatestWalletPerIdentity();
-    const byIdentity = new Map<string, string[]>();
-    for (const [identity_id, wallet_address] of latestWallet) {
-      byIdentity.set(identity_id, [wallet_address]);
-    }
 
     const results = new Map<string, { mist: bigint; partialFailure: boolean }>();
-    const entries = [...byIdentity.entries()];
+    const entries = [...latestWallet.entries()];
     for (let i = 0; i < entries.length; i += RPC_CONCURRENCY) {
       const slice = entries.slice(i, i + RPC_CONCURRENCY);
       await Promise.allSettled(
-        slice.map(async ([identityId, addrs]) => {
+        slice.map(async ([identityId, addr]) => {
           let totalMist = 0n;
           let partialFailure = false;
-          for (const addr of addrs) {
-            try {
-              const stakes = await rpcCall<StakeSet[]>('suix_getStakes', [addr]);
-              for (const stakeSet of stakes ?? []) {
-                for (const stake of stakeSet.stakes ?? []) {
-                  totalMist += BigInt(stake.principal);
-                }
+          try {
+            const stakes = await rpcCall<StakeSet[]>('suix_getStakes', [addr]);
+            for (const stakeSet of stakes ?? []) {
+              for (const stake of stakeSet.stakes ?? []) {
+                totalMist += BigInt(stake.principal);
               }
-            } catch {
-              partialFailure = true;
             }
+          } catch {
+            partialFailure = true;
           }
           results.set(identityId, { mist: totalMist, partialFailure });
         }),
