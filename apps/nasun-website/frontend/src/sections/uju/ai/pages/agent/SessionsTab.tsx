@@ -61,6 +61,13 @@ export function SessionsTab({
   const agentSessions = sessions.filter(
     (s) => s.agent.toLowerCase() === agentAddress.toLowerCase(),
   );
+  // Push routing currently picks the most-recent active session per wallet
+  // (LIMIT 1 in chat-server). A second link doesn't double the notifications,
+  // it just silently supersedes the previous one — so the +Link button is
+  // disabled while a linked session already exists. Pending (tgUserId=null)
+  // rows don't count: those are sessions the user created but never opened
+  // in Telegram, and re-linking is the natural way to recover from them.
+  const hasLinkedSession = agentSessions.some((s) => s.tgUserId !== null);
 
   const handleSaveCapId = () => {
     const trimmed = capIdInput.trim();
@@ -112,9 +119,10 @@ export function SessionsTab({
       )}
 
       <div>
-        <h3 className="text-sm font-semibold text-white">Active Telegram Sessions</h3>
+        <h3 className="text-sm font-semibold text-white">Active Telegram Session</h3>
         <p className="text-sm text-uju-secondary mt-0.5">
-          Each session lets @nasun_ai_bot notify you about this agent.
+          Lets @nasun_ai_bot notify you about this agent. One active session per
+          agent — linking a new one supersedes the existing link.
         </p>
       </div>
 
@@ -194,8 +202,14 @@ export function SessionsTab({
           <button
             type="button"
             onClick={() => setShowModal(true)}
-            disabled={!savedCapId}
-            title={!savedCapId ? 'Save Capability ID first' : undefined}
+            disabled={!savedCapId || hasLinkedSession}
+            title={
+              !savedCapId
+                ? 'Save Capability ID first'
+                : hasLinkedSession
+                  ? 'Already linked. Revoke the current session to link a new one.'
+                  : undefined
+            }
             className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             + Link Telegram
