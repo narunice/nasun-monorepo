@@ -160,6 +160,10 @@ except: print(0)
 " 2>/dev/null || echo 0)
 
 pm2 restart explorer-api
+# tier-worker runs in the same dist tree (dist/workers/tier-worker.js); restart
+# so it picks up the new compiled scanners (nsi-compute, lp-position-sync, etc.)
+# rather than keeping the old code in memory.
+pm2 restart tier-worker 2>/dev/null || echo "(tier-worker not present, skipping)"
 sleep 5
 
 echo "-- crash loop check --"
