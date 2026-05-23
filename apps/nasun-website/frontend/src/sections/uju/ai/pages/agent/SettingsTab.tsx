@@ -22,6 +22,7 @@ import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentMod
 import { RestoreAgentModal } from '../../components/modals/RestoreAgentModal';
 import { TosAcknowledgementModal, hasAcceptedTos } from '../../components/modals/TosAcknowledgementModal';
 import { useAgentVaultStatus } from '../../hooks/useAgentVaultStatus';
+import { AgentStateControl } from '../../components/AgentStateControl';
 import { SessionsTab } from './SessionsTab';
 
 interface SettingsTabProps {
@@ -62,6 +63,16 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
 
   return (
     <div className="space-y-8">
+      {/* Phase 8 — unified Activate / Pause / Kill control at the top of
+          Settings, mirroring the same control on Overview. Both consume
+          the chat-server GET /api/nasun-ai/agent/:addr/state SSOT. */}
+      <AgentStateControl
+        agentAddress={agent.agentAddress}
+        agentName={agent.name}
+        walletAddress={walletAddress}
+        agentProfileId={agent.id}
+      />
+
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-white">AI Agent Config</h3>
         <p className="text-sm text-uju-secondary">
@@ -163,10 +174,6 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
         />
       </section>
 
-      <section>
-        <DangerZoneCard capabilityId={agent.capabilityId} />
-      </section>
-
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-white">Security</h3>
         <div className="rounded-xl border border-uju-border/60 bg-uju-card p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -185,6 +192,10 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             Export key
           </button>
         </div>
+      </section>
+
+      <section>
+        <DangerZoneCard capabilityId={agent.capabilityId} />
       </section>
 
       {exportOpen && (

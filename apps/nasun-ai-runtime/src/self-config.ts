@@ -23,6 +23,7 @@
 
 import { createHmac } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { SuiClient } from '@mysten/sui/client';
 
 export interface AssertEnabledOptions {
   /** chat-server base URL, e.g. "https://nasun.io/chat" or "" to disable check. */
@@ -172,4 +173,109 @@ export async function assertEnabledOrExit(opts: AssertEnabledOptions): Promise<S
   }
 
   return { decision: 'continue', reason: 'enabled:true' };
+}
+
+// ===== Phase 8 (2026-05-24) — on-chain is_active gate =====
+//
+// Backstop for the case where the user signs an on-chain `deactivate_agent`
+// tx (kill) but the chat-server reconcile somehow misses our PM2 process.
+// Runtime exits cleanly if the AgentProfile says inactive.
+//
+// Cache: 60s in-process. Trader cycle is 30+ minutes by default, so the
+// cache rarely hits — its job is to absorb /wake bursts within a minute
+// without N parallel RPC calls.
+//
+// Fail-open: any RPC failure or missing profile_id is treated as
+// "continue normally" — orchestrator polling (60s drift cure) and the
+// existing enabled check provide overlapping safety.
+
+interface IsActiveCacheEntry {
+  value: boolean | null;
+  expiresAt: number;
+}
+// Cache keyed by profileId. In practice each spawn handles one agent so the
+// map stays at size 1, but keying defensively avoids stale data if anything
+// ever calls this with two profile ids in the same process.
+const onChainActiveCache = new Map<string, IsActiveCacheEntry>();
+const ON_CHAIN_CACHE_TTL_MS = 60_000;
+
+// Per-RPC-URL SuiClient cache. RPC rotation/failover is rare (env-driven,
+// PM2 restart on change) but if it ever happens within a process lifetime
+// we don't want to keep using a stale URL.
+const clientsByUrl = new Map<string, SuiClient>();
+function getRuntimeSuiClient(rpcUrl: string): SuiClient {
+  let client = clientsByUrl.get(rpcUrl);
+  if (!client) {
+    client = new SuiClient({ url: rpcUrl });
+    clientsByUrl.set(rpcUrl, client);
+  }
+  return client;
+}
+
+export interface AssertOnChainActiveOptions {
+  /** AgentProfile object id. When unset (legacy spawn) the check is a no-op. */
+  profileId: string | undefined;
+  rpcUrl: string;
+  /** PM2 process name (for admin stop before exit), defaults to env PM2_AGENT_NAME. */
+  pm2Name?: string;
+  log?: (msg: string) => void;
+  fetchClient?: SuiClient;
+  exitImpl?: (code: number) => never;
+  pm2StopImpl?: (pm2Name: string) => { ok: boolean };
+}
+
+export async function assertOnChainActiveOrExit(
+  opts: AssertOnChainActiveOptions,
+): Promise<SelfConfigCheckResult> {
+  const log = opts.log ?? ((m: string) => console.log(m));
+  const pm2Name = opts.pm2Name ?? process.env.PM2_AGENT_NAME ?? '';
+  const pm2StopFn = opts.pm2StopImpl ?? defaultPm2Stop;
+
+  const exit = (code: number): never => {
+    if (pm2Name) {
+      log(`[on-chain-check] pm2 stop ${pm2Name} (suppress autorestart) ...`);
+      const stop = pm2StopFn(pm2Name);
+      log(`[on-chain-check] pm2 stop ${pm2Name} ${stop.ok ? 'ok' : 'failed'}`);
+    }
+    if (opts.exitImpl) return opts.exitImpl(code);
+    return process.exit(code);
+  };
+
+  if (!opts.profileId) {
+    return { decision: 'skip', reason: 'no profile_id (legacy spawn or standalone)' };
+  }
+
+  const now = Date.now();
+  const cached = onChainActiveCache.get(opts.profileId);
+  let isActive: boolean | null;
+  if (cached && cached.expiresAt > now) {
+    isActive = cached.value;
+  } else {
+    try {
+      const client = opts.fetchClient ?? getRuntimeSuiClient(opts.rpcUrl);
+      const obj = await client.getObject({ id: opts.profileId, options: { showContent: true } });
+      if (obj.data?.content?.dataType !== 'moveObject') {
+        isActive = null;
+      } else {
+        const fields = obj.data.content.fields as Record<string, unknown>;
+        isActive = Boolean(fields.is_active);
+      }
+      onChainActiveCache.set(opts.profileId, { value: isActive, expiresAt: now + ON_CHAIN_CACHE_TTL_MS });
+    } catch (err) {
+      const reason = `RPC error: ${err instanceof Error ? err.message : String(err)}`;
+      log(`[on-chain-check] ${reason}; skipping (fail-open)`);
+      return { decision: 'skip', reason };
+    }
+  }
+
+  if (isActive === false) {
+    const reason = 'AgentProfile.is_active = false on chain';
+    log(`[on-chain-check] ${reason}. Exiting.`);
+    exit(0);
+    return { decision: 'exit', reason };
+  }
+  if (isActive === null) {
+    return { decision: 'skip', reason: 'profile object not found or unreadable' };
+  }
+  return { decision: 'continue', reason: 'is_active:true' };
 }

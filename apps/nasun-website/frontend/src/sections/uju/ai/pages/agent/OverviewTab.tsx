@@ -19,6 +19,7 @@ import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { TradingPerformanceCard } from '../../components/performance/TradingPerformanceCard';
 import { FirstRunChecklist } from '../../components/FirstRunChecklist';
 import { HashRef } from '../../components/HashRef';
+import { AgentStateControl } from '../../components/AgentStateControl';
 import { ActivityTab } from './ActivityTab';
 
 interface OverviewTabProps {
@@ -89,6 +90,17 @@ export function OverviewTab({
   return (
     <div className="space-y-6">
       <FirstRunChecklist agent={agent} onJumpToActivity={onViewAllActivity} />
+
+      {/* Phase 8 — unified Activate / Pause / Kill control. Source of truth
+          is chat-server GET /api/nasun-ai/agent/:addr/state (single hook).
+          Renders alongside the legacy buttons below during dogfood; the
+          legacy controls will be removed in cleanup once this is stable. */}
+      <AgentStateControl
+        agentAddress={agent.agentAddress}
+        agentName={agent.name}
+        walletAddress={walletAddress}
+        agentProfileId={agent.id}
+      />
 
       <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-3">
         <div className="flex items-start justify-between gap-2">

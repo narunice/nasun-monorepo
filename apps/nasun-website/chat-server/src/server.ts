@@ -28,6 +28,7 @@ import {
 } from './agent-vault-routes.js';
 import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
+import { startAgentStateDriftPoller } from './agent-orchestrator.js';
 import { handleAgentPushRequest } from './agent-push-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
 import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
@@ -1441,6 +1442,15 @@ httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
 });
+
+// Phase 8 — 60s on-chain drift poller. Heals state when a user deactivates
+// their agent from a different wallet client; otherwise an idle session
+// would let stopped agents keep running.
+try {
+  startAgentStateDriftPoller();
+} catch (err) {
+  console.error('[startup] drift_poller_init_failed:', (err as Error).message);
+}
 
 // ===== Memory Diagnostics =====
 

@@ -1,93 +1,85 @@
 /**
- * Phase 6 (2026-05-23) — reconcile decision function coverage.
+ * Phase 8 (2026-05-24) — deriveAgentState coverage.
  *
- * `decideReconcileAction` is the pure brain of the orchestrator-side
- * enabled-gate. Given a snapshot of {vault, enabled, pm2 list}, it
- * decides whether to spawn, stop, or no-op. Side-effecting parts
- * (pm2 exec, SQLite reads) are exercised end-to-end on staging.
+ * `deriveAgentState` is the pure brain of the orchestrator's reconcile.
+ * Given a snapshot of {is_active, enabled, vault, pm2 list}, it returns
+ * the user-facing state + whether PM2 should be running. Side effects
+ * (pm2 exec, SQLite, RPC) are exercised end-to-end on staging.
+ *
+ * State derivation invariants verified:
+ *   is_active=true,  enabled=true,  vault=ok  → activated, desiredRunning=true
+ *   is_active=true,  enabled=false, vault=ok  → paused,    desiredRunning=false
+ *   is_active=true,  enabled=*,     vault=no  → paused,    desiredRunning=false
+ *   is_active=false, *                        → killed,    desiredRunning=false
+ *   is_active=null  (RPC failed)              → unknown,   desiredRunning=false
  */
 
 import { describe, it, expect } from 'vitest';
-import { decideReconcileAction } from '../agent-orchestrator.js';
+import { deriveAgentState } from '../agent-orchestrator.js';
 
 const NAME = 'nasun-ai-agent-deadbeef';
 
-describe('decideReconcileAction', () => {
-  it('no_vault when vault row is missing', () => {
-    const r = decideReconcileAction({
-      hasVaultRow: false,
-      enabled: true,
-      pm2NameKnown: null,
-      pm2NamesInList: new Set(),
-    });
-    expect(r.action).toBe('no_vault');
+const base = {
+  hasActiveVault: true,
+  pm2NameKnown: NAME,
+  pm2NamesInList: new Set<string>(),
+};
+
+describe('deriveAgentState', () => {
+  it('activated when on-chain active, enabled, vault present', () => {
+    const r = deriveAgentState({ ...base, isActive: true, enabled: true });
+    expect(r.state).toBe('activated');
+    expect(r.desiredRunning).toBe(true);
+    expect(r.reason).toBe('enabled_true');
   });
 
-  it('no_vault when pm2NameKnown is null even if hasVaultRow flag set', () => {
-    // Defensive: both null + true would be a programming error from caller
-    // (vault row exists but name not derived), but we should still no-op.
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: true,
-      pm2NameKnown: null,
-      pm2NamesInList: new Set(),
-    });
-    expect(r.action).toBe('no_vault');
+  it('paused when on-chain active but enabled=false', () => {
+    const r = deriveAgentState({ ...base, isActive: true, enabled: false });
+    expect(r.state).toBe('paused');
+    expect(r.desiredRunning).toBe(false);
+    expect(r.reason).toBe('enabled_false');
   });
 
-  it('spawn when enabled=true and pm2 absent', () => {
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: true,
-      pm2NameKnown: NAME,
-      pm2NamesInList: new Set(['some-other-process']),
+  it('paused when on-chain active but vault row missing (cannot spawn)', () => {
+    const r = deriveAgentState({
+      ...base, hasActiveVault: false, isActive: true, enabled: true,
     });
-    expect(r.action).toBe('spawn');
-    expect(r.reason).toContain('enabled_true_pm2_absent');
+    expect(r.state).toBe('paused');
+    expect(r.desiredRunning).toBe(false);
+    expect(r.reason).toBe('no_active_vault_row');
   });
 
-  it('noop when enabled=true and pm2 already running', () => {
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: true,
-      pm2NameKnown: NAME,
-      pm2NamesInList: new Set([NAME, 'other']),
-    });
-    expect(r.action).toBe('noop');
-    expect(r.reason).toContain('enabled_true_pm2_running');
+  it('killed when on-chain inactive (enabled=true)', () => {
+    const r = deriveAgentState({ ...base, isActive: false, enabled: true });
+    expect(r.state).toBe('killed');
+    expect(r.desiredRunning).toBe(false);
+    expect(r.reason).toBe('on_chain_inactive');
   });
 
-  it('stop when enabled=false and pm2 running', () => {
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: false,
-      pm2NameKnown: NAME,
-      pm2NamesInList: new Set([NAME]),
-    });
-    expect(r.action).toBe('stop');
-    expect(r.reason).toContain('enabled_false_pm2_running');
+  it('killed when on-chain inactive (enabled=false)', () => {
+    const r = deriveAgentState({ ...base, isActive: false, enabled: false });
+    expect(r.state).toBe('killed');
+    expect(r.desiredRunning).toBe(false);
   });
 
-  it('noop when enabled=false and pm2 already absent', () => {
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: false,
-      pm2NameKnown: NAME,
-      pm2NamesInList: new Set(['other']),
+  it('killed even when vault still present (kill is on-chain truth)', () => {
+    const r = deriveAgentState({
+      ...base, hasActiveVault: true, isActive: false, enabled: true,
     });
-    expect(r.action).toBe('noop');
-    expect(r.reason).toContain('enabled_false_pm2_absent');
+    expect(r.state).toBe('killed');
+    expect(r.desiredRunning).toBe(false);
   });
 
-  it('exact name match required (no prefix collisions)', () => {
-    // pm2 list contains a NAME-like-but-different process; we must NOT
-    // assume it is "our" agent.
-    const r = decideReconcileAction({
-      hasVaultRow: true,
-      enabled: true,
-      pm2NameKnown: NAME,
-      pm2NamesInList: new Set([NAME + '-suffix']),
-    });
-    expect(r.action).toBe('spawn');
+  it('unknown when on-chain read returns null (RPC failure or legacy profile_id NULL)', () => {
+    const r = deriveAgentState({ ...base, isActive: null, enabled: true });
+    expect(r.state).toBe('unknown');
+    expect(r.desiredRunning).toBe(false);
+    expect(r.reason).toBe('on_chain_unknown');
+  });
+
+  it('unknown takes precedence over enabled=false (do not infer paused on RPC failure)', () => {
+    const r = deriveAgentState({ ...base, isActive: null, enabled: false });
+    expect(r.state).toBe('unknown');
+    expect(r.desiredRunning).toBe(false);
   });
 });

@@ -103,7 +103,7 @@ export function DeactivateAgentModal({
       <div className="w-full max-w-md rounded-2xl bg-uju-card border border-uju-border/60 shadow-xl">
         <div className="flex items-center justify-between p-5 border-b border-uju-border/60">
           <h2 id="deactivate-agent-title" className="text-base font-semibold text-white">
-            Deactivate {agentName}
+            Kill {agentName}
           </h2>
           <button
             type="button"
@@ -119,11 +119,11 @@ export function DeactivateAgentModal({
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="rounded-xl bg-amber-500/10 border border-amber-500/30 px-3 py-2.5 text-sm text-amber-200">
-            <p className="font-medium">The agent will stop running on the server.</p>
-            <p className="mt-1 text-amber-200/80">
-              You can restore it within 7 days. After that the encrypted key is permanently deleted
-              and you would need to upload it again from your browser-stored copy.
+          <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-3 py-2.5 text-sm text-red-200">
+            <p className="font-medium">This action is permanent.</p>
+            <p className="mt-1 text-red-200/80">
+              The agent's on-chain profile will be marked inactive and the server-side
+              key vault will be removed. Create a new agent to use Nasun AI again.
             </p>
           </div>
 
@@ -135,7 +135,7 @@ export function DeactivateAgentModal({
 
           {done && !error && (
             <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-3 py-2 text-sm text-emerald-300" role="status">
-              Agent paused. Runtime stopped and on-chain status updated.
+              Agent killed. Runtime stopped and on-chain status updated.
             </div>
           )}
 
@@ -154,7 +154,7 @@ export function DeactivateAgentModal({
               disabled={busy || done}
               className="flex-1 py-2.5 rounded-xl bg-red-500/80 text-white text-sm font-medium hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {done ? 'Paused' : busy ? 'Deactivating...' : 'Confirm deactivate'}
+              {done ? 'Killed' : busy ? 'Killing...' : 'Confirm kill'}
             </button>
           </div>
         </div>
