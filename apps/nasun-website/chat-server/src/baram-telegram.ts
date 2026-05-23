@@ -160,10 +160,22 @@ async function sendMessage(
   chatId: number | string,
   text: string,
   replyMarkup?: Record<string, unknown>,
+  options?: { disableWebPagePreview?: boolean },
 ): Promise<void> {
   const body: Record<string, unknown> = { chat_id: chatId, text, parse_mode: 'HTML' };
   if (replyMarkup) body.reply_markup = replyMarkup;
+  if (options?.disableWebPagePreview) body.disable_web_page_preview = true;
   await tgPost('sendMessage', body, true, 'sendMessage');
+}
+
+// Escape user-controlled strings before interpolating into an HTML
+// parse_mode Telegram message. Without this, an agent name like
+// `</b>foo` would break the surrounding markup or smuggle a link tag.
+function escapeTgHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 /**
@@ -735,20 +747,34 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
       'Welcome to Nasun AI!\n\n' +
       'To link your agent, visit your Dashboard and tap "Link Telegram":\n' +
       `<a href="${dashboardDeepLink()}">${dashboardDeepLink()}</a>`,
+      undefined,
+      { disableWebPagePreview: true },
     );
     return;
   }
 
-  const { bindTelegramUser } = await import('./baram-session.js');
+  const { bindTelegramUser, getSession } = await import('./baram-session.js');
+  const { getAgentNameByAddress } = await import('./nasun-ai-config-routes.js');
   const bound = bindTelegramUser(sid, tgUserId);
 
   if (bound) {
+    const session = getSession(sid);
+    const agentName = session ? getAgentNameByAddress(session.agent) : null;
+    const displayName = agentName ? escapeTgHtml(agentName) : 'your Nasun AI agent';
+
     await sendMessage(
       chatId,
-      'Your Nasun AI agent is now linked to this Telegram account.\n\n' +
-      'You can now send messages here to interact with your agent.\n' +
-      'To manage settings, visit your Dashboard:\n' +
+      `Hi! I'm <b>${displayName}</b>, your Nasun AI trading agent.\n\n` +
+      `Here's what I can do for you:\n` +
+      `• <b>Heartbeat trading</b> — I scan the market and execute trades on the interval you configured\n` +
+      `• <b>Balance check</b> — Ask me "what's my balance?" or "show my portfolio"\n` +
+      `• <b>Manual trades</b> — Tell me to buy or sell, and I'll execute it\n` +
+      `• <b>Strategy chat</b> — Discuss market conditions, review my recent trades, or adjust my approach\n\n` +
+      `Just send me a message anytime. I'm always here.\n\n` +
+      `To manage settings, visit your Dashboard:\n` +
       `<a href="${dashboardDeepLink()}">${dashboardDeepLink()}</a>`,
+      undefined,
+      { disableWebPagePreview: true },
     );
   } else {
     await sendMessage(
@@ -756,6 +782,8 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
       'This link has already been used or has expired.\n\n' +
       'Please generate a new link from your Dashboard:\n' +
       `<a href="${dashboardDeepLink()}">${dashboardDeepLink()}</a>`,
+      undefined,
+      { disableWebPagePreview: true },
     );
   }
 }
