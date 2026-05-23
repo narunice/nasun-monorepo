@@ -416,6 +416,16 @@ async function handleHttpRequest(
     return;
   }
 
+  // Phase 8 (2026-05-24): MUST run BEFORE handleBaramTelegramRequest for the
+  // same reason as handleAgentPushRequest above. handleNasunAiConfigRequest
+  // owns precise routes (POST/DELETE /api/nasun-ai/config, GET /config/:addr,
+  // GET /api/nasun-ai/agent/:addr/state). The new /state path lives under
+  // /api/nasun-ai/agent/ so without this ordering baram-telegram's POST-only
+  // gate returns 405 method_not_allowed for the GET probe.
+  if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
   // Baram (Nasun AI) Telegram session API — manages signed sessions between
   // user wallets and the Telegram bot. Handles its own OPTIONS for POST.
   if (await handleBaramTelegramRequest(req, res, url, corsHeaders)) {
@@ -427,11 +437,6 @@ async function handleHttpRequest(
   // dispatch is async (jobId + polling) so a 60-120s analyst cycle does not
   // need a synchronous HTTP connection through CloudFront.
   if (await handleChatWakeRequest(req, res, url, corsHeaders)) {
-    return;
-  }
-
-  // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
-  if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
     return;
   }
 
