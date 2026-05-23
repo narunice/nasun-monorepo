@@ -154,6 +154,30 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
   if (process.env.AGENT_AER_HEARTBEAT_COOLDOWN_MIN) {
     out.AER_HEARTBEAT_COOLDOWN_MIN = process.env.AGENT_AER_HEARTBEAT_COOLDOWN_MIN;
   }
+  // General-chat preset (2026-05-23). Forwarded only when present so
+  // operators with no LLM credentials still spawn agents that soft-fail
+  // chat to a canned reply (see apps/nasun-ai-runtime/src/presets/chat.ts).
+  // Trading-intent user_messages keep running through the analyst path
+  // even without these vars; only free-form chit-chat depends on them.
+  const llmApiUrl = process.env.AGENT_GLOBAL_LLM_API_URL ?? process.env.LLM_API_URL;
+  const llmApiKey = process.env.AGENT_GLOBAL_LLM_API_KEY ?? process.env.LLM_API_KEY;
+  if (llmApiUrl) out.LLM_API_URL = llmApiUrl;
+  if (llmApiKey) out.LLM_API_KEY = llmApiKey;
+  if (process.env.AGENT_GLOBAL_LLM_MODEL ?? process.env.LLM_MODEL) {
+    out.LLM_MODEL = (process.env.AGENT_GLOBAL_LLM_MODEL ?? process.env.LLM_MODEL) as string;
+  }
+  // ANTHROPIC_API_KEY is intentionally NOT forwarded: it is reserved
+  // for Pado's Wavi chatbot (chat-server's ai-chatbot.ts) and must not
+  // be consumed by Nasun AI trading agents. Chat uses the free-tier
+  // pool below instead.
+  //
+  // Multi-provider rotation pool (preferred). JSON array of
+  // {name, url, key, model} read at runtime startup; round-robin +
+  // 60s cooldown on failures. Operator stores this in chat-server's
+  // .env as a single (long) line to avoid shell-escaping the keys.
+  const chatLlmProviders =
+    process.env.AGENT_GLOBAL_CHAT_LLM_PROVIDERS ?? process.env.CHAT_LLM_PROVIDERS;
+  if (chatLlmProviders) out.CHAT_LLM_PROVIDERS = chatLlmProviders;
   return out;
 }
 
@@ -236,6 +260,16 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
     // the spawned process closure, fetched from SSM on startup.
     ...globalEnv,
     ...perAgent,
+    // Explicit blocklist (override anything that may leak via
+    // `pm2 --update-env` from chat-server's process.env). Without this,
+    // ANTHROPIC_API_KEY shows up in every spawned trading agent because
+    // chat-server's process has it loaded for the Wavi chatbot. Empty
+    // string here forces pm2 to write a present-but-empty var into the
+    // child's env, which `config.anthropicApiKey ?? ''` evaluates as
+    // not-set in the runtime config. 2026-05-23: ANTHROPIC_* is reserved
+    // for Pado Wavi and must never reach the trading agent.
+    ANTHROPIC_API_KEY: '',
+    ANTHROPIC_MODEL: '',
   };
 
   const configBody = `// Auto-generated per-spawn pm2 ecosystem file. Safe to delete after pm2\n`

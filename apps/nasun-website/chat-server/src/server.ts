@@ -481,6 +481,72 @@ async function handleHttpRequest(
     return;
   }
 
+  // Re-spawn all active agent processes so they pick up the latest
+  // globalTraderEnv (added 2026-05-23 for the chat preset's
+  // CHAT_LLM_PROVIDERS pool). The orchestrator bakes env into a
+  // per-spawn ecosystem file at spawn time, so a plain `pm2 restart`
+  // would preserve the OLD env block. Restoring the env requires
+  // stop + spawn through the orchestrator's helper. Designed for
+  // one-off invocation after a deploy that adds new env keys to
+  // globalTraderEnv.
+  if (url.pathname === '/api/internal/agents/respawn-all' && req.method === 'POST') {
+    const apiKey = process.env.INTERNAL_API_KEY;
+    if (!checkInternalAuth(req, apiKey ?? '')) {
+      res.writeHead(401, corsHeaders);
+      res.end(JSON.stringify({ error: 'unauthorized' }));
+      return;
+    }
+    try {
+      const { spawnAgentPm2, stopAgentPm2 } = await import('./agent-orchestrator.js');
+      const { getDb } = await import('./store.js');
+      const rows = getDb().prepare(
+        `SELECT agent_address, pm2_name, param_name, wake_port
+           FROM agent_keys
+          WHERE deleted_at IS NULL`,
+      ).all() as Array<{
+        agent_address: string;
+        pm2_name: string;
+        param_name: string;
+        wake_port: number;
+      }>;
+
+      const results: Array<{ pm2Name: string; ok: boolean; error?: string }> = [];
+      for (const row of rows) {
+        try {
+          // best-effort stop; ignore "process not found" — we just want
+          // a clean baseline before spawn.
+          await stopAgentPm2(row.pm2_name).catch(() => undefined);
+          await spawnAgentPm2({
+            agentAddress: row.agent_address,
+            pm2Name: row.pm2_name,
+            paramName: row.param_name,
+            wakePort: row.wake_port,
+          });
+          results.push({ pm2Name: row.pm2_name, ok: true });
+        } catch (err) {
+          results.push({
+            pm2Name: row.pm2_name,
+            ok: false,
+            error: (err as Error).message,
+          });
+        }
+      }
+      res.writeHead(200, corsHeaders);
+      res.end(JSON.stringify({
+        ok: true,
+        total: rows.length,
+        succeeded: results.filter((r) => r.ok).length,
+        failed: results.filter((r) => !r.ok).length,
+        results,
+      }));
+    } catch (err) {
+      console.error('[respawn-all] failed:', (err as Error).message);
+      res.writeHead(500, corsHeaders);
+      res.end(JSON.stringify({ error: 'respawn_failed', message: (err as Error).message }));
+    }
+    return;
+  }
+
   // Internal cache invalidation. Used by:
   //   - network-explorer when a wallet is registered (no params → identity cache)
   //   - nasun-website Lambda PATCH /user-profile (?type=profile&walletAddress=...
