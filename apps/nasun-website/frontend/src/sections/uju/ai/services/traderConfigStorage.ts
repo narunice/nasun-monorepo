@@ -38,21 +38,48 @@ async function sha256Hex(s: string): Promise<string> {
     .join('');
 }
 
-async function syncConfigToServer(
+/**
+ * Phase 4 (2026-05-23) — server save MUST succeed before we touch
+ * IndexedDB. The prior fire-and-forget pattern silently produced ghost
+ * agents (rows in browser, nothing on server) that the runtime could
+ * never see. Now the caller awaits server confirmation; failures throw
+ * a typed error so UI consumers can surface them.
+ *
+ * The chat-server enforces wallet-sig auth (so a missing signer means
+ * we cannot proceed at all). 20s timeout covers a normal save (~100ms)
+ * + worst-case reconcile spawn (~15s pm2 timeout) on the server side.
+ */
+export class TraderConfigSyncError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly serverMessage?: string,
+  ) {
+    super(message);
+    this.name = 'TraderConfigSyncError';
+  }
+}
+
+async function pushConfigToServer(
   config: TraderConfig,
   signer: ConfigSigner | null,
 ): Promise<void> {
-  if (!signer) return;
+  if (!signer) {
+    throw new TraderConfigSyncError(
+      'wallet_signer_required: cannot save without a connected wallet',
+    );
+  }
+  const configPayload = config;
+  const configJson = JSON.stringify(configPayload);
+  const configHash = await sha256Hex(configJson);
+  const ts = Date.now();
+  const walletLower = config.walletAddress.toLowerCase();
+  const agentLower = config.agentAddress.toLowerCase();
+  const message = `nasun-ai-config:save:v1:${walletLower}:${agentLower}:${configHash}:${ts}`;
+  const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
+  let res: Response;
   try {
-    const configPayload = config;
-    const configJson = JSON.stringify(configPayload);
-    const configHash = await sha256Hex(configJson);
-    const ts = Date.now();
-    const walletLower = config.walletAddress.toLowerCase();
-    const agentLower = config.agentAddress.toLowerCase();
-    const message = `nasun-ai-config:save:v1:${walletLower}:${agentLower}:${configHash}:${ts}`;
-    const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
-    await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+    res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -62,31 +89,58 @@ async function syncConfigToServer(
         ts,
         signature,
       }),
+      signal: AbortSignal.timeout(20_000),
     });
-  } catch {
-    // Fire-and-forget: IndexedDB is the local source of truth.
+  } catch (err) {
+    throw new TraderConfigSyncError(
+      `network_error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new TraderConfigSyncError(
+      `server_rejected_save: HTTP ${res.status}`,
+      res.status,
+      text,
+    );
   }
 }
 
-async function deleteConfigFromServer(
+async function deleteConfigOnServer(
   agentAddress: string,
   walletAddress: string,
   signer: ConfigSigner | null,
 ): Promise<void> {
-  if (!signer) return;
+  if (!signer) {
+    throw new TraderConfigSyncError(
+      'wallet_signer_required: cannot delete without a connected wallet',
+    );
+  }
+  const ts = Date.now();
+  const walletLower = walletAddress.toLowerCase();
+  const agentLower = agentAddress.toLowerCase();
+  const message = `nasun-ai-config:delete:v1:${walletLower}:${agentLower}:${ts}`;
+  const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
+  let res: Response;
   try {
-    const ts = Date.now();
-    const walletLower = walletAddress.toLowerCase();
-    const agentLower = agentAddress.toLowerCase();
-    const message = `nasun-ai-config:delete:v1:${walletLower}:${agentLower}:${ts}`;
-    const { signature } = await signer.signPersonal(new TextEncoder().encode(message));
-    await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
+    res = await fetch(`${CHAT_SERVER_URL}/api/nasun-ai/config`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ agentAddress, walletAddress, ts, signature }),
+      signal: AbortSignal.timeout(20_000),
     });
-  } catch {
-    // Fire-and-forget.
+  } catch (err) {
+    throw new TraderConfigSyncError(
+      `network_error: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new TraderConfigSyncError(
+      `server_rejected_delete: HTTP ${res.status}`,
+      res.status,
+      text,
+    );
   }
 }
 
@@ -220,18 +274,47 @@ export async function getConfigByAgent(
   return r.config;
 }
 
-export async function saveConfig(config: TraderConfig, signer: ConfigSigner | null): Promise<void> {
-  await tx(config.walletAddress, 'readwrite', (s) => s.put(config));
-  // Don't block the local save on the server round-trip / signature.
-  void syncConfigToServer(config, signer);
+/**
+ * Phase 4: server is the source of truth, so save MUST hit the server
+ * before we mutate IndexedDB. If the server rejects (timeout, 4xx, 5xx)
+ * we throw so the caller can render the error and abort. IndexedDB is
+ * updated only on server success; that way a failed save leaves both
+ * stores in the previous consistent state.
+ */
+export async function saveConfig(
+  config: TraderConfig,
+  signer: ConfigSigner | null,
+): Promise<void> {
+  await pushConfigToServer(config, signer);
+  // Server confirmed. Refresh the offline cache so subsequent reads
+  // (including the source='cache' fallback when server is unreachable)
+  // see the latest values. Cache-write failure is non-fatal — server
+  // already has the truth.
+  try {
+    await tx(config.walletAddress, 'readwrite', (s) => s.put(config));
+  } catch (err) {
+    console.warn('[trader-config] IndexedDB cache update failed (non-fatal):', err);
+  }
 }
 
+/**
+ * Phase 4: server delete first, then prune the local cache. Symmetric
+ * to saveConfig. If `agentAddress` is undefined (legacy callers that
+ * only know the IndexedDB id), we skip the server call — that branch
+ * was never relied on for orchestrator interactions.
+ */
 export async function deleteConfig(
   walletAddress: string,
   id: string,
   agentAddress: string | undefined,
   signer: ConfigSigner | null,
 ): Promise<void> {
-  await tx(walletAddress, 'readwrite', (s) => s.delete(id));
-  if (agentAddress) void deleteConfigFromServer(agentAddress, walletAddress, signer);
+  if (agentAddress) {
+    await deleteConfigOnServer(agentAddress, walletAddress, signer);
+  }
+  try {
+    await tx(walletAddress, 'readwrite', (s) => s.delete(id));
+  } catch (err) {
+    console.warn('[trader-config] IndexedDB cache delete failed (non-fatal):', err);
+  }
 }
