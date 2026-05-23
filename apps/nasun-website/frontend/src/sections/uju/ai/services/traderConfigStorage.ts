@@ -1,15 +1,21 @@
 /**
- * Trader Config Storage - IndexedDB wrapper for trader agent definitions.
- * Schema: Database `nasun-ai-trader-{walletAddress}`, store `configs` (keyPath = id).
- * Plaintext storage; agent private key still lives in agentKeyStorage (encrypted).
+ * Trader Config Storage.
  *
- * Each write also mirrors to the chat-server (POST /api/nasun-ai/config) so
- * nasun-ai-runtime can read the latest config at the start of each cycle. The
- * server requires a Sui personal-message signature over a canonical message
- * bound to {walletAddress, agentAddress, configHash, ts}; saveConfig /
- * deleteConfig take a `signer` so the caller's wallet can produce that
- * signature. Server sync is best-effort: IndexedDB remains the local source
- * of truth.
+ * Read path (Phase 3, 2026-05-23): chat-server SQLite is the single
+ * source of truth for what the runtime is actually using. `getConfigByAgent`
+ * fetches from the server first and treats IndexedDB as an offline cache
+ * only. Prior to this refactor, IndexedDB was the primary read source,
+ * which meant Settings could lie about an agent's real state after a
+ * browser switch or cache clear (the runtime saw server truth; the UI
+ * saw stale local data).
+ *
+ * Write path: saveConfig/deleteConfig mirror to the chat-server with a
+ * Sui personal-message signature bound to {walletAddress, agentAddress,
+ * configHash, ts}. The server enforces first-writer-wins ownership.
+ *
+ * IndexedDB schema: `nasun-ai-trader-{walletAddress}` / store `configs`
+ * (keyPath = id). Plaintext metadata only; agent private keys live in
+ * agentKeyStorage (encrypted) and never touch this store.
  */
 
 import type { TraderConfig } from '../types/trader';
@@ -137,9 +143,81 @@ export async function getConfig(walletAddress: string, id: string): Promise<Trad
   return r ?? null;
 }
 
-export async function getConfigByAgent(walletAddress: string, agentAddress: string): Promise<TraderConfig | null> {
-  const all = await listConfigs(walletAddress);
-  return all.find((c) => c.agentAddress === agentAddress) ?? null;
+/**
+ * Result of a config read with provenance.
+ * - 'server': fetched live from chat-server (authoritative)
+ * - 'cache':  server unreachable; using last-known IndexedDB copy (stale possible)
+ * - 'none':   neither source has a row for this agent
+ */
+export interface TraderConfigReadResult {
+  config: TraderConfig | null;
+  source: 'server' | 'cache' | 'none';
+}
+
+/**
+ * Server-first read with offline fallback. Caller can ignore source if
+ * they only need the config object; UI surfaces that want to show a
+ * "loaded from offline cache" banner should branch on source.
+ */
+export async function getConfigByAgentDetailed(
+  walletAddress: string,
+  agentAddress: string,
+): Promise<TraderConfigReadResult> {
+  const agentLower = agentAddress.toLowerCase();
+
+  // 1. Try chat-server (source of truth).
+  try {
+    const url = `${CHAT_SERVER_URL}/api/nasun-ai/config/${agentLower}`;
+    const res = await fetch(url, {
+      method: 'GET',
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (res.status === 200) {
+      const body = (await res.json()) as { config?: TraderConfig };
+      const cfg = body.config ?? null;
+      if (cfg) {
+        // Refresh IndexedDB cache so offline reloads stay in sync.
+        try {
+          await tx(walletAddress, 'readwrite', (s) => s.put(cfg));
+        } catch {
+          /* cache update failure is non-fatal */
+        }
+        return { config: cfg, source: 'server' };
+      }
+      // 200 with no config body shouldn't happen, but treat as missing.
+      return { config: null, source: 'none' };
+    }
+    if (res.status === 404) {
+      // Server explicitly says no row. Don't surface stale cache as
+      // truth here; UI will show empty state and the user can re-save.
+      return { config: null, source: 'none' };
+    }
+    // Other status (5xx, 429, etc.): fall through to cache.
+  } catch {
+    // Network error / timeout: fall through to cache.
+  }
+
+  // 2. Offline / server-error fallback: IndexedDB.
+  try {
+    const all = await listConfigs(walletAddress);
+    const cached = all.find((c) => c.agentAddress === agentAddress) ?? null;
+    return { config: cached, source: cached ? 'cache' : 'none' };
+  } catch {
+    // Environments without IndexedDB (some test sandboxes, private mode
+    // on certain browsers) shouldn't crash the entire read path.
+    return { config: null, source: 'none' };
+  }
+}
+
+/**
+ * Backwards-compatible thin wrapper. Returns just the config (or null).
+ */
+export async function getConfigByAgent(
+  walletAddress: string,
+  agentAddress: string,
+): Promise<TraderConfig | null> {
+  const r = await getConfigByAgentDetailed(walletAddress, agentAddress);
+  return r.config;
 }
 
 export async function saveConfig(config: TraderConfig, signer: ConfigSigner | null): Promise<void> {

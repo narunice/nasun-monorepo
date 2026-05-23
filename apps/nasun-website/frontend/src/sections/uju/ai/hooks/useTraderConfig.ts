@@ -2,10 +2,24 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/features/auth';
 import { useSigner } from '@nasun/wallet';
 import type { TraderConfig } from '../types/trader';
-import { getConfigByAgent, saveConfig, deleteConfig } from '../services/traderConfigStorage';
+import {
+  getConfigByAgentDetailed,
+  saveConfig,
+  deleteConfig,
+  type TraderConfigReadResult,
+} from '../services/traderConfigStorage';
 
 export interface UseTraderConfigResult {
   config: TraderConfig | null;
+  /**
+   * Where the current `config` came from:
+   *   - 'server': authoritative chat-server fetch (fresh truth)
+   *   - 'cache':  server unreachable; using IndexedDB copy (may be stale)
+   *   - 'none':   neither source has a row for this agent
+   * UIs that want to warn the user about possibly-stale data can branch
+   * on `source === 'cache'`.
+   */
+  source: TraderConfigReadResult['source'];
   loading: boolean;
   error: string | null;
   save: (
@@ -20,19 +34,22 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
   const { signer } = useSigner();
   const walletAddress = user?.walletAddress ?? null;
   const [config, setConfig] = useState<TraderConfig | null>(null);
+  const [source, setSource] = useState<TraderConfigReadResult['source']>('none');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!walletAddress || !agentAddress) {
       setConfig(null);
+      setSource('none');
       return;
     }
     setLoading(true);
     setError(null);
     try {
-      const c = await getConfigByAgent(walletAddress, agentAddress);
-      setConfig(c);
+      const r = await getConfigByAgentDetailed(walletAddress, agentAddress);
+      setConfig(r.config);
+      setSource(r.source);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load trader config');
     } finally {
@@ -71,7 +88,8 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
     if (!walletAddress || !agentAddress) return;
     await deleteConfig(walletAddress, agentAddress, agentAddress, signer ?? null);
     setConfig(null);
+    setSource('none');
   }, [walletAddress, agentAddress, signer]);
 
-  return { config, loading, error, save, remove, refetch: load };
+  return { config, source, loading, error, save, remove, refetch: load };
 }
