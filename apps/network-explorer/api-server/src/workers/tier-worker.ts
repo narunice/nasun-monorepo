@@ -17,15 +17,20 @@
 import { startStakingPrincipalSync } from '../scanner/staking-principal-sync.js';
 import { startLpPositionSync } from '../scanner/lp-position-sync.js';
 import { startNsiCompute } from '../scanner/nsi-compute.js';
+import { startAgentLeaderboard } from '../scanner/agent-leaderboard.js';
 
 console.log('[tier-worker] starting');
 console.log('[tier-worker] ENABLE_STAKING_PRINCIPAL_SYNC =', process.env.ENABLE_STAKING_PRINCIPAL_SYNC ?? 'unset');
 console.log('[tier-worker] ENABLE_LP_POSITION_SYNC      =', process.env.ENABLE_LP_POSITION_SYNC ?? 'unset');
 console.log('[tier-worker] ENABLE_NSI_COMPUTE           =', process.env.ENABLE_NSI_COMPUTE ?? 'unset');
+console.log('[tier-worker] ENABLE_AGENT_LEADERBOARD     =', process.env.ENABLE_AGENT_LEADERBOARD ?? 'unset');
 
 startStakingPrincipalSync();
 startLpPositionSync();
 startNsiCompute();
+startAgentLeaderboard().catch((err) => {
+  console.error('[tier-worker] agent-leaderboard init error:', err);
+});
 
 // Keep process alive; setInterval handles keep it from exiting but be explicit.
 process.on('SIGTERM', () => {
