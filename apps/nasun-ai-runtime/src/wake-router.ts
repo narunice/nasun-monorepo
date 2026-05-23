@@ -13,6 +13,8 @@ import type { SuiClient } from '@mysten/sui/client';
 import { ACTIVE_WAKE_TRIGGERS, type WakeTrigger, type Proposal } from '@nasun/baram-sdk';
 import type { Config } from './config.js';
 import type { IdempotencyStore } from './idempotency.js';
+import { classifyIntent } from './presets/intent-classifier.js';
+import { RateLimiter } from './rate-limit.js';
 
 export interface WakeContext {
   jobId: string;
@@ -42,10 +44,21 @@ export interface WakeRouterDeps {
   idempotency: IdempotencyStore;
   /** Execute an analyst cognition cycle (D-4). Optional during D-3 stub. */
   runAnalystCycle?: (ctx: WakeContext) => Promise<WakeOutcome>;
+  /** Free-form LLM chat for non-trading user_message (2026-05-23). When
+   *  unset, every user_message falls through to runAnalystCycle, which
+   *  matches pre-chat behaviour. */
+  runChatCycle?: (ctx: WakeContext) => Promise<WakeOutcome>;
   /** Resume a confirmed proposal into execution AER (D-5). */
   runManualExecution?: (ctx: WakeContext) => Promise<WakeOutcome>;
   /** Run an autonomous heartbeat cycle (D-3 wires existing trader). */
   runHeartbeatCycle?: (ctx: WakeContext) => Promise<WakeOutcome>;
+  /** Per-sid + global rate limiter shared between analyst and chat. Both
+   *  paths consume the same free-tier LLM pool, so they share one window.
+   *  When absent, rate limiting is skipped (used in unit tests). */
+  rateLimiter?: RateLimiter;
+  /** Optional log sink. Defaults to console.log via a no-op shim when
+   *  omitted -- keeps the router pure for tests. */
+  log?: (msg: string) => void;
 }
 
 /**
@@ -83,17 +96,57 @@ export async function dispatchWake(
 }
 
 async function runHandler(ctx: WakeContext, deps: WakeRouterDeps): Promise<WakeOutcome> {
+  const log = deps.log ?? (() => {});
   switch (ctx.triggerType) {
     case 'heartbeat':
       if (!deps.runHeartbeatCycle) {
         return { ok: true, status: 'queued', reason: 'heartbeat_handler_not_wired', intentId: ctx.intentId };
       }
       return deps.runHeartbeatCycle(ctx);
-    case 'user_message':
+    case 'user_message': {
+      // Classify first so trading-intent wakes never touch the chat
+      // rate-limiter. Trading is already throttled on-chain by Budget
+      // deduction; double-throttling here would let a chat burst block
+      // a legitimate BUY/SELL, which is the worse failure mode.
+      const intent = classifyIntent(ctx.message ?? '');
+      log(
+        `[wake-router] user_message intent=${intent.intent} ` +
+        `rule=${intent.matchedRule ?? 'n/a'} sid=${ctx.sid.slice(0, 8)}...`,
+      );
+
+      if (intent.intent === 'chat' && deps.runChatCycle) {
+        // Chat-only rate limit: chat uses the free LLM pool which has
+        // shared per-minute quota. Returning ok:true + summary so the
+        // user sees why nothing happened (instead of a silent skip).
+        if (deps.rateLimiter) {
+          const decision = deps.rateLimiter.checkAndConsume(ctx.sid, ctx.nowMs);
+          if (!decision.allowed) {
+            log(
+              `[wake-router] rate-limited chat sid=${ctx.sid.slice(0, 8)}... ` +
+              `${decision.reason}`,
+            );
+            return {
+              ok: true,
+              status: 'skipped',
+              intentId: ctx.intentId,
+              reason: `rate_limited:${decision.reason ?? 'unknown'}`,
+              summary:
+                `You're sending messages a bit fast. Try again in ` +
+                `${decision.retryAfterSec ?? 60}s. ` +
+                `(Trade commands like "BUY"/"SELL" are not rate-limited.)`,
+            };
+          }
+        }
+        return deps.runChatCycle(ctx);
+      }
+
+      // Trading intent OR no chat handler wired: fall through to analyst.
+      // No rate-limit applied -- Budget handles it.
       if (!deps.runAnalystCycle) {
         return { ok: true, status: 'queued', reason: 'analyst_handler_not_wired', intentId: ctx.intentId };
       }
       return deps.runAnalystCycle(ctx);
+    }
     case 'manual':
       if (!deps.runManualExecution) {
         return { ok: true, status: 'queued', reason: 'manual_handler_not_wired', intentId: ctx.intentId };

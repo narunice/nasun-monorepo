@@ -22,8 +22,16 @@ interface ChatCompletionResponse {
 }
 
 const FETCH_TIMEOUT_MS = 60_000;
-const MAX_RETRIES = 3;
+const DEFAULT_MAX_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 5_000;
+
+export interface CallLLMOptions {
+  /** Override the retry count. Defaults to 3 (5s/10s/15s backoff).
+   *  The chat preset's provider pool passes 1 because retrying a single
+   *  throttled key here delays moving to the next provider; the pool
+   *  itself fans out across N providers with its own cooldown. */
+  maxRetries?: number;
+}
 
 /**
  * Call an OpenAI-compatible Chat Completions API
@@ -33,10 +41,12 @@ export async function callLLM(
   apiKey: string,
   model: string,
   prompt: string,
+  options: CallLLMOptions = {},
 ): Promise<LLMResult> {
+  const maxRetries = options.maxRetries ?? DEFAULT_MAX_RETRIES;
   let lastError: string | undefined;
 
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const startTime = Date.now();
 
     try {
@@ -72,12 +82,12 @@ export async function callLLM(
           throw new Error(`LLM API error: ${lastError}`);
         }
 
-        if (attempt < MAX_RETRIES) {
-          console.warn(`[llm] Attempt ${attempt}/${MAX_RETRIES} failed: ${lastError}`);
+        if (attempt < maxRetries) {
+          console.warn(`[llm] Attempt ${attempt}/${maxRetries} failed: ${lastError}`);
           await sleep(BASE_RETRY_DELAY_MS * attempt);
           continue;
         }
-        throw new Error(`LLM API failed after ${MAX_RETRIES} attempts: ${lastError}`);
+        throw new Error(`LLM API failed after ${maxRetries} attempts: ${lastError}`);
       }
 
       const data = await response.json() as ChatCompletionResponse;
@@ -109,17 +119,18 @@ export async function callLLM(
         lastError = errMsg;
       }
 
-      if (attempt < MAX_RETRIES) {
-        console.warn(`[llm] Attempt ${attempt}/${MAX_RETRIES} failed: ${lastError}`);
+      if (attempt < maxRetries) {
+        console.warn(`[llm] Attempt ${attempt}/${maxRetries} failed: ${lastError}`);
         await sleep(BASE_RETRY_DELAY_MS * attempt);
         continue;
       }
     }
   }
 
-  throw new Error(`LLM API failed after ${MAX_RETRIES} attempts: ${lastError}`);
+  throw new Error(`LLM API failed after ${maxRetries} attempts: ${lastError}`);
 }
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
+

@@ -40,7 +40,9 @@ import { PRESETS } from './cycles/registry.js';
 import { runCycle } from './cycles/run-cycle.js';
 import { runHeartbeatFromWake } from './cycles/trader-runner.js';
 import { runAnalystPreset } from './presets/analyst.js';
+import { runChatPreset } from './presets/chat.js';
 import { runManualExecution } from './presets/manual-execution.js';
+import { RateLimiter } from './rate-limit.js';
 
 // ========== Graceful Shutdown ==========
 
@@ -107,13 +109,20 @@ async function main(): Promise<void> {
   // self-scheduling heartbeat loop. Disabled when WAKE_PORT is unset/0.
   if (config.wakePort > 0) {
     const idempotency = new IdempotencyStore();
+    // Shared between analyst (trading) and chat paths: both burn the
+    // same free-tier LLM quota, so the limiter has to see both. See
+    // src/rate-limit.ts for tuned defaults (~8 concurrent testers).
+    const rateLimiter = new RateLimiter();
     const wake = startWakeServer({
       client,
       config,
       idempotency,
       port: config.wakePort,
       logger: (m) => log(m),
+      log: (m) => log(m),
+      rateLimiter,
       runAnalystCycle: (ctx) => runAnalystPreset(client, config, ctx),
+      runChatCycle: (ctx) => runChatPreset(config, ctx),
       runHeartbeatCycle: (ctx) => runHeartbeatFromWake(client, config, ctx),
       runManualExecution: (ctx) => runManualExecution(client, config, ctx),
     });
