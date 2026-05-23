@@ -240,8 +240,47 @@ async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEn
   };
 }
 
+/**
+ * Phase 6 enabled-gate (2026-05-23). Read the trader config's `enabled`
+ * flag straight from SQLite; throw a typed error before any pm2 invocation
+ * if the agent should not be running. Pairs with the runtime self-suicide
+ * gate (apps/nasun-ai-runtime/src/self-config.ts) — orchestrator side
+ * refuses to start at all, runtime side kills itself if it ever does.
+ *
+ * Callers that legitimately tolerate a disabled-state spawn refusal
+ * (vault upload, vault restore, admin respawn-all) use
+ * `instanceof AgentDisabledError` to distinguish from real failures.
+ */
+export class AgentDisabledError extends Error {
+  constructor(public readonly agentAddress: string) {
+    super(`agent_disabled:${agentAddress}`);
+    this.name = 'AgentDisabledError';
+  }
+}
+
+function readEnabledFlag(agentAddress: string): boolean {
+  const row = getDb().prepare(
+    `SELECT config_json FROM nasun_ai_trader_configs WHERE agent_address = ?`,
+  ).get(agentAddress.toLowerCase()) as { config_json: string } | undefined;
+  if (!row) return false;
+  try {
+    const parsed = JSON.parse(row.config_json) as { enabled?: unknown };
+    return parsed.enabled === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   assertSafeName(opts.pm2Name);
+
+  // Phase 6: orchestrator-side enabled gate. The whole point of this
+  // refactor is that the user's `enabled:false` toggle must be binding.
+  // Without this check, callers (vault upload, respawn-all, etc.) would
+  // still spawn agents that the user has explicitly disabled.
+  if (!readEnabledFlag(opts.agentAddress)) {
+    throw new AgentDisabledError(opts.agentAddress.toLowerCase());
+  }
 
   // Resolve all per-agent + global trader env BEFORE invoking pm2 so a
   // partial-config row fails fast and pm2 never adopts an idle process.
@@ -332,6 +371,119 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
 export async function stopAgentPm2(pm2Name: string): Promise<void> {
   assertSafeName(pm2Name);
   await exec(PM2_BIN, ['delete', pm2Name], { env: pm2Env(), timeout: 10_000 });
+}
+
+// === Phase 6 (2026-05-23) ===
+// Reconcile PM2 state with SQLite truth (vault row + config.enabled) on
+// every config save / delete. This is the orchestrator-side counterpart
+// to the runtime self-suicide gate.
+
+export interface ReconcileResult {
+  action: 'spawn' | 'stop' | 'noop' | 'no_vault';
+  reason: string;
+}
+
+/**
+ * Pure decision function. Given DB state + current pm2 process list,
+ * decide what to do. Extracted so it can be unit-tested without invoking
+ * pm2 or touching SQLite.
+ */
+export interface ReconcileInputs {
+  hasVaultRow: boolean;
+  enabled: boolean;
+  pm2NameKnown: string | null;          // null when no vault row
+  pm2NamesInList: ReadonlySet<string>;  // names currently in `pm2 jlist`
+}
+export function decideReconcileAction(inputs: ReconcileInputs): ReconcileResult {
+  if (!inputs.hasVaultRow || !inputs.pm2NameKnown) {
+    // Without a vault row we have no paramName / wakePort, so we cannot
+    // spawn even if enabled is true. The vault-routes upload path is what
+    // creates the row; the config save flow does not. Caller should still
+    // sweep up any stray PM2 process that matches the deterministic name.
+    return { action: 'no_vault', reason: 'no_active_vault_row' };
+  }
+  const inList = inputs.pm2NamesInList.has(inputs.pm2NameKnown);
+  if (!inputs.enabled) {
+    return inList
+      ? { action: 'stop',  reason: 'enabled_false_pm2_running' }
+      : { action: 'noop',  reason: 'enabled_false_pm2_absent' };
+  }
+  // enabled === true
+  return inList
+    ? { action: 'noop',  reason: 'enabled_true_pm2_running' }
+    : { action: 'spawn', reason: 'enabled_true_pm2_absent' };
+}
+
+// Serial queue per agentAddress so concurrent config saves cannot race
+// pm2 spawn/stop (the underlying CLI is not concurrency-safe per name).
+const reconcileQueues = new Map<string, Promise<unknown>>();
+async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T>): Promise<T> {
+  const key = agentAddress.toLowerCase();
+  const prev = reconcileQueues.get(key) ?? Promise.resolve();
+  const next = prev.catch(() => undefined).then(fn);
+  reconcileQueues.set(key, next);
+  try {
+    return await next;
+  } finally {
+    // Best-effort cleanup so the map doesn't grow unbounded under N
+    // distinct agents. Only delete if we're still the tail of the chain.
+    if (reconcileQueues.get(key) === next) reconcileQueues.delete(key);
+  }
+}
+
+/**
+ * Bring PM2 to the state the SQLite config says it should be in.
+ * Called from POST /api/nasun-ai/config (after save) and from DELETE
+ * /api/nasun-ai/config (before delete returns).
+ *
+ * Idempotent: safe to call repeatedly; concurrent calls for the same
+ * agent are serialized via withAgentLock.
+ */
+export async function reconcilePm2State(agentAddress: string): Promise<ReconcileResult> {
+  const lower = agentAddress.toLowerCase();
+  return withAgentLock(lower, async () => {
+    // Snapshot state.
+    const vault = getDb().prepare(
+      `SELECT pm2_name, param_name, wake_port
+         FROM agent_keys
+        WHERE agent_address = ? AND deleted_at IS NULL`,
+    ).get(lower) as
+      | { pm2_name: string; param_name: string; wake_port: number }
+      | undefined;
+    const enabled = readEnabledFlag(lower);
+    const list = await pm2List().catch(() => [] as Pm2ProcessLite[]);
+    const names = new Set(list.map(p => p.name));
+
+    const decision = decideReconcileAction({
+      hasVaultRow: Boolean(vault),
+      enabled,
+      pm2NameKnown: vault?.pm2_name ?? null,
+      pm2NamesInList: names,
+    });
+
+    if (decision.action === 'spawn' && vault) {
+      try {
+        await spawnAgentPm2({
+          agentAddress: lower,
+          pm2Name: vault.pm2_name,
+          paramName: vault.param_name,
+          wakePort: vault.wake_port,
+        });
+      } catch (err) {
+        // Spawn failure should not poison the save call; the user already
+        // saved their config. Log and surface so the API caller can decide.
+        return { action: 'spawn', reason: `spawn_failed:${(err as Error).message}` };
+      }
+    } else if (decision.action === 'stop' && vault) {
+      try {
+        await stopAgentPm2(vault.pm2_name);
+      } catch (err) {
+        return { action: 'stop', reason: `stop_failed:${(err as Error).message}` };
+      }
+    }
+    // 'no_vault' + 'noop' have no pm2 side effect.
+    return decision;
+  });
 }
 
 export async function getRunningAgents(): Promise<string[]> {
