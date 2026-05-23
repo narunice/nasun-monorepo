@@ -390,7 +390,19 @@
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 ls 2>/dev/null | grep chat | head -3; ls /home/ec2-user/ 2>&1 | head -15')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 info nasun-chat-server 2>/dev/null | grep \"exec path\\\\|script\" | head -3')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'cd /home/ec2-user/nasun-chat-server && node -e \" *)",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'find /home/ec2-user/nasun-chat-server -name \"pg\" -type d 2>/dev/null | head -3; ls /home/ec2-user/nasun-chat-server/ 2>/dev/null | head -10')"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'find /home/ec2-user/nasun-chat-server -name \"pg\" -type d 2>/dev/null | head -3; ls /home/ec2-user/nasun-chat-server/ 2>/dev/null | head -10')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -n 'AGENT_PROFILE_ID\\\\|AGENT_NAME\\\\|STRATEGY\\\\|agentAddress' ~/nasun-ai-runtime/ecosystem.nasun-ai-runtime.cjs | head -15\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"cat ~/nasun-ai-runtime/ecosystem.nasun-ai-runtime.cjs\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 show nasun-ai-runtime 2>/dev/null | grep -E 'status|AGENT_PROFILE|PRESET|WALLET|stopped|online'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"pm2 list 2>/dev/null | grep -E 'nasun-ai|chat-server|status'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/chat-server/store.db 'SELECT agent_address, wallet_address, capability_id, profile_id FROM agent_keys WHERE deleted_at IS NULL ORDER BY created_at;'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"find ~ -name '*.db' 2>/dev/null | grep -v node_modules | head -10\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/agent-keys.db 'SELECT agent_address, wallet_address, substr\\(capability_id,1,20\\), profile_id FROM agent_keys WHERE deleted_at IS NULL;'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/agent-keys.db '.tables'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/chat.db '.tables'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/chat.db 'SELECT agent_address, wallet_address, substr\\(capability_id,1,20\\) as cap, profile_id FROM agent_keys WHERE deleted_at IS NULL;'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/chat.db 'SELECT agent_address, wallet_address FROM agent_keys WHERE deleted_at IS NULL;'\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"sqlite3 ~/nasun-chat-server/data/chat.db 'SELECT DISTINCT wallet_address FROM agent_keys WHERE deleted_at IS NULL;'\")"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",

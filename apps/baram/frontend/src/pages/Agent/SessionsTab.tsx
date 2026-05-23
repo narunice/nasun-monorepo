@@ -7,9 +7,9 @@
 // capabilityId is stored in localStorage (same pattern as EscrowTab for escrow ID).
 // Key: baram:capability-id:<walletAddress>:<agentId>
 
-import { useState } from 'react';
-import { useBaramSessions, useRevokeSession } from '@/hooks/useBaramSessions';
-import { LinkTelegramModal } from '@/components/modals/LinkTelegramModal';
+import { useState } from "react";
+import { useBaramSessions, useRevokeSession } from "@/hooks/useBaramSessions";
+import { LinkTelegramModal } from "@/components/modals/LinkTelegramModal";
 
 const SUI_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
 
@@ -20,12 +20,12 @@ interface SessionsTabProps {
 }
 
 function formatDate(ms: number): string {
-  return new Date(ms).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
+  return new Date(ms).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -33,11 +33,15 @@ function truncateSid(s: string): string {
   return s.length > 16 ? `${s.slice(0, 8)}...${s.slice(-4)}` : s;
 }
 
-export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTabProps) {
+export function SessionsTab({
+  agentId,
+  agentAddress,
+  walletAddress,
+}: SessionsTabProps) {
   const storageKey = `baram:capability-id:${walletAddress}:${agentId}`;
 
   const [savedCapId, setSavedCapId] = useState<string>(
-    () => localStorage.getItem(storageKey) ?? '',
+    () => localStorage.getItem(storageKey) ?? "",
   );
   const [capIdInput, setCapIdInput] = useState(savedCapId);
 
@@ -67,9 +71,12 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
       {/* Capability ID setup (required before linking) */}
       <div className="p-4 rounded-xl bg-[var(--color-bg-secondary)] border border-[var(--color-border)] space-y-3">
         <div>
-          <p className="text-sm font-medium text-[var(--color-text-primary)]">Capability ID</p>
+          <p className="text-sm font-medium text-[var(--color-text-primary)]">
+            Capability ID
+          </p>
           <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
-            Required to create a session. Find it in your Baram Capability object on-chain.
+            Required to create a session. Find it in your Baram Capability
+            object on-chain.
           </p>
         </div>
         <div className="flex gap-2">
@@ -99,7 +106,7 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
       <div className="flex items-center justify-between gap-4">
         <div>
           <h3 className="text-sm font-semibold text-[var(--color-text-primary)]">
-            Active Sessions
+            Active Telegram Sessions
           </h3>
           <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
             Each session lets @nasun_ai_bot notify you about this agent.
@@ -108,7 +115,7 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
         <button
           onClick={() => setShowModal(true)}
           disabled={!savedCapId}
-          title={!savedCapId ? 'Save Capability ID first' : undefined}
+          title={!savedCapId ? "Save Capability ID first" : undefined}
           className="shrink-0 px-3 py-2 text-xs font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           + Link Telegram
@@ -117,22 +124,31 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
 
       {/* Error banners */}
       {error && (
-        <div className="p-3 rounded-xl bg-red-500/10 text-sm text-red-400">{error}</div>
+        <div className="p-3 rounded-xl bg-red-500/10 text-sm text-red-400">
+          {error}
+        </div>
       )}
       {revokeError && (
-        <div className="p-3 rounded-xl bg-red-500/10 text-sm text-red-400">{revokeError}</div>
+        <div className="p-3 rounded-xl bg-red-500/10 text-sm text-red-400">
+          {revokeError}
+        </div>
       )}
 
       {/* Session list */}
       {loading ? (
         <div className="space-y-2">
           {[1, 2].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-[var(--color-bg-tertiary)] animate-pulse" />
+            <div
+              key={i}
+              className="h-16 rounded-xl bg-[var(--color-bg-tertiary)] animate-pulse"
+            />
           ))}
         </div>
       ) : agentSessions.length === 0 ? (
         <div className="py-8 text-center rounded-xl border border-[var(--color-border)] border-dashed space-y-2">
-          <p className="text-sm text-[var(--color-text-secondary)]">No active sessions.</p>
+          <p className="text-sm text-[var(--color-text-secondary)]">
+            No active sessions.
+          </p>
           <p className="text-xs text-[var(--color-text-tertiary)]">
             Link Telegram to receive trade alerts and confirmations.
           </p>
@@ -155,11 +171,11 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
                     <span
                       className={`text-xs px-1.5 py-0.5 rounded shrink-0 ${
                         isLinked
-                          ? 'bg-emerald-500/10 text-emerald-400'
-                          : 'bg-yellow-500/10 text-yellow-400'
+                          ? "bg-emerald-500/10 text-emerald-400"
+                          : "bg-yellow-500/10 text-yellow-400"
                       }`}
                     >
-                      {isLinked ? 'Linked' : 'Pending'}
+                      {isLinked ? "Linked" : "Pending"}
                     </span>
                   </div>
                   <p className="text-xs text-[var(--color-text-tertiary)]">
@@ -174,7 +190,7 @@ export function SessionsTab({ agentId, agentAddress, walletAddress }: SessionsTa
                   disabled={isRevoking}
                   className="shrink-0 px-3 py-1.5 text-xs rounded-lg border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
                 >
-                  {isRevoking ? 'Revoking...' : 'Revoke'}
+                  {isRevoking ? "Revoking..." : "Revoke"}
                 </button>
               </div>
             );
