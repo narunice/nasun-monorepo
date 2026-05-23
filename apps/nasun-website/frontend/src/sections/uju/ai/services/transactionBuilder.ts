@@ -6,7 +6,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
-import { BARAM, NSN_TYPE } from '@nasun/devnet-config';
+import { BARAM, NSN_TYPE, NUSDC_TYPE } from '@nasun/devnet-config';
 import type { CoinRef } from './coinService';
 
 const SUI_CLOCK_ID = '0x6';
@@ -358,6 +358,62 @@ export function buildCreateBudgetTransaction(params: BuildCreateBudgetParams): T
       tx.object(SUI_CLOCK_ID),
     ],
   });
+  return tx;
+}
+
+// Quickstart Step ② Fund. Combines `budget::create_budget` (inference balance)
+// and `escrow::deposit<NUSDC>` (trading capital) in a single PTB. Both moves
+// consume NUSDC coins split from the same source, so one wallet signature
+// funds both balances. The new Budget is shared internally by create_budget
+// and never re-referenced in this PTB, so the share timing does not conflict
+// with the escrow::deposit call. The escrow object was already shared in
+// Step ① (`escrow::new_escrow_linked`) so passing `tx.object(escrowId)` is
+// safe shared-object input.
+export interface BuildAgentFundParams {
+  coins: CoinRef[];                // NUSDC coins owned by the wallet
+  agentAddress: string;            // delegated agent address (budget owner field)
+  escrowId: string;                // shared AgentEscrow id from Step ①
+  budgetDeposit: bigint;           // raw NUSDC (6 decimals)
+  tradingCapitalDeposit: bigint;   // raw NUSDC (6 decimals)
+}
+
+export function buildAgentFundTransaction(params: BuildAgentFundParams): Transaction {
+  validateObjectId(params.agentAddress, 'agentAddress');
+  validateObjectId(params.escrowId, 'escrowId');
+  if (params.coins.length === 0) {
+    throw new Error('buildAgentFundTransaction: no NUSDC coins supplied');
+  }
+  const tx = new Transaction();
+
+  if (params.coins.length > 1) {
+    const [primary, ...rest] = params.coins;
+    tx.mergeCoins(tx.object(primary.objectId), rest.map((c) => tx.object(c.objectId)));
+  }
+
+  const [budgetCoin, tradingCoin] = tx.splitCoins(tx.object(params.coins[0].objectId), [
+    tx.pure.u64(params.budgetDeposit),
+    tx.pure.u64(params.tradingCapitalDeposit),
+  ]);
+
+  tx.moveCall({
+    target: `${BARAM.packageId}::budget::create_budget`,
+    arguments: [
+      budgetCoin,
+      tx.pure.address(params.agentAddress),
+      tx.pure.u64(0),                  // max_per_request: 0 → contract default
+      tx.pure.vector('string', []),    // allowed_models: empty = all
+      tx.pure.vector('address', []),   // allowed_executors: empty = all
+      tx.pure.u64(0),                  // expires_at: 0 = no expiration
+      tx.object(SUI_CLOCK_ID),
+    ],
+  });
+
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::escrow::deposit`,
+    typeArguments: [NUSDC_TYPE],
+    arguments: [tx.object(params.escrowId), tradingCoin],
+  });
+
   return tx;
 }
 
