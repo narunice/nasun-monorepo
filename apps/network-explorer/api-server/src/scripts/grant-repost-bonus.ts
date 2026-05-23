@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2056186832942219674';
+const TWEET_ID = '2056939880249544812';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@0x_nonol @0xaiaiai @0xarayeth @0xAzk27 @0xOluwafemi @4seazons263 @__Jayden007 @Abe_qearo @acahandi @AdeyemoYusupha @Anton4599262075 @ashrai78 @BernadetaD70810 @BornG69 @budie4167 @Daddypresh20 @Danzeronero @DisyaBolon @eglebai @Emiola_gangan @emroyd1 @enchainblack @erengyegah @fcbetass234 @gerockkk @hashafifi @hyonggoo93 @I_BlockFive @indah_ye99 @invest_sometime @JulioFarmerl800 @kija888 @larionewlife @lavanyalakshma2 @masud2633 @msaqlainfcma @MTown134056 @naro0ck @ngedream @NgocNguyen63053 @NguynL615156 @noxo_noxon @Obidestiny247 @OjoPhilemo17247 @only_son_twitte @PemburuCuan069 @Putri_dhone @qirat112211 @quoccuong0984 @readnrest0 @RealTucker77 @ReopaahScrin @Richarduwah2 @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @sintsarinan @skybluenalpha @Skymoon201095 @sothh84 @Staunch_idool64 @StoryMofi @sucodautroc @sven_336 @tensyonado18 @The___rapper @TranHa1273612 @VJBillionz1 @vodkamq @web3_eyes @zare_obi
+@Luongson94 @VJBillionz1 @masud2633 @I_BlockFive @Le290788 @Richarduwah2 @elonunmk @Emiola_gangan @hyonggoo93 @SegunAdeba52413 @ashrai78 @msaqlainfcma @readnrest0 @NguynL615156 @beluong96 @web3_eyes @BornG69 @0xringond @BossWhatsNew @NgocNguyen63053 @furyrdx712 @wind_catcher23 @Diamondcryptx @samy69062958 @Obidestiny247 @Skymoon201095 @skybluenalpha @ReopaahScrin @indah_ye99 @PemburuCuan069 @4seazons263 @Putri_dhone @Anton4599262075 @BernadetaD70810 @ngedream @eglebai @naro0ck @0hmybo @0xaiaiai @BLVCK707 @safdarsulehry55 @0xAzk27 @fanumtta @D_O__Y_E @0x_nonol @Semobender @sintsarinan @minhvu229983 @sven_336 @NurRohm22672781 @MTown134056 @RvdWixx49687 @budie4167 @hashafifi @acahandi @kija888 @larionewlife @mv9984 @dung55443 @sucodautroc @elmeweb3 @invest_sometime @OjoPhilemo17247 @Abe_qearo @sicosongus
 `;
 
 const BONUS_POINTS = 3;
