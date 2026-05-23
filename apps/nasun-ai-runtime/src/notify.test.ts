@@ -79,7 +79,7 @@ describe('shouldNotify', () => {
 });
 
 describe('formatHeartbeatHtml', () => {
-  const explorerBase = 'https://explorer.nasun.io/devnet/txblock';
+  const explorerBase = 'https://explorer.nasun.io/devnet/tx';
 
   it('escapes HTML in decision.reason', () => {
     const r = succeededBuy({

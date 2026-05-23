@@ -69,16 +69,90 @@ export interface HeartbeatNotifyDeps {
   explorerBase?: string;
 }
 
+export interface TradeFills {
+  /** Net base coin entering escrow (positive on BUY, negative on SELL). NBTC, 8 decimals. */
+  baseDelta: number;
+  /** Net quote coin entering escrow (positive on SELL, negative on BUY). NUSDC, 6 decimals. */
+  quoteDelta: number;
+}
+
+const BASE_DECIMALS = 8;   // NBTC
+const QUOTE_DECIMALS = 6;  // NUSDC
+
+// Parse Escrow{Withdrawn,Deposited} events from a settled tx and return
+// net base/quote movement (escrow's frame, not wallet's). Best-effort: any
+// RPC or parse failure returns null and the caller falls back to the plain
+// header-only message.
+export async function fetchTradeFills(
+  rpcUrl: string,
+  digest: string,
+  fetchImpl: typeof fetch,
+): Promise<TradeFills | null> {
+  try {
+    const res = await fetchImpl(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'sui_getTransactionBlock',
+        params: [digest, { showEvents: true }],
+      }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      result?: { events?: Array<{ type: string; parsedJson?: { asset?: { name?: string }; amount?: string } }> };
+    };
+    const events = json.result?.events ?? [];
+    let baseRaw = 0n;
+    let quoteRaw = 0n;
+    for (const ev of events) {
+      const m = /::escrow::Escrow(Withdrawn|Deposited)$/.exec(ev.type);
+      if (!m) continue;
+      const dir = m[1] === 'Deposited' ? 1n : -1n;
+      const name = ev.parsedJson?.asset?.name ?? '';
+      const amt = BigInt(ev.parsedJson?.amount ?? '0');
+      if (name.endsWith('::nbtc::NBTC')) baseRaw += dir * amt;
+      else if (name.endsWith('::nusdc::NUSDC')) quoteRaw += dir * amt;
+    }
+    if (baseRaw === 0n && quoteRaw === 0n) return null;
+    return {
+      baseDelta: Number(baseRaw) / 10 ** BASE_DECIMALS,
+      quoteDelta: Number(quoteRaw) / 10 ** QUOTE_DECIMALS,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function deriveExplorerBase(override?: string): string {
   if (override) return override;
   // Default to devnet explorer; mainnet/testnet override via dep injection.
-  return 'https://explorer.nasun.io/devnet/txblock';
+  return 'https://explorer.nasun.io/devnet/tx';
+}
+
+function formatFillsLine(action: string, fills: TradeFills): string {
+  // Escrow's frame: BUY = +base, -quote ; SELL = -base, +quote.
+  // Format with enough precision to show small amounts (NBTC 8 decimals).
+  const base = Math.abs(fills.baseDelta);
+  const quote = Math.abs(fills.quoteDelta);
+  const baseStr = base < 0.01 ? base.toFixed(8).replace(/0+$/, '').replace(/\.$/, '') : base.toFixed(6);
+  const quoteStr = quote.toFixed(4);
+  if (action === 'BUY') {
+    return `Filled: +${baseStr} NBTC ← ${quoteStr} NUSDC (in escrow)`;
+  }
+  if (action === 'SELL') {
+    return `Filled: ${baseStr} NBTC → +${quoteStr} NUSDC (in escrow)`;
+  }
+  return '';
 }
 
 export function formatHeartbeatHtml(
   result: TraderCycleResult,
   strategy: string,
   explorerBase: string,
+  fills?: TradeFills | null,
 ): string {
   // Caller guarantees result.outcome === 'succeeded' && action in BUY/SELL
   // before invoking, so result.decision is non-null. Defensive fallback
@@ -90,17 +164,18 @@ export function formatHeartbeatHtml(
 
   const safeStrategy = escapeHtml(strategy || 'default');
   const header = `<b>[Nasun AI · ${safeStrategy}]</b>\n${action} ~${sizeNUSDC} NUSDC`;
+  const fillsLine = fills ? `\n${escapeHtml(formatFillsLine(action, fills))}` : '';
   const footer = digest
     ? `\n<a href="${explorerBase}/${encodeURIComponent(digest)}">View tx</a>`
     : '';
 
   // Budget remaining bytes for the reason line so the total html fits 4096B.
-  const fixedBytes = Buffer.byteLength(header + footer, 'utf8') + 32; // 32B slack for tags
+  const fixedBytes = Buffer.byteLength(header + fillsLine + footer, 'utf8') + 32; // 32B slack for tags
   const reasonBudget = Math.max(0, MAX_HTML_BYTES - fixedBytes - HEADER_MAX_BYTES);
   const escapedReason = escapeHtml(truncateToByteCap(rawReason, reasonBudget));
   const reasonLine = escapedReason ? `\n<i>${escapedReason}</i>` : '';
 
-  const html = header + reasonLine + footer;
+  const html = header + reasonLine + fillsLine + footer;
   // Final hard cap (paranoia; truncate non-tag suffix if somehow over).
   return Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES
     ? html.slice(0, MAX_HTML_BYTES)
@@ -139,9 +214,20 @@ export async function maybeNotifyHeartbeat(
   const strategy = env.STRATEGY ?? 'default';
   const explorerBase = deriveExplorerBase(deps.explorerBase);
 
+  const fetchImpl = deps.fetchImpl ?? fetch;
+
+  // Best-effort fill enrichment: parse Escrow events from the settled tx so
+  // the user sees the actual swap outcome (escrow NBTC inflow + NUSDC spent),
+  // not just the intent. Wallet-visible +1 NUSDC is the AER executor payout,
+  // not the trade result — without this line the message is misleading.
+  let fills: TradeFills | null = null;
+  if (result.txDigest && env.RPC_URL) {
+    fills = await fetchTradeFills(env.RPC_URL, result.txDigest, fetchImpl);
+  }
+
   let html: string;
   try {
-    html = formatHeartbeatHtml(result, strategy, explorerBase);
+    html = formatHeartbeatHtml(result, strategy, explorerBase, fills);
   } catch (err) {
     log(`[notify] format failed: ${err instanceof Error ? err.message : err}`);
     return;
@@ -150,7 +236,6 @@ export async function maybeNotifyHeartbeat(
   const body = JSON.stringify({ wallet, html });
   const hmac = signPushBody(secret, body);
 
-  const fetchImpl = deps.fetchImpl ?? fetch;
   try {
     const res = await fetchImpl(`${base}${PATH}`, {
       method: 'POST',
