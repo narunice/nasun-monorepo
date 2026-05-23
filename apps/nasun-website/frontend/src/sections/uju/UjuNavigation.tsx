@@ -4,11 +4,20 @@ import { NASUN_AI_ENABLED } from "@/config/featureFlags";
 const ALL_TABS = [
   { id: "dashboard", label: "Dashboard", icon: DashboardIcon },
   { id: "activity",  label: "Activity",  icon: ActivityIcon },
-  { id: "ai",        label: "AI",        icon: AIIcon },
+  { id: "agents",    label: "Agents",    icon: AIIcon },
+  // AI Chat tab hidden pending proposal-confirm UX redesign — the wake path
+  // works but proposals get locked when the user can't confirm/cancel from
+  // the web surface (Telegram deep link reuses sid-bind URL which fails on
+  // already-bound sids). Re-enable after PR3 adds /chat/confirm + /chat/cancel
+  // and ProposalCard renders inline buttons.
+  // { id: "ai-chat",   label: "AI Chat",   icon: ChatIcon },
   { id: "profile",   label: "Profile",   icon: ProfileIcon },
 ] as const;
 
-const TABS = ALL_TABS.filter((t) => t.id !== "ai" || NASUN_AI_ENABLED);
+// Both AI surfaces (Agents + AI Chat) gate on the same feature flag; until
+// NASUN_AI_ENABLED flips, the user sees the pre-AI 3-tab layout.
+const AI_TAB_IDS = new Set(["agents", "ai-chat"]);
+const TABS = ALL_TABS.filter((t) => !AI_TAB_IDS.has(t.id) || NASUN_AI_ENABLED);
 
 type TabId = typeof ALL_TABS[number]["id"];
 
@@ -136,6 +145,14 @@ function ActivityIcon({ active }: IconProps) {
   return (
     <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M3 12h4l3-8 4 16 3-8h4" />
+    </svg>
+  );
+}
+
+function ChatIcon({ active }: IconProps) {
+  return (
+    <svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
     </svg>
   );
 }
