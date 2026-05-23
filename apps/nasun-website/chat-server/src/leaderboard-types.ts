@@ -273,13 +273,13 @@ export const POINTS = {
   PER_TRADE: 2,
   PER_500_VOLUME: 1,             // per $500 NUSDC volume in the linear region (≤ VOLUME_LINEAR_SOFT_CAP_USD)
   VOLUME_LINEAR_SOFT_CAP_USD: 1_000_000, // below this volume, score grows linearly (1pt/$500)
-  VOLUME_LOG_K: 6_500,           // above the soft cap, score grows as K · log10(vol / softCap); reaches ceiling near $100M
-  WEEKLY_VOLUME_SCORE_CAP: 15_000, // hard ceiling on volume score (hybrid linear+log; replaces former $9M cliff)
+  VOLUME_LOG_K: 4_000,           // above the soft cap, score grows as K · log10(vol / softCap) (lowered 6500→4000 on 2026-05-22 to reduce whale volume dominance)
+  WEEKLY_VOLUME_SCORE_CAP: 10_000, // hard ceiling on volume score (lowered 15000→10000 same date to dampen volume-only top-10 entries)
   PER_UNIQUE_POOL: 15,           // per unique pool traded
   FIRST_TRADE_BONUS: 50,         // one-time bonus for first trade
   DAILY_TRADE_CAP: 24,           // max trades counted per day toward trade points
-  PER_10_PNL: 1,                 // per $10 realized profit (1pt/$10; 30x finer than $300/25pt — drastically reduces PnL-tier ties)
-  PER_5PCT_RETURN: 100,          // per 5% return rate (halved from 10%/200pt; same slope, 2x resolution)
+  PER_10_PNL: 2,                 // per $10 realized profit (raised 1→2 on 2026-05-22 to weight absolute profit modestly higher; option A tuning)
+  PER_5PCT_RETURN: 60,           // per 5% return rate (lowered 100→60 same date to moderate small-capital high-% leaderboard dominance; option A tuning)
   // Tiered loss penalty: applied to pnl score (floor 0). Highest matching tier wins.
   LOSS_PENALTY_TIERS: [
     { threshold: -20, penalty: 20 },
