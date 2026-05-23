@@ -145,6 +145,7 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
         <ServerStatusCard
           state={vault.state}
           graceEndsAt={vault.graceEndsAt}
+          configEnabled={config?.enabled ?? null}
           onActivate={requestActivate}
           onDeactivate={() => setDeactivateOpen(true)}
           onRestore={() => setRestoreOpen(true)}
@@ -262,12 +263,50 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
 interface ServerStatusCardProps {
   state: 'active' | 'inactive' | 'grace' | 'not_vaulted';
   graceEndsAt: number | null;
+  /**
+   * Trader-config enabled flag (Phase 6/7, 2026-05-23). When the vault
+   * row exists (state=inactive) but the trader config has enabled=false,
+   * the runtime will NOT spawn — the original "Activated, awaiting first
+   * cycle" label is misleading there because no first cycle is coming
+   * until the user clicks Activate. Pass null/undefined to fall back to
+   * the legacy label.
+   */
+  configEnabled?: boolean | null;
   onActivate: () => void;
   onDeactivate: () => void;
   onRestore: () => void;
 }
 
-function ServerStatusCard({ state, graceEndsAt, onActivate, onDeactivate, onRestore }: ServerStatusCardProps) {
+function ServerStatusCard({
+  state,
+  graceEndsAt,
+  configEnabled,
+  onActivate,
+  onDeactivate,
+  onRestore,
+}: ServerStatusCardProps) {
+  // Phase 7: the `inactive` vault state semantically means "vault key
+  // stored on server, no recent heartbeat". Pre-Phase-6 the only way to
+  // reach that state was a fresh spawn between vault upload and first
+  // heartbeat (~5 min) — hence the original "Activated, awaiting first
+  // cycle" label. Phase 6 added an enabled-gate that lets the same
+  // state describe a deliberately-paused agent. Distinguishing the two
+  // is what prevents the user from waiting indefinitely for a heartbeat
+  // that will never come (the 2026-05-23 staging Santa confusion).
+  const inactiveMeta =
+    configEnabled === false
+      ? {
+          label: 'Vault stored, agent paused',
+          tone: 'text-uju-secondary',
+          description:
+            'The encrypted key is on the server but the runtime is intentionally not running because the agent is paused. Click Activate to start it.',
+        }
+      : {
+          label: 'Activated, awaiting first cycle',
+          tone: 'text-amber-200',
+          description:
+            'The encrypted key is stored on the server but the runtime has not reported a heartbeat yet. Usually clears within ~5 minutes.',
+        };
   const stateMeta: Record<typeof state, { label: string; tone: string; description: string }> = {
     not_vaulted: {
       label: 'Not activated',
@@ -279,11 +318,7 @@ function ServerStatusCard({ state, graceEndsAt, onActivate, onDeactivate, onRest
       tone: 'text-emerald-300',
       description: 'Nasun runtime is running this agent on the server. The next cycle is scheduled automatically.',
     },
-    inactive: {
-      label: 'Activated, awaiting first cycle',
-      tone: 'text-amber-200',
-      description: 'The encrypted key is stored on the server but the runtime has not reported a heartbeat yet. Usually clears within ~5 minutes.',
-    },
+    inactive: inactiveMeta,
     grace: {
       label: 'Deactivated, recovery available',
       tone: 'text-amber-200',
