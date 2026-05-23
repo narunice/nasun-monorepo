@@ -111,22 +111,11 @@ export function SessionsTab({
         </div>
       )}
 
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h3 className="text-sm font-semibold text-white">Active Sessions</h3>
-          <p className="text-sm text-uju-secondary mt-0.5">
-            Each session lets @nasun_ai_bot notify you about this agent.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          disabled={!savedCapId}
-          title={!savedCapId ? 'Save Capability ID first' : undefined}
-          className="shrink-0 px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-        >
-          + Link Telegram
-        </button>
+      <div>
+        <h3 className="text-sm font-semibold text-white">Active Telegram Sessions</h3>
+        <p className="text-sm text-uju-secondary mt-0.5">
+          Each session lets @nasun_ai_bot notify you about this agent.
+        </p>
       </div>
 
       {error && <div className="p-3 rounded-xl bg-red-500/10 text-sm text-red-400">{error}</div>}
@@ -194,13 +183,24 @@ export function SessionsTab({
       )}
 
       {!loading && (
-        <button
-          type="button"
-          onClick={() => void reload()}
-          className="text-sm text-uju-secondary/70 hover:text-white transition-colors"
-        >
-          Reload sessions (requires wallet signature)
-        </button>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={() => void reload()}
+            className="px-3 py-1.5 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 hover:text-white transition-colors"
+          >
+            Reload sessions
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            disabled={!savedCapId}
+            title={!savedCapId ? 'Save Capability ID first' : undefined}
+            className="px-3 py-1.5 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            + Link Telegram
+          </button>
+        </div>
       )}
 
       {showModal && savedCapId && (

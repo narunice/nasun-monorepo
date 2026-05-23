@@ -315,43 +315,52 @@ interface SubTabBarProps {
 // as the primary identity cue; when no agent is selected the tabs render
 // disabled and the label reads "No agent selected".
 function SubTabBar({ agentName, subTab, disabled, onChangeSub }: SubTabBarProps) {
+  // 3-column grid: left (agent name, truncates) / center (tabs, fixed position
+  // regardless of name length) / right (mirror spacer for visual symmetry).
+  // The 1fr…auto…1fr pattern keeps the centered tabs locked in place; if the
+  // name grows too long, it gets clipped via `truncate` rather than pushing
+  // the tabs off-center.
   return (
     <div
-      className="flex items-stretch gap-4 border-b border-uju-border/60 overflow-x-auto"
+      className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-uju-border/60"
       role="tablist"
     >
       <div
-        className={`px-3 py-2 text-base font-semibold whitespace-nowrap self-center ${
+        className={`min-w-0 px-3 py-2 text-base font-semibold truncate ${
           agentName ? 'text-white' : 'text-uju-secondary/60 italic font-medium'
         }`}
+        title={agentName ?? undefined}
       >
         {agentName ?? 'No agent selected'}
       </div>
-      {SUB_TABS.map((t) => {
-        const isSelected = !disabled && subTab === t.key;
-        return (
-          <button
-            type="button"
-            key={t.key}
-            role="tab"
-            aria-selected={isSelected}
-            aria-disabled={disabled}
-            disabled={disabled}
-            onClick={() => {
-              if (!disabled) onChangeSub(t.key);
-            }}
-            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-              isSelected
-                ? 'border-pado-2 text-pado-2'
-                : disabled
-                  ? 'border-transparent text-uju-secondary/40 cursor-not-allowed'
-                  : 'border-transparent text-uju-secondary hover:text-white'
-            }`}
-          >
-            {t.label}
-          </button>
-        );
-      })}
+      <div className="flex items-stretch gap-1 justify-self-center">
+        {SUB_TABS.map((t) => {
+          const isSelected = !disabled && subTab === t.key;
+          return (
+            <button
+              type="button"
+              key={t.key}
+              role="tab"
+              aria-selected={isSelected}
+              aria-disabled={disabled}
+              disabled={disabled}
+              onClick={() => {
+                if (!disabled) onChangeSub(t.key);
+              }}
+              className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors whitespace-nowrap ${
+                isSelected
+                  ? 'border-pado-2 text-pado-2'
+                  : disabled
+                    ? 'border-transparent text-uju-secondary/40 cursor-not-allowed'
+                    : 'border-transparent text-uju-secondary hover:text-white'
+              }`}
+            >
+              {t.label}
+            </button>
+          );
+        })}
+      </div>
+      <div aria-hidden="true" />
     </div>
   );
 }
