@@ -79,6 +79,11 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             Save / load error: {configError}
           </p>
         )}
+        {config && config.enabled === false && (
+          <p className="text-xs text-uju-secondary/80">
+            Agent is paused. No trades will run. Use Activate below to resume.
+          </p>
+        )}
         <TraderConfigForm
           agentAddress={agent.agentAddress}
           agentName={agent.name}

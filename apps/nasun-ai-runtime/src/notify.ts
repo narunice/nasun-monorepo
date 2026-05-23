@@ -59,6 +59,11 @@ export interface NotifyEnv {
   BARAM_CHAT_SERVER_HMAC_SECRET?: string;
   STRATEGY?: string;
   RPC_URL?: string;
+  /** User-facing label sourced from chat-server trader config (Phase 7,
+   *  2026-05-23). Empty or absent means the runtime falls back to a
+   *  strategy-only header — that's the old behavior that caused
+   *  Santa-vs-Jane misattribution on 2026-05-23. */
+  AGENT_NAME?: string;
 }
 
 export interface HeartbeatNotifyDeps {
@@ -148,12 +153,24 @@ function formatFillsLine(action: string, fills: TradeFills): string {
   return '';
 }
 
+export interface FormatHeartbeatOpts {
+  fills?: TradeFills | null;
+  agentName?: string;
+}
+
+/**
+ * Trailing optionals are bundled into an options object so a future
+ * fifth signal cannot be misaligned with `agentName` at a call site
+ * (which was the original Phase 7 review concern).
+ */
 export function formatHeartbeatHtml(
   result: TraderCycleResult,
   strategy: string,
   explorerBase: string,
-  fills?: TradeFills | null,
+  opts: FormatHeartbeatOpts = {},
 ): string {
+  const fills = opts.fills;
+  const agentName = opts.agentName;
   // Caller guarantees result.outcome === 'succeeded' && action in BUY/SELL
   // before invoking, so result.decision is non-null. Defensive fallback
   // preserved against future refactor.
@@ -163,7 +180,14 @@ export function formatHeartbeatHtml(
   const digest = result.txDigest;
 
   const safeStrategy = escapeHtml(strategy || 'default');
-  const header = `<b>[Nasun AI · ${safeStrategy}]</b>\n${action} ~${sizeNUSDC} NUSDC`;
+  // Phase 7: include the user-facing agent name in the header so
+  // multiple agents belonging to the same wallet are distinguishable
+  // at a glance in the shared Telegram chat. Empty / missing name
+  // falls back to the original strategy-only header.
+  const trimmedName = (agentName ?? '').trim();
+  const safeName = trimmedName ? escapeHtml(trimmedName) : '';
+  const headerLabel = safeName ? `${safeName} · ${safeStrategy}` : safeStrategy;
+  const header = `<b>[Nasun AI · ${headerLabel}]</b>\n${action} ~${sizeNUSDC} NUSDC`;
   const fillsLine = fills ? `\n${escapeHtml(formatFillsLine(action, fills))}` : '';
   const footer = digest
     ? `\n<a href="${explorerBase}/${encodeURIComponent(digest)}">View tx</a>`
@@ -212,6 +236,7 @@ export async function maybeNotifyHeartbeat(
   const base = env.CHAT_SERVER_BASE_URL!.replace(/\/+$/, '');
   const secret = env.BARAM_CHAT_SERVER_HMAC_SECRET!;
   const strategy = env.STRATEGY ?? 'default';
+  const agentName = env.AGENT_NAME;
   const explorerBase = deriveExplorerBase(deps.explorerBase);
 
   const fetchImpl = deps.fetchImpl ?? fetch;
@@ -227,7 +252,7 @@ export async function maybeNotifyHeartbeat(
 
   let html: string;
   try {
-    html = formatHeartbeatHtml(result, strategy, explorerBase, fills);
+    html = formatHeartbeatHtml(result, strategy, explorerBase, { fills, agentName });
   } catch (err) {
     log(`[notify] format failed: ${err instanceof Error ? err.message : err}`);
     return;

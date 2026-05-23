@@ -96,6 +96,38 @@ describe('formatHeartbeatHtml', () => {
     expect(html).not.toContain('[Nasun AI · <b>evil</b>]');
   });
 
+  it('Phase 7: includes agent name in header when provided', () => {
+    const html = formatHeartbeatHtml(
+      succeededBuy(),
+      'aggressive_scalper',
+      explorerBase,
+      { agentName: 'Santa' },
+    );
+    expect(html).toContain('[Nasun AI · Santa · aggressive_scalper]');
+  });
+
+  it('Phase 7: omits name prefix when agentName empty/whitespace', () => {
+    const html = formatHeartbeatHtml(
+      succeededBuy(),
+      'aggressive_scalper',
+      explorerBase,
+      { agentName: '   ' },
+    );
+    expect(html).toContain('[Nasun AI · aggressive_scalper]');
+    expect(html).not.toContain('·  · ');
+  });
+
+  it('Phase 7: escapes HTML in agent name', () => {
+    const html = formatHeartbeatHtml(
+      succeededBuy(),
+      'conservative_dca',
+      explorerBase,
+      { agentName: '<img src=x>' },
+    );
+    expect(html).toContain('&lt;img');
+    expect(html).not.toContain('<img src=x>');
+  });
+
   it('includes BUY ~N NUSDC header', () => {
     const html = formatHeartbeatHtml(succeededBuy(), 'conservative_dca', explorerBase);
     expect(html).toMatch(/BUY ~120 NUSDC/);

@@ -97,6 +97,12 @@ interface TraderConfigJson {
   maxSlippageBps?: number;
   strategyPresetId?: string;
   pair?: string;
+  /** User-facing label ("Santa", "Jane"). Forwarded to runtime as
+   *  AGENT_NAME so trade-notification messages can disambiguate multiple
+   *  agents in the same Telegram chat (2026-05-23 misattribution: a
+   *  trade from Santa was credited to Jane because notify.ts had only
+   *  the strategy in its header). */
+  name?: string;
 }
 
 /**
@@ -229,6 +235,11 @@ async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEn
     BUDGET_ID:               cfg.budgetId,
     ESCROW_ID:               escrowId,
     STRATEGY:                cfg.strategyPresetId ?? 'conservative_dca',
+    // User-facing label for Telegram notifications. Truncated to 24
+    // chars so emoji-laden names cannot blow past Telegram message
+    // header budget. Empty string when missing so the runtime can
+    // fall back to a strategy-only header.
+    AGENT_NAME:              (cfg.name ?? '').slice(0, 24),
     MAX_NOTIONAL_QUOTE_RAW:  cfg.perTradeMaxQuoteRaw,
     DAILY_MAX_QUOTE_RAW:     cfg.dailyMaxQuoteRaw,
     MAX_SLIPPAGE_BPS:        String(cfg.maxSlippageBps ?? 50),
