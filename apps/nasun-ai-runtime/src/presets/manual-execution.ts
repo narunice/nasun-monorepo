@@ -538,6 +538,7 @@ export async function runManualExecution(
     escrow: escrowBlock,
     spend: spendBlock,
     purpose: `Manual execution of confirmed proposal ${proposal.proposal_id}`,
+    ...(trader.agentProfileId ? { agentProfileId: trader.agentProfileId } : {}),
   });
 
   if (!execResp.success) {

@@ -502,6 +502,7 @@ async function handleExecute(body: ExecuteRequest): Promise<ExecuteResponse> {
     triggeredByType: body.triggeredByType ?? 4, // MANUAL (session-initiated chat)
     triggeredByRef: body.triggeredByRef ?? null,
     modelVersion: modelVersionTag(model),
+    agentProfileId: body.agentProfileId ?? null,
     // promptTemplateHash / marketSnapshotHash / replayExtras intentionally
     // omitted: the chat /execute path doesn't track a prompt-template or
     // market snapshot, so the PTB builder falls back to ZERO/null/[]
@@ -632,6 +633,7 @@ async function handleRecord(body: RecordRequest): Promise<RecordResponse> {
     triggeredByType: body.triggeredByType ?? 1, // HEARTBEAT
     triggeredByRef: body.triggeredByRef ?? null,
     modelVersion: modelVersionTag(verification.request!.model || 'unknown'),
+    agentProfileId: body.agentProfileId ?? null,
     // promptTemplateHash / marketSnapshotHash / replayExtras intentionally
     // omitted: /record is Model B (self-reported) and the caller doesn't
     // ship replay metadata in this schema. PTB builder defaults to
@@ -1357,6 +1359,7 @@ async function handleExecuteCapability(
       ? replay.marketSnapshotHash
       : null,
     replayExtras: runtimeExtras,
+    agentProfileId: body.agentProfileId ?? null,
   };
 
   try {

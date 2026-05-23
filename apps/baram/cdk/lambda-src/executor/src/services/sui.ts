@@ -320,6 +320,11 @@ export interface AERReportData {
    *  canonically (UTF-8 byte order) and rejected on duplicates by the
    *  contract. */
   replayExtras?: Array<[string, number[]]>;
+  /** v3 attribution: AgentProfile shared object id. Forwarded to the
+   *  `*_capability_v3` PTB as a tail Option<ID> argument and surfaces in
+   *  `ExecutionReportCreatedV3.agent_profile_id` for off-chain indexer
+   *  attribution. null/undefined => Option::None (legacy / non-attributed). */
+  agentProfileId?: string | null;
 }
 
 // Caps mirrored from contracts-aer/sources/aer.move. Keep in sync.

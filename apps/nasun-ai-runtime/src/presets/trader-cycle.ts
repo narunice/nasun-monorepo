@@ -806,6 +806,7 @@ export async function runTraderCycle(
     spend: spendBlock,
     purpose: purposeMsg,
     ...(triggeredAction ? { triggeredAction } : {}),
+    ...(trader.agentProfileId ? { agentProfileId: trader.agentProfileId } : {}),
   };
   const execResp = await deps.executeCapability(trader.hostUrl, config.apiKey, execReq);
 

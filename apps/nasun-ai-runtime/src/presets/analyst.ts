@@ -395,6 +395,7 @@ export async function runAnalystPreset(
     escrow: null,
     spend: null,
     purpose: `Analyst response to user message (sid=${ctx.sid.slice(0, 8)}...)`,
+    ...(trader.agentProfileId ? { agentProfileId: trader.agentProfileId } : {}),
   });
 
   if (!execResp.success) {

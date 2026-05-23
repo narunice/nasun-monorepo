@@ -219,6 +219,11 @@ export interface ExecuteCapabilityRequest {
   constraints?: string | null;
   triggeredBy?: string | null;
   triggeredAction?: string | null;
+  /** v3 attribution: AgentProfile object id. Forwarded into the
+   *  `create_report_with_receipt_capability_v3` moveCall and surfaces in
+   *  `ExecutionReportCreatedV3.agent_profile_id`. Optional: legacy callers
+   *  that omit it produce v3 events with agent_profile_id=None. */
+  agentProfileId?: string | null;
 }
 
 export interface ExecuteCapabilityResponse {
