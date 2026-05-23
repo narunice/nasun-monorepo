@@ -8,7 +8,7 @@ import { NavItem } from "../../types/routes";
 import LoginButton from "./LoginButton";
 import WalletButton from "./WalletButton";
 import WalletDisconnectModal from "./WalletDisconnectModal";
-import { NavStandingBadge } from "./NavStandingBadge";
+// import { NavStandingBadge } from "./NavStandingBadge"; // Hidden until Phase 1 v3 launch announcement
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -182,9 +182,11 @@ export default function Navbar() {
             </Tooltip.Root>
           )}
 
+          {/* Hidden until Phase 1 v3 launch announcement
           {isAuthenticated && user?.walletAddress && (
             <NavStandingBadge walletAddress={user.walletAddress} />
           )}
+          */}
           {isAuthenticated && user && <WalletButton />}
           <LoginButton />
           {isAuthenticated && user && <WalletDisconnectModal />}
