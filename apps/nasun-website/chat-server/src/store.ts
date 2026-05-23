@@ -266,6 +266,10 @@ export function initStore(config: ChatServerConfig): void {
   // pre-check the on-chain Budget balance before forwarding a /wake call.
   try { db.exec('ALTER TABLE baram_agent_endpoints ADD COLUMN budget_id TEXT'); } catch { /* already exists */ }
 
+  // AER v3: store the AgentProfile object id so perAgentTraderEnv can inject
+  // AGENT_PROFILE_ID into spawned daemons for attributed AER rows.
+  try { db.exec('ALTER TABLE agent_keys ADD COLUMN profile_id TEXT'); } catch { /* already exists */ }
+
   // Nasun AI trader configs — synced from browser on form save, read by runtime at cycle start.
   db.exec(`
     CREATE TABLE IF NOT EXISTS nasun_ai_trader_configs (

@@ -296,6 +296,10 @@ export async function handleVaultUpload(
   if (!agentSecretKey) {
     writeJson(res, 400, corsHeaders, { error: 'missing_secret' }); return;
   }
+  // Optional AER v3 attribution. Validated as a 32-byte hex object id when present.
+  const profileId = typeof b.profileId === 'string' && /^0x[0-9a-f]{64}$/i.test(b.profileId)
+    ? b.profileId.toLowerCase()
+    : null;
 
   // Derive + verify
   let derivedAddress: string;
@@ -411,16 +415,17 @@ export async function handleVaultUpload(
             `UPDATE agent_keys
              SET wallet_address = ?, capability_id = ?, deleted_at = NULL,
                  wake_port = ?, last_used_at = ?,
-                 expires_at = ?, paused_at = NULL, warned_at = NULL
+                 expires_at = ?, paused_at = NULL, warned_at = NULL,
+                 profile_id = COALESCE(?, profile_id)
              WHERE agent_address = ?`
-          ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, agentAddress);
+          ).run(ownerWallet, capabilityId, wakePort, now, expiresAt, profileId, agentAddress);
         } else {
           getDb().prepare(
             `INSERT INTO agent_keys
                (agent_address, wallet_address, capability_id, param_name, pm2_name,
-                wake_port, created_at, expires_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-          ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt);
+                wake_port, created_at, expires_at, profile_id)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
         }
 
         // Spawn PM2. Failure here should not orphan the SSM parameter — leave it
