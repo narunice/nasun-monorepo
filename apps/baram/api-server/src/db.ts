@@ -97,36 +97,18 @@ export async function initSchema(): Promise<void> {
     )
   `;
 
-  // Create indexes (IF NOT EXISTS is implicit for CREATE INDEX with concurrent-safe check)
-  const indexes = [
-    `CREATE INDEX IF NOT EXISTS idx_aer_initiator    ON aer_records(initiator, settled_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_executor     ON aer_records(executor, settled_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_authorizer   ON aer_records(authorizer, settled_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_budget       ON aer_records(budget_id, settled_at DESC) WHERE budget_id IS NOT NULL`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_request_id   ON aer_records(request_id)`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_settled_at   ON aer_records(settled_at DESC)`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_triggered_by ON aer_records(triggered_by) WHERE triggered_by IS NOT NULL`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_model        ON aer_records(model_name, settled_at DESC)`,
-    // Plan B B2: capability_version snapshot. Indexer query: "all AERs
-    // emitted under a specific cap version" (used by the Dashboard
-    // capability history view in Plan E). Per AER_V2_CODEC §15.
-    `CREATE INDEX IF NOT EXISTS idx_aer_capability_version ON aer_records(capability_version, settled_at DESC) WHERE capability_version IS NOT NULL`,
-    // Plan C: queries the Dashboard (and Plan E debug view) needs against
-    // the v2-only sub-structs. action_type + event_class drives the
-    // cognition-vs-execution breakdown; intent_id resolves a heartbeat to
-    // its full cognition-then-execution chain.
-    `CREATE INDEX IF NOT EXISTS idx_aer_event_class  ON aer_records(event_class, settled_at DESC) WHERE event_class IS NOT NULL`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_action_type  ON aer_records(action_type, settled_at DESC) WHERE action_type IS NOT NULL`,
-    `CREATE INDEX IF NOT EXISTS idx_aer_intent_id    ON aer_records(intent_id) WHERE intent_id IS NOT NULL`,
-  ];
-  for (const idx of indexes) {
-    await sql.unsafe(idx);
-  }
-
   // Forward-migrate existing rows. Each ADD COLUMN IF NOT EXISTS is
   // idempotent so this block is safe to re-run on a deployed DB. New
   // columns surface as NULL for pre-Plan-C AERs (which never had the
   // sub-structs at all) and for the legacy ungated settlement path.
+  //
+  // MUST run BEFORE CREATE INDEX below; otherwise indexes that reference
+  // these columns (capability_version, intent_id, event_class,
+  // agent_profile_id, ...) abort the whole init on a node where the
+  // table was originally created from the bare CREATE TABLE above. We
+  // hit this on prod node-3 after a fresh rsync — the original order
+  // was indexes-first, which silently failed on every restart and left
+  // the schema at the v1 baseline indefinitely.
   await sql`
     ALTER TABLE aer_records
       ADD COLUMN IF NOT EXISTS capability_version    BIGINT,
@@ -152,10 +134,26 @@ export async function initSchema(): Promise<void> {
       ADD COLUMN IF NOT EXISTS agent_profile_id      TEXT
   `;
 
-  // v3 attribution lookup: "all AERs settled by agent X in window".
-  await sql.unsafe(
+  // Indexes. Created AFTER ALTER above so partial indexes that reference
+  // post-v1 columns can compile their predicate.
+  const indexes = [
+    `CREATE INDEX IF NOT EXISTS idx_aer_initiator    ON aer_records(initiator, settled_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_executor     ON aer_records(executor, settled_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_authorizer   ON aer_records(authorizer, settled_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_budget       ON aer_records(budget_id, settled_at DESC) WHERE budget_id IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_request_id   ON aer_records(request_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_settled_at   ON aer_records(settled_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_triggered_by ON aer_records(triggered_by) WHERE triggered_by IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_model        ON aer_records(model_name, settled_at DESC)`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_capability_version ON aer_records(capability_version, settled_at DESC) WHERE capability_version IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_event_class  ON aer_records(event_class, settled_at DESC) WHERE event_class IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_action_type  ON aer_records(action_type, settled_at DESC) WHERE action_type IS NOT NULL`,
+    `CREATE INDEX IF NOT EXISTS idx_aer_intent_id    ON aer_records(intent_id) WHERE intent_id IS NOT NULL`,
     `CREATE INDEX IF NOT EXISTS idx_aer_agent_profile_id ON aer_records(agent_profile_id, settled_at DESC) WHERE agent_profile_id IS NOT NULL`,
-  );
+  ];
+  for (const idx of indexes) {
+    await sql.unsafe(idx);
+  }
 
   await sql`
     CREATE TABLE IF NOT EXISTS aer_sync_state (

@@ -150,7 +150,7 @@ The signer must be the capability's `owner` (the user's wallet, or the admin if 
 PTB via Sui CLI (substitute `<CAP_ID>` with the capability object ID for the target agent):
 
 ```bash
-AER_PACKAGE_ID=0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0
+AER_PACKAGE_ID=0x50f5c30416e0f160c40839eff100a67cecff047f57814065b5387af701ce1815
 CAP_ID=<CAP_ID>
 
 nasun client call \

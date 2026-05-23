@@ -372,6 +372,9 @@ function formatRow(row: Record<string, unknown>) {
     marketSnapshotHash: row.market_snapshot_hash ?? null,
     strategyId,
     capabilityId,
+    // v3 attribution: AgentProfile object id. Sourced from the V3 event by
+    // aer-sync; NULL for AERs created via legacy (pre-v3) entries.
+    agentProfileId: row.agent_profile_id ?? null,
   };
 }
 

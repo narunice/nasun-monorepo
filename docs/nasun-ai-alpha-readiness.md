@@ -47,7 +47,7 @@
 | 검증 항목 | 상태 | 비고 |
 |---|---|---|
 | `baram-executor` LastModified | ✅ | 2026-05-17 14:42 UTC |
-| `AER_PACKAGE_ID` | ✅ | `0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0` (v4) |
+| `AER_PACKAGE_ID` | ✅ | `0x50f5c30416e0f160c40839eff100a67cecff047f57814065b5387af701ce1815` (v4) |
 | `LAMBDA_SWAP_DISABLED` | ✅ | **`false`** (swap path 열림). 알파 mode 결정 후 토글 |
 | Negative test (kill-switch flip) | ✅ | Phase D dev에서 검증 ([2026-05-17-p2-phase-d-negative-test.md](../.claude/handoffs/2026-05-17-p2-phase-d-negative-test.md)) |
 
@@ -150,7 +150,7 @@ pnpm deploy:nasun-website:prod
 | 알파 글로벌 flag | `AGENT_GLOBAL_PR1A_SWAP_DISABLED=true` |
 | Per-agent override | 현재 코드 미구현. 글로벌 임시 flip → spawn → 복귀 운영 패턴 |
 | Prod Lambda | `baram-executor` (account 466841130170, ap-northeast-2) |
-| AER v4 packageId | `0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0` |
+| AER v4 packageId | `0x50f5c30416e0f160c40839eff100a67cecff047f57814065b5387af701ce1815` |
 | Frontend AI flag | `apps/nasun-website/frontend/.env.production:VITE_NASUN_AI_ENABLED` |
 | Frontend gate | [apps/nasun-website/frontend/src/sections/uju/UjuNavigation.tsx:11](../apps/nasun-website/frontend/src/sections/uju/UjuNavigation.tsx#L11) |
 

@@ -64,6 +64,13 @@ export interface AERRecord {
    * agent-runner heartbeat AERs without a chat capability) leave it unset.
    */
   capabilityId?: string | null;
+  /**
+   * v3 attribution: AgentProfile object id sourced from
+   * `ExecutionReportCreatedV3.agent_profile_id`. Populated for AERs created
+   * via the *_v3 entries (Lambda always routes v3 since 2026-05-23). Null
+   * for AERs created via legacy entries (before the v3 cutover).
+   */
+  agentProfileId?: string | null;
 }
 
 interface IndexerApiResponse {
@@ -106,6 +113,7 @@ interface IndexerApiResponse {
     marketSnapshotHash?: string | null;
     strategyId?: string | null;
     capabilityId?: string | null;
+    agentProfileId?: string | null;
   }>;
   hasNextPage: boolean;
   nextCursor: string | null;
@@ -156,6 +164,7 @@ function mapIndexerRecord(row: IndexerApiResponse['data'][number]): AERRecord {
     marketSnapshotHash: row.marketSnapshotHash ?? null,
     strategyId: row.strategyId ?? null,
     capabilityId: row.capabilityId ?? null,
+    agentProfileId: row.agentProfileId ?? null,
   };
 }
 

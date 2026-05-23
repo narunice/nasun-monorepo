@@ -13,7 +13,7 @@
 > - [docs/nasun-ai-alpha-readiness.md](../../../docs/nasun-ai-alpha-readiness.md) - alpha launch checklist (live status)
 >
 > Current deployment (2026-05-19):
-> - AER package: `0xe685a7431719cece7b60e44d827d9001105b5d68c002242d0f4ce49924e2f7e0` (v4)
+> - AER package: `0x50f5c30416e0f160c40839eff100a67cecff047f57814065b5387af701ce1815` (v4)
 > - The "Devnet V7 + v0.0.6 / v0.0.3" coordinates below are 4 months old.
 >
 > §1 Vision and §3 On-Chain Architecture remain useful as design rationale, but treat all version/packageId text as historical.
