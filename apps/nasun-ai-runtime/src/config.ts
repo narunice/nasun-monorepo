@@ -6,6 +6,7 @@ import 'dotenv/config';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 import { resolveStrategyPreset, type StrategyPreset } from './presets/strategies.js';
+import { parseProvidersEnv, type ChatLLMProvider } from './chat-llm-pool.js';
 
 const MIN_INTERVAL_MINUTES = 5;
 const CLOCK_ID = '0x0000000000000000000000000000000000000000000000000000000000000006';
@@ -217,10 +218,28 @@ export function loadConfigBaseSync() {
     throw new Error(`Invalid MODE: ${mode}. Must be: lambda, record`);
   }
 
-  // Record mode requires LLM configuration
-  const llmApiUrl = mode === 'record' ? requireHttpsUrl(requireEnv('LLM_API_URL'), 'LLM_API_URL') : '';
-  const llmApiKey = mode === 'record' ? requireEnv('LLM_API_KEY') : '';
-  const llmModel = mode === 'record' ? (process.env.LLM_MODEL ?? 'llama-3.3-70b-versatile') : '';
+  // Record mode requires LLM configuration. Other modes accept LLM creds
+  // as optional -- chat preset (general conversation on user_message) reads
+  // them directly without going through the host /infer path. When absent,
+  // chat soft-fails with a canned reply (see presets/chat.ts).
+  const llmApiUrlRaw = process.env.LLM_API_URL ?? '';
+  const llmApiKeyRaw = process.env.LLM_API_KEY ?? '';
+  const llmApiUrl =
+    mode === 'record'
+      ? requireHttpsUrl(requireEnv('LLM_API_URL'), 'LLM_API_URL')
+      : (llmApiUrlRaw ? requireHttpsUrl(llmApiUrlRaw, 'LLM_API_URL') : '');
+  const llmApiKey =
+    mode === 'record'
+      ? requireEnv('LLM_API_KEY')
+      : llmApiKeyRaw;
+  // Only default llmModel when LLM creds are present, so the legacy
+  // "lambda mode + no chat" config still resolves to empty strings (the
+  // test contract). The chat preset applies its own default ('llama-3.3-
+  // 70b-versatile') when llmModel is empty and creds are non-empty.
+  const llmHasCreds = mode === 'record' || (llmApiUrl !== '' && llmApiKey !== '');
+  const llmModel = llmHasCreds
+    ? (process.env.LLM_MODEL ?? 'llama-3.3-70b-versatile')
+    : '';
 
   // Trader preset uses the host /execute-capability path; everything else
   // still routes through the Lambda /execute path (which is itself slated
@@ -259,6 +278,23 @@ export function loadConfigBaseSync() {
     llmApiUrl,
     llmApiKey,
     llmModel,
+
+    // Chat preset (2026-05-23) — used when the user_message intent
+    // classifier routes to free-form chat instead of trading.
+    //
+    // Provider precedence (first non-empty wins):
+    //   1. chatLlmProviders -- multi-provider rotation pool. Parsed from
+    //      CHAT_LLM_PROVIDERS env (JSON array). Production uses ~9
+    //      free-tier keys across Groq/Cerebras/OpenRouter/DeepSeek/
+    //      Mistral/SambaNova/Gemini.
+    //   2. llmApiUrl + llmApiKey -- single-provider OpenAI-compat
+    //      (legacy record-mode shape, kept for minimal configs).
+    //
+    // When both are empty the chat preset returns a canned reply.
+    //
+    // ANTHROPIC_API_KEY is reserved for Pado's Wavi chatbot and is NOT
+    // read here -- see chat.ts header.
+    chatLlmProviders: parseProvidersEnv(process.env.CHAT_LLM_PROVIDERS) as ChatLLMProvider[],
 
     // Network
     rpcUrl: process.env.RPC_URL ?? 'https://rpc.devnet.nasun.io',

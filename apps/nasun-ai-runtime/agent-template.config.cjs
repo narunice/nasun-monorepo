@@ -46,6 +46,19 @@ const FORWARD_KEYS = [
   'BARAM_CHAT_SERVER_HMAC_SECRET', 'BARAM_SESSION_JWT_SECRET',
   // Optional trader-cycle Telegram notifications
   'TELEGRAM_BOT_TOKEN', 'TELEGRAM_CHAT_ID',
+  // General-chat preset (2026-05-23). When present, non-trading
+  // user_message wakes get a free-form LLM reply instead of being
+  // forced into the trade JSON envelope. Soft-fails to a canned reply
+  // when absent, so omitting these keeps the runtime safe.
+  //
+  // Preferred: multi-provider rotation pool (JSON env). Production uses
+  // ~9 free-tier keys (Groq x3 + Cerebras + OpenRouter + DeepSeek +
+  // Mistral + SambaNova + Gemini) so a single provider's per-minute
+  // window doesn't brick chat for the next user.
+  'CHAT_LLM_PROVIDERS',
+  // OpenAI-compat single-key fallback for minimal configs. ANTHROPIC_*
+  // is intentionally NOT forwarded -- those keys are Pado-Wavi-only.
+  'LLM_API_URL', 'LLM_API_KEY', 'LLM_MODEL',
 ];
 
 const forwarded = Object.fromEntries(
