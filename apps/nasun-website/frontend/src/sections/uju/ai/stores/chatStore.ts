@@ -7,7 +7,7 @@
  */
 
 import { create } from 'zustand';
-import type { ChatSession, Message } from '../types/chat';
+import type { ChatSession, Message, SessionKind } from '../types/chat';
 import { generateId, generateSessionTitle } from '../types/chat';
 import {
   openDatabase,
@@ -73,6 +73,17 @@ interface ChatState {
   isLoading: boolean;
 }
 
+export interface CreateSessionOptions {
+  /** Bill this session against a specific agent. Falls back to the store's
+   * current per-agent scope, then to the wallet-mode default. */
+  agentId?: string;
+  /** Internal kind tag. Default 'generic'. UI never exposes this as a toggle. */
+  kind?: SessionKind;
+  /** Required when kind='agent'. Pins the capability so a wake job's chatToken
+   * stays valid across cap rotations of the same (wallet, agent). */
+  capabilityId?: string;
+}
+
 interface ChatActions {
   load: (walletAddress: string, agentId: string) => Promise<void>;
   /**
@@ -81,7 +92,7 @@ interface ChatActions {
    * next *new* session against — typically the wallet's first active agent.
    */
   loadForWallet: (walletAddress: string, defaultAgentId: string | null) => Promise<void>;
-  createSession: (agentId?: string) => Promise<string>;
+  createSession: (opts?: CreateSessionOptions | string) => Promise<string>;
   switchSession: (sessionId: string) => Promise<void>;
   removeSession: (sessionId: string) => Promise<void>;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => string;
@@ -210,15 +221,22 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
     }
   },
 
-  createSession: async (agentIdOverride) => {
+  createSession: async (opts) => {
     const { walletAddress, agentId, defaultAgentId } = get();
     if (!walletAddress) throw new Error('Wallet not loaded');
+    // Back-compat: callers still pass createSession('0x...') as a string.
+    // Treat that as { agentId } so the legacy ChatView code path keeps working.
+    const norm = typeof opts === 'string' ? { agentId: opts } : (opts ?? {});
     // Resolution order:
     //   1. explicit per-call override (e.g. user picked from agent dropdown)
     //   2. per-agent-mode scoping (load(wallet, agentId))
     //   3. wallet-mode default (loadForWallet defaultAgentId)
-    const sessionAgentId = agentIdOverride ?? agentId ?? defaultAgentId;
+    const sessionAgentId = norm.agentId ?? agentId ?? defaultAgentId;
     if (!sessionAgentId) throw new Error('No agent selected to bill this chat');
+    const kind: SessionKind = norm.kind ?? 'generic';
+    if (kind === 'agent' && !norm.capabilityId) {
+      throw new Error('capabilityId required for agent-mode session');
+    }
     const now = Date.now();
     const session: ChatSession = {
       id: generateId(),
@@ -227,6 +245,8 @@ export const useChatStore = create<ChatState & ChatActions>((set, get) => ({
       createdAt: now,
       updatedAt: now,
       messageCount: 0,
+      sessionKind: kind,
+      capabilityId: norm.capabilityId,
     };
     persistSession(walletAddress, session);
     set((s) => ({

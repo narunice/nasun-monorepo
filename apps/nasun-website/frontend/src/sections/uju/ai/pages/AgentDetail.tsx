@@ -22,20 +22,20 @@ import { HashRef } from '../components/HashRef';
 import { OverviewTab } from './agent/OverviewTab';
 import { ActivityTab } from './agent/ActivityTab';
 import { SettingsTab } from './agent/SettingsTab';
+import { AgentChat } from './agent/AgentChat';
+import type { AlphaStatusResponse } from '../alpha/alphaApiClient';
 
-export type AgentSubTab = 'overview' | 'activity' | 'settings';
+export type AgentSubTab = 'overview' | 'activity' | 'chat' | 'settings';
 
-/** Accepts legacy sub values and maps them onto the current 3-tab IA. */
+/** Accepts legacy sub values and maps them onto the current 4-tab IA. */
 export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
   switch (raw) {
     case 'overview':
     case 'activity':
+    case 'chat':
     case 'settings':
       return raw;
     case 'dashboard':
-    case 'chat':
-      // Chat moved to the top-level Agents/Chat split; per-agent chat surface
-      // is gone. Land legacy deep-links on the overview to keep them usable.
       return 'overview';
     case 'escrow':
     case 'sessions':
@@ -48,6 +48,11 @@ export function normalizeSubTab(raw: string | null | undefined): AgentSubTab {
 const SUB_TABS: { key: AgentSubTab; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'activity', label: 'Activity' },
+  // Chat sub-tab hidden pending proposal-confirm UX redesign — see
+  // UjuNavigation.tsx for the corresponding top-level AI Chat tab. The
+  // wake path itself remains operational on chat-server (PR1) but the
+  // user can't confirm proposals from the web yet.
+  // { key: 'chat', label: 'Chat' },
   { key: 'settings', label: 'Settings' },
 ];
 
@@ -59,6 +64,9 @@ interface AgentDetailProps {
   onBack: () => void;
   /** When true, the back link reads "Back to Quickstart" instead of "Back to agents". */
   fromQuickstart?: boolean;
+  /** Alpha state for this wallet. Threaded from AiTab so AgentChat can render
+   * a gate banner / disable input when wake-mode isn't allowed. */
+  alphaStatus?: AlphaStatusResponse | null;
 }
 
 export function AgentDetail({
@@ -68,6 +76,7 @@ export function AgentDetail({
   onChangeSub,
   onBack,
   fromQuickstart,
+  alphaStatus = null,
 }: AgentDetailProps) {
   const backLabel = fromQuickstart ? '← Back to Quickstart' : '← Back to agents';
   const { data: agents, isLoading, refetch } = useAgentProfiles(walletAddress);
@@ -160,6 +169,16 @@ export function AgentDetail({
             walletAddress={walletAddress}
             agentAddress={agent.agentAddress}
             agentCapabilityId={agent.capabilityId}
+          />
+        )}
+        {subTab === 'chat' && (
+          <AgentChat
+            walletAddress={walletAddress}
+            agentId={agentId}
+            agentAddress={agent.agentAddress}
+            capabilityId={agent.capabilityId}
+            alphaStatus={alphaStatus}
+            isAgentActive={agent.isActive}
           />
         )}
         {subTab === 'settings' && (

@@ -1,17 +1,15 @@
-import { ecosystemAiPath } from "@/config/featureFlags";
-
 /**
- * AiTab - root entry for the my-account "AI" sub-tab.
+ * AiTab - root entry for the my-account "Agents" top-level tab.
  *
  * Sub-routes are driven by the `view` query param:
- *   view=list      (default) -> QuickstartView
+ *   view=list      (default) -> QuickstartView (agent list + onboarding)
  *   view=register           -> QuickstartView + CreateAgentModal
- *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<...>`)
+ *   view=detail&agent=<id>  -> AgentDetail (with sub-tab `sub=<overview|activity|chat|settings>`)
  *   view=budgets            -> Budgets page
  *
- * The AgentDetail sub-tab is held in the `sub` query param so deep links
- * survive a refresh. An optional `from=quickstart` flag tells AgentDetail
- * to swap the back-link label so Quickstart-driven users know the round trip.
+ * Generic LLM chat (the legacy useRequestWithRetry path) is NOT mounted here
+ * anymore — it lives at `?tab=ai-chat` (AiChatTab). Per-agent wake-mode chat
+ * is mounted inside AgentDetail as `sub=chat`.
  */
 
 import { useCallback, useRef } from 'react';
@@ -20,10 +18,10 @@ import { useAuth } from '@/features/auth';
 import { AgentDetail, normalizeSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
 import { QuickstartView } from './pages/QuickstartView';
-import { ChatView } from './pages/ChatView';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { useCreateAgent } from './hooks/useCreateAgent';
 import { useAgentProfiles } from './hooks/useAgentProfiles';
+import { useAlphaStatus } from './alpha/useAlphaStatus';
 
 const VIEW_PARAM = 'view';
 const AGENT_PARAM = 'agent';
@@ -96,6 +94,12 @@ export function AiTab() {
   const { data: agents, refetch } = useAgentProfiles(walletAddress ?? '');
   const { createAgent, txStatus, txError, generatedAddress, fallbackKey, resetTxStatus } =
     useCreateAgent();
+
+  // Alpha gate for the per-agent wake chat sub-tab. UX-only — chat-server
+  // enforces the same gate server-side. We thread the raw status into
+  // AgentDetail so it can render an inline banner inside the Chat sub-tab
+  // without ChatView (legacy generic chat) being aware of any of this.
+  const { status: alphaStatus } = useAlphaStatus(walletAddress);
 
   // Captured at "Register" submit time so the post-modal navigation reflects
   // the wallet's state *before* the new agent landed, not after.
@@ -170,6 +174,7 @@ export function AiTab() {
           agentId={agentId}
           subTab={sub}
           fromQuickstart={fromQuickstart}
+          alphaStatus={alphaStatus}
           onChangeSub={(next) => updateView('detail', { sub: next })}
           onBack={() => updateView(null, { agent: null, sub: null, [FROM_PARAM]: null })}
         />
@@ -190,57 +195,22 @@ export function AiTab() {
     );
   }
 
-  const isChatView = view === 'chat';
-
   return (
     <div className="space-y-4">
-      <div
-        className="flex gap-1 border-b border-uju-border/60"
-        role="tablist"
-        aria-label="AI section"
-      >
-        {(['list', 'chat'] as const).map((key) => {
-          const active = key === 'chat' ? isChatView : !isChatView;
-          return (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => updateView(key === 'list' ? null : 'chat')}
-              className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
-                active
-                  ? 'border-pado-2 text-pado-2'
-                  : 'border-transparent text-uju-secondary hover:text-white'
-              }`}
-            >
-              {key === 'list' ? 'Agents' : 'Chat'}
-            </button>
-          );
-        })}
-      </div>
-
-      {isChatView ? (
-        <ChatView
-          walletAddress={walletAddress}
-          onRegisterAgent={() => updateView('register')}
-        />
-      ) : (
-        <QuickstartView
-          walletAddress={walletAddress}
-          onShowRegister={() => updateView('register')}
-          onOpenBudgets={(agentAddress) =>
-            updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
-          }
-          onSelectAgent={(id, opts) =>
-            updateView('detail', {
-              agent: id,
-              sub: opts?.sub ?? 'overview',
-              [FROM_PARAM]: opts?.fromQuickstart ? FROM_QUICKSTART : null,
-            })
-          }
-        />
-      )}
+      <QuickstartView
+        walletAddress={walletAddress}
+        onShowRegister={() => updateView('register')}
+        onOpenBudgets={(agentAddress) =>
+          updateView('budgets', agentAddress ? { [PREFILL_PARAM]: agentAddress } : {})
+        }
+        onSelectAgent={(id, opts) =>
+          updateView('detail', {
+            agent: id,
+            sub: opts?.sub ?? 'overview',
+            [FROM_PARAM]: opts?.fromQuickstart ? FROM_QUICKSTART : null,
+          })
+        }
+      />
 
       {/* Registration modal, triggered by view=register */}
       {view === 'register' && (
