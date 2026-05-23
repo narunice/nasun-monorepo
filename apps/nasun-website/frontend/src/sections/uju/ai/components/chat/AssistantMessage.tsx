@@ -13,8 +13,9 @@ import remarkGfm from 'remark-gfm';
 import rehypeSanitize from 'rehype-sanitize';
 import { NETWORK_CONFIG } from '../../services/network';
 import { formatMessageTime } from '../../utils/format';
-import type { MessageMetadata } from '../../types/chat';
+import type { MessageMetadata, WakeProposal } from '../../types/chat';
 import type { RequestStatus } from '../../hooks/request/useCreateRequest';
+import { ProposalCard } from './ProposalCard';
 
 interface AssistantMessageProps {
   content: string;
@@ -26,6 +27,30 @@ interface AssistantMessageProps {
   requestStatus?: RequestStatus;
   /** Open the AER details modal for this turn's `requestId`. Wired by ChatTab. */
   onOpenAer?: (requestId: number) => void;
+  /** Wake-mode: phase indicator for the soft/hard wait copy + spinner. */
+  wakePhase?: 'submitting' | 'pending' | 'soft-wait' | 'hard-wait' | 'timeout';
+  /** Wake-mode: structured trade proposal artifact attached to this turn. */
+  proposal?: WakeProposal;
+  /** Wake-mode: when failed && retryable, show a Retry button. */
+  retryable?: boolean;
+  onRetry?: () => void;
+}
+
+function getWakeWaitLabel(phase: AssistantMessageProps['wakePhase']): string {
+  switch (phase) {
+    case 'submitting':
+      return 'Submitting...';
+    case 'pending':
+      return 'Working...';
+    case 'soft-wait':
+      return 'Still working — analyst preset can take up to 60s...';
+    case 'hard-wait':
+      return 'Over 60s — agent is still thinking.';
+    case 'timeout':
+      return 'Still processing in background. Refresh to resume.';
+    default:
+      return 'Working...';
+  }
 }
 
 function getProcessingLabel(requestStatus?: RequestStatus, isTeeExecutor?: boolean): string {
@@ -59,7 +84,19 @@ export function AssistantMessage({
   failed = false,
   requestStatus,
   onOpenAer,
+  wakePhase,
+  proposal,
+  retryable = false,
+  onRetry,
 }: AssistantMessageProps) {
+  // Wake-mode phase has its own spinner copy + can coexist with a non-empty
+  // placeholder. Treat it as a flavor of isProcessing for the UI, but with
+  // wake-specific copy.
+  const isWakeWaiting =
+    wakePhase === 'submitting' ||
+    wakePhase === 'pending' ||
+    wakePhase === 'soft-wait' ||
+    wakePhase === 'hard-wait';
   const timeString = timestamp ? formatMessageTime(timestamp) : undefined;
   const explorerUrl = metadata?.txDigest
     ? `${NETWORK_CONFIG.explorerUrl}/tx/${metadata.txDigest}`
@@ -108,7 +145,7 @@ export function AssistantMessage({
         {timeString && <span className="text-xs text-uju-secondary/70">{timeString}</span>}
       </div>
 
-      {isProcessing ? (
+      {isProcessing || isWakeWaiting ? (
         <div className="pl-8 py-2">
           <div className="flex items-center gap-2 text-sm text-uju-secondary">
             <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
@@ -119,7 +156,11 @@ export function AssistantMessage({
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
               />
             </svg>
-            <span>{getProcessingLabel(requestStatus, isTeeExecutor)}</span>
+            <span>
+              {isWakeWaiting
+                ? getWakeWaitLabel(wakePhase)
+                : getProcessingLabel(requestStatus, isTeeExecutor)}
+            </span>
           </div>
         </div>
       ) : (
@@ -133,6 +174,24 @@ export function AssistantMessage({
               {content}
             </ReactMarkdown>
           </div>
+
+          {proposal && (
+            <div className="pl-8">
+              <ProposalCard proposal={proposal} />
+            </div>
+          )}
+
+          {failed && retryable && onRetry && (
+            <div className="pl-8 mt-2">
+              <button
+                type="button"
+                onClick={onRetry}
+                className="text-sm rounded-md border border-pado-2/40 text-pado-2 hover:bg-pado-2/10 px-2 py-1 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           {metadata && (
             <div className="pt-3 pl-8">

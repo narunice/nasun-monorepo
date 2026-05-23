@@ -44,7 +44,14 @@ export function ChatView({ walletAddress, onRegisterAgent }: ChatViewProps) {
   }, [agents, activeAgents]);
 
   const loadForWallet = useChatStore((s) => s.loadForWallet);
-  const sessions = useChatStore((s) => s.sessions);
+  const allSessions = useChatStore((s) => s.sessions);
+  // Top-level "AI Chat" surface only shows generic-kind sessions. Wake-mode
+  // (kind='agent') sessions live in AgentDetail → Chat sub-tab and must not
+  // leak into this list.
+  const sessions = useMemo(
+    () => allSessions.filter((s) => (s.sessionKind ?? 'generic') !== 'agent'),
+    [allSessions],
+  );
   const messages = useChatStore((s) => s.messages);
   const currentSessionId = useChatStore((s) => s.currentSessionId);
   const defaultAgentId = useChatStore((s) => s.defaultAgentId);

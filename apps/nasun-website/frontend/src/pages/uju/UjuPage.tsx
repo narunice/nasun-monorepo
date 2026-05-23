@@ -6,6 +6,7 @@ import { DashboardTab, DashboardNftsSection } from "../../sections/uju/dashboard
 import { ActivityTab } from "../../sections/uju/activity/ActivityTab";
 import { ProfileTab } from "../../sections/uju/profile/ProfileTab";
 import { AiTab } from "../../sections/uju/ai/AiTab";
+import { AiChatTab } from "../../sections/uju/ai/AiChatTab";
 import { UjuChatSidebar } from "../../sections/uju/chat/UjuChatSidebar";
 import { BannerCarousel } from "../../sections/uju/dashboard/banner/BannerCarousel";
 import { UjuAppDirectoryProvider } from "../../sections/uju/apps/UjuAppDirectoryProvider";
@@ -14,15 +15,19 @@ import { NASUN_AI_ENABLED } from "@/config/featureFlags";
 import { ReferralWelcomeModal, REFERRAL_MODAL_DISMISSED_KEY } from "../../sections/uju/onboarding/ReferralWelcomeModal";
 import { getMyReferralStats } from "@/services/referralApi";
 
-type Tab = "dashboard" | "activity" | "ai" | "profile";
+type Tab = "dashboard" | "activity" | "agents" | "ai-chat" | "profile";
 const VALID_TABS = new Set<Tab>(
   NASUN_AI_ENABLED
-    ? ["dashboard", "activity", "ai", "profile"]
+    ? ["dashboard", "activity", "agents", "ai-chat", "profile"]
     : ["dashboard", "activity", "profile"],
 );
 
 function parseTab(raw: string | null): Tab {
-  return raw && VALID_TABS.has(raw as Tab) ? (raw as Tab) : "dashboard";
+  if (!raw) return "dashboard";
+  // Legacy ?tab=ai now lands on the renamed "agents" tab so old bookmarks /
+  // deep links keep working.
+  if (raw === "ai") return NASUN_AI_ENABLED ? "agents" : "dashboard";
+  return VALID_TABS.has(raw as Tab) ? (raw as Tab) : "dashboard";
 }
 
 export default function UjuPage() {
@@ -106,7 +111,8 @@ export default function UjuPage() {
           <div>
             {tab === "dashboard" && <DashboardTab chatSlot={inlineChatSlot} />}
             {tab === "activity" && <ActivityTab />}
-            {tab === "ai" && <AiTab />}
+            {tab === "agents" && <AiTab />}
+            {tab === "ai-chat" && <AiChatTab />}
             {tab === "profile" && <ProfileTab />}
           </div>
 

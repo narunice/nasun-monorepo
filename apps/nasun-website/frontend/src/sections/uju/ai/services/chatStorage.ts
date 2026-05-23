@@ -13,15 +13,17 @@ import type {
   ChatSession,
   EncryptedMessage,
   EncryptedSession,
+  InflightWakeJob,
   Message,
 } from '../types/chat';
 import { generateId } from '../types/chat';
 import { deriveStorageKey, encryptData, decryptData, clearCachedKey } from './chatCrypto';
 
 const DB_PREFIX = 'nasun-ai-chat-';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const MESSAGES_STORE = 'messages';
 const SESSIONS_STORE = 'sessions';
+const INFLIGHT_STORE = 'inflight';
 const AGENT_INDEX = 'agentId';
 const SESSION_INDEX = 'sessionId';
 
@@ -73,6 +75,14 @@ export async function openDatabase(walletAddress: string): Promise<IDBDatabase> 
       if (!database.objectStoreNames.contains(SESSIONS_STORE)) {
         const sessionsStore = database.createObjectStore(SESSIONS_STORE, { keyPath: 'id' });
         sessionsStore.createIndex(AGENT_INDEX, 'agentId', { unique: false });
+      }
+      // v3: inflight wake jobs, keyed by sessionId. Single store covers both
+      // generic and agent sessions because only agent (wake-mode) sessions
+      // ever write to it. Plaintext is fine — the row contains no secret,
+      // and chatToken/idempotencyKey alone are useless without the wallet
+      // sig that minted them.
+      if (!database.objectStoreNames.contains(INFLIGHT_STORE)) {
+        database.createObjectStore(INFLIGHT_STORE, { keyPath: 'sessionId' });
       }
     };
   });
@@ -200,7 +210,13 @@ async function encryptSession(key: CryptoKey, session: ChatSession): Promise<Enc
 
 async function decryptSession(key: CryptoKey, encrypted: EncryptedSession): Promise<ChatSession> {
   const plain = await decryptData(key, encrypted.encrypted, encrypted.iv);
-  return JSON.parse(plain) as ChatSession;
+  const session = JSON.parse(plain) as ChatSession;
+  // v2 rows predate the sessionKind discriminator. Default missing values to
+  // 'generic' so the ChatView (top-level "AI Chat") filter doesn't have to
+  // handle undefined separately. The default is persisted lazily on the next
+  // saveSession (auto-title path) — no upgrade write needed here.
+  if (!session.sessionKind) session.sessionKind = 'generic';
+  return session;
 }
 
 export async function loadSessions(
@@ -291,6 +307,55 @@ export async function deleteSession(
     req.onerror = () => reject(req.error);
   });
   await deleteSessionMessages(walletAddress, sessionId);
+  await deleteInflight(walletAddress, sessionId);
+}
+
+// ---------- Inflight wake jobs (plaintext, single-store) ----------
+
+export async function saveInflight(walletAddress: string, job: InflightWakeJob): Promise<void> {
+  const database = await openDatabase(walletAddress);
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(INFLIGHT_STORE, 'readwrite');
+    const req = tx.objectStore(INFLIGHT_STORE).put(job);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function loadInflight(
+  walletAddress: string,
+  sessionId: string,
+): Promise<InflightWakeJob | null> {
+  const database = await openDatabase(walletAddress);
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(INFLIGHT_STORE, 'readonly');
+    const req = tx.objectStore(INFLIGHT_STORE).get(sessionId);
+    req.onsuccess = () => {
+      const row = req.result as InflightWakeJob | undefined;
+      if (!row) return resolve(null);
+      // Drop expired or in-limbo (jobId never set) rows. The server's 10-min
+      // TTL is authoritative, but we mirror it here so a long-stale row is
+      // discarded before we even hit the network.
+      if (row.expiresAt < Date.now() || !row.jobId) {
+        // Best-effort cleanup. Fire-and-forget — read path shouldn't await
+        // a writeback for correctness.
+        void deleteInflight(walletAddress, sessionId).catch(() => undefined);
+        return resolve(null);
+      }
+      resolve(row);
+    };
+    req.onerror = () => reject(req.error);
+  });
+}
+
+export async function deleteInflight(walletAddress: string, sessionId: string): Promise<void> {
+  const database = await openDatabase(walletAddress);
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(INFLIGHT_STORE, 'readwrite');
+    const req = tx.objectStore(INFLIGHT_STORE).delete(sessionId);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
 }
 
 // ---------- v1 → v2 migration ----------

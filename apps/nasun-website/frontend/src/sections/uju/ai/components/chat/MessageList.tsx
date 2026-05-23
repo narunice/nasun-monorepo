@@ -10,6 +10,8 @@ interface MessageListProps {
   isTeeExecutor?: boolean;
   requestStatus?: RequestStatus;
   onOpenAer?: (requestId: number) => void;
+  /** Wake-mode: handler for Retry button on a failed assistant turn. */
+  onRetry?: () => void;
 }
 
 export function MessageList({
@@ -18,6 +20,7 @@ export function MessageList({
   isTeeExecutor,
   requestStatus,
   onOpenAer,
+  onRetry,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -45,6 +48,10 @@ export function MessageList({
             metadata={message.metadata}
             failed={message.failed}
             onOpenAer={onOpenAer}
+            wakePhase={message.wakePhase}
+            proposal={message.proposal}
+            retryable={message.retryable}
+            onRetry={onRetry}
           />
         ),
       )}
