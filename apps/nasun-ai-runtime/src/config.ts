@@ -135,6 +135,12 @@ interface TraderConfig {
    *  alternates which is input vs output per BUY/SELL. */
   coinNusdcType: string;
   coinNbtcType: string;
+  /** AgentProfile shared object id this runtime represents. Threaded into
+   *  every AER request body so Lambda emits ExecutionReportCreatedV3 with
+   *  agent_profile_id set (vs null for legacy callers). Optional: legacy
+   *  spawns without AGENT_PROFILE_ID env keep emitting v3 events with
+   *  agent_profile_id=None, preserving back-compat. */
+  agentProfileId?: string;
 }
 
 function requireTypeName(raw: string, name: string): string {
@@ -171,6 +177,10 @@ function loadTraderConfig(): TraderConfig {
     }
     maxSlippageBps = parsed;
   }
+  const agentProfileIdRaw = process.env.AGENT_PROFILE_ID;
+  const agentProfileId = agentProfileIdRaw
+    ? requireObjectId(agentProfileIdRaw, 'AGENT_PROFILE_ID')
+    : undefined;
   return {
     hostUrl,
     capabilityId,
@@ -182,6 +192,7 @@ function loadTraderConfig(): TraderConfig {
     escrowId,
     coinNusdcType,
     coinNbtcType,
+    agentProfileId,
   };
 }
 

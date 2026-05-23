@@ -174,6 +174,11 @@ export interface ExecuteCapabilityRequest {
   constraints?: string | null;
   triggeredBy?: string | null;
   triggeredAction?: string | null;
+  /** AgentProfile shared object id. Forwarded to Lambda /execute or /record
+   *  and ultimately surfaces in `ExecutionReportCreatedV3.agent_profile_id`,
+   *  so off-chain indexers can attribute the AER to a specific agent (one
+   *  owner runs N agents → owner-keyed join is N:1 ambiguous without this). */
+  agentProfileId?: string | null;
 }
 
 export interface ExecuteCapabilityResponse {
@@ -219,6 +224,7 @@ export async function executeCapability(
     ...(input.constraints ? { constraints: input.constraints } : {}),
     ...(input.triggeredBy ? { triggeredBy: input.triggeredBy } : {}),
     ...(input.triggeredAction ? { triggeredAction: input.triggeredAction } : {}),
+    ...(input.agentProfileId ? { agentProfileId: input.agentProfileId } : {}),
   });
   return postWithRetry<ExecuteCapabilityResponse>(
     `${hostUrl}/execute-capability`,
