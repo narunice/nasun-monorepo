@@ -408,6 +408,9 @@ export function QuickStartWizardModal({
             // orchestrator's reconcile spawns PM2. Vault upload alone is
             // no longer sufficient since the orchestrator now refuses to
             // spawn disabled agents.
+            // Phase 4: save returns null on server reject. If the enable
+            // save fails, the wizard stays on the activate step (Step 5
+            // done check won't advance) so the user notices and can retry.
             void (async () => {
               if (traderConfig) {
                 const {
@@ -417,7 +420,8 @@ export function QuickStartWizardModal({
                   updatedAt: _u,
                   ...rest
                 } = traderConfig;
-                await traderConfigSave({ ...rest, enabled: true });
+                const saved = await traderConfigSave({ ...rest, enabled: true });
+                if (!saved) return;
               }
               // Vault state flips to 'active' shortly after pm2 spawn.
               // Explicit refresh kicks the fast-window forward so Step 5

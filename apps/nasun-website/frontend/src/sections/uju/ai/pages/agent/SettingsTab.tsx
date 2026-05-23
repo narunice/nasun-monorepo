@@ -31,7 +31,9 @@ interface SettingsTabProps {
 }
 
 export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) {
-  const { config, source, save, remove, refetch } = useTraderConfig(agent.agentAddress);
+  const { config, source, error: configError, save, remove, refetch } = useTraderConfig(
+    agent.agentAddress,
+  );
   // Capability is the on-chain trust boundary the trader operates within.
   // When the user raises trader perTrade/dailyMax in the form, we mirror the
   // change onto the capability so the next swap PTB does not hit
@@ -72,13 +74,24 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             using may differ. Retry to load the authoritative version.
           </p>
         )}
+        {configError && (
+          <p className="text-xs text-red-400">
+            Save / load error: {configError}
+          </p>
+        )}
         <TraderConfigForm
           agentAddress={agent.agentAddress}
           agentName={agent.name}
           agentBudgetId={budget?.id ?? ''}
           initial={config}
           onSave={async (values) => {
-            await save(values);
+            // Phase 4: save now awaits server confirmation. If it rejects
+            // (returns null), do NOT proceed to capability mutation —
+            // raising on-chain risk limits while the off-chain config
+            // save failed would leave the two stores divergent and let
+            // the next session of this agent trade with cap > intent.
+            const saved = await save(values);
+            if (!saved) return;
             // Sync capability risk limits if the trader's new size hints
             // exceed the on-chain cap. Without this, a user who raises
             // perTrade in the form will hit abort 552 the next time the
@@ -186,10 +199,14 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             // chat-server orchestrator's reconcile step actually spawns
             // PM2. Without this, vault upload would succeed but the
             // runtime would never start (enabled gate refuses spawn).
+            // Phase 4: save now returns null on server reject; surface the
+            // failure via the configError banner above so the user knows
+            // their agent did not actually activate.
             void (async () => {
               if (config) {
                 const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;
-                await save({ ...rest, enabled: true });
+                const saved = await save({ ...rest, enabled: true });
+                if (!saved) return;
               }
               void vault.refresh();
             })();
@@ -208,6 +225,10 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             // the chat-server orchestrator's reconcile stops PM2 and the
             // runtime's per-cycle self-suicide gate honors the user
             // intent immediately on next cycle.
+            // Phase 4: save now awaits server confirmation. If it fails
+            // (rare here — vault DELETE has already stopped PM2), the
+            // error surfaces via the configError banner but the agent is
+            // still effectively stopped, so vault.refresh proceeds.
             void (async () => {
               if (config) {
                 const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;

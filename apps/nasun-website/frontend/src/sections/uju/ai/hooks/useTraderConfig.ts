@@ -61,6 +61,13 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
     void load();
   }, [load]);
 
+  /**
+   * Phase 4 contract change (2026-05-23): save now awaits the server
+   * round-trip. A null return means the call was rejected (server,
+   * network, or missing-signer); read `error` for the human-readable
+   * reason. On success, `source` flips to 'server' since the cache
+   * was refreshed from the just-acknowledged write.
+   */
   const save = useCallback<UseTraderConfigResult['save']>(
     async (next) => {
       if (!walletAddress || !agentAddress) return null;
@@ -72,9 +79,11 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
         updatedAt: now,
         ...next,
       };
+      setError(null);
       try {
         await saveConfig(merged, signer ?? null);
         setConfig(merged);
+        setSource('server');
         return merged;
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to save trader config');
@@ -84,11 +93,22 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
     [walletAddress, agentAddress, config?.createdAt, signer],
   );
 
+  /**
+   * Phase 4: delete is symmetric. Awaits server confirmation; on
+   * failure the local state is left untouched and `error` carries the
+   * server's reason.
+   */
   const remove = useCallback(async () => {
     if (!walletAddress || !agentAddress) return;
-    await deleteConfig(walletAddress, agentAddress, agentAddress, signer ?? null);
-    setConfig(null);
-    setSource('none');
+    setError(null);
+    try {
+      await deleteConfig(walletAddress, agentAddress, agentAddress, signer ?? null);
+      setConfig(null);
+      setSource('none');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete trader config');
+      throw err;
+    }
   }, [walletAddress, agentAddress, signer]);
 
   return { config, source, loading, error, save, remove, refetch: load };
