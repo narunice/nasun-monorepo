@@ -22,6 +22,10 @@ import { sendTelegramAlert } from '../utils/alert.js';
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const RPC_CONCURRENCY = 20;
 const RETENTION_DAYS = 90;
+// postgres.js caps a single statement at 65535 bound parameters. With 3
+// columns per row, 10_000 rows = 30_000 params — well under the limit and
+// fast enough for the 50k–100k row scale we see on devnet.
+const UPSERT_BATCH_SIZE = 10_000;
 
 let lastSuccessAt: Date | null = null;
 let errorCount24h = 0;
@@ -108,10 +112,11 @@ async function runSync(): Promise<void> {
         staked_nsn_mist: v.mist.toString(),
       }));
 
-    if (toUpsert.length > 0) {
+    for (let i = 0; i < toUpsert.length; i += UPSERT_BATCH_SIZE) {
+      const slice = toUpsert.slice(i, i + UPSERT_BATCH_SIZE);
       await pointsDb`
         INSERT INTO user_staking_daily_snapshots ${pointsDb(
-          toUpsert,
+          slice,
           'identity_id',
           'day',
           'staked_nsn_mist',
