@@ -13,6 +13,7 @@ import { useState } from 'react';
 import type { AgentProfile } from '../../hooks/useAgentProfiles';
 import { useAgentActions } from '../../hooks/useAgentActions';
 import { useAgentAerStats } from '../../hooks/useAgentAerStats';
+import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { formatNusdc, formatTimestamp } from '../../utils/format';
 import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { TradingPerformanceCard } from '../../components/performance/TradingPerformanceCard';
@@ -36,6 +37,14 @@ export function OverviewTab({
 }: OverviewTabProps) {
   const { reactivateAgent, txStatus, txError, resetTxStatus } = useAgentActions();
   const aerStats = useAgentAerStats(walletAddress, agent.agentAddress, agent.capabilityId);
+  // Phase 7 (2026-05-23): the on-chain AgentProfile.is_active flag and
+  // the trader config's enabled flag are independent. is_active=true with
+  // enabled=false means "agent profile is registered on-chain but the
+  // runtime is intentionally paused" — surface that as 'Paused' rather
+  // than the green 'Active' badge so users do not expect a heartbeat that
+  // will never come (2026-05-23 staging Santa confusion).
+  const traderConfig = useTraderConfig(agent.agentAddress);
+  const runtimeEnabled = traderConfig.config?.enabled === true;
   const [busy, setBusy] = useState(false);
   const [showPauseModal, setShowPauseModal] = useState(false);
 
@@ -62,12 +71,18 @@ export function OverviewTab({
               <h3 className="text-sm font-semibold text-white truncate">{agent.name}</h3>
               <span
                 className={`text-xs px-1.5 py-0.5 rounded ${
-                  agent.isActive
+                  agent.isActive && runtimeEnabled
                     ? 'bg-emerald-500/10 text-emerald-400'
-                    : 'bg-uju-secondary/10 text-uju-secondary'
+                    : agent.isActive
+                      ? 'bg-amber-500/10 text-amber-300'
+                      : 'bg-uju-secondary/10 text-uju-secondary'
                 }`}
               >
-                {agent.isActive ? 'Active' : 'Inactive'}
+                {agent.isActive && runtimeEnabled
+                  ? 'Active'
+                  : agent.isActive
+                    ? 'Paused'
+                    : 'Inactive'}
               </span>
             </div>
             <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
