@@ -208,7 +208,7 @@ export async function pushUserMessage(walletAddress: string, html: string): Prom
   // sendMessage already handles 429/transient/timeout — we don't need
   // additional retry here; the caller already accepted best-effort.
   try {
-    await sendMessage(session.tg_user_id, html);
+    await sendMessage(session.tg_user_id, html, undefined, { disableWebPagePreview: true });
     return true;
   } catch (err) {
     console.warn(`[alpha-tg] pushUserMessage failed for ${wallet.slice(0, 10)}: ${(err as Error).message}`);
