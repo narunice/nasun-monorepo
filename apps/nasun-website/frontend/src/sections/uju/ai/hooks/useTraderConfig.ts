@@ -6,6 +6,7 @@ import {
   getConfigByAgentDetailed,
   saveConfig,
   deleteConfig,
+  reconcileLocalCacheOnce,
   type TraderConfigReadResult,
 } from '../services/traderConfigStorage';
 
@@ -60,6 +61,17 @@ export function useTraderConfig(agentAddress: string | null): UseTraderConfigRes
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Phase 5 (2026-05-23) — one-shot per-wallet cache reconciliation.
+  // Runs in the background the first time this wallet's IndexedDB is
+  // touched in a browser; subsequent sessions short-circuit via the
+  // localStorage flag. Cleans up Jane-style orphans (IDB-only rows
+  // with no server counterpart) so Settings/Sessions stop surfacing
+  // ghost agents from a pre-Phase-4 fire-and-forget save failure.
+  useEffect(() => {
+    if (!walletAddress) return;
+    void reconcileLocalCacheOnce(walletAddress);
+  }, [walletAddress]);
 
   /**
    * Phase 4 contract change (2026-05-23): save now awaits the server
