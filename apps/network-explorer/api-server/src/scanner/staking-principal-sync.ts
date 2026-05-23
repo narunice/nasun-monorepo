@@ -63,12 +63,17 @@ async function runSync(): Promise<void> {
   const started = Date.now();
 
   try {
-    // Load every (identity_id, wallet_address) pair currently visible in activity_points.
-    // This is the canonical wallet→identity map maintained by the main scanner.
+    // Latest wallet per identity from activity_points. The naive
+    // `DISTINCT (identity_id, wallet_address)` is a full sequential scan on
+    // an 18M-row, 12GB table (no composite index) and hits the 30s
+    // statement_timeout. `DISTINCT ON (identity_id) ... ORDER BY identity_id,
+    // tx_timestamp DESC` rides the existing idx_ap_identity_timestamp index
+    // — same pattern as nsi-compute.ts Stage F.
     const wallets = await pointsDb<Array<{ identity_id: string; wallet_address: string }>>`
-      SELECT DISTINCT identity_id, wallet_address
+      SELECT DISTINCT ON (identity_id) identity_id, wallet_address
       FROM activity_points
       WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
+      ORDER BY identity_id, tx_timestamp DESC
     `;
 
     const byIdentity = new Map<string, string[]>();

@@ -216,11 +216,13 @@ async function runCompute(): Promise<void> {
       if (Number.isFinite(v)) txMap.set('0x' + r.sender_hex.toLowerCase(), v);
     }
 
-    // Stage D: 30-day distinct ecosystem categories.
+    // Stage D: 30-day distinct ecosystem categories. Filters on tx_timestamp
+    // (idx_ap_timestamp) rather than processed_at — the latter has no index
+    // and would force a sequential scan over 18M rows.
     const diversity = await pointsDb<Array<{ identity_id: string; distinct_count: string }>>`
       SELECT identity_id, COUNT(DISTINCT category)::text AS distinct_count
       FROM activity_points
-      WHERE processed_at >= now() - INTERVAL '30 days' AND identity_id IS NOT NULL
+      WHERE tx_timestamp >= now() - INTERVAL '30 days' AND identity_id IS NOT NULL
       GROUP BY identity_id
     `;
     const diversityMap = new Map<string, number>();
@@ -249,11 +251,15 @@ async function runCompute(): Promise<void> {
     }
 
     // Stage F: latest wallet per identity.
+    // `idx_ap_identity_timestamp (identity_id, tx_timestamp)` is the only
+    // composite index that supports this DISTINCT ON; ordering by
+    // `processed_at` (no index) would force a sequential scan on the 18M-row
+    // table and hit the 30s statement_timeout.
     const walletRows = await pointsDb<Array<{ identity_id: string; wallet_address: string }>>`
       SELECT DISTINCT ON (identity_id) identity_id, wallet_address
       FROM activity_points
       WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-      ORDER BY identity_id, processed_at DESC
+      ORDER BY identity_id, tx_timestamp DESC
     `;
     const identityToWallet = new Map<string, string>();
     for (const r of walletRows) identityToWallet.set(r.identity_id, r.wallet_address);
