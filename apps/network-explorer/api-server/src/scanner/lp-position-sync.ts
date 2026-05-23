@@ -19,6 +19,8 @@ const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const VENUE = 'gostop-bankroll';
 const NUSDC_MICRO_PER_USD = 1_000_000; // NUSDC has 6 decimals
 const RETENTION_DAYS = 90;
+// postgres.js parameter cap (65535); 4 columns -> 16_000 rows = 64_000 params.
+const UPSERT_BATCH_SIZE = 10_000;
 
 let lastSuccessAt: Date | null = null;
 let errorCount24h = 0;
@@ -105,10 +107,11 @@ async function runSync(): Promise<void> {
       lp_usd: lp_usd.toFixed(4),
     }));
 
-    if (toUpsert.length > 0) {
+    for (let i = 0; i < toUpsert.length; i += UPSERT_BATCH_SIZE) {
+      const slice = toUpsert.slice(i, i + UPSERT_BATCH_SIZE);
       await pointsDb`
         INSERT INTO user_lp_daily_snapshots ${pointsDb(
-          toUpsert,
+          slice,
           'identity_id',
           'day',
           'venue',
