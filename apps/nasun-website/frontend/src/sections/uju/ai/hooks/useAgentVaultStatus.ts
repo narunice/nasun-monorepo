@@ -50,6 +50,18 @@ export function useAgentVaultStatus(agentAddress: string | null): UseAgentVaultS
     await tick();
   }, [tick]);
 
+  // Reset cached status when the user navigates to a different agent.
+  // Without this, the hook keeps showing the previous agent's state
+  // ("Activated, awaiting first cycle" sticks even when the new agent
+  // is `not_vaulted`) for the full ~5s until the first tick completes.
+  // 2026-05-23 incident: a freshly-created Santa on staging displayed
+  // as Activated because the SPA navigated to it from an inactive
+  // prod agent and data state leaked across the agentAddress change.
+  useEffect(() => {
+    setData({ state: 'not_vaulted', graceEndsAt: null });
+    setError(null);
+  }, [agentAddress]);
+
   useEffect(() => {
     mountedRef.current = true;
     if (!agentAddress) return;
