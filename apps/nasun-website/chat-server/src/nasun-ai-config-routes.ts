@@ -30,6 +30,7 @@ import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { SuiClient } from '@mysten/sui/client';
 import { getDb } from './store.js';
 import { isValidSuiAddress } from './auth.js';
+import { reconcilePm2State, type ReconcileResult } from './agent-orchestrator.js';
 
 const MAX_BODY_BYTES = 32 * 1024;
 const AGENT_RE = /^0x[0-9a-fA-F]{40,64}$/;
@@ -316,8 +317,21 @@ export async function handleNasunAiConfigRequest(
     }
 
     upsertConfig(agentLower, walletLower, configJson);
+
+    // Phase 6: reconcile PM2 state with the just-persisted config. A flip
+    // to enabled:true spawns the runtime; enabled:false stops it; no-op
+    // otherwise. We await so the API response reflects the actual lifecycle
+    // outcome (best-effort: spawn failures surface in `reconcile.reason`
+    // but the config save itself is already committed).
+    let reconcile: ReconcileResult;
+    try {
+      reconcile = await reconcilePm2State(agentLower);
+    } catch (err) {
+      reconcile = { action: 'noop', reason: `reconcile_threw:${(err as Error).message}` };
+    }
+
     res.writeHead(200, { ...writeCors, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true }));
+    res.end(JSON.stringify({ ok: true, reconcile }));
     return true;
   }
 
@@ -365,8 +379,18 @@ export async function handleNasunAiConfigRequest(
     }
 
     deleteConfigRow(agentLower);
+
+    // Phase 6: with the config row gone, reconcile will see enabled=false
+    // and stop any running PM2 process for this agent.
+    let reconcile: ReconcileResult;
+    try {
+      reconcile = await reconcilePm2State(agentLower);
+    } catch (err) {
+      reconcile = { action: 'noop', reason: `reconcile_threw:${(err as Error).message}` };
+    }
+
     res.writeHead(200, { ...writeCors, 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ ok: true }));
+    res.end(JSON.stringify({ ok: true, reconcile }));
     return true;
   }
 

@@ -44,6 +44,7 @@ import {
   allocatePort,
   pm2NameForAgent,
   hasLegacyNasunAiRuntime,
+  AgentDisabledError,
 } from './agent-orchestrator.js';
 import {
   enforceAlphaGuards,
@@ -425,12 +426,23 @@ export async function handleVaultUpload(
         // Spawn PM2. Failure here should not orphan the SSM parameter — leave it
         // (status endpoint will show 'inactive') and surface the error to the
         // caller so they can retry.
+        //
+        // Phase 6 (2026-05-23): spawnAgentPm2 now refuses when the trader
+        // config has enabled:false. New agents typically save with
+        // enabled:false and only flip true on the user's explicit activate
+        // toggle, so vault upload commonly hits the disabled gate. Treat
+        // it as success: the upload finished; the next save-with-enabled
+        // will spawn via reconcilePm2State.
         try {
           await spawnAgentPm2({ agentAddress, pm2Name, paramName, wakePort });
         } catch (err) {
-          console.error(`[vault-upload] spawn failed for ${pm2Name}: ${(err as Error).message}`);
-          writeJson(res, 500, corsHeaders, { error: 'spawn_failed', pm2Name, wakePort });
-          return;
+          if (err instanceof AgentDisabledError) {
+            console.log(`[vault-upload] spawn deferred: ${pm2Name} ${err.message}`);
+          } else {
+            console.error(`[vault-upload] spawn failed for ${pm2Name}: ${(err as Error).message}`);
+            writeJson(res, 500, corsHeaders, { error: 'spawn_failed', pm2Name, wakePort });
+            return;
+          }
         }
 
         // Consume the waitlist invite so this slot is no longer "promised"
@@ -613,8 +625,14 @@ export async function handleVaultRestore(
             wakePort: newPort,
           });
         } catch (err) {
-          console.error(`[vault-restore] spawn failed: ${(err as Error).message}`);
-          writeJson(res, 500, corsHeaders, { error: 'spawn_failed' }); return;
+          if (err instanceof AgentDisabledError) {
+            // Phase 6: restored but trader config says enabled:false; user
+            // will reactivate explicitly through Settings save.
+            console.log(`[vault-restore] spawn deferred: ${row.pm2_name} ${err.message}`);
+          } else {
+            console.error(`[vault-restore] spawn failed: ${(err as Error).message}`);
+            writeJson(res, 500, corsHeaders, { error: 'spawn_failed' }); return;
+          }
         }
 
         consumeWaitlistInvite(result.entry.wallet);

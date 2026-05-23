@@ -511,7 +511,7 @@ async function handleHttpRequest(
       return;
     }
     try {
-      const { spawnAgentPm2, stopAgentPm2 } = await import('./agent-orchestrator.js');
+      const { spawnAgentPm2, stopAgentPm2, AgentDisabledError } = await import('./agent-orchestrator.js');
       const { getDb } = await import('./store.js');
       const rows = getDb().prepare(
         `SELECT agent_address, pm2_name, param_name, wake_port
@@ -524,7 +524,7 @@ async function handleHttpRequest(
         wake_port: number;
       }>;
 
-      const results: Array<{ pm2Name: string; ok: boolean; error?: string }> = [];
+      const results: Array<{ pm2Name: string; ok: boolean; skipped?: boolean; error?: string }> = [];
       for (const row of rows) {
         try {
           // best-effort stop; ignore "process not found" — we just want
@@ -538,11 +538,17 @@ async function handleHttpRequest(
           });
           results.push({ pm2Name: row.pm2_name, ok: true });
         } catch (err) {
-          results.push({
-            pm2Name: row.pm2_name,
-            ok: false,
-            error: (err as Error).message,
-          });
+          if (err instanceof AgentDisabledError) {
+            // Phase 6: respect the user's enabled:false intent in admin
+            // tooling too. Disabled agents are skipped, not failed.
+            results.push({ pm2Name: row.pm2_name, ok: true, skipped: true });
+          } else {
+            results.push({
+              pm2Name: row.pm2_name,
+              ok: false,
+              error: (err as Error).message,
+            });
+          }
         }
       }
       res.writeHead(200, corsHeaders);
