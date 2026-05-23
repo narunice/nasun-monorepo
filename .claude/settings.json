@@ -380,7 +380,17 @@
       "Bash(ALLOW_PROD_DIRECT=1 pnpm deploy:nasun-ai-runtime:prod -- --force)",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no -o ConnectTimeout=15 ec2-user@43.200.67.52 'sqlite3 ~/nasun-chat-server/data/chat.db \"SELECT agent_address, json_extract\\(config_json,\\\\\"\\\\$.name\\\\\"\\) FROM nasun_ai_trader_configs WHERE agent_address LIKE \\\\\"0xe0c488%\\\\\";\"')",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'find /home/ec2-user -maxdepth 5 -name \"*.db\" 2>/dev/null | head -10')",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'sqlite3 -readonly /home/ec2-user/nasun-chat-server/data/leaderboard.db \".schema trader_points_weekly\"')"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'sqlite3 -readonly /home/ec2-user/nasun-chat-server/data/leaderboard.db \".schema trader_points_weekly\"')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'psql $DATABASE_URL -t -c \"SELECT identity_id, SUM\\(points\\) as total, MAX\\(created_at\\) as last_award FROM activity_points WHERE identity_id IN \\('\\\\''ap-northeast-2:6cb1e654-ba64-c5bf-3cb3-c13edc0a87eb'\\\\'','\\\\''ap-northeast-2:6cb1e654-bacf-ced2-abe4-76aede45b9d3'\\\\''\\) GROUP BY identity_id;\"')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'docker exec $\\(docker ps -q --filter name=postgres 2>/dev/null || echo \"\"\\) psql -U postgres -t -c \"SELECT identity_id, SUM\\(points\\) as total FROM activity_points WHERE identity_id IN \\('\\\\''ap-northeast-2:6cb1e654-ba64-c5bf-3cb3-c13edc0a87eb'\\\\'','\\\\''ap-northeast-2:6cb1e654-bacf-ced2-abe4-76aede45b9d3'\\\\''\\) GROUP BY identity_id;\" 2>/dev/null || pm2 ls 2>/dev/null | head -5')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'which psql || find /usr -name psql 2>/dev/null | head -3 || ls /var/www/nasun/chat-server/ 2>/dev/null | head -5')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'node -e \" *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'cd /var/www/nasun/chat-server && node -e \" *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'ls ~/nasun-monorepo/apps/nasun-website/chat-server/ 2>/dev/null | head -3 || ls ~/ | head -10')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 ls 2>/dev/null | grep chat | head -3; ls /home/ec2-user/ 2>&1 | head -15')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'pm2 info nasun-chat-server 2>/dev/null | grep \"exec path\\\\|script\" | head -3')",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'cd /home/ec2-user/nasun-chat-server && node -e \" *)",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 ec2-user@43.200.67.52 'find /home/ec2-user/nasun-chat-server -name \"pg\" -type d 2>/dev/null | head -3; ls /home/ec2-user/nasun-chat-server/ 2>/dev/null | head -10')"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
