@@ -15,7 +15,14 @@
 import { describe, it, expect } from 'vitest';
 
 import { runChatPreset } from './chat.js';
+import { ChatHistoryStore } from '../chat-history.js';
 import type { WakeContext } from '../wake-router.js';
+
+// Each test gets a fresh history store to avoid cross-test bleed via
+// the module-level singleton in chat.ts.
+function freshHistory() {
+  return new ChatHistoryStore();
+}
 
 function makeConfig(overrides: Record<string, unknown> = {}) {
   return {
@@ -52,6 +59,7 @@ describe('runChatPreset', () => {
         };
       },
       log: () => {},
+      history: freshHistory(),
     });
     expect(out.ok).toBe(true);
     expect(out.status).toBe('processed');
@@ -70,6 +78,7 @@ describe('runChatPreset', () => {
           throw new Error('should not be called');
         },
         log: () => {},
+      history: freshHistory(),
       },
     );
     expect(out.ok).toBe(true);
@@ -83,6 +92,7 @@ describe('runChatPreset', () => {
         throw new Error('should not be called for empty message');
       },
       log: () => {},
+      history: freshHistory(),
     });
     expect(out.ok).toBe(true);
     expect(out.summary).toMatch(/did not catch/i);
@@ -94,11 +104,62 @@ describe('runChatPreset', () => {
         throw new Error('LLM API timeout (60000ms)');
       },
       log: () => {},
+      history: freshHistory(),
     });
     expect(out.ok).toBe(false);
     expect(out.status).toBe('rejected');
     expect(out.reason).toMatch(/chat_llm_failed/);
     expect(out.summary).toMatch(/trouble thinking/i);
+  });
+
+  it('feeds prior turns from the same sid into the next prompt', async () => {
+    const history = freshHistory();
+    // Turn 1.
+    let capturedTurn2Prompt = '';
+    const out1 = await runChatPreset(makeConfig(), makeCtx('lunch ideas?'), {
+      callLLM: async () => ({
+        content: 'Cooking at home or going out?',
+        model: 'test-model',
+        totalTokens: 10,
+        durationMs: 5,
+      }),
+      log: () => {},
+      history,
+    });
+    expect(out1.ok).toBe(true);
+    expect(out1.summary).toBe('Cooking at home or going out?');
+
+    // Turn 2 from the SAME sid -> prompt should include both prior turns.
+    const out2 = await runChatPreset(makeConfig(), makeCtx('home'), {
+      callLLM: async (_url, _key, _model, prompt) => {
+        capturedTurn2Prompt = prompt;
+        return {
+          content: 'Try a quick pasta then?',
+          model: 'test-model',
+          totalTokens: 12,
+          durationMs: 6,
+        };
+      },
+      log: () => {},
+      history,
+    });
+    expect(out2.ok).toBe(true);
+    expect(capturedTurn2Prompt).toContain('User: lunch ideas?');
+    expect(capturedTurn2Prompt).toContain('Agent: Cooking at home or going out?');
+    expect(capturedTurn2Prompt).toContain('User: home');
+    expect(capturedTurn2Prompt.trimEnd().endsWith('Agent:')).toBe(true);
+  });
+
+  it('does NOT append a turn to history when the LLM call fails', async () => {
+    const history = freshHistory();
+    await runChatPreset(makeConfig(), makeCtx('hi'), {
+      callLLM: async () => { throw new Error('LLM API failed'); },
+      log: () => {},
+      history,
+    });
+    // Failed reply -> session must stay empty so a retry doesn't see
+    // an orphan user line the model never answered.
+    expect(history.load('session-abc1234567')).toEqual([]);
   });
 
   it('trims long replies to fit Telegram bubbles', async () => {
@@ -111,6 +172,7 @@ describe('runChatPreset', () => {
         durationMs: 1,
       }),
       log: () => {},
+      history: freshHistory(),
     });
     expect((out.summary ?? '').length).toBeLessThanOrEqual(610);
   });
