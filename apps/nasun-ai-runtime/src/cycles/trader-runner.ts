@@ -36,6 +36,7 @@ import {
   newTraderCycleRuntime,
   type TraderCycleResult,
 } from '../presets/trader-cycle.js';
+import { maybeNotifyHeartbeat } from '../notify.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
 
 // Cross-cycle runtime owned by this process; tests construct their own.
@@ -55,6 +56,13 @@ export async function runTraderCyclePresetEntry(
   if (result.fatal) {
     requestShutdown();
   }
+  // Fire-and-forget Telegram push (BUY/SELL only; gated by env inside).
+  // Intentional: only the autonomous interval path notifies. The wake path
+  // below does NOT call this, because chat-server already returns the
+  // result to the user's Telegram in-band via wake-proxy.
+  // notify.ts swallows its own errors (try/catch around fetch + format),
+  // so no outer .catch needed here; `void` discards the promise.
+  void maybeNotifyHeartbeat(result, process.env);
   return result.effectiveIntervalMs;
 }
 
@@ -62,6 +70,10 @@ export async function runTraderCyclePresetEntry(
 // same trader cycle as the autonomous heartbeat but returns a WakeOutcome
 // for the idempotency store. Kept separate from the setTimeout loop so the
 // two paths can be driven independently in tests.
+//
+// Intentional: this path does NOT call maybeNotifyHeartbeat. chat-server
+// replies to the user's Telegram in-band via the wake-proxy HTTP response
+// (see baram-telegram.ts:513). Adding a notify call here would double-push.
 export async function runHeartbeatFromWake(
   client: SuiClient,
   config: Config,

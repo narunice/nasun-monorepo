@@ -233,6 +233,10 @@ async function perAgentTraderEnv(agentAddress: string): Promise<NodeJS.ProcessEn
     DAILY_MAX_QUOTE_RAW:     cfg.dailyMaxQuoteRaw,
     MAX_SLIPPAGE_BPS:        String(cfg.maxSlippageBps ?? 50),
     INTERVAL_MINUTES:        String(cfg.intervalMinutes ?? 30),
+    // Explicit opt-in for the runtime → chat-server heartbeat push channel.
+    // Standalone single-daemon (ecosystem.nasun-ai-runtime.cjs) leaves this
+    // unset so operator daemons do not accidentally push to a user chat.
+    HEARTBEAT_PUSH_ENABLED:  'true',
   };
 }
 

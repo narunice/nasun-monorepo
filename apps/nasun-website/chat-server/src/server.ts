@@ -28,6 +28,7 @@ import {
 } from './agent-vault-routes.js';
 import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
+import { handleAgentPushRequest } from './agent-push-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
 import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
 import { isAlphaGateEnabled } from './alpha-guards.js';
@@ -417,6 +418,13 @@ async function handleHttpRequest(
 
   // Nasun AI trader config — browser writes on form save, runtime reads at cycle start.
   if (await handleNasunAiConfigRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
+  // Heartbeat push: runtime → chat-server thin relay → user Telegram via
+  // existing pushUserMessage. HMAC scheme is /push-domain-prefixed (see
+  // agent-push-routes.ts header comment for the asymmetry rationale).
+  if (await handleAgentPushRequest(req, res, url, corsHeaders)) {
     return;
   }
 
