@@ -56,9 +56,9 @@ describe('shouldNotify', () => {
     expect(shouldNotify(succeededBuy(), baseEnv({ BARAM_CHAT_SERVER_HMAC_SECRET: undefined }))).toBe(false);
   });
 
-  it('skips HOLD action even on succeeded outcome', () => {
+  it('allows HOLD on succeeded outcome (user wants per-cycle AER mirror)', () => {
     const r = succeededBuy({ decision: { action: 'HOLD', sizeNUSDC: 0, reason: 'low vol' } });
-    expect(shouldNotify(r, baseEnv())).toBe(false);
+    expect(shouldNotify(r, baseEnv())).toBe(true);
   });
 
   it('skips non-succeeded outcomes (pending_lock, insufficient_balance, etc.)', () => {
@@ -161,8 +161,10 @@ describe('formatHeartbeatHtml', () => {
 describe('maybeNotifyHeartbeat (fetch behavior)', () => {
   it('does not fetch when shouldNotify returns false', async () => {
     const fetchImpl = vi.fn();
+    // outcome=failed bails before fetch (HOLD now permitted, so use a
+    // non-succeeded outcome to exercise the early-return path).
     await maybeNotifyHeartbeat(
-      { outcome: 'succeeded', decision: { action: 'HOLD', sizeNUSDC: 0, reason: '' } },
+      { outcome: 'infer_failed' },
       baseEnv(),
       { fetchImpl: fetchImpl as unknown as typeof fetch, log: () => {} },
     );
