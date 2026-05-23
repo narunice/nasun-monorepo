@@ -12,6 +12,7 @@ import { createHash } from 'node:crypto';
 import { writeFile, unlink } from 'node:fs/promises';
 import { getDb } from './store.js';
 import { fetchCapabilityEscrowId } from './sui-capability-utils.js';
+import { readAgentProfileIsActive, invalidateAgentProfileCache } from './sui-client.js';
 
 const exec = promisify(execFile);
 
@@ -144,6 +145,17 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
       ?? process.env.PR1A_SWAP_DISABLED
       ?? 'true',
   };
+  // Per-request inference fee paid into the AER envelope, in NUSDC raw
+  // (6 dec). Chat-server's .env is the fleet-wide SSOT so a single edit +
+  // respawn applies to every agent. When unset we deliberately do NOT
+  // forward PRICE: the runtime's own config default (100_000 = 0.1 NUSDC,
+  // apps/nasun-ai-runtime/src/config.ts) becomes the floor. This keeps the
+  // runtime .env from silently overriding fleet policy (pre-2026-05-24
+  // incident: prod runtime .env carried a stale PRICE=1000000 long after
+  // the code default was lowered, so every AER kept charging 1.0 NUSDC).
+  const inferencePriceRaw =
+    process.env.AGENT_GLOBAL_PRICE ?? process.env.INFERENCE_PRICE_RAW;
+  if (inferencePriceRaw) out.PRICE = inferencePriceRaw;
   // Operator-facing AER heartbeat watchdog alerts. When ALERT_CHAT_ID is
   // unset the runtime logs stalls but does not send a Telegram message.
   // User-facing trade notifications are delivered via the wake-forwarding
@@ -387,51 +399,74 @@ export async function stopAgentPm2(pm2Name: string): Promise<void> {
   await exec(PM2_BIN, ['delete', pm2Name], { env: pm2Env(), timeout: 10_000 });
 }
 
-// === Phase 6 (2026-05-23) ===
-// Reconcile PM2 state with SQLite truth (vault row + config.enabled) on
-// every config save / delete. This is the orchestrator-side counterpart
-// to the runtime self-suicide gate.
+// === Phase 8 (2026-05-24) ===
+// Reconcile PM2 state with the user's combined intent: on-chain
+// AgentProfile.is_active (kill axis) + config.enabled (pause axis).
+// Replaces the Phase 6 reconcilePm2State which only knew about the
+// server-side enabled flag.
+//
+// State derivation (inline):
+//   is_active=true,  enabled=true  → activated  (PM2 should run)
+//   is_active=true,  enabled=false → paused     (PM2 should stop)
+//   is_active=false, *             → killed     (PM2 should stop, no auto vault delete)
+//   is_active=null (RPC fail)      → unknown    (no state change)
+//
+// Vault soft-delete is the explicit responsibility of DELETE /vault/agent/:addr,
+// never an auto-action here. A transient RPC failure that misread is_active
+// must not destroy a healthy vault row.
 
-export interface ReconcileResult {
-  action: 'spawn' | 'stop' | 'noop' | 'no_vault';
+export type AgentState = 'activated' | 'paused' | 'killed' | 'unknown';
+
+export interface AgentStateResult {
+  state: AgentState;
+  runtime: 'running' | 'stopped';
   reason: string;
+  /** PM2 action actually taken this call. 'noop' includes "already in target state". */
+  action: 'spawn' | 'stop' | 'noop';
+  /** True when on-chain RPC failed or profile_id is missing — caller may surface "syncing..." */
+  pending: boolean;
 }
 
-/**
- * Pure decision function. Given DB state + current pm2 process list,
- * decide what to do. Extracted so it can be unit-tested without invoking
- * pm2 or touching SQLite.
- */
 export interface ReconcileInputs {
-  hasVaultRow: boolean;
+  /** On-chain AgentProfile.is_active. null = RPC failure or profile_id missing. */
+  isActive: boolean | null;
+  /** chat-server config.enabled (inside config_json JSON blob). */
   enabled: boolean;
-  pm2NameKnown: string | null;          // null when no vault row
-  pm2NamesInList: ReadonlySet<string>;  // names currently in `pm2 jlist`
+  /** agent_keys row present AND deleted_at IS NULL. */
+  hasActiveVault: boolean;
+  pm2NameKnown: string | null;
+  pm2NamesInList: ReadonlySet<string>;
 }
-export function decideReconcileAction(inputs: ReconcileInputs): ReconcileResult {
-  if (!inputs.hasVaultRow || !inputs.pm2NameKnown) {
-    // Without a vault row we have no paramName / wakePort, so we cannot
-    // spawn even if enabled is true. The vault-routes upload path is what
-    // creates the row; the config save flow does not. Caller should still
-    // sweep up any stray PM2 process that matches the deterministic name.
-    return { action: 'no_vault', reason: 'no_active_vault_row' };
+
+/** Pure decision function — testable without pm2 / RPC / SQLite. */
+export function deriveAgentState(inputs: ReconcileInputs): {
+  state: AgentState;
+  desiredRunning: boolean;
+  reason: string;
+} {
+  if (inputs.isActive === null) {
+    // RPC unknown — make no inference. PM2 should stay as-is.
+    return { state: 'unknown', desiredRunning: false, reason: 'on_chain_unknown' };
   }
-  const inList = inputs.pm2NamesInList.has(inputs.pm2NameKnown);
+  if (!inputs.isActive) {
+    return { state: 'killed', desiredRunning: false, reason: 'on_chain_inactive' };
+  }
+  // is_active === true
+  if (!inputs.hasActiveVault) {
+    // On-chain says active but no vault row to spawn from. Treat as paused
+    // (PM2 cannot run, but agent is not killed). Vault upload restores.
+    return { state: 'paused', desiredRunning: false, reason: 'no_active_vault_row' };
+  }
   if (!inputs.enabled) {
-    return inList
-      ? { action: 'stop',  reason: 'enabled_false_pm2_running' }
-      : { action: 'noop',  reason: 'enabled_false_pm2_absent' };
+    return { state: 'paused', desiredRunning: false, reason: 'enabled_false' };
   }
-  // enabled === true
-  return inList
-    ? { action: 'noop',  reason: 'enabled_true_pm2_running' }
-    : { action: 'spawn', reason: 'enabled_true_pm2_absent' };
+  return { state: 'activated', desiredRunning: true, reason: 'enabled_true' };
 }
 
 // Serial queue per agentAddress so concurrent config saves cannot race
 // pm2 spawn/stop (the underlying CLI is not concurrency-safe per name).
 const reconcileQueues = new Map<string, Promise<unknown>>();
-async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T>): Promise<T> {
+export async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T>): Promise<T> {
   const key = agentAddress.toLowerCase();
   const prev = reconcileQueues.get(key) ?? Promise.resolve();
   const next = prev.catch(() => undefined).then(fn);
@@ -439,43 +474,91 @@ async function withAgentLock<T>(agentAddress: string, fn: () => Promise<T>): Pro
   try {
     return await next;
   } finally {
-    // Best-effort cleanup so the map doesn't grow unbounded under N
-    // distinct agents. Only delete if we're still the tail of the chain.
     if (reconcileQueues.get(key) === next) reconcileQueues.delete(key);
   }
 }
 
+interface VaultRow {
+  pm2_name: string;
+  param_name: string;
+  wake_port: number;
+  profile_id: string | null;
+  deleted_at: number | null;
+}
+
+function readVaultRow(agentAddress: string): VaultRow | null {
+  const row = getDb().prepare(
+    `SELECT pm2_name, param_name, wake_port, profile_id, deleted_at
+       FROM agent_keys
+      WHERE agent_address = ?
+      ORDER BY (deleted_at IS NULL) DESC, COALESCE(deleted_at, created_at) DESC
+      LIMIT 1`,
+  ).get(agentAddress.toLowerCase()) as VaultRow | undefined;
+  return row ?? null;
+}
+
 /**
- * Bring PM2 to the state the SQLite config says it should be in.
- * Called from POST /api/nasun-ai/config (after save) and from DELETE
- * /api/nasun-ai/config (before delete returns).
+ * Bring PM2 to the state the user's combined on-chain + server-side intent
+ * dictates. Idempotent; concurrent calls for the same agent are serialized
+ * via withAgentLock.
  *
- * Idempotent: safe to call repeatedly; concurrent calls for the same
- * agent are serialized via withAgentLock.
+ * NEVER soft-deletes the vault row. Killed state stops PM2; vault deletion
+ * is the explicit responsibility of DELETE /api/nasun-ai/vault/agent/:addr,
+ * which the frontend calls after the user signs the on-chain deactivate tx.
  */
-export async function reconcilePm2State(agentAddress: string): Promise<ReconcileResult> {
+export async function reconcileAgentState(
+  agentAddress: string,
+  /**
+   * Optional pre-fetched pm2 process names. The drift poller fetches once
+   * per tick and passes the same snapshot to every reconcile so we don't
+   * fork `pm2 jlist` N times in a row.
+   */
+  pm2Snapshot?: ReadonlySet<string>,
+): Promise<AgentStateResult> {
   const lower = agentAddress.toLowerCase();
   return withAgentLock(lower, async () => {
-    // Snapshot state.
-    const vault = getDb().prepare(
-      `SELECT pm2_name, param_name, wake_port
-         FROM agent_keys
-        WHERE agent_address = ? AND deleted_at IS NULL`,
-    ).get(lower) as
-      | { pm2_name: string; param_name: string; wake_port: number }
-      | undefined;
+    const vault = readVaultRow(lower);
+    const hasActiveVault = Boolean(vault && vault.deleted_at === null);
     const enabled = readEnabledFlag(lower);
-    const list = await pm2List().catch(() => [] as Pm2ProcessLite[]);
-    const names = new Set(list.map(p => p.name));
+    const names = pm2Snapshot
+      ?? new Set((await pm2List().catch(() => [] as Pm2ProcessLite[])).map(p => p.name));
 
-    const decision = decideReconcileAction({
-      hasVaultRow: Boolean(vault),
+    // On-chain read. profile_id may be NULL for legacy rows that predate
+    // the AER v3 backfill (store.ts:271). In that case we cannot know
+    // is_active and must return 'unknown'.
+    let isActive: boolean | null = null;
+    if (vault?.profile_id) {
+      const snapshot = await readAgentProfileIsActive(vault.profile_id);
+      isActive = snapshot?.isActive ?? null;
+    }
+
+    const decision = deriveAgentState({
+      isActive,
       enabled,
+      hasActiveVault,
       pm2NameKnown: vault?.pm2_name ?? null,
       pm2NamesInList: names,
     });
 
-    if (decision.action === 'spawn' && vault) {
+    const pm2NameKnown = vault?.pm2_name ?? null;
+    const initiallyInList = pm2NameKnown ? names.has(pm2NameKnown) : false;
+    let action: AgentStateResult['action'] = 'noop';
+    let actionReason = decision.reason;
+    // True iff PM2 is expected to be running after this tick. Reflects the
+    // ACTUAL outcome: a spawn that threw leaves the runtime stopped.
+    let runtimeRunning = initiallyInList;
+
+    if (decision.state === 'unknown') {
+      return {
+        state: 'unknown',
+        runtime: initiallyInList ? 'running' : 'stopped',
+        reason: decision.reason,
+        action: 'noop',
+        pending: true,
+      };
+    }
+
+    if (decision.desiredRunning && !initiallyInList && hasActiveVault && vault) {
       try {
         await spawnAgentPm2({
           agentAddress: lower,
@@ -483,21 +566,177 @@ export async function reconcilePm2State(agentAddress: string): Promise<Reconcile
           paramName: vault.param_name,
           wakePort: vault.wake_port,
         });
+        action = 'spawn';
+        runtimeRunning = true;
       } catch (err) {
-        // Spawn failure should not poison the save call; the user already
-        // saved their config. Log and surface so the API caller can decide.
-        return { action: 'spawn', reason: `spawn_failed:${(err as Error).message}` };
+        action = 'spawn';
+        actionReason = `spawn_failed:${(err as Error).message}`;
+        runtimeRunning = false;
       }
-    } else if (decision.action === 'stop' && vault) {
+    } else if (!decision.desiredRunning && initiallyInList && pm2NameKnown) {
       try {
-        await stopAgentPm2(vault.pm2_name);
+        await stopAgentPm2(pm2NameKnown);
+        action = 'stop';
+        runtimeRunning = false;
       } catch (err) {
-        return { action: 'stop', reason: `stop_failed:${(err as Error).message}` };
+        action = 'stop';
+        actionReason = `stop_failed:${(err as Error).message}`;
+        runtimeRunning = true;  // stop failed → still running
       }
     }
-    // 'no_vault' + 'noop' have no pm2 side effect.
-    return decision;
+
+    return {
+      state: decision.state,
+      runtime: runtimeRunning ? 'running' : 'stopped',
+      reason: actionReason,
+      action,
+      pending: false,
+    };
   });
+}
+
+/**
+ * Lightweight read-only snapshot for the GET state endpoint. Re-uses the
+ * same derivation as reconcileAgentState but does not invoke pm2 actions.
+ * Cache-friendly: callers may invoke this on every browser poll.
+ */
+export interface AgentStateSnapshot {
+  state: AgentState;
+  runtime: 'running' | 'stopped';
+  onChain: { isActive: boolean | null; profileId: string | null };
+  config: { enabled: boolean };
+  /** Vault presence only — deleted_at timestamp is intentionally omitted
+   *  from the public response to avoid leaking account-lifecycle timing. */
+  vault: { present: boolean };
+  pending: boolean;
+}
+
+export async function readAgentStateSnapshot(agentAddress: string): Promise<AgentStateSnapshot> {
+  const lower = agentAddress.toLowerCase();
+  const vault = readVaultRow(lower);
+  const hasActiveVault = Boolean(vault && vault.deleted_at === null);
+  const enabled = readEnabledFlag(lower);
+  const list = await pm2List().catch(() => [] as Pm2ProcessLite[]);
+  const names = new Set(list.map(p => p.name));
+
+  let isActive: boolean | null = null;
+  if (vault?.profile_id) {
+    const snapshot = await readAgentProfileIsActive(vault.profile_id);
+    isActive = snapshot?.isActive ?? null;
+  }
+
+  const decision = deriveAgentState({
+    isActive,
+    enabled,
+    hasActiveVault,
+    pm2NameKnown: vault?.pm2_name ?? null,
+    pm2NamesInList: names,
+  });
+
+  return {
+    state: decision.state,
+    runtime: (vault?.pm2_name && names.has(vault.pm2_name)) ? 'running' : 'stopped',
+    onChain: { isActive, profileId: vault?.profile_id ?? null },
+    config: { enabled },
+    vault: { present: hasActiveVault },
+    pending: decision.state === 'unknown',
+  };
+}
+
+/** Caller-driven cache invalidation (e.g. after wallet signs a deactivate tx). */
+export function invalidateAgentOnChainCache(profileId: string): void {
+  invalidateAgentProfileCache(profileId);
+}
+
+// === Phase 8 (2026-05-24) — on-chain drift poller ===
+//
+// Heals state drift caused by external wallet activity: a user can sign a
+// deactivate_agent tx in another browser tab, a different device, or any
+// wallet client; chat-server only learns about it on the next on-chain read.
+// Reconcile is already invoked on every config save / vault op and on every
+// browser GET /state, but a fully idle session could see a stopped agent
+// keep running for an unbounded time. This poller bounds that to 60s.
+//
+// Implementation notes:
+//   - Self-rescheduling setTimeout (not setInterval): a slow tick under
+//     RPC degradation must not overlap with the next one. Overlapping
+//     ticks would fan out N pm2 jlist forks + N reconciles per agent.
+//   - Single pm2 jlist per tick, shared across all per-agent reconciles.
+//   - The 10s sui-client TTL means agents with a recent GET /state hit
+//     skip the network round-trip during this tick.
+//   - An AgentDeactivated event subscription was considered (v2 plan
+//     §8a-5) but skipped: the all-agent sweep is N≤99 RPCs/min worst
+//     case and event indexing adds infra for marginal latency benefit.
+//
+// Scope: agents with an active vault row + a non-null profile_id (legacy
+// rows are skipped — they cannot be reconciled without on-chain read; the
+// backfill script clears legacy NULLs).
+
+const DRIFT_POLL_INTERVAL_MS = 60_000;
+let driftPollTimer: ReturnType<typeof setTimeout> | null = null;
+let driftPollRunning = false;
+let driftPollStopped = true;
+
+async function driftPollTick(): Promise<void> {
+  if (driftPollRunning) {
+    // Previous tick still in flight — skip this scheduling and let the
+    // outer loop reschedule once the in-flight tick completes.
+    return;
+  }
+  driftPollRunning = true;
+  const startedAt = Date.now();
+  try {
+    const rows = getDb().prepare(
+      `SELECT agent_address FROM agent_keys
+        WHERE deleted_at IS NULL AND profile_id IS NOT NULL`,
+    ).all() as { agent_address: string }[];
+    // One pm2 jlist for the whole sweep.
+    const list = await pm2List().catch(() => [] as Pm2ProcessLite[]);
+    const names = new Set(list.map(p => p.name));
+    for (const row of rows) {
+      try {
+        await reconcileAgentState(row.agent_address, names);
+      } catch (err) {
+        console.warn(
+          `[drift-poll] reconcile failed for ${row.agent_address}:`,
+          (err as Error).message,
+        );
+      }
+    }
+    const elapsed = Date.now() - startedAt;
+    if (elapsed > DRIFT_POLL_INTERVAL_MS) {
+      console.warn(
+        `[drift-poll] tick took ${elapsed}ms over ${rows.length} agents — RPC may be degraded`,
+      );
+    }
+  } catch (err) {
+    console.error('[drift-poll] tick failed:', (err as Error).message);
+  } finally {
+    driftPollRunning = false;
+  }
+}
+
+function scheduleNextDriftPoll(): void {
+  if (driftPollStopped) return;
+  driftPollTimer = setTimeout(async () => {
+    await driftPollTick();
+    scheduleNextDriftPoll();
+  }, DRIFT_POLL_INTERVAL_MS);
+  driftPollTimer.unref();
+}
+
+export function startAgentStateDriftPoller(): void {
+  if (!driftPollStopped) return;
+  driftPollStopped = false;
+  scheduleNextDriftPoll();
+}
+
+export function stopAgentStateDriftPoller(): void {
+  driftPollStopped = true;
+  if (driftPollTimer) {
+    clearTimeout(driftPollTimer);
+    driftPollTimer = null;
+  }
 }
 
 export async function getRunningAgents(): Promise<string[]> {

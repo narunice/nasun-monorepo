@@ -43,7 +43,7 @@ import { runAnalystPreset } from './presets/analyst.js';
 import { runChatPreset } from './presets/chat.js';
 import { runManualExecution } from './presets/manual-execution.js';
 import { RateLimiter } from './rate-limit.js';
-import { assertEnabledOrExit } from './self-config.js';
+import { assertEnabledOrExit, assertOnChainActiveOrExit } from './self-config.js';
 
 // ========== Graceful Shutdown ==========
 
@@ -183,6 +183,15 @@ async function main(): Promise<void> {
       await assertEnabledOrExit({
         chatServerBaseUrl: config.chatServerBaseUrl,
         agentAddress: config.agentAddress,
+        log,
+      });
+      // Phase 8 safety net: re-check on-chain AgentProfile.is_active so a
+      // user-initiated kill (deactivate_agent tx) takes effect even if the
+      // chat-server reconcile / drift poller misses our PM2 process.
+      // 60s in-process cache absorbs /wake bursts.
+      await assertOnChainActiveOrExit({
+        profileId: config.trader?.agentProfileId,
+        rpcUrl: config.rpcUrl,
         log,
       });
       let nextIntervalMs: number | undefined;

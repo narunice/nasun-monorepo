@@ -30,7 +30,11 @@ import { verifyPersonalMessageSignature } from '@mysten/sui/verify';
 import { SuiClient } from '@mysten/sui/client';
 import { getDb } from './store.js';
 import { isValidSuiAddress } from './auth.js';
-import { reconcilePm2State, type ReconcileResult } from './agent-orchestrator.js';
+import {
+  reconcileAgentState,
+  readAgentStateSnapshot,
+  type AgentStateResult,
+} from './agent-orchestrator.js';
 
 const MAX_BODY_BYTES = 32 * 1024;
 const AGENT_RE = /^0x[0-9a-fA-F]{40,64}$/;
@@ -71,6 +75,28 @@ function browserGetRateLimit(ip: string): boolean {
   }
   if (bucket.count >= BROWSER_GET_RATE_LIMIT_PER_IP_PER_MINUTE) return false;
   bucket.count += 1;
+  return true;
+}
+
+// Global QPS cap on the public GET /state endpoint. Per-IP rate-limit is
+// the first line of defense, but distributed scanning (botnet / NAT
+// rotation) can bypass it. The endpoint reads on-chain via a 10s TTL
+// cache so the worst-case load is bounded, but we add a coarse global cap
+// to keep chat-server's main loop from spending all its time on enumeration
+// scrapes. 600 req/min ≈ 10 QPS — generous for a healthy fleet of N≤99
+// agents polling once every 30s.
+const STATE_GLOBAL_QPS_PER_MINUTE = 600;
+let stateGlobalCount = 0;
+let stateGlobalResetAt = 0;
+function stateGlobalRateLimit(): boolean {
+  const now = Date.now();
+  if (stateGlobalResetAt < now) {
+    stateGlobalCount = 1;
+    stateGlobalResetAt = now + 60_000;
+    return true;
+  }
+  if (stateGlobalCount >= STATE_GLOBAL_QPS_PER_MINUTE) return false;
+  stateGlobalCount += 1;
   return true;
 }
 function clientIp(req: import('node:http').IncomingMessage): string {
@@ -318,16 +344,19 @@ export async function handleNasunAiConfigRequest(
 
     upsertConfig(agentLower, walletLower, configJson);
 
-    // Phase 6: reconcile PM2 state with the just-persisted config. A flip
-    // to enabled:true spawns the runtime; enabled:false stops it; no-op
-    // otherwise. We await so the API response reflects the actual lifecycle
-    // outcome (best-effort: spawn failures surface in `reconcile.reason`
-    // but the config save itself is already committed).
-    let reconcile: ReconcileResult;
+    // Phase 8: reconcile combined on-chain + server intent. A flip to
+    // enabled:true spawns the runtime when on-chain is_active=true;
+    // enabled:false stops it; on-chain killed leaves PM2 stopped.
+    // Best-effort: action failures surface in `reconcile.reason` but the
+    // config save itself is already committed.
+    let reconcile: AgentStateResult;
     try {
-      reconcile = await reconcilePm2State(agentLower);
+      reconcile = await reconcileAgentState(agentLower);
     } catch (err) {
-      reconcile = { action: 'noop', reason: `reconcile_threw:${(err as Error).message}` };
+      reconcile = {
+        state: 'unknown', runtime: 'stopped', action: 'noop',
+        pending: true, reason: `reconcile_threw:${(err as Error).message}`,
+      };
     }
 
     res.writeHead(200, { ...writeCors, 'Content-Type': 'application/json' });
@@ -380,13 +409,16 @@ export async function handleNasunAiConfigRequest(
 
     deleteConfigRow(agentLower);
 
-    // Phase 6: with the config row gone, reconcile will see enabled=false
-    // and stop any running PM2 process for this agent.
-    let reconcile: ReconcileResult;
+    // Phase 8: with the config row gone, reconcile sees enabled=false and
+    // stops any running PM2 process. On-chain is_active is unchanged.
+    let reconcile: AgentStateResult;
     try {
-      reconcile = await reconcilePm2State(agentLower);
+      reconcile = await reconcileAgentState(agentLower);
     } catch (err) {
-      reconcile = { action: 'noop', reason: `reconcile_threw:${(err as Error).message}` };
+      reconcile = {
+        state: 'unknown', runtime: 'stopped', action: 'noop',
+        pending: true, reason: `reconcile_threw:${(err as Error).message}`,
+      };
     }
 
     res.writeHead(200, { ...writeCors, 'Content-Type': 'application/json' });
@@ -394,10 +426,47 @@ export async function handleNasunAiConfigRequest(
     return true;
   }
 
-  // OPTIONS /api/nasun-ai/config and /api/nasun-ai/config/:agentAddress
-  if (req.method === 'OPTIONS' && /^\/api\/nasun-ai\/config(\/[^/]+)?$/.test(pathname)) {
+  // OPTIONS for config + agent state endpoints
+  if (
+    req.method === 'OPTIONS' &&
+    (/^\/api\/nasun-ai\/config(\/[^/]+)?$/.test(pathname) ||
+     /^\/api\/nasun-ai\/agent\/[^/]+\/state$/.test(pathname))
+  ) {
     res.writeHead(204, writeCors);
     res.end();
+    return true;
+  }
+
+  // GET /api/nasun-ai/agent/:addr/state — Phase 8 unified state read.
+  //
+  // Public read: returned fields are operational metadata (state, runtime,
+  // on-chain is_active, server config.enabled, vault presence). No secrets.
+  // IP rate-limited identically to GET /config to block enumeration scraping.
+  // Doubles as a lazy reconcile trigger: callers see the latest derived state
+  // including drift caused by external wallet deactivations within the 10s
+  // sui-client cache window. Heavier drift is healed by the 60s on-chain
+  // poller in agent-vault-killswitch.
+  const stateMatch = pathname.match(/^\/api\/nasun-ai\/agent\/([^/]+)\/state$/);
+  if (stateMatch && req.method === 'GET') {
+    const agentAddress = stateMatch[1];
+    if (!agentAddress || !AGENT_RE.test(agentAddress)) {
+      res.writeHead(400, writeCors);
+      res.end(JSON.stringify({ error: 'invalid_agent_address' }));
+      return true;
+    }
+    if (!browserGetRateLimit(clientIp(req)) || !stateGlobalRateLimit()) {
+      res.writeHead(429, writeCors);
+      res.end(JSON.stringify({ error: 'rate_limited' }));
+      return true;
+    }
+    try {
+      const snapshot = await readAgentStateSnapshot(agentAddress);
+      res.writeHead(200, { ...writeCors, 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(snapshot));
+    } catch (err) {
+      res.writeHead(500, writeCors);
+      res.end(JSON.stringify({ error: 'state_read_failed', detail: (err as Error).message }));
+    }
     return true;
   }
 

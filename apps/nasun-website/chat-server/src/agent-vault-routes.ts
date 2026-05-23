@@ -45,7 +45,9 @@ import {
   pm2NameForAgent,
   hasLegacyNasunAiRuntime,
   AgentDisabledError,
+  invalidateAgentOnChainCache,
 } from './agent-orchestrator.js';
+import { readAgentProfileIsActive } from './sui-client.js';
 import {
   enforceAlphaGuards,
   withSlotReservation,
@@ -432,12 +434,12 @@ export async function handleVaultUpload(
         // (status endpoint will show 'inactive') and surface the error to the
         // caller so they can retry.
         //
-        // Phase 6 (2026-05-23): spawnAgentPm2 now refuses when the trader
-        // config has enabled:false. New agents typically save with
-        // enabled:false and only flip true on the user's explicit activate
-        // toggle, so vault upload commonly hits the disabled gate. Treat
-        // it as success: the upload finished; the next save-with-enabled
-        // will spawn via reconcilePm2State.
+        // Phase 6/8: spawnAgentPm2 refuses when the trader config has
+        // enabled:false. New agents typically save with enabled:false and
+        // only flip true on the user's explicit activate toggle, so vault
+        // upload commonly hits the disabled gate. Treat it as success: the
+        // upload finished; the next save-with-enabled will spawn via
+        // reconcileAgentState.
         try {
           await spawnAgentPm2({ agentAddress, pm2Name, paramName, wakePort });
         } catch (err) {
@@ -509,12 +511,32 @@ export async function handleVaultDelete(
   // migration can introduce NULL rows.
   const row = getDb()
     .prepare(
-      `SELECT pm2_name FROM agent_keys
+      `SELECT pm2_name, profile_id FROM agent_keys
        WHERE agent_address = ? AND wallet_address = ? AND deleted_at IS NULL`,
     )
     .get(agentAddress.toLowerCase(), result.entry.wallet) as
-      { pm2_name: string } | undefined;
+      { pm2_name: string; profile_id: string | null } | undefined;
   if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_active' }); return; }
+
+  // Phase 8 — on-chain AgentProfile.owner cross-check. Belt-and-suspenders
+  // for legacy rows where capability_id is NULL (the challenge handler's
+  // verifyCapabilityOwner gate falls through in that case). Skipped when
+  // profile_id is also NULL (truly legacy row predating AER v3 backfill);
+  // those rely on wallet_address binding alone.
+  if (row.profile_id) {
+    const snap = await readAgentProfileIsActive(row.profile_id);
+    // readAgentProfileIsActive already lowercases owner; normalize the
+    // challenge-side wallet too so a mixed-case ChallengeEntry.wallet
+    // (defense-in-depth — the challenge issuer should already lowercase)
+    // cannot lock out a legitimate kill.
+    if (snap && snap.owner !== result.entry.wallet.toLowerCase()) {
+      writeJson(res, 401, corsHeaders, { error: 'not_profile_owner' });
+      return;
+    }
+    // snap === null: RPC failure. Do not reject — challenge-issue cap-owner
+    // check already covers the non-null-capability path. Soft-fail to
+    // preserve user-initiated kill flow during transient RPC outages.
+  }
 
   await withAgentLock(agentAddress.toLowerCase(), async () => {
     try {
@@ -528,6 +550,7 @@ export async function handleVaultDelete(
       .run(now, agentAddress.toLowerCase());
     getDb().prepare(`DELETE FROM baram_agent_endpoints WHERE agent = ?`)
       .run(agentAddress.toLowerCase());
+    if (row.profile_id) invalidateAgentOnChainCache(row.profile_id);
     // PR-2 alpha: user-initiated deactivate frees a cap slot. Run an
     // immediate invite pass so the next queued user gets promoted now
     // instead of waiting up to 60s for the next cron tick.
