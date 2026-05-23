@@ -19,7 +19,6 @@ import { AgentFundsCard } from '../../components/funds/AgentFundsCard';
 import { TradingPerformanceCard } from '../../components/performance/TradingPerformanceCard';
 import { FirstRunChecklist } from '../../components/FirstRunChecklist';
 import { HashRef } from '../../components/HashRef';
-import { DeactivateAgentModal } from '../../components/modals/DeactivateAgentModal';
 import { ActivityTab } from './ActivityTab';
 
 interface OverviewTabProps {
@@ -46,7 +45,6 @@ export function OverviewTab({
   const traderConfig = useTraderConfig(agent.agentAddress);
   const runtimeEnabled = traderConfig.config?.enabled === true;
   const [busy, setBusy] = useState(false);
-  const [showPauseModal, setShowPauseModal] = useState(false);
 
   const handleActivate = async () => {
     if (busy) return;
@@ -57,6 +55,34 @@ export function OverviewTab({
     } finally {
       setBusy(false);
       resetTxStatus();
+    }
+  };
+
+  // Phase 7 v2: soft pause/resume — flip trader-config enabled only.
+  // Vault key stays on the server so the user can resume with one click.
+  // Distinct from Settings → Deactivate, which deletes the vault key.
+  const handlePauseRuntime = async () => {
+    if (busy) return;
+    if (!traderConfig.config) return;
+    setBusy(true);
+    try {
+      const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } =
+        traderConfig.config;
+      await traderConfig.save({ ...rest, enabled: false });
+    } finally {
+      setBusy(false);
+    }
+  };
+  const handleResumeRuntime = async () => {
+    if (busy) return;
+    if (!traderConfig.config) return;
+    setBusy(true);
+    try {
+      const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } =
+        traderConfig.config;
+      await traderConfig.save({ ...rest, enabled: true });
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -112,13 +138,28 @@ export function OverviewTab({
               </svg>
               Open Telegram
             </a>
-            {agent.isActive ? (
+            {/* Phase 7 v2 (2026-05-23): Pause/Resume here are SOFT — they
+                flip the trader-config enabled flag only, leaving the vault
+                key on the server so resuming is a single click. Hard
+                removal (vault delete) stays in Settings → Deactivate. The
+                third branch (!is_active) is the on-chain reactivation. */}
+            {agent.isActive && runtimeEnabled ? (
               <button
                 type="button"
-                onClick={() => setShowPauseModal(true)}
-                className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors"
+                onClick={() => void handlePauseRuntime()}
+                disabled={busy}
+                className="px-4 py-2 text-sm rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg transition-colors disabled:opacity-50"
               >
-                Pause agent
+                {busy ? 'Pausing...' : 'Pause agent'}
+              </button>
+            ) : agent.isActive ? (
+              <button
+                type="button"
+                onClick={() => void handleResumeRuntime()}
+                disabled={busy}
+                className="px-4 py-2 text-sm rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors disabled:opacity-50"
+              >
+                {busy ? 'Activating...' : 'Activate agent'}
               </button>
             ) : (
               <button
@@ -172,16 +213,6 @@ export function OverviewTab({
         />
       </div>
 
-      {showPauseModal && (
-        <DeactivateAgentModal
-          agentAddress={agent.agentAddress}
-          agentName={agent.name}
-          walletAddress={walletAddress}
-          agentProfileId={agent.id}
-          onDeactivated={() => { setShowPauseModal(false); onRefresh(); }}
-          onClose={() => setShowPauseModal(false)}
-        />
-      )}
     </div>
   );
 }
