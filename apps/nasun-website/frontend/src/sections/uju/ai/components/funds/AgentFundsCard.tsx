@@ -19,12 +19,14 @@ import {
 } from '../../hooks/useAgentWalletBalances';
 import { useAgentEscrowBalances } from '../../hooks/useAgentEscrowBalances';
 import { useCapability } from '../../hooks/useCapability';
-import { useBudgetsQuery, type BudgetInfo } from '../../hooks/useBudgets';
-import { formatNusdcValue, truncateAddress } from '../../utils/format';
+import { useBudgets, useBudgetsQuery, type BudgetInfo } from '../../hooks/useBudgets';
+import { formatNusdcValue } from '../../utils/format';
+import { BudgetSettingsModal } from '../modals/BudgetSettingsModal';
 import {
   TransferAgentFundsDialog,
   type TransferMode,
 } from './TransferAgentFundsDialog';
+import type { TokenSymbol } from '../../services/network';
 
 /** 0.05 NASUN. Below this, owner cannot reliably sponsor a deposit/withdraw tx. */
 const LOW_NASUN_THRESHOLD_MIST = 50_000_000n;
@@ -40,10 +42,9 @@ const AGENT_LOW_GAS_THRESHOLD_MIST = 50_000_000n;
 interface AgentFundsCardProps {
   agent: AgentProfile;
   walletAddress: string;
-  onOpenInferenceTab: () => void;
 }
 
-export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: AgentFundsCardProps) {
+export function AgentFundsCard({ agent, walletAddress }: AgentFundsCardProps) {
   const balances = useAgentWalletBalances(agent.agentAddress);
   // Capability resolves agent -> escrow_id. Trading deposits (NUSDC/NBTC) land
   // in the escrow shared object, not in agent.agentAddress. Without this hook
@@ -55,6 +56,14 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
   const { data: ownerNasun } = useOwnerNasunBalance(walletAddress);
   const isLowGas = ownerNasun !== undefined && ownerNasun < LOW_NASUN_THRESHOLD_MIST;
   const [dialogMode, setDialogMode] = useState<TransferMode | null>(null);
+  // When opening the Deposit dialog from a per-token row (NSN / NUSDC) we
+  // preselect the coin so the user lands on the right input. Set together
+  // with setDialogMode('deposit') and consumed by TransferAgentFundsDialog.
+  const [dialogInitialCoin, setDialogInitialCoin] = useState<TokenSymbol>('NUSDC');
+  // BudgetSettingsModal opens in-place when the user clicks Manage on the
+  // Inference Balance side, avoiding a tab navigation away from Overview.
+  const [showBudgetSettings, setShowBudgetSettings] = useState(false);
+  const budgets = useBudgets(walletAddress);
 
   // Agent-side NASUN. The agent pays its own gas when trading; if this is
   // empty the runtime fails with "No valid gas coins" before any swap lands.
@@ -78,12 +87,7 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
   return (
     <>
     <section className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-4">
-      <div className="space-y-0.5">
-        <h3 className="text-sm font-semibold text-white">Funds</h3>
-        <p className="text-sm text-uju-secondary">
-          Trading Wallet holds your capital. Inference Balance covers the agent's AI fees.
-        </p>
-      </div>
+      <h3 className="text-sm font-semibold text-white">Funds</h3>
 
       {isLowGas && (
         <div className="px-3 py-2 text-sm rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300">
@@ -103,7 +107,7 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             <div className="min-w-0">
               <p className="text-sm font-medium text-white">Trading Capital</p>
               <p className="text-xs text-uju-secondary mt-0.5">
-                Agent wallet (NSN gas) + Escrow (trade funds)
+                Capital for Pado spot trading + NSN for gas
               </p>
             </div>
           </div>
@@ -112,59 +116,124 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             <div className="h-16 rounded bg-uju-bg/60 animate-pulse" />
           ) : (
             <ul className="space-y-1.5">
-              {/* Agent wallet (gas + any stray non-gas coins). NSN here is what
-                 lets the agent sign trade PTBs at all. Non-gas tokens shown
-                 here are "stuck" — they exist but cannot be spent by trades
-                 (only Escrow funds spend); user should withdraw them. */}
-              {balances.data
-                .filter((b) => b.totalBalanceRaw > 0n)
-                .map((b) => (
-                  <li key={`w-${b.symbol}`} className="flex items-baseline justify-between gap-2 text-sm">
-                    <span className="text-uju-secondary">
-                      {b.symbol === 'NASUN' ? 'NSN' : b.symbol}
-                      <span className="ml-1 text-xs text-uju-secondary/60">
-                        {b.symbol === 'NASUN' ? '(gas)' : '(wallet)'}
-                      </span>
-                    </span>
-                    <span className="text-white font-mono">{formatTokenBalance(b)}</span>
-                  </li>
-                ))}
-              {/* Escrow balances. These are what `withdraw_for_action` actually
-                 sources from. Non-zero entries are the trade-spendable capital. */}
+              {/* NSN row — gas. Lives in the agent's owned wallet because
+                  the agent needs to pay gas with its own keypair. */}
+              <li className="flex items-center justify-between gap-2 text-sm">
+                <span className="text-uju-secondary">
+                  NSN<span className="ml-1 text-xs text-uju-secondary/60">(gas)</span>
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-white font-mono">
+                    {balances.data.find((b) => b.symbol === 'NASUN')
+                      ? formatTokenBalance(balances.data.find((b) => b.symbol === 'NASUN')!)
+                      : '0'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDialogInitialCoin('NASUN');
+                      setDialogMode('deposit');
+                    }}
+                    className="px-2 py-0.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
+                  >
+                    Deposit
+                  </button>
+                </div>
+              </li>
+
+              {/* Trade assets: only escrow balances. The agent wallet may
+                  also hold the same tokens (when transferred outside the
+                  Deposit flow), but those are not trade-spendable and would
+                  just confuse the user. Stranded wallet balances surface as
+                  a separate recovery warning below. */}
               {escrowBalances.isLoading ? (
                 <li className="text-xs text-uju-secondary/70 italic">Loading escrow…</li>
-              ) : escrowBalances.data && escrowBalances.data.length > 0 ? (
-                escrowBalances.data
-                  .filter((b) => b.totalBalanceRaw > 0n)
-                  .map((b) => (
-                    <li key={`e-${b.type}`} className="flex items-baseline justify-between gap-2 text-sm">
-                      <span className="text-uju-secondary">
-                        {b.label}
-                        <span className="ml-1 text-xs text-uju-secondary/60">(escrow)</span>
-                      </span>
-                      <span className="text-white font-mono">
-                        {formatTokenBalance({
-                          symbol: b.symbol ?? 'NUSDC',
-                          name: b.label,
-                          decimals: b.decimals,
-                          type: b.type,
-                          totalBalanceRaw: b.totalBalanceRaw,
-                        })}
-                      </span>
-                    </li>
-                  ))
-              ) : null}
-              {!balances.data.some((b) => b.totalBalanceRaw > 0n) &&
-                (!escrowBalances.data || escrowBalances.data.every((b) => b.totalBalanceRaw === 0n)) && (
-                  <li className="text-sm text-uju-secondary/70 italic">No funds yet.</li>
-                )}
+              ) : (
+                <>
+                  {/* NUSDC — primary trading asset. Always rendered (even
+                      at 0) so the Deposit affordance is consistently
+                      reachable. */}
+                  {(() => {
+                    const usdc = escrowBalances.data?.find((b) => b.symbol === 'NUSDC');
+                    const raw = usdc?.totalBalanceRaw ?? 0n;
+                    return (
+                      <li className="flex items-center justify-between gap-2 text-sm">
+                        <span className="text-uju-secondary">NUSDC</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-white font-mono">
+                            {usdc
+                              ? formatTokenBalance({
+                                  symbol: 'NUSDC',
+                                  name: usdc.label,
+                                  decimals: usdc.decimals,
+                                  type: usdc.type,
+                                  totalBalanceRaw: raw,
+                                })
+                              : '0'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setDialogInitialCoin('NUSDC');
+                              setDialogMode('deposit');
+                            }}
+                            className="px-2 py-0.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
+                          >
+                            Deposit
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })()}
+
+                  {/* Other escrow trade assets (e.g. NBTC) — show only
+                      nonzero rows. Deposit for these uses the general
+                      Deposit button at the bottom of the card. */}
+                  {escrowBalances.data &&
+                    escrowBalances.data
+                      .filter((b) => b.symbol !== 'NUSDC' && b.totalBalanceRaw > 0n)
+                      .map((b) => (
+                        <li key={`e-${b.type}`} className="flex items-baseline justify-between gap-2 text-sm">
+                          <span className="text-uju-secondary">{b.label}</span>
+                          <span className="text-white font-mono">
+                            {formatTokenBalance({
+                              symbol: b.symbol ?? 'NUSDC',
+                              name: b.label,
+                              decimals: b.decimals,
+                              type: b.type,
+                              totalBalanceRaw: b.totalBalanceRaw,
+                            })}
+                          </span>
+                        </li>
+                      ))}
+                </>
+              )}
             </ul>
           )}
+
+          {/* Stranded wallet warning: any non-NSN coin sitting in the agent's
+              owned address cannot be spent by trades (withdraw_for_action
+              only sources from escrow). Surface so the user can Withdraw to
+              recover. Hidden when wallet is clean. */}
+          {balances.data &&
+            balances.data.some(
+              (b) => b.symbol !== 'NASUN' && b.totalBalanceRaw > 0n,
+            ) && (
+              <p className="text-xs text-amber-300/80">
+                Some funds are stranded in the agent wallet and not spendable for
+                trades. Use Withdraw to recover them.
+              </p>
+            )}
 
           <div className="flex gap-2 pt-1 border-t border-uju-border/60">
             <button
               type="button"
-              onClick={() => setDialogMode('deposit')}
+              onClick={() => {
+                // General Deposit covers other pairs (NBTC, future tokens).
+                // Defaults to NUSDC so existing muscle memory is preserved.
+                setDialogInitialCoin('NUSDC');
+                setDialogMode('deposit');
+              }}
               className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
             >
               Deposit
@@ -188,7 +257,7 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             <div className="min-w-0">
               <p className="text-sm font-medium text-white">Inference Balance</p>
               <p className="text-xs text-uju-secondary mt-0.5">
-                NUSDC for AI executor fees
+                NUSDC the agent uses to pay for AI inference
               </p>
             </div>
           </div>
@@ -234,8 +303,9 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
             </button>
             <button
               type="button"
-              onClick={onOpenInferenceTab}
-              className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
+              onClick={() => setShowBudgetSettings(true)}
+              disabled={!inference.primary}
+              className="flex-1 px-2 py-1.5 text-xs rounded border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Manage
             </button>
@@ -249,12 +319,26 @@ export function AgentFundsCard({ agent, walletAddress, onOpenInferenceTab }: Age
         agent={agent}
         walletAddress={walletAddress}
         mode={dialogMode}
+        initialCoin={dialogInitialCoin}
         agentBalances={balances.data ?? []}
         activeBudgets={inference.count > 0 ? (allBudgets?.filter(
           (b) => b.agent.toLowerCase() === agent.agentAddress.toLowerCase() && b.isActive,
         ) ?? []) : []}
         onClose={() => setDialogMode(null)}
         onSuccess={() => setDialogMode(null)}
+      />
+    )}
+
+    {showBudgetSettings && inference.primary && (
+      <BudgetSettingsModal
+        budget={inference.primary}
+        onClose={() => setShowBudgetSettings(false)}
+        onUpdateConstraints={budgets.updateConstraints}
+        onSetSpendingLimits={budgets.setSpendingLimits}
+        onSetCategories={budgets.setCategories}
+        txStatus={budgets.txStatus}
+        txError={budgets.txError}
+        resetTxStatus={budgets.resetTxStatus}
       />
     )}
     </>

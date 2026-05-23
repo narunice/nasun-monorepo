@@ -40,6 +40,9 @@ interface TransferAgentFundsDialogProps {
   activeBudgets: BudgetInfo[];
   onClose: () => void;
   onSuccess: () => void;
+  /** Preselect a token. Used by per-row Deposit buttons in AgentFundsCard so
+   *  the dialog opens already pointing at NSN vs NUSDC. Defaults to NUSDC. */
+  initialCoin?: TokenSymbol;
 }
 
 const AGENT_ADDRESS_RE = /^0x[0-9a-fA-F]{64}$/;
@@ -55,6 +58,7 @@ export function TransferAgentFundsDialog({
   activeBudgets,
   onClose,
   onSuccess,
+  initialCoin = 'NUSDC',
 }: TransferAgentFundsDialogProps) {
   const { signer, address } = useSigner();
   const queryClient = useQueryClient();
@@ -71,7 +75,7 @@ export function TransferAgentFundsDialog({
   const escrowBalances = useAgentEscrowBalances(escrowId);
 
   const [amount, setAmount] = useState('');
-  const [selectedCoin, setSelectedCoin] = useState<TokenSymbol>('NUSDC');
+  const [selectedCoin, setSelectedCoin] = useState<TokenSymbol>(initialCoin);
   const [selectedBudgetId, setSelectedBudgetId] = useState<string>(activeBudgets[0]?.id ?? '');
   const [passphrase, setPassphrase] = useState('');
   const [step, setStep] = useState<TxStep>('idle');
