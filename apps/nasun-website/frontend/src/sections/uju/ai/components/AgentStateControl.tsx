@@ -1,29 +1,19 @@
 /**
- * Phase 8 — unified Activate / Pause / Kill control.
+ * Phase 8 — unified Activate / Pause control.
  *
  * Reads state from useAgentState (single chat-server GET, no multi-hook
- * composition) and offers exactly three actions matching the user's mental
- * model:
+ * composition) and offers Activate (paused → activated) and Pause (activated
+ * → paused). Both flip config.enabled — no on-chain tx, no wallet sig.
+ * Backend reconcile handles PM2 spawn/stop.
  *
- *   - Activate: paused → activated. PATCH config.enabled=true (no on-chain
- *                tx). Backend reconcile spawns PM2.
- *   - Pause:    activated → paused. PATCH config.enabled=false. Backend
- *                reconcile stops PM2. On-chain is_active untouched.
- *   - Kill:     wallet-signed deactivate_agent tx + vault soft-delete.
- *                Terminal — no restore. UI routes to "Create new agent".
- *                Uses the existing DeactivateAgentModal under the hood
- *                (which performs both steps already); we just rename the
- *                user-facing verb and treat killed as irreversible.
- *
- * Co-exists during the Phase 8 transition with the older controls in
- * OverviewTab / SettingsTab. Those will be removed in cleanup once this
- * is dogfooded.
+ * Kill (terminal action: wallet-signed deactivate_agent + vault soft-delete)
+ * lives in the DangerZone at the bottom of the Settings page, not here, so
+ * the routine controls cannot be confused with the destructive one.
  */
 
 import { useCallback, useState } from 'react';
 import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useAgentState } from '../hooks/useAgentState';
-import { DeactivateAgentModal } from './modals/DeactivateAgentModal';
 import type { TraderConfig } from '../types/trader';
 
 /** Drop the persistence-only fields before re-saving via the upsert API. */
@@ -36,24 +26,17 @@ function stripConfigMetadata(config: TraderConfig): TraderConfigPatch {
 
 interface AgentStateControlProps {
   agentAddress: string;
-  agentName: string;
-  walletAddress: string;
-  agentProfileId: string;
-  /** Optional: where the "Create new agent" CTA should route. */
+  /** Optional: where the "Create new agent" CTA should route after killed. */
   onCreateNewAgent?: () => void;
 }
 
 export function AgentStateControl({
   agentAddress,
-  agentName,
-  walletAddress,
-  agentProfileId,
   onCreateNewAgent,
 }: AgentStateControlProps) {
   const { state, runtime, data, loading: stateLoading, error: stateError, invalidate } =
     useAgentState(agentAddress);
   const { config, save, loading: cfgLoading, error: cfgError } = useTraderConfig(agentAddress);
-  const [showKillModal, setShowKillModal] = useState(false);
   const [pending, setPending] = useState<'pause' | 'activate' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -91,11 +74,6 @@ export function AgentStateControl({
     }
   }, [config, save, invalidate]);
 
-  const handleKilled = useCallback(() => {
-    setShowKillModal(false);
-    void invalidate();
-  }, [invalidate]);
-
   const badgeClasses =
     state === 'activated' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
     : state === 'paused' ? 'bg-amber-500/15 text-amber-200 border-amber-500/30'
@@ -127,45 +105,25 @@ export function AgentStateControl({
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {state === 'activated' && (
-            <>
-              <button
-                type="button"
-                onClick={() => void handlePause()}
-                disabled={busy}
-                className="rounded-lg border border-uju-border/60 px-3 py-1.5 text-sm text-uju-secondary hover:bg-uju-bg/60 disabled:opacity-50"
-              >
-                {pending === 'pause' ? 'Pausing…' : 'Pause'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowKillModal(true)}
-                disabled={busy}
-                className="rounded-lg bg-red-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
-              >
-                Kill
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => void handlePause()}
+              disabled={busy}
+              className="rounded-lg border border-uju-border/60 px-3 py-1.5 text-sm text-uju-secondary hover:bg-uju-bg/60 disabled:opacity-50"
+            >
+              {pending === 'pause' ? 'Pausing…' : 'Pause agent'}
+            </button>
           )}
           {state === 'paused' && (
-            <>
-              <button
-                type="button"
-                onClick={() => void handleActivate()}
-                disabled={busy || activateBlocked}
-                title={activateBlocked ? 'Vault key missing on server — re-upload to activate' : undefined}
-                className="rounded-lg bg-emerald-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
-              >
-                {pending === 'activate' ? 'Activating…' : 'Activate'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowKillModal(true)}
-                disabled={busy}
-                className="rounded-lg border border-red-500/60 px-3 py-1.5 text-sm text-red-300 hover:bg-red-500/10 disabled:opacity-50"
-              >
-                Kill
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => void handleActivate()}
+              disabled={busy || activateBlocked}
+              title={activateBlocked ? 'Vault key missing on server — re-upload to activate' : undefined}
+              className="rounded-lg bg-emerald-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+            >
+              {pending === 'activate' ? 'Activating…' : 'Activate agent'}
+            </button>
           )}
           {state === 'killed' && (
             <button
@@ -198,16 +156,6 @@ export function AgentStateControl({
         <p className="text-xs text-uju-secondary">
           This agent is permanently killed. Create a new agent to use Nasun AI again.
         </p>
-      )}
-      {showKillModal && (
-        <DeactivateAgentModal
-          agentAddress={agentAddress}
-          agentName={agentName}
-          walletAddress={walletAddress}
-          agentProfileId={agentProfileId}
-          onDeactivated={handleKilled}
-          onClose={() => setShowKillModal(false)}
-        />
       )}
     </div>
   );

@@ -63,16 +63,6 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
 
   return (
     <div className="space-y-8">
-      {/* Phase 8 — unified Activate / Pause / Kill control at the top of
-          Settings, mirroring the same control on Overview. Both consume
-          the chat-server GET /api/nasun-ai/agent/:addr/state SSOT. */}
-      <AgentStateControl
-        agentAddress={agent.agentAddress}
-        agentName={agent.name}
-        walletAddress={walletAddress}
-        agentProfileId={agent.id}
-      />
-
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-white">AI Agent Config</h3>
         <p className="text-sm text-uju-secondary">
@@ -152,26 +142,14 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
       </section>
 
       <section className="space-y-2">
-        <h3 className="text-sm font-semibold text-white">Server status</h3>
-        <ServerStatusCard
-          state={vault.state}
-          graceEndsAt={vault.graceEndsAt}
-          configEnabled={config?.enabled ?? null}
-          onActivate={requestActivate}
-          onResume={() => {
-            // Soft resume: vault key already on the server; just flip
-            // enabled:true so the orchestrator's reconcile spawns PM2.
-            void (async () => {
-              if (!config) return;
-              const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;
-              const saved = await save({ ...rest, enabled: true });
-              if (!saved) return;
-              void vault.refresh();
-            })();
-          }}
-          onDeactivate={() => setDeactivateOpen(true)}
-          onRestore={() => setRestoreOpen(true)}
-        />
+        <h3 className="text-sm font-semibold text-white">Agent status</h3>
+        {/* Phase 8 — Activate / Pause only. Kill (terminal: wallet sig +
+            vault delete) lives in DangerZoneCard at the bottom of this
+            page so the routine pause control cannot be confused with the
+            destructive one. State source: chat-server GET
+            /api/nasun-ai/agent/:addr/state, which derives from on-chain
+            AgentProfile.is_active + config.enabled. */}
+        <AgentStateControl agentAddress={agent.agentAddress} />
       </section>
 
       <section className="space-y-2">
