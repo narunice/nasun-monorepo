@@ -118,6 +118,18 @@ function existingOwner(agentAddress: string): string | null {
   return row?.wallet_address ?? null;
 }
 
+export function getAgentNameByAddress(agentAddress: string): string | null {
+  const row = getConfig(agentAddress);
+  if (!row) return null;
+  try {
+    const cfg = JSON.parse(row.config_json) as Record<string, unknown>;
+    const name = cfg.name;
+    return typeof name === 'string' && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 function sha256Hex(s: string): string {
   return createHash('sha256').update(s, 'utf8').digest('hex');
 }
