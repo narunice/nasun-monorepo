@@ -35,6 +35,7 @@ import type { Config } from '../config.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
 import { callLLM as defaultCallLLM } from '../llm-client.js';
 import { ChatLLMPool } from '../chat-llm-pool.js';
+import { ChatHistoryStore, renderChatPrompt } from '../chat-history.js';
 
 // Byte-stable chat persona prompt. Not hashed into any AER (no AER is
 // produced here) but kept const so the agent's voice stays consistent
@@ -65,7 +66,17 @@ Do not:
 export interface ChatDeps {
   callLLM: typeof defaultCallLLM;
   log: (msg: string) => void;
+  /** Per-process chat history store, keyed by ctx.sid. Tests inject
+   *  a fresh store to avoid cross-test pollution; production reuses
+   *  the module-level singleton. */
+  history: ChatHistoryStore;
 }
+
+// Module-level singleton so consecutive wake events from the same sid
+// see the prior turns. Survives the lifetime of the runtime process,
+// which is exactly the right window for casual chat (and aligned with
+// the chat-server's daily 18:00 UTC restart).
+const SHARED_HISTORY = new ChatHistoryStore();
 
 const REAL_DEPS: ChatDeps = {
   callLLM: defaultCallLLM,
@@ -73,6 +84,7 @@ const REAL_DEPS: ChatDeps = {
     const ts = new Date().toLocaleString('en-US');
     console.log(`[${ts}] ${msg}`);
   },
+  history: SHARED_HISTORY,
 };
 
 /**
@@ -154,14 +166,11 @@ export async function runChatPreset(
     };
   }
 
-  // Persona + user turn baked into one prompt because callLLM (and the
-  // pool's underlying providers) all expose a single-message shape today.
-  const flatPrompt = [
-    CHAT_PERSONA_PROMPT,
-    '',
-    `User: ${userMessage}`,
-    'Agent:',
-  ].join('\n');
+  // Load prior turns for this session (TTL-evicted on access). The
+  // returned array is the LIVE list; we'll append to it via the store
+  // below, not by mutating directly.
+  const priorTurns = deps.history.load(ctx.sid, ctx.nowMs);
+  const flatPrompt = renderChatPrompt(CHAT_PERSONA_PROMPT, priorTurns, userMessage);
 
   try {
     let content: string;
@@ -201,9 +210,16 @@ export async function runChatPreset(
     }
 
     const reply = trimReply(content);
+    // Commit BOTH the user turn and the agent reply to history only
+    // after a successful reply. If the LLM failed we leave history
+    // untouched so the user can retry without polluting the thread
+    // with an orphan user line the model never saw.
+    deps.history.append(ctx.sid, 'user', userMessage, ctx.nowMs);
+    deps.history.append(ctx.sid, 'agent', reply, ctx.nowMs);
     deps.log(
       `[chat] reply ok (provider=${providerLabel} ` +
-      `${totalTokens} tok, ${durationMs} ms, sid=${ctx.sid.slice(0, 8)}...)`,
+      `${totalTokens} tok, ${durationMs} ms, turns=${priorTurns.length / 2 | 0}+1, ` +
+      `sid=${ctx.sid.slice(0, 8)}...)`,
     );
     return {
       ok: true,
