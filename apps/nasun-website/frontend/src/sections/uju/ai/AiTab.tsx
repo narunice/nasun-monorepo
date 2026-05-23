@@ -18,6 +18,7 @@ import { useAuth } from '@/features/auth';
 import { AgentDetail, SUB_TABS, normalizeSubTab, type AgentSubTab } from './pages/AgentDetail';
 import { Budgets } from './pages/Budgets';
 import { QuickstartView } from './pages/QuickstartView';
+import { AgentLeaderboard } from './pages/AgentLeaderboard';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { AgentsSidebar } from './components/AgentsSidebar';
 import { AlphaNoticePanel } from './components/AlphaNoticePanel';
@@ -235,6 +236,13 @@ export function AiTab() {
         prefillAgent={prefillAgent}
       />
     );
+  } else if (view === 'leaderboard') {
+    body = (
+      <AgentLeaderboard
+        onBack={() => updateView(null)}
+        onSelectAgent={(profileId) => updateView('detail', { agent: profileId, sub: 'overview' })}
+      />
+    );
   } else {
     body = (
       <QuickstartView
@@ -266,7 +274,7 @@ export function AiTab() {
           createBlockedMessage={createBlock.message}
         />
         <main className="flex-1 min-w-0 space-y-4">
-          {view !== 'budgets' && (
+          {view !== 'budgets' && view !== 'leaderboard' && (
             <SubTabBar
               agentName={
                 view === 'detail' && agentId
@@ -276,6 +284,7 @@ export function AiTab() {
               subTab={view === 'detail' ? sub : null}
               disabled={view !== 'detail' || !agentId}
               onChangeSub={handleChangeSub}
+              onLeaderboard={() => updateView('leaderboard')}
             />
           )}
           {body}
@@ -307,6 +316,7 @@ interface SubTabBarProps {
   subTab: AgentSubTab | null;
   disabled: boolean;
   onChangeSub: (next: AgentSubTab) => void;
+  onLeaderboard: () => void;
 }
 
 // Always-visible sub-tab row. Lives at the top of the AI tab's right column
@@ -314,7 +324,7 @@ interface SubTabBarProps {
 // pick an agent. The currently selected agent's name is rendered on the left
 // as the primary identity cue; when no agent is selected the tabs render
 // disabled and the label reads "No agent selected".
-function SubTabBar({ agentName, subTab, disabled, onChangeSub }: SubTabBarProps) {
+function SubTabBar({ agentName, subTab, disabled, onChangeSub, onLeaderboard }: SubTabBarProps) {
   // 3-column grid: left (agent name, truncates) / center (tabs, fixed position
   // regardless of name length) / right (mirror spacer for visual symmetry).
   // The 1fr…auto…1fr pattern keeps the centered tabs locked in place; if the
@@ -360,7 +370,19 @@ function SubTabBar({ agentName, subTab, disabled, onChangeSub }: SubTabBarProps)
           );
         })}
       </div>
-      <div aria-hidden="true" />
+      <div className="flex justify-end px-2">
+        <button
+          type="button"
+          onClick={onLeaderboard}
+          className="flex items-center gap-1 px-2.5 py-1 text-xs text-uju-secondary hover:text-white rounded-md hover:bg-uju-card/60 transition-colors"
+          title="Agent Leaderboard"
+        >
+          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h2v8H3zm8-6h2v14h-2zm8-4h2v18h-2z" />
+          </svg>
+          Leaderboard
+        </button>
+      </div>
     </div>
   );
 }
