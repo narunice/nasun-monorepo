@@ -404,12 +404,26 @@ export function QuickStartWizardModal({
           walletAddress={walletAddress}
           onClose={() => setActivateChildOpen(false)}
           onActivated={() => {
-            // Vault state flips to 'active' shortly after pm2 spawn. The
-            // hook's natural 5s polling would catch it within seconds,
-            // but an explicit refresh kicks the fast-window forward so
-            // the Step 5 done check advances as soon as the chat-server
-            // confirms the upload (typically <1s after onActivated).
-            void vaultStatus.refresh();
+            // Phase 6 (2026-05-23): flip enabled=true so the chat-server
+            // orchestrator's reconcile spawns PM2. Vault upload alone is
+            // no longer sufficient since the orchestrator now refuses to
+            // spawn disabled agents.
+            void (async () => {
+              if (traderConfig) {
+                const {
+                  id: _id,
+                  walletAddress: _w,
+                  createdAt: _c,
+                  updatedAt: _u,
+                  ...rest
+                } = traderConfig;
+                await traderConfigSave({ ...rest, enabled: true });
+              }
+              // Vault state flips to 'active' shortly after pm2 spawn.
+              // Explicit refresh kicks the fast-window forward so Step 5
+              // done check advances as soon as chat-server confirms.
+              void vaultStatus.refresh();
+            })();
           }}
         />
       )}
