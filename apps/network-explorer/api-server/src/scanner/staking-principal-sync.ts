@@ -15,9 +15,9 @@
  * next cycle (1 hour later) retries.
  */
 
-import { rpcCall } from '../rpc';
-import { pointsDb } from '../db';
-import { sendTelegramAlert } from '../utils/alert';
+import { rpcCall } from '../rpc.js';
+import { pointsDb } from '../db.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const RPC_CONCURRENCY = 20;

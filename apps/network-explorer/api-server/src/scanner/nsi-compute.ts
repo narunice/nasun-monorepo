@@ -24,8 +24,8 @@
  * `ecosystem_score_snapshots` table cannot block or corrupt NSI computation.
  */
 
-import { sql as indexerDb, pointsDb } from '../db';
-import { sendTelegramAlert } from '../utils/alert';
+import { sql as indexerDb, pointsDb } from '../db.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 
 const COMPUTE_INTERVAL_MS = 60 * 60 * 1000; // 1h
 

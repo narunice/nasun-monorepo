@@ -14,9 +14,9 @@
  * at a time during the 24h gate sequence.
  */
 
-import { startStakingPrincipalSync } from '../scanner/staking-principal-sync';
-import { startLpPositionSync } from '../scanner/lp-position-sync';
-import { startNsiCompute } from '../scanner/nsi-compute';
+import { startStakingPrincipalSync } from '../scanner/staking-principal-sync.js';
+import { startLpPositionSync } from '../scanner/lp-position-sync.js';
+import { startNsiCompute } from '../scanner/nsi-compute.js';
 
 console.log('[tier-worker] starting');
 console.log('[tier-worker] ENABLE_STAKING_PRINCIPAL_SYNC =', process.env.ENABLE_STAKING_PRINCIPAL_SYNC ?? 'unset');
