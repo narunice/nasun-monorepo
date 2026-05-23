@@ -170,3 +170,39 @@ describe('handleAgentPushRequest', () => {
     expect(r.json.error).toBe('invalid_json');
   });
 });
+
+// Regression guard for the prod incident on 2026-05-23: handleBaramTelegramRequest
+// (baram-telegram-routes.ts) claims the entire `/api/nasun-ai/agent/` prefix and
+// returns 404 for any sub-path it does not explicitly handle. server.ts MUST mount
+// handleAgentPushRequest BEFORE handleBaramTelegramRequest, otherwise pushes are
+// swallowed with `{"error":"not_found"}` before reaching our route.
+//
+// This test imports both handlers and asserts the conflict still exists, so a
+// future refactor that removes the conflict won't silently let the mount ordering
+// rot. If this test ever fails, re-evaluate server.ts comment around the mount.
+describe('mount ordering invariant vs handleBaramTelegramRequest', () => {
+  it('handleBaramTelegramRequest claims /api/nasun-ai/agent/push as its prefix', async () => {
+    const { handleBaramTelegramRequest } = await import('../baram-telegram-routes.js');
+    const mod = await import('node:http');
+    let observedStatus = 0;
+    let observedBody = '';
+    // Stub req/res to capture the swallow behavior without binding a port.
+    const req = Object.assign(new (mod as any).IncomingMessage(null as any), {
+      method: 'POST',
+      url: '/api/nasun-ai/agent/push',
+      headers: { 'content-type': 'application/json' },
+    });
+    const res = {
+      writeHead(status: number) { observedStatus = status; return this; },
+      end(body?: string) { if (body) observedBody = body; },
+      headersSent: false,
+    } as unknown as import('node:http').ServerResponse;
+    const url = new URL('http://localhost/api/nasun-ai/agent/push');
+    const handled = await handleBaramTelegramRequest(req, res, url, {});
+    expect(handled).toBe(true);
+    // If this assertion changes (e.g. handler now returns false or 200), the
+    // server.ts mount ordering may no longer be load-bearing.
+    expect(observedStatus).toBe(404);
+    expect(observedBody).toContain('not_found');
+  });
+});
