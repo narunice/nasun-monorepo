@@ -147,6 +147,17 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           graceEndsAt={vault.graceEndsAt}
           configEnabled={config?.enabled ?? null}
           onActivate={requestActivate}
+          onResume={() => {
+            // Soft resume: vault key already on the server; just flip
+            // enabled:true so the orchestrator's reconcile spawns PM2.
+            void (async () => {
+              if (!config) return;
+              const { id: _id, walletAddress: _w, createdAt: _c, updatedAt: _u, ...rest } = config;
+              const saved = await save({ ...rest, enabled: true });
+              if (!saved) return;
+              void vault.refresh();
+            })();
+          }}
           onDeactivate={() => setDeactivateOpen(true)}
           onRestore={() => setRestoreOpen(true)}
         />
@@ -273,6 +284,12 @@ interface ServerStatusCardProps {
    */
   configEnabled?: boolean | null;
   onActivate: () => void;
+  /**
+   * Soft resume — flip trader-config enabled:true without re-uploading
+   * the vault key (which is already on the server). Distinct from
+   * onActivate, which is for the not_vaulted state.
+   */
+  onResume: () => void;
   onDeactivate: () => void;
   onRestore: () => void;
 }
@@ -282,6 +299,7 @@ function ServerStatusCard({
   graceEndsAt,
   configEnabled,
   onActivate,
+  onResume,
   onDeactivate,
   onRestore,
 }: ServerStatusCardProps) {
@@ -343,6 +361,18 @@ function ServerStatusCard({
             className="px-3 py-2 rounded-lg bg-pado-2 text-uju-bg text-sm font-medium hover:bg-pado-3 transition-colors"
           >
             Activate on server
+          </button>
+        )}
+        {/* Phase 7 v2: when the agent is paused (vault present, enabled
+            false), surface a quick Resume action alongside Deactivate so
+            the user is not stuck with only the destructive option. */}
+        {state === 'inactive' && configEnabled === false && (
+          <button
+            type="button"
+            onClick={onResume}
+            className="px-3 py-2 rounded-lg bg-pado-2 text-uju-bg text-sm font-medium hover:bg-pado-3 transition-colors"
+          >
+            Activate
           </button>
         )}
         {(state === 'active' || state === 'inactive') && (
