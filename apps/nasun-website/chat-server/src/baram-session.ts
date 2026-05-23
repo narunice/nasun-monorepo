@@ -181,20 +181,35 @@ export function getActiveSessionByTgUser(tgUserId: string): BaramSessionRow | nu
 
 export function bindTelegramUser(sid: string, tgUserId: string): boolean {
   // Called after the user opens the deep link and the bot routes /start <sid>
-  // through the Telegram webhook handler (D-2). One-shot bind: refuses if the
-  // row already has a tg_user_id OR if the session is revoked/expired.
+  // through the Telegram webhook handler (D-2).
+  //
+  // Enforces one active TG session per Telegram account (Option A): all other
+  // active sessions bound to this tg_user_id are revoked atomically before the
+  // new one is bound. One-shot bind: refuses if the target row already has a
+  // tg_user_id OR is revoked/expired.
   const now = Date.now();
-  const result = getDb()
-    .prepare(
+  const db = getDb();
+
+  const bound = db.transaction((): boolean => {
+    // Revoke every other active session already linked to this Telegram user.
+    db.prepare(
+      `UPDATE baram_sessions
+         SET revoked_at = ?
+       WHERE tg_user_id = ? AND revoked_at IS NULL AND expires_at > ? AND sid != ?`,
+    ).run(now, tgUserId, now, sid);
+
+    const result = db.prepare(
       `UPDATE baram_sessions
          SET tg_user_id = ?
        WHERE sid = ?
          AND tg_user_id IS NULL
          AND revoked_at IS NULL
          AND expires_at > ?`,
-    )
-    .run(tgUserId, sid, now);
-  return result.changes > 0;
+    ).run(tgUserId, sid, now);
+    return result.changes > 0;
+  })();
+
+  return bound;
 }
 
 // === JWT (HS256) ===
