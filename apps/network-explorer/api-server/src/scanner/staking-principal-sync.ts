@@ -18,6 +18,7 @@
 import { rpcCall } from '../rpc.js';
 import { pointsDb } from '../db.js';
 import { sendTelegramAlert } from '../utils/alert.js';
+import { getLatestWalletPerIdentity } from './identity-wallet.js';
 
 const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
 const RPC_CONCURRENCY = 20;
@@ -63,24 +64,12 @@ async function runSync(): Promise<void> {
   const started = Date.now();
 
   try {
-    // Latest wallet per identity from activity_points. The naive
-    // `DISTINCT (identity_id, wallet_address)` is a full sequential scan on
-    // an 18M-row, 12GB table (no composite index) and hits the 30s
-    // statement_timeout. `DISTINCT ON (identity_id) ... ORDER BY identity_id,
-    // tx_timestamp DESC` rides the existing idx_ap_identity_timestamp index
-    // — same pattern as nsi-compute.ts Stage F.
-    const wallets = await pointsDb<Array<{ identity_id: string; wallet_address: string }>>`
-      SELECT DISTINCT ON (identity_id) identity_id, wallet_address
-      FROM activity_points
-      WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-      ORDER BY identity_id, tx_timestamp DESC
-    `;
-
+    // Latest wallet per identity. See identity-wallet.ts for why the loose
+    // index scan (skip scan) helper is required over the naive DISTINCT ON.
+    const latestWallet = await getLatestWalletPerIdentity();
     const byIdentity = new Map<string, string[]>();
-    for (const { identity_id, wallet_address } of wallets) {
-      const list = byIdentity.get(identity_id) ?? [];
-      list.push(wallet_address);
-      byIdentity.set(identity_id, list);
+    for (const [identity_id, wallet_address] of latestWallet) {
+      byIdentity.set(identity_id, [wallet_address]);
     }
 
     const results = new Map<string, { mist: bigint; partialFailure: boolean }>();
