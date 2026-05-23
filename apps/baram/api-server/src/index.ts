@@ -4,12 +4,16 @@ import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { sql, initSchema } from './db.js';
 import { startSyncWorker, getSyncStatus } from './sync/aer-sync.js';
+import { startAgentProfileSync } from './sync/agent-profile-sync.js';
 import aerRoutes from './routes/aer.js';
 import type { Context, Next } from 'hono';
 
 const PORT = Number(process.env.PORT ?? 3201);
 const RPC_URL = process.env.SUI_RPC_URL ?? 'https://rpc.devnet.nasun.io';
 const AER_PACKAGE_ID = process.env.AER_PACKAGE_ID;
+// Agent package (contracts-agent: agent_profile module). Defaults to AER_PACKAGE_ID
+// for single-package deployments where agent + AER share the same publish.
+const AGENT_PACKAGE_ID = process.env.AGENT_PACKAGE_ID ?? process.env.AER_PACKAGE_ID;
 
 if (!AER_PACKAGE_ID) {
   throw new Error('AER_PACKAGE_ID environment variable is required');
@@ -112,8 +116,11 @@ process.on('SIGINT', shutdown);
 async function start() {
   await initSchema();
 
-  // Start sync worker (runs in-process)
+  // Start sync workers (run in-process)
+  const { SuiClient } = await import('@mysten/sui/client');
+  const suiClient = new SuiClient({ url: RPC_URL });
   startSyncWorker(RPC_URL, AER_PACKAGE_ID!);
+  startAgentProfileSync(suiClient, AGENT_PACKAGE_ID!);
 
   // Start HTTP server
   console.log(`Baram API starting on port ${PORT}`);

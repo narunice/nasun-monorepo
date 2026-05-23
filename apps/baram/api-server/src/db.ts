@@ -163,5 +163,30 @@ export async function initSchema(): Promise<void> {
     )
   `;
 
+  // Phase 2: Agent Leaderboard foundation.
+  // agent_profiles: synced from on-chain AgentCreated/Deactivated/CapabilityLinked events.
+  await sql`
+    CREATE TABLE IF NOT EXISTS agent_profiles (
+      profile_id        text PRIMARY KEY,
+      owner             text NOT NULL,
+      agent_address     text NOT NULL,
+      name              text NOT NULL,
+      role              text NOT NULL,
+      capability_id     text,
+      is_active         boolean NOT NULL DEFAULT true,
+      created_at_ms     bigint NOT NULL,
+      last_event_at     timestamptz NOT NULL DEFAULT NOW(),
+      deactivated_at_ms bigint
+    )
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_agent_profiles_owner
+      ON agent_profiles(owner) WHERE is_active = true
+  `;
+  await sql`
+    CREATE INDEX IF NOT EXISTS idx_agent_profiles_capability
+      ON agent_profiles(capability_id) WHERE capability_id IS NOT NULL
+  `;
+
   console.log('[db] Schema initialized');
 }
