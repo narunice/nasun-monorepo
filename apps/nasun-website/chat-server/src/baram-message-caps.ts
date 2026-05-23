@@ -64,6 +64,31 @@ export function reserveCognitionSlot(wallet: string, nowMs: number = Date.now())
 }
 
 /**
+ * Refund one cognition slot reserved earlier in the same UTC day. Called when
+ * a wake call fails downstream (RPC timeout, runtime crash, infer_failed) so
+ * the user doesn't lose a slot to a failure they didn't cause.
+ *
+ * Atomic: decrements only when count > 0 to avoid going negative. Returns the
+ * post-decrement count, or null if no row exists (nothing to refund).
+ *
+ * Do NOT refund on legitimate caller errors (cap_reached, daily limit, etc.)
+ * or on successful wakes — even a no-op summary consumed an LLM call.
+ */
+export function releaseCognitionSlot(wallet: string, nowMs: number = Date.now()): { used: number } | null {
+  const date = utcDateString(nowMs);
+  const normWallet = wallet.toLowerCase();
+  const row = getDb()
+    .prepare(
+      `UPDATE baram_message_caps
+         SET cognition_count = cognition_count - 1
+       WHERE wallet = ? AND date = ? AND cognition_count > 0
+       RETURNING cognition_count`,
+    )
+    .get(normWallet, date) as { cognition_count: number } | undefined;
+  return row ? { used: row.cognition_count } : null;
+}
+
+/**
  * Peek today's usage without reserving. Useful for diagnostics or UI.
  */
 export function getCognitionUsage(wallet: string, nowMs: number = Date.now()): { used: number; cap: number; date: string } {

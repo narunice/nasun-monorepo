@@ -269,6 +269,75 @@ export function enforceAlphaGuards(
 }
 
 /**
+ * Read-only gate for the web chat surface. Unlike `enforceAlphaGuards`,
+ * this is NOT a createAgent context — there is no SSM put, no per-wallet
+ * cap collision, no new slot to reserve. The user already passed
+ * `enforceAlphaGuards` when their agent was created; this function only
+ * verifies that the wallet still has the right to use the runtime they
+ * already provisioned.
+ *
+ * Returns `{ ok: true }` when chat is allowed, or `{ ok: false, reason }`
+ * with a stable code the caller maps to user-facing text.
+ *
+ * Allowed when:
+ *   - alpha gate disabled (pre-launch / staging escape hatch), OR
+ *   - the agent row is slot-exempt (santa/admin), OR
+ *   - the wallet has at least one active agent in agent_keys
+ *     (deleted_at IS NULL AND paused_at IS NULL).
+ *
+ * Rejected when the wallet has no active agent OR the agent row is paused
+ * (compliance pause, suspected abuse). 'invited' state without an active
+ * agent is also rejected — the user needs to complete agent creation first.
+ */
+export interface ChatGuardResult {
+  ok: boolean;
+  reason?: 'alpha_gate_off_but_no_agent' | 'no_active_agent' | 'agent_paused' | 'wallet_not_authorized';
+}
+
+interface AgentChatRow { paused_at: number | null; slot_exempt: number }
+
+export function isWalletAlphaActiveForChat(walletAddress: string, agentAddress: string): ChatGuardResult {
+  const wallet = walletAddress.toLowerCase();
+  const agent = agentAddress.toLowerCase();
+
+  // Wallet must own this specific agent row (defense-in-depth on top of the
+  // on-chain capability owner check the caller does separately).
+  //
+  // paused_at + slot_exempt are added by scripts/alpha-migration.sql; in
+  // pre-migration environments fall back to a column-agnostic query so chat
+  // still works on dev boxes that haven't applied the migration yet.
+  let row: AgentChatRow | undefined;
+  try {
+    row = getDb()
+      .prepare(
+        `SELECT paused_at, slot_exempt FROM agent_keys
+          WHERE wallet_address = ? AND agent_address = ? AND deleted_at IS NULL`,
+      )
+      .get(wallet, agent) as AgentChatRow | undefined;
+  } catch {
+    // Column missing — try the minimal query.
+    const fallback = getDb()
+      .prepare(
+        `SELECT 1 AS ok FROM agent_keys
+          WHERE wallet_address = ? AND agent_address = ? AND deleted_at IS NULL`,
+      )
+      .get(wallet, agent) as { ok: number } | undefined;
+    return fallback ? { ok: true } : { ok: false, reason: 'wallet_not_authorized' };
+  }
+
+  if (!row) {
+    return { ok: false, reason: 'wallet_not_authorized' };
+  }
+
+  if (row.paused_at !== null) {
+    // slot_exempt rows can still be paused (e.g. for ops); honor the pause.
+    return { ok: false, reason: 'agent_paused' };
+  }
+
+  return { ok: true };
+}
+
+/**
  * Called after a successful createAgent / restore to clear the user's
  * waitlist row. Idempotent — safe to call even when no row exists
  * (e.g. santa, or when the gate is OFF and no row was ever created).

@@ -22,7 +22,7 @@
 //   - Telegram receives HTTP 200 immediately (handled in baram-telegram-routes.ts)
 //   - This module drives the background work: typing loop, /wake call, reply
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual } from 'node:crypto';
 import { ulid } from 'ulid';
 import { getDb } from './store.js';
 import {
@@ -41,6 +41,11 @@ import {
 import { reserveCognitionSlot } from './baram-message-caps.js';
 import { checkBudgetSufficient } from './baram-budget-guard.js';
 import { describeFetchError } from './fetch-error.js';
+import {
+  forwardToWake,
+  WAKE_SOFT_NOTICE_MS,
+  type WakeBody,
+} from './wake-proxy.js';
 import type { Proposal } from '@nasun/baram-sdk';
 
 // ===== Telegram Bot API helpers =====
@@ -233,17 +238,9 @@ export function verifyWebhookToken(headerValue: string | undefined): boolean {
   return timingSafeEqual(expected, provided);
 }
 
-// ===== HMAC for /wake body signing =====
-
-function getHmacSecret(): Buffer {
-  const raw = process.env.BARAM_CHAT_SERVER_HMAC_SECRET;
-  if (!raw || raw.length < 32) throw new Error('BARAM_CHAT_SERVER_HMAC_SECRET missing or too short');
-  return Buffer.from(raw, 'hex');
-}
-
-function signBody(bodyJson: string): string {
-  return createHmac('sha256', getHmacSecret()).update(bodyJson, 'utf8').digest('hex');
-}
+// HMAC + forwardToWake live in ./wake-proxy.ts so the web chat surface
+// (chat-wake.ts) and the Telegram surface share one byte-identical wire
+// contract. See that module for the HMAC scheme.
 
 // Map a runtime/Lambda wake-failure reason to an actionable user-facing
 // message. Generic "could not process that right now" is unhelpful when the
@@ -290,70 +287,8 @@ function formatWakeFailureMessage(reason: string): string {
   return 'Your agent could not process that right now. Please try again shortly.';
 }
 
-// ===== Wake forwarding =====
-
-// D-6 async UX: a wake call may take longer than the perceived "wait" window.
-// We tell the user "still working" at 30s but keep awaiting up to 120s for the
-// real result. This avoids the previous bug where the fetch aborted at 28s
-// just before the "still working" notice fired, leaving the user with neither
-// the result nor a clear status.
-const WAKE_SOFT_NOTICE_MS = 30_000;
-const WAKE_HARD_TIMEOUT_MS = 120_000;
-
-interface WakeBody {
-  job_id: string;
-  jwt: string;
-  trigger_type: 'user_message' | 'manual';
-  intent_id: string;
-  parent_intent_id?: string;
-  message?: string;
-}
-
-interface WakeResult {
-  ok: boolean;
-  status?: string;
-  reason?: string;
-  summary?: string;
-  proposal?: Proposal;
-  error?: string;
-}
-
-async function forwardToWake(
-  wakeUrl: string,
-  body: WakeBody,
-  timeoutMs: number = WAKE_HARD_TIMEOUT_MS,
-): Promise<WakeResult> {
-  const bodyJson = JSON.stringify(body);
-  const hmac = signBody(bodyJson);
-  try {
-    const res = await fetch(wakeUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-HMAC': hmac,
-      },
-      body: bodyJson,
-      signal: AbortSignal.timeout(timeoutMs),
-    });
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      return { ok: false, error: `wake_http_${res.status}: ${text.slice(0, 100)}` };
-    }
-    const json = (await res.json()) as Record<string, unknown>;
-    const reason = typeof json.reason === 'string' ? json.reason : undefined;
-    const status = typeof json.status === 'string' ? json.status : undefined;
-    return {
-      ok: json.ok === true,
-      status,
-      reason,
-      summary: typeof json.summary === 'string' ? json.summary : undefined,
-      proposal: json.proposal != null ? (json.proposal as Proposal) : undefined,
-      error: json.ok === true ? undefined : reason,
-    };
-  } catch (err) {
-    return { ok: false, error: describeFetchError(err) };
-  }
-}
+// Wake forwarding helpers (forwardToWake, WakeBody, timeouts) are imported
+// from ./wake-proxy.ts above.
 
 // ===== Failure-reason mapping =====
 //

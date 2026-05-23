@@ -14,7 +14,8 @@ import { randomUUID, randomBytes, createHmac, timingSafeEqual } from 'node:crypt
 import { getDb } from './store.js';
 
 const SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
-const JWT_TTL_SEC = 300; // 5 minutes
+const JWT_TTL_SEC = 300; // 5 minutes — wake-server JWT (chat-server → runtime)
+const CHAT_TOKEN_TTL_SEC = 600; // 10 minutes — chatToken (browser → chat-server)
 
 // SQLite TEXT can store full 64-hex Sui addresses fine. We normalize on write
 // so the wallet index is deterministic regardless of caller casing.
@@ -132,6 +133,36 @@ export function revokeSession(sid: string, wallet: string): RevokeResult {
     )
     .run(Date.now(), sid, w);
   return { changed: result.changes > 0 };
+}
+
+/**
+ * Look up an active session for (wallet, agent, capability) — the lookup used
+ * by the web chat surface to find an existing row before lazy-creating a new
+ * one. Returns the most recently created active row, or null if none.
+ *
+ * Unlike `getActiveSessionByTgUser`, the result here may have tg_user_id=NULL
+ * (web-only sessions are never bound to a Telegram user).
+ */
+export function getActiveSessionByWalletAgent(
+  wallet: string,
+  agent: string,
+  capabilityId: string,
+): BaramSessionRow | null {
+  const w = normalizeAddress(wallet);
+  const a = normalizeAddress(agent);
+  const c = normalizeAddress(capabilityId);
+  const now = Date.now();
+  const row = getDb()
+    .prepare(
+      `SELECT sid, wallet, agent, capability_id, tg_user_id, expires_at, revoked_at, created_at
+       FROM baram_sessions
+       WHERE wallet = ? AND agent = ? AND capability_id = ?
+         AND revoked_at IS NULL AND expires_at > ?
+       ORDER BY created_at DESC
+       LIMIT 1`,
+    )
+    .get(w, a, c, now) as RawRow | undefined;
+  return row ? rowToSession(row) : null;
 }
 
 export function getActiveSessionByTgUser(tgUserId: string): BaramSessionRow | null {
@@ -267,12 +298,104 @@ export function verifyJWT(token: string): VerifyJwtResult | VerifyJwtFailure {
   return { ok: true, sid: payload.sid, exp: payload.exp };
 }
 
+// === chat-wake scoped token (web chat surface) ===
+//
+// Distinct from issueShortLivedJWT (wake-server JWT) in two ways:
+//   1. TTL is 10 minutes so the browser only needs one wallet signature per
+//      casual chat session (5 min wake JWT is fine for runtime->server, but
+//      forcing the user to popup re-sign every 5 minutes is hostile UX).
+//   2. payload.scope = 'chat-wake' so a token minted for the web surface
+//      cannot be presented to /wake directly — runtime's verifyJWT does not
+//      check scope (back-compat), but our chat-server verifyChatToken DOES,
+//      so a stolen wake JWT cannot be used to poll/issue web chat traffic.
+//
+// Same HMAC key + same algorithm as the wake JWT, so secret rotation is one
+// operation.
+
+interface ChatJwtPayload {
+  sid: string;
+  scope: 'chat-wake';
+  iat: number;
+  exp: number;
+  jti: string;
+}
+
+export function issueChatToken(sid: string): { token: string; expiresAt: number } {
+  const session = getSession(sid);
+  if (!session) throw new SessionInactiveError('unknown');
+  if (session.revokedAt !== null) throw new SessionInactiveError('revoked');
+  const nowMs = Date.now();
+  if (session.expiresAt <= nowMs) throw new SessionInactiveError('expired');
+  const nowSec = Math.floor(nowMs / 1000);
+  const expSec = nowSec + CHAT_TOKEN_TTL_SEC;
+
+  const payload: ChatJwtPayload = {
+    sid,
+    scope: 'chat-wake',
+    iat: nowSec,
+    exp: expSec,
+    jti: randomBytes(8).toString('hex'),
+  };
+  const payloadB64 = b64urlEncode(Buffer.from(JSON.stringify(payload), 'utf8'));
+  const signingInput = `${JWT_HEADER_B64}.${payloadB64}`;
+  const sig = createHmac('sha256', getJwtSecret()).update(signingInput).digest();
+  return { token: `${signingInput}.${b64urlEncode(sig)}`, expiresAt: expSec * 1000 };
+}
+
+export interface VerifyChatTokenSuccess {
+  ok: true;
+  sid: string;
+  exp: number;
+}
+
+export type VerifyChatTokenFailure =
+  | { ok: false; reason: 'malformed' }
+  | { ok: false; reason: 'bad_header' }
+  | { ok: false; reason: 'bad_signature' }
+  | { ok: false; reason: 'bad_payload' }
+  | { ok: false; reason: 'bad_scope' }
+  | { ok: false; reason: 'expired' };
+
+export function verifyChatToken(token: string): VerifyChatTokenSuccess | VerifyChatTokenFailure {
+  const parts = token.split('.');
+  if (parts.length !== 3) return { ok: false, reason: 'malformed' };
+  const [headerB64, payloadB64, sigB64] = parts;
+  if (headerB64 !== JWT_HEADER_B64) return { ok: false, reason: 'bad_header' };
+
+  const signingInput = `${headerB64}.${payloadB64}`;
+  const expectedSig = createHmac('sha256', getJwtSecret()).update(signingInput).digest();
+  let providedSig: Buffer;
+  try {
+    providedSig = b64urlDecode(sigB64);
+  } catch {
+    return { ok: false, reason: 'bad_signature' };
+  }
+  if (providedSig.length !== expectedSig.length) return { ok: false, reason: 'bad_signature' };
+  if (!timingSafeEqual(providedSig, expectedSig)) return { ok: false, reason: 'bad_signature' };
+
+  let payload: ChatJwtPayload;
+  try {
+    payload = JSON.parse(b64urlDecode(payloadB64).toString('utf8')) as ChatJwtPayload;
+  } catch {
+    return { ok: false, reason: 'bad_payload' };
+  }
+  if (typeof payload.sid !== 'string' || typeof payload.exp !== 'number') {
+    return { ok: false, reason: 'bad_payload' };
+  }
+  if (payload.scope !== 'chat-wake') return { ok: false, reason: 'bad_scope' };
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (payload.exp <= nowSec) return { ok: false, reason: 'expired' };
+
+  return { ok: true, sid: payload.sid, exp: payload.exp };
+}
+
 // === Test helpers ===
 // Exposed only for unit tests; production callers should rely on the public
 // surface above.
 export const __testing__ = {
   SESSION_TTL_MS,
   JWT_TTL_SEC,
+  CHAT_TOKEN_TTL_SEC,
   b64urlEncode,
   b64urlDecode,
 };
