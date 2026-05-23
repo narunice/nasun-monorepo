@@ -57,7 +57,8 @@ const MAX_BODY_BYTES = 16 * 1024;
 export type Purpose =
   | 'link' | 'revoke' | 'list'
   | 'vault-upload' | 'vault-delete' | 'vault-restore'
-  | 'alpha-join' | 'alpha-leave';
+  | 'alpha-join' | 'alpha-leave'
+  | 'chat-wake';
 
 export interface ChallengeEntry {
   wallet: string;
@@ -71,7 +72,7 @@ export interface ChallengeEntry {
 
 export const pendingChallenges = new Map<string, ChallengeEntry>();
 
-function cleanupExpiredChallenges(): void {
+export function cleanupExpiredChallenges(): void {
   const now = Date.now();
   for (const [k, v] of pendingChallenges) {
     if (v.expiresAt < now) pendingChallenges.delete(k);
@@ -134,6 +135,17 @@ export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, non
       lines.push('Nasun AI: Leave alpha waitlist');
       lines.push(`Wallet: ${entry.wallet}`);
       break;
+    // chat-wake: web client signs once per (wallet, agent, capability) tuple
+    // to obtain a short-lived chatToken. Agent + capability are baked into
+    // the challenge so the user's wallet UI shows exactly which agent the
+    // signature authorizes — a phished signature for one agent cannot be
+    // reused to chat with a different agent.
+    case 'chat-wake':
+      lines.push('Nasun AI: Start web chat session');
+      lines.push(`Wallet: ${entry.wallet}`);
+      lines.push(`Agent: ${entry.agent}`);
+      lines.push(`Capability: ${entry.capabilityId}`);
+      break;
   }
   lines.push(`Nonce: ${nonce}`);
   lines.push(`Issued: ${issuedIso}`);
@@ -143,7 +155,7 @@ export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, non
 export const VAULT_CHALLENGE_TTL_MS = CHALLENGE_TTL_MS;
 export const VAULT_MAX_PENDING_CHALLENGES = MAX_PENDING_CHALLENGES;
 
-async function readJsonBody(req: import('node:http').IncomingMessage): Promise<unknown> {
+export async function readJsonBody(req: import('node:http').IncomingMessage): Promise<unknown> {
   return new Promise((resolve, reject) => {
     let body = '';
     let bytes = 0;
@@ -164,7 +176,7 @@ async function readJsonBody(req: import('node:http').IncomingMessage): Promise<u
   });
 }
 
-function writeJson(
+export function writeJson(
   res: import('node:http').ServerResponse,
   status: number,
   headers: Record<string, string>,

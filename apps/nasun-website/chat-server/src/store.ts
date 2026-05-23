@@ -153,6 +153,12 @@ export function initStore(config: ChatServerConfig): void {
     CREATE INDEX IF NOT EXISTS idx_baram_sessions_wallet ON baram_sessions(wallet);
     CREATE INDEX IF NOT EXISTS idx_baram_sessions_tg_user
       ON baram_sessions(tg_user_id) WHERE tg_user_id IS NOT NULL;
+    -- Speeds up getActiveSessionByWalletAgent (web chat-wake lookup) so the
+    -- common case of "user reopens chat" is a single index hit. Not UNIQUE —
+    -- intentionally allows multiple historical rows (revoked / expired) per
+    -- triple; the active lookup filters by revoked_at IS NULL AND expires_at>now.
+    CREATE INDEX IF NOT EXISTS idx_baram_sessions_wallet_agent_cap
+      ON baram_sessions(wallet, agent, capability_id);
     CREATE TABLE IF NOT EXISTS baram_agent_endpoints (
       agent TEXT PRIMARY KEY,
       http_url TEXT NOT NULL,
@@ -170,6 +176,91 @@ export function initStore(config: ChatServerConfig): void {
       PRIMARY KEY (wallet, date)
     );
   `);
+
+  // Web chat-wake jobs. Web chat is async: POST /chat/wake returns a jobId
+  // immediately, and the client polls GET /chat/wake/:jobId. The runtime
+  // dispatch happens in background (setImmediate), and the row is updated
+  // when the wake response arrives. Idempotency: (sid, idempotency_key)
+  // UNIQUE so a retry from the same browser session returns the prior jobId.
+  // expires_at is a hard TTL (10 minutes) used by a cleanup pass below.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS chat_wake_jobs (
+      job_id          TEXT PRIMARY KEY,
+      sid             TEXT NOT NULL,
+      wallet          TEXT NOT NULL,
+      agent           TEXT NOT NULL,
+      idempotency_key TEXT NOT NULL,
+      status          TEXT NOT NULL
+                      CHECK (status IN ('pending','done','error')),
+      outcome_json    TEXT,
+      reason          TEXT,
+      user_message    TEXT,
+      created_at      INTEGER NOT NULL,
+      updated_at      INTEGER NOT NULL,
+      expires_at      INTEGER NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS chat_wake_jobs_idempotency
+      ON chat_wake_jobs (sid, idempotency_key);
+    CREATE INDEX IF NOT EXISTS chat_wake_jobs_expires
+      ON chat_wake_jobs (expires_at);
+  `);
+
+  // Startup recovery: any 'pending' rows from before this restart will never
+  // complete (the in-flight fetch was lost). Mark them as errored AND refund
+  // the cognition slot each one consumed — the user never got an answer so
+  // they shouldn't lose their daily quota to a server-side restart.
+  //
+  // Two-step: first SELECT the (wallet, date-derived) pairs that need
+  // refunding, then mark + decrement. We use the UTC date embedded in
+  // baram_message_caps; rows that crossed UTC midnight between reserve and
+  // recovery are refunded against today's row (no-op if row doesn't exist).
+  try {
+    const now = Date.now();
+    const pendingRows = db
+      .prepare(
+        `SELECT job_id, wallet FROM chat_wake_jobs WHERE status = 'pending'`,
+      )
+      .all() as Array<{ job_id: string; wallet: string }>;
+
+    if (pendingRows.length > 0) {
+      const refundStmt = db.prepare(
+        `UPDATE baram_message_caps
+           SET cognition_count = cognition_count - 1
+         WHERE wallet = ? AND date = ? AND cognition_count > 0`,
+      );
+      const today = new Date(now).toISOString().slice(0, 10);
+      for (const r of pendingRows) {
+        try { refundStmt.run(r.wallet, today); } catch { /* best-effort */ }
+      }
+
+      db.prepare(
+        `UPDATE chat_wake_jobs
+           SET status = 'error',
+               reason = 'server_restarted',
+               user_message = 'Your request was interrupted by a service restart. Please try again.',
+               updated_at = ?
+         WHERE status = 'pending'`,
+      ).run(now);
+
+      console.log(`[chat-wake-jobs] recovered ${pendingRows.length} pending row(s) on boot`);
+    }
+
+    // Cleanup expired rows (older than expires_at) on each boot.
+    db.prepare(`DELETE FROM chat_wake_jobs WHERE expires_at < ?`).run(now);
+  } catch (err) {
+    console.warn('[chat-wake-jobs] startup recovery failed:', (err as Error).message);
+  }
+
+  // Periodic cleanup: drop expired rows every 10 minutes. Re-resolve the
+  // db handle each tick so we follow any future re-open (and so TS knows it
+  // is non-null at use time).
+  setInterval(() => {
+    try {
+      getDb().prepare(`DELETE FROM chat_wake_jobs WHERE expires_at < ?`).run(Date.now());
+    } catch (err) {
+      console.warn('[chat-wake-jobs] periodic cleanup failed:', (err as Error).message);
+    }
+  }, 10 * 60 * 1000).unref();
 
   // Plan D §D-6: budget_id column on agent_endpoints so chat-server can
   // pre-check the on-chain Budget balance before forwarding a /wake call.

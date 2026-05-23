@@ -18,6 +18,7 @@ import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
 import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
+import { handleChatWakeRequest } from './chat-wake.js';
 import {
   handleVaultChallenge,
   handleVaultUpload,
@@ -403,6 +404,14 @@ async function handleHttpRequest(
   // Baram (Nasun AI) Telegram session API — manages signed sessions between
   // user wallets and the Telegram bot. Handles its own OPTIONS for POST.
   if (await handleBaramTelegramRequest(req, res, url, corsHeaders)) {
+    return;
+  }
+
+  // Web chat-wake: trading-agent chat from the website (parallel to Telegram).
+  // Same wallet-sig + chatToken model as the rest of /api/nasun-ai/* but the
+  // dispatch is async (jobId + polling) so a 60-120s analyst cycle does not
+  // need a synchronous HTTP connection through CloudFront.
+  if (await handleChatWakeRequest(req, res, url, corsHeaders)) {
     return;
   }
 
