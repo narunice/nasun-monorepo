@@ -216,20 +216,18 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
       {hideAutoFields ? (
-        <div className="space-y-1">
-          <label className={labelClass}>Trading Pair</label>
-          <select value={pair} onChange={(e) => setPair(e.target.value as TraderPair)} className={inputClass}>
-            {PAIRS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-          </select>
-        </div>
+        <p className="text-sm text-uju-secondary/80">
+          NBTC/NUSDC only for the alpha test. Multi-pair support coming.
+        </p>
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className={labelClass}>Trading Pair</label>
-              <select value={pair} onChange={(e) => setPair(e.target.value as TraderPair)} className={inputClass}>
-                {PAIRS.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
-              </select>
+              <div className={`${inputClass} flex items-center justify-between cursor-default`} aria-readonly="true">
+                <span className="text-white">NBTC / NUSDC</span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-300">Alpha</span>
+              </div>
             </div>
             <div className="space-y-1">
               <label className={labelClass}>Model</label>
@@ -245,10 +243,10 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
             </div>
           </div>
 
-          <p className="text-sm text-uju-secondary/70 -mt-2">
-            Model and executor are auto-selected from a Lambda-verified pool for this
-            prototype. In a future iteration you&apos;ll be able to pick your own
-            model and executor directly.
+          <p className="text-xs text-uju-secondary/70 -mt-2">
+            NBTC/NUSDC only for the alpha test; multi-pair support coming. Model
+            and executor are auto-selected from a Lambda-verified pool for this
+            prototype.
           </p>
         </>
       )}

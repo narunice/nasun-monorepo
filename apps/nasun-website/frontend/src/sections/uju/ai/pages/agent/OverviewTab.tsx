@@ -58,22 +58,45 @@ export function OverviewTab({
       <div className="bg-uju-card rounded-xl p-4 border border-uju-border/60 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="text-sm font-semibold text-white truncate">{agent.name}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-sm font-semibold text-white truncate">{agent.name}</h3>
+              <span
+                className={`text-xs px-1.5 py-0.5 rounded ${
+                  agent.isActive
+                    ? 'bg-emerald-500/10 text-emerald-400'
+                    : 'bg-uju-secondary/10 text-uju-secondary'
+                }`}
+              >
+                {agent.isActive ? 'Active' : 'Inactive'}
+              </span>
+            </div>
             <p className="text-sm text-uju-secondary mt-0.5 flex items-center gap-1.5 flex-wrap">
               <span>{agent.role} -</span>
               <HashRef value={agent.agentAddress} kind="address" />
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-2">
-            <span
-              className={`text-xs px-1.5 py-0.5 rounded ${
-                agent.isActive
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'bg-uju-secondary/10 text-uju-secondary'
-              }`}
+            {/* Direct link to @nasun_ai_bot DM. Each user has only one DM
+                with the bot, and the agent's session is bound to that
+                conversation, so opening the bot DM is the correct chat
+                regardless of which agent is selected. */}
+            <a
+              href="https://t.me/nasun_ai_bot"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
             >
-              {agent.isActive ? 'Active' : 'Inactive'}
-            </span>
+              <svg
+                width={14}
+                height={14}
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z" />
+              </svg>
+              Open Telegram
+            </a>
             {agent.isActive ? (
               <button
                 type="button"
