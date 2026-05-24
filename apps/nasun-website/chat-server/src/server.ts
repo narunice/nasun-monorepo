@@ -646,7 +646,7 @@ async function handleHttpRequest(
     return;
   }
 
-  res.writeHead(422, corsHeaders);
+  res.writeHead(404, corsHeaders);
   res.end(JSON.stringify({ error: 'Not found' }));
 }
 
