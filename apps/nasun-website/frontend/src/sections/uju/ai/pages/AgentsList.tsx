@@ -9,9 +9,11 @@ import { useAgentProfiles, type AgentProfile } from '../hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../hooks/useAgentBudgets';
 import { useAgentAerStats } from '../hooks/useAgentAerStats';
 import { useCreateAgent } from '../hooks/useCreateAgent';
+import { useEnabledFlagMap } from '../hooks/useEnabledFlagMap';
 import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
 import { CreateAgentModal } from '../components/modals/CreateAgentModal';
 import { formatNusdcValue, truncateAddress, formatDate } from '../utils/format';
+import { deriveAgentStatus, type AgentDisplayStatus } from '../utils/agentStatus';
 
 interface AgentsListProps {
   walletAddress: string;
@@ -25,10 +27,18 @@ interface AgentsListProps {
 export function AgentCard({
   agent,
   budget,
+  runtimeEnabled,
   onSelect,
 }: {
   agent: AgentProfile;
   budget?: BudgetInfo;
+  /**
+   * Trader-config enabled flag (chat-server pause axis). When omitted the
+   * card falls back to a 2-state display because the parent did not load
+   * the batch enabled map. Pass this when you have it so the badge stays
+   * consistent with the sidebar's amber "Paused" rendering.
+   */
+  runtimeEnabled?: boolean;
   onSelect?: () => void;
 }) {
   const budgetTotal = budget ? Math.max(1, budget.balance + budget.totalSpent) : 1;
@@ -39,6 +49,17 @@ export function AgentCard({
   // On-chain AgentProfile.total_executions is never incremented (the Move
   // function exists but no caller wires it). Derive from AER records instead.
   const { executions } = useAgentAerStats(agent.owner, agent.agentAddress, agent.capabilityId);
+  const status: AgentDisplayStatus =
+    runtimeEnabled === undefined
+      ? agent.isActive ? 'active' : 'inactive'
+      : deriveAgentStatus(agent.isActive, runtimeEnabled);
+  const badgeClass =
+    status === 'active'
+      ? 'bg-emerald-500/10 text-emerald-400'
+      : status === 'paused'
+        ? 'bg-amber-500/10 text-amber-300'
+        : 'bg-uju-secondary/10 text-uju-secondary';
+  const badgeText = status === 'active' ? 'Active' : status === 'paused' ? 'Paused' : 'Inactive';
 
   return (
     <button
@@ -53,14 +74,8 @@ export function AgentCard({
             {agent.role} · {truncateAddress(agent.agentAddress)}
           </p>
         </div>
-        <span
-          className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
-            agent.isActive
-              ? 'bg-emerald-500/10 text-emerald-400'
-              : 'bg-uju-secondary/10 text-uju-secondary'
-          }`}
-        >
-          {agent.isActive ? 'Active' : 'Inactive'}
+        <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${badgeClass}`}>
+          {badgeText}
         </span>
       </div>
 
@@ -118,22 +133,36 @@ export function AgentsList({
   // enforced in useCreateAgent at submit time.
   const createBlock = useCreateAgentBlocked(walletAddress);
 
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'inactive'>(
+    'all',
+  );
+  const enabledFlags = useEnabledFlagMap(walletAddress);
 
   // Pre-compute counts so the filter chips can label themselves with the
-  // size of each bucket. Falls back to 0 while agents are loading.
+  // size of each bucket. Falls back to 0 while agents are loading. Uses
+  // the same 3-state derivation as each card and the sidebar so the
+  // bucket sizes always match what the user sees rendered.
   const counts = useMemo(() => {
     const list = agents ?? [];
-    const active = list.filter((a) => a.isActive).length;
-    return { all: list.length, active, inactive: list.length - active };
-  }, [agents]);
+    let active = 0, paused = 0, inactive = 0;
+    for (const a of list) {
+      const enabled = enabledFlags.get(a.agentAddress.toLowerCase());
+      const s = deriveAgentStatus(a.isActive, enabled);
+      if (s === 'active') active++;
+      else if (s === 'paused') paused++;
+      else inactive++;
+    }
+    return { all: list.length, active, paused, inactive };
+  }, [agents, enabledFlags]);
 
   const filteredAgents = useMemo(() => {
     if (!agents) return [];
-    if (statusFilter === 'active') return agents.filter((a) => a.isActive);
-    if (statusFilter === 'inactive') return agents.filter((a) => !a.isActive);
-    return agents;
-  }, [agents, statusFilter]);
+    if (statusFilter === 'all') return agents;
+    return agents.filter((a) => {
+      const enabled = enabledFlags.get(a.agentAddress.toLowerCase());
+      return deriveAgentStatus(a.isActive, enabled) === statusFilter;
+    });
+  }, [agents, enabledFlags, statusFilter]);
 
   // Reset tx state each time the modal opens so a stale 'success' from a prior
   // run does not flash the success view immediately on re-open.
@@ -187,7 +216,7 @@ export function AgentsList({
       ) : (
         <>
           <div className="flex items-center gap-1 p-0.5 rounded-lg bg-uju-card/60 border border-uju-border/60 w-fit">
-            {(['all', 'active', 'inactive'] as const).map((key) => (
+            {(['all', 'active', 'paused', 'inactive'] as const).map((key) => (
               <button
                 key={key}
                 type="button"
@@ -198,7 +227,13 @@ export function AgentsList({
                     : 'text-uju-secondary hover:text-white'
                 }`}
               >
-                {key === 'all' ? 'All' : key === 'active' ? 'Active' : 'Inactive'}
+                {key === 'all'
+                  ? 'All'
+                  : key === 'active'
+                    ? 'Active'
+                    : key === 'paused'
+                      ? 'Paused'
+                      : 'Inactive'}
                 <span className="ml-1.5 text-xs opacity-70">{counts[key]}</span>
               </button>
             ))}
@@ -217,6 +252,7 @@ export function AgentsList({
                   key={agent.id}
                   agent={agent}
                   budget={budgets?.find((b) => b.agent === agent.agentAddress)}
+                  runtimeEnabled={enabledFlags.get(agent.agentAddress.toLowerCase()) ?? false}
                   onSelect={onSelectAgent ? () => onSelectAgent(agent.id) : undefined}
                 />
               ))}
