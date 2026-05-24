@@ -22,6 +22,7 @@ import { getDb } from './store.js';
 import { getClaimWindowMs, getSystemCap, isAlphaGateEnabled } from './alpha-guards.js';
 import { pushUserMessage } from './baram-telegram.js';
 import { stopAgentPm2 } from './agent-orchestrator.js';
+import { traceAsync, traceSync } from './perf-trace.js';
 
 const TICK_INTERVAL_MS = 60_000;
 const WARN_LEAD_MS = 6 * 60 * 60 * 1000;  // T-6h warning before expiry (= claim window length)
@@ -69,17 +70,17 @@ async function tick(): Promise<void> {
   tickInFlight = true;
   const startedAt = Date.now();
   try {
-    phaseHeartbeat();
-    await phaseWarn();
-    await phaseExpire();
-    await phaseInvite();
-    await phaseInviteExpire();
+    traceSync('alpha-cron.heartbeat', phaseHeartbeat, { threshold: 50 });
+    await traceAsync('alpha-cron.warn', phaseWarn, { threshold: 200 });
+    await traceAsync('alpha-cron.expire', phaseExpire, { threshold: 200 });
+    await traceAsync('alpha-cron.invite', phaseInvite, { threshold: 200 });
+    await traceAsync('alpha-cron.invite-expire', phaseInviteExpire, { threshold: 200 });
   } catch (err) {
     console.error('[alpha-cron] tick error:', (err as Error).message);
   } finally {
     tickInFlight = false;
     const took = Date.now() - startedAt;
-    if (took > 10_000) {
+    if (took > 1_000) {
       console.warn(`[alpha-cron] slow tick took ${took}ms`);
     }
   }

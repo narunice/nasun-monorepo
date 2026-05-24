@@ -33,6 +33,8 @@ import { handleAgentPushRequest } from './agent-push-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
 import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
 import { isAlphaGateEnabled } from './alpha-guards.js';
+import { startEventLoopMonitor, stopEventLoopMonitor } from './event-loop-monitor.js';
+import { traceAsync } from './perf-trace.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
 import { initChatbot, onUserMessage, stopChatbot } from './ai-chatbot.js';
 import { invalidateIdentityCache } from './identity-resolver.js';
@@ -1373,7 +1375,11 @@ if (leaderboardEnabled) {
       try {
         const addresses = getActiveTraderAddresses(500);
         if (addresses.length > 0) {
-          await ensureProfilesCached(addresses);
+          await traceAsync(
+            'profile.sync',
+            () => ensureProfilesCached(addresses),
+            { threshold: 500, context: () => `count=${addresses.length}` },
+          );
           console.log(`[ProfileSync] Synced profiles for ${addresses.length} active traders`);
         }
       } catch (err) {
@@ -1448,6 +1454,8 @@ httpServer.listen(CONFIG.port, () => {
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
 });
 
+startEventLoopMonitor();
+
 // Phase 8 — 60s on-chain drift poller. Heals state when a user deactivates
 // their agent from a different wallet client; otherwise an idle session
 // would let stopped agents keep running.
@@ -1484,6 +1492,7 @@ async function shutdown(): Promise<void> {
 
   stopChatbot();
   stopAlphaCron();
+  stopEventLoopMonitor();
   if (leaderboardEnabled) {
     stopIndexer();
     stopAggregator();
