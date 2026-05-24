@@ -12,6 +12,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSigner } from '@nasun/wallet';
 import { capability as capabilitySdk } from '@nasun/baram-sdk';
 type Capability = ReturnType<typeof capabilitySdk.decodeCapability>;
@@ -21,9 +22,12 @@ import {
   buildUpdateRiskLimitsTransaction,
   buildReplaceAllowedActionsTransaction,
   buildRevokeCapabilityTransaction,
+  buildKillSwitchTransaction,
+  buildDeactivateAgentTransaction,
   type CapabilityPauseMode,
   type CapabilityRiskLimits,
 } from '../services/transactionBuilder';
+import type { AgentProfile } from './useAgentProfiles';
 
 export type CapabilityTxStatus = 'idle' | 'signing' | 'executing' | 'success' | 'error';
 
@@ -36,13 +40,25 @@ export interface UseCapabilityResult {
   setPauseMode: (mode: CapabilityPauseMode) => Promise<boolean>;
   updateRiskLimits: (limits: CapabilityRiskLimits) => Promise<boolean>;
   replaceAllowedActions: (actions: string[]) => Promise<boolean>;
-  revoke: () => Promise<boolean>;
+  /**
+   * Revoke the capability. When `agentProfileId` is provided, the same PTB
+   * also flips AgentProfile.is_active=false so the sidebar/Overview badge
+   * stops showing this agent as "paused". Single wallet signature for both.
+   */
+  revoke: (agentProfileId?: string) => Promise<boolean>;
+  /**
+   * Finalize-kill for zombie agents whose capability was already revoked by
+   * an older client (before Kill switch combined the two move calls) but
+   * whose AgentProfile.is_active is still true. Calls deactivate_agent only.
+   */
+  finalizeDeactivate: (agentProfileId: string) => Promise<boolean>;
   refetch: () => Promise<void>;
   resetTxStatus: () => void;
 }
 
 export function useCapability(capabilityId: string | null): UseCapabilityResult {
   const { signer, address } = useSigner();
+  const queryClient = useQueryClient();
   const [data, setData] = useState<Capability | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -150,10 +166,47 @@ export function useCapability(capabilityId: string | null): UseCapabilityResult 
     [capabilityId, execute],
   );
 
-  const revoke = useCallback(async (): Promise<boolean> => {
-    if (!capabilityId) return false;
-    return execute(buildRevokeCapabilityTransaction(capabilityId));
-  }, [capabilityId, execute]);
+  const revoke = useCallback(
+    async (agentProfileId?: string): Promise<boolean> => {
+      if (!capabilityId) return false;
+      const tx = agentProfileId
+        ? buildKillSwitchTransaction(capabilityId, agentProfileId)
+        : buildRevokeCapabilityTransaction(capabilityId);
+      const ok = await execute(tx);
+      // Eager-patch the cached AgentProfile so the sidebar's amber "paused"
+      // dot flips to "inactive" immediately instead of waiting on the 15s
+      // useAgentProfiles refetch. Without this the user sees the success
+      // banner but the sidebar lies for up to 15s and Settings > Agent
+      // status keeps polling chat-server which can't resolve unvaulted
+      // agents anyway.
+      if (ok && agentProfileId && address) {
+        queryClient.setQueryData<AgentProfile[]>(
+          ['nasun-ai', 'agentProfiles', address],
+          (prev) =>
+            prev?.map((p) => (p.id === agentProfileId ? { ...p, isActive: false } : p)) ??
+            prev,
+        );
+      }
+      return ok;
+    },
+    [capabilityId, execute, queryClient, address],
+  );
+
+  const finalizeDeactivate = useCallback(
+    async (agentProfileId: string): Promise<boolean> => {
+      const ok = await execute(buildDeactivateAgentTransaction(agentProfileId));
+      if (ok && address) {
+        queryClient.setQueryData<AgentProfile[]>(
+          ['nasun-ai', 'agentProfiles', address],
+          (prev) =>
+            prev?.map((p) => (p.id === agentProfileId ? { ...p, isActive: false } : p)) ??
+            prev,
+        );
+      }
+      return ok;
+    },
+    [execute, queryClient, address],
+  );
 
   const resetTxStatus = useCallback(() => {
     setTxStatus('idle');
@@ -170,6 +223,7 @@ export function useCapability(capabilityId: string | null): UseCapabilityResult 
     updateRiskLimits,
     replaceAllowedActions,
     revoke,
+    finalizeDeactivate,
     refetch,
     resetTxStatus,
   };

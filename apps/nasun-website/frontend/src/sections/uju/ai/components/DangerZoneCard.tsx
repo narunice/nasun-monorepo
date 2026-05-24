@@ -7,15 +7,27 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useSigner } from '@nasun/wallet';
 import { useCapability } from '../hooks/useCapability';
+import { useAgentProfiles } from '../hooks/useAgentProfiles';
 import { formatNusdc } from '../utils/format';
 import { RevokeCapabilityModal } from './modals/RevokeCapabilityModal';
 
 interface DangerZoneCardProps {
   capabilityId: string | null;
+  /**
+   * AgentProfile object id. When present, the Kill switch atomically
+   * deactivates the AgentProfile alongside revoking the capability so the
+   * sidebar/Overview badge flips from "paused" to "inactive" on the same
+   * wallet signature. Optional for legacy callers that only need the
+   * capability-revoke side; with it omitted, AgentProfile.is_active stays
+   * true and the agent will continue to render as paused until manually
+   * deactivated elsewhere.
+   */
+  agentProfileId?: string | null;
 }
 
-export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
+export function DangerZoneCard({ capabilityId, agentProfileId }: DangerZoneCardProps) {
   const {
     data: cap,
     isLoading,
@@ -24,10 +36,24 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
     txError,
     setPauseMode,
     revoke,
+    finalizeDeactivate,
     resetTxStatus,
   } = useCapability(capabilityId);
   const [revokeModalOpen, setRevokeModalOpen] = useState(false);
   const [pendingMode, setPendingMode] = useState<number | null>(null);
+
+  // Zombie-finalize signal: capability already revoked but the AgentProfile
+  // still reports is_active=true. Happens to agents whose Kill switch was
+  // pressed on an older client that only ran capability::revoke. We surface
+  // a small "Finalize" CTA so the user can flip is_active without us having
+  // to write a one-off CLI fix per affected agent.
+  const { address: walletAddress } = useSigner();
+  const { data: profiles } = useAgentProfiles(walletAddress ?? null);
+  const thisProfile = agentProfileId
+    ? profiles?.find((p) => p.id === agentProfileId) ?? null
+    : null;
+  const needsFinalize =
+    !!cap?.revoked && !!agentProfileId && thisProfile?.isActive === true;
 
   // Auto-close the modal once the on-chain revoke is reflected in the
   // refreshed capability state. The modal stays open while the tx is in
@@ -85,7 +111,7 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
 
   const handleConfirmRevoke = async () => {
     if (txBusy) return;
-    await revoke();
+    await revoke(agentProfileId ?? undefined);
   };
 
   return (
@@ -182,11 +208,32 @@ export function DangerZoneCard({ capabilityId }: DangerZoneCardProps) {
               </div>
             </div>
             {cap.revoked ? (
-              <div className="flex items-center gap-2 text-sm text-amber-100/80 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                <svg className="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Kill switch engaged. This agent can no longer execute on-chain actions.</span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm text-amber-100/80 px-3 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                  <svg className="w-4 h-4 text-amber-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span>Kill switch engaged. This agent can no longer execute on-chain actions.</span>
+                </div>
+                {needsFinalize && agentProfileId && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 space-y-2">
+                    <p className="text-xs text-amber-100/80">
+                      The agent profile is still marked active on chain. Sidebar and status badges
+                      will keep showing this agent as paused until you finalize the kill.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => void finalizeDeactivate(agentProfileId)}
+                      disabled={txBusy}
+                      className="w-full px-3 py-2 text-sm font-medium rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/50 text-amber-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {txBusy ? 'Finalizing…' : 'Finalize: deactivate profile'}
+                    </button>
+                    {txStatus === 'error' && txError && (
+                      <p className="text-xs text-red-400">{txError}</p>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <button

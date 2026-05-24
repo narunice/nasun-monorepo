@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSigner } from "@nasun/wallet";
-import { NUSDC_TYPE } from "@nasun/devnet-config";
+import { NUSDC_TYPE, NSN_TYPE } from "@nasun/devnet-config";
 import { suiClient } from "@/lib/sui-client";
 import { useAgentProfiles } from "../hooks/useAgentProfiles";
 import { useAgentBudgets } from "../hooks/useAgentBudgets";
@@ -246,6 +246,17 @@ export interface Step2FundBodyProps {
 const NUSDC_DECIMALS = 6n;
 const NUSDC_UNIT = 10n ** NUSDC_DECIMALS;
 
+// NSN (= SUI on Nasun) has 9 decimal places. The agent uses NSN to pay
+// its own gas at trade-sign time; without it every swap aborts before
+// settlement. 0.5 NSN funds a couple dozen swaps comfortably and matches
+// the default surfaced in FirstRunChecklist.
+const NSN_DECIMALS = 9n;
+const NSN_UNIT = 10n ** NSN_DECIMALS;
+// Keep enough NSN in the owner's wallet for THIS PTB's gas + headroom for
+// the next few signed actions (kill switch, pause, etc.). 0.1 NSN is the
+// same reserve buffer used by transferAmount.ts for owner-side dust math.
+const OWNER_NSN_GAS_RESERVE = NSN_UNIT / 10n;
+
 export function Step2FundBody({
   signer,
   walletAddress,
@@ -259,13 +270,15 @@ export function Step2FundBody({
   // dust-sized.
   const [budgetInput, setBudgetInput] = useState("5");
   const [tradingInput, setTradingInput] = useState("500");
+  const [gasInput, setGasInput] = useState("0.5");
   const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
+  const [walletNsnBalance, setWalletNsnBalance] = useState<bigint | null>(null);
   const [status, setStatus] = useState<
     "idle" | "submitting" | "executing" | "error"
   >("idle");
   const [error, setError] = useState<string | null>(null);
 
-  // Wallet NUSDC balance, refreshed when capabilityId or walletAddress
+  // Wallet NUSDC + NSN balances, refreshed when capabilityId or walletAddress
   // changes (i.e. a different agent enters Step ②). suiClient.getBalance
   // is a single RPC call; no need for a heavier hook.
   useEffect(() => {
@@ -278,6 +291,14 @@ export function Step2FundBody({
       .catch(() => {
         if (!cancelled) setWalletBalance(0n);
       });
+    void suiClient
+      .getBalance({ owner: walletAddress, coinType: NSN_TYPE })
+      .then((b) => {
+        if (!cancelled) setWalletNsnBalance(BigInt(b.totalBalance));
+      })
+      .catch(() => {
+        if (!cancelled) setWalletNsnBalance(0n);
+      });
     return () => {
       cancelled = true;
     };
@@ -285,19 +306,29 @@ export function Step2FundBody({
 
   const budgetRaw = parseDecimalNusdc(budgetInput);
   const tradingRaw = parseDecimalNusdc(tradingInput);
+  const gasRaw = parseDecimalNsn(gasInput);
   const totalRaw =
     budgetRaw !== null && tradingRaw !== null ? budgetRaw + tradingRaw : null;
 
-  // Validation: both fields parse, both >= MIN_DEPOSIT (0.1 NUSDC per the
-  // move module assertion in budget.move L41), and wallet has enough.
+  // Validation: NUSDC fields parse + >= MIN_DEPOSIT (0.1 NUSDC per the
+  // move module assertion in budget.move L41), NSN gas parses + >= floor,
+  // and wallet has enough of each. NSN check reserves OWNER_NSN_GAS_RESERVE
+  // for this PTB's own gas plus a buffer for the next signed actions
+  // (pause, kill, etc.); without the reserve the transfer split would
+  // pass validation here but the SDK gas reservation would fail at build.
   const minDeposit = 100_000n; // 0.1 NUSDC raw
+  const minNsnGas = 10_000_000n; // 0.01 NSN raw — enough for a handful of swaps
   let validationError: string | null = null;
   if (budgetRaw === null || tradingRaw === null) {
     validationError = "Enter a positive number for each field.";
+  } else if (gasRaw === null) {
+    validationError = "Enter a positive number for the agent gas (NSN).";
   } else if (budgetRaw < minDeposit) {
     validationError = "Inference balance must be at least 0.1 NUSDC.";
   } else if (tradingRaw <= 0n) {
     validationError = "Trading capital must be greater than 0.";
+  } else if (gasRaw < minNsnGas) {
+    validationError = "Agent gas must be at least 0.01 NSN.";
   } else if (
     walletBalance !== null &&
     totalRaw !== null &&
@@ -306,6 +337,13 @@ export function Step2FundBody({
     const need = formatNusdc(totalRaw);
     const have = formatNusdc(walletBalance);
     validationError = `Insufficient NUSDC. Need ${need}, have ${have}. Use the faucet.`;
+  } else if (
+    walletNsnBalance !== null &&
+    walletNsnBalance < gasRaw + OWNER_NSN_GAS_RESERVE
+  ) {
+    const need = formatNsn(gasRaw + OWNER_NSN_GAS_RESERVE);
+    const have = formatNsn(walletNsnBalance);
+    validationError = `Insufficient NSN. Need ${need} (includes ${formatNsn(OWNER_NSN_GAS_RESERVE)} gas reserve), have ${have}. Use the faucet.`;
   }
 
   const handleConfirm = async () => {
@@ -359,6 +397,7 @@ export function Step2FundBody({
         escrowId,
         budgetDeposit: budgetRaw,
         tradingCapitalDeposit: tradingRaw,
+        nsnGasDeposit: gasRaw ?? 0n,
       });
       tx.setSender(walletAddress);
       const txBytes = await tx.build({ client: suiClient });
@@ -414,9 +453,27 @@ export function Step2FundBody({
           />
         </label>
       </div>
+      <label className="block">
+        <span className="text-xs text-uju-secondary">Agent gas (NSN)</span>
+        <input
+          type="number"
+          min="0.01"
+          step="0.1"
+          value={gasInput}
+          onChange={(e) => setGasInput(e.target.value)}
+          disabled={busy}
+          className="mt-1 w-full px-3 py-2 text-sm rounded-lg bg-uju-bg border border-uju-border/60 text-white focus:outline-none focus:border-pado-2 transition-colors"
+        />
+        <span className="mt-1 block text-xs text-uju-secondary/70">
+          Sent to the agent's wallet. The agent pays its own gas at trade-sign time; without NSN
+          every swap aborts before settlement.
+        </span>
+      </label>
       <p className="text-xs text-uju-secondary/80">
         Wallet:{" "}
         {walletBalance === null ? "..." : `${formatNusdc(walletBalance)} NUSDC`}
+        {" · "}
+        {walletNsnBalance === null ? "..." : `${formatNsn(walletNsnBalance)} NSN`}
       </p>
       {validationError && (
         <p className="text-sm text-amber-300">{validationError}</p>
@@ -460,5 +517,28 @@ function formatNusdc(raw: bigint): string {
   if (frac === 0n) return whole.toString();
   // Trim trailing zeros so 5.000000 → 5, 5.500000 → 5.5.
   const fracStr = frac.toString().padStart(6, "0").replace(/0+$/, "");
+  return fracStr ? `${whole}.${fracStr}` : whole.toString();
+}
+
+// NSN (= SUI) parse/format. 9 decimals; same truncation semantics as
+// parseDecimalNusdc to match wallet coin-split behavior.
+function parseDecimalNsn(s: string): bigint | null {
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+  const m = /^(\d*)(?:\.(\d{0,9}))?\d*$/.exec(trimmed);
+  if (!m) return null;
+  const whole = m[1] || "0";
+  const frac = (m[2] || "").padEnd(9, "0");
+  if (!/^\d+$/.test(whole) || !/^\d+$/.test(frac)) return null;
+  const raw = BigInt(whole) * NSN_UNIT + BigInt(frac);
+  if (raw <= 0n) return null;
+  return raw;
+}
+
+function formatNsn(raw: bigint): string {
+  const whole = raw / NSN_UNIT;
+  const frac = raw % NSN_UNIT;
+  if (frac === 0n) return whole.toString();
+  const fracStr = frac.toString().padStart(9, "0").replace(/0+$/, "");
   return fracStr ? `${whole}.${fracStr}` : whole.toString();
 }
