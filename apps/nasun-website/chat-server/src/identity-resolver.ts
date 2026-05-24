@@ -18,6 +18,7 @@ import { gunzipSync } from 'zlib';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { describeFetchError } from './fetch-error.js';
+import { traceAsync, traceSync } from './perf-trace.js';
 
 // ===== DynamoDB client (shared, lazy init) =====
 
@@ -64,34 +65,66 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
   const headers: Record<string, string> = {};
   if (WALLET_MAPPINGS_KEY) headers['x-api-key'] = WALLET_MAPPINGS_KEY;
 
-  const res = await fetch(WALLET_MAPPINGS_URL, {
-    headers,
-    signal: AbortSignal.timeout(30_000),
-  });
+  const res = await traceAsync(
+    'identity-resolver.fetch.api',
+    () => fetch(WALLET_MAPPINGS_URL, {
+      headers,
+      signal: AbortSignal.timeout(30_000),
+    }),
+    { threshold: 500 },
+  );
   if (!res.ok) throw new Error(`wallet-mappings fetch failed: ${res.status}`);
 
-  const data = await res.json() as
-    | { wallets?: Record<string, string> }
-    | { url: string };
+  const data = await traceAsync(
+    'identity-resolver.fetch.api.json',
+    () => res.json() as Promise<{ wallets?: Record<string, string> } | { url: string }>,
+    { threshold: 200 },
+  );
 
   // Handle S3 presigned offload (object stored as gzip; decompress via magic bytes).
   let wallets: Record<string, string> = {};
   if ('url' in data) {
-    const s3Res = await fetch(data.url, { signal: AbortSignal.timeout(30_000) });
+    const s3Res = await traceAsync(
+      'identity-resolver.fetch.s3',
+      () => fetch(data.url, { signal: AbortSignal.timeout(30_000) }),
+      { threshold: 500 },
+    );
     if (!s3Res.ok) throw new Error(`S3 offload fetch failed: ${s3Res.status}`);
-    const buf = Buffer.from(await s3Res.arrayBuffer());
+    const buf = await traceAsync(
+      'identity-resolver.s3.arrayBuffer',
+      async () => Buffer.from(await s3Res.arrayBuffer()),
+      { threshold: 200, context: () => `bufBytes=${buf.length}` },
+    );
     const isGzip = buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
-    const text = isGzip ? gunzipSync(buf).toString('utf-8') : buf.toString('utf-8');
-    const s3Data = JSON.parse(text) as { wallets?: Record<string, string> };
+    const bufLen = buf.length;
+    const text = traceSync(
+      'identity-resolver.gunzip',
+      () => (isGzip ? gunzipSync(buf).toString('utf-8') : buf.toString('utf-8')),
+      { threshold: 50, context: () => `bufBytes=${bufLen} gzip=${isGzip}` },
+    );
+    const textLen = text.length;
+    const s3Data = traceSync(
+      'identity-resolver.json.parse',
+      () => JSON.parse(text) as { wallets?: Record<string, string> },
+      { threshold: 50, context: () => `textChars=${textLen}` },
+    );
     wallets = s3Data.wallets ?? {};
   } else {
     wallets = data.wallets ?? {};
   }
 
-  const map = new Map<string, string>();
-  for (const [addr, id] of Object.entries(wallets)) {
-    map.set(addr.toLowerCase(), id);
-  }
+  const walletCount = Object.keys(wallets).length;
+  const map = traceSync(
+    'identity-resolver.build.map',
+    () => {
+      const m = new Map<string, string>();
+      for (const [addr, id] of Object.entries(wallets)) {
+        m.set(addr.toLowerCase(), id);
+      }
+      return m;
+    },
+    { threshold: 50, context: () => `wallets=${walletCount}` },
+  );
   return map;
 }
 
@@ -104,7 +137,11 @@ export async function refreshIdentityCache(): Promise<void> {
 
   refreshPromise = (async () => {
     try {
-      const map = await loadIdentityMap();
+      const map = await traceAsync(
+        'identity-resolver.refresh',
+        () => loadIdentityMap(),
+        { threshold: 500 },
+      );
       identityCache = { map, loadedAt: Date.now() };
       if (map.size === 0) {
         // Empty map silently breaks the weekly score aggregator (all traders get
