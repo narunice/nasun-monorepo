@@ -14,6 +14,7 @@ import { useTraderConfig } from '../../hooks/useTraderConfig';
 import { TraderConfigForm } from '../../components/forms/TraderConfigForm';
 import { DangerZoneCard } from '../../components/DangerZoneCard';
 import { formatNusdc, formatTimestamp } from '../../utils/format';
+import { deriveAgentStatus } from '../../utils/agentStatus';
 import { HashRef } from '../../components/HashRef';
 
 interface DashboardTabProps {
@@ -53,15 +54,19 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
               <HashRef value={agent.agentAddress} kind="address" />
             </p>
           </div>
-          <span
-            className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${
-              agent.isActive
+          {(() => {
+            const status = deriveAgentStatus(agent.isActive, config?.enabled);
+            const cls =
+              status === 'active'
                 ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-uju-secondary/10 text-uju-secondary'
-            }`}
-          >
-            {agent.isActive ? 'Active' : 'Inactive'}
-          </span>
+                : status === 'paused'
+                  ? 'bg-amber-500/10 text-amber-300'
+                  : 'bg-uju-secondary/10 text-uju-secondary';
+            const text = status === 'active' ? 'Active' : status === 'paused' ? 'Paused' : 'Inactive';
+            return (
+              <span className={`shrink-0 text-xs px-1.5 py-0.5 rounded ${cls}`}>{text}</span>
+            );
+          })()}
         </div>
 
         {agent.capabilities.length > 0 && (

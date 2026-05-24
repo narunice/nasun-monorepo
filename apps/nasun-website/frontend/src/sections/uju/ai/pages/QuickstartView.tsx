@@ -5,6 +5,8 @@ import { NUSDC_TYPE, NSN_TYPE } from "@nasun/devnet-config";
 import { suiClient } from "@/lib/sui-client";
 import { useAgentProfiles } from "../hooks/useAgentProfiles";
 import { useAgentBudgets } from "../hooks/useAgentBudgets";
+import { useEnabledFlagMap } from "../hooks/useEnabledFlagMap";
+import { deriveAgentStatus } from "../utils/agentStatus";
 import { useCreateAgentBlocked } from "../alpha/useCreateAgentBlocked";
 import { buildAgentFundTransaction } from "../services/transactionBuilder";
 import { getNusdcCoins } from "../services/coinService";
@@ -133,9 +135,10 @@ export function QuickstartView({
       {/* Agent grid: only when agents exist */}
       {hasAgents && (
         <AgentsSection
+          walletAddress={walletAddress}
           agents={agents!}
           budgets={budgets}
-          onSelectAgent={onSelectAgent}
+          onSelectAgent={(id) => onSelectAgent(id)}
         />
       )}
 
@@ -155,35 +158,51 @@ export function QuickstartView({
 }
 
 interface AgentsSectionProps {
+  walletAddress: string;
   agents: NonNullable<ReturnType<typeof useAgentProfiles>["data"]>;
   budgets: ReturnType<typeof useAgentBudgets>["data"];
   onSelectAgent: (agentId: string) => void;
 }
 
-// Lifted into its own component so the all/active/inactive filter chip state
-// is scoped to the agent grid instead of leaking into QuickstartView's
-// already-busy top-level state. Counts label each chip so the user can see
-// the partition without flipping through filters.
-function AgentsSection({ agents, budgets, onSelectAgent }: AgentsSectionProps) {
+// Lifted into its own component so the filter chip state is scoped to the
+// agent grid instead of leaking into QuickstartView's already-busy top-level
+// state. 3-state derivation (active/paused/inactive) mirrors the sidebar
+// and AgentsList so the same agent never shows two conflicting badges.
+function AgentsSection({ walletAddress, agents, budgets, onSelectAgent }: AgentsSectionProps) {
   const [statusFilter, setStatusFilter] = useState<
-    "all" | "active" | "inactive"
+    "all" | "active" | "paused" | "inactive"
   >("active");
+  const enabledFlags = useEnabledFlagMap(walletAddress);
   const counts = useMemo(() => {
-    const active = agents.filter((a) => a.isActive).length;
-    return { all: agents.length, active, inactive: agents.length - active };
-  }, [agents]);
+    let active = 0, paused = 0, inactive = 0;
+    for (const a of agents) {
+      const s = deriveAgentStatus(
+        a.isActive,
+        enabledFlags.get(a.agentAddress.toLowerCase()),
+      );
+      if (s === "active") active++;
+      else if (s === "paused") paused++;
+      else inactive++;
+    }
+    return { all: agents.length, active, paused, inactive };
+  }, [agents, enabledFlags]);
   const filtered = useMemo(() => {
-    if (statusFilter === "active") return agents.filter((a) => a.isActive);
-    if (statusFilter === "inactive") return agents.filter((a) => !a.isActive);
-    return agents;
-  }, [agents, statusFilter]);
+    if (statusFilter === "all") return agents;
+    return agents.filter(
+      (a) =>
+        deriveAgentStatus(
+          a.isActive,
+          enabledFlags.get(a.agentAddress.toLowerCase()),
+        ) === statusFilter,
+    );
+  }, [agents, enabledFlags, statusFilter]);
 
   return (
     <div className="space-y-3">
       <h2 className="text-base font-semibold text-white">Agents</h2>
 
       <div className="flex items-center gap-1 p-0.5 rounded-lg bg-uju-card/60 border border-uju-border/60 w-fit">
-        {(["all", "active", "inactive"] as const).map((key) => (
+        {(["all", "active", "paused", "inactive"] as const).map((key) => (
           <button
             key={key}
             type="button"
@@ -194,7 +213,13 @@ function AgentsSection({ agents, budgets, onSelectAgent }: AgentsSectionProps) {
                 : "text-uju-secondary hover:text-white font-medium"
             }`}
           >
-            {key === "all" ? "All" : key === "active" ? "Active" : "Inactive"}
+            {key === "all"
+              ? "All"
+              : key === "active"
+                ? "Active"
+                : key === "paused"
+                  ? "Paused"
+                  : "Inactive"}
             <span className="ml-1.5 text-xs opacity-70">{counts[key]}</span>
           </button>
         ))}
@@ -213,6 +238,7 @@ function AgentsSection({ agents, budgets, onSelectAgent }: AgentsSectionProps) {
               key={agent.id}
               agent={agent}
               budget={budgets?.find((b) => b.agent === agent.agentAddress)}
+              runtimeEnabled={enabledFlags.get(agent.agentAddress.toLowerCase()) ?? false}
               onSelect={() => onSelectAgent(agent.id)}
             />
           ))}
