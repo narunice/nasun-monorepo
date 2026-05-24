@@ -20,7 +20,7 @@
  * steps via the Setup guide cards on QuickstartView.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { useSigner } from '@nasun/wallet';
@@ -265,7 +265,15 @@ export function QuickStartWizardModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, tgChildOpen, activateChildOpen]);
 
-  const stepLabels = ['Register', 'Fund', 'Policy', 'Telegram', 'Activate', 'Server'];
+  const stepLabels = [
+    'Create agent',
+    'Fund agent',
+    'Set policy',
+    'Link Telegram',
+    'Activate',
+    'Server ready',
+  ];
+  const currentStepLabel = stepLabels[activeIdx];
 
   return createPortal(
     <div
@@ -281,9 +289,21 @@ export function QuickStartWizardModal({
         <div className="flex items-center justify-between p-5 border-b border-uju-border/60">
           <h2
             id="quickstart-wizard-title"
-            className="text-base font-semibold text-white"
+            className="min-w-0 text-base font-semibold text-white flex items-baseline gap-2 flex-wrap"
           >
-            Quick Start
+            <span>Quick Start</span>
+            {phase === 'wizard' && (
+              <span className="text-xs font-normal text-uju-secondary">
+                {activeIdx >= 0 ? (
+                  <>
+                    Step {activeIdx + 1} of {stepLabels.length}
+                    <span className="text-pado-2 font-medium"> &middot; {currentStepLabel}</span>
+                  </>
+                ) : (
+                  <span className="text-emerald-400 font-medium">All steps complete</span>
+                )}
+              </span>
+            )}
           </h2>
           <button
             type="button"
@@ -350,37 +370,43 @@ export function QuickStartWizardModal({
 
         {phase === 'wizard' && (
           <>
-        {/* Progress strip */}
-        <div className="flex items-center gap-2 px-5 pt-4">
+        {/* Progress strip — dots only; current step name shown in the modal header */}
+        <div
+          className="flex items-center gap-2 px-5 pt-4"
+          role="list"
+          aria-label="Quick Start progress"
+        >
           {stepLabels.map((label, i) => {
             const isDone = done[i];
             const isCurrent = i === activeIdx;
             return (
-              <div key={label} className="flex-1 flex items-center gap-2 min-w-0">
+              <Fragment key={label}>
                 <div
+                  role="listitem"
+                  title={label}
+                  aria-label={`Step ${i + 1}: ${label}${isDone ? ' (done)' : isCurrent ? ' (current)' : ''}`}
+                  aria-current={isCurrent ? 'step' : undefined}
                   className={[
-                    'w-6 h-6 shrink-0 rounded-full border flex items-center justify-center text-xs font-bold',
+                    'w-7 h-7 shrink-0 rounded-full border flex items-center justify-center text-xs font-bold transition-colors',
                     isDone
                       ? 'bg-emerald-500 border-emerald-500 text-white'
                       : isCurrent
-                        ? 'border-pado-2 text-pado-2'
+                        ? 'border-pado-2 text-pado-2 ring-2 ring-pado-2/30'
                         : 'border-uju-border/60 text-uju-secondary',
                   ].join(' ')}
                 >
                   {isDone ? '✓' : i + 1}
                 </div>
-                <span
-                  className={[
-                    'text-xs truncate',
-                    isCurrent ? 'text-pado-2 font-medium' : 'text-uju-secondary',
-                  ].join(' ')}
-                >
-                  {label}
-                </span>
                 {i < stepLabels.length - 1 && (
-                  <div className="flex-1 h-px bg-uju-border/40" />
+                  <div
+                    aria-hidden="true"
+                    className={[
+                      'flex-1 h-px transition-colors',
+                      isDone ? 'bg-emerald-500/60' : 'bg-uju-border/40',
+                    ].join(' ')}
+                  />
                 )}
-              </div>
+              </Fragment>
             );
           })}
         </div>
