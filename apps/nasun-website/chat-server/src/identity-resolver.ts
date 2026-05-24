@@ -90,12 +90,19 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
       { threshold: 500 },
     );
     if (!s3Res.ok) throw new Error(`S3 offload fetch failed: ${s3Res.status}`);
-    // Explicit Buffer annotation: the `context` callback references `buf`
-    // self-referentially, which TS can't infer on its own (TS7022/7023).
-    const buf: Buffer = await traceAsync(
+    // Capture size in an outer binding initialized inside fn. The context
+    // callback fires in traceAsync's finally, *before* the outer `const buf`
+    // binding resolves, so `() => buf.length` would TDZ on slow paths
+    // (threshold>=200ms triggers context evaluation).
+    let bufBytes = 0;
+    const buf = await traceAsync(
       'identity-resolver.s3.arrayBuffer',
-      async () => Buffer.from(await s3Res.arrayBuffer()),
-      { threshold: 200, context: () => `bufBytes=${buf.length}` },
+      async () => {
+        const b = Buffer.from(await s3Res.arrayBuffer());
+        bufBytes = b.length;
+        return b;
+      },
+      { threshold: 200, context: () => `bufBytes=${bufBytes}` },
     );
     const isGzip = buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b;
     const bufLen = buf.length;
