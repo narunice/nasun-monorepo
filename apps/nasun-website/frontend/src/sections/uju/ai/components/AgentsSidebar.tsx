@@ -12,6 +12,7 @@
 
 import { useMemo, useState } from "react";
 import type { AgentProfile } from "../hooks/useAgentProfiles";
+import { useTraderConfig } from "../hooks/useTraderConfig";
 
 interface AgentsSidebarProps {
   agents: AgentProfile[];
@@ -103,28 +104,18 @@ export function AgentsSidebar({
           </p>
         ) : (
           <ul>
-            {filtered.map((agent) => {
-              const isSelected = agent.id === selectedAgentId;
-              return (
-                <li key={agent.id}>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      isSelected ? onClearSelection() : onSelectAgent(agent.id)
-                    }
-                    className={[
-                      "w-full text-left px-4 py-2 text-sm flex items-center gap-2 border-l-2 transition-colors",
-                      isSelected
-                        ? "bg-pado-2/10 border-l-pado-2 text-white"
-                        : "border-l-transparent text-uju-secondary hover:bg-uju-bg/40 hover:text-white",
-                    ].join(" ")}
-                  >
-                    <StatusDot active={agent.isActive} />
-                    <span className="truncate">{agent.name}</span>
-                  </button>
-                </li>
-              );
-            })}
+            {filtered.map((agent) => (
+              <AgentRow
+                key={agent.id}
+                agent={agent}
+                isSelected={agent.id === selectedAgentId}
+                onSelect={() =>
+                  agent.id === selectedAgentId
+                    ? onClearSelection()
+                    : onSelectAgent(agent.id)
+                }
+              />
+            ))}
           </ul>
         )}
       </div>
@@ -147,13 +138,66 @@ export function AgentsSidebar({
   );
 }
 
-function StatusDot({ active }: { active: boolean }) {
-  return active ? (
-    <span
-      aria-label="active"
-      className="shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400"
-    />
-  ) : (
+// Mirrors OverviewTab's badge logic so the sidebar dot and the Overview
+// status badge never disagree: on-chain is_active=true AND runtime
+// trader-config enabled=true is the only 'active' state. Profile registered
+// on-chain but runtime disabled is 'paused' (amber); off-chain or unknown
+// is 'inactive' (outline).
+function AgentRow({
+  agent,
+  isSelected,
+  onSelect,
+}: {
+  agent: AgentProfile;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  const traderConfig = useTraderConfig(agent.agentAddress);
+  const runtimeEnabled = traderConfig.config?.enabled === true;
+  const status: "active" | "paused" | "inactive" =
+    agent.isActive && runtimeEnabled
+      ? "active"
+      : agent.isActive
+        ? "paused"
+        : "inactive";
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        className={[
+          "w-full text-left px-4 py-2 text-sm flex items-center gap-2 border-l-2 transition-colors",
+          isSelected
+            ? "bg-pado-2/10 border-l-pado-2 text-white"
+            : "border-l-transparent text-uju-secondary hover:bg-uju-bg/40 hover:text-white",
+        ].join(" ")}
+      >
+        <StatusDot status={status} />
+        <span className="truncate">{agent.name}</span>
+      </button>
+    </li>
+  );
+}
+
+function StatusDot({ status }: { status: "active" | "paused" | "inactive" }) {
+  if (status === "active") {
+    return (
+      <span
+        aria-label="active"
+        className="shrink-0 w-1.5 h-1.5 rounded-full bg-emerald-400"
+      />
+    );
+  }
+  if (status === "paused") {
+    return (
+      <span
+        aria-label="paused"
+        className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400"
+      />
+    );
+  }
+  return (
     <span
       aria-label="inactive"
       className="shrink-0 w-1.5 h-1.5 rounded-full border border-uju-border/80"
