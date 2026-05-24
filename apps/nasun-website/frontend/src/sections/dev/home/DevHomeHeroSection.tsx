@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import FadeInUp from "./FadeInUp";
 
 export default function DevHomeHeroSection() {
@@ -37,9 +36,6 @@ export default function DevHomeHeroSection() {
             >
               Open App
             </a>
-            <Link to="/about" className="ch-btn ch-btn-lg ch-btn-ghost">
-              Learn More
-            </Link>
           </div>
         </FadeInUp>
       </div>
