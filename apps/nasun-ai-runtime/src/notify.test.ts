@@ -79,7 +79,7 @@ describe('shouldNotify', () => {
 });
 
 describe('formatHeartbeatHtml', () => {
-  const explorerBase = 'https://explorer.nasun.io/devnet/tx';
+  const explorerBase = 'https://explorer.nasun.io/devnet';
 
   it('escapes HTML in decision.reason', () => {
     const r = succeededBuy({
@@ -135,7 +135,35 @@ describe('formatHeartbeatHtml', () => {
 
   it('includes explorer link when txDigest present', () => {
     const html = formatHeartbeatHtml(succeededBuy(), 'conservative_dca', explorerBase);
-    expect(html).toContain(`${explorerBase}/abc123`);
+    expect(html).toContain(`${explorerBase}/tx/abc123`);
+  });
+
+  it('appends View escrow link when escrowId provided', () => {
+    const html = formatHeartbeatHtml(succeededBuy(), 'conservative_dca', explorerBase, {
+      escrowId: '0xescrow',
+    });
+    expect(html).toContain(`${explorerBase}/object/0xescrow`);
+    expect(html).toContain('View escrow');
+    expect(html).toContain('View tx');
+  });
+
+  it('renders Balance line when balances provided', () => {
+    const html = formatHeartbeatHtml(succeededBuy(), 'conservative_dca', explorerBase, {
+      balances: { nbtc: 0.00153, nusdc: 1247.32 },
+    });
+    expect(html).toContain('Balance: 0.00153 NBTC · 1247.3200 NUSDC');
+  });
+
+  it('renders Balance line on HOLD (no txDigest, no fills)', () => {
+    const r = succeededBuy({
+      txDigest: undefined,
+      decision: { action: 'HOLD', sizeNUSDC: 0, reason: 'low vol' },
+    });
+    const html = formatHeartbeatHtml(r, 'conservative_dca', explorerBase, {
+      balances: { nbtc: 0, nusdc: 50 },
+    });
+    expect(html).toContain('Balance: 0 NBTC · 50.0000 NUSDC');
+    expect(html).not.toContain('View tx');
   });
 
   it('omits link when txDigest absent', () => {

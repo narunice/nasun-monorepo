@@ -59,6 +59,11 @@ export interface NotifyEnv {
   BARAM_CHAT_SERVER_HMAC_SECRET?: string;
   STRATEGY?: string;
   RPC_URL?: string;
+  /** Agent's escrow object id. When set together with RPC_URL the heartbeat
+   *  push gains a "Balance:" line (live NBTC/NUSDC held in escrow) and a
+   *  "View escrow" link in the footer. Both are best-effort: any RPC or
+   *  parse failure silently degrades to the previous message shape. */
+  ESCROW_ID?: string;
   /** User-facing label sourced from chat-server trader config (Phase 7,
    *  2026-05-23). Empty or absent means the runtime falls back to a
    *  strategy-only header — that's the old behavior that caused
@@ -69,8 +74,8 @@ export interface NotifyEnv {
 export interface HeartbeatNotifyDeps {
   fetchImpl?: typeof fetch;
   log?: (msg: string) => void;
-  /** Override explorer base for tx digest link. Defaults to RPC_URL-derived
-   *  or hardcoded devnet explorer. */
+  /** Override network-level explorer base (e.g. https://explorer.nasun.io/devnet).
+   *  formatHeartbeatHtml appends /tx/{digest} and /object/{escrowId}. */
   explorerBase?: string;
 }
 
@@ -79,6 +84,13 @@ export interface TradeFills {
   baseDelta: number;
   /** Net quote coin entering escrow (positive on SELL, negative on BUY). NUSDC, 6 decimals. */
   quoteDelta: number;
+}
+
+export interface EscrowBalances {
+  /** Current NBTC balance held in escrow (human units, 8 decimals). */
+  nbtc: number;
+  /** Current NUSDC balance held in escrow (human units, 6 decimals). */
+  nusdc: number;
 }
 
 const BASE_DECIMALS = 8;   // NBTC
@@ -131,10 +143,96 @@ export async function fetchTradeFills(
   }
 }
 
+// Best-effort fetch of escrow NBTC + NUSDC live balances by enumerating the
+// AgentEscrow's dynamic_field<TypeName, Balance<T>> children. Two RPCs:
+// one sui_getDynamicFields, one sui_multiGetObjects. Any failure returns null
+// so the caller falls back to a message without the Balance line.
+export async function fetchEscrowBalances(
+  rpcUrl: string,
+  escrowId: string,
+  fetchImpl: typeof fetch,
+): Promise<EscrowBalances | null> {
+  try {
+    const listRes = await fetchImpl(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'suix_getDynamicFields',
+        params: [escrowId, null, 50],
+      }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!listRes.ok) return null;
+    const listJson = (await listRes.json()) as {
+      result?: { data?: Array<{ objectId: string; objectType?: string }> };
+    };
+    const fields = listJson.result?.data ?? [];
+    // Only fetch the two assets we care about. objectType embeds the inner
+    // Balance<T> type, so filter without a per-field name lookup.
+    const wanted = fields.filter((f) => {
+      const t = f.objectType ?? '';
+      return t.includes('::nbtc::NBTC') || t.includes('::nusdc::NUSDC');
+    });
+    if (wanted.length === 0) return { nbtc: 0, nusdc: 0 };
+
+    const objRes = await fetchImpl(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'sui_multiGetObjects',
+        params: [wanted.map((f) => f.objectId), { showContent: true }],
+      }),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!objRes.ok) return null;
+    const objJson = (await objRes.json()) as {
+      result?: Array<{
+        data?: {
+          objectId: string;
+          type?: string;
+          content?: { fields?: { value?: string | number } };
+        };
+      }>;
+    };
+    let nbtcRaw = 0n;
+    let nusdcRaw = 0n;
+    for (const entry of objJson.result ?? []) {
+      const d = entry.data;
+      if (!d) continue;
+      const t = d.type ?? '';
+      const v = d.content?.fields?.value;
+      if (v === undefined || v === null) continue;
+      const amt = BigInt(typeof v === 'number' ? Math.trunc(v) : v);
+      if (t.includes('::nbtc::NBTC')) nbtcRaw += amt;
+      else if (t.includes('::nusdc::NUSDC')) nusdcRaw += amt;
+    }
+    return {
+      nbtc: Number(nbtcRaw) / 10 ** BASE_DECIMALS,
+      nusdc: Number(nusdcRaw) / 10 ** QUOTE_DECIMALS,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function deriveExplorerBase(override?: string): string {
-  if (override) return override;
-  // Default to devnet explorer; mainnet/testnet override via dep injection.
-  return 'https://explorer.nasun.io/devnet/tx';
+  if (override) return override.replace(/\/+$/, '');
+  // Network-level base; tx and object subpaths are appended downstream.
+  // Mainnet/testnet override via dep injection.
+  return 'https://explorer.nasun.io/devnet';
+}
+
+function formatBalancesLine(b: EscrowBalances): string {
+  // NBTC small values need precision; trim trailing zeros for readability.
+  const nbtcStr = b.nbtc === 0
+    ? '0'
+    : b.nbtc.toFixed(8).replace(/0+$/, '').replace(/\.$/, '');
+  const nusdcStr = b.nusdc.toFixed(4);
+  return `Balance: ${nbtcStr} NBTC · ${nusdcStr} NUSDC`;
 }
 
 function formatFillsLine(action: string, fills: TradeFills): string {
@@ -156,6 +254,10 @@ function formatFillsLine(action: string, fills: TradeFills): string {
 export interface FormatHeartbeatOpts {
   fills?: TradeFills | null;
   agentName?: string;
+  balances?: EscrowBalances | null;
+  /** When set together with a network-level explorerBase, adds a
+   *  "View escrow" link to the footer pointing at /object/{escrowId}. */
+  escrowId?: string;
 }
 
 /**
@@ -189,17 +291,25 @@ export function formatHeartbeatHtml(
   const headerLabel = safeName ? `${safeName} · ${safeStrategy}` : safeStrategy;
   const header = `<b>[Nasun AI · ${headerLabel}]</b>\n${action} ~${sizeNUSDC} NUSDC`;
   const fillsLine = fills ? `\n${escapeHtml(formatFillsLine(action, fills))}` : '';
-  const footer = digest
-    ? `\n<a href="${explorerBase}/${encodeURIComponent(digest)}">View tx</a>`
-    : '';
+  const balances = opts.balances;
+  const balancesLine = balances ? `\n${escapeHtml(formatBalancesLine(balances))}` : '';
+  const networkBase = explorerBase.replace(/\/+$/, '');
+  const footerLinks: string[] = [];
+  if (digest) {
+    footerLinks.push(`<a href="${networkBase}/tx/${encodeURIComponent(digest)}">View tx</a>`);
+  }
+  if (opts.escrowId) {
+    footerLinks.push(`<a href="${networkBase}/object/${encodeURIComponent(opts.escrowId)}">View escrow</a>`);
+  }
+  const footer = footerLinks.length ? `\n${footerLinks.join(' · ')}` : '';
 
   // Budget remaining bytes for the reason line so the total html fits 4096B.
-  const fixedBytes = Buffer.byteLength(header + fillsLine + footer, 'utf8') + 32; // 32B slack for tags
+  const fixedBytes = Buffer.byteLength(header + fillsLine + balancesLine + footer, 'utf8') + 32; // 32B slack for tags
   const reasonBudget = Math.max(0, MAX_HTML_BYTES - fixedBytes - HEADER_MAX_BYTES);
   const escapedReason = escapeHtml(truncateToByteCap(rawReason, reasonBudget));
   const reasonLine = escapedReason ? `\n<i>${escapedReason}</i>` : '';
 
-  const html = header + reasonLine + fillsLine + footer;
+  const html = header + reasonLine + fillsLine + balancesLine + footer;
   // Final hard cap (paranoia; truncate non-tag suffix if somehow over).
   return Buffer.byteLength(html, 'utf8') > MAX_HTML_BYTES
     ? html.slice(0, MAX_HTML_BYTES)
@@ -255,9 +365,22 @@ export async function maybeNotifyHeartbeat(
     fills = await fetchTradeFills(env.RPC_URL, result.txDigest, fetchImpl);
   }
 
+  // Live escrow balances are shown on every cycle (BUY/SELL/HOLD) so the
+  // user can read working capital without leaving Telegram. Independent of
+  // txDigest because HOLD has no tx but the balance is still informative.
+  let balances: EscrowBalances | null = null;
+  if (env.RPC_URL && env.ESCROW_ID) {
+    balances = await fetchEscrowBalances(env.RPC_URL, env.ESCROW_ID, fetchImpl);
+  }
+
   let html: string;
   try {
-    html = formatHeartbeatHtml(result, strategy, explorerBase, { fills, agentName });
+    html = formatHeartbeatHtml(result, strategy, explorerBase, {
+      fills,
+      agentName,
+      balances,
+      escrowId: env.ESCROW_ID,
+    });
   } catch (err) {
     log(`[notify] format failed: ${err instanceof Error ? err.message : err}`);
     return;
