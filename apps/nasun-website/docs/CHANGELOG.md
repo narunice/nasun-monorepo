@@ -7,6 +7,41 @@
 
 ### 🎯 최근 업데이트 이력 ⭐ **필독!**
 
+#### 📅 2026-05-24: 사이트 느림 조사 + 1차 조치 (chat-server 가시화 + frontend stale chunk 자동복구) ✅
+
+**작업 일시**: 2026-05-24
+**작업 유형**: 성능 관찰성 + 사용자 가시 이슈 수정
+**심각도**: Medium (사용자 체감 느림 + 깨진 화면 보고)
+
+---
+
+**배경**: nasun.io / pado.finance가 전체적으로 느리다는 사용자 보고. 외부 latency probe + prod EC2/node-3 시스템 메트릭 + chat-server 내부 측정으로 진단 진행.
+
+**진단 결과**:
+- prod EC2 (2 vCPU / 3.7GB / swap 100% 사용)는 25+ 프로세스가 경쟁하는 구조적 saturation 상태
+- node-3 (8 vCPU / 30GB / swap 4GB 100% 사용) 도 동거 부담
+- `chat-server` main thread가 `indexer.runAllPolls` 로 매 poll cycle 1-3초 점유 (#1 범인)
+- `vite:preloadError` 및 stale lazy chunk 404가 nginx 에러 로그에 분당 누적 (사용자 체감 깨진 화면)
+
+**chat-server 변경**:
+- 신규: `chat-server/src/event-loop-monitor.ts` — `perf_hooks.monitorEventLoopDelay` 기반 30s 윈도우 통계 로깅 (mean/p50/p90/p99/max)
+- 신규: `chat-server/src/perf-trace.ts` — `traceAsync` / `traceSync` 유틸. threshold 초과 시만 `[Trace] <label> took <ms>ms` 형태로 로깅
+- 적용: `indexer.runAllPolls` (>300ms), `profile.sync` (>500ms), `alpha-cron.{heartbeat,warn,expire,invite,invite-expire}` (각 50/200ms)
+- 조정: `alpha-cron` tick 자체 slow 임계 10s → 1s 하향
+
+**frontend 변경**:
+- 복원: `frontend/src/utils/lazyWithRetry.ts` — 2026-05-16 WIP 진단으로 비활성됐던 stale chunk 자동복구 재활성. 추가 안전장치 `MAX_SESSION_RELOADS=3` 도입으로 reload loop 영구 차단
+- 신규: `frontend/src/main.tsx` 의 `vite:preloadError` 핸들러 — `<link rel="modulepreload">` 단계 404를 lazyWithRetry와 동일한 sessionStorage 가드(60s + max 3)로 자동복구
+
+**측정 데이터 (1차 deploy 후)**:
+- EventLoop: mean 22-29ms (CPU 부족 baseline), max 588-3756ms (spike)
+- Trace 빈도: `indexer.runAllPolls` 압도적 1위 (9분에 100회, 매 5.4초 1회 300ms+ stall)
+- stale 404: deploy 직후 burst 25 → 1분만에 baseline 1/min 복귀 (자동복구 정상 작동)
+
+**다음 단계 (다른 세션)**: `apps/nasun-website/chat-server/src/indexer.ts` 를 worker thread 로 분리하여 main event loop 해방. aggregator(2026-05-14) 패턴 그대로 적용. 상세 작업서: `.claude/handoffs/2026-05-24-chat-server-indexer-worker.md`
+
+---
+
 #### 📅 2026-01-24: Legacy Leaderboard V2 분리 ✅
 
 **작업 일시**: 2026-01-24
