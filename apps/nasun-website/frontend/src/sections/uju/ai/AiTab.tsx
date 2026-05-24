@@ -374,13 +374,16 @@ function SubTabBar({ agentName, subTab, disabled, onChangeSub, onLeaderboard }: 
         <button
           type="button"
           onClick={onLeaderboard}
-          className="flex items-center gap-1 px-2.5 py-1 text-xs text-uju-secondary hover:text-white rounded-md hover:bg-uju-card/60 transition-colors"
+          // Mobile: icon-only to keep the 3-col SubTabBar from clipping when
+          // viewport <= ~400px. Label re-appears at sm:.
+          className="flex items-center gap-1 px-2 sm:px-2.5 py-2 sm:py-1 text-xs text-uju-secondary hover:text-white rounded-md hover:bg-uju-card/60 transition-colors"
           title="Agent Leaderboard"
+          aria-label="Agent Leaderboard"
         >
-          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+          <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 13h2v8H3zm8-6h2v14h-2zm8-4h2v18h-2z" />
           </svg>
-          Leaderboard
+          <span className="hidden sm:inline">Leaderboard</span>
         </button>
       </div>
     </div>

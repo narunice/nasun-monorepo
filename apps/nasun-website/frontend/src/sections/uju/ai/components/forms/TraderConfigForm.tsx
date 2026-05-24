@@ -221,7 +221,7 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className={labelClass}>Trading Pair</label>
               <div className={`${inputClass} flex items-center justify-between cursor-default`} aria-readonly="true">
@@ -275,7 +275,7 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
             which limits NUSDC spent paying the AI executor per request.
           </p>
         )}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className={labelClass}>Per-trade swap cap (NUSDC)</label>
             <input type="number" step="0.01" min="0.01" max="100" value={perTrade} onChange={(e) => setPerTrade(e.target.value)} className={inputClass} />
@@ -292,7 +292,7 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
       </div>
 
       <div className="space-y-1">
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="space-y-1">
             <label className={labelClass}>Max slippage (bps)</label>
             <input type="number" step="1" min="0" max={MAX_BPS} value={maxSlippageBps} onChange={(e) => setMaxSlippageBps(e.target.value)} className={inputClass} />
