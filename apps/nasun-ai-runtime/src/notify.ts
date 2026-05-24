@@ -194,7 +194,7 @@ export async function fetchEscrowBalances(
         data?: {
           objectId: string;
           type?: string;
-          content?: { fields?: { value?: string | number } };
+          content?: { type?: string; fields?: { value?: string | number } };
         };
       }>;
     };
@@ -203,7 +203,14 @@ export async function fetchEscrowBalances(
     for (const entry of objJson.result ?? []) {
       const d = entry.data;
       if (!d) continue;
-      const t = d.type ?? '';
+      // sui_multiGetObjects only returns top-level `data.type` when the
+      // request includes `showType:true`. We pass only `showContent:true`,
+      // so the inner Balance<T> type lives at `data.content.type`. Fall back
+      // to top-level for forward compatibility. 2026-05-24 Danny incident:
+      // every heartbeat showed "Balance: 0 NBTC · 0.0000 NUSDC" because the
+      // top-level read was always undefined and the filter rejected every
+      // field.
+      const t = d.content?.type ?? d.type ?? '';
       const v = d.content?.fields?.value;
       if (v === undefined || v === null) continue;
       const amt = BigInt(typeof v === 'number' ? Math.trunc(v) : v);
