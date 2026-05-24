@@ -245,57 +245,251 @@
 .dev-home-catena .ch-rule-left  { border-left: 1px solid var(--ch-fg-accent); padding-left: 1.25rem; }
 .dev-home-catena .ch-rule-right { border-right: 1px solid var(--ch-fg-subdued); padding-right: 1.25rem; }
 
-/* ---------- Step chain (compounding loop) ---------- */
+/* ---------- Step card grid (Compounding Loop) ---------- */
 .dev-home-catena .ch-step-grid {
   display: grid;
   grid-template-columns: 1fr;
-  gap: 1.25rem;
-  align-items: stretch;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .dev-home-catena .ch-step-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @media (min-width: 1024px) {
   .dev-home-catena .ch-step-grid {
     grid-template-columns: repeat(5, 1fr);
-    gap: 0.75rem;
+    gap: 0.875rem;
   }
 }
-.dev-home-catena .ch-step {
+
+.dev-home-catena .ch-step-card {
   background-color: var(--ch-bg-card);
   border: 1px solid var(--ch-border);
-  border-radius: var(--ch-radius-lg);
-  padding: 1.5rem;
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.4rem;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
+  min-height: 320px;
   height: 100%;
   position: relative;
+  overflow: hidden;
+  transition: border-color 320ms ease, transform 320ms ease, background-color 320ms ease;
 }
-.dev-home-catena .ch-step-index {
+.dev-home-catena .ch-step-card:hover {
+  border-color: rgba(134, 243, 183, 0.45);
+  background-color: rgba(35, 33, 36, 0.92);
+  transform: translateY(-2px);
+}
+.dev-home-catena .ch-step-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.dev-home-catena .ch-step-card-eyebrow {
   font-family: var(--ch-font-mono);
   font-weight: 500;
-  letter-spacing: 0.2em;
-  font-size: 0.75rem;
-  background-image: linear-gradient(90deg, #5ee1e4 0%, #d2f6a2 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.6875rem;
+  color: var(--ch-fg-accent);
 }
-.dev-home-catena .ch-step-label {
+.dev-home-catena .ch-step-card-num {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  font-size: 0.6875rem;
+  color: var(--ch-fg-accent);
+  opacity: 0.55;
+}
+.dev-home-catena .ch-step-card-title {
   font-family: var(--ch-font-display);
   font-weight: 500;
-  letter-spacing: 0.01em;
-  font-size: 1.125rem;
+  letter-spacing: 0.005em;
+  font-size: 1.5rem;
+  line-height: 1.1;
   color: var(--ch-fg-display);
+  margin-top: 0.125rem;
 }
-@media (min-width: 1024px) {
-  .dev-home-catena .ch-step + .ch-step::before {
-    content: "";
-    position: absolute;
-    left: -0.75rem;
-    top: 50%;
-    width: 0.75rem;
-    height: 1px;
-    background-image: linear-gradient(90deg, #5ee1e4 0%, #d2f6a2 100%);
-    transform: translateY(-50%);
+.dev-home-catena .ch-step-card-body {
+  font-family: var(--ch-font-body);
+  font-weight: 300;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ch-fg-muted);
+}
+.dev-home-catena .ch-step-card-viz {
+  margin-top: auto;
+  height: 108px;
+  border-radius: 0.625rem;
+  background: rgba(0, 0, 0, 0.32);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* ----- Viz 01 — Act (radial ripple) ----- */
+.dev-home-catena .ch-viz-act { position: relative; width: 100%; height: 100%; }
+.dev-home-catena .ch-viz-act .dot {
+  position: absolute; top: 50%; left: 50%;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%; background: #86f3b7;
+  box-shadow: 0 0 16px rgba(134, 243, 183, 0.85);
+}
+.dev-home-catena .ch-viz-act .ring {
+  position: absolute; top: 50%; left: 50%;
+  width: 8px; height: 8px; margin: -4px 0 0 -4px;
+  border-radius: 50%; border: 1px solid #86f3b7;
+  opacity: 0; animation: ch-ripple 3.2s ease-out infinite;
+}
+.dev-home-catena .ch-viz-act .ring:nth-child(2) { animation-delay: 1.07s; }
+.dev-home-catena .ch-viz-act .ring:nth-child(3) { animation-delay: 2.13s; }
+@keyframes ch-ripple {
+  0%   { transform: scale(1); opacity: 0.85; }
+  100% { transform: scale(8); opacity: 0; }
+}
+
+/* ----- Viz 02 — Record (sequential bars) ----- */
+.dev-home-catena .ch-viz-record {
+  display: flex; flex-direction: column; justify-content: center;
+  gap: 9px; padding: 0 22px; width: 100%; height: 100%;
+}
+.dev-home-catena .ch-viz-record .bar {
+  height: 5px; background: rgba(94, 225, 228, 0.14);
+  border-radius: 999px; position: relative; overflow: hidden;
+}
+.dev-home-catena .ch-viz-record .bar::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, #5ee1e4, #d2f6a2);
+  transform-origin: left; transform: scaleX(0);
+  animation: ch-bar-fill 5.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-viz-record .bar:nth-child(1) { width: 70%; }
+.dev-home-catena .ch-viz-record .bar:nth-child(1)::after { animation-delay: 0s; }
+.dev-home-catena .ch-viz-record .bar:nth-child(2) { width: 92%; }
+.dev-home-catena .ch-viz-record .bar:nth-child(2)::after { animation-delay: 0.35s; }
+.dev-home-catena .ch-viz-record .bar:nth-child(3) { width: 56%; }
+.dev-home-catena .ch-viz-record .bar:nth-child(3)::after { animation-delay: 0.7s; }
+.dev-home-catena .ch-viz-record .bar:nth-child(4) { width: 80%; }
+.dev-home-catena .ch-viz-record .bar:nth-child(4)::after { animation-delay: 1.05s; }
+@keyframes ch-bar-fill {
+  0%        { transform: scaleX(0); }
+  35%, 75%  { transform: scaleX(1); }
+  92%, 100% { transform: scaleX(0); }
+}
+
+/* ----- Viz 03 — Score (sparkline) ----- */
+.dev-home-catena .ch-viz-score { width: 100%; height: 100%; display: block; padding: 14px; }
+.dev-home-catena .ch-viz-score svg { width: 100%; height: 100%; overflow: visible; }
+.dev-home-catena .ch-viz-score .line {
+  stroke-dasharray: 240; stroke-dashoffset: 240;
+  animation: ch-draw 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-viz-score .fill {
+  opacity: 0;
+  animation: ch-fade 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-viz-score .tip {
+  opacity: 0;
+  animation: ch-tip 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes ch-draw {
+  0%       { stroke-dashoffset: 240; }
+  40%, 88% { stroke-dashoffset: 0; }
+  100%     { stroke-dashoffset: 240; }
+}
+@keyframes ch-fade {
+  0%, 15%  { opacity: 0; }
+  50%, 88% { opacity: 1; }
+  100%     { opacity: 0; }
+}
+@keyframes ch-tip {
+  0%, 38%  { opacity: 0; }
+  48%, 88% { opacity: 1; }
+  100%     { opacity: 0; }
+}
+
+/* ----- Viz 04 — Tier (rising bars) ----- */
+.dev-home-catena .ch-viz-tier {
+  display: flex; align-items: flex-end; justify-content: center;
+  gap: 14px; height: 100%; padding: 12px 18px 10px;
+}
+.dev-home-catena .ch-viz-tier .tier-col {
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+  height: 100%; justify-content: flex-end;
+}
+.dev-home-catena .ch-viz-tier .tier-bar {
+  width: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px 3px 0 0;
+  position: relative; overflow: hidden;
+}
+.dev-home-catena .ch-viz-tier .tier-bar > span {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
+  transform-origin: bottom; transform: scaleY(0);
+  animation: ch-tier-rise 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-viz-tier .tier-bar.active > span {
+  background: linear-gradient(180deg, #d2f6a2 0%, #5ee1e4 100%);
+  box-shadow: 0 0 14px rgba(134, 243, 183, 0.55);
+}
+.dev-home-catena .ch-viz-tier .tier-col:nth-child(1) .tier-bar > span { animation-delay: 0s; }
+.dev-home-catena .ch-viz-tier .tier-col:nth-child(2) .tier-bar > span { animation-delay: 0.3s; }
+.dev-home-catena .ch-viz-tier .tier-col:nth-child(3) .tier-bar > span { animation-delay: 0.6s; }
+.dev-home-catena .ch-viz-tier .tier-label {
+  font-family: var(--ch-font-mono);
+  font-size: 0.625rem; letter-spacing: 0.18em;
+  color: var(--ch-fg-subdued);
+}
+@keyframes ch-tier-rise {
+  0%        { transform: scaleY(0); }
+  38%, 82%  { transform: scaleY(1); }
+  100%      { transform: scaleY(0); }
+}
+
+/* ----- Viz 05 — Unlock (padlock + keyhole pulse) ----- */
+.dev-home-catena .ch-viz-unlock {
+  width: 100%; height: 100%; padding: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.dev-home-catena .ch-viz-unlock svg { width: auto; height: 100%; overflow: visible; }
+.dev-home-catena .ch-viz-unlock .shackle {
+  transform-origin: 14px 30px;
+  animation: ch-unlock-shackle 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-viz-unlock .keyhole {
+  transform-origin: center;
+  animation: ch-unlock-pulse 4s ease-in-out infinite;
+}
+.dev-home-catena .ch-viz-unlock .glow {
+  opacity: 0;
+  animation: ch-unlock-glow 4s ease-in-out infinite;
+}
+@keyframes ch-unlock-shackle {
+  0%, 30%  { transform: translate(0, 0) rotate(0); }
+  55%, 82% { transform: translate(-2px, -6px) rotate(-12deg); }
+  100%     { transform: translate(0, 0) rotate(0); }
+}
+@keyframes ch-unlock-pulse {
+  0%, 40%, 100% { opacity: 0.5; transform: scale(1); }
+  60%, 82%      { opacity: 1; transform: scale(1.12); }
+}
+@keyframes ch-unlock-glow {
+  0%, 40%, 100% { opacity: 0; }
+  62%, 82%      { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena .ch-viz-act .ring,
+  .dev-home-catena .ch-viz-record .bar::after,
+  .dev-home-catena .ch-viz-score .line,
+  .dev-home-catena .ch-viz-score .fill,
+  .dev-home-catena .ch-viz-score .tip,
+  .dev-home-catena .ch-viz-tier .tier-bar > span,
+  .dev-home-catena .ch-viz-unlock .shackle,
+  .dev-home-catena .ch-viz-unlock .keyhole,
+  .dev-home-catena .ch-viz-unlock .glow {
+    animation: none;
   }
 }
 
