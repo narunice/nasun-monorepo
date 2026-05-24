@@ -63,11 +63,14 @@ module.exports = {
         // admin agent + hybrida personal agents) bring total active to ~8
         // while public users rotate within 6.
         ALPHA_GATE_ENABLED: 'true',
-        // PAUSED 2026-05-23: temporarily lowered from '6' to '4' to halt
-        // waitlist → invited handoff while alpha UX is reworked. Active 4
-        // expires_at are also frozen +30d in chat.db (see alpha_timer_pause).
-        // Restore to '6' when alpha resumes.
-        NASUN_AI_ALPHA_SYSTEM_CAP: '4',
+        // PAUSED 2026-05-23 → DOGFOOD 2026-05-24: original '6', lowered to
+        // '4' to halt waitlist handoff during UX rework, then bumped to '5'
+        // for admin dogfood (admin pre-invited via alpha_waitlist SQL so
+        // they can create one test agent above the 4 frozen alpha slots).
+        // Active 4's expires_at are frozen +30d in chat.db (see
+        // alpha_timer_pause). Restore to '4' after dogfood test, then to
+        // '6' when alpha resumes for public.
+        NASUN_AI_ALPHA_SYSTEM_CAP: '5',
         NASUN_AI_ALPHA_AGENT_TTL_MS: '129600000',      // 36h
         NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '21600000',    // 6h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
