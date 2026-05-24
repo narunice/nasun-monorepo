@@ -37,7 +37,7 @@ const WalletLayer = lazyWithRetry(() => import("./providers/WalletLayer"));
 function setupErrorHandlers() {
   // Chrome Extension runtime.lastError 에러 억제
   window.addEventListener('error', (event) => {
-    if (event.message?.includes('runtime.lastError') || 
+    if (event.message?.includes('runtime.lastError') ||
         event.message?.includes('message port closed') ||
         event.message?.includes('Extension context invalidated')) {
       // 브라우저 확장 프로그램 관련 에러는 콘솔에만 표시하고 앱 동작에 영향주지 않음
@@ -54,6 +54,28 @@ function setupErrorHandlers() {
       console.warn('🔧 Browser extension promise warning:', event.reason);
       event.preventDefault();
     }
+  });
+
+  // Vite emits this when a `<link rel="modulepreload">` chunk fails to load,
+  // which is the common stale-chunk-after-deploy path. lazyWithRetry catches
+  // the same class of failure when the chunk is actually imported, but
+  // preloadError fires earlier and on a different code path. We share the
+  // same sessionStorage guard keys so the 60s + MAX_SESSION_RELOADS budget
+  // is enforced across both paths.
+  window.addEventListener('vite:preloadError', (event) => {
+    const last = Number(sessionStorage.getItem('chunk-reload-at') ?? 0);
+    const count = Number(sessionStorage.getItem('chunk-reload-count') ?? 0);
+    const now = Date.now();
+    if (now - last < 60_000 || count >= 3) {
+      console.warn('🔁 vite:preloadError but reload budget exhausted:', event);
+      return;
+    }
+    sessionStorage.setItem('chunk-reload-at', String(now));
+    sessionStorage.setItem('chunk-reload-count', String(count + 1));
+    const url = new URL(window.location.href);
+    url.searchParams.set('_r', String(now));
+    console.warn('🔁 vite:preloadError → cache-busted reload:', event);
+    window.location.replace(url.toString());
   });
 }
 
