@@ -86,7 +86,7 @@ interface AgentLeaderboardProps {
 
 export function AgentLeaderboard({ onBack, onSelectAgent }: AgentLeaderboardProps) {
   const [metric, setMetric] = useState<Metric>('profit');
-  const [timeWindow, setTimeWindow] = useState<Window>('30d');
+  const [timeWindow, setTimeWindow] = useState<Window>('7d');
 
   const { data, isLoading, error } = useAgentLeaderboard(metric, timeWindow);
   const rows = data?.rows ?? [];
