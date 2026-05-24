@@ -702,17 +702,30 @@ function Step3PolicyInline({
           throw new Error('Failed to save policy');
         }
         // Only raise on-chain limits; never lower (lowering is an explicit
-        // tighten action via Settings). Skipping when the capability is
-        // still loading would leave the user at default 2 NUSDC, so we
-        // wait for the fetch — refetch is awaited in useCapability so a
-        // fresh wizard sees the just-created cap before this branch runs.
+        // tighten action via Settings). useCapability's initial fetch is
+        // fired by a mount effect, so a user who hits Save immediately
+        // after Step 3 mounts (or while a transient RPC error blocked the
+        // first read) would read capability.data === null and silently
+        // skip the cap raise, leaving the agent at default 2 NUSDC and
+        // bouncing every trade with E_PAYMENT_EXCEEDS_NOTIONAL_CAP
+        // (2026-05-24 Danny incident — this branch was supposed to
+        // prevent it). Re-read via the returned value (NOT capability.data)
+        // because React state updates from refetch's setData don't
+        // propagate to this closure before the next render. Hard-throw if
+        // still null so the user sees an actionable error instead of an
+        // advance-then-fail.
+        const cap = await capability.refetch();
+        if (!cap) {
+          throw new Error(
+            capability.fetchError
+              ?? 'Could not load the on-chain capability for this agent. Please retry in a moment.',
+          );
+        }
         const newPerTrade = BigInt(values.perTradeMaxQuoteRaw);
         const newDailyMax = BigInt(values.dailyMaxQuoteRaw);
-        const cap = capability.data;
         if (
-          cap &&
-          (newPerTrade > cap.riskLimits.maxNotionalPerAction ||
-            newDailyMax > cap.riskLimits.maxDailyLoss)
+          newPerTrade > cap.riskLimits.maxNotionalPerAction ||
+          newDailyMax > cap.riskLimits.maxDailyLoss
         ) {
           const ok = await capability.updateRiskLimits({
             maxNotionalPerAction:
