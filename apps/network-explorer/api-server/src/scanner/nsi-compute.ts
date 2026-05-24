@@ -26,7 +26,7 @@
 
 import { sql as indexerDb, pointsDb } from '../db.js';
 import { sendTelegramAlert } from '../utils/alert.js';
-import { getLatestWalletPerIdentity } from './identity-wallet.js';
+import { getAllWalletsPerIdentity } from './identity-wallet.js';
 
 const COMPUTE_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
@@ -254,9 +254,11 @@ async function runCompute(): Promise<void> {
       }
     }
 
-    // Stage F: latest wallet per identity. See identity-wallet.ts for why
-    // the loose index scan helper replaces the naive DISTINCT ON.
-    const identityToWallet = await getLatestWalletPerIdentity();
+    // Stage F: all wallets per identity. Shares the cycle-scoped helper cache
+    // with staking-principal-sync (single SQL per cycle, ~1s warm). Summing
+    // tx_count across all controlled wallets also fixes a silent
+    // multi-wallet undercount in the previous "latest wallet only" shape.
+    const walletsByIdentity = await getAllWalletsPerIdentity();
 
     // Stage G: existing user_nsi rows (for previous_tier + max_seen_tier).
     const existing = await pointsDb<
@@ -276,15 +278,15 @@ async function runCompute(): Promise<void> {
       ...diversityMap.keys(),
       ...allianceHealthMap.keys(),
       ...gpHealthMap.keys(),
-      ...identityToWallet.keys(),
+      ...walletsByIdentity.keys(),
     ]);
 
     const isMonotoneUpPeriod = monotoneActive;
     const computed: ComputedRow[] = [];
 
     for (const identityId of allIdentities) {
-      const wallet = identityToWallet.get(identityId);
-      if (!wallet) continue;
+      const wallets = walletsByIdentity.get(identityId);
+      if (!wallets || wallets.length === 0) continue;
 
       const avgStakedNsn = stakingMap.get(identityId) ?? 0;
       const stakingScore = Math.min(
@@ -295,7 +297,18 @@ async function runCompute(): Promise<void> {
       const avgLpUsd = lpMap.get(identityId) ?? 0;
       const lpScore = Math.min(1000, log10Safe(Math.max(1, avgLpUsd / LP_DIVISOR)) * LP_SCALE);
 
-      const txCount = txMap.get(wallet.toLowerCase()) ?? 0;
+      // Sum tx_count across every wallet controlled by this identity.
+      // Display wallet = most tx-active wallet (mirrors the old "latest tx"
+      // semantics and ensures standing API lookup hits for the wallet the
+      // user is most likely querying with).
+      let txCount = 0;
+      let wallet = wallets[0];
+      let walletMaxTx = 0;
+      for (const w of wallets) {
+        const wTx = txMap.get(w.toLowerCase()) ?? 0;
+        txCount += wTx;
+        if (wTx > walletMaxTx) { walletMaxTx = wTx; wallet = w; }
+      }
       const txScore = Math.min(1000, log10Safe(Math.max(1, txCount)) * TX_SCALE);
 
       const distinctCount = diversityMap.get(identityId) ?? 0;
