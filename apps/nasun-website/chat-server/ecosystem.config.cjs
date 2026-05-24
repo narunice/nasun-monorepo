@@ -63,14 +63,15 @@ module.exports = {
         // admin agent + hybrida personal agents) bring total active to ~8
         // while public users rotate within 6.
         ALPHA_GATE_ENABLED: 'true',
-        // PAUSED 2026-05-23 → DOGFOOD 2026-05-24: original '6', lowered to
-        // '4' to halt waitlist handoff during UX rework, then bumped to '5'
-        // for admin dogfood (admin pre-invited via alpha_waitlist SQL so
-        // they can create one test agent above the 4 frozen alpha slots).
-        // Active 4's expires_at are frozen +30d in chat.db (see
-        // alpha_timer_pause). Restore to '4' after dogfood test, then to
-        // '6' when alpha resumes for public.
-        NASUN_AI_ALPHA_SYSTEM_CAP: '5',
+        // PAUSED 2026-05-23 → DOGFOOD 2026-05-24 → RESUME 2026-05-24:
+        // original '6', lowered to '4' to halt waitlist handoff during UX
+        // rework, bumped to '5' for admin dogfood, now restored to '6' as
+        // public alpha resumes. Held at '6' (not '8') because the EC2
+        // instance (3.7 GiB RAM, swap 100% utilized) cannot safely host
+        // 8 concurrent agents without risking the 2026-05-13/22 chat-
+        // server saturation incident class. Bumping above 6 requires
+        // EC2 upsize first.
+        NASUN_AI_ALPHA_SYSTEM_CAP: '6',
         // 2026-05-24: lowered from 129600000 (36h) to 86400000 (24h) so the
         // alpha slot rotation reaches more waitlisted users per day. Existing
         // agents keep whatever expires_at they were stamped with; only new
