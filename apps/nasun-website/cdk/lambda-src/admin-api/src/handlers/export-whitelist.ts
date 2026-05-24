@@ -49,6 +49,13 @@ function invalidateReferralReviewCache() {
   referralReviewCache.clear();
 }
 
+// Wallet mappings warm-container cache. A full UserWallets Scan (79k+ rows)
+// takes ~3s on success and 50% of invocations hit API Gateway's 29s sync cap.
+// TTL is held below the presigned URL expiry (600s, see s3-offload.ts) with a
+// safety margin so cached URLs handed to clients remain usable.
+const WALLET_MAPPINGS_CACHE_TTL_MS = 4 * 60 * 1000;
+let walletMappingsCache: { url: string; ts: number; count: number } | null = null;
+
 interface GenesisWhitelistItem {
   walletAddress: string;
   joinedAt: string;
@@ -513,7 +520,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         return errorResponse(401, "Unauthorized", requestOrigin);
       }
 
-      console.log("[internal] Fetching wallet mappings for points scanner");
+      const now = Date.now();
+      if (walletMappingsCache && now - walletMappingsCache.ts < WALLET_MAPPINGS_CACHE_TTL_MS) {
+        const ageSec = Math.round((now - walletMappingsCache.ts) / 1000);
+        console.log(
+          `[internal] Wallet mappings cache HIT (age=${ageSec}s, wallets=${walletMappingsCache.count})`
+        );
+        return jsonResponse(200, { url: walletMappingsCache.url }, requestOrigin);
+      }
+      console.log("[internal] Wallet mappings cache MISS, scanning UserWallets");
 
       // Scan UserWallets for all registered wallets (exclude WALLET_OWNER sentinel rows)
       const wallets: Record<string, string> = {};
@@ -546,6 +561,7 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
 
       // Offload to S3 to avoid Lambda 6MB response limit
       const url = await uploadAndPresign("internal/wallet-mappings.json.gz", payload);
+      walletMappingsCache = { url, ts: Date.now(), count: Object.keys(wallets).length };
       return jsonResponse(200, { url }, requestOrigin);
     }
 
