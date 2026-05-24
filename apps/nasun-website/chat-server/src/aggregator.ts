@@ -20,34 +20,25 @@ import { Worker } from 'node:worker_threads';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import type { LeaderboardConfig } from './leaderboard-types.js';
-import { refreshIdentityCache, buildSameIdentityPairs } from './identity-resolver.js';
 import { refreshBannedCache, backgroundRefreshBannedCache } from './banned-loader.js';
 
-const IDENTITY_CACHE_REFRESH_MS = 60 * 60 * 1000;
 const BANNED_CACHE_REFRESH_MS = 5 * 60 * 1000;
 
 let worker: Worker | null = null;
-let identityTimer: ReturnType<typeof setInterval> | null = null;
 let bannedTimer: ReturnType<typeof setInterval> | null = null;
 let stopping = false;
 
 export function startAggregator(cfg: LeaderboardConfig): void {
-  // Main-thread caches: leaderboard-api reads getBannedSnapshotSync()/getIdentityMap()
-  // on hot HTTP paths. These intervals keep main's copies fresh; the worker has its
-  // own independent copies refreshed on the same cadence.
-  refreshIdentityCache()
-    .then(async () => {
-      const pairs = await buildSameIdentityPairs();
-      console.log(`[Aggregator/main] Identity cache primed (${pairs.size} pairs)`);
-    })
-    .catch((err: Error) => {
-      console.error('[Aggregator/main] Identity cache load failed:', err.message);
-    });
+  // Banned cache: leaderboard-api reads getBannedSnapshotSync() on hot HTTP paths,
+  // so main keeps its own copy refreshed on a 5-min cadence. The worker has its
+  // own independent copy.
+  //
+  // Identity cache is *not* refreshed on main: the bulk wallet->identityId map
+  // (loaded via WALLET_MAPPINGS_URL, ~9MB JSON / 79k entries) has no main-thread
+  // consumer; aggregator-worker is the only reader. Main-thread refresh used to
+  // cost ~550ms of sync work (gunzip+JSON.parse+Map build) per hour for zero
+  // benefit. Invalidation still flows via notifyWorkerIdentityInvalidate().
   refreshBannedCache().catch(() => { /* logged inside */ });
-
-  identityTimer = setInterval(() => {
-    refreshIdentityCache().catch(() => { /* logged inside */ });
-  }, IDENTITY_CACHE_REFRESH_MS);
   bannedTimer = setInterval(() => {
     backgroundRefreshBannedCache();
   }, BANNED_CACHE_REFRESH_MS);
@@ -79,7 +70,6 @@ function spawnWorker(cfg: LeaderboardConfig): void {
 
 export function stopAggregator(): void {
   stopping = true;
-  if (identityTimer) { clearInterval(identityTimer); identityTimer = null; }
   if (bannedTimer) { clearInterval(bannedTimer); bannedTimer = null; }
   if (worker) {
     try { worker.postMessage({ type: 'shutdown' }); } catch { /* ignore */ }
