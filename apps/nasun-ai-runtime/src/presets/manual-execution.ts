@@ -73,6 +73,7 @@ import {
   fetchTradeFills,
   fetchEscrowBalances,
   formatHeartbeatHtml,
+  reconcileBalancesWithFills,
 } from '../notify.js';
 
 // Minimal prompt used for the confirmation LLM call. The user has already
@@ -571,7 +572,11 @@ export async function runManualExecution(
     if (execResp.txDigest) {
       fills = await fetchTradeFills(config.rpcUrl, execResp.txDigest, fetch);
     }
-    const balances = await fetchEscrowBalances(config.rpcUrl, trader.escrowId, fetch);
+    const balancesRaw = await fetchEscrowBalances(config.rpcUrl, trader.escrowId, fetch);
+    // Same RPC indexer-lag mitigation as the autonomous push: if escrow
+    // dynamic field's previousTransaction doesn't match the just-settled
+    // tx digest, apply the fills delta to render the post-trade state.
+    const balances = reconcileBalancesWithFills(balancesRaw, fills, execResp.txDigest);
     const syntheticResult = {
       outcome: 'succeeded' as const,
       txDigest: execResp.txDigest,

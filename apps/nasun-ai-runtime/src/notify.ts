@@ -91,6 +91,13 @@ export interface EscrowBalances {
   nbtc: number;
   /** Current NUSDC balance held in escrow (human units, 6 decimals). */
   nusdc: number;
+  /** Digest of the last tx that mutated each balance field. Empty string
+   *  when the dynamic field is missing or the RPC did not return the
+   *  metadata. Used by `reconcileBalancesWithFills` to detect when an
+   *  RPC indexer lag served pre-tx state so the heartbeat message can
+   *  fall back to fills-derived deltas. */
+  nbtcPrevTx?: string;
+  nusdcPrevTx?: string;
 }
 
 const BASE_DECIMALS = 8;   // NBTC
@@ -184,7 +191,9 @@ export async function fetchEscrowBalances(
         jsonrpc: '2.0',
         id: 2,
         method: 'sui_multiGetObjects',
-        params: [wanted.map((f) => f.objectId), { showContent: true }],
+        // showPreviousTransaction lets the caller detect RPC indexer lag —
+        // see reconcileBalancesWithFills below.
+        params: [wanted.map((f) => f.objectId), { showContent: true, showPreviousTransaction: true }],
       }),
       signal: AbortSignal.timeout(5_000),
     });
@@ -194,12 +203,15 @@ export async function fetchEscrowBalances(
         data?: {
           objectId: string;
           type?: string;
+          previousTransaction?: string;
           content?: { type?: string; fields?: { value?: string | number } };
         };
       }>;
     };
     let nbtcRaw = 0n;
     let nusdcRaw = 0n;
+    let nbtcPrevTx: string | undefined;
+    let nusdcPrevTx: string | undefined;
     for (const entry of objJson.result ?? []) {
       const d = entry.data;
       if (!d) continue;
@@ -214,16 +226,56 @@ export async function fetchEscrowBalances(
       const v = d.content?.fields?.value;
       if (v === undefined || v === null) continue;
       const amt = BigInt(typeof v === 'number' ? Math.trunc(v) : v);
-      if (t.includes('::nbtc::NBTC')) nbtcRaw += amt;
-      else if (t.includes('::nusdc::NUSDC')) nusdcRaw += amt;
+      // Leave prevTx undefined when the RPC didn't return previousTransaction
+      // metadata so reconcileBalancesWithFills can treat it as "unknown"
+      // instead of "stale" and skip the delta correction.
+      const prevTx = typeof d.previousTransaction === 'string' && d.previousTransaction.length > 0
+        ? d.previousTransaction
+        : undefined;
+      if (t.includes('::nbtc::NBTC')) { nbtcRaw += amt; nbtcPrevTx = prevTx; }
+      else if (t.includes('::nusdc::NUSDC')) { nusdcRaw += amt; nusdcPrevTx = prevTx; }
     }
     return {
       nbtc: Number(nbtcRaw) / 10 ** BASE_DECIMALS,
       nusdc: Number(nusdcRaw) / 10 ** QUOTE_DECIMALS,
+      nbtcPrevTx,
+      nusdcPrevTx,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * When fetchEscrowBalances is called immediately after a settled trade,
+ * the Sui RPC's object index can still serve pre-tx state for a brief
+ * window (200-800ms on devnet). Detect that by comparing each balance
+ * field's previousTransaction with the just-settled tx digest; on mismatch
+ * apply the fills delta as a correction so the heartbeat message shows
+ * the post-trade state. 2026-05-24 Frank incident: first BUY ~32 NUSDC
+ * heartbeat displayed `0 NBTC · 3500 NUSDC` (pre-trade) while the second
+ * trade two minutes later correctly showed `0.00041 NBTC · 3468.5116`.
+ *
+ * No-op when fills/digest are absent (HOLD cycles, manual cancel) or when
+ * previousTransaction metadata is missing (older RPC).
+ */
+export function reconcileBalancesWithFills(
+  balances: EscrowBalances | null,
+  fills: TradeFills | null,
+  txDigest: string | undefined,
+): EscrowBalances | null {
+  if (!balances) return null;
+  if (!fills || !txDigest) return balances;
+  if (!balances.nbtcPrevTx && !balances.nusdcPrevTx) return balances;
+  const nbtcStale = balances.nbtcPrevTx !== undefined && balances.nbtcPrevTx !== txDigest;
+  const nusdcStale = balances.nusdcPrevTx !== undefined && balances.nusdcPrevTx !== txDigest;
+  if (!nbtcStale && !nusdcStale) return balances;
+  return {
+    nbtc: balances.nbtc + (nbtcStale ? fills.baseDelta : 0),
+    nusdc: balances.nusdc + (nusdcStale ? fills.quoteDelta : 0),
+    nbtcPrevTx: balances.nbtcPrevTx,
+    nusdcPrevTx: balances.nusdcPrevTx,
+  };
 }
 
 function deriveExplorerBase(override?: string): string {
@@ -378,6 +430,7 @@ export async function maybeNotifyHeartbeat(
   let balances: EscrowBalances | null = null;
   if (env.RPC_URL && env.ESCROW_ID) {
     balances = await fetchEscrowBalances(env.RPC_URL, env.ESCROW_ID, fetchImpl);
+    balances = reconcileBalancesWithFills(balances, fills, result.txDigest);
   }
 
   let html: string;

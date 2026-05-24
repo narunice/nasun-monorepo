@@ -1,7 +1,12 @@
 import { describe, it, expect, vi } from 'vitest';
 import { createHmac } from 'node:crypto';
 
-import { maybeNotifyHeartbeat, formatHeartbeatHtml, __testing__ } from './notify.js';
+import {
+  maybeNotifyHeartbeat,
+  formatHeartbeatHtml,
+  reconcileBalancesWithFills,
+  __testing__,
+} from './notify.js';
 import type { TraderCycleResult } from './presets/trader-cycle.js';
 
 const SECRET_HEX = 'a'.repeat(64);
@@ -183,6 +188,71 @@ describe('formatHeartbeatHtml', () => {
   it('falls back to "default" strategy label when env STRATEGY is empty', () => {
     const html = formatHeartbeatHtml(succeededBuy(), '', explorerBase);
     expect(html).toContain('[Nasun AI · default]');
+  });
+});
+
+describe('reconcileBalancesWithFills', () => {
+  const TX = 'TX_DIGEST_FOR_THIS_SETTLE';
+  const STALE = 'PREVIOUS_TX_DIGEST';
+  const fills = { baseDelta: 0.0004, quoteDelta: -32 };
+
+  it('returns null when balances are null', () => {
+    expect(reconcileBalancesWithFills(null, fills, TX)).toBeNull();
+  });
+
+  it('returns balances unchanged when fills are missing (HOLD path)', () => {
+    const b = { nbtc: 1, nusdc: 100, nbtcPrevTx: STALE, nusdcPrevTx: STALE };
+    expect(reconcileBalancesWithFills(b, null, TX)).toBe(b);
+  });
+
+  it('returns balances unchanged when txDigest is missing', () => {
+    const b = { nbtc: 1, nusdc: 100, nbtcPrevTx: STALE, nusdcPrevTx: STALE };
+    expect(reconcileBalancesWithFills(b, fills, undefined)).toBe(b);
+  });
+
+  it('returns balances unchanged when both prevTx are undefined (older RPC, no metadata)', () => {
+    const b = { nbtc: 0, nusdc: 3500, nbtcPrevTx: undefined, nusdcPrevTx: undefined };
+    expect(reconcileBalancesWithFills(b, fills, TX)).toBe(b);
+  });
+
+  it('returns balances unchanged when both prevTx match txDigest (post-tx state)', () => {
+    const b = { nbtc: 0.0004, nusdc: 3468, nbtcPrevTx: TX, nusdcPrevTx: TX };
+    expect(reconcileBalancesWithFills(b, fills, TX)).toBe(b);
+  });
+
+  it('applies both deltas when both prevTx are stale (pre-tx state)', () => {
+    const b = { nbtc: 0, nusdc: 3500, nbtcPrevTx: STALE, nusdcPrevTx: STALE };
+    const out = reconcileBalancesWithFills(b, fills, TX);
+    expect(out).toEqual({
+      nbtc: 0.0004,
+      nusdc: 3468,
+      nbtcPrevTx: STALE,
+      nusdcPrevTx: STALE,
+    });
+  });
+
+  it('applies only the stale field delta (mixed indexer catch-up)', () => {
+    const b = { nbtc: 0.0004, nusdc: 3500, nbtcPrevTx: TX, nusdcPrevTx: STALE };
+    const out = reconcileBalancesWithFills(b, fills, TX);
+    expect(out).toEqual({
+      nbtc: 0.0004,
+      nusdc: 3468,
+      nbtcPrevTx: TX,
+      nusdcPrevTx: STALE,
+    });
+  });
+
+  it('does not apply delta when prevTx is undefined for one field (treat as unknown, not stale)', () => {
+    const b = { nbtc: 0.0004, nusdc: 3500, nbtcPrevTx: undefined, nusdcPrevTx: STALE };
+    const out = reconcileBalancesWithFills(b, fills, TX);
+    // NBTC field treated as unknown -> keep 0.0004 (do NOT add fills.baseDelta).
+    // NUSDC field is clearly stale -> apply quoteDelta.
+    expect(out).toEqual({
+      nbtc: 0.0004,
+      nusdc: 3468,
+      nbtcPrevTx: undefined,
+      nusdcPrevTx: STALE,
+    });
   });
 });
 
