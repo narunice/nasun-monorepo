@@ -5,7 +5,7 @@ import { NUSDC_TYPE, NSN_TYPE } from "@nasun/devnet-config";
 import { suiClient } from "@/lib/sui-client";
 import { useAgentProfiles } from "../hooks/useAgentProfiles";
 import { useAgentBudgets } from "../hooks/useAgentBudgets";
-import { useEnabledFlagMap } from "../hooks/useEnabledFlagMap";
+import { useEnabledFlagMap, agentAddressSignature } from "../hooks/useEnabledFlagMap";
 import { deriveAgentStatus } from "../utils/agentStatus";
 import { useCreateAgentBlocked } from "../alpha/useCreateAgentBlocked";
 import { buildAgentFundTransaction } from "../services/transactionBuilder";
@@ -172,7 +172,7 @@ function AgentsSection({ walletAddress, agents, budgets, onSelectAgent }: Agents
   const [statusFilter, setStatusFilter] = useState<
     "all" | "active" | "paused" | "inactive"
   >("active");
-  const enabledFlags = useEnabledFlagMap(walletAddress);
+  const enabledFlags = useEnabledFlagMap(walletAddress, agentAddressSignature(agents));
   const counts = useMemo(() => {
     let active = 0, paused = 0, inactive = 0;
     for (const a of agents) {

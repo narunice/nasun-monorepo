@@ -9,7 +9,7 @@ import { useAgentProfiles, type AgentProfile } from '../hooks/useAgentProfiles';
 import { useAgentBudgets, type BudgetInfo } from '../hooks/useAgentBudgets';
 import { useAgentAerStats } from '../hooks/useAgentAerStats';
 import { useCreateAgent } from '../hooks/useCreateAgent';
-import { useEnabledFlagMap } from '../hooks/useEnabledFlagMap';
+import { useEnabledFlagMap, agentAddressSignature } from '../hooks/useEnabledFlagMap';
 import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
 import { CreateAgentModal } from '../components/modals/CreateAgentModal';
 import { formatNusdcValue, truncateAddress, formatDate } from '../utils/format';
@@ -136,7 +136,7 @@ export function AgentsList({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'paused' | 'inactive'>(
     'all',
   );
-  const enabledFlags = useEnabledFlagMap(walletAddress);
+  const enabledFlags = useEnabledFlagMap(walletAddress, agentAddressSignature(agents));
 
   // Pre-compute counts so the filter chips can label themselves with the
   // size of each bucket. Falls back to 0 while agents are loading. Uses
