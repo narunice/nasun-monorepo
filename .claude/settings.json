@@ -438,7 +438,8 @@
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls ~/nasun-ai-runtime/dist/ 2>/dev/null | head -10\")",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"ls ~/nasun-ai-runtime/ 2>/dev/null && grep -c 'assertEnabledOrExit\\\\|selfConfig\\\\|self_config' ~/nasun-ai-runtime/src/index.ts 2>/dev/null || echo 'no ts source'\")",
       "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"head -40 ~/nasun-ai-runtime/ecosystem.config.cjs\")",
-      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -c 'assertEnabledOrExit\\\\|self-config' ~/nasun-ai-runtime/src/index.ts 2>/dev/null\")"
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key ec2-user@43.200.67.52 \"grep -c 'assertEnabledOrExit\\\\|self-config' ~/nasun-ai-runtime/src/index.ts 2>/dev/null\")",
+      "Bash(ALLOW_PROD_DIRECT=1 ssh -i ~/.ssh/.awskey/nasun-prod-key -o ConnectTimeout=10 -o StrictHostKeyChecking=no ec2-user@43.200.67.52 'pm2 logs nasun-ai-agent-1d7959af --lines 20 --nostream --raw 2>/dev/null | tail -20')"
     ],
     "additionalDirectories": [
       "/home/naru/my_apps/nasun-monorepo/apps/nasun-website/docs",
