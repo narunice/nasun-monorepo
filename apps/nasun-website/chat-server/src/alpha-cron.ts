@@ -23,6 +23,7 @@ import { getClaimWindowMs, getSystemCap, isAlphaGateEnabled } from './alpha-guar
 import { pushUserMessage } from './baram-telegram.js';
 import { stopAgentPm2 } from './agent-orchestrator.js';
 import { traceAsync, traceSync } from './perf-trace.js';
+import { ensureTimerPauseSchema, loadTimerPauseKeys } from './alpha-timer-pause.js';
 
 const TICK_INTERVAL_MS = 60_000;
 const WARN_LEAD_MS = 6 * 60 * 60 * 1000;  // T-6h warning before expiry (= claim window length)
@@ -33,6 +34,14 @@ let tickInFlight = false;
 // Module-public lifecycle. Server.ts calls these once based on the flag.
 export function startAlphaCron(): void {
   if (tickTimer) return;
+  // Ensure the alpha_timer_pause table exists before the first tick reads
+  // it — keeps fresh environments (dev, staging post-reset) from crashing
+  // the cron in loadTimerPauseKeys() on the first iteration.
+  try {
+    ensureTimerPauseSchema();
+  } catch (err) {
+    console.warn('[alpha-cron] ensureTimerPauseSchema failed:', (err as Error).message);
+  }
   // Best-effort initial tick on boot so a chat-server restart doesn't
   // miss an expiry by up to one interval. Errors here must not crash the
   // boot path — they're already logged by tick() internally.
@@ -108,9 +117,13 @@ interface ExpiringAgentRow {
 
 async function phaseWarn(): Promise<void> {
   const now = Date.now();
+  const { pausedAgents } = loadTimerPauseKeys();
   // Window: now + WARN_LEAD_MS >= expires_at > now
   // i.e. an agent expiring within the next 6h that hasn't been warned yet.
-  const rows = getDb()
+  // Paused agents are skipped: their `expires_at` is already NULL via the
+  // pause helper, but the explicit guard prevents an out-of-band SQL update
+  // from leaking a warning during a maintenance freeze.
+  const rows = (getDb()
     .prepare(
       `SELECT agent_address, wallet_address, expires_at
          FROM agent_keys
@@ -122,7 +135,8 @@ async function phaseWarn(): Promise<void> {
           AND expires_at - ? <= ?
           AND warned_at IS NULL`,
     )
-    .all(now, now, WARN_LEAD_MS) as ExpiringAgentRow[];
+    .all(now, now, WARN_LEAD_MS) as ExpiringAgentRow[])
+    .filter((r) => !pausedAgents.has(r.agent_address));
   if (rows.length === 0) return;
 
   // Mark warned_at first so a slow Telegram fan-out doesn't double-fire on
@@ -157,7 +171,8 @@ interface ExpiredAgentRow {
 
 async function phaseExpire(): Promise<void> {
   const now = Date.now();
-  const rows = getDb()
+  const { pausedAgents } = loadTimerPauseKeys();
+  const rows = (getDb()
     .prepare(
       `SELECT agent_address, wallet_address, pm2_name
          FROM agent_keys
@@ -167,7 +182,8 @@ async function phaseExpire(): Promise<void> {
           AND expires_at IS NOT NULL
           AND expires_at < ?`,
     )
-    .all(now) as ExpiredAgentRow[];
+    .all(now) as ExpiredAgentRow[])
+    .filter((r) => !pausedAgents.has(r.agent_address));
   if (rows.length === 0) return;
 
   // Sync SQL first: drop endpoints + flag paused_at. This frees the cap
@@ -283,14 +299,16 @@ interface ExpiredInviteRow {
 
 async function phaseInviteExpire(): Promise<void> {
   const now = Date.now();
-  const rows = getDb()
+  const { pausedInvites } = loadTimerPauseKeys();
+  const rows = (getDb()
     .prepare(
       `SELECT wallet_address, miss_count FROM alpha_waitlist
         WHERE status = 'invited'
           AND invite_expires_at IS NOT NULL
           AND invite_expires_at < ?`,
     )
-    .all(now) as ExpiredInviteRow[];
+    .all(now) as ExpiredInviteRow[])
+    .filter((r) => !pausedInvites.has(r.wallet_address));
   if (rows.length === 0) return;
 
   // miss_count = 0 → first miss: re-queue at tail (new joined_at).
