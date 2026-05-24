@@ -14,7 +14,7 @@
 
 import { describe, it, expect } from 'vitest';
 
-import { runChatPreset } from './chat.js';
+import { runChatPreset, renderPortfolioBlock } from './chat.js';
 import { ChatHistoryStore } from '../chat-history.js';
 import type { WakeContext } from '../wake-router.js';
 
@@ -160,6 +160,66 @@ describe('runChatPreset', () => {
     // Failed reply -> session must stay empty so a retry doesn't see
     // an orphan user line the model never answered.
     expect(history.load('session-abc1234567')).toEqual([]);
+  });
+
+  it('injects a Portfolio context block when fetchPortfolio returns balances', async () => {
+    let capturedPrompt = '';
+    const out = await runChatPreset(makeConfig(), makeCtx('how much NBTC are you holding?'), {
+      callLLM: async (_url, _key, _model, prompt) => {
+        capturedPrompt = prompt;
+        return {
+          content: "I'm holding 0.12345678 NBTC right now.",
+          model: 'test-model',
+          totalTokens: 5,
+          durationMs: 1,
+        };
+      },
+      log: () => {},
+      history: freshHistory(),
+      fetchPortfolio: async () => ({
+        nbtcRaw: 12_345_678n,
+        nusdcRaw: 1_500_000n,
+        walletNbtcRaw: 345_678n,
+        walletNusdcRaw: 500_000n,
+        escrowNbtcRaw: 12_000_000n,
+        escrowNusdcRaw: 1_000_000n,
+      }),
+    });
+    expect(out.ok).toBe(true);
+    expect(capturedPrompt).toContain('# Portfolio context');
+    expect(capturedPrompt).toContain('NBTC total: 0.12345678');
+    expect(capturedPrompt).toContain('escrow 0.12000000');
+    expect(capturedPrompt).toContain('NUSDC total: 1.500000');
+  });
+
+  it('proceeds without portfolio block when fetchPortfolio throws', async () => {
+    let capturedPrompt = '';
+    const logs: string[] = [];
+    const out = await runChatPreset(makeConfig(), makeCtx('hi'), {
+      callLLM: async (_url, _key, _model, prompt) => {
+        capturedPrompt = prompt;
+        return { content: 'hello!', model: 'test-model', totalTokens: 1, durationMs: 1 };
+      },
+      log: (msg) => { logs.push(msg); },
+      history: freshHistory(),
+      fetchPortfolio: async () => { throw new Error('rpc 503'); },
+    });
+    expect(out.ok).toBe(true);
+    expect(capturedPrompt).not.toContain('# Portfolio context');
+    expect(logs.some((l) => /portfolio fetch failed/i.test(l))).toBe(true);
+  });
+
+  it('renderPortfolioBlock formats wallet/escrow split', () => {
+    const block = renderPortfolioBlock({
+      nbtcRaw: 100_000_000n,
+      nusdcRaw: 5_000_000n,
+      walletNbtcRaw: 0n,
+      walletNusdcRaw: 5_000_000n,
+      escrowNbtcRaw: 100_000_000n,
+      escrowNusdcRaw: 0n,
+    });
+    expect(block).toContain('NBTC total: 1.00000000 (escrow 1.00000000 + wallet 0.00000000)');
+    expect(block).toContain('NUSDC total: 5.000000 (escrow 0.000000 + wallet 5.000000)');
   });
 
   it('trims long replies to fit Telegram bubbles', async () => {

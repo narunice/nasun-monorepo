@@ -98,15 +98,30 @@ export function dailySpentQuoteRaw(now = Date.now()): bigint {
 // On-chain spend authority lives on the escrow side, so it is the truth for
 // decision making. Wallet positions are added on top because legacy agents
 // (created before phase-1 escrow funding shipped) hold trade coins there.
+export interface AgentBalances {
+  /** Total = wallet + escrow. Existing analyst/trader prompts read these
+   *  two fields; the wallet/escrow split is additive for callers that
+   *  need to surface the breakdown (e.g. the chat preset answering
+   *  "how much NBTC are you holding?"). */
+  nbtcRaw: bigint;
+  nusdcRaw: bigint;
+  walletNbtcRaw: bigint;
+  walletNusdcRaw: bigint;
+  escrowNbtcRaw: bigint;
+  escrowNusdcRaw: bigint;
+}
+
 export async function fetchAgentBalances(
   client: SuiClient,
   agentAddr: string,
   escrowId?: string | null,
-): Promise<{ nbtcRaw: bigint; nusdcRaw: bigint }> {
+): Promise<AgentBalances> {
   const [nbtc, nusdc] = await Promise.all([
     client.getBalance({ owner: agentAddr, coinType: TRADER_CONFIG.baseType }),
     client.getBalance({ owner: agentAddr, coinType: TRADER_CONFIG.quoteType }),
   ]);
+  const walletNbtcRaw = BigInt(nbtc.totalBalance);
+  const walletNusdcRaw = BigInt(nusdc.totalBalance);
   let escrowNbtcRaw = 0n;
   let escrowNusdcRaw = 0n;
   if (escrowId) {
@@ -140,8 +155,12 @@ export async function fetchAgentBalances(
     }
   }
   return {
-    nbtcRaw: BigInt(nbtc.totalBalance) + escrowNbtcRaw,
-    nusdcRaw: BigInt(nusdc.totalBalance) + escrowNusdcRaw,
+    nbtcRaw: walletNbtcRaw + escrowNbtcRaw,
+    nusdcRaw: walletNusdcRaw + escrowNusdcRaw,
+    walletNbtcRaw,
+    walletNusdcRaw,
+    escrowNbtcRaw,
+    escrowNusdcRaw,
   };
 }
 

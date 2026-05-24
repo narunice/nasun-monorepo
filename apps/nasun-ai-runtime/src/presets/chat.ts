@@ -57,11 +57,26 @@ Style:
   small talk). For deep knowledge you don't have, say so briefly.
 - If the user wants to actually trade, remind them to say "BUY" or
   "SELL" explicitly so you can open a trade proposal.
+- If the user asks about your holdings, balance, capital, escrow,
+  position, or "how much NBTC/NUSDC do you have", answer using the
+  exact numbers from the Portfolio context block below. Do not say
+  you don't know or you don't hold anything when the context shows a
+  non-zero balance.
 
 Do not:
 - Output JSON, code fences, or any structured envelope.
 - Promise market predictions or financial outcomes.
 - Mention "AER", "Budget", "Capability", or internal plumbing.`;
+
+export interface ChatPortfolio {
+  /** Wallet + escrow union, in raw on-chain units (1e8 for NBTC, 1e6 for NUSDC). */
+  nbtcRaw: bigint;
+  nusdcRaw: bigint;
+  walletNbtcRaw: bigint;
+  walletNusdcRaw: bigint;
+  escrowNbtcRaw: bigint;
+  escrowNusdcRaw: bigint;
+}
 
 export interface ChatDeps {
   callLLM: typeof defaultCallLLM;
@@ -70,6 +85,13 @@ export interface ChatDeps {
    *  a fresh store to avoid cross-test pollution; production reuses
    *  the module-level singleton. */
   history: ChatHistoryStore;
+  /** Optional. When provided, the chat preset prepends a Portfolio
+   *  context block so the agent can answer "how much NBTC are you
+   *  holding?" with real numbers instead of a vague refusal (the
+   *  2026-05-24 Frank-agent failure). Returning null skips injection
+   *  silently (used when no trader config is loaded). Throws are
+   *  caught and logged; chat still proceeds without the block. */
+  fetchPortfolio?: () => Promise<ChatPortfolio | null>;
 }
 
 // Module-level singleton so consecutive wake events from the same sid
@@ -101,6 +123,26 @@ function getPool(config: Config): ChatLLMPool {
     };
   }
   return cachedPool.pool;
+}
+
+/**
+ * Format a Portfolio context block the LLM can quote when the user
+ * asks about holdings. Numbers are human units (NBTC = 1e-8, NUSDC =
+ * 1e-6) so the model doesn't have to do the conversion. Wallet and
+ * escrow are shown separately because the agent's spend authority
+ * lives on the escrow side and users often ask about either.
+ */
+export function renderPortfolioBlock(p: ChatPortfolio): string {
+  const fmtNbtc = (raw: bigint) => (Number(raw) / 1e8).toFixed(8);
+  const fmtNusdc = (raw: bigint) => (Number(raw) / 1e6).toFixed(6);
+  return [
+    '# Portfolio context (your current on-chain holdings)',
+    `- NBTC total: ${fmtNbtc(p.nbtcRaw)} (escrow ${fmtNbtc(p.escrowNbtcRaw)} + wallet ${fmtNbtc(p.walletNbtcRaw)})`,
+    `- NUSDC total: ${fmtNusdc(p.nusdcRaw)} (escrow ${fmtNusdc(p.escrowNusdcRaw)} + wallet ${fmtNusdc(p.walletNusdcRaw)})`,
+    'When asked "how much NBTC/NUSDC do you have", reply with these totals',
+    'in plain prose (e.g. "I\'m holding 0.12345678 NBTC right now"). It is',
+    'fine to mention the escrow vs wallet split if the user asks for detail.',
+  ].join('\n');
 }
 
 /** Soft cap on the returned reply so a runaway model can't blow up a
@@ -166,11 +208,27 @@ export async function runChatPreset(
     };
   }
 
+  // Best-effort portfolio snapshot. Soft-fail so a transient RPC blip
+  // (escrow getDynamicFields was flaky during the 5/22 saturation
+  // incident) does not block a casual chat reply. When absent or null,
+  // we skip the block entirely — the persona still works as before.
+  let portfolio: ChatPortfolio | null = null;
+  if (deps.fetchPortfolio) {
+    try {
+      portfolio = await deps.fetchPortfolio();
+    } catch (err) {
+      deps.log(`[chat] portfolio fetch failed: ${(err as Error).message}`);
+    }
+  }
+  const personaWithPortfolio = portfolio
+    ? `${CHAT_PERSONA_PROMPT}\n\n${renderPortfolioBlock(portfolio)}`
+    : CHAT_PERSONA_PROMPT;
+
   // Load prior turns for this session (TTL-evicted on access). The
   // returned array is the LIVE list; we'll append to it via the store
   // below, not by mutating directly.
   const priorTurns = deps.history.load(ctx.sid, ctx.nowMs);
-  const flatPrompt = renderChatPrompt(CHAT_PERSONA_PROMPT, priorTurns, userMessage);
+  const flatPrompt = renderChatPrompt(personaWithPortfolio, priorTurns, userMessage);
 
   try {
     let content: string;
