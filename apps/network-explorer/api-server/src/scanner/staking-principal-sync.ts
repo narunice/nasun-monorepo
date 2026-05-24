@@ -1,31 +1,36 @@
 /**
- * Hourly snapshot of every registered identity's total staked NSN principal.
+ * Daily snapshot of every registered identity's total staked NSN principal,
+ * summed across every wallet the identity controls.
  *
  * Writes one row per (identity_id, day) into `user_staking_daily_snapshots`.
  * The downstream `nsi-compute` worker averages the last 30 days to derive
- * the staking sub-score. Storing a daily history lets us reflect stake
- * additions/withdrawals over time instead of only the current balance.
+ * the staking sub-score, so daily resolution is sufficient — hourly is
+ * waste (60k identities × suix_getStakes RPC × 24/day = 1.4M calls/day).
  *
  * Isolation: runs in the dedicated `tier-worker` process, never in the main
- * scanLoop. The `daily-nft-check.ts` staking award path is untouched.
+ * scanLoop. The `daily-nft-check.ts` staking award path is untouched and
+ * uses the same multi-wallet aggregation semantics.
  *
- * Partial-failure handling: if any of an identity's wallets fail the
- * `suix_getStakes` RPC, the identity's snapshot for this cycle is skipped so
- * a transient RPC blip cannot zero out an active staker's principal. The
- * next cycle (1 hour later) retries.
+ * Multi-wallet semantics (CRITICAL): an identity can control multiple
+ * wallets (~13% of users do — see `getAllWalletsPerIdentity`). All wallets
+ * must be queried and summed. The earlier "latest wallet only" shape
+ * silently undercounted principal for ~8k users, drifting NSI's staking
+ * sub-score below daily-nft-check's award path.
+ *
+ * Partial-failure handling: if ANY of an identity's wallets fail the
+ * `suix_getStakes` RPC, the identity's snapshot for this cycle is skipped
+ * so a transient RPC blip cannot zero out an active staker's principal.
+ * The next cycle retries.
  */
 
 import { rpcCall } from '../rpc.js';
 import { pointsDb } from '../db.js';
 import { sendTelegramAlert } from '../utils/alert.js';
-import { getLatestWalletPerIdentity } from './identity-wallet.js';
+import { getAllWalletsPerIdentity } from './identity-wallet.js';
 
-const SYNC_INTERVAL_MS = 60 * 60 * 1000; // 1h
+const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
 const RPC_CONCURRENCY = 20;
 const RETENTION_DAYS = 90;
-// postgres.js caps a single statement at 65535 bound parameters. With 3
-// columns per row, 10_000 rows = 30_000 params — well under the limit and
-// fast enough for the 50k–100k row scale we see on devnet.
 const UPSERT_BATCH_SIZE = 10_000;
 
 let lastSuccessAt: Date | null = null;
@@ -64,27 +69,27 @@ async function runSync(): Promise<void> {
   const started = Date.now();
 
   try {
-    // Latest wallet per identity. See identity-wallet.ts for why the loose
-    // index scan (skip scan) helper is required over the naive DISTINCT ON.
-    const latestWallet = await getLatestWalletPerIdentity();
+    const walletsByIdentity = await getAllWalletsPerIdentity();
 
     const results = new Map<string, { mist: bigint; partialFailure: boolean }>();
-    const entries = [...latestWallet.entries()];
+    const entries = [...walletsByIdentity.entries()];
     for (let i = 0; i < entries.length; i += RPC_CONCURRENCY) {
       const slice = entries.slice(i, i + RPC_CONCURRENCY);
       await Promise.allSettled(
-        slice.map(async ([identityId, addr]) => {
+        slice.map(async ([identityId, addrs]) => {
           let totalMist = 0n;
           let partialFailure = false;
-          try {
-            const stakes = await rpcCall<StakeSet[]>('suix_getStakes', [addr]);
-            for (const stakeSet of stakes ?? []) {
-              for (const stake of stakeSet.stakes ?? []) {
-                totalMist += BigInt(stake.principal);
+          for (const addr of addrs) {
+            try {
+              const stakes = await rpcCall<StakeSet[]>('suix_getStakes', [addr]);
+              for (const stakeSet of stakes ?? []) {
+                for (const stake of stakeSet.stakes ?? []) {
+                  totalMist += BigInt(stake.principal);
+                }
               }
+            } catch {
+              partialFailure = true;
             }
-          } catch {
-            partialFailure = true;
           }
           results.set(identityId, { mist: totalMist, partialFailure });
         }),
@@ -115,24 +120,22 @@ async function runSync(): Promise<void> {
       `;
     }
 
-    // Retention: drop snapshots older than the look-back window we actually use,
-    // plus a small audit buffer.
     await pointsDb`
       DELETE FROM user_staking_daily_snapshots
       WHERE day < CURRENT_DATE - (${RETENTION_DAYS}::int * INTERVAL '1 day')
     `;
 
     const skipped = results.size - toUpsert.length;
+    const totalWallets = entries.reduce((acc, [, w]) => acc + w.length, 0);
     lastSuccessAt = new Date();
     errorCount24h = 0;
     console.log(
       `[staking-principal-sync] snapshotted ${toUpsert.length} identities ` +
-        `(skipped ${skipped} partial-failure) in ${Date.now() - started}ms`,
+        `(${totalWallets} wallets, skipped ${skipped} partial-failure) in ${Date.now() - started}ms`,
     );
   } catch (err) {
     errorCount24h++;
     console.error('[staking-principal-sync] failed', err);
-    // Alert every 6th consecutive failure (≈6h of silence).
     if (errorCount24h % 6 === 1) {
       try {
         await sendTelegramAlert(
