@@ -280,6 +280,7 @@ export const POINTS = {
   DAILY_TRADE_CAP: 24,           // max trades counted per day toward trade points
   PER_10_PNL: 2,                 // per $10 realized profit (raised 1→2 on 2026-05-22 to weight absolute profit modestly higher; option A tuning)
   PER_5PCT_RETURN: 60,           // per 5% return rate (lowered 100→60 same date to moderate small-capital high-% leaderboard dominance; option A tuning)
+  PNL_PERCENT_SCORE_CAP: 200,    // cap on pnlPercent used for percent-return scoring (prevents low-capital pump-and-dump from dominating; 2026-05-24)
   // Tiered loss penalty: applied to pnl score (floor 0). Highest matching tier wins.
   LOSS_PENALTY_TIERS: [
     { threshold: -20, penalty: 20 },

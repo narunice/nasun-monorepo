@@ -501,7 +501,8 @@ async function runWeeklyScoreAggregation(): Promise<void> {
         pnlScore += Math.floor(pnlData.realizedPnlRaw / 10_000_000) * POINTS.PER_10_PNL;
       }
       if (pnlData.pnlPercent > 0) {
-        pnlScore += Math.floor(pnlData.pnlPercent / 5) * POINTS.PER_5PCT_RETURN;
+        const cappedPnlPercent = Math.min(pnlData.pnlPercent, POINTS.PNL_PERCENT_SCORE_CAP);
+        pnlScore += Math.floor(cappedPnlPercent / 5) * POINTS.PER_5PCT_RETURN;
       }
       const tier = POINTS.LOSS_PENALTY_TIERS.find((t) => pnlData.pnlPercent <= t.threshold);
       if (tier) {
