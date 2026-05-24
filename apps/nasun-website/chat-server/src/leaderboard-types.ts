@@ -140,6 +140,10 @@ export interface LeaderboardConfig {
   // prefixed `prediction:${market_id}` so source can be distinguished without
   // a schema change.
   predictionPackage?: string;
+  // Legacy prediction originalPackageIds (pre-cutover republishes). Indexed in
+  // parallel with the canonical predictionPackage so in-flight legacy markets
+  // keep surfacing fills until they expire. Each id gets its own cursor.
+  predictionPackageLegacy?: string[];
   rpcUrl: string;
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;

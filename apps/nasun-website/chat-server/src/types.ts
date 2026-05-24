@@ -224,7 +224,14 @@ export interface ChatServerConfig {
   deepbookPackage: string;
   // Pado prediction market package (module: prediction_market). Optional —
   // when empty, prediction-side indexing is disabled (DeepBook still runs).
+  // Sui emits events under the originalPackageId of the publishing package, so
+  // an upgrade of a single line never requires touching this — but a *fresh*
+  // republish (e.g. v5 cutover on 2026-05-20) emits under a new originalId.
+  // PREDICTION_PACKAGE should track the current canonical (v5+),
+  // PREDICTION_PACKAGE_LEGACY the prior originalIds (comma-separated) so
+  // in-flight legacy markets continue to surface fills until they expire.
   predictionPackage: string;
+  predictionPackageLegacy: string[];
   rpcUrl: string;
   indexerPollIntervalMs: number;
   aggregationIntervalMs: number;
@@ -257,6 +264,8 @@ export const DEFAULT_CONFIG: ChatServerConfig = {
   leaderboardDbPath: process.env.LEADERBOARD_DB_PATH || './data/leaderboard.db',
   deepbookPackage: process.env.DEEPBOOK_PACKAGE || '',
   predictionPackage: process.env.PREDICTION_PACKAGE || '',
+  predictionPackageLegacy: (process.env.PREDICTION_PACKAGE_LEGACY || '')
+    .split(',').map((s) => s.trim()).filter(Boolean),
   rpcUrl: process.env.RPC_URL || 'https://rpc.devnet.nasun.io',
   indexerPollIntervalMs: parseInt(process.env.INDEXER_POLL_INTERVAL_MS || '5000', 10),
   aggregationIntervalMs: parseInt(process.env.AGGREGATION_INTERVAL_MS || '60000', 10),

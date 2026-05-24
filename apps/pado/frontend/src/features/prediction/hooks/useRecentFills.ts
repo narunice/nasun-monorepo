@@ -1,73 +1,85 @@
 /**
  * useRecentFills — market-wide OrderFilled feed (shared across all viewers).
  *
- * No owner argument: the cache key is `marketId` only, so multiple users / tabs
- * viewing the same market hit one shared React Query entry. Per-user fills are
- * fetched separately by `useMyMarketFills` and merged in the component layer.
+ * Cache key is `marketId` only, so multiple users / tabs viewing the same
+ * market hit one shared React Query entry. Per-user fills are fetched
+ * separately by `useMyMarketFills` and merged in the component layer.
  *
- * Polling is intentionally slow (60s); freshness comes from
- * `usePredictionEventBridge` invalidating this key on every OrderFilled event.
- * The dust filter drops sub-cent partial fills (LP repositioning / arb noise)
- * that would otherwise crowd out real trades in the visible window.
+ * Backed by chat-server's `/api/pado/prediction/market-fills/:marketId`, which
+ * reads the indexer-populated `trade_fills` table (pool_id='prediction:<id>').
+ * This replaces the previous RPC-based scan that walked the latest ~1000
+ * OrderFilled events globally and filtered by market_id — markets without
+ * fills in that recent window (older or low-traffic) silently returned empty
+ * even when they had real trade history.
+ *
+ * Polling stays slow (60s); freshness comes from `usePredictionEventBridge`
+ * invalidating this key on every OrderFilled event.
  */
 
 import { useQuery } from '@tanstack/react-query';
-import type { EventId } from '@mysten/sui/client';
-import { getSuiClient } from '../../../lib/sui-client';
-import { ORDER_FILLED_EVENTS } from '../constants';
+import { NETWORK_CONFIG } from '../../../config/network';
 import type { RecentFill } from '../types';
 
-const PAGE_LIMIT = 250;
-const MAX_PAGES = 4;       // fetch up to 1000 events total
-const MIN_FILLS = 10;      // stop early once we have enough per-market fills
-const DUST_COST_THRESHOLD = 500_000n; // 0.5 NUSDC at 6 decimals
+const API_TIMEOUT_MS = 5000;
+const FILL_LIMIT = 200;
+
+interface ApiFillRow {
+  tx_digest: string;
+  event_seq: string;
+  market_id: string;
+  maker_address: string;
+  taker_address: string;
+  maker_order_id: string | null;
+  price: string;
+  fill_shares: string;
+  cost: string;
+  is_yes: number;
+  taker_is_bid: number;
+  timestamp_ms: number;
+}
+
+interface ApiResponse {
+  marketId: string;
+  fills: ApiFillRow[];
+}
 
 async function fetchRecentFills(marketId: string): Promise<RecentFill[]> {
-  const client = getSuiClient();
+  const baseUrl = NETWORK_CONFIG.chatHttpUrl;
+  if (!baseUrl) return [];
 
-  // 2026-05-20 v5 cutover: walk both event streams in parallel and merge.
-  // Each stream paginates independently; each is capped by MIN_FILLS so we
-  // stop early once enough market-matching fills accumulate.
-  async function walkOne(eventType: string): Promise<RecentFill[]> {
-    const out: RecentFill[] = [];
-    let cursor: EventId | null | undefined = undefined;
-    for (let page = 0; page < MAX_PAGES; page++) {
-      const result = await client.queryEvents({
-        query: { MoveEventType: eventType },
-        limit: PAGE_LIMIT,
-        order: 'descending',
-        cursor: cursor ?? undefined,
-      });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
 
-      for (const event of result.data) {
-        const j = event.parsedJson as Record<string, unknown> | null;
-        if (!j || j.market_id !== marketId) continue;
-        const cost = BigInt(String(j.cost ?? 0));
-        if (cost < DUST_COST_THRESHOLD) continue;
-        out.push({
-          marketId: String(j.market_id),
-          orderId: Number(j.order_id ?? 0),
-          taker: String(j.taker ?? ''),
-          maker: String(j.maker ?? ''),
-          isYes: Boolean(j.is_yes ?? false),
-          isBid: Boolean(j.is_bid ?? false),
-          price: Number(j.price ?? 0),
-          fillShares: BigInt(String(j.fill_shares ?? 0)),
-          cost,
-          timestamp: Number(event.timestampMs ?? 0),
-        });
-      }
+  try {
+    const res = await fetch(
+      `${baseUrl}/api/pado/prediction/market-fills/${encodeURIComponent(marketId)}?limit=${FILL_LIMIT}`,
+      { signal: controller.signal },
+    );
+    if (!res.ok) throw new Error(`market-fills API ${res.status}`);
+    const body = (await res.json()) as ApiResponse;
 
-      if (out.length >= MIN_FILLS || !result.hasNextPage) break;
-      cursor = result.nextCursor;
-    }
-    return out;
+    return body.fills.map((r) => ({
+      marketId: r.market_id,
+      // maker_order_id is the source-of-truth order_id in the indexer (taker
+      // side has no order_id for prediction fills). Numeric parse: empty/null
+      // → 0, matching the legacy parsedJson coercion.
+      orderId: r.maker_order_id ? Number(r.maker_order_id) : 0,
+      taker: r.taker_address,
+      maker: r.maker_address,
+      isYes: r.is_yes === 1,
+      // Indexer stores prediction's `is_bid` (maker side, see indexer.ts
+      // comment) in the `taker_is_bid` column for spot-schema parity. The
+      // RecentFill.isBid semantics on the client treat this as "maker is_bid"
+      // — same value the RPC parsedJson previously produced.
+      isBid: r.taker_is_bid === 1,
+      price: Number(r.price),
+      fillShares: BigInt(r.fill_shares),
+      cost: BigInt(r.cost),
+      timestamp: r.timestamp_ms,
+    }));
+  } finally {
+    clearTimeout(timeout);
   }
-
-  const perStream = await Promise.all(ORDER_FILLED_EVENTS.map(walkOne));
-  const fills = perStream.flat();
-  fills.sort((a, b) => b.timestamp - a.timestamp);
-  return fills;
 }
 
 export function useRecentFills(marketId: string | undefined) {
