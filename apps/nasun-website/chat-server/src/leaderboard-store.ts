@@ -489,6 +489,54 @@ export function getPoolPriceHistory(
   return rows;
 }
 
+// ===== Prediction Market Fills =====
+
+// Public shape returned by the prediction market-fills HTTP endpoint. Not to
+// be confused with the local PredictionFillRow used by the PnL aggregator
+// further down — that one carries different columns for wash-trade scoring.
+export interface PredictionMarketFillRow {
+  tx_digest: string;
+  event_seq: string;
+  market_id: string;
+  maker_address: string;
+  taker_address: string;
+  maker_order_id: string | null;
+  price: string;
+  fill_shares: string;
+  cost: string;
+  is_yes: number;
+  taker_is_bid: number;
+  timestamp_ms: number;
+}
+
+// Backs the prediction sparkline. Pulls indexed prediction OrderFilled rows
+// directly from trade_fills (pool_id = 'prediction:<marketId>') so the client
+// doesn't have to globally scan RPC events and hit the 1k-event ceiling.
+//
+// Dust filter (cost < 0.5 NUSDC) is applied server-side to mirror the legacy
+// client behavior that rejected LP repositioning / sub-cent partial fills.
+export function getPredictionMarketFills(
+  marketId: string,
+  limit: number,
+  dustThreshold: number = 500_000,
+): PredictionMarketFillRow[] {
+  const poolId = `prediction:${marketId}`;
+  // CAST cost (TEXT) to INTEGER for the dust filter. SQLite handles this
+  // cleanly for values up to 2^63 - 1 (NUSDC raw fits well under that ceiling).
+  const rows = getLeaderboardDb()
+    .prepare(
+      `SELECT tx_digest, event_seq, maker_address, taker_address,
+              maker_order_id, price, base_quantity AS fill_shares,
+              quote_quantity AS cost, is_yes, taker_is_bid, timestamp_ms
+       FROM trade_fills
+       WHERE pool_id = ? AND CAST(quote_quantity AS INTEGER) >= ?
+       ORDER BY timestamp_ms DESC
+       LIMIT ?`,
+    )
+    .all(poolId, dustThreshold, limit) as Array<Omit<PredictionMarketFillRow, 'market_id'>>;
+  return rows.map((r) => ({ ...r, market_id: marketId }));
+}
+
 // ===== Aggregation Queries =====
 
 interface AggregatedTrader {

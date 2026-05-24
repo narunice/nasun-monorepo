@@ -95,7 +95,9 @@ export function ProbabilitySparkline({
   const yesLast = yesPoints[yesPoints.length - 1];
   const noLast = noPoints[noPoints.length - 1];
 
-  const currentYes = hasSeries ? yesProbs[yesProbs.length - 1] : currentProbability;
+  // Always prefer the orderbook-derived currentProbability for the "Now" badge.
+  // hasSeries fill-derived probability reflects the last trade, not the current market.
+  const currentYes = currentProbability ?? (hasSeries ? yesProbs[yesProbs.length - 1] : undefined);
   const currentNo = currentYes != null ? 100 - currentYes : undefined;
   const startLabel = hasSeries ? formatTimeLabel(tMin) : null;
 

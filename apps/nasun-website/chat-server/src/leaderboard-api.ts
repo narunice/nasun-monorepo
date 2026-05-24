@@ -47,6 +47,7 @@ import {
   createCompetition, updateCompetition, getCompetition, listCompetitions,
   getCompetitionResults,
   getPoolPriceHistory,
+  getPredictionMarketFills,
 } from './leaderboard-store.js';
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES, KNOWN_BOT_ADDRESSES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
@@ -265,6 +266,11 @@ export async function handleLeaderboardRequest(
     const priceHistoryMatch = pathname.match(/^\/api\/pado\/pool-price-history\/(0x[a-fA-F0-9]{64})$/);
     if (priceHistoryMatch && method === 'GET') {
       return handlePoolPriceHistory(res, url, corsHeaders, priceHistoryMatch[1]);
+    }
+
+    const predictionFillsMatch = pathname.match(/^\/api\/pado\/prediction\/market-fills\/(0x[a-fA-F0-9]{64})$/);
+    if (predictionFillsMatch && method === 'GET') {
+      return handlePredictionMarketFills(res, url, corsHeaders, predictionFillsMatch[1]);
     }
 
     const weeklyScoreMatch = pathname.match(/^\/api\/pado\/leaderboard\/score\/weekly\/(\d{4}-W\d{2})$/);
@@ -1030,6 +1036,31 @@ function handlePoolPriceHistory(
     'Cache-Control': 'public, max-age=60',
   });
   res.end(JSON.stringify({ poolId, hours, series }));
+  return true;
+}
+
+function handlePredictionMarketFills(
+  res: ServerResponse, url: URL, corsHeaders: Record<string, string>, marketId: string,
+): boolean {
+  // Sparkline buckets fills into 24 time-windows; 200 is plenty for a smooth
+  // line while keeping payloads small. Caller can override up to 500.
+  const parsedLimit = parseInt(url.searchParams.get('limit') || '200', 10);
+  const limit = Math.min(Math.max(Number.isFinite(parsedLimit) ? parsedLimit : 200, 1), 500);
+
+  // Allow caller to bypass the dust filter (e.g. debugging). Default matches
+  // the legacy client behavior (cost < 0.5 NUSDC excluded).
+  const includeDust = url.searchParams.get('includeDust') === 'true';
+  const dustThreshold = includeDust ? 0 : 500_000;
+
+  const fills = getPredictionMarketFills(marketId, limit, dustThreshold);
+  // Returned descending (most recent first) to match the legacy useRecentFills
+  // contract — FeaturedMarketCard.tsx reads fills[0] as the latest trade.
+
+  res.writeHead(200, {
+    ...corsHeaders,
+    'Cache-Control': 'public, max-age=15',
+  });
+  res.end(JSON.stringify({ marketId, fills }));
   return true;
 }
 

@@ -387,24 +387,58 @@ async function pollOrderEvents(): Promise<number> {
 // schema change. `fill_shares` is shares (not comparable to spot base_quantity
 // in absolute terms); aggregator's PnL filter uses the prefix to isolate.
 
-const PREDICTION_CURSOR_KEY = 'prediction_order_filled_cursor';
+const PREDICTION_CURSOR_KEY_BASE = 'prediction_order_filled_cursor';
 
-async function pollPredictionOrderFilled(): Promise<number> {
+// Per-package cursor key. We can't share a single cursor across packages
+// because cursors are scoped to the `MoveEventType` query that produced them.
+// Suffix = first 12 hex chars of the package id (collision-resistant enough
+// for the small set of historical prediction packages).
+function predictionCursorKey(base: string, pkgId: string): string {
+  // pkgId is `0x` + 64 hex; slice(2, 14) takes 12 chars after 0x.
+  const suffix = pkgId.startsWith('0x') ? pkgId.slice(2, 14) : pkgId.slice(0, 12);
+  return `${base}_${suffix}`;
+}
+
+// One-time migration: when this prod instance previously polled a single
+// package via the bare cursor key, carry that cursor over to the new
+// per-package key so the legacy package doesn't re-scan from genesis. Runs
+// once per (base, pkgId) pair; idempotent thereafter.
+function migrateBareCursor(base: string, pkgId: string): void {
+  const newKey = predictionCursorKey(base, pkgId);
+  if (getIndexerState(newKey)) return; // already migrated
+  const bare = getIndexerState(base);
+  if (!bare) return;
+  setIndexerState(newKey, bare);
+  console.log(`[Indexer:Prediction] Migrated bare cursor "${base}" -> "${newKey}"`);
+}
+
+function predictionPackagesAll(): string[] {
+  if (!config || !config.predictionPackage) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const p of [config.predictionPackage, ...(config.predictionPackageLegacy ?? [])]) {
+    if (p && !seen.has(p)) { seen.add(p); out.push(p); }
+  }
+  return out;
+}
+
+async function pollPredictionOrderFilledForPackage(pkgId: string): Promise<number> {
   if (!client || !config) return 0;
-  if (!config.predictionPackage) return 0;
+  migrateBareCursor(PREDICTION_CURSOR_KEY_BASE, pkgId);
+  const cursorKey = predictionCursorKey(PREDICTION_CURSOR_KEY_BASE, pkgId);
 
-  const savedCursor = getIndexerState(PREDICTION_CURSOR_KEY);
+  const savedCursor = getIndexerState(cursorKey);
   let cursor = null;
   if (savedCursor) {
     try {
       cursor = JSON.parse(savedCursor);
     } catch {
-      console.error('[Indexer:Prediction] Corrupt cursor, resetting');
-      setIndexerState(PREDICTION_CURSOR_KEY, '');
+      console.error(`[Indexer:Prediction:${pkgId.slice(0, 10)}] Corrupt cursor, resetting`);
+      setIndexerState(cursorKey, '');
     }
   }
 
-  const eventType = `${config.predictionPackage}::prediction_market::OrderFilled`;
+  const eventType = `${pkgId}::prediction_market::OrderFilled`;
 
   let totalIndexed = 0;
   let currentCursor = cursor;
@@ -467,7 +501,7 @@ async function pollPredictionOrderFilled(): Promise<number> {
 
       if (result.nextCursor) {
         currentCursor = result.nextCursor;
-        setIndexerState(PREDICTION_CURSOR_KEY, JSON.stringify(currentCursor));
+        setIndexerState(cursorKey, JSON.stringify(currentCursor));
       }
 
       hasMore = result.hasNextPage;
@@ -478,12 +512,22 @@ async function pollPredictionOrderFilled(): Promise<number> {
       }
     } catch (err) {
       if (isRpcError(err)) consecutiveRpcErrors++;
-      console.error('[Indexer:Prediction] Poll error:', (err as Error).message);
+      console.error(`[Indexer:Prediction:${pkgId.slice(0, 10)}] Poll error:`, (err as Error).message);
       hasMore = false;
     }
   }
 
   return totalIndexed;
+}
+
+async function pollPredictionOrderFilled(): Promise<number> {
+  // Fan out across canonical + legacy packages. Sequential to keep per-cycle
+  // RPC pressure bounded (each call internally paginates already).
+  let total = 0;
+  for (const pkgId of predictionPackagesAll()) {
+    total += await pollPredictionOrderFilledForPackage(pkgId);
+  }
+  return total;
 }
 
 // ===== Prediction Market Resolution Polling =====
@@ -493,8 +537,8 @@ async function pollPredictionOrderFilled(): Promise<number> {
 // PnL. Pull-based settlement: resolver triggers MarketResolved; claim_winnings
 // fires later per user. We score at resolve time regardless of claim status.
 
-const PREDICTION_RESOLVED_CURSOR_KEY = 'prediction_market_resolved_cursor';
-const PREDICTION_CANCELLED_CURSOR_KEY = 'prediction_market_cancelled_cursor';
+const PREDICTION_RESOLVED_CURSOR_BASE = 'prediction_market_resolved_cursor';
+const PREDICTION_CANCELLED_CURSOR_BASE = 'prediction_market_cancelled_cursor';
 
 interface PredictionMarketResolvedJson {
   market_id: string;
@@ -507,18 +551,19 @@ interface PredictionMarketCancelledJson {
   timestamp?: string;
 }
 
-async function pollPredictionMarketResolved(): Promise<number> {
+async function pollPredictionMarketResolvedForPackage(pkgId: string): Promise<number> {
   if (!client || !config) return 0;
-  if (!config.predictionPackage) return 0;
+  migrateBareCursor(PREDICTION_RESOLVED_CURSOR_BASE, pkgId);
+  const cursorKey = predictionCursorKey(PREDICTION_RESOLVED_CURSOR_BASE, pkgId);
 
-  const savedCursor = getIndexerState(PREDICTION_RESOLVED_CURSOR_KEY);
+  const savedCursor = getIndexerState(cursorKey);
   let cursor = null;
   if (savedCursor) {
     try { cursor = JSON.parse(savedCursor); }
-    catch { setIndexerState(PREDICTION_RESOLVED_CURSOR_KEY, ''); }
+    catch { setIndexerState(cursorKey, ''); }
   }
 
-  const eventType = `${config.predictionPackage}::prediction_market::MarketResolved`;
+  const eventType = `${pkgId}::prediction_market::MarketResolved`;
 
   let totalIndexed = 0;
   let currentCursor = cursor;
@@ -552,14 +597,14 @@ async function pollPredictionMarketResolved(): Promise<number> {
 
       if (result.nextCursor) {
         currentCursor = result.nextCursor;
-        setIndexerState(PREDICTION_RESOLVED_CURSOR_KEY, JSON.stringify(currentCursor));
+        setIndexerState(cursorKey, JSON.stringify(currentCursor));
       }
       hasMore = result.hasNextPage;
       consecutiveRpcErrors = 0;
       if (hasMore) await new Promise((r) => setTimeout(r, 200));
     } catch (err) {
       if (isRpcError(err)) consecutiveRpcErrors++;
-      console.error('[Indexer:PredictionResolved] Poll error:', (err as Error).message);
+      console.error(`[Indexer:PredictionResolved:${pkgId.slice(0, 10)}] Poll error:`, (err as Error).message);
       hasMore = false;
     }
   }
@@ -567,18 +612,27 @@ async function pollPredictionMarketResolved(): Promise<number> {
   return totalIndexed;
 }
 
-async function pollPredictionMarketCancelled(): Promise<number> {
-  if (!client || !config) return 0;
-  if (!config.predictionPackage) return 0;
+async function pollPredictionMarketResolved(): Promise<number> {
+  let total = 0;
+  for (const pkgId of predictionPackagesAll()) {
+    total += await pollPredictionMarketResolvedForPackage(pkgId);
+  }
+  return total;
+}
 
-  const savedCursor = getIndexerState(PREDICTION_CANCELLED_CURSOR_KEY);
+async function pollPredictionMarketCancelledForPackage(pkgId: string): Promise<number> {
+  if (!client || !config) return 0;
+  migrateBareCursor(PREDICTION_CANCELLED_CURSOR_BASE, pkgId);
+  const cursorKey = predictionCursorKey(PREDICTION_CANCELLED_CURSOR_BASE, pkgId);
+
+  const savedCursor = getIndexerState(cursorKey);
   let cursor = null;
   if (savedCursor) {
     try { cursor = JSON.parse(savedCursor); }
-    catch { setIndexerState(PREDICTION_CANCELLED_CURSOR_KEY, ''); }
+    catch { setIndexerState(cursorKey, ''); }
   }
 
-  const eventType = `${config.predictionPackage}::prediction_market::MarketCancelled`;
+  const eventType = `${pkgId}::prediction_market::MarketCancelled`;
 
   let totalIndexed = 0;
   let currentCursor = cursor;
@@ -610,19 +664,27 @@ async function pollPredictionMarketCancelled(): Promise<number> {
 
       if (result.nextCursor) {
         currentCursor = result.nextCursor;
-        setIndexerState(PREDICTION_CANCELLED_CURSOR_KEY, JSON.stringify(currentCursor));
+        setIndexerState(cursorKey, JSON.stringify(currentCursor));
       }
       hasMore = result.hasNextPage;
       consecutiveRpcErrors = 0;
       if (hasMore) await new Promise((r) => setTimeout(r, 200));
     } catch (err) {
       if (isRpcError(err)) consecutiveRpcErrors++;
-      console.error('[Indexer:PredictionCancelled] Poll error:', (err as Error).message);
+      console.error(`[Indexer:PredictionCancelled:${pkgId.slice(0, 10)}] Poll error:`, (err as Error).message);
       hasMore = false;
     }
   }
 
   return totalIndexed;
+}
+
+async function pollPredictionMarketCancelled(): Promise<number> {
+  let total = 0;
+  for (const pkgId of predictionPackagesAll()) {
+    total += await pollPredictionMarketCancelledForPackage(pkgId);
+  }
+  return total;
 }
 
 // ===== Lifecycle =====
@@ -679,7 +741,11 @@ export function startIndexer(cfg: LeaderboardConfig, largeTrade?: LargeTradeOpti
   console.log(`[Indexer] Starting (poll interval: ${cfg.indexerPollIntervalMs}ms, RPC: ${cfg.rpcUrl})`);
   console.log(`[Indexer] DeepBook package: ${cfg.deepbookPackage.slice(0, 16)}...`);
   if (cfg.predictionPackage) {
-    console.log(`[Indexer] Prediction package: ${cfg.predictionPackage.slice(0, 16)}...`);
+    console.log(`[Indexer] Prediction package (canonical): ${cfg.predictionPackage.slice(0, 16)}...`);
+    const legacy = cfg.predictionPackageLegacy ?? [];
+    if (legacy.length > 0) {
+      console.log(`[Indexer] Prediction packages (legacy): ${legacy.map((p) => p.slice(0, 16) + '...').join(', ')}`);
+    }
   } else {
     console.log('[Indexer] Prediction indexing disabled (PREDICTION_PACKAGE not set)');
   }
