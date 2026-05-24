@@ -16,7 +16,7 @@
  *   - tier              : agent owner's current NSI tier from user_nsi table
  */
 
-import { sql } from '../db.js';
+import { sql, pointsDb } from '../db.js';
 
 const CRON_HOUR_UTC = 1; // 01:00 UTC daily
 
@@ -56,9 +56,9 @@ async function runLeaderboardSnapshot(): Promise<void> {
   const cutoff30d = now - ms30d;
   const cutoff7d  = now - ms7d;
 
-  // Aggregate AER rows per agent over 30d, join agent_profiles + user_nsi tier.
-  // user_nsi lives in nasun_points DB on same host — cross-schema query works
-  // because both schemas are in the same PostgreSQL instance.
+  // Aggregate AER rows per agent over 30d from sui_indexer DB. user_nsi lives in
+  // a separate `nasun_points` database (not a schema), so it cannot be JOINed
+  // inline — fetch tiers via pointsDb in a second query and merge in memory.
   const rows = await sql<{
     agent_profile_id: string;
     operator_wallet: string;
@@ -68,7 +68,6 @@ async function runLeaderboardSnapshot(): Promise<void> {
     total_payment_30d: string;
     total_payment_7d: string;
     last_active_ms: string;
-    tier: number | null;
   }[]>`
     SELECT
       a.agent_profile_id,
@@ -79,16 +78,29 @@ async function runLeaderboardSnapshot(): Promise<void> {
       SUM(a.payment_amount)::text                            AS total_payment_30d,
       SUM(CASE WHEN a.settled_at >= ${String(cutoff7d)}
                THEN a.payment_amount ELSE 0 END)::text       AS total_payment_7d,
-      MAX(a.settled_at)::text                                AS last_active_ms,
-      un.tier
+      MAX(a.settled_at)::text                                AS last_active_ms
     FROM aer_records a
     JOIN agent_profiles ap ON ap.profile_id = a.agent_profile_id
-    LEFT JOIN nasun_points.user_nsi un ON un.wallet_address = ap.owner
     WHERE a.agent_profile_id IS NOT NULL
       AND a.settled_at >= ${String(cutoff30d)}
-    GROUP BY a.agent_profile_id, ap.owner, ap.name, un.tier
+    GROUP BY a.agent_profile_id, ap.owner, ap.name
     HAVING COUNT(*) > 0
   `;
+
+  const tierByOwner = new Map<string, number>();
+  if (pointsDb && rows.length > 0) {
+    const owners = [...new Set(rows.map((r) => r.operator_wallet))];
+    try {
+      const tierRows = await pointsDb<{ wallet_address: string; tier: number }[]>`
+        SELECT wallet_address, tier
+        FROM user_nsi
+        WHERE wallet_address IN ${pointsDb(owners)}
+      `;
+      for (const t of tierRows) tierByOwner.set(t.wallet_address, t.tier);
+    } catch (err) {
+      console.warn('[agent-leaderboard] user_nsi tier lookup failed:', err instanceof Error ? err.message : String(err));
+    }
+  }
 
   if (rows.length === 0) {
     console.log('[agent-leaderboard] no attributed AER rows in 30d window, skipping');
@@ -120,7 +132,7 @@ async function runLeaderboardSnapshot(): Promise<void> {
       VALUES (
         ${today}::date, ${row.agent_profile_id}, ${row.operator_wallet}, ${row.agent_name},
         ${roi7d}, ${totalProfitUsd},
-        ${tradeCount}, ${winRate}, ${lastActiveAt}::timestamptz, ${row.tier ?? null}
+        ${tradeCount}, ${winRate}, ${lastActiveAt}::timestamptz, ${tierByOwner.get(row.operator_wallet) ?? null}
       )
       ON CONFLICT (snapshot_date, agent_profile_id) DO UPDATE SET
         operator_wallet        = EXCLUDED.operator_wallet,
