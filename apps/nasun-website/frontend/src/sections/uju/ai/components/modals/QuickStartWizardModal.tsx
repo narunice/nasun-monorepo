@@ -20,8 +20,9 @@
  * steps via the Setup guide cards on QuickstartView.
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSigner } from '@nasun/wallet';
 import { useAgentProfiles } from '../../hooks/useAgentProfiles';
 import { useAgentBudgets } from '../../hooks/useAgentBudgets';
@@ -78,6 +79,18 @@ export function QuickStartWizardModal({
 }: QuickStartWizardModalProps) {
   const { signer } = useSigner();
   const createBlock = useCreateAgentBlocked(walletAddress);
+  const queryClient = useQueryClient();
+
+  // Step 2 fund tx → invalidate the budgets query immediately so hasBudget
+  // flips on the very next render. Without this the wizard waits on the
+  // useBudgetsQuery 15s refetchInterval, which presents as "Confirm and
+  // sign did nothing" and tempts the user to click again — re-running the
+  // PTB and double-funding the escrow.
+  const handleFunded = useCallback(() => {
+    void queryClient.invalidateQueries({
+      queryKey: ['nasun-ai', 'budgets', walletAddress],
+    });
+  }, [queryClient, walletAddress]);
 
   // Track the agent this wizard run operates on. Populated by Step 1
   // success OR by the resume chooser (continuing an incomplete agent).
@@ -335,11 +348,7 @@ export function QuickStartWizardModal({
               walletAddress={walletAddress}
               agentAddress={wizardAgent.address}
               capabilityId={wizardAgent.capabilityId}
-              onFunded={() => {
-                // budgets refetch via the same queryClient invalidation
-                // path Setup guide uses; the wizard reads from the same
-                // useAgentBudgets cache so hasBudget flips automatically.
-              }}
+              onFunded={handleFunded}
             />
           )}
 
