@@ -1,39 +1,31 @@
 /**
- * Identity ↔ wallet mapping from activity_points (18M+ rows, growing).
+ * All wallets per identity from activity_points (18M+ rows, growing).
  *
- * Two shapes used by tier-worker syncs:
+ * Used by:
+ *   staking-principal-sync — sums staked NSN across every wallet an
+ *                            identity controls (matches the
+ *                            daily-nft-check.ts staking award semantics).
+ *   nsi-compute Stage F    — sums tx_count across every wallet for the
+ *                            tx_activity_score; first wallet is used as
+ *                            display value in user_nsi.wallet_address.
  *
- *   getLatestWalletPerIdentity()  — 1 representative wallet per identity.
- *                                   Used by nsi-compute Stage F (txMap key
- *                                   + user_nsi.wallet_address display).
+ * Loose index scan (skip scan) emulated via recursive CTE + CROSS JOIN
+ * LATERAL: walk from one (identity_id, wallet_address) pair to the next
+ * via index range lookups instead of dedup-ing 18M rows. Cost grows with
+ * #distinct pairs (~68k), not #rows.
  *
- *   getAllWalletsPerIdentity()    — all distinct wallets per identity.
- *                                   Used by staking-principal-sync to sum
- *                                   staked NSN across every wallet an
- *                                   identity controls (matches the
- *                                   daily-nft-check.ts semantics).
+ * Critical detail: the LATERAL pattern packs both result columns into one
+ * subquery, so each iteration does ONE index lookup, not two. The earlier
+ * two-SubPlan shape doubled the work and amplified cold-cache cost from
+ * <1s to 30s+.
  *
- * Both use loose index scan (skip scan) emulated via recursive CTE +
- * CROSS JOIN LATERAL: walk from one key to the next via index range
- * lookups instead of a full 18M-row dedupe. Cost grows with #distinct
- * keys (~60k identities / ~68k (identity, wallet) pairs), not #rows.
+ * Required index:
+ *   idx_ap_identity_wallet (identity_id, wallet_address)
+ *                          WHERE identity_id IS NOT NULL AND wallet_address IS NOT NULL
  *
- * Critical detail: the LATERAL pattern packs both result columns into
- * one subquery, so each iteration does ONE index lookup, not two. The
- * earlier two-SubPlan shape (separate scalar subqueries per column)
- * doubled the work and amplified cold-cache cost from <1s to 30s+.
- *
- * Indexes required:
- *   idx_ap_identity_latest_wallet (identity_id, tx_timestamp DESC)
- *                                   INCLUDE (wallet_address) WHERE both NOT NULL
- *   idx_ap_identity_wallet        (identity_id, wallet_address)
- *                                   WHERE both NOT NULL
- *
- * Concurrency: nsi-compute and staking-principal-sync both call these
- * helpers, and tier-worker fires syncs together on boot / aligned ticks.
- * Two concurrent calls evict each other's index pages from
- * shared_buffers. We dedupe in-flight calls (single Promise) and cache
- * the result so the second caller in a cycle gets a zero-cost hit.
+ * Concurrency: both callers run inside tier-worker and may fire close in
+ * time on boot or aligned ticks. In-flight Promise dedup + 15min TTL
+ * cache lets one cycle share a single SQL execution between callers.
  */
 
 import { pointsDb } from '../db.js';
@@ -62,38 +54,6 @@ function makeMemo<T>(loader: () => Promise<T>): () => Promise<T> {
     })();
     return inflight;
   };
-}
-
-async function loadLatestWalletPerIdentity(): Promise<Map<string, string>> {
-  if (!pointsDb) return new Map();
-  const rows = await pointsDb<Array<{ identity_id: string; wallet_address: string }>>`
-    WITH RECURSIVE t AS (
-      (
-        SELECT identity_id, wallet_address
-        FROM activity_points
-        WHERE wallet_address IS NOT NULL AND identity_id IS NOT NULL
-        ORDER BY identity_id ASC, tx_timestamp DESC
-        LIMIT 1
-      )
-      UNION ALL
-      SELECT n.identity_id, n.wallet_address
-      FROM t
-      CROSS JOIN LATERAL (
-        SELECT ap.identity_id, ap.wallet_address
-        FROM activity_points ap
-        WHERE ap.identity_id > t.identity_id
-          AND ap.wallet_address IS NOT NULL
-          AND ap.identity_id IS NOT NULL
-        ORDER BY ap.identity_id ASC, ap.tx_timestamp DESC
-        LIMIT 1
-      ) n
-      WHERE t.identity_id IS NOT NULL
-    )
-    SELECT identity_id, wallet_address FROM t WHERE identity_id IS NOT NULL
-  `;
-  const out = new Map<string, string>();
-  for (const r of rows) out.set(r.identity_id, r.wallet_address);
-  return out;
 }
 
 async function loadAllWalletsPerIdentity(): Promise<Map<string, string[]>> {
@@ -132,5 +92,4 @@ async function loadAllWalletsPerIdentity(): Promise<Map<string, string[]>> {
   return out;
 }
 
-export const getLatestWalletPerIdentity = makeMemo(loadLatestWalletPerIdentity);
 export const getAllWalletsPerIdentity = makeMemo(loadAllWalletsPerIdentity);
