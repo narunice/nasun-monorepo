@@ -7,7 +7,7 @@ export default function DevHomeAuthoritySection() {
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow">02 / Thesis</span>
         <h2 className="ch-display">
-          The Runtime Enforces Earned <span className="ch-accent-pado">Authority</span>
+          The Runtime Enforces <span className="ch-accent-pado">Earned Authority</span>
         </h2>
       </FadeInUp>
 

@@ -28,7 +28,7 @@ export default function DevHomeTokenSection() {
   return (
     <ChSection>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">07 / Token</span>
+        <span className="ch-eyebrow">02 / Token</span>
         <h2 className="ch-display">
           <span className="ch-accent-pado">NSN</span> Powers the Behavioral Economy
         </h2>

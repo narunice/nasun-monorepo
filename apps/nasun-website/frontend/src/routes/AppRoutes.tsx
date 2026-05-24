@@ -40,6 +40,7 @@ const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
 const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
+const DevAboutPage = lazy(() => import("../pages/dev/DevAboutPage"));
 
 // Admin route definitions
 const adminRoutes = [
@@ -185,6 +186,7 @@ const AppRoutes = () => {
         {/* Dev/Showcase Routes */}
         <Route path="/showcase" element={<ComponentShowcasePage />} />
         <Route path="/dev/home" element={<DevHomePage />} />
+        <Route path="/dev/about" element={<DevAboutPage />} />
         <Route path="/dev/wallet-test" element={<WalletTestPage />} />
         <Route path="/dev/stats" element={<StatsPage />} />
         <Route path="/dev/battalion-nft" element={<DevBattalionNftPage />} />

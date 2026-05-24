@@ -3,9 +3,7 @@ import DevHomeHeroSection from "@/sections/dev/home/DevHomeHeroSection";
 import DevHomeAuthoritySection from "@/sections/dev/home/DevHomeAuthoritySection";
 import DevHomeMechanismSection from "@/sections/dev/home/DevHomeMechanismSection";
 import DevHomeNasunAppSection from "@/sections/dev/home/DevHomeNasunAppSection";
-import DevHomeOperationalSignalSection from "@/sections/dev/home/DevHomeOperationalSignalSection";
 import DevHomeEcosystemSection from "@/sections/dev/home/DevHomeEcosystemSection";
-import DevHomeTokenSection from "@/sections/dev/home/DevHomeTokenSection";
 import "@/sections/dev/home/dev-home.css";
 
 export default function DevHomePage() {
@@ -24,9 +22,7 @@ export default function DevHomePage() {
         <DevHomeAuthoritySection />
         <DevHomeMechanismSection />
         <DevHomeNasunAppSection />
-        <DevHomeOperationalSignalSection />
         <DevHomeEcosystemSection />
-        <DevHomeTokenSection />
       </ErrorBoundary>
     </main>
   );

@@ -14,7 +14,7 @@ export default function DevHomeOperationalSignalSection() {
   return (
     <ChSection>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">05 / Devnet</span>
+        <span className="ch-eyebrow">01 / Devnet</span>
         <h2 className="ch-display">
           <span className="ch-accent-pado">Operational signal</span>{" "}
           <span className="ch-subdued">devnet</span>
