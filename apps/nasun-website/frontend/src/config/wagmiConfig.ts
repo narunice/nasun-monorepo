@@ -62,8 +62,9 @@ export const wagmiConfig = createConfig({
     // Alchemy is intentionally last (safety net) to minimize paid CU consumption.
     // viem fallback tries transports in order; Alchemy is only hit when every public RPC fails.
     [mainnet.id]: fallback([
+      // eth.merkle.io removed: CORS preflight rejected from browser origins,
+      // pollutes console via viem fallback ranking health-checks.
       http("https://cloudflare-eth.com"),
-      http("https://eth.merkle.io"),
       http("https://eth.drpc.org"),
       http("https://rpc.mevblocker.io"),
       ...(alchemyKey ? [http(`https://eth-mainnet.g.alchemy.com/v2/${alchemyKey}`)] : []),
