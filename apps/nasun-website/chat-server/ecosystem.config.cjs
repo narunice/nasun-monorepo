@@ -77,7 +77,11 @@ module.exports = {
         // agents keep whatever expires_at they were stamped with; only new
         // activations land on the 24h TTL.
         NASUN_AI_ALPHA_AGENT_TTL_MS: '86400000',       // 24h
-        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '21600000',    // 6h
+        // 2026-05-24: bumped from 21600000 (6h) to 36000000 (10h) after
+        // sunominq incident. 6h was too tight: ~8 alpha testers who missed
+        // the Telegram invite within their work day got auto-requeued at the
+        // back of the line on a single missed claim.
+        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '36000000',    // 10h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
         // sourced from .env (via `set -a && source .env && set +a` before
         // `pm2 startOrRestart`) reaches the process. Listing it with a
