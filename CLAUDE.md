@@ -156,7 +156,7 @@ Security expectations:
 - Commit messages must follow Conventional Commits (feat, fix, chore, refactor, etc.).
 - Example: `feat(sui): implement zkLogin verification logic`
 - Include co-author line when committing:
-  `Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>`
+  `Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>`
 
 ---
 
