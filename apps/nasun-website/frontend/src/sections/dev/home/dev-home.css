@@ -1,0 +1,368 @@
+/*
+ * Scoped style layer for /dev/home (catena-inspired).
+ * Tokens, utilities, and font load are isolated under `.dev-home-catena`.
+ * Do not import this file outside DevHomePage.
+ */
+
+@import url("https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700;800&display=swap");
+
+.dev-home-catena {
+  /* ---------- Raw palette (catena hex) ---------- */
+  --ch-cream: #f0eee3;
+  --ch-milk: #f9f9f9;
+  --ch-onyx: #151316;
+  --ch-onyx-800: #3e3c3f;
+  --ch-hematite: #232124;
+  --ch-lime-300: #f4fee5;
+  --ch-lime-500: #e1f9b5;
+  --ch-lime-700: #cdf98a;
+  --ch-lime-900: #8db84a;
+
+  /* ---------- Font stack ---------- */
+  --ch-font-display: "Rubik", ui-sans-serif, system-ui, sans-serif;
+  --ch-font-body: "Rubik", ui-sans-serif, system-ui, sans-serif;
+  --ch-font-mono: "Rubik", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  /* ---------- Spacing / layout ---------- */
+  --ch-container: 1296px;
+  --ch-radius-lg: 1.25rem; /* 20px */
+  --ch-radius-md: 1rem;    /* 16px */
+  --ch-radius-sm: 0.75rem; /* 12px */
+  --ch-section-py: 9rem;   /* 144px */
+  --ch-section-gap: 4.5rem; /* 72px */
+
+  font-family: var(--ch-font-body);
+  font-weight: 400;
+  background: var(--ch-bg-page);
+  color: var(--ch-fg-default);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ---------- Theme mapping (dark default) ---------- */
+.dev-home-catena[data-theme="dark"],
+.dev-home-catena:not([data-theme]) {
+  --ch-bg-page: var(--ch-onyx);
+  --ch-bg-card: var(--ch-hematite);
+  --ch-bg-inverted: var(--ch-milk);
+  --ch-fg-display: #ffffff;
+  --ch-fg-default: var(--ch-milk);
+  --ch-fg-inverted: var(--ch-onyx);
+  --ch-fg-accent: #86f3b7; /* pado-4 mint */
+  --ch-fg-muted: rgba(249, 249, 249, 0.85);
+  --ch-fg-subdued: rgba(249, 249, 249, 0.6);
+  --ch-fg-faint: rgba(249, 249, 249, 0.3);
+  --ch-border: var(--ch-onyx-800);
+  --ch-divider: rgba(249, 249, 249, 0.12);
+}
+
+.dev-home-catena[data-theme="light"] {
+  --ch-bg-page: var(--ch-cream);
+  --ch-bg-card: #ffffff;
+  --ch-bg-inverted: var(--ch-onyx);
+  --ch-fg-display: var(--ch-onyx);
+  --ch-fg-default: var(--ch-onyx);
+  --ch-fg-inverted: var(--ch-milk);
+  --ch-fg-accent: #1a8cbc; /* pado-1 blue (readable on cream) */
+  --ch-fg-muted: rgba(21, 19, 22, 0.75);
+  --ch-fg-subdued: rgba(21, 19, 22, 0.55);
+  --ch-fg-faint: rgba(21, 19, 22, 0.22);
+  --ch-border: rgba(21, 19, 22, 0.12);
+  --ch-divider: rgba(21, 19, 22, 0.10);
+}
+
+/* Selection */
+.dev-home-catena ::selection {
+  background-color: rgba(187, 252, 96, 0.85);
+  color: var(--ch-onyx);
+}
+
+/* ---------- Section primitives ---------- */
+.dev-home-catena .ch-section {
+  background-color: var(--ch-bg-page);
+  color: var(--ch-fg-default);
+  padding-top: var(--ch-section-py);
+  padding-bottom: var(--ch-section-py);
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-section {
+    padding-left: 72px;
+    padding-right: 72px;
+  }
+}
+.dev-home-catena .ch-container {
+  max-width: var(--ch-container);
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+}
+.dev-home-catena .ch-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ch-section-gap);
+}
+
+/* ---------- Typography utilities ---------- */
+.dev-home-catena .ch-display-wide {
+  font-family: var(--ch-font-display);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+  font-size: 1.625rem; /* 26px */
+  color: var(--ch-fg-display);
+}
+@media (min-width: 768px) {
+  .dev-home-catena .ch-display-wide { font-size: 2.5rem; line-height: 1.1; }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-display-wide { font-size: 44px; line-height: 52px; }
+}
+
+.dev-home-catena .ch-display {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1.15;
+  font-size: 1.5rem; /* 24px */
+  color: var(--ch-fg-display);
+}
+@media (min-width: 768px) {
+  .dev-home-catena .ch-display { font-size: 36px; line-height: 1.15; }
+}
+
+.dev-home-catena .ch-lead {
+  font-family: var(--ch-font-body);
+  font-weight: 300;
+  font-size: 1rem; /* 16px */
+  line-height: 1.45;
+  max-width: 720px;
+  color: rgba(249, 249, 249, 0.92);
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-lead { font-size: 1.125rem; line-height: 1.4; }
+}
+
+.dev-home-catena .ch-body {
+  font-family: var(--ch-font-body);
+  font-weight: 300;
+  font-size: 1rem;
+  line-height: 1.55;
+  color: var(--ch-fg-muted);
+}
+
+.dev-home-catena .ch-eyebrow {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.875rem;
+  color: var(--ch-fg-accent);
+}
+
+.dev-home-catena .ch-label {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+}
+
+.dev-home-catena .ch-accent { color: var(--ch-fg-accent); }
+.dev-home-catena .ch-accent-pado {
+  background-image: linear-gradient(
+    90deg,
+    #5ee1e4 0%,
+    #d2f6a2 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+.dev-home-catena .ch-muted  { color: var(--ch-fg-muted); }
+.dev-home-catena .ch-subdued { color: var(--ch-fg-subdued); }
+
+/* ---------- Buttons ---------- */
+.dev-home-catena .ch-btn {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--ch-radius-md);
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  cursor: pointer;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dev-home-catena .ch-btn-lg {
+  padding: 0.5rem 1.75rem;
+  font-size: 0.875rem;
+  border-radius: var(--ch-radius-lg);
+}
+.dev-home-catena .ch-btn-sm {
+  padding: 0.3125rem 1rem;
+  font-size: 0.75rem;
+  border-radius: var(--ch-radius-sm);
+}
+.dev-home-catena .ch-btn-primary {
+  background-color: var(--ch-bg-inverted);
+  color: var(--ch-fg-inverted);
+}
+.dev-home-catena .ch-btn-primary:hover {
+  background-color: var(--ch-fg-accent);
+  color: var(--ch-onyx);
+}
+.dev-home-catena .ch-btn-ghost {
+  background-color: transparent;
+  color: var(--ch-fg-default);
+  border: 1px solid var(--ch-border);
+}
+.dev-home-catena .ch-btn-ghost:hover {
+  border-color: var(--ch-fg-accent);
+  color: var(--ch-fg-accent);
+}
+
+/* ---------- Cards / Dividers ---------- */
+.dev-home-catena .ch-card {
+  background-color: var(--ch-bg-card);
+  border-radius: var(--ch-radius-lg);
+  padding: 2rem;
+  border: 1px solid var(--ch-border);
+}
+.dev-home-catena .ch-divider-v {
+  background-color: var(--ch-divider);
+  width: 1px;
+}
+.dev-home-catena .ch-divider-h {
+  background-color: var(--ch-divider);
+  height: 1px;
+}
+.dev-home-catena .ch-rule-left  { border-left: 1px solid var(--ch-fg-accent); padding-left: 1.25rem; }
+.dev-home-catena .ch-rule-right { border-right: 1px solid var(--ch-fg-subdued); padding-right: 1.25rem; }
+
+/* ---------- Step chain (compounding loop) ---------- */
+.dev-home-catena .ch-step-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  align-items: stretch;
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-step-grid {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+  }
+}
+.dev-home-catena .ch-step {
+  background-color: var(--ch-bg-card);
+  border: 1px solid var(--ch-border);
+  border-radius: var(--ch-radius-lg);
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  height: 100%;
+  position: relative;
+}
+.dev-home-catena .ch-step-index {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  font-size: 0.75rem;
+  background-image: linear-gradient(90deg, #5ee1e4 0%, #d2f6a2 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.dev-home-catena .ch-step-label {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-size: 1.125rem;
+  color: var(--ch-fg-display);
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-step + .ch-step::before {
+    content: "";
+    position: absolute;
+    left: -0.75rem;
+    top: 50%;
+    width: 0.75rem;
+    height: 1px;
+    background-image: linear-gradient(90deg, #5ee1e4 0%, #d2f6a2 100%);
+    transform: translateY(-50%);
+  }
+}
+
+/* ---------- Sink grid (NSN demand sinks) ---------- */
+.dev-home-catena .ch-sink-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 640px) {
+  .dev-home-catena .ch-sink-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-sink-grid {
+    grid-template-columns: repeat(5, 1fr);
+  }
+}
+.dev-home-catena .ch-sink {
+  background-color: var(--ch-bg-card);
+  border: 1px solid var(--ch-border);
+  border-radius: var(--ch-radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  height: 100%;
+}
+.dev-home-catena .ch-sink-title {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  font-size: 1rem;
+  color: var(--ch-fg-display);
+}
+
+/* ---------- Hero ---------- */
+.dev-home-catena .ch-hero {
+  background-color: var(--ch-bg-page);
+  color: var(--ch-fg-default);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+  padding-top: 6rem;
+  padding-bottom: 6rem;
+  min-height: calc(100vh - 50px);
+  display: flex;
+  align-items: center;
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-hero {
+    padding-left: 72px;
+    padding-right: 72px;
+    padding-top: 9rem;
+    padding-bottom: 9rem;
+  }
+}
+.dev-home-catena .ch-hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: -2;
+  pointer-events: none;
+  user-select: none;
+}
