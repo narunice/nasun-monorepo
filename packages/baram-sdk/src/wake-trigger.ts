@@ -13,6 +13,21 @@
  * runtime handling is deferred to Phase 2.
  */
 
+// Semantic note: `triggered_by_type` labels the AER's *lifecycle stage*,
+// not the user input channel. A single Telegram chat that ends in a
+// confirmed trade produces TWO AERs:
+//   1) analyst preset    -> tbt=2 (user_message), envelope=analysis.v1,
+//      outcome=hold-noop. Cognition-only; no swap. A proposal card is
+//      sent to TG awaiting confirm/cancel.
+//   2) manual-execution  -> tbt=4 (manual), envelope=trade.swap.v1,
+//      outcome=1, parent_intent_id=(1). The actual on-chain swap, fired
+//      when the user taps Confirm on the proposal.
+// Autonomous heartbeat (tbt=1) collapses both stages into one AER:
+// envelope=trade.swap.v1, outcome=1, no human in the loop.
+// So when classifying "what initiated this trade":
+//   tbt=1 = agent itself (heartbeat cycle)
+//   tbt=2 = no trade yet (analysis/proposal stage)
+//   tbt=4 = user-confirmed trade (parent AER's tbt tells the channel)
 export const WAKE_TRIGGER_VALUES = {
   heartbeat: 1,
   user_message: 2,
