@@ -235,6 +235,31 @@ export function buildRevokeCapabilityTransaction(capabilityId: string): Transact
   return tx;
 }
 
+// Kill switch — atomic capability::revoke + agent_profile::deactivate_agent.
+// Capability revoke alone leaves AgentProfile.is_active=true, which the
+// sidebar (useAgentProfiles + useTraderConfig) renders as "paused" because
+// runtime config.enabled is false. Combining both in one PTB so the wallet
+// signature finalizes both axes of "killed" — capability authority gone AND
+// profile inactive — matches the user intent ("retire this agent") and
+// avoids the zombie state where chat-server reports unknown indefinitely.
+export function buildKillSwitchTransaction(
+  capabilityId: string,
+  agentProfileId: string,
+): Transaction {
+  validateObjectId(capabilityId, 'capabilityId');
+  validateObjectId(agentProfileId, 'agentProfileId');
+  const tx = new Transaction();
+  tx.moveCall({
+    target: `${BARAM.aerPackageId}::capability::revoke`,
+    arguments: [tx.object(capabilityId)],
+  });
+  tx.moveCall({
+    target: `${BARAM.agentPackageId}::agent_profile::deactivate_agent`,
+    arguments: [tx.object(BARAM.agentProfileRegistry), tx.object(agentProfileId)],
+  });
+  return tx;
+}
+
 // ========== Agent Profile ==========
 
 export function buildCreateAgentTransaction(params: {
@@ -375,6 +400,15 @@ export interface BuildAgentFundParams {
   escrowId: string;                // shared AgentEscrow id from Step ①
   budgetDeposit: bigint;           // raw NUSDC (6 decimals)
   tradingCapitalDeposit: bigint;   // raw NUSDC (6 decimals)
+  /**
+   * NSN gas to transfer into the agent's owned wallet. The agent signs its
+   * own trade PTBs from this wallet, so without NSN it cannot pay gas and
+   * every swap aborts at the wallclock before settlement. Split from
+   * tx.gas (same coin pool the SDK reserves for this PTB's gas), so the
+   * owner does NOT need a separate NSN coin object. Raw u64, 9 decimals.
+   * Pass 0 to skip the transfer.
+   */
+  nsnGasDeposit: bigint;
 }
 
 export function buildAgentFundTransaction(params: BuildAgentFundParams): Transaction {
@@ -413,6 +447,17 @@ export function buildAgentFundTransaction(params: BuildAgentFundParams): Transac
     typeArguments: [NUSDC_TYPE],
     arguments: [tx.object(params.escrowId), tradingCoin],
   });
+
+  if (params.nsnGasDeposit > 0n) {
+    // Use tx.gas (the SDK's gas-coin pool) for the same reason
+    // buildDepositToAgentWalletTransaction does — NSN is the gas token,
+    // so splitting from a separate owner-held SUI coin races the SDK's
+    // own gas reservation and aborts with GasBalanceTooLow even when the
+    // owner has plenty of NSN. tx.gas is reserved first, then the
+    // remainder is available for our split.
+    const [gasCoin] = tx.splitCoins(tx.gas, [tx.pure.u64(params.nsnGasDeposit)]);
+    tx.transferObjects([gasCoin], tx.pure.address(params.agentAddress));
+  }
 
   return tx;
 }

@@ -118,7 +118,7 @@ export function DashboardTab({ agent, budget, onRefresh }: DashboardTabProps) {
         />
       </div>
 
-      <DangerZoneCard capabilityId={agent.capabilityId} />
+      <DangerZoneCard capabilityId={agent.capabilityId} agentProfileId={agent.id} />
     </div>
   );
 }

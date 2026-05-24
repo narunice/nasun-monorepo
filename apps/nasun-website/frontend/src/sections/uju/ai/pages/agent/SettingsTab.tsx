@@ -173,7 +173,7 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
       </section>
 
       <section>
-        <DangerZoneCard capabilityId={agent.capabilityId} />
+        <DangerZoneCard capabilityId={agent.capabilityId} agentProfileId={agent.id} />
       </section>
 
       {exportOpen && (
