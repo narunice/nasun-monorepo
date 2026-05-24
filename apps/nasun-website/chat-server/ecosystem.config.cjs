@@ -71,7 +71,11 @@ module.exports = {
         // alpha_timer_pause). Restore to '4' after dogfood test, then to
         // '6' when alpha resumes for public.
         NASUN_AI_ALPHA_SYSTEM_CAP: '5',
-        NASUN_AI_ALPHA_AGENT_TTL_MS: '129600000',      // 36h
+        // 2026-05-24: lowered from 129600000 (36h) to 86400000 (24h) so the
+        // alpha slot rotation reaches more waitlisted users per day. Existing
+        // agents keep whatever expires_at they were stamped with; only new
+        // activations land on the 24h TTL.
+        NASUN_AI_ALPHA_AGENT_TTL_MS: '86400000',       // 24h
         NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '21600000',    // 6h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
         // sourced from .env (via `set -a && source .env && set +a` before
