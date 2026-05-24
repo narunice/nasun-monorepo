@@ -52,7 +52,14 @@ export interface UseCapabilityResult {
    * whose AgentProfile.is_active is still true. Calls deactivate_agent only.
    */
   finalizeDeactivate: (agentProfileId: string) => Promise<boolean>;
-  refetch: () => Promise<void>;
+  /**
+   * Re-read the capability from chain. Returns the freshly fetched Capability
+   * so callers that need to act on the result within the same async tick can
+   * avoid a stale-closure read of `data` (React state updates do not propagate
+   * before the next render). `null` is returned on fetch failure or when
+   * `capabilityId` is null/raced.
+   */
+  refetch: () => Promise<Capability | null>;
   resetTxStatus: () => void;
 }
 
@@ -66,11 +73,11 @@ export function useCapability(capabilityId: string | null): UseCapabilityResult 
   const [txError, setTxError] = useState<string | null>(null);
   const txInFlight = useRef(false);
 
-  const refetch = useCallback(async () => {
+  const refetch = useCallback(async (): Promise<Capability | null> => {
     if (!capabilityId) {
       setData(null);
       setFetchError(null);
-      return;
+      return null;
     }
     // Clear stale data synchronously so consumers can't observe one frame
     // where `data` is from the previous capabilityId. Without this, switching
@@ -87,12 +94,14 @@ export function useCapability(capabilityId: string | null): UseCapabilityResult 
       // Guard against races: if capabilityId changed underneath us during
       // the await, drop the response so we never publish data tagged with
       // the wrong id.
-      if (requestedId !== capabilityId) return;
+      if (requestedId !== capabilityId) return null;
       setData(ref.cap);
+      return ref.cap;
     } catch (err) {
-      if (requestedId !== capabilityId) return;
+      if (requestedId !== capabilityId) return null;
       setFetchError(err instanceof Error ? err.message : 'Failed to fetch capability');
       setData(null);
+      return null;
     } finally {
       setIsLoading(false);
     }
