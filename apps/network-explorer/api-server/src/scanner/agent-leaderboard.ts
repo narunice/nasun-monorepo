@@ -100,6 +100,9 @@ async function runLeaderboardSnapshot(): Promise<void> {
     } catch (err) {
       console.warn('[agent-leaderboard] user_nsi tier lookup failed:', err instanceof Error ? err.message : String(err));
     }
+    if (tierByOwner.size === 0) {
+      console.warn(`[agent-leaderboard] tier lookup 0 matches for ${rows.length} agents — owner↔wallet_address mismatch`);
+    }
   }
 
   if (rows.length === 0) {
