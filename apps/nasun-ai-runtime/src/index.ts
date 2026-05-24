@@ -41,6 +41,7 @@ import { runCycle } from './cycles/run-cycle.js';
 import { runHeartbeatFromWake } from './cycles/trader-runner.js';
 import { runAnalystPreset } from './presets/analyst.js';
 import { runChatPreset } from './presets/chat.js';
+import { fetchAgentBalances } from './presets/trader.js';
 import { runManualExecution } from './presets/manual-execution.js';
 import { RateLimiter } from './rate-limit.js';
 import { assertEnabledOrExit, assertOnChainActiveOrExit } from './self-config.js';
@@ -134,7 +135,28 @@ async function main(): Promise<void> {
       log: (m) => log(m),
       rateLimiter,
       runAnalystCycle: (ctx) => runAnalystPreset(client, config, ctx),
-      runChatCycle: (ctx) => runChatPreset(config, ctx),
+      runChatCycle: (ctx) => runChatPreset(config, ctx, {
+        // Only inject portfolio for trader-preset agents (the only spawn
+        // shape with an escrow). Other presets fall back to the plain
+        // persona, matching pre-2026-05-24 behavior.
+        fetchPortfolio: config.trader
+          ? async () => {
+              const b = await fetchAgentBalances(
+                client,
+                config.agentAddress,
+                config.trader!.escrowId,
+              );
+              return {
+                nbtcRaw: b.nbtcRaw,
+                nusdcRaw: b.nusdcRaw,
+                walletNbtcRaw: b.walletNbtcRaw,
+                walletNusdcRaw: b.walletNusdcRaw,
+                escrowNbtcRaw: b.escrowNbtcRaw,
+                escrowNusdcRaw: b.escrowNusdcRaw,
+              };
+            }
+          : undefined,
+      }),
       runHeartbeatCycle: (ctx) => runHeartbeatFromWake(client, config, ctx),
       runManualExecution: (ctx) => runManualExecution(client, config, ctx),
     });
