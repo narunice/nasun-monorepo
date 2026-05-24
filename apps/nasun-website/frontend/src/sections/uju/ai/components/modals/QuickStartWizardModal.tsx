@@ -27,6 +27,7 @@ import { useSigner } from '@nasun/wallet';
 import { useAgentProfiles } from '../../hooks/useAgentProfiles';
 import { useAgentBudgets } from '../../hooks/useAgentBudgets';
 import { useTraderConfig } from '../../hooks/useTraderConfig';
+import { useCapability } from '../../hooks/useCapability';
 import { useCreateAgent } from '../../hooks/useCreateAgent';
 import { useAerRecords } from '../../hooks/useAerRecords';
 import { useAgentVaultStatus } from '../../hooks/useAgentVaultStatus';
@@ -55,6 +56,31 @@ function writeTgLinked(wallet: string, agent: string): void {
     localStorage.setItem(tgLinkedKey(wallet, agent), '1');
   } catch {
     // private window or storage quota — best effort.
+  }
+}
+
+// Persist the activation-submitted signal so a page reload between vault
+// upload and the first agent heartbeat doesn't bounce the user back to
+// the Activate button. Without this the wizard re-renders Step 5 during
+// the spawn-to-heartbeat gap (up to ~90s, see baram_agent_endpoints
+// freshness check in chat-server) and a second click consumes the now-
+// missing waitlist invite, surfacing as "Public alpha is full".
+function activationSubmittedKey(wallet: string, agent: string): string {
+  return `nasun-ai-quickstart-activation-submitted:${wallet.toLowerCase()}:${agent.toLowerCase()}`;
+}
+function readActivationSubmitted(wallet: string, agent: string | null): boolean {
+  if (!agent) return false;
+  try {
+    return localStorage.getItem(activationSubmittedKey(wallet, agent)) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeActivationSubmitted(wallet: string, agent: string): void {
+  try {
+    localStorage.setItem(activationSubmittedKey(wallet, agent), '1');
+  } catch {
+    // best effort.
   }
 }
 
@@ -194,9 +220,35 @@ export function QuickStartWizardModal({
   useEffect(() => {
     setTgLinkedFlag(readTgLinked(walletAddress, wizardAgent?.address ?? null));
   }, [walletAddress, wizardAgent?.address]);
-  const isActive = vaultStatus.state === 'active';
 
-  const done: boolean[] = [!!wizardAgent, hasBudget, hasPolicy, tgLinkedFlag, isActive];
+  // Step 5/6 split: 'Activate' is the user-initiated upload (ActivateAgentModal
+  // -> vault upload -> chain authorize -> enable=true save). 'Server ready'
+  // is the passive wait until chat-server confirms the spawned process is
+  // sending heartbeats. Splitting these prevents the recognition bug where
+  // the activate button re-renders during the upload->heartbeat gap, which
+  // tempted users to click again and burn their alpha invite.
+  const [activationSubmittedFlag, setActivationSubmittedFlag] = useState(false);
+  useEffect(() => {
+    setActivationSubmittedFlag(readActivationSubmitted(walletAddress, wizardAgent?.address ?? null));
+  }, [walletAddress, wizardAgent?.address]);
+
+  // Vault row in 'active' or 'inactive' state means the SSM key is uploaded
+  // and the chat-server agent_keys row is alive (only difference is whether
+  // the heartbeat is fresh). Either counts as "Activate" done — even if
+  // activationSubmittedFlag was cleared (e.g. different browser), the
+  // server state proves the upload happened.
+  const vaultLanded = vaultStatus.state === 'active' || vaultStatus.state === 'inactive';
+  const activated = activationSubmittedFlag || vaultLanded;
+  const serverReady = vaultStatus.state === 'active';
+
+  const done: boolean[] = [
+    !!wizardAgent,
+    hasBudget,
+    hasPolicy,
+    tgLinkedFlag,
+    activated,
+    serverReady,
+  ];
   const activeIdx = done.findIndex((v) => !v); // -1 when every step is done
 
   // Child-modal toggles. Wizard mounts these on demand instead of always
@@ -213,7 +265,7 @@ export function QuickStartWizardModal({
     return () => document.removeEventListener('keydown', onKey);
   }, [onClose, tgChildOpen, activateChildOpen]);
 
-  const stepLabels = ['Register', 'Fund', 'Policy', 'Telegram', 'Activate'];
+  const stepLabels = ['Register', 'Fund', 'Policy', 'Telegram', 'Activate', 'Server'];
 
   return createPortal(
     <div
@@ -372,6 +424,10 @@ export function QuickStartWizardModal({
             />
           )}
 
+          {activeIdx === 5 && wizardAgent && (
+            <Step6ServerReady vaultState={vaultStatus.state} />
+          )}
+
           {activeIdx === -1 && (
             <div className="text-center py-6 space-y-3">
               <div className="text-2xl">🎉</div>
@@ -413,13 +469,21 @@ export function QuickStartWizardModal({
           walletAddress={walletAddress}
           onClose={() => setActivateChildOpen(false)}
           onActivated={() => {
+            // Persist the activation-submitted signal BEFORE the async
+            // config save so a reload mid-save still surfaces Step 6 (the
+            // server-ready wait) instead of bouncing back to Step 5. The
+            // vault row has already been inserted by uploadAgentKeyToVault
+            // at this point, so this localStorage write is just belt-and-
+            // suspenders for the heartbeat-delay window.
+            writeActivationSubmitted(walletAddress, wizardAgent.address);
+            setActivationSubmittedFlag(true);
             // Phase 6 (2026-05-23): flip enabled=true so the chat-server
             // orchestrator's reconcile spawns PM2. Vault upload alone is
             // no longer sufficient since the orchestrator now refuses to
             // spawn disabled agents.
             // Phase 4: save returns null on server reject. If the enable
-            // save fails, the wizard stays on the activate step (Step 5
-            // done check won't advance) so the user notices and can retry.
+            // save fails the wizard stays on Step 6 polling vault status;
+            // the user can still confirm activation via Settings.
             void (async () => {
               if (traderConfig) {
                 const {
@@ -433,7 +497,7 @@ export function QuickStartWizardModal({
                 if (!saved) return;
               }
               // Vault state flips to 'active' shortly after pm2 spawn.
-              // Explicit refresh kicks the fast-window forward so Step 5
+              // Explicit refresh kicks the fast-window forward so Step 6
               // done check advances as soon as chat-server confirms.
               void vaultStatus.refresh();
             })();
@@ -582,6 +646,14 @@ function Step3PolicyInline({
 }) {
   const { data: budgets } = useAgentBudgets(walletAddress);
   const budget = budgets?.find((b) => b.agent === agent.address);
+  // Capability is the on-chain trust boundary; useCreateAgent seeds it with
+  // DEFAULT_RISK_LIMITS (2 NUSDC per action). The wizard's policy form lets
+  // the user set perTrade / dailyMax above that default, so we mirror the
+  // raise onto the capability — otherwise every swap PTB aborts at
+  // escrow::withdraw_for_action with E_PAYMENT_EXCEEDS_NOTIONAL_CAP (552)
+  // and the user sees wake_http_422 with no heartbeat (2026-05-24 Danny
+  // incident). Mirrors SettingsTab onSave; keep the two in sync.
+  const capability = useCapability(agent.capabilityId);
 
   if (!budget) {
     return (
@@ -602,6 +674,41 @@ function Step3PolicyInline({
         const result = await onSavePolicy(values);
         if (!result) {
           throw new Error('Failed to save policy');
+        }
+        // Only raise on-chain limits; never lower (lowering is an explicit
+        // tighten action via Settings). Skipping when the capability is
+        // still loading would leave the user at default 2 NUSDC, so we
+        // wait for the fetch — refetch is awaited in useCapability so a
+        // fresh wizard sees the just-created cap before this branch runs.
+        const newPerTrade = BigInt(values.perTradeMaxQuoteRaw);
+        const newDailyMax = BigInt(values.dailyMaxQuoteRaw);
+        const cap = capability.data;
+        if (
+          cap &&
+          (newPerTrade > cap.riskLimits.maxNotionalPerAction ||
+            newDailyMax > cap.riskLimits.maxDailyLoss)
+        ) {
+          const ok = await capability.updateRiskLimits({
+            maxNotionalPerAction:
+              newPerTrade > cap.riskLimits.maxNotionalPerAction
+                ? newPerTrade
+                : cap.riskLimits.maxNotionalPerAction,
+            maxDailyLoss:
+              newDailyMax > cap.riskLimits.maxDailyLoss
+                ? newDailyMax
+                : cap.riskLimits.maxDailyLoss,
+            maxSlippageBps: cap.riskLimits.maxSlippageBps,
+            stopLossBps: cap.riskLimits.stopLossBps,
+            takeProfitBps: cap.riskLimits.takeProfitBps,
+          });
+          if (!ok) {
+            // Surface the failure so the wizard does not auto-advance with
+            // a divergent off-chain/on-chain pair. capability.txError holds
+            // the human-readable reason for the caller / form to display.
+            throw new Error(
+              capability.txError ?? 'Failed to update on-chain risk limits',
+            );
+          }
         }
       }}
     />
@@ -634,7 +741,9 @@ function Step4TelegramTrigger({
 }
 
 // =========================================================================
-// Step 5 — Activate. Single CTA opens the existing ActivateAgentModal.
+// Step 5 — Activate. Single CTA opens the existing ActivateAgentModal,
+// which decrypts + uploads + on-chain authorizes in one wallet flow.
+// The follow-up "is the server actually running it" check lives in Step 6.
 // =========================================================================
 
 function Step5ActivateTrigger({
@@ -645,7 +754,7 @@ function Step5ActivateTrigger({
   return (
     <div className="space-y-3">
       <p className="text-sm text-uju-secondary">
-        Upload the encrypted key. Trading starts within ~5 minutes.
+        Sign with your wallet and upload the encrypted key. One signature, one click.
       </p>
       <button
         type="button"
@@ -654,6 +763,50 @@ function Step5ActivateTrigger({
       >
         Activate agent
       </button>
+    </div>
+  );
+}
+
+// =========================================================================
+// Step 6 — Server ready. Passive wait: poll vault status until the chat-
+// server confirms the spawned PM2 process is sending heartbeats. No CTA,
+// so a second click cannot trigger a duplicate vault upload during the
+// spawn-to-heartbeat gap.
+// =========================================================================
+
+function Step6ServerReady({
+  vaultState,
+}: {
+  vaultState: 'active' | 'inactive' | 'grace' | 'not_vaulted';
+}) {
+  const subline =
+    vaultState === 'inactive'
+      ? 'Key uploaded. Waiting for the first agent heartbeat.'
+      : vaultState === 'not_vaulted'
+        ? 'Looking up the agent record on the chat-server.'
+        : vaultState === 'grace'
+          ? 'Agent is in the 7-day recovery window. Restore it from Settings if you want to keep using it.'
+          : 'Server confirmed.';
+
+  return (
+    <div className="space-y-3 text-center py-4">
+      <div className="flex justify-center" aria-hidden="true">
+        <svg
+          className="w-8 h-8 animate-spin text-pado-2"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
+          <path d="M22 12a10 10 0 00-10-10" strokeLinecap="round" />
+        </svg>
+      </div>
+      <p className="text-sm text-white font-medium">Activating on server...</p>
+      <p className="text-xs text-uju-secondary">{subline}</p>
+      <p className="text-xs text-uju-secondary/70">
+        Usually under 60 seconds. You can close this; the agent will continue starting and you can check status in Settings.
+      </p>
     </div>
   );
 }
