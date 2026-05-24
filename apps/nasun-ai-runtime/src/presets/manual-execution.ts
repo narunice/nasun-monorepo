@@ -69,6 +69,11 @@ import {
 import type { Config } from '../config.js';
 import type { WakeContext, WakeOutcome } from '../wake-router.js';
 import { recordAerLanded } from '../aer-heartbeat.js';
+import {
+  fetchTradeFills,
+  fetchEscrowBalances,
+  formatHeartbeatHtml,
+} from '../notify.js';
 
 // Minimal prompt used for the confirmation LLM call. The user has already
 // confirmed the trade direction; we ask the LLM to "endorse" the decision so
@@ -554,14 +559,50 @@ export async function runManualExecution(
 
   // Pending lock cleanup runs in the finally block below.
 
-  const summaryText = `Executed ${proposal.side} ~${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC (confirmed). ${fakeDecision.reason}`;
+  // Build a rich HTML summary mirroring the autonomous heartbeat push so the
+  // user sees identical formatting (header, fills, live escrow balances, View
+  // tx / View escrow links) on both surfaces. The chat-server side sends the
+  // returned summary verbatim with parse_mode='HTML', so the same formatter
+  // can power both paths. Any RPC/format failure degrades to a plain summary —
+  // we never want a presentation bug to make a settled trade look failed.
+  let summaryHtml: string;
+  try {
+    let fills: Awaited<ReturnType<typeof fetchTradeFills>> = null;
+    if (execResp.txDigest) {
+      fills = await fetchTradeFills(config.rpcUrl, execResp.txDigest, fetch);
+    }
+    const balances = await fetchEscrowBalances(config.rpcUrl, trader.escrowId, fetch);
+    const syntheticResult = {
+      outcome: 'succeeded' as const,
+      txDigest: execResp.txDigest,
+      decision: {
+        action: proposal.side as 'BUY' | 'SELL',
+        sizeNUSDC: Number(proposal.size_quote_raw) / 1e6,
+        reason: `User-confirmed: ${proposal.summary}`,
+      },
+    };
+    summaryHtml = formatHeartbeatHtml(
+      syntheticResult,
+      trader.strategy.id,
+      'https://explorer.nasun.io/devnet',
+      {
+        fills,
+        agentName: process.env.AGENT_NAME,
+        balances,
+        escrowId: trader.escrowId,
+      },
+    );
+  } catch (err) {
+    deps.log(`[manual] summary enrichment failed (non-fatal): ${err instanceof Error ? err.message : err}`);
+    summaryHtml = `Executed ${proposal.side} ~${(Number(proposal.size_quote_raw) / 1e6).toFixed(2)} NUSDC (confirmed). ${fakeDecision.reason}`;
+  }
 
   return {
     ok: true,
     status: 'processed',
     intentId: confirmIntentId,
     aerDigest: execResp.txDigest,
-    summary: summaryText,
+    summary: summaryHtml,
   };
   } finally {
     await releaseLock('post-exec');

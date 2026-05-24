@@ -687,7 +687,13 @@ async function handleProposalConfirm(
     clearInterval(typingTimer);
 
     if (result.ok && result.summary) {
-      await sendMessage(chatId, `Trade executed.\n\n${result.summary}`);
+      // Runtime's manual-execution.ts builds the same HTML shape that the
+      // autonomous heartbeat push uses (header + fills + balances + View tx /
+      // View escrow links), so we send it verbatim. The "Trade executed."
+      // prefix was removed because the summary's own "[Nasun AI · ...]\nBUY ...
+      // NUSDC" header already conveys the outcome. disableWebPagePreview keeps
+      // the explorer link from rendering a giant card under the message.
+      await sendMessage(chatId, result.summary, undefined, { disableWebPagePreview: true });
     } else if (result.ok) {
       await sendMessage(chatId, 'Trade executed. Check your Dashboard for details.');
     } else {
