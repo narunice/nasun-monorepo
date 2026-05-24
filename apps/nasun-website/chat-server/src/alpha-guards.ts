@@ -29,8 +29,9 @@ export class GuardError extends Error {
 
 function systemCap(): number {
   const raw = process.env.NASUN_AI_ALPHA_SYSTEM_CAP;
-  const n = raw ? parseInt(raw, 10) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : 8;
+  if (raw === undefined || raw === '') return 8;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n >= 0 ? n : 8;
 }
 
 function agentTtlMs(): number {
@@ -41,8 +42,9 @@ function agentTtlMs(): number {
 
 function claimWindowMs(): number {
   const raw = process.env.NASUN_AI_ALPHA_CLAIM_WINDOW_MS;
-  const n = raw ? parseInt(raw, 10) : NaN;
-  return Number.isFinite(n) && n > 0 ? n : 6 * 60 * 60 * 1000;
+  if (raw === undefined || raw === '') return 10 * 60 * 60 * 1000;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 10 * 60 * 60 * 1000;
 }
 
 const PER_WALLET_CAP = 1;
