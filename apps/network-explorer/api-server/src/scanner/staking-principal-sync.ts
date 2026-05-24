@@ -136,7 +136,9 @@ async function runSync(): Promise<void> {
   } catch (err) {
     errorCount24h++;
     console.error('[staking-principal-sync] failed', err);
-    if (errorCount24h % 6 === 1) {
+    // Daily cadence: alert on every failure. The earlier `% 6 === 1` (every
+    // ~6 hours at hourly cadence) would now silence alerts for 6 days.
+    {
       try {
         await sendTelegramAlert(
           `staking-principal-sync failed (${errorCount24h}x in 24h): ${(err as Error).message}`,
