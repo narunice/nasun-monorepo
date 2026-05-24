@@ -16,6 +16,7 @@ import {
   upsertPredictionMarket,
 } from './leaderboard-store.js';
 import { getPoolSymbol, getPoolBaseDecimals } from './rooms.js';
+import { traceAsync } from './perf-trace.js';
 
 // In-memory cache for balance_manager_id -> owner address (LRU-bounded)
 const BM_CACHE_MAX = 10_000;
@@ -637,16 +638,18 @@ async function runAllPolls(): Promise<{ fills: number; orders: number; predFills
   // cycle and trigger the 120s backoff cap sooner. That is intentional: faster
   // backoff during a true outage reduces RPC pressure. Mixed cycles (any
   // success) reset the counter to 0, so partial errors don't compound.
-  const results = await Promise.allSettled([
-    pollOrderFilled(),
-    pollOrderEvents(),
-    pollPredictionOrderFilled(),
-    pollPredictionMarketResolved(),
-    pollPredictionMarketCancelled(),
-  ]);
-  const val = (i: number): number =>
-    results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<number>).value : 0;
-  return { fills: val(0), orders: val(1), predFills: val(2), resolved: val(3), cancelled: val(4) };
+  return traceAsync('indexer.runAllPolls', async () => {
+    const results = await Promise.allSettled([
+      pollOrderFilled(),
+      pollOrderEvents(),
+      pollPredictionOrderFilled(),
+      pollPredictionMarketResolved(),
+      pollPredictionMarketCancelled(),
+    ]);
+    const val = (i: number): number =>
+      results[i].status === 'fulfilled' ? (results[i] as PromiseFulfilledResult<number>).value : 0;
+    return { fills: val(0), orders: val(1), predFills: val(2), resolved: val(3), cancelled: val(4) };
+  }, { threshold: 300 });
 }
 
 function schedulePoll(): void {
