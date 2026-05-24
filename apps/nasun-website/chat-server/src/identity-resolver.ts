@@ -90,7 +90,9 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
       { threshold: 500 },
     );
     if (!s3Res.ok) throw new Error(`S3 offload fetch failed: ${s3Res.status}`);
-    const buf = await traceAsync(
+    // Explicit Buffer annotation: the `context` callback references `buf`
+    // self-referentially, which TS can't infer on its own (TS7022/7023).
+    const buf: Buffer = await traceAsync(
       'identity-resolver.s3.arrayBuffer',
       async () => Buffer.from(await s3Res.arrayBuffer()),
       { threshold: 200, context: () => `bufBytes=${buf.length}` },
