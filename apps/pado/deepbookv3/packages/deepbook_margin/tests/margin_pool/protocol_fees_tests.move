@@ -4,12 +4,8 @@
 #[test_only]
 module deepbook_margin::protocol_fees_tests;
 
-use deepbook_margin::{
-    constants,
-    protocol_fees::{Self, SupplyReferral},
-    test_constants,
-    test_helpers
-};
+use deepbook::constants;
+use deepbook_margin::{protocol_fees::{Self, SupplyReferral}, test_constants, test_helpers};
 use std::unit_test::{assert_eq, destroy};
 use sui::test_scenario::return_shared;
 
@@ -256,7 +252,7 @@ fun test_referra_fees_many() {
     // create 10 referrals, each with 1000 shares referred.
     // total shares is 10 * 1000 = 10000
     let mut i = 0;
-    let mut referral_ids = vector::empty();
+    let mut referral_ids = vector[];
     while (i < 10) {
         let referral_id = protocol_fees.mint_supply_referral(test.ctx());
         referral_ids.push_back(referral_id);

@@ -8,4 +8,6 @@ export RUST_LOG=debug
   --rpc-url "$RPC_URL" \
   --deepbook-package-id "$DEEPBOOK_PACKAGE_ID" \
   --deep-token-package-id "$DEEP_TOKEN_PACKAGE_ID" \
-  --deep-treasury-id "$DEEP_TREASURY_ID"
+  --deep-treasury-id "$DEEP_TREASURY_ID" \
+  --margin-package-id "$MARGIN_PACKAGE_ID" \
+  --db-statement-timeout-ms 60000

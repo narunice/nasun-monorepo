@@ -1,16 +1,27 @@
 use anyhow::Context;
 use clap::Parser;
+use deepbook_indexer::handlers::balance_manager_event_handler::BalanceManagerEventHandler;
 use deepbook_indexer::handlers::balances_handler::BalancesHandler;
+use deepbook_indexer::handlers::book_params_updated_handler::BookParamsUpdatedHandler;
 use deepbook_indexer::handlers::deep_burned_handler::DeepBurnedHandler;
+use deepbook_indexer::handlers::deepbook_referral_created_event_handler::DeepBookReferralCreatedEventHandler;
+use deepbook_indexer::handlers::deepbook_referral_set_event_handler::DeepBookReferralSetEventHandler;
+use deepbook_indexer::handlers::ewma_update_handler::EwmaUpdateHandler;
 use deepbook_indexer::handlers::flash_loan_handler::FlashLoanHandler;
 use deepbook_indexer::handlers::order_fill_handler::OrderFillHandler;
 use deepbook_indexer::handlers::order_update_handler::OrderUpdateHandler;
+use deepbook_indexer::handlers::pool_created_handler::PoolCreatedHandler;
 use deepbook_indexer::handlers::pool_price_handler::PoolPriceHandler;
 use deepbook_indexer::handlers::proposals_handler::ProposalsHandler;
 use deepbook_indexer::handlers::rebates_handler::RebatesHandler;
+use deepbook_indexer::handlers::rebates_v2_handler::RebatesV2Handler;
+use deepbook_indexer::handlers::referral_claimed_handler::ReferralClaimedHandler;
+use deepbook_indexer::handlers::referral_fee_event_handler::ReferralFeeEventHandler;
 use deepbook_indexer::handlers::stakes_handler::StakesHandler;
+use deepbook_indexer::handlers::taker_fee_penalty_handler::TakerFeePenaltyHandler;
 use deepbook_indexer::handlers::trade_params_update_handler::TradeParamsUpdateHandler;
 use deepbook_indexer::handlers::vote_handler::VotesHandler;
+use deepbook_indexer::materialized_view_refresh::MaterializedViewRefreshMetrics;
 
 // Margin Manager Events
 use deepbook_indexer::handlers::liquidation_handler::LiquidationHandler;
@@ -33,25 +44,42 @@ use deepbook_indexer::handlers::margin_pool_config_updated_handler::MarginPoolCo
 use deepbook_indexer::handlers::margin_pool_created_handler::MarginPoolCreatedHandler;
 
 // Margin Registry Events
+use deepbook_indexer::handlers::current_price_updated_handler::CurrentPriceUpdatedHandler;
 use deepbook_indexer::handlers::deepbook_pool_config_updated_handler::DeepbookPoolConfigUpdatedHandler;
 use deepbook_indexer::handlers::deepbook_pool_registered_handler::DeepbookPoolRegisteredHandler;
 use deepbook_indexer::handlers::deepbook_pool_updated_registry_handler::DeepbookPoolUpdatedRegistryHandler;
 use deepbook_indexer::handlers::maintainer_cap_updated_handler::MaintainerCapUpdatedHandler;
+use deepbook_indexer::handlers::max_price_age_updated_handler::MaxPriceAgeUpdatedHandler;
 use deepbook_indexer::handlers::pause_cap_updated_handler::PauseCapUpdatedHandler;
+use deepbook_indexer::handlers::price_tolerance_updated_handler::PriceToleranceUpdatedHandler;
 
 // Protocol Fees Events
 use deepbook_indexer::handlers::protocol_fees_increased_handler::ProtocolFeesIncreasedHandler;
 use deepbook_indexer::handlers::referral_fees_claimed_handler::ReferralFeesClaimedHandler;
-use deepbook_indexer::DeepbookEnv;
+
+// Collateral Events
+use deepbook_indexer::handlers::deposit_collateral_handler::DepositCollateralHandler;
+use deepbook_indexer::handlers::withdraw_collateral_handler::WithdrawCollateralHandler;
+
+// TPSL (Take Profit / Stop Loss) Events
+use deepbook_indexer::handlers::conditional_order_added_handler::ConditionalOrderAddedHandler;
+use deepbook_indexer::handlers::conditional_order_cancelled_handler::ConditionalOrderCancelledHandler;
+use deepbook_indexer::handlers::conditional_order_executed_handler::ConditionalOrderExecutedHandler;
+use deepbook_indexer::handlers::conditional_order_insufficient_funds_handler::ConditionalOrderInsufficientFundsHandler;
+
+use deepbook_indexer::{DeepbookEnv, TESTNET_REMOTE_STORE_URL};
 use deepbook_schema::MIGRATIONS;
 use prometheus::Registry;
 use std::net::SocketAddr;
-use sui_indexer_alt_framework::ingestion::ClientArgs;
+use std::path::PathBuf;
+use sui_indexer_alt_framework::ingestion::ingestion_client::IngestionClientArgs;
+use sui_indexer_alt_framework::ingestion::streaming_client::StreamingClientArgs;
+use sui_indexer_alt_framework::ingestion::{ClientArgs, IngestionConfig};
 use sui_indexer_alt_framework::{Indexer, IndexerArgs};
 use sui_indexer_alt_metrics::db::DbConnectionStatsCollector;
 use sui_indexer_alt_metrics::{MetricsArgs, MetricsService};
 use sui_pg_db::{Db, DbArgs};
-use tokio_util::sync::CancellationToken;
+
 use url::Url;
 
 #[derive(Debug, Clone, clap::ValueEnum)]
@@ -69,6 +97,8 @@ struct Args {
     db_args: DbArgs,
     #[command(flatten)]
     indexer_args: IndexerArgs,
+    #[command(flatten)]
+    streaming_args: StreamingClientArgs,
     #[clap(env, long, default_value = "0.0.0.0:9184")]
     metrics_address: SocketAddr,
     #[clap(
@@ -77,12 +107,46 @@ struct Args {
         default_value = "postgres://postgres:postgrespw@localhost:5432/deepbook"
     )]
     database_url: Url,
-    /// Deepbook environment, defaulted to SUI mainnet.
+    /// Deepbook environment (required in production mode, ignored with sandbox subcommand)
     #[clap(env, long)]
-    env: DeepbookEnv,
+    env: Option<DeepbookEnv>,
     /// Packages to index events for (can specify multiple)
     #[clap(long, value_enum, default_values = ["deepbook", "deepbook-margin"])]
     packages: Vec<Package>,
+    /// Materialized view refresh interval in seconds. Set to 0 to disable.
+    #[clap(env, long, default_value_t = 60)]
+    materialized_view_refresh_interval_secs: u64,
+    #[command(subcommand)]
+    sandbox: Option<Command>,
+}
+
+#[derive(clap::Subcommand)]
+enum Command {
+    /// Run the indexer in sandbox mode with custom package IDs
+    Sandbox(SandboxArgs),
+}
+
+#[derive(clap::Args)]
+#[clap(rename_all = "kebab-case")]
+struct SandboxArgs {
+    /// Sandbox environment
+    #[clap(long, default_value = "localnet")]
+    env: SandboxEnv,
+    /// DeepBook core package ID(s) — can be specified multiple times
+    #[clap(long, required = true)]
+    deepbook_package_id: Vec<String>,
+    /// Margin package ID(s) — optional, skip margin indexing if omitted
+    #[clap(long)]
+    margin_packages: Vec<String>,
+    /// Path to local checkpoint directory (required for localnet)
+    #[clap(long)]
+    local_ingestion_path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+enum SandboxEnv {
+    Testnet,
+    Localnet,
 }
 
 #[tokio::main]
@@ -94,20 +158,71 @@ async fn main() -> Result<(), anyhow::Error> {
     let Args {
         db_args,
         indexer_args,
+        streaming_args,
         metrics_address,
         database_url,
         env,
         packages,
+        materialized_view_refresh_interval_secs,
+        sandbox,
     } = Args::parse();
 
-    let cancel = CancellationToken::new();
+    // Resolve mode-specific config: env, ingestion source, and which packages to index
+    let (env, ingestion_args, packages) = match sandbox {
+        None => {
+            // Production mode — --env is required
+            let env = env.context("--env is required when not using a subcommand")?;
+            let ingestion = IngestionClientArgs {
+                remote_store_url: Some(env.remote_store_url()),
+                ..Default::default()
+            };
+            (env, ingestion, packages)
+        }
+        Some(Command::Sandbox(sb)) => {
+            // Sandbox mode — override package addresses (even on testnet, because
+            // sandbox deploys its own DeepBook instance), then pick ingestion source
+            let has_margin = !sb.margin_packages.is_empty();
+            deepbook_indexer::sandbox::init_package_override(
+                sb.deepbook_package_id,
+                sb.margin_packages,
+            );
+
+            let ingestion = match sb.env {
+                SandboxEnv::Localnet => IngestionClientArgs {
+                    local_ingestion_path: Some(
+                        sb.local_ingestion_path
+                            .context("--local-ingestion-path is required for localnet")?,
+                    ),
+                    ..Default::default()
+                },
+                SandboxEnv::Testnet => IngestionClientArgs {
+                    remote_store_url: Some(
+                        Url::parse(TESTNET_REMOTE_STORE_URL)
+                            .expect("invalid testnet remote store URL"),
+                    ),
+                    ..Default::default()
+                },
+            };
+
+            // Skip margin handlers if no margin packages provided
+            let mut packages = packages;
+            if !has_margin {
+                packages.retain(|p| matches!(p, Package::Deepbook));
+            }
+
+            // In sandbox mode the OnceLock override handles all package resolution,
+            // so this env is only used for type compatibility in handler constructors.
+            // Map both sandbox variants to Testnet (the closest DeepbookEnv equivalent).
+            let deepbook_env = match sb.env {
+                SandboxEnv::Testnet | SandboxEnv::Localnet => DeepbookEnv::Testnet,
+            };
+            (deepbook_env, ingestion, packages)
+        }
+    };
+
     let registry = Registry::new_custom(Some("deepbook".into()), None)
         .context("Failed to create Prometheus registry.")?;
-    let metrics = MetricsService::new(
-        MetricsArgs { metrics_address },
-        registry.clone(),
-        cancel.child_token(),
-    );
+    let metrics = MetricsService::new(MetricsArgs { metrics_address }, registry.clone());
 
     // Prepare the store for the indexer
     let store = Db::for_write(database_url, db_args)
@@ -123,21 +238,20 @@ async fn main() -> Result<(), anyhow::Error> {
         Some("deepbook_indexer_db"),
         store.clone(),
     )))?;
+    let materialized_view_refresh_metrics = MaterializedViewRefreshMetrics::new(metrics.registry());
+
+    let materialized_view_refresh_db = store.clone();
 
     let mut indexer = Indexer::new(
         store,
         indexer_args,
         ClientArgs {
-            remote_store_url: Some(env.remote_store_url()),
-            local_ingestion_path: None,
-            rpc_api_url: None,
-            rpc_username: None,
-            rpc_password: None,
+            ingestion: ingestion_args,
+            streaming: streaming_args,
         },
-        Default::default(),
+        IngestionConfig::default(),
         None,
         metrics.registry(),
-        cancel.clone(),
     )
     .await?;
 
@@ -147,10 +261,25 @@ async fn main() -> Result<(), anyhow::Error> {
             Package::Deepbook => {
                 // DeepBook core event handlers
                 indexer
+                    .concurrent_pipeline(BalanceManagerEventHandler::new(env), Default::default())
+                    .await?;
+                indexer
                     .concurrent_pipeline(BalancesHandler::new(env), Default::default())
                     .await?;
                 indexer
                     .concurrent_pipeline(DeepBurnedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(
+                        DeepBookReferralCreatedEventHandler::new(env),
+                        Default::default(),
+                    )
+                    .await?;
+                indexer
+                    .concurrent_pipeline(
+                        DeepBookReferralSetEventHandler::new(env),
+                        Default::default(),
+                    )
                     .await?;
                 indexer
                     .concurrent_pipeline(FlashLoanHandler::new(env), Default::default())
@@ -171,6 +300,12 @@ async fn main() -> Result<(), anyhow::Error> {
                     .concurrent_pipeline(RebatesHandler::new(env), Default::default())
                     .await?;
                 indexer
+                    .concurrent_pipeline(RebatesV2Handler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(ReferralFeeEventHandler::new(env), Default::default())
+                    .await?;
+                indexer
                     .concurrent_pipeline(StakesHandler::new(env), Default::default())
                     .await?;
                 indexer
@@ -178,6 +313,21 @@ async fn main() -> Result<(), anyhow::Error> {
                     .await?;
                 indexer
                     .concurrent_pipeline(VotesHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(PoolCreatedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(BookParamsUpdatedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(ReferralClaimedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(EwmaUpdateHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(TakerFeePenaltyHandler::new(env), Default::default())
                     .await?;
             }
             Package::DeepbookMargin => {
@@ -254,21 +404,71 @@ async fn main() -> Result<(), anyhow::Error> {
                     .concurrent_pipeline(PauseCapUpdatedHandler::new(env), Default::default())
                     .await?;
                 indexer
+                    .concurrent_pipeline(CurrentPriceUpdatedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(PriceToleranceUpdatedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(MaxPriceAgeUpdatedHandler::new(env), Default::default())
+                    .await?;
+                indexer
                     .concurrent_pipeline(ProtocolFeesIncreasedHandler::new(env), Default::default())
                     .await?;
                 indexer
                     .concurrent_pipeline(ReferralFeesClaimedHandler::new(env), Default::default())
                     .await?;
+
+                // Collateral Events
+                indexer
+                    .concurrent_pipeline(DepositCollateralHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(WithdrawCollateralHandler::new(env), Default::default())
+                    .await?;
+
+                // TPSL (Take Profit / Stop Loss) Events
+                indexer
+                    .concurrent_pipeline(ConditionalOrderAddedHandler::new(env), Default::default())
+                    .await?;
+                indexer
+                    .concurrent_pipeline(
+                        ConditionalOrderCancelledHandler::new(env),
+                        Default::default(),
+                    )
+                    .await?;
+                indexer
+                    .concurrent_pipeline(
+                        ConditionalOrderExecutedHandler::new(env),
+                        Default::default(),
+                    )
+                    .await?;
+                indexer
+                    .concurrent_pipeline(
+                        ConditionalOrderInsufficientFundsHandler::new(env),
+                        Default::default(),
+                    )
+                    .await?;
             }
         }
     }
 
-    let h_indexer = indexer.run().await?;
-    let h_metrics = metrics.run().await?;
+    let materialized_view_refresh_service =
+        deepbook_indexer::materialized_view_refresh::materialized_view_refresh_service(
+            materialized_view_refresh_db,
+            materialized_view_refresh_metrics,
+            materialized_view_refresh_interval_secs,
+        )?;
 
-    let _ = h_indexer.await;
-    cancel.cancel();
-    let _ = h_metrics.await;
+    let s_indexer = indexer.run().await?;
+    let s_metrics = metrics.run().await?;
+    let service = s_indexer.attach(s_metrics);
+    let service = if let Some(s_materialized_view_refresh) = materialized_view_refresh_service {
+        service.attach(s_materialized_view_refresh)
+    } else {
+        service
+    };
 
+    service.main().await?;
     Ok(())
 }

@@ -3,7 +3,7 @@
 
 module deepbook::constants;
 
-const CURRENT_VERSION: u64 = 5; // Update version during upgrades
+const CURRENT_VERSION: u64 = 8; // Update version during upgrades
 const POOL_CREATION_FEE: u64 = 500 * 1_000_000; // 500 DEEP
 const FLOAT_SCALING: u64 = 1_000_000_000;
 const FLOAT_SCALING_U128: u128 = 1_000_000_000;
@@ -12,11 +12,12 @@ const MAX_U128: u128 = ((1u256 << 128) - 1) as u128;
 const MIN_PRICE: u64 = 1;
 const MAX_PRICE: u64 = ((1u128 << 63) - 1) as u64;
 const DEFAULT_STAKE_REQUIRED: u64 = 100_000_000; // 100 DEEP
+const MAX_STAKE_REQUIRED: u64 = 1_000_000_000_000; // 1M DEEP
 const HALF: u64 = 500_000_000;
 const DEEP_UNIT: u64 = 1_000_000;
 const FEE_PENALTY_MULTIPLIER: u64 = 1_250_000_000; // 25% more than normal
 const EWMA_DF_KEY: vector<u8> = b"ewma";
-const REFERRAL_MAX_MULTIPLIER: u64 = 2_000_000_000; // 2x multiplier
+const REFERRAL_MAX_MULTIPLIER: u64 = 10_000_000_000; // 10x multiplier
 const REFERRAL_MULTIPLIER: u64 = 100_000_000; // 0.1x multiplier
 const MAX_BALANCE_MANAGERS: u64 = 100;
 
@@ -198,6 +199,10 @@ public fun phase_out_epochs(): u64 {
 
 public fun default_stake_required(): u64 {
     DEFAULT_STAKE_REQUIRED
+}
+
+public fun max_stake_required(): u64 {
+    MAX_STAKE_REQUIRED
 }
 
 public fun half(): u64 {

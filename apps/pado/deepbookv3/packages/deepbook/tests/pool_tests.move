@@ -497,6 +497,11 @@ fun test_get_quantity_out_input_fee_ask_bid_zero() {
     test_get_quantity_out_zero(false);
 }
 
+#[test]
+fun test_get_quantity_out_ask_dust_rejected() {
+    test_get_quantity_out_ask_min_size_enforced();
+}
+
 #[test, expected_failure(abort_code = ::deepbook::big_vector::ENotFound)]
 fun test_cancel_all_orders_bid_e() {
     test_cancel_all_orders(true, true);
@@ -905,6 +910,74 @@ fun test_using_unregistered_as_reference() {
         &mut test,
     );
     end(test);
+}
+
+#[test, expected_failure(abort_code = ::deepbook::pool::EInvalidDeepPrice)]
+fun add_deep_price_point_aborts_on_zero_rate() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id = create_acct_and_share_with_funds(
+        ALICE,
+        1_000_000 * constants::float_scaling(),
+        &mut test,
+    );
+
+    let target_pool_id = setup_pool_with_default_fees<SUI, USDC>(
+        OWNER,
+        registry_id,
+        false,
+        false,
+        &mut test,
+    );
+    let reference_pool_id = setup_pool_with_default_fees<DEEP, SUI>(
+        OWNER,
+        registry_id,
+        true,
+        false,
+        &mut test,
+    );
+
+    // mid_price = 2e18 → math::div(1e9, 2e18) = 1e18 / 2e18 = 0 (floors).
+    let huge_price: u64 = 2_000_000_000_000_000_000;
+    let tick = constants::tick_size();
+    place_limit_order<DEEP, SUI>(
+        ALICE,
+        reference_pool_id,
+        balance_manager_id,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        huge_price - tick,
+        constants::min_size(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    place_limit_order<DEEP, SUI>(
+        ALICE,
+        reference_pool_id,
+        balance_manager_id,
+        2,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        huge_price + tick,
+        constants::min_size(),
+        false,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+
+    set_time(0, &mut test);
+    add_deep_price_point<SUI, USDC, DEEP, SUI>(
+        ALICE,
+        target_pool_id,
+        reference_pool_id,
+        &mut test,
+    );
+
+    abort
 }
 
 #[test, expected_failure(abort_code = ::deepbook::pool::EPoolCannotBeBothWhitelistedAndStable)]
@@ -2091,7 +2164,7 @@ fun test_order_limit(is_bid: bool) {
             &mut test,
         );
 
-        num_orders = num_orders - 1;
+        num_orders = num_orders - 1u64;
     };
 
     let match_quantity = 1000 * constants::float_scaling();
@@ -3384,7 +3457,7 @@ fun mint_referral_max_multiplier_e() {
     test.next_tx(ALICE);
     {
         let mut pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
-        pool.mint_referral(2_100_000_000, test.ctx());
+        pool.mint_referral(10_100_000_000, test.ctx());
     };
 
     abort (0)
@@ -3419,7 +3492,7 @@ fun test_update_deepbook_referral_multiplier_e() {
     {
         let mut pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
-        pool.update_pool_referral_multiplier(&referral, 2_100_000_000, test.ctx());
+        pool.update_pool_referral_multiplier(&referral, 10_100_000_000, test.ctx());
     };
 
     abort (0)
@@ -3538,12 +3611,12 @@ fun test_process_order_referral_ok() {
         return_shared(pool);
     };
 
-    // increase multiplier from 0.1x to 2x
+    // increase multiplier from 0.1x to 10x
     test.next_tx(ALICE);
     {
         let mut pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
-        pool.update_pool_referral_multiplier(&referral, 2_000_000_000, test.ctx());
+        pool.update_pool_referral_multiplier(&referral, 10_000_000_000, test.ctx());
         return_shared(pool);
         return_shared(referral);
     };
@@ -3572,9 +3645,9 @@ fun test_process_order_referral_ok() {
         let (base, quote, deep) = pool.get_pool_referral_balances(&referral);
         assert_eq!(base, 0);
         assert_eq!(quote, 0);
-        // 10bps fee, 2x multiplier = 300_000_000
+        // 10bps fee, 10x multiplier = 1_500_000_000
         // + 10bps fee, 0.1x multiplier = 15_000_000
-        assert_eq!(deep, 315_000_000);
+        assert_eq!(deep, 1_515_000_000);
         return_shared(referral);
         return_shared(pool);
     };
@@ -3605,9 +3678,9 @@ fun test_process_order_referral_ok() {
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
         let (base, quote, deep) = pool.get_pool_referral_balances(&referral);
         assert_eq!(base, 0);
-        // fees paid in USDC = 3_750_000 with 2x multiple = 7_500_000
-        assert_eq!(quote, 7_500_000);
-        assert_eq!(deep, 315_000_000);
+        // fees paid in USDC = 3_750_000 with 10x multiple = 37_500_000
+        assert_eq!(quote, 37_500_000);
+        assert_eq!(deep, 1_515_000_000);
         return_shared(referral);
         return_shared(pool);
     };
@@ -3637,10 +3710,10 @@ fun test_process_order_referral_ok() {
         let pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
         let (base, quote, deep) = pool.get_pool_referral_balances(&referral);
-        // fees paid in SUI = 1_875_000 with 2x multiple = 3_750_000
-        assert_eq!(base, 3_750_000);
-        assert_eq!(quote, 7_500_000);
-        assert_eq!(deep, 315_000_000);
+        // fees paid in SUI = 1_875_000 with 10x multiple = 18_750_000
+        assert_eq!(base, 18_750_000);
+        assert_eq!(quote, 37_500_000);
+        assert_eq!(deep, 1_515_000_000);
         return_shared(referral);
         return_shared(pool);
     };
@@ -9554,7 +9627,7 @@ fun pool_referral_multiplier_after_update() {
     {
         let mut pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
-        pool.update_pool_referral_multiplier(&referral, 2_000_000_000, test.ctx());
+        pool.update_pool_referral_multiplier(&referral, 10_000_000_000, test.ctx());
         return_shared(referral);
         return_shared(pool);
     };
@@ -9564,7 +9637,7 @@ fun pool_referral_multiplier_after_update() {
         let pool = test.take_shared_by_id<Pool<SUI, USDC>>(pool_id);
         let referral = test.take_shared_by_id<DeepBookPoolReferral>(referral_id);
         let multiplier = pool.pool_referral_multiplier(&referral);
-        assert_eq!(multiplier, 2_000_000_000);
+        assert_eq!(multiplier, 10_000_000_000);
         return_shared(referral);
         return_shared(pool);
     };
@@ -9742,4 +9815,502 @@ fun test_swap_with_manager_zero_out(is_base_to_quote: bool) {
     };
 
     end(test);
+}
+
+/// Verifies that get_quantity_out rejects ask (sell) orders where the executed
+/// base quantity is below min_size, matching the existing behavior for bids.
+/// Scenario: A bid rests with only lot_size remaining after partial fill.
+/// A sell simulation should be rejected since it can only fill lot_size < min_size.
+fun test_get_quantity_out_ask_min_size_enforced() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+
+    let price = 2 * constants::float_scaling();
+    let expire_timestamp = constants::max_u64();
+    let pay_with_deep = true;
+
+    // Place a bid for min_size + lot_size (11000)
+    place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        price,
+        constants::min_size() + constants::lot_size(),
+        true,
+        pay_with_deep,
+        expire_timestamp,
+        &mut test,
+    );
+
+    // Partially fill the bid by selling min_size (10000), leaving only lot_size (1000) remaining
+    place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        2,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        price,
+        constants::min_size(),
+        false,
+        pay_with_deep,
+        expire_timestamp,
+        &mut test,
+    );
+
+    // Now only lot_size (1000) of the bid remains, which is < min_size (10000).
+    // Selling a large quantity should be rejected because the executed base
+    // would only be lot_size, which is below min_size.
+    let sell_quantity = 10 * constants::min_size();
+    let (base_out, quote_out, deep_required) = get_quote_quantity_out<SUI, USDC>(
+        pool_id,
+        sell_quantity,
+        &mut test,
+    );
+
+    // With the fix, get_quantity_out should reject the dust fill and return
+    // the original sell_quantity as base_out (unchanged) with 0 quote and 0 deep.
+    assert_eq!(base_out, sell_quantity);
+    assert_eq!(quote_out, 0);
+    assert_eq!(deep_required, 0);
+
+    end(test);
+}
+
+// === cancel_live_order(s) tests ===
+
+#[test]
+fun cancel_live_order_succeeds_for_live_order() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+
+    let order_info = place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        2 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    let order_id = order_info.order_id();
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        vector[order_id],
+        vector[],
+        &mut test,
+    );
+
+    cancel_live_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        order_id,
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[order_id],
+        &mut test,
+    );
+    end(test);
+}
+
+#[test]
+fun cancel_live_order_skips_filled_order() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+    let balance_manager_id_bob = create_acct_and_share_with_funds(
+        BOB,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+
+    // Alice posts a maker bid that Bob will fully fill.
+    let alice_order = place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        2 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    let alice_order_id = alice_order.order_id();
+
+    // Bob crosses with an ask priced below Alice's bid → Alice's order fills.
+    place_limit_order<SUI, USDC>(
+        BOB,
+        pool_id,
+        balance_manager_id_bob,
+        2,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        1 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        false,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+
+    // The fill removes alice_order_id from Alice's open orders.
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[alice_order_id],
+        &mut test,
+    );
+
+    // cancel_live_order on the already-filled id is a silent no-op.
+    cancel_live_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        alice_order_id,
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[alice_order_id],
+        &mut test,
+    );
+    end(test);
+}
+
+#[test]
+fun cancel_live_order_noop_for_unknown_id() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+
+    let bogus_id: u128 = 0xDEAD_BEEF;
+    cancel_live_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        bogus_id,
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[bogus_id],
+        &mut test,
+    );
+    end(test);
+}
+
+#[test]
+fun cancel_live_orders_skips_filled_in_batch() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+    let balance_manager_id_bob = create_acct_and_share_with_funds(
+        BOB,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+
+    // Alice posts two bids at different prices. Bob will fill only the higher one.
+    let to_be_filled = place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        3 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    let to_stay_live = place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        2,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        1 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    let filled_id = to_be_filled.order_id();
+    let live_id = to_stay_live.order_id();
+
+    // Bob crosses at price 2 — fills the bid at 3 but not the bid at 1.
+    place_limit_order<SUI, USDC>(
+        BOB,
+        pool_id,
+        balance_manager_id_bob,
+        3,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        2 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        false,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        vector[live_id],
+        vector[filled_id],
+        &mut test,
+    );
+
+    // Batch contains both ids; the filled one is silently skipped, the live
+    // one cancels successfully.
+    cancel_live_orders<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        vector[filled_id, live_id],
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[filled_id, live_id],
+        &mut test,
+    );
+    end(test);
+}
+
+#[test]
+fun cancel_live_orders_handles_duplicate_ids() {
+    let mut test = begin(OWNER);
+    let registry_id = setup_test(OWNER, &mut test);
+    let balance_manager_id_alice = create_acct_and_share_with_funds(
+        ALICE,
+        1000000 * constants::float_scaling(),
+        &mut test,
+    );
+    let pool_id = setup_pool_with_default_fees_and_reference_pool<SUI, USDC, SUI, DEEP>(
+        ALICE,
+        registry_id,
+        balance_manager_id_alice,
+        &mut test,
+    );
+
+    let order_info = place_limit_order<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        1,
+        constants::no_restriction(),
+        constants::self_matching_allowed(),
+        2 * constants::float_scaling(),
+        1 * constants::float_scaling(),
+        true,
+        true,
+        constants::max_u64(),
+        &mut test,
+    );
+    let order_id = order_info.order_id();
+
+    // Duplicate id in the input vector must not abort on the second pass.
+    cancel_live_orders<SUI, USDC>(
+        ALICE,
+        pool_id,
+        balance_manager_id_alice,
+        vector[order_id, order_id],
+        &mut test,
+    );
+
+    assert_open_orders<SUI, USDC>(
+        pool_id,
+        balance_manager_id_alice,
+        0,
+        vector[],
+        vector[order_id],
+        &mut test,
+    );
+    end(test);
+}
+
+fun cancel_live_order<BaseAsset, QuoteAsset>(
+    sender: address,
+    pool_id: ID,
+    balance_manager_id: ID,
+    order_id: u128,
+    test: &mut Scenario,
+) {
+    test.next_tx(sender);
+    {
+        let mut pool = test.take_shared_by_id<Pool<BaseAsset, QuoteAsset>>(
+            pool_id,
+        );
+        let clock = test.take_shared<Clock>();
+        let mut balance_manager = test.take_shared_by_id<BalanceManager>(
+            balance_manager_id,
+        );
+        let trade_proof = balance_manager.generate_proof_as_owner(test.ctx());
+
+        pool.cancel_live_order<BaseAsset, QuoteAsset>(
+            &mut balance_manager,
+            &trade_proof,
+            order_id,
+            &clock,
+            test.ctx(),
+        );
+        return_shared(pool);
+        return_shared(clock);
+        return_shared(balance_manager);
+    }
+}
+
+fun cancel_live_orders<BaseAsset, QuoteAsset>(
+    sender: address,
+    pool_id: ID,
+    balance_manager_id: ID,
+    order_ids: vector<u128>,
+    test: &mut Scenario,
+) {
+    test.next_tx(sender);
+    {
+        let mut pool = test.take_shared_by_id<Pool<BaseAsset, QuoteAsset>>(
+            pool_id,
+        );
+        let clock = test.take_shared<Clock>();
+        let mut balance_manager = test.take_shared_by_id<BalanceManager>(
+            balance_manager_id,
+        );
+        let trade_proof = balance_manager.generate_proof_as_owner(test.ctx());
+
+        pool.cancel_live_orders<BaseAsset, QuoteAsset>(
+            &mut balance_manager,
+            &trade_proof,
+            order_ids,
+            &clock,
+            test.ctx(),
+        );
+        return_shared(pool);
+        return_shared(clock);
+        return_shared(balance_manager);
+    }
+}
+
+fun assert_open_orders<BaseAsset, QuoteAsset>(
+    pool_id: ID,
+    balance_manager_id: ID,
+    expected_size: u64,
+    contains: vector<u128>,
+    not_contains: vector<u128>,
+    test: &mut Scenario,
+) {
+    test.next_tx(OWNER);
+    let pool = test.take_shared_by_id<Pool<BaseAsset, QuoteAsset>>(pool_id);
+    let balance_manager = test.take_shared_by_id<BalanceManager>(
+        balance_manager_id,
+    );
+    let open_orders = pool.account_open_orders(&balance_manager);
+    assert_eq!(open_orders.length(), expected_size);
+    let mut i = 0;
+    while (i < contains.length()) {
+        assert!(open_orders.contains(&contains[i]));
+        i = i + 1;
+    };
+    let mut j = 0;
+    while (j < not_contains.length()) {
+        assert!(!open_orders.contains(&not_contains[j]));
+        j = j + 1;
+    };
+    return_shared(pool);
+    return_shared(balance_manager);
 }

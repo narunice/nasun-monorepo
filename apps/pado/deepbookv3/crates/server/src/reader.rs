@@ -1,11 +1,12 @@
 use crate::error::DeepBookError;
 use crate::metrics::RpcMetrics;
 use deepbook_schema::models::{
-    AssetSupplied, AssetWithdrawn, DeepbookPoolConfigUpdated, DeepbookPoolRegistered,
-    DeepbookPoolUpdated, DeepbookPoolUpdatedRegistry, InterestParamsUpdated, Liquidation,
-    LoanBorrowed, LoanRepaid, MaintainerCapUpdated, MaintainerFeesWithdrawn, MarginManagerCreated,
-    MarginManagerState, MarginPoolConfigUpdated, MarginPoolCreated, OrderFillSummary,
-    PauseCapUpdated, Pools, ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn,
+    AssetSupplied, AssetWithdrawn, BookParamsUpdated, CollateralEvent, DeepbookPoolConfigUpdated,
+    DeepbookPoolRegistered, DeepbookPoolUpdated, DeepbookPoolUpdatedRegistry,
+    InterestParamsUpdated, Liquidation, LoanBorrowed, LoanRepaid, MaintainerCapUpdated,
+    MaintainerFeesWithdrawn, MarginManagerCreated, MarginManagerState, MarginPoolConfigUpdated,
+    MarginPoolCreated, OrderFillSummary, OrderStatus, PauseCapUpdated, PoolCreated, Pools,
+    ProtocolFeesIncreasedEvent, ProtocolFeesWithdrawn, RebatesV2, ReferralFeeEvent,
     ReferralFeesClaimedEvent, SupplierCapMinted, SupplyReferralMinted,
 };
 use deepbook_schema::schema;
@@ -15,7 +16,7 @@ use diesel::expression::QueryMetadata;
 use diesel::pg::Pg;
 use diesel::query_builder::{Query, QueryFragment, QueryId};
 use diesel::query_dsl::CompatibleType;
-use diesel::sql_types::{BigInt, Double};
+use diesel::sql_types::{Array, BigInt, Double, Integer, Nullable, Text};
 use diesel::{
     BoolExpressionMethods, ExpressionMethods, QueryDsl, QueryableByName, SelectableHelper,
     TextExpressionMethods,
@@ -31,6 +32,7 @@ fn to_pattern(s: &str) -> String {
         s.to_string()
     }
 }
+
 use diesel_async::methods::LoadQuery;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use prometheus::Registry;
@@ -53,6 +55,60 @@ struct OhclvRow {
     close: f64,
     #[diesel(sql_type = Double)]
     base_volume: f64,
+}
+
+#[derive(QueryableByName, Debug)]
+struct MarginPositionRow {
+    #[diesel(sql_type = Text)]
+    margin_manager_id: String,
+    #[diesel(sql_type = Text)]
+    pool_name: String,
+    #[diesel(sql_type = Text)]
+    base_asset_symbol: String,
+    #[diesel(sql_type = Text)]
+    quote_asset_symbol: String,
+    #[diesel(sql_type = Double)]
+    base_asset: f64,
+    #[diesel(sql_type = Double)]
+    quote_asset: f64,
+    #[diesel(sql_type = Double)]
+    base_debt: f64,
+    #[diesel(sql_type = Double)]
+    quote_debt: f64,
+    #[diesel(sql_type = Double)]
+    base_asset_usd: f64,
+    #[diesel(sql_type = Double)]
+    quote_asset_usd: f64,
+    #[diesel(sql_type = Double)]
+    base_debt_usd: f64,
+    #[diesel(sql_type = Double)]
+    quote_debt_usd: f64,
+    #[diesel(sql_type = Double)]
+    risk_ratio: f64,
+}
+
+#[derive(QueryableByName, Debug)]
+struct CollateralRow {
+    #[diesel(sql_type = Text)]
+    asset: String,
+    #[diesel(sql_type = Double)]
+    balance: f64,
+    #[diesel(sql_type = Double)]
+    balance_usd: f64,
+}
+
+#[derive(QueryableByName, Debug)]
+struct LpPositionRow {
+    #[diesel(sql_type = Text)]
+    margin_pool_id: String,
+    #[diesel(sql_type = Text)]
+    asset: String,
+    #[diesel(sql_type = Double)]
+    net_supplied: f64,
+    #[diesel(sql_type = BigInt)]
+    net_shares: i64,
+    #[diesel(sql_type = Double)]
+    supplied_usd: f64,
 }
 
 #[derive(Clone)]
@@ -219,12 +275,15 @@ impl Reader {
         limit: i64,
         maker_balance_manager: Option<String>,
         taker_balance_manager: Option<String>,
+        balance_manager: Option<String>,
     ) -> Result<
         Vec<(
             String,
             String,
             String,
             String,
+            i64,
+            i64,
             i64,
             i64,
             i64,
@@ -253,6 +312,13 @@ impl Reader {
         if let Some(taker_id) = taker_balance_manager {
             query = query.filter(schema::order_fills::taker_balance_manager_id.eq(taker_id));
         }
+        if let Some(bm_id) = balance_manager {
+            query = query.filter(
+                schema::order_fills::maker_balance_manager_id
+                    .eq(bm_id.clone())
+                    .or(schema::order_fills::taker_balance_manager_id.eq(bm_id)),
+            );
+        }
 
         let _guard = self.metrics.db_latency.start_timer();
 
@@ -265,6 +331,8 @@ impl Reader {
                 schema::order_fills::digest,
                 schema::order_fills::maker_order_id,
                 schema::order_fills::taker_order_id,
+                schema::order_fills::maker_client_order_id,
+                schema::order_fills::taker_client_order_id,
                 schema::order_fills::price,
                 schema::order_fills::base_quantity,
                 schema::order_fills::quote_quantity,
@@ -282,6 +350,8 @@ impl Reader {
                 String,
                 String,
                 String,
+                i64,
+                i64,
                 i64,
                 i64,
                 i64,
@@ -361,6 +431,105 @@ impl Reader {
         res
     }
 
+    pub async fn get_orders_status(
+        &self,
+        pool_id: String,
+        limit: i64,
+        balance_manager_filter: Option<String>,
+        status_filter: Option<Vec<String>>,
+        start_time: i64,
+        end_time: i64,
+    ) -> Result<Vec<OrderStatus>, DeepBookError> {
+        let mut connection = self.db.connect().await?;
+        let _guard = self.metrics.db_latency.start_timer();
+
+        let res = diesel::sql_query(
+            r#"
+            WITH latest_events AS (
+                SELECT DISTINCT ON (order_id)
+                    order_id,
+                    balance_manager_id,
+                    is_bid,
+                    status as event_status,
+                    price,
+                    original_quantity,
+                    filled_quantity,
+                    quantity as remaining_quantity,
+                    checkpoint_timestamp_ms as last_updated_at
+                FROM order_updates
+                WHERE pool_id = $1
+                AND ($2 IS NULL OR balance_manager_id = $2)
+                AND checkpoint_timestamp_ms >= $5
+                AND checkpoint_timestamp_ms <= $6
+                ORDER BY order_id, checkpoint_timestamp_ms DESC
+            ),
+            placed_events AS (
+                SELECT DISTINCT ON (order_id)
+                    order_id,
+                    checkpoint_timestamp_ms as placed_at
+                FROM order_updates
+                WHERE pool_id = $1
+                    AND status = 'Placed'
+                    AND checkpoint_timestamp_ms >= $5
+                    AND checkpoint_timestamp_ms <= $6
+                ORDER BY order_id, checkpoint_timestamp_ms ASC
+            ),
+            order_status AS (
+                SELECT
+                    le.order_id,
+                    le.balance_manager_id,
+                    le.is_bid,
+                    CASE
+                        WHEN le.event_status = 'Canceled' THEN 'canceled'
+                        WHEN le.event_status = 'Expired' THEN 'expired'
+                        WHEN le.filled_quantity >= le.original_quantity THEN 'filled'
+                        WHEN le.filled_quantity > 0 THEN 'partially_filled'
+                        ELSE 'placed'
+                    END as current_status,
+                    le.price,
+                    COALESCE(pe.placed_at, le.last_updated_at) as placed_at,
+                    le.last_updated_at,
+                    le.original_quantity,
+                    le.filled_quantity,
+                    le.remaining_quantity
+                FROM latest_events le
+                LEFT JOIN placed_events pe ON le.order_id = pe.order_id
+            )
+            SELECT
+                order_id::text,
+                balance_manager_id::text,
+                is_bid,
+                current_status::text,
+                price,
+                placed_at,
+                last_updated_at,
+                original_quantity,
+                filled_quantity,
+                remaining_quantity
+            FROM order_status
+            WHERE ($3 IS NULL OR current_status = ANY($3))
+            ORDER BY last_updated_at DESC
+            LIMIT $4
+            "#,
+        )
+        .bind::<Text, _>(&pool_id)
+        .bind::<Nullable<Text>, _>(&balance_manager_filter)
+        .bind::<Nullable<Array<Text>>, _>(&status_filter)
+        .bind::<BigInt, _>(limit)
+        .bind::<BigInt, _>(start_time)
+        .bind::<BigInt, _>(end_time)
+        .load::<OrderStatus>(&mut connection)
+        .await
+        .map_err(|e| DeepBookError::database(format!("Error fetching order status: {}", e)));
+
+        if res.is_ok() {
+            self.metrics.db_requests_succeeded.inc();
+        } else {
+            self.metrics.db_requests_failed.inc();
+        }
+        res
+    }
+
     pub async fn get_ohclv(
         &self,
         pool_id: String,
@@ -372,39 +541,41 @@ impl Reader {
         let mut connection = self.db.connect().await?;
         let limit_val = limit.unwrap_or(1000);
         let _guard = self.metrics.db_latency.start_timer();
-        let query_str = format!(
+
+        // Convert milliseconds to seconds for to_timestamp()
+        let start_secs = start_time.map(|ts| ts / 1000);
+        let end_secs = end_time.map(|ts| ts / 1000);
+
+        let res = diesel::sql_query(
             "SELECT EXTRACT(EPOCH FROM bucket_time)::bigint * 1000 as timestamp_ms, \
              open::float8, high::float8, low::float8, close::float8, base_volume::float8 \
-             FROM get_ohclv('{}', '{}', {}::timestamp, {}::timestamp, {})",
-            interval,
-            pool_id,
-            start_time
-                .map(|ts| format!("to_timestamp({})", ts / 1000))
-                .unwrap_or_else(|| "NULL".to_string()),
-            end_time
-                .map(|ts| format!("to_timestamp({})", ts / 1000))
-                .unwrap_or_else(|| "NULL".to_string()),
-            limit_val
-        );
-
-        let res = diesel::sql_query(query_str)
-            .load::<OhclvRow>(&mut connection)
-            .await
-            .map_err(|e| DeepBookError::database(format!("Error fetching OHCLV data: {}", e)))
-            .map(|rows| {
-                rows.into_iter()
-                    .map(|row| {
-                        (
-                            row.timestamp_ms,
-                            row.open,
-                            row.high,
-                            row.low,
-                            row.close,
-                            row.base_volume,
-                        )
-                    })
-                    .collect()
-            });
+             FROM get_ohclv($1, $2, \
+                CASE WHEN $3 IS NULL THEN NULL ELSE to_timestamp($3)::timestamp END, \
+                CASE WHEN $4 IS NULL THEN NULL ELSE to_timestamp($4)::timestamp END, \
+                $5)",
+        )
+        .bind::<Text, _>(&interval)
+        .bind::<Text, _>(&pool_id)
+        .bind::<Nullable<BigInt>, _>(&start_secs)
+        .bind::<Nullable<BigInt>, _>(&end_secs)
+        .bind::<Integer, _>(limit_val)
+        .load::<OhclvRow>(&mut connection)
+        .await
+        .map_err(|e| DeepBookError::database(format!("Error fetching OHCLV data: {}", e)))
+        .map(|rows| {
+            rows.into_iter()
+                .map(|row| {
+                    (
+                        row.timestamp_ms,
+                        row.open,
+                        row.high,
+                        row.low,
+                        row.close,
+                        row.base_volume,
+                    )
+                })
+                .collect()
+        });
 
         if res.is_ok() {
             self.metrics.db_requests_succeeded.inc();
@@ -417,25 +588,30 @@ impl Reader {
     // === Deepbook Margin Events ===
     pub async fn get_margin_manager_created(
         &self,
-        start_time: i64,
-        end_time: i64,
+        start_time: Option<i64>,
+        end_time: Option<i64>,
         limit: i64,
-        margin_manager_id_filter: String,
+        owner_filter: Option<String>,
     ) -> Result<Vec<MarginManagerCreated>, DeepBookError> {
-        let query = schema::margin_manager_created::table
+        let mut connection = self.db.connect().await?;
+        let mut query = schema::margin_manager_created::table
             .select(MarginManagerCreated::as_select())
-            .filter(
-                schema::margin_manager_created::checkpoint_timestamp_ms
-                    .between(start_time, end_time),
-            )
-            .filter(
-                schema::margin_manager_created::margin_manager_id
-                    .like(to_pattern(&margin_manager_id_filter)),
-            )
             .order_by(schema::margin_manager_created::checkpoint_timestamp_ms.desc())
-            .limit(limit);
+            .limit(limit)
+            .into_boxed();
 
-        Ok(self.results(query).await?)
+        if let Some(start) = start_time {
+            query = query.filter(schema::margin_manager_created::checkpoint_timestamp_ms.ge(start));
+        }
+        if let Some(end) = end_time {
+            query = query.filter(schema::margin_manager_created::checkpoint_timestamp_ms.le(end));
+        }
+        if let Some(owner) = owner_filter {
+            query = query.filter(schema::margin_manager_created::owner.eq(owner));
+        }
+
+        let _guard = self.metrics.db_latency.start_timer();
+        Ok(query.get_results(&mut connection).await?)
     }
 
     pub async fn get_loan_borrowed(
@@ -544,22 +720,15 @@ impl Reader {
 
     pub async fn get_margin_pool_created(
         &self,
-        start_time: i64,
-        end_time: i64,
-        limit: i64,
         margin_pool_id_filter: String,
     ) -> Result<Vec<MarginPoolCreated>, DeepBookError> {
         let query = schema::margin_pool_created::table
             .select(MarginPoolCreated::as_select())
             .filter(
-                schema::margin_pool_created::checkpoint_timestamp_ms.between(start_time, end_time),
-            )
-            .filter(
                 schema::margin_pool_created::margin_pool_id
                     .like(to_pattern(&margin_pool_id_filter)),
             )
-            .order_by(schema::margin_pool_created::checkpoint_timestamp_ms.desc())
-            .limit(limit);
+            .order_by(schema::margin_pool_created::checkpoint_timestamp_ms.desc());
 
         Ok(self.results(query).await?)
     }
@@ -820,6 +989,46 @@ impl Reader {
         Ok(self.results(query).await?)
     }
 
+    pub async fn get_referral_fee_events(
+        &self,
+        start_time: i64,
+        end_time: i64,
+        limit: i64,
+        pool_id_filter: String,
+        referral_id_filter: String,
+    ) -> Result<Vec<ReferralFeeEvent>, DeepBookError> {
+        let query = schema::referral_fee_events::table
+            .select(ReferralFeeEvent::as_select())
+            .filter(
+                schema::referral_fee_events::checkpoint_timestamp_ms.between(start_time, end_time),
+            )
+            .filter(schema::referral_fee_events::pool_id.like(to_pattern(&pool_id_filter)))
+            .filter(schema::referral_fee_events::referral_id.like(to_pattern(&referral_id_filter)))
+            .order_by(schema::referral_fee_events::checkpoint_timestamp_ms.desc())
+            .limit(limit);
+
+        Ok(self.results(query).await?)
+    }
+
+    pub async fn get_rebates_v2(
+        &self,
+        start_time: i64,
+        end_time: i64,
+        limit: i64,
+        balance_manager_id_filter: String,
+    ) -> Result<Vec<RebatesV2>, DeepBookError> {
+        let query = schema::rebates_v2::table
+            .select(RebatesV2::as_select())
+            .filter(schema::rebates_v2::checkpoint_timestamp_ms.between(start_time, end_time))
+            .filter(
+                schema::rebates_v2::balance_manager_id.like(to_pattern(&balance_manager_id_filter)),
+            )
+            .order_by(schema::rebates_v2::checkpoint_timestamp_ms.desc())
+            .limit(limit);
+
+        Ok(self.results(query).await?)
+    }
+
     pub async fn get_deepbook_pool_registered(
         &self,
         start_time: i64,
@@ -988,6 +1197,8 @@ impl Reader {
         &self,
         max_risk_ratio: Option<f64>,
         deepbook_pool_id_filter: Option<String>,
+        base_asset_symbol_filter: Option<String>,
+        quote_asset_symbol_filter: Option<String>,
     ) -> Result<Vec<MarginManagerState>, DeepBookError> {
         use bigdecimal::BigDecimal;
         use deepbook_schema::schema::margin_manager_state::dsl::*;
@@ -1007,6 +1218,12 @@ impl Reader {
         }
         if let Some(pool_id) = deepbook_pool_id_filter {
             query = query.filter(deepbook_pool_id.eq(pool_id));
+        }
+        if let Some(base_symbol) = base_asset_symbol_filter {
+            query = query.filter(base_asset_symbol.eq(base_symbol));
+        }
+        if let Some(quote_symbol) = quote_asset_symbol_filter {
+            query = query.filter(quote_asset_symbol.eq(quote_symbol));
         }
         query = query.order(risk_ratio.asc().nulls_last());
 
@@ -1070,4 +1287,580 @@ impl Reader {
         }
         res
     }
+
+    /// Query net deposits using the materialized view for efficiency.
+    /// The indexer refreshes this view with a write-capable database connection.
+    pub async fn get_net_deposits_from_view(
+        &self,
+        asset_ids: &[String],
+        timestamp_ms: i64,
+    ) -> Result<std::collections::HashMap<String, i64>, DeepBookError> {
+        let mut connection = self.db.connect().await?;
+        let _guard = self.metrics.db_latency.start_timer();
+
+        // Calculate the hour boundary for the timestamp
+        let hour_bucket_ms = (timestamp_ms / 3600000) * 3600000;
+
+        // Strip 0x prefix from asset_ids for database comparison
+        let cleaned_assets: Vec<String> = asset_ids
+            .iter()
+            .map(|a| a.strip_prefix("0x").unwrap_or(a).to_string())
+            .collect();
+
+        #[derive(QueryableByName)]
+        struct NetDepositRow {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            asset: String,
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            net_amount: i64,
+        }
+
+        // Query: use refreshed MV buckets before each asset's latest MV bucket, then scan raw
+        // balances from that bucket to the requested timestamp.
+        let res = diesel::sql_query(
+            r#"
+            WITH requested_assets AS (
+                SELECT UNNEST($2::text[]) AS asset
+            ),
+            asset_cutoffs AS (
+                SELECT
+                    requested_assets.asset,
+                    COALESCE(MAX(ndh.hour_bucket_ms), 0) AS cutoff_ms
+                FROM requested_assets
+                LEFT JOIN net_deposits_hourly ndh
+                    ON ndh.asset = requested_assets.asset
+                    AND ndh.hour_bucket_ms < $1
+                GROUP BY requested_assets.asset
+            ),
+            hourly_totals AS (
+                SELECT ndh.asset, SUM(ndh.net_amount_delta) AS net_amount
+                FROM net_deposits_hourly ndh
+                JOIN asset_cutoffs ac ON ac.asset = ndh.asset
+                WHERE ndh.hour_bucket_ms < ac.cutoff_ms
+                GROUP BY ndh.asset
+            ),
+            raw_totals AS (
+                SELECT
+                    ac.asset,
+                    raw.net_amount
+                FROM asset_cutoffs ac
+                LEFT JOIN LATERAL (
+                    SELECT SUM(CASE WHEN b.deposit THEN b.amount ELSE -b.amount END) AS net_amount
+                    FROM balances b
+                    WHERE b.asset = ac.asset
+                      AND b.checkpoint_timestamp_ms >= ac.cutoff_ms
+                      AND b.checkpoint_timestamp_ms < $3
+                ) raw ON TRUE
+            )
+            SELECT
+                COALESCE(h.asset, p.asset) AS asset,
+                (COALESCE(h.net_amount, 0) + COALESCE(p.net_amount, 0))::bigint AS net_amount
+            FROM hourly_totals h
+            FULL OUTER JOIN raw_totals p ON h.asset = p.asset
+            "#,
+        )
+        .bind::<BigInt, _>(hour_bucket_ms)
+        .bind::<Array<Text>, _>(&cleaned_assets)
+        .bind::<BigInt, _>(timestamp_ms)
+        .load::<NetDepositRow>(&mut connection)
+        .await;
+
+        if res.is_ok() {
+            self.metrics.db_requests_succeeded.inc();
+        } else {
+            self.metrics.db_requests_failed.inc();
+        }
+
+        res.map(|rows| {
+            rows.into_iter()
+                .map(|row| {
+                    let mut asset = row.asset;
+                    if !asset.starts_with("0x") {
+                        asset.insert_str(0, "0x");
+                    }
+                    (asset, row.net_amount)
+                })
+                .collect()
+        })
+        .map_err(|e| DeepBookError::database(format!("Error fetching net deposits: {}", e)))
+    }
+
+    pub async fn get_collateral_events(
+        &self,
+        start_time: i64,
+        end_time: i64,
+        limit: i64,
+        margin_manager_id_filter: String,
+        event_type_filter: String,
+        is_base_filter: Option<bool>,
+    ) -> Result<Vec<CollateralEvent>, DeepBookError> {
+        let mut connection = self.db.connect().await?;
+        let _guard = self.metrics.db_latency.start_timer();
+
+        let mut query = schema::collateral_events::table
+            .select(CollateralEvent::as_select())
+            .filter(
+                schema::collateral_events::checkpoint_timestamp_ms.between(start_time, end_time),
+            )
+            .filter(
+                schema::collateral_events::margin_manager_id
+                    .like(to_pattern(&margin_manager_id_filter)),
+            )
+            .filter(schema::collateral_events::event_type.like(to_pattern(&event_type_filter)))
+            .order_by(schema::collateral_events::checkpoint_timestamp_ms.desc())
+            .limit(limit)
+            .into_boxed();
+
+        if let Some(is_base) = is_base_filter {
+            query = query.filter(schema::collateral_events::withdraw_base_asset.eq(Some(is_base)));
+        }
+
+        let res = query.load::<CollateralEvent>(&mut connection).await;
+
+        if res.is_ok() {
+            self.metrics.db_requests_succeeded.inc();
+        } else {
+            self.metrics.db_requests_failed.inc();
+        }
+
+        res.map_err(|_| DeepBookError::database("Error fetching collateral events"))
+    }
+
+    pub async fn get_points(
+        &self,
+        addresses: Option<&[String]>,
+    ) -> Result<Vec<(String, i64)>, DeepBookError> {
+        let mut connection = self.db.connect().await?;
+        let _guard = self.metrics.db_latency.start_timer();
+
+        // Convert to owned Vec for binding, None if empty or not provided
+        let addr_filter: Option<Vec<String>> =
+            addresses.filter(|a| !a.is_empty()).map(|a| a.to_vec());
+
+        #[derive(QueryableByName)]
+        struct PointsRow {
+            #[diesel(sql_type = diesel::sql_types::Text)]
+            address: String,
+            #[diesel(sql_type = diesel::sql_types::BigInt)]
+            total_points: i64,
+        }
+
+        let res = diesel::sql_query(
+            "SELECT address, COALESCE(SUM(amount), 0)::bigint as total_points \
+             FROM points \
+             WHERE ($1 IS NULL OR address = ANY($1)) \
+             GROUP BY address",
+        )
+        .bind::<Nullable<Array<Text>>, _>(&addr_filter)
+        .load::<PointsRow>(&mut connection)
+        .await;
+
+        if res.is_ok() {
+            self.metrics.db_requests_succeeded.inc();
+        } else {
+            self.metrics.db_requests_failed.inc();
+        }
+
+        res.map(|rows| {
+            rows.into_iter()
+                .map(|r| (r.address, r.total_points))
+                .collect()
+        })
+        .map_err(|e| DeepBookError::database(format!("Error fetching points: {}", e)))
+    }
+
+    /// Get a comprehensive margin portfolio for a wallet address.
+    /// Returns margin positions, collateral balances, and LP positions with USD valuations.
+    /// Prices are sourced from hourly ohclv_1m candles (falling back to daily ohclv_1d).
+    ///
+    /// NOTE: LP positions use flow-based approximation (cumulative supply - withdraw).
+    /// This does not account for interest accrual on lending positions (~3-4% undercount).
+    /// Shares are exact; only the share-to-amount conversion is approximate.
+    /// This will be resolved once margin_pool_snapshots is populated in production.
+    pub async fn get_portfolio(
+        &self,
+        wallet_address: &str,
+    ) -> Result<PortfolioQueryResult, DeepBookError> {
+        // Validate: must be 0x-prefixed 64-character hex string
+        if !wallet_address.starts_with("0x")
+            || wallet_address.len() != 66
+            || !wallet_address[2..].chars().all(|c| c.is_ascii_hexdigit())
+        {
+            return Err(DeepBookError::bad_request(
+                "Invalid wallet address: expected 0x-prefixed 64-character hex string",
+            ));
+        }
+
+        let mut connection = self.db.connect().await?;
+        let _guard = self.metrics.db_latency.start_timer();
+
+        // --- Margin positions ---
+        let margin_res = diesel::sql_query(
+            r#"
+            WITH hourly_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1m o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                  AND o.bucket_time >= NOW() - INTERVAL '2 hours'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            daily_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1d o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            latest_prices AS (
+                SELECT
+                    COALESCE(h.symbol, d.symbol) as symbol,
+                    COALESCE(h.price_usd, d.price_usd) as price_usd
+                FROM daily_prices d
+                LEFT JOIN hourly_prices h ON d.symbol = h.symbol
+            )
+            SELECT
+                c.margin_manager_id::text,
+                p.pool_name::text,
+                s.base_asset_symbol::text,
+                s.quote_asset_symbol::text,
+                ROUND(s.base_asset::numeric, 6)::float8 as base_asset,
+                ROUND(s.quote_asset::numeric, 6)::float8 as quote_asset,
+                ROUND(s.base_debt::numeric, 6)::float8 as base_debt,
+                ROUND(s.quote_debt::numeric, 6)::float8 as quote_debt,
+                ROUND((s.base_asset * COALESCE(bp.price_usd, 0))::numeric, 2)::float8 as base_asset_usd,
+                ROUND((s.quote_asset::numeric * CASE WHEN UPPER(s.quote_asset_symbol) IN ('USDC','USDT','AUSD') THEN 1 ELSE COALESCE(qp.price_usd, 0) END)::numeric, 2)::float8 as quote_asset_usd,
+                ROUND((s.base_debt * COALESCE(bp.price_usd, 0))::numeric, 2)::float8 as base_debt_usd,
+                ROUND((s.quote_debt::numeric * CASE WHEN UPPER(s.quote_asset_symbol) IN ('USDC','USDT','AUSD') THEN 1 ELSE COALESCE(qp.price_usd, 0) END)::numeric, 2)::float8 as quote_debt_usd,
+                ROUND(s.risk_ratio::numeric, 4)::float8 as risk_ratio
+            FROM margin_manager_created c
+            JOIN margin_manager_state s ON c.margin_manager_id = s.margin_manager_id
+            JOIN pools p ON s.deepbook_pool_id = p.pool_id
+            LEFT JOIN latest_prices bp ON s.base_asset_symbol = bp.symbol
+            LEFT JOIN latest_prices qp ON s.quote_asset_symbol = qp.symbol
+            WHERE c.owner = $1
+              AND (s.base_asset <> 0 OR s.quote_asset <> 0 OR s.base_debt <> 0 OR s.quote_debt <> 0)
+            "#,
+        )
+        .bind::<Text, _>(wallet_address)
+        .load::<MarginPositionRow>(&mut connection)
+        .await;
+
+        // --- Collateral balances ---
+        let collateral_res = diesel::sql_query(
+            r#"
+            WITH hourly_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1m o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                  AND o.bucket_time >= NOW() - INTERVAL '2 hours'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            daily_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1d o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            latest_prices AS (
+                SELECT
+                    COALESCE(h.symbol, d.symbol) as symbol,
+                    COALESCE(h.price_usd, d.price_usd) as price_usd
+                FROM daily_prices d
+                LEFT JOIN hourly_prices h ON d.symbol = h.symbol
+            ),
+            -- UNION (not UNION ALL) intentionally deduplicates assets that appear as both base and quote
+            asset_meta AS (
+                SELECT DISTINCT base_asset_id as asset_id, base_asset_decimals as decimals, base_asset_symbol as symbol FROM pools
+                UNION
+                SELECT DISTINCT quote_asset_id, quote_asset_decimals, quote_asset_symbol FROM pools
+            ),
+            wallet_bms AS (
+                SELECT DISTINCT balance_manager_id
+                FROM margin_manager_created
+                WHERE owner = $1
+            )
+            SELECT
+                am.symbol::text as asset,
+                ROUND(SUM(CASE WHEN b.deposit THEN b.amount ELSE -b.amount END) / POWER(10, COALESCE(am.decimals, 9))::numeric, 6)::float8 as balance,
+                ROUND(
+                    (SUM(CASE WHEN b.deposit THEN b.amount ELSE -b.amount END) / POWER(10, COALESCE(am.decimals, 9))::numeric) *
+                    CASE WHEN UPPER(am.symbol) IN ('USDC','USDT','AUSD') THEN 1 ELSE COALESCE(lp.price_usd, 0) END
+                , 2)::float8 as balance_usd
+            FROM balances b
+            JOIN wallet_bms wbm ON b.balance_manager_id = wbm.balance_manager_id
+            -- asset_id matching strips the 0x prefix for a suffix LIKE match; this is intentional
+            -- and consistent with other queries in the codebase. Assumes asset IDs are unique enough
+            -- that no two assets share the same suffix, which holds for all current DeepBook pools.
+            -- TODO: leading '%' wildcard prevents B-tree index use on balances.asset, causing a
+            -- sequential scan for wallets with many balance events. Consider adding a normalized
+            -- asset column or a functional index to avoid this. Same concern as the missing
+            -- idx_asset_supplied_sender / idx_asset_withdrawn_sender indexes noted in the LP query.
+            LEFT JOIN asset_meta am ON b.asset LIKE '%' || SUBSTRING(am.asset_id FROM 3) || '%'
+            LEFT JOIN latest_prices lp ON am.symbol = lp.symbol
+            WHERE am.symbol IS NOT NULL
+            GROUP BY am.symbol, am.decimals, lp.price_usd
+            HAVING SUM(CASE WHEN b.deposit THEN b.amount ELSE -b.amount END) > 0
+            "#,
+        )
+        .bind::<Text, _>(wallet_address)
+        .load::<CollateralRow>(&mut connection)
+        .await;
+
+        // --- LP positions ---
+        // Filters on sender (wallet address). Note: asset_supplied/asset_withdrawn do not have
+        // an index on sender; a future migration adding idx_asset_supplied_sender and
+        // idx_asset_withdrawn_sender would improve performance at scale. The supplier column
+        // stores the SupplierCap NFT object ID, which is distinct from the wallet address.
+        let lp_res = diesel::sql_query(
+            r#"
+            WITH hourly_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1m o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                  AND o.bucket_time >= NOW() - INTERVAL '2 hours'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            daily_prices AS (
+                SELECT DISTINCT ON (p.base_asset_symbol)
+                    p.base_asset_symbol as symbol,
+                    o.close as price_usd
+                FROM pools p
+                JOIN ohclv_1d o ON p.pool_id = o.pool_id
+                WHERE p.quote_asset_symbol = 'USDC'
+                ORDER BY p.base_asset_symbol, o.bucket_time DESC
+            ),
+            latest_prices AS (
+                SELECT
+                    COALESCE(h.symbol, d.symbol) as symbol,
+                    COALESCE(h.price_usd, d.price_usd) as price_usd
+                FROM daily_prices d
+                LEFT JOIN hourly_prices h ON d.symbol = h.symbol
+            ),
+            -- UNION (not UNION ALL) intentionally deduplicates assets that appear as both base and quote
+            asset_meta AS (
+                SELECT DISTINCT base_asset_id as asset_id, base_asset_decimals as decimals, base_asset_symbol as symbol FROM pools
+                UNION
+                SELECT DISTINCT quote_asset_id, quote_asset_decimals, quote_asset_symbol FROM pools
+            ),
+            lp_supplied AS (
+                SELECT margin_pool_id, asset_type, SUM(amount) as supplied, SUM(shares) as supplied_shares
+                FROM asset_supplied
+                WHERE sender = $1
+                GROUP BY margin_pool_id, asset_type
+            ),
+            lp_withdrawn AS (
+                SELECT margin_pool_id, asset_type, SUM(amount) as withdrawn, SUM(shares) as withdrawn_shares
+                FROM asset_withdrawn
+                WHERE sender = $1
+                GROUP BY margin_pool_id, asset_type
+            )
+            SELECT
+                s.margin_pool_id::text,
+                am.symbol::text as asset,
+                ROUND((s.supplied - COALESCE(w.withdrawn, 0)) / POWER(10, COALESCE(am.decimals, 9))::numeric, 6)::float8 as net_supplied,
+                (s.supplied_shares - COALESCE(w.withdrawn_shares, 0))::bigint as net_shares,
+                ROUND(
+                    ((s.supplied - COALESCE(w.withdrawn, 0)) / POWER(10, COALESCE(am.decimals, 9))::numeric) *
+                    CASE WHEN UPPER(am.symbol) IN ('USDC','USDT','AUSD') THEN 1 ELSE COALESCE(lp2.price_usd, 0) END
+                , 2)::float8 as supplied_usd
+            FROM lp_supplied s
+            LEFT JOIN lp_withdrawn w ON s.margin_pool_id = w.margin_pool_id AND s.asset_type = w.asset_type
+            -- see comment in collateral query re: LIKE asset matching
+            LEFT JOIN asset_meta am ON s.asset_type LIKE '%' || SUBSTRING(am.asset_id FROM 3) || '%'
+            LEFT JOIN latest_prices lp2 ON am.symbol = lp2.symbol
+            WHERE am.symbol IS NOT NULL
+              AND (s.supplied - COALESCE(w.withdrawn, 0)) > 0
+            "#,
+        )
+        .bind::<Text, _>(wallet_address)
+        .load::<LpPositionRow>(&mut connection)
+        .await;
+
+        // Increment metrics per-query (1 query = 1 metric) for consistency with rest of codebase
+        let margin_positions = match margin_res {
+            Ok(v) => {
+                self.metrics.db_requests_succeeded.inc();
+                v
+            }
+            Err(e) => {
+                self.metrics.db_requests_failed.inc();
+                return Err(DeepBookError::database(format!(
+                    "Error fetching margin positions: {}",
+                    e
+                )));
+            }
+        };
+        let collateral = match collateral_res {
+            Ok(v) => {
+                self.metrics.db_requests_succeeded.inc();
+                v
+            }
+            Err(e) => {
+                self.metrics.db_requests_failed.inc();
+                return Err(DeepBookError::database(format!(
+                    "Error fetching collateral: {}",
+                    e
+                )));
+            }
+        };
+        let lp_positions = match lp_res {
+            Ok(v) => {
+                self.metrics.db_requests_succeeded.inc();
+                v
+            }
+            Err(e) => {
+                self.metrics.db_requests_failed.inc();
+                return Err(DeepBookError::database(format!(
+                    "Error fetching LP positions: {}",
+                    e
+                )));
+            }
+        };
+
+        // Compute summary totals
+        let collateral_total_usd: f64 = collateral.iter().map(|c| c.balance_usd).sum();
+        let margin_equity_usd: f64 = margin_positions
+            .iter()
+            .map(|m| m.base_asset_usd + m.quote_asset_usd)
+            .sum();
+        let margin_debt_usd: f64 = margin_positions
+            .iter()
+            .map(|m| m.base_debt_usd + m.quote_debt_usd)
+            .sum();
+        let lp_total_usd: f64 = lp_positions.iter().map(|l| l.supplied_usd).sum();
+
+        Ok(PortfolioQueryResult {
+            margin_positions: margin_positions
+                .into_iter()
+                .map(|m| PortfolioMarginPosition {
+                    margin_manager_id: m.margin_manager_id,
+                    pool: m.pool_name,
+                    base_asset_symbol: m.base_asset_symbol,
+                    quote_asset_symbol: m.quote_asset_symbol,
+                    base_asset: m.base_asset,
+                    quote_asset: m.quote_asset,
+                    base_debt: m.base_debt,
+                    quote_debt: m.quote_debt,
+                    base_asset_usd: m.base_asset_usd,
+                    quote_asset_usd: m.quote_asset_usd,
+                    base_debt_usd: m.base_debt_usd,
+                    quote_debt_usd: m.quote_debt_usd,
+                    total_debt_usd: m.base_debt_usd + m.quote_debt_usd,
+                    net_value_usd: m.base_asset_usd + m.quote_asset_usd
+                        - m.base_debt_usd
+                        - m.quote_debt_usd,
+                    risk_ratio: m.risk_ratio,
+                })
+                .collect(),
+            collateral_balances: collateral
+                .into_iter()
+                .map(|c| PortfolioCollateralBalance {
+                    asset: c.asset,
+                    balance: c.balance,
+                    balance_usd: c.balance_usd,
+                })
+                .collect(),
+            lp_positions: lp_positions
+                .into_iter()
+                .map(|l| PortfolioLpPosition {
+                    margin_pool_id: l.margin_pool_id,
+                    asset: l.asset,
+                    supplied: l.net_supplied,
+                    shares: l.net_shares,
+                    supplied_usd: l.supplied_usd,
+                })
+                .collect(),
+            summary: PortfolioSummary {
+                total_equity_usd: collateral_total_usd + margin_equity_usd + lp_total_usd,
+                total_debt_usd: margin_debt_usd,
+                net_value_usd: collateral_total_usd + margin_equity_usd + lp_total_usd
+                    - margin_debt_usd,
+            },
+        })
+    }
+
+    pub async fn get_pool_created(&self) -> Result<Vec<PoolCreated>, DeepBookError> {
+        let query = schema::pool_created::table
+            .select(PoolCreated::as_select())
+            .order_by(schema::pool_created::checkpoint_timestamp_ms.desc());
+        Ok(self.results(query).await?)
+    }
+
+    pub async fn get_book_params_updated(
+        &self,
+        pool_id: String,
+    ) -> Result<Option<BookParamsUpdated>, DeepBookError> {
+        let query = schema::book_params_updated::table
+            .select(BookParamsUpdated::as_select())
+            .filter(schema::book_params_updated::pool_id.eq(pool_id))
+            .order_by(schema::book_params_updated::checkpoint_timestamp_ms.desc())
+            .limit(1);
+        Ok(self.results(query).await?.into_iter().next())
+    }
+}
+
+// --- Portfolio response types ---
+
+#[derive(Debug, serde::Serialize)]
+pub struct PortfolioQueryResult {
+    pub margin_positions: Vec<PortfolioMarginPosition>,
+    pub collateral_balances: Vec<PortfolioCollateralBalance>,
+    pub lp_positions: Vec<PortfolioLpPosition>,
+    pub summary: PortfolioSummary,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PortfolioMarginPosition {
+    pub margin_manager_id: String,
+    pub pool: String,
+    pub base_asset_symbol: String,
+    pub quote_asset_symbol: String,
+    pub base_asset: f64,
+    pub quote_asset: f64,
+    pub base_debt: f64,
+    pub quote_debt: f64,
+    pub base_asset_usd: f64,
+    pub quote_asset_usd: f64,
+    pub base_debt_usd: f64,
+    pub quote_debt_usd: f64,
+    pub total_debt_usd: f64,
+    pub net_value_usd: f64,
+    pub risk_ratio: f64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PortfolioCollateralBalance {
+    pub asset: String,
+    pub balance: f64,
+    pub balance_usd: f64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PortfolioLpPosition {
+    pub margin_pool_id: String,
+    pub asset: String,
+    pub supplied: f64,
+    pub shares: i64,
+    pub supplied_usd: f64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct PortfolioSummary {
+    pub total_equity_usd: f64,
+    pub total_debt_usd: f64,
+    pub net_value_usd: f64,
 }

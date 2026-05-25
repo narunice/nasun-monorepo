@@ -49,6 +49,20 @@ diesel::table! {
 }
 
 diesel::table! {
+    balance_manager_created (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        balance_manager_id -> Text,
+        owner -> Text,
+    }
+}
+
+diesel::table! {
     balances (event_digest) {
         event_digest -> Text,
         digest -> Text,
@@ -61,6 +75,77 @@ diesel::table! {
         asset -> Text,
         amount -> Int8,
         deposit -> Bool,
+    }
+}
+
+diesel::table! {
+    collateral_events (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        event_type -> Text,
+        margin_manager_id -> Text,
+        amount -> Numeric,
+        asset_type -> Text,
+        pyth_decimals -> Int2,
+        pyth_price -> Numeric,
+        withdraw_base_asset -> Nullable<Bool>,
+        base_pyth_decimals -> Nullable<Int2>,
+        base_pyth_price -> Nullable<Numeric>,
+        quote_pyth_decimals -> Nullable<Int2>,
+        quote_pyth_price -> Nullable<Numeric>,
+        remaining_base_asset -> Nullable<Numeric>,
+        remaining_quote_asset -> Nullable<Numeric>,
+        remaining_base_debt -> Nullable<Numeric>,
+        remaining_quote_debt -> Nullable<Numeric>,
+        onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
+    conditional_order_events (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        event_type -> Text,
+        manager_id -> Text,
+        pool_id -> Nullable<Text>,
+        conditional_order_id -> Int8,
+        trigger_below_price -> Bool,
+        trigger_price -> Numeric,
+        is_limit_order -> Bool,
+        client_order_id -> Int8,
+        order_type -> Int2,
+        self_matching_option -> Int2,
+        price -> Numeric,
+        quantity -> Numeric,
+        is_bid -> Bool,
+        pay_with_deep -> Bool,
+        expire_timestamp -> Int8,
+        onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
+    current_price_updated (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        price -> Int8,
+        onchain_timestamp -> Int8,
     }
 }
 
@@ -137,6 +222,34 @@ diesel::table! {
         pool_id -> Text,
         enabled -> Bool,
         onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
+    deepbook_referral_created (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        referral_id -> Text,
+        owner -> Text,
+    }
+}
+
+diesel::table! {
+    deepbook_referral_set (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        referral_id -> Text,
+        balance_manager_id -> Text,
     }
 }
 
@@ -282,8 +395,7 @@ diesel::table! {
 }
 
 diesel::table! {
-    margin_manager_state (id) {
-        id -> Int4,
+    margin_manager_state (margin_manager_id) {
         #[max_length = 66]
         margin_manager_id -> Varchar,
         #[max_length = 66]
@@ -346,6 +458,39 @@ diesel::table! {
         maintainer_cap_id -> Text,
         asset_type -> Text,
         config_json -> Jsonb,
+        onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
+    margin_pool_snapshots (id) {
+        id -> Int8,
+        margin_pool_id -> Text,
+        asset_type -> Text,
+        timestamp -> Timestamp,
+        total_supply -> Int8,
+        total_borrow -> Int8,
+        vault_balance -> Int8,
+        supply_cap -> Int8,
+        interest_rate -> Int8,
+        available_withdrawal -> Int8,
+        utilization_rate -> Float8,
+        solvency_ratio -> Nullable<Float8>,
+        available_liquidity_pct -> Nullable<Float8>,
+    }
+}
+
+diesel::table! {
+    max_price_age_updated (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        max_age_ms -> Int8,
         onchain_timestamp -> Int8,
     }
 }
@@ -450,6 +595,23 @@ diesel::table! {
 }
 
 diesel::table! {
+    book_params_updated (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        tick_size -> Int8,
+        lot_size -> Int8,
+        min_size -> Int8,
+        onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
     pool_prices (event_digest) {
         event_digest -> Text,
         digest -> Text,
@@ -461,6 +623,26 @@ diesel::table! {
         target_pool -> Text,
         reference_pool -> Text,
         conversion_rate -> Int8,
+    }
+}
+
+diesel::table! {
+    pool_created (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        taker_fee -> Int8,
+        maker_fee -> Int8,
+        tick_size -> Int8,
+        lot_size -> Int8,
+        min_size -> Int8,
+        whitelisted_pool -> Bool,
+        treasury_address -> Text,
     }
 }
 
@@ -479,6 +661,21 @@ diesel::table! {
         min_size -> Int8,
         lot_size -> Int8,
         tick_size -> Int8,
+    }
+}
+
+diesel::table! {
+    price_tolerance_updated (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        tolerance -> Int8,
+        onchain_timestamp -> Int8,
     }
 }
 
@@ -546,6 +743,23 @@ diesel::table! {
         balance_manager_id -> Text,
         epoch -> Int8,
         claim_amount -> Int8,
+    }
+}
+
+diesel::table! {
+    referral_fee_events (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        referral_id -> Text,
+        base_fee -> Int8,
+        quote_fee -> Int8,
+        deep_fee -> Int8,
     }
 }
 
@@ -659,6 +873,86 @@ diesel::table! {
 }
 
 diesel::table! {
+    points (id) {
+        id -> Int8,
+        address -> Text,
+        amount -> Int8,
+        week -> Int4,
+        timestamp -> Timestamp,
+    }
+}
+
+diesel::table! {
+    rebates_v2 (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        balance_manager_id -> Text,
+        epoch -> Int8,
+        claim_base -> Int8,
+        claim_quote -> Int8,
+        claim_deep -> Int8,
+    }
+}
+
+diesel::table! {
+    referral_claimed (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        referral_id -> Text,
+        owner -> Text,
+        base_amount -> Int8,
+        quote_amount -> Int8,
+        deep_amount -> Int8,
+    }
+}
+
+diesel::table! {
+    ewma_updates (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        gas_price -> Int8,
+        mean -> Int8,
+        variance -> Int8,
+        onchain_timestamp -> Int8,
+    }
+}
+
+diesel::table! {
+    taker_fee_penalty_applied (event_digest) {
+        event_digest -> Text,
+        digest -> Text,
+        sender -> Text,
+        checkpoint -> Int8,
+        timestamp -> Timestamp,
+        checkpoint_timestamp_ms -> Int8,
+        package -> Text,
+        pool_id -> Text,
+        balance_manager_id -> Text,
+        order_id -> Text,
+        taker_fee_without_penalty -> Int8,
+        taker_fee -> Int8,
+    }
+}
+
+diesel::table! {
     watermarks (pipeline) {
         pipeline -> Text,
         epoch_hi_inclusive -> Int8,
@@ -675,12 +969,20 @@ diesel::allow_tables_to_appear_in_same_query!(
     asset_supplied,
     asset_withdrawn,
     assets,
+    balance_manager_created,
     balances,
+    book_params_updated,
+    collateral_events,
+    conditional_order_events,
+    current_price_updated,
     deep_burned,
     deepbook_pool_config_updated,
     deepbook_pool_registered,
     deepbook_pool_updated,
     deepbook_pool_updated_registry,
+    deepbook_referral_created,
+    deepbook_referral_set,
+    ewma_updates,
     flashloans,
     interest_params_updated,
     liquidation,
@@ -692,22 +994,31 @@ diesel::allow_tables_to_appear_in_same_query!(
     margin_manager_state,
     margin_pool_config_updated,
     margin_pool_created,
+    margin_pool_snapshots,
+    max_price_age_updated,
     ohclv_1d,
     ohclv_1m,
     order_fills,
     order_updates,
     pause_cap_updated,
+    points,
+    pool_created,
     pool_prices,
     pools,
+    price_tolerance_updated,
     proposals,
     protocol_fees_increased,
     protocol_fees_withdrawn,
     rebates,
+    rebates_v2,
+    referral_claimed,
+    referral_fee_events,
     referral_fees_claimed,
     stakes,
     sui_error_transactions,
     supplier_cap_minted,
     supply_referral_minted,
+    taker_fee_penalty_applied,
     trade_params_update,
     votes,
     watermarks,

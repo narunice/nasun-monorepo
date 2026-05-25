@@ -31,6 +31,8 @@ const EDeepbookPoolNotAllowed: u64 = 5;
 const EInvalidMarginPoolCap: u64 = 6;
 const EBorrowAmountTooLow: u64 = 7;
 const ERateLimitExceeded: u64 = 8;
+const EZeroCapitalInjection: u64 = 9;
+const ENoSupplyShares: u64 = 10;
 
 // === Structs ===
 public struct MarginPool<phantom Asset> has key, store {
@@ -247,6 +249,9 @@ public fun update_margin_pool_config<Asset>(
 ) {
     registry.load_inner();
     assert!(margin_pool_cap.margin_pool_id() == self.id(), EInvalidMarginPoolCap);
+    let margin_pool_id = self.id();
+    let protocol_fees = self.state.update(&self.config, clock);
+    self.protocol_fees.increase_fees_accrued(margin_pool_id, protocol_fees);
     self.config.set_margin_pool_config(margin_pool_config);
     self
         .rate_limiter
@@ -263,6 +268,26 @@ public fun update_margin_pool_config<Asset>(
         margin_pool_config,
         timestamp: clock.timestamp_ms(),
     });
+}
+
+/// Inject capital into the margin pool without minting supplier shares.
+public fun admin_inject_capital<Asset>(
+    self: &mut MarginPool<Asset>,
+    _admin_cap: &MarginAdminCap,
+    coin: Coin<Asset>,
+    clock: &Clock,
+) {
+    let amount = coin.value();
+    assert!(amount > 0, EZeroCapitalInjection);
+
+    let margin_pool_id = self.id();
+    let protocol_fees = self.state.update(&self.config, clock);
+    self.protocol_fees.increase_fees_accrued(margin_pool_id, protocol_fees);
+    assert!(self.state.supply_shares() > 0, ENoSupplyShares);
+
+    self.state.increase_supply_absolute(amount);
+    self.vault.join(coin.into_balance());
+    self.rate_limiter.record_deposit(amount, clock);
 }
 
 // === Public Functions * LENDING * ===
@@ -312,6 +337,7 @@ public fun supply<Asset>(
 
     let balance = coin.into_balance();
     self.vault.join(balance);
+    self.rate_limiter.record_deposit(supply_amount, clock);
 
     assert!(self.state.total_supply() <= self.config.supply_cap(), ESupplyCapExceeded);
 
@@ -344,7 +370,7 @@ public fun withdraw<Asset>(
     let withdraw_amount = amount.destroy_with_default(supplied_amount);
     let withdraw_shares = math::mul_round_up(
         supplied_shares,
-        math::div(withdraw_amount, supplied_amount),
+        math::div_round_up(withdraw_amount, supplied_amount),
     );
     assert!(
         self.rate_limiter.check_and_record_withdrawal(withdraw_amount, clock),

@@ -1,7 +1,9 @@
 use url::Url;
 
 pub mod handlers;
+pub mod materialized_view_refresh;
 pub(crate) mod models;
+pub mod sandbox;
 pub mod traits;
 
 pub const NOT_MAINNET_PACKAGE: &str = "<not on mainnet>";
@@ -14,7 +16,8 @@ const MAINNET_PACKAGES: &[&str] = &[
     "0xb29d83c26cdd2a64959263abbcfc4a6937f0c9fccaf98580ca56faded65be244",
     "0x2c8d603bc51326b8c13cef9dd07031a408a48dddb541963357661df5d3204809",
     "0xcaf6ba059d539a97646d47f0b9ddf843e138d215e2a12ca1f4585d386f7aec3a",
-    "0x00c1a56ec8c4c623a848b2ed2f03d23a25d17570b670c22106f336eb933785cc", // Latest
+    "0x00c1a56ec8c4c623a848b2ed2f03d23a25d17570b670c22106f336eb933785cc",
+    "0x2d93777cc8b67c064b495e8606f2f8f5fd578450347bbe7b36e0bc03963c1c40", // Latest
 ];
 
 const TESTNET_PACKAGES: &[&str] = &[
@@ -30,17 +33,35 @@ const TESTNET_PACKAGES: &[&str] = &[
     "0xfb28c4cbc6865bd1c897d26aecbe1f8792d1509a20ffec692c800660cbec6982",
     "0x926c446869fa175ec3b0dbf6c4f14604d86a415c1fccd8c8f823cfc46a29baed",
     "0xa0936c6ea82fbfc0356eedc2e740e260dedaaa9f909a0715b1cc31e9a8283719",
-    "0x9ae1cbfb7475f6a4c2d4d3273335459f8f9d265874c4d161c1966cdcbd4e9ebc", // Latest
+    "0x9ae1cbfb7475f6a4c2d4d3273335459f8f9d265874c4d161c1966cdcbd4e9ebc",
+    "0xb48d47cb5f56d0f489f48f186d06672df59d64bd2f514b2f0ba40cbb8c8fd487",
+    "0xbc331f09e5c737d45f074ad2d17c3038421b3b9018699e370d88d94938c53d28",
+    "0x23018638bb4f11ef9ffb0de922519bea52f960e7a5891025ca9aaeeaff7d5034",
+    "0x22be4cade64bf2d02412c7e8d0e8beea2f78828b948118d46735315409371a3c", // Latest
 ];
 
-// Mainnet margin package is not yet deployed - using placeholder
-// This will cause the indexer to fail fast if margin modules are requested on mainnet
-// When the margin package is deployed on mainnet, replace this with the actual address
-const MAINNET_MARGIN_PACKAGES: &[&str] = &[NOT_MAINNET_PACKAGE];
+// Mainnet margin package addresses
+const MAINNET_MARGIN_PACKAGES: &[&str] = &[
+    "0x97d9473771b01f77b0940c589484184b49f6444627ec121314fae6a6d36fb86b",
+    "0xcb4fc91921494ebe6979e201fdb2d67388ffdf6a1b1eb4952526259074de8d0b",
+    "0xfbd322126f1452fd4c89aedbaeb9fd0c44df9b5cedbe70d76bf80dc086031377",
+    "0x7767428727629a08dfd196bd4fc00d8a060e30da33aa63f4087fb3271e615a98",
+    "0x124bb3d8105d6d301c0d40feaa54d65df6b301e4d8ddd5eb8475b0f8a18cff2e", // Latest
+];
 const TESTNET_MARGIN_PACKAGES: &[&str] = &[
     "0xb8620c24c9ea1a4a41e79613d2b3d1d93648d1bb6f6b789a7c8f261c94110e4b",
     "0xf978cf2b601c24e40ef82b6e51512b448696b44cb014c0a1162422aa8b9cb811",
-    "0x16d781c327a919dc55390f5cc60d58c7ec4535bb317e88850961222bbd5d4d9e", // Latest
+    "0x16d781c327a919dc55390f5cc60d58c7ec4535bb317e88850961222bbd5d4d9e",
+    "0xbf9e1b079fa68ffc54a84533b1c3d357019178b19e9901f262fb925454425177",
+    "0xe673d499eb03f1c31e8079dc73a700f2f085ff7b69c4aff396fad52d07ae6338",
+    "0x229d3cdbb327082a5c6773e8344b16c4040b360235e3cda75e1f232d4e9184cb",
+    "0x3d02a90ae1d2eff63ca8ae9bfd89ffa0f7e12d780563259c8271833c270ae842",
+    "0x3ca7f6ee86b42ebe05ab8de70fbc96832e65615f64f10dbdc1820fa599904c7b",
+    "0xb284008ea0a6ac0a68c41f50a631207cd8d9c197ba0884e0df29ea204256777e",
+    "0xc21637e41d3db1c7ca6258fb4de567ba09d4e41610da44a148b26e99b68e11b5",
+    "0xf0a090340d74ea598d59868378f27d2cc5e46a562ec3a5b26b5117572905d9f3",
+    "0x32e32dd608c4d83f82c64331a547bcb4bbfb819d4591197f2fe442b1661873d8",
+    "0xd6a42f4df4db73d68cbeb52be66698d2fe6a9464f45ad113ca52b0c6ebd918b6",
 ];
 
 // Module definitions
@@ -52,6 +73,7 @@ pub const CORE_MODULES: &[&str] = &[
     "vault",
     "deep_price",
     "state",
+    "ewma",
     "governance",
     "pool",
 ];
@@ -62,6 +84,7 @@ pub const MARGIN_MODULES: &[&str] = &[
     "margin_pool",
     "margin_registry",
     "protocol_fees",
+    "tpsl",
 ];
 
 /// SUI system modules
@@ -140,6 +163,9 @@ pub fn is_valid_margin_packages(packages: &[&str]) -> bool {
 
 /// Check if margin trading is supported in the given environment
 pub fn is_margin_supported(env: DeepbookEnv) -> bool {
+    if let Some(margin) = sandbox::margin_packages() {
+        return !margin.is_empty();
+    }
     match env {
         DeepbookEnv::Mainnet => is_valid_margin_packages(MAINNET_MARGIN_PACKAGES),
         DeepbookEnv::Testnet => is_valid_margin_packages(TESTNET_MARGIN_PACKAGES),
@@ -148,6 +174,9 @@ pub fn is_margin_supported(env: DeepbookEnv) -> bool {
 
 /// Get the margin package addresses for the given environment
 pub fn get_margin_package_addresses(env: DeepbookEnv) -> &'static [&'static str] {
+    if let Some(margin) = sandbox::margin_packages() {
+        return margin;
+    }
     match env {
         DeepbookEnv::Mainnet => MAINNET_MARGIN_PACKAGES,
         DeepbookEnv::Testnet => TESTNET_MARGIN_PACKAGES,
@@ -156,6 +185,13 @@ pub fn get_margin_package_addresses(env: DeepbookEnv) -> &'static [&'static str]
 
 /// Get the first valid margin package address for the given environment with validation
 pub fn get_margin_package_address(env: DeepbookEnv) -> Result<&'static str, String> {
+    if let Some(margin) = sandbox::margin_packages() {
+        return margin
+            .first()
+            .copied()
+            .ok_or_else(|| "No margin packages configured in sandbox mode".to_string());
+    }
+
     let packages = get_margin_package_addresses(env);
 
     // Find the first valid package
@@ -174,6 +210,9 @@ pub fn get_margin_package_address(env: DeepbookEnv) -> Result<&'static str, Stri
 
 /// Get all core package addresses for the given environment
 pub fn get_core_package_addresses(env: DeepbookEnv) -> &'static [&'static str] {
+    if let Some(core) = sandbox::core_packages() {
+        return core;
+    }
     match env {
         DeepbookEnv::Mainnet => MAINNET_PACKAGES,
         DeepbookEnv::Testnet => TESTNET_PACKAGES,
@@ -197,6 +236,14 @@ impl DeepbookEnv {
 
     /// Get all package addresses (DeepBook + Margin) for this environment
     fn get_all_package_strings(&self) -> Vec<&str> {
+        // If sandbox mode is active, both overrides are set together by init_package_override
+        // (margin may be an empty slice). Use them instead of the hardcoded constants.
+        if let (Some(core), Some(margin)) = (sandbox::core_packages(), sandbox::margin_packages()) {
+            let mut all = core.to_vec();
+            all.extend_from_slice(margin);
+            return all;
+        }
+
         let (packages, margin_packages) = match self {
             DeepbookEnv::Mainnet => (MAINNET_PACKAGES, MAINNET_MARGIN_PACKAGES),
             DeepbookEnv::Testnet => (TESTNET_PACKAGES, TESTNET_MARGIN_PACKAGES),

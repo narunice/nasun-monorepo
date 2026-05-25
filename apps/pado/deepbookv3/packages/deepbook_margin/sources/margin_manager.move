@@ -4,6 +4,7 @@
 module deepbook_margin::margin_manager;
 
 use deepbook::{
+    account::Account,
     balance_manager::{
         Self,
         BalanceManager,
@@ -11,11 +12,11 @@ use deepbook::{
         DepositCap,
         WithdrawCap,
         TradeProof,
-        DeepBookPoolReferral,
-        DeepBookReferral
+        DeepBookPoolReferral
     },
     constants,
     math,
+    order::Order,
     order_info::OrderInfo,
     pool::Pool,
     registry::Registry
@@ -24,12 +25,19 @@ use deepbook_margin::{
     margin_constants,
     margin_pool::MarginPool,
     margin_registry::MarginRegistry,
-    oracle::{calculate_target_currency, get_pyth_price, calculate_price},
+    oracle::{
+        calculate_target_currency,
+        calculate_target_currency_unsafe,
+        get_pyth_price,
+        get_pyth_price_unsafe,
+        calculate_price,
+        calculate_price_unsafe
+    },
     tpsl::{Self, TakeProfitStopLoss, PendingOrder, Condition, ConditionalOrder}
 };
 use pyth::price_info::PriceInfoObject;
 use std::{string::String, type_name::{Self, TypeName}};
-use sui::{clock::Clock, coin::Coin, event, vec_map::{Self, VecMap}};
+use sui::{clock::Clock, coin::Coin, event, vec_map::{Self, VecMap}, vec_set::VecSet};
 use token::deep::DEEP;
 
 // === Errors ===
@@ -50,6 +58,15 @@ const ERepaySharesTooLow: u64 = 14;
 const EPoolNotEnabledForMarginTrading: u64 = 15;
 const EConditionalOrderNotFound: u64 = 16;
 const EOutstandingDebt: u64 = 17;
+const EOutstandingAsset: u64 = 18;
+/// A conditional-order fill in `execute_conditional_orders_v2` would drop the
+/// manager's `risk_ratio` below `min_borrow_risk_ratio`. The whole txn aborts
+/// — we don't allow partial fills that leave the manager in a state borrowing
+/// would have been forbidden from.
+const EInsufficientRiskRatioAfterTrade: u64 = 19;
+/// Deprecated v1 entry was called. Use the `_v2` variant which enforces a
+/// post-trade risk_ratio invariant.
+const EDeprecatedUseV2: u64 = 20;
 
 // === Structs ===
 /// Witness type for authorizing MarginManager to call protected features of the DeepBook
@@ -165,6 +182,7 @@ public fun add_conditional_order<BaseAsset, QuoteAsset>(
     clock: &Clock,
     ctx: &mut TxContext,
 ) {
+    registry.load_inner();
     self.validate_owner(ctx);
     let manager_id = self.id();
     assert!(pool.id() == self.deepbook_pool(), EIncorrectDeepBookPool);
@@ -206,11 +224,38 @@ public fun cancel_conditional_order<BaseAsset, QuoteAsset>(
     self.take_profit_stop_loss.cancel_conditional_order(manager_id, conditional_order_id, clock);
 }
 
+/// DEPRECATED. Use `execute_conditional_orders_v2`.
+///
+/// The v1 entry preserves its on-chain signature so the v5 package upgrade
+/// type-checks against existing dependents, but the body is replaced with
+/// `abort EDeprecatedUseV2`. The v2 variant adds margin-pool + oracle params
+/// and enforces a post-fill `risk_ratio >= min_borrow_risk_ratio` invariant
+/// inside `process_collected_orders_v2`.
+public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
+    _self: &mut MarginManager<BaseAsset, QuoteAsset>,
+    _pool: &mut Pool<BaseAsset, QuoteAsset>,
+    _base_price_info_object: &PriceInfoObject,
+    _quote_price_info_object: &PriceInfoObject,
+    _registry: &MarginRegistry,
+    _max_orders_to_execute: u64,
+    _clock: &Clock,
+    _ctx: &TxContext,
+): vector<OrderInfo> {
+    abort EDeprecatedUseV2
+}
+
 /// Execute conditional orders and return the order infos.
 /// This is a permissionless function that can be called by anyone.
-public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
+///
+/// v2 adds `base_margin_pool` + `quote_margin_pool` parameters and enforces
+/// a post-fill `risk_ratio >= min_borrow_risk_ratio` invariant inside the
+/// inner loop. If any single triggered fill would breach that floor, the
+/// entire txn aborts — no partial-state landing.
+public fun execute_conditional_orders_v2<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
     pool: &mut Pool<BaseAsset, QuoteAsset>,
+    base_margin_pool: &MarginPool<BaseAsset>,
+    quote_margin_pool: &MarginPool<QuoteAsset>,
     base_price_info_object: &PriceInfoObject,
     quote_price_info_object: &PriceInfoObject,
     registry: &MarginRegistry,
@@ -218,6 +263,7 @@ public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
     clock: &Clock,
     ctx: &TxContext,
 ): vector<OrderInfo> {
+    registry.load_inner();
     assert!(pool.id() == self.deepbook_pool(), EIncorrectDeepBookPool);
     let current_price = calculate_price<BaseAsset, QuoteAsset>(
         registry,
@@ -230,6 +276,7 @@ public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
     let mut executed_ids = vector[];
     let mut expired_ids = vector[];
     let mut insufficient_funds_ids = vector[];
+    let mut out_of_bounds_ids = vector[];
 
     // Collect orders to process (to avoid borrow conflicts)
     let mut orders_to_process = vector[];
@@ -263,14 +310,19 @@ public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
     };
 
     // Process collected orders
-    self.process_collected_orders(
+    self.process_collected_orders_v2(
         pool,
         registry,
+        base_margin_pool,
+        quote_margin_pool,
+        base_price_info_object,
+        quote_price_info_object,
         orders_to_process,
         &mut order_infos,
         &mut executed_ids,
         &mut expired_ids,
         &mut insufficient_funds_ids,
+        &mut out_of_bounds_ids,
         max_orders_to_execute,
         clock,
         ctx,
@@ -283,9 +335,13 @@ public fun execute_conditional_orders<BaseAsset, QuoteAsset>(
         self.take_profit_stop_loss.emit_insufficient_funds_event(manager_id, id, clock);
     });
 
+    out_of_bounds_ids.do!(|id| {
+        self.take_profit_stop_loss.emit_price_out_of_bounds_event(manager_id, id, clock);
+    });
+
     let mut cancelled_ids = expired_ids;
     cancelled_ids.append(insufficient_funds_ids);
-    // Canceled orders will include both expired and insufficient funds orders
+    cancelled_ids.append(out_of_bounds_ids);
     cancelled_ids.do!(|id| {
         self.take_profit_stop_loss.cancel_conditional_order(manager_id, id, clock);
     });
@@ -348,6 +404,16 @@ public fun share<BaseAsset, QuoteAsset>(
     } = initializer;
 }
 
+/// Register the margin manager back to the margin registry.
+public fun register_margin_manager<BaseAsset, QuoteAsset>(
+    self: &mut MarginManager<BaseAsset, QuoteAsset>,
+    margin_registry: &mut MarginRegistry,
+    ctx: &mut TxContext,
+) {
+    self.validate_owner(ctx);
+    margin_registry.add_margin_manager(self.id(), ctx);
+}
+
 /// Unregister the margin manager from the margin registry.
 public fun unregister_margin_manager<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
@@ -358,17 +424,11 @@ public fun unregister_margin_manager<BaseAsset, QuoteAsset>(
     assert!(self.borrowed_base_shares == 0, EOutstandingDebt);
     assert!(self.borrowed_quote_shares == 0, EOutstandingDebt);
     assert!(self.margin_pool_id.is_none(), EOutstandingDebt);
+    assert!(self.base_balance() == 0, EOutstandingAsset);
+    assert!(self.quote_balance() == 0, EOutstandingAsset);
+    assert!(self.deep_balance() == 0, EOutstandingAsset);
 
     margin_registry.remove_margin_manager(self.id(), ctx);
-}
-
-#[deprecated(note = b"This function is deprecated, use `set_margin_manager_referral` instead.")]
-public fun set_referral<BaseAsset, QuoteAsset>(
-    _self: &mut MarginManager<BaseAsset, QuoteAsset>,
-    _referral_cap: &DeepBookReferral,
-    _ctx: &mut TxContext,
-) {
-    abort
 }
 
 /// Set the referral for the margin manager.
@@ -379,14 +439,6 @@ public fun set_margin_manager_referral<BaseAsset, QuoteAsset>(
 ) {
     self.validate_owner(ctx);
     self.balance_manager.set_balance_manager_referral(referral_cap, &self.trade_cap);
-}
-
-#[deprecated(note = b"This function is deprecated, use `unset_margin_manager_referral` instead.")]
-public fun unset_referral<BaseAsset, QuoteAsset>(
-    _self: &mut MarginManager<BaseAsset, QuoteAsset>,
-    _ctx: &mut TxContext,
-) {
-    abort
 }
 
 /// Unset the referral for the margin manager.
@@ -699,6 +751,7 @@ public fun liquidate<BaseAsset, QuoteAsset, DebtAsset>(
     assert!(registry.can_liquidate(pool.id(), risk_ratio), ECannotLiquidate);
     assert!(repay_coin.value() >= margin_constants::min_liquidation_repay(), ERepayAmountTooLow);
     let trade_proof = self.trade_proof(ctx);
+    pool.withdraw_settled_amounts(&mut self.balance_manager, &trade_proof);
     pool.cancel_all_orders(&mut self.balance_manager, &trade_proof, clock, ctx);
 
     // 2. Calculate the maximum debt that can be repaid. The margin manager can be in three scenarios:
@@ -741,7 +794,11 @@ public fun liquidate<BaseAsset, QuoteAsset, DebtAsset>(
     let repay_amount = max_repay.min(input_coin_without_pool_reward); // 97.087
     let repay_amount_with_pool_reward = math::mul(repay_amount, liquidation_reward_with_pool); // 97.087 * 1.03 = 100
 
-    let repay_shares = if (risk_ratio < constants::float_scaling() && repay_amount == max_repay) {
+    // If assets are insufficient to cover full debt + reward, the manager's collateral is
+    // fully withdrawn at `max_repay`. Clear every borrow share so the shortfall is recorded
+    // as `pool_default` rather than left as silent residual debt on an empty manager.
+    let assets_exhausted = assets_in_debt_unit <= debt_with_reward;
+    let repay_shares = if (assets_exhausted && repay_amount == max_repay) {
         borrowed_shares
     } else {
         math::mul(
@@ -888,6 +945,40 @@ public fun risk_ratio<BaseAsset, QuoteAsset>(
     }
 }
 
+/// Returns the risk ratio without validating oracle price staleness or confidence.
+/// Use for read-only queries where stale prices are acceptable.
+public fun risk_ratio_unsafe<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    registry: &MarginRegistry,
+    base_oracle: &PriceInfoObject,
+    quote_oracle: &PriceInfoObject,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+    base_margin_pool: &MarginPool<BaseAsset>,
+    quote_margin_pool: &MarginPool<QuoteAsset>,
+    clock: &Clock,
+): u64 {
+    let debt_is_base = self.borrowed_base_shares > 0;
+    if (debt_is_base) {
+        self.risk_ratio_int_unsafe(
+            registry,
+            base_oracle,
+            quote_oracle,
+            pool,
+            base_margin_pool,
+            clock,
+        )
+    } else {
+        self.risk_ratio_int_unsafe(
+            registry,
+            base_oracle,
+            quote_oracle,
+            pool,
+            quote_margin_pool,
+            clock,
+        )
+    }
+}
+
 // === Public Functions - Read Only ===
 public fun balance_manager<BaseAsset, QuoteAsset>(
     self: &MarginManager<BaseAsset, QuoteAsset>,
@@ -984,7 +1075,7 @@ public fun manager_state<BaseAsset, QuoteAsset>(
     } else {
         (0, 0)
     };
-    let risk_ratio = self.risk_ratio(
+    let risk_ratio = self.risk_ratio_unsafe(
         registry,
         base_oracle,
         quote_oracle,
@@ -994,24 +1085,19 @@ public fun manager_state<BaseAsset, QuoteAsset>(
         clock,
     );
 
-    // Get raw Pyth oracle prices and decimals
-    let (base_pyth_price, base_pyth_decimals) = get_pyth_price<BaseAsset>(
+    let (base_pyth_price, base_pyth_decimals) = get_pyth_price_unsafe<BaseAsset>(
         base_oracle,
         registry,
-        clock,
     );
-    let (quote_pyth_price, quote_pyth_decimals) = get_pyth_price<QuoteAsset>(
+    let (quote_pyth_price, quote_pyth_decimals) = get_pyth_price_unsafe<QuoteAsset>(
         quote_oracle,
         registry,
-        clock,
     );
 
-    // Calculate current price
-    let current_price = calculate_price<BaseAsset, QuoteAsset>(
+    let current_price = calculate_price_unsafe<BaseAsset, QuoteAsset>(
         registry,
         base_oracle,
         quote_oracle,
-        clock,
     );
 
     // Get the lowest trigger above price and highest trigger below price
@@ -1079,7 +1165,7 @@ public fun has_base_debt<BaseAsset, QuoteAsset>(self: &MarginManager<BaseAsset, 
 public fun conditional_order_ids<BaseAsset, QuoteAsset>(
     self: &MarginManager<BaseAsset, QuoteAsset>,
 ): vector<u64> {
-    let mut ids = vector::empty();
+    let mut ids = vector[];
 
     let trigger_below = self.take_profit_stop_loss.trigger_below_orders();
     let mut i = 0;
@@ -1132,6 +1218,92 @@ public fun highest_trigger_below_price<BaseAsset, QuoteAsset>(
     } else {
         trigger_below[0].condition().trigger_price()
     }
+}
+
+public fun get_account_order_details<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+): vector<Order> {
+    pool.get_account_order_details(&self.balance_manager)
+}
+
+public fun account_open_orders<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+): VecSet<u128> {
+    pool.account_open_orders(&self.balance_manager)
+}
+
+public fun locked_balance<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+): (u64, u64, u64) {
+    pool.locked_balance(&self.balance_manager)
+}
+
+public fun balance_manager_id<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+): ID {
+    self.balance_manager.id()
+}
+
+public fun get_balance_manager_referral_id<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool_id: ID,
+): Option<ID> {
+    self.balance_manager.get_balance_manager_referral_id(pool_id)
+}
+
+public fun account_exists<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+): bool {
+    pool.account_exists(&self.balance_manager)
+}
+
+public fun account<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+): Account {
+    pool.account(&self.balance_manager)
+}
+
+public fun can_place_limit_order<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+    price: u64,
+    quantity: u64,
+    is_bid: bool,
+    pay_with_deep: bool,
+    expire_timestamp: u64,
+    clock: &Clock,
+): bool {
+    pool.can_place_limit_order(
+        &self.balance_manager,
+        price,
+        quantity,
+        is_bid,
+        pay_with_deep,
+        expire_timestamp,
+        clock,
+    )
+}
+
+public fun can_place_market_order<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+    quantity: u64,
+    is_bid: bool,
+    pay_with_deep: bool,
+    clock: &Clock,
+): bool {
+    pool.can_place_market_order(
+        &self.balance_manager,
+        quantity,
+        is_bid,
+        pay_with_deep,
+        clock,
+    )
 }
 
 // === Public-Package Functions ===
@@ -1217,6 +1389,35 @@ fun risk_ratio_int<BaseAsset, QuoteAsset, DebtAsset>(
     }
 }
 
+fun risk_ratio_int_unsafe<BaseAsset, QuoteAsset, DebtAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    registry: &MarginRegistry,
+    base_oracle: &PriceInfoObject,
+    quote_oracle: &PriceInfoObject,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+    margin_pool: &MarginPool<DebtAsset>,
+    clock: &Clock,
+): u64 {
+    assert!(
+        self.margin_pool_id.contains(&margin_pool.id()) || self.margin_pool_id.is_none(),
+        EIncorrectMarginPool,
+    );
+    let (assets_in_debt_unit, _, _) = self.assets_in_debt_unit_unsafe(
+        registry,
+        pool,
+        base_oracle,
+        quote_oracle,
+    );
+    let borrowed_shares = self.borrowed_base_shares.max(self.borrowed_quote_shares);
+    let debt = margin_pool.borrow_shares_to_amount(borrowed_shares, clock);
+    let max_risk_ratio = margin_constants::max_risk_ratio();
+    if (assets_in_debt_unit >= math::mul(debt, max_risk_ratio)) {
+        max_risk_ratio
+    } else {
+        math::div(assets_in_debt_unit, debt)
+    }
+}
+
 fun new_margin_manager<BaseAsset, QuoteAsset>(
     pool: &Pool<BaseAsset, QuoteAsset>,
     deepbook_registry: &Registry,
@@ -1236,7 +1437,8 @@ fun new_margin_manager<BaseAsset, QuoteAsset>(
         deposit_cap,
         withdraw_cap,
         trade_cap,
-    ) = balance_manager::new_with_custom_owner_caps<MarginApp>(
+    ) = balance_manager::new_with_custom_owner_caps_v2<MarginApp>(
+        MarginApp {},
         deepbook_registry,
         id.to_address(),
         ctx,
@@ -1378,7 +1580,27 @@ fun assets_in_debt_unit<BaseAsset, QuoteAsset>(
     (assets_in_debt_unit, base_asset, quote_asset)
 }
 
-fun place_pending_order<BaseAsset, QuoteAsset>(
+fun assets_in_debt_unit_unsafe<BaseAsset, QuoteAsset>(
+    self: &MarginManager<BaseAsset, QuoteAsset>,
+    registry: &MarginRegistry,
+    pool: &Pool<BaseAsset, QuoteAsset>,
+    base_oracle: &PriceInfoObject,
+    quote_oracle: &PriceInfoObject,
+): (u64, u64, u64) {
+    let (base_asset, quote_asset) = self.calculate_assets(pool);
+    if (self.margin_pool_id.is_none()) {
+        return (0, base_asset, quote_asset)
+    };
+
+    let assets_in_debt_unit = if (self.borrowed_base_shares > 0) {
+        calculate_target_currency_unsafe<QuoteAsset, BaseAsset>(registry, quote_oracle, base_oracle, quote_asset) + base_asset
+    } else {
+        calculate_target_currency_unsafe<BaseAsset, QuoteAsset>(registry, base_oracle, quote_oracle, base_asset) + quote_asset
+    };
+    (assets_in_debt_unit, base_asset, quote_asset)
+}
+
+fun place_pending_order_v2<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
     registry: &MarginRegistry,
     pool: &mut Pool<BaseAsset, QuoteAsset>,
@@ -1387,7 +1609,7 @@ fun place_pending_order<BaseAsset, QuoteAsset>(
     ctx: &TxContext,
 ): OrderInfo {
     if (pending_order.is_limit_order()) {
-        self.place_pending_limit_order<BaseAsset, QuoteAsset>(
+        self.place_pending_limit_order_v2<BaseAsset, QuoteAsset>(
             registry,
             pool,
             pending_order.client_order_id(),
@@ -1402,7 +1624,7 @@ fun place_pending_order<BaseAsset, QuoteAsset>(
             ctx,
         )
     } else {
-        self.place_market_order_conditional<BaseAsset, QuoteAsset>(
+        self.place_market_order_conditional_v2<BaseAsset, QuoteAsset>(
             registry,
             pool,
             pending_order.client_order_id(),
@@ -1417,7 +1639,9 @@ fun place_pending_order<BaseAsset, QuoteAsset>(
 }
 
 /// Only used for tpsl pending orders.
-fun place_pending_limit_order<BaseAsset, QuoteAsset>(
+/// The post-fill solvency invariant is enforced one level up in
+/// `process_collected_orders_v2`, where we have access to the margin pools.
+fun place_pending_limit_order_v2<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
     registry: &MarginRegistry,
     pool: &mut Pool<BaseAsset, QuoteAsset>,
@@ -1433,9 +1657,13 @@ fun place_pending_limit_order<BaseAsset, QuoteAsset>(
     ctx: &TxContext,
 ): OrderInfo {
     assert!(self.deepbook_pool() == pool.id(), EIncorrectDeepBookPool);
+    assert!(registry.pool_enabled(pool), EPoolNotEnabledForMarginTrading);
+
+    registry.assert_price(pool.id(), price, is_bid, clock);
+    let expire_timestamp = registry.clamp_expire_timestamp(pool.id(), expire_timestamp, clock);
+
     let trade_proof = self.trade_proof(ctx);
     let balance_manager = self.balance_manager_unsafe_mut();
-    assert!(registry.pool_enabled(pool), EPoolNotEnabledForMarginTrading);
 
     pool.place_limit_order(
         balance_manager,
@@ -1455,7 +1683,9 @@ fun place_pending_limit_order<BaseAsset, QuoteAsset>(
 
 /// Places a market order in the pool.
 /// Only used for tpsl pending orders.
-fun place_market_order_conditional<BaseAsset, QuoteAsset>(
+/// The post-fill solvency invariant is enforced one level up in
+/// `process_collected_orders_v2`, where we have access to the margin pools.
+fun place_market_order_conditional_v2<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
     registry: &MarginRegistry,
     pool: &mut Pool<BaseAsset, QuoteAsset>,
@@ -1468,9 +1698,10 @@ fun place_market_order_conditional<BaseAsset, QuoteAsset>(
     ctx: &TxContext,
 ): OrderInfo {
     assert!(self.deepbook_pool() == pool.id(), EIncorrectDeepBookPool);
+    assert!(registry.pool_enabled(pool), EPoolNotEnabledForMarginTrading);
+
     let trade_proof = self.trade_proof(ctx);
     let balance_manager = self.balance_manager_unsafe_mut();
-    assert!(registry.pool_enabled(pool), EPoolNotEnabledForMarginTrading);
 
     pool.place_market_order(
         balance_manager,
@@ -1485,16 +1716,28 @@ fun place_market_order_conditional<BaseAsset, QuoteAsset>(
     )
 }
 
-/// Helper function to process collected conditional orders
-fun process_collected_orders<BaseAsset, QuoteAsset>(
+/// Helper function to process collected conditional orders.
+///
+/// After each successful `place_pending_order_v2` call, recompute `risk_ratio`
+/// against Pyth via the public `risk_ratio` helper. If the manager has debt
+/// and the post-fill ratio is below `min_borrow_risk_ratio`, abort the entire
+/// txn with `EInsufficientRiskRatioAfterTrade`. We do not allow partial-fill
+/// landing — one bad fill reverts everything so the manager is never left in
+/// a state borrowing would have been forbidden from.
+fun process_collected_orders_v2<BaseAsset, QuoteAsset>(
     self: &mut MarginManager<BaseAsset, QuoteAsset>,
     pool: &mut Pool<BaseAsset, QuoteAsset>,
     registry: &MarginRegistry,
+    base_margin_pool: &MarginPool<BaseAsset>,
+    quote_margin_pool: &MarginPool<QuoteAsset>,
+    base_oracle: &PriceInfoObject,
+    quote_oracle: &PriceInfoObject,
     orders: vector<ConditionalOrder>,
     order_infos: &mut vector<OrderInfo>,
     executed_ids: &mut vector<u64>,
     expired_ids: &mut vector<u64>,
     insufficient_funds_ids: &mut vector<u64>,
+    out_of_bounds_ids: &mut vector<u64>,
     max_orders_to_execute: u64,
     clock: &Clock,
     ctx: &TxContext,
@@ -1526,13 +1769,66 @@ fun process_collected_orders<BaseAsset, QuoteAsset>(
         };
 
         if (can_place) {
-            let order_info = self.place_pending_order(
+            // Check price bounds before placing
+            // For bids: only check upper bound (buying above oracle is bad, below is fine)
+            // For asks: only check lower bound (selling below oracle is bad, above is fine)
+            let (lower_bound, upper_bound) = registry.get_price_bounds(pool.id(), clock);
+            let is_bid = pending_order.is_bid();
+            if (pending_order.is_limit_order()) {
+                let price = *pending_order.price().borrow();
+                if ((is_bid && price > upper_bound) || (!is_bid && price < lower_bound)) {
+                    out_of_bounds_ids.push_back(conditional_order_id);
+                    i = i + 1;
+                    continue
+                };
+            } else if (is_bid) {
+                // For market buy orders, calculate execution price
+                let (base_out, quote_in, _) = pool.get_quote_quantity_in(
+                    pending_order.quantity(),
+                    pending_order.pay_with_deep(),
+                    clock,
+                );
+                // Cancel if insufficient liquidity or price out of bounds
+                if (base_out == 0) {
+                    out_of_bounds_ids.push_back(conditional_order_id);
+                    i = i + 1;
+                    continue
+                };
+                let effective_price = math::div(quote_in, base_out);
+                if (effective_price > upper_bound) {
+                    out_of_bounds_ids.push_back(conditional_order_id);
+                    i = i + 1;
+                    continue
+                };
+            } else {
+                // For market sell orders, calculate execution price
+                let (base_out, quote_out, _) = pool.get_quote_quantity_out(
+                    pending_order.quantity(),
+                    clock,
+                );
+                let base_used = pending_order.quantity() - base_out;
+                // Cancel if insufficient liquidity or price out of bounds
+                if (base_used == 0) {
+                    out_of_bounds_ids.push_back(conditional_order_id);
+                    i = i + 1;
+                    continue
+                };
+                let effective_price = math::div(quote_out, base_used);
+                if (effective_price < lower_bound) {
+                    out_of_bounds_ids.push_back(conditional_order_id);
+                    i = i + 1;
+                    continue
+                };
+            };
+
+            let order_info = self.place_pending_order_v2(
                 registry,
                 pool,
                 &pending_order,
                 clock,
                 ctx,
             );
+
             order_infos.push_back(order_info);
             executed_ids.push_back(conditional_order_id);
         } else {
@@ -1549,7 +1845,32 @@ fun process_collected_orders<BaseAsset, QuoteAsset>(
         };
 
         i = i + 1;
-    }
+    };
+
+    // Post-loop solvency check. Move PTBs are atomic, so checking once after
+    // all fills is functionally equivalent to checking after each fill — a
+    // breach of the invariant aborts the whole txn either way. Skipped when
+    // no fills landed (executed_ids empty) and skipped when manager has no
+    // debt (nothing to be insolvent against). Saves up to N-1 Pyth reads on
+    // the happy path versus per-fill checking.
+    if (
+        !executed_ids.is_empty()
+        && (self.borrowed_base_shares > 0 || self.borrowed_quote_shares > 0)
+    ) {
+        let risk_ratio_after = self.risk_ratio(
+            registry,
+            base_oracle,
+            quote_oracle,
+            pool,
+            base_margin_pool,
+            quote_margin_pool,
+            clock,
+        );
+        assert!(
+            risk_ratio_after >= registry.min_borrow_risk_ratio(pool.id()),
+            EInsufficientRiskRatioAfterTrade,
+        );
+    };
 }
 
 fun balance_manager_unsafe_mut<BaseAsset, QuoteAsset>(
