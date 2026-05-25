@@ -345,6 +345,9 @@ Response: { "identityId": "...", "token": "..." }
 5. **외부 지갑 (MetaMask/Solana) 링킹은 읽기 전용 공시**: 트랜잭션 권한 없음. Genesis Pass NFT 확인 + 외부 DeFi 포지션 표시용. 보안 논의는 이 좁은 범위로 (reference_evm_link_scope.md).
 6. **Twitter OAuth Lambda 빌드는 반드시 npm 사용** (pnpm 금지): `auth-twitter` Lambda는 node_modules 포함 zip이어야 정상 동작.
 7. **버그 리포트 답장 정책**: declined/wont-fix는 0pt, positive-feedback은 accepted/2pt, Pado feedback은 후한 3-5pt. 답장 본문에 포인트 언급 금지. 자세한 규칙은 [docs/bug-report-system.md](docs/bug-report-system.md) §6 운영 invariants.
+8. **알파 kill-recovery 24h grace** (2026-05-25): `handleVaultDelete`가 `grantKillRecoveryInvite()`를 호출하여 kill한 wallet에 24h `invited` 슬롯 재발급. 미적용 시 kill한 사용자가 60명 대기열 뒤로 밀려 silent disenfranchisement. `phaseInvite.countActiveAndPending`이 `invited`를 카운트하여 cap 보존. tunable `NASUN_AI_ALPHA_KILL_GRACE_MS`. 자세한 사항: 메모리 [project_2026_05_25_alpha_kill_disenfranchisement.md](../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_2026_05_25_alpha_kill_disenfranchisement.md).
+9. **baram-executor Lambda는 single-signer** (2026-05-25): `baram/executor` Secrets Manager에 1개 private key만 보유 → 모든 agent traffic이 단일 executor address로 routing됨. chain에 4개 executor가 등록돼 있어도 Lambda는 그 중 1개만 sign 가능. `chat-server agent-orchestrator.pickExecutorAddress()`가 comma-list 지원하지만 prod는 단일 값 유지 필수 — multi-list로 바꾸면 `/infer preflight denied: executor_mismatch` 발생. Lambda multi-signer 구현 후에만 .env를 comma-list로 flip. 메모리 [project_2026_05_25_baram_executor_single_signer.md](../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_2026_05_25_baram_executor_single_signer.md).
+10. **baram-executor gas는 keeper-gas-watchdog가 자동 refill** (2026-05-25): 4개 executor 중 3개 (`baram-exec-1/2/3`)가 `pado-bots/.env`의 `KEEPER_GAS_TARGETS`에 등록됨. 1h cycle, 1000 NSN 미만 시 100k NSN으로 충전. 4번째 `0xe1c4` (treasury 겸용)은 동일 watchdog의 `price-updater` entry로 이미 모니터링. memory [project_keeper_gas_watchdog.md](../../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_keeper_gas_watchdog.md).
 
 ## 최근 30일 주요 변경 (요약)
 
@@ -355,6 +358,7 @@ Response: { "identityId": "...", "token": "..." }
 - **chat-server CORS 확장**: nasun/pado/gostop 스테이징 origin 허용
 - **Turnstile 완전 제거** (2026-05-16): chat + pado + nasun
 - **Per-app 지갑 binding**: external wallet → per-app scope (security boundary)
+- **Alpha kill-recovery + executor 안정화** (2026-05-25): kill한 사용자가 잃은 슬롯 복구하는 `grantKillRecoveryInvite` (24h grace) + killed-state UI gate-aware CTA + baram-executor pool gas-watchdog 등록 + multi-executor round-robin scaffold (Lambda single-signer 한계로 inert)
 
 ---
 
