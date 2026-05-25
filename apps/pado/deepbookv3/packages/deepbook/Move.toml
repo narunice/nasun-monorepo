@@ -2,7 +2,7 @@
 name = "deepbook"
 edition = "2024.beta"
 version = "0.0.2"
-published-at = "0xea69229a69fa59babff9a746583694d06551b74bcd5c26200bc58b4edc7c8d55"
+published-at = "0x5afb9964557015d71be58b76ec802b8341301515b3db17e447b554673d94a20d"
 
 [dependencies]
 token = { local = "../token" }
