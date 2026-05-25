@@ -41,7 +41,13 @@ const WALLET_OWNER_SENTINEL = 'WALLET_OWNER';
 const WALLET_MAPPINGS_URL = process.env.WALLET_MAPPINGS_URL || '';
 const WALLET_MAPPINGS_KEY = process.env.WALLET_MAPPINGS_API_KEY || '';
 
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+// 2026-05-24: bumped from 1h after observing the wallet-mappings Lambda
+// routinely taking 28-29s (the previous 30s fetch timeout was hitting the
+// hard cap; ~20 TimeoutErrors / 30min). Doubling the TTL halves the refresh
+// rate, and the fetch timeout below was raised to 60s so each attempt has
+// more headroom before tripping. Bucketed downstream consumers (aggregator
+// wash-trading detection) tolerate the extra staleness.
+const CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 hours
 
 // ===== Bulk identity cache =====
 
@@ -69,7 +75,10 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
     'identity-resolver.fetch.api',
     () => fetch(WALLET_MAPPINGS_URL, {
       headers,
-      signal: AbortSignal.timeout(30_000),
+      // 60s: Lambda routinely measured at 28-29s (DynamoDB scan of ~80k
+      // wallets). 30s left zero headroom; bumped to 60s so transient
+      // slow-paths don't surface as TimeoutError + stale-cache fallback.
+      signal: AbortSignal.timeout(60_000),
     }),
     { threshold: 500 },
   );
@@ -86,7 +95,7 @@ async function loadIdentityMap(): Promise<Map<string, string>> {
   if ('url' in data) {
     const s3Res = await traceAsync(
       'identity-resolver.fetch.s3',
-      () => fetch(data.url, { signal: AbortSignal.timeout(30_000) }),
+      () => fetch(data.url, { signal: AbortSignal.timeout(60_000) }),
       { threshold: 500 },
     );
     if (!s3Res.ok) throw new Error(`S3 offload fetch failed: ${s3Res.status}`);
