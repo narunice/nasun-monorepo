@@ -11,10 +11,13 @@
  * the routine controls cannot be confused with the destructive one.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useSigner } from '@nasun/wallet';
+import { suiClient } from '@/lib/sui-client';
 import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useAgentState } from '../hooks/useAgentState';
 import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
+import { buildDeactivateAgentTransaction } from '../services/transactionBuilder';
 import type { TraderConfig } from '../types/trader';
 
 /** Drop the persistence-only fields before re-saving via the upsert API. */
@@ -31,24 +34,31 @@ interface AgentStateControlProps {
   onCreateNewAgent?: () => void;
   /** Owner wallet, used to query the alpha gate state for the killed-CTA. */
   walletAddress?: string | null;
+  /** AgentProfile object id. Required to build the cleanup deactivate PTB
+   *  when an on-chain profile is detected without a server-side vault row
+   *  (the "orphaned" / interrupted-setup case). */
+  profileId?: string | null;
 }
 
 export function AgentStateControl({
   agentAddress,
   onCreateNewAgent,
   walletAddress = null,
+  profileId = null,
 }: AgentStateControlProps) {
   const { state, runtime, data, loading: stateLoading, error: stateError, invalidate } =
     useAgentState(agentAddress);
   const { config, save, loading: cfgLoading, error: cfgError } = useTraderConfig(agentAddress);
+  const signer = useSigner();
   // Gate the post-kill CTA on the same alpha predicate the form-level
   // useCreateAgent and QuickstartView Register button use, so the killed
   // state doesn't dangle a "Create new agent" affordance that immediately
   // bounces off the alpha waitlist (2026-05-25 incident: killed users saw
   // an enabled CTA but were silently parked at queue position #57).
   const createBlock = useCreateAgentBlocked(walletAddress);
-  const [pending, setPending] = useState<'pause' | 'activate' | null>(null);
+  const [pending, setPending] = useState<'pause' | 'activate' | 'cleanup' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
+  const cleanupInFlight = useRef(false);
 
   const handlePause = useCallback(async () => {
     if (!config) {
@@ -84,16 +94,74 @@ export function AgentStateControl({
     }
   }, [config, save, invalidate]);
 
+  // Orphaned-agent cleanup. Signs `agent_profile::deactivate_agent` on-chain
+  // so a profile that was created but never reached the vault-upload step
+  // (2026-05-25 incident: elonunmk's 0x4ede9168... — alpha gate was 'waiting'
+  // when the user reached step 2 of quickstart, so step 1's profile became
+  // permanently stranded) can be retired and replaced via the normal
+  // "Create new agent" flow. No capability revoke is bundled because an
+  // orphaned profile by definition has no functional capability holder
+  // (no vault, no agent process); deactivating the profile alone flips
+  // chain-side is_active=false which lets reconcileAgentState resolve to
+  // 'killed' on the next poll.
+  const handleCleanupOrphan = useCallback(async () => {
+    if (cleanupInFlight.current) return;
+    if (!profileId) {
+      setLocalError('Missing profile id — cannot build cleanup transaction.');
+      return;
+    }
+    if (!signer.address) {
+      setLocalError('Connect a wallet to clean up this stranded agent.');
+      return;
+    }
+    cleanupInFlight.current = true;
+    setLocalError(null);
+    setPending('cleanup');
+    try {
+      const tx = buildDeactivateAgentTransaction(profileId);
+      tx.setSender(signer.address);
+      const txBytes = await tx.build({ client: suiClient });
+      const { signature } = await signer.sign(txBytes);
+      const result = await suiClient.executeTransactionBlock({
+        transactionBlock: txBytes,
+        signature,
+        options: { showEffects: true },
+      });
+      if (result.effects?.status?.status !== 'success') {
+        throw new Error(result.effects?.status?.error || 'Cleanup transaction failed');
+      }
+      await suiClient.waitForTransaction({ digest: result.digest });
+      await invalidate();
+    } catch (err) {
+      setLocalError(err instanceof Error ? err.message : 'cleanup_failed');
+    } finally {
+      cleanupInFlight.current = false;
+      setPending(null);
+    }
+  }, [profileId, signer, invalidate]);
+
+  // Orphaned detection: chat-server returns state='unknown' for an agent
+  // it has no record of (no agent_keys row), so it cannot resolve isActive
+  // and bails. The frontend reaches this screen only via useAgentProfiles,
+  // which already confirmed the AgentProfile exists on chain and is owned
+  // by the user — so an 'unknown'+no-vault combo is unambiguously the
+  // "setup interrupted between on-chain create and vault upload" case.
+  // Treat as a dedicated state so the user gets a one-click cleanup path
+  // instead of a permanently-disabled Activate button.
+  const isOrphaned = state === 'unknown' && data?.vault.present === false && profileId !== null;
+
   const badgeClasses =
     state === 'activated' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
     : state === 'paused' ? 'bg-amber-500/15 text-amber-200 border-amber-500/30'
     : state === 'killed' ? 'bg-red-500/15 text-red-300 border-red-500/30'
+    : isOrphaned ? 'bg-orange-500/15 text-orange-300 border-orange-500/30'
     : 'bg-uju-bg/40 text-uju-secondary border-uju-border/40';
 
   const badgeText =
     state === 'activated' ? `Activated · ${runtime === 'running' ? 'Running' : 'Spawning'}`
     : state === 'paused' ? 'Paused'
     : state === 'killed' ? 'Killed'
+    : isOrphaned ? 'Setup interrupted'
     : stateLoading ? 'Syncing…' : 'Unknown';
 
   const busy = pending !== null || cfgLoading;
@@ -146,7 +214,7 @@ export function AgentStateControl({
               Create new agent
             </button>
           )}
-          {state === 'unknown' && (
+          {state === 'unknown' && !isOrphaned && (
             <button
               type="button"
               onClick={() => void invalidate()}
@@ -154,6 +222,17 @@ export function AgentStateControl({
               className="rounded-lg border border-uju-border/60 px-3 py-1.5 text-sm text-uju-secondary hover:bg-uju-bg/60 disabled:opacity-50"
             >
               Retry
+            </button>
+          )}
+          {isOrphaned && (
+            <button
+              type="button"
+              onClick={() => void handleCleanupOrphan()}
+              disabled={busy || !signer.address}
+              title={!signer.address ? 'Connect a wallet to clean up' : undefined}
+              className="rounded-lg bg-orange-500/80 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-500 disabled:opacity-50"
+            >
+              {pending === 'cleanup' ? 'Cleaning up…' : 'Deactivate & start over'}
             </button>
           )}
         </div>
@@ -168,6 +247,14 @@ export function AgentStateControl({
           {createBlock.blocked && createBlock.message
             ? createBlock.message
             : 'This agent is permanently killed. Create a new agent to use Nasun AI again.'}
+        </p>
+      )}
+      {isOrphaned && (
+        <p className="text-xs text-uju-secondary">
+          The on-chain profile exists, but quickstart never finished — the
+          encrypted key was not delivered to our server, so no agent process
+          can run. Sign one tx to deactivate this stranded profile, then use
+          "Create new agent" to start fresh.
         </p>
       )}
     </div>

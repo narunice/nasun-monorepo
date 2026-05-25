@@ -149,7 +149,11 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
             destructive one. State source: chat-server GET
             /api/nasun-ai/agent/:addr/state, which derives from on-chain
             AgentProfile.is_active + config.enabled. */}
-        <AgentStateControl agentAddress={agent.agentAddress} walletAddress={walletAddress} />
+        <AgentStateControl
+          agentAddress={agent.agentAddress}
+          walletAddress={walletAddress}
+          profileId={agent.id}
+        />
       </section>
 
       <section className="space-y-2">
