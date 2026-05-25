@@ -4,6 +4,7 @@ import { PageLayout } from "../../components/layout/PageLayout";
 import { SectionLayout } from "../../components/layout/SectionLayout";
 import { PadoScoreLeaderboard } from "../../features/pado-score-leaderboard/PadoScoreLeaderboard";
 import { PageTitle } from "@/components/ui/PageTitle";
+import { GenesisPassBadge } from "@nasun/wallet-ui";
 
 const PadoScoreLeaderboardPage: React.FC = () => {
   return (
@@ -25,9 +26,13 @@ const PadoScoreLeaderboardPage: React.FC = () => {
         <PageTitle wrapperClassName="flex flex-col mb-6 md:mb-8 lg:mb-10 xl:mb-12">
           Pado DeFi Leaderboard
         </PageTitle>
-        <p className="text-base text-nasun-white/80 mb-6 -mt-2">
+        <p className="text-base text-nasun-white/80 -mt-2">
           Weekly rankings reset every Monday 00:00 UTC. Top traders earn Nasun
           Points.
+        </p>
+        <p className="text-base text-nasun-white/80 mb-6 mt-2 flex items-center gap-2 flex-wrap">
+          <GenesisPassBadge variant="compact" />
+          <span>Genesis Pass NFT holders are paid cohort members.</span>
         </p>
         <PadoScoreLeaderboard />
 

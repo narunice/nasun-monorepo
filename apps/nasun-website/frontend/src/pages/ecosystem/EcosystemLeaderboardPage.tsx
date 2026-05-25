@@ -150,6 +150,10 @@ const EcosystemLeaderboardPage = () => {
           <p className="text-base text-nasun-white/90">
             Weekly rankings reset every Monday 00:00 UTC.
           </p>
+          <p className="text-base text-nasun-white/90 mt-2 flex items-center gap-2 flex-wrap">
+            <GenesisPassBadge variant="compact" />
+            <span>Genesis Pass NFT holders are paid cohort members.</span>
+          </p>
         </div>
 
         {/* Meta bar */}

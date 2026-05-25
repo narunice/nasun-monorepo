@@ -27,6 +27,7 @@ import { CompetitionBanner } from "../features/competitions";
 import { ActivityFeed } from "../features/social/components/ActivityFeed";
 import { LeaderboardSearchBox, type LeaderboardSearchResult } from "../components/ui/LeaderboardSearchBox";
 import { useHighlightRow } from "../hooks/useHighlightRow";
+import { GenesisPassBadge } from "@nasun/wallet-ui";
 import type {
   Period,
   LeaderboardMode,
@@ -228,6 +229,10 @@ export function LeaderboardPage() {
           </div>
           <p className="text-sm text-theme-text-muted mt-0.5">
             {MODE_DESCRIPTIONS[mode]}
+          </p>
+          <p className="text-sm text-theme-text-muted mt-1 flex items-center gap-1.5 flex-wrap">
+            <GenesisPassBadge variant="compact" />
+            <span>Genesis Pass NFT holders are paid cohort members.</span>
           </p>
         </div>
         <div className="flex items-center gap-2">

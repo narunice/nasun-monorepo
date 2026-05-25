@@ -24,6 +24,7 @@ import {
 } from "../features/dashboard/format";
 import { PlayerIdentity } from "../features/shared/PlayerIdentity";
 import { Pagination } from "../features/shared/Pagination";
+import { GenesisPassBadge } from "@nasun/wallet-ui";
 
 const PERIOD_OPTIONS: { value: LeaderboardPeriod; label: string }[] = [
   { value: "24h", label: "24h" },
@@ -91,6 +92,10 @@ export default function LeaderboardPage() {
           Live rankings across every GoStop table. Anonymous players show as
           masked handles; opt-out players are hidden. Refreshed every 10
           seconds.
+        </p>
+        <p className="text-base text-neutral-200 max-w-2xl flex items-center gap-2 flex-wrap">
+          <GenesisPassBadge variant="compact" />
+          <span>Genesis Pass NFT holders are paid cohort members.</span>
         </p>
       </header>
 
