@@ -1,0 +1,844 @@
+/*
+ * Scoped style layer for /dev/about. Builds on dev-home.css tokens and primitives.
+ * Only loaded by DevAboutPage. Keep selectors prefixed with `.dev-home-catena`
+ * so they stay isolated to the dev pages.
+ */
+
+/* ---------- Hero (about variant) ---------- */
+.dev-home-catena .ch-hero-about {
+  /* Reuse hero spacing; the overlay tilts content toward the bottom-left like the reference board. */
+  align-items: stretch;
+}
+.dev-home-catena .ch-hero-about .ch-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 100%;
+  padding-block: 2rem;
+}
+.dev-home-catena .ch-hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 80% at 12% 60%,
+      rgba(0, 0, 0, 0.72) 0%,
+      rgba(0, 0, 0, 0.45) 30%,
+      rgba(0, 0, 0, 0) 65%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.2) 0%,
+      rgba(0, 0, 0, 0) 35%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-hero-about .ch-container {
+    justify-content: flex-end;
+    padding-bottom: 8vh;
+  }
+}
+
+/* ---------- Cyan eyebrow variant (memory + recognition) ---------- */
+.dev-home-catena .ch-eyebrow-cyan {
+  color: var(--ch-accent-cyan);
+}
+
+/* ---------- Gravity section ---------- */
+.dev-home-catena .ch-gravity-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+@media (min-width: 640px) {
+  .dev-home-catena .ch-gravity-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.9rem;
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena .ch-gravity-grid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.85rem;
+  }
+}
+.dev-home-catena .ch-gravity-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  min-height: 100%;
+  padding: 1.1rem 1.25rem 1.35rem;
+  border-radius: var(--ch-radius-md);
+  background:
+    radial-gradient(
+      120% 90% at 0% 0%,
+      rgba(94, 225, 228, 0.05) 0%,
+      rgba(0, 0, 0, 0) 55%
+    ),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--ch-bg-card);
+  border: 1px solid var(--ch-border);
+  overflow: hidden;
+  isolation: isolate;
+  transition:
+    border-color 380ms ease,
+    transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 380ms ease;
+}
+
+/* gradient border halo on hover */
+.dev-home-catena .ch-gravity-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(140deg, rgba(94, 225, 228, 0), rgba(210, 246, 162, 0));
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  pointer-events: none;
+  z-index: 1;
+  transition: background 380ms ease;
+}
+
+/* corner accent that sweeps across on hover */
+.dev-home-catena .ch-gravity-card::after {
+  content: "";
+  position: absolute;
+  top: -20%;
+  left: -10%;
+  width: 140%;
+  height: 50%;
+  background: radial-gradient(
+    60% 100% at 50% 0%,
+    rgba(94, 225, 228, 0.16) 0%,
+    rgba(94, 225, 228, 0) 70%
+  );
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-8px);
+  transition: opacity 420ms ease, transform 420ms ease;
+  z-index: 0;
+}
+.dev-home-catena .ch-gravity-card:hover {
+  border-color: rgba(94, 225, 228, 0.0);
+  transform: translateY(-3px);
+  box-shadow: 0 24px 60px -36px rgba(94, 225, 228, 0.55);
+}
+.dev-home-catena .ch-gravity-card:hover::before {
+  background: linear-gradient(140deg, rgba(94, 225, 228, 0.55), rgba(210, 246, 162, 0.12));
+}
+.dev-home-catena .ch-gravity-card:hover::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* viz area — matches SVG 2:1 viewBox so animations keep natural proportions */
+.dev-home-catena .ch-gravity-card-viz {
+  position: relative;
+  aspect-ratio: 2 / 1;
+  width: 100%;
+  max-height: 140px;
+  border-radius: 0.5rem;
+  background:
+    radial-gradient(
+      80% 100% at 50% 100%,
+      rgba(0, 0, 0, 0.35) 0%,
+      rgba(0, 0, 0, 0.15) 60%,
+      rgba(0, 0, 0, 0) 100%
+    );
+  overflow: hidden;
+  margin-bottom: 0.25rem;
+}
+.dev-home-catena .ch-gv-viz {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dev-home-catena .ch-gv-viz svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* card head + body */
+.dev-home-catena .ch-gravity-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.85rem;
+  position: relative;
+  z-index: 2;
+}
+.dev-home-catena .ch-gravity-card-num {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  letter-spacing: 0.26em;
+  color: var(--ch-accent-cyan);
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+.dev-home-catena .ch-gravity-card-title {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  font-size: 1.125rem;
+  line-height: 1.3;
+  color: var(--ch-fg-display);
+  letter-spacing: 0.012em;
+}
+.dev-home-catena .ch-gravity-card-body {
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  letter-spacing: 0.012em;
+  position: relative;
+  z-index: 2;
+  color: var(--ch-fg-muted);
+}
+
+/* ---------- Viz 01 — Compounding bars + sparkline ---------- */
+.dev-home-catena .ch-gv-viz-compound .b {
+  transform-origin: bottom center;
+  transform: scaleY(0);
+  animation: gv-bar-grow 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-gv-viz-compound .b1 { animation-delay: 0s; }
+.dev-home-catena .ch-gv-viz-compound .b2 { animation-delay: 0.18s; }
+.dev-home-catena .ch-gv-viz-compound .b3 { animation-delay: 0.36s; }
+.dev-home-catena .ch-gv-viz-compound .b4 { animation-delay: 0.54s; }
+.dev-home-catena .ch-gv-viz-compound .b5 { animation-delay: 0.72s; }
+.dev-home-catena .ch-gv-viz-compound .line {
+  stroke-dasharray: 180;
+  stroke-dashoffset: 180;
+  animation: gv-line-draw 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-gv-viz-compound .tip {
+  opacity: 0;
+  animation: gv-tip-pulse 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@keyframes gv-bar-grow {
+  0%        { transform: scaleY(0); opacity: 0.2; }
+  22%, 80%  { transform: scaleY(1); opacity: 1; }
+  92%, 100% { transform: scaleY(0); opacity: 0; }
+}
+@keyframes gv-line-draw {
+  0%       { stroke-dashoffset: 180; }
+  22%      { stroke-dashoffset: 180; }
+  55%, 80% { stroke-dashoffset: 0; }
+  92%,100% { stroke-dashoffset: 180; }
+}
+@keyframes gv-tip-pulse {
+  0%, 50%   { opacity: 0; }
+  60%, 80%  { opacity: 1; transform: scale(1.4); }
+  92%, 100% { opacity: 0; }
+}
+
+/* ---------- Viz 02 — Tier ladder ---------- */
+.dev-home-catena .ch-gv-viz-tiers .p {
+  opacity: 0;
+  transform-origin: left center;
+  animation: gv-tier-pop 4.4s cubic-bezier(0.5, 1.4, 0.4, 1) infinite;
+}
+.dev-home-catena .ch-gv-viz-tiers .p1 { animation-delay: 0s; }
+.dev-home-catena .ch-gv-viz-tiers .p2 { animation-delay: 0.45s; }
+.dev-home-catena .ch-gv-viz-tiers .p3 { animation-delay: 0.9s; }
+.dev-home-catena .ch-gv-viz-tiers .arrow {
+  opacity: 0;
+  animation: gv-arrow-fade 4.4s ease-in-out infinite;
+  animation-delay: 1.1s;
+}
+@keyframes gv-tier-pop {
+  0%        { opacity: 0; transform: translateX(-8px) scale(0.92); }
+  18%, 70%  { opacity: 1; transform: translateX(0) scale(1); }
+  88%, 100% { opacity: 0; transform: translateX(4px) scale(0.95); }
+}
+@keyframes gv-arrow-fade {
+  0%, 8%    { opacity: 0; }
+  30%, 70%  { opacity: 0.85; }
+  90%, 100% { opacity: 0; }
+}
+
+/* ---------- Viz 03 — Import chains -> center ---------- */
+.dev-home-catena .ch-gv-viz-import .src {
+  opacity: 0;
+  animation: gv-src-fade 5s ease-in-out infinite;
+}
+.dev-home-catena .ch-gv-viz-import .s1 { animation-delay: 0s; }
+.dev-home-catena .ch-gv-viz-import .s2 { animation-delay: 0.15s; }
+.dev-home-catena .ch-gv-viz-import .s3 { animation-delay: 0.3s; }
+.dev-home-catena .ch-gv-viz-import .d {
+  stroke-dasharray: 6 8;
+  stroke-dashoffset: 0;
+  animation: gv-flow-march 2.4s linear infinite;
+}
+.dev-home-catena .ch-gv-viz-import .d2 { animation-delay: 0.2s; }
+.dev-home-catena .ch-gv-viz-import .d3 { animation-delay: 0.4s; }
+.dev-home-catena .ch-gv-viz-import .target {
+  transform-origin: 140px 40px;
+  animation: gv-target-pulse 2.4s ease-in-out infinite;
+}
+@keyframes gv-src-fade {
+  0%        { opacity: 0; }
+  15%, 80%  { opacity: 1; }
+  95%, 100% { opacity: 0.4; }
+}
+@keyframes gv-flow-march {
+  0%   { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -28; }
+}
+@keyframes gv-target-pulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(134, 243, 183, 0)); }
+  50%      { transform: scale(1.08); filter: drop-shadow(0 0 6px rgba(134, 243, 183, 0.55)); }
+}
+
+/* ---------- Viz 04 — Orbit (cross-chain unified) ---------- */
+.dev-home-catena .ch-gv-viz-orbit .o {
+  transform-origin: 80px 40px;
+}
+.dev-home-catena .ch-gv-viz-orbit .o1 { animation: gv-orbit-spin 12s linear infinite; }
+.dev-home-catena .ch-gv-viz-orbit .o2 { animation: gv-orbit-spin 18s linear infinite reverse; }
+.dev-home-catena .ch-gv-viz-orbit .o3 { animation: gv-orbit-spin 24s linear infinite; }
+.dev-home-catena .ch-gv-viz-orbit .sat {
+  transform-origin: 80px 40px;
+}
+.dev-home-catena .ch-gv-viz-orbit .sa1 { animation: gv-orbit-spin 7s linear infinite; }
+.dev-home-catena .ch-gv-viz-orbit .sa2 { animation: gv-orbit-spin 9s linear infinite reverse; }
+.dev-home-catena .ch-gv-viz-orbit .sa3 { animation: gv-orbit-spin 11s linear infinite; }
+.dev-home-catena .ch-gv-viz-orbit .core-glow {
+  transform-origin: 80px 40px;
+  animation: gv-core-pulse 3.4s ease-in-out infinite;
+}
+@keyframes gv-orbit-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes gv-core-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.4; }
+  50%      { transform: scale(1.35); opacity: 0; }
+}
+
+/* reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena .ch-gv-viz-compound .b,
+  .dev-home-catena .ch-gv-viz-compound .line,
+  .dev-home-catena .ch-gv-viz-compound .tip,
+  .dev-home-catena .ch-gv-viz-tiers .p,
+  .dev-home-catena .ch-gv-viz-tiers .arrow,
+  .dev-home-catena .ch-gv-viz-import .src,
+  .dev-home-catena .ch-gv-viz-import .d,
+  .dev-home-catena .ch-gv-viz-import .target,
+  .dev-home-catena .ch-gv-viz-orbit .o,
+  .dev-home-catena .ch-gv-viz-orbit .sat,
+  .dev-home-catena .ch-gv-viz-orbit .core-glow {
+    animation: none;
+  }
+  .dev-home-catena .ch-gv-viz-compound .b { transform: scaleY(1); opacity: 1; }
+  .dev-home-catena .ch-gv-viz-compound .line { stroke-dashoffset: 0; }
+  .dev-home-catena .ch-gv-viz-compound .tip { opacity: 1; }
+  .dev-home-catena .ch-gv-viz-tiers .p,
+  .dev-home-catena .ch-gv-viz-tiers .arrow { opacity: 1; transform: none; }
+  .dev-home-catena .ch-gv-viz-import .src,
+  .dev-home-catena .ch-gv-viz-import .target { opacity: 1; }
+}
+
+/* ---------- Network / Execution Environment section ---------- */
+.dev-home-catena .ch-network-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+@media (min-width: 960px) {
+  .dev-home-catena .ch-network-grid {
+    grid-template-columns: 1.1fr 0.9fr;
+    gap: 2.5rem;
+    align-items: start;
+  }
+}
+.dev-home-catena .ch-network-pillars {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.dev-home-catena .ch-network-pillar {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 0.75rem;
+  padding: 1.1rem 0;
+  border-top: 1px solid var(--ch-divider);
+}
+.dev-home-catena .ch-network-pillar:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.dev-home-catena .ch-network-pillar-index {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  color: var(--ch-fg-accent);
+  opacity: 0.6;
+  padding-top: 0.25rem;
+}
+.dev-home-catena .ch-network-pillar-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Epoch card */
+.dev-home-catena .ch-epoch-card {
+  background:
+    radial-gradient(
+      120% 80% at 100% 0%,
+      rgba(94, 225, 228, 0.06) 0%,
+      rgba(0, 0, 0, 0) 60%
+    ),
+    var(--ch-bg-card);
+  border: 1px solid var(--ch-border);
+  border-radius: var(--ch-radius-lg);
+  padding: 1.5rem 1.5rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+.dev-home-catena .ch-epoch-card-head {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+.dev-home-catena .ch-epoch-card-title {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  color: var(--ch-fg-display);
+  letter-spacing: 0.005em;
+}
+.dev-home-catena .ch-epoch-skeleton {
+  min-height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dev-home-catena .ch-epoch-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.dev-home-catena .ch-epoch-epoch {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 1rem;
+  color: var(--ch-fg-display);
+  letter-spacing: 0.04em;
+}
+.dev-home-catena .ch-epoch-remaining {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ch-fg-subdued);
+}
+.dev-home-catena .ch-epoch-bar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.dev-home-catena .ch-epoch-bar {
+  flex: 1;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.dev-home-catena .ch-epoch-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #5ee1e4 0%, #86f3b7 100%);
+  box-shadow: 0 0 12px rgba(94, 225, 228, 0.5);
+  transition: width 1s linear;
+}
+.dev-home-catena .ch-epoch-pct {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.6875rem;
+  letter-spacing: 0.14em;
+  color: var(--ch-accent-cyan);
+  min-width: 48px;
+  text-align: right;
+}
+.dev-home-catena .ch-epoch-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  border-top: 1px solid var(--ch-divider);
+  padding-top: 0.85rem;
+}
+.dev-home-catena .ch-epoch-grid-label {
+  font-family: var(--ch-font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ch-fg-faint);
+}
+.dev-home-catena .ch-epoch-grid-value {
+  font-family: var(--ch-font-mono);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  color: var(--ch-fg-muted);
+  margin-top: 0.2rem;
+}
+
+/* ---------- Grants & Awards section ---------- */
+.dev-home-catena .ch-about-grants {
+  /* Container gets a touch more bottom breathing for slider dots. */
+  padding-bottom: 1rem;
+}
+.dev-home-catena .ch-grants-wrap {
+  position: relative;
+  margin-top: 0.25rem;
+}
+.dev-home-catena .ch-grants-skeleton-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .dev-home-catena .ch-grants-skeleton-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1200px) {
+  .dev-home-catena .ch-grants-skeleton-row {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.dev-home-catena .ch-grants-skeleton {
+  height: 360px;
+  border-radius: 4px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.07) 50%,
+    rgba(255, 255, 255, 0.03) 100%
+  );
+  background-size: 300% 100%;
+  animation: ch-skeleton-shimmer 1.8s ease-in-out infinite;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+@keyframes ch-skeleton-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+.dev-home-catena .ch-grants-wrap .slick-list {
+  margin: 0 -10px;
+  overflow: hidden;
+}
+.dev-home-catena .ch-grants-wrap .slick-track {
+  display: flex;
+  align-items: stretch;
+}
+.dev-home-catena .ch-grants-wrap .slick-slide {
+  height: auto;
+}
+.dev-home-catena .ch-grants-wrap .slick-slide > div {
+  height: 100%;
+}
+.dev-home-catena .ch-grants-slide {
+  padding: 0 10px;
+  height: 100%;
+}
+/* Awards card — mirrors the /about/awards DividerBox(nw3) timeline cards:
+   dark navy translucent, sharp corners, dim white border, structured content. */
+.dev-home-catena .ch-grants-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  height: 100%;
+  min-height: 440px;
+  padding: 1.25rem 1.25rem 1.5rem;
+  background: rgba(35, 33, 36, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  backdrop-filter: blur(8px);
+  text-decoration: none;
+  color: var(--ch-fg-default);
+  transition:
+    border-color 320ms ease,
+    transform 320ms ease,
+    background-color 320ms ease;
+}
+@media (min-width: 768px) {
+  .dev-home-catena .ch-grants-card {
+    padding: 1.5rem 1.75rem 1.75rem;
+  }
+}
+.dev-home-catena .ch-grants-card:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(35, 33, 36, 0.7);
+  transform: translateY(-2px);
+}
+
+.dev-home-catena .ch-grants-card-date {
+  font-family: var(--ch-font-body);
+  font-weight: 500;
+  font-size: 0.8125rem;
+  color: rgba(249, 249, 249, 0.6);
+  margin-bottom: 0.2rem;
+}
+.dev-home-catena .ch-grants-card-title {
+  font-family: var(--ch-font-display);
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  font-size: 1.125rem;
+  line-height: 1.25;
+  color: var(--ch-fg-display);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dev-home-catena .ch-grants-card-prize {
+  font-family: var(--ch-font-body);
+  font-weight: 500;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+  color: #6fa6c2; /* nasun-nw1 tone — mid steel-blue from existing card */
+  margin: 0;
+}
+.dev-home-catena .ch-grants-card-project {
+  font-family: var(--ch-font-body);
+  font-weight: 300;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(249, 249, 249, 0.85);
+  margin-top: 0.35rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dev-home-catena .ch-grants-card-hosts {
+  list-style: disc;
+  list-style-position: inside;
+  padding: 0;
+  margin: 0.15rem 0 0;
+  font-family: var(--ch-font-body);
+  font-weight: 300;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: rgba(249, 249, 249, 0.78);
+}
+.dev-home-catena .ch-grants-card-hosts li {
+  margin: 0;
+  padding-left: 0;
+}
+.dev-home-catena .ch-grants-card-logos {
+  margin-top: auto;
+  padding-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem 1.25rem;
+}
+.dev-home-catena .ch-grants-card-logo {
+  height: 1.5rem;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  opacity: 0.8;
+  flex-shrink: 0;
+  transition: opacity 240ms ease;
+}
+.dev-home-catena .ch-grants-card:hover .ch-grants-card-logo {
+  opacity: 1;
+}
+
+.dev-home-catena .ch-grants-controls {
+  position: absolute;
+  top: -52px;
+  right: 0;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+.dev-home-catena .ch-grants-arrow {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--ch-border);
+  background: rgba(0, 0, 0, 0.4);
+  color: var(--ch-fg-default);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease,
+    transform 200ms ease;
+}
+.dev-home-catena .ch-grants-arrow:hover {
+  color: var(--ch-fg-display);
+  border-color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+@media (max-width: 767px) {
+  .dev-home-catena .ch-grants-controls {
+    display: none;
+  }
+}
+
+/* Custom dot styling */
+.dev-home-catena .ch-grants-wrap .slick-dots {
+  position: static;
+  margin-top: 1.5rem;
+  display: flex !important;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0;
+}
+.dev-home-catena .ch-grants-wrap .slick-dots li {
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+.dev-home-catena .ch-grants-wrap .slick-dots li button {
+  width: 24px;
+  height: 24px;
+  padding: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.dev-home-catena .ch-grants-wrap .slick-dots li button::before {
+  display: none;
+}
+.dev-home-catena .ch-grants-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: rgba(249, 249, 249, 0.25);
+  transition: background-color 240ms ease, transform 240ms ease;
+}
+.dev-home-catena .ch-grants-wrap .slick-dots li.slick-active .ch-grants-dot {
+  background: rgba(249, 249, 249, 0.95);
+  transform: scale(1.4);
+}
+
+/* ---------- Team section ---------- */
+.dev-home-catena .ch-team-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+@media (min-width: 900px) {
+  .dev-home-catena .ch-team-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+.dev-home-catena .ch-team-card {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.025) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  border: 1px solid var(--ch-border);
+  border-radius: var(--ch-radius-lg);
+  padding: 1.5rem 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 320ms ease, transform 320ms ease;
+}
+.dev-home-catena .ch-team-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    80% 60% at 100% 0%,
+    rgba(134, 243, 183, 0.06) 0%,
+    rgba(0, 0, 0, 0) 60%
+  );
+}
+.dev-home-catena .ch-team-card:hover {
+  border-color: rgba(134, 243, 183, 0.4);
+  transform: translateY(-2px);
+}
+.dev-home-catena .ch-team-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+.dev-home-catena .ch-team-card-index {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  color: var(--ch-fg-accent);
+  opacity: 0.6;
+}
+.dev-home-catena .ch-team-card-id {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.dev-home-catena .ch-team-card-name {
+  font-family: var(--ch-font-display);
+  font-weight: 500;
+  font-size: 1.5rem;
+  line-height: 1.1;
+  color: var(--ch-fg-display);
+  letter-spacing: 0.005em;
+}
+.dev-home-catena .ch-team-card-role {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.6875rem;
+  color: var(--ch-fg-subdued);
+}
+.dev-home-catena .ch-team-card-bio {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--ch-fg-muted);
+}
+
+/* ---------- Hero text resize for very small screens ---------- */
+@media (max-width: 640px) {
+  .dev-home-catena .ch-hero-about .ch-display-wide {
+    font-size: 1.5rem;
+    line-height: 1.15;
+  }
+  .dev-home-catena .ch-hero-about .ch-lead {
+    font-size: 0.9375rem;
+    line-height: 1.5;
+  }
+}

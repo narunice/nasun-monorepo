@@ -1,7 +1,11 @@
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-import DevHomeOperationalSignalSection from "@/sections/dev/home/DevHomeOperationalSignalSection";
-import DevHomeTokenSection from "@/sections/dev/home/DevHomeTokenSection";
+import DevAboutHeroSection from "@/sections/dev/about/DevAboutHeroSection";
+import DevAboutGravitySection from "@/sections/dev/about/DevAboutGravitySection";
+import DevAboutNetworkSection from "@/sections/dev/about/DevAboutNetworkSection";
+import DevAboutGrantsSection from "@/sections/dev/about/DevAboutGrantsSection";
+import DevAboutTeamSection from "@/sections/dev/about/DevAboutTeamSection";
 import "@/sections/dev/home/dev-home.css";
+import "@/sections/dev/about/dev-about.css";
 
 export default function DevAboutPage() {
   const errorFallback = (
@@ -15,8 +19,11 @@ export default function DevAboutPage() {
   return (
     <main id="main-content" className="dev-home-catena" data-theme="dark">
       <ErrorBoundary fallback={errorFallback}>
-        <DevHomeOperationalSignalSection />
-        <DevHomeTokenSection />
+        <DevAboutHeroSection />
+        <DevAboutGravitySection />
+        <DevAboutNetworkSection />
+        <DevAboutGrantsSection />
+        <DevAboutTeamSection />
       </ErrorBoundary>
     </main>
   );
