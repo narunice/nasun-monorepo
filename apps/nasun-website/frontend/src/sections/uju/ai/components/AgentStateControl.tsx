@@ -12,12 +12,14 @@
  */
 
 import { useCallback, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSigner } from '@nasun/wallet';
 import { suiClient } from '@/lib/sui-client';
 import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useAgentState } from '../hooks/useAgentState';
 import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
 import { buildDeactivateAgentTransaction } from '../services/transactionBuilder';
+import type { AgentProfile } from '../hooks/useAgentProfiles';
 import type { TraderConfig } from '../types/trader';
 
 /** Drop the persistence-only fields before re-saving via the upsert API. */
@@ -38,6 +40,12 @@ interface AgentStateControlProps {
    *  when an on-chain profile is detected without a server-side vault row
    *  (the "orphaned" / interrupted-setup case). */
   profileId?: string | null;
+  /** On-chain AgentProfile.is_active (from useAgentProfiles). The chat-server
+   *  state endpoint cannot resolve is_active for an orphaned profile (no
+   *  vault row = no profile_id to query), so without this prop the UI cannot
+   *  detect the post-cleanup transition (on-chain flipped to false, but
+   *  chat-server keeps returning state='unknown'). */
+  onChainIsActive?: boolean | null;
 }
 
 export function AgentStateControl({
@@ -45,10 +53,12 @@ export function AgentStateControl({
   onCreateNewAgent,
   walletAddress = null,
   profileId = null,
+  onChainIsActive = null,
 }: AgentStateControlProps) {
   const { state, runtime, data, loading: stateLoading, error: stateError, invalidate } =
     useAgentState(agentAddress);
   const { config, save, loading: cfgLoading, error: cfgError } = useTraderConfig(agentAddress);
+  const queryClient = useQueryClient();
   const signer = useSigner();
   // Gate the post-kill CTA on the same alpha predicate the form-level
   // useCreateAgent and QuickstartView Register button use, so the killed
@@ -131,6 +141,19 @@ export function AgentStateControl({
         throw new Error(result.effects?.status?.error || 'Cleanup transaction failed');
       }
       await suiClient.waitForTransaction({ digest: result.digest });
+      // Eager-patch useAgentProfiles cache so isOrphaned flips off immediately
+      // instead of waiting 15s for the next poll. Without this the UI keeps
+      // showing the orange "Deactivate & start over" button after a successful
+      // cleanup; clicking it would call deactivate_agent again, which Move
+      // aborts with E_ALREADY_INACTIVE. Mirrors useCapability.revoke's
+      // cache-patch pattern (apps/.../hooks/useCapability.ts:191).
+      if (profileId && signer.address) {
+        queryClient.setQueryData<AgentProfile[]>(
+          ['nasun-ai', 'agentProfiles', signer.address],
+          (prev) =>
+            prev?.map((p) => (p.id === profileId ? { ...p, isActive: false } : p)) ?? prev,
+        );
+      }
       await invalidate();
     } catch (err) {
       setLocalError(err instanceof Error ? err.message : 'cleanup_failed');
@@ -138,7 +161,7 @@ export function AgentStateControl({
       cleanupInFlight.current = false;
       setPending(null);
     }
-  }, [profileId, signer, invalidate]);
+  }, [profileId, signer, invalidate, queryClient]);
 
   // Orphaned detection: chat-server returns state='unknown' for an agent
   // it has no record of (no agent_keys row), so it cannot resolve isActive
@@ -146,21 +169,42 @@ export function AgentStateControl({
   // which already confirmed the AgentProfile exists on chain and is owned
   // by the user — so an 'unknown'+no-vault combo is unambiguously the
   // "setup interrupted between on-chain create and vault upload" case.
-  // Treat as a dedicated state so the user gets a one-click cleanup path
-  // instead of a permanently-disabled Activate button.
-  const isOrphaned = state === 'unknown' && data?.vault.present === false && profileId !== null;
+  //
+  // After cleanup runs, on-chain is_active flips to false but chat-server
+  // STILL returns state='unknown' (no vault row was ever created, so it
+  // never gains the profile_id needed to call readAgentProfileIsActive).
+  // We gate orphan detection on onChainIsActive !== false so the post-
+  // cleanup transition reaches the killed state below without requiring
+  // a backend change.
+  const isOrphaned =
+    state === 'unknown' &&
+    data?.vault.present === false &&
+    profileId !== null &&
+    onChainIsActive !== false;
+
+  // The matching post-cleanup case: same 'unknown'+no-vault shape, but
+  // on-chain is_active just became false. Promote to 'killed' so the
+  // existing kill-state UI (with the alpha-gate-aware "Create new agent"
+  // CTA from a2e0344d) takes over.
+  const isStrandedCleaned =
+    state === 'unknown' &&
+    data?.vault.present === false &&
+    profileId !== null &&
+    onChainIsActive === false;
+
+  const effectiveState: typeof state = isStrandedCleaned ? 'killed' : state;
 
   const badgeClasses =
-    state === 'activated' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-    : state === 'paused' ? 'bg-amber-500/15 text-amber-200 border-amber-500/30'
-    : state === 'killed' ? 'bg-red-500/15 text-red-300 border-red-500/30'
+    effectiveState === 'activated' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    : effectiveState === 'paused' ? 'bg-amber-500/15 text-amber-200 border-amber-500/30'
+    : effectiveState === 'killed' ? 'bg-red-500/15 text-red-300 border-red-500/30'
     : isOrphaned ? 'bg-orange-500/15 text-orange-300 border-orange-500/30'
     : 'bg-uju-bg/40 text-uju-secondary border-uju-border/40';
 
   const badgeText =
-    state === 'activated' ? `Activated · ${runtime === 'running' ? 'Running' : 'Spawning'}`
-    : state === 'paused' ? 'Paused'
-    : state === 'killed' ? 'Killed'
+    effectiveState === 'activated' ? `Activated · ${runtime === 'running' ? 'Running' : 'Spawning'}`
+    : effectiveState === 'paused' ? 'Paused'
+    : effectiveState === 'killed' ? 'Killed'
     : isOrphaned ? 'Setup interrupted'
     : stateLoading ? 'Syncing…' : 'Unknown';
 
@@ -182,7 +226,7 @@ export function AgentStateControl({
           <span className="text-xs text-uju-secondary">on-chain sync pending…</span>
         )}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {state === 'activated' && (
+          {effectiveState === 'activated' && (
             <button
               type="button"
               onClick={() => void handlePause()}
@@ -192,7 +236,7 @@ export function AgentStateControl({
               {pending === 'pause' ? 'Pausing…' : 'Pause agent'}
             </button>
           )}
-          {state === 'paused' && (
+          {effectiveState === 'paused' && (
             <button
               type="button"
               onClick={() => void handleActivate()}
@@ -203,7 +247,7 @@ export function AgentStateControl({
               {pending === 'activate' ? 'Activating…' : 'Activate agent'}
             </button>
           )}
-          {state === 'killed' && (
+          {effectiveState === 'killed' && (
             <button
               type="button"
               onClick={() => onCreateNewAgent?.()}
@@ -214,7 +258,7 @@ export function AgentStateControl({
               Create new agent
             </button>
           )}
-          {state === 'unknown' && !isOrphaned && (
+          {effectiveState === 'unknown' && !isOrphaned && (
             <button
               type="button"
               onClick={() => void invalidate()}
@@ -242,11 +286,13 @@ export function AgentStateControl({
           {error}
         </div>
       )}
-      {state === 'killed' && (
+      {effectiveState === 'killed' && (
         <p className="text-xs text-uju-secondary">
           {createBlock.blocked && createBlock.message
             ? createBlock.message
-            : 'This agent is permanently killed. Create a new agent to use Nasun AI again.'}
+            : isStrandedCleaned
+              ? 'Stranded profile deactivated. Create a new agent to start fresh — make sure to complete BOTH signatures (on-chain create + vault upload).'
+              : 'This agent is permanently killed. Create a new agent to use Nasun AI again.'}
         </p>
       )}
       {isOrphaned && (

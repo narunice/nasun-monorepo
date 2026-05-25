@@ -29,9 +29,12 @@ interface SettingsTabProps {
   agent: AgentProfile;
   budget: BudgetInfo | null;
   walletAddress: string;
+  /** Forwarded to AgentStateControl so the killed-state CTA can route the
+   *  user into a fresh quickstart (post-cleanup or post-kill recovery). */
+  onShowRegister?: () => void;
 }
 
-export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) {
+export function SettingsTab({ agent, budget, walletAddress, onShowRegister }: SettingsTabProps) {
   const { config, source, error: configError, save, remove, refetch } = useTraderConfig(
     agent.agentAddress,
   );
@@ -153,6 +156,8 @@ export function SettingsTab({ agent, budget, walletAddress }: SettingsTabProps) 
           agentAddress={agent.agentAddress}
           walletAddress={walletAddress}
           profileId={agent.id}
+          onChainIsActive={agent.isActive}
+          onCreateNewAgent={onShowRegister}
         />
       </section>
 
