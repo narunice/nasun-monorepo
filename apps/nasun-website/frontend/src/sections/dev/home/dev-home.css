@@ -277,11 +277,21 @@
 .dev-home-catena .ch-rule-left  { border-left: 1px solid var(--ch-fg-accent); padding-left: 1.25rem; }
 .dev-home-catena .ch-rule-right { border-right: 1px solid var(--ch-fg-subdued); padding-right: 1.25rem; }
 
-/* ---------- Step card grid (Compounding Loop) ---------- */
+/* ---------- Step card grid (2026 chrome + spotlight) ---------- */
+@property --step-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
 .dev-home-catena .ch-step-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
+  /* Spotlight vars — written by useGridSpotlight on pointermove. */
+  --mx: -200px;
+  --my: -200px;
+  --in: 0;
 }
 @media (min-width: 640px) {
   .dev-home-catena .ch-step-grid { grid-template-columns: repeat(2, 1fr); }
@@ -294,8 +304,12 @@
 }
 
 .dev-home-catena .ch-step-card {
-  background-color: var(--ch-bg-card);
-  border: 1px solid var(--ch-border);
+  --rx: 0deg;
+  --ry: 0deg;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 60%),
+    linear-gradient(180deg, rgba(15, 17, 19, 0.85) 0%, rgba(20, 22, 24, 0.88) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 1.25rem;
   padding: 1.5rem 1.4rem;
   display: flex;
@@ -305,18 +319,81 @@
   height: 100%;
   position: relative;
   overflow: hidden;
-  transition: border-color 320ms ease, transform 320ms ease, background-color 320ms ease;
+  isolation: isolate;
+  transform-style: preserve-3d;
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(0);
+  transition:
+    transform 380ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 320ms ease,
+    box-shadow 380ms ease;
 }
+
+/* Group spotlight layer (cursor follow over the grid). */
+.dev-home-catena .ch-step-card-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 0;
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    rgba(134, 243, 183, 0.12),
+    rgba(94, 225, 228, 0.04) 30%,
+    transparent 60%
+  );
+  opacity: var(--in, 0);
+  transition: opacity 320ms ease;
+}
+
+/* Conic gradient border halo — paused at idle, runs on hover. */
+.dev-home-catena .ch-step-card-halo {
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 1;
+  background: conic-gradient(
+    from var(--step-angle),
+    rgba(94, 225, 228, 0) 0deg,
+    rgba(134, 243, 183, 0.65) 40deg,
+    rgba(210, 246, 162, 0.45) 90deg,
+    rgba(94, 225, 228, 0) 160deg,
+    rgba(94, 225, 228, 0) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  opacity: 0;
+  animation: step-conic-spin 6s linear infinite;
+  animation-play-state: paused;
+  transition: opacity 320ms ease;
+}
+@keyframes step-conic-spin {
+  to { --step-angle: 360deg; }
+}
+
 .dev-home-catena .ch-step-card:hover {
-  border-color: rgba(134, 243, 183, 0.45);
-  background-color: rgba(35, 33, 36, 0.92);
-  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0);
+  transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) translateY(-3px);
+  box-shadow: 0 24px 60px -36px rgba(134, 243, 183, 0.4);
+}
+.dev-home-catena .ch-step-card:hover .ch-step-card-halo {
+  opacity: 1;
+  animation-play-state: running;
 }
 .dev-home-catena .ch-step-card-header {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  position: relative;
+  z-index: 2;
 }
+.dev-home-catena .ch-step-card-title,
+.dev-home-catena .ch-step-card-body,
+.dev-home-catena .ch-step-card-viz { position: relative; z-index: 2; }
 .dev-home-catena .ch-step-card-eyebrow {
   font-family: var(--ch-font-mono);
   font-weight: 500;
@@ -359,7 +436,13 @@
   border: 1px solid rgba(255, 255, 255, 0.04);
 }
 
-/* ----- Viz 01 — Act (radial ripple) ----- */
+/*
+ * Vizes are paused at idle (animation-play-state: paused) and play exactly
+ * one cycle on hover (or tap on touch, via [data-state="playing"] toggle).
+ * Idle = a calm, intentional end-frame.
+ */
+
+/* ----- Viz 01 — Act (radial ripple, one-shot) ----- */
 .dev-home-catena .ch-viz-act { position: relative; width: 100%; height: 100%; }
 .dev-home-catena .ch-viz-act .dot {
   position: absolute; top: 50%; left: 50%;
@@ -371,71 +454,72 @@
   position: absolute; top: 50%; left: 50%;
   width: 8px; height: 8px; margin: -4px 0 0 -4px;
   border-radius: 50%; border: 1px solid #86f3b7;
-  opacity: 0; animation: ch-ripple 3.2s ease-out infinite;
+  opacity: 0;
 }
-.dev-home-catena .ch-viz-act .ring:nth-child(2) { animation-delay: 1.07s; }
-.dev-home-catena .ch-viz-act .ring:nth-child(3) { animation-delay: 2.13s; }
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-act .ring {
+  animation: ch-ripple 2.2s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-act .ring:nth-child(2) { animation-delay: 0.25s; }
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-act .ring:nth-child(3) { animation-delay: 0.5s; }
 @keyframes ch-ripple {
   0%   { transform: scale(1); opacity: 0.85; }
-  100% { transform: scale(8); opacity: 0; }
+  100% { transform: scale(7); opacity: 0; }
 }
 
-/* ----- Viz 03 — Score (sparkline) ----- */
+/* ----- Viz 02 — Score (sparkline, etched at idle, draws on hover) ----- */
 .dev-home-catena .ch-viz-score { width: 100%; height: 100%; display: block; padding: 14px; }
 .dev-home-catena .ch-viz-score svg { width: 100%; height: 100%; overflow: visible; }
 .dev-home-catena .ch-viz-score .line {
-  stroke-dasharray: 240; stroke-dashoffset: 240;
-  animation: ch-draw 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  stroke-dasharray: 240;
+  stroke-dashoffset: 0; /* idle: fully drawn */
 }
-.dev-home-catena .ch-viz-score .fill {
-  opacity: 0;
-  animation: ch-fade 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.dev-home-catena .ch-viz-score .fill { opacity: 1; }
+.dev-home-catena .ch-viz-score .tip { opacity: 1; }
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-score .line {
+  animation: ch-draw 1.4s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
-.dev-home-catena .ch-viz-score .tip {
-  opacity: 0;
-  animation: ch-tip 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-score .tip {
+  animation: ch-tip-pulse 1.4s ease-out 1;
 }
 @keyframes ch-draw {
-  0%       { stroke-dashoffset: 240; }
-  40%, 88% { stroke-dashoffset: 0; }
-  100%     { stroke-dashoffset: 240; }
+  0%   { stroke-dashoffset: 240; }
+  100% { stroke-dashoffset: 0; }
 }
-@keyframes ch-fade {
-  0%, 15%  { opacity: 0; }
-  50%, 88% { opacity: 1; }
-  100%     { opacity: 0; }
-}
-@keyframes ch-tip {
-  0%, 38%  { opacity: 0; }
-  48%, 88% { opacity: 1; }
-  100%     { opacity: 0; }
+@keyframes ch-tip-pulse {
+  0%, 70% { transform: scale(1); }
+  85%     { transform: scale(1.5); filter: drop-shadow(0 0 8px rgba(210, 246, 162, 0.8)); }
+  100%    { transform: scale(1); }
 }
 
-/* ----- Viz: Bind (tier badge snaps onto tx) ----- */
+/* ----- Viz 03 — Bind (tier badge stamped, re-snaps on hover) ----- */
 .dev-home-catena .ch-viz-bind {
   width: 100%; height: 100%; display: flex;
   align-items: center; justify-content: center; padding: 12px;
 }
 .dev-home-catena .ch-viz-bind svg { width: 100%; height: 100%; overflow: visible; }
 .dev-home-catena .ch-viz-bind .tier-pill {
-  animation: ch-bind-snap 3.6s cubic-bezier(0.5, 1.4, 0.4, 1) infinite;
+  transform: translateX(0);
+  opacity: 1;
 }
-.dev-home-catena .ch-viz-bind .flash {
-  opacity: 0;
-  animation: ch-bind-flash 3.6s ease-out infinite;
+.dev-home-catena .ch-viz-bind .flash { opacity: 0; }
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-bind .tier-pill {
+  animation: ch-bind-snap 1.4s cubic-bezier(0.5, 1.4, 0.4, 1) 1;
+}
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-bind .flash {
+  animation: ch-bind-flash 1.4s ease-out 1;
 }
 @keyframes ch-bind-snap {
-  0%, 20%   { transform: translateX(28px); opacity: 0; }
-  45%       { transform: translateX(0); opacity: 1; }
-  85%, 100% { transform: translateX(0); opacity: 1; }
+  0%   { transform: translateX(28px); opacity: 0; }
+  60%  { transform: translateX(0); opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
 }
 @keyframes ch-bind-flash {
-  0%, 42%   { opacity: 0; }
-  48%       { opacity: 0.7; }
-  62%, 100% { opacity: 0; }
+  0%   { opacity: 0; }
+  35%  { opacity: 0.7; }
+  100% { opacity: 0; }
 }
 
-/* ----- Viz: Enforce (gate accept/reject) ----- */
+/* ----- Viz 04 — Enforce (gate, decisive one-shot pass + block) ----- */
 .dev-home-catena .ch-viz-enforce {
   width: 100%; height: 100%; padding: 0; position: relative; overflow: hidden;
 }
@@ -452,45 +536,52 @@
   position: absolute;
   width: 14px; height: 8px;
   border-radius: 2px;
+  opacity: 0;
 }
 .dev-home-catena .ch-viz-enforce .pass {
   top: 28%;
+  left: -10%;
   background: linear-gradient(90deg, #5ee1e4, #d2f6a2);
   box-shadow: 0 0 10px rgba(134, 243, 183, 0.6);
-  animation: ch-enforce-pass 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 .dev-home-catena .ch-viz-enforce .block {
   bottom: 28%;
+  left: -10%;
   background: rgba(255, 255, 255, 0.18);
-  animation: ch-enforce-block 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-enforce .pass {
+  animation: ch-enforce-pass 1.3s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+.dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-enforce .block {
+  animation: ch-enforce-block 1.3s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 @keyframes ch-enforce-pass {
   0%   { left: -10%; opacity: 0; }
   15%  { opacity: 1; }
   50%  { left: 50%; }
-  85%  { left: 110%; opacity: 1; }
+  90%  { left: 110%; opacity: 1; }
   100% { left: 110%; opacity: 0; }
 }
 @keyframes ch-enforce-block {
   0%   { left: -10%; opacity: 0; }
-  15%  { opacity: 1; }
-  45%  { left: 38%; }
-  60%  { left: 38%; opacity: 1; }
-  85%  { left: -10%; opacity: 0.2; }
+  20%  { opacity: 1; }
+  50%  { left: 38%; opacity: 1; }
+  70%  { left: 38%; opacity: 1; }
   100% { left: -10%; opacity: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dev-home-catena .ch-viz-act .ring,
   .dev-home-catena .ch-viz-score .line,
-  .dev-home-catena .ch-viz-score .fill,
   .dev-home-catena .ch-viz-score .tip,
   .dev-home-catena .ch-viz-bind .tier-pill,
   .dev-home-catena .ch-viz-bind .flash,
   .dev-home-catena .ch-viz-enforce .pass,
-  .dev-home-catena .ch-viz-enforce .block {
-    animation: none;
+  .dev-home-catena .ch-viz-enforce .block,
+  .dev-home-catena .ch-step-card-halo {
+    animation: none !important;
   }
+  .dev-home-catena .ch-step-card { transform: none !important; }
 }
 
 /* ----- Closing assertions (counter-positioning + agent inheritance) ----- */

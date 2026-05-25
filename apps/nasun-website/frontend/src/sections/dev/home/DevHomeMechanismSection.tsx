@@ -1,6 +1,9 @@
-import type { ReactNode } from "react";
+import type { PointerEvent as RPointerEvent, ReactNode } from "react";
+import { useCallback, useRef } from "react";
 import ChSection from "./ChSection";
 import FadeInUp from "./FadeInUp";
+import { useGridSpotlight } from "../_shared/useGridSpotlight";
+import { useRevealReplay } from "../_shared/useRevealReplay";
 
 type Step = {
   index: string;
@@ -9,6 +12,12 @@ type Step = {
   body: ReactNode;
   viz: ReactNode;
 };
+
+/* ------------------------------------------------------------------ */
+/* Vizes — replay once on reveal/hover (no infinite loops).           */
+/* Animation keyframes live in dev-home.css and are gated by the      */
+/* card's `:hover` / `[data-state="playing"]` state.                  */
+/* ------------------------------------------------------------------ */
 
 function VizExecute() {
   return (
@@ -129,7 +138,8 @@ const STEPS: Step[] = [
     index: "02",
     eyebrow: "Index",
     title: "Underwrite",
-    body: "The runtime captures every settlement receipt and compounds the outcome into NSI. Quests do not.",
+    body:
+      "The runtime captures every settlement receipt and compounds the outcome into NSI. Quests do not.",
     viz: <VizUnderwrite />,
   },
   {
@@ -148,7 +158,42 @@ const STEPS: Step[] = [
   },
 ];
 
+function useCardTilt() {
+  const onMove = useCallback((e: RPointerEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    const rx = (0.5 - y) * 4;
+    const ry = (x - 0.5) * 4;
+    el.style.setProperty("--rx", `${rx}deg`);
+    el.style.setProperty("--ry", `${ry}deg`);
+  }, []);
+  const onLeave = useCallback((e: RPointerEvent<HTMLElement>) => {
+    e.currentTarget.style.setProperty("--rx", "0deg");
+    e.currentTarget.style.setProperty("--ry", "0deg");
+  }, []);
+  return { onMove, onLeave };
+}
+
 export default function DevHomeMechanismSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
+  useRevealReplay(gridRef);
+  const tilt = useCardTilt();
+  const lastTap = useRef(0);
+
+  const onCardPointerDown = useCallback((e: RPointerEvent<HTMLElement>) => {
+    if (e.pointerType !== "touch") return;
+    const now = performance.now();
+    if (now - lastTap.current < 400) return;
+    lastTap.current = now;
+    const el = e.currentTarget;
+    el.dataset.state = "playing";
+    window.setTimeout(() => {
+      el.dataset.state = "done";
+    }, 900);
+  }, []);
+
   return (
     <ChSection>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
@@ -161,10 +206,19 @@ export default function DevHomeMechanismSection() {
         </p>
       </FadeInUp>
 
-      <div className="ch-step-grid">
+      <div ref={gridRef} className="ch-step-grid">
         {STEPS.map((s, i) => (
           <FadeInUp key={s.index} delayMs={120 + i * 90}>
-            <article className="ch-step-card">
+            <article
+              className="ch-step-card"
+              data-spotlight-card=""
+              data-state="idle"
+              onPointerMove={tilt.onMove}
+              onPointerLeave={tilt.onLeave}
+              onPointerDown={onCardPointerDown}
+            >
+              <span className="ch-step-card-halo" aria-hidden="true" />
+              <span className="ch-step-card-glow" aria-hidden="true" />
               <header className="ch-step-card-header">
                 <span className="ch-step-card-eyebrow">{s.eyebrow}</span>
                 <span className="ch-step-card-num">{s.index}</span>
