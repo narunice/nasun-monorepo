@@ -3,7 +3,7 @@ import FadeInUp from "./FadeInUp";
 
 export default function DevHomeEcosystemSection() {
   return (
-    <ChSection>
+    <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-center text-center">
         <span className="ch-eyebrow">05 / Live on Devnet</span>
         <h2 className="ch-display">
@@ -48,7 +48,7 @@ export default function DevHomeEcosystemSection() {
               href="https://pado.finance"
               target="_blank"
               rel="noopener noreferrer"
-              className="ch-btn ch-btn-lg ch-btn-primary"
+              className="ch-btn ch-btn-lg ch-btn-primary ch-btn-invert"
             >
               Visit Pado
             </a>
@@ -101,7 +101,7 @@ export default function DevHomeEcosystemSection() {
               href="https://gostop.app"
               target="_blank"
               rel="noopener noreferrer"
-              className="ch-btn ch-btn-lg ch-btn-primary"
+              className="ch-btn ch-btn-lg ch-btn-primary ch-btn-invert"
             >
               Visit GoStop
             </a>

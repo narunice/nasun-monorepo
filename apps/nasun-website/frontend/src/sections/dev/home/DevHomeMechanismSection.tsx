@@ -195,7 +195,7 @@ export default function DevHomeMechanismSection() {
   }, []);
 
   return (
-    <ChSection>
+    <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow">03 / Enforcement</span>
         <h2 className="ch-display">

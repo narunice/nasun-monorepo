@@ -83,7 +83,7 @@ export default function DevAboutGrantsSection() {
   );
 
   return (
-    <ChSection innerClassName="ch-about-grants">
+    <ChSection innerClassName="ch-about-grants" fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow ch-eyebrow-cyan">03 / Recognition</span>
         <h2 className="ch-display">Awards &amp; Grants</h2>
