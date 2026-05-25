@@ -3,7 +3,7 @@ import FadeInUp from "./FadeInUp";
 
 export default function DevHomeAuthoritySection() {
   return (
-    <ChSection>
+    <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow">02 / Thesis</span>
         <h2 className="ch-display">

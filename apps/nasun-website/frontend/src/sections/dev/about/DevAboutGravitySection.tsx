@@ -139,7 +139,7 @@ export default function DevAboutGravitySection() {
   }, []);
 
   return (
-    <ChSection innerClassName="ch-about-gravity">
+    <ChSection innerClassName="ch-about-gravity" fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow ch-eyebrow-cyan">01 / Gravity</span>
         <h2 className="ch-display" style={{ maxWidth: "940px" }}>

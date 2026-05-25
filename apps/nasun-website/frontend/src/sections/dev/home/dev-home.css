@@ -171,7 +171,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  font-size: 0.75rem;
+  font-size: 0.875rem;
 }
 
 .dev-home-catena .ch-accent { color: var(--ch-fg-accent); }
@@ -205,20 +205,55 @@
   white-space: nowrap;
 }
 .dev-home-catena .ch-btn-lg {
-  padding: 0.5rem 1.75rem;
+  padding: 0.375rem 1.75rem;
   font-size: 0.875rem;
 }
 .dev-home-catena .ch-btn-sm {
-  padding: 0.3125rem 1rem;
+  padding: 0.25rem 1rem;
   font-size: 0.75rem;
 }
+
+/* Primary button — solid mint at rest. Hover wipes a white fill in along the
+   bottom-right → top-left diagonal. Single-direction, single-property motion. */
 .dev-home-catena .ch-btn-primary {
-  background-color: var(--ch-bg-inverted);
-  color: var(--ch-fg-inverted);
-}
-.dev-home-catena .ch-btn-primary:hover {
-  background-color: var(--ch-fg-accent);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background-color: #86f3b7;
   color: var(--ch-onyx);
+}
+.dev-home-catena .ch-btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-color: #ffffff;
+  /* Triangle collapsed at the bottom-right corner — zero white showing. */
+  clip-path: polygon(100% 100%, 100% 100%, 100% 100%);
+  transition: clip-path 0.28s cubic-bezier(0.65, 0, 0.35, 1);
+}
+.dev-home-catena .ch-btn-primary:hover::before {
+  /* Triangle expanded so the button is fully covered, and the leading edge
+     of the wipe is a diagonal line sweeping from bottom-right → top-left. */
+  clip-path: polygon(-100% 100%, 100% -100%, 100% 100%);
+}
+.dev-home-catena .ch-btn-primary:active {
+  transform: scale(0.98);
+  transition-duration: 0.12s;
+}
+
+/* Inverted variant — white at rest, mint wipes in on hover.
+   Same diagonal wipe mechanism, color roles swapped. */
+.dev-home-catena .ch-btn-primary.ch-btn-invert {
+  background-color: #ffffff;
+}
+.dev-home-catena .ch-btn-primary.ch-btn-invert::before {
+  background-color: #86f3b7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena .ch-btn-primary::before {
+    transition: none;
+  }
 }
 .dev-home-catena .ch-btn-ghost {
   background-color: transparent;
@@ -531,43 +566,51 @@
   background-repeat: repeat-y;
   opacity: 0.65;
 }
+/* Idle: pass particle rests at the right (passed through), block particle
+   rests at the gate (was stopped). Hover replays the journey — each
+   particle exits, reappears from the left, travels, and returns to rest. */
 .dev-home-catena .ch-viz-enforce .pass,
 .dev-home-catena .ch-viz-enforce .block {
   position: absolute;
-  width: 14px; height: 8px;
-  border-radius: 2px;
-  opacity: 0;
+  width: 18px; height: 10px;
+  border-radius: 3px;
 }
 .dev-home-catena .ch-viz-enforce .pass {
   top: 28%;
-  left: -10%;
+  left: 86%;
+  opacity: 1;
   background: linear-gradient(90deg, #5ee1e4, #d2f6a2);
-  box-shadow: 0 0 10px rgba(134, 243, 183, 0.6);
+  box-shadow: 0 0 12px rgba(134, 243, 183, 0.75);
 }
 .dev-home-catena .ch-viz-enforce .block {
   bottom: 28%;
-  left: -10%;
-  background: rgba(255, 255, 255, 0.18);
+  left: 38%;
+  opacity: 0.85;
+  background: rgba(255, 255, 255, 0.35);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
 }
 .dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-enforce .pass {
-  animation: ch-enforce-pass 1.3s cubic-bezier(0.4, 0, 0.2, 1) 1;
+  animation: ch-enforce-pass 1.6s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 .dev-home-catena .ch-step-card:where(:hover, [data-state="playing"]) .ch-viz-enforce .block {
-  animation: ch-enforce-block 1.3s cubic-bezier(0.4, 0, 0.2, 1) 1;
+  animation: ch-enforce-block 1.6s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 @keyframes ch-enforce-pass {
-  0%   { left: -10%; opacity: 0; }
-  15%  { opacity: 1; }
-  50%  { left: 50%; }
-  90%  { left: 110%; opacity: 1; }
-  100% { left: 110%; opacity: 0; }
+  0%   { left: 86%;  opacity: 1; }
+  8%   { left: 110%; opacity: 0; }   /* exits to the right */
+  18%  { left: -10%; opacity: 0; }   /* wraps invisibly to the left */
+  26%  { left: -2%;  opacity: 1; }   /* fades in at the left edge */
+  60%  { left: 50%;  opacity: 1; }   /* through the gate */
+  100% { left: 86%;  opacity: 1; }   /* settles back at the rest position */
 }
 @keyframes ch-enforce-block {
-  0%   { left: -10%; opacity: 0; }
-  20%  { opacity: 1; }
-  50%  { left: 38%; opacity: 1; }
-  70%  { left: 38%; opacity: 1; }
-  100% { left: -10%; opacity: 0; }
+  0%   { left: 38%;  opacity: 0.85; }
+  10%  { left: 38%;  opacity: 0; }   /* dissolves at the gate */
+  20%  { left: -10%; opacity: 0; }   /* wraps invisibly to the left */
+  28%  { left: -2%;  opacity: 1; }   /* fades in at the left edge */
+  72%  { left: 40%;  opacity: 1; transform: translateX(0) scale(1); }
+  82%  { left: 38%;  opacity: 1; transform: translateX(-2px) scale(0.95); }
+  100% { left: 38%;  opacity: 0.85; transform: translateX(0) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -606,7 +649,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.22em;
-  font-size: 0.6875rem;
+  font-size: 0.875rem;
   color: var(--ch-fg-accent);
 }
 .dev-home-catena .ch-closing-title {

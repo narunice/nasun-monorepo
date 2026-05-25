@@ -52,9 +52,12 @@ export default function Footer() {
 
   const isHomePage = location.pathname === "/";
   const isUjuPage = location.pathname === "/uju" || location.pathname.startsWith("/uju/") || location.pathname === "/my-account" || location.pathname.startsWith("/my-account/");
+  // /dev/home and /dev/about use the catena dark theme with --ch-onyx (#151316)
+  // as the page background. Keep the footer aligned to avoid a visible seam.
+  const isDevCatenaPage = location.pathname === "/dev/home" || location.pathname === "/dev/about";
 
   return (
-    <div className={isUjuPage ? "bg-uju-bg" : isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
+    <div className={isUjuPage ? "bg-uju-bg" : isDevCatenaPage ? "bg-[#151316]" : isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>
