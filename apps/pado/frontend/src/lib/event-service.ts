@@ -185,7 +185,7 @@ export class EventService {
       // Test query to check if events API works
       await client.queryEvents({
         query: {
-          MoveEventType: `${deepbookPackage}::pool::OrderFilled`,
+          MoveEventType: `${deepbookPackage}::order_info::OrderFilled`,
         },
         limit: 1,
       });
@@ -252,7 +252,7 @@ export class EventService {
     try {
       const result = await client.queryEvents({
         query: {
-          MoveEventType: `${deepbookPackage}::pool::OrderFilled`,
+          MoveEventType: `${deepbookPackage}::order_info::OrderFilled`,
         },
         cursor: this.pollingCursor as { txDigest: string; eventSeq: string } | undefined,
         limit: MAX_EVENTS_PER_POLL,
