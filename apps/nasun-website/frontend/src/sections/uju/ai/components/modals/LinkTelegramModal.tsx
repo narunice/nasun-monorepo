@@ -60,10 +60,23 @@ export function LinkTelegramModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleClose = useCallback(() => {
+  // Fire onLinked the moment the deep link is generated, not just on
+  // close. The Quickstart wizard uses this signal to mark the TG step
+  // done and persist tgLinkedFlag to localStorage. If the user opens
+  // the TG deep link and never returns to this tab (the happy path in
+  // the new wizard order), the parent's completion state is still
+  // captured so a later visit re-renders the 🎉 screen instead of
+  // stranding them on a dead modal.
+  useEffect(() => {
     if (status === 'success' && onLinked) onLinked();
+    // onLinked is intentionally omitted from deps: callers pass a fresh
+    // closure each render and we want exactly one fire per session.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
+
+  const handleClose = useCallback(() => {
     onClose();
-  }, [status, onLinked, onClose]);
+  }, [onClose]);
 
   useEffect(() => {
     const onKey = (e: globalThis.KeyboardEvent) => {
