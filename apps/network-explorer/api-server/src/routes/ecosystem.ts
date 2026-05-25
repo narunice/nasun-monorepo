@@ -1100,9 +1100,11 @@ app.get('/leaderboard', async (c) => {
     return c.json({ error: 'invalid_week_id' }, 400);
   }
 
+  // Past weeks are settled. Long TTL absorbs multi-week scrape bursts that
+  // would otherwise trigger an expensive 7-CTE scan every 5 min per weekId.
   const getScoredLeaderboard = cached(
     `eco-leaderboard-${weekId}`,
-    5 * 60 * 1000,
+    weekId === getCurrentWeekId() ? 5 * 60 * 1000 : 60 * 60 * 1000,
     async () => {
       // Excluded from activity diversity score:
       //   - system-generated: referral-bonus, daily-mission, ecosystem-passive, staking-daily, staking, staking-reward
