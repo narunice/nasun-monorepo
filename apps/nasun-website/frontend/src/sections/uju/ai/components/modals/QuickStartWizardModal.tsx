@@ -10,8 +10,16 @@
  * Reuses existing form components where possible:
  *   - Step 2: Step2FundBody (from QuickstartView)  -> handled inline below
  *   - Step 3: TraderConfigForm                     -> existing component
- *   - Step 4: LinkTelegramModal                    -> child modal trigger
- *   - Step 5: ActivateAgentModal                   -> child modal trigger
+ *   - Step 4: ActivateAgentModal                   -> child modal trigger
+ *   - Step 5: Server ready (passive heartbeat wait, auto-advances)
+ *   - Step 6: LinkTelegramModal                    -> child modal trigger
+ *
+ * Step order rationale: Activate runs before Telegram so the agent process
+ * is already alive on chat-server by the time the user opens the TG deep
+ * link. They can chat in TG directly without bouncing back to the website
+ * for one more wallet signature. If they do come back, tgLinkedFlag is
+ * persisted in localStorage so the wizard re-renders the completion
+ * screen instead of stranding them mid-flow.
  *
  * Resume: the only persisted state is the freshly-created agent address.
  * Closing the wizard mid-flow loses local state, but the user's chain
@@ -56,6 +64,31 @@ function writeTgLinked(wallet: string, agent: string): void {
     localStorage.setItem(tgLinkedKey(wallet, agent), '1');
   } catch {
     // private window or storage quota — best effort.
+  }
+}
+
+// TG is optional. "Skip for now" lets the user terminate the wizard
+// without pretending the link was actually performed. We persist a
+// separate skipped flag so reopening the wizard for the same agent
+// honors that choice (no nag screen) while leaving tgLinkedFlag
+// honestly false for downstream consumers (Setup guide on
+// QuickstartView still shows Link Telegram as incomplete).
+function tgSkippedKey(wallet: string, agent: string): string {
+  return `nasun-ai-quickstart-tg-skipped:${wallet.toLowerCase()}:${agent.toLowerCase()}`;
+}
+function readTgSkipped(wallet: string, agent: string | null): boolean {
+  if (!agent) return false;
+  try {
+    return localStorage.getItem(tgSkippedKey(wallet, agent)) === '1';
+  } catch {
+    return false;
+  }
+}
+function writeTgSkipped(wallet: string, agent: string): void {
+  try {
+    localStorage.setItem(tgSkippedKey(wallet, agent), '1');
+  } catch {
+    // best effort.
   }
 }
 
@@ -217,9 +250,14 @@ export function QuickStartWizardModal({
     !!budgets && !!wizardAgent && budgets.some((b) => b.agent === wizardAgent.address);
   const hasPolicy = !!traderConfig;
   const [tgLinkedFlag, setTgLinkedFlag] = useState(false);
+  const [tgSkippedFlag, setTgSkippedFlag] = useState(false);
   useEffect(() => {
     setTgLinkedFlag(readTgLinked(walletAddress, wizardAgent?.address ?? null));
+    setTgSkippedFlag(readTgSkipped(walletAddress, wizardAgent?.address ?? null));
   }, [walletAddress, wizardAgent?.address]);
+  // TG step counts as done when the user either linked their account OR
+  // explicitly skipped. Either branch terminates the wizard gracefully.
+  const tgStepDone = tgLinkedFlag || tgSkippedFlag;
 
   // Step 5/6 split: 'Activate' is the user-initiated upload (ActivateAgentModal
   // -> vault upload -> chain authorize -> enable=true save). 'Server ready'
@@ -241,13 +279,20 @@ export function QuickStartWizardModal({
   const activated = activationSubmittedFlag || vaultLanded;
   const serverReady = vaultStatus.state === 'active';
 
+  // Step order (2026-05-25): Activate + Server ready run BEFORE Telegram so
+  // the chat-server agent process is already heartbeating when the user
+  // opens the TG deep link. This collapses the "go to TG → come back for
+  // one more sig" round trip into a single forward path. Reopen-from-TG
+  // is handled by the tgLinkedFlag/tgSkippedFlag localStorage gates above:
+  // if either is true on remount, activeIdx === -1 and the completion
+  // screen renders directly.
   const done: boolean[] = [
     !!wizardAgent,
     hasBudget,
     hasPolicy,
-    tgLinkedFlag,
     activated,
     serverReady,
+    tgStepDone,
   ];
   const activeIdx = done.findIndex((v) => !v); // -1 when every step is done
 
@@ -269,9 +314,9 @@ export function QuickStartWizardModal({
     'Create agent',
     'Fund agent',
     'Set policy',
-    'Link Telegram',
     'Activate',
     'Server ready',
+    'Link Telegram',
   ];
   const currentStepLabel = stepLabels[activeIdx];
 
@@ -439,27 +484,38 @@ export function QuickStartWizardModal({
           )}
 
           {activeIdx === 3 && wizardAgent && (
-            <Step4TelegramTrigger
-              onOpenLinkModal={() => setTgChildOpen(true)}
-            />
-          )}
-
-          {activeIdx === 4 && wizardAgent && (
-            <Step5ActivateTrigger
+            <Step4ActivateTrigger
               onOpenActivateModal={() => setActivateChildOpen(true)}
             />
           )}
 
+          {activeIdx === 4 && wizardAgent && (
+            <Step5ServerReady vaultState={vaultStatus.state} />
+          )}
+
           {activeIdx === 5 && wizardAgent && (
-            <Step6ServerReady vaultState={vaultStatus.state} />
+            <Step6TelegramTrigger
+              onOpenLinkModal={() => setTgChildOpen(true)}
+              onSkip={() => {
+                writeTgSkipped(walletAddress, wizardAgent.address);
+                setTgSkippedFlag(true);
+              }}
+            />
           )}
 
           {activeIdx === -1 && (
             <div className="text-center py-6 space-y-3">
               <div className="text-2xl">🎉</div>
               <p className="text-sm text-white font-medium">
-                Agent online. Trading starts within ~5 minutes.
+                {tgLinkedFlag
+                  ? 'Agent online. Continue the conversation in Telegram.'
+                  : 'Agent online. Trading starts within ~5 minutes.'}
               </p>
+              {tgLinkedFlag && (
+                <p className="text-xs text-uju-secondary">
+                  You can reopen the deep link any time from the agent's Settings tab.
+                </p>
+              )}
               <button
                 type="button"
                 onClick={onClose}
@@ -755,37 +811,12 @@ function Step3PolicyInline({
 }
 
 // =========================================================================
-// Step 4 — Telegram. Single CTA opens the existing LinkTelegramModal.
-// =========================================================================
-
-function Step4TelegramTrigger({
-  onOpenLinkModal,
-}: {
-  onOpenLinkModal: () => void;
-}) {
-  return (
-    <div className="space-y-3">
-      <p className="text-sm text-uju-secondary">
-        Receive alerts and confirm trades from your phone.
-      </p>
-      <button
-        type="button"
-        onClick={onOpenLinkModal}
-        className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
-      >
-        Link Telegram
-      </button>
-    </div>
-  );
-}
-
-// =========================================================================
-// Step 5 — Activate. Single CTA opens the existing ActivateAgentModal,
+// Step 4 — Activate. Single CTA opens the existing ActivateAgentModal,
 // which decrypts + uploads + on-chain authorizes in one wallet flow.
-// The follow-up "is the server actually running it" check lives in Step 6.
+// The follow-up "is the server actually running it" check lives in Step 5.
 // =========================================================================
 
-function Step5ActivateTrigger({
+function Step4ActivateTrigger({
   onOpenActivateModal,
 }: {
   onOpenActivateModal: () => void;
@@ -807,13 +838,14 @@ function Step5ActivateTrigger({
 }
 
 // =========================================================================
-// Step 6 — Server ready. Passive wait: poll vault status until the chat-
+// Step 5 — Server ready. Passive wait: poll vault status until the chat-
 // server confirms the spawned PM2 process is sending heartbeats. No CTA,
 // so a second click cannot trigger a duplicate vault upload during the
-// spawn-to-heartbeat gap.
+// spawn-to-heartbeat gap. Auto-advances to Step 6 (Telegram) once the
+// heartbeat lands.
 // =========================================================================
 
-function Step6ServerReady({
+function Step5ServerReady({
   vaultState,
 }: {
   vaultState: 'active' | 'inactive' | 'grace' | 'not_vaulted';
@@ -845,6 +877,52 @@ function Step6ServerReady({
       <p className="text-xs text-uju-secondary">{subline}</p>
       <p className="text-xs text-uju-secondary/70">
         Usually under 60 seconds. You can close this; the agent will continue starting and you can check status in Settings.
+      </p>
+    </div>
+  );
+}
+
+// =========================================================================
+// Step 6 — Telegram. Final, optional step. Agent is already heartbeating
+// at this point, so once the user opens the deep link they can chat in
+// TG immediately without coming back for another wallet signature. The
+// "Skip for now" path terminates the wizard gracefully without lying
+// about TG linkage. If the user does return to the website after using
+// TG, tgLinkedFlag is set on LinkTelegramModal close and the wizard
+// re-renders the completion screen on next mount.
+// =========================================================================
+
+function Step6TelegramTrigger({
+  onOpenLinkModal,
+  onSkip,
+}: {
+  onOpenLinkModal: () => void;
+  onSkip: () => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-white font-medium">Your agent is live.</p>
+      <p className="text-sm text-uju-secondary">
+        Link Telegram now and the next message you send goes straight to your agent. You can keep chatting in Telegram without coming back here.
+      </p>
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenLinkModal}
+          className="px-3 py-2 text-sm font-medium rounded-lg bg-pado-2 text-uju-bg hover:bg-pado-3 transition-colors"
+        >
+          Link Telegram
+        </button>
+        <button
+          type="button"
+          onClick={onSkip}
+          className="px-3 py-2 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
+        >
+          Skip for now
+        </button>
+      </div>
+      <p className="text-xs text-uju-secondary/70">
+        You can link Telegram later from the agent's Settings tab.
       </p>
     </div>
   );
