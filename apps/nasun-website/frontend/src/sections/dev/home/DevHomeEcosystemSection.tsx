@@ -72,7 +72,7 @@ export default function DevHomeEcosystemSection() {
               style={{
                 fontFamily: '"Playfair Display", Georgia, serif',
                 backgroundImage:
-                  "linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #8a6b1d 100%)",
+                  "linear-gradient(135deg, #fff8dc 0%, #f5e08a 30%, #d4af37 65%, #6b5214 100%)",
               }}
             >
               GoStop
