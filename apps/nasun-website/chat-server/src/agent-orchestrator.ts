@@ -114,6 +114,26 @@ interface TraderConfigJson {
  * agents vs. chat-server itself. Already-shared secrets (HMAC, JWT,
  * RPC_URL) are inherited under their canonical names with no prefix.
  */
+// 2026-05-25 incident: a single hard-coded EXECUTOR_ADDRESS meant every
+// spawned agent routed every AER+swap PTB to the same on-chain executor,
+// which drained that one wallet's gas while three sibling executors sat at
+// ~10-37k NSN unused. The Lambda's heartbeat fix (139b1fa2) only resolves
+// "all 4 dormant" — it doesn't load-balance picks. Splitting the env var
+// into a comma list and choosing one per spawn distributes traffic across
+// the executor pool. Random (not RR-counter) so we don't need persistent
+// orchestrator state, and spawn churn is low enough that uniform random
+// converges to even distribution quickly.
+function pickExecutorAddress(): string {
+  const raw = process.env.AGENT_GLOBAL_EXECUTOR_ADDRESS
+              ?? process.env.EXECUTOR_ADDRESS
+              ?? '';
+  const list = raw.split(',').map((s) => s.trim()).filter(Boolean);
+  if (list.length === 0) {
+    throw new Error('missing_global_trader_env:AGENT_GLOBAL_EXECUTOR_ADDRESS');
+  }
+  return list[Math.floor(Math.random() * list.length)];
+}
+
 function globalTraderEnv(): NodeJS.ProcessEnv {
   const pick = (name: string, opts: { required: boolean } = { required: true }): string => {
     const val = process.env[`AGENT_GLOBAL_${name}`] ?? process.env[name] ?? '';
@@ -127,7 +147,7 @@ function globalTraderEnv(): NodeJS.ProcessEnv {
     BARAM_REGISTRY_ID:    pick('BARAM_REGISTRY_ID'),
     BARAM_AER_PACKAGE_ID: pick('BARAM_AER_PACKAGE_ID'),
     BARAM_API_KEY:        pick('BARAM_API_KEY'),
-    EXECUTOR_ADDRESS:     pick('EXECUTOR_ADDRESS'),
+    EXECUTOR_ADDRESS:     pickExecutorAddress(),
     HOST_URL:             pick('HOST_URL'),
     COIN_NBTC_TYPE:       pick('COIN_NBTC_TYPE'),
     COIN_NUSDC_TYPE:      pick('COIN_NUSDC_TYPE'),
