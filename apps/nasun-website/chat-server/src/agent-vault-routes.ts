@@ -431,6 +431,25 @@ export async function handleVaultUpload(
           ).run(agentAddress, ownerWallet, capabilityId, paramName, pm2Name, wakePort, now, expiresAt, profileId);
         }
 
+        // Stamp slot_exempt=1 on the new row when guard granted exemption
+        // because the wallet is exempt (santa/admin). Without this, the
+        // next kill of this agent would drop the wallet out of the exempt
+        // set (lookupExemptWallets requires a deleted_at IS NULL row) and
+        // re-create the "Public alpha is full" lockout that hit admin
+        // after Jason Bourne was killed (2026-05-25). Wrapped in try/catch
+        // so pre-migration DBs that lack the column don't crash the upload.
+        if (guard.slotExempt) {
+          try {
+            getDb()
+              .prepare(`UPDATE agent_keys SET slot_exempt = 1 WHERE agent_address = ?`)
+              .run(agentAddress);
+          } catch (err) {
+            console.warn(
+              `[vault-upload] slot_exempt stamp skipped for ${agentAddress}: ${(err as Error).message}`,
+            );
+          }
+        }
+
         // Spawn PM2. Failure here should not orphan the SSM parameter — leave it
         // (status endpoint will show 'inactive') and surface the error to the
         // caller so they can retry.

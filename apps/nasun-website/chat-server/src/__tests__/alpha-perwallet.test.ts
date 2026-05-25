@@ -22,6 +22,10 @@ import {
   countMyActiveAgents,
   getPerWalletCap,
   isAlphaGateEnabled,
+  enforceAlphaGuards,
+  lookupExemptWallets,
+  withSlotReservation,
+  GuardError,
 } from '../alpha-guards.js';
 
 // === fixtures ===
@@ -472,6 +476,66 @@ describe('/alpha/status — perWallet field', () => {
       const res = new MockRes();
       await handleAlphaRequest(req as any, res as any, url, {});
       expect(res.statusCode).toBe(405);
+    });
+
+    it('wallet-level exempt fallback — admin creating a NEW agent_address bypasses system cap', () => {
+      // Regression for the 2026-05-25 admin lockout: admin had one
+      // slot_exempt=1 row (Jason Bourne). After killing every active agent,
+      // a brand-new agent_address was being checked with
+      // `lookupSlotExempt(agentAddress)` which returns false for any row
+      // not yet inserted. The new wallet-level fallback rescues admin.
+      applyAlphaMigration();
+      // Seed an existing slot_exempt=1 row for the wallet (Jason Bourne analog).
+      seedAgent({ agent: AGENT_EXEMPT, wallet: WALLET_EXEMPT, exempt: true });
+
+      // Brand-new agent address that does NOT exist in agent_keys.
+      const freshAgent = '0x' + 'f'.repeat(64);
+      const ctx = enforceAlphaGuards(WALLET_EXEMPT, freshAgent);
+      expect(ctx.slotExempt).toBe(true);
+    });
+
+    it('wallet-level exempt fallback is wallet-scoped — a different wallet does NOT inherit', () => {
+      applyAlphaMigration();
+      seedAgent({ agent: AGENT_EXEMPT, wallet: WALLET_EXEMPT, exempt: true });
+
+      const freshAgent = '0x' + 'f'.repeat(64);
+      // WALLET_A has no slot_exempt row, so it must fall through to the
+      // waitlist/per-wallet checks — and with no invite present, throw.
+      expect(() => enforceAlphaGuards(WALLET_A, freshAgent)).toThrow(GuardError);
+    });
+
+    it('wallet-level exempt requires deleted_at IS NULL — soft-deleted exempt row does NOT grant bypass', () => {
+      applyAlphaMigration();
+      // This is the precise pre-fix lockout shape: only slot_exempt row is
+      // deleted. With the wallet-level fallback the wallet is no longer in
+      // the exempt set, and a fresh agent_address falls through to the
+      // (missing) waitlist + per-wallet checks.
+      seedAgent({ agent: AGENT_EXEMPT, wallet: WALLET_EXEMPT, exempt: true, deleted: true });
+
+      expect(lookupExemptWallets().has(WALLET_EXEMPT.toLowerCase())).toBe(false);
+      const freshAgent = '0x' + 'f'.repeat(64);
+      expect(() => enforceAlphaGuards(WALLET_EXEMPT, freshAgent)).toThrow(GuardError);
+    });
+
+    it('withSlotReservation honors wallet-level slotExempt — exempt wallet bypasses system cap', async () => {
+      applyAlphaMigration();
+      // Cap=1, already at cap with one non-exempt active agent.
+      const originalCap = process.env.NASUN_AI_ALPHA_SYSTEM_CAP;
+      process.env.NASUN_AI_ALPHA_SYSTEM_CAP = '1';
+      try {
+        seedAgent({ agent: AGENT_1, wallet: WALLET_A }); // counts toward cap
+        // Non-exempt new agent: should be rejected.
+        await expect(
+          withSlotReservation(false, async () => 'ok'),
+        ).rejects.toThrow(/alpha_full/);
+        // Exempt new agent: should succeed even though we are at cap.
+        await expect(
+          withSlotReservation(true, async () => 'ok'),
+        ).resolves.toBe('ok');
+      } finally {
+        if (originalCap === undefined) delete process.env.NASUN_AI_ALPHA_SYSTEM_CAP;
+        else process.env.NASUN_AI_ALPHA_SYSTEM_CAP = originalCap;
+      }
     });
 
     it('unknown subpath on the alpha namespace → 404, not a misrouted status', async () => {

@@ -140,6 +140,39 @@ function lookupSlotExempt(agentAddress: string): boolean {
   return row?.slot_exempt === 1;
 }
 
+/**
+ * Wallet-level exempt set. Returns wallets that own at least one active
+ * `slot_exempt=1` row in agent_keys (santa / admin).
+ *
+ * Used by `enforceAlphaGuards` so a brand-new agent_address being created
+ * by an exempt wallet bypasses the system cap. Without this fallback, the
+ * exempt wallet would lose its bypass the moment its only slot_exempt row
+ * is killed, because the new agent_address isn't in agent_keys yet
+ * (`lookupSlotExempt` returns false on a never-inserted row).
+ *
+ * Pre-migration DB (no slot_exempt column) returns an empty set so no
+ * wallet is silently granted bypass before the migration is applied.
+ */
+export function lookupExemptWallets(): Set<string> {
+  try {
+    const rows = getDb()
+      .prepare(
+        `SELECT wallet_address FROM agent_keys
+          WHERE slot_exempt = 1 AND deleted_at IS NULL`,
+      )
+      .all() as Array<{ wallet_address: string }>;
+    return new Set(rows.map((r) => r.wallet_address.toLowerCase()));
+  } catch (err) {
+    // Pre-migration DBs (no slot_exempt column) are the expected hit;
+    // other errors (lock, corruption, future schema drift) would silently
+    // lock every exempt wallet out of agent creation. Surface them at
+    // warn so the incident is visible in chat-server logs rather than
+    // diagnosed via user reports (cf. feedback_warn_on_empty_critical_cache.md).
+    console.warn(`[alpha-guards] lookupExemptWallets failed: ${(err as Error).message}`);
+    return new Set();
+  }
+}
+
 /** Counts agent_keys that occupy a cap slot. Excludes santa + paused + soft-deleted. */
 export function countActiveAgents(): number {
   const row = getDb()
@@ -243,7 +276,9 @@ export interface GuardContext {
  *
  * Order matters:
  *   0. flag check — escape hatch
- *   1. slot_exempt — santa bypass
+ *   1a. agent-level slot_exempt — restore-after-purge of an exempt row
+ *   1b. wallet-level exempt — santa/admin creating a NEW agent_address
+ *       (the new row isn't in agent_keys yet, so 1a always misses)
  *   2. waitlist 'invited' — Genesis Pass + queue gating already passed
  *      at /alpha/join, so this is a fast SQL check
  *   3. per-wallet cap — protects against a single Genesis Pass holder
@@ -260,8 +295,19 @@ export function enforceAlphaGuards(
     // Pre-launch: every callsite continues to work without alpha gating.
     return { slotExempt: false };
   }
-  const slotExempt = lookupSlotExempt(agentAddress);
-  if (slotExempt) return { slotExempt: true };
+  // Agent-level: the (existing) agent_address is already marked exempt.
+  // Hit on the restore-after-purge path where the same agent_address is
+  // re-uploaded after a soft-delete.
+  if (lookupSlotExempt(agentAddress)) return { slotExempt: true };
+
+  // Wallet-level: santa/admin wallet creating a fresh agent_address. The
+  // new row isn't in agent_keys yet so agent-level lookup misses; we
+  // recognize the wallet via its OTHER active slot_exempt rows and grant
+  // bypass. The caller is expected to stamp slot_exempt=1 on the new row
+  // (see handleVaultUpload) so the exempt status survives the next kill.
+  if (lookupExemptWallets().has(walletAddress.toLowerCase())) {
+    return { slotExempt: true };
+  }
 
   const invite = lookupInvited(walletAddress);
   if (!invite) {
