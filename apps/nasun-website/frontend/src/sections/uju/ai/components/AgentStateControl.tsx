@@ -14,6 +14,7 @@
 import { useCallback, useState } from 'react';
 import { useTraderConfig } from '../hooks/useTraderConfig';
 import { useAgentState } from '../hooks/useAgentState';
+import { useCreateAgentBlocked } from '../alpha/useCreateAgentBlocked';
 import type { TraderConfig } from '../types/trader';
 
 /** Drop the persistence-only fields before re-saving via the upsert API. */
@@ -28,15 +29,24 @@ interface AgentStateControlProps {
   agentAddress: string;
   /** Optional: where the "Create new agent" CTA should route after killed. */
   onCreateNewAgent?: () => void;
+  /** Owner wallet, used to query the alpha gate state for the killed-CTA. */
+  walletAddress?: string | null;
 }
 
 export function AgentStateControl({
   agentAddress,
   onCreateNewAgent,
+  walletAddress = null,
 }: AgentStateControlProps) {
   const { state, runtime, data, loading: stateLoading, error: stateError, invalidate } =
     useAgentState(agentAddress);
   const { config, save, loading: cfgLoading, error: cfgError } = useTraderConfig(agentAddress);
+  // Gate the post-kill CTA on the same alpha predicate the form-level
+  // useCreateAgent and QuickstartView Register button use, so the killed
+  // state doesn't dangle a "Create new agent" affordance that immediately
+  // bounces off the alpha waitlist (2026-05-25 incident: killed users saw
+  // an enabled CTA but were silently parked at queue position #57).
+  const createBlock = useCreateAgentBlocked(walletAddress);
   const [pending, setPending] = useState<'pause' | 'activate' | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
@@ -129,7 +139,8 @@ export function AgentStateControl({
             <button
               type="button"
               onClick={() => onCreateNewAgent?.()}
-              disabled={!onCreateNewAgent}
+              disabled={!onCreateNewAgent || createBlock.blocked}
+              title={createBlock.blocked && createBlock.message ? createBlock.message : undefined}
               className="rounded-lg border border-uju-border/60 px-3 py-1.5 text-sm text-uju-secondary hover:bg-uju-bg/60 disabled:opacity-50"
             >
               Create new agent
@@ -154,7 +165,9 @@ export function AgentStateControl({
       )}
       {state === 'killed' && (
         <p className="text-xs text-uju-secondary">
-          This agent is permanently killed. Create a new agent to use Nasun AI again.
+          {createBlock.blocked && createBlock.message
+            ? createBlock.message
+            : 'This agent is permanently killed. Create a new agent to use Nasun AI again.'}
         </p>
       )}
     </div>
