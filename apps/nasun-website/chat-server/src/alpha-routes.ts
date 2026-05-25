@@ -41,6 +41,7 @@ import {
   getAgentTtlMs,
   getPerWalletCap,
   countMyActiveAgents,
+  lookupExemptWallets,
 } from './alpha-guards.js';
 import { processQueueTick } from './alpha-cron.js';
 
@@ -259,22 +260,10 @@ setInterval(() => {
 // captured at chat-server boot from agent_keys; we reject any /alpha/join
 // signed by that wallet at the route boundary so a misuse can't dirty the
 // waitlist with an exempt row.
-
-function lookupExemptWallets(): Set<string> {
-  const schema = probeSchema();
-  if (!schema.hasSlotExempt) return new Set();
-  try {
-    const rows = getDb()
-      .prepare(
-        `SELECT wallet_address FROM agent_keys
-          WHERE slot_exempt = 1 AND deleted_at IS NULL`,
-      )
-      .all() as Array<{ wallet_address: string }>;
-    return new Set(rows.map((r) => r.wallet_address.toLowerCase()));
-  } catch {
-    return new Set();
-  }
-}
+//
+// `lookupExemptWallets` lives in alpha-guards.ts and is imported above —
+// shared between the route layer (waitlist filtering, status response) and
+// the gate layer (system-cap bypass for new agent creation).
 
 // === Challenge handler ===
 //
