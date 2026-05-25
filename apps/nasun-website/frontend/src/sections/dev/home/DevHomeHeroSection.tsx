@@ -1,6 +1,19 @@
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/features/auth/hooks/useAuth";
 import FadeInUp from "./FadeInUp";
 
 export default function DevHomeHeroSection() {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+
+  const handleOpenApp = () => {
+    if (isAuthenticated) {
+      navigate("/my-account");
+    } else {
+      window.dispatchEvent(new CustomEvent("nasun:open-login"));
+    }
+  };
+
   return (
     <section className="ch-hero">
       <video
@@ -28,14 +41,13 @@ export default function DevHomeHeroSection() {
             earns agents capital authority across applications.
           </p>
           <div className="flex flex-wrap gap-3 justify-end md:justify-start mt-6">
-            <a
-              href="https://app.nasun.io"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={handleOpenApp}
               className="ch-btn ch-btn-lg ch-btn-primary"
             >
               Open App
-            </a>
+            </button>
           </div>
         </FadeInUp>
       </div>

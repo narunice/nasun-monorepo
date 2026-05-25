@@ -8,7 +8,6 @@ type Step = {
   title: string;
   body: ReactNode;
   viz: ReactNode;
-  primary?: boolean;
 };
 
 function VizExecute() {
@@ -69,7 +68,7 @@ function VizBind() {
         <rect
           x="18"
           y="20"
-          width="52"
+          width="44"
           height="22"
           rx="3"
           fill="rgba(255,255,255,0.05)"
@@ -77,19 +76,19 @@ function VizBind() {
           strokeWidth="1"
         />
         <text
-          x="44"
+          x="40"
           y="35"
           textAnchor="middle"
           fill="rgba(255,255,255,0.6)"
           fontFamily="var(--ch-font-mono)"
           fontSize="9"
-          letterSpacing="2"
+          letterSpacing="1"
         >
           tx
         </text>
-        <rect className="flash" x="74" y="22" width="32" height="18" rx="9" fill="rgba(134,243,183,0.35)" />
+        <rect className="flash" x="66" y="22" width="48" height="18" rx="9" fill="rgba(134,243,183,0.35)" />
         <g className="tier-pill">
-          <rect x="74" y="22" width="32" height="18" rx="9" fill="url(#ch-bind-grad)" />
+          <rect x="66" y="22" width="48" height="18" rx="9" fill="url(#ch-bind-grad)" />
           <text
             x="90"
             y="35"
@@ -98,9 +97,9 @@ function VizBind() {
             fontFamily="var(--ch-font-mono)"
             fontSize="10"
             fontWeight="600"
-            letterSpacing="1.5"
+            letterSpacing="0.5"
           >
-            T3
+            Tier3
           </text>
         </g>
       </svg>
@@ -165,9 +164,7 @@ export default function DevHomeMechanismSection() {
       <div className="ch-step-grid">
         {STEPS.map((s, i) => (
           <FadeInUp key={s.index} delayMs={120 + i * 90}>
-            <article
-              className={`ch-step-card${s.primary ? " ch-step-card--primary" : ""}`}
-            >
+            <article className="ch-step-card">
               <header className="ch-step-card-header">
                 <span className="ch-step-card-eyebrow">{s.eyebrow}</span>
                 <span className="ch-step-card-num">{s.index}</span>

@@ -52,6 +52,7 @@
   --ch-fg-default: var(--ch-milk);
   --ch-fg-inverted: var(--ch-onyx);
   --ch-fg-accent: #86f3b7; /* pado-4 mint */
+  --ch-accent-cyan: #5ee1e4;
   --ch-fg-muted: rgba(249, 249, 249, 0.85);
   --ch-fg-subdued: rgba(249, 249, 249, 0.6);
   --ch-fg-faint: rgba(249, 249, 249, 0.3);
@@ -67,6 +68,7 @@
   --ch-fg-default: var(--ch-onyx);
   --ch-fg-inverted: var(--ch-milk);
   --ch-fg-accent: #1a8cbc; /* pado-1 blue (readable on cream) */
+  --ch-accent-cyan: #1a8cbc;
   --ch-fg-muted: rgba(21, 19, 22, 0.75);
   --ch-fg-subdued: rgba(21, 19, 22, 0.55);
   --ch-fg-faint: rgba(21, 19, 22, 0.22);
@@ -310,18 +312,6 @@
   background-color: rgba(35, 33, 36, 0.92);
   transform: translateY(-2px);
 }
-.dev-home-catena .ch-step-card--primary {
-  border-color: rgba(134, 243, 183, 0.55);
-  background:
-    linear-gradient(180deg, rgba(134, 243, 183, 0.05), transparent 60%),
-    var(--ch-bg-card);
-  box-shadow:
-    inset 0 0 0 1px rgba(134, 243, 183, 0.08),
-    0 0 32px -16px rgba(134, 243, 183, 0.4);
-}
-.dev-home-catena .ch-step-card--primary:hover {
-  border-color: rgba(134, 243, 183, 0.75);
-}
 .dev-home-catena .ch-step-card-header {
   display: flex;
   justify-content: space-between;
@@ -390,35 +380,6 @@
   100% { transform: scale(8); opacity: 0; }
 }
 
-/* ----- Viz 02 — Record (sequential bars) ----- */
-.dev-home-catena .ch-viz-record {
-  display: flex; flex-direction: column; justify-content: center;
-  gap: 9px; padding: 0 22px; width: 100%; height: 100%;
-}
-.dev-home-catena .ch-viz-record .bar {
-  height: 5px; background: rgba(94, 225, 228, 0.14);
-  border-radius: 999px; position: relative; overflow: hidden;
-}
-.dev-home-catena .ch-viz-record .bar::after {
-  content: ""; position: absolute; inset: 0;
-  background: linear-gradient(90deg, #5ee1e4, #d2f6a2);
-  transform-origin: left; transform: scaleX(0);
-  animation: ch-bar-fill 5.6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.dev-home-catena .ch-viz-record .bar:nth-child(1) { width: 70%; }
-.dev-home-catena .ch-viz-record .bar:nth-child(1)::after { animation-delay: 0s; }
-.dev-home-catena .ch-viz-record .bar:nth-child(2) { width: 92%; }
-.dev-home-catena .ch-viz-record .bar:nth-child(2)::after { animation-delay: 0.35s; }
-.dev-home-catena .ch-viz-record .bar:nth-child(3) { width: 56%; }
-.dev-home-catena .ch-viz-record .bar:nth-child(3)::after { animation-delay: 0.7s; }
-.dev-home-catena .ch-viz-record .bar:nth-child(4) { width: 80%; }
-.dev-home-catena .ch-viz-record .bar:nth-child(4)::after { animation-delay: 1.05s; }
-@keyframes ch-bar-fill {
-  0%        { transform: scaleX(0); }
-  35%, 75%  { transform: scaleX(1); }
-  92%, 100% { transform: scaleX(0); }
-}
-
 /* ----- Viz 03 — Score (sparkline) ----- */
 .dev-home-catena .ch-viz-score { width: 100%; height: 100%; display: block; padding: 14px; }
 .dev-home-catena .ch-viz-score svg { width: 100%; height: 100%; overflow: visible; }
@@ -448,109 +409,6 @@
   0%, 38%  { opacity: 0; }
   48%, 88% { opacity: 1; }
   100%     { opacity: 0; }
-}
-
-/* ----- Viz 04 — Tier (rising bars) ----- */
-.dev-home-catena .ch-viz-tier {
-  display: flex; align-items: flex-end; justify-content: center;
-  gap: 14px; height: 100%; padding: 12px 18px 10px;
-}
-.dev-home-catena .ch-viz-tier .tier-col {
-  display: flex; flex-direction: column; align-items: center; gap: 6px;
-  height: 100%; justify-content: flex-end;
-}
-.dev-home-catena .ch-viz-tier .tier-bar {
-  width: 20px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 3px 3px 0 0;
-  position: relative; overflow: hidden;
-}
-.dev-home-catena .ch-viz-tier .tier-bar > span {
-  position: absolute; inset: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06));
-  transform-origin: bottom; transform: scaleY(0);
-  animation: ch-tier-rise 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.dev-home-catena .ch-viz-tier .tier-bar.active > span {
-  background: linear-gradient(180deg, #d2f6a2 0%, #5ee1e4 100%);
-  box-shadow: 0 0 14px rgba(134, 243, 183, 0.55);
-}
-.dev-home-catena .ch-viz-tier .tier-col:nth-child(1) .tier-bar > span { animation-delay: 0s; }
-.dev-home-catena .ch-viz-tier .tier-col:nth-child(2) .tier-bar > span { animation-delay: 0.3s; }
-.dev-home-catena .ch-viz-tier .tier-col:nth-child(3) .tier-bar > span { animation-delay: 0.6s; }
-.dev-home-catena .ch-viz-tier .tier-label {
-  font-family: var(--ch-font-mono);
-  font-size: 0.625rem; letter-spacing: 0.18em;
-  color: var(--ch-fg-subdued);
-}
-@keyframes ch-tier-rise {
-  0%        { transform: scaleY(0); }
-  38%, 82%  { transform: scaleY(1); }
-  100%      { transform: scaleY(0); }
-}
-
-/* ----- Viz 05 — Unlock (padlock + keyhole pulse) ----- */
-.dev-home-catena .ch-viz-unlock {
-  width: 100%; height: 100%; padding: 14px;
-  display: flex; align-items: center; justify-content: center;
-}
-.dev-home-catena .ch-viz-unlock svg { width: auto; height: 100%; overflow: visible; }
-.dev-home-catena .ch-viz-unlock .shackle {
-  transform-origin: 14px 30px;
-  animation: ch-unlock-shackle 4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.dev-home-catena .ch-viz-unlock .keyhole {
-  transform-origin: center;
-  animation: ch-unlock-pulse 4s ease-in-out infinite;
-}
-.dev-home-catena .ch-viz-unlock .glow {
-  opacity: 0;
-  animation: ch-unlock-glow 4s ease-in-out infinite;
-}
-@keyframes ch-unlock-shackle {
-  0%, 30%  { transform: translate(0, 0) rotate(0); }
-  55%, 82% { transform: translate(-2px, -6px) rotate(-12deg); }
-  100%     { transform: translate(0, 0) rotate(0); }
-}
-@keyframes ch-unlock-pulse {
-  0%, 40%, 100% { opacity: 0.5; transform: scale(1); }
-  60%, 82%      { opacity: 1; transform: scale(1.12); }
-}
-@keyframes ch-unlock-glow {
-  0%, 40%, 100% { opacity: 0; }
-  62%, 82%      { opacity: 0.6; }
-}
-
-/* ----- Viz: Verify (receipt + check stamp) ----- */
-.dev-home-catena .ch-viz-verify {
-  width: 100%; height: 100%; display: flex;
-  align-items: center; justify-content: center; padding: 12px;
-}
-.dev-home-catena .ch-viz-verify svg { width: auto; height: 100%; overflow: visible; }
-.dev-home-catena .ch-viz-verify .frame {
-  stroke-dasharray: 220; stroke-dashoffset: 220;
-  animation: ch-draw 4.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.dev-home-catena .ch-viz-verify .row {
-  opacity: 0;
-  animation: ch-verify-rows 4.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.dev-home-catena .ch-viz-verify .row:nth-of-type(1) { animation-delay: 0.9s; }
-.dev-home-catena .ch-viz-verify .row:nth-of-type(2) { animation-delay: 1.1s; }
-.dev-home-catena .ch-viz-verify .row:nth-of-type(3) { animation-delay: 1.3s; }
-.dev-home-catena .ch-viz-verify .check {
-  opacity: 0; transform-origin: center;
-  animation: ch-verify-check 4.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-@keyframes ch-verify-rows {
-  0%, 18%   { opacity: 0; }
-  35%, 92%  { opacity: 1; }
-  100%      { opacity: 0; }
-}
-@keyframes ch-verify-check {
-  0%, 45%   { opacity: 0; transform: scale(0.7); }
-  60%, 92%  { opacity: 1; transform: scale(1); }
-  100%      { opacity: 0; transform: scale(0.7); }
 }
 
 /* ----- Viz: Bind (tier badge snaps onto tx) ----- */
@@ -624,9 +482,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .dev-home-catena .ch-viz-act .ring,
-  .dev-home-catena .ch-viz-verify .frame,
-  .dev-home-catena .ch-viz-verify .row,
-  .dev-home-catena .ch-viz-verify .check,
   .dev-home-catena .ch-viz-score .line,
   .dev-home-catena .ch-viz-score .fill,
   .dev-home-catena .ch-viz-score .tip,
