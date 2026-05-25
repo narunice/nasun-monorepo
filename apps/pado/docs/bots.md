@@ -56,6 +56,53 @@ actual TreasuryCap types if the wiring is wrong. Do not bypass it.
 | Liquidation Keeper | `bots/liquidation-keeper.ts` | Perpetual position monitoring -> Liquidation trigger below MM(2.5%), 5% bonus collection (10s interval) |
 | TP/SL Keeper | `bots/tpsl-keeper.ts` | Take-profit/Stop-loss order monitoring -> Auto-close position on price trigger (HTTP + WS, port 4001) |
 
+## Prediction Market Resolvers
+
+`bots/prediction-keeper.ts` dispatches to a per-kind resolver based on the
+`Kind:` line in `resolution_criteria`. Each resolver returns `resolved` or
+`pending`; `pending` past `resolve_deadline + EXPIRE_GRACE_MS` triggers the
+permissionless `cancel_expired_market` (full refund).
+
+| Kind | File | Data source | Notes |
+|------|------|-------------|-------|
+| `crypto` | `prediction-criteria.ts` (legacy path) | Binance + CoinGecko fallback | Price comparison |
+| `stock` | `lib/stock-price.ts` | Twelve Data + Yahoo cross-check | Stalls if `TWELVEDATA_API_KEY` missing |
+| `space` | `lib/resolvers/space.ts` | The Space Devs (Launch Library 2) | |
+| `music` | `lib/resolvers/music.ts` | iTunes | |
+| `sports` | `lib/resolvers/sports.ts` | TheSportsDB | Score-based finalCache invariant (Freiburg 2026-05-20) |
+| `weather` | `lib/resolvers/weather.ts` | Open-Meteo | |
+| `ufc` | `lib/resolvers/ufc.ts` | ESPN core API (MMA) | Single-fight winner; pending on NC/Draw |
+| `esports` | `lib/resolvers/esports.ts` | lolesports getSchedule (public x-api-key constant) | LCK series-level home_win. `state=completed` + empty `flags` + stability window + gameWins majority cross-check |
+
+### lolesports observed flags
+
+`match.flags` carries both benign post-game metadata and abnormal markers.
+`esports.ts` resolves only when every flag is on the `BENIGN_FLAGS` allowlist;
+an unknown entry holds the market pending so `cancel_expired_market` refunds
+at the deadline. As new flags surface in production, classify them here AND
+in `BENIGN_FLAGS` (lower-case) inside `lib/resolvers/esports.ts`.
+
+| Observed `flags` value | Verdict | Notes |
+|------------------------|---------|-------|
+| `hasVod` | benign | Stamped on every normal completion once the VOD is published. Live LCK data 2026-05-25. |
+| `hasHighlights` | benign | Pre-classified by analogy with `hasVod`. Not yet observed on LCK at allowlist time; remove if it turns out to mean something else. |
+
+The public x-api-key constant lives in `lib/resolvers/esports.ts`; if Riot
+rotates it, override via `LOLESPORTS_API_KEY`. The key can be extracted from
+lolesports.com browser devtools (network tab, any persisted/gw call).
+
+### Batch creator scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/create-ufc-batch.ts` | UFC fight cards (ESPN pre-flight, on-chain create) |
+| `scripts/create-lck-batch.ts` | LCK series (lolesports pre-flight, on-chain create) |
+| `scripts/create-sports-batch.ts` / `create-soccer-batch-*.ts` / etc. | Other sport / category batches |
+
+Run with `--dry-run` first; the script aborts before touching the chain if
+pre-flight verification (team/fighter id mismatch, TBD teams, wrong bestOf)
+fails.
+
 ## Support Libraries (`bots/lib/`)
 
 - `config.ts` - Multi-market pool/order/spread config (NBTC, NETH, NSOL), contract addresses

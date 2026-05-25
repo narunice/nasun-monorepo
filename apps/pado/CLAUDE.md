@@ -82,6 +82,7 @@ cd apps/pado/frontend && pnpm test:coverage
 2. **TP/SL keeper 주소 invariant**: prod keeper=`0x74a7daf4...`. `VITE_TPSL_KEEPER_ADDRESS` ↔ `KEEPER_PRIVATE_KEY` pubkey 동기화 필수. 불일치 시 keeper가 사용자 주문을 보지 못함 (project_pado_tpsl_keeper_address.md).
 3. **envDir 패턴**: vite config에 `envDir: '../'` 적용. `.env.production`은 `apps/pado/`에 위치 (`apps/pado/frontend/.env` 아님). env 변경 시 빌드 후 [/env-verify](../../scripts/env-verify.sh)로 `VITE_*` embed 검증 필수.
 4. **Prediction-keeper 자동 정산 (stock markets)**: Twelve Data 1차 + Yahoo cross-check. `TWELVEDATA_API_KEY` 없으면 awaiting resolution이 deadline까지 stall (project_pado_prediction_keeper.md).
+11. **Prediction-keeper esports resolver (LCK)**: lolesports unofficial `getSchedule` API + 공개 x-api-key 상수. `ESPORTS_RESOLVER_DISABLED=true`로 kill switch. `state=completed` 단독으로 finalCache promote 금지 — stability window(default 10min) + gameWins majority cross-check 모두 통과 후에만. `match.flags`가 비어있지 않으면 forfeit/walkover 보수적 처리 (pending → `cancel_expired_market` 환불). 자세: [docs/bots.md](docs/bots.md#prediction-market-resolvers).
 5. **Sui SDK 버전 분리**: Frontend @mysten/sui 1.45.2, bots 1.21.1. 의도적 분리 (봇 안정성 vs frontend 최신 기능). 같이 올리지 말 것.
 6. **Keeper gas auto-refill**: `keeper-gas-watchdog` pm2 process가 1h마다 점검, threshold 미만이면 treasury에서 PTB 충전. 2026-04-29 operator gas 고갈 사고 후 도입 (project_keeper_gas_watchdog.md).
 7. **Turnstile 영구 제거 (2026-05-16)**: pado 채팅/idea-submission에서 CF Turnstile 완전 제거. 봇 방어는 banned list shadow-ban 단독 (project_chat_turnstile_removed.md).
