@@ -127,7 +127,7 @@ export function AgentsSidebar({
           disabled={createBlocked}
           title={
             createBlockedMessage ??
-            "Bring your own keypair or wallet address. Most users should use Quick Start instead."
+            "Bring your own keypair or wallet address. Most users should use Quickstart instead."
           }
           className="w-full px-3 py-2 text-sm font-medium rounded-md border border-uju-border/60 text-uju-secondary hover:text-white hover:border-pado-2 transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
