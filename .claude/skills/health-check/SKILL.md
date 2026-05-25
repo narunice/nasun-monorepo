@@ -25,7 +25,7 @@ description: |
 ### CloudFront
 | 도메인 | Distribution ID | Region | Origin | CustomErrorResp qty (expected) |
 |--------|----------------|--------|--------|--------------------------------|
-| nasun.io | E362CCGDH7WA7C | ap-northeast-2 | EC2 43.200.67.52 | 7 (403/404 SPA + 5xx pass-through, TTL=0) |
+| nasun.io | E362CCGDH7WA7C | ap-northeast-2 | EC2 43.200.67.52 | 5 (5xx pass-through only, TTL=0; 4xx는 origin pass-through 의도적, 2026-05-23 HANDOFF_cloudfront_error_response_fix 참조) |
 | explorer.nasun.io | E31QOCW4WNY9FL | ap-northeast-2 | EC2 43.200.67.52 | 11 (4xx/5xx pass-through, TTL=0) |
 | pado.finance | E35SWPQEJB8HHE | ap-northeast-2 | EC2 43.200.67.52 | 11 (4xx/5xx pass-through, TTL=0) |
 | gostop.app | EPRUC29V8YRN3 | **us-east-1** | S3 gostop-site-466841130170 | 11 (4xx SPA + 5xx pass-through, TTL=0) |
@@ -479,7 +479,7 @@ curl -sI -m 10 https://explorer.nasun.io/api/v1/health | grep -iE "^cache-contro
 
 ```bash
 declare -A EXPECTED_QTY=(
-  [E362CCGDH7WA7C]=7    # nasun.io
+  [E362CCGDH7WA7C]=5    # nasun.io (5xx only; 4xx pass-through 의도적, 2026-05-23 핸드오프)
   [E31QOCW4WNY9FL]=11   # explorer.nasun.io
   [E35SWPQEJB8HHE]=11   # pado.finance
 )
