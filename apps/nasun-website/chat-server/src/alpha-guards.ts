@@ -47,6 +47,22 @@ function claimWindowMs(): number {
   return Number.isFinite(n) && n > 0 ? n : 10 * 60 * 60 * 1000;
 }
 
+// Grace window for the killer's re-invite. Long enough that a user who
+// killed by mistake (or to rotate keys) can recreate before the slot is
+// re-issued to the next waiter; short enough that an abandoned kill does
+// not park a slot indefinitely. 24h matches the typical 36h session TTL
+// rhythm without doubling it.
+function killGraceMs(): number {
+  const raw = process.env.NASUN_AI_ALPHA_KILL_GRACE_MS;
+  if (raw === undefined || raw === '') return 24 * 60 * 60 * 1000;
+  const n = parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 24 * 60 * 60 * 1000;
+}
+
+export function getKillGraceMs(): number {
+  return killGraceMs();
+}
+
 const PER_WALLET_CAP = 1;
 
 export function getPerWalletCap(): number {
@@ -348,4 +364,62 @@ export function consumeWaitlistInvite(walletAddress: string): void {
   getDb()
     .prepare(`DELETE FROM alpha_waitlist WHERE wallet_address = ?`)
     .run(walletAddress.toLowerCase());
+}
+
+/**
+ * Re-grants the killing wallet a fresh 'invited' row so the user can
+ * recreate without falling to the back of a 60-deep queue. Without this,
+ * a kill (intentional rotation or accidental) silently disenfranchises an
+ * alpha tester who has already cleared the Genesis Pass + slot lottery
+ * gates — the next /alpha/status call returns state='none' and the
+ * Quick Start CTA is blocked.
+ *
+ * Counted against system cap via phaseInvite.countActiveAndPending, so
+ * processQueueTick (called immediately after handleVaultDelete) won't
+ * promote a new waiter into the slot we are reserving for the killer.
+ * After the grace window the invite expires through the normal
+ * phaseInviteExpire path (miss_count=0 → re-queue at tail, same as a
+ * regular missed claim).
+ *
+ * No-op when:
+ *   - the alpha gate is disabled (no waitlist concept)
+ *   - the wallet is slot_exempt (santa bypasses caps entirely)
+ *
+ * Always resets miss_count to 0: the user is voluntarily acting, not
+ * passively missing a window, so the next-miss-is-permanent state should
+ * not carry over from a prior expired invite.
+ */
+export function grantKillRecoveryInvite(walletAddress: string): void {
+  if (!isAlphaGateEnabled()) return;
+  const wallet = walletAddress.toLowerCase();
+  // Slot-exempt (santa / ops) wallets bypass the cap entirely; granting them
+  // a waitlist row would pollute the queue without giving them anything new.
+  // Filter without `deleted_at IS NULL` because this is called *after* the
+  // delete sets deleted_at — we want to know historical exemption, not the
+  // current active set.
+  try {
+    const row = getDb()
+      .prepare(
+        `SELECT 1 AS ok FROM agent_keys WHERE wallet_address = ? AND slot_exempt = 1 LIMIT 1`,
+      )
+      .get(wallet) as { ok: number } | undefined;
+    if (row) return;
+  } catch {
+    // slot_exempt column missing on pre-migrated DBs — fall through and
+    // grant the invite. Pre-migration environments have no waitlist
+    // semantics anyway, so the row is harmless.
+  }
+  const now = Date.now();
+  const expiresAt = now + killGraceMs();
+  getDb()
+    .prepare(
+      `INSERT INTO alpha_waitlist (wallet_address, status, joined_at, invited_at, invite_expires_at, miss_count)
+       VALUES (?, 'invited', ?, ?, ?, 0)
+       ON CONFLICT(wallet_address) DO UPDATE SET
+         status = 'invited',
+         invited_at = excluded.invited_at,
+         invite_expires_at = excluded.invite_expires_at,
+         miss_count = 0`,
+    )
+    .run(wallet, now, now, expiresAt);
 }
