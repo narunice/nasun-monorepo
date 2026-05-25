@@ -147,9 +147,15 @@ export function AgentStateControl({
       // cleanup; clicking it would call deactivate_agent again, which Move
       // aborts with E_ALREADY_INACTIVE. Mirrors useCapability.revoke's
       // cache-patch pattern (apps/.../hooks/useCapability.ts:191).
-      if (profileId && signer.address) {
+      //
+      // Key by walletAddress prop, not signer.address: useAgentProfiles is
+      // called with the prop in AgentDetail, so the cache entry lives under
+      // the prop's key. signer.address normally equals walletAddress, but
+      // a per-app wallet binding could in theory differ.
+      const cacheKeyAddr = walletAddress ?? signer.address;
+      if (profileId && cacheKeyAddr) {
         queryClient.setQueryData<AgentProfile[]>(
-          ['nasun-ai', 'agentProfiles', signer.address],
+          ['nasun-ai', 'agentProfiles', cacheKeyAddr],
           (prev) =>
             prev?.map((p) => (p.id === profileId ? { ...p, isActive: false } : p)) ?? prev,
         );
@@ -161,7 +167,7 @@ export function AgentStateControl({
       cleanupInFlight.current = false;
       setPending(null);
     }
-  }, [profileId, signer, invalidate, queryClient]);
+  }, [profileId, signer, invalidate, queryClient, walletAddress]);
 
   // Orphaned detection: chat-server returns state='unknown' for an agent
   // it has no record of (no agent_keys row), so it cannot resolve isActive
