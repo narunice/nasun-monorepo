@@ -161,5 +161,27 @@
     "adminCap": "0x6d95e0abd50784e01b106f86bfe5474a3a895059fb67d4c4a5147f03e694791c",
     "registry": "0xed64e2d9661dde6f6f6fb303680c4ab7c95f9070c41e967b746299610ca7b00f",
     "upgradeCap": "0x103f43fdbf88eed03aca3b1e775436a6960a0b707d30b870d0eab01b568160ec"
+  },
+  "nasunTier": {
+    "packageId": "0x1b1f684bbc6795461ad5fba6e13427ec8ccbf2921aaa555a15f4aac827f0f7b9",
+    "originalPackageId": "0x1b1f684bbc6795461ad5fba6e13427ec8ccbf2921aaa555a15f4aac827f0f7b9",
+    "registry": "0x9d67cc044e51e86173b001548f9e5df493c780d98bfb1d7e31f074b1fa0a86d0",
+    "adminCap": "0x7bec26415d0d9fc9752c5d8b306ce72c6b43161480367c3269cc00cc938d89f0",
+    "upgradeCap": "0x49d753bc3e0931c5b782d84779b0ae1885f0a8c3aaf0b63af197c2b098cde6d6",
+    "adminAddress": "0x1389169cabea702cd5616c68e6da26a4eb27364be76e292ef5fb0da1456e6e08",
+    "upgradeCapHolder": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90"
+  },
+  "nasunTreasury": {
+    "packageId": "0x617fac6bd099b4df07d6208eeec2f422ee2946d76868f9138584a404125d2269",
+    "originalPackageId": "0x617fac6bd099b4df07d6208eeec2f422ee2946d76868f9138584a404125d2269",
+    "adminCap": "0xa12b8b7ac14c578a8366040baf1534622336ec68842abe75f532eeac1611da87",
+    "upgradeCap": "0x9df19a6fa6606056228b34ec8809bcd520f40f92376dccf19c4fb1ad948a8932",
+    "adminAddress": "0x069691c6f416799237a0a1b50c761c84793fca677d2964f6bebeda81cdfb2403",
+    "upgradeCapHolder": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
+    "pools": {
+      "gostopLp": "",
+      "aiInference": "",
+      "stakingBoost": ""
+    }
   }
 }

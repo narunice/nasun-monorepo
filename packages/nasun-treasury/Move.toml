@@ -1,13 +1,14 @@
 [package]
 name = "nasun_treasury"
 edition = "2024"
-# published-at = "0x..."  # Phase 4 publish 후 추가
+version = "0.0.1"
+published-at = "0x617fac6bd099b4df07d6208eeec2f422ee2946d76868f9138584a404125d2269"
 
 [dependencies]
 # Sui and std are implicit system dependencies in the new package system
 
 [addresses]
-nasun_treasury = "0x0"
+nasun_treasury = "0x617fac6bd099b4df07d6208eeec2f422ee2946d76868f9138584a404125d2269"
 
 [environments]
 devnet = "272218f1"
