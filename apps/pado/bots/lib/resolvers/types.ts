@@ -26,7 +26,7 @@ export type ResolveResult =
 export const EXPIRE_GRACE_MS = 5 * 60_000;
 
 /** Identifier returned by `detectKind()` for dispatch. */
-export type ResolverKind = 'crypto' | 'stock' | 'space' | 'music' | 'sports' | 'weather' | 'ufc';
+export type ResolverKind = 'crypto' | 'stock' | 'space' | 'music' | 'sports' | 'weather' | 'ufc' | 'esports';
 
 /**
  * Detect resolver kind from a `Kind:` line in the resolution criteria.
@@ -37,7 +37,7 @@ export function detectKind(text: string): ResolverKind | null {
   const m = /^Kind:\s*([a-z]+)\s*$/im.exec(text);
   if (!m) return null;
   const kind = m[1].toLowerCase();
-  if (kind === 'crypto' || kind === 'stock' || kind === 'space' || kind === 'music' || kind === 'sports' || kind === 'weather' || kind === 'ufc') {
+  if (kind === 'crypto' || kind === 'stock' || kind === 'space' || kind === 'music' || kind === 'sports' || kind === 'weather' || kind === 'ufc' || kind === 'esports') {
     return kind;
   }
   return null;

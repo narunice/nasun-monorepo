@@ -67,6 +67,7 @@ import { parseMusicCriteria, resolveMusic, MusicParseError } from './lib/resolve
 import { parseSportsCriteria, resolveSports, SportsParseError } from './lib/resolvers/sports.js';
 import { parseWeatherCriteria, resolveWeather, WeatherParseError } from './lib/resolvers/weather.js';
 import { parseUfcCriteria, resolveUfc, UfcParseError } from './lib/resolvers/ufc.js';
+import { parseEsportsCriteria, resolveEsports, EsportsParseError } from './lib/resolvers/esports.js';
 
 // ========================================
 // Configuration
@@ -520,6 +521,10 @@ async function dispatchResolve(market: MarketLite, now: number): Promise<Resolve
     const criteria = parseUfcCriteria(text);
     return await resolveUfc(criteria, now);
   }
+  if (kind === 'esports') {
+    const criteria = parseEsportsCriteria(text);
+    return await resolveEsports(criteria, now);
+  }
 
   // Legacy path: crypto/stock via existing parseResolutionCriteria + evaluateOutcome.
   const legacy = parseResolutionCriteria(text);
@@ -693,7 +698,7 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] Pinned markets: ${pinnedMarkets.length > 0 ? pinnedMarkets.join(', ') : '(none)'}`);
   console.log(`[${timestamp()}] Tick interval: ${intervalMs}ms  Discover interval: ${discoverIntervalMs}ms`);
   console.log(`[${timestamp()}] DRY_RUN: ${DRY_RUN ? 'ENABLED (no on-chain writes)' : 'disabled (live)'}`);
-  console.log(`[${timestamp()}] Resolvers: space=${process.env.SPACE_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} music=${process.env.MUSIC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} sports=${process.env.SPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} weather=${process.env.WEATHER_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'}`);
+  console.log(`[${timestamp()}] Resolvers: space=${process.env.SPACE_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} music=${process.env.MUSIC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} sports=${process.env.SPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} weather=${process.env.WEATHER_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} ufc=${process.env.UFC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} esports=${process.env.ESPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'}`);
 
   // Initial market discovery.
   let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
