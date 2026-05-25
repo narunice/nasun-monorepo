@@ -58,5 +58,24 @@ module.exports = {
       instances: 1,
       autorestart: true,
     },
+    {
+      // Phase 4 D4: process-level isolation for off-chain -> on-chain
+      // TierRegistry sync. A signAndExecute hang or RPC blip here must
+      // not stall NSI compute (tier-worker) or HTTP traffic (explorer-api).
+      // Gated by ENABLE_TIER_PUSH so it stays dark until the operator opts in.
+      name: 'tier-push-worker',
+      script: 'node',
+      args: 'dist/workers/tier-push-worker.js',
+      env: {
+        NODE_ENV: 'production',
+        CHAIN_ID: '272218f1',
+        ...loadDotenv(),
+      },
+      max_memory_restart: '256M',
+      kill_timeout: 8000,
+      exec_mode: 'fork',
+      instances: 1,
+      autorestart: true,
+    },
   ],
 };
