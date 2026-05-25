@@ -127,6 +127,14 @@ async function runPush(): Promise<void> {
         throw new Error(`tx aborted: ${result.effects?.status?.error ?? 'unknown'}`);
       }
 
+      // TierAdminCap is an owned object. The next batch resolves its objectRef
+      // via getObject() against the fullnode; without waitForTransaction the
+      // subsequent batch can read the prior version and fail with
+      // "Object ... is not available for consumption, current version: ...".
+      // Wait for the fullnode to reach the new version before building the
+      // next PTB.
+      await client.waitForTransaction({ digest: result.digest });
+
       // Race-safe UPDATE: capture `tier` at SELECT time and require WHERE
       // tier = $captured. If nsi-compute mutated the tier between our
       // SELECT and UPDATE, the row simply re-enters the next cycle.
