@@ -116,7 +116,7 @@ export function QuickstartView({
        *  the primary CTA on this page. */}
       <div className="flex items-center justify-between gap-3 flex-wrap rounded-xl border border-pado-5/40 bg-gradient-to-br from-pado-5/10 via-pado-5/5 to-transparent px-4 py-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-pado-5">Quick Start</p>
+          <p className="text-sm font-semibold text-pado-5">Quickstart</p>
           <p className="text-xs text-uju-secondary">
             Create and configure an agent end-to-end in one flow.
           </p>
@@ -128,7 +128,7 @@ export function QuickstartView({
           title={createBlock.message ?? undefined}
           className="shrink-0 px-4 py-2 text-sm font-semibold rounded-lg bg-gradient-to-r from-pado-4 via-pado-5 to-pado-5 text-uju-bg hover:from-pado-5 hover:via-pado-5 hover:to-pado-4 transition-colors disabled:opacity-50 disabled:pointer-events-none"
         >
-          Quick Start New Agent
+          Quickstart New Agent
         </button>
       </div>
 

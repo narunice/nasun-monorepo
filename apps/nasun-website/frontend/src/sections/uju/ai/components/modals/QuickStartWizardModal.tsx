@@ -291,7 +291,7 @@ export function QuickStartWizardModal({
             id="quickstart-wizard-title"
             className="min-w-0 text-base font-semibold text-white flex items-baseline gap-2 flex-wrap"
           >
-            <span>Quick Start</span>
+            <span>Quickstart</span>
             {phase === 'wizard' && (
               <span className="text-xs font-normal text-uju-secondary">
                 {activeIdx >= 0 ? (
@@ -374,7 +374,7 @@ export function QuickStartWizardModal({
         <div
           className="flex items-center gap-2 px-5 pt-4"
           role="list"
-          aria-label="Quick Start progress"
+          aria-label="Quickstart progress"
         >
           {stepLabels.map((label, i) => {
             const isDone = done[i];
