@@ -57,3 +57,12 @@ CREATE TABLE IF NOT EXISTS user_lp_daily_snapshots (
 
 CREATE INDEX IF NOT EXISTS idx_user_lp_daily_day
     ON user_lp_daily_snapshots(day);
+
+-- Phase 4 v3: tier-push tracking. `last_pushed_tier` is the canonical diff
+-- marker between off-chain user_nsi.tier and the on-chain TierRegistry.
+-- NULL means "never pushed", which the worker treats as TIER_1 (the on-chain
+-- default returned by `tier::get` when an address is absent from the table).
+-- `last_pushed_at` is intentionally omitted; re-add if/when stale-push
+-- alerting needs a wallclock signal.
+ALTER TABLE user_nsi
+    ADD COLUMN IF NOT EXISTS last_pushed_tier smallint;
