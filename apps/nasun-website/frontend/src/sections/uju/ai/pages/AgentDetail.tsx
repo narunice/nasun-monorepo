@@ -69,6 +69,10 @@ interface AgentDetailProps {
   /** Alpha state for this wallet. Threaded from AiTab so AgentChat can render
    * a gate banner / disable input when wake-mode isn't allowed. */
   alphaStatus?: AlphaStatusResponse | null;
+  /** Open the registration / quickstart flow (used as the killed-state CTA
+   *  destination so a user whose agent was killed or whose interrupted setup
+   *  has just been cleaned up can start a fresh agent in one click). */
+  onShowRegister?: () => void;
 }
 
 export function AgentDetail({
@@ -79,6 +83,7 @@ export function AgentDetail({
   onBack,
   fromQuickstart,
   alphaStatus = null,
+  onShowRegister,
 }: AgentDetailProps) {
   const backLabel = fromQuickstart ? '← Back to Quickstart' : '← Back to agents';
   const { data: agents, isLoading, refetch } = useAgentProfiles(walletAddress);
@@ -147,7 +152,12 @@ export function AgentDetail({
           />
         )}
         {subTab === 'settings' && (
-          <SettingsTab agent={agent} budget={budget} walletAddress={walletAddress} />
+          <SettingsTab
+            agent={agent}
+            budget={budget}
+            walletAddress={walletAddress}
+            onShowRegister={onShowRegister}
+          />
         )}
       </div>
     </div>

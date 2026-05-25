@@ -226,6 +226,7 @@ export function AiTab() {
         alphaStatus={alphaStatus}
         onChangeSub={handleChangeSub}
         onBack={handleClearSelection}
+        onShowRegister={handleShowRegister}
       />
     );
   } else if (view === 'budgets') {
