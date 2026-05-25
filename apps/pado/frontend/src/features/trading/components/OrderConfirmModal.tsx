@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import type { ExecutionOption } from '../context';
 import { useMarket } from '../context/MarketContext';
+import { useActiveAddress } from '../../../hooks/useActiveAddress';
+import { useTier } from '../../../lib/tier';
 
 interface OrderConfirmModalProps {
   isOpen: boolean;
@@ -54,12 +56,22 @@ export function OrderConfirmModal({
   const baseToken = currentPool.baseToken.symbol;
   const quoteToken = currentPool.quoteToken.symbol;
 
-  // Dynamic fee from pool config (POST_ONLY = maker fee, others = taker fee)
+  // Dynamic fee from pool config (POST_ONLY = maker fee, others = taker fee).
+  // Phase 3: apply NSI tier discount to the baseline. The chain enforces the
+  // actual discount; this display mirrors policy.move via standing.ts SSOT.
+  const address = useActiveAddress();
+  const { data: tierData } = useTier(address);
   const isMakerFee = executionOption === 'POST_ONLY';
-  const feeBps = isMakerFee ? currentPool.makerFeeBps : currentPool.takerFeeBps;
-  const feeRate = feeBps / 10000;
+  const baselineBps = isMakerFee ? currentPool.makerFeeBps : currentPool.takerFeeBps;
+  const discountBps = tierData?.benefits.pado_fee_discount_bps ?? 0;
+  // Multiply-then-divide (matches Move integer arithmetic in process_create_with_tier).
+  const effectiveBps = (baselineBps * (10000 - discountBps)) / 10000;
+  const feeRate = effectiveBps / 10000;
   const fee = total * feeRate;
-  const feeLabel = `${(feeBps / 100).toFixed(2)}%`;
+  const tier = tierData?.tier ?? 1;
+  const feeLabel = discountBps > 0
+    ? `${(effectiveBps / 100).toFixed(4)}% (Tier ${tier}, -${discountBps / 100}%)`
+    : `${(effectiveBps / 100).toFixed(2)}%`;
 
   // Price vs mid price comparison
   const priceDiffPct = midPrice > 0 && priceNum > 0

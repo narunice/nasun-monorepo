@@ -15,6 +15,9 @@ import { pointsDb } from '../db.js';
 
 const app = new Hono();
 
+// SSOT: packages/nasun-tier/sources/policy.move :17-21 (fee_discount_bps).
+// If those values change on-chain, update here AND the Pado frontend parity
+// test (apps/pado/frontend/src/lib/tier.test.ts). Drift triggers test fail.
 const TIER_BENEFITS = {
   1: { pado_fee_discount_bps: 0, gostop_max_bet_usd: 100, can_create_vault: false },
   2: { pado_fee_discount_bps: 3500, gostop_max_bet_usd: 1000, can_create_vault: false },

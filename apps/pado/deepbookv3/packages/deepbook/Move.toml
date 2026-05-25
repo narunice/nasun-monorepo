@@ -1,0 +1,18 @@
+[package]
+name = "deepbook"
+edition = "2024.beta"
+version = "0.0.2"
+published-at = "0xea69229a69fa59babff9a746583694d06551b74bcd5c26200bc58b4edc7c8d55"
+
+[dependencies]
+token = { local = "../token" }
+nasun_tier = { local = "../../../../../packages/nasun-tier" }
+Sui = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework", override = true }
+MoveStdlib = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/move-stdlib", override = true }
+
+[addresses]
+deepbook = "0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"

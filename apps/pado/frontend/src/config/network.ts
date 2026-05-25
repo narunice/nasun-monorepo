@@ -6,6 +6,9 @@ export const NETWORK_CONFIG = {
   faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
   chainId: import.meta.env.VITE_CHAIN_ID || '272218f1',
   explorerUrl: import.meta.env.VITE_EXPLORER_URL || NETWORK.explorerUrl,
+  // Explorer API base, e.g. https://explorer.nasun.io/api/v1. Used by `useTier`
+  // (Phase 3) to fetch NSI tier + benefits from /standing/by-address/:address.
+  explorerApiUrl: import.meta.env.VITE_EXPLORER_API_URL || 'https://explorer.nasun.io/api/v1',
 
   // DeepBook V3
   deepbookPackage: import.meta.env.VITE_DEEPBOOK_PACKAGE,
@@ -157,14 +160,17 @@ export function isFaucetAvailable(): boolean {
 
 // Pool Metadata
 export const POOLS = {
+  // Phase 3 baseline (2026-05-25, on-chain via admin_set_trade_params):
+  // taker = 4 bps (Hyperliquid retail equivalent), maker = 1.5 bps.
+  // Tier 3 effective ≈ 1.6 / 0.6 bps (Hyperliquid VIP territory).
   NBTC_NUSDC: {
     id: NETWORK_CONFIG.poolNbtcNusdc,
     baseToken: TOKENS.NBTC,
     quoteToken: TOKENS.NUSDC,
     tickSize: 100000,   // $0.10 (on-chain verified)
     lotSize: 1000,      // 0.00001 BTC (on-chain verified)
-    makerFeeBps: 5,     // 5 bps = 0.05% (on-chain verified)
-    takerFeeBps: 10,    // 10 bps = 0.10% (on-chain verified)
+    makerFeeBps: 1.5,   // 1.5 bps = 0.015% (Hyperliquid retail maker)
+    takerFeeBps: 4,     // 4 bps = 0.040% (Hyperliquid retail taker)
   },
   NASUN_NUSDC: {
     id: NETWORK_CONFIG.poolNasunNusdc,
@@ -172,8 +178,8 @@ export const POOLS = {
     quoteToken: TOKENS.NUSDC,
     tickSize: 10000,    // $0.01 (on-chain verified)
     lotSize: 1000000000, // 1.0 NASUN (on-chain verified)
-    makerFeeBps: 5,     // 5 bps = 0.05% (on-chain verified)
-    takerFeeBps: 10,    // 10 bps = 0.10% (on-chain verified)
+    makerFeeBps: 1.5,
+    takerFeeBps: 4,
   },
   NETH_NUSDC: {
     id: NETWORK_CONFIG.poolNethNusdc,
@@ -181,8 +187,8 @@ export const POOLS = {
     quoteToken: TOKENS.NUSDC,
     tickSize: 100000,   // $0.10 (8 decimals, same as NBTC)
     lotSize: 1000,      // 0.00001 ETH (8 decimals)
-    makerFeeBps: 5,
-    takerFeeBps: 10,
+    makerFeeBps: 1.5,
+    takerFeeBps: 4,
   },
   NSOL_NUSDC: {
     id: NETWORK_CONFIG.poolNsolNusdc,
@@ -190,7 +196,7 @@ export const POOLS = {
     quoteToken: TOKENS.NUSDC,
     tickSize: 10000,    // $0.01
     lotSize: 1000000000, // 1.0 SOL (9 decimals)
-    makerFeeBps: 5,
-    takerFeeBps: 10,
+    makerFeeBps: 1.5,
+    takerFeeBps: 4,
   },
 } as const;

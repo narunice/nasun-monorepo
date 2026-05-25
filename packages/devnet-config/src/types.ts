@@ -8,6 +8,11 @@
 // Object ID format: 0x followed by 64 hex characters
 export type ObjectId = `0x${string}`;
 
+// Sui account address format. Structurally identical to ObjectId on Sui,
+// but semantically distinct: ObjectId refers to a Sui object instance,
+// SuiAddress refers to an account (EOA / multisig / zkLogin derived).
+export type SuiAddress = `0x${string}`;
+
 // Coin type format: package::module::TYPE
 export type CoinType = `${ObjectId}::${string}::${string}`;
 
@@ -178,6 +183,19 @@ export interface NsaConfig {
   registry: ObjectId;
 }
 
+// Nasun Standing Index (NSI) tier registry — published Phase 4 (2026-05-25).
+// Downstream consumers (Pado fee discount Phase 3, GoStop max bet Phase 6, etc.)
+// read tier off the shared TierRegistry via `nasun_tier::tier::get`.
+export interface NasunTierConfig {
+  packageId: ObjectId;
+  originalPackageId: ObjectId;
+  registry: ObjectId;
+  adminCap: ObjectId;
+  upgradeCap: ObjectId;
+  adminAddress: SuiAddress;
+  upgradeCapHolder: SuiAddress;
+}
+
 export interface DevnetConfig {
   version: string;
   lastUpdated: string;
@@ -196,4 +214,5 @@ export interface DevnetConfig {
   pools: PoolsConfig;
   oracle: OracleConfig;
   nsa: NsaConfig;
+  nasunTier: NasunTierConfig;
 }
