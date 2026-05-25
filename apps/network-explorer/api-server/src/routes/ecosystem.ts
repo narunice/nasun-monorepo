@@ -2220,6 +2220,19 @@ async function getAllTimeRankCache(): Promise<AllTimeRankCache> {
         allTimeRankPending = null;
       });
   }
+  // Stale-while-revalidate: if a previous cache exists, return it instead of
+  // waiting for the in-flight rebuild. Rebuild failures (e.g. PG statement
+  // timeout under load) used to reject the shared pending promise, causing every
+  // concurrent request to 500 simultaneously. Returning stale keeps the API
+  // available; bucketed percentile tolerates a few extra minutes of staleness.
+  if (allTimeRankCache) {
+    // Swallow the rejection so unhandled-rejection logs don't fire; the next
+    // request after pending clears will retry.
+    allTimeRankPending.catch((err) => {
+      console.warn('[leaderboard] all-time rank rebuild failed, serving stale cache:', err);
+    });
+    return allTimeRankCache;
+  }
   return allTimeRankPending;
 }
 
