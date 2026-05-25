@@ -52,6 +52,7 @@ import {
   enforceAlphaGuards,
   withSlotReservation,
   consumeWaitlistInvite,
+  grantKillRecoveryInvite,
   getAgentTtlMs,
   isAlphaGateEnabled,
   GuardError,
@@ -551,9 +552,21 @@ export async function handleVaultDelete(
     getDb().prepare(`DELETE FROM baram_agent_endpoints WHERE agent = ?`)
       .run(agentAddress.toLowerCase());
     if (row.profile_id) invalidateAgentOnChainCache(row.profile_id);
-    // PR-2 alpha: user-initiated deactivate frees a cap slot. Run an
-    // immediate invite pass so the next queued user gets promoted now
-    // instead of waiting up to 60s for the next cron tick.
+    // PR-2 alpha: re-grant the killer a fresh `invited` row inside the
+    // grace window BEFORE running the queue tick. countActiveAndPending in
+    // phaseInvite counts 'invited' rows against the system cap, so this
+    // call effectively reserves the freed slot for the killer's recovery
+    // window. Without this step, a kill (intentional rotation OR accidental)
+    // silently disenfranchises an alpha tester who already cleared the
+    // Genesis Pass + slot lottery — they fall to the back of a 60-deep
+    // queue with no path back. processQueueTick is still called so that if
+    // the cap had room beyond the freed slot, the next waiter still gets
+    // promoted promptly.
+    try {
+      grantKillRecoveryInvite(result.entry.wallet);
+    } catch (err) {
+      console.warn('[alpha] grantKillRecoveryInvite failed:', (err as Error).message);
+    }
     void processQueueTick().catch((err) => {
       console.warn('[alpha] processQueueTick after delete failed:', (err as Error).message);
     });
