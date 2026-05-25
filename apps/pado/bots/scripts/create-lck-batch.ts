@@ -74,6 +74,14 @@ const SPECS: Spec[] = [
   // Edit before running. Use the curl helper at the top of this file to list
   // upcoming LCK matches. First production batch should hold 1-2 matches only
   // until the resolver path is observed end-to-end at least once.
+  //
+  // History:
+  // 2026-05-25: GEN-HLE, BFX-KRX, DNS-NS, KT-T1 (4 markets for the 2026-05-27
+  //   and 2026-05-28 LCK Regular Season days). Market objects:
+  //     GEN vs HLE: 0x5296ebedd61296dd385a062a020264538f4d1de599560f89c585e0469612cad2
+  //     BFX vs KRX: 0x73b1a4210432926708bb21237fa543d3b44f3f12f1cad09ed61fd72417e5a621
+  //     DNS vs NS:  0xccabb3e956d13333b60a0e3deab5f13bcc4cb75a95f2cc7adbf31dcad0ae9252
+  //     KT  vs T1:  0xe07e27841b2b5507a51174c19bf6f5815a5d9c4580bdf237615ef23523f1d506
 ];
 
 function parseUtc(s: string): number {
