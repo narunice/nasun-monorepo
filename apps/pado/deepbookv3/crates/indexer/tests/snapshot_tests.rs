@@ -2,12 +2,18 @@ use bigdecimal::BigDecimal;
 use chrono::NaiveDateTime;
 use deepbook_indexer::handlers::asset_supplied_handler::AssetSuppliedHandler;
 use deepbook_indexer::handlers::asset_withdrawn_handler::AssetWithdrawnHandler;
+use deepbook_indexer::handlers::balance_manager_event_handler::BalanceManagerEventHandler;
 use deepbook_indexer::handlers::balances_handler::BalancesHandler;
+use deepbook_indexer::handlers::book_params_updated_handler::BookParamsUpdatedHandler;
+use deepbook_indexer::handlers::current_price_updated_handler::CurrentPriceUpdatedHandler;
 use deepbook_indexer::handlers::deep_burned_handler::DeepBurnedHandler;
 use deepbook_indexer::handlers::deepbook_pool_config_updated_handler::DeepbookPoolConfigUpdatedHandler;
 use deepbook_indexer::handlers::deepbook_pool_registered_handler::DeepbookPoolRegisteredHandler;
 use deepbook_indexer::handlers::deepbook_pool_updated_handler::DeepbookPoolUpdatedHandler;
 use deepbook_indexer::handlers::deepbook_pool_updated_registry_handler::DeepbookPoolUpdatedRegistryHandler;
+use deepbook_indexer::handlers::deepbook_referral_created_event_handler::DeepBookReferralCreatedEventHandler;
+use deepbook_indexer::handlers::deepbook_referral_set_event_handler::DeepBookReferralSetEventHandler;
+use deepbook_indexer::handlers::ewma_update_handler::EwmaUpdateHandler;
 use deepbook_indexer::handlers::flash_loan_handler::FlashLoanHandler;
 use deepbook_indexer::handlers::interest_params_updated_handler::InterestParamsUpdatedHandler;
 use deepbook_indexer::handlers::liquidation_handler::LiquidationHandler;
@@ -18,15 +24,33 @@ use deepbook_indexer::handlers::maintainer_fees_withdrawn_handler::MaintainerFee
 use deepbook_indexer::handlers::margin_manager_created_handler::MarginManagerCreatedHandler;
 use deepbook_indexer::handlers::margin_pool_config_updated_handler::MarginPoolConfigUpdatedHandler;
 use deepbook_indexer::handlers::margin_pool_created_handler::MarginPoolCreatedHandler;
+use deepbook_indexer::handlers::max_price_age_updated_handler::MaxPriceAgeUpdatedHandler;
 use deepbook_indexer::handlers::order_fill_handler::OrderFillHandler;
 use deepbook_indexer::handlers::order_update_handler::OrderUpdateHandler;
 use deepbook_indexer::handlers::pause_cap_updated_handler::PauseCapUpdatedHandler;
+use deepbook_indexer::handlers::pool_created_handler::PoolCreatedHandler;
 use deepbook_indexer::handlers::pool_price_handler::PoolPriceHandler;
+use deepbook_indexer::handlers::price_tolerance_updated_handler::PriceToleranceUpdatedHandler;
 use deepbook_indexer::handlers::protocol_fees_increased_handler::ProtocolFeesIncreasedHandler;
 use deepbook_indexer::handlers::protocol_fees_withdrawn_handler::ProtocolFeesWithdrawnHandler;
+use deepbook_indexer::handlers::rebates_v2_handler::RebatesV2Handler;
+use deepbook_indexer::handlers::referral_claimed_handler::ReferralClaimedHandler;
+use deepbook_indexer::handlers::referral_fee_event_handler::ReferralFeeEventHandler;
 use deepbook_indexer::handlers::referral_fees_claimed_handler::ReferralFeesClaimedHandler;
 use deepbook_indexer::handlers::supplier_cap_minted_handler::SupplierCapMintedHandler;
 use deepbook_indexer::handlers::supply_referral_minted_handler::SupplyReferralMintedHandler;
+use deepbook_indexer::handlers::taker_fee_penalty_handler::TakerFeePenaltyHandler;
+
+// Collateral Events
+use deepbook_indexer::handlers::deposit_collateral_handler::DepositCollateralHandler;
+use deepbook_indexer::handlers::withdraw_collateral_handler::WithdrawCollateralHandler;
+
+// TPSL (Take Profit / Stop Loss) Events
+use deepbook_indexer::handlers::conditional_order_added_handler::ConditionalOrderAddedHandler;
+use deepbook_indexer::handlers::conditional_order_cancelled_handler::ConditionalOrderCancelledHandler;
+use deepbook_indexer::handlers::conditional_order_executed_handler::ConditionalOrderExecutedHandler;
+use deepbook_indexer::handlers::conditional_order_insufficient_funds_handler::ConditionalOrderInsufficientFundsHandler;
+
 use deepbook_indexer::DeepbookEnv;
 use deepbook_schema::MIGRATIONS;
 use fastcrypto::hash::{HashFunction, Sha256};
@@ -45,12 +69,44 @@ use sui_pg_db::Connection;
 use sui_pg_db::Db;
 use sui_pg_db::DbArgs;
 use sui_storage::blob::Blob;
+use sui_types::full_checkpoint_content::Checkpoint;
 use sui_types::full_checkpoint_content::CheckpointData;
 
 #[tokio::test]
 async fn balances_test() -> Result<(), anyhow::Error> {
     let handler = BalancesHandler::new(DeepbookEnv::Mainnet);
     data_test("balances", handler, ["balances"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn balance_manager_event_test() -> Result<(), anyhow::Error> {
+    let handler = BalanceManagerEventHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "balance_manager_created",
+        handler,
+        ["balance_manager_created"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn deepbook_referral_created_event_test() -> Result<(), anyhow::Error> {
+    let handler = DeepBookReferralCreatedEventHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "deepbook_referral_created",
+        handler,
+        ["deepbook_referral_created"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn deepbook_referral_set_event_test() -> Result<(), anyhow::Error> {
+    let handler = DeepBookReferralSetEventHandler::new(DeepbookEnv::Mainnet);
+    data_test("deepbook_referral_set", handler, ["deepbook_referral_set"]).await?;
     Ok(())
 }
 
@@ -85,6 +141,34 @@ async fn pool_price_test() -> Result<(), anyhow::Error> {
 async fn deep_burned_test() -> Result<(), anyhow::Error> {
     let handler = DeepBurnedHandler::new(DeepbookEnv::Mainnet);
     data_test("deep_burned", handler, ["deep_burned"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn pool_created_test() -> Result<(), anyhow::Error> {
+    let handler = PoolCreatedHandler::new(DeepbookEnv::Mainnet);
+    data_test("pool_created", handler, ["pool_created"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn book_params_updated_test() -> Result<(), anyhow::Error> {
+    let handler = BookParamsUpdatedHandler::new(DeepbookEnv::Mainnet);
+    data_test("book_params_updated", handler, ["book_params_updated"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn referral_claimed_test() -> Result<(), anyhow::Error> {
+    let handler = ReferralClaimedHandler::new(DeepbookEnv::Mainnet);
+    data_test("referral_claimed", handler, ["referral_claimed"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn ewma_update_test() -> Result<(), anyhow::Error> {
+    let handler = EwmaUpdateHandler::new(DeepbookEnv::Mainnet);
+    data_test("ewma_updates", handler, ["ewma_updates"]).await?;
     Ok(())
 }
 
@@ -239,6 +323,34 @@ async fn deepbook_pool_config_updated_test() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+async fn current_price_updated_test() -> Result<(), anyhow::Error> {
+    let handler = CurrentPriceUpdatedHandler::new(DeepbookEnv::Mainnet);
+    data_test("current_price_updated", handler, ["current_price_updated"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // Event not emitted yet
+async fn price_tolerance_updated_test() -> Result<(), anyhow::Error> {
+    let handler = PriceToleranceUpdatedHandler::new(DeepbookEnv::Testnet);
+    data_test(
+        "price_tolerance_updated",
+        handler,
+        ["price_tolerance_updated"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // Event not emitted yet
+async fn max_price_age_updated_test() -> Result<(), anyhow::Error> {
+    let handler = MaxPriceAgeUpdatedHandler::new(DeepbookEnv::Testnet);
+    data_test("max_price_age_updated", handler, ["max_price_age_updated"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
 #[ignore] // TODO: Add checkpoint test data - Event does not exist on testnet yet (checked all package versions)
 async fn maintainer_fees_withdrawn_test() -> Result<(), anyhow::Error> {
     let handler = MaintainerFeesWithdrawnHandler::new(DeepbookEnv::Testnet);
@@ -304,9 +416,101 @@ async fn protocol_fees_increased_test() -> Result<(), anyhow::Error> {
 }
 
 #[tokio::test]
+async fn referral_fee_event_test() -> Result<(), anyhow::Error> {
+    let handler = ReferralFeeEventHandler::new(DeepbookEnv::Mainnet);
+    data_test("referral_fee_events", handler, ["referral_fee_events"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
 async fn referral_fees_claimed_test() -> Result<(), anyhow::Error> {
     let handler = ReferralFeesClaimedHandler::new(DeepbookEnv::Testnet);
     data_test("referral_fees_claimed", handler, ["referral_fees_claimed"]).await?;
+    Ok(())
+}
+
+// === Collateral Events Tests ===
+// Checkpoint 234918188 - TX: GSNpevf2UcTeq3ACPMGRsvLFRRGB9w2H4KB9BR1cEYcQ
+#[tokio::test]
+async fn deposit_collateral_test() -> Result<(), anyhow::Error> {
+    let handler = DepositCollateralHandler::new(DeepbookEnv::Mainnet);
+    data_test("deposit_collateral", handler, ["collateral_events"]).await?;
+    Ok(())
+}
+
+// Checkpoint 234920766 - TX: 73DkKzySTo824MBEQREnhNwXbbSpX8YEEb7qbfxxaHGG
+#[tokio::test]
+async fn withdraw_collateral_test() -> Result<(), anyhow::Error> {
+    let handler = WithdrawCollateralHandler::new(DeepbookEnv::Mainnet);
+    data_test("withdraw_collateral", handler, ["collateral_events"]).await?;
+    Ok(())
+}
+
+// === TPSL (Take Profit / Stop Loss) Events Tests ===
+// Checkpoint 234928955 - TX: HRj2fF9ifRA8kXipJy2g6y6UKgMFNeKvvZqfrKY2L825
+#[tokio::test]
+async fn conditional_order_added_test() -> Result<(), anyhow::Error> {
+    let handler = ConditionalOrderAddedHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "conditional_order_added",
+        handler,
+        ["conditional_order_events"],
+    )
+    .await?;
+    Ok(())
+}
+
+// Checkpoint 234928968 - TX: 5QcwuLcE7jmunStKgUSCrHPpAw1WC8B9XQLPph3jrKGn
+#[tokio::test]
+async fn conditional_order_cancelled_test() -> Result<(), anyhow::Error> {
+    let handler = ConditionalOrderCancelledHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "conditional_order_cancelled",
+        handler,
+        ["conditional_order_events"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // No mainnet transactions yet - ConditionalOrderExecuted requires price trigger
+async fn conditional_order_executed_test() -> Result<(), anyhow::Error> {
+    let handler = ConditionalOrderExecutedHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "conditional_order_executed",
+        handler,
+        ["conditional_order_executed"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // No mainnet transactions yet - ConditionalOrderInsufficientFunds requires trigger with low balance
+async fn conditional_order_insufficient_funds_test() -> Result<(), anyhow::Error> {
+    let handler = ConditionalOrderInsufficientFundsHandler::new(DeepbookEnv::Mainnet);
+    data_test(
+        "conditional_order_insufficient_funds",
+        handler,
+        ["conditional_order_insufficient_funds"],
+    )
+    .await?;
+    Ok(())
+}
+
+#[tokio::test]
+#[ignore] // Event not emitted yet on mainnet
+async fn taker_fee_penalty_test() -> Result<(), anyhow::Error> {
+    let handler = TakerFeePenaltyHandler::new(DeepbookEnv::Mainnet);
+    data_test("taker_fee_penalty", handler, ["taker_fee_penalty_applied"]).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn rebates_v2_test() -> Result<(), anyhow::Error> {
+    let handler = RebatesV2Handler::new(DeepbookEnv::Mainnet);
+    data_test("rebates_v2", handler, ["rebates_v2"]).await?;
     Ok(())
 }
 
@@ -317,7 +521,8 @@ async fn data_test<H, I>(
 ) -> Result<(), anyhow::Error>
 where
     I: IntoIterator<Item = &'static str>,
-    H: Handler + Processor,
+    H: Processor,
+    H: Handler<Batch = Vec<<H as Processor>::Value>>,
     for<'a> H::Store: Store<Connection<'a> = Connection<'a>>,
 {
     // Set up database URL based on environment
@@ -366,18 +571,21 @@ where
     Ok(())
 }
 
-async fn run_pipeline<'c, T: Handler + Processor, P: AsRef<Path>>(
-    handler: &T,
+async fn run_pipeline<'c, H, P: AsRef<Path>>(
+    handler: &H,
     path: P,
     conn: &mut Connection<'c>,
 ) -> Result<(), anyhow::Error>
 where
-    T::Store: Store<Connection<'c> = Connection<'c>>,
+    H: Processor,
+    H: Handler<Batch = Vec<<H as Processor>::Value>>,
+    H::Store: Store<Connection<'c> = Connection<'c>>,
 {
     let bytes = fs::read(path)?;
-    let cp = Blob::from_bytes::<CheckpointData>(&bytes)?;
-    let result = handler.process(&Arc::new(cp))?;
-    T::commit(&result, conn).await?;
+    let data = Blob::from_bytes::<CheckpointData>(&bytes)?;
+    let cp: Checkpoint = data.into();
+    let result = handler.process(&Arc::new(cp)).await?;
+    handler.commit(&result, conn).await?;
     Ok(())
 }
 

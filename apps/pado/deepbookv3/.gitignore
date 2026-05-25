@@ -15,6 +15,25 @@ node_modules
 package-lock.json
 **/pnpm-lock.yaml
 
+# Jupyter
+.ipynb_checkpoints/
+
+# Sui replay
+.replay/
+
+# Python
+__pycache__/
+
+# Predict simulation local artifacts
+packages/predict/simulations/runs/
+packages/predict/parallel_pool_implementation_plan.md
+
+# Research
+predict_research/
+
+# Local agent artifacts
+/docs/
+
 # misc
 .env
 .envrc
@@ -22,3 +41,4 @@ package-lock.json
 tx-data.txt
 example.ts
 /data
+/handoff

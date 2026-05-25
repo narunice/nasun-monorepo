@@ -222,7 +222,12 @@ public(package) fun get_quantity_out(
             (quantity_out, quantity_in_left, deep_fee)
         }
     } else {
-        (quantity_in_left, quantity_out, deep_fee)
+        let executed_base = base_quantity - quantity_in_left;
+        if (executed_base > 0 && executed_base < self.min_size) {
+            (base_quantity, quote_quantity, 0)
+        } else {
+            (quantity_in_left, quantity_out, deep_fee)
+        }
     }
 }
 
@@ -356,9 +361,9 @@ public(package) fun get_level2_range_and_ticks(
 
     // convert price_low and price_high to keys for searching
     let msb = if (is_bid) {
-        (0 as u128)
+        0u128
     } else {
-        (1 as u128) << 127
+        1u128 << 127
     };
     let key_low = ((price_low as u128) << 64) + msb;
     let key_high = ((price_high as u128) << 64) + (((1u128 << 64) - 1) as u128) + msb;
