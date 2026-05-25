@@ -1,0 +1,39 @@
+name: Move Test CI
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "packages/**"
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install Homebrew
+        run: |
+          /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+          echo "/home/linuxbrew/.linuxbrew/bin" >> $GITHUB_PATH
+
+      - name: Install Sui using Homebrew
+        run: brew install sui
+
+      - name: Run Move tests in all package subdirectories, with exclusions
+        run: |
+          for dir in packages/*; do
+            dir_name=$(basename "$dir")
+            echo "Running sui move test in $dir"
+            sui move test -i 100000000 --path "$dir"
+          done

@@ -3,6 +3,7 @@
  */
 
 import { Transaction } from '@mysten/sui/transactions';
+import { NASUN_TIER_REGISTRY_ID } from '@nasun/devnet-config';
 import { NETWORK_CONFIG, POOLS, TOKENS } from '../../config/network';
 import { ORDER_TYPE, SELF_MATCHING, CLOCK_ID, NATIVE_TOKEN_TYPE, GAS_RESERVE_RAW } from './constants';
 import type { PlaceLimitOrderParams, PlaceMarketOrderParams, PoolConfig } from './types';
@@ -253,9 +254,9 @@ export function buildPlaceLimitOrder(
   // Generate trade proof
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
-  // Place limit order
+  // Place limit order (v2 path: applies NSI tier discount from sender's tier).
   const orderInfo = tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::pool::place_limit_order`,
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::place_limit_order_v2`,
     typeArguments: [
       pool.baseToken.type!,
       pool.quoteToken.type!,
@@ -264,6 +265,7 @@ export function buildPlaceLimitOrder(
       tx.object(pool.id!),
       tx.object(balanceManagerId),
       tradeProof,
+      tx.object(NASUN_TIER_REGISTRY_ID),
       tx.pure.u64(params.clientOrderId || 0n),
       tx.pure.u8(params.orderType ?? ORDER_TYPE.NO_RESTRICTION),
       tx.pure.u8(params.selfMatchingOption ?? SELF_MATCHING.ALLOWED),
@@ -315,9 +317,9 @@ export function buildPlaceMarketOrder(
   // Generate trade proof
   const tradeProof = generateProofAsOwner(tx, balanceManagerId);
 
-  // Place market order
+  // Place market order (v2 path: tier discount applied).
   tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::pool::place_market_order`,
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::place_market_order_v2`,
     typeArguments: [
       pool.baseToken.type!,
       pool.quoteToken.type!,
@@ -326,6 +328,7 @@ export function buildPlaceMarketOrder(
       tx.object(pool.id!),
       tx.object(balanceManagerId),
       tradeProof,
+      tx.object(NASUN_TIER_REGISTRY_ID),
       tx.pure.u64(params.clientOrderId || 0n),
       tx.pure.u8(params.selfMatchingOption ?? SELF_MATCHING.ALLOWED),
       tx.pure.u64(params.quantity),
@@ -420,13 +423,14 @@ export function buildSwapExactBaseForQuote(
   const tx = new Transaction();
 
   const [baseOut, quoteOut, deepOut] = tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_base_for_quote`,
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_base_for_quote_v2`,
     typeArguments: [
       TOKENS.NBTC.type!,
       TOKENS.NUSDC.type!,
     ],
     arguments: [
       tx.object(POOLS.NBTC_NUSDC.id!),
+      tx.object(NASUN_TIER_REGISTRY_ID),
       tx.object(baseCoinId),
       tx.object(deepCoinId),
       tx.pure.u64(minQuoteOut),
@@ -456,13 +460,14 @@ export function buildSwapExactQuoteForBase(
   const tx = new Transaction();
 
   const [baseOut, quoteOut, deepOut] = tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_quote_for_base`,
+    target: `${NETWORK_CONFIG.deepbookPackage}::pool::swap_exact_quote_for_base_v2`,
     typeArguments: [
       TOKENS.NBTC.type!,
       TOKENS.NUSDC.type!,
     ],
     arguments: [
       tx.object(POOLS.NBTC_NUSDC.id!),
+      tx.object(NASUN_TIER_REGISTRY_ID),
       tx.object(quoteCoinId),
       tx.object(deepCoinId),
       tx.pure.u64(minBaseOut),

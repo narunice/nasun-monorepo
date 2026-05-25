@@ -18,10 +18,11 @@
   },
   "deepbook": {
     "tokenPackageId": "0x71afcf8eaeb282bad050ef78931205a15c9e49638f2a7c67bde2c372251e1c3e",
-    "packageId": "0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134",
+    "packageId": "0xea69229a69fa59babff9a746583694d06551b74bcd5c26200bc58b4edc7c8d55",
     "originalPackageId": "0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134",
     "registry": "0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b",
-    "adminCap": "0xe0b017bb62d572415c447e37008cea68bc8bb5bd4e47f12e672924b05ba651eb"
+    "adminCap": "0xe0b017bb62d572415c447e37008cea68bc8bb5bd4e47f12e672924b05ba651eb",
+    "upgradeCap": "0xeb3ba40667c5221e308f24ae278207d2bf6cbe0b916d2c4bfab8badc85590513"
   },
   "prediction": {
     "packageId": "0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2",

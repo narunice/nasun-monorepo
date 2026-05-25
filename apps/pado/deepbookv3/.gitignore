@@ -1,0 +1,24 @@
+# IDE
+**/.history/
+**/.vscode/
+**/.idea/
+**/target/
+
+# OSX
+.DS_Store
+
+# Move build directory
+build
+
+# Node.js
+node_modules
+package-lock.json
+**/pnpm-lock.yaml
+
+# misc
+.env
+.envrc
+**/benchmark_data/
+tx-data.txt
+example.ts
+/data
