@@ -245,7 +245,7 @@
 /* ---------- Viz 02 — Tier ladder ---------- */
 .dev-home-catena .ch-gv-viz-tiers .p {
   opacity: 0;
-  transform-origin: left center;
+  transform-origin: 80px center;
   animation: gv-tier-pop 4.4s cubic-bezier(0.5, 1.4, 0.4, 1) infinite;
 }
 .dev-home-catena .ch-gv-viz-tiers .p1 { animation-delay: 0s; }
@@ -257,9 +257,9 @@
   animation-delay: 1.1s;
 }
 @keyframes gv-tier-pop {
-  0%        { opacity: 0; transform: translateX(-8px) scale(0.92); }
-  18%, 70%  { opacity: 1; transform: translateX(0) scale(1); }
-  88%, 100% { opacity: 0; transform: translateX(4px) scale(0.95); }
+  0%        { opacity: 0; transform: translateY(6px) scale(0.92); }
+  18%, 70%  { opacity: 1; transform: translateY(0) scale(1); }
+  88%, 100% { opacity: 0; transform: translateY(-3px) scale(0.95); }
 }
 @keyframes gv-arrow-fade {
   0%, 8%    { opacity: 0; }
