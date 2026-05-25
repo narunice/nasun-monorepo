@@ -1,10 +1,18 @@
 # Nasun AI Alpha Readiness (SSOT)
 
-> Last updated: 2026-05-20
+> Last updated: 2026-05-25
 > 이 문서는 Nasun AI(구 Baram) 퍼블릭 알파 출시까지의 실시간 진행도를 담는 단일 진실의 출처(SSOT)다.
 > 트랙별 상태를 변경할 때는 **반드시 이 문서를 같이 업데이트**한다. handoff/memory가 산재하면 다음 세션이 진척도를 잘못 판단한다.
 
-## TL;DR (2026-05-20 기준)
+## 2026-05-25 운영 incident 요약
+
+알파 가동 중 발견된 3종 incident + 조치:
+
+1. **Kill-recovery disenfranchisement (P0)** — kill switch 발동한 alpha tester가 alpha 게이트에 막혀 재생성 불가. 4명 victim (edy, sxsyqa, sunominq, elonunmk) 수동 promote. 영구 fix: chat-server `grantKillRecoveryInvite()` (24h grace), AgentStateControl killed CTA gate-aware. 커밋 `f4287017` + `a2e0344d` 배포 완료.
+2. **baram-executor gas 고갈 (P0)** — 4 executor 중 0x6f51 한 명에만 traffic 라우팅되어 gas 0.016 NSN까지 소진 → 모든 settlement failed. 즉시 252 NSN 충전 + watchdog에 3개 executor 추가 (`pado-bots/.env KEEPER_GAS_TARGETS`). 0x6f51는 추가로 5000 NSN 충전.
+3. **Lambda single-signer 한계 발견 (Known gap)** — round-robin 분산 시도 시 `/infer preflight denied: executor_mismatch`. `baram/executor` Secrets Manager가 1개 key만 보유. chat-server `pickExecutorAddress()` 코드는 추가했지만 prod `.env`는 단일 값 유지. Lambda multi-signer 구현이 다음 작업.
+
+## TL;DR (2026-05-25 기준)
 
 **결론: 코드/인프라 측면 알파 출시 준비 완료. 차단요인은 최종 flag flip + 배포 1 사이클 뿐.**
 
@@ -173,6 +181,8 @@ pnpm deploy:nasun-website:prod
 - [project_nasun_ai_agent_funds_ux_revamp](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_nasun_ai_agent_funds_ux_revamp.md)
 - [project_baram_no_tee_v1](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_baram_no_tee_v1.md)
 - [project_2026_05_17_baram_executor_phase_e_drift](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_2026_05_17_baram_executor_phase_e_drift.md)
+- [project_2026_05_25_alpha_kill_disenfranchisement](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_2026_05_25_alpha_kill_disenfranchisement.md) — kill-recovery 24h grace fix
+- [project_2026_05_25_baram_executor_single_signer](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/project_2026_05_25_baram_executor_single_signer.md) — multi-signer 구현 전까지 single-executor 강제
 - [feedback_pm2_hard_restart_for_new_env](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_pm2_hard_restart_for_new_env.md)
 - [feedback_lambda_env_replace_not_merge](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_lambda_env_replace_not_merge.md)
 - [feedback_no_raw_rsync_to_prod](../.claude/projects/-home-naru-my-apps-nasun-monorepo/memory/feedback_no_raw_rsync_to_prod.md)
