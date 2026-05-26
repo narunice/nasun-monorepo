@@ -89,25 +89,32 @@ infra/nginx/secrets.env
 /SECURITY_REVIEW_*.md
 
 # Internal operations docs and handoffs (live in narunice/nasun-ops)
+# Patterns without trailing slash to catch symlinks too (git treats symlinks as files)
 /CLAUDE.md
 /@CLAUDE.md
 /GEMINI.md
-.claude/
-_handoffs/
-/ops/
-/infra/
-/prompts/
-/nasun-marketplace/
-/.agents/
-/scripts/
+.claude/handoffs
+.claude/plans
+.claude/skills
+.claude/scheduled_tasks.lock
+.claude/skills/*/cache
+.claude/skills/*/drafts
+_handoffs
+/ops
+/infra
+/prompts
+/nasun-marketplace
+/.agents
+/scripts
+/docs
 
 # Archived/legacy apps (live in narunice/nasun-ops)
-apps/baram/
-apps/x-leaderboard-v2-legacy/
+apps/baram
+apps/x-leaderboard-v2-legacy
 
 # App-level operational docs (mirrored to nasun-ops)
-apps/*/doc/
-apps/*/docs/
+apps/*/doc
+apps/*/docs
 
 # CDK synth output and deployment artifacts
 **/cdk.out/
@@ -126,3 +133,111 @@ apps/*/cdk/outputs.json
 
 # Root-owned external resources not part of monorepo
 /zklogin-prover/
+
+# ============================================================================
+# Security hardening — additional patterns to block accidental commits
+# ============================================================================
+
+# Private keys / certificates (HIGH severity)
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.ppk
+*.gpg
+*.asc
+
+# SSH private keys (any filename matching common conventions)
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+id_ecdsa
+id_ecdsa.*
+id_dsa
+id_dsa.*
+**/.ssh/
+
+# Cloud / OAuth credentials
+**/.aws/
+**/.gnupg/
+service-account*.json
+firebase-adminsdk-*.json
+gcloud-key*.json
+gcp-key*.json
+credentials.json
+auth.json
+*-credentials.json
+*.token
+*-token.json
+.netrc
+*.npmrc.local
+**/.docker/config.json
+
+# Crypto wallet exports / mnemonics
+wallet*.json
+mnemonic*.txt
+*.mnemonic
+seed-phrase*
+*.seedphrase
+keystore*.json
+
+# Database dumps (user-data risk)
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+*.dump
+*.sql.gz
+*.bak.sql
+
+# Security tooling artifacts
+redactions*.txt
+mailmap.txt
+*.history.diff
+detect-secrets-baseline.json
+
+# Editor temp / merge artifacts
+*.bak
+*.tmp
+*.orig
+*.rej
+.history/
+.vscode-test/
+
+# Re-allow Move contract intentional backups (Published.toml.vN.bak archive pattern)
+!apps/*/contracts*/**/Published.toml.*.bak
+
+# Tooling caches
+.eslintcache
+.stylelintcache
+.parcel-cache/
+.yarn/cache/
+.yarn/install-state.gz
+.nx/cache/
+.rush/
+
+# Python (deepbookv3 includes simulation .py)
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Rust (deepbookv3 indexer/server)
+target/
+**/target/
+
+# Other IDEs
+*.iml
+.cursor/
+.fleet/
+.zed/
+
+# Windows OS artifacts
+desktop.ini
+$RECYCLE.BIN/
+
+# npm pack output
+*.tgz
