@@ -1,13 +1,13 @@
 import React from "react";
 import { FadeInUp } from "@/components/ui/FadeInUp";
-import Taroka from "@/assets/images/Taroka-Trans.webp";
+import PrincessKaebo from "@/assets/images/Princess-Kaebo-Fixed.webp";
 
 const GRADIENT =
-  "linear-gradient(135deg, #3a2410 0%, #6b4420 25%, #a8792f 55%, #d4a24c 80%, #e8c370 100%)";
+  "linear-gradient(135deg, #141e30 0%, #1e3a5f 35%, #3a6186 65%, #6b8fad 100%)";
 const RADIAL_GLOW =
-  "radial-gradient(ellipse at 70% 45%, rgba(255,210,130,0.35), transparent 65%)";
+  "radial-gradient(ellipse at 75% 50%, rgba(110,160,210,0.15), transparent 60%)";
 const BOTTOM_VIGNETTE =
-  "linear-gradient(to top, rgba(40,25,10,0.9) 0%, transparent 45%)";
+  "linear-gradient(to top, rgba(25,22,21,0.9) 0%, transparent 40%)";
 
 function AllianceNftHeroSection() {
   return (
@@ -27,7 +27,7 @@ function AllianceNftHeroSection() {
         <div className="relative w-full h-[80vh] md:h-screen">
           {/* Character - centered */}
           <img
-            src={Taroka}
+            src={PrincessKaebo}
             alt="Alliance character"
             className="absolute bottom-0 left-1/2 -translate-x-1/2 h-[95%] object-cover object-top"
           />
@@ -37,7 +37,7 @@ function AllianceNftHeroSection() {
             className="absolute inset-0 pointer-events-none"
             style={{
               background:
-                "linear-gradient(to top, rgba(40,25,10,1) 0%, rgba(40,25,10,0.6) 25%, transparent 50%)",
+                "linear-gradient(to top, rgba(20,30,48,1) 0%, rgba(20,30,48,0.6) 25%, transparent 50%)",
             }}
           />
 
@@ -48,7 +48,7 @@ function AllianceNftHeroSection() {
                 <h1 className="!font-eurostile text-nasun-white uppercase text-4xl md:text-5xl tracking-[0.15em] leading-none">
                   ALLIANCE
                 </h1>
-                <p className="!font-eurostile uppercase text-lg md:text-xl tracking-wider mt-2 text-nasun-c1">
+                <p className="!font-eurostile uppercase text-lg md:text-xl tracking-wider mt-2 text-[#5ecbf0]">
                   FREE MINT EVENT
                 </p>
               </div>
@@ -59,7 +59,7 @@ function AllianceNftHeroSection() {
         {/* Lower area: benefits list (below character) */}
         <div
           className="relative z-10 px-8 pt-6 pb-10 text-center"
-          style={{ backgroundColor: "#28190a" }}
+          style={{ backgroundColor: "#141e30" }}
         >
           <p className="!font-rubik font-bold text-nasun-white text-base md:text-lg">
             Unlock Your Powers
@@ -92,7 +92,7 @@ function AllianceNftHeroSection() {
 
         {/* Character - right side (push further right on narrower screens) */}
         <img
-          src={Taroka}
+          src={PrincessKaebo}
           alt="Alliance character"
           className="absolute bottom-0 -right-[8%] min-[1500px]:-right-[2%] min-[1700px]:right-[6%] h-[98%] object-contain"
           fetchPriority="high"
@@ -105,7 +105,7 @@ function AllianceNftHeroSection() {
               <h1 className="!font-eurostile text-nasun-white uppercase lg:text-6xl min-[1440px]:text-7xl tracking-[0.15em] leading-none">
                 ALLIANCE
               </h1>
-              <p className="!font-eurostile uppercase lg:text-3xl min-[1440px]:text-4xl tracking-wider mt-3 text-nasun-c1">
+              <p className="!font-eurostile uppercase lg:text-3xl min-[1440px]:text-4xl tracking-wider mt-3 text-[#5ecbf0]">
                 FREE MINT EVENT
               </p>
             </div>
