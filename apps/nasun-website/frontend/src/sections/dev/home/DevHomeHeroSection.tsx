@@ -28,7 +28,7 @@ export default function DevHomeHeroSection() {
       />
 
       <div className="ch-container flex justify-end">
-        <FadeInUp className="max-w-[640px] lg:mr-[10%] xl:mr-[14%] flex flex-col text-right md:text-left">
+        <FadeInUp className="max-w-[640px] mr-4 md:mr-8 lg:mr-[6%] xl:mr-[10%] flex flex-col text-right md:text-left">
           <span className="ch-eyebrow">01 / Nasun</span>
           <h1 className="ch-display-wide mt-6">
             How AI Agents

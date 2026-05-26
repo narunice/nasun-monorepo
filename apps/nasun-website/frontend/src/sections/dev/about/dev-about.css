@@ -8,6 +8,7 @@
 .dev-home-catena .ch-hero-about {
   /* Reuse hero spacing; the overlay tilts content toward the bottom-left like the reference board. */
   align-items: stretch;
+  padding-left: 2rem;
 }
 .dev-home-catena .ch-hero-about .ch-container {
   display: flex;
@@ -37,9 +38,12 @@
     );
 }
 @media (min-width: 1024px) {
+  .dev-home-catena .ch-hero-about {
+    padding-left: 112px;
+  }
   .dev-home-catena .ch-hero-about .ch-container {
     justify-content: flex-end;
-    padding-bottom: 8vh;
+    padding-bottom: 4vh;
   }
 }
 
