@@ -124,6 +124,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.protocol",
       path: "/network",
+      hidden: true, // Hidden from top nav per design request
       subMenu: [
         {
           name: "navigation.nasunNetwork",
@@ -212,6 +213,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
+      hidden: true, // Hidden from top nav per design request
       subMenu: [
         {
           name: "navigation.padoFinance",
@@ -333,55 +335,8 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.about",
       path: "/about",
-      subMenu: [
-        // {
-        //   name: "navigation.aboutOverview",
-        //   path: "/about/overview",
-        //   element: Pages.AboutOverview,
-        // },
-        {
-          name: "navigation.founders",
-          path: "/about/founders",
-          element: Pages.Founders,
-        },
-        {
-          name: "navigation.news",
-          path: "/about/news",
-          element: Pages.News,
-        },
-        {
-          name: "navigation.awards",
-          path: "/about/awards",
-          element: Pages.Grants,
-        },
-        {
-          name: "navigation.roadmap",
-          path: "/about/roadmap",
-          element: Pages.Roadmap,
-        },
-        // {
-        //   name: "navigation.aboutTeam",
-        //   path: "/about/team",
-        //   element: Pages.AboutTeam,
-        //   disabled: true, // Coming Soon
-        // },
-        // {
-        //   name: "navigation.opportunities",
-        //   path: "/about/opportunities",
-        //   element: Pages.Opportunities,
-        //   disabled: true, // Coming Soon
-        // },
-        // {
-        //   name: "navigation.strategy",
-        //   path: "/about/strategy",
-        //   element: Pages.VisionStrategy,
-        // },
-        // {
-        //   name: "navigation.investors",
-        //   path: "/about/investors",
-        //   element: Pages.Investors,
-        // },
-      ],
+      // Flat top-level link (no dropdown). Sub-paths (founders/news/awards/roadmap)
+      // still resolve for URL backwards-compat — registered inline in AppRoutes.tsx.
     },
     meta: {
       title: "About — NASUN",
@@ -390,7 +345,7 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     },
   },
 
-  // Community 섹션 (Governance, Leaderboards 통합)
+  // Community 섹션 (Alliance, Governance)
   community: {
     path: "/community",
     component: Pages.LeaderboardV3,
@@ -408,6 +363,49 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/community/governance",
           element: Pages.Web3,
         },
+        // Leaderboard sub-routes kept for URL backwards-compatibility,
+        // but exposed through the dedicated "Leaderboards" nav entry below.
+        {
+          name: "navigation.ecosystemLeaderboard",
+          path: "/community/nasun-ecosystem-leaderboard",
+          element: Pages.EcosystemLeaderboard,
+          hidden: true,
+        },
+        {
+          name: "navigation.padoScoreLeaderboard",
+          path: "/community/pado-leaderboard",
+          element: Pages.PadoScoreLeaderboard,
+          hidden: true,
+        },
+        {
+          name: "navigation.creatorsLeaderboard",
+          path: "/community/creators-leaderboard",
+          element: Pages.LeaderboardV3,
+          hidden: true,
+        },
+        {
+          name: "navigation.creatorsLeaderboardGuide",
+          path: "/community/creators-leaderboard-guide",
+          element: Pages.LeaderboardInfo,
+          hidden: true,
+        },
+      ],
+    },
+    meta: {
+      title: "Community — NASUN",
+      description:
+        "Nasun community — alliance, governance, and ecosystem participation.",
+    },
+  },
+
+  // Leaderboards 섹션 (Community 옆 신설 — 3개 리더보드 + 가이드)
+  leaderboards: {
+    path: "/leaderboards",
+    component: Pages.EcosystemLeaderboard,
+    navItem: {
+      name: "navigation.leaderboards",
+      path: "/leaderboards",
+      subMenu: [
         {
           name: "navigation.ecosystemLeaderboard",
           path: "/community/nasun-ecosystem-leaderboard",
@@ -432,9 +430,9 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       ],
     },
     meta: {
-      title: "Community — NASUN",
+      title: "Leaderboards — NASUN",
       description:
-        "Nasun community — governance, leaderboards, and ecosystem participation.",
+        "Nasun leaderboards — Ecosystem, Pado DeFi, and Creators rankings.",
     },
   },
 
@@ -725,13 +723,14 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
         })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: network, infra, ecosystem, about, community, wave1
+      // 정렬 순서: network, infra, ecosystem, about(visible /dev/about), community, leaderboards, wave1
       const order = [
         "network",
         "infra",
         "ecosystem",
         "about",
         "community",
+        "leaderboards",
         "wave1",
       ];
       const aIndex = order.findIndex((item) => a.path.includes(item));

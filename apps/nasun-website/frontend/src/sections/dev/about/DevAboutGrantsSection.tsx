@@ -83,7 +83,7 @@ export default function DevAboutGrantsSection() {
   );
 
   return (
-    <ChSection innerClassName="ch-about-grants" fullMinHeight={false}>
+    <ChSection id="awards" innerClassName="ch-about-grants" fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow ch-eyebrow-cyan">03 / Recognition</span>
         <h2 className="ch-display">Awards &amp; Grants</h2>
@@ -108,9 +108,13 @@ export default function DevAboutGrantsSection() {
               <Slider ref={sliderRef} {...settings}>
                 {grantsList.map((item, idx) => (
                   <div key={idx} className="ch-grants-slide">
-                    <Link to="/about/awards" className="ch-grants-card">
-                      <p className="ch-grants-card-date">{item.date}</p>
-                      <h3 className="ch-grants-card-title">{item.event_name}</h3>
+                    <article className="ch-grants-card">
+                      <span className="ch-grants-card-halo" aria-hidden="true" />
+                      <header className="ch-grants-card-head">
+                        <p className="ch-grants-card-date">{item.date}</p>
+                        <h3 className="ch-grants-card-title">{item.event_name}</h3>
+                      </header>
+                      <div className="ch-grants-card-divider" aria-hidden="true" />
                       <p className="ch-grants-card-prize">
                         {item.prize}
                         {item.amount ? ` · ${item.amount}` : ""}
@@ -123,20 +127,31 @@ export default function DevAboutGrantsSection() {
                           ))}
                         </ul>
                       )}
-                      {item.logos?.dark?.length > 0 && (
-                        <div className="ch-grants-card-logos">
-                          {item.logos.dark.map((logo) => (
-                            <img
-                              key={logo}
-                              src={`/${logo}`}
-                              alt=""
-                              loading="lazy"
-                              className="ch-grants-card-logo"
-                            />
-                          ))}
-                        </div>
-                      )}
-                    </Link>
+                      <footer className="ch-grants-card-foot">
+                        {item.logos?.dark?.length > 0 && (
+                          <div className="ch-grants-card-logos">
+                            {item.logos.dark.map((logo) => (
+                              <img
+                                key={logo}
+                                src={`/${logo}`}
+                                alt=""
+                                loading="lazy"
+                                className="ch-grants-card-logo"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        {item.slug && (
+                          <Link
+                            to={`/news-events/${item.slug}`}
+                            className="ch-grants-card-readmore"
+                          >
+                            <span>Read more</span>
+                            <span aria-hidden="true" className="ch-grants-card-readmore-arrow">→</span>
+                          </Link>
+                        )}
+                      </footer>
+                    </article>
                   </div>
                 ))}
               </Slider>

@@ -12,10 +12,10 @@ import FadeInUp from "../home/FadeInUp";
 import { useEpochInfo, useTPS } from "@/hooks/network/useNetworkData";
 import { useTPSHistory } from "@/hooks/network/useTPSHistory";
 
-// Nasun devnet has been live since 2026-03-26 (per litepaper § 3 "Operational
-// Signal"). Anchor the live uptime counter to this timestamp so the card
-// continues to climb daily without manual updates.
-const DEVNET_LAUNCH_TS = Date.parse("2026-03-26T00:00:00Z");
+// Nasun devnet first DAA recorded on 2026-03-05 (per stats snapshot). Anchor
+// the live uptime counter to this timestamp so the card continues to climb
+// daily without manual updates.
+const DEVNET_LAUNCH_TS = Date.parse("2026-03-05T00:00:00Z");
 
 function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);

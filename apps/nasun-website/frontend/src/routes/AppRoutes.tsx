@@ -76,9 +76,17 @@ const AppRoutes = () => {
           }
         />
 
-        {/* Home Route */}
-        <Route path="/" element={<RouteWithMeta route={routesV2.home} />} />
+        {/* Home Route — now serves the new dev/home landing.
+            Old home preserved at /archive/home-may2026 for reference. */}
+        <Route
+          path="/"
+          element={<RouteWithMeta route={{ component: DevHomePage, meta: routesV2.home.meta }} />}
+        />
         <Route path="/home" element={<Navigate to="/" replace />} />
+        <Route
+          path="/archive/home-may2026"
+          element={<RouteWithMeta route={{ component: Pages.Home, meta: { title: "Archive — Home (May 2026) — NASUN", description: "Archived snapshot of the May 2026 Nasun home page." } }} />}
+        />
 
         {/* Dynamic Routes from routesV2 (non-nested) */}
         {Object.entries(routesV2)
@@ -124,7 +132,11 @@ const AppRoutes = () => {
         </Route>
 
         <Route path="/about">
-          {renderNestedRoutes("About", routesV2.about, "overview", pageTitleMaps.about)}
+          <Route index element={<DevAboutPage />} />
+          <Route path="founders" element={<Pages.Founders />} />
+          <Route path="news" element={<Pages.News />} />
+          <Route path="awards" element={<Pages.Grants />} />
+          <Route path="roadmap" element={<Pages.Roadmap />} />
         </Route>
 
         <Route path="/community">
@@ -185,8 +197,8 @@ const AppRoutes = () => {
 
         {/* Dev/Showcase Routes */}
         <Route path="/showcase" element={<ComponentShowcasePage />} />
-        <Route path="/dev/home" element={<DevHomePage />} />
-        <Route path="/dev/about" element={<DevAboutPage />} />
+        <Route path="/dev/home" element={<Navigate to="/" replace />} />
+        <Route path="/dev/about" element={<Navigate to="/about" replace />} />
         <Route path="/dev/wallet-test" element={<WalletTestPage />} />
         <Route path="/dev/stats" element={<StatsPage />} />
         <Route path="/dev/battalion-nft" element={<DevBattalionNftPage />} />

@@ -50,14 +50,19 @@ export default function Footer() {
     }
   };
 
-  const isHomePage = location.pathname === "/";
   const isUjuPage = location.pathname === "/uju" || location.pathname.startsWith("/uju/") || location.pathname === "/my-account" || location.pathname.startsWith("/my-account/");
-  // /dev/home and /dev/about use the catena dark theme with --ch-onyx (#151316)
+  // /, /about, /dev/home use the catena dark theme with --ch-onyx (#151316)
   // as the page background. Keep the footer aligned to avoid a visible seam.
-  const isDevCatenaPage = location.pathname === "/dev/home" || location.pathname === "/dev/about";
+  const isDevCatenaPage =
+    location.pathname === "/" ||
+    location.pathname === "/about" ||
+    location.pathname === "/dev/home" ||
+    location.pathname === "/dev/about";
+  // Archived May 2026 home keeps its original navy backdrop.
+  const isArchivedHome = location.pathname === "/archive/home-may2026";
 
   return (
-    <div className={isUjuPage ? "bg-uju-bg" : isDevCatenaPage ? "bg-[#151316]" : isHomePage ? "bg-[#0b1628]" : "bg-nasun-black"}>
+    <div className={isUjuPage ? "bg-uju-bg" : isDevCatenaPage ? "bg-[#151316]" : isArchivedHome ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>
@@ -139,6 +144,32 @@ export default function Footer() {
 
       <FadeInUp>
         <div className="max-w-8xl mx-auto p-4 md:p-6 lg:p-8 ">
+          {/* Investor & partnership contact (own row, slightly emphasized) */}
+          <div className="flex justify-start items-center pb-6 md:pb-8">
+            <a
+              href="mailto:admin@nasun.io"
+              className="inline-flex items-center gap-2 text-nasun-white/90 hover:text-white transition-colors text-sm md:text-[15px] tracking-wide"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="w-4 h-4 md:w-[18px] md:h-[18px] opacity-80"
+                aria-hidden="true"
+              >
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+              <span>
+                Investor & partnership · <span className="underline underline-offset-4 decoration-nasun-white/30">admin@nasun.io</span>
+              </span>
+            </a>
+          </div>
+
           {/* 저작권 및 링크 섹션 */}
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 md:gap-8 !text-sm">
             <div className="flex flex-col gap-2">

@@ -90,6 +90,8 @@
   padding-bottom: var(--ch-section-py);
   padding-left: 1.5rem;
   padding-right: 1.5rem;
+  /* Offset hash-scroll landings so they clear the sticky top nav. */
+  scroll-margin-top: 80px;
 }
 @media (min-width: 1024px) {
   .dev-home-catena .ch-section {
@@ -149,7 +151,8 @@
   .dev-home-catena .ch-lead { font-size: 1.125rem; line-height: 1.4; }
 }
 
-.dev-home-catena .ch-body {
+.dev-home-catena .ch-body,
+.dev-home-catena .ch-body p {
   font-family: var(--ch-font-body);
   font-weight: 300;
   font-size: 1rem;
@@ -259,6 +262,7 @@
   background-color: transparent;
   color: var(--ch-fg-default);
   border: 1px solid var(--ch-border);
+  font-weight: 450;
 }
 .dev-home-catena .ch-btn-ghost:hover {
   border-color: var(--ch-fg-accent);

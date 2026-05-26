@@ -5,6 +5,7 @@ type Props = {
   className?: string;
   innerClassName?: string;
   fullMinHeight?: boolean;
+  id?: string;
 };
 
 export default function ChSection({
@@ -12,6 +13,7 @@ export default function ChSection({
   className = "",
   innerClassName = "",
   fullMinHeight = true,
+  id,
 }: Props) {
   // When the section is forced to fill the viewport, center the content
   // vertically so any unavoidable slack splits evenly between top and
@@ -26,7 +28,7 @@ export default function ChSection({
     : undefined;
 
   return (
-    <section className={`ch-section ${className}`} style={style}>
+    <section id={id} className={`ch-section ${className}`} style={style}>
       <div className={`ch-container ch-stack ${innerClassName}`}>{children}</div>
     </section>
   );

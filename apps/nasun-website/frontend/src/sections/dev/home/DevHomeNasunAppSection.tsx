@@ -34,9 +34,17 @@ export default function DevHomeNasunAppSection() {
               <span className="ch-logo-primary !font-changeling tracking-widest">
                 NASUN
               </span>
-              <span className="ch-logo-secondary !font-changeling" style={{ color: "var(--ch-accent-cyan)" }}>APP</span>
+              <span
+                className="ch-logo-secondary !font-changeling"
+                style={{ color: "var(--ch-accent-cyan)" }}
+              >
+                APP
+              </span>
             </h2>
-            <p className="ch-body mt-1" style={{ color: "var(--ch-fg-default)" }}>
+            <p
+              className="ch-body mt-1 !font-medium tracking-wider"
+              style={{ color: "var(--ch-fg-default)" }}
+            >
               Agentic finance control center
             </p>
           </div>

@@ -73,29 +73,25 @@ const PILLARS: Pillar[] = [
   {
     index: "01",
     title: "Compounding Track Records",
-    body:
-      "Users and agents build independent execution histories that both compound into a shared standing over time. The more meaningful activity in the environment, the more authority accrues.",
+    body: "Users and agents build independent execution histories that both compound into a shared standing over time. The more meaningful activity in the environment, the more authority accrues.",
     viz: <VizStackedLayers />,
   },
   {
     index: "02",
     title: "Real Benefits at Higher Tiers",
-    body:
-      "A higher Nasun Standing Index unlocks real economic benefits: lower fees, higher leverage limits, expanded agent permissions, priority execution, and increased staking rewards.",
+    body: "A higher Nasun Standing Index unlocks real economic benefits: lower fees, higher leverage limits, expanded agent permissions, priority execution, and increased staking rewards.",
     viz: <VizLuminanceBands />,
   },
   {
     index: "03",
     title: "Bring Your History With You",
-    body:
-      "Import verified activity from Ethereum, Solana, and Sui and start on Nasun with established standing. You do not arrive at zero.",
+    body: "Import verified activity from Ethereum, Solana, and Sui and start on Nasun with established standing. You do not arrive at zero.",
     viz: <VizHoloMerge />,
   },
   {
     index: "04",
     title: "One Record, Across Chains",
-    body:
-      "Engage curated applications across chains while building one unified Nasun Standing Index. External applications gain participants with persistent behavioral history rather than isolated wallets.",
+    body: "Engage curated applications across chains while building one unified Nasun Standing Index. External applications gain participants with persistent behavioral history rather than isolated wallets.",
     viz: <VizResonance />,
   },
 ];
@@ -141,7 +137,7 @@ export default function DevAboutGravitySection() {
   return (
     <ChSection innerClassName="ch-about-gravity" fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow ch-eyebrow-cyan">01 / Gravity</span>
+        <span className="ch-eyebrow">03 / Gravity</span>
         <h2 className="ch-display" style={{ maxWidth: "940px" }}>
           Becoming the Center of{" "}
           <span className="ch-accent-pado">Onchain Financial Gravity</span>

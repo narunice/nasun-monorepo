@@ -13,7 +13,7 @@ export const DESKTOP_NAVIGATION_STYLES = {
   // 패딩을 base에 통일하여 active/inactive 전환 시 레이아웃 시프트 방지
   // whitespace-nowrap으로 메뉴 항목 줄바꿈 방지
   mainLink: {
-    base: "transition-all text-base text-nasun-black outline-none px-5 py-1.5 whitespace-nowrap",
+    base: "inline-flex items-center transition-all text-base text-nasun-black outline-none px-5 py-1.5 whitespace-nowrap",
     active: "bg-nasun-c4/20 rounded-2xl",
     inactive: "text-nasun-black hover:opacity-70",
   },

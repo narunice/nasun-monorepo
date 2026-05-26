@@ -12,7 +12,10 @@ export default function DevHomeEcosystemSection() {
       </FadeInUp>
 
       <div className="grid grid-cols-1 md:grid-cols-[1fr_1px_1fr] gap-10 md:gap-0 items-stretch">
-        <FadeInUp className="md:pl-16 md:pr-12 lg:pl-32 lg:pr-16 flex flex-col gap-6" delayMs={150}>
+        <FadeInUp
+          className="md:pl-16 md:pr-12 lg:pl-32 lg:pr-16 flex flex-col gap-6"
+          delayMs={150}
+        >
           <div>
             <h3
               className="text-2xl md:text-3xl tracking-wider text-transparent bg-clip-text"
@@ -24,7 +27,10 @@ export default function DevHomeEcosystemSection() {
             >
               PADO
             </h3>
-            <p className="ch-body mt-2" style={{ color: "var(--ch-fg-default)" }}>
+            <p
+              className="ch-body mt-0  !font-medium tracking-wider"
+              style={{ color: "var(--ch-fg-default)" }}
+            >
               Unified Onchain Finance
             </p>
           </div>
@@ -65,7 +71,10 @@ export default function DevHomeEcosystemSection() {
 
         <div className="hidden md:block ch-divider-v" aria-hidden="true" />
 
-        <FadeInUp className="md:pl-16 lg:pl-24 flex flex-col gap-6" delayMs={300}>
+        <FadeInUp
+          className="md:pl-16 lg:pl-24 flex flex-col gap-6"
+          delayMs={300}
+        >
           <div>
             <h3
               className="text-3xl md:text-4xl italic font-medium leading-[1.05] tracking-tight text-transparent bg-clip-text -ml-1"
@@ -77,7 +86,10 @@ export default function DevHomeEcosystemSection() {
             >
               GoStop
             </h3>
-            <p className="ch-body mt-2" style={{ color: "var(--ch-fg-default)" }}>
+            <p
+              className="ch-body mt-1  !font-medium tracking-wider"
+              style={{ color: "var(--ch-fg-default)" }}
+            >
               Casino-style Mini-games
             </p>
           </div>

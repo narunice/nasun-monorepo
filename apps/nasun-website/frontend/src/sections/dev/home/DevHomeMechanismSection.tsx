@@ -95,9 +95,24 @@ function VizBind() {
         >
           tx
         </text>
-        <rect className="flash" x="66" y="22" width="48" height="18" rx="9" fill="rgba(134,243,183,0.35)" />
+        <rect
+          className="flash"
+          x="66"
+          y="22"
+          width="48"
+          height="18"
+          rx="9"
+          fill="rgba(134,243,183,0.35)"
+        />
         <g className="tier-pill">
-          <rect x="66" y="22" width="48" height="18" rx="9" fill="url(#ch-bind-grad)" />
+          <rect
+            x="66"
+            y="22"
+            width="48"
+            height="18"
+            rx="9"
+            fill="url(#ch-bind-grad)"
+          />
           <text
             x="90"
             y="35"
@@ -138,8 +153,7 @@ const STEPS: Step[] = [
     index: "02",
     eyebrow: "Index",
     title: "Underwrite",
-    body:
-      "The runtime captures every settlement receipt and compounds the outcome into NSI. Quests do not.",
+    body: "The runtime captures every settlement receipt and compounds the outcome into NSI. Quests do not.",
     viz: <VizUnderwrite />,
   },
   {
@@ -197,12 +211,13 @@ export default function DevHomeMechanismSection() {
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">03 / Enforcement</span>
+        <span className="ch-eyebrow ch-eyebrow-cyan">01 / Enforcement</span>
         <h2 className="ch-display">
           Standing the <span className="ch-accent-pado">Runtime Enforces</span>
         </h2>
         <p className="ch-lead">
-          Standing is not published. It is enforced at runtime, on every native execution.
+          Standing is not published. It is enforced at runtime, on every native
+          execution.
         </p>
       </FadeInUp>
 
@@ -237,8 +252,8 @@ export default function DevHomeMechanismSection() {
             <span className="ch-closing-eyebrow">What moves NSI</span>
             <h3 className="ch-closing-title">Settlement, not signaling.</h3>
             <p className="ch-body">
-              NSI moves on settlement receipts, agent execution records, and verified outcomes.
-              Quests do not.
+              NSI moves on settlement receipts, agent execution records, and
+              verified outcomes. Quests do not.
             </p>
           </div>
         </FadeInUp>
@@ -246,10 +261,13 @@ export default function DevHomeMechanismSection() {
         <FadeInUp delayMs={820}>
           <div className="ch-closing-card">
             <span className="ch-closing-eyebrow">How agents inherit</span>
-            <h3 className="ch-closing-title">Agents inherit. Then they earn.</h3>
+            <h3 className="ch-closing-title">
+              Agents inherit. Then they earn.
+            </h3>
             <p className="ch-body">
-              An agent starts with a capped floor inherited from its operator. Its own onchain
-              record compounds standing independently, and feeds back.
+              An agent starts with a capped floor inherited from its operator.
+              Its own onchain record compounds standing independently, and feeds
+              back.
             </p>
           </div>
         </FadeInUp>

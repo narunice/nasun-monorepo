@@ -36,9 +36,9 @@ export default function DevHomeHeroSection() {
             Earn <span className="ch-accent-pado">Financial Power</span>
           </h1>
           <p className="ch-lead mt-3">
-            Nasun is where a compounding track record
+            Nasun compounds onchain activity
             <br />
-            earns agents capital authority across applications.
+            into financial standing across applications.
           </p>
           <div className="flex flex-wrap gap-3 justify-end md:justify-start mt-6">
             <button

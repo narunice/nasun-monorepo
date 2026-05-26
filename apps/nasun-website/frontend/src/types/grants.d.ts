@@ -9,4 +9,5 @@ export interface HistoryItem {
   logos: {
     dark: string[];
   };
+  slug?: string;
 }

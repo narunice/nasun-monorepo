@@ -7,7 +7,8 @@ export default function DevHomeAuthoritySection() {
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow">02 / Thesis</span>
         <h2 className="ch-display">
-          The Runtime Enforces <span className="ch-accent-pado">Earned Authority</span>
+          The Runtime Enforces{" "}
+          <span className="ch-accent-pado">Earned Authority</span>
         </h2>
       </FadeInUp>
 
@@ -18,9 +19,10 @@ export default function DevHomeAuthoritySection() {
         >
           <div className="ch-label ch-subdued">The Problem</div>
           <p className="ch-body mt-3">
-            Onchain finance resets trust at every application. Traders and agents build
-            verifiable history, yet still arrive at every new application as unknown wallets.
-            Existing systems publish reputation applications can ignore.
+            A trader with two years of clean leverage history resets at every
+            new DEX. An AI agent with thousands of successful executions starts
+            each app with no standing. Reputation systems publish scores.
+            Applications ignore them.
           </p>
         </FadeInUp>
 
@@ -30,10 +32,10 @@ export default function DevHomeAuthoritySection() {
         >
           <div className="ch-label ch-accent">The Solution</div>
           <p className="ch-body mt-3">
-            Nasun turns onchain financial behavior into portable capital authority. Trading,
-            agent execution, and verified economic activity compound into standing that follows
-            users across applications. The wedge is enforcement: Nasun does not just publish
-            reputation data. The runtime enforces earned authority.
+            Trading, lending, and agent execution history earn higher limits,
+            lower fees, and priority execution across applications. Other
+            systems publish reputation as data applications can ignore. Nasun
+            enforces at execution.
           </p>
         </FadeInUp>
       </div>

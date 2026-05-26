@@ -1,27 +1,38 @@
+import { library } from "@fortawesome/fontawesome-svg-core";
+import { fab } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import ChSection from "../home/ChSection";
 import FadeInUp from "../home/FadeInUp";
 import naruPortrait from "@/assets/images/profile-naru.png";
 import overclockedPortrait from "@/assets/images/profile-overclocked.png";
+
+library.add(fab);
 
 type Member = {
   name: string;
   role: string;
   bio: string;
   portrait: string;
+  xHandle: string;
+  xUrl: string;
 };
 
 const MEMBERS: Member[] = [
   {
     name: "Naru",
     role: "Founder and Protocol Lead",
-    bio: "Architect of the Nasun runtime, a Move-based L1 built on Mysticeti, and author of the core onchain systems and production infrastructure layer. Her background in clinical psychology and research on online behavior and identity formation informs Nasun's behavioral scoring systems. She is first author on two peer-reviewed SCIE-indexed papers in mental health. Prior decade in the Korean film industry across productions shown at Cannes, Berlin, and Venice.",
+    bio: "Architect of the Nasun runtime, a Move-based L1 built on Mysticeti, and author of the core onchain systems and production infrastructure layer. Her background in clinical psychology and research on the biopsychosocial impacts of social media and disasters informs Nasun's behavioral scoring systems. She is first author on two peer-reviewed SCIE-indexed papers in mental health. Prior decade in the Korean film industry across productions shown at Cannes, Berlin, and Venice.",
     portrait: naruPortrait,
+    xHandle: "@Naru010110",
+    xUrl: "https://x.com/Naru010110",
   },
   {
     name: "Overclocked",
     role: "Founder and Ecosystem Lead",
     bio: "Owns product strategy, market research, and community growth, including the cohort-acquisition systems that produced the devnet's verified-tester base without paid acquisition. Active in crypto since 2017 across DAO operations and community building. Background directing commercial and broadcast productions for Microsoft, Nike, and IBM, plus operating a 100+ employee retail business. BA from the University of Michigan.",
     portrait: overclockedPortrait,
+    xHandle: "@overclocksalmon",
+    xUrl: "https://x.com/overclocksalmon",
   },
 ];
 
@@ -30,9 +41,7 @@ export default function DevAboutTeamSection() {
     <ChSection innerClassName="ch-about-team" fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-3 items-center text-center">
         <span className="ch-eyebrow">04 / Team</span>
-        <h2 className="ch-display">
-          <span className="ch-accent-pado">Team</span>
-        </h2>
+        <h2 className="ch-display">Team</h2>
       </FadeInUp>
 
       <div className="ch-team-grid">
@@ -42,12 +51,27 @@ export default function DevAboutTeamSection() {
             delayMs={150 + i * 150}
             className="ch-team-card"
           >
-            <div className="ch-team-card-portrait">
-              <img
-                src={m.portrait}
-                alt={`${m.name} portrait`}
-                loading="lazy"
-              />
+            <div className="ch-team-card-portrait-col">
+              <div className="ch-team-card-portrait">
+                <img
+                  src={m.portrait}
+                  alt={`${m.name} portrait`}
+                  loading="lazy"
+                />
+              </div>
+              <a
+                href={m.xUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ch-team-card-x"
+                aria-label={`${m.name} on X (${m.xHandle})`}
+              >
+                <FontAwesomeIcon
+                  icon={["fab", "x-twitter"]}
+                  className="ch-team-card-x-icon"
+                />
+                <span className="ch-team-card-x-handle">{m.xHandle}</span>
+              </a>
             </div>
             <div className="ch-team-card-body">
               <div className="ch-team-card-head">

@@ -22,13 +22,16 @@ export function usePostSectionNavigation() {
   const isNewsEvents = location.pathname.startsWith("/news-events/");
   const currentSection = isNewsEvents ? SECTION_CONFIG.newsEvents : SECTION_CONFIG.awardsGrants;
 
+  // The standalone /updates/news page has been retired; all post-article
+  // back-links now land on the /about page's Awards & Grants section, which
+  // is the canonical surface for both award and news/event posts.
   const handleBackToSection = useCallback(() => {
-    navigate(isNewsEvents ? "/updates/news" : "/updates/awards");
-  }, [navigate, isNewsEvents]);
+    navigate("/about#awards");
+  }, [navigate]);
 
   return {
     currentSection,
-    backButtonText: isNewsEvents ? "Back to News" : "Back to Awards",
+    backButtonText: "Back to Awards & Grants",
     handleBackToSection,
   };
 }
