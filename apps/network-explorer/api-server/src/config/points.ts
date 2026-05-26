@@ -156,8 +156,12 @@ const PKG = {
   // catch in-flight history.
   //   0x98765cc3... — dead (pre-2026-05, history already aggregated)
   //   0xbe6d8f... — superseded 2026-05-18 by upgrade to 0x0b4f89...
-  //   0x0b4f89... — current
+  //   0x0b4f89... — previous generation, kept for in-flight history
+  //   0x86595464... — current (fresh publish per devnet-ids.json, 2026-05-25)
   prediction: stripHex(
+    '0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2',
+  ),
+  predictionPrev: stripHex(
     '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
   ),
   predictionLegacy: stripHex(
@@ -175,11 +179,43 @@ const PKG = {
   baram: stripHex(
     '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
   ),
+  // 2026-05-25 fresh publish (devnet-ids.json baram.packageId). Restructured:
+  // user-facing events moved from `aer` module to `baram` module. Adds
+  // `budget` module for spend tracking (internal accounting, ignored).
+  baramV2: stripHex(
+    '0x734c42b8e8fbca26f1961766176a509a49c8dd44368d80cdc035439809ff1aee',
+  ),
   baramExecutor: stripHex(
     '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
   ),
   baramAer: stripHex(
     '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
+  ),
+  // 2026-05-25 new AER package (devnet-ids.json baram.aerPackageId). Emits
+  // ExecutionReportCreatedV3 (per-execution telemetry, ignored — already
+  // covered by baram-ai user-gesture events).
+  baramAerV2: stripHex(
+    '0x50f5c30416e0f160c40839eff100a67cecff047f57814065b5387af701ce1815',
+  ),
+  // Agent escrow / legacy AER (originalPackageId per
+  // memory:reference_agent_trade_data_source). Emits Escrow{Deposited,
+  // Withdrawn} + an older ExecutionReportCreated. Internal flow only.
+  baramEscrow: stripHex(
+    '0xdb118fd931572cf42af8613dce1cc18471419d1ba937b63c832d4361aad5b8e5',
+  ),
+  // Gostop bankroll v0.0.4 lockstep (2026-05-20). Emits BetCollected /
+  // WinnerPaid / GameResult / OpenExposureSnapshot from internal accounting
+  // alongside each game-specific event — ignored to avoid double-credit.
+  gostopBankrollV1: stripHex(
+    '0x4bc06710d15aa0ae235e5f9c69b01dec63afab929d0257586d5f2ecad72f0386',
+  ),
+  gostopBankrollV2: stripHex(
+    '0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82',
+  ),
+  // Nasun Standing (NSI) tier-worker events. System-emitted (tier-push job),
+  // not a user gesture. Ignored.
+  nasunTier: stripHex(
+    '0x1b1f684bbc6795461ad5fba6e13427ec8ccbf2921aaa555a15f4aac827f0f7b9',
   ),
   lending: stripHex(
     '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
@@ -266,14 +302,14 @@ export const WALLET_TRANSFER_EXCLUDED_MODULES: readonly string[] = [
   // Pado games
   'prediction_market', 'lottery', 'scratchcard', 'numbermatch',
   // Gostop games
-  'mines', 'crash',
+  'mines', 'crash', 'wheel', 'bankroll_pool',
   // Nasun website / admin
   'alliance_nft', 'battalion_nft', 'smart_account',
   'dev_oracle',
   // Governance
   'governance',
   // Baram AI Settlement
-  'baram', 'executor', 'aer',
+  'baram', 'executor', 'aer', 'escrow', 'budget',
   // Sui system (0x3)
   'staking_pool', 'sui_system',
 ] as const;
@@ -283,13 +319,17 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.tokensV2,
   PKG.deepbook,
   PKG.prediction,
+  PKG.predictionPrev,
   PKG.predictionLegacy,
   PKG.lottery,
   PKG.governance,
   PKG.governanceMultiChoice,
   PKG.baram,
+  PKG.baramV2,
   PKG.baramExecutor,
   PKG.baramAer,
+  PKG.baramAerV2,
+  PKG.baramEscrow,
   PKG.lending,
   PKG.perp,
   PKG.scratchcard,
@@ -300,6 +340,10 @@ export const WALLET_TRANSFER_EXCLUDED_PACKAGES: ReadonlySet<string> = new Set([
   PKG.gostopMines,
   PKG.gostopCrash,
   PKG.gostopWheel,
+  PKG.gostopBankrollV1,
+  PKG.gostopBankrollV2,
+  PKG.unifiedMargin,
+  PKG.nasunTier,
   PKG.sui, // 0x3 Sui system (staking)
 ]);
 
@@ -335,8 +379,14 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.prediction, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
   [PKG.prediction, 'prediction_market', 'OrderCancelled', { category: 'pado-prediction', activityType: 'cancel-order' }],
   [PKG.prediction, 'prediction_market', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
-  // Legacy publish (0xbe6d8f...): dual-mapped so events emitted before the
-  // 2026-05-18 upgrade still credit the same category/activityType.
+  // Previous publish (0x0b4f89...) and legacy (0xbe6d8f...): dual-mapped so
+  // events emitted by prior upgrades still credit the same category/type.
+  // The 1pt/day category cap collapses any cross-package duplicates.
+  [PKG.predictionPrev, 'prediction_market', 'TokensMinted', { category: 'pado-prediction', activityType: 'mint-tokens' }],
+  [PKG.predictionPrev, 'prediction_market', 'OrderPlaced', { category: 'pado-prediction', activityType: 'place-order' }],
+  [PKG.predictionPrev, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
+  [PKG.predictionPrev, 'prediction_market', 'OrderCancelled', { category: 'pado-prediction', activityType: 'cancel-order' }],
+  [PKG.predictionPrev, 'prediction_market', 'WinningsClaimed', { category: 'pado-prediction', activityType: 'claim-winnings' }],
   [PKG.predictionLegacy, 'prediction_market', 'TokensMinted', { category: 'pado-prediction', activityType: 'mint-tokens' }],
   [PKG.predictionLegacy, 'prediction_market', 'OrderPlaced', { category: 'pado-prediction', activityType: 'place-order' }],
   [PKG.predictionLegacy, 'prediction_market', 'OrderFilled', { category: 'pado-prediction', activityType: 'fill-order' }],
@@ -399,6 +449,11 @@ const EVENT_MAP_ENTRIES: [string, string, string, EventMapping][] = [
   [PKG.baramAer, 'aer', 'RequestCreated', { category: 'baram-ai', activityType: 'create-request' }],
   [PKG.baramAer, 'aer', 'RequestSettled', { category: 'baram-ai', activityType: 'settle' }],
   [PKG.baramAer, 'aer', 'RequestCanceled', { category: 'baram-ai', activityType: 'cancel' }],
+  // 2026-05-25 baramV2 restructure: user-gesture events moved to `baram`
+  // module. RequestCanceled not yet observed but mapped for completeness.
+  [PKG.baramV2, 'baram', 'RequestCreated', { category: 'baram-ai', activityType: 'create-request' }],
+  [PKG.baramV2, 'baram', 'RequestSettled', { category: 'baram-ai', activityType: 'settle' }],
+  [PKG.baramV2, 'baram', 'RequestCanceled', { category: 'baram-ai', activityType: 'cancel' }],
 
   // Baram Executor
   [PKG.baramExecutor, 'executor', 'ExecutorRegistered', { category: 'baram-executor', activityType: 'register' }],
@@ -461,8 +516,43 @@ export const IGNORED_EVENT_KEYS = new Set<string>([
   //    unified_margin: new pado margin product (2026-04). Categorize before awarding points.
   `${PKG.unifiedMargin}::unified_margin::AccountCreated`,
   `${PKG.unifiedMargin}::unified_margin::NusdcDeposited`,
+  `${PKG.unifiedMargin}::unified_margin::NusdcWithdrawn`,
   //    alliance_nft: new NFT contract (2026-04). No category defined yet.
   `${PKG.allianceNft}::alliance_nft::AllianceMinted`,
+
+  // D) Gostop bankroll_pool internal accounting (v0.0.4 lockstep 2026-05-20).
+  //    Fires alongside game-specific events (mines::SessionFinished,
+  //    wheel::WheelResultEvent, crash::BetPlaced); mapping here would
+  //    double-credit the same player gesture.
+  `${PKG.gostopBankrollV1}::bankroll_pool::BetCollected`,
+  `${PKG.gostopBankrollV1}::bankroll_pool::WinnerPaid`,
+  `${PKG.gostopBankrollV1}::bankroll_pool::GameResult`,
+  `${PKG.gostopBankrollV1}::bankroll_pool::OpenExposureSnapshot`,
+  `${PKG.gostopBankrollV2}::bankroll_pool::BetCollected`,
+  `${PKG.gostopBankrollV2}::bankroll_pool::WinnerPaid`,
+  `${PKG.gostopBankrollV2}::bankroll_pool::GameResult`,
+  `${PKG.gostopBankrollV2}::bankroll_pool::OpenExposureSnapshot`,
+
+  // E) Gostop mines sub-session events. We already credit one point per
+  //    completed session via SessionFinished; SessionCreated/CellRevealed
+  //    fire many times per session and must not stack.
+  `${PKG.gostopMines}::mines::SessionCreated`,
+  `${PKG.gostopMines}::mines::CellRevealed`,
+
+  // F) Baram executor / AER per-job telemetry. Settlement gestures are
+  //    already credited via baram-ai (RequestSettled). These are auto-emitted
+  //    accounting frames.
+  `${PKG.baramExecutor}::executor::ExecutorStatsUpdated`,
+  `${PKG.baramAerV2}::aer::ExecutionReportCreatedV3`,
+  `${PKG.baramEscrow}::aer::ExecutionReportCreated`,
+  `${PKG.baramEscrow}::escrow::EscrowDeposited`,
+  `${PKG.baramEscrow}::escrow::EscrowWithdrawn`,
+  `${PKG.baramV2}::budget::BudgetSpentWithCategory`,
+
+  // G) Nasun Standing (NSI) tier events. Emitted by tier-worker batch push,
+  //    not a user gesture — credit must not flow back to the affected user.
+  `${PKG.nasunTier}::events::TierUpdated`,
+  `${PKG.nasunTier}::events::TierBatchUpdate`,
 ]);
 
 // Get base points for a category + activity type

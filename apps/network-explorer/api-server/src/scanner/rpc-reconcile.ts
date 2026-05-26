@@ -47,9 +47,11 @@ const PKG = {
   // each upgrade variant. Add the new id when upgrading, keep the previous
   // one so older events still reconcile.
   //   0x98765cc3... — dead (pre-2026-05)
-  //   0xbe6d8f... — superseded 2026-05-18
-  //   0x0b4f89... — current
-  prediction: '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
+  //   0xbe6d8f... — legacy publish
+  //   0x0b4f89... — previous, kept for in-flight history
+  //   0x86595464... — current (fresh publish per devnet-ids.json, 2026-05-25)
+  prediction: '0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2',
+  predictionPrev: '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
   predictionLegacy: '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   lottery: '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
   perp: '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
@@ -68,6 +70,8 @@ const PKG = {
   gostopWheel: '0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d',
   lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
   baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
+  // 2026-05-25 fresh publish: user-facing events moved from `aer` to `baram`.
+  baramV2: '0x734c42b8e8fbca26f1961766176a509a49c8dd44368d80cdc035439809ff1aee',
   baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
   baramExecutor: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
   governance: '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3',
@@ -103,6 +107,12 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.predictionLegacy}::prediction_market::OrderFilled`, category: 'pado-prediction', activityType: 'fill-order' },
   { moveEventType: `${PKG.predictionLegacy}::prediction_market::OrderCancelled`, category: 'pado-prediction', activityType: 'cancel-order' },
   { moveEventType: `${PKG.predictionLegacy}::prediction_market::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
+  // Previous publish (0x0b4f89...) — second-to-most-recent, kept for in-flight.
+  { moveEventType: `${PKG.predictionPrev}::prediction_market::TokensMinted`, category: 'pado-prediction', activityType: 'mint-tokens' },
+  { moveEventType: `${PKG.predictionPrev}::prediction_market::OrderPlaced`, category: 'pado-prediction', activityType: 'place-order' },
+  { moveEventType: `${PKG.predictionPrev}::prediction_market::OrderFilled`, category: 'pado-prediction', activityType: 'fill-order' },
+  { moveEventType: `${PKG.predictionPrev}::prediction_market::OrderCancelled`, category: 'pado-prediction', activityType: 'cancel-order' },
+  { moveEventType: `${PKG.predictionPrev}::prediction_market::WinningsClaimed`, category: 'pado-prediction', activityType: 'claim-winnings' },
   // Gostop Lottery (own category; pado-side lottery PKG kept in EXCLUDED_PACKAGES
   // but no longer mapped to a points category since pado-side traffic is 0)
   { moveEventType: `${PKG.gostopLottery}::lottery::TicketPurchased`, category: 'gostop-lottery', activityType: 'buy-ticket' },
@@ -136,6 +146,10 @@ const RECONCILE_QUERIES: ReconcileQuery[] = [
   { moveEventType: `${PKG.baramAer}::aer::RequestCreated`, category: 'baram-ai', activityType: 'create-request' },
   { moveEventType: `${PKG.baramAer}::aer::RequestSettled`, category: 'baram-ai', activityType: 'settle' },
   { moveEventType: `${PKG.baramAer}::aer::RequestCanceled`, category: 'baram-ai', activityType: 'cancel' },
+  // 2026-05-25 baramV2 restructure: user-gesture events moved to `baram` module.
+  { moveEventType: `${PKG.baramV2}::baram::RequestCreated`, category: 'baram-ai', activityType: 'create-request' },
+  { moveEventType: `${PKG.baramV2}::baram::RequestSettled`, category: 'baram-ai', activityType: 'settle' },
+  { moveEventType: `${PKG.baramV2}::baram::RequestCanceled`, category: 'baram-ai', activityType: 'cancel' },
   // Baram Executor
   { moveEventType: `${PKG.baramExecutor}::executor::ExecutorRegistered`, category: 'baram-executor', activityType: 'register' },
   { moveEventType: `${PKG.baramExecutor}::staking::StakeAdded`, category: 'baram-executor', activityType: 'stake' },
@@ -417,22 +431,37 @@ export async function reconcileFromRpc(
 async function correctSnapshotForReconciledDate(targetDate: string): Promise<void> {
   if (!pointsDb) return;
   const sf = REFERRAL_ECOSYSTEM_SCALING_FACTOR;
+  const db = pointsDb;
 
   // Single source of truth in config/points.ts. All readers (snapshot, /score,
   // reconcile) must agree to keep filtered base consistent across live and
   // lock-in. We render the defaults as a postgres SQL fragment rather than
   // a JS array parameter to avoid the jsonb-vs-text[] COALESCE collision
   // (see comment in user_effective_missions CTE below).
-  const defaultMissionsLiteral = pointsDb.unsafe(
+  const defaultMissionsLiteral = db.unsafe(
     DEFAULT_MISSION_IDS
       .map((m) => `'${m.replace(/'/g, "''")}'`)
       .join(','),
   );
 
+  // Wrap the whole correction in a single transaction so we can raise
+  // statement_timeout via SET LOCAL (scoped to this tx only, no pool leak)
+  // and so steps 2a/2b/3 commit atomically. Previously each statement ran on
+  // a separately-pooled connection at the 30s default, which surfaced as
+  // "canceling statement due to statement timeout" once the per-date snapshot
+  // join + re-rank window crossed ~30s on busier days and starved unrelated
+  // HTTP queries sharing the pool.
+  await db.begin(async (txRaw) => {
+    // postgres.js TransactionSql drops call-signature typing via Omit<Sql>;
+    // cast back to recover the tagged-template signature (same pattern as
+    // routes/nasun-metrics.ts).
+    const tx = txRaw as unknown as typeof db;
+    await tx`SET LOCAL statement_timeout = '5min'`;
+
   // Step 1: compute mission-filtered base + multiplier-scaled delta for the date.
   // The delta CTE captures what would change so we can propagate to forward
   // cumulative rows in step 2 without re-querying activity_points.
-  const deltaRows = await pointsDb`
+  const deltaRows = await tx`
     WITH today_categories AS (
       SELECT DISTINCT identity_id, category
       FROM activity_points
@@ -507,7 +536,7 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
     // 2a. Update the target date row. Recomputes ecosystem_score from the
     // canonical formula (base*mult + bonuses + ref*sf + day_staking_scaled).
     // V1/V2 column choice is driven by which multiplier column is non-NULL.
-    await pointsDb`
+    await tx`
       WITH staking_today AS (
         SELECT GREATEST(
                  COALESCE(s.all_time_staking_scaled, 0)
@@ -544,7 +573,7 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
     // 2b. Forward-propagate the all_time_base / all_time_score delta to any
     // existing snapshot rows on later dates (rare unless reconcile runs late).
     if (scoredDelta !== 0) {
-      await pointsDb`
+      await tx`
         UPDATE ecosystem_score_snapshots
         SET all_time_base  = COALESCE(all_time_base, 0)  + ${scoredDelta.toFixed(3)}::numeric,
             all_time_score = COALESCE(all_time_score, 0) + ${scoredDelta.toFixed(3)}::numeric
@@ -561,7 +590,7 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
   // on the same scale (the score columns are intentionally on the same
   // numeric basis -- daily ecosystem score, with V2 just adding staking and
   // health-derived multiplier).
-  await pointsDb`
+  await tx`
     WITH ranked AS (
       SELECT identity_id,
              ROW_NUMBER() OVER (
@@ -579,4 +608,5 @@ async function correctSnapshotForReconciledDate(targetDate: string): Promise<voi
   `;
 
   console.log(`[Reconcile] Snapshot corrected for ${targetDate}: ${deltaRows.length} rows`);
+  }); // end db.begin
 }

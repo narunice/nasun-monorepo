@@ -73,11 +73,17 @@ export async function runInvariantAuditDaily(): Promise<void> {
 }
 
 async function runAudit(): Promise<AuditResult> {
-  // Single SQL pass with three CTEs to keep DB roundtrips minimal. Each
-  // window function partitions by identity_id and walks the chain in
-  // snapshot_date order, producing per-row violation flags that we then
-  // aggregate.
-  const [row] = await pointsDb!`
+  // Reserved connection with raised statement_timeout: the audit window-scans
+  // the full ecosystem_score_snapshots table (~N_users * N_days rows) and can
+  // exceed the pool's 30s default once the table passes ~1M rows, which
+  // previously surfaced as "canceling statement due to statement timeout"
+  // and starved unrelated HTTP queries sharing the pool. The reserved
+  // connection isolates the timeout bump and is released on the same socket.
+  const conn = await pointsDb!.reserve();
+  let row: { [k: string]: unknown } | undefined;
+  try {
+    await conn`SET statement_timeout = '5min'`;
+    const rows = await conn`
     WITH chained AS (
       SELECT identity_id, snapshot_date, base_score,
              COALESCE(multiplier_v2, multiplier) AS mult,
@@ -120,11 +126,20 @@ async function runAudit(): Promise<AuditResult> {
       END), 0)::numeric AS worst_anchor_gap
     FROM chained
   `;
+    row = rows[0];
+  } finally {
+    try {
+      await conn`RESET statement_timeout`;
+    } catch {
+      // best-effort; if the connection is dead the pool will discard it
+    }
+    conn.release();
+  }
   return {
     anchorChainViolations: Number(row?.anchor_chain_violations ?? 0),
     sumInvariantViolations: Number(row?.sum_invariant_violations ?? 0),
     monotonicViolations: Number(row?.monotonic_violations ?? 0),
-    worstSumGap: parseFloat(row?.worst_sum_gap ?? '0'),
-    worstAnchorGap: parseFloat(row?.worst_anchor_gap ?? '0'),
+    worstSumGap: parseFloat((row?.worst_sum_gap as string | undefined) ?? '0'),
+    worstAnchorGap: parseFloat((row?.worst_anchor_gap as string | undefined) ?? '0'),
   };
 }

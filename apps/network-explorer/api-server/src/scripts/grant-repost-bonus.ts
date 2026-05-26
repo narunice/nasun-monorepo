@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2056939880249544812';
+const TWEET_ID = '2058031091244769314';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@Luongson94 @VJBillionz1 @masud2633 @I_BlockFive @Le290788 @Richarduwah2 @elonunmk @Emiola_gangan @hyonggoo93 @SegunAdeba52413 @ashrai78 @msaqlainfcma @readnrest0 @NguynL615156 @beluong96 @web3_eyes @BornG69 @0xringond @BossWhatsNew @NgocNguyen63053 @furyrdx712 @wind_catcher23 @Diamondcryptx @samy69062958 @Obidestiny247 @Skymoon201095 @skybluenalpha @ReopaahScrin @indah_ye99 @PemburuCuan069 @4seazons263 @Putri_dhone @Anton4599262075 @BernadetaD70810 @ngedream @eglebai @naro0ck @0hmybo @0xaiaiai @BLVCK707 @safdarsulehry55 @0xAzk27 @fanumtta @D_O__Y_E @0x_nonol @Semobender @sintsarinan @minhvu229983 @sven_336 @NurRohm22672781 @MTown134056 @RvdWixx49687 @budie4167 @hashafifi @acahandi @kija888 @larionewlife @mv9984 @dung55443 @sucodautroc @elmeweb3 @invest_sometime @OjoPhilemo17247 @Abe_qearo @sicosongus
+@0hmybo @0xaiaiai @0xarayeth @0xAzk27 @0xcryptup @1Minicio @4seazons263 @6brother9 @__Jayden007 @Abe_qearo @acahandi @Adetolaniprime @AdlieI46077 @AgolliDani96293 @ashrai78 @BLVCK707 @BornG69 @BossWhatsNew @budie4167 @CapsidKay1 @casdkocak9291 @Cobalt_Duck @Diamondcryptx @DisyaBolon @eglebai @elmeweb3 @elonunmk @Emiola_gangan @hammedmusbau19 @hashafifi @hyonggoo93 @I_BlockFive @IcySp84362 @indah_ye99 @invest_sometime @jaypolaris7 @jdub_666 @JulioFarmerl800 @JuniorArchej59 @khagenep @khanhbac2468 @kija888 @larionewlife @Le290788 @le290789 @Lolazmir @miyamiya_S2 @msaqlainfcma @MTown134056 @naro0ck @NgocNguyen63053 @NguynL615156 @NumtadFa @NurRohm22672781 @Obidestiny247 @OjoPhilemo17247 @ontoseno0701 @PemburuCuan069 @Putri_dhone @qathylu @ReopaahScrin @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @skybluenalpha @Skymoon201095 @Staunch_idool64 @StoryMofi @sucodautroc @supirimalla @sven_336 @tav_web3 @tayanh1993 @tensyonado18 @The___rapper @TonBoy187 @TradeTraine @VJBillionz1 @VongVuot88444 @web3_eyes @wind_catcher23 @Zailaniharunam1 @zare_obi
 `;
 
 const BONUS_POINTS = 3;
