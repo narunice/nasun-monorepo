@@ -21,6 +21,7 @@ const NAME = 'nasun-ai-agent-deadbeef';
 
 const base = {
   hasActiveVault: true,
+  alphaPaused: false,
   pm2NameKnown: NAME,
   pm2NamesInList: new Set<string>(),
 };
@@ -79,6 +80,34 @@ describe('deriveAgentState', () => {
 
   it('unknown takes precedence over enabled=false (do not infer paused on RPC failure)', () => {
     const r = deriveAgentState({ ...base, isActive: null, enabled: false });
+    expect(r.state).toBe('unknown');
+    expect(r.desiredRunning).toBe(false);
+  });
+
+  // 2026-05-26 regression — alpha-cron's expiry pause must outrank
+  // config.enabled so a dump.pm2 resurrection (or a stale client toggle)
+  // cannot re-spawn a slot-expired agent.
+  it('paused when alpha-cron expired the slot, even if enabled=true', () => {
+    const r = deriveAgentState({
+      ...base, isActive: true, enabled: true, alphaPaused: true,
+    });
+    expect(r.state).toBe('paused');
+    expect(r.desiredRunning).toBe(false);
+    expect(r.reason).toBe('alpha_session_expired');
+  });
+
+  it('alphaPaused does not override killed (on-chain kill is terminal)', () => {
+    const r = deriveAgentState({
+      ...base, isActive: false, enabled: true, alphaPaused: true,
+    });
+    expect(r.state).toBe('killed');
+    expect(r.desiredRunning).toBe(false);
+  });
+
+  it('alphaPaused does not override unknown (RPC failure leaves state unchanged)', () => {
+    const r = deriveAgentState({
+      ...base, isActive: null, enabled: true, alphaPaused: true,
+    });
     expect(r.state).toBe('unknown');
     expect(r.desiredRunning).toBe(false);
   });

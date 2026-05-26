@@ -29,6 +29,7 @@ import {
 import { startVaultPurgeCron } from './agent-vault-purge.js';
 import { handleNasunAiConfigRequest } from './nasun-ai-config-routes.js';
 import { startAgentStateDriftPoller } from './agent-orchestrator.js';
+import { startPm2Monitor } from './agent-pm2-monitor.js';
 import { handleAgentPushRequest } from './agent-push-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
 import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
@@ -1463,6 +1464,15 @@ try {
   startAgentStateDriftPoller();
 } catch (err) {
   console.error('[startup] drift_poller_init_failed:', (err as Error).message);
+}
+
+// PM2 <-> SQL drift alert (5min). Independent from the drift poller above:
+// the poller fixes, this monitor alerts when the poller itself is broken or
+// when manual pm2 actions diverge from SQL truth.
+try {
+  startPm2Monitor();
+} catch (err) {
+  console.error('[startup] pm2_monitor_init_failed:', (err as Error).message);
 }
 
 // ===== Memory Diagnostics =====

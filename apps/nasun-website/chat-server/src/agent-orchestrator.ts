@@ -317,6 +317,23 @@ function readEnabledFlag(agentAddress: string): boolean {
   }
 }
 
+/**
+ * 2026-05-26 — alpha-cron's expiry pause is a hard policy gate. Any caller
+ * that bypasses reconcileAgentState (vault upload, vault restore, admin
+ * respawn-all, server boot) must still respect it; otherwise a re-uploaded
+ * vault row or a stale admin script can resurrect an expired alpha agent
+ * that the cron has already freed the slot for, double-booking the cap.
+ * Raises AgentDisabledError because the caller contract is identical:
+ * "spawn refused, no operator action required".
+ */
+function readAlphaPausedFlag(agentAddress: string): boolean {
+  const row = getDb().prepare(
+    `SELECT paused_at FROM agent_keys
+      WHERE agent_address = ? AND deleted_at IS NULL`,
+  ).get(agentAddress.toLowerCase()) as { paused_at: number | null } | undefined;
+  return Boolean(row && row.paused_at !== null);
+}
+
 export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   assertSafeName(opts.pm2Name);
 
@@ -325,6 +342,10 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
   // Without this check, callers (vault upload, respawn-all, etc.) would
   // still spawn agents that the user has explicitly disabled.
   if (!readEnabledFlag(opts.agentAddress)) {
+    throw new AgentDisabledError(opts.agentAddress.toLowerCase());
+  }
+
+  if (readAlphaPausedFlag(opts.agentAddress)) {
     throw new AgentDisabledError(opts.agentAddress.toLowerCase());
   }
 
@@ -419,6 +440,20 @@ export async function stopAgentPm2(pm2Name: string): Promise<void> {
   await exec(PM2_BIN, ['delete', pm2Name], { env: pm2Env(), timeout: 10_000 });
 }
 
+/**
+ * Persist the current PM2 process list to dump.pm2 so the next chat-server /
+ * EC2 restart does not resurrect just-deleted agents from the previous dump.
+ * 2026-05-26 incident: two alpha-expired agents (@skymoon, @ashrai) were
+ * paused by phaseExpire, pm2 delete succeeded, but the prior dump.pm2 still
+ * contained them and a subsequent chat-server restart re-spawned them as
+ * orphans — they kept burning escrow gas + Inference Balance for 8+ hours.
+ * Best-effort: a failure here only widens the resurrection window; the
+ * drift poll's alphaPaused check is the durable backstop.
+ */
+export async function pm2Save(): Promise<void> {
+  await exec(PM2_BIN, ['save'], { env: pm2Env(), timeout: 10_000 });
+}
+
 // === Phase 8 (2026-05-24) ===
 // Reconcile PM2 state with the user's combined intent: on-chain
 // AgentProfile.is_active (kill axis) + config.enabled (pause axis).
@@ -454,6 +489,15 @@ export interface ReconcileInputs {
   enabled: boolean;
   /** agent_keys row present AND deleted_at IS NULL. */
   hasActiveVault: boolean;
+  /**
+   * agent_keys.paused_at IS NOT NULL — alpha-cron has expired the slot.
+   * Binding: until the user reactivates explicitly (which clears paused_at),
+   * PM2 must stay stopped even if config.enabled=true and is_active=true.
+   * Prevents the 2026-05-26 orphan-resurrection class: chat-server restart
+   * reloads dump.pm2 with expired agents, drift poll then re-spawned them
+   * because it only knew about enabled/is_active.
+   */
+  alphaPaused: boolean;
   pm2NameKnown: string | null;
   pm2NamesInList: ReadonlySet<string>;
 }
@@ -472,6 +516,12 @@ export function deriveAgentState(inputs: ReconcileInputs): {
     return { state: 'killed', desiredRunning: false, reason: 'on_chain_inactive' };
   }
   // is_active === true
+  if (inputs.alphaPaused) {
+    // Checked before `enabled` because alpha-cron's expiry is a
+    // policy-level pause that the user cannot reverse just by toggling
+    // config.enabled; they must go through the alpha re-invite flow.
+    return { state: 'paused', desiredRunning: false, reason: 'alpha_session_expired' };
+  }
   if (!inputs.hasActiveVault) {
     // On-chain says active but no vault row to spawn from. Treat as paused
     // (PM2 cannot run, but agent is not killed). Vault upload restores.
@@ -504,11 +554,12 @@ interface VaultRow {
   wake_port: number;
   profile_id: string | null;
   deleted_at: number | null;
+  paused_at: number | null;
 }
 
 function readVaultRow(agentAddress: string): VaultRow | null {
   const row = getDb().prepare(
-    `SELECT pm2_name, param_name, wake_port, profile_id, deleted_at
+    `SELECT pm2_name, param_name, wake_port, profile_id, deleted_at, paused_at
        FROM agent_keys
       WHERE agent_address = ?
       ORDER BY (deleted_at IS NULL) DESC, COALESCE(deleted_at, created_at) DESC
@@ -556,6 +607,7 @@ export async function reconcileAgentState(
       isActive,
       enabled,
       hasActiveVault,
+      alphaPaused: Boolean(vault && vault.paused_at !== null),
       pm2NameKnown: vault?.pm2_name ?? null,
       pm2NamesInList: names,
     });
@@ -649,6 +701,7 @@ export async function readAgentStateSnapshot(agentAddress: string): Promise<Agen
     isActive,
     enabled,
     hasActiveVault,
+    alphaPaused: Boolean(vault && vault.paused_at !== null),
     pm2NameKnown: vault?.pm2_name ?? null,
     pm2NamesInList: names,
   });

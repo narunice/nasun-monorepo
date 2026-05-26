@@ -21,7 +21,7 @@
 import { getDb } from './store.js';
 import { getClaimWindowMs, getSystemCap, isAlphaGateEnabled } from './alpha-guards.js';
 import { pushUserMessage } from './baram-telegram.js';
-import { stopAgentPm2 } from './agent-orchestrator.js';
+import { stopAgentPm2, pm2Save } from './agent-orchestrator.js';
 import { traceAsync, traceSync } from './perf-trace.js';
 import { ensureTimerPauseSchema, loadTimerPauseKeys } from './alpha-timer-pause.js';
 
@@ -219,6 +219,14 @@ async function phaseExpire(): Promise<void> {
       ),
     ]),
   );
+
+  // Persist the post-delete process list so the next chat-server / EC2
+  // restart does not resurrect the just-expired agents from a stale
+  // dump.pm2. The drift poll's alphaPaused check is the durable backstop
+  // when this fails, so a save error is logged but not fatal to the tick.
+  await pm2Save().catch((err) => {
+    console.warn(`[alpha-cron] pm2 save failed after expiry batch: ${(err as Error).message}`);
+  });
 }
 
 // === Phase 4: invite from queue ===
