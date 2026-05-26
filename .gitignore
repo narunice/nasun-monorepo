@@ -117,3 +117,12 @@ apps/*/cdk/outputs.json
 /Pub.devnet.toml
 /*.py
 /*.skill
+
+# Local security tooling artifacts (DO NOT COMMIT — contains discovered secrets)
+/gitleaks-report.json
+/gitleaks_*.tar.gz
+/gitleaks
+/.gitleaks.toml
+
+# Root-owned external resources not part of monorepo
+/zklogin-prover/
