@@ -5,7 +5,7 @@
  */
 
 import { Suspense } from "react";
-import { Link } from "react-router-dom";
+// import { Link } from "react-router-dom";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { PageLayout } from "../components/layout/PageLayout";
 import ErrorBoundary from "../components/layout/ErrorBoundary";
@@ -28,6 +28,7 @@ const LeaderboardV3Page = () => {
           <LeaderboardV3 />
         </Suspense>
       </ErrorBoundary>
+      {/*
       <div className="flex justify-center pb-12">
         <Link
           to="/community/creators-leaderboard-guide"
@@ -36,6 +37,7 @@ const LeaderboardV3Page = () => {
           Creators Leaderboard Guide
         </Link>
       </div>
+      */}
     </PageLayout>
   );
 };

@@ -42,6 +42,7 @@ export function LeaderboardV3() {
       </PageTitle>
 
       {/* Important Update Notice */}
+      {/*
       <div className="mb-10 p-6 md:p-8 bg-nasun-nw3/10 border border-nasun-nw1/30 rounded-sm">
         <h3 className="text-xl md:text-2xl font-semibold text-nasun-white mb-4">
           An Important Update on the Creators Leaderboard
@@ -58,6 +59,7 @@ export function LeaderboardV3() {
           </a>
         </p>
       </div>
+      */}
 
       {/* Season Selector */}
       {seasons && seasons.length > 0 && (
