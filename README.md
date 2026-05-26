@@ -4,13 +4,14 @@ Nasun is a protocol that turns repeated onchain behavior into a persistent, comp
 
 ## Products
 
-| App                                        | Description                                                                    | Status |
-| ------------------------------------------ | ------------------------------------------------------------------------------ | ------ |
-| [Nasun Website / Uju](apps/nasun-website/) | Ecosystem dashboard: ecosystem points, governance, NFT management, leaderboard | Live   |
-| [Pado](apps/pado/)                         | DEX, prediction markets, lottery, mini-games                                   | Live   |
-| [GoStop](apps/gostop/)                     | Onchain gaming hub                                                             | Live   |
-| [Network Explorer](apps/network-explorer/) | Block explorer + ecosystem API server                                          | Live   |
-| [Baram](apps/baram/)                       | AI compliance settlement layer                                                 | Active |
+| App                                            | Description                                                                    | Status |
+| ---------------------------------------------- | ------------------------------------------------------------------------------ | ------ |
+| [Nasun Website / Uju](apps/nasun-website/)     | Ecosystem dashboard: ecosystem points, governance, NFT management, leaderboard | Live   |
+| [Pado](apps/pado/)                             | DEX, prediction markets, lottery, mini-games                                   | Live   |
+| [GoStop](apps/gostop/)                         | Onchain gaming hub                                                             | Live   |
+| [Network Explorer](apps/network-explorer/)     | Block explorer + ecosystem API server                                          | Live   |
+| [Nasun AI Runtime](apps/nasun-ai-runtime/)     | Agent runtime for the AI settlement layer (Baram v1)                           | Live   |
+| [GenSol Website](apps/gensol-website/)         | GenSol marketing site                                                          | Prelaunch |
 
 ## Links
 
@@ -40,14 +41,20 @@ nasun-monorepo/
 │   ├── pado/                  # DeFi + prediction + lottery + mini-games
 │   ├── gostop/                # Onchain gaming hub
 │   ├── network-explorer/      # Block explorer (frontend + api-server/)
-│   └── baram/                 # AI settlement layer
-├── packages/
-│   ├── wallet/                # @nasun/wallet
-│   ├── wallet-ui/             # @nasun/wallet-ui
-│   ├── devnet-config/         # contract addresses
-│   └── tailwind-config/       # brand design tokens
-└── docs/                      # infrastructure + deployment docs
+│   ├── nasun-ai-runtime/      # AI agent runtime
+│   └── gensol-website/        # GenSol marketing site
+└── packages/
+    ├── wallet/                # @nasun/wallet
+    ├── wallet-ui/             # @nasun/wallet-ui
+    ├── devnet-config/         # contract addresses
+    ├── profile-core/          # @nasun/profile-core
+    ├── nasun-tier/            # Nasun Standing tier system
+    └── tailwind-config/       # brand design tokens
 ```
+
+> **Note**: Internal infrastructure docs, deployment scripts, runbooks, and archived
+> apps (including the original Baram implementation) live in a separate private repo.
+> This public repo is the application source code only.
 
 ## License
 
