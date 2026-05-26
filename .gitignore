@@ -87,3 +87,33 @@ infra/nginx/secrets.env
 # Ad-hoc security review reports emitted at repo root
 /SECURITY_FIX_GUIDE.md
 /SECURITY_REVIEW_*.md
+
+# Internal operations docs and handoffs (live in narunice/nasun-ops)
+/CLAUDE.md
+/@CLAUDE.md
+/GEMINI.md
+.claude/
+_handoffs/
+/ops/
+/infra/
+/prompts/
+/nasun-marketplace/
+/.agents/
+/scripts/
+
+# Archived/legacy apps (live in narunice/nasun-ops)
+apps/baram/
+apps/x-leaderboard-v2-legacy/
+
+# App-level operational docs (mirrored to nasun-ops)
+apps/*/doc/
+apps/*/docs/
+
+# CDK synth output and deployment artifacts
+**/cdk.out/
+apps/*/cdk/outputs.json
+
+# Root-level ad-hoc scripts and build metadata (live in nasun-ops)
+/Pub.devnet.toml
+/*.py
+/*.skill

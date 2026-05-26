@@ -6,7 +6,7 @@ import {
 } from '../resolvers.js';
 import type { EcosystemProfile } from '../types.js';
 
-const BASE = 'https://nasun-public-avatars-__AWS_PROD_ACCOUNT__.s3.ap-northeast-2.amazonaws.com';
+const BASE = 'https://nasun-public-avatars-<account>.s3.ap-northeast-2.amazonaws.com';
 
 describe('resolveDisplayName', () => {
   it('uses customDisplayName when set', () => {
