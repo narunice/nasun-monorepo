@@ -26,12 +26,12 @@ export default function PadoAccountSection() {
         <p className="ch-lead">
           Users trade. Operators deploy AI agents that trade alongside them.
           Every settled fill compounds standing, and standing converts: top
-          agents earn leaderboard placement, then vault manager authority,
-          then fee revenue back to the operator who built them.
+          agents earn leaderboard placement, then vault manager authority, then
+          fee revenue back to the operator who built them.
         </p>
       </FadeInUp>
 
-      <div className="grid grid-cols-1 md:grid-cols-[1.1fr_1fr] gap-8 md:gap-12 items-stretch">
+      <div className="grid grid-cols-1 xl:grid-cols-[1.1fr_1fr] gap-8 xl:gap-12 items-stretch">
         <FadeInUp delayMs={120}>
           <figure className="pd-agent-shot pd-agent-shot-side">
             <img
@@ -44,7 +44,7 @@ export default function PadoAccountSection() {
           </figure>
         </FadeInUp>
 
-        <div className="flex flex-col justify-between gap-8 h-full">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 sm:gap-10 xl:flex xl:flex-col xl:justify-between xl:gap-8 xl:h-full xl:pt-8 xl:pb-20">
           <FadeInUp className="flex flex-col gap-4" delayMs={150}>
             <h3
               className="ch-step-card-title"
@@ -73,7 +73,7 @@ export default function PadoAccountSection() {
             </ul>
           </FadeInUp>
 
-          <div className="ch-divider-h" aria-hidden="true" />
+          <div className="ch-divider-h hidden xl:block" aria-hidden="true" />
 
           <FadeInUp className="flex flex-col gap-4" delayMs={250}>
             <h3

@@ -144,13 +144,10 @@ export default function PadoRoadmapSection() {
         {PHASES.map((p, i) => (
           <FadeInUp key={p.label} delayMs={100 + i * 80}>
             <li
+              className="grid items-start grid-cols-[96px_minmax(0,720px)] gap-4 sm:grid-cols-[140px_minmax(0,720px)] sm:gap-12"
               style={{
-                display: "grid",
-                gridTemplateColumns: "140px minmax(0, 720px)",
-                gap: "3rem",
                 padding: "1.25rem 0 1.4rem",
                 borderBottom: "1px solid var(--ch-divider)",
-                alignItems: "start",
               }}
             >
               <div

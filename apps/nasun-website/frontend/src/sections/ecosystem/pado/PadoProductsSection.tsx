@@ -112,7 +112,7 @@ export default function PadoProductsSection() {
             />
             <figcaption>Spot orderbook</figcaption>
           </figure>
-          <figure className="pd-product-shot">
+          <figure className="pd-product-shot pd-product-shot--light">
             <img
               src={padoPredictShot}
               alt="Pado prediction market interface"

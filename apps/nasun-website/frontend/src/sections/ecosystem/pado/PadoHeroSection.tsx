@@ -6,12 +6,17 @@ const VIDEO_DESKTOP = "/videos/Walden-DEX-Token-10bit-HD.mp4";
 const VIDEO_MOBILE = "/videos/Walden-DEX-Token-Mobile-10bit-HD.mp4";
 const VIDEO_POSTER = "/images/posters/Walden-Dex-Token-rf28.webp";
 
-function HeroCopy() {
+function HeroCopy({ align = "left" }: { align?: "left" | "center" }) {
+  const isCenter = align === "center";
   return (
-    <FadeInUp className="max-w-[520px] w-full flex flex-col gap-3 text-left">
+    <FadeInUp
+      className={`max-w-[520px] w-full flex flex-col gap-3 ${
+        isCenter ? "items-center text-center" : "items-start text-left"
+      }`}
+    >
       <span className="ch-eyebrow ch-eyebrow-cyan">DeFi with a Memory</span>
       <p
-        className="!text-5xl md:!text-6xl lg:!text-7xl tracking-[0.06em] text-transparent bg-clip-text leading-none mt-1"
+        className="!text-5xl lg:!text-6xl xl:!text-7xl tracking-[0.06em] text-transparent bg-clip-text leading-none mt-1"
         style={{
           fontFamily: '"pirulen", sans-serif',
           backgroundImage:
@@ -21,10 +26,14 @@ function HeroCopy() {
       >
         PADO
       </p>
-      <h1 className="text-lg md:text-xl lg:text-2xl text-white font-light tracking-tight leading-snug m-0 mt-1">
+      <h1 className="text-lg lg:text-xl xl:text-2xl text-white font-light tracking-tight leading-snug m-0 mt-1">
         Where Trading History Earns Capital Authority
       </h1>
-      <div className="flex flex-wrap gap-3 mt-4">
+      <div
+        className={`flex flex-wrap gap-3 mt-4 ${
+          isCenter ? "justify-center" : ""
+        }`}
+      >
         <a
           href={withCrossAppParam("https://pado.finance/", "nasun")}
           target="_blank"
@@ -59,12 +68,12 @@ export default function PadoHeroSection() {
   // The previous attempt reused .ch-hero (min-height: calc(100vh - 50px)
   // + bg video absolute/object-cover) which made the wide desktop video
   // crop into a vertical sliver, hence the "tiny token" effect.
-  const isMobile = useIsMobile(1024);
+  const isMobile = useIsMobile(768);
 
   if (isMobile) {
     return (
-      <section className="relative overflow-hidden bg-black flex flex-col">
-        <div className="relative w-full -mt-16 md:-mt-24">
+      <section className="relative overflow-hidden bg-black">
+        <div className="relative w-full -mt-24 sm:-mt-48 md:-mt-48">
           <video
             key="mobile"
             src={VIDEO_MOBILE}
@@ -77,17 +86,28 @@ export default function PadoHeroSection() {
             aria-hidden="true"
             className="block w-full h-auto"
           />
+          {/* Fade from transparent over the coin to opaque under it. The
+              overlay extends past the video container's bottom edge so the
+              video's last pixel row (a faint cyan rim) is fully masked and
+              no hairline shows at the section boundary. */}
           <div
-            className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
+            className="absolute inset-x-0 pointer-events-none"
             style={{
+              top: "45%",
+              bottom: "-40px",
               background:
-                "linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000000 100%)",
+                "linear-gradient(to bottom, rgba(0,0,0,0) 0%, rgba(0,0,0,0.85) 50%, #000000 90%, #000000 100%)",
             }}
             aria-hidden="true"
           />
         </div>
-        <div className="px-6 pt-8 pb-14 flex flex-col items-start">
-          <HeroCopy />
+        {/* HeroCopy is a flow sibling pulled up by -65% of the section width
+            (CSS margin %s are width-relative). Since the video is also
+            width-relative (h-auto), the copy lands at the same point under
+            the coin across viewports, and the section grows to contain the
+            buttons rather than clipping them. */}
+        <div className="relative px-6 pb-12 -mt-[65%] flex flex-col items-center">
+          <HeroCopy align="center" />
         </div>
       </section>
     );

@@ -45,7 +45,7 @@ export default function DevHomeNasunAppSection() {
               className="ch-body mt-1 !font-medium tracking-wider"
               style={{ color: "var(--ch-fg-default)" }}
             >
-              Agentic finance control center
+              Agentic Finance Control Center
             </p>
           </div>
 

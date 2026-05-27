@@ -183,7 +183,7 @@
    otherwise leave too much white space top and bottom). */
 .dev-home-catena.pado-theme .pd-product-shots-wrap {
   margin-top: -2.5rem;
-  margin-bottom: -2rem;
+  margin-bottom: 0rem;
 }
 .dev-home-catena.pado-theme .pd-product-shots {
   display: grid;
@@ -204,7 +204,10 @@
   border-radius: var(--ch-radius-md);
   overflow: hidden;
   border: 1px solid rgba(96, 165, 250, 0.18);
-  background: rgba(11, 17, 32, 0.6);
+  /* Default background matches the Spot screenshot's near-black navy
+     (sampled #03060b) so the contain-letterbox blends with the image edge. */
+  background: #03060b;
+  padding: 0.6rem 0.6rem 0;
   box-shadow: 0 24px 60px -42px rgba(59, 130, 246, 0.55);
   transition:
     border-color 0.4s ease,
@@ -221,8 +224,11 @@
   width: 100%;
   height: auto;
   aspect-ratio: 16 / 9;
-  object-fit: cover;
-  object-position: center top;
+  /* contain (was cover) so the full screenshot is visible — no cropped
+     UI chrome on the edges. The slight letterbox blends with the
+     container background, which is sized per variant to match. */
+  object-fit: contain;
+  object-position: center;
 }
 .dev-home-catena.pado-theme .pd-product-shot figcaption {
   padding: 0 1rem 0.85rem;
@@ -231,6 +237,17 @@
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: #93c5fd;
+}
+
+/* Light variant — for screenshots captured against a white app background
+   (e.g. Prediction Market). Container bg matches so the letterbox is
+   invisible and figcaption stays readable. */
+.dev-home-catena.pado-theme .pd-product-shot--light {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.12);
+}
+.dev-home-catena.pado-theme .pd-product-shot--light figcaption {
+  color: #1d4ed8;
 }
 
 /* Side variant — sits in the left column of the Account section. Caption
@@ -396,47 +413,80 @@
    keyframes target `.ch-step-card:where(:hover, [data-state="playing"])`
    so we mirror that selector chain by tagging the row container with
    `[data-state="playing"]` once it scrolls into view via useRevealReplay. */
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .pkt-direct,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-act
+  .pkt-direct,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .pkt-direct {
   animation: pd-act-direct 1.7s cubic-bezier(0.16, 1, 0.3, 1) 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .pkt-delegate,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-act
+  .pkt-delegate,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .pkt-delegate {
   animation: pd-act-delegate-flow 2.4s linear 0.5s 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .delegate,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-act
+  .delegate,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .delegate {
   animation: pd-act-channel 2.4s ease-out 0.4s 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .platform,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-act
+  .platform,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .platform {
   animation: pd-act-platform 2.9s cubic-bezier(0.4, 0, 0.4, 1) 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .line,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-record
+  .line,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .line {
   animation: pd-record-draw 2.4s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .l2,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-record
+  .l2,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .l2 {
   animation-delay: 0.25s;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .l3,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-record
+  .l3,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .l3 {
   animation-delay: 0.5s;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-score .hex,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-score
+  .hex,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-score .hex {
   animation: pd-score-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-score .label,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-score
+  .label,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-score .label {
   animation: pd-score-flash 1.6s ease-out 0.85s 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-enforce .shackle,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-enforce
+  .shackle,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-enforce .shackle {
   animation: pd-enforce-snap 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
-.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-enforce .body,
+.dev-home-catena.pado-theme
+  .pd-loop-row[data-state="playing"]
+  .pd-viz-enforce
+  .body,
 .dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-enforce .body {
   animation: pd-enforce-body 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
@@ -543,10 +593,26 @@
 
 /* Direct packet: human's right edge (30, 27) → Pado (134, 40). */
 @keyframes pd-act-direct {
-  0%   { cx: 30;  cy: 27; opacity: 0; }
-  15%  { cx: 30;  cy: 27; opacity: 1; }
-  85%  { cx: 134; cy: 40; opacity: 1; }
-  100% { cx: 134; cy: 40; opacity: 0; }
+  0% {
+    cx: 30;
+    cy: 27;
+    opacity: 0;
+  }
+  15% {
+    cx: 30;
+    cy: 27;
+    opacity: 1;
+  }
+  85% {
+    cx: 134;
+    cy: 40;
+    opacity: 1;
+  }
+  100% {
+    cx: 134;
+    cy: 40;
+    opacity: 0;
+  }
 }
 
 /* Delegate packet via offset-distance along the full delegate path
@@ -559,21 +625,41 @@
    packet's speed adapts per segment (slow on the curve, fast on the
    long pado run) while the browser handles the geometry smoothly. */
 @keyframes pd-act-delegate-flow {
-  0%   { offset-distance: 0%;   opacity: 0; }
-  10%  { offset-distance: 0%;   opacity: 1; }
-  48%  { offset-distance: 16%;  opacity: 1; }   /* end of curve */
-  56%  { offset-distance: 24%;  opacity: 1; }   /* end of agent leg */
-  92%  { offset-distance: 100%; opacity: 1; }   /* arrived at Pado */
-  100% { offset-distance: 100%; opacity: 0; }
+  0% {
+    offset-distance: 0%;
+    opacity: 0;
+  }
+  10% {
+    offset-distance: 0%;
+    opacity: 1;
+  }
+  48% {
+    offset-distance: 16%;
+    opacity: 1;
+  } /* end of curve */
+  56% {
+    offset-distance: 24%;
+    opacity: 1;
+  } /* end of agent leg */
+  92% {
+    offset-distance: 100%;
+    opacity: 1;
+  } /* arrived at Pado */
+  100% {
+    offset-distance: 100%;
+    opacity: 0;
+  }
 }
 
 /* Delegate channel glow — brightens while the packet is descending. */
 @keyframes pd-act-channel {
-  0%, 100% {
+  0%,
+  100% {
     stroke: rgba(147, 197, 253, 0.5);
     stroke-width: 1.3;
   }
-  15%, 35% {
+  15%,
+  35% {
     stroke: rgba(191, 219, 254, 0.95);
     stroke-width: 1.6;
   }
@@ -582,7 +668,8 @@
 /* Platform pulses near the end of the cycle when the delegate packet
    (the longer, more deliberate path) arrives. */
 @keyframes pd-act-platform {
-  0%, 80% {
+  0%,
+  80% {
     stroke-width: 1.8;
     filter: drop-shadow(0 0 4px rgba(147, 197, 253, 0.45));
   }
@@ -636,9 +723,15 @@
   animation-delay: 0.5s;
 }
 @keyframes pd-record-draw {
-  0% { stroke-dashoffset: 100; }    /* dash shifted off line — invisible */
-  70% { stroke-dashoffset: 0; }     /* dash covers full line — drawn */
-  100% { stroke-dashoffset: 0; }
+  0% {
+    stroke-dashoffset: 100;
+  } /* dash shifted off line — invisible */
+  70% {
+    stroke-dashoffset: 0;
+  } /* dash covers full line — drawn */
+  100% {
+    stroke-dashoffset: 0;
+  }
 }
 
 /* ── 03 Score — hexagonal NSI badge stroke draw ────────────────────── */
@@ -672,12 +765,23 @@
   animation: pd-score-flash 1.6s ease-out 0.85s 1;
 }
 @keyframes pd-score-draw {
-  0% { stroke-dashoffset: 210; }
-  100% { stroke-dashoffset: 0; }
+  0% {
+    stroke-dashoffset: 210;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
 }
 @keyframes pd-score-flash {
-  0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
-  50% { opacity: 0.55; filter: drop-shadow(0 0 8px rgba(147, 197, 253, 0.85)); }
+  0%,
+  100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0));
+  }
+  50% {
+    opacity: 0.55;
+    filter: drop-shadow(0 0 8px rgba(147, 197, 253, 0.85));
+  }
 }
 
 /* ── 04 Enforce — padlock shackle lifts + tilts then snaps closed ──── */
@@ -724,17 +828,36 @@
   animation: pd-enforce-body 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 @keyframes pd-enforce-snap {
-  0%   { transform: translateY(0)    rotate(0deg); }
-  22%  { transform: translateY(-7px) rotate(0deg); }      /* lift */
-  50%  { transform: translateY(-7px) rotate(-28deg); }    /* tilt sideways */
-  72%  { transform: translateY(-7px) rotate(-28deg); }    /* hold open */
-  86%  { transform: translateY(2px)  rotate(4deg); }      /* snap overshoot */
-  100% { transform: translateY(0)    rotate(0deg); }
+  0% {
+    transform: translateY(0) rotate(0deg);
+  }
+  22% {
+    transform: translateY(-7px) rotate(0deg);
+  } /* lift */
+  50% {
+    transform: translateY(-7px) rotate(-28deg);
+  } /* tilt sideways */
+  72% {
+    transform: translateY(-7px) rotate(-28deg);
+  } /* hold open */
+  86% {
+    transform: translateY(2px) rotate(4deg);
+  } /* snap overshoot */
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
 }
 @keyframes pd-enforce-body {
-  0%, 80% { filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
-  92% { filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.85)); }
-  100% { filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
+  0%,
+  80% {
+    filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0));
+  }
+  92% {
+    filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.85));
+  }
+  100% {
+    filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0));
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
