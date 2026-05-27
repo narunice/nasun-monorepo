@@ -35,6 +35,14 @@ export function OrderConfirmModal({
   // before the parent's async isLoading has a chance to propagate. Prevents
   // double-submit during tx build / signing setup.
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // NSI tier discount lookup. MUST be called unconditionally above the
+  // `if (!isOpen) return null` early return — moving these below the early
+  // return changes hook count across renders and trips React #310
+  // ("Rendered more hooks than during the previous render"), surfaced as
+  // a TradePage ErrorBoundary catch on Buy/Sell click (regression
+  // introduced by 3fc6866ff before being moved here).
+  const address = useActiveAddress();
+  const { data: tierData } = useTier(address);
 
   // Reset checkbox and submitting flag when modal closes
   /* eslint-disable react-hooks/set-state-in-effect */
@@ -59,8 +67,6 @@ export function OrderConfirmModal({
   // Dynamic fee from pool config (POST_ONLY = maker fee, others = taker fee).
   // Phase 3: apply NSI tier discount to the baseline. The chain enforces the
   // actual discount; this display mirrors policy.move via standing.ts SSOT.
-  const address = useActiveAddress();
-  const { data: tierData } = useTier(address);
   const isMakerFee = executionOption === 'POST_ONLY';
   const baselineBps = isMakerFee ? currentPool.makerFeeBps : currentPool.takerFeeBps;
   const discountBps = tierData?.benefits.pado_fee_discount_bps ?? 0;
