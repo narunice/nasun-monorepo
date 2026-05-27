@@ -60,9 +60,12 @@ export default function Footer() {
     location.pathname === "/dev/about";
   // Archived May 2026 home keeps its original navy backdrop.
   const isArchivedHome = location.pathname === "/archive/home-may2026";
+  // Pado page uses pure black (--ch-bg-page #000000); match the footer
+  // so there's no visible seam at the section boundary.
+  const isPadoPage = location.pathname === "/ecosystem/pado";
 
   return (
-    <div className={isUjuPage ? "bg-uju-bg" : isDevCatenaPage ? "bg-[#151316]" : isArchivedHome ? "bg-[#0b1628]" : "bg-nasun-black"}>
+    <div className={isUjuPage ? "bg-uju-bg" : isPadoPage ? "bg-black" : isDevCatenaPage ? "bg-[#151316]" : isArchivedHome ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>

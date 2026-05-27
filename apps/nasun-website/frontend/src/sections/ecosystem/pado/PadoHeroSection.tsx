@@ -8,25 +8,22 @@ const VIDEO_POSTER = "/images/posters/Walden-Dex-Token-rf28.webp";
 
 function HeroCopy() {
   return (
-    <FadeInUp className="max-w-[520px] w-full flex flex-col gap-5 text-left">
+    <FadeInUp className="max-w-[520px] w-full flex flex-col gap-3 text-left">
+      <span className="ch-eyebrow ch-eyebrow-cyan">DeFi with a Memory</span>
       <p
-        className="text-3xl md:text-4xl tracking-wider text-transparent bg-clip-text leading-none"
+        className="!text-5xl md:!text-6xl lg:!text-7xl tracking-[0.06em] text-transparent bg-clip-text leading-none mt-1"
         style={{
           fontFamily: '"pirulen", sans-serif',
-          backgroundImage: "linear-gradient(135deg, #3b82f6 0%, #93c5fd 100%)",
+          backgroundImage:
+            "linear-gradient(90deg, #2563eb 0%, #60a5fa 40%, #93c5fd 75%, #ffffff 100%)",
+          filter: "drop-shadow(0 0 24px rgba(96, 165, 250, 0.25))",
         }}
       >
         PADO
       </p>
-      <h1 className="ch-display-wide">
-        Onchain finance where{" "}
-        <span className="pd-accent">standing is earned</span>.
+      <h1 className="text-lg md:text-xl lg:text-2xl text-white font-light tracking-tight leading-snug m-0 mt-1">
+        Where Trading History Earns Capital Authority
       </h1>
-      <p className="ch-lead">
-        Pado is the financial execution venue inside Nasun. People and AI
-        agents trade the same orderbooks, share the same risk engine, and
-        compound the same onchain track record into portable authority.
-      </p>
       <div className="flex flex-wrap gap-3 mt-4">
         <a
           href={withCrossAppParam("https://pado.finance/", "nasun")}
@@ -34,6 +31,7 @@ function HeroCopy() {
           rel="noopener noreferrer"
           onClick={() => trackCrossAppNav("pado", "/")}
           className="ch-btn ch-btn-lg ch-btn-primary"
+          style={{ color: "#000" }}
         >
           Open Pado
         </a>
@@ -66,7 +64,7 @@ export default function PadoHeroSection() {
   if (isMobile) {
     return (
       <section className="relative overflow-hidden bg-black flex flex-col">
-        <div className="relative w-full">
+        <div className="relative w-full -mt-16 md:-mt-24">
           <video
             key="mobile"
             src={VIDEO_MOBILE}
@@ -132,12 +130,15 @@ export default function PadoHeroSection() {
         aria-hidden="true"
       />
 
-      {/* Copy floats vertically centered on the right within the 1296 band. */}
+      {/* Copy anchored just right of the viewport's horizontal center, so on
+          ultra-wide displays it does not drift to the far right edge with the
+          1296px container's right margin. */}
       <div className="absolute inset-0 z-10 pointer-events-none">
-        <div className="max-w-[1296px] mx-auto h-full relative px-6 lg:px-[72px]">
-          <div className="absolute top-1/2 -translate-y-1/2 right-6 lg:right-[72px] max-w-[520px] pointer-events-auto">
-            <HeroCopy />
-          </div>
+        <div
+          className="absolute top-1/2 -translate-y-1/2 max-w-[520px] pointer-events-auto px-6 lg:px-0"
+          style={{ left: "calc(53% + 30px)" }}
+        >
+          <HeroCopy />
         </div>
       </div>
     </section>

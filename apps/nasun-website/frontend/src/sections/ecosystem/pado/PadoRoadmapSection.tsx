@@ -8,35 +8,48 @@ type Phase = {
   status: "now" | "next" | "later";
 };
 
+// Pado spot trading first onchain trade: 2026-03-31 (verified from nasun-stats daily traders).
+const PADO_SPOT_LAUNCH = Date.UTC(2026, 2, 31);
+const padoDaysLive = Math.max(
+  1,
+  Math.floor((Date.now() - PADO_SPOT_LAUNCH) / 86_400_000),
+);
+
 const PHASES: Phase[] = [
   {
     label: "Now",
-    title: "Devnet, 61+ days continuous",
-    body: "Pado, GoStop, and Nasun AI Runtime live on devnet. NSI scoring active. Cross-chain history indexing across Ethereum, Solana, and Sui.",
+    title: `Pado live, ${padoDaysLive}+ days continuous`,
+    body: "Spot orderbooks, prediction markets, and the AI agent venue (alpha), with NSI scoring active.",
     status: "now",
   },
   {
-    label: "Next 4–6 months",
-    title: "Public testnet and audits",
-    body: "Public testnet, third-party security audits, senior protocol and infrastructure hires, and mainnet preparation.",
+    label: "Next",
+    title: "Agent leaderboard",
+    body: "Public ranking by realized PnL, risk-adjusted return, and standing.",
     status: "next",
   },
   {
-    label: "Mainnet",
-    title: "Funded trading and enforced floors",
-    body: "Funded trading on Pado. Live NSI with runtime-enforced authority floors across native applications. Devnet history imports to mainnet through identity binding.",
+    label: "Next",
+    title: "NSI tiers for operators and agents",
+    body: "Tier badges and runtime-enforced floors gating capacity on Pado.",
     status: "next",
   },
   {
-    label: "Post-mainnet",
-    title: "Capital coordination layer",
-    body: "Leverage minimums, liquidation parameters, cross-margin access, and agent capital limits derived from tier rather than from per-product configuration.",
+    label: "Roadmap",
+    title: "Agent vault manager",
+    body: "Higher-tier agents manage delegated capital under tier-bound risk parameters.",
     status: "later",
   },
   {
-    label: "Long term",
-    title: "Behavioral history as a portable risk signal",
-    body: "External venues consume Nasun behavioral history when pricing users and agents, completing the loop from earned standing to portable capital authority.",
+    label: "Roadmap",
+    title: "Infrastructure scaling",
+    body: "RPC and indexer scale-out for sub-second order placement and faster fills.",
+    status: "later",
+  },
+  {
+    label: "Roadmap",
+    title: "Agent-only API",
+    body: "Programmatic surface for agents to read state and submit orders directly.",
     status: "later",
   },
 ];
@@ -48,6 +61,50 @@ function StatusDot({ status }: { status: Phase["status"] }) {
     later: { color: "rgba(225, 229, 234, 0.35)", glow: "transparent" },
   };
   const s = styles[status];
+
+  if (status === "now") {
+    // Pulse: a concentric ring scales/fades out from under the solid dot,
+    // signaling "currently live" without animating the dot itself.
+    return (
+      <span
+        aria-hidden="true"
+        style={{
+          position: "relative",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 12,
+          height: 12,
+          flexShrink: 0,
+        }}
+      >
+        <span
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: 999,
+            border: `1.5px solid ${s.color}`,
+            animation: "pdNowPulse 1.8s ease-out infinite",
+          }}
+        />
+        <span
+          style={{
+            width: 8,
+            height: 8,
+            borderRadius: 999,
+            backgroundColor: s.color,
+            boxShadow: `0 0 12px ${s.glow}`,
+          }}
+        />
+        <style>{`@keyframes pdNowPulse {
+          0%   { transform: scale(0.6); opacity: 0.9; }
+          80%  { transform: scale(2.2); opacity: 0; }
+          100% { transform: scale(2.2); opacity: 0; }
+        }`}</style>
+      </span>
+    );
+  }
+
   return (
     <span
       aria-hidden="true"
@@ -68,15 +125,15 @@ export default function PadoRoadmapSection() {
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">06 / Roadmap</span>
+        <span className="ch-eyebrow ch-eyebrow-cyan">04 / Trajectory</span>
         <h2 className="ch-display">
-          Sequenced delivery,{" "}
-          <span className="pd-accent">gated by signal</span>.
+          From discretionary trader to{" "}
+          <span className="pd-accent">tier-bound allocator</span>.
         </h2>
         <p className="ch-lead">
-          Later phases activate only after earlier ones demonstrate sustained
-          funded activity and retention. The behavioral economy is built on
-          evidence, not promises.
+          Agents today trade only their operator's capital. The long arc: a
+          proven agent earns the authority to manage capital delegated by
+          others.
         </p>
       </FadeInUp>
 
@@ -89,8 +146,8 @@ export default function PadoRoadmapSection() {
             <li
               style={{
                 display: "grid",
-                gridTemplateColumns: "minmax(140px, 0.8fr) 1fr",
-                gap: "1.5rem",
+                gridTemplateColumns: "140px minmax(0, 720px)",
+                gap: "3rem",
                 padding: "1.25rem 0 1.4rem",
                 borderBottom: "1px solid var(--ch-divider)",
                 alignItems: "start",

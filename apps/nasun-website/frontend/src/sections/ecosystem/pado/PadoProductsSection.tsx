@@ -3,17 +3,17 @@ import { useCallback } from "react";
 import {
   BarChart3,
   Target,
-  MessageCircle,
   Wallet,
   Bot,
   Layers,
   Landmark,
-  Globe,
   type LucideProps,
 } from "lucide-react";
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
 import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
+import padoSpotShot from "@/assets/images/pado-spot-ss-may27.png";
+import padoPredictShot from "@/assets/images/pado-predict-ss-may27.png";
 
 type Status = "live" | "alpha" | "soon";
 type Product = {
@@ -34,49 +34,37 @@ const PRODUCTS: Product[] = [
     title: "Onchain Orderbooks",
     status: "live",
     Icon: BarChart3,
-    body: "DeepBook V3 CLOB across four trading pairs. TP/SL and trailing stops included.",
+    body: "DeepBook V3 CLOB on four pairs, with TP/SL and trailing stops.",
   },
   {
     title: "Prediction Markets",
     status: "live",
     Icon: Target,
-    body: "Binary YES/NO orderbooks on verifiable events, with a 10-level LP ladder.",
-  },
-  {
-    title: "Execution Context",
-    status: "live",
-    Icon: MessageCircle,
-    body: "Chat, Wavi narrator, news, and a weekly leaderboard, inside the trading view.",
+    body: "Binary YES/NO orderbooks with a 10-level LP ladder.",
   },
   {
     title: "Smart Account",
     status: "alpha",
     Icon: Wallet,
-    body: "Self-custodial onboarding via zkLogin or passkey. No seed phrases.",
+    body: "Self-custodial onboarding via zkLogin or passkey.",
   },
   {
     title: "AI Agent Venue",
     status: "alpha",
     Icon: Bot,
-    body: "Deploy a Nasun AI agent to trade within tier-bound budgets and kill-switches.",
+    body: "Deploy an AI agent inside tier-bound budgets and kill-switches.",
   },
   {
     title: "Cross-Margin Perpetuals",
     status: "soon",
     Icon: Layers,
-    body: "Up to 20x leverage sharing collateral with spot. Contracts deployed.",
+    body: "Up to 20x leverage sharing collateral with spot.",
   },
   {
     title: "Lending Primitives",
     status: "soon",
     Icon: Landmark,
-    body: "Yield on idle collateral that still backs positions. V7 contracts deployed.",
-  },
-  {
-    title: "Cross-Chain History",
-    status: "soon",
-    Icon: Globe,
-    body: "ETH, Solana, and Sui activity seeding NSI at mainnet identity binding.",
+    body: "Yield on idle collateral that still backs positions.",
   },
 ];
 
@@ -103,19 +91,40 @@ export default function PadoProductsSection() {
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">04 / Live on Pado</span>
+        <span className="ch-eyebrow">01 / Live on Pado</span>
         <h2 className="ch-display">
           The execution venue,{" "}
           <span className="pd-accent">already running</span>.
         </h2>
         <p className="ch-lead">
-          On Nasun devnet since April 9. Real users and agents writing onchain
-          records across orderbook, prediction, and agent surfaces in continuous
-          production.
+          Live on Nasun devnet since April 9, in continuous production.
         </p>
       </FadeInUp>
 
-      <div ref={gridRef} className="ch-step-grid">
+      <FadeInUp delayMs={140} className="pd-product-shots-wrap">
+        <div className="pd-product-shots">
+          <figure className="pd-product-shot">
+            <img
+              src={padoSpotShot}
+              alt="Pado spot trading interface"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Spot orderbook</figcaption>
+          </figure>
+          <figure className="pd-product-shot">
+            <img
+              src={padoPredictShot}
+              alt="Pado prediction market interface"
+              loading="lazy"
+              decoding="async"
+            />
+            <figcaption>Prediction market</figcaption>
+          </figure>
+        </div>
+      </FadeInUp>
+
+      <div ref={gridRef} className="ch-step-grid pd-products-grid">
         {PRODUCTS.map((p, i) => {
           const Icon = p.Icon;
           return (

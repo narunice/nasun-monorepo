@@ -6,15 +6,14 @@ export default function PadoCtaSection() {
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-6 items-start text-left max-w-4xl">
-        <span className="ch-eyebrow ch-eyebrow-cyan">07 / Start earning standing</span>
+        <span className="ch-eyebrow ch-eyebrow-cyan">05 / Start earning standing</span>
         <h2 className="ch-display">
-          <span className="pd-accent">Trade.</span> Delegate.{" "}
-          <span className="pd-accent">Compound.</span>
+          Trade. Delegate.{" "}
+          <span className="pd-accent">Compound</span>.
         </h2>
         <p className="ch-lead">
-          Pado is live. Verify it yourself. Every order, settlement, and agent
-          execution writes an onchain record that follows you to the next
-          venue and to mainnet.
+          Pado is live. Every order writes an onchain record that follows you
+          to mainnet.
         </p>
 
         <div className="flex flex-wrap gap-3 mt-2">
@@ -24,6 +23,7 @@ export default function PadoCtaSection() {
             rel="noopener noreferrer"
             onClick={() => trackCrossAppNav("pado", "/")}
             className="ch-btn ch-btn-lg ch-btn-primary"
+            style={{ color: "#000" }}
           >
             Open Pado
           </a>

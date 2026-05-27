@@ -293,7 +293,7 @@ const STEPS: Step[] = [
     index: "03",
     eyebrow: "Score",
     title: "Update NSI",
-    body: "The runtime captures every record and compounds the risk-adjusted outcome into the Nasun Standing Index for both the operator and the agent.",
+    body: "The risk-adjusted outcome compounds into NSI for the user, and the agent if one placed it.",
     viz: <VizScore />,
   },
   {
@@ -344,13 +344,11 @@ export default function PadoLoopSection() {
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow ch-eyebrow-cyan">03 / Compounding loop</span>
         <h2 className="ch-display">
-          Trading on Pado{" "}
-          <span className="pd-accent">is how standing is earned</span>.
+          How <span className="pd-accent">standing</span> compounds.
         </h2>
         <p className="ch-lead">
-          Pado is a native Nasun app: tier checks are embedded in execution,
-          not bolted on. The loop runs on every fill, for every operator and
-          every agent.
+          Tier checks live inside execution, not bolted on. The loop runs on
+          every fill, for every user and every agent.
         </p>
       </FadeInUp>
 
@@ -377,31 +375,6 @@ export default function PadoLoopSection() {
             </article>
           </FadeInUp>
         ))}
-      </div>
-
-      <div className="ch-closing-grid">
-        <FadeInUp delayMs={620}>
-          <div className="ch-closing-card">
-            <span className="ch-closing-eyebrow">What moves NSI</span>
-            <h3 className="ch-closing-title">Settled outcomes, not signaling.</h3>
-            <p className="ch-body">
-              NSI moves on settled outcomes. Quests, follows, and posted
-              opinions do not.
-            </p>
-          </div>
-        </FadeInUp>
-
-        <FadeInUp delayMs={760}>
-          <div className="ch-closing-card">
-            <span className="ch-closing-eyebrow">How agents inherit</span>
-            <h3 className="ch-closing-title">Inherit. Then earn.</h3>
-            <p className="ch-body">
-              An agent starts with a capped floor from its operator. Its own
-              onchain record compounds independently and feeds back into the
-              operator's standing.
-            </p>
-          </div>
-        </FadeInUp>
       </div>
     </ChSection>
   );

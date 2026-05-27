@@ -41,19 +41,29 @@
 /* Primary button — saturated blue at rest, lighter blue wipes in from the
    bottom-right diagonal. */
 .dev-home-catena.pado-theme .ch-btn-primary {
-  background-color: #2563eb;
-  color: #ffffff;
+  background-color: #93c5fd;
+  color: #000000;
 }
 .dev-home-catena.pado-theme .ch-btn-primary::before {
-  background-color: #60a5fa;
+  background-color: #dbeafe;
 }
 .dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert {
-  background-color: #60a5fa;
+  background-color: #dbeafe;
 }
 .dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert::before {
-  background-color: #2563eb;
+  background-color: #93c5fd;
 }
 .dev-home-catena.pado-theme .ch-btn-primary:hover {
+  color: #000000;
+}
+
+/* Ghost button — match the brighter primary palette. */
+.dev-home-catena.pado-theme .ch-btn-ghost {
+  border-color: #93c5fd;
+  color: #dbeafe;
+}
+.dev-home-catena.pado-theme .ch-btn-ghost:hover {
+  border-color: #dbeafe;
   color: #ffffff;
 }
 
@@ -84,43 +94,12 @@
   );
 }
 
-/* Card surfaces — dev-home.css hard-codes the ch-step-card background to
-   onyx tones, so override it here with pd0 / pd0s so cards sit as dark
-   blue panels against the pure-black page bg. */
-.dev-home-catena.pado-theme .ch-step-card {
-  background:
-    linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.035) 0%,
-      rgba(255, 255, 255, 0) 60%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(11, 17, 32, 0.92) 0%,
-      rgba(19, 28, 43, 0.95) 100%
-    );
-  border-color: rgba(96, 165, 250, 0.12);
-}
-
-/* Card chrome — saturated blue halo + spotlight glow. */
-.dev-home-catena.pado-theme .ch-step-card-halo {
-  background: conic-gradient(
-    from var(--step-angle),
-    rgba(59, 130, 246, 0) 0deg,
-    rgba(59, 130, 246, 0.7) 40deg,
-    rgba(147, 197, 253, 0.55) 90deg,
-    rgba(59, 130, 246, 0) 160deg,
-    rgba(59, 130, 246, 0) 360deg
-  );
-}
-.dev-home-catena.pado-theme .ch-step-card:hover {
-  box-shadow: 0 24px 60px -36px rgba(59, 130, 246, 0.55);
-}
+/* Spotlight glow — quieter than the original blue radial. */
 .dev-home-catena.pado-theme .ch-step-card-glow {
   background: radial-gradient(
     260px circle at var(--mx) var(--my),
-    rgba(147, 197, 253, 0.18),
-    rgba(59, 130, 246, 0.05) 30%,
+    rgba(147, 197, 253, 0.1),
+    rgba(59, 130, 246, 0.03) 30%,
     transparent 60%
   );
 }
@@ -166,66 +145,300 @@
   border-left-color: #60a5fa;
 }
 
+/* Pado now inherits home/about's display + body type scale. The previous
+   per-token scaledown was masking the real problem (over-decorated cards
+   and accent overload), not solving it. */
+
+/* Card chrome restraint — quieter background, softer halo, smaller hover
+   shadow so cards stop looking like marketing tiles. */
+.dev-home-catena.pado-theme .ch-step-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    rgba(11, 17, 32, 0.6);
+  border-color: rgba(96, 165, 250, 0.1);
+}
+.dev-home-catena.pado-theme .ch-step-card-halo {
+  background: conic-gradient(
+    from var(--step-angle),
+    rgba(59, 130, 246, 0) 0deg,
+    rgba(96, 165, 250, 0.45) 40deg,
+    rgba(147, 197, 253, 0.32) 90deg,
+    rgba(59, 130, 246, 0) 160deg,
+    rgba(59, 130, 246, 0) 360deg
+  );
+  opacity: 0.65;
+}
+.dev-home-catena.pado-theme .ch-step-card:hover {
+  box-shadow: 0 18px 48px -36px rgba(59, 130, 246, 0.4);
+}
+
+/* Product screenshots — two equal-width framed images above the card grid.
+   Mobile stacks 1-col, sm+ stays side-by-side 50/50.
+   `pd-product-shots-wrap` is applied to the FadeInUp wrapper so we can
+   pull the shots tighter to neighbours (the ch-stack 72px gap would
+   otherwise leave too much white space top and bottom). */
+.dev-home-catena.pado-theme .pd-product-shots-wrap {
+  margin-top: -2.5rem;
+  margin-bottom: -2rem;
+}
+.dev-home-catena.pado-theme .pd-product-shots {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .pd-product-shots {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+  }
+}
+.dev-home-catena.pado-theme .pd-product-shot {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  border-radius: var(--ch-radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(11, 17, 32, 0.6);
+  box-shadow: 0 24px 60px -42px rgba(59, 130, 246, 0.55);
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dev-home-catena.pado-theme .pd-product-shot:hover {
+  border-color: rgba(147, 197, 253, 0.45);
+  box-shadow: 0 28px 70px -38px rgba(96, 165, 250, 0.7);
+  transform: translateY(-2px);
+}
+.dev-home-catena.pado-theme .pd-product-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center top;
+}
+.dev-home-catena.pado-theme .pd-product-shot figcaption {
+  padding: 0 1rem 0.85rem;
+  font-family: var(--ch-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+/* Side variant — sits in the left column of the Account section. Caption
+   sits below the image (not on top of it) and the image is constrained
+   so it does not dominate the section. */
+.dev-home-catena.pado-theme .pd-agent-shot-side {
+  margin: 0;
+  max-width: 100%;
+}
+.dev-home-catena.pado-theme .pd-agent-shot-side img {
+  aspect-ratio: 1307 / 800;
+}
+
+/* Agent control panel screenshot — default chrome. 3:2 aspect to match
+   the source image and a softer caption. */
+.dev-home-catena.pado-theme .pd-agent-shot {
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  border-radius: var(--ch-radius-md);
+  overflow: hidden;
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  background: rgba(11, 17, 32, 0.6);
+  box-shadow: 0 22px 56px -42px rgba(59, 130, 246, 0.5);
+}
+.dev-home-catena.pado-theme .pd-agent-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1307 / 800;
+  object-fit: cover;
+}
+.dev-home-catena.pado-theme .pd-agent-shot figcaption {
+  padding: 0 1rem 0.8rem;
+  font-family: var(--ch-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+/* Products 3×2 grid override (6 cards). Mobile stays 1, sm stays 2, md/lg
+   forced to 3 instead of inheriting ch-step-grid's 4-col rule. */
+.dev-home-catena.pado-theme .pd-products-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .dev-home-catena.pado-theme .pd-products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena.pado-theme .pd-products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 /* ----------------------------------------------------------------------
- * Typography scaledown — Pado sections were sitting one step heavier than
- * the home / about pages because the section copy is denser per card
- * (multi-sentence titles, lists, status pills) than the dev-home Mechanism
- * grid (single-word titles). Pull the in-card type one notch down so the
- * Pado page sits at the same visual weight as home / about.
+ * Compounding loop — editorial rows (no card chrome).
+ *
+ * Each row is a 4-column grid on lg: numeral / eyebrow+title / body / viz.
+ * Top hairline rule per row, no background, no halo, no spotlight.
  * --------------------------------------------------------------------*/
 
-/* Section H2 (ch-display): 22px mobile → 30px md (was 24 → 36). */
-.dev-home-catena.pado-theme .ch-display {
-  font-size: 1.375rem; /* 22px */
+.dev-home-catena.pado-theme .pd-loop-rows {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--ch-divider);
+}
+.dev-home-catena.pado-theme .pd-loop-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 1rem 1.25rem;
+  padding: 1.85rem 0 2rem;
+  border-bottom: 1px solid var(--ch-divider);
+  align-items: start;
 }
 @media (min-width: 768px) {
-  .dev-home-catena.pado-theme .ch-display {
-    font-size: 1.875rem; /* 30px */
+  .dev-home-catena.pado-theme .pd-loop-row {
+    grid-template-columns: 76px 1.05fr 1.4fr 132px;
+    gap: 1.75rem;
+    align-items: center;
+    padding: 2.1rem 0 2.2rem;
   }
 }
-
-/* Hero H1 (ch-display-wide): mobile 24 → md 34 → lg 38 (was 26/40/44). */
-.dev-home-catena.pado-theme .ch-display-wide {
-  font-size: 1.5rem; /* 24px */
+.dev-home-catena.pado-theme .pd-loop-row-num {
+  font-family: var(--ch-font-mono);
+  font-weight: 300;
+  font-size: 2.25rem;
+  line-height: 1;
+  color: #60a5fa;
+  letter-spacing: 0.02em;
 }
 @media (min-width: 768px) {
-  .dev-home-catena.pado-theme .ch-display-wide {
-    font-size: 2.125rem; /* 34px */
+  .dev-home-catena.pado-theme .pd-loop-row-num {
+    font-size: 3rem;
   }
+}
+.dev-home-catena.pado-theme .pd-loop-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  grid-column: 2 / -1;
+}
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .pd-loop-row-text {
+    grid-column: 2 / 3;
+  }
+}
+.dev-home-catena.pado-theme .pd-loop-row-eyebrow {
+  font-family: var(--ch-font-mono);
+  font-size: 0.6875rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+.dev-home-catena.pado-theme .pd-loop-row-title {
+  font-family: var(--ch-font-display);
+  font-size: 1.375rem;
+  line-height: 1.2;
+  color: var(--ch-fg-display);
+  margin: 0;
 }
 @media (min-width: 1024px) {
-  .dev-home-catena.pado-theme .ch-display-wide {
-    font-size: 38px;
-    line-height: 46px;
+  .dev-home-catena.pado-theme .pd-loop-row-title {
+    font-size: 1.5rem;
   }
 }
-
-/* Step-card titles: 24 → 20px so multi-word product/problem titles don't
-   read heavier than home Mechanism's one-word titles. */
-.dev-home-catena.pado-theme .ch-step-card-title {
-  font-size: 1.25rem; /* 20px */
-}
-
-/* Card body copy: 15 → 14px. Tighter information density per card. */
-.dev-home-catena.pado-theme .ch-step-card-body {
-  font-size: 0.875rem; /* 14px */
-  line-height: 1.5;
-}
-
-/* Lead paragraph under each section heading: 16 → 15 mobile, 18 → 16 lg. */
-.dev-home-catena.pado-theme .ch-lead {
+.dev-home-catena.pado-theme .pd-loop-row-body {
+  font-family: var(--ch-font-body);
+  font-weight: 300;
   font-size: 0.9375rem;
+  line-height: 1.5;
+  color: var(--ch-fg-muted);
+  margin: 0;
+  grid-column: 1 / -1;
 }
-@media (min-width: 1024px) {
-  .dev-home-catena.pado-theme .ch-lead {
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .pd-loop-row-body {
+    grid-column: 3 / 4;
     font-size: 1rem;
-    line-height: 1.5;
+  }
+}
+.dev-home-catena.pado-theme .pd-loop-row-viz {
+  display: none;
+  position: relative;
+  width: 132px;
+  height: 100px;
+}
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .pd-loop-row-viz {
+    display: block;
+    grid-column: 4 / 5;
+    justify-self: end;
   }
 }
 
-/* Closing-card title — match the reduced step-card title size. */
-.dev-home-catena.pado-theme .ch-closing-title {
-  font-size: 1.125rem; /* 18px */
+/* Auto-play vizes in the loop rows (no hover required on rows). The
+   keyframes target `.ch-step-card:where(:hover, [data-state="playing"])`
+   so we mirror that selector chain by tagging the row container with
+   `[data-state="playing"]` once it scrolls into view via useRevealReplay. */
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .pkt-direct,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .pkt-direct {
+  animation: pd-act-direct 1.7s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .pkt-delegate,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .pkt-delegate {
+  animation: pd-act-delegate-flow 2.4s linear 0.5s 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .delegate,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .delegate {
+  animation: pd-act-channel 2.4s ease-out 0.4s 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-act .platform,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-act .platform {
+  animation: pd-act-platform 2.9s cubic-bezier(0.4, 0, 0.4, 1) 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .line,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .line {
+  animation: pd-record-draw 2.4s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .l2,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .l2 {
+  animation-delay: 0.25s;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-record .l3,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-record .l3 {
+  animation-delay: 0.5s;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-score .hex,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-score .hex {
+  animation: pd-score-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-score .label,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-score .label {
+  animation: pd-score-flash 1.6s ease-out 0.85s 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-enforce .shackle,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-enforce .shackle {
+  animation: pd-enforce-snap 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+.dev-home-catena.pado-theme .pd-loop-row[data-state="playing"] .pd-viz-enforce .body,
+.dev-home-catena.pado-theme .pd-loop-row:hover .pd-viz-enforce .body {
+  animation: pd-enforce-body 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
 }
 
 /* Hero layout lives entirely in PadoHeroSection.tsx (no ch-hero, no
