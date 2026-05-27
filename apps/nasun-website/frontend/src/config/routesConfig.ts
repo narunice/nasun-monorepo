@@ -213,13 +213,14 @@ export const routesV2: EnhancedRouteConfigBuilder = {
     navItem: {
       name: "navigation.ecosystem",
       path: "/ecosystem",
-      hidden: true, // Hidden from top nav per design request
       subMenu: [
         {
           name: "navigation.padoFinance",
           path: "/ecosystem/pado",
           element: Pages.FinancePado,
         },
+        // Temporarily hidden — only Pado remains visible in the Ecosystem
+        // dropdown. Restore by removing the `hidden: true` flag on each entry.
         {
           name: "navigation.ecosystemLeaderboard",
           path: "/ecosystem/leaderboard",
@@ -230,16 +231,19 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           name: "navigation.baramAi",
           path: "/ecosystem/baram",
           element: Pages.BaramDark,
+          hidden: true,
         },
         {
           name: "navigation.gostop",
           path: "/ecosystem/gostop",
           element: Pages.EcosystemGostop,
+          hidden: true,
         },
         {
           name: "navigation.genSol",
           path: "/ecosystem/gensol",
           element: Pages.IPsGenSol,
+          hidden: true,
           subMenu: [
             {
               name: "navigation.genSolMain",
