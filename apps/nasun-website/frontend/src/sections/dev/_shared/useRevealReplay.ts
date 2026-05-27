@@ -68,11 +68,12 @@ export function useRevealReplay<T extends HTMLElement>(
           const startId = window.setTimeout(() => {
             card.dataset.state = "playing";
             const endId = window.setTimeout(() => {
-              // If user is hovering when the timer fires, keep playing via
-              // CSS :hover. Otherwise settle to "done" (idle end-frame).
-              card.dataset.state = card.matches(":hover")
-                ? "playing"
-                : "done";
+              // Always settle to "done". CSS :hover handles re-triggering:
+              // the selector goes false when not hovering, then true again
+              // on next hover, which restarts the one-shot animation cleanly.
+              // Keeping "playing" here was the bug — it caused the selector
+              // to stay permanently true, preventing any subsequent replay.
+              card.dataset.state = "done";
             }, playMs);
             endTimers.set(card, endId);
           }, stagger);
