@@ -2,8 +2,8 @@ import { useIsMobile } from "@/hooks/useIsMobile";
 import { trackCrossAppNav, withCrossAppParam } from "@/lib/analytics";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
 
-const VIDEO_DESKTOP = "/videos/Walden-Dex-Token-rf28.mp4";
-const VIDEO_MOBILE = "/videos/Walden-Dex-Token-mobile-rf28.mp4";
+const VIDEO_DESKTOP = "/videos/Walden-DEX-Token-10bit-HD.mp4";
+const VIDEO_MOBILE = "/videos/Walden-DEX-Token-Mobile-10bit-HD.mp4";
 const VIDEO_POSTER = "/images/posters/Walden-Dex-Token-rf28.webp";
 
 function HeroCopy() {
@@ -13,7 +13,7 @@ function HeroCopy() {
         className="text-3xl md:text-4xl tracking-wider text-transparent bg-clip-text leading-none"
         style={{
           fontFamily: '"pirulen", sans-serif',
-          backgroundImage: "linear-gradient(135deg, #7d9dbf 0%, #e1e5ea 100%)",
+          backgroundImage: "linear-gradient(135deg, #3b82f6 0%, #93c5fd 100%)",
         }}
       >
         PADO
@@ -65,7 +65,7 @@ export default function PadoHeroSection() {
 
   if (isMobile) {
     return (
-      <section className="relative overflow-hidden bg-[#0b1120] flex flex-col">
+      <section className="relative overflow-hidden bg-black flex flex-col">
         <div className="relative w-full">
           <video
             key="mobile"
@@ -83,7 +83,7 @@ export default function PadoHeroSection() {
             className="absolute inset-x-0 bottom-0 h-1/3 pointer-events-none"
             style={{
               background:
-                "linear-gradient(to bottom, rgba(11,17,32,0) 0%, #0b1120 100%)",
+                "linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000000 100%)",
             }}
             aria-hidden="true"
           />
@@ -98,7 +98,7 @@ export default function PadoHeroSection() {
   // Desktop: video flows in natural aspect ratio; copy floats absolute on
   // the right half of a 1296px container. No min-height enforced.
   return (
-    <section className="relative overflow-hidden bg-[#0b1120]">
+    <section className="relative overflow-hidden bg-black">
       <video
         key="desktop"
         src={VIDEO_DESKTOP}
@@ -127,7 +127,7 @@ export default function PadoHeroSection() {
         style={{
           height: "28%",
           background:
-            "linear-gradient(to bottom, rgba(11,17,32,0) 0%, #0b1120 100%)",
+            "linear-gradient(to bottom, rgba(0,0,0,0) 0%, #000000 100%)",
         }}
         aria-hidden="true"
       />

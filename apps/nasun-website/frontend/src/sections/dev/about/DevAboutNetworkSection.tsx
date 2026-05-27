@@ -314,7 +314,7 @@ export default function DevAboutNetworkSection() {
         <span className="ch-eyebrow">02 / Network</span>
         <h2 className="ch-display" style={{ maxWidth: "880px" }}>
           <span className="ch-accent-pado">Execution</span>{" "}
-          <span className="ch-subdued">Environment</span>
+          <span>Environment</span>
         </h2>
         <p className="ch-body" style={{ maxWidth: "820px" }}>
           Nasun runs on its own Move-based L1 with Mysticeti consensus.

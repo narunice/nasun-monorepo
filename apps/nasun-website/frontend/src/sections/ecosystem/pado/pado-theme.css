@@ -1,64 +1,71 @@
 /*
  * Pado page theme overrides — scoped to `.pado-theme` (sits inside
  * `.dev-home-catena` so it inherits the catena type + layout primitives,
- * then re-maps the tokens to the pd palette).
+ * then re-maps the tokens to the Pado palette).
  *
- *   pd0   #0b1120  page bg
- *   pd0s  #131c2b  card bg
- *   pd1   #1f3a61  deep blue
- *   pd2   #3a5f78  mid blue
- *   pd3   #7d9dbf  light blue (accent)
- *   pd4   #aac9d5  pale blue (secondary accent)
- *   pd5   #e1e5ea  near-white text
+ * Surface roles
+ *   page bg     #000000  pure black
+ *   card bg     #0b1120  pd0 dark blue
+ *   card bg lo  #131c2b  pd0s
+ *   text body   #e1e5ea  near-white
+ *
+ * Accent (saturated blue ramp — pops on black bg)
+ *   accent-deep   #1d4ed8  blue-700
+ *   accent-bg     #2563eb  blue-600  (button rest)
+ *   accent-mid    #3b82f6  blue-500  (button wipe)
+ *   accent        #60a5fa  blue-400  (eyebrow / num / icon)
+ *   accent-light  #93c5fd  blue-300  (cyan-eyebrow / icon hover)
+ *   accent-pale   #bfdbfe  blue-200  (gradient bright end)
  */
 
 .dev-home-catena.pado-theme {
-  --ch-bg-page: #0b1120;
-  --ch-bg-card: #131c2b;
+  --ch-bg-page: #000000;
+  --ch-bg-card: #0b1120;
   --ch-fg-display: #ffffff;
   --ch-fg-default: #e1e5ea;
-  --ch-fg-accent: #7d9dbf;
-  --ch-accent-cyan: #aac9d5;
+  --ch-fg-accent: #60a5fa;
+  --ch-accent-cyan: #93c5fd;
   --ch-fg-muted: rgba(225, 229, 234, 0.85);
   --ch-fg-subdued: rgba(225, 229, 234, 0.6);
   --ch-fg-faint: rgba(225, 229, 234, 0.3);
-  --ch-border: rgba(125, 157, 191, 0.22);
+  --ch-border: rgba(96, 165, 250, 0.24);
   --ch-divider: rgba(225, 229, 234, 0.12);
 }
 
 /* Selection */
 .dev-home-catena.pado-theme ::selection {
-  background-color: rgba(125, 157, 191, 0.55);
-  color: #0b1120;
+  background-color: rgba(59, 130, 246, 0.6);
+  color: #ffffff;
 }
 
-/* Primary button — pd2 at rest, pd3 wipes in from the bottom-right. */
+/* Primary button — saturated blue at rest, lighter blue wipes in from the
+   bottom-right diagonal. */
 .dev-home-catena.pado-theme .ch-btn-primary {
-  background-color: #3a5f78;
+  background-color: #2563eb;
   color: #ffffff;
 }
 .dev-home-catena.pado-theme .ch-btn-primary::before {
-  background-color: #7d9dbf;
+  background-color: #60a5fa;
 }
 .dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert {
-  background-color: #7d9dbf;
+  background-color: #60a5fa;
 }
 .dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert::before {
-  background-color: #3a5f78;
+  background-color: #2563eb;
 }
 .dev-home-catena.pado-theme .ch-btn-primary:hover {
   color: #ffffff;
 }
 
 /* PD accent — gradient text replacement for `.ch-accent-pado`.
-   Wide tonal range (pd2 → pd5) so the accent reads as a real highlight even
-   on the dark pd0 background. Diagonal angle adds a touch of motion. */
+   Saturated 3-stop blue ramp so the accent reads as a real highlight on
+   the black page bg. Diagonal angle adds a touch of motion. */
 .dev-home-catena.pado-theme .pd-accent {
   background-image: linear-gradient(
     105deg,
-    #3a5f78 0%,
-    #7d9dbf 40%,
-    #e1e5ea 100%
+    #2563eb 0%,
+    #60a5fa 50%,
+    #bfdbfe 100%
   );
   -webkit-background-clip: text;
   background-clip: text;
@@ -71,44 +78,62 @@
 .dev-home-catena.pado-theme .ch-accent-pado {
   background-image: linear-gradient(
     105deg,
-    #3a5f78 0%,
-    #7d9dbf 40%,
-    #e1e5ea 100%
+    #2563eb 0%,
+    #60a5fa 50%,
+    #bfdbfe 100%
   );
 }
 
-/* Card chrome — pd palette conic halo + spotlight. */
+/* Card surfaces — dev-home.css hard-codes the ch-step-card background to
+   onyx tones, so override it here with pd0 / pd0s so cards sit as dark
+   blue panels against the pure-black page bg. */
+.dev-home-catena.pado-theme .ch-step-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.035) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(11, 17, 32, 0.92) 0%,
+      rgba(19, 28, 43, 0.95) 100%
+    );
+  border-color: rgba(96, 165, 250, 0.12);
+}
+
+/* Card chrome — saturated blue halo + spotlight glow. */
 .dev-home-catena.pado-theme .ch-step-card-halo {
   background: conic-gradient(
     from var(--step-angle),
-    rgba(125, 157, 191, 0) 0deg,
-    rgba(125, 157, 191, 0.65) 40deg,
-    rgba(170, 201, 213, 0.45) 90deg,
-    rgba(125, 157, 191, 0) 160deg,
-    rgba(125, 157, 191, 0) 360deg
+    rgba(59, 130, 246, 0) 0deg,
+    rgba(59, 130, 246, 0.7) 40deg,
+    rgba(147, 197, 253, 0.55) 90deg,
+    rgba(59, 130, 246, 0) 160deg,
+    rgba(59, 130, 246, 0) 360deg
   );
 }
 .dev-home-catena.pado-theme .ch-step-card:hover {
-  box-shadow: 0 24px 60px -36px rgba(125, 157, 191, 0.45);
+  box-shadow: 0 24px 60px -36px rgba(59, 130, 246, 0.55);
 }
 .dev-home-catena.pado-theme .ch-step-card-glow {
   background: radial-gradient(
     260px circle at var(--mx) var(--my),
-    rgba(170, 201, 213, 0.14),
-    rgba(125, 157, 191, 0.04) 30%,
+    rgba(147, 197, 253, 0.18),
+    rgba(59, 130, 246, 0.05) 30%,
     transparent 60%
   );
 }
 
-/* Card eyebrow / index numerals re-tinted to pd3. */
+/* Card eyebrow / index numerals tinted to the saturated accent. */
 .dev-home-catena.pado-theme .ch-step-card-eyebrow,
 .dev-home-catena.pado-theme .ch-step-card-num,
 .dev-home-catena.pado-theme .ch-closing-eyebrow,
 .dev-home-catena.pado-theme .ch-eyebrow {
-  color: #7d9dbf;
+  color: #60a5fa;
 }
 .dev-home-catena.pado-theme .ch-eyebrow-cyan {
-  color: #aac9d5;
+  color: #93c5fd;
 }
 
 /* Status pill palette (LIVE / ALPHA / SOON tints driven by data-status). */
@@ -121,24 +146,24 @@
   border-radius: 999px;
 }
 .dev-home-catena.pado-theme .pd-status[data-status="live"] {
-  color: #aac9d5;
-  background-color: rgba(125, 157, 191, 0.18);
-  border: 1px solid rgba(170, 201, 213, 0.45);
+  color: #bfdbfe;
+  background-color: rgba(59, 130, 246, 0.22);
+  border: 1px solid rgba(96, 165, 250, 0.55);
 }
 .dev-home-catena.pado-theme .pd-status[data-status="alpha"] {
   color: #e1e5ea;
-  background-color: rgba(58, 95, 120, 0.32);
-  border: 1px solid rgba(125, 157, 191, 0.45);
+  background-color: rgba(37, 99, 235, 0.28);
+  border: 1px solid rgba(96, 165, 250, 0.4);
 }
 .dev-home-catena.pado-theme .pd-status[data-status="soon"] {
   color: rgba(225, 229, 234, 0.7);
-  background-color: rgba(31, 58, 97, 0.32);
-  border: 1px solid rgba(125, 157, 191, 0.25);
+  background-color: rgba(29, 78, 216, 0.22);
+  border: 1px solid rgba(96, 165, 250, 0.22);
 }
 
-/* Closing-card accent rule uses pd3 instead of mint. */
+/* Closing-card accent rule uses saturated blue. */
 .dev-home-catena.pado-theme .ch-closing-card {
-  border-left-color: #7d9dbf;
+  border-left-color: #60a5fa;
 }
 
 /* ----------------------------------------------------------------------
@@ -149,7 +174,7 @@
  * Pado page sits at the same visual weight as home / about.
  * --------------------------------------------------------------------*/
 
-/* Section H2 (ch-display): 24px mobile → 30px md (was 24 → 36). */
+/* Section H2 (ch-display): 22px mobile → 30px md (was 24 → 36). */
 .dev-home-catena.pado-theme .ch-display {
   font-size: 1.375rem; /* 22px */
 }
@@ -210,44 +235,367 @@
    right of a 1296px container band. */
 
 /* Product card icon (lucide). Quiet at rest, blooms on card hover with a
-   soft pd-palette glow and a 1.08× scale. The icon also nudges horizontally
-   so the badge has room to breathe. */
+   saturated blue glow and a 1.08× scale. */
 .dev-home-catena.pado-theme .pd-card-icon {
   width: 30px;
   height: 30px;
-  color: #7d9dbf;
+  color: #60a5fa;
   transition:
     color 0.4s ease,
     transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
     filter 0.4s ease;
 }
 .dev-home-catena.pado-theme .ch-step-card:hover .pd-card-icon {
-  color: #aac9d5;
+  color: #93c5fd;
   transform: scale(1.08);
-  filter: drop-shadow(0 0 14px rgba(170, 201, 213, 0.55));
+  filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.7));
 }
 
-/* Animated underline beneath the icon — paused at rest, draws on hover.
-   Provides the "simple animation" cue without per-card SVG work. */
-.dev-home-catena.pado-theme .pd-card-rule {
-  display: block;
-  height: 1px;
-  width: 28px;
-  background: linear-gradient(90deg, #7d9dbf 0%, rgba(170, 201, 213, 0) 100%);
-  transform: scaleX(0);
-  transform-origin: left;
-  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+/* ----------------------------------------------------------------------
+ * Compounding-loop viz palette — 4 Pado-only primitives, distinct from
+ * the home Mechanism set (`.ch-viz-*`, also rendered on /about) and the
+ * About Gravity set (`.ch-gv-viz-*`). Each viz sits in `.ch-step-card-viz`
+ * (108px panel) and replays once on `.ch-step-card:hover` or
+ * `[data-state="playing"]` (set by useRevealReplay).
+ *
+ *   pd-viz-act      → human + agent both route into the Pado platform,
+ *                     delegation channel flashes between them
+ *   pd-viz-record   → onchain record block fills with three data lines
+ *                     drawn left → right via SVG stroke-dashoffset
+ *   pd-viz-score    → hexagonal NSI badge stroke draws + label flash
+ *   pd-viz-enforce  → padlock shackle lifts + tilts open then snaps shut
+ * --------------------------------------------------------------------*/
+
+/* ── 01 Act — human + agent into Pado, delegation channel ──────────── */
+/* Idle: human silhouette + agent glyph + dashed delegation channel +
+   trade lines + Pado platform with a soft glow. Hover: delegation channel
+   first flashes/flows (h → b), then two packets travel from each glyph
+   into the platform which pulses on arrival. The dashed channel
+   foreshadows the agent-as-vault-manager direction; the parallel packets
+   say "people and agents trade alongside each other on this venue". */
+.dev-home-catena.pado-theme .pd-viz-act {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.dev-home-catena.pado-theme .ch-step-card:hover .pd-card-rule {
-  transform: scaleX(1);
+.dev-home-catena.pado-theme .pd-viz-act svg {
+  width: 100%;
+  height: 100%;
+}
+.dev-home-catena.pado-theme .pd-viz-act .platform {
+  filter: drop-shadow(0 0 4px rgba(147, 197, 253, 0.45));
+}
+.dev-home-catena.pado-theme .pd-viz-act .pkt {
+  /* idle: invisible — only visible during the travel keyframe */
+  opacity: 0;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-act
+  .pkt-direct {
+  animation: pd-act-direct 1.7s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-act
+  .pkt-delegate {
+  animation: pd-act-delegate-flow 2.4s cubic-bezier(0.4, 0, 0.4, 1) 0.5s 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-act
+  .delegate {
+  animation: pd-act-channel 2.4s ease-out 0.4s 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-act
+  .platform {
+  animation: pd-act-platform 2.9s cubic-bezier(0.4, 0, 0.4, 1) 1;
+}
+
+/* Direct packet: human's right edge (30, 27) → Pado (134, 40). */
+@keyframes pd-act-direct {
+  0%   { cx: 30;  cy: 27; opacity: 0; }
+  15%  { cx: 30;  cy: 27; opacity: 1; }
+  85%  { cx: 134; cy: 40; opacity: 1; }
+  100% { cx: 134; cy: 40; opacity: 0; }
+}
+
+/* Delegate packet: human (22, 32) → left-bowing curve → agent (22, 48)
+   → slide into agent's trade line (31, 55) → Pado (134, 40). The curve
+   is sampled at three points (t≈0.25, 0.5, 0.75) of the quadratic
+   `M 22 32 Q 6 40 22 48` so linear interpolation between keyframes
+   approximates the visible bow closely. */
+@keyframes pd-act-delegate-flow {
+  0%   { cx: 22;  cy: 32; opacity: 0; }
+  10%  { cx: 22;  cy: 32; opacity: 1; }
+  18%  { cx: 16;  cy: 36; opacity: 1; }   /* curve out, t≈0.25 */
+  28%  { cx: 14;  cy: 40; opacity: 1; }   /* max bow, t≈0.5 */
+  38%  { cx: 16;  cy: 44; opacity: 1; }   /* curve back, t≈0.75 */
+  48%  { cx: 22;  cy: 48; opacity: 1; }   /* arrived at agent top */
+  56%  { cx: 31;  cy: 55; opacity: 1; }   /* slide into trade line */
+  92%  { cx: 134; cy: 40; opacity: 1; }   /* arrived at Pado */
+  100% { cx: 134; cy: 40; opacity: 0; }
+}
+
+/* Delegate channel glow — brightens while the packet is descending. */
+@keyframes pd-act-channel {
+  0%, 100% {
+    stroke: rgba(147, 197, 253, 0.5);
+    stroke-width: 1.3;
+  }
+  15%, 35% {
+    stroke: rgba(191, 219, 254, 0.95);
+    stroke-width: 1.6;
+  }
+}
+
+/* Platform pulses near the end of the cycle when the delegate packet
+   (the longer, more deliberate path) arrives. */
+@keyframes pd-act-platform {
+  0%, 80% {
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 4px rgba(147, 197, 253, 0.45));
+  }
+  92% {
+    stroke-width: 2.4;
+    filter: drop-shadow(0 0 16px rgba(147, 197, 253, 0.95));
+  }
+  100% {
+    stroke-width: 1.8;
+    filter: drop-shadow(0 0 4px rgba(147, 197, 253, 0.45));
+  }
+}
+
+/* ── 02 Onchain record — block frame fills with three data lines ───── */
+/* SVG <line> + stroke-dashoffset. Each line's actual length is at most
+   ~56 viewBox units, so a fixed dasharray of 100 guarantees the dash
+   covers the full line (idle = solid). dashoffset 100 → 0 wipes the line
+   in from the left edge. Avoided pathLength normalization which proved
+   inconsistent across browsers for <line> elements. */
+.dev-home-catena.pado-theme .pd-viz-record {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+.dev-home-catena.pado-theme .pd-viz-record svg {
+  width: 100%;
+  height: 100%;
+}
+.dev-home-catena.pado-theme .pd-viz-record .line {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 0; /* idle: fully drawn */
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-record
+  .line {
+  animation: pd-record-draw 2.4s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-record
+  .l2 {
+  animation-delay: 0.25s;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-record
+  .l3 {
+  animation-delay: 0.5s;
+}
+@keyframes pd-record-draw {
+  0% { stroke-dashoffset: 100; }    /* dash shifted off line — invisible */
+  70% { stroke-dashoffset: 0; }     /* dash covers full line — drawn */
+  100% { stroke-dashoffset: 0; }
+}
+
+/* ── 03 Score — hexagonal NSI badge stroke draw ────────────────────── */
+.dev-home-catena.pado-theme .pd-viz-score {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+}
+.dev-home-catena.pado-theme .pd-viz-score svg {
+  width: 84px;
+  height: 84px;
+  overflow: visible;
+}
+.dev-home-catena.pado-theme .pd-viz-score .hex {
+  stroke-dasharray: 210;
+  stroke-dashoffset: 0; /* idle: fully drawn */
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-score
+  .hex {
+  animation: pd-score-draw 1.6s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-score
+  .label {
+  animation: pd-score-flash 1.6s ease-out 0.85s 1;
+}
+@keyframes pd-score-draw {
+  0% { stroke-dashoffset: 210; }
+  100% { stroke-dashoffset: 0; }
+}
+@keyframes pd-score-flash {
+  0%, 100% { opacity: 1; filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
+  50% { opacity: 0.55; filter: drop-shadow(0 0 8px rgba(147, 197, 253, 0.85)); }
+}
+
+/* ── 04 Enforce — padlock shackle lifts + tilts then snaps closed ──── */
+/* viewBox extended vertically (0 0 44 60) so the shackle has headroom to
+   rise and rotate without getting clipped. The shackle pivots around the
+   bottom of its left leg (12, 32), so the animation reads as:
+     1. lift the shackle straight up off the body
+     2. swing the right side out (rotate around the left hinge)
+     3. hold the open pose
+     4. snap closed with a small overshoot                                */
+.dev-home-catena.pado-theme .pd-viz-enforce {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 6px;
+}
+.dev-home-catena.pado-theme .pd-viz-enforce svg {
+  width: 78px;
+  height: 100px;
+  overflow: visible;
+}
+/* SVG transforms on a <path>: use `transform-box: fill-box` so the
+   transform-origin is the path's own bounding box (not the SVG viewport
+   in CSS pixels). 50% 100% then maps to the bottom-center of the shackle,
+   which acts as the pivot for the tilt. Without this, rotation was being
+   applied around an offset CSS-pixel point and the visual change was
+   barely detectable on hover. */
+.dev-home-catena.pado-theme .pd-viz-enforce .shackle {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-enforce
+  .shackle {
+  animation: pd-enforce-snap 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+.dev-home-catena.pado-theme
+  .ch-step-card:where(:hover, [data-state="playing"])
+  .pd-viz-enforce
+  .body {
+  animation: pd-enforce-body 1.9s cubic-bezier(0.4, 0, 0.2, 1) 1;
+}
+@keyframes pd-enforce-snap {
+  0%   { transform: translateY(0)    rotate(0deg); }
+  22%  { transform: translateY(-7px) rotate(0deg); }      /* lift */
+  50%  { transform: translateY(-7px) rotate(-28deg); }    /* tilt sideways */
+  72%  { transform: translateY(-7px) rotate(-28deg); }    /* hold open */
+  86%  { transform: translateY(2px)  rotate(4deg); }      /* snap overshoot */
+  100% { transform: translateY(0)    rotate(0deg); }
+}
+@keyframes pd-enforce-body {
+  0%, 80% { filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
+  92% { filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.85)); }
+  100% { filter: drop-shadow(0 0 0 rgba(147, 197, 253, 0)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.pado-theme .pd-viz-act .pkt-direct,
+  .dev-home-catena.pado-theme .pd-viz-act .pkt-delegate,
+  .dev-home-catena.pado-theme .pd-viz-act .delegate,
+  .dev-home-catena.pado-theme .pd-viz-act .platform,
+  .dev-home-catena.pado-theme .pd-viz-record .line,
+  .dev-home-catena.pado-theme .pd-viz-score .hex,
+  .dev-home-catena.pado-theme .pd-viz-score .label,
+  .dev-home-catena.pado-theme .pd-viz-enforce .shackle,
+  .dev-home-catena.pado-theme .pd-viz-enforce .body {
+    animation: none !important;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * Product card (Live on Pado) — compact ch-step-card variant.
+ *
+ *   • Icon sits at the top-left as a 28px glyph (no chip, no bottom slot).
+ *   • Status pill sits top-right.
+ *   • Card height shrinks to content; min-height pulled in from 320 → 188
+ *     so 8 cards on the grid don't leave large dead space.
+ *   • A 2px accent rail on the left edge draws top→bottom on hover, the
+ *     SaaS-card focus cue, replacing the old horizontal divider.
+ *   • Icon scales + glows on hover. Card border brightens to a hairline
+ *     blue. No bottom-center glyph.
+ * --------------------------------------------------------------------*/
+
+.dev-home-catena.pado-theme .pd-product-card {
+  min-height: 188px;
+  padding: 1.35rem 1.35rem 1.3rem 1.55rem;
+  gap: 0.6rem;
+}
+
+.dev-home-catena.pado-theme .pd-product-card .pd-card-icon {
+  width: 26px;
+  height: 26px;
+  color: #60a5fa;
+  transition:
+    color 0.4s ease,
+    transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s ease;
+}
+.dev-home-catena.pado-theme .pd-product-card:hover .pd-card-icon {
+  color: #bfdbfe;
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.7));
+}
+
+/* Left-edge accent rail — focus signal on hover. */
+.dev-home-catena.pado-theme .pd-product-card-rail {
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(96, 165, 250, 0) 0%,
+    #3b82f6 22%,
+    #93c5fd 78%,
+    rgba(96, 165, 250, 0) 100%
+  );
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+  pointer-events: none;
+}
+.dev-home-catena.pado-theme .pd-product-card:hover .pd-product-card-rail {
+  transform: scaleY(1);
+}
+
+/* Border picks up a brighter hairline blue on hover to match the rail. */
+.dev-home-catena.pado-theme .pd-product-card:hover {
+  border-color: rgba(96, 165, 250, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .dev-home-catena.pado-theme .pd-card-icon,
-  .dev-home-catena.pado-theme .pd-card-rule {
+  .dev-home-catena.pado-theme .pd-product-card-rail {
     transition: none !important;
   }
-  .dev-home-catena.pado-theme .ch-step-card:hover .pd-card-icon {
+  .dev-home-catena.pado-theme .pd-product-card:hover .pd-card-icon {
     transform: none;
   }
 }

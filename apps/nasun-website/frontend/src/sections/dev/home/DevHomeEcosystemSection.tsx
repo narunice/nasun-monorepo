@@ -47,7 +47,7 @@ export default function DevHomeEcosystemSection() {
             <p>Resets every Monday</p>
           </div>
 
-          <p className="ch-body">Live on devnet since April 9th</p>
+          <p className="ch-body mt-auto">Live on devnet since April 9th</p>
 
           <div className="flex flex-wrap gap-3 mt-2">
             <a
@@ -106,7 +106,7 @@ export default function DevHomeEcosystemSection() {
             <p>Resets every Monday</p>
           </div>
 
-          <p className="ch-body">Live on devnet since April 1st</p>
+          <p className="ch-body mt-auto">Live on devnet since April 1st</p>
 
           <div className="flex flex-wrap gap-3 mt-2">
             <a

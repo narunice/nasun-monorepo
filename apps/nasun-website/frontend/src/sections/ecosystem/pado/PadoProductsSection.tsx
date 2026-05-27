@@ -109,8 +109,8 @@ export default function PadoProductsSection() {
           <span className="pd-accent">already running</span>.
         </h2>
         <p className="ch-lead">
-          On Nasun devnet since April 9. Real users and agents writing receipts
-          across orderbook, prediction, and agent surfaces in continuous
+          On Nasun devnet since April 9. Real users and agents writing onchain
+          records across orderbook, prediction, and agent surfaces in continuous
           production.
         </p>
       </FadeInUp>
@@ -121,25 +121,33 @@ export default function PadoProductsSection() {
           return (
             <FadeInUp key={p.title} delayMs={100 + i * 70}>
               <article
-                className="ch-step-card"
+                className="ch-step-card pd-product-card"
                 data-spotlight-card=""
                 onPointerMove={tilt.onMove}
                 onPointerLeave={tilt.onLeave}
-                style={{ minHeight: 220 }}
               >
                 <span className="ch-step-card-halo" aria-hidden="true" />
                 <span className="ch-step-card-glow" aria-hidden="true" />
+                <span className="pd-product-card-rail" aria-hidden="true" />
+
                 <header
                   className="ch-step-card-header"
-                  style={{ alignItems: "center" }}
+                  style={{
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "0.75rem",
+                  }}
                 >
                   <Icon className="pd-card-icon" aria-hidden="true" />
                   <span className="pd-status" data-status={p.status}>
                     {STATUS_LABEL[p.status]}
                   </span>
                 </header>
-                <span className="pd-card-rule" aria-hidden="true" />
-                <h3 className="ch-step-card-title" style={{ marginTop: 4 }}>
+
+                <h3
+                  className="ch-step-card-title"
+                  style={{ marginTop: 4 }}
+                >
                   {p.title}
                 </h3>
                 <p className="ch-step-card-body">{p.body}</p>

@@ -51,7 +51,7 @@ export default function PadoFutureSection() {
                 flexDirection: "column",
                 gap: "0.65rem",
                 height: "100%",
-                borderLeft: "1px solid #7d9dbf",
+                borderLeft: "1px solid #60a5fa",
               }}
             >
               <span className="ch-step-card-num">{f.index}</span>

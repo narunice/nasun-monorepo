@@ -43,8 +43,8 @@ const PHASES: Phase[] = [
 
 function StatusDot({ status }: { status: Phase["status"] }) {
   const styles: Record<Phase["status"], { color: string; glow: string }> = {
-    now: { color: "#aac9d5", glow: "rgba(170, 201, 213, 0.55)" },
-    next: { color: "#7d9dbf", glow: "rgba(125, 157, 191, 0.45)" },
+    now: { color: "#93c5fd", glow: "rgba(147, 197, 253, 0.65)" },
+    next: { color: "#60a5fa", glow: "rgba(96, 165, 250, 0.55)" },
     later: { color: "rgba(225, 229, 234, 0.35)", glow: "transparent" },
   };
   const s = styles[status];
@@ -102,7 +102,7 @@ export default function PadoRoadmapSection() {
                 <StatusDot status={p.status} />
                 <span
                   className="ch-step-card-eyebrow"
-                  style={{ color: "#7d9dbf" }}
+                  style={{ color: "#60a5fa" }}
                 >
                   {p.label}
                 </span>

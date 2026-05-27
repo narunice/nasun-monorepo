@@ -3,7 +3,7 @@ import FadeInUp from "@/sections/dev/home/FadeInUp";
 
 const PEOPLE = [
   "Smart account onboarding via zkLogin or passkey, no seed phrases.",
-  "Every fill, settlement, and prediction outcome lands as an onchain receipt.",
+  "Every fill, settlement, and prediction outcome lands as an onchain record.",
   "Risk-adjusted history compounds into your Nasun Standing Index (NSI).",
   "Tier unlocks leverage floors, agent permissions, and execution priority.",
 ];
@@ -11,7 +11,7 @@ const PEOPLE = [
 const AGENTS = [
   "Deploy a Nasun AI agent with a budget, kill-switch, and venue allow-list.",
   "Agent inherits a capped authority floor from the operator's NSI tier.",
-  "Agent execution receipts compound a track record of its own.",
+  "Agent execution records compound a track record of its own.",
   "Operator history shapes agent permissions; agent activity feeds back.",
 ];
 
@@ -53,7 +53,7 @@ export default function PadoAccountSection() {
                 <span
                   aria-hidden="true"
                   style={{
-                    color: "#7d9dbf",
+                    color: "#60a5fa",
                     fontFamily: "var(--ch-font-mono)",
                     fontSize: "0.6875rem",
                     letterSpacing: "0.22em",
@@ -92,7 +92,7 @@ export default function PadoAccountSection() {
                 <span
                   aria-hidden="true"
                   style={{
-                    color: "#aac9d5",
+                    color: "#93c5fd",
                     fontFamily: "var(--ch-font-mono)",
                     fontSize: "0.6875rem",
                     letterSpacing: "0.22em",

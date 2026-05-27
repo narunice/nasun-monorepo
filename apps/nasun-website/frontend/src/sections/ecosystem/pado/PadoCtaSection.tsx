@@ -13,8 +13,8 @@ export default function PadoCtaSection() {
         </h2>
         <p className="ch-lead">
           Pado is live. Verify it yourself. Every order, settlement, and agent
-          execution writes a receipt that follows you to the next venue and to
-          mainnet.
+          execution writes an onchain record that follows you to the next
+          venue and to mainnet.
         </p>
 
         <div className="flex flex-wrap gap-3 mt-2">
