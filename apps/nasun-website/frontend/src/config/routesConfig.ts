@@ -727,12 +727,12 @@ export const getNavItemsV2 = (t: TFunction<"common", undefined>) => {
         })),
     }))
     .sort((a, b) => {
-      // 정렬 순서: network, infra, ecosystem, about(visible /dev/about), community, leaderboards, wave1
+      // 정렬 순서: network, infra, about(visible /dev/about), ecosystem, community, leaderboards, wave1
       const order = [
         "network",
         "infra",
-        "ecosystem",
         "about",
+        "ecosystem",
         "community",
         "leaderboards",
         "wave1",
