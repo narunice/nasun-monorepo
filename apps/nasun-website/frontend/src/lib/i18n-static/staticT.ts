@@ -4,7 +4,6 @@ import about from "../../assets/locales/en/about.json";
 import baram from "../../assets/locales/en/baram.json";
 import devInvestors from "../../assets/locales/en/dev-investors.json";
 import earlyContributors from "../../assets/locales/en/early-contributors.json";
-import finance from "../../assets/locales/en/finance.json";
 import genSol from "../../assets/locales/en/genSol.json";
 import grants from "../../assets/locales/en/grants.json";
 import infra from "../../assets/locales/en/infra.json";
@@ -31,7 +30,6 @@ export const locales = {
   baram,
   "dev-investors": devInvestors,
   "early-contributors": earlyContributors,
-  finance,
   genSol,
   grants,
   infra,

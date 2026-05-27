@@ -27,11 +27,9 @@ export const PageLoadingProvider: React.FC<{ children: ReactNode }> = ({ childre
   // 이렇게 하면 이전 페이지의 isPageReady=true 상태가 잠시 보이는 현상 방지
   useLayoutEffect(() => {
     // 비디오 hero 섹션이 있는 페이지들: Footer를 비디오 로딩 완료 후에만 표시
-    // /ecosystem/finance는 하위 경로가 없지만 미래를 위해 유지
     const isPageWithVideoHero =
       location.pathname === "/legacy/home2026april" ||
       location.pathname === "/network/nsn" ||
-      location.pathname.startsWith("/ecosystem/pado") ||
       location.pathname === "/dev/battalion-nft" ||
       location.pathname === "/pado-revised";
 

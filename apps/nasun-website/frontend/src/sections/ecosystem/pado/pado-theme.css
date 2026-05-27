@@ -1,0 +1,253 @@
+/*
+ * Pado page theme overrides — scoped to `.pado-theme` (sits inside
+ * `.dev-home-catena` so it inherits the catena type + layout primitives,
+ * then re-maps the tokens to the pd palette).
+ *
+ *   pd0   #0b1120  page bg
+ *   pd0s  #131c2b  card bg
+ *   pd1   #1f3a61  deep blue
+ *   pd2   #3a5f78  mid blue
+ *   pd3   #7d9dbf  light blue (accent)
+ *   pd4   #aac9d5  pale blue (secondary accent)
+ *   pd5   #e1e5ea  near-white text
+ */
+
+.dev-home-catena.pado-theme {
+  --ch-bg-page: #0b1120;
+  --ch-bg-card: #131c2b;
+  --ch-fg-display: #ffffff;
+  --ch-fg-default: #e1e5ea;
+  --ch-fg-accent: #7d9dbf;
+  --ch-accent-cyan: #aac9d5;
+  --ch-fg-muted: rgba(225, 229, 234, 0.85);
+  --ch-fg-subdued: rgba(225, 229, 234, 0.6);
+  --ch-fg-faint: rgba(225, 229, 234, 0.3);
+  --ch-border: rgba(125, 157, 191, 0.22);
+  --ch-divider: rgba(225, 229, 234, 0.12);
+}
+
+/* Selection */
+.dev-home-catena.pado-theme ::selection {
+  background-color: rgba(125, 157, 191, 0.55);
+  color: #0b1120;
+}
+
+/* Primary button — pd2 at rest, pd3 wipes in from the bottom-right. */
+.dev-home-catena.pado-theme .ch-btn-primary {
+  background-color: #3a5f78;
+  color: #ffffff;
+}
+.dev-home-catena.pado-theme .ch-btn-primary::before {
+  background-color: #7d9dbf;
+}
+.dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert {
+  background-color: #7d9dbf;
+}
+.dev-home-catena.pado-theme .ch-btn-primary.ch-btn-invert::before {
+  background-color: #3a5f78;
+}
+.dev-home-catena.pado-theme .ch-btn-primary:hover {
+  color: #ffffff;
+}
+
+/* PD accent — gradient text replacement for `.ch-accent-pado`.
+   Wide tonal range (pd2 → pd5) so the accent reads as a real highlight even
+   on the dark pd0 background. Diagonal angle adds a touch of motion. */
+.dev-home-catena.pado-theme .pd-accent {
+  background-image: linear-gradient(
+    105deg,
+    #3a5f78 0%,
+    #7d9dbf 40%,
+    #e1e5ea 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Mirror the same gradient onto the catena mint accent class so any inherited
+   `.ch-accent-pado` markup still reads as Pado-themed. */
+.dev-home-catena.pado-theme .ch-accent-pado {
+  background-image: linear-gradient(
+    105deg,
+    #3a5f78 0%,
+    #7d9dbf 40%,
+    #e1e5ea 100%
+  );
+}
+
+/* Card chrome — pd palette conic halo + spotlight. */
+.dev-home-catena.pado-theme .ch-step-card-halo {
+  background: conic-gradient(
+    from var(--step-angle),
+    rgba(125, 157, 191, 0) 0deg,
+    rgba(125, 157, 191, 0.65) 40deg,
+    rgba(170, 201, 213, 0.45) 90deg,
+    rgba(125, 157, 191, 0) 160deg,
+    rgba(125, 157, 191, 0) 360deg
+  );
+}
+.dev-home-catena.pado-theme .ch-step-card:hover {
+  box-shadow: 0 24px 60px -36px rgba(125, 157, 191, 0.45);
+}
+.dev-home-catena.pado-theme .ch-step-card-glow {
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    rgba(170, 201, 213, 0.14),
+    rgba(125, 157, 191, 0.04) 30%,
+    transparent 60%
+  );
+}
+
+/* Card eyebrow / index numerals re-tinted to pd3. */
+.dev-home-catena.pado-theme .ch-step-card-eyebrow,
+.dev-home-catena.pado-theme .ch-step-card-num,
+.dev-home-catena.pado-theme .ch-closing-eyebrow,
+.dev-home-catena.pado-theme .ch-eyebrow {
+  color: #7d9dbf;
+}
+.dev-home-catena.pado-theme .ch-eyebrow-cyan {
+  color: #aac9d5;
+}
+
+/* Status pill palette (LIVE / ALPHA / SOON tints driven by data-status). */
+.dev-home-catena.pado-theme .pd-status {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.625rem;
+  letter-spacing: 0.22em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+}
+.dev-home-catena.pado-theme .pd-status[data-status="live"] {
+  color: #aac9d5;
+  background-color: rgba(125, 157, 191, 0.18);
+  border: 1px solid rgba(170, 201, 213, 0.45);
+}
+.dev-home-catena.pado-theme .pd-status[data-status="alpha"] {
+  color: #e1e5ea;
+  background-color: rgba(58, 95, 120, 0.32);
+  border: 1px solid rgba(125, 157, 191, 0.45);
+}
+.dev-home-catena.pado-theme .pd-status[data-status="soon"] {
+  color: rgba(225, 229, 234, 0.7);
+  background-color: rgba(31, 58, 97, 0.32);
+  border: 1px solid rgba(125, 157, 191, 0.25);
+}
+
+/* Closing-card accent rule uses pd3 instead of mint. */
+.dev-home-catena.pado-theme .ch-closing-card {
+  border-left-color: #7d9dbf;
+}
+
+/* ----------------------------------------------------------------------
+ * Typography scaledown — Pado sections were sitting one step heavier than
+ * the home / about pages because the section copy is denser per card
+ * (multi-sentence titles, lists, status pills) than the dev-home Mechanism
+ * grid (single-word titles). Pull the in-card type one notch down so the
+ * Pado page sits at the same visual weight as home / about.
+ * --------------------------------------------------------------------*/
+
+/* Section H2 (ch-display): 24px mobile → 30px md (was 24 → 36). */
+.dev-home-catena.pado-theme .ch-display {
+  font-size: 1.375rem; /* 22px */
+}
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .ch-display {
+    font-size: 1.875rem; /* 30px */
+  }
+}
+
+/* Hero H1 (ch-display-wide): mobile 24 → md 34 → lg 38 (was 26/40/44). */
+.dev-home-catena.pado-theme .ch-display-wide {
+  font-size: 1.5rem; /* 24px */
+}
+@media (min-width: 768px) {
+  .dev-home-catena.pado-theme .ch-display-wide {
+    font-size: 2.125rem; /* 34px */
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena.pado-theme .ch-display-wide {
+    font-size: 38px;
+    line-height: 46px;
+  }
+}
+
+/* Step-card titles: 24 → 20px so multi-word product/problem titles don't
+   read heavier than home Mechanism's one-word titles. */
+.dev-home-catena.pado-theme .ch-step-card-title {
+  font-size: 1.25rem; /* 20px */
+}
+
+/* Card body copy: 15 → 14px. Tighter information density per card. */
+.dev-home-catena.pado-theme .ch-step-card-body {
+  font-size: 0.875rem; /* 14px */
+  line-height: 1.5;
+}
+
+/* Lead paragraph under each section heading: 16 → 15 mobile, 18 → 16 lg. */
+.dev-home-catena.pado-theme .ch-lead {
+  font-size: 0.9375rem;
+}
+@media (min-width: 1024px) {
+  .dev-home-catena.pado-theme .ch-lead {
+    font-size: 1rem;
+    line-height: 1.5;
+  }
+}
+
+/* Closing-card title — match the reduced step-card title size. */
+.dev-home-catena.pado-theme .ch-closing-title {
+  font-size: 1.125rem; /* 18px */
+}
+
+/* Hero layout lives entirely in PadoHeroSection.tsx (no ch-hero, no
+   min-height). It splits into two JSX trees: tablet/mobile uses a
+   natural-flow video stacked above an in-flow copy block; desktop uses
+   a natural-aspect-ratio video with absolute-positioned copy on the
+   right of a 1296px container band. */
+
+/* Product card icon (lucide). Quiet at rest, blooms on card hover with a
+   soft pd-palette glow and a 1.08× scale. The icon also nudges horizontally
+   so the badge has room to breathe. */
+.dev-home-catena.pado-theme .pd-card-icon {
+  width: 30px;
+  height: 30px;
+  color: #7d9dbf;
+  transition:
+    color 0.4s ease,
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s ease;
+}
+.dev-home-catena.pado-theme .ch-step-card:hover .pd-card-icon {
+  color: #aac9d5;
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 14px rgba(170, 201, 213, 0.55));
+}
+
+/* Animated underline beneath the icon — paused at rest, draws on hover.
+   Provides the "simple animation" cue without per-card SVG work. */
+.dev-home-catena.pado-theme .pd-card-rule {
+  display: block;
+  height: 1px;
+  width: 28px;
+  background: linear-gradient(90deg, #7d9dbf 0%, rgba(170, 201, 213, 0) 100%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dev-home-catena.pado-theme .ch-step-card:hover .pd-card-rule {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.pado-theme .pd-card-icon,
+  .dev-home-catena.pado-theme .pd-card-rule {
+    transition: none !important;
+  }
+  .dev-home-catena.pado-theme .ch-step-card:hover .pd-card-icon {
+    transform: none;
+  }
+}
