@@ -42,23 +42,10 @@ export default tseslint.config(
       // until a cleanup PR clears the existing violations.
       // CORE — re-promote only after cleanup PR.
       "react-hooks/rules-of-hooks": "error",
-      // Other react-hooks v6 rules demoted to not block deploy gate.
+      // Installed eslint-plugin-react-hooks is v5 (only rules-of-hooks +
+      // exhaustive-deps). v6 rules are referenced via doc only; do not list
+      // them here or ESLint throws "Could not find rule".
       "react-hooks/exhaustive-deps": "warn",
-      "react-hooks/component-hook-factories": "warn",
-      "react-hooks/config": "warn",
-      "react-hooks/error-boundaries": "warn",
-      "react-hooks/gating": "warn",
-      "react-hooks/globals": "warn",
-      "react-hooks/immutability": "warn",
-      "react-hooks/incompatible-library": "warn",
-      "react-hooks/preserve-manual-memoization": "warn",
-      "react-hooks/purity": "warn",
-      "react-hooks/refs": "warn",
-      "react-hooks/set-state-in-effect": "off",
-      "react-hooks/set-state-in-render": "warn",
-      "react-hooks/static-components": "warn",
-      "react-hooks/unsupported-syntax": "warn",
-      "react-hooks/use-memo": "warn",
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
       "no-empty-static-block": "warn",

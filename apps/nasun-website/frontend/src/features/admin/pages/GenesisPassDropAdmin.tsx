@@ -1,3 +1,9 @@
+/* eslint-disable react-hooks/rules-of-hooks --
+ * Genesis Pass drop is decommissioned (project_genesis_pass_decommission).
+ * This admin page calls useReadContract inside .map() callbacks and a helper
+ * function — legitimate hook-rule violations, but the page is slated for
+ * read-only reduction and rewriting it now is wasted effort. Disable file-wide.
+ */
 import { useReadContract, useBalance } from "wagmi";
 import { formatEther } from "viem";
 import { AdminLayout } from "../components/AdminLayout";

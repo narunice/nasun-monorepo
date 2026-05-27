@@ -36,24 +36,9 @@ export default defineConfig([
       // rules-of-hooks catches the exact class of bug that caused the 5/27
       // pado universal outage (OrderConfirmModal hook below early return).
       'react-hooks/rules-of-hooks': 'error',
-      // All other react-hooks v6 rules demoted for now so the deploy-script
-      // eslint gate doesn't block on pre-existing violations.
+      // Installed eslint-plugin-react-hooks is v5 — only rules-of-hooks +
+      // exhaustive-deps exist. v6 rules removed to avoid ESLint config errors.
       'react-hooks/exhaustive-deps': 'warn',
-      'react-hooks/component-hook-factories': 'warn',
-      'react-hooks/config': 'warn',
-      'react-hooks/error-boundaries': 'warn',
-      'react-hooks/gating': 'warn',
-      'react-hooks/globals': 'warn',
-      'react-hooks/immutability': 'warn',
-      'react-hooks/incompatible-library': 'warn',
-      'react-hooks/preserve-manual-memoization': 'warn',
-      'react-hooks/purity': 'warn',
-      'react-hooks/refs': 'warn',
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/set-state-in-render': 'warn',
-      'react-hooks/static-components': 'warn',
-      'react-hooks/unsupported-syntax': 'warn',
-      'react-hooks/use-memo': 'warn',
       // Non-hooks noise demoted too.
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': 'warn',

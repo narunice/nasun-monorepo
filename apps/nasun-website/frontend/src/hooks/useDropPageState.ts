@@ -239,7 +239,7 @@ export function useDropPageState({
     if (address) {
       lockedRef.current = true;
       markGatePassed(address, currentStage);
-      try { sessionStorage.setItem("nasun:lore-seen", "1"); } catch {}
+      try { sessionStorage.setItem("nasun:lore-seen", "1"); } catch { /* sessionStorage unavailable (privacy mode) */ }
     }
     dispatch({ type: "PROCEED_TO_MINT" });
   }, [address]);

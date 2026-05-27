@@ -5,11 +5,9 @@ export function useCarousel(itemCount: number, intervalMs = 9000) {
   const [paused, setPaused] = useState(false);
   const [skipTransition, setSkipTransition] = useState(false);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (currentIndex > itemCount) setCurrentIndex(0);
   }, [itemCount, currentIndex]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     if (paused || itemCount <= 1) return;
