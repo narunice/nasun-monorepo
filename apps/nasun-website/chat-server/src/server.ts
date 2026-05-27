@@ -17,6 +17,7 @@ import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-ap
 import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
+import { handleFrontendErrorReport } from './frontend-error-routes.js';
 import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
 import { handleChatWakeRequest } from './chat-wake.js';
 import {
@@ -624,6 +625,23 @@ async function handleHttpRequest(
       console.error('[HTTP] pado-idea handler error:', err);
       if (!res.headersSent) {
         res.writeHead(500, padoCors);
+        res.end(JSON.stringify({ error: 'internal_error' }));
+      }
+    });
+    return;
+  }
+
+  // Frontend ErrorBoundary report → operator Telegram alert (dedup + capped)
+  if (url.pathname === '/api/frontend-error-report') {
+    const errCors = {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    handleFrontendErrorReport(req, res, errCors).catch((err) => {
+      console.error('[HTTP] frontend-error-report handler error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, errCors);
         res.end(JSON.stringify({ error: 'internal_error' }));
       }
     });
