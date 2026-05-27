@@ -85,6 +85,9 @@ export default function PadoHeroSection() {
             preload="auto"
             aria-hidden="true"
             className="block w-full h-auto"
+            width={1080}
+            height={1920}
+            style={{ aspectRatio: "9 / 16" }}
           />
           {/* Fade from transparent over the coin to opaque under it. The
               overlay extends past the video container's bottom edge so the
@@ -128,6 +131,9 @@ export default function PadoHeroSection() {
         preload="auto"
         aria-hidden="true"
         className="block w-full h-auto"
+        width={1920}
+        height={1080}
+        style={{ aspectRatio: "16 / 9" }}
       />
 
       {/* Right-side dim for copy legibility against the lit area. */}

@@ -152,14 +152,18 @@
 /* Card chrome restraint — quieter background, softer halo, smaller hover
    shadow so cards stop looking like marketing tiles. */
 .dev-home-catena.pado-theme .ch-step-card {
+  /* Card body sits a touch above the pure-black page so it reads as a
+     card instead of a hole, while staying dark enough that the
+     spotlight/flashlight hover effect still pops. Effective tone on the
+     black page is ~#0F1626 (subtle bump from the previous ~#06080A). */
   background:
     linear-gradient(
       180deg,
       rgba(255, 255, 255, 0.02) 0%,
       rgba(255, 255, 255, 0) 60%
     ),
-    rgba(11, 17, 32, 0.6);
-  border-color: rgba(96, 165, 250, 0.1);
+    rgba(20, 30, 50, 0.78);
+  border-color: rgba(96, 165, 250, 0.12);
 }
 .dev-home-catena.pado-theme .ch-step-card-halo {
   background: conic-gradient(

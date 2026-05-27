@@ -1,7 +1,13 @@
 import { useState, useEffect } from "react";
 
 export const useIsMobile = (breakpoint: number = 768) => {
-  const [isMobile, setIsMobile] = useState(false);
+  // Initialize from window synchronously so the first paint matches the
+  // device. Defaulting to `false` and flipping in useEffect causes a CLS
+  // on mobile (desktop variant briefly renders, then swaps).
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.innerWidth < breakpoint;
+  });
 
   useEffect(() => {
     const checkMobile = () => {
