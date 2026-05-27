@@ -8,6 +8,7 @@
  */
 
 import { Hono } from 'hono';
+import { createHash } from 'node:crypto';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { pointsDb } from '../db.js';
@@ -26,16 +27,24 @@ import type { Context } from 'hono';
 
 /**
  * Per-handler self-only guard for routes that expose user-private data
- * (e.g. activity composition). Verifies Cognito JWT and confirms the path
- * `:identityId` matches the authenticated identity. Older endpoints in this
- * file (`/score`, `/snapshot/history`, `/bonus-history`) intentionally stay
- * public — they predate the self-only guard and are gated only by the
- * route-group rate limiter.
+ * (activity composition, daily snapshots, bonus history, active missions).
+ *
+ * Accepts EITHER a Cognito JWT whose identityId matches `:identityId`, OR a
+ * shared `x-internal-api-key` from a trusted server-to-server caller
+ * (gostop-backend's /me/profile aggregator, etc.). The internal-api-key path
+ * lets backend services skip the user JWT round-trip while still rejecting
+ * unauthenticated public scraping.
  */
+const INTERNAL_API_KEY = process.env.ECOSYSTEM_INTERNAL_API_KEY || '';
+
 async function requireSelf(
   c: Context,
   pathIdentityId: string,
 ): Promise<{ ok: true } | { ok: false; status: 401 | 403; error: string }> {
+  if (INTERNAL_API_KEY) {
+    const internalKey = c.req.header('x-internal-api-key');
+    if (internalKey && internalKey === INTERNAL_API_KEY) return { ok: true };
+  }
   const header = c.req.header('authorization') || c.req.header('Authorization');
   const token = header?.replace(/^Bearer\s+/i, '');
   if (!token) return { ok: false, status: 401, error: 'unauthorized' };
@@ -45,6 +54,11 @@ async function requireSelf(
     return { ok: false, status: 403, error: 'forbidden' };
   }
   return { ok: true };
+}
+
+const DISPLAY_ID_LEN = 16;
+export function identityToDisplayId(identityId: string): string {
+  return createHash('sha256').update(identityId).digest('hex').slice(0, DISPLAY_ID_LEN);
 }
 
 const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
@@ -386,6 +400,11 @@ function parseOffset(raw: string | undefined): number {
 }
 
 // GET /api/v1/ecosystem/score/:identityId
+//
+// Self-only: exposes the caller's NFT activations, multiplier, daily/weekly/
+// all-time score breakdown, and active-mission filter. Was previously public,
+// which let any caller mass-scrape per-user profiles by enumerating identityIds
+// off the leaderboard. See SECURITY history issue #1.
 app.get('/score/:identityId', async (c) => {
   if (!pointsDb) {
     return c.json({ error: 'points_not_configured' }, 503);
@@ -395,6 +414,9 @@ app.get('/score/:identityId', async (c) => {
   if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
+
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
 
   const getData = cached(
     `eco-score-${identityId}`,
@@ -887,7 +909,9 @@ app.get('/score/:identityId', async (c) => {
     },
   };
 
-  c.header('Cache-Control', 'public, max-age=30');
+  // private: this is self-only data — never let a shared cache (CDN, ISP proxy)
+  // store the response under the URL key and serve it back to another caller.
+  c.header('Cache-Control', 'private, max-age=30');
   return c.json({ data });
 });
 
@@ -902,6 +926,8 @@ app.get('/active-missions/:identityId', async (c) => {
   if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
   const row = await pointsDb`
     SELECT
       CASE
@@ -925,16 +951,19 @@ app.get('/active-missions/:identityId', async (c) => {
 
 // PUT /api/v1/ecosystem/active-missions/:identityId
 // Upserts the user's active mission selection. Accepts a flat string array of
-// category ids (max 7, matching frontend MAX_DAILY_MISSIONS). No auth token
-// required — same public-identityId pattern as the rest of the ecosystem
-// endpoints. The cap mirrors the frontend so direct API calls cannot exceed
-// the displayed limit and inflate base score.
+// category ids (max 7, matching frontend MAX_DAILY_MISSIONS). Self-only:
+// without a Cognito JWT (or internal-api-key) any caller could rewrite an
+// arbitrary user's active missions and silently zero their base_score the
+// next snapshot. The cap mirrors the frontend so direct API calls cannot
+// exceed the displayed limit and inflate base score.
 app.put('/active-missions/:identityId', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
   const identityId = c.req.param('identityId');
   if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
   const body = await c.req.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || !Array.isArray(body.missions)) {
     return c.json({ error: 'invalid_body' }, 400);
@@ -1066,15 +1095,14 @@ app.get('/leaderboard/weeks', async (c) => {
   return c.json({ weeks });
 });
 
-// TODO(security): Leaderboard exposes raw Cognito identityIds (region:uuid) in unauthenticated
-// responses. Any caller can enumerate all active users' identityIds by paging through the
-// leaderboard and then mass-scrape per-user detail data via /score/:identityId.
-// Fix: replace identityId in leaderboard response with SHA256(identityId).slice(0,16).
-// Clients finding "my rank" should hash their own identityId client-side for comparison.
-// Blocked by: EcosystemPointsCard and other components that currently use identityId directly.
-// Tracked: https://github.com/narunice/nasun-monorepo/issues/1
-
 // GET /api/v1/ecosystem/leaderboard?weekId=2026-W17&limit=50&offset=0
+//
+// SECURITY (issue #1): the response exposes only an opaque `displayId`
+// (SHA256(identityId).slice(0,16)), not the raw Cognito identityId. Clients
+// finding their own rank hash their identityId with the same function and
+// match by displayId. /score/:identityId is now self-only, so even if a
+// caller could re-derive identityIds they could not mass-scrape per-user
+// detail.
 //
 // Weekly ecosystem leaderboard — no NFT multiplier applied to ranking.
 // Score = activity_score (distinct non-pado categories per epoch-day slot)
@@ -1593,11 +1621,25 @@ app.get('/leaderboard', async (c) => {
   }
 
   const page = all.slice(offset, offset + limit);
+  // Strip raw identityId from the public response and replace with an opaque
+  // displayId (SHA256-prefix). identityId remains in the cached `entries` /
+  // `page` arrays so internal joins (prevRankMap, etc.) still work, but the
+  // client never sees the Cognito identifier and so cannot mass-scrape /score
+  // (now self-only anyway) or derive the AWS region. Clients identifying
+  // their own row should hash their identityId client-side and match by
+  // displayId. See SECURITY history issue #1.
   const ranked = page.map((entry, i) => {
     const currentRank = offset + i + 1;
     const prevRank = prevRankMap.get(entry.identityId) ?? 0;
     const rankChange = prevRank === 0 ? 0 : prevRank - currentRank;
-    return { ...entry, rank: currentRank, rankChange };
+    const { identityId: _ignored, ...rest } = entry;
+    void _ignored;
+    return {
+      ...rest,
+      displayId: identityToDisplayId(entry.identityId),
+      rank: currentRank,
+      rankChange,
+    };
   });
 
   c.header('Cache-Control', 'public, max-age=300');
@@ -1688,6 +1730,9 @@ app.post('/sync/:identityId', async (c) => {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
 
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
+
   const updated = await updateActivationsForUser(identityId);
   if (updated === null) {
     return c.json({ error: 'rate_limited', message: 'Try again in 20 seconds' }, 429);
@@ -1731,6 +1776,10 @@ app.get('/profile/:identityId', async (c) => {
 
 // GET /api/v1/ecosystem/score/wallet/:address
 // Wallet-based score lookup (for Pado frontend, no Cognito identity).
+// Self-only: redirects to the identityId-scoped /score endpoint, which now
+// requires the caller's own Cognito JWT (or internal-api-key). The Authorization
+// header survives a 302 in browsers, so the redirected /score/:identityId call
+// will succeed iff the caller actually owns that identity.
 const SUI_ADDRESS_RE = /^0x[a-fA-F0-9]{1,64}$/;
 
 app.get('/score/wallet/:address', async (c) => {
@@ -1746,6 +1795,12 @@ app.get('/score/wallet/:address', async (c) => {
     return c.json({ data: null, message: 'wallet_not_registered' });
   }
 
+  // Gate the wallet-based lookup with the same self-only check so the wallet
+  // alias cannot be used to side-step /score auth (e.g. by scraping wallets
+  // from the leaderboard's xHandle/displayName and probing each one).
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
+
   // Redirect to the identityId-based score endpoint.
   // Explicit CORS header on 302 response (nginx/CloudFront may strip middleware headers on redirects)
   const url = new URL(c.req.url);
@@ -1758,6 +1813,7 @@ app.get('/score/wallet/:address', async (c) => {
 });
 
 // GET /api/v1/ecosystem/snapshot/history/:identityId?days=30
+// Self-only: per-day base/multiplier/bonus history is user-private.
 app.get('/snapshot/history/:identityId', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
@@ -1765,6 +1821,9 @@ app.get('/snapshot/history/:identityId', async (c) => {
   if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
+
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
 
   const days = Math.min(Math.max(1, parseInt(c.req.query('days') ?? '30', 10)), 90);
 
@@ -1803,7 +1862,8 @@ app.get('/snapshot/history/:identityId', async (c) => {
     LIMIT ${days}
   `;
 
-  c.header('Cache-Control', 'public, max-age=300');
+  // private: self-only history; shared caches must not store it.
+  c.header('Cache-Control', 'private, max-age=300');
   return c.json({
     data: rows.map(r => ({
       date: r.snapshot_date,
@@ -1821,6 +1881,7 @@ app.get('/snapshot/history/:identityId', async (c) => {
 
 // GET /api/v1/ecosystem/bonus-history/:identityId?days=30
 // Returns per-day breakdown of bonus categories (earlybird, pado, game, airdrop, referral)
+// Self-only: bonus stream is user-private.
 app.get('/bonus-history/:identityId', async (c) => {
   if (!pointsDb) return c.json({ error: 'points_not_configured' }, 503);
 
@@ -1828,6 +1889,9 @@ app.get('/bonus-history/:identityId', async (c) => {
   if (!identityId || !IDENTITY_ID_PATTERN.test(identityId)) {
     return c.json({ error: 'invalid_identity_id' }, 400);
   }
+
+  const guard = await requireSelf(c, identityId);
+  if (!guard.ok) return c.json({ error: guard.error }, guard.status);
 
   const days = Math.min(Math.max(1, parseInt(c.req.query('days') ?? '30', 10)), 90);
 
@@ -1861,7 +1925,8 @@ app.get('/bonus-history/:identityId', async (c) => {
     });
   }
 
-  c.header('Cache-Control', 'public, max-age=300');
+  // private: self-only history; shared caches must not store it.
+  c.header('Cache-Control', 'private, max-age=300');
   return c.json({
     data: [...byDay.entries()].map(([day, items]) => ({
       date: day,
@@ -2103,7 +2168,8 @@ app.get('/base-history/:identityId', async (c) => {
       byDay.get(day)!.push({ category, points });
     }
 
-    c.header('Cache-Control', 'public, max-age=300');
+    // private: self-only base-history; shared caches must not store it.
+    c.header('Cache-Control', 'private, max-age=300');
     return c.json({
       data: [...byDay.entries()].map(([date, items]) => ({
         date,
@@ -2273,7 +2339,7 @@ app.get('/leaderboard/all-time-percentile/:identityId', async (c) => {
     // Users whose all-time score is 0 (e.g., signed up but never scored) get
     // null percentile — there's no meaningful "rank" in an empty distribution.
     if (myTotal === undefined || myTotal <= 0) {
-      c.header('Cache-Control', 'public, max-age=60');
+      c.header('Cache-Control', 'private, max-age=60');
       return c.json({
         data: { rank: null, total, percentile: null, myTotal: 0 },
       });
@@ -2284,7 +2350,7 @@ app.get('/leaderboard/all-time-percentile/:identityId', async (c) => {
     // ceil so rank-1 reads as "Top 1%" rather than the misleading "Top 0%".
     const percentile = Math.max(1, Math.ceil((rank / total) * 100));
 
-    c.header('Cache-Control', 'public, max-age=60');
+    c.header('Cache-Control', 'private, max-age=60');
     return c.json({
       data: { rank, total, percentile, myTotal },
     });

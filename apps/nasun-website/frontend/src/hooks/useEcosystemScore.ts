@@ -64,8 +64,11 @@ export function useEcosystemScore(
 
   const query = useQuery({
     queryKey: ecosystemScoreKeys.detail(identityId),
-    queryFn: () => getEcosystemScore(identityId!),
-    enabled: !!identityId,
+    // /ecosystem/score is now self-only; gate the query on the JWT being
+    // available so the server's 401 path never fires for a logged-in user
+    // whose Cognito token is still hydrating.
+    queryFn: () => getEcosystemScore(identityId!, cognitoToken),
+    enabled: !!identityId && !!cognitoToken,
     staleTime: 30_000,
     retry: 1,
     refetchOnWindowFocus: false,
@@ -90,7 +93,7 @@ export function useEcosystemScore(
         // null without aborting the refetch.
         const token = tokenRef.current;
         const [activationsResult] = await Promise.all([
-          syncEcosystemActivations(id),
+          syncEcosystemActivations(id, token),
           token ? syncEcosystemTodayActivity(token) : Promise.resolve(null),
         ]);
         if (activationsResult === null) {

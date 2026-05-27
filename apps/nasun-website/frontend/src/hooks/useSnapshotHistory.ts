@@ -7,6 +7,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { getSnapshotHistory, type SnapshotHistoryEntry } from '@/services/ecosystemScoreApi';
+import { useAuth } from '@/features/auth';
 
 interface UseSnapshotHistoryOptions {
   identityId?: string;
@@ -16,6 +17,8 @@ interface UseSnapshotHistoryOptions {
 
 export function useSnapshotHistory(options: UseSnapshotHistoryOptions = {}) {
   const { identityId, days = 30, enabled = true } = options;
+  const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
 
   const {
     data,
@@ -25,8 +28,9 @@ export function useSnapshotHistory(options: UseSnapshotHistoryOptions = {}) {
     refetch,
   } = useQuery({
     queryKey: ['ecosystem', 'snapshot-history', identityId, days],
-    queryFn: () => getSnapshotHistory(identityId!, days),
-    enabled: enabled && !!identityId,
+    queryFn: () => getSnapshotHistory(identityId!, days, cognitoToken),
+    // /ecosystem/snapshot/history is self-only; wait for the JWT to hydrate.
+    enabled: enabled && !!identityId && !!cognitoToken,
     staleTime: 5 * 60 * 1000,
     gcTime: 15 * 60 * 1000,
     retry: 1,

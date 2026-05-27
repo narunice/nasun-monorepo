@@ -72,7 +72,7 @@ const EcosystemLeaderboardPage = () => {
   const updatedAt = leaderboardQuery.data?.meta.updatedAt;
 
   const { highlightedId, selectRow } = useHighlightRow({
-    dataAttribute: "data-identity-id",
+    dataAttribute: "data-display-id",
     pageSize: PAGE_SIZE,
     page,
     setPage,
@@ -92,10 +92,10 @@ const EcosystemLeaderboardPage = () => {
   const toResult = useCallback(
     (entry: EcosystemLeaderboardEntry): LeaderboardSearchResult => {
       const primary =
-        entry.displayName ?? entry.xHandle ?? truncateId(entry.identityId);
+        entry.displayName ?? entry.xHandle ?? truncateId(entry.displayId);
       const secondary = entry.xHandle ? `@${entry.xHandle}` : undefined;
       return {
-        id: entry.identityId,
+        id: entry.displayId,
         primaryLabel: primary,
         secondaryLabel: secondary !== primary ? secondary : undefined,
         rank: entry.rank,
@@ -364,11 +364,11 @@ const EcosystemLeaderboardPage = () => {
                   </tr>
                 ) : (
                   pagedEntries.map((entry) => {
-                    const isHighlighted = highlightedId === entry.identityId;
+                    const isHighlighted = highlightedId === entry.displayId;
                     return (
                       <tr
-                        key={entry.identityId}
-                        data-identity-id={entry.identityId}
+                        key={entry.displayId}
+                        data-display-id={entry.displayId}
                         className={`border-b border-nasun-c3/15 transition-colors hover:bg-nasun-c3/8 ${
                           isHighlighted
                             ? "bg-nasun-nw2/20 border-l-2 border-nasun-nw1"
@@ -392,7 +392,7 @@ const EcosystemLeaderboardPage = () => {
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
                             <EcosystemAvatar
-                              seed={entry.identityId}
+                              seed={entry.displayId}
                               imageUrl={entry.profileImageUrl}
                               size={48}
                               className="bg-nasun-dark-500"
@@ -404,7 +404,7 @@ const EcosystemLeaderboardPage = () => {
                                   {entry.displayName ??
                                     (isValidXHandle(entry.xHandle)
                                       ? `@${entry.xHandle}`
-                                      : truncateId(entry.identityId))}
+                                      : truncateId(entry.displayId))}
                                 </span>
                                 {entry.hasGenesisPass && <GenesisPassBadge />}
                               </div>

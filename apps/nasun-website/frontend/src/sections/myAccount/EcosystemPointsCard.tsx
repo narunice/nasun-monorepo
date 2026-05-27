@@ -215,6 +215,7 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
 }) => {
   const { user } = useAuth();
   const identityId = user?.identityId;
+  const cognitoToken = user?.cognitoToken;
   const [days, setDays] = useState<DaysOption>(30);
 
   const { score, isLoading: scoreLoading, isError: scoreError } = useEcosystemScore(identityId);
@@ -226,8 +227,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
 
   const { data: bonusHistory } = useQuery({
     queryKey: ["ecosystem", "bonus-history", identityId, days],
-    queryFn: () => getBonusHistory(identityId!, days),
-    enabled: !!identityId,
+    queryFn: () => getBonusHistory(identityId!, days, cognitoToken),
+    enabled: !!identityId && !!cognitoToken,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });

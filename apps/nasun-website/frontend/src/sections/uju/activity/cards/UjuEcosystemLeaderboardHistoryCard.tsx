@@ -1,10 +1,11 @@
-import { FC, useState } from "react";
+import { FC, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth";
 import {
   getEcosystemLeaderboardFull,
   getAvailableEcosystemWeeks,
+  identityToDisplayId,
 } from "@/services/ecosystemScoreApi";
 import { Spinner } from "@/components/ui";
 import { UjuCard, UjuSectionHeader } from "../../shared";
@@ -21,6 +22,26 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
   const { user } = useAuth();
   const identityId = user?.identityId;
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Leaderboard rows now expose only an opaque displayId (no raw identityId),
+  // so derive the user's own displayId once per identityId change and match
+  // by that. Browser SubtleCrypto is async; the SHA-256 of a short string
+  // resolves on the next microtask so this is effectively synchronous in
+  // practice.
+  const [myDisplayId, setMyDisplayId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!identityId) {
+      setMyDisplayId(null);
+      return;
+    }
+    let cancelled = false;
+    identityToDisplayId(identityId).then((id) => {
+      if (!cancelled) setMyDisplayId(id);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [identityId]);
 
   const { data: weeks } = useQuery({
     queryKey: ["uju", "ecosystem-history", "weeks"],
@@ -61,7 +82,9 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
     if (!q) return { weekId: w.weekId, label: w.label, state: "idle" as const };
     if (q.isLoading) return { weekId: w.weekId, label: w.label, state: "loading" as const };
     if (q.isError) return { weekId: w.weekId, label: w.label, state: "error" as const };
-    const entry = q.data?.data.find((e) => e.identityId === identityId);
+    const entry = myDisplayId
+      ? q.data?.data.find((e) => e.displayId === myDisplayId)
+      : undefined;
     return {
       weekId: w.weekId,
       label: w.label,

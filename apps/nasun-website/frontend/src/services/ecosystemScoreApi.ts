@@ -1,12 +1,38 @@
 /**
  * Ecosystem Score API Client
  *
- * Public API (no auth required) for ecosystem scores and leaderboard.
- * Calls explorer-api endpoints at VITE_EXPLORER_API_URL.
+ * Mix of public and self-only endpoints.
+ *
+ * Self-only (caller must pass their Cognito JWT, server enforces identity
+ * match): /ecosystem/score, /ecosystem/snapshot/history, /ecosystem/bonus-history,
+ * /ecosystem/bonus-feed, /ecosystem/base-history, /ecosystem/active-missions,
+ * /ecosystem/sync/:identityId.
+ *
+ * Public: /ecosystem/leaderboard, /ecosystem/leaderboard/weeks. The leaderboard
+ * returns an opaque `displayId` (SHA256(identityId).slice(0,16)) per row, not
+ * the raw Cognito identityId. Use `identityToDisplayId` to compare your own
+ * identityId against displayed rows.
  */
 
 const API_BASE = import.meta.env.VITE_EXPLORER_API_URL;
 const IDENTITY_ID_RE = /^[\w-]+:[\w-]{36}$/;
+
+/**
+ * Match the server-side opaque ID derivation in
+ * apps/network-explorer/api-server/src/routes/ecosystem.ts: SHA-256 hex,
+ * first 16 chars. Used to spot the signed-in user inside leaderboard rows
+ * without ever shipping their raw identityId in the payload.
+ *
+ * Uses the SubtleCrypto API which is sync-only-from-async. Callers must await.
+ */
+export async function identityToDisplayId(identityId: string): Promise<string> {
+  const bytes = new TextEncoder().encode(identityId);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const hex = Array.from(new Uint8Array(digest))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+  return hex.slice(0, 16);
+}
 
 export class EcosystemScoreError extends Error {
   constructor(
@@ -86,7 +112,12 @@ export interface EcosystemScoreData {
 }
 
 export interface EcosystemLeaderboardEntry {
-  identityId: string;
+  /**
+   * Opaque per-user identifier: SHA-256(identityId).slice(0, 16). The server
+   * intentionally never returns the raw Cognito identityId on this endpoint.
+   * Compare against `await identityToDisplayId(myIdentityId)` to detect self.
+   */
+  displayId: string;
   activityScore: number;
   creatorPostScore: number;
   bonusScore: number;
@@ -124,9 +155,13 @@ export interface AvailableEcosystemWeek {
 
 export async function getEcosystemScore(
   identityId: string,
+  token?: string,
 ): Promise<EcosystemScoreData | null> {
   if (!API_BASE) return null;
   if (!IDENTITY_ID_RE.test(identityId)) return null;
+  // Self-only endpoint: without a token the server will 401. Short-circuit
+  // so the call doesn't show up as a spurious error in DevTools / Sentry.
+  if (!token) return null;
 
   const encoded = encodeURIComponent(identityId);
   // cache: 'no-store' bypasses the browser HTTP cache. The endpoint ships
@@ -137,9 +172,10 @@ export async function getEcosystemScore(
   // is the single source of truth on the client.
   const res = await fetch(`${API_BASE}/ecosystem/score/${encoded}`, {
     cache: "no-store",
+    headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (res.status === 404) return null;
+  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
   if (!res.ok) {
     throw new EcosystemScoreError(
       `Ecosystem score fetch failed: ${res.status}`,
@@ -228,17 +264,20 @@ export async function syncEcosystemTodayActivity(
 
 /**
  * Trigger per-user NFT activation cache sync on explorer-api.
- * Call after activate/deactivate or manual Refresh.
+ * Call after activate/deactivate or manual Refresh. Self-only.
  */
 export async function syncEcosystemActivations(
   identityId: string,
+  token?: string,
 ): Promise<{ multiplier: number; synced: boolean } | null> {
   if (!API_BASE) return null;
   if (!IDENTITY_ID_RE.test(identityId)) return null;
+  if (!token) return null;
 
   const encoded = encodeURIComponent(identityId);
   const res = await fetch(`${API_BASE}/ecosystem/sync/${encoded}`, {
     method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
   });
 
   if (res.status === 429) return null; // rate-limited, silent
@@ -263,13 +302,16 @@ export interface SnapshotHistoryEntry {
 export async function getSnapshotHistory(
   identityId: string,
   days: number = 30,
+  token?: string,
 ): Promise<SnapshotHistoryEntry[]> {
   if (!API_BASE) return [];
   if (!IDENTITY_ID_RE.test(identityId)) return [];
+  if (!token) return [];
 
   const encoded = encodeURIComponent(identityId);
   const res = await fetch(
     `${API_BASE}/ecosystem/snapshot/history/${encoded}?days=${days}`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!res.ok) {
@@ -304,13 +346,16 @@ export interface BonusHistoryDay {
 export async function getBonusHistory(
   identityId: string,
   days: number = 30,
+  token?: string,
 ): Promise<BonusHistoryDay[]> {
   if (!API_BASE) return [];
   if (!IDENTITY_ID_RE.test(identityId)) return [];
+  if (!token) return [];
 
   const encoded = encodeURIComponent(identityId);
   const res = await fetch(
     `${API_BASE}/ecosystem/bonus-history/${encoded}?days=${days}`,
+    { headers: { Authorization: `Bearer ${token}` } },
   );
 
   if (!res.ok) {
@@ -419,32 +464,46 @@ export interface ActiveMissionsData {
   updatedAt: string | null;
 }
 
-/** Fetch the user's active mission selection from the server. */
+/** Fetch the user's active mission selection from the server. Self-only. */
 export async function getActiveMissions(
   identityId: string,
+  token?: string,
 ): Promise<ActiveMissionsData | null> {
   if (!API_BASE) return null;
   if (!IDENTITY_ID_RE.test(identityId)) return null;
+  if (!token) return null;
   const encoded = encodeURIComponent(identityId);
   const res = await fetch(`${API_BASE}/ecosystem/active-missions/${encoded}`, {
     cache: 'no-store',
+    headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) return null;
   const json = await res.json();
   return (json.data as ActiveMissionsData) ?? null;
 }
 
-/** Persist the user's active mission selection to the server. Fire-and-forget. */
+/**
+ * Persist the user's active mission selection to the server. Self-only:
+ * before guarding this endpoint, any unauthenticated caller could overwrite
+ * any user's mission list (and silently zero their next daily snapshot).
+ */
 export async function putActiveMissions(
   identityId: string,
   missions: string[],
+  token?: string,
 ): Promise<void> {
   if (!API_BASE) return;
   if (!IDENTITY_ID_RE.test(identityId)) return;
+  if (!token) {
+    throw new EcosystemScoreError('putActiveMissions requires auth token', 401);
+  }
   const encoded = encodeURIComponent(identityId);
   const res = await fetch(`${API_BASE}/ecosystem/active-missions/${encoded}`, {
     method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
     body: JSON.stringify({ missions }),
   });
   if (!res.ok) {

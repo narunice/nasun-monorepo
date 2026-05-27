@@ -1,7 +1,8 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { APP_REGISTRY, VALID_APP_IDS, DEFAULT_PINNED_APPS, type AppEntry } from './appRegistry';
 import { APP_MISSION_MAP, DEFAULT_MISSIONS_BY_APP, MAX_DAILY_MISSIONS } from '../missions/missionRegistry';
 import { getActiveMissions, putActiveMissions } from '@/services/ecosystemScoreApi';
+import { useAuth } from '@/features/auth';
 
 // ---------------------------------------------------------------------------
 // Storage
@@ -325,6 +326,15 @@ export interface UseAppDirectoryResult {
 }
 
 export function useAppDirectory(identityId: string | undefined): UseAppDirectoryResult {
+  // /ecosystem/active-missions is now self-only; carry the JWT for both the
+  // mount-time pull/push and the debounced change-sync writer. A ref keeps
+  // the latest token visible to the debounced writer without retriggering
+  // its effect every render.
+  const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
+  const tokenRef = useRef(cognitoToken);
+  tokenRef.current = cognitoToken;
+
   // Must be declared BEFORE the state useState so its initializer runs first,
   // while localStorage still contains the raw (un-cleaned) data. loadFromStorage
   // calls parseDirectoryState + writeJson which removes STALE_MISSION_IDS from
@@ -357,11 +367,11 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
   // and leave state.missions = {}, which makes UjuDailyMissionsCard fall back
   // to "show all" (8 missions) and todayScoring compute filteredBase = 0.
   useEffect(() => {
-    if (!identityId) return;
+    if (!identityId || !cognitoToken) return;
     let cancelled = false;
     (async () => {
       try {
-        const serverData = await getActiveMissions(identityId);
+        const serverData = await getActiveMissions(identityId, cognitoToken);
         if (cancelled) return;
         const serverHasMissions =
           Array.isArray(serverData?.missions) && serverData!.missions!.length > 0;
@@ -390,7 +400,7 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
           const local = loadFromStorage(identityId);
           const flat = getFlatMissions(local.missions);
           if (flat.length > 0) {
-            await putActiveMissions(identityId, flat);
+            await putActiveMissions(identityId, flat, cognitoToken);
             writeSyncTs(identityId, Date.now());
           }
         }
@@ -399,7 +409,7 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
       }
     })();
     return () => { cancelled = true; };
-  }, [identityId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [identityId, cognitoToken]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Change sync: push missions to server on every selection change (debounced).
   // Ensures the midnight snapshot job sees the user's final choice for the day.
@@ -410,7 +420,9 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
     const flat = getFlatMissions(state.missions);
     if (flat.length === 0) return;
     const timer = setTimeout(() => {
-      putActiveMissions(identityId, flat).then(() => {
+      const token = tokenRef.current;
+      if (!token) return; // wallet-login users without a JWT cannot push
+      putActiveMissions(identityId, flat, token).then(() => {
         writeSyncTs(identityId, Date.now());
       }).catch((e) => console.warn('[useAppDirectory] change sync failed:', e));
     }, 500);

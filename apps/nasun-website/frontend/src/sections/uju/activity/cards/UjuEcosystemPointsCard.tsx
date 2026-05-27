@@ -300,15 +300,15 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     days,
   });
 
+  const cognitoToken = user?.cognitoToken;
+
   const { data: bonusHistory, isLoading: bonusLoading } = useQuery({
     queryKey: ["ecosystem", "bonus-history-uju", identityId, days],
-    queryFn: () => getBonusHistory(identityId!, days),
-    enabled: !!identityId,
+    queryFn: () => getBonusHistory(identityId!, days, cognitoToken),
+    enabled: !!identityId && !!cognitoToken,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
-
-  const cognitoToken = user?.cognitoToken;
   // isLoading (not isPending) so a disabled query (e.g. wallet-login user
   // without cognitoToken) doesn't trap the card in a permanent spinner.
   const { data: baseHistory, isLoading: baseLoading } = useQuery({

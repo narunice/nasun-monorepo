@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { GenesisPassBadge } from "@nasun/wallet-ui";
+import { useAuth } from "@/features/auth";
 
 const EXPLORER_API = import.meta.env.VITE_EXPLORER_API_URL || "";
 
@@ -15,16 +16,22 @@ interface NavEcoPointsBadgeProps {
 }
 
 export function NavEcoPointsBadge({ identityId }: NavEcoPointsBadgeProps) {
+  const { user } = useAuth();
+  const cognitoToken = user?.cognitoToken;
   const [data, setData] = useState<EcoNavData | null>(null);
 
   useEffect(() => {
-    if (!identityId || !EXPLORER_API) return;
+    // /ecosystem/score is now self-only. Without the JWT the server returns
+    // 401, so skip the fetch instead of generating a console error per nav
+    // render for wallet-login users still hydrating their Cognito session.
+    if (!identityId || !EXPLORER_API || !cognitoToken) return;
     let cancelled = false;
 
     (async () => {
       try {
         const res = await fetch(
           `${EXPLORER_API}/ecosystem/score/${encodeURIComponent(identityId)}`,
+          { headers: { Authorization: `Bearer ${cognitoToken}` } },
         );
         if (!res.ok || cancelled) return;
         const json = await res.json();
@@ -48,7 +55,7 @@ export function NavEcoPointsBadge({ identityId }: NavEcoPointsBadgeProps) {
     return () => {
       cancelled = true;
     };
-  }, [identityId]);
+  }, [identityId, cognitoToken]);
 
   if (data === null) return null;
 
