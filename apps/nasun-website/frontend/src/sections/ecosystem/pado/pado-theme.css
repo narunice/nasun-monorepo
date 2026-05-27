@@ -292,6 +292,17 @@
   /* idle: invisible — only visible during the travel keyframe */
   opacity: 0;
 }
+
+/* Delegate packet rides the visible curve via CSS offset-path. Browsers
+   interpolate the path natively so motion is smooth across the curve
+   and the line segments — replaces the previous polyline approximation
+   that visibly stuttered at each keyframe corner. */
+.dev-home-catena.pado-theme .pd-viz-act .pkt-delegate {
+  offset-path: path("M 22 32 Q 6 40 22 48 L 31 55 L 134 40");
+  offset-distance: 0%;
+  offset-rotate: 0deg;
+}
+
 .dev-home-catena.pado-theme
   .ch-step-card:where(:hover, [data-state="playing"])
   .pd-viz-act
@@ -302,7 +313,7 @@
   .ch-step-card:where(:hover, [data-state="playing"])
   .pd-viz-act
   .pkt-delegate {
-  animation: pd-act-delegate-flow 2.4s cubic-bezier(0.4, 0, 0.4, 1) 0.5s 1;
+  animation: pd-act-delegate-flow 2.4s linear 0.5s 1;
 }
 .dev-home-catena.pado-theme
   .ch-step-card:where(:hover, [data-state="playing"])
@@ -325,21 +336,22 @@
   100% { cx: 134; cy: 40; opacity: 0; }
 }
 
-/* Delegate packet: human (22, 32) → left-bowing curve → agent (22, 48)
-   → slide into agent's trade line (31, 55) → Pado (134, 40). The curve
-   is sampled at three points (t≈0.25, 0.5, 0.75) of the quadratic
-   `M 22 32 Q 6 40 22 48` so linear interpolation between keyframes
-   approximates the visible bow closely. */
+/* Delegate packet via offset-distance along the full delegate path
+   `M 22 32 Q 6 40 22 48 L 31 55 L 134 40` (curve + 2 lines).
+   Approximate path-length proportions:
+     curve         22.6 units → 16% of total
+     agent leg     11.4 units → 8%  (16% → 24%)
+     pado leg     104.1 units → 76% (24% → 100%)
+   Keyframes set offset-distance at each segment boundary so the
+   packet's speed adapts per segment (slow on the curve, fast on the
+   long pado run) while the browser handles the geometry smoothly. */
 @keyframes pd-act-delegate-flow {
-  0%   { cx: 22;  cy: 32; opacity: 0; }
-  10%  { cx: 22;  cy: 32; opacity: 1; }
-  18%  { cx: 16;  cy: 36; opacity: 1; }   /* curve out, t≈0.25 */
-  28%  { cx: 14;  cy: 40; opacity: 1; }   /* max bow, t≈0.5 */
-  38%  { cx: 16;  cy: 44; opacity: 1; }   /* curve back, t≈0.75 */
-  48%  { cx: 22;  cy: 48; opacity: 1; }   /* arrived at agent top */
-  56%  { cx: 31;  cy: 55; opacity: 1; }   /* slide into trade line */
-  92%  { cx: 134; cy: 40; opacity: 1; }   /* arrived at Pado */
-  100% { cx: 134; cy: 40; opacity: 0; }
+  0%   { offset-distance: 0%;   opacity: 0; }
+  10%  { offset-distance: 0%;   opacity: 1; }
+  48%  { offset-distance: 16%;  opacity: 1; }   /* end of curve */
+  56%  { offset-distance: 24%;  opacity: 1; }   /* end of agent leg */
+  92%  { offset-distance: 100%; opacity: 1; }   /* arrived at Pado */
+  100% { offset-distance: 100%; opacity: 0; }
 }
 
 /* Delegate channel glow — brightens while the packet is descending. */

@@ -26,16 +26,14 @@ function VizAct() {
   return (
     <div className="pd-viz-act">
       <svg viewBox="0 0 180 80" fill="none" aria-hidden="true">
-        {/* Human silhouette — head circle + rounded shoulder bar that
-            sits flush under the head (no visual gap between them). */}
+        {/* Human silhouette — head circle + curved shoulders. Control
+            point y=16 puts the shoulder curve's peak (at t=0.5) at y=23,
+            just below the head's bottom edge (y=22.8), closing the
+            visual gap between head and body. */}
         <g>
           <circle cx="22" cy="19" r="3.8" fill="#60a5fa" />
-          <rect
-            x="15"
-            y="23"
-            width="14"
-            height="9"
-            rx="4"
+          <path
+            d="M 14 30 Q 22 16 30 30 L 30 32 Q 22 30.5 14 32 Z"
             fill="#60a5fa"
           />
         </g>
@@ -125,10 +123,13 @@ function VizAct() {
           r="2.4"
           fill="#ffffff"
         />
+        {/* Delegate packet — positioned by CSS offset-path so it follows
+            the curve smoothly. cx/cy set to 0 so the offset-path-driven
+            position is absolute in SVG user space. */}
         <circle
           className="pkt pkt-delegate"
-          cx="22"
-          cy="32"
+          cx="0"
+          cy="0"
           r="2.4"
           fill="#ffffff"
         />
