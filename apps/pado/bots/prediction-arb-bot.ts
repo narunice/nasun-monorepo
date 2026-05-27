@@ -24,6 +24,7 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Transaction } from '@mysten/sui/transactions';
 import { TOKENS_PACKAGE } from './lib/config.js';
 import { discoverMarketIds } from './lib/prediction-market-discovery.js';
+import { isTransientRpcError } from './lib/retry.js';
 
 // ========================================
 // Constants
@@ -78,6 +79,13 @@ const MAX_NUSDC_PER_ARB = Number(process.env.PREDICTION_ARB_MAX_NUSDC ?? '10');
 const MIN_PROFIT_BPS = Number(process.env.PREDICTION_ARB_MIN_PROFIT_BPS ?? '100');
 const DISCOVERY_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_CONSECUTIVE_ERRORS = 5;
+// ECapacityExceeded (MoveAbort code 18) means the target price level already
+// has MAX_FIFO_PER_LEVEL=20 fills. Re-trying every 15s just burns RPC --
+// wait until enough fills age out / new levels open up. 10 min is the
+// shortest pause that meaningfully reduces noise without missing real
+// arb opportunities on heavily-traded markets.
+const CAPACITY_COOLDOWN_MS = 10 * 60 * 1000;
+const ECAPACITY_EXCEEDED_PATTERN = /MoveAbort\b[^)]*prediction_market[^)]*\}\s*,\s*18\s*\)/;
 
 // Refill thresholds
 const MIN_GAS_NASUN = Number(process.env.PREDICTION_ARB_MIN_GAS_NASUN ?? '50');
@@ -447,6 +455,11 @@ let isRunning = false;
 let shuttingDown = false;
 let consecutiveErrors = 0;
 
+// Per-market cooldown: when a market hits a long-running condition that
+// would just throw on every tick (ECapacityExceeded most commonly),
+// skip it until cooldownUntil. Keyed by marketId.
+const marketCooldown = new Map<string, number>();
+
 async function tick(
   client: SuiClient,
   keypair: Ed25519Keypair,
@@ -457,15 +470,37 @@ async function tick(
   isRunning = true;
   try {
     await checkAndRefill(client, keypair, address);
+    const now = Date.now();
     for (const marketId of markets) {
       if (shuttingDown) break;
+      const cooldownUntil = marketCooldown.get(marketId);
+      if (cooldownUntil && cooldownUntil > now) continue;
       try {
         await checkMarket(client, keypair, marketId);
         consecutiveErrors = 0;
+        if (cooldownUntil) marketCooldown.delete(marketId);
       } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (ECAPACITY_EXCEEDED_PATTERN.test(msg)) {
+          // Price level is full -- arb-bot can't fix this, it just has to
+          // wait for fills to age out. Cool down this market and move on
+          // without bumping the suicide counter.
+          marketCooldown.set(marketId, Date.now() + CAPACITY_COOLDOWN_MS);
+          console.warn(
+            `[tick] market=${marketId.slice(0, 16)}... ECapacityExceeded; cooldown ${CAPACITY_COOLDOWN_MS / 60_000}min`,
+          );
+          continue;
+        }
+        if (isTransientRpcError(err)) {
+          // 503 / lock conflict -- next tick is the cure. No counter bump.
+          console.warn(
+            `[tick] market=${marketId.slice(0, 16)}... transient: ${msg}`,
+          );
+          continue;
+        }
         consecutiveErrors++;
         console.error(
-          `[tick] market=${marketId.slice(0, 16)}... error=${(err as Error).message}`,
+          `[tick] market=${marketId.slice(0, 16)}... error=${msg}`,
         );
         if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
           console.error('[tick] too many consecutive errors, exiting');
@@ -500,7 +535,25 @@ async function main(): Promise<void> {
     `[arb-bot] interval=${INTERVAL_MS}ms maxNusdc=${MAX_NUSDC_PER_ARB} minProfitBps=${MIN_PROFIT_BPS}`,
   );
 
-  let markets = await discoverMarketIds(client, DISCOVERY_PKGS);
+  // Startup discovery with indefinite RPC retry. Without this, a sustained
+  // 503 on startup hits process.exit, pm2 restarts, hits 503 again -- and
+  // the restart count climbs past 100 in a single bad RPC hour.
+  let markets: string[] = [];
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    if (shuttingDown) process.exit(0);
+    try {
+      markets = await discoverMarketIds(client, DISCOVERY_PKGS);
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isTransientRpcError(err) || attempt === 60) {
+        console.error(`[arb-bot] startup discovery failed (${attempt}/60): ${msg}`);
+        throw err;
+      }
+      console.warn(`[arb-bot] startup discovery RPC error (${attempt}/60): ${msg}. Retrying in 30s...`);
+      await new Promise((r) => setTimeout(r, 30_000));
+    }
+  }
   console.log(`[arb-bot] discovered ${markets.length} markets`);
 
   const runOnce = process.argv.includes('--once');

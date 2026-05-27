@@ -45,7 +45,7 @@ import { SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Transaction } from '@mysten/sui/transactions';
-import { withRetry } from './lib/retry.js';
+import { withRetry, isTransientRpcError } from './lib/retry.js';
 import {
   parseResolutionCriteria,
   evaluateOutcome,
@@ -582,6 +582,14 @@ async function tick(
           console.warn(`[${timestamp()}] [PRICE WARN] ${marketId}: ${msg}`);
           continue;
         }
+        if (isTransientRpcError(err)) {
+          // Fullnode RPC 503 / network blip -- pm2 restart wouldn't help and
+          // would just compound the load. Skip this market for this tick.
+          // Without this, a 503 burst hits every market in the loop and
+          // crashes the keeper before any real error can resolve.
+          console.warn(`[${timestamp()}] [RPC WARN] ${marketId}: ${msg}`);
+          continue;
+        }
         consecutiveErrors++;
         const prefix = consecutiveErrors >= 5 ? '[PREDICTION CRITICAL]' : '[PREDICTION ERROR]';
         console.error(
@@ -700,8 +708,27 @@ async function main(): Promise<void> {
   console.log(`[${timestamp()}] DRY_RUN: ${DRY_RUN ? 'ENABLED (no on-chain writes)' : 'disabled (live)'}`);
   console.log(`[${timestamp()}] Resolvers: space=${process.env.SPACE_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} music=${process.env.MUSIC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} sports=${process.env.SPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} weather=${process.env.WEATHER_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} ufc=${process.env.UFC_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'} esports=${process.env.ESPORTS_RESOLVER_DISABLED === 'true' ? 'OFF' : 'on'}`);
 
-  // Initial market discovery.
-  let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
+  // Initial market discovery. Indefinite RPC retry: discoverMarketIds wraps
+  // each page in withRetry(4 attempts), but a sustained 503 (>14s) used to
+  // throw and crash the keeper at startup, which pm2 then restarted into
+  // the same 503. Cap at ~30 min (60 outer × 30s) so a truly dead RPC
+  // eventually surfaces a fatal instead of hiding forever.
+  let markets: string[] = [];
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    if (shuttingDown) process.exit(0);
+    try {
+      markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isTransientRpcError(err) || attempt === 60) {
+        console.error(`[${timestamp()}] Startup discovery failed (${attempt}/60): ${msg}`);
+        throw err;
+      }
+      console.warn(`[${timestamp()}] Startup discovery RPC error (${attempt}/60): ${msg}. Retrying in 30s...`);
+      await new Promise((r) => setTimeout(r, 30_000));
+    }
+  }
   let lastDiscoverAt = Date.now();
   console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
 

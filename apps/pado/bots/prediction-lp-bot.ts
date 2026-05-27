@@ -60,6 +60,7 @@ import {
   type LadderParams,
 } from './lib/prediction-quotes.js';
 import { discoverMarketIds } from './lib/prediction-market-discovery.js';
+import { isTransientRpcError } from './lib/retry.js';
 
 // ========================================
 // Configuration
@@ -1162,8 +1163,15 @@ async function tick(
         await reconcileMarket(client, keypair, packageId, marketId, cfg, legacyPackageIds, packageIdForMarketType);
         consecutiveErrors = 0;
       } catch (err) {
-        consecutiveErrors++;
         const msg = err instanceof Error ? err.message : String(err);
+        if (isTransientRpcError(err)) {
+          // Fullnode 503 / lock conflict -- next tick is the cure, not a
+          // pm2 restart. Without this, a 503 burst hits every market in the
+          // loop and crashes lp-bot before any single market can succeed.
+          console.warn(`[${timestamp()}] [LP RPC WARN] ${marketId}: ${msg}`);
+          continue;
+        }
+        consecutiveErrors++;
         const prefix = consecutiveErrors >= 5 ? '[LP CRITICAL]' : '[LP ERROR]';
         console.error(
           `[${timestamp()}] ${prefix} ${marketId}: ${msg} (consecutive: ${consecutiveErrors})`,
@@ -1332,7 +1340,27 @@ async function main(): Promise<void> {
     `[${timestamp()}] NUSDC self-refill: ${refill ? `minNusdc=${refill.minNusdc} rounds=${refill.rounds}` : 'DISABLED (PREDICTION_LP_MIN_NUSDC=0)'}`,
   );
 
-  let markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
+  // Startup discovery: keep retrying until we have a market list. discoverMarketIds
+  // already wraps each page fetch in withRetry(4 attempts), but a sustained RPC 503
+  // (>14s) blows past that and used to crash lp-bot before it ever quoted -- which
+  // PM2 then restarted, which hit the same RPC and crashed again. Cap at ~30 min
+  // (60 outer attempts × 30s) so a truly dead RPC eventually surfaces as a fatal.
+  let markets: string[] = [];
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    if (shuttingDown) process.exit(0);
+    try {
+      markets = await buildMarketList(client, packageId, pinnedMarkets, legacyPackageIds);
+      break;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!isTransientRpcError(err) || attempt === 60) {
+        console.error(`[${timestamp()}] Startup discovery failed (attempt ${attempt}/60): ${msg}`);
+        throw err;
+      }
+      console.warn(`[${timestamp()}] Startup discovery RPC error (attempt ${attempt}/60): ${msg}. Retrying in 30s...`);
+      await new Promise((r) => setTimeout(r, 30_000));
+    }
+  }
   let lastDiscoverAt = Date.now();
   console.log(`[${timestamp()}] Watching ${markets.length} market(s) after discovery`);
 
