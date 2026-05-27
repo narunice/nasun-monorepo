@@ -37,7 +37,9 @@ const txMethods = {
 };
 
 vi.mock('@mysten/sui/transactions', () => ({
-  Transaction: vi.fn().mockImplementation(() => txMethods),
+  Transaction: vi.fn(function () {
+    return txMethods;
+  }),
 }));
 
 // Mock SuiClient

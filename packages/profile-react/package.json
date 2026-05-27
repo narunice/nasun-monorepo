@@ -13,7 +13,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "peerDependencies": {
@@ -30,6 +30,6 @@
     "@types/react": "^19.0.0",
     "react": "^19.0.0",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.7"
   }
 }

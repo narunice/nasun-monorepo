@@ -23,6 +23,6 @@
   "devDependencies": {
     "@nasun/tsconfig": "workspace:*",
     "typescript": "^5.9.3",
-    "vitest": "^2.1.9"
+    "vitest": "^4.1.7"
   }
 }
