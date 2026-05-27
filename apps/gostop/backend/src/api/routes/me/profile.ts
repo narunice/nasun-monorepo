@@ -36,10 +36,17 @@ async function fetchLiveScore(identityId: string): Promise<number | null> {
   const hit = liveScoreCache.get(identityId);
   if (hit && Date.now() < hit.expiresAt) return hit.score;
   if (!env.explorerApiUrl) return null;
+  // /ecosystem/score is self-only (issue #1); a trusted-server caller must
+  // present the shared secret. Without it the request 401s and live score
+  // falls back to the daily snapshot (still correct, just up to 24h stale).
+  if (!env.ecosystemInternalApiKey) return null;
   try {
     const res = await fetch(
       `${env.explorerApiUrl}/api/v1/ecosystem/score/${encodeURIComponent(identityId)}`,
-      { signal: AbortSignal.timeout(3000) },
+      {
+        signal: AbortSignal.timeout(3000),
+        headers: { 'x-internal-api-key': env.ecosystemInternalApiKey },
+      },
     );
     if (!res.ok) return null;
     const data = await res.json() as { data?: { allTime?: { ecosystemScore?: number } } };

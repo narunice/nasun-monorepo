@@ -134,4 +134,10 @@ export const env = {
   // Optional: explorer-api base URL for live ecosystem scores + Nasun profiles.
   // When unset, /me/profile falls back to the daily ecosystem_score_snapshots table.
   explorerApiUrl: opt('EXPLORER_API_URL', '').replace(/\/+$/, ''),
+  // Shared secret for the self-only ecosystem endpoints (issue #1). gostop-
+  // backend is a trusted server-to-server caller; the API key short-circuits
+  // the user-JWT identity match so /me/profile can still resolve the player's
+  // live ecosystem score by identityId without forwarding the player's
+  // Cognito token. Must match ECOSYSTEM_INTERNAL_API_KEY on explorer-api.
+  ecosystemInternalApiKey: opt('ECOSYSTEM_INTERNAL_API_KEY', ''),
 } as const;
