@@ -15,7 +15,9 @@
     <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
-    <!-- Hero poster preload is handled per-page to avoid wasting bandwidth on non-home routes -->
+    <!-- Home hero poster preload (~25KB). Eliminates black hero on cold loads.
+         Video itself is fetched by <video preload="auto"> on the home route only. -->
+    <link rel="preload" as="image" href="/images/posters/Triangle-BW-Light.webp" fetchpriority="high" />
 
     <!-- Preload critical fonts to avoid FOUT -->
     <link rel="preload" as="font" href="/fonts/rubik/Rubik-Regular.woff2" type="font/woff2" crossorigin />

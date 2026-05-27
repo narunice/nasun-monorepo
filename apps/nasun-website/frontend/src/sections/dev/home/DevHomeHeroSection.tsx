@@ -6,6 +6,7 @@ import FadeInUp from "./FadeInUp";
 export default function DevHomeHeroSection() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const [posterReady, setPosterReady] = useState(false);
   const [videoReady, setVideoReady] = useState(false);
 
   const handleOpenApp = () => {
@@ -18,6 +19,20 @@ export default function DevHomeHeroSection() {
 
   return (
     <section className="ch-hero">
+      <img
+        className="ch-hero-bg"
+        src="/images/posters/Triangle-BW-Light.webp"
+        alt=""
+        aria-hidden="true"
+        decoding="async"
+        fetchPriority="high"
+        onLoad={() => setPosterReady(true)}
+        style={{
+          opacity: posterReady ? 1 : 0,
+          transition: "opacity 600ms ease-out",
+          zIndex: -2,
+        }}
+      />
       <video
         className="ch-hero-bg"
         src="/videos/Triangle-B&W-Light-Fixed-web.mp4"
@@ -28,7 +43,11 @@ export default function DevHomeHeroSection() {
         preload="auto"
         aria-hidden="true"
         onCanPlay={() => setVideoReady(true)}
-        style={{ opacity: videoReady ? 1 : 0, transition: "opacity 800ms ease-out" }}
+        style={{
+          opacity: videoReady ? 1 : 0,
+          transition: "opacity 800ms ease-out",
+          zIndex: -1,
+        }}
       />
 
       <div className="ch-container flex justify-end">
