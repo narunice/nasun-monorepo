@@ -50,8 +50,11 @@ interface MarketFilterBarProps {
 }
 
 function SegmentedGroup({ children }: { children: React.ReactNode }) {
+  // max-w-full + overflow-x-auto keeps an overcrowded pill (e.g. 8-item
+  // Category group) scrollable inside its own bounds instead of stretching
+  // the page width on mobile.
   return (
-    <div className="flex items-center gap-0.5 bg-gray-200 dark:bg-gray-800/70 rounded-lg p-0.5">
+    <div className="flex items-center gap-0.5 bg-gray-200 dark:bg-gray-800/70 rounded-lg p-0.5 max-w-full overflow-x-auto scrollbar-hide">
       {children}
     </div>
   );
@@ -77,7 +80,7 @@ function TabButton({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`px-3 py-1.5 rounded-md text-sm font-semibold transition-colors whitespace-nowrap ${
+      className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md text-xs sm:text-sm font-semibold transition-colors whitespace-nowrap flex-shrink-0 ${
         active
           ? "bg-gray-700 text-white dark:bg-sky-200 dark:text-gray-900 shadow-sm"
           : disabled
