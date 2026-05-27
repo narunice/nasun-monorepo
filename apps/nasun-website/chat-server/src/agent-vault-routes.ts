@@ -292,6 +292,7 @@ export async function handleVaultUpload(
   const { entry } = result;
   const agentAddress = entry.agent!;          // guaranteed by buildChallengeText
   const ownerWallet = entry.wallet;
+  console.log(`[alpha-funnel] event=vault_upload_attempt wallet=${ownerWallet} agent=${agentAddress}`);
   const expectedPubkeyHash = entry.pubkeyHash!;
   const capabilityId = entry.capabilityId!;
 
@@ -481,6 +482,7 @@ export async function handleVaultUpload(
           console.warn('[alpha] processQueueTick after upload failed:', (err as Error).message);
         });
 
+        console.log(`[alpha-funnel] event=vault_upload_success wallet=${ownerWallet} agent=${agentAddress} pm2=${pm2Name}`);
         writeJson(res, 200, corsHeaders, {
           ok: true,
           paramName,

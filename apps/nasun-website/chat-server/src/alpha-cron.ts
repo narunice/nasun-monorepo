@@ -267,8 +267,8 @@ async function phaseInvite(): Promise<void> {
       pushUserMessage(
         r.wallet_address,
         `🎟 <b>Your Nasun AI alpha slot is ready.</b>\n` +
-        `Activate within 6 hours: <a href="https://nasun.io/my-account?tab=ai">nasun.io</a>\n` +
-        `If you miss this window, you'll go back in queue once.`,
+        `Activate now: <a href="https://nasun.io/my-account?tab=ai">nasun.io</a>\n` +
+        `Complete the setup wizard while your slot is reserved. If you miss the claim window, you'll go back in queue once.`,
       ),
     ),
   );
