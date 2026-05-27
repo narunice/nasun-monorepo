@@ -1,10 +1,36 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import FadeInUp from "../home/FadeInUp";
 
+const HERO_IMAGE_SRC = "/images/About-Page-Triangle-B&W.webp";
+
 export default function DevAboutHeroSection() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
+  const [imageReady, setImageReady] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.fetchPriority = "high";
+    img.decoding = "async";
+    img.src = HERO_IMAGE_SRC;
+    if (img.complete && img.naturalWidth > 0) {
+      setImageReady(true);
+      return;
+    }
+    let cancelled = false;
+    const done = () => {
+      if (!cancelled) setImageReady(true);
+    };
+    img.addEventListener("load", done);
+    img.addEventListener("error", done);
+    return () => {
+      cancelled = true;
+      img.removeEventListener("load", done);
+      img.removeEventListener("error", done);
+    };
+  }, []);
 
   const handleOpenApp = () => {
     if (isAuthenticated) {
@@ -18,15 +44,23 @@ export default function DevAboutHeroSection() {
     <section className="ch-hero ch-hero-about">
       <img
         className="ch-hero-bg"
-        src="/images/About-Page-Triangle-B&W.webp"
+        src={HERO_IMAGE_SRC}
         alt=""
         loading="eager"
         decoding="async"
+        // @ts-expect-error fetchpriority is a valid HTML attribute
+        fetchpriority="high"
         aria-hidden="true"
+        style={{ opacity: imageReady ? 1 : 0, transition: "opacity 800ms ease-out" }}
       />
-      <div className="ch-hero-overlay" aria-hidden="true" />
 
-      <div className="ch-container">
+      <div
+        className="ch-container"
+        style={{
+          opacity: imageReady ? 1 : 0,
+          transition: "opacity 300ms ease-out",
+        }}
+      >
         <FadeInUp className="max-w-[680px] flex flex-col text-left">
           <h1 className="ch-display-wide">
             Build a <span className="ch-accent-pado">Financial Dynasty</span>

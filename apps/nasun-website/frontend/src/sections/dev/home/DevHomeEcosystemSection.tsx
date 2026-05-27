@@ -7,7 +7,7 @@ export default function DevHomeEcosystemSection() {
       <FadeInUp className="flex flex-col gap-4 items-center text-center">
         <span className="ch-eyebrow">05 / Live on Devnet</span>
         <h2 className="ch-display">
-          <span className="ch-accent-pado">Apps to Test</span> Nasun
+          Test Nasun with <span className="ch-accent-pado">DeFi and Games</span>
         </h2>
       </FadeInUp>
 

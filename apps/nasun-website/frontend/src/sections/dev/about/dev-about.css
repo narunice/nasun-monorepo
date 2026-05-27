@@ -18,25 +18,6 @@
   padding-top: 2rem;
   padding-bottom: 3vh;
 }
-.dev-home-catena .ch-hero-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      120% 80% at 12% 60%,
-      rgba(0, 0, 0, 0.72) 0%,
-      rgba(0, 0, 0, 0.45) 30%,
-      rgba(0, 0, 0, 0) 65%
-    ),
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.2) 0%,
-      rgba(0, 0, 0, 0) 35%,
-      rgba(0, 0, 0, 0.55) 100%
-    );
-}
 @media (min-width: 1024px) {
   .dev-home-catena .ch-hero-about {
     padding-left: 112px;
