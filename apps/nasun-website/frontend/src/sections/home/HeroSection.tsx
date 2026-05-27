@@ -86,9 +86,6 @@ const animVariants: Variants = {
   }),
 };
 
-// Defer video autoplay on mobile to prioritize critical resources (JS, fonts, poster)
-const isMobileViewport = typeof window !== "undefined" && window.innerWidth < 768;
-
 function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
@@ -201,7 +198,7 @@ function HeroSectionV3({ onVideoReady }: HeroSectionProps) {
         loop
         muted
         playsInline
-        preload={isMobileViewport ? "metadata" : "auto"}
+        preload="auto"
         className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
           isVideoPlaying ? "opacity-100" : "opacity-0"
         }`}

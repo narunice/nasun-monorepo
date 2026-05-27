@@ -15,9 +15,14 @@
     <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
-    <!-- Home hero poster preload (~25KB). Eliminates black hero on cold loads.
-         Video itself is fetched by <video preload="auto"> on the home route only. -->
-    <link rel="preload" as="image" href="/images/posters/Triangle-BW-Light.webp" fetchpriority="high" />
+    <!-- Home hero poster preload (~25KB). Eliminates black hero on cold loads. -->
+    <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" fetchpriority="high" />
+
+    <!-- Hero video preload — start download during HTML parse instead of waiting
+         for React to mount the <video> element. Cuts poster-frozen time noticeably.
+         Media query splits desktop (4.4MB) vs mobile (1.6MB) variant. -->
+    <link rel="preload" as="video" type="video/mp4" href="/videos/Full-Trailer184s-rf24.mp4" media="(min-width: 768px)" fetchpriority="high" />
+    <link rel="preload" as="video" type="video/mp4" href="/videos/Full-Trailer184s-mobile-rf28.mp4" media="(max-width: 767px)" fetchpriority="high" />
 
     <!-- Preload critical fonts to avoid FOUT -->
     <link rel="preload" as="font" href="/fonts/rubik/Rubik-Regular.woff2" type="font/woff2" crossorigin />
