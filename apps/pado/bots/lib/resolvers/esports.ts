@@ -58,7 +58,7 @@ const ISO_UTC_RE = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) UTC$/;
 const BEST_OF_ALLOWED = new Set([1, 3, 5]);
 
 const DEFAULT_LEAGUE_ID = '98767991310872058'; // LCK
-const DEFAULT_API_KEY = '__REDACTED_LOL_API_KEY__';
+const DEFAULT_API_KEY = '0TvQnueqKa5mxJntVWt0w4LpLfEkrV1Ta8rQBb9Z';
 const DEFAULT_BASE = 'https://esports-api.lolesports.com/persisted/gw';
 
 const FETCH_TIMEOUT_MS = 8000;
