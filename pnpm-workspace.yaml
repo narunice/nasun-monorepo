@@ -19,3 +19,7 @@ packages:
   - '!apps/baram/agent-runner'
   - '!apps/baram/api-server'
   - '!apps/baram/executor-nitro'
+  # Genesis Pass NFT drop is permanently ended (decommissioned 2026-04-24).
+  # Solidity source preserved for historical reference; excluded from workspace
+  # to drop hardhat/undici transitive deps from the lockfile.
+  - '!apps/nasun-website/contracts/genesis-pass'
