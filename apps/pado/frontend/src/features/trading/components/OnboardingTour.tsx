@@ -55,7 +55,6 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
   }, [tour.currentStep]);
 
   // Update rect on step change and window resize
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!tour.isActive) return;
     updateRect();
@@ -80,7 +79,6 @@ export function OnboardingTour({ tour }: OnboardingTourProps) {
       window.removeEventListener('scroll', updateRect, true);
     };
   }, [tour.isActive, tour.step, updateRect]); // eslint-disable-line react-hooks/exhaustive-deps -- tour.next/prev are stable
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!tour.isActive || !tour.currentStep) return null;
 

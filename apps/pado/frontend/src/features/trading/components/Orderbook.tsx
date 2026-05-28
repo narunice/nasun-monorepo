@@ -87,7 +87,6 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
     return newIds;
   }, [trades, seenIds]);
 
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     setSeenIds(prev => {
       const next = new Set(prev);
@@ -99,7 +98,6 @@ function TradesPanel({ compact, trades, connectionMode }: TradesPanelProps) {
       return next;
     });
   }, [trades]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <>

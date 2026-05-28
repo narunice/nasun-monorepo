@@ -45,14 +45,12 @@ export function OrderConfirmModal({
   const { data: tierData } = useTier(address);
 
   // Reset checkbox and submitting flag when modal closes
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!isOpen) {
       setSkipConfirm(false);
       setIsSubmitting(false);
     }
   }, [isOpen]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   if (!isOpen) return null;
 

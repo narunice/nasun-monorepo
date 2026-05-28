@@ -34,14 +34,12 @@ export function MarketSelector() {
   }, []);
 
   // Reset search and auto-focus when dropdown opens
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (isOpen) {
       setSearch('');
       setTimeout(() => searchRef.current?.focus(), 0);
     }
   }, [isOpen]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleSelect = (key: MarketKey) => {
     setMarket(key);

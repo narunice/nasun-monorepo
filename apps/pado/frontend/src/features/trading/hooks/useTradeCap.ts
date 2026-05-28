@@ -131,7 +131,6 @@ export function useTradeCap(
 
   // Load stored state on mount / address change, with on-chain verification (P2-1)
   // Syncing state from localStorage (external system) — setState in effect is intentional
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (!walletAddress) {
       setStatus('none');
@@ -195,7 +194,6 @@ export function useTradeCap(
     loadAndVerify();
     return () => { cancelled = true; };
   }, [walletAddress]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   // Mint TradeCap and transfer to keeper
   const delegate = useCallback(async (): Promise<{ success: boolean; error?: string }> => {

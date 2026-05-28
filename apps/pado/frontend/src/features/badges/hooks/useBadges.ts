@@ -95,12 +95,10 @@ export function useBadges(context: BadgeEvalContext): UseBadgesResult {
   );
 
   // Side effects in useEffect, not useMemo
-  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (changed) saveUnlocked(unlocked);
     if (newBadges.length > 0) setNewlyUnlocked(newBadges);
   }, [changed, unlocked, newBadges]);
-  /* eslint-enable react-hooks/set-state-in-effect */
 
   return {
     badges,

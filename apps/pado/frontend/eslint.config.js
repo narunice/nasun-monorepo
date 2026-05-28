@@ -15,7 +15,7 @@ export default defineConfig([
     extends: [
       js.configs.recommended,
       tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
+      reactHooks.configs['recommended-latest'],
       reactRefresh.configs.vite,
     ],
     languageOptions: {
@@ -36,8 +36,11 @@ export default defineConfig([
       // rules-of-hooks catches the exact class of bug that caused the 5/27
       // pado universal outage (OrderConfirmModal hook below early return).
       'react-hooks/rules-of-hooks': 'error',
-      // Installed eslint-plugin-react-hooks is v5 — only rules-of-hooks +
-      // exhaustive-deps exist. v6 rules removed to avoid ESLint config errors.
+      // eslint-plugin-react-hooks pinned to ^5.0.0 intentionally (matches nws).
+      // Plugin had drifted to v7 via unintentional bump, introducing 18 errors
+      // from v7-only rules (purity, set-state-in-effect, etc.) that blocked
+      // prod deploy. Pin restores documented intent. v7 adoption is a separate
+      // decision tracked in nasun-ops handoff 2026-05-27-lint-cleanup-sweep.
       'react-hooks/exhaustive-deps': 'warn',
       // Non-hooks noise demoted too.
       '@typescript-eslint/no-explicit-any': 'warn',
