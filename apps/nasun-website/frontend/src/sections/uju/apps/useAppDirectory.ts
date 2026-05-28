@@ -409,7 +409,7 @@ export function useAppDirectory(identityId: string | undefined): UseAppDirectory
       }
     })();
     return () => { cancelled = true; };
-  }, [identityId, cognitoToken]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [identityId, cognitoToken]);
 
   // Change sync: push missions to server on every selection change (debounced).
   // Ensures the midnight snapshot job sees the user's final choice for the day.
