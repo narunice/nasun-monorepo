@@ -11,12 +11,12 @@
   },
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.658.0",
-    "@hono/node-server": "^1.13.8",
+    "@hono/node-server": "^1.19.13",
     "@mysten/sui": "^1.21.0",
     "@nasun/baram-sdk": "workspace:*",
     "better-sqlite3": "^11.7.0",
     "dotenv": "^16.4.7",
-    "hono": "^4.7.5",
+    "hono": "^4.12.18",
     "tsx": "^4.19.2"
   },
   "devDependencies": {
