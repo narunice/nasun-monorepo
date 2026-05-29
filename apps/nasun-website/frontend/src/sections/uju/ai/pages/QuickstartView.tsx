@@ -21,13 +21,11 @@ interface SelectAgentOptions {
 
 interface QuickstartViewProps {
   walletAddress: string;
-  onShowRegister: () => void;
   onSelectAgent: (id: string, opts?: SelectAgentOptions) => void;
 }
 
 export function QuickstartView({
   walletAddress,
-  onShowRegister,
   onSelectAgent,
 }: QuickstartViewProps) {
   const { data: agents, isLoading: agentsLoading } =
@@ -87,7 +85,7 @@ export function QuickstartView({
             </p>
             <button
               type="button"
-              onClick={onShowRegister}
+              onClick={() => setWizardOpen(true)}
               disabled={createBlock.blocked}
               title={createBlock.message ?? undefined}
               className="inline-flex items-center gap-2 px-6 py-3 bg-pado-2 text-uju-bg rounded-xl font-semibold text-sm hover:bg-pado-3 transition-colors disabled:opacity-50 disabled:pointer-events-none"

@@ -248,7 +248,6 @@ export function AiTab() {
     body = (
       <QuickstartView
         walletAddress={walletAddress}
-        onShowRegister={handleShowRegister}
         onSelectAgent={(id, opts) =>
           updateView('detail', {
             agent: id,
