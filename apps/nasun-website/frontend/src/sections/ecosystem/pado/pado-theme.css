@@ -115,26 +115,18 @@
   color: #93c5fd;
 }
 
-/* Status pill palette (LIVE / ALPHA / SOON tints driven by data-status). */
-.dev-home-catena.pado-theme .pd-status {
-  font-family: var(--ch-font-mono);
-  font-weight: 500;
-  font-size: 0.625rem;
-  letter-spacing: 0.22em;
-  padding: 0.18rem 0.55rem;
-  border-radius: 999px;
-}
-.dev-home-catena.pado-theme .pd-status[data-status="live"] {
+/* Status pill color tints (structure lives in dev-home.css .ch-status). */
+.dev-home-catena.pado-theme .ch-status[data-status="live"] {
   color: #bfdbfe;
   background-color: rgba(59, 130, 246, 0.22);
   border: 1px solid rgba(96, 165, 250, 0.55);
 }
-.dev-home-catena.pado-theme .pd-status[data-status="alpha"] {
+.dev-home-catena.pado-theme .ch-status[data-status="alpha"] {
   color: #e1e5ea;
   background-color: rgba(37, 99, 235, 0.28);
   border: 1px solid rgba(96, 165, 250, 0.4);
 }
-.dev-home-catena.pado-theme .pd-status[data-status="soon"] {
+.dev-home-catena.pado-theme .ch-status[data-status="soon"] {
   color: rgba(225, 229, 234, 0.7);
   background-color: rgba(29, 78, 216, 0.22);
   border: 1px solid rgba(96, 165, 250, 0.22);
@@ -891,13 +883,8 @@
  *     blue. No bottom-center glyph.
  * --------------------------------------------------------------------*/
 
-.dev-home-catena.pado-theme .pd-product-card {
-  min-height: 188px;
-  padding: 1.35rem 1.35rem 1.3rem 1.55rem;
-  gap: 0.6rem;
-}
-
-.dev-home-catena.pado-theme .pd-product-card .pd-card-icon {
+/* Product card color tints (structure lives in dev-home.css .ch-product-card). */
+.dev-home-catena.pado-theme .ch-product-card .pd-card-icon {
   width: 26px;
   height: 26px;
   color: #60a5fa;
@@ -906,20 +893,14 @@
     transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
     filter 0.4s ease;
 }
-.dev-home-catena.pado-theme .pd-product-card:hover .pd-card-icon {
+.dev-home-catena.pado-theme .ch-product-card:hover .pd-card-icon {
   color: #bfdbfe;
   transform: scale(1.12);
   filter: drop-shadow(0 0 14px rgba(147, 197, 253, 0.7));
 }
 
-/* Left-edge accent rail — focus signal on hover. */
-.dev-home-catena.pado-theme .pd-product-card-rail {
-  position: absolute;
-  left: 0;
-  top: 14%;
-  bottom: 14%;
-  width: 2px;
-  border-radius: 999px;
+/* Accent rail — Pado blue gradient stops. */
+.dev-home-catena.pado-theme .ch-product-card-rail {
   background: linear-gradient(
     180deg,
     rgba(96, 165, 250, 0) 0%,
@@ -927,27 +908,18 @@
     #93c5fd 78%,
     rgba(96, 165, 250, 0) 100%
   );
-  transform: scaleY(0);
-  transform-origin: top;
-  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
-  z-index: 2;
-  pointer-events: none;
-}
-.dev-home-catena.pado-theme .pd-product-card:hover .pd-product-card-rail {
-  transform: scaleY(1);
 }
 
 /* Border picks up a brighter hairline blue on hover to match the rail. */
-.dev-home-catena.pado-theme .pd-product-card:hover {
+.dev-home-catena.pado-theme .ch-product-card:hover {
   border-color: rgba(96, 165, 250, 0.35);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dev-home-catena.pado-theme .pd-card-icon,
-  .dev-home-catena.pado-theme .pd-product-card-rail {
+  .dev-home-catena.pado-theme .pd-card-icon {
     transition: none !important;
   }
-  .dev-home-catena.pado-theme .pd-product-card:hover .pd-card-icon {
+  .dev-home-catena.pado-theme .ch-product-card:hover .pd-card-icon {
     transform: none;
   }
 }

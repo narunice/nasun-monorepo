@@ -92,6 +92,33 @@ export default defineConfig(({ mode }) => {
           );
         },
       },
+      // Inject <link rel="modulepreload"> for chunks reached only via dynamic
+      // import (wallet/metamask-sdk). Vite's modulePreload.resolveDependencies
+      // only sees chunks on the static import graph from the entry. The
+      // wallet chunks are wagmi/RainbowKit internal dynamic imports, which
+      // means without this plugin they're not fetched until the WalletLayer
+      // component runs at render time — blocking <App /> mount via Suspense.
+      {
+        name: "inject-wallet-modulepreload",
+        apply: "build" as const,
+        transformIndexHtml: {
+          order: "post" as const,
+          handler(html: string, ctx: { bundle?: Record<string, { type: string; fileName: string }> }) {
+            if (!ctx.bundle) return html;
+            const links: string[] = [];
+            for (const chunk of Object.values(ctx.bundle)) {
+              if (chunk.type !== "chunk") continue;
+              if (/^(?:assets\/)?(core|metamask-sdk)-/.test(chunk.fileName)) {
+                links.push(
+                  `<link rel="modulepreload" crossorigin href="/${chunk.fileName}">`
+                );
+              }
+            }
+            if (links.length === 0) return html;
+            return html.replace("</head>", links.join("\n    ") + "\n  </head>");
+          },
+        },
+      },
     ],
 
     // 다양한 미디어 파일을 포함
@@ -203,11 +230,26 @@ export default defineConfig(({ mode }) => {
       outDir: "dist",
       assetsDir: "assets",
       emptyOutDir: true,
-      // modulePreload disabled: vendor-chart (505KB raw) gets modulepreloaded
-      // and parsed before FCP on slow CPUs, tripling TBT (120ms → 390ms).
-      // With modulePreload off, browser discovers chunks after parsing index.js,
-      // deferring non-critical chunk parsing to after first paint.
-      modulePreload: false,
+      // Selective modulePreload: preload only chunks needed for first paint of
+      // the home route. Full modulePreload tripled TBT (120ms → 390ms) because
+      // vendor-chart (505KB) and other heavy lazy chunks were parsed before
+      // FCP. Fully disabling it, however, deferred wallet chunk fetch until
+      // after main bundle parse, which blocked <App /> mount (wrapped in
+      // <Suspense><WalletLayer>) for ~200-400ms on cold loads — preventing
+      // Hero <video> from mounting and starting playback.
+      //
+      // Allow-list: framework + wallet (App is wrapped in WalletLayer, so this
+      // is on the critical path). Heavy lazy chunks (chart/framer/html2canvas)
+      // and per-page chunks remain non-preloaded — they're only needed when
+      // their owning route mounts.
+      modulePreload: {
+        resolveDependencies: (_filename, deps) =>
+          deps.filter((dep) =>
+            /vendor-react|vendor-radix|vendor-data|vendor-aws|vendor-i18n|vendor-web3|core-|metamask-sdk-/.test(
+              dep,
+            ),
+          ),
+      },
       rollupOptions: {
         output: {
           manualChunks: {

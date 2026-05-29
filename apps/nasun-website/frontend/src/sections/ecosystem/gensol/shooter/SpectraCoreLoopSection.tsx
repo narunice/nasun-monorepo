@@ -1,23 +1,13 @@
+import { useCallback } from "react";
 import type { PointerEvent as RPointerEvent, ReactNode } from "react";
-import { useCallback, useRef } from "react";
-import ChSection from "./ChSection";
-import FadeInUp from "./FadeInUp";
-import { useGridSpotlight } from "../_shared/useGridSpotlight";
-import { useRevealReplay } from "../_shared/useRevealReplay";
+import ChSection from "@/sections/dev/home/ChSection";
+import FadeInUp from "@/sections/dev/home/FadeInUp";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
+import { useRevealReplay } from "@/sections/dev/_shared/useRevealReplay";
 
-type Step = {
-  index: string;
-  eyebrow: string;
-  title: string;
-  body: ReactNode;
-  viz: ReactNode;
-};
-
-/* ------------------------------------------------------------------ */
-/* Vizes — replay once on reveal/hover (no infinite loops).           */
-/* Animation keyframes live in dev-home.css and are gated by the      */
-/* card's `:hover` / `[data-state="playing"]` state.                  */
-/* ------------------------------------------------------------------ */
+/* Reuse the catena vizes (.ch-viz-act/score/bind/enforce). Stroke colors are
+   re-themed via gensol-theme.css overrides + the §4.3.e CSS variables on the
+   inline SVG stops, so no bespoke viz markup needed here. */
 
 function VizExecute() {
   return (
@@ -35,30 +25,30 @@ function VizUnderwrite() {
     <div className="ch-viz-score">
       <svg viewBox="0 0 200 80" preserveAspectRatio="none">
         <defs>
-          <linearGradient id="ch-uw-line" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0%" stopColor="var(--ch-viz-stop-start, #5ee1e4)" />
-            <stop offset="100%" stopColor="var(--ch-viz-stop-end, #d2f6a2)" />
+          <linearGradient id="gs-uw-line" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="var(--ch-viz-stop-start, #d52933)" />
+            <stop offset="100%" stopColor="var(--ch-viz-stop-end, #ffb547)" />
           </linearGradient>
-          <linearGradient id="ch-uw-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--ch-viz-fill-strong, rgba(134,243,183,0.32))" />
-            <stop offset="100%" stopColor="var(--ch-viz-fill-fade, rgba(134,243,183,0))" />
+          <linearGradient id="gs-uw-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="var(--ch-viz-fill-strong, rgba(213,41,51,0.32))" />
+            <stop offset="100%" stopColor="var(--ch-viz-fill-fade, rgba(213,41,51,0))" />
           </linearGradient>
         </defs>
         <path
           className="fill"
           d="M0 80 L0 56 L28 50 L56 58 L86 40 L114 46 L144 26 L172 30 L200 12 L200 80 Z"
-          fill="url(#ch-uw-fill)"
+          fill="url(#gs-uw-fill)"
         />
         <path
           className="line"
           d="M0 56 L28 50 L56 58 L86 40 L114 46 L144 26 L172 30 L200 12"
           fill="none"
-          stroke="url(#ch-uw-line)"
+          stroke="url(#gs-uw-line)"
           strokeWidth="1.75"
           strokeLinecap="round"
           strokeLinejoin="round"
         />
-        <circle className="tip" cx="200" cy="12" r="3" fill="#d2f6a2" />
+        <circle className="tip" cx="200" cy="12" r="3" fill="#ffb547" />
       </svg>
     </div>
   );
@@ -69,9 +59,9 @@ function VizBind() {
     <div className="ch-viz-bind">
       <svg viewBox="0 0 120 60" fill="none">
         <defs>
-          <linearGradient id="ch-bind-grad" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="var(--ch-viz-pill-start, #5ee1e4)" />
-            <stop offset="100%" stopColor="var(--ch-viz-pill-end, #d2f6a2)" />
+          <linearGradient id="gs-bind-grad" x1="0" x2="1" y1="0" y2="1">
+            <stop offset="0%" stopColor="var(--ch-viz-pill-start, #d52933)" />
+            <stop offset="100%" stopColor="var(--ch-viz-pill-end, #ffb547)" />
           </linearGradient>
         </defs>
         <rect
@@ -93,7 +83,7 @@ function VizBind() {
           fontSize="9"
           letterSpacing="1"
         >
-          tx
+          ext
         </text>
         <rect
           className="flash"
@@ -102,7 +92,7 @@ function VizBind() {
           width="48"
           height="18"
           rx="9"
-          fill="rgba(134,243,183,0.35)"
+          fill="rgba(213,41,51,0.35)"
         />
         <g className="tier-pill">
           <rect
@@ -111,19 +101,19 @@ function VizBind() {
             width="48"
             height="18"
             rx="9"
-            fill="url(#ch-bind-grad)"
+            fill="url(#gs-bind-grad)"
           />
           <text
             x="90"
             y="35"
             textAnchor="middle"
-            fill="#151316"
+            fill="#111821"
             fontFamily="var(--ch-font-mono)"
             fontSize="10"
             fontWeight="600"
             letterSpacing="0.5"
           >
-            Tier3
+            Loot
           </text>
         </g>
       </svg>
@@ -141,33 +131,41 @@ function VizEnforce() {
   );
 }
 
+type Step = {
+  index: string;
+  eyebrow: string;
+  title: string;
+  body: string;
+  viz: ReactNode;
+};
+
 const STEPS: Step[] = [
   {
     index: "01",
-    eyebrow: "Instruction",
-    title: "Execute",
-    body: "A user or agent submits an onchain instruction.",
+    eyebrow: "Crash",
+    title: "Make landfall",
+    body: "Your team crash-lands on a hostile alien world. Spectra is scattered across the wreckage.",
     viz: <VizExecute />,
   },
   {
     index: "02",
-    eyebrow: "Index",
-    title: "Underwrite",
-    body: "The runtime captures every settlement receipt and compounds the outcome into NSI. Quests do not.",
+    eyebrow: "Extract",
+    title: "Pull Spectra",
+    body: "Race to extract enough Spectra to power your escape ship. Carry more, earn more — but slow yourself down.",
     viz: <VizUnderwrite />,
   },
   {
     index: "03",
-    eyebrow: "Tier",
-    title: "Bind",
-    body: "Runtime attaches tier to every instruction.",
+    eyebrow: "Compete",
+    title: "Outgun the enemy",
+    body: "Two factions, one wreck. Combat, timing, and risk management decide who fuels the way out.",
     viz: <VizBind />,
   },
   {
     index: "04",
-    eyebrow: "Floor",
-    title: "Enforce",
-    body: "Above-tier instructions do not execute.",
+    eyebrow: "Escape",
+    title: "Survive or burn",
+    body: "Lava eruptions intensify. Earthquakes carve the map. Delay too long and the planet kills everyone.",
     viz: <VizEnforce />,
   },
 ];
@@ -178,10 +176,8 @@ function useCardTilt() {
     const rect = el.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width;
     const y = (e.clientY - rect.top) / rect.height;
-    const rx = (0.5 - y) * 4;
-    const ry = (x - 0.5) * 4;
-    el.style.setProperty("--rx", `${rx}deg`);
-    el.style.setProperty("--ry", `${ry}deg`);
+    el.style.setProperty("--rx", `${(0.5 - y) * 4}deg`);
+    el.style.setProperty("--ry", `${(x - 0.5) * 4}deg`);
   }, []);
   const onLeave = useCallback((e: RPointerEvent<HTMLElement>) => {
     e.currentTarget.style.setProperty("--rx", "0deg");
@@ -190,47 +186,29 @@ function useCardTilt() {
   return { onMove, onLeave };
 }
 
-export default function DevHomeMechanismSection() {
+export default function SpectraCoreLoopSection() {
   const gridRef = useGridSpotlight<HTMLDivElement>();
   useRevealReplay(gridRef);
   const tilt = useCardTilt();
-  const lastTap = useRef(0);
-
-  const onCardPointerDown = useCallback((e: RPointerEvent<HTMLElement>) => {
-    if (e.pointerType !== "touch") return;
-    const now = performance.now();
-    if (now - lastTap.current < 400) return;
-    lastTap.current = now;
-    const el = e.currentTarget;
-    el.dataset.state = "playing";
-    window.setTimeout(() => {
-      el.dataset.state = "done";
-    }, 900);
-  }, []);
 
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow ch-eyebrow-cyan">01 / Enforcement</span>
+        <span className="ch-eyebrow">02 / The Core Loop</span>
         <h2 className="ch-display">
-          Standing the <span className="ch-accent-pado">Runtime Enforces</span>
+          Crash. Compete. <span className="gs-accent">Escape or perish.</span>
         </h2>
-        <p className="ch-lead">
-          Standing is not published. It is enforced at runtime, on every native
-          execution.
-        </p>
       </FadeInUp>
 
       <div ref={gridRef} className="ch-step-grid">
-        {STEPS.map((s, i) => (
-          <FadeInUp key={s.index} delayMs={120 + i * 90}>
+        {STEPS.map((s) => (
+          <FadeInUp key={s.index}>
             <article
               className="ch-step-card"
               data-spotlight-card=""
               data-state="idle"
               onPointerMove={tilt.onMove}
               onPointerLeave={tilt.onLeave}
-              onPointerDown={onCardPointerDown}
             >
               <span className="ch-step-card-halo" aria-hidden="true" />
               <span className="ch-step-card-glow" aria-hidden="true" />
@@ -244,33 +222,6 @@ export default function DevHomeMechanismSection() {
             </article>
           </FadeInUp>
         ))}
-      </div>
-
-      <div className="ch-closing-grid">
-        <FadeInUp delayMs={700}>
-          <div className="ch-closing-card">
-            <span className="ch-closing-eyebrow">What moves NSI</span>
-            <h3 className="ch-closing-title">Settlement, not signaling.</h3>
-            <p className="ch-body">
-              NSI moves on settlement receipts, agent execution records, and
-              verified outcomes. Quests do not.
-            </p>
-          </div>
-        </FadeInUp>
-
-        <FadeInUp delayMs={820}>
-          <div className="ch-closing-card">
-            <span className="ch-closing-eyebrow">How agents inherit</span>
-            <h3 className="ch-closing-title">
-              Agents inherit. Then they earn.
-            </h3>
-            <p className="ch-body">
-              An agent starts with a capped floor inherited from its operator.
-              Its own onchain record compounds standing independently, and feeds
-              back.
-            </p>
-          </div>
-        </FadeInUp>
       </div>
     </ChSection>
   );

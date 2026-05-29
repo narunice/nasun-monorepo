@@ -495,7 +495,7 @@ const DevMyAccountPage = () => {
                   setShowLinkXGuidance(false);
                   localStorage.setItem(
                     "auth_return_to",
-                    "/community/creators-leaderboard-guide?x_linked=1",
+                    "/leaderboards/creators-leaderboard-guide?x_linked=1",
                   );
                   handleLinkTwitter();
                 }}

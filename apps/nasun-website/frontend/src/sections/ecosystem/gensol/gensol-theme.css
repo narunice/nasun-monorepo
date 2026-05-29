@@ -1,0 +1,708 @@
+/*
+ * GenSol page theme overrides — scoped to `.dev-home-catena.gensol-theme`.
+ * Mirrors the pattern in pado-theme.css: inherits catena layout + typography
+ * primitives, re-maps the token palette to GenSol brand red + sci-fi
+ * complementaries, and explicitly overrides every primitive in the home/about
+ * CSS that hardcodes mint/cyan literals.
+ *
+ * Brand sheet (locked):
+ *   --gs-red          #d52933   primary brand red
+ *   --gs-red-shade    #b22432   hover/pressed, secondary surface tint
+ *   --gs-black        #111821   page bg
+ *   --gs-white        #ffffff   invert text
+ *
+ * Sci-fi complementaries (proposed):
+ *   --gs-spectra      #ffb547   in-universe fuel amber, gradient mid stop
+ *   --gs-plasma       #5ee1e4   cold cyan tension, eyebrow-cyan equivalent
+ *   --gs-steel        #1c2632   card bg one notch above page
+ *   --gs-steel-hi     #2a3645   elevated chrome / hairline rules
+ *   --gs-bone         #e8eaec   cooler body white, reduces flare
+ *
+ * See doc/gensol-redesign-plan.md §2, §4.3.
+ */
+
+/* ---------------- Token re-mapping ---------------- */
+.dev-home-catena.gensol-theme {
+  --ch-bg-page: #0a0f15;       /* darker than --gs-black for hero contrast */
+  --ch-bg-card: #131c27;       /* sits above page bg, no hard border needed */
+  --ch-fg-display: #ffffff;
+  --ch-fg-default: #e8eaec;    /* --gs-bone */
+  --ch-fg-accent: #d52933;     /* --gs-red, primary brand accent */
+  --ch-accent-cyan: #5ee1e4;   /* --gs-plasma, replaces catena eyebrow-cyan */
+  --ch-fg-muted: rgba(232, 234, 236, 0.85);
+  --ch-fg-subdued: rgba(232, 234, 236, 0.6);
+  --ch-fg-faint: rgba(232, 234, 236, 0.3);
+  --ch-border: rgba(213, 41, 51, 0.22);
+  --ch-divider: rgba(232, 234, 236, 0.12);
+
+  /* Inline-SVG viz gradient stops (consumed by DevHomeMechanismSection vizes
+     via CSS variables — see §4.3.e). Red → spectra-amber sweep on every viz
+     so the Shooter Core Loop reuses ch-viz-* without forking. */
+  --ch-viz-stop-start: #d52933;
+  --ch-viz-stop-end:   #ffb547;
+  --ch-viz-pill-start: #d52933;
+  --ch-viz-pill-end:   #ffb547;
+  --ch-viz-fill-strong: rgba(213, 41, 51, 0.32);
+  --ch-viz-fill-fade:   rgba(213, 41, 51, 0);
+}
+
+/* Selection */
+.dev-home-catena.gensol-theme ::selection {
+  background-color: rgba(213, 41, 51, 0.65);
+  color: #ffffff;
+}
+
+/* ============================================================
+ *  4.3.a — Brand-new selectors
+ * ============================================================ */
+
+/* GenSol accent gradient — red → spectra-amber → bone.
+   Parallel to .ch-accent-pado (mint) and .pd-accent (blue). */
+.dev-home-catena.gensol-theme .gs-accent {
+  background-image: linear-gradient(
+    100deg,
+    #b22432 0%,
+    #d52933 38%,
+    #ffb547 78%,
+    #ffe8c2 100%
+  );
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Mirror onto inherited .ch-accent-pado markup so anything inheriting the
+   catena gradient class still reads as GenSol-themed. */
+.dev-home-catena.gensol-theme .ch-accent-pado {
+  background-image: linear-gradient(
+    100deg,
+    #b22432 0%,
+    #d52933 38%,
+    #ffb547 78%,
+    #ffe8c2 100%
+  );
+}
+
+/* Hero plate vignette — red radial wash at the corners. */
+.dev-home-catena.gensol-theme .gs-hero-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 80% at 100% 100%,
+      rgba(178, 36, 50, 0.45) 0%,
+      transparent 55%
+    ),
+    radial-gradient(
+      100% 70% at 0% 0%,
+      rgba(213, 41, 51, 0.18) 0%,
+      transparent 50%
+    );
+}
+
+/* Trailer 16:9 frame — aspect-ratio prevents CLS, vignette + watermark. */
+.dev-home-catena.gensol-theme .gs-trailer-frame {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid rgba(213, 41, 51, 0.32);
+  background: #03080d;
+  box-shadow: 0 28px 80px -44px rgba(213, 41, 51, 0.6);
+}
+.dev-home-catena.gensol-theme .gs-trailer-frame > video,
+.dev-home-catena.gensol-theme .gs-trailer-frame > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.dev-home-catena.gensol-theme .gs-trailer-frame::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      120% 80% at 50% 100%,
+      rgba(178, 36, 50, 0.3) 0%,
+      transparent 60%
+    );
+}
+
+/* Tap-to-play overlay (accessibility: real button, focusable, visible ring). */
+.dev-home-catena.gensol-theme .gs-trailer-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 15, 21, 0) 0%,
+    rgba(10, 15, 21, 0.55) 100%
+  );
+  border: none;
+  cursor: pointer;
+  transition: background 240ms ease;
+}
+.dev-home-catena.gensol-theme .gs-trailer-overlay:hover,
+.dev-home-catena.gensol-theme .gs-trailer-overlay:focus-visible {
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0.08) 0%,
+    rgba(10, 15, 21, 0.65) 100%
+  );
+}
+.dev-home-catena.gensol-theme .gs-trailer-overlay:focus-visible {
+  outline: 2px solid #ffb547;
+  outline-offset: -6px;
+}
+.dev-home-catena.gensol-theme .gs-trailer-overlay-glyph {
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: rgba(213, 41, 51, 0.92);
+  border: 1px solid rgba(255, 232, 194, 0.65);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), background 240ms ease;
+  box-shadow: 0 0 32px rgba(213, 41, 51, 0.55);
+}
+.dev-home-catena.gensol-theme .gs-trailer-overlay:hover .gs-trailer-overlay-glyph {
+  transform: scale(1.08);
+  background: #d52933;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.gensol-theme .gs-trailer-overlay,
+  .dev-home-catena.gensol-theme .gs-trailer-overlay-glyph {
+    transition: none !important;
+  }
+}
+
+/* Bespoke viz — sole brand-load-bearing animation: spectra crystal pulsing.
+   Used on the Shooter Hero beat ("crash-land, extract Spectra"). */
+.dev-home-catena.gensol-theme .gs-viz-spectra {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dev-home-catena.gensol-theme .gs-viz-spectra .crystal {
+  width: 38%;
+  aspect-ratio: 3 / 4;
+  background: linear-gradient(
+    160deg,
+    #ffb547 0%,
+    #ffd28a 35%,
+    #d52933 100%
+  );
+  clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%);
+  box-shadow: 0 0 28px rgba(255, 181, 71, 0.45);
+  filter: drop-shadow(0 8px 18px rgba(178, 36, 50, 0.4));
+}
+.dev-home-catena.gensol-theme .ch-step-card:where(:hover, [data-state="playing"]) .gs-viz-spectra .crystal {
+  animation: gs-crystal-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) 1;
+}
+@keyframes gs-crystal-pulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 8px 18px rgba(178, 36, 50, 0.4));
+  }
+  50% {
+    transform: scale(1.08);
+    filter: drop-shadow(0 8px 26px rgba(255, 181, 71, 0.7));
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.gensol-theme .gs-viz-spectra .crystal {
+    animation: none !important;
+  }
+}
+
+/* ============================================================
+ *  4.3.c — Promoted primitive color tints
+ *  Status pill (.ch-status) and product card (.ch-product-card)
+ *  now live in dev-home.css. GenSol adds red/spectra tints here.
+ * ============================================================ */
+
+/* Status pill tints. */
+.dev-home-catena.gensol-theme .ch-status[data-status="live"] {
+  color: #ffe8c2;
+  background-color: rgba(213, 41, 51, 0.22);
+  border: 1px solid rgba(213, 41, 51, 0.55);
+}
+.dev-home-catena.gensol-theme .ch-status[data-status="alpha"] {
+  color: #ffd28a;
+  background-color: rgba(255, 181, 71, 0.18);
+  border: 1px solid rgba(255, 181, 71, 0.4);
+}
+.dev-home-catena.gensol-theme .ch-status[data-status="soon"] {
+  color: rgba(232, 234, 236, 0.7);
+  background-color: rgba(28, 38, 50, 0.6);
+  border: 1px solid rgba(232, 234, 236, 0.22);
+}
+
+/* Product card tints. */
+.dev-home-catena.gensol-theme .ch-product-card-rail {
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0) 0%,
+    #d52933 22%,
+    #ffb547 78%,
+    rgba(213, 41, 51, 0) 100%
+  );
+}
+.dev-home-catena.gensol-theme .ch-product-card:hover {
+  border-color: rgba(255, 181, 71, 0.35);
+}
+
+/* ============================================================
+ *  4.3.b — Mint/cyan leak overrides
+ *  Hardcoded mint+cyan literals across dev-home.css and dev-about.css
+ *  that the token re-map alone does NOT reach. Each block here mirrors
+ *  one row in plan §4.3.b.
+ * ============================================================ */
+
+/* --- dev-home.css --- */
+
+/* L225 .ch-btn-primary background. */
+.dev-home-catena.gensol-theme .ch-btn-primary {
+  background-color: #d52933;
+  color: #ffffff;
+}
+
+/* L233 .ch-btn-primary::before wipe. */
+.dev-home-catena.gensol-theme .ch-btn-primary::before {
+  background-color: #ffb547;
+}
+
+/* L251-255 invert variant pair. */
+.dev-home-catena.gensol-theme .ch-btn-primary.ch-btn-invert {
+  background-color: #ffe8c2;
+  color: #111821;
+}
+.dev-home-catena.gensol-theme .ch-btn-primary.ch-btn-invert::before {
+  background-color: #d52933;
+}
+.dev-home-catena.gensol-theme .ch-btn-primary:hover {
+  color: #ffffff;
+}
+.dev-home-catena.gensol-theme .ch-btn-primary.ch-btn-invert:hover {
+  color: #ffffff;
+}
+
+/* Ghost button matches brand red. */
+.dev-home-catena.gensol-theme .ch-btn-ghost {
+  border-color: rgba(255, 181, 71, 0.5);
+  color: #ffe8c2;
+}
+.dev-home-catena.gensol-theme .ch-btn-ghost:hover {
+  border-color: #ffb547;
+  color: #ffffff;
+}
+
+/* L377-385 .ch-step-card-glow radial. */
+.dev-home-catena.gensol-theme .ch-step-card-glow {
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    rgba(213, 41, 51, 0.12),
+    rgba(255, 181, 71, 0.04) 30%,
+    transparent 60%
+  );
+}
+
+/* L395-402 .ch-step-card-halo conic stops. */
+.dev-home-catena.gensol-theme .ch-step-card-halo {
+  background: conic-gradient(
+    from var(--step-angle),
+    rgba(213, 41, 51, 0) 0deg,
+    rgba(213, 41, 51, 0.6) 40deg,
+    rgba(255, 181, 71, 0.5) 90deg,
+    rgba(94, 225, 228, 0.3) 140deg,
+    rgba(213, 41, 51, 0) 200deg,
+    rgba(213, 41, 51, 0) 360deg
+  );
+  opacity: 0.7;
+}
+
+/* L420 .ch-step-card:hover box-shadow. */
+.dev-home-catena.gensol-theme .ch-step-card:hover {
+  box-shadow: 0 24px 60px -36px rgba(213, 41, 51, 0.45);
+  border-color: rgba(255, 181, 71, 0.18);
+}
+
+/* Card body slightly above pure black so spotlight pops. */
+.dev-home-catena.gensol-theme .ch-step-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.025) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    rgba(28, 38, 50, 0.82);
+  border-color: rgba(213, 41, 51, 0.14);
+}
+
+/* Step card eyebrow + num use the brand red, not mint. */
+.dev-home-catena.gensol-theme .ch-step-card-eyebrow,
+.dev-home-catena.gensol-theme .ch-step-card-num,
+.dev-home-catena.gensol-theme .ch-closing-eyebrow,
+.dev-home-catena.gensol-theme .ch-eyebrow {
+  color: #d52933;
+}
+.dev-home-catena.gensol-theme .ch-eyebrow-cyan {
+  color: #5ee1e4;
+}
+
+/* L489-495 .ch-viz-act dot + ring. */
+.dev-home-catena.gensol-theme .ch-viz-act .dot {
+  background: #d52933;
+  box-shadow: 0 0 16px rgba(213, 41, 51, 0.85);
+}
+.dev-home-catena.gensol-theme .ch-viz-act .ring {
+  border-color: #d52933;
+}
+/* L529 ch-tip-pulse drop-shadow color stop is on .tip — also re-color in score viz. */
+.dev-home-catena.gensol-theme .ch-viz-score .tip {
+  fill: #ffb547;
+}
+
+/* L568 .ch-viz-enforce .gate dashed gradient. */
+.dev-home-catena.gensol-theme .ch-viz-enforce .gate {
+  background-image: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0.6),
+    rgba(213, 41, 51, 0.2) 50%,
+    rgba(213, 41, 51, 0.6)
+  );
+}
+
+/* L586-587 .ch-viz-enforce .pass gradient + glow. */
+.dev-home-catena.gensol-theme .ch-viz-enforce .pass {
+  background: linear-gradient(90deg, #d52933, #ffb547);
+  box-shadow: 0 0 12px rgba(213, 41, 51, 0.75);
+}
+
+/* L184 .ch-accent-pado gradient already re-painted above (line ~70). */
+
+/* --- dev-about.css --- */
+
+/* L117-118 .ch-gravity-card-glow radial. */
+.dev-home-catena.gensol-theme .ch-gravity-card-glow {
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    rgba(213, 41, 51, 0.14),
+    rgba(255, 181, 71, 0.04) 30%,
+    transparent 60%
+  );
+}
+
+/* L126-150 .ch-gravity-card-halo conic stops. */
+.dev-home-catena.gensol-theme .ch-gravity-card-halo {
+  background: conic-gradient(
+    from var(--grav-angle),
+    rgba(213, 41, 51, 0) 0deg,
+    rgba(213, 41, 51, 0.65) 40deg,
+    rgba(255, 181, 71, 0.5) 90deg,
+    rgba(94, 225, 228, 0.3) 140deg,
+    rgba(213, 41, 51, 0) 200deg,
+    rgba(213, 41, 51, 0) 360deg
+  );
+}
+
+/* L159-166 .ch-gravity-card hover box-shadow + bg. */
+.dev-home-catena.gensol-theme .ch-gravity-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.03) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    rgba(28, 38, 50, 0.82);
+  border-color: rgba(213, 41, 51, 0.14);
+}
+.dev-home-catena.gensol-theme .ch-gravity-card:hover {
+  box-shadow: 0 24px 60px -36px rgba(213, 41, 51, 0.5);
+  border-color: rgba(255, 181, 71, 0.22);
+}
+
+/* L239-275 .ch-gv-viz-layers stacked layers. */
+.dev-home-catena.gensol-theme .ch-gv-viz-layers .layer {
+  background: linear-gradient(
+    135deg,
+    rgba(213, 41, 51, 0.55),
+    rgba(255, 181, 71, 0.35)
+  );
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-layers .l2 {
+  background: linear-gradient(
+    135deg,
+    rgba(213, 41, 51, 0.6),
+    rgba(213, 41, 51, 0.25)
+  );
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-layers .l3 {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 181, 71, 0.7),
+    rgba(213, 41, 51, 0.45)
+  );
+  box-shadow: 0 4px 18px rgba(213, 41, 51, 0.22);
+}
+
+/* L358-403 .ch-gv-viz-bands band + tick. */
+.dev-home-catena.gensol-theme .ch-gv-viz-bands .band {
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0.35),
+    rgba(213, 41, 51, 0.05)
+  );
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-bands .band-tick {
+  background: #ffb547;
+  box-shadow: 0 0 10px rgba(255, 181, 71, 0.7);
+}
+.dev-home-catena.gensol-theme .ch-gravity-card[data-state="done"] .ch-gv-viz-bands .b4 {
+  background: linear-gradient(
+    180deg,
+    #ffb547 0%,
+    #d52933 60%,
+    rgba(213, 41, 51, 0.2) 100%
+  );
+  box-shadow: 0 0 22px rgba(213, 41, 51, 0.5);
+}
+
+/* L456-525 gv-band-pulse / gv-band-settle keyframes — re-author the lit
+   color stops via override classes used by the same selectors. */
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b1,
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b2,
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b3 {
+  animation: gs-band-pulse 0.9s cubic-bezier(0.4, 0, 0.4, 1) 1;
+}
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b1 { animation-delay: 0s; }
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b2 { animation-delay: 0.22s; }
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b3 { animation-delay: 0.44s; }
+.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b4 {
+  animation: gs-band-settle 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.66s 1 both;
+}
+@keyframes gs-band-pulse {
+  0% {
+    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    opacity: 0.55;
+    filter: brightness(0.7) saturate(0.55);
+    transform: translateY(0);
+  }
+  40% {
+    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    opacity: 1;
+    filter: brightness(1.15) saturate(1.05);
+    transform: translateY(-3px);
+  }
+  100% {
+    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    opacity: 0.55;
+    filter: brightness(0.7) saturate(0.55);
+    transform: translateY(0);
+  }
+}
+@keyframes gs-band-settle {
+  0% {
+    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    opacity: 0.55;
+    filter: brightness(0.7) saturate(0.55);
+    transform: translateY(0) scaleY(1);
+    box-shadow: 0 0 0 rgba(213, 41, 51, 0);
+  }
+  60% {
+    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    opacity: 1;
+    filter: brightness(1.25) saturate(1.15);
+    transform: translateY(-3px) scaleY(1.03);
+    box-shadow: 0 0 28px rgba(213, 41, 51, 0.6);
+  }
+  100% {
+    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+    transform: translateY(0) scaleY(1);
+    box-shadow: 0 0 22px rgba(213, 41, 51, 0.5);
+  }
+}
+
+/* L544-731 .ch-gv-viz-holo node + halo + chips. */
+.dev-home-catena.gensol-theme .ch-gv-viz-holo .link {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(213, 41, 51, 0.6) 50%,
+    rgba(255, 181, 71, 0) 100%
+  );
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-holo .node-core {
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffffff 0%,
+    #ffb547 30%,
+    #d52933 70%,
+    rgba(213, 41, 51, 0.2) 100%
+  );
+  box-shadow: 0 0 14px rgba(213, 41, 51, 0.5);
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-holo .node-halo {
+  background: conic-gradient(
+    from 0deg,
+    rgba(213, 41, 51, 0.55),
+    rgba(255, 181, 71, 0.5),
+    rgba(213, 41, 51, 0) 60%,
+    rgba(213, 41, 51, 0.55)
+  );
+}
+
+/* L741-806 .ch-gv-viz-resonance rings + core. */
+.dev-home-catena.gensol-theme .ch-gv-viz-resonance .ring {
+  border-color: rgba(213, 41, 51, 0.35);
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-resonance .r2 {
+  border-color: rgba(213, 41, 51, 0.22);
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-resonance .r3 {
+  border-color: rgba(213, 41, 51, 0.12);
+}
+.dev-home-catena.gensol-theme .ch-gv-viz-resonance .core {
+  background: radial-gradient(
+    circle at 30% 30%,
+    #ffffff,
+    #ffb547 35%,
+    #d52933 100%
+  );
+  box-shadow: 0 0 18px rgba(213, 41, 51, 0.5);
+}
+
+/* L882 .ch-uptime-days-num gradient. */
+.dev-home-catena.gensol-theme .ch-uptime-days-num {
+  background-image: linear-gradient(90deg, #d52933 0%, #ffb547 100%);
+}
+
+/* L1012 .ch-epoch-card background. */
+.dev-home-catena.gensol-theme .ch-epoch-card {
+  background:
+    radial-gradient(
+      120% 80% at 100% 0%,
+      rgba(213, 41, 51, 0.06) 0%,
+      rgba(0, 0, 0, 0) 60%
+    ),
+    var(--ch-bg-card);
+}
+
+/* L1079-1080 .ch-epoch-bar-fill. */
+.dev-home-catena.gensol-theme .ch-epoch-bar-fill {
+  background: linear-gradient(90deg, #d52933 0%, #ffb547 100%);
+  box-shadow: 0 0 12px rgba(213, 41, 51, 0.5);
+}
+.dev-home-catena.gensol-theme .ch-epoch-pct {
+  color: #ffb547;
+}
+
+/* L1283-1284 .ch-grants-card hover border + box-shadow. */
+.dev-home-catena.gensol-theme .ch-grants-card:hover {
+  border-color: rgba(255, 181, 71, 0.3);
+  box-shadow: 0 24px 60px -32px rgba(213, 41, 51, 0.45);
+}
+
+/* L1297-1303 .ch-grants-card-halo conic. */
+.dev-home-catena.gensol-theme .ch-grants-card-halo {
+  background: conic-gradient(
+    from var(--grants-angle, 140deg),
+    rgba(213, 41, 51, 0) 0deg,
+    rgba(213, 41, 51, 0.55) 50deg,
+    rgba(255, 181, 71, 0.45) 120deg,
+    rgba(94, 225, 228, 0.3) 180deg,
+    rgba(213, 41, 51, 0) 240deg,
+    rgba(213, 41, 51, 0) 360deg
+  );
+}
+
+/* L1329-1331 .ch-grants-card::before accent rail. */
+.dev-home-catena.gensol-theme .ch-grants-card::before {
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0) 0%,
+    rgba(213, 41, 51, 0.85) 18%,
+    rgba(255, 181, 71, 0.5) 60%,
+    rgba(255, 181, 71, 0.3) 90%,
+    rgba(213, 41, 51, 0) 100%
+  );
+}
+
+/* L1359 .ch-grants-card-date color. */
+.dev-home-catena.gensol-theme .ch-grants-card-date {
+  color: #ffb547;
+}
+
+/* L1390-1408 prize/project color tints. */
+.dev-home-catena.gensol-theme .ch-grants-card-prize {
+  color: #5ee1e4;
+}
+
+/* L1477 logo drop-shadow on hover. */
+.dev-home-catena.gensol-theme .ch-grants-card:hover .ch-grants-card-logo {
+  filter: saturate(1.15) drop-shadow(0 0 6px rgba(213, 41, 51, 0.35));
+}
+
+/* L1502-1503 readmore bg gradient. */
+.dev-home-catena.gensol-theme .ch-grants-card-readmore {
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0) 0%,
+    rgba(213, 41, 51, 0.08) 100%
+  );
+}
+.dev-home-catena.gensol-theme .ch-grants-card-readmore:hover {
+  color: #ffb547;
+  background: linear-gradient(
+    180deg,
+    rgba(213, 41, 51, 0.05) 0%,
+    rgba(255, 181, 71, 0.15) 100%
+  );
+}
+
+/* L1656-1670 .ch-team-card::before radial + hover border. */
+.dev-home-catena.gensol-theme .ch-team-card::before {
+  background: radial-gradient(
+    80% 60% at 100% 0%,
+    rgba(213, 41, 51, 0.07) 0%,
+    rgba(0, 0, 0, 0) 60%
+  );
+}
+.dev-home-catena.gensol-theme .ch-team-card:hover {
+  border-color: rgba(255, 181, 71, 0.4);
+}
+
+/* L1705-1707 team portrait hover border. */
+.dev-home-catena.gensol-theme .ch-team-card:hover .ch-team-card-portrait {
+  border-color: rgba(255, 181, 71, 0.4);
+}
+.dev-home-catena.gensol-theme .ch-team-card-portrait {
+  background:
+    radial-gradient(
+      120% 80% at 100% 0%,
+      rgba(213, 41, 51, 0.1),
+      rgba(0, 0, 0, 0) 60%
+    ),
+    rgba(255, 255, 255, 0.02);
+}
+
+/* Closing-card accent rule. */
+.dev-home-catena.gensol-theme .ch-closing-card {
+  border-left-color: #d52933;
+}

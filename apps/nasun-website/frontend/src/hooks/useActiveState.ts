@@ -56,9 +56,13 @@ export const useActiveState = () => {
         return true;
       }
 
-      // 서브메뉴 중 하나라도 active인 경우
+      // 서브메뉴 중 하나라도 active인 경우 (hidden 항목은 backward-compat
+      // 용도라 부모 메뉴 활성화에 기여하지 않음. 같은 path를 다른 visible
+      // 부모 아래로 옮긴 경우 두 부모가 동시에 active로 잡히는 사고 방지)
       if (item.subMenu) {
-        return item.subMenu.some((subItem) => isActive(subItem));
+        return item.subMenu.some(
+          (subItem) => !subItem.hidden && isActive(subItem),
+        );
       }
 
       return false;

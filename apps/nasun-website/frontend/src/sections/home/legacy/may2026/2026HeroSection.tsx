@@ -1,3 +1,8 @@
+/**
+ * ARCHIVE — not in production. See apps/nasun-website/CLAUDE.md
+ * Operational Invariants #11. Only rendered by Home2026MayPage at
+ * /archive/home-may2026.
+ */
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { SectionLayout } from "@/components/layout/SectionLayout";
@@ -21,13 +26,35 @@ function Hero2026Section({
   const { isAuthenticated } = useAuth();
 
   const handleVideoCanPlay = () => {
+    if (typeof console !== "undefined")
+      console.log("[hero] canplay", Math.round(performance.now()));
     setIsVideoLoaded(true);
   };
 
   const handleVideoPlaying = () => {
+    if (typeof console !== "undefined")
+      console.log("[hero] playing", Math.round(performance.now()));
     setIsVideoPlaying(true);
     if (!isVideoLoaded) setIsVideoLoaded(true);
   };
+
+  const handleVideoLoadStart = () => {
+    if (typeof console !== "undefined")
+      console.log("[hero] loadstart", Math.round(performance.now()));
+  };
+
+  const handleVideoLoadedMetadata = () => {
+    if (typeof console !== "undefined")
+      console.log(
+        "[hero] loadedmetadata",
+        Math.round(performance.now()),
+      );
+  };
+
+  useEffect(() => {
+    if (typeof console !== "undefined")
+      console.log("[hero] mounted", Math.round(performance.now()));
+  }, []);
 
   // Timeout fallback
   useEffect(() => {
@@ -93,11 +120,12 @@ function Hero2026Section({
           muted
           playsInline
           preload="auto"
+          poster="/images/posters/Triangle-Hero-Section-BW-poster.webp"
+          onLoadStart={handleVideoLoadStart}
+          onLoadedMetadata={handleVideoLoadedMetadata}
           onCanPlay={handleVideoCanPlay}
           onPlaying={handleVideoPlaying}
-          className={`absolute inset-x-0 w-full object-cover ${
-            !isVideoPlaying ? "opacity-0" : "opacity-100"
-          } transition-opacity duration-1000 z-0`}
+          className="absolute inset-x-0 w-full object-cover z-0"
           style={{
             top: videoTopCrop ?? "0",
             height: videoTopCrop
@@ -168,11 +196,12 @@ function Hero2026Section({
             muted
             playsInline
             preload="auto"
+            poster="/images/posters/Triangle-Hero-Section-BW-poster.webp"
+            onLoadStart={handleVideoLoadStart}
+            onLoadedMetadata={handleVideoLoadedMetadata}
             onCanPlay={handleVideoCanPlay}
             onPlaying={handleVideoPlaying}
-            className={`absolute inset-0 w-full h-full object-cover object-left ${
-              !isVideoPlaying ? "opacity-0" : "opacity-100"
-            } transition-opacity duration-1000`}
+            className="absolute inset-0 w-full h-full object-cover object-left"
           >
             <source src={videoSrc} type="video/mp4" />
           </video>

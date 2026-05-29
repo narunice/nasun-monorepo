@@ -1,3 +1,8 @@
+/**
+ * ARCHIVE — not in production. See apps/nasun-website/CLAUDE.md
+ * Operational Invariants #11. Only rendered by Home2026MayPage at
+ * /archive/home-may2026.
+ */
 import { useRef } from "react";
 import { motion, useInView } from "framer-motion";
 import { CountingNumber } from "@/components/ui/CountingNumber";

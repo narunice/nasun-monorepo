@@ -143,7 +143,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
                       : t('rankHistory.noData')}
                   </p>
                   <Link
-                    to="/community/creators-leaderboard"
+                    to="/leaderboards/creators-leaderboard"
                     className="text-pado-2 hover:text-pado-4 font-normal text-sm transition-colors"
                   >
                     View Leaderboard
@@ -197,7 +197,7 @@ export const UjuRankHistoryCard: FC<UjuRankHistoryCardProps> = ({ className = ''
 
                   {/* Footer CTA */}
                   <Link
-                    to="/community/creators-leaderboard"
+                    to="/leaderboards/creators-leaderboard"
                     className="flex items-center justify-center gap-2 py-3 border-t border-uju-border/10 text-pado-2 hover:text-pado-4 font-normal transition-all text-sm group"
                   >
                     View Full Leaderboard

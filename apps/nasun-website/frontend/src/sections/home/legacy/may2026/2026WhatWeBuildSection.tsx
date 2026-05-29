@@ -1,3 +1,8 @@
+/**
+ * ARCHIVE — not in production. See apps/nasun-website/CLAUDE.md
+ * Operational Invariants #11. Only rendered by Home2026MayPage at
+ * /archive/home-may2026.
+ */
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { ecosystemAiPath } from "@/config/featureFlags";
 import { Link } from "react-router-dom";

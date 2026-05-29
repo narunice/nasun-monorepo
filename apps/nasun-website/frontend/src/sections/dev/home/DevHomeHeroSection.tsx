@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/hooks/useAuth";
 import FadeInUp from "./FadeInUp";
@@ -6,8 +5,6 @@ import FadeInUp from "./FadeInUp";
 export default function DevHomeHeroSection() {
   const navigate = useNavigate();
   const { isAuthenticated } = useAuth();
-  const [posterReady, setPosterReady] = useState(false);
-  const [videoReady, setVideoReady] = useState(false);
 
   const handleOpenApp = () => {
     if (isAuthenticated) {
@@ -21,17 +18,12 @@ export default function DevHomeHeroSection() {
     <section className="ch-hero">
       <img
         className="ch-hero-bg"
-        src="/images/posters/Triangle-BW-Light.webp"
+        src="/images/posters/Triangle-BW-Light-Fixed-poster.webp"
         alt=""
         aria-hidden="true"
         decoding="async"
         fetchPriority="high"
-        onLoad={() => setPosterReady(true)}
-        style={{
-          opacity: posterReady ? 1 : 0,
-          transition: "opacity 600ms ease-out",
-          zIndex: -2,
-        }}
+        style={{ zIndex: -2 }}
       />
       <video
         className="ch-hero-bg"
@@ -42,12 +34,7 @@ export default function DevHomeHeroSection() {
         playsInline
         preload="auto"
         aria-hidden="true"
-        onCanPlay={() => setVideoReady(true)}
-        style={{
-          opacity: videoReady ? 1 : 0,
-          transition: "opacity 800ms ease-out",
-          zIndex: -1,
-        }}
+        style={{ zIndex: -1 }}
       />
 
       <div className="ch-container flex justify-end">

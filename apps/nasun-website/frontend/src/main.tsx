@@ -1,6 +1,5 @@
 // main.tsx
 import { StrictMode, Suspense } from "react";
-import { lazyWithRetry } from "./utils/lazyWithRetry";
 import { createRoot } from "react-dom/client";
 import { StaticTranslationProvider } from "./providers/i18n/StaticTranslationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -16,6 +15,12 @@ import { installQueryClientBroadcast } from "@/lib/queryClientBroadcast";
 import { startVersionCheck } from "../../../_shared/version-check";
 import "./index.css";
 import App from "./App";
+// WalletLayer is eager-loaded into the main bundle. Previously lazy, it blocked
+// the entire <App /> mount via the surrounding Suspense — Hero couldn't render
+// until wallet/metamask-sdk/RainbowKit chunks finished downloading, costing
+// hundreds of ms on cold loads. The main bundle is larger, but those bytes
+// arrive in the same fetch as main entry rather than sequentially after it.
+import WalletLayer from "./providers/WalletLayer";
 
 // Auto-reload on new deploy. Polls /version.json (built by viteVersionPlugin)
 // and reloads at the next safe moment (tab focus, idle, route change).
@@ -28,10 +33,6 @@ if (import.meta.env.PROD) {
 // Multi-tab sync: tab A invalidating a query invalidates the same key in tab B.
 // Same-origin only; safe to call once at boot.
 installQueryClientBroadcast(queryClient);
-
-// Lazy-load wallet layer: @nasun/wallet + @nasun/wallet-ui + @mysten/dapp-kit
-// are deferred until after the app shell renders (~667KB gzip saved from initial load)
-const WalletLayer = lazyWithRetry(() => import("./providers/WalletLayer"));
 
 // 1. Chrome Extension 에러 핸들링 (브라우저 확장 프로그램 통신 오류 방지)
 function setupErrorHandlers() {

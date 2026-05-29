@@ -58,6 +58,15 @@
   --ch-fg-faint: rgba(249, 249, 249, 0.3);
   --ch-border: var(--ch-onyx-800);
   --ch-divider: rgba(249, 249, 249, 0.12);
+  /* Inline-SVG viz gradient stops (consumed by DevHomeMechanismSection vizes).
+     Themes override these to retint the Score/Bind/Underwrite gradients
+     without forking the React component. See doc/gensol-redesign-plan.md §4.3.e. */
+  --ch-viz-stop-start: #5ee1e4;
+  --ch-viz-stop-end:   #d2f6a2;
+  --ch-viz-pill-start: #5ee1e4;
+  --ch-viz-pill-end:   #d2f6a2;
+  --ch-viz-fill-strong: rgba(134, 243, 183, 0.32);
+  --ch-viz-fill-fade:   rgba(134, 243, 183, 0);
 }
 
 .dev-home-catena[data-theme="light"] {
@@ -315,6 +324,50 @@
 }
 .dev-home-catena .ch-rule-left  { border-left: 1px solid var(--ch-fg-accent); padding-left: 1.25rem; }
 .dev-home-catena .ch-rule-right { border-right: 1px solid var(--ch-fg-subdued); padding-right: 1.25rem; }
+
+/* ---------- Status pill (LIVE / ALPHA / SOON) ----------
+   Structural primitive. Per-theme color tints live in each theme override
+   (.pado-theme, .gensol-theme). data-status attribute drives the colorway. */
+.dev-home-catena .ch-status {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  font-size: 0.625rem;
+  letter-spacing: 0.22em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+
+/* ---------- Product card (modifier on ch-step-card) ----------
+   Structural shell — padding, min-height, gap, accent rail geometry.
+   Each theme contributes hover color tints (border, icon glow, rail
+   gradient stops). Used as: <article class="ch-step-card ch-product-card">. */
+.dev-home-catena .ch-product-card {
+  min-height: 188px;
+  padding: 1.35rem 1.35rem 1.3rem 1.55rem;
+  gap: 0.6rem;
+}
+.dev-home-catena .ch-product-card-rail {
+  position: absolute;
+  left: 0;
+  top: 14%;
+  bottom: 14%;
+  width: 2px;
+  border-radius: 999px;
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 2;
+  pointer-events: none;
+}
+.dev-home-catena .ch-product-card:hover .ch-product-card-rail {
+  transform: scaleY(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena .ch-product-card-rail {
+    transition: none !important;
+  }
+}
 
 /* ---------- Step card grid (2026 chrome + spotlight) ---------- */
 @property --step-angle {

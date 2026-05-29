@@ -1757,6 +1757,45 @@
   line-height: 1.55;
   color: rgba(249, 249, 249, 0.95);
 }
+.dev-home-catena .ch-team-card-refs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.55rem 0.7rem;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+.dev-home-catena .ch-team-card-refs-label {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.7rem;
+  color: var(--ch-fg-subdued);
+  flex-shrink: 0;
+  min-width: 6.5rem;
+}
+.dev-home-catena .ch-team-card-refs-list {
+  display: inline;
+  color: rgba(249, 249, 249, 0.85);
+}
+.dev-home-catena .ch-team-card-refs-link {
+  font-family: var(--ch-font-mono);
+  color: rgba(249, 249, 249, 0.9);
+  text-decoration: underline;
+  text-decoration-color: rgba(249, 249, 249, 0.25);
+  text-underline-offset: 3px;
+  transition: color 0.18s ease, text-decoration-color 0.18s ease;
+}
+.dev-home-catena .ch-team-card-refs-link:hover {
+  color: #ffffff;
+  text-decoration-color: var(--ch-fg-accent);
+}
+.dev-home-catena .ch-team-card-refs-sep {
+  color: rgba(249, 249, 249, 0.4);
+  margin: 0 0.1rem;
+}
 .dev-home-catena .ch-team-card-portrait-col {
   display: flex;
   flex-direction: column;

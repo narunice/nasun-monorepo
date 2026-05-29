@@ -35,7 +35,7 @@ function WelcomeCta() {
 function LeaderboardCta() {
   return (
     <Link
-      to="/community/nasun-ecosystem-leaderboard"
+      to="/leaderboards/nasun-ecosystem-leaderboard"
       className={CTA_CLASSES}
     >
       View Leaderboard

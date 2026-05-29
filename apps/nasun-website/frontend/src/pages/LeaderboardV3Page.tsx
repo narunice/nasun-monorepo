@@ -31,7 +31,7 @@ const LeaderboardV3Page = () => {
       {/*
       <div className="flex justify-center pb-12">
         <Link
-          to="/community/creators-leaderboard-guide"
+          to="/leaderboards/creators-leaderboard-guide"
           className="text-base text-nasun-nw1 hover:text-nasun-nw2 underline underline-offset-4 transition-colors"
         >
           Creators Leaderboard Guide

@@ -1,17 +1,19 @@
+/**
+ * ARCHIVE — not in production. See apps/nasun-website/CLAUDE.md
+ * Operational Invariants #11. Only rendered by Home2026MayPage at
+ * /archive/home-may2026.
+ */
 import React, { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import Slider from "react-slick";
 import "slick-carousel/slick/slick.css";
 import "slick-carousel/slick/slick-theme.css";
 import { ChevronLeftIcon, ChevronRightIcon } from "@radix-ui/react-icons";
-import usePosts, { WP_CATEGORIES } from "../../hooks/wordpress/usePosts";
-import { Post } from "../../types/post.d";
-import {
-  stripHtmlTags,
-  decodeHtmlEntities,
-} from "../../utils/wordpressContent";
-import NewsGoStopMobile from "../../assets/images/News-GoStop-Mobile.webp";
-import NewsLeaderboardMobile from "../../assets/images/News-Leaderboard-Mobile.webp";
+import usePosts, { WP_CATEGORIES } from "@/hooks/wordpress/usePosts";
+import { Post } from "@/types/post.d";
+import { stripHtmlTags, decodeHtmlEntities } from "@/utils/wordpressContent";
+import NewsGoStopMobile from "@/assets/images/News-GoStop-Mobile.webp";
+import NewsLeaderboardMobile from "@/assets/images/News-Leaderboard-Mobile.webp";
 
 const CONTENT_MAX_WIDTH = "max-w-[1440px]";
 

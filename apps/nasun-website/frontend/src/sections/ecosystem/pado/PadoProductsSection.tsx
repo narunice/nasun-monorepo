@@ -130,14 +130,14 @@ export default function PadoProductsSection() {
           return (
             <FadeInUp key={p.title} delayMs={100 + i * 70}>
               <article
-                className="ch-step-card pd-product-card"
+                className="ch-step-card ch-product-card"
                 data-spotlight-card=""
                 onPointerMove={tilt.onMove}
                 onPointerLeave={tilt.onLeave}
               >
                 <span className="ch-step-card-halo" aria-hidden="true" />
                 <span className="ch-step-card-glow" aria-hidden="true" />
-                <span className="pd-product-card-rail" aria-hidden="true" />
+                <span className="ch-product-card-rail" aria-hidden="true" />
 
                 <header
                   className="ch-step-card-header"
@@ -148,7 +148,7 @@ export default function PadoProductsSection() {
                   }}
                 >
                   <Icon className="pd-card-icon" aria-hidden="true" />
-                  <span className="pd-status" data-status={p.status}>
+                  <span className="ch-status" data-status={p.status}>
                     {STATUS_LABEL[p.status]}
                   </span>
                 </header>

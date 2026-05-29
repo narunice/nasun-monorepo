@@ -8,6 +8,8 @@ import overclockedPortrait from "@/assets/images/profile-overclocked.png";
 
 library.add(fab);
 
+type RefLink = { short: string; full: string; url: string };
+
 type Member = {
   name: string;
   role: string;
@@ -15,6 +17,8 @@ type Member = {
   portrait: string;
   xHandle: string;
   xUrl: string;
+  publications?: RefLink[];
+  filmography?: RefLink[];
 };
 
 const MEMBERS: Member[] = [
@@ -25,6 +29,35 @@ const MEMBERS: Member[] = [
     portrait: naruPortrait,
     xHandle: "@Naru010110",
     xUrl: "https://x.com/Naru010110",
+    publications: [
+      {
+        short: "EJPT '24",
+        full: "European Journal of Psychotraumatology (2024)",
+        url: "https://doi.org/10.1080/20008066.2024.2429268",
+      },
+      {
+        short: "PI '18",
+        full: "Psychiatry Investigation (2018)",
+        url: "https://doi.org/10.30773/pi.2017.12.03",
+      },
+      {
+        short: "BPSM '20",
+        full: "BioPsychoSocial Medicine (2020)",
+        url: "https://doi.org/10.1186/s13030-020-00181-z",
+      },
+    ],
+    filmography: [
+      {
+        short: "KOFIC",
+        full: "Korean Film Council Database",
+        url: "https://www.kobis.or.kr/kobis/business/mast/peop/searchPeoplePrintList.do?peopleCd=10051553&p_gubun=undefined",
+      },
+      {
+        short: "IMDB",
+        full: "IMDB Database",
+        url: "https://www.imdb.com/name/nm3783450/?ref_=fn_all_nme_1",
+      },
+    ],
   },
   {
     name: "Overclocked",
@@ -35,6 +68,34 @@ const MEMBERS: Member[] = [
     xUrl: "https://x.com/overclocksalmon",
   },
 ];
+
+function RefRow({ label, items }: { label: string; items: RefLink[] }) {
+  return (
+    <div className="ch-team-card-refs">
+      <span className="ch-team-card-refs-label">{label}</span>
+      <span className="ch-team-card-refs-list">
+        {items.map((item, idx) => (
+          <span key={item.url}>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ch-team-card-refs-link"
+              title={item.full}
+            >
+              {item.short}
+            </a>
+            {idx < items.length - 1 ? (
+              <span className="ch-team-card-refs-sep" aria-hidden="true">
+                {" · "}
+              </span>
+            ) : null}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
 
 export default function DevAboutTeamSection() {
   return (
@@ -84,6 +145,12 @@ export default function DevAboutTeamSection() {
                 </div>
               </div>
               <p className="ch-body ch-team-card-bio">{m.bio}</p>
+              {m.publications && m.publications.length > 0 ? (
+                <RefRow label="Publications" items={m.publications} />
+              ) : null}
+              {m.filmography && m.filmography.length > 0 ? (
+                <RefRow label="Filmography" items={m.filmography} />
+              ) : null}
             </div>
           </FadeInUp>
         ))}

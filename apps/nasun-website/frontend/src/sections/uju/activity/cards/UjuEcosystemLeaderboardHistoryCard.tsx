@@ -154,7 +154,7 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
                 <Spinner />
               ) : (
                 <Link
-                  to="/community/nasun-ecosystem-leaderboard"
+                  to="/leaderboards/nasun-ecosystem-leaderboard"
                   className="text-pado-2 text-sm font-semibold"
                 >
                   View leaderboard →
@@ -197,7 +197,7 @@ export const UjuEcosystemLeaderboardHistoryCard: FC<Props> = ({
                 )}
               </div>
               <Link
-                to="/community/nasun-ecosystem-leaderboard"
+                to="/leaderboards/nasun-ecosystem-leaderboard"
                 className="flex items-center justify-center gap-2 py-3 mt-2 border-t border-uju-border/10 text-pado-2 hover:text-pado-4 font-semibold text-sm transition-all"
               >
                 View Full Leaderboard →

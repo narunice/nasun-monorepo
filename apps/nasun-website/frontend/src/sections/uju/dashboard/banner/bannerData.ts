@@ -60,7 +60,7 @@ export const BANNER_ITEMS: BannerItem[] = [
     description:
       "Climb the weekly DeFi leaderboard by trading and providing liquidity on Pado.",
     ctaLabel: "View Leaderboard",
-    ctaUrl: "/community/pado-leaderboard",
+    ctaUrl: "/leaderboards/pado-leaderboard",
     isExternal: false,
     accent: "cyan",
     bg: "bg-sky-100",
@@ -73,7 +73,7 @@ export const BANNER_ITEMS: BannerItem[] = [
     description:
       "See where you rank across the entire Nasun ecosystem by weekly ecosystem points.",
     ctaLabel: "View Leaderboard",
-    ctaUrl: "/community/nasun-ecosystem-leaderboard",
+    ctaUrl: "/leaderboards/nasun-ecosystem-leaderboard",
     isExternal: false,
     accent: "gold",
     bg: "bg-stone-900",

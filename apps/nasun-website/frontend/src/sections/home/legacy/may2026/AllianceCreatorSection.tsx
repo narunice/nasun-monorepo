@@ -1,3 +1,8 @@
+/**
+ * ARCHIVE — not in production. See apps/nasun-website/CLAUDE.md
+ * Operational Invariants #11. Only rendered by Home2026MayPage at
+ * /archive/home-may2026.
+ */
 import { Link, useNavigate } from "react-router-dom";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 import { ButtonV4 } from "@/components/ui/button-v4";

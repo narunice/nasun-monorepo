@@ -327,7 +327,7 @@ export const UjuDefiLeaderboardHistoryCard: FC<Props> = ({
                 )}
               </div>
               <Link
-                to="/community/pado-leaderboard"
+                to="/leaderboards/pado-leaderboard"
                 className="flex items-center justify-center gap-2 py-3 mt-2 border-t border-uju-border/50 text-pado-2 hover:text-pado-4 font-semibold text-sm transition-all"
               >
                 View Full Leaderboard →

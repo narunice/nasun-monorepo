@@ -39,7 +39,12 @@ const DevGenesisNftPage = lazy(() => import("../pages/dev/DevGenesisNftPage"));
 const DevInvestorsPage = lazy(() => import("../pages/dev/InvestorsPage"));
 const DevGenesisPassPage = lazy(() => import("../pages/dev/DevGenesisPassPage"));
 const StatsPage = lazy(() => import("../pages/dev/StatsPage"));
-const DevHomePage = lazy(() => import("../pages/dev/DevHomePage"));
+// DevHomePage is eager-loaded into the main bundle. It's the actual `/`
+// landing page, so on cold loads its lazy chunk fetch blocked Hero mount
+// (and video playback) by an extra round-trip. Sibling sections (auth/
+// ecosystem/mechanism/etc.) come along for the ride.
+import DevHomePageEager from "../pages/dev/DevHomePage";
+const DevHomePage = lazy(() => Promise.resolve({ default: DevHomePageEager }));
 const DevAboutPage = lazy(() => import("../pages/dev/DevAboutPage"));
 
 // Admin route definitions
@@ -85,12 +90,30 @@ const AppRoutes = () => {
         <Route path="/home" element={<Navigate to="/" replace />} />
         <Route
           path="/archive/home-may2026"
-          element={<RouteWithMeta route={{ component: Pages.Home, meta: { title: "Archive — Home (May 2026) — NASUN", description: "Archived snapshot of the May 2026 Nasun home page." } }} />}
+          element={<RouteWithMeta route={{ component: Pages.LegacyHome2026May, meta: { title: "Archive — Home (May 2026) — NASUN", description: "Archived snapshot of the May 2026 Nasun home page." } }} />}
+        />
+
+        {/* GenSol archive routes — pre-2026-05-29 design preserved at /archive/ecosystem/gensol/*. */}
+        <Route
+          path="/archive/ecosystem/gensol/main"
+          element={<RouteWithMeta route={{ component: Pages.LegacyGenSolMain, meta: { title: "Archive — GenSol — NASUN", description: "Archived GenSol universe overview." } }} />}
+        />
+        <Route
+          path="/archive/ecosystem/gensol/shooter"
+          element={<RouteWithMeta route={{ component: Pages.LegacyGenSolShooter, meta: { title: "Archive — Spectra — NASUN", description: "Archived Spectra shooter page." } }} />}
+        />
+        <Route
+          path="/archive/ecosystem/gensol/animation"
+          element={<RouteWithMeta route={{ component: Pages.LegacyGenSolAnimation, meta: { title: "Archive — The Heist — NASUN", description: "Archived The Heist animation page." } }} />}
+        />
+        <Route
+          path="/archive/ecosystem/gensol/plan"
+          element={<RouteWithMeta route={{ component: Pages.LegacyGenSolPlan, meta: { title: "Archive — GenSol Plan — NASUN", description: "Archived GenSol transmedia plan." } }} />}
         />
 
         {/* Dynamic Routes from routesV2 (non-nested) */}
         {Object.entries(routesV2)
-          .filter(([key]) => !["home", "ecosystem", "infra", "team", "wave1Campaign", "updates", "network", "about", "community"].includes(key))
+          .filter(([key]) => !["home", "ecosystem", "infra", "team", "wave1Campaign", "updates", "network", "about", "community", "leaderboards"].includes(key))
           .map(([key, routeConfig]) => {
             const RouteElement = routeConfig.isProtected ? (
               <PrivateRoute>
@@ -144,6 +167,10 @@ const AppRoutes = () => {
           <Route path="governance/proposal/:proposalId" element={<Pages.ProposalDetail />} />
         </Route>
 
+        <Route path="/leaderboards">
+          {renderNestedRoutes("Leaderboards", routesV2.leaderboards, "nasun-ecosystem-leaderboard", pageTitleMaps.leaderboards)}
+        </Route>
+
         {/* Legacy redirects */}
         <Route path="/protocol" element={<Navigate to="/network" replace />} />
         <Route path="/ecosystem/ai-economy" element={<Navigate to={ecosystemAiPath} replace />} />
@@ -163,15 +190,20 @@ const AppRoutes = () => {
         <Route path="/updates/awards" element={<Navigate to="/about/awards" replace />} />
         <Route path="/grants" element={<Navigate to="/about/awards" replace />} />
         <Route path="/updates/grants" element={<Navigate to="/about/awards" replace />} />
-        <Route path="/wave1/leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
-        <Route path="/wave1/leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
+        <Route path="/wave1/leaderboard" element={<Navigate to="/leaderboards/creators-leaderboard" replace />} />
+        <Route path="/wave1/leaderboard-guide" element={<Navigate to="/leaderboards/creators-leaderboard-guide" replace />} />
         <Route path="/wave1/alliance-nft" element={<Navigate to="/community/alliance-nft" replace />} />
-        <Route path="/wave1/creators-leaderboard" element={<Navigate to="/community/creators-leaderboard" replace />} />
-        <Route path="/wave1/creators-leaderboard-guide" element={<Navigate to="/community/creators-leaderboard-guide" replace />} />
+        <Route path="/wave1/creators-leaderboard" element={<Navigate to="/leaderboards/creators-leaderboard" replace />} />
+        <Route path="/wave1/creators-leaderboard-guide" element={<Navigate to="/leaderboards/creators-leaderboard-guide" replace />} />
         <Route path="/network/governance" element={<Navigate to="/community/governance" replace />} />
-        <Route path="/dev/pado-score-leaderboard" element={<Navigate to="/community/pado-leaderboard" replace />} />
-        <Route path="/community/pado-score-leaderboard" element={<Navigate to="/community/pado-leaderboard" replace />} />
-        <Route path="/ecosystem/leaderboard" element={<Navigate to="/community/nasun-ecosystem-leaderboard" replace />} />
+        <Route path="/dev/pado-score-leaderboard" element={<Navigate to="/leaderboards/pado-leaderboard" replace />} />
+        {/* Legacy /community/*-leaderboard* URLs → /leaderboards/* */}
+        <Route path="/community/pado-leaderboard" element={<Navigate to="/leaderboards/pado-leaderboard" replace />} />
+        <Route path="/community/pado-score-leaderboard" element={<Navigate to="/leaderboards/pado-leaderboard" replace />} />
+        <Route path="/community/nasun-ecosystem-leaderboard" element={<Navigate to="/leaderboards/nasun-ecosystem-leaderboard" replace />} />
+        <Route path="/community/creators-leaderboard" element={<Navigate to="/leaderboards/creators-leaderboard" replace />} />
+        <Route path="/community/creators-leaderboard-guide" element={<Navigate to="/leaderboards/creators-leaderboard-guide" replace />} />
+        <Route path="/ecosystem/leaderboard" element={<Navigate to="/leaderboards/nasun-ecosystem-leaderboard" replace />} />
 
         {/* Headless WordPress Post Detail Page */}
         <Route path="/awards-grants/:slug" element={<Pages.PostDetailPage />} />

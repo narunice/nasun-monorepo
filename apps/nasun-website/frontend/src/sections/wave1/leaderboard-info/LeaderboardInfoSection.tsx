@@ -168,7 +168,7 @@ const LeaderboardInfoSection: React.FC = () => {
       // Logged in but no X connected — start OAuth linking directly
       localStorage.setItem(
         "auth_return_to",
-        "/community/creators-leaderboard-guide?x_linked=1",
+        "/leaderboards/creators-leaderboard-guide?x_linked=1",
       );
       handleLinkTwitter();
     } else {
@@ -421,7 +421,7 @@ const LeaderboardInfoSection: React.FC = () => {
         {/* --- CTA Buttons --- */}
         <div className="flex justify-center">
           <ButtonV3 asChild variant="nw2" size="md">
-            <Link to="/community/creators-leaderboard">
+            <Link to="/leaderboards/creators-leaderboard">
               View Creators Leaderboard
             </Link>
           </ButtonV3>
@@ -452,7 +452,7 @@ const LeaderboardInfoSection: React.FC = () => {
           </DialogHeader>
           <div className="flex flex-col sm:flex-row justify-center gap-3 pt-2">
             <ButtonV3 asChild variant="nw2" size="sm">
-              <Link to="/community/creators-leaderboard">View Leaderboard</Link>
+              <Link to="/leaderboards/creators-leaderboard">View Leaderboard</Link>
             </ButtonV3>
             <ButtonV3 asChild variant="nw2" size="sm" outline>
               <Link to="/my-account">Go to My Account</Link>

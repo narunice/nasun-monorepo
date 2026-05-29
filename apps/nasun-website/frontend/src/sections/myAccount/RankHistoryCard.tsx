@@ -161,7 +161,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
                 </p>
               )}
               <Link
-                to="/community/creators-leaderboard"
+                to="/leaderboards/creators-leaderboard"
                 className="text-nasun-c4 hover:text-nasun-white transition-colors text-sm"
               >
                 {t('rankHistory.viewLeaderboard')}
@@ -247,7 +247,7 @@ export const RankHistoryCard: FC<RankHistoryCardProps> = ({ className = '' }) =>
 
           {/* View Full Leaderboard Link */}
           <Link
-            to="/community/creators-leaderboard"
+            to="/leaderboards/creators-leaderboard"
             className="flex items-center justify-center gap-2 pt-3 border-t border-nasun-c5/30 text-nasun-c4 hover:text-nasun-white transition-colors"
           >
             {t('rankHistory.viewLeaderboard')}

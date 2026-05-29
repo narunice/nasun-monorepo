@@ -3,24 +3,50 @@ import { EnhancedRouteConfigBuilder } from "../types/routes.d";
 import { TFunction } from "i18next";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
 import { NASUN_AI_ENABLED } from "./featureFlags";
+import LegacyHome2026MayPageEager from "../pages/legacy/Home2026MayPage";
 
 // 페이지 컴포넌트 lazy loading
 export const Pages = {
-  Home: lazyWithRetry(() => import("../pages/HomePage")),
+  // ARCHIVE: the May 2026 home page, only mounted at /archive/home-may2026.
+  // The active `/` route uses pages/dev/DevHomePage.tsx (wired directly in
+  // AppRoutes.tsx). See CLAUDE.md Operational Invariants #11.
+  LegacyHome2026May: lazyWithRetry(() =>
+    Promise.resolve({ default: LegacyHome2026MayPageEager }),
+  ),
   LegacyHome2026April: lazyWithRetry(
     () => import("../pages/legacy/Home2026AprilPage"),
   ),
   VisionStrategy: lazyWithRetry(() => import("../pages/about/StrategyPage")),
   VisionNetwork: lazyWithRetry(() => import("../pages/protocol/NetworkPage")),
   IPs: lazyWithRetry(() => import("../pages/IPsPage")),
-  IPsGenSol: lazyWithRetry(() => import("../pages/ips/gensol/GenSolMainPage")),
+  // Active GenSol routes. New catena-themed pages land at pages/ecosystem/gensol/.
+  // Routes that haven't been rebuilt yet temporarily point at the archived
+  // implementations so the site stays up mid-rollout. See
+  // doc/gensol-redesign-plan.md §8 step order.
+  IPsGenSol: lazyWithRetry(() => import("../pages/ecosystem/gensol/GenSolMainPage")),
   IPsGenSolOverview: lazyWithRetry(
-    () => import("../pages/ips/gensol/OverviewPage"),
+    () => import("../pages/ecosystem/gensol/GenSolPlanPage"),
   ),
   IPsGenSolShooter: lazyWithRetry(
-    () => import("../pages/ips/gensol/ShooterPage"),
+    () => import("../pages/ecosystem/gensol/GenSolShooterPage"),
   ),
-  IPsGenSolHeist: lazyWithRetry(() => import("../pages/ips/gensol/HeistPage")),
+  IPsGenSolHeist: lazyWithRetry(
+    () => import("../pages/ecosystem/gensol/GenSolAnimationPage"),
+  ),
+  // Archive routes — mounted at /archive/ecosystem/gensol/* in AppRoutes.tsx.
+  // Permanent snapshots of the pre-2026-05-29 design.
+  LegacyGenSolMain: lazyWithRetry(
+    () => import("../pages/legacy/gensol/GenSolMainPage"),
+  ),
+  LegacyGenSolShooter: lazyWithRetry(
+    () => import("../pages/legacy/gensol/ShooterPage"),
+  ),
+  LegacyGenSolAnimation: lazyWithRetry(
+    () => import("../pages/legacy/gensol/HeistPage"),
+  ),
+  LegacyGenSolPlan: lazyWithRetry(
+    () => import("../pages/legacy/gensol/OverviewPage"),
+  ),
   FinancePado: lazyWithRetry(() => import("../pages/finance/PadoPage")),
   IPsWePop: lazyWithRetry(() => import("../pages/ips/WePopPage")),
   IPsRiderStudioMain: lazyWithRetry(
@@ -101,10 +127,13 @@ export const Pages = {
 
 // 라우트 구성 정의
 export const routesV2: EnhancedRouteConfigBuilder = {
-  // 홈 페이지
+  // 홈 페이지 — `component` field is only kept for type compatibility. The
+  // active `/` route mounts pages/dev/DevHomePage.tsx directly via
+  // AppRoutes.tsx; this entry exists so AppRoutes can read `meta` for the
+  // active route. Archive snapshot is at /archive/home-may2026.
   home: {
     path: "/",
-    component: Pages.Home,
+    component: Pages.LegacyHome2026May,
     navItem: {
       name: "navigation.home",
       path: "/",
@@ -367,32 +396,9 @@ export const routesV2: EnhancedRouteConfigBuilder = {
           path: "/community/governance",
           element: Pages.Web3,
         },
-        // Leaderboard sub-routes kept for URL backwards-compatibility,
-        // but exposed through the dedicated "Leaderboards" nav entry below.
-        {
-          name: "navigation.ecosystemLeaderboard",
-          path: "/community/nasun-ecosystem-leaderboard",
-          element: Pages.EcosystemLeaderboard,
-          hidden: true,
-        },
-        {
-          name: "navigation.padoScoreLeaderboard",
-          path: "/community/pado-leaderboard",
-          element: Pages.PadoScoreLeaderboard,
-          hidden: true,
-        },
-        {
-          name: "navigation.creatorsLeaderboard",
-          path: "/community/creators-leaderboard",
-          element: Pages.LeaderboardV3,
-          hidden: true,
-        },
-        {
-          name: "navigation.creatorsLeaderboardGuide",
-          path: "/community/creators-leaderboard-guide",
-          element: Pages.LeaderboardInfo,
-          hidden: true,
-        },
+        // Leaderboard sub-routes moved to /leaderboards/* (see leaderboards
+        // section below). Old /community/*-leaderboard* URLs are kept as
+        // redirects in AppRoutes for backwards-compatibility.
       ],
     },
     meta: {
@@ -412,22 +418,22 @@ export const routesV2: EnhancedRouteConfigBuilder = {
       subMenu: [
         {
           name: "navigation.ecosystemLeaderboard",
-          path: "/community/nasun-ecosystem-leaderboard",
+          path: "/leaderboards/nasun-ecosystem-leaderboard",
           element: Pages.EcosystemLeaderboard,
         },
         {
           name: "navigation.padoScoreLeaderboard",
-          path: "/community/pado-leaderboard",
+          path: "/leaderboards/pado-leaderboard",
           element: Pages.PadoScoreLeaderboard,
         },
         {
           name: "navigation.creatorsLeaderboard",
-          path: "/community/creators-leaderboard",
+          path: "/leaderboards/creators-leaderboard",
           element: Pages.LeaderboardV3,
         },
         {
           name: "navigation.creatorsLeaderboardGuide",
-          path: "/community/creators-leaderboard-guide",
+          path: "/leaderboards/creators-leaderboard-guide",
           element: Pages.LeaderboardInfo,
           hidden: true,
         },
@@ -790,6 +796,8 @@ export const pageTitleMaps: Record<string, Record<string, string>> = {
   community: {
     "navigation.alliance": "Alliance",
     "navigation.governance": "Governance",
+  },
+  leaderboards: {
     "navigation.padoScoreLeaderboard": "Pado DeFi Leaderboard",
     "navigation.creatorsLeaderboard": "Creators Leaderboard",
     "navigation.ecosystemLeaderboard": "Nasun Ecosystem Leaderboard",

@@ -15,14 +15,15 @@
     <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
-    <!-- Home hero poster preload (~25KB). Eliminates black hero on cold loads. -->
-    <link rel="preload" as="image" href="/images/posters/Full-Trailer184s-rf28.webp" fetchpriority="high" />
+    <!-- Real home hero poster (lossless RGB WebP, first frame of
+         Triangle-B&W-Light-Fixed-web.mp4). The route `/` mounts
+         DevHomePage > DevHomeHeroSection, not the legacy 2026 hero. -->
+    <link rel="preload" as="image" href="/images/posters/Triangle-BW-Light-Fixed-poster.webp" fetchpriority="high" />
 
-    <!-- Hero video preload — start download during HTML parse instead of waiting
-         for React to mount the <video> element. Cuts poster-frozen time noticeably.
-         Media query splits desktop (4.4MB) vs mobile (1.6MB) variant. -->
-    <link rel="preload" as="video" type="video/mp4" href="/videos/Full-Trailer184s-rf24.mp4" media="(min-width: 768px)" fetchpriority="high" />
-    <link rel="preload" as="video" type="video/mp4" href="/videos/Full-Trailer184s-mobile-rf28.mp4" media="(max-width: 767px)" fetchpriority="high" />
+    <!-- Hero video warmup happens via a hidden <video> in <body>, gated by
+         pathname. Chromium does not implement `<link rel="preload" as="video">`
+         and `as="fetch"` mismatches the no-cors Range requests a <video>
+         element makes. A hidden <video> guarantees cache-key compatibility. -->
 
     <!-- Preload critical fonts to avoid FOUT -->
     <link rel="preload" as="font" href="/fonts/rubik/Rubik-Regular.woff2" type="font/woff2" crossorigin />
@@ -64,6 +65,24 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Kick off hero video fetch during HTML parse on the homepage only.
+      // Same URL and no-cors mode as React's <video>, so HTTP cache is shared
+      // and the React-mounted <video> hits cache instantly on canPlay.
+      (function () {
+        var p = location.pathname;
+        if (p !== "/" && p !== "") return;
+        var v = document.createElement("video");
+        v.preload = "auto";
+        v.muted = true;
+        v.playsInline = true;
+        v.setAttribute("aria-hidden", "true");
+        v.style.cssText =
+          "position:absolute;width:1px;height:1px;opacity:0;pointer-events:none;left:-9999px;top:-9999px";
+        v.src = "/videos/Triangle-B&W-Light-Fixed-web.mp4";
+        document.body.appendChild(v);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -3,11 +3,11 @@ import { Suspense, lazy } from "react";
 import { PageLayout } from "@/components/layout/PageLayout";
 // import { Button } from "@/components/ui/button";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
-// import OverviewSkeleton from "@/sections/ips/gensol/overview/OverviewSkeleton";
+// import OverviewSkeleton from "@/sections/ips/gensol/legacy/overview/OverviewSkeleton";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
-const GenSolPlanSection = lazy(() => import("@/sections/ips/gensol/overview/GenSolPlanSection"));
-// Legacy: const OverviewHeroSection = lazy(() => import("@/sections/ips/gensol/overview/OverviewHeroSection"));
+const GenSolPlanSection = lazy(() => import("@/sections/ips/gensol/legacy/overview/GenSolPlanSection"));
+// Legacy: const OverviewHeroSection = lazy(() => import("@/sections/ips/gensol/legacy/overview/OverviewHeroSection"));
 
 export default function OverviewPage() {
   // const { t } = useTranslation("genSol");

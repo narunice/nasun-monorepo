@@ -173,7 +173,7 @@ export const CompactNftStatus: FC<CompactNftStatusProps> = ({ className = "", sh
               <p className="text-nasun-white/70 text-base">
                 You're in! Share content about Nasun and get recognized.
               </p>
-              <Button onClick={() => navigate("/community/creators-leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
+              <Button onClick={() => navigate("/leaderboards/creators-leaderboard-guide")} variant="filledOutlineC7" size="sm" className="self-end mt-1">
                 Learn More
               </Button>
             </div>

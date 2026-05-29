@@ -3,14 +3,14 @@ import { PageLayout } from "@/components/layout/PageLayout";
 import ErrorBoundary from "@/components/layout/ErrorBoundary";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
-const SpectraSection = lazy(() => import("@/sections/ips/gensol/shooter/SpectraSection"));
+const TheHeistSection = lazy(() => import("@/sections/ips/gensol/legacy/animation/TheHeistSection"));
 
-export default function ShooterPage() {
+export default function HeistPage() {
   return (
     <ErrorBoundary>
-      <PageLayout>
+      <PageLayout className="!pt-0">
         <Suspense fallback={<SectionLoading fullScreen />}>
-          <SpectraSection />
+          <TheHeistSection />
         </Suspense>
       </PageLayout>
     </ErrorBoundary>

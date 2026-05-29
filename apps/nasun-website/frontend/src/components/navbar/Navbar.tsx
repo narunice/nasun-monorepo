@@ -41,9 +41,10 @@ export default function Navbar() {
         // 서브메뉴 중에 현재 경로와 일치하는 항목이 있는지 확인
         const hasActiveSubItem = item.subMenu.some(
           (subItem) =>
-            location.pathname === subItem.path ||
-            (subItem.path !== "/" &&
-              location.pathname.startsWith(subItem.path)),
+            !subItem.hidden &&
+            (location.pathname === subItem.path ||
+              (subItem.path !== "/" &&
+                location.pathname.startsWith(subItem.path))),
         );
 
         if (hasActiveSubItem) {
