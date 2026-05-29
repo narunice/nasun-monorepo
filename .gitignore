@@ -68,11 +68,15 @@ stats/
 .claude/skills/*/cache/
 .claude/skills/*/drafts/
 
-# CDK synth output
+# CDK synth output (contains rendered Lambda env vars / secrets)
 **/cdk.out/
 
 # Local backup directory (note: _backup/ is already covered above)
 backup/
+
+# Timestamped app/repo snapshots (CDK synth output once baked secrets into one of these)
+apps_backup_*/
+*_backup_[0-9]*/
 
 # Data export folders (place ad-hoc CSV/JSON exports here)
 exports/

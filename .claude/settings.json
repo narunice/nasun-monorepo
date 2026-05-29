@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command -v convert)",
+      "Bash(convert apps/nasun-website/frontend/src/assets/images/pado-spot-ss-may27.png -crop 10x10+5+5 +repage -format \"%[pixel:p{0,0}]\" info:)",
+      "Bash(command -v identify)"
+    ]
+  }
+}
