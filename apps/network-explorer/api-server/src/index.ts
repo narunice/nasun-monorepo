@@ -59,6 +59,14 @@ app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
 app.route('/api/v1/standing', standingRoutes);
 app.route('/api/v1/agents', agentsRoutes);
 
+// Internal routes carry sensitive data (e.g. the banned-users feed) and
+// trigger side effects. They sit behind a CloudFront-fronted public domain, so
+// force `no-store` to keep any edge/proxy from caching the response.
+app.use('/api/v1/internal/*', async (c, next) => {
+  await next();
+  c.header('Cache-Control', 'no-store');
+});
+
 // Internal-only routes (auth via shared secret). Used by nasun-website Lambda
 // PATCH /user-profile to invalidate the leaderboard's profile cache when a
 // display name or avatar changes. Mounted under /api/v1 so the nginx proxy
