@@ -12,10 +12,13 @@ overrides:
   valibot: '>=1.2.0'
   esbuild: '>=0.25.0'
   fast-xml-parser: ^5.3.5
-  h3: ^1.15.5
+  h3: ^1.15.6
   qs: ^6.14.2
   lodash: '>=4.17.23'
-  axios: '>=1.13.5'
+  axios: '>=1.15.2'
+  js-cookie: '>=3.0.7'
+  hono: '>=4.12.4'
+  '@hono/node-server': '>=1.19.10 <2'
   '@mysten/ledgerjs-hw-app-sui': 0.7.0
   readable-stream: ^3.6.2 || ^4.0.0
 
@@ -205,8 +208,8 @@ importers:
   apps/gostop/backend:
     dependencies:
       '@hono/node-server':
-        specifier: ^1.13.8
-        version: 1.19.9(hono@4.12.3)
+        specifier: '>=1.19.10 <2'
+        version: 1.19.14(hono@4.12.23)
       '@mysten/bcs':
         specifier: ^1.9.2
         version: 1.9.2
@@ -217,8 +220,8 @@ importers:
         specifier: ^1.8.0
         version: 1.8.0
       hono:
-        specifier: ^4.7.5
-        version: 4.12.3
+        specifier: '>=4.12.4'
+        version: 4.12.23
       jose:
         specifier: ^5.2.0
         version: 5.10.0
@@ -321,8 +324,8 @@ importers:
         specifier: ^3.658.0
         version: 3.1047.0
       '@hono/node-server':
-        specifier: ^1.13.8
-        version: 1.19.9(hono@4.12.3)
+        specifier: '>=1.19.10 <2'
+        version: 1.19.14(hono@4.12.23)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
@@ -336,8 +339,8 @@ importers:
         specifier: ^16.4.7
         version: 16.6.1
       hono:
-        specifier: ^4.7.5
-        version: 4.12.3
+        specifier: '>=4.12.4'
+        version: 4.12.23
       tsx:
         specifier: ^4.19.2
         version: 4.21.0
@@ -495,8 +498,8 @@ importers:
         specifier: ^6.14.4
         version: 6.16.2
       axios:
-        specifier: '>=1.13.5'
-        version: 1.13.6
+        specifier: '>=1.15.2'
+        version: 1.16.1
       boring-avatars:
         specifier: ^2.0.4
         version: 2.0.4(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -812,14 +815,14 @@ importers:
         specifier: ^3.400.0
         version: 3.1029.0(@aws-sdk/client-dynamodb@3.1029.0)
       '@hono/node-server':
-        specifier: ^1.13.8
-        version: 1.19.9(hono@4.12.3)
+        specifier: '>=1.19.10 <2'
+        version: 1.19.14(hono@4.12.23)
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
       hono:
-        specifier: ^4.7.5
-        version: 4.12.3
+        specifier: '>=4.12.4'
+        version: 4.12.23
       jose:
         specifier: ^5.2.0
         version: 5.10.0
@@ -2491,11 +2494,11 @@ packages:
     peerDependencies:
       tailwindcss: ^3.0 || ^4.0
 
-  '@hono/node-server@1.19.9':
-    resolution: {integrity: sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==}
+  '@hono/node-server@1.19.14':
+    resolution: {integrity: sha512-GwtvgtXxnWsucXvbQXkRgqksiH2Qed37H9xHZocE5sA3N8O8O8/8FA3uclQXxXVzc9XBZuEOMK7+r02FmSpHtw==}
     engines: {node: '>=18.14.1'}
     peerDependencies:
-      hono: ^4
+      hono: '>=4.12.4'
 
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
@@ -5384,6 +5387,10 @@ packages:
   aes-js@4.0.0-beta.5:
     resolution: {integrity: sha512-G965FqalsNyrPqgEGON7nIx1e/OVENSgiEIzyC63haUMuvNnwIgIjMs52hlTCKhkBny7A2ORNlfY9Zu+jmGk1Q==}
 
+  agent-base@6.0.2:
+    resolution: {integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==}
+    engines: {node: '>= 6.0.0'}
+
   agent-base@7.1.4:
     resolution: {integrity: sha512-MnA+YT8fwfJPgBx3m60MNqakm30XOkyIoH1y6huTQvC0PwZG7ki8NacLBcrPbNoo8vEZy7Jpuk7+jMO+CUovTQ==}
     engines: {node: '>= 14'}
@@ -5524,10 +5531,10 @@ packages:
   axios-retry@4.5.0:
     resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
     peerDependencies:
-      axios: '>=1.13.5'
+      axios: '>=1.15.2'
 
-  axios@1.13.6:
-    resolution: {integrity: sha512-ChTCHMouEe2kn713WHbQGcuYrr6fXTBiu460OTwWrWob16g1bXn4vtz07Ope7ewMozJAnEquLk5lWQWtBig9DQ==}
+  axios@1.16.1:
+    resolution: {integrity: sha512-caYkukvroVPO8KrzuJEb50Hm07KwfBZPEC3VeFHTsqWHvKTsy54hjJz9BS/cdaypROE2rH6xvm9mHX4fgWkr3A==}
 
   b4a@1.8.0:
     resolution: {integrity: sha512-qRuSmNSkGQaHwNbM7J78Wwy+ghLEYF1zNrSeMxj4Kgw6y33O3mXcQ6Ie9fRvfU/YnxWkOchPXbaLb73TkIsfdg==}
@@ -5987,8 +5994,8 @@ packages:
   convert-source-map@2.0.0:
     resolution: {integrity: sha512-Kvp459HrV2FEJ1CAsi1Ku+MY3kasH19TFykTz2xWmMeq6bk2NU3XXvfJ+Q61m0xktWwt+1HSYf3JZsTms3aRJg==}
 
-  cookie-es@1.2.2:
-    resolution: {integrity: sha512-+W7VmiVINB+ywl1HGXJXmrqkOhpKrIiVZV6tQuV54ZyQC7MMuBt81Vc336GMLoHBq5hV/F9eXgt5Mnx0Rha5Fg==}
+  cookie-es@1.2.3:
+    resolution: {integrity: sha512-lXVyvUvrNXblMqzIRrxHb57UUVmqsSWlxqt3XIjCkUP0wDAf6uicO6KMbEgYrMNtEvWgWHwe42CKxPu9MYAnWw==}
 
   cookie@1.1.1:
     resolution: {integrity: sha512-ei8Aos7ja0weRpFzJnEA9UHJ/7XQmqglbRwnf2ATjcB9Wq874VKH9kfjjirM6UhU2/E5fFYadylyhFldcqSidQ==}
@@ -6372,8 +6379,8 @@ packages:
     resolution: {integrity: sha512-8QmQKqEASLd5nx0U1B1okLElbUuuttJ/AnYmRXbbbGDWh6uS208EjD4Xqq/I9wK7u0v6O08XhTWnt5XtEbR6Dg==}
     engines: {node: '>= 0.4'}
 
-  defu@6.1.4:
-    resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
+  defu@6.1.7:
+    resolution: {integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==}
 
   degenerator@5.0.1:
     resolution: {integrity: sha512-TllpMR/t0M5sqCXfj85i4XaAzxmS5tVA16dqvdkMwGmzI+dXLXnw3J+3Vdv7VKw+ThlTMboK6i9rnZ6Nntj5CQ==}
@@ -6871,8 +6878,8 @@ packages:
   flatted@3.4.1:
     resolution: {integrity: sha512-IxfVbRFVlV8V/yRaGzk0UVIcsKKHMSfYw66T/u4nTwlWteQePsxe//LjudR1AMX4tZW3WFCh3Zqa/sjlqpbURQ==}
 
-  follow-redirects@1.15.11:
-    resolution: {integrity: sha512-deG2P0JfjrTxl50XGCDyfI97ZGVCxIpfKYmfyrQ54n5FO/0gfIES8C/Psl6kWVDolizcaaxZJnTS0QSMxvnsBQ==}
+  follow-redirects@1.16.0:
+    resolution: {integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==}
     engines: {node: '>=4.0'}
     peerDependencies:
       debug: '*'
@@ -7052,8 +7059,8 @@ packages:
     resolution: {integrity: sha512-DKKrynuQRne0PNpEbzuEdHlYOMksHSUI8Zc9Unei5gTsMNA2/vMpoMz/yKba50pejK56qj98qM0SjYxAKi13gQ==}
     engines: {node: ^12.22.0 || ^14.16.0 || ^16.0.0 || >=17.0.0}
 
-  h3@1.15.5:
-    resolution: {integrity: sha512-xEyq3rSl+dhGX2Lm0+eFQIAzlDN6Fs0EcC4f7BNUmzaRX/PTzeuM+Tr2lHB8FoXggsQIeXLj8EDVgs5ywxyxmg==}
+  h3@1.15.11:
+    resolution: {integrity: sha512-L3THSe2MPeBwgIZVSH5zLdBBU90TOxarvhK9d04IDY2AmVS8j2Jz2LIWtwsGOU3lu2I5jCN7FNvVfY2+XyF+mg==}
 
   hachure-fill@0.5.2:
     resolution: {integrity: sha512-3GKBOn+m2LX9iq+JC1064cSFprJY4jL1jCXTcpnfER5HYE2l/4EfWSGzkPa/ZDBmYI0ZOEj5VHV/eKnPGkHuOg==}
@@ -7129,8 +7136,8 @@ packages:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
 
-  hono@4.12.3:
-    resolution: {integrity: sha512-SFsVSjp8sj5UumXOOFlkZOG6XS9SJDKw0TbwFeV+AJ8xlST8kxK5Z/5EYa111UY8732lK2S/xB653ceuaoGwpg==}
+  hono@4.12.23:
+    resolution: {integrity: sha512-eIaZ9qDgu7XV0pxOCrg7/WhnQ6Ivm22UcxhXx/A3dcbqbbYgBEkc6e/J/s7j2tS96zoB0S9VBdLwQNCWwUo4LA==}
     engines: {node: '>=16.9.0'}
 
   html-encoding-sniffer@4.0.0:
@@ -7168,6 +7175,10 @@ packages:
 
   https-browserify@1.0.0:
     resolution: {integrity: sha512-J+FkSdyD+0mA0N+81tMotaRMfSL9SGi+xpD3T6YApKsc3bGSXJlfXri3VyFOeYkfLRQisDk1W+jIFFKBeUBbBg==}
+
+  https-proxy-agent@5.0.1:
+    resolution: {integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==}
+    engines: {node: '>= 6'}
 
   https-proxy-agent@7.0.6:
     resolution: {integrity: sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw==}
@@ -7528,9 +7539,8 @@ packages:
   jquery@3.7.1:
     resolution: {integrity: sha512-m4avr8yL8kmFN8psrbFFFmB/If14iN5o9nw/NgnnM+kybDJpRsAynV2BsfpTYrTRysYUdADVD7CkUUizgkpLfg==}
 
-  js-cookie@3.0.5:
-    resolution: {integrity: sha512-cEiJEAEoIbWfCZYKWhVwFuvPX1gETRYPw6LlaTKoxD3s2AkXzkCjnp6h0V77ozyqj0jakteJ4YqDJT830+lVGw==}
-    engines: {node: '>=14'}
+  js-cookie@3.0.8:
+    resolution: {integrity: sha512-yeJd4aNAdYZQjaon2bpD/Gb0B/omw7HQOsynXXcOiWVCacbBcPlgn8S/d1X6blFSaHao7ozqtW7NZW19xpCtIw==}
 
   js-sha3@0.8.0:
     resolution: {integrity: sha512-gF1cRrHhIzNfToc802P800N8PpXS+evLLXfsVpowqmAFR9uwbi89WvXg2QspOmXL8QL86J4T1EpFu+yUkwJY3Q==}
@@ -8581,6 +8591,10 @@ packages:
 
   proxy-from-env@1.1.0:
     resolution: {integrity: sha512-D+zkORCbA9f1tdWRK0RaCR3GPv50cMxcrz4X8k5LTSUD1Dkw47mKJEZQNunItRTkWwgtaUSo1RVFRIG9ZXiFYg==}
+
+  proxy-from-env@2.1.0:
+    resolution: {integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==}
+    engines: {node: '>=10'}
 
   public-encrypt@4.0.3:
     resolution: {integrity: sha512-zVpa8oKZSz5bTMTFClc1fQOnyyEzpl5ozpi1B5YcvBrdohMjH2rfsBtyXcuNuwjsDIXmBYlF2N5FlJYhR29t8Q==}
@@ -10592,7 +10606,7 @@ snapshots:
       '@aws-sdk/types': 3.973.1
       '@smithy/util-hex-encoding': 2.0.0
       '@types/uuid': 9.0.8
-      js-cookie: 3.0.5
+      js-cookie: 3.0.8
       rxjs: 7.8.2
       tslib: 2.8.1
       uuid: 11.1.0
@@ -12023,6 +12037,7 @@ snapshots:
       - fastestsmallesttextencoderdecoder
       - immer
       - react
+      - supports-color
       - typescript
       - use-sync-external-store
       - utf-8-validate
@@ -12063,8 +12078,8 @@ snapshots:
       '@solana/kit': 5.5.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
       '@solana/web3.js': 1.98.4(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
       abitype: 1.0.6(typescript@5.9.3)(zod@3.25.76)
-      axios: 1.13.6
-      axios-retry: 4.5.0(axios@1.13.6)
+      axios: 1.16.1
+      axios-retry: 4.5.0(axios@1.16.1)
       jose: 6.1.3
       md5: 2.3.0
       uncrypto: 0.1.3
@@ -12075,6 +12090,7 @@ snapshots:
       - debug
       - encoding
       - fastestsmallesttextencoderdecoder
+      - supports-color
       - typescript
       - utf-8-validate
 
@@ -12501,9 +12517,9 @@ snapshots:
     dependencies:
       tailwindcss: 3.4.19(tsx@4.21.0)
 
-  '@hono/node-server@1.19.9(hono@4.12.3)':
+  '@hono/node-server@1.19.14(hono@4.12.23)':
     dependencies:
-      hono: 4.12.3
+      hono: 4.12.23
 
   '@humanfs/core@0.19.1': {}
 
@@ -12680,13 +12696,14 @@ snapshots:
       '@ledgerhq/errors': 6.29.0
       '@ledgerhq/logs': 6.14.0
       '@ledgerhq/types-live': 6.98.0(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.3)(redux@5.0.1))(react@19.2.3)
-      axios: 1.13.6
+      axios: 1.16.1
       eip55: 2.1.1
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
     transitivePeerDependencies:
       - debug
       - react-redux
+      - supports-color
 
   '@ledgerhq/errors@6.29.0': {}
 
@@ -12695,10 +12712,11 @@ snapshots:
       '@ethersproject/constants': 5.8.0
       '@ethersproject/hash': 5.8.0
       '@ledgerhq/live-env': 2.28.0
-      axios: 1.13.6
+      axios: 1.16.1
       crypto-js: 4.2.0
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@ledgerhq/hw-app-eth@7.4.1(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.3)(redux@5.0.1))(react@19.2.3)':
     dependencies:
@@ -12712,13 +12730,14 @@ snapshots:
       '@ledgerhq/hw-transport-mocker': 6.31.0
       '@ledgerhq/logs': 6.14.0
       '@ledgerhq/types-live': 6.98.0(react-redux@9.2.0(@types/react@19.2.14)(react@19.2.3)(redux@5.0.1))(react@19.2.3)
-      axios: 1.13.6
+      axios: 1.16.1
       bignumber.js: 9.3.1
       semver: 7.7.3
     transitivePeerDependencies:
       - debug
       - react
       - react-redux
+      - supports-color
 
   '@ledgerhq/hw-bolos@6.33.0':
     dependencies:
@@ -12750,6 +12769,7 @@ snapshots:
       '@ledgerhq/live-network': 2.2.3
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@ledgerhq/ledger-trust-service@0.3.14':
     dependencies:
@@ -12757,6 +12777,7 @@ snapshots:
       '@ledgerhq/live-network': 2.0.19
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@ledgerhq/live-env@2.18.0':
     dependencies:
@@ -12774,10 +12795,11 @@ snapshots:
       '@ledgerhq/live-env': 2.28.0
       '@ledgerhq/live-promise': 0.1.1
       '@ledgerhq/logs': 6.14.0
-      axios: 1.13.6
+      axios: 1.16.1
       lru-cache: 7.18.3
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@ledgerhq/live-network@2.2.3':
     dependencies:
@@ -12785,10 +12807,11 @@ snapshots:
       '@ledgerhq/live-env': 2.28.0
       '@ledgerhq/live-promise': 0.2.0
       '@ledgerhq/logs': 6.14.0
-      axios: 1.13.6
+      axios: 1.16.1
       lru-cache: 7.18.3
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@ledgerhq/live-promise@0.1.1':
     dependencies:
@@ -13105,6 +13128,7 @@ snapshots:
       semver: 7.7.4
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   '@mysten/slush-wallet@0.2.12(typescript@5.9.3)':
     dependencies:
@@ -17023,6 +17047,12 @@ snapshots:
 
   aes-js@4.0.0-beta.5: {}
 
+  agent-base@6.0.2:
+    dependencies:
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
+
   agent-base@7.1.4: {}
 
   agentkeepalive@4.6.0:
@@ -17170,18 +17200,20 @@ snapshots:
       - '@aws-amplify/react-native'
       - aws-crt
 
-  axios-retry@4.5.0(axios@1.13.6):
+  axios-retry@4.5.0(axios@1.16.1):
     dependencies:
-      axios: 1.13.6
+      axios: 1.16.1
       is-retry-allowed: 2.2.0
 
-  axios@1.13.6:
+  axios@1.16.1:
     dependencies:
-      follow-redirects: 1.15.11
+      follow-redirects: 1.16.0
       form-data: 4.0.5
-      proxy-from-env: 1.1.0
+      https-proxy-agent: 5.0.1
+      proxy-from-env: 2.1.0
     transitivePeerDependencies:
       - debug
+      - supports-color
 
   b4a@1.8.0: {}
 
@@ -17645,7 +17677,7 @@ snapshots:
 
   convert-source-map@2.0.0: {}
 
-  cookie-es@1.2.2: {}
+  cookie-es@1.2.3: {}
 
   cookie@1.1.1: {}
 
@@ -18080,7 +18112,7 @@ snapshots:
       has-property-descriptors: 1.0.2
       object-keys: 1.1.1
 
-  defu@6.1.4: {}
+  defu@6.1.7: {}
 
   degenerator@5.0.1:
     dependencies:
@@ -18716,7 +18748,7 @@ snapshots:
 
   flatted@3.4.1: {}
 
-  follow-redirects@1.15.11: {}
+  follow-redirects@1.16.0: {}
 
   for-each@0.3.5:
     dependencies:
@@ -18911,11 +18943,11 @@ snapshots:
 
   graphql@16.12.0: {}
 
-  h3@1.15.5:
+  h3@1.15.11:
     dependencies:
-      cookie-es: 1.2.2
+      cookie-es: 1.2.3
       crossws: 0.3.5
-      defu: 6.1.4
+      defu: 6.1.7
       destr: 2.0.5
       iron-webcrypto: 1.2.1
       node-mock-http: 1.0.4
@@ -19038,7 +19070,7 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
-  hono@4.12.3: {}
+  hono@4.12.23: {}
 
   html-encoding-sniffer@4.0.0:
     dependencies:
@@ -19090,6 +19122,13 @@ snapshots:
       - supports-color
 
   https-browserify@1.0.0: {}
+
+  https-proxy-agent@5.0.1:
+    dependencies:
+      agent-base: 6.0.2
+      debug: 4.4.3
+    transitivePeerDependencies:
+      - supports-color
 
   https-proxy-agent@7.0.6:
     dependencies:
@@ -19424,7 +19463,7 @@ snapshots:
 
   jquery@3.7.1: {}
 
-  js-cookie@3.0.5: {}
+  js-cookie@3.0.8: {}
 
   js-sha3@0.8.0: {}
 
@@ -20702,7 +20741,7 @@ snapshots:
   porto@0.2.35(@tanstack/react-query@5.90.21(react@19.2.3))(@types/react@19.2.14)(@wagmi/core@2.22.1(@tanstack/query-core@5.90.20)(@types/react@19.2.14)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)))(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))(wagmi@2.19.5(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@19.2.3))(@types/react@19.2.14)(bufferutil@4.1.0)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(utf-8-validate@6.0.6)(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))(zod@4.3.6)):
     dependencies:
       '@wagmi/core': 2.22.1(@tanstack/query-core@5.90.20)(@types/react@19.2.14)(immer@11.1.0)(react@19.2.3)(typescript@5.9.3)(use-sync-external-store@1.4.0(react@19.2.3))(viem@2.46.3(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6))
-      hono: 4.12.3
+      hono: 4.12.23
       idb-keyval: 6.2.2
       mipd: 0.0.7(typescript@5.9.3)
       ox: 0.9.17(typescript@5.9.3)(zod@4.3.6)
@@ -20835,6 +20874,8 @@ snapshots:
   proxy-compare@2.6.0: {}
 
   proxy-from-env@1.1.0: {}
+
+  proxy-from-env@2.1.0: {}
 
   public-encrypt@4.0.3:
     dependencies:
@@ -22270,7 +22311,7 @@ snapshots:
       anymatch: 3.1.3
       chokidar: 4.0.3
       destr: 2.0.5
-      h3: 1.15.5
+      h3: 1.15.11
       lru-cache: 10.4.3
       node-fetch-native: 1.6.7
       ofetch: 1.5.1

@@ -65,10 +65,13 @@
       "valibot": ">=1.2.0",
       "esbuild": ">=0.25.0",
       "fast-xml-parser": "^5.3.5",
-      "h3": "^1.15.5",
+      "h3": "^1.15.6",
       "qs": "^6.14.2",
       "lodash": ">=4.17.23",
-      "axios": ">=1.13.5",
+      "axios": ">=1.15.2",
+      "js-cookie": ">=3.0.7",
+      "hono": ">=4.12.4",
+      "@hono/node-server": ">=1.19.10 <2",
       "@mysten/ledgerjs-hw-app-sui": "0.7.0",
       "readable-stream": "^3.6.2 || ^4.0.0"
     }
