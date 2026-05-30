@@ -2,6 +2,7 @@ import { Crown, Crosshair } from "lucide-react";
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
 import LazyVideoFrame from "./LazyVideoFrame";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
 
 const PROGRESS_DESKTOP = "/videos/Progress-Video-Final-rf36.mp4";
 const PROGRESS_MOBILE = "/videos/Progress-Video-Final-mobile-rf28.mp4";
@@ -35,6 +36,7 @@ const IN_DEV = [
 ];
 
 export default function SpectraFactionsProgressSection() {
+  const factionsGridRef = useGridSpotlight<HTMLDivElement>();
   return (
     <ChSection fullMinHeight={false}>
       {/* Factions */}
@@ -45,7 +47,7 @@ export default function SpectraFactionsProgressSection() {
         </h2>
       </FadeInUp>
 
-      <div className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div ref={factionsGridRef} className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
         {FACTIONS.map((f) => {
           const Icon = f.icon;
           return (
@@ -98,11 +100,11 @@ export default function SpectraFactionsProgressSection() {
         />
       </FadeInUp>
 
-      {/* Status chips */}
+      {/* Status — flat lists, no box chrome. Marker color carries the state. */}
       <div
         style={{
           display: "grid",
-          gap: "1.5rem",
+          gap: "2rem",
           gridTemplateColumns: "1fr",
         }}
         className="md:!grid-cols-2"
@@ -126,23 +128,31 @@ export default function SpectraFactionsProgressSection() {
                 listStyle: "none",
                 padding: 0,
                 margin: 0,
-                display: "grid",
-                gap: "0.6rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
               }}
             >
               {ALPHA_LIVE.map((item) => (
                 <li
                   key={item}
+                  className="ch-body"
                   style={{
-                    padding: "0.7rem 0.85rem",
-                    background: "rgba(16, 185, 129, 0.05)",
-                    border: "1px solid rgba(16, 185, 129, 0.2)",
-                    borderRadius: 10,
-                    color: "var(--ch-fg-default)",
-                    fontSize: "0.875rem",
+                    display: "flex",
+                    gap: "0.6rem",
+                    alignItems: "start",
                   }}
                 >
-                  {item}
+                  <span
+                    style={{
+                      color: "#10b981",
+                      fontSize: "0.7rem",
+                      marginTop: "0.45rem",
+                    }}
+                  >
+                    ✓
+                  </span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>
@@ -168,23 +178,31 @@ export default function SpectraFactionsProgressSection() {
                 listStyle: "none",
                 padding: 0,
                 margin: 0,
-                display: "grid",
-                gap: "0.6rem",
+                display: "flex",
+                flexDirection: "column",
+                gap: "0.5rem",
               }}
             >
               {IN_DEV.map((item) => (
                 <li
                   key={item}
+                  className="ch-body"
                   style={{
-                    padding: "0.7rem 0.85rem",
-                    background: "rgba(255, 181, 71, 0.05)",
-                    border: "1px solid rgba(255, 181, 71, 0.22)",
-                    borderRadius: 10,
-                    color: "var(--ch-fg-default)",
-                    fontSize: "0.875rem",
+                    display: "flex",
+                    gap: "0.6rem",
+                    alignItems: "start",
                   }}
                 >
-                  {item}
+                  <span
+                    style={{
+                      color: "#ffb547",
+                      fontSize: "0.7rem",
+                      marginTop: "0.45rem",
+                    }}
+                  >
+                    ▶
+                  </span>
+                  <span>{item}</span>
                 </li>
               ))}
             </ul>

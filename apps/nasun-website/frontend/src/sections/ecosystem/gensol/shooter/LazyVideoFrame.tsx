@@ -26,6 +26,15 @@ export default function LazyVideoFrame({
   const [mounted, setMounted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [errored, setErrored] = useState(false);
+  const [autoplay, setAutoplay] = useState(false);
+
+  useEffect(() => {
+    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+    const reduced = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    setAutoplay(isDesktop && !reduced);
+  }, []);
 
   useEffect(() => {
     const node = wrapRef.current;
@@ -44,21 +53,21 @@ export default function LazyVideoFrame({
   }, [mounted]);
 
   useEffect(() => {
-    if (!mounted || playing || errored) return;
+    if (!mounted || !autoplay || playing || errored) return;
     const v = videoRef.current;
     if (!v) return;
-    const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
-    const reduced = window.matchMedia(
-      "(prefers-reduced-motion: reduce)",
-    ).matches;
-    if (isDesktop && !reduced) {
-      v.play()
-        .then(() => setPlaying(true))
-        .catch(() => {
-          /* opt-in only */
-        });
-    }
-  }, [mounted, playing, errored]);
+    const onPlay = () => setPlaying(true);
+    const onPlaying = () => setPlaying(true);
+    v.addEventListener("play", onPlay);
+    v.addEventListener("playing", onPlaying);
+    v.play().catch(() => {
+      /* user can still tap the overlay */
+    });
+    return () => {
+      v.removeEventListener("play", onPlay);
+      v.removeEventListener("playing", onPlaying);
+    };
+  }, [mounted, autoplay, playing, errored]);
 
   const handlePlay = () => {
     const v = videoRef.current;
@@ -76,27 +85,28 @@ export default function LazyVideoFrame({
       ? window.matchMedia("(max-width: 1023px)").matches
       : false;
   const finalSrc = isMobile && mobileSrc ? mobileSrc : src;
+  const preload = autoplay ? "metadata" : "none";
 
   return (
-    <figure
-      style={{ margin: 0 }}
-    >
+    <figure style={{ margin: 0 }}>
       <div ref={wrapRef} className="gs-trailer-frame">
-        <img
-          src={poster}
-          alt=""
-          loading="lazy"
-          decoding="async"
-          // @ts-expect-error fetchpriority is a valid HTML attribute
-          fetchpriority="low"
-          style={{
-            position: "absolute",
-            inset: 0,
-            width: "100%",
-            height: "100%",
-            objectFit: "cover",
-          }}
-        />
+        {!playing && (
+          <img
+            src={poster}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            // @ts-expect-error fetchpriority is a valid HTML attribute
+            fetchpriority="low"
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+            }}
+          />
+        )}
 
         {mounted && !errored && (
           <video
@@ -106,7 +116,8 @@ export default function LazyVideoFrame({
             playsInline
             muted
             loop
-            preload="none"
+            preload={preload}
+            autoPlay={autoplay}
             controls={playing}
             onError={() => setErrored(true)}
           />

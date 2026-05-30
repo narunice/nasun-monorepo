@@ -33,10 +33,8 @@ export default function HeistHeroSection() {
     <section
       className="ch-hero"
       style={{
-        minHeight: "calc(100vh - 50px)",
-        position: "relative",
-        overflow: "hidden",
-        padding: 0,
+        paddingTop: 0,
+        paddingBottom: 0,
       }}
     >
       <picture>
@@ -76,33 +74,26 @@ export default function HeistHeroSection() {
       />
 
       <div
-        className="ch-container"
+        className="ch-container relative z-[2] flex min-h-[calc(100vh-50px)] items-end justify-center pb-[12vh] xl:items-center xl:justify-start xl:pb-0"
         style={{
           opacity: ready ? 1 : 0,
           transition: "opacity 300ms ease-out",
-          position: "relative",
-          zIndex: 2,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "center",
-          paddingBottom: "12vh",
-          minHeight: "calc(100vh - 50px)",
         }}
       >
-        <FadeInUp className="text-center xl:text-left max-w-[640px] xl:mr-auto xl:ml-[6%]">
-          <span className="ch-eyebrow">02 / Animation</span>
-          <h1 className="ch-display-wide mt-4">
-            <span className="gs-accent">The Heist</span>
+        <FadeInUp className="text-center xl:text-left max-w-[640px] xl:max-w-[760px]">
+          <span className="ch-eyebrow gs-heist-eyebrow">02 / Animation</span>
+          <h1 className="ch-display-wide mt-4 xl:!text-6xl min-[1440px]:!text-7xl !leading-[1.05] uppercase">
+            <span className="gs-heist-title">The Heist</span>
           </h1>
           <p
+            className="xl:!text-2xl min-[1440px]:!text-3xl gs-heist-subtitle"
             style={{
               fontFamily: "var(--ch-font-display)",
               fontWeight: 500,
               fontSize: "1.25rem",
               letterSpacing: "0.06em",
               textTransform: "uppercase",
-              color: "var(--ch-fg-subdued)",
-              margin: "0.5rem 0 0",
+              margin: "0.85rem 0 0",
             }}
           >
             An 8-Episode 3D Animated Series

@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
-
-const HERO_DESKTOP = "/images/posters/Triangle-Hero-Section-BW-poster.webp";
-// Reuse the existing robot arena hero plate as the GenSol main hero background.
 import bgDesktop from "@/assets/images/robot-arena-hq.webp";
 import bgMobile from "@/assets/images/robot-arena-mobile.webp";
 
@@ -31,14 +28,20 @@ export default function GenSolMainHeroSection() {
     };
   }, []);
 
-  const scrollToTrailer = () => {
-    document
-      .getElementById("trailer")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const scrollDown = () => {
+    window.scrollBy({
+      top: window.innerHeight - 50,
+      behavior: "smooth",
+    });
   };
 
   return (
-    <section className="ch-hero" style={{ minHeight: "calc(100vh - 50px)" }}>
+    <section
+      className="ch-hero"
+      style={{
+        alignItems: "flex-end",
+      }}
+    >
       <picture>
         <source media="(min-width: 1024px)" srcSet={bgDesktop} />
         <img
@@ -53,22 +56,24 @@ export default function GenSolMainHeroSection() {
             transition: "opacity 800ms ease-out",
             zIndex: -2,
           }}
-          // suppress unused poster const warning by not using HERO_DESKTOP
-          data-poster={HERO_DESKTOP}
         />
       </picture>
-      <div className="gs-hero-vignette" aria-hidden="true" />
 
+      {/* Content sits at the bottom of the hero — gives the artwork the
+          full top 60% to breathe, then the title block lands against the
+          dark gradient floor where it's always readable. */}
       <div
-        className="ch-container flex justify-end"
+        className="ch-container"
         style={{
+          position: "relative",
+          zIndex: 1,
           opacity: imageReady ? 1 : 0,
           transition: "opacity 300ms ease-out",
         }}
       >
-        <FadeInUp className="max-w-[640px] mr-4 md:mr-8 lg:mr-[6%] xl:mr-[10%] flex flex-col text-right md:text-left">
+        <FadeInUp className="max-w-[760px] mx-auto md:mx-0 flex flex-col items-center md:items-start text-center md:text-left">
           <span className="ch-eyebrow">00 / Gen Sol</span>
-          <h1 className="ch-display-wide mt-6">
+          <h1 className="ch-display-wide mt-4">
             A Bold <span className="gs-accent">Sci-Fi Universe</span>
             <br />
             Across Games, Animation, Film
@@ -78,17 +83,47 @@ export default function GenSolMainHeroSection() {
             conflict. Gen Sol powers a transmedia world where Spectra fuels
             every empire and every rebellion.
           </p>
-          <div className="flex flex-wrap gap-3 justify-end md:justify-start mt-6">
-            <button
-              type="button"
-              onClick={scrollToTrailer}
-              className="ch-btn ch-btn-lg ch-btn-primary"
-            >
-              Watch Trailer ↓
-            </button>
-          </div>
         </FadeInUp>
       </div>
+
+      {/* Scroll indicator — chevron-only, bounces to invite scroll down. */}
+      <button
+        type="button"
+        onClick={scrollDown}
+        aria-label="Scroll down"
+        className="group"
+        style={{
+          position: "absolute",
+          bottom: "1.5rem",
+          left: "50%",
+          transform: "translateX(-50%)",
+          zIndex: 2,
+          background: "transparent",
+          border: "none",
+          padding: "0.5rem",
+          cursor: "pointer",
+          color: "rgba(232, 234, 236, 0.7)",
+          transition: "color 200ms ease",
+          opacity: imageReady ? 1 : 0,
+        }}
+      >
+        <svg
+          className="animate-bounce"
+          width="22"
+          height="22"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+          />
+        </svg>
+      </button>
     </section>
   );
 }

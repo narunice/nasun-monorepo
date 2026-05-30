@@ -74,7 +74,7 @@ export default function GenSolMainOverviewSection() {
         {PILLARS.map((p) => (
           <FadeInUp key={p.index}>
             <article
-              className="ch-step-card"
+              className="ch-step-card gs-card-noviz"
               data-spotlight-card=""
               data-state="idle"
               onPointerMove={tilt.onMove}

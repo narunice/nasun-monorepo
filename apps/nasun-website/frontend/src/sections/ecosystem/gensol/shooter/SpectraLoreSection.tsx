@@ -1,9 +1,12 @@
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
 
 export default function SpectraLoreSection() {
+  const phantomGridRef = useGridSpotlight<HTMLDivElement>();
   return (
-    <ChSection fullMinHeight={false}>
+    <>
+      <ChSection fullMinHeight={false}>
       {/* Top block — Escape from Kramok */}
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow">03 / The Map</span>
@@ -17,20 +20,21 @@ export default function SpectraLoreSection() {
         </p>
       </FadeInUp>
 
-      <div className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      {/* Editorial layout — left rule instead of card chrome.
+          Two closing-card blocks: hazards on the left, stakes on the right. */}
+      <div className="ch-closing-grid">
         <FadeInUp>
-          <article className="ch-gravity-card">
-            <span className="ch-gravity-card-halo" aria-hidden="true" />
-            <span className="ch-gravity-card-glow" aria-hidden="true" />
-            <h3 className="ch-gravity-card-title">Environmental pressure</h3>
+          <div className="ch-closing-card">
+            <span className="ch-closing-eyebrow">The pressure</span>
+            <h3 className="ch-closing-title">Environmental hazards</h3>
             <ul
               style={{
                 listStyle: "none",
                 padding: 0,
-                margin: "0.6rem 0 0",
+                margin: "0.35rem 0 0",
                 display: "flex",
                 flexDirection: "column",
-                gap: "0.55rem",
+                gap: "0.5rem",
               }}
             >
               {[
@@ -41,35 +45,43 @@ export default function SpectraLoreSection() {
               ].map((item) => (
                 <li
                   key={item}
+                  className="ch-body"
                   style={{
                     display: "flex",
                     alignItems: "start",
-                    gap: "0.6rem",
-                    color: "var(--ch-fg-muted)",
-                    fontSize: "0.9375rem",
+                    gap: "0.55rem",
                   }}
                 >
-                  <span style={{ color: "#d52933", fontSize: "0.75rem", marginTop: "0.2rem" }}>▶</span>
+                  <span
+                    style={{
+                      color: "var(--ch-fg-accent)",
+                      fontSize: "0.7rem",
+                      marginTop: "0.45rem",
+                    }}
+                  >
+                    ▶
+                  </span>
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
-          </article>
+          </div>
         </FadeInUp>
 
         <FadeInUp>
-          <article className="ch-gravity-card">
-            <span className="ch-gravity-card-halo" aria-hidden="true" />
-            <span className="ch-gravity-card-glow" aria-hidden="true" />
-            <h3 className="ch-gravity-card-title">Victory condition</h3>
-            <p className="ch-gravity-card-body">
+          <div className="ch-closing-card">
+            <span className="ch-closing-eyebrow">The stakes</span>
+            <h3 className="ch-closing-title">Victory condition</h3>
+            <p className="ch-body">
               First team to fuel their escape ship survives. Everyone else
               burns. Combat, timing, and risk management decide who walks away.
             </p>
-          </article>
+          </div>
         </FadeInUp>
       </div>
+      </ChSection>
 
+      <ChSection fullMinHeight={false}>
       {/* Bottom block — Phantom system */}
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
         <span className="ch-eyebrow ch-eyebrow-cyan">04 / Death Isn't the End</span>
@@ -83,7 +95,7 @@ export default function SpectraLoreSection() {
         </p>
       </FadeInUp>
 
-      <div className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
+      <div ref={phantomGridRef} className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <FadeInUp>
           <article className="ch-gravity-card">
             <span className="ch-gravity-card-halo" aria-hidden="true" />
@@ -160,6 +172,7 @@ export default function SpectraLoreSection() {
           </article>
         </FadeInUp>
       </div>
-    </ChSection>
+      </ChSection>
+    </>
   );
 }

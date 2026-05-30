@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
 
-import shooterArt from "@/assets/images/robot-arena-hq.webp";
+import shooterArt from "@/assets/images/spectra-plant-raid.webp";
 import heistArt from "@/assets/images/The-Heist-Hero-Section.webp";
 
 type BuildCard = {
@@ -19,19 +19,19 @@ const CARDS: BuildCard[] = [
   {
     to: "/ecosystem/gensol/shooter",
     status: "alpha",
-    statusLabel: "Alpha Live",
+    statusLabel: "Playable Prototype",
     eyebrow: "Shooter",
     title: "Spectra",
-    body: "Crash. Compete. Escape, or perish. A multiplayer sci-fi shooter built in Unreal Engine 5 — competitive integrity first.",
+    body: "Crash. Compete. Escape, or perish. A multiplayer sci-fi shooter built in Unreal Engine 5 — playable prototype already running on dedicated servers.",
     art: shooterArt,
   },
   {
     to: "/ecosystem/gensol/animation",
-    status: "soon",
-    statusLabel: "In Production",
+    status: "alpha",
+    statusLabel: "Pre-Production",
     eyebrow: "Animation",
     title: "The Heist",
-    body: "An 8-episode 3D animated series about a farmer forced into the galaxy's most dangerous heist to save his daughter.",
+    body: "An 8-episode 3D animated series about a farmer forced into the galaxy's most dangerous heist to save his daughter. Episode 1 script and concept art complete.",
     art: heistArt,
   },
 ];
@@ -40,9 +40,9 @@ export default function GenSolMainBuildingSection() {
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
-        <span className="ch-eyebrow">04 / Building</span>
+        <span className="ch-eyebrow">04 / The Slate</span>
         <h2 className="ch-display">
-          What we're <span className="gs-accent">shipping now</span>
+          What we're <span className="gs-accent">building now</span>
         </h2>
       </FadeInUp>
 
@@ -79,7 +79,13 @@ export default function GenSolMainBuildingSection() {
                 e.currentTarget.style.transform = "translateY(0)";
               }}
             >
-              <div style={{ aspectRatio: "16 / 9", overflow: "hidden" }}>
+              <div
+                style={{
+                  position: "relative",
+                  aspectRatio: "16 / 9",
+                  overflow: "hidden",
+                }}
+              >
                 <img
                   src={card.art}
                   alt=""
@@ -89,15 +95,6 @@ export default function GenSolMainBuildingSection() {
                     height: "100%",
                     objectFit: "cover",
                     display: "block",
-                  }}
-                />
-                <div
-                  aria-hidden="true"
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    background:
-                      "linear-gradient(180deg, rgba(10,15,21,0) 50%, rgba(10,15,21,0.78) 100%)",
                   }}
                 />
               </div>

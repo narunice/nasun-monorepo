@@ -1,5 +1,6 @@
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
 
 type Pillar = {
   index: string;
@@ -19,7 +20,7 @@ const COLUMNS: Pillar[] = [
     index: "02",
     eyebrow: "Factions",
     title: "Empires & Outlaws",
-    body: "The Dorakken Empire controls the primary Spectra zones. Raiders, mercenaries, and rebels fight to steal them.",
+    body: "The Dorakken Empire holds the Vertex Zone, the galaxy's only source of Spectra. Raiders, mercenaries, and outlaws spend their lives plotting how to break in.",
   },
   {
     index: "03",
@@ -30,6 +31,7 @@ const COLUMNS: Pillar[] = [
 ];
 
 export default function GenSolMainUniverseSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-4 items-start text-left">
@@ -40,6 +42,7 @@ export default function GenSolMainUniverseSection() {
       </FadeInUp>
 
       <div
+        ref={gridRef}
         className="ch-gravity-grid"
         style={{ gridTemplateColumns: "repeat(3, 1fr)" }}
       >

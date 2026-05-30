@@ -1,5 +1,6 @@
 import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
 
 type Character = {
   name: string;
@@ -22,6 +23,7 @@ const CHARACTERS: Character[] = [
 ];
 
 export default function HeistCharactersSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
   return (
     <ChSection fullMinHeight={false}>
       <FadeInUp className="flex flex-col gap-3 items-start text-left">
@@ -31,7 +33,7 @@ export default function HeistCharactersSection() {
         </h2>
       </FadeInUp>
 
-      <div className="ch-gravity-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+      <div ref={gridRef} className="ch-gravity-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {CHARACTERS.map((c) => (
           <FadeInUp key={c.name}>
             <article className="ch-gravity-card">

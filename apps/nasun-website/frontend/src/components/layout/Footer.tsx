@@ -63,9 +63,12 @@ export default function Footer() {
   // Pado page uses pure black (--ch-bg-page #000000); match the footer
   // so there's no visible seam at the section boundary.
   const isPadoPage = location.pathname === "/ecosystem/pado";
+  // GenSol pages (main / shooter / animation / plan) use the gensol-theme
+  // override --ch-bg-page #0a0f15. Match the footer to avoid a visible seam.
+  const isGenSolPage = location.pathname.startsWith("/ecosystem/gensol");
 
   return (
-    <div className={isUjuPage ? "bg-uju-bg" : isPadoPage ? "bg-black" : isDevCatenaPage ? "bg-[#151316]" : isArchivedHome ? "bg-[#0b1628]" : "bg-nasun-black"}>
+    <div className={isUjuPage ? "bg-uju-bg" : isPadoPage ? "bg-black" : isGenSolPage ? "bg-[#0a0f15]" : isDevCatenaPage ? "bg-[#151316]" : isArchivedHome ? "bg-[#0b1628]" : "bg-nasun-black"}>
       <div>
         <div className="flex flex-col items-center ">
           <FadeInUp>

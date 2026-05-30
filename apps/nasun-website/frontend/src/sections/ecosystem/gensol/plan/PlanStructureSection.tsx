@@ -71,7 +71,7 @@ export default function PlanStructureSection() {
         {PILLARS.map((p) => (
           <FadeInUp key={p.index}>
             <article
-              className="ch-step-card"
+              className="ch-step-card gs-card-noviz"
               data-spotlight-card=""
               onPointerMove={tilt.onMove}
               onPointerLeave={tilt.onLeave}

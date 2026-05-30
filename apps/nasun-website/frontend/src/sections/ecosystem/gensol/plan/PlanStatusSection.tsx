@@ -2,7 +2,7 @@ import ChSection from "@/sections/dev/home/ChSection";
 import FadeInUp from "@/sections/dev/home/FadeInUp";
 
 const NOW = [
-  { label: "Spectra", status: "Alpha Live" },
+  { label: "Spectra", status: "Playable Prototype" },
   { label: "The Heist", status: "Pre-Production" },
 ];
 

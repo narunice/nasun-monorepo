@@ -106,11 +106,10 @@ export default function SpectraTechNextSection() {
           return (
             <FadeInUp key={t.title}>
               <article
-                className="ch-step-card"
+                className="ch-step-card gs-card-noviz"
                 data-spotlight-card=""
                 onPointerMove={tilt.onMove}
                 onPointerLeave={tilt.onLeave}
-                style={{ minHeight: 240 }}
               >
                 <span className="ch-step-card-halo" aria-hidden="true" />
                 <span className="ch-step-card-glow" aria-hidden="true" />

@@ -23,12 +23,12 @@
 
 /* ---------------- Token re-mapping ---------------- */
 .dev-home-catena.gensol-theme {
-  --ch-bg-page: #0a0f15;       /* darker than --gs-black for hero contrast */
-  --ch-bg-card: #131c27;       /* sits above page bg, no hard border needed */
+  --ch-bg-page: #0a0f15; /* darker than --gs-black for hero contrast */
+  --ch-bg-card: #131c27; /* sits above page bg, no hard border needed */
   --ch-fg-display: #ffffff;
-  --ch-fg-default: #e8eaec;    /* --gs-bone */
-  --ch-fg-accent: #d52933;     /* --gs-red, primary brand accent */
-  --ch-accent-cyan: #5ee1e4;   /* --gs-plasma, replaces catena eyebrow-cyan */
+  --ch-fg-default: #e8eaec; /* --gs-bone */
+  --ch-fg-accent: #d52933; /* --gs-red, primary brand accent */
+  --ch-accent-cyan: #5ee1e4; /* --gs-plasma, replaces catena eyebrow-cyan */
   --ch-fg-muted: rgba(232, 234, 236, 0.85);
   --ch-fg-subdued: rgba(232, 234, 236, 0.6);
   --ch-fg-faint: rgba(232, 234, 236, 0.3);
@@ -39,11 +39,11 @@
      via CSS variables — see §4.3.e). Red → spectra-amber sweep on every viz
      so the Shooter Core Loop reuses ch-viz-* without forking. */
   --ch-viz-stop-start: #d52933;
-  --ch-viz-stop-end:   #ffb547;
+  --ch-viz-stop-end: #ffb547;
   --ch-viz-pill-start: #d52933;
-  --ch-viz-pill-end:   #ffb547;
+  --ch-viz-pill-end: #ffb547;
   --ch-viz-fill-strong: rgba(213, 41, 51, 0.32);
-  --ch-viz-fill-fade:   rgba(213, 41, 51, 0);
+  --ch-viz-fill-fade: rgba(213, 41, 51, 0);
 }
 
 /* Selection */
@@ -67,7 +67,7 @@
     #ffe8c2 100%
   );
   -webkit-background-clip: text;
-          background-clip: text;
+  background-clip: text;
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
@@ -127,12 +127,11 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background:
-    radial-gradient(
-      120% 80% at 50% 100%,
-      rgba(178, 36, 50, 0.3) 0%,
-      transparent 60%
-    );
+  background: radial-gradient(
+    120% 80% at 50% 100%,
+    rgba(178, 36, 50, 0.3) 0%,
+    transparent 60%
+  );
 }
 
 /* Tap-to-play overlay (accessibility: real button, focusable, visible ring). */
@@ -173,10 +172,14 @@
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), background 240ms ease;
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 240ms ease;
   box-shadow: 0 0 32px rgba(213, 41, 51, 0.55);
 }
-.dev-home-catena.gensol-theme .gs-trailer-overlay:hover .gs-trailer-overlay-glyph {
+.dev-home-catena.gensol-theme
+  .gs-trailer-overlay:hover
+  .gs-trailer-overlay-glyph {
   transform: scale(1.08);
   background: #d52933;
 }
@@ -187,45 +190,60 @@
   }
 }
 
-/* Bespoke viz — sole brand-load-bearing animation: spectra crystal pulsing.
-   Used on the Shooter Hero beat ("crash-land, extract Spectra"). */
-.dev-home-catena.gensol-theme .gs-viz-spectra {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* ============================================================
+ *  Content-only step cards (no viz panel) — trim the catena 320px
+ *  min-height so the card sits at its natural content height
+ *  instead of leaving an empty viz slot at the bottom. Applied to
+ *  Shooter Core Loop, Main Overview, Plan Structure.
+ * ============================================================ */
+.dev-home-catena.gensol-theme .gs-card-noviz {
+  min-height: 0;
 }
-.dev-home-catena.gensol-theme .gs-viz-spectra .crystal {
-  width: 38%;
-  aspect-ratio: 3 / 4;
-  background: linear-gradient(
-    160deg,
-    #ffb547 0%,
-    #ffd28a 35%,
-    #d52933 100%
+
+/* ============================================================
+ *  Heist hero readability — the xl+ background uses the bright
+ *  orange GenSol-Symbol plate, which kills the catena cream
+ *  gradient on text. Mirror the legacy choice: dark text on
+ *  orange, which also reads as an echo of the symbol's black
+ *  hexagons. Below xl we keep the standard gs-accent treatment
+ *  since the mobile BKGD image is darker.
+ * ============================================================ */
+.dev-home-catena.gensol-theme .gs-heist-title {
+  background-image: linear-gradient(
+    100deg,
+    #b22432 0%,
+    #d52933 38%,
+    #ffb547 78%,
+    #ffe8c2 100%
   );
-  clip-path: polygon(50% 0%, 100% 30%, 80% 100%, 20% 100%, 0% 30%);
-  box-shadow: 0 0 28px rgba(255, 181, 71, 0.45);
-  filter: drop-shadow(0 8px 18px rgba(178, 36, 50, 0.4));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
-.dev-home-catena.gensol-theme .ch-step-card:where(:hover, [data-state="playing"]) .gs-viz-spectra .crystal {
-  animation: gs-crystal-pulse 1.8s cubic-bezier(0.16, 1, 0.3, 1) 1;
-}
-@keyframes gs-crystal-pulse {
-  0%, 100% {
-    transform: scale(1);
-    filter: drop-shadow(0 8px 18px rgba(178, 36, 50, 0.4));
+@media (min-width: 1280px) {
+  .dev-home-catena.gensol-theme .gs-heist-title {
+    background-image: none;
+    color: #111821;
+    -webkit-text-fill-color: #111821;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-shadow: 0 2px 18px rgba(0, 0, 0, 0.14);
   }
-  50% {
-    transform: scale(1.08);
-    filter: drop-shadow(0 8px 26px rgba(255, 181, 71, 0.7));
+  /* Eyebrow + subtitle: solid GenSol black, no transparency.
+     Red-on-orange and translucent-white-on-orange both wash out;
+     matching the title's solid black gives the strongest contrast
+     and creates a single-color editorial hierarchy. */
+  .dev-home-catena.gensol-theme .gs-heist-eyebrow {
+    color: #111821;
+    font-weight: 600;
+    font-size: 1.125rem;
+    letter-spacing: 0.26em;
   }
-}
-@media (prefers-reduced-motion: reduce) {
-  .dev-home-catena.gensol-theme .gs-viz-spectra .crystal {
-    animation: none !important;
+  .dev-home-catena.gensol-theme .gs-heist-subtitle {
+    color: #ffffff;
+    font-weight: 600;
+    opacity: 0.8;
   }
 }
 
@@ -472,7 +490,10 @@
   background: #ffb547;
   box-shadow: 0 0 10px rgba(255, 181, 71, 0.7);
 }
-.dev-home-catena.gensol-theme .ch-gravity-card[data-state="done"] .ch-gv-viz-bands .b4 {
+.dev-home-catena.gensol-theme
+  .ch-gravity-card[data-state="done"]
+  .ch-gv-viz-bands
+  .b4 {
   background: linear-gradient(
     180deg,
     #ffb547 0%,
@@ -484,32 +505,72 @@
 
 /* L456-525 gv-band-pulse / gv-band-settle keyframes — re-author the lit
    color stops via override classes used by the same selectors. */
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b1,
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b2,
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b3 {
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b1,
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b2,
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b3 {
   animation: gs-band-pulse 0.9s cubic-bezier(0.4, 0, 0.4, 1) 1;
 }
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b1 { animation-delay: 0s; }
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b2 { animation-delay: 0.22s; }
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b3 { animation-delay: 0.44s; }
-.dev-home-catena.gensol-theme .ch-gravity-card:where(:hover, [data-state="playing"]) .ch-gv-viz-bands .b4 {
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b1 {
+  animation-delay: 0s;
+}
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b2 {
+  animation-delay: 0.22s;
+}
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b3 {
+  animation-delay: 0.44s;
+}
+.dev-home-catena.gensol-theme
+  .ch-gravity-card:where(:hover, [data-state="playing"])
+  .ch-gv-viz-bands
+  .b4 {
   animation: gs-band-settle 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.66s 1 both;
 }
 @keyframes gs-band-pulse {
   0% {
-    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    background: linear-gradient(
+      180deg,
+      rgba(213, 41, 51, 0.35),
+      rgba(213, 41, 51, 0.05)
+    );
     opacity: 0.55;
     filter: brightness(0.7) saturate(0.55);
     transform: translateY(0);
   }
   40% {
-    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    background: linear-gradient(
+      180deg,
+      #ffb547 0%,
+      #d52933 60%,
+      rgba(213, 41, 51, 0.2) 100%
+    );
     opacity: 1;
     filter: brightness(1.15) saturate(1.05);
     transform: translateY(-3px);
   }
   100% {
-    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    background: linear-gradient(
+      180deg,
+      rgba(213, 41, 51, 0.35),
+      rgba(213, 41, 51, 0.05)
+    );
     opacity: 0.55;
     filter: brightness(0.7) saturate(0.55);
     transform: translateY(0);
@@ -517,21 +578,35 @@
 }
 @keyframes gs-band-settle {
   0% {
-    background: linear-gradient(180deg, rgba(213, 41, 51, 0.35), rgba(213, 41, 51, 0.05));
+    background: linear-gradient(
+      180deg,
+      rgba(213, 41, 51, 0.35),
+      rgba(213, 41, 51, 0.05)
+    );
     opacity: 0.55;
     filter: brightness(0.7) saturate(0.55);
     transform: translateY(0) scaleY(1);
     box-shadow: 0 0 0 rgba(213, 41, 51, 0);
   }
   60% {
-    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    background: linear-gradient(
+      180deg,
+      #ffb547 0%,
+      #d52933 60%,
+      rgba(213, 41, 51, 0.2) 100%
+    );
     opacity: 1;
     filter: brightness(1.25) saturate(1.15);
     transform: translateY(-3px) scaleY(1.03);
     box-shadow: 0 0 28px rgba(213, 41, 51, 0.6);
   }
   100% {
-    background: linear-gradient(180deg, #ffb547 0%, #d52933 60%, rgba(213, 41, 51, 0.2) 100%);
+    background: linear-gradient(
+      180deg,
+      #ffb547 0%,
+      #d52933 60%,
+      rgba(213, 41, 51, 0.2) 100%
+    );
     opacity: 1;
     filter: brightness(1) saturate(1);
     transform: translateY(0) scaleY(1);
