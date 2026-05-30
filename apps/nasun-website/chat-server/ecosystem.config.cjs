@@ -81,7 +81,10 @@ module.exports = {
         // sunominq incident. 6h was too tight: ~8 alpha testers who missed
         // the Telegram invite within their work day got auto-requeued at the
         // back of the line on a single missed claim.
-        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '36000000',    // 10h
+        // 2026-05-30: bumped 10h -> 12h. Outbound invite DMs were promising a
+        // 12h window while the gate enforced 10h; users who acted within the
+        // promised window (hour 10-12) found the slot already gone (zzangddoru).
+        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '43200000',    // 12h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
         // sourced from .env (via `set -a && source .env && set +a` before
         // `pm2 startOrRestart`) reaches the process. Listing it with a
