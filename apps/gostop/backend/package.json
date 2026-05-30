@@ -15,14 +15,14 @@
     "migrate": "tsx scripts/run-migrations.ts"
   },
   "dependencies": {
-    "@hono/node-server": "^1.13.8",
+    "@hono/node-server": "^2.0.4",
     "@mysten/bcs": "^1.9.2",
     "@mysten/sui": "^1.45.0",
     "@noble/hashes": "^1.8.0",
     "hono": "^4.7.5",
     "jose": "^5.2.0",
     "postgres": "^3.4.5",
-    "ws": "^8.18.0"
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@types/node": "^22.16.0",
