@@ -9,9 +9,9 @@
 #   ./deploy.sh prod --stack CommonStack  # 특정 스택만 배포
 #   ./deploy.sh dev --dry-run     # 실제 배포 없이 검증만
 #
-# 환경별 설정:
-#   - dev:  AWS 계정 __AWS_DEV_ACCOUNT__, @Nasun_io, nasun-twitter-tokens
-#   - prod: AWS 계정 __AWS_PROD_ACCOUNT__, @GenSol_io, nasun-twitter-tokens-prod
+# 환경별 설정 (AWS 계정 ID는 .env.<env>의 AWS_ACCOUNT_ID에서 로드):
+#   - dev:  @Nasun_io, nasun-twitter-tokens
+#   - prod: @GenSol_io, nasun-twitter-tokens-prod
 # =============================================================================
 
 set -e
@@ -110,16 +110,26 @@ if [[ "$ENV" == "production" ]]; then
     ENV_FILE=".env.production"
     AWS_PROFILE="nasun-prod"
     TARGET_ACCOUNT="@Nasun_io"
-    AWS_ACCOUNT_ID="__AWS_PROD_ACCOUNT__"
     PROFILE_FLAG="--profile nasun-prod"
     NODE_ENV_VAL="production"
 else
     ENV_FILE=".env.development"
     AWS_PROFILE="default"
     TARGET_ACCOUNT="@Nasun_io"
-    AWS_ACCOUNT_ID="__AWS_DEV_ACCOUNT__"
     PROFILE_FLAG=""
     NODE_ENV_VAL="development"
+fi
+
+# Load AWS account ID from the env file (real ID is gitignored).
+if [[ ! -f "$ENV_FILE" ]]; then
+    echo -e "${RED}❌ 오류: $ENV_FILE 파일이 없습니다${NC}"
+    echo "  AWS_ACCOUNT_ID 를 포함한 $ENV_FILE 을 만들어 주세요."
+    exit 1
+fi
+AWS_ACCOUNT_ID=$(grep "^AWS_ACCOUNT_ID=" "$ENV_FILE" | cut -d'=' -f2)
+if [[ -z "$AWS_ACCOUNT_ID" || ! "$AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
+    echo -e "${RED}❌ 오류: $ENV_FILE 의 AWS_ACCOUNT_ID 가 유효한 12자리 ID가 아닙니다${NC}"
+    exit 1
 fi
 
 echo -e "${YELLOW}📋 배포 설정${NC}"

@@ -8,8 +8,9 @@
  *   AWS_REGION=ap-northeast-2 npx tsx scripts/e2e-test-admin-merge-accounts.ts
  *   CLEANUP_ONLY=1 AWS_REGION=ap-northeast-2 npx tsx scripts/e2e-test-admin-merge-accounts.ts
  *
- * IMPORTANT: this script targets the DEV account (__AWS_DEV_ACCOUNT__).
- * All test entities are prefixed with "e2e-merge-" for safe cleanup.
+ * IMPORTANT: this script targets the DEV account (see .env.development
+ * AWS_ACCOUNT_ID). All test entities are prefixed with "e2e-merge-" for
+ * safe cleanup.
  */
 
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';

@@ -29,9 +29,10 @@ export interface ApiRateLimitConfig {
  * Per-API rate limits (requests per 5 min per IP).
  * Tuned for each endpoint's expected traffic profile.
  *
- * API IDs are pinned to the current production account (__AWS_PROD_ACCOUNT__).
- * When re-deploying to a new account, these will need to be re-mapped or
- * the scope-down switched to a different signal (e.g. tag, custom domain).
+ * API IDs are pinned to the current production account (see .env.production
+ * AWS_ACCOUNT_ID). When re-deploying to a new account, these will need to be
+ * re-mapped or the scope-down switched to a different signal (e.g. tag,
+ * custom domain).
  */
 // NOTE: Pre-gostop-launch (2026-04-27) limits are doubled from the planned
 // baseline to leave a false-positive buffer during initial rollout.

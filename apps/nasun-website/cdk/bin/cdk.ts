@@ -20,11 +20,17 @@ console.log(`[CDK] Loading environment: ${envFile} (NODE_ENV=${nodeEnv})`);
 
 // Account-env mapping: ensures env vars are deployed to the correct AWS account.
 // CDK will refuse to deploy if the current AWS credentials don't match env.account.
-const EXPECTED_ACCOUNTS: Record<string, string> = {
-  development: '__AWS_DEV_ACCOUNT__',
-  production: '__AWS_PROD_ACCOUNT__',
-};
-const cdkEnv = { account: EXPECTED_ACCOUNTS[nodeEnv], region: 'ap-northeast-2' };
+//
+// Account IDs are redacted from the committed source as part of the public-repo
+// hygiene policy. The real ID lives in the env file loaded above
+// (.env.development / .env.production) under AWS_ACCOUNT_ID.
+const accountId = process.env.AWS_ACCOUNT_ID;
+if (!accountId || !/^\d{12}$/.test(accountId)) {
+  console.error(`[CDK] ERROR: AWS_ACCOUNT_ID not configured in ${envFile}.`);
+  console.error(`[CDK]   Add AWS_ACCOUNT_ID=<12-digit-id> to ${envFile}.`);
+  process.exit(1);
+}
+const cdkEnv = { account: accountId, region: 'ap-northeast-2' };
 
 import * as cdk from 'aws-cdk-lib';
 import { AuthStack } from '../lib/auth-stack';

@@ -102,12 +102,19 @@ echo "  프로필: $PROFILE_INFO"
 echo ""
 
 # 환경별 예상 계정 ID
-if [[ "$EXPECTED_ENV" == "development" ]]; then
-  EXPECTED_ACCOUNT="__AWS_DEV_ACCOUNT__"
-  EXPECTED_TARGET="Nasun_io"
-elif [[ "$EXPECTED_ENV" == "production" ]]; then
-  EXPECTED_ACCOUNT="__AWS_PROD_ACCOUNT__"
-  EXPECTED_TARGET="Nasun_io"
+# Account IDs are redacted from committed sources; load from gitignored
+# .env.<env> file (each contains AWS_ACCOUNT_ID=<12-digit-id>).
+EXPECTED_ENV_FILE=".env.${EXPECTED_ENV}"
+if [[ ! -f "$EXPECTED_ENV_FILE" ]]; then
+  echo -e "${RED}❌ 오류: $EXPECTED_ENV_FILE 파일이 없습니다${NC}"
+  echo "  AWS_ACCOUNT_ID를 포함한 $EXPECTED_ENV_FILE 파일을 만들어 주세요."
+  exit 1
+fi
+EXPECTED_ACCOUNT=$(grep "^AWS_ACCOUNT_ID=" "$EXPECTED_ENV_FILE" | cut -d'=' -f2)
+EXPECTED_TARGET="Nasun_io"
+if [[ -z "$EXPECTED_ACCOUNT" || ! "$EXPECTED_ACCOUNT" =~ ^[0-9]{12}$ ]]; then
+  echo -e "${RED}❌ 오류: $EXPECTED_ENV_FILE 의 AWS_ACCOUNT_ID 가 유효한 12자리 ID가 아닙니다${NC}"
+  exit 1
 fi
 
 # 계정 불일치 확인

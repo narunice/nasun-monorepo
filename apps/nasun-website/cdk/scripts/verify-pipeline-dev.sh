@@ -18,7 +18,18 @@ set -e
 # 설정
 # ─────────────────────────────────────────────────────────────────
 REGION="ap-northeast-2"
-AWS_ACCOUNT_ID="__AWS_DEV_ACCOUNT__"
+# Load AWS account ID from gitignored .env.development (real ID is not committed).
+# Script must run from apps/nasun-website/cdk/ (the deploy.sh / pnpm wrappers cd there).
+ENV_FILE="$(dirname "$0")/../.env.development"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "❌ ERROR: $ENV_FILE not found. Create it with AWS_ACCOUNT_ID=<12-digit-id>." >&2
+  exit 1
+fi
+AWS_ACCOUNT_ID=$(grep "^AWS_ACCOUNT_ID=" "$ENV_FILE" | cut -d'=' -f2)
+if [[ -z "$AWS_ACCOUNT_ID" || ! "$AWS_ACCOUNT_ID" =~ ^[0-9]{12}$ ]]; then
+  echo "❌ ERROR: AWS_ACCOUNT_ID in $ENV_FILE is missing or not a valid 12-digit ID." >&2
+  exit 1
+fi
 TARGET_DATE="${1:-$(date +%Y-%m-%d)}"
 SECRET_NAME="nasun-twitter-tokens-dev"
 STATE_MACHINE_NAME="nasun-leaderboard-pipeline"
