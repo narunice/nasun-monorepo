@@ -1059,7 +1059,6 @@ app.get('/leaderboard/weeks', async (c) => {
       ? rawMin
       : ECOSYSTEM_LEADERBOARD_FLOOR_DATE;
 
-    const currentWeekId = getCurrentWeekId();
     const weeks: Array<{ weekId: string; label: string }> = [];
     let cursor = new Date();
     const seen = new Set<string>();
@@ -1077,9 +1076,12 @@ app.get('/leaderboard/weeks', async (c) => {
       const sun = new Date(mon.getTime() + 6 * 24 * 60 * 60 * 1000);
       const fmt = (d: Date) =>
         d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-      const label = wId === currentWeekId
-        ? `${wId} (current)`
-        : `${wId} (${fmt(mon)} - ${fmt(sun)})`;
+      // Canonical week label, kept identical to chat-server formatWeekLabel
+      // (leaderboard-store.ts) so the DeFi and Ecosystem rank-history cards on
+      // my-account render the same format. No year prefix, no "(current)" case:
+      // the date range disambiguates the year, and the current week is always
+      // shown under a "Current Week" heading by the consuming UI.
+      const label = `W${String(week).padStart(2, '0')} (${fmt(mon)} - ${fmt(sun)})`;
 
       weeks.push({ weekId: wId, label });
 
