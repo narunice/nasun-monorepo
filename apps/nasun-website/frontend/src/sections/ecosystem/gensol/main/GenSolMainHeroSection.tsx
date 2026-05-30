@@ -59,6 +59,21 @@ export default function GenSolMainHeroSection() {
         />
       </picture>
 
+      {/* Bottom-up readability gradient — half the strength of the original
+          so the title stays legible without flattening the mech artwork. */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 0,
+          background:
+            "linear-gradient(to top, rgba(10,15,21,0.92) 0%, rgba(10,15,21,0.6) 25%, transparent 50%)",
+          pointerEvents: "none",
+        }}
+      />
+      <div className="gs-hero-vignette" aria-hidden="true" />
+
       {/* Content sits at the bottom of the hero — gives the artwork the
           full top 60% to breathe, then the title block lands against the
           dark gradient floor where it's always readable. */}

@@ -52,9 +52,8 @@ export default function GenSolMainUniverseSection() {
               <span className="ch-gravity-card-halo" aria-hidden="true" />
               <span className="ch-gravity-card-glow" aria-hidden="true" />
               <header className="ch-gravity-card-head">
-                <span className="ch-gravity-card-num">
-                  {c.index} / {c.eyebrow}
-                </span>
+                <span className="ch-gravity-card-eyebrow">{c.eyebrow}</span>
+                <span className="ch-gravity-card-num">{c.index}</span>
               </header>
               <h3 className="ch-gravity-card-title">{c.title}</h3>
               <p className="ch-gravity-card-body">{c.body}</p>

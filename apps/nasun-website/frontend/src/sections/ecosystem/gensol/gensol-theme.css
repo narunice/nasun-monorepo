@@ -382,6 +382,20 @@
   color: #5ee1e4;
 }
 
+/* Universe card head: eyebrow on the left, index on the right (mirrors the
+   overview cards above) instead of the combined "01 / Resource" run. */
+.dev-home-catena.gensol-theme .ch-gravity-card-head {
+  justify-content: space-between;
+}
+.dev-home-catena.gensol-theme .ch-gravity-card-eyebrow {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.6875rem;
+  color: var(--ch-accent-cyan);
+}
+
 /* L489-495 .ch-viz-act dot + ring. */
 .dev-home-catena.gensol-theme .ch-viz-act .dot {
   background: #d52933;
