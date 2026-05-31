@@ -11,6 +11,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isTradingDay,
   nextTradingDay,
+  previousTradingDay,
   sessionCloseUtc,
   localDateString,
 } from './market-holidays.js';
@@ -69,6 +70,36 @@ describe('nextTradingDay', () => {
   it('Chuseok eve (2026-09-24 Thu) -> Monday Sep 28', () => {
     const chuseok = new Date('2026-09-24T03:00:00Z');
     expect(localDateString('KRX', nextTradingDay('KRX', chuseok))).toBe('2026-09-28');
+  });
+});
+
+describe('previousTradingDay', () => {
+  it('returns input if already a trading day', () => {
+    const d = new Date('2026-05-29T20:00:00Z'); // Fri
+    expect(localDateString('NYSE', previousTradingDay('NYSE', d))).toBe('2026-05-29');
+  });
+
+  it('rolls a Saturday close back to Friday (NYSE)', () => {
+    // 2026-05-30 Saturday -> 2026-05-29 Friday (real NVDA session)
+    const sat = new Date('2026-05-30T20:00:00Z');
+    expect(localDateString('NYSE', previousTradingDay('NYSE', sat))).toBe('2026-05-29');
+  });
+
+  it('rolls a Saturday close back to Friday (KRX)', () => {
+    // 2026-05-30 Saturday in Seoul -> 2026-05-29 Friday (real 005930.KS session)
+    const sat = new Date('2026-05-30T06:30:00Z');
+    expect(localDateString('KRX', previousTradingDay('KRX', sat))).toBe('2026-05-29');
+  });
+
+  it('skips Memorial Day (Mon 2026-05-25) back to the prior Friday (NYSE)', () => {
+    const holiday = new Date('2026-05-25T20:00:00Z');
+    expect(localDateString('NYSE', previousTradingDay('NYSE', holiday))).toBe('2026-05-22');
+  });
+
+  it('skips a multi-day holiday closure (KR Chuseok Sat 2026-09-26) back to the prior session', () => {
+    // 2026-09-26 Sat; Sep 24-26 Chuseok + Sep 27 Sun -> Sep 23 Wed
+    const chuseok = new Date('2026-09-26T03:00:00Z');
+    expect(localDateString('KRX', previousTradingDay('KRX', chuseok))).toBe('2026-09-23');
   });
 });
 

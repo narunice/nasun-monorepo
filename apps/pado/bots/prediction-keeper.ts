@@ -60,7 +60,7 @@ import {
   PriceIntegrityError,
   type StockQuote,
 } from './lib/stock-price.js';
-import { localDateString, sessionCloseUtc } from './lib/market-holidays.js';
+import { localDateString, sessionCloseUtc, previousTradingDay } from './lib/market-holidays.js';
 import { EXPIRE_GRACE_MS, detectKind, type ResolveResult } from './lib/resolvers/types.js';
 import { parseSpaceCriteria, resolveSpace, SpaceParseError } from './lib/resolvers/space.js';
 import { parseMusicCriteria, resolveMusic, MusicParseError } from './lib/resolvers/music.js';
@@ -286,8 +286,25 @@ async function fetchStockPriceForCriteria(
   closeTimeMs: number,
 ): Promise<number> {
   const market = inferStockMarket(criteria.symbol);
-  const sessionDateLocal = localDateString(market, new Date(closeTimeMs));
-  const sessionUtcClose = sessionCloseUtc(market, new Date(closeTimeMs));
+  // Resolve against the last real trading session at or before the market
+  // close. If close_time already lands on a trading day this is a no-op; if it
+  // lands on a weekend/holiday (a market created via a path that skipped
+  // trading-day alignment) we roll back to the prior session whose daily candle
+  // actually exists, instead of polling forever for a non-existent candle. The
+  // outer `now < market.closeTime` gate still prevents resolving early.
+  const intendedDateLocal = localDateString(market, new Date(closeTimeMs));
+  const tradingDay = previousTradingDay(market, new Date(closeTimeMs));
+  const sessionDateLocal = localDateString(market, tradingDay);
+  const sessionUtcClose = sessionCloseUtc(market, tradingDay);
+  if (sessionDateLocal !== intendedDateLocal) {
+    // Audit trail: the market's close_time was not a trading day, so settlement
+    // uses the prior session's close. Logged once per market (it resolves on
+    // this tick, after which status != OPEN short-circuits earlier).
+    console.warn(
+      `[stock-price] ${criteria.symbol}: close ${intendedDateLocal} is not a trading day; ` +
+        `resolving against prior session ${sessionDateLocal}`,
+    );
+  }
   const grace = 5 * 60 * 1000;
   if (Date.now() < sessionUtcClose + grace) {
     throw new StockPriceFetchError(

@@ -136,6 +136,24 @@ export function nextTradingDay(market: Market, d: Date): Date {
 }
 
 /**
+ * Return the most recent trading day at or before the given instant.
+ * Mirror of nextTradingDay walking backward. Used by the keeper to resolve a
+ * stock market whose close_time lands on a weekend/holiday (e.g. created via a
+ * path that skipped trading-day alignment): the resolving session is the last
+ * real session at or before the market close, so the daily candle exists.
+ * For a close_time already on a trading day this returns the same day, so
+ * correctly-created markets are unaffected.
+ */
+export function previousTradingDay(market: Market, d: Date): Date {
+  const cursor = new Date(d.getTime());
+  for (let i = 0; i < 30; i++) {
+    if (isTradingDay(market, cursor)) return cursor;
+    cursor.setUTCDate(cursor.getUTCDate() - 1);
+  }
+  throw new Error(`No trading day found within 30 days before ${d.toISOString()} for ${market}`);
+}
+
+/**
  * UTC milliseconds for the given session's regular-hours close.
  * Computed from the exchange's local close hour, then converted to UTC using
  * Intl with the appropriate timezone (handles DST automatically).
