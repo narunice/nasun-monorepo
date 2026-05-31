@@ -60,6 +60,31 @@ export function useMines(): UseMinesResult {
     }
   }, [walletAddress])
 
+  // After a session is created on-chain, the owned-object index can lag a
+  // moment behind the confirmed transaction, so a single read may still
+  // return null and leave the UI on the bet panel. Poll briefly until the
+  // active session appears. Used as the create onSuccess callback so the
+  // panel stays in its "creating" state until the board is ready.
+  const waitForActiveSession = useCallback(async () => {
+    if (!walletAddress) return
+    for (let attempt = 0; attempt < 6; attempt++) {
+      try {
+        const s = await getMyActiveSession(walletAddress)
+        if (s) {
+          setSession(s)
+          return
+        }
+      } catch (e) {
+        console.warn('[mines] session poll failed', e)
+      }
+      if (attempt < 5) {
+        await new Promise((resolve) => setTimeout(resolve, 600))
+      }
+    }
+    // Last resort: reflect whatever the chain returns now (may be null).
+    await refresh()
+  }, [walletAddress, refresh])
+
   useEffect(() => {
     refresh()
   }, [refresh])
@@ -80,7 +105,7 @@ export function useMines(): UseMinesResult {
             if (!betVal.isValid) return betVal;
             return validateMinesConfig(mineCount, MINES_MIN_MINES, MINES_MAX_MINES);
           },
-          onSuccess: refresh,
+          onSuccess: waitForActiveSession,
           onError: (err) => setError(humanizeMinesError(err.message)),
         }
       )
@@ -88,7 +113,7 @@ export function useMines(): UseMinesResult {
       setLocalPhase('idle')
       return success
     },
-    [executeGameTx, refresh]
+    [executeGameTx, waitForActiveSession]
   )
 
   const revealCell = useCallback(

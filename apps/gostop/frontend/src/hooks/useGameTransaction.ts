@@ -15,7 +15,7 @@ import type { ValidationResult } from '../lib/validation/game-rules';
 export interface GameTxOptions {
   amount?: bigint;
   successMessage?: string;
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: any) => void | Promise<void>;
   onError?: (error: Error) => void;
   skipBalanceCheck?: boolean;
   /** Sui execution options */
@@ -134,7 +134,16 @@ export function useGameTransaction() {
         if (options.successMessage) {
           showToast(options.successMessage, 'success');
         }
-        options.onSuccess?.(finalResult);
+        // Await the success callback so callers that refresh on-chain state
+        // (e.g. loading a freshly created game session) complete before we
+        // report success and the UI leaves its pending state. The transaction
+        // has already succeeded here, so a failure inside the callback must
+        // never be surfaced as a transaction failure.
+        try {
+          await options.onSuccess?.(finalResult);
+        } catch (cbErr) {
+          console.error('[GameTransaction] onSuccess callback failed:', cbErr);
+        }
         return true;
       } catch (err: any) {
         console.error('[GameTransaction] Error:', err);
