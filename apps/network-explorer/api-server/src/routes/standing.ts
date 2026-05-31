@@ -104,20 +104,24 @@ function publicStandingView(row: UserNsiRow | null): PublicStandingWire {
 
 /**
  * Apply cache headers consistent with other public routes (`points.ts`,
- * `stats.ts`, `ecosystem.ts`). `Vary: Origin` keeps the cache entry per-origin
- * so the Hono CORS middleware's reflected `Access-Control-Allow-Origin` value
- * does not poison the response for siblings (nasun.io vs pado.finance vs
- * gostop.app). NSI re-computes hourly upstream; 60 s edge cache is well within
- * the data's natural freshness.
+ * `stats.ts`, `ecosystem.ts`). NSI re-computes hourly upstream; 60 s edge
+ * cache is well within the data's natural freshness.
  *
- * NOTE: CloudFront `/api/*` is currently `CachingDisabled` (see
- * docs/infrastructure.md); these headers are honoured by the nginx upstream
- * cache on the origin EC2 and by browsers. CDN-level promotion is a separate
- * deliverable.
+ * `Vary: Origin` is NOT set here — the Hono `cors()` middleware already
+ * emits it on every cross-origin response, so adding it again produces a
+ * duplicate header. Trusting the middleware keeps cache-key correctness in
+ * one place.
+ *
+ * NOTE: prod nginx (`/api/v1/` block) currently overrides upstream with
+ * `Cache-Control: no-store` for safety on internal routes. Standing
+ * responses will inherit that override until the operator carves out a
+ * standing-specific `location` block. CloudFront `/api/*` is also currently
+ * `CachingDisabled` (see docs/infrastructure.md); the headers here are
+ * already correct at the origin layer and become effective once those
+ * layers are loosened. See Phase 1 close runbook for the follow-up.
  */
 function applyPublicCacheHeaders(c: Context): void {
   c.header('Cache-Control', 'public, max-age=60');
-  c.header('Vary', 'Origin');
 }
 
 // Sui addresses are exactly 32 bytes -> 64 hex chars -> 66-char "0x..." string.
