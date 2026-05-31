@@ -1,9 +1,11 @@
 {
   "extends": "@nasun/tsconfig/base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": ".",
-    "resolveJsonModule": true
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "resolveJsonModule": true,
+    "declaration": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "exclude": ["src/**/__tests__/**"]
 }

@@ -3,19 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./src/index.ts",
-      "types": "./src/index.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./test-utils": {
-      "import": "./src/test-utils/parity.ts",
-      "types": "./src/test-utils/parity.ts"
+      "types": "./dist/test-utils/parity.d.ts",
+      "import": "./dist/test-utils/parity.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"
