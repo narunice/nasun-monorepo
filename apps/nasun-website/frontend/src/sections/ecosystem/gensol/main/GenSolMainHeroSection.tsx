@@ -59,7 +59,7 @@ export default function GenSolMainHeroSection() {
         />
       </picture>
 
-      {/* Bottom-up readability gradient — half the strength of the original
+      {/* Bottom-up readability gradient at half the strength of the original,
           so the title stays legible without flattening the mech artwork. */}
       <div
         aria-hidden="true"

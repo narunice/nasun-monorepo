@@ -48,7 +48,7 @@ export default function GenSolMainUniverseSection() {
       >
         {COLUMNS.map((c) => (
           <FadeInUp key={c.index}>
-            <article className="ch-gravity-card">
+            <article className="ch-gravity-card" data-spotlight-card="">
               <span className="ch-gravity-card-halo" aria-hidden="true" />
               <span className="ch-gravity-card-glow" aria-hidden="true" />
               <header className="ch-gravity-card-head">

@@ -103,7 +103,7 @@ export default function GenSolMainBuildingSection() {
                     position: "absolute",
                     inset: 0,
                     background:
-                      "linear-gradient(180deg, rgba(10,15,21,0) 50%, rgba(10,15,21,0.39) 100%)",
+                      "linear-gradient(180deg, rgba(10,15,21,0) 50%, rgba(10,15,21,0.55) 100%)",
                   }}
                 />
               </div>

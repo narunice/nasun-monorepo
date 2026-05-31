@@ -64,8 +64,8 @@ export default function SpectraHeroSection() {
           />
         </picture>
 
-        {/* Bottom-up readability gradient — same pattern as the main hero
-            so the title block always lands against a dark floor. */}
+        {/* Bottom-up readability gradient, same pattern as the main hero:
+            top half fully transparent, only the lower half darkens. */}
         <div
           aria-hidden="true"
           style={{
@@ -73,7 +73,7 @@ export default function SpectraHeroSection() {
             inset: 0,
             zIndex: 0,
             background:
-              "linear-gradient(to top, #0a0f15 0%, rgba(10,15,21,0.92) 18%, rgba(10,15,21,0.55) 40%, rgba(10,15,21,0.05) 65%, transparent 85%)",
+              "linear-gradient(to top, rgba(10,15,21,0.92) 0%, rgba(10,15,21,0.6) 25%, transparent 50%)",
             pointerEvents: "none",
           }}
         />

@@ -82,21 +82,15 @@ export default function HeistHeroSection() {
       >
         <FadeInUp className="text-center xl:text-left max-w-[640px] xl:max-w-[760px]">
           <span className="ch-eyebrow gs-heist-eyebrow">02 / Animation</span>
-          <h1 className="ch-display-wide mt-4 xl:!text-6xl min-[1440px]:!text-7xl !leading-[1.05] uppercase">
+          <h1 className="ch-display-wide mt-4">
             <span className="gs-heist-title">The Heist</span>
           </h1>
-          <p
-            className="xl:!text-2xl min-[1440px]:!text-3xl gs-heist-subtitle"
-            style={{
-              fontFamily: "var(--ch-font-display)",
-              fontWeight: 500,
-              fontSize: "1.25rem",
-              letterSpacing: "0.06em",
-              textTransform: "uppercase",
-              margin: "0.85rem 0 0",
-            }}
-          >
+          <p className="gs-heist-subtitle mt-3">
             An 8-Episode 3D Animated Series
+          </p>
+          <p className="ch-lead mt-4 gs-heist-logline">
+            When his daughter is taken, a grieving farmer must steal a cache of
+            Spectra from the Dorakken Empire's vaults, or never see her again.
           </p>
         </FadeInUp>
       </div>

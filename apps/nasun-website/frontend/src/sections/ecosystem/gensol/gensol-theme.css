@@ -221,13 +221,24 @@
   color: transparent;
   -webkit-text-fill-color: transparent;
 }
+/* Format tagline reads as a small mono label (a peer to the eyebrow), clearly
+   subordinate to the body logline below it so the two lines aren't equal. */
+.dev-home-catena.gensol-theme .gs-heist-subtitle {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.8125rem;
+  color: var(--ch-fg-subdued);
+}
 @media (min-width: 1280px) {
+  /* Color treatment only. Size/weight/spacing defer to the shared
+     ch-display-wide / ch-eyebrow / ch-lead primitives so the hero matches
+     the main and shooter pages. */
   .dev-home-catena.gensol-theme .gs-heist-title {
     background-image: none;
     color: #111821;
     -webkit-text-fill-color: #111821;
-    font-weight: 600;
-    letter-spacing: -0.01em;
     text-shadow: 0 2px 18px rgba(0, 0, 0, 0.14);
   }
   /* Eyebrow + subtitle: solid GenSol black, no transparency.
@@ -236,14 +247,17 @@
      and creates a single-color editorial hierarchy. */
   .dev-home-catena.gensol-theme .gs-heist-eyebrow {
     color: #111821;
-    font-weight: 600;
-    font-size: 1.125rem;
-    letter-spacing: 0.26em;
   }
   .dev-home-catena.gensol-theme .gs-heist-subtitle {
     color: #ffffff;
-    font-weight: 600;
-    opacity: 0.8;
+    opacity: 0.6;
+  }
+  /* Logline is the primary read: brighter and wider than the label tagline,
+     capped so it stays a tidy left-aligned block instead of spanning the hero. */
+  .dev-home-catena.gensol-theme .gs-heist-logline {
+    color: #ffffff;
+    opacity: 0.92;
+    max-width: 30rem;
   }
 }
 
