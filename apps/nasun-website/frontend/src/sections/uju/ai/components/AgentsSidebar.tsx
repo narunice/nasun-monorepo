@@ -13,12 +13,16 @@
 import { useMemo, useState } from "react";
 import type { AgentProfile } from "../hooks/useAgentProfiles";
 import { useTraderConfig } from "../hooks/useTraderConfig";
+import type { AlphaCapacity } from "../alpha/alphaApiClient";
+import { AlphaCapacityBox } from "./AlphaCapacity";
 
 interface AgentsSidebarProps {
   agents: AgentProfile[];
   selectedAgentId: string | null;
   onSelectAgent: (id: string) => void;
   onClearSelection: () => void;
+  /** Public alpha capacity from AiTab; powers the capacity box. Null while loading. */
+  alphaCapacity: AlphaCapacity | null;
   /**
    * Opens CreateAgentModal preselected on the import path. Generate-mode
    * creation lives on the Quickstart card; the sidebar entry is for users
@@ -42,6 +46,7 @@ export function AgentsSidebar({
   onShowImport,
   createBlocked = false,
   createBlockedMessage,
+  alphaCapacity,
 }: AgentsSidebarProps) {
   const [query, setQuery] = useState("");
 
@@ -80,6 +85,8 @@ export function AgentsSidebar({
       >
         Agents
       </button>
+
+      <AlphaCapacityBox capacity={alphaCapacity} className="m-2" />
 
       <div className="flex-1 overflow-y-auto py-2">
         {showSearch && (

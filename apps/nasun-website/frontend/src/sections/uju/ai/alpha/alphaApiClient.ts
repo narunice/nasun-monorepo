@@ -31,6 +31,14 @@ export interface AlphaCapacity {
   used: number;
   total: number;
   available: number;
+  /**
+   * Waitlist members in their claim window (promoted, not yet activated).
+   * They hold a pending slot, so available = total - used - invited. Optional
+   * for forward-compat: a chat-server without this field omits it.
+   */
+  invited?: number;
+  /** Agent session length in hours (server config). Optional for forward-compat. */
+  ttl_hours?: number;
   queue_depth: number;
   schema_ready: boolean;
   gate_enabled: boolean;
