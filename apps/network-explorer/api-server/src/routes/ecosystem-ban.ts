@@ -1,8 +1,7 @@
 /**
  * Admin endpoint for ecosystem-level ban (banned_users + activity_points.flagged).
  *
- * Auth: requireAdmin — accepts either the shared X-Internal-Auth secret
- * (CLI/chat-server) or a Cognito Bearer token whose UserProfiles row has
+ * Auth: requireAdmin — a Cognito Bearer token whose UserProfiles row has
  * role=ADMIN (admin web UI).
  *
  * Routes:
@@ -18,8 +17,8 @@
  *     "actor":       "admin@nasun" | "user-display"    // optional fallback
  *   }
  *
- * `actor` defaults to the resolved admin identity (Cognito email or
- * "internal-token") so the audit trail is non-empty even when callers omit it.
+ * `actor` defaults to the resolved admin identity (Cognito email or identity
+ * id) so the audit trail is non-empty even when callers omit it.
  *
  * At least one of `handle` or `identityId` must be provided.
  */
@@ -64,7 +63,6 @@ interface UnbanRequest {
 
 function defaultActor(admin: AdminContext, override?: string): string {
   if (override?.trim()) return override.trim();
-  if (admin.source === 'internal-token') return 'internal-token';
   return admin.email ? `admin-web:${admin.email}` : `admin-web:${admin.identityId}`;
 }
 
