@@ -1,9 +1,17 @@
 import { ChatPanel } from './ChatPanel';
 import { useChatMode } from '../context/ChatModeContext';
+import { useMobileTradeBar } from '../../../hooks/useMobileTradeBar';
 
 export function MobileChatDrawer() {
   const { chatMode, setChatMode } = useChatMode();
   const isOpen = chatMode === 'floating';
+  // When the prediction trade sticky bar is shown (< lg), lift the FAB above it
+  // so it no longer overlaps the BUY YES/NO buttons (516b5034). The bar is
+  // hidden at lg+, so the FAB returns to its normal offset there.
+  const tradeBarVisible = useMobileTradeBar((s) => s.visible);
+  const fabPosition = tradeBarVisible
+    ? 'bottom-[132px] lg:bottom-4'
+    : 'bottom-[72px] md:bottom-4';
 
   return (
     <>
@@ -11,11 +19,11 @@ export function MobileChatDrawer() {
       {!isOpen && (
         <button
           onClick={() => setChatMode('floating')}
-          className="fixed bottom-[72px] md:bottom-4 right-4 z-40 xl:hidden
+          className={`fixed ${fabPosition} right-4 z-40 xl:hidden
             w-12 h-12 rounded-full
             bg-theme-accent text-white shadow-lg
             flex items-center justify-center
-            hover:opacity-90 transition-opacity"
+            hover:opacity-90 transition-opacity`}
           title="Open chat"
           aria-label="Open chat"
         >

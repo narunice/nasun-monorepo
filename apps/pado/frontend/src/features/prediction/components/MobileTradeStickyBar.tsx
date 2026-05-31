@@ -6,8 +6,9 @@
  * instance — desktop and mobile share the same form state.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import type { MarketStatus } from '../types';
+import { useMobileTradeBar } from '../../../hooks/useMobileTradeBar';
 
 interface MobileTradeStickyBarProps {
   yesProbability: number;
@@ -24,6 +25,14 @@ export function MobileTradeStickyBar({
   isTradingFrozen,
   onSelectOutcome,
 }: MobileTradeStickyBarProps) {
+  // Signal that the mobile trade bar occupies the bottom-right so the global
+  // chat FAB lifts above it instead of overlapping the BUY YES/NO buttons (516b5034).
+  const setTradeBarVisible = useMobileTradeBar((s) => s.setVisible);
+  useEffect(() => {
+    setTradeBarVisible(true);
+    return () => setTradeBarVisible(false);
+  }, [setTradeBarVisible]);
+
   const scrollToForm = useCallback(
     (outcome: 'yes' | 'no') => {
       onSelectOutcome(outcome);
