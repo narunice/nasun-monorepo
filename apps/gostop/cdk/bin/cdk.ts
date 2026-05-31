@@ -79,6 +79,21 @@ if (!isProd && BASIC_AUTH_TOKENS.length === 0) {
   process.exit(1);
 }
 
+// gostop-backend (node-3) IP for the prod-only api.gostop.app A record. The
+// host is redacted from committed source (public-repo hygiene), same as the
+// account ID above; load it from AWS env var or .env.production (gitignored).
+// Fail fast so a placeholder string can never reach Route53 as a record value.
+let apiBackendIp: string | undefined;
+if (isProd) {
+  apiBackendIp = process.env.INDEXER_NODE_HOST ?? readEnvValue(envFilePath, 'INDEXER_NODE_HOST');
+  if (!apiBackendIp || !/^(\d{1,3}\.){3}\d{1,3}$/.test(apiBackendIp)) {
+    console.error('[CDK] ERROR: INDEXER_NODE_HOST (api.gostop.app backend IP) not configured for production.');
+    console.error('[CDK]   Either export INDEXER_NODE_HOST=<ipv4>');
+    console.error(`[CDK]   or add INDEXER_NODE_HOST=<ipv4> to ${envFilePath}.`);
+    process.exit(1);
+  }
+}
+
 new GostopSiteStack(app, isProd ? 'GostopSiteStack' : 'GostopSiteStagingStack', {
   env,
   domainName: isProd ? 'gostop.app' : 'staging.gostop.app',
@@ -88,7 +103,7 @@ new GostopSiteStack(app, isProd ? 'GostopSiteStack' : 'GostopSiteStagingStack', 
   // (BASIC_AUTH_TOKENS comes from .env.staging / env var — never inline plaintext.)
   // Direct A record for gostop-backend on node-3. Only the prod zone owns the
   // api subdomain; staging frontend will point at https://api.gostop.app.
-  apiBackendIp: isProd ? '__INDEXER_NODE_HOST__' : undefined,
+  apiBackendIp,
   description: isProd
     ? 'gostop.app static SPA hosting (S3 + CloudFront + Route53)'
     : 'staging.gostop.app static SPA hosting (S3 + CloudFront + Route53)',
