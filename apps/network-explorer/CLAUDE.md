@@ -169,8 +169,8 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 | `api-server/src/workers/tier-worker.ts` | (2026-05-22 신규) NSI 별도 pm2 fork — 3 hourly cron 격리 가동, `daily-nft-check.ts`/`points-scanner.ts` 미접촉 |
 | `api-server/src/scanner/staking-principal-sync.ts` | (2026-05-22 NSI) hourly `suix_getStakes` → `user_staking_daily_snapshots` (30일 sliding window) |
 | `api-server/src/scanner/lp-position-sync.ts` | (2026-05-22 NSI) hourly cross-schema aggregate of `gostop.bankroll_event` → `user_lp_daily_snapshots` |
-| `api-server/src/scanner/nsi-compute.ts` | (2026-05-22 NSI) hourly 5-stage join → `user_nsi`, monotone-up env-driven, bootstrap/stale guard |
-| `api-server/src/routes/standing.ts` | (2026-05-22 NSI) `/api/v1/standing/by-address`, `/_/health`, `/_/distribution` |
+| `api-server/src/scanner/nsi-compute.ts` | (2026-05-22 NSI, 2026-05-31 audit table + savepoint) hourly 5-stage join → `user_nsi`. Reads thresholds/weights from `@nasun/standing`. Writes `nsi_compute_events` audit row each cycle via `SAVEPOINT audit_insert` so audit-side failures cannot roll back state UPSERT. Async `ensureNsiSchema()` awaited at start to close cold-start race. |
+| `api-server/src/routes/standing.ts` | (2026-05-22 NSI, 2026-05-31 SSOT cutover + cache) `/by-address/:address` public (`Cache-Control: public, max-age=60` + `Vary: Origin`), `/_/health`, `/_/distribution`. `TIER_BENEFITS` + thresholds imported from `@nasun/standing`. Threat model documented in file header. |
 | `api-server/src/rpc.ts` | 중앙 retry+backoff (5xx/timeout, 3회, jitter, Retry-After 존중) |
 | `api-server/src/scripts/settle-pado.ts` | Pado 주간 정산 (Mon 00:15 UTC) |
 | `api-server/src/scripts/settle-ecosystem.ts` | Ecosystem 주간 정산 (Mon 00:20 UTC) |
@@ -213,4 +213,5 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 | [../../docs/ecosystem-points-system.md](../../docs/ecosystem-points-system.md) | 포인트 시스템 (단조 증가 불변식, 인시던트 학습) |
 | [../../docs/pado-score-leaderboard.md](../../docs/pado-score-leaderboard.md) | Pado Score 리더보드 |
 | [../../docs/infrastructure.md](../../docs/infrastructure.md) | node-3 인프라, DB 리셋, CloudFront/WAF |
-| [../../docs/nsi-phase1-runbook.md](../../docs/nsi-phase1-runbook.md) | NSI (Nasun Standing Index) Phase 1 — tier-worker 배포·튜닝·롤백 (2026-05-22 신규) |
+| [../../docs/nsi-phase1-runbook.md](../../docs/nsi-phase1-runbook.md) | NSI (Nasun Standing Index) Phase 1 — tier-worker 배포·튜닝·롤백 + Phase boundary reality 표 + `@nasun/standing` SOP + `nsi_compute_events` 쿼리 (2026-05-22 신규, 2026-05-31 Phase 1 close) |
+| [../../packages/nasun-standing/README.md](../../packages/nasun-standing/README.md) | NSI score→tier SSOT 패키지 — `nasun_tier::policy.move` mirror, JSON_ANCHOR source-parity test, 변경 SOP (2026-05-31 신규) |
