@@ -24,25 +24,27 @@
  * `ecosystem_score_snapshots` table cannot block or corrupt NSI computation.
  */
 
+import {
+  NSI_FORMULA,
+  nsiToTier,
+  applyGpFloor,
+  monotoneUpDisplayTier,
+  type Tier,
+} from '@nasun/standing';
 import { sql as indexerDb, pointsDb } from '../db.js';
 import { sendTelegramAlert } from '../utils/alert.js';
 import { getAllWalletsPerIdentity } from './identity-wallet.js';
 
 const COMPUTE_INTERVAL_MS = 60 * 60 * 1000; // 1h
 
-// === Sub-score weights ===
-const W_STAKING = 0.35;
-const W_LP = 0.2;
-const W_TX = 0.2;
-const W_DIVERSITY = 0.15;
-const W_NFT = 0.1;
-
-// === Tier thresholds (NSI 0-1000 range) ===
-// T3 lowered 600→500 (2026-05-23) after first-cycle distribution showed only
-// 14 users ≥600 (target ~500). NSI cold start: 30d sliding window has 1 day
-// of data; revisit after window fully populates (~2026-06-22).
-const TIER_3_THRESHOLD = 500;
-const TIER_2_THRESHOLD = 250;
+// === Sub-score weights — pulled from @nasun/standing SSOT ===
+// Bumping weights requires updating NSI_FORMULA.version in the package + an
+// 'nsi_compute_events.formula_version_cutover' audit row in this worker.
+const W_STAKING = NSI_FORMULA.weights.staking;
+const W_LP = NSI_FORMULA.weights.lp;
+const W_TX = NSI_FORMULA.weights.tx;
+const W_DIVERSITY = NSI_FORMULA.weights.diversity;
+const W_NFT = NSI_FORMULA.weights.nft;
 
 // === Sub-score normalization constants ===
 // staking: 10 NSN -> 0, 1K NSN -> 500, 100K NSN -> 1000
@@ -79,7 +81,6 @@ const MONOTONE_UP_UNTIL = process.env.NSI_MONOTONE_UP_UNTIL
 
 const BATCH_SIZE = 500;
 const STALE_SNAPSHOT_GUARD_DAYS = 2;
-let monotoneUpExpiryAlertSent = false;
 
 let lastSuccessAt: Date | null = null;
 let errorCount24h = 0;
@@ -96,7 +97,33 @@ interface ComputedRow {
   has_gp: boolean;
 }
 
-export function startNsiCompute(): void {
+/**
+ * Idempotent schema setup for the audit table written each cycle.
+ *
+ * Called once before the cron timer starts. CREATE TABLE IF NOT EXISTS makes
+ * re-invocation on restart safe. PK on cycle_started_at + ON CONFLICT DO
+ * NOTHING in the writers gives us idempotency across crash-restart races
+ * (rather than relying on the prior single-shot module-level latch which
+ * reset on every process restart).
+ */
+async function ensureNsiSchema(): Promise<void> {
+  if (!pointsDb) return;
+  await pointsDb.unsafe(`
+    CREATE TABLE IF NOT EXISTS nsi_compute_events (
+      cycle_started_at   timestamptz PRIMARY KEY,
+      cycle_completed_at timestamptz NOT NULL,
+      event_type         text NOT NULL,
+      metadata           jsonb NOT NULL
+    )
+  `);
+  await pointsDb.unsafe(`
+    CREATE INDEX IF NOT EXISTS idx_nsi_events_type_time
+      ON nsi_compute_events(event_type, cycle_started_at DESC)
+  `);
+  console.log('[nsi-compute] schema ready');
+}
+
+export async function startNsiCompute(): Promise<void> {
   if (process.env.ENABLE_NSI_COMPUTE !== 'true') {
     console.log('[nsi-compute] disabled (set ENABLE_NSI_COMPUTE=true)');
     return;
@@ -105,6 +132,13 @@ export function startNsiCompute(): void {
     console.warn('[nsi-compute] pointsDb unavailable, skipping');
     return;
   }
+  // Ensure audit table exists before the first cycle can fire. Without this
+  // await, the first cycle's audit INSERT can race the CREATE TABLE and fail
+  // with `relation "nsi_compute_events" does not exist` — see the
+  // agent-leaderboard regression for the same pattern (sync start + sync
+  // ensureSchema = guaranteed cold-start race on fresh nodes).
+  await ensureNsiSchema();
+
   timer = setInterval(runCompute, COMPUTE_INTERVAL_MS);
   runCompute().catch((err) => console.error('[nsi-compute] initial run failed', err));
 }
@@ -154,20 +188,14 @@ async function runCompute(): Promise<void> {
       return;
     }
 
-    // Monotone-up expiry alert: when the window transitions off, fire once so
-    // operators know mass tier movements may follow. Suppressed on subsequent
-    // cycles via the module-level latch.
+    // Monotone-up expiry alert: when the window transitions off we emit one
+    // audit row per `window_until` value. Dedup is via the audit table's
+    // existence check rather than a module-level latch — process restarts
+    // (deploys, OOM, pm2 reload) no longer cause duplicate alerts, and the
+    // event is recoverable from `nsi_compute_events` indefinitely.
     const monotoneActive = MONOTONE_UP_UNTIL !== null && Date.now() < MONOTONE_UP_UNTIL.getTime();
-    if (!monotoneActive && MONOTONE_UP_UNTIL !== null && !monotoneUpExpiryAlertSent) {
-      monotoneUpExpiryAlertSent = true;
-      try {
-        await sendTelegramAlert(
-          `[nsi-compute] monotone-up window expired at ${MONOTONE_UP_UNTIL.toISOString()} — tier downgrades now possible`,
-          { dedupKey: 'nsi-monotone-expired' },
-        );
-      } catch {
-        // ignore
-      }
+    if (!monotoneActive && MONOTONE_UP_UNTIL !== null) {
+      await emitMonotoneExpiredIfNew(MONOTONE_UP_UNTIL);
     }
 
     // Stage A: 30-day avg staking principal (NSN units, fractional).
@@ -329,26 +357,30 @@ async function runCompute(): Promise<void> {
         diversityScore * W_DIVERSITY +
         nftScore * W_NFT;
 
-      const nsiTier = nsi >= TIER_3_THRESHOLD ? 3 : nsi >= TIER_2_THRESHOLD ? 2 : 1;
+      const nsiTier = nsiToTier(nsi);
       const hasGp = gpSet.has(identityId);
-      const gpFloor = hasGp ? 2 : 1;
-      const computedTier = Math.max(nsiTier, gpFloor);
+      const computedTier = applyGpFloor(nsiTier, hasGp);
 
       const prev = existingMap.get(identityId);
       const previousTier = prev?.tier ?? null;
-      const prevMaxSeen = prev?.max_seen_tier ?? 1;
+      const prevMaxSeen = (prev?.max_seen_tier ?? 1) as Tier;
 
       // `max_seen_tier` tracks the highest *earned* tier — based on `nsiTier`
       // (the score-derived tier before GP floor), NOT `computedTier` or
       // `finalTier`. Otherwise a GP holder's max_seen jumps to 2 just from
       // holding the NFT and never reflects whether the user actually earned it.
       // After NFT loss, max_seen should reflect the user's own onchain history.
-      const newMaxSeen = Math.max(prevMaxSeen, nsiTier);
+      const newMaxSeen = (nsiTier > prevMaxSeen ? nsiTier : prevMaxSeen) as Tier;
 
       // Monotone-up window: display the higher of "what we just computed" vs
       // "highest earned tier ever". GP holders' floor (`gpFloor`) is already
       // baked into `computedTier`, so this also preserves the floor automatically.
-      const finalTier = isMonotoneUpPeriod ? Math.max(computedTier, prevMaxSeen) : computedTier;
+      const finalTier = monotoneUpDisplayTier(
+        computedTier,
+        prevMaxSeen,
+        isMonotoneUpPeriod ? MONOTONE_UP_UNTIL : null,
+        new Date(),
+      );
 
       computed.push({
         identity_id: identityId,
@@ -367,6 +399,17 @@ async function runCompute(): Promise<void> {
         has_gp: hasGp,
       });
     }
+
+    // Pre-compute distribution for both the operator log line and the audit
+    // row. Mirrors the t1/t2/t3 counts we'd otherwise emit only to stdout.
+    const dist = { t1: 0, t2: 0, t3: 0 };
+    for (const c of computed) {
+      if (c.tier === 1) dist.t1++;
+      else if (c.tier === 2) dist.t2++;
+      else dist.t3++;
+    }
+
+    const cycleStartedAt = new Date(started);
 
     // Bulk UPSERT in a single transaction. The `tx as unknown as typeof pointsDb`
     // cast follows the existing pattern in ban-service.ts:211 and settle-pado.ts:434
@@ -413,16 +456,49 @@ async function runCompute(): Promise<void> {
             computed_at = now()
         `;
       }
+
+      // Audit row inside the same transaction — wrapped in a savepoint so
+      // any failure here (JSONB serialisation, schema drift, etc.) only
+      // rolls back the audit insert, never the user_nsi UPSERTs above.
+      // The state side of nsi-compute must never be held hostage to audit
+      // bookkeeping. PK on cycle_started_at + ON CONFLICT DO NOTHING makes
+      // this idempotent across crash-restart races.
+      try {
+        await sql`SAVEPOINT audit_insert`;
+        await sql`
+          INSERT INTO nsi_compute_events (
+            cycle_started_at, cycle_completed_at, event_type, metadata
+          ) VALUES (
+            ${cycleStartedAt}, ${new Date()}, 'cycle',
+            ${sql.json({
+              t1: dist.t1,
+              t2: dist.t2,
+              t3: dist.t3,
+              monotone_up_active: isMonotoneUpPeriod,
+              identities_computed: computed.length,
+              cycle_duration_ms: Date.now() - started,
+              formula_version: NSI_FORMULA.version,
+            })}
+          )
+          ON CONFLICT (cycle_started_at) DO NOTHING
+        `;
+        await sql`RELEASE SAVEPOINT audit_insert`;
+      } catch (auditErr) {
+        await sql`ROLLBACK TO SAVEPOINT audit_insert`;
+        console.error(
+          '[nsi-compute] audit insert failed (state UPSERT preserved):',
+          auditErr instanceof Error ? auditErr.message : String(auditErr),
+        );
+        // Don't block the transaction commit; alert is best-effort.
+        sendTelegramAlert(
+          `nsi-compute audit insert failed: ${auditErr instanceof Error ? auditErr.message : String(auditErr)}`,
+          { dedupKey: 'nsi-audit-fail' },
+        ).catch(() => {});
+      }
     });
 
     lastSuccessAt = new Date();
     errorCount24h = 0;
-    const dist = { t1: 0, t2: 0, t3: 0 };
-    for (const c of computed) {
-      if (c.tier === 1) dist.t1++;
-      else if (c.tier === 2) dist.t2++;
-      else dist.t3++;
-    }
     console.log(
       `[nsi-compute] computed ${computed.length} NSIs in ${Date.now() - started}ms ` +
         `(t1=${dist.t1}, t2=${dist.t2}, t3=${dist.t3}, monotone_up=${isMonotoneUpPeriod})`,
@@ -445,4 +521,51 @@ async function runCompute(): Promise<void> {
 
 export function getNsiComputeHealth(): { lastSuccessAt: Date | null; errorCount24h: number } {
   return { lastSuccessAt, errorCount24h };
+}
+
+/**
+ * Record a monotone-up expiry event at most once per `window_until` value.
+ *
+ * Replaces the prior module-level boolean latch which reset on every process
+ * restart — a single deploy or OOM kill during the expiry instant would have
+ * skipped (or duplicated) the alert. The audit table is the durable record
+ * and the alert is gated by `RETURNING cycle_started_at` so Telegram only
+ * fires when a new row was actually inserted.
+ *
+ * Note: the row records the *post-expiry* distribution (whatever the current
+ * cycle is computing), not the pre-expiry distribution. The 5/29 wave count
+ * lives in the runbook prose (see Phase 1 close docs); this audit row marks
+ * "we observed expiry transition" rather than reconstructing pre-state.
+ */
+async function emitMonotoneExpiredIfNew(windowUntil: Date): Promise<void> {
+  if (!pointsDb) return;
+  try {
+    const inserted = await pointsDb<Array<{ cycle_started_at: Date }>>`
+      INSERT INTO nsi_compute_events (
+        cycle_started_at, cycle_completed_at, event_type, metadata
+      )
+      SELECT now(), now(), 'monotone_up_expired',
+        ${pointsDb.json({
+          window_until: windowUntil.toISOString(),
+          formula_version: NSI_FORMULA.version,
+        })}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM nsi_compute_events
+        WHERE event_type = 'monotone_up_expired'
+          AND metadata->>'window_until' = ${windowUntil.toISOString()}
+      )
+      RETURNING cycle_started_at
+    `;
+    if (inserted.length > 0) {
+      await sendTelegramAlert(
+        `[nsi-compute] monotone-up window expired at ${windowUntil.toISOString()} — tier downgrades now possible`,
+        { dedupKey: `nsi-monotone-expired-${windowUntil.toISOString()}` },
+      );
+    }
+  } catch (err) {
+    console.error(
+      '[nsi-compute] monotone expiry audit emit failed:',
+      err instanceof Error ? err.message : String(err),
+    );
+  }
 }

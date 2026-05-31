@@ -27,7 +27,14 @@ console.log('[tier-worker] ENABLE_AGENT_LEADERBOARD     =', process.env.ENABLE_A
 
 startStakingPrincipalSync();
 startLpPositionSync();
-startNsiCompute();
+// nsi-compute owns the `nsi_compute_events` audit table — its async startup
+// awaits CREATE TABLE before the first cycle can run, blocking the cold-start
+// race that bit agent-leaderboard. If schema init throws we exit non-zero so
+// pm2 restarts cleanly; the idempotent CREATE makes restart safe.
+startNsiCompute().catch((err) => {
+  console.error('[tier-worker] nsi-compute init error:', err);
+  process.exit(1);
+});
 startAgentLeaderboard().catch((err) => {
   console.error('[tier-worker] agent-leaderboard init error:', err);
 });
