@@ -18,12 +18,14 @@ import { startStakingPrincipalSync } from '../scanner/staking-principal-sync.js'
 import { startLpPositionSync } from '../scanner/lp-position-sync.js';
 import { startNsiCompute } from '../scanner/nsi-compute.js';
 import { startAgentLeaderboard } from '../scanner/agent-leaderboard.js';
+import { startVaultScanner } from '../scanner/vault-scanner.js';
 
 console.log('[tier-worker] starting');
 console.log('[tier-worker] ENABLE_STAKING_PRINCIPAL_SYNC =', process.env.ENABLE_STAKING_PRINCIPAL_SYNC ?? 'unset');
 console.log('[tier-worker] ENABLE_LP_POSITION_SYNC      =', process.env.ENABLE_LP_POSITION_SYNC ?? 'unset');
 console.log('[tier-worker] ENABLE_NSI_COMPUTE           =', process.env.ENABLE_NSI_COMPUTE ?? 'unset');
 console.log('[tier-worker] ENABLE_AGENT_LEADERBOARD     =', process.env.ENABLE_AGENT_LEADERBOARD ?? 'unset');
+console.log('[tier-worker] ENABLE_VAULT_SCANNER         =', process.env.ENABLE_VAULT_SCANNER ?? 'unset');
 
 startStakingPrincipalSync();
 startLpPositionSync();
@@ -37,6 +39,13 @@ startNsiCompute().catch((err) => {
 });
 startAgentLeaderboard().catch((err) => {
   console.error('[tier-worker] agent-leaderboard init error:', err);
+});
+// vault-scanner awaits ensureVaultSchema before its first cycle (same cold-start
+// guard as nsi-compute). Dormant unless ENABLE_VAULT_SCANNER=true + VAULT_PACKAGE_ID
+// set. Isolated here so its 30s RPC/DB cycle never competes with the main
+// explorer-api event loop or the points scanner.
+startVaultScanner().catch((err) => {
+  console.error('[tier-worker] vault-scanner init error:', err);
 });
 
 // Keep process alive; setInterval handles keep it from exiting but be explicit.
