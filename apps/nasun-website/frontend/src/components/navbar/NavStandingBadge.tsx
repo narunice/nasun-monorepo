@@ -1,22 +1,37 @@
 import { useState, useEffect } from "react";
+import * as Tooltip from "@radix-ui/react-tooltip";
+import {
+  NSI_MAX_SCORE,
+  TIER_BADGE_TOOLTIP_DESC,
+  type Tier,
+} from "@nasun/standing";
 
 /**
  * Nasun Standing Index (NSI) badge.
  *
- * Fetches the current user's tier + NSI score from
- * `${VITE_EXPLORER_API_URL}/standing/by-address/{wallet}` and displays a
- * pill in the Navbar. Hover tooltip surfaces the underlying score for
- * power users; the badge label is just the tier number to stay calm in
- * the header chrome.
+ * Reads the current user's tier + NSI score from
+ * `${VITE_EXPLORER_API_URL}/standing/by-address/{wallet}`. Renders a tier pill
+ * in the Navbar with a Radix Tooltip for the underlying breakdown on hover
+ * (desktop) or tap (touch, via Radix's built-in pointer handling).
  *
- * Implementation deliberately mirrors NavEcoPointsBadge (useState +
- * useEffect, silent-fail) instead of pulling in react-query — same
- * cancellation semantics and zero extra dependencies.
+ * Implementation notes:
+ *   - useState + useEffect (no react-query) mirrors NavEcoPointsBadge so the
+ *     two badges have identical lifecycle / cancellation semantics.
+ *   - HTTP-layer caching: the explorer-api route sets
+ *     `Cache-Control: public, max-age=60, Vary: Origin`. The browser and the
+ *     nginx upstream cache absorb repeated hits; this component intentionally
+ *     does NOT keep its own sessionStorage cache — HTTP cache is the SSOT for
+ *     freshness.
+ *   - Silent-fail: any fetch error keeps `data === null` and the badge is
+ *     simply not rendered. No noisy fallback, no console spam.
+ *   - Tooltip text strings come from `@nasun/standing/copy.ts` so wording
+ *     stays consistent across surfaces (Pado / GoStop will reuse the same
+ *     copy bundle in later phases).
+ *   - Tooltip.Provider is mounted at the Navbar root — do not nest a new
+ *     provider here.
  */
 
 const EXPLORER_API = import.meta.env.VITE_EXPLORER_API_URL || "";
-
-type Tier = 1 | 2 | 3;
 
 interface StandingData {
   tier: Tier;
@@ -79,20 +94,50 @@ export function NavStandingBadge({ walletAddress }: NavStandingBadgeProps) {
   if (data === null) return null;
 
   const tierStyle = TIER_STYLES[data.tier];
-  const scoreLabel = data.nsi_score.toFixed(0);
-  const tooltip =
+  const scoreLabel = Math.round(data.nsi_score);
+  const remainder =
     data.next_threshold !== null
-      ? `Nasun Standing: ${scoreLabel} / 1000 (next tier at ${data.next_threshold})`
-      : `Nasun Standing: ${scoreLabel} / 1000`;
+      ? Math.max(0, data.next_threshold - data.nsi_score)
+      : null;
 
   return (
-    <span
-      className={`inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold ring-1 ${tierStyle}`}
-      title={tooltip}
-      data-testid="nav-standing-badge"
-    >
-      Tier {data.tier}
-    </span>
+    <Tooltip.Root>
+      <Tooltip.Trigger asChild>
+        <span
+          className={`inline-flex items-center h-7 px-3 rounded-full text-xs font-semibold ring-1 ${tierStyle}`}
+          data-testid="nav-standing-badge"
+          aria-label={`Nasun Standing tier ${data.tier}, score ${scoreLabel} of ${NSI_MAX_SCORE}`}
+        >
+          {/* Mobile-friendly inline label: tier + score both visible without
+              hover, so touch users get the same info as desktop hover users. */}
+          <span>Tier {data.tier}</span>
+          <span className="ml-1.5 hidden sm:inline opacity-70">·</span>
+          <span className="ml-1.5 hidden sm:inline opacity-80">{scoreLabel}</span>
+          <span className="ml-1.5 sm:hidden opacity-70">· {scoreLabel}</span>
+        </span>
+      </Tooltip.Trigger>
+      <Tooltip.Content
+        side="bottom"
+        align="center"
+        sideOffset={5}
+        className="max-w-[220px] px-3 py-2 bg-gray-300 text-nasun-black/80 text-xs border border-gray-500 rounded-lg"
+      >
+        <div className="font-semibold text-nasun-black">
+          Nasun Standing — Tier {data.tier}
+        </div>
+        <div className="mt-0.5">
+          Score {scoreLabel} / {NSI_MAX_SCORE}
+        </div>
+        {data.next_threshold !== null && remainder !== null && (
+          <div className="mt-1">
+            Next tier at {data.next_threshold} (+{Math.round(remainder)})
+          </div>
+        )}
+        <div className="mt-2 text-nasun-black/60">
+          {TIER_BADGE_TOOLTIP_DESC}
+        </div>
+      </Tooltip.Content>
+    </Tooltip.Root>
   );
 }
 

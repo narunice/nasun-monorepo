@@ -8,7 +8,7 @@ import { NavItem } from "../../types/routes";
 import LoginButton from "./LoginButton";
 import WalletButton from "./WalletButton";
 import WalletDisconnectModal from "./WalletDisconnectModal";
-// import { NavStandingBadge } from "./NavStandingBadge"; // Hidden until Phase 1 v3 launch announcement
+// import { NavStandingBadge } from "./NavStandingBadge"; // Hidden until NSI public launch — uncomment line 11 + JSX block below to ship
 import DesktopNav from "./DesktopNav";
 import MobileNav from "./MobileNav";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
@@ -183,7 +183,9 @@ export default function Navbar() {
             </Tooltip.Root>
           )}
 
-          {/* Hidden until Phase 1 v3 launch announcement
+          {/* Hidden until NSI public launch — uncomment together with the import on line 11.
+              NavStandingBadge itself is fully refactored (Radix tooltip + @nasun/standing copy)
+              and ready to ship; gate is purely "wait for marketing moment".
           {isAuthenticated && user?.walletAddress && (
             <NavStandingBadge walletAddress={user.walletAddress} />
           )}
