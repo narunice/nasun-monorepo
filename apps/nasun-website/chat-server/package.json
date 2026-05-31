@@ -22,7 +22,7 @@
     "better-sqlite3": "^11.7.0",
     "ulid": "^3.0.2",
     "undici": "^6.25.0",
-    "ws": "^8.18.0"
+    "ws": "^8.20.1"
   },
   "optionalDependencies": {
     "@anthropic-ai/sdk": "^0.39.0"

@@ -22,7 +22,7 @@
     "hono": "^4.7.5",
     "jose": "^5.2.0",
     "postgres": "^3.4.5",
-    "ws": "^8.18.0"
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@types/node": "^22.16.0",
