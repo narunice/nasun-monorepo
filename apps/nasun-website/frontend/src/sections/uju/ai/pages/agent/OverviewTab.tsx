@@ -24,12 +24,18 @@ interface OverviewTabProps {
   walletAddress: string;
   onRefresh: () => void;
   onViewAllActivity: () => void;
+  /** Route to the Settings tab. Overview is read-only (Phase 8), so the
+   *  lifecycle controls (Pause / Activate / Deactivate / Delete) live in
+   *  Settings; this gives users on Overview a one-click path there instead
+   *  of leaving them hunting for the controls (2026-05-25 bug report). */
+  onManageSettings: () => void;
 }
 
 export function OverviewTab({
   agent,
   walletAddress,
   onViewAllActivity,
+  onManageSettings,
 }: OverviewTabProps) {
   const aerStats = useAgentAerStats(walletAddress, agent.agentAddress, agent.capabilityId);
   // Phase 7: the on-chain AgentProfile.is_active flag and the trader config's
@@ -95,7 +101,19 @@ export function OverviewTab({
             </a>
             {/* Phase 8: Pause/Activate/Kill controls live in Settings → Agent
                 status. Overview surfaces the badge only so users have one
-                authoritative place to flip lifecycle state. */}
+                authoritative place to flip lifecycle state. This link routes
+                there so the controls stay discoverable from Overview. */}
+            <button
+              type="button"
+              onClick={onManageSettings}
+              className="inline-flex items-center gap-1 px-3 py-2 text-sm font-medium rounded-lg border border-uju-border/60 text-uju-secondary hover:bg-uju-bg/60 transition-colors"
+            >
+              <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <circle cx="12" cy="12" r="3" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+              Manage
+            </button>
           </div>
         </div>
 

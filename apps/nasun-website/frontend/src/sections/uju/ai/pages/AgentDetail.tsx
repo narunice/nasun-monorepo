@@ -132,6 +132,7 @@ export function AgentDetail({
             walletAddress={walletAddress}
             onRefresh={() => void refetch()}
             onViewAllActivity={() => onChangeSub('aer')}
+            onManageSettings={() => onChangeSub('settings')}
           />
         )}
         {subTab === 'aer' && (

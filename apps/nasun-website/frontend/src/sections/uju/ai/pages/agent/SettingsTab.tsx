@@ -147,9 +147,9 @@ export function SettingsTab({ agent, budget, walletAddress, onShowRegister }: Se
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-white">Agent status</h3>
         {/* Phase 8 — Activate / Pause only. Kill (terminal: wallet sig +
-            vault delete) lives in DangerZoneCard at the bottom of this
-            page so the routine pause control cannot be confused with the
-            destructive one. State source: chat-server GET
+            on-chain capability revoke) lives in DangerZoneCard at the bottom
+            of this page so the routine pause control cannot be confused with
+            the destructive one. State source: chat-server GET
             /api/nasun-ai/agent/:addr/state, which derives from on-chain
             AgentProfile.is_active + config.enabled. */}
         <AgentStateControl
@@ -158,6 +158,26 @@ export function SettingsTab({ agent, budget, walletAddress, onShowRegister }: Se
           profileId={agent.id}
           onChainIsActive={agent.isActive}
           onCreateNewAgent={onShowRegister}
+        />
+        {/* Server vault axis. Pause (AgentStateControl above) only flips
+            config.enabled and does NOT free the per-wallet alpha slot —
+            countMyActiveAgents counts any row with deleted_at IS NULL AND
+            paused_at IS NULL (alpha-guards.ts). Deactivate here calls the
+            vault DELETE endpoint, which is the only path that clears
+            deleted_at and grants the kill-recovery invite. Restored after
+            c425b9827 removed the ServerStatusCard render, which left
+            handleVaultDelete unreachable and blocked users from activating a
+            replacement agent (per_wallet_cap_reached) until the 36h
+            alpha-cron auto-expiry. The on-chain Kill switch in DangerZone
+            does not touch these SQLite columns (agent-orchestrator.ts:
+            "is_active=false → killed, no auto vault delete"). */}
+        <ServerStatusCard
+          state={vault.state}
+          graceEndsAt={vault.graceEndsAt}
+          configEnabled={config?.enabled ?? null}
+          onActivate={requestActivate}
+          onDeactivate={() => setDeactivateOpen(true)}
+          onRestore={() => setRestoreOpen(true)}
         />
       </section>
 
@@ -282,12 +302,6 @@ interface ServerStatusCardProps {
    */
   configEnabled?: boolean | null;
   onActivate: () => void;
-  /**
-   * Soft resume — flip trader-config enabled:true without re-uploading
-   * the vault key (which is already on the server). Distinct from
-   * onActivate, which is for the not_vaulted state.
-   */
-  onResume: () => void;
   onDeactivate: () => void;
   onRestore: () => void;
 }
@@ -297,7 +311,6 @@ function ServerStatusCard({
   graceEndsAt,
   configEnabled,
   onActivate,
-  onResume,
   onDeactivate,
   onRestore,
 }: ServerStatusCardProps) {
@@ -315,7 +328,7 @@ function ServerStatusCard({
           label: 'Vault stored, agent paused',
           tone: 'text-uju-secondary',
           description:
-            'The encrypted key is on the server but the runtime is intentionally not running because the agent is paused. Click Activate to start it.',
+            'The encrypted key is on the server but the runtime is paused. Pausing keeps your alpha slot reserved — use Activate above to resume, or Deactivate to remove the key and free the slot for a different agent.',
         }
       : {
           label: 'Activated, awaiting first cycle',
@@ -332,7 +345,7 @@ function ServerStatusCard({
     active: {
       label: 'Active',
       tone: 'text-emerald-300',
-      description: 'Nasun runtime is running this agent on the server. The next cycle is scheduled automatically.',
+      description: 'Nasun runtime is running this agent on the server. The next cycle is scheduled automatically. Deactivate to stop it and free your alpha slot for a different agent.',
     },
     inactive: inactiveMeta,
     grace: {
@@ -361,18 +374,9 @@ function ServerStatusCard({
             Activate on server
           </button>
         )}
-        {/* Phase 7 v2: when the agent is paused (vault present, enabled
-            false), surface a quick Resume action alongside Deactivate so
-            the user is not stuck with only the destructive option. */}
-        {state === 'inactive' && configEnabled === false && (
-          <button
-            type="button"
-            onClick={onResume}
-            className="px-3 py-2 rounded-lg bg-pado-2 text-uju-bg text-sm font-medium hover:bg-pado-3 transition-colors"
-          >
-            Activate
-          </button>
-        )}
+        {/* Resume (vault present, enabled=false) lives in AgentStateControl
+            above — the config-enabled axis. This card owns the vault axis:
+            Deactivate (free the alpha slot) and Restore. */}
         {(state === 'active' || state === 'inactive') && (
           <button
             type="button"
