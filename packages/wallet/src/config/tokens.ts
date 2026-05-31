@@ -19,6 +19,7 @@ export const NATIVE_TOKEN: TokenConfig = {
   name: 'Nasun',
   decimals: 9,
   type: '0x2::sui::SUI',
+  fallbackPriceUsd: 0.1,
 };
 
 /**
@@ -28,6 +29,11 @@ export const NATIVE_TOKEN: TokenConfig = {
  *
  * Token types are imported from @nasun/devnet-config for centralized management.
  * Apps can override these by calling registerTokens() with custom types.
+ *
+ * fallbackPriceUsd is the single source of truth for each token's portfolio
+ * valuation when no live price source is available. Nasun devnet tokens are
+ * pegged to their real-asset counterparts (NBTC~BTC, NETH~ETH, NSOL~SOL), so
+ * the fallbacks are kept near current market.
  */
 export const DEVNET_TOKENS: TokenConfig[] = [
   {
@@ -35,24 +41,28 @@ export const DEVNET_TOKENS: TokenConfig[] = [
     name: 'Nasun BTC',
     decimals: 8,
     type: NBTC_TYPE,
+    fallbackPriceUsd: 97000,
   },
   {
     symbol: 'NUSDC',
     name: 'Nasun USDC',
     decimals: 6,
     type: NUSDC_TYPE,
+    fallbackPriceUsd: 1.0,
   },
   {
     symbol: 'NETH',
     name: 'Nasun ETH',
     decimals: 8,
     type: NETH_TYPE,
+    fallbackPriceUsd: 2000,
   },
   {
     symbol: 'NSOL',
     name: 'Nasun SOL',
     decimals: 9,
     type: NSOL_TYPE,
+    fallbackPriceUsd: 85,
   },
 ];
 

@@ -31,6 +31,10 @@ const PORTFOLIO_QUERY_KEY = 'wallet-portfolio';
 // Default polling interval (30 seconds)
 const DEFAULT_POLLING_INTERVAL = 30_000;
 
+// Symbols already warned about for missing price coverage (warn once, not every
+// 30s refetch). A held token with no price source is a bug: it renders as $0.
+const warnedMissingPrice = new Set<string>();
+
 // Global configuration
 let portfolioConfig: PortfolioConfig = {};
 let priceProvider: PriceProvider = new DefaultPriceProvider();
@@ -192,6 +196,14 @@ export function usePortfolio(options?: UsePortfolioOptions): UsePortfolioResult 
           asset.priceUsd = price.priceUsd;
           asset.valueUsd = parseFloat(asset.formattedBalance) * price.priceUsd;
           asset.change24h = price.change24h;
+        } else if (!warnedMissingPrice.has(asset.symbol)) {
+          // No price source maps this held token, so it renders at $0. Register
+          // a fallbackPriceUsd on its TokenConfig (token registry) to fix.
+          warnedMissingPrice.add(asset.symbol);
+          console.warn(
+            `[usePortfolio] No price for "${asset.symbol}" (${asset.chainName}); valued at $0. ` +
+            `Add fallbackPriceUsd to its TokenConfig.`
+          );
         }
       }
 

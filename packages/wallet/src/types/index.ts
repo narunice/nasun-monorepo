@@ -150,6 +150,13 @@ export interface TokenConfig {
   decimals: number;
   type: string; // Coin type (e.g., '0x2::sui::SUI')
   icon?: string;
+  /**
+   * Fallback USD price used by the portfolio when no live price source maps
+   * this symbol. Any token that can appear in a wallet balance MUST set this,
+   * or the portfolio will value holdings at $0 (see DefaultPriceProvider and
+   * the price-coverage test in __tests__/portfolio.test.ts).
+   */
+  fallbackPriceUsd?: number;
 }
 
 // Token faucet handler for requesting test tokens

@@ -6,6 +6,7 @@
  */
 
 import type { PriceProvider, TokenPrice } from '../../types/portfolio';
+import { getToken } from '../../config/tokens';
 
 // Symbol to CoinGecko ID mapping
 const COINGECKO_IDS: Record<string, string> = {
@@ -26,11 +27,11 @@ const SYMBOL_ALIASES: Record<string, string> = {
   NASUN: 'NSN',
 };
 
-// Simulated prices for devnet/testnet tokens
-const SIMULATED_PRICES: Record<string, number> = {
-  NSN: 0.1,
-  NBTC: 97000,
-  NUSDC: 1.0,
+// Fallback prices for external / non-Nasun symbols (used when CoinGecko is
+// unreachable). Nasun token fallbacks are NOT listed here on purpose: they live
+// on the token registry (TokenConfig.fallbackPriceUsd) so price coverage is tied
+// to the single place tokens are defined. See buildSimulatedPrices below.
+const EXTERNAL_SIMULATED_PRICES: Record<string, number> = {
   ETH: 3400,
   BTC: 97000,
   WBTC: 97000,
@@ -41,6 +42,18 @@ const SIMULATED_PRICES: Record<string, number> = {
   ARB: 1.2,
   OP: 2.5,
 };
+
+// Resolve a fallback USD price for a symbol. External / EVM symbols come from
+// EXTERNAL_SIMULATED_PRICES; Nasun tokens come from their registry entry
+// (TokenConfig.fallbackPriceUsd), so the price lives in the single place tokens
+// are defined and a token registered at runtime (registerTokens) is honored too.
+// Returns undefined when nothing maps the symbol (caller treats as "no price").
+function simulatedPriceFor(symbol: string): number | undefined {
+  const upper = symbol.toUpperCase();
+  const external = EXTERNAL_SIMULATED_PRICES[upper];
+  if (external !== undefined) return external;
+  return getToken(upper)?.fallbackPriceUsd;
+}
 
 export interface DefaultPriceProviderOptions {
   /** Cache TTL in milliseconds (default: 30000) */
@@ -86,8 +99,8 @@ export class DefaultPriceProvider implements PriceProvider {
       }
     }
 
-    // Fallback to simulated price
-    const simulatedPrice = SIMULATED_PRICES[upperSymbol];
+    // Fallback to simulated price (external map or token registry)
+    const simulatedPrice = simulatedPriceFor(upperSymbol);
     if (simulatedPrice !== undefined) {
       const price: TokenPrice = {
         symbol: upperSymbol,
@@ -140,7 +153,7 @@ export class DefaultPriceProvider implements PriceProvider {
     // Fill in remaining with simulated prices
     for (const symbol of uncached) {
       if (!results[symbol]) {
-        const simulatedPrice = SIMULATED_PRICES[symbol];
+        const simulatedPrice = simulatedPriceFor(symbol);
         if (simulatedPrice !== undefined) {
           const price: TokenPrice = {
             symbol,

@@ -4,6 +4,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DefaultPriceProvider } from '../core/portfolio/price-provider';
+import { getAllTokens, registerToken, registerTokens, clearTokens, DEVNET_TOKENS } from '../config/tokens';
 import type {
   TokenAsset,
   PortfolioSummary,
@@ -48,6 +49,24 @@ describe('Portfolio', () => {
       expect(price?.source).toBe('simulated');
     });
 
+    it('should return simulated price for NETH (pegged to ETH)', async () => {
+      const price = await provider.getPrice('NETH');
+
+      expect(price).not.toBeNull();
+      expect(price?.symbol).toBe('NETH');
+      expect(price?.priceUsd).toBe(2000);
+      expect(price?.source).toBe('simulated');
+    });
+
+    it('should return simulated price for NSOL (pegged to SOL)', async () => {
+      const price = await provider.getPrice('NSOL');
+
+      expect(price).not.toBeNull();
+      expect(price?.symbol).toBe('NSOL');
+      expect(price?.priceUsd).toBe(85);
+      expect(price?.source).toBe('simulated');
+    });
+
     it('should handle case-insensitive symbols', async () => {
       const price1 = await provider.getPrice('nasun');
       const price2 = await provider.getPrice('NSN');
@@ -82,6 +101,48 @@ describe('Portfolio', () => {
       expect(prices['NSN'].priceUsd).toBe(0.1);
       expect(prices['NBTC'].priceUsd).toBe(97000);
       expect(prices['NUSDC'].priceUsd).toBe(1.0);
+    });
+
+    // Regression: usePortfolio batches every held symbol through getPrices, then
+    // values each asset by prices[symbol]. NETH/NSOL were absent from every price
+    // map, so getPrices returned no entry and the portfolio rendered them at $0.00.
+    it('should price NETH and NSOL via getPrices so the portfolio never shows $0', async () => {
+      const prices = await provider.getPrices(['NETH', 'NSOL']);
+
+      expect(prices['NETH']?.priceUsd).toBe(2000);
+      expect(prices['NSOL']?.priceUsd).toBe(85);
+    });
+
+    // Guard against the add-token-without-price regression class: every token in
+    // the registry can appear in the portfolio (getAllBalances enumerates the
+    // registry), so each MUST resolve a positive price. Adding a token without a
+    // fallbackPriceUsd fails here instead of silently rendering $0 in production.
+    it('prices every registered token (no silent $0)', async () => {
+      const symbols = getAllTokens().map((t) => t.symbol);
+      expect(symbols.length).toBeGreaterThan(0);
+
+      const prices = await provider.getPrices(symbols);
+
+      for (const symbol of symbols) {
+        const price = prices[symbol.toUpperCase()];
+        expect(price, `registered token "${symbol}" has no price`).toBeDefined();
+        expect(price.priceUsd, `registered token "${symbol}" priced at 0`).toBeGreaterThan(0);
+      }
+    });
+
+    // A token registered at runtime (registerTokens, as Pado/Gostop do) must also
+    // be priced from its fallbackPriceUsd, not just the package-default tokens.
+    it('honors fallbackPriceUsd for runtime-registered tokens', async () => {
+      registerToken({ symbol: 'NTEST', name: 'Test', decimals: 9, type: '0xtest::t::T', fallbackPriceUsd: 42 });
+      try {
+        const price = await provider.getPrice('NTEST');
+        expect(price?.priceUsd).toBe(42);
+        expect(price?.source).toBe('simulated');
+      } finally {
+        // Restore the default registry so registry-reading tests stay deterministic.
+        clearTokens();
+        registerTokens(DEVNET_TOKENS);
+      }
     });
 
     it('should return null for unknown symbols', async () => {
