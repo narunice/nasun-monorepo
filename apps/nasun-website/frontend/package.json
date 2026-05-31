@@ -29,6 +29,7 @@
     "@nasun/devnet-config": "workspace:*",
     "@nasun/profile-core": "workspace:*",
     "@nasun/profile-react": "workspace:*",
+    "@nasun/standing": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@radix-ui/react-dialog": "^1.1.15",

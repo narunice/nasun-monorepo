@@ -17,6 +17,7 @@
     "@nasun/devnet-config": "workspace:*",
     "@nasun/profile-core": "workspace:*",
     "@nasun/profile-react": "workspace:*",
+    "@nasun/standing": "workspace:*",
     "@nasun/wallet": "workspace:*",
     "@nasun/wallet-ui": "workspace:*",
     "@scure/bip39": "^2.0.1",

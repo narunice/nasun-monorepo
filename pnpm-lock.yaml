@@ -461,6 +461,9 @@ importers:
       '@nasun/profile-react':
         specifier: workspace:*
         version: link:../../../packages/profile-react
+      '@nasun/standing':
+        specifier: workspace:*
+        version: link:../../../packages/nasun-standing
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../../../packages/wallet
@@ -820,6 +823,9 @@ importers:
       '@mysten/sui':
         specifier: 1.45.2
         version: 1.45.2(typescript@5.9.3)
+      '@nasun/standing':
+        specifier: workspace:*
+        version: link:../../../packages/nasun-standing
       hono:
         specifier: '>=4.12.4'
         version: 4.12.23
@@ -854,6 +860,9 @@ importers:
       '@nasun/profile-react':
         specifier: workspace:*
         version: link:../../../packages/profile-react
+      '@nasun/standing':
+        specifier: workspace:*
+        version: link:../../../packages/nasun-standing
       '@nasun/wallet':
         specifier: workspace:*
         version: link:../../../packages/wallet
@@ -1028,6 +1037,18 @@ importers:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
+
+  packages/nasun-standing:
+    devDependencies:
+      '@nasun/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.1.7
+        version: 4.1.7(@types/node@25.3.2)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.1(@types/node@25.3.2)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0))
 
   packages/profile-core:
     devDependencies:

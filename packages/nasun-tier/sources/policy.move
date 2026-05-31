@@ -55,3 +55,20 @@ public fun max_bet_floor_usdc(t: u8): u64 {
 public fun can_create_vault(t: u8): bool {
     t == tier::tier_3()
 }
+
+// === JSON_ANCHOR — off-chain parity SSOT (do not desync) ===
+//
+// Off-chain mirror in `packages/nasun-standing/src/benefits.ts` parses the
+// JSON block below and asserts equality with TIER_BENEFITS. Any change to
+// the entry functions above MUST update this block in the same commit.
+// Keep keys aligned with the Move function names exactly.
+//
+// JSON_ANCHOR:
+// {
+//   "fee_discount_bps":        { "1": 0,           "2": 3500,        "3": 6000        },
+//   "staking_multiplier_bps":  { "1": 10000,       "2": 12500,       "3": 15000       },
+//   "lp_yield_multiplier_bps": { "1": 10000,       "2": 13000,       "3": 16000       },
+//   "inference_subsidy_bps":   { "1": 0,           "2": 3000,        "3": 6000        },
+//   "max_bet_floor_usdc":      { "1": 100000000,   "2": 1000000000,  "3": 10000000000 },
+//   "can_create_vault":        { "1": false,       "2": false,       "3": true        }
+// }
