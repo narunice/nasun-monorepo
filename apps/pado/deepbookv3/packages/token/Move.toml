@@ -3,7 +3,7 @@ name = "token"
 edition = "2024.beta"
 published-at = "0x71afcf8eaeb282bad050ef78931205a15c9e49638f2a7c67bde2c372251e1c3e"
 [dependencies]
-Sui = { local = "<NASUN_DEVNET>/sui/crates/sui-framework/packages/sui-framework" }
+# Sui + MoveStdlib are implicit system deps (Sui 1.45+).
 
 [addresses]
 token = "0x71afcf8eaeb282bad050ef78931205a15c9e49638f2a7c67bde2c372251e1c3e"
