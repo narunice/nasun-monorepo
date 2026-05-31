@@ -60,14 +60,18 @@ const STALE = {
 // (e.g. invalidate 'me' after a round settles).
 export const QK = {
   me: ['gostop', 'me'] as const,
-  meProfile: () => [...QK.me, 'profile'] as const,
-  meRecentRounds: (limit: number) => [...QK.me, 'recent-rounds', limit] as const,
-  meStats: (period: StatsPeriod) => [...QK.me, 'stats', period] as const,
-  meSettings: () => [...QK.me, 'settings'] as const,
-  meEcosystem: () => [...QK.me, 'ecosystem'] as const,
-  meRank: () => [...QK.me, 'rank'] as const,
-  meStreak: () => [...QK.me, 'streak'] as const,
-  meLpPosition: () => [...QK.me, 'lp', 'position'] as const,
+  // Per-wallet `me` keys: the connected wallet is part of the cache key so
+  // switching wallets never serves the previous account's cached profile /
+  // streak / ecosystem / quest data until refetch. `invalidateQueries({
+  // queryKey: QK.me })` still matches all of them by prefix.
+  meProfile: (w: string) => [...QK.me, w, 'profile'] as const,
+  meRecentRounds: (w: string, limit: number) => [...QK.me, w, 'recent-rounds', limit] as const,
+  meStats: (w: string, period: StatsPeriod) => [...QK.me, w, 'stats', period] as const,
+  meSettings: (w: string) => [...QK.me, w, 'settings'] as const,
+  meEcosystem: (w: string) => [...QK.me, w, 'ecosystem'] as const,
+  meRank: (w: string) => [...QK.me, w, 'rank'] as const,
+  meStreak: (w: string) => [...QK.me, w, 'streak'] as const,
+  meLpPosition: (w: string) => [...QK.me, w, 'lp', 'position'] as const,
   streak: (player: string) => ['gostop', 'streak', player.toLowerCase()] as const,
   leaderboard: (
     period: LeaderboardPeriod,
@@ -88,7 +92,7 @@ export const QK = {
 export function useMeProfile() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meProfile(),
+    queryKey: QK.meProfile(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.profile,
     queryFn: () =>
@@ -99,7 +103,7 @@ export function useMeProfile() {
 export function useMeRecentRounds(limit = 20) {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meRecentRounds(limit),
+    queryKey: QK.meRecentRounds(walletAddress ?? '', limit),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.recentRounds,
     queryFn: () =>
@@ -113,7 +117,7 @@ export function useMeRecentRounds(limit = 20) {
 export function useMeStats(period: StatsPeriod = 'all') {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meStats(period),
+    queryKey: QK.meStats(walletAddress ?? '', period),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.stats,
     queryFn: () =>
@@ -126,7 +130,7 @@ export function useMeStats(period: StatsPeriod = 'all') {
 export function useMeSettings() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meSettings(),
+    queryKey: QK.meSettings(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.settings,
     queryFn: () =>
@@ -156,7 +160,7 @@ export function useUpdateMeSettings() {
       });
     },
     onSuccess: (data) => {
-      queryClient.setQueryData(QK.meSettings(), data);
+      queryClient.setQueryData(QK.meSettings(walletAddress ?? ''), data);
     },
   });
 }
@@ -164,7 +168,7 @@ export function useUpdateMeSettings() {
 export function useMeEcosystem() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meEcosystem(),
+    queryKey: QK.meEcosystem(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.ecosystem,
     queryFn: () =>
@@ -175,7 +179,7 @@ export function useMeEcosystem() {
 export function useMeStreak() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meStreak(),
+    queryKey: QK.meStreak(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.streak,
     queryFn: () =>
@@ -186,7 +190,7 @@ export function useMeStreak() {
 export function useMeLpPosition() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meLpPosition(),
+    queryKey: QK.meLpPosition(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     // Same TTL as risk dashboard 30s — they render together.
     staleTime: 30_000,
@@ -198,7 +202,7 @@ export function useMeLpPosition() {
 export function useMeLeaderboardRank() {
   const { walletAddress, tokenReady } = useGostopAuth();
   return useQuery({
-    queryKey: QK.meRank(),
+    queryKey: QK.meRank(walletAddress ?? ''),
     enabled: !!walletAddress && tokenReady,
     staleTime: STALE.rank,
     queryFn: () =>
