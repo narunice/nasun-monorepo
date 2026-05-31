@@ -52,7 +52,7 @@ export default function SpectraFactionsProgressSection() {
           const Icon = f.icon;
           return (
             <FadeInUp key={f.title}>
-              <article className="ch-gravity-card">
+              <article className="ch-gravity-card" data-spotlight-card="">
                 <span className="ch-gravity-card-halo" aria-hidden="true" />
                 <span className="ch-gravity-card-glow" aria-hidden="true" />
                 <header

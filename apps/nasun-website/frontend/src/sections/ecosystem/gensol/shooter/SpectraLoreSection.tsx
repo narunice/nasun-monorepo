@@ -97,7 +97,7 @@ export default function SpectraLoreSection() {
 
       <div ref={phantomGridRef} className="ch-gravity-grid" style={{ gridTemplateColumns: "1fr 1fr" }}>
         <FadeInUp>
-          <article className="ch-gravity-card">
+          <article className="ch-gravity-card" data-spotlight-card="">
             <span className="ch-gravity-card-halo" aria-hidden="true" />
             <span className="ch-gravity-card-glow" aria-hidden="true" />
             <h3 className="ch-gravity-card-title">As a Phantom you can</h3>
@@ -136,7 +136,7 @@ export default function SpectraLoreSection() {
         </FadeInUp>
 
         <FadeInUp>
-          <article className="ch-gravity-card">
+          <article className="ch-gravity-card" data-spotlight-card="">
             <span className="ch-gravity-card-halo" aria-hidden="true" />
             <span className="ch-gravity-card-glow" aria-hidden="true" />
             <h3 className="ch-gravity-card-title">You cannot</h3>

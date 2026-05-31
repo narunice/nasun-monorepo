@@ -24,6 +24,7 @@ export default function LazyVideoFrame({
   const wrapRef = useRef<HTMLDivElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [mounted, setMounted] = useState(false);
+  const [inView, setInView] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [errored, setErrored] = useState(false);
   const [autoplay, setAutoplay] = useState(false);
@@ -36,26 +37,32 @@ export default function LazyVideoFrame({
     setAutoplay(isDesktop && !reduced);
   }, []);
 
+  // Track real viewport visibility. Mount on first true entry (and keep it
+  // mounted so the loaded video survives scroll-away), and surface `inView`
+  // so playback never begins before the frame is actually on screen.
   useEffect(() => {
     const node = wrapRef.current;
-    if (!node || mounted) return;
+    if (!node) return;
     const io = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setMounted(true);
-          io.disconnect();
-        }
+        const visible = entries[0]?.isIntersecting ?? false;
+        setInView(visible);
+        if (visible) setMounted(true);
       },
-      { rootMargin: "0px 0px 200px 0px" },
+      { threshold: 0.25 },
     );
     io.observe(node);
     return () => io.disconnect();
-  }, [mounted]);
+  }, []);
 
   useEffect(() => {
-    if (!mounted || !autoplay || playing || errored) return;
+    if (!mounted || !autoplay || errored) return;
     const v = videoRef.current;
     if (!v) return;
+    if (!inView) {
+      v.pause();
+      return;
+    }
     const onPlay = () => setPlaying(true);
     const onPlaying = () => setPlaying(true);
     v.addEventListener("play", onPlay);
@@ -67,7 +74,7 @@ export default function LazyVideoFrame({
       v.removeEventListener("play", onPlay);
       v.removeEventListener("playing", onPlaying);
     };
-  }, [mounted, autoplay, playing, errored]);
+  }, [mounted, autoplay, inView, errored]);
 
   const handlePlay = () => {
     const v = videoRef.current;

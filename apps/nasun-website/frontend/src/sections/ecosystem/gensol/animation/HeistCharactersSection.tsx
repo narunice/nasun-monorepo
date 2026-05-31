@@ -36,7 +36,7 @@ export default function HeistCharactersSection() {
       <div ref={gridRef} className="ch-gravity-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
         {CHARACTERS.map((c) => (
           <FadeInUp key={c.name}>
-            <article className="ch-gravity-card">
+            <article className="ch-gravity-card" data-spotlight-card="">
               <span className="ch-gravity-card-halo" aria-hidden="true" />
               <span className="ch-gravity-card-glow" aria-hidden="true" />
               <h3 className="ch-gravity-card-title">{c.name}</h3>
