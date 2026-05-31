@@ -29,7 +29,13 @@ export interface FieldDefinition {
 export interface EventDefinition {
   label: string;
   description: string;
-  fields: FieldDefinition[];
+  // Declarative field mapping. Optional when `decode` is provided.
+  fields?: FieldDefinition[];
+  // Custom decoder for events whose fields need cross-field or context-dependent
+  // formatting the declarative `fields`/FieldType system cannot express (e.g.
+  // DeepBook prices scaled per-pool by priceScaleExp). When present it replaces
+  // the declarative mapping and receives the event's parsedJson.
+  decode?: (data: Record<string, unknown>) => DecodedField[];
 }
 
 // A group of events from a protocol module

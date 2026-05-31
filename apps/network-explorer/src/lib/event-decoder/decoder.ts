@@ -147,17 +147,20 @@ export function decodeEvent(event: SuiEvent): DecodedEvent | null {
   const data = event.parsedJson as Record<string, unknown> | null | undefined;
   if (!data) return null;
 
-  const fields: DecodedField[] = eventDef.fields.map((fieldDef) => {
-    const rawValue = data[fieldDef.key];
-    const { formatted, link } = formatFieldValue(rawValue, fieldDef.type);
-    return {
-      label: fieldDef.label,
-      value: rawValue !== undefined && rawValue !== null ? String(rawValue) : '-',
-      type: fieldDef.type,
-      formattedValue: formatted,
-      link,
-    };
-  });
+  // Custom decoder takes precedence over the declarative field mapping.
+  const fields: DecodedField[] = eventDef.decode
+    ? eventDef.decode(data)
+    : (eventDef.fields ?? []).map((fieldDef) => {
+        const rawValue = data[fieldDef.key];
+        const { formatted, link } = formatFieldValue(rawValue, fieldDef.type);
+        return {
+          label: fieldDef.label,
+          value: rawValue !== undefined && rawValue !== null ? String(rawValue) : '-',
+          type: fieldDef.type,
+          formattedValue: formatted,
+          link,
+        };
+      });
 
   return {
     protocol: group.name,

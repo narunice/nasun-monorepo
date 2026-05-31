@@ -381,4 +381,82 @@ describe('decodeEvent', () => {
       expect(decoded.raw).toEqual(parsedJson);
     });
   });
+
+  // ===================================================
+  // DeepBook events (real devnet fixtures, tx 7udqh6wx...)
+  // A market SELL: OrderInfo.price is the sentinel `1`, not the fill price.
+  // ===================================================
+  describe('DeepBook — market order price scaling', () => {
+    const DEEPBOOK_PKG = devnetConfig.deepbook.originalPackageId;
+    const NBTC_POOL = devnetConfig.pools.nbtcNusdc;
+
+    const fieldValue = (decoded: ReturnType<typeof decodeEvent>, label: string) =>
+      decoded!.fields.find((f) => f.label === label)?.formattedValue;
+
+    it('OrderInfo surfaces avg execution price, not the market sentinel', () => {
+      const event = makeEvent(`${DEEPBOOK_PKG}::order_info::OrderInfo`, {
+        pool_id: NBTC_POOL,
+        order_id: '170141183460469231750134047789610921357',
+        is_bid: false,
+        market_order: true,
+        price: '1',
+        executed_quantity: '10000000',
+        original_quantity: '10000000',
+        cumulative_quote_quantity: '812800000',
+        status: 2,
+        timestamp: '1778502864972',
+      });
+      const decoded = decodeEvent(event);
+      expect(decoded).not.toBeNull();
+      expect(decoded!.protocol).toBe('DeepBook');
+      // The real price: 812.8 NUSDC / 0.1 NBTC = $8,128.00
+      expect(fieldValue(decoded, 'Avg execution price')).toBe('$8,128.00');
+      expect(fieldValue(decoded, 'Type')).toBe('Market');
+      expect(fieldValue(decoded, 'Side')).toBe('Sell');
+      expect(fieldValue(decoded, 'Status')).toBe('Filled');
+      expect(fieldValue(decoded, 'Filled / Quantity')).toBe('0.1 / 0.1 NBTC');
+      // The sentinel limit price must be labeled, not shown as a tradeable price.
+      expect(fieldValue(decoded, 'Limit price')).toContain('market sentinel');
+    });
+
+    it('OrderFilled scales the raw price to a human USD value', () => {
+      const event = makeEvent(`${DEEPBOOK_PKG}::order_info::OrderFilled`, {
+        pool_id: NBTC_POOL,
+        price: '81280000000',
+        base_quantity: '10000000',
+        quote_quantity: '812800000',
+        taker_is_bid: false,
+      });
+      const decoded = decodeEvent(event);
+      expect(fieldValue(decoded, 'Price')).toBe('$8,128.00');
+      expect(fieldValue(decoded, 'Amount')).toBe('0.1 NBTC');
+      expect(fieldValue(decoded, 'Total')).toBe('812.8 NUSDC');
+      expect(fieldValue(decoded, 'Taker side')).toBe('Sell');
+    });
+
+    it('scales NSOL pool prices with its own decimals (priceScaleExp=6)', () => {
+      // NSOL has 9 base decimals → priceScaleExp = 6 + 9 - 9 = 6, not 7.
+      const event = makeEvent(`${DEEPBOOK_PKG}::order_info::OrderFilled`, {
+        pool_id: devnetConfig.pools.nsolNusdc,
+        price: '85000000', // 85.00 with exp 6
+        base_quantity: '1000000000', // 1 NSOL (9 decimals)
+        quote_quantity: '85000000',
+        taker_is_bid: true,
+      });
+      const decoded = decodeEvent(event);
+      expect(fieldValue(decoded, 'Price')).toBe('$85.00');
+      expect(fieldValue(decoded, 'Amount')).toBe('1 NSOL');
+    });
+
+    it('falls back to raw values for an unknown pool', () => {
+      const event = makeEvent(`${DEEPBOOK_PKG}::order_info::OrderFilled`, {
+        pool_id: '0xdeadbeef',
+        price: '81280000000',
+        base_quantity: '10000000',
+        taker_is_bid: false,
+      });
+      const decoded = decodeEvent(event);
+      expect(fieldValue(decoded, 'Price (raw)')).toBe('81280000000');
+    });
+  });
 });

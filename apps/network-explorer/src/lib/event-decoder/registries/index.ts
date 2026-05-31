@@ -6,6 +6,7 @@ import type { ProtocolEventGroup } from '../types';
 import { PREDICTION_EVENTS } from './prediction';
 import { LOTTERY_EVENTS } from './lottery';
 import { PERPETUALS_EVENTS } from './perpetuals';
+import { DEEPBOOK_EVENTS } from './deepbook';
 import {
   BARAM_ESCROW_EVENTS,
   BARAM_EXECUTOR_EVENTS,
@@ -19,6 +20,7 @@ const ALL_GROUPS: ProtocolEventGroup[] = [
   PREDICTION_EVENTS,
   LOTTERY_EVENTS,
   PERPETUALS_EVENTS,
+  DEEPBOOK_EVENTS,
   BARAM_ESCROW_EVENTS,
   BARAM_EXECUTOR_EVENTS,
   BARAM_EXECUTOR_STAKING_EVENTS,
