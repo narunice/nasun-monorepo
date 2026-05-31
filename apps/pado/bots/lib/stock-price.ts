@@ -260,18 +260,36 @@ export async function fetchStockDailyClose(
   const market = inferMarket(criteria.symbol);
   const apiKey = env.TWELVEDATA_API_KEY ?? '';
 
-  const useTwelveDataFirst = criteria.sourceHost === 'api.twelvedata.com';
+  // Twelve Data's free tier does not serve Korea Exchange (.KS/.KQ) symbols:
+  // every request 404s. KRX markets therefore resolve from Yahoo only, with no
+  // second source to cross-check against. This also stops the per-tick 404
+  // noise these markets used to produce on every keeper cycle.
+  const twelveDataSupportsMarket = market !== 'KRX';
+
+  const useTwelveDataFirst =
+    twelveDataSupportsMarket && criteria.sourceHost === 'api.twelvedata.com';
 
   const fetchPrimary = () =>
     useTwelveDataFirst
       ? fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
       : fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market);
-  const fetchAlternate = () =>
-    useTwelveDataFirst
-      ? fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market)
-      : apiKey
-        ? fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
-        : Promise.reject(new PriceFetchError('TWELVEDATA_API_KEY is not set'));
+  const fetchAlternate = () => {
+    if (useTwelveDataFirst) {
+      return fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market);
+    }
+    // Yahoo was primary; Twelve Data is the only alternate, and only when it
+    // actually serves this market.
+    if (twelveDataSupportsMarket && apiKey) {
+      return fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey);
+    }
+    return Promise.reject(
+      new PriceFetchError(
+        twelveDataSupportsMarket
+          ? 'TWELVEDATA_API_KEY is not set'
+          : 'no alternate source for KRX symbol (Twelve Data does not serve .KS/.KQ)',
+      ),
+    );
+  };
 
   // Primary fetch with automatic fallback to alternate source on transient
   // failure. PriceIntegrityError (currency mismatch / data corruption) is not
@@ -307,7 +325,7 @@ export async function fetchStockDailyClose(
     try {
       cross = useTwelveDataFirst
         ? await fetchYahooDailyClose(criteria.symbol, sessionDateLocal, market)
-        : apiKey
+        : twelveDataSupportsMarket && apiKey
           ? await fetchTwelveDataDailyClose(criteria.symbol, sessionDateLocal, apiKey)
           : null;
     } catch (err) {

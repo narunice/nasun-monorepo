@@ -246,6 +246,49 @@ describe('fetchStockDailyClose (combined)', () => {
     expect(q.price).toBe(255.42);
   });
 
+  it('KRX (.KS) resolves from Yahoo only, never calling Twelve Data even when sourceHost is twelvedata', async () => {
+    // Twelve Data free tier 404s on every .KS/.KQ symbol, so KRX markets must
+    // resolve from Yahoo alone: no TD primary and no TD cross-check, even though
+    // the criteria names api.twelvedata.com as its source.
+    const tsKr = Math.floor(Date.UTC(2026, 5, 30, 3, 0, 0) / 1000); // 2026-06-30 in Seoul
+    fetchSpy.mockResolvedValueOnce(jsonResponse({
+      chart: { error: null, result: [{
+        meta: { currency: 'KRW' },
+        timestamp: [tsKr],
+        indicators: { quote: [{ close: [70000] }] },
+      }] },
+    }));
+    const q = await fetchStockDailyClose(
+      makeStockCriteria({ symbol: '005930.KS', currency: 'KRW', sourceHost: 'api.twelvedata.com' }),
+      '2026-06-30',
+      { TWELVEDATA_API_KEY: TWELVE_KEY },
+    );
+    expect(q.price).toBe(70000);
+    expect(q.currency).toBe('KRW');
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    // The single upstream call must be Yahoo, never Twelve Data.
+    const calledUrl = String(fetchSpy.mock.calls[0][0]);
+    expect(calledUrl).not.toContain('api.twelvedata.com');
+    expect(calledUrl).toContain('finance.yahoo.com');
+  });
+
+  it('KRX (.KS) does not fall back to Twelve Data when Yahoo fails', async () => {
+    fetchSpy.mockResolvedValueOnce(jsonResponse(
+      { chart: { error: { description: 'down' }, result: null } },
+      { status: 503, statusText: 'Service Unavailable' },
+    ));
+    await expect(
+      fetchStockDailyClose(
+        makeStockCriteria({ symbol: '005930.KS', currency: 'KRW', sourceHost: 'api.twelvedata.com' }),
+        '2026-06-30',
+        { TWELVEDATA_API_KEY: TWELVE_KEY },
+      ),
+    ).rejects.toThrow(PriceFetchError);
+    // The only upstream call is Yahoo; no Twelve Data retry for KRX.
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(String(fetchSpy.mock.calls[0][0])).toContain('finance.yahoo.com');
+  });
+
   it('throws PriceFetchError when called on non-stock criteria', async () => {
     const cryptoCriteria: ResolutionCriteria = {
       kind: 'crypto',
