@@ -1,0 +1,21 @@
+[package]
+name = "nasun_vault"
+edition = "2024"
+version = "0.0.1"
+# published-at = "0x..."  # filled after first publish
+
+[dependencies]
+# Sui + MoveStdlib are implicit system deps (Sui 1.45+).
+baram_aer = { local = "../../apps/baram/contracts-aer" }
+baram_agent = { local = "../../apps/baram/contracts-agent" }
+nasun_tier = { local = "../nasun-tier", override = true }
+devnet_tokens = { local = "../devnet-tokens", override = true }
+deepbook = { local = "../../apps/pado/deepbookv3/packages/deepbook" }
+token = { local = "../../apps/pado/deepbookv3/packages/token" }
+
+[addresses]
+nasun_vault = "0x0"
+
+[environments]
+devnet = "272218f1"
+nasun-devnet = "272218f1"
