@@ -242,29 +242,38 @@ export class ChatService {
       this.ws = null;
     }
     this.setStatus('connecting');
+    // Capture this attempt's socket. Every handler below gates on `this.ws ===
+    // socket` so that a socket replaced by a later connect()/reconnect can no
+    // longer mutate the shared state machine. Without this, the replaced
+    // socket's onclose flips status to 'disconnected' and schedules a reconnect
+    // against the live connection, which is the "Connecting…" oscillation
+    // (bug 65d2a5a3).
+    let socket: WebSocket;
     try {
-      this.ws = new WebSocket(this.wsUrl);
+      socket = new WebSocket(this.wsUrl);
     } catch (err) {
       console.error('WS connection error:', err);
       this.scheduleReconnect();
       return;
     }
+    this.ws = socket;
 
     this.connectionTimer = setTimeout(() => {
-      if (this.status === 'connecting') {
-        this.ws?.close();
+      // Only the socket this timer was started for may time itself out.
+      if (this.ws === socket && this.status === 'connecting') {
+        socket.close();
         this.scheduleReconnect();
       }
     }, CONNECTION_TIMEOUT_MS);
 
-    this.ws.onopen = () => {
+    socket.onopen = () => {
       if (this.connectionTimer) {
         clearTimeout(this.connectionTimer);
         this.connectionTimer = null;
       }
     };
 
-    this.ws.onmessage = (event) => {
+    socket.onmessage = (event) => {
       let msg: ServerMessage;
       try {
         msg = JSON.parse(event.data as string);
@@ -274,7 +283,10 @@ export class ChatService {
       this.handleMessage(msg);
     };
 
-    this.ws.onclose = (event) => {
+    socket.onclose = (event) => {
+      // Ignore the close of a socket we have already replaced — see the note
+      // above. The live connection's onclose is unaffected (this.ws === socket).
+      if (this.ws !== socket) return;
       if (this.connectionTimer) {
         clearTimeout(this.connectionTimer);
         this.connectionTimer = null;
@@ -294,7 +306,7 @@ export class ChatService {
       }
     };
 
-    this.ws.onerror = () => {};
+    socket.onerror = () => {};
   }
 
   private handleMessage(msg: ServerMessage): void {

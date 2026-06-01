@@ -90,6 +90,12 @@ interface CapacitySnapshot {
   used: number;
   total: number;
   available: number;
+  /** Waitlist rows in 'invited' state: promoted, in their claim window, not
+   *  yet activated. They hold a pending slot (cap counts active + invited),
+   *  so `available` excludes them. */
+  invited: number;
+  /** Agent session length in hours (NASUN_AI_ALPHA_AGENT_TTL_MS), for UI copy. */
+  ttl_hours: number;
   queue_depth: number;
   schema_ready: boolean;
   gate_enabled: boolean;
@@ -126,6 +132,7 @@ function computeCapacity(): CapacitySnapshot {
   }
 
   let queueDepth = 0;
+  let invited = 0;
   if (schema.hasWaitlist) {
     try {
       const row = db
@@ -135,13 +142,24 @@ function computeCapacity(): CapacitySnapshot {
     } catch {
       queueDepth = 0;
     }
+    try {
+      const row = db
+        .prepare("SELECT COUNT(*) AS n FROM alpha_waitlist WHERE status = 'invited'")
+        .get() as { n: number } | undefined;
+      invited = row?.n ?? 0;
+    } catch {
+      invited = 0;
+    }
   }
 
-  const available = Math.max(0, total - used);
+  // active + invited both occupy a cap slot, so truly-claimable = total - both.
+  const available = Math.max(0, total - used - invited);
   return {
     used,
     total,
     available,
+    invited,
+    ttl_hours: Math.round(getAgentTtlMs() / 3_600_000),
     queue_depth: queueDepth,
     schema_ready: schema.hasSlotExempt && schema.hasPausedAt && schema.hasWaitlist,
     gate_enabled: isAlphaGateEnabled(),

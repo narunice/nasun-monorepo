@@ -20,8 +20,16 @@ import {
   AlphaApiError,
 } from "../alpha/alphaApiClient";
 
-const BASE_LINE =
-  "Nasun AI alpha test. Up to 8 testers can run an agent at the same time. If every slot is taken, your agent joins a waitlist and rotates in when one frees up (every 36 hours). Genesis Pass holders are invited first; Alliance-only holders get a testing window in a later round.";
+// Cap + session length are server config (NASUN_AI_ALPHA_SYSTEM_CAP /
+// _AGENT_TTL_MS), surfaced via capacity.{total,ttl_hours}. Interpolate the live
+// values instead of hardcoding so the notice never drifts from the actual gate.
+function buildBaseLine(cap?: number, ttlHours?: number): string {
+  const testers = cap ? `Up to ${cap} testers` : "A limited number of testers";
+  const rotate = ttlHours
+    ? `rotates in when one frees up (about every ${ttlHours} hours)`
+    : "rotates in when a slot frees up";
+  return `Nasun AI alpha test. ${testers} can run an agent at the same time. If every slot is taken, your agent joins a waitlist and ${rotate}. Genesis Pass holders are invited first; Alliance-only holders get a testing window in a later round.`;
+}
 
 export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   const alpha = useAlphaStatus(walletAddress);
@@ -36,6 +44,9 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   const queueDepth = alpha.status?.queue_depth;
   const inviteExpiresAt = alpha.status?.invite_expires_at ?? null;
   const tgBound = alpha.status?.tg_bound;
+  const cap = alpha.status?.capacity.total;
+  const ttlHours = alpha.status?.capacity.ttl_hours;
+  const baseLine = buildBaseLine(cap, ttlHours);
 
   const handleJoin = async () => {
     if (!signer) {
@@ -117,7 +128,7 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   if (!gateOn || state === "active" || state === "exempt") {
     return (
       <div className="rounded-lg border border-pado-2/30 bg-pado-2/5 px-3 py-2 text-sm text-uju-secondary">
-        {BASE_LINE}
+        {baseLine}
       </div>
     );
   }
@@ -180,8 +191,8 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   } else if (state === "paused") {
     statusLine = (
       <span className="text-amber-200">
-        Your 36-hour session ended and the agent is paused. Funds and signing
-        key are preserved.
+        Your {ttlHours ? `${ttlHours}-hour ` : ""}session ended and the agent is
+        paused. Funds and signing key are preserved.
       </span>
     );
   } else if (state === "expired") {
@@ -215,7 +226,7 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
     <div className="rounded-lg border border-pado-2/30 bg-pado-2/5 px-3 py-2.5 text-sm text-uju-secondary space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 space-y-1">
-          <p>{BASE_LINE}</p>
+          <p>{baseLine}</p>
           {statusLine && <p>{statusLine}</p>}
         </div>
         {action}

@@ -28,6 +28,11 @@ const CreatorPostsAdmin = lazy(() => import("../features/admin/pages/CreatorPost
 // Claim page (lazy loaded, standalone layout)
 const ClaimPage = lazy(() => import("../pages/ClaimPage"));
 
+// Vault (Phase 5) pages (lazy loaded)
+const VaultListPage = lazy(() => import("../sections/vaults/VaultListPage"));
+const VaultDetailPage = lazy(() => import("../sections/vaults/VaultDetailPage"));
+const CreateVaultPage = lazy(() => import("../sections/vaults/CreateVaultPage"));
+
 // uju public coming-soon landing — shown at nasun.io/uju from "Enter uju" button
 const UjuComingSoonPage = lazy(() => import("../pages/uju/UjuComingSoonPage"));
 
@@ -219,6 +224,23 @@ const AppRoutes = () => {
         } />
         {/* Legacy uju dev path — uju app now lives at /my-account */}
         <Route path="/dev/uju" element={<Navigate to="/my-account" replace />} />
+
+        {/* Vault (Phase 5) — tier-3 managed DeepBook vaults */}
+        <Route path="/vaults" element={
+          <Suspense fallback={<PageLoading />}>
+            <VaultListPage />
+          </Suspense>
+        } />
+        <Route path="/vaults/create" element={
+          <Suspense fallback={<PageLoading />}>
+            <CreateVaultPage />
+          </Suspense>
+        } />
+        <Route path="/vaults/:id" element={
+          <Suspense fallback={<PageLoading />}>
+            <VaultDetailPage />
+          </Suspense>
+        } />
 
         {/* Claim Route (standalone landing page, no Navbar/Footer) */}
         <Route path="/claim/:encodedData" element={

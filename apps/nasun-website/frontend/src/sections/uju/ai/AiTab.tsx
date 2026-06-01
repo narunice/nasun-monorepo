@@ -22,9 +22,11 @@ import { AgentLeaderboard } from './pages/AgentLeaderboard';
 import { CreateAgentModal } from './components/modals/CreateAgentModal';
 import { AgentsSidebar } from './components/AgentsSidebar';
 import { AlphaNoticePanel } from './components/AlphaNoticePanel';
+import { AlphaCapacityStrip } from './components/AlphaCapacity';
 import { useCreateAgent } from './hooks/useCreateAgent';
 import { useAgentProfiles } from './hooks/useAgentProfiles';
 import { useAlphaStatus } from './alpha/useAlphaStatus';
+import { useAlphaCapacity } from './alpha/useAlphaCapacity';
 import { useCreateAgentBlocked } from './alpha/useCreateAgentBlocked';
 
 // Memoized AgentDetail keeps the heavy sub-tab body (charts, tables) from
@@ -115,6 +117,10 @@ export function AiTab() {
   // AgentDetail so it can render an inline banner inside the Chat sub-tab
   // without ChatView (legacy generic chat) being aware of any of this.
   const { status: alphaStatus } = useAlphaStatus(walletAddress);
+
+  // Public, wallet-independent capacity for the always-visible capacity widget
+  // (sidebar box + mobile strip). Same numbers for every viewer.
+  const alphaCapacity = useAlphaCapacity(!!walletAddress);
 
   // Captured at "Register" submit time so the post-modal navigation reflects
   // the wallet's state *before* the new agent landed, not after.
@@ -262,6 +268,7 @@ export function AiTab() {
   return (
     <div className="space-y-4">
       <AlphaNoticePanel walletAddress={walletAddress} />
+      <AlphaCapacityStrip capacity={alphaCapacity} className="md:hidden" />
 
       <div className="md:flex md:gap-4">
         <AgentsSidebar
@@ -272,6 +279,7 @@ export function AiTab() {
           onShowImport={handleShowImport}
           createBlocked={createBlock.blocked}
           createBlockedMessage={createBlock.message}
+          alphaCapacity={alphaCapacity}
         />
         <main className="flex-1 min-w-0 space-y-4">
           {view !== 'budgets' && view !== 'leaderboard' && (
