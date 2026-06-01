@@ -85,7 +85,11 @@ const MAX_CONSECUTIVE_ERRORS = 5;
 // shortest pause that meaningfully reduces noise without missing real
 // arb opportunities on heavily-traded markets.
 const CAPACITY_COOLDOWN_MS = 10 * 60 * 1000;
-const ECAPACITY_EXCEEDED_PATTERN = /MoveAbort\b[^)]*prediction_market[^)]*\}\s*,\s*18\s*\)/;
+// NOTE: use [\s\S]*? (lazy, crosses parens) rather than [^)]*. The MoveAbort
+// string nests two ')' before the abort code, from Identifier("prediction_market")
+// and Some("place_sell_taker"), so [^)]* can never reach the trailing ", 18)"
+// and the cooldown silently never fired (legacy markets re-tried every tick).
+const ECAPACITY_EXCEEDED_PATTERN = /MoveAbort\b[\s\S]*?prediction_market[\s\S]*?\}\s*,\s*18\s*\)/;
 
 // Refill thresholds
 const MIN_GAS_NASUN = Number(process.env.PREDICTION_ARB_MIN_GAS_NASUN ?? '50');
