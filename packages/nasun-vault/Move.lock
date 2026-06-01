@@ -87,3 +87,75 @@ source = { local = "../../apps/pado/deepbookv3/packages/token" }
 use_environment = "devnet"
 manifest_digest = "41D1BDD28F3C119A169CE18934867517916EFC7FB9628B27D00844D146B950C3"
 deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.testnet.MoveStdlib]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/move-stdlib", rev = "c2428b3aaf9c24270b609001e56d96cb10c76d28" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.MoveStdlib_1]
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/move-stdlib" }
+use_environment = "testnet"
+manifest_digest = "C4FE4C91DE74CBF223B2E380AE40F592177D21870DC2D7EB6227D2D694E05363"
+deps = {}
+
+[pinned.testnet.Sui]
+source = { git = "https://github.com/MystenLabs/sui.git", subdir = "crates/sui-framework/packages/sui-framework", rev = "c2428b3aaf9c24270b609001e56d96cb10c76d28" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib" }
+
+[pinned.testnet.Sui_1]
+source = { local = "/home/naru/my_apps/nasun-devnet/sui/crates/sui-framework/packages/sui-framework" }
+use_environment = "testnet"
+manifest_digest = "7AFB66695545775FBFBB2D3078ADFD084244D5002392E837FDE21D9EA1C6D01C"
+deps = { MoveStdlib = "MoveStdlib_1" }
+
+[pinned.testnet.baram]
+source = { local = "../../apps/baram/contracts" }
+use_environment = "testnet"
+manifest_digest = "6A16F7BC4053DD019A0D513539BDC241D838C8A68E4044815333F815A3B19259"
+deps = { devnet_tokens = "devnet_tokens", std = "MoveStdlib", sui = "Sui" }
+
+[pinned.testnet.baram_aer]
+source = { local = "../../apps/baram/contracts-aer" }
+use_environment = "testnet"
+manifest_digest = "9D1EA727074178F932F613AA8643D4F09BD30BFC480B2885FA7A0D3DD2DA6068"
+deps = { MoveStdlib = "MoveStdlib_1", Sui = "Sui_1", baram = "baram" }
+
+[pinned.testnet.baram_agent]
+source = { local = "../../apps/baram/contracts-agent" }
+use_environment = "testnet"
+manifest_digest = "6CED66EA1768994169D16E035FD20FEF7C32C432A4CC5696476234A79C14CE40"
+deps = { Sui = "Sui_1" }
+
+[pinned.testnet.deepbook]
+source = { local = "../../apps/pado/deepbookv3/packages/deepbook" }
+use_environment = "testnet"
+manifest_digest = "1058A6BD8A81AFF148033CD2A5DD195433940D5569BB43523DD74082BA49793F"
+deps = { nasun_tier = "nasun_tier", std = "MoveStdlib", sui = "Sui", token = "token" }
+
+[pinned.testnet.devnet_tokens]
+source = { local = "/home/naru/my_apps/nasun-monorepo/packages/devnet-tokens" }
+use_environment = "testnet"
+manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.testnet.nasun_tier]
+source = { local = "../../packages/nasun-tier" }
+use_environment = "testnet"
+manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
+deps = { std = "MoveStdlib", sui = "Sui" }
+
+[pinned.testnet.nasun_vault]
+source = { root = true }
+use_environment = "testnet"
+manifest_digest = "F06AD31E09F5EA9B11BEF43581032312523878148F136EC89E6673AFAD41EFB7"
+deps = { baram_aer = "baram_aer", baram_agent = "baram_agent", deepbook = "deepbook", devnet_tokens = "devnet_tokens", nasun_tier = "nasun_tier", std = "MoveStdlib", sui = "Sui", token = "token" }
+
+[pinned.testnet.token]
+source = { local = "../../apps/pado/deepbookv3/packages/token" }
+use_environment = "testnet"
+manifest_digest = "5745706258F61D6CE210904B3E6AE87A73CE9D31A6F93BE4718C442529332A87"
+deps = { std = "MoveStdlib", sui = "Sui" }

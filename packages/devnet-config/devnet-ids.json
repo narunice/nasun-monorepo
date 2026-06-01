@@ -185,5 +185,15 @@
       "aiInference": "",
       "stakingBoost": ""
     }
+  },
+  "nasunVault": {
+    "packageId": "0x6a622d90d2ce81c19affc2a73aa6df2d85c691db97a63d1fe589e788d61f16b0",
+    "originalPackageId": "0x6a622d90d2ce81c19affc2a73aa6df2d85c691db97a63d1fe589e788d61f16b0",
+    "factory": "0x2d18f525a633d1845d3ea5188eca7eaa3306e5934e2f82d7bc62ee8cdcbbee7e",
+    "factoryAdminCap": "0x35b07d07cc2abf63f2e81298f30ffcb63067b28599dbe7f2b933f855532c408b",
+    "upgradeCap": "0xd68b48a188c1a5104c734f105416fb35f72e25560e95d1b4d05cc264b9fe03e4",
+    "upgradeCapHolder": "0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90",
+    "allowedBasePool": "0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0",
+    "witnessType": "0x6a622d90d2ce81c19affc2a73aa6df2d85c691db97a63d1fe589e788d61f16b0::vault::VaultWitness"
   }
 }
