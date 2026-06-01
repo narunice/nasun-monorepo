@@ -1,13 +1,35 @@
 /**
  * Prediction Market Arbitrage Bot
  *
- * Monitors all open prediction markets for crossed orderbook states where
- * (best_yes_bid + best_no_bid) > 10000 bps, capturing risk-free profit via:
+ * Monitors all open prediction markets for two distinct risk-free states.
+ *
+ * (A) CROSS-MARKET cross: (best_yes_bid + best_no_bid) > 10000 bps. Both
+ *     outcomes can be sold for more than the 10000 bps it costs to mint a pair.
  *
  *   tx1: mint_outcome_tokens(amount NUSDC) -> YES + NO positions sent to wallet
  *   tx2: place_sell_taker(YES) + place_sell_taker(NO) in one PTB
  *
- * Profit per arb: (yesBid + noBid - 10000) bps * mintAmount / 10000
+ *   Profit per arb: (yesBid + noBid - 10000) bps * mintAmount / 10000
+ *
+ * (B) SINGLE-SIDE cross: best_bid > best_ask on the SAME side (YES or NO).
+ *     The maker entry functions (place_buy_maker / place_sell_maker) are
+ *     post-only and do NOT match against the opposite side, so a resting bid
+ *     can sit ABOVE a later resting ask indefinitely until a taker sweeps it.
+ *     This both breaks the displayed probability and leaves free money on the
+ *     table. We capture it (and uncross the book) by buying the cheap ask and
+ *     selling into the rich bid:
+ *
+ *   tx1: place_buy_taker(side, max_price = bestAsk) -> Position bought cheap
+ *   tx2: place_sell_taker(side, min_price = bestAsk + 1) -> sold into rich bid
+ *
+ *   Profit per bite: (bestBid - bestAsk) bps * filledShares / 10000. With a
+ *   small MAX_NUSDC against a deep level there is no resting leftover, so each
+ *   tick takes one bounded bite and the spread grinds shut over several ticks.
+ *
+ * At most ONE action runs per market per tick, so two different opportunities
+ * never race within a tick. A single-side-cross is still two sequential txs
+ * (buy then sell); if the rich bid is taken in between, the sell aborts and the
+ * position is kept rather than rested (see executeSingleSideCross).
  *
  * Environment variables:
  *   PREDICTION_ARB_PRIVATE_KEY   required  ed25519 hex or suiprivkey bech32
@@ -90,6 +112,10 @@ const CAPACITY_COOLDOWN_MS = 10 * 60 * 1000;
 // and Some("place_sell_taker"), so [^)]* can never reach the trailing ", 18)"
 // and the cooldown silently never fired (legacy markets re-tried every tick).
 const ECAPACITY_EXCEEDED_PATTERN = /MoveAbort\b[\s\S]*?prediction_market[\s\S]*?\}\s*,\s*18\s*\)/;
+// ENoFillsAtMarketPrice (code 19): the single-side-cross buy targeted an ask
+// that was taken between our fetch and our exec. A benign race -- skip the
+// market this tick without bumping the suicide counter.
+const ENO_FILLS_PATTERN = /MoveAbort\b[\s\S]*?prediction_market[\s\S]*?\}\s*,\s*19\s*\)/;
 
 // Refill thresholds
 const MIN_GAS_NASUN = Number(process.env.PREDICTION_ARB_MIN_GAS_NASUN ?? '50');
@@ -147,6 +173,8 @@ interface MarketBook {
   objectType: string;
   yesBestBid: number | null;
   noBestBid: number | null;
+  yesBestAsk: number | null;
+  noBestAsk: number | null;
 }
 
 async function fetchMarketBook(
@@ -158,16 +186,21 @@ async function fetchMarketBook(
     const fields = (obj.data?.content as { fields?: Record<string, unknown> } | undefined)?.fields;
     if (!fields) return null;
 
-    const yesPrices = (fields.yes_bid_prices as string[]) ?? [];
-    const noPrices = (fields.no_bid_prices as string[]) ?? [];
+    const yesBids = (fields.yes_bid_prices as string[]) ?? [];
+    const noBids = (fields.no_bid_prices as string[]) ?? [];
+    const yesAsks = (fields.yes_ask_prices as string[]) ?? [];
+    const noAsks = (fields.no_ask_prices as string[]) ?? [];
 
     return {
       status: Number(fields.status),
       closeTime: Number(fields.close_time),
       objectType: String(obj.data?.type ?? ''),
-      // yes_bid_prices is sorted descending (highest first)
-      yesBestBid: yesPrices.length > 0 ? Number(yesPrices[0]) : null,
-      noBestBid: noPrices.length > 0 ? Number(noPrices[0]) : null,
+      // *_bid_prices sorted descending (highest first); *_ask_prices ascending
+      // (lowest first). Head element is the best price on each side.
+      yesBestBid: yesBids.length > 0 ? Number(yesBids[0]) : null,
+      noBestBid: noBids.length > 0 ? Number(noBids[0]) : null,
+      yesBestAsk: yesAsks.length > 0 ? Number(yesAsks[0]) : null,
+      noBestAsk: noAsks.length > 0 ? Number(noAsks[0]) : null,
     };
   } catch {
     return null;
@@ -206,22 +239,46 @@ interface Positions {
   noId: string;
 }
 
+// Retry getObject: executeAndWait returns when the executing fullnode has the
+// tx, but a subsequent client.getObject can route to a different read replica
+// that has not yet indexed the new owned object, returning content=null. This
+// produced 32 "could not identify YES/NO" aborts between 14:59 and 15:06 UTC
+// on 2026-05-18, each one stranding a position in the arb wallet.
+async function fetchPositionFields(
+  client: SuiClient,
+  objectId: string,
+): Promise<{ is_yes?: boolean } | undefined> {
+  for (let attempt = 1; attempt <= 4; attempt++) {
+    const obj = await client.getObject({ id: objectId, options: { showContent: true } });
+    const fields = (obj.data?.content as { fields?: { is_yes?: boolean } } | undefined)?.fields;
+    if (fields && typeof fields.is_yes === 'boolean') return fields;
+    if (attempt < 4) await new Promise((r) => setTimeout(r, 300 * attempt));
+  }
+  return undefined;
+}
+
+// Sui anchors a struct's type tag to the publish that defined the struct, so a
+// Position minted via the latest package id still carries the type prefix of
+// the publish where Position was originally introduced (see prediction-lp-bot's
+// stale-package guard). Accept any prefix from an upgrade-chain id we know.
+function positionPrefixMatcher(
+  packageId: string,
+  legacyPackageIds: string[],
+): (objectType?: string) => boolean {
+  const prefixes = [packageId, ...legacyPackageIds].map(
+    (p) => `${p}::prediction_market::Position`,
+  );
+  return (ot?: string) =>
+    typeof ot === 'string' && prefixes.some((p) => ot.startsWith(p));
+}
+
 async function findMintedPositions(
   client: SuiClient,
   objectChanges: Array<{ type: string; objectType?: string; objectId: string }>,
   packageId: string,
   legacyPackageIds: string[] = [],
 ): Promise<Positions | null> {
-  // Sui anchors a struct's type tag to the publish that defined the struct,
-  // so a Position object minted via the latest package id still carries the
-  // type prefix of the publish where Position was originally introduced
-  // (see prediction-lp-bot's stale-package guard). Accept any prefix that
-  // matches an upgrade-chain id we know about.
-  const positionPrefixes = [packageId, ...legacyPackageIds].map(
-    (p) => `${p}::prediction_market::Position`,
-  );
-  const matchesAnyPrefix = (ot?: string): boolean =>
-    typeof ot === 'string' && positionPrefixes.some((p) => ot.startsWith(p));
+  const matchesAnyPrefix = positionPrefixMatcher(packageId, legacyPackageIds);
   const created = objectChanges.filter(
     (c) => c.type === 'created' && matchesAnyPrefix(c.objectType),
   );
@@ -230,31 +287,37 @@ async function findMintedPositions(
     return null;
   }
 
-  // Retry getObject: executeAndWait returns when the executing fullnode has the
-  // tx, but a subsequent client.getObject can route to a different read replica
-  // that has not yet indexed the new owned object, returning content=null. This
-  // produced 32 "could not identify YES/NO" aborts between 14:59 and 15:06 UTC
-  // on 2026-05-18, each one stranding a YES+NO pair in the arb wallet until the
-  // market resolves.
-  const fetchWithRetry = async (objectId: string) => {
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      const obj = await client.getObject({ id: objectId, options: { showContent: true } });
-      const fields = (obj.data?.content as { fields?: { is_yes?: boolean } } | undefined)?.fields;
-      if (fields && typeof fields.is_yes === 'boolean') return fields;
-      if (attempt < 4) await new Promise((r) => setTimeout(r, 300 * attempt));
-    }
-    return undefined;
-  };
-
   const [aFields, bFields] = await Promise.all([
-    fetchWithRetry(created[0].objectId),
-    fetchWithRetry(created[1].objectId),
+    fetchPositionFields(client, created[0].objectId),
+    fetchPositionFields(client, created[1].objectId),
   ]);
   if (!aFields || !bFields) return null;
 
   return aFields.is_yes
     ? { yesId: created[0].objectId, noId: created[1].objectId }
     : { yesId: created[1].objectId, noId: created[0].objectId };
+}
+
+// Locate the single Position minted by a place_buy_taker fill, verifying it is
+// the expected side. buy_taker mints exactly one Position for the filled
+// portion (prediction_market.move:656), so we take the first created Position
+// whose is_yes matches.
+async function findSinglePosition(
+  client: SuiClient,
+  objectChanges: Array<{ type: string; objectType?: string; objectId: string }>,
+  expectedIsYes: boolean,
+  packageId: string,
+  legacyPackageIds: string[] = [],
+): Promise<string | null> {
+  const matchesAnyPrefix = positionPrefixMatcher(packageId, legacyPackageIds);
+  const created = objectChanges.filter(
+    (c) => c.type === 'created' && matchesAnyPrefix(c.objectType),
+  );
+  for (const c of created) {
+    const fields = await fetchPositionFields(client, c.objectId);
+    if (fields && fields.is_yes === expectedIsYes) return c.objectId;
+  }
+  return null;
 }
 
 // ========================================
@@ -349,6 +412,103 @@ async function executeArb(
   console.log(`[arb] done. estimated profit: ${profitNusdc.toFixed(4)} NUSDC`);
 }
 
+// Capture + uncross a single-side cross (best_bid > best_ask on one side).
+// Buys the cheapest ask level, then sells the bought shares into the rich bid.
+async function executeSingleSideCross(
+  client: SuiClient,
+  keypair: Ed25519Keypair,
+  marketId: string,
+  marketPackageId: string,
+  isYes: boolean,
+  bestBid: number,
+  bestAsk: number,
+): Promise<void> {
+  const arbAddress = keypair.toSuiAddress();
+  const spendRaw = nusdcToRaw(MAX_NUSDC_PER_ARB);
+  const spreadBps = bestBid - bestAsk;
+  const side = isYes ? 'YES' : 'NO';
+
+  console.log(
+    `[arb] single-side ${side} cross market=${marketId.slice(0, 16)}...` +
+      ` bid=${bestBid}bps ask=${bestAsk}bps spreadBps=${spreadBps}`,
+  );
+
+  const funds = await fetchNusdcFunds(client, arbAddress, spendRaw);
+  if (!funds) {
+    console.warn('[arb] insufficient NUSDC balance, skipping single-side cross');
+    return;
+  }
+
+  // tx1: buy the cheapest ask level only (max_price = bestAsk = max margin).
+  // rest_on_no_fill=false so if the ask vanished between fetch and exec the tx
+  // aborts (ENoFillsAtMarketPrice, treated as benign in tick) rather than
+  // resting our payment as a new bid. Against a deep level a small MAX_NUSDC
+  // fully converts to shares with no resting leftover.
+  const buyTx = new Transaction();
+  if (funds.extras.length > 0) {
+    buyTx.mergeCoins(
+      buyTx.object(funds.primary),
+      funds.extras.map((id) => buyTx.object(id)),
+    );
+  }
+  const [buyCoin] = buyTx.splitCoins(buyTx.object(funds.primary), [
+    buyTx.pure.u64(spendRaw),
+  ]);
+  buyTx.moveCall({
+    target: `${marketPackageId}::prediction_market::place_buy_taker`,
+    arguments: [
+      buyTx.object(marketId),
+      buyTx.pure.bool(isYes),
+      buyTx.pure.u64(bestAsk),
+      buyTx.pure.bool(false),
+      buyCoin,
+      buyTx.object(CLOCK_ID),
+    ],
+  });
+  const buyResult = await executeAndWait(client, keypair, buyTx, `xclear-buy:${side}`);
+
+  const positionId = await findSinglePosition(
+    client,
+    (buyResult.objectChanges ?? []) as Array<{
+      type: string;
+      objectType?: string;
+      objectId: string;
+    }>,
+    isYes,
+    PACKAGE_ID,
+    LEGACY_PACKAGE_IDS,
+  );
+  if (!positionId) {
+    console.error('[arb] single-side cross: no position minted, skipping sell');
+    return;
+  }
+
+  // tx2: sell into the rich bid. min_price floors at the ask we paid + 1 so we
+  // never realise a loss. rest_on_no_fill=FALSE is deliberate: if the rich bid
+  // was taken between tx1 and tx2, the sell aborts (benign ENoFillsAtMarketPrice)
+  // and the bought position stays in the wallet rather than resting as our OWN
+  // ask. A rested ask would sit below any surviving higher bid, and
+  // place_buy_taker self-skips our own orders, so we could never re-take it --
+  // every later tick would re-detect the cross, abort, and burn gas forever
+  // without clearing it. Stranding a small position (as the cross-market arb
+  // already does on failure) is the safer outcome. A partial fill can still rest
+  // a remainder; the repeated-no-fill cooldown in tick() backstops that case.
+  const minSell = Math.min(bestAsk + 1, MAX_PRICE_BPS - 1);
+  const sellTx = new Transaction();
+  sellTx.moveCall({
+    target: `${marketPackageId}::prediction_market::place_sell_taker`,
+    arguments: [
+      sellTx.object(marketId),
+      sellTx.object(positionId),
+      sellTx.pure.u64(minSell),
+      sellTx.pure.bool(false),
+      sellTx.object(CLOCK_ID),
+    ],
+  });
+  await executeAndWait(client, keypair, sellTx, `xclear-sell:${side}`);
+  console.log(`[arb] single-side ${side} cross: one bite taken (spreadBps=${spreadBps})`);
+}
+
 // ========================================
 // Per-market check
 // ========================================
@@ -363,11 +523,22 @@ async function checkMarket(
   if (book.status !== MARKET_STATUS_OPEN) return;
   if (Date.now() >= book.closeTime) return;
 
-  const { yesBestBid, noBestBid } = book;
-  if (yesBestBid === null || noBestBid === null) return;
+  const { yesBestBid, noBestBid, yesBestAsk, noBestAsk } = book;
 
-  const profitBps = yesBestBid + noBestBid - MAX_PRICE_BPS;
-  if (profitBps < MIN_PROFIT_BPS) return;
+  // Score every available opportunity in bps, then act on the most profitable
+  // one. Only one action runs per tick so the second leg never executes
+  // against a stale book.
+  const crossMarketBps =
+    yesBestBid !== null && noBestBid !== null
+      ? yesBestBid + noBestBid - MAX_PRICE_BPS
+      : -Infinity;
+  const yesCrossBps =
+    yesBestBid !== null && yesBestAsk !== null ? yesBestBid - yesBestAsk : -Infinity;
+  const noCrossBps =
+    noBestBid !== null && noBestAsk !== null ? noBestBid - noBestAsk : -Infinity;
+
+  const bestBps = Math.max(crossMarketBps, yesCrossBps, noCrossBps);
+  if (bestBps < MIN_PROFIT_BPS) return;
 
   // Dispatch every moveCall by the market's type-tag originalPackageId.
   // Without this, a legacy market against a v5-only PACKAGE_ID fires
@@ -382,7 +553,17 @@ async function checkMarket(
     return;
   }
 
-  await executeArb(client, keypair, marketId, marketPackageId, yesBestBid, noBestBid);
+  if (bestBps === crossMarketBps) {
+    await executeArb(client, keypair, marketId, marketPackageId, yesBestBid!, noBestBid!);
+  } else if (bestBps === yesCrossBps) {
+    await executeSingleSideCross(
+      client, keypair, marketId, marketPackageId, true, yesBestBid!, yesBestAsk!,
+    );
+  } else {
+    await executeSingleSideCross(
+      client, keypair, marketId, marketPackageId, false, noBestBid!, noBestAsk!,
+    );
+  }
 }
 
 // ========================================
@@ -464,6 +645,15 @@ let consecutiveErrors = 0;
 // skip it until cooldownUntil. Keyed by marketId.
 const marketCooldown = new Map<string, number>();
 
+// Consecutive ENoFillsAtMarketPrice per market. A one-off is a benign race
+// (the level we targeted was taken between fetch and exec), but a sustained
+// streak means our own resting order is the only thing crossing the book
+// (place_buy_taker / place_sell_taker self-skip it), so we can never clear it
+// by taking -- cool the market down rather than retry every tick forever. See
+// executeSingleSideCross. Reset to zero on any non-throwing checkMarket.
+const marketNoFillStreak = new Map<string, number>();
+const MAX_NOFILL_STREAK = 3;
+
 async function tick(
   client: SuiClient,
   keypair: Ed25519Keypair,
@@ -482,6 +672,7 @@ async function tick(
       try {
         await checkMarket(client, keypair, marketId);
         consecutiveErrors = 0;
+        marketNoFillStreak.delete(marketId);
         if (cooldownUntil) marketCooldown.delete(marketId);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -493,6 +684,27 @@ async function tick(
           console.warn(
             `[tick] market=${marketId.slice(0, 16)}... ECapacityExceeded; cooldown ${CAPACITY_COOLDOWN_MS / 60_000}min`,
           );
+          continue;
+        }
+        if (ENO_FILLS_PATTERN.test(msg)) {
+          const streak = (marketNoFillStreak.get(marketId) ?? 0) + 1;
+          if (streak >= MAX_NOFILL_STREAK) {
+            // Persistent no-fill: almost certainly our own resting order is the
+            // only thing crossing the book and we self-skip it. Cool down
+            // instead of looping. Counter bump is suppressed (not a crash bug).
+            marketCooldown.set(marketId, Date.now() + CAPACITY_COOLDOWN_MS);
+            marketNoFillStreak.delete(marketId);
+            console.warn(
+              `[tick] market=${marketId.slice(0, 16)}... ${MAX_NOFILL_STREAK} consecutive no-fills` +
+                ` (likely self-owned cross); cooldown ${CAPACITY_COOLDOWN_MS / 60_000}min`,
+            );
+          } else {
+            marketNoFillStreak.set(marketId, streak);
+            console.warn(
+              `[tick] market=${marketId.slice(0, 16)}... no-fill race (ENoFillsAtMarketPrice)` +
+                ` ${streak}/${MAX_NOFILL_STREAK}; skipping`,
+            );
+          }
           continue;
         }
         if (isTransientRpcError(err)) {
@@ -521,6 +733,13 @@ async function main(): Promise<void> {
   const keyInput = process.env.PREDICTION_ARB_PRIVATE_KEY;
   if (!keyInput) throw new Error('PREDICTION_ARB_PRIVATE_KEY is required');
   if (!PACKAGE_ID) throw new Error('PREDICTION_PACKAGE_ID is required');
+  // Contract caps a single payment at MAX_PAYMENT_AMOUNT = 100k NUSDC
+  // (prediction_market.move:58). A larger MAX_NUSDC would make every buy/mint
+  // abort with EInvalidInput (code 17) -- not a benign code -- crash-looping
+  // the bot via consecutiveErrors. Fail fast at startup instead.
+  if (!Number.isFinite(MAX_NUSDC_PER_ARB) || MAX_NUSDC_PER_ARB <= 0 || MAX_NUSDC_PER_ARB > 100_000) {
+    throw new Error('PREDICTION_ARB_MAX_NUSDC must be a number in (0, 100000]');
+  }
 
   const keypair = parseKeypair(keyInput);
   const client = new SuiClient({ url: RPC_URL });
