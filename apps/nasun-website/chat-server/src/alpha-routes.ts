@@ -29,11 +29,13 @@ import {
   pendingChallenges,
   consumeChallenge,
   buildChallengeText,
+  getBotUsername,
   VAULT_CHALLENGE_TTL_MS,
   VAULT_MAX_PENDING_CHALLENGES,
   type ChallengeEntry,
   type Purpose,
 } from './baram-telegram-routes.js';
+import { issueLinkToken, isAlphaTgBound } from './alpha-tg-link.js';
 import {
   isAlphaGateEnabled,
   checkGenesisPassEligibility,
@@ -290,7 +292,7 @@ async function handleAlphaChallenge(
   if (!wallet || !isValidSuiAddress(wallet)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_wallet' }); return;
   }
-  if (purpose !== 'alpha-join' && purpose !== 'alpha-leave') {
+  if (purpose !== 'alpha-join' && purpose !== 'alpha-leave' && purpose !== 'alpha-tg-link') {
     writeJson(res, 400, corsHeaders, { error: 'invalid_purpose' }); return;
   }
   if (!isAlphaGateEnabled()) {
@@ -425,6 +427,42 @@ async function handleAlphaJoin(
   });
 }
 
+// === Telegram link handler ===
+//
+// Mints a short-lived token bound to the signature-verified wallet and
+// returns the bot deep link. The user opens it, the bot's /start handler
+// calls bindAlphaTelegram, and from then on invite/warn/expire DMs reach a
+// waitlist user who has no agent session yet. Signature-gated so a token
+// can only be issued for a wallet the caller actually controls — otherwise
+// someone could bind their own Telegram to a stranger's wallet and snoop
+// that wallet's slot timing.
+async function handleAlphaTgLink(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+  corsHeaders: Record<string, string>,
+): Promise<void> {
+  if (!isAlphaGateEnabled()) {
+    writeJson(res, 503, corsHeaders, { error: 'alpha_gate_disabled' }); return;
+  }
+  let body: unknown;
+  try { body = await readJsonBody(req); } catch (err) {
+    const code = (err as Error).message === 'body_too_large' ? 413 : 400;
+    writeJson(res, code, corsHeaders, { error: (err as Error).message });
+    return;
+  }
+  const result = await consumeChallenge(body as Record<string, unknown>, 'alpha-tg-link');
+  if (!result.ok) {
+    const status = result.reason === 'bad_signature' ? 401
+                 : result.reason === 'expired' ? 410 : 400;
+    writeJson(res, status, corsHeaders, { error: result.reason });
+    return;
+  }
+  const wallet = result.entry.wallet;
+  const { token, expiresAt } = issueLinkToken(wallet);
+  const deepLink = `https://t.me/${getBotUsername()}?start=${token}`;
+  writeJson(res, 200, corsHeaders, { ok: true, deepLink, expiresAt });
+}
+
 // === Leave handler ===
 
 async function handleAlphaLeave(
@@ -484,6 +522,10 @@ interface StatusResponse {
   queue_position?: number;
   queue_depth?: number;
   paused_at?: number | null;
+  // Whether invite/warn DMs can reach this wallet (live baram_session OR an
+  // alpha_tg_binding). Populated for waitlist states so the frontend can
+  // surface a "Connect Telegram" CTA only to unreachable waiters.
+  tg_bound?: boolean;
   capacity: CapacitySnapshot;
   // Per-wallet cap snapshot. Frontend uses this to gate the Create Agent
   // entry points before any on-chain PTB is signed, so a user with an
@@ -498,6 +540,26 @@ interface StatusResponse {
 // likewise have no cap to enforce. SQL failure (column missing on pre-migrated
 // DBs) falls back to canCreate=true so a stale schema can't lock out the UI
 // before the migration has been applied.
+// Whether `pushUserMessage` would reach this wallet via a live agent session.
+// Mirrors the primary lookup in pushUserMessage (baram-telegram.ts); the
+// alpha_tg_binding fallback is checked separately by the caller. wallet must
+// already be lowercased. Defensive try/catch: a pre-migration DB without
+// baram_sessions must not crash the status read.
+function hasLiveTgSession(wallet: string): boolean {
+  try {
+    const row = getDb()
+      .prepare(
+        `SELECT 1 FROM baram_sessions
+          WHERE wallet = ? AND revoked_at IS NULL AND expires_at > ? AND tg_user_id IS NOT NULL
+          LIMIT 1`,
+      )
+      .get(wallet, Date.now());
+    return !!row;
+  } catch {
+    return false;
+  }
+}
+
 function computePerWallet(wallet: string, isExempt: boolean): PerWalletSnapshot {
   const cap = getPerWalletCap();
   if (!isAlphaGateEnabled() || isExempt) {
@@ -618,6 +680,7 @@ async function handleAlphaStatus(
       invite_expires_at: row.invite_expires_at,
       queue_position: queuePosition,
       queue_depth: queueDepth,
+      tg_bound: hasLiveTgSession(wallet) || isAlphaTgBound(wallet),
       capacity,
       perWallet,
     } satisfies StatusResponse);
@@ -689,6 +752,10 @@ export async function handleAlphaRequest(
       }
       if (url.pathname === '/api/nasun-ai/alpha/leave') {
         await handleAlphaLeave(req, res, corsHeaders);
+        return true;
+      }
+      if (url.pathname === '/api/nasun-ai/alpha/tg-link') {
+        await handleAlphaTgLink(req, res, corsHeaders);
         return true;
       }
       writeJson(res, 404, corsHeaders, { error: 'not_found' });

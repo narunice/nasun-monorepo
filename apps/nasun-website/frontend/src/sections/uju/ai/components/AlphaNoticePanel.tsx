@@ -16,6 +16,7 @@ import { useAlphaStatus } from "../alpha/useAlphaStatus";
 import {
   joinAlphaWaitlist,
   leaveAlphaWaitlist,
+  requestAlphaTgLink,
   AlphaApiError,
 } from "../alpha/alphaApiClient";
 
@@ -25,7 +26,7 @@ const BASE_LINE =
 export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   const alpha = useAlphaStatus(walletAddress);
   const { signer } = useSigner();
-  const [busy, setBusy] = useState<"join" | "leave" | null>(null);
+  const [busy, setBusy] = useState<"join" | "leave" | "tg" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const gateOn = alpha.status?.capacity.gate_enabled ?? false;
@@ -34,6 +35,7 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
   const queuePos = alpha.status?.queue_position;
   const queueDepth = alpha.status?.queue_depth;
   const inviteExpiresAt = alpha.status?.invite_expires_at ?? null;
+  const tgBound = alpha.status?.tg_bound;
 
   const handleJoin = async () => {
     if (!signer) {
@@ -49,6 +51,41 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
       const code =
         err instanceof AlphaApiError ? err.code : (err as Error).message;
       setError(joinErrorMessage(code));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleTgConnect = async () => {
+    if (!signer) {
+      setError("Connect your wallet first.");
+      return;
+    }
+    // Open the tab synchronously, while we still hold the click's user
+    // activation. The signature + network round-trip below would otherwise
+    // make a post-await window.open look unsolicited, so popup blockers
+    // (esp. Safari / mobile) silently swallow it. We navigate this tab once
+    // the deep link resolves. Sever the opener relationship to avoid
+    // reverse-tabnabbing from the destination page.
+    const pending = window.open("about:blank", "_blank");
+    if (pending) pending.opener = null;
+    setBusy("tg");
+    setError(null);
+    try {
+      const { deepLink } = await requestAlphaTgLink(signer, walletAddress);
+      // The bot's /start handler binds this wallet so invite DMs reach the
+      // user. If the popup was blocked (pending === null) navigate the
+      // current tab as a fallback rather than failing silently.
+      if (pending && !pending.closed) {
+        pending.location.href = deepLink;
+      } else {
+        window.location.href = deepLink;
+      }
+    } catch (err) {
+      if (pending && !pending.closed) pending.close();
+      const code =
+        err instanceof AlphaApiError ? err.code : (err as Error).message;
+      setError(`Could not start Telegram linking (${code}).`);
     } finally {
       setBusy(null);
     }
@@ -166,6 +203,14 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
     );
   }
 
+  // Telegram opt-in for waitlist users who can't yet be DM'd. tg_bound is only
+  // populated for waitlist states; `=== false` (not undefined) means the server
+  // confirmed this wallet is unreachable, so we don't nag on older chat-servers
+  // or states where DMs already work (active/paused have an agent session).
+  const showTgConnect =
+    (state === "waiting" || state === "invited" || state === "expired") &&
+    tgBound === false;
+
   return (
     <div className="rounded-lg border border-pado-2/30 bg-pado-2/5 px-3 py-2.5 text-sm text-uju-secondary space-y-2">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -175,6 +220,22 @@ export function AlphaNoticePanel({ walletAddress }: { walletAddress: string }) {
         </div>
         {action}
       </div>
+      {showTgConnect && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-pado-2/20 pt-2">
+          <span className="min-w-0 text-uju-secondary/90">
+            Connect Telegram to get a DM the moment your slot opens, so you
+            don't miss the claim window.
+          </span>
+          <button
+            type="button"
+            onClick={handleTgConnect}
+            disabled={busy !== null || !hasSigner}
+            className="shrink-0 px-3 py-1.5 text-sm rounded-md bg-pado-2 text-uju-bg font-medium hover:bg-pado-3 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {busy === "tg" ? "Opening..." : "Connect Telegram"}
+          </button>
+        </div>
+      )}
       {error && <p className="text-sm text-red-400">{error}</p>}
     </div>
   );

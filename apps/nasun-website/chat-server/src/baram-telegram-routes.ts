@@ -57,7 +57,7 @@ const MAX_BODY_BYTES = 16 * 1024;
 export type Purpose =
   | 'link' | 'revoke' | 'list'
   | 'vault-upload' | 'vault-delete' | 'vault-restore'
-  | 'alpha-join' | 'alpha-leave'
+  | 'alpha-join' | 'alpha-leave' | 'alpha-tg-link'
   | 'chat-wake';
 
 export interface ChallengeEntry {
@@ -133,6 +133,10 @@ export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, non
       break;
     case 'alpha-leave':
       lines.push('Nasun AI: Leave alpha waitlist');
+      lines.push(`Wallet: ${entry.wallet}`);
+      break;
+    case 'alpha-tg-link':
+      lines.push('Nasun AI: Connect Telegram for alpha slot alerts');
       lines.push(`Wallet: ${entry.wallet}`);
       break;
     // chat-wake: web client signs once per (wallet, agent, capability) tuple
@@ -293,7 +297,7 @@ export async function consumeChallenge(
   return { ok: true, entry, challenge };
 }
 
-function getBotUsername(): string {
+export function getBotUsername(): string {
   return process.env.BARAM_TG_BOT_USERNAME || 'nasun_ai_bot';
 }
 

@@ -35,6 +35,7 @@ import { handleAgentPushRequest } from './agent-push-routes.js';
 import { handleAlphaRequest } from './alpha-routes.js';
 import { startAlphaCron, stopAlphaCron } from './alpha-cron.js';
 import { isAlphaGateEnabled } from './alpha-guards.js';
+import { ensureAlphaTgBindingSchema } from './alpha-tg-link.js';
 import { startEventLoopMonitor, stopEventLoopMonitor } from './event-loop-monitor.js';
 import { traceAsync } from './perf-trace.js';
 import type { LeaderboardConfig } from './leaderboard-types.js';
@@ -1275,6 +1276,7 @@ try {
   // Gated on ALPHA_GATE_ENABLED so a pre-launch chat-server has no
   // background timer touching the alpha schema.
   if (isAlphaGateEnabled()) {
+    ensureAlphaTgBindingSchema();
     startAlphaCron();
   } else {
     console.log('[alpha-cron] skipped (ALPHA_GATE_ENABLED != true)');
