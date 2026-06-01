@@ -16,7 +16,7 @@
 const CHAT_SERVER_URL =
   (import.meta.env.VITE_CHAT_SERVER_URL as string | undefined) ?? 'https://nasun.io';
 
-export type AlphaPurpose = 'alpha-join' | 'alpha-leave';
+export type AlphaPurpose = 'alpha-join' | 'alpha-leave' | 'alpha-tg-link';
 
 export type AlphaUserState =
   | 'none'
@@ -65,6 +65,13 @@ export interface AlphaStatusResponse {
   queue_position?: number;
   queue_depth?: number;
   paused_at?: number | null;
+  /**
+   * Whether invite/warn DMs can reach this wallet (live agent session OR an
+   * alpha Telegram binding). Populated only for waitlist states. Optional for
+   * forward compatibility: when absent (older chat-server) the frontend
+   * suppresses the "Connect Telegram" CTA rather than nagging.
+   */
+  tg_bound?: boolean;
   capacity: AlphaCapacity;
   /**
    * Per-wallet cap snapshot. Optional for forward compatibility: a chat-server
@@ -140,6 +147,27 @@ export async function leaveAlphaWaitlist(
   const challenge = await fetchAlphaChallenge(wallet, 'alpha-leave');
   const { signature } = await signer.signPersonal(new TextEncoder().encode(challenge));
   return postJson<AlphaLeaveResult>('/api/nasun-ai/alpha/leave', { challenge, signature });
+}
+
+export interface AlphaTgLinkResult {
+  ok: true;
+  /** `https://t.me/<bot>?start=alpha_<token>` — open to bind Telegram. */
+  deepLink: string;
+  expiresAt: number;
+}
+
+/**
+ * Sign + POST /alpha/tg-link. Returns a Telegram deep link the caller should
+ * open; the bot's /start handler then binds this wallet to the Telegram
+ * account so invite/warn DMs reach a waitlist user with no agent session yet.
+ */
+export async function requestAlphaTgLink(
+  signer: SignerLike,
+  wallet: string,
+): Promise<AlphaTgLinkResult> {
+  const challenge = await fetchAlphaChallenge(wallet, 'alpha-tg-link');
+  const { signature } = await signer.signPersonal(new TextEncoder().encode(challenge));
+  return postJson<AlphaTgLinkResult>('/api/nasun-ai/alpha/tg-link', { challenge, signature });
 }
 
 /** GET /alpha/status?wallet=. Public read — no signature required. */

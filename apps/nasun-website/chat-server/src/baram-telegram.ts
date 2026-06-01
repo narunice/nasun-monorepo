@@ -30,6 +30,7 @@ import {
   issueShortLivedJWT,
   SessionInactiveError,
 } from './baram-session.js';
+import { getAlphaTgUserId, bindAlphaTelegram } from './alpha-tg-link.js';
 import { classifyIntent, dashboardDeepLink } from './baram-intent-classifier.js';
 import { getEndpoint, isEndpointFresh } from './baram-agent-registry.js';
 import {
@@ -204,11 +205,14 @@ export async function pushUserMessage(walletAddress: string, html: string): Prom
        ORDER BY created_at DESC LIMIT 1`,
     )
     .get(wallet, Date.now()) as { tg_user_id: string } | undefined;
-  if (!session?.tg_user_id) return false;
+  // Fallback to the alpha waitlist binding: a user still in the queue has no
+  // agent session yet, so without this their invite/warn DMs are dropped.
+  const tgUserId = session?.tg_user_id ?? getAlphaTgUserId(wallet);
+  if (!tgUserId) return false;
   // sendMessage already handles 429/transient/timeout — we don't need
   // additional retry here; the caller already accepted best-effort.
   try {
-    await sendMessage(session.tg_user_id, html, undefined, { disableWebPagePreview: true });
+    await sendMessage(tgUserId, html, undefined, { disableWebPagePreview: true });
     return true;
   } catch (err) {
     console.warn(`[alpha-tg] pushUserMessage failed for ${wallet.slice(0, 10)}: ${(err as Error).message}`);
@@ -761,6 +765,25 @@ async function handleStartCommand(chatId: number, tgUserId: string, text: string
       'Welcome to Nasun AI!\n\n' +
       'To link your agent, visit your Dashboard and tap "Link Telegram":\n' +
       `<a href="${dashboardDeepLink()}">${dashboardDeepLink()}</a>`,
+      undefined,
+      { disableWebPagePreview: true },
+    );
+    return;
+  }
+
+  // Alpha waitlist binding: payload is `alpha_<token>` minted by
+  // /api/nasun-ai/alpha/tg-link. Binds wallet <-> this Telegram account so
+  // invite/warn/expire DMs reach a user who has no agent session yet.
+  if (sid.startsWith('alpha_')) {
+    const { ok } = bindAlphaTelegram(sid, tgUserId);
+    await sendMessage(
+      chatId,
+      ok
+        ? '✅ <b>Telegram connected.</b>\n' +
+          "I'll DM you the moment your Nasun AI alpha slot opens, so you don't miss the claim window."
+        : 'This link has expired or was already used.\n\n' +
+          'Open your Dashboard and tap "Get slot alerts" to generate a fresh one:\n' +
+          `<a href="${dashboardDeepLink()}">${dashboardDeepLink()}</a>`,
       undefined,
       { disableWebPagePreview: true },
     );
