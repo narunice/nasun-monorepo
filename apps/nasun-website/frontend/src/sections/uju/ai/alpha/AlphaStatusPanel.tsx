@@ -389,6 +389,6 @@ function CapacityLine({ status }: { status: AlphaStatusResponse }) {
 }
 
 function remaining(expiresAt: number | null | undefined): string {
-  if (!expiresAt) return '6 hours';
+  if (!expiresAt) return '16 hours';
   return fmtRemaining(expiresAt - Date.now());
 }

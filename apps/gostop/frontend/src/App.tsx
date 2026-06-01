@@ -77,9 +77,11 @@ function ScrollToTop() {
 }
 
 import { useBalanceSync } from './hooks/useBalanceSync'
+import { useReportClientMeta } from './hooks/useReportClientMeta'
 
 export default function App() {
   useBalanceSync() // Start background balance sync
+  useReportClientMeta() // Report screen metadata once auth is ready (bot hygiene)
 
   return (
     <div className="min-h-screen flex flex-col">

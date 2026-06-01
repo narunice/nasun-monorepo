@@ -396,6 +396,14 @@ export async function spawnAgentPm2(opts: SpawnOptions): Promise<void> {
         interpreter_args: 'tsx',
         cwd: RUNTIME_CWD,
         autorestart: true,
+        // Explicit null overrides PM2 daemon-wide cron_restart inheritance.
+        // chat-server's ecosystem.config.cjs sets cron_restart='0 18 * * *' to
+        // cap pnl-phase ballooning; without this null marker, the daemon
+        // applied that same cron to dynamically spawned agents, restarting
+        // them once a day even though agents don't have the same workload
+        // characteristics. 2026-05-31 incident: e4abc071 (founder personal
+        // agent) accrued 7 daily restarts before this was diagnosed.
+        cron_restart: null,
         watch: false,
         max_memory_restart: '512M',
         min_uptime: '30s',

@@ -1,10 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { SectionBox } from '../ui/SectionBox';
 import NFTCard from '../NFTCard';
 import { parseContent } from '../../lib/object-utils';
-import { isNFTObject } from '../../lib/media';
-import { useCursorPagination } from '../../hooks/useCursorPagination';
 import { getOwnedObjectsPage } from '../../lib/sui-client';
 import type { SuiObjectResponse } from '@mysten/sui/client';
 
@@ -23,28 +20,12 @@ export default function AddressNFTs({
   objectsNextCursor,
   address,
 }: AddressNFTsProps) {
-  const { cursor, pageIndex, handleNextPage, handlePrevPage } = useCursorPagination<string>();
   const [extraObjects, setExtraObjects] = useState<SuiObjectResponse[]>([]);
   const [lastFetchedCursor, setLastFetchedCursor] = useState<string | null>(objectsNextCursor);
   const [hasMoreExtra, setHasMoreExtra] = useState(objectsHasMore);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
 
-  // Query for additional pages (beyond initial 500)
-  const { data: pageData, isLoading: isPageLoading } = useQuery({
-    queryKey: ['address-nfts-page', address, cursor],
-    queryFn: () => getOwnedObjectsPage(address, cursor),
-    enabled: !!cursor,
-  });
-
-  // Collect extra NFT objects from cursor-based page queries
-  const extraNftObjects = useMemo(() => {
-    if (!pageData) return [];
-    return pageData.objects.filter(obj =>
-      isNFTObject(obj.data?.display?.data, parseContent(obj.data?.content))
-    );
-  }, [pageData]);
-
-  // All NFTs: initial (from useAddressObjects) + extra pages via cursor
+  // All NFTs: initial (from useAddressObjects) + extra pages via Load More
   const allNftObjects = useMemo(() => {
     const seen = new Set<string>();
     const all: SuiObjectResponse[] = [];
@@ -83,15 +64,13 @@ export default function AddressNFTs({
     }
   }, [pagedNFTs.length, hasMoreExtra, isFetchingMore, loadMore]);
 
-  if (allNftObjects.length === 0 && !objectsHasMore && !isPageLoading) return null;
+  if (allNftObjects.length === 0 && !objectsHasMore) return null;
 
   const showLoadMore = hasMoreExtra && pagedNFTs.length > 0;
 
   return (
     <SectionBox title={`NFTs (${allNftObjects.length}${hasMoreExtra ? '+' : ''})`} color="c4">
-      {isPageLoading ? (
-        <p className="text-sm text-gray-400">Loading...</p>
-      ) : pagedNFTs.length === 0 ? (
+      {pagedNFTs.length === 0 ? (
         <p className="text-sm text-gray-400">No NFTs on this page.</p>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
