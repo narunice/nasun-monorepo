@@ -126,6 +126,12 @@ export function ZkLoginCallback({
     if (raw === 'server_error' || raw === 'temporarily_unavailable') {
       return 'The sign-in provider is temporarily unavailable. Please try again.';
     }
+    // Google rejects OAuth inside in-app browsers (Telegram, Instagram, etc.)
+    // with a disallowed_useragent error. Point the user to a workaround instead
+    // of passing the raw policy string through.
+    if (/disallowed_useragent/i.test(raw)) {
+      return 'Google sign-in is blocked inside in-app browsers. Open this page in Chrome or Safari, or use Passkey to sign in.';
+    }
     return raw;
   };
 

@@ -3,7 +3,7 @@
  */
 
 import { useState } from "react";
-import { type ZkLoginProvider, type PasskeyWalletState } from "@nasun/wallet";
+import { type ZkLoginProvider, type PasskeyWalletState, isInAppWebview } from "@nasun/wallet";
 import { SocialLoginButtons } from "../../social/SocialLoginButtons";
 import type { ViewMode } from "../types";
 
@@ -39,6 +39,11 @@ export function DisconnectedView({
   const [passkeyPassword, setPasskeyPassword] = useState("");
   const showPasskeySection = isPasskeySupported && isPasskeyPlatformAvailable;
 
+  // Google OAuth (zkLogin) is blocked inside in-app browsers like Telegram or
+  // Instagram. Detect that environment once on mount so we can warn the user
+  // and surface the alternatives (Passkey, default browser) that DO work there.
+  const [isWebview] = useState(() => isInAppWebview());
+
   // Show privacy notice only on first visit when the consumer opts in
   const [showPrivacy] = useState(() => {
     if (!showPrivacyNotice) return false;
@@ -52,8 +57,9 @@ export function DisconnectedView({
   });
 
   // Show passkey first only for returning users (existing wallet = 1-step biometric unlock)
-  // New users see Google first (2-step OAuth, no mnemonic backup needed)
-  const passkeyFirst = showPasskeySection && !!passkeyWallet;
+  // New users see Google first (2-step OAuth, no mnemonic backup needed).
+  // In an in-app webview, surface passkey first regardless since Google is blocked.
+  const passkeyFirst = showPasskeySection && (!!passkeyWallet || isWebview);
 
   // Read network name from env — falls back to "Nasun Devnet" if not set
   const networkName = import.meta.env.VITE_NETWORK_NAME ?? "Nasun Devnet";
@@ -128,6 +134,17 @@ export function DisconnectedView({
     </div>
   );
 
+  // In-app browser notice (Google sign-in is blocked here)
+  const webviewNotice = isWebview && (
+    <div className="mb-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 px-3 py-2 text-left">
+      <p className="text-[11px] xl:text-xs text-amber-700 dark:text-amber-300 leading-snug">
+        Google sign-in does not work inside in-app browsers (such as Telegram or Instagram). Open
+        this page in Chrome or Safari, or{" "}
+        {showPasskeySection ? "use Passkey below" : "create or import a wallet below"}.
+      </p>
+    </div>
+  );
+
   // Google login button with description
   const googleButton = (
     <div>
@@ -172,6 +189,9 @@ export function DisconnectedView({
           </ul>
         </div>
       )}
+
+      {/* In-app browser notice (shown above auth options when Google is blocked) */}
+      {webviewNotice}
 
       {/* Primary auth — order depends on device passkey support */}
       {passkeyFirst ? (

@@ -354,6 +354,8 @@ export {
   type ProverProgressEvent,
 } from './core/zklogin';
 
+export { isInAppWebview } from './core/webview';
+
 // ============================================
 // Passkey Authentication (Phase 9.6)
 // ============================================
