@@ -84,7 +84,10 @@ module.exports = {
         // 2026-05-30: bumped 10h -> 12h. Outbound invite DMs were promising a
         // 12h window while the gate enforced 10h; users who acted within the
         // promised window (hour 10-12) found the slot already gone (zzangddoru).
-        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '43200000',    // 12h
+        // 2026-06-01: bumped 12h -> 16h. A tester (lavanyalakshma2) received an
+        // invite but could not activate within 12h and got auto-requeued; a
+        // wider window better tolerates timezone gaps for international testers.
+        NASUN_AI_ALPHA_CLAIM_WINDOW_MS: '57600000',    // 16h
         // INDEXER_EXCLUDED_ADDRESSES intentionally NOT listed here so the value
         // sourced from .env (via `set -a && source .env && set +a` before
         // `pm2 startOrRestart`) reaches the process. Listing it with a

@@ -42,9 +42,9 @@ function agentTtlMs(): number {
 
 function claimWindowMs(): number {
   const raw = process.env.NASUN_AI_ALPHA_CLAIM_WINDOW_MS;
-  if (raw === undefined || raw === '') return 10 * 60 * 60 * 1000;
+  if (raw === undefined || raw === '') return 16 * 60 * 60 * 1000;
   const n = parseInt(raw, 10);
-  return Number.isFinite(n) && n > 0 ? n : 10 * 60 * 60 * 1000;
+  return Number.isFinite(n) && n > 0 ? n : 16 * 60 * 60 * 1000;
 }
 
 // Grace window for the killer's re-invite. Long enough that a user who

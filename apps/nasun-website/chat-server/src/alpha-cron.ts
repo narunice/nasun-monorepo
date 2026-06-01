@@ -26,7 +26,7 @@ import { traceAsync, traceSync } from './perf-trace.js';
 import { ensureTimerPauseSchema, loadTimerPauseKeys } from './alpha-timer-pause.js';
 
 const TICK_INTERVAL_MS = 60_000;
-const WARN_LEAD_MS = 6 * 60 * 60 * 1000;  // T-6h warning before expiry (= claim window length)
+const WARN_LEAD_MS = 6 * 60 * 60 * 1000;  // T-6h warning before agent session (TTL) expiry
 
 let tickTimer: ReturnType<typeof setInterval> | null = null;
 let tickInFlight = false;
