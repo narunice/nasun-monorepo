@@ -3,7 +3,10 @@
     "allow": [
       "Bash(command -v convert)",
       "Bash(convert apps/nasun-website/frontend/src/assets/images/pado-spot-ss-may27.png -crop 10x10+5+5 +repage -format \"%[pixel:p{0,0}]\" info:)",
-      "Bash(command -v identify)"
+      "Bash(command -v identify)",
+      "Bash(AWS_PROFILE=nasun-prod aws dynamodb scan --table-name nasun-referrals --region ap-northeast-2 --filter-expression '#s = :d' --expression-attribute-names '{\"#s\":\"status\"}' --expression-attribute-values '{\":d\":{\"S\":\"DECLINED\"}}' --projection-expression 'referredIdentityId, referrerIdentityId, reviewerNote, reviewedAt' --output json)",
+      "Bash(git branch *)",
+      "Bash(git update-ref *)"
     ]
   }
 }
