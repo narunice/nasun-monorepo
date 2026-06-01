@@ -67,8 +67,6 @@ export default function HeistHeroSection() {
           height: "78%",
           objectFit: "contain",
           zIndex: 1,
-          opacity: ready ? 1 : 0,
-          transition: "opacity 800ms ease-out 200ms",
         }}
         className="xl:!left-auto xl:!right-[10%] xl:!translate-x-0 xl:!h-[88%]"
       />
