@@ -106,6 +106,11 @@ export async function queryLeaderboard(
             WHERE bu.wallet_address = ps.player
               AND bu.unbanned_at IS NULL
           )
+          AND NOT EXISTS (
+            SELECT 1 FROM gostop.client_meta cm
+            WHERE cm.player = ps.player
+              AND cm.is_impossible
+          )
         ORDER BY ${sql.unsafe(metricSqlPs)} DESC, ps.player ASC
         LIMIT ${limit}
       `;
@@ -136,6 +141,11 @@ export async function queryLeaderboard(
           SELECT 1 FROM public.banned_users bu
           WHERE bu.wallet_address = gr.player
             AND bu.unbanned_at IS NULL
+        )
+        AND NOT EXISTS (
+          SELECT 1 FROM gostop.client_meta cm
+          WHERE cm.player = gr.player
+            AND cm.is_impossible
         )
       GROUP BY gr.player
     )
@@ -225,10 +235,17 @@ export async function queryLeaderboardForPlayer(
         ${otherExclude.length > 0 ? sql`AND gr.player NOT IN ${sql(otherExclude)}` : sql``}
         AND (
           gr.player = ${player}
-          OR NOT EXISTS (
-            SELECT 1 FROM public.banned_users bu
-            WHERE bu.wallet_address = gr.player
-              AND bu.unbanned_at IS NULL
+          OR (
+            NOT EXISTS (
+              SELECT 1 FROM public.banned_users bu
+              WHERE bu.wallet_address = gr.player
+                AND bu.unbanned_at IS NULL
+            )
+            AND NOT EXISTS (
+              SELECT 1 FROM gostop.client_meta cm
+              WHERE cm.player = gr.player
+                AND cm.is_impossible
+            )
           )
         )
       GROUP BY gr.player
