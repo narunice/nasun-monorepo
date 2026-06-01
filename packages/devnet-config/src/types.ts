@@ -196,6 +196,17 @@ export interface NasunTierConfig {
   upgradeCapHolder: SuiAddress;
 }
 
+export interface NasunVaultConfig {
+  packageId: ObjectId;
+  originalPackageId: ObjectId;
+  factory: ObjectId;
+  factoryAdminCap: ObjectId;
+  upgradeCap: ObjectId;
+  upgradeCapHolder: SuiAddress;
+  allowedBasePool: ObjectId;
+  witnessType: string;
+}
+
 export interface DevnetConfig {
   version: string;
   lastUpdated: string;
@@ -215,4 +226,5 @@ export interface DevnetConfig {
   oracle: OracleConfig;
   nsa: NsaConfig;
   nasunTier: NasunTierConfig;
+  nasunVault: NasunVaultConfig;
 }
