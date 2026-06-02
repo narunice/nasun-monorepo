@@ -25,6 +25,7 @@ import type { Config } from '../config.js';
 import { checkBudget } from '../nasun-ai-client.js';
 import { PRESETS } from './registry.js';
 import { runTraderCyclePresetEntry } from './trader-runner.js';
+import { runVaultCyclePresetEntry } from './vault-runner.js';
 import { runSingleStepCycle } from './lambda-runner.js';
 import { runAnalysisCycle } from './analysis-runner.js';
 
@@ -36,6 +37,11 @@ export async function runCycle(client: SuiClient, config: Config): Promise<numbe
   if (config.preset === 'trader') {
     // Trader cycle handles its own budget check internally.
     return runTraderCyclePresetEntry(client, config);
+  }
+
+  if (config.preset === 'vault') {
+    // Vault cycle signs execute_trade directly; no budget/AER/escrow path.
+    return runVaultCyclePresetEntry(client, config);
   }
 
   // 1. Check budget (non-trader presets)

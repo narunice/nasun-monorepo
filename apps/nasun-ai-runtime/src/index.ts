@@ -105,11 +105,15 @@ async function main(): Promise<void> {
   log(`Preset: ${preset.name} (${config.preset})`);
   log(`Interval: ${config.intervalMinutes} minutes`);
 
-  startAerHeartbeatWatchdog({
-    agentAddress: config.agentAddress,
-    intervalMinutes: config.intervalMinutes,
-    log,
-  });
+  // The vault preset has no AER path (it never calls recordAerLanded), so the
+  // stale-AER watchdog would fire false-positive alerts every cooldown. Skip it.
+  if (config.preset !== 'vault') {
+    startAerHeartbeatWatchdog({
+      agentAddress: config.agentAddress,
+      intervalMinutes: config.intervalMinutes,
+      log,
+    });
+  }
   log(`Model: ${config.mode === 'record' ? config.llmModel : config.model}`);
   log(`Price per request: ${config.price / 1e6} NUSDC`);
   log(`API Key: ${maskApiKey(config.apiKey)}`);
@@ -120,7 +124,11 @@ async function main(): Promise<void> {
 
   // Plan D D-3: start /wake HTTP server (127.0.0.1) in parallel with the
   // self-scheduling heartbeat loop. Disabled when WAKE_PORT is unset/0.
-  if (config.wakePort > 0) {
+  // The vault preset is interval-only: its /wake heartbeat would route to
+  // the trader cycle (runHeartbeatFromWake), which dereferences config.trader
+  // (null for vault). Skip the wake server for vault until a vault /wake
+  // path exists.
+  if (config.wakePort > 0 && config.preset !== 'vault') {
     const idempotency = new IdempotencyStore();
     // Shared between analyst (trading) and chat paths: both burn the
     // same free-tier LLM quota, so the limiter has to see both. See
@@ -212,7 +220,7 @@ async function main(): Promise<void> {
       // chat-server reconcile / drift poller misses our PM2 process.
       // 60s in-process cache absorbs /wake bursts.
       await assertOnChainActiveOrExit({
-        profileId: config.trader?.agentProfileId,
+        profileId: config.trader?.agentProfileId ?? config.vault?.agentProfileId,
         rpcUrl: config.rpcUrl,
         log,
       });

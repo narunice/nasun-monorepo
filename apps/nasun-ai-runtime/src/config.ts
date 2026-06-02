@@ -11,7 +11,7 @@ import { parseProvidersEnv, type ChatLLMProvider } from './chat-llm-pool.js';
 const MIN_INTERVAL_MINUTES = 5;
 const CLOCK_ID = '0x0000000000000000000000000000000000000000000000000000000000000006';
 
-export type PresetName = 'research' | 'content' | 'analysis' | 'trader';
+export type PresetName = 'research' | 'content' | 'analysis' | 'trader' | 'vault';
 export type RunMode = 'lambda' | 'record';
 
 interface PresetDefaults {
@@ -24,6 +24,7 @@ const PRESET_DEFAULTS: Record<PresetName, PresetDefaults> = {
   content: { intervalMinutes: 1440, category: 'content' },
   analysis: { intervalMinutes: 1440, category: 'analysis' },
   trader: { intervalMinutes: 30, category: 'ai_inference' },
+  vault: { intervalMinutes: 30, category: 'ai_inference' },
 };
 
 function requireEnv(key: string): string {
@@ -196,6 +197,90 @@ function loadTraderConfig(): TraderConfig {
   };
 }
 
+// Vault preset (manages a Nasun Vault via direct-signed execute_trade).
+// Per-agent: VAULT_ID identifies the managed vault; everything else
+// (cap, pool, agent_profile) is read off the vault object at runtime.
+interface VaultConfig {
+  vaultId: string;
+  /** Mean-reversion trigger half-width in basis points (default 50 = 0.5%). */
+  bandBps: number;
+  /** Per-trade NBTC quantity in base-raw units (default 1000 = 1 lot = 0.00001 NBTC). */
+  stepQtyRaw: bigint;
+  /** Per-trade notional ceiling in NUSDC micro-units (default 1_000_000 = 1 NUSDC). */
+  maxNotionalRaw: bigint;
+  /** Rolling-24h aggregate notional ceiling in NUSDC micro-units
+   *  (default 10_000_000 = 10 NUSDC). Mirrors the trader preset's
+   *  dailyMaxQuoteRaw: the per-trade cap alone does not bound how much the
+   *  loop can trade per day at a tight interval. */
+  dailyMaxNotionalRaw: bigint;
+  /** Crossing-price cushion for the IOC limit (default 100 = 1%). */
+  slippageBps: number;
+  /** Enable SELL legs. Default false: BUY-only accumulation is balance-safe
+   *  without reading the vault's NBTC holdings. */
+  allowSell: boolean;
+  /** Build + dry-run the PTB but never sign/submit. Defaults to TRUE: this
+   *  is a funds-moving path, so it stays in verification mode unless an
+   *  operator explicitly sets VAULT_DRY_RUN=false. */
+  dryRun: boolean;
+  /** AgentProfile id for the per-cycle on-chain is_active kill switch.
+   *  Required for vault: without it the on-chain kill switch is a no-op. */
+  agentProfileId: string;
+}
+
+function parseIntInRange(
+  raw: string | undefined,
+  name: string,
+  fallback: number,
+  min: number,
+  max: number,
+): number {
+  if (raw === undefined || raw === '') return fallback;
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < min || parsed > max) {
+    throw new Error(`${name} must be an integer in [${min}, ${max}] (got "${raw}")`);
+  }
+  return parsed;
+}
+
+function loadVaultConfig(): VaultConfig {
+  const vaultId = requireObjectId(requireEnv('VAULT_ID'), 'VAULT_ID');
+  const bandBps = parseIntInRange(process.env.VAULT_BAND_BPS, 'VAULT_BAND_BPS', 50, 0, 10_000);
+  const stepQtyRaw = parseBigIntEnv(process.env.VAULT_STEP_QTY_RAW, 'VAULT_STEP_QTY_RAW', 1_000n);
+  const maxNotionalRaw = parseBigIntEnv(
+    process.env.VAULT_MAX_NOTIONAL_RAW,
+    'VAULT_MAX_NOTIONAL_RAW',
+    1_000_000n,
+  );
+  const dailyMaxNotionalRaw = parseBigIntEnv(
+    process.env.VAULT_DAILY_MAX_NOTIONAL_RAW,
+    'VAULT_DAILY_MAX_NOTIONAL_RAW',
+    10_000_000n,
+  );
+  // Cap slippage well below 100%: at 10000bps a SELL price collapses to 0.
+  const slippageBps = parseIntInRange(
+    process.env.VAULT_MAX_SLIPPAGE_BPS,
+    'VAULT_MAX_SLIPPAGE_BPS',
+    100,
+    0,
+    5_000,
+  );
+  const allowSell = process.env.VAULT_ALLOW_SELL === 'true';
+  // Safe-by-default: only go live when explicitly told to.
+  const dryRun = process.env.VAULT_DRY_RUN !== 'false';
+  const agentProfileId = requireObjectId(requireEnv('AGENT_PROFILE_ID'), 'AGENT_PROFILE_ID');
+  return {
+    vaultId,
+    bandBps,
+    stepQtyRaw,
+    maxNotionalRaw,
+    dailyMaxNotionalRaw,
+    slippageBps,
+    allowSell,
+    dryRun,
+    agentProfileId,
+  };
+}
+
 // PR2.A: split into two phases. loadConfigBaseSync() returns everything
 // that does NOT need the keypair; enrichWithKeypair() awaits the SSM
 // fetch (or falls back to AGENT_PRIVATE_KEY env) and returns the full
@@ -209,7 +294,9 @@ export async function loadConfig(): Promise<Config> {
 export function loadConfigBaseSync() {
   const preset = (process.env.PRESET ?? 'research') as PresetName;
   if (!(preset in PRESET_DEFAULTS)) {
-    throw new Error(`Invalid PRESET: ${preset}. Must be: research, content, analysis, trader`);
+    throw new Error(
+      `Invalid PRESET: ${preset}. Must be: research, content, analysis, trader, vault`,
+    );
   }
 
   const defaults = PRESET_DEFAULTS[preset];
@@ -256,8 +343,11 @@ export function loadConfigBaseSync() {
   // still routes through the Lambda /execute path (which is itself slated
   // for retirement in Plan E but kept alive for non-trader presets in C2).
   const trader = preset === 'trader' ? loadTraderConfig() : null;
+  // Vault preset signs execute_trade directly with the agent key; it does
+  // not use the host /execute-capability or Lambda /execute paths.
+  const vault = preset === 'vault' ? loadVaultConfig() : null;
   const lambdaUrl =
-    preset === 'trader'
+    preset === 'trader' || preset === 'vault'
       ? (process.env.LAMBDA_URL ? requireHttpsUrl(process.env.LAMBDA_URL, 'LAMBDA_URL') : '')
       : requireHttpsUrl(requireEnv('LAMBDA_URL'), 'LAMBDA_URL');
 
@@ -275,6 +365,9 @@ export function loadConfigBaseSync() {
 
     // Trader-only (host /execute-capability path). null for non-trader presets.
     trader,
+
+    // Vault-only (direct-signed execute_trade). null for non-vault presets.
+    vault,
 
     // Agent behavior
     mode,
