@@ -840,9 +840,25 @@ async function main(): Promise<void> {
     if (shuttingDown) break;
 
     if (Date.now() - lastDiscoveryAt >= DISCOVERY_INTERVAL_MS) {
-      markets = await discoverMarketIds(client, DISCOVERY_PKGS);
-      console.log(`[arb-bot] rediscovered ${markets.length} markets`);
-      lastDiscoveryAt = Date.now();
+      // Best-effort refresh, mirroring prediction-keeper / prediction-lp-bot: the
+      // bot already holds a valid market list, so a failed rediscovery must NOT
+      // kill a healthy trading loop (it previously propagated to main().catch ->
+      // process.exit -> pm2 restart on a single RPC 503). On failure keep the
+      // cached list; lastDiscoveryAt only advances on success, so the next tick
+      // retries instead of waiting a full interval. checkMarket() skips
+      // closed/expired markets, so a stale list is safe.
+      try {
+        const fresh = await discoverMarketIds(client, DISCOVERY_PKGS);
+        const added = fresh.filter((id) => !markets.includes(id));
+        if (added.length > 0) {
+          console.log(`[arb-bot] rediscovered +${added.length} new market(s) (${fresh.length} total)`);
+        }
+        markets = fresh;
+        lastDiscoveryAt = Date.now();
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[arb-bot] market discovery refresh failed, keeping ${markets.length} cached: ${msg}`);
+      }
     }
 
     await tick(client, keypair, arbAddress, markets);
