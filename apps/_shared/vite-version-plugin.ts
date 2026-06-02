@@ -11,7 +11,7 @@
 // no-store request header, but the origin must cooperate.
 
 import { execSync } from 'node:child_process'
-import { writeFileSync } from 'node:fs'
+import { writeFileSync, mkdirSync } from 'node:fs'
 import path from 'node:path'
 import type { Plugin } from 'vite'
 
@@ -34,7 +34,13 @@ export function viteVersionPlugin(): Plugin {
         version: sha,
         buildTime: new Date().toISOString(),
       }) + '\n'
-      writeFileSync(path.resolve(outDir, 'version.json'), payload)
+      // closeBundle can fire before the output dir exists (e.g. a clean
+      // checkout with no prior dist, or vite's parallel env close ordering),
+      // so ensure it before writing — otherwise writeFileSync throws ENOENT
+      // and fails the whole build.
+      const resolvedOutDir = path.resolve(outDir)
+      mkdirSync(resolvedOutDir, { recursive: true })
+      writeFileSync(path.resolve(resolvedOutDir, 'version.json'), payload)
     },
   }
 }
