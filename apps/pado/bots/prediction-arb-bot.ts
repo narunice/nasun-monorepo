@@ -139,17 +139,60 @@ function parseKeypair(key: string): Ed25519Keypair {
   return Ed25519Keypair.fromSecretKey(Buffer.from(hex, 'hex'));
 }
 
+// Gas payment pinning. The arb wallet holds a single SUI gas coin, so every tx
+// reuses it. After a tx lands the coin's version increments; the SDK's default
+// gas selection then re-reads owned coins and may hit a lagging fullnode read
+// replica, submitting the stale version. Validators reject that fast with
+// "Object ... not available for consumption", which floods the logs and, worse,
+// drops the second leg of a cross-market arb (mint lands, sell rejected ->
+// YES+NO positions stranded). We instead carry the gas object reference forward
+// from each tx's own effects (authoritative, no replica read) via setGasPayment.
+let cachedGasRef: { objectId: string; version: string; digest: string } | null = null;
+
+async function resolveGasRef(
+  client: SuiClient,
+  owner: string,
+): Promise<{ objectId: string; version: string; digest: string }> {
+  if (cachedGasRef) return cachedGasRef;
+  const page = await client.getCoins({ owner, coinType: '0x2::sui::SUI' });
+  const coins = page.data.sort((a, b) => Number(BigInt(b.balance) - BigInt(a.balance)));
+  if (coins.length === 0) throw new Error('arb wallet has no SUI gas coin');
+  const c = coins[0];
+  cachedGasRef = { objectId: c.coinObjectId, version: String(c.version), digest: c.digest };
+  return cachedGasRef;
+}
+
 async function executeAndWait(
   client: SuiClient,
   keypair: Ed25519Keypair,
   tx: Transaction,
   label: string,
 ) {
-  const result = await client.signAndExecuteTransaction({
-    signer: keypair,
-    transaction: tx,
-    options: { showEffects: true, showObjectChanges: true },
-  });
+  const owner = keypair.toSuiAddress();
+  const gasRef = await resolveGasRef(client, owner);
+  tx.setGasPayment([gasRef]);
+
+  let result;
+  try {
+    result = await client.signAndExecuteTransaction({
+      signer: keypair,
+      transaction: tx,
+      options: { showEffects: true, showObjectChanges: true },
+    });
+  } catch (err) {
+    // Submission was rejected before execution (tx never ran, gas object
+    // unchanged). Our pinned ref is the likely culprit -- an out-of-band
+    // mutation left it stale. Drop the cache so the next call re-reads fresh.
+    cachedGasRef = null;
+    throw err;
+  }
+
+  // A landed tx (success OR MoveAbort) consumes gas and advances the coin
+  // version. Carry the new reference forward so the next tx never reuses the
+  // old version. On submission rejection above we never reach here.
+  const g = result.effects?.gasObject?.reference;
+  if (g) cachedGasRef = { objectId: g.objectId, version: String(g.version), digest: g.digest };
+
   if (result.effects?.status?.status !== 'success') {
     throw new Error(`[${label}] TX failed: ${result.effects?.status?.error ?? 'unknown'}`);
   }
