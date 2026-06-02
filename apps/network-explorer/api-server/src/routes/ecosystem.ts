@@ -22,6 +22,7 @@ import {
 import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js';
 import { DEFAULT_MISSION_IDS, baseWeightFor } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR, REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
+import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
 
@@ -1140,6 +1141,10 @@ app.get('/leaderboard', async (c) => {
       //   - system-generated: referral-bonus, daily-mission, ecosystem-passive, staking-daily, staking, staking-reward
       //   - ecosystem-bonus-* (creator-posts counted separately; bugreport/feedback/game in bonus CTE)
       //   - pado-* (covered by the dedicated Pado Score Leaderboard)
+      const weekEndMs = bounds.end.getTime();
+      const includeLp = bounds.start.getTime() >= LP_LEADERBOARD_START_MS;
+      const lpFactor = lpDailyRampFactor(bounds.start.getTime(), Date.now());
+      const lpCte = lpScoreCte(pointsDb!, weekEndMs, includeLp, lpFactor);
       const rows = await pointsDb!`
         WITH week_activities AS (
           SELECT DISTINCT identity_id,
@@ -1240,9 +1245,10 @@ app.get('/leaderboard', async (c) => {
             AND tx_timestamp >= ${bounds.start}
             AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
-        )
+        ),
+        ${lpCte}
         SELECT
-          COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id,
+          COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id,
           COALESCE(a.activity_score, 0)::int AS activity_score,
           COALESCE(c.post_score, 0) AS creator_post_score,
           COALESCE(b.bonus_score, 0) AS bonus_score,
@@ -1257,6 +1263,7 @@ app.get('/leaderboard', async (c) => {
             + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
             + COALESCE(se.emission_score, 0)
             + COALESCE(rb.referrer_bonus, 0)
+            + COALESCE(lp.lp_score, 0)
           )::float8 AS weekly_score
         FROM activity_score a
         FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
@@ -1268,9 +1275,11 @@ app.get('/leaderboard', async (c) => {
           ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
         FULL OUTER JOIN referrer_bonus_score rb
           ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
+        FULL OUTER JOIN lp_score lp
+          ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) = lp.identity_id
         WHERE NOT EXISTS (
           SELECT 1 FROM banned_users bu
-          WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id)
+          WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id)
             AND bu.unbanned_at IS NULL
         )
         -- Pre-sort by SQL-computable columns. JS applies isTelegramMember/hasGenesisPass tiebreakers after.
@@ -1347,6 +1356,10 @@ app.get('/leaderboard', async (c) => {
     `eco-leaderboard-count-${weekId}`,
     5 * 60 * 1000,
     async () => {
+      const weekEndMs = bounds.end.getTime();
+      const includeLp = bounds.start.getTime() >= LP_LEADERBOARD_START_MS;
+      const lpFactor = lpDailyRampFactor(bounds.start.getTime(), Date.now());
+      const lpCte = lpScoreCte(pointsDb!, weekEndMs, includeLp, lpFactor);
       const result = await pointsDb!`
         WITH week_activities AS (
           SELECT DISTINCT identity_id, category
@@ -1402,9 +1415,10 @@ app.get('/leaderboard', async (c) => {
             AND NOT flagged AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
-        )
+        ),
+        ${lpCte}
         SELECT COUNT(*) AS total FROM (
-          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b
@@ -1415,10 +1429,12 @@ app.get('/leaderboard', async (c) => {
             ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
           FULL OUTER JOIN referrer_bonus_score rb
             ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
-          WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) IS NOT NULL
+          FULL OUTER JOIN lp_score lp
+            ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) = lp.identity_id
+          WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) IS NOT NULL
             AND NOT EXISTS (
               SELECT 1 FROM banned_users bu
-              WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id)
+              WHERE bu.identity_id = COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id)
                 AND bu.unbanned_at IS NULL
             )
         ) sub
@@ -1438,6 +1454,10 @@ app.get('/leaderboard', async (c) => {
       async () => {
         // Minimal re-use: same query as getScoredLeaderboard but for previous week.
         // We only need identityId order, so we skip profile enrichment.
+        const prevWeekEndMs = prevWeekBounds.end.getTime();
+        const prevIncludeLp = prevWeekBounds.start.getTime() >= LP_LEADERBOARD_START_MS;
+        const prevLpFactor = lpDailyRampFactor(prevWeekBounds.start.getTime(), Date.now());
+        const lpCte = lpScoreCte(pointsDb!, prevWeekEndMs, prevIncludeLp, prevLpFactor);
         const rows = await pointsDb!`
           WITH week_activities AS (
             SELECT DISTINCT identity_id,
@@ -1496,16 +1516,18 @@ app.get('/leaderboard', async (c) => {
               AND NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
             GROUP BY identity_id
-          )
-          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id,
+          ),
+          ${lpCte}
+          SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id,
             COALESCE(a.activity_score, 0)::int AS activity_score,
-            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1) + COALESCE(se.emission_score, 0) + COALESCE(rb.referrer_bonus, 0))::float8 AS weekly_score
+            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1) + COALESCE(se.emission_score, 0) + COALESCE(rb.referrer_bonus, 0) + COALESCE(lp.lp_score, 0))::float8 AS weekly_score
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
           FULL OUTER JOIN volume_score v ON COALESCE(a.identity_id, c.identity_id, b.identity_id) = v.identity_id
           FULL OUTER JOIN staking_emission se ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
           FULL OUTER JOIN referrer_bonus_score rb ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
+          FULL OUTER JOIN lp_score lp ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) = lp.identity_id
           ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
           LIMIT ${LEADERBOARD_TOP_N}
         `;
@@ -1526,6 +1548,10 @@ app.get('/leaderboard', async (c) => {
         60 * 60 * 1000,
         async () => {
           const pb = prevWeekBounds!;
+          const prevWeekEndMs = pb.end.getTime();
+          const prevIncludeLp = pb.start.getTime() >= LP_LEADERBOARD_START_MS;
+          const prevLpFactor = lpDailyRampFactor(pb.start.getTime(), Date.now());
+          const lpCte = lpScoreCte(pointsDb!, prevWeekEndMs, prevIncludeLp, prevLpFactor);
           const result = await pointsDb!`
             WITH week_activities AS (
               SELECT DISTINCT identity_id, category
@@ -1578,9 +1604,10 @@ app.get('/leaderboard', async (c) => {
                 AND NOT flagged AND identity_id IS NOT NULL
                 AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
               GROUP BY identity_id
-            )
+            ),
+            ${lpCte}
             SELECT COUNT(*) AS total FROM (
-              SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id
+              SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id
               FROM activity_score a
               FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
               FULL OUTER JOIN bonus_score b
@@ -1591,7 +1618,9 @@ app.get('/leaderboard', async (c) => {
                 ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
               FULL OUTER JOIN referrer_bonus_score rb
                 ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
-              WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) IS NOT NULL
+              FULL OUTER JOIN lp_score lp
+                ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) = lp.identity_id
+              WHERE COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) IS NOT NULL
             ) sub
           `;
           return Number((result[0] as any).total ?? 0);
