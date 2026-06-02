@@ -5,6 +5,10 @@
  * try/catch and surface as an uncaught exception in an async handler).
  */
 
+// On-chain NAV fixed-point scale (vault.move NAV_SCALE = 1e9). nav fields from
+// the API are integers in these units; divide by NAV_SCALE for nav-per-share.
+export const NAV_SCALE = 1e9;
+
 // Parse a human decimal string into raw base units (10^decimals). Returns null
 // for empty/non-numeric/negative/zero input. Uses string math to avoid the
 // float precision loss of Number(x) * 10^decimals for large amounts.
