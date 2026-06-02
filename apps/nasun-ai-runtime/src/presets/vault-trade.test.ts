@@ -2,13 +2,32 @@ import { describe, it, expect } from 'vitest';
 
 import {
   decideVaultTrade,
+  decideVaultTradeLLM,
+  vaultPreGate,
+  parseVaultLLMDecision,
+  buildVaultPrompt,
   computeOrderParams,
   buildExecuteTradeTx,
   VAULT_CONFIG,
+  type DecideInput,
 } from './vault-trade.js';
+import type { LLMResult } from '../llm-client.js';
 
 // ~$71,746 in price-raw (x1e7) terms.
 const MARK = 717_464_600_000n;
+
+// A seeded, in-band-region input the LLM is allowed to decide on.
+const SEEDED: DecideInput = {
+  isKilled: false,
+  lastMarkRaw: MARK,
+  refPriceRaw: (MARK * 99n) / 100n, // -1%
+  bandBps: 50,
+  allowSell: true,
+};
+
+function llmReply(content: string): LLMResult {
+  return { content, model: 'test-model', totalTokens: 42, durationMs: 7 };
+}
 
 describe('decideVaultTrade', () => {
   it('HOLDs a killed vault regardless of price', () => {
@@ -112,5 +131,107 @@ describe('buildExecuteTradeTx', () => {
     expect(cmd.MoveCall!.package).toBe(VAULT_CONFIG.packageId);
     expect(cmd.MoveCall!.typeArguments).toHaveLength(0);
     expect(cmd.MoveCall!.arguments).toHaveLength(10);
+  });
+});
+
+describe('vaultPreGate', () => {
+  it('returns a deterministic HOLD for a killed vault (never asks the LLM)', () => {
+    const d = vaultPreGate({ ...SEEDED, isKilled: true });
+    expect(d?.action).toBe('HOLD');
+  });
+
+  it('returns a deterministic decision for invalid prices and unseeded mark', () => {
+    expect(vaultPreGate({ ...SEEDED, lastMarkRaw: 0n })?.action).toBe('HOLD');
+    expect(vaultPreGate({ ...SEEDED, refPriceRaw: 0n })?.action).toBe('HOLD');
+    // unseeded 1.0 sentinel -> bootstrap BUY
+    expect(vaultPreGate({ ...SEEDED, lastMarkRaw: 1_000_000_000n })?.action).toBe('BUY');
+  });
+
+  it('returns null (delegate to LLM) for a seeded, valid input', () => {
+    expect(vaultPreGate(SEEDED)).toBeNull();
+  });
+});
+
+describe('parseVaultLLMDecision', () => {
+  it('parses a clean JSON BUY/SELL/HOLD reply', () => {
+    expect(parseVaultLLMDecision('{"action":"BUY","reason":"dip"}', SEEDED).action).toBe('BUY');
+    expect(parseVaultLLMDecision('{"action":"sell","reason":"up"}', SEEDED).action).toBe('SELL');
+    expect(parseVaultLLMDecision('{"action":"HOLD","reason":"flat"}', SEEDED).action).toBe('HOLD');
+  });
+
+  it('extracts JSON wrapped in markdown/prose', () => {
+    const reply = 'Here is my call:\n```json\n{"action":"BUY","reason":"x"}\n```\n';
+    expect(parseVaultLLMDecision(reply, SEEDED).action).toBe('BUY');
+  });
+
+  it('clamps SELL to HOLD when selling is disabled', () => {
+    const d = parseVaultLLMDecision('{"action":"SELL","reason":"up"}', { ...SEEDED, allowSell: false });
+    expect(d.action).toBe('HOLD');
+    expect(d.reason).toMatch(/clamped/);
+  });
+
+  it('falls back to the deterministic band on unparseable reply', () => {
+    // SEEDED is -1% vs mark, band 50bps -> band says BUY
+    const d = parseVaultLLMDecision('not json at all', SEEDED);
+    expect(d.action).toBe('BUY');
+  });
+
+  it('falls back to the band on an unknown action', () => {
+    const d = parseVaultLLMDecision('{"action":"YOLO","reason":"x"}', SEEDED);
+    expect(d.action).toBe('BUY');
+  });
+
+  it('falls back to the band on a non-string action (rejects array coercion)', () => {
+    // String(["SELL"]) === "SELL" would otherwise honor a malformed reply.
+    const d = parseVaultLLMDecision('{"action":["SELL"],"reason":"x"}', SEEDED);
+    expect(d.action).toBe('BUY'); // band: -1% vs mark, not the coerced SELL
+  });
+
+  it('attaches the deterministic deviationBps regardless of the LLM', () => {
+    const d = parseVaultLLMDecision('{"action":"HOLD","reason":"x"}', SEEDED);
+    expect(d.deviationBps).toBeLessThanOrEqual(-50);
+  });
+});
+
+describe('decideVaultTradeLLM', () => {
+  const LLM = { apiUrl: 'https://x', apiKey: 'k', model: 'm' };
+
+  it('does not call the LLM for a pre-gated (killed) vault', async () => {
+    let called = false;
+    const d = await decideVaultTradeLLM(
+      { ...SEEDED, isKilled: true },
+      LLM,
+      { call: async () => { called = true; return llmReply('{}'); } },
+    );
+    expect(called).toBe(false);
+    expect(d.action).toBe('HOLD');
+  });
+
+  it('uses the LLM decision for a seeded input', async () => {
+    const d = await decideVaultTradeLLM(
+      SEEDED,
+      LLM,
+      { call: async () => llmReply('{"action":"HOLD","reason":"wait"}') },
+    );
+    expect(d.action).toBe('HOLD');
+    expect(d.reason).toMatch(/LLM:/);
+  });
+
+  it('falls back to the deterministic band when the LLM call throws', async () => {
+    const d = await decideVaultTradeLLM(
+      SEEDED,
+      LLM,
+      { call: async () => { throw new Error('provider down'); } },
+    );
+    expect(d.action).toBe('BUY'); // band: -1% vs mark
+  });
+});
+
+describe('buildVaultPrompt', () => {
+  it('includes mark, reference, deviation, band, and the strict-JSON instruction', () => {
+    const p = buildVaultPrompt(SEEDED);
+    expect(p).toMatch(/STRICT JSON/);
+    expect(p).toMatch(/Selling enabled: true/);
+    expect(p).toMatch(/bps/);
   });
 });
