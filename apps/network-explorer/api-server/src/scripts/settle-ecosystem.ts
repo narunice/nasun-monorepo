@@ -41,6 +41,7 @@ import { promisify } from 'node:util';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
+import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -334,6 +335,11 @@ async function main() {
   const pgDb = postgres(POINTS_DB_URL!, { max: 3, idle_timeout: 30, connect_timeout: 10 });
 
   console.log(`Querying activity_points for week ${weekId}...`);
+  const weekEndMs = bounds.end.getTime();
+  const includeLp = bounds.start.getTime() >= LP_LEADERBOARD_START_MS;
+  // Settlement runs after the week ends (nowMs >= weekEnd) -> ramp factor is 1.0 (full LP).
+  const lpFactor = lpDailyRampFactor(bounds.start.getTime(), Date.now());
+  const lpCte = lpScoreCte(pgDb, weekEndMs, includeLp, lpFactor);
   const rows = await pgDb<Array<{
     identity_id: string;
     weekly_score: number;
@@ -424,9 +430,10 @@ async function main() {
         AND NOT flagged AND identity_id IS NOT NULL
         AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
       GROUP BY identity_id
-    )
+    ),
+    ${lpCte}
     SELECT
-      COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) AS identity_id,
+      COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id,
       COALESCE(a.activity_score, 0)::int AS activity_score,
       (
         COALESCE(a.activity_score, 0)
@@ -435,6 +442,7 @@ async function main() {
         + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
         + COALESCE(se.emission_score, 0)
         + COALESCE(rb.referrer_bonus, 0)
+        + COALESCE(lp.lp_score, 0)
       )::float8 AS weekly_score
     FROM activity_score a
     FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
@@ -446,6 +454,8 @@ async function main() {
       ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id) = se.identity_id
     FULL OUTER JOIN referrer_bonus_score rb
       ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id) = rb.identity_id
+    FULL OUTER JOIN lp_score lp
+      ON COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id) = lp.identity_id
     ORDER BY weekly_score DESC, activity_score DESC, identity_id ASC
     LIMIT ${TOP_N}
   `;
