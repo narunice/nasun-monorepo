@@ -29,9 +29,18 @@ const TRADER_PLACEHOLDER: Preset = {
   generateSteps: () => [{ prompt: '', category: 'ai_inference' }],
 };
 
+// Like the trader placeholder: the vault preset runs runVaultCyclePresetEntry
+// (read vault -> decide -> direct-sign execute_trade), never generateSteps.
+const VAULT_PLACEHOLDER: Preset = {
+  name: 'Nasun Vault Agent',
+  description: 'Autonomous management of a Nasun Vault via execute_trade',
+  generateSteps: () => [{ prompt: '', category: 'ai_inference' }],
+};
+
 export const PRESETS: Record<PresetName, Preset> = {
   research: researchPreset,
   content: contentPreset,
   analysis: analysisPreset,
   trader: TRADER_PLACEHOLDER,
+  vault: VAULT_PLACEHOLDER,
 };
