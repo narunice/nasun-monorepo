@@ -20,6 +20,7 @@ import {
   readVaultState,
   quoteReferenceRaw,
   decideVaultTrade,
+  decideVaultTradeLLM,
   computeOrderParams,
   buildExecuteTradeTx,
   dryRunVaultTrade,
@@ -104,13 +105,25 @@ export async function runVaultCyclePresetEntry(
     return undefined;
   }
 
-  const decision = decideVaultTrade({
+  // LLM seam: when LLM creds are configured the model chooses direction
+  // (with deterministic fallback inside decideVaultTradeLLM); otherwise the
+  // pure mean-reversion band drives. The dryrun verifier + tests exercise the
+  // band path directly, so a credential-less runtime still trades coherently.
+  const decideInput = {
     isKilled: state.isKilled,
     lastMarkRaw: state.lastMarkRaw,
     refPriceRaw,
     bandBps: vault.bandBps,
     allowSell: vault.allowSell,
-  });
+  };
+  const useLlm = config.llmApiUrl !== '' && config.llmApiKey !== '';
+  const decision = useLlm
+    ? await decideVaultTradeLLM(
+        decideInput,
+        { apiUrl: config.llmApiUrl, apiKey: config.llmApiKey, model: config.llmModel },
+        { log },
+      )
+    : decideVaultTrade(decideInput);
 
   log(
     `[vault] mark=${state.lastMarkRaw} ref=${refPriceRaw} -> ${decision.action} ` +

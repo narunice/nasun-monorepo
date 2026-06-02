@@ -8,7 +8,11 @@
  *   pnpm --filter @nasun/nasun-ai-runtime exec tsx scripts/vault-trade-dryrun.ts
  *
  * Env (all optional): VAULT_ID (default = demo vault), RPC_URL,
- * VAULT_BAND_BPS, VAULT_MAX_SLIPPAGE_BPS, VAULT_STEP_QTY_RAW.
+ * VAULT_BAND_BPS, VAULT_MAX_SLIPPAGE_BPS, VAULT_STEP_QTY_RAW,
+ * VAULT_ALLOW_SELL. When LLM_API_URL + LLM_API_KEY (+ optional LLM_MODEL)
+ * are set, it ALSO runs the live LLM decision seam (decideVaultTradeLLM)
+ * against the same inputs so an operator can preview the model's direction
+ * before going live -- still no signing.
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -18,6 +22,7 @@ import {
   readVaultState,
   quoteReferenceRaw,
   decideVaultTrade,
+  decideVaultTradeLLM,
   computeOrderParams,
   buildExecuteTradeTx,
   dryRunVaultTrade,
@@ -30,6 +35,7 @@ const VAULT_ID =
 const BAND_BPS = Number(process.env.VAULT_BAND_BPS ?? 50);
 const SLIPPAGE_BPS = Number(process.env.VAULT_MAX_SLIPPAGE_BPS ?? 100);
 const STEP_QTY_RAW = BigInt(process.env.VAULT_STEP_QTY_RAW ?? '1000');
+const ALLOW_SELL = process.env.VAULT_ALLOW_SELL === 'true';
 const EXPIRY_MS = 120_000;
 
 async function main(): Promise<void> {
@@ -50,14 +56,30 @@ async function main(): Promise<void> {
       `(~$${(Number(refPriceRaw) / 1e7).toFixed(2)})`,
   );
 
-  const auto = decideVaultTrade({
+  const decideInput = {
     isKilled: state.isKilled,
     lastMarkRaw: state.lastMarkRaw,
     refPriceRaw,
     bandBps: BAND_BPS,
-    allowSell: true,
-  });
-  console.log(`  AUTO decision: ${auto.action} (${auto.deviationBps}bps) -- ${auto.reason}`);
+    allowSell: ALLOW_SELL,
+  };
+  const auto = decideVaultTrade(decideInput);
+  console.log(`  BAND decision: ${auto.action} (${auto.deviationBps}bps) -- ${auto.reason}`);
+
+  // Live LLM seam preview when creds are present. No signing; just shows what
+  // the model would choose for these inputs (with its deterministic fallback).
+  const llmApiUrl = process.env.LLM_API_URL ?? '';
+  const llmApiKey = process.env.LLM_API_KEY ?? '';
+  if (llmApiUrl !== '' && llmApiKey !== '') {
+    const llm = await decideVaultTradeLLM(
+      decideInput,
+      { apiUrl: llmApiUrl, apiKey: llmApiKey, model: process.env.LLM_MODEL ?? 'llama-3.3-70b-versatile' },
+      { log: (m) => console.log(`  ${m}`) },
+    );
+    console.log(`  LLM decision:  ${llm.action} (${llm.deviationBps}bps) -- ${llm.reason}`);
+  } else {
+    console.log('  LLM decision:  (skipped -- set LLM_API_URL + LLM_API_KEY to preview)');
+  }
 
   // Force both legs so each direction's on-chain gates are exercised even
   // when the band says HOLD. A SELL may legitimately abort if the vault is

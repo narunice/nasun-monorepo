@@ -20,8 +20,20 @@
  *   accumulation is balance-safe without reading the vault's NBTC
  *   holdings, which live inside the wrapped BalanceManager Bag and are
  *   not exposed by a non-test view fn). `decideVaultTrade` is a pure
- *   function so an LLM decision can replace it later without touching the
+ *   function so an LLM decision can replace it without touching the
  *   builder/signer below.
+ *
+ * Decision (LLM):
+ *   `decideVaultTradeLLM` is the live seam. It keeps the hard safety gates
+ *   deterministic (killed vault, garbage prices, unseeded-mark bootstrap)
+ *   and only asks the LLM for direction in the normal seeded case. The
+ *   reply is clamped (SELL is dropped to HOLD when selling is disabled) and
+ *   ANY failure -- transport, timeout, unparseable reply, unknown action --
+ *   falls back to the deterministic band, so the vault never trades on a
+ *   bad inference and never stalls when the provider is down. Token usage
+ *   is logged per call since this path is NOT budget/AER instrumented (it
+ *   signs directly; see header above). All downstream caps (per-trade and
+ *   rolling-24h notional, slippage, tick/lot) stay enforced in vault-runner.
  */
 
 import { SuiClient } from '@mysten/sui/client';
@@ -29,6 +41,7 @@ import { Transaction } from '@mysten/sui/transactions';
 import type { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 
 import { TRADER_CONFIG } from './trader.js';
+import { callLLM, type CallLLMOptions, type LLMResult } from '../llm-client.js';
 
 // ===== Devnet constants (nasun_vault Phase 5) =====
 // Hardcoded to mirror TRADER_CONFIG's style (the runtime has no
@@ -207,9 +220,7 @@ export function decideVaultTrade(input: DecideInput): VaultTradeDecision {
       reason: 'unseeded mark (1.0 sentinel) -> bootstrap accumulate',
     };
   }
-  const deviationBps = Number(
-    ((input.refPriceRaw - input.lastMarkRaw) * 10_000n) / input.lastMarkRaw,
-  );
+  const deviationBps = deviationBpsOf(input.refPriceRaw, input.lastMarkRaw);
   if (deviationBps <= -input.bandBps) {
     return {
       action: 'BUY',
@@ -232,6 +243,147 @@ export function decideVaultTrade(input: DecideInput): VaultTradeDecision {
     };
   }
   return { action: 'HOLD', deviationBps, reason: `within +/-${input.bandBps}bps band` };
+}
+
+// ===== LLM-backed decision (live seam) =====
+
+export interface VaultLLMConfig {
+  apiUrl: string;
+  apiKey: string;
+  model: string;
+}
+
+/** Signed deviation in basis points: (ref - mark) / mark * 10000. Pure.
+ *  Guards against a zero/negative mark (returns 0) so the exported parse
+ *  helpers can never divide by zero even if called outside the pre-gate. */
+function deviationBpsOf(refPriceRaw: bigint, lastMarkRaw: bigint): number {
+  if (lastMarkRaw <= 0n) return 0;
+  return Number(((refPriceRaw - lastMarkRaw) * 10_000n) / lastMarkRaw);
+}
+
+/**
+ * Pre-gate: returns a deterministic decision when the situation must NOT be
+ * delegated to the LLM (killed vault, garbage prices, or the unseeded-mark
+ * bootstrap), else null to signal "ask the model". These are safety/bootstrap
+ * invariants identical to decideVaultTrade's leading guards, factored out so
+ * the LLM is only consulted in the genuine band region. Pure.
+ */
+export function vaultPreGate(input: DecideInput): VaultTradeDecision | null {
+  if (
+    input.isKilled ||
+    input.lastMarkRaw <= 0n ||
+    input.refPriceRaw <= 0n ||
+    input.lastMarkRaw <= NAV_SCALE
+  ) {
+    return decideVaultTrade(input);
+  }
+  return null;
+}
+
+/** Build the direction-only prompt. Human-readable USD plus raw bps context. */
+export function buildVaultPrompt(input: DecideInput): string {
+  const deviationBps = deviationBpsOf(input.refPriceRaw, input.lastMarkRaw);
+  const markUsd = (Number(input.lastMarkRaw) / 1e7).toFixed(2);
+  const refUsd = (Number(input.refPriceRaw) / 1e7).toFixed(2);
+  return [
+    'You are the trading policy for a managed Nasun Vault that accumulates NBTC against NUSDC.',
+    'Base strategy is mean reversion: accumulate (BUY) when the live price dips below the vault mark, trim (SELL) when it runs above (only if selling is enabled), otherwise HOLD.',
+    `Vault mark price: $${markUsd}`,
+    `Live reference price: $${refUsd}`,
+    `Deviation: ${deviationBps} bps (negative = price below mark).`,
+    `Configured mean-reversion band half-width: ${input.bandBps} bps.`,
+    `Selling enabled: ${input.allowSell}.`,
+    'Per-trade size and all risk caps (per-trade notional, rolling-24h notional, slippage) are enforced downstream; you only choose the direction.',
+    'Reply with STRICT JSON only and nothing else: {"action":"BUY"|"SELL"|"HOLD","reason":"<=120 chars"}',
+  ].join('\n');
+}
+
+/** Extract the first balanced {...} block (LLMs may fence/prefix JSON). */
+function extractJsonObject(raw: string): Record<string, unknown> {
+  const start = raw.indexOf('{');
+  const end = raw.lastIndexOf('}');
+  if (start < 0 || end <= start) throw new Error('no JSON object in reply');
+  return JSON.parse(raw.slice(start, end + 1)) as Record<string, unknown>;
+}
+
+/**
+ * Pure: parse an LLM reply into a clamped vault decision. Falls back to the
+ * deterministic band when the reply is unparseable / has an unknown action;
+ * clamps SELL to HOLD when selling is disabled. Assumes pre-gates already
+ * passed (seeded mark, valid prices), so the band fallback is the genuine
+ * mean-reversion signal, not a bootstrap/kill path.
+ */
+export function parseVaultLLMDecision(raw: string, input: DecideInput): VaultTradeDecision {
+  const deviationBps = deviationBpsOf(input.refPriceRaw, input.lastMarkRaw);
+  let action: string;
+  let reason: string;
+  try {
+    const json = extractJsonObject(raw);
+    // Reject non-string action (e.g. ["BUY"], 1, {}): String() would coerce
+    // an array to a valid action and honor a structurally-wrong reply as a
+    // trade. A non-string action means the contract was not followed -> band.
+    if (typeof json.action !== 'string') return decideVaultTrade(input);
+    action = json.action.toUpperCase();
+    reason = typeof json.reason === 'string' ? json.reason.trim().slice(0, 120) : '';
+  } catch {
+    return decideVaultTrade(input);
+  }
+  if (action !== 'BUY' && action !== 'SELL' && action !== 'HOLD') {
+    return decideVaultTrade(input);
+  }
+  if (action === 'SELL' && !input.allowSell) {
+    return {
+      action: 'HOLD',
+      deviationBps,
+      reason: `LLM SELL clamped (selling disabled): ${reason || 'no reason'}`,
+    };
+  }
+  return { action, deviationBps, reason: `LLM: ${reason || 'no reason'}` };
+}
+
+/**
+ * LLM-backed decision seam. Hard gates stay deterministic; the model is only
+ * consulted in the band region. Any failure falls back to decideVaultTrade,
+ * so the loop never trades on a bad inference and never stalls on an outage.
+ * `call`/`log` are injectable for tests.
+ */
+export async function decideVaultTradeLLM(
+  input: DecideInput,
+  llm: VaultLLMConfig,
+  deps: {
+    call?: (
+      apiUrl: string,
+      apiKey: string,
+      model: string,
+      prompt: string,
+      options?: CallLLMOptions,
+    ) => Promise<LLMResult>;
+    log?: (msg: string) => void;
+  } = {},
+): Promise<VaultTradeDecision> {
+  const call = deps.call ?? callLLM;
+  const log = deps.log ?? (() => {});
+
+  const gated = vaultPreGate(input);
+  if (gated) return gated;
+
+  const prompt = buildVaultPrompt(input);
+  try {
+    // maxRetries=2: a vault cycle is periodic, so a transient miss just defers
+    // to the next tick rather than blocking; the deterministic fallback covers
+    // an outright failure anyway.
+    const res = await call(llm.apiUrl, llm.apiKey, llm.model, prompt, { maxRetries: 2 });
+    const decision = parseVaultLLMDecision(res.content, input);
+    log(
+      `[vault] LLM ${res.model} tokens=${res.totalTokens} ${res.durationMs}ms -> ` +
+        `${decision.action} (${decision.reason})`,
+    );
+    return decision;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`[vault] LLM call failed (${msg}); falling back to deterministic band`);
+    return decideVaultTrade(input);
+  }
 }
 
 /**
