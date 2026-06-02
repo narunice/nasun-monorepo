@@ -5,9 +5,9 @@ import { useSigner } from "@nasun/wallet";
 import { NUSDC_DECIMALS } from "@nasun/devnet-config";
 import { useVault, useDepositorFlows } from "./lib/vaultApi";
 import { useVaultActions } from "./lib/useVaultActions";
-import { parseUnits, parseShares } from "./lib/amount";
+import { parseUnits, parseShares, NAV_SCALE } from "./lib/amount";
+import { VaultNavChart } from "./components/VaultNavChart";
 
-const NAV_SCALE = 1e9;
 const NUSDC_UNIT = 10 ** NUSDC_DECIMALS;
 
 function short(id: string): string {
@@ -211,6 +211,11 @@ export default function VaultDetailPage() {
         </div>
       )}
 
+      {/* NAV history */}
+      <div className="mt-6">
+        <VaultNavChart navSeries={navSeries} />
+      </div>
+
       {/* Recent trades */}
       <div className="mt-6">
         <h2 className="mb-2 text-sm font-medium">Recent trades ({trades.length})</h2>
@@ -242,7 +247,6 @@ export default function VaultDetailPage() {
             </tbody>
           </table>
         </div>
-        <p className="mt-1 text-xs text-gray-500">{navSeries.length} NAV points indexed.</p>
       </div>
     </div>
   );

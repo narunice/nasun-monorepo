@@ -2,8 +2,7 @@ import { Link } from "react-router-dom";
 import { useSigner } from "@nasun/wallet";
 import { useVaultList, type VaultSummary } from "./lib/vaultApi";
 import { useVaultTier } from "./lib/useVaultTier";
-
-const NAV_SCALE = 1e9; // vault.move NAV_SCALE
+import { NAV_SCALE } from "./lib/amount";
 
 function short(id: string): string {
   return `${id.slice(0, 6)}…${id.slice(-4)}`;
