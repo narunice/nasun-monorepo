@@ -289,6 +289,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     refresh,
     isRefreshing,
     cooldownSeconds,
+    dataUpdatedAt,
   } = useEcosystemScore(identityId);
   const {
     filtered: filteredScore,
@@ -543,6 +544,18 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
                       </svg>
                     </button>
                   </div>
+                  {dataUpdatedAt != null && (
+                    <p
+                      className="px-1 text-[10px] leading-none text-uju-secondary/70 tabular-nums"
+                      title={`Last synced at ${new Date(dataUpdatedAt).toLocaleString("en-US")}`}
+                    >
+                      Last updated{" "}
+                      {new Date(dataUpdatedAt).toLocaleTimeString("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  )}
                   <div className="flex items-start gap-2">
                     <div className="flex-1 min-w-0 flex items-baseline flex-wrap gap-x-1.5 gap-y-1 text-sm text-uju-secondary">
                       <span className="font-mono text-amber-400 tabular-nums text-base">
