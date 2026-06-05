@@ -33,6 +33,8 @@ interface UseEcosystemScoreResult {
   isRefreshing: boolean;
   /** Seconds remaining until refresh is available again (0 = ready) */
   cooldownSeconds: number;
+  /** Epoch ms when the score was last successfully fetched (null = not yet loaded) */
+  dataUpdatedAt: number | null;
 }
 
 export function useEcosystemScore(
@@ -122,5 +124,6 @@ export function useEcosystemScore(
     refresh,
     isRefreshing,
     cooldownSeconds,
+    dataUpdatedAt: query.dataUpdatedAt || null,
   };
 }
