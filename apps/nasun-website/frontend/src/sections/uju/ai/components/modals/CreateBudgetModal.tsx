@@ -145,6 +145,7 @@ export function CreateBudgetModal({
             <label className="text-xs uppercase tracking-wider text-uju-secondary">Initial Deposit (NUSDC) *</label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={deposit}
@@ -169,6 +170,7 @@ export function CreateBudgetModal({
             </label>
             <input
               type="number"
+              inputMode="decimal"
               step="0.01"
               min="0"
               value={maxPerRequest}

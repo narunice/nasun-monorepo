@@ -191,6 +191,7 @@ function BudgetCard({
         <div className="flex gap-2">
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0"
             value={depositInput}
@@ -215,6 +216,7 @@ function BudgetCard({
         <div className="flex gap-2">
           <input
             type="number"
+            inputMode="decimal"
             step="0.01"
             min="0"
             value={withdrawInput}
