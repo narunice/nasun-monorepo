@@ -42,6 +42,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
+import { gameVolumeCategoriesSql } from '../lib/game-volume-categories.js';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -405,7 +406,7 @@ async function main() {
     volume_score AS (
       SELECT identity_id, COUNT(*)::int AS volume_count
       FROM activity_points
-      WHERE category IN ('gostop-lottery','gostop-numbermatch','gostop-mines','gostop-crash','gostop-scratchcard','wallet-transfer')
+      WHERE category IN (${gameVolumeCategoriesSql(pgDb, bounds.start.getTime())})
         AND NOT flagged AND identity_id IS NOT NULL
         AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
       GROUP BY identity_id
