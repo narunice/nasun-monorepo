@@ -23,6 +23,7 @@ import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js'
 import { DEFAULT_MISSION_IDS, baseWeightFor } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR, REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
+import { gameVolumeCategoriesSql } from '../lib/game-volume-categories.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
 
@@ -1208,12 +1209,14 @@ app.get('/leaderboard', async (c) => {
           GROUP BY identity_id
         ),
         volume_score AS (
-          -- Game plays (gostop-{lottery,numbermatch,mines,crash,scratchcard}) + wallet transfers.
+          -- Game plays (gostop-{lottery,numbermatch,mines,crash,scratchcard,wheel}) + wallet transfers.
+          -- gostop-wheel is week-gated via gameVolumeCategoriesSql so past weeks recompute
+          -- without it and historical leaderboards stay immutable.
           -- wallet-transfer intentionally double-counted with activity_score to reward volume.
           -- pado-dex excluded (covered by Pado Score Leaderboard).
           SELECT identity_id, COUNT(*)::int AS volume_count
           FROM activity_points
-          WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
+          WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, bounds.start.getTime())})
             AND NOT flagged
             AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start}
@@ -1397,7 +1400,7 @@ app.get('/leaderboard', async (c) => {
         ),
         volume_score AS (
           SELECT identity_id FROM activity_points
-          WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
+          WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, bounds.start.getTime())})
             AND NOT flagged AND identity_id IS NOT NULL
             AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
@@ -1494,7 +1497,7 @@ app.get('/leaderboard', async (c) => {
           volume_score AS (
             SELECT identity_id, COUNT(*)::int AS volume_count
             FROM activity_points
-            WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
+            WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, prevWeekBounds.start.getTime())})
               AND NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
             GROUP BY identity_id
@@ -1586,7 +1589,7 @@ app.get('/leaderboard', async (c) => {
             ),
             volume_score AS (
               SELECT identity_id FROM activity_points
-              WHERE category IN ('gostop-lottery', 'gostop-numbermatch', 'gostop-mines', 'gostop-crash', 'gostop-scratchcard', 'wallet-transfer')
+              WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, pb.start.getTime())})
                 AND NOT flagged AND identity_id IS NOT NULL
                 AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
               GROUP BY identity_id
