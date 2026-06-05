@@ -240,9 +240,14 @@ export function initLeaderboardStore(config: LeaderboardConfig): void {
     CREATE TABLE IF NOT EXISTS trader_points_weekly (
       week_id TEXT NOT NULL,
       address TEXT NOT NULL,
-      total_score INTEGER NOT NULL DEFAULT 0,
+      -- total_score / score_from_volume are REAL: weekly volume scoring is
+      -- continuous (computeWeeklyVolumePoints, 3dp) to avoid low-end score ties.
+      -- Existing prod rows on the old INTEGER affinity still accept fractional
+      -- values (SQLite NUMERIC affinity preserves a real with a fractional part),
+      -- so no migration is required; this REAL is for fresh-DB clarity.
+      total_score REAL NOT NULL DEFAULT 0,
       score_from_trades INTEGER NOT NULL DEFAULT 0,
-      score_from_volume INTEGER NOT NULL DEFAULT 0,
+      score_from_volume REAL NOT NULL DEFAULT 0,
       score_from_diversity INTEGER NOT NULL DEFAULT 0,
       score_from_pnl INTEGER NOT NULL DEFAULT 0,
       score_from_prediction_pnl INTEGER NOT NULL DEFAULT 0,

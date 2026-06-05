@@ -306,6 +306,30 @@ export const POINTS = {
   WEEKLY_SPOT_PNL_SCORE_CAP: 30_000,       // weekly max spot PnL score (prevents whale single-trade dominance; ~$300k profit ceiling)
 } as const;
 
+/**
+ * Weekly volume score from raw NUSDC volume (6-dec). Continuous: the previous
+ * implementation floored volume into $500 buckets, which collapsed every
+ * sub-$500 trader onto 0 points and produced large score ties at the low end.
+ * Removing the floor keeps the same scale and coefficients but lets close
+ * volumes separate. Hybrid linear up to the soft cap, then log10 above it
+ * (whales keep earning small increments), capped at WEEKLY_VOLUME_SCORE_CAP.
+ * Rounded to 3dp so the only fractional weekly-score component stays stable
+ * across aggregation cycles (avoids float-noise rank churn).
+ */
+export function computeWeeklyVolumePoints(volumeRaw: bigint): number {
+  const softCapRaw = BigInt(POINTS.VOLUME_LINEAR_SOFT_CAP_USD) * BigInt(1_000_000); // USD → 6-dec NUSDC raw
+  const linearMaxScore = (POINTS.VOLUME_LINEAR_SOFT_CAP_USD / 500) * POINTS.PER_500_VOLUME;
+  let raw: number;
+  if (volumeRaw <= softCapRaw) {
+    raw = (Number(volumeRaw) / 500_000_000) * POINTS.PER_500_VOLUME;
+  } else {
+    const ratio = Number(volumeRaw) / Number(softCapRaw);
+    raw = linearMaxScore + POINTS.VOLUME_LOG_K * Math.log10(ratio);
+  }
+  const capped = Math.min(raw, POINTS.WEEKLY_VOLUME_SCORE_CAP);
+  return Math.round(capped * 1000) / 1000;
+}
+
 // Known bot wallet addresses - always excluded from leaderboards and points.
 //
 // Additional bot addresses can be supplied at deploy time via the
