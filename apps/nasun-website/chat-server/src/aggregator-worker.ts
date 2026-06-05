@@ -25,7 +25,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import type { LeaderboardConfig, Period } from './leaderboard-types.js';
-import { PERIOD_MS, POINTS } from './leaderboard-types.js';
+import { PERIOD_MS, POINTS, computeWeeklyVolumePoints } from './leaderboard-types.js';
 import {
   initLeaderboardStore,
   closeLeaderboardStore,
@@ -478,20 +478,7 @@ async function runWeeklyScoreAggregation(): Promise<void> {
 
     const firstTradeBonus = tradeCount >= 1 ? POINTS.FIRST_TRADE_BONUS : 0;
     const tradePoints = firstTradeBonus + tradeCount * POINTS.PER_TRADE;
-    // Hybrid volume scoring: linear up to VOLUME_LINEAR_SOFT_CAP_USD (preserves
-    // mid-tier resolution), then log10 above (whales keep earning small
-    // increments instead of slamming into a hard cliff). Final ceiling
-    // WEEKLY_VOLUME_SCORE_CAP guarantees a bounded contribution.
-    const softCapRaw = BigInt(POINTS.VOLUME_LINEAR_SOFT_CAP_USD) * BigInt(1_000_000); // USD → 6-dec NUSDC raw
-    const linearMaxScore = POINTS.VOLUME_LINEAR_SOFT_CAP_USD / 500 * POINTS.PER_500_VOLUME;
-    let rawVolumePoints: number;
-    if (volumeRaw <= softCapRaw) {
-      rawVolumePoints = Number(volumeRaw / BigInt(500_000_000)) * POINTS.PER_500_VOLUME;
-    } else {
-      const ratio = Number(volumeRaw) / Number(softCapRaw);
-      rawVolumePoints = linearMaxScore + Math.floor(POINTS.VOLUME_LOG_K * Math.log10(ratio));
-    }
-    const volumePoints = Math.min(rawVolumePoints, POINTS.WEEKLY_VOLUME_SCORE_CAP);
+    const volumePoints = computeWeeklyVolumePoints(volumeRaw);
     const diversityPoints = uniquePools * POINTS.PER_UNIQUE_POOL;
 
     const pnlData = weeklyPnlMap.get(t.address);

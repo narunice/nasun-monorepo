@@ -312,9 +312,14 @@ async function main() {
   // 5. Upsert snapshot rows (idempotent: existing rows are not overwritten)
   console.log('\nUpserting snapshot rows...');
   for (const trader of data.traders) {
+    // total_score is an INTEGER column here (display/audit metadata; payouts are
+    // rank-based via getRewardPts). Weekly scores are now fractional (continuous
+    // volume scoring), so round before binding — a bound text param of '523.456'
+    // would fail int4in and abort the whole settlement. The high-resolution score
+    // stays in the chat-server leaderboard; this PG snapshot only needs the rank.
     await pgDb`
       INSERT INTO weekly_score_snapshots (week_id, address, total_score, rank, settled)
-      VALUES (${weekId}, ${trader.address}, ${trader.totalScore}, ${trader.rank}, 0)
+      VALUES (${weekId}, ${trader.address}, ${Math.round(trader.totalScore)}, ${trader.rank}, 0)
       ON CONFLICT (week_id, address) DO NOTHING
     `;
   }

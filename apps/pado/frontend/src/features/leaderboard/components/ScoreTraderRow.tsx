@@ -30,7 +30,9 @@ function formatScore(score: number | null | undefined): string {
   if (s >= 1_000) {
     return `${(s / 1_000).toFixed(1)}K`;
   }
-  return s.toLocaleString();
+  // Two decimals below 1K: weekly volume scoring is continuous, so showing the
+  // fractional part separates traders that the old integer display tied.
+  return s.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function formatVolume(volumeUsd: string): string {
