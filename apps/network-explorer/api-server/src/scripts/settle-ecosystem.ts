@@ -42,7 +42,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
-import { gameVolumeCategoriesSql } from '../lib/game-volume-categories.js';
+import { ecosystemVolumeScoreCte } from '../lib/ecosystem-volume-score.js';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -403,14 +403,7 @@ async function main() {
         AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
       GROUP BY identity_id
     ),
-    volume_score AS (
-      SELECT identity_id, COUNT(*)::int AS volume_count
-      FROM activity_points
-      WHERE category IN (${gameVolumeCategoriesSql(pgDb, bounds.start.getTime())})
-        AND NOT flagged AND identity_id IS NOT NULL
-        AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
-      GROUP BY identity_id
-    ),
+    ${ecosystemVolumeScoreCte(pgDb, bounds)},
     staking_emission AS (
       SELECT identity_id,
              COALESCE(SUM(final_points), 0)::float8 AS emission_score
@@ -440,7 +433,7 @@ async function main() {
         COALESCE(a.activity_score, 0)
         + COALESCE(c.post_score, 0)
         + COALESCE(b.bonus_score, 0)
-        + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
+        + COALESCE(v.volume_score, 0)
         + COALESCE(se.emission_score, 0)
         + COALESCE(rb.referrer_bonus, 0)
         + COALESCE(lp.lp_score, 0)
