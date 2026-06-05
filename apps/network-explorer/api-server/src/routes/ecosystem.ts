@@ -23,7 +23,7 @@ import { getActivationBonus, calculateMultiplier } from '../config/ecosystem.js'
 import { DEFAULT_MISSION_IDS, baseWeightFor } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR, REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
-import { gameVolumeCategoriesSql } from '../lib/game-volume-categories.js';
+import { ecosystemVolumeScoreCte } from '../lib/ecosystem-volume-score.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
 
@@ -1208,21 +1208,7 @@ app.get('/leaderboard', async (c) => {
             AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
         ),
-        volume_score AS (
-          -- Game plays (gostop-{lottery,numbermatch,mines,crash,scratchcard,wheel}) + wallet transfers.
-          -- gostop-wheel is week-gated via gameVolumeCategoriesSql so past weeks recompute
-          -- without it and historical leaderboards stay immutable.
-          -- wallet-transfer intentionally double-counted with activity_score to reward volume.
-          -- pado-dex excluded (covered by Pado Score Leaderboard).
-          SELECT identity_id, COUNT(*)::int AS volume_count
-          FROM activity_points
-          WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, bounds.start.getTime())})
-            AND NOT flagged
-            AND identity_id IS NOT NULL
-            AND tx_timestamp >= ${bounds.start}
-            AND tx_timestamp < ${bounds.end}
-          GROUP BY identity_id
-        ),
+        ${ecosystemVolumeScoreCte(pointsDb!, bounds)},
         staking_emission AS (
           SELECT identity_id,
                  COALESCE(SUM(final_points), 0)::float8 AS emission_score
@@ -1263,7 +1249,7 @@ app.get('/leaderboard', async (c) => {
             COALESCE(a.activity_score, 0)
             + COALESCE(c.post_score, 0)
             + COALESCE(b.bonus_score, 0)
-            + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1)
+            + COALESCE(v.volume_score, 0)
             + COALESCE(se.emission_score, 0)
             + COALESCE(rb.referrer_bonus, 0)
             + COALESCE(lp.lp_score, 0)
@@ -1398,13 +1384,7 @@ app.get('/leaderboard', async (c) => {
             AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
           GROUP BY identity_id
         ),
-        volume_score AS (
-          SELECT identity_id FROM activity_points
-          WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, bounds.start.getTime())})
-            AND NOT flagged AND identity_id IS NOT NULL
-            AND tx_timestamp >= ${bounds.start} AND tx_timestamp < ${bounds.end}
-          GROUP BY identity_id
-        ),
+        ${ecosystemVolumeScoreCte(pointsDb!, bounds)},
         staking_emission AS (
           SELECT identity_id FROM activity_points
           WHERE category = 'staking-reward'
@@ -1494,14 +1474,7 @@ app.get('/leaderboard', async (c) => {
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
             GROUP BY identity_id
           ),
-          volume_score AS (
-            SELECT identity_id, COUNT(*)::int AS volume_count
-            FROM activity_points
-            WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, prevWeekBounds.start.getTime())})
-              AND NOT flagged AND identity_id IS NOT NULL
-              AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
-            GROUP BY identity_id
-          ),
+          ${ecosystemVolumeScoreCte(pointsDb!, prevWeekBounds)},
           staking_emission AS (
             SELECT identity_id,
                    COALESCE(SUM(final_points), 0)::float8 AS emission_score
@@ -1523,7 +1496,7 @@ app.get('/leaderboard', async (c) => {
           ${lpCte}
           SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id,
             COALESCE(a.activity_score, 0)::int AS activity_score,
-            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + 1.6 * LOG(2, COALESCE(v.volume_count, 0) + 1) + COALESCE(se.emission_score, 0) + COALESCE(rb.referrer_bonus, 0) + COALESCE(lp.lp_score, 0))::float8 AS weekly_score
+            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + COALESCE(v.volume_score, 0) + COALESCE(se.emission_score, 0) + COALESCE(rb.referrer_bonus, 0) + COALESCE(lp.lp_score, 0))::float8 AS weekly_score
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id
@@ -1587,13 +1560,7 @@ app.get('/leaderboard', async (c) => {
                 AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
               GROUP BY identity_id
             ),
-            volume_score AS (
-              SELECT identity_id FROM activity_points
-              WHERE category IN (${gameVolumeCategoriesSql(pointsDb!, pb.start.getTime())})
-                AND NOT flagged AND identity_id IS NOT NULL
-                AND tx_timestamp >= ${pb.start} AND tx_timestamp < ${pb.end}
-              GROUP BY identity_id
-            ),
+            ${ecosystemVolumeScoreCte(pointsDb!, pb)},
             staking_emission AS (
               SELECT identity_id FROM activity_points
               WHERE category = 'staking-reward'
