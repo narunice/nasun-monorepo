@@ -31,10 +31,12 @@ export function AlphaBanner({ walletAddress }: Props) {
   if (!status) return null;
 
   if (status.state === 'invited') {
+    const claimIn = fmtRemaining((status.invite_expires_at ?? 0) - Date.now());
     return (
       <Banner tone="accent">
-        Your alpha slot is ready — activate within {fmtRemaining((status.invite_expires_at ?? 0) - Date.now())}
-        {' '}or you'll be re-queued.
+        {status.resume
+          ? <>Your turn is back. Resume your agent within {claimIn} to start a fresh session.</>
+          : <>Your alpha slot is ready. Activate within {claimIn} or you'll be re-queued.</>}
       </Banner>
     );
   }
@@ -42,8 +44,9 @@ export function AlphaBanner({ walletAddress }: Props) {
   if (status.state === 'active' && status.warned && status.expires_at) {
     return (
       <Banner tone="warn">
-        Alpha session ends in {fmtRemaining(status.expires_at - Date.now())}.
-        Your agent will pause automatically — open Deactivate to withdraw early.
+        Your alpha turn ends in {fmtRemaining(status.expires_at - Date.now())}.
+        The agent pauses automatically and you go back in the waitlist for your
+        next turn. Want to exit and withdraw instead? Open Deactivate.
       </Banner>
     );
   }
@@ -51,8 +54,12 @@ export function AlphaBanner({ walletAddress }: Props) {
   if (status.state === 'paused') {
     return (
       <Banner tone="muted">
-        Alpha session ended. Your agent is paused; funds and signing key are
-        preserved.
+        Your alpha turn ended. You are back in the waitlist
+        {status.queue_position
+          ? <> at position #{status.queue_position}{status.queue_depth ? ` of ${status.queue_depth}` : ''}</>
+          : ''}
+        ; your funds and agent are preserved and you can resume in one tap when
+        your turn comes around.
       </Banner>
     );
   }

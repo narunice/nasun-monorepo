@@ -54,7 +54,16 @@ export function useAgentState(agentAddress: string | null): UseAgentStateResult 
     try {
       const next = await fetchAgentState(agentAddress);
       if (!mountedRef.current) return;
-      setData(next);
+      // Stale-while-error: a transient on-chain read failure surfaces as a
+      // successful HTTP 200 with state:'unknown' (deriveAgentState maps a null
+      // RPC read to 'unknown'). Don't clobber a known-good state with it, or a
+      // brief devnet fullnode 503 makes the agent badge/controls flip to an
+      // indeterminate state. Keep the last resolved state until a real one
+      // returns. The server (sui-client) already serves last-known on RPC
+      // error; this is the client-side guard for the cold-cache window.
+      setData((prev) =>
+        next.state === 'unknown' && prev && prev.state !== 'unknown' ? prev : next,
+      );
       setError(null);
     } catch (err) {
       if (!mountedRef.current) return;

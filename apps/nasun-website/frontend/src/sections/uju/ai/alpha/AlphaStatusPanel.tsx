@@ -18,7 +18,13 @@ import {
   AlphaApiError,
   type AlphaStatusResponse,
 } from './alphaApiClient';
+import { resumeAgent } from '../services/agentVaultClient';
 import { useAlphaStatus, type UseAlphaStatus } from './useAlphaStatus';
+
+/** Test-window length in hours, from server config (falls back to 24h). */
+function windowHours(status: AlphaStatusResponse): number {
+  return status.capacity.ttl_hours ?? 24;
+}
 
 interface Props {
   walletAddress: string;
@@ -71,11 +77,32 @@ function leaveErrorMessage(code: string): string {
   }
 }
 
+function resumeErrorMessage(code: string): string {
+  switch (code) {
+    case 'not_invited':
+      return "It's not your turn yet. You'll be able to resume once your slot comes up.";
+    case 'invite_expired':
+      return 'Your resume window has closed. You go back in the queue once and can resume on your next turn.';
+    case 'not_paused':
+      return 'This agent is not paused. Refresh the page and try again.';
+    case 'already_purged':
+      return 'This agent can no longer be resumed. Please create a new agent.';
+    case 'per_wallet_cap_reached':
+      return 'You already have an active agent on this wallet.';
+    case 'no_free_port':
+      return 'No capacity right now. Please try again in a moment.';
+    case 'bad_signature':
+      return 'Signature verification failed. Please try again.';
+    default:
+      return `Could not resume your agent (${code}).`;
+  }
+}
+
 export function AlphaStatusPanel({ walletAddress, status: external }: Props) {
   const fallback = useAlphaStatus(external ? null : walletAddress);
   const { status, loading, error: pollError, refetch } = external ?? fallback;
   const { signer } = useSigner();
-  const [pending, setPending] = useState<'join' | 'leave' | null>(null);
+  const [pending, setPending] = useState<'join' | 'leave' | 'resume' | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const onJoin = async () => {
@@ -107,6 +134,28 @@ export function AlphaStatusPanel({ walletAddress, status: external }: Props) {
     } catch (err) {
       const code = err instanceof AlphaApiError ? err.code : (err as Error).message;
       setActionError(leaveErrorMessage(code));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const onResume = async () => {
+    if (!signer) {
+      setActionError('Please connect your wallet first.');
+      return;
+    }
+    if (!status?.agent_address) {
+      setActionError('Agent address unavailable. Please refresh and try again.');
+      return;
+    }
+    setPending('resume');
+    setActionError(null);
+    try {
+      await resumeAgent(signer, walletAddress, status.agent_address);
+      refetch();
+    } catch (err) {
+      const code = (err as { code?: string }).code ?? (err as Error).message;
+      setActionError(resumeErrorMessage(code));
     } finally {
       setPending(null);
     }
@@ -149,14 +198,46 @@ export function AlphaStatusPanel({ walletAddress, status: external }: Props) {
         </PanelShell>
       );
 
-    case 'paused':
+    case 'paused': {
+      // queue_position is present only while the auto-requeued waitlist row is
+      // still 'waiting'. If it's absent the user is not currently queued (their
+      // resume invite lapsed twice → terminal 'expired', or a legacy row): give
+      // them an explicit Re-join so a paused agent with funds is never a dead end.
+      const queued = status.queue_position !== undefined;
       return (
-        <PanelShell title="Alpha session ended">
+        <PanelShell title="Your alpha test window has ended">
           <Paragraph>
-            Your 36-hour alpha session has expired and the agent is paused.
-            Your funds and signing key are preserved — open the Dashboard
-            and tap Deactivate to withdraw, or wait for the next round.
+            This is normal. Each turn lasts {windowHours(status)}h, and yours is
+            up.{' '}
+            {queued ? (
+              <>
+                You are now back in the waitlist at position{' '}
+                <strong>#{status.queue_position}</strong>
+                {status.queue_depth ? ` of ${status.queue_depth}` : ''}. Your
+                funds and agent are preserved, so when your turn comes around
+                again you can resume the same agent in one tap. We will notify
+                you here when it does.
+              </>
+            ) : (
+              <>
+                Your funds and agent are preserved. Re-join the waitlist below to
+                get another turn; when it comes you can resume the same agent in
+                one tap.
+              </>
+            )}
           </Paragraph>
+          {!queued && (
+            <ActionRow>
+              <PrimaryButton onClick={onJoin} disabled={pending !== null || !signer}>
+                {pending === 'join' ? 'Signing...' : 'Re-join waitlist'}
+              </PrimaryButton>
+            </ActionRow>
+          )}
+          <Paragraph>
+            Prefer to exit now and withdraw? Open the Dashboard and tap
+            Deactivate.
+          </Paragraph>
+          {actionError && <ErrorText>{actionError}</ErrorText>}
           {status.paused_at && (
             <p className="text-xs text-uju-muted">
               Paused at {new Date(status.paused_at).toLocaleString('en-US')}
@@ -164,8 +245,33 @@ export function AlphaStatusPanel({ walletAddress, status: external }: Props) {
           )}
         </PanelShell>
       );
+    }
 
     case 'invited':
+      // resume=true → returning tester whose turn came back. One-tap resume of
+      // the existing paused agent (funds preserved), no setup wizard.
+      if (status.resume) {
+        return (
+          <PanelShell title="Your turn is back" highlight>
+            <Paragraph>
+              Resume your agent within{' '}
+              <strong>{remaining(status.invite_expires_at)}</strong> to start a
+              fresh {windowHours(status)}h session. Your funds and agent are
+              preserved, so this is a one-tap resume. If you miss this window
+              you go back in the queue once.
+            </Paragraph>
+            <ActionRow>
+              <PrimaryButton onClick={onResume} disabled={pending !== null || !signer}>
+                {pending === 'resume' ? 'Resuming...' : 'Resume agent'}
+              </PrimaryButton>
+              <SecondaryButton onClick={onLeave} disabled={pending !== null}>
+                {pending === 'leave' ? 'Leaving...' : 'Leave waitlist'}
+              </SecondaryButton>
+            </ActionRow>
+            {actionError && <ErrorText>{actionError}</ErrorText>}
+          </PanelShell>
+        );
+      }
       return (
         <PanelShell title="Your alpha slot is ready" highlight>
           <Paragraph>
@@ -277,8 +383,9 @@ function renderNone(args: {
     <PanelShell title="Join the Nasun AI alpha" highlight>
       <Paragraph>
         Genesis Pass holders are invited first and can claim one of{' '}
-        {status.capacity.total} active slots. Each slot runs for 36 hours;
-        when it ends your agent pauses and your funds stay safe.
+        {status.capacity.total} active slots. Each turn runs for{' '}
+        {status.capacity.ttl_hours ?? 24}h; when it ends your agent pauses, your
+        funds stay safe, and you go back in the waitlist for your next turn.
       </Paragraph>
       <Paragraph>
         Alliance-only holders will get a testing window in a later round.

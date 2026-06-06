@@ -550,3 +550,44 @@ describe('/alpha/status — perWallet field', () => {
     });
   });
 });
+
+// === paused re-queue + resume enrichment on /alpha/status (2026-06-05) ===
+//
+// A 24h-expired agent is paused AND re-queued to the waitlist by phaseExpire.
+// The status read must surface the live queue position while 'waiting', and
+// flip to invited+resume once the tester's turn comes around again so the
+// frontend offers a one-tap Resume of the SAME paused agent.
+describe('/alpha/status — paused re-queue + resume', () => {
+  it('paused + waiting row → state=paused with queue position and preserved agent', async () => {
+    applyAlphaMigration();
+    seedAgent({ agent: AGENT_1, wallet: WALLET_A, paused: true });
+    seedWaitlist(WALLET_A, 'waiting');
+    const r = await callStatus(WALLET_A);
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe('paused');
+    expect(r.body.agent_address).toBe(AGENT_1.toLowerCase());
+    expect(r.body.queue_position).toBe(1);
+    expect(r.body.queue_depth).toBe(1);
+  });
+
+  it('paused + invited row → state=invited with resume=true (turn came back)', async () => {
+    applyAlphaMigration();
+    seedAgent({ agent: AGENT_1, wallet: WALLET_A, paused: true });
+    seedWaitlist(WALLET_A, 'invited', { inviteExpiresAt: Date.now() + 60_000 });
+    const r = await callStatus(WALLET_A);
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe('invited');
+    expect(r.body.resume).toBe(true);
+    expect(r.body.agent_address).toBe(AGENT_1.toLowerCase());
+    expect(typeof r.body.invite_expires_at).toBe('number');
+  });
+
+  it('paused with NO waitlist row → state=paused, no queue position (legacy/edge)', async () => {
+    applyAlphaMigration();
+    seedAgent({ agent: AGENT_1, wallet: WALLET_A, paused: true });
+    const r = await callStatus(WALLET_A);
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe('paused');
+    expect(r.body.queue_position).toBeUndefined();
+  });
+});

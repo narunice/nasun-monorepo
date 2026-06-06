@@ -72,6 +72,12 @@ export interface AlphaStatusResponse {
    * suppresses the "Connect Telegram" CTA rather than nagging.
    */
   tg_bound?: boolean;
+  /**
+   * On the 'invited' state: true when the wallet has a paused agent waiting to
+   * resume (returning tester, one-tap Resume) rather than a fresh setup.
+   * (Test-window length is in capacity.ttl_hours.)
+   */
+  resume?: boolean;
   capacity: AlphaCapacity;
   /**
    * Per-wallet cap snapshot. Optional for forward compatibility: a chat-server

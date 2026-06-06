@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createHmac } from 'node:crypto';
 
 import {
@@ -80,6 +80,54 @@ describe('shouldNotify', () => {
   it('allows succeeded SELL', () => {
     const r = succeededBuy({ decision: { action: 'SELL', sizeNUSDC: 80, reason: 'tp hit' } });
     expect(shouldNotify(r, baseEnv())).toBe(true);
+  });
+});
+
+describe('HOLD notification throttle', () => {
+  const WINDOW = 6 * 60 * 60 * 1000;
+  const env = () => baseEnv({ HOLD_NOTIFY_MIN_INTERVAL_MS: String(WINDOW) });
+  const hold = (reason: string): TraderCycleResult =>
+    succeededBuy({ decision: { action: 'HOLD', sizeNUSDC: 0, reason }, txDigest: undefined });
+
+  beforeEach(() => {
+    __testing__.resetHoldThrottle();
+    vi.useFakeTimers();
+    vi.setSystemTime(0);
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it('suppresses a repeated same-reason HOLD within the window', async () => {
+    const fetchImpl = mockFetchOk();
+    await maybeNotifyHeartbeat(hold('insufficient_quote_balance'), env(), { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1); // first HOLD lands
+
+    vi.setSystemTime(60 * 60 * 1000); // +1h, still inside window
+    await maybeNotifyHeartbeat(hold('insufficient_quote_balance'), env(), { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(1); // suppressed
+  });
+
+  it('sends again once the window elapses (proof-of-life)', async () => {
+    const fetchImpl = mockFetchOk();
+    await maybeNotifyHeartbeat(hold('insufficient_quote_balance'), env(), { fetchImpl });
+    vi.setSystemTime(WINDOW + 1); // past the window
+    await maybeNotifyHeartbeat(hold('insufficient_quote_balance'), env(), { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not throttle a HOLD with a changed reason', async () => {
+    const fetchImpl = mockFetchOk();
+    await maybeNotifyHeartbeat(hold('insufficient_quote_balance'), env(), { fetchImpl });
+    vi.setSystemTime(60 * 1000); // +1m
+    await maybeNotifyHeartbeat(hold('low volatility, waiting'), env(), { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('never throttles BUY/SELL', async () => {
+    const fetchImpl = mockFetchOk();
+    await maybeNotifyHeartbeat(succeededBuy(), env(), { fetchImpl });
+    vi.setSystemTime(60 * 1000);
+    await maybeNotifyHeartbeat(succeededBuy(), env(), { fetchImpl });
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });
 

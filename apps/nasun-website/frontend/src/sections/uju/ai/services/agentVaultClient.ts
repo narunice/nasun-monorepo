@@ -20,7 +20,7 @@ import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 const CHAT_SERVER_URL =
   (import.meta.env.VITE_CHAT_SERVER_URL as string | undefined) ?? 'https://nasun.io';
 
-export type VaultPurpose = 'vault-upload' | 'vault-delete' | 'vault-restore';
+export type VaultPurpose = 'vault-upload' | 'vault-delete' | 'vault-restore' | 'vault-resume';
 
 export type VaultState = 'active' | 'inactive' | 'grace' | 'not_vaulted';
 
@@ -44,6 +44,12 @@ export interface VaultDeleteResult {
 export interface VaultRestoreResult {
   ok: true;
   wakePort: number;
+}
+
+export interface VaultResumeResult {
+  ok: true;
+  wakePort: number;
+  expiresAt: number | null;
 }
 
 function pubkeyHashHex(pubkeyBytes: Uint8Array): string {
@@ -155,6 +161,30 @@ export async function restoreAgent(
   const { signature } = await signer.signPersonal(new TextEncoder().encode(challenge));
   return postJson<VaultRestoreResult>(
     `/api/nasun-ai/vault/agent/${agentAddress.toLowerCase()}/restore`,
+    { challenge, signature },
+  );
+}
+
+/**
+ * Resume a TTL-paused agent for a new 24h alpha turn. Unlike restore (which
+ * revives a soft-deleted agent within the kill grace), resume targets an agent
+ * that auto-paused at the end of its window and was re-queued; the server
+ * requires the wallet to hold a current 'invited' waitlist row (its turn). The
+ * same agent + funds are reused, so no re-setup.
+ */
+export async function resumeAgent(
+  signer: SignerLike,
+  ownerWallet: string,
+  agentAddress: string,
+): Promise<VaultResumeResult> {
+  const challenge = await fetchChallenge({
+    ownerWallet,
+    agentAddress,
+    purpose: 'vault-resume',
+  });
+  const { signature } = await signer.signPersonal(new TextEncoder().encode(challenge));
+  return postJson<VaultResumeResult>(
+    `/api/nasun-ai/vault/agent/${agentAddress.toLowerCase()}/resume`,
     { challenge, signature },
   );
 }

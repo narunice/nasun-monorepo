@@ -25,6 +25,7 @@ import {
   handleVaultUpload,
   handleVaultDelete,
   handleVaultRestore,
+  handleVaultResume,
   handleVaultStatus,
 } from './agent-vault-routes.js';
 import { startVaultPurgeCron } from './agent-vault-purge.js';
@@ -468,8 +469,8 @@ async function handleHttpRequest(
     if (url.pathname === '/api/nasun-ai/vault/upload' && req.method === 'POST') {
       await handleVaultUpload(req, res, vaultCors); return;
     }
-    // /api/nasun-ai/vault/agent/<addr>[/restore|/status]
-    const m = url.pathname.match(/^\/api\/nasun-ai\/vault\/agent\/(0x[0-9a-fA-F]{40,64})(?:\/(restore|status))?$/);
+    // /api/nasun-ai/vault/agent/<addr>[/restore|/resume|/status]
+    const m = url.pathname.match(/^\/api\/nasun-ai\/vault\/agent\/(0x[0-9a-fA-F]{40,64})(?:\/(restore|resume|status))?$/);
     if (m) {
       const agentAddr = m[1];
       const sub = m[2];
@@ -478,6 +479,9 @@ async function handleHttpRequest(
       }
       if (req.method === 'POST' && sub === 'restore') {
         await handleVaultRestore(req, res, vaultCors, agentAddr); return;
+      }
+      if (req.method === 'POST' && sub === 'resume') {
+        await handleVaultResume(req, res, vaultCors, agentAddr); return;
       }
       if (req.method === 'GET' && sub === 'status') {
         await handleVaultStatus(req, res, vaultCors, agentAddr); return;

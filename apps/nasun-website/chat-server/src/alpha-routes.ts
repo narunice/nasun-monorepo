@@ -540,6 +540,11 @@ interface StatusResponse {
   queue_position?: number;
   queue_depth?: number;
   paused_at?: number | null;
+  // True on the 'invited' state when the wallet has a paused agent waiting to
+  // resume (returning tester) rather than a fresh setup (first-timer). The
+  // frontend renders a one-tap Resume CTA instead of the setup wizard.
+  // (The test-window length is already in capacity.ttl_hours.)
+  resume?: boolean;
   // Whether invite/warn DMs can reach this wallet (live baram_session OR an
   // alpha_tg_binding). Populated for waitlist states so the frontend can
   // surface a "Connect Telegram" CTA only to unreachable waiters.
@@ -589,6 +594,17 @@ function computePerWallet(wallet: string, isExempt: boolean): PerWalletSnapshot 
   } catch {
     return { activeCount: 0, cap, canCreate: true };
   }
+}
+
+/** 1-based queue position of `joinedAt` among 'waiting' rows (earliest first). */
+function queuePositionFor(joinedAt: number): number {
+  const ahead = getDb()
+    .prepare(
+      `SELECT COUNT(*) AS n FROM alpha_waitlist
+        WHERE status = 'waiting' AND joined_at < ?`,
+    )
+    .get(joinedAt) as { n: number };
+  return (ahead?.n ?? 0) + 1;
 }
 
 async function handleAlphaStatus(
@@ -647,11 +663,46 @@ async function handleAlphaStatus(
       | undefined;
   if (agent) {
     if (agent.paused_at !== null) {
+      // A 24h-expired agent is paused AND auto-requeued to the waitlist by
+      // phaseExpire. Read that waitlist row so the UI can show the live queue
+      // position, and flip to an 'invited'+resume affordance once the
+      // tester's turn comes around again (one-tap resume of the SAME agent).
+      const wl = getDb()
+        .prepare(
+          `SELECT status, joined_at, invite_expires_at
+             FROM alpha_waitlist WHERE wallet_address = ?`,
+        )
+        .get(wallet) as
+          | { status: AlphaUserState; joined_at: number; invite_expires_at: number | null }
+          | undefined;
+      if (wl?.status === 'invited') {
+        writeJson(res, 200, corsHeaders, {
+          state: 'invited',
+          eligible: null,
+          resume: true,
+          agent_address: agent.agent_address,
+          invite_expires_at: wl.invite_expires_at,
+          tg_bound: hasLiveTgSession(wallet) || isAlphaTgBound(wallet),
+          capacity,
+          perWallet,
+        } satisfies StatusResponse);
+        return;
+      }
+      let queuePosition: number | undefined;
+      let queueDepth: number | undefined;
+      if (wl?.status === 'waiting') {
+        queuePosition = queuePositionFor(wl.joined_at);
+        queueDepth = capacity.queue_depth;
+      }
       writeJson(res, 200, corsHeaders, {
         state: 'paused',
         eligible: null,
         agent_address: agent.agent_address,
         paused_at: agent.paused_at,
+        joined_at: wl?.joined_at,
+        queue_position: queuePosition,
+        queue_depth: queueDepth,
+        tg_bound: hasLiveTgSession(wallet) || isAlphaTgBound(wallet),
         capacity,
         perWallet,
       } satisfies StatusResponse);
@@ -682,13 +733,7 @@ async function handleAlphaStatus(
     let queuePosition: number | undefined;
     let queueDepth: number | undefined;
     if (row.status === 'waiting') {
-      const ahead = getDb()
-        .prepare(
-          `SELECT COUNT(*) AS n FROM alpha_waitlist
-            WHERE status = 'waiting' AND joined_at < ?`,
-        )
-        .get(row.joined_at) as { n: number };
-      queuePosition = (ahead?.n ?? 0) + 1;
+      queuePosition = queuePositionFor(row.joined_at);
       queueDepth = capacity.queue_depth;
     }
     writeJson(res, 200, corsHeaders, {

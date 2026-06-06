@@ -57,6 +57,14 @@ const cache = new Map<string, CachedEntry>();
  * object is not a Move object (deleted / wrong id). Caller treats null as
  * "unknown" and does not change state.
  *
+ * Fail-open-to-null on RPC error is deliberate and load-bearing for safety:
+ * the drift poller (reconcileAgentState) relies on it to catch an EXTERNAL
+ * on-chain deactivation. Returning a stale "isActive:true" here during an RPC
+ * outage would keep a just-deactivated agent trading the user's funds, so we
+ * must NOT serve stale on error. UI resilience to transient 'unknown' is
+ * handled client-side instead (useAgentState keeps the last resolved state
+ * rather than clobbering it with 'unknown').
+ *
  * 10s TTL is tight enough that a frontend kill action's downstream reconcile
  * (called immediately after the on-chain tx confirms) sees a fresh value
  * after invalidate(); operators bouncing chat-server pick up external

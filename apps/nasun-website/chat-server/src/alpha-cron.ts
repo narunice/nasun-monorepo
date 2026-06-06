@@ -19,7 +19,7 @@
 // observable in a single log line.
 
 import { getDb } from './store.js';
-import { getClaimWindowMs, getSystemCap, isAlphaGateEnabled } from './alpha-guards.js';
+import { getAgentTtlMs, getClaimWindowMs, getSystemCap, isAlphaGateEnabled } from './alpha-guards.js';
 import { pushUserMessage } from './baram-telegram.js';
 import { stopAgentPm2, pm2Save } from './agent-orchestrator.js';
 import { traceAsync, traceSync } from './perf-trace.js';
@@ -149,13 +149,16 @@ async function phaseWarn(): Promise<void> {
   });
   tx(rows);
 
+  const windowHours = Math.round(getAgentTtlMs() / 3_600_000);
   await Promise.allSettled(
     rows.map((r) => {
       const expiresAtIso = new Date(r.expires_at).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
       const html =
-        `⏰ <b>Alpha session ends in ~6 hours.</b>\n` +
-        `Your Nasun AI agent will auto-pause at <code>${expiresAtIso}</code>. ` +
-        `Withdraw via Deactivate if needed before then.`;
+        `⏰ <b>~6 hours left in your alpha test window.</b>\n` +
+        `Your ${windowHours}h turn ends at <code>${expiresAtIso}</code> and the agent will pause. ` +
+        `You will go back in the waitlist and can resume the same agent when your ` +
+        `turn comes around again, so no action is needed. ` +
+        `Want to exit and withdraw instead? Tap Deactivate before then.`;
       return pushUserMessage(r.wallet_address, html);
     }),
   );
@@ -186,9 +189,15 @@ async function phaseExpire(): Promise<void> {
     .filter((r) => !pausedAgents.has(r.agent_address));
   if (rows.length === 0) return;
 
-  // Sync SQL first: drop endpoints + flag paused_at. This frees the cap
-  // slot in `countActiveAgents` immediately, so a fresh invite later in
-  // this same tick can see the new headroom.
+  // Sync SQL first: drop endpoints + flag paused_at + re-queue. This frees
+  // the cap slot in `countActiveAgents` immediately, so a fresh invite later
+  // in this same tick can see the new headroom.
+  //
+  // Re-queue: a 24h test window is one turn. When it ends the tester goes to
+  // the BACK of the waitlist (fresh joined_at) and waits for their turn to
+  // come around again, at which point they resume the SAME paused agent
+  // (funds + SSM key preserved) via /vault/agent/:addr/resume. Without this
+  // UPSERT the paused wallet had no waitlist row at all — a dead end.
   const tx = getDb().transaction((batch: ExpiredAgentRow[]) => {
     const dropEndpoint = getDb().prepare(
       `DELETE FROM baram_agent_endpoints WHERE agent = ?`,
@@ -196,9 +205,18 @@ async function phaseExpire(): Promise<void> {
     const pause = getDb().prepare(
       `UPDATE agent_keys SET paused_at = ? WHERE agent_address = ?`,
     );
+    const requeue = getDb().prepare(
+      `INSERT INTO alpha_waitlist
+         (wallet_address, joined_at, status, invited_at, invite_expires_at, miss_count, created_at)
+       VALUES (?, ?, 'waiting', NULL, NULL, 0, ?)
+       ON CONFLICT(wallet_address) DO UPDATE SET
+         status = 'waiting', joined_at = excluded.joined_at,
+         invited_at = NULL, invite_expires_at = NULL, miss_count = 0`,
+    );
     for (const r of batch) {
       dropEndpoint.run(r.agent_address);
       pause.run(now, r.agent_address);
+      requeue.run(r.wallet_address, now, now);
     }
   });
   tx(rows);
@@ -206,6 +224,7 @@ async function phaseExpire(): Promise<void> {
   // Best-effort fan-out off the transaction. pm2 delete failures leave an
   // orphan process — operator can clean it up; the cap is already freed
   // because the endpoint row is gone (heartbeat lookup misses).
+  const windowHours = Math.round(getAgentTtlMs() / 3_600_000);
   await Promise.allSettled(
     rows.flatMap((r) => [
       stopAgentPm2(r.pm2_name).catch((err) => {
@@ -213,9 +232,11 @@ async function phaseExpire(): Promise<void> {
       }),
       pushUserMessage(
         r.wallet_address,
-        `⏸ <b>Alpha session ended.</b>\n` +
-        `Your agent is paused. Funds and SSM key are preserved — open the app ` +
-        `and tap Deactivate any time to withdraw.`,
+        `⏸ <b>Your alpha test window has ended.</b>\n` +
+        `This is normal: each turn lasts ${windowHours}h. You are now back in the waitlist. ` +
+        `Your funds and agent are preserved, so when your turn comes around again ` +
+        `you can resume the same agent in one tap. We will notify you here and in the app. ` +
+        `Prefer to exit now and withdraw? Open the app and tap Deactivate.`,
       ),
     ]),
   );
@@ -262,15 +283,26 @@ async function phaseInvite(): Promise<void> {
   });
   tx(heads);
 
+  // Returning testers have a paused agent waiting to resume; first-timers run
+  // the setup wizard. Branch the DM so the CTA matches what they will do.
+  const hasPausedAgent = getDb().prepare(
+    `SELECT 1 FROM agent_keys
+      WHERE wallet_address = ? AND deleted_at IS NULL
+        AND slot_exempt = 0 AND paused_at IS NOT NULL
+      LIMIT 1`,
+  );
   await Promise.allSettled(
-    heads.map((r) =>
-      pushUserMessage(
-        r.wallet_address,
-        `🎟 <b>Your Nasun AI alpha slot is ready.</b>\n` +
-        `Activate now: <a href="https://nasun.io/my-account?tab=ai">nasun.io</a>\n` +
-        `Complete the setup wizard while your slot is reserved. If you miss the claim window, you'll go back in queue once.`,
-      ),
-    ),
+    heads.map((r) => {
+      const returning = !!hasPausedAgent.get(r.wallet_address);
+      const html = returning
+        ? `🎟 <b>Your turn is back.</b>\n` +
+          `Resume your agent: <a href="https://nasun.io/my-account?tab=ai">nasun.io</a>\n` +
+          `Your funds and agent are preserved, so this is a one-tap resume. If you miss the claim window, you'll go back in queue once.`
+        : `🎟 <b>Your Nasun AI alpha slot is ready.</b>\n` +
+          `Activate now: <a href="https://nasun.io/my-account?tab=ai">nasun.io</a>\n` +
+          `Complete the setup wizard while your slot is reserved. If you miss the claim window, you'll go back in queue once.`;
+      return pushUserMessage(r.wallet_address, html);
+    }),
   );
 }
 
