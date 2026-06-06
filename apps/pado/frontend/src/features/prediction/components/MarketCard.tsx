@@ -51,6 +51,7 @@ export function MarketCard({
           yesProbability: market.outcome ? 100 : 0,
           noProbability: market.outcome ? 0 : 100,
           hasRealQuotes: true,
+          isCrossed: false,
         }
       : null;
 

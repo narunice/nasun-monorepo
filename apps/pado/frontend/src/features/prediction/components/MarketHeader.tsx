@@ -25,7 +25,7 @@ export function MarketHeader({
   const [timeRemaining, setTimeRemaining] = useState(
     getTimeRemaining(market.closeTime),
   );
-  const { yesProbability, noProbability, hasRealQuotes } =
+  const { yesProbability, noProbability, hasRealQuotes, isCrossed } =
     calculateProbabilityFromOrderbook(
       yesOrderbook ?? null,
       noOrderbook ?? null,
@@ -103,6 +103,12 @@ export function MarketHeader({
           {!hasRealQuotes && (
             <div className="text-center text-sm text-notice-text mb-4">
               No orders yet — showing default 50/50
+            </div>
+          )}
+
+          {hasRealQuotes && isCrossed && (
+            <div className="text-center text-sm text-notice-text mb-4">
+              Order book is updating. This resolves automatically in a few seconds.
             </div>
           )}
 
