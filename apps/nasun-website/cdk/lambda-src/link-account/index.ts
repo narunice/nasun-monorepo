@@ -137,7 +137,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         };
       }
 
-      const secondaryIdentityId = linkedAccounts[providerKey].identityId;
+      const unlinkedAccount = linkedAccounts[providerKey];
+      const secondaryIdentityId = unlinkedAccount.identityId;
 
       // Remove from primary profile
       delete linkedAccounts[providerKey];
@@ -165,7 +166,23 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         // MetaMask unlink signature verification REMOVED for better UX
         // Users should be able to unlink lost wallets without signing
         // Authentication is already handled by API Gateway (or identity check)
-        removeExpression = 'REMOVE walletAddress';
+        //
+        // Only strip the top-level walletAddress when it is the EVM address
+        // being unlinked (a MetaMask-provider primary whose login wallet IS the
+        // EVM). For Nasun Wallet / Google / Twitter primaries the top-level
+        // walletAddress is the Nasun login wallet and must never be removed
+        // here. The EVM address lives in linkedAccounts.metamask, already
+        // removed above. Blindly removing it wiped the Nasun login wallet from
+        // the profile on every EVM unlink.
+        const unlinkedEvmAddr = typeof unlinkedAccount?.walletAddress === 'string'
+          ? unlinkedAccount.walletAddress.toLowerCase()
+          : null;
+        const topLevelAddr = typeof primaryProfile.walletAddress === 'string'
+          ? primaryProfile.walletAddress.toLowerCase()
+          : null;
+        if (unlinkedEvmAddr && topLevelAddr && unlinkedEvmAddr === topLevelAddr) {
+          removeExpression = 'REMOVE walletAddress';
+        }
       }
 
       // Combine expressions
