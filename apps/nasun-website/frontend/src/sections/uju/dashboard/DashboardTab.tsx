@@ -3,6 +3,7 @@ import { OverviewSummaryCard } from "./OverviewSummaryCard";
 import { ActivatedAppsSection } from "./ActivatedAppsSection";
 import { WalletBalanceCard } from "./WalletBalanceCard";
 import { StakingCard } from "./StakingCard";
+import { StandingCard } from "./StandingCard";
 import { UjuDailyMissionsCard } from "./UjuDailyMissionsCard";
 import { UjuNftShowcaseCard } from "./UjuNftShowcaseCard";
 import { NewsEventsCard } from "./NewsEventsCard";
@@ -76,6 +77,7 @@ export function DashboardTabBottom({ chatSlot }: DashboardTabBottomProps = {}) {
 
       <ActivatedAppsSection directory={directory} />
       <WalletBalanceCard />
+      <StandingCard />
       <StakingCard />
     </div>
   );
