@@ -68,6 +68,12 @@ stats/
 .claude/skills/*/cache/
 .claude/skills/*/drafts/
 
+# Claude per-project memory (canonical home is ~/.claude/projects/; never track a stray copy in the repo)
+.claude/projects/
+
+# Personal artifacts unrelated to the monorepo (e.g. portfolio docs)
+_portfolio/
+
 # CDK synth output (contains rendered Lambda env vars / secrets)
 **/cdk.out/
 
