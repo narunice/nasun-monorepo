@@ -24,6 +24,7 @@ import { DEFAULT_MISSION_IDS, baseWeightFor } from '../config/points.js';
 import { REFERRAL_ECOSYSTEM_SCALING_FACTOR, REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
 import { ecosystemVolumeScoreCte } from '../lib/ecosystem-volume-score.js';
+import { ecosystemScoreWeights } from '../lib/ecosystem-score-weights.js';
 import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
 
@@ -1109,10 +1110,15 @@ app.get('/leaderboard/weeks', async (c) => {
 // detail.
 //
 // Weekly ecosystem leaderboard — no NFT multiplier applied to ranking.
-// Score = activity_score (distinct non-pado categories per epoch-day slot)
-//       + FLOOR(creator_post_score / 5)
-//       + FLOOR(bugreport+feedback / 2) + FLOOR(game / 3)
-//       + active_days * 2
+// weekly_score = activity_score (distinct non-pado categories per epoch-day slot)
+//   + creator_post_score (SUM(final_points) / creatorDivisor)
+//   + bonus_score (bugreport+feedback / 2 + game / 3)
+//   + volume_score (bot-resistant game bet volume, see ecosystem-volume-score)
+//   + emission_score * stakingMult (staking reward delta, see ecosystem-score-weights)
+//   + referrer_bonus + lp_score
+// creatorDivisor (5->4) and stakingMult (1->1.5) are week-gated by
+// ecosystemScoreWeights so past weeks recompute with legacy weights (immutable).
+// active_days is computed for display only; it is NOT part of weekly_score.
 // All users with any qualifying activity appear; NFT ownership is not required.
 app.get('/leaderboard', async (c) => {
   if (!pointsDb) {
@@ -1146,6 +1152,7 @@ app.get('/leaderboard', async (c) => {
       const includeLp = bounds.start.getTime() >= LP_LEADERBOARD_START_MS;
       const lpFactor = lpDailyRampFactor(bounds.start.getTime(), Date.now());
       const lpCte = lpScoreCte(pointsDb!, weekEndMs, includeLp, lpFactor);
+      const w = ecosystemScoreWeights(bounds.start.getTime());
       const rows = await pointsDb!`
         WITH week_activities AS (
           SELECT DISTINCT identity_id,
@@ -1179,7 +1186,7 @@ app.get('/leaderboard', async (c) => {
         ),
         creator_post_score AS (
           SELECT identity_id,
-                 COALESCE(SUM(final_points), 0) / 5.0 AS post_score
+                 COALESCE(SUM(final_points), 0) / ${w.creatorDivisor}::float8 AS post_score
           FROM activity_points
           WHERE category = 'ecosystem-bonus-creator-posts'
             AND NOT flagged
@@ -1250,7 +1257,7 @@ app.get('/leaderboard', async (c) => {
             + COALESCE(c.post_score, 0)
             + COALESCE(b.bonus_score, 0)
             + COALESCE(v.volume_score, 0)
-            + COALESCE(se.emission_score, 0)
+            + COALESCE(se.emission_score, 0) * ${w.stakingMult}::float8
             + COALESCE(rb.referrer_bonus, 0)
             + COALESCE(lp.lp_score, 0)
           )::float8 AS weekly_score
@@ -1441,6 +1448,7 @@ app.get('/leaderboard', async (c) => {
         const prevIncludeLp = prevWeekBounds.start.getTime() >= LP_LEADERBOARD_START_MS;
         const prevLpFactor = lpDailyRampFactor(prevWeekBounds.start.getTime(), Date.now());
         const lpCte = lpScoreCte(pointsDb!, prevWeekEndMs, prevIncludeLp, prevLpFactor);
+        const wPrev = ecosystemScoreWeights(prevWeekBounds.start.getTime());
         const rows = await pointsDb!`
           WITH week_activities AS (
             SELECT DISTINCT identity_id,
@@ -1458,7 +1466,7 @@ app.get('/leaderboard', async (c) => {
             FROM week_activities GROUP BY identity_id
           ),
           creator_post_score AS (
-            SELECT identity_id, COALESCE(SUM(final_points), 0) / 5.0 AS post_score
+            SELECT identity_id, COALESCE(SUM(final_points), 0) / ${wPrev.creatorDivisor}::float8 AS post_score
             FROM activity_points
             WHERE category = 'ecosystem-bonus-creator-posts' AND NOT flagged AND identity_id IS NOT NULL
               AND tx_timestamp >= ${prevWeekBounds.start} AND tx_timestamp < ${prevWeekBounds.end}
@@ -1496,7 +1504,7 @@ app.get('/leaderboard', async (c) => {
           ${lpCte}
           SELECT COALESCE(a.identity_id, c.identity_id, b.identity_id, v.identity_id, se.identity_id, rb.identity_id, lp.identity_id) AS identity_id,
             COALESCE(a.activity_score, 0)::int AS activity_score,
-            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + COALESCE(v.volume_score, 0) + COALESCE(se.emission_score, 0) + COALESCE(rb.referrer_bonus, 0) + COALESCE(lp.lp_score, 0))::float8 AS weekly_score
+            (COALESCE(a.activity_score, 0) + COALESCE(c.post_score, 0) + COALESCE(b.bonus_score, 0) + COALESCE(v.volume_score, 0) + COALESCE(se.emission_score, 0) * ${wPrev.stakingMult}::float8 + COALESCE(rb.referrer_bonus, 0) + COALESCE(lp.lp_score, 0))::float8 AS weekly_score
           FROM activity_score a
           FULL OUTER JOIN creator_post_score c ON a.identity_id = c.identity_id
           FULL OUTER JOIN bonus_score b ON COALESCE(a.identity_id, c.identity_id) = b.identity_id

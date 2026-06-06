@@ -43,6 +43,7 @@ import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
 import { ecosystemVolumeScoreCte } from '../lib/ecosystem-volume-score.js';
+import { ecosystemScoreWeights } from '../lib/ecosystem-score-weights.js';
 
 const gunzipAsync = promisify(gunzip);
 
@@ -341,6 +342,7 @@ async function main() {
   // Settlement runs after the week ends (nowMs >= weekEnd) -> ramp factor is 1.0 (full LP).
   const lpFactor = lpDailyRampFactor(bounds.start.getTime(), Date.now());
   const lpCte = lpScoreCte(pgDb, weekEndMs, includeLp, lpFactor);
+  const w = ecosystemScoreWeights(bounds.start.getTime());
   const rows = await pgDb<Array<{
     identity_id: string;
     weekly_score: number;
@@ -382,7 +384,7 @@ async function main() {
     ),
     creator_post_score AS (
       SELECT identity_id,
-             COALESCE(SUM(final_points), 0) / 5.0 AS post_score
+             COALESCE(SUM(final_points), 0) / ${w.creatorDivisor}::float8 AS post_score
       FROM activity_points
       WHERE category = 'ecosystem-bonus-creator-posts'
         AND NOT flagged AND identity_id IS NOT NULL
@@ -434,7 +436,7 @@ async function main() {
         + COALESCE(c.post_score, 0)
         + COALESCE(b.bonus_score, 0)
         + COALESCE(v.volume_score, 0)
-        + COALESCE(se.emission_score, 0)
+        + COALESCE(se.emission_score, 0) * ${w.stakingMult}::float8
         + COALESCE(rb.referrer_bonus, 0)
         + COALESCE(lp.lp_score, 0)
       )::float8 AS weekly_score
