@@ -1,0 +1,7 @@
+# Cloudflare Pages cache headers (replaces the S3/CloudFront cache-control deploy logic).
+# Hashed build assets are immutable; version.json is polled for deploy detection.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/version.json
+  Cache-Control: no-store

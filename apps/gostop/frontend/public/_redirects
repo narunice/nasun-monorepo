@@ -1,0 +1,3 @@
+# Cloudflare Pages SPA fallback (BrowserRouter deep links: /crash, /lottery, ...).
+# Pages serves a matching static file first; everything else rewrites to index.html.
+/*    /index.html    200
