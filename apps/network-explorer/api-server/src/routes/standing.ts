@@ -138,10 +138,30 @@ app.get('/by-address/:address', async (c) => {
     return c.json({ error: 'invalid_address' }, 400);
   }
 
+  // Resolve standing by IDENTITY, not by the single display wallet nsi-compute
+  // happened to key the row to. A Nasun identity controls multiple wallets
+  // (zkLogin + linked wallets); nsi-compute writes one user_nsi row per identity
+  // keyed to that identity's most-tx-active wallet (nsi-compute.ts:333-338).
+  // Querying any *other* wallet of the same identity must still return that
+  // identity's standing, not the tier-1 baseline. Map wallet -> identity via
+  // activity_points (idx_ap_wallet_latest_identity: Index Only Scan, ~3ms) then
+  // look up user_nsi by identity_id (PK).
+  //
+  // Pre-migration limitation: activity_points is the only identity<->wallet
+  // source colocated in nasun_points. A wallet with zero point-attributed
+  // activity resolves to no identity -> baseline (the GP-only-no-activity gap).
+  // Post-migration this should join the authoritative UserWallets-PG table and
+  // apply the GP floor as a read-time invariant — see
+  // docs/nsi-phase1-runbook.md "Identity-centric lookup + GP floor (follow-up)".
   const rows = await pointsDb<UserNsiRow[]>`
     SELECT tier, nsi_score::text, has_gp, computed_at
     FROM user_nsi
-    WHERE LOWER(wallet_address) = ${address}
+    WHERE identity_id = (
+      SELECT identity_id FROM activity_points
+      WHERE wallet_address = ${address} AND identity_id IS NOT NULL
+      ORDER BY tx_timestamp DESC
+      LIMIT 1
+    )
     LIMIT 1
   `;
 
