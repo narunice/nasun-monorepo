@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateProbabilityFromOrderbook,
   calculateProbabilityFromBestPrices,
+  quotesRequireLastTrade,
 } from './types';
 import type { Orderbook, BestPrices } from './types';
 
@@ -181,5 +182,40 @@ describe('calculateProbabilityFromBestPrices (inline best-quartet)', () => {
     const bp: BestPrices = { yesBid: null, yesAsk: 4000, noBid: null, noAsk: null };
     const r = calculateProbabilityFromBestPrices(bp);
     expect(r.yesProbability).toBe(40);
+  });
+});
+
+describe('quotesRequireLastTrade (list-card fills-fetch gate)', () => {
+  // The gate must fire for exactly the books where the pricing rule consults
+  // the last trade — otherwise a card diverges from the detail page (which
+  // always supplies it). Crossed books are the regression that motivated this:
+  // makers rest crossed after close, and without last trade the card showed the
+  // raw ask while the detail page showed the last fill.
+  it('fires on a crossed book (best bid above best ask)', () => {
+    // YES bid 6300; NO bid 6100 → implied YES ask 3900. bid 6300 > ask 3900.
+    const bp: BestPrices = { yesBid: 6300, yesAsk: null, noBid: 6100, noAsk: null };
+    expect(quotesRequireLastTrade(bp)).toBe(true);
+    // And the rule indeed reads off the last trade, not the ask, when crossed.
+    expect(calculateProbabilityFromBestPrices(bp, 5070).yesProbability).toBeCloseTo(50.7);
+  });
+
+  it('fires on a too-wide two-sided book (spread > 1000 bps)', () => {
+    const bp: BestPrices = { yesBid: 3000, yesAsk: 7000, noBid: null, noAsk: null };
+    expect(quotesRequireLastTrade(bp)).toBe(true);
+  });
+
+  it('fires on a fully empty book', () => {
+    const emptyBook: BestPrices = { yesBid: null, yesAsk: null, noBid: null, noAsk: null };
+    expect(quotesRequireLastTrade(emptyBook)).toBe(true);
+  });
+
+  it('does not fire on a tight two-sided book (midpoint is trustworthy)', () => {
+    const bp: BestPrices = { yesBid: 4900, yesAsk: 5100, noBid: null, noAsk: null };
+    expect(quotesRequireLastTrade(bp)).toBe(false);
+  });
+
+  it('does not fire on a one-sided book (the single side is used directly)', () => {
+    const bp: BestPrices = { yesBid: null, yesAsk: 4000, noBid: null, noAsk: null };
+    expect(quotesRequireLastTrade(bp)).toBe(false);
   });
 });

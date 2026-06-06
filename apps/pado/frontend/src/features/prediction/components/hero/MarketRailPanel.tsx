@@ -4,7 +4,9 @@ import type { MarketWithOrderbook } from "../../hooks/useMarkets";
 import {
   calculateProbabilityFromOrderbook,
   calculateProbabilityFromBestPrices,
+  quotesRequireLastTrade,
 } from "../../types";
+import { useLastTradePrice } from "../../hooks/useLastTradePrice";
 import { resolveMarketIcon } from "../../lib/market-icon";
 import { splitTitle } from "../../lib/title-split";
 import { formatVolumeCompact } from "../../../../lib/format";
@@ -112,10 +114,15 @@ function MarketRow({
 }) {
   const location = useLocation();
   const { market, yesOrderbook, noOrderbook } = entry;
+  // Match the detail page: a crossed/wide book reads off the last trade, not
+  // the raw ask. Gate the fetch on the rule so well-quoted rows stay cheap.
+  const lastTradePriceBps = useLastTradePrice(
+    quotesRequireLastTrade(market.bestPrices) ? market.id : undefined,
+  );
   const { yesProbability, hasRealQuotes } =
     yesOrderbook || noOrderbook
-      ? calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook, null)
-      : calculateProbabilityFromBestPrices(market.bestPrices, null);
+      ? calculateProbabilityFromOrderbook(yesOrderbook, noOrderbook, lastTradePriceBps)
+      : calculateProbabilityFromBestPrices(market.bestPrices, lastTradePriceBps);
 
   const icon = resolveMarketIcon(market.category, market.question);
   const { main } = splitTitle(market.question);

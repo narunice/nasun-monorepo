@@ -199,19 +199,49 @@ export interface ProbabilityResult {
  * by `calculateProbabilityFromOrderbook` (which extracts the quartet from a
  * full orderbook before delegating).
  */
+/**
+ * Best YES bid/ask after folding in the implied quotes from the NO book
+ * (NO bid X ⇒ implied YES ask 10000-X; NO ask X ⇒ implied YES bid 10000-X).
+ * Shared by the pricing rule and `quotesRequireLastTrade` so both agree on the
+ * book geometry.
+ */
+function effectiveQuotes(bp: BestPrices): { bid: number | null; ask: number | null } {
+  const impliedYesAsk = bp.noBid !== null ? MAX_PRICE_BPS - bp.noBid : null;
+  const impliedYesBid = bp.noAsk !== null ? MAX_PRICE_BPS - bp.noAsk : null;
+
+  const bid = [bp.yesBid, impliedYesBid]
+    .filter((v): v is number => v !== null)
+    .reduce<number | null>((acc, v) => (acc === null || v > acc ? v : acc), null);
+  const ask = [bp.yesAsk, impliedYesAsk]
+    .filter((v): v is number => v !== null)
+    .reduce<number | null>((acc, v) => (acc === null || v < acc ? v : acc), null);
+  return { bid, ask };
+}
+
+/**
+ * Whether the display rule would consult the last trade price for these quotes.
+ * Views that lazy-fetch the fills feed (list cards) gate the fetch on this so
+ * they only pay for it when the book is crossed, too wide to trust the
+ * midpoint, or has no two-sided quote — the exact cases the rule falls back to
+ * last trade. Mirrors `calculateProbabilityFromBestPrices` so a card's number
+ * equals the detail page's instead of diverging to the raw ask on a crossed book.
+ */
+export function quotesRequireLastTrade(bp: BestPrices): boolean {
+  const { bid, ask } = effectiveQuotes(bp);
+  if (bid !== null && ask !== null) {
+    const spread = ask - bid;
+    return spread < 0 || spread > SPREAD_THRESHOLD_BPS;
+  }
+  // A one-sided book uses that side directly; only a fully empty book needs the
+  // last-trade fallback.
+  return bid === null && ask === null;
+}
+
 export function calculateProbabilityFromBestPrices(
   bp: BestPrices,
   lastTradePriceBps?: number | null,
 ): ProbabilityResult {
-  const impliedYesAsk = bp.noBid !== null ? MAX_PRICE_BPS - bp.noBid : null;
-  const impliedYesBid = bp.noAsk !== null ? MAX_PRICE_BPS - bp.noAsk : null;
-
-  const effectiveBid = [bp.yesBid, impliedYesBid]
-    .filter((v): v is number => v !== null)
-    .reduce<number | null>((acc, v) => (acc === null || v > acc ? v : acc), null);
-  const effectiveAsk = [bp.yesAsk, impliedYesAsk]
-    .filter((v): v is number => v !== null)
-    .reduce<number | null>((acc, v) => (acc === null || v < acc ? v : acc), null);
+  const { bid: effectiveBid, ask: effectiveAsk } = effectiveQuotes(bp);
 
   const hasRealQuotes =
     effectiveBid !== null || effectiveAsk !== null || lastTradePriceBps != null;

@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { useMarkets, useLastTradePrice } from "../../prediction";
-import { calculateProbabilityFromBestPrices } from "../../prediction/types";
+import {
+  calculateProbabilityFromBestPrices,
+  quotesRequireLastTrade,
+} from "../../prediction/types";
 import type { PredictionMarket } from "../../prediction/types";
 
 function LoadingCard() {
@@ -23,17 +26,14 @@ interface MarketRowProps {
 
 function MarketRow({ market }: MarketRowProps) {
   // Use the inline best-price quartet read off the Market object (free) and
-  // skip the global ORDER_FILLED scan when any quote exists. Mirrors the fix
-  // applied to MarketCard — previously this row triggered a full dynamic-field
-  // orderbook walk per dashboard render and still defaulted to 50/50 when the
-  // walk returned empty.
+  // only fetch the fills feed when the pricing rule would actually consult the
+  // last trade (empty, crossed, or too-wide book). Mirrors MarketCard — gating
+  // on mere quote-presence starved the rule on a crossed book, so this row
+  // diverged from the detail page (raw ask instead of the last fill).
   const { question, category } = market;
-  const hasAnyQuote =
-    market.bestPrices.yesBid !== null ||
-    market.bestPrices.yesAsk !== null ||
-    market.bestPrices.noBid !== null ||
-    market.bestPrices.noAsk !== null;
-  const lastTradePriceBps = useLastTradePrice(hasAnyQuote ? undefined : market.id);
+  const lastTradePriceBps = useLastTradePrice(
+    quotesRequireLastTrade(market.bestPrices) ? market.id : undefined,
+  );
   const { yesProbability, hasRealQuotes } = calculateProbabilityFromBestPrices(
     market.bestPrices,
     lastTradePriceBps,

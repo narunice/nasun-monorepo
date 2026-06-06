@@ -8,6 +8,7 @@ import type { PredictionMarket, Orderbook, Position } from "../types";
 import {
   calculateProbabilityFromOrderbook,
   calculateProbabilityFromBestPrices,
+  quotesRequireLastTrade,
 } from "../types";
 import { useLastTradePrice } from "../hooks/useLastTradePrice";
 import { NUSDC_DECIMALS } from "../constants";
@@ -34,15 +35,13 @@ export function MarketCard({
   // but the Market struct itself stores sorted price-level vectors inline —
   // `fetchMarket` already pulled them via showContent at zero extra RPC cost,
   // so we get accurate best bid/ask without paginating ORDER_FILLED events.
-  // lastTradePrice is kept only as a final fallback for markets that have
-  // never had a resting order on either side.
-  const hasAnyQuote =
-    market.bestPrices.yesBid !== null ||
-    market.bestPrices.yesAsk !== null ||
-    market.bestPrices.noBid !== null ||
-    market.bestPrices.noAsk !== null;
+  // lastTradePrice is needed whenever the pricing rule would consult it — an
+  // empty book, but also a crossed or too-wide book (the detail page passes it
+  // unconditionally, so a card that skipped it diverged to the raw ask on a
+  // crossed book). Gate the fills fetch on that exact condition so the list
+  // doesn't hammer the fills endpoint for every well-quoted card.
   const lastTradePriceBps = useLastTradePrice(
-    hasAnyQuote ? undefined : market.id,
+    quotesRequireLastTrade(market.bestPrices) ? market.id : undefined,
   );
 
   const resolvedProbability =
