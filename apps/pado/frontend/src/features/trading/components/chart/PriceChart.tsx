@@ -272,7 +272,7 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
       height: initialHeight,
       timeScale: { timeVisible: true, secondsVisible: false, barSpacing: 4 },
       rightPriceScale: { borderColor: colors.border },
-      crosshair: { mode: 1 },
+      crosshair: { mode: 0 },
       localization: {
         timeFormatter: (time: number) => {
           const date = new Date(time * 1000);
@@ -288,7 +288,7 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
       height: VOLUME_HEIGHT,
       timeScale: { visible: false, barSpacing: 4 },
       rightPriceScale: { borderColor: colors.border, scaleMargins: { top: 0.1, bottom: 0 } },
-      crosshair: { mode: 1 },
+      crosshair: { mode: 0 },
     });
 
     const candleSeries = chart.addSeries(CandlestickSeries, {
@@ -742,6 +742,13 @@ function LightweightChart({ currentPrice = 95000, className = '' }: PriceChartPr
         isRealData={!!binanceSymbol}
         indicators={indicators}
       />
+
+      {/* Chart prices come from an external reference feed; actual fills happen
+          on the on-chain Pado order book, so the two can differ on thin
+          liquidity. Clarify this so users do not read the chart as execution. */}
+      <div className="px-2 pb-0.5 text-[11px] leading-tight text-theme-text-muted">
+        Reference market prices. Trades execute on the on-chain Pado order book.
+      </div>
 
       {/* Candlestick Chart */}
       <div ref={mainChartWrapperRef} className="flex-1 min-h-0 flex">

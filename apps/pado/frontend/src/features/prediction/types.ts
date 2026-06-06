@@ -183,6 +183,13 @@ export interface ProbabilityResult {
    * neutral "—" placeholder on this flag.
    */
   hasRealQuotes: boolean;
+  /**
+   * True when the best bid sits above the best ask (crossed book). The CLOB
+   * only matches on taker entry, so resting makers can sit crossed until the
+   * arb process clears them (~15s), during which the probability reads oddly.
+   * Callers can surface an "updating" hint instead of the raw number.
+   */
+  isCrossed: boolean;
 }
 
 /**
@@ -210,9 +217,11 @@ export function calculateProbabilityFromBestPrices(
     effectiveBid !== null || effectiveAsk !== null || lastTradePriceBps != null;
 
   let yesProbability = 50;
+  let isCrossed = false;
   if (effectiveBid !== null && effectiveAsk !== null) {
     const spread = effectiveAsk - effectiveBid;
     if (spread < 0) {
+      isCrossed = true;
       // Crossed book: best bid > best ask. The CLOB only matches on taker
       // entry, so resting makers on opposite sides can sit crossed
       // indefinitely. Under a symmetric cross (e.g. yesBid 6100 +
@@ -239,7 +248,7 @@ export function calculateProbabilityFromBestPrices(
   }
 
   yesProbability = Math.max(0.1, Math.min(99.9, yesProbability));
-  return { yesProbability, noProbability: 100 - yesProbability, hasRealQuotes };
+  return { yesProbability, noProbability: 100 - yesProbability, hasRealQuotes, isCrossed };
 }
 
 /**
