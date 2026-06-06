@@ -274,7 +274,12 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
 
               {/* Mission label */}
               <div className="flex-1 min-w-0">
-                {mission.externalUrl ? (
+                {/* Completed missions render as a non-interactive label (locked
+                    state) so users can't keep re-opening a finished quest. The
+                    strike-through styling + right-side checkmark already signal
+                    completion; dropping the link removes the repeated-click
+                    affordance the bug report called out. */}
+                {mission.externalUrl && !completed ? (
                   <a
                     href={
                       mission.externalUrl.startsWith("https://pado.finance")

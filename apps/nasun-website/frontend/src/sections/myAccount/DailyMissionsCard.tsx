@@ -223,7 +223,10 @@ export const DailyMissionsCard: FC<DailyMissionsCardProps> = ({
                   }`}
                 >
                   {i + 1}.{" "}
-                  {mission.externalUrl ? (
+                  {/* Completed missions drop the link (locked state) so a
+                      finished quest can't be re-opened; the checkmark +
+                      strike-through still signal completion. */}
+                  {mission.externalUrl && !completed ? (
                     <a
                       href={
                         mission.externalUrl.startsWith("https://pado.finance")
