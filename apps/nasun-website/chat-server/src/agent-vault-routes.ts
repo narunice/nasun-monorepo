@@ -187,7 +187,8 @@ export async function handleVaultChallenge(
   if (!agentAddress || !isValidSuiAddress(agentAddress)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
   }
-  if (purpose !== 'vault-upload' && purpose !== 'vault-delete' && purpose !== 'vault-restore') {
+  if (purpose !== 'vault-upload' && purpose !== 'vault-delete'
+      && purpose !== 'vault-restore' && purpose !== 'vault-resume') {
     writeJson(res, 400, corsHeaders, { error: 'invalid_purpose' }); return;
   }
   if (purpose === 'vault-upload') {
@@ -210,24 +211,28 @@ export async function handleVaultChallenge(
   // resolve from the agent_keys row.
   //
   // vault-delete needs an active row (deleted_at IS NULL).
+  // vault-resume needs a TTL-paused row (deleted_at IS NULL AND paused_at IS NOT NULL).
   // vault-restore needs a soft-deleted row (deleted_at IS NOT NULL) — use a
   // separate query so that capability_id can still be resolved and verified.
   let resolvedCapId = capabilityId;
   if (purpose !== 'vault-upload') {
-    const isDelete = purpose === 'vault-delete';
+    const query =
+      purpose === 'vault-delete'
+        ? `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NULL`
+        : purpose === 'vault-resume'
+          ? `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NULL AND paused_at IS NOT NULL`
+          : `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1`;
+    const notFoundError =
+      purpose === 'vault-delete' ? 'not_active'
+      : purpose === 'vault-resume' ? 'not_paused'
+      : 'not_vaulted';
     const row = getDb()
-      .prepare(
-        isDelete
-          ? `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NULL`
-          : `SELECT capability_id FROM agent_keys WHERE agent_address = ? AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1`,
-      )
+      .prepare(query)
       .get(agentAddress.toLowerCase()) as { capability_id: string | null } | undefined;
     // Fail fast at challenge time: no point prompting the user to sign a
     // challenge that the action handler will immediately reject.
     if (!row) {
-      writeJson(res, 422, corsHeaders, {
-        error: isDelete ? 'not_active' : 'not_vaulted',
-      }); return;
+      writeJson(res, 422, corsHeaders, { error: notFoundError }); return;
     }
     resolvedCapId = row.capability_id;
   }
@@ -703,6 +708,130 @@ export async function handleVaultRestore(
         });
 
         writeJson(res, 200, corsHeaders, { ok: true, wakePort: newPort });
+      });
+    } catch (err) {
+      if (err instanceof GuardError) {
+        writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+        return;
+      }
+      throw err;
+    }
+  });
+}
+
+/**
+ * POST /api/nasun-ai/vault/agent/:agentAddress/resume
+ *
+ * Alpha re-entry. A 24h test window ends with the agent TTL-paused
+ * (paused_at set, deleted_at NULL, funds + SSM key preserved). The wallet is
+ * auto-requeued to the back of the waitlist by phaseExpire; when its turn
+ * comes around again (alpha_waitlist row promoted to 'invited'), the user
+ * resumes the SAME agent with no re-setup. Mirrors handleVaultRestore but
+ * targets the paused (not soft-deleted) row, so funds in escrow are untouched.
+ */
+export async function handleVaultResume(
+  req: import('node:http').IncomingMessage,
+  res: import('node:http').ServerResponse,
+  corsHeaders: Record<string, string>,
+  agentAddress: string,
+): Promise<void> {
+  if (!isValidSuiAddress(agentAddress)) {
+    writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
+  }
+  let body: unknown;
+  try { body = await readJsonBody(req); } catch (err) {
+    const code = (err as Error).message === 'body_too_large' ? 413 : 400;
+    writeJson(res, code, corsHeaders, { error: (err as Error).message }); return;
+  }
+  const result = await consumeChallenge(body as Record<string, unknown>, 'vault-resume');
+  if (!result.ok) {
+    const status = result.reason === 'bad_signature' ? 401
+                 : result.reason === 'expired' ? 410 : 400;
+    writeJson(res, status, corsHeaders, { error: result.reason }); return;
+  }
+  if (result.entry.agent?.toLowerCase() !== agentAddress.toLowerCase()) {
+    writeJson(res, 400, corsHeaders, { error: 'agent_mismatch' }); return;
+  }
+
+  // Defense-in-depth: same wallet_address binding as delete/restore. The row
+  // must be TTL-paused (deleted_at IS NULL, paused_at IS NOT NULL).
+  const row = getDb().prepare(
+    `SELECT param_name, pm2_name, paused_at FROM agent_keys
+     WHERE agent_address = ? AND wallet_address = ? AND deleted_at IS NULL`
+  ).get(agentAddress.toLowerCase(), result.entry.wallet) as
+    { param_name: string; pm2_name: string; paused_at: number | null } | undefined;
+  if (!row) { writeJson(res, 422, corsHeaders, { error: 'not_active' }); return; }
+  if (row.paused_at === null) { writeJson(res, 409, corsHeaders, { error: 'not_paused' }); return; }
+
+  // Verify the SSM parameter still exists (a paused agent keeps its key, but
+  // guard against a concurrent purge / manual deletion).
+  try {
+    await getSsm().send(new GetParameterCommand({ Name: row.param_name, WithDecryption: false }));
+  } catch (err) {
+    if ((err as { name?: string }).name === 'ParameterNotFound') {
+      writeJson(res, 410, corsHeaders, { error: 'already_purged' }); return;
+    }
+    console.error(`[vault-resume] SSM lookup failed: ${(err as Error).name}`);
+    writeJson(res, 500, corsHeaders, { error: 'vault_lookup_failed' }); return;
+  }
+
+  // A paused row was freed from countActiveAgents, so resuming re-acquires a
+  // slot via the same guard path as upload/restore. enforceAlphaGuards
+  // validates the 'invited' waitlist row — i.e. that the tester's turn has
+  // actually come around again — so a paused user cannot jump their own queue.
+  let resumeGuard;
+  try {
+    resumeGuard = enforceAlphaGuards(result.entry.wallet, agentAddress);
+  } catch (err) {
+    if (err instanceof GuardError) {
+      writeJson(res, err.httpStatus, corsHeaders, { error: err.code });
+      return;
+    }
+    throw err;
+  }
+
+  await withAgentLock(agentAddress.toLowerCase(), async () => {
+    try {
+      await withSlotReservation(resumeGuard.slotExempt, async () => {
+        // Wake port may have been reassigned to a newly-invited agent while
+        // this one was paused. Reallocate (UX: "wake port may change").
+        let newPort: number;
+        try { newPort = allocatePort(); }
+        catch { writeJson(res, 503, corsHeaders, { error: 'no_free_port' }); return; }
+
+        const stampExpiry = !resumeGuard.slotExempt && isAlphaGateEnabled();
+        const expiresAt = stampExpiry ? Date.now() + getAgentTtlMs() : null;
+
+        getDb().prepare(
+          `UPDATE agent_keys
+              SET wake_port = ?, last_used_at = ?,
+                  expires_at = ?, paused_at = NULL, warned_at = NULL
+            WHERE agent_address = ?`
+        ).run(newPort, Date.now(), expiresAt, agentAddress.toLowerCase());
+
+        try {
+          await spawnAgentPm2({
+            agentAddress: agentAddress.toLowerCase(),
+            pm2Name: row.pm2_name,
+            paramName: row.param_name,
+            wakePort: newPort,
+          });
+        } catch (err) {
+          if (err instanceof AgentDisabledError) {
+            // trader config says enabled:false; user reactivates via Settings.
+            console.log(`[vault-resume] spawn deferred: ${row.pm2_name} ${err.message}`);
+          } else {
+            console.error(`[vault-resume] spawn failed: ${(err as Error).message}`);
+            writeJson(res, 500, corsHeaders, { error: 'spawn_failed' }); return;
+          }
+        }
+
+        consumeWaitlistInvite(result.entry.wallet);
+        void processQueueTick().catch((err) => {
+          console.warn('[alpha] processQueueTick after resume failed:', (err as Error).message);
+        });
+
+        writeJson(res, 200, corsHeaders, { ok: true, wakePort: newPort, expiresAt });
       });
     } catch (err) {
       if (err instanceof GuardError) {

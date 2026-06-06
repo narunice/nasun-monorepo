@@ -33,13 +33,14 @@ export function AlphaGate({ walletAddress, children, bypass }: Props) {
   if (bypass) return <>{children}</>;
   if (!status.status) return <>{children}</>;  // fail-open while loading
 
-  // The two states that get the regular AI tab. Everything else (waiting,
-  // invited, paused, expired, none) renders the alpha panel — even
-  // "invited", because the activation still goes through CreateAgentModal
-  // which sits inside `children`. To avoid that chicken-and-egg the
-  // 'invited' state explicitly renders children too, with the banner
-  // adding the time-to-claim warning above.
-  if (status.status.state === 'active' || status.status.state === 'exempt' || status.status.state === 'invited') {
+  // The states that get the regular AI tab. A first-time 'invited' user runs
+  // activation through CreateAgentModal (inside `children`), with the banner
+  // adding the time-to-claim warning above. A RETURNING 'invited' user
+  // (resume=true) already has a paused agent and funds, so they get the panel
+  // instead, which offers a one-tap Resume rather than the setup wizard.
+  const s = status.status;
+  const invitedFreshSetup = s.state === 'invited' && !s.resume;
+  if (s.state === 'active' || s.state === 'exempt' || invitedFreshSetup) {
     return <>{children}</>;
   }
 

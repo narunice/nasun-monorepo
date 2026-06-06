@@ -69,6 +69,11 @@ export interface NotifyEnv {
    *  strategy-only header — that's the old behavior that caused
    *  Santa-vs-Jane misattribution on 2026-05-23. */
   AGENT_NAME?: string;
+  /** Minimum gap (ms) between repeated HOLD notifications that carry the same
+   *  reason. Default 6h. BUY/SELL and reason changes are never throttled. A
+   *  starved agent (e.g. insufficient_quote_balance every cycle) would
+   *  otherwise spam an identical HOLD every INTERVAL_MINUTES. */
+  HOLD_NOTIFY_MIN_INTERVAL_MS?: string;
 }
 
 export interface HeartbeatNotifyDeps {
@@ -381,6 +386,31 @@ function signPushBody(secretHex: string, body: string): string {
   return createHmac('sha256', secret).update(input).digest('hex');
 }
 
+const DEFAULT_HOLD_NOTIFY_MIN_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+// Per-process (= per-agent, one runtime per agent) memory of the last HOLD we
+// pushed, so a starved agent repeating the same HOLD reason every cycle does
+// not spam the user. BUY/SELL are never throttled; a HOLD with a NEW reason is
+// not throttled; and a HOLD with the same reason still gets through once per
+// window as a proof-of-life heartbeat.
+let lastHoldNotify: { reason: string; at: number } | null = null;
+
+function holdThrottleWindowMs(env: NotifyEnv): number {
+  const raw = Number(env.HOLD_NOTIFY_MIN_INTERVAL_MS);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_HOLD_NOTIFY_MIN_INTERVAL_MS;
+}
+
+/** True when this HOLD repeats the last pushed HOLD's reason inside the window. */
+function isHoldThrottled(result: TraderCycleResult, env: NotifyEnv, now: number): boolean {
+  if (result.decision?.action !== 'HOLD') return false;
+  const reason = (result.decision?.reason ?? '').trim();
+  return (
+    lastHoldNotify !== null &&
+    lastHoldNotify.reason === reason &&
+    now - lastHoldNotify.at < holdThrottleWindowMs(env)
+  );
+}
+
 function shouldNotify(result: TraderCycleResult, env: NotifyEnv): boolean {
   if (env.HEARTBEAT_PUSH_ENABLED !== 'true') return false;
   if (!env.WALLET_ADDRESS) return false;
@@ -404,6 +434,21 @@ export async function maybeNotifyHeartbeat(
 ): Promise<void> {
   const log = deps.log ?? defaultLog;
   if (!shouldNotify(result, env)) return;
+
+  // Suppress a HOLD that just repeats the previous HOLD's reason (e.g. a
+  // starved agent emitting insufficient_quote_balance every cycle). BUY/SELL,
+  // a changed reason, and the first HOLD after the window elapses still notify.
+  const now = Date.now();
+  if (isHoldThrottled(result, env, now)) {
+    log('[notify] HOLD push suppressed (same reason within throttle window)');
+    return;
+  }
+  // Record the HOLD signature now that it has cleared the throttle, so a
+  // downstream push failure doesn't re-open the floodgate next cycle (the AER
+  // remains the SSOT for the action).
+  if (result.decision?.action === 'HOLD') {
+    lastHoldNotify = { reason: (result.decision?.reason ?? '').trim(), at: now };
+  }
 
   // Non-null guarded by shouldNotify above.
   const wallet = env.WALLET_ADDRESS!.toLowerCase();
@@ -474,6 +519,8 @@ export const __testing__ = {
   escapeHtml,
   truncateToByteCap,
   shouldNotify,
+  isHoldThrottled,
+  resetHoldThrottle: () => { lastHoldNotify = null; },
   signPushBody,
   formatHeartbeatHtml,
   MAX_HTML_BYTES,

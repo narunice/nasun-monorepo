@@ -56,7 +56,7 @@ const MAX_BODY_BYTES = 16 * 1024;
 // signature for one cannot be replayed for the other.
 export type Purpose =
   | 'link' | 'revoke' | 'list'
-  | 'vault-upload' | 'vault-delete' | 'vault-restore'
+  | 'vault-upload' | 'vault-delete' | 'vault-restore' | 'vault-resume'
   | 'alpha-join' | 'alpha-leave' | 'alpha-tg-link'
   | 'chat-wake';
 
@@ -124,6 +124,11 @@ export function buildChallengeText(entry: Omit<ChallengeEntry, 'expiresAt'>, non
       break;
     case 'vault-restore':
       lines.push('Nasun AI: Restore agent (server vault)');
+      lines.push(`Wallet: ${entry.wallet}`);
+      lines.push(`Agent:  ${entry.agent}`);
+      break;
+    case 'vault-resume':
+      lines.push('Nasun AI: Resume agent for new alpha session');
       lines.push(`Wallet: ${entry.wallet}`);
       lines.push(`Agent:  ${entry.agent}`);
       break;
