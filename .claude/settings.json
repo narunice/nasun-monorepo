@@ -6,7 +6,20 @@
       "Bash(command -v identify)",
       "Bash(AWS_PROFILE=nasun-prod aws dynamodb scan --table-name nasun-referrals --region ap-northeast-2 --filter-expression '#s = :d' --expression-attribute-names '{\"#s\":\"status\"}' --expression-attribute-values '{\":d\":{\"S\":\"DECLINED\"}}' --projection-expression 'referredIdentityId, referrerIdentityId, reviewerNote, reviewedAt' --output json)",
       "Bash(git branch *)",
-      "Bash(git update-ref *)"
+      "Bash(git update-ref *)",
+      "Bash(awk '/function deriveAlphaState|function computeWalletState|function walletState|kind: .none/{found=1} found{print NR\": \"$0} found && /^}/{c++; if\\(c>=1 && /^}/\\) exit}' alpha-routes.ts)",
+      "Bash(timeout 400 ./scripts/deploy-nasun-chat-server-production.sh --force)",
+      "Bash(gh --version)",
+      "Bash(gh auth *)",
+      "Bash(git -C /tmp/portfolio-deploy init -b main -q)",
+      "Bash(git -C /tmp/portfolio-deploy add index.html)",
+      "Bash(git -C /tmp/portfolio-deploy commit -q -m 'feat: Aekyeong Wong product portfolio \\(Korbit PM\\) *)",
+      "Bash(git -C /tmp/portfolio-deploy log --oneline -1)",
+      "Bash(gh api *)",
+      "Bash(git -C /tmp/portfolio-deploy commit -q -m 'style: continuous-scroll responsive web view, keep print pagination *)",
+      "Bash(git -C /tmp/portfolio-deploy push -q origin main)",
+      "Bash(unset AWS_PROFILE)",
+      "Bash(gh pr create --base main --head feat/ecosystem-bet-volume-score --title 'feat\\(network-explorer\\): bot-resistant game bet volume in ecosystem weekly score' --body ' *)"
     ]
   }
 }
