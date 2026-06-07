@@ -17,6 +17,11 @@ import {
 import * as jose from 'jose';
 import { randomBytes } from 'crypto';
 import { jwtToAddress } from '@mysten/sui/zklogin';
+import {
+  isIssuerSaltEnabled,
+  lookupSaltViaIssuer,
+  createSaltViaIssuer,
+} from '../../_shared/auth/issuer-salt';
 
 // Environment variables
 const ZKLOGIN_TABLE = process.env.ZKLOGIN_TABLE_NAME || 'ZkLoginUsers';
@@ -154,6 +159,38 @@ async function handleGetSalt(jwt: string, origin?: string): Promise<APIGatewayPr
     if (iss.includes('google')) provider = 'google';
     else if (iss.includes('apple')) provider = 'apple';
     else if (iss.includes('twitch')) provider = 'twitch';
+
+    // AWS-exit grace: resolve the salt from the self-hosted PG store when wired, otherwise fall through
+    // to the DynamoDB path below. The salt+address pair is immutable per (provider, sub), so the same
+    // OIDC sub always derives the same Sui address (existing zkLogin users are not orphaned). Unlike the
+    // DynamoDB path, profile fields (email/name/picture) are not re-persisted on each login (the issuer
+    // store is append-only); the response still returns the JWT-fresh values, and user_profiles remains
+    // the source of truth for profile data.
+    if (isIssuerSaltEnabled()) {
+      const found = await lookupSaltViaIssuer(provider, sub);
+      if (found.salt !== null) {
+        return success(
+          { salt: found.salt, address: found.address, isNewUser: false, provider, email, name, picture },
+          origin
+        );
+      }
+      // First-seen: generate a salt, derive the address from the JWT, and persist (create-if-absent).
+      const salt = generateSalt();
+      const address = deriveSuiAddress(jwt, salt);
+      const created = await createSaltViaIssuer({ provider, sub, salt, address, email, name, picture });
+      return success(
+        {
+          salt: created.salt,
+          address: created.address,
+          isNewUser: created.isNewUser ?? true,
+          provider,
+          email,
+          name,
+          picture,
+        },
+        origin
+      );
+    }
 
     // 2. Create partition key
     const pk = `ZKLOGIN#${provider}#${sub}`;

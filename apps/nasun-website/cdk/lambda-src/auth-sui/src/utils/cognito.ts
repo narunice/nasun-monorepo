@@ -2,6 +2,7 @@ import {
   CognitoIdentityClient,
   GetOpenIdTokenForDeveloperIdentityCommand,
 } from '@aws-sdk/client-cognito-identity';
+import { isIssuerMintEnabled, mintViaIssuer } from '../../../_shared/auth/issuer-mint';
 
 const client = new CognitoIdentityClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const identityPoolId = process.env.COGNITO_IDENTITY_POOL_ID!;
@@ -19,10 +20,21 @@ export interface CognitoIdentity {
 export async function getCognitoIdentityId(
   walletAddress: string
 ): Promise<CognitoIdentity> {
-  try {
-    // Use nasun_ prefix to distinguish from metamask_ (Ethereum) identities
-    const developerUserIdentifier = `nasun_${walletAddress.toLowerCase()}`;
+  // Use nasun_ prefix to distinguish from metamask_ (Ethereum) identities. This is also the lookup
+  // key in issuer.identity_map (seeded from the Stage 1 Cognito export), so it must stay identical.
+  const developerUserIdentifier = `nasun_${walletAddress.toLowerCase()}`;
 
+  // AWS-exit grace: mint from the self-hosted issuer when wired, otherwise fall back to Cognito.
+  if (isIssuerMintEnabled()) {
+    try {
+      return await mintViaIssuer(developerUserIdentifier, 'sui');
+    } catch (error) {
+      console.error('Error minting identity from issuer:', error);
+      throw new Error('Failed to authenticate with identity issuer');
+    }
+  }
+
+  try {
     const command = new GetOpenIdTokenForDeveloperIdentityCommand({
       IdentityPoolId: identityPoolId,
       Logins: {
