@@ -8,7 +8,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
 import { createResponse, getRequestOrigin } from '../utils/response';
 
 // DynamoDB
@@ -19,17 +19,6 @@ const docClient = DynamoDBDocumentClient.from(ddbClient, {
 
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID || '';
-
-// JWKS singleton
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
-    );
-  }
-  return jwksInstance;
-}
 
 async function verifyJwt(authHeader: string | undefined): Promise<string | undefined> {
   if (!authHeader) {
@@ -52,10 +41,7 @@ async function verifyJwt(authHeader: string | undefined): Promise<string | undef
   }
 
   try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: 'https://cognito-identity.amazonaws.com',
-      audience: COGNITO_IDENTITY_POOL_ID,
-    });
+    const payload = await verifyIdentityPayload(token);
     return payload.sub;
   } catch (error: any) {
     const code = error?.code || 'UNKNOWN';

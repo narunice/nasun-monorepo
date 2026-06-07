@@ -1,44 +1,16 @@
-import { createRemoteJWKSet, jwtVerify, SignJWT } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
+import { verifyIdentityFromBearer } from '../../../_shared/auth/dual-jwks';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { randomBytes } from 'crypto';
 
-const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
-
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
-    );
-  }
-  return jwksInstance;
-}
-
 /**
- * Verify a Bearer token and extract identityId from Cognito JWT.
- * Returns undefined if verification fails.
- * NOTE: This function is ONLY for Cognito JWTs (register/list/remove).
+ * Verify a Bearer token and extract identityId.
+ * NOTE: This function is ONLY for identity JWTs (register/list/remove).
  *       For address book auth, use verifyAddressBookToken() instead.
+ * Delegates to the shared dual-JWKS verifier (Cognito + nasun-issuer during the AWS-exit grace window).
  */
 export async function verifyToken(authHeader: string | undefined): Promise<string | undefined> {
-  if (!authHeader?.startsWith('Bearer ')) return undefined;
-  const token = authHeader.slice(7);
-
-  if (!COGNITO_IDENTITY_POOL_ID) {
-    console.error('COGNITO_IDENTITY_POOL_ID is not set');
-    return undefined;
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: 'https://cognito-identity.amazonaws.com',
-      audience: COGNITO_IDENTITY_POOL_ID,
-    });
-    return payload.sub;
-  } catch (error) {
-    console.error('JWT verification failed:', error);
-    return undefined;
-  }
+  return verifyIdentityFromBearer(authHeader);
 }
 
 // ---- Address Book JWT (self-issued, separate from Cognito) ----

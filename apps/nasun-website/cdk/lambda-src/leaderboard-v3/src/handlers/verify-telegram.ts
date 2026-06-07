@@ -27,7 +27,7 @@ import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { grantIfReferralActivated } from '../utils/onboardingBonus';
@@ -59,17 +59,6 @@ const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID || '';
 
 // Module-scope cache for bot token (survives across warm invocations)
 let cachedBotToken: string | null = null;
-
-// JWKS singleton
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
-    );
-  }
-  return jwksInstance;
-}
 
 // ============================================
 // Types
@@ -152,10 +141,7 @@ async function verifyJwt(authHeader: string | undefined): Promise<{ sub?: string
   }
 
   try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: 'https://cognito-identity.amazonaws.com',
-      audience: COGNITO_IDENTITY_POOL_ID,
-    });
+    const payload = await verifyIdentityPayload(token);
     return { sub: payload.sub };
   } catch (error: any) {
     const code = error?.code || 'UNKNOWN';

@@ -13,13 +13,12 @@ import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-sec
 import { SuiClient } from "@mysten/sui/client";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { Transaction } from "@mysten/sui/transactions";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { verifyIdentityFromBearer } from "../../_shared/auth/dual-jwks";
 
 // ========== Config ==========
 
 const ALLIANCE_MINT_TABLE = process.env.ALLIANCE_MINT_TABLE || "nasun-alliance-mint";
 const USER_WALLETS_TABLE = process.env.USER_WALLETS_TABLE || "UserWallets";
-const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
 const SUI_RPC_URL = process.env.SUI_RPC_URL || "https://rpc.devnet.nasun.io";
 
 const ALLIANCE_PACKAGE_ID = process.env.ALLIANCE_PACKAGE_ID || "";
@@ -147,40 +146,8 @@ async function checkMintedOnChain(
 
 // ========== JWT Verification ==========
 
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL("https://cognito-identity.amazonaws.com/.well-known/jwks_uri"),
-    );
-  }
-  return jwksInstance;
-}
-
 async function verifyToken(authHeader: string | undefined): Promise<string | undefined> {
-  if (!authHeader?.startsWith("Bearer ")) return undefined;
-  const token = authHeader.slice(7);
-
-  if (!COGNITO_IDENTITY_POOL_ID) {
-    console.error("[alliance] COGNITO_IDENTITY_POOL_ID is not set");
-    return undefined;
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: "https://cognito-identity.amazonaws.com",
-      audience: COGNITO_IDENTITY_POOL_ID,
-    });
-    return payload.sub;
-  } catch (error) {
-    const code = (error as { code?: string })?.code;
-    if (code === "ERR_JWT_EXPIRED") {
-      console.warn("[alliance] JWT expired (client must re-authenticate)");
-    } else {
-      console.error("[alliance] JWT verification failed:", error);
-    }
-    return undefined;
-  }
+  return verifyIdentityFromBearer(authHeader);
 }
 
 // ========== Admin Keypair ==========

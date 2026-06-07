@@ -7,11 +7,10 @@
  * for non-MetaMask-provider primaries.
  */
 
-// ── jose: bypass JWT, return a fixed identity as the authenticated user ──
+// ── auth: bypass the dual-JWKS verifier, return a fixed identity as the authenticated user ──
 let AUTH_ID = '';
-jest.mock('jose', () => ({
-  createRemoteJWKSet: () => ({}),
-  jwtVerify: async () => ({ payload: { sub: AUTH_ID } }),
+jest.mock('../../_shared/auth/dual-jwks', () => ({
+  verifyIdentityFromBearer: async () => AUTH_ID,
 }));
 
 // ── AWS SDK: capture commands, serve profiles from a per-test fixture ──

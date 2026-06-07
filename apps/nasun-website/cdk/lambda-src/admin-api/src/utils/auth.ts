@@ -1,6 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import type { APIGatewayProxyEvent } from "aws-lambda";
-import { createRemoteJWKSet, jwtVerify } from "jose";
+import { verifyIdentityFromBearer } from "../../../_shared/auth/dual-jwks";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || "UserProfiles";
@@ -62,39 +62,15 @@ export function extractIdentityIdFromAuthorizer(
   return requestContext.authorizer?.identityId as string | undefined;
 }
 
-// JWKS for manual token verification (dual-purpose endpoints like GET /nft-collections?admin=true)
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL("https://cognito-identity.amazonaws.com/.well-known/jwks_uri")
-    );
-  }
-  return jwksInstance;
-}
-
-// Cognito Identity Pool ID for audience validation
-const IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
-
 /**
  * Manually verify a Bearer token and extract identityId.
  * Used for dual-purpose endpoints where API Gateway authorizer is set to NONE
  * but some paths require authentication (e.g., GET /nft-collections?admin=true).
+ * Delegates to the shared dual-JWKS verifier (Cognito + nasun-issuer during the AWS-exit grace window).
  */
 export async function verifyTokenManually(
   authHeader: string | undefined
 ): Promise<string | undefined> {
-  if (!authHeader?.startsWith("Bearer ")) return undefined;
-  const token = authHeader.slice(7);
-
-  try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: "https://cognito-identity.amazonaws.com",
-      audience: IDENTITY_POOL_ID,
-    });
-    return payload.sub;
-  } catch {
-    return undefined;
-  }
+  return verifyIdentityFromBearer(authHeader);
 }
 

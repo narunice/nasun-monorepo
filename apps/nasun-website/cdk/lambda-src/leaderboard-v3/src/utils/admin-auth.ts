@@ -9,11 +9,10 @@
 
 import { APIGatewayProxyEvent } from 'aws-lambda';
 import { DynamoDBClient, GetItemCommand } from '@aws-sdk/client-dynamodb';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { verifyIdentityFromBearer } from '../../../_shared/auth/dual-jwks';
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
-const COGNITO_IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID;
 
 export interface AdminUser {
   identityId: string;
@@ -22,39 +21,12 @@ export interface AdminUser {
   role: string;
 }
 
-// JWKS singleton for token verification
-let jwksInstance: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getJWKS() {
-  if (!jwksInstance) {
-    jwksInstance = createRemoteJWKSet(
-      new URL('https://cognito-identity.amazonaws.com/.well-known/jwks_uri')
-    );
-  }
-  return jwksInstance;
-}
-
 /**
- * Verify a Bearer token and extract identityId from Cognito JWT.
- * Returns undefined if verification fails.
+ * Verify a Bearer token and extract identityId. Delegates to the shared dual-JWKS verifier
+ * (Cognito + nasun-issuer during the AWS-exit grace window).
  */
 export async function verifyToken(authHeader: string | undefined): Promise<string | undefined> {
-  if (!authHeader?.startsWith('Bearer ')) return undefined;
-  const token = authHeader.slice(7);
-
-  if (!COGNITO_IDENTITY_POOL_ID) {
-    console.error('COGNITO_IDENTITY_POOL_ID is not set');
-    return undefined;
-  }
-
-  try {
-    const { payload } = await jwtVerify(token, getJWKS(), {
-      issuer: 'https://cognito-identity.amazonaws.com',
-      audience: COGNITO_IDENTITY_POOL_ID,
-    });
-    return payload.sub;
-  } catch {
-    return undefined;
-  }
+  return verifyIdentityFromBearer(authHeader);
 }
 
 /**
