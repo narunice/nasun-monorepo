@@ -20,6 +20,7 @@ import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
+import { issuerVerifyEnv } from "./issuer-env";
 
 interface GenesisPassStackProps extends cdk.StackProps {
   userProfilesTableName: string;
@@ -205,6 +206,8 @@ export class GenesisPassStack extends cdk.Stack {
       memorySize: 256,
       logGroup: authorizerLogGroup,
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
         NODE_OPTIONS: "--enable-source-maps",
       },

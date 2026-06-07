@@ -8,6 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
+import { issuerVerifyEnv, issuerMintEnv, issuerSaltEnv } from './issuer-env';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
@@ -166,6 +167,8 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
+        // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
+        ...issuerMintEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
@@ -276,6 +279,8 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(15),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -348,6 +353,8 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions, // tweetnacl + bs58 bundled (only @aws-sdk/* is external)
       timeout: cdk.Duration.seconds(15),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -417,6 +424,8 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions, // @mysten/sui bundled (only @aws-sdk/* is external)
       timeout: cdk.Duration.seconds(15),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -496,6 +505,8 @@ export class AuthStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       environment: {
+        // AWS-exit grace: persist salt to the self-hosted issuer when configured (else DynamoDB).
+        ...issuerSaltEnv(),
         ZKLOGIN_TABLE_NAME: zkLoginTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         ALLOWED_AUD: process.env.GOOGLE_CLIENT_ID || '',
@@ -578,6 +589,8 @@ export class AuthStack extends cdk.Stack {
       timeout: cdk.Duration.seconds(30),
       memorySize: 256, // extra memory for @mysten/sui bundle cold start (same as zkLogin Lambda)
       environment: {
+        // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
+        ...issuerMintEnv(),
         NONCE_TABLE_NAME: suiNonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',

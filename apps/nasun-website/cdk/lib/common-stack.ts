@@ -15,6 +15,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
+import { issuerVerifyEnv } from './issuer-env';
 
 export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
@@ -288,6 +289,8 @@ export class CommonStack extends cdk.Stack {
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
@@ -336,6 +339,8 @@ export class CommonStack extends cdk.Stack {
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_WALLETS_TABLE: userWalletsTable.tableName,
         ADDRESS_BOOKS_TABLE: addressBooksTable.tableName,
@@ -388,6 +393,8 @@ export class CommonStack extends cdk.Stack {
       memorySize: 512,
       timeout: cdk.Duration.seconds(60),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         // Leaderboard V3 tables (accounts + seasons for rank lookup)
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
         LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",

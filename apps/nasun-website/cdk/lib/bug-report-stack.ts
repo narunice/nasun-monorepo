@@ -29,6 +29,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
+import { issuerVerifyEnv } from './issuer-env';
 
 export interface BugReportStackProps extends cdk.StackProps {
   environmentName: string;
@@ -136,6 +137,9 @@ export class BugReportStack extends cdk.Stack {
       memorySize: 128,
       depsLockFilePath: path.join(__dirname, '../pnpm-lock.yaml'),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        // Same admin-api/tokenAuthorizer.ts handler as admin-stack — must be wired identically.
+        ...issuerVerifyEnv(),
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
       bundling: {

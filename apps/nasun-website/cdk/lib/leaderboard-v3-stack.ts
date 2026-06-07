@@ -28,6 +28,7 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as path from 'path';
 
 import { ALLOWED_ORIGINS_ENV } from './constants/cors';
+import { issuerVerifyEnv } from './issuer-env';
 
 export interface LeaderboardV3StackProps extends cdk.StackProps {
   /** Environment name (dev, staging, prod) */
@@ -191,6 +192,10 @@ export class LeaderboardV3Stack extends cdk.Stack {
     // ============================================
 
     const lambdaEnvironment: Record<string, string> = {
+      // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+      // Shared object — propagates to every leaderboard-v3 lambda (telegram verify/status/disconnect,
+      // admin-auth, etc.); a no-op env on the non-verifying handlers.
+      ...issuerVerifyEnv(),
       LEADERBOARD_V3_POSTS_TABLE: this.postsTable.tableName,
       LEADERBOARD_V3_ACCOUNTS_TABLE: this.accountsTable.tableName,
       LEADERBOARD_V3_SEASONS_TABLE: this.seasonsTable.tableName,

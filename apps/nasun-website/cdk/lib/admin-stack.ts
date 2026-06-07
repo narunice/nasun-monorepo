@@ -8,6 +8,7 @@ import { NodejsFunction, OutputFormat } from "aws-cdk-lib/aws-lambda-nodejs";
 import { Construct } from "constructs";
 import * as path from "path";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
+import { issuerVerifyEnv } from './issuer-env';
 
 interface AdminStackProps extends cdk.StackProps {
   userProfilesTableName?: string;
@@ -170,6 +171,8 @@ export class AdminStack extends cdk.Stack {
         ACTIVATIONS_TABLE: activationsTableName,
         INTERNAL_CACHE_BUCKET: internalCacheBucket.bucketName,
         ALLOWED_ORIGINS: allowedOrigins,
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
         // Onboarding bonus backfill on referral approve
         EXPLORER_API_URL: process.env.EXPLORER_API_URL || "",
@@ -226,6 +229,8 @@ export class AdminStack extends cdk.Stack {
         NFT_COLLECTIONS_TABLE: nftCollectionsTableName,
         USER_PROFILES_TABLE: userProfilesTableName,
         ALLOWED_ORIGINS: allowedOrigins,
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
       bundling: {
@@ -250,6 +255,8 @@ export class AdminStack extends cdk.Stack {
       memorySize: 128,
       depsLockFilePath: path.join(__dirname, "../pnpm-lock.yaml"),
       environment: {
+        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
+        ...issuerVerifyEnv(),
         COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId,
       },
       bundling: {
