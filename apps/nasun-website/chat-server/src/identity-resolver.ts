@@ -15,6 +15,7 @@
  */
 
 import { gunzipSync } from 'zlib';
+import postgres from 'postgres';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
 import { describeFetchError } from './fetch-error.js';
@@ -29,6 +30,51 @@ function getDdbClient(): DynamoDBDocumentClient {
   const region = process.env.AWS_REGION || 'ap-northeast-2';
   ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region }));
   return ddbClient;
+}
+
+// ===== PostgreSQL DAL client (AWS-exit repoint, lazy, gated on DAL_DATABASE_URL) =====
+//
+// When DAL_DATABASE_URL is set, wallet<->identity and social-badge lookups read
+// from the self-hosted nasun_dal Postgres (wallet_owner + user_profiles tables,
+// the migrated DynamoDB UserWallets WALLET_OWNER sentinel + UserProfiles). When
+// the var is absent, the original DynamoDB path is used unchanged, preserving the
+// AWS rollback window (additive-first cutover). The PG schema is the faithful
+// migration of the DynamoDB tables (see 2026-06-07-stage2-offchain-design.md §B),
+// so the social/badge parsing logic is shared verbatim between both backends.
+
+let dalSql: ReturnType<typeof postgres> | null = null;
+let dalInitDone = false;
+
+function getDal(): ReturnType<typeof postgres> | null {
+  if (dalInitDone) return dalSql;
+  dalInitDone = true;
+  const url = process.env.DAL_DATABASE_URL;
+  if (url) {
+    dalSql = postgres(url, { max: 5, idle_timeout: 30, connect_timeout: 10 });
+    console.log('[identity-resolver] DAL backend: PostgreSQL (nasun_dal)');
+  } else {
+    console.log('[identity-resolver] DAL backend: DynamoDB (legacy)');
+  }
+  return dalSql;
+}
+
+/**
+ * Shape a nasun_dal user_profiles row like a DynamoDB UserProfiles item so the
+ * existing hasSocialConnection/parseSocialBadges logic applies unchanged.
+ * provider/role live in the attributes JSONB long-tail; promoted columns are
+ * twitter_handle/twitter_id/telegram_user_id/is_telegram_member/linked_accounts.
+ */
+function dalRowToProfileItem(r: Record<string, unknown>): Record<string, unknown> {
+  return {
+    identityId: r.identity_id,
+    provider: r.provider,
+    twitterHandle: r.twitter_handle,
+    twitterId: r.twitter_id,
+    telegramUserId: r.telegram_user_id,
+    isTelegramMember: r.is_telegram_member,
+    linkedAccounts: r.linked_accounts,
+    role: r.role,
+  };
 }
 
 // ===== Config =====
@@ -64,6 +110,23 @@ let refreshPromise: Promise<void> | null = null;
  * Handles S3 presigned URL offload (same pattern as settle-pado.ts).
  */
 async function loadIdentityMap(): Promise<Map<string, string>> {
+  const dal = getDal();
+  if (dal) {
+    // wallet_owner is the migrated WALLET_OWNER sentinel reverse index
+    // (wallet_address -> owner_identity_id), the authoritative bulk map. All
+    // stored addresses are lowercase (verified), but lowercase defensively to
+    // match the DynamoDB/WALLET_MAPPINGS path's key normalization.
+    const rows = await traceAsync(
+      'identity-resolver.dal.bulk',
+      () => dal<{ wallet_address: string; owner_identity_id: string }[]>`
+        SELECT wallet_address, owner_identity_id FROM wallet_owner`,
+      { threshold: 500 },
+    );
+    const m = new Map<string, string>();
+    for (const r of rows) m.set(r.wallet_address.toLowerCase(), r.owner_identity_id);
+    return m;
+  }
+
   if (!WALLET_MAPPINGS_URL) {
     return new Map();
   }
@@ -211,6 +274,20 @@ export async function getIdentityMap(): Promise<Map<string, string>> {
  * resolveIdentityId in pado-idea-api.ts.
  */
 export async function resolveIdentityId(walletAddress: string): Promise<string | null> {
+  const dal = getDal();
+  if (dal) {
+    try {
+      const rows = await dal<{ owner_identity_id: string }[]>`
+        SELECT owner_identity_id FROM wallet_owner
+        WHERE wallet_address = ${walletAddress.toLowerCase()}
+        LIMIT 1`;
+      return rows[0]?.owner_identity_id ?? null;
+    } catch (err) {
+      console.error('[identity-resolver] DAL lookup failed:', (err as Error).message);
+      return null;
+    }
+  }
+
   try {
     const result = await getDdbClient().send(new GetCommand({
       TableName: USER_WALLETS_TABLE,
@@ -233,6 +310,21 @@ export async function resolveIdentityIds(
   addresses: string[],
 ): Promise<Map<string, string>> {
   if (addresses.length === 0) return new Map();
+
+  const dal = getDal();
+  if (dal) {
+    const result = new Map<string, string>();
+    try {
+      const lowered = addresses.map((a) => a.toLowerCase());
+      const rows = await dal<{ wallet_address: string; owner_identity_id: string }[]>`
+        SELECT wallet_address, owner_identity_id FROM wallet_owner
+        WHERE wallet_address = ANY(${lowered})`;
+      for (const r of rows) result.set(r.wallet_address.toLowerCase(), r.owner_identity_id);
+    } catch (err) {
+      console.error('[identity-resolver] DAL batch lookup failed:', (err as Error).message);
+    }
+    return result;
+  }
 
   const ddb = getDdbClient();
   const result = new Map<string, string>();
@@ -321,6 +413,19 @@ const BATCH_GET_MAX_RETRIES = 3;
  */
 export async function checkSocialConnectionsBatch(identityIds: string[]): Promise<Set<string>> {
   if (identityIds.length === 0) return new Set();
+
+  const dal = getDal();
+  if (dal) {
+    const result = new Set<string>();
+    const rows = await dal<Record<string, unknown>[]>`
+      SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
+             linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
+      FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
+    for (const r of rows) {
+      if (hasSocialConnection(dalRowToProfileItem(r))) result.add(r.identity_id as string);
+    }
+    return result;
+  }
 
   const ddb = getDdbClient();
   const result = new Set<string>();
@@ -462,6 +567,19 @@ async function fetchBadgesChunk(
  */
 export async function getSocialBadgesBatch(identityIds: string[]): Promise<Map<string, SocialBadges>> {
   if (identityIds.length === 0) return new Map();
+
+  const dal = getDal();
+  if (dal) {
+    const result = new Map<string, SocialBadges>();
+    const rows = await dal<Record<string, unknown>[]>`
+      SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
+             linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
+      FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
+    for (const r of rows) {
+      result.set(r.identity_id as string, parseSocialBadges(dalRowToProfileItem(r)));
+    }
+    return result;
+  }
 
   const ddb = getDdbClient();
   const result = new Map<string, SocialBadges>();

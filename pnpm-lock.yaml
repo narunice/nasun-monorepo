@@ -54,6 +54,8 @@ importers:
         specifier: ^5.9.3
         version: 5.9.3
 
+  apps/baram/scripts: {}
+
   apps/gensol-website/frontend:
     dependencies:
       '@fortawesome/fontawesome-svg-core':
@@ -405,6 +407,9 @@ importers:
       better-sqlite3:
         specifier: ^11.7.0
         version: 11.10.0
+      postgres:
+        specifier: ^3.4.5
+        version: 3.4.8
       ulid:
         specifier: ^3.0.2
         version: 3.0.2
@@ -16112,7 +16117,7 @@ snapshots:
       obug: 2.1.1
       std-env: 4.1.0
       tinyrainbow: 3.1.0
-      vitest: 4.1.7(@types/node@25.3.2)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.3(@types/node@25.3.2)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0))
+      vitest: 4.1.7(@types/node@22.19.15)(@vitest/coverage-v8@4.1.7)(happy-dom@20.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jsdom@28.1.0(@noble/hashes@1.8.0))(vite@7.3.3(@types/node@22.19.15)(jiti@1.21.7)(terser@5.46.0)(tsx@4.21.0))
 
   '@vitest/expect@3.2.4':
     dependencies:
@@ -16218,7 +16223,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.15
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.15)(@vitest/ui@3.2.4)(happy-dom@20.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@27.4.0(@noble/hashes@2.0.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(terser@5.46.0)(tsx@4.21.0)
+      vitest: 3.2.4(@types/debug@4.1.12)(@types/node@22.19.15)(@vitest/ui@3.2.4)(happy-dom@20.9.0(bufferutil@4.1.0)(utf-8-validate@6.0.6))(jiti@1.21.7)(jsdom@28.1.0(@noble/hashes@1.8.0))(terser@5.46.0)(tsx@4.21.0)
 
   '@vitest/utils@3.2.4':
     dependencies:
