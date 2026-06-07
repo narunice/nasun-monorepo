@@ -56,7 +56,7 @@
     "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
     "i18next": "^25.2.1",
-    "i18next-http-backend": "^3.0.2",
+    "i18next-http-backend": "^3.0.5",
     "lucide-react": "^0.511.0",
     "qrcode": "^1.5.4",
     "react": "^19.2.3",
@@ -109,6 +109,6 @@
     "typescript-eslint": "^8.18.2",
     "vite": "^7.3.0",
     "vite-plugin-node-polyfills": "^0.25.0",
-    "vitest": "^4.0.18"
+    "vitest": "^4.1.0"
   }
 }
