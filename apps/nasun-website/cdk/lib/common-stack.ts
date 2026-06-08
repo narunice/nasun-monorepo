@@ -16,6 +16,7 @@ import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
+import { identityWriteEnv } from './identity-env';
 
 export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
@@ -341,6 +342,8 @@ export class CommonStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL S1.2: also mirror register/remove writes to the box nasun-identity service when wired.
+        ...identityWriteEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_WALLETS_TABLE: userWalletsTable.tableName,
         ADDRESS_BOOKS_TABLE: addressBooksTable.tableName,

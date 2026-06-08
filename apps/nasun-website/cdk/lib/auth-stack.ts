@@ -9,6 +9,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
 import { issuerVerifyEnv, issuerMintEnv, issuerSaltEnv } from './issuer-env';
+import { identityWriteEnv } from './identity-env';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
@@ -169,6 +170,8 @@ export class AuthStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
         ...issuerMintEnv(),
+        // AWS-exit DAL S1.2: also mirror the profile write to the box nasun-identity service when wired.
+        ...identityWriteEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
@@ -591,6 +594,8 @@ export class AuthStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
         ...issuerMintEnv(),
+        // AWS-exit DAL S1.2: also mirror the profile write to the box nasun-identity service when wired.
+        ...identityWriteEnv(),
         NONCE_TABLE_NAME: suiNonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
