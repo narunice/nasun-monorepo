@@ -320,8 +320,10 @@ async function handleRegister(event: APIGatewayProxyEvent): Promise<APIGatewayPr
       console.warn('[registerWallet] sync webhook failed:', err);
     });
     // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op
-    // unless wired). DynamoDB is the source of truth; the box reproduces register/idempotent/transfer.
-    await mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, { identityId, walletAddress: addr });
+    // unless wired). Fire-and-forget like the webhook above so a slow/down box never delays the
+    // register response; the helper never throws. DynamoDB is SoT and dal-reload (full re-scan)
+    // converges any mirror dropped on a Lambda freeze.
+    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, { identityId, walletAddress: addr });
   }
 
   return jsonResponse(result.statusCode, result.body);
@@ -377,9 +379,10 @@ async function handleRemove(event: APIGatewayProxyEvent): Promise<APIGatewayProx
   });
 
   // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op unless
-  // wired). DynamoDB is the source of truth; the box reproduces the sentinel-CAS delete + cleanup.
+  // wired). Fire-and-forget so a slow/down box never delays the remove response; the helper never
+  // throws. DynamoDB is SoT and dal-reload converges any mirror dropped on a Lambda freeze.
   if (result.statusCode === 200) {
-    await mirrorIdentityWrite(IDENTITY_ROUTES.walletRemove, { identityId, walletAddress: String(body.walletAddress).toLowerCase() });
+    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRemove, { identityId, walletAddress: String(body.walletAddress).toLowerCase() });
   }
 
   return jsonResponse(result.statusCode, result.body);

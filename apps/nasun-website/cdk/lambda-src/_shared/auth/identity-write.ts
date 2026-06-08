@@ -31,11 +31,6 @@ export const IDENTITY_ROUTES = {
   walletRemove: '/wallet/remove',
 } as const;
 
-/** True when the box identity service is wired (both URL and bearer present). */
-export function isIdentityWriteEnabled(): boolean {
-  return !!(process.env.IDENTITY_WRITE_URL && process.env.IDENTITY_WRITE_SECRET);
-}
-
 /**
  * POST `payload` to a box identity route (e.g. IDENTITY_ROUTES.profileUpsert). No-op unless wired.
  * NEVER throws: a missing config, non-2xx status (status only, never the body — it carries

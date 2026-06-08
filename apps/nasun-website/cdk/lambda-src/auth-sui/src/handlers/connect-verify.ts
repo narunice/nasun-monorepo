@@ -126,15 +126,20 @@ export async function handleConnectVerify(
   const { identityId, token } = await getCognitoIdentityId(walletAddress);
 
   // 6. Save/update user profile
+  let profileSaved = true;
   try {
     await createOrUpdateSuiProfile(identityId, walletAddress);
   } catch (error: any) {
+    profileSaved = false;
     console.error('Failed to save user profile, but continuing:', maskSensitiveData({ message: error?.message }));
   }
 
   // 6b. AWS-exit DAL S1.2: mirror the profile write to the box nasun-identity service (best-effort
-  // follower; no-op unless wired). DynamoDB above stays the source of truth; dal-reload reconciles.
-  await mirrorIdentityWrite(IDENTITY_ROUTES.profileUpsert, { identityId, walletAddress, provider: 'Nasun Wallet' });
+  // follower; no-op unless wired). Only when the authoritative DynamoDB write succeeded, so the box
+  // never holds a profile DynamoDB lacks (which dal-reconcile would flag as a structural extra).
+  if (profileSaved) {
+    await mirrorIdentityWrite(IDENTITY_ROUTES.profileUpsert, { identityId, walletAddress, provider: 'Nasun Wallet' });
+  }
 
   // 7. Generate HMAC wallet proof
   // Battalion NFT register-user Lambda validates walletProof as a required parameter
