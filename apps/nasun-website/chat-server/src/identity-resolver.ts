@@ -112,19 +112,28 @@ let refreshPromise: Promise<void> | null = null;
 async function loadIdentityMap(): Promise<Map<string, string>> {
   const dal = getDal();
   if (dal) {
-    // wallet_owner is the migrated WALLET_OWNER sentinel reverse index
-    // (wallet_address -> owner_identity_id), the authoritative bulk map. All
-    // stored addresses are lowercase (verified), but lowercase defensively to
-    // match the DynamoDB/WALLET_MAPPINGS path's key normalization.
-    const rows = await traceAsync(
-      'identity-resolver.dal.bulk',
-      () => dal<{ wallet_address: string; owner_identity_id: string }[]>`
-        SELECT wallet_address, owner_identity_id FROM wallet_owner`,
-      { threshold: 500 },
-    );
-    const m = new Map<string, string>();
-    for (const r of rows) m.set(r.wallet_address.toLowerCase(), r.owner_identity_id);
-    return m;
+    try {
+      // wallet_owner is the migrated WALLET_OWNER sentinel reverse index
+      // (wallet_address -> owner_identity_id), the authoritative bulk map. All
+      // stored addresses are lowercase (verified), but lowercase defensively to
+      // match the DynamoDB/WALLET_MAPPINGS path's key normalization.
+      const rows = await traceAsync(
+        'identity-resolver.dal.bulk',
+        () => dal<{ wallet_address: string; owner_identity_id: string }[]>`
+          SELECT wallet_address, owner_identity_id FROM wallet_owner`,
+        { threshold: 500 },
+      );
+      const m = new Map<string, string>();
+      for (const r of rows) m.set(r.wallet_address.toLowerCase(), r.owner_identity_id);
+      return m;
+    } catch (err) {
+      // DAL down (wg/box unreachable): fall through to the WALLET_MAPPINGS HTTP
+      // path below so the bulk cache still refreshes off DynamoDB (still SoT
+      // during P1). warn-level so it surfaces in log scans, not a silent stale cache.
+      console.warn(
+        `[identity-resolver] DAL bulk load failed, falling back to WALLET_MAPPINGS: ${(err as Error).message}`,
+      );
+    }
   }
 
   if (!WALLET_MAPPINGS_URL) {
@@ -283,8 +292,12 @@ export async function resolveIdentityId(walletAddress: string): Promise<string |
         LIMIT 1`;
       return rows[0]?.owner_identity_id ?? null;
     } catch (err) {
-      console.error('[identity-resolver] DAL lookup failed:', (err as Error).message);
-      return null;
+      // Fall through to the DynamoDB lookup below (still SoT during P1) rather
+      // than returning null, which would look like an unregistered wallet.
+      console.error(
+        '[identity-resolver] DAL lookup failed, falling back to DynamoDB:',
+        (err as Error).message,
+      );
     }
   }
 
@@ -313,17 +326,22 @@ export async function resolveIdentityIds(
 
   const dal = getDal();
   if (dal) {
-    const result = new Map<string, string>();
     try {
+      const result = new Map<string, string>();
       const lowered = addresses.map((a) => a.toLowerCase());
       const rows = await dal<{ wallet_address: string; owner_identity_id: string }[]>`
         SELECT wallet_address, owner_identity_id FROM wallet_owner
         WHERE wallet_address = ANY(${lowered})`;
       for (const r of rows) result.set(r.wallet_address.toLowerCase(), r.owner_identity_id);
+      return result;
     } catch (err) {
-      console.error('[identity-resolver] DAL batch lookup failed:', (err as Error).message);
+      // Fall through to the DynamoDB BatchGet path below rather than returning a
+      // partial/empty map (which would silently drop identities from wash checks).
+      console.error(
+        '[identity-resolver] DAL batch lookup failed, falling back to DynamoDB:',
+        (err as Error).message,
+      );
     }
-    return result;
   }
 
   const ddb = getDdbClient();
@@ -416,15 +434,24 @@ export async function checkSocialConnectionsBatch(identityIds: string[]): Promis
 
   const dal = getDal();
   if (dal) {
-    const result = new Set<string>();
-    const rows = await dal<Record<string, unknown>[]>`
-      SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
-             linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
-      FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
-    for (const r of rows) {
-      if (hasSocialConnection(dalRowToProfileItem(r))) result.add(r.identity_id as string);
+    try {
+      const result = new Set<string>();
+      const rows = await dal<Record<string, unknown>[]>`
+        SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
+               linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
+        FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
+      for (const r of rows) {
+        if (hasSocialConnection(dalRowToProfileItem(r))) result.add(r.identity_id as string);
+      }
+      return result;
+    } catch (err) {
+      // settle-pado / wash-detection callers treat a throw as fatal (500). Fall
+      // through to the DynamoDB BatchGet path (still SoT during P1) instead.
+      console.error(
+        '[identity-resolver] DAL social-connections batch failed, falling back to DynamoDB:',
+        (err as Error).message,
+      );
     }
-    return result;
   }
 
   const ddb = getDdbClient();
@@ -570,15 +597,24 @@ export async function getSocialBadgesBatch(identityIds: string[]): Promise<Map<s
 
   const dal = getDal();
   if (dal) {
-    const result = new Map<string, SocialBadges>();
-    const rows = await dal<Record<string, unknown>[]>`
-      SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
-             linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
-      FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
-    for (const r of rows) {
-      result.set(r.identity_id as string, parseSocialBadges(dalRowToProfileItem(r)));
+    try {
+      const result = new Map<string, SocialBadges>();
+      const rows = await dal<Record<string, unknown>[]>`
+        SELECT identity_id, twitter_handle, twitter_id, telegram_user_id, is_telegram_member,
+               linked_accounts, attributes->>'provider' AS provider, attributes->>'role' AS role
+        FROM user_profiles WHERE identity_id = ANY(${identityIds})`;
+      for (const r of rows) {
+        result.set(r.identity_id as string, parseSocialBadges(dalRowToProfileItem(r)));
+      }
+      return result;
+    } catch (err) {
+      // Fall through to the DynamoDB BatchGet path (still SoT during P1) rather
+      // than throwing, which would abort badge composition for the whole batch.
+      console.error(
+        '[identity-resolver] DAL social-badges batch failed, falling back to DynamoDB:',
+        (err as Error).message,
+      );
     }
-    return result;
   }
 
   const ddb = getDdbClient();
