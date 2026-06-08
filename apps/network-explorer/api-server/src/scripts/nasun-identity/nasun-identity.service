@@ -1,0 +1,61 @@
+# /etc/systemd/system/nasun-identity.service
+# Box-co-located identity write service (AWS-exit DAL S1). Mirrors nasun-issuer.service
+# hardening; differs only in: no signing key (writes identity rows, mints nothing), a
+# distinct least-privilege DB role (nasun_identity), and a server-to-server bearer instead
+# of the mint secret. Localhost-only (PG + the nginx reverse proxy are both loopback), so
+# the issuer's IPAddressDeny=any / IPAddressAllow=localhost applies unchanged.
+[Unit]
+Description=Nasun identity write service (wallet+profile de-Lambda, box PG)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/identity
+ExecStart=/usr/bin/node /srv/nasun/identity/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=IDENTITY_PORT=3211
+Environment=IDENTITY_BIND=127.0.0.1
+Environment=IDENTITY_PG_SCHEMA=public
+Environment=IDENTITY_PG_HOST=127.0.0.1
+Environment=IDENTITY_PG_DATABASE=nasun_dal
+Environment=IDENTITY_PG_USER=nasun_identity
+
+# Secrets arrive host-decrypted into the per-unit tmpfs ($CREDENTIALS_DIRECTORY), never
+# plaintext on disk, owned by this unit's dynamic user only, auto-removed on stop.
+LoadCredentialEncrypted=pg-password:/srv/nasun/identity/secrets/pg-password.cred
+LoadCredentialEncrypted=identity-bearer:/srv/nasun/identity/secrets/identity-bearer.cred
+
+# --- hardening (mirrors nasun-issuer.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# No internet: serve on loopback + reach Postgres on loopback only.
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
