@@ -6,6 +6,7 @@ import { getCognitoIdentityId } from '../utils/cognito';
 import { getAndDeleteNonce } from '../utils/dynamodb';
 import { createOrUpdateMetaMaskProfile } from '../utils/userProfile';
 import { maskSensitiveData } from '../utils/log-utils';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 
 /**
  * Connect-verify handler for 1-trip connectAndSign flow.
@@ -150,6 +151,10 @@ Nonce: ${nonce}`;
   } catch (error: any) {
     console.error('Failed to save user profile, but continuing:', maskSensitiveData({ message: error?.message }));
   }
+
+  // 5b. AWS-exit DAL S1.2: mirror the profile write to the box nasun-identity service (best-effort
+  // follower; no-op unless wired). DynamoDB above stays the source of truth; dal-reload reconciles.
+  await mirrorIdentityWrite(IDENTITY_ROUTES.profileUpsert, { identityId, walletAddress, provider: 'MetaMask' });
 
   // 6. Generate HMAC wallet proof
   const walletProofSecret = await getWalletProofSecret();

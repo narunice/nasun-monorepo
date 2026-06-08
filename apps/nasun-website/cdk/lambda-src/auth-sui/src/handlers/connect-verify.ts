@@ -6,6 +6,7 @@ import { getCognitoIdentityId } from '../utils/cognito';
 import { getAndDeleteNonce } from '../utils/dynamodb';
 import { createOrUpdateSuiProfile } from '../utils/userProfile';
 import { maskSensitiveData } from '../utils/log-utils';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 
 /**
  * Connect-verify handler for Sui wallet authentication.
@@ -130,6 +131,10 @@ export async function handleConnectVerify(
   } catch (error: any) {
     console.error('Failed to save user profile, but continuing:', maskSensitiveData({ message: error?.message }));
   }
+
+  // 6b. AWS-exit DAL S1.2: mirror the profile write to the box nasun-identity service (best-effort
+  // follower; no-op unless wired). DynamoDB above stays the source of truth; dal-reload reconciles.
+  await mirrorIdentityWrite(IDENTITY_ROUTES.profileUpsert, { identityId, walletAddress, provider: 'Nasun Wallet' });
 
   // 7. Generate HMAC wallet proof
   // Battalion NFT register-user Lambda validates walletProof as a required parameter

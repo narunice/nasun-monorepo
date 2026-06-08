@@ -11,6 +11,7 @@ import {
   ValidationError, PayloadTooLargeError,
 } from './handlers/addressBook';
 import { verifySuiPersonalSignature, verifyZkLoginEphemeralSignature } from './utils/signature';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../_shared/auth/identity-write';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 function getCorsOrigin(origin?: string): string {
@@ -314,9 +315,13 @@ async function handleRegister(event: APIGatewayProxyEvent): Promise<APIGatewayPr
   // the new wallet. Webhook failure does not affect the registration response;
   // the scanner's 10-min TTL fallback eventually catches up.
   if (result.statusCode === 200) {
-    notifyWalletRegistered(identityId, String(body.walletAddress).toLowerCase()).catch((err) => {
+    const addr = String(body.walletAddress).toLowerCase();
+    notifyWalletRegistered(identityId, addr).catch((err) => {
       console.warn('[registerWallet] sync webhook failed:', err);
     });
+    // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op
+    // unless wired). DynamoDB is the source of truth; the box reproduces register/idempotent/transfer.
+    await mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, { identityId, walletAddress: addr });
   }
 
   return jsonResponse(result.statusCode, result.body);
@@ -370,6 +375,12 @@ async function handleRemove(event: APIGatewayProxyEvent): Promise<APIGatewayProx
     identityId,
     walletAddress: body.walletAddress,
   });
+
+  // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op unless
+  // wired). DynamoDB is the source of truth; the box reproduces the sentinel-CAS delete + cleanup.
+  if (result.statusCode === 200) {
+    await mirrorIdentityWrite(IDENTITY_ROUTES.walletRemove, { identityId, walletAddress: String(body.walletAddress).toLowerCase() });
+  }
 
   return jsonResponse(result.statusCode, result.body);
 }
