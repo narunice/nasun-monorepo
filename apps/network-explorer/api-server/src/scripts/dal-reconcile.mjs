@@ -9,15 +9,17 @@
 // hopefully right" into "the box is continuously proven right" before any write slice is
 // de-Lambda'd onto box (delambda-plan S0 -> S1).
 //
-// SCOPE = the only two tables box currently holds (verified live 2026-06-08):
+// SCOPE = the box read-mirror tables (verified live 2026-06-08):
 //   public.user_profiles  <- DynamoDB UserProfiles
 //   public.wallet_owner   <- DynamoDB UserWallets (identityId='WALLET_OWNER' sentinels)
+//   public.user_wallets   <- DynamoDB UserWallets (per-identity rows; S1 wallet slice)
 //
 // SAFETY INVARIANTS:
 //   - 100% READ-ONLY. box access uses the nasun_chat_ro role (SELECT-only, GRANT verified
 //     live); DynamoDB access is Scan-only (EC2 instance role DalSyncScan). No DDL, no
-//     INSERT, no DynamoDB write. The issuer schema is never referenced (chat_ro has no
-//     grant on it -- verified session 13).
+//     INSERT, no DynamoDB write. user_wallets SELECT is granted to chat_ro by dal-reload's
+//     swap (S1.0) solely so this monitor can diff it -- chat-server never queries it. The
+//     issuer schema is never referenced (chat_ro has no grant on it -- verified session 13).
 //   - PROJECTION PARITY. The JOBS map + omit() below are a verbatim mirror of
 //     dal-reload.mjs. A startup source-parity guard SHA-256s the sibling dal-reload.mjs
 //     and aborts if it diverges from RELOAD_ANCHOR_SHA256, forcing this mirror to be
@@ -73,9 +75,9 @@ const STALE_RELOAD_MS = 25 * 60 * 1000;
 const STATE_PATH = join(HERE, 'recon-state.json');
 const REPORT_PATH = join(HERE, 'recon-report.json');
 const RELOAD_PATH = join(HERE, 'dal-reload.mjs');
-// SHA-256 of dal-reload.mjs @ repo 84cc14377 (== EC2 deployed, verified 2026-06-08).
+// SHA-256 of dal-reload.mjs @ S1.0 (user_wallets read-mirror; == EC2 deployed 2026-06-08).
 // If dal-reload.mjs changes, this guard fires: re-mirror JOBS/omit below and update this.
-const RELOAD_ANCHOR_SHA256 = 'ae8512a2b621b3b53c6dd9388c83287fdf33749217a1629fe2b82d47b8788dc8';
+const RELOAD_ANCHOR_SHA256 = '51c5233b11aa3b973ef07e5d764ed0df930fa92ed92ef466d88888bca4773221';
 
 if (!DB_URL) {
   console.error('FATAL: RECON_DATABASE_URL is required (read role over wg, e.g. nasun_chat_ro@10.99.0.1)');
@@ -104,13 +106,22 @@ function assertReloadParity() {
 }
 
 // ============================================================================
-// MIRROR of dal-reload.mjs (84cc14377). Keep verbatim; the parity guard enforces it.
+// MIRROR of dal-reload.mjs (S1.0). Keep verbatim; the parity guard enforces it.
 // ============================================================================
 const omit = (it, keys) => {
   const o = { ...it };
   for (const k of keys) delete o[k];
   return Object.keys(o).length ? o : null;
 };
+
+// Composite-PK support. A table's pk may be one column (string) or several (array);
+// every row's identity flows through a single string key so the bulk-scan and
+// confirmation passes stay key-shape-agnostic. NUL joins the parts -- no identityId or
+// wallet_address ever contains it.
+const KEY_SEP = '\u0000';
+const pkCols = (meta) => (Array.isArray(meta.pk) ? meta.pk : [meta.pk]);
+const keyOf = (row, meta) => pkCols(meta).map((c) => row[c]).join(KEY_SEP);
+const keyVals = (k) => k.split(KEY_SEP);
 
 const JOBS = {
   user_profiles: {
@@ -142,12 +153,24 @@ const JOBS = {
       updated_at: it.updatedAt ?? null,
     }),
   },
+  user_wallets: {
+    source: 'UserWallets',
+    filter: (it) => it.identityId !== 'WALLET_OWNER',
+    required: ['identity_id', 'wallet_address'],
+    promoted: ['identityId', 'walletAddress', 'updatedAt'],
+    row: (it) => ({
+      identity_id: it.identityId,
+      wallet_address: it.walletAddress,
+      updated_at: it.updatedAt ?? null,
+    }),
+  },
 };
 // ============================================================================
 
-// Per-table comparison metadata: the PK column, the non-PK columns to fingerprint
+// Per-table comparison metadata: the PK column(s), the non-PK columns to fingerprint
 // (in fixed order so box and DDB hash identically), per-type normalization sets, and
-// the dangling self-ref column to NULL in parity with dal-reload.mjs:188.
+// the dangling self-ref column to NULL in parity with dal-reload.mjs:188. ddbKey maps
+// the array of PK-column values (in pk order) to the DynamoDB key.
 const META = {
   user_profiles: {
     pk: 'identity_id',
@@ -156,7 +179,7 @@ const META = {
     bool: new Set(['is_telegram_member']),
     json: new Set(['linked_accounts', 'attributes']),
     dangling: 'linked_to_primary_id',
-    ddbKey: (k) => ({ identityId: k }), // UserProfiles PK
+    ddbKey: ([id]) => ({ identityId: id }), // UserProfiles PK
   },
   wallet_owner: {
     pk: 'wallet_address',
@@ -165,7 +188,19 @@ const META = {
     bool: new Set(),
     json: new Set(),
     dangling: null,
-    ddbKey: (k) => ({ identityId: 'WALLET_OWNER', walletAddress: k }), // UserWallets sentinel PK+SK
+    ddbKey: ([wa]) => ({ identityId: 'WALLET_OWNER', walletAddress: wa }), // UserWallets sentinel PK+SK
+  },
+  user_wallets: {
+    pk: ['identity_id', 'wallet_address'],
+    // created_at is intentionally NOT compared: DynamoDB UserWallets has no createdAt, so
+    // dal-reload lets the column take its DEFAULT now() and it can never match. attributes
+    // ({blockchain,registeredAt}) + updated_at are the only mirrored non-PK columns.
+    cols: ['attributes', 'updated_at'],
+    ts: new Set(['updated_at']),
+    bool: new Set(),
+    json: new Set(['attributes']),
+    dangling: null,
+    ddbKey: ([id, wa]) => ({ identityId: id, walletAddress: wa }), // UserWallets PK+SK
   },
 };
 
@@ -262,32 +297,45 @@ const sql = postgres(DB_URL, {
 });
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: REGION }));
 
-// Stream the box table via cursor, keeping only Map<pk, fingerprint> resident.
+// Stream the box table via cursor, keeping only Map<key, fingerprint> resident.
 async function loadBoxFingerprints(table, meta) {
   const map = new Map();
   await sql`SELECT * FROM public.${sql(table)}`.cursor(5000, (rows) => {
-    for (const r of rows) map.set(r[meta.pk], fingerprint(r, meta));
+    for (const r of rows) map.set(keyOf(r, meta), fingerprint(r, meta));
   });
   return map;
 }
 
-// Re-read box rows for a set of PKs (current generation), as Map<pk, row>.
+// Re-read box rows for a set of keys (current generation), as Map<key, row>.
 async function boxRowsByKeys(table, meta, keys) {
   const map = new Map();
+  const cols = pkCols(meta);
   for (let i = 0; i < keys.length; i += 1000) {
     const chunk = keys.slice(i, i + 1000);
-    const rows = await sql`SELECT * FROM public.${sql(table)} WHERE ${sql(meta.pk)} IN ${sql(chunk)}`;
-    for (const r of rows) map.set(r[meta.pk], r);
+    let rows;
+    if (cols.length === 1) {
+      rows = await sql`SELECT * FROM public.${sql(table)} WHERE ${sql(cols[0])} IN ${sql(chunk)}`;
+    } else {
+      // Composite PK: zip the parallel value arrays with unnest() and join, which is
+      // robust regardless of how the driver renders a multi-column IN tuple list.
+      const a = chunk.map((k) => keyVals(k)[0]);
+      const b = chunk.map((k) => keyVals(k)[1]);
+      rows = await sql`
+        SELECT t.* FROM public.${sql(table)} t
+        JOIN unnest(${a}::text[], ${b}::text[]) AS k(c0, c1)
+          ON t.${sql(cols[0])} = k.c0 AND t.${sql(cols[1])} = k.c1`;
+    }
+    for (const r of rows) map.set(keyOf(r, meta), r);
   }
   return map;
 }
 
-// Re-read DDB items for a set of PKs (current), projected exactly like the bulk scan, as
-// Map<pk, row>. ddbIds (full scan keyset) is the dangling-NULL existence oracle.
+// Re-read DDB items for a set of keys (current), projected exactly like the bulk scan, as
+// Map<key, row>. ddbIds (full scan keyset) is the dangling-NULL existence oracle.
 async function ddbRowsByKeys(job, meta, keys, ddbIds) {
   const map = new Map();
   for (let i = 0; i < keys.length; i += 100) {
-    let request = { [job.source]: { Keys: keys.slice(i, i + 100).map(meta.ddbKey) } };
+    let request = { [job.source]: { Keys: keys.slice(i, i + 100).map((k) => meta.ddbKey(keyVals(k))) } };
     // UnprocessedKeys come back on a 200 (partial throttle) -- NOT a thrown error -- so
     // withRetry's backoff never sees them. Re-send with our own exponential backoff and a
     // hard cap so sustained throttling fails the cycle (exit 2) instead of busy-looping
@@ -300,7 +348,7 @@ async function ddbRowsByKeys(job, meta, keys, ddbIds) {
         if (job.required.some((k) => row[k] == null)) continue;
         if (!job.noAttributes) row.attributes = omit(it, job.promoted);
         if (meta.dangling && row[meta.dangling] != null && ddbIds && !ddbIds.has(row[meta.dangling])) row[meta.dangling] = null;
-        map.set(row[meta.pk], row);
+        map.set(keyOf(row, meta), row);
       }
       request = res.UnprocessedKeys?.[job.source]?.Keys?.length ? res.UnprocessedKeys : null;
       if (request) {
@@ -332,7 +380,7 @@ async function reconcileTable(table) {
   const deferred = [];
 
   const checkRow = (row) => {
-    const key = row[meta.pk];
+    const key = keyOf(row, meta);
     const bfp = boxFp.get(key);
     if (bfp === undefined) { missingCand.push(key); return; }
     seen.add(key);
@@ -351,7 +399,7 @@ async function reconcileTable(table) {
       if (job.required.some((k) => row[k] == null)) { skipped++; continue; }
       if (!job.noAttributes) row.attributes = omit(it, job.promoted);
       scanned++;
-      if (ddbIds) ddbIds.add(row[meta.pk]);
+      if (ddbIds) ddbIds.add(keyOf(row, meta));
       if (meta.dangling && row[meta.dangling] != null) { deferred.push(row); continue; }
       checkRow(row);
     }

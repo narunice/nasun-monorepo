@@ -8,10 +8,11 @@
 // a half-built or empty table (the swap takes a sub-second ACCESS EXCLUSIVE lock;
 // the expensive scan + load happens off the live table).
 //
-// Scope = P1 read-flip only: user_profiles + wallet_owner. These are the *only* two
-// tables identity-resolver.ts reads (verified L122/281/320/423/577). P2 tables
-// (lb_*/ecosystem/creator/nft/bug_reports/address_books) are intentionally NOT
-// synced here; they belong to the P2 write cutover.
+// Scope = the box read-mirror: user_profiles + wallet_owner (the only two tables
+// identity-resolver.ts reads, verified L122/281/320/423/577) plus user_wallets, added
+// for the S1 wallet-slice reconciliation (dal-reconcile diffs it; chat-server does NOT
+// read it). Remaining P2 tables (lb_*/ecosystem/creator/nft/bug_reports/address_books)
+// are intentionally NOT synced here; they belong to the P2 write cutover.
 //
 // SAFETY INVARIANTS:
 //   - issuer schema (identity_map / zklogin_users) is NEVER touched. The sync role
@@ -91,6 +92,20 @@ const JOBS = {
       owner_identity_id: it.ownerIdentityId,
       updated_at: it.updatedAt ?? null,
     }),
+  },
+  user_wallets: {
+    source: 'UserWallets',
+    filter: (it) => it.identityId !== 'WALLET_OWNER', // per-identity wallet rows (inverse of the wallet_owner sentinel filter)
+    required: ['identity_id', 'wallet_address'], // composite PK columns (NOT NULL)
+    promoted: ['identityId', 'walletAddress', 'updatedAt'],
+    row: (it) => ({
+      identity_id: it.identityId,
+      wallet_address: it.walletAddress,
+      updated_at: it.updatedAt ?? null,
+    }),
+    // attributes JSONB = item minus promoted = {blockchain, registeredAt}. created_at
+    // has no DynamoDB source (UserWallets has no createdAt) so it is left unset and
+    // takes the column DEFAULT now(); dal-reconcile excludes it from comparison.
   },
 };
 
@@ -258,18 +273,22 @@ async function main() {
     await tx.unsafe('DROP VIEW IF EXISTS public.v_wallet_primary_profile');
     await tx.unsafe('DROP TABLE public.user_profiles');
     await tx.unsafe('DROP TABLE public.wallet_owner');
+    await tx.unsafe('DROP TABLE public.user_wallets');
     await tx.unsafe('ALTER TABLE staging.user_profiles SET SCHEMA public');
     await tx.unsafe('ALTER TABLE staging.wallet_owner SET SCHEMA public');
+    await tx.unsafe('ALTER TABLE staging.user_wallets SET SCHEMA public');
     await tx.unsafe(VIEW_DDL);
     // Owner (nasun_app) keeps all privileges implicitly via SET SCHEMA. Re-grant the
-    // reader roles explicitly (parity with pre-swap ACLs).
-    await tx.unsafe('GRANT SELECT ON public.user_profiles, public.wallet_owner TO nasun_chat_ro, nasun_keeper');
+    // reader roles explicitly (parity with pre-swap ACLs). user_wallets adds
+    // nasun_chat_ro SELECT so the dal-reconcile monitor (chat_ro) can diff it; this is
+    // read-only and additive (chat-server's identity-resolver never queries it).
+    await tx.unsafe('GRANT SELECT ON public.user_profiles, public.wallet_owner, public.user_wallets TO nasun_chat_ro, nasun_keeper');
     await tx.unsafe('GRANT SELECT ON public.v_wallet_primary_profile TO nasun_keeper');
   });
 
   const after = {};
   for (const name of names) after[name] = await liveCount(name);
-  console.log(`swap committed: user_profiles=${after.user_profiles} wallet_owner=${after.wallet_owner}`);
+  console.log(`swap committed: user_profiles=${after.user_profiles} wallet_owner=${after.wallet_owner} user_wallets=${after.user_wallets}`);
 }
 
 main()
