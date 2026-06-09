@@ -709,6 +709,8 @@ export class CommonStack extends cdk.Stack {
       environment: {
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        // AWS-exit DAL S3.R3: serve the user count from the box mirror when IDENTITY_READ_MODE=flip (DDB fallback).
+        ...identityReadEnv(),
       },
       logGroup: new logs.LogGroup(this, "GetUserCountLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-count",

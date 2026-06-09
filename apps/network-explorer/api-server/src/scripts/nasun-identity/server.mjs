@@ -652,10 +652,25 @@ async function handleWalletList(params) {
   });
 }
 
+// --- GET /profile/count --------------------------------------------------------------
+// Mirrors get-user-count (S3.R3). The Lambda reports DynamoDB DescribeTable ItemCount -- an
+// eventually-consistent approximation (~6h refresh). The box returns an EXACT count of the
+// user_profiles mirror (the true row count as of the last dal-reload, <=10min): fresher and exact.
+// This is an accepted behavior change (approx -> exact); the only consumer (useUserCount) reads
+// `count` for a display figure. No identityId input. Existing table read: GRANT 0 / anchor 0.
+async function handleProfileCount() {
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const [{ n }] = await tx`SELECT count(*)::int AS n FROM user_profiles`;
+    return { status: 200, body: { count: n, tableName: 'UserProfiles', updatedAt: new Date().toISOString() } };
+  });
+}
+
 const GET_ROUTES = {
   '/profile/by-wallet': handleProfileByWallet,
   '/profile/by-identity': handleProfileByIdentity,
   '/wallet/list': handleWalletList,
+  '/profile/count': handleProfileCount,
 };
 
 function readBody(req) {

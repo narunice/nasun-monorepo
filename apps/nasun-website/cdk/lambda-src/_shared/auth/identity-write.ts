@@ -39,6 +39,8 @@ export const IDENTITY_ROUTES = {
   profileCreateMirror: '/profile/create-mirror',
   // S3.R2 wallet-api reader: box-served multi-wallet list (GET, query-param input).
   walletList: '/wallet/list',
+  // S3.R3 get-user-count reader: box-served exact user_profiles count (GET, no input).
+  profileCount: '/profile/count',
 } as const;
 
 /**
