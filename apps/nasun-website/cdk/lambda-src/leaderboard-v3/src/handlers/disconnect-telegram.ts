@@ -20,6 +20,7 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 
@@ -225,6 +226,9 @@ export const handler = async (
 
     // 4. Clear Telegram from UserProfiles (primary)
     await clearUserProfileTelegram(identityId);
+
+    // 4b. AWS-exit DAL S2.B: mirror the clear to the box nasun-identity service. No-op until env wired.
+    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramDisconnect, { identityId });
 
     // 5. Clear Telegram from leaderboard tables (secondary, optional)
     if (userProfile.twitterHandle) {

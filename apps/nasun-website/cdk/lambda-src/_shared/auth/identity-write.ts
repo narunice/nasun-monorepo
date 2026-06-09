@@ -29,6 +29,11 @@ export const IDENTITY_ROUTES = {
   profileUpsert: '/profile/upsert',
   walletRegister: '/wallet/register',
   walletRemove: '/wallet/remove',
+  // S2.A account-linking: full resulting-state mirror of the profile rows link-account mutated.
+  profileLinkSync: '/profile/link-sync',
+  // S2.B telegram membership.
+  telegramVerify: '/telegram/verify',
+  telegramDisconnect: '/telegram/disconnect',
 } as const;
 
 /**

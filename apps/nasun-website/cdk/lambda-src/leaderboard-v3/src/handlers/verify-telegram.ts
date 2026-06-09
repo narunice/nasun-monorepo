@@ -28,6 +28,7 @@ import {
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
 import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { grantIfReferralActivated } from '../utils/onboardingBonus';
@@ -576,6 +577,10 @@ export const handler = async (
 
     // 9. Primary: Update UserProfiles table
     await updateUserProfileTelegram(identityId, telegramUserIdStr, telegramUsername);
+
+    // 9b. AWS-exit DAL S2.B: mirror to the box nasun-identity service. One route clears any prior
+    // owner of this telegram id and sets the new owner in a single tx. No-op until env is wired.
+    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramVerify, { identityId, telegramUserId: telegramUserIdStr });
 
     // Onboarding bonus: telegram-link. Granted only if user joined via referral
     // and that referral is ACTIVATED. Idempotent via PG UNIQUE, so re-verify is safe.

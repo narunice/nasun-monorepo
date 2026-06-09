@@ -5,6 +5,33 @@ import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCo
 import { appendXHistory } from './utils/xHistory';
 import { grantIfReferralActivated } from './onboardingBonus';
 import { verifyIdentityFromBearer } from '../_shared/auth/dual-jwks';
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../_shared/auth/identity-write';
+
+/**
+ * AWS-exit DAL S2.A: build the box-mirrorable projection of a UserProfiles row after link-account
+ * has mutated it. The box route (/profile/link-sync) does a full-column UPSERT of exactly these
+ * dal-reload-mapped columns, so each value must be the row's POST-write DynamoDB truth (not just
+ * the delta) or an unchanged column would be wiped. is_telegram_member / telegram_user_id /
+ * attributes are intentionally absent (the box route leaves them untouched on conflict).
+ */
+function linkSyncRow(
+  identityId: string,
+  linkedAccounts: Record<string, any> | undefined,
+  linkedToPrimaryId: string | null | undefined,
+  twitterHandle: string | null | undefined,
+  twitterId: string | null | undefined,
+  walletAddressNull = false,
+): Record<string, any> {
+  const row: Record<string, any> = {
+    identityId,
+    linkedAccounts: linkedAccounts ?? {},
+    linkedToPrimaryId: linkedToPrimaryId ?? null,
+    twitterHandle: twitterHandle ?? null,
+    twitterId: twitterId ?? null,
+  };
+  if (walletAddressNull) row.walletAddressNull = true;
+  return row;
+}
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoClient = DynamoDBDocumentClient.from(client);
@@ -170,6 +197,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
       await dynamoClient.send(updatePrimaryCommand);
 
+      // AWS-exit DAL S2.A: collect the box-mirror projection of every UserProfiles row this
+      // unlink mutates (primary now, secondary below), then push once after both DDB writes.
+      const unlinkMirrorRows: Record<string, any>[] = [];
+      const twitterStripped = providerKey === 'twitter' && primaryProfile.provider !== 'Twitter';
+      unlinkMirrorRows.push(linkSyncRow(
+        primaryIdentityId,
+        linkedAccounts,
+        primaryProfile.linkedToPrimaryId ?? null,
+        twitterStripped ? null : (primaryProfile.twitterHandle ?? null),
+        twitterStripped ? null : (primaryProfile.twitterId ?? null),
+        removeExpression === 'REMOVE walletAddress',
+      ));
+
       // Record X unlink history (non-blocking, best-effort).
       // Placed after DB update succeeds to avoid phantom history on failure.
       if (providerKey === 'twitter') {
@@ -212,8 +252,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           });
 
           await dynamoClient.send(updateSecondaryCommand);
+
+          unlinkMirrorRows.push(linkSyncRow(
+            secondaryIdentityId,
+            secondaryLinkedAccounts,
+            isCurrentOwner ? null : (secondaryProfile.linkedToPrimaryId ?? null),
+            secondaryProfile.twitterHandle ?? null,
+            secondaryProfile.twitterId ?? null,
+          ));
         }
       }
+
+      // AWS-exit DAL S2.A: mirror the unlink result to the box (no-op until env wired, never throws).
+      await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: unlinkMirrorRows });
 
       console.log('Account unlinking successful');
 
@@ -370,6 +421,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // 2.5. Auto-transfer: linkedToPrimaryId as primary source, reverse link as v1 fallback
     const currentOwnerId = secondaryProfile.linkedToPrimaryId;
     let oldPrimaryId: string | undefined;
+    // AWS-exit DAL S2.A: box-mirror projection of the old primary, set only if a transfer-unlink runs.
+    let oldPrimaryMirrorRow: Record<string, any> | null = null;
 
     console.log(JSON.stringify({
       event: 'AUTO_TRANSFER_CHECK',
@@ -477,6 +530,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
               ':ua': new Date().toISOString(),
             },
           }));
+
+          const oldTwitterStripped = matchingKey === 'twitter' && oldPrimary.provider !== 'Twitter';
+          oldPrimaryMirrorRow = linkSyncRow(
+            oldPrimaryId,
+            oldLinked,
+            oldPrimary.linkedToPrimaryId ?? null,
+            oldTwitterStripped ? null : (oldPrimary.twitterHandle ?? null),
+            oldTwitterStripped ? null : (oldPrimary.twitterId ?? null),
+            matchingKey === 'metamask' && oldPrimary.provider === 'MetaMask',
+          );
 
           console.log(JSON.stringify({
             event: 'AUTO_TRANSFER_UNLINK',
@@ -806,6 +869,32 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }
       throw err;
     }
+
+    // AWS-exit DAL S2.A: mirror the link result to the box. Every UserProfiles row this flow
+    // mutated (old primary on transfer, primary, secondary) is sent as its full post-write
+    // projection in one tx. Metamask manual-entry dedup rows (rare) are left to dal-reload.
+    const linkMirrorRows: Record<string, any>[] = [];
+    if (oldPrimaryMirrorRow) linkMirrorRows.push(oldPrimaryMirrorRow);
+    linkMirrorRows.push(linkSyncRow(
+      primaryIdentityId,
+      primaryLinkedAccounts,
+      primaryProfile.linkedToPrimaryId ?? null,
+      providerKey === 'twitter'
+        ? (secondaryProfile.twitterHandle || primaryProfile.twitterHandle || null)
+        : (primaryProfile.twitterHandle ?? null),
+      providerKey === 'twitter'
+        ? (secondaryProfile.twitterId || primaryProfile.twitterId || null)
+        : (primaryProfile.twitterId ?? null),
+    ));
+    linkMirrorRows.push(linkSyncRow(
+      secondaryIdentityId,
+      secondaryLinkedAccounts,
+      primaryIdentityId,
+      secondaryProfile.twitterHandle ?? null,
+      secondaryProfile.twitterId ?? null,
+    ));
+    await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
+
     console.log('Bidirectional account linking successful');
 
     return {
