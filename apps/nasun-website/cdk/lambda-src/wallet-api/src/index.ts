@@ -1,7 +1,4 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult, Context } from 'aws-lambda';
-import { getWallet } from './handlers/getWallet';
-import { saveWallet } from './handlers/saveWallet';
-import { deleteWallet } from './handlers/deleteWallet';
 import { registerWallet } from './handlers/registerWallet';
 import { listWallets } from './handlers/listWallets';
 import { removeWallet } from './handlers/removeWallet';
@@ -88,42 +85,11 @@ export const handler = async (
       return await handleRemove(event);
     }
 
-    // Legacy single-wallet endpoints (existing auth via requestContext)
-    const identityId = event.requestContext.authorizer?.claims?.sub;
-    if (!identityId) {
-      return jsonResponse(401, { error: 'Unauthorized', message: 'No identity found in token' });
-    }
-
-    switch (event.httpMethod) {
-      case 'GET': {
-        const wallet = await getWallet({ identityId });
-        if (!wallet) {
-          return jsonResponse(404, { error: 'Not Found', message: 'No wallet address found' });
-        }
-        return jsonResponse(200, wallet);
-      }
-
-      case 'POST': {
-        const body = JSON.parse(event.body || '{}');
-        if (!body.walletAddress) {
-          return jsonResponse(400, { error: 'Bad Request', message: 'walletAddress is required' });
-        }
-        const wallet = await saveWallet({
-          identityId,
-          walletAddress: body.walletAddress,
-          blockchain: body.blockchain
-        });
-        return jsonResponse(200, wallet);
-      }
-
-      case 'DELETE': {
-        await deleteWallet({ identityId });
-        return { statusCode: 204, headers: corsHeaders(), body: '' };
-      }
-
-      default:
-        return jsonResponse(405, { error: 'Method Not Allowed' });
-    }
+    // No named route matched. The legacy single-wallet root endpoints (GET/POST/DELETE on root,
+    // backed by UserProfiles.walletAddress) were removed as dead code: all clients use the
+    // multi-wallet routes (/register, /list, /remove) and the address-book routes
+    // (/challenge, /verify, /address-book). Anything reaching here is an unknown route.
+    return jsonResponse(404, { error: 'Not Found', message: 'Unknown route' });
   } catch (error: unknown) {
     console.error('Error processing request:', error);
     return jsonResponse(500, { error: 'Internal Server Error' });
