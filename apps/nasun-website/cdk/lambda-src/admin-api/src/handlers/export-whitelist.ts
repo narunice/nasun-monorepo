@@ -15,6 +15,7 @@ import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResp
 import { uploadAndPresign, getS3Object } from "../utils/s3-offload.js";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { grantIfReferralActivated } from "../utils/onboardingBonus.js";
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from "../../../_shared/auth/identity-write.js";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -2006,6 +2007,15 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             ExpressionAttributeValues: { ":now": { S: now } },
           })
         );
+        // AWS-exit DAL S3.R4 (C2): mirror lastReferralDeclinedAt to the box nasun-identity
+        // attributes-JSONB after the authoritative DynamoDB write, reusing /profile/attributes-sync
+        // (allowlist already accepts this key). Best-effort fire-and-forget (never throws; no-op
+        // unless IDENTITY_WRITE_* wired); DynamoDB stays SoT, dal-reload backstops a dropped mirror.
+        // Prerequisite for a later read-before-write flip of the referral apply cooldown check.
+        void mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
+          identityId: referredId,
+          set: { lastReferralDeclinedAt: now },
+        });
       } catch (err: any) {
         console.error("[referral-review] Failed to set cooldown tombstone:", err.message);
       }

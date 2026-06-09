@@ -9,6 +9,7 @@ import { Construct } from "constructs";
 import * as path from "path";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
+import { identityWriteEnv } from './identity-env';
 
 interface AdminStackProps extends cdk.StackProps {
   userProfilesTableName?: string;
@@ -177,6 +178,10 @@ export class AdminStack extends cdk.Stack {
         // Onboarding bonus backfill on referral approve
         EXPLORER_API_URL: process.env.EXPLORER_API_URL || "",
         ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || "",
+        // AWS-exit DAL S3.R4 (C2): best-effort mirror of lastReferralDeclinedAt (referral-decline
+        // cooldown tombstone) to the box nasun-identity service. FAIL-SAFE: {} when
+        // IDENTITY_WRITE_URL/SECRET unset at synth. DynamoDB stays SoT.
+        ...identityWriteEnv(),
       },
       bundling: {
         minify: true,
