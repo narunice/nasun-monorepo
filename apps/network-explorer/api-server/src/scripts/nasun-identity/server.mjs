@@ -11,9 +11,12 @@
 // Routes (POST = server-to-server bearer; the caller has already verified the user and the
 // wallet proof, so the box trusts the bearer and writes):
 //   GET  /health
-//   POST /profile/upsert   { identityId, walletAddress, provider }
-//   POST /wallet/register  { identityId, walletAddress }
-//   POST /wallet/remove    { identityId, walletAddress }
+//   POST /profile/upsert       { identityId, walletAddress, provider }
+//   POST /wallet/register      { identityId, walletAddress }
+//   POST /wallet/remove        { identityId, walletAddress }
+//   POST /profile/link-sync    { rows: [{ identityId, linkedAccounts, linkedToPrimaryId, twitterHandle, twitterId, walletAddressNull? }] }  (S2.A)
+//   POST /telegram/verify      { identityId, telegramUserId }   (S2.B)
+//   POST /telegram/disconnect  { identityId }                   (S2.B)
 //
 // Each write is ONE transaction (the lambda TransactWrite -> a single PG tx; sentinel CAS
 // and ownership transfer preserved). Tables are reached through search_path = IDENTITY_PG_SCHEMA
@@ -215,10 +218,105 @@ async function handleWalletRemove(body) {
   });
 }
 
+// --- POST /profile/link-sync ----------------------------------------------------------
+// S2.A account-linking. link-account/index.ts mutates several UserProfiles rows (primary,
+// secondary, and on auto-transfer the old primary) under DynamoDB CAS/uniqueness; DDB stays
+// the source of truth and has already resolved every conflict. So the box does NOT re-run the
+// CAS -- it mirrors the FULL resulting projection of each touched row in one tx (idempotent
+// UPSERT). Only the dal-reload-mapped, link-account-owned columns are written: linked_accounts,
+// linked_to_primary_id, twitter_handle, twitter_id (+ wallet_address->NULL only on the narrow
+// metamask-primary unlink). is_telegram_member / telegram_user_id / attributes / created_at are
+// left untouched on conflict so the telegram slice (S2.B) and reload keep ownership of them.
+async function handleProfileLinkSync(body) {
+  const rawRows = Array.isArray(body.rows) ? body.rows : null;
+  if (!rawRows || rawRows.length === 0) throw new RouteAbort(400, { error: 'rows required' });
+  if (rawRows.length > 64) throw new RouteAbort(400, { error: 'too many rows (max 64)' });
+
+  const rows = rawRows.map((r) => {
+    if (!r || typeof r !== 'object' || Array.isArray(r)) throw new RouteAbort(400, { error: 'row must be object' });
+    const identityId = str(r.identityId);
+    if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'row.identityId required' });
+    let la;
+    if (r.linkedAccounts == null) la = null;
+    else if (typeof r.linkedAccounts === 'object' && !Array.isArray(r.linkedAccounts)) la = r.linkedAccounts;
+    else throw new RouteAbort(400, { error: 'row.linkedAccounts must be object or null' });
+    const ltp = r.linkedToPrimaryId == null ? null : (str(r.linkedToPrimaryId) || null);
+    const th = r.twitterHandle == null ? null : (str(r.twitterHandle) || null);
+    const tid = r.twitterId == null ? null : (str(r.twitterId) || null);
+    const walletNull = r.walletAddressNull === true;
+    return { identityId, la, ltp, th, tid, walletNull };
+  });
+
+  // primary-first: a row's linked_to_primary_id FK references a primary row that must already
+  // exist. Rows with a NULL linkedToPrimaryId (primaries) are upserted before referrers; the
+  // referenced primary is otherwise a pre-existing mirrored row.
+  rows.sort((a, b) => (a.ltp ? 1 : 0) - (b.ltp ? 1 : 0));
+
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    for (const r of rows) {
+      const laBind = r.la === null ? null : tx.json(r.la);
+      await tx`
+        INSERT INTO user_profiles
+          (identity_id, linked_accounts, linked_to_primary_id, twitter_handle, twitter_id, is_telegram_member, created_at, updated_at)
+        VALUES (${r.identityId}, ${laBind}, ${r.ltp}, ${r.th}, ${r.tid}, false, now(), now())
+        ON CONFLICT (identity_id) DO UPDATE SET
+          linked_accounts = ${laBind},
+          linked_to_primary_id = ${r.ltp},
+          twitter_handle = ${r.th},
+          twitter_id = ${r.tid},
+          updated_at = now()`;
+      if (r.walletNull) {
+        await tx`UPDATE user_profiles SET wallet_address = NULL, updated_at = now() WHERE identity_id = ${r.identityId}`;
+      }
+    }
+  });
+  return { status: 200, body: { synced: rows.length } };
+}
+
+// --- POST /telegram/verify ------------------------------------------------------------
+// S2.B. verify-telegram.ts: clear any prior owner of the telegram id (DDB GSI-query + sequential
+// clear) then set the new owner. Done as ONE tx so 1:1 ownership is enforced atomically (stronger
+// than the lambda's non-atomic sequence). telegram_username is NOT mirrored (no box column).
+async function handleTelegramVerify(body) {
+  const identityId = str(body.identityId);
+  const tgId = str(body.telegramUserId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!/^\d{1,20}$/.test(tgId)) throw new RouteAbort(400, { error: 'invalid telegramUserId' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      UPDATE user_profiles SET is_telegram_member = false, telegram_user_id = NULL, updated_at = now()
+      WHERE telegram_user_id = ${tgId} AND identity_id <> ${identityId}`;
+    // attribute_exists(identityId) parity: a missing row is a no-op (box follower; reload backstops).
+    await tx`
+      UPDATE user_profiles SET is_telegram_member = true, telegram_user_id = ${tgId}, updated_at = now()
+      WHERE identity_id = ${identityId}`;
+  });
+  return { status: 200, body: { identityId, telegramUserId: tgId } };
+}
+
+// --- POST /telegram/disconnect --------------------------------------------------------
+// S2.B. disconnect-telegram.ts clearUserProfileTelegram -> tx.
+async function handleTelegramDisconnect(body) {
+  const identityId = str(body.identityId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      UPDATE user_profiles SET is_telegram_member = false, telegram_user_id = NULL, updated_at = now()
+      WHERE identity_id = ${identityId}`;
+  });
+  return { status: 200, body: { identityId } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
   '/wallet/remove': handleWalletRemove,
+  '/profile/link-sync': handleProfileLinkSync,
+  '/telegram/verify': handleTelegramVerify,
+  '/telegram/disconnect': handleTelegramDisconnect,
 };
 
 function readBody(req) {
