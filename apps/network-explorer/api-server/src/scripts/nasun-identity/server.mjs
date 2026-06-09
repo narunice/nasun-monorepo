@@ -344,7 +344,9 @@ async function handleTelegramDisconnect(body) {
 // --- POST /profile/attributes-sync ----------------------------------------------------
 // S2.C self-write mirror. get-user-profile PATCH writes customDisplayName / customAvatarKey /
 // linkedSuiAddress / linkedSolanaAddress (+ the *UpdatedAt stamps) AFTER the authoritative
-// DynamoDB UpdateItem. Every one of those is an attributes-JSONB long-tail key (dal-reload
+// DynamoDB UpdateItem. S3.R4 extends this to the referral writer (referralCode, set after the
+// referral lambda's UserProfiles UpdateItem) and the admin referral-decline writer
+// (lastReferralDeclinedAt). Every one of those is an attributes-JSONB long-tail key (dal-reload
 // promotes none of them), so the box merges the same `set` into attributes and drops the
 // `remove` keys in one tx; updated_at -> column (parity with the PATCH updatedAt=:now). A
 // missing row is a no-op (follower; reload backstops). Only the non-promoted PATCH keys are
@@ -354,6 +356,7 @@ const ATTRS_SYNC_SET_KEYS = new Set([
   'customDisplayName', 'displayNameUpdatedAt',
   'customAvatarKey', 'customAvatarUpdatedAt',
   'linkedSuiAddress', 'linkedSolanaAddress',
+  'referralCode', 'lastReferralDeclinedAt',
 ]);
 const ATTRS_SYNC_REMOVE_KEYS = new Set(['customAvatarKey', 'linkedSuiAddress', 'linkedSolanaAddress']);
 

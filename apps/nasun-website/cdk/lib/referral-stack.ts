@@ -23,6 +23,7 @@ import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
 import { issuerVerifyEnv } from "./issuer-env";
+import { identityWriteEnv } from "./identity-env";
 
 interface ReferralStackProps extends cdk.StackProps {
   userProfilesTableName: string;
@@ -144,6 +145,9 @@ export class ReferralStack extends cdk.Stack {
         REFERRAL_GATE_ENABLED: process.env.REFERRAL_GATE_ENABLED || "true",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         NODE_OPTIONS: "--enable-source-maps",
+        // AWS-exit DAL S3.R4: best-effort mirror of referralCode to the box nasun-identity service
+        // (followed by DynamoDB SoT). FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset at synth.
+        ...identityWriteEnv(),
       },
     });
 

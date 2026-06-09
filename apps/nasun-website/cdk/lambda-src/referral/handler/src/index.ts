@@ -29,6 +29,7 @@ import {
   type EligibilitySignals,
   type GateDecision,
 } from "./eligibility.js";
+import { mirrorIdentityWrite, IDENTITY_ROUTES } from "../../../_shared/auth/identity-write.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -301,6 +302,19 @@ async function handleMyCode(
           ExpressionAttributeValues: { ":code": code },
         })
       );
+
+      // AWS-exit DAL S3.R4: mirror referralCode to the box nasun-identity attributes-JSONB
+      // (best-effort follower; no-op unless IDENTITY_WRITE_* is wired; never throws). DynamoDB is
+      // SoT. Fire-and-forget keeps code issuance latency-free; the common case lands the mirror so
+      // the box carries referralCode near-real-time, and dal-reload (<=10min full re-scan) is the
+      // backstop for the rare dropped mirror (e.g. Lambda freeze right after return). This is the
+      // write-mirror foundation only; the later read-before-write flip of handleMyCode's "already
+      // have a code" check must itself guarantee mirror reliability (await, or accept the backstop
+      // window) before relying on the box to prevent double-issue.
+      void mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
+        identityId,
+        set: { referralCode: code },
+      });
 
       console.log(`[referral] Generated code ${code} for ${identityId}`);
       return jsonResponse(200, { referralCode: code }, origin);
