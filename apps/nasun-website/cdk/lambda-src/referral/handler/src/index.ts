@@ -29,7 +29,11 @@ import {
   type EligibilitySignals,
   type GateDecision,
 } from "./eligibility.js";
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from "../../../_shared/auth/identity-write.js";
+import {
+  mirrorIdentityWrite,
+  readProfileFromBox,
+  IDENTITY_ROUTES,
+} from "../../../_shared/auth/identity-write.js";
 
 const client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
@@ -202,7 +206,23 @@ async function handleMyCode(
   identityId: string,
   origin?: string
 ): Promise<APIGatewayProxyResult> {
-  // 1. Load profile (referralCode + social fields)
+  // 1. Fast path: serve an existing referralCode from the box nasun-identity mirror when the reader
+  // is flipped (AWS-exit DAL S3.R4, read-before-write flip). referralCode is immutable once set
+  // (codes are never deleted) and write-mirrored (C1, awaited), so a box hit is authoritative for the
+  // "already have a code" short-circuit. A box MISS (404/error, or a 200 lacking referralCode from a
+  // dropped mirror) is NOT trusted as a negative: we fall through to the authoritative DynamoDB read
+  // below, which both confirms the code is truly absent AND loads the gate fields. This keeps
+  // double-issue impossible regardless of mirror lag, and the eligibility gate always evaluates the
+  // DynamoDB profile (no stale-field risk). DynamoDB stays SoT. readProfileFromBox no-ops (null)
+  // unless IDENTITY_READ_URL/SECRET are wired and never throws.
+  if ((process.env.IDENTITY_READ_MODE || "").trim() === "flip") {
+    const boxed = await readProfileFromBox("/profile/by-identity", { identityId });
+    if (boxed?.referralCode) {
+      return jsonResponse(200, { referralCode: boxed.referralCode }, origin);
+    }
+  }
+
+  // 1b. Authoritative profile load (referralCode negative + social fields for the eligibility gate).
   const profile = await client.send(
     new GetCommand({
       TableName: USER_PROFILES_TABLE,
@@ -304,14 +324,14 @@ async function handleMyCode(
       );
 
       // AWS-exit DAL S3.R4: mirror referralCode to the box nasun-identity attributes-JSONB
-      // (best-effort follower; no-op unless IDENTITY_WRITE_* is wired; never throws). DynamoDB is
-      // SoT. Fire-and-forget keeps code issuance latency-free; the common case lands the mirror so
-      // the box carries referralCode near-real-time, and dal-reload (<=10min full re-scan) is the
-      // backstop for the rare dropped mirror (e.g. Lambda freeze right after return). This is the
-      // write-mirror foundation only; the later read-before-write flip of handleMyCode's "already
-      // have a code" check must itself guarantee mirror reliability (await, or accept the backstop
-      // window) before relying on the box to prevent double-issue.
-      void mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
+      // (best-effort follower; no-op unless IDENTITY_WRITE_* is wired; never throws/rejects).
+      // DynamoDB is SoT. AWAITED (not fire-and-forget) so the box reliably carries referralCode
+      // before this rare code-generation path returns: this minimizes the read-flip's DynamoDB
+      // fallback rate and prepares the box for the eventual SoT flip. Awaiting cannot break the
+      // caller (the helper swallows all errors) and only adds the box round-trip to the rare
+      // generation path. dal-reload (<=10min full re-scan) remains the backstop for a box write
+      // that fails outright; the read flip stays correct regardless via its DynamoDB fallback.
+      await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
         identityId,
         set: { referralCode: code },
       });

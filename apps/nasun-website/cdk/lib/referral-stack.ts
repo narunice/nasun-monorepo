@@ -23,7 +23,7 @@ import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
 import { issuerVerifyEnv } from "./issuer-env";
-import { identityWriteEnv } from "./identity-env";
+import { identityWriteEnv, identityReadEnv } from "./identity-env";
 
 interface ReferralStackProps extends cdk.StackProps {
   userProfilesTableName: string;
@@ -148,6 +148,9 @@ export class ReferralStack extends cdk.Stack {
         // AWS-exit DAL S3.R4: best-effort mirror of referralCode to the box nasun-identity service
         // (followed by DynamoDB SoT). FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset at synth.
         ...identityWriteEnv(),
+        // AWS-exit DAL S3.R4: read flip for handleMyCode's "already have a code" short-circuit.
+        // FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE=flip activates it.
+        ...identityReadEnv(),
       },
     });
 
