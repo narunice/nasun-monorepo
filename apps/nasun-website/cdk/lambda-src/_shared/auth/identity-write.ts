@@ -34,6 +34,9 @@ export const IDENTITY_ROUTES = {
   // S2.B telegram membership.
   telegramVerify: '/telegram/verify',
   telegramDisconnect: '/telegram/disconnect',
+  // S2.C get-user-profile self-write mirror: PATCH attribute deltas + POST create.
+  profileAttributesSync: '/profile/attributes-sync',
+  profileCreateMirror: '/profile/create-mirror',
 } as const;
 
 /**
@@ -65,5 +68,39 @@ export async function mirrorIdentityWrite(path: string, payload: unknown): Promi
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
   } catch (err) {
     console.warn(`[identity-mirror] ${path} failed (non-blocking):`, err instanceof Error ? err.message : err);
+  }
+}
+
+/**
+ * GET a box identity READ route (e.g. /profile/by-wallet) for the S2.C get-user-profile reader
+ * cutover. Co-located with mirrorIdentityWrite so the box-call surface (write + read) lives in
+ * one file and is hardened in one place. No-op (returns null) unless BOTH IDENTITY_READ_URL and
+ * IDENTITY_READ_SECRET are set. NEVER throws: a missing config, non-200 status (404 = profile or
+ * wallet absent / box lag), timeout, or network error returns null so the caller falls back to
+ * its DynamoDB read. Read-only on the box side (single SELECT), so it cannot mutate the mirror.
+ */
+export async function readProfileFromBox(
+  path: string,
+  query: Record<string, string>,
+): Promise<Record<string, any> | null> {
+  const base = process.env.IDENTITY_READ_URL;
+  const secret = process.env.IDENTITY_READ_SECRET;
+  if (!base || !secret) return null;
+
+  const overrideMs = Number(process.env.IDENTITY_READ_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(overrideMs) && overrideMs > 0 ? overrideMs : DEFAULT_TIMEOUT_MS;
+
+  try {
+    const qs = new URLSearchParams(query).toString();
+    const res = await fetch(`${base.replace(/\/+$/, '')}${path}?${qs}`, {
+      method: 'GET',
+      headers: { authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (res.status === 200) return (await res.json()) as Record<string, any>;
+    return null;
+  } catch (err) {
+    console.warn(`[identity-read] ${path} failed (non-blocking):`, err instanceof Error ? err.message : err);
+    return null;
   }
 }

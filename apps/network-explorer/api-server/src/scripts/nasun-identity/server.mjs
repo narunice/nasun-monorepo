@@ -310,6 +310,91 @@ async function handleTelegramDisconnect(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /profile/attributes-sync ----------------------------------------------------
+// S2.C self-write mirror. get-user-profile PATCH writes customDisplayName / customAvatarKey /
+// linkedSuiAddress / linkedSolanaAddress (+ the *UpdatedAt stamps) AFTER the authoritative
+// DynamoDB UpdateItem. Every one of those is an attributes-JSONB long-tail key (dal-reload
+// promotes none of them), so the box merges the same `set` into attributes and drops the
+// `remove` keys in one tx; updated_at -> column (parity with the PATCH updatedAt=:now). A
+// missing row is a no-op (follower; reload backstops). Only the non-promoted PATCH keys are
+// accepted, so a promoted column (twitter_handle, ...) can never be shadowed into attributes
+// and collide on read. All values are strings (no NUMERIC sink).
+const ATTRS_SYNC_SET_KEYS = new Set([
+  'customDisplayName', 'displayNameUpdatedAt',
+  'customAvatarKey', 'customAvatarUpdatedAt',
+  'linkedSuiAddress', 'linkedSolanaAddress',
+]);
+const ATTRS_SYNC_REMOVE_KEYS = new Set(['customAvatarKey', 'linkedSuiAddress', 'linkedSolanaAddress']);
+
+async function handleProfileAttributesSync(body) {
+  const identityId = str(body.identityId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  const rawSet = (body.set && typeof body.set === 'object' && !Array.isArray(body.set)) ? body.set : {};
+  const rawRemove = Array.isArray(body.remove) ? body.remove : [];
+
+  const setEntries = {};
+  for (const [k, v] of Object.entries(rawSet)) {
+    if (!ATTRS_SYNC_SET_KEYS.has(k)) throw new RouteAbort(400, { error: `set key not allowed: ${k}` });
+    if (typeof v !== 'string') throw new RouteAbort(400, { error: `set.${k} must be a string` });
+    setEntries[k] = v;
+  }
+  const removeKeys = [];
+  for (const k of rawRemove) {
+    if (typeof k !== 'string' || !ATTRS_SYNC_REMOVE_KEYS.has(k)) throw new RouteAbort(400, { error: `remove key not allowed: ${k}` });
+    removeKeys.push(k);
+  }
+  if (Object.keys(setEntries).length === 0 && removeKeys.length === 0) {
+    throw new RouteAbort(400, { error: 'no set or remove fields' });
+  }
+
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    // Merge set, then drop removed keys ('- text[]' is a no-op on an empty array).
+    await tx`
+      UPDATE user_profiles
+      SET attributes = (COALESCE(attributes, '{}'::jsonb) || ${tx.json(setEntries)}::jsonb) - ${removeKeys}::text[],
+          updated_at = now()
+      WHERE identity_id = ${identityId}`;
+  });
+  return { status: 200, body: { identityId } };
+}
+
+// --- POST /profile/create-mirror ------------------------------------------------------
+// S2.C create mirror. get-user-profile POST creates a NEW non-social profile after the
+// authoritative DynamoDB Put (ConditionExpression attribute_not_exists). Mirror as an
+// INSERT ... ON CONFLICT DO NOTHING so it stays create-only (an existing box row -- e.g. one
+// dal-reload already pulled -- is left untouched). twitterHandle/twitterId map to the promoted
+// columns; provider/username/email/xHandle/profileImageUrl go to attributes.
+async function handleProfileCreateMirror(body) {
+  const identityId = str(body.identityId);
+  const provider = str(body.provider);
+  const username = str(body.username);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!provider) throw new RouteAbort(400, { error: 'provider required' });
+  if (!username) throw new RouteAbort(400, { error: 'username required' });
+  // Parity with the lambda BLOCKED_PROVIDERS guard: social providers exist only as linked
+  // secondaries created by link-account.
+  if (['google', 'twitter'].includes(provider.toLowerCase())) {
+    throw new RouteAbort(403, { error: 'social provider profiles cannot be created directly' });
+  }
+  const twitterHandle = body.twitterHandle == null ? null : (str(body.twitterHandle) || null);
+  const twitterId = body.twitterId == null ? null : (str(body.twitterId) || null);
+  const attrs = { provider, username };
+  for (const k of ['email', 'xHandle', 'profileImageUrl']) {
+    const v = str(body[k]);
+    if (v) attrs[k] = v;
+  }
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      INSERT INTO user_profiles
+        (identity_id, twitter_handle, twitter_id, linked_accounts, attributes, is_telegram_member, created_at, updated_at)
+      VALUES (${identityId}, ${twitterHandle}, ${twitterId}, ${tx.json({})}, ${tx.json(attrs)}, false, now(), now())
+      ON CONFLICT (identity_id) DO NOTHING`;
+  });
+  return { status: 200, body: { identityId } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -317,6 +402,8 @@ const ROUTES = {
   '/profile/link-sync': handleProfileLinkSync,
   '/telegram/verify': handleTelegramVerify,
   '/telegram/disconnect': handleTelegramDisconnect,
+  '/profile/attributes-sync': handleProfileAttributesSync,
+  '/profile/create-mirror': handleProfileCreateMirror,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================
