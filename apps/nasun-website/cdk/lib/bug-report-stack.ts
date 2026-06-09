@@ -30,6 +30,7 @@ import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
+import { identityReadEnv } from './identity-env';
 
 export interface BugReportStackProps extends cdk.StackProps {
   environmentName: string;
@@ -227,6 +228,12 @@ export class BugReportStack extends cdk.Stack {
         EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
         BUG_REPORT_API_KEY: process.env.BUG_REPORT_API_KEY || '',
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
+        // AWS-exit DAL S3.R4: creator-posts handleGrant reads the user's walletAddress from the box
+        // nasun-identity mirror when flipped (walletAddress + linkedAccounts are write-mirrored;
+        // DDB fallback on null/404/error). FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset at
+        // synth -> DynamoDB-only, no diff. The admin role check (authenticateAdmin) is unaffected:
+        // it does a direct DynamoDB GetItem and does not consult IDENTITY_READ_MODE.
+        ...identityReadEnv(),
       },
       bundling: {
         minify: true,

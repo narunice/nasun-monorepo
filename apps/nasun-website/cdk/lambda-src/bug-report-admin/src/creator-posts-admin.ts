@@ -17,8 +17,21 @@ import {
   BatchGetCommand,
   GetCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { readProfileFromBox } from '../../_shared/auth/identity-write';
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+
+// Resolve the user's primary wallet from a profile item (DynamoDB or box mirror — identical shape):
+// direct walletAddress, else the linked Nasun wallet, else the linked MetaMask address.
+function resolveWalletAddress(profileItem: Record<string, any> | undefined): string | undefined {
+  if (!profileItem) return undefined;
+  const direct = profileItem.walletAddress as string | undefined;
+  const linked = profileItem.linkedAccounts as {
+    metamask?: { walletAddress?: string };
+    'nasun wallet'?: { walletAddress?: string };
+  } | undefined;
+  return direct || linked?.['nasun wallet']?.walletAddress || linked?.metamask?.walletAddress;
+}
 
 const CREATOR_POSTS_TABLE = process.env.CREATOR_POSTS_TABLE || 'nasun-creator-posts';
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
@@ -311,26 +324,28 @@ export async function handleGrant(
   }
   const identityId = item.identityId as string;
 
-  // Step 3: Look up walletAddress from UserProfiles (optional — points are not money)
+  // Step 3: Look up walletAddress from the profile (optional — points are not money).
+  // AWS-exit DAL S3.R4: serve from the box nasun-identity mirror when the reader is flipped. Both
+  // walletAddress and linkedAccounts are write-mirrored, so the box is near-real-time for the fields
+  // this resolves (the by-identity parity sweep confirmed 0 mismatch across all creator-post
+  // consumers). readProfileFromBox no-ops (returns null) unless IDENTITY_READ_URL/SECRET are wired
+  // and never throws -> fall through to the DynamoDB read on null/404/error. DynamoDB stays SoT.
   let walletAddress: string | undefined;
   try {
-    const profile = await ddb.send(new GetCommand({
-      TableName: USER_PROFILES_TABLE,
-      Key: { identityId },
-      ProjectionExpression: 'walletAddress, linkedAccounts',
-    }));
-    const profileItem = profile.Item;
-    if (profileItem) {
-      const direct = profileItem.walletAddress as string | undefined;
-      const linked = (profileItem.linkedAccounts as {
-        metamask?: { walletAddress?: string };
-        'nasun wallet'?: { walletAddress?: string };
-      } | undefined);
-      walletAddress =
-        direct ||
-        linked?.['nasun wallet']?.walletAddress ||
-        linked?.metamask?.walletAddress;
+    let profileItem: Record<string, any> | undefined;
+    if ((process.env.IDENTITY_READ_MODE || '').trim() === 'flip') {
+      const boxed = await readProfileFromBox('/profile/by-identity', { identityId });
+      if (boxed) profileItem = boxed;
     }
+    if (!profileItem) {
+      const profile = await ddb.send(new GetCommand({
+        TableName: USER_PROFILES_TABLE,
+        Key: { identityId },
+        ProjectionExpression: 'walletAddress, linkedAccounts',
+      }));
+      profileItem = profile.Item;
+    }
+    walletAddress = resolveWalletAddress(profileItem);
   } catch (err) {
     console.warn('[creator-posts][GRANT] profile lookup failed (non-fatal):', err);
   }
