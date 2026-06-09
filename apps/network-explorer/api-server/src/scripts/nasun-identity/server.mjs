@@ -604,6 +604,25 @@ const send = (res, code, obj) => {
   res.end(JSON.stringify(obj));
 };
 
+// Retry a READ on a transient conflict with the dal-reload atomic schema swap. The swap
+// (DROP + schema rename, sub-second) takes an AccessExclusiveLock; a concurrent read tx holding
+// AccessShareLock across its two SELECTs can lose a deadlock (40P01), hit lock_timeout (55P03),
+// or briefly observe a missing relation/schema mid-swap (42P01/3F000). All are transient and the
+// reads are idempotent + read-only, so a short backed-off retry lands after the swap completes.
+// RouteAbort (4xx, e.g. 404) and any non-transient error propagate immediately.
+const TRANSIENT_PG_CODES = new Set(['40P01', '40001', '55P03', '42P01', '3F000']);
+async function withReadRetry(fn, attempts = 3) {
+  for (let i = 0; ; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (e instanceof RouteAbort) throw e;
+      if (i >= attempts - 1 || !TRANSIENT_PG_CODES.has(e && e.code)) throw e;
+      await new Promise((r) => setTimeout(r, 40 * (i + 1)));
+    }
+  }
+}
+
 const server = createServer(async (req, res) => {
   let parsed;
   try { parsed = new URL(req.url, 'http://localhost'); } catch { return send(res, 400, { error: 'bad_url' }); }
@@ -619,7 +638,7 @@ const server = createServer(async (req, res) => {
     if (!ghandler) return send(res, 404, { error: 'not_found' });
     if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
     try {
-      const { status, body: out } = await ghandler(parsed.searchParams);
+      const { status, body: out } = await withReadRetry(() => ghandler(parsed.searchParams));
       return send(res, status, out);
     } catch (e) {
       if (e instanceof RouteAbort) return send(res, e.status, e.body);
