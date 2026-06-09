@@ -74,7 +74,12 @@ const JOBS = {
       twitter_handle: it.twitterHandle ?? null,
       twitter_id: it.twitterId ?? null,
       telegram_user_id: it.telegramUserId ?? null,
-      is_telegram_member: it.isTelegramMember ?? false,
+      // null (not false) for a never-connected profile: DynamoDB OMITS isTelegramMember for those,
+      // so the box reader (dalRowToItem `!= null`) drops it too -> byte-identical to DynamoDB. The
+      // attribute is tri-state in DynamoDB: true (connected) / false (explicit, disconnect-telegram)
+      // / absent (never). dal-reconcile normalizes null==false==absent for this bool column, so the
+      // gate stays green. Requires the staging column to be nullable (see buildStaging).
+      is_telegram_member: it.isTelegramMember ?? null,
       linked_accounts: it.linkedAccounts ?? null,
       linked_to_primary_id: it.linkedToPrimaryId ?? null,
       updated_at: it.updatedAt ?? null,
@@ -160,6 +165,14 @@ async function buildStaging(name, job) {
   // after the bulk load (validated once, all rows present) for user_profiles.
   await sql.unsafe(`DROP TABLE IF EXISTS staging.${name}`);
   await sql.unsafe(`CREATE TABLE staging.${name} (LIKE public.${name} INCLUDING ALL)`);
+  if (name === 'user_profiles') {
+    // LIKE copies the live `is_telegram_member boolean NOT NULL DEFAULT false`. Drop both so the
+    // null-bearing load (never-connected -> NULL, see job.row) does not abort, and so the swapped
+    // public column is nullable with no default -- matching DynamoDB's absent-vs-false distinction.
+    // Reload-enforced (independent of public's current state), so the nullable property survives
+    // every swap. To roll back, restore `?? false` + re-ALTER public NOT NULL DEFAULT false.
+    await sql.unsafe(`ALTER TABLE staging.user_profiles ALTER COLUMN is_telegram_member DROP NOT NULL, ALTER COLUMN is_telegram_member DROP DEFAULT`);
+  }
 
   let scanned = 0;
   let loaded = 0;
@@ -284,6 +297,9 @@ async function main() {
     // read-only and additive (chat-server's identity-resolver never queries it).
     await tx.unsafe('GRANT SELECT ON public.user_profiles, public.wallet_owner, public.user_wallets TO nasun_chat_ro, nasun_keeper');
     await tx.unsafe('GRANT SELECT ON public.v_wallet_primary_profile TO nasun_keeper');
+    // The box nasun-identity dual-write service (S1.2) writes these tables as nasun_identity;
+    // the swap drops the tables (wiping ACLs), so its write grants must be re-applied here too.
+    await tx.unsafe('GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_profiles, public.wallet_owner, public.user_wallets TO nasun_identity');
   });
 
   const after = {};

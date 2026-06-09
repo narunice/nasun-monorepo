@@ -75,9 +75,12 @@ const STALE_RELOAD_MS = 25 * 60 * 1000;
 const STATE_PATH = join(HERE, 'recon-state.json');
 const REPORT_PATH = join(HERE, 'recon-report.json');
 const RELOAD_PATH = join(HERE, 'dal-reload.mjs');
-// SHA-256 of dal-reload.mjs @ S1.0 (user_wallets read-mirror; == EC2 deployed 2026-06-08).
-// If dal-reload.mjs changes, this guard fires: re-mirror JOBS/omit below and update this.
-const RELOAD_ANCHOR_SHA256 = '51c5233b11aa3b973ef07e5d764ed0df930fa92ed92ef466d88888bca4773221';
+// SHA-256 of dal-reload.mjs @ S2.C by-identity parity (is_telegram_member ?? null + staging
+// nullable; == EC2 deployed 2026-06-09). The only mapping change since the prior anchor is
+// is_telegram_member's null-for-never-connected; the bool fingerprint here normalizes
+// null==false==absent (see fp()), so the reconcile projection below still mirrors dal-reload
+// with no functional change. If dal-reload.mjs changes again, re-mirror JOBS/omit and update this.
+const RELOAD_ANCHOR_SHA256 = '7f9da26c340b441b87af1f8a788c98d5e29db433e70c654dfd985d226178a598';
 
 if (!DB_URL) {
   console.error('FATAL: RECON_DATABASE_URL is required (read role over wg, e.g. nasun_chat_ro@10.99.0.1)');

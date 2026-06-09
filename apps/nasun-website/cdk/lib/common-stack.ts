@@ -252,14 +252,15 @@ export class CommonStack extends cdk.Stack {
         EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
         LEADERBOARD_SYNC_URL: process.env.LEADERBOARD_SYNC_URL || '',
         LEADERBOARD_SYNC_TOKEN: process.env.LEADERBOARD_SYNC_TOKEN || '',
-        // AWS-exit DAL S2.C: box mirror reader shadow/flip. identityReadEnv() returns {} until
-        // IDENTITY_READ_URL/SECRET are set in the cdk .env, so this is inert today (DynamoDB only).
-        // NOTE: identityWriteEnv() is intentionally NOT spread here yet. .env.production already
-        // carries IDENTITY_WRITE_URL/SECRET (the S2.A/B writer lambdas use them), so spreading it
-        // would immediately activate the PATCH/POST dual-write. The reader cutover (shadow -> flip
-        // on /by-wallet) tolerates <=10min cross-app staleness on profile edits via the dal-reload
-        // backstop, so write-dual is deferred to the pre-S3 step where it becomes required.
+        // AWS-exit DAL S2.C: box mirror reader (shadow/flip) + PATCH/POST self-write dual-write.
+        // identityReadEnv() drives the read cutover; identityWriteEnv() activates the dual-write so
+        // a profile edit (display name / avatar / linked Sui|Solana) and a profile create also land
+        // on the box, eliminating the post-edit <=10min /by-wallet staleness (dal-reload was the
+        // interim backstop). Both fragments return {} when their cdk .env vars are unset. The box
+        // write routes (/profile/attributes-sync, /profile/create-mirror) are additive + never-throws
+        // (DynamoDB stays SoT). Roll back by unsetting the vars and redeploying.
         ...identityReadEnv(),
+        ...identityWriteEnv(),
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",

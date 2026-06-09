@@ -258,8 +258,8 @@ async function handleProfileLinkSync(body) {
       const laBind = r.la === null ? null : tx.json(r.la);
       await tx`
         INSERT INTO user_profiles
-          (identity_id, linked_accounts, linked_to_primary_id, twitter_handle, twitter_id, is_telegram_member, created_at, updated_at)
-        VALUES (${r.identityId}, ${laBind}, ${r.ltp}, ${r.th}, ${r.tid}, false, now(), now())
+          (identity_id, linked_accounts, linked_to_primary_id, twitter_handle, twitter_id, created_at, updated_at)
+        VALUES (${r.identityId}, ${laBind}, ${r.ltp}, ${r.th}, ${r.tid}, now(), now())
         ON CONFLICT (identity_id) DO UPDATE SET
           linked_accounts = ${laBind},
           linked_to_primary_id = ${r.ltp},
@@ -388,8 +388,8 @@ async function handleProfileCreateMirror(body) {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
     await tx`
       INSERT INTO user_profiles
-        (identity_id, twitter_handle, twitter_id, linked_accounts, attributes, is_telegram_member, created_at, updated_at)
-      VALUES (${identityId}, ${twitterHandle}, ${twitterId}, ${tx.json({})}, ${tx.json(attrs)}, false, now(), now())
+        (identity_id, twitter_handle, twitter_id, linked_accounts, attributes, created_at, updated_at)
+      VALUES (${identityId}, ${twitterHandle}, ${twitterId}, ${tx.json({})}, ${tx.json(attrs)}, now(), now())
       ON CONFLICT (identity_id) DO NOTHING`;
   });
   return { status: 200, body: { identityId } };
