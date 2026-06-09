@@ -430,6 +430,15 @@ function dalRowToItem(row) {
   if (row.is_telegram_member != null) item.isTelegramMember = row.is_telegram_member;
   if (row.linked_accounts != null) item.linkedAccounts = row.linked_accounts;
   if (row.linked_to_primary_id != null) item.linkedToPrimaryId = row.linked_to_primary_id;
+  // created_at/updated_at are promoted timestamptz columns (dal-reload sets them from the DDB
+  // createdAt/updatedAt ISO strings). Emit only when the caller SELECTed them (by-identity, which
+  // mirrors buildUnifiedProfile's full unmarshalled item). The by-wallet primary SELECT omits them,
+  // so its fixed-shape response is unaffected. createdAt is immutable (matches DDB byte-for-byte);
+  // updatedAt may differ by the dal-reload churn window but no consumer reads it (see
+  // BY_IDENTITY_SHADOW_IGNORE in get-user-profile).
+  const toIso = (v) => (v instanceof Date ? v.toISOString() : v);
+  if (row.created_at != null) item.createdAt = toIso(row.created_at);
+  if (row.updated_at != null) item.updatedAt = toIso(row.updated_at);
   return item;
 }
 
@@ -559,7 +568,8 @@ async function handleProfileByIdentity(params) {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
     const [row] = await tx`
       SELECT identity_id, wallet_address, twitter_handle, twitter_id, telegram_user_id,
-             is_telegram_member, linked_accounts, linked_to_primary_id, attributes
+             is_telegram_member, linked_accounts, linked_to_primary_id, attributes,
+             created_at, updated_at
       FROM user_profiles WHERE identity_id = ${identityId}`;
     if (!row) throw new RouteAbort(404, { error: 'User profile not found' });
     const baseProfile = dalRowToItem(row);
