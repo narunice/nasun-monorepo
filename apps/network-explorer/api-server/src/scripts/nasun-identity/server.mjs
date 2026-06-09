@@ -319,6 +319,185 @@ const ROUTES = {
   '/telegram/disconnect': handleTelegramDisconnect,
 };
 
+// ===== READ routes (S2.C get-user-profile reader cutover) =============================
+// The (still-AWS) get-user-profile lambda calls these to read the profile from the box,
+// shadow-comparing the result against its own DynamoDB read before any flip. The lambda's
+// wallet path is coupled to the DynamoDB AttributeValue shape, so the box computes the SAME
+// response body here (on plain values) rather than returning raw items. Reads are a single
+// SELECT (no tx mutation); nasun_identity already has SELECT on user_profiles + wallet_owner
+// (dal-reload swap GRANT), so the 3-hop runs against base tables -- no view grant needed.
+
+// Reconstruct a DynamoDB-UserProfiles-item shape from a box row: attributes JSONB holds the
+// long-tail (provider, username, customDisplayName, profileImageUrl, email, ...), promoted
+// columns hold the identity-resolution fields. attributes excludes the promoted keys
+// (dal-reload omit), so there is no collision; null columns are omitted to match an absent
+// DynamoDB attribute.
+function dalRowToItem(row) {
+  if (!row) return null;
+  const attrs = (row.attributes && typeof row.attributes === 'object' && !Array.isArray(row.attributes)) ? row.attributes : {};
+  const item = { ...attrs, identityId: row.identity_id };
+  if (row.wallet_address != null) item.walletAddress = row.wallet_address;
+  if (row.twitter_handle != null) item.twitterHandle = row.twitter_handle;
+  if (row.twitter_id != null) item.twitterId = row.twitter_id;
+  if (row.telegram_user_id != null) item.telegramUserId = row.telegram_user_id;
+  if (row.is_telegram_member != null) item.isTelegramMember = row.is_telegram_member;
+  if (row.linked_accounts != null) item.linkedAccounts = row.linked_accounts;
+  if (row.linked_to_primary_id != null) item.linkedToPrimaryId = row.linked_to_primary_id;
+  return item;
+}
+
+// Mirror get-user-profile resolveDisplayName (plain-value form).
+function resolveDisplayNameFromItem(item) {
+  if (item.customDisplayName) return item.customDisplayName;
+  if (item.provider === 'Twitter' && item.username) return item.username;
+  const lt = item.linkedAccounts && item.linkedAccounts.twitter && item.linkedAccounts.twitter.username;
+  if (lt) return lt;
+  if (item.provider === 'Google' && item.email) return String(item.email).split('@')[0];
+  const lg = item.linkedAccounts && item.linkedAccounts.google && item.linkedAccounts.google.email;
+  if (lg) return String(lg).split('@')[0];
+  return null;
+}
+
+async function fetchSecondaries(tx, ids) {
+  const map = new Map();
+  if (!ids.length) return map;
+  const rows = await tx`
+    SELECT identity_id, wallet_address, twitter_handle, twitter_id, telegram_user_id,
+           is_telegram_member, linked_accounts, linked_to_primary_id, attributes
+    FROM user_profiles WHERE identity_id = ANY(${ids})`;
+  for (const r of rows) map.set(r.identity_id, dalRowToItem(r));
+  return map;
+}
+
+// --- GET /profile/by-wallet?walletAddress=0x.. ---------------------------------------
+// Mirrors get-user-profile GET-by-wallet (3-hop + linked-secondary merge + resolveDisplayName).
+async function handleProfileByWallet(params) {
+  const addr = str(params.get('walletAddress')).toLowerCase();
+  if (!SUI_ADDRESS_REGEX.test(addr)) throw new RouteAbort(400, { error: 'Invalid wallet address format' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const [primaryRow] = await tx`
+      SELECT pp.identity_id, pp.wallet_address, pp.twitter_handle, pp.twitter_id, pp.telegram_user_id,
+             pp.is_telegram_member, pp.linked_accounts, pp.linked_to_primary_id, pp.attributes
+      FROM wallet_owner wo
+      JOIN user_profiles up ON up.identity_id = wo.owner_identity_id
+      JOIN user_profiles pp ON pp.identity_id = COALESCE(up.linked_to_primary_id, up.identity_id)
+      WHERE wo.wallet_address = ${addr}`;
+    // 404 -> the lambda falls back to its DynamoDB read (also covers box lag for new profiles).
+    if (!primaryRow) throw new RouteAbort(404, { error: 'Wallet not registered or profile not found' });
+
+    const profileItem = dalRowToItem(primaryRow);
+    const linkedAccounts = profileItem.linkedAccounts ? JSON.parse(JSON.stringify(profileItem.linkedAccounts)) : {};
+
+    let rootProfileImageUrl = profileItem.profileImageUrl || null;
+    let rootTwitterHandle = profileItem.twitterHandle || null;
+    let rootOriginalTwitterHandle = profileItem.originalTwitterHandle || null;
+    let rootUsername = profileItem.username || null;
+    let rootEmail = profileItem.email || null;
+
+    const hopKeys = Object.keys(linkedAccounts).filter((p) => linkedAccounts[p] && linkedAccounts[p].identityId);
+    const secondaries = await fetchSecondaries(tx, hopKeys.map((p) => linkedAccounts[p].identityId));
+
+    for (const p of hopKeys) {
+      const item = secondaries.get(linkedAccounts[p].identityId);
+      if (!item) continue;
+      if (!linkedAccounts[p].profileImageUrl && item.profileImageUrl) linkedAccounts[p].profileImageUrl = item.profileImageUrl;
+      if (!linkedAccounts[p].username && item.username) linkedAccounts[p].username = item.username;
+      const spv = (item.provider || '').toLowerCase();
+      const canonical = spv === 'twitter' ? 'twitter' : spv === 'google' ? 'google' : null;
+      if (canonical) {
+        const merged = { ...(linkedAccounts[canonical] || {}) };
+        if (!merged.profileImageUrl && item.profileImageUrl) merged.profileImageUrl = item.profileImageUrl;
+        if (!merged.username && item.username) merged.username = item.username;
+        if (canonical === 'twitter') {
+          if (!merged.twitterHandle && item.twitterHandle) merged.twitterHandle = item.twitterHandle;
+          if (!merged.originalTwitterHandle && item.originalTwitterHandle) merged.originalTwitterHandle = item.originalTwitterHandle;
+        }
+        if (canonical === 'google' && !merged.email && item.email) merged.email = item.email;
+        linkedAccounts[canonical] = merged;
+      }
+      if (!rootProfileImageUrl && item.profileImageUrl) rootProfileImageUrl = item.profileImageUrl;
+      if (!rootTwitterHandle && item.twitterHandle) rootTwitterHandle = item.twitterHandle;
+      if (!rootOriginalTwitterHandle && item.originalTwitterHandle) rootOriginalTwitterHandle = item.originalTwitterHandle;
+      if (!rootUsername && item.username) rootUsername = item.username;
+      if (!rootEmail && item.email) rootEmail = item.email;
+    }
+
+    if (rootTwitterHandle || rootOriginalTwitterHandle) {
+      const tw = linkedAccounts.twitter || {};
+      linkedAccounts.twitter = {
+        ...tw,
+        profileImageUrl: tw.profileImageUrl || rootProfileImageUrl || undefined,
+        twitterHandle: tw.twitterHandle || rootTwitterHandle || undefined,
+        originalTwitterHandle: tw.originalTwitterHandle || rootOriginalTwitterHandle || undefined,
+        username: tw.username || rootUsername || undefined,
+      };
+    }
+    if (rootEmail) {
+      const gl = linkedAccounts.google || {};
+      linkedAccounts.google = {
+        ...gl,
+        profileImageUrl: gl.profileImageUrl || rootProfileImageUrl || undefined,
+        email: gl.email || rootEmail || undefined,
+      };
+    }
+
+    const mergedItemForName = {
+      ...profileItem,
+      username: rootUsername || profileItem.username,
+      twitterHandle: rootTwitterHandle || profileItem.twitterHandle,
+      originalTwitterHandle: rootOriginalTwitterHandle || profileItem.originalTwitterHandle,
+      email: rootEmail || profileItem.email,
+    };
+
+    return { status: 200, body: {
+      resolvedDisplayName: resolveDisplayNameFromItem(mergedItemForName),
+      provider: profileItem.provider || null,
+      profileImageUrl: rootProfileImageUrl,
+      twitterHandle: rootOriginalTwitterHandle || rootTwitterHandle || null,
+      customAvatarKey: profileItem.customAvatarBanned === true ? null : (profileItem.customAvatarKey || null),
+      customDisplayName: profileItem.customDisplayName || null,
+      walletAddress: addr,
+      linkedAccounts,
+    } };
+  });
+}
+
+// --- GET /profile/by-identity?identityId=.. ------------------------------------------
+// Mirrors get-user-profile buildUnifiedProfile (full item + linked-secondary field merge).
+async function handleProfileByIdentity(params) {
+  const identityId = str(params.get('identityId'));
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const [row] = await tx`
+      SELECT identity_id, wallet_address, twitter_handle, twitter_id, telegram_user_id,
+             is_telegram_member, linked_accounts, linked_to_primary_id, attributes
+      FROM user_profiles WHERE identity_id = ${identityId}`;
+    if (!row) throw new RouteAbort(404, { error: 'User profile not found' });
+    const baseProfile = dalRowToItem(row);
+    const unified = { ...baseProfile };
+    const la = (baseProfile.linkedAccounts && typeof baseProfile.linkedAccounts === 'object') ? baseProfile.linkedAccounts : {};
+    const hopKeys = Object.keys(la).filter((p) => la[p] && la[p].identityId);
+    const secondaries = await fetchSecondaries(tx, hopKeys.map((p) => la[p].identityId));
+    const fieldsToMerge = ['email', 'twitterHandle', 'originalTwitterHandle', 'twitterId', 'profileImageUrl', 'username', 'walletAddress'];
+    for (const p of hopKeys) {
+      const sec = secondaries.get(la[p].identityId);
+      if (!sec) continue;
+      const { linkedAccounts: _drop, ...linkedProfile } = sec;
+      for (const f of fieldsToMerge) {
+        if (linkedProfile[f] && !unified[f]) unified[f] = linkedProfile[f];
+      }
+    }
+    return { status: 200, body: unified };
+  });
+}
+
+const GET_ROUTES = {
+  '/profile/by-wallet': handleProfileByWallet,
+  '/profile/by-identity': handleProfileByIdentity,
+};
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -339,10 +518,30 @@ const send = (res, code, obj) => {
 };
 
 const server = createServer(async (req, res) => {
-  if (req.method === 'GET' && req.url === '/health') {
+  let parsed;
+  try { parsed = new URL(req.url, 'http://localhost'); } catch { return send(res, 400, { error: 'bad_url' }); }
+  const pathname = parsed.pathname;
+
+  if (req.method === 'GET' && pathname === '/health') {
     return send(res, 200, { status: 'ok', service: 'nasun-identity', schema: SCHEMA });
   }
-  const handler = req.method === 'POST' ? ROUTES[req.url] : undefined;
+
+  // GET read routes (bearer-gated, query-param input, no body).
+  if (req.method === 'GET') {
+    const ghandler = GET_ROUTES[pathname];
+    if (!ghandler) return send(res, 404, { error: 'not_found' });
+    if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
+    try {
+      const { status, body: out } = await ghandler(parsed.searchParams);
+      return send(res, status, out);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.body);
+      console.error(`[identity] ${pathname} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'internal_error' });
+    }
+  }
+
+  const handler = req.method === 'POST' ? ROUTES[pathname] : undefined;
   if (!handler) return send(res, 404, { error: 'not_found' });
   if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
   let body;
