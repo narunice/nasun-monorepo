@@ -37,7 +37,11 @@ import postgres from 'postgres';
 const PORT = Number(process.env.IDENTITY_PORT || 3211);
 const HOST = process.env.IDENTITY_BIND || '127.0.0.1';
 const SCHEMA = process.env.IDENTITY_PG_SCHEMA || 'public';
-const MAX_BODY = 4096;
+// 64KB: write-route bodies are small, but /profile/batch carries up to MAX_BATCH_IDS
+// identityIds (~55 bytes each). This is a bearer-gated loopback service, so the larger ceiling
+// is no abuse exposure.
+const MAX_BODY = 65536;
+const MAX_BATCH_IDS = 500;                     // /profile/batch identityIds cap (node-3 chunks <=100)
 const MAX_WALLETS_PER_ACCOUNT = 10;            // parity with wallet-api registerWallet.ts
 const SUI_ADDRESS_REGEX = /^0x[a-f0-9]{64}$/;  // address is lower-cased before the test
 
@@ -438,6 +442,7 @@ const ROUTES = {
   '/telegram/disconnect': handleTelegramDisconnect,
   '/profile/attributes-sync': handleProfileAttributesSync,
   '/profile/create-mirror': handleProfileCreateMirror,
+  '/profile/batch': handleProfileBatch,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================
@@ -667,6 +672,34 @@ async function handleProfileCount() {
     const [{ n }] = await tx`SELECT count(*)::int AS n FROM user_profiles`;
     return { status: 200, body: { count: n, tableName: 'UserProfiles', updatedAt: new Date().toISOString() } };
   });
+}
+
+// --- POST /profile/batch { identityIds: string[] } -----------------------------------
+// AWS-exit DAL S3.R4: bulk raw-row read for node-3 explorer-api's ecosystem leaderboard
+// fetchProfilesBatch. Returns the SAME per-identity DynamoDB-item shape as a UserProfiles
+// BatchGet (dalRowToItem, NO secondary merge) keyed by identityId; the caller keeps its own
+// primary-override (linkedToPrimaryId) + linked-secondary enrich hop and a DynamoDB fallback.
+// POST (not GET) because a leaderboard page resolves up to MAX_BATCH_IDS ids -- too many for a
+// query string. A read, so wrapped in withReadRetry to survive a dal-reload swap straddle.
+// Missing ids are simply absent from `profiles` (the caller treats absent as a default entry).
+async function handleProfileBatch(body) {
+  const ids = Array.isArray(body.identityIds) ? body.identityIds : null;
+  if (!ids) throw new RouteAbort(400, { error: 'identityIds[] required' });
+  if (ids.length > MAX_BATCH_IDS) throw new RouteAbort(400, { error: 'too many identityIds' });
+  for (const id of ids) {
+    if (typeof id !== 'string' || !id) throw new RouteAbort(400, { error: 'invalid identityId' });
+  }
+  if (ids.length === 0) return { status: 200, body: { profiles: {} } };
+  return await withReadRetry(() => sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id, wallet_address, twitter_handle, twitter_id, telegram_user_id,
+             is_telegram_member, linked_accounts, linked_to_primary_id, attributes
+      FROM user_profiles WHERE identity_id = ANY(${ids})`;
+    const profiles = {};
+    for (const r of rows) profiles[r.identity_id] = dalRowToItem(r);
+    return { status: 200, body: { profiles } };
+  }));
 }
 
 const GET_ROUTES = {
