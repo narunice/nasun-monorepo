@@ -112,7 +112,14 @@ async function handleWalletRegister(body) {
   const addr = str(body.walletAddress).toLowerCase();
   if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
   if (!SUI_ADDRESS_REGEX.test(addr)) throw new RouteAbort(400, { error: 'Invalid Sui wallet address format' });
-  const registeredAt = new Date().toISOString();
+  // Prefer the DynamoDB-authoritative registeredAt carried by the caller so the mirrored row is
+  // byte-identical to DDB even inside the register->next-reload transient window (S3.R2: /wallet/list
+  // serves this field). Fall back to a fresh timestamp when absent (old caller / not wired) -- the
+  // next dal-reload reconciles either way.
+  const passedRegisteredAt = str(body.registeredAt);
+  const registeredAt = (passedRegisteredAt && !Number.isNaN(Date.parse(passedRegisteredAt)))
+    ? passedRegisteredAt
+    : new Date().toISOString();
   const attrs = { blockchain: 'sui', registeredAt };
 
   return await sql.begin(async (tx) => {
@@ -614,9 +621,41 @@ async function handleProfileByIdentity(params) {
   });
 }
 
+// --- GET /wallet/list?identityId=.. --------------------------------------------------
+// Mirrors wallet-api listWallets (S3.R2): Query UserWallets (identityId AND begins_with(
+// walletAddress,'0x')) -> { wallets: [{ walletAddress, blockchain, label?, registeredAt }] }.
+// DynamoDB returns sort-key (walletAddress) ascending; every address is lower-case hex
+// (registerWallet SUI_ADDRESS_REGEX), so `ORDER BY wallet_address ASC` is byte-identical to the
+// DDB order. blockchain/registeredAt/label live in the attributes JSONB (dal-reload projection);
+// label has no writer today so the spread is a no-op in practice but kept for shape parity.
+async function handleWalletList(params) {
+  const identityId = str(params.get('identityId'));
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT wallet_address, attributes
+      FROM user_wallets
+      WHERE identity_id = ${identityId} AND wallet_address LIKE '0x%'
+      ORDER BY wallet_address ASC`;
+    const wallets = rows.map((r) => {
+      const a = (r.attributes && typeof r.attributes === 'object') ? r.attributes : {};
+      const blockchain = (typeof a.blockchain === 'string' && a.blockchain) ? a.blockchain : 'sui';
+      return {
+        walletAddress: r.wallet_address,
+        blockchain,
+        ...(a.label ? { label: a.label } : {}),
+        registeredAt: a.registeredAt,
+      };
+    });
+    return { status: 200, body: { wallets } };
+  });
+}
+
 const GET_ROUTES = {
   '/profile/by-wallet': handleProfileByWallet,
   '/profile/by-identity': handleProfileByIdentity,
+  '/wallet/list': handleWalletList,
 };
 
 function readBody(req) {

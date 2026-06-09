@@ -37,6 +37,8 @@ export const IDENTITY_ROUTES = {
   // S2.C get-user-profile self-write mirror: PATCH attribute deltas + POST create.
   profileAttributesSync: '/profile/attributes-sync',
   profileCreateMirror: '/profile/create-mirror',
+  // S3.R2 wallet-api reader: box-served multi-wallet list (GET, query-param input).
+  walletList: '/wallet/list',
 } as const;
 
 /**

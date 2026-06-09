@@ -355,6 +355,8 @@ export class CommonStack extends cdk.Stack {
         ...issuerVerifyEnv(),
         // AWS-exit DAL S1.2: also mirror register/remove writes to the box nasun-identity service when wired.
         ...identityWriteEnv(),
+        // AWS-exit DAL S3.R2: serve listWallets from the box mirror when IDENTITY_READ_MODE=flip (DDB fallback).
+        ...identityReadEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         USER_WALLETS_TABLE: userWalletsTable.tableName,
         ADDRESS_BOOKS_TABLE: addressBooksTable.tableName,

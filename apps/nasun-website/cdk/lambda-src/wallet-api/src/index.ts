@@ -11,7 +11,7 @@ import {
   ValidationError, PayloadTooLargeError,
 } from './handlers/addressBook';
 import { verifySuiPersonalSignature, verifyZkLoginEphemeralSignature } from './utils/signature';
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../_shared/auth/identity-write';
+import { mirrorIdentityWrite, readProfileFromBox, IDENTITY_ROUTES } from '../../_shared/auth/identity-write';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 function getCorsOrigin(origin?: string): string {
@@ -323,7 +323,13 @@ async function handleRegister(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     // unless wired). Fire-and-forget like the webhook above so a slow/down box never delays the
     // register response; the helper never throws. DynamoDB is SoT and dal-reload (full re-scan)
     // converges any mirror dropped on a Lambda freeze.
-    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, { identityId, walletAddress: addr });
+    // Carry the DynamoDB-authoritative registeredAt so the box mirror is byte-identical even in the
+    // register->next-reload window (S3.R2 /wallet/list reads this field); box falls back if absent.
+    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, {
+      identityId,
+      walletAddress: addr,
+      registeredAt: (result.body as { registeredAt?: string }).registeredAt,
+    });
   }
 
   return jsonResponse(result.statusCode, result.body);
@@ -356,6 +362,17 @@ async function handleList(event: APIGatewayProxyEvent): Promise<APIGatewayProxyR
   const identityId = await verifyToken(event.headers?.Authorization || event.headers?.authorization);
   if (!identityId) {
     return jsonResponse(401, { error: 'Unauthorized' });
+  }
+
+  // AWS-exit DAL S3.R2: serve the multi-wallet list from the box nasun-identity mirror when the
+  // reader is flipped. readProfileFromBox no-ops (returns null) unless IDENTITY_READ_URL/SECRET are
+  // wired; the box returns 200 with { wallets: [] } even for an empty list, so a null here means the
+  // box is unconfigured, down, or timed out -- fall through to the DynamoDB read. DynamoDB stays SoT.
+  if ((process.env.IDENTITY_READ_MODE || '').trim() === 'flip') {
+    const boxed = await readProfileFromBox(IDENTITY_ROUTES.walletList, { identityId });
+    if (boxed && Array.isArray(boxed.wallets)) {
+      return jsonResponse(200, { wallets: boxed.wallets });
+    }
   }
 
   const wallets = await listWallets(identityId);
