@@ -29,6 +29,7 @@ import * as path from 'path';
 
 import { ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
+import { identityWriteEnv } from './identity-env';
 
 export interface LeaderboardV3StackProps extends cdk.StackProps {
   /** Environment name (dev, staging, prod) */
@@ -521,6 +522,8 @@ export class LeaderboardV3Stack extends cdk.Stack {
         description: 'Leaderboard V3: Verify Telegram channel membership for sky-blue checkmark',
         environment: {
           ...lambdaEnvironment,
+          // AWS-exit DAL S2.B: mirror telegram membership writes to the box nasun-identity service when wired.
+          ...identityWriteEnv(),
           TELEGRAM_BOT_TOKEN_SECRET_NAME: process.env.TELEGRAM_BOT_TOKEN_SECRET_NAME || 'nasun-telegram-bot-token',
           TELEGRAM_CHANNEL_USERNAME: process.env.TELEGRAM_CHANNEL_USERNAME || '',
           // Onboarding bonus: referral-only telegram-link bonus on first verify
@@ -566,6 +569,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
         timeout: cdk.Duration.seconds(15),
         memorySize: 128,
         description: 'Leaderboard V3: Disconnect Telegram from user account',
+        // Override defaults' environment: re-include lambdaEnvironment (dual-jwks/Cognito/tables)
+        // and add the S2.B box mirror env. Replacing without re-including would wipe the defaults.
+        environment: {
+          ...lambdaEnvironment,
+          ...identityWriteEnv(),
+        },
       }
     );
 

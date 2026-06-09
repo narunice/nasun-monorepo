@@ -292,6 +292,8 @@ export class CommonStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL S2.A: mirror account-linking writes to the box nasun-identity service when wired.
+        ...identityWriteEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
