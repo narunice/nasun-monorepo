@@ -16,7 +16,7 @@ import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
-import { identityWriteEnv } from './identity-env';
+import { identityWriteEnv, identityReadEnv } from './identity-env';
 
 export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
@@ -252,6 +252,14 @@ export class CommonStack extends cdk.Stack {
         EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
         LEADERBOARD_SYNC_URL: process.env.LEADERBOARD_SYNC_URL || '',
         LEADERBOARD_SYNC_TOKEN: process.env.LEADERBOARD_SYNC_TOKEN || '',
+        // AWS-exit DAL S2.C: box mirror reader shadow/flip. identityReadEnv() returns {} until
+        // IDENTITY_READ_URL/SECRET are set in the cdk .env, so this is inert today (DynamoDB only).
+        // NOTE: identityWriteEnv() is intentionally NOT spread here yet. .env.production already
+        // carries IDENTITY_WRITE_URL/SECRET (the S2.A/B writer lambdas use them), so spreading it
+        // would immediately activate the PATCH/POST dual-write. The reader cutover (shadow -> flip
+        // on /by-wallet) tolerates <=10min cross-app staleness on profile edits via the dal-reload
+        // backstop, so write-dual is deferred to the pre-S3 step where it becomes required.
+        ...identityReadEnv(),
       },
       logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-get-user-profile",
