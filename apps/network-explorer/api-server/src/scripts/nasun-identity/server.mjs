@@ -277,34 +277,58 @@ async function handleProfileLinkSync(body) {
 // --- POST /telegram/verify ------------------------------------------------------------
 // S2.B. verify-telegram.ts: clear any prior owner of the telegram id (DDB GSI-query + sequential
 // clear) then set the new owner. Done as ONE tx so 1:1 ownership is enforced atomically (stronger
-// than the lambda's non-atomic sequence). telegram_username is NOT mirrored (no box column).
+// than the lambda's non-atomic sequence). telegramUsername lives in the attributes JSONB (not a
+// promoted column); the lambda's DDB write SET telegramUsername (string or null) on the new owner
+// and REMOVEs it from the prior owner, so we mirror the same into attributes: merge it on the new
+// owner (when the field is present -- absent means an older lambda that does not send it, leave
+// attributes untouched and let dal-reload converge) and drop it from the prior owner unconditionally.
 async function handleTelegramVerify(body) {
   const identityId = str(body.identityId);
   const tgId = str(body.telegramUserId);
   if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
   if (!/^\d{1,20}$/.test(tgId)) throw new RouteAbort(400, { error: 'invalid telegramUserId' });
+  const hasUsername = Object.prototype.hasOwnProperty.call(body, 'telegramUsername');
+  const tgUsername = typeof body.telegramUsername === 'string' ? body.telegramUsername : null;
+  if (hasUsername && tgUsername !== null && tgUsername.length > 256) throw new RouteAbort(400, { error: 'telegramUsername too long' });
   await sql.begin(async (tx) => {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    // Prior owner: clear membership + drop telegramUsername from attributes (DDB REMOVE parity).
     await tx`
-      UPDATE user_profiles SET is_telegram_member = false, telegram_user_id = NULL, updated_at = now()
+      UPDATE user_profiles
+      SET is_telegram_member = false, telegram_user_id = NULL,
+          attributes = COALESCE(attributes, '{}'::jsonb) - 'telegramUsername', updated_at = now()
       WHERE telegram_user_id = ${tgId} AND identity_id <> ${identityId}`;
-    // attribute_exists(identityId) parity: a missing row is a no-op (box follower; reload backstops).
-    await tx`
-      UPDATE user_profiles SET is_telegram_member = true, telegram_user_id = ${tgId}, updated_at = now()
-      WHERE identity_id = ${identityId}`;
+    // New owner: a missing row is a no-op (box follower; reload backstops). Set telegramUsername
+    // (string OR JSON null, matching the lambda's SET telegramUsername = :tgUsername) when present.
+    if (hasUsername) {
+      await tx`
+        UPDATE user_profiles
+        SET is_telegram_member = true, telegram_user_id = ${tgId},
+            attributes = COALESCE(attributes, '{}'::jsonb) || ${tx.json({ telegramUsername: tgUsername })}::jsonb,
+            updated_at = now()
+        WHERE identity_id = ${identityId}`;
+    } else {
+      await tx`
+        UPDATE user_profiles SET is_telegram_member = true, telegram_user_id = ${tgId}, updated_at = now()
+        WHERE identity_id = ${identityId}`;
+    }
   });
   return { status: 200, body: { identityId, telegramUserId: tgId } };
 }
 
 // --- POST /telegram/disconnect --------------------------------------------------------
-// S2.B. disconnect-telegram.ts clearUserProfileTelegram -> tx.
+// S2.B. disconnect-telegram.ts clearUserProfileTelegram -> tx. DDB REMOVEs telegramUserId +
+// telegramUsername, so drop telegramUsername from attributes too (it lives in the JSONB, not a
+// promoted column).
 async function handleTelegramDisconnect(body) {
   const identityId = str(body.identityId);
   if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
   await sql.begin(async (tx) => {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
     await tx`
-      UPDATE user_profiles SET is_telegram_member = false, telegram_user_id = NULL, updated_at = now()
+      UPDATE user_profiles
+      SET is_telegram_member = false, telegram_user_id = NULL,
+          attributes = COALESCE(attributes, '{}'::jsonb) - 'telegramUsername', updated_at = now()
       WHERE identity_id = ${identityId}`;
   });
   return { status: 200, body: { identityId } };

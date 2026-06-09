@@ -9,6 +9,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
+import { readProfileFromBox } from '../../../_shared/auth/identity-write';
 import { createResponse, getRequestOrigin } from '../utils/response';
 
 // DynamoDB
@@ -74,7 +75,22 @@ export const handler = async (
       }, requestOrigin);
     }
 
-    // 2. Read UserProfile
+    // 2a. AWS-exit DAL S3.R1: when flipped, derive the status from the box mirror
+    // (/profile/by-identity returns isTelegramMember tri-state + telegramUsername from attributes;
+    // both byte-identical to DynamoDB per the by-identity parity sweep). The `=== true` / `|| null`
+    // projection collapses absent/false to the same result the DynamoDB path produces. Box
+    // null/404/error -> DynamoDB fallback below (readProfileFromBox is env-gated + never-throws).
+    if ((process.env.IDENTITY_READ_MODE || '').trim() === 'flip') {
+      const boxed = await readProfileFromBox('/profile/by-identity', { identityId });
+      if (boxed) {
+        return createResponse(200, {
+          isTelegramMember: boxed.isTelegramMember === true,
+          telegramUsername: boxed.telegramUsername || null,
+        }, requestOrigin);
+      }
+    }
+
+    // 2b. Read UserProfile (DynamoDB; also the fallback when the box returned null above).
     const result = await docClient.send(
       new GetCommand({
         TableName: USER_PROFILES_TABLE,

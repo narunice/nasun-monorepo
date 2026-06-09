@@ -580,7 +580,7 @@ export const handler = async (
 
     // 9b. AWS-exit DAL S2.B: mirror to the box nasun-identity service. One route clears any prior
     // owner of this telegram id and sets the new owner in a single tx. No-op until env is wired.
-    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramVerify, { identityId, telegramUserId: telegramUserIdStr });
+    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramVerify, { identityId, telegramUserId: telegramUserIdStr, telegramUsername });
 
     // Onboarding bonus: telegram-link. Granted only if user joined via referral
     // and that referral is ACTIVATED. Idempotent via PG UNIQUE, so re-verify is safe.

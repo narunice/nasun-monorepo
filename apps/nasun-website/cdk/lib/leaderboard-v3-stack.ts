@@ -29,7 +29,7 @@ import * as path from 'path';
 
 import { ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
-import { identityWriteEnv } from './identity-env';
+import { identityWriteEnv, identityReadEnv } from './identity-env';
 
 export interface LeaderboardV3StackProps extends cdk.StackProps {
   /** Environment name (dev, staging, prod) */
@@ -554,6 +554,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
         timeout: cdk.Duration.seconds(10),
         memorySize: 128,
         description: 'Leaderboard V3: Check Telegram verification status from UserProfiles',
+        // AWS-exit DAL S3.R1: re-include defaults' env (dual-jwks/Cognito/tables — replace-not-merge)
+        // and add the box reader env. identityReadEnv() returns {} unless IDENTITY_READ_URL/SECRET
+        // are set; with IDENTITY_READ_MODE=flip the handler serves /profile/by-identity (DDB fallback).
+        environment: {
+          ...lambdaEnvironment,
+          ...identityReadEnv(),
+        },
       }
     );
 
