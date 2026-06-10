@@ -131,17 +131,22 @@ async function handleWalletRegister(body) {
 
   return await sql.begin(async (tx) => {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
-    // Per-account limit (parity with the lambda's COUNT on user_wallets for this identity).
-    const [{ n }] = await tx`SELECT count(*)::int AS n FROM user_wallets WHERE identity_id = ${identityId}`;
-    if (n >= MAX_WALLETS_PER_ACCOUNT) throw new RouteAbort(429, { error: `Maximum ${MAX_WALLETS_PER_ACCOUNT} wallets per account` });
 
-    // CAS on the sentinel == attribute_not_exists(walletAddress).
+    // CAS on the sentinel == attribute_not_exists(walletAddress). The per-account limit is checked
+    // INSIDE the two paths that actually add a wallet to this account (new insert + transfer-in),
+    // never on the idempotent "already mine" branch -- otherwise an authoritative retry of a
+    // MAX-th-wallet register (whose first attempt committed but timed out) would 429 instead of
+    // returning its committed 200.
     const ins = await tx`
       INSERT INTO wallet_owner (wallet_address, owner_identity_id, updated_at)
       VALUES (${addr}, ${identityId}, NULL)
       ON CONFLICT (wallet_address) DO NOTHING
       RETURNING owner_identity_id`;
     if (ins.length > 0) {
+      // New ownership: apply the per-account limit (parity with the lambda's COUNT). count() is the
+      // pre-insert total, so `>= MAX` rejects the (MAX+1)th wallet and rolls back the CAS insert above.
+      const [{ n }] = await tx`SELECT count(*)::int AS n FROM user_wallets WHERE identity_id = ${identityId}`;
+      if (n >= MAX_WALLETS_PER_ACCOUNT) throw new RouteAbort(429, { error: `Maximum ${MAX_WALLETS_PER_ACCOUNT} wallets per account` });
       await tx`
         INSERT INTO user_wallets (identity_id, wallet_address, attributes, updated_at, created_at)
         VALUES (${identityId}, ${addr}, ${tx.json(attrs)}, now(), now())
@@ -158,12 +163,17 @@ async function handleWalletRegister(body) {
       throw new RouteAbort(409, { error: 'wallet ownership changed, please retry' });
     }
     if (owner.owner_identity_id === identityId) {
+      // Already mine: idempotent no-op (NO limit check -- the wallet is already counted, and an
+      // authoritative retry after an ambiguous success must return the committed 200, not 429).
       const [w] = await tx`SELECT attributes FROM user_wallets WHERE identity_id = ${identityId} AND wallet_address = ${addr}`;
       const a = w?.attributes || {};
       return { status: 200, body: { walletAddress: addr, blockchain: a.blockchain || 'sui', registeredAt: a.registeredAt || registeredAt } };
     }
 
-    // Ownership transfer (the lambda does this because the wallet proof was already verified).
+    // Ownership transfer (the lambda does this because the wallet proof was already verified). The
+    // wallet moves into this account, so the per-account limit applies (pre-transfer count).
+    const [{ n }] = await tx`SELECT count(*)::int AS n FROM user_wallets WHERE identity_id = ${identityId}`;
+    if (n >= MAX_WALLETS_PER_ACCOUNT) throw new RouteAbort(429, { error: `Maximum ${MAX_WALLETS_PER_ACCOUNT} wallets per account` });
     const prevOwner = owner.owner_identity_id;
     await tx`DELETE FROM user_wallets WHERE identity_id = ${prevOwner} AND wallet_address = ${addr}`;
     await tx`
