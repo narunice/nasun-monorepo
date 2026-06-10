@@ -348,6 +348,12 @@ export class CommonStack extends cdk.Stack {
       entry: path.join(lambdaSrcPath, 'wallet-api', 'src', 'index.ts'),
       handler: 'handler',
       memorySize: 256,
+      // AWS-exit DAL 3d step-2: raised from the implicit 3s default so the authoritative box write
+      // (authoritativeIdentityWrite, ~5.4s worst with retry) on a flipped /wallet/register or
+      // /wallet/remove cannot exceed the lambda timeout (which would 504-kill instead of returning a
+      // clean 500). Register/list/remove finish well under this; the headroom only bounds a stalled
+      // box write. Prerequisite for the wallet authority flip at the coordinated cutover.
+      timeout: cdk.Duration.seconds(15),
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {

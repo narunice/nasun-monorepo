@@ -8,7 +8,7 @@ import {
   ValidationError, PayloadTooLargeError,
 } from './handlers/addressBook';
 import { verifySuiPersonalSignature, verifyZkLoginEphemeralSignature } from './utils/signature';
-import { mirrorIdentityWrite, readProfileFromBox, IDENTITY_ROUTES } from '../../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, readProfileFromBox, IDENTITY_ROUTES } from '../../_shared/auth/identity-write';
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 function getCorsOrigin(origin?: string): string {
@@ -285,17 +285,28 @@ async function handleRegister(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     notifyWalletRegistered(identityId, addr).catch((err) => {
       console.warn('[registerWallet] sync webhook failed:', err);
     });
-    // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op
-    // unless wired). Fire-and-forget like the webhook above so a slow/down box never delays the
-    // register response; the helper never throws. DynamoDB is SoT and dal-reload (full re-scan)
-    // converges any mirror dropped on a Lambda freeze.
-    // Carry the DynamoDB-authoritative registeredAt so the box mirror is byte-identical even in the
-    // register->next-reload window (S3.R2 /wallet/list reads this field); box falls back if absent.
-    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, {
+    // AWS-exit DAL: write to the box nasun-identity service. Carry the DynamoDB-authoritative
+    // registeredAt so the box row is byte-identical even in the register->next-reload window
+    // (S3.R2 /wallet/list reads this field); box falls back if absent. When /wallet/register is in
+    // IDENTITY_WRITE_FLIP_ROUTES (3d step-2 coordinated cutover) the box write is AUTHORITATIVE
+    // (retry + throw) -- dual-authoritative with the DynamoDB TransactWrite above so box == DDB. The
+    // box register route is idempotent (CAS sentinel: a retry after an ambiguous timeout finds the
+    // wallet already owned and returns the existing state, never re-transferring), so retries=1 is
+    // safe; the budget (timeoutMs 2500, retries 1 => ~5.4s worst) fits the raised 15s wallet lambda
+    // timeout. A box failure throws -> the register 500s rather than diverging the future SoT.
+    // Otherwise it stays the fire-and-forget best-effort follower (void; never throws; no-op until
+    // env wired). INERT until /wallet/register is added to FLIP_ROUTES.
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+    const registerPayload = {
       identityId,
       walletAddress: addr,
       registeredAt: (result.body as { registeredAt?: string }).registeredAt,
-    });
+    };
+    if (flipRoutes.includes(IDENTITY_ROUTES.walletRegister)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.walletRegister, registerPayload, { timeoutMs: 2500, retries: 1 });
+    } else {
+      void mirrorIdentityWrite(IDENTITY_ROUTES.walletRegister, registerPayload);
+    }
   }
 
   return jsonResponse(result.statusCode, result.body);
@@ -361,11 +372,25 @@ async function handleRemove(event: APIGatewayProxyEvent): Promise<APIGatewayProx
     walletAddress: body.walletAddress,
   });
 
-  // AWS-exit DAL S1.2: mirror to the box nasun-identity service (best-effort follower; no-op unless
-  // wired). Fire-and-forget so a slow/down box never delays the remove response; the helper never
-  // throws. DynamoDB is SoT and dal-reload converges any mirror dropped on a Lambda freeze.
+  // AWS-exit DAL: write to the box nasun-identity service. When /wallet/remove is in
+  // IDENTITY_WRITE_FLIP_ROUTES (3d step-2 coordinated cutover) the box write is AUTHORITATIVE
+  // (throw) -- dual-authoritative with the DynamoDB delete above so box == DDB. ★ retries=0: unlike
+  // register, the box remove route is NOT idempotent across a retry (its last-wallet guard counts
+  // user_wallets, so a retry after an ambiguous timeout that already committed the delete sees a
+  // lower count and can return a spurious 400/403). It never corrupts ownership (it only ever
+  // deletes the named wallet, never another), but a single attempt avoids the spurious-error retry;
+  // a transient box blip surfaces as a clean 500 and the user re-issues the remove. The budget
+  // (timeoutMs 2500, no retry) fits the raised 15s wallet lambda timeout. Otherwise it stays the
+  // fire-and-forget best-effort follower (void; never throws). INERT until /wallet/remove is in
+  // FLIP_ROUTES.
   if (result.statusCode === 200) {
-    void mirrorIdentityWrite(IDENTITY_ROUTES.walletRemove, { identityId, walletAddress: String(body.walletAddress).toLowerCase() });
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+    const removePayload = { identityId, walletAddress: String(body.walletAddress).toLowerCase() };
+    if (flipRoutes.includes(IDENTITY_ROUTES.walletRemove)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.walletRemove, removePayload, { timeoutMs: 2500, retries: 0 });
+    } else {
+      void mirrorIdentityWrite(IDENTITY_ROUTES.walletRemove, removePayload);
+    }
   }
 
   return jsonResponse(result.statusCode, result.body);

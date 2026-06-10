@@ -15,7 +15,7 @@ import { corsHeaders, csvResponse, jsonResponse, errorResponse, unauthorizedResp
 import { uploadAndPresign, getS3Object } from "../utils/s3-offload.js";
 import { DynamoDBDocumentClient } from "@aws-sdk/lib-dynamodb";
 import { grantIfReferralActivated } from "../utils/onboardingBonus.js";
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from "../../../_shared/auth/identity-write.js";
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from "../../../_shared/auth/identity-write.js";
 
 const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION });
 
@@ -1996,8 +1996,9 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         throw err;
       }
 
-      // Set 30-day cooldown tombstone on the declined user (compat with
-      // existing referral apply handler's lastReferralDeclinedAt check).
+      // Set 30-day cooldown tombstone on the declined user (compat with the referral apply
+      // handler's lastReferralDeclinedAt check). The decline status already committed above, so a
+      // DynamoDB tombstone failure must not fail the decline -> kept best-effort (logged + swallowed).
       try {
         await dynamoClient.send(
           new UpdateItemCommand({
@@ -2007,19 +2008,14 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
             ExpressionAttributeValues: { ":now": { S: now } },
           })
         );
-        // AWS-exit DAL S3.R4 (C2): mirror lastReferralDeclinedAt to the box nasun-identity
-        // attributes-JSONB after the authoritative DynamoDB write, reusing /profile/attributes-sync
-        // (allowlist already accepts this key). Best-effort fire-and-forget (never throws; no-op
-        // unless IDENTITY_WRITE_* wired); DynamoDB stays SoT, dal-reload backstops a dropped mirror.
-        // Prerequisite for a later read-before-write flip of the referral apply cooldown check.
-        void mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
-          identityId: referredId,
-          set: { lastReferralDeclinedAt: now },
-        });
       } catch (err: any) {
-        console.error("[referral-review] Failed to set cooldown tombstone:", err.message);
+        console.error("[referral-review] Failed to set cooldown tombstone (DynamoDB):", err.message);
       }
 
+      // The decline is functionally complete once DynamoDB carries it (status + tombstone). Emit the
+      // audit log and invalidate the review-list cache BEFORE the box mirror below, so a box write
+      // failure (which 500s on the flipped authoritative path) cannot strand them -- otherwise the
+      // admin would get a 500 while the cached review list keeps showing the row as PENDING.
       console.log(JSON.stringify({
         event: "referral_declined",
         referredIdentityId: referredId,
@@ -2028,6 +2024,34 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         ts: now,
       }));
       invalidateReferralReviewCache();
+
+      // AWS-exit DAL 3d step-2 (C2): mirror lastReferralDeclinedAt to the box nasun-identity service,
+      // reusing /profile/attributes-sync (allowlist accepts this key; the box route has been a live
+      // best-effort mirror target since C2 was wired). OUTSIDE the DynamoDB swallow above, and LAST,
+      // so neither a swallowed DynamoDB failure nor a box failure strands the bookkeeping. When
+      // /profile/attributes-sync is in IDENTITY_WRITE_FLIP_ROUTES the box write is AUTHORITATIVE
+      // (retry + throw): the box must carry the tombstone so the later read-before-write flip of the
+      // referral apply cooldown check is correct, and box == DynamoDB keeps dal-reload a no-op. The
+      // box merge (attributes JSONB SET) is idempotent, so the helper retry is safe.
+      //
+      // Skew/recovery notes (lastReferralDeclinedAt is a best-effort soft cooldown, so these are
+      // tolerated): (a) if the DynamoDB tombstone above FAILED (swallowed) but this box write
+      // SUCCEEDS, box has the value and DynamoDB lacks it -- during the dal-reload overlap the next
+      // reload REVERTS the box value (dal-reload rebuilds the whole attributes JSONB from DynamoDB),
+      // it does NOT heal it; reconcile surfaces the divergence. The opposite skew (box write fails,
+      // DynamoDB has it) self-heals on the next reload. (b) On the flipped path a box throw 500s
+      // after the status CAS already committed; an admin retry hits the #s=:pending CAS -> 409, so
+      // the box tombstone cannot be re-applied via retry. Benign today because the referral apply
+      // cooldown read still reads DynamoDB; MUST be revisited before that read is flipped to the box.
+      const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || "")
+        .split(",")
+        .map((s) => s.trim());
+      const attrPayload = { identityId: referredId, set: { lastReferralDeclinedAt: now } };
+      if (flipRoutes.includes(IDENTITY_ROUTES.profileAttributesSync)) {
+        await authoritativeIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+      } else {
+        await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+      }
       return jsonResponse(200, { declined: 1, identityId: referredId }, requestOrigin);
     }
 
