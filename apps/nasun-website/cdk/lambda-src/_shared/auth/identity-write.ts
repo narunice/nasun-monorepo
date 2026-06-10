@@ -59,6 +59,13 @@ export async function mirrorIdentityWrite(path: string, payload: unknown): Promi
   const overrideMs = Number(process.env.IDENTITY_WRITE_TIMEOUT_MS);
   const timeoutMs = Number.isFinite(overrideMs) && overrideMs > 0 ? overrideMs : DEFAULT_TIMEOUT_MS;
 
+  // 3d-S0 reliability soak: per-write first-try outcome signal. Emits route + ok=1|0 + latency for
+  // BOTH success and failure (the old code only logged failures, so success rate was unobservable).
+  // No body / identifiers are logged (route paths carry none), so this is PII-safe. Queryable via
+  // CloudWatch Logs Insights to prove box-write first-try success ~100% BEFORE the authority flip
+  // removes the dal-reload backstop. Purely additive: the helper still NEVER throws and is still a
+  // no-op until IDENTITY_WRITE_URL/SECRET are wired.
+  const startedAt = Date.now();
   try {
     const res = await fetch(`${base.replace(/\/+$/, '')}${path}`, {
       method: 'POST',
@@ -70,8 +77,11 @@ export async function mirrorIdentityWrite(path: string, payload: unknown): Promi
       signal: AbortSignal.timeout(timeoutMs),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    console.log(`[identity-mirror-metric] route=${path} ok=1 ms=${Date.now() - startedAt}`);
   } catch (err) {
-    console.warn(`[identity-mirror] ${path} failed (non-blocking):`, err instanceof Error ? err.message : err);
+    console.warn(
+      `[identity-mirror-metric] route=${path} ok=0 ms=${Date.now() - startedAt} err=${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }
 
