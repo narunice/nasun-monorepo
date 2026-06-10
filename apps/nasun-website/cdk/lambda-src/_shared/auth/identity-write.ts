@@ -48,6 +48,9 @@ export const IDENTITY_ROUTES = {
   // twitter columns + username/originalTwitterHandle/profileImageUrl/verified attributes +
   // optional xHistory append). UPDATE-only mirror of callback.ts's existing-profile branch.
   twitterPrimary: '/profile/twitter-primary',
+  // 3d step-2 prerequisite: deactivate-user-account mirror (attributes status="DEACTIVATED" +
+  // deletionScheduledAt numeric). UPDATE-only; does not touch updated_at (the DDB write does not).
+  profileStatus: '/profile/status',
 } as const;
 
 /**

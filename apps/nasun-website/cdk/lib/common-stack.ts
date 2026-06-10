@@ -643,7 +643,14 @@ export class CommonStack extends cdk.Stack {
         handler: 'handler',
         depsLockFilePath,
         bundling: bundlingOptions,
+        // AWS-exit DAL 3d step-2: raised from the 3s CDK default so the authoritative box-write
+        // budget (~5.4s worst case) fits when /profile/status joins IDENTITY_WRITE_FLIP_ROUTES at the
+        // cutover (matches WalletApiLambda's pre-raise). Best-effort today returns in <1s; no-op change.
+        timeout: cdk.Duration.seconds(15),
         environment: {
+            // AWS-exit DAL 3d step-2: mirror the deactivation (status + deletionScheduledAt) to the
+            // box nasun-identity service when wired. FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset.
+            ...identityWriteEnv(),
             USER_PROFILES_TABLE: this.userProfilesTable.tableName,
             ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
         },

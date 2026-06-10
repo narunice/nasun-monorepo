@@ -1,5 +1,6 @@
 import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
 
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
 
@@ -90,6 +91,21 @@ export const handler = async (event: APIGatewayProxyEvent): Promise<APIGatewayPr
     }));
 
     console.log(`[AccountDeactivation] Scheduled deletion for IdentityId: ${identityId}`);
+
+    // AWS-exit DAL 3d step-2: mirror status="DEACTIVATED" + deletionScheduledAt (numeric) to the box
+    // nasun-identity service AFTER the authoritative DynamoDB write (only on a real deactivation; the
+    // already-deactivated / not-found / provider-mismatch paths throw and skip this). Best-effort
+    // (mirrorIdentityWrite never throws; dal-reload backstops) until /profile/status is in
+    // IDENTITY_WRITE_FLIP_ROUTES, then dual-authoritative. The box route is UPDATE-only and idempotent
+    // (same values), so retries are safe. The lambda timeout was pre-raised to 15s (common-stack.ts)
+    // so the authoritative budget (~5.4s worst case) fits at the cutover.
+    const statusPayload = { identityId, status: 'DEACTIVATED', deletionScheduledAt: deletionTime };
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+    if (flipRoutes.includes(IDENTITY_ROUTES.profileStatus)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.profileStatus, statusPayload, { timeoutMs: 2500, retries: 1 });
+    } else {
+      await mirrorIdentityWrite(IDENTITY_ROUTES.profileStatus, statusPayload);
+    }
 
     return {
       statusCode: 202,

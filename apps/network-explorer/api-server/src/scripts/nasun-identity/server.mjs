@@ -561,6 +561,35 @@ async function handleTwitterPrimary(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /profile/status -------------------------------------------------------------
+// AWS-exit DAL 3d step-2 prerequisite. deactivate-user-account mirror. The DDB UpdateItem SETs
+// status="DEACTIVATED" (string) + deletionScheduledAt (NUMBER, epoch seconds), guarded by
+// attribute_exists(identityId) + provider match + not-already-deactivated. Both are non-promoted ->
+// attributes JSONB. ★ deletionScheduledAt MUST be a JSON number: dal-reload unmarshalls the DDB N to
+// a JS number, and reconcile deep-compares attributes, so a string would drift. The DDB write does
+// NOT touch updatedAt, so this mirror does NOT touch updated_at either (byte-faithful; setting it
+// would create a guaranteed mismatch since DDB leaves updatedAt unchanged). UPDATE-only: a missing
+// row is a no-op (follower; reload backstops). status is the only value this lambda writes
+// (DEACTIVATED; there is no UserProfiles reactivation path), so it is validated strictly.
+async function handleProfileStatus(body) {
+  const identityId = str(body.identityId);
+  const status = str(body.status);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (status !== 'DEACTIVATED') throw new RouteAbort(400, { error: 'status must be DEACTIVATED' });
+  const dsa = body.deletionScheduledAt;
+  if (typeof dsa !== 'number' || !Number.isInteger(dsa) || dsa <= 0) {
+    throw new RouteAbort(400, { error: 'deletionScheduledAt must be a positive integer (epoch seconds)' });
+  }
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      UPDATE user_profiles
+      SET attributes = COALESCE(attributes, '{}'::jsonb) || ${tx.json({ status, deletionScheduledAt: dsa })}::jsonb
+      WHERE identity_id = ${identityId}`;
+  });
+  return { status: 200, body: { identityId } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -573,6 +602,7 @@ const ROUTES = {
   '/profile/batch': handleProfileBatch,
   '/profile/linked-account-merge': handleLinkedAccountMerge,
   '/profile/twitter-primary': handleTwitterPrimary,
+  '/profile/status': handleProfileStatus,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================
