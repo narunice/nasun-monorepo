@@ -20,7 +20,7 @@ import {
   ScanCommand,
 } from '@aws-sdk/lib-dynamodb';
 import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 
@@ -224,11 +224,23 @@ export const handler = async (
       return createResponse(400, { error: 'Telegram is not connected' }, requestOrigin);
     }
 
-    // 4. Clear Telegram from UserProfiles (primary)
+    // 4. Clear Telegram from UserProfiles (DynamoDB; authoritative-FIRST so dal-reload, which syncs
+    //    DDB -> box, can only ever heal the box toward this value, never revert it).
     await clearUserProfileTelegram(identityId);
 
-    // 4b. AWS-exit DAL S2.B: mirror the clear to the box nasun-identity service. No-op until env wired.
-    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramDisconnect, { identityId });
+    // 4b. AWS-exit DAL 3d-S1: clear on the box. When /telegram/disconnect is in
+    //     IDENTITY_WRITE_FLIP_ROUTES the box write is AUTHORITATIVE (retry + throw) -- it joins the
+    //     critical path alongside the DynamoDB write (dual-authoritative), so box == DDB holds and
+    //     the box-served telegram-status reader stays correct. The UPDATE is idempotent, so the
+    //     retry is safe. Otherwise it stays the S2.B best-effort follower (no-op until env wired).
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '')
+      .split(',')
+      .map((s) => s.trim());
+    if (flipRoutes.includes(IDENTITY_ROUTES.telegramDisconnect)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.telegramDisconnect, { identityId });
+    } else {
+      await mirrorIdentityWrite(IDENTITY_ROUTES.telegramDisconnect, { identityId });
+    }
 
     // 5. Clear Telegram from leaderboard tables (secondary, optional)
     if (userProfile.twitterHandle) {

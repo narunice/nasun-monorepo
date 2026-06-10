@@ -26,6 +26,12 @@ export function identityWriteEnv(): Record<string, string> {
   if (process.env.IDENTITY_WRITE_TIMEOUT_MS) {
     env.IDENTITY_WRITE_TIMEOUT_MS = process.env.IDENTITY_WRITE_TIMEOUT_MS;
   }
+  // AWS-exit DAL 3d write-path inversion: per-route opt-in (comma-list of box routes whose write is
+  // AUTHORITATIVE, not best-effort). A route only flips when added here, so deploying a new slice's
+  // handler code does not prematurely activate it. Unset (today) = every route stays best-effort.
+  if (process.env.IDENTITY_WRITE_FLIP_ROUTES) {
+    env.IDENTITY_WRITE_FLIP_ROUTES = process.env.IDENTITY_WRITE_FLIP_ROUTES;
+  }
   return env;
 }
 

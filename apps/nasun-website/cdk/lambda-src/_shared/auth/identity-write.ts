@@ -86,6 +86,59 @@ export async function mirrorIdentityWrite(path: string, payload: unknown): Promi
 }
 
 /**
+ * AUTHORITATIVE box write for the AWS-exit DAL 3d write-path inversion. Unlike mirrorIdentityWrite
+ * (best-effort, never throws), this one THROWS after exhausting retries so a box failure surfaces to
+ * the caller instead of being silently swallowed. Used once a route is added to
+ * IDENTITY_WRITE_FLIP_ROUTES: the box write joins the critical path (dual-authoritative with the
+ * still-present DynamoDB write), which keeps box == DynamoDB so dal-reload (DDB->box) stays a no-op
+ * and the box-served readers are correct. The true SoT cede (drop DDB to best-effort + stop
+ * dal-reload) is a later step.
+ *
+ * RETRY SAFETY: retries are safe ONLY for idempotent routes (e.g. /telegram/disconnect's
+ * `UPDATE ... WHERE id=$`). The backoff exists to ride out the rare multi-second dal-reload
+ * schema-swap stall observed in the 3d-S0 soak (box p50 ~330ms, p99 ~1s, rare swap tail to several
+ * seconds) -- so a transient swap collision retries through instead of failing the user op. Default
+ * timeout is 5s (vs the 1500ms best-effort default) because the box write may legitimately wait on a
+ * swap lock; a 1500ms cap would clip a write the box then commits anyway (ambiguous).
+ */
+export async function authoritativeIdentityWrite(
+  path: string,
+  payload: unknown,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<void> {
+  const base = process.env.IDENTITY_WRITE_URL;
+  const secret = process.env.IDENTITY_WRITE_SECRET;
+  // Authoritative path: a missing config is a hard error (the caller chose flip mode for this route).
+  if (!base || !secret) throw new Error('authoritativeIdentityWrite: IDENTITY_WRITE_URL/SECRET unset');
+
+  const timeoutMs = opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : 5000;
+  const retries = Number.isInteger(opts.retries) && (opts.retries as number) >= 0 ? (opts.retries as number) : 2;
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const startedAt = Date.now();
+    try {
+      const res = await fetch(`${base.replace(/\/+$/, '')}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      console.log(`[identity-auth-write] route=${path} ok=1 attempt=${attempt} ms=${Date.now() - startedAt}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      console.warn(
+        `[identity-auth-write] route=${path} ok=0 attempt=${attempt} ms=${Date.now() - startedAt} err=${err instanceof Error ? err.message : String(err)}`,
+      );
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
  * GET a box identity READ route (e.g. /profile/by-wallet) for the S2.C get-user-profile reader
  * cutover. Co-located with mirrorIdentityWrite so the box-call surface (write + read) lives in
  * one file and is hardened in one place. No-op (returns null) unless BOTH IDENTITY_READ_URL and
