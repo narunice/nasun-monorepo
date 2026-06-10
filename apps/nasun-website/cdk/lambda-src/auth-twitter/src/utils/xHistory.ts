@@ -2,7 +2,7 @@ import { DynamoDBClient, UpdateItemCommand } from '@aws-sdk/client-dynamodb';
 
 export type XChangeType = 'initial_link' | 'handle_rename' | 'account_switch' | 'unlink';
 
-interface XHistoryEntry {
+export interface XHistoryEntry {
   changedAt: string;
   changeType: XChangeType;
   oldHandle?: string;
@@ -11,20 +11,25 @@ interface XHistoryEntry {
   newTwitterId?: string;
 }
 
+// Appends one entry to the DynamoDB xHistory list and RETURNS the entry it built (with the
+// changedAt stamp). The caller mirrors this exact returned object to the box nasun-identity service
+// so the box's attributes.xHistory list element is byte-identical to the DynamoDB one (shared
+// changedAt). Only the present optional keys are written, matching the box route's str()-coerce.
 export async function appendXHistory(
   client: DynamoDBClient,
   tableName: string,
   identityId: string,
   entry: Omit<XHistoryEntry, 'changedAt'>
-): Promise<void> {
+): Promise<XHistoryEntry> {
+  const full: XHistoryEntry = { changedAt: new Date().toISOString(), ...entry };
   const entryMap: Record<string, { S: string }> = {
-    changedAt:  { S: new Date().toISOString() },
-    changeType: { S: entry.changeType },
+    changedAt:  { S: full.changedAt },
+    changeType: { S: full.changeType },
   };
-  if (entry.oldHandle)    entryMap.oldHandle    = { S: entry.oldHandle };
-  if (entry.newHandle)    entryMap.newHandle    = { S: entry.newHandle };
-  if (entry.oldTwitterId) entryMap.oldTwitterId = { S: entry.oldTwitterId };
-  if (entry.newTwitterId) entryMap.newTwitterId = { S: entry.newTwitterId };
+  if (full.oldHandle)    entryMap.oldHandle    = { S: full.oldHandle };
+  if (full.newHandle)    entryMap.newHandle    = { S: full.newHandle };
+  if (full.oldTwitterId) entryMap.oldTwitterId = { S: full.oldTwitterId };
+  if (full.newTwitterId) entryMap.newTwitterId = { S: full.newTwitterId };
 
   await client.send(new UpdateItemCommand({
     TableName: tableName,
@@ -35,4 +40,5 @@ export async function appendXHistory(
       ':empty': { L: [] },
     },
   }));
+  return full;
 }

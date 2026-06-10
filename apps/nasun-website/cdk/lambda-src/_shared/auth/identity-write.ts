@@ -44,6 +44,10 @@ export const IDENTITY_ROUTES = {
   // 3d step-2 prerequisite: single-provider linkedAccounts merge for the auth-{sui,solana,metamask}
   // -additional verify/label/app-binding/remove flows (sets linked_accounts.<provider> only).
   linkedAccountMerge: '/profile/linked-account-merge',
+  // 3d step-2 prerequisite: auth-twitter callback Twitter-primary profile refresh (promoted
+  // twitter columns + username/originalTwitterHandle/profileImageUrl/verified attributes +
+  // optional xHistory append). UPDATE-only mirror of callback.ts's existing-profile branch.
+  twitterPrimary: '/profile/twitter-primary',
 } as const;
 
 /**

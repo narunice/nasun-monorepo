@@ -60,6 +60,9 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
+        // AWS-exit DAL 3d step-2: mirror the Twitter-primary profile refresh to the box
+        // nasun-identity service when wired. FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset.
+        ...identityWriteEnv(),
         SESSIONS_TABLE_NAME: twitterSessionsTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',

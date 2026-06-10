@@ -6,8 +6,9 @@ import { SessionManager } from '../utils/session-manager';
 import { CognitoService } from '../utils/cognito';
 import { createSafeEventLog, maskSensitiveData } from '../utils/log-utils';
 import { getOAuthClientCredentials } from '../utils/secrets';
-import { appendXHistory, XChangeType } from '../utils/xHistory';
+import { appendXHistory, XChangeType, XHistoryEntry } from '../utils/xHistory';
 import { grantIfReferralActivated } from '../utils/onboardingBonus';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 
 // Read from environment variable (set by CDK from shared constants/cors.ts)
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io').split(',').map(o => o.trim());
@@ -198,14 +199,50 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
       } else if (oldHandle !== normalizedTwitterHandle) {
         xChangeType = 'handle_rename';
       }
+      // Append the xHistory entry to DynamoDB (still SoT) and capture the exact entry (with its
+      // changedAt) so the box mirror below carries a byte-identical list element. Awaited so a DDB
+      // failure leaves xHistoryEntry undefined -> the box is NOT given an entry DynamoDB lacks.
+      let xHistoryEntry: XHistoryEntry | undefined;
       if (xChangeType) {
-        appendXHistory(dynamoClient, USER_PROFILES_TABLE, cognitoIdentity.identityId, {
-          changeType: xChangeType,
-          oldHandle:    oldHandle || undefined,
-          newHandle:    normalizedTwitterHandle,
-          oldTwitterId: oldTwitterId || undefined,
-          newTwitterId: twitterUser.id,
-        }).catch((e) => console.warn('[xHistory] append failed', e));
+        try {
+          xHistoryEntry = await appendXHistory(dynamoClient, USER_PROFILES_TABLE, cognitoIdentity.identityId, {
+            changeType: xChangeType,
+            oldHandle:    oldHandle || undefined,
+            newHandle:    normalizedTwitterHandle,
+            oldTwitterId: oldTwitterId || undefined,
+            newTwitterId: twitterUser.id,
+          });
+        } catch (e) {
+          console.warn('[xHistory] append failed', e);
+        }
+      }
+
+      // AWS-exit DAL 3d step-2: mirror this Twitter-primary profile refresh to the box
+      // nasun-identity service AFTER the authoritative DynamoDB writes (UpdateItem + optional
+      // xHistory append). The box route writes the promoted twitter columns + the four attribute
+      // keys and (when present) appends xHistoryEntry with a changedAt-dedup guard. provider is not
+      // sent (the DynamoDB UpdateExpression above does not SET it). Best-effort (mirrorIdentityWrite
+      // never throws; dal-reload backstops) until /profile/twitter-primary is in
+      // IDENTITY_WRITE_FLIP_ROUTES, then dual-authoritative. ★ Before that authoritative flip, note
+      // the DynamoDB xHistory list_append is NOT idempotent: an authoritative box failure -> 500 ->
+      // client retry would double-append the DDB xHistory (the box side is dedup-guarded). Resolve
+      // that retry-trap (e.g. order the box write before the DDB xHistory append, or gate the retry)
+      // as a prerequisite to adding this route to FLIP_ROUTES.
+      const twitterPrimaryPayload = {
+        identityId: cognitoIdentity.identityId,
+        twitterHandle: normalizedTwitterHandle,
+        twitterId: twitterUser.id,
+        username: twitterUser.name,
+        originalTwitterHandle,
+        profileImageUrl: twitterUser.profile_image_url || '',
+        verified: twitterUser.verified || false,
+        ...(xHistoryEntry ? { xHistoryEntry } : {}),
+      };
+      const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+      if (flipRoutes.includes(IDENTITY_ROUTES.twitterPrimary)) {
+        await authoritativeIdentityWrite(IDENTITY_ROUTES.twitterPrimary, twitterPrimaryPayload, { timeoutMs: 2500, retries: 1 });
+      } else {
+        await mirrorIdentityWrite(IDENTITY_ROUTES.twitterPrimary, twitterPrimaryPayload);
       }
 
       // Onboarding bonus: x-link. Fires on every X re-login but PG UNIQUE

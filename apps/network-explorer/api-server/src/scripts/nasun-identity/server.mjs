@@ -477,6 +477,90 @@ async function handleLinkedAccountMerge(body) {
   return { status: 200, body: { identityId, provider } };
 }
 
+// --- POST /profile/twitter-primary ----------------------------------------------------
+// AWS-exit DAL 3d step-2 prerequisite. The auth-twitter callback refreshes a Twitter-cognito
+// PRIMARY profile on every X re-login (callback.ts existingProfile branch): ONE DynamoDB
+// UpdateItem SETs twitter_handle/twitter_id (promoted) + username/originalTwitterHandle/
+// profileImageUrl/verified (attributes) + updatedAt, and a SEPARATE best-effort UpdateItem
+// list-appends an xHistory entry on initial_link / handle_rename. provider is NOT in the SET, so
+// this mirror leaves it untouched (byte-faithful). The else branch writes NO DynamoDB row, so this
+// route is UPDATE-only: a missing box row is a no-op (follower; reload backstops). It writes the
+// promoted twitter columns directly and merges the four long-tail keys into attributes in one tx --
+// /profile/attributes-sync refuses promoted columns AND non-string values (verified is a boolean),
+// and /profile/link-sync replaces the whole linked_accounts map, so neither fits. xHistoryEntry
+// (optional) is appended to attributes.xHistory ONLY when the last element's changedAt differs (a
+// changedAt-dedup guard) so an authoritative retry after an ambiguous success cannot double-append;
+// the caller passes the SAME entry object (shared changedAt) it list-appended to DynamoDB so the
+// lists stay byte-identical. DynamoDB stays SoT until the cutover; on flip this becomes authoritative.
+async function handleTwitterPrimary(body) {
+  const identityId = str(body.identityId);
+  const twitterHandle = str(body.twitterHandle);
+  const twitterId = str(body.twitterId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!twitterHandle) throw new RouteAbort(400, { error: 'twitterHandle required' });
+  if (!twitterId) throw new RouteAbort(400, { error: 'twitterId required' });
+  // The four attribute keys the DDB UpdateExpression always SETs. profileImageUrl may be '' (the
+  // lambda's `:image = profile_image_url || ''`); verified is a boolean (`|| false`). username and
+  // originalTwitterHandle are strings -> coerce absent to '' so every key is always present (parity
+  // with the DDB write, which always SETs all four), keeping attributes byte-identical post-reload.
+  const username = typeof body.username === 'string' ? body.username : '';
+  const originalTwitterHandle = typeof body.originalTwitterHandle === 'string' ? body.originalTwitterHandle : '';
+  const profileImageUrl = typeof body.profileImageUrl === 'string' ? body.profileImageUrl : '';
+  const verified = body.verified === true; // BOOL || false parity
+  const attrsSet = { username, originalTwitterHandle, profileImageUrl, verified };
+
+  // Optional xHistory entry (initial_link / handle_rename). Require the caller-stamped changedAt so
+  // the box list element is byte-identical to the DDB list_append. Carry only the present optional
+  // keys (no nulls), matching appendXHistory's conditional entryMap so the JSON canonicalizes alike.
+  let xEntry = null;
+  if (body.xHistoryEntry != null) {
+    const e = body.xHistoryEntry;
+    if (typeof e !== 'object' || Array.isArray(e)) throw new RouteAbort(400, { error: 'xHistoryEntry must be an object' });
+    const changedAt = str(e.changedAt);
+    const changeType = str(e.changeType);
+    if (!changedAt || Number.isNaN(Date.parse(changedAt))) throw new RouteAbort(400, { error: 'xHistoryEntry.changedAt required (ISO)' });
+    if (!changeType) throw new RouteAbort(400, { error: 'xHistoryEntry.changeType required' });
+    const entry = { changedAt, changeType };
+    for (const k of ['oldHandle', 'newHandle', 'oldTwitterId', 'newTwitterId']) {
+      const v = str(e[k]);
+      if (v) entry[k] = v;
+    }
+    xEntry = entry;
+  }
+
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    // Promoted twitter columns + the four attribute keys. Missing row -> 0 rows (follower; reload
+    // backstops). provider is intentionally untouched (the DDB UpdateExpression does not SET it).
+    await tx`
+      UPDATE user_profiles
+      SET twitter_handle = ${twitterHandle},
+          twitter_id = ${twitterId},
+          attributes = COALESCE(attributes, '{}'::jsonb) || ${tx.json(attrsSet)}::jsonb,
+          updated_at = now()
+      WHERE identity_id = ${identityId}`;
+    if (xEntry) {
+      // Append xEntry to attributes.xHistory in one guarded UPDATE. The WHERE no-ops on a missing
+      // row (never INSERTs -- this route mirrors callback.ts's existing-profile branch only) AND on
+      // a duplicate (the tail element's changedAt equals xEntry's, so an authoritative retry after
+      // an ambiguous success cannot double-append). `->-1` is the last array element; a NULL (no
+      // xHistory yet) IS DISTINCT FROM the new changedAt, so the first entry is appended. The
+      // `|| [entry]` concat matches the DynamoDB list_append (append to the end).
+      await tx`
+        UPDATE user_profiles
+        SET attributes = jsonb_set(
+              COALESCE(attributes, '{}'::jsonb),
+              ARRAY['xHistory'],
+              COALESCE(attributes->'xHistory', '[]'::jsonb) || ${tx.json([xEntry])}::jsonb,
+              true),
+            updated_at = now()
+        WHERE identity_id = ${identityId}
+          AND (attributes->'xHistory'->-1->>'changedAt') IS DISTINCT FROM ${xEntry.changedAt}`;
+    }
+  });
+  return { status: 200, body: { identityId } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -488,6 +572,7 @@ const ROUTES = {
   '/profile/create-mirror': handleProfileCreateMirror,
   '/profile/batch': handleProfileBatch,
   '/profile/linked-account-merge': handleLinkedAccountMerge,
+  '/profile/twitter-primary': handleTwitterPrimary,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================
