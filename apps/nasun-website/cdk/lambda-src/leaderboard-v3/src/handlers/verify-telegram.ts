@@ -28,7 +28,7 @@ import {
   GetSecretValueCommand,
 } from '@aws-sdk/client-secrets-manager';
 import { verifyIdentityPayload } from '../../../_shared/auth/dual-jwks';
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 import { DYNAMO_KEYS } from '../types';
 import { createResponse, getRequestOrigin } from '../utils/response';
 import { grantIfReferralActivated } from '../utils/onboardingBonus';
@@ -575,12 +575,23 @@ export const handler = async (
 
     const telegramUsername = telegramAuth.username ? telegramAuth.username.toLowerCase() : null;
 
-    // 9. Primary: Update UserProfiles table
+    // 9. Primary: Update UserProfiles table (DynamoDB; authoritative-FIRST so dal-reload DDB->box
+    //    can only heal the box toward this value, never revert it).
     await updateUserProfileTelegram(identityId, telegramUserIdStr, telegramUsername);
 
-    // 9b. AWS-exit DAL S2.B: mirror to the box nasun-identity service. One route clears any prior
-    // owner of this telegram id and sets the new owner in a single tx. No-op until env is wired.
-    await mirrorIdentityWrite(IDENTITY_ROUTES.telegramVerify, { identityId, telegramUserId: telegramUserIdStr, telegramUsername });
+    // 9b. AWS-exit DAL 3d-S1: set on the box. When /telegram/verify is in IDENTITY_WRITE_FLIP_ROUTES
+    //     the box write is AUTHORITATIVE (retry + throw), dual-authoritative with the DynamoDB write
+    //     above so box == DDB holds. The box route is one idempotent tx (clear prior owner of this
+    //     telegram id + set the new owner), so the retry is safe. Otherwise S2.B best-effort follower.
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '')
+      .split(',')
+      .map((s) => s.trim());
+    const tgPayload = { identityId, telegramUserId: telegramUserIdStr, telegramUsername };
+    if (flipRoutes.includes(IDENTITY_ROUTES.telegramVerify)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.telegramVerify, tgPayload);
+    } else {
+      await mirrorIdentityWrite(IDENTITY_ROUTES.telegramVerify, tgPayload);
+    }
 
     // Onboarding bonus: telegram-link. Granted only if user joined via referral
     // and that referral is ACTIVATED. Idempotent via PG UNIQUE, so re-verify is safe.
