@@ -95,11 +95,18 @@ export async function mirrorIdentityWrite(path: string, payload: unknown): Promi
  * dal-reload) is a later step.
  *
  * RETRY SAFETY: retries are safe ONLY for idempotent routes (e.g. /telegram/disconnect's
- * `UPDATE ... WHERE id=$`). The backoff exists to ride out the rare multi-second dal-reload
- * schema-swap stall observed in the 3d-S0 soak (box p50 ~330ms, p99 ~1s, rare swap tail to several
- * seconds) -- so a transient swap collision retries through instead of failing the user op. Default
- * timeout is 5s (vs the 1500ms best-effort default) because the box write may legitimately wait on a
- * swap lock; a 1500ms cap would clip a write the box then commits anyway (ambiguous).
+ * `UPDATE ... WHERE id=$`). The single retry rides out a transient box blip.
+ *
+ * BUDGET: the worst-case wall time (attempts x timeoutMs + backoff) MUST stay under the calling
+ * lambda's timeout, or the lambda is timeout-KILLED (504) instead of returning a clean 500. The
+ * tightest flipped lambda is link-account at 10s (and it does linking work before the box write), so
+ * the default is timeoutMs=1500 + retries=1 => worst ~3.4s, which fits every flipped lambda
+ * (10s/15s/30s) with margin. This is intentionally NOT a long swap-ride-out budget: the rare
+ * multi-second tail seen in the 3d-S0 soak is dal-reload's schema-swap stall, which (a) is
+ * backstopped by dal-reload itself during the overlap (a missed box write self-heals on the next
+ * <=10min reload) and (b) DISAPPEARS at step-2 once dal-reload is stopped (box writes become
+ * uniformly ~330ms, so 1500ms never clips). Callers on a lambda with more headroom may pass a larger
+ * budget; step-2's profileUpsert/wallet should pass opts matched to their own lambda timeout.
  */
 export async function authoritativeIdentityWrite(
   path: string,
@@ -111,8 +118,8 @@ export async function authoritativeIdentityWrite(
   // Authoritative path: a missing config is a hard error (the caller chose flip mode for this route).
   if (!base || !secret) throw new Error('authoritativeIdentityWrite: IDENTITY_WRITE_URL/SECRET unset');
 
-  const timeoutMs = opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : 5000;
-  const retries = Number.isInteger(opts.retries) && (opts.retries as number) >= 0 ? (opts.retries as number) : 2;
+  const timeoutMs = opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : 1500;
+  const retries = Number.isInteger(opts.retries) && (opts.retries as number) >= 0 ? (opts.retries as number) : 1;
 
   let lastErr: unknown;
   for (let attempt = 0; attempt <= retries; attempt++) {
