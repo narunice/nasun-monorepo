@@ -5,7 +5,7 @@ import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCo
 import { appendXHistory } from './utils/xHistory';
 import { grantIfReferralActivated } from './onboardingBonus';
 import { verifyIdentityFromBearer } from '../_shared/auth/dual-jwks';
-import { mirrorIdentityWrite, IDENTITY_ROUTES } from '../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../_shared/auth/identity-write';
 
 /**
  * AWS-exit DAL S2.A: build the box-mirrorable projection of a UserProfiles row after link-account
@@ -263,8 +263,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         }
       }
 
-      // AWS-exit DAL S2.A: mirror the unlink result to the box (no-op until env wired, never throws).
-      await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: unlinkMirrorRows });
+      // AWS-exit DAL 3d-S1: carry the unlink result to the box (DynamoDB writes above are
+      // authoritative-FIRST). When /profile/link-sync is in IDENTITY_WRITE_FLIP_ROUTES the box write
+      // is AUTHORITATIVE (retry+throw), dual-authoritative with DynamoDB so box == DDB. The box route
+      // upserts the full resulting-state rows in one tx (ON CONFLICT DO UPDATE), so the retry is
+      // idempotent. Otherwise S2.A best-effort follower.
+      {
+        const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+        if (flipRoutes.includes(IDENTITY_ROUTES.profileLinkSync)) {
+          await authoritativeIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: unlinkMirrorRows });
+        } else {
+          await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: unlinkMirrorRows });
+        }
+      }
 
       console.log('Account unlinking successful');
 
@@ -893,7 +904,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       secondaryProfile.twitterHandle ?? null,
       secondaryProfile.twitterId ?? null,
     ));
-    await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
+    // AWS-exit DAL 3d-S1: authoritative box write when /profile/link-sync is flipped (see unlink
+    // path above for rationale); dual-authoritative with the DynamoDB link writes, idempotent upsert.
+    {
+      const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+      if (flipRoutes.includes(IDENTITY_ROUTES.profileLinkSync)) {
+        await authoritativeIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
+      } else {
+        await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
+      }
+    }
 
     console.log('Bidirectional account linking successful');
 
