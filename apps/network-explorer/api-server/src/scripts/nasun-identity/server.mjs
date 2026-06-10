@@ -44,6 +44,9 @@ const MAX_BODY = 65536;
 const MAX_BATCH_IDS = 500;                     // /profile/batch identityIds cap (node-3 chunks <=100)
 const MAX_WALLETS_PER_ACCOUNT = 10;            // parity with wallet-api registerWallet.ts
 const SUI_ADDRESS_REGEX = /^0x[a-f0-9]{64}$/;  // address is lower-cased before the test
+// Cognito identity id (region:uuid) -- parity with the deactivate/purge lambdas. Used to hard-bound
+// the destructive /profile/delete route to well-formed identities (every user_profiles row matches).
+const COGNITO_ID_REGEX = /^[a-z]{2}-[a-z]+-\d:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const PG_HOST = process.env.IDENTITY_PG_HOST || '127.0.0.1';
 const PG_PORT = Number(process.env.IDENTITY_PG_PORT || 5432);
@@ -590,6 +593,39 @@ async function handleProfileStatus(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /profile/delete -------------------------------------------------------------
+// purge-deactivated-accounts mirror. This is the box's FIRST row-DELETE route (every other route is
+// UPDATE/INSERT-only). The scheduled purge job DeleteItem's a UserProfiles row by identityId (after
+// Cognito unlink) for accounts past their 7-day deletion grace; it deletes ONLY the UserProfiles item
+// (UserWallets + wallet_owner are left orphaned in DynamoDB too). So this route touches ONLY
+// user_profiles -- deleting from user_wallets/wallet_owner here would create missing_in_box drift vs
+// DynamoDB (there is no FK from those tables to user_profiles). ★ If the purge lambda is ever extended
+// to delete wallets, extend this route in lockstep.
+//
+// The DELETE is UNCONDITIONAL (mirrors the lambda's unconditional DeleteItem; a status guard would
+// risk a false-refuse + drift if the box status lagged). Before deleting, it NULLs any row that
+// references this identity via linked_to_primary_id: this satisfies the self-ref FK
+// (user_profiles_linked_to_primary_id_fkey is NO ACTION/RESTRICT, so deleting a primary that still has
+// secondaries would otherwise fail) AND matches dal-reload's dangling-NULL + dal-reconcile's DDB-side
+// dangling-NULL projection (linked_to_primary_id is the META `dangling` column, excluded from
+// META.cols), so box == DDB after the delete. The referrer NULL does NOT bump updated_at (DynamoDB
+// leaves those secondaries untouched). Idempotent (re-delete = 0 rows -> 200) so authoritative retries
+// are safe. A missing row is a no-op (follower; reload backstops).
+// ★ Authoritative-flip prerequisite: the purge lambda's per-account try/catch SWALLOWS errors, so an
+// authoritative box-delete failure would be silently dropped (persistent extra_in_box once dal-reload
+// is stopped). Before adding /profile/delete to FLIP_ROUTES, make the purge lambda surface/record box
+// failures (and add an extra_in_box sweep) -- best-effort + dal-reload overlap heals it until then.
+async function handleProfileDelete(body) {
+  const identityId = str(body.identityId);
+  if (!COGNITO_ID_REGEX.test(identityId)) throw new RouteAbort(400, { error: 'valid Cognito identityId required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`UPDATE user_profiles SET linked_to_primary_id = NULL WHERE linked_to_primary_id = ${identityId}`;
+    await tx`DELETE FROM user_profiles WHERE identity_id = ${identityId}`;
+  });
+  return { status: 200, body: { identityId } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -603,6 +639,7 @@ const ROUTES = {
   '/profile/linked-account-merge': handleLinkedAccountMerge,
   '/profile/twitter-primary': handleTwitterPrimary,
   '/profile/status': handleProfileStatus,
+  '/profile/delete': handleProfileDelete,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================

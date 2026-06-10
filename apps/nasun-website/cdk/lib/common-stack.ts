@@ -684,6 +684,10 @@ export class CommonStack extends cdk.Stack {
       depsLockFilePath,
       bundling: bundlingOptions,
       environment: {
+        // AWS-exit DAL 3d step-2: mirror the row deletion to the box nasun-identity service when wired.
+        // FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset. (No timeout raise needed: this is a 5-min
+        // batch job, so the authoritative box-write budget already fits.)
+        ...identityWriteEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
       },

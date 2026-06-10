@@ -51,6 +51,9 @@ export const IDENTITY_ROUTES = {
   // 3d step-2 prerequisite: deactivate-user-account mirror (attributes status="DEACTIVATED" +
   // deletionScheduledAt numeric). UPDATE-only; does not touch updated_at (the DDB write does not).
   profileStatus: '/profile/status',
+  // 3d step-2 prerequisite: purge-deactivated-accounts mirror. Row DELETE by identityId (parity with
+  // the purge job's unconditional DeleteItem). NULLs self-ref referrers first; touches only user_profiles.
+  profileDelete: '/profile/delete',
 } as const;
 
 /**

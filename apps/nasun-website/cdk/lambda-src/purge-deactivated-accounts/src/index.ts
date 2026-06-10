@@ -1,5 +1,6 @@
 import { DynamoDBClient, ScanCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 import { CognitoIdentityClient, UnlinkIdentityCommand, DescribeIdentityCommand } from "@aws-sdk/client-cognito-identity";
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
 
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE!;
 
@@ -66,6 +67,21 @@ export const handler = async (): Promise<void> => {
         });
         await ddbClient.send(deleteCmd);
         console.log(`[AccountPurge] Deleted profile from DynamoDB for IdentityId: ${identityId}`);
+
+        // AWS-exit DAL 3d step-2: mirror the row deletion to the box nasun-identity service AFTER the
+        // authoritative DynamoDB DeleteItem. Best-effort (mirrorIdentityWrite never throws; dal-reload
+        // backstops) until /profile/delete is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative. The
+        // box route deletes only user_profiles (parity with this job, which leaves UserWallets orphaned)
+        // and is idempotent, so retries are safe. ★ Authoritative-flip prerequisite: the per-account
+        // catch below SWALLOWS errors, so an authoritative box-delete failure would be silently dropped
+        // (persistent extra_in_box once dal-reload is stopped). Before adding /profile/delete to
+        // FLIP_ROUTES, surface/record box-delete failures here (and add an extra_in_box sweep).
+        const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+        if (flipRoutes.includes(IDENTITY_ROUTES.profileDelete)) {
+          await authoritativeIdentityWrite(IDENTITY_ROUTES.profileDelete, { identityId }, { timeoutMs: 2500, retries: 1 });
+        } else {
+          await mirrorIdentityWrite(IDENTITY_ROUTES.profileDelete, { identityId });
+        }
 
       } catch (error) {
         console.error(`[AccountPurge] Failed to process account ${identityId}:`, error);
