@@ -1,6 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { addrEq } from './sui';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(client);
@@ -50,6 +51,37 @@ export function getSuiLink(profile: UserProfile | null): SuiLinkedAccount | null
   const linked = profile?.linkedAccounts ?? {};
   const sui = linked.sui as SuiLinkedAccount | undefined;
   return sui ?? null;
+}
+
+/**
+ * AWS-exit DAL 3d step-2 prerequisite: after an authoritative DynamoDB write to
+ * `linkedAccounts.sui`, push the FULL resulting sub-object to the box `nasun-identity` service so
+ * box == DynamoDB once dal-reload stops. Re-reads the profile so the mirror reflects exactly what
+ * was persisted (the box route does an idempotent single-provider merge). Best-effort (awaited,
+ * never throws) until `/profile/linked-account-merge` is in IDENTITY_WRITE_FLIP_ROUTES, then
+ * AUTHORITATIVE (retry + throw). Never mirrors a missing sub-object as a delete (these flows always
+ * leave a `sui` object; a disconnect goes through link-account -> /profile/link-sync instead).
+ */
+async function mirrorSuiLink(identityId: string): Promise<void> {
+  const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+  const authoritative = flipRoutes.includes(IDENTITY_ROUTES.linkedAccountMerge);
+  try {
+    // Consistent read so the mirror reflects the write we just committed. An eventually-consistent
+    // read could return the pre-write item and mirror a stale sub-object -- harmless under the
+    // dal-reload backstop, but wrong once this route is authoritative and the backstop is gone.
+    const fresh = await docClient.send(new GetCommand({ TableName: tableName, Key: { identityId }, ConsistentRead: true }));
+    const account = (fresh.Item as UserProfile | undefined)?.linkedAccounts?.sui;
+    if (!account || typeof account !== 'object') return;
+    const payload = { identityId, provider: 'sui', account };
+    if (authoritative) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.linkedAccountMerge, payload, { timeoutMs: 2500, retries: 1 });
+    } else {
+      await mirrorIdentityWrite(IDENTITY_ROUTES.linkedAccountMerge, payload);
+    }
+  } catch (err) {
+    if (authoritative) throw err;
+    console.warn('[mirrorSuiLink] best-effort mirror failed:', err instanceof Error ? err.message : err);
+  }
 }
 
 /**
@@ -170,6 +202,7 @@ export async function appendVerifiedAddress(
       }),
     );
 
+    await mirrorSuiLink(identityId);
     return {
       primary: true,
       walletAddress: entry.walletAddress,
@@ -218,6 +251,7 @@ export async function appendVerifiedAddress(
     })
   );
 
+  await mirrorSuiLink(identityId);
   return {
     primary: false,
     walletAddress: entry.walletAddress,
@@ -256,6 +290,7 @@ export async function setAppBinding(
       },
     })
   );
+  await mirrorSuiLink(identityId);
 }
 
 export async function removeAppBinding(identityId: string, appId: string): Promise<void> {
@@ -283,6 +318,7 @@ export async function removeAppBinding(identityId: string, appId: string): Promi
       },
     })
   );
+  await mirrorSuiLink(identityId);
 }
 
 export const MAX_LABEL_LENGTH = 32;
@@ -340,6 +376,7 @@ export async function setAdditionalAddressLabel(
     })
   );
 
+  await mirrorSuiLink(identityId);
   return { additionalAddresses: nextAdditional };
 }
 
@@ -392,5 +429,6 @@ export async function removeAdditionalAddress(
     })
   );
 
+  await mirrorSuiLink(identityId);
   return { clearedBindings };
 }

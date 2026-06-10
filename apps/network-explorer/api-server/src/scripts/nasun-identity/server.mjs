@@ -433,6 +433,50 @@ async function handleProfileCreateMirror(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /profile/linked-account-merge -----------------------------------------------
+// AWS-exit DAL 3d step-2 prerequisite. The auth-{sui,solana,metamask}-additional verify / label /
+// app-binding / remove flows mutate the nested linkedAccounts.<provider> sub-object on UserProfiles
+// (linkedAccounts is a PROMOTED column -> linked_accounts JSONB) AFTER the authoritative DynamoDB
+// UpdateItem. /profile/attributes-sync refuses promoted columns and /profile/link-sync replaces the
+// WHOLE linked_accounts map (+ twitter columns), so neither fits a single-provider merge without
+// clobbering. This route sets ONLY the one provider sub-key (or removes it when account is null)
+// and touches nothing else, so it cannot disturb other providers, twitter_*, telegram_*, or
+// attributes. The caller passes the FULL resulting linkedAccounts.<provider> object, so the merge
+// is idempotent. A missing row is a no-op (follower; reload backstops). DynamoDB stays SoT until
+// the cutover; on flip this becomes authoritative (dual-write keeps box == DynamoDB).
+const LINKED_ACCOUNT_MERGE_PROVIDERS = new Set(['sui', 'solana', 'metamask']);
+
+async function handleLinkedAccountMerge(body) {
+  const identityId = str(body.identityId);
+  const provider = str(body.provider);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!LINKED_ACCOUNT_MERGE_PROVIDERS.has(provider)) throw new RouteAbort(400, { error: `provider not allowed: ${provider}` });
+  // account: the full resulting linkedAccounts.<provider> object (set), or null/absent (remove the key).
+  const hasAccount = body.account != null;
+  if (hasAccount && (typeof body.account !== 'object' || Array.isArray(body.account))) {
+    throw new RouteAbort(400, { error: 'account must be an object or null' });
+  }
+
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    if (hasAccount) {
+      // Set only the single provider sub-key; create the key if missing. Other keys untouched.
+      await tx`
+        UPDATE user_profiles
+        SET linked_accounts = jsonb_set(COALESCE(linked_accounts, '{}'::jsonb), ARRAY[${provider}], ${tx.json(body.account)}::jsonb, true),
+            updated_at = now()
+        WHERE identity_id = ${identityId}`;
+    } else {
+      await tx`
+        UPDATE user_profiles
+        SET linked_accounts = COALESCE(linked_accounts, '{}'::jsonb) - ${provider},
+            updated_at = now()
+        WHERE identity_id = ${identityId}`;
+    }
+  });
+  return { status: 200, body: { identityId, provider } };
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -443,6 +487,7 @@ const ROUTES = {
   '/profile/attributes-sync': handleProfileAttributesSync,
   '/profile/create-mirror': handleProfileCreateMirror,
   '/profile/batch': handleProfileBatch,
+  '/profile/linked-account-merge': handleLinkedAccountMerge,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================

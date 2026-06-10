@@ -41,6 +41,9 @@ export const IDENTITY_ROUTES = {
   walletList: '/wallet/list',
   // S3.R3 get-user-count reader: box-served exact user_profiles count (GET, no input).
   profileCount: '/profile/count',
+  // 3d step-2 prerequisite: single-provider linkedAccounts merge for the auth-{sui,solana,metamask}
+  // -additional verify/label/app-binding/remove flows (sets linked_accounts.<provider> only).
+  linkedAccountMerge: '/profile/linked-account-merge',
 } as const;
 
 /**

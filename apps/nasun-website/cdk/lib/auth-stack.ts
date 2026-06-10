@@ -284,6 +284,9 @@ export class AuthStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL 3d step-2: mirror linkedAccounts.metamask writes to the box (best-effort
+        // until /profile/linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative).
+        ...identityWriteEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -358,6 +361,9 @@ export class AuthStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL 3d step-2: mirror linkedAccounts.solana writes to the box (best-effort
+        // until /profile/linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative).
+        ...identityWriteEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -429,6 +435,9 @@ export class AuthStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL 3d step-2: mirror linkedAccounts.sui writes to the box (best-effort
+        // until /profile/linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative).
+        ...identityWriteEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
