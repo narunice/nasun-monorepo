@@ -1,0 +1,14 @@
+# /etc/systemd/system/nasun-dal-backup.timer
+# Daily trigger for nasun-dal-backup.service (AWS-exit DAL SoT-flip prereq 3a).
+# 03:30 UTC off-peak; Persistent catches a missed run after downtime; randomized jitter
+# avoids a thundering herd with any other 03:30 job.
+[Unit]
+Description=Daily timer for Nasun box identity DB backup
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,22 @@
+# /etc/systemd/system/nasun-dal-backup.service
+# AWS-exit DAL SoT-flip prereq 3a. Oneshot daily logical backup of nasun_dal (public identity
+# mirror + issuer SoT). Triggered by nasun-dal-backup.timer. Runs as the postgres OS user so
+# pg_dump/pg_dumpall authenticate over the local peer socket (no password on disk).
+[Unit]
+Description=Nasun box identity DB daily backup (nasun_dal: public mirror + issuer SoT)
+After=postgresql.service
+Requires=postgresql.service
+
+[Service]
+Type=oneshot
+User=postgres
+Group=postgres
+ExecStart=/srv/nasun/identity/nasun-dal-backup.sh
+
+# Modest hardening: read-only system except the backup dir; no new privileges. Kept light so
+# the local postgres socket connect is unaffected.
+NoNewPrivileges=yes
+ProtectHome=yes
+PrivateTmp=yes
+ProtectSystem=full
+ReadWritePaths=/srv/nasun/backups
