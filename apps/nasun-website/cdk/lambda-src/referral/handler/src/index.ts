@@ -31,6 +31,7 @@ import {
 } from "./eligibility.js";
 import {
   mirrorIdentityWrite,
+  authoritativeIdentityWrite,
   readProfileFromBox,
   IDENTITY_ROUTES,
 } from "../../../_shared/auth/identity-write.js";
@@ -323,18 +324,23 @@ async function handleMyCode(
         })
       );
 
-      // AWS-exit DAL S3.R4: mirror referralCode to the box nasun-identity attributes-JSONB
-      // (best-effort follower; no-op unless IDENTITY_WRITE_* is wired; never throws/rejects).
-      // DynamoDB is SoT. AWAITED (not fire-and-forget) so the box reliably carries referralCode
-      // before this rare code-generation path returns: this minimizes the read-flip's DynamoDB
-      // fallback rate and prepares the box for the eventual SoT flip. Awaiting cannot break the
-      // caller (the helper swallows all errors) and only adds the box round-trip to the rare
-      // generation path. dal-reload (<=10min full re-scan) remains the backstop for a box write
-      // that fails outright; the read flip stays correct regardless via its DynamoDB fallback.
-      await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, {
-        identityId,
-        set: { referralCode: code },
-      });
+      // AWS-exit DAL 3d-S1: carry referralCode to the box. The DynamoDB writes above are
+      // authoritative-FIRST. When /profile/attributes-sync is in IDENTITY_WRITE_FLIP_ROUTES the box
+      // write is AUTHORITATIVE (retry + throw) -- dual-authoritative with DynamoDB so box == DDB. A
+      // box failure throws here; it is NOT a ConditionalCheckFailedException, so the catch re-throws
+      // (it does NOT `continue` -> no spurious code regeneration), the handler 500s, the code is
+      // already in DynamoDB + reserved, and dal-reload heals the box (the D1 read flip stays correct
+      // via its DynamoDB fallback). The box merge is idempotent, so the retry is safe. Otherwise it
+      // stays the S3.R4 best-effort follower (awaited; never throws; no-op until env wired).
+      const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || "")
+        .split(",")
+        .map((s) => s.trim());
+      const attrPayload = { identityId, set: { referralCode: code } };
+      if (flipRoutes.includes(IDENTITY_ROUTES.profileAttributesSync)) {
+        await authoritativeIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+      } else {
+        await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+      }
 
       console.log(`[referral] Generated code ${code} for ${identityId}`);
       return jsonResponse(200, { referralCode: code }, origin);
