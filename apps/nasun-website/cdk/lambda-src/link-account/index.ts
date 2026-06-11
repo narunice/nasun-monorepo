@@ -773,6 +773,16 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           }));
         }
 
+        // Cap cumulative box-write time across all imposters: the loop awaits sequentially and the
+        // imposter count is unbounded (multi-account paste-linking is the abuse dedup cleans), so an
+        // N-imposter dead/slow-box case would be N x ~5.4s and could blow the 10s lambda timeout -> a
+        // 504 that fails the link (the exact outcome this non-blocking block must avoid). The budget
+        // keeps total box spend bounded (~6s) regardless of N: a healthy box (~330ms/write) keeps the
+        // early writes retry-hardened (budget stays above the 5.4s retry floor for the first ~2 fast
+        // writes, then downgrades to single-attempt -- harmless on a healthy box), while a dead box
+        // burns one retrying attempt then skips the rest.
+        // A skipped/failed mirror is left to reconcile/self-heal (same backstop as any best-effort miss).
+        const dedupBoxDeadlineMs = Date.now() + 6000;
         for (const item of dupItems) {
           const dupId = item.identityId;
           if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
@@ -791,15 +801,6 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 ':ua': new Date().toISOString(),
               },
             }));
-
-            // 1b. AWS-exit DAL (S2): mirror the metamask-link revocation to the box follower. The DDB
-            // write above persists the whole linkedAccounts map minus metamask; the box route removes
-            // only the metamask sub-key (jsonb - 'metamask'), byte-equivalent here since metamask is the
-            // sole removed key. Best-effort (mirrorIdentityWrite never throws) -> DDB stays authoritative
-            // and the daily reconcile/alert surfaces any miss. Without this, post-STOP (dal-reload
-            // stopped) the revocation would orphan the imposter's metamask link in box = persistent
-            // box<->DDB drift on that profile.
-            await mirrorIdentityWrite(IDENTITY_ROUTES.linkedAccountMerge, { identityId: dupId, provider: 'metamask' });
 
             // 2. Clean up Genesis Pass allowlist entry owned by this identity
             if (genesisPassAllowlistTable) {
@@ -820,6 +821,27 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                   ExpressionAttributeValues: { ':id': dupId },
                 }));
               }
+            }
+
+            // 3. AWS-exit DAL: mirror the metamask-link revocation to the box. The DDB update above
+            // persists the imposter's linkedAccounts minus metamask; the box route removes only the
+            // metamask sub-key (jsonb - 'metamask'), byte-equivalent since metamask is the sole removed
+            // key. Done LAST so a box failure does not skip the DDB-side cleanup above. Retry-hardened
+            // best-effort: authoritativeIdentityWrite retries a transient box blip (reducing post-STOP
+            // box<->DDB drift on the imposter row), but its final throw is swallowed by the enclosing
+            // non-blocking catch -- intentional, because the whole dedup cleanup (incl. the DDB writes)
+            // is a best-effort side effect of linking that must never fail the link. Bounded by the
+            // per-loop budget: retry only while >=5.4s of budget remains (room for a full 2-attempt
+            // worst case), a single attempt while >=0.8s remains, and skip once exhausted. A skipped or
+            // failed mirror is surfaced by the daily reconcile/alert and self-heals on the next link
+            // touching this address.
+            const boxBudgetMs = dedupBoxDeadlineMs - Date.now();
+            if (boxBudgetMs >= 800) {
+              await authoritativeIdentityWrite(
+                IDENTITY_ROUTES.linkedAccountMerge,
+                { identityId: dupId, provider: 'metamask' },
+                { timeoutMs: Math.min(2500, boxBudgetMs), retries: boxBudgetMs >= 5400 ? 1 : 0 },
+              );
             }
 
             console.log(JSON.stringify({
