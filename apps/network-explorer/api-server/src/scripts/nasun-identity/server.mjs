@@ -982,6 +982,56 @@ async function handleProfileByMetamaskAddress(params) {
   });
 }
 
+// --- GET /profile/voting-identity?walletAddress=0x.. ---------------------------------
+// AWS-exit DAL read-flip prereq (S5): 1:1 mirror of governance-api resolveUserProfile -- resolve a
+// wallet to its canonical (primary) voting identity plus the two social-link signals voting power
+// needs (twitterHandle for the X-link bonus AND the leaderboard rank lookup, isTelegramMember for the
+// TG bonus). Mirrors the DynamoDB 3-hop EXACTLY: wallet_owner -> owner profile -> (conditional)
+// primary profile, with the same twitterHandle fallback order (promoted twitter_handle ->
+// linkedAccounts.twitter.twitterHandle -> primary's promoted twitter_handle) and the same
+// circular-link guard (a primary that is ITSELF linked = a >1-hop chain keeps the owner identity, no
+// promotion). twitter_handle is returned RAW (the consumer lower-cases it for the rank query). 404 on
+// wallet-not-owned / owner-profile-missing so the lambda falls back to its authoritative DynamoDB
+// resolution for those rare/edge cases. INERT until governance-api flips.
+async function handleVotingIdentity(params) {
+  const addr = str(params.get('walletAddress')).toLowerCase();
+  if (!SUI_ADDRESS_REGEX.test(addr)) throw new RouteAbort(400, { error: 'Invalid wallet address format' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const [wo] = await tx`SELECT owner_identity_id FROM wallet_owner WHERE wallet_address = ${addr}`;
+    if (!wo || !wo.owner_identity_id) throw new RouteAbort(404, { error: 'Wallet not registered' });
+    const ownerIdentityId = wo.owner_identity_id;
+    const [owner] = await tx`
+      SELECT twitter_handle, is_telegram_member, linked_accounts, linked_to_primary_id
+      FROM user_profiles WHERE identity_id = ${ownerIdentityId}`;
+    // Owner profile missing -> resolveUserProfile returns { identityId: ownerIdentityId } only. 404 so
+    // the lambda reproduces that via fallback (rare; an orphan wallet_owner pointer).
+    if (!owner) throw new RouteAbort(404, { error: 'Owner profile not found' });
+
+    let twitterHandle = owner.twitter_handle || null;
+    let isTelegramMember = owner.is_telegram_member === true;
+    if (!twitterHandle) {
+      const la = (owner.linked_accounts && typeof owner.linked_accounts === 'object') ? owner.linked_accounts : {};
+      twitterHandle = (la.twitter && typeof la.twitter.twitterHandle === 'string') ? la.twitter.twitterHandle : null;
+    }
+
+    let canonicalIdentityId = ownerIdentityId;
+    if (owner.linked_to_primary_id) {
+      const [primary] = await tx`
+        SELECT twitter_handle, is_telegram_member, linked_to_primary_id
+        FROM user_profiles WHERE identity_id = ${owner.linked_to_primary_id}`;
+      // Promote to primary ONLY when it exists and is not itself linked (circular-link guard keeps the
+      // owner identity); a missing primary keeps the owner too -- both mirror resolveUserProfile.
+      if (primary && !primary.linked_to_primary_id) {
+        canonicalIdentityId = owner.linked_to_primary_id;
+        if (!twitterHandle) twitterHandle = primary.twitter_handle || null;
+        if (!isTelegramMember) isTelegramMember = primary.is_telegram_member === true;
+      }
+    }
+    return { status: 200, body: { identityId: canonicalIdentityId, twitterHandle, isTelegramMember } };
+  });
+}
+
 const GET_ROUTES = {
   '/profile/by-wallet': handleProfileByWallet,
   '/profile/by-identity': handleProfileByIdentity,
@@ -990,6 +1040,7 @@ const GET_ROUTES = {
   '/profile/by-twitter-id': handleProfileByTwitterId,
   '/profile/by-telegram-id': handleProfileByTelegramId,
   '/profile/by-metamask-address': handleProfileByMetamaskAddress,
+  '/profile/voting-identity': handleVotingIdentity,
 };
 
 function readBody(req) {

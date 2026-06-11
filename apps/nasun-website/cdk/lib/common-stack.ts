@@ -421,6 +421,10 @@ export class CommonStack extends cdk.Stack {
       environment: {
         // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
         ...issuerVerifyEnv(),
+        // AWS-exit DAL read-flip (S5): box-served voting-identity resolution (/profile/voting-identity)
+        // with DynamoDB fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
+        // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
+        ...identityReadEnv(),
         // Leaderboard V3 tables (accounts + seasons for rank lookup)
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
         LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",

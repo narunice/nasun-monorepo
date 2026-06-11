@@ -24,6 +24,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { bcs } from "@mysten/sui/bcs";
 import { handleAllianceRoute } from "./alliance-handler";
+import { readProfileFromBox } from "../../_shared/auth/identity-write";
 
 // Configure ed25519 to use sha512
 ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
@@ -311,6 +312,21 @@ async function resolveUserProfile(walletAddress: string): Promise<UserProfile> {
   if (!walletAddress) return {};
 
   const normalizedAddr = walletAddress.toLowerCase();
+
+  // AWS-exit DAL read-flip (S5): box-served voting-identity resolution (wallet -> canonical primary +
+  // twitterHandle + isTelegramMember), a 1:1 mirror of the DynamoDB 3-hop below. readProfileFromBox
+  // never throws (null on unset/non-200/error); a 404 (wallet not owned / owner profile missing) or
+  // any box failure falls through to the authoritative DynamoDB resolution. DynamoDB stays SoT.
+  if ((process.env.IDENTITY_READ_MODE || "").trim() === "flip") {
+    const boxed = await readProfileFromBox("/profile/voting-identity", { walletAddress: normalizedAddr });
+    if (boxed?.identityId) {
+      return {
+        twitterHandle: boxed.twitterHandle || undefined,
+        isTelegramMember: boxed.isTelegramMember === true,
+        identityId: boxed.identityId,
+      };
+    }
+  }
 
   try {
     // Hop 1: UserWallets WALLET_OWNER sentinel -> identityId
