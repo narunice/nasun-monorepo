@@ -21,6 +21,7 @@ function linkSyncRow(
   twitterHandle: string | null | undefined,
   twitterId: string | null | undefined,
   walletAddressNull = false,
+  attributes?: Record<string, any>,
 ): Record<string, any> {
   const row: Record<string, any> = {
     identityId,
@@ -30,7 +31,28 @@ function linkSyncRow(
     twitterId: twitterId ?? null,
   };
   if (walletAddressNull) row.walletAddressNull = true;
+  // Only set for a row that may be a FRESH INSERT in the box (the auto-created secondary). The box
+  // route populates attributes on INSERT and ignores it on conflict, so existing rows are unaffected.
+  if (attributes !== undefined) row.attributes = attributes;
   return row;
+}
+
+// dal-reload's promoted UserProfiles keys (-> dedicated box columns). Everything NOT in this set is
+// folded into the box `attributes` JSONB. Keep in sync with dal-reload.mjs JOBS.user_profiles.promoted
+// so a freshly mirrored secondary's attributes byte-match what dal-reload would have synthesized from
+// the flat DynamoDB item (dal-reload is permanently stopped and can no longer backfill).
+const PROMOTED_PROFILE_KEYS = new Set([
+  'identityId', 'walletAddress', 'twitterHandle', 'twitterId', 'telegramUserId',
+  'isTelegramMember', 'linkedAccounts', 'linkedToPrimaryId', 'updatedAt', 'createdAt',
+]);
+
+function profileAttributes(item: Record<string, any>): Record<string, any> {
+  const attrs: Record<string, any> = {};
+  for (const [k, v] of Object.entries(item)) {
+    if (v === undefined) continue;
+    if (!PROMOTED_PROFILE_KEYS.has(k)) attrs[k] = v;
+  }
+  return attrs;
 }
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
@@ -897,12 +919,17 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         ? (secondaryProfile.twitterId || primaryProfile.twitterId || null)
         : (primaryProfile.twitterId ?? null),
     ));
+    // Secondary is the only row this flow can freshly INSERT into the box (auto-created above when it
+    // had no profile). Carry its attributes = omit(item, promoted) so a brand-new secondary lands with
+    // provider/username/email populated instead of NULL (the box ignores it on conflict for existing rows).
     linkMirrorRows.push(linkSyncRow(
       secondaryIdentityId,
       secondaryLinkedAccounts,
       primaryIdentityId,
       secondaryProfile.twitterHandle ?? null,
       secondaryProfile.twitterId ?? null,
+      false,
+      profileAttributes(secondaryProfile),
     ));
     // AWS-exit DAL 3d-S1: authoritative box write when /profile/link-sync is flipped (see unlink
     // path above for rationale); dual-authoritative with the DynamoDB link writes, idempotent upsert.

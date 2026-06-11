@@ -249,8 +249,12 @@ async function handleWalletRemove(body) {
 // CAS -- it mirrors the FULL resulting projection of each touched row in one tx (idempotent
 // UPSERT). Only the dal-reload-mapped, link-account-owned columns are written: linked_accounts,
 // linked_to_primary_id, twitter_handle, twitter_id (+ wallet_address->NULL only on the narrow
-// metamask-primary unlink). is_telegram_member / telegram_user_id / attributes / created_at are
-// left untouched on conflict so the telegram slice (S2.B) and reload keep ownership of them.
+// metamask-primary unlink). is_telegram_member / telegram_user_id / created_at are left untouched
+// on conflict so the telegram slice (S2.B) and reload keep ownership of them. attributes is
+// populated ONLY on a fresh INSERT -- the auto-created secondary profile of a link, whose attributes
+// (provider/username/email) dal-reload synthesized from the flat DDB item but can no longer backfill
+// once stopped -- and left untouched on conflict so existing rows keep their own attributes. The
+// caller sends attributes = omit(item, promoted), byte-matching dal-reload's projection.
 async function handleProfileLinkSync(body) {
   const rawRows = Array.isArray(body.rows) ? body.rows : null;
   if (!rawRows || rawRows.length === 0) throw new RouteAbort(400, { error: 'rows required' });
@@ -268,7 +272,11 @@ async function handleProfileLinkSync(body) {
     const th = r.twitterHandle == null ? null : (str(r.twitterHandle) || null);
     const tid = r.twitterId == null ? null : (str(r.twitterId) || null);
     const walletNull = r.walletAddressNull === true;
-    return { identityId, la, ltp, th, tid, walletNull };
+    let attrs;
+    if (r.attributes == null) attrs = undefined;
+    else if (typeof r.attributes === 'object' && !Array.isArray(r.attributes)) attrs = r.attributes;
+    else throw new RouteAbort(400, { error: 'row.attributes must be object' });
+    return { identityId, la, ltp, th, tid, walletNull, attrs };
   });
 
   // primary-first: a row's linked_to_primary_id FK references a primary row that must already
@@ -280,10 +288,13 @@ async function handleProfileLinkSync(body) {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
     for (const r of rows) {
       const laBind = r.la === null ? null : tx.json(r.la);
+      const attrBind = r.attrs === undefined ? null : tx.json(r.attrs);
+      // attributes is in the INSERT column list but intentionally absent from DO UPDATE SET:
+      // insert-populate (fresh secondary), update-preserve (existing rows keep their own).
       await tx`
         INSERT INTO user_profiles
-          (identity_id, linked_accounts, linked_to_primary_id, twitter_handle, twitter_id, created_at, updated_at)
-        VALUES (${r.identityId}, ${laBind}, ${r.ltp}, ${r.th}, ${r.tid}, now(), now())
+          (identity_id, linked_accounts, linked_to_primary_id, twitter_handle, twitter_id, attributes, created_at, updated_at)
+        VALUES (${r.identityId}, ${laBind}, ${r.ltp}, ${r.th}, ${r.tid}, ${attrBind}, now(), now())
         ON CONFLICT (identity_id) DO UPDATE SET
           linked_accounts = ${laBind},
           linked_to_primary_id = ${r.ltp},
