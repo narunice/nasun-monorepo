@@ -647,6 +647,47 @@ async function handleProfileDelete(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /governance/vote-claim  { identityId, proposalId } --------------------------
+// --- POST /governance/vote-release { identityId, proposalId } -------------------------
+// AWS-exit DAL governanceVotes migration: replaces the DynamoDB Set duplicate-vote guard on
+// UserProfiles (governanceVotes SS) with a box governance_votes table keyed by (identity_id,
+// proposal_id). The certificate flow's atomic conditional `ADD governanceVotes IF NOT contains`
+// becomes INSERT ... ON CONFLICT DO NOTHING (claimed = a row was inserted); the rollback / stale-
+// cleanup DELETE becomes a keyed DELETE. The on-chain VoteProofNFT remains the ultimate authority;
+// this is the fast-path that avoids issuing a cert for an already-claimed proposal. AUTHORITATIVE
+// (the lambda calls these via authoritativeIdentityWriteJson, not a best-effort mirror), so box is
+// the sole home for the guard once flipped. governance_votes is NOT a dal-reload-synced table.
+async function handleVoteClaim(body) {
+  const identityId = str(body.identityId);
+  const proposalId = str(body.proposalId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!proposalId || proposalId.length > 256) throw new RouteAbort(400, { error: 'proposalId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      INSERT INTO governance_votes (identity_id, proposal_id)
+      VALUES (${identityId}, ${proposalId})
+      ON CONFLICT (identity_id, proposal_id) DO NOTHING
+      RETURNING proposal_id`;
+    return { status: 200, body: { claimed: rows.length > 0 } };
+  });
+}
+
+async function handleVoteRelease(body) {
+  const identityId = str(body.identityId);
+  const proposalId = str(body.proposalId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!proposalId || proposalId.length > 256) throw new RouteAbort(400, { error: 'proposalId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      DELETE FROM governance_votes
+      WHERE identity_id = ${identityId} AND proposal_id = ${proposalId}
+      RETURNING proposal_id`;
+    return { status: 200, body: { released: rows.length > 0 } };
+  });
+}
+
 const ROUTES = {
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
@@ -661,6 +702,8 @@ const ROUTES = {
   '/profile/twitter-primary': handleTwitterPrimary,
   '/profile/status': handleProfileStatus,
   '/profile/delete': handleProfileDelete,
+  '/governance/vote-claim': handleVoteClaim,
+  '/governance/vote-release': handleVoteRelease,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================

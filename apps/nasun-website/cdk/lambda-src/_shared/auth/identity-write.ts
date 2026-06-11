@@ -54,6 +54,11 @@ export const IDENTITY_ROUTES = {
   // 3d step-2 prerequisite: purge-deactivated-accounts mirror. Row DELETE by identityId (parity with
   // the purge job's unconditional DeleteItem). NULLs self-ref referrers first; touches only user_profiles.
   profileDelete: '/profile/delete',
+  // governanceVotes migration: box-served duplicate-vote guard (governance_votes table). vote-claim =
+  // INSERT ON CONFLICT DO NOTHING -> { claimed }; vote-release = keyed DELETE -> { released }. Called
+  // via authoritativeIdentityWriteJson (needs the JSON result), so box is the authoritative guard.
+  governanceVoteClaim: '/governance/vote-claim',
+  governanceVoteRelease: '/governance/vote-release',
 } as const;
 
 /**
@@ -147,6 +152,52 @@ export async function authoritativeIdentityWrite(
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       console.log(`[identity-auth-write] route=${path} ok=1 attempt=${attempt} ms=${Date.now() - startedAt}`);
       return;
+    } catch (err) {
+      lastErr = err;
+      console.warn(
+        `[identity-auth-write] route=${path} ok=0 attempt=${attempt} ms=${Date.now() - startedAt} err=${err instanceof Error ? err.message : String(err)}`,
+      );
+      if (attempt < retries) await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * Authoritative box write that RETURNS the parsed JSON response body (vs authoritativeIdentityWrite
+ * which is fire-and-confirm/void). For routes whose result drives a branch -- e.g. the governanceVotes
+ * guard's vote-claim returns { claimed } and the caller must know whether the row was newly inserted.
+ * Same retry/throw contract as authoritativeIdentityWrite (THROWS after exhausting retries). Retries
+ * are safe only for idempotent routes: vote-claim is INSERT ON CONFLICT DO NOTHING (a retry after an
+ * ambiguous success returns claimed=false, which the caller's on-chain self-heal handles correctly);
+ * vote-release is a keyed DELETE.
+ */
+export async function authoritativeIdentityWriteJson(
+  path: string,
+  payload: unknown,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<Record<string, any>> {
+  const base = process.env.IDENTITY_WRITE_URL;
+  const secret = process.env.IDENTITY_WRITE_SECRET;
+  if (!base || !secret) throw new Error('authoritativeIdentityWriteJson: IDENTITY_WRITE_URL/SECRET unset');
+
+  const timeoutMs = opts.timeoutMs && opts.timeoutMs > 0 ? opts.timeoutMs : 1500;
+  const retries = Number.isInteger(opts.retries) && (opts.retries as number) >= 0 ? (opts.retries as number) : 1;
+
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const startedAt = Date.now();
+    try {
+      const res = await fetch(`${base.replace(/\/+$/, '')}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${secret}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = (await res.json()) as Record<string, any>;
+      console.log(`[identity-auth-write] route=${path} ok=1 attempt=${attempt} ms=${Date.now() - startedAt}`);
+      return json;
     } catch (err) {
       lastErr = err;
       console.warn(

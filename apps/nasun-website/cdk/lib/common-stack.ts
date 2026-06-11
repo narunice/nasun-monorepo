@@ -425,6 +425,10 @@ export class CommonStack extends cdk.Stack {
         // with DynamoDB fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
         // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
         ...identityReadEnv(),
+        // AWS-exit DAL governanceVotes migration: authoritative box duplicate-vote guard
+        // (/governance/vote-claim + vote-release). Needs IDENTITY_WRITE_URL/SECRET; the lambda calls
+        // authoritativeIdentityWriteJson which THROWS if unset, so this must be wired before deploy.
+        ...identityWriteEnv(),
         // Leaderboard V3 tables (accounts + seasons for rank lookup)
         LEADERBOARD_V3_ACCOUNTS_TABLE: "leaderboard-v3-accounts",
         LEADERBOARD_V3_SEASONS_TABLE: "leaderboard-v3-seasons",

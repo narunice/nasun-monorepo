@@ -24,7 +24,7 @@ import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromBase64, toBase64 } from "@mysten/bcs";
 import { bcs } from "@mysten/sui/bcs";
 import { handleAllianceRoute } from "./alliance-handler";
-import { readProfileFromBox } from "../../_shared/auth/identity-write";
+import { readProfileFromBox, authoritativeIdentityWriteJson, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
 
 // Configure ed25519 to use sha512
 ed25519.etc.sha512Sync = (...m) => sha512(ed25519.etc.concatBytes(...m));
@@ -613,7 +613,7 @@ function corsHeaders() {
 /**
  * Issue an Oracle-signed voting power certificate.
  * Extracted so both the normal path and the self-healing path can call it.
- * Rolls back the governanceVotes DynamoDB entry on failure.
+ * Rolls back the box governance_votes claim (vote-release) on failure.
  */
 async function issueCertificate(
   profile: UserProfile,
@@ -671,17 +671,14 @@ async function issueCertificate(
       body: JSON.stringify(certificate),
     };
   } catch (error: unknown) {
-    // Rollback governanceVotes record if certificate issuance failed
+    // Rollback the box governance_votes claim if certificate issuance failed (best-effort: the
+    // release is wrapped so a box failure here does not mask the original error).
     if (profile.identityId) {
       try {
-        await docClient.send(new UpdateCommand({
-          TableName: USER_PROFILES_TABLE,
-          Key: { identityId: profile.identityId },
-          UpdateExpression: "DELETE governanceVotes :pidSet",
-          ExpressionAttributeValues: {
-            ":pidSet": new Set([proposalId]),
-          },
-        }));
+        await authoritativeIdentityWriteJson(IDENTITY_ROUTES.governanceVoteRelease, {
+          identityId: profile.identityId,
+          proposalId,
+        });
         console.log(`Rolled back governanceVotes for identity=${profile.identityId}, proposal=${proposalId}`);
       } catch (rollbackErr) {
         console.error("Failed to rollback governanceVotes:", rollbackErr instanceof Error ? rollbackErr.message : String(rollbackErr));
@@ -804,69 +801,47 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // Resolve outside try so rollback can access identityId
       const profile = await resolveUserProfile(voter as string);
 
-      // Identity-based duplicate vote prevention (atomic conditional update)
+      // Identity-based duplicate vote prevention. AWS-exit DAL: the guard moved from a DynamoDB
+      // governanceVotes Set (ADD ... IF NOT contains) to the box governance_votes table -- vote-claim
+      // does INSERT ON CONFLICT DO NOTHING and returns { claimed } (claimed = a row was newly inserted,
+      // i.e. NOT a duplicate). authoritativeIdentityWriteJson throws on box failure, so an unreachable
+      // box surfaces as a 500 rather than a silently-skipped guard. The on-chain VoteProofNFT remains
+      // the ultimate authority.
       if (profile.identityId) {
-        try {
-          await docClient.send(new UpdateCommand({
-            TableName: USER_PROFILES_TABLE,
-            Key: { identityId: profile.identityId },
-            UpdateExpression: "ADD governanceVotes :pidSet",
-            ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
-            ExpressionAttributeValues: {
-              ":pidSet": new Set([proposalId as string]),
-              ":pidStr": proposalId as string,
-            },
-          }));
-        } catch (err) {
-          if (err instanceof ConditionalCheckFailedException) {
-            // Self-healing: check on-chain whether the vote actually completed
-            const onChainVoted = await checkOnChainVoteExists(voter as string, proposalId as string);
+        const claim = await authoritativeIdentityWriteJson(IDENTITY_ROUTES.governanceVoteClaim, {
+          identityId: profile.identityId,
+          proposalId,
+        });
+        if (!claim.claimed) {
+          // Already claimed: self-heal by checking on-chain whether the vote actually completed.
+          const onChainVoted = await checkOnChainVoteExists(voter as string, proposalId as string);
 
-            if (onChainVoted) {
-              console.warn(`Duplicate vote blocked (confirmed on-chain): identity=${profile.identityId}, proposal=${proposalId}, wallet=${voter}`);
-              return {
-                statusCode: 409,
-                headers: corsHeaders(),
-                body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
-              };
-            }
+          if (onChainVoted) {
+            console.warn(`Duplicate vote blocked (confirmed on-chain): identity=${profile.identityId}, proposal=${proposalId}, wallet=${voter}`);
+            return {
+              statusCode: 409,
+              headers: corsHeaders(),
+              body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
+            };
+          }
 
-            // Stale DynamoDB entry from a previously failed vote flow. Clean up and re-issue.
-            console.warn(`Stale governanceVotes entry detected, cleaning up: identity=${profile.identityId}, proposal=${proposalId}`);
-            await docClient.send(new UpdateCommand({
-              TableName: USER_PROFILES_TABLE,
-              Key: { identityId: profile.identityId },
-              UpdateExpression: "DELETE governanceVotes :pidSet",
-              ExpressionAttributeValues: {
-                ":pidSet": new Set([proposalId as string]),
-              },
-            }));
-
-            // Re-attempt conditional ADD after cleanup (prevents concurrent race)
-            try {
-              await docClient.send(new UpdateCommand({
-                TableName: USER_PROFILES_TABLE,
-                Key: { identityId: profile.identityId },
-                UpdateExpression: "ADD governanceVotes :pidSet",
-                ConditionExpression: "attribute_not_exists(governanceVotes) OR NOT contains(governanceVotes, :pidStr)",
-                ExpressionAttributeValues: {
-                  ":pidSet": new Set([proposalId as string]),
-                  ":pidStr": proposalId as string,
-                },
-              }));
-            } catch (reAddErr) {
-              if (reAddErr instanceof ConditionalCheckFailedException) {
-                // Concurrent request won the race
-                return {
-                  statusCode: 409,
-                  headers: corsHeaders(),
-                  body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
-                };
-              }
-              throw reAddErr;
-            }
-          } else {
-            throw err;
+          // Stale claim from a previously failed vote flow. Release and re-claim (prevents a concurrent race).
+          console.warn(`Stale governanceVotes entry detected, cleaning up: identity=${profile.identityId}, proposal=${proposalId}`);
+          await authoritativeIdentityWriteJson(IDENTITY_ROUTES.governanceVoteRelease, {
+            identityId: profile.identityId,
+            proposalId,
+          });
+          const reclaim = await authoritativeIdentityWriteJson(IDENTITY_ROUTES.governanceVoteClaim, {
+            identityId: profile.identityId,
+            proposalId,
+          });
+          if (!reclaim.claimed) {
+            // Concurrent request won the race
+            return {
+              statusCode: 409,
+              headers: corsHeaders(),
+              body: JSON.stringify({ error: "You have already voted on this proposal", code: "ALREADY_VOTED" }),
+            };
           }
         }
       }
