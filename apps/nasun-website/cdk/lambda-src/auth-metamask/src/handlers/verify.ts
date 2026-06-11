@@ -5,6 +5,7 @@ import { verifySignature } from '../utils/ethereum';
 import { getCognitoIdentityId } from '../utils/cognito';
 import { getAndDeleteNonce } from '../utils/dynamodb';
 import { createOrUpdateMetaMaskProfile } from '../utils/userProfile';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 import { maskSensitiveData } from '../utils/log-utils';
 
 export async function handleVerify(
@@ -115,11 +116,34 @@ Nonce: ${nonce}`;
   const { identityId, token } = await getCognitoIdentityId(walletAddress);
 
   // 6. UserProfiles 테이블에 사용자 정보 저장
+  let profileSaved = true;
   try {
     await createOrUpdateMetaMaskProfile(identityId, walletAddress);
   } catch (error: any) {
+    profileSaved = false;
     console.error('Failed to save user profile, but continuing:', maskSensitiveData({ message: error?.message }));
     // 프로필 저장 실패해도 인증은 성공으로 처리
+  }
+
+  // 6b. AWS-exit DAL: mirror the profile to the box nasun-identity service. Identical to
+  // connect-verify's post-save block (same createOrUpdateMetaMaskProfile + profileUpsert payload).
+  // The MetaMask login path (/auth/metamask/verify) was previously the only metamask profile write
+  // with no box mirror, so post-STOP (dal-reload stopped) a login-created/updated profile would not
+  // reach the box = box<->DDB drift. Only mirror when the authoritative DynamoDB write succeeded, so
+  // the box never holds a profile DynamoDB lacks. When /profile/upsert is in IDENTITY_WRITE_FLIP_ROUTES
+  // the box write is AUTHORITATIVE (retry + throw) -- dual-authoritative with the DynamoDB write above
+  // so box == DDB. profileUpsert is idempotent (full-row UPSERT), so the retry is safe; the budget
+  // (timeoutMs 2500, retries 1 => ~5.4s worst) fits the auth lambda timeout. A box failure throws ->
+  // the login 500s rather than silently diverging the future SoT. Otherwise it stays the best-effort
+  // follower (awaited; never throws; no-op until env wired).
+  if (profileSaved) {
+    const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+    const upsertPayload = { identityId, walletAddress: walletAddress.toLowerCase(), provider: 'MetaMask' };
+    if (flipRoutes.includes(IDENTITY_ROUTES.profileUpsert)) {
+      await authoritativeIdentityWrite(IDENTITY_ROUTES.profileUpsert, upsertPayload, { timeoutMs: 2500, retries: 1 });
+    } else {
+      await mirrorIdentityWrite(IDENTITY_ROUTES.profileUpsert, upsertPayload);
+    }
   }
 
   // 7. Generate HMAC wallet proof token (for downstream register/withdraw Lambdas)
