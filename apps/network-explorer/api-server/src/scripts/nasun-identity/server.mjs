@@ -391,7 +391,15 @@ const ATTRS_SYNC_SET_KEYS = new Set([
   'referralCode', 'lastReferralDeclinedAt',
   'originalTwitterHandle', 'profileImageUrl',
 ]);
-const ATTRS_SYNC_REMOVE_KEYS = new Set(['customAvatarKey', 'linkedSuiAddress', 'linkedSolanaAddress']);
+// originalTwitterHandle/profileImageUrl/email are removable because link-account's unlink + auto-transfer
+// paths drop these non-promoted top-level keys from the DynamoDB primary (DDB REMOVE) when a twitter/google
+// account is unlinked from a non-twitter / twitter primary respectively; the /profile/link-sync mirror only
+// NULLs the promoted twitter columns and leaves attributes untouched on conflict, so without an attributes-sync
+// REMOVE the box keeps a stale key (dal-reload is stopped and can no longer converge it).
+const ATTRS_SYNC_REMOVE_KEYS = new Set([
+  'customAvatarKey', 'linkedSuiAddress', 'linkedSolanaAddress',
+  'originalTwitterHandle', 'profileImageUrl', 'email',
+]);
 
 async function handleProfileAttributesSync(body) {
   const identityId = str(body.identityId);

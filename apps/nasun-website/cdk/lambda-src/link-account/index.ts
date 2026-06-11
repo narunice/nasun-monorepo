@@ -62,6 +62,30 @@ function profileAttributes(item: Record<string, any>): Record<string, any> {
   return attrs;
 }
 
+// Flip-aware /profile/attributes-sync mirror: MERGE `set` and DROP `remove` keys in the box attributes
+// JSONB, parallel to the /profile/link-sync mirror but for the non-promoted long-tail keys that link-sync
+// leaves untouched on conflict (originalTwitterHandle/profileImageUrl on twitter link/unlink, email on
+// google unlink). Authoritative when /profile/attributes-sync is flipped (it is in prod) -- a box failure
+// then fails the link, identical to the link-sync mirror's authority and acceptable because the DDB write
+// is authoritative-FIRST and the merge/remove is idempotent (retry-safe). No-op when both are empty so an
+// empty removeKeys never triggers the route's "no set or remove fields" 400.
+async function mirrorAttributes(
+  identityId: string,
+  set?: Record<string, string>,
+  remove?: string[],
+): Promise<void> {
+  const payload: Record<string, any> = { identityId };
+  if (set && Object.keys(set).length > 0) payload.set = set;
+  if (remove && remove.length > 0) payload.remove = remove;
+  if (!payload.set && !payload.remove) return;
+  const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+  if (flipRoutes.includes(IDENTITY_ROUTES.profileAttributesSync)) {
+    await authoritativeIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, payload);
+  } else {
+    await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, payload);
+  }
+}
+
 const client = new DynamoDBClient({ region: process.env.AWS_REGION });
 const dynamoClient = DynamoDBDocumentClient.from(client);
 const tableName = process.env.USER_PROFILES_TABLE || 'UserProfiles';
@@ -173,6 +197,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       // Determine which fields to remove based on the unlinked provider
       let updateExpression = 'SET linkedAccounts = :linkedAccounts, updatedAt = :updatedAt';
       let removeExpression = '';
+      // Non-promoted attribute keys dropped from the primary alongside removeExpression. linkSyncRow
+      // mirrors only the promoted twitter columns + walletAddress; these long-tail keys must be removed
+      // from the box attributes JSONB via /profile/attributes-sync (kept in lockstep with removeExpression).
+      const attrRemoveKeys: string[] = [];
       const expressionValues: any = {
         ':linkedAccounts': linkedAccounts,
         ':updatedAt': new Date().toISOString(),
@@ -183,11 +211,13 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         // If unlinking Google and primary is Twitter, remove email
         if (primaryProfile.provider === 'Twitter') {
           removeExpression = 'REMOVE email';
+          attrRemoveKeys.push('email');
         }
       } else if (providerKey === 'twitter') {
         // Remove promoted Twitter fields from primary profile (any non-Twitter provider)
         if (primaryProfile.provider !== 'Twitter') {
           removeExpression = 'REMOVE twitterHandle, originalTwitterHandle, twitterId, profileImageUrl';
+          attrRemoveKeys.push('originalTwitterHandle', 'profileImageUrl');
         }
       } else if (providerKey === 'metamask') {
         // MetaMask unlink signature verification REMOVED for better UX
@@ -305,6 +335,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: unlinkMirrorRows });
         }
       }
+
+      // AWS-exit DAL: drop the non-promoted attribute keys this unlink removed from the primary
+      // (originalTwitterHandle/profileImageUrl on twitter unlink, email on google unlink) from the box
+      // attributes JSONB -- link-sync above does not touch attributes on conflict. No-op when empty.
+      await mirrorAttributes(primaryIdentityId, undefined, attrRemoveKeys);
 
       console.log('Account unlinking successful');
 
@@ -468,6 +503,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     let oldPrimaryId: string | undefined;
     // AWS-exit DAL S2.A: box-mirror projection of the old primary, set only if a transfer-unlink runs.
     let oldPrimaryMirrorRow: Record<string, any> | null = null;
+    // Non-promoted attribute keys dropped from the OLD primary on a transfer-unlink (mirrored to the box
+    // via /profile/attributes-sync after the link mirror, since linkSyncRow leaves attributes untouched).
+    const oldPrimaryAttrRemoveKeys: string[] = [];
 
     console.log(JSON.stringify({
       event: 'AUTO_TRANSFER_CHECK',
@@ -560,8 +598,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           let unlinkExpr = 'SET linkedAccounts = :la, updatedAt = :ua';
           if (matchingKey === 'twitter' && oldPrimary.provider !== 'Twitter') {
             unlinkExpr += ' REMOVE twitterHandle, originalTwitterHandle, twitterId, profileImageUrl';
+            oldPrimaryAttrRemoveKeys.push('originalTwitterHandle', 'profileImageUrl');
           } else if (matchingKey === 'google' && oldPrimary.provider === 'Twitter') {
             unlinkExpr += ' REMOVE email';
+            oldPrimaryAttrRemoveKeys.push('email');
           } else if (matchingKey === 'metamask' && oldPrimary.provider === 'MetaMask') {
             unlinkExpr += ' REMOVE walletAddress';
           }
@@ -1041,8 +1081,8 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // (provider/username/telegramUsername preserved). Authoritative when flipped (matching the link-sync
     // mirror above): a box failure already fails the link there, so this adds no new failure surface;
     // idempotent merge -> retry-safe. Runs AFTER link-sync so the primary row exists (attributes-sync is
-    // a no-op on a missing row). Only the link path is mirrored here; the unlink REMOVE of these keys is
-    // a separate gap tracked by the attributes-mirror audit.
+    // a no-op on a missing row). The matching unlink/auto-transfer REMOVE of these keys is mirrored via
+    // mirrorAttributes(remove=...) in the unlink branch and after the link mirror below.
     if (providerKey === 'twitter') {
       // typeof==='string' (not bare truthiness): the box attributes-sync route 400s on a non-string
       // value, which -- being authoritative when flipped -- would throw and fail the whole link while
@@ -1053,15 +1093,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       const twitterAttrs: Record<string, string> = {};
       if (typeof secondaryProfile.originalTwitterHandle === 'string' && secondaryProfile.originalTwitterHandle) twitterAttrs.originalTwitterHandle = secondaryProfile.originalTwitterHandle;
       if (typeof secondaryProfile.profileImageUrl === 'string' && secondaryProfile.profileImageUrl) twitterAttrs.profileImageUrl = secondaryProfile.profileImageUrl;
-      if (Object.keys(twitterAttrs).length > 0) {
-        const attrFlipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
-        const attrPayload = { identityId: primaryIdentityId, set: twitterAttrs };
-        if (attrFlipRoutes.includes(IDENTITY_ROUTES.profileAttributesSync)) {
-          await authoritativeIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
-        } else {
-          await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
-        }
-      }
+      await mirrorAttributes(primaryIdentityId, twitterAttrs);
+    }
+
+    // AWS-exit DAL: on a transfer-unlink the OLD primary dropped non-promoted attribute keys
+    // (originalTwitterHandle/profileImageUrl or email); mirror that removal to the box attributes JSONB
+    // (the oldPrimaryMirrorRow link-sync above carried only its promoted columns). No-op unless a
+    // transfer-unlink populated the keys.
+    if (oldPrimaryId && oldPrimaryAttrRemoveKeys.length > 0) {
+      await mirrorAttributes(oldPrimaryId, undefined, oldPrimaryAttrRemoveKeys);
     }
 
     console.log('Bidirectional account linking successful');
