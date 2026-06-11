@@ -920,11 +920,76 @@ async function handleProfileBatch(body) {
   }));
 }
 
+// --- GET /profile/by-twitter-id?twitterId=.. -----------------------------------------
+// AWS-exit DAL read-flip prereq: mirrors link-account's twitterId uniqueness check (Query
+// twitterId-index + a per-conflict GetItem of walletAddress/username/customDisplayName). Returns
+// every row with this twitter_id in one call so the lambda flip drops both the Query and the
+// follow-up GetItem. twitter_id is a promoted column with a partial btree index. INERT until the
+// consumer flips. The caller does its own self/already-linked filtering on the returned ids.
+async function handleProfileByTwitterId(params) {
+  const twitterId = str(params.get('twitterId'));
+  if (!twitterId || twitterId.length > 256) throw new RouteAbort(400, { error: 'twitterId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id, wallet_address, attributes
+      FROM user_profiles WHERE twitter_id = ${twitterId}`;
+    const matches = rows.map((r) => {
+      const a = (r.attributes && typeof r.attributes === 'object') ? r.attributes : {};
+      return {
+        identityId: r.identity_id,
+        walletAddress: r.wallet_address ?? null,
+        username: typeof a.username === 'string' ? a.username : null,
+        customDisplayName: typeof a.customDisplayName === 'string' ? a.customDisplayName : null,
+      };
+    });
+    return { status: 200, body: { matches } };
+  });
+}
+
+// --- GET /profile/by-telegram-id?telegramUserId=.. -----------------------------------
+// AWS-exit DAL read-flip prereq: mirrors the telegramUserId-index dedup Query (verify-telegram and
+// admin export-whitelist), which is KEYS_ONLY -> projects identityId only. telegram_user_id is a
+// promoted text column with a partial btree index. INERT until the consumers flip.
+async function handleProfileByTelegramId(params) {
+  const telegramUserId = str(params.get('telegramUserId'));
+  if (!telegramUserId || telegramUserId.length > 256) throw new RouteAbort(400, { error: 'telegramUserId required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id FROM user_profiles WHERE telegram_user_id = ${telegramUserId}`;
+    return { status: 200, body: { matches: rows.map((r) => ({ identityId: r.identity_id })) } };
+  });
+}
+
+// --- GET /profile/by-metamask-address?walletAddress=.. -------------------------------
+// AWS-exit DAL read-flip prereq: mirrors link-account's MetaMask manual-entry dedup Scan
+// (linkedAccounts.metamask.walletAddress == addr AND linkedAccounts.metamask.manualEntry == true),
+// which projects identityId + linkedAccounts. The caller lower-cases the address before calling.
+// JSONB path read (no index today; rare manual-link path, acceptable seq scan -- add an expression
+// index if it grows). manualEntry is a JSON boolean, so ->> renders 'true'. INERT until flip.
+async function handleProfileByMetamaskAddress(params) {
+  const walletAddress = str(params.get('walletAddress')).toLowerCase();
+  if (!walletAddress || walletAddress.length > 256) throw new RouteAbort(400, { error: 'walletAddress required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id, linked_accounts
+      FROM user_profiles
+      WHERE linked_accounts->'metamask'->>'walletAddress' = ${walletAddress}
+        AND linked_accounts->'metamask'->>'manualEntry' = 'true'`;
+    return { status: 200, body: { matches: rows.map((r) => ({ identityId: r.identity_id, linkedAccounts: r.linked_accounts ?? {} })) } };
+  });
+}
+
 const GET_ROUTES = {
   '/profile/by-wallet': handleProfileByWallet,
   '/profile/by-identity': handleProfileByIdentity,
   '/wallet/list': handleWalletList,
   '/profile/count': handleProfileCount,
+  '/profile/by-twitter-id': handleProfileByTwitterId,
+  '/profile/by-telegram-id': handleProfileByTelegramId,
+  '/profile/by-metamask-address': handleProfileByMetamaskAddress,
 };
 
 function readBody(req) {

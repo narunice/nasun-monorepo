@@ -1991,9 +1991,28 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         );
       } catch (err: any) {
         if (err.name === "ConditionalCheckFailedException") {
-          return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+          // The status CAS fails for two distinct reasons: the referral is missing/not-PENDING, OR it
+          // is already DECLINED because a PRIOR decline committed the status but its box tombstone write
+          // (below) threw and 500'd the caller. On the flipped authoritative path the box MUST carry
+          // lastReferralDeclinedAt for the referral-apply cooldown read, so a blanket 409 here would
+          // strand the box tombstone forever (the retry-trap). Distinguish: only already-DECLINED falls
+          // through to idempotently re-apply the tombstones (DDB + box); anything else is a real 409.
+          const cur = await dynamoClient.send(
+            new GetItemCommand({
+              TableName: REFERRALS_TABLE,
+              Key: { referredIdentityId: { S: referredId } },
+              ProjectionExpression: "#s",
+              ExpressionAttributeNames: { "#s": "status" },
+            })
+          );
+          if (cur.Item?.status?.S !== "DECLINED") {
+            return errorResponse(409, "Already reviewed or referral missing", requestOrigin);
+          }
+          // Already DECLINED: idempotent retry, fall through to re-apply the cooldown tombstones so the
+          // box (authoritative on the flipped path) reliably carries lastReferralDeclinedAt.
+        } else {
+          throw err;
         }
-        throw err;
       }
 
       // Set 30-day cooldown tombstone on the declined user (compat with the referral apply
@@ -2039,10 +2058,10 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
       // SUCCEEDS, box has the value and DynamoDB lacks it -- during the dal-reload overlap the next
       // reload REVERTS the box value (dal-reload rebuilds the whole attributes JSONB from DynamoDB),
       // it does NOT heal it; reconcile surfaces the divergence. The opposite skew (box write fails,
-      // DynamoDB has it) self-heals on the next reload. (b) On the flipped path a box throw 500s
-      // after the status CAS already committed; an admin retry hits the #s=:pending CAS -> 409, so
-      // the box tombstone cannot be re-applied via retry. Benign today because the referral apply
-      // cooldown read still reads DynamoDB; MUST be revisited before that read is flipped to the box.
+      // DynamoDB has it) self-heals on the next reload. (b) The retry-trap (a box throw 500s after the
+      // status CAS committed, and an admin retry hits #s=:pending -> 409 before re-applying the box
+      // tombstone) is now RESOLVED: the CCFE handler above detects an already-DECLINED referral and
+      // falls through to re-run this tombstone block idempotently, so a retry re-applies the box write.
       const flipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || "")
         .split(",")
         .map((s) => s.trim());
