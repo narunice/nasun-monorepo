@@ -31,6 +31,7 @@ import {
   ROUND_STATUS,
   timestamp,
   fetchLatestRound,
+  fetchRoundByNumber,
   countWinners,
   calculateNextRoundTimes,
   requestGas,
@@ -174,6 +175,42 @@ async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<Lottery
         (round ? ` | Pool: ${(Number(round.prizePool) / 1e6).toFixed(2)} NUSDC | Tickets: ${round.ticketCount}` : ''),
     );
 
+    // Reconcile a stuck rollover. create_round records `rollover_in` up front,
+    // but the matching transfer_rollover is a separate tx; if it failed (e.g. a
+    // transient owned-object lock right after the new round was created) the
+    // funds stay in the prior SETTLED round and the normal state machine never
+    // retries (the latest round is OPEN, not SETTLED). transfer_rollover only
+    // moves balance above the reserved winner claims, so it is idempotent and
+    // safe to (re)issue. Gate on the previous round actually still holding
+    // transferable funds so this never fires a no-op tx loop.
+    if (round && round.status === ROUND_STATUS.OPEN && round.prizePool < round.rolloverIn) {
+      const prev = await fetchRoundByNumber(client, round.roundNumber - 1);
+      if (prev && prev.status === ROUND_STATUS.SETTLED) {
+        const reservedForClaims =
+          prev.tier1PayoutPerWinner * BigInt(prev.tier1Winners) +
+          prev.tier2PayoutPerWinner * BigInt(prev.tier2Winners) +
+          prev.tier3PayoutPerWinner * BigInt(prev.tier3Winners);
+
+        if (prev.prizePool > reservedForClaims) {
+          await withRetry(
+            () =>
+              executeAndWait(
+                client,
+                keypair,
+                buildTransferRolloverTx(prev.id, round!.id, LOTTERY_ADMIN_CAP_ID),
+                'transfer_rollover',
+              ),
+            { label: 'transfer_rollover_reconcile' },
+          );
+          console.log(
+            `[${timestamp()}] Reconciled pending rollover: round ${prev.roundNumber} -> ${round.roundNumber}`,
+          );
+          consecutiveErrors = 0;
+          return round;
+        }
+      }
+    }
+
     // Case 1: No round or SETTLED -> create next round + transfer rollover
     if (!round || round.status === ROUND_STATUS.SETTLED) {
       const { closeTime, drawTime } = calculateNextRoundTimes();
@@ -263,7 +300,7 @@ async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<Lottery
       let counts: { tier1: number; tier2: number; tier3: number; totalFetched: number } | null = null;
 
       for (let attempt = 0; attempt < MAX_EVENT_COUNT_RETRIES; attempt++) {
-        const result = await countWinners(client, round.id, round.drawnNumbers);
+        const result = await countWinners(client, round.id, round.drawnNumbers, round.ticketCount);
 
         if (result.totalFetched === round.ticketCount) {
           counts = result;

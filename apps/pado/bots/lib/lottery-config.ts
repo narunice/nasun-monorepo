@@ -254,6 +254,57 @@ export async function fetchLatestRound(
 }
 
 /**
+ * Resolve a round by its sequential number via RoundCreated events (newest
+ * first, bounded). Rounds are created in order, so a recent target sits near the
+ * top; the page bound keeps the scan away from prunable history.
+ */
+export async function fetchRoundByNumber(
+  client: SuiClient,
+  roundNumber: number,
+): Promise<LotteryRound | null> {
+  let cursor: EventId | null | undefined = undefined;
+  // Small descending pages: queryEvents fails atomically if any event in the
+  // requested page references a pruned tx, so a wide page would break the moment
+  // it reached an old round. A 2-wide window keeps each page within recent,
+  // un-pruned history; on the reconcile path the target (the immediately prior
+  // round) is found on the first page.
+  for (let page = 0; page < 6; page++) {
+    let events;
+    try {
+      events = await withRetry(
+        () =>
+          client.queryEvents({
+            query: {
+              MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::RoundCreated`,
+            },
+            cursor: cursor ?? undefined,
+            limit: 2,
+            order: 'descending',
+          }),
+        { label: 'queryRoundCreated' },
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      // Paged back into pruned history without finding the round: give up
+      // gracefully (caller treats a null as "nothing to reconcile").
+      if (msg.includes('Could not find the referenced transaction')) return null;
+      throw error;
+    }
+
+    for (const ev of events.data) {
+      const pj = ev.parsedJson as any;
+      if (Number(pj.round_number) === roundNumber) {
+        return withRetry(() => fetchRound(client, pj.round_id), { label: 'fetchRound' });
+      }
+    }
+
+    if (!events.hasNextPage) break;
+    cursor = events.nextCursor;
+  }
+  return null;
+}
+
+/**
  * Count winners by querying TicketPurchased events and matching against drawn numbers.
  * Uses full cursor-based pagination with ticket_count cross-check.
  */
@@ -261,6 +312,7 @@ export async function countWinners(
   client: SuiClient,
   roundId: string,
   drawnNumbers: number[],
+  expectedTicketCount: number,
 ): Promise<WinnerCounts> {
   const drawnSet = new Set(drawnNumbers);
   let tier1 = 0,
@@ -269,19 +321,41 @@ export async function countWinners(
   let totalFetched = 0;
   let cursor: EventId | null | undefined = undefined;
 
-  while (true) {
-    const response = await withRetry(
-      () =>
-        client.queryEvents({
-          query: {
-            MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`,
-          },
-          cursor: cursor ?? undefined,
-          limit: 50,
-          order: 'ascending',
-        }),
-      { label: 'queryTicketPurchased' },
-    );
+  // Paginate DESCENDING (newest first) and stop once we have collected every
+  // ticket of the target round (expectedTicketCount = on-chain ticket_count,
+  // the authoritative tally). The devnet fullnode prunes old transactions, so a
+  // genesis-up ascending scan fails the instant the oldest TicketPurchased event
+  // references a pruned tx. The round being settled is always recent, so reading
+  // newest-first and stopping at the on-chain count never descends into pruned
+  // history.
+  while (totalFetched < expectedTicketCount) {
+    let response;
+    try {
+      response = await withRetry(
+        () =>
+          client.queryEvents({
+            query: {
+              MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`,
+            },
+            cursor: cursor ?? undefined,
+            limit: 50,
+            order: 'descending',
+          }),
+        { label: 'queryTicketPurchased' },
+      );
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      // Reached pruned history before collecting every ticket. Return the
+      // partial tally; the caller verifies totalFetched === ticket_count and
+      // skips settlement on any shortfall rather than under-paying winners.
+      if (msg.includes('Could not find the referenced transaction')) {
+        console.warn(
+          `[lottery] TicketPurchased history pruned mid-scan (fetched ${totalFetched}/${expectedTicketCount} for round ${roundId}): ${msg}`,
+        );
+        break;
+      }
+      throw error;
+    }
 
     for (const event of response.data) {
       const parsed = event.parsedJson as any;
