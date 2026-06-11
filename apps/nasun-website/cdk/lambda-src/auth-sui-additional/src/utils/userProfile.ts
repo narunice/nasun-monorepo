@@ -1,7 +1,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand, UpdateCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { addrEq } from './sui';
-import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, readProfileFromBox, IDENTITY_ROUTES } from '../../../_shared/auth/identity-write';
 
 const client = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 const docClient = DynamoDBDocumentClient.from(client);
@@ -121,6 +121,20 @@ export async function findOtherOwnerOfAddress(
   address: string,
   selfIdentityId: string,
 ): Promise<string | null> {
+  // AWS-exit DAL read-flip: box-served collision check (/profile/address-owner). box.linked_accounts.sui
+  // is LOCKSTEP with DynamoDB because the link write mirrors via authoritativeIdentityWrite (linked-
+  // account-merge is in IDENTITY_WRITE_FLIP_ROUTES), so a box 200 -- including ownerIdentityId:null
+  // (no collision) -- is authoritative and safely short-circuits the Scan. readProfileFromBox returns
+  // null only on unset/non-200/error, which falls through to the authoritative DynamoDB Scan below.
+  if ((process.env.IDENTITY_READ_MODE || '').trim() === 'flip') {
+    const boxed = await readProfileFromBox('/profile/address-owner', {
+      chain: 'sui',
+      address,
+      self: selfIdentityId,
+    });
+    if (boxed) return (boxed.ownerIdentityId as string | null) ?? null;
+  }
+
   const normalized = address.toLowerCase();
   let exclusiveStartKey: Record<string, unknown> | undefined;
   do {

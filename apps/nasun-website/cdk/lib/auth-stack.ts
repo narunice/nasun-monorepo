@@ -9,7 +9,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
 import { issuerVerifyEnv, issuerMintEnv, issuerSaltEnv } from './issuer-env';
-import { identityWriteEnv } from './identity-env';
+import { identityWriteEnv, identityReadEnv } from './identity-env';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
 export interface AuthStackProps extends cdk.StackProps {
@@ -367,6 +367,10 @@ export class AuthStack extends cdk.Stack {
         // AWS-exit DAL 3d step-2: mirror linkedAccounts.solana writes to the box (best-effort
         // until /profile/linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative).
         ...identityWriteEnv(),
+        // AWS-exit DAL read-flip: box-served address-collision check (/profile/address-owner) with
+        // DynamoDB Scan fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
+        // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
+        ...identityReadEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {
@@ -441,6 +445,10 @@ export class AuthStack extends cdk.Stack {
         // AWS-exit DAL 3d step-2: mirror linkedAccounts.sui writes to the box (best-effort
         // until /profile/linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES, then authoritative).
         ...identityWriteEnv(),
+        // AWS-exit DAL read-flip: box-served address-collision check (/profile/address-owner) with
+        // DynamoDB Scan fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
+        // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
+        ...identityReadEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: (() => {

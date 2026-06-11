@@ -1032,6 +1032,62 @@ async function handleVotingIdentity(params) {
   });
 }
 
+// --- GET /profile/address-owner?chain=sui|solana&address=..&self=.. -------------------
+// AWS-exit DAL read-flip prereq: 1:1 mirror of auth-{sui,solana}-additional findOtherOwnerOfAddress
+// -- the anti-fraud "is this verified external-wallet address already owned by a DIFFERENT identity?"
+// gate. Matches the VERIFIED nested link only (linked_accounts.<chain>.walletAddress and each
+// .additionalAddresses[].walletAddress); the legacy paste-only root linkedSuiAddress is intentionally
+// NOT considered (same as the lambda). Self is excluded. Comparison mirrors the lambda's addrEq:
+// sui = case-insensitive (lower both), solana = case-sensitive (exact, base58). Returns the FIRST
+// other-owner identity_id or null. SAFE to serve a null (no-collision) authoritatively: the link
+// writes mirror via authoritativeIdentityWrite (linked-account-merge is in IDENTITY_WRITE_FLIP_ROUTES)
+// so box.linked_accounts.<chain> is lockstep with DynamoDB. INERT until the lambdas flip.
+async function handleAddressOwner(params) {
+  const chain = str(params.get('chain'));
+  if (chain !== 'sui' && chain !== 'solana') throw new RouteAbort(400, { error: 'chain must be sui or solana' });
+  const address = str(params.get('address'));
+  if (!address || address.length > 256) throw new RouteAbort(400, { error: 'address required' });
+  const self = str(params.get('self'));
+  if (!self || self.length > 256) throw new RouteAbort(400, { error: 'self required' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    let rows;
+    if (chain === 'sui') {
+      // case-insensitive: lower(stored) = lower(input). Input lowered here so the bound value is final.
+      const a = address.toLowerCase();
+      rows = await tx`
+        SELECT identity_id FROM user_profiles
+        WHERE identity_id <> ${self}
+          AND (
+            lower(linked_accounts->'sui'->>'walletAddress') = ${a}
+            OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(
+                CASE WHEN jsonb_typeof(linked_accounts->'sui'->'additionalAddresses') = 'array'
+                     THEN linked_accounts->'sui'->'additionalAddresses' ELSE '[]'::jsonb END
+              ) e WHERE lower(e->>'walletAddress') = ${a}
+            )
+          )
+        LIMIT 1`;
+    } else {
+      // solana: case-sensitive exact (base58).
+      rows = await tx`
+        SELECT identity_id FROM user_profiles
+        WHERE identity_id <> ${self}
+          AND (
+            linked_accounts->'solana'->>'walletAddress' = ${address}
+            OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(
+                CASE WHEN jsonb_typeof(linked_accounts->'solana'->'additionalAddresses') = 'array'
+                     THEN linked_accounts->'solana'->'additionalAddresses' ELSE '[]'::jsonb END
+              ) e WHERE e->>'walletAddress' = ${address}
+            )
+          )
+        LIMIT 1`;
+    }
+    return { status: 200, body: { ownerIdentityId: rows.length ? rows[0].identity_id : null } };
+  });
+}
+
 const GET_ROUTES = {
   '/profile/by-wallet': handleProfileByWallet,
   '/profile/by-identity': handleProfileByIdentity,
@@ -1041,6 +1097,7 @@ const GET_ROUTES = {
   '/profile/by-telegram-id': handleProfileByTelegramId,
   '/profile/by-metamask-address': handleProfileByMetamaskAddress,
   '/profile/voting-identity': handleVotingIdentity,
+  '/profile/address-owner': handleAddressOwner,
 };
 
 function readBody(req) {
