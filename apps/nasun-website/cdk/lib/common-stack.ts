@@ -303,6 +303,10 @@ export class CommonStack extends cdk.Stack {
         ...issuerVerifyEnv(),
         // AWS-exit DAL S2.A: mirror account-linking writes to the box nasun-identity service when wired.
         ...identityWriteEnv(),
+        // AWS-exit DAL read-flip (S2): box-served twitterId uniqueness dedup (/profile/by-twitter-id)
+        // with DynamoDB fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
+        // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
+        ...identityReadEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,

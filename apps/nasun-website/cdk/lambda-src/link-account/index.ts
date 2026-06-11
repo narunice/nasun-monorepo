@@ -5,7 +5,14 @@ import { DynamoDBDocumentClient, GetCommand, UpdateCommand, QueryCommand, ScanCo
 import { appendXHistory } from './utils/xHistory';
 import { grantIfReferralActivated } from './onboardingBonus';
 import { verifyIdentityFromBearer } from '../_shared/auth/dual-jwks';
-import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from '../_shared/auth/identity-write';
+import { mirrorIdentityWrite, authoritativeIdentityWrite, readProfileFromBox, IDENTITY_ROUTES } from '../_shared/auth/identity-write';
+
+// AWS-exit DAL read-flip gate (S2). When IDENTITY_READ_MODE=flip the read-before-write dedup checks
+// query the box first and fall back to DynamoDB on a null box result (config unset / non-200 / error).
+// Read at call time so a warm lambda picks up the value once it is wired; unset = DynamoDB only.
+function identityReadFlip(): boolean {
+  return (process.env.IDENTITY_READ_MODE || '').trim() === 'flip';
+}
 
 /**
  * AWS-exit DAL S2.A: build the box-mirrorable projection of a UserProfiles row after link-account
@@ -636,57 +643,60 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // verification. Legitimate migration must go through explicit unlink first.
     // Admin-link bypasses this gate (admin-driven identity merges).
     if (providerKey === 'twitter' && secondaryProfile.twitterId && !isAdminLink) {
+      // "self" = the caller's own primary, the Twitter-side Cognito secondary, and anything already
+      // linked to the caller (linkedAccounts.*.identityId). A match on any of these is not a conflict.
+      const primaryLinked = (primaryProfile.linkedAccounts || {}) as Record<string, any>;
+      const selfIds = new Set<string>([
+        primaryIdentityId,
+        secondaryIdentityId,
+        ...Object.values(primaryLinked).map((v) => v?.identityId).filter(Boolean),
+      ]);
+      let conflict: { identityId: string; walletAddress: string | null; displayName: string | null } | null = null;
       try {
-        // twitterId-index is KEYS_ONLY, so only identityId (base PK) + twitterId
-        // are projected. Fetch the full record via GetItem when a real conflict
-        // is identified.
-        const dedupResult = await dynamoClient.send(new QueryCommand({
-          TableName: tableName,
-          IndexName: 'twitterId-index',
-          KeyConditionExpression: 'twitterId = :tid',
-          ExpressionAttributeValues: { ':tid': secondaryProfile.twitterId },
-          ProjectionExpression: 'identityId',
-        }));
-
-        for (const item of dedupResult.Items || []) {
-          const dupId = item.identityId as string;
-          // Skip the caller's own primary identity, the Twitter-side Cognito
-          // identity (secondary), and any other identities already linked to
-          // the caller (linkedAccounts.*.identityId) — those are all "self".
-          if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
-          const primaryLinked = (primaryProfile.linkedAccounts || {}) as Record<string, any>;
-          const linkedSelfIds = Object.values(primaryLinked)
-            .map((v) => v?.identityId)
-            .filter(Boolean);
-          if (linkedSelfIds.includes(dupId)) continue;
-
-          const dupRecord = await dynamoClient.send(new GetCommand({
+        // AWS-exit DAL read-flip (S2): /profile/by-twitter-id returns every row with this twitter_id
+        // and the fields the 409 needs (walletAddress + username/customDisplayName) in one call,
+        // replacing the twitterId-index Query + per-conflict GetItem. readProfileFromBox never throws
+        // (null on config-unset / non-200 / error), so a box failure transparently falls back to the
+        // DynamoDB path below -- box errors never fail-close, only an unreachable DynamoDB does.
+        const box = identityReadFlip()
+          ? await readProfileFromBox('/profile/by-twitter-id', { twitterId: secondaryProfile.twitterId })
+          : null;
+        if (box && Array.isArray(box.matches)) {
+          for (const m of box.matches as Array<Record<string, any>>) {
+            if (!m?.identityId || selfIds.has(m.identityId)) continue;
+            conflict = {
+              identityId: m.identityId,
+              walletAddress: typeof m.walletAddress === 'string' ? m.walletAddress : null,
+              displayName: (m.customDisplayName || m.username || null) as string | null,
+            };
+            break;
+          }
+        } else {
+          // DynamoDB path (default, or box fallback). twitterId-index is KEYS_ONLY, so fetch the full
+          // record via GetItem only once a real (non-self) conflict is identified.
+          const dedupResult = await dynamoClient.send(new QueryCommand({
             TableName: tableName,
-            Key: { identityId: dupId },
-            ProjectionExpression: 'walletAddress, username, customDisplayName',
+            IndexName: 'twitterId-index',
+            KeyConditionExpression: 'twitterId = :tid',
+            ExpressionAttributeValues: { ':tid': secondaryProfile.twitterId },
+            ProjectionExpression: 'identityId',
           }));
-          const dupItem = dupRecord.Item || {};
-
-          console.log(JSON.stringify({
-            event: 'LINK_TWITTER_ALREADY_LINKED',
-            twitterId: secondaryProfile.twitterId,
-            otherPrimaryId: dupId,
-            attemptedPrimaryId: primaryIdentityId,
-            secondaryId: secondaryIdentityId,
-          }));
-          return {
-            statusCode: 409,
-            headers: corsHeaders,
-            body: JSON.stringify({
-              code: 'TWITTER_ALREADY_LINKED',
-              message: 'This X account is already linked to another wallet. Unlink it from the other wallet first.',
-              existingPrimary: {
-                identityId: dupId,
-                walletAddress: typeof dupItem.walletAddress === 'string' ? dupItem.walletAddress : null,
-                username: (dupItem.customDisplayName || dupItem.username || null) as string | null,
-              },
-            }),
-          };
+          for (const item of dedupResult.Items || []) {
+            const dupId = item.identityId as string;
+            if (selfIds.has(dupId)) continue;
+            const dupRecord = await dynamoClient.send(new GetCommand({
+              TableName: tableName,
+              Key: { identityId: dupId },
+              ProjectionExpression: 'walletAddress, username, customDisplayName',
+            }));
+            const dupItem = dupRecord.Item || {};
+            conflict = {
+              identityId: dupId,
+              walletAddress: typeof dupItem.walletAddress === 'string' ? dupItem.walletAddress : null,
+              displayName: (dupItem.customDisplayName || dupItem.username || null) as string | null,
+            };
+            break;
+          }
         }
       } catch (dedupError) {
         console.warn('Twitter uniqueness query failed:', dedupError);
@@ -697,6 +707,28 @@ export const handler: APIGatewayProxyHandler = async (event) => {
           body: JSON.stringify({
             code: 'TWITTER_UNIQUENESS_CHECK_FAILED',
             message: 'Could not verify X account uniqueness. Please try again.',
+          }),
+        };
+      }
+      if (conflict) {
+        console.log(JSON.stringify({
+          event: 'LINK_TWITTER_ALREADY_LINKED',
+          twitterId: secondaryProfile.twitterId,
+          otherPrimaryId: conflict.identityId,
+          attemptedPrimaryId: primaryIdentityId,
+          secondaryId: secondaryIdentityId,
+        }));
+        return {
+          statusCode: 409,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            code: 'TWITTER_ALREADY_LINKED',
+            message: 'This X account is already linked to another wallet. Unlink it from the other wallet first.',
+            existingPrimary: {
+              identityId: conflict.identityId,
+              walletAddress: conflict.walletAddress,
+              username: conflict.displayName,
+            },
           }),
         };
       }
