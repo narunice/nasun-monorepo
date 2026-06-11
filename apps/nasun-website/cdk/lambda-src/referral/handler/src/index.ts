@@ -391,12 +391,27 @@ async function handleApply(
 
   const referrerIdentityId = codeResult.Item.identityId;
 
-  // 3. Self-referral check (including linked accounts)
-  const callerProfile = await client.send(
-    new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId } })
-  );
+  // 3. Self-referral check (including linked accounts).
+  // AWS-exit DAL read-flip: load the caller's profile from the box (Source-of-Truth post-STOP) when
+  // flipped. The gate fields (linkedAccounts / linkedToPrimaryId / twitterId / lastReferralDeclinedAt)
+  // are all box-authoritative (link-sync + admin attributes-sync dual-writes), so the box is the freshest
+  // source. A box MISS/error (readProfileFromBox -> null, never throws) falls back to the authoritative
+  // DynamoDB GetItem, so this fail-closed gate can never be loosened by mirror lag. /profile/by-identity's
+  // secondary-merge only ever FILLS twitterId (when the own value is absent, never overwrites) -> strictly
+  // stricter for the reuse guard below; linkedAccounts/linkedToPrimaryId/lastReferralDeclinedAt are not merged.
+  const flip = (process.env.IDENTITY_READ_MODE || "").trim() === "flip";
+  let callerProfileItem: Record<string, any> | undefined;
+  if (flip) {
+    callerProfileItem = (await readProfileFromBox("/profile/by-identity", { identityId })) ?? undefined;
+  }
+  if (!callerProfileItem) {
+    const callerProfile = await client.send(
+      new GetCommand({ TableName: USER_PROFILES_TABLE, Key: { identityId } })
+    );
+    callerProfileItem = callerProfile.Item;
+  }
 
-  const allCallerIds = collectLinkedIdentityIds(identityId, callerProfile.Item);
+  const allCallerIds = collectLinkedIdentityIds(identityId, callerProfileItem);
   if (allCallerIds.includes(referrerIdentityId)) {
     return jsonResponse(400, { error: "SELF_REFERRAL", message: "Cannot use your own referral code" }, origin);
   }
@@ -408,19 +423,27 @@ async function handleApply(
   const otherCallerIds = allCallerIds.filter((id) => id !== identityId);
   const linkedProfiles = otherCallerIds.length
     ? await Promise.all(
-        otherCallerIds.map((id) =>
-          client.send(
-            new GetCommand({
-              TableName: USER_PROFILES_TABLE,
-              Key: { identityId: id },
-              ProjectionExpression: "lastReferralDeclinedAt",
-            })
-          ).catch(() => ({ Item: undefined as Record<string, any> | undefined }))
-        )
+        otherCallerIds.map(async (id) => {
+          // Same box-first (SoT) + DDB fallback discipline as the caller read. A box 200 lacking the field
+          // is an authoritative "not declined"; a box MISS/error (null) falls back to the DynamoDB GetItem.
+          if (flip) {
+            const boxed = await readProfileFromBox("/profile/by-identity", { identityId: id });
+            if (boxed) return { Item: boxed as Record<string, any> };
+          }
+          return client
+            .send(
+              new GetCommand({
+                TableName: USER_PROFILES_TABLE,
+                Key: { identityId: id },
+                ProjectionExpression: "lastReferralDeclinedAt",
+              })
+            )
+            .catch(() => ({ Item: undefined as Record<string, any> | undefined }));
+        })
       )
     : [];
   let latestDeclinedMs = 0;
-  const ownDeclined = callerProfile.Item?.lastReferralDeclinedAt as string | undefined;
+  const ownDeclined = callerProfileItem?.lastReferralDeclinedAt as string | undefined;
   if (ownDeclined) latestDeclinedMs = Math.max(latestDeclinedMs, Date.parse(ownDeclined) || 0);
   for (const p of linkedProfiles) {
     const v = p.Item?.lastReferralDeclinedAt as string | undefined;
@@ -442,25 +465,37 @@ async function handleApply(
   // in depth against the bot pattern of recycling one X account across many
   // wallets. link-account also enforces uniqueness upstream; this is a
   // backstop for any pre-existing duplicate state.
-  const callerTwitterId = callerProfile.Item?.twitterId as string | undefined;
+  const callerTwitterId = callerProfileItem?.twitterId as string | undefined;
   if (callerTwitterId) {
     try {
-      const twitterDupResult = await client.send(
-        new QueryCommand({
-          TableName: USER_PROFILES_TABLE,
-          IndexName: "twitterId-index",
-          KeyConditionExpression: "twitterId = :tid",
-          ExpressionAttributeValues: { ":tid": callerTwitterId },
-          ProjectionExpression: "identityId",
-        })
-      );
+      // Box-first (SoT): /profile/by-twitter-id returns every row carrying this twitter_id (the same set
+      // the twitterId-index Query would). A box hit is authoritative -- twitter ownership is dual-written
+      // via link-sync/twitter-primary. A box MISS/error (readProfileFromBox -> null, never throws) falls
+      // back to the authoritative DynamoDB twitterId-index Query, which preserves the fail-closed 503 on a
+      // genuine lookup failure (the box never throws, so only the DynamoDB path can hit the catch below).
+      let dupIds: string[];
+      const boxed = flip
+        ? await readProfileFromBox("/profile/by-twitter-id", { twitterId: callerTwitterId })
+        : null;
+      if (boxed && Array.isArray(boxed.matches)) {
+        dupIds = (boxed.matches as Array<Record<string, any>>).map((m) => m.identityId as string);
+      } else {
+        const twitterDupResult = await client.send(
+          new QueryCommand({
+            TableName: USER_PROFILES_TABLE,
+            IndexName: "twitterId-index",
+            KeyConditionExpression: "twitterId = :tid",
+            ExpressionAttributeValues: { ":tid": callerTwitterId },
+            ProjectionExpression: "identityId",
+          })
+        );
+        dupIds = (twitterDupResult.Items || []).map((it) => it.identityId as string);
+      }
       const callerSelfIds = new Set(allCallerIds);
-      const foreignOwner = (twitterDupResult.Items || []).find(
-        (it) => !callerSelfIds.has(it.identityId as string)
-      );
+      const foreignOwner = dupIds.find((id) => !callerSelfIds.has(id));
       if (foreignOwner) {
         console.warn(
-          `[referral] TWITTER_REUSED identityId=${identityId} twitterId=${callerTwitterId} foreign=${foreignOwner.identityId}`
+          `[referral] TWITTER_REUSED identityId=${identityId} twitterId=${callerTwitterId} foreign=${foreignOwner}`
         );
         return jsonResponse(409, {
           error: "TWITTER_REUSED",
