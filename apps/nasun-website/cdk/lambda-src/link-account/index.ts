@@ -739,25 +739,47 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       const signedWalletAddress = secondaryProfile.walletAddress.toLowerCase();
 
       try {
-        const scanResult = await dynamoClient.send(new ScanCommand({
-          TableName: tableName,
-          FilterExpression:
-            'linkedAccounts.metamask.walletAddress = :addr ' +
-            'AND linkedAccounts.metamask.manualEntry = :manual',
-          ExpressionAttributeValues: {
-            ':addr': signedWalletAddress,
-            ':manual': true,
-          },
-          ProjectionExpression: 'identityId, linkedAccounts',
-        }));
+        // AWS-exit DAL read-flip (S2): /profile/by-metamask-address mirrors this dedup's DynamoDB
+        // Scan (linkedAccounts.metamask.walletAddress == addr AND .manualEntry == true), returning
+        // {identityId, linkedAccounts} per match -- byte-parity with the Scan's projection. The box
+        // route lower-cases the address (the caller already did) and matches the JSON boolean via
+        // ->>'manualEntry'='true'. readProfileFromBox never throws (null on unset/non-200/error), so a
+        // box failure transparently falls back to the Scan below. A 200 {matches:[]} is an
+        // authoritative "no manual duplicates" and correctly skips cleanup.
+        const box = identityReadFlip()
+          ? await readProfileFromBox('/profile/by-metamask-address', { walletAddress: signedWalletAddress })
+          : null;
+        let dupItems: Array<{ identityId: string; linkedAccounts: Record<string, any> }>;
+        if (box && Array.isArray(box.matches)) {
+          dupItems = (box.matches as Array<Record<string, any>>).map((m) => ({
+            identityId: m.identityId as string,
+            linkedAccounts: (m.linkedAccounts as Record<string, any>) || {},
+          }));
+        } else {
+          const scanResult = await dynamoClient.send(new ScanCommand({
+            TableName: tableName,
+            FilterExpression:
+              'linkedAccounts.metamask.walletAddress = :addr ' +
+              'AND linkedAccounts.metamask.manualEntry = :manual',
+            ExpressionAttributeValues: {
+              ':addr': signedWalletAddress,
+              ':manual': true,
+            },
+            ProjectionExpression: 'identityId, linkedAccounts',
+          }));
+          dupItems = (scanResult.Items || []).map((it) => ({
+            identityId: it.identityId as string,
+            linkedAccounts: (it.linkedAccounts as Record<string, any>) || {},
+          }));
+        }
 
-        for (const item of scanResult.Items || []) {
-          const dupId = item.identityId as string;
+        for (const item of dupItems) {
+          const dupId = item.identityId;
           if (dupId === primaryIdentityId || dupId === secondaryIdentityId) continue;
 
           try {
             // 1. Remove linkedAccounts.metamask from the imposter profile
-            const dupLinked = (item.linkedAccounts as Record<string, any>) || {};
+            const dupLinked = item.linkedAccounts || {};
             delete dupLinked.metamask;
 
             await dynamoClient.send(new UpdateCommand({
@@ -769,6 +791,15 @@ export const handler: APIGatewayProxyHandler = async (event) => {
                 ':ua': new Date().toISOString(),
               },
             }));
+
+            // 1b. AWS-exit DAL (S2): mirror the metamask-link revocation to the box follower. The DDB
+            // write above persists the whole linkedAccounts map minus metamask; the box route removes
+            // only the metamask sub-key (jsonb - 'metamask'), byte-equivalent here since metamask is the
+            // sole removed key. Best-effort (mirrorIdentityWrite never throws) -> DDB stays authoritative
+            // and the daily reconcile/alert surfaces any miss. Without this, post-STOP (dal-reload
+            // stopped) the revocation would orphan the imposter's metamask link in box = persistent
+            // box<->DDB drift on that profile.
+            await mirrorIdentityWrite(IDENTITY_ROUTES.linkedAccountMerge, { identityId: dupId, provider: 'metamask' });
 
             // 2. Clean up Genesis Pass allowlist entry owned by this identity
             if (genesisPassAllowlistTable) {
