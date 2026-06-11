@@ -404,9 +404,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       };
       if (secondaryEmail) newSecondaryProfile.email = secondaryEmail;
       if (secondaryTwitterHandle) newSecondaryProfile.twitterHandle = secondaryTwitterHandle;
-      if (secondaryOriginalTwitterHandle) newSecondaryProfile.originalTwitterHandle = secondaryOriginalTwitterHandle;
+      // originalTwitterHandle/profileImageUrl come from the untrusted request body and flow into the
+      // box `attributes` JSONB (the secondary's link-sync attributes + the primary's attributes-sync
+      // mirror below). The box attributes-sync route accepts only string values, so guard on
+      // typeof==='string' (still non-empty, matching the prior truthiness) -- a malformed non-string is
+      // dropped, never stored to DDB and never mirrored, keeping box == DDB (no post-STOP drift).
+      if (typeof secondaryOriginalTwitterHandle === 'string' && secondaryOriginalTwitterHandle) newSecondaryProfile.originalTwitterHandle = secondaryOriginalTwitterHandle;
       if (secondaryTwitterId) newSecondaryProfile.twitterId = secondaryTwitterId;
-      if (secondaryProfileImageUrl) newSecondaryProfile.profileImageUrl = secondaryProfileImageUrl;
+      if (typeof secondaryProfileImageUrl === 'string' && secondaryProfileImageUrl) newSecondaryProfile.profileImageUrl = secondaryProfileImageUrl;
 
       try {
         await dynamoClient.send(new PutCommand({
@@ -1024,6 +1029,38 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         await authoritativeIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
       } else {
         await mirrorIdentityWrite(IDENTITY_ROUTES.profileLinkSync, { rows: linkMirrorRows });
+      }
+    }
+
+    // AWS-exit DAL: a twitter link copies the secondary's originalTwitterHandle/profileImageUrl onto
+    // the PRIMARY item as top-level keys (twitter branch above). Both are NON-promoted, so dal-reload
+    // would have folded them into the box `attributes` JSONB -- but the primary's link-sync row
+    // intentionally omits attributes (preserved on conflict) and dal-reload is permanently stopped, so
+    // without this the box attributes lag forever (post-STOP persistent drift). Mirror exactly the keys
+    // the primary just gained via /profile/attributes-sync, which MERGEs them into attributes
+    // (provider/username/telegramUsername preserved). Authoritative when flipped (matching the link-sync
+    // mirror above): a box failure already fails the link there, so this adds no new failure surface;
+    // idempotent merge -> retry-safe. Runs AFTER link-sync so the primary row exists (attributes-sync is
+    // a no-op on a missing row). Only the link path is mirrored here; the unlink REMOVE of these keys is
+    // a separate gap tracked by the attributes-mirror audit.
+    if (providerKey === 'twitter') {
+      // typeof==='string' (not bare truthiness): the box attributes-sync route 400s on a non-string
+      // value, which -- being authoritative when flipped -- would throw and fail the whole link while
+      // leaving the committed DDB write unmirrored (the exact post-STOP drift this fix prevents). The
+      // auto-create path already drops non-strings (above); this guards a legacy non-string read back
+      // from an existing secondary's DynamoDB row. Byte-parity holds: same non-empty-string condition
+      // the primary DDB write used for these keys.
+      const twitterAttrs: Record<string, string> = {};
+      if (typeof secondaryProfile.originalTwitterHandle === 'string' && secondaryProfile.originalTwitterHandle) twitterAttrs.originalTwitterHandle = secondaryProfile.originalTwitterHandle;
+      if (typeof secondaryProfile.profileImageUrl === 'string' && secondaryProfile.profileImageUrl) twitterAttrs.profileImageUrl = secondaryProfile.profileImageUrl;
+      if (Object.keys(twitterAttrs).length > 0) {
+        const attrFlipRoutes = (process.env.IDENTITY_WRITE_FLIP_ROUTES || '').split(',').map((s) => s.trim());
+        const attrPayload = { identityId: primaryIdentityId, set: twitterAttrs };
+        if (attrFlipRoutes.includes(IDENTITY_ROUTES.profileAttributesSync)) {
+          await authoritativeIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+        } else {
+          await mirrorIdentityWrite(IDENTITY_ROUTES.profileAttributesSync, attrPayload);
+        }
       }
     }
 

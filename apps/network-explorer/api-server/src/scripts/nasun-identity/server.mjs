@@ -374,17 +374,22 @@ async function handleTelegramDisconnect(body) {
 // linkedSuiAddress / linkedSolanaAddress (+ the *UpdatedAt stamps) AFTER the authoritative
 // DynamoDB UpdateItem. S3.R4 extends this to the referral writer (referralCode, set after the
 // referral lambda's UserProfiles UpdateItem) and the admin referral-decline writer
-// (lastReferralDeclinedAt). Every one of those is an attributes-JSONB long-tail key (dal-reload
-// promotes none of them), so the box merges the same `set` into attributes and drops the
-// `remove` keys in one tx; updated_at -> column (parity with the PATCH updatedAt=:now). A
-// missing row is a no-op (follower; reload backstops). Only the non-promoted PATCH keys are
-// accepted, so a promoted column (twitter_handle, ...) can never be shadowed into attributes
-// and collide on read. All values are strings (no NUMERIC sink).
+// (lastReferralDeclinedAt). It is further used by link-account: a twitter link copies the
+// secondary's originalTwitterHandle/profileImageUrl onto the PRIMARY item as top-level keys, which
+// the primary's /profile/link-sync row intentionally omits (attributes preserved on conflict), so
+// link-account mirrors exactly those two via this route (dal-reload is stopped and can no longer
+// backfill the lag). Every one of those is an attributes-JSONB long-tail key (dal-reload promotes
+// none of them), so the box merges the same `set` into attributes and drops the `remove` keys in
+// one tx; updated_at -> column (parity with the PATCH updatedAt=:now). A missing row is a no-op
+// (follower; reload backstops). Only the non-promoted keys are accepted, so a promoted column
+// (twitter_handle, ...) can never be shadowed into attributes and collide on read. All values are
+// strings (no NUMERIC sink).
 const ATTRS_SYNC_SET_KEYS = new Set([
   'customDisplayName', 'displayNameUpdatedAt',
   'customAvatarKey', 'customAvatarUpdatedAt',
   'linkedSuiAddress', 'linkedSolanaAddress',
   'referralCode', 'lastReferralDeclinedAt',
+  'originalTwitterHandle', 'profileImageUrl',
 ]);
 const ATTRS_SYNC_REMOVE_KEYS = new Set(['customAvatarKey', 'linkedSuiAddress', 'linkedSolanaAddress']);
 
