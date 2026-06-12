@@ -1,9 +1,10 @@
-import { 
-  CognitoIdentityClient, 
-  GetIdCommand, 
-  GetOpenIdTokenForDeveloperIdentityCommand 
+import {
+  CognitoIdentityClient,
+  GetIdCommand,
+  GetOpenIdTokenForDeveloperIdentityCommand
 } from '@aws-sdk/client-cognito-identity';
 import { TwitterUser } from './twitter-api';
+import { isIssuerMintEnabled, mintViaIssuer } from '../../../_shared/auth/issuer-mint';
 
 export interface CognitoIdentity {
   identityId: string;
@@ -26,10 +27,25 @@ export class CognitoService {
    * Uses Developer Identity Provider method
    */
   async getCognitoIdentityId(twitterUser: TwitterUser): Promise<CognitoIdentity> {
-    try {
-      // Use Twitter user ID as the developer user identifier
-      const developerUserIdentifier = `twitter_${twitterUser.id}`;
+    // Use Twitter user ID as the developer user identifier. This is also the lookup key in
+    // issuer.identity_map (seeded from the Stage 1 Cognito export), so it must stay identical.
+    const developerUserIdentifier = `twitter_${twitterUser.id}`;
 
+    // AWS-exit grace: mint from the self-hosted issuer when wired (ISSUER_MINT_URL set), otherwise
+    // fall back to Cognito. Mirrors auth-sui/auth-metamask. Inert until the env is wired at cutover.
+    // ROLLOUT GATE: do NOT add issuerMintEnv() to TwitterLoginFunction (the flip) before the
+    // pre-flip checks in plans/2026-06-12-aws-exit-delambda-C2-auth-twitter-de-cognito-design.md
+    // (RAW twitter map == live Cognito; CANON 13% folds twitter login to the linked primary).
+    if (isIssuerMintEnabled()) {
+      try {
+        return await mintViaIssuer(developerUserIdentifier, 'twitter');
+      } catch (error) {
+        console.error('Error minting identity from issuer:', error);
+        throw new Error('Failed to authenticate with identity issuer');
+      }
+    }
+
+    try {
       const command = new GetOpenIdTokenForDeveloperIdentityCommand({
         IdentityPoolId: this.identityPoolId,
         Logins: {
