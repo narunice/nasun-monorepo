@@ -587,8 +587,17 @@ export class AuthStack extends cdk.Stack {
     const zkLogin = zkLoginAuth.addResource('zklogin');
 
     // POST /auth/zklogin/salt
+    // AWS-exit #4 / de-Lambda C8: served by the box compute service (nasun-identity-compute) over the
+    // same API Gateway HTTP_PROXY pattern as the C3a login cutover (reuses c3aProxy). The box reproduces
+    // the zkLoginSaltFunction handler's ISSUER-SALT branch byte-for-byte (Google JWKS verify ->
+    // jwtToAddress derivation -> box issuer salt store over loopback; @mysten/sui 1.45.2 on both sides,
+    // so address derivation is identical, and the salt store is the SAME box issuer so existing users'
+    // salt+address stay continuous). The RestApi + execute-api URL are preserved (no frontend rebuild).
+    // zkLoginSaltFunction stays deployed as the rollback lever -- revert this integration to
+    // LambdaIntegration + redeploy to roll back. (The lambda's DynamoDB branch is dead on the box:
+    // ISSUER_SALT_URL is set in prod, so persistence already lives on the box issuer.)
     const saltResource = zkLogin.addResource('salt');
-    saltResource.addMethod('POST', new apigw.LambdaIntegration(zkLoginSaltFunction));
+    saltResource.addMethod('POST', c3aProxy('zklogin/salt'));
 
     // 5. CloudFormation Outputs
     new cdk.CfnOutput(this, 'ZkLoginAuthApiUrl', {

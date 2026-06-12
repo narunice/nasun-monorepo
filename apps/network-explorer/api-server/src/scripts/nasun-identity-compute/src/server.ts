@@ -1,23 +1,27 @@
 // nasun-identity-compute -- box-co-located de-Lambda compute service (AWS-exit #4).
 // C0/C1: GET /health, GET /count (public). C3a: POST /auth/{sui,metamask}/{prepare,connect-verify}
 // (login compute lifted off the auth-sui/auth-metamask lambdas; in-memory nonce + issuer/identity
-// loopback). nginx `location /compute/ -> :3212/` strips the prefix, so the box sees /auth/sui/prepare.
+// loopback). C8: POST /auth/zklogin/salt (lifted off the zklogin-salt lambda; Google JWT verify +
+// jwtToAddress derivation + box issuer salt store over loopback). nginx `location /compute/ -> :3212/`
+// strips the prefix, so the box sees /auth/sui/prepare etc.
 //
-// Single loopback Node process (127.0.0.1), so the in-memory nonce store is correct. All C3a deps are
-// loopback (issuer :3210, identity :3211) -> NO external egress -> systemd IPAddressDeny=any stays.
+// Single loopback Node process (127.0.0.1), so the in-memory nonce store is correct. C0/C1/C3a deps are
+// all loopback (issuer :3210, identity :3211). C8 adds ONE external call (Google JWKS) -> the unit's
+// egress was relaxed to allow=any/deny-private at the C8 cutover (see service unit + design doc).
 // Migrated to TS + esbuild bundle at C3a (crypto-critical); the deployed artifact is a single bundled
 // server.mjs (build.mjs), preserving the box "scp one .mjs" contract.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN } from './config';
-import { publicCors, loginCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT } from './config';
+import { publicCors, loginCors, saltCors, send, RouteAbort } from './http';
 import {
   handleSuiPrepare,
   handleSuiConnectVerify,
   handleEvmPrepare,
   handleEvmConnectVerify,
 } from './handlers';
+import { handleZkLoginSalt } from './handlers-zklogin';
 
 const sql = postgres({
   host: PG.host, port: PG.port, database: PG.database, username: PG.username, password: PG.password,
@@ -97,11 +101,38 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // C8 zklogin-salt route -- origin-allowlist CORS WITHOUT credentials (parity with zklogin-salt
+  // lambda corsHeaders). jwt arrives in the BODY. Gated by SALT.enabled (issuer-mint-bearer present).
+  if (pathname === '/auth/zklogin/salt') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = saltCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!SALT.enabled) return send(res, 503, { error: 'salt compute not enabled' }, cors);
+    try {
+      const body = parseJson(await readBody(req));
+      const jwt = body?.jwt;
+      if (!jwt || typeof jwt !== 'string') return send(res, 400, { error: 'Missing jwt parameter' }, cors);
+      const { status, body: out } = await handleZkLoginSalt(jwt);
+      return send(res, status, out, cors);
+    } catch (e) {
+      // Re-key RouteAbort payloads ({message}) to the salt route's {error} contract so EVERY salt error
+      // body is { error } (parity with the zklogin-salt lambda, which returns { error } for invalid
+      // JSON / oversize too). The C3a login routes keep {message} (they mirror the auth lambdas).
+      if (e instanceof RouteAbort) {
+        const msg = typeof e.payload.message === 'string' ? e.payload.message : `HTTP ${e.status}`;
+        return send(res, e.status, { error: msg }, cors);
+      }
+      console.error('[compute] /auth/zklogin/salt failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal Server Error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

@@ -92,6 +92,31 @@ if (walletProofSecret && walletProofSecret.length < 32) {
   process.exit(1);
 }
 
+// --- C8 zklogin-salt dependencies -----------------------------------------------------------------
+// C8 (POST /auth/zklogin/salt) needs ONLY the issuer-mint-bearer (to call the box issuer salt store
+// over loopback) + outbound Google JWKS egress -- NOT identity-write/wallet-proof. So it gates on
+// issuer-mint-bearer alone (present in prod), letting the salt route serve even if the other two C3a
+// secrets were absent. Salt PERSISTENCE already lives on the box issuer (zklogin-salt lambda env
+// ISSUER_SALT_URL is set in prod); this lift moves only the JWT-verify + jwtToAddress derivation.
+// ALLOWED_AUD mirrors the lambda (zklogin-salt index.ts:66): empty in prod => audience check skipped
+// (byte-parity; do NOT silently add a check -- that would be a behavior change, see design doc §4).
+export const SALT = {
+  enabled: !!issuerMintBearer,
+  issuerSaltUrl: process.env.COMPUTE_ISSUER_SALT_URL || 'http://127.0.0.1:3210/zklogin/salt',
+  issuerMintBearer: issuerMintBearer || '',
+  allowedAud: (process.env.ALLOWED_AUD || '').split(',').map((s) => s.trim()).filter(Boolean),
+  loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
+  // Dedicated budget for the Google JWKS fetch (the ONLY egress call). The lambda fetched googleapis
+  // untimed per-invoke, relying on its own 29s ceiling + per-invocation isolation; on the long-lived box
+  // process a wedged TCP connection would otherwise hang a socket, so we cap it. 5s (> the 2.5s loopback
+  // budget, an internet round-trip can be slower) stays well inside the API Gateway 29s integration cap.
+  // Same guard as loopbackTimeoutMs: fall back on unset/non-finite/non-positive.
+  egressTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_EGRESS_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 5000;
+  })(),
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

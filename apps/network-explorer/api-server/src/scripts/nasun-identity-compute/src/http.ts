@@ -28,6 +28,21 @@ export function loginCors(origin: string | undefined): Record<string, string> {
   };
 }
 
+// C8 salt CORS: origin-allowlist ACAO, NO credentials, NO security headers -- byte-parity with the
+// zklogin-salt lambda corsHeaders (zklogin-salt/src/index.ts:35-43). The jwt arrives in the request
+// BODY (not a cookie/Authorization), so credentials:true is intentionally absent. Header VALUES match
+// the lambda exactly ('Content-Type,Authorization' / 'POST,OPTIONS', no spaces). content-type is set
+// by send() so it is not duplicated here.
+export function saltCors(origin: string | undefined): Record<string, string> {
+  const normalized = origin?.replace(/\/$/, '');
+  const allowed = normalized && ALLOWED_ORIGINS.includes(normalized) ? normalized : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type,Authorization',
+    'access-control-allow-methods': 'POST,OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

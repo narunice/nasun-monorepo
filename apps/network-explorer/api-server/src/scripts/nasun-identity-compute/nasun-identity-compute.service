@@ -5,12 +5,15 @@
 # API Gateway HTTP-proxy. Localhost-only (PG + the nginx reverse proxy are both loopback), so
 # IPAddressDeny=any / IPAddressAllow=localhost applies unchanged.
 #
-# ★ EGRESS NOTE: C0/C1 make NO external calls (loopback PG only). C3a login (sui/metamask
-# prepare+connect-verify) also stays LOOPBACK-ONLY: it calls the sibling issuer (:3210 /mint) and
-# nasun-identity (:3211 /profile/upsert) over 127.0.0.1, both covered by IPAddressAllow=localhost -- so
-# NO egress relaxation is needed for C3a. Only later slices that reach Twitter / Telegram / Sui RPC will
-# need outbound internet -> at that point relax IPAddressAllow (or split the egress-needing handlers
-# into a separate egress-allowed unit). Do NOT widen this for C0/C1/C3a.
+# ★ EGRESS NOTE: C0/C1/C3a are LOOPBACK-ONLY (issuer :3210, identity :3211, PG over 127.0.0.1). C8
+# (POST /auth/zklogin/salt) is the FIRST slice that reaches the public internet: it fetches the Google
+# OIDC JWKS (https://www.googleapis.com/oauth2/v3/certs) to verify the login JWT. So the egress filter
+# was relaxed (allow=any / deny RFC1918+link-local+ULA) at the C8 cutover: public egress is permitted,
+# loopback stays open (PG/issuer/identity on 127.0.0.1), and private/internal ranges are denied to bound
+# lateral movement. The primary controls remain the read-only PG role (nasun_compute_ro), the hardcoded
+# egress targets (no handler takes an attacker-supplied URL), and this sandbox. Empirically validated
+# (systemd-run probe, systemd 255 + cgroup2/bpf): public allowed, loopback allowed, DNS resolver
+# 127.0.0.53 unaffected. See 2026-06-12-aws-exit-delambda-C8-egress-and-zklogin-salt-design.md.
 [Unit]
 Description=Nasun identity compute service (de-Lambda handler logic, box PG)
 After=network.target
@@ -72,9 +75,13 @@ SystemCallFilter=@system-service
 SystemCallErrorNumber=EPERM
 SystemCallArchitectures=native
 RestrictAddressFamilies=AF_INET AF_INET6
-# No internet: serve on loopback + reach Postgres on loopback only (see EGRESS NOTE above).
-IPAddressDeny=any
+# Egress (C8): allow public internet (Google JWKS) + loopback (PG/issuer/identity), deny private/internal
+# ranges to bound lateral movement. systemd longest-prefix-match: `any` (/0) permits everything, the
+# RFC1918+link-local+ULA deny entries (longer prefix) override for those ranges; `localhost` keeps
+# 127/8 + ::1 explicit. See EGRESS NOTE above. (Pre-C8 this was IPAddressDeny=any/IPAddressAllow=localhost.)
+IPAddressAllow=any
 IPAddressAllow=localhost
+IPAddressDeny=10.0.0.0/8 172.16.0.0/12 192.168.0.0/16 169.254.0.0/16 fc00::/7 fe80::/10
 UMask=0077
 
 [Install]
