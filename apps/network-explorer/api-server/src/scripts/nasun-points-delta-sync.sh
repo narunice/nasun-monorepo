@@ -18,11 +18,19 @@
 # a date-watermark pass. Those are lower urgency (derived/settled). This pass covers the
 # source-of-truth event ledgers.
 #
-# Usage: ./nasun-points-delta-sync.sh [--dry-run]
+# Usage:
+#   NODE3_SSH='ssh -i <key> ubuntu@<node3-host>' \
+#   BOX_SSH='ssh -i <key> nasun@<box-host>' \
+#   ./nasun-points-delta-sync.sh [--dry-run]
+# Infra identifiers (hosts, key paths) are NOT hardcoded -- this repo is public, so the source
+# (node-3) and target (box) SSH commands are supplied via env (e.g. an operator-local, gitignored
+# .env or the nasun-ops private wrapper). Both must reach `sudo -u postgres psql nasun_points`.
 set -euo pipefail
 
-N3_SSH="ssh -i $HOME/.ssh/.awskey/nasun-devnet-key.pem -o StrictHostKeyChecking=no -o ConnectTimeout=15 ubuntu@54.180.61.196"
-BOX_SSH="ssh -i $HOME/.ssh/hetzner-ax102 -o StrictHostKeyChecking=no -o ConnectTimeout=15 nasun@37.27.112.156"
+: "${NODE3_SSH:?set NODE3_SSH (the source/live ssh prefix, e.g. 'ssh -i ~/.ssh/key ubuntu@<node3-host>')}"
+: "${BOX_SSH:?set BOX_SSH (the target/box ssh prefix, e.g. 'ssh -i ~/.ssh/key nasun@<box-host>')}"
+N3_SSH="$NODE3_SSH"
+BOX_SSH="$BOX_SSH"
 N3_PSQL="sudo -u postgres psql nasun_points"
 BOX_PSQL="sudo -u postgres psql nasun_points"
 
