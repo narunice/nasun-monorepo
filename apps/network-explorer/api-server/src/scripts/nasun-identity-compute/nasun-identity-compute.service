@@ -1,0 +1,65 @@
+# /etc/systemd/system/nasun-identity-compute.service
+# Box-co-located identity COMPUTE service (AWS-exit #4, de-Lambda C0). Clones the
+# nasun-identity.service hardening verbatim; differs only in: port 3212, a SELECT-only DB role
+# (nasun_compute_ro), and a distinct server-to-server bearer (compute-bearer) presented by the
+# API Gateway HTTP-proxy. Localhost-only (PG + the nginx reverse proxy are both loopback), so
+# IPAddressDeny=any / IPAddressAllow=localhost applies unchanged.
+#
+# ★ EGRESS NOTE: C0/C1 make NO external calls (loopback PG only). Later slices that call Twitter /
+# Telegram / Sui RPC will need outbound internet -> at that point relax IPAddressAllow (or split the
+# egress-needing handlers into a separate egress-allowed unit). Do NOT widen this for C0/C1.
+[Unit]
+Description=Nasun identity compute service (de-Lambda handler logic, box PG)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/identity-compute
+ExecStart=/usr/bin/node /srv/nasun/identity-compute/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=COMPUTE_PORT=3212
+Environment=COMPUTE_BIND=127.0.0.1
+Environment=COMPUTE_PG_SCHEMA=public
+Environment=COMPUTE_PG_HOST=127.0.0.1
+Environment=COMPUTE_PG_DATABASE=nasun_dal
+Environment=COMPUTE_PG_USER=nasun_compute_ro
+
+# Secrets arrive host-decrypted into the per-unit tmpfs ($CREDENTIALS_DIRECTORY), never
+# plaintext on disk, owned by this unit's dynamic user only, auto-removed on stop.
+LoadCredentialEncrypted=pg-password:/srv/nasun/identity-compute/secrets/pg-password.cred
+LoadCredentialEncrypted=compute-bearer:/srv/nasun/identity-compute/secrets/compute-bearer.cred
+
+# --- hardening (mirrors nasun-identity.service / nasun-issuer.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# No internet: serve on loopback + reach Postgres on loopback only (see EGRESS NOTE above).
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
