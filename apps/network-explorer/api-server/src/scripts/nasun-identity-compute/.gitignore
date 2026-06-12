@@ -1,0 +1,6 @@
+# esbuild output -- regenerable from src/ via `node build.mjs`. The deployable bundle is a generated
+# artifact (1.1MB, deps inlined), NOT committed: src/ is the reviewable source of truth. Deploy builds
+# dist/server.mjs and scps it to the box. (server.mjs was the hand-written C0/C1 file pre-C3a; from C3a
+# it is the build output, so it is ignored too.)
+dist/
+server.mjs

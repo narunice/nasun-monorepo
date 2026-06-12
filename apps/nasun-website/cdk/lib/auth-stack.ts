@@ -235,6 +235,20 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
+    // AWS-exit #4 / de-Lambda C3a: the 1-trip login (prepare + connect-verify, for BOTH metamask and
+    // sui below) is served by the box compute service (nasun-identity-compute) over an API Gateway
+    // HTTP_PROXY, identical to the C1 get-user-count cutover. The box reproduces the lambda handlers
+    // byte-for-byte (signature verify -> issuer-loopback mint -> identity-loopback /profile/upsert ->
+    // HMAC; in-memory nonce). The RestApi + execute-api URL are preserved (same construct), so no
+    // frontend rebuild. The auth lambdas (metamaskAuthFunction / suiAuthFunction) stay deployed as the
+    // rollback lever -- revert these integrations to LambdaIntegration + redeploy to roll back. The
+    // 2-trip /challenge + /verify stay on the lambda (not ported; the frontend uses the 1-trip flow).
+    const c3aProxy = (p: string) =>
+      new apigw.HttpIntegration(`https://issuer.nasun.io/compute/auth/${p}`, {
+        httpMethod: 'POST',
+        proxy: true,
+      });
+
     const metamaskAuth = this.metamaskAuthApi.root.addResource('auth');
     const metamask = metamaskAuth.addResource('metamask');
 
@@ -246,13 +260,13 @@ export class AuthStack extends cdk.Stack {
     const verifyResource = metamask.addResource('verify');
     verifyResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
 
-    // POST /auth/metamask/prepare (1-trip connectAndSign flow — no address required)
+    // POST /auth/metamask/prepare (1-trip connectAndSign flow — no address required). C3a: box compute.
     const prepareResource = metamask.addResource('prepare');
-    prepareResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
+    prepareResource.addMethod('POST', c3aProxy('metamask/prepare'));
 
-    // POST /auth/metamask/connect-verify (1-trip connectAndSign flow — recovers address from signature)
+    // POST /auth/metamask/connect-verify (1-trip connectAndSign flow — recovers address). C3a: box compute.
     const connectVerifyResource = metamask.addResource('connect-verify');
-    connectVerifyResource.addMethod('POST', new apigw.LambdaIntegration(metamaskAuthFunction));
+    connectVerifyResource.addMethod('POST', c3aProxy('metamask/connect-verify'));
 
     // 6. CloudFormation Outputs
     new cdk.CfnOutput(this, 'MetaMaskAuthApiUrl', {
@@ -676,13 +690,13 @@ export class AuthStack extends cdk.Stack {
     const suiAuth = this.suiAuthApi.root.addResource('auth');
     const sui = suiAuth.addResource('sui');
 
-    // POST /auth/sui/prepare
+    // POST /auth/sui/prepare. C3a: box compute (self-custody Ed25519 + zkLogin ephemeral, in-memory nonce).
     const suiPrepareResource = sui.addResource('prepare');
-    suiPrepareResource.addMethod('POST', new apigw.LambdaIntegration(suiAuthFunction));
+    suiPrepareResource.addMethod('POST', c3aProxy('sui/prepare'));
 
-    // POST /auth/sui/connect-verify
+    // POST /auth/sui/connect-verify. C3a: box compute (handles both self-custody and zkLogin branches).
     const suiConnectVerifyResource = sui.addResource('connect-verify');
-    suiConnectVerifyResource.addMethod('POST', new apigw.LambdaIntegration(suiAuthFunction));
+    suiConnectVerifyResource.addMethod('POST', c3aProxy('sui/connect-verify'));
 
     // 7. CloudFormation Outputs
     new cdk.CfnOutput(this, 'SuiAuthApiUrl', {
