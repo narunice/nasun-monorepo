@@ -65,9 +65,18 @@ function authorized(req) {
   return presented.length === bearer.length && timingSafeEqual(presented, bearer);
 }
 
+// Access-Control-Allow-Origin: * on every response. These routes serve PUBLIC data (the user count is
+// public) and are fronted by API Gateway HTTP_PROXY, which passes the backend's headers through to the
+// browser; without this header a cross-origin fetch from nasun.io would be blocked. ACAO:* is safe here
+// because auth is a server-to-server bearer in the Authorization header (not browser cookies), and
+// browsers reject ACAO:* in credentialed mode, so it never exposes a bearer-gated response to a page.
 function send(res, status, body) {
   const payload = JSON.stringify(body);
-  res.writeHead(status, { 'content-type': 'application/json', 'content-length': Buffer.byteLength(payload) });
+  res.writeHead(status, {
+    'content-type': 'application/json',
+    'content-length': Buffer.byteLength(payload),
+    'access-control-allow-origin': '*',
+  });
   res.end(payload);
 }
 
@@ -85,7 +94,14 @@ async function handleCount() {
   });
 }
 
-const GET_ROUTES = { '/count': handleCount };
+// Public GET routes (NO bearer): the user count is public data -- the old get-user-count Lambda served
+// it without any authorizer, and the API Gateway HTTP_PROXY in front cannot present a bearer. Exposure
+// is unchanged: the Cloudflare origin-lock (only CF reaches the box) + nginx rate-limit gate it, same as
+// the old public Lambda behind WAF. ACAO:* (see send) lets the browser read it cross-origin.
+const PUBLIC_GET_ROUTES = { '/count': handleCount };
+// Bearer-gated GET routes (server-to-server, API GW injects the bearer). Empty until an authenticated
+// read slice lands; the compute-bearer infra stays provisioned for it.
+const GET_ROUTES = {};
 
 const server = createServer(async (req, res) => {
   let parsed;
@@ -99,9 +115,10 @@ const server = createServer(async (req, res) => {
   }
 
   if (req.method === 'GET') {
-    const handler = GET_ROUTES[pathname];
+    const pub = PUBLIC_GET_ROUTES[pathname];
+    const handler = pub || GET_ROUTES[pathname];
     if (!handler) return send(res, 404, { error: 'not_found' });
-    if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
+    if (!pub && !authorized(req)) return send(res, 401, { error: 'unauthorized' });
     try {
       const { status, body } = await handler(parsed.searchParams);
       return send(res, status, body);

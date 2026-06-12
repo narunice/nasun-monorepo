@@ -93,17 +93,18 @@ location /compute/ {
 Then `sudo nginx -t && sudo systemctl reload nginx`. The Cloudflare origin-lock (`x-issuer-origin`) and
 rate-limit already apply (they wrap the whole server block).
 
-## Smoke (in-box loopback, with bearer)
+## Smoke
+
+`/count` is PUBLIC (no bearer) -- it is the de-Lambda target for the public get-user-count API, fronted
+by an API Gateway HTTP_PROXY that cannot present a bearer. The compute-bearer still gates any future
+authenticated route (none yet).
 
 ```bash
-# Decrypt the bearer into an env var without echoing it (avoid shell history / process listing).
-CBEAR=$(sudo systemd-creds decrypt --name=compute-bearer /srv/nasun/identity-compute/secrets/compute-bearer.cred -)
-curl -s http://127.0.0.1:3212/health                                   # {status:ok,...} no bearer
-curl -s -H "authorization: Bearer $CBEAR" http://127.0.0.1:3212/count  # {count:N,...}
-curl -s http://127.0.0.1:3212/count                                    # 401 (no bearer)
-# via Cloudflare (public path), proves origin-lock + nginx route:
-curl -s -H "authorization: Bearer $CBEAR" https://issuer.nasun.io/compute/count
-unset CBEAR   # clear the plaintext bearer from the shell
+curl -s http://127.0.0.1:3212/health    # {status:ok,...}
+curl -s http://127.0.0.1:3212/count     # {count:N,tableName:UserProfiles,...}  (public, no bearer)
+# via Cloudflare (public path), proves origin-lock + nginx route + CORS passthrough:
+curl -sD - http://127.0.0.1:3212/count | grep -i access-control   # access-control-allow-origin: *
+curl -s https://issuer.nasun.io/compute/count
 ```
 Parity: `/compute/count` `count` must equal nasun-identity `/identity/profile/count` (same SQL, same row).
 
@@ -112,8 +113,11 @@ Parity: `/compute/count` `count` must equal nasun-identity `/identity/profile/co
 `sudo systemctl disable --now nasun-identity-compute` + remove the nginx `/compute/` location +
 `reload nginx`. Zero impact on issuer/identity (separate unit, port, role).
 
-## Slice C1 (separate go)
+## Slice C1 (LIVE 2026-06-12)
 
-Repoint `nasun-common-get-user-count` API Gateway `/count` integration from Lambda-proxy to HTTP-proxy
-→ `https://issuer.nasun.io/compute/count`, injecting `authorization: Bearer <compute-bearer>` as a static
-integration request header. Lambda stays deployed-but-bypassed (rollback). See C0-C1 slice design doc.
+`nasun-common-get-user-count` API Gateway (CommonStack `GetUserCountApi`, url preserved `mwhyuu1k51`)
+repointed from `LambdaRestApi` to `RestApi` + root `GET` **HTTP_PROXY** → `https://issuer.nasun.io/compute/count`.
+No bearer injected (the box route is public; the count is public data). The box returns
+`Access-Control-Allow-Origin: *` which HTTP_PROXY passes through to the browser. The get-user-count Lambda
+stays deployed-but-unwired as the rollback target (revert the CommonStack block to `LambdaRestApi`).
+See `~/.claude/plans/2026-06-12-aws-exit-delambda-C0-C1-slice-design.md`.

@@ -754,15 +754,24 @@ export class CommonStack extends cdk.Stack {
       })
     );
 
-    const getUserCountApi = new apigw.LambdaRestApi(this, "GetUserCountApi", {
-      handler: getUserCountLambda,
+    // AWS-exit de-Lambda C1: serve the user count directly from the box compute service
+    // (https://issuer.nasun.io/compute/count) via an HTTP_PROXY integration, removing the Lambda hop.
+    // The RestApi construct id is unchanged ("GetUserCountApi") so the execute-api URL is preserved
+    // (the frontend has it baked into the build); only the integration changes Lambda -> HTTP. The box
+    // route is public (the count is public data) and returns Access-Control-Allow-Origin: * which
+    // HTTP_PROXY passes through to the browser. getUserCountLambda above stays declared-but-unwired as
+    // the rollback target (revert this block to LambdaRestApi to roll back).
+    const getUserCountApi = new apigw.RestApi(this, "GetUserCountApi", {
       restApiName: "NASUN Get User Count API (Common)",
-      proxy: true,
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "OPTIONS"]
       },
     });
+    getUserCountApi.root.addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/count",
+      { httpMethod: "GET", proxy: true }
+    ));
 
     // ========================================
     // 7. SSM Parameters
