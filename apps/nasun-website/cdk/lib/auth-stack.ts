@@ -357,17 +357,20 @@ export class AuthStack extends cdk.Stack {
     // Path layout mirrors the handoff spec (`/additional-address/challenge`
     // etc.). The Lambda's internal router matches on path suffix so the
     // same code works regardless of mount depth.
+    // AWS-exit de-Lambda C4-1c: the 5 integrations proxy to the box compute service (metamask). Same as
+    // the C4-1a/b repoints -- only the backend integration swaps Lambda -> HTTP_PROXY; the RestApi URL
+    // (VITE_ADDITIONAL_API) is unchanged. metamaskAdditionalFunction stays deployed as a rollback lever.
     const additional = metamaskAdditionalApi.root.addResource('additional-address');
-    additional.addMethod('DELETE', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    additional.addMethod('DELETE', additionalProxy('DELETE', 'metamask-additional/remove'));
     const additionalChallenge = additional.addResource('challenge');
-    additionalChallenge.addMethod('POST', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    additionalChallenge.addMethod('POST', additionalProxy('POST', 'metamask-additional/challenge'));
     const additionalVerify = additional.addResource('verify');
-    additionalVerify.addMethod('POST', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    additionalVerify.addMethod('POST', additionalProxy('POST', 'metamask-additional/verify'));
     const additionalLabel = additional.addResource('label');
-    additionalLabel.addMethod('PATCH', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    additionalLabel.addMethod('PATCH', additionalProxy('PATCH', 'metamask-additional/label'));
 
     const appBinding = metamaskAdditionalApi.root.addResource('app-binding');
-    appBinding.addMethod('PATCH', new apigw.LambdaIntegration(metamaskAdditionalFunction));
+    appBinding.addMethod('PATCH', additionalProxy('PATCH', 'metamask-additional/app-binding'));
 
     new cdk.CfnOutput(this, 'MetaMaskAdditionalApiUrl', {
       value: metamaskAdditionalApi.url,

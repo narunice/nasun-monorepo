@@ -1129,7 +1129,7 @@ async function handleVotingIdentity(params) {
 // so box.linked_accounts.<chain> is lockstep with DynamoDB. INERT until the lambdas flip.
 async function handleAddressOwner(params) {
   const chain = str(params.get('chain'));
-  if (chain !== 'sui' && chain !== 'solana') throw new RouteAbort(400, { error: 'chain must be sui or solana' });
+  if (chain !== 'sui' && chain !== 'solana' && chain !== 'metamask') throw new RouteAbort(400, { error: 'chain must be sui, solana, or metamask' });
   const address = str(params.get('address'));
   if (!address || address.length > 256) throw new RouteAbort(400, { error: 'address required' });
   const self = str(params.get('self'));
@@ -1149,6 +1149,24 @@ async function handleAddressOwner(params) {
               SELECT 1 FROM jsonb_array_elements(
                 CASE WHEN jsonb_typeof(linked_accounts->'sui'->'additionalAddresses') = 'array'
                      THEN linked_accounts->'sui'->'additionalAddresses' ELSE '[]'::jsonb END
+              ) e WHERE lower(e->>'walletAddress') = ${a}
+            )
+          )
+        LIMIT 1`;
+    } else if (chain === 'metamask') {
+      // metamask/EVM: case-insensitive (stored checksum-cased, compared lowered) -- mirrors the sui branch
+      // with the 'metamask' provider key. C4-1c anti-Sybil uniqueness over linked_accounts.metamask
+      // (primary + additionalAddresses), matching the lambda findOtherOwnerOfAddress scan filter.
+      const a = address.toLowerCase();
+      rows = await tx`
+        SELECT identity_id FROM user_profiles
+        WHERE identity_id <> ${self}
+          AND (
+            lower(linked_accounts->'metamask'->>'walletAddress') = ${a}
+            OR EXISTS (
+              SELECT 1 FROM jsonb_array_elements(
+                CASE WHEN jsonb_typeof(linked_accounts->'metamask'->'additionalAddresses') = 'array'
+                     THEN linked_accounts->'metamask'->'additionalAddresses' ELSE '[]'::jsonb END
               ) e WHERE lower(e->>'walletAddress') = ${a}
             )
           )
