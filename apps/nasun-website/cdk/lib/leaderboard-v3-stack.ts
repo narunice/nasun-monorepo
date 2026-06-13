@@ -800,10 +800,22 @@ export class LeaderboardV3Stack extends cdk.Stack {
     );
 
     // GET /v3/leaderboard/telegram-status
+    // AWS-exit de-Lambda C5a: served by the box compute service (nasun-identity-compute) over an API
+    // Gateway HTTP_PROXY, identical to the C3a/C4-1 cutovers. The box route /telegram/status does dual-jwks
+    // verify + the box /profile/by-identity loopback (the SAME read the flipped telegram-status lambda
+    // already serves) + the {isTelegramMember===true, telegramUsername||null} projection, byte-parity with
+    // the lambda. nginx strips /compute/. The RestApi + execute-api URL are preserved (same resource/method),
+    // so no frontend rebuild. OPTIONS preflight stays on the API GW MOCK (defaultCorsPreflightOptions); the
+    // box sets the origin-allowlist + credentials CORS on the GET response (parity with the lambda). The
+    // telegramStatusLambda stays deployed (still grantReadData'd) as the rollback lever -- revert this
+    // integration to LambdaIntegration + redeploy to roll back.
     const telegramStatusResource = leaderboardResource.addResource('telegram-status');
     telegramStatusResource.addMethod(
       'GET',
-      new apigw.LambdaIntegration(telegramStatusLambda)
+      new apigw.HttpIntegration('https://issuer.nasun.io/compute/telegram/status', {
+        httpMethod: 'GET',
+        proxy: true,
+      }),
     );
 
     // POST /v3/leaderboard/disconnect-telegram

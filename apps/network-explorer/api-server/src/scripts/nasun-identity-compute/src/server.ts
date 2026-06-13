@@ -23,6 +23,7 @@ import {
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
 import { CHAINS } from './additional-chains';
+import { readProfileByIdentity } from './clients';
 import { verifyJwtIdentity } from './identity-verify';
 import {
   handleChallenge as handleAdditionalChallenge,
@@ -178,6 +179,34 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
       console.error(`[compute] /${addlMatch[1]}-additional/${action} failed:`, e instanceof Error ? e.message : e);
       return send(res, 500, { message: 'Internal Server Error' }, cors);
+    }
+  }
+
+  // C5a telegram-status (GET) -- de-Lambda read: dual-jwks + the box /profile/by-identity loopback,
+  // the SAME box read the flipped telegram-status lambda already serves (byte-parity). NO bot token, NO
+  // telegram API, NO secondary leaderboard write. Box is SoT, so a box-absent profile -> not a member
+  // (the lambda's DDB fallback is unnecessary post-cutover; reconcile keeps missing_in_box=0). Origin-
+  // allowlist CORS + credentials (same allowlist as the wallet-link routes, both called from my-account).
+  // Shares the ADDITIONAL gate (VERIFY.audience dual-jwks + identity-write-bearer loopback read). Lambda
+  // precedence preserved: OPTIONS -> 405 (non-GET) -> 401 (auth) -> 200.
+  if (pathname === '/telegram/status') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = additionalCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!ADDITIONAL.enabled) return send(res, 503, { error: 'telegram compute not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { error: 'Unauthorized', message: 'Valid Cognito token required' }, cors);
+      const boxed = await readProfileByIdentity(identityId);
+      return send(res, 200, {
+        isTelegramMember: boxed?.isTelegramMember === true,
+        telegramUsername: boxed?.telegramUsername || null,
+      }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /telegram/status failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal error', message: 'An unexpected error occurred.' }, cors);
     }
   }
 
