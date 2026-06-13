@@ -249,6 +249,17 @@ export class AuthStack extends cdk.Stack {
         proxy: true,
       });
 
+    // AWS-exit de-Lambda C4-1: additional-wallet integrations proxy to the box compute service. Unlike
+    // c3aProxy (POST-only, /compute/auth/ prefix), these encode the chain + verb in the path -- the box
+    // router matches `/<chain>-additional/<action>` and the backend httpMethod MUST equal the source
+    // method (DELETE->DELETE, PATCH->PATCH) for HTTP_PROXY passthrough. `p` is the full compute path,
+    // e.g. `sui-additional/challenge` (reused by solana/metamask in C4-1b/c). nginx strips `/compute/`.
+    const additionalProxy = (method: string, p: string) =>
+      new apigw.HttpIntegration(`https://issuer.nasun.io/compute/${p}`, {
+        httpMethod: method,
+        proxy: true,
+      });
+
     const metamaskAuth = this.metamaskAuthApi.root.addResource('auth');
     const metamask = metamaskAuth.addResource('metamask');
 
@@ -499,17 +510,21 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
+    // AWS-exit de-Lambda C4-1a: the 5 integrations proxy to the box compute service. The SuiAdditionalApi
+    // RestApi (and its URL, baked into the frontend VITE_SUI_ADDITIONAL_API) is UNCHANGED -- only the
+    // backend integration swaps Lambda -> HTTP_PROXY, so no frontend rebuild. suiAdditionalFunction stays
+    // deployed as a rollback lever (revert these 5 lines to LambdaIntegration + redeploy to roll back).
     const suiAdditional = suiAdditionalApi.root.addResource('additional-address');
-    suiAdditional.addMethod('DELETE', new apigw.LambdaIntegration(suiAdditionalFunction));
+    suiAdditional.addMethod('DELETE', additionalProxy('DELETE', 'sui-additional/remove'));
     const suiAddChallenge = suiAdditional.addResource('challenge');
-    suiAddChallenge.addMethod('POST', new apigw.LambdaIntegration(suiAdditionalFunction));
+    suiAddChallenge.addMethod('POST', additionalProxy('POST', 'sui-additional/challenge'));
     const suiAddVerify = suiAdditional.addResource('verify');
-    suiAddVerify.addMethod('POST', new apigw.LambdaIntegration(suiAdditionalFunction));
+    suiAddVerify.addMethod('POST', additionalProxy('POST', 'sui-additional/verify'));
     const suiAddLabel = suiAdditional.addResource('label');
-    suiAddLabel.addMethod('PATCH', new apigw.LambdaIntegration(suiAdditionalFunction));
+    suiAddLabel.addMethod('PATCH', additionalProxy('PATCH', 'sui-additional/label'));
 
     const suiAddAppBinding = suiAdditionalApi.root.addResource('app-binding');
-    suiAddAppBinding.addMethod('PATCH', new apigw.LambdaIntegration(suiAdditionalFunction));
+    suiAddAppBinding.addMethod('PATCH', additionalProxy('PATCH', 'sui-additional/app-binding'));
 
     new cdk.CfnOutput(this, 'SuiAdditionalApiUrl', {
       value: suiAdditionalApi.url,
