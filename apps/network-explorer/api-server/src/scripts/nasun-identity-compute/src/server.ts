@@ -13,8 +13,8 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT } from './config';
-import { publicCors, loginCors, saltCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, send, RouteAbort } from './http';
 import {
   handleSuiPrepare,
   handleSuiConnectVerify,
@@ -22,6 +22,20 @@ import {
   handleEvmConnectVerify,
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
+import { CHAINS } from './additional-chains';
+import { verifyJwtIdentity } from './identity-verify';
+import {
+  handleChallenge as handleAdditionalChallenge,
+  handleVerify as handleAdditionalVerify,
+  handleLabel as handleAdditionalLabel,
+  handleRemove as handleAdditionalRemove,
+  handleAppBinding as handleAdditionalAppBinding,
+} from './handlers-additional';
+
+// C4-1 additional-wallet action -> required HTTP method (parity with the lambda API GW route mounts).
+const ADDITIONAL_METHODS: Record<string, string> = {
+  challenge: 'POST', verify: 'POST', label: 'PATCH', remove: 'DELETE', 'app-binding': 'PATCH',
+};
 
 const sql = postgres({
   host: PG.host, port: PG.port, database: PG.database, username: PG.username, password: PG.password,
@@ -128,11 +142,50 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // C4-1 additional-wallet routes -- chain encoded in the path by the API GW repoint
+  // (/compute/<chain>-additional/<action> -> nginx strips /compute/ -> box sees /<chain>-additional/...).
+  // All gate on dual-jwks (verifyJwtIdentity) + ADDITIONAL.enabled. Origin-allowlist CORS + credentials.
+  const addlMatch = pathname.match(/^\/([a-z]+)-additional\/(challenge|verify|label|remove|app-binding)$/);
+  if (addlMatch) {
+    const chain = CHAINS[addlMatch[1]];
+    const action = addlMatch[2];
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = additionalCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (!chain) return send(res, 404, { message: 'Not Found' }, cors); // unknown chain (solana/metamask not yet shipped)
+    if (!ADDITIONAL.enabled) return send(res, 503, { message: 'additional-wallet compute not enabled' }, cors);
+    try {
+      // Auth BEFORE the method check (lambda precedence: 401 over 405).
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { message: 'Unauthorized. Valid authentication token required.' }, cors);
+      if (req.method !== ADDITIONAL_METHODS[action]) return send(res, 405, { message: 'Method Not Allowed' }, cors);
+
+      const body = parseJson(await readBody(req));
+      // remove (DELETE) accepts walletAddress in the body OR the query string (lambda parity).
+      if (action === 'remove' && body.walletAddress == null) {
+        const q = new URL(req.url || '/', 'http://localhost').searchParams.get('walletAddress');
+        if (q) body.walletAddress = q;
+      }
+
+      let out: { status: number; body: Record<string, unknown> };
+      if (action === 'challenge') out = await handleAdditionalChallenge(chain, identityId, body);
+      else if (action === 'verify') out = await handleAdditionalVerify(chain, identityId, body);
+      else if (action === 'label') out = await handleAdditionalLabel(chain, identityId, body);
+      else if (action === 'remove') out = await handleAdditionalRemove(chain, identityId, body);
+      else out = await handleAdditionalAppBinding(chain, identityId, body);
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error(`[compute] /${addlMatch[1]}-additional/${action} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { message: 'Internal Server Error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

@@ -494,23 +494,52 @@ async function handleLinkedAccountMerge(body) {
     throw new RouteAbort(400, { error: 'account must be an object or null' });
   }
 
-  await sql.begin(async (tx) => {
+  // AWS-exit de-Lambda C4-1: optional compare-and-swap. When cas===true, the box-compute
+  // additional-wallet flow has read linked_accounts.<provider> (expectedCurrent) and computed `account`;
+  // apply ONLY if the current value still equals expectedCurrent (semantic jsonb equality, NULL=NULL via
+  // IS NOT DISTINCT FROM), else report raced so the compute returns 409 RACE (parity with the lambda's
+  // ConditionalCheckFailedException). expectedCurrent absent/null => the caller read no provider sub
+  // (Case A primary creation). The non-cas path (existing dual-write callers) is UNCHANGED: they never
+  // send cas, so they always apply unconditionally.
+  const cas = body.cas === true;
+
+  const raced = await sql.begin(async (tx) => {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
-    if (hasAccount) {
-      // Set only the single provider sub-key; create the key if missing. Other keys untouched.
-      await tx`
-        UPDATE user_profiles
-        SET linked_accounts = jsonb_set(COALESCE(linked_accounts, '{}'::jsonb), ARRAY[${provider}], ${tx.json(body.account)}::jsonb, true),
-            updated_at = now()
-        WHERE identity_id = ${identityId}`;
-    } else {
-      await tx`
-        UPDATE user_profiles
-        SET linked_accounts = COALESCE(linked_accounts, '{}'::jsonb) - ${provider},
-            updated_at = now()
-        WHERE identity_id = ${identityId}`;
+    const expectedParam = body.expectedCurrent == null ? null : tx.json(body.expectedCurrent);
+    if (!cas) {
+      if (hasAccount) {
+        await tx`
+          UPDATE user_profiles
+          SET linked_accounts = jsonb_set(COALESCE(linked_accounts, '{}'::jsonb), ARRAY[${provider}], ${tx.json(body.account)}::jsonb, true),
+              updated_at = now()
+          WHERE identity_id = ${identityId}`;
+      } else {
+        await tx`
+          UPDATE user_profiles
+          SET linked_accounts = COALESCE(linked_accounts, '{}'::jsonb) - ${provider},
+              updated_at = now()
+          WHERE identity_id = ${identityId}`;
+      }
+      return false; // non-cas: unconditional, not race-tracked
     }
+    // CAS: conditional UPDATE; r.count===0 => current != expectedCurrent (or row absent) => raced.
+    const r = hasAccount
+      ? await tx`
+          UPDATE user_profiles
+          SET linked_accounts = jsonb_set(COALESCE(linked_accounts, '{}'::jsonb), ARRAY[${provider}], ${tx.json(body.account)}::jsonb, true),
+              updated_at = now()
+          WHERE identity_id = ${identityId}
+            AND (linked_accounts -> ${provider}) IS NOT DISTINCT FROM ${expectedParam}::jsonb`
+      : await tx`
+          UPDATE user_profiles
+          SET linked_accounts = COALESCE(linked_accounts, '{}'::jsonb) - ${provider},
+              updated_at = now()
+          WHERE identity_id = ${identityId}
+            AND (linked_accounts -> ${provider}) IS NOT DISTINCT FROM ${expectedParam}::jsonb`;
+    return r.count === 0;
   });
+
+  if (cas) return { status: 200, body: { identityId, provider, merged: !raced, raced } };
   return { status: 200, body: { identityId, provider } };
 }
 

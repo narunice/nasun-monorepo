@@ -117,6 +117,33 @@ export const SALT = {
   })(),
 };
 
+// --- C4+ incoming-JWT verification (dual-jwks) ----------------------------------------------------
+// Shared by additional-wallet / telegram / governance. The Cognito pool id (audience) is NOT a secret
+// (it ships in the frontend build), so it arrives via a unit Environment= var, not a credential. The
+// nasun issuer JWKS is served on the loopback issuer (:3210) so the nasun branch needs no egress; the
+// Cognito branch fetches cognito-identity.amazonaws.com (egress, allowed since C8). See identity-verify.ts.
+export const VERIFY = {
+  audience: process.env.COMPUTE_COGNITO_AUDIENCE || '',
+  nasunIssuerId: process.env.COMPUTE_NASUN_ISSUER_ID || 'nasun-issuer',
+  nasunJwksUrl: process.env.COMPUTE_NASUN_JWKS_URL || 'http://127.0.0.1:3210/.well-known/jwks.json',
+  jwksTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_JWKS_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 5000;
+  })(),
+};
+
+// --- C4-1 additional-wallet ------------------------------------------------------------------------
+// Routes gate on: dual-jwks (VERIFY.audience set) + the identity-service loopback (read by-identity,
+// read address-owner, write linked-account-merge) authenticated with the identity-write-bearer the
+// box already holds (C3a). identityBaseUrl is the loopback nasun-identity service (:3211). When any of
+// these is absent the additional routes stay DISABLED (503) -- inert deploy until wired + repointed.
+export const ADDITIONAL = {
+  enabled: !!(VERIFY.audience && identityWriteBearer),
+  identityBaseUrl: process.env.COMPUTE_IDENTITY_BASE_URL || 'http://127.0.0.1:3211',
+  identityWriteBearer: identityWriteBearer || '',
+  loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

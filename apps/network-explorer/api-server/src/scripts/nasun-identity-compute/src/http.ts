@@ -43,6 +43,25 @@ export function saltCors(origin: string | undefined): Record<string, string> {
   };
 }
 
+// C4-1 additional-wallet CORS: byte-parity with the lambda _shared/additional-link/responses.ts
+// corsHeaders -- origin-allowlist ACAO + credentials + 4 security headers, methods POST/PATCH/DELETE/
+// OPTIONS (label/app-binding are PATCH, remove is DELETE). Error bodies use {message} (the lambda
+// convention), which matches the box RouteAbort payload shape, so no re-keying is needed (unlike C8).
+export function additionalCors(origin: string | undefined): Record<string, string> {
+  const normalized = origin?.replace(/\/$/, '');
+  const allowed = normalized && ALLOWED_ORIGINS.includes(normalized) ? normalized : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'POST, PATCH, DELETE, OPTIONS',
+    'access-control-allow-credentials': 'true',
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

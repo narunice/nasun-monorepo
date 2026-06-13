@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac } from 'node:crypto';
-import { LOGIN, SALT } from './config';
+import { LOGIN, SALT, ADDITIONAL } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -124,4 +124,83 @@ export function saltCreate(args: {
   picture?: string;
 }): Promise<SaltResult> {
   return saltPost(args);
+}
+
+// --- C4-1 additional-wallet: box identity-service loopback (read by-identity, read address-owner,
+// CAS merge). All over loopback (:3211), bearer = identity-write-bearer the box already holds. ---------
+
+function identityHeaders(): Record<string, string> {
+  return { 'content-type': 'application/json', authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` };
+}
+
+/**
+ * GET /profile/by-identity -> the unified profile object, or null ONLY when the profile genuinely does
+ * not exist (404). A non-200/non-404 status or a transport error THROWS (review #3): conflating a
+ * transient box failure with "no profile" would skip the already-linked re-check and let verify run
+ * Case-A primary creation on a stale read. Throwing fails closed (the handler maps it to 500).
+ */
+export async function readProfileByIdentity(identityId: string): Promise<Record<string, any> | null> {
+  const url = `${ADDITIONAL.identityBaseUrl}/profile/by-identity?identityId=${encodeURIComponent(identityId)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (res.status === 200) return (await res.json()) as Record<string, any>;
+  if (res.status === 404) return null; // genuinely no profile row
+  throw new Error(`by-identity returned HTTP ${res.status}`);
+}
+
+/**
+ * GET /profile/address-owner?chain=&address=&self= -> the FIRST other-owner identityId, or null when
+ * there is no collision. The box route serves an authoritative null (box.linked_accounts is lockstep
+ * with the authoritative merge). THROWS on a non-200 so the caller can fail closed (a uniqueness check
+ * that silently returned "no collision" on a box error would be an anti-Sybil hole).
+ */
+export async function readAddressOwner(chain: string, address: string, self: string): Promise<string | null> {
+  const qs = new URLSearchParams({ chain, address, self }).toString();
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/address-owner?${qs}`, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`address-owner returned HTTP ${res.status}`);
+  const data = (await res.json()) as { ownerIdentityId?: string | null };
+  return data.ownerIdentityId ?? null;
+}
+
+/**
+ * POST /profile/linked-account-merge with a whole-subobject compare-and-swap (Option B). expectedCurrent
+ * is the EXACT linked_accounts.<provider> value the compute read before computing `account`; the box
+ * writes `account` ONLY if the current value still equals expectedCurrent (IS NOT DISTINCT FROM), else
+ * it reports a race. Returns true=merged, false=raced (-> caller returns 409 RACE, lambda parity).
+ * THROWS on transport/HTTP error so a failed write never looks like success.
+ *
+ * NOTE: this relies on the box handleLinkedAccountMerge CAS extension (separate box-local go). Until
+ * that lands, the route ignores expectedCurrent and always merges -- which is why the additional routes
+ * stay INERT (ADDITIONAL.enabled false) until both the box route AND this client are live + repointed.
+ */
+export async function mergeLinkedAccountCas(
+  identityId: string,
+  provider: string,
+  account: Record<string, unknown> | null,
+  expectedCurrent: unknown,
+): Promise<boolean> {
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/linked-account-merge`, {
+    method: 'POST',
+    headers: identityHeaders(),
+    body: JSON.stringify({ identityId, provider, account, expectedCurrent, cas: true }),
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`linked-account-merge returned HTTP ${res.status}`);
+  const data = (await res.json().catch(() => ({}))) as { merged?: boolean; raced?: boolean };
+  // FAIL-CLOSED CAS contract (review #2): only an explicit merged:true is success; an explicit
+  // raced:true / merged:false is a CAS conflict (-> 409 RACE). ANYTHING ELSE (e.g. a pre-CAS box that
+  // ignores expectedCurrent and returns neither) is AMBIGUOUS -> we must NOT report success, because a
+  // legacy box would have done an UNCONDITIONAL write (lost-update). Throw so the route 500s rather than
+  // silently losing concurrency safety. This makes "box CAS route must be live" a hard code guard, not
+  // just an operational convention (the route also stays inert via ADDITIONAL.enabled until cutover).
+  if (data.merged === true) return true;
+  if (data.raced === true || data.merged === false) return false;
+  throw new Error('linked-account-merge did not acknowledge the CAS contract (merged/raced absent)');
 }
