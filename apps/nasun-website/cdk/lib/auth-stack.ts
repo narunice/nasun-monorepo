@@ -435,17 +435,20 @@ export class AuthStack extends cdk.Stack {
       },
     });
 
+    // AWS-exit de-Lambda C4-1b: the 5 integrations proxy to the box compute service (solana). Same as the
+    // C4-1a sui repoint -- only the backend integration swaps Lambda -> HTTP_PROXY; the RestApi URL
+    // (VITE_SOLANA_ADDITIONAL_API) is unchanged. solanaAdditionalFunction stays deployed as a rollback lever.
     const solAdditional = solanaAdditionalApi.root.addResource('additional-address');
-    solAdditional.addMethod('DELETE', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    solAdditional.addMethod('DELETE', additionalProxy('DELETE', 'solana-additional/remove'));
     const solChallenge = solAdditional.addResource('challenge');
-    solChallenge.addMethod('POST', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    solChallenge.addMethod('POST', additionalProxy('POST', 'solana-additional/challenge'));
     const solVerify = solAdditional.addResource('verify');
-    solVerify.addMethod('POST', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    solVerify.addMethod('POST', additionalProxy('POST', 'solana-additional/verify'));
     const solLabel = solAdditional.addResource('label');
-    solLabel.addMethod('PATCH', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    solLabel.addMethod('PATCH', additionalProxy('PATCH', 'solana-additional/label'));
 
     const solAppBinding = solanaAdditionalApi.root.addResource('app-binding');
-    solAppBinding.addMethod('PATCH', new apigw.LambdaIntegration(solanaAdditionalFunction));
+    solAppBinding.addMethod('PATCH', additionalProxy('PATCH', 'solana-additional/app-binding'));
 
     new cdk.CfnOutput(this, 'SolanaAdditionalApiUrl', {
       value: solanaAdditionalApi.url,
