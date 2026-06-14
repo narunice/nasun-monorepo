@@ -313,13 +313,30 @@ export class CommonStack extends cdk.Stack {
     // Root POST/PATCH writes stay on the lambda (also the rollback target for the reads).
     userProfileApi.root.addMethod("POST", userProfileLambdaIntegration);
     userProfileApi.root.addMethod("PATCH", userProfileLambdaIntegration);
-    // {proxy+} greedy -> lambda: ALL sub-paths stay on the lambda exactly as proxy:true routed them
-    // (POST /upload-avatar-url avatar presign; GET /v3/user-profile chat-server reads + zkLogin auth gate).
-    // Only root GET is lifted to the box; everything else is unchanged. Added as an explicit {proxy+}
-    // resource (NOT root.addProxy(), which also synthesizes a spurious root ANY->MOCK method) so the root
-    // keeps exactly GET(->box)/POST/PATCH(->lambda)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
+    // {proxy+} greedy -> lambda: the remaining sub-paths stay on the lambda exactly as proxy:true routed
+    // them (POST /upload-avatar-url avatar S3 presign). Added as an explicit {proxy+} resource (NOT
+    // root.addProxy(), which also synthesizes a spurious root ANY->MOCK method) so the root keeps exactly
+    // GET(->box)/POST/PATCH(->lambda)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
     const userProfileProxy = userProfileApi.root.addResource("{proxy+}");
     userProfileProxy.addMethod("ANY", userProfileLambdaIntegration);
+
+    // AWS-exit de-Lambda (C7 follow-up): the LAST get-user-profile READ caller on the lambda is the
+    // chat-server (server-side) GET /v3/user-profile?walletAddress= (display-name/avatar cache + zkLogin
+    // ephemeral-key auth gate, auth.ts/store.ts/server.ts). The frontends (nasun/pado/gostop) already read
+    // the box via the ROOT GET -- their VITE_*USER_PROFILE_API is the root URL with ?walletAddress= /
+    // ?identityId= appended. Lift the chat-server path to the box too by routing the SPECIFIC
+    // /v3/user-profile resource's GET to the box compute (the SAME /compute/profile endpoint the root GET
+    // already serves; byte-identical by-wallet body, proven by the C7 root cutover). A specific resource is
+    // matched ahead of {proxy+}, so ONLY GET /v3/user-profile is lifted; every other method/path still
+    // falls to {proxy+} ANY -> lambda (avatar presign, root POST/PATCH writes). After this the
+    // get-user-profile lambda is write-only. ROLLBACK: delete this resource block -> GET /v3/user-profile
+    // falls back to {proxy+} -> lambda (which still flip-serves the box). reconcile-neutral (read repoint).
+    const userProfileV3 = userProfileApi.root.addResource("v3");
+    const userProfileV3Read = userProfileV3.addResource("user-profile");
+    userProfileV3Read.addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/profile",
+      { httpMethod: "GET", proxy: true }
+    ));
 
     // 2-2. Link Account
     const linkAccountLambda = new NodejsFunction(this, "LinkAccountLambda", {
