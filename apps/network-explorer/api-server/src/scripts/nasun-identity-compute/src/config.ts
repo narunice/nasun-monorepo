@@ -67,6 +67,10 @@ export const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io
 const issuerMintBearer = readOptional('issuer-mint-bearer', 'ISSUER_MINT_BEARER_FILE');
 const identityWriteBearer = readOptional('identity-write-bearer', 'IDENTITY_WRITE_BEARER_FILE');
 const walletProofSecret = readOptional('wallet-proof-secret', 'WALLET_PROOF_SECRET_FILE');
+// C5b telegram-disconnect secondary clear: the leaderboard-v3 internal-route shared token (NOT a signing
+// key; the same LEADERBOARD_INTERNAL_TOKEN the get-user-profile lambda already presents to internal/
+// sync-profile). Optional -- when absent the secondary leaderboard-badge clear is skipped (best-effort).
+const leaderboardInternalToken = readOptional('leaderboard-internal-token', 'LEADERBOARD_INTERNAL_TOKEN_FILE');
 
 export const LOGIN = {
   // Wired iff all three secrets are present. When false, /compute/auth/* return 503 (inert deploy).
@@ -142,6 +146,31 @@ export const ADDITIONAL = {
   identityBaseUrl: process.env.COMPUTE_IDENTITY_BASE_URL || 'http://127.0.0.1:3211',
   identityWriteBearer: identityWriteBearer || '',
   loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
+};
+
+// --- C5b telegram-disconnect (write) --------------------------------------------------------------
+// The route does dual-jwks verify + the AUTHORITATIVE box PG clear via the identity loopback
+// /telegram/disconnect (the SAME endpoint the disconnect-telegram lambda already hits when flipped;
+// idempotent UPDATE, so retry-safe), reusing the ADDITIONAL bearer/baseUrl. It then does a BEST-EFFORT
+// secondary clear of the leaderboard-v3 Accounts/SeasonAccounts telegram badge via the leaderboard
+// internal route over HTTPS (X-Internal-Auth = leaderboard-internal-token). The secondary clear is
+// OPTIONAL and never blocks the authoritative box clear: when leaderboardClearUrl or the token is absent
+// it is skipped (the badge lags -- the same failure mode as a transient leaderboard error, and the
+// lambda already wrapped it in try/catch as "secondary, optional"). Route gates on ADDITIONAL.enabled
+// (same dual-jwks + identity-write-bearer deps as the box clear).
+export const TELEGRAM = {
+  enabled: ADDITIONAL.enabled,
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: ADDITIONAL.identityWriteBearer,
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // Secondary leaderboard clear (best-effort). leaderboardClearUrl is the leaderboard-v3 API GW route
+  // (egress, allowed since C8); the token authenticates it. Both must be present or the clear is skipped.
+  leaderboardClearUrl: process.env.COMPUTE_LEADERBOARD_CLEAR_TELEGRAM_URL || '',
+  leaderboardInternalToken: leaderboardInternalToken || '',
+  leaderboardTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_LEADERBOARD_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 3000;
+  })(),
 };
 
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled

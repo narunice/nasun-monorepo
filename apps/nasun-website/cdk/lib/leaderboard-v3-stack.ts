@@ -429,6 +429,24 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // AWS-exit de-Lambda C5b: thin residual called by the box compute /telegram/disconnect route to
+    // clear the leaderboard Account/SeasonAccount Telegram badge (the box cannot write these DynamoDB
+    // tables directly). Same internal-token auth as internal-sync-profile. Removed when leaderboard-v3
+    // migrates off DynamoDB.
+    const internalClearTelegramLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3InternalClearTelegramFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-internal-clear-telegram`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'internal-clear-telegram.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(15),
+        memorySize: 256,
+        description: 'Leaderboard V3: Clear Telegram badge from Account/SeasonAccount (box C5b residual)',
+      }
+    );
+
     // Admin Blacklist Lambda (Phase 11)
     const adminBlacklistLambda = new NodejsFunction(
       this,
@@ -710,6 +728,11 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonsTable.grantReadData(internalSyncProfileLambda);
     userProfilesTable.grantReadData(internalSyncProfileLambda);
 
+    // C5b internal clear-telegram: Account/SeasonAccount write + Seasons read (no UserProfiles access).
+    this.accountsTable.grantReadWriteData(internalClearTelegramLambda);
+    this.seasonAccountsTable.grantReadWriteData(internalClearTelegramLambda);
+    this.seasonsTable.grantReadData(internalClearTelegramLambda);
+
     // Secrets Manager read for Telegram bot token
     verifyTelegramLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -819,10 +842,25 @@ export class LeaderboardV3Stack extends cdk.Stack {
     );
 
     // POST /v3/leaderboard/disconnect-telegram
+    // AWS-exit de-Lambda C5b: served by the box compute service (nasun-identity-compute) over an API
+    // Gateway HTTP_PROXY, identical to the C5a telegram-status cutover above. The box route
+    // /telegram/disconnect does dual-jwks verify + the AUTHORITATIVE box PG clear via the identity
+    // loopback /telegram/disconnect (the SAME write the flipped disconnect-telegram lambda already does)
+    // + a BEST-EFFORT secondary clear of the leaderboard Account/SeasonAccount badge via the new
+    // internal/clear-telegram lambda (the box cannot write those DynamoDB tables). Box is SoT: the box
+    // clears box PG only and does NOT write DynamoDB (the (B) divergence, covered by the reconcile
+    // post-cutover telegram exclusion). nginx strips /compute/. The RestApi + execute-api URL are
+    // preserved (same resource/method), so no frontend rebuild. OPTIONS preflight stays on the API GW
+    // MOCK (defaultCorsPreflightOptions); the box sets the origin-allowlist + credentials CORS on the
+    // POST response (parity with the lambda). The disconnectTelegramLambda stays deployed (still
+    // grant*'d) as the rollback lever -- revert this integration to LambdaIntegration + redeploy to roll back.
     const disconnectTelegramResource = leaderboardResource.addResource('disconnect-telegram');
     disconnectTelegramResource.addMethod(
       'POST',
-      new apigw.LambdaIntegration(disconnectTelegramLambda)
+      new apigw.HttpIntegration('https://issuer.nasun.io/compute/telegram/disconnect', {
+        httpMethod: 'POST',
+        proxy: true,
+      }),
     );
 
     // POST /v3/leaderboard/internal/sync-profile (webhook from get-user-profile PATCH)
@@ -831,6 +869,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     internalSyncProfileResource.addMethod(
       'POST',
       new apigw.LambdaIntegration(internalSyncProfileLambda)
+    );
+
+    // POST /v3/leaderboard/internal/clear-telegram (called by box compute /telegram/disconnect, C5b)
+    const internalClearTelegramResource = internalResource.addResource('clear-telegram');
+    internalClearTelegramResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(internalClearTelegramLambda)
     );
 
     // GET /v3/feed/featured

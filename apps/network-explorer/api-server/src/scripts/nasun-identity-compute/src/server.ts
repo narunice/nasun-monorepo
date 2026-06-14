@@ -23,7 +23,7 @@ import {
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
 import { CHAINS } from './additional-chains';
-import { readProfileByIdentity } from './clients';
+import { readProfileByIdentity, disconnectTelegramBox, clearLeaderboardTelegramRemote } from './clients';
 import { verifyJwtIdentity } from './identity-verify';
 import {
   handleChallenge as handleAdditionalChallenge,
@@ -207,6 +207,38 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
       console.error('[compute] /telegram/status failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'Internal error', message: 'An unexpected error occurred.' }, cors);
+    }
+  }
+
+  // C5b telegram-disconnect (POST) -- de-Lambda write: dual-jwks + AUTHORITATIVE box PG clear via the
+  // identity loopback /telegram/disconnect (parity with the flipped disconnect-telegram lambda; box-only,
+  // NO DynamoDB write -- the (B) divergence, covered by the reconcile post-cutover telegram exclusion) +
+  // a BEST-EFFORT secondary clear of the leaderboard badge (only when the profile has a twitterHandle).
+  // Box is SoT: a box-absent profile -> 403 (same as the lambda's "profile not found"). Lambda precedence:
+  // OPTIONS -> 405 (non-POST) -> 401 (auth) -> 403 (no profile) -> 400 (not connected) -> 200.
+  if (pathname === '/telegram/disconnect') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = additionalCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!ADDITIONAL.enabled) return send(res, 503, { error: 'telegram compute not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { error: 'Unauthorized' }, cors);
+      const boxed = await readProfileByIdentity(identityId);
+      if (!boxed) return send(res, 403, { error: 'User profile not found' }, cors);
+      if (boxed.isTelegramMember !== true) return send(res, 400, { error: 'Telegram is not connected' }, cors);
+      // Authoritative box clear (throws -> 500). DynamoDB is intentionally NOT cleared (box=SoT).
+      await disconnectTelegramBox(identityId);
+      // Secondary: clear the curated-leaderboard badge (best-effort, never throws, only if on the board).
+      if (typeof boxed.twitterHandle === 'string' && boxed.twitterHandle) {
+        await clearLeaderboardTelegramRemote(boxed.twitterHandle);
+      }
+      return send(res, 200, { success: true }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /telegram/disconnect failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
     }
   }
 

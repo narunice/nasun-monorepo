@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -203,4 +203,57 @@ export async function mergeLinkedAccountCas(
   if (data.merged === true) return true;
   if (data.raced === true || data.merged === false) return false;
   throw new Error('linked-account-merge did not acknowledge the CAS contract (merged/raced absent)');
+}
+
+// --- C5b telegram disconnect -----------------------------------------------------------------------
+
+/**
+ * POST /telegram/disconnect { identityId } to the identity loopback (:3211) -- the AUTHORITATIVE box PG
+ * clear (is_telegram_member=false, telegram_user_id=NULL, drop attributes.telegramUsername). Parity with
+ * the disconnect-telegram lambda's authoritativeIdentityWrite(IDENTITY_ROUTES.telegramDisconnect). The
+ * UPDATE is idempotent (no row -> no-op; already-clear -> same result), so a retry is safe. THROWS on
+ * failure so the route surfaces a 500 rather than reporting a disconnect that did not persist.
+ */
+export async function disconnectTelegramBox(identityId: string): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${TELEGRAM.identityBaseUrl}/telegram/disconnect`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${TELEGRAM.identityWriteBearer}` },
+        body: JSON.stringify({ identityId }),
+        signal: AbortSignal.timeout(TELEGRAM.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`identity /telegram/disconnect returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * BEST-EFFORT secondary clear of the leaderboard-v3 Accounts/SeasonAccounts telegram badge via the
+ * leaderboard internal route (X-Internal-Auth = leaderboard-internal-token). Parity with the
+ * disconnect-telegram lambda's clearLeaderboardTelegram, which is itself wrapped in try/catch as
+ * "secondary, optional". NEVER throws: the authoritative box clear already succeeded, and the badge
+ * self-corrects on a future re-verify; surfacing a leaderboard-side failure as a 500 would wrongly tell
+ * the user the disconnect failed. Skipped (no-op) when the URL or token is absent (inert deploy window).
+ * Only call this for a profile that actually has a twitterHandle (a curated-leaderboard member).
+ */
+export async function clearLeaderboardTelegramRemote(twitterHandle: string): Promise<void> {
+  if (!TELEGRAM.leaderboardClearUrl || !TELEGRAM.leaderboardInternalToken) return;
+  try {
+    const res = await fetch(TELEGRAM.leaderboardClearUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-internal-auth': TELEGRAM.leaderboardInternalToken },
+      body: JSON.stringify({ twitterHandle }),
+      signal: AbortSignal.timeout(TELEGRAM.leaderboardTimeoutMs),
+    });
+    if (!res.ok) console.warn(`[compute] leaderboard clear-telegram returned HTTP ${res.status} (non-fatal)`);
+  } catch (err) {
+    console.warn('[compute] leaderboard clear-telegram failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
 }
