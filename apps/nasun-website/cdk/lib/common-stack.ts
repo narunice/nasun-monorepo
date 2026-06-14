@@ -490,10 +490,13 @@ export class CommonStack extends cdk.Stack {
       ],
     }));
 
-    this.governanceApi = new apigw.LambdaRestApi(this, "GovernanceApi", {
-      handler: this.governanceApiLambda,
+    // C6a AWS-exit de-Lambda: converted from LambdaRestApi(proxy:true) to a plain RestApi so a single
+    // route (/sponsor) can be repointed to the box compute while the rest still hit the Lambda. The
+    // greedy {proxy+}->Lambda is re-created below via addProxy (reproduces the LambdaRestApi behavior),
+    // plus an explicit /sponsor->box. cdk diff MUST show replace:0 on the existing proxy resource/methods
+    // (the restApiId 4xf3e5t8zc is baked into the frontend build and must NOT change); abort if not.
+    this.governanceApi = new apigw.RestApi(this, "GovernanceApi", {
       restApiName: "NASUN Governance API (Common)",
-      proxy: true,
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "OPTIONS"],
@@ -523,6 +526,34 @@ export class CommonStack extends cdk.Stack {
     this.governanceApi.addGatewayResponse("GovernanceApiDefault5xx", {
       type: apigw.ResponseType.DEFAULT_5XX,
       responseHeaders: governanceGatewayCorsHeaders,
+    });
+
+    // C6a AWS-exit de-Lambda: repoint POST /sponsor to the box identity-compute (Sui sponsor signing)
+    // via HTTP_PROXY (https://issuer.nasun.io/compute/governance/sponsor -> nginx strips /compute/ ->
+    // :3212 /governance/sponsor), shadowing the greedy {proxy+} for this ONE path. The other governance
+    // routes (/voting-power, /certificate, /config, /alliance/*) still hit governanceApiLambda. The box
+    // validates + Ed25519-signs identically (shadow-parity verified 2026-06-14: missing-fields /
+    // unauthorized-target / NOT_SPONSORED responses byte-match the Lambda). OPTIONS preflight stays a MOCK
+    // (this resource's own defaultCorsPreflightOptions), parity with the API-level preflight on the other
+    // routes. REVERSIBLE: delete this block to roll /sponsor back to the Lambda (kept deployed-but-bypassed).
+    this.governanceApi.root.addResource("sponsor", {
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ["POST", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Authorization"],
+      },
+    }).addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/governance/sponsor",
+      { httpMethod: "POST", proxy: true },
+    ));
+
+    // All other governance routes (/voting-power, /certificate, /config, /alliance/*) keep hitting the
+    // Lambda via the greedy {proxy+} + root ANY -- reproduces what LambdaRestApi(proxy:true) created, so
+    // the proxy resource/method logical ids stay stable (verify replace:0 in cdk diff).
+    this.governanceApi.root.addMethod("ANY", new apigw.LambdaIntegration(this.governanceApiLambda));
+    this.governanceApi.root.addProxy({
+      anyMethod: true,
+      defaultIntegration: new apigw.LambdaIntegration(this.governanceApiLambda),
     });
 
     // ========================================

@@ -215,6 +215,46 @@ export const TELEGRAM_VERIFY = {
   })(),
 };
 
+// --- C6a governance /sponsor (Sui sponsor tx signing) ---------------------------------------------
+// Box port of the nasun-common-governance-api POST /sponsor route (Sui sponsored Poll-vote tx). Gates on
+// the sponsor signing key ALONE: when absent the /governance/sponsor route stays DISABLED (503) -- inert
+// deploy until the secret is provisioned + the API Gateway repoints. The on-chain package/registry IDs are
+// PUBLIC chain data (not secrets) -> unit Environment vars; the sponsor key is a signing secret -> a
+// systemd-creds credential. Sui RPC is egress (allowed since C8/C5c); a per-call timeout caps a wedged
+// socket on the long-lived box (the lambda relied on its 60s ceiling + per-invoke isolation instead).
+const governanceSponsorKey = readOptional('governance-sponsor', 'GOVERNANCE_SPONSOR_FILE');
+
+// Validate the sponsor key format up front. A present-but-malformed key DISABLES the route (503) + warns,
+// rather than process.exit -- a non-hex/wrong-length governance cred must NOT brick the whole multi-route
+// compute service (login/salt/additional/telegram). 32-byte Ed25519 secret = exactly 64 hex chars
+// (Ed25519Keypair.fromSecretKey requires 32 bytes; a wrong length would otherwise throw only at the first
+// /sponsor call -> 500). Provision the .cred from the EXACT hex in Secrets Manager nasun/governance/sponsor
+// (the privateKey field) -- do NOT re-encode (a 64-byte/128-hex or bech32 form throws at fromSecretKey).
+const governanceSponsorValid = !!governanceSponsorKey && /^[0-9a-fA-F]{64}$/.test(governanceSponsorKey);
+if (governanceSponsorKey && !governanceSponsorValid) {
+  console.error('[compute] governance sponsor DISABLED (503): governance-sponsor cred is not 64-char hex (32-byte Ed25519)');
+}
+
+export const GOVERNANCE = {
+  // /governance/sponsor is wired iff the sponsor key is present AND well-formed. Else the route returns 503.
+  sponsorEnabled: governanceSponsorValid,
+  sponsorPrivateKeyHex: governanceSponsorKey || '',
+  suiRpcUrl: process.env.COMPUTE_SUI_RPC_URL || 'https://rpc.devnet.nasun.io',
+  // Whitelist target prefix for validateTxKind (parity index.ts GOVERNANCE_PACKAGE_ID). When empty the
+  // whitelist degrades CLOSED (canonicalized package ids never equal `::voting_power::...`) -> every
+  // sponsor request 400s; so the unit MUST set COMPUTE_GOVERNANCE_PACKAGE_ID for the route to function.
+  packageId: process.env.COMPUTE_GOVERNANCE_PACKAGE_ID || '',
+  // ProposalTypeRegistry shared object; getProposalType looks the proposal up here (Poll vs Governance).
+  proposalTypeRegistryId: process.env.COMPUTE_PROPOSAL_TYPE_REGISTRY_ID || '',
+  // Per-call Sui RPC egress budget. Default 6s keeps the serial worst case (getProposalType 2 + getCoins 1
+  // + tx.build >=1 ~= 4 calls) inside the API Gateway 29s HTTP-integration cap. Same guard as the other
+  // timeouts: fall back on unset/non-finite/non-positive (incl. NEGATIVE, which AbortSignal.timeout rejects).
+  rpcTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_GOVERNANCE_RPC_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 6000;
+  })(),
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

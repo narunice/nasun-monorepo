@@ -62,6 +62,20 @@ export function additionalCors(origin: string | undefined): Record<string, strin
   };
 }
 
+// C6 governance CORS: byte-parity with the governance-api lambda corsHeaders (index.ts:605-611) --
+// origin-allowlist ACAO, headers Content-Type+Authorization, methods GET/POST/OPTIONS, NO credentials
+// (governance is public: identity arrives in the body/query, never a cookie) and NO extra security
+// headers (the lambda sets none). Distinct from additionalCors (which adds credentials + 4 sec headers).
+export function governanceCors(origin: string | undefined): Record<string, string> {
+  const normalized = origin?.replace(/\/$/, '');
+  const allowed = normalized && ALLOWED_ORIGINS.includes(normalized) ? normalized : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

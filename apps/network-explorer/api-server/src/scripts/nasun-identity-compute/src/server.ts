@@ -13,8 +13,9 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, send, RouteAbort } from './http';
+import { handleSponsor } from './governance-sponsor';
 import {
   handleSuiPrepare,
   handleSuiConnectVerify,
@@ -321,11 +322,39 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // C6a governance /sponsor (POST) -- de-Lambda Sui sponsor signing (parity governance-api index.ts:854).
+  // PUBLIC (no JWT, same as the lambda): the 2-command tx-kind whitelist + Poll-only gate ARE the
+  // protection (a sponsor can only sign the exact mint_certificate+vote_with_certificate shape for a Poll
+  // proposal). governanceCors (GET/POST/OPTIONS, no credentials). Gated on GOVERNANCE.sponsorEnabled
+  // (sponsor key present) -> 503 inert until the secret is wired + the API GW repoints. Error bodies use
+  // the governance {error} contract, so RouteAbort {message} payloads (parseJson/readBody) are re-keyed.
+  if (pathname === '/governance/sponsor') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = governanceCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!GOVERNANCE.sponsorEnabled) return send(res, 503, { error: 'governance sponsor compute not enabled' }, cors);
+    try {
+      const body = parseJson(await readBody(req));
+      const { status, body: out } = await handleSponsor(body);
+      return send(res, status, out, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) {
+        const payload = 'error' in e.payload
+          ? e.payload
+          : { error: typeof e.payload.message === 'string' ? e.payload.message : `HTTP ${e.status}` };
+        return send(res, e.status, payload, cors);
+      }
+      console.error('[compute] /governance/sponsor failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };
