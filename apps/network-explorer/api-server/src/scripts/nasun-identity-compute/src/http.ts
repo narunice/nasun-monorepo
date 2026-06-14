@@ -76,6 +76,22 @@ export function governanceCors(origin: string | undefined): Record<string, strin
   };
 }
 
+// get-user-profile GET-read CORS: byte-parity with the get-user-profile lambda corsHeaders
+// (index.ts:398-402 + getCorsOrigin): origin-allowlist ACAO (echo the request origin when allow-listed,
+// else ALLOWED_ORIGINS[0]), headers Content-Type+Authorization, methods GET/POST/PATCH/OPTIONS (the lambda
+// advertises all of its proxy methods), NO credentials, NO extra security headers. The lambda matches the
+// RAW origin (no trailing-slash strip) -- replicated exactly so a (hypothetical) origin with a trailing
+// slash falls back identically. ALLOWED_ORIGINS is byte-identical to the lambda env (verified at cutover),
+// so cross-app reads (pado/gostop) get the identical ACAO.
+export function profileCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'GET, POST, PATCH, OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

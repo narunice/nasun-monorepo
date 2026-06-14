@@ -152,6 +152,26 @@ export async function readProfileByIdentity(identityId: string): Promise<Record<
 }
 
 /**
+ * GET /profile/by-wallet?walletAddress= -> the unified public profile object, or null when the wallet is
+ * not registered / has no profile (404). Mirror of readProfileByIdentity for the public get-user-profile
+ * GET-by-wallet read (the SAME box route the flipped lambda hits via readProfileFromBox). The compute
+ * pre-validates the 0x+64hex format before calling, so the box-side 400 path is unreachable here; a
+ * non-200/non-404 THROWS (fail-closed -> the route 500s rather than a false 404). Reuses the C4-1
+ * identity-write-bearer/baseUrl (the box GET read routes share one `authorized()` bearer check).
+ */
+export async function readProfileByWallet(walletAddress: string): Promise<Record<string, any> | null> {
+  const url = `${ADDITIONAL.identityBaseUrl}/profile/by-wallet?walletAddress=${encodeURIComponent(walletAddress)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (res.status === 200) return (await res.json()) as Record<string, any>;
+  if (res.status === 404) return null; // wallet not registered / no profile
+  throw new Error(`by-wallet returned HTTP ${res.status}`);
+}
+
+/**
  * GET /profile/address-owner?chain=&address=&self= -> the FIRST other-owner identityId, or null when
  * there is no collision. The box route serves an authoritative null (box.linked_accounts is lockstep
  * with the authoritative merge). THROWS on a non-200 so the caller can fail closed (a uniqueness check

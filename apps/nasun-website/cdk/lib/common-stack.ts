@@ -275,10 +275,23 @@ export class CommonStack extends cdk.Stack {
     publicAvatarsBucket.grantPut(getUserProfileLambda, 'profile-images/*');
     publicAvatarsBucket.grantDelete(getUserProfileLambda, 'profile-images/*');
 
-    const userProfileApi = new apigw.LambdaRestApi(this, "UserProfileApi", {
-      handler: getUserProfileLambda,
+    // AWS-exit de-Lambda (get-user-profile ROOT GET READS): serve ONLY the PUBLIC root GET reads
+    // (?walletAddress / ?identityId) directly from the box compute service
+    // (https://issuer.nasun.io/compute/profile) via HTTP_PROXY, removing the Lambda hop for the frontend's
+    // primary profile lookup. The reads are box-owned -- the lambda already flip-served them from the box
+    // (IDENTITY_READ_MODE=flip), and an E2E proved the box response is byte-identical (by-wallet + by-identity
+    // + 404 + 400 + CORS). The RestApi construct id is unchanged ("UserProfileApi") so the execute-api URL is
+    // preserved (baked into the frontend + cross-app builds).
+    // EVERYTHING ELSE STAYS ON getUserProfileLambda, unchanged: root POST/PATCH (profile create/update;
+    // crown-jewel DynamoDB writes) AND the {proxy+} greedy for SUB-PATHS. The lambda dispatches on
+    // httpMethod + event.path, so it serves real sub-paths: POST /upload-avatar-url (avatar S3 presign,
+    // index.ts:703) and GET /v3/user-profile?walletAddress= (chat-server display-name/avatar + zkLogin
+    // verifyAddressExists). Keeping {proxy+} ANY -> lambda preserves those exactly (proxy:true behavior),
+    // so the ONLY routing change vs the old LambdaRestApi is root GET -> box. OPTIONS preflight stays an
+    // API-GW MOCK (defaultCorsPreflightOptions). ROLLBACK: revert this block to
+    // `new apigw.LambdaRestApi(this, "UserProfileApi", { handler: getUserProfileLambda, proxy: true, ... })`.
+    const userProfileApi = new apigw.RestApi(this, "UserProfileApi", {
       restApiName: "NASUN User Profile API (Common)",
-      proxy: true,
       deployOptions: {
         throttlingBurstLimit: 50,
         throttlingRateLimit: 20,
@@ -289,6 +302,24 @@ export class CommonStack extends cdk.Stack {
         allowHeaders: ["Content-Type", "Authorization"]
       },
     });
+    const userProfileLambdaIntegration = new apigw.LambdaIntegration(getUserProfileLambda);
+    // Root GET reads -> box compute (HTTP_PROXY; the incoming query string is forwarded). Byte-identical to
+    // the lambda flip-path; box is SoT (no DynamoDB fallback -> a box-absent profile is 404, reconcile keeps
+    // missing_in_box=0).
+    userProfileApi.root.addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/profile",
+      { httpMethod: "GET", proxy: true }
+    ));
+    // Root POST/PATCH writes stay on the lambda (also the rollback target for the reads).
+    userProfileApi.root.addMethod("POST", userProfileLambdaIntegration);
+    userProfileApi.root.addMethod("PATCH", userProfileLambdaIntegration);
+    // {proxy+} greedy -> lambda: ALL sub-paths stay on the lambda exactly as proxy:true routed them
+    // (POST /upload-avatar-url avatar presign; GET /v3/user-profile chat-server reads + zkLogin auth gate).
+    // Only root GET is lifted to the box; everything else is unchanged. Added as an explicit {proxy+}
+    // resource (NOT root.addProxy(), which also synthesizes a spurious root ANY->MOCK method) so the root
+    // keeps exactly GET(->box)/POST/PATCH(->lambda)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
+    const userProfileProxy = userProfileApi.root.addResource("{proxy+}");
+    userProfileProxy.addMethod("ANY", userProfileLambdaIntegration);
 
     // 2-2. Link Account
     const linkAccountLambda = new NodejsFunction(this, "LinkAccountLambda", {

@@ -148,6 +148,17 @@ export const ADDITIONAL = {
   loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
 };
 
+// --- get-user-profile GET reads (public) ----------------------------------------------------------
+// PUBLIC get-user-profile reads (GET /profile?walletAddress= | ?identityId=) lifted off the
+// get-user-profile lambda. These are READ-ONLY and PUBLIC (no JWT, parity with the lambda GET), so they
+// need ONLY the identity-service loopback bearer to call the box /profile/by-wallet|by-identity routes the
+// flipped lambda already serves (readProfileByWallet/readProfileByIdentity reuse ADDITIONAL.identityWrite-
+// Bearer/identityBaseUrl). They do NOT require VERIFY.audience (the dual-jwks dep ADDITIONAL gates on),
+// since there is no incoming JWT to verify. Enabled iff the identity-write-bearer is present (prod: yes).
+export const PROFILE_READ = {
+  enabled: !!identityWriteBearer,
+};
+
 // --- C5b telegram-disconnect (write) --------------------------------------------------------------
 // The route does dual-jwks verify + the AUTHORITATIVE box PG clear via the identity loopback
 // /telegram/disconnect (the SAME endpoint the disconnect-telegram lambda already hits when flipped;

@@ -13,8 +13,8 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
@@ -27,6 +27,7 @@ import { handleZkLoginSalt } from './handlers-zklogin';
 import { CHAINS } from './additional-chains';
 import {
   readProfileByIdentity,
+  readProfileByWallet,
   disconnectTelegramBox,
   clearLeaderboardTelegramRemote,
   validateTelegramAuth,
@@ -401,11 +402,51 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // get-user-profile READ (GET /profile?walletAddress= | ?identityId=) -- de-Lambda PUBLIC read: no JWT
+  // (parity with the lambda GET) + the box /profile/by-wallet|by-identity loopback, the SAME box reads the
+  // flipped get-user-profile lambda already serves directly (byte-identical, shadow-validated 200 body).
+  // Box is SoT: a box-absent profile -> 404 (the lambda's DynamoDB fallback is unnecessary post-cutover;
+  // reconcile keeps missing_in_box=0). profileCors (origin-allowlist, GET/POST/PATCH/OPTIONS, no creds --
+  // byte-parity with the lambda corsHeaders). Lambda precedence: OPTIONS -> 405(non-GET) -> 400(bad wallet
+  // format) -> 404(box null). The 404 message collapses the lambda's "Wallet not registered" vs "User
+  // profile not found" (the box returns one 404 for both); status + {message} shape are preserved.
+  if (pathname === '/profile') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = profileCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET') return send(res, 405, { message: 'Method Not Allowed' }, cors);
+    if (!PROFILE_READ.enabled) return send(res, 503, { message: 'profile read compute not enabled' }, cors);
+    try {
+      const params = new URL(req.url || '/', 'http://localhost').searchParams;
+      const walletAddress = params.get('walletAddress');
+      const identityId = params.get('identityId');
+      if (walletAddress) {
+        const normalizedAddr = walletAddress.toLowerCase();
+        if (!/^0x[0-9a-f]{64}$/.test(normalizedAddr)) {
+          return send(res, 400, { message: 'Invalid wallet address format' }, cors);
+        }
+        const boxed = await readProfileByWallet(normalizedAddr);
+        if (!boxed) return send(res, 404, { message: 'Wallet not registered' }, cors);
+        return send(res, 200, boxed, cors);
+      }
+      if (identityId) {
+        const boxed = await readProfileByIdentity(identityId);
+        if (!boxed) return send(res, 404, { message: 'User profile not found' }, cors);
+        return send(res, 200, boxed, cors);
+      }
+      return send(res, 400, { message: 'identityId or walletAddress is required' }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /profile failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { message: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };
