@@ -11,7 +11,7 @@
  * right `packageId` without thread-through plumbing.
  */
 
-import type { EventId } from '@mysten/sui/client';
+import type { EventId, SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
   MARKET_CREATED_EVENTS,
@@ -44,42 +44,63 @@ function isPrunedEventCursorError(error: unknown): boolean {
   return /Could not find the referenced transaction/i.test(message);
 }
 
+// Sui RPC caps multiGetObjects at 50 ids per call.
+const MARKET_FETCH_CHUNK = 50;
+
 export async function fetchMarkets(): Promise<PredictionMarket[]> {
   let marketIds: string[] = TEST_MARKETS;
   if (marketIds.length === 0) {
     marketIds = await fetchMarketsByEvents();
   }
+  if (marketIds.length === 0) return [];
 
-  const markets = await Promise.all(
-    marketIds.map(async (marketId) => {
-      try {
-        return await fetchMarket(marketId);
-      } catch (error) {
-        console.error(`Failed to fetch market ${marketId}:`, error);
-        return null;
-      }
-    }),
-  );
+  const client = getSuiClient();
+  // A single /predict load can discover 150+ markets. Reading them with one
+  // getObject each stampedes the fullnode (a concurrent burst → intermittent
+  // failures → empty list, requiring a hard refresh). Batch into
+  // multiGetObjects (50 ids/call) so 159 markets cost ~4 RPC calls instead of
+  // 159 — the same anti-stampede pattern oracle-client and useMyOpenOrders use.
+  const markets: PredictionMarket[] = [];
+  for (let i = 0; i < marketIds.length; i += MARKET_FETCH_CHUNK) {
+    const chunk = marketIds.slice(i, i + MARKET_FETCH_CHUNK);
+    let objects: SuiObjectResponse[];
+    try {
+      objects = await client.multiGetObjects({
+        ids: chunk,
+        options: { showContent: true, showType: true },
+      });
+    } catch (error) {
+      console.error('Failed to batch-fetch prediction markets:', error);
+      continue;
+    }
+    for (let j = 0; j < chunk.length; j++) {
+      const market = parseMarketObject(chunk[j], objects[j]);
+      if (market) markets.push(market);
+    }
+  }
+  return markets;
+}
 
-  return markets.filter((m): m is PredictionMarket => m !== null);
+function parseMarketObject(
+  marketId: string,
+  object: SuiObjectResponse | undefined,
+): PredictionMarket | null {
+  if (!object?.data?.content || object.data.content.dataType !== 'moveObject') {
+    return null;
+  }
+  const fields = object.data.content.fields as Record<string, unknown>;
+  const objectType = object.data.type ?? '';
+  return parseMarketFields(marketId, fields, objectType);
 }
 
 export async function fetchMarket(marketId: string): Promise<PredictionMarket | null> {
   const client = getSuiClient();
-
   try {
     const object = await client.getObject({
       id: marketId,
       options: { showContent: true, showType: true },
     });
-
-    if (!object.data?.content || object.data.content.dataType !== 'moveObject') {
-      return null;
-    }
-
-    const fields = object.data.content.fields as Record<string, unknown>;
-    const objectType = object.data.type ?? '';
-    return parseMarketFields(marketId, fields, objectType);
+    return parseMarketObject(marketId, object);
   } catch (error) {
     console.error(`Failed to fetch market ${marketId}:`, error);
     return null;

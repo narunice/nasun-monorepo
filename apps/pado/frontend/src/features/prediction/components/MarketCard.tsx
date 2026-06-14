@@ -40,8 +40,17 @@ export function MarketCard({
   // unconditionally, so a card that skipped it diverged to the raw ask on a
   // crossed book). Gate the fills fetch on that exact condition so the list
   // doesn't hammer the fills endpoint for every well-quoted card.
+  // Only consult the (chat-server-backed) fills endpoint for markets still open
+  // for trading. Expired/resolved markets — especially the ~100 frozen legacy
+  // markets surfaced in the list — all have empty books, so each would
+  // otherwise fire a fills request and exhaust the shared 180 req/min API
+  // budget (429). Resolved cards price off `outcome`; closed cards don't need a
+  // live last trade.
+  const stillTradeable = market.status === "open" && Date.now() < market.closeTime;
   const lastTradePriceBps = useLastTradePrice(
-    quotesRequireLastTrade(market.bestPrices) ? market.id : undefined,
+    stillTradeable && quotesRequireLastTrade(market.bestPrices)
+      ? market.id
+      : undefined,
   );
 
   const resolvedProbability =
