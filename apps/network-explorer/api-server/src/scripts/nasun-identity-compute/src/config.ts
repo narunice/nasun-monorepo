@@ -235,6 +235,25 @@ if (governanceSponsorKey && !governanceSponsorValid) {
   console.error('[compute] governance sponsor DISABLED (503): governance-sponsor cred is not 64-char hex (32-byte Ed25519)');
 }
 
+// C6b certificate Oracle Ed25519 signing key (Secrets Manager nasun/governance/oracle). Same disable-not-
+// brick policy as the sponsor key: a present-but-malformed cred disables /certificate (503) + warns; an
+// absent cred leaves it inert. 32-byte Ed25519 secret = 64 hex chars. /voting-power + /config do NOT need
+// this key (only /certificate signs). Provision the .cred from the EXACT hex in nasun/governance/oracle.
+const governanceOracleKey = readOptional('governance-oracle', 'GOVERNANCE_ORACLE_FILE');
+const governanceOracleValid = !!governanceOracleKey && /^[0-9a-fA-F]{64}$/.test(governanceOracleKey);
+if (governanceOracleKey && !governanceOracleValid) {
+  console.error('[compute] governance certificate DISABLED (503): governance-oracle cred is not 64-char hex (32-byte Ed25519)');
+}
+
+// C6b rank-residual + identity-loopback wiring for /voting-power + /certificate. The leaderboard rank is
+// DynamoDB-resident, so the box fetches it from a thin residual lambda over HTTPS (X-Internal-Auth =
+// leaderboard-internal-token, the SAME cred the C5 telegram residuals use). Voting identity + the
+// governance_votes dup-vote guard run over the :3211 identity loopback (reusing the C4-1 identity-write-
+// bearer/baseUrl). votingPowerEnabled needs identity loopback + rank residual; certEnabled also needs the
+// oracle key. /config is always served (static, no deps).
+const governanceRankUrl = process.env.COMPUTE_GOVERNANCE_RANK_URL || '';
+const governanceVotingDepsReady = !!(ADDITIONAL.enabled && governanceRankUrl && leaderboardInternalToken);
+
 export const GOVERNANCE = {
   // /governance/sponsor is wired iff the sponsor key is present AND well-formed. Else the route returns 503.
   sponsorEnabled: governanceSponsorValid,
@@ -252,6 +271,30 @@ export const GOVERNANCE = {
   rpcTimeoutMs: (() => {
     const o = Number(process.env.COMPUTE_GOVERNANCE_RPC_TIMEOUT_MS);
     return Number.isFinite(o) && o > 0 ? o : 6000;
+  })(),
+
+  // --- C6b /config + /voting-power + /certificate ---
+  votingPowerEnabled: governanceVotingDepsReady,
+  certEnabled: !!(governanceOracleValid && governanceVotingDepsReady),
+  oraclePrivateKeyHex: governanceOracleKey || '',
+  // MUST match the Move contract's DOMAIN_SEPARATOR byte-for-byte (cert signature domain).
+  domainSeparator: process.env.COMPUTE_GOVERNANCE_DOMAIN_SEPARATOR || 'NASUN_GOVERNANCE_DEVNET_V1',
+  // Certificate TTL: devnet 15min, mainnet 30min (parity index.ts calculateCertificateTTL with no
+  // proposalExpiration arg). NETWORK unset on the live lambda -> devnet -> 15min.
+  certTtlMs: (process.env.COMPUTE_GOVERNANCE_NETWORK === 'mainnet' ? 30 : 15) * 60 * 1000,
+  // VoteProofNFT struct package ids for checkOnChainVoteExists (parity GOVERNANCE_ORIGINAL_PACKAGE_ID /
+  // GOVERNANCE_MULTI_CHOICE_PACKAGE_ID). Default to packageId (parity index.ts:106-107 fallback).
+  originalPackageId: process.env.COMPUTE_GOVERNANCE_ORIGINAL_PACKAGE_ID || process.env.COMPUTE_GOVERNANCE_PACKAGE_ID || '',
+  multiChoicePackageId: process.env.COMPUTE_GOVERNANCE_MULTI_CHOICE_PACKAGE_ID || process.env.COMPUTE_GOVERNANCE_PACKAGE_ID || '',
+  // Residual rank lambda (HTTPS) + the internal token + identity loopback (reused from C4-1/C5).
+  rankResidualUrl: governanceRankUrl,
+  leaderboardInternalToken: leaderboardInternalToken || '',
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: ADDITIONAL.identityWriteBearer,
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  rankResidualTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_GOVERNANCE_RANK_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 4000;
   })(),
 };
 

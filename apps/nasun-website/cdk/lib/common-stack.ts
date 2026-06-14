@@ -547,8 +547,44 @@ export class CommonStack extends cdk.Stack {
       { httpMethod: "POST", proxy: true },
     ));
 
-    // All other governance routes (/voting-power, /certificate, /config, /alliance/*) keep hitting the
-    // Lambda via the greedy {proxy+} + root ANY -- reproduces what LambdaRestApi(proxy:true) created, so
+    // C6b AWS-exit de-Lambda: repoint /config (GET), /voting-power (GET), /certificate (POST) to the box
+    // identity-compute. /config is static; /voting-power resolves the box voting-identity + a residual rank
+    // lambda; /certificate Oracle-signs the same byte-exact message (RFC-8032 Ed25519 parity verified) +
+    // runs the box governance_votes dup-guard. Each explicit resource shadows the greedy {proxy+}; the
+    // remaining routes (/alliance/*) stay on the Lambda. REVERSIBLE per route (delete the block).
+    this.governanceApi.root.addResource("config", {
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ["GET", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Authorization"],
+      },
+    }).addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/governance/config",
+      { httpMethod: "GET", proxy: true },
+    ));
+    this.governanceApi.root.addResource("voting-power", {
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ["GET", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Authorization"],
+      },
+    }).addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/governance/voting-power",
+      { httpMethod: "GET", proxy: true },
+    ));
+    this.governanceApi.root.addResource("certificate", {
+      defaultCorsPreflightOptions: {
+        allowOrigins: ALLOWED_ORIGINS,
+        allowMethods: ["POST", "OPTIONS"],
+        allowHeaders: ["Content-Type", "Authorization"],
+      },
+    }).addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/governance/certificate",
+      { httpMethod: "POST", proxy: true },
+    ));
+
+    // The remaining governance routes (/alliance/status, /alliance/mint, and any future path) keep hitting
+    // the Lambda via the greedy {proxy+} + root ANY -- reproduces what LambdaRestApi(proxy:true) created, so
     // the proxy resource/method logical ids stay stable (verify replace:0 in cdk diff).
     this.governanceApi.root.addMethod("ANY", new apigw.LambdaIntegration(this.governanceApiLambda));
     this.governanceApi.root.addProxy({

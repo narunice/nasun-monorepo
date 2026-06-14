@@ -23,8 +23,9 @@ function getSponsorKeypair(): Ed25519Keypair {
 }
 
 // Sui RPC client with a per-call egress timeout (box hardening; see file header). One client per request
-// is fine -- the transport is cheap and the lambda also constructed one per invoke.
-function makeSuiClient(): SuiClient {
+// is fine -- the transport is cheap and the lambda also constructed one per invoke. Exported so the
+// certificate route (governance-voting.ts checkOnChainVoteExists) reuses the same timeout-wrapped client.
+export function makeSuiClient(): SuiClient {
   return new SuiClient({
     transport: new SuiHTTPTransport({
       url: GOVERNANCE.suiRpcUrl,

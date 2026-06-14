@@ -472,6 +472,24 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // AWS-exit de-Lambda C6b: thin residual rank lookup called by the box governance compute
+    // (/governance/voting-power + /governance/certificate) to convert twitterHandle -> leaderboard rank
+    // (rank data is DynamoDB-resident; the box has no DDB access). Byte-parity port of the governance
+    // Lambda's getUserRank. Same internal-token auth. Removed when leaderboard-v3 migrates off DynamoDB.
+    const internalVotingRankLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3InternalVotingRankFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-internal-voting-rank`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'internal-voting-rank.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(15),
+        memorySize: 256,
+        description: 'Leaderboard V3: twitterHandle -> rank for box governance compute (box C6b residual)',
+      }
+    );
+
     // Admin Blacklist Lambda (Phase 11)
     const adminBlacklistLambda = new NodejsFunction(
       this,
@@ -766,6 +784,12 @@ export class LeaderboardV3Stack extends cdk.Stack {
     userProfilesTable.grantReadData(internalTelegramVerifiedLambda);
     nasunReferralsForTelegram.grantReadData(internalTelegramVerifiedLambda);
 
+    // C6b voting-rank residual: read Accounts (platform-username GSI), Seasons (Scan), Snapshots
+    // (accountId-snapshotDate GSI). grantReadData on these Table constructs covers their GSIs.
+    this.accountsTable.grantReadData(internalVotingRankLambda);
+    this.seasonsTable.grantReadData(internalVotingRankLambda);
+    this.snapshotsTable.grantReadData(internalVotingRankLambda);
+
     // Secrets Manager read for Telegram bot token
     verifyTelegramLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -931,6 +955,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     internalTelegramVerifiedResource.addMethod(
       'POST',
       new apigw.LambdaIntegration(internalTelegramVerifiedLambda)
+    );
+
+    // POST /v3/leaderboard/internal/voting-rank (called by box governance compute, C6b)
+    const internalVotingRankResource = internalResource.addResource('voting-rank');
+    internalVotingRankResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(internalVotingRankLambda)
     );
 
     // GET /v3/feed/featured

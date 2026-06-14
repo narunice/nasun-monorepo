@@ -16,6 +16,7 @@ import postgres from 'postgres';
 import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
+import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
   handleSuiPrepare,
   handleSuiConnectVerify,
@@ -350,11 +351,61 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // C6b governance /config (GET) -- static config, no deps (parity index.ts:743). PUBLIC, no gate.
+  if (pathname === '/governance/config') {
+    const cors = governanceCors((req.headers['origin'] as string) || undefined);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    const { status, body } = handleConfig();
+    return send(res, status, body, cors);
+  }
+
+  // C6b governance /voting-power (GET ?walletAddress=) -- PUBLIC (no JWT, parity); box voting-identity
+  // loopback + residual rank. Gated on votingPowerEnabled (identity loopback + rank residual configured).
+  if (pathname === '/governance/voting-power') {
+    const cors = governanceCors((req.headers['origin'] as string) || undefined);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!GOVERNANCE.votingPowerEnabled) return send(res, 503, { error: 'governance voting-power compute not enabled' }, cors);
+    try {
+      const walletAddress = new URL(req.url || '/', 'http://localhost').searchParams.get('walletAddress') || '';
+      const { status, body } = await handleVotingPower(walletAddress);
+      return send(res, status, body, cors);
+    } catch (e) {
+      console.error('[compute] /governance/voting-power failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
+  // C6b governance /certificate (POST) -- PUBLIC (no JWT, parity; identity resolved from `voter` body).
+  // Oracle Ed25519 sign + box governance_votes dup-guard + on-chain self-heal. Gated on certEnabled
+  // (oracle key + identity loopback + rank residual). {error} contract -> RouteAbort {message} re-keyed.
+  if (pathname === '/governance/certificate') {
+    const cors = governanceCors((req.headers['origin'] as string) || undefined);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!GOVERNANCE.certEnabled) return send(res, 503, { error: 'governance certificate compute not enabled' }, cors);
+    try {
+      const body = parseJson(await readBody(req));
+      const { status, body: out } = await handleCertificate(body);
+      return send(res, status, out, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) {
+        const payload = 'error' in e.payload
+          ? e.payload
+          : { error: typeof e.payload.message === 'string' ? e.payload.message : `HTTP ${e.status}` };
+        return send(res, e.status, payload, cors);
+      }
+      console.error('[compute] /governance/certificate failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };
