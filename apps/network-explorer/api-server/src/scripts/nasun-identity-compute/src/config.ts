@@ -159,6 +159,45 @@ export const PROFILE_READ = {
   enabled: !!identityWriteBearer,
 };
 
+// --- C3b wallet register/remove/list (crown-jewel ownership writes + list read) -------------------
+// De-Lambda of the wallet-api lambda's multi-wallet routes: POST /register, POST /remove, GET /list.
+// register does dual-jwks verify (VERIFY.audience) + the wallet-proof HMAC (walletProofSecret, the SAME
+// nasun-wallet-proof-prod secret the wallet lambda + C3a login already use) + a loopback to the box
+// identity service :3211 /wallet/register; remove/list skip the proof (the lambda does too) and loopback
+// to :3211 /wallet/{remove,list}. Those :3211 routes are the SAME authoritative routes the FLIPPED wallet
+// lambda already writes/reads today (IDENTITY_WRITE_FLIP_ROUTES has /wallet/register,/wallet/remove and
+// IDENTITY_READ_MODE=flip serves /wallet/list), so the box already holds the complete mirror. Box is SoT:
+// box-only PG write, NO DynamoDB (the (B) divergence, covered by the reconcile post-cutover wallet
+// exclusion). Reuses the C4-1 identity-write-bearer/baseUrl.
+//
+// ★ Crown-jewel cutover gate: unlike additional/telegram (gated on secrets alone, all of which are
+// already present in prod), wallet gates ADDITIONALLY on the explicit COMPUTE_WALLET_ENABLED=1 flag so the
+// bundle deploys INERT (503) even though audience + both secrets are live. This keeps the publicly
+// reachable box-direct /compute/wallet/* WRITE endpoints CLOSED until the cutover gate flips the flag
+// (separate go), so the E2E parity test is provably the FIRST caller of the live box write path -- no
+// pre-cutover box-only writes can sneak in ahead of verification.
+const explorerInvalidateToken = readOptional('explorer-api-invalidate-token', 'EXPLORER_API_INVALIDATE_TOKEN_FILE');
+
+export const WALLET = {
+  enabled: process.env.COMPUTE_WALLET_ENABLED === '1'
+    && !!(VERIFY.audience && identityWriteBearer && walletProofSecret),
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: identityWriteBearer || '',
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // walletProof freshness window -- byte-parity with the lambda verifyWalletProof PROOF_MAX_AGE_MS (5 min).
+  proofMaxAgeMs: 5 * 60 * 1000,
+  // Best-effort points-scanner cache invalidation (parity with the lambda notifyWalletRegistered): POST
+  // {identityId, walletAddress} to <base>/api/v1/internal/wallet-registered with X-Internal-Auth. OPTIONAL
+  // -- skipped when the base URL or token is absent (the scanner's 10-min TTL fallback catches up, exactly
+  // as the lambda documented). egress to explorer.nasun.io (allowed since C8). NEVER blocks/fails register.
+  walletRegisteredBaseUrl: process.env.COMPUTE_WALLET_REGISTERED_BASE_URL || '',
+  walletRegisteredToken: explorerInvalidateToken || '',
+  webhookTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_WALLET_WEBHOOK_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 3000;
+  })(),
+};
+
 // --- C5b telegram-disconnect (write) --------------------------------------------------------------
 // The route does dual-jwks verify + the AUTHORITATIVE box PG clear via the identity loopback
 // /telegram/disconnect (the SAME endpoint the disconnect-telegram lambda already hits when flipped;

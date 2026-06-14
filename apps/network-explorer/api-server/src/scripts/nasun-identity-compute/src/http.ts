@@ -92,6 +92,20 @@ export function profileCors(origin: string | undefined): Record<string, string> 
   };
 }
 
+// C3b wallet CORS: byte-parity with the wallet-api lambda corsHeaders (index.ts:20-27 + getCorsOrigin):
+// origin-allowlist ACAO matched against the RAW Origin (no trailing-slash strip -- getCorsOrigin compares
+// the raw header, falling back to ALLOWED_ORIGINS[0]), headers 'Content-Type,Authorization' (no spaces),
+// methods 'GET,POST,DELETE,OPTIONS' (no spaces -- the lambda advertises all of its proxy methods), NO
+// credentials, NO extra security headers. content-type is set by send() so it is not duplicated here.
+export function walletCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type,Authorization',
+    'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

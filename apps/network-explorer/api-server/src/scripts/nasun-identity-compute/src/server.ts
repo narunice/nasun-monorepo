@@ -13,8 +13,8 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, WALLET } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
@@ -45,6 +45,11 @@ import {
   handleRemove as handleAdditionalRemove,
   handleAppBinding as handleAdditionalAppBinding,
 } from './handlers-additional';
+import {
+  handleWalletRegister,
+  handleWalletRemove,
+  handleWalletList,
+} from './handlers-wallet';
 
 // C4-1 additional-wallet action -> required HTTP method (parity with the lambda API GW route mounts).
 const ADDITIONAL_METHODS: Record<string, string> = {
@@ -192,6 +197,48 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
       console.error(`[compute] /${addlMatch[1]}-additional/${action} failed:`, e instanceof Error ? e.message : e);
       return send(res, 500, { message: 'Internal Server Error' }, cors);
+    }
+  }
+
+  // C3b wallet register/remove/list (POST /wallet/register, POST /wallet/remove, GET /wallet/list) --
+  // de-Lambda crown-jewel: dual-jwks (verifyJwtIdentity) + (register only) the wallet-proof HMAC + the box
+  // identity loopback :3211 /wallet/{register,remove,list} (the SAME authoritative routes the FLIPPED wallet
+  // lambda already writes/reads today: IDENTITY_WRITE_FLIP_ROUTES has /wallet/register,/wallet/remove and
+  // IDENTITY_READ_MODE=flip serves /wallet/list). Box is SoT: box-only PG write, NO DynamoDB (the (B)
+  // divergence, covered by the reconcile post-cutover wallet exclusion). walletCors (origin-allowlist,
+  // GET/POST/DELETE/OPTIONS -- byte-parity with the wallet lambda corsHeaders; {error} bodies). Gated on
+  // WALLET.enabled (COMPUTE_WALLET_ENABLED=1 + audience + identity-write-bearer + wallet-proof-secret) ->
+  // 503 inert until the cutover gate flips the flag, so the box-direct WRITE path stays closed pre-cutover.
+  // Precedence (additional-wallet parity): OPTIONS -> 503(disabled) -> 401(auth) -> 405(method) -> handler.
+  const walletMatch = pathname.match(/^\/wallet\/(register|remove|list)$/);
+  if (walletMatch) {
+    const action = walletMatch[1];
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = walletCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (!WALLET.enabled) return send(res, 503, { error: 'wallet compute not enabled' }, cors);
+    try {
+      // Auth BEFORE the method check (lambda precedence: 401 over 405; the API GW specific resources also
+      // enforce the method, so a wrong-method call cannot reach here in the live path -- 405 is defensive).
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { error: 'Unauthorized' }, cors);
+      const expectedMethod = action === 'list' ? 'GET' : 'POST';
+      if (req.method !== expectedMethod) return send(res, 405, { error: 'Method Not Allowed' }, cors);
+
+      let out: { status: number; body: Record<string, unknown> };
+      if (action === 'list') {
+        out = await handleWalletList(identityId);
+      } else {
+        const body = parseJson(await readBody(req));
+        out = action === 'register'
+          ? await handleWalletRegister(identityId, body)
+          : await handleWalletRemove(identityId, body);
+      }
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error(`[compute] /wallet/${action} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal Server Error' }, cors);
     }
   }
 
@@ -446,7 +493,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

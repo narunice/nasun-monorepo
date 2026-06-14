@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -425,5 +425,111 @@ export async function telegramVerifiedResidual(payload: {
     if (!res.ok) console.warn(`[compute] telegram-verified residual returned HTTP ${res.status} (non-fatal)`);
   } catch (err) {
     console.warn('[compute] telegram-verified residual failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
+}
+
+// --- C3b wallet register/remove/list ----------------------------------------------------------------
+// Box identity-service (:3211) loopback for the three multi-wallet routes + the wallet-proof HMAC verify
+// + the best-effort points-scanner cache-invalidation webhook. All loopback over 127.0.0.1 (NO egress);
+// only the webhook is egress (to explorer.nasun.io, allowed since C8). These call the SAME authoritative
+// box routes the FLIPPED wallet lambda already hits today, so the box end-state is identical to the lambda
+// path -- the only difference is the compute does NOT also write DynamoDB (the chosen (B) divergence).
+
+/**
+ * Verify the walletProof HMAC -- byte-parity with the wallet-api lambda verifyWalletProof
+ * (utils/walletProof.ts): freshness (<= 5 min) + a constant-time compare of
+ * hmac-sha256(secret, `${walletAddress}:${proofIssuedAt}`).digest('hex'). walletAddress MUST already be
+ * lower-cased by the caller (registerWallet.ts lowercases before computing the HMAC). Returns
+ * { valid, reason? } and NEVER throws (a non-string proof is coerced to '' -> length mismatch -> invalid).
+ */
+export function verifyWalletProofHmac(
+  walletAddress: string,
+  walletProofValue: unknown,
+  proofIssuedAt: string,
+): { valid: boolean; reason?: string } {
+  const issuedTime = new Date(proofIssuedAt).getTime();
+  if (Number.isNaN(issuedTime)) return { valid: false, reason: 'Invalid proofIssuedAt format' };
+  if (Date.now() - issuedTime > WALLET.proofMaxAgeMs) return { valid: false, reason: 'walletProof expired (>5 min)' };
+
+  // Reuse walletProof() so the verify side uses the IDENTICAL HMAC construction the C3a login mint side
+  // generates (clients.ts walletProof). A future format change (chain tag, secret rotation) then cannot
+  // silently diverge generate-vs-verify and break wallet auth. Same wallet-proof-secret cred underneath.
+  const expected = walletProof(walletAddress, proofIssuedAt);
+  const expectedBuf = Buffer.from(expected, 'utf8');
+  const actualBuf = Buffer.from(typeof walletProofValue === 'string' ? walletProofValue : '', 'utf8');
+  if (expectedBuf.length !== actualBuf.length) return { valid: false, reason: 'walletProof mismatch' };
+  if (!timingSafeEqual(expectedBuf, actualBuf)) return { valid: false, reason: 'walletProof mismatch' };
+  return { valid: true };
+}
+
+/**
+ * POST a wallet write to the box identity loopback (:3211 /wallet/register|remove) -- the AUTHORITATIVE box
+ * PG write (sentinel CAS + transfer + MAX-10 + last-wallet guard live INSIDE the box tx). Returns the box
+ * { status, body } for ANY 2xx OR 4xx so the route proxies the box's 200/idempotent/transfer + 400/403/404/
+ * 409/429 responses through BYTE-IDENTICALLY (the box error bodies + status codes match the lambda's). Only
+ * a box 5xx or a transport/timeout error THROWS -> the route 500s (fail-closed). A single attempt: the box
+ * write is idempotent (CAS), but a retry of /wallet/remove is NOT (its last-wallet COUNT shifts), so -- like
+ * the flipped lambda's authoritative remove (retries:0) -- the compute issues one attempt and lets the
+ * API Gateway / frontend retry a transient 5xx.
+ */
+async function walletWrite(path: string, payload: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(`${WALLET.identityBaseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${WALLET.identityWriteBearer}` },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(WALLET.loopbackTimeoutMs),
+  });
+  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (res.status >= 500) throw new Error(`box ${path} returned HTTP ${res.status}`);
+  return { status: res.status, body: (data && typeof data === 'object') ? data : {} };
+}
+
+export function walletRegisterBox(identityId: string, walletAddress: string) {
+  return walletWrite('/wallet/register', { identityId, walletAddress });
+}
+
+export function walletRemoveBox(identityId: string, walletAddress: string) {
+  return walletWrite('/wallet/remove', { identityId, walletAddress });
+}
+
+/**
+ * GET /wallet/list?identityId= from the box identity loopback (:3211) -> { wallets: [...] } (the SAME box
+ * read the IDENTITY_READ_MODE=flip wallet lambda already serves; ORDER BY wallet_address ASC == DDB sort
+ * order, byte-identical shape). Returns the box { status, body } for 2xx/4xx; a box 5xx or transport error
+ * THROWS -> 500 (post-cutover the box is SoT with NO DynamoDB fallback, mirror of the C7 profile read).
+ */
+export async function walletListBox(identityId: string): Promise<{ status: number; body: Record<string, unknown> }> {
+  const url = `${WALLET.identityBaseUrl}/wallet/list?identityId=${encodeURIComponent(identityId)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${WALLET.identityWriteBearer}` },
+    signal: AbortSignal.timeout(WALLET.loopbackTimeoutMs),
+  });
+  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (res.status >= 500) throw new Error(`box /wallet/list returned HTTP ${res.status}`);
+  return { status: res.status, body: (data && typeof data === 'object') ? data : { wallets: [] } };
+}
+
+/**
+ * BEST-EFFORT points-scanner cache invalidation -- byte-parity with the wallet lambda notifyWalletRegistered:
+ * POST { identityId, walletAddress } to <base>/api/v1/internal/wallet-registered (X-Internal-Auth = the
+ * explorer-api invalidate token) so the points scanner immediately refreshes its wallet->identity cache for
+ * the new wallet. NEVER throws (the registration already committed to box PG; the scanner's 10-min TTL
+ * fallback catches up on any failure, exactly as the lambda documented). Skipped (no-op) when the base URL
+ * or token is absent (inert until wired -- a separate cred provision, like the C5 leaderboard residuals).
+ */
+export async function notifyWalletRegistered(identityId: string, walletAddress: string): Promise<void> {
+  if (!WALLET.walletRegisteredBaseUrl || !WALLET.walletRegisteredToken) return;
+  const url = `${WALLET.walletRegisteredBaseUrl.replace(/\/+$/, '')}/api/v1/internal/wallet-registered`;
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-internal-auth': WALLET.walletRegisteredToken },
+      body: JSON.stringify({ identityId, walletAddress }),
+      signal: AbortSignal.timeout(WALLET.webhookTimeoutMs),
+    });
+    if (!res.ok) console.warn(`[compute] wallet-registered webhook returned HTTP ${res.status} (non-fatal)`);
+  } catch (err) {
+    console.warn('[compute] wallet-registered webhook failed (non-fatal):', err instanceof Error ? err.message : err);
   }
 }
