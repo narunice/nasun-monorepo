@@ -445,16 +445,41 @@ export class CommonStack extends cdk.Stack {
       }),
     );
 
-    const walletApi = new apigw.LambdaRestApi(this, "WalletApi", {
-      handler: walletApiLambda,
+    // AWS-exit de-Lambda C3b: the multi-wallet ownership routes (register/remove/list) are lifted to the
+    // box compute (nasun-identity-compute -> nasun-identity :3211, box PG SoT, NO DynamoDB). Convert the
+    // LambdaRestApi(proxy:true) to a plain RestApi with the SAME construct id "WalletApi" so the restApiId
+    // + execute-api URL are PRESERVED (no frontend rebuild). register(POST)/remove(POST)/list(GET) -> box
+    // HTTP_PROXY (Authorization + body forwarded; the box reads identityId from the JWT, verifies the
+    // wallet-proof on register, and loopbacks to :3211). Everything else ({proxy+} ANY + root ANY) stays
+    // on the lambda exactly as proxy:true routed it: the address-book auth (POST /challenge, /verify) +
+    // address-book CRUD (GET/POST /address-book), which use a separate self-issued JWT and are NOT part of
+    // the C3b ownership lift. OPTIONS preflight stays an API-GW MOCK (defaultCorsPreflightOptions). The box
+    // is SoT post-cutover (box-only PG write; the wallet drift is excluded by the dal-reconcile
+    // RECON_WALLET_CUTOVER_EPOCH gate). ROLLBACK: revert this block to
+    // `new apigw.LambdaRestApi(this, "WalletApi", { handler: walletApiLambda, proxy: true, ... })`.
+    const walletApi = new apigw.RestApi(this, "WalletApi", {
       restApiName: "NASUN Wallet API (Common)",
-      proxy: true,
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
     });
+    const walletLambdaIntegration = new apigw.LambdaIntegration(walletApiLambda);
+    walletApi.root.addResource("register").addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/wallet/register", { httpMethod: "POST", proxy: true }
+    ));
+    walletApi.root.addResource("remove").addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/wallet/remove", { httpMethod: "POST", proxy: true }
+    ));
+    walletApi.root.addResource("list").addMethod("GET", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/wallet/list", { httpMethod: "GET", proxy: true }
+    ));
+    // Explicit {proxy+} (NOT root.addProxy(), which synthesizes a spurious root ANY->MOCK) for the
+    // address-book routes + a root ANY for exact proxy:true parity (the lambda returns 404 for root /
+    // unknown paths). A specific resource (register/remove/list) is matched ahead of {proxy+}.
+    walletApi.root.addResource("{proxy+}").addMethod("ANY", walletLambdaIntegration);
+    walletApi.root.addMethod("ANY", walletLambdaIntegration);
 
     // 2-4. Governance API (with VotingPowerCertificate + Sponsored Transaction)
     this.governanceApiLambda = new NodejsFunction(this, "GovernanceApiLambda", {
