@@ -15,6 +15,11 @@ const NON_RETRIABLE_PATTERNS = [
   'already locked by a different transaction',
   'not available for consumption',
   'equivocation',
+  // Fullnode pruned the transaction a queryEvents cursor points at. This is
+  // deterministic (the tx is gone for good), so retrying only wastes the
+  // backoff window. Callers that walk event history (e.g. discoverMarketIds)
+  // catch this to stop at the prune boundary instead of crashing.
+  'Could not find the referenced transaction',
 ];
 
 // Transient HTTP/network failures that resolve on their own without

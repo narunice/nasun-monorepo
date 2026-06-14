@@ -26,6 +26,17 @@ const MAX_MARKETS = 500;
 const PAGE_SIZE = 50;
 
 /**
+ * True when queryEvents fails because its cursor points at a transaction the
+ * fullnode has pruned ("Could not find the referenced transaction events
+ * [TransactionDigest(...)]"). A descending walk over the frozen legacy package
+ * always reaches pruned history, so this is end-of-stream, not a failure.
+ */
+function isPrunedEventCursorError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Could not find the referenced transaction/i.test(message);
+}
+
+/**
  * Return all market IDs created by the given package id(s), newest first per
  * package. Deduplicates across pages and across packages.
  *
@@ -49,16 +60,26 @@ export async function discoverMarketIds(
     let cursor: EventId | null | undefined = null;
 
     while (ids.length < MAX_MARKETS) {
-      const page = await withRetry(
-        () =>
-          client.queryEvents({
-            query: { MoveEventType: eventType },
-            cursor: cursor ?? null,
-            limit: PAGE_SIZE,
-            order: 'descending',
-          }),
-        { maxRetries: 4, baseDelayMs: 2000, label: 'discoverMarketIds.queryEvents' },
-      );
+      let page: Awaited<ReturnType<typeof client.queryEvents>>;
+      try {
+        page = await withRetry(
+          () =>
+            client.queryEvents({
+              query: { MoveEventType: eventType },
+              cursor: cursor ?? null,
+              limit: PAGE_SIZE,
+              order: 'descending',
+            }),
+          { maxRetries: 4, baseDelayMs: 2000, label: 'discoverMarketIds.queryEvents' },
+        );
+      } catch (error) {
+        // Pruned history at the cursor: stop paginating this package and keep
+        // the ids already collected. Without this the throw propagates to the
+        // keeper/lp/arb startup, which treats it as fatal and crash-loops under
+        // pm2 (the 200+ restart counts seen on the prediction bots).
+        if (isPrunedEventCursorError(error)) break;
+        throw error;
+      }
 
       for (const event of page.data) {
         const parsed = event.parsedJson as { market_id?: string } | undefined;
