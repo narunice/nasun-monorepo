@@ -33,6 +33,17 @@ const REFERRALS_TABLE = process.env.REFERRALS_TABLE || "nasun-referrals";
 const ACTIVATIONS_TABLE = process.env.ACTIVATIONS_TABLE || "nasun-ecosystem-activations";
 const INTERNAL_CACHE_BUCKET = process.env.INTERNAL_CACHE_BUCKET || "";
 
+// AWS-exit C3b prerequisite: source the wallet->identity map from the box `wallet_owner` table instead of
+// scanning DynamoDB UserWallets. Box-only (post-write-cutover) wallet registrations live ONLY in box PG, so
+// the DynamoDB scan would miss them and the points-scanner would drop their on-chain activity from day+1.
+// When WALLET_MAPPINGS_SOURCE=box, fetch the authoritative bulk map from the box compute /wallet-mappings
+// route (bearer-gated) instead of scanning DynamoDB. Reversible: unset the env -> the DynamoDB scan path.
+// The S3-offload + warm-container cache + { url } response shape are unchanged either way, so the
+// points-scanner (and the chat-server fallback) are unaffected.
+const WALLET_MAPPINGS_SOURCE = process.env.WALLET_MAPPINGS_SOURCE || "ddb";
+const COMPUTE_WALLET_MAPPINGS_URL = process.env.COMPUTE_WALLET_MAPPINGS_URL || "";
+const COMPUTE_BEARER = process.env.COMPUTE_BEARER || "";
+
 // S3 Cache Configuration
 const USER_LIST_CACHE_KEY = "internal/user-list-full-cache.json.gz";
 
@@ -56,6 +67,63 @@ function invalidateReferralReviewCache() {
 // safety margin so cached URLs handed to clients remain usable.
 const WALLET_MAPPINGS_CACHE_TTL_MS = 4 * 60 * 1000;
 let walletMappingsCache: { url: string; ts: number; count: number } | null = null;
+
+// AWS-exit C3b prereq: build the wallet->identity map by scanning DynamoDB UserWallets (legacy source).
+// Superseded by the box wallet_owner read once box-only registrations exist (WALLET_MAPPINGS_SOURCE=box).
+async function scanWalletMappingsFromDynamo(): Promise<Record<string, string>> {
+  const wallets: Record<string, string> = {};
+  let lastKey: Record<string, any> | undefined;
+  do {
+    const result = await dynamoClient.send(
+      new ScanCommand({
+        TableName: USER_WALLETS_TABLE,
+        FilterExpression: "identityId <> :sentinel",
+        ExpressionAttributeValues: { ":sentinel": { S: "WALLET_OWNER" } },
+        ProjectionExpression: "identityId, walletAddress",
+        ...(lastKey && { ExclusiveStartKey: lastKey }),
+      })
+    );
+    for (const item of result.Items || []) {
+      const addr = item.walletAddress?.S;
+      const id = item.identityId?.S;
+      if (addr && id) {
+        wallets[addr.toLowerCase()] = id;
+      }
+    }
+    lastKey = result.LastEvaluatedKey;
+  } while (lastKey);
+  return wallets;
+}
+
+// AWS-exit C3b prereq: fetch the authoritative bulk wallet->identity map from the box compute
+// /wallet-mappings route (bearer-gated, server-to-server). THROWS on any failure (the caller maps it to a
+// 502 -- we do NOT fall back to the DynamoDB scan, because post-write-cutover that scan is missing exactly
+// the box-only wallets this read exists to surface; on a box hiccup the points-scanner keeps its last-good
+// in-memory/disk map instead, which still carries those box-only wallets). Node 22 has global fetch.
+async function fetchWalletMappingsFromBox(): Promise<Record<string, string>> {
+  if (!COMPUTE_WALLET_MAPPINGS_URL || !COMPUTE_BEARER) {
+    throw new Error("WALLET_MAPPINGS_SOURCE=box but COMPUTE_WALLET_MAPPINGS_URL/COMPUTE_BEARER is not set");
+  }
+  const controller = new AbortController();
+  // 12s box budget leaves clear headroom under the API Gateway 29s sync-integration cap for the
+  // downstream ~9MB gzip S3 upload (uploadAndPresign) on a cache MISS, so a slow box degrades to a stale
+  // refresh (scanner keeps its last-good map) rather than a 504 mid-upload.
+  const timeout = setTimeout(() => controller.abort(), 12000);
+  try {
+    const res = await fetch(COMPUTE_WALLET_MAPPINGS_URL, {
+      headers: { authorization: `Bearer ${COMPUTE_BEARER}` },
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`box /wallet-mappings returned HTTP ${res.status}`);
+    const data = (await res.json()) as { wallets?: Record<string, string> };
+    if (!data || typeof data.wallets !== "object" || data.wallets === null || Array.isArray(data.wallets)) {
+      throw new Error("box /wallet-mappings returned an unexpected shape");
+    }
+    return data.wallets;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 interface GenesisWhitelistItem {
   walletAddress: string;
@@ -529,30 +597,23 @@ export const handler: APIGatewayProxyHandler = async (event): Promise<APIGateway
         );
         return jsonResponse(200, { url: walletMappingsCache.url }, requestOrigin);
       }
-      console.log("[internal] Wallet mappings cache MISS, scanning UserWallets");
+      console.log(`[internal] Wallet mappings cache MISS (source=${WALLET_MAPPINGS_SOURCE})`);
 
-      // Scan UserWallets for all registered wallets (exclude WALLET_OWNER sentinel rows)
-      const wallets: Record<string, string> = {};
-      let lastKey: Record<string, any> | undefined;
-      do {
-        const result = await dynamoClient.send(
-          new ScanCommand({
-            TableName: USER_WALLETS_TABLE,
-            FilterExpression: "identityId <> :sentinel",
-            ExpressionAttributeValues: { ":sentinel": { S: "WALLET_OWNER" } },
-            ProjectionExpression: "identityId, walletAddress",
-            ...(lastKey && { ExclusiveStartKey: lastKey }),
-          })
-        );
-        for (const item of result.Items || []) {
-          const addr = item.walletAddress?.S;
-          const id = item.identityId?.S;
-          if (addr && id) {
-            wallets[addr.toLowerCase()] = id;
-          }
+      // AWS-exit C3b prereq: source the map from the box wallet_owner read (includes box-only
+      // registrations) or the legacy DynamoDB UserWallets scan. On a box failure return 502 -- do NOT serve
+      // a DynamoDB scan (it is missing exactly the box-only wallets); the points-scanner keeps its last-good
+      // map (which carries them) on a non-200.
+      let wallets: Record<string, string>;
+      if (WALLET_MAPPINGS_SOURCE === "box") {
+        try {
+          wallets = await fetchWalletMappingsFromBox();
+        } catch (err) {
+          console.error(`[internal] box wallet-mappings failed: ${(err as Error).message}`);
+          return errorResponse(502, "Wallet mappings source unavailable", requestOrigin);
         }
-        lastKey = result.LastEvaluatedKey;
-      } while (lastKey);
+      } else {
+        wallets = await scanWalletMappingsFromDynamo();
+      }
 
       // Genesis Pass holder identification has moved to /internal/ecosystem-activations
       // (Alchemy on-chain snapshot). The legacy drop allowlist is no longer used for

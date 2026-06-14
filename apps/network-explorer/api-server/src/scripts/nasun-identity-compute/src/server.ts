@@ -12,8 +12,9 @@
 // server.mjs (build.mjs), preserving the box "scp one .mjs" contract.
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, WALLET } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, WALLET } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
@@ -69,6 +70,34 @@ async function handleCount() {
   return { count: n, tableName: 'UserProfiles', updatedAt: new Date().toISOString() };
 }
 
+// Constant-time bearer check against COMPUTE_BEARER (parity with the box identity authorized()). Gates
+// the server-to-server /wallet-mappings route (the admin-api wallet-mappings lambda presents this bearer).
+function bearerOk(authHeader: string | undefined): boolean {
+  const presented = authHeader?.startsWith('Bearer ') ? Buffer.from(authHeader.slice(7)) : Buffer.alloc(0);
+  return presented.length === COMPUTE_BEARER.length && timingSafeEqual(presented, COMPUTE_BEARER);
+}
+
+// GET /wallet-mappings -- bearer-gated bulk wallet->identity map for the points-scanner wallet cache.
+// Serves the AUTHORITATIVE box `wallet_owner` reverse index (wallet_address -> owner_identity_id) -- the
+// SAME index the chat-server identity-resolver already reads via DAL. This is the source that includes
+// box-only (post-cutover C3b) wallet registrations that the admin-api lambda's DynamoDB UserWallets scan
+// misses; flipping that lambda to WALLET_MAPPINGS_SOURCE=box (-> this route) is the prerequisite that
+// unblocks the wallet write cutover. wallet_owner (not a user_wallets scan) is also authoritative +
+// DETERMINISTIC: a wallet with a stale duplicate user_wallets row resolves to its true sentinel owner,
+// not scan-order roulette (the lambda's DDB scan can attribute such a wallet to either identity).
+// SELECT-only, schema-qualified; requires the compute PG role to hold SELECT on wallet_owner (GRANT
+// applied box-side before the lambda flips; until then this 500s, but only the bearer-holder reaches it).
+async function handleWalletMappings(): Promise<{ wallets: Record<string, string> }> {
+  const rows = await sql<{ wallet_address: string; owner_identity_id: string }[]>`
+    SELECT wallet_address, owner_identity_id FROM ${sql(SCHEMA)}.wallet_owner
+    WHERE owner_identity_id IS NOT NULL`;
+  const wallets: Record<string, string> = {};
+  // Lower-case the key so the route is authoritative-clean rather than relying on the wallet_owner
+  // lowercase invariant (both consumers re-lowercase on ingest, but make the source self-correcting too).
+  for (const r of rows) wallets[r.wallet_address.toLowerCase()] = r.owner_identity_id;
+  return { wallets };
+}
+
 function readBody(req: IncomingMessage, limitBytes = 16 * 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -112,6 +141,22 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     } catch (e) {
       console.error('[compute] /count failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'internal_error' }, publicCors());
+    }
+  }
+
+  // GET /wallet-mappings -- bearer-gated (COMPUTE_BEARER), server-to-server (admin-api wallet-mappings
+  // lambda). NOT public (returns the full wallet->identity map); no CORS (no browser caller). 401 on a
+  // bad/absent bearer (constant-time). Reachable at issuer.nasun.io/compute/wallet-mappings (nginx strips
+  // /compute/). Inert in effect until the lambda flips to WALLET_MAPPINGS_SOURCE=box.
+  if (req.method === 'GET' && pathname === '/wallet-mappings') {
+    if (!bearerOk(req.headers['authorization'] as string | undefined)) {
+      return send(res, 401, { error: 'unauthorized' }, {});
+    }
+    try {
+      return send(res, 200, await handleWalletMappings(), {});
+    } catch (e) {
+      console.error('[compute] /wallet-mappings failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'internal_error' }, {});
     }
   }
 

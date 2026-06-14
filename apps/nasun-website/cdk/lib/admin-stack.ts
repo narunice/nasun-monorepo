@@ -182,6 +182,14 @@ export class AdminStack extends cdk.Stack {
         // cooldown tombstone) to the box nasun-identity service. FAIL-SAFE: {} when
         // IDENTITY_WRITE_URL/SECRET unset at synth. DynamoDB stays SoT.
         ...identityWriteEnv(),
+        // AWS-exit C3b prereq: source the /internal/wallet-mappings map from the box wallet_owner read
+        // (includes box-only post-cutover registrations) instead of the DynamoDB UserWallets scan. INERT
+        // until WALLET_MAPPINGS_SOURCE=box is set at synth (default empty -> handler uses "ddb"). COMPUTE_*
+        // wire the box compute /wallet-mappings endpoint + its bearer (empty -> the box path is unreachable,
+        // but it is never taken while SOURCE!=box). Flip = set all three in the deploy env and redeploy.
+        WALLET_MAPPINGS_SOURCE: process.env.WALLET_MAPPINGS_SOURCE || "",
+        COMPUTE_WALLET_MAPPINGS_URL: process.env.COMPUTE_WALLET_MAPPINGS_URL || "",
+        COMPUTE_BEARER: process.env.COMPUTE_BEARER || "",
       },
       bundling: {
         minify: true,
