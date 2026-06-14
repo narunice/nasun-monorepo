@@ -11,8 +11,8 @@ interface TotalPointsCardProps {
 }
 
 export function TotalPointsCard({ bare = false }: TotalPointsCardProps = {}) {
-  const { user } = useAuth();
-  const { score, isLoading } = useEcosystemScore(user?.identityId);
+  const { user, logout } = useAuth();
+  const { score, isLoading, isSessionStale } = useEcosystemScore(user?.identityId);
 
   const allTimePoints = score?.allTime.ecosystemScore ?? 0;
   // Percentile is currently hidden in the UI but the hook stays wired so the
@@ -28,7 +28,23 @@ export function TotalPointsCard({ bare = false }: TotalPointsCardProps = {}) {
   const body = (
     <>
       <UjuSectionHeader accent title="Nasun Points" />
-      {isLoading ? (
+      {isSessionStale ? (
+        <div className="flex flex-col items-center justify-center flex-1 min-h-[64px] gap-3 px-2 text-center">
+          <p className="text-sm text-uju-secondary">
+            Your session is out of date, so your points can&apos;t load right
+            now. Please log in again to refresh them.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              void logout();
+            }}
+            className="rounded-full bg-gradient-to-r from-pado-3 to-pado-5 px-5 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            Log in again
+          </button>
+        </div>
+      ) : isLoading ? (
         <div className="flex items-center justify-center flex-1 min-h-[64px]">
           <Spinner size="sm" />
         </div>

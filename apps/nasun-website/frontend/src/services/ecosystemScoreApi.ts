@@ -175,7 +175,20 @@ export async function getEcosystemScore(
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (res.status === 401 || res.status === 403 || res.status === 404) return null;
+  // 404: the identity simply has no score row yet (e.g. a brand-new user) ->
+  // treat as "no data, render 0". 401/403: the bearer token was rejected
+  // server-side (e.g. a persisted session whose issuer signature is no longer
+  // accepted after an auth cutover). The caller gates this request on a token
+  // being present, so a 401 here means a STALE token, not a still-hydrating
+  // one -> surface it as a typed error so the dashboard can prompt a re-login
+  // instead of silently rendering 0 points.
+  if (res.status === 404) return null;
+  if (res.status === 401 || res.status === 403) {
+    throw new EcosystemScoreError(
+      `Ecosystem score auth rejected: ${res.status}`,
+      res.status,
+    );
+  }
   if (!res.ok) {
     throw new EcosystemScoreError(
       `Ecosystem score fetch failed: ${res.status}`,

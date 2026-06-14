@@ -11,6 +11,7 @@ import {
   getEcosystemScore,
   syncEcosystemActivations,
   syncEcosystemTodayActivity,
+  EcosystemScoreError,
   type EcosystemScoreData,
 } from "@/services/ecosystemScoreApi";
 import { queryClient } from "@/lib/queryClient";
@@ -28,6 +29,9 @@ interface UseEcosystemScoreResult {
   score: EcosystemScoreData | null;
   isLoading: boolean;
   isError: boolean;
+  /** True when the persisted bearer token was rejected (401/403) by the score
+   *  endpoint. Signals a stale session that a re-login will fix. */
+  isSessionStale: boolean;
   /** Sync activations cache then refetch score */
   refresh: () => void;
   isRefreshing: boolean;
@@ -72,9 +76,23 @@ export function useEcosystemScore(
     queryFn: () => getEcosystemScore(identityId!, cognitoToken),
     enabled: !!identityId && !!cognitoToken,
     staleTime: 30_000,
-    retry: 1,
+    // A rejected bearer token (401/403) won't recover on retry -> fail fast so
+    // the stale-session prompt shows immediately. Other errors retry once.
+    retry: (failureCount, error) =>
+      error instanceof EcosystemScoreError &&
+      (error.statusCode === 401 || error.statusCode === 403)
+        ? false
+        : failureCount < 1,
     refetchOnWindowFocus: false,
   });
+
+  // True when the user's persisted bearer token was rejected by the score
+  // endpoint (401/403). The dashboard uses this to prompt a re-login instead
+  // of misleadingly rendering 0 points -- the symptom many users hit after an
+  // auth cutover, which they discover is fixed by logging out and back in.
+  const isSessionStale =
+    query.error instanceof EcosystemScoreError &&
+    (query.error.statusCode === 401 || query.error.statusCode === 403);
 
   // Use refs to avoid stale closure in refresh
   const identityIdRef = useRef(identityId);
@@ -121,6 +139,7 @@ export function useEcosystemScore(
     score: query.data ?? null,
     isLoading: query.isLoading || query.isFetching,
     isError: query.isError,
+    isSessionStale,
     refresh,
     isRefreshing,
     cooldownSeconds,
