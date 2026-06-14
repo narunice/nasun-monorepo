@@ -724,7 +724,11 @@ wss.on('connection', (ws, req) => {
 
   // Pong handler for dead connection detection
   (ws as any)._isAlive = true;
-  ws.on('pong', () => { (ws as any)._isAlive = true; });
+  (ws as any)._missedPongs = 0;
+  ws.on('pong', () => {
+    (ws as any)._isAlive = true;
+    (ws as any)._missedPongs = 0;
+  });
 
   ws.on('message', async (raw) => {
     try {
@@ -1207,13 +1211,27 @@ function handleToggleFollow(
 // ===== Keepalive + Dead Connection Detection =====
 
 const HEARTBEAT_INTERVAL = 30_000;
+// Terminate only after this many consecutive missed pongs. A single missed
+// pong is common on mobile / jittery networks (a delayed pong, a brief radio
+// gap) and previously killed live connections after one 30s cycle, surfacing
+// to users as "cannot send/receive messages" during the reconnect window.
+// Allowing one grace cycle (~60s total) keeps genuinely dead sockets from
+// lingering while sparing healthy-but-laggy clients.
+const MAX_MISSED_PONGS = 2;
 const heartbeatTimer = setInterval(() => {
   for (const [ws, client] of authenticatedClients) {
     if ((ws as any)._isAlive === false) {
-      // Did not respond to previous ping, terminate
-      console.log(`Terminating dead connection: ${client.address}`);
-      ws.terminate();
-      continue;
+      // Did not respond to the previous ping. Give a grace cycle before
+      // terminating so a single late pong does not drop a live client.
+      const missed = ((ws as any)._missedPongs ?? 0) + 1;
+      (ws as any)._missedPongs = missed;
+      if (missed >= MAX_MISSED_PONGS) {
+        console.log(`Terminating dead connection: ${client.address} (missed ${missed} pongs)`);
+        ws.terminate();
+        continue;
+      }
+    } else {
+      (ws as any)._missedPongs = 0;
     }
     (ws as any)._isAlive = false;
     if (ws.readyState === WebSocket.OPEN) {
