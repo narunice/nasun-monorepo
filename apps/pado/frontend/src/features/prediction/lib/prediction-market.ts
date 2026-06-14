@@ -31,6 +31,19 @@ const MAX_MARKETS_DISCOVERY = 1000;
 const MAX_PRICE_LEVELS_PER_SIDE = 200;
 const FETCH_CHUNK_SIZE = 50;
 
+/**
+ * Detects the RPC error raised when a `queryEvents` cursor points at a
+ * transaction the fullnode has pruned ("Could not find the referenced
+ * transaction events [TransactionDigest(...)]"). Descending event walks over
+ * the frozen legacy package inevitably reach pruned history, so callers treat
+ * this as a clean end-of-stream rather than a hard failure that would discard
+ * already-collected results.
+ */
+function isPrunedEventCursorError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /Could not find the referenced transaction/i.test(message);
+}
+
 export async function fetchMarkets(): Promise<PredictionMarket[]> {
   let marketIds: string[] = TEST_MARKETS;
   if (marketIds.length === 0) {
@@ -309,12 +322,22 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
     const ids: string[] = [];
     let cursor: EventId | null | undefined = null;
     while (ids.length < MAX_MARKETS_DISCOVERY) {
-      const page = await client.queryEvents({
-        query: { MoveEventType: eventType },
-        cursor: cursor ?? null,
-        limit: 50,
-        order: 'descending',
-      });
+      let page: Awaited<ReturnType<typeof client.queryEvents>>;
+      try {
+        page = await client.queryEvents({
+          query: { MoveEventType: eventType },
+          cursor: cursor ?? null,
+          limit: 50,
+          order: 'descending',
+        });
+      } catch (error) {
+        // Descending walks over the frozen legacy package reach pruned
+        // history; stop at the prune boundary and keep what we collected so
+        // far instead of throwing (which, under Promise.all below, would
+        // discard the healthy v5 stream too and hide all markets).
+        if (isPrunedEventCursorError(error)) break;
+        throw error;
+      }
       for (const event of page.data) {
         const parsed = event.parsedJson as { market_id?: string } | undefined;
         if (parsed?.market_id) ids.push(parsed.market_id);
