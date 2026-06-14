@@ -1089,9 +1089,13 @@ async function handleVotingIdentity(params) {
     const [owner] = await tx`
       SELECT twitter_handle, is_telegram_member, linked_accounts, linked_to_primary_id
       FROM user_profiles WHERE identity_id = ${ownerIdentityId}`;
-    // Owner profile missing -> resolveUserProfile returns { identityId: ownerIdentityId } only. 404 so
-    // the lambda reproduces that via fallback (rare; an orphan wallet_owner pointer).
-    if (!owner) throw new RouteAbort(404, { error: 'Owner profile not found' });
+    // Owner profile missing -> resolveUserProfile returns { identityId: ownerIdentityId } only (no twitter/
+    // telegram signals). Return 200 with that identity + null/false so the box governance compute (C6b
+    // /certificate) runs the governance_votes dup-vote guard for this identity; a 404 here would make the
+    // box skip the guard -- the only off-chain-guard asymmetry vs the lambda. Safe for the flipped governance
+    // lambda too: its readProfileFromBox now gets {identityId} directly instead of falling back to a DDB
+    // hop-2 that returns the same {identityId}. Rare: an orphan wallet_owner pointer.
+    if (!owner) return { status: 200, body: { identityId: ownerIdentityId, twitterHandle: null, isTelegramMember: false } };
 
     let twitterHandle = owner.twitter_handle || null;
     let isTelegramMember = owner.is_telegram_member === true;
