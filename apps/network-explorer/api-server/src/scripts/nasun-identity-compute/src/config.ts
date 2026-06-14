@@ -173,6 +173,48 @@ export const TELEGRAM = {
   })(),
 };
 
+// --- C5c telegram-verify (write) ------------------------------------------------------------------
+// The route does dual-jwks verify + Telegram Login Widget HMAC verify (telegram-bot-token secret) +
+// getChatMember channel-membership (egress, allowed since C8) + the AUTHORITATIVE box PG set via the
+// identity loopback /telegram/verify (the SAME atomic set+auto-transfer write the flipped verify-telegram
+// lambda already does; box clears any prior owner of the telegram id + sets the new owner in ONE tx) + a
+// BEST-EFFORT consolidated residual call to the leaderboard-v3 internal/telegram-verified lambda (badge
+// SET for the new owner + auto-transfer CLEAR of the prior owner's badge + onboarding bonus -- all the
+// DynamoDB-side secondary work the box cannot do). Box is SoT: the box sets box PG only and does NOT
+// write DynamoDB UserProfiles (the (B) divergence, covered by the reconcile set-direction exclusion).
+// Gated on enabled = ADDITIONAL.enabled (dual-jwks + identity-write-bearer) AND the bot-token secret AND
+// the channel username. When the bot-token is absent the route stays DISABLED (503) -- inert deploy until
+// the secret is provisioned (separate go) and the API Gateway repoints.
+const telegramBotToken = readOptional('telegram-bot-token', 'TELEGRAM_BOT_TOKEN_FILE');
+
+export const TELEGRAM_VERIFY = {
+  enabled: !!(ADDITIONAL.enabled && telegramBotToken && (process.env.COMPUTE_TELEGRAM_CHANNEL_USERNAME || '')),
+  botToken: telegramBotToken || '',
+  // The channel to check membership against (parity with verify-telegram TELEGRAM_CHANNEL_USERNAME,
+  // e.g. 'nasun_official'). Non-secret (ships in the bot config) -> a unit Environment var.
+  channelUsername: process.env.COMPUTE_TELEGRAM_CHANNEL_USERNAME || '',
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: ADDITIONAL.identityWriteBearer,
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // auth_date freshness window: 24h + 300s grace (parity with verify-telegram isAuthDateValid).
+  authMaxAgeSec: 24 * 60 * 60 + 300,
+  // getChatMember egress budget (the ONLY external call on this route). The lambda fetched it untimed
+  // per-invoke; on the long-lived box a wedged socket must be capped. 5s (parity with SALT.egressTimeoutMs)
+  // stays inside the API Gateway 29s integration cap. Same guard: fall back on unset/non-finite/non-positive.
+  telegramApiTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_TELEGRAM_API_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 5000;
+  })(),
+  // Consolidated best-effort residual lambda (leaderboard badge set/clear + onboarding bonus). Reuses the
+  // SAME leaderboard-internal-token the C5b clear presents. Both URL + token must be present or skipped.
+  verifiedResidualUrl: process.env.COMPUTE_TELEGRAM_VERIFIED_URL || '',
+  leaderboardInternalToken: leaderboardInternalToken || '',
+  residualTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_TELEGRAM_RESIDUAL_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 4000;
+  })(),
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

@@ -13,7 +13,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL } from './config';
+import { PORT, HOST, SCHEMA, PG, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, send, RouteAbort } from './http';
 import {
   handleSuiPrepare,
@@ -23,7 +23,17 @@ import {
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
 import { CHAINS } from './additional-chains';
-import { readProfileByIdentity, disconnectTelegramBox, clearLeaderboardTelegramRemote } from './clients';
+import {
+  readProfileByIdentity,
+  disconnectTelegramBox,
+  clearLeaderboardTelegramRemote,
+  validateTelegramAuth,
+  verifyTelegramHash,
+  checkChannelMembership,
+  TelegramApiError,
+  verifyTelegramBox,
+  telegramVerifiedResidual,
+} from './clients';
 import { verifyJwtIdentity } from './identity-verify';
 import {
   handleChallenge as handleAdditionalChallenge,
@@ -242,11 +252,80 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // C5c telegram-verify (POST) -- de-Lambda write: dual-jwks + Telegram Login Widget HMAC verify +
+  // getChatMember channel-membership + the AUTHORITATIVE box PG set via the identity loopback
+  // /telegram/verify (atomic clear-prior-owner + set-new-owner; box-only, NO DynamoDB UserProfiles write
+  // -- the (B) divergence, covered by the reconcile set-direction exclusion) + a BEST-EFFORT consolidated
+  // residual (leaderboard badge set/clear + onboarding bonus). Box is SoT. Precedence byte-parity with the
+  // verify-telegram lambda: OPTIONS -> 405 -> 503(disabled/no-channel) -> 401(auth) -> 403(no profile) ->
+  // 200(already verified) -> 400(bad body) -> 401(bad hash) -> 401(expired) -> 400/503(membership) ->
+  // 400(not member) -> 200.
+  if (pathname === '/telegram/verify') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = additionalCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    if (!TELEGRAM_VERIFY.enabled) return send(res, 503, { error: 'telegram verify compute not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { error: 'Unauthorized' }, cors);
+      const boxed = await readProfileByIdentity(identityId);
+      if (!boxed) return send(res, 403, { error: 'User profile not found' }, cors);
+      // Idempotent: already verified (parity with the lambda's early 200).
+      if (boxed.isTelegramMember === true) {
+        return send(res, 200, { success: true, alreadyVerified: true, telegramUsername: boxed.telegramUsername ?? null }, cors);
+      }
+      const body = parseJson(await readBody(req));
+      const telegramAuth = validateTelegramAuth((body as Record<string, unknown>)?.telegramAuth);
+      if (!telegramAuth) return send(res, 400, { error: 'Invalid request' }, cors);
+      // Telegram Login Widget HMAC (constant-time) -> 401 on mismatch.
+      if (!verifyTelegramHash(telegramAuth, TELEGRAM_VERIFY.botToken)) {
+        return send(res, 401, { error: 'Invalid Telegram auth' }, cors);
+      }
+      // auth_date freshness (replay guard) -> 401 if stale.
+      if (Math.floor(Date.now() / 1000) - telegramAuth.auth_date >= TELEGRAM_VERIFY.authMaxAgeSec) {
+        return send(res, 401, { error: 'Expired Telegram auth' }, cors);
+      }
+      // Channel membership (fail-closed: 4xx client error -> 400, else 503).
+      let membership: { isMember: boolean; status: string };
+      try {
+        membership = await checkChannelMembership(
+          TELEGRAM_VERIFY.botToken, TELEGRAM_VERIFY.channelUsername, telegramAuth.id, TELEGRAM_VERIFY.telegramApiTimeoutMs,
+        );
+      } catch (err) {
+        if (err instanceof TelegramApiError && err.isClientError) {
+          return send(res, 400, { error: 'Telegram verification failed' }, cors);
+        }
+        console.error('[compute] /telegram/verify getChatMember failed:', err instanceof Error ? err.message : err);
+        return send(res, 503, { error: 'Telegram API unavailable' }, cors);
+      }
+      if (!membership.isMember) {
+        return send(res, 400, { error: 'Not a channel member', channelUsername: TELEGRAM_VERIFY.channelUsername }, cors);
+      }
+      const telegramUserId = String(telegramAuth.id);
+      const telegramUsername = telegramAuth.username ? telegramAuth.username.toLowerCase() : null;
+      // Authoritative box set (atomic set + auto-transfer; throws -> 500). DynamoDB NOT written (box=SoT).
+      await verifyTelegramBox(identityId, telegramUserId, telegramUsername);
+      // Best-effort consolidated residual (leaderboard badge set/clear + onboarding bonus; never throws).
+      await telegramVerifiedResidual({
+        identityId,
+        telegramUserId,
+        telegramUsername,
+        twitterHandle: typeof boxed.twitterHandle === 'string' && boxed.twitterHandle ? boxed.twitterHandle : null,
+      });
+      return send(res, 200, { success: true, telegramUsername }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /telegram/verify failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

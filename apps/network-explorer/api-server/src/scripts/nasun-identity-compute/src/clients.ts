@@ -4,8 +4,8 @@
 // nasun-identity /profile/upsert), so the box end-state is identical to the lambda path. The only
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
-import { createHmac } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM } from './config';
+import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -255,5 +255,155 @@ export async function clearLeaderboardTelegramRemote(twitterHandle: string): Pro
     if (!res.ok) console.warn(`[compute] leaderboard clear-telegram returned HTTP ${res.status} (non-fatal)`);
   } catch (err) {
     console.warn('[compute] leaderboard clear-telegram failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
+}
+
+// --- C5c telegram verify ---------------------------------------------------------------------------
+
+export interface TelegramAuthData {
+  id: number;
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+  auth_date: number;
+  hash: string;
+}
+
+/**
+ * Strict runtime validation of the Telegram Login Widget payload -- byte-parity with verify-telegram.ts
+ * validateTelegramAuth: keep only known fields, require id (positive int), auth_date (positive int), hash
+ * (64-hex). Returns null on any violation. The insertion order (id, auth_date, hash, then optionals) is
+ * irrelevant to the hash check (verifyTelegramHash sorts), but kept identical to the lambda for clarity.
+ */
+export function validateTelegramAuth(raw: unknown): TelegramAuthData | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Record<string, unknown>;
+  const id = Number(obj.id);
+  const auth_date = Number(obj.auth_date);
+  const hash = String(obj.hash || '');
+  if (!Number.isInteger(id) || id <= 0) return null;
+  if (!Number.isInteger(auth_date) || auth_date <= 0) return null;
+  if (!/^[a-f0-9]{64}$/.test(hash)) return null;
+  const validated: TelegramAuthData = { id, auth_date, hash };
+  if (typeof obj.first_name === 'string') validated.first_name = obj.first_name;
+  if (typeof obj.last_name === 'string') validated.last_name = obj.last_name;
+  if (typeof obj.username === 'string') validated.username = obj.username;
+  if (typeof obj.photo_url === 'string') validated.photo_url = obj.photo_url;
+  return validated;
+}
+
+/**
+ * Verify the Telegram Login Widget HMAC -- byte-parity with verify-telegram.ts verifyTelegramHash:
+ * secretKey = sha256(botToken); data-check-string = sorted "key=value" (excluding hash) joined by '\n';
+ * compare hmac-sha256(secretKey, dcs) to the provided hash via timingSafeEqual. Returns false on any
+ * mismatch or length difference (so a forged/short hash never throws).
+ */
+export function verifyTelegramHash(authData: TelegramAuthData, botToken: string): boolean {
+  const secretKey = createHash('sha256').update(botToken).digest();
+  const dataCheckArr: string[] = [];
+  for (const [key, value] of Object.entries(authData)) {
+    if (key === 'hash') continue;
+    if (value !== undefined && value !== null) dataCheckArr.push(`${key}=${value}`);
+  }
+  dataCheckArr.sort();
+  const hmac = createHmac('sha256', secretKey).update(dataCheckArr.join('\n')).digest();
+  const expected = Buffer.from(authData.hash, 'hex');
+  if (hmac.length !== expected.length) return false;
+  return timingSafeEqual(hmac, expected);
+}
+
+/** Telegram Bot API error -- mirrors verify-telegram.ts TelegramApiError (client vs server distinction). */
+export class TelegramApiError extends Error {
+  constructor(public readonly httpStatus: number, public readonly body: string) {
+    super(`Telegram API error: ${httpStatus}`);
+    this.name = 'TelegramApiError';
+  }
+  get isClientError(): boolean {
+    return this.httpStatus >= 400 && this.httpStatus < 500;
+  }
+}
+
+/**
+ * getChatMember channel-membership check (egress) -- byte-parity with verify-telegram.ts
+ * checkChannelMembership: member/administrator/creator => isMember. THROWS TelegramApiError on a non-2xx
+ * (the route fail-closes: 4xx -> 400, else 503). Timed (the lambda was untimed per-invoke; the long-lived
+ * box caps a wedged socket).
+ */
+export async function checkChannelMembership(
+  botToken: string,
+  channelUsername: string,
+  telegramUserId: number,
+  timeoutMs: number,
+): Promise<{ isMember: boolean; status: string }> {
+  const url = `https://api.telegram.org/bot${botToken}/getChatMember?chat_id=@${channelUsername}&user_id=${telegramUserId}`;
+  const res = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new TelegramApiError(res.status, body);
+  }
+  const data = (await res.json()) as { result?: { status?: string } };
+  const status = data.result?.status || 'unknown';
+  return { isMember: ['member', 'administrator', 'creator'].includes(status), status };
+}
+
+/**
+ * POST /telegram/verify { identityId, telegramUserId, telegramUsername } to the identity loopback -- the
+ * AUTHORITATIVE box PG set. Parity with the verify-telegram lambda's
+ * authoritativeIdentityWrite(IDENTITY_ROUTES.telegramVerify): the box does the clear-prior-owner +
+ * set-new-owner in ONE atomic tx (stronger than the lambda's non-atomic sequence). telegramUsername is
+ * always sent (string OR null) so the box merges it into attributes (hasUsername=true). Idempotent UPDATE,
+ * so the single retry is safe. THROWS on failure so the route surfaces 500 rather than a false success.
+ */
+export async function verifyTelegramBox(
+  identityId: string,
+  telegramUserId: string,
+  telegramUsername: string | null,
+): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${TELEGRAM_VERIFY.identityBaseUrl}/telegram/verify`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${TELEGRAM_VERIFY.identityWriteBearer}` },
+        body: JSON.stringify({ identityId, telegramUserId, telegramUsername }),
+        signal: AbortSignal.timeout(TELEGRAM_VERIFY.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`identity /telegram/verify returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * BEST-EFFORT consolidated leaderboard-v3 residual (X-Internal-Auth = leaderboard-internal-token, the SAME
+ * token the C5b clear presents). The lambda does ALL the DynamoDB-side secondary work the box cannot:
+ * auto-transfer CLEAR of any prior owner's leaderboard badge (telegramUserId GSI), badge SET for the new
+ * owner (when twitterHandle present), and the referral-gated onboarding bonus. NEVER throws: the
+ * authoritative box set already succeeded; a leaderboard/onboarding hiccup self-corrects (badge via a
+ * future get-my-rank, bonus is idempotent on re-verify) and must not 500 the user. Skipped when the URL or
+ * token is absent (inert deploy window).
+ */
+export async function telegramVerifiedResidual(payload: {
+  identityId: string;
+  telegramUserId: string;
+  telegramUsername: string | null;
+  twitterHandle: string | null;
+}): Promise<void> {
+  if (!TELEGRAM_VERIFY.verifiedResidualUrl || !TELEGRAM_VERIFY.leaderboardInternalToken) return;
+  try {
+    const res = await fetch(TELEGRAM_VERIFY.verifiedResidualUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-internal-auth': TELEGRAM_VERIFY.leaderboardInternalToken },
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(TELEGRAM_VERIFY.residualTimeoutMs),
+    });
+    if (!res.ok) console.warn(`[compute] telegram-verified residual returned HTTP ${res.status} (non-fatal)`);
+  } catch (err) {
+    console.warn('[compute] telegram-verified residual failed (non-fatal):', err instanceof Error ? err.message : err);
   }
 }

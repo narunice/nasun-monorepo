@@ -447,6 +447,31 @@ export class LeaderboardV3Stack extends cdk.Stack {
       }
     );
 
+    // AWS-exit de-Lambda C5c: consolidated residual called by the box compute /telegram/verify route
+    // AFTER it authoritatively sets the box telegram link. Does all the DynamoDB-side secondary work the
+    // box cannot: auto-transfer clear of any prior owner's leaderboard badge (telegramUserId GSI), badge
+    // SET for the new owner, and the referral-gated onboarding bonus. Does NOT write UserProfiles (box is
+    // SoT). Same internal-token auth. Removed when leaderboard-v3 migrates off DynamoDB.
+    const internalTelegramVerifiedLambda = new NodejsFunction(
+      this,
+      'LeaderboardV3InternalTelegramVerifiedFunction',
+      {
+        ...nodejsFunctionDefaults,
+        functionName: `${envPrefix}nasun-leaderboard-v3-internal-telegram-verified`,
+        entry: path.join(lambdaSrcPath, 'handlers', 'internal-telegram-verified.ts'),
+        handler: 'handler',
+        timeout: cdk.Duration.seconds(15),
+        memorySize: 256,
+        description: 'Leaderboard V3: Telegram-verify DDB secondary (badge set/clear + onboarding, box C5c residual)',
+        environment: {
+          ...lambdaEnvironment,
+          REFERRALS_TABLE: 'nasun-referrals',
+          EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
+          ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || '',
+        },
+      }
+    );
+
     // Admin Blacklist Lambda (Phase 11)
     const adminBlacklistLambda = new NodejsFunction(
       this,
@@ -733,6 +758,14 @@ export class LeaderboardV3Stack extends cdk.Stack {
     this.seasonAccountsTable.grantReadWriteData(internalClearTelegramLambda);
     this.seasonsTable.grantReadData(internalClearTelegramLambda);
 
+    // C5c internal telegram-verified: Account/SeasonAccount write + Seasons read + UserProfiles READ
+    // (telegramUserId GSI dedup + twitterHandle lookup; box owns UserProfiles writes) + referrals read.
+    this.accountsTable.grantReadWriteData(internalTelegramVerifiedLambda);
+    this.seasonAccountsTable.grantReadWriteData(internalTelegramVerifiedLambda);
+    this.seasonsTable.grantReadData(internalTelegramVerifiedLambda);
+    userProfilesTable.grantReadData(internalTelegramVerifiedLambda);
+    nasunReferralsForTelegram.grantReadData(internalTelegramVerifiedLambda);
+
     // Secrets Manager read for Telegram bot token
     verifyTelegramLambda.addToRolePolicy(
       new iam.PolicyStatement({
@@ -755,6 +788,7 @@ export class LeaderboardV3Stack extends cdk.Stack {
     verifyTelegramLambda.addToRolePolicy(userProfilesIndexPolicy);
     generateSnapshotLambda.addToRolePolicy(userProfilesIndexPolicy);
     internalSyncProfileLambda.addToRolePolicy(userProfilesIndexPolicy);
+    internalTelegramVerifiedLambda.addToRolePolicy(userProfilesIndexPolicy); // C5c: telegramUserId GSI dedup
 
     // ============================================
     // API Gateway
@@ -816,10 +850,24 @@ export class LeaderboardV3Stack extends cdk.Stack {
     );
 
     // POST /v3/leaderboard/verify-telegram
+    // AWS-exit de-Lambda C5c: served by the box compute service (nasun-identity-compute) over an API
+    // Gateway HTTP_PROXY, identical to the C5a/C5b telegram cutovers. The box route /telegram/verify does
+    // dual-jwks verify + Telegram Login Widget HMAC verify (telegram-bot-token) + getChatMember membership
+    // + the AUTHORITATIVE box PG set via the identity loopback /telegram/verify (the SAME atomic
+    // set+auto-transfer write the flipped verify-telegram lambda already does) + a BEST-EFFORT consolidated
+    // residual (leaderboard badge set/clear + onboarding bonus) via internal/telegram-verified. Box is SoT:
+    // the box sets box PG only and does NOT write DynamoDB UserProfiles (the (B) divergence, covered by the
+    // reconcile set-direction exclusion). nginx strips /compute/. The RestApi + execute-api URL are
+    // preserved (same resource/method), so no frontend rebuild. OPTIONS preflight stays on the API GW MOCK.
+    // The verifyTelegramLambda stays deployed (still grant*'d) as the rollback lever -- revert this
+    // integration to LambdaIntegration + redeploy to roll back.
     const verifyTelegramResource = leaderboardResource.addResource('verify-telegram');
     verifyTelegramResource.addMethod(
       'POST',
-      new apigw.LambdaIntegration(verifyTelegramLambda)
+      new apigw.HttpIntegration('https://issuer.nasun.io/compute/telegram/verify', {
+        httpMethod: 'POST',
+        proxy: true,
+      }),
     );
 
     // GET /v3/leaderboard/telegram-status
@@ -876,6 +924,13 @@ export class LeaderboardV3Stack extends cdk.Stack {
     internalClearTelegramResource.addMethod(
       'POST',
       new apigw.LambdaIntegration(internalClearTelegramLambda)
+    );
+
+    // POST /v3/leaderboard/internal/telegram-verified (called by box compute /telegram/verify, C5c)
+    const internalTelegramVerifiedResource = internalResource.addResource('telegram-verified');
+    internalTelegramVerifiedResource.addMethod(
+      'POST',
+      new apigw.LambdaIntegration(internalTelegramVerifiedLambda)
     );
 
     // GET /v3/feed/featured
