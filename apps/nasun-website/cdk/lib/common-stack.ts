@@ -282,13 +282,13 @@ export class CommonStack extends cdk.Stack {
     // (IDENTITY_READ_MODE=flip), and an E2E proved the box response is byte-identical (by-wallet + by-identity
     // + 404 + 400 + CORS). The RestApi construct id is unchanged ("UserProfileApi") so the execute-api URL is
     // preserved (baked into the frontend + cross-app builds).
-    // The lambda RETAINS root PATCH (#2b target; profile update; crown-jewel DynamoDB writes) AND the
-    // {proxy+} greedy for SUB-PATHS. The lambda dispatches on httpMethod + event.path, so it serves real
-    // sub-paths: POST /upload-avatar-url (avatar S3 presign, index.ts:703) and GET
-    // /v3/user-profile?walletAddress= (chat-server display-name/avatar + zkLogin verifyAddressExists).
+    // The lambda RETAINS only the {proxy+} greedy for SUB-PATHS. The lambda dispatches on httpMethod +
+    // event.path, so it serves real sub-paths: POST /upload-avatar-url (avatar S3 presign, index.ts:703) and
+    // GET /v3/user-profile?walletAddress= (chat-server display-name/avatar + zkLogin verifyAddressExists).
     // Keeping {proxy+} ANY -> lambda preserves those exactly (proxy:true behavior). Routing changes vs the
-    // old LambdaRestApi: root GET -> box (C7), root POST create -> box (#2a), GET /v3/user-profile -> box
-    // (C7 follow-up). OPTIONS preflight stays an
+    // old LambdaRestApi: root GET -> box (C7), root POST create -> box (#2a), root PATCH update -> box (#2b),
+    // GET /v3/user-profile -> box (C7 follow-up). After #2b the lambda serves ONLY the avatar sub-path +
+    // /v3 read. OPTIONS preflight stays an
     // API-GW MOCK (defaultCorsPreflightOptions). ROLLBACK: revert this block to
     // `new apigw.LambdaRestApi(this, "UserProfileApi", { handler: getUserProfileLambda, proxy: true, ... })`.
     const userProfileApi = new apigw.RestApi(this, "UserProfileApi", {
@@ -321,12 +321,20 @@ export class CommonStack extends cdk.Stack {
       "https://issuer.nasun.io/compute/profile",
       { httpMethod: "POST", proxy: true }
     ));
-    // Root PATCH update stays on the lambda (#2b target; also the rollback target for the reads).
-    userProfileApi.root.addMethod("PATCH", userProfileLambdaIntegration);
+    // Root PATCH update -> box compute (HTTP_PROXY, #2b). The box compute PATCH /compute/profile ports the
+    // lambda update path byte-for-byte (validate -> displayName rate-limit [atomic CAS] -> avatar ban ->
+    // paste-linked sui/solana cross-account collision [anti-Sybil fail-closed] -> box :3211
+    // /profile/attributes-sync, box-only, no DynamoDB). The avatar POST /upload-avatar-url + the S3
+    // delete-on-replace stay on the lambda ({proxy+}; box has no S3 egress). ROLLBACK: revert this PATCH
+    // method to `userProfileLambdaIntegration` + redeploy (the lambda stays live for {proxy+}).
+    userProfileApi.root.addMethod("PATCH", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/profile",
+      { httpMethod: "PATCH", proxy: true }
+    ));
     // {proxy+} greedy -> lambda: the remaining sub-paths stay on the lambda exactly as proxy:true routed
     // them (POST /upload-avatar-url avatar S3 presign). Added as an explicit {proxy+} resource (NOT
     // root.addProxy(), which also synthesizes a spurious root ANY->MOCK method) so the root keeps exactly
-    // GET(->box)/POST/PATCH(->lambda)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
+    // GET/POST/PATCH(->box)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
     const userProfileProxy = userProfileApi.root.addResource("{proxy+}");
     userProfileProxy.addMethod("ANY", userProfileLambdaIntegration);
 
