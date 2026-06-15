@@ -482,13 +482,33 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }
     }
 
-    // 2. Get the primary user's current profile
+    // 2. Get the primary user's current profile.
+    // AWS-exit DAL: after the C3a login cutover a wallet login mints a box-ONLY primary (present in the
+    // box user_profiles SoT, absent from DynamoDB). A DDB-only read here 404s those users on EVERY link
+    // attempt -- and the secondary auto-created in step 1 above is then orphaned in DDB with no box row
+    // (-> reconcile missing_in_box). So on a DDB miss, when the read-flip is on, fall back to the box
+    // `/profile/by-identity` reader (the same DDB-shaped route referral/telegram-status already use).
+    // `primaryFromBox` gates the primary's DDB writes below: a box-only primary must NOT be re-created as
+    // a partial DDB stub (an unconditional UpdateItem would upsert linkedAccounts/updatedAt only, with no
+    // wallet_address/attributes, which the reconcile would flag as a box-vs-DDB field_mismatch). The box
+    // mirror (authoritative /profile/link-sync) is the primary's write path in that case.
     const getPrimaryCommand = new GetCommand({
       TableName: tableName,
       Key: { identityId: primaryIdentityId },
     });
     const primaryProfileResult = await dynamoClient.send(getPrimaryCommand);
-    const primaryProfile = primaryProfileResult.Item;
+    let primaryProfile = primaryProfileResult.Item;
+    let primaryFromBox = false;
+
+    if (!primaryProfile && identityReadFlip()) {
+      const boxPrimary = await readProfileFromBox('/profile/by-identity', { identityId: primaryIdentityId });
+      // readProfileFromBox never throws (null on config-unset / 404 / non-200 / error), so an unreachable
+      // box transparently keeps the legacy 404 below -- no worse than today, and box errors never fail-open.
+      if (boxPrimary && boxPrimary.identityId === primaryIdentityId) {
+        primaryProfile = boxPrimary;
+        primaryFromBox = true;
+      }
+    }
 
     if (!primaryProfile) {
       return {
@@ -933,7 +953,14 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     });
 
     console.log('Updating primary profile with linkedAccounts:', primaryLinkedAccounts);
-    await dynamoClient.send(updatePrimaryCommand);
+    // Box-only primary (no DDB row): skip the DDB UpdateItem. It has no ConditionExpression, so an
+    // unconditional UpdateItem would UPSERT a PARTIAL primary stub (linkedAccounts + updatedAt only, no
+    // wallet_address/provider/attributes), which the box<->DDB reconcile would then flag as a field
+    // mismatch. The authoritative box mirror below (/profile/link-sync) persists the primary's new
+    // linkedAccounts to the box SoT, which is the only place a box-only primary lives.
+    if (!primaryFromBox) {
+      await dynamoClient.send(updatePrimaryCommand);
+    }
 
     // Onboarding bonus grants. PG UNIQUE on (tx_digest, activity_type, event_seq)
     // dedupes (auth-twitter callback also grants x-link on X re-login), so only
@@ -964,8 +991,10 @@ export const handler: APIGatewayProxyHandler = async (event) => {
       }
     }
 
-    // Record X link history (non-blocking, best-effort)
-    if (providerKey === 'twitter') {
+    // Record X link history (non-blocking, best-effort). Skipped for a box-only primary: appendXHistory
+    // is a DDB UpdateItem on the primary row, which would upsert the same partial DDB stub avoided above.
+    // xHistory is DDB-only analytics (not mirrored to the box), so a box-only primary simply forgoes it.
+    if (providerKey === 'twitter' && !primaryFromBox) {
       const xChangeType = primaryProfile.twitterHandle ? 'account_switch' : 'initial_link';
       appendXHistory(dynamoClient, tableName, primaryIdentityId, {
         changeType:   xChangeType,
