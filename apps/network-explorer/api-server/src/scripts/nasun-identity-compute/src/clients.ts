@@ -228,6 +228,90 @@ export async function readAddressOwner(chain: string, address: string, self: str
   return data.ownerIdentityId ?? null;
 }
 
+// --- #2b get-user-profile root PATCH update: 3 box-loopback ops (:3211, NO egress) ----------------
+
+/**
+ * #2b displayName rate-limit: an atomic 2-step CAS on the box user_profiles.attributes counter
+ * (displayNameChangeCount/displayNameChangeWindowStart), a faithful port of the lambda DynamoDB CAS
+ * (index.ts:1035-1096). The NEW box :3211 /profile/display-name-ratelimit route does the whole decision
+ * under SELECT ... FOR UPDATE, so the increment is atomic (serializes concurrent same-identity renames);
+ * the box owns the conditional logic, this client only passes the bounds. Returns { limited } (true => the
+ * caller returns 429). THROWS on a 404 (no profile) or any non-2xx / transport error -> the PATCH 500s
+ * rather than silently letting a rate-limited rename through. The counter is monotonic (no rollback), lambda
+ * parity, so this is NOT retried (a retry would double-increment).
+ */
+export async function checkDisplayNameRateLimit(
+  identityId: string,
+  rateLimitMax: number,
+  rateLimitWindowMs: number,
+): Promise<{ limited: boolean }> {
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/display-name-ratelimit`, {
+    method: 'POST',
+    headers: identityHeaders(),
+    body: JSON.stringify({ identityId, max: rateLimitMax, windowMs: rateLimitWindowMs }),
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`display-name-ratelimit returned HTTP ${res.status}`);
+  const data = (await res.json().catch(() => null)) as { ok?: boolean; limited?: boolean } | null;
+  if (!data || (data.ok !== true && data.limited !== true)) {
+    throw new Error('display-name-ratelimit returned an incomplete response');
+  }
+  return { limited: data.limited === true };
+}
+
+/**
+ * #2b cross-account collision: GET the NEW box :3211 /profile/linked-address-owner -> the FIRST OTHER
+ * owner identityId of this paste-based linked address, or null. Parity with the lambda findCrossAccountOwner
+ * (index.ts:374-393), but on the box ROOT attributes.linkedSuiAddress/linkedSolanaAddress -- the existing
+ * readAddressOwner / /profile/address-owner is the WRONG target (it scans the signature-verified
+ * linked_accounts.<chain>, which DELIBERATELY excludes the paste-based root attribute). THROWS on a non-200
+ * so the caller fails CLOSED (503): a uniqueness check that silently returned "no collision" on a box error
+ * would be an anti-Sybil hole.
+ */
+export async function readLinkedAddressOwner(chain: string, address: string, self: string): Promise<string | null> {
+  const qs = new URLSearchParams({ chain, address, self }).toString();
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/linked-address-owner?${qs}`, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`linked-address-owner returned HTTP ${res.status}`);
+  const data = (await res.json()) as { ownerIdentityId?: string | null };
+  return data.ownerIdentityId ?? null;
+}
+
+/**
+ * #2b attribute write: POST the EXISTING box :3211 /profile/attributes-sync (server.mjs:404) with the
+ * validated set/remove maps (box-only, no DynamoDB). The route's ATTRS_SYNC_SET/REMOVE_KEYS already allow
+ * customDisplayName/displayNameUpdatedAt/linkedSuiAddress/linkedSolanaAddress/customAvatarKey/
+ * customAvatarUpdatedAt. THROWS on a non-2xx / transport error so a failed authoritative write never looks
+ * like success (the PATCH 500s). Retries once -- the merge is idempotent (re-applying the same set/remove
+ * is a no-op) and does NOT touch the rate-limit counter (no double-increment risk).
+ */
+export async function syncProfileAttributes(
+  identityId: string,
+  set: Record<string, string>,
+  remove: string[],
+): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/attributes-sync`, {
+        method: 'POST',
+        headers: identityHeaders(),
+        body: JSON.stringify({ identityId, set, remove }),
+        signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`attributes-sync returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
 /**
  * POST /profile/linked-account-merge with a whole-subobject compare-and-swap (Option B). expectedCurrent
  * is the EXACT linked_accounts.<provider> value the compute read before computing `account`; the box

@@ -173,6 +173,25 @@ export const PROFILE_WRITE = {
   enabled: process.env.COMPUTE_PROFILE_WRITE_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
 };
 
+// --- #2b get-user-profile root PATCH update (write) -----------------------------------------------
+// De-Lambda of the get-user-profile PATCH path (displayName / linked sui+solana / avatarKey). Parity with
+// the lambda PATCH (index.ts:883-1312): verifyJwt -> validate -> displayName rate-limit (atomic 2-step CAS)
+// -> avatar ban -> cross-account collision (anti-Sybil, fail-closed) -> box :3211 /profile/attributes-sync
+// write (box-only, no DynamoDB). The rate-limit counter (displayNameChangeCount/displayNameChangeWindowStart)
+// lives in box user_profiles.attributes; the atomic CAS is a NEW :3211 /profile/display-name-ratelimit route;
+// the cross-account uniqueness check is a NEW :3211 GET /profile/linked-address-owner (the existing
+// /profile/address-owner targets the signature-verified linked_accounts.<chain>, NOT the paste-based root
+// linkedSuiAddress/linkedSolanaAddress). avatar POST /upload-avatar-url + the best-effort S3
+// delete-on-replace STAY on the lambda (the box has no S3 egress); only the customAvatarKey attribute is
+// ported. Gated on a DEDICATED COMPUTE_PROFILE_PATCH_ENABLED=1 flag (NOT the #2a PROFILE_WRITE flag, which
+// is already live) so PATCH deploys INERT (503) until its own cutover repoints the API Gateway root PATCH.
+export const PROFILE_PATCH = {
+  enabled: process.env.COMPUTE_PROFILE_PATCH_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  // RATE_LIMIT_MAX/RATE_LIMIT_WINDOW_DAYS byte-parity with the lambda (index.ts:27-30): 15 changes / 30 days.
+  rateLimitMax: (() => { const o = parseInt(process.env.RATE_LIMIT_MAX || '15', 10); return Number.isInteger(o) && o > 0 ? o : 15; })(),
+  rateLimitWindowMs: (() => { const d = parseInt(process.env.RATE_LIMIT_WINDOW_DAYS || '30', 10); return (Number.isInteger(d) && d > 0 ? d : 30) * 24 * 60 * 60 * 1000; })(),
+};
+
 // --- C3b wallet register/remove/list (crown-jewel ownership writes + list read) -------------------
 // De-Lambda of the wallet-api lambda's multi-wallet routes: POST /register, POST /remove, GET /list.
 // register does dual-jwks verify (VERIFY.audience) + the wallet-proof HMAC (walletProofSecret, the SAME

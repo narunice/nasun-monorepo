@@ -14,7 +14,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, WALLET } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
@@ -30,6 +30,9 @@ import {
   readProfileByIdentity,
   readProfileByWallet,
   createProfileMirror,
+  checkDisplayNameRateLimit,
+  readLinkedAddressOwner,
+  syncProfileAttributes,
   disconnectTelegramBox,
   clearLeaderboardTelegramRemote,
   validateTelegramAuth,
@@ -40,6 +43,13 @@ import {
   telegramVerifiedResidual,
 } from './clients';
 import { verifyJwtIdentity } from './identity-verify';
+import {
+  type LinkChain,
+  LINK_FIELD,
+  validateDisplayName,
+  validateLinkedAddress,
+  validateAvatarKey,
+} from './profile-validation';
 import {
   handleChallenge as handleAdditionalChallenge,
   handleVerify as handleAdditionalVerify,
@@ -556,6 +566,137 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       }
     }
 
+    // PATCH -- #2b de-Lambda get-user-profile UPDATE. Byte-parity with the lambda PATCH (index.ts:883-1312):
+    // verifyJwt -> JSON -> linkedEthereum 410 -> collect+validate (displayName/linked sui+solana/avatarKey,
+    // 400) -> empty guard 400 -> displayName rate-limit (atomic CAS via box :3211, 429) -> avatar ban (403)
+    // -> cross-account collision (anti-Sybil fail-closed, 409/503) -> box :3211 /profile/attributes-sync
+    // (box-only, no DynamoDB) -> re-read 200. Gated on PROFILE_PATCH.enabled (COMPUTE_PROFILE_PATCH_ENABLED=1)
+    // so the box-direct PATCH is INERT (503) until the API GW root PATCH is repointed at cutover. RESIDUALS
+    // dropped vs the lambda (best-effort, TTL-bounded): the S3 avatar delete-on-replace (no S3 egress) and
+    // the chat-server/explorer/leaderboard cache-invalidation webhooks (those caches self-expire; the SoT
+    // box + my-account reflect the change immediately).
+    if (req.method === 'PATCH') {
+      if (!PROFILE_PATCH.enabled) return send(res, 503, { message: 'profile patch compute not enabled' }, cors);
+      try {
+        const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+        if (!identityId) return send(res, 401, { message: 'Authentication required' }, cors);
+        const raw = await readBody(req);
+        let patchData: any;
+        try { patchData = JSON.parse(raw || '{}'); } catch { return send(res, 400, { message: 'Invalid JSON body' }, cors); }
+        if (!patchData || typeof patchData !== 'object' || Array.isArray(patchData)) {
+          return send(res, 400, { message: 'Invalid JSON body' }, cors);
+        }
+        if ('linkedEthereumAddress' in patchData) {
+          return send(res, 410, { message: 'linkedEthereumAddress paste-link is deprecated. Use the verified MetaMask flow to link an EVM wallet.' }, cors);
+        }
+        // collect + validate (all 400s before any write/side-effect, lambda order)
+        const hasDisplayName = 'displayName' in patchData && typeof patchData.displayName === 'string';
+        const hasAvatarKey = 'avatarKey' in patchData;
+        const linkedInputs: Partial<Record<LinkChain, string | null>> = {};
+        for (const { key, chain } of [
+          { key: 'linkedSuiAddress', chain: 'sui' as LinkChain },
+          { key: 'linkedSolanaAddress', chain: 'solana' as LinkChain },
+        ]) {
+          if (!(key in patchData)) continue;
+          const v = patchData[key];
+          if (v === null || v === '') linkedInputs[chain] = null;
+          else if (typeof v === 'string') linkedInputs[chain] = v;
+          else return send(res, 400, { message: `Invalid value for ${key}` }, cors);
+        }
+        const hasLinkedInputs = Object.keys(linkedInputs).length > 0;
+        if (!hasDisplayName && !hasAvatarKey && !hasLinkedInputs) {
+          return send(res, 400, { message: 'No valid fields to update' }, cors);
+        }
+        let validatedDisplayName: string | undefined;
+        if (hasDisplayName) {
+          const r = validateDisplayName(patchData.displayName as string);
+          if (!r.ok) return send(res, 400, { message: r.message }, cors);
+          validatedDisplayName = r.value;
+        }
+        const validatedLinks: Partial<Record<LinkChain, string | null>> = {};
+        for (const [chain, rawv] of Object.entries(linkedInputs) as [LinkChain, string | null][]) {
+          if (rawv === null) { validatedLinks[chain] = null; continue; }
+          const r = validateLinkedAddress(chain, rawv);
+          if (!r.ok) return send(res, 400, { message: r.message }, cors);
+          validatedLinks[chain] = r.value;
+        }
+        let validatedAvatarKey: string | null | undefined;
+        if (hasAvatarKey) {
+          const av = patchData.avatarKey;
+          if (av === null || av === '') validatedAvatarKey = null;
+          else if (typeof av === 'string') {
+            const r = validateAvatarKey(identityId, av);
+            if (!r.ok) return send(res, 400, { message: r.message }, cors);
+            validatedAvatarKey = r.value;
+          } else {
+            return send(res, 400, { message: 'Invalid avatarKey: must match profile-images/<your-id>/<uuid>.{png|jpg|jpeg|webp}' }, cors);
+          }
+        }
+        // existence (404) -- the lambda's main UpdateItem ConditionExpression attribute_exists. Pulled to the
+        // front of the side-effecting phase: a box attributes-sync UPDATE on a missing row is a 0-row no-op,
+        // so the 404 must be an explicit pre-check (a missing-profile PATCH is a non-occurring edge -- a JWT
+        // holder has a profile from login -- so the order vs the lambda's late 404 is immaterial). The
+        // customAvatarBanned flag is read from this same unified profile.
+        const existing = await readProfileByIdentity(identityId);
+        if (!existing) return send(res, 404, { message: 'User profile not found' }, cors);
+        // displayName rate-limit (atomic CAS on the box counter; lambda runs this BEFORE ban/collision)
+        if (validatedDisplayName !== undefined) {
+          const rl = await checkDisplayNameRateLimit(identityId, PROFILE_PATCH.rateLimitMax, PROFILE_PATCH.rateLimitWindowMs);
+          if (rl.limited) {
+            const windowDays = Math.round(PROFILE_PATCH.rateLimitWindowMs / (24 * 60 * 60 * 1000));
+            return send(res, 429, {
+              code: 'RATE_LIMITED',
+              message: `Display name change limit reached (${PROFILE_PATCH.rateLimitMax} per ${windowDays} days).`,
+              retryAfter: Math.round(PROFILE_PATCH.rateLimitWindowMs / 1000),
+            }, cors);
+          }
+        }
+        // avatar ban (only when SETTING a new key, not clearing)
+        if (validatedAvatarKey !== undefined && validatedAvatarKey !== null && existing.customAvatarBanned === true) {
+          return send(res, 403, { code: 'AVATAR_BANNED', message: 'Avatar uploads disabled. Contact support.', profile: existing }, cors);
+        }
+        // cross-account collision (anti-Sybil, FAIL-CLOSED): for each linked address being SET (not cleared)
+        for (const [chain, addr] of Object.entries(validatedLinks) as [LinkChain, string | null][]) {
+          if (!addr) continue;
+          let priorOwner: string | null;
+          try {
+            priorOwner = await readLinkedAddressOwner(chain, addr, identityId);
+          } catch {
+            return send(res, 503, { code: 'COLLISION_CHECK_UNAVAILABLE', chain, message: 'Could not verify address uniqueness. Please retry shortly.' }, cors);
+          }
+          if (priorOwner) {
+            return send(res, 409, { code: 'ADDRESS_ALREADY_LINKED', chain, message: `This ${chain} address is already linked to another account. Unlink it from the other account first, or contact support.` }, cors);
+          }
+        }
+        // build the box attributes-sync set/remove maps (real field names; updatedAt NOT touched, parity with
+        // the lambda's box mirror which excludes updatedAt so it cannot drift vs the frozen DDB follower).
+        const nowIso = new Date().toISOString();
+        const set: Record<string, string> = {};
+        const remove: string[] = [];
+        if (validatedDisplayName !== undefined) {
+          set.customDisplayName = validatedDisplayName;
+          set.displayNameUpdatedAt = nowIso;
+        }
+        for (const [chain, addr] of Object.entries(validatedLinks) as [LinkChain, string | null][]) {
+          const field = LINK_FIELD[chain];
+          if (addr === null) remove.push(field);
+          else set[field] = addr;
+        }
+        if (validatedAvatarKey !== undefined) {
+          set.customAvatarUpdatedAt = nowIso;
+          if (validatedAvatarKey === null) remove.push('customAvatarKey');
+          else set.customAvatarKey = validatedAvatarKey;
+        }
+        await syncProfileAttributes(identityId, set, remove);
+        const unified = await readProfileByIdentity(identityId);
+        return send(res, 200, unified ?? { success: true }, cors);
+      } catch (e) {
+        if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+        console.error('[compute] /profile PATCH failed:', e instanceof Error ? e.message : e);
+        return send(res, 500, { message: 'Internal server error' }, cors);
+      }
+    }
+
     if (req.method !== 'GET') return send(res, 405, { message: 'Method Not Allowed' }, cors);
     if (!PROFILE_READ.enabled) return send(res, 503, { message: 'profile read compute not enabled' }, cors);
     try {
@@ -588,7 +729,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

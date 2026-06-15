@@ -656,6 +656,76 @@ async function handleProfileStatus(body) {
   return { status: 200, body: { identityId } };
 }
 
+// --- POST /profile/display-name-ratelimit  { identityId, max, windowMs } --------------------------
+// #2b get-user-profile PATCH displayName rate-limit -- the atomic 2-step CAS the lambda did on DynamoDB
+// (get-user-profile/index.ts:1035-1096) ported to box PG. The counter lives in attributes JSONB:
+// displayNameChangeCount (JSON number) + displayNameChangeWindowStart (ISO string), both already mirrored
+// by dal-reload. The whole decision runs under SELECT ... FOR UPDATE so concurrent same-identity renames
+// serialize (== the DynamoDB conditional ADD). ★ displayNameChangeCount MUST stay a JSON number: dal-reload
+// unmarshalls the DDB N to a JS number and reconcile deep-compares attributes, so a string would drift --
+// to_jsonb(int) keeps it a number (same trap handleProfileStatus.deletionScheduledAt documents). Does NOT
+// touch updated_at (the DDB CAS does not; bumping it would guarantee a reconcile mismatch vs the frozen
+// DDB). Returns { ok:true } (incremented) or { limited:true } (cap reached). A missing row -> 404 (a TOCTOU
+// vs the compute's existence pre-check; the compute maps it to 500). max/windowMs come from the compute
+// (RATE_LIMIT_MAX=15 / 30 days), validated here.
+async function handleDisplayNameRateLimit(body) {
+  const identityId = str(body.identityId);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  const max = Number(body.max);
+  const windowMs = Number(body.windowMs);
+  if (!Number.isInteger(max) || max <= 0) throw new RouteAbort(400, { error: 'max must be a positive integer' });
+  if (!Number.isFinite(windowMs) || windowMs <= 0) throw new RouteAbort(400, { error: 'windowMs must be a positive number' });
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`SELECT attributes FROM user_profiles WHERE identity_id = ${identityId} FOR UPDATE`;
+    if (rows.length === 0) throw new RouteAbort(404, { error: 'profile not found' });
+    const attrs = rows[0].attributes || {};
+    const cnt = Number.isInteger(attrs.displayNameChangeCount) ? attrs.displayNameChangeCount : null;
+    const ws = typeof attrs.displayNameChangeWindowStart === 'string' ? attrs.displayNameChangeWindowStart : null;
+    const nowIso = new Date().toISOString();
+    const cutoffIso = new Date(Date.now() - windowMs).toISOString();
+    let newCnt;
+    let newWs;
+    if (cnt === null || ws === null) { newCnt = 1; newWs = nowIso; }        // first-ever change
+    else if (ws < cutoffIso) { newCnt = 1; newWs = nowIso; }               // window expired -> reset
+    else if (cnt < max) { newCnt = cnt + 1; newWs = ws; }                  // within window, under cap
+    else { return { status: 200, body: { limited: true } }; }             // cap reached -> no write
+    await tx`
+      UPDATE user_profiles
+      SET attributes = jsonb_set(
+            jsonb_set(COALESCE(attributes, '{}'::jsonb), '{displayNameChangeCount}', to_jsonb(${newCnt}::int)),
+            '{displayNameChangeWindowStart}', to_jsonb(${newWs}::text))
+      WHERE identity_id = ${identityId}`;
+    return { status: 200, body: { ok: true } };
+  });
+}
+
+// --- GET /profile/linked-address-owner?chain=&address=&self= --------------------------------------
+// #2b get-user-profile PATCH cross-account collision -- the FIRST OTHER identity holding this PASTE-based
+// root linked address (attributes.linkedSuiAddress / linkedSolanaAddress), or null. Parity with the lambda
+// findCrossAccountOwner (index.ts:374-393, exact match `#f=:addr AND identityId<>:self`). ★ This is NOT
+// /profile/address-owner: that route scans the signature-verified linked_accounts.<chain> and DELIBERATELY
+// excludes the paste-based root attribute. The compute normalizes before calling (sui lower-cased, solana
+// case-preserved) and the PATCH stores the normalized value, so exact match is correct. Seq-scan at
+// prototype scale (== the lambda DynamoDB Scan); add an expression index if it grows.
+async function handleLinkedAddressOwner(params) {
+  const chain = str(params.get('chain'));
+  if (chain !== 'sui' && chain !== 'solana') throw new RouteAbort(400, { error: 'chain must be sui or solana' });
+  const address = str(params.get('address'));
+  if (!address || address.length > 256) throw new RouteAbort(400, { error: 'address required' });
+  const self = str(params.get('self'));
+  if (!self || self.length > 256) throw new RouteAbort(400, { error: 'self required' });
+  const field = chain === 'sui' ? 'linkedSuiAddress' : 'linkedSolanaAddress';
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id FROM user_profiles
+      WHERE attributes->>${field} = ${address} AND identity_id <> ${self}
+      LIMIT 1`;
+    return { status: 200, body: { ownerIdentityId: rows.length ? rows[0].identity_id : null } };
+  });
+}
+
 // --- POST /profile/delete -------------------------------------------------------------
 // purge-deactivated-accounts mirror. This is the box's FIRST row-DELETE route (every other route is
 // UPDATE/INSERT-only). The scheduled purge job DeleteItem's a UserProfiles row by identityId (after
@@ -738,6 +808,7 @@ const ROUTES = {
   '/telegram/verify': handleTelegramVerify,
   '/telegram/disconnect': handleTelegramDisconnect,
   '/profile/attributes-sync': handleProfileAttributesSync,
+  '/profile/display-name-ratelimit': handleDisplayNameRateLimit,
   '/profile/create-mirror': handleProfileCreateMirror,
   '/profile/batch': handleProfileBatch,
   '/profile/linked-account-merge': handleLinkedAccountMerge,
@@ -1205,6 +1276,7 @@ const GET_ROUTES = {
   '/profile/by-metamask-address': handleProfileByMetamaskAddress,
   '/profile/voting-identity': handleVotingIdentity,
   '/profile/address-owner': handleAddressOwner,
+  '/profile/linked-address-owner': handleLinkedAddressOwner,
 };
 
 function readBody(req) {
