@@ -106,6 +106,20 @@ export function walletCors(origin: string | undefined): Record<string, string> {
   };
 }
 
+// #3a deactivate CORS: byte-parity with the deactivate-user-account lambda corsHeader (index.ts:26-30 +
+// getCorsOrigin): origin-allowlist ACAO matched against the RAW Origin (no trailing-slash strip -- the lambda
+// getCorsOrigin compares the raw header, falling back to ALLOWED_ORIGINS[0]), headers 'Content-Type' (NO
+// Authorization -- the route is no-JWT/no-auth), methods 'DELETE, OPTIONS', NO credentials, NO extra security
+// headers. content-type is set by send() so it is not duplicated here.
+export function deactivateCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type',
+    'access-control-allow-methods': 'DELETE, OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

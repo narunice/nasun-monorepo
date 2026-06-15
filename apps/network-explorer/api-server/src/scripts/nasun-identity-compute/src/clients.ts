@@ -313,6 +313,34 @@ export async function syncProfileAttributes(
 }
 
 /**
+ * #3a deactivate write: POST the EXISTING box :3211 /profile/status (server.mjs handleProfileStatus) to set
+ * status='DEACTIVATED' + deletionScheduledAt (epoch SECONDS, JSON number) box-only (no DynamoDB). The route
+ * is UPDATE-only + idempotent (re-applying the same status/dsa is a no-op + dedups on identityId), so a retry
+ * cannot double-apply. THROWS on a non-2xx / transport error so a failed authoritative write never reports
+ * success (the handler 500s). Mirrors syncProfileAttributes (retries:1 == the lambda's
+ * authoritativeIdentityWrite(IDENTITY_ROUTES.profileStatus, {retries:1})).
+ */
+export async function setDeactivatedStatus(identityId: string, deletionScheduledAt: number): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/status`, {
+        method: 'POST',
+        headers: identityHeaders(),
+        body: JSON.stringify({ identityId, status: 'DEACTIVATED', deletionScheduledAt }),
+        signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`profile/status returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
  * POST /profile/linked-account-merge with a whole-subobject compare-and-swap (Option B). expectedCurrent
  * is the EXACT linked_accounts.<provider> value the compute read before computing `account`; the box
  * writes `account` ONLY if the current value still equals expectedCurrent (IS NOT DISTINCT FROM), else

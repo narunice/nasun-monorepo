@@ -831,19 +831,28 @@ export class CommonStack extends cdk.Stack {
     });
     this.userProfilesTable.grantWriteData(deactivateUserAccountLambda);
 
-    // ✅ identityId 기반 인증: 인증 없이 쿼리 파라미터로 identityId 전달
-    // Lambda 함수 내부에서 DynamoDB 프로필 존재 여부로 검증
-    const deactivateAccountApi = new apigw.LambdaRestApi(this, "DeactivateAccountApi", {
-        handler: deactivateUserAccountLambda,
+    // #3a de-Lambda deactivate-user-account: root DELETE -> box compute (HTTP_PROXY). The box compute
+    // DELETE /compute/profile/deactivate ports the lambda byte-for-byte (no-JWT query identityId+provider ->
+    // loopback read provider/status -> 404/200/403 decision -> box :3211 /profile/status box-only write, no
+    // DynamoDB). Converted from LambdaRestApi(proxy:false) to a plain RestApi with the SAME construct id so the
+    // execute-api id is preserved (no frontend rebuild; VITE_DEACTIVATE_USER_API_URL unchanged). Auth was
+    // already NONE at the API GW (the lambda enforced ownership via the DynamoDB provider-match
+    // ConditionExpression, reproduced byte-for-byte by the box handler). OPTIONS preflight stays an API-GW MOCK
+    // (defaultCorsPreflightOptions). ROLLBACK: revert this block to LambdaRestApi(proxy:false) +
+    // root.addMethod('DELETE', new apigw.LambdaIntegration(deactivateUserAccountLambda)) + redeploy (the lambda
+    // stays defined + granted as the rollback target).
+    const deactivateAccountApi = new apigw.RestApi(this, "DeactivateAccountApi", {
         restApiName: "NASUN Deactivate Account API (Common)",
-        proxy: false,
         defaultCorsPreflightOptions: {
             allowOrigins: ALLOWED_ORIGINS,
             allowMethods: ["DELETE", "OPTIONS"],
             allowHeaders: ["Content-Type", "Authorization"],
         },
     });
-    deactivateAccountApi.root.addMethod('DELETE', new apigw.LambdaIntegration(deactivateUserAccountLambda));
+    deactivateAccountApi.root.addMethod('DELETE', new apigw.HttpIntegration(
+        "https://issuer.nasun.io/compute/profile/deactivate",
+        { httpMethod: "DELETE", proxy: true }
+    ));
 
     // 5-3. Purge Deactivated Accounts Lambda (Scheduled)
     const purgeDeactivatedAccountsLambda = new NodejsFunction(this, "PurgeDeactivatedAccountsLambda", {
@@ -860,6 +869,12 @@ export class CommonStack extends cdk.Stack {
         ...identityWriteEnv(),
         USER_PROFILES_TABLE: this.userProfilesTable.tableName,
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
+        // #3a-1 purge scan-source toggle: "box" enumerates the box /profile/deactivated-due route (the box-only
+        // deactivate queue once #3a-2 flips) via IDENTITY_WRITE_URL/SECRET; unset/"ddb" keeps the DynamoDB Scan.
+        // Only emitted when set, so the pre-flip deploy leaves it absent -> the lambda defaults to "ddb"
+        // (byte-identical behavior). Flip by setting PURGE_SCAN_SOURCE=box in the CDK .env + redeploy; rollback
+        // by unsetting + redeploy.
+        ...(process.env.PURGE_SCAN_SOURCE ? { PURGE_SCAN_SOURCE: process.env.PURGE_SCAN_SOURCE } : {}),
       },
       timeout: cdk.Duration.minutes(5),
       logGroup: new logs.LogGroup(this, "PurgeDeactivatedAccountsLogGroup", {

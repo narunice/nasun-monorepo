@@ -54,6 +54,10 @@ export const IDENTITY_ROUTES = {
   // 3d step-2 prerequisite: purge-deactivated-accounts mirror. Row DELETE by identityId (parity with
   // the purge job's unconditional DeleteItem). NULLs self-ref referrers first; touches only user_profiles.
   profileDelete: '/profile/delete',
+  // #3a-1 purge scan-source: box-served list of accounts past their 7-day grace (GET, ?before=<epochSec>).
+  // status=DEACTIVATED AND deletionScheduledAt<=before. Lets the purge job enumerate the box (the box-only
+  // deactivate queue once #3a-2 flips) instead of the frozen DynamoDB follower; returns { accounts:[{ identityId }] }.
+  deactivatedDue: '/profile/deactivated-due',
   // governanceVotes migration: box-served duplicate-vote guard (governance_votes table). vote-claim =
   // INSERT ON CONFLICT DO NOTHING -> { claimed }; vote-release = keyed DELETE -> { released }. Called
   // via authoritativeIdentityWriteJson (needs the JSON result), so box is the authoritative guard.
@@ -217,6 +221,34 @@ export async function authoritativeIdentityWriteJson(
  * wallet absent / box lag), timeout, or network error returns null so the caller falls back to
  * its DynamoDB read. Read-only on the box side (single SELECT), so it cannot mutate the mirror.
  */
+export async function readIdentityRouteOrThrow(
+  path: string,
+  query: Record<string, string>,
+): Promise<Record<string, any>> {
+  // #3a-1 purge scan-source. Uses IDENTITY_WRITE_URL/SECRET (the SAME base + bearer the authoritative writes
+  // present; the box :3211 GET routes share one `authorized()` bearer check with the POST routes), so no new
+  // secret is needed. THROWS on a missing config or any non-200 -- the purge caller MUST fail the run rather
+  // than proceed on an empty/partial list (deleting nothing is safe; deleting on a half-read is NOT). Distinct
+  // from readProfileFromBox (best-effort, returns null, separate IDENTITY_READ_URL creds for read-fallback).
+  const base = process.env.IDENTITY_WRITE_URL;
+  const secret = process.env.IDENTITY_WRITE_SECRET;
+  if (!base || !secret) throw new Error('readIdentityRouteOrThrow: IDENTITY_WRITE_URL/SECRET unset');
+  // Batch-scan read timeout: a 5-min batch job's one-shot read, NOT the 1.5s authoritative-write budget. A COLD
+  // cross-region fetch (Lambda ap-northeast-2 -> box) can exceed 1.5s on the first TLS handshake, and aborting
+  // mid-handshake leaves undici in a state that abends the Node runtime ("Promise never settled"). So this read
+  // uses a dedicated generous default (10s), tunable via IDENTITY_SCAN_TIMEOUT_MS, well inside the 5-min budget.
+  const overrideMs = Number(process.env.IDENTITY_SCAN_TIMEOUT_MS);
+  const timeoutMs = Number.isFinite(overrideMs) && overrideMs > 0 ? overrideMs : 10000;
+  const qs = new URLSearchParams(query).toString();
+  const res = await fetch(`${base.replace(/\/+$/, '')}${path}?${qs}`, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${secret}` },
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+  if (!res.ok) throw new Error(`readIdentityRouteOrThrow ${path} HTTP ${res.status}`);
+  return (await res.json()) as Record<string, any>;
+}
+
 export async function readProfileFromBox(
   path: string,
   query: Record<string, string>,

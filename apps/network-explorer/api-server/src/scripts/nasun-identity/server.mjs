@@ -1003,6 +1003,42 @@ async function handleProfileByIdentity(params) {
   });
 }
 
+// --- GET /profile/deactivated-due?before=<epochSeconds> ------------------------------
+// AWS-exit #3a-1: purge-deactivated-accounts scan-source repoint (DynamoDB Scan -> box). Returns
+// every user_profiles row past its 7-day deletion grace -- status=='DEACTIVATED' AND
+// deletionScheduledAt <= before -- so the purge lambda enumerates box (the box-only deactivate
+// queue once #3a-2 flips) instead of the frozen DynamoDB follower. Byte-parity with the lambda
+// Scan FilterExpression (purge-deactivated-accounts index.ts: `#status = :status AND
+// #deletionScheduledAt <= :now`). The purge lambda needs ONLY identityId (its Cognito unlink +
+// box /profile/delete + DDB DeleteItem are all keyed on identityId; the DDB item never carried
+// login-provider attributes), so this read is sufficient. ★ deletionScheduledAt is a JSON number
+// (epoch SECONDS, handleProfileStatus invariant: the sole writer validates a positive integer),
+// so every DEACTIVATED row casts cleanly; the `~ '^[0-9]{1,18}$'` guard fail-safes a hypothetical
+// non-numeric value by EXCLUDING it (it would then linger and surface in dal-reconcile as an
+// overdue box-extra -- the correct signal). `before` is epoch SECONDS (the lambda passes
+// Math.floor(Date.now()/1000)). Seq-scan at prototype scale (== the lambda full Scan); add an
+// expression index on (attributes->>'status') if it grows. INERT until purge flips PURGE_SCAN_SOURCE=box.
+async function handleDeactivatedDue(params) {
+  const beforeRaw = str(params.get('before'));
+  const before = Number(beforeRaw);
+  if (!beforeRaw || !Number.isInteger(before) || before <= 0) {
+    throw new RouteAbort(400, { error: 'before must be a positive integer (epoch seconds)' });
+  }
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT identity_id, attributes->>'deletionScheduledAt' AS dsa
+      FROM user_profiles
+      WHERE attributes->>'status' = 'DEACTIVATED'
+        AND attributes->>'deletionScheduledAt' ~ '^[0-9]{1,18}$'
+        AND (attributes->>'deletionScheduledAt')::bigint <= ${before}`;
+    return {
+      status: 200,
+      body: { accounts: rows.map((r) => ({ identityId: r.identity_id, deletionScheduledAt: Number(r.dsa) })) },
+    };
+  });
+}
+
 // --- GET /wallet/list?identityId=.. --------------------------------------------------
 // Mirrors wallet-api listWallets (S3.R2): Query UserWallets (identityId AND begins_with(
 // walletAddress,'0x')) -> { wallets: [{ walletAddress, blockchain, label?, registeredAt }] }.
@@ -1277,6 +1313,7 @@ const GET_ROUTES = {
   '/profile/voting-identity': handleVotingIdentity,
   '/profile/address-owner': handleAddressOwner,
   '/profile/linked-address-owner': handleLinkedAddressOwner,
+  '/profile/deactivated-due': handleDeactivatedDue,
 };
 
 function readBody(req) {

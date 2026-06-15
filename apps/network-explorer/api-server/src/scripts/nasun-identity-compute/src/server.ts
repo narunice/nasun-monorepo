@@ -14,8 +14,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
@@ -28,6 +28,7 @@ import { handleZkLoginSalt } from './handlers-zklogin';
 import { CHAINS } from './additional-chains';
 import {
   readProfileByIdentity,
+  setDeactivatedStatus,
   readProfileByWallet,
   createProfileMirror,
   checkDisplayNameRateLimit,
@@ -67,6 +68,10 @@ import {
 const ADDITIONAL_METHODS: Record<string, string> = {
   challenge: 'POST', verify: 'POST', label: 'PATCH', remove: 'DELETE', 'app-binding': 'PATCH',
 };
+
+// #3a deactivate: Cognito identity id (region:uuid) -- byte-parity with the deactivate/purge lambdas and the
+// box :3211 COGNITO_ID_REGEX. Bounds the no-JWT query identityId to a well-formed identity before the loopback.
+const COGNITO_ID_REGEX = /^[a-z]{2}-[a-z]+-\d:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const sql = postgres({
   host: PG.host, port: PG.port, database: PG.database, username: PG.username, password: PG.password,
@@ -725,11 +730,56 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // #3a de-Lambda deactivate-user-account (DELETE /profile/deactivate). Byte-parity with the lambda
+  // (deactivate-user-account/src/index.ts): NO incoming JWT (API GW authorizationType NONE) -- ownership is
+  // the query identityId (Cognito regex) + provider matched against the stored profile, reproducing the
+  // lambda's DDB ConditionExpression. The box has no atomic conditional status route, so the decision is a
+  // loopback READ (:3211 /profile/by-identity) then, on a real deactivation, a loopback WRITE (:3211
+  // /profile/status; box-only PG, NO DynamoDB). Decision ORDER is byte-faithful to the lambda's ALL_OLD
+  // inspection: not-found(404) -> already-DEACTIVATED(200, provider-INDEPENDENT) -> provider-mismatch(403)
+  // -> deactivate(202). The read-then-write TOCTOU is benign (idempotent + provider immutable concurrently).
+  // deactivateCors (origin-allowlist, 'Content-Type', 'DELETE, OPTIONS'; no creds/sec headers, the lambda
+  // corsHeader). Gated on DEACTIVATE.enabled (COMPUTE_DEACTIVATE_ENABLED=1) so the box-direct DELETE is INERT
+  // (503) until the API GW root DELETE is repointed at cutover.
+  if (pathname === '/profile/deactivate') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = deactivateCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'DELETE') return send(res, 405, { message: 'Method Not Allowed' }, cors);
+    if (!DEACTIVATE.enabled) return send(res, 503, { message: 'deactivate compute not enabled' }, cors);
+    try {
+      const params = new URL(req.url || '/', 'http://localhost').searchParams;
+      const identityId = params.get('identityId');
+      const provider = params.get('provider');
+      if (!identityId) return send(res, 400, { message: 'identityId query parameter is required' }, cors);
+      if (!COGNITO_ID_REGEX.test(identityId)) return send(res, 400, { message: 'Invalid identityId format' }, cors);
+      if (!provider || !['Google', 'Twitter', 'MetaMask'].includes(provider)) {
+        return send(res, 400, { message: 'provider query parameter is required (Google, Twitter, or MetaMask)' }, cors);
+      }
+      const profile = await readProfileByIdentity(identityId);
+      if (!profile) return send(res, 404, { message: 'Account not found' }, cors);
+      // already-DEACTIVATED wins over provider-mismatch (lambda: ALL_OLD status check precedes the 403).
+      if (profile.status === 'DEACTIVATED') {
+        return send(res, 200, { message: 'Account is already scheduled for deletion.' }, cors);
+      }
+      if (profile.provider !== provider) {
+        return send(res, 403, { message: 'Provider mismatch. Deactivation denied.' }, cors);
+      }
+      const deletionScheduledAt = Math.floor(Date.now() / 1000) + DEACTIVATE.graceSec;
+      await setDeactivatedStatus(identityId, deletionScheduledAt);
+      return send(res, 202, { message: 'Account deactivation request accepted.' }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /profile/deactivate failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { message: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

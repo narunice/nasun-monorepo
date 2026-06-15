@@ -1,13 +1,18 @@
 import { DynamoDBClient, ScanCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
 import { CognitoIdentityClient, UnlinkIdentityCommand, DescribeIdentityCommand } from "@aws-sdk/client-cognito-identity";
-import { mirrorIdentityWrite, authoritativeIdentityWrite, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
+import { mirrorIdentityWrite, authoritativeIdentityWrite, readIdentityRouteOrThrow, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
 
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE!;
 
 const ddbClient = new DynamoDBClient({});
 const cognitoClient = new CognitoIdentityClient({});
 
-export const handler = async (): Promise<void> => {
+export const handler = async (_event?: unknown, context?: { callbackWaitsForEmptyEventLoop?: boolean }): Promise<void> => {
+  // The box-scan read (PURGE_SCAN_SOURCE=box) uses Node fetch (undici); a kept-alive socket or an aborted-fetch
+  // timer can leave the event loop non-empty, which under the default callbackWaitsForEmptyEventLoop=true abends
+  // the runtime ("Runtime.NodeJsExit: Promise never settled") instead of returning. Every real operation below
+  // is awaited, so finalizing as soon as the handler promise settles is safe (and matches the DynamoDB path).
+  if (context) context.callbackWaitsForEmptyEventLoop = false;
   console.log("[AccountPurge] Starting job to purge deactivated accounts.");
 
   const now = Math.floor(Date.now() / 1000);
@@ -15,30 +20,50 @@ export const handler = async (): Promise<void> => {
   let lastEvaluatedKey: any = undefined;
 
   try {
-    // 1. Scan for accounts due for deletion
-    do {
-      const scanCmd = new ScanCommand({
-        TableName: USER_PROFILES_TABLE,
-        FilterExpression: "#status = :status AND #deletionScheduledAt <= :now",
-        ExpressionAttributeNames: {
-          "#status": "status",
-          "#deletionScheduledAt": "deletionScheduledAt",
-        },
-        ExpressionAttributeValues: {
-          ":status": { S: "DEACTIVATED" },
-          ":now": { N: String(now) },
-        },
-        ExclusiveStartKey: lastEvaluatedKey,
-      });
-
-      const { Items, LastEvaluatedKey } = await ddbClient.send(scanCmd);
-      if (Items) {
-        accountsToPurge.push(...Items);
+    // 1. Enumerate accounts due for deletion (status=DEACTIVATED AND deletionScheduledAt<=now).
+    const scanSource = (process.env.PURGE_SCAN_SOURCE || "ddb").toLowerCase();
+    if (scanSource === "box") {
+      // #3a-1: enumerate the box (the box-only deactivate queue once #3a-2 flips) instead of the frozen
+      // DynamoDB follower. The box /profile/deactivated-due route returns every status=DEACTIVATED row with
+      // deletionScheduledAt<=before. The purge needs ONLY identityId -- the Cognito unlink + box /profile/delete
+      // + DynamoDB DeleteItem below all key on identityId; the DynamoDB item never carried login-provider
+      // attributes, so the per-login `account[login]?.S` was already always undefined (-> ''), so a box item
+      // carrying only identityId is byte-faithful. A box read failure THROWS -> the run aborts and retries next
+      // day (parity with the DynamoDB Scan's throw; deleting nothing is safe, a half-read deletion is NOT).
+      // Reversible: PURGE_SCAN_SOURCE unset/"ddb" falls back to the DynamoDB Scan below.
+      const out = await readIdentityRouteOrThrow(IDENTITY_ROUTES.deactivatedDue, { before: String(now) });
+      const accounts = Array.isArray(out?.accounts) ? out.accounts : [];
+      for (const a of accounts) {
+        if (a && typeof a.identityId === "string" && a.identityId) {
+          accountsToPurge.push({ identityId: { S: a.identityId } });
+        }
       }
-      lastEvaluatedKey = LastEvaluatedKey;
-    } while (lastEvaluatedKey);
+    } else {
+      // DynamoDB Scan (default; pre-#3a-1 and the rollback path).
+      do {
+        const scanCmd = new ScanCommand({
+          TableName: USER_PROFILES_TABLE,
+          FilterExpression: "#status = :status AND #deletionScheduledAt <= :now",
+          ExpressionAttributeNames: {
+            "#status": "status",
+            "#deletionScheduledAt": "deletionScheduledAt",
+          },
+          ExpressionAttributeValues: {
+            ":status": { S: "DEACTIVATED" },
+            ":now": { N: String(now) },
+          },
+          ExclusiveStartKey: lastEvaluatedKey,
+        });
 
-    console.log(`[AccountPurge] Found ${accountsToPurge.length} accounts to purge.`);
+        const { Items, LastEvaluatedKey } = await ddbClient.send(scanCmd);
+        if (Items) {
+          accountsToPurge.push(...Items);
+        }
+        lastEvaluatedKey = LastEvaluatedKey;
+      } while (lastEvaluatedKey);
+    }
+
+    console.log(`[AccountPurge] Found ${accountsToPurge.length} accounts to purge (source=${scanSource}).`);
 
     // 2. Process each account for deletion. ORDER (AWS-exit DAL 3d step-2): the box delete runs BEFORE
     //    the DynamoDB DeleteItem -- the opposite of the dual-write routes -- so DynamoDB (this job's

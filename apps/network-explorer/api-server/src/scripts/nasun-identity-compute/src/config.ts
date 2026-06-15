@@ -192,6 +192,24 @@ export const PROFILE_PATCH = {
   rateLimitWindowMs: (() => { const d = parseInt(process.env.RATE_LIMIT_WINDOW_DAYS || '30', 10); return (Number.isInteger(d) && d > 0 ? d : 30) * 24 * 60 * 60 * 1000; })(),
 };
 
+// --- #3a deactivate-user-account (write) ----------------------------------------------------------
+// De-Lambda of nasun-common-deactivate-user-account (DELETE). Parity with the lambda (index.ts): NO
+// incoming JWT (API GW authorizationType NONE) -- ownership is the query identityId (Cognito regex) +
+// provider (Google|Twitter|MetaMask) matched against the stored profile, EXACTLY as the lambda's DDB
+// ConditionExpression. The handler reproduces the 404/200/403/202 decision via a loopback READ (:3211
+// /profile/by-identity) then, on a real deactivation, a loopback WRITE (:3211 /profile/status; box-only PG,
+// NO DynamoDB -- the (B) divergence, covered by the reconcile deactivate field/extra exclusions). NO
+// VERIFY.audience dep (there is no JWT to verify); the box loopback reuses ADDITIONAL.identityWriteBearer/
+// identityBaseUrl (present in prod). Gated on a DEDICATED COMPUTE_DEACTIVATE_ENABLED=1 flag so the bundle
+// deploys INERT (503) even though the identity-write bearer is already live -- the public box-direct DELETE
+// stays CLOSED until the API Gateway root DELETE is repointed at cutover (mirrors the WALLET/PROFILE_PATCH
+// gate rationale).
+export const DEACTIVATE = {
+  enabled: process.env.COMPUTE_DEACTIVATE_ENABLED === '1' && !!identityWriteBearer,
+  // 7-day deletion grace (epoch SECONDS), byte-parity with the lambda (index.ts: now + 7*24*60*60).
+  graceSec: 7 * 24 * 60 * 60,
+};
+
 // --- C3b wallet register/remove/list (crown-jewel ownership writes + list read) -------------------
 // De-Lambda of the wallet-api lambda's multi-wallet routes: POST /register, POST /remove, GET /list.
 // register does dual-jwks verify (VERIFY.audience) + the wallet-proof HMAC (walletProofSecret, the SAME
