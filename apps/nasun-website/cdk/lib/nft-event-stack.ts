@@ -16,14 +16,12 @@ import * as dynamodb from "aws-cdk-lib/aws-dynamodb";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import { NodejsFunction } from "aws-cdk-lib/aws-lambda-nodejs";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as wafv2 from "aws-cdk-lib/aws-wafv2";
 import * as path from "path";
 import { Construct } from "constructs";
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from "./constants/cors";
-import { issuerVerifyEnv } from "./issuer-env";
 
 export interface NftEventStackProps extends cdk.StackProps {
   /** Shared WAF WebACL ARN to attach this API's stage to */
@@ -37,10 +35,6 @@ export class NftEventStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: NftEventStackProps) {
     super(scope, id, props);
-
-    // Secret names for Secrets Manager runtime reads
-    const twitterTokensSecretName = process.env.TWITTER_TOKENS_SECRET_NAME || 'nasun-twitter-tokens';
-    const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';
 
     // ========== 1. DynamoDB Tables ==========
 
@@ -114,30 +108,7 @@ export class NftEventStack extends cdk.Stack {
     });
 
     // ========== 2. CloudWatch Log Groups ==========
-
-    const verifyLogGroup = new logs.LogGroup(this, "VerifyEligibilityLogGroup", {
-      logGroupName: "/aws/lambda/nasun-nft-verify-eligibility",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const registerLogGroup = new logs.LogGroup(this, "RegisterUserLogGroup", {
-      logGroupName: "/aws/lambda/nasun-nft-register-user",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const exportLogGroup = new logs.LogGroup(this, "ExportCsvLogGroup", {
-      logGroupName: "/aws/lambda/nasun-nft-export-csv",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const withdrawLogGroup = new logs.LogGroup(this, "WithdrawUserLogGroup", {
-      logGroupName: "/aws/lambda/nasun-nft-withdraw-user",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    // verify/register/export/withdraw/withdraw-authorizer log groups RETIRED (AWS-exit #5, 2026-06-15).
 
     const checkStatusLogGroup = new logs.LogGroup(this, "CheckStatusLogGroup", {
       logGroupName: "/aws/lambda/nasun-nft-check-status",
@@ -165,10 +136,6 @@ export class NftEventStack extends cdk.Stack {
 
     // ========== 4. Lambda Functions ==========
 
-    // 환경 변수 (cdk/.env에서 로드)
-    const X_TARGET_USERNAME = process.env.X_TARGET_USERNAME || "Nasun_io";
-    const X_TARGET_USER_ID = process.env.X_TARGET_USER_ID || "1725466995565752320";
-
     // Common NodejsFunction options
     const nftEventLambdaSrcPath = path.join(__dirname, "..", "lambda-src", "nft-event");
     const depsLockFilePath = path.join(__dirname, "..", "pnpm-lock.yaml");
@@ -185,171 +152,11 @@ export class NftEventStack extends cdk.Stack {
       ],
     };
 
-    // Lambda 1: verify-eligibility
-    const verifyEligibilityLambda = new NodejsFunction(this, "VerifyEligibilityLambda", {
-      functionName: "nasun-nft-verify-eligibility",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(nftEventLambdaSrcPath, "verify-eligibility", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      logGroup: verifyLogGroup,
-      environment: {
-        WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        TASKS_TABLE_NAME: this.tasksTable.tableName,
-        TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
-        X_TARGET_USERNAME,
-        X_TARGET_USER_ID,
-        ENABLE_RATE_LIMIT_CACHE: "true",
-        CACHE_TTL_MINUTES: "15",
-        CACHE_MAX_AGE_HOURS: "24",
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    // IAM 권한: DynamoDB 읽기/쓰기
-    this.whitelistTable.grantReadWriteData(verifyEligibilityLambda);
-    this.tasksTable.grantReadWriteData(verifyEligibilityLambda);
-
-    // IAM 권한: Secrets Manager (Twitter bearer token)
-    verifyEligibilityLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["secretsmanager:GetSecretValue"],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${twitterTokensSecretName}-*`,
-        ],
-      }),
-    );
-
-    // Lambda 2: register-user
-    const registerUserLambda = new NodejsFunction(this, "RegisterUserLambda", {
-      functionName: "nasun-nft-register-user",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(nftEventLambdaSrcPath, "register-user", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(15),
-      memorySize: 256,
-      logGroup: registerLogGroup,
-      environment: {
-        WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        TASKS_TABLE_NAME: this.tasksTable.tableName,
-        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
-        X_TARGET_USERNAME,
-        X_TARGET_USER_ID,
-        ENABLE_RATE_LIMIT_CACHE: "true",
-        CACHE_TTL_MINUTES: "15",
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    this.whitelistTable.grantReadWriteData(registerUserLambda);
-    this.tasksTable.grantReadWriteData(registerUserLambda); // copyTasks() PutItem 권한 필요
-
-    // IAM 권한: Secrets Manager (wallet proof only)
-    registerUserLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ["secretsmanager:GetSecretValue"],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
-        ],
-      }),
-    );
-
-    // Lambda 3: withdraw-user
-    // Uses Cognito JWT authorizer + xUserId ownership verification (Phase 2 security hardening)
-    const withdrawUserLambda = new NodejsFunction(this, "WithdrawUserLambda", {
-      functionName: "nasun-nft-withdraw-user",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(nftEventLambdaSrcPath, "withdraw-user", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(15),
-      memorySize: 256,
-      logGroup: withdrawLogGroup,
-      environment: {
-        WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    this.whitelistTable.grantReadWriteData(withdrawUserLambda);
-
-    // Lambda 3a: withdraw-user Token Authorizer (Cognito JWT verification)
-    const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
-    if (!cognitoIdentityPoolId) {
-      console.warn('[NftEventStack] VITE_COGNITO_IDENTITY_POOL_ID not set — withdraw authorizer will reject all tokens');
-    }
-
-    const withdrawAuthorizerLogGroup = new logs.LogGroup(this, "WithdrawAuthorizerLogGroup", {
-      logGroupName: "/aws/lambda/nasun-nft-withdraw-authorizer",
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    const withdrawAuthorizerLambda = new NodejsFunction(this, "WithdrawAuthorizerLambda", {
-      functionName: "nasun-nft-withdraw-authorizer",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(nftEventLambdaSrcPath, "withdraw-user", "src", "authorizer.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: {
-        minify: true,
-        sourceMap: true,
-      },
-      timeout: cdk.Duration.seconds(10),
-      memorySize: 256,
-      logGroup: withdrawAuthorizerLogGroup,
-      environment: {
-        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
-        ...issuerVerifyEnv(),
-        COGNITO_IDENTITY_POOL_ID: cognitoIdentityPoolId || '',
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    const withdrawTokenAuthorizer = new apigateway.TokenAuthorizer(this, "WithdrawTokenAuthorizer", {
-      handler: withdrawAuthorizerLambda,
-      resultsCacheTtl: cdk.Duration.seconds(60),
-      identitySource: "method.request.header.Authorization",
-    });
-
-    // Lambda 4: export-csv (OpenSea Allowlist)
-    const exportCsvLambda = new NodejsFunction(this, "ExportCsvLambda", {
-      functionName: "nasun-nft-export-csv",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(nftEventLambdaSrcPath, "export-csv", "src", "index.ts"),
-      handler: "handler",
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.minutes(5),
-      memorySize: 512,
-      logGroup: exportLogGroup,
-      environment: {
-        WHITELIST_TABLE_NAME: this.whitelistTable.tableName,
-        TASKS_TABLE_NAME: this.tasksTable.tableName,
-        X_TARGET_USERNAME,
-        X_TARGET_USER_ID,
-        ENABLE_RATE_LIMIT_CACHE: "true",
-        CACHE_TTL_MINUTES: "15",
-        EXPORT_BUCKET_NAME: exportBucket.bucketName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: "--enable-source-maps",
-      },
-    });
-
-    this.whitelistTable.grantReadData(exportCsvLambda);
-    exportBucket.grantPut(exportCsvLambda);
-    exportBucket.grantRead(exportCsvLambda); // Presigned URL 생성용
+    // Lambda 1-4 (verify-eligibility / register-user / withdraw-user / withdraw-authorizer / export-csv)
+    // RETIRED (AWS-exit #5 Tier-1, 2026-06-15): Genesis Battalion event over, 0 invocations/14d,
+    // frontend battalion flow unmounted from prod routes. The withdraw Cognito TokenAuthorizer + the
+    // /admin export-csv ApiKey/UsagePlan are removed with them. Only check-status survives below.
+    // The whitelist/tasks tables (RETAIN) + exportBucket (RETAIN) are kept for the #8 decommission gate.
 
     // Lambda 5: check-registration-status
     const checkStatusLambda = new NodejsFunction(this, "CheckStatusLambda", {
@@ -395,38 +202,7 @@ export class NftEventStack extends cdk.Stack {
     // /event 리소스
     const eventResource = this.api.root.addResource("event");
 
-    // POST /event/verify
-    // Note: proxy: true means Lambda handles CORS headers directly
-    // integrationResponses and methodResponses are not used in proxy mode
-    const verifyResource = eventResource.addResource("verify");
-    verifyResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(verifyEligibilityLambda, {
-        proxy: true,
-      })
-    );
-
-    // POST /event/register
-    const registerResource = eventResource.addResource("register");
-    registerResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(registerUserLambda, {
-        proxy: true,
-      })
-    );
-
-    // POST /event/withdraw (Cognito JWT required)
-    const withdrawResource = eventResource.addResource("withdraw");
-    withdrawResource.addMethod(
-      "POST",
-      new apigateway.LambdaIntegration(withdrawUserLambda, {
-        proxy: true,
-      }),
-      {
-        authorizer: withdrawTokenAuthorizer,
-        authorizationType: apigateway.AuthorizationType.CUSTOM,
-      }
-    );
+    // POST /event/{verify,register,withdraw} RETIRED (AWS-exit #5, 2026-06-15). Only /event/status kept.
 
     // GET /event/status?walletAddress=0x...
     const statusResource = eventResource.addResource("status");
@@ -458,45 +234,7 @@ export class NftEventStack extends cdk.Stack {
       },
     );
 
-    // /admin 리소스 (관리자 전용)
-    const adminResource = this.api.root.addResource("admin");
-
-    // GET /admin/export-csv (관리자 전용, API Key 필요)
-    const exportResource = adminResource.addResource("export-csv");
-
-    // API Key 생성
-    const apiKey = this.api.addApiKey("NftEventAdminApiKey", {
-      apiKeyName: "nft-event-admin-key",
-      description: "Admin API Key for NFT Event CSV Export",
-    });
-
-    // Usage Plan 생성
-    const usagePlan = this.api.addUsagePlan("NftEventUsagePlan", {
-      name: "NFT Event Admin Usage Plan",
-      throttle: {
-        rateLimit: 10, // 초당 10 요청
-        burstLimit: 20,
-      },
-      quota: {
-        limit: 1000, // 일 1000 요청
-        period: apigateway.Period.DAY,
-      },
-    });
-
-    usagePlan.addApiKey(apiKey);
-    usagePlan.addApiStage({
-      stage: this.api.deploymentStage,
-    });
-
-    exportResource.addMethod(
-      "GET",
-      new apigateway.LambdaIntegration(exportCsvLambda, {
-        proxy: true,
-      }),
-      {
-        apiKeyRequired: true, // API Key 필수
-      }
-    );
+    // /admin/export-csv + NftEventAdminApiKey + NftEventUsagePlan RETIRED (AWS-exit #5, 2026-06-15).
 
     // ========== 6. CloudFormation Outputs ==========
 
@@ -536,34 +274,11 @@ export class NftEventStack extends cdk.Stack {
       exportName: "NftEventApiUrl",
     });
 
-    new cdk.CfnOutput(this, "ApiKeyId", {
-      value: apiKey.keyId,
-      description: "Admin API Key ID (use AWS CLI to get value)",
-    });
-
-    new cdk.CfnOutput(this, "VerifyEndpoint", {
-      value: `${this.api.url}event/verify`,
-      description: "POST /event/verify - 참여 자격 검증",
-    });
-
-    new cdk.CfnOutput(this, "RegisterEndpoint", {
-      value: `${this.api.url}event/register`,
-      description: "POST /event/register - 화이트리스트 등록",
-    });
-
-    new cdk.CfnOutput(this, "WithdrawEndpoint", {
-      value: `${this.api.url}event/withdraw`,
-      description: "POST /event/withdraw - 화이트리스트 참여 취소",
-    });
+    // ApiKeyId / VerifyEndpoint / RegisterEndpoint / WithdrawEndpoint outputs RETIRED (AWS-exit #5, 2026-06-15).
 
     new cdk.CfnOutput(this, "StatusEndpoint", {
       value: `${this.api.url}event/status`,
       description: "GET /event/status?walletAddress=0x... - 등록 상태 조회",
-    });
-
-    new cdk.CfnOutput(this, "ExportEndpoint", {
-      value: `${this.api.url}admin/export-csv`,
-      description: "GET /admin/export-csv - OpenSea CSV Export (API Key required)",
     });
 
     // Feature Flag Output
