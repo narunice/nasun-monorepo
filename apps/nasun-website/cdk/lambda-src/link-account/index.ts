@@ -105,6 +105,31 @@ function getCorsOrigin(origin?: string): string {
   return ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
 }
 
+/**
+ * Read a primary / old-primary profile by identityId with a box-first fallback. The C3a login cutover made
+ * wallet logins box-only (a full row in the box user_profiles, ABSENT from the now-frozen DynamoDB), so a
+ * DDB-only GetCommand misses for the 763+ post-cutover box-only primaries. Returns the DDB item if present,
+ * else (when IDENTITY_READ_MODE=flip) the box row from /profile/by-identity -- which dalRowToItem shapes
+ * exactly like a DDB item, carrying every field the link/unlink/transfer paths read (linkedAccounts,
+ * provider, twitterHandle, twitterId, walletAddress, linkedToPrimaryId). `fromBox` lets the caller SKIP the
+ * unconditional primary DDB UpdateItem -- it has no ConditionExpression, so it would UPSERT a partial primary
+ * stub (linkedAccounts + updatedAt only) that the box<->DDB reconcile flags as a field_mismatch; the
+ * authoritative box mirror (/profile/link-sync) is the box-only primary's real write path. readProfileFromBox
+ * never throws (null on config-unset / 404 / non-200 / error), so an unreachable box transparently keeps the
+ * legacy not-found below -- no worse than today, and box errors never fail-open.
+ */
+async function getPrimaryWithBoxFallback(
+  identityId: string,
+): Promise<{ item: Record<string, any> | null; fromBox: boolean }> {
+  const ddb = await dynamoClient.send(new GetCommand({ TableName: tableName, Key: { identityId } }));
+  if (ddb.Item) return { item: ddb.Item, fromBox: false };
+  if (identityReadFlip()) {
+    const box = await readProfileFromBox('/profile/by-identity', { identityId });
+    if (box && box.identityId === identityId) return { item: box, fromBox: true };
+  }
+  return { item: null, fromBox: false };
+}
+
 export const handler: APIGatewayProxyHandler = async (event) => {
   const origin = event.headers?.origin || event.headers?.Origin;
   const corsHeaders = {
@@ -161,13 +186,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         };
       }
 
-      // Get primary user profile
-      const getPrimaryCommand = new GetCommand({
-        TableName: tableName,
-        Key: { identityId: primaryIdentityId },
-      });
-      const primaryProfileResult = await dynamoClient.send(getPrimaryCommand);
-      const primaryProfile = primaryProfileResult.Item;
+      // Get primary user profile (box-first fallback: a C3a box-only primary is absent from the frozen DDB,
+      // so a DDB-only read 404s for the 763+ post-cutover box-only primaries on unlink).
+      const { item: primaryProfile, fromBox: primaryFromBox } = await getPrimaryWithBoxFallback(primaryIdentityId);
 
       if (!primaryProfile) {
         return {
@@ -254,7 +275,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
         ExpressionAttributeValues: expressionValues,
       });
 
-      await dynamoClient.send(updatePrimaryCommand);
+      // Box-only primary: skip the unconditional DDB UpdateItem (it would upsert a partial primary stub the
+      // box<->DDB reconcile flags); the authoritative box mirror (/profile/link-sync) below is its write path.
+      if (!primaryFromBox) {
+        await dynamoClient.send(updatePrimaryCommand);
+      }
 
       // AWS-exit DAL S2.A: collect the box-mirror projection of every UserProfiles row this
       // unlink mutates (primary now, secondary below), then push once after both DDB writes.
@@ -271,7 +296,9 @@ export const handler: APIGatewayProxyHandler = async (event) => {
 
       // Record X unlink history (non-blocking, best-effort).
       // Placed after DB update succeeds to avoid phantom history on failure.
-      if (providerKey === 'twitter') {
+      // Skipped for a box-only primary: appendXHistory is a DDB UpdateItem on the primary row (same partial
+      // stub guard as the link path). xHistory is DDB-only analytics, not mirrored to the box.
+      if (providerKey === 'twitter' && !primaryFromBox) {
         appendXHistory(dynamoClient, tableName, primaryIdentityId, {
           changeType: 'unlink',
           oldHandle:    primaryProfile.twitterHandle,
@@ -492,23 +519,7 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     // a partial DDB stub (an unconditional UpdateItem would upsert linkedAccounts/updatedAt only, with no
     // wallet_address/attributes, which the reconcile would flag as a box-vs-DDB field_mismatch). The box
     // mirror (authoritative /profile/link-sync) is the primary's write path in that case.
-    const getPrimaryCommand = new GetCommand({
-      TableName: tableName,
-      Key: { identityId: primaryIdentityId },
-    });
-    const primaryProfileResult = await dynamoClient.send(getPrimaryCommand);
-    let primaryProfile = primaryProfileResult.Item;
-    let primaryFromBox = false;
-
-    if (!primaryProfile && identityReadFlip()) {
-      const boxPrimary = await readProfileFromBox('/profile/by-identity', { identityId: primaryIdentityId });
-      // readProfileFromBox never throws (null on config-unset / 404 / non-200 / error), so an unreachable
-      // box transparently keeps the legacy 404 below -- no worse than today, and box errors never fail-open.
-      if (boxPrimary && boxPrimary.identityId === primaryIdentityId) {
-        primaryProfile = boxPrimary;
-        primaryFromBox = true;
-      }
-    }
+    const { item: primaryProfile, fromBox: primaryFromBox } = await getPrimaryWithBoxFallback(primaryIdentityId);
 
     if (!primaryProfile) {
       return {
@@ -548,11 +559,11 @@ export const handler: APIGatewayProxyHandler = async (event) => {
     }
 
     if (oldPrimaryId) {
-      const oldPrimaryResult = await dynamoClient.send(new GetCommand({
-        TableName: tableName,
-        Key: { identityId: oldPrimaryId },
-      }));
-      const oldPrimary = oldPrimaryResult.Item;
+      // box-first fallback: a C3a box-only oldPrimary is absent from the frozen DDB. Without this the whole
+      // transfer-unlink below silently skips -> a dangling cross-link (both primaries keep the same secondary)
+      // AND the twitter uniqueness gate is bypassed (anti-Sybil). fromBox skips the unconditional oldPrimary
+      // DDB UpdateItem (partial-stub guard); the box mirror (/profile/link-sync) is its write path.
+      const { item: oldPrimary, fromBox: oldPrimaryFromBox } = await getPrimaryWithBoxFallback(oldPrimaryId);
 
       if (oldPrimary) {
         const oldLinked = oldPrimary.linkedAccounts || {};
@@ -626,15 +637,19 @@ export const handler: APIGatewayProxyHandler = async (event) => {
             unlinkExpr += ' REMOVE walletAddress';
           }
 
-          await dynamoClient.send(new UpdateCommand({
-            TableName: tableName,
-            Key: { identityId: oldPrimaryId },
-            UpdateExpression: unlinkExpr,
-            ExpressionAttributeValues: {
-              ':la': oldLinked,
-              ':ua': new Date().toISOString(),
-            },
-          }));
+          // Box-only oldPrimary: skip the unconditional DDB UpdateItem (partial-stub guard); the box mirror
+          // (oldPrimaryMirrorRow -> /profile/link-sync) persists the cleaned linkedAccounts to the box SoT.
+          if (!oldPrimaryFromBox) {
+            await dynamoClient.send(new UpdateCommand({
+              TableName: tableName,
+              Key: { identityId: oldPrimaryId },
+              UpdateExpression: unlinkExpr,
+              ExpressionAttributeValues: {
+                ':la': oldLinked,
+                ':ua': new Date().toISOString(),
+              },
+            }));
+          }
 
           const oldTwitterStripped = matchingKey === 'twitter' && oldPrimary.provider !== 'Twitter';
           oldPrimaryMirrorRow = linkSyncRow(
