@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 import { pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { rpcCall } from '../rpc.js';
@@ -10,6 +12,32 @@ import {
 } from '../scanner/ecosystem-cache.js';
 
 const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
+
+// AWS-exit #3b (D1=A): server-side referral-ACTIVATED gate for the onboarding-bonus endpoint, used ONLY when
+// the caller passes requireReferralActivated=true (the box compute link handler, which CANNOT read this DDB
+// table itself). Existing Lambda callers (auth-twitter / verify-telegram / admin-api / leaderboard-v3)
+// pre-gate via their own grantIfReferralActivated and do NOT pass the flag, so this is additive + leaves them
+// byte-identical. nasun-referrals: PK referredIdentityId, status ∈ {PENDING, ACTIVATED}. Lazy DDB client
+// (node-3 has default-profile creds), region parity with ban-service.ts.
+const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
+const REFERRALS_TABLE = process.env.REFERRALS_TABLE || 'nasun-referrals';
+let _ddb: DynamoDBDocumentClient | null = null;
+function getDdb(): DynamoDBDocumentClient {
+  if (!_ddb) _ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
+  return _ddb;
+}
+// Byte-parity with the lambda onboardingBonus.ts isReferralActivated: GetItem nasun-referrals by
+// referredIdentityId, true iff status === 'ACTIVATED'. THROWS on a DDB error (the caller fails CLOSED -> no
+// grant, matching the lambda's catch -> granted:false reason http-failed).
+async function isReferralActivated(identityId: string): Promise<boolean> {
+  const res = await getDdb().send(new GetCommand({
+    TableName: REFERRALS_TABLE,
+    Key: { referredIdentityId: identityId },
+    ProjectionExpression: '#s',
+    ExpressionAttributeNames: { '#s': 'status' },
+  }));
+  return res.Item?.status === 'ACTIVATED';
+}
 
 const app = new Hono();
 
@@ -445,6 +473,7 @@ app.post('/onboarding-bonus', requireInternalApiKey('ONBOARDING_BONUS_API_KEY'),
     walletAddress?: string;
     kind?: string;
     externalId?: string;
+    requireReferralActivated?: boolean;
   }>();
 
   if (!body.identityId || !IDENTITY_ID_PATTERN.test(body.identityId)) {
@@ -465,6 +494,24 @@ app.post('/onboarding-bonus', requireInternalApiKey('ONBOARDING_BONUS_API_KEY'),
       return c.json({ error: 'Invalid walletAddress format' }, 400);
     }
     walletAddress = body.walletAddress.toLowerCase();
+  }
+
+  // AWS-exit #3b (D1=A): when the caller delegates the referral gate (the box compute link handler, which
+  // cannot read nasun-referrals), do the ACTIVATED read here BEFORE the grant. Fail-CLOSED: a not-activated
+  // user OR a DDB error yields created:false (no grant) -- byte-parity with the lambda grantIfReferralActivated
+  // not-referred / http-failed paths. Existing callers don't pass the flag, so this is skipped for them.
+  const identityId = body.identityId;
+  if (body.requireReferralActivated === true) {
+    let activated = false;
+    try {
+      activated = await isReferralActivated(identityId);
+    } catch (err) {
+      console.error('[onboarding-bonus] referral-activated check failed (fail-closed, no grant):', err);
+      return c.json({ created: false, reason: 'referral-check-failed' });
+    }
+    if (!activated) {
+      return c.json({ created: false, reason: 'not-referred' });
+    }
   }
 
   const points = ONBOARDING_BONUS_POINTS[kind];

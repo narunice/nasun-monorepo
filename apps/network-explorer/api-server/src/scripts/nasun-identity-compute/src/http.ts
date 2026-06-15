@@ -120,6 +120,20 @@ export function deactivateCors(origin: string | undefined): Record<string, strin
   };
 }
 
+// #3b link-account CORS: byte-parity with the link-account lambda corsHeaders (index.ts:102-106,135-139 +
+// getCorsOrigin): origin-allowlist ACAO matched against the RAW Origin (no trailing-slash strip -- the lambda
+// getCorsOrigin compares the raw header, falling back to ALLOWED_ORIGINS[0]), headers 'Content-Type, Authorization',
+// methods 'POST, OPTIONS' (the lambda advertises only POST/OPTIONS), NO credentials, NO extra security headers.
+// content-type is set by send() so it is not duplicated here.
+export function linkCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'POST, OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

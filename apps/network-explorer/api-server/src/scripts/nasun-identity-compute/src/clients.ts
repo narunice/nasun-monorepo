@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -188,6 +188,30 @@ export async function readProfileByIdentity(identityId: string): Promise<Record<
   if (res.status === 200) return (await res.json()) as Record<string, any>;
   if (res.status === 404) return null; // genuinely no profile row
   throw new Error(`by-identity returned HTTP ${res.status}`);
+}
+
+/**
+ * #3b RAW read: POST /profile/batch { identityIds:[id] } -> the RAW dalRowToItem for that id (or null),
+ * WITHOUT the /profile/by-identity linked-secondary field MERGE. The link/unlink/transfer flow MUST read
+ * raw column truth (parity with the lambda's DynamoDB GetItem). /profile/by-identity back-fills
+ * email/twitterHandle/originalTwitterHandle/twitterId/profileImageUrl/username/walletAddress from linked
+ * secondaries (server.mjs:993-1001), but the lambda's GetItem did NOT -- a merged twitterHandle/twitterId
+ * fed into the unconditional link-sync UPSERT would persist a secondary-derived value onto the PRIMARY's
+ * promoted columns (and pollute the by-twitter-id anti-Sybil index) that the lambda left NULL. /profile/batch
+ * returns dalRowToItem with NO merge (server.mjs:1110), the byte-parity equivalent of the lambda's raw GetItem.
+ * THROWS on a non-2xx / transport error (fail-closed -> the handler 500s); returns null when the id is absent
+ * (batch omits a missing id). Reuses the ADDITIONAL identity-write bearer/baseUrl.
+ */
+export async function readProfileByIdentityRaw(identityId: string): Promise<Record<string, any> | null> {
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/batch`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    body: JSON.stringify({ identityIds: [identityId] }),
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`profile/batch returned HTTP ${res.status}`);
+  const data = (await res.json().catch(() => null)) as { profiles?: Record<string, any> } | null;
+  return data?.profiles?.[identityId] ?? null;
 }
 
 /**
@@ -682,5 +706,93 @@ export async function notifyWalletRegistered(identityId: string, walletAddress: 
     if (!res.ok) console.warn(`[compute] wallet-registered webhook returned HTTP ${res.status} (non-fatal)`);
   } catch (err) {
     console.warn('[compute] wallet-registered webhook failed (non-fatal):', err instanceof Error ? err.message : err);
+  }
+}
+
+// --- #3b link-account: box identity-service (:3211) loopback reads/writes + onboarding delegation -----
+// All loopback over 127.0.0.1 (NO egress) EXCEPT grantOnboardingBonus (egress to explorer-api, allowed
+// since C8). readProfileByIdentity (above, C4-1) is REUSED for the primary/secondary/oldPrimary reads.
+
+export interface TwitterIdMatch {
+  identityId: string;
+  walletAddress: string | null;
+  username: string | null;
+  customDisplayName: string | null;
+}
+
+/**
+ * GET /profile/by-twitter-id?twitterId= -> the matches array (every box row carrying this twitter_id + the
+ * fields the anti-Sybil 409 needs: walletAddress/username/customDisplayName). Parity with the lambda's
+ * readProfileFromBox('/profile/by-twitter-id') (link-account/index.ts:742). The caller does its OWN
+ * self/already-linked filtering (selfIds). THROWS on a non-200 so the twitter-uniqueness gate fails CLOSED
+ * (a silent "no matches" on a box error would be an anti-Sybil hole; matches the lambda's 503
+ * TWITTER_UNIQUENESS_CHECK_FAILED on a dedup error).
+ */
+export async function readProfileByTwitterId(twitterId: string): Promise<TwitterIdMatch[]> {
+  const url = `${LINK.identityBaseUrl}/profile/by-twitter-id?twitterId=${encodeURIComponent(twitterId)}`;
+  const res = await fetch(url, {
+    method: 'GET',
+    headers: { authorization: `Bearer ${LINK.identityWriteBearer}` },
+    signal: AbortSignal.timeout(LINK.loopbackTimeoutMs),
+  });
+  if (res.status !== 200) throw new Error(`by-twitter-id returned HTTP ${res.status}`);
+  const data = (await res.json().catch(() => null)) as { matches?: unknown } | null;
+  return Array.isArray(data?.matches) ? (data!.matches as TwitterIdMatch[]) : [];
+}
+
+/**
+ * POST /profile/link-sync { rows } -- the AUTHORITATIVE multi-row box UPSERT of the full post-write
+ * projection of every user_profiles row the link/unlink flow mutated (primary, secondary, oldPrimary on
+ * transfer). Parity with the lambda's authoritativeIdentityWrite(IDENTITY_ROUTES.profileLinkSync, {rows}).
+ * The box route sorts rows primary-first + does the whole batch in ONE tx (ON CONFLICT DO UPDATE; attributes
+ * insert-only), so it is idempotent and the single retry is safe. THROWS on a non-2xx / transport error so a
+ * failed authoritative write never reports success (the handler 500s). Box-enforced max 64 rows; link sends <=3.
+ */
+export async function linkSyncBox(rows: Record<string, unknown>[]): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${LINK.identityBaseUrl}/profile/link-sync`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${LINK.identityWriteBearer}` },
+        body: JSON.stringify({ rows }),
+        signal: AbortSignal.timeout(LINK.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`profile/link-sync returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * BEST-EFFORT onboarding bonus grant via explorer-api (design SSOT D1=A). The box CANNOT read the
+ * nasun-referrals DDB gate, so it posts requireReferralActivated=true and explorer-api (node-3, which has
+ * DDB) does the referral-ACTIVATED read server-side BEFORE the PG-deduped INSERT. Parity with the lambda's
+ * grantIfReferralActivated (onboardingBonus.ts) MINUS the local DDB gate (moved server-side). NEVER throws
+ * (the link already committed to box PG; the bonus is referral-gated + PG-idempotent, self-corrects on a
+ * future re-link, exactly as the lambda wrapped it in .catch(non-fatal)). Skipped (no-op) when the URL or
+ * api-key is absent (inert deploy window). egress to explorer.nasun.io (allowed since C8).
+ */
+export async function grantOnboardingBonus(payload: {
+  identityId: string;
+  walletAddress: string | null;
+  kind: 'x-link' | 'google-link';
+  externalId: string;
+}): Promise<void> {
+  if (!LINK.onboardingBonusUrl || !LINK.onboardingBonusApiKey) return;
+  try {
+    const res = await fetch(LINK.onboardingBonusUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': LINK.onboardingBonusApiKey },
+      body: JSON.stringify({ ...payload, requireReferralActivated: true }),
+      signal: AbortSignal.timeout(LINK.onboardingTimeoutMs),
+    });
+    if (!res.ok) console.warn(`[compute] onboarding-bonus returned HTTP ${res.status} (non-fatal)`);
+  } catch (err) {
+    console.warn('[compute] onboarding-bonus failed (non-fatal):', err instanceof Error ? err.message : err);
   }
 }

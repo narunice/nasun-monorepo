@@ -399,16 +399,45 @@ export class CommonStack extends cdk.Stack {
     );
     nasunReferralsForLink.grantReadData(linkAccountLambda);
 
-    const linkAccountApi = new apigw.LambdaRestApi(this, "LinkAccountApi", {
-      handler: linkAccountLambda,
+    // #3b de-Lambda link-account: link / unlink / admin-link -> box compute (HTTP_PROXY). The box compute
+    // POST /compute/link{,/unlink,/admin-link} ports the lambda byte-for-byte (verifyJwt dual-jwks ->
+    // ownership/admin -> box reads (by-identity/by-twitter-id) -> box link-sync/attributes-sync, box-only PG,
+    // NO DynamoDB; onboarding-bonus delegated to explorer-api). Converted from LambdaRestApi(proxy:true) to a
+    // plain RestApi with the SAME construct id so the execute-api id is preserved (no frontend rebuild;
+    // VITE_LINK_ACCOUNT_API unchanged). The frontend hits root POST (useWalletAuth/EvmWalletLink/
+    // useWhitelistRegistration) + /link (authApi) for the link flow, /unlink (useAccountLinking/uju), and
+    // /admin-link (admin tool). register-evm (410) + EVERY other path STAY on the lambda via the explicit
+    // {proxy+} ANY mount (NOT root.addProxy(), which would synthesize a spurious root ANY->MOCK), so the box
+    // serves ONLY the three lifted routes. root ANY -> lambda gives exact proxy:true parity for non-POST root
+    // (the lambda 405s them). OPTIONS preflight stays an API-GW MOCK (defaultCorsPreflightOptions). ROLLBACK:
+    // revert this block to LambdaRestApi(proxy:true) + redeploy (the lambda stays defined + granted as the
+    // rollback target).
+    const linkAccountApi = new apigw.RestApi(this, "LinkAccountApi", {
       restApiName: "NASUN Link Account API (Common)",
-      proxy: true,
       defaultCorsPreflightOptions: {
         allowOrigins: ALLOWED_ORIGINS,
         allowMethods: ["POST", "OPTIONS"],
         allowHeaders: ["Content-Type", "Authorization"]
       },
     });
+    const linkLambdaIntegration = new apigw.LambdaIntegration(linkAccountLambda);
+    // root POST (link) + /link POST (link) -> box /compute/link (HTTP_PROXY; Authorization + body forwarded).
+    linkAccountApi.root.addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/link", { httpMethod: "POST", proxy: true }
+    ));
+    linkAccountApi.root.addResource("link").addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/link", { httpMethod: "POST", proxy: true }
+    ));
+    linkAccountApi.root.addResource("unlink").addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/link/unlink", { httpMethod: "POST", proxy: true }
+    ));
+    linkAccountApi.root.addResource("admin-link").addMethod("POST", new apigw.HttpIntegration(
+      "https://issuer.nasun.io/compute/link/admin-link", { httpMethod: "POST", proxy: true }
+    ));
+    // {proxy+} ANY -> lambda (register-evm 410 + any other path) + root ANY -> lambda (non-POST root parity).
+    // A specific resource (link/unlink/admin-link) is matched ahead of {proxy+}.
+    linkAccountApi.root.addResource("{proxy+}").addMethod("ANY", linkLambdaIntegration);
+    linkAccountApi.root.addMethod("ANY", linkLambdaIntegration);
 
     // 2-3. Wallet API
     const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';

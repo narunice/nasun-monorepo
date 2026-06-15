@@ -210,6 +210,54 @@ export const DEACTIVATE = {
   graceSec: 7 * 24 * 60 * 60,
 };
 
+// --- #3b link-account (write) ---------------------------------------------------------------------
+// De-Lambda of nasun-common-link-account (link/unlink/admin-link; register-evm stays 410). Parity with the
+// lambda (link-account/index.ts): verifyJwt (dual-jwks, VERIFY.audience) -> ownership (link/unlink require
+// primaryIdentityId === authenticated; admin-link bypasses but requires the caller's box profile
+// role==='ADMIN') -> box reads (by-identity primary/secondary/oldPrimary, by-twitter-id for the anti-Sybil
+// twitter-uniqueness gate) -> box writes (link-sync multi-row UPSERT + attributes-sync for the non-promoted
+// long-tail keys + linked-account-merge), all box-only PG, NO DynamoDB (the (B) divergence, covered by the
+// reconcile RECON_LINK_CUTOVER_EPOCH field exclusion). The box is ALREADY authoritative for all of these
+// today (IDENTITY_WRITE_FLIP_ROUTES has link-sync/attributes-sync/linked-account-merge), so the box
+// end-state is identical to the lambda path; the de-Lambda only drops the parallel DynamoDB write half and
+// moves the HTTP termination box-local.
+//
+// Two DDB-coupled side-effects are intentionally DROPPED (design SSOT D2/D4, both verified safe):
+//   - xHistory (DDB-only audit list): NO consumer reads it (grep-verified) + already skipped for box-only
+//     primaries today. Not mirrored to box from link-account.
+//   - MetaMask manual-dedup + Genesis-Pass allowlist cleanup: the dedup only fires on
+//     linkedAccounts.metamask.manualEntry===true rows, and the ONLY path that set that flag (register-evm
+//     manual entry) is permanently 410-disabled -- no new manualEntry=true rows can be created, so the
+//     by-metamask-address scan is provably empty and the cleanup is a dead no-op. The box has no genesis
+//     allowlist data anyway.
+//
+// Onboarding-bonus (x-link / google-link) is DELEGATED to explorer-api (design SSOT D1=A): the grant is
+// referral-ACTIVATED-gated, and that gate reads the nasun-referrals DynamoDB table which the box cannot
+// access. The box posts to explorer-api /onboarding-bonus with requireReferralActivated=true; explorer-api
+// (node-3, which has DDB) does the referral read server-side, then PG-dedupes. Best-effort + never blocks
+// the link (parity with the lambda's grantIfReferralActivated().catch(non-fatal)). Skipped (no-op) when the
+// URL or api-key is absent (inert until wired). Egress to explorer.nasun.io (allowed since C8).
+//
+// Gated on a DEDICATED COMPUTE_LINK_ENABLED=1 flag so the bundle deploys INERT (503) even though audience +
+// the identity-write bearer are already live -- the public box-direct /compute/link* WRITE endpoints stay
+// CLOSED until the API Gateway repoint at cutover (mirrors the WALLET/PROFILE_PATCH/DEACTIVATE gate rationale).
+const onboardingBonusApiKey = readOptional('onboarding-bonus-api-key', 'ONBOARDING_BONUS_API_KEY_FILE');
+
+export const LINK = {
+  enabled: process.env.COMPUTE_LINK_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: identityWriteBearer || '',
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // Onboarding-bonus delegation (D1=A). Full URL of the explorer-api endpoint (e.g.
+  // https://explorer.nasun.io/api/v1/points/onboarding-bonus); a public domain, NOT a secret -> unit env.
+  onboardingBonusUrl: process.env.COMPUTE_ONBOARDING_BONUS_URL || '',
+  onboardingBonusApiKey: onboardingBonusApiKey || '',
+  onboardingTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_ONBOARDING_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 3000;
+  })(),
+};
+
 // --- C3b wallet register/remove/list (crown-jewel ownership writes + list read) -------------------
 // De-Lambda of the wallet-api lambda's multi-wallet routes: POST /register, POST /remove, GET /list.
 // register does dual-jwks verify (VERIFY.audience) + the wallet-proof HMAC (walletProofSecret, the SAME
