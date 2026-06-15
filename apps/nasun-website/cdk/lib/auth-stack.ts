@@ -60,6 +60,10 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
+        // AWS-exit C2 flip: route Twitter identity mint to the self-hosted issuer when configured
+        // (else Cognito). Mirrors auth-metamask/auth-sui. The handler toggle (cognito.ts) is already
+        // deployed-inert; wiring ISSUER_MINT_URL/SECRET here activates issuer mint.
+        ...issuerMintEnv(),
         // AWS-exit DAL 3d step-2: mirror the Twitter-primary profile refresh to the box
         // nasun-identity service when wired. FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset.
         ...identityWriteEnv(),
