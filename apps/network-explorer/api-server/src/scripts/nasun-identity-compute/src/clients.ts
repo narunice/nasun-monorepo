@@ -64,6 +64,45 @@ export async function upsertProfile(
 }
 
 /**
+ * #2a: create a NEW non-social profile in the box via nasun-identity loopback /profile/create-mirror
+ * (INSERT ... ON CONFLICT DO NOTHING; box-only, no DynamoDB). Parity with the get-user-profile POST's
+ * mirrorIdentityWrite(profileCreateMirror) payload. THROWS on a non-2xx / transport failure so the create
+ * surfaces a 500 rather than silently dropping the SoT write. The caller pre-checks existence (409) and
+ * pre-validates provider/username + the social-provider block, so create-mirror's own guards never fire
+ * and its ON-CONFLICT no-op can never mask an overwrite. The retry is safe because the INSERT is
+ * ON CONFLICT DO NOTHING (a re-POST after an ambiguous success is an idempotent no-op). Reuses the
+ * ADDITIONAL identity-write bearer/baseUrl (same loopback the sibling reads use).
+ */
+export async function createProfileMirror(fields: {
+  identityId: string;
+  provider: string;
+  username: string;
+  email?: string;
+  xHandle?: string;
+  twitterHandle?: string;
+  twitterId?: string;
+  profileImageUrl?: string;
+}): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ADDITIONAL.identityBaseUrl}/profile/create-mirror`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+        body: JSON.stringify(fields),
+        signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`identity /profile/create-mirror returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
  * HMAC wallet proof, parity with the login lambdas (createHmac('sha256', secret).update(
  * `${walletAddress}:${proofIssuedAt}`)). Battalion NFT register-user validates this.
  */

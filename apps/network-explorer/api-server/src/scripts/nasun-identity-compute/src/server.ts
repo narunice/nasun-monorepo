@@ -14,7 +14,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, WALLET } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, WALLET } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
@@ -29,6 +29,7 @@ import { CHAINS } from './additional-chains';
 import {
   readProfileByIdentity,
   readProfileByWallet,
+  createProfileMirror,
   disconnectTelegramBox,
   clearLeaderboardTelegramRemote,
   validateTelegramAuth,
@@ -506,6 +507,55 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     const origin = (req.headers['origin'] as string) || undefined;
     const cors = profileCors(origin);
     if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+
+    // POST -- #2a de-Lambda get-user-profile CREATE. Byte-parity with the lambda POST create path
+    // (index.ts:689-881): verifyJwt -> body required -> identityId required + == authenticated ->
+    // provider/username required -> social-provider block -> create-only (409 if it already exists) ->
+    // box :3211 /profile/create-mirror (ON CONFLICT DO NOTHING; box-only, no DynamoDB). The avatar
+    // POST /upload-avatar-url sub-route is NOT here -- it stays on the lambda via the {proxy+} mount
+    // (S3 presign). Gated on PROFILE_WRITE.enabled (COMPUTE_PROFILE_WRITE_ENABLED=1) so the box-direct
+    // POST is INERT (503) until the API GW root POST is repointed at cutover.
+    if (req.method === 'POST') {
+      if (!PROFILE_WRITE.enabled) return send(res, 503, { message: 'profile write compute not enabled' }, cors);
+      try {
+        const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+        if (!identityId) return send(res, 401, { message: 'Authentication required' }, cors);
+        const raw = await readBody(req);
+        if (!raw) return send(res, 400, { message: 'Request body is required' }, cors);
+        let postData: any;
+        try { postData = JSON.parse(raw); } catch { return send(res, 400, { message: 'Invalid JSON body' }, cors); }
+        if (!postData.identityId) return send(res, 400, { message: 'identityId is required' }, cors);
+        if (postData.identityId !== identityId) return send(res, 403, { message: 'Forbidden. Identity mismatch.' }, cors);
+        if (!postData.provider || !postData.username) {
+          return send(res, 400, { message: 'provider and username are required for creating profile' }, cors);
+        }
+        if (['google', 'twitter'].includes(String(postData.provider).toLowerCase().trim())) {
+          return send(res, 403, { message: 'Social provider profiles cannot be created directly. Use account linking.' }, cors);
+        }
+        // create-only parity (the lambda PutItem ConditionExpression attribute_not_exists -> 409). The
+        // box reads first because /profile/create-mirror is ON CONFLICT DO NOTHING and cannot itself
+        // report the conflict; a benign read-then-create TOCTOU on a concurrent self-create is
+        // parity-acceptable at prototype scale (both requests create the same profile, no overwrite).
+        const existing = await readProfileByIdentity(postData.identityId);
+        if (existing) return send(res, 409, { message: 'Profile already exists' }, cors);
+        await createProfileMirror({
+          identityId: postData.identityId,
+          provider: postData.provider,
+          username: postData.username,
+          email: postData.email,
+          xHandle: postData.xHandle,
+          twitterHandle: postData.twitterHandle,
+          twitterId: postData.twitterId,
+          profileImageUrl: postData.profileImageUrl,
+        });
+        return send(res, 201, { message: 'User profile created successfully', success: true }, cors);
+      } catch (e) {
+        if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+        console.error('[compute] /profile POST failed:', e instanceof Error ? e.message : e);
+        return send(res, 500, { message: 'Internal server error' }, cors);
+      }
+    }
+
     if (req.method !== 'GET') return send(res, 405, { message: 'Method Not Allowed' }, cors);
     if (!PROFILE_READ.enabled) return send(res, 503, { message: 'profile read compute not enabled' }, cors);
     try {
@@ -538,7 +588,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

@@ -159,6 +159,20 @@ export const PROFILE_READ = {
   enabled: !!identityWriteBearer,
 };
 
+// --- #2a get-user-profile root POST create (write) ------------------------------------------------
+// De-Lambda of the get-user-profile POST create path (a NEW non-social profile). Parity with the lambda
+// POST: verifyJwt (dual-jwks, VERIFY.audience) -> identityId == authenticated -> provider/username
+// required -> social-provider (google/twitter) block -> create-only (409 if it already exists). The box
+// write is the box :3211 /profile/create-mirror loopback (INSERT ... ON CONFLICT DO NOTHING; box-only,
+// no DynamoDB) reusing the ADDITIONAL identity-write bearer/baseUrl. avatar POST /upload-avatar-url is
+// NOT lifted (it stays on the lambda via the {proxy+} mount; S3 presign moves with S3->R2). Gated on a
+// dedicated COMPUTE_PROFILE_WRITE_ENABLED=1 flag so the bundle deploys INERT (503) even though audience +
+// the bearer are already live -- the public box-direct POST stays closed until the API Gateway root POST
+// is repointed at cutover (mirrors the WALLET COMPUTE_WALLET_ENABLED gate rationale).
+export const PROFILE_WRITE = {
+  enabled: process.env.COMPUTE_PROFILE_WRITE_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+};
+
 // --- C3b wallet register/remove/list (crown-jewel ownership writes + list read) -------------------
 // De-Lambda of the wallet-api lambda's multi-wallet routes: POST /register, POST /remove, GET /list.
 // register does dual-jwks verify (VERIFY.audience) + the wallet-proof HMAC (walletProofSecret, the SAME
