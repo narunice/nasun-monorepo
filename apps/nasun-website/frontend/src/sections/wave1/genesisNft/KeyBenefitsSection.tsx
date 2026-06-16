@@ -3,7 +3,6 @@ import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticT
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";
 import { SectionTitle } from "@/components/ui/SectionTitle";
-import { JoinWhitelistButton } from "@/components/whitelist/JoinWhitelistButton";
 import { Button } from "@/components/ui/button";
 
 function KeyBenefitsSection() {
@@ -101,7 +100,6 @@ function KeyBenefitsSection() {
 
         {/* CTA Buttons */}
         <div className="flex justify-center gap-4 md:gap-6">
-          <JoinWhitelistButton variant="white" size="lg" className=" max-w-2xl " />
           <Button variant="white" size="lg" disabled className="max-w-2xl ">
             Mint Coming Soon
           </Button>
