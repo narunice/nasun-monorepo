@@ -121,6 +121,22 @@ export const SALT = {
   })(),
 };
 
+// --- Google de-Cognito login (P1) ----------------------------------------------------------------
+// POST /auth/google/verify replaces the browser-side Cognito federated GetId/GetOpenIdToken for Google
+// login. The box verifies the Google OIDC id_token server-side, then mints the SAME identityId via the
+// issuer using developerUserIdentifier "google:<sub>" -- the byte-exact key Stage-1 seeded into
+// issuer.identity_map (provider accounts.google.com) -- so existing Google users keep their identityId.
+// ★ Unlike SALT, the audience check is MANDATORY: a login issues a session JWT, so accepting a Google
+// id_token minted for a different client_id would let an attacker replay it to log in as its subject
+// (token-audience confusion). clientId is NOT a secret (it ships in the frontend build), so it arrives
+// via a unit Environment= var, like VERIFY.audience. Gates on issuer-mint-bearer + clientId (no
+// identity-write / wallet-proof needed -- Google login mints no wallet); inert 503 until both present.
+export const GOOGLE = {
+  enabled: !!(issuerMintBearer && (process.env.COMPUTE_GOOGLE_CLIENT_ID || '')),
+  clientId: process.env.COMPUTE_GOOGLE_CLIENT_ID || '',
+  egressTimeoutMs: SALT.egressTimeoutMs,
+};
+
 // --- C4+ incoming-JWT verification (dual-jwks) ----------------------------------------------------
 // Shared by additional-wallet / telegram / governance. The Cognito pool id (audience) is NOT a secret
 // (it ships in the frontend build), so it arrives via a unit Environment= var, not a credential. The

@@ -14,7 +14,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, send, RouteAbort } from './http';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
@@ -25,6 +25,7 @@ import {
   handleEvmConnectVerify,
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
+import { handleGoogleLogin } from './handlers-google';
 import { CHAINS } from './additional-chains';
 import {
   readProfileByIdentity,
@@ -195,6 +196,27 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     } catch (e) {
       if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
       console.error(`[compute] ${pathname} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { message: 'Internal Server Error' }, cors);
+    }
+  }
+
+  // P1 Google de-Cognito login -- origin-allowlist CORS + credentials (same loginCors as the sui/metamask
+  // login routes; this replaces the browser Cognito federated GetId/GetOpenIdToken). idToken arrives in
+  // the BODY. Gated by GOOGLE.enabled (issuer-mint-bearer + client_id present); inert 503 until both are
+  // provisioned and the api.nasun.io vhost adds /auth/google/.
+  if (pathname === '/auth/google/verify') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = loginCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { message: 'Method Not Allowed' }, cors);
+    if (!GOOGLE.enabled) return send(res, 503, { message: 'google login compute not enabled' }, cors);
+    try {
+      const body = parseJson(await readBody(req));
+      const { status, body: out } = await handleGoogleLogin(body);
+      return send(res, status, out, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /auth/google/verify failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { message: 'Internal Server Error' }, cors);
     }
   }
