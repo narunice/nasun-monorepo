@@ -791,43 +791,6 @@ export class CommonStack extends cdk.Stack {
     priceUpdateRule.addTarget(new targets.LambdaFunction(this.priceUpdaterLambda));
 
     // ========================================
-    // 4. AWS Credentials Lambda
-    // ========================================
-
-    const getAwsCredentialsLambda = new NodejsFunction(this, "GetAwsCredentialsLambda", {
-      functionName: "nasun-common-get-aws-credentials",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'get-aws-credentials', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-      },
-      logGroup: new logs.LogGroup(this, "GetAwsCredentialsLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-aws-credentials",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    getAwsCredentialsLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["cognito-identity:GetCredentialsForIdentity"],
-        resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`]
-      })
-    );
-
-    const getAwsCredentialsApi = new apigw.LambdaRestApi(this, "GetAwsCredentialsApi", {
-      handler: getAwsCredentialsLambda,
-      restApiName: "NASUN Get AWS Credentials API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["POST", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"]
-      },
-    });
-
-    // ========================================
     // 5. User Account Management (Deactivation & Purge)
     // ========================================
 
@@ -1041,10 +1004,6 @@ export class CommonStack extends cdk.Stack {
       description: "Governance API URL (CommonStack)",
     });
 
-    new cdk.CfnOutput(this, "GetAwsCredentialsApiUrl", {
-      value: getAwsCredentialsApi.url,
-      description: "Get AWS Credentials API URL (CommonStack)",
-    });
 
     new cdk.CfnOutput(this, "GetUserCountApiUrl", {
       value: getUserCountApi.url,
