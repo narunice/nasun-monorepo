@@ -245,48 +245,63 @@ export default defineConfig(({ mode }) => {
       modulePreload: {
         resolveDependencies: (_filename, deps) =>
           deps.filter((dep) =>
-            /vendor-react|vendor-radix|vendor-data|vendor-aws|vendor-i18n|vendor-web3|core-|metamask-sdk-/.test(
+            /vendor-react|vendor-radix|vendor-data|vendor-i18n|vendor-web3|core-|metamask-sdk-/.test(
               dep,
             ),
           ),
       },
       rollupOptions: {
         output: {
-          manualChunks: {
-            // Core React
-            "vendor-react": ["react", "react-dom", "react-router-dom"],
-
-            // UI Components
-            "vendor-radix": [
-              "@radix-ui/react-dialog",
-              "@radix-ui/react-dropdown-menu",
-              "@radix-ui/react-popover",
-              "@radix-ui/react-tooltip",
-            ],
-
-            // Web3 — lazy-loaded via WalletLayer and page-level imports
-            // NOTE: @mysten/dapp-kit intentionally NOT assigned here.
-            // It imports clsx + zustand internally, which forces vendor-web3
-            // into the critical path (index statically imports shared deps).
-            // Letting Rollup place dapp-kit in lazy chunks naturally avoids this.
-            "vendor-web3": ["ethers"],
-
-            // AWS
-            "vendor-aws": ["aws-amplify"],
-
-            // State & Data
-            "vendor-data": ["zustand", "@tanstack/react-query", "axios"],
-
-            // i18n
-            "vendor-i18n": ["i18next", "react-i18next"],
-
-            // Heavy Libraries
-            "vendor-framer-motion": ["framer-motion"],
-            // chart.js/recharts — NOT assigned to manual chunk.
-            // Only used in lazy-loaded pages (Network, MyAccount).
-            // Assigning to manual chunk forces Rollup to place it in index's
-            // dependency graph, adding 505KB raw JS to the critical path.
-            "vendor-carousel": ["react-slick", "slick-carousel"],
+          // Function-form manualChunks. The object form did NOT reliably honor its
+          // assignments: Rollup's heuristic scattered `react` core into vendor-data
+          // (next to axios/@tanstack) while react-dom landed in index and react-router
+          // in vendor-react. That split produced multiple React module instances, so a
+          // consumer resolved an incomplete React namespace and crashed on `D.Activity`
+          // (undefined) once removing aws-amplify shifted the chunk balance. The function
+          // form gives deterministic, per-module control: the entire React runtime family
+          // (react core, react-dom, scheduler, react/jsx-runtime, react-router*) is pinned
+          // to a SINGLE vendor-react chunk so there is exactly one React instance.
+          //
+          // Everything not matched returns undefined → Rollup's natural placement is kept.
+          // This is intentional for @mysten/dapp-kit / chart.js / recharts, which must stay
+          // in lazy chunks off the critical path (assigning them pulls them into index's
+          // static graph).
+          manualChunks(id) {
+            if (!id.includes("node_modules")) return undefined;
+            if (
+              /[\\/]node_modules[\\/](react|react-dom|scheduler|react-router|react-router-dom)[\\/]/.test(
+                id,
+              )
+            ) {
+              return "vendor-react";
+            }
+            if (
+              /[\\/]node_modules[\\/]@radix-ui[\\/]react-(dialog|dropdown-menu|popover|tooltip)[\\/]/.test(
+                id,
+              )
+            ) {
+              return "vendor-radix";
+            }
+            if (/[\\/]node_modules[\\/]ethers[\\/]/.test(id)) return "vendor-web3";
+            if (
+              /[\\/]node_modules[\\/](zustand|@tanstack[\\/]react-query|axios)[\\/]/.test(
+                id,
+              )
+            ) {
+              return "vendor-data";
+            }
+            if (/[\\/]node_modules[\\/](i18next|react-i18next)[\\/]/.test(id)) {
+              return "vendor-i18n";
+            }
+            if (/[\\/]node_modules[\\/]framer-motion[\\/]/.test(id)) {
+              return "vendor-framer-motion";
+            }
+            if (
+              /[\\/]node_modules[\\/](react-slick|slick-carousel)[\\/]/.test(id)
+            ) {
+              return "vendor-carousel";
+            }
+            return undefined;
           },
         },
       },
