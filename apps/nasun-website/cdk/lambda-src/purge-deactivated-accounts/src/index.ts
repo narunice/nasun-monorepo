@@ -1,11 +1,9 @@
 import { DynamoDBClient, ScanCommand, DeleteItemCommand } from "@aws-sdk/client-dynamodb";
-import { CognitoIdentityClient, UnlinkIdentityCommand, DescribeIdentityCommand } from "@aws-sdk/client-cognito-identity";
 import { mirrorIdentityWrite, authoritativeIdentityWrite, readIdentityRouteOrThrow, IDENTITY_ROUTES } from "../../_shared/auth/identity-write";
 
 const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE!;
 
 const ddbClient = new DynamoDBClient({});
-const cognitoClient = new CognitoIdentityClient({});
 
 export const handler = async (_event?: unknown, context?: { callbackWaitsForEmptyEventLoop?: boolean }): Promise<void> => {
   // The box-scan read (PURGE_SCAN_SOURCE=box) uses Node fetch (undici); a kept-alive socket or an aborted-fetch
@@ -25,8 +23,8 @@ export const handler = async (_event?: unknown, context?: { callbackWaitsForEmpt
     if (scanSource === "box") {
       // #3a-1: enumerate the box (the box-only deactivate queue once #3a-2 flips) instead of the frozen
       // DynamoDB follower. The box /profile/deactivated-due route returns every status=DEACTIVATED row with
-      // deletionScheduledAt<=before. The purge needs ONLY identityId -- the Cognito unlink + box /profile/delete
-      // + DynamoDB DeleteItem below all key on identityId; the DynamoDB item never carried login-provider
+      // deletionScheduledAt<=before. The purge needs ONLY identityId -- the box /profile/delete + DynamoDB
+      // DeleteItem below both key on identityId; the DynamoDB item never carried login-provider
       // attributes, so the per-login `account[login]?.S` was already always undefined (-> ''), so a box item
       // carrying only identityId is byte-faithful. A box read failure THROWS -> the run aborts and retries next
       // day (parity with the DynamoDB Scan's throw; deleting nothing is safe, a half-read deletion is NOT).
@@ -79,21 +77,7 @@ export const handler = async (_event?: unknown, context?: { callbackWaitsForEmpt
       if (!identityId) continue;
 
       try {
-        // 2a. Unlink from Cognito (idempotent: DescribeIdentity re-checks currentLogins on a retry).
-        const describeCmd = new DescribeIdentityCommand({ IdentityId: identityId });
-        const { Logins: currentLogins } = await cognitoClient.send(describeCmd);
-
-        if (currentLogins && currentLogins.length > 0) {
-          const unlinkCmd = new UnlinkIdentityCommand({
-            IdentityId: identityId,
-            Logins: currentLogins.reduce((acc, login) => ({ ...acc, [login]: account[login]?.S || '' }), {}),
-            LoginsToRemove: currentLogins,
-          });
-          await cognitoClient.send(unlinkCmd);
-          console.log(`[AccountPurge] Unlinked logins for IdentityId: ${identityId}`);
-        }
-
-        // 2b. Delete from the box nasun-identity mirror FIRST (see order note above). Best-effort
+        // 2a. Delete from the box nasun-identity mirror FIRST (see order note above). Best-effort
         //     (mirrorIdentityWrite never throws; dal-reload backstops) until /profile/delete is in
         //     IDENTITY_WRITE_FLIP_ROUTES, then authoritative (throws -> the DynamoDB delete below is
         //     skipped, leaving the account in DynamoDB to be retried next run). The box route deletes
@@ -106,7 +90,7 @@ export const handler = async (_event?: unknown, context?: { callbackWaitsForEmpt
           await mirrorIdentityWrite(IDENTITY_ROUTES.profileDelete, { identityId });
         }
 
-        // 2c. Delete from DynamoDB LAST (the Scan source).
+        // 2b. Delete from DynamoDB LAST (the Scan source).
         const deleteCmd = new DeleteItemCommand({
           TableName: USER_PROFILES_TABLE,
           Key: { identityId: { S: identityId } },

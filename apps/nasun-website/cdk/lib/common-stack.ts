@@ -830,12 +830,6 @@ export class CommonStack extends cdk.Stack {
       }),
     });
     this.userProfilesTable.grantReadWriteData(purgeDeactivatedAccountsLambda);
-    purgeDeactivatedAccountsLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["cognito-identity:UnlinkIdentity", "cognito-identity:DescribeIdentity"],
-        resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`]
-      })
-    );
 
     const purgeAccountsRule = new events.Rule(this, "PurgeAccountsRule", {
       ruleName: "nasun-common-purge-deactivated-accounts-daily",
