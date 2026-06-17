@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import { StaticTranslationProvider } from "./providers/i18n/StaticTranslationProvider";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
+import { Amplify } from "aws-amplify";
+import awsConfig from "./config/awsConfig"; // 기존 awsConfig 임포트 유지
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import { AuthProvider } from "@/features/auth/providers/AuthProvider";
@@ -83,6 +85,7 @@ function initializeApp() {
   try {
     setupErrorHandlers(); // 에러 핸들러 먼저 설정
     validateEnv(); // 환경 변수 검증
+    Amplify.configure(awsConfig); // ← awsConfig 객체 그대로 사용
 
     // 개발 환경 로깅
     if (import.meta.env.DEV) {

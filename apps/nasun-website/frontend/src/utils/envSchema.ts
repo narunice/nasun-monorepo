@@ -17,6 +17,10 @@ const BaseEnvSchema = z.object({
   // 1. 네트워크 설정
   VITE_NETWORK: NetworkType.default("mainnet"),
 
+  // 2. AWS & 인프라 설정
+  VITE_AWS_REGION: z.string().min(1),
+  VITE_COGNITO_IDENTITY_POOL_ID: z.string().min(1),
+
   // API 엔드포인트
   VITE_RANDOM_IMAGE_API_ENDPOINT: z.string().url(),
   VITE_WALLET_API_ENDPOINT: z.string().url(),

@@ -10,8 +10,8 @@ export interface GoogleOAuthResult {
  * Handles the Google OAuth redirect: extracts the implicit-flow id_token from the URL hash and verifies
  * it SERVER-SIDE at the box (POST /auth/google/verify). The box validates the token (Google JWKS +
  * audience + issuer + expiry) and mints the stable identityId via the issuer
- * (developerUserIdentifier "google:<sub>"). This replaced the former browser-side Cognito federated
- * GetId / GetOpenIdToken (now removed), the last Cognito Identity Pool dependency on the frontend.
+ * (developerUserIdentifier "google:<sub>"). This replaces the former browser-side Cognito federated
+ * GetId / GetOpenIdToken (features/auth/utils/cognito.ts) -- the last Cognito Identity Pool dependency.
  *
  * Google OAuth is account-LINKING only (primary login is the Nasun wallet; AuthProvider blocks the
  * non-linking flow), so the returned identityId is the SECONDARY identity passed to linkAccounts. It is
