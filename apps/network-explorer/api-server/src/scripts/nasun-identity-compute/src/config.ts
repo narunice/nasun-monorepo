@@ -140,8 +140,8 @@ export const GOOGLE = {
 // --- C4+ incoming-JWT verification (dual-jwks) ----------------------------------------------------
 // Shared by additional-wallet / telegram / governance. The Cognito pool id (audience) is NOT a secret
 // (it ships in the frontend build), so it arrives via a unit Environment= var, not a credential. The
-// nasun issuer JWKS is served on the loopback issuer (:3210) so the nasun branch needs no egress; the
-// Cognito branch fetches cognito-identity.amazonaws.com (egress, allowed since C8). See identity-verify.ts.
+// nasun issuer JWKS is served on the loopback issuer (:3210) so verification needs no egress. See
+// identity-verify.ts.
 export const VERIFY = {
   audience: process.env.COMPUTE_COGNITO_AUDIENCE || '',
   nasunIssuerId: process.env.COMPUTE_NASUN_ISSUER_ID || 'nasun-issuer',

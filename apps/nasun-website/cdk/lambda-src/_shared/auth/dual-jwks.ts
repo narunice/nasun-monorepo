@@ -1,44 +1,27 @@
 /**
- * Dual-JWKS identity-token verification (AWS-exit grace window, Stage 2 §A.2).
+ * Identity-token verification for the self-hosted nasun issuer (iss: nasun-issuer).
  *
- * During the migration grace window two kinds of identity tokens coexist:
- *   - legacy Cognito Identity tokens  (iss: https://cognito-identity.amazonaws.com)
- *   - new self-hosted issuer tokens    (iss: nasun-issuer)
- * Both mint `sub = identityId` (re-key 0), so a caller resolves the SAME identityId regardless of
- * which credential the user logged in with.
+ * Post AWS-exit cutover: every login path mints issuer tokens (`sub = identityId`, `aud` = the legacy
+ * Cognito Identity Pool id kept as the audience string for identityId continuity). The legacy
+ * Cognito-token branch was dropped after residual Cognito tokens (24h TTL) had expired; tokens with
+ * any other issuer are now rejected as unknown.
  *
- * Routing is by the (unverified) `iss` claim, then the token is cryptographically verified against
- * the matching JWKS with the expected issuer + audience. Reading `iss` before verification is safe:
- * the subsequent jwtVerify enforces issuer, audience, and signature, so a forged `iss` only selects a
- * key set that will reject the forged signature.
- *
- * Grace toggle: the nasun branch is active only when NASUN_ISSUER_JWKS_URL is set. While it is unset
- * (pre-cutover) this helper is equivalent to the previous Cognito-only verification, so deploying it is
- * a no-op until the env var is wired at cutover, and removing the env var rolls back. After the grace
- * window, drop the cognito branch (or its env) to finish the cutover.
+ * Routing reads the (unverified) `iss` claim, then jwtVerify enforces issuer + audience + signature
+ * against the issuer JWKS, so a forged `iss` only selects a key set that rejects the forged signature.
  *
  * Two entry points: verifyIdentityId (never throws, returns sub|undefined) for the simple call sites,
  * and verifyIdentityPayload (throws jose errors, preserving codes like ERR_JWT_EXPIRED) for the few
- * sites that differentiate error messages to the client. All 14 verify sites delegate here instead of
+ * sites that differentiate error messages to the client. All verify sites delegate here instead of
  * copy-pasting the JWKS singleton + jwtVerify block.
  */
 
 import { createRemoteJWKSet, jwtVerify, decodeJwt, type JWTPayload } from 'jose';
 
-const COGNITO_ISS = 'https://cognito-identity.amazonaws.com';
-const COGNITO_JWKS_URI = `${COGNITO_ISS}/.well-known/jwks_uri`;
-
 const NASUN_ISS = process.env.NASUN_ISSUER_ID || 'nasun-issuer';
-const NASUN_JWKS_URL = process.env.NASUN_ISSUER_JWKS_URL; // public URL of the nasun issuer's JWKS (cutover)
-const AUDIENCE = process.env.COGNITO_IDENTITY_POOL_ID;    // shared aud for both issuers (continuity)
+const NASUN_JWKS_URL = process.env.NASUN_ISSUER_JWKS_URL; // public URL of the nasun issuer's JWKS
+const AUDIENCE = process.env.COGNITO_IDENTITY_POOL_ID;    // identityId audience string (continuity; not a live pool)
 
-// JWKS fetchers are lazy module-scope singletons (cached across Lambda invocations).
-let cognitoJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
-function getCognitoJwks() {
-  if (!cognitoJwks) cognitoJwks = createRemoteJWKSet(new URL(COGNITO_JWKS_URI));
-  return cognitoJwks;
-}
-
+// JWKS fetcher is a lazy module-scope singleton (cached across Lambda invocations).
 let nasunJwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getNasunJwks() {
   if (!NASUN_JWKS_URL) return null;
@@ -60,11 +43,6 @@ export async function verifyIdentityPayload(token: string): Promise<JWTPayload> 
     const jwks = getNasunJwks();
     if (!jwks) throw new Error('nasun-issuer token received but NASUN_ISSUER_JWKS_URL is unset');
     const { payload } = await jwtVerify(token, jwks, { issuer: NASUN_ISS, audience: AUDIENCE });
-    return payload;
-  }
-
-  if (iss === COGNITO_ISS) {
-    const { payload } = await jwtVerify(token, getCognitoJwks(), { issuer: COGNITO_ISS, audience: AUDIENCE });
     return payload;
   }
 
