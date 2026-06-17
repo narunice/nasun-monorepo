@@ -8,7 +8,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 import * as path from 'path';
-import { issuerVerifyEnv, issuerMintEnv, issuerSaltEnv } from './issuer-env';
+import { issuerVerifyEnv, issuerMintEnv } from './issuer-env';
 import { identityWriteEnv, identityReadEnv } from './identity-env';
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 
@@ -20,8 +20,6 @@ export interface AuthStackProps extends cdk.StackProps {
 
 export class AuthStack extends cdk.Stack {
   public readonly metamaskAuthApi: apigw.RestApi;
-  public readonly suiAuthApi: apigw.RestApi;
-  public readonly zkLoginAuthApi: apigw.RestApi;
 
   constructor(scope: Construct, id: string, props: AuthStackProps) {
     super(scope, id, props);
@@ -244,8 +242,9 @@ export class AuthStack extends cdk.Stack {
     // HTTP_PROXY, identical to the C1 get-user-count cutover. The box reproduces the lambda handlers
     // byte-for-byte (signature verify -> issuer-loopback mint -> identity-loopback /profile/upsert ->
     // HMAC; in-memory nonce). The RestApi + execute-api URL are preserved (same construct), so no
-    // frontend rebuild. The auth lambdas (metamaskAuthFunction / suiAuthFunction) stay deployed as the
-    // rollback lever -- revert these integrations to LambdaIntegration + redeploy to roll back. The
+    // frontend rebuild. The metamaskAuthFunction lambda stays deployed as the rollback lever -- revert
+    // this integration to LambdaIntegration + redeploy to roll back. (The Sui auth lambda was removed in
+    // the AWS-exit P2 decommission, so the Sui path is box-only.) The
     // 2-trip /challenge + /verify stay on the lambda (not ported; the frontend uses the 1-trip flow).
     const c3aProxy = (p: string) =>
       new apigw.HttpIntegration(`https://issuer.nasun.io/compute/auth/${p}`, {
@@ -556,80 +555,12 @@ export class AuthStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN, // RETAIN: cdk destroy 시 salt DB 삭제 방지 (사용자 Sui 주소 영구 소실 방어)
     });
 
-    // 2. zkLogin Salt Lambda 함수
-    const zkLoginSaltFunction = new NodejsFunction(this, 'ZkLoginSaltFunction', {
-      functionName: 'nasun-auth-zklogin-salt',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'zklogin-salt', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256,
-      environment: {
-        // AWS-exit grace: persist salt to the self-hosted issuer when configured (else DynamoDB).
-        ...issuerSaltEnv(),
-        ZKLOGIN_TABLE_NAME: zkLoginTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        ALLOWED_AUD: process.env.GOOGLE_CLIENT_ID || '',
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logGroup: new logs.LogGroup(this, 'ZkLoginSaltLambdaLogGroup', {
-        logGroupName: '/aws/lambda/nasun-auth-zklogin-salt',
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
-    });
-
-    // Provisioned Concurrency for Genesis Pass drop (eliminates cold starts)
-    const zkLoginSaltVersion = zkLoginSaltFunction.currentVersion;
-    new lambda.Alias(this, "ZkLoginSaltLiveAlias", {
-      aliasName: "live",
-      version: zkLoginSaltVersion,
-      provisionedConcurrentExecutions: 5,
-    });
-
-    // 3. DynamoDB 권한 부여
-    zkLoginTable.grantReadWriteData(zkLoginSaltFunction);
-
-    // 4. API Gateway for zkLogin Auth with rate limiting
-    this.zkLoginAuthApi = new apigw.RestApi(this, 'ZkLoginAuthApi', {
-      restApiName: 'zkLogin Auth Service',
-      description: 'API for Sui zkLogin authentication with social providers',
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ['POST', 'OPTIONS'],
-        allowHeaders: ['Content-Type', 'Authorization'],
-      },
-      // Rate limiting -- raised for Genesis Pass drop traffic
-      deployOptions: {
-        throttlingBurstLimit: 1000,
-        throttlingRateLimit: 500,
-      },
-    });
-
-    const zkLoginAuth = this.zkLoginAuthApi.root.addResource('auth');
-    const zkLogin = zkLoginAuth.addResource('zklogin');
-
-    // POST /auth/zklogin/salt
-    // AWS-exit #4 / de-Lambda C8: served by the box compute service (nasun-identity-compute) over the
-    // same API Gateway HTTP_PROXY pattern as the C3a login cutover (reuses c3aProxy). The box reproduces
-    // the zkLoginSaltFunction handler's ISSUER-SALT branch byte-for-byte (Google JWKS verify ->
-    // jwtToAddress derivation -> box issuer salt store over loopback; @mysten/sui 1.45.2 on both sides,
-    // so address derivation is identical, and the salt store is the SAME box issuer so existing users'
-    // salt+address stay continuous). The RestApi + execute-api URL are preserved (no frontend rebuild).
-    // zkLoginSaltFunction stays deployed as the rollback lever -- revert this integration to
-    // LambdaIntegration + redeploy to roll back. (The lambda's DynamoDB branch is dead on the box:
-    // ISSUER_SALT_URL is set in prod, so persistence already lives on the box issuer.)
-    const saltResource = zkLogin.addResource('salt');
-    saltResource.addMethod('POST', c3aProxy('zklogin/salt'));
-
-    // 5. CloudFormation Outputs
-    new cdk.CfnOutput(this, 'ZkLoginAuthApiUrl', {
-      value: this.zkLoginAuthApi.url,
-      description: 'The URL of the zkLogin Auth API Gateway',
-      exportName: 'ZkLoginAuthApiUrl',
-    });
+    // zkLogin Auth API + Lambda: DECOMMISSIONED (AWS-exit P2, 2026-06-17). POST /auth/zklogin/salt is served
+    // by the box compute (nasun-identity-compute) via api.nasun.io; the standalone execute-api + the
+    // nasun-auth-zklogin-salt lambda + its provisioned-concurrency alias were removed after stale-client
+    // traffic drained to ~0. The ZkLoginUsersTable above is RETAINED: the canonical salt store is the box
+    // issuer (issuer.zklogin_users, superset of this table), but this legacy DynamoDB copy is kept until a
+    // per-key (provider, sub) diff confirms box is a superset of DynamoDB. Its name is still exported below.
 
     new cdk.CfnOutput(this, 'ZkLoginTableName', {
       value: zkLoginTable.tableName,
@@ -649,95 +580,11 @@ export class AuthStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY, // nonce는 TTL 임시 데이터이므로 삭제 허용
     });
 
-    // 2. Sui Auth Lambda 함수
-    const suiAuthFunction = new NodejsFunction(this, 'SuiAuthFunction', {
-      functionName: 'nasun-auth-sui',
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'auth-sui', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions, // @mysten/sui is bundled (only @aws-sdk/* is external)
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 256, // extra memory for @mysten/sui bundle cold start (same as zkLogin Lambda)
-      environment: {
-        // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
-        ...issuerMintEnv(),
-        // AWS-exit DAL S1.2: also mirror the profile write to the box nasun-identity service when wired.
-        ...identityWriteEnv(),
-        NONCE_TABLE_NAME: suiNonceTable.tableName,
-        USER_PROFILES_TABLE: props.userProfilesTable.tableName,
-        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
-        COGNITO_DEVELOPER_PROVIDER_NAME: process.env.COGNITO_DEVELOPER_PROVIDER_NAME || 'nasun.io',
-        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logGroup: new logs.LogGroup(this, 'SuiAuthLambdaLogGroup', {
-        logGroupName: '/aws/lambda/nasun-auth-sui',
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
-    });
-
-    // 3. DynamoDB 권한 부여
-    suiNonceTable.grantReadWriteData(suiAuthFunction);
-    props.userProfilesTable.grantReadWriteData(suiAuthFunction);
-
-    // 4. Cognito 권한 부여
-    suiAuthFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'cognito-identity:GetId',
-          'cognito-identity:GetCredentialsForIdentity',
-          'cognito-identity:GetOpenIdTokenForDeveloperIdentity',
-        ],
-        resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
-      })
-    );
-
-    // 5. Secrets Manager 권한 (wallet proof secret)
-    suiAuthFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue'],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
-        ],
-      }),
-    );
-
-    // 6. API Gateway for Sui Auth
-    this.suiAuthApi = new apigw.RestApi(this, 'SuiAuthApi', {
-      restApiName: 'Sui Auth Service',
-      description: 'API for Nasun Wallet (Sui Ed25519) authentication',
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ['POST', 'OPTIONS'],
-        allowHeaders: ['Content-Type', 'Authorization'],
-      },
-      deployOptions: {
-        throttlingBurstLimit: 500,
-        throttlingRateLimit: 200,
-      },
-    });
-
-    const suiAuth = this.suiAuthApi.root.addResource('auth');
-    const sui = suiAuth.addResource('sui');
-
-    // POST /auth/sui/prepare. C3a: box compute (self-custody Ed25519 + zkLogin ephemeral, in-memory nonce).
-    const suiPrepareResource = sui.addResource('prepare');
-    suiPrepareResource.addMethod('POST', c3aProxy('sui/prepare'));
-
-    // POST /auth/sui/connect-verify. C3a: box compute (handles both self-custody and zkLogin branches).
-    const suiConnectVerifyResource = sui.addResource('connect-verify');
-    suiConnectVerifyResource.addMethod('POST', c3aProxy('sui/connect-verify'));
-
-    // 7. CloudFormation Outputs
-    new cdk.CfnOutput(this, 'SuiAuthApiUrl', {
-      value: this.suiAuthApi.url,
-      description: 'The URL of the Sui Auth API Gateway',
-      exportName: 'SuiAuthApiUrl',
-    });
+    // Sui Auth API + Lambda: DECOMMISSIONED (AWS-exit P2, 2026-06-17). POST /auth/sui/prepare and
+    // /auth/sui/connect-verify are served by the box compute (nasun-identity-compute) via api.nasun.io;
+    // the standalone execute-api + the nasun-auth-sui lambda (with its Cognito + secrets IAM) were removed
+    // after stale-client traffic drained to ~0. The SuiAuthNoncesTable above is RETAINED for now (ephemeral
+    // TTL nonces; the box uses an in-memory nonce, so this table is unused but harmless). Name exported below.
 
     new cdk.CfnOutput(this, 'SuiNonceTableName', {
       value: suiNonceTable.tableName,
@@ -752,8 +599,6 @@ export class AuthStack extends cdk.Stack {
       { id: 'MetaMaskAdditionalWafAssociation', api: metamaskAdditionalApi },
       { id: 'SolanaAdditionalWafAssociation', api: solanaAdditionalApi },
       { id: 'SuiAdditionalWafAssociation', api: suiAdditionalApi },
-      { id: 'ZkLoginAuthWafAssociation', api: this.zkLoginAuthApi },
-      { id: 'SuiAuthWafAssociation', api: this.suiAuthApi },
     ];
     for (const { id, api } of wafTargets) {
       new wafv2.CfnWebACLAssociation(this, id, {

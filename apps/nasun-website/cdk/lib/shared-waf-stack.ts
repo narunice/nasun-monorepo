@@ -49,8 +49,8 @@ export const API_RATE_LIMITS: ApiRateLimitConfig[] = [
   { apiId: "br30jspm8j", name: "TwitterAuth", limit: 60 },
   { apiId: "p2du2vo5uf", name: "BugReport", limit: 600 },
   { apiId: "gtzq164xhb", name: "MetaMaskAuth", limit: 120 },
-  { apiId: "r0thrlqqcf", name: "ZkLoginAuth", limit: 120 },
-  { apiId: "r45cfshhkf", name: "SuiAuth", limit: 120 },
+  // ZkLoginAuth (r0thrlqqcf) + SuiAuth (r45cfshhkf) rate rules removed: those execute-apis were
+  // decommissioned (AWS-exit P2, 2026-06-17); the box compute serves both via api.nasun.io.
   { apiId: "9snrweav74", name: "Referral", limit: 120 },
   { apiId: "jrrge0lqtk", name: "NftEvent", limit: 200 },
   { apiId: "hntjvkuyvk", name: "GenesisPass", limit: 600 },

@@ -797,54 +797,9 @@ export class CommonStack extends cdk.Stack {
     // ✅ Lambda Authorizer 제거: identityId 기반 인증으로 변경
     // 로그인 시스템을 건드리지 않기 위해 Custom Token Authorizer를 사용하지 않음
 
-    // 5-2. Deactivate User Account Lambda
-    const deactivateUserAccountLambda = new NodejsFunction(this, "DeactivateUserAccountLambda", {
-        functionName: "nasun-common-deactivate-user-account",
-        runtime: lambda.Runtime.NODEJS_22_X,
-        entry: path.join(lambdaSrcPath, 'deactivate-user-account', 'src', 'index.ts'),
-        handler: 'handler',
-        depsLockFilePath,
-        bundling: bundlingOptions,
-        // AWS-exit DAL 3d step-2: raised from the 3s CDK default so the authoritative box-write
-        // budget (~5.4s worst case) fits when /profile/status joins IDENTITY_WRITE_FLIP_ROUTES at the
-        // cutover (matches WalletApiLambda's pre-raise). Best-effort today returns in <1s; no-op change.
-        timeout: cdk.Duration.seconds(15),
-        environment: {
-            // AWS-exit DAL 3d step-2: mirror the deactivation (status + deletionScheduledAt) to the
-            // box nasun-identity service when wired. FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset.
-            ...identityWriteEnv(),
-            USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-            ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        },
-        logGroup: new logs.LogGroup(this, "DeactivateUserAccountLogGroup", {
-            logGroupName: "/aws/lambda/nasun-common-deactivate-user-account",
-            removalPolicy: cdk.RemovalPolicy.DESTROY
-        }),
-    });
-    this.userProfilesTable.grantWriteData(deactivateUserAccountLambda);
-
-    // #3a de-Lambda deactivate-user-account: root DELETE -> box compute (HTTP_PROXY). The box compute
-    // DELETE /compute/profile/deactivate ports the lambda byte-for-byte (no-JWT query identityId+provider ->
-    // loopback read provider/status -> 404/200/403 decision -> box :3211 /profile/status box-only write, no
-    // DynamoDB). Converted from LambdaRestApi(proxy:false) to a plain RestApi with the SAME construct id so the
-    // execute-api id is preserved (no frontend rebuild; VITE_DEACTIVATE_USER_API_URL unchanged). Auth was
-    // already NONE at the API GW (the lambda enforced ownership via the DynamoDB provider-match
-    // ConditionExpression, reproduced byte-for-byte by the box handler). OPTIONS preflight stays an API-GW MOCK
-    // (defaultCorsPreflightOptions). ROLLBACK: revert this block to LambdaRestApi(proxy:false) +
-    // root.addMethod('DELETE', new apigw.LambdaIntegration(deactivateUserAccountLambda)) + redeploy (the lambda
-    // stays defined + granted as the rollback target).
-    const deactivateAccountApi = new apigw.RestApi(this, "DeactivateAccountApi", {
-        restApiName: "NASUN Deactivate Account API (Common)",
-        defaultCorsPreflightOptions: {
-            allowOrigins: ALLOWED_ORIGINS,
-            allowMethods: ["DELETE", "OPTIONS"],
-            allowHeaders: ["Content-Type", "Authorization"],
-        },
-    });
-    deactivateAccountApi.root.addMethod('DELETE', new apigw.HttpIntegration(
-        "https://issuer.nasun.io/compute/profile/deactivate",
-        { httpMethod: "DELETE", proxy: true }
-    ));
+    // 5-2. Deactivate Account API: DECOMMISSIONED (AWS-exit P2, 2026-06-17). The deactivate flow is served
+    // by the box compute via api.nasun.io; the standalone execute-api + nasun-common-deactivate-user-account
+    // lambda were removed after stale-client traffic drained to ~0. The purge cron (5-3) is independent.
 
     // 5-3. Purge Deactivated Accounts Lambda (Scheduled)
     const purgeDeactivatedAccountsLambda = new NodejsFunction(this, "PurgeDeactivatedAccountsLambda", {
@@ -889,54 +844,9 @@ export class CommonStack extends cdk.Stack {
     });
     purgeAccountsRule.addTarget(new targets.LambdaFunction(purgeDeactivatedAccountsLambda));
 
-    // ========================================
-    // 6. Get User Count Lambda (Roadmap 메트릭용)
-    // ========================================
-
-    const getUserCountLambda = new NodejsFunction(this, "GetUserCountLambda", {
-      functionName: "nasun-common-get-user-count",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'get-user-count', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        // AWS-exit DAL S3.R3: serve the user count from the box mirror when IDENTITY_READ_MODE=flip (DDB fallback).
-        ...identityReadEnv(),
-      },
-      logGroup: new logs.LogGroup(this, "GetUserCountLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-user-count",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    // DescribeTable 권한 추가
-    getUserCountLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ["dynamodb:DescribeTable"],
-        resources: [this.userProfilesTable.tableArn]
-      })
-    );
-
-    // AWS-exit de-Lambda C1: serve the user count directly from the box compute service
-    // (https://issuer.nasun.io/compute/count) via an HTTP_PROXY integration, removing the Lambda hop.
-    // The RestApi construct id is unchanged ("GetUserCountApi") so the execute-api URL is preserved
-    // (the frontend has it baked into the build); only the integration changes Lambda -> HTTP. The box
-    // route is public (the count is public data) and returns Access-Control-Allow-Origin: * which
-    // HTTP_PROXY passes through to the browser. getUserCountLambda above stays declared-but-unwired as
-    // the rollback target (revert this block to LambdaRestApi to roll back).
-    const getUserCountApi = new apigw.RestApi(this, "GetUserCountApi", {
-      restApiName: "NASUN Get User Count API (Common)",
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["GET", "OPTIONS"]
-      },
-    });
-    getUserCountApi.root.addMethod("GET", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/count",
-      { httpMethod: "GET", proxy: true }
-    ));
+    // 6. Get User Count API: DECOMMISSIONED (AWS-exit P2, 2026-06-17). The count is served by the box
+    // compute via api.nasun.io; the standalone execute-api + nasun-common-get-user-count lambda were
+    // removed after stale-client traffic drained to ~0.
 
     // ========================================
     // 7. SSM Parameters
@@ -989,11 +899,6 @@ export class CommonStack extends cdk.Stack {
       description: "Link Account API URL (CommonStack)",
     });
 
-    new cdk.CfnOutput(this, "DeactivateAccountApiUrl", {
-      value: deactivateAccountApi.url,
-      description: "Deactivate Account API URL (CommonStack)",
-    });
-
     new cdk.CfnOutput(this, "WalletApiUrl", {
       value: walletApi.url,
       description: "Wallet API URL (CommonStack)",
@@ -1002,12 +907,6 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "GovernanceApiUrl", {
       value: this.governanceApi.url,
       description: "Governance API URL (CommonStack)",
-    });
-
-
-    new cdk.CfnOutput(this, "GetUserCountApiUrl", {
-      value: getUserCountApi.url,
-      description: "Get User Count API URL (CommonStack)",
     });
 
     // ========================================
