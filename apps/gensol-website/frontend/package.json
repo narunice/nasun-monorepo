@@ -29,7 +29,7 @@
     "@tanstack/react-query": "^5.67.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dompurify": "^3.3.1",
+    "dompurify": "^3.4.9",
     "lucide-react": "^0.525.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
@@ -56,7 +56,7 @@
     "@vitest/ui": "^3.2.4",
     "autoprefixer": "^10.4.20",
     "depcheck": "^1.4.7",
-    "esbuild": "^0.25.12",
+    "esbuild": "^0.28.1",
     "eslint": "^10.4.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -71,7 +71,7 @@
     "tsx": "^4.19.4",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.18.2",
-    "vite": "^7.3.0",
-    "vitest": "^3.2.4"
+    "vite": "^7.3.5",
+    "vitest": "^3.2.6"
   }
 }
