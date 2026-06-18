@@ -53,6 +53,15 @@ export default defineConfig(({ mode }) => {
       },
     },
     VitePWA({
+      // Retire the PWA service worker. The precaching app-shell SW served stale
+      // pre-cutover bundles (referencing the now-deleted r0thrlqqcf zkLogin salt
+      // execute-api) to returning users, breaking login until a manual site-data
+      // clear. selfDestroying generates a SW that unregisters every previously
+      // installed SW and wipes its caches on the next visit, so all returning
+      // users auto-recover onto the live origin assets (which point at the stable
+      // api.nasun.io salt endpoint). A live trading app needs fresh data, not an
+      // offline precache, so dropping the SW removes this whole stale-cache class.
+      selfDestroying: true,
       registerType: 'autoUpdate',
       includeAssets: ['fonts/**/*.woff2', 'icons/*.svg'],
       manifest: {
