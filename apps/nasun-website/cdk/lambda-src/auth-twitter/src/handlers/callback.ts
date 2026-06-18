@@ -83,19 +83,16 @@ export const callbackHandler = async (event: APIGatewayProxyEvent): Promise<APIG
     const {
       SESSIONS_TABLE_NAME,
       USER_PROFILES_TABLE,
-      COGNITO_IDENTITY_POOL_ID,
-      COGNITO_DEVELOPER_PROVIDER_NAME,
     } = process.env;
 
-    if (!SESSIONS_TABLE_NAME || !USER_PROFILES_TABLE || !COGNITO_IDENTITY_POOL_ID ||
-        !COGNITO_DEVELOPER_PROVIDER_NAME) {
+    if (!SESSIONS_TABLE_NAME || !USER_PROFILES_TABLE) {
       throw new Error('Missing required environment variables');
     }
 
     // Initialize services
     const twitterAPI = new TwitterAPI(TWITTER_CLIENT_ID, TWITTER_CLIENT_SECRET);
     const sessionManager = new SessionManager(SESSIONS_TABLE_NAME);
-    const cognitoService = new CognitoService(COGNITO_IDENTITY_POOL_ID, COGNITO_DEVELOPER_PROVIDER_NAME);
+    const cognitoService = new CognitoService();
     const dynamoClient = new DynamoDBClient({ region: process.env.AWS_REGION || 'ap-northeast-2' });
 
     // 1. Atomically get and delete session (prevents replay attacks)

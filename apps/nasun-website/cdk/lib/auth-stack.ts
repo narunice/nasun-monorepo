@@ -58,17 +58,15 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
-        // AWS-exit C2 flip: route Twitter identity mint to the self-hosted issuer when configured
-        // (else Cognito). Mirrors auth-metamask/auth-sui. The handler toggle (cognito.ts) is already
-        // deployed-inert; wiring ISSUER_MINT_URL/SECRET here activates issuer mint.
+        // AWS-exit: route Twitter identity mint to the self-hosted issuer. The Cognito Identity Pool
+        // fallback was removed after the P3 decommission (Pool deleted 2026-06-18), so ISSUER_MINT_URL/
+        // SECRET are required; the handler (cognito.ts) throws if unset. Mirrors auth-metamask.
         ...issuerMintEnv(),
         // AWS-exit DAL 3d step-2: mirror the Twitter-primary profile refresh to the box
         // nasun-identity service when wired. FAIL-SAFE: {} when IDENTITY_WRITE_URL/SECRET unset.
         ...identityWriteEnv(),
         SESSIONS_TABLE_NAME: twitterSessionsTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
-        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
-        COGNITO_DEVELOPER_PROVIDER_NAME: 'nasun.io',
         TWITTER_TOKENS_SECRET_NAME: twitterTokensSecretName,
         // NFT event tasks table for secure X access token storage (backend proxy)
         NFT_EVENT_TASKS_TABLE_NAME: nftEventTasksTableName,
@@ -107,15 +105,8 @@ export class AuthStack extends cdk.Stack {
       }),
     );
 
-    // Grant Cognito permissions
-    twitterLoginFunction.addToRolePolicy(new iam.PolicyStatement({
-      actions: [
-        'cognito-identity:GetId',
-        'cognito-identity:GetCredentialsForIdentity',
-        'cognito-identity:GetOpenIdTokenForDeveloperIdentity',
-      ],
-      resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
-    }));
+    // Cognito Identity Pool IAM removed: the Twitter login mint path is issuer-only after the AWS-exit
+    // P3 decommission (Pool 312bb111 deleted 2026-06-18). See auth-twitter/src/utils/cognito.ts.
 
     // Create API Gateway for Twitter Auth with rate limiting
     const twitterAuthApi = new apigw.RestApi(this, "TwitterAuthApi", {
@@ -173,14 +164,13 @@ export class AuthStack extends cdk.Stack {
       bundling: bundlingOptions,
       timeout: cdk.Duration.seconds(30),
       environment: {
-        // AWS-exit grace: route mint to the self-hosted issuer when configured (else Cognito).
+        // AWS-exit: route mint to the self-hosted issuer. Cognito fallback removed (P3 decommission,
+        // 2026-06-18); ISSUER_MINT_URL/SECRET required, the handler (cognito.ts) throws if unset.
         ...issuerMintEnv(),
         // AWS-exit DAL S1.2: also mirror the profile write to the box nasun-identity service when wired.
         ...identityWriteEnv(),
         NONCE_TABLE_NAME: nonceTable.tableName,
         USER_PROFILES_TABLE: props.userProfilesTable.tableName,
-        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || '',
-        COGNITO_DEVELOPER_PROVIDER_NAME: process.env.COGNITO_DEVELOPER_PROVIDER_NAME || 'nasun.io',
         ETHEREUM_CHAIN_ID_MAINNET: process.env.ETHEREUM_CHAIN_ID_MAINNET || '1',
         ETHEREUM_CHAIN_ID_SEPOLIA: process.env.ETHEREUM_CHAIN_ID_SEPOLIA || '11155111',
         WALLET_PROOF_SECRET_NAME: walletProofSecretName,
@@ -198,17 +188,8 @@ export class AuthStack extends cdk.Stack {
     nonceTable.grantReadWriteData(metamaskAuthFunction);
     props.userProfilesTable.grantReadWriteData(metamaskAuthFunction);
 
-    // 4. Cognito 권한 부여
-    metamaskAuthFunction.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: [
-          'cognito-identity:GetId',
-          'cognito-identity:GetCredentialsForIdentity',
-          'cognito-identity:GetOpenIdTokenForDeveloperIdentity',
-        ],
-        resources: [`arn:aws:cognito-identity:${this.region}:${this.account}:identitypool/*`],
-      })
-    );
+    // Cognito Identity Pool IAM removed: the MetaMask auth mint path is issuer-only after the AWS-exit
+    // P3 decommission (Pool 312bb111 deleted 2026-06-18). See auth-metamask/src/utils/cognito.ts.
 
     // Secrets Manager 권한 (wallet proof secret)
     metamaskAuthFunction.addToRolePolicy(
