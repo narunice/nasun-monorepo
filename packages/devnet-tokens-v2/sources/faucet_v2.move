@@ -9,8 +9,8 @@ module devnet_tokens_v2::faucet_v2 {
     use devnet_tokens_v2::nsol::NSOL;
 
     // Faucet amounts per claim (24h cooldown)
-    const NETH_FAUCET_AMOUNT: u64 = 50_000_000; // 0.5 NETH (8 decimals)
-    const NSOL_FAUCET_AMOUNT: u64 = 10_000_000_000; // 10 NSOL (9 decimals)
+    const NETH_FAUCET_AMOUNT: u64 = 60_000_000; // 0.6 NETH (8 decimals) [v8 2026-06-19]
+    const NSOL_FAUCET_AMOUNT: u64 = 12_000_000_000; // 12 NSOL (9 decimals) [v8 2026-06-19]
 
     // Rate limiting: daily reset at 00:00 UTC (09:00 KST)
     const RESET_INTERVAL_MS: u64 = 86_400_000; // 24 hours
