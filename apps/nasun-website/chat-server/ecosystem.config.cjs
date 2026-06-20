@@ -47,7 +47,7 @@ module.exports = {
         CHAT_DB_PATH: './data/chat.db',
         LEADERBOARD_DB_PATH: './data/leaderboard.db',
         CRASH_HISTORY_DB_PATH: './data/crash-history.db',
-        RPC_URL: 'https://rpc.devnet.nasun.io',
+        RPC_URL: 'http://127.0.0.1:9000',
         INDEXER_POLL_INTERVAL_MS: '5000',
         AGGREGATION_INTERVAL_MS: '240000',
         NASUN_PROFILE_API_URL: 'https://api.nasun.io/profile',

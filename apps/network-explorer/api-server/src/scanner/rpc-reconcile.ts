@@ -42,15 +42,12 @@ interface ReconcileQuery {
 
 // Package IDs (original, for RPC MoveEventType queries)
 const PKG = {
-  // SYNC WARNING: mirrors PKG.prediction + PKG.predictionLegacy in
-  // config/points.ts. Sui upgrade emit-type pinning means we have to query
-  // each upgrade variant. Add the new id when upgrading, keep the previous
-  // one so older events still reconcile.
-  //   0x98765cc3... — dead (pre-2026-05)
-  //   0xbe6d8f... — legacy publish
-  //   0x0b4f89... — previous, kept for in-flight history
-  //   0x86595464... — current (fresh publish per devnet-ids.json, 2026-05-25)
-  prediction: '0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2',
+  // SYNC WARNING: mirrors PKG.prediction in config/points.ts; keep both in
+  // lockstep or the startup guard trips. v8 fresh genesis (2026-06-19):
+  // prediction is a fresh publish (packageId == originalPackageId). The
+  // predictionPrev/predictionLegacy entries below are OLD-chain ids, inert on
+  // v8 (no events match), kept as harmless holdovers.
+  prediction: '0xa5e996e74ee9be7c7545e380d68d4f318d3c9a8d0cfd552a25482529481d14a9',
   predictionPrev: '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
   predictionLegacy: '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   lottery: '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
@@ -58,25 +55,25 @@ const PKG = {
   scratchcard: '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
   numbermatch: '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
   // Gostop game contracts (apps/gostop/devnet-ids.json)
-  gostopLottery: '0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3',
-  gostopScratchcard: '0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e',
-  gostopNumbermatch: '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
+  gostopLottery: '0x397f418412738dc82ebb09f0dfda64f449b8a738c64f303ced6661cd6d2191d2',
+  gostopScratchcard: '0xd04d86674b80196c71a3019fd0efb55e462b56d2b804f37e807aa6333830c286',
+  gostopNumbermatch: '0x8780af96d1accbdb10ccbe3d5102233d95f0883e68d8540c5202028b88711daf',
   // Mines and crash use originalPackageId (event subscription identity, stable
   // across upgrades). crash has been upgraded to v5; using packageId would miss
   // events emitted by older upgrade variants still resolved via the linker.
-  gostopMines: '0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54',
+  gostopMines: '0x1ba1065558e2495aec9d48e393f39d3086650013e68ef2ff498daa673d68faa4',
   gostopCrash: '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
   // Wheel: 2026-05-17 onboarding. packageId == originalPackageId (no upgrade yet).
-  gostopWheel: '0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d',
-  lending: '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
+  gostopWheel: '0xd7ec44b5ca454914d79a8cdd395e6c746ac9850a95fe616de4de25ef4af4e6cb',
+  lending: '0xecc406956e3cf436c297162e13fbff3db5f675fed706e1f92aa7eb6b3a6ec635',
   baram: '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
   // 2026-05-25 fresh publish: user-facing events moved from `aer` to `baram`.
   baramV2: '0x734c42b8e8fbca26f1961766176a509a49c8dd44368d80cdc035439809ff1aee',
   baramAer: '0xac4843a4db8803824bc7fca66492131d0744e77e650da0a7f8c4785b06da46e0',
   baramExecutor: '0x45efd887fdaee9d9ad29fb98d4d5c21083769cdc8ce5fb8a5f7d4701e4675ebd',
-  governance: '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3',
-  governanceMultiChoice: '0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a',
-  deepbook: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
+  governance: '0x6c6c22e7308666f323d020d40fe1c378d211ed7ec07b249b2561adaa7369afc8',
+  governanceMultiChoice: '0x6c6c22e7308666f323d020d40fe1c378d211ed7ec07b249b2561adaa7369afc8',
+  deepbook: '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00',
   sui: '0x0000000000000000000000000000000000000000000000000000000000000003',
 };
 

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
-    "build": "tsc",
+    "build": "tsc && mkdir -p dist/data && (cp src/data/*.json dist/data/ 2>/dev/null || true)",
     "typecheck": "tsc --noEmit",
     "lint:sql": "bash scripts/check-sql-antipatterns.sh"
   },

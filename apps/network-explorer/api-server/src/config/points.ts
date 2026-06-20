@@ -139,7 +139,7 @@ function stripHex(addr: string): string {
 // Package original IDs from devnet-ids.json (v8 fresh genesis 2026-06-19).
 // Event subscription identity = originalPackageId (== packageId for fresh v8 publishes).
 // INERT on v8 (kept harmless, no events match): deferred contracts
-// (unifiedMargin / baram* / baramEscrow / lending / perp), upgrade-history
+// (unifiedMargin / baram* / baramEscrow / perp), upgrade-history
 // holdovers (predictionPrev / predictionLegacy / gostopBankrollV2), and
 // gostopCrash (CRASH_ENABLED=false, not deployed). These keep OLD-chain ids by design.
 const PKG = {
@@ -223,7 +223,7 @@ const PKG = {
     '0x77c9d74b000a77ad0c392841e766b22381ccb479e65cb4cf004e4f3deb20673f',
   ),
   lending: stripHex(
-    '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
+    '0xecc406956e3cf436c297162e13fbff3db5f675fed706e1f92aa7eb6b3a6ec635',
   ),
   perp: stripHex(
     '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',

@@ -57,6 +57,11 @@ scripts/.credentials
 apps/pado/chat-server/data/
 apps/nasun-website/chat-server/data/
 
+# Creators appreciation eligibility snapshot (PII: handle/identityId/wallet mapping).
+# Kept in ops locations (node-3/box), regenerable via grant-creators-appreciation-bonus.ts
+# --export-eligibility. Build copies src/data/*.json -> dist/data/ (see api-server package.json).
+apps/network-explorer/api-server/src/data/
+
 # Claude Code runtime state (per-session, pid-bound)
 .claude/scheduled_tasks.lock
 
