@@ -27,7 +27,7 @@ module.exports = {
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
       },
       max_restarts: 10,
       min_uptime: '30s',

@@ -159,7 +159,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // ORACLE_ADMIN_KEY loaded from .env via deploy script
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
       },
       max_restarts: 10,
       restart_delay: 5000,
@@ -180,7 +180,7 @@ module.exports = {
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         WATCHDOG_INTERVAL_MS: '60000',    // 1 minute (5min caused up to 5min token drain gap)
         WATCHDOG_REFILL_ROUNDS: '100',    // 100 rounds per refill TX
       },
@@ -207,7 +207,7 @@ module.exports = {
       interpreter: 'none',
       env: {
         NODE_ENV: 'production',
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         KEEPER_GAS_INTERVAL_MS: '3600000',  // 1 hour
         KEEPER_GAS_THRESHOLD: '1000',       // refill below 1k NASUN
         KEEPER_GAS_TARGET: '100000',        // refill up to 100k NASUN
@@ -237,7 +237,7 @@ module.exports = {
         NODE_ENV: 'production',
         TPSL_PORT: '4001',
         // KEEPER_PRIVATE_KEY loaded from .env via deploy script
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         ORACLE_REGISTRY_ID: '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1',
         ORACLE_PACKAGE_ID: '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c',
         DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
@@ -270,7 +270,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // PREDICTION_RESOLVER_KEY + PREDICTION_KEEPER_MARKETS loaded from .env
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
         PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
@@ -316,7 +316,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // PREDICTION_LP_PRIVATE_KEY + PREDICTION_LP_MARKETS loaded from .env
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
         PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
@@ -382,7 +382,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // PREDICTION_ARB_PRIVATE_KEY loaded from .env
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
         PREDICTION_PACKAGE_ID,
         PREDICTION_PACKAGE_ID_LEGACY,
         PREDICTION_PACKAGE_ID_LEGACY_ORIGINAL,
@@ -417,7 +417,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         // LOTTERY_ADMIN_KEY loaded from .env via deploy script
-        NASUN_RPC_URL: 'https://rpc.devnet.nasun.io',
+        NASUN_RPC_URL: 'http://127.0.0.1:9000',
       },
       max_restarts: 10,
       min_uptime: '30s',
