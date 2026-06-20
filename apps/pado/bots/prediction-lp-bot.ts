@@ -94,7 +94,7 @@ const MAX_CONSECUTIVE_ERRORS = 10;
 // incident: yes_ask sat at [] for 30+ min because ensureInventory could not
 // mint a single Position pair). balance-watchdog covers only spot LP wallets
 // (NBTC/NETH/NSOL), so prediction-lp is self-served.
-const NUSDC_FAUCET_OBJECT = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
+const NUSDC_FAUCET_OBJECT = '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff';
 const DEFAULT_LP_MIN_NUSDC = 200;          // refill trigger (units of NUSDC)
 const DEFAULT_LP_NUSDC_REFILL_ROUNDS = 50; // request_nusdc moveCalls per PTB
 

@@ -1,6 +1,13 @@
 /**
  * cancel-and-sweep.ts
  *
+ * v7 OLD-CHAIN recovery artifact. Every address below (DEEPBOOK_PACKAGE, token
+ * packages, poolIds, oldBalanceManager) targets the pre-v8 chain (272218f1) as a
+ * coherent set. The v8 fresh genesis (69cd1d45) consolidated NETH into
+ * devnet_tokens_v2 (0xe09adc42); the 0xe672.../0xcc65... literals here are
+ * intentional OLD-chain references, NOT a NETH-package resurrection. Do NOT
+ * half-migrate: to sweep on v8, refresh the ENTIRE set (deepbook + pools + BMs).
+ *
  * One-shot script to:
  * 1. Cancel all open orders from old wallet in NBTC/NETH/NSOL markets
  * 2. Withdraw all tokens from old wallet's BalanceManagers

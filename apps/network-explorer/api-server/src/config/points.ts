@@ -136,10 +136,15 @@ function stripHex(addr: string): string {
   return addr.replace(/^0x/, '').toLowerCase();
 }
 
-// Package original IDs from devnet-ids.json
+// Package original IDs from devnet-ids.json (v8 fresh genesis 2026-06-19).
+// Event subscription identity = originalPackageId (== packageId for fresh v8 publishes).
+// INERT on v8 (kept harmless, no events match): deferred contracts
+// (unifiedMargin / baram* / baramEscrow / lending / perp), upgrade-history
+// holdovers (predictionPrev / predictionLegacy / gostopBankrollV2), and
+// gostopCrash (CRASH_ENABLED=false, not deployed). These keep OLD-chain ids by design.
 const PKG = {
   deepbook: stripHex(
-    '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
+    '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00',
   ),
   // Unified margin contract (new pado perp/margin product, 2026-04)
   unifiedMargin: stripHex(
@@ -147,7 +152,7 @@ const PKG = {
   ),
   // Alliance NFT (new NFT contract, 2026-04)
   allianceNft: stripHex(
-    '0x2f2f9e1a1683462af44d3da1b5148f8671d446dbb913d5348efaf2f08819ba5b',
+    '0xe1cd047fa08964fa3be2721d6be81fe25258fa30b77101c06330f6fb771d43cd',
   ),
   // Prediction package — current publish (mirrors devnet-ids.json packageId).
   // Sui upgrade: emit type of an event is the packageId of the *upgrade
@@ -159,7 +164,7 @@ const PKG = {
   //   0x0b4f89... — previous generation, kept for in-flight history
   //   0x86595464... — current (fresh publish per devnet-ids.json, 2026-05-25)
   prediction: stripHex(
-    '0x86595464922e006fd3af117dfee3f879796184e09e01b877379080c156a997b2',
+    '0xa5e996e74ee9be7c7545e380d68d4f318d3c9a8d0cfd552a25482529481d14a9',
   ),
   predictionPrev: stripHex(
     '0x0b4f89ade5ca63c737369c50f30721839ce9bb1b9cadd371924520c4944572ef',
@@ -168,13 +173,13 @@ const PKG = {
     '0xbe6d8f699ebe9a4b7249f9853d73cdb9443fbccac8f7fcf7ade0c200769fa78d',
   ),
   lottery: stripHex(
-    '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c',
+    '0xf2bddf105befcf89b2556d0da9d6c1189abfd172e0194c3c67356f8e7ac08578',
   ),
   governance: stripHex(
-    '0x3a3babecdd13b588c29fcd854819fc79f050ac7a7919b41d24ba66ab21dc1de3',
+    '0x6c6c22e7308666f323d020d40fe1c378d211ed7ec07b249b2561adaa7369afc8',
   ),
   governanceMultiChoice: stripHex(
-    '0xa1b4149ed07605c334396027132e7cd17c9aaf7a66bb7c9b09c2450cbda4144a',
+    '0x6c6c22e7308666f323d020d40fe1c378d211ed7ec07b249b2561adaa7369afc8',
   ),
   baram: stripHex(
     '0xaf77e8d92826156b9392c4e3c094d6927fd4397c768e983a8c0bbc9071ea19e6',
@@ -207,7 +212,7 @@ const PKG = {
   // WinnerPaid / GameResult / OpenExposureSnapshot from internal accounting
   // alongside each game-specific event — ignored to avoid double-credit.
   gostopBankrollV1: stripHex(
-    '0x4bc06710d15aa0ae235e5f9c69b01dec63afab929d0257586d5f2ecad72f0386',
+    '0xbd90dbc51a4b00e1366ad864817d0611eac2b2df3190fdf0615b97ff60b60da1',
   ),
   gostopBankrollV2: stripHex(
     '0xb92e09a5665144aeb69934b7e1c8b6fc67a37d424c69ac2eabd9386524110b82',
@@ -215,7 +220,7 @@ const PKG = {
   // Nasun Standing (NSI) tier-worker events. System-emitted (tier-push job),
   // not a user gesture. Ignored.
   nasunTier: stripHex(
-    '0x1b1f684bbc6795461ad5fba6e13427ec8ccbf2921aaa555a15f4aac827f0f7b9',
+    '0x77c9d74b000a77ad0c392841e766b22381ccb479e65cb4cf004e4f3deb20673f',
   ),
   lending: stripHex(
     '0xdd1e36881a1d47ad4f0f331b6a949948f308ded71c1d46802f23e258ca1ebafe',
@@ -224,42 +229,42 @@ const PKG = {
     '0x6821a73cfc3cd45dc6318db379c2c88f0acb61ec6a26060f4de8cbe4718d3658',
   ),
   scratchcard: stripHex(
-    '0xd70d650aae2a313faf6ec4a56744a9fb1bab8c289bfef57838bc5e336296ddff',
+    '0xfa48571700773a20438df6d3f0fc678debd3decfcc2ee571607e30272dd1e865',
   ),
   numbermatch: stripHex(
-    '0xf1087293200f23afdcce3415fcf025943bb22708b6b29588be671629dcb92758',
+    '0x90a5da24fe48b0e0e3961eeacdf8bed24463d6dc0650d59c939cdcf8025cc5f3',
   ),
   // Gostop game contracts (apps/gostop/devnet-ids.json). Same Move event
   // names as pado equivalents — mapped to the same categories so daily caps
   // dedup across both products.
   gostopLottery: stripHex(
-    '0xc0be188b342c4ee7c6cb3cef351a800b1b549cac75311a3d9a80a0a3f54634a3',
+    '0x397f418412738dc82ebb09f0dfda64f449b8a738c64f303ced6661cd6d2191d2',
   ),
   gostopScratchcard: stripHex(
-    '0xbd496f89148dfcd1f2bf9da19c9e5b053f97ebe0332df59289cb5ccfde6b6f7e',
+    '0xd04d86674b80196c71a3019fd0efb55e462b56d2b804f37e807aa6333830c286',
   ),
   gostopNumbermatch: stripHex(
-    '0xa111b54021094504d91fffd6e46ae6d4e4824e0341490004e4474aca03c8d314',
+    '0x8780af96d1accbdb10ccbe3d5102233d95f0883e68d8540c5202028b88711daf',
   ),
   // Mines and crash: must use originalPackageId (event subscription identity).
   // crash has been upgraded to v5; packageId field in devnet-ids.json reflects
   // the current upgrade, not the origin. Using packageId here would silently
   // drop matches.
   gostopMines: stripHex(
-    '0x57ba939cf26c6bc52a8ab4db81b8f07077cb5f41ceab0d08b497f98e4a2f3d54',
+    '0x1ba1065558e2495aec9d48e393f39d3086650013e68ef2ff498daa673d68faa4',
   ),
   gostopCrash: stripHex(
     '0x6fc868a6dabc2081cd47ea71ee8d2f8314c57102179eafd2ce0fce8e9edc5188',
   ),
   // Wheel: 2026-05-17 onboarding. packageId == originalPackageId (no upgrade yet).
   gostopWheel: stripHex(
-    '0x0dbfd5cb7e3f6892ce408371c429c7b3a77855ced7169d42a162c7c1dc03c16d',
+    '0xd7ec44b5ca454914d79a8cdd395e6c746ac9850a95fe616de4de25ef4af4e6cb',
   ),
   tokens: stripHex(
-    '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731',
+    '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11',
   ),
   tokensV2: stripHex(
-    '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2',
+    '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9',
   ),
   sui: stripHex(
     '0x0000000000000000000000000000000000000000000000000000000000000003',

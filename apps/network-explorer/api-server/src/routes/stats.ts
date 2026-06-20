@@ -15,10 +15,10 @@ const OWNER_TYPE_ADDRESS = 1;
 // NOTE: sui-indexer stores coin_type with zero-padded 64-char hex addresses
 const KNOWN_COIN_TYPES = [
   '0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI',
-  '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nbtc::NBTC',
-  '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC',
-  '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31::neth::NETH',
-  '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL',
+  '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nbtc::NBTC',
+  '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nusdc::NUSDC',
+  '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::neth::NETH',
+  '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::nsol::NSOL',
 ] as const;
 
 // Map zero-padded indexer coin types back to standard short form for API response

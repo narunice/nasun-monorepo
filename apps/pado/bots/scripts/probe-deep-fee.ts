@@ -15,36 +15,36 @@ import { Transaction } from '@mysten/sui/transactions';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 
-// V8 dev addresses (matching apps/pado/.env.local)
+// v8 fresh-genesis dev addresses (matching apps/pado/.env.local)
 const DEEPBOOK_PACKAGE = process.env.VITE_DEEPBOOK_PACKAGE
-  || '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134';
+  || '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00';
 const DEEP_TOKEN_PACKAGE = process.env.VITE_DEEP_TOKEN
-  || '0x71afcf8eaeb282bad050ef78931205a15c9e49638f2a7c67bde2c372251e1c3e';
+  || '0x642e81bd21a2dea6dd90d41a5f6bc18d6e63c0442f901d12198a894ed3b6a15a';
 const DEEP_TYPE = `${DEEP_TOKEN_PACKAGE}::deep::DEEP`;
 
-// Coin types — type identity uses originalPackageId
-const NUSDC_TYPE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nusdc::NUSDC';
-const NBTC_TYPE  = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731::nbtc::NBTC';
-const NETH_TYPE  = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31::neth::NETH';
-const NSOL_TYPE  = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL';
+// Coin types: type identity uses originalPackageId (fresh publish: == packageId)
+const NUSDC_TYPE = '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nusdc::NUSDC';
+const NBTC_TYPE  = '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11::nbtc::NBTC';
+const NETH_TYPE  = '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::neth::NETH';
+const NSOL_TYPE  = '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::nsol::NSOL';
 
 // Pool IDs from .env.local
 const POOLS: Array<{ name: string; id: string; baseType: string; baseDecimals: number }> = [
   {
     name: 'NBTC_NUSDC',
-    id: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
+    id: '0x1addff570f17f0e12fa14c5f986806ce21bd5cc0542c4548ebf011a56eb26ec9',
     baseType: NBTC_TYPE,
     baseDecimals: 8,
   },
   {
     name: 'NETH_NUSDC',
-    id: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
+    id: '0x2fb410e4505fabc13b2791e801969cd9691ad2dc47173fb1b3d7e7811cc37209',
     baseType: NETH_TYPE,
     baseDecimals: 8,
   },
   {
     name: 'NSOL_NUSDC',
-    id: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
+    id: '0xbdcaa69717ffcc5ce67a983903c0d77adabe944ad8d478e618345f66ee7e01c6',
     baseType: NSOL_TYPE,
     baseDecimals: 9,
   },

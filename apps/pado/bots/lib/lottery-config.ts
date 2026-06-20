@@ -22,20 +22,20 @@ export const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet
 
 export const LOTTERY_PACKAGE_ID =
   process.env.LOTTERY_PACKAGE_ID ||
-  '0xeb5af6c536464672cc6975b07957ff222037c724a4f2810b0cd295bb8b4304da';
+  '0xf2bddf105befcf89b2556d0da9d6c1189abfd172e0194c3c67356f8e7ac08578';
 
-// Original package ID for event type queries (immutable across upgrades)
+// Original package ID for event type queries (fresh v8 publish: == packageId)
 export const LOTTERY_ORIGINAL_PACKAGE_ID =
   process.env.LOTTERY_ORIGINAL_PACKAGE_ID ||
-  '0xeb79d7421090eccc5f912f20407c67b8052c7fbe1efea39bf9b548ccea46819c';
+  '0xf2bddf105befcf89b2556d0da9d6c1189abfd172e0194c3c67356f8e7ac08578';
 
 export const LOTTERY_REGISTRY_ID =
   process.env.LOTTERY_REGISTRY_ID ||
-  '0x8a0d95d3bfb3d9771d333673e3d1943dfe2c31b7c8dc3ef6c1310fe0f3317ae5';
+  '0x8c40955ec42b1119614812fb01cd69f4df2f633ea41891fefb1abc129fcbf0d2';
 
 export const LOTTERY_ADMIN_CAP_ID =
   process.env.LOTTERY_ADMIN_CAP_ID ||
-  '0x20e79c01aa862fbf0273dfb2b769feb0f87ac07f3788478115efb6f2d3a33c71';
+  '0x1eba924efea6e23d56b842ac8e373e6602a0625a1135f5683543a0fa8cce6987';
 
 export const CLOCK_ID = '0x6';
 export const SUI_RANDOM_ID = '0x8';

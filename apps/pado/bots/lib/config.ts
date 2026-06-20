@@ -17,12 +17,12 @@ export const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io
 export const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet.nasun.io';
 
 // ========================================
-// Contract Addresses (DevNet V7 - 2026-02-04)
+// Contract Addresses (Nasun Devnet v8 fresh genesis - 2026-06-19)
 // ========================================
 
-// DeepBook V3
-export const DEEPBOOK_PACKAGE = '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134';
-export const DEEPBOOK_REGISTRY = '0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b';
+// DeepBook V3 (fresh publish: packageId == originalPackageId)
+export const DEEPBOOK_PACKAGE = '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00';
+export const DEEPBOOK_REGISTRY = '0xd1f79b00a86ac2f767a47fff88bd5c81597a557e19d645f7f93cf4ce7bce8f76';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Token / faucet package map  (INVARIANT — read before editing)
@@ -46,26 +46,25 @@ export const DEEPBOOK_REGISTRY = '0x0a6ba6378a30598f1487e193865bfa387f177f826604
 // constant AND its dedicated faucet object below, and confirm preflight passes.
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Tokens V1 (NBTC, NUSDC)
-export const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
-export const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
+// Tokens V1 (NBTC, NUSDC): devnet_tokens (v8 fresh genesis)
+export const TOKENS_PACKAGE = '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11';
+export const TOKEN_FAUCET = '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff';
 
-// Tokens V2 - NSOL (original package, 9 decimals).
-// The shared v2 faucet (TOKEN_FAUCET_V2) was created with NSOL's TreasuryCap
-// AND a now-legacy NETH TreasuryCap; the legacy NETH is NOT the current NETH —
-// see the NETH block below.
-export const TOKENS_V2_PACKAGE = '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2';
-export const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
-export const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
+// Tokens V2 (NSOL + NETH): devnet_tokens_v2 (v8 fresh genesis).
+// v8 consolidation: NETH and NSOL share ONE package and ONE faucet. The v7
+// split (NETH on its own re-published package due to an 8-decimal migration)
+// is gone. Both coins now live at 0xe09adc42 and the single faucet_v2 object
+// 0xf6ff5936 holds both TreasuryCaps (request_neth / request_nsol).
+export const TOKENS_V2_PACKAGE = '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9';
+export const TOKENS_V2_FAUCET_PACKAGE = TOKENS_V2_PACKAGE; // faucet_v2 module lives in the token package
+export const TOKEN_FAUCET_V2 = '0xf6ff5936a307f0c02e7a812c03a17a3ce95e7252a00ec27a809ead96641fcb36';
 
-// Tokens V2 - NETH (re-published, 8 decimals — matches Sui mainnet WETH convention).
-// NETH lives in its OWN package and has its OWN faucet — the shared
-// TOKEN_FAUCET_V2 still mints the obsolete pre-republish NETH type and must
-// not be used for NETH. The current NETH faucet exposes `request_tokens`
-// (no cooldown, mints NETH + NSOL together) and `request_neth_with_cooldown`.
-export const NETH_PACKAGE = '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31';
-export const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
-export const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
+// NETH: consolidated into devnet_tokens_v2 (8 decimals, matches mainnet WETH).
+// In v8 these alias the V2 constants; kept as named symbols because MARKETS and
+// preflight reference NETH-specific pairings and NETH could diverge again.
+export const NETH_PACKAGE = TOKENS_V2_PACKAGE;
+export const NETH_FAUCET_PACKAGE = TOKENS_V2_FAUCET_PACKAGE;
+export const NETH_FAUCET_V2 = TOKEN_FAUCET_V2;
 
 // Token Types
 const NBTC_TYPE = `${TOKENS_PACKAGE}::nbtc::NBTC`;
@@ -132,7 +131,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     name: 'NBTC',
     baseType: NBTC_TYPE,
     quoteType: NUSDC_TYPE,
-    poolId: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
+    poolId: '0x1addff570f17f0e12fa14c5f986806ce21bd5cc0542c4548ebf011a56eb26ec9',
     baseDecimals: 8,
     quoteDecimals: 6,
     tickSize: 100000n,      // $0.1
@@ -156,7 +155,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     name: 'NETH',
     baseType: NETH_TYPE,
     quoteType: NUSDC_TYPE,
-    poolId: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
+    poolId: '0x2fb410e4505fabc13b2791e801969cd9691ad2dc47173fb1b3d7e7811cc37209',
     baseDecimals: 8,      // 8 decimals (matches Sui mainnet WETH convention)
     quoteDecimals: 6,
     tickSize: 100000n,    // $0.10 (same as NBTC — both 8 dec)
@@ -174,9 +173,8 @@ export const MARKETS: Record<string, MarketConfig> = {
     faucetBaseAmount: 0.5,   // V2 faucet: 0.5 NETH per call (NETH_FAUCET_AMOUNT = 50_000_000)
     startupDelayMs: 20000,
     faucetType: 'v2',
-    // Current NETH (type 0xe672...::neth::NETH) is minted by the dedicated NETH
-    // faucet, not the shared TOKEN_FAUCET_V2. The shared faucet holds the
-    // legacy 0xcc65...::neth::NETH TreasuryCap and produces unusable coins.
+    // v8: NETH (0xe09adc42::neth::NETH) is minted by the shared faucet_v2 via
+    // request_neth, same package + faucet object as NSOL (consolidated).
     faucetV2Package: NETH_FAUCET_PACKAGE,
     faucetV2Object: NETH_FAUCET_V2,
     faucetV2Function: 'request_neth',
@@ -186,7 +184,7 @@ export const MARKETS: Record<string, MarketConfig> = {
     name: 'NSOL',
     baseType: NSOL_TYPE,
     quoteType: NUSDC_TYPE,
-    poolId: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
+    poolId: '0xbdcaa69717ffcc5ce67a983903c0d77adabe944ad8d478e618345f66ee7e01c6',
     baseDecimals: 9,
     quoteDecimals: 6,
     tickSize: 10000n,         // $0.01

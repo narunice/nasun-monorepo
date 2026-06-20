@@ -37,19 +37,19 @@ const FAUCET_URL = process.env.NASUN_FAUCET_URL || 'https://faucet.devnet.nasun.
 // Auto-refill via HTTP faucet when gas drops below this threshold
 
 // Contract addresses
-const TOKENS_PACKAGE = '0x96adf476d488ffb588d0bfdb5c422355f065386a2e7124e66746fb7078816731';
-const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
-// Upgraded package (v7) — adds request_neth (no cooldown)
-const TOKENS_V2_FAUCET_PACKAGE = '0xa26189900ac82fbb581579a346e0557905f1c7c9958e9d4dd460f421a43fc9ae';
-const TOKEN_FAUCET_V2 = '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2';
-const NETH_FAUCET_PACKAGE = '0xbf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474';
-const NETH_FAUCET_V2 = '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e';
+const TOKENS_PACKAGE = '0xeb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11';
+const TOKEN_FAUCET = '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff';
+// devnet_tokens_v2 (v8): NETH + NSOL consolidated in ONE package + ONE faucet.
+const TOKENS_V2_FAUCET_PACKAGE = '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9';
+const TOKEN_FAUCET_V2 = '0xf6ff5936a307f0c02e7a812c03a17a3ce95e7252a00ec27a809ead96641fcb36';
+const NETH_FAUCET_PACKAGE = '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9';
+const NETH_FAUCET_V2 = '0xf6ff5936a307f0c02e7a812c03a17a3ce95e7252a00ec27a809ead96641fcb36';
 
 const TOKEN_TYPES = {
   NBTC: `${TOKENS_PACKAGE}::nbtc::NBTC`,
   NUSDC: `${TOKENS_PACKAGE}::nusdc::NUSDC`,
-  NETH: '0xe672843fd6e5388ca1248200059c6ef50e82a68689f42f7b9efb3e70dcabdf31::neth::NETH',
-  NSOL: '0xcc65166f76b0aed75f8c94527405cec82bb4b416483c7bcdd7725490179601b2::nsol::NSOL',
+  NETH: '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::neth::NETH',
+  NSOL: '0xe09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9::nsol::NSOL',
 } as const;
 
 const MARKETS = {
@@ -68,14 +68,10 @@ const MARKETS = {
     baseThreshold: 300,
     quoteThreshold: 500_000,
     faucetType: 'v2' as const,
-    // Current NETH TreasuryCap lives in NETH_FAUCET_V2, not TOKEN_FAUCET_V2 (which
-    // still holds the legacy 0xcc65...::neth::NETH cap that mints unusable coins).
+    // v8: NETH + NSOL consolidated. NETH_FAUCET_* alias the shared
+    // devnet_tokens_v2 faucet. request_tokens mints NETH + NSOL together.
     faucetV2Package: NETH_FAUCET_PACKAGE,
     faucetV2Object: NETH_FAUCET_V2,
-    // The dedicated NETH faucet exposes `request_tokens` (no cooldown, mints
-    // NETH + NSOL together) and `request_neth_with_cooldown`. It does NOT have
-    // a no-cooldown `request_neth` — that only exists on the shared faucet,
-    // which mints the wrong (legacy) NETH type.
     faucetV2Function: 'request_tokens',
     basePerRound: 0.5,
     quotePerRound: 100_000,

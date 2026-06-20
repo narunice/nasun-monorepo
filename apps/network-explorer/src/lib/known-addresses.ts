@@ -12,20 +12,16 @@ export const KNOWN_ADDRESSES: Record<string, string> = {
   '0x0000000000000000000000000000000000000000000000000000000000000005': 'NasunSystem',
   '0x0000000000000000000000000000000000000000000000000000000000000006': 'Clock',
   '0x0000000000000000000000000000000000000000000000000000000000000403': 'Random',
-  // Nasun Devnet V7 — update after devnet reset
-  '0xe1c4c90bd18d22d5d8fbc9ab7994bdcf1ac717714c0f5375528c229d6dfb3d90': 'Admin',
-  '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92': 'Token Faucet',
-  '0x39d18f61b17942dd6823d11a09393937e526619af2f7f707f6afc5c9453c75f2': 'Token Faucet V2',
-  '0x8654e80b3e978aa0d5dca457f6b891e2c6cdbda4531d8c2ee7ab4e1251a0e50e': 'NETH Faucet V2',
-  '0xc6eff35e83378d77e1ef7214cac1b447b6e486c5ba1daa0ae0ca88bef2d1f0f2': 'Governance Dashboard',
-  '0x509825058d4a537d3e9dfea39120077c02c1cf68f8b33969689017ae97c8e833': 'Baram Registry',
-  '0xb5212e4c780544d6bf576e3db7b35118f0380763665bb074229f48d90a7d8656': 'Executor Registry',
-  '0xf1acc0794f5aa692de3f825953b708f940c5ccd83655bf79fe0c520052588583': 'AER Registry',
-  '0x120434fe3c76f084b13e9a294bec0c42e95ac408cdeb7327ea5d46e822c3c290': 'Attestation Registry',
-  '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1': 'Oracle Registry',
-  '0x159b6cbda6376b190921b5f385a1f83aba69c45181c7859844a49b02be93d746': 'Lending Pool',
-  '0xec2b20cf83b6bc6291533335c0e157778cd91d26bfbb38755194a091e5c556e5': 'Margin Registry',
-  '0x0a6ba6378a30598f1487e193865bfa387f177f82660400a5eace887cfe5a6b7b': 'DeepBook Registry',
-  '0xe08f1d01bb02b4d2832fb5583adf9a84298cd1b541781635c07b0231d2795305': 'Lottery Registry',
-  '0xc9ec77a50548113178961c7b81bb642fc38d38c073b0bce0dba5308ad6f96628': 'Prediction State',
+  // Nasun Devnet v8 fresh genesis (69cd1d45). Synced 2026-06-19.
+  '0x98f5339a8d5c6ba1c1478d8b405711c816e13250553a2c20ec8b839abf454a6c': 'Admin',
+  '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff': 'Token Faucet',
+  // v8: NETH + NSOL consolidated, one faucet_v2 object mints both.
+  '0xf6ff5936a307f0c02e7a812c03a17a3ce95e7252a00ec27a809ead96641fcb36': 'Token Faucet V2 (NETH + NSOL)',
+  '0x2e368f28f15c35a1be424da5974481eb0e8d6b8fa51b5ad38da31cd023a2ab61': 'Governance Dashboard',
+  '0xd1f79b00a86ac2f767a47fff88bd5c81597a557e19d645f7f93cf4ce7bce8f76': 'DeepBook Registry',
+  '0x8c40955ec42b1119614812fb01cd69f4df2f633ea41891fefb1abc129fcbf0d2': 'Lottery Registry',
+  '0x5fce00b3db60c0da2595afc374bd0bce30d16257c4894fbffbba444ca11c803c': 'Alliance Registry',
+  // Deferred in v8 (not yet deployed): Baram/Executor/AER/Attestation/Oracle
+  // registries, Lending Pool, Margin Registry. Prediction has no shared State
+  // object in v8 (markets are standalone). Re-add labels when those deploy.
 };

@@ -52,11 +52,11 @@ module.exports = {
         AGGREGATION_INTERVAL_MS: '240000',
         NASUN_PROFILE_API_URL: 'https://api.nasun.io/profile',
         GENESIS_PASS_API_URL: 'https://api.nasun.io',
-        DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
-        POOL_NBTC_NUSDC: '0xa2b755aebb88f9d249e22d58f7ac5e2e003ce53f4d5bbb30c03be50966d01cd0',
-        POOL_NASUN_NUSDC: '0x5953740daf54d767f2cd71a8372db75c7277f2907b55e0bdf7c172d96e033b1e',
-        POOL_NETH_NUSDC: '0xb6c960985711cf5a9cc5063cec8c7ad148794e4cb3c1ad1cea224911cd68e7b7',
-        POOL_NSOL_NUSDC: '0x577f81bb5dae12aac57103ed0231aae200af3ac1c5db3d523b679b09ac88c769',
+        DEEPBOOK_PACKAGE: '0xf0dce6bfc71db3f20be146e65a70cc721dd82d6bc1a1be84febfa58a1018ea00',
+        POOL_NBTC_NUSDC: '0x1addff570f17f0e12fa14c5f986806ce21bd5cc0542c4548ebf011a56eb26ec9',
+        POOL_NASUN_NUSDC: '0x91f5e123cd1211347dd8dc8a92bfde99a2153844d795c2ccfe6ad43d4a26ec03',
+        POOL_NETH_NUSDC: '0x2fb410e4505fabc13b2791e801969cd9691ad2dc47173fb1b3d7e7811cc37209',
+        POOL_NSOL_NUSDC: '0xbdcaa69717ffcc5ce67a983903c0d77adabe944ad8d478e618345f66ee7e01c6',
         // Nasun AI alpha (flipped ON 2026-05-22 after alpha-migration SQL
         // applied + PR-2 deployed + admin/hybrida slot_exempt provisioned).
         // System cap reduced 8 → 6 so admin/hybrida exempt slots (santa +

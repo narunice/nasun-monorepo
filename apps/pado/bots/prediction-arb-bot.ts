@@ -55,7 +55,7 @@ import { isTransientRpcError } from './lib/retry.js';
 const RPC_URL = process.env.NASUN_RPC_URL ?? 'https://rpc.devnet.nasun.io';
 const FAUCET_URL = process.env.NASUN_FAUCET_URL ?? 'https://faucet.devnet.nasun.io';
 const CLOCK_ID = '0x6';
-const TOKEN_FAUCET = '0x7cc75ad1f00f65589074ba9a8f0ad4922b2be3bfef31c22c66d137bc8dbced92';
+const TOKEN_FAUCET = '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff';
 const MAX_PRICE_BPS = 10_000;
 const NUSDC_DECIMALS = 6;
 const NUSDC_TYPE = `${TOKENS_PACKAGE}::nusdc::NUSDC`;
