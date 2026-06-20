@@ -22,7 +22,7 @@
     "better-sqlite3": "^11.7.0",
     "postgres": "^3.4.5",
     "ulid": "^3.0.2",
-    "undici": "^6.25.0",
+    "undici": "^6.27.0",
     "ws": "^8.18.0"
   },
   "optionalDependencies": {
@@ -39,6 +39,6 @@
     "@types/ws": "^8.5.13",
     "tsx": "^4.19.0",
     "typescript": "^5.9.0",
-    "vitest": "^4.0.18"
+    "vitest": "^3.2.6"
   }
 }

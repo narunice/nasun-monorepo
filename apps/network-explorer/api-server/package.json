@@ -18,7 +18,7 @@
     "@mysten/sui": "^1.21.1",
     "@nasun/standing": "workspace:*",
     "bs58": "^6.0.0",
-    "hono": "^4.7.5",
+    "hono": "^4.12.25",
     "jose": "^5.2.0",
     "postgres": "^3.4.5",
     "tweetnacl": "^1.0.3",
