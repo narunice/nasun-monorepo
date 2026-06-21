@@ -129,11 +129,10 @@
     "nsolNusdc": "0xbdcaa69717ffcc5ce67a983903c0d77adabe944ad8d478e618345f66ee7e01c6"
   },
   "oracle": {
-    "packageId": "",
-    "registry": "",
-    "adminCap": "",
-    "upgradeCap": "",
-    "_deferred_v8": "oracle NOT deployed in v8 fresh genesis"
+    "packageId": "0x44e7ce1cfd8ebd21132288052eb84163dd08db50c7628de54be4ffd238a3f502",
+    "registry": "0xc000fcace9eea05419d86ba58aec416e232b723f385a4358555159249e158f80",
+    "adminCap": "0x8203cb65893765299fb39901f51a4d6c8ba343d3a449aed8917490e05be14053",
+    "upgradeCap": "0xdb5eaa1a9c3b64faf7a668da3e2dc9945a4c911d19a799ca6f0c6e174af43176"
   },
   "lending": {
     "packageId": "0xecc406956e3cf436c297162e13fbff3db5f675fed706e1f92aa7eb6b3a6ec635",

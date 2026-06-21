@@ -25,10 +25,10 @@ import { withRetry } from './lib/retry.js';
 
 const RPC_URL = process.env.NASUN_RPC_URL || 'https://rpc.devnet.nasun.io';
 
-// Contract addresses (Devnet V7 - 2026-02-04, overridable via env)
-const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c';
-const ORACLE_REGISTRY_ID = process.env.ORACLE_REGISTRY_ID || '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1';
-const ADMIN_CAP_ID = process.env.ORACLE_ADMIN_CAP_ID || '0x335a8e50cca47f993cb2eee7221791bac67be0a9a71ac69708a28d174a746bec';
+// Contract addresses (Nasun Devnet v8 fresh-genesis - 2026-06-21 oracle redeploy, overridable via env)
+const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '0x44e7ce1cfd8ebd21132288052eb84163dd08db50c7628de54be4ffd238a3f502';
+const ORACLE_REGISTRY_ID = process.env.ORACLE_REGISTRY_ID || '0xc000fcace9eea05419d86ba58aec416e232b723f385a4358555159249e158f80';
+const ADMIN_CAP_ID = process.env.ORACLE_ADMIN_CAP_ID || '0x8203cb65893765299fb39901f51a4d6c8ba343d3a449aed8917490e05be14053';
 const CLOCK_ID = '0x6';
 
 const DECIMALS = 8;

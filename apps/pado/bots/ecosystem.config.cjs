@@ -238,8 +238,8 @@ module.exports = {
         TPSL_PORT: '4001',
         // KEEPER_PRIVATE_KEY loaded from .env via deploy script
         NASUN_RPC_URL: 'http://127.0.0.1:9000',
-        ORACLE_REGISTRY_ID: '0xdd4b9ac16342bb2b4d8cd7ad3556f025122914a69450f72563e733d4a477e7f1',
-        ORACLE_PACKAGE_ID: '0x8a0acb40e5546a01e276a367e583df32b134306ebce6118cc01d9e164edf4c1c',
+        ORACLE_REGISTRY_ID: '0xc000fcace9eea05419d86ba58aec416e232b723f385a4358555159249e158f80',
+        ORACLE_PACKAGE_ID: '0x44e7ce1cfd8ebd21132288052eb84163dd08db50c7628de54be4ffd238a3f502',
         DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
         // TPSL_ALLOWED_ORIGIN loaded from .env (per-environment CORS origin)
       },
