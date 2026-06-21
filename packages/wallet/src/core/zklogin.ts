@@ -77,6 +77,34 @@ const ZKLOGIN_RETURN_URL_KEY = 'nasun:zklogin:return_url';
 // With 2h devnet epochs: 29 * 2h = 58h (~2.4 days).
 const ZKLOGIN_MAX_EPOCH_OFFSET = 29;
 
+// Client-side bound for detecting a session stranded by a CHAIN RESET -- this is
+// deliberately WIDER than the validator's hard limit, not a mirror of it. The
+// validator accepts maxEpoch <= currentEpoch + 30 (zklogin_max_epoch_upper_bound_delta);
+// a fresh session is created at currentEpoch + 29 and its delta only shrinks as
+// the epoch advances, so a real session's delta never exceeds 30 on its own
+// chain. The only way maxEpoch lands far ahead is a fresh-genesis reset that
+// dropped the epoch counter (leaving a stored maxEpoch in the hundreds/thousands),
+// which signing would hit as "ZKLogin max epoch too large". We use a margin above
+// the validator's 30 so RPC epoch lag (a validation node reading a stale, lower
+// currentEpoch) can never false-reject a still-valid session: nothing legitimate
+// falls in (currentEpoch+30, currentEpoch+FUTURE_BOUND], and reset sessions sit
+// far above it.
+const ZKLOGIN_MAX_EPOCH_FUTURE_BOUND = ZKLOGIN_MAX_EPOCH_OFFSET + 30;
+
+/**
+ * Whether a session's maxEpoch is usable against the chain's current epoch.
+ * Fails on both bounds:
+ *   - currentEpoch >= maxEpoch                 -> expired (epoch advanced past it)
+ *   - maxEpoch > currentEpoch + FUTURE_BOUND   -> chain reset (epoch counter
+ *     dropped under a stale pre-reset session); the validator would reject it.
+ * Either way the caller should force a fresh login instead of signing.
+ */
+function isMaxEpochInRange(currentEpoch: number, maxEpoch: number): boolean {
+  if (currentEpoch >= maxEpoch) return false;
+  if (maxEpoch > currentEpoch + ZKLOGIN_MAX_EPOCH_FUTURE_BOUND) return false;
+  return true;
+}
+
 /** zkLogin configuration (set via configureZkLogin) */
 let zkLoginConfig: ZkLoginConfig | null = null;
 
@@ -781,10 +809,10 @@ export async function signPersonalWithZkLogin(params: {
     const client = getSuiClient();
     const { epoch } = await client.getLatestSuiSystemState();
     const currentEpoch = Number(epoch);
-    if (currentEpoch >= maxEpoch) {
+    if (!isMaxEpochInRange(currentEpoch, maxEpoch)) {
       throw new ZkLoginError(
         'SESSION_EXPIRED',
-        `zkLogin session expired. Current epoch ${currentEpoch} >= max epoch ${maxEpoch}`,
+        `zkLogin session invalid (current epoch ${currentEpoch}, max epoch ${maxEpoch}). Please log in again.`,
       );
     }
   } catch (err) {
@@ -828,8 +856,8 @@ export async function signWithZkLogin(params: {
     const client = getSuiClient();
     const { epoch } = await client.getLatestSuiSystemState();
     const currentEpoch = Number(epoch);
-    if (currentEpoch >= maxEpoch) {
-      throw new ZkLoginError('SESSION_EXPIRED', `zkLogin session expired. Current epoch ${currentEpoch} >= max epoch ${maxEpoch}`);
+    if (!isMaxEpochInRange(currentEpoch, maxEpoch)) {
+      throw new ZkLoginError('SESSION_EXPIRED', `zkLogin session invalid (current epoch ${currentEpoch}, max epoch ${maxEpoch}). Please log in again.`);
     }
   } catch (err) {
     if (err instanceof ZkLoginError) throw err;
@@ -982,11 +1010,11 @@ export async function isZkLoginSessionValid(): Promise<boolean> {
   // Check if proof exists
   if (!state.proof) return false;
 
-  // Check epoch expiration
+  // Check epoch range (expired, or maxEpoch stranded above a post-reset chain)
   try {
     const client = getSuiClient();
     const { epoch } = await client.getLatestSuiSystemState();
-    if (Number(epoch) >= state.maxEpoch) {
+    if (!isMaxEpochInRange(Number(epoch), state.maxEpoch)) {
       return false;
     }
   } catch {
