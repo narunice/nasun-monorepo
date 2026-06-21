@@ -12,7 +12,9 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { PORT, HOST, ALLOWED_ORIGINS } from './config';
+import { PORT, HOST, ALLOWED_ORIGINS, ADMIN_ENABLED } from './config';
+import { authenticateAdmin, type AdminUser } from './auth';
+import * as admin from './admin-handlers';
 import {
   getLeaderboard,
   getMyRank,
@@ -70,6 +72,41 @@ app.get('/v3/leaderboard/rank-history', route('get-rank-history', (c) => getRank
 app.get('/v3/accounts/search', route('search-accounts', (c) => searchAccounts(c.req.query())));
 app.get('/v3/accounts/:username', route('get-account', (c) => getAccount(c.req.param('username'), c.req.query())));
 app.get('/v3/feed/featured', route('get-featured-feed', (c) => getFeaturedFeed(c.req.query())));
+
+// Admin/write routes: gated behind ADMIN_ENABLED (503 inert until the Phase 3 cutover) + dual-jwks admin
+// auth (401). Bodies parsed leniently. Validated write-then-read at cutover (NOT shadow-validated, they mutate).
+function adminRoute(name: string, fn: (c: Context, adminUser: AdminUser, body: Record<string, unknown>) => Promise<admin.Result>) {
+  return async (c: Context) => {
+    if (!ADMIN_ENABLED) return c.json({ error: 'admin compute not enabled' }, 503);
+    const adminUser = await authenticateAdmin(c.req.header('authorization'));
+    if (!adminUser) return c.json({ error: 'Unauthorized' }, 401);
+    let body: Record<string, unknown> = {};
+    if (c.req.method !== 'GET' && c.req.method !== 'DELETE') {
+      body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    }
+    try {
+      const { status, body: out } = await fn(c, adminUser, body);
+      return c.json(out, status as 200);
+    } catch (e) {
+      console.error(`[leaderboard] admin ${name} failed:`, e instanceof Error ? e.message : e);
+      return c.json({ error: e instanceof Error ? e.message : 'Internal server error' }, 500);
+    }
+  };
+}
+
+app.post('/v3/posts', adminRoute('create-post', (c, a, body) => admin.createPostHandler(body, a)));
+app.on(['GET', 'POST'], '/v3/admin/blacklist', adminRoute('blacklist', (c, a, body) => admin.blacklistHandler(c.req.method, undefined, body, a)));
+app.delete('/v3/admin/blacklist/:accountId', adminRoute('blacklist-del', (c, a) => admin.blacklistHandler('DELETE', c.req.param('accountId'), {}, a)));
+app.post('/v3/admin/adjust-score', adminRoute('adjust-score', (c, a, body) => admin.adjustScoreHandler(body)));
+app.on(['GET', 'POST'], '/v3/admin/seasons', adminRoute('seasons', (c, a, body) => admin.seasonsHandler(c.req.method, undefined, undefined, body, a)));
+app.on(['GET', 'PATCH', 'DELETE'], '/v3/admin/seasons/:seasonId', adminRoute('season', (c, a, body) => admin.seasonsHandler(c.req.method, c.req.param('seasonId'), undefined, body, a)));
+app.post('/v3/admin/seasons/:seasonId/activate', adminRoute('season-activate', (c, a, body) => admin.seasonsHandler('POST', c.req.param('seasonId'), 'activate', body, a)));
+app.post('/v3/admin/seasons/:seasonId/end', adminRoute('season-end', (c, a, body) => admin.seasonsHandler('POST', c.req.param('seasonId'), 'end', body, a)));
+app.patch('/v3/admin/posts/:postId', adminRoute('edit-post', (c, a, body) => admin.editPostHandler(c.req.param('postId'), body)));
+app.on(['GET', 'PUT'], '/v3/admin/featured-feed', adminRoute('featured-feed', (c, a, body) => admin.featuredFeedHandler(c.req.method, body, a)));
+app.get('/v3/admin/stats', adminRoute('stats', () => admin.statsHandler()));
+app.post('/v3/admin/merge-accounts', adminRoute('merge', (c, a, body) => admin.mergeHandler(body, a)));
+app.post('/v3/admin/snapshot', adminRoute('snapshot', (c, a, body) => admin.snapshotHandler(body)));
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 

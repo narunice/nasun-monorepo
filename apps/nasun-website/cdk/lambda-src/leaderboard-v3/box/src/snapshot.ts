@@ -12,7 +12,6 @@
 // mirrored; profile freshness is owned by the profile de-Lambda service post-cutover. This does NOT affect
 // any score/rank field -- only the displayName string -- so scoring parity is unaffected.
 
-import postgres from 'postgres';
 import type { DailySnapshot, SeasonAccountScore, Season } from '../../src/types';
 import { SCORE_CONSTANTS } from '../../src/types';
 import {
@@ -23,7 +22,7 @@ import {
 import { calculateRankChange } from '../../src/utils/rank';
 import { getTodayDateString, getYesterdayDateString } from '../../src/utils/date';
 import * as db from './db';
-import { PG, writeCred } from './config';
+import { getWriteSql, endWriteSql } from './write-pool';
 
 const SNAPSHOT_TTL_DAYS = 180;
 const MAX_SNAPSHOT_ENTRIES = 2000;
@@ -126,19 +125,6 @@ export async function computeSnapshots(
 }
 
 // ---- Write path (cutover-gated; needs the writer role) -------------------------------------------
-
-let writeSql: ReturnType<typeof postgres> | null = null;
-function getWriteSql() {
-  if (writeSql) return writeSql;
-  const cred = writeCred();
-  if (!cred) throw new Error('writer credential not provisioned (LEADERBOARD_WRITE_PG_USER + LEADERBOARD_WRITE_PG_PASSWORD_FILE)');
-  writeSql = postgres({
-    host: PG.host, port: PG.port, database: PG.database, username: cred.user, password: cred.password,
-    max: 2, idle_timeout: 20, connect_timeout: 15, prepare: false, onnotice: () => {},
-    connection: { statement_timeout: 30000, lock_timeout: 8000, idle_in_transaction_session_timeout: 30000 },
-  });
-  return writeSql;
-}
 
 async function snapshotExistsForDate(seasonId: string, date: string): Promise<boolean> {
   const rows = await db.sql<{ n: number }[]>`
@@ -245,5 +231,5 @@ export async function runReproduce(date: string): Promise<void> {
 
 export async function shutdown(): Promise<void> {
   await db.sql.end({ timeout: 5 }).catch(() => {});
-  if (writeSql) await writeSql.end({ timeout: 5 }).catch(() => {});
+  await endWriteSql();
 }

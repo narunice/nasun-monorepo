@@ -79,3 +79,23 @@ export const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'https://nasun.io
   .split(',')
   .map((o) => o.trim())
   .filter(Boolean);
+
+// Admin auth (dual-JWKS, parity with _shared/auth/dual-jwks.ts): verify the nasun-issuer JWT against the
+// loopback issuer JWKS (:3210) + the identityId audience, then check the box user_profiles ADMIN role.
+export const AUTH = {
+  nasunIss: process.env.NASUN_ISSUER_ID || 'nasun-issuer',
+  nasunJwksUrl: process.env.NASUN_ISSUER_JWKS_URL || 'http://127.0.0.1:3210/.well-known/jwks.json',
+  audience: process.env.COGNITO_IDENTITY_POOL_ID || '',
+};
+
+// Admin/write routes cutover gate: 503 (inert) until COMPUTE_ADMIN_ENABLED=1 is set at the Phase 3 cutover
+// (after the writer cred is provisioned). Keeps the box-direct write surface CLOSED so it cannot mutate the
+// frozen mirror pre-cutover -- the write-then-read parity test is provably the first caller of the live path.
+export const ADMIN_ENABLED = process.env.COMPUTE_ADMIN_ENABLED === '1';
+
+// Footgun guard: with admin enabled but no audience, EVERY admin request silently 401s (verifyIdentityFromBearer
+// rejects an empty audience). Warn loudly at startup so a cutover that sets COMPUTE_ADMIN_ENABLED=1 without
+// COGNITO_IDENTITY_POOL_ID is debuggable instead of an opaque all-admin-401.
+if (ADMIN_ENABLED && !AUTH.audience) {
+  console.warn('[leaderboard] WARNING: COMPUTE_ADMIN_ENABLED=1 but COGNITO_IDENTITY_POOL_ID is unset -- ALL admin routes will 401.');
+}

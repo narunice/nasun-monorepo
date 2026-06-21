@@ -793,5 +793,8 @@ export async function getFeaturedFeed(query: Query): Promise<Result> {
   };
 }
 
+// Reused by the admin featured-feed GET handler (enriched preview).
+export { enrichCuratedItems as enrichCuratedItemsPublic };
+
 // Silence unused-import lint for types only referenced structurally.
 export type { ComputedUserScore, GetLeaderboardResponse, LeaderboardEntry };
