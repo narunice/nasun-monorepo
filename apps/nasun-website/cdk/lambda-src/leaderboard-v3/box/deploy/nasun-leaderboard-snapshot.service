@@ -21,13 +21,15 @@ ExecStart=/usr/bin/node /srv/nasun/leaderboard/snapshot.mjs
 Environment=LEADERBOARD_PG_HOST=127.0.0.1
 Environment=LEADERBOARD_PG_DATABASE=nasun_dal
 Environment=LEADERBOARD_PG_USER=nasun_compute_ro
-# Writer role for INSERT lb_snapshots + UPDATE lb_seasons. Set at cutover (e.g. nasun_app or a dedicated
-# lb_writer). Until then, runLive() no-ops on the paused campaign before reaching any write.
-# Environment=LEADERBOARD_WRITE_PG_USER=<writer-role>
+# Writer role for INSERT lb_snapshots + UPDATE lb_seasons (Phase 3 cutover, 2026-06-21). lb_writer is the
+# dedicated SELECT/INSERT/UPDATE/DELETE role on lb_* (separate from the SELECT-only compute_ro read role).
+# While SEASON1 is paused runLive() no-ops before any write, so the writer cred sits unused until a season
+# activates; getWriteSql()/writeCred() are lazy and only read it on the first real snapshot write.
+Environment=LEADERBOARD_WRITE_PG_USER=lb_writer
 
-# Read cred (compute_ro), same as the read service. Writer cred provisioned at cutover.
+# Read cred (compute_ro), same as the read service. Writer cred (lb_writer) provisioned at Phase 3 cutover.
 LoadCredentialEncrypted=pg-password:/srv/nasun/leaderboard/secrets/pg-password.cred
-# LoadCredentialEncrypted=write-pg-password:/srv/nasun/leaderboard/secrets/write-pg-password.cred
+LoadCredentialEncrypted=write-pg-password:/srv/nasun/leaderboard/secrets/write-pg-password.cred
 
 # --- hardening (mirrors nasun-leaderboard.service; loopback-only) ---
 NoNewPrivileges=yes

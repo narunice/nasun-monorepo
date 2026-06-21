@@ -9,9 +9,10 @@
 # pg-password.cred is a copy of the identity-compute credential (same compute_ro role); systemd-creds
 # decryption is bound to the credential NAME (pg-password) + the host, not the unit, so the copy decrypts.
 #
-# INERT until the Phase 3 cutover: the unit listens on 127.0.0.1:3213 but no nginx vhost routes to it yet,
-# so it serves zero user traffic. Roll back = `systemctl disable --now nasun-leaderboard` (read-only, no
-# state to unwind).
+# Phase 3 cutover (2026-06-21): admin/write path ENABLED. Still no nginx vhost routes to :3213 until the
+# routing cutover (Step 4), so external user traffic stays zero; the write-then-read parity test (Step 2) is
+# provably the first caller of the live write path. Roll back = remove the writer block below + restart
+# (returns admin routes to 503 inert), then `DROP ROLE lb_writer`.
 
 [Unit]
 Description=Nasun community Leaderboard V3 read service (de-Lambda, box PG lb_* mirror)
@@ -67,6 +68,16 @@ RestrictAddressFamilies=AF_INET AF_INET6
 IPAddressDeny=any
 IPAddressAllow=localhost
 UMask=0077
+
+# --- Phase 3 cutover: admin/write path (lb_writer role, separate from the SELECT-only compute_ro read role).
+# write-pg-password.cred is generated on box via `systemd-creds encrypt --name=write-pg-password` (host-bound,
+# NOT committed). COGNITO_IDENTITY_POOL_ID = the box nasun-issuer ISSUER_AUDIENCE (legacy pool id kept for
+# identityId continuity), matching nasun-identity-compute's COMPUTE_COGNITO_AUDIENCE.
+LoadCredentialEncrypted=write-pg-password:/srv/nasun/leaderboard/secrets/write-pg-password.cred
+Environment=LEADERBOARD_WRITE_PG_USER=lb_writer
+Environment=COMPUTE_ADMIN_ENABLED=1
+Environment=COGNITO_IDENTITY_POOL_ID=ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df
+Environment=NASUN_ISSUER_JWKS_URL=http://127.0.0.1:3210/.well-known/jwks.json
 
 [Install]
 WantedBy=multi-user.target
