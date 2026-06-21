@@ -20,7 +20,10 @@ export interface KnownContractEntry {
   websiteUrl?: string;
 }
 
-const NASUN_DEVNET_CHAIN_ID = '272218f1';
+// Derived from the active network config (devnet-ids.json) so the registry
+// labels never drift from the live chain on a reset. Hardcoding this caused
+// KNOWN_CONTRACTS to key under a stale chain-id after the v8 reset.
+const NASUN_DEVNET_CHAIN_ID = config.network.chainId;
 
 export const KNOWN_CONTRACTS: KnownContractEntry[] = [
   // DeepBook V3 (Pado DEX engine)

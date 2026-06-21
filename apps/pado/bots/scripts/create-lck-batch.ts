@@ -36,7 +36,7 @@ if (RPC_URL.includes('mainnet')) { console.error('mainnet refused'); process.exi
 // Nasun devnet chain identifier. Verified post-RPC-init below; the string
 // match above is a fast first check but does not catch a typo that points at
 // a foreign chain on a non-mainnet hostname.
-const EXPECTED_CHAIN_ID = '272218f1';
+const EXPECTED_CHAIN_ID = '69cd1d45';
 
 const CLOCK_ID = '0x6';
 const DEFAULT_ADMIN_CAP = '0x06f263829f9f84951280e2fa16d32d2729c28aca2600e4e77ec54a86d00f8fa1';

@@ -29,7 +29,7 @@ Nasun is a protocol that turns repeated onchain behavior into a persistent, comp
 | Spec         | Value        |
 | ------------ | ------------ |
 | Network      | Nasun Devnet |
-| Chain ID     | `272218f1`   |
+| Chain ID     | `69cd1d45`   |
 | Native Token | NASUN        |
 
 ## Structure

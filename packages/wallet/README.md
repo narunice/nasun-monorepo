@@ -235,7 +235,7 @@ Default: Nasun Devnet
 | RPC Endpoint | `https://rpc.devnet.nasun.io` |
 | Faucet | `https://faucet.devnet.nasun.io` |
 | Explorer | `https://explorer.nasun.io/devnet` |
-| Chain ID | `272218f1` |
+| Chain ID | `69cd1d45` |
 | Native Token | NASUN (decimals: 9) |
 
 ## Storage Keys

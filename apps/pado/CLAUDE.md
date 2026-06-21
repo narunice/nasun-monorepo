@@ -101,7 +101,7 @@ cd apps/pado/frontend && pnpm test:coverage
 - **Perp**: `features/perp/` 디렉토리 존재하나 주요 기능 비활성. unified-margin 우선 (archived 분류 검토)
 - **Market Narrator pool hardcoding**: `formatAlert`가 "NBTC" hardcode. NETH/NSOL 추가 시 갱신 필요
 - **Env var mismatch**: 일부 `.env.local` 주소가 `devnet-ids.json`과 어긋날 수 있음 (V7 리셋 후 부분 갱신)
-- **Staging Chain ID**: staging은 별도 체인, dev는 `272218f1`
+- **Staging Chain ID**: staging은 별도 체인, dev는 `69cd1d45`
 
 ## 최근 30일 주요 변경 (요약)
 

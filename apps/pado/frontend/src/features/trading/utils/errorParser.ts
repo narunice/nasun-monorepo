@@ -218,10 +218,10 @@ export function formatErrorMessage(error: unknown): string {
   if (parsed.errorType === 'GAS_REQUIRED') {
     try {
       // Check network type inline to avoid circular import
-      const chainId = import.meta.env.VITE_CHAIN_ID || '272218f1';
+      const chainId = import.meta.env.VITE_CHAIN_ID || '69cd1d45';
       const rpcUrl = import.meta.env.VITE_RPC_URL || '';
       const isDevOrTest =
-        chainId === '272218f1' ||
+        chainId === '69cd1d45' ||
         rpcUrl.includes('devnet') ||
         rpcUrl.includes('testnet');
       if (isDevOrTest) {

@@ -82,7 +82,7 @@ process.on('SIGTERM', () => handleShutdown('SIGTERM'));
 async function main(): Promise<void> {
   console.log('');
   console.log('  Nasun AI Runtime');
-  console.log('  Nasun Devnet (Chain ID: 272218f1)');
+  console.log('  Nasun Devnet (Chain ID: 69cd1d45)');
   console.log('');
 
   const config = await loadConfig();

@@ -28,7 +28,7 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3200,
-        CHAIN_ID: '272218f1',
+        CHAIN_ID: '69cd1d45',
         ...loadDotenv(),
       },
       // 768M gives room for in-memory caches (wallet, referral, activations).
@@ -49,7 +49,7 @@ module.exports = {
       args: 'dist/workers/tier-worker.js',
       env: {
         NODE_ENV: 'production',
-        CHAIN_ID: '272218f1',
+        CHAIN_ID: '69cd1d45',
         ...loadDotenv(),
       },
       max_memory_restart: '512M',
@@ -68,7 +68,7 @@ module.exports = {
       args: 'dist/workers/tier-push-worker.js',
       env: {
         NODE_ENV: 'production',
-        CHAIN_ID: '272218f1',
+        CHAIN_ID: '69cd1d45',
         ...loadDotenv(),
       },
       max_memory_restart: '256M',

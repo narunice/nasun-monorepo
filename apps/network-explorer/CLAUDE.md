@@ -113,7 +113,7 @@ pnpm build
 ```env
 VITE_SUI_RPC_URL=https://rpc.devnet.nasun.io
 VITE_NETWORK_NAME=Nasun Devnet
-VITE_CHAIN_ID=272218f1
+VITE_CHAIN_ID=69cd1d45
 VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 ```
 

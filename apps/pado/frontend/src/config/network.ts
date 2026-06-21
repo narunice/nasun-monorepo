@@ -4,7 +4,7 @@ import { NETWORK } from '@nasun/devnet-config';
 export const NETWORK_CONFIG = {
   rpcUrl: import.meta.env.VITE_RPC_URL || 'https://rpc.devnet.nasun.io',
   faucetUrl: import.meta.env.VITE_FAUCET_URL || 'https://faucet.devnet.nasun.io',
-  chainId: import.meta.env.VITE_CHAIN_ID || '272218f1',
+  chainId: import.meta.env.VITE_CHAIN_ID || '69cd1d45',
   explorerUrl: import.meta.env.VITE_EXPLORER_URL || NETWORK.explorerUrl,
   // Explorer API base, e.g. https://explorer.nasun.io/api/v1. Used by `useTier`
   // (Phase 3) to fetch NSI tier + benefits from /standing/by-address/:address.
@@ -141,7 +141,7 @@ export function getNetworkType(): NetworkType {
   const { rpcUrl, chainId } = NETWORK_CONFIG;
 
   // Chain ID based detection (primary)
-  if (chainId === '272218f1') return 'devnet'; // Nasun Devnet V7
+  if (chainId === '69cd1d45') return 'devnet'; // Nasun Devnet (v8 reset)
 
   // RPC URL based detection (fallback)
   if (rpcUrl.includes('devnet')) return 'devnet';

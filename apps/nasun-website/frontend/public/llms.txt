@@ -10,7 +10,7 @@
 
 ## Network
 
-- Chain: Nasun Network (Sui fork, Chain ID 272218f1)
+- Chain: Nasun Network (Move-based Layer 1, Chain ID 69cd1d45)
 - Consensus: Sub-second finality
 - RPC: https://rpc.devnet.nasun.io
 - Explorer: https://explorer.nasun.io/devnet
