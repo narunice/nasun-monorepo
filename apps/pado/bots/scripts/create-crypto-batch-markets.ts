@@ -236,6 +236,7 @@ async function createMarket(
   adminCap: string,
   resolverAddress: string,
   spec: MarketSpec,
+  gasCoinId: string | null,
 ): Promise<string> {
   const meta = buildMarketMeta(spec);
   const tx = new Transaction();
@@ -254,6 +255,19 @@ async function createMarket(
       tx.object(CLOCK_ID),
     ],
   });
+
+  // Pin the gas payment to a single coin when requested. The default SDK gas
+  // selection performs gas smashing across ALL of the sender's SUI coins,
+  // merging (and thus destroying) any reserved coin the admin wallet also
+  // holds. When the AdminCap holder also custodies a reserved treasury coin,
+  // an unpinned create would smash that treasury into the gas payment. The ref
+  // is re-fetched each call because the coin's version advances after every tx.
+  if (gasCoinId) {
+    const gasObj = await client.getObject({ id: gasCoinId });
+    const d = gasObj.data;
+    if (!d) throw new Error(`Gas coin ${gasCoinId} not found`);
+    tx.setGasPayment([{ objectId: d.objectId, version: d.version, digest: d.digest }]);
+  }
 
   const result = await client.signAndExecuteTransaction({
     signer: adminKp,
@@ -335,6 +349,11 @@ async function main(): Promise<void> {
     'PREDICTION_RESOLVER_ADDRESS',
     requireEnv('PREDICTION_RESOLVER_ADDRESS'),
   );
+  // Optional: pin gas to one coin so the default SDK gas-smashing path cannot
+  // merge a reserved coin (e.g. a treasury coin) the admin wallet also holds.
+  const gasCoinId = process.env.PREDICTION_GAS_COIN_ID
+    ? requireHex64('PREDICTION_GAS_COIN_ID', process.env.PREDICTION_GAS_COIN_ID)
+    : null;
 
   const adminKp = parseKeypair(adminKeyInput);
   const adminAddress = adminKp.toSuiAddress().toLowerCase();
@@ -351,11 +370,30 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
+  // Treasury-safety guard: the default SDK gas selection smashes every SUI coin
+  // the sender owns into the gas payment. If the admin wallet holds more than
+  // one coin and no gas coin is pinned, a reserved coin could be merged away.
+  // Refuse to proceed unless the operator pins a gas coin (or explicitly opts
+  // into smashing) so this cannot happen silently.
+  if (!gasCoinId && process.env.PREDICTION_ALLOW_GAS_SMASH !== 'true') {
+    const adminCoins = await client.getCoins({ owner: adminAddress, coinType: '0x2::sui::SUI' });
+    if (adminCoins.data.length > 1) {
+      console.error(
+        `Admin wallet holds ${adminCoins.data.length} SUI coins and no gas coin is pinned. ` +
+          `The default gas-smashing path would merge all of them. ` +
+          `Set PREDICTION_GAS_COIN_ID=<coin id> to pin gas, ` +
+          `or PREDICTION_ALLOW_GAS_SMASH=true to override. Aborting.`,
+      );
+      process.exit(1);
+    }
+  }
+
   console.log(`Creating ${specs.length} crypto markets`);
   console.log(`  Package:  ${packageId}`);
   console.log(`  AdminCap: ${adminCap}`);
   console.log(`  Creator:  ${adminAddress}`);
   console.log(`  Resolver: ${resolverAddress}`);
+  console.log(`  Gas coin: ${gasCoinId ?? '(auto-select / gas smashing)'}`);
   console.log('');
 
   const created: { spec: MarketSpec; objectId: string }[] = [];
@@ -363,7 +401,7 @@ async function main(): Promise<void> {
     const meta = buildMarketMeta(spec);
     process.stdout.write(`  [${spec.template.symbol} ${spec.horizon.label}] Creating... `);
     try {
-      const objectId = await createMarket(client, adminKp, packageId, adminCap, resolverAddress, spec);
+      const objectId = await createMarket(client, adminKp, packageId, adminCap, resolverAddress, spec, gasCoinId);
       console.log(`${objectId}`);
       created.push({ spec, objectId });
       console.log(`    question: ${meta.question}`);
