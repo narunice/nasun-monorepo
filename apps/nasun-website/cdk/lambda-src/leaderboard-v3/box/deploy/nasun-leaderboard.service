@@ -1,0 +1,72 @@
+# /etc/systemd/system/nasun-leaderboard.service
+# Box-co-located community Leaderboard V3 READ service (AWS-exit Stage 4, leaderboard de-Lambda slice).
+# Clones the nasun-identity-compute hardening verbatim; differs in: port 3213, the read service is
+# LOOPBACK-ONLY (PG + the nginx reverse proxy are both 127.0.0.1, and the read handlers make NO external
+# calls), so the STRICT egress filter applies (IPAddressDeny=any / IPAddressAllow=localhost) -- unlike
+# identity-compute which had to relax egress for the Google JWKS/telegram fetches.
+#
+# DB role: nasun_compute_ro (SELECT-only; the read service can never mutate the frozen lb_* mirror). The
+# pg-password.cred is a copy of the identity-compute credential (same compute_ro role); systemd-creds
+# decryption is bound to the credential NAME (pg-password) + the host, not the unit, so the copy decrypts.
+#
+# INERT until the Phase 3 cutover: the unit listens on 127.0.0.1:3213 but no nginx vhost routes to it yet,
+# so it serves zero user traffic. Roll back = `systemctl disable --now nasun-leaderboard` (read-only, no
+# state to unwind).
+
+[Unit]
+Description=Nasun community Leaderboard V3 read service (de-Lambda, box PG lb_* mirror)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/leaderboard
+ExecStart=/usr/bin/node /srv/nasun/leaderboard/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=LEADERBOARD_PORT=3213
+Environment=LEADERBOARD_BIND=127.0.0.1
+Environment=LEADERBOARD_PG_HOST=127.0.0.1
+Environment=LEADERBOARD_PG_DATABASE=nasun_dal
+Environment=LEADERBOARD_PG_USER=nasun_compute_ro
+# CORS allowlist: byte-identical to the leaderboard-v3 lambdas (cdk constants/cors ALLOWED_ORIGINS_ENV) so
+# the origin-allowlist CORS the box returns matches what the lambdas returned for every origin at cutover.
+Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://explorer.nasun.io,https://staging.explorer.nasun.io,https://gensol.io,https://www.gensol.io,https://gensol.nasun.io,https://staging.gensol.io,https://pado.finance,https://staging.pado.finance,https://baram.nasun.io,https://gostop.app,https://www.gostop.app,https://staging.gostop.app,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178
+
+# Secret arrives host-decrypted into the per-unit tmpfs ($CREDENTIALS_DIRECTORY), never plaintext on disk,
+# owned by this unit's dynamic user only, auto-removed on stop. Cred name MUST be pg-password (config.ts).
+LoadCredentialEncrypted=pg-password:/srv/nasun/leaderboard/secrets/pg-password.cred
+
+# --- hardening (mirrors nasun-identity-compute.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# Loopback-only: PG (127.0.0.1:5432) + the future nginx reverse proxy (127.0.0.1) are the only peers; the
+# read handlers make NO external calls, so deny all non-loopback egress (tighter than identity-compute).
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

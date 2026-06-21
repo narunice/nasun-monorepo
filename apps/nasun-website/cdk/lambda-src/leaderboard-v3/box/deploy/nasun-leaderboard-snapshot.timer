@@ -1,0 +1,18 @@
+# /etc/systemd/system/nasun-leaderboard-snapshot.timer
+# Fires the daily snapshot generator at 09:10 KST (= 00:10 UTC), matching the observed prod snapshotTime
+# (e.g. 2026-04-09T00:10:28Z = 09:10 KST) and replacing the AWS EventBridge schedule.
+#
+# ★ Install + `systemctl enable --now nasun-leaderboard-snapshot.timer` ONLY at the Phase 3 cutover (after
+# the writer cred is provisioned). At that point also decommission the EventBridge cron so the two do not
+# both generate. Persistent=true backfills a missed fire (box reboot) on next boot.
+
+[Unit]
+Description=Daily 09:10 KST Nasun leaderboard snapshot
+
+[Timer]
+OnCalendar=*-*-* 00:10:00 UTC
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

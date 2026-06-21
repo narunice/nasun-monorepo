@@ -1,0 +1,58 @@
+# /etc/systemd/system/nasun-leaderboard-snapshot.service
+# Daily leaderboard snapshot generator (de-Lambda port of generate-snapshot.ts, ENABLE_BATCH_DECAY path).
+# oneshot, timer-triggered by nasun-leaderboard-snapshot.timer at 09:10 KST. Reuses the validated
+# score-calculator.ts (reproduced the last snapshot at 99.93% userScore / 100% rawScore / 100% dailyBase).
+#
+# ★ CUTOVER-GATED: NOT installed/enabled until Phase 3. While the campaign is PAUSED (no active season)
+# runLive() is a clean no-op, so enabling early is harmless EXCEPT that a write needs the writer role:
+# provision write-pg-password.cred + set LEADERBOARD_WRITE_PG_USER before a season is activated. Reads use
+# the SELECT-only nasun_compute_ro role (same pg-password.cred as the read service).
+
+[Unit]
+Description=Nasun leaderboard daily snapshot generator (de-Lambda, box PG)
+After=network.target nasun-fullnode.service
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/leaderboard
+ExecStart=/usr/bin/node /srv/nasun/leaderboard/snapshot.mjs
+
+Environment=LEADERBOARD_PG_HOST=127.0.0.1
+Environment=LEADERBOARD_PG_DATABASE=nasun_dal
+Environment=LEADERBOARD_PG_USER=nasun_compute_ro
+# Writer role for INSERT lb_snapshots + UPDATE lb_seasons. Set at cutover (e.g. nasun_app or a dedicated
+# lb_writer). Until then, runLive() no-ops on the paused campaign before reaching any write.
+# Environment=LEADERBOARD_WRITE_PG_USER=<writer-role>
+
+# Read cred (compute_ro), same as the read service. Writer cred provisioned at cutover.
+LoadCredentialEncrypted=pg-password:/srv/nasun/leaderboard/secrets/pg-password.cred
+# LoadCredentialEncrypted=write-pg-password:/srv/nasun/leaderboard/secrets/write-pg-password.cred
+
+# --- hardening (mirrors nasun-leaderboard.service; loopback-only) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
