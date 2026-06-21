@@ -27,7 +27,7 @@ import { usePadoAccount } from "./usePadoAccount";
 import { WithdrawAllConfirmModal } from "./WithdrawAllConfirmModal";
 import { useTrading } from "../../trading/useTrading";
 import { useToast } from "@/components/common";
-import { floatToRaw } from "../../../lib/unified-margin";
+import { floatToRaw, MARGIN_ENABLED } from "../../../lib/unified-margin";
 import {
   quoteBaseForQuote,
   recommendedSlippageBps,
@@ -128,7 +128,7 @@ export function MarginAccountCard() {
         return;
       }
 
-      if (hasBm && !hasMa) {
+      if (MARGIN_ENABLED && hasBm && !hasMa) {
         await createAccount();
         showToast("Pado enabled!", "success");
         navigate("/portfolio?tab=balance");
@@ -367,8 +367,11 @@ export function MarginAccountCard() {
     );
   }
 
-  // No account - show create button (unified onboarding)
-  if (!hasAccount) {
+  // Setup not complete - show create button (unified onboarding).
+  // In BalanceManager-only mode (margin not deployed) setup is complete once a
+  // BalanceManager exists, so the Pado Balance card renders without a MA.
+  const needsSetup = MARGIN_ENABLED ? !hasAccount : !balanceManagerId;
+  if (needsSetup) {
     const isBusy = isEnablingPado || isEnabling || isCreating;
     // BM-only legacy users need only to add MA; new users need the full setup.
     const isLegacy = !!balanceManagerId;
@@ -573,12 +576,21 @@ export function MarginAccountCard() {
           Partial single-asset withdraw was removed (was MA-NUSDC only and
           confusingly disabled when only BM had funds). Users withdraw-all
           and redeposit if they need a partial. */}
-      <button
-        onClick={() => setShowDepositModal(true)}
-        className="w-full py-2.5 mb-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
-      >
-        + Deposit
-      </button>
+      {MARGIN_ENABLED ? (
+        <button
+          onClick={() => setShowDepositModal(true)}
+          className="w-full py-2.5 mb-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+        >
+          + Deposit
+        </button>
+      ) : (
+        // BalanceManager-only mode: deposits flow through auto-deposit at trade
+        // time (spot) or directly from the wallet (predictions), so manual MA
+        // deposit is unavailable. Withdraw remains available below.
+        <p className="text-xs text-theme-text-muted mb-2 text-center">
+          Funds are added to your Pado Balance automatically when you place a trade.
+        </p>
+      )}
 
       {hasAnyPadoBalance && (
         <button

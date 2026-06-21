@@ -26,6 +26,7 @@ import type { PredictionFormMode } from '../hooks/usePredictionFormMode';
 import { formatCentsWithProb } from '../utils/formatPrice';
 import { trackEvent, AnalyticsEvent } from '../../../lib/analytics';
 import { useTrading } from '../../trading/useTrading';
+import { MARGIN_ENABLED } from '../../../lib/unified-margin';
 import { formatErrorMessage } from '../../trading/utils/errorParser';
 import { useToast } from '@/components/common/Toast';
 import {
@@ -109,7 +110,7 @@ export function OutcomeOrderForm({
         return;
       }
 
-      if (hasBm && !hasMa) {
+      if (MARGIN_ENABLED && hasBm && !hasMa) {
         await createAccount();
         showToast('Pado enabled!', 'success');
         return;
@@ -581,8 +582,10 @@ export function OutcomeOrderForm({
         </div>
       </div>
 
-      {/* Complete Pado Setup banner for legacy users and new users without MA */}
-      {isWalletConnected && !isLoadingMA && !hasAccount && (
+      {/* Complete Pado Setup banner. Setup is complete once a BalanceManager
+          exists (BalanceManager-only mode), or both BM + MarginAccount when
+          unified margin is deployed. */}
+      {isWalletConnected && !isLoadingMA && (MARGIN_ENABLED ? !hasAccount : !balanceManagerId) && (
         <div className="bg-gradient-to-r from-pd2/10 to-purple-500/10 border border-pd2/30 rounded-xl p-4 mb-4">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">

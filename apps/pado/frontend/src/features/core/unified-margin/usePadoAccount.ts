@@ -12,12 +12,12 @@ import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
 import { POOLS } from '../../../config/network';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
-import { floatToRaw } from '../../../lib/unified-margin';
+import { floatToRaw, MARGIN_ENABLED } from '../../../lib/unified-margin';
 
 export interface PadoAccountState {
-  /** True iff both BM and MA exist for the active wallet */
+  /** True iff setup is complete: a BM exists (and a MA too, when margin is deployed) */
   isEnabled: boolean;
-  /** True iff only one of BM/MA exists (legacy or anomalous) */
+  /** True iff in a partial/anomalous state (only meaningful when margin is deployed) */
   isPartiallyEnabled: boolean;
   /** True iff BM exists */
   hasBalanceManager: boolean;
@@ -67,10 +67,13 @@ export function usePadoAccount(): PadoAccountState {
   const maNbtcRaw = marginAccount?.nbtcBalance ?? 0n;
 
   return {
-    isEnabled: hasBalanceManager && hasMarginAccount,
-    isPartiallyEnabled:
-      (hasBalanceManager && !hasMarginAccount) ||
-      (!hasBalanceManager && hasMarginAccount),
+    // BalanceManager-only mode (margin not deployed): a BM alone is a complete
+    // setup, so such an account is fully enabled, never "partial".
+    isEnabled: hasBalanceManager && (MARGIN_ENABLED ? hasMarginAccount : true),
+    isPartiallyEnabled: MARGIN_ENABLED
+      ? (hasBalanceManager && !hasMarginAccount) ||
+        (!hasBalanceManager && hasMarginAccount)
+      : false,
     hasBalanceManager,
     hasMarginAccount,
     totalNusdcRaw: bmQuoteRaw + maNusdcRaw,

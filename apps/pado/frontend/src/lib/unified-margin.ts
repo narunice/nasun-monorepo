@@ -20,6 +20,16 @@ export const MARGIN_REGISTRY_ID =
   import.meta.env.VITE_MARGIN_REGISTRY_ID || '';
 const CLOCK_ID = '0x6';
 
+/**
+ * Unified margin exists on-chain only when both its package and registry IDs
+ * are configured. On devnets where margin is deferred (e.g. v8 fresh genesis),
+ * these are empty and Pado runs in BalanceManager-only mode: spot trading and
+ * prediction fund directly from the BalanceManager / wallet, and no
+ * MarginAccount is created. Guarding on this flag prevents building Move calls
+ * with an empty package/registry, which the RPC rejects as "invalid params".
+ */
+export const MARGIN_ENABLED = Boolean(UNIFIED_MARGIN_PACKAGE && MARGIN_REGISTRY_ID);
+
 // Token types (from env config)
 const TOKENS_PACKAGE = import.meta.env.VITE_TOKENS_PACKAGE || '';
 export const NUSDC_TYPE = import.meta.env.VITE_NUSDC_TYPE || `${TOKENS_PACKAGE}::nusdc::NUSDC`;
@@ -327,9 +337,10 @@ export function buildCreateAccountTx(): Transaction {
 }
 
 /**
- * Build a single PTB that creates BalanceManager + MarginAccount atomically.
- * Either both succeed or both fail — eliminates partial-state UX where the
- * user ends up with one but not the other.
+ * Build a single PTB that enables Pado for the user. When unified margin is
+ * deployed this creates BalanceManager + MarginAccount atomically (both succeed
+ * or both fail, no partial-state UX). In BalanceManager-only mode (margin
+ * deferred) it creates just the BalanceManager.
  */
 export function buildEnablePadoTx(): Transaction {
   const tx = new Transaction();
@@ -345,11 +356,15 @@ export function buildEnablePadoTx(): Transaction {
     arguments: [balanceManager],
   });
 
-  // 2. MarginAccount: create_account internally transfers to sender
-  tx.moveCall({
-    target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::create_account`,
-    arguments: [tx.object(MARGIN_REGISTRY_ID), tx.object(CLOCK_ID)],
-  });
+  // 2. MarginAccount: create_account internally transfers to sender.
+  //    Skipped when unified margin is not deployed (BalanceManager-only mode);
+  //    otherwise the empty package/registry would produce a malformed Move call.
+  if (MARGIN_ENABLED) {
+    tx.moveCall({
+      target: `${UNIFIED_MARGIN_PACKAGE}::unified_margin::create_account`,
+      arguments: [tx.object(MARGIN_REGISTRY_ID), tx.object(CLOCK_ID)],
+    });
+  }
 
   return tx;
 }

@@ -11,7 +11,7 @@ import { useMarket } from "../context/MarketContext";
 import { useOrderForm } from "../context/OrderFormContext";
 import { useAutoDeposit } from "./useAutoDeposit";
 import { useMarginAccount } from "../../core/unified-margin/useMarginAccount";
-import { floatToRaw, NUSDC_TYPE } from "../../../lib/unified-margin";
+import { floatToRaw, MARGIN_ENABLED, NUSDC_TYPE } from "../../../lib/unified-margin";
 import type { TradeResult, OrderType } from "../types";
 import { ORDER_TYPE } from "../constants";
 import { useToast } from "@/components/common";
@@ -522,7 +522,7 @@ export function useOrderActions(): UseOrderActionsResult {
         }
       }
 
-      if (hasBm && !hasMa) {
+      if (MARGIN_ENABLED && hasBm && !hasMa) {
         // Legacy BM-only user: complete the pair by creating MA only
         try {
           await createMarginAccount();

@@ -32,6 +32,7 @@ import {
   buildWithdrawTx,
   buildWithdrawAllTx,
   buildWithdrawAllPadoTx,
+  MARGIN_ENABLED,
   NUSDC_TYPE,
   NBTC_TYPE,
   NETH_TYPE,
@@ -112,6 +113,9 @@ export function useMarginAccount(): UseMarginAccountResult {
     queryKey: ['margin-account-id', activeAddress],
     queryFn: async () => {
       if (!activeAddress) return null;
+      // Margin not deployed (BalanceManager-only mode): no MarginAccount can
+      // exist, so skip the owned-object scan entirely.
+      if (!MARGIN_ENABLED) return null;
 
       // First check localStorage
       const storedId = getStoredMarginAccountId(activeAddress);
@@ -232,15 +236,19 @@ export function useMarginAccount(): UseMarginAccountResult {
       if (!bmObj) {
         throw new Error('Failed to find created BalanceManager in PTB result');
       }
-      if (!maObj) {
+      // In BalanceManager-only mode (margin not deployed) the PTB intentionally
+      // creates no MarginAccount, so only require it when margin is enabled.
+      if (MARGIN_ENABLED && !maObj) {
         throw new Error('Failed to find created MarginAccount in PTB result');
       }
 
       const balanceManagerId = (bmObj as { objectId: string }).objectId;
-      const marginAccountId = (maObj as { objectId: string }).objectId;
+      const marginAccountId = maObj ? (maObj as { objectId: string }).objectId : '';
 
-      storeMarginAccountId(activeAddress, marginAccountId);
-      setMarginAccountId(marginAccountId);
+      if (marginAccountId) {
+        storeMarginAccountId(activeAddress, marginAccountId);
+        setMarginAccountId(marginAccountId);
+      }
 
       return { balanceManagerId, marginAccountId };
     },
