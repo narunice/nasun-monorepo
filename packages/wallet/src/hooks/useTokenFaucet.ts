@@ -71,6 +71,18 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// NETH and NSOL are minted together by one faucet_v2 call under a single
+// per-address cooldown, so claiming either consumes both. Mirror that in local
+// cooldown state: marking one also marks its pair, so the UI never offers the
+// already-consumed token as still-claimable (which would dry-run-abort).
+const SHARED_COOLDOWN_PAIR: Record<string, string> = { NETH: 'NSOL', NSOL: 'NETH' };
+
+function markCooldown(address: string, symbol: string): void {
+  setCooldownTimestamp(address, symbol);
+  const paired = SHARED_COOLDOWN_PAIR[symbol];
+  if (paired) setCooldownTimestamp(address, paired);
+}
+
 function setGlobalLoading(symbol: string, loading: boolean): void {
   if (loading) {
     _globalLoadingTokens.add(symbol);
@@ -333,7 +345,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
         if (result) {
           await refreshBalance();
-          setCooldownTimestamp(address!, symbol);
+          markCooldown(address!, symbol);
           // Wait for RPC object index to propagate new gas coin version
           // so the next sequential faucet claim gets fresh data
           await delay(POST_SUCCESS_DELAY_MS);
@@ -357,7 +369,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
             const retryResult = await withTimeout(signAndExecute(freshTx));
             if (retryResult.success) {
               await refreshBalance();
-              setCooldownTimestamp(address!, symbol);
+              markCooldown(address!, symbol);
               return { success: true, successMessage: handler.successMessage };
             }
           } catch (retryErr) {
@@ -365,7 +377,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
             const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
             if (classifyFaucetError(retryMsg) === 'cooldown') {
               await refreshBalance();
-              setCooldownTimestamp(address!, symbol);
+              markCooldown(address!, symbol);
               return { success: true, successMessage: handler.successMessage };
             }
           }
@@ -376,7 +388,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         // Sync localStorage cooldown when on-chain rejects with cooldown error.
         // Prevents repeated attempts (each costs 10-15s for zkLogin users).
         if (classifyFaucetError(msg) === 'cooldown') {
-          setCooldownTimestamp(address!, symbol);
+          markCooldown(address!, symbol);
         }
         return { success: false, error: errorMsg };
       } finally {
@@ -479,7 +491,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
 
         if (txResult.success) {
           for (const s of onchainSymbols) {
-            setCooldownTimestamp(address!, s);
+            markCooldown(address!, s);
             result.claimed.push(s);
           }
           await refreshBalance();
@@ -503,7 +515,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
               const retryResult = await withTimeout(signAndExecute(freshTx));
               if (retryResult.success) {
                 for (const s of onchainSymbols) {
-                  setCooldownTimestamp(address!, s);
+                  markCooldown(address!, s);
                   result.claimed.push(s);
                 }
                 await refreshBalance();
@@ -522,7 +534,7 @@ export function useTokenFaucet(): UseTokenFaucetResult {
         for (const s of onchainSymbols) {
           result.failed.push({ symbol: s, error: errorMsg });
           if (errorKind === 'cooldown') {
-            setCooldownTimestamp(address!, s);
+            markCooldown(address!, s);
           }
         }
       } finally {

@@ -6,12 +6,16 @@
  * enforced by the Move smart contract (24h cooldown per address).
  *
  * V1 tokens (NBTC/NUSDC) use PerTokenClaimRecord for independent cooldowns.
- * V2 tokens (NETH/NSOL) have separate packages with independent cooldowns.
+ * V2 tokens (NETH/NSOL) share one package (devnet_tokens_v2) and one
+ * ClaimRecordV2 with a single per-address daily cooldown. They must be claimed
+ * together via request_tokens_with_cooldown -- it mints both with one cooldown
+ * check. Two separate _with_cooldown calls (request_neth + request_nsol) abort
+ * the batch: the second sees the cooldown the first just wrote (E_COOLDOWN_NOT_MET).
  */
 
 import {
   TOKENS_PACKAGE_ID, TOKEN_FAUCET, PER_TOKEN_CLAIM_RECORD,
-  NETH_PACKAGE_ID, NETH_FAUCET_V2, NETH_CLAIM_RECORD_V2,
+  NETH_PACKAGE_ID, NETH_CLAIM_RECORD_V2,
   TOKENS_V2_PACKAGE_ID, TOKEN_FAUCET_V2, CLAIM_RECORD_V2,
 } from '@nasun/devnet-config';
 import { Transaction } from '@mysten/sui/transactions';
@@ -67,46 +71,48 @@ export function buildNusdcFaucetTx(): Transaction {
 }
 
 /**
- * Build transaction to request NETH from V2 faucet (24h cooldown)
+ * Append the combined NETH+NSOL faucet_v2 claim to a transaction.
+ *
+ * faucet_v2 mints NETH and NSOL together under one shared per-address daily
+ * cooldown (single ClaimRecordV2). request_tokens_with_cooldown does both mints
+ * with one cooldown check, so it is the only correct claim path on v8: calling
+ * request_neth_with_cooldown and request_nsol_with_cooldown separately (even in
+ * one PTB) aborts the second with E_COOLDOWN_NOT_MET.
  */
-export function buildNethFaucetTx(): Transaction {
-  const tx = new Transaction();
-
+function appendNethNsolFaucetCall(tx: Transaction): void {
   tx.moveCall({
-    target: `${NETH_PACKAGE_ID}::faucet_v2::request_neth_with_cooldown`,
-    arguments: [
-      tx.object(NETH_FAUCET_V2),
-      tx.object(NETH_CLAIM_RECORD_V2),
-      tx.object(CLOCK_ID),
-    ],
-  });
-
-  return tx;
-}
-
-/**
- * Build transaction to request NSOL from V2 faucet (24h cooldown)
- */
-export function buildNsolFaucetTx(): Transaction {
-  const tx = new Transaction();
-
-  tx.moveCall({
-    target: `${TOKENS_V2_PACKAGE_ID}::faucet_v2::request_nsol_with_cooldown`,
+    target: `${TOKENS_V2_PACKAGE_ID}::faucet_v2::request_tokens_with_cooldown`,
     arguments: [
       tx.object(TOKEN_FAUCET_V2),
       tx.object(CLAIM_RECORD_V2),
       tx.object(CLOCK_ID),
     ],
   });
+}
 
+/**
+ * Build a transaction that claims BOTH NETH and NSOL from the V2 faucet.
+ *
+ * The NETH and NSOL buttons share this builder: the cooldown is per-address
+ * (not per-token), so a single-token claim would consume the shared cooldown
+ * and lock the other token out for the rest of the day without delivering it.
+ */
+export function buildNethNsolFaucetTx(): Transaction {
+  const tx = new Transaction();
+  appendNethNsolFaucetCall(tx);
   return tx;
 }
+
+// NETH/NSOL aliases retained for callers (wallet index re-export, pado trading).
+// Both deliver the NETH+NSOL pair.
+export const buildNethFaucetTx = buildNethNsolFaucetTx;
+export const buildNsolFaucetTx = buildNethNsolFaucetTx;
 
 // ============================================
 // Batch PTB Builder
 // ============================================
 
-/** MoveCall appenders for each on-chain faucet token (excludes NSN which is HTTP) */
+/** MoveCall appenders for v1 independent-cooldown faucet tokens (NBTC, NUSDC) */
 const FAUCET_MOVE_CALLS: Record<string, (tx: Transaction) => void> = {
   NBTC: (tx) => {
     tx.moveCall({
@@ -128,45 +134,36 @@ const FAUCET_MOVE_CALLS: Record<string, (tx: Transaction) => void> = {
       ],
     });
   },
-  NETH: (tx) => {
-    tx.moveCall({
-      target: `${NETH_PACKAGE_ID}::faucet_v2::request_neth_with_cooldown`,
-      arguments: [
-        tx.object(NETH_FAUCET_V2),
-        tx.object(NETH_CLAIM_RECORD_V2),
-        tx.object(CLOCK_ID),
-      ],
-    });
-  },
-  NSOL: (tx) => {
-    tx.moveCall({
-      target: `${TOKENS_V2_PACKAGE_ID}::faucet_v2::request_nsol_with_cooldown`,
-      arguments: [
-        tx.object(TOKEN_FAUCET_V2),
-        tx.object(CLAIM_RECORD_V2),
-        tx.object(CLOCK_ID),
-      ],
-    });
-  },
 };
 
+/** Tokens minted together by the shared faucet_v2 (one per-address cooldown). */
+const V2_FAUCET_SYMBOLS = ['NETH', 'NSOL'] as const;
+
 /** All on-chain faucet token symbols (excludes NSN which uses HTTP API) */
-export const ONCHAIN_FAUCET_SYMBOLS = Object.keys(FAUCET_MOVE_CALLS);
+export const ONCHAIN_FAUCET_SYMBOLS = [...Object.keys(FAUCET_MOVE_CALLS), ...V2_FAUCET_SYMBOLS];
 
 /**
  * Build a single PTB that claims multiple tokens at once.
  * Avoids gas coin contention by combining all moveCall into one transaction.
  *
+ * NETH and NSOL collapse into a single request_tokens_with_cooldown call (they
+ * share one faucet_v2 cooldown); emitting both as separate calls would abort
+ * the batch on the second.
+ *
  * @param symbols - Token symbols to include (e.g., ['NBTC', 'NUSDC', 'NETH', 'NSOL'])
  * @returns Transaction with all faucet moveCall commands, or null if no valid symbols
  */
 export function buildBatchFaucetTx(symbols: string[]): Transaction | null {
-  const validSymbols = symbols.filter((s) => s in FAUCET_MOVE_CALLS);
-  if (validSymbols.length === 0) return null;
+  const v1Symbols = symbols.filter((s) => s in FAUCET_MOVE_CALLS);
+  const hasV2 = symbols.some((s) => (V2_FAUCET_SYMBOLS as readonly string[]).includes(s));
+  if (v1Symbols.length === 0 && !hasV2) return null;
 
   const tx = new Transaction();
-  for (const symbol of validSymbols) {
+  for (const symbol of v1Symbols) {
     FAUCET_MOVE_CALLS[symbol](tx);
+  }
+  if (hasV2) {
+    appendNethNsolFaucetCall(tx);
   }
   return tx;
 }
@@ -241,12 +238,12 @@ export const nusdcFaucetHandler: TokenFaucetHandler = {
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NUSDC'),
 };
 export const nethFaucetHandler: TokenFaucetHandler = {
-  buildTransaction: buildNethFaucetTx,
-  successMessage: '0.5 NETH received!',
+  buildTransaction: buildNethNsolFaucetTx,
+  successMessage: '0.6 NETH + 12 NSOL received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NETH'),
 };
 export const nsolFaucetHandler: TokenFaucetHandler = {
-  buildTransaction: buildNsolFaucetTx,
-  successMessage: '10 NSOL received!',
+  buildTransaction: buildNethNsolFaucetTx,
+  successMessage: '0.6 NETH + 12 NSOL received!',
   getCooldownRemaining: (address: string) => getCooldownRemaining(address, 'NSOL'),
 };

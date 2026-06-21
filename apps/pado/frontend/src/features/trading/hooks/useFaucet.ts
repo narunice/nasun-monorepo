@@ -26,6 +26,18 @@ const NASUN_POLL_INTERVAL_MS = 800;
 const NASUN_POLL_MAX_ATTEMPTS = 10;
 const COOLDOWN_POLL_INTERVAL_MS = 60_000;
 
+// NETH and NSOL are minted together by one faucet_v2 call under a single
+// per-address cooldown, so claiming either consumes both. Mark both in local
+// cooldown state so the UI never offers the already-consumed token (a click on
+// it would dry-run-abort with E_COOLDOWN_NOT_MET).
+const V2_COOLDOWN_PAIR: Record<string, string> = { NETH: 'NSOL', NSOL: 'NETH' };
+
+function markCooldownPair(address: string, token: string): void {
+  setCooldownTimestamp(address, token);
+  const paired = V2_COOLDOWN_PAIR[token];
+  if (paired) setCooldownTimestamp(address, paired);
+}
+
 /**
  * Format faucet errors into user-friendly messages
  */
@@ -251,17 +263,17 @@ export function useFaucet(): UseFaucetResult {
     try {
       const result = await requestNeth();
       if (result.success) {
-        setCooldownTimestamp(address, 'NETH');
+        markCooldownPair(address, 'NETH');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("0.5 NETH received!", "success");
+        showToast("0.6 NETH + 12 NSOL received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NETH");
-        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NETH');
+        if (formatted.includes('cooldown')) markCooldownPair(address, 'NETH');
         showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
       const formatted = formatFaucetError(error, "NETH");
-      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NETH');
+      if (formatted.includes('cooldown')) markCooldownPair(address, 'NETH');
       showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNethLoading(false);
@@ -283,17 +295,17 @@ export function useFaucet(): UseFaucetResult {
     try {
       const result = await requestNsol();
       if (result.success) {
-        setCooldownTimestamp(address, 'NSOL');
+        markCooldownPair(address, 'NSOL');
         if (result.digest) await waitAndRefresh(result.digest);
-        showToast("10 NSOL received!", "success");
+        showToast("0.6 NETH + 12 NSOL received!", "success");
       } else {
         const formatted = formatFaucetError(result.error, "NSOL");
-        if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NSOL');
+        if (formatted.includes('cooldown')) markCooldownPair(address, 'NSOL');
         showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
       }
     } catch (error) {
       const formatted = formatFaucetError(error, "NSOL");
-      if (formatted.includes('cooldown')) setCooldownTimestamp(address, 'NSOL');
+      if (formatted.includes('cooldown')) markCooldownPair(address, 'NSOL');
       showToast(formatted, formatted.includes('cooldown') ? "warning" : "error");
     } finally {
       setIsNsolLoading(false);
