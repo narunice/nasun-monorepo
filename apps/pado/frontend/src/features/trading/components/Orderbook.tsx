@@ -447,7 +447,8 @@ export function Orderbook({ orderbook, onPriceClick, showSpread = true, compact 
   const fontSize = compact ? 'text-trading-xs xl:text-trading-sm' : 'text-trading-sm xl:text-trading-lg';
 
   return (
-    <div className="relative flex flex-col h-full">
+    // translate="no": Chrome auto-translate crash guard (see MarketInfoBar).
+    <div translate="no" className="relative flex flex-col h-full">
       {/* Error banner */}
       {isError && (
         <div className="px-2 py-1 text-xs text-yellow-300 bg-yellow-900/30 border-b border-yellow-700/40" role="alert">

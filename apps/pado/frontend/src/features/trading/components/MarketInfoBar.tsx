@@ -71,7 +71,9 @@ export function MarketInfoBar({
   }, [nextFundingTime]);
 
   return (
-    <div className={`bg-theme-bg-secondary rounded-lg px-3 py-2 ${className ?? ''}`}>
+    // translate="no": live-updating numeric text crashes React reconciliation
+    // when Chrome auto-translate rewraps these text nodes (insertBefore error).
+    <div translate="no" className={`bg-theme-bg-secondary rounded-lg px-3 py-2 ${className ?? ''}`}>
       <div className="flex flex-wrap items-center gap-x-5 gap-y-1 tabular-nums">
         {/* Symbol & Price */}
         <div className="flex items-center gap-2">

@@ -23,7 +23,8 @@ export function MobileMarketHeader({ symbol, price, priceChange24h, onExpandChar
     : '';
 
   return (
-    <div className="sticky top-0 z-20 bg-theme-bg-primary border-b border-theme-border px-3 py-3 flex items-center justify-between">
+    // translate="no": Chrome auto-translate crash guard (see MarketInfoBar).
+    <div translate="no" className="sticky top-0 z-20 bg-theme-bg-primary border-b border-theme-border px-3 py-3 flex items-center justify-between">
       <span className="text-sm font-semibold text-theme-text-primary">{symbol}</span>
       <div className="flex items-center gap-2">
         <span className="text-sm font-mono font-semibold text-theme-text-primary">

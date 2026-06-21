@@ -31,7 +31,8 @@ export function MiniOrderbook({ bids, asks, midPrice, onPriceClick }: MiniOrderb
   };
 
   return (
-    <div className="bg-theme-bg-secondary rounded-lg p-2.5">
+    // translate="no": Chrome auto-translate crash guard (see MarketInfoBar).
+    <div translate="no" className="bg-theme-bg-secondary rounded-lg p-2.5">
       <div className="text-[10px] text-theme-text-muted mb-1.5 flex justify-between px-1">
         <span>Price</span>
         <span>Qty</span>
