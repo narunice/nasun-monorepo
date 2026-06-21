@@ -37,6 +37,11 @@
  *   PREDICTION_LP_DISCOVER_INTERVAL_MS     Market list refresh (default 600000).
  *   NASUN_RPC_URL                          RPC endpoint.
  *
+ *   PREDICTION_LP_MIN_NUSDC                NUSDC refill floor; 0 disables self-refill (default 200).
+ *   PREDICTION_LP_NUSDC_REFILL_ROUNDS      request_nusdc moveCalls per faucet PTB (default 50).
+ *   PREDICTION_LP_REFILL_TRIGGER_BUFFER    Refill when free < openMarkets×perMarket×this (default 1.25).
+ *   PREDICTION_LP_REFILL_TARGET_BUFFER     Refill up to openMarkets×perMarket×this (default 2.5).
+ *
  * Usage:
  *   node --env-file=.env --import tsx prediction-lp-bot.ts
  *   node --env-file=.env --import tsx prediction-lp-bot.ts --once
@@ -95,8 +100,21 @@ const MAX_CONSECUTIVE_ERRORS = 10;
 // mint a single Position pair). balance-watchdog covers only spot LP wallets
 // (NBTC/NETH/NSOL), so prediction-lp is self-served.
 const NUSDC_FAUCET_OBJECT = '0x336c5db9b9aef143feddb1376c4a7f2a6dc10dabdf6185947f3ac48ddadaf6ff';
-const DEFAULT_LP_MIN_NUSDC = 200;          // refill trigger (units of NUSDC)
-const DEFAULT_LP_NUSDC_REFILL_ROUNDS = 50; // request_nusdc moveCalls per PTB
+const DEFAULT_LP_MIN_NUSDC = 200;          // refill floor / disable switch (0 = off)
+const DEFAULT_LP_NUSDC_REFILL_ROUNDS = 50; // request_nusdc moveCalls per PTB (~2,500 NUSDC/round)
+
+// Dynamic refill sizing. Fixes the dead-zone bug (2026-06-22). The old fixed
+// 200-NUSDC trigger never fired once books emptied: each market needs ~3× the
+// per-side ladder pool to fully provision (2 bid ladders + 1 mint-inventory
+// pool), so quoting N open markets requires N × 3 × ladderPool free NUSDC. When
+// the wallet sat between 200 and that figure, every market was skipped (no funds
+// locked) yet the balance never dropped under 200, so the faucet never fired and
+// the books stayed empty indefinitely. The trigger/target now scale with the
+// live open-market count instead.
+const PROVISION_PER_MARKET_LADDER_MULT = 3;        // 2 bid ladders + 1 mint pool, each ≈ ladderPool
+const DEFAULT_LP_REFILL_TRIGGER_BUFFER = 1.25;     // refill when free < provisionAll × this
+const DEFAULT_LP_REFILL_TARGET_BUFFER = 2.5;       // refill up to provisionAll × this (hysteresis vs trigger)
+const MAX_REFILL_PTBS_PER_TICK = 20;               // bound a single refill burst (~2.5M NUSDC at 50 rounds)
 
 // ========================================
 // Package dispatch (v5 + legacy)
@@ -1061,46 +1079,73 @@ async function classifyMarketsByStaleness(
 
 /**
  * Top up the LP wallet's NUSDC via the devnet faucet when the on-hand balance
- * drops below `minNusdc`. Mirrors prediction-arb-bot's `ensureNusdc`. A single
- * PTB batches `rounds` × `request_nusdc(faucet)` moveCalls. Best-effort:
- * faucet outages return silently with a warning so the bot does not crash on
- * an off-chain failure.
+ * drops below `triggerNusdc`, refilling up to `targetNusdc`. Mirrors
+ * prediction-arb-bot's `ensureNusdc`, but loops faucet PTBs (each batches
+ * `rounds` × `request_nusdc`, ~2,500 NUSDC/round) until the target is reached.
+ * A single PTB caps out at ~125k NUSDC, far below what dozens of markets need.
+ * `trigger < target` gives hysteresis so a refill that provisions every market
+ * doesn't immediately re-trigger. Best-effort: faucet outages or a no-op faucet
+ * stop the loop with a warning so the bot keeps quoting and retries next tick.
  */
 async function ensureLpNusdc(
   client: SuiClient,
   keypair: Ed25519Keypair,
   owner: string,
-  minNusdc: number,
+  triggerNusdc: number,
+  targetNusdc: number,
   rounds: number,
 ): Promise<void> {
   const bal = await client.getBalance({ owner, coinType: NUSDC_TYPE });
-  const current = Number(bal.totalBalance) / 10 ** NUSDC_DECIMALS;
-  if (current >= minNusdc) return;
+  const startBal = Number(bal.totalBalance) / 10 ** NUSDC_DECIMALS;
+  if (startBal >= triggerNusdc) return;
 
   console.log(
-    `[${timestamp()}] [refill] NUSDC low (${current.toFixed(2)} < ${minNusdc}), ` +
-    `claiming ${rounds} faucet rounds`,
+    `[${timestamp()}] [refill] NUSDC low (${startBal.toFixed(2)} < trigger ${triggerNusdc.toFixed(0)}), ` +
+    `claiming faucet toward target ${targetNusdc.toFixed(0)} (${rounds} rounds/PTB)`,
   );
 
-  const tx = new Transaction();
-  tx.setGasBudget(500_000_000);
-  for (let i = 0; i < rounds; i++) {
-    tx.moveCall({
-      target: `${TOKENS_PACKAGE}::faucet::request_nusdc`,
-      arguments: [tx.object(NUSDC_FAUCET_OBJECT)],
-    });
-  }
-  try {
-    const digest = await executeAndWait(client, keypair, tx, 'nusdc_faucet_refill');
+  let current = startBal;
+  let ptbs = 0;
+  while (current < targetNusdc && ptbs < MAX_REFILL_PTBS_PER_TICK && !shuttingDown) {
+    ptbs++;
+    const tx = new Transaction();
+    tx.setGasBudget(500_000_000);
+    for (let i = 0; i < rounds; i++) {
+      tx.moveCall({
+        target: `${TOKENS_PACKAGE}::faucet::request_nusdc`,
+        arguments: [tx.object(NUSDC_FAUCET_OBJECT)],
+      });
+    }
+    let digest: string;
+    try {
+      digest = await executeAndWait(client, keypair, tx, 'nusdc_faucet_refill');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`[${timestamp()}] [refill] faucet PTB ${ptbs} failed: ${msg}`);
+      break;
+    }
     const after = await client.getBalance({ owner, coinType: NUSDC_TYPE });
     const newBal = Number(after.totalBalance) / 10 ** NUSDC_DECIMALS;
+    // Guard a silently no-op faucet (e.g. object drained): stop rather than spin
+    // PTBs that mint nothing and burn gas.
+    if (newBal <= current + 1e-6) {
+      console.warn(
+        `[${timestamp()}] [refill] faucet made no progress (${newBal.toFixed(2)}), stopping after ${ptbs} PTB(s)`,
+      );
+      current = newBal;
+      break;
+    }
     console.log(
-      `[${timestamp()}] [refill] NUSDC refilled ${current.toFixed(2)} -> ${newBal.toFixed(2)} (${digest.slice(0, 12)})`,
+      `[${timestamp()}] [refill] PTB ${ptbs}: ${current.toFixed(2)} -> ${newBal.toFixed(2)} (${digest.slice(0, 12)})`,
     );
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.warn(`[${timestamp()}] [refill] NUSDC faucet failed: ${msg}`);
+    current = newBal;
   }
+
+  const short = current < targetNusdc ? ', short, will continue next tick' : '';
+  console.log(
+    `[${timestamp()}] [refill] done: ${startBal.toFixed(2)} -> ${current.toFixed(2)} NUSDC in ${ptbs} PTB(s) ` +
+    `(target ${targetNusdc.toFixed(0)}${short})`,
+  );
 }
 
 // ========================================
@@ -1118,21 +1163,18 @@ async function tick(
   markets: string[],
   cfg: ReconcileConfig,
   legacyPackageIds: string[] = [],
-  refill?: { minNusdc: number; rounds: number },
+  refill?: {
+    perMarketNusdc: number;
+    floorNusdc: number;
+    triggerBuffer: number;
+    targetBuffer: number;
+    rounds: number;
+  },
   packageIdForMarketType?: (marketObjectType: string) => string,
 ): Promise<void> {
   if (isRunning || shuttingDown) return;
   isRunning = true;
   try {
-    if (refill) {
-      try {
-        await ensureLpNusdc(client, keypair, keypair.toSuiAddress(), refill.minNusdc, refill.rounds);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        console.warn(`[${timestamp()}] [refill] precheck failed: ${msg}`);
-      }
-    }
-
     // Stale-priority pass: classify all watched markets, drop closed ones,
     // surface depleted books first. Without this, a market whose top-of-book
     // got swept waits one full round-robin (30+ min with 175 markets) before
@@ -1141,19 +1183,52 @@ async function tick(
     // Fall back to legacy round-robin if (a) the env disables it or (b) the
     // classifier returned null (widespread RPC failure). Either path keeps
     // quoting under degraded RPC instead of emitting a silent empty tick.
+    // `openCount` sizes the NUSDC refill below; `openCountReliable` is true only
+    // when classify gave us a real open-market count (it drops closed/expired
+    // markets). On the null fallback `openCount` is the full watch list, which
+    // over-counts closed markets — we skip the dynamic refill there rather than
+    // mint a large faucet burst against dead markets while RPC is degraded.
     let orderedMarkets: string[];
+    let openCount: number;
+    let openCountReliable: boolean;
     if (process.env.PREDICTION_LP_STALE_PRIORITY === 'false') {
       orderedMarkets = markets;
+      openCount = markets.length;
+      openCountReliable = true; // deliberate opt-out; markets.length is the chosen count
     } else {
       const stale = await classifyMarketsByStaleness(client, markets);
       if (stale === null) {
         orderedMarkets = markets;
+        openCount = markets.length;
+        openCountReliable = false; // RPC degraded; count is the over-inclusive watch list
       } else {
         const empties = stale.filter((s) => s.emptySides > 0).length;
         console.log(
           `[${timestamp()}] tick: ${stale.length} open of ${markets.length} watched; ${empties} have ≥1 empty side`,
         );
         orderedMarkets = stale.map((s) => s.marketId);
+        openCount = stale.length;
+        openCountReliable = true;
+      }
+    }
+
+    // NUSDC self-refill. Trigger/target scale with the open-market count so the
+    // wallet always holds enough free NUSDC to provision both sides everywhere;
+    // a fixed floor created a dead zone (see PROVISION_PER_MARKET_LADDER_MULT).
+    // Runs after classification so it sizes against open markets, not closed
+    // ones still lingering in the watch list. Skipped when the count is
+    // unreliable (degraded RPC) so we don't over-mint; resumes once RPC recovers.
+    if (refill && openCountReliable) {
+      try {
+        const provisionAll = refill.perMarketNusdc * openCount;
+        const triggerNusdc = Math.max(refill.floorNusdc, provisionAll * refill.triggerBuffer);
+        const targetNusdc = Math.max(refill.floorNusdc, provisionAll * refill.targetBuffer);
+        await ensureLpNusdc(
+          client, keypair, keypair.toSuiAddress(), triggerNusdc, targetNusdc, refill.rounds,
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn(`[${timestamp()}] [refill] precheck failed: ${msg}`);
       }
     }
 
@@ -1303,22 +1378,37 @@ async function main(): Promise<void> {
     ladder, emaLambda, invSkewAlphaBps, invCapShares, minRepostBps,
   };
 
-  // NUSDC self-refill. Setting min=0 disables it (keep manual prefund model).
-  const refillMinNusdc = readNumberEnv(
+  const totalLadderNusdc = targetMintSizesNusdc(ladder).reduce((s, v) => s + v, 0);
+
+  // NUSDC self-refill. Setting PREDICTION_LP_MIN_NUSDC=0 disables it (manual
+  // prefund model). Otherwise it is the floor; the live trigger/target scale
+  // with the open-market count: perMarketNusdc × openCount × buffer. perMarket
+  // is one mint-inventory pool plus both bid ladders, each ≈ totalLadderNusdc.
+  const refillFloorNusdc = readNumberEnv(
     'PREDICTION_LP_MIN_NUSDC', DEFAULT_LP_MIN_NUSDC, 0,
   );
   const refillRounds = Math.round(readNumberEnv(
     'PREDICTION_LP_NUSDC_REFILL_ROUNDS', DEFAULT_LP_NUSDC_REFILL_ROUNDS, 1, 200,
   ));
-  const refill = refillMinNusdc > 0
-    ? { minNusdc: refillMinNusdc, rounds: refillRounds }
+  const refillTriggerBuffer = readNumberEnv(
+    'PREDICTION_LP_REFILL_TRIGGER_BUFFER', DEFAULT_LP_REFILL_TRIGGER_BUFFER, 1, 100,
+  );
+  const refillTargetBuffer = readNumberEnv(
+    'PREDICTION_LP_REFILL_TARGET_BUFFER', DEFAULT_LP_REFILL_TARGET_BUFFER, refillTriggerBuffer, 1000,
+  );
+  const refill = refillFloorNusdc > 0
+    ? {
+        perMarketNusdc: totalLadderNusdc * PROVISION_PER_MARKET_LADDER_MULT,
+        floorNusdc: refillFloorNusdc,
+        triggerBuffer: refillTriggerBuffer,
+        targetBuffer: refillTargetBuffer,
+        rounds: refillRounds,
+      }
     : undefined;
 
   const keypair = parseKeypair(keyInput);
   const lpAddress = keypair.toSuiAddress();
   const client = new SuiClient({ url: RPC_URL });
-
-  const totalLadderNusdc = targetMintSizesNusdc(ladder).reduce((s, v) => s + v, 0);
 
   console.log(`[${timestamp()}] Prediction LP Bot (ladder mode) starting`);
   console.log(`[${timestamp()}] LP wallet: ${lpAddress}`);
@@ -1337,7 +1427,10 @@ async function main(): Promise<void> {
     `[${timestamp()}] EMA λ=${emaLambda} invSkewα=${invSkewAlphaBps}bps invCap=${invCapSharesNum} minRepost=${minRepostBps}bps tick=${intervalMs}ms`,
   );
   console.log(
-    `[${timestamp()}] NUSDC self-refill: ${refill ? `minNusdc=${refill.minNusdc} rounds=${refill.rounds}` : 'DISABLED (PREDICTION_LP_MIN_NUSDC=0)'}`,
+    `[${timestamp()}] NUSDC self-refill: ${refill
+      ? `floor=${refill.floorNusdc} perMarket≈${refill.perMarketNusdc.toFixed(0)} ` +
+        `trigger=${refill.triggerBuffer}× target=${refill.targetBuffer}× rounds=${refill.rounds}`
+      : 'DISABLED (PREDICTION_LP_MIN_NUSDC=0)'}`,
   );
 
   // Startup discovery: keep retrying until we have a market list. discoverMarketIds
