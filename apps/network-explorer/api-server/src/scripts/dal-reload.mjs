@@ -295,7 +295,10 @@ async function main() {
     // reader roles explicitly (parity with pre-swap ACLs). user_wallets adds
     // nasun_chat_ro SELECT so the dal-reconcile monitor (chat_ro) can diff it; this is
     // read-only and additive (chat-server's identity-resolver never queries it).
-    await tx.unsafe('GRANT SELECT ON public.user_profiles, public.wallet_owner, public.user_wallets TO nasun_chat_ro, nasun_keeper');
+    // nasun_compute_ro reads user_profiles for the box admin-role check (leaderboard + referral
+    // de-Lambda admin auth: attributes->>'role'='ADMIN'); without re-granting it here the swap
+    // silently revokes that SELECT and every box admin route 500s after the next reload.
+    await tx.unsafe('GRANT SELECT ON public.user_profiles, public.wallet_owner, public.user_wallets TO nasun_chat_ro, nasun_keeper, nasun_compute_ro');
     await tx.unsafe('GRANT SELECT ON public.v_wallet_primary_profile TO nasun_keeper');
     // The box nasun-identity dual-write service (S1.2) writes these tables as nasun_identity;
     // the swap drops the tables (wiping ACLs), so its write grants must be re-applied here too.

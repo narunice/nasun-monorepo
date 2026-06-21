@@ -21,15 +21,31 @@ const IDENTITY_ID_PATTERN = /^[\w-]+:[\w-]{36}$/;
 // (node-3 has default-profile creds), region parity with ban-service.ts.
 const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
 const REFERRALS_TABLE = process.env.REFERRALS_TABLE || 'nasun-referrals';
+// AWS-exit Stage 4 referral de-Lambda: when set, the referral-ACTIVATED check reads the box referral service
+// (GET /internal/referral-activated/:id -> {activated}) instead of DynamoDB. referrals is the box SoT after the
+// referral cutover (DDB frozen), so this must flip with it. FAIL-CLOSED: any non-200/timeout throws so the
+// caller returns created:false (no grant) -- identical contract to the DDB-error path below.
+const REFERRAL_ACTIVATED_URL = process.env.REFERRAL_ACTIVATED_URL || '';
 let _ddb: DynamoDBDocumentClient | null = null;
 function getDdb(): DynamoDBDocumentClient {
   if (!_ddb) _ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
   return _ddb;
 }
-// Byte-parity with the lambda onboardingBonus.ts isReferralActivated: GetItem nasun-referrals by
-// referredIdentityId, true iff status === 'ACTIVATED'. THROWS on a DDB error (the caller fails CLOSED -> no
-// grant, matching the lambda's catch -> granted:false reason http-failed).
+// Byte-parity with the lambda onboardingBonus.ts isReferralActivated: true iff status === 'ACTIVATED'.
+// THROWS on error (the caller fails CLOSED -> no grant, matching the lambda's catch -> http-failed).
 async function isReferralActivated(identityId: string): Promise<boolean> {
+  if (REFERRAL_ACTIVATED_URL) {
+    const res = await fetch(
+      `${REFERRAL_ACTIVATED_URL.replace(/\/$/, '')}/${encodeURIComponent(identityId)}`,
+      {
+        headers: { 'x-api-key': process.env.REFERRAL_MAPPINGS_API_KEY || '' },
+        signal: AbortSignal.timeout(3000),
+      },
+    );
+    if (!res.ok) throw new Error(`referral-activated HTTP ${res.status}`);
+    const body = (await res.json()) as { activated?: boolean };
+    return body.activated === true;
+  }
   const res = await getDdb().send(new GetCommand({
     TableName: REFERRALS_TABLE,
     Key: { referredIdentityId: identityId },
