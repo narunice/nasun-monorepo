@@ -1,0 +1,100 @@
+# /etc/systemd/system/nasun-referral.service
+# Box-co-located referral de-Lambda service (AWS-exit Stage 4, referral slice). Clones the nasun-leaderboard
+# hardening; differs in: port 3214. ALL peers are box loopback (PG :5432, issuer JWKS :3210, identity-compute
+# :3211, explorer-api :3200), so the STRICT egress filter applies (IPAddressDeny=any / IPAddressAllow=localhost).
+#
+# DB roles: read pool = nasun_compute_ro (SELECT on referrals/referral_codes + user_profiles for the admin-role
+# check). Write pool = nasun_identity (RW on referrals/referral_codes ONLY; provisioned at Phase 3b cutover).
+# user_profiles is NEVER written by this service -- the referralCode + lastReferralDeclinedAt fields go through
+# the identity-compute /profile/attributes-sync loopback (keeps user_profiles single-writer via nasun-identity).
+#
+# INERT (Phase 2): no write cred + no COMPUTE_ADMIN_ENABLED. The pure-READ routes (my-stats, my-referees,
+# /internal/referral-mappings, /internal/referral-activated) serve off compute_ro; the WRITE routes (my-code,
+# apply, appeal, admin) need the write pool (getWriteSql throws until provisioned) and the admin routes 503.
+# nginx does NOT route to :3214 yet, so user traffic stays zero. Shadow parity validates the read routes.
+#
+# Phase 3b cutover: uncomment the writer block + restart (admin routes 401-gated, write pool live). Roll back
+# = re-comment + restart (admin -> 503, write pool gone), then DROP the writer grant if desired.
+
+[Unit]
+Description=Nasun referral de-Lambda service (box PG referrals/referral_codes mirror)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/referral
+ExecStart=/usr/bin/node /srv/nasun/referral/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=REFERRAL_PORT=3214
+Environment=REFERRAL_BIND=127.0.0.1
+Environment=REFERRAL_PG_HOST=127.0.0.1
+Environment=REFERRAL_PG_DATABASE=nasun_dal
+Environment=REFERRAL_PG_USER=nasun_compute_ro
+# Loopback peers.
+Environment=IDENTITY_COMPUTE_URL=http://127.0.0.1:3211
+Environment=EXPLORER_API_URL=http://127.0.0.1:3200
+Environment=NASUN_ISSUER_JWKS_URL=http://127.0.0.1:3210/.well-known/jwks.json
+Environment=NASUN_ISSUER_ID=nasun-issuer
+# User-route + admin-route JWT audience (the box nasun-issuer ISSUER_AUDIENCE, matching identity-compute /
+# leaderboard). Required for the dual-jwks Bearer verification even while admin is inert.
+Environment=COGNITO_IDENTITY_POOL_ID=ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df
+Environment=REFERRAL_GATE_ENABLED=true
+# CORS allowlist: byte-identical to the referral/admin lambdas (cdk constants/cors ALLOWED_ORIGINS_ENV).
+Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://explorer.nasun.io,https://staging.explorer.nasun.io,https://gensol.io,https://www.gensol.io,https://gensol.nasun.io,https://staging.gensol.io,https://pado.finance,https://staging.pado.finance,https://baram.nasun.io,https://gostop.app,https://www.gostop.app,https://staging.gostop.app,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178
+
+# Secrets (host-decrypted into the per-unit tmpfs $CREDENTIALS_DIRECTORY, never plaintext on disk, dynamic-user
+# owned, auto-removed on stop). Cred names MUST match config.ts.
+#  - pg-password: nasun_compute_ro (copy of the identity-compute/leaderboard compute_ro cred).
+#  - identity-bearer: the identity-compute :3211 shared bearer (profile reads + attributes-sync).
+#  - explorer-stats-key: value of the explorer-api REFERRAL_MAPPINGS_API_KEY (eligibility-signals + referral-stats).
+#  - explorer-onboarding-key: value of the explorer-api ONBOARDING_BONUS_API_KEY (onboarding-bonus backfill).
+#    These TWO explorer keys are DISTINCT (verified) -- do NOT collapse them.
+#  - internal-api-key: the key THIS service requires on /internal/* (set as the explorer-api scanner's
+#    REFERRAL_MAPPINGS_API_KEY when REFERRAL_MAPPINGS_URL is repointed at cutover).
+LoadCredentialEncrypted=pg-password:/srv/nasun/referral/secrets/pg-password.cred
+LoadCredentialEncrypted=identity-bearer:/srv/nasun/referral/secrets/identity-bearer.cred
+LoadCredentialEncrypted=explorer-stats-key:/srv/nasun/referral/secrets/explorer-stats-key.cred
+LoadCredentialEncrypted=explorer-onboarding-key:/srv/nasun/referral/secrets/explorer-onboarding-key.cred
+LoadCredentialEncrypted=internal-api-key:/srv/nasun/referral/secrets/internal-api-key.cred
+
+# --- hardening (mirrors nasun-leaderboard.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# Loopback-only: PG + issuer JWKS + identity-compute + explorer-api + the future nginx reverse proxy are all
+# 127.0.0.1. No external egress.
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+# --- Phase 3b cutover: write pool (nasun_identity) + admin path. write-pg-password.cred generated on box via
+# `systemd-creds encrypt --name=write-pg-password` (host-bound, NOT committed). Uncomment + restart at cutover.
+# LoadCredentialEncrypted=write-pg-password:/srv/nasun/referral/secrets/write-pg-password.cred
+# Environment=REFERRAL_WRITE_PG_USER=nasun_identity
+# Environment=COMPUTE_ADMIN_ENABLED=1
+
+[Install]
+WantedBy=multi-user.target
