@@ -51,7 +51,8 @@ export const API_RATE_LIMITS: ApiRateLimitConfig[] = [
   { apiId: "gtzq164xhb", name: "MetaMaskAuth", limit: 120 },
   // ZkLoginAuth (r0thrlqqcf) + SuiAuth (r45cfshhkf) rate rules removed: those execute-apis were
   // decommissioned (AWS-exit P2, 2026-06-17); the box compute serves both via api.nasun.io.
-  { apiId: "9snrweav74", name: "Referral", limit: 120 },
+  // Referral (9snrweav74) rate rule removed: execute-api decommissioned (AWS-exit Stage 4 Phase 3c,
+  // 2026-06-22); the box nasun-referral service serves /referral/* + admin via api.nasun.io.
   { apiId: "jrrge0lqtk", name: "NftEvent", limit: 200 },
   { apiId: "hntjvkuyvk", name: "GenesisPass", limit: 600 },
   { apiId: "auzo707xql", name: "LeaderboardV3", limit: 1200 },
