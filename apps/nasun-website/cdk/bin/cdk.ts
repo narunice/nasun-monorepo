@@ -38,7 +38,6 @@ import { CommonStack } from '../lib/common-stack';
 import { MonitoringStack } from '../lib/monitoring-stack';
 import { NftEventStack } from '../lib/nft-event-stack';
 import { AdminStack } from '../lib/admin-stack';
-import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
 import { GenesisPassStack } from '../lib/genesis-pass-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
@@ -83,17 +82,11 @@ const adminStack = new AdminStack(app, 'AdminStack', {
 // Leaderboard V3 stack (Independent manual curation system)
 const cognitoIdentityPoolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
 if (!cognitoIdentityPoolId) {
-  throw new Error('VITE_COGNITO_IDENTITY_POOL_ID environment variable is required for LeaderboardV3Stack');
+  throw new Error('VITE_COGNITO_IDENTITY_POOL_ID environment variable is required for the user-profile JWT auth stacks');
 }
-
-const leaderboardV3Stack = new LeaderboardV3Stack(app, 'LeaderboardV3Stack', {
-  env: cdkEnv,
-  environmentName: 'prod',
-  cognitoIdentityPoolId,
-  userProfilesTableName: 'UserProfiles',
-  sharedWafArn,
-});
-leaderboardV3Stack.addDependency(sharedWafStack);
+// LeaderboardV3Stack removed: de-Lambda'd to the box nasun-leaderboard service (AWS-exit Stage 4 Step 5b,
+// 2026-06-22). api.nasun.io/v3/* is served by box; the 5 leaderboard-v3-* DDB tables were RETAIN'd then
+// manually deleted after the box mirror was confirmed authoritative.
 
 // Genesis Pass Allowlist stack
 const genesisPassStack = new GenesisPassStack(app, 'GenesisPassStack', {
@@ -148,7 +141,7 @@ if (agentVaultRoleArn) {
   });
 }
 
-// Monitoring stack — depends on Common, Auth, LeaderboardV3, and NftEvent stacks
+// Monitoring stack — depends on Common, Auth, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   env: cdkEnv,
   priceApiGateway: commonStack.priceApiGateway,
@@ -156,12 +149,10 @@ const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   governanceApi: commonStack.governanceApi,
   governanceApiLambda: commonStack.governanceApiLambda,
   metamaskAuthApi: authStack.metamaskAuthApi,
-  leaderboardV3Api: leaderboardV3Stack.api,
   nftEventApi: nftEventStack.api,
   genesisPassApi: genesisPassStack.api,
 });
 monitoringStack.addDependency(commonStack);
 monitoringStack.addDependency(authStack);
-monitoringStack.addDependency(leaderboardV3Stack);
 monitoringStack.addDependency(nftEventStack);
 monitoringStack.addDependency(genesisPassStack);
