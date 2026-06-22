@@ -1,0 +1,82 @@
+# /etc/systemd/system/nasun-address-book.service
+# Box-co-located address-book de-Lambda service (AWS-exit Stage 4, wallet de-Lambda slice). Clones the
+# nasun-referral / nasun-leaderboard hardening; differs in: port 3215, and NO identity-compute / explorer-api /
+# issuer-JWKS peers (address-book auth is a SELF-ISSUED HS256 JWT, not the dual-jwks identity JWT). The only
+# peer is box PG :5432, so the STRICT egress filter applies (IPAddressDeny=any / IPAddressAllow=localhost).
+#
+# DB roles: read pool = nasun_compute_ro (SELECT on address_books). Write pool = the DEDICATED nasun_address_book
+# role (RW on address_books ONLY -- least privilege; provisioned at the cutover). No other table is touched.
+#
+# INERT (build/inert phase): no write cred + no writer env. The READ route (GET /wallet/address-book) and
+# challenge/verify (in-memory nonce + crypto + HS256 sign) serve fully; the WRITE route (POST /wallet/address-
+# book) throws until the write pool is provisioned. nginx does NOT route the `/wallet/` prefix to :3215 yet, so
+# user traffic stays zero. Shadow parity validates challenge/verify + GET.
+#
+# Cutover: uncomment the writer block + restart (write pool live). Roll back = re-comment + restart, then DROP
+# the writer grant/role if desired.
+
+[Unit]
+Description=Nasun address-book de-Lambda service (box PG address_books mirror)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/address-book
+ExecStart=/usr/bin/node /srv/nasun/address-book/server.mjs
+Restart=on-failure
+RestartSec=2
+
+Environment=ADDRESS_BOOK_PORT=3215
+Environment=ADDRESS_BOOK_BIND=127.0.0.1
+Environment=ADDRESS_BOOK_PG_HOST=127.0.0.1
+Environment=ADDRESS_BOOK_PG_DATABASE=nasun_dal
+Environment=ADDRESS_BOOK_PG_USER=nasun_compute_ro
+# CORS allowlist: byte-identical to the wallet-api lambda (cdk constants/cors ALLOWED_ORIGINS_ENV).
+Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://explorer.nasun.io,https://staging.explorer.nasun.io,https://gensol.io,https://www.gensol.io,https://gensol.nasun.io,https://staging.gensol.io,https://pado.finance,https://staging.pado.finance,https://baram.nasun.io,https://gostop.app,https://www.gostop.app,https://staging.gostop.app,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178
+
+# Secrets (host-decrypted into the per-unit tmpfs $CREDENTIALS_DIRECTORY, never plaintext on disk, dynamic-user
+# owned, auto-removed on stop). Cred names MUST match config.ts.
+#  - pg-password: nasun_compute_ro (copy of the identity-compute/leaderboard/referral compute_ro cred).
+#  - jwt-key: the addressBookJwtKey value ported from Secrets Manager (WALLET_PROOF_SECRET_NAME.addressBookJwtKey),
+#    so tokens the live lambda issued stay valid across cutover.
+LoadCredentialEncrypted=pg-password:/srv/nasun/address-book/secrets/pg-password.cred
+LoadCredentialEncrypted=jwt-key:/srv/nasun/address-book/secrets/jwt-key.cred
+
+# --- hardening (mirrors nasun-referral.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# Loopback-only: PG + the future nginx reverse proxy are 127.0.0.1. No external egress.
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
+
+# --- cutover: write pool (dedicated nasun_address_book role) for POST /wallet/address-book. write-pg-password.cred
+# generated on box via `systemd-creds encrypt --name=write-pg-password` (host-bound, NOT committed). Uncomment
+# + restart at cutover.
+# LoadCredentialEncrypted=write-pg-password:/srv/nasun/address-book/secrets/write-pg-password.cred
+# Environment=ADDRESS_BOOK_WRITE_PG_USER=nasun_address_book
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,36 @@
+-- Box nasun_dal grants + roles for the nasun-address-book service.
+-- Run as a superuser/owner: sudo -u postgres psql nasun_dal -f grants.sql
+--
+-- address_books was created by the Phase 1 dal-load owned by nasun_app. Verified 2026-06-22 (\dp): it carries
+-- ONLY nasun_app=arwdDxt (owner) + nasun_keeper=r -- UNLIKE referrals/referral_codes it has NO compute_ro
+-- SELECT and NO writer grant yet, so both must be added here. address_books is OUTSIDE the dal-reload scope
+-- (dal-reload rebuilds only user_profiles + wallet_owner), so these ACLs are STABLE -- no re-grant gap (the
+-- service also never reads user_profiles: there are no admin routes, so the referral compute_ro/user_profiles
+-- dal-reload caveat does NOT apply here).
+--
+-- Schema (verified): address_books(wallet_address text, record_type text, attributes jsonb, expires_at
+-- timestamptz), PK (wallet_address, record_type). The service's only query keys on (wallet_address,
+-- record_type='DATA'), fully served by the PK -- no extra index required.
+
+-- ============================================================================
+-- INERT-DEPLOY (apply now): read role nasun_compute_ro (the nasun-address-book read pool, GET /wallet/address-
+-- book). The role exists, so this is safe to run immediately and is needed for the shadow GET parity check.
+GRANT SELECT ON address_books TO nasun_compute_ro;
+
+-- ============================================================================
+-- CUTOVER-ONLY (the dedicated writer role does NOT exist yet -- this whole block is commented so running
+-- grants.sql at the inert deploy only does the compute_ro grant above and does not error).
+--
+-- Write role: a DEDICATED nasun_address_book role (least privilege -- RW on address_books and NOTHING else, so
+-- a compromise of this self-contained service cannot touch wallet ownership / profiles / referrals). Created at
+-- the cutover with a generated URL-safe password (openssl rand -hex 24); the password also goes into the
+-- host-bound systemd credential write-pg-password.cred. NOT committed.
+--
+-- Run at cutover (uncomment, substitute the generated password):
+--   CREATE ROLE nasun_address_book LOGIN PASSWORD '<generated>';
+--   GRANT CONNECT ON DATABASE nasun_dal TO nasun_address_book;
+--   GRANT USAGE ON SCHEMA public TO nasun_address_book;
+--   GRANT SELECT, INSERT, UPDATE, DELETE ON address_books TO nasun_address_book;
+--
+-- Teardown (after AWS exit complete): REVOKE + DROP ROLE nasun_address_book; (and DROP the live lambda's DDB
+-- table once box >= DDB confirmed).
