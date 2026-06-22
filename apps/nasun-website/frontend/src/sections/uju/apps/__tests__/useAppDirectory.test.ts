@@ -146,20 +146,20 @@ describe("loadFromStorage migration", () => {
   });
 
   it("on second load (already migrated), returns user-authored state untouched", () => {
-    store[NEW_KEY_A] = JSON.stringify({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-crash"] } });
+    store[NEW_KEY_A] = JSON.stringify({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-wheel"] } });
     store[`uju:app-directory:migrated-v6-defaults:${ID_A}`] = "1";
     const result = loadFromStorage(ID_A);
-    expect(result).toEqual({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-crash"] } });
+    expect(result).toEqual({ explicitPinned: ["gostop"], missions: { gostop: ["gostop-wheel"] } });
   });
 
-  it("migration preserves user's prior selections (e.g. gostop-crash kept alongside defaults)", () => {
+  it("migration preserves user's prior selections (e.g. gostop-wheel kept alongside defaults)", () => {
     store[NEW_KEY_A] = JSON.stringify({
       explicitPinned: ["gostop"],
-      missions: { gostop: ["gostop-crash"] },
+      missions: { gostop: ["gostop-wheel"] },
     });
     const result = loadFromStorage(ID_A);
     expect(result.missions.gostop).toEqual([
-      "gostop-crash",
+      "gostop-wheel",
       "gostop-lottery",
       "gostop-scratchcard",
       "gostop-numbermatch",
@@ -174,7 +174,7 @@ describe("loadFromStorage migration", () => {
     store[NEW_KEY_A] = JSON.stringify({
       explicitPinned: ["gostop"],
       missions: {
-        gostop: ["gostop-lottery", "gostop-scratchcard", "gostop-numbermatch", "gostop-mines", "gostop-crash"],
+        gostop: ["gostop-lottery", "gostop-scratchcard", "gostop-numbermatch", "gostop-mines", "gostop-wheel"],
         pado: ["pado-dex"],
         "nasun-devnet": ["faucet"],
       },
@@ -183,7 +183,7 @@ describe("loadFromStorage migration", () => {
     const total = Object.values(result.missions).reduce((n, ids) => n + ids.length, 0);
     expect(total).toBe(7); // existing 7, no addition possible
     // Existing selections preserved
-    expect(result.missions.gostop).toContain("gostop-crash");
+    expect(result.missions.gostop).toContain("gostop-wheel");
     expect(result.missions["nasun-devnet"]).toEqual(["faucet"]);
   });
 
@@ -202,10 +202,10 @@ describe("loadFromStorage migration", () => {
     store[OLD_KEY_A] = JSON.stringify(["pado"]);
     store[NEW_KEY_A] = JSON.stringify({
       explicitPinned: ["gostop"],
-      missions: { gostop: ["gostop-crash"] },
+      missions: { gostop: ["gostop-wheel"] },
     });
     const result = loadFromStorage(ID_A);
-    expect(result.missions.gostop).toContain("gostop-crash");
+    expect(result.missions.gostop).toContain("gostop-wheel");
   });
 
   it("filters legacy key entries through VALID_APP_IDS before merge (drops removed apps)", () => {
@@ -222,7 +222,7 @@ describe("effectivePinned (derive)", () => {
   it("merges explicitPinned with apps having selected missions", () => {
     const state: AppDirectoryState = {
       explicitPinned: ["pado"],
-      missions: { gostop: ["gostop-crash"] },
+      missions: { gostop: ["gostop-wheel"] },
     };
     expect(effectivePinned(state)).toEqual(["pado", "gostop"]);
   });

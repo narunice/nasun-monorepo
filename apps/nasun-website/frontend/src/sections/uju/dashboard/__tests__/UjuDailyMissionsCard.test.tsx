@@ -75,12 +75,10 @@ function getTotalPoints(pool: UjuMission[]): number {
   return pool.reduce((acc, m) => acc + (m.points ?? 0), 0);
 }
 
-function getDisplayedMissions(pool: UjuMission[], showAll: boolean): UjuMission[] {
-  return showAll ? pool : pool.slice(0, MAX_DAILY_MISSIONS);
-}
-
-function getHiddenCount(pool: UjuMission[]): number {
-  return Math.max(0, pool.length - MAX_DAILY_MISSIONS);
+// Production clamps the mission pool to MAX_DAILY_MISSIONS (the per-app
+// fallback can otherwise sum beyond the cap).
+function clampPool(pool: UjuMission[]): UjuMission[] {
+  return pool.slice(0, MAX_DAILY_MISSIONS);
 }
 
 // ── localStorage helpers mirroring card implementation ────────────────────────
@@ -114,16 +112,16 @@ describe('mission pool construction (PR3b)', () => {
     expect(buildMissionPool([NASUN_DEVNET_APP])).toHaveLength(2);
   });
 
-  it('pado pinned: 1 mission (pado-dex)', () => {
-    expect(buildMissionPool([PADO_APP])).toHaveLength(1);
+  it('pado pinned: 2 missions (pado-dex, pado-prediction)', () => {
+    expect(buildMissionPool([PADO_APP])).toHaveLength(2);
   });
 
   it('gostop pinned: 5 missions', () => {
     expect(buildMissionPool([GOSTOP_APP])).toHaveLength(5);
   });
 
-  it('all live apps: 2 + 1 + 5 = 8 missions', () => {
-    expect(buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP])).toHaveLength(8);
+  it('all live apps before clamp: 2 + 2 + 5 = 9 missions', () => {
+    expect(buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP])).toHaveLength(9);
   });
 
   it('coming-soon app (baram) adds 0 missions', () => {
@@ -197,24 +195,15 @@ describe('overflow cap', () => {
     expect(MAX_DAILY_MISSIONS).toBe(7);
   });
 
-  it('pool of 8 (nasun-devnet+pado+gostop): hiddenCount=1', () => {
+  it('pool over the cap is clamped to MAX_DAILY_MISSIONS', () => {
     const pool = buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP]);
-    expect(pool).toHaveLength(8);
-    expect(getHiddenCount(pool)).toBe(1);
+    expect(pool.length).toBeGreaterThan(MAX_DAILY_MISSIONS);
+    expect(clampPool(pool)).toHaveLength(MAX_DAILY_MISSIONS);
   });
 
-  it('pool of 8 with showAll=false: only 7 displayed', () => {
-    const pool = buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP]);
-    expect(getDisplayedMissions(pool, false)).toHaveLength(7);
-  });
-
-  it('pool of 8 with showAll=true: all 8 displayed', () => {
-    const pool = buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP]);
-    expect(getDisplayedMissions(pool, true)).toHaveLength(8);
-  });
-
-  it('pool under 7: hiddenCount=0', () => {
-    expect(getHiddenCount(buildMissionPool([NASUN_DEVNET_APP, PADO_APP]))).toBe(0);
+  it('pool under the cap is unchanged by clamp', () => {
+    const pool = buildMissionPool([NASUN_DEVNET_APP, PADO_APP]);
+    expect(clampPool(pool)).toHaveLength(pool.length);
   });
 });
 
@@ -229,16 +218,16 @@ describe('total points calculation', () => {
     expect(getTotalPoints(buildMissionPool([NASUN_DEVNET_APP]))).toBe(2);
   });
 
-  it('pado: 2 pts (pado-dex)', () => {
-    expect(getTotalPoints(buildMissionPool([PADO_APP]))).toBe(2);
+  it('pado: 4 pts (pado-dex 2 + pado-prediction 2)', () => {
+    expect(getTotalPoints(buildMissionPool([PADO_APP]))).toBe(4);
   });
 
   it('gostop: 5 pts (5 games × 1pt each)', () => {
     expect(getTotalPoints(buildMissionPool([GOSTOP_APP]))).toBe(5);
   });
 
-  it('all live apps: 9 pts (2 + 2 + 5)', () => {
-    expect(getTotalPoints(buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP]))).toBe(9);
+  it('all live apps before clamp: 11 pts (2 + 4 + 5)', () => {
+    expect(getTotalPoints(buildMissionPool([NASUN_DEVNET_APP, PADO_APP, GOSTOP_APP]))).toBe(11);
   });
 });
 
@@ -259,7 +248,7 @@ describe('mission ordering', () => {
       'gostop-scratchcard',
       'gostop-numbermatch',
       'gostop-mines',
-      'gostop-crash',
+      'gostop-wheel',
     ]);
   });
 
