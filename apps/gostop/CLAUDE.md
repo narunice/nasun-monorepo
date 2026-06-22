@@ -1,7 +1,9 @@
 # CLAUDE.md (apps/gostop)
 
-> Last Updated: 2026-05-18
+> Last Updated: 2026-06-22
 > 공통 규칙은 루트 [CLAUDE.md](../../CLAUDE.md) 참조
+>
+> ⚠️ AWS-exit 진행 중 (2026-06-22): frontend는 **Cloudflare Pages**로 이전 완료. 라이브 backend/indexer/bots는 **Hetzner box** pm2에서 가동 중(좌표는 nasun-ops / 운영 메모리 참조). 본문의 일부 `CloudFront`/`us-east-1`/`node-3` 기술은 마이그레이션 잔여로 outdated일 수 있으니, 라이브 상태(box pm2 / Cloudflare) 기준으로 판단할 것.
 
 ## 앱 목적
 
@@ -82,8 +84,8 @@ pnpm build:gostop                       # frontend
 pnpm --filter @nasun/gostop-backend build
 
 # Prod 배포 (monorepo root)
-pnpm deploy:gostop:prod                 # frontend → gostop.app (CloudFront us-east-1)
-pnpm deploy:gostop-backend:prod         # backend → node-3:3202
+pnpm deploy:gostop:prod                 # frontend → gostop.app (Cloudflare Pages, wrangler)
+pnpm deploy:gostop-backend:prod         # backend → box pm2 (deploy script may still target node-3; verify live)
 pnpm deploy:gostop:bots:prod            # bots → EC2 pm2
 pnpm deploy:gostop:staging              # staging.gostop.app (basic auth)
 
@@ -94,7 +96,7 @@ NODE_ENV=production npx cdk deploy
 
 ## 운영 환경
 
-- **Frontend**: CloudFront `gostop.app` (prod, no basic auth) + `staging.gostop.app` (basic auth tokens). us-east-1 ACM/CF 리전, 계정 dev(__AWS_DEV_ACCOUNT__) / prod(__AWS_PROD_ACCOUNT__)
+- **Frontend**: **Cloudflare Pages** (`gostop.app` prod, no basic auth) + `staging.gostop.app` (basic auth tokens). `pnpm deploy:gostop:prod` = `wrangler pages deploy` (AWS-exit으로 CloudFront/us-east-1 → Cloudflare Pages 이전 완료, 2026-06-22)
 - **Backend**: **node-3 (__INDEXER_NODE_HOST__):3202** → nginx 프록시 → `https://api.gostop.app` (reference_gostop_backend_endpoints.md)
 - **DB**: node-3 PostgreSQL (sui_indexer / nasun_points 와 동일 인스턴스, 별도 DB)
 - **Bots (pm2)**: `lottery-keeper` 등. PM2 ecosystem은 별도 (`apps/gostop/bots/ecosystem.config.cjs`)
