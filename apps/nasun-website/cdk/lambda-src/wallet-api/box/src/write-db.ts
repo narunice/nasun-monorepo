@@ -24,8 +24,14 @@ export async function saveAddressBook(
   expectedVersion: number,
 ): Promise<{ success: boolean; conflict: boolean; version?: number }> {
   const sql = getWriteSql();
-  const abJson = JSON.stringify(data);
+  // sanitizedData is pure JSON at runtime; the cast satisfies postgres's strict JSONValue (a nominal interface
+  // is not assignable to its index-signature object type, unlike a Record/literal).
+  const payload = data as unknown as Parameters<typeof sql.json>[0];
 
+  // sql.json(payload) sends the object as a json-typed param (serialized ONCE by the driver); jsonb_build_object
+  // then embeds it as a nested object. Do NOT pre-JSON.stringify + ::jsonb -- the driver re-encodes a string
+  // param as a JSON string, storing addressBook double-encoded (a jsonb string, not an object).
+  //
   // INSERT path (no existing row): always succeeds at version 1 -- matches DDB attribute_not_exists, which
   // ignores :expected for a brand-new item. DO UPDATE path (row exists): the WHERE gate enforces the CAS;
   // when the version does not match, no row is updated and RETURNING yields zero rows -> conflict.
@@ -34,11 +40,11 @@ export async function saveAddressBook(
     VALUES (
       ${walletAddress},
       'DATA',
-      jsonb_build_object('addressBook', ${abJson}::jsonb, 'addressBookVersion', 1)
+      jsonb_build_object('addressBook', ${sql.json(payload)}, 'addressBookVersion', 1)
     )
     ON CONFLICT (wallet_address, record_type) DO UPDATE
       SET attributes = jsonb_build_object(
-            'addressBook', ${abJson}::jsonb,
+            'addressBook', ${sql.json(payload)},
             'addressBookVersion', COALESCE((address_books.attributes->>'addressBookVersion')::int, 0) + 1)
       WHERE COALESCE((address_books.attributes->>'addressBookVersion')::int, 0) = ${expectedVersion}
     RETURNING (attributes->>'addressBookVersion')::int AS version`;
