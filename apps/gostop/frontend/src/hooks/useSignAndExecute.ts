@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
-import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
+import { useWallet, useZkLogin, usePasskeyStore, ZkLoginError } from '@nasun/wallet';
 import { getSuiClient } from '../lib/sui-client';
 
 export interface SignAndExecuteOptions {
@@ -31,7 +31,7 @@ const EXECUTE_RPC_TIMEOUT_MS = 30_000;
 
 export function useSignAndExecute(): UseSignAndExecuteResult {
   const { status, account, getKeypair } = useWallet();
-  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction } = useZkLogin();
+  const { isConnected: isZkLoggedIn, state: zkState, signTransaction: zkSignTransaction, checkSession, logout: zkLogout } = useZkLogin();
   const passkeyKeypair = usePasskeyStore((s) => s.keypair);
   const passkeyAddress = usePasskeyStore((s) => s.address);
   const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
@@ -56,6 +56,17 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
 
       let signature: string;
       if (isZkLoggedIn && zkState) {
+        // Pre-sign chain-reset guard (B): a devnet / fresh-genesis reset leaves the
+        // session's maxEpoch stranded far above the new epoch, so signing yields a
+        // raw validator reject ("ZKLogin max epoch too large"). Verify the session
+        // is usable against the live epoch first; if not, log out (the auth gate
+        // then prompts re-login) and surface a clean SESSION_EXPIRED instead of
+        // submitting a doomed transaction.
+        const sessionUsable = await checkSession();
+        if (!sessionUsable) {
+          zkLogout();
+          throw new ZkLoginError('SESSION_EXPIRED', 'Your session expired. Please log in again.');
+        }
         signature = await zkSignTransaction(bytes);
       } else if (isPasskeyUnlocked && passkeyKeypair) {
         const signResult = await passkeyKeypair.signTransaction(bytes);
@@ -99,7 +110,7 @@ export function useSignAndExecute(): UseSignAndExecuteResult {
         objectChanges: result.objectChanges,
       };
     },
-    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, isPasskeyUnlocked, passkeyKeypair],
+    [walletAddress, getKeypair, isZkLoggedIn, zkState, zkSignTransaction, checkSession, zkLogout, isPasskeyUnlocked, passkeyKeypair],
   );
 
   return { walletAddress, isWalletConnected, signAndExecute };

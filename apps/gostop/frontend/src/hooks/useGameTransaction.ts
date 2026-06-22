@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Transaction } from '@mysten/sui/transactions';
 import type { SuiTransactionBlockResponseOptions } from '@mysten/sui/client';
 import { useSignAndExecute } from './useSignAndExecute';
+import { useZkLogin } from '@nasun/wallet';
 import { getSuiClient } from '../lib/sui-client';
 import { withStaleObjectRetry } from '../lib/sui-retry';
 import { useToastStore } from '../store/useToastStore';
@@ -49,6 +50,7 @@ export interface GameTxOptions {
  */
 export function useGameTransaction() {
   const { walletAddress: address, signAndExecute: signAndExecuteTransaction } = useSignAndExecute();
+  const { logout: zkLogout } = useZkLogin();
   const showToast = useToastStore((s) => s.showToast);
   const { addPendingBet, removePendingBet } = useBalanceStore();
   const [isPending, setIsPending] = useState(false);
@@ -154,7 +156,16 @@ export function useGameTransaction() {
         // users don't see raw RPC dumps. Keep messages short and consistent.
         const RETRY_HINT = "Devnet hiccup. Give it a moment and try again.";
         let userMessage: string;
-        if (message.includes('MoveAbort')) {
+        if (/ZKLogin max epoch|max epoch too large|SESSION_EXPIRED|zkLogin session (?:expired|invalid)|Your session expired/i.test(message)) {
+          // Failure auto-recovery (A): a devnet / fresh-genesis reset strands the
+          // zkLogin session's maxEpoch above the new epoch (or the pre-sign guard
+          // in useSignAndExecute already flagged it). Clear the dead session so the
+          // auth gate prompts a fresh login instead of leaving the user stuck on a
+          // session that can never sign. zkLogin requires an OAuth re-auth, so we
+          // cannot silently re-sign; surfacing a clean "log in again" is the best UX.
+          zkLogout();
+          userMessage = 'Your session expired (the network was reset). Please log in again.';
+        } else if (message.includes('MoveAbort')) {
           userMessage = options.humanizeMoveAbort?.(message) ?? 'Transaction rejected by smart contract.';
         } else if (/is not available for consumption|ObjectVersionUnavailable|current version:|ObjectNotFound|InputObjectDeleted|ObjectDeleted|LockConflict|ObjectVersionMismatch/i.test(message)) {
           userMessage = RETRY_HINT;
@@ -189,7 +200,7 @@ export function useGameTransaction() {
         setIsPending(false);
       }
     },
-    [address, isPending, signAndExecuteTransaction, showToast, addPendingBet, removePendingBet, refreshBalance]
+    [address, isPending, signAndExecuteTransaction, zkLogout, showToast, addPendingBet, removePendingBet, refreshBalance]
   );
 
   return { executeGameTx, isPending, refreshBalance };

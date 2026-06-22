@@ -191,14 +191,28 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
       throw new ZkLoginError('PROVER_FAILED', 'ZK proof not available');
     }
 
-    return signWithZkLogin({
-      txBytes,
-      ephemeralPrivateKey: state.ephemeralPrivateKey,
-      proof: state.proof,
-      maxEpoch: state.maxEpoch,
-      addressSeed: state.addressSeed,
-    });
-  }, [state]);
+    try {
+      return await signWithZkLogin({
+        txBytes,
+        ephemeralPrivateKey: state.ephemeralPrivateKey,
+        proof: state.proof,
+        maxEpoch: state.maxEpoch,
+        addressSeed: state.addressSeed,
+      });
+    } catch (err) {
+      // Shared chain-reset auto-recovery: signWithZkLogin's epoch guard throws
+      // SESSION_EXPIRED when the stored maxEpoch is unusable against the live epoch.
+      // Most commonly a devnet fresh-genesis reset drops the epoch counter, stranding
+      // maxEpoch far ahead ("ZKLogin max epoch too large"). Clear the dead session so
+      // every consuming app's auth gate prompts a fresh login instead of repeatedly
+      // failing to sign. zkLogin needs an OAuth re-auth, so we cannot silently re-sign,
+      // but no app needs to special-case this anymore.
+      if (err instanceof ZkLoginError && err.type === 'SESSION_EXPIRED') {
+        logout();
+      }
+      throw err;
+    }
+  }, [state, logout]);
 
   // Check session validity
   const checkSession = useCallback(async (): Promise<boolean> => {
