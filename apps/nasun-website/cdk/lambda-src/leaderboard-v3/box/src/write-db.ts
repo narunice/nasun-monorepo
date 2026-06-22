@@ -13,7 +13,7 @@ import type {
   Season, SeasonAccountScore, SeasonStatus, CreatePostRequest, BannedAccountEntry,
 } from '../../src/types';
 import { getWriteSql } from './write-pool';
-import { sql } from './db';
+import { sql, getProfileRowByHandle } from './db';
 import {
   calculatePostScoreWithFollowers, calculateScoreComponents, getRoleByFollowers, countBonusSignals, addActiveDate,
 } from '../../src/services/score-calculator';
@@ -161,14 +161,8 @@ function isStaleDisplayName(displayName: string | undefined, username: string): 
 }
 
 async function lookupUserProfile(twitterHandle: string): Promise<{ displayName: string; profileImageUrl?: string; isRegistered: boolean } | null> {
-  const rows = await sql<{ attributes: Record<string, unknown> }[]>`
-    SELECT attributes FROM user_profiles WHERE twitter_handle = ${twitterHandle.toLowerCase()} LIMIT 10`;
-  if (!rows.length) return null;
-  let best = rows[0].attributes;
-  for (const r of rows) {
-    const u = r.attributes.username as string | undefined;
-    if (u && !u.startsWith('0x')) { best = r.attributes; break; }
-  }
+  const best = await getProfileRowByHandle(twitterHandle);
+  if (!best) return null;
   let displayName = (best.username as string) || '';
   if (displayName.startsWith('0x')) displayName = '';
   return { displayName, profileImageUrl: best.profileImageUrl as string | undefined, isRegistered: true };

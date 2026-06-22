@@ -155,6 +155,23 @@ export async function getAccountById(accountId: string): Promise<Account | null>
   return rows.length ? rowToAccount(rows[0]) : null;
 }
 
+// Raw user_profiles row (full attributes jsonb) for a twitter handle, preferring a row with a real
+// (non-0x) username (parity with the lambda's twitterHandle-index scan + 0x-skip). Shared by write-db's
+// account display-name refresh + the internal sync-profile port. twitter_handle is an indexed column; the
+// leading @ is stripped (no-op for already-normalized callers).
+export async function getProfileRowByHandle(twitterHandle: string): Promise<Record<string, unknown> | null> {
+  const normalized = twitterHandle.toLowerCase().replace(/^@/, '');
+  const rows = await sql<{ attributes: Record<string, unknown> }[]>`
+    SELECT attributes FROM user_profiles WHERE twitter_handle = ${normalized} LIMIT 10`;
+  if (!rows.length) return null;
+  let best = rows[0].attributes;
+  for (const r of rows) {
+    const u = r.attributes.username as string | undefined;
+    if (u && !u.startsWith('0x')) { best = r.attributes; break; }
+  }
+  return best;
+}
+
 // Admin-curated featured feed record (lb_seasons __FEATURED_FEED__ / CURATED). attributes holds {items,
 // updatedAt, updatedBy}.
 export async function getCuratedFeedRecord(): Promise<{ items: Array<{ postId: string; badge: string; order: number }>; updatedAt: string; updatedBy: string } | null> {

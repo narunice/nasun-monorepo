@@ -12,9 +12,10 @@
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { PORT, HOST, ALLOWED_ORIGINS, ADMIN_ENABLED } from './config';
+import { PORT, HOST, ALLOWED_ORIGINS, ADMIN_ENABLED, INTERNAL_TOKEN } from './config';
 import { authenticateAdmin, type AdminUser } from './auth';
 import * as admin from './admin-handlers';
+import * as internal from './internal-handlers';
 import {
   getLeaderboard,
   getMyRank,
@@ -107,6 +108,30 @@ app.on(['GET', 'PUT'], '/v3/admin/featured-feed', adminRoute('featured-feed', (c
 app.get('/v3/admin/stats', adminRoute('stats', () => admin.statsHandler()));
 app.post('/v3/admin/merge-accounts', adminRoute('merge', (c, a, body) => admin.mergeHandler(body, a)));
 app.post('/v3/admin/snapshot', adminRoute('snapshot', (c, a, body) => admin.snapshotHandler(body)));
+
+// Internal routes (Step 5 de-Lambda): box compute (identity-compute) + governance calls, gated by the
+// X-Internal-Auth shared secret (NOT the admin dual-jwks). voting-rank is read-only; clear-telegram/
+// telegram-verified/sync-profile write lb_* via the writer pool. Caller-side best-effort (fire-and-forget).
+function internalRoute(name: string, fn: (body: Record<string, unknown>) => Promise<internal.Result>) {
+  return async (c: Context) => {
+    if (!INTERNAL_TOKEN || (c.req.header('x-internal-auth') ?? '') !== INTERNAL_TOKEN) {
+      return c.json({ error: 'unauthorized' }, 401);
+    }
+    const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
+    try {
+      const { status, body: out } = await fn(body);
+      return c.json(out, status as 200);
+    } catch (e) {
+      console.error(`[leaderboard] internal ${name} failed:`, e instanceof Error ? e.message : e);
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  };
+}
+
+app.post('/v3/leaderboard/internal/voting-rank', internalRoute('voting-rank', (b) => internal.votingRankHandler(b)));
+app.post('/v3/leaderboard/internal/clear-telegram', internalRoute('clear-telegram', (b) => internal.clearTelegramHandler(b)));
+app.post('/v3/leaderboard/internal/telegram-verified', internalRoute('telegram-verified', (b) => internal.telegramVerifiedHandler(b)));
+app.post('/v3/leaderboard/internal/sync-profile', internalRoute('sync-profile', (b) => internal.syncProfileHandler(b)));
 
 app.notFound((c) => c.json({ error: 'not_found' }, 404));
 
