@@ -26,12 +26,12 @@ import { DynamoDBDocumentClient, QueryCommand, GetCommand } from '@aws-sdk/lib-d
 // ─── CONFIG ─────────────────────────────────────────────────────────────────
 
 // The tweet ID of the post users were asked to repost.
-const TWEET_ID = '2059490682902127052';
+const TWEET_ID = '2063779491323978029';
 
 // Paste the raw text from the user here. The script extracts @handles
 // automatically — any format works (mentions, lists, prose, etc.).
 const RAW_INPUT = `
-@crico41 @VJBillionz1 @I_BlockFive @Staunch_idool64 @Le290788 @elonunmk @Emiola_gangan @hyonggoo93 @zzangddoru @SegunAdeba52413 @msaqlainfcma @igangsan54078 @jaypolaris7 @BossWhatsNew @NgocNguyen63053 @Obidestiny247 @samy69062958 @D33n_web3 @Skymoon201095 @supirimalla @ReopaahScrin @quoccuong0984 @gerockkk @indah_ye99 @teampeuli4 @invest_sometime @mbavictory300 @OjoPhilemo17247 @4seazons263 @tensyonado18 @Abe_qearo @Savior_16 @The___rapper @PemburuCuan069 @Putri_dhone @Anton4599262075 @BernadetaD70810 @ngedream @eglebai @Feerry_712 @0hmybo @naro0ck @0xaiaiai @BLVCK707 @Cobalt_Duck @safdarsulehry55 @0xAzk27 @D_O__Y_E @0xarayeth @minhvu229983 @sven_336 @Vudu22998 @StoryMofi @MTown134056 @RvdWixx49687 @JulioFarmerl800 @hashafifi @__Jayden007 @acahandi @6brother9 @larionewlife @kija888 @VongVuot88444 @qirat112211 @ri_web3 @van_hien12243 @mv9984 @Hwang_Zi1 @ontoseno0701
+@0hmybo @0xaiaiai @0xAzk27 @1Minicio @4seazons263 @6brother9 @__Jayden007 @Adetolaniprime @AdeyemoYusupha @AKELEONCHAIN @Anton4599262075 @ashrai78 @behudeghet @BernadetaD70810 @BLVCK707 @BossWhatsNew @CapsidKay1 @Cobalt_Duck @Diamondcryptx @eglebai @elmeweb3 @Emiola_gangan @erengyegah @Feerry_712 @GalnarezAvigail @hashafifi @Hwang_Zi1 @hyonggoo93 @I_BlockFive @IcySp84362 @indah_ye99 @Jokosam72966649 @JulioFarmerl800 @khagenep @kija888 @kik_gary @larionewlife @Le290788 @lexxychad @Luongson94 @masud2633 @mezzadd @msaqlainfcma @MTown134056 @mv9984 @naro0ck @ngedream @nguyen_qui79552 @noxo_noxon @Obidestiny247 @OjoPhilemo17247 @ontoseno0701 @PemburuCuan069 @Putri_dhone @qathylu @readnrest0 @RegandBimantara @ReopaahScrin @Richarduwah2 @RvdWixx49687 @safdarsulehry55 @samy69062958 @Savior_16 @SegunAdeba52413 @shu_bomi @sicosongus @sinmoxzo @skybluenalpha @Skymoon201095 @Staunch_idool64 @StoryMofi @supirimalla @sven_336 @Tarique_tapi @tensyonado18 @The___rapper @toktiol @TradeTraine @van_hien12243 @vodkamq @VongVuot88444 @WakikR @wind_catcher23 @Yungmony01 @zzangddoru
 `;
 
 const BONUS_POINTS = 3;
