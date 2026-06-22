@@ -88,6 +88,16 @@ export const AUTH = {
   audience: process.env.COGNITO_IDENTITY_POOL_ID || '',
 };
 
+// Internal-route shared secret (X-Internal-Auth) for the box-ported leaderboard-v3 internal handlers (Step
+// 5: voting-rank/clear-telegram/telegram-verified/sync-profile). Loaded from the leaderboard-internal-token
+// cred (copied from identity-compute at 5a-1) or the LEADERBOARD_INTERNAL_TOKEN env. When absent, the
+// internal routes 401 every request (parity with the lambda's `!INTERNAL_TOKEN` reject) -- safe-closed.
+export const INTERNAL_TOKEN = readOptional('leaderboard-internal-token', 'LEADERBOARD_INTERNAL_TOKEN') || '';
+
+// Public avatars base URL for sync-profile custom-avatar resolution (parity with the lambda's
+// PUBLIC_AVATARS_BASE_URL). Trailing slashes trimmed. Empty => custom avatars fall back to profileImageUrl.
+export const PUBLIC_AVATARS_BASE_URL = (process.env.PUBLIC_AVATARS_BASE_URL || '').replace(/\/+$/, '');
+
 // Admin/write routes cutover gate: 503 (inert) until COMPUTE_ADMIN_ENABLED=1 is set at the Phase 3 cutover
 // (after the writer cred is provisioned). Keeps the box-direct write surface CLOSED so it cannot mutate the
 // frozen mirror pre-cutover -- the write-then-read parity test is provably the first caller of the live path.

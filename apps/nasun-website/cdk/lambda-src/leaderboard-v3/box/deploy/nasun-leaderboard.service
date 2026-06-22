@@ -79,5 +79,13 @@ Environment=COMPUTE_ADMIN_ENABLED=1
 Environment=COGNITO_IDENTITY_POOL_ID=ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df
 Environment=NASUN_ISSUER_JWKS_URL=http://127.0.0.1:3210/.well-known/jwks.json
 
+# --- Step 5 de-Lambda: internal routes (voting-rank/clear-telegram/telegram-verified/sync-profile).
+# leaderboard-internal-token.cred is the SAME X-Internal-Auth shared secret nasun-identity-compute already
+# holds (copied from /srv/nasun/identity-compute/secrets, host-bound + name-bound systemd-creds, decrypts
+# cross-unit). PUBLIC_AVATARS_BASE_URL matches the AWS sync-profile lambda (used only to BUILD the avatar
+# URL string -- the service makes no external fetch, so IPAddressDeny=any stays).
+LoadCredentialEncrypted=leaderboard-internal-token:/srv/nasun/leaderboard/secrets/leaderboard-internal-token.cred
+Environment=PUBLIC_AVATARS_BASE_URL=https://nasun-public-avatars-466841130170.s3.ap-northeast-2.amazonaws.com
+
 [Install]
 WantedBy=multi-user.target
