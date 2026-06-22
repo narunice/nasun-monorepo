@@ -41,7 +41,6 @@ import { AdminStack } from '../lib/admin-stack';
 import { LeaderboardV3Stack } from '../lib/leaderboard-v3-stack';
 import { DevnetMetricsStack } from '../lib/devnet-metrics-stack';
 import { GenesisPassStack } from '../lib/genesis-pass-stack';
-import { ReferralStack } from '../lib/referral-stack';
 import { NftSnapshotStack } from '../lib/nft-snapshot-stack';
 import { EcosystemStack } from '../lib/ecosystem-stack';
 import { BugReportStack } from '../lib/bug-report-stack';
@@ -105,14 +104,10 @@ const genesisPassStack = new GenesisPassStack(app, 'GenesisPassStack', {
 });
 genesisPassStack.addDependency(sharedWafStack);
 
-// Referral system stack
-const referralStack = new ReferralStack(app, 'ReferralStack', {
-  env: cdkEnv,
-  userProfilesTableName: 'UserProfiles',
-  cognitoIdentityPoolId,
-  sharedWafArn,
-});
-referralStack.addDependency(sharedWafStack);
+// Referral system stack DECOMMISSIONED (AWS-exit Stage 4 Phase 3c, 2026-06-22): handler +
+// authorizer + API GW (9snrweav74) destroyed; the box nasun-referral service serves /referral/* +
+// admin via api.nasun.io. DDB nasun-referrals/nasun-referral-codes retained (RemovalPolicy.RETAIN).
+// Stack removed here so a future `cdk deploy --all` does not recreate it.
 
 // Devnet metrics stack (daily DAU/address collection via RPC)
 const devnetMetricsStack = new DevnetMetricsStack(app, 'DevnetMetricsStack', { env: cdkEnv });
