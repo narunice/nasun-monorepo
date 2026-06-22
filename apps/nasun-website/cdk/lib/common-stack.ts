@@ -79,15 +79,9 @@ export class CommonStack extends cdk.Stack {
       encryption: dynamodb.TableEncryption.AWS_MANAGED,
     });
 
-    // AddressBooks table — wallet-signature-based address book sync (PK: walletAddress, SK: recordType)
-    const addressBooksTable = new dynamodb.Table(this, "AddressBooksTable", {
-      tableName: "AddressBooks",
-      partitionKey: { name: "walletAddress", type: dynamodb.AttributeType.STRING },
-      sortKey: { name: "recordType", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      timeToLiveAttribute: "expiresAt",
-    });
+    // AddressBooks DDB table removed (wallet/address-book de-Lambda Phase 5 teardown, 2026-06-23).
+    // box nasun-address-book (:3215) is SoT. RemovalPolicy.RETAIN orphans the table on this removal;
+    // it is manually deleted after the box >= DDB reconcile (verified 0 missing / 0 stale).
 
     // ========================================
     // Common NodejsFunction options
@@ -439,94 +433,11 @@ export class CommonStack extends cdk.Stack {
     linkAccountApi.root.addResource("{proxy+}").addMethod("ANY", linkLambdaIntegration);
     linkAccountApi.root.addMethod("ANY", linkLambdaIntegration);
 
-    // 2-3. Wallet API
-    const walletProofSecretName = process.env.WALLET_PROOF_SECRET_NAME || 'nasun-wallet-proof';
-    const walletApiLambda = new NodejsFunction(this, "WalletApiLambda", {
-      functionName: "nasun-common-wallet-api",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'wallet-api', 'src', 'index.ts'),
-      handler: 'handler',
-      memorySize: 256,
-      // AWS-exit DAL 3d step-2: raised from the implicit 3s default so the authoritative box write
-      // (authoritativeIdentityWrite, ~5.4s worst with retry) on a flipped /wallet/register or
-      // /wallet/remove cannot exceed the lambda timeout (which would 504-kill instead of returning a
-      // clean 500). Register/list/remove finish well under this; the headroom only bounds a stalled
-      // box write. Prerequisite for the wallet authority flip at the coordinated cutover.
-      timeout: cdk.Duration.seconds(15),
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
-        ...issuerVerifyEnv(),
-        // AWS-exit DAL S1.2: also mirror register/remove writes to the box nasun-identity service when wired.
-        ...identityWriteEnv(),
-        // AWS-exit DAL S3.R2: serve listWallets from the box mirror when IDENTITY_READ_MODE=flip (DDB fallback).
-        ...identityReadEnv(),
-        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-        USER_WALLETS_TABLE: userWalletsTable.tableName,
-        ADDRESS_BOOKS_TABLE: addressBooksTable.tableName,
-        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
-        WALLET_PROOF_SECRET_NAME: walletProofSecretName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        // Explorer-api webhook for wallet-registration sync. Reuses the same
-        // INTERNAL_INVALIDATE_TOKEN shared secret as the user-profile webhook.
-        // Empty disables the webhook (falls back to 10-min wallet cache TTL).
-        EXPLORER_API_URL: process.env.EXPLORER_API_URL || '',
-        EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
-      },
-      logGroup: new logs.LogGroup(this, "WalletApiLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-wallet-api",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    this.userProfilesTable.grantReadWriteData(walletApiLambda);
-    userWalletsTable.grantReadWriteData(walletApiLambda);
-    addressBooksTable.grantReadWriteData(walletApiLambda);
-    walletApiLambda.addToRolePolicy(
-      new iam.PolicyStatement({
-        effect: iam.Effect.ALLOW,
-        actions: ['secretsmanager:GetSecretValue', 'secretsmanager:PutSecretValue'],
-        resources: [
-          `arn:aws:secretsmanager:${this.region}:${this.account}:secret:${walletProofSecretName}-*`,
-        ],
-      }),
-    );
-
-    // AWS-exit de-Lambda C3b: the multi-wallet ownership routes (register/remove/list) are lifted to the
-    // box compute (nasun-identity-compute -> nasun-identity :3211, box PG SoT, NO DynamoDB). Convert the
-    // LambdaRestApi(proxy:true) to a plain RestApi with the SAME construct id "WalletApi" so the restApiId
-    // + execute-api URL are PRESERVED (no frontend rebuild). register(POST)/remove(POST)/list(GET) -> box
-    // HTTP_PROXY (Authorization + body forwarded; the box reads identityId from the JWT, verifies the
-    // wallet-proof on register, and loopbacks to :3211). Everything else ({proxy+} ANY + root ANY) stays
-    // on the lambda exactly as proxy:true routed it: the address-book auth (POST /challenge, /verify) +
-    // address-book CRUD (GET/POST /address-book), which use a separate self-issued JWT and are NOT part of
-    // the C3b ownership lift. OPTIONS preflight stays an API-GW MOCK (defaultCorsPreflightOptions). The box
-    // is SoT post-cutover (box-only PG write; the wallet drift is excluded by the dal-reconcile
-    // RECON_WALLET_CUTOVER_EPOCH gate). ROLLBACK: revert this block to
-    // `new apigw.LambdaRestApi(this, "WalletApi", { handler: walletApiLambda, proxy: true, ... })`.
-    const walletApi = new apigw.RestApi(this, "WalletApi", {
-      restApiName: "NASUN Wallet API (Common)",
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"]
-      },
-    });
-    const walletLambdaIntegration = new apigw.LambdaIntegration(walletApiLambda);
-    walletApi.root.addResource("register").addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/wallet/register", { httpMethod: "POST", proxy: true }
-    ));
-    walletApi.root.addResource("remove").addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/wallet/remove", { httpMethod: "POST", proxy: true }
-    ));
-    walletApi.root.addResource("list").addMethod("GET", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/wallet/list", { httpMethod: "GET", proxy: true }
-    ));
-    // Explicit {proxy+} (NOT root.addProxy(), which synthesizes a spurious root ANY->MOCK) for the
-    // address-book routes + a root ANY for exact proxy:true parity (the lambda returns 404 for root /
-    // unknown paths). A specific resource (register/remove/list) is matched ahead of {proxy+}.
-    walletApi.root.addResource("{proxy+}").addMethod("ANY", walletLambdaIntegration);
-    walletApi.root.addMethod("ANY", walletLambdaIntegration);
+    // 2-3. Wallet API — REMOVED (wallet/address-book de-Lambda Phase 5 teardown, 2026-06-23).
+    // The address-book service is box nasun-address-book (:3215); register/remove/list are box
+    // nasun-identity-compute (:3212). api.nasun.io/wallet/* is nginx-routed to box (GW 6pnnb6hcrd dead,
+    // no traffic). This removes walletApiLambda (nasun-common-wallet-api) + WalletApi RestApi
+    // (6pnnb6hcrd) + log group + DDB grants. userProfiles/userWallets tables are shared and kept.
 
     // 2-4. Governance API (with VotingPowerCertificate + Sponsored Transaction)
     this.governanceApiLambda = new NodejsFunction(this, "GovernanceApiLambda", {
@@ -891,11 +802,6 @@ export class CommonStack extends cdk.Stack {
     new cdk.CfnOutput(this, "LinkAccountApiUrl", {
       value: linkAccountApi.url,
       description: "Link Account API URL (CommonStack)",
-    });
-
-    new cdk.CfnOutput(this, "WalletApiUrl", {
-      value: walletApi.url,
-      description: "Wallet API URL (CommonStack)",
     });
 
     new cdk.CfnOutput(this, "GovernanceApiUrl", {
