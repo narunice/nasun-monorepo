@@ -704,6 +704,11 @@ export async function exportPasskeyMnemonic(
  * Get saved passkey wallet from localStorage
  */
 export function getPasskeyWallet(): PasskeyWalletState | null {
+  // Guard non-browser contexts (SSR / unit tests): localStorage may be
+  // undefined when this module is imported outside the browser. The passkey
+  // store reads this at module-load time, so an unguarded access throws on
+  // import before any test can stub localStorage.
+  if (typeof localStorage === 'undefined') return null;
   const stored = localStorage.getItem(PASSKEY_WALLET_KEY);
   if (!stored) return null;
 
