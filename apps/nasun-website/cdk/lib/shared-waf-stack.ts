@@ -55,7 +55,9 @@ export const API_RATE_LIMITS: ApiRateLimitConfig[] = [
   // 2026-06-22); the box nasun-referral service serves /referral/* + admin via api.nasun.io.
   { apiId: "jrrge0lqtk", name: "NftEvent", limit: 200 },
   { apiId: "hntjvkuyvk", name: "GenesisPass", limit: 600 },
-  { apiId: "auzo707xql", name: "LeaderboardV3", limit: 1200 },
+  // LeaderboardV3 (auzo707xql) rate rule removed: execute-api decommissioned (AWS-exit Stage 4 Step 5b,
+  // 2026-06-22); the box nasun-leaderboard service serves /v3/* (read/admin/internal) + telegram via
+  // api.nasun.io.
 ];
 
 export class SharedWafStack extends cdk.Stack {
