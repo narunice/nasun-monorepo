@@ -340,6 +340,19 @@ export function getBalanceManagerOwner(bmId: string): string | null {
   return row?.owner_address ?? null;
 }
 
+// Reverse lookup: all BalanceManagers a wallet owns, from the persistent index.
+// This survives fullnode event pruning (the SQLite row is written once when the
+// indexer first sees the BM in a fill and kept forever), so it can recover BMs
+// created long before the queryable on-chain event window.
+export function getBalanceManagersByOwner(ownerAddress: string): string[] {
+  const rows = getLeaderboardDb()
+    .prepare(
+      'SELECT balance_manager_id FROM balance_managers WHERE owner_address = ? COLLATE NOCASE'
+    )
+    .all(ownerAddress) as { balance_manager_id: string }[];
+  return rows.map((r) => r.balance_manager_id);
+}
+
 export function setBalanceManagerOwner(bmId: string, ownerAddress: string): void {
   getLeaderboardDb()
     .prepare(

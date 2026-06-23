@@ -342,14 +342,20 @@ export function buildCreateAccountTx(): Transaction {
  * or both fail, no partial-state UX). In BalanceManager-only mode (margin
  * deferred) it creates just the BalanceManager.
  */
-export function buildEnablePadoTx(): Transaction {
+export function buildEnablePadoTx(sender: string): Transaction {
   const tx = new Transaction();
 
-  // 1. BalanceManager: create + share
+  // 1. BalanceManager: create + mint DepositCap (owned, prune-immune pointer for
+  //    later recovery; deposit-only so safe to hold) + share.
   const [balanceManager] = tx.moveCall({
     target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::new`,
     arguments: [],
   });
+  const [depositCap] = tx.moveCall({
+    target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::mint_deposit_cap`,
+    arguments: [balanceManager],
+  });
+  tx.transferObjects([depositCap], tx.pure.address(sender));
   tx.moveCall({
     target: '0x2::transfer::public_share_object',
     typeArguments: [`${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManager`],

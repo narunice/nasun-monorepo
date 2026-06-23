@@ -284,6 +284,34 @@ export async function fetchPoolPriceHistory(
   return data.series;
 }
 
+/**
+ * Prune-immune BalanceManager discovery.
+ *
+ * Returns the BMs a wallet owns from the chat-server's persistent index. Unlike
+ * on-chain `queryEvents` (pruned to a ~10 day window on devnet), this recovers
+ * BMs created long ago, so the app can reuse an existing BM instead of spawning
+ * a duplicate. Best-effort: returns [] when the API is unavailable.
+ */
+export async function fetchBalanceManagerIds(owner: string): Promise<string[]> {
+  const baseUrl = NETWORK_CONFIG.chatHttpUrl;
+  if (!baseUrl) return [];
+  try {
+    // Bound the wait: this runs before BM creation, so a hung chat-server must
+    // not stall onboarding. On timeout/error we fall back to the other sources.
+    const res = await fetch(
+      `${baseUrl}/api/pado/balance-managers/${encodeURIComponent(owner)}`,
+      { signal: AbortSignal.timeout(4000) },
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as { balanceManagerIds?: unknown };
+    return Array.isArray(data.balanceManagerIds)
+      ? data.balanceManagerIds.filter((id): id is string => typeof id === 'string')
+      : [];
+  } catch {
+    return [];
+  }
+}
+
 // ===== Feature Detection =====
 
 export function isTradeApiAvailable(): boolean {

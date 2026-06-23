@@ -87,7 +87,7 @@ const MOCK_ADDRESS = '0x' + 'f'.repeat(64);
 // ========================================
 describe('buildCreateBalanceManager', () => {
   it('returns a valid Transaction object', () => {
-    const tx = buildCreateBalanceManager();
+    const tx = buildCreateBalanceManager(MOCK_ADDRESS);
     expect(tx).toBeDefined();
     expect(typeof tx.build).toBe('function');
   });

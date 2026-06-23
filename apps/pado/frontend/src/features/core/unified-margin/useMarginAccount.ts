@@ -43,6 +43,7 @@ import { depositPoolFor } from '../../../lib/deepbook';
 import { TOKENS } from '../../../config/network';
 import { getAllCoins, pickCoinsForAmount, totalBalance } from '../../../lib/coin-selection';
 import { buildDepositExact } from '../../trading/transactions';
+import { findUserBalanceManager } from '../../trading/lib/balanceManagerValidation';
 
 interface UseMarginAccountResult {
   // Account state
@@ -230,7 +231,18 @@ export function useMarginAccount(): UseMarginAccountResult {
     mutationFn: async () => {
       if (!activeAddress) throw new Error('Wallet not connected');
 
-      const tx = buildEnablePadoTx();
+      // BalanceManager-only mode: reuse an existing on-chain BM if discoverable
+      // (cap/index/events) instead of creating a duplicate empty one when
+      // localStorage was lost. When margin is deployed the atomic BM+MA PTB still
+      // runs (a BM-but-no-MA user is routed to createAccount by the caller).
+      if (!MARGIN_ENABLED) {
+        const existing = await findUserBalanceManager(activeAddress);
+        if (existing.primaryId) {
+          return { balanceManagerId: existing.primaryId, marginAccountId: '' };
+        }
+      }
+
+      const tx = buildEnablePadoTx(activeAddress);
       const result = await signAndExecute(tx);
 
       const created = result.objectChanges?.filter(

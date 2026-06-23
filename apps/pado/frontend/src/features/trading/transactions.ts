@@ -151,14 +151,26 @@ function validateSlippageParams(minOutput: bigint, inputAmount?: bigint): void {
 
 /**
  * BalanceManager 생성 트랜잭션
+ *
+ * Also mints a DepositCap to the creator. The cap records its balance_manager_id
+ * and, being an owned object, survives devnet event pruning forever, so the BM
+ * can later be recovered via getOwnedObjects regardless of age. DepositCap only
+ * grants deposit rights, so it is safe to hold (depositing into your own BM
+ * cannot harm you).
  */
-export function buildCreateBalanceManager(): Transaction {
+export function buildCreateBalanceManager(sender: string): Transaction {
   const tx = new Transaction();
 
   const balanceManager = tx.moveCall({
     target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::new`,
     arguments: [],
   });
+
+  const [depositCap] = tx.moveCall({
+    target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::mint_deposit_cap`,
+    arguments: [balanceManager],
+  });
+  tx.transferObjects([depositCap], tx.pure.address(sender));
 
   // Share the BalanceManager
   tx.moveCall({

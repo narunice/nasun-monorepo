@@ -5,6 +5,7 @@
 import { getSuiClient } from '../../../lib/sui-client';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
 import { NETWORK_CONFIG } from '../../../config/network';
+import { fetchBalanceManagerIds } from '../../../lib/pado-api';
 
 export interface OrphanBalanceManager {
   id: string;
@@ -35,12 +36,20 @@ export async function validateBalanceManagerExists(id: string): Promise<boolean>
 }
 
 /**
- * Find user's existing BalanceManager by querying BalanceManagerEvent.
- * BalanceManager is a shared object, so getOwnedObjects() won't work.
+ * Find user's existing BalanceManager(s). BalanceManager is a shared object, so
+ * getOwnedObjects() can't return it directly and there is no owner->id RPC.
  *
- * When multiple BMs exist (caused by a past recovery bug), picks the one
- * with the highest balance and returns others with funds as orphans
- * so the caller can drain them back to the user's wallet.
+ * devnet prunes transactions/events aggressively (~10 day window), so an event
+ * scan alone misses BMs created long ago. Objects, however, are never pruned, so
+ * discovery layers three prune-immune-or-bounded sources:
+ *   1. DepositCap owned objects (created with the BM; survive pruning forever)
+ *   2. chat-server persistent index (owner -> BM, written on first fill)
+ *   3. recent BalanceManagerEvent scan (descending, bounded) for just-created
+ *      BMs not yet indexed and without a cap
+ *
+ * When multiple BMs exist (a past recovery bug, or duplicate-creation), picks
+ * the one with the highest balance and returns others with funds as orphans so
+ * the caller can drain them back to the user's wallet.
  */
 export async function findUserBalanceManager(
   userAddress: string
@@ -48,51 +57,86 @@ export async function findUserBalanceManager(
   const empty: FindResult = { primaryId: null, orphans: [] };
   try {
     const client = getSuiClient();
-    const eventType = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManagerEvent`;
 
-    // Paginate ascending (oldest first) so BM creation events are found
-    // even when the user has hundreds of later transactions.
     const candidateIds: string[] = [];
     const seen = new Set<string>();
-    let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
-    let hasMore = true;
-
-    while (hasMore) {
-      const result = await client.queryEvents({
-        query: { Sender: userAddress },
-        cursor: cursor,
-        limit: 50,
-        order: 'ascending',
-      });
-
-      for (const event of result.data) {
-        if (event.type !== eventType) continue;
-        const json = event.parsedJson as {
-          balance_manager_id: string;
-          owner: string;
-        } | undefined;
-        if (!json || json.owner !== userAddress) continue;
-        if (seen.has(json.balance_manager_id)) continue;
-        seen.add(json.balance_manager_id);
-        candidateIds.push(json.balance_manager_id);
+    const addCandidate = (id: string | null | undefined) => {
+      if (id && !seen.has(id)) {
+        seen.add(id);
+        candidateIds.push(id);
       }
+    };
 
-      hasMore = result.hasNextPage;
-      if (!result.nextCursor) break;
-      cursor = result.nextCursor;
+    // Source 1: DepositCap owned objects. The cap stores its balance_manager_id
+    // and, being an owned object, survives event pruning indefinitely.
+    try {
+      const capType = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::DepositCap`;
+      let cursor: string | null | undefined = null;
+      for (let page = 0; page < 5; page++) {
+        const owned = await client.getOwnedObjects({
+          owner: userAddress,
+          filter: { StructType: capType },
+          options: { showContent: true },
+          cursor,
+          limit: 50,
+        });
+        for (const o of owned.data) {
+          const content = o.data?.content;
+          if (content?.dataType === 'moveObject') {
+            const bmId = (content.fields as Record<string, unknown>).balance_manager_id;
+            if (typeof bmId === 'string') addCandidate(bmId);
+          }
+        }
+        if (!owned.hasNextPage || !owned.nextCursor) break;
+        cursor = owned.nextCursor;
+      }
+    } catch (err) {
+      console.warn('[findUserBalanceManager] DepositCap scan failed:', err);
+    }
+
+    // Source 2: chat-server persistent index. Covers BMs that have traded at any
+    // time, even older than the on-chain event window.
+    try {
+      (await fetchBalanceManagerIds(userAddress)).forEach(addCandidate);
+    } catch (err) {
+      console.warn('[findUserBalanceManager] index lookup failed:', err);
+    }
+
+    // Source 3: recent BalanceManagerEvent (descending, bounded). Catches a
+    // just-created BM that is not yet indexed and predates the deposit-cap flow.
+    // Descending + a page cap means devnet pruning of old events cannot break it.
+    try {
+      const eventType = `${NETWORK_CONFIG.deepbookPackage}::balance_manager::BalanceManagerEvent`;
+      let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
+      for (let page = 0; page < 10; page++) {
+        const result = await client.queryEvents({
+          query: { Sender: userAddress },
+          cursor,
+          limit: 50,
+          order: 'descending',
+        });
+        for (const event of result.data) {
+          if (event.type !== eventType) continue;
+          const json = event.parsedJson as {
+            balance_manager_id: string;
+            owner: string;
+          } | undefined;
+          if (json?.owner === userAddress) addCandidate(json.balance_manager_id);
+        }
+        if (!result.hasNextPage || !result.nextCursor) break;
+        cursor = result.nextCursor;
+      }
+    } catch (err) {
+      // Pruned/unavailable event region after a devnet reset: fall back to the
+      // prune-immune sources above instead of failing the whole lookup.
+      console.warn('[findUserBalanceManager] event scan stopped early:', err);
     }
 
     if (candidateIds.length === 0) return empty;
 
-    // Single BM: just validate existence
-    if (candidateIds.length === 1) {
-      const exists = await validateBalanceManagerExists(candidateIds[0]);
-      return exists ? { primaryId: candidateIds[0], orphans: [] } : empty;
-    }
-
-    // Multiple BMs: verify ownership and check balances in parallel
-    console.info(`[findUserBalanceManager] Found ${candidateIds.length} BMs, checking balances...`);
-
+    // Verify ownership + balances for every candidate (including a lone one):
+    // a DepositCap is transferable, so a candidate from the cap scan could point
+    // to a BM the user does not own. Only owner-matching BMs are eligible.
     const checks = await Promise.all(
       candidateIds.map(async (id) => {
         try {

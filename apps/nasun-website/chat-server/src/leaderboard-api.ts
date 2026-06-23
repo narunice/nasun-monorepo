@@ -48,6 +48,7 @@ import {
   getCompetitionResults,
   getPoolPriceHistory,
   getPredictionMarketFills,
+  getBalanceManagersByOwner,
 } from './leaderboard-store.js';
 import { VALID_PERIODS, VALID_MODES, VALID_SCORE_SCOPES, KNOWN_BOT_ADDRESSES } from './leaderboard-types.js';
 import type { CompetitionStatus, CompetitionRow } from './leaderboard-types.js';
@@ -266,6 +267,17 @@ export async function handleLeaderboardRequest(
     const priceHistoryMatch = pathname.match(/^\/api\/pado\/pool-price-history\/(0x[a-fA-F0-9]{64})$/);
     if (priceHistoryMatch && method === 'GET') {
       return handlePoolPriceHistory(res, url, corsHeaders, priceHistoryMatch[1]);
+    }
+
+    // Prune-immune BalanceManager discovery: returns the BMs a wallet owns from
+    // the persistent index, so the frontend can recover BMs created before the
+    // queryable on-chain event window (avoids spawning duplicate empty BMs).
+    const bmByOwnerMatch = pathname.match(/^\/api\/pado\/balance-managers\/(0x[a-fA-F0-9]{64})$/);
+    if (bmByOwnerMatch && method === 'GET') {
+      const balanceManagerIds = getBalanceManagersByOwner(bmByOwnerMatch[1].toLowerCase());
+      res.writeHead(200, { ...corsHeaders, 'Cache-Control': 'public, max-age=30' });
+      res.end(JSON.stringify({ balanceManagerIds }));
+      return true;
     }
 
     const predictionFillsMatch = pathname.match(/^\/api\/pado\/prediction\/market-fills\/(0x[a-fA-F0-9]{64})$/);

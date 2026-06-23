@@ -48,6 +48,7 @@ function resolvePositionRef(
   return buildBucketPositionArg(tx, marketId, ref);
 }
 import { buildCreateBalanceManager } from '../../trading/transactions';
+import { findUserBalanceManager } from '../../trading/lib/balanceManagerValidation';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
 import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../../lib/payment';
@@ -952,7 +953,16 @@ export function usePredictionTrade(): UsePredictionTradeResult {
     if (!walletAddress) return { success: false, error: 'Wallet not connected' };
     setIsLoading(true);
     try {
-      const tx = buildCreateBalanceManager();
+      // Reuse an existing BM if discoverable (cap/index/events) instead of
+      // creating a duplicate empty one when localStorage was lost.
+      const existing = await findUserBalanceManager(walletAddress);
+      if (existing.primaryId) {
+        storeBalanceManagerId(walletAddress, existing.primaryId);
+        setBalanceManagerId(existing.primaryId);
+        invalidateBalances();
+        return { success: true, newBmId: existing.primaryId };
+      }
+      const tx = buildCreateBalanceManager(walletAddress);
       const result = await signAndExecute(tx, { showObjectChanges: true });
       const created = result.objectChanges?.find(
         (c) => c.type === 'created' && 'objectType' in c &&

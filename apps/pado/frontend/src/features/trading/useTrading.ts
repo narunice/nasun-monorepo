@@ -189,7 +189,17 @@ export function useTrading(): UseTrading {
       return { success: false, error: 'Wallet not connected' };
     }
 
-    const tx = buildCreateBalanceManager();
+    // Reuse an existing BM if one is discoverable (cap/index/events). localStorage
+    // may be empty (cleared cache / different device) while a funded BM exists on
+    // chain; creating another would strand funds in a duplicate empty BM.
+    const existing = await findUserBalanceManager(walletAddress);
+    if (existing.primaryId) {
+      storeBalanceManagerId(walletAddress, existing.primaryId);
+      setBalanceManagerId(existing.primaryId);
+      return { success: true };
+    }
+
+    const tx = buildCreateBalanceManager(walletAddress);
     const result = await executeTransaction(tx);
 
     if (result.success && result.objectChanges) {
