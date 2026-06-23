@@ -42,6 +42,7 @@ import {
 import { depositPoolFor } from '../../../lib/deepbook';
 import { TOKENS } from '../../../config/network';
 import { getAllCoins, pickCoinsForAmount, totalBalance } from '../../../lib/coin-selection';
+import { buildDepositExact } from '../../trading/transactions';
 
 interface UseMarginAccountResult {
   // Account state
@@ -67,6 +68,12 @@ interface UseMarginAccountResult {
   withdrawNsol: (rawAmount: bigint) => Promise<void>;
   /** Swap a non-native token to NUSDC and deposit, atomically. Kept as a secondary path. */
   depositSwap: (params: { fromSymbol: 'NETH' | 'NSOL' | 'NSN'; rawAmount: bigint; minQuoteOut: bigint }) => Promise<void>;
+  /**
+   * Deposit a token directly into the BalanceManager (BalanceManager-only mode,
+   * i.e. margin not deployed). Funds land in the BM and are used directly for
+   * Spot (auto-routed at trade time) and Predictions.
+   */
+  depositToBm: (coinType: string, rawAmount: bigint) => Promise<void>;
   withdraw: (amount: bigint) => Promise<void>;
   withdrawAll: () => Promise<void>;
   withdrawAllPado: () => Promise<void>;
@@ -525,6 +532,28 @@ export function useMarginAccount(): UseMarginAccountResult {
     },
   });
 
+  // Deposit a token directly into the BalanceManager. Used in BalanceManager-only
+  // mode (margin not deployed), where deposits cannot route through
+  // unified_margin::deposit. Mirrors the auto-deposit path's
+  // balance_manager::deposit, exposed as an explicit user action so funds can be
+  // parked before trading instead of only at trade time.
+  const depositToBmMutation = useMutation({
+    mutationFn: async ({ coinType, rawAmount }: { coinType: string; rawAmount: bigint }) => {
+      if (!activeAddress) throw new Error('Wallet not connected');
+      const balanceManagerId = getStoredBalanceManagerId(activeAddress);
+      if (!balanceManagerId) throw new Error('No Pado Balance account. Enable Pado first.');
+      const tx = await buildDepositExact(balanceManagerId, rawAmount, coinType, activeAddress);
+      await signAndExecute(tx);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['margin-account'] });
+      queryClient.invalidateQueries({ queryKey: ['multi-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['balance-manager-balance'] });
+      queryClient.invalidateQueries({ queryKey: ['bm-balance-global'] });
+      queryClient.invalidateQueries({ queryKey: ['bm-balance-pado-account'] });
+    },
+  });
+
   // Drain both BM and MA in a single PTB. Uses withdraw_all on the BM to avoid
   // the TOCTOU race between balance fetch and TX submission.
   const withdrawAllPadoMutation = useMutation({
@@ -601,6 +630,10 @@ export function useMarginAccount(): UseMarginAccountResult {
     await depositSwapMutation.mutateAsync(params);
   }, [depositSwapMutation]);
 
+  const depositToBm = useCallback(async (coinType: string, rawAmount: bigint) => {
+    await depositToBmMutation.mutateAsync({ coinType, rawAmount });
+  }, [depositToBmMutation]);
+
   const withdrawAllPado = useCallback(async () => {
     await withdrawAllPadoMutation.mutateAsync();
   }, [withdrawAllPadoMutation]);
@@ -624,6 +657,7 @@ export function useMarginAccount(): UseMarginAccountResult {
     withdrawNeth,
     withdrawNsol,
     depositSwap,
+    depositToBm,
     withdraw,
     withdrawAll,
     withdrawAllPado,
@@ -636,7 +670,8 @@ export function useMarginAccount(): UseMarginAccountResult {
       depositNbtcMutation.isPending ||
       depositNethMutation.isPending ||
       depositNsolMutation.isPending ||
-      depositSwapMutation.isPending,
+      depositSwapMutation.isPending ||
+      depositToBmMutation.isPending,
     isWithdrawing:
       withdrawMutation.isPending ||
       withdrawAllMutation.isPending ||

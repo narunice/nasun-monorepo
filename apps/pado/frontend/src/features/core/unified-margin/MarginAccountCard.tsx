@@ -91,6 +91,7 @@ export function MarginAccountCard() {
     depositByAmount,
     depositNbtc,
     depositSwap,
+    depositToBm,
     withdrawAllPado,
     isCreating,
     isEnabling,
@@ -216,10 +217,13 @@ export function MarginAccountCard() {
   const amountRaw = amountValid ? floatToRaw(amountFloat, activeDecimals) : 0n;
   const debouncedAmountRaw = useDebouncedValue(amountRaw, 250);
 
-  // NETH/NSOL: native deposit is built but not yet deployed; for now we force
-  // the convert-to-NUSDC path so funds land as NUSDC in Pado Balance (the only
-  // collateral form that works with prediction at launch).
-  const canConvert = activeTab === "NETH" || activeTab === "NSOL";
+  // NETH/NSOL: in margin mode, native deposit is built but not yet deployed, so
+  // we force the convert-to-NUSDC path so funds land as NUSDC (the only
+  // collateral form that works with prediction at launch). In BalanceManager-only
+  // mode (prod) the BM holds each token natively, so NETH/NSOL deposit directly
+  // with no swap.
+  const canConvert =
+    MARGIN_ENABLED && (activeTab === "NETH" || activeTab === "NSOL");
   const isSwapTab = canConvert;
 
   // Live swap quote (NETH/NSOL only). 5s polling, debounced amount key.
@@ -291,7 +295,14 @@ export function MarginAccountCard() {
     }
 
     try {
-      if (activeTab === "NUSDC") {
+      if (!MARGIN_ENABLED) {
+        // BalanceManager-only mode (prod): deposit the selected token directly
+        // into the BalanceManager. No swap; the BM holds each token natively
+        // for Spot, and Predictions pull from it directly.
+        const coinType = TOKENS[activeTab].type;
+        if (!coinType) throw new Error(`${activeTab} is not configured`);
+        await depositToBm(coinType, amountRaw);
+      } else if (activeTab === "NUSDC") {
         await depositByAmount(amountRaw);
       } else if (activeTab === "NBTC") {
         await depositNbtc(amountRaw);
@@ -575,22 +586,15 @@ export function MarginAccountCard() {
       {/* Actions: a single Deposit primary + Withdraw All secondary.
           Partial single-asset withdraw was removed (was MA-NUSDC only and
           confusingly disabled when only BM had funds). Users withdraw-all
-          and redeposit if they need a partial. */}
-      {MARGIN_ENABLED ? (
-        <button
-          onClick={() => setShowDepositModal(true)}
-          className="w-full py-2.5 mb-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
-        >
-          + Deposit
-        </button>
-      ) : (
-        // BalanceManager-only mode: deposits flow through auto-deposit at trade
-        // time (spot) or directly from the wallet (predictions), so manual MA
-        // deposit is unavailable. Withdraw remains available below.
-        <p className="text-xs text-theme-text-muted mb-2 text-center">
-          Funds are added to your Pado Balance automatically when you place a trade.
-        </p>
-      )}
+          and redeposit if they need a partial. The Deposit action works in both
+          margin mode (unified_margin::deposit) and BalanceManager-only mode
+          (balance_manager::deposit); spot still auto-deposits at trade time. */}
+      <button
+        onClick={() => setShowDepositModal(true)}
+        className="w-full py-2.5 mb-2 bg-green-500 hover:bg-green-600 text-white font-medium rounded-lg transition-colors"
+      >
+        + Deposit
+      </button>
 
       {hasAnyPadoBalance && (
         <button
@@ -663,7 +667,9 @@ export function MarginAccountCard() {
                   Destination
                 </span>
                 <span className="text-xs font-medium text-pd3">
-                  Predictions &amp; Margin account
+                  {MARGIN_ENABLED
+                    ? "Predictions & Margin account"
+                    : "Pado Balance (Spot & Predict)"}
                 </span>
               </div>
               <p className="text-xs text-theme-text-muted leading-relaxed">
