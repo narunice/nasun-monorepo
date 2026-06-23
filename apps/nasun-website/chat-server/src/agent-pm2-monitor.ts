@@ -18,6 +18,7 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { getDb } from './store.js';
+import { readAgentStateSnapshot, type AgentState } from './agent-orchestrator.js';
 
 const exec = promisify(execFile);
 
@@ -36,6 +37,7 @@ let lastAlertKey: string | null = null;
 
 interface DriftRow {
   pm2_name: string;
+  agent_address: string;
 }
 
 interface Pm2ProcessLite {
@@ -85,15 +87,58 @@ async function readPm2Names(): Promise<Set<string>> {
   return new Set(parsed.map((p) => p.name));
 }
 
-function readSqlActiveNames(): Set<string> {
+function readSqlActiveAgents(): { names: Set<string>; addrByName: Map<string, string> } {
   const rows = getDb().prepare(
     // paused_at IS NULL covers both real-alpha agents (slot_exempt=0) and
     // dogfood (slot_exempt=1) — alpha-cron only stamps paused_at on the
-    // former, so the latter naturally pass through.
-    `SELECT pm2_name FROM agent_keys
+    // former, so the latter naturally pass through. This is NECESSARY but
+    // not sufficient for "should be running": see filterDesiredRunning.
+    `SELECT pm2_name, agent_address FROM agent_keys
       WHERE deleted_at IS NULL AND paused_at IS NULL`,
   ).all() as DriftRow[];
-  return new Set(rows.map((r) => r.pm2_name));
+  const names = new Set<string>();
+  const addrByName = new Map<string, string>();
+  for (const r of rows) {
+    names.add(r.pm2_name);
+    addrByName.set(r.pm2_name, r.agent_address);
+  }
+  return { names, addrByName };
+}
+
+// A missing candidate (SQL-active row with no pm2 process) is true drift only
+// if the orchestrator actually WANTS it running. deriveAgentState returns
+// 'activated' only when on-chain is_active=true AND config enabled=true AND the
+// vault is present. The other states are intentionally stopped and must not
+// alert:
+//   - 'killed'  : wallet deactivated the agent on-chain (is_active=false)
+//   - 'paused'  : config disabled, or vault removed
+//   - 'unknown' : on-chain profile missing/notExists, or RPC read failed
+// Motivating false positive: a dogfood agent (slot_exempt=1) is never stamped
+// paused_at, so a deactivated/pruned dogfood profile would otherwise alert
+// forever (e.g. nasun-ai-agent-e4abc071, 2026-06). Unresolvable rows (no
+// agent_address, or snapshot throws) are KEPT — a broken lookup is itself
+// worth investigating, and a full RPC outage already trips the AER heartbeat
+// watchdog separately.
+export async function filterDesiredRunning(
+  candidates: readonly string[],
+  addrByName: ReadonlyMap<string, string>,
+  getState: (addr: string) => Promise<{ state: AgentState }>,
+): Promise<string[]> {
+  const real: string[] = [];
+  for (const name of candidates) {
+    const addr = addrByName.get(name);
+    if (!addr) {
+      real.push(name);
+      continue;
+    }
+    try {
+      const { state } = await getState(addr);
+      if (state === 'activated') real.push(name);
+    } catch {
+      real.push(name);
+    }
+  }
+  return real;
 }
 
 async function sendOperatorAlert(text: string): Promise<void> {
@@ -142,9 +187,18 @@ function formatAlert(report: DriftReport): string {
 
 async function tick(): Promise<void> {
   try {
-    const sqlActive = readSqlActiveNames();
+    const { names: sqlActive, addrByName } = readSqlActiveAgents();
     const pm2Names = await readPm2Names();
     const report = computeDriftReport(sqlActive, pm2Names);
+    // Drop missing candidates the orchestrator intentionally keeps stopped
+    // (deactivated / disabled / on-chain profile gone) so they don't alert
+    // forever. Orphans are left as-is: a pm2 process the DB says should be
+    // gone is real drift regardless of on-chain state.
+    report.missing = await filterDesiredRunning(
+      report.missing,
+      addrByName,
+      readAgentStateSnapshot,
+    );
     const key = report.orphans.length === 0 && report.missing.length === 0
       ? ''
       : `orphan:${report.orphans.join(',')}|missing:${report.missing.join(',')}`;
