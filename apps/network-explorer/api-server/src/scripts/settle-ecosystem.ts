@@ -38,8 +38,7 @@
 import postgres from 'postgres';
 import { gunzip } from 'node:zlib';
 import { promisify } from 'node:util';
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, BatchGetCommand } from '@aws-sdk/lib-dynamodb';
+import { batchGetProfiles } from '../lib/profile-batch-read.js';
 import { REFERRER_BONUS_LEADERBOARD_FACTOR } from '../config/referral.js';
 import { lpScoreCte, lpDailyRampFactor, LP_LEADERBOARD_START_MS } from '../lib/lp-leaderboard-score.js';
 import { ecosystemVolumeScoreCte } from '../lib/ecosystem-volume-score.js';
@@ -53,8 +52,6 @@ const ECOSYSTEM_ACTIVATIONS_URL = process.env.ECOSYSTEM_ACTIVATIONS_URL;
 const ECOSYSTEM_ACTIVATIONS_API_KEY = process.env.ECOSYSTEM_ACTIVATIONS_API_KEY || '';
 const WALLET_MAPPINGS_URL = process.env.WALLET_MAPPINGS_URL;
 const WALLET_MAPPINGS_API_KEY = process.env.WALLET_MAPPINGS_API_KEY || '';
-const AWS_REGION = process.env.AWS_REGION || 'ap-northeast-2';
-const USER_PROFILES_TABLE = process.env.USER_PROFILES_TABLE || 'UserProfiles';
 
 if (!POINTS_DB_URL) {
   console.error('POINTS_DATABASE_URL not set');
@@ -235,38 +232,17 @@ function hasSocialConnection(item: Record<string, unknown>): boolean {
 }
 
 async function fetchProfileFlags(identityIds: string[]): Promise<Map<string, ProfileFlags>> {
-  const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({ region: AWS_REGION }));
   const result = new Map<string, ProfileFlags>();
   if (identityIds.length === 0) return result;
-
-  const CHUNK = 100;
-  const MAX_RETRIES = 5;
-  for (let i = 0; i < identityIds.length; i += CHUNK) {
-    let pendingKeys = identityIds.slice(i, i + CHUNK).map(id => ({ identityId: id }));
-    for (let attempt = 0; pendingKeys.length > 0; attempt++) {
-      if (attempt > 0) await new Promise(r => setTimeout(r, 100 * 2 ** (attempt - 1)));
-      if (attempt > MAX_RETRIES) {
-        throw new Error(`UserProfiles BatchGet exceeded ${MAX_RETRIES} retries`);
-      }
-      const res = await ddb.send(new BatchGetCommand({
-        RequestItems: {
-          [USER_PROFILES_TABLE]: {
-            Keys: pendingKeys,
-            ProjectionExpression: 'identityId, #pr, twitterHandle, linkedAccounts, #tgm, telegramUserId, #rl',
-            ExpressionAttributeNames: { '#pr': 'provider', '#tgm': 'isTelegramMember', '#rl': 'role' },
-          },
-        },
-      }));
-      for (const item of res.Responses?.[USER_PROFILES_TABLE] ?? []) {
-        const id = item.identityId as string;
-        result.set(id, {
-          hasSocialAccount: hasSocialConnection(item),
-          isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
-          isAdmin: (item.role as string | undefined) === 'ADMIN',
-        });
-      }
-      pendingKeys = (res.UnprocessedKeys?.[USER_PROFILES_TABLE]?.Keys as typeof pendingKeys) ?? [];
-    }
+  // Box-first read (POST /profile/batch when IDENTITY_READ_MODE=flip, DynamoDB fallback). On box,
+  // flip mode means no AWS credentials are required, which is what lets the weekly cron run there.
+  const profiles = await batchGetProfiles(identityIds);
+  for (const [id, item] of profiles) {
+    result.set(id, {
+      hasSocialAccount: hasSocialConnection(item),
+      isTelegramMember: (item.isTelegramMember as boolean | undefined) ?? false,
+      isAdmin: (item.role as string | undefined) === 'ADMIN',
+    });
   }
   return result;
 }
