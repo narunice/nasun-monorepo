@@ -1,5 +1,5 @@
 /*
- * GoStop page theme overrides — scoped to `.gostop-theme` (sits inside
+ * GoStop page theme overrides - scoped to `.gostop-theme` (sits inside
  * `.dev-home-catena` so it inherits the catena type + layout primitives,
  * then re-maps the tokens to the GoStop gold palette). Mirrors the
  * structure of pado-theme.css so both ecosystem pages share one design
@@ -10,7 +10,7 @@
  *   card bg     #140f08  warm gold-tinted dark
  *   text body   #ece6da  warm near-white
  *
- * Accent (gold ramp — pops on black bg)
+ * Accent (gold ramp - pops on black bg)
  *   accent-deep   #b45309  amber-700
  *   accent-bg     #d97706  amber-600  (button wipe base)
  *   accent-mid    #f59e0b  amber-500  (glow / shadow tint)
@@ -40,7 +40,7 @@
   color: #000000;
 }
 
-/* Primary button — gold at rest, brighter gold wipes in from the
+/* Primary button - gold at rest, brighter gold wipes in from the
    bottom-right diagonal (same mechanic as the catena base button). */
 .dev-home-catena.gostop-theme .ch-btn-primary {
   background-color: #e9c25a;
@@ -59,7 +59,7 @@
   color: #000000;
 }
 
-/* Ghost button — match the gold palette. */
+/* Ghost button - match the gold palette. */
 .dev-home-catena.gostop-theme .ch-btn-ghost {
   border-color: #fcd34d;
   color: #fde68a;
@@ -69,7 +69,7 @@
   color: #ffffff;
 }
 
-/* GS accent — gradient text replacement for `.gs-accent`. Champagne→amber
+/* GS accent - gradient text replacement for `.gs-accent`. Champagne→amber
    ramp so the accent reads as a real metallic highlight on the black page. */
 .dev-home-catena.gostop-theme .gs-accent {
   background-image: linear-gradient(
@@ -95,7 +95,7 @@
   );
 }
 
-/* Spotlight glow — warm gold radial (replaces the mint default). */
+/* Spotlight glow - warm gold radial (replaces the mint default). */
 .dev-home-catena.gostop-theme .ch-step-card-glow {
   background: radial-gradient(
     260px circle at var(--mx) var(--my),
@@ -138,7 +138,7 @@
   border-left-color: #fbbf24;
 }
 
-/* Card chrome — warm gold-tinted dark body, gold halo + hover shadow so
+/* Card chrome - warm gold-tinted dark body, gold halo + hover shadow so
    cards read as luxury tiles instead of the mint catena default. */
 .dev-home-catena.gostop-theme .ch-step-card {
   background:
@@ -222,7 +222,7 @@
 }
 
 /* ----------------------------------------------------------------------
- * Game cards — image-thumbnail tiles for the live floor. Reuse the
+ * Game cards - image-thumbnail tiles for the live floor. Reuse the
  * group spotlight (`.ch-step-card-glow` + useGridSpotlight) but with a
  * lighter shell than ch-step-card so the art bleeds to the edges.
  * --------------------------------------------------------------------*/
@@ -230,7 +230,7 @@
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
-  /* Spotlight vars — written by useGridSpotlight on pointermove. */
+  /* Spotlight vars - written by useGridSpotlight on pointermove. */
   --mx: -200px;
   --my: -200px;
   --in: 0;
@@ -308,7 +308,7 @@
 }
 
 /* ----------------------------------------------------------------------
- * Hero — framed product shot (gold-bordered glass panel). Mirrors Pado's
+ * Hero - framed product shot (gold-bordered glass panel). Mirrors Pado's
  * `.pd-product-shot` framing but tuned for the warm GoStop palette.
  * --------------------------------------------------------------------*/
 .dev-home-catena.gostop-theme .gs-hero-shot {
@@ -326,7 +326,7 @@
   height: auto;
 }
 
-/* Hero stat strip — mono labels under gold figures, hairline dividers. */
+/* Hero stat strip - mono labels under gold figures, hairline dividers. */
 .dev-home-catena.gostop-theme .gs-stat-num {
   font-family: var(--ch-font-mono);
   font-weight: 600;
@@ -349,7 +349,7 @@
   background-color: var(--ch-divider);
 }
 
-/* Live badge — pulsing dot + gold pill, reused in the hero. */
+/* Live badge - pulsing dot + gold pill, reused in the hero. */
 .dev-home-catena.gostop-theme .gs-live-badge {
   display: inline-flex;
   align-items: center;
@@ -390,7 +390,7 @@
   }
 }
 
-/* Disclaimer panel — gold-edged caution block. */
+/* Disclaimer panel - gold-edged caution block. */
 .dev-home-catena.gostop-theme .gs-disclaimer {
   border-radius: var(--ch-radius-md);
   border: 1px solid rgba(251, 191, 36, 0.35);
