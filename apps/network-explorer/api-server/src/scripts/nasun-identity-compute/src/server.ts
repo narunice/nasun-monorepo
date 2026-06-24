@@ -91,10 +91,16 @@ async function handleCount() {
   return { count: n, tableName: 'UserProfiles', updatedAt: new Date().toISOString() };
 }
 
-// Constant-time bearer check against COMPUTE_BEARER (parity with the box identity authorized()). Gates
-// the server-to-server /wallet-mappings route (the admin-api wallet-mappings lambda presents this bearer).
-function bearerOk(authHeader: string | undefined): boolean {
-  const presented = authHeader?.startsWith('Bearer ') ? Buffer.from(authHeader.slice(7)) : Buffer.alloc(0);
+// Constant-time check of COMPUTE_BEARER for the server-to-server /wallet-mappings route. Accepts the
+// secret via EITHER `Authorization: Bearer <key>` (the admin-api wallet-mappings lambda, when flipped to
+// WALLET_MAPPINGS_SOURCE=box) OR `x-api-key: <key>` (the box explorer-api points-scanner + chat-server
+// identity-resolver, repointed straight at this route off the admin-api lambda at the internal-route
+// de-Lambda -- their fetch helpers send x-api-key, not a bearer). Same secret either way; the bearer wins
+// when both are present, x-api-key applies only when no bearer is supplied. Neither header -> empty
+// presented -> length mismatch -> 401 (timingSafeEqual is never reached on a length mismatch).
+function computeKeyOk(authHeader: string | undefined, apiKeyHeader: string | undefined): boolean {
+  const fromBearer = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  const presented = Buffer.from(fromBearer || apiKeyHeader || '');
   return presented.length === COMPUTE_BEARER.length && timingSafeEqual(presented, COMPUTE_BEARER);
 }
 
@@ -165,12 +171,15 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
-  // GET /wallet-mappings -- bearer-gated (COMPUTE_BEARER), server-to-server (admin-api wallet-mappings
-  // lambda). NOT public (returns the full wallet->identity map); no CORS (no browser caller). 401 on a
-  // bad/absent bearer (constant-time). Reachable at issuer.nasun.io/compute/wallet-mappings (nginx strips
-  // /compute/). Inert in effect until the lambda flips to WALLET_MAPPINGS_SOURCE=box.
+  // GET /wallet-mappings -- key-gated (COMPUTE_BEARER via Bearer or x-api-key), server-to-server. NOT
+  // public (returns the full wallet->identity map); no CORS (no browser caller). 401 on a bad/absent key
+  // (constant-time). Two callers: (1) the admin-api wallet-mappings lambda (Bearer) when flipped to
+  // WALLET_MAPPINGS_SOURCE=box, and (2) the box explorer-api points-scanner + chat-server identity-resolver
+  // (x-api-key), repointed straight here off that lambda at the internal-route de-Lambda. Reachable on the
+  // box loopback (http://127.0.0.1:3212/wallet-mappings) and at issuer.nasun.io/compute/wallet-mappings
+  // (nginx strips /compute/).
   if (req.method === 'GET' && pathname === '/wallet-mappings') {
-    if (!bearerOk(req.headers['authorization'] as string | undefined)) {
+    if (!computeKeyOk(req.headers['authorization'] as string | undefined, req.headers['x-api-key'] as string | undefined)) {
       return send(res, 401, { error: 'unauthorized' }, {});
     }
     try {
