@@ -1,0 +1,399 @@
+/*
+ * GoStop page theme overrides — scoped to `.gostop-theme` (sits inside
+ * `.dev-home-catena` so it inherits the catena type + layout primitives,
+ * then re-maps the tokens to the GoStop gold palette). Mirrors the
+ * structure of pado-theme.css so both ecosystem pages share one design
+ * language and differ only in brand color.
+ *
+ * Surface roles
+ *   page bg     #000000  pure black (matches Pado / home)
+ *   card bg     #140f08  warm gold-tinted dark
+ *   text body   #ece6da  warm near-white
+ *
+ * Accent (gold ramp — pops on black bg)
+ *   accent-deep   #b45309  amber-700
+ *   accent-bg     #d97706  amber-600  (button wipe base)
+ *   accent-mid    #f59e0b  amber-500  (glow / shadow tint)
+ *   accent        #fbbf24  amber-400  (eyebrow / num / icon)
+ *   accent-light  #fcd34d  amber-300  (cyan-eyebrow / icon hover)
+ *   accent-pale   #fde68a  amber-200  (gradient bright end)
+ *   metallic      #d4af37  champagne gold (wordmark gradient anchor)
+ */
+
+.dev-home-catena.gostop-theme {
+  --ch-bg-page: #000000;
+  --ch-bg-card: #140f08;
+  --ch-fg-display: #ffffff;
+  --ch-fg-default: #ece6da;
+  --ch-fg-accent: #fbbf24;
+  --ch-accent-cyan: #fcd34d;
+  --ch-fg-muted: rgba(236, 230, 218, 0.85);
+  --ch-fg-subdued: rgba(236, 230, 218, 0.6);
+  --ch-fg-faint: rgba(236, 230, 218, 0.3);
+  --ch-border: rgba(212, 175, 55, 0.24);
+  --ch-divider: rgba(236, 230, 218, 0.12);
+}
+
+/* Selection */
+.dev-home-catena.gostop-theme ::selection {
+  background-color: rgba(245, 158, 11, 0.6);
+  color: #000000;
+}
+
+/* Primary button — gold at rest, brighter gold wipes in from the
+   bottom-right diagonal (same mechanic as the catena base button). */
+.dev-home-catena.gostop-theme .ch-btn-primary {
+  background-color: #e9c25a;
+  color: #000000;
+}
+.dev-home-catena.gostop-theme .ch-btn-primary::before {
+  background-color: #fbe08a;
+}
+.dev-home-catena.gostop-theme .ch-btn-primary.ch-btn-invert {
+  background-color: #fbe08a;
+}
+.dev-home-catena.gostop-theme .ch-btn-primary.ch-btn-invert::before {
+  background-color: #e9c25a;
+}
+.dev-home-catena.gostop-theme .ch-btn-primary:hover {
+  color: #000000;
+}
+
+/* Ghost button — match the gold palette. */
+.dev-home-catena.gostop-theme .ch-btn-ghost {
+  border-color: #fcd34d;
+  color: #fde68a;
+}
+.dev-home-catena.gostop-theme .ch-btn-ghost:hover {
+  border-color: #fde68a;
+  color: #ffffff;
+}
+
+/* GS accent — gradient text replacement for `.gs-accent`. Champagne→amber
+   ramp so the accent reads as a real metallic highlight on the black page. */
+.dev-home-catena.gostop-theme .gs-accent {
+  background-image: linear-gradient(
+    105deg,
+    #d4af37 0%,
+    #fbbf24 50%,
+    #fde68a 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Mirror the same gradient onto the catena mint accent class so any inherited
+   `.ch-accent-pado` markup still reads as GoStop-themed. */
+.dev-home-catena.gostop-theme .ch-accent-pado {
+  background-image: linear-gradient(
+    105deg,
+    #d4af37 0%,
+    #fbbf24 50%,
+    #fde68a 100%
+  );
+}
+
+/* Spotlight glow — warm gold radial (replaces the mint default). */
+.dev-home-catena.gostop-theme .ch-step-card-glow {
+  background: radial-gradient(
+    260px circle at var(--mx) var(--my),
+    rgba(251, 191, 36, 0.12),
+    rgba(212, 175, 55, 0.04) 30%,
+    transparent 60%
+  );
+}
+
+/* Card eyebrow / index numerals tinted to the gold accent. */
+.dev-home-catena.gostop-theme .ch-step-card-eyebrow,
+.dev-home-catena.gostop-theme .ch-step-card-num,
+.dev-home-catena.gostop-theme .ch-closing-eyebrow,
+.dev-home-catena.gostop-theme .ch-eyebrow {
+  color: #fbbf24;
+}
+.dev-home-catena.gostop-theme .ch-eyebrow-cyan {
+  color: #fcd34d;
+}
+
+/* Status pill color tints (structure lives in dev-home.css .ch-status). */
+.dev-home-catena.gostop-theme .ch-status[data-status="live"] {
+  color: #fde68a;
+  background-color: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.55);
+}
+.dev-home-catena.gostop-theme .ch-status[data-status="alpha"] {
+  color: #f5e6c8;
+  background-color: rgba(217, 119, 6, 0.28);
+  border: 1px solid rgba(251, 191, 36, 0.4);
+}
+.dev-home-catena.gostop-theme .ch-status[data-status="soon"] {
+  color: rgba(236, 230, 218, 0.7);
+  background-color: rgba(180, 83, 9, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+}
+
+/* Closing-card accent rule uses gold. */
+.dev-home-catena.gostop-theme .ch-closing-card {
+  border-left-color: #fbbf24;
+}
+
+/* Card chrome — warm gold-tinted dark body, gold halo + hover shadow so
+   cards read as luxury tiles instead of the mint catena default. */
+.dev-home-catena.gostop-theme .ch-step-card {
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.02) 0%,
+      rgba(255, 255, 255, 0) 60%
+    ),
+    rgba(28, 21, 11, 0.8);
+  border-color: rgba(251, 191, 36, 0.12);
+}
+.dev-home-catena.gostop-theme .ch-step-card-halo {
+  background: conic-gradient(
+    from var(--step-angle),
+    rgba(212, 175, 55, 0) 0deg,
+    rgba(251, 191, 36, 0.5) 40deg,
+    rgba(253, 224, 138, 0.35) 90deg,
+    rgba(212, 175, 55, 0) 160deg,
+    rgba(212, 175, 55, 0) 360deg
+  );
+  opacity: 0.65;
+}
+.dev-home-catena.gostop-theme .ch-step-card:hover {
+  box-shadow: 0 18px 48px -36px rgba(245, 158, 11, 0.45);
+}
+
+/* Card icon (lucide). Quiet at rest, blooms on card hover with a gold
+   glow and a slight scale-up. */
+.dev-home-catena.gostop-theme .gs-card-icon {
+  width: 30px;
+  height: 30px;
+  color: #fbbf24;
+  transition:
+    color 0.4s ease,
+    transform 0.45s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.4s ease;
+}
+.dev-home-catena.gostop-theme .ch-step-card:hover .gs-card-icon {
+  color: #fde68a;
+  transform: scale(1.08);
+  filter: drop-shadow(0 0 14px rgba(253, 224, 138, 0.7));
+}
+
+/* Product card icon + accent rail (compact ch-step-card variant). */
+.dev-home-catena.gostop-theme .ch-product-card .gs-card-icon {
+  width: 26px;
+  height: 26px;
+}
+.dev-home-catena.gostop-theme .ch-product-card:hover .gs-card-icon {
+  color: #fde68a;
+  transform: scale(1.12);
+  filter: drop-shadow(0 0 14px rgba(253, 224, 138, 0.7));
+}
+.dev-home-catena.gostop-theme .ch-product-card-rail {
+  background: linear-gradient(
+    180deg,
+    rgba(251, 191, 36, 0) 0%,
+    #f59e0b 22%,
+    #fde68a 78%,
+    rgba(251, 191, 36, 0) 100%
+  );
+}
+.dev-home-catena.gostop-theme .ch-product-card:hover {
+  border-color: rgba(251, 191, 36, 0.35);
+}
+
+/* 3-col product grid override (Pado uses the same pattern: mobile 1, sm 2,
+   lg 3 instead of inheriting ch-step-grid's 4-col rule). */
+.dev-home-catena.gostop-theme .gs-products-grid {
+  grid-template-columns: 1fr;
+}
+@media (min-width: 640px) {
+  .dev-home-catena.gostop-theme .gs-products-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena.gostop-theme .gs-products-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * Game cards — image-thumbnail tiles for the live floor. Reuse the
+ * group spotlight (`.ch-step-card-glow` + useGridSpotlight) but with a
+ * lighter shell than ch-step-card so the art bleeds to the edges.
+ * --------------------------------------------------------------------*/
+.dev-home-catena.gostop-theme .gs-game-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  /* Spotlight vars — written by useGridSpotlight on pointermove. */
+  --mx: -200px;
+  --my: -200px;
+  --in: 0;
+}
+@media (min-width: 640px) {
+  .dev-home-catena.gostop-theme .gs-game-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1024px) {
+  .dev-home-catena.gostop-theme .gs-game-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.875rem;
+  }
+}
+
+.dev-home-catena.gostop-theme .gs-game-card {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  border-radius: var(--ch-radius-lg);
+  border: 1px solid rgba(251, 191, 36, 0.16);
+  background: rgba(20, 15, 8, 0.85);
+  text-decoration: none;
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.45s ease,
+    transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dev-home-catena.gostop-theme .gs-game-card:hover {
+  border-color: rgba(251, 191, 36, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 26px 64px -40px rgba(245, 158, 11, 0.6);
+}
+.dev-home-catena.gostop-theme .gs-game-media {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  position: relative;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.14);
+}
+.dev-home-catena.gostop-theme .gs-game-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dev-home-catena.gostop-theme .gs-game-card:hover .gs-game-media img {
+  transform: scale(1.06);
+}
+.dev-home-catena.gostop-theme .gs-game-body {
+  position: relative;
+  z-index: 2;
+  padding: 1.05rem 1.2rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.gostop-theme .gs-game-card,
+  .dev-home-catena.gostop-theme .gs-game-media img,
+  .dev-home-catena.gostop-theme .gs-card-icon {
+    transition: none !important;
+  }
+  .dev-home-catena.gostop-theme .gs-game-card:hover {
+    transform: none;
+  }
+  .dev-home-catena.gostop-theme .ch-step-card:hover .gs-card-icon,
+  .dev-home-catena.gostop-theme .ch-product-card:hover .gs-card-icon {
+    transform: none;
+  }
+}
+
+/* ----------------------------------------------------------------------
+ * Hero — framed product shot (gold-bordered glass panel). Mirrors Pado's
+ * `.pd-product-shot` framing but tuned for the warm GoStop palette.
+ * --------------------------------------------------------------------*/
+.dev-home-catena.gostop-theme .gs-hero-shot {
+  margin: 0;
+  position: relative;
+  border-radius: var(--ch-radius-lg);
+  overflow: hidden;
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  background: #0c0805;
+  box-shadow: 0 36px 90px -54px rgba(245, 158, 11, 0.65);
+}
+.dev-home-catena.gostop-theme .gs-hero-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Hero stat strip — mono labels under gold figures, hairline dividers. */
+.dev-home-catena.gostop-theme .gs-stat-num {
+  font-family: var(--ch-font-mono);
+  font-weight: 600;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #fde68a;
+}
+.dev-home-catena.gostop-theme .gs-stat-label {
+  font-family: var(--ch-font-mono);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.625rem;
+  color: var(--ch-fg-subdued);
+  margin-top: 0.45rem;
+}
+.dev-home-catena.gostop-theme .gs-stat-divider {
+  width: 1px;
+  align-self: stretch;
+  background-color: var(--ch-divider);
+}
+
+/* Live badge — pulsing dot + gold pill, reused in the hero. */
+.dev-home-catena.gostop-theme .gs-live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+  font-family: var(--ch-font-mono);
+  font-size: 0.625rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #fde68a;
+}
+.dev-home-catena.gostop-theme .gs-live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background-color: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.8);
+  animation: gsLivePulse 1.8s ease-out infinite;
+}
+@keyframes gsLivePulse {
+  0% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.4;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dev-home-catena.gostop-theme .gs-live-dot {
+    animation: none !important;
+  }
+}
+
+/* Disclaimer panel — gold-edged caution block. */
+.dev-home-catena.gostop-theme .gs-disclaimer {
+  border-radius: var(--ch-radius-md);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  background-color: rgba(36, 26, 9, 0.5);
+  padding: 1.4rem 1.5rem;
+}

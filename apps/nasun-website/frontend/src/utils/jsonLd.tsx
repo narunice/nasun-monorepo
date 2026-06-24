@@ -65,3 +65,20 @@ export const PADO_APP_SCHEMA = {
     description: "Free to use on Nasun Devnet",
   },
 };
+
+export const GOSTOP_APP_SCHEMA = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "GoStop",
+  url: "https://nasun.io/ecosystem/gostop",
+  description:
+    "Provably fair onchain casino with crash, lottery, scratch cards, mines, and number match. Commit-reveal randomness settled on Nasun Network.",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Web Browser",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+    description: "Free to play on Nasun Devnet",
+  },
+};

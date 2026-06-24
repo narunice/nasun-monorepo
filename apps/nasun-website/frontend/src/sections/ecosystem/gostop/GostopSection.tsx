@@ -1,49 +1,43 @@
-import React from "react";
+import React, {
+  useCallback,
+  type ComponentType,
+  type PointerEvent as RPointerEvent,
+} from "react";
 import {
-  Crown,
-  Coins,
   ShieldCheck,
-  Sparkles,
   Wallet,
   TrendingUp,
+  Sparkles,
+  Crown,
   Trophy,
+  Coins,
   Cpu,
   Layers,
   ArrowUpRight,
   CheckCircle2,
   Hourglass,
+  type LucideProps,
 } from "lucide-react";
-import { SectionLayout } from "@/components/layout/SectionLayout";
-import { PageTitle } from "@/components/ui/PageTitle";
-import { SectionTitle } from "@/components/ui/SectionTitle";
-import { DividerBox } from "@/components/ui/DividerBox";
-import { OuterBox, FadeInUp } from "@/components/ui";
+import ChSection from "@/sections/dev/home/ChSection";
+import FadeInUp from "@/sections/dev/home/FadeInUp";
+import { useGridSpotlight } from "@/sections/dev/_shared/useGridSpotlight";
 import lotteryImg from "@/assets/images/lottery.webp";
 
 const GOSTOP_URL = "https://gostop.app";
 
-// Hero stat values — update these manually or replace with API-driven data
+/* ------------------------------------------------------------------ */
+/* Content                                                            */
+/* ------------------------------------------------------------------ */
+
 const HERO_STATS = [
-  { value: "5", label: "Live Games" },
-  {
-    value: "3,347",
-    label: (
-      <>
-        DAU with
-        <br />
-        social&nbsp;accounts
-      </>
-    ),
-  },
-  { value: "8m 42s", label: "Avg. Session" },
+  { value: "5", label: "Live games" },
+  { value: "3,347", label: "Social DAU" },
+  { value: "8m 42s", label: "Avg. session" },
 ] as const;
 
-const liveGames: Array<{
-  title: string;
-  tagline: string;
-  thumb: string;
-  href: string;
-}> = [
+type Game = { title: string; tagline: string; thumb: string; href: string };
+
+const LIVE_GAMES: Game[] = [
   {
     title: "Crash",
     tagline: "A live multiplier you cash out before it busts.",
@@ -76,543 +70,659 @@ const liveGames: Array<{
   },
 ];
 
-function GostopSection() {
+type Card = {
+  title: string;
+  Icon: ComponentType<LucideProps>;
+  body?: string;
+  bullets?: string[];
+  status?: "live" | "alpha" | "soon";
+};
+
+const FORCES: Card[] = [
+  {
+    title: "Provable fairness",
+    Icon: ShieldCheck,
+    body: "Commit-reveal salts and onchain RNG remove the operator's ability to silently tilt the odds. Anyone can replay the math.",
+  },
+  {
+    title: "Self-custody",
+    Icon: Wallet,
+    body: "No wallet provider holds the bankroll. Withdrawals settle as native tokens; deposits never leave the chain.",
+  },
+  {
+    title: "Open liquidity",
+    Icon: TrendingUp,
+    body: "House liquidity becomes a public market. LPs become the casino, and edge becomes yield.",
+  },
+];
+
+const NEXT: Array<{ head: string; body: string }> = [
+  {
+    head: "Latency-sensitive games",
+    body: "Multiplier curves, live duels, and shared-state rounds need fast finality and a chat layer that survives spikes.",
+  },
+  {
+    head: "Becoming the house",
+    body: "Players want to LP into the bankroll, take edge as yield, and unwind any time. Vault primitives replace operator equity.",
+  },
+  {
+    head: "Social stakes",
+    body: "Leaderboards, shared tables, and tournament pools turn solo grind into a social loop with persistent identity.",
+  },
+];
+
+const EDGE: Array<{ label: string; body: string }> = [
+  {
+    label: "Sub-second feedback loops",
+    body: "Crash uses a server-broadcast multiplier curve with onchain verification. Mines reveals snap instantly with a deferred ledger commit.",
+  },
+  {
+    label: "One bankroll, every game",
+    body: "A single shared treasury settles every payout. LP into the bankroll once and earn edge across all formats.",
+  },
+  {
+    label: "Production-grade UX",
+    body: "Wallet flows that hide chain friction, celebration tiers tuned to real win amounts, mobile-first layouts, and result modals that turn a bust into a moment.",
+  },
+  {
+    label: "Composable identity",
+    body: "Every player is a Nasun account. Game history, points, and Alliance NFT membership carry across the rest of the ecosystem.",
+  },
+];
+
+const TECH: Card[] = [
+  {
+    title: "Move-based settlement",
+    Icon: Cpu,
+    bullets: [
+      "Move contracts on Nasun devnet",
+      "Object model for per-round state",
+      "Sub-second tx finality on consensus",
+    ],
+  },
+  {
+    title: "Commit-reveal randomness",
+    Icon: ShieldCheck,
+    bullets: [
+      "Salt committed before betting opens",
+      "Reveal verifies the round on close",
+      "No operator can rewrite outcomes",
+    ],
+  },
+  {
+    title: "Single bankroll",
+    Icon: Layers,
+    bullets: [
+      "Shared treasury across every game",
+      "Per-game caps to bound max payout",
+      "Edge accrues to one liquidity layer",
+    ],
+  },
+];
+
+const ROADMAP: Card[] = [
+  {
+    title: "Plinko",
+    Icon: Sparkles,
+    status: "soon",
+    body: "Drop a chip from the top, watch it bounce through golden pegs. Pick low, medium, or high risk to shape the payout curve.",
+  },
+  {
+    title: "Roulette",
+    Icon: Crown,
+    status: "soon",
+    body: "Classic European single-zero roulette settled on chain. Numbers, splits, colors, columns, with a multiplayer table coming.",
+  },
+  {
+    title: "Wheel",
+    Icon: Trophy,
+    status: "soon",
+    body: "A nightly community wheel. Stake to enter, spin together at the cutoff, split a pooled prize. Daily plus weekly mega rounds.",
+  },
+  {
+    title: "Bankroll Vault",
+    Icon: Coins,
+    status: "soon",
+    body: "Open the casino's treasury to LPs. Deposit NUSDC, become the house, take edge as yield, withdraw any time.",
+  },
+];
+
+const LIVE_NOW = [
+  "Five live games on gostop.app",
+  "Provably fair commit-reveal randomness",
+  "Shared bankroll across every game",
+  "Wallet, zkLogin, and passkey sign-in",
+];
+
+const IN_DEV = [
+  "Plinko, Roulette, Wheel",
+  "Bankroll Vault for LP house edge",
+  "Tournaments and seasonal pools",
+  "Cross-game leaderboards",
+];
+
+/* ------------------------------------------------------------------ */
+/* Shared interactions                                                */
+/* ------------------------------------------------------------------ */
+
+function useCardTilt() {
+  const onMove = useCallback((e: RPointerEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    const rect = el.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width;
+    const y = (e.clientY - rect.top) / rect.height;
+    el.style.setProperty("--rx", `${(0.5 - y) * 4}deg`);
+    el.style.setProperty("--ry", `${(x - 0.5) * 4}deg`);
+  }, []);
+  const onLeave = useCallback((e: RPointerEvent<HTMLElement>) => {
+    e.currentTarget.style.setProperty("--rx", "0deg");
+    e.currentTarget.style.setProperty("--ry", "0deg");
+  }, []);
+  return { onMove, onLeave };
+}
+
+const STATUS_LABEL: Record<NonNullable<Card["status"]>, string> = {
+  live: "LIVE",
+  alpha: "ALPHA",
+  soon: "SOON",
+};
+
+function InfoCard({
+  card,
+  tilt,
+}: {
+  card: Card;
+  tilt: ReturnType<typeof useCardTilt>;
+}) {
+  const { Icon } = card;
   return (
-    <SectionLayout className="!max-w-6xl">
-      <div className="flex flex-col gap-10 md:gap-12 lg:gap-14">
-        {/* ========== HERO ========== */}
-        <div className="flex flex-col items-center text-center">
-          <FadeInUp>
-            <PageTitle>GoStop</PageTitle>
-            <h5 className="-mt-4 md:-mt-6 lg:-mt-8 font-medium">
-              A luxury onchain casino. Provably fair. Settled on chain.
-            </h5>
+    <article
+      className="ch-step-card ch-product-card"
+      data-spotlight-card=""
+      onPointerMove={tilt.onMove}
+      onPointerLeave={tilt.onLeave}
+    >
+      <span className="ch-step-card-halo" aria-hidden="true" />
+      <span className="ch-step-card-glow" aria-hidden="true" />
+      <span className="ch-product-card-rail" aria-hidden="true" />
+
+      <header
+        className="ch-step-card-header"
+        style={{ alignItems: "center", justifyContent: "space-between", gap: "0.6rem" }}
+      >
+        <Icon className="gs-card-icon" aria-hidden="true" />
+        {card.status && (
+          <span className="ch-status" data-status={card.status}>
+            {STATUS_LABEL[card.status]}
+          </span>
+        )}
+      </header>
+
+      <h3 className="ch-step-card-title" style={{ marginTop: 4, fontSize: "1.35rem" }}>
+        {card.title}
+      </h3>
+
+      {card.body && <p className="ch-step-card-body">{card.body}</p>}
+
+      {card.bullets && (
+        <ul className="flex flex-col gap-1.5 list-none p-0 m-0">
+          {card.bullets.map((b) => (
+            <li
+              key={b}
+              className="ch-step-card-body flex items-start gap-2"
+              style={{ fontSize: "0.875rem" }}
+            >
+              <span aria-hidden="true" style={{ color: "#fbbf24", marginTop: 1 }}>
+                •
+              </span>
+              <span>{b}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </article>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* Sections                                                           */
+/* ------------------------------------------------------------------ */
+
+function HeroSection() {
+  return (
+    <section
+      className="ch-section relative overflow-hidden"
+      style={{ paddingTop: "6.5rem", paddingBottom: "3.5rem" }}
+    >
+      {/* Ambient warm glow behind the copy. */}
+      <div
+        aria-hidden="true"
+        className="absolute -top-24 -left-24 w-[520px] h-[520px] rounded-full pointer-events-none"
+        style={{ background: "rgba(245,158,11,0.10)", filter: "blur(120px)" }}
+      />
+      <div className="ch-container relative">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_0.95fr] gap-10 lg:gap-14 items-center">
+          <FadeInUp className="flex flex-col gap-5 items-start text-left">
+            <span className="gs-live-badge">
+              <span className="gs-live-dot" aria-hidden="true" />
+              Live on Nasun Devnet
+            </span>
+
+            <p
+              className="m-0 -ml-1 text-6xl sm:text-7xl lg:text-8xl"
+              style={{
+                fontFamily: '"Playfair Display", Georgia, serif',
+                fontStyle: "italic",
+                fontWeight: 600,
+                lineHeight: 0.9,
+                letterSpacing: "-0.01em",
+                backgroundImage:
+                  "linear-gradient(135deg, #fff8dc 0%, #f5e08a 28%, #d4af37 62%, #b8860b 100%)",
+                WebkitBackgroundClip: "text",
+                backgroundClip: "text",
+                color: "transparent",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              GoStop
+            </p>
+
+            <h1 className="ch-display" style={{ maxWidth: "20ch" }}>
+              A luxury onchain casino.{" "}
+              <span className="gs-accent">Provably fair.</span>
+            </h1>
+
+            <p className="ch-lead">
+              Five games live on devnet, every round committed and revealed on
+              chain. A self-custodial bankroll, auditable odds, and payouts that
+              settle in seconds.
+            </p>
+
+            <div className="flex flex-wrap gap-3 mt-1">
+              <a
+                href={GOSTOP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ch-btn ch-btn-lg ch-btn-primary"
+                style={{ color: "#000" }}
+              >
+                Enter the Floor
+              </a>
+              <a
+                href={`${GOSTOP_URL}/leaderboard`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ch-btn ch-btn-lg ch-btn-ghost"
+              >
+                Leaderboard
+              </a>
+            </div>
+
+            <div className="flex items-stretch gap-5 sm:gap-7 mt-3">
+              {HERO_STATS.map((stat, i) => (
+                <React.Fragment key={stat.label}>
+                  {i > 0 && <span className="gs-stat-divider" aria-hidden="true" />}
+                  <div className="flex flex-col">
+                    <span className="gs-stat-num">{stat.value}</span>
+                    <span className="gs-stat-label">{stat.label}</span>
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          </FadeInUp>
+
+          <FadeInUp delayMs={140}>
+            <figure className="gs-hero-shot">
+              <img
+                src={lotteryImg}
+                alt="GoStop onchain lottery"
+                width={1024}
+                height={1024}
+                decoding="async"
+              />
+              {/* Warm wash + bottom fade to seat the render in the palette. */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background:
+                    "linear-gradient(160deg, rgba(245,158,11,0.10) 0%, rgba(0,0,0,0) 45%), linear-gradient(to top, rgba(12,8,5,0.85) 0%, rgba(12,8,5,0) 40%)",
+                }}
+              />
+            </figure>
           </FadeInUp>
         </div>
+      </div>
+    </section>
+  );
+}
 
-        <FadeInUp delay="0.15s">
-          <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-[#0c0805]">
-            {/* Dot grid texture */}
-            <div
-              className="absolute inset-0 opacity-[0.035] pointer-events-none"
+function FloorSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
+  return (
+    <ChSection fullMinHeight={false}>
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <span className="ch-eyebrow">01 / On the floor</span>
+        <h2 className="ch-display">
+          Five formats live, <span className="gs-accent">more queued</span>.
+        </h2>
+        <p className="ch-lead">
+          Every game settles on Nasun devnet with commit-reveal randomness and a
+          shared bankroll. Tap in, the chain does the rest.
+        </p>
+      </FadeInUp>
+
+      <div ref={gridRef} className="gs-game-grid">
+        {LIVE_GAMES.map((game, i) => (
+          <FadeInUp key={game.title} delayMs={100 + i * 60}>
+            <a
+              href={game.href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="gs-game-card"
+              data-spotlight-card=""
+            >
+              <span className="ch-step-card-glow" aria-hidden="true" />
+              <div className="gs-game-media">
+                <img
+                  src={game.thumb}
+                  alt={game.title}
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <div className="gs-game-body">
+                <div className="flex items-center justify-between gap-2">
+                  <h3
+                    className="ch-step-card-title"
+                    style={{ marginTop: 0, fontSize: "1.3rem" }}
+                  >
+                    {game.title}
+                  </h3>
+                  <ArrowUpRight
+                    className="w-4 h-4 shrink-0"
+                    style={{ color: "#fcd34d" }}
+                    aria-hidden="true"
+                  />
+                </div>
+                <p className="ch-step-card-body">{game.tagline}</p>
+              </div>
+            </a>
+          </FadeInUp>
+        ))}
+      </div>
+    </ChSection>
+  );
+}
+
+function MarketSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
+  const tilt = useCardTilt();
+  return (
+    <ChSection fullMinHeight={false}>
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <span className="ch-eyebrow ch-eyebrow-cyan">
+          02 / A sector hitting escape velocity
+        </span>
+        <h2 className="ch-display">
+          Crypto-native gambling is{" "}
+          <span className="gs-accent">no longer a side bet</span>.
+        </h2>
+        <p className="ch-lead">
+          Onchain casinos crossed an estimated $80B+ wagered in 2024 and keep
+          pacing higher. Custody returns to the player, the house edge becomes
+          auditable, and game logic stops being a black box behind a license.
+        </p>
+      </FadeInUp>
+
+      <div ref={gridRef} className="ch-step-grid gs-products-grid">
+        {FORCES.map((card, i) => (
+          <FadeInUp key={card.title} delayMs={120 + i * 70}>
+            <InfoCard card={card} tilt={tilt} />
+          </FadeInUp>
+        ))}
+      </div>
+
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <h3 className="ch-step-card-title" style={{ marginTop: 0, fontSize: "1.5rem" }}>
+          Where the category goes next
+        </h3>
+        <ul className="flex flex-col gap-3 list-none p-0 m-0">
+          {NEXT.map((item) => (
+            <li key={item.head} className="ch-body flex gap-3">
+              <span
+                aria-hidden="true"
+                style={{
+                  display: "inline-block",
+                  width: 5,
+                  height: 5,
+                  borderRadius: 999,
+                  backgroundColor: "#fbbf24",
+                  marginTop: 10,
+                  flexShrink: 0,
+                }}
+              />
+              <span>
+                <span className="font-medium" style={{ color: "var(--ch-fg-display)" }}>
+                  {item.head}.
+                </span>{" "}
+                {item.body}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </FadeInUp>
+    </ChSection>
+  );
+}
+
+function EdgeSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
+  const tilt = useCardTilt();
+  return (
+    <ChSection fullMinHeight={false}>
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <span className="ch-eyebrow">03 / Where GoStop competes</span>
+        <h2 className="ch-display">
+          Built for the onchain era{" "}
+          <span className="gs-accent">from day one</span>.
+        </h2>
+        <p className="ch-lead">
+          GoStop isn't a casino bolted onto a chain. It's a casino designed for
+          one, with five live games today and a roadmap into formats legacy
+          operators can't ship.
+        </p>
+      </FadeInUp>
+
+      <ul
+        className="list-none p-0 m-0 flex flex-col"
+        style={{ borderTop: "1px solid var(--ch-divider)" }}
+      >
+        {EDGE.map((item, i) => (
+          <FadeInUp key={item.label} delayMs={90 + i * 70}>
+            <li
+              className="grid grid-cols-1 sm:grid-cols-[220px_minmax(0,1fr)] gap-1.5 sm:gap-10"
               style={{
-                backgroundImage:
-                  "radial-gradient(circle, #f9a824 1px, transparent 1px)",
-                backgroundSize: "28px 28px",
+                padding: "1.25rem 0 1.4rem",
+                borderBottom: "1px solid var(--ch-divider)",
+              }}
+            >
+              <h3
+                className="ch-step-card-title"
+                style={{ marginTop: 0, fontSize: "1.2rem" }}
+              >
+                {item.label}
+              </h3>
+              <p className="ch-step-card-body" style={{ marginTop: 0 }}>
+                {item.body}
+              </p>
+            </li>
+          </FadeInUp>
+        ))}
+      </ul>
+
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <h3 className="ch-step-card-title" style={{ marginTop: 0, fontSize: "1.5rem" }}>
+          Under the hood
+        </h3>
+      </FadeInUp>
+      <div ref={gridRef} className="ch-step-grid gs-products-grid" style={{ marginTop: "-2.5rem" }}>
+        {TECH.map((card, i) => (
+          <FadeInUp key={card.title} delayMs={120 + i * 70}>
+            <InfoCard card={card} tilt={tilt} />
+          </FadeInUp>
+        ))}
+      </div>
+    </ChSection>
+  );
+}
+
+function StatusColumn({
+  eyebrow,
+  Icon,
+  color,
+  items,
+}: {
+  eyebrow: string;
+  Icon: ComponentType<LucideProps>;
+  color: string;
+  items: string[];
+}) {
+  return (
+    <FadeInUp className="flex flex-col gap-3">
+      <p className="flex items-center gap-2 m-0 font-medium" style={{ color }}>
+        <Icon className="w-5 h-5" aria-hidden="true" />
+        {eyebrow}
+      </p>
+      <ul className="flex flex-col gap-2.5 list-none p-0 m-0">
+        {items.map((item) => (
+          <li key={item} className="ch-body flex gap-3">
+            <span
+              aria-hidden="true"
+              style={{
+                display: "inline-block",
+                width: 5,
+                height: 5,
+                borderRadius: 999,
+                backgroundColor: color,
+                marginTop: 10,
+                flexShrink: 0,
               }}
             />
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </FadeInUp>
+  );
+}
 
-            {/* Ambient top-left glow */}
-            <div className="absolute -top-40 -left-20 w-[500px] h-[500px] bg-amber-500/8 rounded-full blur-3xl pointer-events-none" />
+function RoadmapSection() {
+  const gridRef = useGridSpotlight<HTMLDivElement>();
+  const tilt = useCardTilt();
+  return (
+    <ChSection fullMinHeight={false}>
+      <FadeInUp className="flex flex-col gap-4 items-start text-left">
+        <span className="ch-eyebrow ch-eyebrow-cyan">04 / On the rail</span>
+        <h2 className="ch-display">
+          The floor keeps <span className="gs-accent">growing</span>.
+        </h2>
+        <p className="ch-lead">
+          New formats and a player-owned bankroll are in active development.
+        </p>
+      </FadeInUp>
 
-            <div className="relative flex flex-col lg:flex-row">
-              {/* Text panel */}
-              <div className="relative z-10 flex-1 flex flex-col justify-center gap-6 md:gap-7 px-8 py-12 md:px-12 md:py-16 lg:px-14 lg:py-20">
-                {/* Live badge */}
-                <div className="inline-flex items-center gap-2 self-start px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span className="text-xs uppercase tracking-[0.15em] text-amber-200/80">
-                    Live on Nasun Devnet
-                  </span>
-                </div>
-
-                {/* Card title */}
-                <div className="-ml-1">
-                  <h2
-                    className="leading-[0.88] tracking-tight text-transparent bg-clip-text"
-                    style={{
-                      fontSize: "clamp(72px, 12vw, 144px)",
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontStyle: "italic",
-                      fontWeight: 500,
-                      backgroundImage:
-                        "linear-gradient(135deg, #fef3c7 0%, #fbbf24 45%, #d97706 100%)",
-                    }}
-                  >
-                    GoStop
-                  </h2>
-                </div>
-
-                {/* Stat strip */}
-                <div className="flex items-center gap-5 md:gap-7">
-                  {HERO_STATS.map((stat, i) => (
-                    <React.Fragment key={stat.label}>
-                      {i > 0 && (
-                        <div className="w-px h-7 bg-amber-500/20 shrink-0" />
-                      )}
-                      <div>
-                        <div className="text-base md:text-xl font-bold text-amber-200">
-                          {stat.value}
-                        </div>
-                        <div className="text-sm text-nasun-white/40 uppercase tracking-wider mt-0.5 whitespace-nowrap">
-                          {stat.label}
-                        </div>
-                      </div>
-                    </React.Fragment>
-                  ))}
-                </div>
-
-              </div>
-
-              {/* Image panel — bleeds left over text panel on desktop to show more of the image */}
-              <div className="relative z-0 lg:w-[560px] xl:w-[640px] shrink-0 overflow-hidden lg:-ml-16 xl:-ml-20">
-                {/* Left fade mask — blends image into text panel on desktop */}
-                <div className="absolute inset-y-0 left-0 w-28 bg-gradient-to-r from-[#0c0805] to-transparent z-10 pointer-events-none hidden lg:block" />
-
-                <div className="relative aspect-square lg:aspect-auto lg:h-full min-h-[280px] sm:min-h-[360px]">
-                  <img
-                    src={lotteryImg}
-                    alt="GoStop Lottery"
-                    className="w-full h-full object-cover object-center"
-                  />
-
-                  {/* Warm overlay to tie image into page palette */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-amber-950/50 via-transparent to-amber-900/20 pointer-events-none" />
-
-                  {/* Bottom fade — improves CTA legibility over image */}
-                  <div className="absolute bottom-0 inset-x-0 h-24 bg-gradient-to-t from-[#0c0805] to-transparent pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* CTA pinned to card bottom-center (overlay, does not affect height) */}
-            <div className="absolute inset-x-0 bottom-6 md:bottom-8 z-20 flex justify-center pointer-events-none [&>*]:pointer-events-auto">
-              <a
-                href={GOSTOP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full text-black font-semibold text-sm tracking-wide transition-all duration-200 hover:-translate-y-px"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(135deg, #f2d67b 0%, #d4af37 50%, #b68d22 100%)",
-                  boxShadow:
-                    "inset 0 1px 0 rgba(255,255,255,0.2), 0 0 20px -5px rgba(212,175,55,0.4)",
-                }}
-              >
-                Enter the Floor <ArrowUpRight className="w-4 h-4" />
-              </a>
-            </div>
-          </div>
-        </FadeInUp>
-
-        {/* ========== WHY CRYPTO CASINOS ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">
-              A SECTOR HITTING ESCAPE VELOCITY
-            </SectionTitle>
-            <h5 className="font-normal text-nasun-white/80 mb-0 md:mb-1 lg:mb-2">
-              Crypto-native gambling is no longer a side bet.
-            </h5>
+      <div ref={gridRef} className="ch-step-grid">
+        {ROADMAP.map((card, i) => (
+          <FadeInUp key={card.title} delayMs={110 + i * 70}>
+            <InfoCard card={card} tilt={tilt} />
           </FadeInUp>
-          <FadeInUp delay="0.1s">
-            <div className="space-y-3">
-              <p>
-                Onchain casinos crossed an estimated{" "}
-                <span className="font-semibold text-amber-200">
-                  $80B+ wagered in 2024
-                </span>{" "}
-                and are pacing higher into 2026 as regulated audiences look for
-                venues that settle on transparent rails. The shift mirrors what
-                DeFi did to spot trading: custody returns to the player, the
-                house's edge becomes auditable, and the game logic stops being a
-                black box behind a license.
-              </p>
-              <p>Three forces are pulling players in:</p>
-            </div>
-          </FadeInUp>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-            {[
-              {
-                icon: <ShieldCheck className="w-5 h-5" />,
-                title: "Provable Fairness",
-                body: "Commit-reveal salts and onchain RNG remove the operator's ability to silently tilt the odds. Anyone can replay the math.",
-              },
-              {
-                icon: <Wallet className="w-5 h-5" />,
-                title: "Self-Custody",
-                body: "No wallet provider holds the bankroll. Withdrawals settle as native tokens; deposits never leave the chain.",
-              },
-              {
-                icon: <TrendingUp className="w-5 h-5" />,
-                title: "Open Liquidity",
-                body: "House liquidity becomes a public market. LPs become the casino, and edge becomes yield.",
-              },
-            ].map((card, i) => (
-              <FadeInUp key={card.title} delay={`${0.15 + i * 0.05}s`}>
-                <DividerBox
-                  color="w4"
-                  hideDivider
-                  padding="sm"
-                  title={card.title}
-                  icon={card.icon}
-                  className="h-full"
-                >
-                  <p>{card.body}</p>
-                </DividerBox>
-              </FadeInUp>
-            ))}
-          </div>
-        </section>
-
-        {/* ========== WHERE IT'S HEADED ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">WHERE THE CATEGORY GOES NEXT</SectionTitle>
-          </FadeInUp>
-          <FadeInUp delay="0.1s">
-            <div className="space-y-3">
-              <p>
-                The next wave of onchain casinos competes on three axes that the
-                legacy stack can't reach:
-              </p>
-              <ul className="space-y-2">
-                {[
-                  {
-                    head: "Latency-sensitive games",
-                    body: "Multiplier curves, live duels, and shared-state rounds need fast finality and a chat layer that survives spikes.",
-                  },
-                  {
-                    head: "Becoming the house",
-                    body: "Players want to LP into the bankroll, take edge as yield, and unwind any time. Vault primitives replace operator equity.",
-                  },
-                  {
-                    head: "Social stakes",
-                    body: "Leaderboards, shared tables, and tournament pools turn solo grind into a social loop with persistent identity.",
-                  },
-                ].map((item) => (
-                  <li
-                    key={item.head}
-                    className="flex items-start gap-3 text-nasun-white/80"
-                  >
-                    <span className="text-amber-300 mt-0.5 shrink-0 text-xs">
-                      ▶
-                    </span>
-                    <span>
-                      <span className="font-semibold text-nasun-white">
-                        {item.head}.
-                      </span>{" "}
-                      {item.body}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </FadeInUp>
-        </section>
-
-        {/* ========== GOSTOP'S EDGE ========== */}
-        <section>
-          <FadeInUp>
-            <OuterBox
-              color="w1"
-              padding="lg"
-              className="!bg-[#19130a] relative"
-            >
-              <div className="flex items-center gap-2 mb-3 md:mb-0 md:absolute md:top-5 md:right-5">
-                <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-500/20 text-amber-300">
-                  Onchain
-                </span>
-                <span className="text-xs px-2 py-0.5 rounded-full whitespace-nowrap bg-amber-500/20 text-amber-300">
-                  Provably Fair
-                </span>
-              </div>
-              <div className="mb-4">
-                <h4 className="!font-rubik uppercase font-medium text-xl md:text-2xl lg:text-3xl">
-                  WHERE GOSTOP COMPETES
-                  <span className="block md:inline text-base md:text-lg lg:text-xl text-nasun-white/50 font-normal mt-1 md:mt-0 md:ml-3">
-                    — Built for the on-chain era from day one
-                  </span>
-                </h4>
-              </div>
-              <div className="space-y-4">
-                <p className="text-nasun-white/90">
-                  GoStop isn't a casino bolted onto a chain. It's a casino
-                  designed for one. Five live games today; a roadmap that pushes
-                  into the formats legacy operators can't ship.
-                </p>
-                <ul className="space-y-2 py-2">
-                  {[
-                    {
-                      label: "Sub-second feedback loops",
-                      body: "Crash uses a server-broadcast multiplier curve with on-chain verification. Mines reveals snap instantly with a deferred ledger commit.",
-                    },
-                    {
-                      label: "One bankroll, every game",
-                      body: "A single shared treasury settles every payout. LP into the bankroll once and earn edge across all formats.",
-                    },
-                    {
-                      label: "Production-grade UX",
-                      body: "Wallet flows that hide chain friction, celebration tiers tuned to actual win amounts, mobile-first layouts, and result modals that turn a bust into a moment.",
-                    },
-                    {
-                      label: "Composable identity",
-                      body: "Every player is a Nasun account. Game history, points, and Alliance NFT membership carry across the rest of the ecosystem.",
-                    },
-                  ].map((item) => (
-                    <li
-                      key={item.label}
-                      className="flex items-start gap-3 text-nasun-white/80"
-                    >
-                      <span className="text-amber-300 mt-0.5 shrink-0 text-xs">
-                        ▶
-                      </span>
-                      <span>
-                        <span className="font-semibold text-nasun-white">
-                          {item.label}.
-                        </span>{" "}
-                        {item.body}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </OuterBox>
-          </FadeInUp>
-        </section>
-
-        {/* ========== CURRENT GAMES ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">ON THE FLOOR</SectionTitle>
-            <h5 className="font-normal text-nasun-white/80 mb-0 md:mb-1 lg:mb-2">
-              Five formats live. More queued.
-            </h5>
-          </FadeInUp>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-2">
-            {liveGames.map((game, i) => (
-              <FadeInUp key={game.title} delay={`${0.1 + i * 0.04}s`}>
-                <a
-                  href={game.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group block h-full overflow-hidden rounded-lg border border-amber-500/20 bg-[#0d0a05] hover:border-amber-500/50 hover:-translate-y-0.5 transition-all"
-                >
-                  <div className="aspect-square overflow-hidden border-b border-amber-500/20">
-                    <img
-                      src={game.thumb}
-                      alt={game.title}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="font-rubik text-amber-200 text-lg md:text-xl uppercase tracking-wide">
-                        {game.title}
-                      </h5>
-                      <ArrowUpRight className="w-4 h-4 text-amber-300/60 group-hover:text-amber-200 transition-colors" />
-                    </div>
-                    <p className="text-sm text-nasun-white/70 mt-1.5">
-                      {game.tagline}
-                    </p>
-                  </div>
-                </a>
-              </FadeInUp>
-            ))}
-          </div>
-        </section>
-
-        {/* ========== ROADMAP ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">ON THE RAIL</SectionTitle>
-          </FadeInUp>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              {
-                icon: <Sparkles className="w-5 h-5" />,
-                title: "Plinko",
-                body: "Drop a chip from the top, watch it bounce through golden pegs. Pick low, medium, or high risk to shape the payout curve.",
-              },
-              {
-                icon: <Crown className="w-5 h-5" />,
-                title: "Roulette",
-                body: "Classic European single-zero roulette settled on chain. Numbers, splits, colors, columns — multiplayer table coming.",
-              },
-              {
-                icon: <Trophy className="w-5 h-5" />,
-                title: "Wheel",
-                body: "A nightly community wheel. Stake to enter, spin together at the cutoff, split a pooled prize. Daily plus weekly mega rounds.",
-              },
-              {
-                icon: <Coins className="w-5 h-5" />,
-                title: "Bankroll Vault",
-                body: "Open the casino's treasury to LPs. Deposit NUSDC, become the house, take edge as yield, withdraw any time.",
-              },
-            ].map((card, i) => (
-              <FadeInUp key={card.title} delay={`${0.1 + i * 0.05}s`}>
-                <DividerBox
-                  color="c1"
-                  hideDivider
-                  padding="sm"
-                  title={card.title}
-                  icon={card.icon}
-                  className="h-full !bg-black/30"
-                >
-                  <p>{card.body}</p>
-                </DividerBox>
-              </FadeInUp>
-            ))}
-          </div>
-        </section>
-
-        {/* ========== TECHNICAL FOUNDATION ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">UNDER THE HOOD</SectionTitle>
-          </FadeInUp>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[
-              {
-                icon: <Cpu className="w-5 h-5" />,
-                title: "Move-based settlement",
-                bullets: [
-                  "Move contracts on Nasun Devnet",
-                  "Object model for per-round state",
-                  "Sub-second tx finality on consensus",
-                ],
-              },
-              {
-                icon: <ShieldCheck className="w-5 h-5" />,
-                title: "Commit-reveal randomness",
-                bullets: [
-                  "Salt committed before betting opens",
-                  "Reveal verifies the round on close",
-                  "No operator can rewrite outcomes",
-                ],
-              },
-              {
-                icon: <Layers className="w-5 h-5" />,
-                title: "Single bankroll",
-                bullets: [
-                  "Shared treasury across every game",
-                  "Per-game caps to bound max payout",
-                  "Edge accrues to one liquidity layer",
-                ],
-              },
-            ].map((card, i) => (
-              <FadeInUp key={card.title} delay={`${0.15 + i * 0.05}s`}>
-                <DividerBox
-                  color="w4"
-                  hideDivider
-                  padding="sm"
-                  title={card.title}
-                  icon={card.icon}
-                  className="h-full"
-                >
-                  <ul className="space-y-1.5">
-                    {card.bullets.map((bullet) => (
-                      <li
-                        key={bullet}
-                        className="flex items-start gap-2 text-nasun-white/80 text-sm"
-                      >
-                        <span className="text-amber-300 shrink-0 mt-0.5 text-xs">
-                          •
-                        </span>
-                        <span>{bullet}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </DividerBox>
-              </FadeInUp>
-            ))}
-          </div>
-        </section>
-
-        {/* ========== STATUS ========== */}
-        <section>
-          <FadeInUp>
-            <SectionTitle as="h4">WHAT'S LIVE NOW</SectionTitle>
-          </FadeInUp>
-          <div className="space-y-6">
-            <div>
-              <FadeInUp delay="0.1s">
-                <p className="text-emerald-400 font-medium text-lg mb-3 flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5" />
-                  Devnet Prototype (Playable)
-                </p>
-              </FadeInUp>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  "Five live games on gostop.app",
-                  "Provably fair commit-reveal randomness",
-                  "Shared bankroll across every game",
-                  "Wallet, zkLogin, and passkey sign-in",
-                ].map((item, i) => (
-                  <FadeInUp key={item} delay={`${0.15 + i * 0.03}s`}>
-                    <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4">
-                      <p className="text-nasun-white font-medium text-sm md:text-base">
-                        {item}
-                      </p>
-                    </div>
-                  </FadeInUp>
-                ))}
-              </div>
-            </div>
-            <div>
-              <FadeInUp delay="0.1s">
-                <p className="text-amber-400 font-medium text-lg mb-3 flex items-center gap-2">
-                  <Hourglass className="w-5 h-5" />
-                  In Development
-                </p>
-              </FadeInUp>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {[
-                  "Plinko, Roulette, Wheel",
-                  "Bankroll Vault for LP house edge",
-                  "Tournaments and seasonal pools",
-                  "Cross-game leaderboards",
-                ].map((item, i) => (
-                  <FadeInUp key={item} delay={`${0.15 + i * 0.03}s`}>
-                    <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4">
-                      <p className="text-nasun-white font-medium text-sm md:text-base">
-                        {item}
-                      </p>
-                    </div>
-                  </FadeInUp>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ========== DISCLAIMER ========== */}
-        <section>
-          <FadeInUp>
-            <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-5 md:p-6">
-              <p className="text-xs uppercase tracking-[0.25em] text-amber-200 mb-2">
-                Disclaimer
-              </p>
-              <p className="text-sm md:text-base text-amber-100/90 leading-relaxed">
-                GoStop is a proof-of-concept prototype operating on Nasun
-                Devnet, provided strictly for testing and entertainment. It is
-                not a financial product. All tokens and balances shown on the
-                site are test assets that hold no monetary value and cannot be
-                redeemed. The devnet may be reset at any time without prior
-                notice, which will erase all balances, history, and game state.
-              </p>
-            </div>
-          </FadeInUp>
-        </section>
-
-        {/* ========== CTA ========== */}
-        <section>
-          <FadeInUp>
-            <div className="text-center">
-              <h5 className="font-medium mb-4">Ready to take the floor?</h5>
-              <a
-                href={GOSTOP_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-amber-500 text-black font-semibold hover:bg-amber-400 transition-colors"
-              >
-                Visit gostop.app <ArrowUpRight className="w-4 h-4" />
-              </a>
-            </div>
-          </FadeInUp>
-        </section>
+        ))}
       </div>
-    </SectionLayout>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+        <StatusColumn
+          eyebrow="Playable now"
+          Icon={CheckCircle2}
+          color="#34d399"
+          items={LIVE_NOW}
+        />
+        <StatusColumn
+          eyebrow="In development"
+          Icon={Hourglass}
+          color="#fbbf24"
+          items={IN_DEV}
+        />
+      </div>
+    </ChSection>
+  );
+}
+
+function CtaSection() {
+  return (
+    <ChSection fullMinHeight={false}>
+      <FadeInUp className="flex flex-col gap-6 items-start text-left max-w-4xl">
+        <span className="ch-eyebrow ch-eyebrow-cyan">05 / Take the floor</span>
+        <h2 className="ch-display">
+          Provably fair. <span className="gs-accent">Settled on chain</span>.
+        </h2>
+        <p className="ch-lead">
+          GoStop is live on Nasun devnet. Self-custodial sign-in, auditable
+          odds, instant settlement.
+        </p>
+        <div className="flex flex-wrap gap-3 mt-1">
+          <a
+            href={GOSTOP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ch-btn ch-btn-lg ch-btn-primary"
+            style={{ color: "#000" }}
+          >
+            Enter the Floor
+          </a>
+          <a
+            href={`${GOSTOP_URL}/leaderboard`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="ch-btn ch-btn-lg ch-btn-ghost"
+          >
+            View Leaderboard
+          </a>
+        </div>
+      </FadeInUp>
+
+      <FadeInUp>
+        <div className="gs-disclaimer">
+          <p
+            className="ch-eyebrow m-0"
+            style={{ fontSize: "0.625rem", letterSpacing: "0.25em" }}
+          >
+            Disclaimer
+          </p>
+          <p className="ch-body" style={{ marginTop: "0.6rem", marginBottom: 0 }}>
+            GoStop is a proof-of-concept prototype operating on Nasun devnet,
+            provided strictly for testing and entertainment. It is not a
+            financial product. All tokens and balances shown on the site are
+            test assets that hold no monetary value and cannot be redeemed. The
+            devnet may be reset at any time without prior notice, which will
+            erase all balances, history, and game state.
+          </p>
+        </div>
+      </FadeInUp>
+    </ChSection>
+  );
+}
+
+function GostopSection() {
+  return (
+    <>
+      <HeroSection />
+      <FloorSection />
+      <MarketSection />
+      <EdgeSection />
+      <RoadmapSection />
+      <CtaSection />
+    </>
   );
 }
 
