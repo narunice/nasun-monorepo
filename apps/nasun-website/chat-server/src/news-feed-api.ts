@@ -156,9 +156,15 @@ async function fetchRssFeeds(): Promise<NewsItem[]> {
       const response = await fetch(feed.url, {
         signal: AbortSignal.timeout(8000),
         headers: { 'User-Agent': 'PadoNewsFeed/1.0' },
-        redirect: 'error', // block SSRF via redirect to internal endpoints
+        redirect: 'follow', // CoinDesk 308s on a trailing slash; allow same-host hops
       });
       if (!response.ok) throw new Error(`HTTP ${response.status} from ${feed.label}`);
+      // SSRF guard: a redirect must stay on the feed's own host and stay https,
+      // so a feed can never be bounced to an internal or other-host endpoint.
+      const finalUrl = new URL(response.url);
+      if (finalUrl.protocol !== 'https:' || finalUrl.hostname !== new URL(feed.url).hostname) {
+        throw new Error(`unsafe redirect for ${feed.label}: ${finalUrl.origin}`);
+      }
       const contentLength = parseInt(response.headers.get('content-length') || '0', 10);
       if (contentLength > MAX_RSS_BODY_SIZE) {
         throw new Error(`RSS body too large from ${feed.label}: ${contentLength} bytes`);
