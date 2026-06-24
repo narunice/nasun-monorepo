@@ -117,20 +117,23 @@ export function useScratchCardPage(celebrate: any) {
   }, [walletAddress, results, revealed]);
 
   const onBuy = useCallback(async (count: number) => {
-    setResults([]);
-    setRevealed(new Set());
-    celebratedBatchRef.current = null;
     setBuyingCount(count);
     try {
       const out = await buy(count);
       if (!out) return;
-      setResults(out);
+      // Keep any still-unrevealed cards from the prior batch and append the new
+      // ones, so a second purchase before the user finishes scratching does not
+      // discard their earlier cards (reported). A fully-revealed prior batch is
+      // dropped here (its unrevealed filter is empty), starting fresh.
+      setResults((prev) => [...prev.filter((_, i) => !revealed.has(i)), ...out]);
+      setRevealed(new Set());
+      celebratedBatchRef.current = null;
       showToast(`${out.length} card${out.length === 1 ? "" : "s"} purchased — tap to reveal`, "info");
       invalidateHistory();
     } finally {
       setBuyingCount(null);
     }
-  }, [buy, showToast, invalidateHistory]);
+  }, [buy, showToast, invalidateHistory, revealed]);
 
   useEffect(() => {
     if (results.length === 0) return;
