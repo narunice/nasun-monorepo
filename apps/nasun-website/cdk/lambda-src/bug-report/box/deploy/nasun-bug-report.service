@@ -1,0 +1,100 @@
+# /etc/systemd/system/nasun-bug-report.service
+# Box-co-located bug-report + creator-posts de-Lambda service (AWS-exit Stage 4, BugReportStack slice). Clones
+# the nasun-referral hardening; differs in: port 3216, a StateDirectory for screenshot files (box-FS object
+# store), and EXTERNAL egress is ALLOWED (the referral service was loopback-only; this service must reach the
+# Telegram Bot API for notifications + publish.twitter.com oEmbed for creator-post shortlink author resolution).
+#
+# DB roles: read pool = nasun_compute_ro (SELECT on bug_reports/creator_posts + user_profiles for the admin-role
+# check). Write pool = nasun_bug_report (dedicated, RW on bug_reports/creator_posts ONLY). Both provisioned at
+# deploy (the user routes -- submit/reply/creator-post submit -- are writes; the nginx-not-routed state is the
+# pre-cutover gate, not a read-only mode). nginx does NOT route /feedback/ to :3216 until cutover, so user
+# traffic stays zero; loopback shadow validation exercises the routes first.
+#
+# Cutover: api.nasun.io vhost `location /feedback/` -> proxy_pass http://127.0.0.1:3216/ (the trailing slash
+# strips /feedback; the routes are also mounted under /feedback so a non-stripping proxy_pass works too).
+
+[Unit]
+Description=Nasun bug-report + creator-posts de-Lambda service (box PG bug_reports/creator_posts mirror)
+After=network.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/bug-report
+ExecStart=/usr/bin/node /srv/nasun/bug-report/server.mjs
+Restart=on-failure
+RestartSec=2
+
+# Screenshot store: systemd-managed persistent dir (/var/lib/nasun-bug-report), chowned to the dynamic user on
+# each start and writable under ProtectSystem=strict (auto-added to ReadWritePaths).
+StateDirectory=nasun-bug-report
+StateDirectoryMode=0700
+Environment=SCREENSHOTS_DIR=/var/lib/nasun-bug-report/screenshots
+
+Environment=BUG_REPORT_PORT=3216
+Environment=BUG_REPORT_BIND=127.0.0.1
+Environment=BUG_REPORT_PG_HOST=127.0.0.1
+Environment=BUG_REPORT_PG_DATABASE=nasun_dal
+Environment=BUG_REPORT_PG_USER=nasun_compute_ro
+Environment=BUG_REPORT_WRITE_PG_USER=nasun_bug_report
+# Loopback peers.
+Environment=IDENTITY_COMPUTE_URL=http://127.0.0.1:3211
+Environment=EXPLORER_API_URL=http://127.0.0.1:3200
+Environment=NASUN_ISSUER_JWKS_URL=http://127.0.0.1:3210/.well-known/jwks.json
+Environment=NASUN_ISSUER_ID=nasun-issuer
+# User + admin JWT audience (the box nasun-issuer ISSUER_AUDIENCE, matching identity-compute / referral).
+Environment=COGNITO_IDENTITY_POOL_ID=ap-northeast-2:312bb111-8de7-4a61-95db-9a3c3fab58df
+# Public gateway prefix the browser POSTs/GETs screenshots against (nginx strips /feedback -> this service).
+Environment=PUBLIC_BASE_URL=https://api.nasun.io/feedback
+Environment=NARU_TELEGRAM_CHAT_ID=
+Environment=CREATOR_POSTS_DAILY_LIMIT=20
+Environment=SCREENSHOT_RETENTION_DAYS=7
+# CORS allowlist: byte-identical to the bug-report/admin lambdas (cdk constants/cors ALLOWED_ORIGINS_ENV).
+Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://explorer.nasun.io,https://staging.explorer.nasun.io,https://gensol.io,https://www.gensol.io,https://gensol.nasun.io,https://staging.gensol.io,https://pado.finance,https://staging.pado.finance,https://baram.nasun.io,https://gostop.app,https://www.gostop.app,https://staging.gostop.app,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178
+
+# Secrets (host-decrypted into the per-unit tmpfs $CREDENTIALS_DIRECTORY, never plaintext on disk). Cred names
+# MUST match config.ts.
+#  - pg-password:            nasun_compute_ro (copy of the sibling compute_ro cred).
+#  - write-pg-password:      nasun_bug_report (box `systemd-creds encrypt --name=write-pg-password`).
+#  - identity-bearer:        the identity-compute :3211 shared bearer (profile reads).
+#  - telegram-bot-token:     the shared nasun bot token (notifications; best-effort if absent).
+#  - explorer-bug-report-key: value of the explorer-api BUG_REPORT_API_KEY (bug-report + creator-post rewards).
+#  - screenshot-signing-key: box-generated HMAC key for the screenshot upload/serve signatures.
+LoadCredentialEncrypted=pg-password:/srv/nasun/bug-report/secrets/pg-password.cred
+LoadCredentialEncrypted=write-pg-password:/srv/nasun/bug-report/secrets/write-pg-password.cred
+LoadCredentialEncrypted=identity-bearer:/srv/nasun/bug-report/secrets/identity-bearer.cred
+LoadCredentialEncrypted=telegram-bot-token:/srv/nasun/bug-report/secrets/telegram-bot-token.cred
+LoadCredentialEncrypted=explorer-bug-report-key:/srv/nasun/bug-report/secrets/explorer-bug-report-key.cred
+LoadCredentialEncrypted=screenshot-signing-key:/srv/nasun/bug-report/secrets/screenshot-signing-key.cred
+
+# --- hardening (mirrors nasun-referral.service, MINUS the loopback-only egress filter) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# NOTE: NO IPAddressDeny=any. External egress is required for Telegram (api.telegram.org) + the X oEmbed author
+# resolution (publish.twitter.com). PG + issuer + identity-compute + explorer-api are loopback; the rest is
+# outbound HTTPS to CDN-backed endpoints whose IPs are not pinnable.
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target
