@@ -23,9 +23,11 @@ import type { PointsInsert } from './referral-bonus.js';
 // tx_calls_fun stores the RUNTIME (upgraded) package ID, not the original.
 // Must include all upgrade versions.
 const FAUCET_PKG_IDS = [
-  '1c93579be99e89ab05a33ac04af2fd7b1a604f9c98fe74d1b6cae6913c8362e7', // tokens V1 current
+  'eb10b5a62d591da68c4ea2bb2a18d2b440f855d6dfae2252d485733898ad5b11', // tokens V1 current (2026-06-20 v8 redeploy)
+  'e09adc42e0c830fe5f85b839fc8ff2d53045c06da1cf31abec8e72efb903daa9', // tokens V2 current (2026-06-20 v8 redeploy)
+  '1c93579be99e89ab05a33ac04af2fd7b1a604f9c98fe74d1b6cae6913c8362e7', // tokens V1 older
   '7f8dba64318adb8042b266d52d372b4b876778aa7f27f7e37847cc15611f75b2', // tokens V1 older
-  'd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f', // tokens V2 current
+  'd3256ab6c7013402f258870188e15e69bd881c534e913c1ee7d991f4f9e6ab0f', // tokens V2 older
   'bf33cac7b8ccb22d398a6dedc3e159ed68bc1804bf0726516360e7e0b9dcb474', // tokens V2 older
   '2e08785948d44afb14f912a6bfd6bca0dc83f0d623b290ed1b7d0f57a7dced5d', // tokens V2 older
   'c2d09b5e026b1d8378e8f70333e8e74ed3b5798715caa284bcb82d22cb60b78e', // tokens V2 older
