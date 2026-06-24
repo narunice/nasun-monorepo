@@ -399,12 +399,35 @@ async function getNewsItems(limit: number, audience: Audience): Promise<NewsFeed
 
 // ===== HTTP handler + warmer =====
 
+// CORS allowlist for this cross-origin endpoint (pado.finance + nasun.io
+// audiences). Self-contained so it does not depend on the chat-server's global
+// ALLOWED_ORIGINS, which is nasun-scoped and (intentionally) omits pado.finance.
+// Mirrors the original Lambda's getCorsHeaders (default origin = pado.finance).
+const NEWS_ALLOWED_ORIGINS = new Set([
+  'https://pado.finance',
+  'https://staging.pado.finance',
+  'https://nasun.io',
+  'https://staging.nasun.io',
+  'http://localhost:5176',
+  'http://localhost:5174',
+]);
+
+function newsCorsHeaders(origin: string | undefined): Record<string, string> {
+  const allow = origin && NEWS_ALLOWED_ORIGINS.has(origin) ? origin : 'https://pado.finance';
+  return {
+    'Access-Control-Allow-Origin': allow,
+    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Vary': 'Origin',
+  };
+}
+
 export async function handleNewsFeedRequest(
   req: IncomingMessage,
   res: ServerResponse,
   url: URL,
-  cors: Record<string, string>,
 ): Promise<void> {
+  const cors = newsCorsHeaders(req.headers.origin);
   if (req.method === 'OPTIONS') { res.writeHead(204, cors); res.end(); return; }
   if (req.method !== 'GET') {
     res.writeHead(405, cors);

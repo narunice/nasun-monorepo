@@ -499,6 +499,20 @@ async function handleHttpRequest(
   }
 
 
+  // News feed (cross-origin, self-contained CORS). Dispatch before the global
+  // OPTIONS handler so its preflight uses the news allowlist (which includes
+  // pado.finance), not the nasun-scoped global corsHeaders.
+  if (url.pathname === '/news-feed') {
+    handleNewsFeedRequest(req, res, url).catch((err) => {
+      console.error('[HTTP] news-feed handler error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'internal_error' }));
+      }
+    });
+    return;
+  }
+
   if (req.method === 'OPTIONS') {
     res.writeHead(204, corsHeaders);
     res.end();
@@ -617,23 +631,6 @@ async function handleHttpRequest(
     }
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ ok: true }));
-    return;
-  }
-
-  // News feed (RSS + X API; box port of the pado-news-feed Lambda)
-  if (url.pathname === '/news-feed') {
-    const newsCors = {
-      ...corsHeaders,
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
-    };
-    handleNewsFeedRequest(req, res, url, newsCors).catch((err) => {
-      console.error('[HTTP] news-feed handler error:', err);
-      if (!res.headersSent) {
-        res.writeHead(500, newsCors);
-        res.end(JSON.stringify({ error: 'internal_error' }));
-      }
-    });
     return;
   }
 
