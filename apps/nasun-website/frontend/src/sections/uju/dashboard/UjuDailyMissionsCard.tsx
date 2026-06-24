@@ -86,7 +86,6 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
   const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
   const [visitedMissions, setVisitedMissions] =
     useState<Set<string>>(loadVisitedMissions);
-  const [showAll, setShowAll] = useState(false);
 
   const { registeredWallets } = useUjuWalletRegistration();
   const allWalletAddresses = useAccountWalletAddresses(registeredWallets);
@@ -121,7 +120,12 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
       const filtered = appMissions.filter((m) => effectiveIds.includes(m.id));
       pool.push(...filtered);
     }
-    return pool;
+    // Clamp to the active-engagement cap. The per-app fallback above can sum to
+    // more than MAX_DAILY_MISSIONS when several pinned apps have an undefined
+    // mission key (each one falls back to its own defaults). A user can never
+    // select more than MAX_DAILY_MISSIONS, so the card must never show more, or
+    // the header count and "All slots filled" accounting read as 8/8.
+    return pool.slice(0, MAX_DAILY_MISSIONS);
   }, [pinnedApps, missionsByApp]);
 
   // Fire notification detector after missionPool is computed, before early return
@@ -147,10 +151,7 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
     [missionPool, isCompleted],
   );
 
-  const displayedMissions = showAll
-    ? missionPool
-    : missionPool.slice(0, MAX_DAILY_MISSIONS);
-  const hiddenCount = Math.max(0, missionPool.length - MAX_DAILY_MISSIONS);
+  const displayedMissions = missionPool;
 
   const handleFaucetSuccess = useCallback(() => {
     setLocalCompleted((prev) => new Set(prev).add("faucet"));
@@ -390,10 +391,8 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
 
         {/* Empty slot skeletons — visualize remaining capacity. Each skeleton
             mirrors the height of a real mission row so the slot count reads
-            as physical space, not just a label. Hidden when the user has
-            opened "show all" since extra rows would otherwise bloat the card. */}
-        {!showAll &&
-          slotsLeft > 0 &&
+            as physical space, not just a label. */}
+        {slotsLeft > 0 &&
           Array.from({ length: slotsLeft }).map((_, i) => {
             const handleClick = () => {
               const el = document.querySelector(
@@ -431,26 +430,6 @@ export const UjuDailyMissionsCard: FC<UjuDailyMissionsCardProps> = ({
           })}
       </div>
 
-      {/* Overflow control */}
-      {!showAll && hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowAll(true)}
-          className="mt-3 w-full py-2 text-base text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
-        >
-          {hiddenCount} more mission{hiddenCount > 1 ? "s" : ""} hidden - Show
-          all
-        </button>
-      )}
-      {showAll && hiddenCount > 0 && (
-        <button
-          type="button"
-          onClick={() => setShowAll(false)}
-          className="mt-3 w-full py-2 text-base text-uju-secondary border border-dashed border-uju-border rounded-lg hover:text-uju-primary hover:border-uju-secondary/50 transition-colors"
-        >
-          Show top {MAX_DAILY_MISSIONS} only
-        </button>
-      )}
     </UjuCard>
   );
 };
