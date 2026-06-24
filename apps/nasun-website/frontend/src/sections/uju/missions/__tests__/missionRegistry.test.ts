@@ -49,9 +49,11 @@ describe('APP_MISSION_MAP - nasun-devnet', () => {
 describe('APP_MISSION_MAP - pado', () => {
   const padoMissions = APP_MISSION_MAP['pado'];
 
-  it('has exactly 1 pado mission (pado-dex)', () => {
-    expect(padoMissions).toHaveLength(1);
-    expect(padoMissions[0].id).toBe('pado-dex');
+  it('has exactly 2 pado missions (pado-dex, pado-prediction)', () => {
+    expect(padoMissions).toHaveLength(2);
+    const ids = padoMissions.map((m) => m.id);
+    expect(ids).toContain('pado-dex');
+    expect(ids).toContain('pado-prediction');
   });
 
   it('pado-dex is onchain with points=2', () => {
@@ -72,13 +74,13 @@ describe('APP_MISSION_MAP - gostop', () => {
     expect(gostopMissions).toHaveLength(5);
   });
 
-  it('contains gostop-{lottery,scratchcard,numbermatch,mines,crash}', () => {
+  it('contains gostop-{lottery,scratchcard,numbermatch,mines,wheel}', () => {
     const ids = gostopMissions.map((m) => m.id);
     expect(ids).toContain('gostop-lottery');
     expect(ids).toContain('gostop-scratchcard');
     expect(ids).toContain('gostop-numbermatch');
     expect(ids).toContain('gostop-mines');
-    expect(ids).toContain('gostop-crash');
+    expect(ids).toContain('gostop-wheel');
   });
 
   it('all gostop missions are onchain with appId=gostop', () => {
@@ -168,11 +170,13 @@ describe('onchain mission ID sync', () => {
     'faucet',
     'wallet-transfer',
     'pado-dex',
+    'pado-prediction',
     'gostop-lottery',
     'gostop-scratchcard',
     'gostop-numbermatch',
     'gostop-mines',
     'gostop-crash',
+    'gostop-wheel',
   ] as const satisfies readonly MissionId[];
 
   type _Exhaustive = Exclude<MissionId, (typeof ALLOWED_MISSION_IDS)[number]> extends never
