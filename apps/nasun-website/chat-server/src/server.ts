@@ -17,6 +17,7 @@ import { handleLeaderboardRequest, cleanupApiRateLimits } from './leaderboard-ap
 import type { LeaderboardApiDeps } from './leaderboard-api.js';
 import { handlePadoIdeaRequest } from './pado-idea-api.js';
 import type { PadoIdeaApiDeps } from './pado-idea-api.js';
+import { handleNewsFeedRequest, startNewsFeedWarmer, stopNewsFeedWarmer } from './news-feed-api.js';
 import { handleFrontendErrorReport } from './frontend-error-routes.js';
 import { handleBaramTelegramRequest } from './baram-telegram-routes.js';
 import { handleChatWakeRequest } from './chat-wake.js';
@@ -616,6 +617,23 @@ async function handleHttpRequest(
     }
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ ok: true }));
+    return;
+  }
+
+  // News feed (RSS + X API; box port of the pado-news-feed Lambda)
+  if (url.pathname === '/news-feed') {
+    const newsCors = {
+      ...corsHeaders,
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    };
+    handleNewsFeedRequest(req, res, url, newsCors).catch((err) => {
+      console.error('[HTTP] news-feed handler error:', err);
+      if (!res.headersSent) {
+        res.writeHead(500, newsCors);
+        res.end(JSON.stringify({ error: 'internal_error' }));
+      }
+    });
     return;
   }
 
@@ -1495,6 +1513,7 @@ console.log('[banned-loader] cold-start gate passed');
 httpServer.listen(CONFIG.port, () => {
   console.log(`Nasun Chat Server listening on port ${CONFIG.port}`);
   console.log(`Allowed origins: ${CONFIG.allowedOrigins.join(', ')}`);
+  startNewsFeedWarmer();
 });
 
 startEventLoopMonitor();
@@ -1541,6 +1560,7 @@ async function shutdown(): Promise<void> {
   if (leaderboardWalTimer) clearInterval(leaderboardWalTimer);
   if (orderEventRetentionTimer) clearInterval(orderEventRetentionTimer);
   if (profileSyncTimer) clearInterval(profileSyncTimer);
+  stopNewsFeedWarmer();
 
   stopChatbot();
   stopAlphaCron();

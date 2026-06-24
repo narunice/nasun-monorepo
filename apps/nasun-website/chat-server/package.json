@@ -20,6 +20,7 @@
     "@nasun/profile-core": "workspace:*",
     "@noble/hashes": "^1.8.0",
     "better-sqlite3": "^11.7.0",
+    "fast-xml-parser": "^5.0.0",
     "postgres": "^3.4.5",
     "ulid": "^3.0.2",
     "undici": "^6.25.0",
