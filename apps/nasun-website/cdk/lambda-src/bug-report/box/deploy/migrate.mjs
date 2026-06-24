@@ -1,6 +1,9 @@
-// One-shot data migration for the nasun-bug-report de-Lambda lift: DynamoDB -> box nasun_dal PG, plus a stage
-// of the active (non-terminal) reports' screenshots from S3 (closed/orphan screenshots are intentionally NOT
-// migrated -- they are short-lived triage aids the box prune deletes anyway).
+// Delta data sync for the nasun-bug-report de-Lambda lift: upserts the DynamoDB bug-reports / creator-posts
+// onto the EXISTING box nasun_dal DAL mirror (the DDB->PG "P2" tables; the initial dal-load snapshot is stale
+// as of ~2026-06-02, so this catches everything created since), plus a stage of the active (non-terminal)
+// reports' screenshots from S3 (closed/orphan screenshots are intentionally NOT migrated -- they are
+// short-lived triage aids the box prune deletes anyway). Schema (ts/created_at timestamptz, bug PK
+// (report_id, ts)) matches the live mirror exactly.
 //
 // Run on the box from ~/nasun-monorepo (resolves @aws-sdk + postgres from the monorepo node_modules):
 //   AWS_PROFILE=nasun-prod AWS_REGION=ap-northeast-2 \
@@ -64,12 +67,13 @@ async function migrateBugReports() {
     }
     const st = status || 'new';
     if (!DRY_RUN) {
+      // ts is the timestamptz column (DDB `timestamp` ISO). PK is (report_id, ts), stable per report (DDB sort
+      // key is immutable), so ON CONFLICT (report_id, ts) matches the mirrored row; new rows insert.
       await sql`
-        INSERT INTO bug_reports (report_id, report_ts, identity_id, status, attributes)
-        VALUES (${reportId}, ${timestamp}, ${identityId}, ${st}, ${sql.json(attributes)})
-        ON CONFLICT (report_id) DO UPDATE
-          SET report_ts = EXCLUDED.report_ts, identity_id = EXCLUDED.identity_id,
-              status = EXCLUDED.status, attributes = EXCLUDED.attributes`;
+        INSERT INTO bug_reports (report_id, ts, identity_id, status, attributes)
+        VALUES (${reportId}, ${timestamp}::timestamptz, ${identityId}, ${st}, ${sql.json(attributes)})
+        ON CONFLICT (report_id, ts) DO UPDATE
+          SET identity_id = EXCLUDED.identity_id, status = EXCLUDED.status, attributes = EXCLUDED.attributes`;
     }
     // Stage screenshots only for non-terminal reports.
     if (!TERMINAL_BUG_STATUSES.has(st) && Array.isArray(attributes.screenshotKeys)) {
@@ -93,9 +97,10 @@ async function migrateCreatorPosts() {
     }
     const st = status || 'PENDING';
     if (!DRY_RUN) {
+      // created_at is the timestamptz column (DDB `createdAt` ISO). PK is (post_id), single.
       await sql`
         INSERT INTO creator_posts (post_id, identity_id, created_at, status, attributes)
-        VALUES (${postId}, ${identityId}, ${createdAt}, ${st}, ${sql.json(attributes)})
+        VALUES (${postId}, ${identityId}, ${createdAt}::timestamptz, ${st}, ${sql.json(attributes)})
         ON CONFLICT (post_id) DO UPDATE
           SET identity_id = EXCLUDED.identity_id, created_at = EXCLUDED.created_at,
               status = EXCLUDED.status, attributes = EXCLUDED.attributes`;

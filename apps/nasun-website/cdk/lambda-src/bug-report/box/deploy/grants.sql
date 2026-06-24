@@ -1,42 +1,42 @@
--- Box nasun_dal schema + grants for the nasun-bug-report service (AWS-exit Stage 4, BugReportStack slice).
--- Run as a superuser/owner AFTER creating the writer role (see below):
---   sudo -u postgres psql nasun_dal -f grants.sql
+-- Box nasun_dal grants for the nasun-bug-report service (AWS-exit Stage 4, BugReportStack slice).
+-- Run via stdin so the postgres OS user does not need to read a file under ~nasun:
+--   sudo -u postgres psql nasun_dal < grants.sql
 --
--- These tables are NEW (not part of the Phase 1 dal-load), so this script creates them. Idempotent. The DDB
--- key (reportId, timestamp) / (postId) collapses to a PG PK on the globally-unique id; the DDB sort key
--- `timestamp` becomes report_ts (re-surfaced as `timestamp` in the reconstructed item). The long-tail lives in
--- `attributes` jsonb (reconstructors in src/db.ts overlay the promoted columns -> DDB-identical item).
+-- bug_reports / creator_posts ALREADY EXIST as the DAL DDB->PG mirror "P2" tables (created by dal-load; owner
+-- nasun_app; verified \d 2026-06-24: bug_reports 1066 rows / creator_posts 6109 rows). The CREATE statements
+-- below are IF NOT EXISTS and match the live schema EXACTLY, so they are no-ops on the current box; kept as the
+-- authoritative rebuild record. The ONLY effective change this script makes is the GRANTs (the tables currently
+-- carry only nasun_app=arwdDxt + nasun_keeper=r; the box service needs compute_ro SELECT + a writer role).
 
--- ---- tables -------------------------------------------------------------------------------------------------
-
+-- ---- tables (authoritative record; no-op on the live box) ---------------------------------------------------
+-- ts / created_at are timestamptz (the DDB `timestamp` / `createdAt` ISO strings). report_id / post_id are
+-- globally unique; the composite bug_reports PK preserves the DDB (reportId, timestamp) key.
 CREATE TABLE IF NOT EXISTS bug_reports (
-  report_id   text PRIMARY KEY,
-  report_ts   text NOT NULL,
-  identity_id text NOT NULL,
-  status      text NOT NULL DEFAULT 'new',
-  attributes  jsonb NOT NULL DEFAULT '{}'::jsonb
+  report_id   text NOT NULL,
+  ts          timestamptz NOT NULL,
+  status      text,
+  identity_id text,
+  attributes  jsonb,
+  PRIMARY KEY (report_id, ts)
 );
--- identityId-index GSI (my-reports, cooldown): newest-first per identity.
-CREATE INDEX IF NOT EXISTS bug_reports_identity_idx ON bug_reports (identity_id, report_ts DESC);
--- status-index GSI (admin list): newest-first per status. Also serves the backfill status IN (...) scan.
-CREATE INDEX IF NOT EXISTS bug_reports_status_idx ON bug_reports (status, report_ts DESC);
+CREATE INDEX IF NOT EXISTS idx_br_identity ON bug_reports (identity_id);
+CREATE INDEX IF NOT EXISTS idx_br_status ON bug_reports (status);
 
 CREATE TABLE IF NOT EXISTS creator_posts (
   post_id     text PRIMARY KEY,
-  identity_id text NOT NULL,
-  created_at  text NOT NULL,
-  status      text NOT NULL DEFAULT 'PENDING',
-  attributes  jsonb NOT NULL DEFAULT '{}'::jsonb
+  identity_id text,
+  status      text,
+  created_at  timestamptz,
+  attributes  jsonb
 );
--- identityId-createdAt-index GSI (my list, daily-limit count).
-CREATE INDEX IF NOT EXISTS creator_posts_identity_idx ON creator_posts (identity_id, created_at DESC);
--- status-createdAt-index GSI (admin list).
-CREATE INDEX IF NOT EXISTS creator_posts_status_idx ON creator_posts (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_cp_identity ON creator_posts (identity_id);
+CREATE INDEX IF NOT EXISTS idx_cp_status_created ON creator_posts (status, created_at);
 
--- ---- writer role (dedicated, least-privilege) ---------------------------------------------------------------
+-- ---- writer role (dedicated, least-privilege) --------------------------------------------------------------
 -- Create the role with a box-generated password FIRST (out-of-band, NOT committed):
 --   CREATE ROLE nasun_bug_report LOGIN PASSWORD '<openssl rand -hex 24>';
--- Teardown: DROP OWNED BY nasun_bug_report; DROP ROLE nasun_bug_report; (after the AWS BugReportStack is gone).
+--   (or, if already created: ALTER ROLE nasun_bug_report PASSWORD '<...>';)
+-- Teardown (after the AWS BugReportStack is gone): DROP OWNED BY nasun_bug_report; DROP ROLE nasun_bug_report;
 
 GRANT CONNECT ON DATABASE nasun_dal TO nasun_bug_report;
 GRANT USAGE ON SCHEMA public TO nasun_bug_report;

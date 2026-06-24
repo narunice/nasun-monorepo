@@ -15,7 +15,8 @@ const j = (v: Record<string, unknown>): SqlJson => v as unknown as SqlJson;
 
 // ---- bug_reports -----------------------------------------------------------------------------------
 
-// Submit: plain insert. `attributes` is the long-tail object (everything except the promoted columns).
+// Submit: plain insert. `reportTs` is an ISO string (cast to the ts timestamptz column); `attributes` is the
+// long-tail object (everything except the promoted columns).
 export async function insertReport(
   reportId: string,
   reportTs: string,
@@ -25,8 +26,8 @@ export async function insertReport(
 ): Promise<void> {
   const sql = getWriteSql();
   await sql`
-    INSERT INTO bug_reports (report_id, report_ts, identity_id, status, attributes)
-    VALUES (${reportId}, ${reportTs}, ${identityId}, ${status}, ${sql.json(j(attributes))})`;
+    INSERT INTO bug_reports (report_id, ts, identity_id, status, attributes)
+    VALUES (${reportId}, ${reportTs}::timestamptz, ${identityId}, ${status}, ${sql.json(j(attributes))})`;
 }
 
 // Reply on a closed ticket: conditional reopen. Parity with the lambda ConditionExpression
@@ -89,7 +90,7 @@ export async function insertPost(
   const sql = getWriteSql();
   const rows = await sql<{ post_id: string }[]>`
     INSERT INTO creator_posts (post_id, identity_id, created_at, status, attributes)
-    VALUES (${postId}, ${identityId}, ${createdAt}, ${status}, ${sql.json(j(attributes))})
+    VALUES (${postId}, ${identityId}, ${createdAt}::timestamptz, ${status}, ${sql.json(j(attributes))})
     ON CONFLICT (post_id) DO NOTHING
     RETURNING post_id`;
   return rows.length > 0;
