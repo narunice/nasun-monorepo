@@ -125,6 +125,32 @@ async function handleWalletMappings(): Promise<{ wallets: Record<string, string>
   return { wallets };
 }
 
+// GET /ecosystem-activations -- key-gated bulk NFT-activation map for the points-scanner ecosystem
+// multiplier (Alliance + Genesis Pass) + the weekly settlement crons (settle-ecosystem / settle-pado) +
+// backfill/airdrop scripts. Serves the box `ecosystem_activations` P2 mirror (DAL DDB->PG), byte-parity
+// with the admin-api lambda's DynamoDB scan: ACTIVE rows only; nftType = the sk prefix
+// (sk = "nftType#walletAddress"); nftCount from the attributes jsonb (DDB long-tail, default 1); grouped
+// by identity_id. Same { activations } shape the lambda returns, minus its S3 offload -- the box loopback
+// callers take the direct JSON, which settle-ecosystem/settle-pado (else-branch), _load-gp-holders
+// (fetchWithOffload backwards-compat) and airdrop-bonus (direct-only) all already accept. SELECT-only,
+// schema-qualified; requires the compute PG role to hold SELECT on ecosystem_activations (GRANT applied
+// box-side before the consumers repoint).
+async function handleEcosystemActivations(): Promise<{
+  activations: Record<string, Array<{ nftType: string; nftCount: number }>>;
+}> {
+  const rows = await sql<{ identity_id: string; nft_type: string; nft_count: number }[]>`
+    SELECT identity_id,
+           split_part(sk, '#', 1) AS nft_type,
+           COALESCE(NULLIF(attributes->>'nftCount', '')::int, 1) AS nft_count
+    FROM ${sql(SCHEMA)}.ecosystem_activations
+    WHERE status = 'ACTIVE'`;
+  const activations: Record<string, Array<{ nftType: string; nftCount: number }>> = {};
+  for (const r of rows) {
+    (activations[r.identity_id] ??= []).push({ nftType: r.nft_type, nftCount: r.nft_count });
+  }
+  return { activations };
+}
+
 function readBody(req: IncomingMessage, limitBytes = 16 * 1024): Promise<string> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -186,6 +212,22 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       return send(res, 200, await handleWalletMappings(), {});
     } catch (e) {
       console.error('[compute] /wallet-mappings failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'internal_error' }, {});
+    }
+  }
+
+  // GET /ecosystem-activations -- key-gated (COMPUTE_BEARER via Bearer or x-api-key), server-to-server.
+  // Same auth + no-CORS posture as /wallet-mappings. Callers: box explorer-api weekly settlement crons
+  // (settle-ecosystem, settle-pado) + backfill/airdrop scripts, repointed off the admin-api lambda
+  // (doetwxms5a) at the internal-route de-Lambda. Box loopback (http://127.0.0.1:3212/ecosystem-activations).
+  if (req.method === 'GET' && pathname === '/ecosystem-activations') {
+    if (!computeKeyOk(req.headers['authorization'] as string | undefined, req.headers['x-api-key'] as string | undefined)) {
+      return send(res, 401, { error: 'unauthorized' }, {});
+    }
+    try {
+      return send(res, 200, await handleEcosystemActivations(), {});
+    } catch (e) {
+      console.error('[compute] /ecosystem-activations failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'internal_error' }, {});
     }
   }
