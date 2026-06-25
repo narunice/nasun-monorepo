@@ -41,19 +41,36 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
+  // 2026-06-24 batch. trackId/name/artist verified live against
+  // rss.marketingtools.apple.com most-played top-10 (kr/us) on 2026-06-24.
+  // Existing markets (REDRED #1 KR, Janice STFU #1 US) intentionally omitted.
   {
-    country: 'us', chart: 'most-played',
-    trackId: '6769568596', trackName: 'Janice STFU', artistName: 'Drake',
-    resolveAfterUtc: '2026-05-25 18:00:00 UTC',
+    country: 'kr', chart: 'most-played',
+    trackId: '1893599773', trackName: 'LEMONADE', artistName: 'aespa',
+    resolveAfterUtc: '2026-06-28 12:00:00 UTC',
     comparisonOp: '==', threshold: 1,
-    label: 'Drake Janice STFU #1 US @ 2026-05-25 18:00 UTC',
+    label: 'aespa LEMONADE #1 KR @ 2026-06-28 12:00 UTC',
   },
   {
-    country: 'gb', chart: 'most-played',
-    trackId: '6769568456', trackName: 'Make Them Cry', artistName: 'Drake',
-    resolveAfterUtc: '2026-05-25 18:00:00 UTC',
-    comparisonOp: '==', threshold: 1,
-    label: 'Drake Make Them Cry #1 UK @ 2026-05-25 18:00 UTC',
+    country: 'kr', chart: 'most-played',
+    trackId: '6779521286', trackName: 'Lemon Tang', artistName: 'Hearts2Hearts',
+    resolveAfterUtc: '2026-06-27 12:00:00 UTC',
+    comparisonOp: '<=', threshold: 3,
+    label: 'Hearts2Hearts Lemon Tang top-3 KR @ 2026-06-27 12:00 UTC',
+  },
+  {
+    country: 'kr', chart: 'most-played',
+    trackId: '6774516636', trackName: 'Do your dance', artistName: 'RIIZE',
+    resolveAfterUtc: '2026-07-01 12:00:00 UTC',
+    comparisonOp: '<=', threshold: 5,
+    label: 'RIIZE Do your dance top-5 KR @ 2026-07-01 12:00 UTC',
+  },
+  {
+    country: 'us', chart: 'most-played',
+    trackId: '1889992115', trackName: 'stupid song', artistName: 'Olivia Rodrigo',
+    resolveAfterUtc: '2026-06-29 18:00:00 UTC',
+    comparisonOp: '<=', threshold: 3,
+    label: 'Olivia Rodrigo stupid song top-3 US @ 2026-06-29 18:00 UTC',
   },
 ];
 

@@ -69,87 +69,73 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
-  // UFC Fight Night 277 main card (2026-05-30). All 6 main-card fights.
-  // FighterA = ESPN order=1 for each competition (consistent convention).
-  // Card start time used as fightStartUtc for every fight; non-main bouts
-  // happen earlier on the card but closeTime = card start - 5min closes
-  // all betting before the first cage walk to avoid inside-info windows.
-  // Verified via ESPN sports.core.api.espn.com/.../events/600058517/competitions/<compId>.
+  // 2026-06-24 batch: UFC Fight Night: Fiziev vs Torres (ESPN eventId 600059254,
+  // 2026-06-27). competitionId / athleteAId / athleteBId / fighter names verified
+  // live against sports.core.api.espn.com/.../events/600059254/competitions on
+  // 2026-06-24. fightStartUtc = card start (prelims 13:00 UTC) for every bout so
+  // closeTime closes all betting before the first walk. FighterA matches athleteAId.
 
   // Main event
   {
-    eventId: '600058517',
-    competitionId: '401859897',
-    athleteAId: '3151289',
-    athleteBId: '4189320',
-    fighterA: 'Song Yadong',
-    fighterB: 'Deiveson Figueiredo',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401870065',
+    athleteAId: '4339488',
+    athleteBId: '4896616',
+    fighterA: 'Rafael Fiziev',
+    fighterB: 'Manuel Torres',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
   // Co-main
   {
-    eventId: '600058517',
-    competitionId: '401864363',
-    athleteAId: '4217395',
-    athleteBId: '5212856',
-    fighterA: 'Sergei Pavlovich',
-    fighterB: 'Tallison Teixeira',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401871791',
+    athleteAId: '4418962',
+    athleteBId: '4421784',
+    fighterA: 'Michel Pereira',
+    fighterB: 'Shara Magomedov',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
   {
-    eventId: '600058517',
-    competitionId: '401864362',
-    athleteAId: '4845284',
-    athleteBId: '3948876',
-    fighterA: 'Zhang Mingyang',
-    fighterB: 'Alonzo Menifield',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401872625',
+    athleteAId: '4684776',
+    athleteBId: '5077131',
+    fighterA: 'Ikram Aliskerov',
+    fighterB: 'Brunno Ferreira',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
   {
-    eventId: '600058517',
-    competitionId: '401867461',
-    athleteAId: '3132513',
-    athleteBId: '3089915',
-    fighterA: 'Muslim Salikhov',
-    fighterB: 'Jake Matthews',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401872675',
+    athleteAId: '3077822',
+    athleteBId: '4012999',
+    fighterA: 'Abus Magomedov',
+    fighterB: 'Michal Oleksiejczuk',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
   {
-    eventId: '600058517',
-    competitionId: '401864573',
-    athleteAId: '3155425',
-    athleteBId: '4405109',
-    fighterA: 'Alex Perez',
-    fighterB: 'Sumudaerji',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401872676',
+    athleteAId: '4294926',
+    athleteBId: '4375156',
+    fighterA: 'Asu Almabayev',
+    fighterB: 'Charles Johnson',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
   {
-    eventId: '600058517',
-    competitionId: '401867462',
-    athleteAId: '4336757',
-    athleteBId: '5144320',
-    fighterA: 'Kai Asakura',
-    fighterB: 'Cameron Smotherman',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 11:00:00 UTC',
-  },
-  // Prelim with Korean fighter Yi Sak Lee (이이삭). Prelim card starts at
-  // 08:00 UTC (3h before main card). FighterA = Yi Sak Lee so YES = Korean
-  // fighter wins, which reads more naturally for the primary audience.
-  {
-    eventId: '600058517',
-    competitionId: '401867171',
-    athleteAId: '5341761',
-    athleteBId: '4693161',
-    fighterA: 'Yi Sak Lee',
-    fighterB: 'Luis Felipe Dias',
-    eventName: 'Fight Night 277',
-    fightStartUtc: '2026-05-30 08:00:00 UTC',
+    eventId: '600059254',
+    competitionId: '401872674',
+    athleteAId: '5074130',
+    athleteBId: '5170144',
+    fighterA: 'Nazim Sadykhov',
+    fighterB: 'Matheus Camilo',
+    eventName: 'Fight Night: Fiziev vs Torres',
+    fightStartUtc: '2026-06-27 13:00:00 UTC',
   },
 ];
 

@@ -46,29 +46,32 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
+  // 2026-06-24 batch. Coordinates are standard city centroids; Open-Meteo
+  // archive (keyless) resolves each window after endDate. Thresholds set for
+  // genuine uncertainty (Korea late-June heat/monsoon onset).
+  {
+    locationName: 'Tokyo', latitude: 35.6762, longitude: 139.6503,
+    startDate: '2026-06-26', endDate: '2026-06-29',
+    field: 'temperature_max_over', aggregation: 'max', threshold: 34,
+    label: 'Tokyo max-temp 6/26-29 > 34C',
+  },
   {
     locationName: 'Seoul', latitude: 37.5665, longitude: 126.9780,
-    startDate: '2026-05-19', endDate: '2026-05-25',
-    field: 'temperature_max_over', aggregation: 'max', threshold: 30,
-    label: 'Seoul weekly max-temp 5/19-25 > 30C',
+    startDate: '2026-06-27', endDate: '2026-07-03',
+    field: 'temperature_max_over', aggregation: 'max', threshold: 35,
+    label: 'Seoul heatwave 6/27-7/3 > 35C',
+  },
+  {
+    locationName: 'Seoul', latitude: 37.5665, longitude: 126.9780,
+    startDate: '2026-06-27', endDate: '2026-07-04',
+    field: 'precipitation_sum_over', aggregation: 'sum', threshold: 100,
+    label: 'Seoul total rain 6/27-7/4 > 100mm',
   },
   {
     locationName: 'Ho Chi Minh City', latitude: 10.8231, longitude: 106.6297,
-    startDate: '2026-05-19', endDate: '2026-05-25',
-    field: 'rainy_days_over', aggregation: 'count', threshold: 3,
-    label: 'HCMC rainy days 5/19-25 > 3',
-  },
-  {
-    locationName: 'Frankfurt', latitude: 50.1109, longitude: 8.6821,
-    startDate: '2026-05-19', endDate: '2026-05-25',
-    field: 'temperature_max_over', aggregation: 'max', threshold: 25,
-    label: 'Frankfurt weekly max-temp 5/19-25 > 25C',
-  },
-  {
-    locationName: 'New York', latitude: 40.7128, longitude: -74.0060,
-    startDate: '2026-05-19', endDate: '2026-05-25',
-    field: 'temperature_max_over', aggregation: 'max', threshold: 25,
-    label: 'NYC weekly max-temp 5/19-25 > 25C',
+    startDate: '2026-06-26', endDate: '2026-07-02',
+    field: 'rainy_days_over', aggregation: 'count', threshold: 4,
+    label: 'HCMC rainy days 6/26-7/2 > 4',
   },
 ];
 

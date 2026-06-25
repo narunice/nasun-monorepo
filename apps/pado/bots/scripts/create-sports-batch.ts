@@ -45,32 +45,52 @@ interface Spec {
 }
 
 const SPECS: Spec[] = [
-  // 2026-05-19 reissue: original markets (eventId 2267447 / 2267448 / 2470477)
-  // shipped with `Will <home> beat <away>?` questions that omitted sport +
-  // league context — viewers couldn't tell soccer from another team-sports
-  // discipline at a glance. Same TheSportsDB EventIds, but question now
-  // carries the ⚽ + league prefix; original three are admin-cancelled in a
-  // follow-up sweep so the new ones are the canonical entries.
+  // 2026-06-24 batch: live FIFA World Cup fixtures pulled from TheSportsDB
+  // league 4429 (eventsday.php / eventsnextleague.php) on 2026-06-24. EventIds,
+  // home/away orientation and kickoff (strTimestamp, UTC) verified against the
+  // API at build time. Switzerland vs Canada (2391767) and South Africa vs
+  // South Korea (2391766) are intentionally omitted (already have markets).
   {
-    eventId: '2267447',
-    homeTeam: 'Liverpool',
-    awayTeam: 'Brentford',
-    league: 'Premier League',
-    kickoffUtc: '2026-05-24 15:00:00 UTC',
+    eventId: '2391769',
+    homeTeam: 'Ecuador',
+    awayTeam: 'Germany',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-25 20:00:00 UTC',
   },
   {
-    eventId: '2267448',
-    homeTeam: 'Manchester City',
-    awayTeam: 'Aston Villa',
-    league: 'Premier League',
-    kickoffUtc: '2026-05-24 15:00:00 UTC',
+    eventId: '2391768',
+    homeTeam: 'Curaçao',
+    awayTeam: 'Ivory Coast',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-25 20:00:00 UTC',
   },
   {
-    eventId: '2470477',
-    homeTeam: 'Paris Saint-Germain',
-    awayTeam: 'Arsenal',
-    league: 'Champions League',
-    kickoffUtc: '2026-05-30 16:00:00 UTC',
+    eventId: '2461118',
+    homeTeam: 'Turkey',
+    awayTeam: 'USA',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-26 02:00:00 UTC',
+  },
+  {
+    eventId: '2391775',
+    homeTeam: 'Norway',
+    awayTeam: 'France',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-26 19:00:00 UTC',
+  },
+  {
+    eventId: '2391774',
+    homeTeam: 'New Zealand',
+    awayTeam: 'Belgium',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-27 03:00:00 UTC',
+  },
+  {
+    eventId: '2391780',
+    homeTeam: 'Jordan',
+    awayTeam: 'Argentina',
+    league: 'FIFA World Cup',
+    kickoffUtc: '2026-06-28 02:00:00 UTC',
   },
 ];
 
