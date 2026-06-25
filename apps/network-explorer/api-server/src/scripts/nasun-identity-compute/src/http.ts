@@ -134,6 +134,33 @@ export function linkCors(origin: string | undefined): Record<string, string> {
   };
 }
 
+// Ship1 ecosystem activate/deactivate/status CORS: byte-parity with the ecosystem-api lambda jsonResponse
+// (index.ts:62-77, ACAO origin-allowlist matched against the RAW Origin) PLUS the API GW
+// defaultCorsPreflightOptions the lambda relied on for OPTIONS (Content-Type+Authorization headers, all
+// methods). The box serves its own preflight, so the headers/methods are set here. NO credentials, NO extra
+// security headers (the lambda set none). Methods GET (status) + POST (activate/deactivate) + OPTIONS.
+export function ecosystemCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+  };
+}
+
+// Ship1 genesis-pass/check CORS: byte-parity with the genesis-pass-check lambda corsHeaders
+// (check/src/index.ts:63-70 + getCorsOrigin, ACAO origin-allowlist matched against the RAW Origin):
+// headers Content-Type only (the route is public/no-Authorization), methods GET,OPTIONS, NO credentials.
+// Cross-origin from pado.finance (the GP-badge hot path) works because pado.finance is in ALLOWED_ORIGINS.
+export function genesisPassCheckCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type',
+    'access-control-allow-methods': 'GET, OPTIONS',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,

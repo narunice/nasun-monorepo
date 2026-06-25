@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK, ECOSYSTEM } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -795,4 +795,108 @@ export async function grantOnboardingBonus(payload: {
   } catch (err) {
     console.warn('[compute] onboarding-bonus failed (non-fatal):', err instanceof Error ? err.message : err);
   }
+}
+
+// --- Ship1 ecosystem activation + nft-ownership writes (box :3211 loopback, NO egress) -------------
+// The ecosystem activate/deactivate flow computes its decision on the compute side (verify, compute_ro
+// reads, on-demand Alchemy) then delegates the AUTHORITATIVE write to the box identity service (:3211),
+// which holds the write grants. The box reproduces the lambda's DDB conditional (ON CONFLICT WHERE
+// status<>'ACTIVE') so a concurrent verifier write cannot lost-update. Reuses the identity-write
+// bearer/baseUrl (the SAME loopback the profile/wallet writes use).
+
+/**
+ * POST /ecosystem/activation/upsert -> { changed }. changed:false == the row was already ACTIVE (the
+ * lambda's "Already activated" 200 idempotent path). THROWS on a non-2xx / transport error so a failed
+ * authoritative write never reports success (the route 500s). Retries once -- the upsert is idempotent
+ * (re-applying the same ACTIVE row is a conditional no-op), so the retry is safe.
+ */
+export async function ecosystemActivationUpsert(payload: {
+  identityId: string;
+  sk: string;
+  nftCount: number;
+  activatedAt: string;
+  lastVerifiedAt: string;
+}): Promise<{ changed: boolean }> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ECOSYSTEM.identityBaseUrl}/ecosystem/activation/upsert`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ECOSYSTEM.identityWriteBearer}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(ECOSYSTEM.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`ecosystem/activation/upsert returned HTTP ${res.status}`);
+      const data = (await res.json().catch(() => null)) as { changed?: boolean } | null;
+      return { changed: data?.changed === true };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * POST /ecosystem/activation/deactivate -> { updated } (rows flipped to INACTIVE). The compute already
+ * resolved the exact sk via a read, so this is a keyed UPDATE. Idempotent (re-applying INACTIVE -> same).
+ * THROWS on a non-2xx / transport error (the route 500s). Retries once (idempotent keyed UPDATE).
+ */
+export async function ecosystemActivationDeactivate(payload: {
+  identityId: string;
+  sk: string;
+}): Promise<{ updated: number }> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ECOSYSTEM.identityBaseUrl}/ecosystem/activation/deactivate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ECOSYSTEM.identityWriteBearer}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(ECOSYSTEM.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`ecosystem/activation/deactivate returned HTTP ${res.status}`);
+      const data = (await res.json().catch(() => null)) as { updated?: number } | null;
+      return { updated: data?.updated ?? 0 };
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * POST /nft-ownership/upsert -- persist the on-demand ETH#LATEST per-wallet cache (full-item replace,
+ * parity with the lambda fetchAndPersistOwnership Put). The compute computes the merged holdings before
+ * calling. THROWS on a non-2xx / transport error so the route surfaces a 500. Retries once (full replace
+ * is idempotent).
+ */
+export async function nftOwnershipUpsert(payload: {
+  pk: string;
+  sk: string;
+  walletAddress: string;
+  snapshotDate: string;
+  holdings: Array<{ contractAddress: string; chain: string; tokenCount: number }>;
+  totalNftCount: number;
+  source: string;
+  lastUpdatedAt: string;
+}): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${ECOSYSTEM.identityBaseUrl}/nft-ownership/upsert`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${ECOSYSTEM.identityWriteBearer}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(ECOSYSTEM.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`nft-ownership/upsert returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }

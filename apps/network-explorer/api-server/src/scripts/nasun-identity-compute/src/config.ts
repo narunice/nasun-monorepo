@@ -463,6 +463,43 @@ export const GOVERNANCE = {
   })(),
 };
 
+// --- Ship1 ecosystem NFT-activation + genesis-pass/check (de-Lambda of ecosystem-api + genesis-pass/check) ---
+// The authed routes (status/activate/deactivate) gate on dual-jwks (VERIFY.audience) + the identity-write-
+// bearer (activate/deactivate writes delegate to :3211) + a DEDICATED COMPUTE_ECOSYSTEM_ENABLED=1 flag so the
+// bundle deploys INERT (503) until the api.nasun.io /ecosystem/ location is repointed at cutover (mirrors the
+// WALLET/PROFILE_PATCH gate rationale). genesis-pass/check is PUBLIC (no JWT) + pure compute_ro 3-hop read; it
+// gates on the same flag alone (no write, no audience). ALCHEMY_API_KEY is the on-demand activate egress key --
+// NOT a secret (it ships in the frontend bundle, frontend/.env.production:84), so it arrives via a unit
+// Environment var, not a credential; the real abuse control is the nginx rate-limit + (recommended) a dedicated
+// box key with an Alchemy spend cap (plan §5). When the key is absent the on-demand fallback throws -> activate
+// 503 SNAPSHOT_UNAVAILABLE (lambda parity). GP contract + stage are public chain data -> env. The anti-Sybil
+// social gate on activate genesis-pass is a DELIBERATE Ship-1 delta (the lambda lacked it; plan §2 Ship1-d).
+export const ECOSYSTEM = {
+  enabled: process.env.COMPUTE_ECOSYSTEM_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  // genesis-pass/check: public read, no JWT/write -> flag only.
+  checkEnabled: process.env.COMPUTE_ECOSYSTEM_ENABLED === '1',
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: identityWriteBearer || '',
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // GP contract (public chain data). Lower-cased here. Default = the prod GP contract (nft_collections row).
+  genesisPassContract: (process.env.COMPUTE_GENESIS_PASS_CONTRACT || '0x561D4A687e9D13925AD7BEf0209c9eCaEC9858E1').toLowerCase(),
+  // Current mint stage (SSM /nasun/genesis-pass/current-stage in the lambda; static "0" PAUSED post-mint).
+  gpStage: (() => { const n = parseInt(process.env.COMPUTE_GP_STAGE || '0', 10); return Number.isInteger(n) ? n : 0; })(),
+  // Alchemy on-demand egress (activate fallback). Key is PUBLIC (frontend-shipped); abuse-bounded by rate-limit.
+  alchemyApiKey: process.env.COMPUTE_ALCHEMY_API_KEY || '',
+  alchemyRpcBaseUrl: process.env.COMPUTE_ALCHEMY_RPC_BASE_URL || 'https://eth-mainnet.g.alchemy.com/v2',
+  alchemyNftBaseUrl: process.env.COMPUTE_ALCHEMY_NFT_BASE_URL || 'https://eth-mainnet.g.alchemy.com/nft/v3',
+  // eth_call balanceOf budget (lambda eth-rpc TIMEOUT_MS 8s).
+  alchemyTimeoutMs: 8000,
+  // getOwnersForContract paginated fetch budget (lambda HOLDER_CACHE_FETCH_TIMEOUT_MS 30s).
+  holderFetchTimeoutMs: 30000,
+  // In-memory holder-set cache freshness (lambda HOLDER_CACHE_FRESHNESS_MS 1h). The long-lived box process
+  // replaces the lambda's DDB ETH#HOLDERS cache with a module-level Map -- identical holder-set output.
+  holderCacheFreshnessMs: 60 * 60 * 1000,
+  // On-demand ETH#LATEST per-wallet freshness window (lambda ON_DEMAND_FRESHNESS_MS 10m).
+  onDemandFreshnessMs: 10 * 60 * 1000,
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

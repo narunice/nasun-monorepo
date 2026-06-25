@@ -14,8 +14,15 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, send, RouteAbort } from './http';
+import {
+  ecosystemStatus,
+  ecosystemActivationsForUser,
+  handleEcosystemActivate,
+  handleEcosystemDeactivate,
+  genesisPassCheck,
+} from './handlers-ecosystem';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
@@ -229,6 +236,76 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     } catch (e) {
       console.error('[compute] /ecosystem-activations failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'internal_error' }, {});
+    }
+  }
+
+  // GET /ecosystem-activations/<identityId> -- key-gated per-user activation list for the points-scanner
+  // (ecosystem-cache.ts updateActivationsForUser). Same auth + no-CORS posture as the bulk route. The
+  // identityId is the RAW path segment (the scanner does NOT url-encode the colon, ecosystem-cache.ts:202).
+  // Matched AFTER the exact bulk route so /ecosystem-activations stays the bulk map.
+  if (req.method === 'GET' && pathname.startsWith('/ecosystem-activations/')) {
+    if (!computeKeyOk(req.headers['authorization'] as string | undefined, req.headers['x-api-key'] as string | undefined)) {
+      return send(res, 401, { error: 'unauthorized' }, {});
+    }
+    let id: string;
+    try { id = decodeURIComponent(pathname.slice('/ecosystem-activations/'.length)); }
+    catch { return send(res, 404, { error: 'not_found' }, {}); } // stray % -> 404, not a 500 (bulk path tolerates)
+    if (!id) return send(res, 404, { error: 'not_found' }, {});
+    try {
+      return send(res, 200, await ecosystemActivationsForUser(sql, SCHEMA, id), {});
+    } catch (e) {
+      console.error('[compute] /ecosystem-activations/:id failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'internal_error' }, {});
+    }
+  }
+
+  // Ship1 ecosystem activate/deactivate/status (de-Lambda of ecosystem-api). dual-jwks (verifyJwtIdentity)
+  // + ECOSYSTEM.enabled (COMPUTE_ECOSYSTEM_ENABLED=1 + audience + identity-write-bearer); writes delegate to
+  // :3211. Origin-allowlist CORS (no credentials), inert 503 until the /ecosystem/ vhost repoints at cutover.
+  if (pathname === '/ecosystem/status' || pathname === '/ecosystem/activate' || pathname === '/ecosystem/deactivate') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = ecosystemCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    const isStatus = pathname === '/ecosystem/status';
+    if (isStatus ? req.method !== 'GET' : req.method !== 'POST') {
+      return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    }
+    if (!ECOSYSTEM.enabled) return send(res, 503, { error: 'ecosystem compute not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { error: 'Unauthorized' }, cors);
+      let out: { status: number; body: Record<string, unknown> };
+      if (isStatus) {
+        out = await ecosystemStatus(sql, SCHEMA, identityId);
+      } else {
+        const body = parseJson(await readBody(req));
+        out = pathname === '/ecosystem/activate'
+          ? await handleEcosystemActivate(sql, SCHEMA, identityId, body)
+          : await handleEcosystemDeactivate(sql, SCHEMA, identityId, body);
+      }
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error(`[compute] ${pathname} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'INTERNAL_ERROR', message: 'Internal server error' }, cors);
+    }
+  }
+
+  // GET /genesis-pass/check -- PUBLIC (no JWT), pure compute_ro 3-hop read (de-Lambda of genesis-pass/check).
+  // Gated on ECOSYSTEM.checkEnabled (the flag alone). genesisPassCheckCors echoes the allow-listed origin so
+  // the pado.finance GP-badge hot path + chat-server alpha-guard work cross-origin. inert 503 until cutover.
+  if (pathname === '/genesis-pass/check') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = genesisPassCheckCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET') return send(res, 405, { success: false, error: 'Method Not Allowed' }, cors);
+    if (!ECOSYSTEM.checkEnabled) return send(res, 503, { success: false, error: 'genesis-pass check not enabled' }, cors);
+    try {
+      const out = await genesisPassCheck(sql, SCHEMA, new URL(req.url || '/', 'http://localhost').searchParams);
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      console.error('[compute] /genesis-pass/check failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { success: false, error: 'INTERNAL_ERROR', message: 'Failed to check registration status' }, cors);
     }
   }
 

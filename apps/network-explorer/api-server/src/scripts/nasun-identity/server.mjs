@@ -800,7 +800,104 @@ async function handleVoteRelease(body) {
   });
 }
 
+// --- POST /ecosystem/activation/upsert ------------------------------------------------
+// Authoritative write for the ecosystem activate flow (de-Lambda of ecosystem-api handleActivate's
+// activations PutCommand). Reproduces the lambda's ConditionExpression `attribute_not_exists(sk) OR
+// #s <> :active` (index.ts:294,401) as an INSERT ... ON CONFLICT DO UPDATE ... WHERE status <> 'ACTIVE',
+// so a concurrent verifier INACTIVE write and an activate ACTIVE write cannot lost-update (per-row atomic
+// in one tx, matching DDB item atomicity). When the row is already ACTIVE the DO UPDATE is skipped
+// (RETURNING empty -> changed:false), the byte-parity of the lambda's "Already activated" 200. The
+// activate path always writes status='ACTIVE'; attributes is REPLACED (lambda PutCommand is a full-item
+// replace, dropping any prior deactivatedAt/reason), matching the lambda Item {status,activatedAt,
+// lastVerifiedAt,nftCount}.
+async function handleEcosystemActivationUpsert(body) {
+  const identityId = str(body.identityId);
+  const sk = str(body.sk);
+  const nftCount = Number.isFinite(Number(body.nftCount)) && Number(body.nftCount) >= 0 ? Number(body.nftCount) : 1;
+  const activatedAt = str(body.activatedAt) || null;
+  const lastVerifiedAt = str(body.lastVerifiedAt) || null;
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!sk || sk.indexOf('#') < 0 || sk.length > 256) throw new RouteAbort(400, { error: 'sk required (nftType#walletAddress)' });
+  let changed = false;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      INSERT INTO ecosystem_activations (identity_id, sk, status, activated_at, last_verified_at, attributes)
+      VALUES (${identityId}, ${sk}, 'ACTIVE', ${activatedAt}, ${lastVerifiedAt}, ${tx.json({ nftCount })})
+      ON CONFLICT (identity_id, sk) DO UPDATE
+        SET status = 'ACTIVE',
+            activated_at = EXCLUDED.activated_at,
+            last_verified_at = EXCLUDED.last_verified_at,
+            attributes = EXCLUDED.attributes
+        WHERE ecosystem_activations.status <> 'ACTIVE'
+      RETURNING 1 AS w`;
+    changed = rows.length > 0;
+  });
+  return { status: 200, body: { ok: true, changed } };
+}
+
+// --- POST /ecosystem/activation/deactivate --------------------------------------------
+// Authoritative keyed status flip for the ecosystem deactivate flow (de-Lambda of handleDeactivate's
+// UpdateCommand SET status=INACTIVE, index.ts:458-466). The compute already resolved the exact sk via a
+// read, so this is a keyed UPDATE (no Query). Idempotent (re-applying INACTIVE -> same result). Returns
+// { updated } so the caller can 404 when no row matched (parity with the lambda's "NOT_FOUND" pre-check,
+// which the compute does on its read side).
+async function handleEcosystemActivationDeactivate(body) {
+  const identityId = str(body.identityId);
+  const sk = str(body.sk);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!sk || sk.length > 256) throw new RouteAbort(400, { error: 'sk required' });
+  let updated = 0;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      UPDATE ecosystem_activations SET status = 'INACTIVE'
+      WHERE identity_id = ${identityId} AND sk = ${sk}
+      RETURNING 1 AS w`;
+    updated = rows.length;
+  });
+  return { status: 200, body: { ok: true, updated } };
+}
+
+// --- POST /nft-ownership/upsert -------------------------------------------------------
+// On-demand ETH#LATEST cache persist for the ecosystem activate fallback (de-Lambda of
+// fetchAndPersistOwnership's PutCommand, index.ts:180 / eth-rpc.ts). Full-item replace (ON CONFLICT DO
+// UPDATE all), byte-parity with the lambda Put { pk, sk, walletAddress, snapshotDate, holdings,
+// totalNftCount, source, lastUpdatedAt }; the box promotes pk/sk/walletAddress/snapshot_date to columns
+// and keeps holdings/totalNftCount/source/lastUpdatedAt in attributes. The compute computes the merged
+// holdings (drop-the-contract + re-add) before calling, so this is a pure persist.
+async function handleNftOwnershipUpsert(body) {
+  const pk = str(body.pk);
+  const sk = str(body.sk);
+  const walletAddress = str(body.walletAddress).toLowerCase() || null;
+  const snapshotDate = str(body.snapshotDate) || null;
+  if (!pk || !sk || sk.length > 256) throw new RouteAbort(400, { error: 'pk and sk required' });
+  // Defense-in-depth on this authenticated write surface: the compute only persists ETH#* / WALLET#* rows
+  // (the lambda computed pk/sk internally, never from input). Reject any other shape so a misused
+  // identity-write bearer cannot forge arbitrary nft_ownership rows that feed activate + genesis-pass/check.
+  if (!pk.startsWith('ETH#') || !sk.startsWith('WALLET#')) throw new RouteAbort(400, { error: 'invalid pk/sk shape' });
+  const holdings = Array.isArray(body.holdings) ? body.holdings : [];
+  const totalNftCount = Number.isFinite(Number(body.totalNftCount)) ? Number(body.totalNftCount) : 0;
+  const source = str(body.source) || 'alchemy-ondemand';
+  const lastUpdatedAt = str(body.lastUpdatedAt) || new Date().toISOString();
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      INSERT INTO nft_ownership (pk, sk, wallet_address, snapshot_date, attributes)
+      VALUES (${pk}, ${sk}, ${walletAddress}, ${snapshotDate},
+              ${tx.json({ holdings, totalNftCount, source, lastUpdatedAt })})
+      ON CONFLICT (pk, sk) DO UPDATE
+        SET wallet_address = EXCLUDED.wallet_address,
+            snapshot_date = EXCLUDED.snapshot_date,
+            attributes = EXCLUDED.attributes`;
+  });
+  return { status: 200, body: { ok: true } };
+}
+
 const ROUTES = {
+  '/ecosystem/activation/upsert': handleEcosystemActivationUpsert,
+  '/ecosystem/activation/deactivate': handleEcosystemActivationDeactivate,
+  '/nft-ownership/upsert': handleNftOwnershipUpsert,
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
   '/wallet/remove': handleWalletRemove,
