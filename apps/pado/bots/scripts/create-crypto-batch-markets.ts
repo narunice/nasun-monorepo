@@ -400,14 +400,29 @@ async function main(): Promise<void> {
   for (const spec of specs) {
     const meta = buildMarketMeta(spec);
     process.stdout.write(`  [${spec.template.symbol} ${spec.horizon.label}] Creating... `);
-    try {
-      const objectId = await createMarket(client, adminKp, packageId, adminCap, resolverAddress, spec, gasCoinId);
+    // Retry transient RPC failures (503/429/5xx, version/lock conflicts). The
+    // creator wallet's gas coin version bumps under gas-smashing, and the public
+    // RPC rate-limits rapid-fire create bursts, so a no-retry loop loses most of
+    // a 15-market batch to flakiness.
+    let objectId: string | null = null;
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      try {
+        objectId = await createMarket(client, adminKp, packageId, adminCap, resolverAddress, spec, gasCoinId);
+        break;
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        const retriable = /Unexpected status code: (?:429|5\d\d)|HTTP (?:429|5\d\d)|not available for consumption|current version|ObjectVersionUnavailable|already locked|reference is not available|EquivocationDetected|fetch failed|ETIMEDOUT|ECONNRESET|socket hang up/i.test(msg);
+        if (!retriable || attempt === 5) { console.log(`FAILED: ${msg}`); break; }
+        await new Promise((r) => setTimeout(r, 2500 * attempt));
+      }
+    }
+    if (objectId) {
       console.log(`${objectId}`);
       created.push({ spec, objectId });
       console.log(`    question: ${meta.question}`);
-    } catch (err) {
-      console.log(`FAILED: ${err instanceof Error ? err.message : String(err)}`);
     }
+    // Gentle pacing so the public RPC does not 503 the next create.
+    await new Promise((r) => setTimeout(r, 800));
   }
 
   if (created.length === 0) {
