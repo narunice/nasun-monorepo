@@ -500,6 +500,17 @@ export const ECOSYSTEM = {
   onDemandFreshnessMs: 10 * 60 * 1000,
 };
 
+// --- Ship2 eth-ownership weekly job (collector + verifier oneshot) ---------------------------------
+// De-Lambda of nft-snapshot eth-collector-v2 + ownership-verifier, run by a systemd timer (NOT this long-
+// lived server process -- eth-ownership-job.ts is a separate oneshot entry). Gated on a DEDICATED
+// COMPUTE_ETH_OWNERSHIP_ENABLED=1 flag so even an accidentally-enabled timer stays INERT (the job logs +
+// exits 0) until cutover go. The job ALSO needs the identity-write bearer (nft_ownership upsert/cleanup +
+// ecosystem deactivate delegate to :3211) AND the Alchemy key (holder fetch); the --dry-run mode IGNORES the
+// flag (read-only, no writes). cadence/enable is decided after the Ship-1 soak (plan §2, default weekly).
+export const ETH_OWNERSHIP = {
+  enabled: process.env.COMPUTE_ETH_OWNERSHIP_ENABLED === '1' && !!(identityWriteBearer && ECOSYSTEM.alchemyApiKey),
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).

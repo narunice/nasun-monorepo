@@ -845,6 +845,8 @@ export async function ecosystemActivationUpsert(payload: {
 export async function ecosystemActivationDeactivate(payload: {
   identityId: string;
   sk: string;
+  reason?: string; // Ship-2 ownership-verifier passes 'ownership_lost'; the compute deactivate passes none.
+  notAfter?: string; // Ship-2 verifier passes its job-start ISO (lost-update guard); the compute deactivate omits it.
 }): Promise<{ updated: number }> {
   let lastErr: unknown;
   for (let attempt = 0; attempt <= 1; attempt++) {
@@ -877,7 +879,9 @@ export async function nftOwnershipUpsert(payload: {
   sk: string;
   walletAddress: string;
   snapshotDate: string;
-  holdings: Array<{ contractAddress: string; chain: string; tokenCount: number }>;
+  // on-demand activate sends the minimal {contractAddress, chain, tokenCount}; the Ship-2 collector sends the
+  // full holder-snapshot shape (+ collectionName/tokenIds, byte-parity with the lambda eth-collector-v2 row).
+  holdings: Array<{ contractAddress: string; chain: string; tokenCount: number; collectionName?: string; tokenIds?: string[] }>;
   totalNftCount: number;
   source: string;
   lastUpdatedAt: string;
@@ -899,4 +903,24 @@ export async function nftOwnershipUpsert(payload: {
     }
   }
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+}
+
+/**
+ * POST /nft-ownership/cleanup-stale { keepSks } -> { deleted }. The Ship-2 weekly collector calls this AFTER
+ * upserting today's ETH#LATEST rows, passing the full keep-set, to DELETE stale holders (parity with the
+ * lambda eth-collector-v2 cleanupStaleLatestRecords; on-demand negative-cache rows are preserved box-side).
+ * Single attempt (NOT retried): the collector decides cleanup eligibility (fetch-failure / drop-guard) and a
+ * transient failure simply skips cleanup until the next weekly cycle (the stale rows linger one extra cycle,
+ * harmless). THROWS on a non-2xx / transport error so the collector logs it rather than reporting success.
+ */
+export async function nftOwnershipCleanupStale(keepSks: string[]): Promise<{ deleted: number }> {
+  const res = await fetch(`${ECOSYSTEM.identityBaseUrl}/nft-ownership/cleanup-stale`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ECOSYSTEM.identityWriteBearer}` },
+    body: JSON.stringify({ keepSks }),
+    signal: AbortSignal.timeout(ECOSYSTEM.loopbackTimeoutMs),
+  });
+  if (!res.ok) throw new Error(`nft-ownership/cleanup-stale returned HTTP ${res.status}`);
+  const data = (await res.json().catch(() => null)) as { deleted?: number } | null;
+  return { deleted: data?.deleted ?? 0 };
 }

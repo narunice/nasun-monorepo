@@ -10,6 +10,7 @@
 
 import type { Sql } from 'postgres';
 import { ECOSYSTEM } from './config';
+import { fetchHoldersForContract } from './eth-holders';
 import {
   ecosystemActivationUpsert,
   ecosystemActivationDeactivate,
@@ -394,42 +395,17 @@ async function fetchAndPersistOwnership(
 // cache). One getOwnersForContract per contract per freshness window, shared across all activate attempts.
 const holderCache = new Map<string, { holders: Record<string, string[]>; at: number }>();
 
-interface AlchemyOwnersResponse {
-  owners: Array<{ ownerAddress: string; tokenBalances: Array<{ tokenId: string; balance: string }> }>;
-  pageKey?: string;
-}
-
 async function getErc1155TokenIds(wallet: string, contractAddress: string): Promise<string[]> {
-  if (!ECOSYSTEM.alchemyApiKey) throw new Error('ALCHEMY_API_KEY not configured');
   const holders = await loadOrRefreshHolderSet(contractAddress.toLowerCase());
   return holders[wallet.toLowerCase()] ?? [];
 }
 
+// On-demand cache wrapper around the shared eth-holders fetch (one getOwnersForContract per contract per
+// freshness window). The fetch + Alchemy-key guard live in eth-holders.ts (shared with the Ship-2 collector).
 async function loadOrRefreshHolderSet(contract: string): Promise<Record<string, string[]>> {
   const cached = holderCache.get(contract);
   if (cached && Date.now() - cached.at < ECOSYSTEM.holderCacheFreshnessMs) return cached.holders;
   const holders = await fetchHoldersForContract(contract);
   holderCache.set(contract, { holders, at: Date.now() });
   return holders;
-}
-
-async function fetchHoldersForContract(contract: string): Promise<Record<string, string[]>> {
-  const out: Record<string, string[]> = {};
-  let pageKey: string | undefined;
-  do {
-    const params = new URLSearchParams({ contractAddress: contract, withTokenBalances: 'true' });
-    if (pageKey) params.set('pageKey', pageKey);
-    const url = `${ECOSYSTEM.alchemyNftBaseUrl}/${ECOSYSTEM.alchemyApiKey}/getOwnersForContract?${params}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(ECOSYSTEM.holderFetchTimeoutMs) });
-    if (!res.ok) throw new Error(`getOwnersForContract HTTP ${res.status}`);
-    const data = (await res.json()) as AlchemyOwnersResponse;
-    for (const o of data.owners) {
-      const a = o.ownerAddress.toLowerCase();
-      const ids = o.tokenBalances.map((tb) => tb.tokenId);
-      if (out[a]) out[a].push(...ids);
-      else out[a] = ids;
-    }
-    pageKey = data.pageKey;
-  } while (pageKey);
-  return out;
 }

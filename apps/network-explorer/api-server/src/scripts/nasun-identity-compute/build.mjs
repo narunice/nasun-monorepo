@@ -17,8 +17,11 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 
 await build({
-  entryPoints: [resolve(here, 'src/server.ts')],
-  outfile: resolve(here, 'dist/server.mjs'),
+  // server.ts -> dist/server.mjs (the long-lived :3212 service) and eth-ownership-job.ts ->
+  // dist/eth-ownership-job.mjs (the Ship-2 weekly collector+verifier oneshot, run by a systemd timer).
+  entryPoints: [resolve(here, 'src/server.ts'), resolve(here, 'src/eth-ownership-job.ts')],
+  outdir: resolve(here, 'dist'),
+  outExtension: { '.js': '.mjs' },
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -38,4 +41,4 @@ await build({
   logLevel: 'info',
 });
 
-console.log('[build] wrote dist/server.mjs');
+console.log('[build] wrote dist/server.mjs + dist/eth-ownership-job.mjs');

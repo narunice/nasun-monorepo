@@ -847,13 +847,35 @@ async function handleEcosystemActivationDeactivate(body) {
   const sk = str(body.sk);
   if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
   if (!sk || sk.length > 256) throw new RouteAbort(400, { error: 'sk required' });
+  // Optional deactivationReason. The Ship-2 ownership-verifier sends 'ownership_lost'; the compute
+  // handleDeactivate (user-initiated) sends none. When present, mirror the lambda verifier's extra
+  // UpdateExpression attrs (deactivatedAt + deactivationReason) merged into the JSONB (nftCount preserved);
+  // when absent, a status-only flip (parity with the compute deactivate UpdateCommand SET status only).
+  const reason = str(body.reason);
+  if (reason && reason.length > 64) throw new RouteAbort(400, { error: 'reason too long' });
+  // Optional notAfter (ISO): a lost-update guard for the Ship-2 verifier. The verifier decides on a possibly-
+  // stale weekly snapshot; a user activate that lands DURING the run bumps last_verified_at to now(). When the
+  // verifier passes its job-start as notAfter, an activation re-verified AFTER that instant is NOT flipped to
+  // INACTIVE (the fresh activate wins). The user deactivate sends no notAfter -> COALESCE to +infinity ->
+  // unconditional keyed flip (unchanged). 'infinity'::timestamptz keeps NULL last_verified_at rows deletable.
+  const notAfter = str(body.notAfter) || null;
   let updated = 0;
   await sql.begin(async (tx) => {
     await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
-    const rows = await tx`
-      UPDATE ecosystem_activations SET status = 'INACTIVE'
-      WHERE identity_id = ${identityId} AND sk = ${sk}
-      RETURNING 1 AS w`;
+    const rows = reason
+      ? await tx`
+          UPDATE ecosystem_activations
+          SET status = 'INACTIVE',
+              attributes = COALESCE(attributes, '{}'::jsonb)
+                || ${tx.json({ deactivatedAt: new Date().toISOString(), deactivationReason: reason })}::jsonb
+          WHERE identity_id = ${identityId} AND sk = ${sk}
+            AND (last_verified_at IS NULL OR last_verified_at < COALESCE(${notAfter}::timestamptz, 'infinity'::timestamptz))
+          RETURNING 1 AS w`
+      : await tx`
+          UPDATE ecosystem_activations SET status = 'INACTIVE'
+          WHERE identity_id = ${identityId} AND sk = ${sk}
+            AND (last_verified_at IS NULL OR last_verified_at < COALESCE(${notAfter}::timestamptz, 'infinity'::timestamptz))
+          RETURNING 1 AS w`;
     updated = rows.length;
   });
   return { status: 200, body: { ok: true, updated } };
@@ -894,10 +916,58 @@ async function handleNftOwnershipUpsert(body) {
   return { status: 200, body: { ok: true } };
 }
 
+// --- POST /nft-ownership/cleanup-stale ------------------------------------------------
+// Ship-2 weekly collector cleanup (de-Lambda of eth-collector-v2 cleanupStaleLatestRecords). DELETEs the
+// ETH#LATEST WALLET# rows NOT in today's holder set, EXCEPT preserved on-demand negative-cache rows
+// (source='alchemy-ondemand' AND totalNftCount=0 AND lastUpdatedAt within 24h) -- byte-parity with the
+// lambda isPreservedNegativeCache. The COLLECTOR owns the decision to run cleanup at all: it short-circuits
+// (fetch-failure / drop-guard / zero-records) on the compute side and only calls this with the FULL keep-set
+// when cleanup is safe. keepSks = the 'WALLET#<addr>' sks to RETAIN; a non-empty list is REQUIRED so a bug
+// that produced an empty set can never wipe the whole holder table (defense-in-depth on a DELETE surface).
+const MAX_KEEP_SKS = 5000;
+async function handleNftOwnershipCleanupStale(body) {
+  const raw = Array.isArray(body.keepSks) ? body.keepSks : null;
+  if (!raw) throw new RouteAbort(400, { error: 'keepSks array required' });
+  if (raw.length === 0) throw new RouteAbort(400, { error: 'keepSks must be non-empty (refusing full-table cleanup)' });
+  if (raw.length > MAX_KEEP_SKS) throw new RouteAbort(400, { error: `too many keepSks (max ${MAX_KEEP_SKS})` });
+  const keepSks = [];
+  for (const s of raw) {
+    const v = str(s);
+    if (!v.startsWith('WALLET#') || v.length > 256) throw new RouteAbort(400, { error: 'invalid keepSk shape' });
+    keepSks.push(v);
+  }
+  let deleted = 0;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      DELETE FROM nft_ownership
+      WHERE pk = 'ETH#LATEST'
+        AND sk LIKE 'WALLET#%'
+        AND sk <> ALL(${keepSks}::text[])
+        AND NOT (
+          -- preserved on-demand negative cache: source=alchemy-ondemand, totalNftCount=0, lastUpdatedAt within
+          -- 24h. The ::numeric / ::timestamptz casts are GUARDED so a single malformed row (a bad/legacy
+          -- attributes value) cannot raise inside the DELETE and abort the whole cleanup: jsonb_typeof gates
+          -- the numeric cast, and an ISO-shape regex gates the timestamptz cast. A row failing either guard
+          -- fails the preservation predicate and is DELETED -- byte-parity with isPreservedNegativeCache, which
+          -- treats a missing/unparseable totalNftCount or lastUpdatedAt as "not preserved" (deletable).
+          attributes->>'source' = 'alchemy-ondemand'
+          AND jsonb_typeof(attributes->'totalNftCount') = 'number'
+          AND (attributes->>'totalNftCount')::numeric = 0
+          AND attributes->>'lastUpdatedAt' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}'
+          AND (attributes->>'lastUpdatedAt')::timestamptz > now() - interval '24 hours'
+        )
+      RETURNING 1 AS d`;
+    deleted = rows.length;
+  });
+  return { status: 200, body: { ok: true, deleted } };
+}
+
 const ROUTES = {
   '/ecosystem/activation/upsert': handleEcosystemActivationUpsert,
   '/ecosystem/activation/deactivate': handleEcosystemActivationDeactivate,
   '/nft-ownership/upsert': handleNftOwnershipUpsert,
+  '/nft-ownership/cleanup-stale': handleNftOwnershipCleanupStale,
   '/profile/upsert': handleProfileUpsert,
   '/wallet/register': handleWalletRegister,
   '/wallet/remove': handleWalletRemove,
