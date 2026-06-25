@@ -177,7 +177,7 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 | `api-server/src/scripts/backfill-referral-bonus-day.ts` | (2026-05-18 신규) 누락된 일자의 referral batch 독립 재실행 |
 | `api-server/src/scripts/repair-referral-aggregate-bug.ts` | (2026-05-18 신규) 5/11~17 silent dedup 복구 |
 | `api-server/src/scripts/ban-users.ts` | 사용자 차단 (--identity-ids 옵션 지원) |
-| `api-server/src/scripts/grant-repost-bonus.ts` | X 리포스트 사용자에게 3pt 일괄 부여 |
+| `api-server/src/scripts/repost-grant-emit.py` | X 리포스트 3pt 부여: 로컬 DDB 해석→멱등 SQL 생성, box psql 적용 (box-split; box엔 AWS 없음) |
 
 ## Operational Invariants (자주 까먹는 것)
 
