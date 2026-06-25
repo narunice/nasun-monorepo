@@ -53,13 +53,14 @@ Environment=SCREENSHOT_RETENTION_DAYS=7
 Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://staging.nasun.io,https://explorer.nasun.io,https://staging.explorer.nasun.io,https://gensol.io,https://www.gensol.io,https://gensol.nasun.io,https://staging.gensol.io,https://pado.finance,https://staging.pado.finance,https://baram.nasun.io,https://gostop.app,https://www.gostop.app,https://staging.gostop.app,http://localhost:5173,http://localhost:5174,http://localhost:5175,http://localhost:5176,http://localhost:5177,http://localhost:5178
 
 # Secrets (host-decrypted into the per-unit tmpfs $CREDENTIALS_DIRECTORY, never plaintext on disk). Cred names
-# MUST match config.ts.
-#  - pg-password:            nasun_compute_ro (copy of the sibling compute_ro cred).
-#  - write-pg-password:      nasun_bug_report (box `systemd-creds encrypt --name=write-pg-password`).
-#  - identity-bearer:        the identity-compute :3211 shared bearer (profile reads).
-#  - telegram-bot-token:     the shared nasun bot token (notifications; best-effort if absent).
-#  - explorer-bug-report-key: value of the explorer-api BUG_REPORT_API_KEY (bug-report + creator-post rewards).
-#  - screenshot-signing-key: box-generated HMAC key for the screenshot upload/serve signatures.
+# MUST match config.ts. Each cred decrypts to the secret for the noted DB role / API peer (the token shown is
+# the role/peer name, NOT the secret value).
+#  - pg-password            -> secret for the nasun_compute_ro DB role (copy of the sibling compute_ro cred).
+#  - write-pg-password      -> secret for the nasun_bug_report DB role (box `systemd-creds encrypt --name=write-pg-password`).
+#  - identity-bearer        -> the identity-compute :3211 shared bearer (profile reads).
+#  - telegram-bot-token     -> the shared nasun bot token (notifications; best-effort if absent).
+#  - explorer-bug-report-key -> value of the explorer-api BUG_REPORT_API_KEY (bug-report + creator-post rewards).
+#  - screenshot-signing-key -> box-generated HMAC key for the screenshot upload/serve signatures.
 LoadCredentialEncrypted=pg-password:/srv/nasun/bug-report/secrets/pg-password.cred
 LoadCredentialEncrypted=write-pg-password:/srv/nasun/bug-report/secrets/write-pg-password.cred
 LoadCredentialEncrypted=identity-bearer:/srv/nasun/bug-report/secrets/identity-bearer.cred
