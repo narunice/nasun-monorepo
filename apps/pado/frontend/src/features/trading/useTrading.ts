@@ -286,8 +286,9 @@ export function useTrading(): UseTrading {
     if (!balanceManagerId) {
       return { success: false, error: 'BalanceManager not created. Create one first.' };
     }
-    const tx = buildPlaceLimitOrder(balanceManagerId, params, currentPool);
-    return executeTransaction(tx);
+    // Pass a builder so executeTransaction can rebuild with fresh owned-object
+    // refs and retry on cross-tab conflicts (e.g. parallel Pado + GoStop trades).
+    return executeTransaction(() => buildPlaceLimitOrder(balanceManagerId, params, currentPool));
   }, [balanceManagerId, executeTransaction, currentPool]);
 
   const placeMarketOrder = useCallback(async (
@@ -296,8 +297,8 @@ export function useTrading(): UseTrading {
     if (!balanceManagerId) {
       return { success: false, error: 'BalanceManager not created. Create one first.' };
     }
-    const tx = buildPlaceMarketOrder(balanceManagerId, params, currentPool);
-    return executeTransaction(tx);
+    // Builder input enables fresh-rebuild conflict retry (see placeLimitOrder).
+    return executeTransaction(() => buildPlaceMarketOrder(balanceManagerId, params, currentPool));
   }, [balanceManagerId, executeTransaction, currentPool]);
 
   const cancelOrder = useCallback(async (orderId: string): Promise<TradeResult> => {

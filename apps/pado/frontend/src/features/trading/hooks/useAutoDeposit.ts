@@ -342,14 +342,18 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
         const quoteToDeposit = check.quoteShortfall > 0 ? check.quoteShortfall * DEPOSIT_BUFFER_MULTIPLIER : 0;
         const baseToDeposit = check.baseShortfall > 0 ? check.baseShortfall * DEPOSIT_BUFFER_MULTIPLIER : 0;
 
-        const tx = await buildDepositExactAmount(
+        // Probe-build once to surface the friendly "no coins" precondition before
+        // submitting (a deterministic state, not a conflict). If buildable, pass a
+        // builder so executeTransaction can rebuild with fresh coins and retry the
+        // cross-tab owned-object deposit conflict the bug report describes.
+        const probe = await buildDepositExactAmount(
           balanceManagerId,
           quoteToDeposit,
           baseToDeposit,
           currentPool
         );
 
-        if (!tx) {
+        if (!probe) {
           const missingToken = check.needsQuoteDeposit
             ? currentPool.quoteToken.symbol
             : currentPool.baseToken.symbol;
@@ -358,7 +362,24 @@ export function useAutoDeposit(balanceManagerId: string | null): UseAutoDepositR
           return { success: false, error };
         }
 
-        const result = await executeTransaction(tx);
+        let firstAttempt: Transaction | null = probe;
+        const result = await executeTransaction(async () => {
+          // Reuse the probe on the first attempt; rebuild with fresh coins only
+          // when retrying a conflict, so the happy path costs no extra coin query.
+          if (firstAttempt) {
+            const tx = firstAttempt;
+            firstAttempt = null;
+            return tx;
+          }
+          const rebuilt = await buildDepositExactAmount(
+            balanceManagerId,
+            quoteToDeposit,
+            baseToDeposit,
+            currentPool
+          );
+          if (!rebuilt) throw new Error('Deposit coins no longer available');
+          return rebuilt;
+        });
 
         if (result.success) {
           // Refresh balance data

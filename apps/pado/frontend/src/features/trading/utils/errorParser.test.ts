@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseError, formatErrorMessage } from './errorParser';
+import { parseError, formatErrorMessage, isOwnedObjectConflict } from './errorParser';
 
 // ========================================
 // 1. Network error patterns
@@ -205,5 +205,54 @@ describe('parseError — existing patterns regression', () => {
     const result = parseError('leaf_remove error in big_vector');
     expect(result.isKnown).toBe(true);
     expect(result.errorType).toBe('ORDER_NOT_FOUND');
+  });
+});
+
+// ========================================
+// 4. isOwnedObjectConflict (retry gate)
+// ========================================
+describe('isOwnedObjectConflict', () => {
+  describe('retriable owned-object conflicts (tx rejected, never committed)', () => {
+    const conflicts = [
+      'LockConflict on object 0xabc',
+      'ObjectVersionMismatch: expected v5',
+      'ObjectVersionUnavailableForConsumption',
+      'Object 0x1 is not available for consumption, current version: 42',
+      'ObjectNotFound: 0xdead',
+    ];
+    for (const msg of conflicts) {
+      it(`returns true for: ${msg.slice(0, 40)}`, () => {
+        expect(isOwnedObjectConflict(new Error(msg))).toBe(true);
+        expect(isOwnedObjectConflict(msg)).toBe(true);
+      });
+    }
+  });
+
+  // CRITICAL: timeouts must NOT be retriable. A timed-out executeTransactionBlock
+  // may have reached the fullnode, so a rebuild+resubmit would risk double-spend.
+  describe('non-retriable errors (double-spend / not-a-conflict)', () => {
+    const nonRetriable = [
+      'Request timeout',
+      'ETIMEDOUT',
+      'AbortError: signal aborted',
+      'fetch failed',
+      'NetworkError when attempting to fetch',
+      'ECONNREFUSED',
+      'MoveAbort(MoveLocation { module: ModuleId { ... name: Identifier("order_info") }, ... }, 1)',
+      'Insufficient balance',
+    ];
+    for (const msg of nonRetriable) {
+      it(`returns false for: ${msg.slice(0, 40)}`, () => {
+        expect(isOwnedObjectConflict(new Error(msg))).toBe(false);
+        expect(isOwnedObjectConflict(msg)).toBe(false);
+      });
+    }
+  });
+
+  it('returns false for empty / null / non-string input', () => {
+    expect(isOwnedObjectConflict('')).toBe(false);
+    expect(isOwnedObjectConflict(null)).toBe(false);
+    expect(isOwnedObjectConflict(undefined)).toBe(false);
+    expect(isOwnedObjectConflict(42)).toBe(false);
   });
 });

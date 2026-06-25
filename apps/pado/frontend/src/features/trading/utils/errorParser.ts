@@ -114,6 +114,31 @@ const GENERAL_ERRORS: { pattern: RegExp; message: string; errorType?: ErrorType 
 ];
 
 /**
+ * Detect Sui owned-object version/lock conflicts in a RAW (pre-formatted) error.
+ *
+ * These surface when two transactions from the same wallet reference the same
+ * owned object (gas coin / coin) concurrently, e.g. a Pado spot order and a
+ * GoStop game submitted from two tabs at the same moment. Validators REJECT the
+ * losing tx, so it never reached the chain and is safe to retry with a fresh
+ * rebuild (which resolves new owned-object versions / picks a different gas coin).
+ *
+ * Deliberately EXCLUDES RPC timeouts and network errors: a timed-out
+ * executeTransactionBlock may have actually reached the fullnode, so retrying it
+ * risks a double-spend. Those keep falling through to the user-facing message.
+ * Same rationale as the write-RPC no-retry guard in @nasun/wallet and GoStop's
+ * withStaleObjectRetry.
+ */
+const OWNED_OBJECT_CONFLICT_RE =
+  /LockConflict|ObjectVersionMismatch|ObjectVersionUnavailable|is not available for consumption|ObjectNotFound|current version:/i;
+
+export function isOwnedObjectConflict(error: unknown): boolean {
+  const msg =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  if (!msg) return false;
+  return OWNED_OBJECT_CONFLICT_RE.test(msg);
+}
+
+/**
  * MoveAbort 에러에서 모듈명과 에러코드 추출
  */
 function parseMoveAbort(error: string): { module: string; code: number } | null {
