@@ -28,6 +28,28 @@ export function loginCors(origin: string | undefined): Record<string, string> {
   };
 }
 
+// Twitter (X) login CORS: byte-parity with the auth-twitter lambda getSecurityHeaders (login.ts:22-38 +
+// callback.ts:17-33) -- origin-allowlist ACAO + credentials:true + the four security headers, headers
+// 'Content-Type'. The lambda uses two method sets (login advertises GET, callback POST); the box advertises
+// the union 'GET, POST, OPTIONS' (a superset is CORS-safe: the browser checks the requested method is in the
+// list). The lambda's login normalizes via extractOrigin (full-URL Referer) while callback strips a trailing
+// slash; for a real Origin header (protocol//host, no path) both equal this trailing-slash strip, so the
+// CORS ACAO is identical. content-type is set by send() so it is not duplicated here.
+export function twitterCors(origin: string | undefined): Record<string, string> {
+  const normalized = origin?.replace(/\/$/, '');
+  const allowed = normalized && ALLOWED_ORIGINS.includes(normalized) ? normalized : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-allow-credentials': 'true',
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'strict-transport-security': 'max-age=31536000; includeSubDomains',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+  };
+}
+
 // C8 salt CORS: origin-allowlist ACAO, NO credentials, NO security headers -- byte-parity with the
 // zklogin-salt lambda corsHeaders (zklogin-salt/src/index.ts:35-43). The jwt arrives in the request
 // BODY (not a cookie/Authorization), so credentials:true is intentionally absent. Header VALUES match

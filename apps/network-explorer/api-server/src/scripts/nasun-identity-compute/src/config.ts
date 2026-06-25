@@ -164,6 +164,39 @@ export const ADDITIONAL = {
   loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
 };
 
+// --- Twitter (X) OAuth login (de-Lambda of auth-twitter) ------------------------------------------
+// GET /auth/twitter/login + POST /auth/twitter/callback lifted off the auth-twitter lambda. The X OAuth2
+// client_id is semi-public (it ships in the X authorize URL the browser navigates to) -> unit env; the
+// client_secret IS a secret -> systemd-creds (readOptional). The callback mints via the box issuer (it
+// reuses the mintIdentity client, which is gated on LOGIN.issuerMintBearer == this module's
+// issuerMintBearer) and writes the promoted twitter columns via the box :3211 /profile/twitter-primary
+// route (identityWriteBearer) -- the SAME authoritative route the LIVE lambda already hits today
+// (IDENTITY_WRITE_FLIP_ROUTES includes /profile/twitter-primary), so the box end-state is identical to the
+// lambda path minus the dropped parallel DynamoDB write. Twitter mints NO wallet, so (unlike LOGIN) there
+// is no walletProofSecret dep. The onboarding-bonus (x-link) reuses the LINK delegation (explorer-api,
+// requireReferralActivated server-side). Gated on a DEDICATED COMPUTE_TWITTER_ENABLED=1 flag so the bundle
+// deploys INERT (503) until the api.nasun.io /auth/twitter/ vhost repoints at cutover (mirrors the
+// WALLET/PROFILE/LINK gate rationale). egress to api.x.com (allowed since C8).
+const twitterClientSecret = readOptional('twitter-client-secret', 'TWITTER_CLIENT_SECRET_FILE');
+
+export const TWITTER = {
+  enabled: process.env.COMPUTE_TWITTER_ENABLED === '1'
+    && !!(issuerMintBearer && identityWriteBearer && (process.env.COMPUTE_TWITTER_CLIENT_ID || '') && twitterClientSecret),
+  clientId: process.env.COMPUTE_TWITTER_CLIENT_ID || '',
+  clientSecret: twitterClientSecret || '',
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: identityWriteBearer || '',
+  // Default redirect URI when the request carries no Origin/Referer (parity with the lambda env
+  // TWITTER_REDIRECT_URI fallback). The X app whitelists the per-origin <origin>/callback derived below.
+  defaultRedirectUri: process.env.COMPUTE_TWITTER_REDIRECT_URI || 'https://nasun.io/callback',
+  // OAuth session TTL (parity with the lambda SessionManager ttlMinutes=15).
+  sessionTtlSec: 15 * 60,
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // X API egress budget (token exchange + users/me). Same posture as SALT.egressTimeoutMs (Google JWKS):
+  // the lambda fetched untimed per-invoke, the long-lived box caps a wedged socket. 5s default.
+  egressTimeoutMs: SALT.egressTimeoutMs,
+};
+
 // --- get-user-profile GET reads (public) ----------------------------------------------------------
 // PUBLIC get-user-profile reads (GET /profile?walletAddress= | ?identityId=) lifted off the
 // get-user-profile lambda. These are READ-ONLY and PUBLIC (no JWT, parity with the lambda GET), so they

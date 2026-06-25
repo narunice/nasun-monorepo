@@ -14,8 +14,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, twitterCors, send, RouteAbort } from './http';
 import {
   ecosystemStatus,
   ecosystemActivationsForUser,
@@ -33,6 +33,7 @@ import {
 } from './handlers';
 import { handleZkLoginSalt } from './handlers-zklogin';
 import { handleGoogleLogin } from './handlers-google';
+import { handleTwitterLogin, handleTwitterCallback } from './handlers-twitter';
 import { CHAINS } from './additional-chains';
 import {
   readProfileByIdentity,
@@ -346,6 +347,46 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
       console.error('[compute] /auth/google/verify failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { message: 'Internal Server Error' }, cors);
+    }
+  }
+
+  // Twitter (X) OAuth de-Lambda: GET /auth/twitter/login (PKCE init -> X authorize URL, or a 302 to it for
+  // ?mode=redirect) + POST /auth/twitter/callback (code exchange + getUserInfo + box-issuer mint + the box
+  // :3211 /profile/twitter-primary write for an existing profile). twitterCors (origin-allowlist +
+  // credentials + 4 security headers, parity with the auth-twitter lambda). Gated on TWITTER.enabled
+  // (COMPUTE_TWITTER_ENABLED=1 + issuer-mint/identity-write bearers + X client id/secret); inert 503 until
+  // the api.nasun.io /auth/twitter/ vhost repoints at cutover. The login route can return a 302 (mode=
+  // redirect), so that case is written directly (send() forces a JSON body). Precedence: OPTIONS -> 405
+  // (wrong method) -> 503 (disabled) -> handler.
+  if (pathname === '/auth/twitter/login' || pathname === '/auth/twitter/callback') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = twitterCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    const isLogin = pathname === '/auth/twitter/login';
+    if (isLogin ? req.method !== 'GET' : req.method !== 'POST') {
+      return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    }
+    if (!TWITTER.enabled) return send(res, 503, { error: 'twitter login compute not enabled' }, cors);
+    try {
+      if (isLogin) {
+        const url = new URL(req.url || '/', 'http://localhost');
+        // The lambda derives the redirect URI from Origin OR Referer (the Referer carries a full URL with
+        // a path, hence extractOrigin in the handler). CORS uses the Origin header (above) like every box route.
+        const originCandidate = ((req.headers['origin'] as string) || (req.headers['referer'] as string)) || undefined;
+        const out = await handleTwitterLogin({ originCandidate, mode: url.searchParams.get('mode') || undefined });
+        if (out.location) {
+          res.writeHead(302, { location: out.location, ...cors });
+          return res.end();
+        }
+        return send(res, out.status, out.body ?? {}, cors);
+      }
+      const body = parseJson(await readBody(req));
+      const out = await handleTwitterCallback(body);
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error(`[compute] ${pathname} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal Server Error', message: 'Failed to process Twitter OAuth' }, cors);
     }
   }
 
@@ -963,7 +1004,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'} twitter=${TWITTER.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

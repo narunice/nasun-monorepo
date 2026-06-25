@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK, ECOSYSTEM } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK, ECOSYSTEM, TWITTER } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -795,6 +795,48 @@ export async function grantOnboardingBonus(payload: {
   } catch (err) {
     console.warn('[compute] onboarding-bonus failed (non-fatal):', err instanceof Error ? err.message : err);
   }
+}
+
+// --- Twitter (X) login: box identity-service (:3211) loopback profile write ------------------------
+
+/**
+ * POST /profile/twitter-primary to the box identity loopback (:3211) -- the AUTHORITATIVE box PG refresh of
+ * the promoted twitter columns (twitter_handle/twitter_id) + the four attribute keys (username/
+ * originalTwitterHandle/profileImageUrl/verified) + (optional) the changedAt-deduped xHistory append.
+ * Parity with the auth-twitter lambda's authoritativeIdentityWrite(IDENTITY_ROUTES.twitterPrimary): the box
+ * route is UPDATE-only (a missing row is a 0-row no-op; the callback only calls this for an existing
+ * profile) and is ALREADY authoritative-live for the lambda (IDENTITY_WRITE_FLIP_ROUTES). THROWS on a
+ * non-2xx / transport error so a failed write never reports success (the route 500s). Retries once -- the
+ * column SET is idempotent and the xHistory append is changedAt-dedup-guarded box-side (the caller passes
+ * the SAME entry object -> same changedAt -> no double-append), so the retry is safe.
+ */
+export async function twitterPrimaryBox(payload: {
+  identityId: string;
+  twitterHandle: string;
+  twitterId: string;
+  username: string;
+  originalTwitterHandle: string;
+  profileImageUrl: string;
+  verified: boolean;
+  xHistoryEntry?: Record<string, string>;
+}): Promise<void> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= 1; attempt++) {
+    try {
+      const res = await fetch(`${TWITTER.identityBaseUrl}/profile/twitter-primary`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${TWITTER.identityWriteBearer}` },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(TWITTER.loopbackTimeoutMs),
+      });
+      if (!res.ok) throw new Error(`identity /profile/twitter-primary returned HTTP ${res.status}`);
+      return;
+    } catch (err) {
+      lastErr = err;
+      if (attempt < 1) await new Promise((r) => setTimeout(r, 400));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // --- Ship1 ecosystem activation + nft-ownership writes (box :3211 loopback, NO egress) -------------
