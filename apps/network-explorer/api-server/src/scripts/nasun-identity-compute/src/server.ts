@@ -14,8 +14,26 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, twitterCors, send, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, twitterCors, adminCors, send, sendRaw, RouteAbort } from './http';
+import {
+  authenticateAdmin,
+  exportGenesis,
+  exportGenesisPass,
+  exportBattalion,
+  exportStats,
+  hiddenProposalsList,
+  hiddenProposalsHide,
+  hiddenProposalsUnhide,
+  nftCollectionsList,
+  nftCollectionsCreate,
+  nftCollectionsUpdate,
+  nftCollectionsDelete,
+  devnetMetrics,
+  usersListOrSearch,
+  userDetail,
+  type AdminResult,
+} from './handlers-admin';
 import {
   ecosystemStatus,
   ecosystemActivationsForUser,
@@ -1000,11 +1018,107 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     }
   }
 
+  // AdminStack admin UI de-Lambda (doetwxms5a AdminExportFunction + NftCollectionsFunction). nginx
+  // `location /admin/ -> :3212/admin/` KEEPS the /admin prefix (unlike /compute/, which strips), so the
+  // box sees /admin/export/genesis, /admin/users, /admin/hidden-proposals, /admin/nft-collections, etc.
+  // (referral-review's /admin/admin/referral-review* stays on its own :3214 vhost override, ahead of this
+  // location). adminCors (origin-allowlist + credentials, GET/POST/PUT/DELETE/OPTIONS). Two PUBLIC reads
+  // (GET /admin/hidden-proposals, GET /admin/nft-collections without ?admin); everything else needs the box
+  // ADMIN role (authenticateAdmin -> 401 on non-admin, the lambda unauthorizedResponse status). Gated on
+  // ADMIN.enabled (COMPUTE_ADMIN_ENABLED=1) -> 503 inert until cutover. Precedence: OPTIONS -> 503 ->
+  // (auth where required) -> handler. CSV exports use sendRaw (text/csv); all other routes use send (JSON).
+  if (pathname.startsWith('/admin/')) {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = adminCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (!ADMIN.enabled) return send(res, 503, { error: 'admin compute not enabled' }, cors);
+
+    const sub = pathname.slice('/admin'.length); // e.g. /export/genesis, /users, /hidden-proposals/{id}
+    const authHeader = req.headers['authorization'] as string | undefined;
+    const params = new URL(req.url || '/', 'http://localhost').searchParams;
+    const method = req.method || 'GET';
+
+    // Writes a JSON-or-raw AdminResult through the right writer.
+    const emit = (out: AdminResult) => {
+      if ('raw' in out) return sendRaw(res, out.status, out.raw, out.contentType, { ...cors, ...out.headers });
+      return send(res, out.status, out.body, cors);
+    };
+
+    try {
+      // ---- PUBLIC reads (no auth) ----
+      // GET /admin/hidden-proposals (public list of hidden proposal ids for the governance page).
+      if (method === 'GET' && sub === '/hidden-proposals') {
+        return emit(await hiddenProposalsList(sql, SCHEMA));
+      }
+      // GET /admin/nft-collections (public = enabled only; ?admin=true requires admin -> all).
+      if (method === 'GET' && sub === '/nft-collections') {
+        if (params.get('admin') === 'true') {
+          const admin = await authenticateAdmin(sql, SCHEMA, authHeader);
+          if (!admin) return send(res, 401, { error: 'Unauthorized: Admin access required' }, cors);
+          return emit(await nftCollectionsList(sql, SCHEMA, false));
+        }
+        return emit(await nftCollectionsList(sql, SCHEMA, true));
+      }
+
+      // ---- everything else is admin-authed ----
+      const admin = await authenticateAdmin(sql, SCHEMA, authHeader);
+      if (!admin) return send(res, 401, { error: 'Unauthorized: Admin access required' }, cors);
+
+      // exports (CSV / JSON)
+      if (method === 'GET' && sub === '/export/genesis') return emit(await exportGenesis(sql, SCHEMA, params));
+      if (method === 'GET' && sub === '/export/genesis-pass') return emit(await exportGenesisPass(sql, SCHEMA, params));
+      if (method === 'GET' && sub === '/export/battalion') return emit(await exportBattalion(sql, SCHEMA, params));
+      if (method === 'GET' && sub === '/export/stats') return emit(await exportStats(sql, SCHEMA));
+
+      // hidden-proposals write
+      if (method === 'POST' && sub === '/hidden-proposals') {
+        const body = parseJson(await readBody(req));
+        return emit(await hiddenProposalsHide(admin, body));
+      }
+      if (method === 'DELETE' && sub.startsWith('/hidden-proposals/')) {
+        const proposalId = decodeURIComponent(sub.slice('/hidden-proposals/'.length));
+        return emit(await hiddenProposalsUnhide(proposalId));
+      }
+
+      // users
+      if (method === 'GET' && sub === '/users') return emit(await usersListOrSearch(sql, SCHEMA, params));
+      if (method === 'GET' && sub.startsWith('/users/')) {
+        const id = decodeURIComponent(sub.slice('/users/'.length));
+        if (!id) return send(res, 404, { error: 'Not found' }, cors);
+        return emit(await userDetail(sql, SCHEMA, id));
+      }
+
+      // devnet-metrics
+      if (method === 'GET' && sub === '/devnet-metrics') return emit(await devnetMetrics());
+
+      // nft-collections write
+      if (method === 'POST' && sub === '/nft-collections') {
+        const body = parseJson(await readBody(req));
+        return emit(await nftCollectionsCreate(admin, body));
+      }
+      if (method === 'PUT' && sub.startsWith('/nft-collections/')) {
+        const id = decodeURIComponent(sub.slice('/nft-collections/'.length));
+        const body = parseJson(await readBody(req));
+        return emit(await nftCollectionsUpdate(id, body));
+      }
+      if (method === 'DELETE' && sub.startsWith('/nft-collections/')) {
+        const id = decodeURIComponent(sub.slice('/nft-collections/'.length));
+        return emit(await nftCollectionsDelete(id));
+      }
+
+      return send(res, 404, { error: 'Not found' }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error(`[compute] /admin${sub} failed:`, e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
   return send(res, 404, { error: 'not_found' }, publicCors());
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'} twitter=${TWITTER.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'} twitter=${TWITTER.enabled ? 'on' : 'inert'} admin=${ADMIN.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

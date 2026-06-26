@@ -5,7 +5,7 @@
 // difference from the lambda is that compute does NOT also write DynamoDB (the chosen (B) divergence).
 
 import { createHmac, createHash, timingSafeEqual } from 'node:crypto';
-import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK, ECOSYSTEM, TWITTER } from './config';
+import { LOGIN, SALT, ADDITIONAL, TELEGRAM, TELEGRAM_VERIFY, WALLET, LINK, ECOSYSTEM, TWITTER, ADMIN } from './config';
 
 export interface MintResult {
   identityId: string;
@@ -965,4 +965,123 @@ export async function nftOwnershipCleanupStale(keepSks: string[]): Promise<{ del
   if (!res.ok) throw new Error(`nft-ownership/cleanup-stale returned HTTP ${res.status}`);
   const data = (await res.json().catch(() => null)) as { deleted?: number } | null;
   return { deleted: data?.deleted ?? 0 };
+}
+
+// --- AdminStack admin UI: box :3211 write delegations (NO egress) + devnet-metrics egress -----------
+// The admin write routes (hidden-proposals POST/DELETE, nft-collections POST/PUT/DELETE) delegate the
+// AUTHORITATIVE box PG write to the identity service (:3211), which holds the write grant (compute_ro is
+// SELECT-only). They post the validated payload the box handler persists, returning the box { status,
+// body } byte-identically so the route proxies the box's 200/201/400/404/409 through unchanged. Reuse the
+// identity-write bearer/baseUrl (the SAME loopback the ecosystem/profile/wallet writes use).
+
+// POST a JSON write to the box identity loopback (:3211). Returns the box { status, body } for ANY 2xx OR
+// 4xx so the admin route can proxy the box decision (404 not-found, 409 duplicate, 400 validation) byte-
+// identically; a box 5xx or transport/timeout error THROWS (the admin route 500s, fail-closed).
+async function adminWrite(path: string, payload: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(`${ADMIN.identityBaseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ADMIN.identityWriteBearer}` },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(ADMIN.loopbackTimeoutMs),
+  });
+  const data = (await res.json().catch(() => null)) as Record<string, unknown> | null;
+  if (res.status >= 500) throw new Error(`box ${path} returned HTTP ${res.status}`);
+  return { status: res.status, body: (data && typeof data === 'object') ? data : {} };
+}
+
+// hidden_proposals: upsert (POST /hidden-proposals -> hidden_at=now/hidden_by=adminIdentityId) + delete
+// (DELETE /hidden-proposals/{id}). nft_collections: create (POST), update (PUT /{id}), delete (DELETE /{id}).
+export function hiddenProposalUpsert(proposalId: string, hiddenBy: string) {
+  return adminWrite('/admin/hidden-proposals/upsert', { proposalId, hiddenBy });
+}
+export function hiddenProposalDelete(proposalId: string) {
+  return adminWrite('/admin/hidden-proposals/delete', { proposalId });
+}
+export function nftCollectionUpsert(payload: {
+  contractAddress: string;
+  chain: string;
+  collectionName: string;
+  nftTypeId: string;
+  featured: boolean;
+  createdBy: string;
+}) {
+  return adminWrite('/admin/nft-collections/upsert', payload);
+}
+export function nftCollectionUpdate(collectionId: string, updates: Record<string, unknown>) {
+  return adminWrite('/admin/nft-collections/update', { collectionId, updates });
+}
+export function nftCollectionDelete(collectionId: string) {
+  return adminWrite('/admin/nft-collections/delete', { collectionId });
+}
+
+export interface DevnetMetricRow {
+  date: string;
+  dau: number;
+  newAddresses: number;
+  cumulativeAddresses: number;
+  transactionCount?: number;
+}
+
+// devnet-metrics: range the box explorer-api /stats/daily-metrics (egress) over the trailing N days. The
+// admin lambda Scanned the DDB METRICS# table; the box derives the SAME { date, dau, newAddresses,
+// cumulativeAddresses, transactionCount } shape from the LIVE explorer-api computation (activity_points,
+// which the compute_ro pool cannot reach -- a different DB). transactionCount maps from explorer-api's
+// `dailyTx`; the lambda's per-row `collectedAt` is OMITTED (live compute, no collector snapshot time).
+//
+// One round-trip PER DAY would serialize to N*timeout (90*5s -> nginx 504), so the fetches run with a
+// CONCURRENCY cap (8 in-flight) AND an overall DEADLINE: once the deadline elapses, the remaining days are
+// abandoned and only the days fetched so far are returned (a partial series beats a 504). A per-day failure
+// (non-200 / transport) is skipped (the day is omitted). Sorted by date ASC (parity with the lambda sort).
+// THROWS only if the base URL is absent (the route pre-checks ADMIN.dailyMetricsBaseUrl and 503s first).
+//
+// TODO(aws-exit): collapse these N per-day round-trips into a single explorer-api /stats/daily-metrics-range
+// endpoint (one PG range scan) -- tracked as a follow-up; this fan-out is the interim parity bridge.
+export async function fetchDevnetMetricsRange(): Promise<DevnetMetricRow[]> {
+  const base = ADMIN.dailyMetricsBaseUrl.replace(/\/+$/, '');
+  const today = new Date();
+  const dates: string[] = [];
+  for (let i = ADMIN.dailyMetricsRangeDays - 1; i >= 0; i--) {
+    const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
+    dates.push(d.toISOString().slice(0, 10));
+  }
+
+  const CONCURRENCY = 8;
+  const deadline = Date.now() + ADMIN.dailyMetricsRangeDeadlineMs;
+  const out: DevnetMetricRow[] = [];
+  let cursor = 0;
+
+  async function fetchOne(date: string): Promise<void> {
+    try {
+      const res = await fetch(`${base}/daily-metrics?date=${date}`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(ADMIN.dailyMetricsTimeoutMs),
+      });
+      if (!res.ok) return;
+      const m = (await res.json().catch(() => null)) as {
+        date?: string; dau?: number; newAddresses?: number; cumulativeAddresses?: number; dailyTx?: number | null;
+      } | null;
+      if (!m || typeof m.date !== 'string') return;
+      out.push({
+        date: m.date,
+        dau: Number(m.dau) || 0,
+        newAddresses: Number(m.newAddresses) || 0,
+        cumulativeAddresses: Number(m.cumulativeAddresses) || 0,
+        transactionCount: m.dailyTx != null ? Number(m.dailyTx) : undefined,
+      });
+    } catch {
+      // best-effort: a transient explorer-api hiccup drops that day from the series
+    }
+  }
+
+  // Each worker pulls the next date off the shared cursor until the list is exhausted OR the deadline hits.
+  async function worker(): Promise<void> {
+    while (cursor < dates.length && Date.now() < deadline) {
+      const date = dates[cursor++];
+      await fetchOne(date);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, dates.length) }, () => worker()));
+
+  out.sort((a, b) => a.date.localeCompare(b.date));
+  return out;
 }

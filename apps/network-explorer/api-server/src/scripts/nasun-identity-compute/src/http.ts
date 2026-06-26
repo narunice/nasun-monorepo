@@ -183,6 +183,21 @@ export function genesisPassCheckCors(origin: string | undefined): Record<string,
   };
 }
 
+// AdminStack admin-api CORS: byte-parity with the admin-api lambda utils/response.ts corsHeaders
+// (ALLOWED_ORIGINS allow-list: echo the request origin when allow-listed, else ALLOWED_ORIGINS[0]),
+// headers 'Content-Type, Authorization', methods 'GET, POST, PUT, DELETE, OPTIONS', credentials:true.
+// The lambda matches the RAW origin (no trailing-slash strip) -- replicated exactly. Used by every
+// /admin/* route (export CSV + JSON + the write delegations).
+export function adminCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type, Authorization',
+    'access-control-allow-methods': 'GET, POST, PUT, DELETE, OPTIONS',
+    'access-control-allow-credentials': 'true',
+  };
+}
+
 export function send(
   res: ServerResponse,
   status: number,
@@ -196,6 +211,25 @@ export function send(
     ...cors,
   });
   res.end(payload);
+}
+
+// Raw-body writer (NOT JSON): the AdminStack CSV export routes return text/csv with a
+// Content-Disposition attachment header (the lambda utils/response.ts csvResponse). send() always
+// JSON.stringifies + sets application/json, so it cannot emit a CSV blob. contentType carries the full
+// header value (e.g. 'text/csv; charset=utf-8'); extraHeaders carries Content-Disposition etc.
+export function sendRaw(
+  res: ServerResponse,
+  status: number,
+  body: string,
+  contentType: string,
+  extraHeaders: Record<string, string> = {},
+): void {
+  res.writeHead(status, {
+    'content-type': contentType,
+    'content-length': Buffer.byteLength(body),
+    ...extraHeaders,
+  });
+  res.end(body);
 }
 
 // Typed 4xx abort: handlers throw this for client errors so the server maps status/body instead of

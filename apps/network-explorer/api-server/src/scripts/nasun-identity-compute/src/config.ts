@@ -544,6 +544,52 @@ export const ETH_OWNERSHIP = {
   enabled: process.env.COMPUTE_ETH_OWNERSHIP_ENABLED === '1' && !!(identityWriteBearer && ECOSYSTEM.alchemyApiKey),
 };
 
+// --- AdminStack admin UI (de-Lambda of admin-api export-whitelist + nft-collections) --------------
+// Box port of the AdminStack admin-api (doetwxms5a) AdminExportFunction + NftCollectionsFunction. The
+// admin-authed routes (export/{genesis,genesis-pass,battalion,stats}, users[/{id}], devnet-metrics, the
+// hidden-proposals/nft-collections WRITES) gate on the box ADMIN-role read (compute_ro user_profiles
+// attributes->>'role'='ADMIN'). authenticateAdmin verifies the incoming JWT via dual-jwks
+// (verifyJwtIdentity -> VERIFY.audience + the issuer JWKS) BEFORE the role read, so enabled MUST include
+// VERIFY.audience (parity with the ECOSYSTEM.enabled gate): without it EVERY admin call fails JWT verify
+// -> an undiagnosable 401. enabled also needs the identity-write-bearer (the writes delegate to :3211).
+// The two PUBLIC reads (GET /hidden-proposals, GET /nft-collections without ?admin) need no auth. A
+// DEDICATED COMPUTE_ADMIN_ENABLED=1 flag deploys the bundle INERT (503 on every /admin/* route) until the
+// api.nasun.io /admin/ location is repointed off doetwxms5a at cutover (mirrors the WALLET/PROFILE_PATCH/
+// ECOSYSTEM gate rationale).
+//
+// devnet-metrics is NOT mirrored: the admin GET /devnet-metrics timeseries is served by ranging the box
+// explorer-api /stats/daily-metrics route (which reads nasun_points.activity_points -- a DIFFERENT DB the
+// compute_ro pool cannot reach, so it is fetched over HTTPS, not run on the local pool). Gated on the
+// explorer daily-metrics base URL being set (else /devnet-metrics 503s while the rest of admin works).
+export const ADMIN = {
+  enabled: process.env.COMPUTE_ADMIN_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  identityBaseUrl: ADDITIONAL.identityBaseUrl,
+  identityWriteBearer: identityWriteBearer || '',
+  loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
+  // explorer-api /stats/daily-metrics base (e.g. https://explorer.nasun.io/api/v1/stats). A public domain,
+  // NOT a secret -> unit env. devnet-metrics ranges this per-day (egress to explorer.nasun.io, allowed since
+  // C8). When absent the /devnet-metrics route 503s (the rest of admin is unaffected).
+  dailyMetricsBaseUrl: process.env.COMPUTE_ADMIN_DAILY_METRICS_URL || '',
+  dailyMetricsTimeoutMs: (() => {
+    const o = Number(process.env.COMPUTE_ADMIN_DAILY_METRICS_TIMEOUT_MS);
+    return Number.isFinite(o) && o > 0 ? o : 5000;
+  })(),
+  // devnet-metrics range: number of trailing days to fetch (the lambda Scanned the full METRICS# table;
+  // the box bounds it to a sane window since each day is one explorer-api round-trip). Default 90.
+  dailyMetricsRangeDays: (() => {
+    const n = parseInt(process.env.COMPUTE_ADMIN_DEVNET_METRICS_DAYS || '90', 10);
+    return Number.isInteger(n) && n > 0 ? n : 90;
+  })(),
+  // Overall deadline for the whole devnet-metrics fan-out (concurrency-capped per-day fetches). Once it
+  // elapses the remaining days are abandoned and only the days fetched so far are returned (a partial
+  // series beats a 504). Default 20s -- well inside the nginx/API-Gateway response ceiling. Same guard as
+  // the other timeouts: fall back on unset/non-finite/non-positive.
+  dailyMetricsRangeDeadlineMs: (() => {
+    const o = Number(process.env.COMPUTE_ADMIN_DEVNET_METRICS_DEADLINE_MS);
+    return Number.isFinite(o) && o > 0 ? o : 20000;
+  })(),
+};
+
 // Observability: a PARTIAL config (some C3a secrets present, others absent/empty) leaves login disabled
 // (503) with no signal -- name the missing ones so a fat-fingered/empty cred at cutover is debuggable
 // rather than a silent inert service. Fail-safe is preserved (still 503, never wrong behavior).
@@ -558,4 +604,14 @@ if (!LOGIN.enabled) {
       .filter((n) => !present.some(([p]) => p === n));
     console.warn(`[compute] login DISABLED (503): partial C3a config -- missing/empty cred(s): ${missing.join(', ')}`);
   }
+}
+
+// Same observability for admin: COMPUTE_ADMIN_ENABLED=1 set but a dependency absent leaves every /admin/*
+// route 503 with no signal. Name the missing dep so a cutover misconfig is debuggable (still fail-safe 503).
+if (process.env.COMPUTE_ADMIN_ENABLED === '1' && !ADMIN.enabled) {
+  const missing = [
+    ['COMPUTE_COGNITO_AUDIENCE (VERIFY.audience)', VERIFY.audience],
+    ['identity-write-bearer', identityWriteBearer],
+  ].filter(([, v]) => !v).map(([n]) => n);
+  console.warn(`[compute] admin DISABLED (503): COMPUTE_ADMIN_ENABLED=1 but missing: ${missing.join(', ')}`);
 }

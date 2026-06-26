@@ -30,7 +30,7 @@
 //   identity-bearer  -- shared secret the login/wallet lambdas present to call the POST routes.
 
 import { createServer } from 'node:http';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import postgres from 'postgres';
 
@@ -963,7 +963,160 @@ async function handleNftOwnershipCleanupStale(body) {
   return { status: 200, body: { ok: true, deleted } };
 }
 
+// ===== AdminStack admin UI authoritative writes (de-Lambda of admin-api) ==============
+// The box compute (:3212) admin routes are SELECT-only (compute_ro); the hidden_proposals /
+// nft_collections WRITES delegate here (nasun_identity holds INSERT/UPDATE/DELETE). Byte-parity with the
+// admin-api lambda hideProposal/unhideProposal (export-whitelist.ts) + createCollection/updateCollection/
+// deleteCollection (nft-collections.ts). The mirror tables match the compute reader's column layout:
+//   hidden_proposals(proposal_id PK, hidden_at bigint, hidden_by text)
+//   nft_collections(collection_id PK, contract_address, chain, collection_name, nft_type_id, enabled,
+//     featured, created_at, updated_at, created_by)  -- ALL promoted columns (NOT an attributes jsonb).
+// ★ GRANT prerequisite (Phase 1 deploy, NOT this code): nasun_identity needs INSERT/UPDATE/DELETE on
+//   public.hidden_proposals + public.nft_collections, and nasun_compute_ro needs SELECT on
+//   public.{hidden_proposals,nft_collections,genesis_pass_allowlist,genesis_nft_whitelist,
+//   battalion_whitelist}. These tables are NOT in the dal-reload swap GRANT (it covers only
+//   user_profiles/wallet_owner/user_wallets), so the mirror creation + GRANTs are an out-of-band box step.
+
+// POST /admin/hidden-proposals/upsert { proposalId, hiddenBy } -- Put HiddenProposals (hidden_at=now ms).
+async function handleAdminHiddenProposalUpsert(body) {
+  const proposalId = str(body.proposalId);
+  const hiddenBy = str(body.hiddenBy);
+  if (!proposalId || proposalId.length > 256) throw new RouteAbort(400, { error: 'proposalId required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      INSERT INTO hidden_proposals (proposal_id, hidden_at, hidden_by)
+      VALUES (${proposalId}, ${Date.now()}, ${hiddenBy || null})
+      ON CONFLICT (proposal_id) DO UPDATE
+        SET hidden_at = EXCLUDED.hidden_at, hidden_by = EXCLUDED.hidden_by`;
+  });
+  return { status: 200, body: { ok: true, proposalId } };
+}
+
+// POST /admin/hidden-proposals/delete { proposalId } -- Delete HiddenProposals (idempotent).
+async function handleAdminHiddenProposalDelete(body) {
+  const proposalId = str(body.proposalId);
+  if (!proposalId || proposalId.length > 256) throw new RouteAbort(400, { error: 'proposalId required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`DELETE FROM hidden_proposals WHERE proposal_id = ${proposalId}`;
+  });
+  return { status: 200, body: { ok: true, proposalId } };
+}
+
+// POST /admin/nft-collections/upsert { contractAddress, chain, collectionName, nftTypeId, featured,
+// createdBy } -- create (lambda createCollection: new UUID, enabled=true, timestamps). The compute
+// pre-validates all fields, so this is a pure INSERT. Returns the created collection (parity body).
+async function handleAdminNftCollectionUpsert(body) {
+  const contractAddress = str(body.contractAddress).toLowerCase();
+  const chain = str(body.chain);
+  const collectionName = str(body.collectionName);
+  const nftTypeId = str(body.nftTypeId);
+  const createdBy = str(body.createdBy);
+  const featured = body.featured === true;
+  if (!contractAddress || !chain || !collectionName || !nftTypeId) {
+    throw new RouteAbort(400, { error: 'contractAddress, chain, collectionName, nftTypeId required' });
+  }
+  const now = new Date().toISOString();
+  const collection = {
+    collectionId: randomUUID(),
+    contractAddress,
+    chain,
+    collectionName,
+    nftTypeId,
+    enabled: true,
+    featured,
+    createdAt: now,
+    updatedAt: now,
+    createdBy,
+  };
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`
+      INSERT INTO nft_collections
+        (collection_id, contract_address, chain, collection_name, nft_type_id, enabled, featured, created_at, updated_at, created_by)
+      VALUES (${collection.collectionId}, ${contractAddress}, ${chain}, ${collectionName}, ${nftTypeId},
+              true, ${featured}, ${now}, ${now}, ${createdBy || null})`;
+  });
+  return { status: 201, body: { ok: true, collection } };
+}
+
+// POST /admin/nft-collections/update { collectionId, updates } -- partial update over the PROMOTED columns
+// (lambda updateCollection: SET only the provided fields + updated_at; disabling clears featured). 404 when
+// absent. updates carries camelCase keys (collectionName/enabled/featured/contractAddress/chain/nftTypeId),
+// mapped to columns. Built with COALESCE-style conditional SETs so an absent field is untouched.
+async function handleAdminNftCollectionUpdate(body) {
+  const collectionId = str(body.collectionId);
+  const updates = (body.updates && typeof body.updates === 'object' && !Array.isArray(body.updates)) ? body.updates : null;
+  if (!collectionId) throw new RouteAbort(400, { error: 'collectionId required' });
+  if (!updates) throw new RouteAbort(400, { error: 'updates object required' });
+  // Business rule (lambda): disabling a collection also clears featured.
+  const merged = { ...updates };
+  if (merged.enabled === false) merged.featured = false;
+  const now = new Date().toISOString();
+  let collection = null;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      SELECT collection_id, contract_address, chain, collection_name, nft_type_id, enabled, featured, created_at, updated_at, created_by
+      FROM nft_collections WHERE collection_id = ${collectionId} FOR UPDATE`;
+    if (rows.length === 0) return; // 404 below
+    const cur = rows[0];
+    const next = {
+      contract_address: merged.contractAddress !== undefined ? String(merged.contractAddress).toLowerCase() : cur.contract_address,
+      chain: merged.chain !== undefined ? String(merged.chain) : cur.chain,
+      collection_name: merged.collectionName !== undefined ? String(merged.collectionName) : cur.collection_name,
+      nft_type_id: merged.nftTypeId !== undefined ? String(merged.nftTypeId) : cur.nft_type_id,
+      enabled: merged.enabled !== undefined ? merged.enabled === true : cur.enabled,
+      featured: merged.featured !== undefined ? merged.featured === true : cur.featured,
+    };
+    await tx`
+      UPDATE nft_collections SET
+        contract_address = ${next.contract_address},
+        chain = ${next.chain},
+        collection_name = ${next.collection_name},
+        nft_type_id = ${next.nft_type_id},
+        enabled = ${next.enabled},
+        featured = ${next.featured},
+        updated_at = ${now}
+      WHERE collection_id = ${collectionId}`;
+    collection = {
+      collectionId,
+      contractAddress: next.contract_address ?? '',
+      chain: next.chain ?? 'ethereum',
+      collectionName: next.collection_name ?? '',
+      nftTypeId: next.nft_type_id ?? undefined,
+      enabled: next.enabled ?? true,
+      featured: next.featured === true,
+      createdAt: cur.created_at ?? '',
+      updatedAt: now,
+      createdBy: cur.created_by ?? '',
+    };
+  });
+  if (!collection) throw new RouteAbort(404, { error: 'Collection not found' });
+  return { status: 200, body: { ok: true, collection } };
+}
+
+// POST /admin/nft-collections/delete { collectionId } -- delete (lambda deleteCollection: 404 when absent).
+async function handleAdminNftCollectionDelete(body) {
+  const collectionId = str(body.collectionId);
+  if (!collectionId) throw new RouteAbort(400, { error: 'collectionId required' });
+  let deleted = 0;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`DELETE FROM nft_collections WHERE collection_id = ${collectionId} RETURNING 1 AS w`;
+    deleted = rows.length;
+  });
+  if (deleted === 0) throw new RouteAbort(404, { error: 'Collection not found' });
+  return { status: 200, body: { ok: true, collectionId } };
+}
+
 const ROUTES = {
+  '/admin/hidden-proposals/upsert': handleAdminHiddenProposalUpsert,
+  '/admin/hidden-proposals/delete': handleAdminHiddenProposalDelete,
+  '/admin/nft-collections/upsert': handleAdminNftCollectionUpsert,
+  '/admin/nft-collections/update': handleAdminNftCollectionUpdate,
+  '/admin/nft-collections/delete': handleAdminNftCollectionDelete,
   '/ecosystem/activation/upsert': handleEcosystemActivationUpsert,
   '/ecosystem/activation/deactivate': handleEcosystemActivationDeactivate,
   '/nft-ownership/upsert': handleNftOwnershipUpsert,
