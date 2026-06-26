@@ -105,7 +105,20 @@ export async function handleUnlinkAccount(
   const linkedAccounts: Record<string, any> = primaryProfile.linkedAccounts || {};
   const providerKey = String(provider).toLowerCase();
   if (!linkedAccounts[providerKey]) {
-    throw new RouteAbort(404, { message: `No linked ${provider} account found.` });
+    // Self-canon X: a canonicalized twitter shows as connected via the primary's PROMOTED columns
+    // (twitter_handle/twitter_id) with no linkedAccounts.twitter entry (see the 0.5 affirm in
+    // handleLinkAccount + the frontend's promoted-column display). Unlinking it must clear those
+    // promoted columns rather than 404. Fall through to the normal twitter-strip path below (the
+    // twitterStripped branch NULLs the promoted columns and drops the originalTwitterHandle/
+    // profileImageUrl attrs) rather than duplicating it; the secondary-cleanup block self-skips since
+    // there is no secondary identity. Guarded to a non-Twitter-login primary: for a Twitter-PROVIDER
+    // primary the twitter id IS the login identity (and the UI shows no unlink action), so 404 as before.
+    const promotedTwitterOnly = providerKey === 'twitter'
+      && primaryProfile.provider !== 'Twitter'
+      && !!(primaryProfile.twitterId || primaryProfile.twitterHandle);
+    if (!promotedTwitterOnly) {
+      throw new RouteAbort(404, { message: `No linked ${provider} account found.` });
+    }
   }
 
   const unlinkedAccount = linkedAccounts[providerKey];
@@ -205,6 +218,22 @@ export async function handleLinkAccount(
     }
   } else if (primaryIdentityId !== authenticatedIdentityId) {
     throw new RouteAbort(403, { message: 'Forbidden. You can only link accounts to your own identity.' });
+  }
+
+  // 0.5 Self-canon X affirm. The AWS-exit identity migration canonicalized some users' twitter
+  //     credential onto their own primary identity (issuer.identity_map twitter_<id> -> primaryId),
+  //     so a fresh X OAuth now mints secondaryIdentityId === primaryIdentityId. Re-linking/Sync then
+  //     sends secondary === primary, which the transfer-detection scan below (step 2.5) would
+  //     misread as a conflict against the caller's OWN linked accounts (-> spurious LINK_NEEDS_CONFIRM
+  //     or, after confirm, a self twitter-uniqueness 409). secondary === primary is itself PROOF the
+  //     caller owns this twitter (the issuer minted it onto the JWT-sub primary), so there is nothing
+  //     to link: affirm and return. We write NOTHING (no self-referential linkedAccounts.twitter,
+  //     which would break unlink) -- the promoted twitter columns were already refreshed by the
+  //     OAuth callback's twitter-primary mirror, and the x-link onboarding bonus already fired there.
+  //     Scoped to non-admin twitter self-links only; admin-link and other providers are unaffected.
+  if (!isAdminLink && primaryIdentityId === secondaryIdentityId
+      && String(secondaryProvider).toLowerCase() === 'twitter') {
+    return { status: 200, body: { success: true, selfAffirmed: true, message: 'X account already linked to this wallet.' } };
   }
 
   // 1. Secondary profile (box). Auto-create in-memory when absent; persisted via the final link-sync
