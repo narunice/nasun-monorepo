@@ -61,12 +61,21 @@ Environment=ALLOWED_ORIGINS=https://nasun.io,https://www.nasun.io,https://stagin
 #  - telegram-bot-token     -> the shared nasun bot token (notifications; best-effort if absent).
 #  - explorer-bug-report-key -> value of the explorer-api BUG_REPORT_API_KEY (bug-report + creator-post rewards).
 #  - screenshot-signing-key -> box-generated HMAC key for the screenshot upload/serve signatures.
+#  - admin-service-key (OPTIONAL) -> operator service key for the bug-report admin routes (x-internal-key).
+#       Absent => the service-key auth path is disabled and the admin routes require the dual-jwks JWT
+#       (fail-safe). To enable: create the cred, then UNCOMMENT the matching LoadCredentialEncrypted below
+#       (a missing LoadCredentialEncrypted file fails unit start, so the line stays commented until provisioned):
+#         head -c 36 /dev/urandom | base64 \
+#           | systemd-creds encrypt --name=admin-service-key - /srv/nasun/bug-report/secrets/admin-service-key.cred
 LoadCredentialEncrypted=pg-password:/srv/nasun/bug-report/secrets/pg-password.cred
 LoadCredentialEncrypted=write-pg-password:/srv/nasun/bug-report/secrets/write-pg-password.cred
 LoadCredentialEncrypted=identity-bearer:/srv/nasun/bug-report/secrets/identity-bearer.cred
 LoadCredentialEncrypted=telegram-bot-token:/srv/nasun/bug-report/secrets/telegram-bot-token.cred
 LoadCredentialEncrypted=explorer-bug-report-key:/srv/nasun/bug-report/secrets/explorer-bug-report-key.cred
 LoadCredentialEncrypted=screenshot-signing-key:/srv/nasun/bug-report/secrets/screenshot-signing-key.cred
+# OPTIONAL operator service key (see the admin-service-key note above). Uncomment ONLY after the .cred file
+# exists, otherwise systemd fails to start the unit.
+#LoadCredentialEncrypted=admin-service-key:/srv/nasun/bug-report/secrets/admin-service-key.cred
 
 # --- hardening (mirrors nasun-referral.service, MINUS the loopback-only egress filter) ---
 NoNewPrivileges=yes
