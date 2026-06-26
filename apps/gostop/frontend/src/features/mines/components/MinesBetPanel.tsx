@@ -34,8 +34,15 @@ export function MinesBetPanel({
   const overCap = bet > maxBetAllowed;
   const theoreticalPayout = bet * maxMul;
   const payoutWillCap = theoreticalPayout > payoutCapNusdc;
-  
+
   const fmtNum = (n: number) => n.toFixed(2);
+
+  // Keep mine count within the contract-enforced range regardless of input
+  // path (typed number, slider drag, or empty field). The on-chain
+  // create_session asserts MIN_MINES..=MAX_MINES, so clamp before it reaches
+  // the transaction builder.
+  const clampMines = (n: number) =>
+    Math.max(MINES_MIN_MINES, Math.min(MINES_MAX_MINES, Math.round(n) || MINES_MIN_MINES));
 
   return (
     <section className="panel p-5 sm:p-7 space-y-6">
@@ -65,13 +72,24 @@ export function MinesBetPanel({
             Mines ({MINES_MIN_MINES}-{MINES_MAX_MINES})
           </label>
           <input
-            type="range"
+            type="number"
             min={MINES_MIN_MINES}
             max={MINES_MAX_MINES}
+            step={1}
             value={mineCount}
-            onChange={(e) => onMineCountChange(Number(e.target.value))}
-            className="w-full"
+            onChange={(e) => onMineCountChange(clampMines(Number(e.target.value)))}
+            className="w-full px-4 py-3 rounded-lg bg-ink-900 border border-gold-subtle text-neutral-100 font-mono focus:outline-none focus:border-gold-200/60"
           />
+          <div className="mt-3">
+            <input
+              type="range"
+              min={MINES_MIN_MINES}
+              max={MINES_MAX_MINES}
+              value={mineCount}
+              onChange={(e) => onMineCountChange(clampMines(Number(e.target.value)))}
+              className="w-full"
+            />
+          </div>
           <p className="text-sm text-gold-200 mt-1 font-mono">
             {mineCount} / {MINES_GRID_SIZE - 1}
           </p>
