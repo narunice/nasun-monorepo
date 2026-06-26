@@ -278,7 +278,7 @@ function RankTooltip({
 export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
   className = "",
 }) => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const identityId = user?.identityId;
   const [days, setDays] = useState<DaysOption>(7);
 
@@ -286,6 +286,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     score,
     isLoading: scoreLoading,
     isError: scoreError,
+    isSessionStale,
     refresh,
     isRefreshing,
     cooldownSeconds,
@@ -451,7 +452,14 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
         trailing={rangeSelector}
       />
 
-      {isLoading ? (
+      {isSessionStale ? (
+        <UjuScoreUnavailableFallback
+          sessionStale
+          onReauth={() => {
+            void logout();
+          }}
+        />
+      ) : isLoading ? (
         <div className="flex h-48 items-center justify-center">
           <Spinner />
         </div>
