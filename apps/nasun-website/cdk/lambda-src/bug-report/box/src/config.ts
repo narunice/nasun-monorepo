@@ -118,6 +118,14 @@ export const EXPLORER = {
   apiKey: readOptional('explorer-bug-report-key', 'EXPLORER_BUG_REPORT_API_KEY'),
 };
 
+// Operator service key for the bug-report ADMIN routes (presented as the `x-internal-key` header). OPTIONAL:
+// when unset, the service-key path is disabled and those routes require the dual-jwks admin JWT (fail-safe).
+// server.ts scopes it to /admin/bug-reports (list + update) ONLY -- never the creator-posts admin routes.
+// Lets a human operator run the bug-triage fetch/apply with a stored key instead of grabbing a fresh 1h
+// admin JWT each run. Trade-off: a long-lived key is a larger attack surface than the ephemeral JWT, hence
+// the narrow route scope + constant-time compare + audit log in server.ts.
+export const ADMIN_SERVICE_KEY = readOptional('admin-service-key', 'BUG_REPORT_ADMIN_SERVICE_KEY_FILE');
+
 // Telegram notification (best-effort). Token via systemd cred (shared nasun bot token); chat id is non-secret.
 export const TELEGRAM = {
   botToken: readOptional('telegram-bot-token', 'TELEGRAM_BOT_TOKEN_FILE'),

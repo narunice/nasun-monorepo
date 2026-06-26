@@ -7,8 +7,22 @@
 //    authenticateAdmin (UserProfiles role === 'ADMIN').
 
 import { createRemoteJWKSet, jwtVerify, decodeJwt } from 'jose';
-import { AUTH } from './config';
+import { timingSafeEqual } from 'node:crypto';
+import { AUTH, ADMIN_SERVICE_KEY } from './config';
 import { getAdminRole } from './db';
+
+// Constant-time match of the operator service key (the `x-internal-key` header) against the configured
+// ADMIN_SERVICE_KEY. Returns false when the key is unset (fail-safe: the admin routes then require the
+// dual-jwks JWT) or on any length/value mismatch. Length-guards before timingSafeEqual, which throws on
+// unequal buffer lengths. This is an additive, scoped path -- the JWT + ADMIN-role check
+// (authenticateAdmin) is unchanged and remains the only auth for the human admin UI.
+export function serviceKeyMatches(provided: string | undefined): boolean {
+  if (!provided || !ADMIN_SERVICE_KEY) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(ADMIN_SERVICE_KEY);
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
 
 let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 function getJwks() {

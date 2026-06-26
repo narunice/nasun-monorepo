@@ -17,7 +17,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 import { PORT, HOST, ALLOWED_ORIGINS, AUTH, writeCred } from './config';
-import { verifyIdentityFromBearer, authenticateAdmin } from './auth';
+import { verifyIdentityFromBearer, authenticateAdmin, serviceKeyMatches } from './auth';
 import type { Result } from './result';
 import * as bug from './bug-report-handlers';
 import * as cp from './creator-posts-handlers';
@@ -60,6 +60,31 @@ function userRoute(name: string, fn: (identityId: string, c: Context) => Promise
 function adminRoute(name: string, fn: (adminId: string, c: Context) => Promise<Result>) {
   return async (c: Context) => {
     const adminId = await authenticateAdmin(c.req.header('authorization'));
+    if (!adminId) return c.json({ error: 'Unauthorized: admin access required' }, 401);
+    try {
+      const { status, body } = await fn(adminId, c);
+      return c.json(body as object, status as 200);
+    } catch (e) {
+      console.error(`[bug-report] admin ${name} failed:`, e instanceof Error ? e.message : e);
+      return c.json({ error: 'Internal server error' }, 500);
+    }
+  };
+}
+
+// Like adminRoute, but ALSO accepts the operator service key (x-internal-key) as an alternative to the
+// dual-jwks admin JWT. Used ONLY for the bug-report admin routes (list + update) -- the creator-posts admin
+// routes keep adminRoute (JWT + ADMIN role only). The key path is disabled when ADMIN_SERVICE_KEY is unset
+// (serviceKeyMatches -> false), so behavior is identical to adminRoute until a key is provisioned.
+// Service-key calls are audit-logged (the JWT path already attributes a real adminId).
+function adminOrServiceKeyRoute(name: string, fn: (adminId: string, c: Context) => Promise<Result>) {
+  return async (c: Context) => {
+    let adminId: string | null;
+    if (serviceKeyMatches(c.req.header('x-internal-key'))) {
+      adminId = 'service:bug-triage';
+      console.log(`[bug-report] admin ${name} via=service:bug-triage method=${c.req.method} path=${c.req.path}`);
+    } else {
+      adminId = await authenticateAdmin(c.req.header('authorization'));
+    }
     if (!adminId) return c.json({ error: 'Unauthorized: admin access required' }, 401);
     try {
       const { status, body } = await fn(adminId, c);
@@ -137,9 +162,9 @@ routes.get('/bug-report/screenshot', async (c) => {
 routes.post('/v1/creator-posts', userRoute('cp-submit', async (id, c) => cp.handleCreatorPostSubmit(id, await c.req.text())));
 routes.get('/v1/creator-posts/my', userRoute('cp-my', (id, c) => cp.handleCreatorPostMyList(id, { limit: c.req.query('limit'), cursor: c.req.query('cursor') })));
 
-// --- bug-report admin ---
-routes.get('/admin/bug-reports', adminRoute('br-list', (_a, c) => admin.handleBugReportList({ status: c.req.query('status') })));
-routes.patch('/admin/bug-reports/:reportId', adminRoute('br-update', async (_a, c) => admin.handleBugReportUpdate(c.req.param('reportId') ?? '', await jsonBody(c))));
+// --- bug-report admin (JWT+ADMIN OR the scoped bug-triage service key) ---
+routes.get('/admin/bug-reports', adminOrServiceKeyRoute('br-list', (_a, c) => admin.handleBugReportList({ status: c.req.query('status') })));
+routes.patch('/admin/bug-reports/:reportId', adminOrServiceKeyRoute('br-update', async (_a, c) => admin.handleBugReportUpdate(c.req.param('reportId') ?? '', await jsonBody(c))));
 
 // --- creator-posts admin ---
 routes.get('/admin/creator-posts', adminRoute('cp-list', (_a, c) => admin.handleCreatorPostsList({ status: c.req.query('status'), limit: c.req.query('limit'), cursor: c.req.query('cursor') })));
