@@ -58,7 +58,21 @@ export const ConnectedAccountsCard: FC<ConnectedAccountsCardProps> = ({ classNam
   const isMetaMaskPrimary = user.provider === "MetaMask";
 
   // Linked Data
-  const twitterData = isTwitterPrimary ? user : user.linkedAccounts?.twitter;
+  // Self-canon X (AWS-exit identity migration): a canonicalized twitter credential shows up only via
+  // the primary's PROMOTED top-level twitterHandle/twitterId, with no linkedAccounts.twitter entry.
+  // Fall back to those promoted fields so X still renders as connected (parity with CreatorPostsCard's
+  // `user?.twitterHandle || ...` read). Only triggers when there is no linkedAccounts.twitter, so a
+  // normal linked secondary is unaffected.
+  const twitterData = isTwitterPrimary
+    ? user
+    : user.linkedAccounts?.twitter
+      ?? (user.twitterHandle
+        ? {
+            twitterHandle: user.twitterHandle,
+            originalTwitterHandle: user.originalTwitterHandle,
+            twitterId: user.twitterId,
+          }
+        : undefined);
   const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
   const metamaskData = isMetaMaskPrimary ? user : user.linkedAccounts?.metamask;
   const isMetaMaskLinked = !!metamaskData;

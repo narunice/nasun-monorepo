@@ -44,7 +44,19 @@ export const UjuConnectedSocialsCard: FC<UjuConnectedSocialsCardProps> = ({
   const isTwitterPrimary = user.provider === "Twitter";
   const isGooglePrimary = user.provider === "Google";
 
-  const twitterData = isTwitterPrimary ? user : user.linkedAccounts?.twitter;
+  // Self-canon X (AWS-exit identity migration): a canonicalized twitter credential shows only via the
+  // primary's PROMOTED top-level twitterHandle/twitterId, with no linkedAccounts.twitter entry. Fall
+  // back to those promoted fields so X still renders as connected (parity with ConnectedAccountsCard).
+  const twitterData = isTwitterPrimary
+    ? user
+    : user.linkedAccounts?.twitter
+      ?? (user.twitterHandle
+        ? {
+            twitterHandle: user.twitterHandle,
+            originalTwitterHandle: user.originalTwitterHandle,
+            twitterId: user.twitterId,
+          }
+        : undefined);
   const googleData = isGooglePrimary ? user : user.linkedAccounts?.google;
 
   return (
