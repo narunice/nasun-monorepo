@@ -557,36 +557,34 @@ export const ETH_OWNERSHIP = {
 // api.nasun.io /admin/ location is repointed off doetwxms5a at cutover (mirrors the WALLET/PROFILE_PATCH/
 // ECOSYSTEM gate rationale).
 //
-// devnet-metrics is NOT mirrored: the admin GET /devnet-metrics timeseries is served by ranging the box
-// explorer-api /stats/daily-metrics route (which reads nasun_points.activity_points -- a DIFFERENT DB the
-// compute_ro pool cannot reach, so it is fetched over HTTPS, not run on the local pool). Gated on the
+// devnet-metrics is NOT mirrored: the admin GET /devnet-metrics timeseries is served by ONE call to the box
+// explorer-api /stats/daily-metrics-range route (which reads nasun_points.activity_points -- a DIFFERENT DB
+// the compute_ro pool cannot reach, so it is fetched over HTTPS, not run on the local pool). Gated on the
 // explorer daily-metrics base URL being set (else /devnet-metrics 503s while the rest of admin works).
 export const ADMIN = {
   enabled: process.env.COMPUTE_ADMIN_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
   identityBaseUrl: ADDITIONAL.identityBaseUrl,
   identityWriteBearer: identityWriteBearer || '',
   loopbackTimeoutMs: ADDITIONAL.loopbackTimeoutMs,
-  // explorer-api /stats/daily-metrics base (e.g. https://explorer.nasun.io/api/v1/stats). A public domain,
-  // NOT a secret -> unit env. devnet-metrics ranges this per-day (egress to explorer.nasun.io, allowed since
+  // explorer-api /stats base (e.g. https://explorer.nasun.io/api/v1/stats). A public domain, NOT a secret
+  // -> unit env. devnet-metrics calls {base}/daily-metrics-range (egress to explorer.nasun.io, allowed since
   // C8). When absent the /devnet-metrics route 503s (the rest of admin is unaffected).
   dailyMetricsBaseUrl: process.env.COMPUTE_ADMIN_DAILY_METRICS_URL || '',
+  // Timeout for the single daily-metrics-range fetch (one PG range scan upstream). Default 15s -- well
+  // inside the nginx/API-Gateway response ceiling. Falls back on unset/non-finite/non-positive.
   dailyMetricsTimeoutMs: (() => {
     const o = Number(process.env.COMPUTE_ADMIN_DAILY_METRICS_TIMEOUT_MS);
-    return Number.isFinite(o) && o > 0 ? o : 5000;
+    return Number.isFinite(o) && o > 0 ? o : 15000;
   })(),
-  // devnet-metrics range: number of trailing days to fetch (the lambda Scanned the full METRICS# table;
-  // the box bounds it to a sane window since each day is one explorer-api round-trip). Default 90.
+  // devnet-metrics range: number of trailing days to fetch (the lambda Scanned the full METRICS# table; the
+  // box bounds it to a sane window). The explorer-api /daily-metrics-range endpoint REJECTS a span over 400
+  // days with a 400, which the client maps to an empty series -- so this is CLAMPED to <=366 to keep it
+  // strictly inside that server cap (a fat-fingered COMPUTE_ADMIN_DEVNET_METRICS_DAYS=500 would otherwise
+  // silently blank the chart). Default 90.
   dailyMetricsRangeDays: (() => {
     const n = parseInt(process.env.COMPUTE_ADMIN_DEVNET_METRICS_DAYS || '90', 10);
-    return Number.isInteger(n) && n > 0 ? n : 90;
-  })(),
-  // Overall deadline for the whole devnet-metrics fan-out (concurrency-capped per-day fetches). Once it
-  // elapses the remaining days are abandoned and only the days fetched so far are returned (a partial
-  // series beats a 504). Default 20s -- well inside the nginx/API-Gateway response ceiling. Same guard as
-  // the other timeouts: fall back on unset/non-finite/non-positive.
-  dailyMetricsRangeDeadlineMs: (() => {
-    const o = Number(process.env.COMPUTE_ADMIN_DEVNET_METRICS_DEADLINE_MS);
-    return Number.isFinite(o) && o > 0 ? o : 20000;
+    const v = Number.isInteger(n) && n > 0 ? n : 90;
+    return Math.min(v, 366);
   })(),
 };
 

@@ -1022,66 +1022,53 @@ export interface DevnetMetricRow {
   transactionCount?: number;
 }
 
-// devnet-metrics: range the box explorer-api /stats/daily-metrics (egress) over the trailing N days. The
-// admin lambda Scanned the DDB METRICS# table; the box derives the SAME { date, dau, newAddresses,
-// cumulativeAddresses, transactionCount } shape from the LIVE explorer-api computation (activity_points,
-// which the compute_ro pool cannot reach -- a different DB). transactionCount maps from explorer-api's
-// `dailyTx`; the lambda's per-row `collectedAt` is OMITTED (live compute, no collector snapshot time).
+// devnet-metrics: one round-trip to the box explorer-api /stats/daily-metrics-range (egress) for the
+// trailing N days. The admin lambda Scanned the DDB METRICS# table; the box derives the SAME { date, dau,
+// newAddresses, cumulativeAddresses, transactionCount } shape from the LIVE explorer-api computation
+// (activity_points, which the compute_ro pool cannot reach -- a different DB). transactionCount maps from
+// explorer-api's `dailyTx`; the lambda's per-row `collectedAt` is OMITTED (live compute, no collector
+// snapshot time). Days are returned ASC (the range endpoint orders by day; gaps are zero-filled there).
 //
-// One round-trip PER DAY would serialize to N*timeout (90*5s -> nginx 504), so the fetches run with a
-// CONCURRENCY cap (8 in-flight) AND an overall DEADLINE: once the deadline elapses, the remaining days are
-// abandoned and only the days fetched so far are returned (a partial series beats a 504). A per-day failure
-// (non-200 / transport) is skipped (the day is omitted). Sorted by date ASC (parity with the lambda sort).
-// THROWS only if the base URL is absent (the route pre-checks ADMIN.dailyMetricsBaseUrl and 503s first).
-//
-// TODO(aws-exit): collapse these N per-day round-trips into a single explorer-api /stats/daily-metrics-range
-// endpoint (one PG range scan) -- tracked as a follow-up; this fan-out is the interim parity bridge.
+// A single range scan replaces the former N per-day fan-out. On a non-200 / transport error / malformed
+// body the series is dropped (empty array, best-effort) rather than throwing -- the chart degrades to empty
+// instead of 500ing the whole admin call. THROWS only if the base URL is absent (the route pre-checks
+// ADMIN.dailyMetricsBaseUrl and 503s first).
 export async function fetchDevnetMetricsRange(): Promise<DevnetMetricRow[]> {
   const base = ADMIN.dailyMetricsBaseUrl.replace(/\/+$/, '');
+  // Trailing N-day window, UTC. The range endpoint is inclusive of both bounds.
   const today = new Date();
-  const dates: string[] = [];
-  for (let i = ADMIN.dailyMetricsRangeDays - 1; i >= 0; i--) {
-    const d = new Date(today.getTime() - i * 24 * 60 * 60 * 1000);
-    dates.push(d.toISOString().slice(0, 10));
-  }
+  const to = today.toISOString().slice(0, 10);
+  const from = new Date(today.getTime() - (ADMIN.dailyMetricsRangeDays - 1) * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 
-  const CONCURRENCY = 8;
-  const deadline = Date.now() + ADMIN.dailyMetricsRangeDeadlineMs;
-  const out: DevnetMetricRow[] = [];
-  let cursor = 0;
-
-  async function fetchOne(date: string): Promise<void> {
-    try {
-      const res = await fetch(`${base}/daily-metrics?date=${date}`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(ADMIN.dailyMetricsTimeoutMs),
-      });
-      if (!res.ok) return;
-      const m = (await res.json().catch(() => null)) as {
-        date?: string; dau?: number; newAddresses?: number; cumulativeAddresses?: number; dailyTx?: number | null;
-      } | null;
-      if (!m || typeof m.date !== 'string') return;
-      out.push({
+  try {
+    const res = await fetch(`${base}/daily-metrics-range?from=${from}&to=${to}`, {
+      method: 'GET',
+      signal: AbortSignal.timeout(ADMIN.dailyMetricsTimeoutMs),
+    });
+    if (!res.ok) return [];
+    const body = (await res.json().catch(() => null)) as {
+      data?: {
+        date?: string;
+        dau?: number;
+        newAddresses?: number;
+        cumulativeAddresses?: number;
+        dailyTx?: number | null;
+      }[];
+    } | null;
+    if (!body || !Array.isArray(body.data)) return [];
+    return body.data
+      .filter((m): m is { date: string } & typeof m => typeof m?.date === 'string')
+      .map((m) => ({
         date: m.date,
         dau: Number(m.dau) || 0,
         newAddresses: Number(m.newAddresses) || 0,
         cumulativeAddresses: Number(m.cumulativeAddresses) || 0,
         transactionCount: m.dailyTx != null ? Number(m.dailyTx) : undefined,
-      });
-    } catch {
-      // best-effort: a transient explorer-api hiccup drops that day from the series
-    }
+      }));
+  } catch {
+    // best-effort: a transient explorer-api hiccup yields an empty series, not a 500
+    return [];
   }
-
-  // Each worker pulls the next date off the shared cursor until the list is exhausted OR the deadline hits.
-  async function worker(): Promise<void> {
-    while (cursor < dates.length && Date.now() < deadline) {
-      const date = dates[cursor++];
-      await fetchOne(date);
-    }
-  }
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, dates.length) }, () => worker()));
-
-  out.sort((a, b) => a.date.localeCompare(b.date));
-  return out;
 }

@@ -400,4 +400,123 @@ app.get('/daily-metrics', async (c) => {
   }
 });
 
+// Daily metrics over a date RANGE for the devnet admin dashboard. Single PG range scan that returns the
+// SAME per-day { date, dau, newAddresses, cumulativeAddresses, dailyTx } shape as GET /daily-metrics, for
+// every day in [from, to] inclusive (gaps zero-filled). This collapses the box admin compute's former
+// N per-day round-trips (one /daily-metrics call per day) into one request. Definitions are byte-parity
+// with the single-date route:
+//   dau               = distinct wallets with on-chain activity on the day
+//   newAddresses      = wallets whose first-ever on-chain activity is on the day
+//   cumulativeAddresses = rolling distinct wallet count up to and including the day
+//                       = (count of first activity BEFORE `from`) + running sum of newAddresses in-range
+//   dailyTx           = sui-indexer checkpoint tx count for the day (null when uncovered; different DB)
+const MAX_RANGE_DAYS = 400;
+app.get('/daily-metrics-range', async (c) => {
+  const fromParam = c.req.query('from');
+  const toParam = c.req.query('to');
+  const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+  if (!fromParam || !DATE_RE.test(fromParam) || !toParam || !DATE_RE.test(toParam)) {
+    return c.json({ error: 'from and to query params required in YYYY-MM-DD format' }, 400);
+  }
+  if (fromParam > toParam) {
+    return c.json({ error: 'from must be <= to' }, 400);
+  }
+  // Span guard: bound the scan window (lexical compare is safe for YYYY-MM-DD; exact day count is enforced
+  // in SQL via generate_series, this is just a cheap pre-check against an absurd range).
+  const spanDays = Math.round(
+    (Date.parse(`${toParam}T00:00:00Z`) - Date.parse(`${fromParam}T00:00:00Z`)) / 86400000,
+  ) + 1;
+  if (spanDays > MAX_RANGE_DAYS) {
+    return c.json({ error: `range too large (max ${MAX_RANGE_DAYS} days)` }, 400);
+  }
+  if (!pointsDb) {
+    return c.json({ error: 'points db not configured' }, 503);
+  }
+
+  const compute = cached(`daily-metrics-range-${fromParam}-${toParam}`, 30 * 60 * 1000, async () => {
+    // dau / new / cumulative from nasun_points.activity_points (one range scan).
+    const rows = await pointsDb!<
+      { date: string; dau: number; new_addresses: number; cumulative: number }[]
+    >`
+      WITH onchain AS (
+        SELECT wallet_address, tx_timestamp::date AS day
+        FROM activity_points
+        WHERE category NOT IN ${pointsDb!(OFFCHAIN_CATEGORIES)}
+      ),
+      first_seen AS (
+        SELECT wallet_address, MIN(day) AS first_day
+        FROM onchain
+        GROUP BY wallet_address
+      ),
+      days AS (
+        SELECT generate_series(${fromParam}::date, ${toParam}::date, interval '1 day')::date AS day
+      ),
+      dau AS (
+        SELECT day, COUNT(DISTINCT wallet_address) AS dau
+        FROM onchain
+        WHERE day BETWEEN ${fromParam}::date AND ${toParam}::date
+        GROUP BY day
+      ),
+      new_per_day AS (
+        SELECT first_day AS day, COUNT(*) AS new_addresses
+        FROM first_seen
+        WHERE first_day BETWEEN ${fromParam}::date AND ${toParam}::date
+        GROUP BY first_day
+      ),
+      baseline AS (
+        SELECT COUNT(*)::bigint AS c FROM first_seen WHERE first_day < ${fromParam}::date
+      )
+      SELECT
+        to_char(d.day, 'YYYY-MM-DD') AS date,
+        COALESCE(dau.dau, 0)::int AS dau,
+        COALESCE(n.new_addresses, 0)::int AS new_addresses,
+        (b.c + SUM(COALESCE(n.new_addresses, 0)) OVER (ORDER BY d.day))::int AS cumulative
+      FROM days d
+      CROSS JOIN baseline b
+      LEFT JOIN dau ON dau.day = d.day
+      LEFT JOIN new_per_day n ON n.day = d.day
+      ORDER BY d.day
+    `;
+
+    // dailyTx per day from sui-indexer checkpoints (a DIFFERENT db -> separate query, merged in JS).
+    // Day bucketing is timezone-independent: floor(timestamp_ms / 86400000) is the UTC day index, the same
+    // boundary the single-date route uses (EXTRACT(EPOCH FROM date) * 1000). Best-effort: a failure leaves
+    // every day's dailyTx null (parity with the single-date checkpoint try/catch).
+    const txByDate = new Map<string, number>();
+    try {
+      const txRows = await sql<{ day: string; tx_count: string | number }[]>`
+        SELECT
+          to_char(DATE '1970-01-01' + (timestamp_ms / 1000 / 86400)::int, 'YYYY-MM-DD') AS day,
+          SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::bigint AS tx_count
+        FROM checkpoints
+        WHERE timestamp_ms >= EXTRACT(EPOCH FROM ${fromParam}::date) * 1000
+          AND timestamp_ms < EXTRACT(EPOCH FROM (${toParam}::date + interval '1 day')) * 1000
+        GROUP BY 1
+      `;
+      for (const r of txRows) {
+        if (r.tx_count != null) txByDate.set(r.day, Number(r.tx_count));
+      }
+    } catch (err) {
+      console.warn('daily-metrics-range: checkpoint tx query failed:', err);
+    }
+
+    return rows.map((r) => ({
+      date: r.date,
+      dau: Number(r.dau) || 0,
+      newAddresses: Number(r.new_addresses) || 0,
+      cumulativeAddresses: Number(r.cumulative) || 0,
+      dailyTx: txByDate.has(r.date) ? txByDate.get(r.date)! : null,
+    }));
+  });
+
+  try {
+    const data = await compute();
+    c.header('Cache-Control', 'public, max-age=1800');
+    return c.json({ data, range: `${fromParam}..${toParam}` });
+  } catch (err) {
+    console.error('daily-metrics-range query failed:', err);
+    return c.json({ error: 'query failed' }, 500);
+  }
+});
+
 export default app;
