@@ -3,9 +3,9 @@
 // devnet-metrics) and nft-collections.ts (nft-collections CRUD), plus the admin-api utils/csv.ts +
 // utils/auth.ts (verifyAdminRole). Reads run on the compute_ro PG pool (the box nasun_dal mirror); the
 // authoritative hidden_proposals / nft_collections WRITES delegate to the box identity service (:3211)
-// via clients.ts (compute_ro is SELECT-only). devnet-metrics is NOT mirrored -- it ranges the box
-// explorer-api /stats/daily-metrics (activity_points lives in a DIFFERENT DB the compute_ro pool cannot
-// reach). CSV byte-parity with the lambda generateCSV (LF join, no trailing newline, no BOM).
+// via clients.ts (compute_ro is SELECT-only). devnet-metrics is NOT mirrored -- it calls the box
+// explorer-api /stats/daily-metrics-range (activity_points lives in a DIFFERENT DB the compute_ro pool
+// cannot reach). CSV byte-parity with the lambda generateCSV (LF join, no trailing newline, no BOM).
 //
 // DELIBERATE DROP vs the lambda (plan §R): nasun-stats/download is a dead UI (writer absent in the
 // monorepo) and is NOT ported; the /nasun-stats + /dau-export skills already generate that report.
@@ -144,23 +144,33 @@ interface GenesisPassItem {
   probableBot?: boolean;
 }
 
-// Scan genesis_pass_allowlist mirror (Ship1; PK wallet_address; promoted status/mint_type, the rest in
-// attributes). status filter (ALL = no filter). Parity with the lambda scanGenesisPassAllowlist.
+// Scan genesis_pass_allowlist mirror (Ship1; PK wallet_address). identity_id/status/mint_type/registered_at
+// are PROMOTED columns (NOT in attributes -- the dal-load lifted them out; attributes only carries the
+// long-tail source/probableBot/twitterHandle/lastModified*). registered_at is a timestamptz -> formatted to
+// the DDB ISO string (`...T..:..:..MSZ`, millisecond precision) for byte-parity with the lambda's
+// item.registeredAt?.S. status filter (ALL = no filter). Parity with the lambda scanGenesisPassAllowlist.
 async function scanGenesisPassAllowlist(sql: Db, schema: string, status?: string): Promise<GenesisPassItem[]> {
   const filtered = status && status !== 'ALL';
+  type Row = {
+    wallet_address: string;
+    identity_id: string | null;
+    status: string | null;
+    mint_type: string | null;
+    registered_at_iso: string | null;
+    attributes: Record<string, unknown> | null;
+  };
+  const cols = sql`wallet_address, identity_id, status, mint_type,
+        to_char(registered_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"') AS registered_at_iso,
+        attributes`;
   const rows = filtered
-    ? await sql<{ wallet_address: string; status: string | null; mint_type: string | null; attributes: Record<string, unknown> | null }[]>`
-        SELECT wallet_address, status, mint_type, attributes
-        FROM ${sql(schema)}.genesis_pass_allowlist WHERE status = ${status!}`
-    : await sql<{ wallet_address: string; status: string | null; mint_type: string | null; attributes: Record<string, unknown> | null }[]>`
-        SELECT wallet_address, status, mint_type, attributes
-        FROM ${sql(schema)}.genesis_pass_allowlist`;
+    ? await sql<Row[]>`SELECT ${cols} FROM ${sql(schema)}.genesis_pass_allowlist WHERE status = ${status!}`
+    : await sql<Row[]>`SELECT ${cols} FROM ${sql(schema)}.genesis_pass_allowlist`;
   return rows.map((r) => {
     const a = (r.attributes || {}) as Record<string, unknown>;
     return {
       walletAddress: r.wallet_address || '',
-      identityId: typeof a.identityId === 'string' ? a.identityId : '',
-      registeredAt: typeof a.registeredAt === 'string' ? a.registeredAt : '',
+      identityId: r.identity_id ?? (typeof a.identityId === 'string' ? a.identityId : ''),
+      registeredAt: r.registered_at_iso ?? (typeof a.registeredAt === 'string' ? a.registeredAt : ''),
       status: r.status || 'ACTIVE',
       mintType: r.mint_type ?? (typeof a.mintType === 'string' ? a.mintType : undefined),
       source: typeof a.source === 'string' ? a.source : undefined,
@@ -299,6 +309,27 @@ export async function exportGenesisPass(sql: Db, schema: string, params: URLSear
     { key: 'status', header: 'status' },
   ]);
   return csvResult(csv, generateFilename('genesis-pass-allowlist', status.toLowerCase()));
+}
+
+// GET /genesis-pass/entries (admin) -> { success, items } -- the admin UI allowlist list view. Box port of
+// the lambda GET handler: scan ALL entries, enrich missing twitterHandle off user_profiles, sort by
+// registeredAt DESC. This is the READ slice of genesis-pass/entries only; the POST/PUT/DELETE writes are
+// NOT ported -- they stay on the doetwxms5a lambda (Batch B split-brain: the genesis-pass register lambda is
+// the live writer of the genesis-pass-allowlist DDB, so the box -- which has no AWS access -- cannot own
+// these writes. At cutover nginx keeps genesis-pass/entries writes on doetwxms5a). Reuses the export path's
+// scanGenesisPassAllowlist + scanTwitterHandleMap (byte-parity with exportGenesisPass's read).
+export async function genesisPassEntries(sql: Db, schema: string): Promise<AdminResult> {
+  const items = await scanGenesisPassAllowlist(sql, schema, 'ALL');
+  try {
+    const handleMap = await scanTwitterHandleMap(sql, schema);
+    for (const item of items) {
+      if (!item.twitterHandle && item.identityId) item.twitterHandle = handleMap.get(item.identityId);
+    }
+  } catch (err) {
+    console.warn('[compute][admin] genesis-pass entries twitterHandle enrich failed:', err instanceof Error ? err.message : err);
+  }
+  items.sort((a, b) => (b.registeredAt || '').localeCompare(a.registeredAt || ''));
+  return { status: 200, body: { success: true, items } };
 }
 
 // GET /export/battalion
@@ -537,7 +568,7 @@ export async function nftCollectionsDelete(collectionId: string): Promise<AdminR
 // ===================== devnet-metrics =====================
 
 // GET /devnet-metrics (admin) -> { metrics: [{ date, dau, newAddresses, cumulativeAddresses,
-// transactionCount? }] } ranged from the box explorer-api /stats/daily-metrics (NOT mirrored;
+// transactionCount? }] } from ONE box explorer-api /stats/daily-metrics-range call (NOT mirrored;
 // activity_points is a different DB). The lambda's per-row `collectedAt` is intentionally OMITTED: this is
 // a LIVE compute (no collector snapshot timestamp); transactionCount maps from explorer-api's `dailyTx`
 // (the same source the lambda's collector wrote). 503 when the explorer base URL is unset.

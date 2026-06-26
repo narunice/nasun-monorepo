@@ -22,6 +22,7 @@ import {
   exportGenesisPass,
   exportBattalion,
   exportStats,
+  genesisPassEntries,
   hiddenProposalsList,
   hiddenProposalsHide,
   hiddenProposalsUnhide,
@@ -1090,6 +1091,11 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 
       // devnet-metrics
       if (method === 'GET' && sub === '/devnet-metrics') return emit(await devnetMetrics());
+
+      // genesis-pass/entries -- READ only on box (Batch B). The POST/PUT/DELETE writes intentionally fall
+      // through to 404: the genesis-pass register lambda is the live allowlist writer, so writes stay on
+      // doetwxms5a (nginx keeps genesis-pass/entries writes pointed at the lambda at cutover).
+      if (method === 'GET' && sub === '/genesis-pass/entries') return emit(await genesisPassEntries(sql, SCHEMA));
 
       // nft-collections write
       if (method === 'POST' && sub === '/nft-collections') {
