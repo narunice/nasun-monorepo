@@ -164,6 +164,16 @@ export const ADDITIONAL = {
   loopbackTimeoutMs: LOGIN.loopbackTimeoutMs,
 };
 
+// --- Genesis Pass register (de-Lambda of genesis-pass/register) ------------------------------------
+// GET /genesis-pass/register (own status, compute_ro read) + POST/DELETE (allowlist upsert/withdraw,
+// delegated to :3211). Gates on the SAME deps as ADDITIONAL (dual-jwks VERIFY.audience + the identity-write
+// bearer for the :3211 loopback) PLUS the explicit COMPUTE_GENESIS_PASS_REGISTER_ENABLED=1 flag, so the
+// allowlist write SoT flip (register lambda -> box) is a deliberate cutover step (mirrors ECOSYSTEM/WALLET
+// gating). Inert 503 until the flag is set AND the /genesis-pass/register nginx location repoints to the box.
+export const GENESIS_PASS_REGISTER = {
+  enabled: process.env.COMPUTE_GENESIS_PASS_REGISTER_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+};
+
 // --- Twitter (X) OAuth login (de-Lambda of auth-twitter) ------------------------------------------
 // GET /auth/twitter/login + POST /auth/twitter/callback lifted off the auth-twitter lambda. The X OAuth2
 // client_id is semi-public (it ships in the X authorize URL the browser navigates to) -> unit env; the

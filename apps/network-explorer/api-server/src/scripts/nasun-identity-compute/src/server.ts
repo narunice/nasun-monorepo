@@ -14,8 +14,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN } from './config';
-import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, twitterCors, adminCors, send, sendRaw, RouteAbort } from './http';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN, GENESIS_PASS_REGISTER } from './config';
+import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, genesisPassRegisterCors, twitterCors, adminCors, send, sendRaw, RouteAbort } from './http';
 import {
   authenticateAdmin,
   exportGenesis,
@@ -23,6 +23,9 @@ import {
   exportBattalion,
   exportStats,
   genesisPassEntries,
+  genesisPassEntryCreate,
+  genesisPassEntryEdit,
+  genesisPassEntryDelete,
   hiddenProposalsList,
   hiddenProposalsHide,
   hiddenProposalsUnhide,
@@ -42,6 +45,11 @@ import {
   handleEcosystemDeactivate,
   genesisPassCheck,
 } from './handlers-ecosystem';
+import {
+  genesisPassRegisterStatus,
+  genesisPassRegister,
+  genesisPassWithdraw,
+} from './handlers-genesis-pass';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
 import {
@@ -326,6 +334,33 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
     } catch (e) {
       console.error('[compute] /genesis-pass/check failed:', e instanceof Error ? e.message : e);
       return send(res, 500, { success: false, error: 'INTERNAL_ERROR', message: 'Failed to check registration status' }, cors);
+    }
+  }
+
+  // GET/POST/DELETE /genesis-pass/register -- JWT-authed own-status / register / withdraw (de-Lambda of the
+  // genesis-pass register lambda). dual-jwks (verifyJwtIdentity) + GENESIS_PASS_REGISTER.enabled
+  // (COMPUTE_GENESIS_PASS_REGISTER_ENABLED=1 + audience + identity-write-bearer); GET reads compute_ro,
+  // POST/DELETE delegate the atomic allowlist write to :3211. Precedence: OPTIONS -> 405 -> 503 -> 401 ->
+  // handler. inert 503 until the /genesis-pass/register nginx location repoints at cutover.
+  if (pathname === '/genesis-pass/register') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = genesisPassRegisterCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'GET' && req.method !== 'POST' && req.method !== 'DELETE') {
+      return send(res, 405, { success: false, error: 'METHOD_NOT_ALLOWED', message: 'Method not allowed' }, cors);
+    }
+    if (!GENESIS_PASS_REGISTER.enabled) return send(res, 503, { success: false, error: 'genesis-pass register not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { success: false, error: 'UNAUTHORIZED', message: 'Authentication required' }, cors);
+      let out;
+      if (req.method === 'GET') out = await genesisPassRegisterStatus(sql, SCHEMA, identityId);
+      else if (req.method === 'POST') out = await genesisPassRegister(sql, SCHEMA, identityId);
+      else out = await genesisPassWithdraw(sql, SCHEMA, identityId);
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      console.error('[compute] /genesis-pass/register failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { success: false, error: 'INTERNAL_ERROR', message: 'Operation failed. Please try again.' }, cors);
     }
   }
 
@@ -1092,10 +1127,25 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       // devnet-metrics
       if (method === 'GET' && sub === '/devnet-metrics') return emit(await devnetMetrics());
 
-      // genesis-pass/entries -- READ only on box (Batch B). The POST/PUT/DELETE writes intentionally fall
-      // through to 404: the genesis-pass register lambda is the live allowlist writer, so writes stay on
-      // doetwxms5a (nginx keeps genesis-pass/entries writes pointed at the lambda at cutover).
+      // genesis-pass/entries -- GET (Batch B) + write (POST add / PUT update / DELETE). The writes delegate
+      // the allowlist mutation to :3211, the SAME write SoT as the genesis-pass register lift, so at cutover
+      // the register lambda's allowlist write retires alongside these (no split-brain DDB writer). admin authed.
       if (method === 'GET' && sub === '/genesis-pass/entries') return emit(await genesisPassEntries(sql, SCHEMA));
+      if (method === 'POST' && sub === '/genesis-pass/entries') {
+        const body = parseJson(await readBody(req));
+        return emit(await genesisPassEntryCreate(body));
+      }
+      if (method === 'PUT' && sub.startsWith('/genesis-pass/entries/')) {
+        const wa = sub.slice('/genesis-pass/entries/'.length);
+        if (!wa) return send(res, 400, { error: 'Missing walletAddress in path' }, cors);
+        const body = parseJson(await readBody(req));
+        return emit(await genesisPassEntryEdit(admin, wa, body));
+      }
+      if (method === 'DELETE' && sub.startsWith('/genesis-pass/entries/')) {
+        const wa = sub.slice('/genesis-pass/entries/'.length);
+        if (!wa) return send(res, 400, { error: 'Missing walletAddress in path' }, cors);
+        return emit(await genesisPassEntryDelete(wa));
+      }
 
       // nft-collections write
       if (method === 'POST' && sub === '/nft-collections') {
@@ -1124,7 +1174,7 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
 });
 
 server.listen(PORT, HOST, () => {
-  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'} twitter=${TWITTER.enabled ? 'on' : 'inert'} admin=${ADMIN.enabled ? 'on' : 'inert'}`);
+  console.log(`[compute] listening http://${HOST}:${PORT} schema=${SCHEMA} db=${PG.username}@${PG.host}:${PG.port}/${PG.database} login=${LOGIN.enabled ? 'on' : 'inert'} salt=${SALT.enabled ? 'on' : 'inert'} additional=${ADDITIONAL.enabled ? 'on' : 'inert'} tgverify=${TELEGRAM_VERIFY.enabled ? 'on' : 'inert'} govsponsor=${GOVERNANCE.sponsorEnabled ? 'on' : 'inert'} govvp=${GOVERNANCE.votingPowerEnabled ? 'on' : 'inert'} govcert=${GOVERNANCE.certEnabled ? 'on' : 'inert'} profileread=${PROFILE_READ.enabled ? 'on' : 'inert'} profilewrite=${PROFILE_WRITE.enabled ? 'on' : 'inert'} profilepatch=${PROFILE_PATCH.enabled ? 'on' : 'inert'} wallet=${WALLET.enabled ? 'on' : 'inert'} deactivate=${DEACTIVATE.enabled ? 'on' : 'inert'} link=${LINK.enabled ? 'on' : 'inert'} twitter=${TWITTER.enabled ? 'on' : 'inert'} admin=${ADMIN.enabled ? 'on' : 'inert'} gpregister=${GENESIS_PASS_REGISTER.enabled ? 'on' : 'inert'}`);
 });
 
 const shutdown = () => { sql.end({ timeout: 5 }).catch(() => {}); server.close(() => process.exit(0)); };

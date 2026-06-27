@@ -21,6 +21,9 @@ import {
   nftCollectionUpsert,
   nftCollectionUpdate,
   nftCollectionDelete,
+  genesisPassEntryAdd,
+  genesisPassEntryUpdate,
+  genesisPassEntryRemove,
   fetchDevnetMetricsRange,
 } from './clients';
 
@@ -330,6 +333,50 @@ export async function genesisPassEntries(sql: Db, schema: string): Promise<Admin
   }
   items.sort((a, b) => (b.registeredAt || '').localeCompare(a.registeredAt || ''));
   return { status: 200, body: { success: true, items } };
+}
+
+// POST /genesis-pass/entries (admin) -> :3211 add. Parity with the lambda POST handler: validate walletAddress
+// + EVM regex, lowercase, the box dup-checks (409) and writes status='ACTIVE' + optional mintType/source.
+export async function genesisPassEntryCreate(body: Record<string, unknown>): Promise<AdminResult> {
+  const { walletAddress, mintType, source } = body as { walletAddress?: string; mintType?: string; source?: string };
+  if (!walletAddress || typeof walletAddress !== 'string') {
+    return { status: 400, body: { error: 'Missing required field: walletAddress' } };
+  }
+  if (!EVM_ADDRESS_REGEX.test(walletAddress)) {
+    return { status: 400, body: { error: 'Invalid EVM wallet address format' } };
+  }
+  return genesisPassEntryAdd({
+    walletAddress: walletAddress.toLowerCase(),
+    ...(typeof mintType === 'string' ? { mintType } : {}),
+    ...(typeof source === 'string' ? { source } : {}),
+  });
+}
+
+// PUT /genesis-pass/entries/{walletAddress} (admin) -> :3211 update. Parity with the lambda PUT: validate
+// status against ACTIVE/APPLIED/LEGACY/WITHDRAWN, forward only the provided fields, 400 when none, stamp the
+// admin's identityId as lastModifiedBy. The box does the existence check (404).
+export async function genesisPassEntryEdit(admin: AdminUser, walletAddress: string, body: Record<string, unknown>): Promise<AdminResult> {
+  const normalized = decodeURIComponent(walletAddress).toLowerCase();
+  const VALID_STATUS = ['ACTIVE', 'APPLIED', 'LEGACY', 'WITHDRAWN'];
+  const updates: Record<string, unknown> = {};
+  if (body.status !== undefined) {
+    const s = String(body.status);
+    if (!VALID_STATUS.includes(s)) {
+      return { status: 400, body: { error: `Invalid status: ${s}. Must be one of: ${VALID_STATUS.join(', ')}` } };
+    }
+    updates.status = s;
+  }
+  if (body.mintType !== undefined) updates.mintType = String(body.mintType);
+  if (body.source !== undefined) updates.source = String(body.source);
+  if (Object.keys(updates).length === 0) {
+    return { status: 400, body: { error: 'No fields to update. Provide status, mintType, or source.' } };
+  }
+  return genesisPassEntryUpdate({ walletAddress: normalized, updates, lastModifiedBy: admin.identityId });
+}
+
+// DELETE /genesis-pass/entries/{walletAddress} (admin) -> :3211 delete (idempotent, parity with the lambda).
+export async function genesisPassEntryDelete(walletAddress: string): Promise<AdminResult> {
+  return genesisPassEntryRemove(decodeURIComponent(walletAddress).toLowerCase());
 }
 
 // GET /export/battalion

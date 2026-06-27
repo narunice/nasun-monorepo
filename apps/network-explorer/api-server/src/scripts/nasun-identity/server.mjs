@@ -1111,6 +1111,186 @@ async function handleAdminNftCollectionDelete(body) {
   return { status: 200, body: { ok: true, collectionId } };
 }
 
+// --- POST /genesis-pass/register/upsert -----------------------------------------------
+// Authoritative allowlist register (de-Lambda of the genesis-pass register lambda handleRegister). The
+// compute side (handlers-genesis-pass.ts) read the profile (compute_ro), resolved the EVM wallet +
+// linked identityIds, and validated the address; this reproduces the lambda's allowlist branching inside
+// ONE tx so the read->branch->write is atomic (the lambda relied on DynamoDB conditional puts). Branches:
+// takeover-with-mintType -> 409 (block raffle-winner takeover); existing-by-identity same-wallet LEGACY/
+// WITHDRAWN -> APPLIED; ACTIVE/APPLIED -> 409 already; wallet-change -> delete old; mintType from the row
+// or approvals (-> ACTIVE) else APPLIED. Final write is a CAS UPDATE (takeover) or INSERT ON CONFLICT DO
+// NOTHING (parity with the lambda's identityId= / attribute_not_exists conditions; r.count===0 -> 409 race).
+// Promoted columns: wallet_address/identity_id/status/mint_type/registered_at; long-tail (source,
+// twitterHandle, appliedAt, withdrawnAt) lives in attributes (matching the Ship1 mirror's promoted split).
+async function handleGenesisPassRegister(body) {
+  const identityId = str(body.identityId);
+  const walletAddress = str(body.walletAddress).toLowerCase();
+  const allIds = Array.isArray(body.allIdentityIds) ? body.allIdentityIds.filter((x) => typeof x === 'string').slice(0, 5) : [];
+  const twitterHandle = typeof body.twitterHandle === 'string' && body.twitterHandle ? body.twitterHandle : null;
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { success: false, error: 'BAD_REQUEST', message: 'identityId required' });
+  if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) throw new RouteAbort(400, { success: false, error: 'INVALID_ADDRESS', message: 'Invalid EVM wallet address format' });
+  if (!allIds.includes(identityId)) allIds.unshift(identityId);
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const idSet = new Set(allIds);
+    // array_position preserves the lambda findRegistrationByAnyIdentity order (per-id GSI query in allIds
+    // order, first match; allIds[0] is self) -- ANY(...) LIMIT 1 alone would pick an arbitrary linked row.
+    const byIdRows = await tx`SELECT wallet_address, identity_id, status, mint_type, attributes FROM genesis_pass_allowlist WHERE identity_id = ANY(${allIds}) ORDER BY array_position(${allIds}, identity_id) LIMIT 1`;
+    const existingByIdentity = byIdRows[0] || null;
+    const byAddrRows = await tx`SELECT identity_id, mint_type FROM genesis_pass_allowlist WHERE wallet_address = ${walletAddress}`;
+    const existingByAddress = byAddrRows[0] || null;
+    const isTakeover = !!(existingByAddress && !idSet.has(existingByAddress.identity_id));
+    if (isTakeover && existingByAddress.mint_type) {
+      return { status: 409, body: { success: false, error: 'ADDRESS_ALREADY_REGISTERED', message: 'This wallet address is already registered by another account and cannot be taken over.' } };
+    }
+    if (existingByIdentity) {
+      const exWallet = (existingByIdentity.wallet_address || '').toLowerCase();
+      const exStatus = existingByIdentity.status;
+      const exAttr = (existingByIdentity.attributes && typeof existingByIdentity.attributes === 'object') ? existingByIdentity.attributes : {};
+      if ((exStatus === 'LEGACY' || exStatus === 'WITHDRAWN') && exWallet === walletAddress && !isTakeover) {
+        const now = new Date().toISOString();
+        const newAttr = { ...exAttr, appliedAt: now };
+        if (twitterHandle) newAttr.twitterHandle = twitterHandle;
+        await tx`UPDATE genesis_pass_allowlist SET status = 'APPLIED', attributes = ${tx.json(newAttr)} WHERE wallet_address = ${exWallet} AND identity_id = ${existingByIdentity.identity_id}`;
+        return { status: 200, body: { success: true, data: { walletAddress: exWallet, registeredAt: now, updated: true, replaced: false } } };
+      }
+      if (exStatus === 'ACTIVE' && exWallet === walletAddress && !isTakeover) {
+        return { status: 409, body: { success: false, error: 'ALREADY_REGISTERED', message: 'You have already registered for the Genesis Pass allowlist' } };
+      }
+      if (exStatus === 'APPLIED' && exWallet === walletAddress && !isTakeover) {
+        return { status: 409, body: { success: false, error: 'ALREADY_APPLIED', message: 'You have already applied for the Genesis Pass allowlist' } };
+      }
+      if (exWallet !== walletAddress) {
+        await tx`DELETE FROM genesis_pass_allowlist WHERE wallet_address = ${exWallet} AND identity_id = ${existingByIdentity.identity_id}`;
+      }
+    }
+    let mintType = (existingByIdentity && existingByIdentity.mint_type) || null;
+    const exAttr2 = (existingByIdentity && existingByIdentity.attributes && typeof existingByIdentity.attributes === 'object') ? existingByIdentity.attributes : {};
+    let source = typeof exAttr2.source === 'string' ? exAttr2.source : null;
+    if (!mintType) {
+      const apprRows = await tx`SELECT mint_type, source FROM genesis_pass_approvals WHERE identity_id = ANY(${allIds}) LIMIT 1`;
+      if (apprRows[0]) { mintType = apprRows[0].mint_type || null; source = apprRows[0].source || null; }
+    }
+    const status = mintType ? 'ACTIVE' : 'APPLIED';
+    const now = new Date().toISOString();
+    const attr = {};
+    if (source) attr.source = source;
+    if (twitterHandle) attr.twitterHandle = twitterHandle;
+    if (isTakeover) {
+      const r = await tx`UPDATE genesis_pass_allowlist SET identity_id = ${identityId}, status = ${status}, registered_at = ${now}::timestamptz, mint_type = ${mintType}, attributes = ${tx.json(attr)} WHERE wallet_address = ${walletAddress} AND identity_id = ${existingByAddress.identity_id}`;
+      if (r.count === 0) return { status: 409, body: { success: false, error: 'ADDRESS_ALREADY_REGISTERED', message: 'This wallet address was just registered. Please try again.' } };
+    } else {
+      const r = await tx`INSERT INTO genesis_pass_allowlist (wallet_address, identity_id, status, registered_at, mint_type, attributes) VALUES (${walletAddress}, ${identityId}, ${status}, ${now}::timestamptz, ${mintType}, ${tx.json(attr)}) ON CONFLICT (wallet_address) DO NOTHING`;
+      if (r.count === 0) return { status: 409, body: { success: false, error: 'ADDRESS_ALREADY_REGISTERED', message: 'This wallet address was just registered. Please try again.' } };
+    }
+    return { status: 200, body: { success: true, data: { walletAddress, registeredAt: now, updated: !!existingByIdentity, replaced: isTakeover } } };
+  });
+}
+
+// --- POST /genesis-pass/register/withdraw ---------------------------------------------
+// Authoritative soft-delete (de-Lambda of the register lambda handleWithdraw). Finds the registration by
+// the linked-wallet PK first (must belong to one of the caller's linked identities AND be withdrawable),
+// falling back to the identityId-GSI; then UPDATEs status=WITHDRAWN with a keyed identity condition (parity
+// with the lambda's ConditionExpression identityId=). withdrawnAt -> attributes (no promoted column; the
+// Ship1 mirror keeps audit fields in attributes). 404 when no registration, 409 when not withdrawable.
+async function handleGenesisPassWithdraw(body) {
+  const identityId = str(body.identityId);
+  const allIds = Array.isArray(body.allIdentityIds) ? body.allIdentityIds.filter((x) => typeof x === 'string').slice(0, 5) : [];
+  const walletAddress = typeof body.walletAddress === 'string' && body.walletAddress ? body.walletAddress.toLowerCase() : null;
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { success: false, error: 'BAD_REQUEST', message: 'identityId required' });
+  if (!allIds.includes(identityId)) allIds.unshift(identityId);
+  const WITHDRAWABLE = new Set(['ACTIVE', 'APPLIED', 'LEGACY']);
+  return await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const idSet = new Set(allIds);
+    let targetWallet = null;
+    let storedIdentityId = null;
+    if (walletAddress) {
+      const rows = await tx`SELECT wallet_address, identity_id, status FROM genesis_pass_allowlist WHERE wallet_address = ${walletAddress}`;
+      const ex = rows[0];
+      if (ex && idSet.has(ex.identity_id) && WITHDRAWABLE.has(ex.status)) {
+        targetWallet = ex.wallet_address;
+        storedIdentityId = ex.identity_id;
+      }
+    }
+    if (!targetWallet) {
+      const rows = await tx`SELECT wallet_address, identity_id, status FROM genesis_pass_allowlist WHERE identity_id = ANY(${allIds}) ORDER BY array_position(${allIds}, identity_id) LIMIT 1`;
+      const ex = rows[0];
+      if (!ex) return { status: 404, body: { success: false, error: 'NOT_FOUND', message: 'No registration found for this account' } };
+      if (!WITHDRAWABLE.has(ex.status)) return { status: 409, body: { success: false, error: 'CANNOT_WITHDRAW', message: 'Registration cannot be withdrawn in its current state' } };
+      targetWallet = ex.wallet_address;
+      storedIdentityId = ex.identity_id;
+    }
+    const now = new Date().toISOString();
+    await tx`UPDATE genesis_pass_allowlist SET status = 'WITHDRAWN', attributes = COALESCE(attributes, '{}'::jsonb) || ${tx.json({ withdrawnAt: now })}::jsonb WHERE wallet_address = ${targetWallet} AND identity_id = ${storedIdentityId}`;
+    return { status: 200, body: { success: true, data: { walletAddress: targetWallet } } };
+  });
+}
+
+// --- POST /admin/genesis-pass/entries/add ---------------------------------------------
+// Admin add an allowlist entry (de-Lambda export-whitelist POST /genesis-pass/entries). identity_id is NULL
+// (admin adds by wallet, no identity binding -- the lambda Item carries no identityId). Dup -> 409 (parity
+// with the lambda's GetItem dup-check). status='ACTIVE', mintType promoted, source -> attributes.
+async function handleAdminGenesisPassEntryAdd(body) {
+  const walletAddress = str(body.walletAddress).toLowerCase();
+  const mintType = typeof body.mintType === 'string' && body.mintType ? body.mintType : null;
+  const source = typeof body.source === 'string' && body.source ? body.source : null;
+  if (!/^0x[a-f0-9]{40}$/.test(walletAddress)) throw new RouteAbort(400, { error: 'Invalid EVM wallet address format' });
+  let inserted = false;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const attr = {};
+    if (source) attr.source = source;
+    const rows = await tx`
+      INSERT INTO genesis_pass_allowlist (wallet_address, status, registered_at, mint_type, attributes)
+      VALUES (${walletAddress}, 'ACTIVE', now(), ${mintType}, ${tx.json(attr)})
+      ON CONFLICT (wallet_address) DO NOTHING RETURNING 1 AS w`;
+    inserted = rows.length > 0;
+  });
+  if (!inserted) throw new RouteAbort(409, { error: 'Wallet address already registered' });
+  return { status: 201, body: { success: true, walletAddress } };
+}
+
+// --- POST /admin/genesis-pass/entries/update ------------------------------------------
+// Admin partial update (de-Lambda export-whitelist PUT). status/mintType are promoted; source + the audit
+// fields (lastModifiedBy/lastModifiedAt) live in attributes. Reads the row FOR UPDATE so omitted promoted
+// fields keep their current value (parity with the lambda's partial UpdateExpression). 404 when absent.
+async function handleAdminGenesisPassEntryUpdate(body) {
+  const walletAddress = str(body.walletAddress).toLowerCase();
+  const updates = (body.updates && typeof body.updates === 'object' && !Array.isArray(body.updates)) ? body.updates : {};
+  const lastModifiedBy = str(body.lastModifiedBy);
+  if (!walletAddress) throw new RouteAbort(400, { error: 'walletAddress required' });
+  let found = false;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`SELECT status, mint_type, attributes FROM genesis_pass_allowlist WHERE wallet_address = ${walletAddress} FOR UPDATE`;
+    if (rows.length === 0) return;
+    found = true;
+    const cur = rows[0];
+    const newStatus = typeof updates.status === 'string' ? updates.status : cur.status;
+    const newMint = typeof updates.mintType === 'string' ? updates.mintType : cur.mint_type;
+    const attr = (cur.attributes && typeof cur.attributes === 'object') ? { ...cur.attributes } : {};
+    if (typeof updates.source === 'string') attr.source = updates.source;
+    attr.lastModifiedBy = lastModifiedBy;
+    attr.lastModifiedAt = new Date().toISOString();
+    await tx`UPDATE genesis_pass_allowlist SET status = ${newStatus}, mint_type = ${newMint}, attributes = ${tx.json(attr)} WHERE wallet_address = ${walletAddress}`;
+  });
+  if (!found) throw new RouteAbort(404, { error: 'Entry not found' });
+  return { status: 200, body: { success: true, walletAddress } };
+}
+
+// --- POST /admin/genesis-pass/entries/delete ------------------------------------------
+// Admin delete (idempotent, parity with the lambda DeleteItem -- no existence check, always 200).
+async function handleAdminGenesisPassEntryDelete(body) {
+  const walletAddress = str(body.walletAddress).toLowerCase();
+  if (!walletAddress) throw new RouteAbort(400, { error: 'walletAddress required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`DELETE FROM genesis_pass_allowlist WHERE wallet_address = ${walletAddress}`;
+  });
+  return { status: 200, body: { success: true, walletAddress } };
+}
+
 const ROUTES = {
   '/admin/hidden-proposals/upsert': handleAdminHiddenProposalUpsert,
   '/admin/hidden-proposals/delete': handleAdminHiddenProposalDelete,
@@ -1119,6 +1299,11 @@ const ROUTES = {
   '/admin/nft-collections/delete': handleAdminNftCollectionDelete,
   '/ecosystem/activation/upsert': handleEcosystemActivationUpsert,
   '/ecosystem/activation/deactivate': handleEcosystemActivationDeactivate,
+  '/genesis-pass/register/upsert': handleGenesisPassRegister,
+  '/genesis-pass/register/withdraw': handleGenesisPassWithdraw,
+  '/admin/genesis-pass/entries/add': handleAdminGenesisPassEntryAdd,
+  '/admin/genesis-pass/entries/update': handleAdminGenesisPassEntryUpdate,
+  '/admin/genesis-pass/entries/delete': handleAdminGenesisPassEntryDelete,
   '/nft-ownership/upsert': handleNftOwnershipUpsert,
   '/nft-ownership/cleanup-stale': handleNftOwnershipCleanupStale,
   '/profile/upsert': handleProfileUpsert,

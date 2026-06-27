@@ -183,6 +183,18 @@ export function genesisPassCheckCors(origin: string | undefined): Record<string,
   };
 }
 
+// AWS-exit #5 genesis-pass register CORS: byte-parity with the register lambda corsHeaders (register/
+// index.ts:33-40 + getCorsOrigin): origin-allowlist ACAO, headers 'Content-Type,Authorization' (JWT auth),
+// methods GET,POST,DELETE,OPTIONS. No credentials. content-type is set by send().
+export function genesisPassRegisterCors(origin: string | undefined): Record<string, string> {
+  const allowed = origin && ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return {
+    'access-control-allow-origin': allowed,
+    'access-control-allow-headers': 'Content-Type,Authorization',
+    'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
+  };
+}
+
 // AdminStack admin-api CORS: byte-parity with the admin-api lambda utils/response.ts corsHeaders
 // (ALLOWED_ORIGINS allow-list: echo the request origin when allow-listed, else ALLOWED_ORIGINS[0]),
 // headers 'Content-Type, Authorization', methods 'GET, POST, PUT, DELETE, OPTIONS', credentials:true.

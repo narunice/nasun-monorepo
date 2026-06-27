@@ -102,6 +102,33 @@ export async function createProfileMirror(fields: {
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
+// AWS-exit #5 genesis-pass register de-Lambda: authoritative allowlist upsert/withdraw delegate (:3211).
+// The compute side (handlers-genesis-pass.ts) read the profile (compute_ro) + resolved the EVM wallet and
+// linked identities; the box tx does the allowlist read + lambda branch (existing-by-identity, takeover,
+// wallet-change, approvals mintType, soft-delete) atomically. Returns the :3211 {status, body} envelope
+// VERBATIM -- the handler returns the lambda's 200/404/409 status directly (dispatch maps it to the HTTP
+// status), so the compute route just forwards it. NO retry: the upsert is non-idempotent (takeover UPDATE /
+// wallet-change DELETE), so a retried POST after an ambiguous network failure could double-apply -- the
+// lambda likewise never retried (the client re-submits on error).
+async function gpRegisterDelegate(path: string, payload: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { status: res.status, body: data };
+}
+
+export function genesisPassRegisterUpsert(payload: { identityId: string; allIdentityIds: string[]; walletAddress: string; twitterHandle?: string }): Promise<{ status: number; body: Record<string, unknown> }> {
+  return gpRegisterDelegate('/genesis-pass/register/upsert', payload as unknown as Record<string, unknown>);
+}
+
+export function genesisPassWithdrawDelegate(payload: { identityId: string; allIdentityIds: string[]; walletAddress: string | null }): Promise<{ status: number; body: Record<string, unknown> }> {
+  return gpRegisterDelegate('/genesis-pass/register/withdraw', payload as unknown as Record<string, unknown>);
+}
+
 /**
  * HMAC wallet proof, parity with the login lambdas (createHmac('sha256', secret).update(
  * `${walletAddress}:${proofIssuedAt}`)). Battalion NFT register-user validates this.
@@ -1012,6 +1039,18 @@ export function nftCollectionUpdate(collectionId: string, updates: Record<string
 }
 export function nftCollectionDelete(collectionId: string) {
   return adminWrite('/admin/nft-collections/delete', { collectionId });
+}
+// genesis_pass_allowlist admin CRUD (de-Lambda export-whitelist POST/PUT/DELETE /genesis-pass/entries):
+// add (dup-check -> 409, status ACTIVE), update (partial status/mintType/source + audit), delete (idempotent).
+// Same allowlist write SoT as the genesis-pass register lift, so the box is the single writer at cutover.
+export function genesisPassEntryAdd(payload: { walletAddress: string; mintType?: string; source?: string }) {
+  return adminWrite('/admin/genesis-pass/entries/add', payload as unknown as Record<string, unknown>);
+}
+export function genesisPassEntryUpdate(payload: { walletAddress: string; updates: Record<string, unknown>; lastModifiedBy: string }) {
+  return adminWrite('/admin/genesis-pass/entries/update', payload as unknown as Record<string, unknown>);
+}
+export function genesisPassEntryRemove(walletAddress: string) {
+  return adminWrite('/admin/genesis-pass/entries/delete', { walletAddress });
 }
 
 export interface DevnetMetricRow {
