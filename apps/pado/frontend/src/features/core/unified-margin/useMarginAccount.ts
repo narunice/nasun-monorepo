@@ -106,9 +106,14 @@ export function useMarginAccount(): UseMarginAccountResult {
 
   const [marginAccountId, setMarginAccountId] = useState<string | null>(null);
 
-  // Reset marginAccountId when activeAddress changes
+  // Reset marginAccountId when activeAddress changes.
+  // Only adopt a stored ID when margin is actually deployed. On v8 fresh
+  // genesis (MARGIN_ENABLED false), a leftover pre-reset margin account ID in
+  // localStorage would otherwise route NUSDC deposits through the unified-margin
+  // path, building a Move call against an empty package and getting rejected by
+  // the RPC as "Invalid params". BalanceManager-only mode must keep this null.
   useEffect(() => {
-    if (activeAddress) {
+    if (activeAddress && MARGIN_ENABLED) {
       const storedId = getStoredMarginAccountId(activeAddress);
       setMarginAccountId(storedId);
     } else {
