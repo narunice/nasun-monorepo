@@ -506,6 +506,7 @@ function buildMarket(spec: Spec): Market {
   const target = spec.comparisonOp === '==' ? `#${spec.threshold}` : `top-${spec.threshold}`;
   const source = `https://rss.marketingtools.apple.com/api/v2/${spec.country}/music/${spec.chart}/10/songs.json`;
   const criteria =
+    `Kind: music\n` +
     `Provider: itunes_rss\n` +
     `Country: ${spec.country}\n` +
     `Chart: ${spec.chart}\n` +

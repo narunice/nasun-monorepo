@@ -32,13 +32,24 @@ export type ResolverKind = 'crypto' | 'stock' | 'space' | 'music' | 'sports' | '
  * Detect resolver kind from a `Kind:` line in the resolution criteria.
  * Falls back to `null` so the caller can route to the legacy parser
  * (crypto/stock by Source URL host) for backwards compatibility.
+ *
+ * Provider fallback: some music markets were created without the `Kind: music`
+ * header (the dated create-full-batch-2026-06-06 / -06-22 scripts start the
+ * criteria at `Provider: itunes_rss`). On-chain criteria is immutable, so
+ * without this fallback those markets hang `pending` forever and get wrongly
+ * cancel-refunded at their deadline instead of resolving. The `itunes_rss`
+ * provider tag is music-specific, so this is an unambiguous route; crypto/stock
+ * carry no Provider line and still fall through to the legacy Source-host parser.
  */
 export function detectKind(text: string): ResolverKind | null {
   const m = /^Kind:\s*([a-z]+)\s*$/im.exec(text);
-  if (!m) return null;
-  const kind = m[1].toLowerCase();
-  if (kind === 'crypto' || kind === 'stock' || kind === 'space' || kind === 'music' || kind === 'sports' || kind === 'weather' || kind === 'ufc' || kind === 'esports') {
-    return kind;
+  if (m) {
+    const kind = m[1].toLowerCase();
+    if (kind === 'crypto' || kind === 'stock' || kind === 'space' || kind === 'music' || kind === 'sports' || kind === 'weather' || kind === 'ufc' || kind === 'esports') {
+      return kind;
+    }
+    return null;
   }
+  if (/^Provider:\s*itunes_rss\s*$/im.test(text)) return 'music';
   return null;
 }
