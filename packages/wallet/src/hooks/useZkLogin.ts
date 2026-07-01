@@ -5,7 +5,7 @@
  * Uses Zustand store for global state synchronization.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ZkLoginProvider, ZkLoginState, ZkLoginConfig } from '../types/zklogin';
 import { ZkLoginError } from '../types/zklogin';
@@ -25,6 +25,7 @@ import {
 } from '../core/zklogin';
 import { useZkLoginStore } from '../stores/zkLoginStore';
 import { useChainStore } from './useChain';
+import { registerZkLoginStaleSessionHandler } from '../core/zklogin-recovery';
 
 /**
  * zkLogin hook options
@@ -181,6 +182,18 @@ export function useZkLogin(options: UseZkLoginOptions = {}): UseZkLoginResult {
     useChainStore.getState().resetToDefault();
     queryClient.invalidateQueries({ queryKey: ['zklogin'] });
   }, [queryClient, clearStoreState]);
+
+  // Auto-recovery for proofs rejected on-chain at execution time (a stale
+  // session that passed signWithZkLogin's epoch guard but fails Groth16
+  // verification against the live chain). getSuiClient's execution wrapper
+  // invokes the registered handler; logout clears the dead session so every
+  // app's auth gate prompts a fresh login. A ref keeps the registration stable
+  // across logout identity changes without re-subscribing each render.
+  const logoutRef = useRef(logout);
+  useEffect(() => {
+    logoutRef.current = logout;
+  }, [logout]);
+  useEffect(() => registerZkLoginStaleSessionHandler(() => logoutRef.current()), []);
 
   // Sign transaction
   const signTransaction = useCallback(async (txBytes: Uint8Array): Promise<string> => {

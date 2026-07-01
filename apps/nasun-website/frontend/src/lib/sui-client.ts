@@ -1,5 +1,5 @@
 import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
-import { createRetryFetch } from '@nasun/wallet';
+import { createRetryFetch, installZkLoginRecovery } from '@nasun/wallet';
 
 // Trusted RPC URL whitelist - only these URLs are allowed
 const ALLOWED_RPC_URLS = [
@@ -41,6 +41,10 @@ export const suiClient = new SuiClient({
     fetch: createRetryFetch(),
   }),
 });
+
+// zkLogin stale-proof recovery: nasun-website caches its own SuiClient (not the
+// @nasun/wallet singleton), so the wrapper must be installed here too.
+installZkLoginRecovery(suiClient);
 
 export async function getEpochInfo() {
   try {

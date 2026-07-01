@@ -8,6 +8,7 @@ import type { BalanceInfo, WalletConfig, TokenBalance, MultiTokenBalanceInfo } f
 import { getTokenByType, NATIVE_TOKEN } from '../config/tokens';
 import { AllBalancesSchema, CoinBalanceSchema, safeParseRpc } from '../schemas/rpc';
 import { createRetryFetch } from './retry-fetch';
+import { installZkLoginRecovery } from '../core/zklogin-recovery';
 
 // ============================================
 // CORS-Compatible Transport for External Chains
@@ -180,6 +181,9 @@ export function getSuiClient(): SuiClient {
         fetch: createRetryFetch(),
       }),
     });
+    // External Move chains (getMoveClient) do not use zkLogin, so only the
+    // default Nasun client is wrapped for zkLogin stale-proof recovery.
+    installZkLoginRecovery(suiClient);
   }
   return suiClient;
 }

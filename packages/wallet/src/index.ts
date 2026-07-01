@@ -354,6 +354,14 @@ export {
   type ProverProgressEvent,
 } from './core/zklogin';
 
+export {
+  isStaleZkLoginProofError,
+  registerZkLoginStaleSessionHandler,
+  notifyZkLoginStaleSession,
+  handleStaleZkLoginProof,
+  installZkLoginRecovery,
+} from './core/zklogin-recovery';
+
 export { isInAppWebview } from './core/webview';
 
 // ============================================

@@ -1,5 +1,5 @@
 import { SuiClient, SuiHTTPTransport } from '@mysten/sui/client';
-import { createRetryFetch } from '@nasun/wallet';
+import { createRetryFetch, installZkLoginRecovery } from '@nasun/wallet';
 import { NETWORK_CONFIG } from '../config/network';
 
 let suiClient: SuiClient | null = null;
@@ -60,6 +60,11 @@ export function getSuiClient(): SuiClient {
       origGetPkg,
       (p) => p.package,
     ) as typeof client.getNormalizedMoveModulesByPackage;
+
+    // zkLogin stale-proof recovery: pado caches its own SuiClient (not the
+    // @nasun/wallet singleton), so the wrapper must be installed here too or
+    // pado trading/prediction/perp zkLogin failures would not auto-recover.
+    installZkLoginRecovery(client);
 
     suiClient = client;
   }
