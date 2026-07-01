@@ -639,6 +639,79 @@ export function __resetPrimaryProverCircuitForTest(): void {
   primaryProverCircuit = { consecutiveFailures: 0, openUntil: 0 };
 }
 
+// Extra self-hosted-pool attempts on transient errors before failing over.
+// Mutable so tests can zero the backoff and isolate retry vs circuit behaviour.
+let primaryProverMaxRetries = 2;
+let primaryProverRetryBaseMs = 800;
+
+/** Override prover retry tuning (retries + backoff base ms). Exposed for tests. */
+export function __setPrimaryProverRetryForTest(maxRetries: number, baseDelayMs: number): void {
+  primaryProverMaxRetries = maxRetries;
+  primaryProverRetryBaseMs = baseDelayMs;
+}
+
+function isRetryablePrimaryError(err: unknown): boolean {
+  // A timeout aborts via AbortController; retrying would stack another full
+  // PROVER_TIMEOUT_MS, so fail straight over to the fallback instead. A 4xx is a
+  // bad request that will not improve on retry. Retry only transient overload
+  // (rapidsnark returns 503 "at capacity" under a burst), other 5xx, and bare
+  // network errors (fetch throws a TypeError with no Response).
+  if (err instanceof DOMException && err.name === 'AbortError') return false;
+  const status = (err as { status?: number } | null)?.status;
+  if (typeof status === 'number') return status >= 500;
+  return err instanceof TypeError;
+}
+
+function primaryRetryDelayMs(attempt: number): number {
+  // Jittered backoff (default ~0.8-1.6s, then ~1.6-3.2s). The pool clears a
+  // proof every ~3s, so a short wait lets it drain; the random jitter de-syncs
+  // concurrent clients so a burst does not retry in lockstep and thundering-herd
+  // the public fallback.
+  const base = primaryProverRetryBaseMs * 2 ** attempt;
+  return base + Math.random() * base;
+}
+
+function sleepWithAbort(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled'));
+      return;
+    }
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new ZkLoginError('PROVER_FAILED', 'Proof request was cancelled'));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+/**
+ * Call the self-hosted prover pool, retrying a couple of times on transient
+ * capacity/network errors (with jittered backoff) before giving up so the
+ * caller can fail over to the public fallback. Throws the last error.
+ */
+async function callPrimaryProverWithRetry(
+  url: string,
+  body: string,
+  signal?: AbortSignal,
+): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await callProver(url, body, PROVER_TIMEOUT_MS, signal);
+    } catch (err) {
+      if (signal?.aborted) throw err;
+      if (attempt >= primaryProverMaxRetries || !isRetryablePrimaryError(err)) {
+        throw err;
+      }
+      await sleepWithAbort(primaryRetryDelayMs(attempt), signal);
+    }
+  }
+}
+
 /**
  * Call a single prover endpoint with timeout and abort support.
  */
@@ -665,7 +738,9 @@ async function callProver(
     });
     if (!response.ok) {
       const text = await response.text();
-      throw new Error(text);
+      const err = new Error(text) as Error & { status?: number };
+      err.status = response.status;
+      throw err;
     }
     return response;
   } finally {
@@ -739,10 +814,11 @@ export async function fetchZkProof(params: {
       );
     }
   } else {
-    // Try primary (self-hosted) prover
+    // Try primary (self-hosted) prover, with jittered retries on transient
+    // capacity/network errors before failing over to the public prover.
     params.onProgress?.({ phase: 'primary' });
     try {
-      response = await callProver(primaryUrl, body, PROVER_TIMEOUT_MS, params.signal);
+      response = await callPrimaryProverWithRetry(primaryUrl, body, params.signal);
       recordPrimaryProverSuccess();
     } catch (primaryErr) {
       // If the caller aborted (navigation, unmount), don't fallback and

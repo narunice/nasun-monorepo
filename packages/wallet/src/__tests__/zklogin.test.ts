@@ -400,8 +400,10 @@ describe('zklogin.ts core functions', () => {
         configureZkLogin,
         fetchZkProof,
         __resetPrimaryProverCircuitForTest,
+        __setPrimaryProverRetryForTest,
       } = await import('../core/zklogin');
       __resetPrimaryProverCircuitForTest();
+      __setPrimaryProverRetryForTest(0, 0); // isolate circuit logic from primary retries
 
       configureZkLogin({
         saltApiUrl: 'https://salt.example.com',
@@ -455,13 +457,100 @@ describe('zklogin.ts core functions', () => {
       expect(primaryCalls).toBe(3);
     });
 
+    it('retries the primary pool on transient 5xx then succeeds without failing over', async () => {
+      const {
+        configureZkLogin,
+        fetchZkProof,
+        __resetPrimaryProverCircuitForTest,
+        __setPrimaryProverRetryForTest,
+      } = await import('../core/zklogin');
+      __resetPrimaryProverCircuitForTest();
+      __setPrimaryProverRetryForTest(2, 0); // 2 retries, zero backoff
+
+      configureZkLogin({
+        saltApiUrl: 'https://salt.example.com',
+        proverUrl: 'https://primary.example.com',
+        providers: {},
+      });
+
+      // Primary returns 503 twice (transient capacity), then 200. No fallback.
+      let primaryHits = 0;
+      const fetchMock = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url.toString();
+        if (u.includes('primary.example.com')) {
+          primaryHits += 1;
+          if (primaryHits <= 2) return new Response('overloaded', { status: 503 });
+          return new Response(JSON.stringify(proofResponse), { status: 200 });
+        }
+        return new Response(JSON.stringify(proofResponse), { status: 200 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const progress: string[] = [];
+      const result = await fetchZkProof({
+        jwt: 'jwt',
+        salt: '1',
+        ephemeralPrivateKey,
+        maxEpoch: 1,
+        randomness: '1',
+        onProgress: (e) => progress.push(e.phase),
+      });
+
+      expect(primaryHits).toBe(3); // 2x 503 + 1 success
+      expect(progress).toEqual(['primary']); // never fell over to the fallback
+      expect(result.proof.addressSeed).toBe('seed');
+    });
+
+    it('fails over to the fallback after exhausting primary retries', async () => {
+      const {
+        configureZkLogin,
+        fetchZkProof,
+        __resetPrimaryProverCircuitForTest,
+        __setPrimaryProverRetryForTest,
+      } = await import('../core/zklogin');
+      __resetPrimaryProverCircuitForTest();
+      __setPrimaryProverRetryForTest(2, 0);
+
+      configureZkLogin({
+        saltApiUrl: 'https://salt.example.com',
+        proverUrl: 'https://primary.example.com',
+        providers: {},
+      });
+
+      let primaryHits = 0;
+      const fetchMock = vi.fn(async (url: string | URL | Request) => {
+        const u = typeof url === 'string' ? url : url.toString();
+        if (u.includes('primary.example.com')) {
+          primaryHits += 1;
+          return new Response('overloaded', { status: 503 });
+        }
+        return new Response(JSON.stringify(proofResponse), { status: 200 });
+      });
+      vi.stubGlobal('fetch', fetchMock);
+
+      const progress: string[] = [];
+      await fetchZkProof({
+        jwt: 'jwt',
+        salt: '1',
+        ephemeralPrivateKey,
+        maxEpoch: 1,
+        randomness: '1',
+        onProgress: (e) => progress.push(e.phase),
+      });
+
+      expect(primaryHits).toBe(3); // initial + 2 retries, all 503
+      expect(progress).toEqual(['primary', 'fallback']);
+    });
+
     it('closes the circuit on successful primary call', async () => {
       const {
         configureZkLogin,
         fetchZkProof,
         __resetPrimaryProverCircuitForTest,
+        __setPrimaryProverRetryForTest,
       } = await import('../core/zklogin');
       __resetPrimaryProverCircuitForTest();
+      __setPrimaryProverRetryForTest(0, 0); // isolate circuit logic from primary retries
 
       configureZkLogin({
         saltApiUrl: 'https://salt.example.com',
