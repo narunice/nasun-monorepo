@@ -51,7 +51,7 @@ import { buildCreateBalanceManager } from '../../trading/transactions';
 import { findUserBalanceManager } from '../../trading/lib/balanceManagerValidation';
 import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore';
 import { storeBalanceManagerId } from '../../../lib/unified-margin';
-import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg } from '../../../lib/payment';
+import { assembleUnifiedPaymentArg, assembleAutoDepositPaymentArg, assembleAutoDepositPaymentArgBm } from '../../../lib/payment';
 import { useMarginAccount } from '../../core/unified-margin';
 import { useToast } from '@/components/common/Toast';
 import { NUSDC_DECIMALS } from '../constants';
@@ -610,17 +610,30 @@ export function usePredictionTrade(): UsePredictionTradeResult {
         marketId,
         `buy-taker-autodeposit:${isYes}`,
         async (tx, client) => {
-          if (!maAccountId) {
-            throw new Error('Pado Balance account required for auto-deposit. Please set up Pado Balance first.');
+          let paymentArg;
+          if (maAccountId) {
+            // Margin mode: combine MarginAccount balance + wallet shortfall via unified_margin.
+            paymentArg = await assembleAutoDepositPaymentArg(
+              tx,
+              amountUnits,
+              walletAddress!,
+              maAccountId,
+              client,
+              maAccount?.nusdcBalance ?? 0n,
+            );
+          } else {
+            // BalanceManager-only mode (margin undeployed): combine BM balance +
+            // wallet shortfall. The margin helper would build an empty-package
+            // Move call here, which the RPC rejects as "Invalid params".
+            const currentBmId = useBalanceManagerStore.getState().balanceManagerId;
+            paymentArg = await assembleAutoDepositPaymentArgBm(
+              tx,
+              amountUnits,
+              walletAddress!,
+              currentBmId,
+              client,
+            );
           }
-          const paymentArg = await assembleAutoDepositPaymentArg(
-            tx,
-            amountUnits,
-            walletAddress!,
-            maAccountId,
-            client,
-            maAccount?.nusdcBalance ?? 0n,
-          );
           buildPlaceBuyTaker(tx, marketId, isYes, maxPriceBps, restOnNoFill, amountUnits, paymentArg);
         },
         restOnNoFill ? 'Limit buy submitted' : 'Buy filled',

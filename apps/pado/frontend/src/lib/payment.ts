@@ -144,6 +144,66 @@ export async function assembleAutoDepositPaymentArg(
 }
 
 /**
+ * BalanceManager-mode auto-deposit: assemble an exact `amount` Coin<NUSDC> by
+ * spending the BalanceManager's NUSDC first and topping up any shortfall from
+ * wallet coins, all in one atomic PTB.
+ *
+ * This is the BalanceManager-only-mode counterpart of
+ * assembleAutoDepositPaymentArg. That helper targets unified_margin Move calls
+ * which do not exist when margin is undeployed (v8 fresh genesis): the empty
+ * package makes the RPC reject the whole PTB with "Invalid params", so the
+ * market-buy auto-deposit path must route through the BalanceManager instead.
+ */
+export async function assembleAutoDepositPaymentArgBm(
+  tx: Transaction,
+  amount: bigint,
+  walletAddress: string,
+  bmId: string | null,
+  client: SuiClient,
+): Promise<TransactionArgument> {
+  if (amount <= 0n) throw new Error('Amount must be positive');
+
+  const bmBalance = bmId ? await getBmNusdcBalance(bmId) : 0n;
+
+  // BalanceManager alone covers the order: withdraw the exact amount.
+  if (bmId && bmBalance >= amount) {
+    return withdrawNusdcFromBm(tx, bmId, amount);
+  }
+
+  // Otherwise top up the shortfall (or the whole amount) from wallet coins.
+  const shortfall = amount - bmBalance;
+  const walletCoins: Array<{ coinObjectId: string; balance: string }> = [];
+  let cursor: string | null | undefined = undefined;
+  do {
+    const page = await client.getCoins({ owner: walletAddress, coinType: NUSDC_TYPE, cursor });
+    walletCoins.push(...page.data);
+    cursor = page.nextCursor;
+  } while (cursor);
+  if (walletCoins.length === 0) throw new Error('No wallet NUSDC coins found');
+  const walletTotal = walletCoins.reduce((s, c) => s + BigInt(c.balance), 0n);
+  if (walletTotal < shortfall) throw new Error('Insufficient wallet NUSDC for auto-deposit');
+
+  const [primary, ...rest] = walletCoins;
+  if (rest.length > 0) {
+    tx.mergeCoins(
+      tx.object(primary.coinObjectId),
+      rest.map((c) => tx.object(c.coinObjectId)),
+    );
+  }
+
+  // No BM funds to combine: pay the whole amount from wallet.
+  if (!bmId || bmBalance === 0n) {
+    return tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(amount)])[0];
+  }
+
+  // Combine BM balance + wallet shortfall into a single exact-`amount` coin.
+  const bmCoin = withdrawNusdcFromBm(tx, bmId, bmBalance);
+  const [walletCoin] = tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(shortfall)]);
+  tx.mergeCoins(bmCoin, [walletCoin]);
+  return bmCoin;
+}
+
+/**
  * Assemble wallet-coin payment: merges fragmented NUSDC, splits exact amount.
  */
 export async function assembleWalletPaymentArg(
