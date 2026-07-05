@@ -477,9 +477,12 @@ export class CommonStack extends cdk.Stack {
         // Alliance NFT minting
         COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
         ALLIANCE_MINT_TABLE: "nasun-alliance-mint",
-        ALLIANCE_PACKAGE_ID: "0xef29f3b4eaaefd35a1c7b2684122b1538f1a996da55657d0867b96019988df0b",
-        ALLIANCE_REGISTRY_ID: "0xed64e2d9661dde6f6f6fb303680c4ab7c95f9070c41e967b746299610ca7b00f",
-        ALLIANCE_ADMIN_ID: "0x6d95e0abd50784e01b106f86bfe5474a3a895059fb67d4c4a5147f03e694791c",
+        // v8 fresh-genesis alliance_nft redeploy (devnet-ids.json `alliance`).
+        // The v7 IDs below were wiped by the v8 reset; the Lambda queried a
+        // non-existent package so every user showed "Not Minted" and mint failed.
+        ALLIANCE_PACKAGE_ID: "0xe1cd047fa08964fa3be2721d6be81fe25258fa30b77101c06330f6fb771d43cd",
+        ALLIANCE_REGISTRY_ID: "0x5fce00b3db60c0da2595afc374bd0bce30d16257c4894fbffbba444ca11c803c",
+        ALLIANCE_ADMIN_ID: "0xd73e045d618e780e0f0b0ee8e79994b8baa25b70eb0ce1aff9ed54eed6e3b717",
       },
       logGroup: new logs.LogGroup(this, "GovernanceApiLambdaLogGroup", {
         logGroupName: "/aws/lambda/nasun-common-governance-api",
