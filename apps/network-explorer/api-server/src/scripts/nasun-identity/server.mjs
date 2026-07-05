@@ -1291,6 +1291,113 @@ async function handleAdminGenesisPassEntryDelete(body) {
   return { status: 200, body: { success: true, walletAddress } };
 }
 
+// ===== Alliance NFT mint state machine (box-lift S2) ==================================
+// Authoritative write side for the Alliance NFT flow, de-Lambda of alliance-handler.ts. The Lambda used
+// a DynamoDB conditional PutCommand for the PENDING claim + a distributed lock row (__ALLIANCE_MINT_LOCK__)
+// to serialize on-chain minting across concurrent Lambda invocations. On the box, on-chain serialization
+// lives in the single-instance :3212 signing service (in-proc mutex around the owned AllianceAdmin cap tx),
+// so these endpoints are PURE atomic DB state -- no lock row, no cooldown row. One mint per identity:
+// alliance_mint PK is identity_id.
+const ALLIANCE_PENDING_TTL_MS = 5 * 60 * 1000; // a :3212 crash between begin and commit/abort -> reclaimable
+const ALLIANCE_WALLET_RE = /^0x[0-9a-f]{64}$/;  // Sui address (lower-cased before test)
+
+// --- POST /alliance/mint-begin --------------------------------------------------------
+// Atomically claim a PENDING mint slot (parity with alliance-handler.ts:338 conditional put).
+//   { claimed:true }        -> :3212 proceeds to sign+execute, then /alliance/mint-commit
+//   409 ALREADY_MINTED      -> MINTED row OR a pre-migration mirror row (status NULL = minted pre-box-lift)
+//   409 MINT_IN_PROGRESS    -> a fresh PENDING (<5min) held by a concurrent attempt
+// A stale PENDING (>5min) is atomically reclaimed (guards a :3212 crash before commit/abort).
+async function handleAllianceMintBegin(body) {
+  const identityId = str(body.identityId);
+  const walletAddress = str(body.walletAddress).toLowerCase();
+  const imageIndex = Number(body.imageIndex);
+  const imageUrl = str(body.imageUrl);
+  if (!identityId || identityId.length > 256) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!ALLIANCE_WALLET_RE.test(walletAddress)) throw new RouteAbort(400, { error: 'walletAddress required (0x + 64 hex)' });
+  if (!Number.isInteger(imageIndex) || imageIndex < 0 || imageIndex > 3) throw new RouteAbort(400, { error: 'imageIndex 0-3 required' });
+  if (!imageUrl || imageUrl.length > 512) throw new RouteAbort(400, { error: 'imageUrl required' });
+
+  // Box alliance_mint stores mint metadata in the `attributes` jsonb (imageIndex/imageUrl/mintedAt +
+  // txDigest/nftObjectId on commit), matching the migrated DDB item shape -- NOT as separate columns.
+  const attrs = { imageIndex, imageUrl, mintedAt: new Date().toISOString() };
+  let result;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    // Atomic claim: PENDING only if no row exists for this identity.
+    const claimed = await tx`
+      INSERT INTO alliance_mint (identity_id, wallet_address, status, attributes)
+      VALUES (${identityId}, ${walletAddress}, 'PENDING', ${tx.json(attrs)})
+      ON CONFLICT (identity_id) DO NOTHING
+      RETURNING 1 AS w`;
+    if (claimed.length > 0) { result = { status: 200, body: { claimed: true } }; return; }
+
+    // A row already exists -- inspect its status (only status is needed; staleness is evaluated
+    // server-side in the reclaim UPDATE below).
+    const [row] = await tx`SELECT status FROM alliance_mint WHERE identity_id = ${identityId}`;
+    // MINTED, or a pre-migration mirror row (status NULL = already minted before the box-lift): block re-mint.
+    if (!row || row.status === 'MINTED' || row.status === null) {
+      result = { status: 409, body: { error: 'Already minted', code: 'ALREADY_MINTED' } };
+      return;
+    }
+    if (row.status === 'PENDING') {
+      // Reclaim iff the PENDING is stale (>TTL), evaluated ENTIRELY server-side: a JS Date is millisecond
+      // precision but timestamptz/now() is microsecond, so an equality guard on a round-tripped Date would
+      // (almost) never match -> a stale PENDING could never be reclaimed. now() - make_interval avoids that.
+      const reclaimed = await tx`
+        UPDATE alliance_mint
+          SET wallet_address = ${walletAddress}, attributes = ${tx.json(attrs)}
+          WHERE identity_id = ${identityId} AND status = 'PENDING'
+            AND ( (attributes->>'mintedAt') IS NULL
+                  OR (attributes->>'mintedAt')::timestamptz < now() - make_interval(secs => ${ALLIANCE_PENDING_TTL_MS / 1000}) )
+        RETURNING 1 AS w`;
+      result = reclaimed.length > 0
+        ? { status: 200, body: { claimed: true } }
+        : { status: 409, body: { error: 'Mint in progress', code: 'MINT_IN_PROGRESS' } };
+      return;
+    }
+    // Unknown status -> fail closed (never double-mint).
+    result = { status: 409, body: { error: 'Already minted', code: 'ALREADY_MINTED' } };
+  });
+  return result;
+}
+
+// --- POST /alliance/mint-commit -------------------------------------------------------
+// Transition a claimed PENDING slot -> MINTED after the on-chain mint lands. Idempotent (a :3212 retry is
+// a no-op). NEVER rolls back: the NFT is already on-chain (alliance-handler.ts:502 invariant). Only a
+// PENDING row is transitioned, so a stray commit cannot corrupt a MINTED or mirror row.
+async function handleAllianceMintCommit(body) {
+  const identityId = str(body.identityId);
+  const txDigest = str(body.txDigest);
+  const nftObjectId = str(body.nftObjectId);
+  if (!identityId) throw new RouteAbort(400, { error: 'identityId required' });
+  if (!txDigest) throw new RouteAbort(400, { error: 'txDigest required' });
+  let committed = 0;
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    const rows = await tx`
+      UPDATE alliance_mint
+        SET status = 'MINTED',
+            attributes = coalesce(attributes, '{}'::jsonb) || ${tx.json({ txDigest, nftObjectId: nftObjectId || null, mintedAt: new Date().toISOString() })}
+        WHERE identity_id = ${identityId} AND status = 'PENDING'
+      RETURNING 1 AS w`;
+    committed = rows.length;
+  });
+  return { status: 200, body: { ok: true, committed: committed > 0 } };
+}
+
+// --- POST /alliance/mint-abort --------------------------------------------------------
+// Roll back a claimed PENDING slot after an on-chain mint failure (alliance-handler.ts:621). Deletes ONLY
+// a PENDING row -- never a MINTED row or a pre-migration mirror (status NULL).
+async function handleAllianceMintAbort(body) {
+  const identityId = str(body.identityId);
+  if (!identityId) throw new RouteAbort(400, { error: 'identityId required' });
+  await sql.begin(async (tx) => {
+    await tx`SET LOCAL search_path = ${sql(SCHEMA)}`;
+    await tx`DELETE FROM alliance_mint WHERE identity_id = ${identityId} AND status = 'PENDING'`;
+  });
+  return { status: 200, body: { ok: true } };
+}
+
 const ROUTES = {
   '/admin/hidden-proposals/upsert': handleAdminHiddenProposalUpsert,
   '/admin/hidden-proposals/delete': handleAdminHiddenProposalDelete,
@@ -1322,6 +1429,9 @@ const ROUTES = {
   '/profile/delete': handleProfileDelete,
   '/governance/vote-claim': handleVoteClaim,
   '/governance/vote-release': handleVoteRelease,
+  '/alliance/mint-begin': handleAllianceMintBegin,
+  '/alliance/mint-commit': handleAllianceMintCommit,
+  '/alliance/mint-abort': handleAllianceMintAbort,
 };
 
 // ===== READ routes (S2.C get-user-profile reader cutover) =============================

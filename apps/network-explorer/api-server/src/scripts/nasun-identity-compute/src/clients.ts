@@ -129,6 +129,32 @@ export function genesisPassWithdrawDelegate(payload: { identityId: string; allId
   return gpRegisterDelegate('/genesis-pass/register/withdraw', payload as unknown as Record<string, unknown>);
 }
 
+// Alliance NFT mint state machine (box-lift S3): the :3211 /alliance/mint-* write endpoints. The compute
+// side (handlers-alliance.ts) claims a PENDING slot, signs+executes the on-chain mint, then commits (or
+// aborts on failure). Returns the :3211 { status, body } envelope VERBATIM so the handler can branch on
+// 200/409. NO retry: begin/commit/abort are each atomic + idempotent-or-terminal on the :3211 side, and a
+// blind re-POST of begin after an ambiguous failure is handled by the stale-PENDING reclaim, not here.
+async function allianceMintDelegate(path: string, payload: Record<string, unknown>): Promise<{ status: number; body: Record<string, unknown> }> {
+  const res = await fetch(`${ADDITIONAL.identityBaseUrl}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${ADDITIONAL.identityWriteBearer}` },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(ADDITIONAL.loopbackTimeoutMs),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  return { status: res.status, body: data };
+}
+
+export function allianceMintBegin(payload: { identityId: string; walletAddress: string; imageIndex: number; imageUrl: string }): Promise<{ status: number; body: Record<string, unknown> }> {
+  return allianceMintDelegate('/alliance/mint-begin', payload as unknown as Record<string, unknown>);
+}
+export function allianceMintCommit(payload: { identityId: string; txDigest: string; nftObjectId: string }): Promise<{ status: number; body: Record<string, unknown> }> {
+  return allianceMintDelegate('/alliance/mint-commit', payload as unknown as Record<string, unknown>);
+}
+export function allianceMintAbort(payload: { identityId: string }): Promise<{ status: number; body: Record<string, unknown> }> {
+  return allianceMintDelegate('/alliance/mint-abort', payload as unknown as Record<string, unknown>);
+}
+
 /**
  * HMAC wallet proof, parity with the login lambdas (createHmac('sha256', secret).update(
  * `${walletAddress}:${proofIssuedAt}`)). Battalion NFT register-user validates this.

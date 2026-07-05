@@ -14,7 +14,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN, GENESIS_PASS_REGISTER } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN, GENESIS_PASS_REGISTER, ALLIANCE } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, genesisPassRegisterCors, twitterCors, adminCors, send, sendRaw, RouteAbort } from './http';
 import {
   authenticateAdmin,
@@ -52,6 +52,7 @@ import {
 } from './handlers-genesis-pass';
 import { handleSponsor } from './governance-sponsor';
 import { handleConfig, handleVotingPower, handleCertificate } from './governance-voting';
+import { handleAllianceStatus, handleAllianceMint } from './handlers-alliance';
 import {
   handleSuiPrepare,
   handleSuiConnectVerify,
@@ -755,6 +756,39 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
         return send(res, e.status, payload, cors);
       }
       console.error('[compute] /governance/certificate failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
+  // Alliance NFT status/mint (box-lift) -- de-Lambda of governance-api alliance-handler. JWT-gated. The
+  // /governance prefix mirrors /governance/sponsor + the frontend VITE_GOVERNANCE_API_URL base
+  // (https://api.nasun.io/governance). Status = compute_ro read + :3211 wallet list (ALLIANCE.enabled);
+  // mint = admin-signed on-chain + :3211 loopback (ALLIANCE.mintEnabled), serialized by an in-proc mutex.
+  // governanceCors (GET/POST/OPTIONS, no credentials). Inert 503 until the flag + admin cred + nginx repoint.
+  if (pathname === '/governance/alliance/status' || pathname === '/governance/alliance/mint') {
+    const cors = governanceCors((req.headers['origin'] as string) || undefined);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    const isStatus = pathname === '/governance/alliance/status';
+    if (isStatus ? req.method !== 'GET' : req.method !== 'POST') {
+      return send(res, 405, { error: 'Method Not Allowed' }, cors);
+    }
+    if (isStatus ? !ALLIANCE.enabled : !ALLIANCE.mintEnabled) {
+      return send(res, 503, { error: isStatus ? 'alliance compute not enabled' : 'alliance mint compute not enabled' }, cors);
+    }
+    try {
+      const authHeader = req.headers['authorization'] as string | undefined;
+      const out = isStatus
+        ? await handleAllianceStatus(sql, SCHEMA, authHeader)
+        : await handleAllianceMint(sql, SCHEMA, authHeader, parseJson(await readBody(req)));
+      return send(res, out.status, out.body, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) {
+        const payload = 'error' in e.payload
+          ? e.payload
+          : { error: typeof e.payload.message === 'string' ? e.payload.message : `HTTP ${e.status}` };
+        return send(res, e.status, payload, cors);
+      }
+      console.error(`[compute] ${pathname} failed:`, e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'Internal server error' }, cors);
     }
   }

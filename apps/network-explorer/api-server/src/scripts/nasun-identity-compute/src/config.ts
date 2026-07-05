@@ -174,6 +174,36 @@ export const GENESIS_PASS_REGISTER = {
   enabled: process.env.COMPUTE_GENESIS_PASS_REGISTER_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
 };
 
+// --- Alliance NFT mint (de-Lambda of governance-api alliance-handler) ------------------------------
+// GET /governance/alliance/status (JWT; compute_ro read of alliance_mint + the :3211 wallet-list loopback)
+// + POST /governance/alliance/mint (JWT; admin-signed on-chain mint via makeSuiClient, PENDING/MINTED state
+// over the :3211 /alliance/mint-* loopback). On-chain serialization is an in-proc mutex in this single-
+// instance service (the owned AllianceAdmin cap contends across concurrent mints). The admin signing key is
+// a systemd-creds secret -- same disable-not-brick policy as the governance keys: a present-but-malformed
+// 64-hex cred disables /mint (503) + warns; an absent cred leaves it inert. The v8 chain ids are unit env
+// (public). Gated on a dedicated COMPUTE_ALLIANCE_ENABLED=1 flag so the bundle deploys INERT (503) until the
+// admin cred is provisioned AND the api.nasun.io /governance/alliance/* location repoints here (mirrors the
+// ECOSYSTEM / WALLET / GENESIS_PASS_REGISTER gate rationale).
+const allianceAdminKey = readOptional('alliance-admin', 'ALLIANCE_ADMIN_FILE');
+const allianceAdminValid = !!allianceAdminKey && /^[0-9a-fA-F]{64}$/.test(allianceAdminKey);
+if (allianceAdminKey && !allianceAdminValid) {
+  console.error('[compute] alliance mint DISABLED (503): alliance-admin cred is not 64-char hex (32-byte Ed25519)');
+}
+
+export const ALLIANCE = {
+  // Route mount + GET status: the flag + dual-jwks audience + the :3211 write bearer (status reads
+  // alliance_mint via compute_ro but also fetches the wallet list over the :3211 loopback).
+  enabled: process.env.COMPUTE_ALLIANCE_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  // POST mint additionally needs the admin signing key + the three v8 chain ids.
+  mintEnabled: process.env.COMPUTE_ALLIANCE_ENABLED === '1'
+    && !!(VERIFY.audience && identityWriteBearer && allianceAdminValid
+      && process.env.COMPUTE_ALLIANCE_PACKAGE_ID && process.env.COMPUTE_ALLIANCE_REGISTRY_ID && process.env.COMPUTE_ALLIANCE_ADMIN_ID),
+  adminPrivateKeyHex: allianceAdminKey || '',
+  packageId: process.env.COMPUTE_ALLIANCE_PACKAGE_ID || '',
+  registryId: process.env.COMPUTE_ALLIANCE_REGISTRY_ID || '',
+  adminId: process.env.COMPUTE_ALLIANCE_ADMIN_ID || '',
+};
+
 // --- Twitter (X) OAuth login (de-Lambda of auth-twitter) ------------------------------------------
 // GET /auth/twitter/login + POST /auth/twitter/callback lifted off the auth-twitter lambda. The X OAuth2
 // client_id is semi-public (it ships in the X authorize URL the browser navigates to) -> unit env; the
