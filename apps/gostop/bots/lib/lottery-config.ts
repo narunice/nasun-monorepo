@@ -275,25 +275,43 @@ export async function fetchRound(
   };
 }
 
+/**
+ * Find the current/latest round WITHOUT queryEvents. The devnet fullnode prunes
+ * transaction events after a couple of epochs (~4h), so
+ * queryEvents(RoundCreated) throws "Could not find the referenced transaction
+ * events" once the round's create tx ages out. That stalled the keeper for days
+ * on round 3 (29k+ consecutive failures, a 24,449-ticket draw left overdue).
+ * queryTransactionBlocks degrades gracefully instead of throwing, and the newest
+ * create_round tx is always recent (weekly cycle) so it stays within tx-index
+ * retention. We read the created shared LotteryRound straight from its effects.
+ */
 export async function fetchLatestRound(
   client: SuiClient,
 ): Promise<LotteryRound | null> {
-  const events = await withRetry(
+  const txs = await withRetry(
     () =>
-      client.queryEvents({
-        query: {
-          MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::RoundCreated`,
+      client.queryTransactionBlocks({
+        filter: {
+          MoveFunction: {
+            package: LOTTERY_PACKAGE_ID,
+            module: 'lottery',
+            function: 'create_round',
+          },
         },
+        options: { showEffects: true },
         order: 'descending',
         limit: 1,
       }),
-    { label: 'queryRoundCreated' },
+    { label: 'queryCreateRoundTx' },
   );
 
-  if (events.data.length === 0) return null;
+  const created = txs.data[0]?.effects?.created ?? [];
+  const roundRef = created.find(
+    (c) => c.owner && typeof c.owner === 'object' && 'Shared' in c.owner,
+  );
+  if (!roundRef) return null;
 
-  const roundId = (events.data[0].parsedJson as any).round_id;
-  return withRetry(() => fetchRound(client, roundId), { label: 'fetchRound' });
+  return withRetry(() => fetchRound(client, roundRef.reference.objectId), { label: 'fetchRound' });
 }
 
 /**

@@ -1,11 +1,43 @@
 import { getSuiClient } from '../../lib/sui-client';
 import {
+  LOTTERY_PACKAGE_ID,
   LOTTERY_REGISTRY_ID,
-  ROUND_CREATED_EVENT_TYPE,
   ROUND_STATUS,
   TICKET_TYPE,
   type RoundStatus,
 } from '../../lib/gostop-config';
+
+/**
+ * Return the object IDs of the most recent lottery rounds, newest first,
+ * WITHOUT queryEvents. The devnet fullnode prunes transaction events after a
+ * couple of epochs (~4h), so queryEvents(RoundCreated) throws "Could not find
+ * the referenced transaction events" once a round's create tx ages out — which
+ * blanked the current round and history on this page. queryTransactionBlocks
+ * degrades gracefully (pruned txs come back with empty effects, not a throw),
+ * and each create_round tx carries the created shared LotteryRound in its
+ * effects. Tx-index retention is short too, so only the newest round(s) are
+ * recoverable on-chain; older history must come from the backend indexer.
+ */
+async function fetchRecentRoundIds(limit: number): Promise<string[]> {
+  const client = getSuiClient();
+  const txs = await client.queryTransactionBlocks({
+    filter: {
+      MoveFunction: { package: LOTTERY_PACKAGE_ID, module: 'lottery', function: 'create_round' },
+    },
+    options: { showEffects: true },
+    order: 'descending',
+    limit,
+  });
+  const ids: string[] = [];
+  for (const tx of txs.data) {
+    const created = tx.effects?.created ?? [];
+    const roundRef = created.find(
+      (c) => c.owner && typeof c.owner === 'object' && 'Shared' in c.owner,
+    );
+    if (roundRef) ids.push(roundRef.reference.objectId);
+  }
+  return ids;
+}
 
 export interface LotteryRegistry {
   id: string;
@@ -86,16 +118,9 @@ export async function fetchLotteryRound(roundId: string): Promise<LotteryRound |
  * null if no rounds have been created yet.
  */
 export async function fetchLatestRoundId(): Promise<string | null> {
-  const client = getSuiClient();
   try {
-    const events = await client.queryEvents({
-      query: { MoveEventType: ROUND_CREATED_EVENT_TYPE },
-      limit: 1,
-      order: 'descending',
-    });
-    if (events.data.length === 0) return null;
-    const p = events.data[0].parsedJson as { round_id: string };
-    return p.round_id;
+    const ids = await fetchRecentRoundIds(1);
+    return ids[0] ?? null;
   } catch (e) {
     console.error('[lottery] fetchLatestRoundId:', e);
     return null;
@@ -116,23 +141,10 @@ export async function fetchLatestRound(): Promise<LotteryRound | null> {
 export async function fetchPastRounds(limit = 24): Promise<LotteryRound[]> {
   const client = getSuiClient();
   try {
-    const roundIds: string[] = [];
-    let cursor: { txDigest: string; eventSeq: string } | null | undefined = null;
-    while (roundIds.length < limit) {
-      const events = await client.queryEvents({
-        query: { MoveEventType: ROUND_CREATED_EVENT_TYPE },
-        limit: Math.min(50, limit - roundIds.length),
-        order: 'descending',
-        cursor: cursor ?? null,
-      });
-      for (const ev of events.data) {
-        const p = ev.parsedJson as { round_id?: string };
-        if (p?.round_id) roundIds.push(p.round_id);
-        if (roundIds.length >= limit) break;
-      }
-      if (!events.hasNextPage || events.data.length === 0) break;
-      cursor = events.nextCursor as typeof cursor;
-    }
+    // On-chain discovery is bounded by tx-index pruning (only the newest
+    // round(s) survive); older history is served from the backend indexer.
+    const roundIds = await fetchRecentRoundIds(limit);
+    if (roundIds.length === 0) return [];
     const rounds: LotteryRound[] = [];
     for (let i = 0; i < roundIds.length; i += 50) {
       const chunk = roundIds.slice(i, i + 50);
