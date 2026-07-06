@@ -8,8 +8,6 @@ import { aws_apigateway as apigw, aws_lambda as lambda } from "aws-cdk-lib";
 export interface MonitoringStackProps extends cdk.StackProps {
   priceApiGateway: apigw.LambdaRestApi;
   priceUpdaterLambda: lambda.Function;
-  governanceApi?: apigw.LambdaRestApi;
-  governanceApiLambda?: lambda.Function;
   metamaskAuthApi?: apigw.RestApi;
   leaderboardV3Api?: apigw.RestApi;
   nftEventApi?: apigw.RestApi;
@@ -66,26 +64,6 @@ export class MonitoringStack extends cdk.Stack {
         })
       ],
     ];
-
-    // Row 3: Governance API (optional)
-    if (props.governanceApi && props.governanceApiLambda) {
-      widgetRows.push([
-        new cloudwatch.GraphWidget({
-          title: "Governance API - 호출 수 & 지연시간",
-          width: 12,
-          height: 6,
-          left: [props.governanceApi.metricCount({ period })],
-          right: [props.governanceApi.metricLatency({ period })]
-        }),
-        new cloudwatch.GraphWidget({
-          title: "Governance Lambda - 에러 & 실행시간",
-          width: 12,
-          height: 6,
-          left: [props.governanceApiLambda.metricErrors({ period })],
-          right: [props.governanceApiLambda.metricDuration({ period })]
-        })
-      ]);
-    }
 
     // Row 4: Auth API (optional)
     if (props.metamaskAuthApi) {
@@ -144,33 +122,6 @@ export class MonitoringStack extends cdk.Stack {
     });
     priceUpdaterErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
-    // Governance API 5xx
-    if (props.governanceApi) {
-      const governanceApiErrorAlarm = new cloudwatch.Alarm(this, "GovernanceApiServerErrorAlarm", {
-        alarmName: "NASUN-GovernanceAPI-서버에러",
-        alarmDescription: "Governance API 5xx 에러가 5분간 5회 이상 발생 (alliance mint RPC lag은 429로 변환되어 5xx 미계산)",
-        metric: props.governanceApi.metricServerError({ period }),
-        threshold: 5,
-        evaluationPeriods: 1,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
-      });
-      governanceApiErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
-    }
-
-    // Governance Lambda 타임아웃/에러 (duration > 50s = 위험 신호)
-    if (props.governanceApiLambda) {
-      const governanceLambdaDurationAlarm = new cloudwatch.Alarm(this, "GovernanceLambdaDurationAlarm", {
-        alarmName: "NASUN-GovernanceLambda-지연",
-        alarmDescription: "Governance Lambda 평균 실행시간이 50초 초과 (타임아웃 위험)",
-        metric: props.governanceApiLambda.metricDuration({ period, statistic: "Average" }),
-        threshold: 50000,
-        evaluationPeriods: 2,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
-      });
-      governanceLambdaDurationAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
-    }
-
-    // MetaMask Auth API 5xx
     if (props.metamaskAuthApi) {
       const authApiErrorAlarm = new cloudwatch.Alarm(this, "AuthApiServerErrorAlarm", {
         alarmName: "NASUN-AuthAPI-서버에러",

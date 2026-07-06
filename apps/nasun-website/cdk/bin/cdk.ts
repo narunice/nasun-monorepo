@@ -146,8 +146,6 @@ const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   env: cdkEnv,
   priceApiGateway: commonStack.priceApiGateway,
   priceUpdaterLambda: commonStack.priceUpdaterLambda,
-  governanceApi: commonStack.governanceApi,
-  governanceApiLambda: commonStack.governanceApiLambda,
   metamaskAuthApi: authStack.metamaskAuthApi,
   nftEventApi: nftEventStack.api,
   genesisPassApi: genesisPassStack.api,
