@@ -14,7 +14,6 @@
 import type { EventId, SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
 import {
-  MARKET_CREATED_EVENTS,
   ORDER_FILLED_EVENTS,
   TEST_MARKETS,
   PREDICTION_PACKAGE_ID,
@@ -30,19 +29,6 @@ import { parseMarketStatus } from '../types';
 const MAX_MARKETS_DISCOVERY = 1000;
 const MAX_PRICE_LEVELS_PER_SIDE = 200;
 const FETCH_CHUNK_SIZE = 50;
-
-/**
- * Detects the RPC error raised when a `queryEvents` cursor points at a
- * transaction the fullnode has pruned ("Could not find the referenced
- * transaction events [TransactionDigest(...)]"). Descending event walks over
- * the frozen legacy package inevitably reach pruned history, so callers treat
- * this as a clean end-of-stream rather than a hard failure that would discard
- * already-collected results.
- */
-function isPrunedEventCursorError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /Could not find the referenced transaction/i.test(message);
-}
 
 // Sui RPC caps multiGetObjects at 50 ids per call.
 const MARKET_FETCH_CHUNK = 50;
@@ -330,70 +316,70 @@ export async function fetchMarketsWithOrderbooks(): Promise<
 }
 
 /**
- * Discover markets via MarketCreated events.
+ * Discover markets via `create_market` transactions (NOT MarketCreated events).
  *
- * 2026-05-20 v5 cutover: walks BOTH originalIds in parallel so v1~v4 in-
- * flight markets remain discoverable alongside any v5 markets. Cap is
- * applied per-side and re-applied to the merged result.
+ * The devnet fullnode prunes transaction events after ~2 epochs (~4h), so
+ * queryEvents(MarketCreated) throws "Could not find the referenced transaction
+ * events" once markets age out. Because TEST_MARKETS is empty, that blanked the
+ * entire market list (the whole prediction page went dark). queryTransactionBlocks
+ * degrades gracefully — pruned txs come back with empty effects instead of
+ * throwing — and the created shared Market object is right there in each create
+ * tx's effects. Tx-index retention is short too, so only recently-created
+ * markets survive on-chain; older markets need a durable indexer or longer
+ * fullnode retention (follow-up).
+ *
+ * 2026-05-20 v5 cutover: queries each originalId's create_market so v1~v4 and v5
+ * markets are both discoverable (deduped; on v8 the two ids coincide).
  */
 export async function fetchMarketsByEvents(): Promise<string[]> {
   const client = getSuiClient();
+  // queryTransactionBlocks' MoveFunction filter matches the package the call
+  // TARGETED, i.e. the latest published id (not the upgrade-stable originalId
+  // that event type tags carry). Use the latest v5 + legacy latest ids so an
+  // upgrade of the prediction package does not silently drop every create_market
+  // tx and blank the list again.
+  const callPackageIds = Array.from(
+    new Set(
+      [PREDICTION_PACKAGE_ID, LEGACY_PREDICTION_PACKAGE_ID].filter(
+        (p): p is string => typeof p === 'string' && p.length > 0,
+      ),
+    ),
+  );
 
-  async function walkOne(eventType: string): Promise<string[]> {
-    const ids: string[] = [];
-    let cursor: EventId | null | undefined = null;
-    while (ids.length < MAX_MARKETS_DISCOVERY) {
-      let page: Awaited<ReturnType<typeof client.queryEvents>>;
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const pkg of callPackageIds) {
+    let cursor: string | null | undefined = null;
+    for (let page = 0; page < 40 && ids.length < MAX_MARKETS_DISCOVERY; page++) {
+      let res: Awaited<ReturnType<typeof client.queryTransactionBlocks>>;
       try {
-        page = await client.queryEvents({
-          query: { MoveEventType: eventType },
-          cursor: cursor ?? null,
-          limit: 50,
+        res = await client.queryTransactionBlocks({
+          filter: {
+            MoveFunction: { package: pkg, module: 'prediction_market', function: 'create_market' },
+          },
+          options: { showEffects: true },
           order: 'descending',
+          limit: 50,
+          cursor: cursor ?? undefined,
         });
       } catch (error) {
-        // Descending walks over the frozen legacy package reach pruned
-        // history; stop at the prune boundary and keep what we collected so
-        // far instead of throwing (which, under Promise.all below, would
-        // discard the healthy v5 stream too and hide all markets).
-        if (isPrunedEventCursorError(error)) break;
-        throw error;
+        console.error('Failed to discover markets via create_market txs:', error);
+        break;
       }
-      for (const event of page.data) {
-        const parsed = event.parsedJson as { market_id?: string } | undefined;
-        if (parsed?.market_id) ids.push(parsed.market_id);
-      }
-      if (!page.hasNextPage || !page.nextCursor) break;
-      cursor = page.nextCursor;
-    }
-    return ids;
-  }
-
-  try {
-    const perEventResults = await Promise.all(MARKET_CREATED_EVENTS.map(walkOne));
-    // Dedupe preserving first-seen ordering (descending = newest first).
-    const seen = new Set<string>();
-    const merged: string[] = [];
-    // Interleave: take from each event stream in turn so v5 newest beats
-    // legacy newest by recency rather than by event-type ordering.
-    const maxLen = Math.max(...perEventResults.map((r) => r.length), 0);
-    for (let i = 0; i < maxLen && merged.length < MAX_MARKETS_DISCOVERY; i++) {
-      for (const arr of perEventResults) {
-        if (i < arr.length) {
-          const id = arr[i];
-          if (!seen.has(id)) {
-            seen.add(id);
-            merged.push(id);
-            if (merged.length >= MAX_MARKETS_DISCOVERY) break;
-          }
+      for (const tx of res.data) {
+        const marketRef = (tx.effects?.created ?? []).find(
+          (c) => c.owner && typeof c.owner === 'object' && 'Shared' in c.owner,
+        );
+        if (marketRef && !seen.has(marketRef.reference.objectId)) {
+          seen.add(marketRef.reference.objectId);
+          ids.push(marketRef.reference.objectId);
         }
       }
+      if (!res.hasNextPage || !res.nextCursor) break;
+      cursor = res.nextCursor;
     }
-    return merged;
-  } catch (error) {
-    console.error('Failed to fetch market events:', error);
-    return TEST_MARKETS;
   }
+  return ids.length > 0 ? ids : TEST_MARKETS;
 }
 
 /**
