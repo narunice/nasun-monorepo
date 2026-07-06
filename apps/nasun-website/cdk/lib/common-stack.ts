@@ -23,7 +23,6 @@ export interface CommonStackProps extends cdk.StackProps {
 }
 
 export class CommonStack extends cdk.Stack {
-  public readonly priceApiGateway: apigw.LambdaRestApi;
   public readonly priceUpdaterLambda: lambda.Function;
   public readonly userProfilesTable: dynamodb.ITable;
 
@@ -99,64 +98,6 @@ export class CommonStack extends cdk.Stack {
     // 1. NFT/Supply Lambda 함수들
     // ========================================
 
-    // 1-1. Get Backup Prices
-    const getBackupPricesLambda = new NodejsFunction(this, "GetBackupPricesLambda", {
-      functionName: "nasun-common-get-backup-prices",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'get-backup-prices', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        TABLE_NAME: cryptoBackupPricesTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-      },
-      logGroup: new logs.LogGroup(this, "GetBackupPricesLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-backup-prices",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    cryptoBackupPricesTable.grantReadData(getBackupPricesLambda);
-
-    const getBackupPricesApi = new apigw.LambdaRestApi(this, "GetBackupPricesApi", {
-      handler: getBackupPricesLambda,
-      restApiName: "NASUN Get Backup Prices API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: apigw.Cors.ALL_METHODS
-      },
-    });
-
-    // 1-2. Random Image Handler
-    const randomImageHandlerLambda = new NodejsFunction(this, "RandomImageHandlerLambda", {
-      functionName: "nasun-common-random-image-handler",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'randomImageHandler', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        TABLE_NAME: nftImagesTable.tableName,
-        MAX_MINT_COUNTS: '{"TIER1":1,"TIER2":2,"TIER3":3,"TIER4":4,"TIER5":100}',
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logGroup: new logs.LogGroup(this, "RandomImageHandlerLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-random-image-handler",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    nftImagesTable.grantReadWriteData(randomImageHandlerLambda);
-
-    const randomImageApi = new apigw.LambdaRestApi(this, "RandomImageApi", {
-      handler: randomImageHandlerLambda,
-      restApiName: "NASUN Random Image API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: apigw.Cors.ALL_METHODS
-      },
-    });
 
     // ========================================
     // 2. User Profile Lambda 함수들
@@ -343,88 +284,6 @@ export class CommonStack extends cdk.Stack {
       { httpMethod: "GET", proxy: true }
     ));
 
-    // 2-2. Link Account
-    const linkAccountLambda = new NodejsFunction(this, "LinkAccountLambda", {
-      functionName: "nasun-common-link-account",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'link-account', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        // AWS-exit grace: accept issuer-signed JWTs via dual-JWKS when configured (else Cognito-only).
-        ...issuerVerifyEnv(),
-        // AWS-exit DAL S2.A: mirror account-linking writes to the box nasun-identity service when wired.
-        ...identityWriteEnv(),
-        // AWS-exit DAL read-flip (S2): box-served twitterId uniqueness dedup (/profile/by-twitter-id)
-        // with DynamoDB fallback. FAIL-SAFE: {} when IDENTITY_READ_URL/SECRET unset; IDENTITY_READ_MODE
-        // =flip activates it. Roll back by unsetting the vars (or IDENTITY_READ_MODE) and redeploying.
-        ...identityReadEnv(),
-        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-        COGNITO_IDENTITY_POOL_ID: process.env.VITE_COGNITO_IDENTITY_POOL_ID || "",
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        GENESIS_PASS_ALLOWLIST_TABLE: "nasun-genesis-pass-allowlist",
-        // Onboarding bonus: referral-only social-link bonuses
-        REFERRALS_TABLE: "nasun-referrals",
-        EXPLORER_API_URL: process.env.EXPLORER_API_URL || "",
-        ONBOARDING_BONUS_API_KEY: process.env.ONBOARDING_BONUS_API_KEY || "",
-      },
-      timeout: cdk.Duration.seconds(10),
-      logGroup: new logs.LogGroup(this, "LinkAccountLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-link-account",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    this.userProfilesTable.grantReadWriteData(linkAccountLambda);
-    const genesisPassAllowlistForLink = dynamodb.Table.fromTableName(
-      this, "GenesisPassAllowlistForLink", "nasun-genesis-pass-allowlist"
-    );
-    genesisPassAllowlistForLink.grantReadWriteData(linkAccountLambda);
-    // Read-only on nasun-referrals for onboarding bonus referral-status check
-    const nasunReferralsForLink = dynamodb.Table.fromTableName(
-      this, "NasunReferralsForLink", "nasun-referrals"
-    );
-    nasunReferralsForLink.grantReadData(linkAccountLambda);
-
-    // #3b de-Lambda link-account: link / unlink / admin-link -> box compute (HTTP_PROXY). The box compute
-    // POST /compute/link{,/unlink,/admin-link} ports the lambda byte-for-byte (verifyJwt dual-jwks ->
-    // ownership/admin -> box reads (by-identity/by-twitter-id) -> box link-sync/attributes-sync, box-only PG,
-    // NO DynamoDB; onboarding-bonus delegated to explorer-api). Converted from LambdaRestApi(proxy:true) to a
-    // plain RestApi with the SAME construct id so the execute-api id is preserved (no frontend rebuild;
-    // VITE_LINK_ACCOUNT_API unchanged). The frontend hits root POST (useWalletAuth/EvmWalletLink/
-    // useWhitelistRegistration) + /link (authApi) for the link flow, /unlink (useAccountLinking/uju), and
-    // /admin-link (admin tool). register-evm (410) + EVERY other path STAY on the lambda via the explicit
-    // {proxy+} ANY mount (NOT root.addProxy(), which would synthesize a spurious root ANY->MOCK), so the box
-    // serves ONLY the three lifted routes. root ANY -> lambda gives exact proxy:true parity for non-POST root
-    // (the lambda 405s them). OPTIONS preflight stays an API-GW MOCK (defaultCorsPreflightOptions). ROLLBACK:
-    // revert this block to LambdaRestApi(proxy:true) + redeploy (the lambda stays defined + granted as the
-    // rollback target).
-    const linkAccountApi = new apigw.RestApi(this, "LinkAccountApi", {
-      restApiName: "NASUN Link Account API (Common)",
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["POST", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"]
-      },
-    });
-    const linkLambdaIntegration = new apigw.LambdaIntegration(linkAccountLambda);
-    // root POST (link) + /link POST (link) -> box /compute/link (HTTP_PROXY; Authorization + body forwarded).
-    linkAccountApi.root.addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/link", { httpMethod: "POST", proxy: true }
-    ));
-    linkAccountApi.root.addResource("link").addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/link", { httpMethod: "POST", proxy: true }
-    ));
-    linkAccountApi.root.addResource("unlink").addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/link/unlink", { httpMethod: "POST", proxy: true }
-    ));
-    linkAccountApi.root.addResource("admin-link").addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/link/admin-link", { httpMethod: "POST", proxy: true }
-    ));
-    // {proxy+} ANY -> lambda (register-evm 410 + any other path) + root ANY -> lambda (non-POST root parity).
-    // A specific resource (link/unlink/admin-link) is matched ahead of {proxy+}.
-    linkAccountApi.root.addResource("{proxy+}").addMethod("ANY", linkLambdaIntegration);
-    linkAccountApi.root.addMethod("ANY", linkLambdaIntegration);
 
     // 2-3. Wallet API — REMOVED (wallet/address-book de-Lambda Phase 5 teardown, 2026-06-23).
     // The address-book service is box nasun-address-book (:3215); register/remove/list are box
@@ -456,22 +315,6 @@ export class CommonStack extends cdk.Stack {
     });
     cryptoBackupPricesTable.grantWriteData(updateBackupPricesLambda);
 
-    // 3-2. Price API
-    const priceApiLambda = new NodejsFunction(this, "PriceApiLambda", {
-      functionName: "nasun-common-price-api",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'PriceAPI', 'src', 'lambda-handler.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {},
-      logGroup: new logs.LogGroup(this, "PriceApiLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-price-api",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    cryptoPricesTable.grantReadData(priceApiLambda);
-    cryptoBackupPricesTable.grantReadData(priceApiLambda);
 
     // 3-3. Price Updater
     this.priceUpdaterLambda = new NodejsFunction(this, "PriceUpdaterLambda", {
@@ -493,15 +336,6 @@ export class CommonStack extends cdk.Stack {
     cryptoBackupPricesTable.grantReadWriteData(this.priceUpdaterLambda);
     cryptoPricesTable.grantReadWriteData(this.priceUpdaterLambda);
 
-    this.priceApiGateway = new apigw.LambdaRestApi(this, "PriceApiGateway", {
-      handler: priceApiLambda,
-      restApiName: "NASUN Price API (Common)",
-      proxy: true,
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: apigw.Cors.ALL_METHODS
-      },
-    });
 
     // 3-4. Price Update Rule (EventBridge)
     const priceUpdateRule = new events.Rule(this, "PriceUpdateRule", {
@@ -567,17 +401,7 @@ export class CommonStack extends cdk.Stack {
     // 7. SSM Parameters
     // ========================================
 
-    new ssm.StringParameter(this, 'PriceApiUrlParam', {
-      parameterName: '/nasun/common/price-api-url',
-      stringValue: this.priceApiGateway.url,
-      description: 'CommonStack Price API URL',
-    });
 
-    new ssm.StringParameter(this, 'GetBackupPricesApiUrlParam', {
-      parameterName: '/nasun/common/get-backup-prices-api-url',
-      stringValue: getBackupPricesApi.url,
-      description: 'CommonStack Get Backup Prices API URL',
-    });
 
     new ssm.StringParameter(this, 'UserProfileApiUrlParam', {
       parameterName: '/nasun/common/user-profile-api-url',
@@ -589,30 +413,14 @@ export class CommonStack extends cdk.Stack {
     // 6. Stack Outputs
     // ========================================
 
-    new cdk.CfnOutput(this, "PriceApiUrl", {
-      value: this.priceApiGateway.url,
-      description: "Price API Gateway URL (CommonStack)",
-    });
 
-    new cdk.CfnOutput(this, "GetBackupPricesApiUrl", {
-      value: getBackupPricesApi.url,
-      description: "Get Backup Prices API URL (CommonStack)",
-    });
 
-    new cdk.CfnOutput(this, "RandomImageApiUrl", {
-      value: randomImageApi.url,
-      description: "Random Image API URL (CommonStack)",
-    });
 
     new cdk.CfnOutput(this, "UserProfileApiUrl", {
       value: userProfileApi.url,
       description: "User Profile API URL (CommonStack)",
     });
 
-    new cdk.CfnOutput(this, "LinkAccountApiUrl", {
-      value: linkAccountApi.url,
-      description: "Link Account API URL (CommonStack)",
-    });
 
 
     // ========================================

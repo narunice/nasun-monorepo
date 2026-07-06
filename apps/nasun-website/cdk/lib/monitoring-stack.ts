@@ -6,7 +6,6 @@ import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
 import { aws_apigateway as apigw, aws_lambda as lambda } from "aws-cdk-lib";
 
 export interface MonitoringStackProps extends cdk.StackProps {
-  priceApiGateway: apigw.LambdaRestApi;
   priceUpdaterLambda: lambda.Function;
   metamaskAuthApi?: apigw.RestApi;
   leaderboardV3Api?: apigw.RestApi;
@@ -28,25 +27,6 @@ export class MonitoringStack extends cdk.Stack {
 
     // -- Dashboard widgets --
     const widgetRows: cloudwatch.IWidget[][] = [
-      // Row 1: Price API
-      [
-        new cloudwatch.GraphWidget({
-          title: "Price API Gateway - 호출 수 & 지연시간",
-          width: 12,
-          height: 6,
-          left: [props.priceApiGateway.metricCount({ period })],
-          right: [props.priceApiGateway.metricLatency({ period })]
-        }),
-        new cloudwatch.GraphWidget({
-          title: "Price API Gateway - 에러율",
-          width: 12,
-          height: 6,
-          left: [
-            props.priceApiGateway.metricClientError({ period }),
-            props.priceApiGateway.metricServerError({ period })
-          ]
-        })
-      ],
       // Row 2: Price Updater Lambda
       [
         new cloudwatch.GraphWidget({
@@ -99,17 +79,6 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     // -- Alarms --
-
-    // Price API 5xx
-    const priceApiServerErrorAlarm = new cloudwatch.Alarm(this, "PriceApiServerErrorAlarm", {
-      alarmName: "NASUN-PriceAPI-서버에러",
-      alarmDescription: "Price API 5xx 에러가 5분간 3회 이상 발생",
-      metric: props.priceApiGateway.metricServerError({ period }),
-      threshold: 3,
-      evaluationPeriods: 1,
-      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING
-    });
-    priceApiServerErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
     // Price Updater 연속 실패
     const priceUpdaterErrorAlarm = new cloudwatch.Alarm(this, "PriceUpdaterErrorAlarm", {
