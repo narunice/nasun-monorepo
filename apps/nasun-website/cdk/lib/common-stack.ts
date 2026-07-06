@@ -68,14 +68,9 @@ export class CommonStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    // Alliance Mint table — one NFT mint per account (PK: identityId)
-    const allianceMintTable = new dynamodb.Table(this, "AllianceMintTable", {
-      tableName: "nasun-alliance-mint",
-      partitionKey: { name: "identityId", type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      encryption: dynamodb.TableEncryption.AWS_MANAGED,
-    });
+    // AllianceMint DDB table removed (alliance NFT de-Lambda teardown, 2026-07-06). box PG
+    // nasun_dal.alliance_mint (:3211 write / :3212 read) is SoT; the governance-api Lambda that used this
+    // table is deleted. RemovalPolicy.RETAIN had orphaned the table, which was then manually deleted.
 
     // AddressBooks DDB table removed (wallet/address-book de-Lambda Phase 5 teardown, 2026-06-23).
     // box nasun-address-book (:3215) is SoT. RemovalPolicy.RETAIN orphans the table on this removal;
