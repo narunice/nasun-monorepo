@@ -273,21 +273,21 @@ async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<Lottery
       let counts: { tier1: number; tier2: number; tier3: number; totalFetched: number } | null = null;
 
       for (let attempt = 0; attempt < MAX_EVENT_COUNT_RETRIES; attempt++) {
-        const result = await countWinners(client, round.id, round.drawnNumbers, round.startTime);
+        const result = await countWinners(round.roundNumber, round.drawnNumbers, round.startTime);
         if (result.totalFetched >= round.ticketCount) {
           if (result.totalFetched > round.ticketCount) {
-            // Extra events beyond chain ticketCount: possible duplicate event emission.
-            // Winner counts computed from all events are still valid since settle_round
-            // distributes the pool across counted winners.
+            // Indexer rows beyond chain ticketCount would mean double-indexed
+            // tickets; winner counts are still valid since settle_round
+            // distributes the pool across counted winners, but flag it.
             console.warn(
-              `[${timestamp()}] Event surplus: events=${result.totalFetched}, chain=${round.ticketCount} — proceeding with settlement`,
+              `[${timestamp()}] Ticket surplus: db=${result.totalFetched}, chain=${round.ticketCount} — proceeding with settlement`,
             );
           }
           counts = result;
           break;
         }
         console.warn(
-          `[${timestamp()}] Ticket count mismatch: events=${result.totalFetched}, chain=${round.ticketCount} (attempt ${attempt + 1}/${MAX_EVENT_COUNT_RETRIES})`,
+          `[${timestamp()}] Ticket count shortfall (indexer lag?): db=${result.totalFetched}, chain=${round.ticketCount} (attempt ${attempt + 1}/${MAX_EVENT_COUNT_RETRIES})`,
         );
         if (attempt < MAX_EVENT_COUNT_RETRIES - 1) {
           await new Promise((r) => setTimeout(r, EVENT_COUNT_RETRY_DELAY_MS));

@@ -418,6 +418,9 @@ importers:
       better-sqlite3:
         specifier: ^11.7.0
         version: 11.10.0
+      fast-xml-parser:
+        specifier: '>=5.7.0 <6'
+        version: 5.9.3
       postgres:
         specifier: ^3.4.5
         version: 3.4.8

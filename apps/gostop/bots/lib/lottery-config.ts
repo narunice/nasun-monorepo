@@ -11,7 +11,8 @@
  *     immediately after (LOTTERY_DRAW_OFFSET_MS=0 default).
  */
 
-import { SuiClient, type EventId } from '@mysten/sui/client';
+import { SuiClient } from '@mysten/sui/client';
+import postgres from 'postgres';
 import { Transaction } from '@mysten/sui/transactions';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -315,80 +316,68 @@ export async function fetchLatestRound(
 }
 
 /**
- * Count winners by paginating TicketPurchased events DESCENDING from now,
- * stopping once we've passed the round's start_time. This avoids the O(N²)
- * scan from genesis that grows unbounded with cumulative rounds.
+ * Count winners from the durable indexer table `gostop.lottery_ticket`, NOT
+ * from TicketPurchased events. The devnet fullnode prunes tx events after ~2
+ * epochs (~4h), so the old queryEvents scan threw "Could not find the
+ * referenced transaction events" on any round older than a few hours — which
+ * left Round 3 (24,449 tickets) unsettleable and stalled the keeper for days.
+ * The indexer (gostop-backend) captures every TicketPurchased into
+ * gostop.lottery_ticket before pruning, so it is the durable source of truth.
  *
- * Caller must pass `roundStartTime` (round.startTime ms) so we can early-out.
- * As an extra safety net, we cap at MAX_PAGES to avoid runaway loops if
- * the RPC returns events without timestampMs.
+ * The indexer keys tickets by `round_number`, which pre-v8 rounds reused after
+ * the fresh genesis. Isolate THIS round's tickets by
+ * `purchase_ts_ms >= round.startTime` (a pre-v8 round with the same number was
+ * bought strictly before this round opened). Verified against Round 3's live
+ * settlement: drawn {4,10,18,24,25} -> tier2=38, tier3=883, total 24449.
+ *
+ * The keeper cross-checks `totalFetched` against the on-chain ticket_count and
+ * retries on a shortfall (indexer lag) before settling, so a briefly-behind
+ * indexer defers settlement rather than under-paying.
  */
-// Headroom for very large rounds. Sui devnet RPC silently caps queryEvents
-// page size at 50 even when a higher limit is requested, so the effective
-// ceiling is 50 × MAX_PAGES. 20,000 pages = 1M tickets of headroom.
-// Raising the cap is essentially free in normal operation: the loop exits
-// early via `pastCutoff` (events older than round.startTime - 30min) or
-// `!hasNextPage`, so RPC call count tracks actual ticket volume, not
-// MAX_PAGES. The cap only matters as a safety net against a runaway loop
-// if both early-exit conditions fail simultaneously.
-// We still pass EVENTS_PAGE_SIZE=1000 so that if the node is reconfigured
-// to allow larger pages, fewer round-trips are needed.
-const EVENTS_PAGE_SIZE = 1000;
-const MAX_PAGES = 20000;
-const SAFETY_LOOKBACK_MS = 30 * 60 * 1000; // 30 min before round.startTime
+let _lotteryDb: ReturnType<typeof postgres> | null = null;
+function lotteryDb(): ReturnType<typeof postgres> {
+  if (_lotteryDb) return _lotteryDb;
+  const url = process.env.GOSTOP_LOTTERY_DB_URL;
+  if (!url) {
+    throw new Error('GOSTOP_LOTTERY_DB_URL is required for winner counting (durable ticket source)');
+  }
+  _lotteryDb = postgres(url, {
+    max: 2,
+    idle_timeout: 20,
+    connect_timeout: 10,
+    connection: { statement_timeout: 30_000 },
+  });
+  return _lotteryDb;
+}
 
 export async function countWinners(
-  client: SuiClient,
-  roundId: string,
+  roundNumber: number,
   drawnNumbers: number[],
   roundStartTime: number,
 ): Promise<WinnerCounts> {
-  const drawnSet = new Set(drawnNumbers);
-  let tier1 = 0,
-    tier2 = 0,
-    tier3 = 0;
-  let totalFetched = 0;
-  let cursor: EventId | null | undefined = undefined;
-  const cutoffMs = roundStartTime - SAFETY_LOOKBACK_MS;
-
-  for (let page = 0; page < MAX_PAGES; page++) {
-    const response = await withRetry(
-      () =>
-        client.queryEvents({
-          query: {
-            MoveEventType: `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::TicketPurchased`,
-          },
-          cursor: cursor ?? undefined,
-          limit: EVENTS_PAGE_SIZE,
-          order: 'descending',
-        }),
-      { label: 'queryTicketPurchased' },
-    );
-
-    let pastCutoff = false;
-    for (const event of response.data) {
-      const tsMs = Number(event.timestampMs ?? 0);
-      if (tsMs && tsMs < cutoffMs) {
-        pastCutoff = true;
-        break;
-      }
-      const parsed = event.parsedJson as { round_id: string; numbers: unknown };
-      if (parsed.round_id !== roundId) continue;
-
-      const numbers: number[] = (parsed.numbers as unknown[]).map(Number);
-      const matches = numbers.filter((n) => drawnSet.has(n)).length;
-      if (matches === 5) tier1++;
-      else if (matches === 4) tier2++;
-      else if (matches === 3) tier3++;
-      totalFetched++;
-    }
-
-    if (pastCutoff) break;
-    if (!response.hasNextPage) break;
-    cursor = response.nextCursor;
+  if (
+    drawnNumbers.length !== 5 ||
+    drawnNumbers.some((n) => !Number.isInteger(n) || n < 1 || n > 25)
+  ) {
+    throw new Error(`invalid drawn numbers: ${JSON.stringify(drawnNumbers)}`);
   }
-
-  return { tier1, tier2, tier3, totalFetched };
+  const db = lotteryDb();
+  const rows = await db<{ tier1: number; tier2: number; tier3: number; total: number }[]>`
+    WITH w AS (
+      SELECT (
+        SELECT count(*) FROM unnest(numbers) x WHERE x = ANY(${drawnNumbers}::int[])
+      ) AS m
+      FROM gostop.lottery_ticket
+      WHERE round_number = ${roundNumber} AND purchase_ts_ms >= ${roundStartTime}
+    )
+    SELECT
+      count(*) FILTER (WHERE m = 5)::int AS tier1,
+      count(*) FILTER (WHERE m = 4)::int AS tier2,
+      count(*) FILTER (WHERE m = 3)::int AS tier3,
+      count(*)::int AS total
+    FROM w`;
+  const r = rows[0];
+  return { tier1: r.tier1, tier2: r.tier2, tier3: r.tier3, totalFetched: r.total };
 }
 
 export function calculateNextRoundTimes(): { closeTime: number; drawTime: number } {
