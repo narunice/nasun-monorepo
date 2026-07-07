@@ -8,7 +8,11 @@
  * making them chainable in a PTB.
  */
 
-import { Transaction, type TransactionArgument } from '@mysten/sui/transactions';
+import {
+  Transaction,
+  type TransactionArgument,
+  type TransactionObjectArgument,
+} from '@mysten/sui/transactions';
 import type { SuiClient } from '@mysten/sui/client';
 import { NETWORK_CONFIG } from '../config/network';
 import { getSuiClient } from './sui-client';
@@ -199,7 +203,11 @@ export async function assembleAutoDepositPaymentArgBm(
   // Combine BM balance + wallet shortfall into a single exact-`amount` coin.
   const bmCoin = withdrawNusdcFromBm(tx, bmId, bmBalance);
   const [walletCoin] = tx.splitCoins(tx.object(primary.coinObjectId), [tx.pure.u64(shortfall)]);
-  tx.mergeCoins(bmCoin, [walletCoin]);
+  // bmCoin is a Coin<NUSDC> from balance_manager::withdraw; the shared
+  // withdrawNusdcFromBm() return type is the wider TransactionArgument, so
+  // narrow it to the coin-object arg mergeCoins requires (type-only, no
+  // runtime change).
+  tx.mergeCoins(bmCoin as TransactionObjectArgument, [walletCoin]);
   return bmCoin;
 }
 
