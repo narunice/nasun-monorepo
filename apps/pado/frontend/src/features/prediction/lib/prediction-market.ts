@@ -339,12 +339,8 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
   // upgrade of the prediction package does not silently drop every create_market
   // tx and blank the list again.
   const callPackageIds = Array.from(
-    new Set(
-      [PREDICTION_PACKAGE_ID, LEGACY_PREDICTION_PACKAGE_ID].filter(
-        (p): p is string => typeof p === 'string' && p.length > 0,
-      ),
-    ),
-  );
+    new Set([PREDICTION_PACKAGE_ID, LEGACY_PREDICTION_PACKAGE_ID]),
+  ).filter((p) => typeof p === 'string' && p.length > 0);
 
   const seen = new Set<string>();
   const ids: string[] = [];
