@@ -148,12 +148,16 @@ export async function handleAvatarUpload(
 
   await mkdir(destDir, { recursive: true });
   // Force perms explicitly: the unit runs with a hardened UMask (0077) + DynamicUser, so without this the
-  // dir would be 0700 and files 0600 -- nginx (a different user) could neither traverse nor read them, and
-  // a later service instance (DynamicUser may be assigned a different uid across restarts) could not write
-  // into an existing per-identity dir. 2775 = setgid + group-write: the shared `nasun-avatars` group
-  // (SupplementaryGroups in the unit) lets any instance write, and world r-x/r lets nginx serve. chmod is
-  // not masked by UMask, so it wins.
-  await chmod(destDir, 0o2775).catch(() => {});
+  // dir would be 0700 -- nginx (a different user) could not traverse it. 0775 gives world r-x (nginx
+  // traverses) + group rwx so a later service instance (DynamicUser may get a different uid across
+  // restarts, but stays in the shared nasun-avatars group via SupplementaryGroups) can still write into an
+  // existing per-identity dir. We deliberately do NOT set setgid here: RestrictSUIDSGID=yes in the unit
+  // blocks any chmod that SETS suid/sgid, so a 2775 chmod fails with EPERM and leaves the dir 0700. The dir
+  // still ends up group=nasun-avatars because it inherits the group from the setgid parent (avatars/ +
+  // profile-images/) at mkdir time; clearing setgid on this leaf dir is harmless (it has no subdirs).
+  // chmod is not masked by UMask, so these perms win. Let a real failure surface (500) rather than a silent
+  // unreadable dir (404).
+  await chmod(destDir, 0o0775);
   try {
     await writeFile(tmpPath, encoded);
     await chmod(tmpPath, 0o644);
