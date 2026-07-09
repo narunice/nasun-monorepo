@@ -106,14 +106,21 @@ export async function handleAvatarUpload(
   identityId: string,
   opts: AvatarUploadOptions,
 ): Promise<{ key: string }> {
+  // Defense-in-depth: identityId is JWT-derived (trusted issuer) but is used as a path segment below.
+  // Reject anything that could escape the per-identity dir, without assuming the exact issuer sub format.
+  if (identityId.length === 0 || /[/\\\0]/.test(identityId) || identityId.includes('..')) {
+    throw new RouteAbort(400, { message: 'Invalid identity' });
+  }
+
   const raw = await readSingleUpload(req, opts.maxBytes);
   if (raw.length === 0) throw new RouteAbort(400, { message: 'Empty image file' });
 
-  // Probe the ACTUAL bytes; a mislabeled content-type cannot pass here.
-  const pipeline = sharp(raw, { failOn: 'error', limitInputPixels: LIMIT_INPUT_PIXELS });
+  // Probe the ACTUAL bytes; a mislabeled content-type cannot pass here. A fresh sharp instance is used for
+  // the re-encode below (rather than reusing this one) so the probe and the transform never share pipeline
+  // state -- the input is a Buffer, so re-reading it is free.
   let meta;
   try {
-    meta = await pipeline.metadata();
+    meta = await sharp(raw, { failOn: 'error', limitInputPixels: LIMIT_INPUT_PIXELS }).metadata();
   } catch {
     throw new RouteAbort(400, { message: 'Unreadable or invalid image' });
   }
@@ -123,7 +130,7 @@ export async function handleAvatarUpload(
 
   let encoded: Buffer;
   try {
-    encoded = await pipeline
+    encoded = await sharp(raw, { failOn: 'error', limitInputPixels: LIMIT_INPUT_PIXELS })
       .rotate() // bake EXIF orientation BEFORE stripping metadata
       .resize(opts.dim, opts.dim, { fit: 'cover', position: 'centre' })
       .webp({ quality: 82 }) // re-encode: strips EXIF/ICC/XMP + any appended payload
