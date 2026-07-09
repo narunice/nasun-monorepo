@@ -144,7 +144,6 @@ if (agentVaultRoleArn) {
 // Monitoring stack — depends on Common, Auth, and NftEvent stacks
 const monitoringStack = new MonitoringStack(app, 'MonitoringStack', {
   env: cdkEnv,
-  priceUpdaterLambda: commonStack.priceUpdaterLambda,
   metamaskAuthApi: authStack.metamaskAuthApi,
   nftEventApi: nftEventStack.api,
   genesisPassApi: genesisPassStack.api,

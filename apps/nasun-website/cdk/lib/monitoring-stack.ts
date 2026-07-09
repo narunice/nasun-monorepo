@@ -3,10 +3,9 @@ import { Construct } from "constructs";
 import * as cloudwatch from "aws-cdk-lib/aws-cloudwatch";
 import * as sns from "aws-cdk-lib/aws-sns";
 import * as cloudwatchActions from "aws-cdk-lib/aws-cloudwatch-actions";
-import { aws_apigateway as apigw, aws_lambda as lambda } from "aws-cdk-lib";
+import { aws_apigateway as apigw } from "aws-cdk-lib";
 
 export interface MonitoringStackProps extends cdk.StackProps {
-  priceUpdaterLambda: lambda.Function;
   metamaskAuthApi?: apigw.RestApi;
   leaderboardV3Api?: apigw.RestApi;
   nftEventApi?: apigw.RestApi;
@@ -26,24 +25,7 @@ export class MonitoringStack extends cdk.Stack {
     const period = cdk.Duration.minutes(5);
 
     // -- Dashboard widgets --
-    const widgetRows: cloudwatch.IWidget[][] = [
-      // Row 2: Price Updater Lambda
-      [
-        new cloudwatch.GraphWidget({
-          title: "Price Updater Lambda - 실행 상태",
-          width: 12,
-          height: 6,
-          left: [props.priceUpdaterLambda.metricInvocations({ period })],
-          right: [props.priceUpdaterLambda.metricErrors({ period })]
-        }),
-        new cloudwatch.GraphWidget({
-          title: "Price Updater Lambda - 실행 시간",
-          width: 12,
-          height: 6,
-          left: [props.priceUpdaterLambda.metricDuration({ period })]
-        })
-      ],
-    ];
+    const widgetRows: cloudwatch.IWidget[][] = [];
 
     // Row 4: Auth API (optional)
     if (props.metamaskAuthApi) {
@@ -79,17 +61,6 @@ export class MonitoringStack extends cdk.Stack {
     });
 
     // -- Alarms --
-
-    // Price Updater 연속 실패
-    const priceUpdaterErrorAlarm = new cloudwatch.Alarm(this, "PriceUpdaterErrorAlarm", {
-      alarmName: "NASUN-가격업데이트-연속실패",
-      alarmDescription: "가격 업데이트가 15분간 3회 이상 실패",
-      metric: props.priceUpdaterLambda.metricErrors({ period }),
-      threshold: 3,
-      evaluationPeriods: 3,
-      treatMissingData: cloudwatch.TreatMissingData.BREACHING
-    });
-    priceUpdaterErrorAlarm.addAlarmAction(new cloudwatchActions.SnsAction(alertTopic));
 
     if (props.metamaskAuthApi) {
       const authApiErrorAlarm = new cloudwatch.Alarm(this, "AuthApiServerErrorAlarm", {

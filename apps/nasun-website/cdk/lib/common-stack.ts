@@ -23,7 +23,6 @@ export interface CommonStackProps extends cdk.StackProps {
 }
 
 export class CommonStack extends cdk.Stack {
-  public readonly priceUpdaterLambda: lambda.Function;
   public readonly userProfilesTable: dynamodb.ITable;
 
   constructor(scope: Construct, id: string, props?: CommonStackProps) {
@@ -32,11 +31,6 @@ export class CommonStack extends cdk.Stack {
     // ========================================
     // DynamoDB 테이블 참조 (기존 테이블 사용)
     // ========================================
-    const cryptoBackupPricesTable = dynamodb.Table.fromTableName(
-      this,
-      "CryptoBackupPricesTable",
-      "CryptoBackupPrices"
-    );
     const nftImagesTable = dynamodb.Table.fromTableName(
       this,
       "SupplyCountTable",
@@ -52,12 +46,6 @@ export class CommonStack extends cdk.Stack {
       "UserIdentityMapTable",
       "UserIdentityMap"
     );
-    const cryptoPricesTable = dynamodb.Table.fromTableName(
-      this,
-      "CryptoPricesTable",
-      "CryptoPrices"
-    );
-
     // UserWallets table — multi-wallet registration (PK: identityId, SK: walletAddress)
     const userWalletsTable = new dynamodb.Table(this, "UserWalletsTable", {
       tableName: "UserWallets",
@@ -292,58 +280,13 @@ export class CommonStack extends cdk.Stack {
     // (6pnnb6hcrd) + log group + DDB grants. userProfiles/userWallets tables are shared and kept.
 
 
-    // ========================================
-    // 3. Price API Lambda 함수들
-    // ========================================
-
-    // 3-1. Update Backup Prices
-    const updateBackupPricesLambda = new NodejsFunction(this, "UpdateBackupPricesLambda", {
-      functionName: "nasun-common-update-backup-prices",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'update-backup-prices', 'src', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      environment: {
-        CMC_API_KEY: process.env.CMC_API_KEY || "",
-        TABLE_NAME: cryptoBackupPricesTable.tableName
-      },
-      logGroup: new logs.LogGroup(this, "UpdateBackupPricesLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-update-backup-prices",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    cryptoBackupPricesTable.grantWriteData(updateBackupPricesLambda);
-
-
-    // 3-3. Price Updater
-    this.priceUpdaterLambda = new NodejsFunction(this, "PriceUpdaterLambda", {
-      functionName: "nasun-common-price-updater",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'PriceAPI', 'src', 'price-updater-handler.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.minutes(5),
-      environment: {
-        NODE_OPTIONS: '--enable-source-maps',
-      },
-      logGroup: new logs.LogGroup(this, "PriceUpdaterLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-price-updater",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    cryptoBackupPricesTable.grantReadWriteData(this.priceUpdaterLambda);
-    cryptoPricesTable.grantReadWriteData(this.priceUpdaterLambda);
-
-
-    // 3-4. Price Update Rule (EventBridge)
-    const priceUpdateRule = new events.Rule(this, "PriceUpdateRule", {
-      ruleName: "nasun-common-price-update",
-      schedule: events.Schedule.rate(cdk.Duration.minutes(1)),
-      description: "Trigger price updates every minute (Common Stack)",
-    });
-    priceUpdateRule.addTarget(new targets.LambdaFunction(this.priceUpdaterLambda));
+    // Price subsystem removed (de-Lambda price teardown, 2026-07-07). price-api (the only reader,
+    // api.nasun.io/price -> Genesis NFT mint price converter, dormant) was retired; CloudWatch then
+    // showed CryptoPrices with 0 reads / writes-only and CryptoBackupPrices fully idle. So the writers
+    // (nasun-common-price-updater @ EventBridge 1/min, nasun-common-update-backup-prices) plus the
+    // CryptoPrices/CryptoBackupPrices DynamoDB tables + PriceUpdateRule are vestigial and removed here.
+    // Tables were imported via fromTableName (not owned by this stack) and are manually deleted.
+    // A future NFT mint that needs crypto->USD pricing rebuilds this subsystem from scratch.
 
     // ========================================
     // 5. User Account Management (Deactivation & Purge)
