@@ -1,23 +1,29 @@
 /**
- * Prediction Market Auto-Discovery
+ * Prediction Market Auto-Discovery (via create_market transactions)
  *
- * Queries MarketCreated events emitted by the prediction package to build a
- * live market list, eliminating the need for manual PREDICTION_KEEPER_MARKETS /
- * PREDICTION_LP_MARKETS env-var maintenance.
+ * Returns market IDs by scanning `create_market` transactions, NOT MarketCreated
+ * events. The devnet fullnode prunes transaction events after ~2 epochs (~4h),
+ * so queryEvents(MarketCreated) throws "Could not find the referenced
+ * transaction events" once markets age out — which silently stalled the keeper /
+ * lp / arb bots (discovery returned 0 markets, so nothing got resolved or
+ * quoted, and closed markets sat unsettled). queryTransactionBlocks degrades
+ * gracefully (pruned txs come back with empty effects instead of a throw) and
+ * the created shared Market object is in each create tx's effects.
+ *
+ * Tx-index retention is short too, so only recently-created markets are
+ * recoverable on-chain; older markets need a durable indexer or longer fullnode
+ * retention.
+ *
+ * `packageIds` are the package(s) the create_market calls TARGET (the latest
+ * published id), not the event-emitter originalId. On a fresh genesis the two
+ * coincide. Pass an array to scan multiple package families; results dedupe.
  *
  * Usage:
  *   const ids = await discoverMarketIds(client, packageId);
  *   const ids = await discoverMarketIds(client, [packageIdV2, packageIdV1]);
- *
- * Pass an array to dual-scan across an upgrade boundary. Sui pins an event's
- * type tag to the package that emitted it (NOT the upgrade-stable original
- * package id), so after a contract upgrade events from prior publishes remain
- * queryable only at those prior package ids. Callers should list the current
- * publish first; results are deduplicated across packages.
  */
 
 import type { SuiClient } from '@mysten/sui/client';
-import type { EventId } from '@mysten/sui/client';
 import { withRetry } from './retry.js';
 
 // Safety cap: stop paginating after this many market IDs (combined across
@@ -26,23 +32,13 @@ const MAX_MARKETS = 500;
 const PAGE_SIZE = 50;
 
 /**
- * True when queryEvents fails because its cursor points at a transaction the
- * fullnode has pruned ("Could not find the referenced transaction events
- * [TransactionDigest(...)]"). A descending walk over the frozen legacy package
- * always reaches pruned history, so this is end-of-stream, not a failure.
- */
-function isPrunedEventCursorError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return /Could not find the referenced transaction/i.test(message);
-}
-
-/**
- * Return all market IDs created by the given package id(s), newest first per
+ * Return market IDs created by the given package id(s), newest first per
  * package. Deduplicates across pages and across packages.
  *
  * Each page fetch is wrapped in withRetry so a transient RPC 503 mid-pagination
- * does not abort discovery and lose the cursor. Without this, a single 503
- * cascades into PM2 restart bursts (root cause of 200+ restart counts).
+ * does not abort discovery and lose the cursor. A non-transient failure (e.g. a
+ * cursor that walks into pruned tx history) ends that package's scan with the
+ * ids already collected rather than crash-looping the bot.
  */
 export async function discoverMarketIds(
   client: SuiClient,
@@ -56,34 +52,42 @@ export async function discoverMarketIds(
 
   for (const pkg of pkgs) {
     if (ids.length >= MAX_MARKETS) break;
-    const eventType = `${pkg}::prediction_market::MarketCreated`;
-    let cursor: EventId | null | undefined = null;
+    let cursor: string | null | undefined = null;
 
     while (ids.length < MAX_MARKETS) {
-      let page: Awaited<ReturnType<typeof client.queryEvents>>;
+      let page: Awaited<ReturnType<typeof client.queryTransactionBlocks>>;
       try {
         page = await withRetry(
           () =>
-            client.queryEvents({
-              query: { MoveEventType: eventType },
+            client.queryTransactionBlocks({
+              filter: {
+                MoveFunction: {
+                  package: pkg,
+                  module: 'prediction_market',
+                  function: 'create_market',
+                },
+              },
+              options: { showEffects: true },
               cursor: cursor ?? null,
               limit: PAGE_SIZE,
               order: 'descending',
             }),
-          { maxRetries: 4, baseDelayMs: 2000, label: 'discoverMarketIds.queryEvents' },
+          { maxRetries: 4, baseDelayMs: 2000, label: 'discoverMarketIds.queryTxBlocks' },
         );
       } catch (error) {
-        // Pruned history at the cursor: stop paginating this package and keep
-        // the ids already collected. Without this the throw propagates to the
-        // keeper/lp/arb startup, which treats it as fatal and crash-loops under
-        // pm2 (the 200+ restart counts seen on the prediction bots).
-        if (isPrunedEventCursorError(error)) break;
-        throw error;
+        // End this package's scan with what we have instead of aborting the
+        // keeper/lp/arb loop (a cursor into pruned history can still surface here).
+        console.warn(
+          `discoverMarketIds: queryTransactionBlocks failed for ${pkg}: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        break;
       }
 
-      for (const event of page.data) {
-        const parsed = event.parsedJson as { market_id?: string } | undefined;
-        const id = parsed?.market_id;
+      for (const tx of page.data) {
+        const marketRef = (tx.effects?.created ?? []).find(
+          (c) => c.owner && typeof c.owner === 'object' && 'Shared' in c.owner,
+        );
+        const id = marketRef?.reference.objectId;
         if (id && !seen.has(id)) {
           seen.add(id);
           ids.push(id);
