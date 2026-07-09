@@ -5,18 +5,14 @@ import { Construct } from 'constructs';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as apigw from 'aws-cdk-lib/aws-apigateway';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as logs from 'aws-cdk-lib/aws-logs';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as path from 'path';
 
 import { ALLOWED_ORIGINS, ALLOWED_ORIGINS_ENV } from './constants/cors';
 import { issuerVerifyEnv } from './issuer-env';
-import { identityWriteEnv, identityReadEnv } from './identity-env';
+import { identityWriteEnv } from './identity-env';
 
 export interface CommonStackProps extends cdk.StackProps {
   // 필요한 경우 다른 스택 참조 추가
@@ -40,11 +36,6 @@ export class CommonStack extends cdk.Stack {
       this,
       "UserProfilesTable",
       "UserProfiles"
-    );
-    const userIdentityMapTable = dynamodb.Table.fromTableName(
-      this,
-      "UserIdentityMapTable",
-      "UserIdentityMap"
     );
     // UserWallets table — multi-wallet registration (PK: identityId, SK: walletAddress)
     const userWalletsTable = new dynamodb.Table(this, "UserWalletsTable", {
@@ -91,186 +82,19 @@ export class CommonStack extends cdk.Stack {
     // 2. User Profile Lambda 함수들
     // ========================================
 
-    // 2-0. Public avatar S3 bucket (ecosystem-wide profile image storage).
-    // Stores customAvatarKey objects under prefix `profile-images/{identityId}/`.
-    // Public-readable so all Nasun apps (nasun-website, pado, gostop, explorer)
-    // can display avatars without auth. CORS allows the entire ecosystem.
-    const publicAvatarsBucket = new s3.Bucket(this, "PublicAvatarsBucket", {
-      bucketName: `nasun-public-avatars-${this.account}`,
-      blockPublicAccess: new s3.BlockPublicAccess({
-        blockPublicAcls: true,
-        blockPublicPolicy: false,
-        ignorePublicAcls: true,
-        restrictPublicBuckets: false,
-      }),
-      publicReadAccess: false,
-      cors: [
-        {
-          allowedOrigins: [
-            'https://nasun.io',
-            'https://staging.nasun.io',
-            'https://pado.finance',
-            'https://gostop.app',
-            'https://explorer.nasun.io',
-            'http://localhost:5173',
-            'http://localhost:5174',
-            'http://localhost:5175',
-            'http://localhost:5176',
-          ],
-          allowedMethods: [s3.HttpMethods.GET, s3.HttpMethods.HEAD, s3.HttpMethods.POST, s3.HttpMethods.PUT],
-          allowedHeaders: ['*'],
-          exposedHeaders: ['ETag'],
-          maxAge: 3000,
-        },
-      ],
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-    });
-    // Allow public GET on profile-images/* only (not the entire bucket).
-    publicAvatarsBucket.addToResourcePolicy(new iam.PolicyStatement({
-      sid: 'PublicReadProfileImages',
-      effect: iam.Effect.ALLOW,
-      principals: [new iam.AnyPrincipal()],
-      actions: ['s3:GetObject'],
-      resources: [`${publicAvatarsBucket.bucketArn}/profile-images/*`],
-    }));
-    const publicAvatarsBaseUrl = `https://${publicAvatarsBucket.bucketName}.s3.${this.region}.amazonaws.com`;
-
-    // 2-1. Get User Profile
-    const getUserProfileLambda = new NodejsFunction(this, "GetUserProfileLambda", {
-      functionName: "nasun-common-get-user-profile",
-      runtime: lambda.Runtime.NODEJS_22_X,
-      entry: path.join(lambdaSrcPath, 'get-user-profile', 'index.ts'),
-      handler: 'handler',
-      depsLockFilePath,
-      bundling: bundlingOptions,
-      timeout: cdk.Duration.seconds(15),
-      environment: {
-        USER_PROFILES_TABLE: this.userProfilesTable.tableName,
-        USER_IDENTITY_MAP_TABLE: userIdentityMapTable.tableName,
-        ALLOWED_ORIGINS: ALLOWED_ORIGINS_ENV,
-        COGNITO_IDENTITY_POOL_ID: (() => {
-          const poolId = process.env.VITE_COGNITO_IDENTITY_POOL_ID;
-          if (!poolId) throw new Error('VITE_COGNITO_IDENTITY_POOL_ID is required for user-profile JWT auth');
-          return poolId;
-        })(),
-        USER_WALLETS_TABLE: userWalletsTable.tableName,
-        // Avatar uploads
-        PUBLIC_AVATARS_BUCKET: publicAvatarsBucket.bucketName,
-        PUBLIC_AVATARS_BASE_URL: publicAvatarsBaseUrl,
-        MAX_AVATAR_SIZE_BYTES: '2097152',
-        // Display-name rate limit
-        RATE_LIMIT_WINDOW_DAYS: '30',
-        RATE_LIMIT_MAX: '15',
-        // Webhook fan-out targets (optional; empty disables).
-        CHAT_SERVER_INVALIDATE_URL: process.env.CHAT_SERVER_INVALIDATE_URL || '',
-        CHAT_SERVER_INVALIDATE_TOKEN: process.env.CHAT_SERVER_INVALIDATE_TOKEN || '',
-        EXPLORER_API_INVALIDATE_URL: process.env.EXPLORER_API_INVALIDATE_URL || '',
-        EXPLORER_API_INVALIDATE_TOKEN: process.env.EXPLORER_API_INVALIDATE_TOKEN || '',
-        LEADERBOARD_SYNC_URL: process.env.LEADERBOARD_SYNC_URL || '',
-        LEADERBOARD_SYNC_TOKEN: process.env.LEADERBOARD_SYNC_TOKEN || '',
-        // AWS-exit DAL S2.C: box mirror reader (shadow/flip) + PATCH/POST self-write dual-write.
-        // identityReadEnv() drives the read cutover; identityWriteEnv() activates the dual-write so
-        // a profile edit (display name / avatar / linked Sui|Solana) and a profile create also land
-        // on the box, eliminating the post-edit <=10min /by-wallet staleness (dal-reload was the
-        // interim backstop). Both fragments return {} when their cdk .env vars are unset. The box
-        // write routes (/profile/attributes-sync, /profile/create-mirror) are additive + never-throws
-        // (DynamoDB stays SoT). Roll back by unsetting the vars and redeploying.
-        ...identityReadEnv(),
-        ...identityWriteEnv(),
-      },
-      logGroup: new logs.LogGroup(this, "GetUserProfileLambdaLogGroup", {
-        logGroupName: "/aws/lambda/nasun-common-get-user-profile",
-        removalPolicy: cdk.RemovalPolicy.DESTROY
-      }),
-    });
-    this.userProfilesTable.grantReadWriteData(getUserProfileLambda);
-    userIdentityMapTable.grantReadData(getUserProfileLambda);
-    userWalletsTable.grantReadData(getUserProfileLambda);
-    // Avatar upload (presigned POST) requires PutObject; delete-on-replace
-    // requires DeleteObject. Limit to the avatar prefix.
-    publicAvatarsBucket.grantPut(getUserProfileLambda, 'profile-images/*');
-    publicAvatarsBucket.grantDelete(getUserProfileLambda, 'profile-images/*');
-
-    // AWS-exit de-Lambda (get-user-profile ROOT GET READS): serve ONLY the PUBLIC root GET reads
-    // (?walletAddress / ?identityId) directly from the box compute service
-    // (https://issuer.nasun.io/compute/profile) via HTTP_PROXY, removing the Lambda hop for the frontend's
-    // primary profile lookup. The reads are box-owned -- the lambda already flip-served them from the box
-    // (IDENTITY_READ_MODE=flip), and an E2E proved the box response is byte-identical (by-wallet + by-identity
-    // + 404 + 400 + CORS). The RestApi construct id is unchanged ("UserProfileApi") so the execute-api URL is
-    // preserved (baked into the frontend + cross-app builds).
-    // The lambda RETAINS only the {proxy+} greedy for SUB-PATHS. The lambda dispatches on httpMethod +
-    // event.path, so it serves real sub-paths: POST /upload-avatar-url (avatar S3 presign, index.ts:703) and
-    // GET /v3/user-profile?walletAddress= (chat-server display-name/avatar + zkLogin verifyAddressExists).
-    // Keeping {proxy+} ANY -> lambda preserves those exactly (proxy:true behavior). Routing changes vs the
-    // old LambdaRestApi: root GET -> box (C7), root POST create -> box (#2a), root PATCH update -> box (#2b),
-    // GET /v3/user-profile -> box (C7 follow-up). After #2b the lambda serves ONLY the avatar sub-path +
-    // /v3 read. OPTIONS preflight stays an
-    // API-GW MOCK (defaultCorsPreflightOptions). ROLLBACK: revert this block to
-    // `new apigw.LambdaRestApi(this, "UserProfileApi", { handler: getUserProfileLambda, proxy: true, ... })`.
-    const userProfileApi = new apigw.RestApi(this, "UserProfileApi", {
-      restApiName: "NASUN User Profile API (Common)",
-      deployOptions: {
-        throttlingBurstLimit: 50,
-        throttlingRateLimit: 20,
-      },
-      defaultCorsPreflightOptions: {
-        allowOrigins: ALLOWED_ORIGINS,
-        allowMethods: ["GET", "POST", "PATCH", "OPTIONS"],
-        allowHeaders: ["Content-Type", "Authorization"]
-      },
-    });
-    const userProfileLambdaIntegration = new apigw.LambdaIntegration(getUserProfileLambda);
-    // Root GET reads -> box compute (HTTP_PROXY; the incoming query string is forwarded). Byte-identical to
-    // the lambda flip-path; box is SoT (no DynamoDB fallback -> a box-absent profile is 404, reconcile keeps
-    // missing_in_box=0).
-    userProfileApi.root.addMethod("GET", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/profile",
-      { httpMethod: "GET", proxy: true }
-    ));
-    // Root POST create -> box compute (HTTP_PROXY, #2a). The box compute POST /compute/profile ports the
-    // lambda create path byte-for-byte (verifyJwt -> identityId == authenticated -> provider/username
-    // required -> social-provider block -> create-only 409 -> box :3211 /profile/create-mirror, box-only,
-    // no DynamoDB). The avatar POST /upload-avatar-url sub-path stays on the lambda via {proxy+}. ROLLBACK:
-    // revert this POST method to `userProfileLambdaIntegration` + redeploy (the lambda stays live for PATCH
-    // + {proxy+}). Same construct id preserves the execute-api id (no frontend rebuild).
-    userProfileApi.root.addMethod("POST", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/profile",
-      { httpMethod: "POST", proxy: true }
-    ));
-    // Root PATCH update -> box compute (HTTP_PROXY, #2b). The box compute PATCH /compute/profile ports the
-    // lambda update path byte-for-byte (validate -> displayName rate-limit [atomic CAS] -> avatar ban ->
-    // paste-linked sui/solana cross-account collision [anti-Sybil fail-closed] -> box :3211
-    // /profile/attributes-sync, box-only, no DynamoDB). The avatar POST /upload-avatar-url + the S3
-    // delete-on-replace stay on the lambda ({proxy+}; box has no S3 egress). ROLLBACK: revert this PATCH
-    // method to `userProfileLambdaIntegration` + redeploy (the lambda stays live for {proxy+}).
-    userProfileApi.root.addMethod("PATCH", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/profile",
-      { httpMethod: "PATCH", proxy: true }
-    ));
-    // {proxy+} greedy -> lambda: the remaining sub-paths stay on the lambda exactly as proxy:true routed
-    // them (POST /upload-avatar-url avatar S3 presign). Added as an explicit {proxy+} resource (NOT
-    // root.addProxy(), which also synthesizes a spurious root ANY->MOCK method) so the root keeps exactly
-    // GET/POST/PATCH(->box)/OPTIONS(MOCK) and the greedy child carries ANY->lambda.
-    const userProfileProxy = userProfileApi.root.addResource("{proxy+}");
-    userProfileProxy.addMethod("ANY", userProfileLambdaIntegration);
-
-    // AWS-exit de-Lambda (C7 follow-up): the LAST get-user-profile READ caller on the lambda is the
-    // chat-server (server-side) GET /v3/user-profile?walletAddress= (display-name/avatar cache + zkLogin
-    // ephemeral-key auth gate, auth.ts/store.ts/server.ts). The frontends (nasun/pado/gostop) already read
-    // the box via the ROOT GET -- their VITE_*USER_PROFILE_API is the root URL with ?walletAddress= /
-    // ?identityId= appended. Lift the chat-server path to the box too by routing the SPECIFIC
-    // /v3/user-profile resource's GET to the box compute (the SAME /compute/profile endpoint the root GET
-    // already serves; byte-identical by-wallet body, proven by the C7 root cutover). A specific resource is
-    // matched ahead of {proxy+}, so ONLY GET /v3/user-profile is lifted; every other method/path still
-    // falls to {proxy+} ANY -> lambda (avatar presign, root POST/PATCH writes). After this the
-    // get-user-profile lambda is write-only. ROLLBACK: delete this resource block -> GET /v3/user-profile
-    // falls back to {proxy+} -> lambda (which still flip-serves the box). reconcile-neutral (read repoint).
-    const userProfileV3 = userProfileApi.root.addResource("v3");
-    const userProfileV3Read = userProfileV3.addResource("user-profile");
-    userProfileV3Read.addMethod("GET", new apigw.HttpIntegration(
-      "https://issuer.nasun.io/compute/profile",
-      { httpMethod: "GET", proxy: true }
-    ));
+    // 2-0/2-1. Public avatars S3 bucket + get-user-profile Lambda + UserProfile API GW (aanboqet5i)
+    // REMOVED (avatar box-direct upload de-Lambda, 2026-07-09) -- the last profile gateway.
+    //   - Avatar upload: the presigned-S3 two-step is replaced by a box-direct POST /profile/avatar
+    //     (nasun-identity-compute :3212: multipart -> sharp re-encode -> disk), with nginx serving the
+    //     files back from /avatars/. The prod bucket nasun-public-avatars-<account> did not exist in v8
+    //     (NoSuchBucket), so prod avatar uploads had been broken and there was nothing to migrate.
+    //   - Root GET/POST/PATCH and GET /v3/user-profile already HTTP_PROXY'd to the box compute. Every
+    //     consumer (nasun/pado/gostop VITE_*USER_PROFILE_API, chat-server) now uses
+    //     https://api.nasun.io/profile via nginx.
+    // Verified before teardown: 0 lambda invocations, ~2 gateway requests/day, and no live bundle or
+    // server-side reference to the execute-api URL (chat-server's NASUN_PROFILE_API_URL was vestigial).
+    // The bucket was RemovalPolicy.RETAIN (already absent); the lambda + RestApi are deleted manually
+    // because CommonStack is never cdk-deployed (drift landmine) -- same pattern as governance/address-book.
 
 
     // 2-3. Wallet API — REMOVED (wallet/address-book de-Lambda Phase 5 teardown, 2026-06-23).
@@ -346,23 +170,11 @@ export class CommonStack extends cdk.Stack {
 
 
 
-    new ssm.StringParameter(this, 'UserProfileApiUrlParam', {
-      parameterName: '/nasun/common/user-profile-api-url',
-      stringValue: userProfileApi.url,
-      description: 'CommonStack User Profile API URL',
-    });
+    // UserProfileApiUrl SSM param + CfnOutput removed with the UserProfile API GW (2026-07-09).
 
     // ========================================
     // 6. Stack Outputs
     // ========================================
-
-
-
-
-    new cdk.CfnOutput(this, "UserProfileApiUrl", {
-      value: userProfileApi.url,
-      description: "User Profile API URL (CommonStack)",
-    });
 
 
 
