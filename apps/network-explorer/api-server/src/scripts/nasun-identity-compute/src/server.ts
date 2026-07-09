@@ -14,7 +14,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { timingSafeEqual } from 'node:crypto';
 import postgres from 'postgres';
-import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN, GENESIS_PASS_REGISTER, ALLIANCE } from './config';
+import { PORT, HOST, SCHEMA, PG, COMPUTE_BEARER, LOGIN, SALT, GOOGLE, ADDITIONAL, TELEGRAM_VERIFY, GOVERNANCE, PROFILE_READ, PROFILE_WRITE, PROFILE_PATCH, AVATAR, WALLET, DEACTIVATE, LINK, ECOSYSTEM, TWITTER, ADMIN, GENESIS_PASS_REGISTER, ALLIANCE } from './config';
 import { publicCors, loginCors, saltCors, additionalCors, governanceCors, profileCors, walletCors, deactivateCors, linkCors, ecosystemCors, genesisPassCheckCors, genesisPassRegisterCors, twitterCors, adminCors, send, sendRaw, RouteAbort } from './http';
 import {
   authenticateAdmin,
@@ -81,6 +81,7 @@ import {
   telegramVerifiedResidual,
 } from './clients';
 import { verifyJwtIdentity } from './identity-verify';
+import { handleAvatarUpload } from './handlers-avatar';
 import {
   type LinkChain,
   LINK_FIELD,
@@ -790,6 +791,40 @@ const server = createServer(async (req: IncomingMessage, res: ServerResponse) =>
       }
       console.error(`[compute] ${pathname} failed:`, e instanceof Error ? e.message : e);
       return send(res, 500, { error: 'Internal server error' }, cors);
+    }
+  }
+
+  // #2c avatar upload (POST /profile/avatar) -- de-Lambda of the get-user-profile presigned-S3 flow. JWT
+  // -> profile (404) -> avatar ban (403, parity with the PATCH ban gate) -> multipart parse + sharp
+  // re-encode + atomic disk write -> { key }. profileCors (origin-allowlist, no creds -- Authorization
+  // header, not cookies). Matched BEFORE `/profile` (exact `/profile` would not catch this sub-path, but
+  // keep it above for clarity). Gated on AVATAR.enabled (COMPUTE_AVATAR_ENABLED=1) so it deploys INERT
+  // (503) until the box avatars dir + nginx route are provisioned and the API GW /upload-avatar-url is
+  // retired. The returned key is committed by the existing PATCH { avatarKey } (buildAvatarKeyRegex).
+  if (pathname === '/profile/avatar') {
+    const origin = (req.headers['origin'] as string) || undefined;
+    const cors = profileCors(origin);
+    if (req.method === 'OPTIONS') return send(res, 200, {}, cors);
+    if (req.method !== 'POST') return send(res, 405, { message: 'Method not allowed' }, cors);
+    if (!AVATAR.enabled) return send(res, 503, { message: 'avatar upload compute not enabled' }, cors);
+    try {
+      const identityId = await verifyJwtIdentity(req.headers['authorization'] as string | undefined);
+      if (!identityId) return send(res, 401, { message: 'Authentication required' }, cors);
+      const existing = await readProfileByIdentity(identityId);
+      if (!existing) return send(res, 404, { message: 'User profile not found' }, cors);
+      if (existing.customAvatarBanned === true) {
+        return send(res, 403, { code: 'AVATAR_BANNED', message: 'Avatar uploads disabled. Contact support.' }, cors);
+      }
+      const { key } = await handleAvatarUpload(req, identityId, {
+        dir: AVATAR.dir,
+        maxBytes: AVATAR.maxBytes,
+        dim: AVATAR.dim,
+      });
+      return send(res, 200, { key }, cors);
+    } catch (e) {
+      if (e instanceof RouteAbort) return send(res, e.status, e.payload, cors);
+      console.error('[compute] /profile/avatar POST failed:', e instanceof Error ? e.message : e);
+      return send(res, 500, { message: 'Internal server error' }, cors);
     }
   }
 

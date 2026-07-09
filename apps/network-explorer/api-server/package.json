@@ -18,13 +18,16 @@
     "@mysten/sui": "^1.21.1",
     "@nasun/standing": "workspace:*",
     "bs58": "^6.0.0",
+    "busboy": "^1.6.0",
     "hono": "^4.7.5",
     "jose": "^5.2.0",
     "postgres": "^3.4.5",
+    "sharp": "^0.34.5",
     "tweetnacl": "^1.0.3",
     "tsx": "^4.19.4"
   },
   "devDependencies": {
+    "@types/busboy": "^1.5.4",
     "@types/node": "^22.16.0",
     "typescript": "~5.9.3"
   }

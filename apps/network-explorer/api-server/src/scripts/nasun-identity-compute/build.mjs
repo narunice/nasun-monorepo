@@ -26,6 +26,10 @@ await build({
   platform: 'node',
   format: 'esm',
   target: 'node20',
+  // sharp ships a native .node binary that cannot be inlined into the single-file bundle; keep it external
+  // and install it as a minimal node_modules alongside server.mjs on the box (see README "Avatar upload").
+  // busboy is pure JS and bundles normally.
+  external: ['sharp'],
   minify: false, // keep readable for box-side audit of the security-critical bundle
   banner: {
     // ESM output shim: some CJS deps (tweetnacl 1.0.3 -> require('crypto') at module-load for its PRNG)

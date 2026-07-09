@@ -281,6 +281,23 @@ export const PROFILE_PATCH = {
   rateLimitWindowMs: (() => { const d = parseInt(process.env.RATE_LIMIT_WINDOW_DAYS || '30', 10); return (Number.isInteger(d) && d > 0 ? d : 30) * 24 * 60 * 60 * 1000; })(),
 };
 
+// --- #2c avatar upload (box-direct multipart + re-encode + disk store) ----------------------------
+// De-Lambda of the get-user-profile presigned-S3 upload (POST /upload-avatar-url -> S3 PUT). The box has
+// no AWS credentials, so the two-step S3 flow is replaced by a single box-direct multipart upload that
+// re-encodes the image (sharp) and writes it under COMPUTE_AVATAR_DIR; nginx serves the files back
+// statically. The returned key is committed by the existing PROFILE_PATCH { avatarKey } path, so this
+// gates on the SAME VERIFY.audience + identity-write dependency as PROFILE_PATCH. Gated on a DEDICATED
+// COMPUTE_AVATAR_ENABLED=1 flag so the bundle deploys INERT (503) until the box avatars dir + nginx route
+// are provisioned and the API Gateway /upload-avatar-url is retired.
+export const AVATAR = {
+  enabled: process.env.COMPUTE_AVATAR_ENABLED === '1' && !!(VERIFY.audience && identityWriteBearer),
+  dir: process.env.COMPUTE_AVATAR_DIR || '/srv/nasun/avatars',
+  // MAX_BYTES byte-parity with the frontend MAX_AVATAR_SIZE_BYTES (2 MB). Re-validated server-side.
+  maxBytes: (() => { const n = parseInt(process.env.COMPUTE_AVATAR_MAX_BYTES || '', 10); return Number.isInteger(n) && n > 0 ? n : 2 * 1024 * 1024; })(),
+  // Output square edge (cover-fit). 512 is ample for an avatar and bounds re-encode cost + disk.
+  dim: (() => { const n = parseInt(process.env.COMPUTE_AVATAR_DIM || '', 10); return Number.isInteger(n) && n > 0 ? n : 512; })(),
+};
+
 // --- #3a deactivate-user-account (write) ----------------------------------------------------------
 // De-Lambda of nasun-common-deactivate-user-account (DELETE). Parity with the lambda (index.ts): NO
 // incoming JWT (API GW authorizationType NONE) -- ownership is the query identityId (Cognito regex) +

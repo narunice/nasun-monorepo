@@ -26,6 +26,14 @@ ExecStart=/usr/bin/node /srv/nasun/identity-compute/server.mjs
 Restart=on-failure
 RestartSec=2
 
+# #2c avatar upload (COMPUTE_AVATAR_ENABLED=1): the ONLY disk-write surface. ProtectSystem=strict keeps the
+# rest of the FS read-only; grant just the avatars tree. The dir is provisioned root:nasun-avatars mode 2775
+# (setgid) so files/dirs the DynamicUser creates inherit the shared group; SupplementaryGroups lets a later
+# instance (DynamicUser uid may change across restarts) write into an existing per-identity dir. nginx reads
+# the files back via the world r-x/r bits the handler chmods (no group membership needed on nginx's side).
+ReadWritePaths=/srv/nasun/avatars
+SupplementaryGroups=nasun-avatars
+
 Environment=COMPUTE_PORT=3212
 Environment=COMPUTE_BIND=127.0.0.1
 Environment=COMPUTE_PG_SCHEMA=public

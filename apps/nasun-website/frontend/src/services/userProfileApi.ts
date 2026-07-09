@@ -123,12 +123,6 @@ const ALLOWED_AVATAR_CONTENT_TYPES = ['image/png', 'image/jpeg', 'image/webp'] a
 type AvatarContentType = typeof ALLOWED_AVATAR_CONTENT_TYPES[number];
 const MAX_AVATAR_SIZE_BYTES = 2 * 1024 * 1024; // 2 MB
 
-export interface PresignedAvatarUpload {
-  url: string;
-  fields: Record<string, string>;
-  key: string;
-}
-
 function inferAvatarContentType(file: File): AvatarContentType | null {
   const ct = file.type;
   if ((ALLOWED_AVATAR_CONTENT_TYPES as readonly string[]).includes(ct)) {
@@ -143,71 +137,39 @@ function inferAvatarContentType(file: File): AvatarContentType | null {
 }
 
 /**
- * Step 1: get a presigned POST URL for uploading an avatar to S3.
- * The Lambda derives the storage key from the authenticated identityId in
- * the JWT — the client never sees or chooses the key prefix.
- */
-export async function getAvatarUploadUrl(
-  token: string,
-  contentType: AvatarContentType,
-  fileSize: number,
-): Promise<PresignedAvatarUpload> {
-  const endpoint = requireEndpoint();
-  const url = `${endpoint.replace(/\/+$/, '')}/upload-avatar-url`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ contentType, fileSize }),
-  });
-  const body = await res.json().catch(() => ({} as Record<string, unknown>));
-  if (!res.ok) {
-    const msg = (body as any)?.message || `Upload URL failed (${res.status})`;
-    const code = (body as any)?.code as string | undefined;
-    throw new UserProfileApiError(msg, res.status, code);
-  }
-  return body as PresignedAvatarUpload;
-}
-
-/**
- * Step 2: PUT (POST multipart) the file to S3 using the presigned URL.
- * Throws on any non-2xx response.
- */
-export async function uploadAvatarToS3(
-  presigned: PresignedAvatarUpload,
-  file: File,
-): Promise<void> {
-  const formData = new FormData();
-  for (const [k, v] of Object.entries(presigned.fields)) {
-    formData.append(k, v);
-  }
-  formData.append('file', file);
-  const res = await fetch(presigned.url, { method: 'POST', body: formData });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new UserProfileApiError(
-      `S3 upload failed (${res.status}): ${text.slice(0, 200)}`,
-      res.status,
-    );
-  }
-}
-
-/**
- * Full upload flow: validates file, requests presigned URL, uploads to S3,
- * and returns the storage key. Caller still needs to PATCH the profile with
- * `{ avatarKey: key }` to commit it.
+ * Upload an avatar in a single request. The file is POSTed as multipart/form-data
+ * straight to the box, which re-encodes it (strips metadata, normalizes to WebP),
+ * writes it to disk, and returns the server-authoritative storage key. The client
+ * never sees or chooses the key prefix — it is derived from the JWT identityId
+ * server-side. The caller still PATCHes the profile with `{ avatarKey: key }` to
+ * commit it. The client-side size/type checks below are a fast-fail UX only; the
+ * server re-validates both (and probes the real image bytes).
  */
 export async function uploadAvatarFile(token: string, file: File): Promise<string> {
   if (file.size > MAX_AVATAR_SIZE_BYTES) {
     throw new UserProfileApiError(`Image too large (max ${MAX_AVATAR_SIZE_BYTES} bytes)`, 400);
   }
-  const contentType = inferAvatarContentType(file);
-  if (!contentType) {
+  if (!inferAvatarContentType(file)) {
     throw new UserProfileApiError('Only PNG, JPEG, or WebP images are allowed', 400);
   }
-  const presigned = await getAvatarUploadUrl(token, contentType, file.size);
-  await uploadAvatarToS3(presigned, file);
-  return presigned.key;
+  const endpoint = requireEndpoint();
+  const url = `${endpoint.replace(/\/+$/, '')}/avatar`;
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` }, // no Content-Type: the browser sets the multipart boundary
+    body: formData,
+  });
+  const body = await res.json().catch(() => ({} as Record<string, unknown>));
+  if (!res.ok) {
+    const msg = (body as any)?.message || `Avatar upload failed (${res.status})`;
+    const code = (body as any)?.code as string | undefined;
+    throw new UserProfileApiError(msg, res.status, code);
+  }
+  const key = (body as any)?.key;
+  if (typeof key !== 'string' || !key) {
+    throw new UserProfileApiError('Avatar upload returned no key', 502);
+  }
+  return key;
 }
