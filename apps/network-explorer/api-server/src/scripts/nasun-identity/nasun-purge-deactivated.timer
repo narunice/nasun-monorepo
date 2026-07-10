@@ -1,0 +1,15 @@
+# /etc/systemd/system/nasun-purge-deactivated.timer
+# Daily trigger for nasun-purge-deactivated.service (AWS-exit order 6). 04:10 UTC clears the
+# 03:30 nasun-dal-backup window, so a purge never races the logical backup that would capture
+# it. Persistent catches a missed run after downtime; the grace period is 7 days, so a late
+# run is harmless. Replaces the lambda's EventBridge rate(1 day).
+[Unit]
+Description=Daily timer for Nasun deactivated-account purge
+
+[Timer]
+OnCalendar=*-*-* 04:10:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

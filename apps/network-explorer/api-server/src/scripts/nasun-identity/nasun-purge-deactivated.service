@@ -1,0 +1,47 @@
+# /etc/systemd/system/nasun-purge-deactivated.service
+# AWS-exit order 6. Oneshot daily purge of accounts past their deletion grace, replacing the
+# nasun-common-purge-deactivated-accounts lambda. Triggered by nasun-purge-deactivated.timer.
+# Talks to nasun-identity over loopback, so it needs the same identity-bearer credential the
+# server validates, and nothing else: no PG role, no disk writes, no internet.
+[Unit]
+Description=Nasun daily purge of deactivated accounts (de-Lambda of nasun-common-purge-deactivated-accounts)
+After=nasun-identity.service
+Requires=nasun-identity.service
+
+[Service]
+Type=oneshot
+DynamicUser=yes
+WorkingDirectory=/srv/nasun/identity
+ExecStart=/usr/bin/node /srv/nasun/identity/nasun-purge-deactivated.mjs
+
+# Same cred file nasun-identity.service reads; decrypted into this unit's tmpfs only.
+LoadCredentialEncrypted=identity-bearer:/srv/nasun/identity/secrets/identity-bearer.cred
+
+# --- hardening (mirrors nasun-identity.service) ---
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+# Loopback only: the lambda reached issuer.nasun.io over the internet, the box does not need to.
+IPAddressDeny=any
+IPAddressAllow=localhost
+UMask=0077
