@@ -1,4 +1,0 @@
-ALTER TABLE pools
-    ALTER COLUMN min_size TYPE BIGINT,
-    ALTER COLUMN lot_size TYPE BIGINT,
-    ALTER COLUMN tick_size TYPE BIGINT;

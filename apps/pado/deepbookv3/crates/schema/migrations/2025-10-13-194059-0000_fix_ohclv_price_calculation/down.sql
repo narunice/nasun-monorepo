@@ -1,1 +1,0 @@
--- Rollback not needed for this migration as it only fixes the calculation formula

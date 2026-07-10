@@ -1,2 +1,0 @@
-DROP INDEX IF EXISTS idx_order_updates_pool_order_ts_desc;
-DROP INDEX IF EXISTS idx_order_updates_pool_placed_order_ts;
