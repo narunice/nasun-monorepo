@@ -15,6 +15,13 @@ import {
 } from '@aws-sdk/client-ssm';
 import { getDb } from './store.js';
 
+// AWS-exit retire gate (mirrors agent-vault-routes.isVaultRetired; read inline to
+// avoid a module cycle). When set, the SSM parameter delete is skipped and only the
+// local SQLite row is reaped -- the orphaned parameter dies with the prod account.
+function isVaultRetired(): boolean {
+  return process.env.AGENT_VAULT_RETIRED === '1';
+}
+
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const PURGE_INTERVAL_MS = 60 * 60 * 1000;
 
@@ -45,6 +52,24 @@ export async function runVaultPurge(forceImmediate = false): Promise<void> {
   ).all(cutoff) as { param_name: string; agent_address: string }[];
 
   for (const row of rows) {
+    // Retired routine sweep: the prod SSM account is being decommissioned, so the
+    // hourly cron skips the remote delete (which would only log auth failures once
+    // the account is gone) and reaps the local row. The orphaned parameter dies with
+    // the account. The kill-switch path (forceImmediate) is deliberately excluded:
+    // its whole purpose is to purge private keys from SSM on demand, a security
+    // guarantee that must hold for as long as the account is still alive, so it falls
+    // through to the best-effort DeleteParameter below (which tolerates a post-
+    // suspension auth failure the same way it tolerates ParameterNotFound).
+    if (isVaultRetired() && !forceImmediate) {
+      try {
+        getDb().prepare(`DELETE FROM agent_keys WHERE agent_address = ?`)
+          .run(row.agent_address);
+        console.log(`[vault-purge] reaped ${row.agent_address} (retired, SSM delete skipped)`);
+      } catch (err) {
+        console.error(`[vault-purge] retired reap failed ${row.agent_address}: ${(err as Error).message}`);
+      }
+      continue;
+    }
     try {
       await getSsm().send(new DeleteParameterCommand({ Name: row.param_name }));
       getDb().prepare(`DELETE FROM agent_keys WHERE agent_address = ?`)

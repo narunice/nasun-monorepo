@@ -64,6 +64,19 @@ const RATE_LIMIT_PER_WALLET_PER_MINUTE = 5;
 const RATE_LIMIT_PER_IP_PER_MINUTE = 10;
 const STATUS_RATE_LIMIT_PER_IP_PER_MINUTE = 30;
 
+// AWS-exit retire gate. The keypair custody backing store is SSM Parameter Store
+// in the prod account, which is being decommissioned. When AGENT_VAULT_RETIRED is
+// set, the three activation paths (upload / restore / resume) return 503 before any
+// SSM call: each either writes a parameter or spawns a per-agent runtime that reads
+// the key back from SSM, so none can produce a working agent once SSM is gone. The
+// read-only paths (status), soft-delete, and challenge stay live so users can still
+// see and deactivate agents; the routine purge cron skips the SSM delete while the
+// kill-switch still attempts it (see agent-vault-purge.ts). Unset = unchanged
+// behavior (rollback). A box-native store rebuild is tracked separately.
+export function isVaultRetired(): boolean {
+  return process.env.AGENT_VAULT_RETIRED === '1';
+}
+
 let ssmClient: SSMClient | null = null;
 function getSsm(): SSMClient {
   if (!ssmClient) {
@@ -272,6 +285,10 @@ export async function handleVaultUpload(
   res: import('node:http').ServerResponse,
   corsHeaders: Record<string, string>,
 ): Promise<void> {
+  if (isVaultRetired()) {
+    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' });
+    return;
+  }
   let body: unknown;
   try { body = await readJsonBody(req); } catch (err) {
     const code = (err as Error).message === 'body_too_large' ? 413 : 400;
@@ -608,6 +625,9 @@ export async function handleVaultRestore(
   corsHeaders: Record<string, string>,
   agentAddress: string,
 ): Promise<void> {
+  if (isVaultRetired()) {
+    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' }); return;
+  }
   if (!isValidSuiAddress(agentAddress)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
   }
@@ -735,6 +755,9 @@ export async function handleVaultResume(
   corsHeaders: Record<string, string>,
   agentAddress: string,
 ): Promise<void> {
+  if (isVaultRetired()) {
+    writeJson(res, 503, corsHeaders, { error: 'vault_disabled' }); return;
+  }
   if (!isValidSuiAddress(agentAddress)) {
     writeJson(res, 400, corsHeaders, { error: 'invalid_agent' }); return;
   }
