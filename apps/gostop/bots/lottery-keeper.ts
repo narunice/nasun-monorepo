@@ -67,6 +67,7 @@ import {
   timestamp,
   fetchLatestRound,
   countWinners,
+  countWinnersOnChain,
   calculateNextRoundTimes,
   requestGas,
   buildCloseRoundPermissionlessTx,
@@ -167,6 +168,12 @@ function getNextInterval(round: LotteryRound | null): number {
 let isRunning = false;
 let consecutiveErrors = 0;
 let shuttingDown = false;
+
+// Rounds whose on-chain reconstruction came up short (tickets transferred out of
+// the buyer set). A DRAWN round's chain state is frozen, so re-running the
+// multi-minute, all-buyer scan every 10s tick would only hammer the fullnode to
+// the same short result. Skip until the process restarts (a genuine retry).
+const shortReconstructionRounds = new Set<string>();
 
 async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<LotteryRound | null> {
   if (isRunning || shuttingDown) return null;
@@ -294,11 +301,43 @@ async function tick(client: SuiClient, keypair: Ed25519Keypair): Promise<Lottery
         }
       }
 
-      if (!counts) {
+      // DB shortfall persisted (indexer missed a ticket burst and the
+      // TicketPurchased events have since been pruned, so the DB can never catch
+      // up). Reconstruct winners directly from live on-chain Ticket objects,
+      // which are never pruned. This is what unsticks a DRAWN round instead of
+      // leaving it unsettleable forever.
+      if (!counts && shortReconstructionRounds.has(round.id)) {
         console.error(
-          `[${timestamp()}] [GOSTOP CRITICAL] Failed to verify ticket count after ${MAX_EVENT_COUNT_RETRIES} attempts. Settlement skipped.`,
+          `[${timestamp()}] [GOSTOP CRITICAL] Round ${round.roundNumber} DB count short and on-chain reconstruction already came up short this session. Settlement skipped (restart keeper to retry).`,
         );
         return round;
+      }
+
+      if (!counts) {
+        console.warn(
+          `[${timestamp()}] DB ticket count did not reach chain total after ${MAX_EVENT_COUNT_RETRIES} attempts. Reconstructing winners from on-chain Ticket objects...`,
+        );
+        try {
+          const onChain = await countWinnersOnChain(client, round);
+          if (onChain.totalFetched >= round.ticketCount) {
+            console.log(
+              `[${timestamp()}] On-chain reconstruction complete: ${onChain.totalFetched}/${round.ticketCount} tickets`,
+            );
+            counts = onChain;
+          } else {
+            shortReconstructionRounds.add(round.id);
+            console.error(
+              `[${timestamp()}] [GOSTOP CRITICAL] On-chain reconstruction short (${onChain.totalFetched}/${round.ticketCount}); tickets transferred out of buyer set. Settlement skipped.`,
+            );
+            return round;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error(
+            `[${timestamp()}] [GOSTOP CRITICAL] On-chain winner reconstruction failed: ${msg}. Settlement skipped.`,
+          );
+          return round;
+        }
       }
 
       console.log(

@@ -107,6 +107,8 @@ export interface LotteryRound {
   rolloverIn: bigint;
   drawnNumbers: number[] | null;
   ticketCount: number;
+  /** UID of the round's `tickets_by_address` Table; parent for buyer enumeration. */
+  ticketsTableId: string;
   totalSales: bigint;
   tier1Winners: number;
   tier2Winners: number;
@@ -263,6 +265,7 @@ export async function fetchRound(
     rolloverIn: BigInt(fields.rollover_in),
     drawnNumbers,
     ticketCount: Number(fields.ticket_count),
+    ticketsTableId: fields.tickets_by_address?.fields?.id?.id ?? '',
     totalSales: BigInt(fields.total_sales),
     tier1Winners: Number(fields.tier1_winners),
     tier2Winners: Number(fields.tier2_winners),
@@ -378,6 +381,119 @@ export async function countWinners(
     FROM w`;
   const r = rows[0];
   return { tier1: r.tier1, tier2: r.tier2, tier3: r.tier3, totalFetched: r.total };
+}
+
+function normalizeSuiId(id: unknown): string {
+  const hex = String(id ?? '').toLowerCase().replace(/^0x/, '');
+  return '0x' + hex.padStart(64, '0');
+}
+
+/**
+ * Reconstruct winner counts directly from live on-chain Ticket objects, without
+ * the indexer DB. Every ticket is an owned `Ticket` object that persists in the
+ * object store (only tx *events* are pruned after ~4h, not object state), and the
+ * round's `tickets_by_address` Table enumerates every buyer. So even when the
+ * indexer missed a ticket burst and its TicketPurchased events have since been
+ * pruned (leaving countWinners permanently short of chain ticket_count and the
+ * round stuck in DRAWN), we can still count winners exactly from chain.
+ *
+ * Isolation is by `round_id` (the round object's ID), NOT round_number: pre-v8
+ * rounds reuse round numbers, and a single buyer can hold tickets from several
+ * rounds (verified live: one address held both round 4 and an earlier round).
+ *
+ * Heavier than the DB path (one getOwnedObjects per buyer), so the keeper only
+ * falls back to it when the DB shortfall persists. The caller must still gate on
+ * `totalFetched >= ticketCount`; a shortfall here means some tickets were
+ * transferred out of the buyer set, and settlement should defer rather than
+ * under-pay.
+ */
+export async function countWinnersOnChain(
+  client: SuiClient,
+  round: LotteryRound,
+): Promise<WinnerCounts> {
+  if (!round.drawnNumbers || round.drawnNumbers.length !== 5) {
+    throw new Error('countWinnersOnChain requires 5 drawn numbers');
+  }
+  if (!round.ticketsTableId) {
+    throw new Error('countWinnersOnChain requires round.ticketsTableId');
+  }
+  const drawn = new Set(round.drawnNumbers);
+  const ticketType = `${LOTTERY_ORIGINAL_PACKAGE_ID}::lottery::Ticket`;
+  const roundId = normalizeSuiId(round.id);
+
+  // 1) Enumerate every buyer address from the round's tickets_by_address Table.
+  const buyers: string[] = [];
+  let cursor: string | null = null;
+  do {
+    const page = await withRetry(
+      () => client.getDynamicFields({ parentId: round.ticketsTableId, cursor, limit: 50 }),
+      { label: 'ticketsByAddress.getDynamicFields' },
+    );
+    for (const f of page.data) {
+      const v = (f.name as { value?: unknown })?.value;
+      if (typeof v === 'string') buyers.push(v);
+    }
+    cursor = page.hasNextPage ? page.nextCursor ?? null : null;
+  } while (cursor);
+
+  // 2) For each buyer, tally their Ticket objects belonging to THIS round.
+  // Per-buyer tallies are independent, so run a bounded-concurrency pool: with
+  // ~5000 buyers a fully sequential pass takes many minutes against devnet RPC
+  // and would block the keeper tick. Concurrency stays modest to be gentle on
+  // the public fullnode.
+  const tallyBuyer = async (owner: string) => {
+    let t1 = 0;
+    let t2 = 0;
+    let t3 = 0;
+    let n = 0;
+    let oCursor: string | null = null;
+    do {
+      const page = await withRetry(
+        () =>
+          client.getOwnedObjects({
+            owner,
+            filter: { StructType: ticketType },
+            options: { showContent: true },
+            cursor: oCursor,
+            limit: 50,
+          }),
+        { label: 'ticket.getOwnedObjects' },
+      );
+      for (const o of page.data) {
+        const content = o.data?.content;
+        if (!content || content.dataType !== 'moveObject') continue;
+        const fields = content.fields as Record<string, any>;
+        if (normalizeSuiId(fields.round_id) !== roundId) continue;
+        const nums = Array.isArray(fields.numbers) ? fields.numbers.map(Number) : [];
+        let m = 0;
+        for (const num of nums) if (drawn.has(num)) m++;
+        if (m === 5) t1++;
+        else if (m === 4) t2++;
+        else if (m === 3) t3++;
+        n++;
+      }
+      oCursor = page.hasNextPage ? page.nextCursor ?? null : null;
+    } while (oCursor);
+    return { t1, t2, t3, n };
+  };
+
+  let tier1 = 0;
+  let tier2 = 0;
+  let tier3 = 0;
+  let total = 0;
+  const CONCURRENCY = 25;
+  for (let i = 0; i < buyers.length; i += CONCURRENCY) {
+    const batch = buyers.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(tallyBuyer));
+    for (const r of results) {
+      tier1 += r.t1;
+      tier2 += r.t2;
+      tier3 += r.t3;
+      total += r.n;
+    }
+  }
+
+  return { tier1, tier2, tier3, totalFetched: total };
 }
 
 export function calculateNextRoundTimes(): { closeTime: number; drawTime: number } {
