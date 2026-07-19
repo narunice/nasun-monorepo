@@ -79,6 +79,32 @@ export function buildClaimPrize(roundId: string, ticketId: string): Transaction 
 }
 
 /**
+ * Claim multiple winning tickets in a single PTB. `claim_prize` is an entry
+ * function with no return value (it pays out to the sender internally and
+ * consumes the Ticket by value), so repeating the call per ticket is safe to
+ * compose. The same round object may appear across calls (a shared &mut reused
+ * sequentially within one PTB). Caller chunks the list to stay under limits.
+ */
+export function buildClaimPrizeBulk(
+  items: ReadonlyArray<{ roundId: string; ticketId: string }>,
+): Transaction {
+  if (items.length === 0) {
+    throw new Error('[Security] No tickets to claim');
+  }
+  const tx = new Transaction();
+  // claim_prize does payout math + a coin transfer, so budget more generously
+  // than burn's 5M/call.
+  tx.setGasBudget(Math.max(20_000_000, items.length * 8_000_000));
+  for (const { roundId, ticketId } of items) {
+    tx.moveCall({
+      target: `${LOTTERY_PACKAGE_ID}::lottery::claim_prize`,
+      arguments: [tx.object(roundId), tx.object(ticketId), tx.object(SUI_CLOCK_ID)],
+    });
+  }
+  return tx;
+}
+
+/**
  * Bulk ticket purchase with client-side auto-picked numbers. PTB repeats
  * `buy_ticket` N times (buy_ticket does not use &Random so composition is
  * safe). Caller must ensure `nusdcCoinId` total >= count * TICKET_PRICE

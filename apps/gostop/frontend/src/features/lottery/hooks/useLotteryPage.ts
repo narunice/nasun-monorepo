@@ -25,9 +25,11 @@ export function useLotteryPage(celebrate: any) {
     buyTicket,
     buyTicketBulk,
     claimPrize,
+    claimPrizesBulk,
     burnTicket,
     isBuying,
     isClaiming,
+    isBulkClaiming,
     claimingTicketId,
     burningTicketId,
     error,
@@ -124,6 +126,37 @@ export function useLotteryPage(celebrate: any) {
     }
   }, [claimSummary.claimable, claimPrize, refreshRound, refreshTickets, invalidateHistory, celebrate]);
 
+  const onClaimAll = useCallback(async () => {
+    // Snapshot the currently claimable tickets that are not already optimistically
+    // claimed, so a mid-flight refresh does not change the set we settle.
+    const pending = claimSummary.claimable.filter((c) => !claimedTicketIds.has(c.ticket.id));
+    if (pending.length === 0) return;
+    const items = pending.map((c) => ({ roundId: c.round.id, ticketId: c.ticket.id }));
+
+    const { claimed } = await claimPrizesBulk(items);
+    if (claimed <= 0) return;
+
+    // Optimistically hide every ticket we attempted; a failed chunk will
+    // reappear after the refetch below reconciles against chain state.
+    setClaimedTicketIds((prev) => new Set([...prev, ...items.map((i) => i.ticketId)]));
+    refreshRound();
+    refreshTickets();
+    setTimeout(refreshTickets, 2_000);
+    invalidateHistory();
+
+    // One aggregate celebration: best tier reached + total payout across wins.
+    const best = pending.reduce((a, b) => (b.tier < a.tier ? b : a), pending[0]);
+    const totalPayout = pending.reduce((sum, c) => sum + c.payout, 0n);
+    celebrate({
+      variant: "tiered",
+      tier: tierForLottery(best.tier),
+      payout: totalPayout,
+      gameLabel: "Lottery",
+      tierLabelOverride:
+        best.tier === 1 ? "JACKPOT" : best.tier === 2 ? "2ND PRIZE" : "3RD PRIZE",
+    });
+  }, [claimSummary.claimable, claimedTicketIds, claimPrizesBulk, refreshRound, refreshTickets, invalidateHistory, celebrate]);
+
   const onBurn = useCallback(async (roundId: string, ticketId: string) => {
     const ok = await burnTicket(roundId, ticketId);
     if (ok) refreshTickets();
@@ -147,6 +180,7 @@ export function useLotteryPage(celebrate: any) {
     clearError,
     isBuying,
     isClaiming,
+    isBulkClaiming,
     claimingTicketId,
     burningTicketId,
     togglePick,
@@ -154,6 +188,7 @@ export function useLotteryPage(celebrate: any) {
     onBuy,
     onQuickBuy,
     onClaim,
+    onClaimAll,
     onBurn,
     canBuy,
     purchaseConfirm,

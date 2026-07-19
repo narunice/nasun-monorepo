@@ -8,14 +8,18 @@ export function ClaimBanner({
   totalNusdc,
   earliestDeadlineMs,
   onClaim,
+  onClaimAll,
   isClaiming,
+  isBulkClaiming,
   claimingTicketId,
 }: {
   claimable: ClaimableTicket[];
   totalNusdc: bigint;
   earliestDeadlineMs: number | null;
   onClaim: (roundId: string, ticketId: string) => void;
+  onClaimAll: () => void;
   isClaiming: boolean;
+  isBulkClaiming: boolean;
   claimingTicketId?: string | null;
 }) {
   if (claimable.length === 0) return null;
@@ -48,9 +52,20 @@ export function ClaimBanner({
             <span className="font-mono text-gold-200">{formatNusdc(totalNusdc)} NUSDC</span>
           </p>
         </div>
-        <p className={`text-sm ${isUrgent ? "text-amber-200" : "text-neutral-200"}`}>
-          Earliest deadline · <span className="font-mono">{deadlineDate}</span>
-        </p>
+        <div className="flex flex-col sm:items-end gap-2">
+          {claimable.length >= 2 && (
+            <button
+              onClick={onClaimAll}
+              disabled={isClaiming || isBulkClaiming}
+              className="btn-gold !py-2 !px-4 text-sm self-start sm:self-auto"
+            >
+              {isBulkClaiming ? "Claiming all..." : `Claim all (${claimable.length})`}
+            </button>
+          )}
+          <p className={`text-sm ${isUrgent ? "text-amber-200" : "text-neutral-200"}`}>
+            Earliest deadline · <span className="font-mono">{deadlineDate}</span>
+          </p>
+        </div>
       </div>
 
       <ul className="space-y-2">
@@ -80,14 +95,10 @@ export function ClaimBanner({
               </span>
               <button
                 onClick={() => onClaim(c.round.id, c.ticket.id)}
-                disabled={isClaiming}
+                disabled={isClaiming || isBulkClaiming}
                 className="btn-gold !py-2 !px-4 text-sm"
               >
-                {claimingTicketId === c.ticket.id
-                  ? "Claiming..."
-                  : isClaiming
-                    ? "Claim"
-                    : "Claim"}
+                {claimingTicketId === c.ticket.id ? "Claiming..." : "Claim"}
               </button>
             </li>
           );

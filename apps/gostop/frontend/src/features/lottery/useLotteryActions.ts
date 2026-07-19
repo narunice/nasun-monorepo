@@ -8,6 +8,7 @@ import {
   buildBurnTicket,
   buildBurnTicketBulk,
   buildClaimPrize,
+  buildClaimPrizeBulk,
 } from './transactions'
 import { autoPickNumbers } from './lottery-utils'
 import { humanizeLotteryError } from './errors'
@@ -21,18 +22,27 @@ export interface BulkBurnResult {
   digests: string[]
 }
 
+export interface BulkClaimResult {
+  claimed: number
+  failedChunks: number
+  digests: string[]
+}
+
 export interface UseLotteryActionsResult {
   walletAddress: string | undefined
   isWalletConnected: boolean
   buyTicket: (roundId: string, numbers: number[]) => Promise<boolean>
   buyTicketBulk: (roundId: string, count: number) => Promise<boolean>
   claimPrize: (roundId: string, ticketId: string) => Promise<boolean>
+  claimPrizesBulk: (items: ReadonlyArray<{ roundId: string; ticketId: string }>) => Promise<BulkClaimResult>
   burnTicket: (roundId: string, ticketId: string) => Promise<boolean>
   burnTicketsBulk: (items: ReadonlyArray<{ roundId: string; ticketId: string }>) => Promise<BulkBurnResult>
   isBuying: boolean
   isBulkBurning: boolean
   bulkBurnProgress: { done: number; total: number } | null
   isClaiming: boolean
+  isBulkClaiming: boolean
+  bulkClaimProgress: { done: number; total: number } | null
   claimingTicketId: string | null
   burningTicketId: string | null
   error: string | null
@@ -48,6 +58,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
   const [burningTicketId, setBurningTicketId] = useState<string | null>(null)
   const [isBulkBurning, setIsBulkBurning] = useState(false)
   const [bulkBurnProgress, setBulkBurnProgress] = useState<{ done: number; total: number } | null>(null)
+  const [isBulkClaiming, setIsBulkClaiming] = useState(false)
+  const [bulkClaimProgress, setBulkClaimProgress] = useState<{ done: number; total: number } | null>(null)
   const [error, setError] = useState<string | null>(null)
   const { executeGameTx, isPending } = useGameTransaction()
 
@@ -199,12 +211,55 @@ export function useLotteryActions(): UseLotteryActionsResult {
     [executeGameTx],
   )
 
+  const claimPrizesBulk = useCallback(
+    async (
+      items: ReadonlyArray<{ roundId: string; ticketId: string }>,
+    ): Promise<BulkClaimResult> => {
+      if (items.length === 0) return { claimed: 0, failedChunks: 0, digests: [] }
+      setError(null)
+      setIsBulkClaiming(true)
+      setBulkClaimProgress({ done: 0, total: items.length })
+
+      // Smaller than burn's 50: claim_prize does payout math + a coin transfer
+      // per ticket, so keep each PTB comfortably under gas/size limits.
+      const CHUNK = 25
+      let claimed = 0
+      let failedChunks = 0
+      const digests: string[] = []
+
+      try {
+        for (let i = 0; i < items.length; i += CHUNK) {
+          const chunk = items.slice(i, i + CHUNK)
+          const ok = await executeGameTx(async () => buildClaimPrizeBulk(chunk), {
+            skipBalanceCheck: true,
+            humanizeMoveAbort: humanizeLotteryError,
+            onSuccess: (result: unknown) => {
+              const r = result as { digest?: string } | undefined
+              if (r?.digest) digests.push(r.digest)
+            },
+            onError: (err) => setError(humanizeLotteryError(err.message)),
+          })
+          if (ok) claimed += chunk.length
+          else failedChunks += 1
+          setBulkClaimProgress({ done: Math.min(i + CHUNK, items.length), total: items.length })
+        }
+      } finally {
+        setIsBulkClaiming(false)
+        setTimeout(() => setBulkClaimProgress(null), 500)
+      }
+
+      return { claimed, failedChunks, digests }
+    },
+    [executeGameTx],
+  )
+
   return {
     walletAddress,
     isWalletConnected,
     buyTicket,
     buyTicketBulk,
     claimPrize,
+    claimPrizesBulk,
     burnTicket,
     burnTicketsBulk,
     isBuying: isPending && localPhase === 'buying',
@@ -213,6 +268,8 @@ export function useLotteryActions(): UseLotteryActionsResult {
     burningTicketId,
     isBulkBurning,
     bulkBurnProgress,
+    isBulkClaiming,
+    bulkClaimProgress,
     error,
     clearError: () => setError(null),
   }

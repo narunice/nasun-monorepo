@@ -33,6 +33,7 @@ export default function LotteryPage() {
     clearError,
     isBuying,
     isClaiming,
+    isBulkClaiming,
     claimingTicketId,
     burningTicketId,
     togglePick,
@@ -40,6 +41,7 @@ export default function LotteryPage() {
     onBuy,
     onQuickBuy,
     onClaim,
+    onClaimAll,
     onBurn,
     canBuy,
     purchaseConfirm,
@@ -77,7 +79,9 @@ export default function LotteryPage() {
         totalNusdc={claimSummary.totalClaimableNusdc}
         earliestDeadlineMs={claimSummary.earliestDeadlineMs}
         onClaim={onClaim}
+        onClaimAll={onClaimAll}
         isClaiming={isClaiming}
+        isBulkClaiming={isBulkClaiming}
         claimingTicketId={claimingTicketId}
       />
       <ExpiredBanner expired={claimSummary.expired} />
