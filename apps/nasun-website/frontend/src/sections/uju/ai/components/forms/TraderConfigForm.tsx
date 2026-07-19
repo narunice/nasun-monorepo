@@ -213,6 +213,26 @@ export function TraderConfigForm({ agentAddress, agentName, agentBudgetId, initi
   const labelClass = 'text-xs uppercase tracking-wider text-uju-secondary/70';
   const inputClass = 'w-full px-3 py-2 text-xs rounded-lg bg-uju-bg border border-uju-border/60 text-white focus:outline-none focus:border-pado-2 transition-colors';
 
+  // Gate: the trader flow cannot function without a verified executor, and the
+  // save always fails with "No verified executors available" when none exist.
+  // On the current network the executor registry is not deployed, so
+  // activeExecutors is empty for everyone. Show a clear not-yet-available
+  // notice instead of a form that is guaranteed to fail on submit. This lives
+  // in the shared form so every render site (Dashboard, Settings, QuickStart
+  // wizard) inherits the gate.
+  if (!executorsLoading && activeExecutors.length === 0) {
+    return (
+      <div className="max-w-2xl rounded-lg border border-uju-border/60 bg-uju-bg p-4 space-y-2">
+        <p className="text-sm font-medium text-white">Agent trading is not available yet</p>
+        <p className="text-sm text-uju-secondary/80">
+          The agent execution layer is being rebuilt after the recent network upgrade.
+          No verified executors are online right now, so trader setup is temporarily
+          unavailable. Please check back soon.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-w-2xl">
       {hideAutoFields ? (
