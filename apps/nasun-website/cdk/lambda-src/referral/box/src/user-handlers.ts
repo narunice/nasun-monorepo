@@ -17,6 +17,7 @@ import {
 import { insertCode, insertReferral, updateAppeal } from './write-db';
 import {
   readProfileByIdentity,
+  readProfileByIdentityDetailed,
   readProfilesByTwitterId,
   profileBatch,
   attributesSyncAuthoritative,
@@ -101,10 +102,27 @@ async function enrichReferees(rawItems: Array<ReferralItem & { _serial: number }
 // ==================== GET /referral/my-code ====================
 
 export async function handleMyCode(identityId: string): Promise<Result> {
-  // The caller is authenticated, so a user_profiles row exists. identity-compute is the box SoT for the
-  // profile (referralCode + the gate's social fields). A null read = identity outage (not "absent"): we
-  // FAIL-CLOSED with 500 rather than risk a double-issue or a gate evaluated on a missing profile.
-  const profile = await readProfileByIdentity(identityId);
+  // identity-compute is the box SoT for the profile (referralCode + the gate's social fields).
+  // Distinguish two read failures that must NOT share a response:
+  //   - 404 (profile genuinely absent): the caller authenticated but has no user_profiles row yet
+  //     (e.g. mid-onboarding). A profile-less user can never pass the eligibility gate and there is
+  //     nothing to double-issue, so we surface the normal NOT_ELIGIBLE state instead of a hard 500.
+  //     Collapsing this into 500 was the root cause of the "Failed to load referral data" errors:
+  //     the client shows a generic error for any non-NOT_ELIGIBLE/PENDING failure.
+  //   - outage (5xx / timeout / network, status 0): we STILL FAIL-CLOSED with 500 rather than risk a
+  //     double-issue or a gate evaluated on a missing profile.
+  const read = await readProfileByIdentityDetailed(identityId);
+  if (read.status === 404) {
+    return {
+      status: 403,
+      body: {
+        error: 'NOT_ELIGIBLE',
+        message: 'Complete your profile to unlock referrals.',
+        hint: 'Finish setting up your account, then check back for your referral code.',
+      },
+    };
+  }
+  const profile = read.body;
   if (!profile) {
     return { status: 500, body: { error: 'PROFILE_UNAVAILABLE', message: 'Could not load profile. Please try again.' } };
   }

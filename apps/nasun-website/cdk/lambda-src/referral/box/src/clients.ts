@@ -37,6 +37,33 @@ export function readProfileByIdentity(identityId: string) {
   return readProfile('/profile/by-identity', { identityId });
 }
 
+// Status-aware profile read. Same call as readProfile but surfaces the upstream
+// HTTP status so callers can tell a genuine 404 (profile absent) apart from an
+// outage (5xx / timeout / network error, reported as status 0). NEVER throws.
+//   - { status: 200, body }  profile found
+//   - { status: 404, body: null }  profile genuinely absent (identity has no row)
+//   - { status: 0,   body: null }  outage: fetch threw or timed out
+//   - { status: <other>, body: null }  any other non-200 (treated as outage by callers)
+export async function readProfileByIdentityDetailed(
+  identityId: string,
+): Promise<{ status: number; body: Record<string, any> | null }> {
+  try {
+    const qs = new URLSearchParams({ identityId }).toString();
+    const res = await fetch(`${IDENTITY.baseUrl}/profile/by-identity?${qs}`, {
+      method: 'GET',
+      headers: { authorization: `Bearer ${identitySecret()}` },
+      signal: AbortSignal.timeout(IDENTITY.timeoutMs),
+    });
+    if (res.status === 200) {
+      return { status: 200, body: (await res.json()) as Record<string, any> };
+    }
+    return { status: res.status, body: null };
+  } catch (err) {
+    console.warn('[referral] identity /profile/by-identity read failed (non-blocking):', err instanceof Error ? err.message : err);
+    return { status: 0, body: null };
+  }
+}
+
 // Returns { matches: [{ identityId, walletAddress, username, customDisplayName }] } | null.
 export function readProfilesByTwitterId(twitterId: string) {
   return readProfile('/profile/by-twitter-id', { twitterId });
