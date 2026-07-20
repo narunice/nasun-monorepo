@@ -147,15 +147,48 @@ export async function fetchLotteryRound(roundId: string): Promise<LotteryRound |
 }
 
 /**
- * Find the most recent RoundCreated event and return that round id. Returns
- * null if no rounds have been created yet.
+ * Resolve a round object id by round number from the backend indexer. Returns
+ * null on 404/error so the caller can fall back.
+ */
+async function fetchRoundIdByNumber(roundNumber: number): Promise<string | null> {
+  try {
+    const resp = await apiRequest<{ round: { round_id: string } }>(
+      `/api/gostop/round/lottery/by-number/${encodeURIComponent(roundNumber)}`,
+    );
+    const id = resp.round?.round_id;
+    return typeof id === 'string' && id.length > 0 ? id : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Return the object id of the CURRENT lottery round.
+ *
+ * The authoritative round number comes from the on-chain LotteryRegistry — a
+ * live shared object that is never pruned — and the backend indexer maps that
+ * number to the round object id durably. This is robust against two devnet
+ * hazards at once: (1) tx-index/event pruning, which blanked on-chain
+ * discovery mid-week, and (2) genesis resets, which leave STALE higher
+ * round_numbers in the indexer so "newest by number" would resolve a dead
+ * round object. Falls back to on-chain tx-index discovery only when the
+ * registry or backend is unavailable.
  */
 export async function fetchLatestRoundId(): Promise<string | null> {
   try {
-    const ids = await fetchRecentRoundIds(1);
+    const registry = await fetchLotteryRegistry();
+    if (registry && registry.currentRound > 0) {
+      const id = await fetchRoundIdByNumber(registry.currentRound);
+      if (id) return id;
+    }
+  } catch (e) {
+    console.warn('[lottery] registry-anchored round discovery failed, falling back on-chain:', e);
+  }
+  try {
+    const ids = await fetchRecentRoundIdsOnChain(1);
     return ids[0] ?? null;
   } catch (e) {
-    console.error('[lottery] fetchLatestRoundId:', e);
+    console.error('[lottery] fetchLatestRoundId on-chain fallback:', e);
     return null;
   }
 }

@@ -156,6 +156,62 @@ roundRoutes.get('/lottery/recent', async (c) => {
   return c.json(value);
 });
 
+/**
+ * Resolve a lottery round object id by round number.
+ *
+ *   GET /api/gostop/round/lottery/by-number/:round_number
+ *
+ * The caller passes the authoritative current round number read from the
+ * on-chain LotteryRegistry (a live shared object, never pruned). This mapping
+ * is required because a devnet genesis reset can leave STALE higher
+ * round_numbers in gostop.lottery_round from a previous genesis, so
+ * "max(round_number)" is NOT the current round. Anchoring on the registry
+ * number and resolving its id here is correct across resets.
+ */
+const ROUND_NUMBER_RE = /^\d{1,19}$/;
+
+roundRoutes.get('/lottery/by-number/:round_number', async (c) => {
+  const raw = c.req.param('round_number');
+  if (!ROUND_NUMBER_RE.test(raw)) {
+    return c.json({ error: 'bad_request', reason: 'invalid_round_number' }, 400);
+  }
+
+  const cacheKey = `lottery:by-number:${raw}`;
+  const cached = cacheGet<unknown>(cacheKey);
+  if (cached) {
+    const ifNoneMatch = c.req.header('if-none-match');
+    if (ifNoneMatch && ifNoneMatch === cached.etag) {
+      c.header('ETag', cached.etag);
+      return c.body(null, 304);
+    }
+    c.header('ETag', cached.etag);
+    c.header('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
+    return c.json(cached.value);
+  }
+
+  const sql = reader();
+  const rows = await sql<LotteryRecentRow[]>`
+    SELECT
+      round_number::text,
+      round_id,
+      close_time_ms::text,
+      draw_time_ms::text,
+      drawn_numbers,
+      settled
+    FROM gostop.lottery_round
+    WHERE round_number = ${raw}
+    LIMIT 1
+  `;
+  if (rows.length === 0) {
+    return c.json({ error: 'not_found' }, 404);
+  }
+  const value = { round: rows[0] };
+  const etag = cacheSet(cacheKey, value, CACHE_TTL_SECONDS);
+  c.header('ETag', etag);
+  c.header('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
+  return c.json(value);
+});
+
 roundRoutes.get('/:game/:session_id', async (c) => {
   const game = c.req.param('game');
   const sessionHexRaw = c.req.param('session_id');
