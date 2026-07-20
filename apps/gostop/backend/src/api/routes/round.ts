@@ -88,6 +88,74 @@ type CrashCashoutRow = {
   cashout_ts_ms: string;
 };
 
+/**
+ * Recent lottery rounds, newest first — pruning-immune round discovery.
+ *
+ *   GET /api/gostop/round/lottery/recent?limit=N   (1..48, default 1)
+ *
+ * The devnet fullnode prunes the transaction index and events within hours, so
+ * the frontend can no longer discover the current round object on-chain via
+ * queryTransactionBlocks(create_round) once a weekly round ages past retention
+ * — which disabled the lottery buy button while the round was still open. This
+ * endpoint serves the durable round_id from the indexer's lottery_round table
+ * (written at RoundCreated time). The frontend then getObject(round_id)s the
+ * live round for authoritative status/ticket_count. Only the object id and
+ * public round timing are exposed; no player data, so no visibility gate.
+ */
+const RECENT_ROUNDS_MAX = 48;
+type LotteryRecentRow = {
+  round_number: string;
+  round_id: string;
+  close_time_ms: string;
+  draw_time_ms: string;
+  drawn_numbers: number[] | null;
+  settled: boolean;
+};
+
+roundRoutes.get('/lottery/recent', async (c) => {
+  const limitRaw = c.req.query('limit');
+  let limit = 1;
+  if (limitRaw !== undefined) {
+    const n = Number(limitRaw);
+    if (!Number.isInteger(n) || n < 1 || n > RECENT_ROUNDS_MAX) {
+      return c.json({ error: 'bad_request', reason: 'invalid_limit' }, 400);
+    }
+    limit = n;
+  }
+
+  const cacheKey = `lottery:recent:${limit}`;
+  const cached = cacheGet<unknown>(cacheKey);
+  if (cached) {
+    const ifNoneMatch = c.req.header('if-none-match');
+    if (ifNoneMatch && ifNoneMatch === cached.etag) {
+      c.header('ETag', cached.etag);
+      return c.body(null, 304);
+    }
+    c.header('ETag', cached.etag);
+    c.header('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
+    return c.json(cached.value);
+  }
+
+  const sql = reader();
+  const rows = await sql<LotteryRecentRow[]>`
+    SELECT
+      round_number::text,
+      round_id,
+      close_time_ms::text,
+      draw_time_ms::text,
+      drawn_numbers,
+      settled
+    FROM gostop.lottery_round
+    ORDER BY round_number DESC
+    LIMIT ${limit}
+  `;
+  const value = { rounds: rows };
+  const etag = cacheSet(cacheKey, value, CACHE_TTL_SECONDS);
+  c.header('ETag', etag);
+  c.header('Cache-Control', `public, max-age=${CACHE_TTL_SECONDS}`);
+  return c.json(value);
+});
+
 roundRoutes.get('/:game/:session_id', async (c) => {
   const game = c.req.param('game');
   const sessionHexRaw = c.req.param('session_id');

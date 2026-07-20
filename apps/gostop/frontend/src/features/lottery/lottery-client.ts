@@ -1,4 +1,5 @@
 import { getSuiClient } from '../../lib/sui-client';
+import { apiRequest } from '../../lib/api/client';
 import {
   LOTTERY_PACKAGE_ID,
   LOTTERY_REGISTRY_ID,
@@ -8,17 +9,34 @@ import {
 } from '../../lib/gostop-config';
 
 /**
- * Return the object IDs of the most recent lottery rounds, newest first,
+ * Resolve the most recent round object ids, newest first, from the backend
+ * indexer. This is the PRIMARY discovery path and is immune to devnet pruning:
+ * the indexer persists `round_id` in `gostop.lottery_round` at RoundCreated
+ * time, so the current (open) round is always resolvable even after the
+ * fullnode drops the create_round tx/events. The round objects themselves are
+ * live shared state and never pruned, so a later getObject(round_id) still
+ * returns authoritative status/ticket_count. Throws on network/config error so
+ * the caller can fall back to on-chain discovery.
+ */
+async function fetchRecentRoundIdsFromBackend(limit: number): Promise<string[]> {
+  const resp = await apiRequest<{ rounds: { round_id: string }[] }>(
+    `/api/gostop/round/lottery/recent?limit=${encodeURIComponent(limit)}`,
+  );
+  return resp.rounds.map((r) => r.round_id).filter((id) => typeof id === 'string' && id.length > 0);
+}
+
+/**
+ * Fallback: return round object ids from the on-chain tx index, newest first,
  * WITHOUT queryEvents. The devnet fullnode prunes transaction events after a
  * couple of epochs (~4h), so queryEvents(RoundCreated) throws "Could not find
  * the referenced transaction events" once a round's create tx ages out — which
  * blanked the current round and history on this page. queryTransactionBlocks
  * degrades gracefully (pruned txs come back with empty effects, not a throw),
  * and each create_round tx carries the created shared LotteryRound in its
- * effects. Tx-index retention is short too, so only the newest round(s) are
- * recoverable on-chain; older history must come from the backend indexer.
+ * effects. Tx-index retention is short too (only the newest round(s) survive),
+ * which is why the backend indexer above is preferred for discovery.
  */
-async function fetchRecentRoundIds(limit: number): Promise<string[]> {
+async function fetchRecentRoundIdsOnChain(limit: number): Promise<string[]> {
   const client = getSuiClient();
   const txs = await client.queryTransactionBlocks({
     filter: {
@@ -37,6 +55,21 @@ async function fetchRecentRoundIds(limit: number): Promise<string[]> {
     if (roundRef) ids.push(roundRef.reference.objectId);
   }
   return ids;
+}
+
+/**
+ * Backend-first round discovery with on-chain fallback. The backend is durable
+ * against pruning; the on-chain path is the safety net when the backend is
+ * unreachable or not configured (e.g. local dev without VITE_GOSTOP_API_URL).
+ */
+async function fetchRecentRoundIds(limit: number): Promise<string[]> {
+  try {
+    const ids = await fetchRecentRoundIdsFromBackend(limit);
+    if (ids.length > 0) return ids;
+  } catch (e) {
+    console.warn('[lottery] backend round discovery failed, falling back on-chain:', e);
+  }
+  return fetchRecentRoundIdsOnChain(limit);
 }
 
 export interface LotteryRegistry {
