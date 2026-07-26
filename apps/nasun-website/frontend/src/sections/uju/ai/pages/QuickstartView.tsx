@@ -280,6 +280,13 @@ const NSN_UNIT = 10n ** NSN_DECIMALS;
 // the next few signed actions (kill switch, pause, etc.). 0.1 NSN is the
 // same reserve buffer used by transferAmount.ts for owner-side dust math.
 const OWNER_NSN_GAS_RESERVE = NSN_UNIT / 10n;
+// How long Step ② waits for the just-funded budget to become readable before
+// advancing anyway. executeTransactionBlock already returns a success effects
+// cert (funds committed); waitForTransaction only lets the budget query surface
+// the deposit so the wizard can move to Step ③. Bounded (shorter than the SDK's
+// 60s default) so a lagging devnet fullnode cannot leave Step ② hanging on
+// "Submitting..." (bug reports 2026-06-24, 2026-07-09).
+const FUND_CONFIRM_WAIT_MS = 15_000;
 
 export function Step2FundBody({
   signer,
@@ -298,7 +305,7 @@ export function Step2FundBody({
   const [walletBalance, setWalletBalance] = useState<bigint | null>(null);
   const [walletNsnBalance, setWalletNsnBalance] = useState<bigint | null>(null);
   const [status, setStatus] = useState<
-    "idle" | "submitting" | "executing" | "error"
+    "idle" | "submitting" | "executing" | "funded" | "error"
   >("idle");
   const [error, setError] = useState<string | null>(null);
 
@@ -438,16 +445,32 @@ export function Step2FundBody({
           result.effects?.status?.error ?? "Fund transaction failed",
         );
       }
-      await suiClient.waitForTransaction({ digest: result.digest });
+      // The deposit is final now that executeTransactionBlock returned a
+      // success effects cert. Give the fullnode a bounded moment to make the
+      // budget readable (uses the SDK's own timeout/abort so the poll is not
+      // left running), but do not fail if the read lags behind the cert.
+      try {
+        await suiClient.waitForTransaction({
+          digest: result.digest,
+          timeout: FUND_CONFIRM_WAIT_MS,
+        });
+      } catch {
+        // Read-visibility lag is non-fatal; the deposit already landed.
+      }
+      // Terminal state: the fund succeeded. Never return to "idle" here; that
+      // would re-enable "Confirm and sign" while hasBudget is still catching up
+      // and let a re-click double-fund the escrow. onFunded() invalidates the
+      // budgets query; the wizard advances to Step ③ as soon as it surfaces.
+      setStatus("funded");
       onFunded();
-      setStatus("idle");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Fund failed");
       setStatus("error");
     }
   };
 
-  const busy = status === "submitting" || status === "executing";
+  const busy =
+    status === "submitting" || status === "executing" || status === "funded";
 
   return (
     <div className="space-y-3">
@@ -513,7 +536,9 @@ export function Step2FundBody({
           ? "Signing..."
           : status === "executing"
             ? "Submitting..."
-            : "Confirm and sign"}
+            : status === "funded"
+              ? "Funded, finalizing..."
+              : "Confirm and sign"}
       </button>
     </div>
   );
