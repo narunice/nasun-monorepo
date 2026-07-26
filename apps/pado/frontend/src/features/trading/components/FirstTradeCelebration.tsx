@@ -42,7 +42,7 @@ function generateParticles(): Particle[] {
 }
 
 const TWEET_TEXT = encodeURIComponent(
-  'Just made my first trade on #Pado, a real on-chain CLOB orderbook on Nasun L1!\n\nBootstrapped and built from scratch.\n\n@Nasun_io',
+  'Just made my first trade on #Pado, a real on-chain CLOB orderbook on Nasun L1!\n\nPublic alpha on devnet, bootstrapped and built from scratch.\n\n@Nasun_io',
 );
 const TWITTER_URL = `https://x.com/intent/tweet?text=${TWEET_TEXT}`;
 
@@ -126,9 +126,17 @@ export function FirstTradeCelebration({ onDismiss }: Props) {
         <p className="text-theme-text-secondary mb-1">
           You just traded on a <strong className="text-theme-text-primary">real on-chain CLOB orderbook</strong>.
         </p>
-        <p className="text-sm text-theme-text-muted mb-6">
+        <p className="text-sm text-theme-text-muted mb-4">
           Not a simulated order. A real transaction, settled on Nasun L1.
         </p>
+
+        {/* Devnet / public alpha disclosure */}
+        <div className="mb-6 rounded-lg border border-theme-border bg-theme-bg-secondary/50 px-4 py-3 text-left">
+          <p className="text-sm text-theme-text-secondary">
+            <strong className="text-theme-text-primary">Public alpha on Nasun devnet.</strong>{' '}
+            This is a prototype running on a test network, not mainnet. Tokens have no real-world value.
+          </p>
+        </div>
 
         {/* Share on X */}
         <a
