@@ -6,10 +6,11 @@
  * - BalanceManager balance (DeepBook trading)
  * - MarginAccount balance (Pado Balance)
  *
+ * - Pool-side balances (order collateral + proceeds of filled maker orders)
+ *
  * IMPORTANT: This hook only tracks "cash-equivalent" assets.
  * It does NOT include:
  * - Prediction positions (unrealized PnL)
- * - Open orders (locked but not settled)
  * - Future: Perp unrealized PnL, lending deposits
  *
  * For total portfolio value including positions, use useTotalValue or useNetWorth.
@@ -22,6 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMultiBalance, useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { useMarginAccount } from './useMarginAccount';
+import { usePendingProceedsQuery } from './usePendingProceeds';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
 import { getStoredBalanceManagerId, floatToRaw } from '../../../lib/unified-margin';
 import { POOLS, TOKENS, getTokenBySymbol } from '../../../config/network';
@@ -68,7 +70,7 @@ export interface UnifiedBalanceState {
   inMargin: number;
   /** Combined BM + MA in USD — the user-facing Pado Balance total */
   inPado: number;
-  /** Locked in open orders (estimated) */
+  /** Held pool-side in USD: order collateral plus unsettled maker proceeds */
   inOpenOrders: number;
 
   // 24h changes
@@ -157,6 +159,11 @@ export function useUnifiedBalance(): UnifiedBalanceState {
     enabled: !!balanceManagerId,
   });
 
+  // Pool-side balances. These left the BalanceManager bag on order placement
+  // and only return to it on the next interaction with that pool, so counting
+  // them is the difference between a truthful total and money that looks gone.
+  const { usd: pendingUsd, refetch: refetchPending } = usePendingProceedsQuery();
+
   const hasBalanceManager = !!balanceManagerId;
   const isLoading = isWalletLoading || isMarginLoading || isBmLoading;
 
@@ -164,6 +171,7 @@ export function useUnifiedBalance(): UnifiedBalanceState {
   const refetch = () => {
     refetchWallet();
     refetchMargin();
+    refetchPending();
     if (balanceManagerId) {
       refetchBm();
     }
@@ -212,19 +220,20 @@ export function useUnifiedBalance(): UnifiedBalanceState {
     const inMargin = calculateUsdValue('NUSDC', Number(nusdcMargin) / 10 ** TOKENS.NUSDC.decimals);
 
     // Total value
-    const totalValue = nasunUsd + nbtcUsd + nusdcUsd;
+    const totalValue = nasunUsd + nbtcUsd + nusdcUsd + pendingUsd;
     const totalPnl24h = nasunPnl + nbtcPnl + nusdcPnl;
     const totalChange24h = totalValue > 0 && totalPnl24h !== 0
       ? (totalPnl24h / (totalValue - totalPnl24h)) * 100
       : 0;
 
-    // Available = Total - InTrading (trading is locked for trading purposes)
-    // In Phase 16.1, we don't track open orders yet, so inOpenOrders = 0
-    const inOpenOrders = 0;
+    // Available = Total - InTrading - pool-side holdings. Neither is spendable
+    // until it is withdrawn from the trading account or pulled back out of the
+    // order book.
+    const inOpenOrders = pendingUsd;
 
     // P0-1: Available calculation guard (underflow prevention)
     // Rule: available can never exceed totalValue or go negative
-    const rawAvailable = totalValue - inTrading;
+    const rawAvailable = totalValue - inTrading - inOpenOrders;
     const available = Math.max(0, Math.min(rawAvailable, totalValue));
 
     if (rawAvailable < 0) {
@@ -280,7 +289,7 @@ export function useUnifiedBalance(): UnifiedBalanceState {
       marginUsagePercent: undefined,
       freeCollateral: undefined,
     };
-  }, [walletBalance, bmBalance, marginAccount]);
+  }, [walletBalance, bmBalance, marginAccount, pendingUsd]);
 
   return {
     ...result,

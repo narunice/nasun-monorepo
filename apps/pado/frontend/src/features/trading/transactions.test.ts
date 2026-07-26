@@ -138,9 +138,38 @@ describe('buildWithdraw', () => {
 // WithdrawAll
 // ========================================
 describe('buildWithdrawAll', () => {
+  const commandsOf = (tx: ReturnType<typeof buildWithdrawAll>) =>
+    tx.getData().commands.map((c) =>
+      c.$kind === 'MoveCall' ? `${c.MoveCall.module}::${c.MoveCall.function}` : c.$kind
+    );
+
   it('builds withdraw-all transaction', () => {
     const tx = buildWithdrawAll(MOCK_BM_ID, MOCK_ADDRESS, MOCK_POOL);
     expect(tx).toBeDefined();
+  });
+
+  it('withdraws base and quote only by default', () => {
+    const calls = commandsOf(buildWithdrawAll(MOCK_BM_ID, MOCK_ADDRESS, MOCK_POOL));
+    expect(calls.filter((c) => c === 'balance_manager::withdraw_all')).toHaveLength(2);
+    expect(calls).not.toContain('pool::withdraw_settled_amounts_permissionless');
+  });
+
+  // Maker proceeds sit pool-side until settled, so recovery must settle first or
+  // it silently leaves funds behind.
+  it('settles the given pools before withdrawing', () => {
+    const calls = commandsOf(
+      buildWithdrawAll(MOCK_BM_ID, MOCK_ADDRESS, MOCK_POOL, { settlePools: [MOCK_POOL] })
+    );
+    expect(calls[0]).toBe('pool::withdraw_settled_amounts_permissionless');
+  });
+
+  it('drains extra token types without duplicating the pool assets', () => {
+    const calls = commandsOf(
+      buildWithdrawAll(MOCK_BM_ID, MOCK_ADDRESS, MOCK_POOL, {
+        extraTokenTypes: [MOCK_POOL.baseToken.type!, '0x2::sui::SUI'],
+      })
+    );
+    expect(calls.filter((c) => c === 'balance_manager::withdraw_all')).toHaveLength(3);
   });
 });
 

@@ -493,35 +493,54 @@ export function buildSwapExactQuoteForBase(
   return tx;
 }
 
+export interface WithdrawAllOptions {
+  /** Pools to pull settled maker proceeds from before withdrawing */
+  settlePools?: PoolConfig[];
+  /** Extra coin types to drain beyond the pool's base and quote */
+  extraTokenTypes?: string[];
+}
+
 /**
  * BalanceManager에서 현재 풀의 토큰 출금
  * Base와 Quote 토큰을 지갑으로 전송
  * @param balanceManagerId - BalanceManager object ID
  * @param recipientAddress - 수신 주소
  * @param pool - Pool 설정 (선택, 기본값: NBTC/NUSDC)
+ * @param options - 정산할 풀 / 추가 출금 토큰 타입
  */
 export function buildWithdrawAll(
   balanceManagerId: string,
   recipientAddress: string,
   pool: PoolConfig = DEFAULT_POOL,
+  options: WithdrawAllOptions = {},
 ): Transaction {
   const tx = new Transaction();
 
-  // Base 토큰 전체 출금
-  const baseCoin = tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::withdraw_all`,
-    typeArguments: [pool.baseToken.type!],
-    arguments: [tx.object(balanceManagerId)],
-  });
-  tx.transferObjects([baseCoin], tx.pure.address(recipientAddress));
+  // Proceeds of filled maker orders sit pool-side until the owner touches the
+  // pool again, so withdraw_all alone would leave them behind. Settling first
+  // is permissionless and a no-op when nothing is pending.
+  for (const settlePool of options.settlePools ?? []) {
+    if (!settlePool.id || !settlePool.baseToken.type || !settlePool.quoteToken.type) continue;
+    tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::pool::withdraw_settled_amounts_permissionless`,
+      typeArguments: [settlePool.baseToken.type, settlePool.quoteToken.type],
+      arguments: [tx.object(settlePool.id), tx.object(balanceManagerId)],
+    });
+  }
 
-  // Quote 토큰 전체 출금
-  const quoteCoin = tx.moveCall({
-    target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::withdraw_all`,
-    typeArguments: [pool.quoteToken.type!],
-    arguments: [tx.object(balanceManagerId)],
-  });
-  tx.transferObjects([quoteCoin], tx.pure.address(recipientAddress));
+  const withdrawTypes = [pool.baseToken.type!, pool.quoteToken.type!];
+  for (const extra of options.extraTokenTypes ?? []) {
+    if (extra && !withdrawTypes.includes(extra)) withdrawTypes.push(extra);
+  }
+
+  for (const coinType of withdrawTypes) {
+    const coin = tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::balance_manager::withdraw_all`,
+      typeArguments: [coinType],
+      arguments: [tx.object(balanceManagerId)],
+    });
+    tx.transferObjects([coin], tx.pure.address(recipientAddress));
+  }
 
   return tx;
 }

@@ -12,6 +12,12 @@ export { useUnifiedMargin, type UnifiedMarginState } from './useUnifiedMargin';
 export { useMarginAccount } from './useMarginAccount';
 export { usePadoAccount, type PadoAccountState } from './usePadoAccount';
 export { useRiskEngine, type UseRiskEngineResult } from './useRiskEngine';
+export {
+  usePendingProceeds,
+  usePendingProceedsQuery,
+  type PendingProceedsState,
+  type PendingProceedsQuery,
+} from './usePendingProceeds';
 
 // Phase 16.1: Unified Balance (cash-only assets)
 export {
@@ -40,4 +46,5 @@ export { SmartAccountPanel } from './SmartAccountPanel';
 export { WithdrawAllConfirmModal } from './WithdrawAllConfirmModal';
 export { PadoActivityCard } from './PadoActivityCard';
 export { AdvancedFundLocation } from './AdvancedFundLocation';
+export { PendingProceedsCard } from './PendingProceedsCard';
 export { WalletSection } from './WalletSection';

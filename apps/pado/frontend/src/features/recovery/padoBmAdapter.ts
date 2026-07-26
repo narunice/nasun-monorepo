@@ -13,6 +13,18 @@ import { getBalanceManagerBalances } from '../../lib/deepbook';
 import { buildWithdrawAll } from '../trading/transactions';
 import { POOLS, TOKENS } from '../../config/network';
 import { floatToRaw } from '../../lib/unified-margin';
+import { getPendingProceeds, claimableProceeds } from '../trading/lib/pendingProceeds';
+
+// Recovery must drain every asset the user could have traded, not just the
+// default pool's pair. withdraw_all on an absent coin type returns a zero coin,
+// so listing every type is safe.
+const ALL_TOKEN_TYPES = [
+  ...new Set(
+    Object.values(POOLS)
+      .flatMap((p) => [p.baseToken.type, p.quoteToken.type])
+      .filter((t): t is string => !!t)
+  ),
+];
 
 interface SignAndExecute {
   (tx: Transaction): Promise<{ digest: string }>;
@@ -51,7 +63,13 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecute): RecoveryAda
               disabled: !hasFunds,
               disabledReason: hasFunds ? undefined : 'No balance to recover',
               execute: async () => {
-                const tx = buildWithdrawAll(id, address, POOLS.NBTC_NUSDC);
+                // Settling a pool with nothing settled aborts, so ask which
+                // pools actually hold proceeds instead of settling blindly.
+                const pending = claimableProceeds(await getPendingProceeds(id));
+                const tx = buildWithdrawAll(id, address, POOLS.NBTC_NUSDC, {
+                  settlePools: pending.map((p) => p.pool),
+                  extraTokenTypes: ALL_TOKEN_TYPES,
+                });
                 return signAndExecute(tx);
               },
             },

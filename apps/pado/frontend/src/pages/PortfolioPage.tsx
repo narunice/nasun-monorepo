@@ -18,6 +18,7 @@ import {
 import {
   MarginAccountCard,
   AdvancedFundLocation,
+  PendingProceedsCard,
   WalletSection,
 } from "../features/core/unified-margin";
 
@@ -119,6 +120,9 @@ function BalanceTab() {
 
       {/* Hero: Pado deposit balance, composition, actions, period activity */}
       <MarginAccountCard />
+
+      {/* Funds sitting pool-side, which no other balance view reads */}
+      <PendingProceedsCard />
 
       {/* Self-custody reminder */}
       <p className="text-sm text-theme-text-secondary leading-relaxed px-1">
