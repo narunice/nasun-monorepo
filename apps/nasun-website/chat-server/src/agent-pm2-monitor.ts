@@ -35,6 +35,18 @@ const TG_TIMEOUT_MS = 5_000;
 // re-alerts even if it matches a previously-seen state.
 let lastAlertKey: string | null = null;
 
+// A "missing" candidate only alerts after it has been observed as
+// desired-running for ALERT_MIN_STREAK consecutive ticks. filterDesiredRunning
+// defensively KEEPS a candidate whenever readAgentStateSnapshot throws (a
+// one-off SQLite BUSY under WAL, a transient RPC blip), so a dead agent whose
+// on-chain profile is gone would otherwise flap alert<->clear tick after tick
+// (observed with nasun-ai-agent-e4abc071: a dogfood row, on-chain notExists,
+// flapping 30+ times). Debouncing on persistence kills the flap without
+// swallowing real drift: a genuinely down agent is missing EVERY tick, so its
+// streak climbs and it still fires after ALERT_MIN_STREAK ticks.
+const ALERT_MIN_STREAK = 2;
+const missingStreak = new Map<string, number>();
+
 interface DriftRow {
   pm2_name: string;
   agent_address: string;
@@ -141,6 +153,29 @@ export async function filterDesiredRunning(
   return real;
 }
 
+// Advance the per-name streak against the current desired-running missing set
+// and return only names that have persisted for >= minStreak ticks. Names
+// absent from `missing` are dropped from `streak` so a cleared-then-reappearing
+// agent restarts its count from zero (a transient blip never accumulates).
+export function confirmPersistentMissing(
+  missing: readonly string[],
+  streak: Map<string, number>,
+  minStreak: number,
+): string[] {
+  const current = new Set(missing);
+  for (const name of [...streak.keys()]) {
+    if (!current.has(name)) streak.delete(name);
+  }
+  const confirmed: string[] = [];
+  for (const name of missing) {
+    const next = (streak.get(name) ?? 0) + 1;
+    streak.set(name, next);
+    if (next >= minStreak) confirmed.push(name);
+  }
+  confirmed.sort();
+  return confirmed;
+}
+
 async function sendOperatorAlert(text: string): Promise<void> {
   const token = process.env.AGENT_TELEGRAM_BOT_TOKEN;
   const chatId = process.env.AGENT_TELEGRAM_ALERT_CHAT_ID;
@@ -199,6 +234,9 @@ async function tick(): Promise<void> {
       addrByName,
       readAgentStateSnapshot,
     );
+    // Debounce: only alert on missing agents that stayed desired-running across
+    // consecutive ticks, so a single transient snapshot error can't flap.
+    report.missing = confirmPersistentMissing(report.missing, missingStreak, ALERT_MIN_STREAK);
     const key = report.orphans.length === 0 && report.missing.length === 0
       ? ''
       : `orphan:${report.orphans.join(',')}|missing:${report.missing.join(',')}`;
@@ -232,4 +270,5 @@ export function stopPm2Monitor(): void {
     timer = null;
   }
   lastAlertKey = null;
+  missingStreak.clear();
 }
