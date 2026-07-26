@@ -177,7 +177,7 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 | `api-server/src/scripts/backfill-referral-bonus-day.ts` | (2026-05-18 신규) 누락된 일자의 referral batch 독립 재실행 |
 | `api-server/src/scripts/repair-referral-aggregate-bug.ts` | (2026-05-18 신규) 5/11~17 silent dedup 복구 |
 | `api-server/src/scripts/ban-users.ts` | 사용자 차단 (--identity-ids 옵션 지원) |
-| `api-server/src/scripts/repost-grant.sh` | X 리포스트 3pt 부여: box `nasun_dal` 핸들→지갑 해석→멱등 grant SQL 생성, box points DB psql 적용. AWS-exit 후 DDB UserProfiles 삭제로 box-only 경로 (구 repost-grant-emit.py 대체) |
+| `api-server/src/scripts/repost-grant.sh` | X 리포스트 3pt 부여: box `nasun_dal` 핸들→지갑 해석→멱등 grant SQL 생성, box points DB psql 적용. AWS-exit 후 DDB UserProfiles 삭제로 box-only 경로. **box `~/nasun-monorepo`는 git checkout이 아니라 rsync 트리**이므로 이 스크립트는 box에 상주하지 않음. 매 실행 로컬에서 box `/tmp`로 scp해서 돌릴 것 |
 
 ## Operational Invariants (자주 까먹는 것)
 
@@ -193,7 +193,6 @@ VITE_FAUCET_URL=https://faucet.devnet.nasun.io
 ## 최근 30일 주요 변경 (요약)
 
 - **Daily referral bonus 도입** (5/11): 전일 일일 포인트의 10% × 2/3 weight로 referrer에게 자동 배치
-- **Repost bonus X API 자동화**: X API로 reposter 자동 fetch, batch 부여
 - **RPC retry 중앙화** (rpc.ts): 5xx/timeout/AbortError 3회 backoff. daily-nft-check ad-hoc retry 제거 → 모든 caller 보호
 - **daily-mission scanner 폐기** (5/11): dead code 제거. SCORE_CATEGORIES enum 항목은 historical row 보호 위해 유지
 - **Ban 관리 고도화**: rank cap 1000, 2단계 unban flow (retroactive/forward-only), `--identity-ids` 옵션
