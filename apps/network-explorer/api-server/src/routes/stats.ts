@@ -3,6 +3,11 @@ import { sql, pointsDb } from '../db.js';
 import { cached } from '../cache.js';
 import { getBalance, discoverAddressesViaRpc } from '../rpc.js';
 import { OFFCHAIN_CATEGORIES } from '../config/categories.js';
+import {
+  readNetworkDailyStats,
+  computeTodayTxGas,
+  computeTodayActiveAddresses,
+} from '../scanner/network-daily-rollup.js';
 
 const app = new Hono();
 
@@ -106,28 +111,30 @@ app.get('/tokens', async (c) => {
 app.get('/daily-gas', async (c) => {
   const days = parseDays(c.req.query('range'));
 
+  // Complete days come from network_daily_stats (nasun_points), today is computed live.
+  // See scanner/network-daily-rollup.ts for why: the indexer only retains ~32 days, so
+  // reading history straight from `checkpoints` capped what these charts could ever show.
   const getDailyGas = cached(`daily-gas-${days}`, 5 * 60 * 1000, async () => {
     try {
-      const rows = await sql`
-        SELECT
-          DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
-          SUM(total_gas_cost)::text AS total_gas_cost,
-          CASE WHEN SUM(max_tx_sequence_number - min_tx_sequence_number + 1) > 0
-            THEN FLOOR(SUM(total_gas_cost) / SUM(max_tx_sequence_number - min_tx_sequence_number + 1))::text
-            ELSE '0'
-          END AS avg_gas_per_tx,
-          SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::int AS tx_count
-        FROM checkpoints
-        WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
-        GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
-        ORDER BY day ASC
-      `;
-      return rows.map((r: Record<string, unknown>) => ({
+      const [history, today] = await Promise.all([
+        readNetworkDailyStats(days),
+        computeTodayTxGas(),
+      ]);
+      const rows = [...history.map((r) => ({
         date: r.day,
-        totalGasCost: r.total_gas_cost as string,
-        avgGasPerTx: r.avg_gas_per_tx as string,
-        txCount: Number(r.tx_count),
-      }));
+        totalGasCost: r.totalGasCost,
+        avgGasPerTx: r.avgGasPerTx,
+        txCount: r.txCount,
+      }))];
+      if (today) {
+        rows.push({
+          date: today.day,
+          totalGasCost: today.totalGasCost,
+          avgGasPerTx: today.avgGasPerTx,
+          txCount: today.txCount,
+        });
+      }
+      return rows;
     } catch (err) {
       console.error('Daily gas query failed:', err);
       return [];
@@ -209,32 +216,19 @@ app.get('/top-accounts', async (c) => {
 app.get('/active-addresses', async (c) => {
   const days = parseDays(c.req.query('range'));
 
-  // 15min TTL: DISTINCT sender JOIN is expensive on large tables
+  // 15min TTL: today's DISTINCT sender scan is still ~14s. Before the rollup the same
+  // scan ran once per day in the window, which put range=14d and 30d past the request
+  // timeout -- the catch below then returned [] and this cache served that empty array
+  // for 15 minutes, so the charts looked simply "empty" rather than broken.
   const getActiveAddresses = cached(`active-addresses-${days}`, 15 * 60 * 1000, async () => {
     try {
-      const rows = await sql`
-        WITH date_ranges AS (
-          SELECT
-            DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
-            MIN(min_tx_sequence_number) AS day_min_seq,
-            MAX(max_tx_sequence_number) AS day_max_seq
-          FROM checkpoints
-          WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
-          GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
-        )
-        SELECT
-          dr.day,
-          COUNT(DISTINCT a.sender) AS active_count
-        FROM date_ranges dr
-        JOIN tx_affected_addresses a
-          ON a.tx_sequence_number BETWEEN dr.day_min_seq AND dr.day_max_seq
-        GROUP BY dr.day
-        ORDER BY dr.day ASC
-      `;
-      return rows.map((r) => ({
-        date: r.day,
-        activeAddresses: Number(r.active_count),
-      }));
+      const [history, today] = await Promise.all([
+        readNetworkDailyStats(days),
+        computeTodayActiveAddresses(),
+      ]);
+      const rows = history.map((r) => ({ date: r.day, activeAddresses: r.activeAddresses }));
+      if (today) rows.push({ date: today.day, activeAddresses: today.activeAddresses });
+      return rows;
     } catch (err) {
       console.error('Active addresses query failed:', err);
       return [];
@@ -303,19 +297,13 @@ app.get('/daily-transactions', async (c) => {
 
   const getDailyTx = cached(`daily-tx-${days}`, 5 * 60 * 1000, async () => {
     try {
-      const rows = await sql`
-        SELECT
-          DATE(to_timestamp(timestamp_ms / 1000.0))::text AS day,
-          SUM(max_tx_sequence_number - min_tx_sequence_number + 1)::int AS tx_count
-        FROM checkpoints
-        WHERE timestamp_ms >= (EXTRACT(EPOCH FROM NOW()) - ${days * 86400}) * 1000
-        GROUP BY DATE(to_timestamp(timestamp_ms / 1000.0))
-        ORDER BY day ASC
-      `;
-      return rows.map((r) => ({
-        date: r.day,
-        transactions: Number(r.tx_count),
-      }));
+      const [history, today] = await Promise.all([
+        readNetworkDailyStats(days),
+        computeTodayTxGas(),
+      ]);
+      const rows = history.map((r) => ({ date: r.day, transactions: r.txCount }));
+      if (today) rows.push({ date: today.day, transactions: today.txCount });
+      return rows;
     } catch (err) {
       console.error('Daily transactions query failed:', err);
       return [];

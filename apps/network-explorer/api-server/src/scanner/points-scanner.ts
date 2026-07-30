@@ -32,6 +32,7 @@ import {
 import { checkEcosystemMatviewVersion } from '../db/ecosystem-matview-migration.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
 import { sendTelegramAlert } from '../utils/alert.js';
+import { rollUpNetworkDailyStats } from './network-daily-rollup.js';
 import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
 import { reconcileFromRpc } from './rpc-reconcile.js';
@@ -49,6 +50,7 @@ let isReconciling = false;
 let scanTimerId: ReturnType<typeof setTimeout> | null = null;
 let matviewTimerId: ReturnType<typeof setInterval> | null = null;
 let lastDailyNftCheckDate = '';
+let lastNetworkRollupDate = '';
 
 // Matview refresh runs on its own timer, independent of scanLoop, so a slow
 // REFRESH MATERIALIZED VIEW CONCURRENTLY (can exceed 3min on large tables)
@@ -345,6 +347,20 @@ async function scanLoop(myGen: number): Promise<void> {
         }
       } catch (err) {
         console.error('[DailyNftCheck] Error (non-fatal):', (err as Error).message);
+      }
+    }
+
+    // Network daily rollup: freeze yesterday's tx/gas/active-address totals into
+    // nasun_points so the Analytics charts read a permanent table instead of scanning the
+    // indexer. Its own gate rather than the NFT one, since a failure here must not hold
+    // that gate open. Lookback 3 days covers a couple of missed cycles; a longer gap is
+    // what scripts/backfill-network-daily-stats.ts is for.
+    if (todayStr !== lastNetworkRollupDate) {
+      try {
+        await rollUpNetworkDailyStats(3);
+        lastNetworkRollupDate = todayStr;
+      } catch (err) {
+        console.error('[NetworkRollup] Error (non-fatal):', (err as Error).message);
       }
     }
 
