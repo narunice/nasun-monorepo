@@ -27,6 +27,26 @@ import { verifyCognitoToken } from '../auth/cognito.js';
 import type { Context } from 'hono';
 
 /**
+ * Widen CORS to `*` on a public, credential-free response so it is safe to
+ * store in a shared cache.
+ *
+ * The global `cors()` middleware echoes the caller's Origin and relies on
+ * `Vary: Origin` to keep per-origin responses apart. Cloudflare only varies
+ * its cache key on `Accept-Encoding`, so an edge-cached response would pin
+ * whichever ACAO value happened to fill the cache first. A request without an
+ * Origin header (a bot, a health check, curl) gets no ACAO at all -- cache
+ * that and every browser request fails CORS for the whole TTL.
+ *
+ * Returning `*` removes the per-origin variance entirely. Only call this on
+ * routes that carry no credentials and no user-private data: the leaderboard
+ * list and its week index. Never on `/leaderboard/all-time-percentile/:id`,
+ * which is self-only and must never enter a shared cache.
+ */
+function allowAnyOriginForSharedCache(c: Context): void {
+  c.header('Access-Control-Allow-Origin', '*');
+}
+
+/**
  * Per-handler self-only guard for routes that expose user-private data
  * (activity composition, daily snapshots, bonus history, active missions).
  *
@@ -1041,6 +1061,7 @@ app.get('/leaderboard/weeks', async (c) => {
 
   const weeks = await getWeeks();
   c.header('Cache-Control', 'public, max-age=3600');
+  allowAnyOriginForSharedCache(c);
   return c.json({ weeks });
 });
 
@@ -1589,6 +1610,7 @@ app.get('/leaderboard', async (c) => {
   });
 
   c.header('Cache-Control', 'public, max-age=300');
+  allowAnyOriginForSharedCache(c);
   return c.json({
     data: ranked,
     meta: {
