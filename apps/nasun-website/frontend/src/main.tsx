@@ -2,13 +2,14 @@
 import { StrictMode, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { StaticTranslationProvider } from "./providers/i18n/StaticTranslationProvider";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { ToastContainer } from "react-toastify";
 import * as Tooltip from "@radix-ui/react-tooltip";
 import { ThemeProvider } from "./providers/theme/ThemeContext";
 import { AuthProvider } from "@/features/auth/providers/AuthProvider";
 import { validateEnv } from "./utils/envValidation";
 import { queryClient } from "@/lib/queryClient";
+import { queryPersistOptions } from "@/lib/queryPersist";
 import { installQueryClientBroadcast } from "@/lib/queryClientBroadcast";
 import { startVersionCheck } from "../../../_shared/version-check";
 import "./index.css";
@@ -130,13 +131,16 @@ createRoot(container).render(
       <Tooltip.Provider delayDuration={100} skipDelayDuration={0} disableHoverableContent={false}>
         <ThemeProvider>
           <AuthProvider>
-            <QueryClientProvider client={queryClient}>
+            <PersistQueryClientProvider
+              client={queryClient}
+              persistOptions={queryPersistOptions}
+            >
               <Suspense fallback={null}>
                 <WalletLayer>
                   <App />
                 </WalletLayer>
               </Suspense>
-            </QueryClientProvider>
+            </PersistQueryClientProvider>
             <ToastContainer
               position="top-right"
               autoClose={4000}

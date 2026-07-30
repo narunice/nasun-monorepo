@@ -84,6 +84,13 @@ export function useEcosystemScore(
         ? false
         : failureCount < 1,
     refetchOnWindowFocus: false,
+    // The query cache is persisted to localStorage (lib/queryPersist.ts), so a
+    // reload restores the previous score instantly instead of showing a blank
+    // card for one Helsinki round trip. `todayCategories` from this response
+    // drives the daily-mission checklist, which must reflect fresh on-chain
+    // activity immediately -- so always revalidate on mount rather than
+    // letting a restored-but-still-fresh entry sit for staleTime.
+    refetchOnMount: "always",
   });
 
   // True when the user's persisted bearer token was rejected by the score

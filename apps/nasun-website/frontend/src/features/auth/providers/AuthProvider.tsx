@@ -16,6 +16,7 @@ import { handleTwitterOAuthRedirect } from "../handlers/twitterOAuthHandler";
 import { fetchSsoBridgeProfile } from "../utils/ssoBridge";
 import { WALLET_IDENTITY_CHANGED_EVENT } from "@nasun/wallet";
 import { queryClient } from "@/lib/queryClient";
+import { clearPersistedQueryCache } from "@/lib/queryPersist";
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -42,6 +43,10 @@ function clearAllAuthState(): void {
   // Drop the entire react-query cache so a different user logging in on the
   // same browser cannot see the previous user's profile/leaderboard data.
   queryClient.clear();
+  // clear() only empties the in-memory cache. The persisted snapshot has to go
+  // too, otherwise the next user on this browser restores the previous user's
+  // ecosystem/leaderboard data from localStorage on first paint.
+  clearPersistedQueryCache();
   localStorage.removeItem("nasun_user_profile");
   localStorage.removeItem("auth_provider_preference");
   deleteSessionCookie();

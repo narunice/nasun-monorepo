@@ -1,5 +1,9 @@
 /// <reference types="vite/client" />
 
+/** Build-time constant injected by vite.config.ts `define`. Used as the
+ *  persisted query-cache buster so every deploy drops stale snapshots. */
+declare const __BUILD_TIMESTAMP__: string;
+
 type SuiID = {
   id: string;
 };

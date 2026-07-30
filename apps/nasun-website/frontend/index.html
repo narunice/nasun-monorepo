@@ -10,9 +10,17 @@
     <link rel="manifest" href="/manifest.json" />
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
 
-    <!-- Preconnect to critical origins for faster first requests -->
+    <!-- Preconnect to critical origins for faster first requests.
+         The origin moved from Seoul to Helsinki in the AWS exit, so a cold
+         cross-origin connection now costs ~146ms TCP + ~140ms TLS from KR
+         before the request is even sent. Every origin the app talks to during
+         first paint gets a preconnect so that handshake overlaps bundle parse.
+         explorer.nasun.io -> VITE_EXPLORER_API_URL (ecosystem score/percentile)
+         api.nasun.io      -> VITE_ECOSYSTEM_API_URL (NFT activation status) -->
+    <link rel="preconnect" href="https://explorer.nasun.io" crossorigin />
+    <link rel="preconnect" href="https://api.nasun.io" crossorigin />
+    <link rel="preconnect" href="https://rpc.devnet.nasun.io" crossorigin />
     <link rel="preconnect" href="https://signin.auth.ap-northeast-2.amazoncognito.com" crossorigin />
-    <link rel="dns-prefetch" href="https://rpc.devnet.nasun.io" />
     <link rel="dns-prefetch" href="https://accounts.google.com" />
 
     <!-- Real home hero poster (lossless RGB WebP, first frame of
