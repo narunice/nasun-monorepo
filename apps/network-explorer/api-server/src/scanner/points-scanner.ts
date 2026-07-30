@@ -31,6 +31,7 @@ import {
 } from './wallet-transfer-scanner.js';
 import { checkEcosystemMatviewVersion } from '../db/ecosystem-matview-migration.js';
 import { scanFaucetClaims, resetFaucetScanner } from './faucet-scanner.js';
+import { sendTelegramAlert } from '../utils/alert.js';
 import { scanChatParticipation } from './chat-scanner.js';
 import { takeDailySnapshot } from './daily-snapshot.js';
 import { reconcileFromRpc } from './rpc-reconcile.js';
@@ -554,16 +555,48 @@ async function detectChainReset(): Promise<void> {
 async function detectIndexerRebuild(lastSeq: number): Promise<void> {
   if (!pointsDb || lastSeq === 0) return;
 
-  const [earliest] = await sql`
-    SELECT MIN(tx_sequence_number)::bigint as min_seq
+  const [bounds] = await sql`
+    SELECT MIN(tx_sequence_number)::bigint as min_seq,
+           MAX(tx_sequence_number)::bigint as max_seq
     FROM event_struct_name
   `;
-  const minSeq = Number(earliest?.min_seq ?? 0);
-  if (minSeq === 0 || lastSeq >= minSeq) return;
+  const minSeq = Number(bounds?.min_seq ?? 0);
+  const maxSeq = Number(bounds?.max_seq ?? 0);
+
+  if (minSeq === 0 || lastSeq >= minSeq) {
+    // Warn while the cursor can still be recovered. Past minSeq the data is gone and the
+    // fast-forward below is the only option, so the useful alert is the one that fires
+    // before we get there: the cursor sitting in the oldest slice of the retained window
+    // means the scanner is falling behind faster than it catches up.
+    const retained = maxSeq - minSeq;
+    if (retained > 0 && lastSeq < minSeq + retained * 0.05) {
+      void sendTelegramAlert(
+        `points-scanner cursor is close to the sui_indexer retention floor: cursor ${lastSeq}, ` +
+          `retained window ${minSeq}..${maxSeq}. Once the floor passes the cursor, that activity ` +
+          `is permanently unscored. Check why the scanner is behind.`,
+        { dedupKey: 'points-cursor-near-floor' },
+      );
+    }
+    return;
+  }
 
   // Scanner's position is behind the indexer's earliest data
+  const skipped = minSeq - lastSeq;
   console.warn(
     `[Points] Indexer rebuild detected. Scanner at seq ${lastSeq}, indexer starts at ${minSeq}. Fast-forwarding.`,
+  );
+  // Fast-forwarding skips those sequences permanently -- whatever activity they held never
+  // earns points, and points are append-only so there is no later correction. A genuine DB
+  // rebuild is the benign case; the dangerous one is a stalled scanner falling out of the
+  // indexer's retention window (400 epochs / ~32 days as of 2026-07-30), which looks
+  // identical here. Until 2026-07-30 the only signal was this console.warn, so it could
+  // happen unnoticed. Alerting must not block the fast-forward, hence no await on failure.
+  void sendTelegramAlert(
+    `points-scanner fast-forwarded past ${skipped} tx sequences (cursor ${lastSeq} -> ${minSeq - 1}). ` +
+      `If the indexer DB was NOT rebuilt, the scanner fell behind sui_indexer retention and ` +
+      `activity in that range is permanently unscored. Check scanner uptime and ` +
+      `MIN(tx_sequence_number) in event_struct_name.`,
+    { dedupKey: `points-fast-forward-${minSeq}` },
   );
   await pointsDb`
     UPDATE processing_state
