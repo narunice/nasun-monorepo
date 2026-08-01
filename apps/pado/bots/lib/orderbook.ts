@@ -83,6 +83,68 @@ function emptyOrderbookState(): OrderbookState {
   return { bestBid: 0, bestAsk: 0, midPrice: 0, spread: 0, hasBids: false, hasAsks: false };
 }
 
+export interface PoolPriceConfig {
+  poolId: string;
+  baseType: string;
+  quoteType: string;
+  baseDecimals: number;
+  quoteDecimals: number;
+}
+
+export interface TopOfBook {
+  bestBid: number;
+  bestAsk: number;
+}
+
+/**
+ * Top of book for an arbitrary pool.
+ *
+ * The functions above are bound to the LP bot's singleton MARKET; this variant
+ * takes the pool explicitly so callers that are not the LP bot (TP/SL keeper)
+ * can price a market they do not trade. Each side is 0 when that side of the
+ * book is empty, so callers can treat 0 as "no quote" rather than a real price.
+ */
+export async function getPoolTopOfBook(client: SuiClient, cfg: PoolPriceConfig): Promise<TopOfBook> {
+  const tx = new Transaction();
+
+  tx.moveCall({
+    target: `${DEEPBOOK_PACKAGE}::pool::get_level2_ticks_from_mid`,
+    typeArguments: [cfg.baseType, cfg.quoteType],
+    arguments: [
+      tx.object(cfg.poolId),
+      tx.pure.u64(1),
+      tx.object(CLOCK_ID),
+    ],
+  });
+
+  const result = await client.devInspectTransactionBlock({
+    sender: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    transactionBlock: tx,
+  });
+
+  const status = result.effects?.status;
+  if (status?.status === 'failure') {
+    throw new Error(`devInspect failure: ${status.error || 'unknown'}`);
+  }
+
+  const returnValues = result.results?.[0]?.returnValues;
+  if (!returnValues || returnValues.length < 4) {
+    throw new Error('devInspect returned malformed orderbook result');
+  }
+
+  // DeepBook V3 encodes price as quote_raw_per_base_unit_at_9_decimals.
+  const exp = cfg.quoteDecimals + 9 - cfg.baseDecimals;
+  const scale = Math.pow(10, exp);
+
+  const bidPrices = parseU64Vector(returnValues[0][0]);
+  const askPrices = parseU64Vector(returnValues[2][0]);
+
+  return {
+    bestBid: bidPrices.length > 0 ? Number(bidPrices[0]) / scale : 0,
+    bestAsk: askPrices.length > 0 ? Number(askPrices[0]) / scale : 0,
+  };
+}
+
 // Adaptive tick count for get_level2_ticks_from_mid devInspect.
 // DeepBook's gas cost grows non-linearly with depth: ticks=25 ≈ 2M gas,
 // ticks=50 ≈ 1.6B gas, ticks=100 exceeds devInspect budget on devnet. The bot

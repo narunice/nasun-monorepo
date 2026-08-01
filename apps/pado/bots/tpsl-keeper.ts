@@ -17,7 +17,6 @@
  * Environment Variables:
  *   KEEPER_PRIVATE_KEY    - Hex-encoded private key for keeper wallet
  *   NASUN_RPC_URL         - RPC endpoint
- *   DEEPBOOK_PACKAGE      - DeepBook V3 package ID
  *   ORACLE_REGISTRY_ID    - Oracle registry object ID
  *   TPSL_PORT             - HTTP server port (default: 4001)
  *   TPSL_ALLOWED_ORIGIN   - CORS allowed origin (default: https://pado.finance)
@@ -29,10 +28,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import { SuiClient } from '@mysten/sui/client';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-import { TPSLStore, type TPSLOrder, MAX_TRANSIENT_FAILURES } from './lib/tpsl-store.js';
+import { TPSLStore, type TPSLOrder, type OrderSide, MAX_TRANSIENT_FAILURES } from './lib/tpsl-store.js';
 import { executeMarketOrder, type ExecuteParams } from './lib/tpsl-executor.js';
 import { withRetry } from './lib/retry.js';
-import { MARKETS } from './lib/config.js';
+import { MARKETS, NSN_POOL } from './lib/config.js';
+import { getPoolTopOfBook } from './lib/orderbook.js';
+import { selectTriggerPrice, midPrice } from './lib/tpsl-price.js';
 
 // Fire-and-forget Telegram alert. Silent no-op when TELEGRAM_BOT_TOKEN /
 // TELEGRAM_ALERT_CHAT_ID are unset (dev/staging).
@@ -61,7 +62,6 @@ const PORT = parseInt(process.env.TPSL_PORT || '4001');
 const CHECK_INTERVAL_MS = 10_000; // 10 seconds
 const ORACLE_REGISTRY_ID = process.env.ORACLE_REGISTRY_ID || '';
 const ORACLE_PACKAGE_ID = process.env.ORACLE_PACKAGE_ID || '';
-const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
 const ALLOWED_ORIGIN = process.env.TPSL_ALLOWED_ORIGIN || 'https://pado.finance';
 // Origin check is enforced in production only. Dev/staging bypass because localhost
 // origins vary. The real security boundaries are on-chain: TradeCap ownership (checked
@@ -76,11 +76,15 @@ const SUI_OBJECT_ID_REGEX = /^0x[a-f0-9]{64}$/;
 const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 60;  // 60 requests per minute per IP
 
-// Oracle symbol IDs
+// Oracle symbol IDs.
+//
+// NASUN (id 3) is deliberately absent: price-updater pushes that feed as a
+// fixed $1 placeholder, while the tradable NSN price is the NASUN/NUSDC pool
+// mid. Pricing NSN orders off the oracle would evaluate every trigger against
+// $1 and fire the whole book at once, so NSN is priced from the pool below.
 const SYMBOL_IDS: Record<string, number> = {
   NBTC: 1,
   NETH: 2,
-  NASUN: 3,
   NSOL: 4,
 };
 
@@ -94,6 +98,10 @@ interface OraclePrice {
   symbol: string;
   price: number;
   timestamp: number;
+  // Book-sourced symbols only (NSN). See lib/tpsl-price.ts for why triggers are
+  // evaluated against a side rather than this entry's mid.
+  bestBid?: number;
+  bestAsk?: number;
 }
 
 let cachedPrices: Map<string, OraclePrice> = new Map();
@@ -153,6 +161,28 @@ async function fetchOraclePrices(client: SuiClient): Promise<Map<string, OracleP
     // Always set NUSDC = $1.00
     prices.set('NUSDC', { symbol: 'NUSDC', price: 1.0, timestamp: now });
 
+    // NSN is priced from its DeepBook book, not the oracle (see SYMBOL_IDS).
+    // Both sides are cached: triggers use the executable side, display and the
+    // registration sanity check use the mid. On failure the symbol is simply
+    // absent, which leaves NSN orders untriggered — fail-safe for a keeper that
+    // sells on a user's behalf.
+    try {
+      const { bestBid, bestAsk } = await getPoolTopOfBook(client, NSN_POOL);
+      if (bestBid > 0 || bestAsk > 0) {
+        prices.set(NSN_POOL.symbol, {
+          symbol: NSN_POOL.symbol,
+          price: midPrice(bestBid, bestAsk),
+          bestBid,
+          bestAsk,
+          timestamp: now,
+        });
+      } else {
+        console.warn('[keeper] NSN book is empty on both sides, skipping NSN triggers this cycle');
+      }
+    } catch (error) {
+      console.error('[keeper] Failed to fetch NSN top of book:', error instanceof Error ? error.message : error);
+    }
+
     cachedPrices = prices;
     return prices;
   } catch (error) {
@@ -171,11 +201,33 @@ function normalizeTimestampMs(raw: number): number {
   return raw;
 }
 
+// Throttled per-symbol warning for orders the keeper cannot price.
+const unpricedWarnedAt = new Map<string, number>();
+const UNPRICED_WARN_INTERVAL_MS = 300_000; // 5 minutes
+
+function warnUnpriced(symbol: string): void {
+  const last = unpricedWarnedAt.get(symbol) ?? 0;
+  if (Date.now() - last < UNPRICED_WARN_INTERVAL_MS) return;
+  unpricedWarnedAt.set(symbol, Date.now());
+  console.warn(`[keeper] No usable price for ${symbol}: its active orders cannot trigger`);
+}
+
+function getFreshQuote(symbol: string): OraclePrice | undefined {
+  const quote = cachedPrices.get(symbol);
+  if (!quote) return undefined;
+  if (Date.now() - quote.timestamp > PRICE_STALENESS_MS) return undefined;
+  return quote;
+}
+
+/** Reference price for display and the registration sanity check. */
 function getCurrentPrice(symbol: string): number | null {
-  const priceData = cachedPrices.get(symbol);
-  if (!priceData) return null;
-  if (Date.now() - priceData.timestamp > PRICE_STALENESS_MS) return null;
-  return priceData.price;
+  const quote = getFreshQuote(symbol);
+  return quote && quote.price > 0 ? quote.price : null;
+}
+
+/** Price a trigger is evaluated against: the side the order would execute into. */
+function getTriggerPrice(symbol: string, side: OrderSide): number | null {
+  return selectTriggerPrice(getFreshQuote(symbol), side);
 }
 
 // ========================================
@@ -192,9 +244,14 @@ async function checkAndExecuteOrders(
 
   for (const order of activeOrders) {
     const baseSymbol = order.marketSymbol.split('/')[0];
-    const currentPrice = getCurrentPrice(baseSymbol);
+    const currentPrice = getTriggerPrice(baseSymbol, order.side);
 
-    if (currentPrice === null) continue;
+    if (currentPrice === null) {
+      // Silent skip here once hid a symbol mismatch for weeks: orders sat active
+      // and were never evaluated, with no fills and no failures to show for it.
+      warnUnpriced(baseSymbol);
+      continue;
+    }
 
     // Check trigger condition
     const shouldTrigger = checkTriggerCondition(order, currentPrice);
@@ -306,11 +363,12 @@ function checkTriggerCondition(order: TPSLOrder, currentPrice: number): boolean 
   }
 }
 
-// Type helpers (will be populated from env or config)
+// Type helpers. MARKETS covers the LP-bot markets; NSN is the native token and
+// lives outside MARKETS (see NSN_POOL), so it is resolved separately.
 function getBaseType(symbol: string): string {
   const market = MARKETS[symbol];
   if (market) return market.baseType;
-  if (symbol === 'NASUN') return '0x2::sui::SUI';
+  if (symbol === NSN_POOL.symbol) return NSN_POOL.baseType;
   return '';
 }
 
@@ -321,13 +379,10 @@ function getQuoteType(): string {
 }
 
 function getBaseMultiplier(symbol: string): number {
-  const decimals: Record<string, number> = {
-    NBTC: 8,
-    NETH: 8,
-    NSOL: 9,
-    NASUN: 9,
-  };
-  return Math.pow(10, decimals[symbol] || 9);
+  const market = MARKETS[symbol];
+  if (market) return Math.pow(10, market.baseDecimals);
+  if (symbol === NSN_POOL.symbol) return Math.pow(10, NSN_POOL.baseDecimals);
+  return Math.pow(10, 9);
 }
 
 // ========================================
@@ -551,6 +606,15 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
         // Trigger price sanity check: reject orders with trigger price wildly different from current oracle price
         // Prevents cross-market data contamination (e.g. BTC price entered for ETH market)
         const baseSymbol = marketSymbol.split('/')[0];
+
+        // Reject markets the keeper cannot execute. Without this an unknown
+        // symbol is accepted, never priced, and never triggered — the order
+        // looks armed to the user while doing nothing.
+        if (!getBaseType(baseSymbol)) {
+          sendJson(res, 400, { error: `Unsupported market: ${marketSymbol}` });
+          return;
+        }
+
         const currentPrice = getCurrentPrice(baseSymbol);
         if (currentPrice && currentPrice > 0) {
           const ratio = triggerPrice / currentPrice;
@@ -654,8 +718,14 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
       if (method === 'GET' && url.pathname === '/api/tpsl/status') {
         const stats = store.stats();
         const prices: Record<string, number> = {};
+        // Book-sourced symbols expose both sides: a trigger fires off the side it
+        // would execute into, so the mid alone cannot explain a fill after the fact.
+        const books: Record<string, { bestBid: number; bestAsk: number }> = {};
         for (const [symbol, data] of cachedPrices) {
           prices[symbol] = data.price;
+          if (data.bestBid !== undefined || data.bestAsk !== undefined) {
+            books[symbol] = { bestBid: data.bestBid ?? 0, bestAsk: data.bestAsk ?? 0 };
+          }
         }
 
         sendJson(res, 200, {
@@ -663,6 +733,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
           uptime: Math.floor((Date.now() - startTime) / 1000),
           orders: stats,
           prices,
+          books,
           checkInterval: CHECK_INTERVAL_MS / 1000,
         });
         return;

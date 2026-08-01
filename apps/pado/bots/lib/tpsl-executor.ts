@@ -8,9 +8,7 @@
 import { SuiClient } from '@mysten/sui/client';
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
-
-const DEEPBOOK_PACKAGE = process.env.DEEPBOOK_PACKAGE || '';
-const CLOCK_ID = '0x6';
+import { DEEPBOOK_PACKAGE, CLOCK_ID } from './config.js';
 
 // DeepBook V3 self-matching option: cancel taker side
 const SELF_MATCHING_CANCEL_TAKER = 0;

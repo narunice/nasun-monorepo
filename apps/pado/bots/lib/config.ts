@@ -209,6 +209,21 @@ export const MARKETS: Record<string, MarketConfig> = {
   },
 };
 
+// NSN/NUSDC spot pool.
+//
+// Deliberately NOT a MARKETS entry: NSN is the native gas token, so it has no
+// faucet/mint path and must never be selectable via LP_MARKET. The TP/SL keeper
+// still needs its price, and the DevOracle NASUN feed is a fixed $1 placeholder
+// (price-updater pushes only BTC/ETH/SOL), so for NSN the pool mid IS the price.
+export const NSN_POOL = {
+  symbol: 'NSN',
+  baseType: '0x2::sui::SUI',
+  quoteType: NUSDC_TYPE,
+  poolId: '0x91f5e123cd1211347dd8dc8a92bfde99a2153844d795c2ccfe6ad43d4a26ec03',
+  baseDecimals: 9,
+  quoteDecimals: 6,
+} as const;
+
 // Active market (from LP_MARKET env var)
 const marketName = process.env.LP_MARKET || 'NBTC';
 export const MARKET: MarketConfig = (() => {

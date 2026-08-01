@@ -240,7 +240,10 @@ module.exports = {
         NASUN_RPC_URL: 'http://127.0.0.1:9000',
         ORACLE_REGISTRY_ID: '0xc000fcace9eea05419d86ba58aec416e232b723f385a4358555159249e158f80',
         ORACLE_PACKAGE_ID: '0x44e7ce1cfd8ebd21132288052eb84163dd08db50c7628de54be4ffd238a3f502',
-        DEEPBOOK_PACKAGE: '0xb4a100f26550fe84d8134e9e97ef1569e8f2e63cd864adf4774249ee05178134',
+        // DEEPBOOK_PACKAGE intentionally absent: the keeper reads it from
+        // lib/config.ts alongside every other bot. A second copy here drifted to
+        // a v7 package that no longer exists on chain, and every TP/SL execution
+        // failed for weeks while the LP bots (config.ts) kept working.
         // TPSL_ALLOWED_ORIGIN loaded from .env (per-environment CORS origin)
       },
       max_restarts: 10,
