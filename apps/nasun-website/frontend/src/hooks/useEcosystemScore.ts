@@ -144,7 +144,16 @@ export function useEcosystemScore(
 
   return {
     score: query.data ?? null,
-    isLoading: query.isLoading || query.isFetching,
+    // "No data to show yet" -- NOT "a request is in flight". Folding
+    // isFetching in here is what turned `refetchOnMount: "always"` into a
+    // self-sustaining loop: TotalPointsCard renders a spinner instead of
+    // <MultiplierBox>, and MultiplierBox is a second observer of this same
+    // query, so each settled fetch remounted it -> "always" fired another
+    // fetch -> the spinner unmounted it again. One iteration per round trip
+    // (~1.4s from KR), which the server rate limit turned into a permanent
+    // spinner. Background revalidation has to repaint behind the data that is
+    // already on screen, which is the entire point of persisting the cache.
+    isLoading: query.isLoading,
     isError: query.isError,
     isSessionStale,
     refresh,
