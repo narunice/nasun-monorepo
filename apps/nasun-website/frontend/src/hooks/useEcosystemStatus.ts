@@ -183,7 +183,10 @@ export function useEcosystemStatus(
 
   return {
     activations,
-    isLoading: query.isLoading || query.isFetching,
+    // First load only -- see the note in useEcosystemScore. A background
+    // revalidation reported as loading is what let a spinner unmount a
+    // sibling observer and re-trigger its own refetch.
+    isLoading: query.isLoading,
     error: query.error?.message ?? null,
     isConfigured,
     getActivation,

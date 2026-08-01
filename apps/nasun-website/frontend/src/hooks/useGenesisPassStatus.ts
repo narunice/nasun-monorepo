@@ -79,7 +79,10 @@ export function useGenesisPassStatus(
     eligibleStage: data?.eligibleStage ?? null,
     eligibleStageLabel: data?.eligibleStageLabel ?? null,
     currentStageLabel: data?.currentStageLabel ?? null,
-    isLoading: query.isLoading || query.isFetching,
+    // First load only -- see the note in useEcosystemScore. A background
+    // revalidation reported as loading is what let a spinner unmount a
+    // sibling observer and re-trigger its own refetch.
+    isLoading: query.isLoading,
     error: query.error?.message ?? null,
     isConfigured: API_CONFIGURED,
     refetch,

@@ -57,7 +57,11 @@ export function useAllianceMintStatus(
 
   return {
     isMinted: query.data?.minted ?? false,
-    isLoading: query.isLoading || query.isFetching,
+    // First load only. A background revalidation must not read as loading:
+    // callers gate spinners on this, and a spinner that hides a sibling
+    // observer of the same query turns every settled fetch into a remount,
+    // which is the loop that took ecosystem points down on 2026-07-31.
+    isLoading: query.isLoading,
     data: (query.data?.data as AllianceMintData) ?? null,
     wallets: query.data?.wallets ?? EMPTY_WALLETS,
     error: query.error?.message ?? null,
