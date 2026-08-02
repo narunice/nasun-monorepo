@@ -310,6 +310,7 @@ export function useTPSLMonitor({
           quantity: order.quantity,
           tradeCapId,
           balanceManagerId,
+          ocoGroupId: order.ocoGroupId,
         });
 
         // Also store locally for immediate UI update
@@ -319,6 +320,7 @@ export function useTPSLMonitor({
           quantity: order.quantity,
           triggerPrice: order.triggerPrice,
           triggerType: order.triggerType,
+          ocoGroupId: order.ocoGroupId,
           status: 'active',
           createdAt: response.createdAt,
         };

@@ -85,3 +85,59 @@ describe('TPSLStore.markFailed', () => {
     expect(store.markFailed('tpsl-missing', 'noop', true).promoted).toBe(false);
   });
 });
+
+describe('TPSLStore.cancelLinkedOrders', () => {
+  it('cancels the OCO sibling and leaves the filled leg alone', () => {
+    const sl = store.create({ ...BASE_ORDER, ocoGroupId: 'g1' });
+    const tp = store.create({ ...BASE_ORDER, triggerType: 'take_profit', triggerPrice: 70000, ocoGroupId: 'g1' });
+
+    store.markFilled(sl.id, '0xdigest');
+    const canceled = store.cancelLinkedOrders('g1', sl.id, BASE_ORDER.userAddress);
+
+    expect(canceled).toEqual([tp.id]);
+    expect(store.getById(tp.id)!.status).toBe('canceled');
+    expect(store.getById(tp.id)!.error).toBe('OCO: linked order filled');
+    expect(store.getById(sl.id)!.status).toBe('filled');
+  });
+
+  it('never touches another user orders sharing the same group id', () => {
+    const mine = store.create({ ...BASE_ORDER, ocoGroupId: 'shared' });
+    const theirs = store.create({ ...BASE_ORDER, userAddress: '0xvictim', ocoGroupId: 'shared' });
+
+    const canceled = store.cancelLinkedOrders('shared', mine.id, BASE_ORDER.userAddress);
+
+    expect(canceled).toEqual([]);
+    expect(store.getById(theirs.id)!.status).toBe('active');
+  });
+
+  it('leaves unrelated groups and non-active orders alone', () => {
+    const other = store.create({ ...BASE_ORDER, ocoGroupId: 'g2' });
+    const ungrouped = store.create(BASE_ORDER);
+    const sibling = store.create({ ...BASE_ORDER, ocoGroupId: 'g1' });
+    const alreadyFailed = store.create({ ...BASE_ORDER, ocoGroupId: 'g1' });
+    store.markFailed(alreadyFailed.id, 'permanent', true);
+
+    const canceled = store.cancelLinkedOrders('g1', 'tpsl-filled-elsewhere', BASE_ORDER.userAddress);
+
+    expect(canceled).toEqual([sibling.id]);
+    expect(store.getById(other.id)!.status).toBe('active');
+    expect(store.getById(ungrouped.id)!.status).toBe('active');
+    expect(store.getById(alreadyFailed.id)!.status).toBe('failed');
+  });
+
+  it('is a no-op for orders with no group', () => {
+    const solo = store.create(BASE_ORDER);
+    expect(store.cancelLinkedOrders('', solo.id, BASE_ORDER.userAddress)).toEqual([]);
+    expect(store.getById(solo.id)!.status).toBe('active');
+  });
+
+  it('persists cancellations across reload', () => {
+    const sl = store.create({ ...BASE_ORDER, ocoGroupId: 'g1' });
+    const tp = store.create({ ...BASE_ORDER, triggerType: 'take_profit', ocoGroupId: 'g1' });
+    store.cancelLinkedOrders('g1', sl.id, BASE_ORDER.userAddress);
+
+    const reopened = new TPSLStore(join(tmpDir, 'tpsl-orders.json'));
+    expect(reopened.getById(tp.id)!.status).toBe('canceled');
+    expect(reopened.getActive().map((o) => o.id)).toEqual([sl.id]);
+  });
+});

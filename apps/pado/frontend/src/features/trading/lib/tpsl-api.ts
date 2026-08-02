@@ -19,6 +19,8 @@ export interface TPSLOrderRequest {
   quantity: number;
   tradeCapId: string;
   balanceManagerId: string;
+  /** Links a TP to its SL so the keeper cancels the sibling when one fills. */
+  ocoGroupId?: string;
 }
 
 export interface TPSLOrderResponse {
@@ -32,6 +34,7 @@ export interface TPSLOrderResponse {
   quantity: number;
   status: 'active' | 'executing' | 'filled' | 'canceled' | 'failed';
   createdAt: number;
+  ocoGroupId?: string;
   txDigest?: string;
   error?: string;
 }

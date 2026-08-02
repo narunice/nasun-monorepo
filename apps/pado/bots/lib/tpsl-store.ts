@@ -30,6 +30,12 @@ export interface TPSLOrder {
   quantity: number;
   tradeCapId: string;
   balanceManagerId: string;
+  // Links a take-profit to its stop-loss. When one fills the other must be
+  // canceled, or the user is left holding an armed order against a position
+  // that no longer exists. The client also tracks this, but the keeper cannot
+  // rely on that: delegated orders exist precisely so they fire with the
+  // browser closed.
+  ocoGroupId?: string;
   status: OrderStatus;
   createdAt: number;
   updatedAt: number;
@@ -45,7 +51,14 @@ interface StoreData {
   version: number;
 }
 
-const DEFAULT_DATA: StoreData = { orders: [], version: 1 };
+const STORE_VERSION = 1;
+
+// Built per call: a shared constant spread with `{ ...DEFAULT }` copies the same
+// `orders` array reference into every store that falls back to it, silently
+// merging their contents.
+function emptyStoreData(): StoreData {
+  return { orders: [], version: STORE_VERSION };
+}
 
 export class TPSLStore {
   private filePath: string;
@@ -65,7 +78,7 @@ export class TPSLStore {
     } catch (error) {
       console.warn(`[tpsl-store] Failed to load ${this.filePath}, using defaults`);
     }
-    return { ...DEFAULT_DATA };
+    return emptyStoreData();
   }
 
   /**
@@ -179,6 +192,38 @@ export class TPSLStore {
     order.updatedAt = Date.now();
     this.save();
     return true;
+  }
+
+  /**
+   * Cancel the OCO siblings of an order that just filled.
+   *
+   * Scoped to the filled order's own userAddress: the group id arrives from the
+   * client, so matching on it alone would let anyone cancel another user's
+   * orders by registering an order that reuses their group id.
+   *
+   * Returns the ids canceled, for logging.
+   */
+  cancelLinkedOrders(ocoGroupId: string, exceptId: string, userAddress: string): string[] {
+    if (!ocoGroupId) return [];
+
+    const canceled: string[] = [];
+    const now = Date.now();
+    for (const order of this.data.orders) {
+      if (
+        order.ocoGroupId === ocoGroupId &&
+        order.userAddress === userAddress &&
+        order.id !== exceptId &&
+        order.status === 'active'
+      ) {
+        order.status = 'canceled';
+        order.error = 'OCO: linked order filled';
+        order.updatedAt = now;
+        canceled.push(order.id);
+      }
+    }
+
+    if (canceled.length > 0) this.save();
+    return canceled;
   }
 
   // Prune old completed orders (> maxAgeMs, default 7 days)

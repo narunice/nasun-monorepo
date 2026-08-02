@@ -278,6 +278,15 @@ async function checkAndExecuteOrders(
       if (result.success && result.txDigest) {
         store.markFilled(order.id, result.txDigest);
         console.log(`[keeper] Order ${order.id} filled: ${result.txDigest}`);
+        // A filled leg closed the position; its OCO sibling must not stay armed.
+        // Only on a fill: a failed leg leaves the position open, so the other
+        // side is still the user's protection.
+        if (order.ocoGroupId) {
+          const canceled = store.cancelLinkedOrders(order.ocoGroupId, order.id, order.userAddress);
+          if (canceled.length > 0) {
+            console.log(`[keeper] OCO: canceled ${canceled.length} linked order(s) after ${order.id} filled`);
+          }
+        }
       } else {
         const msg = result.error || 'Unknown error';
         const permanent = isPermanentFailure(msg);
@@ -573,6 +582,7 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
         const quantity = Number(body.quantity);
         const tradeCapId = String(body.tradeCapId || '');
         const balanceManagerId = String(body.balanceManagerId || '');
+        const ocoGroupId = body.ocoGroupId === undefined ? undefined : String(body.ocoGroupId);
 
         // Strict input validation
         if (!userAddress || !isValidObjectId(userAddress)) {
@@ -583,6 +593,12 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
         }
         if (!marketSymbol || marketSymbol.length > 30) {
           sendJson(res, 400, { error: 'Invalid marketSymbol' }); return;
+        }
+        // Opaque client-generated group key. Bounded and charset-restricted
+        // because it is stored and echoed back; cancellation additionally scopes
+        // by userAddress, so a guessed group id cannot reach another user.
+        if (ocoGroupId !== undefined && !/^[A-Za-z0-9-]{1,64}$/.test(ocoGroupId)) {
+          sendJson(res, 400, { error: 'Invalid ocoGroupId' }); return;
         }
         if (side !== 'buy' && side !== 'sell') {
           sendJson(res, 400, { error: 'side must be "buy" or "sell"' }); return;
@@ -657,9 +673,10 @@ function createHttpHandler(store: TPSLStore, client: SuiClient, keeperAddress: s
           quantity,
           tradeCapId,
           balanceManagerId,
+          ocoGroupId,
         });
 
-        console.log(`[keeper] Order registered: id=${order.id} user=${userAddress.slice(0, 16)}... ${marketSymbol} ${side} ${triggerType} @${triggerPrice}`);
+        console.log(`[keeper] Order registered: id=${order.id} user=${userAddress.slice(0, 16)}... ${marketSymbol} ${side} ${triggerType} @${triggerPrice}${ocoGroupId ? ' oco' : ''}`);
         sendJson(res, 201, { order });
         return;
       }
