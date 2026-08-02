@@ -155,8 +155,12 @@ export function OrderFormProvider({ children }: { children: ReactNode }) {
   const [trailValue, setTrailValue] = useState('');
   const [trailMode, setTrailMode] = useState<TrailMode>('percent');
 
-  // OCO state
-  const [ocoEnabled, setOcoEnabled] = useState(false);
+  // OCO state. Defaults on: a TP and an SL placed together close the same
+  // position for the same quantity, so they are mutually exclusive by
+  // construction. Leaving the link opt-in meant a filled leg left its sibling
+  // armed against a position that no longer existed. Users who want both legs
+  // to survive independently can still untick it.
+  const [ocoEnabled, setOcoEnabled] = useState(true);
 
   // Focused price field (for orderbook click routing in stop-limit mode)
   const [focusedPriceField, setFocusedPriceField] = useState<'price' | 'stopPrice' | null>(null);

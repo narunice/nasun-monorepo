@@ -67,6 +67,21 @@ describe('registerTPSLOrder', () => {
     expect(JSON.parse(options.body)).toEqual(validRequest);
   });
 
+  it('forwards ocoGroupId so the keeper can cancel the sibling leg', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        order: { id: 'order-1', ...validRequest, status: 'active', createdAt: 1000 },
+      }),
+    });
+
+    const ocoGroupId = '0eff9c50-c972-4214-a9b8-ae9bb32fef58';
+    await registerTPSLOrder({ ...validRequest, ocoGroupId });
+
+    const [, options] = mockFetch.mock.calls[0];
+    expect(JSON.parse(options.body).ocoGroupId).toBe(ocoGroupId);
+  });
+
   it('returns order response on success', async () => {
     const responseOrder = {
       id: 'order-1',
