@@ -20,6 +20,7 @@
  *
  * Safety:
  *   - chat-server API refuses requests for the current (in-progress) week.
+ *   - Aborts if BANNED_USERS_URL is unset or the ban feed returns an empty set.
  *   - Each award uses ON CONFLICT DO NOTHING (idempotent re-runs).
  *   - weekly_score_snapshots.settled flag is set in the same PG transaction.
  *   - Traders without an identityId are skipped.
@@ -192,13 +193,16 @@ async function fetchActivationsPayload(): Promise<{
  * settlement loop would still reward the user. By fetching the ban list
  * directly here too, we close that race.
  *
- * Returns empty sets if BANNED_USERS_URL is not configured (no-op fallback).
+ * Fail-closed: a missing BANNED_USERS_URL used to return empty sets, which made
+ * this filter a silent no-op for every box run after the node-3 migration (the
+ * "0 banned identities, 0 banned wallets" log line read as normal). Settling
+ * without the ban list is a correctness failure, so refuse to start instead.
  */
 async function fetchBannedSets(): Promise<{ identityIds: Set<string>; addresses: Set<string> }> {
   const url = process.env.BANNED_USERS_URL;
   const token = process.env.BANNED_USERS_API_KEY || process.env.INTERNAL_INVALIDATE_TOKEN;
   if (!url) {
-    return { identityIds: new Set(), addresses: new Set() };
+    throw new Error('BANNED_USERS_URL not set — refusing to settle without the ban list');
   }
   const headers: Record<string, string> = {};
   if (token) headers['X-Internal-Auth'] = token;
@@ -273,6 +277,14 @@ async function main() {
   console.log('Fetching banned-users set...');
   const bannedSets = await fetchBannedSets();
   console.log(`  ${bannedSets.identityIds.size} banned identities, ${bannedSets.addresses.size} banned wallets`);
+
+  // An empty ban list means the feed is broken, not that nobody is banned:
+  // banned_users has been non-empty since the first bot sweep. Treat it like
+  // the empty-Alliance case rather than settling with the filter disabled.
+  if (bannedSets.identityIds.size === 0 && bannedSets.addresses.size === 0) {
+    console.error('ABORT: banned-users feed returned an empty set. API may be unavailable.');
+    process.exit(1);
+  }
 
   if (allianceSet.size === 0) {
     console.error('ABORT: Alliance NFT set is empty. API may be unavailable or returned no data.');
