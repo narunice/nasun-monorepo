@@ -40,7 +40,8 @@ function tierForWheel(multiplierBps: number): WinTier | null {
 
 export default function WheelPage() {
   const viewer = useActiveAddress();
-  const { isWalletConnected, spin, isSpinning, error, clearError } = useWheel();
+  const { isWalletConnected, spin, isSpinning, error, clearError, refreshBalance } =
+    useWheel();
   const invalidateHistory = useInvalidateGameHistory();
   const { balance: availableBalance, isInitialized: balanceReady } =
     useOptimisticBalance();
@@ -92,12 +93,25 @@ export default function WheelPage() {
       r = null;
     }
     if (r) {
-      await landOn(r.segmentIndex);
+      // The balance refresh is deferred in useWheel so the Available figure
+      // cannot move while the wheel is still turning and reveal the segment
+      // early. Landing is the reveal, so refresh once it completes. `finally`
+      // covers an animation that throws: a stale balance after a settled bet
+      // is worse than a spoiled reveal.
+      try {
+        await landOn(r.segmentIndex);
+      } finally {
+        refreshBalance();
+      }
       setResult(r);
       invalidateHistory();
       celebrate(r);
     } else {
+      // No result: either the tx failed, or it succeeded but the client hit the
+      // 30s RPC wallclock cap and never saw it. Refresh so the second case does
+      // not leave a stale balance on screen.
       await gracefulStop();
+      refreshBalance();
     }
   };
 

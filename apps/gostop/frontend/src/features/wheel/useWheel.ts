@@ -20,13 +20,15 @@ export interface UseWheelResult {
   isSpinning: boolean;
   error: string | null;
   clearError: () => void;
+  /** Pull the post-payout balance once the wheel has landed. See `spin`. */
+  refreshBalance: () => void;
 }
 
 export function useWheel(): UseWheelResult {
   const walletAddress = useActiveAddress();
   const isWalletConnected = !!walletAddress;
   const [error, setError] = useState<string | null>(null);
-  const { executeGameTx, isPending } = useGameTransaction();
+  const { executeGameTx, isPending, refreshBalance } = useGameTransaction();
 
   const spin = useCallback(
     async (betAmount: bigint): Promise<WheelResult | null> => {
@@ -37,6 +39,11 @@ export function useWheel(): UseWheelResult {
         async (coins) => buildSpinTx(coins!.primary, betAmount, coins!.extra),
         {
           amount: betAmount,
+          // The wheel keeps spinning for a second or two after the tx confirms.
+          // Refreshing the balance here would move the Available figure before
+          // the wheel lands, which gives the segment away. The caller refreshes
+          // once the landing animation has finished.
+          deferBalanceRefresh: true,
           onSuccess: (txResult) => {
             const ev = (txResult.events ?? []).find(
               (e: { type: string }) => e.type === WHEEL_RESULT_EVENT_TYPE,
@@ -79,6 +86,7 @@ export function useWheel(): UseWheelResult {
     isSpinning: isPending,
     error,
     clearError: () => setError(null),
+    refreshBalance,
   };
 }
 
