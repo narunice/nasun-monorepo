@@ -105,10 +105,18 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       // Paginate through ALL Position NFTs owned by the user. Sui's
       // getOwnedObjects returns 50 per page by default; users with > 50
       // positions across markets would silently see a truncated list.
-      // Cap at 1000 (20 pages) to avoid pathological loops.
+      //
+      // The cap was 20 pages (1,000 objects), which is well under what active
+      // accounts actually hold: a 2026-07-30 report came from an account with
+      // 4,167 Position objects, because every fill mints a new one and they are
+      // only merged on claim. Truncation is not a cosmetic "long tail is
+      // missing" problem either, since getOwnedObjects does not promise any
+      // particular order and the newest-first sort below runs on what was
+      // fetched. A position filled seconds ago can sit past the cut and never
+      // render, which reads as "my position vanished".
       const all: ReturnType<typeof parsePosition>[] = [];
       let cursor: string | null | undefined = undefined;
-      const MAX_PAGES = 20;
+      const MAX_PAGES = 200;
       // 2026-05-20 v5 cutover: filter accepts BOTH legacy and v5 Position
       // types so users with positions split across the cutover see them all.
       // When there is no legacy block (e.g. tests), POSITION_TYPES is a
@@ -117,6 +125,7 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
         POSITION_TYPES.length === 1
           ? { StructType: POSITION_TYPES[0] }
           : { MatchAny: POSITION_TYPES.map((t) => ({ StructType: t })) };
+      let truncated = false;
       for (let page = 0; page < MAX_PAGES; page++) {
         const response = await client.getOwnedObjects({
           owner: address,
@@ -127,6 +136,16 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
         for (const obj of response.data) all.push(parsePosition(obj));
         if (!response.hasNextPage || !response.nextCursor) break;
         cursor = response.nextCursor;
+        if (page === MAX_PAGES - 1) truncated = true;
+      }
+
+      // Hitting the cap still hides positions, so say so rather than silently
+      // rendering a partial portfolio as if it were complete.
+      if (truncated) {
+        console.warn(
+          `[usePredictionPositions] cap reached at ${all.length} positions for ${address}; ` +
+            'the list is incomplete. Claiming merges positions and shrinks this count.'
+        );
       }
 
       // Newest first (by Sui object version — assigned at mint time).
