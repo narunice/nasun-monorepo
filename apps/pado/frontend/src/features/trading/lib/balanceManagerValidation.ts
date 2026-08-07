@@ -36,25 +36,31 @@ export async function validateBalanceManagerExists(id: string): Promise<boolean>
 }
 
 /**
- * Find user's existing BalanceManager(s). BalanceManager is a shared object, so
- * getOwnedObjects() can't return it directly and there is no owner->id RPC.
+ * Every BalanceManager the address provably owns.
  *
- * devnet prunes transactions/events aggressively (~10 day window), so an event
- * scan alone misses BMs created long ago. Objects, however, are never pruned, so
- * discovery layers three prune-immune-or-bounded sources:
+ * BalanceManager is a shared object, so getOwnedObjects() can't return it
+ * directly and there is no owner->id RPC. devnet prunes transactions/events
+ * aggressively (~10 day window), so an event scan alone misses BMs created long
+ * ago. Objects, however, are never pruned, so discovery layers three
+ * prune-immune-or-bounded sources:
  *   1. DepositCap owned objects (created with the BM; survive pruning forever)
  *   2. chat-server persistent index (owner -> BM, written on first fill)
  *   3. recent BalanceManagerEvent scan (descending, bounded) for just-created
  *      BMs not yet indexed and without a cap
  *
- * When multiple BMs exist (a past recovery bug, or duplicate-creation), picks
- * the one with the highest balance and returns others with funds as orphans so
- * the caller can drain them back to the user's wallet.
+ * Ownership is verified on chain for every candidate: a DepositCap is
+ * transferable, so a candidate from the cap scan could point at a BM the caller
+ * does not own.
+ *
+ * Split out from `findUserBalanceManager` because callers that need to see
+ * *all* of a user's funds cannot work from the primary alone. Pending pool-side
+ * proceeds are the case that forced this: those funds are invisible to the
+ * balance ranking below (they are not in any BM bag), so a BM can rank last, or
+ * not rank as an orphan at all, while holding the money the user is looking for.
  */
-export async function findUserBalanceManager(
+export async function findOwnedBalanceManagerIds(
   userAddress: string
-): Promise<FindResult> {
-  const empty: FindResult = { primaryId: null, orphans: [] };
+): Promise<string[]> {
   try {
     const client = getSuiClient();
 
@@ -132,21 +138,53 @@ export async function findUserBalanceManager(
       console.warn('[findUserBalanceManager] event scan stopped early:', err);
     }
 
-    if (candidateIds.length === 0) return empty;
+    if (candidateIds.length === 0) return [];
 
-    // Verify ownership + balances for every candidate (including a lone one):
-    // a DepositCap is transferable, so a candidate from the cap scan could point
-    // to a BM the user does not own. Only owner-matching BMs are eligible.
-    const checks = await Promise.all(
+    const owned = await Promise.all(
       candidateIds.map(async (id) => {
         try {
           const obj = await client.getObject({ id, options: { showContent: true } });
-          if (!obj.data || obj.error) return { id, valid: false, base: 0, quote: 0 };
+          if (!obj.data || obj.error) return null;
           const content = obj.data.content;
-          if (content?.dataType !== 'moveObject') return { id, valid: false, base: 0, quote: 0 };
+          if (content?.dataType !== 'moveObject') return null;
           const fields = content.fields as Record<string, unknown>;
-          if (fields.owner !== userAddress) return { id, valid: false, base: 0, quote: 0 };
+          return fields.owner === userAddress ? id : null;
+        } catch {
+          return null;
+        }
+      })
+    );
 
+    return owned.filter((id): id is string => id !== null);
+  } catch (error) {
+    console.error('[findOwnedBalanceManagerIds] Failed:', error);
+    return [];
+  }
+}
+
+/**
+ * Pick the BalanceManager to trade through, plus any others still holding funds.
+ *
+ * When multiple BMs exist (a past recovery bug, or duplicate-creation), picks
+ * the one with the highest balance and returns others with funds as orphans so
+ * the caller can drain them back to the user's wallet.
+ *
+ * Ranking reads the default pool's base and quote only, so it is a heuristic:
+ * holdings in other assets do not influence which BM wins, and pool-side settled
+ * proceeds are invisible to it entirely. Callers that must account for every
+ * asset should enumerate with `findOwnedBalanceManagerIds` instead.
+ */
+export async function findUserBalanceManager(
+  userAddress: string
+): Promise<FindResult> {
+  const empty: FindResult = { primaryId: null, orphans: [] };
+  try {
+    const ownedIds = await findOwnedBalanceManagerIds(userAddress);
+    if (ownedIds.length === 0) return empty;
+
+    const checks = await Promise.all(
+      ownedIds.map(async (id) => {
+        try {
           const bal = await getBalanceManagerBalances(id);
           return { id, valid: true, base: bal.base, quote: bal.quote };
         } catch {

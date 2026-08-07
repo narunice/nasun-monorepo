@@ -37,10 +37,12 @@ vi.mock('../../../lib/sui-client', () => ({
 import {
   getPendingProceeds,
   buildClaimPendingProceeds,
+  buildClaimAcrossManagers,
   type PendingProceeds,
 } from './pendingProceeds';
 import { POOLS } from '../../../config/network';
 import type { PoolConfig } from '../types';
+import type { Transaction } from '@mysten/sui/transactions';
 
 /** u64 little-endian, the encoding devInspect returns for return values */
 function u64(value: bigint): number[] {
@@ -107,7 +109,8 @@ describe('getPendingProceeds', () => {
 
 describe('buildClaimPendingProceeds', () => {
   const pool = POOLS.NBTC_NUSDC as unknown as PoolConfig;
-  const entry = (hasOpenOrders: boolean): PendingProceeds => ({
+  const entry = (hasOpenOrders: boolean, balanceManagerId = BM_ID): PendingProceeds => ({
+    balanceManagerId,
     poolKey: 'NBTC_NUSDC',
     pool,
     baseRaw: 0n,
@@ -138,5 +141,34 @@ describe('buildClaimPendingProceeds', () => {
     expect(
       settleCalls(buildClaimPendingProceeds(BM_ID, [entry(true), entry(false), entry(true)]))
     ).toEqual(['withdraw_settled_amounts_permissionless']);
+  });
+
+  // A user can own more than one BalanceManager, and each strands its proceeds
+  // separately. withdraw_settled_amounts_permissionless credits only the
+  // manager it is handed, so routing every entry to its own manager is what
+  // lets one button recover funds spread across them.
+  describe('buildClaimAcrossManagers', () => {
+    const SECOND_BM = `0x${'b'.repeat(64)}`;
+
+    const settleArgs = (tx: Transaction) =>
+      tx
+        .getData()
+        .commands.filter((c) => c.$kind === 'MoveCall')
+        .map((c) => {
+          const managerArg = c.MoveCall!.arguments[1];
+          const inputs = tx.getData().inputs;
+          const input = managerArg.$kind === 'Input' ? inputs[managerArg.Input] : undefined;
+          return input?.$kind === 'UnresolvedObject' ? input.UnresolvedObject.objectId : undefined;
+        });
+
+    it('routes each pool to the manager that stranded it', () => {
+      const tx = buildClaimAcrossManagers([entry(false), entry(false, SECOND_BM)]);
+      expect(settleArgs(tx)).toEqual([BM_ID, SECOND_BM]);
+    });
+
+    it('still drops pools with working orders', () => {
+      const tx = buildClaimAcrossManagers([entry(true), entry(true, SECOND_BM)]);
+      expect(settleArgs(tx)).toEqual([]);
+    });
   });
 });

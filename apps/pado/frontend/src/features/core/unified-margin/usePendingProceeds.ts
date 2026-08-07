@@ -17,10 +17,11 @@ import { useBalanceManagerStore } from '../../trading/stores/balanceManagerStore
 import { useTransactionExecutor } from '../../trading/hooks/useTransactionExecutor';
 import {
   getPendingProceeds,
-  buildClaimPendingProceeds,
+  buildClaimAcrossManagers,
   claimableProceeds,
   type PendingProceeds,
 } from '../../trading/lib/pendingProceeds';
+import { findOwnedBalanceManagerIds } from '../../trading/lib/balanceManagerValidation';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { useActiveAddress } from '../../../hooks/useActiveAddress';
 import { getStoredBalanceManagerId } from '../../../lib/unified-margin';
@@ -49,29 +50,56 @@ function toHuman(raw: bigint, decimals: number): number {
 }
 
 /**
- * Resolves the manager to inspect from address-keyed storage first.
+ * Every manager to inspect, not just the one this browser happens to remember.
  *
- * The shared store is only populated once a trading surface has mounted, so
- * relying on it alone would leave balance surfaces (the header total among
- * them) blind to pool-side funds on every other page.
+ * Address-keyed storage and the shared store both hold a *single* id, and a
+ * user can own more than one BalanceManager. Whichever id was written locally
+ * then decides whether pool-side funds are visible at all: a 2026-07-26 report
+ * came from an account with two managers, where the one not in storage held
+ * 26,157 NUSDC of settled proceeds. Enumerating on chain removes that coin
+ * flip. The locally known id is seeded first so the card still works on the
+ * first paint, before discovery resolves.
  */
-function useResolvedBalanceManagerId(): string | null {
+function useOwnedBalanceManagerIds(): string[] {
   const activeAddress = useActiveAddress();
   const storeId = useBalanceManagerStore((s) => s.balanceManagerId);
-  return (activeAddress ? getStoredBalanceManagerId(activeAddress) : null) ?? storeId;
+  const knownId =
+    (activeAddress ? getStoredBalanceManagerId(activeAddress) : null) ?? storeId;
+
+  // Discovery is three RPC sources deep, so it is cached far longer than the
+  // balance read that consumes it. The set of managers a user owns effectively
+  // never changes; their contents change constantly.
+  const { data } = useQuery({
+    queryKey: ['owned-balance-managers', activeAddress],
+    queryFn: () => (activeAddress ? findOwnedBalanceManagerIds(activeAddress) : Promise.resolve([])),
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    enabled: !!activeAddress,
+  });
+
+  return useMemo(() => {
+    const ids = new Set<string>();
+    if (knownId) ids.add(knownId);
+    for (const id of data ?? []) ids.add(id);
+    return [...ids];
+  }, [knownId, data]);
 }
 
 /** Read-only view, safe for balance aggregation. */
 export function usePendingProceedsQuery(): PendingProceedsQuery {
-  const balanceManagerId = useResolvedBalanceManagerId();
+  const balanceManagerIds = useOwnedBalanceManagerIds();
   const adaptiveInterval = useAdaptiveInterval(15_000);
+  const idKey = balanceManagerIds.join(',');
 
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['pending-proceeds', balanceManagerId],
-    queryFn: () => (balanceManagerId ? getPendingProceeds(balanceManagerId) : Promise.resolve([])),
+    queryKey: ['pending-proceeds', idKey],
+    queryFn: async () => {
+      const perManager = await Promise.all(balanceManagerIds.map(getPendingProceeds));
+      return perManager.flat();
+    },
     refetchInterval: adaptiveInterval,
     staleTime: 5000,
-    enabled: !!balanceManagerId,
+    enabled: balanceManagerIds.length > 0,
   });
 
   const entries = useMemo(() => data ?? [], [data]);
@@ -97,7 +125,6 @@ export function usePendingProceedsQuery(): PendingProceedsQuery {
 
 /** Query plus the action to pull settled proceeds back into the trading account. */
 export function usePendingProceeds(): PendingProceedsState {
-  const balanceManagerId = useResolvedBalanceManagerId();
   const query = usePendingProceedsQuery();
   const { executeTransaction } = useTransactionExecutor();
   const [isClaiming, setIsClaiming] = useState(false);
@@ -106,13 +133,13 @@ export function usePendingProceeds(): PendingProceedsState {
   const claimable = useMemo(() => claimableProceeds(query.entries), [query.entries]);
 
   const claim = useCallback(async (): Promise<boolean> => {
-    if (!balanceManagerId || claimable.length === 0) return false;
+    if (claimable.length === 0) return false;
     setIsClaiming(true);
     setClaimError(null);
     try {
-      const result = await executeTransaction(() =>
-        buildClaimPendingProceeds(balanceManagerId, claimable)
-      );
+      // Each entry carries its own manager, so one transaction can drain
+      // proceeds stranded across several of them.
+      const result = await executeTransaction(() => buildClaimAcrossManagers(claimable));
       if (!result.success) {
         setClaimError(result.error ?? 'Claim failed');
         return false;
@@ -122,7 +149,7 @@ export function usePendingProceeds(): PendingProceedsState {
     } finally {
       setIsClaiming(false);
     }
-  }, [balanceManagerId, claimable, executeTransaction, query]);
+  }, [claimable, executeTransaction, query]);
 
   return { ...query, claimable, isClaiming, claimError, claim };
 }

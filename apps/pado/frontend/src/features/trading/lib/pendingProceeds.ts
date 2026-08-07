@@ -26,6 +26,8 @@ import type { PoolConfig } from '../types';
 export type PoolKey = keyof typeof POOLS;
 
 export interface PendingProceeds {
+  /** The manager these funds settle back into. */
+  balanceManagerId: string;
   poolKey: PoolKey;
   pool: PoolConfig;
   /** Raw base-asset amount held pool-side (smallest unit) */
@@ -103,6 +105,7 @@ export async function getPendingProceeds(balanceManagerId: string): Promise<Pend
       const quoteRaw = parseU64(locked?.[1]?.[0]);
       if (baseRaw === 0n && quoteRaw === 0n) return;
       pending.push({
+        balanceManagerId,
         poolKey,
         pool,
         baseRaw,
@@ -143,6 +146,26 @@ export function buildClaimPendingProceeds(
 ): Transaction {
   const tx = new Transaction();
   for (const { pool } of claimableProceeds(entries)) {
+    tx.moveCall({
+      target: `${NETWORK_CONFIG.deepbookPackage}::pool::withdraw_settled_amounts_permissionless`,
+      typeArguments: [pool.baseToken.type as string, pool.quoteToken.type as string],
+      arguments: [tx.object(pool.id as string), tx.object(balanceManagerId)],
+    });
+  }
+  return tx;
+}
+
+/**
+ * Claim across every manager represented in `entries`, in one transaction.
+ *
+ * A user can own more than one BalanceManager (duplicate creation, or an older
+ * recovery path), and each strands its proceeds separately. Each call credits
+ * only the manager it is handed, so routing every entry to its own manager is
+ * what makes a single button recover all of it.
+ */
+export function buildClaimAcrossManagers(entries: PendingProceeds[]): Transaction {
+  const tx = new Transaction();
+  for (const { pool, balanceManagerId } of claimableProceeds(entries)) {
     tx.moveCall({
       target: `${NETWORK_CONFIG.deepbookPackage}::pool::withdraw_settled_amounts_permissionless`,
       typeArguments: [pool.baseToken.type as string, pool.quoteToken.type as string],
