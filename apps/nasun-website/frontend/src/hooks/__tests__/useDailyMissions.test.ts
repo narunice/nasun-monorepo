@@ -82,4 +82,39 @@ describe("useDailyMissions (backend-driven)", () => {
       queryKey: ["ecosystem", "score", "id-1"],
     });
   });
+
+  /**
+   * The query cache is persisted to localStorage for 24h, so a user returning
+   * across a UTC midnight restores a snapshot whose `todayCategories` describe
+   * YESTERDAY. Serving those as today's completions ticks the checklist for
+   * work not yet done and, because useNotificationDetector absorbs everything
+   * complete on its first non-loading pass, permanently suppresses today's
+   * "Mission Complete" for exactly those missions.
+   */
+  it("ignores todayCategories from a snapshot cached on a previous UTC day", () => {
+    const yesterday = Date.now() - 24 * 60 * 60 * 1000;
+    mockUseEcosystemScore.mockReturnValue({
+      score: { todayCategories: ["gostop-lottery", "pado-dex"] },
+      isLoading: false,
+      dataUpdatedAt: yesterday,
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDailyMissions("id-1"), {
+      wrapper: makeWrapper(client),
+    });
+    expect(result.current.completedMissions.size).toBe(0);
+  });
+
+  it("keeps todayCategories from a snapshot cached on the current UTC day", () => {
+    mockUseEcosystemScore.mockReturnValue({
+      score: { todayCategories: ["gostop-lottery", "pado-dex"] },
+      isLoading: false,
+      dataUpdatedAt: Date.now(),
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDailyMissions("id-1"), {
+      wrapper: makeWrapper(client),
+    });
+    expect(result.current.completedMissions.size).toBe(2);
+  });
 });
