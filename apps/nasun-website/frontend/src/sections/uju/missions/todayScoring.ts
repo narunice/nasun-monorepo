@@ -132,3 +132,31 @@ export function computeFilteredTodayBase(
   }
   return score;
 }
+
+/**
+ * `todayCategories`, or an empty list when the payload predates today.
+ *
+ * The query cache is persisted to localStorage for 24h, so a snapshot restored
+ * after a UTC midnight describes YESTERDAY. Every surface that reads
+ * `todayCategories` has to apply this together: the checklist withholding while
+ * the points card still lists yesterday's missions is the checklist/pts-today
+ * drift these two are supposed to be incapable of.
+ *
+ * `fetchedAt` is react-query's `dataUpdatedAt`. Null means "no fetch recorded",
+ * which is treated as usable so a caller that cannot supply it degrades to the
+ * previous behaviour rather than blanking.
+ */
+export function todayCategoriesAsOf(
+  todayCategories: readonly string[] | undefined,
+  fetchedAt: number | null | undefined,
+  now: number = Date.now(),
+): readonly string[] {
+  if (!todayCategories || todayCategories.length === 0) return [];
+  if (fetchedAt == null) return todayCategories;
+  return utcDayOf(fetchedAt) === utcDayOf(now) ? todayCategories : [];
+}
+
+/** UTC calendar day (YYYY-MM-DD) of an epoch-ms timestamp. */
+function utcDayOf(ms: number): string {
+  return new Date(ms).toISOString().slice(0, 10);
+}

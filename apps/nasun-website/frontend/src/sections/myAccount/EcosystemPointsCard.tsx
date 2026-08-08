@@ -218,8 +218,8 @@ export const EcosystemPointsCard: FC<EcosystemPointsCardProps> = ({
   const cognitoToken = user?.cognitoToken;
   const [days, setDays] = useState<DaysOption>(30);
 
-  const { score, isLoading: scoreLoading, isError: scoreError } = useEcosystemScore(identityId);
-  const { filtered: filteredScore } = useFilteredTodayScore(score);
+  const { score, isLoading: scoreLoading, isError: scoreError, dataUpdatedAt } = useEcosystemScore(identityId);
+  const { filtered: filteredScore } = useFilteredTodayScore(score, dataUpdatedAt);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,

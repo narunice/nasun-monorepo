@@ -106,15 +106,39 @@ describe("useDailyMissions (backend-driven)", () => {
   });
 
   it("keeps todayCategories from a snapshot cached on the current UTC day", () => {
+    // Pin the clock: seeding dataUpdatedAt from the real one while the hook
+    // reads Date.now() again makes this flake for runs that straddle midnight.
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-08T12:00:00.000Z"));
     mockUseEcosystemScore.mockReturnValue({
       score: { todayCategories: ["gostop-lottery", "pado-dex"] },
       isLoading: false,
-      dataUpdatedAt: Date.now(),
+      dataUpdatedAt: Date.parse("2026-08-08T00:30:00.000Z"),
     });
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const { result } = renderHook(() => useDailyMissions("id-1"), {
       wrapper: makeWrapper(client),
     });
     expect(result.current.completedMissions.size).toBe(2);
+    vi.useRealTimers();
+  });
+
+  // The same UTC-day guard has to hold on the pts-today side, or the checklist
+  // withholds while the points card still lists yesterday -- the drift these
+  // two exist to prevent.
+  it("withholds a stale day across a UTC midnight boundary", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-08T00:05:00.000Z"));
+    mockUseEcosystemScore.mockReturnValue({
+      score: { todayCategories: ["gostop-lottery"] },
+      isLoading: false,
+      dataUpdatedAt: Date.parse("2026-08-07T23:55:00.000Z"),
+    });
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useDailyMissions("id-1"), {
+      wrapper: makeWrapper(client),
+    });
+    expect(result.current.completedMissions.size).toBe(0);
+    vi.useRealTimers();
   });
 });

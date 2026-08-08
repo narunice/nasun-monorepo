@@ -296,7 +296,7 @@ export const UjuEcosystemPointsCard: FC<UjuEcosystemPointsCardProps> = ({
     filtered: filteredScore,
     hasFilteredOutActivity,
     completedMissions,
-  } = useFilteredTodayScore(score);
+  } = useFilteredTodayScore(score, dataUpdatedAt);
   const { data: snapshots, isLoading: historyLoading } = useSnapshotHistory({
     identityId,
     days,

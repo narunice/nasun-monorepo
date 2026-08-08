@@ -20,6 +20,7 @@ import {
   computeFilteredTodayBase,
   computeCompletedMissions,
   getActiveMissionCategories,
+  todayCategoriesAsOf,
 } from './todayScoring';
 
 export interface FilteredTodayScore {
@@ -41,6 +42,14 @@ export interface FilteredTodayScore {
 
 export function useFilteredTodayScore(
   score: EcosystemScoreData | null,
+  /**
+   * react-query's `dataUpdatedAt` for the score payload. Without it a snapshot
+   * restored from localStorage after a UTC midnight is treated as today's, and
+   * this surface lists yesterday's missions while the checklist (which does
+   * check) shows none. Optional so callers that have no handle on the query
+   * keep the previous behaviour rather than blanking.
+   */
+  fetchedAt?: number | null,
 ): FilteredTodayScore {
   const directory = useUjuAppDirectory();
 
@@ -49,7 +58,7 @@ export function useFilteredTodayScore(
       return { filtered: null, raw: null, hasFilteredOutActivity: false, completedMissions: [] };
     }
 
-    const todayCategories = score.todayCategories ?? [];
+    const todayCategories = todayCategoriesAsOf(score.todayCategories, fetchedAt);
     const activeCategories = getActiveMissionCategories(directory.state.missions);
     const filteredBase = computeFilteredTodayBase(todayCategories, activeCategories);
 
@@ -87,7 +96,7 @@ export function useFilteredTodayScore(
       hasFilteredOutActivity: filteredBase !== rawBase,
       completedMissions: computeCompletedMissions(todayCategories, directory.state.missions),
     };
-  }, [score, directory.state.missions]);
+  }, [score, fetchedAt, directory.state.missions]);
 }
 
 function roundTo2(n: number): number {

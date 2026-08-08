@@ -144,6 +144,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
     refresh: refreshEcosystem,
     isRefreshing: ecosystemRefreshing,
     cooldownSeconds,
+    dataUpdatedAt,
   } = useEcosystemScore(identityId);
 
   // Activation state from DynamoDB (real-time, not cached)
@@ -159,7 +160,7 @@ export const ProfileHeroCard: FC<ProfileHeroCardProps> = ({
   // categories outside the curated list (e.g. creator-posts) don't inflate
   // today's base. All-time/weekly/multiplier come from the raw API response
   // (full ledger). See sections/uju/missions/useFilteredTodayScore.ts.
-  const { filtered: filteredScore, hasFilteredOutActivity } = useFilteredTodayScore(ecosystemScore);
+  const { filtered: filteredScore, hasFilteredOutActivity } = useFilteredTodayScore(ecosystemScore, dataUpdatedAt);
   const displayBaseScore = filteredScore?.daily.baseScore ?? 0;
   const displayStakingScore = filteredScore?.daily.stakingScore ?? 0;
   const displayMultiplier = filteredScore?.multiplier ?? 0;

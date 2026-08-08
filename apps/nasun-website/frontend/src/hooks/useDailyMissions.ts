@@ -23,11 +23,7 @@
 import { useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEcosystemScore, ecosystemScoreKeys } from "./useEcosystemScore";
-
-/** UTC calendar day (YYYY-MM-DD) of an epoch-ms timestamp. */
-function utcDayOf(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
-}
+import { todayCategoriesAsOf } from "@/sections/uju/missions/todayScoring";
 
 // Mission IDs match the backend `category` strings 1:1, so `todayCategories`
 // values can be promoted to MissionId without translation.
@@ -82,18 +78,14 @@ export function useDailyMissions(
 
   const completedMissions = useMemo<Set<string>>(() => {
     const out = new Set<string>();
-    // `todayCategories` is scoped to the current UTC day, but the query cache
-    // is persisted to localStorage for up to 24h -- a snapshot restored after
-    // a UTC midnight carries YESTERDAY's completions. Serving those as today's
-    // would tick the checklist for missions the user has not done yet, and
-    // worse: useNotificationDetector absorbs whatever is complete on its first
+    // A snapshot restored after a UTC midnight carries YESTERDAY's completions.
+    // Serving those ticks missions the user has not done yet, and worse:
+    // useNotificationDetector absorbs whatever is complete on its first
     // non-loading pass to suppress mount-time spam, so yesterday's ids land in
     // its seen-set and today's "Mission Complete" for those missions never
-    // fires. Withhold until revalidation lands rather than serve a stale day.
-    if (dataUpdatedAt != null && utcDayOf(dataUpdatedAt) !== utcDayOf(Date.now())) {
-      return out;
-    }
-    const categories = score?.todayCategories ?? [];
+    // fires. Shared with useFilteredTodayScore so the checklist and pts-today
+    // cannot disagree about which day they are showing.
+    const categories = todayCategoriesAsOf(score?.todayCategories, dataUpdatedAt);
     for (const category of categories) {
       if (KNOWN_MISSION_IDS.has(category as MissionId)) {
         out.add(category);
