@@ -48,7 +48,10 @@ export function PendingProceedsCard() {
 
       <div className="space-y-1.5">
         {entries.map((e) => (
-          <div key={e.poolKey} className="flex items-center justify-between text-sm">
+          <div
+            key={`${e.balanceManagerId}:${e.poolKey}`}
+            className="flex items-center justify-between text-sm"
+          >
             <span className="text-theme-text-secondary">
               {e.pool.baseToken.symbol} / {e.pool.quoteToken.symbol}
               {e.hasOpenOrders && (

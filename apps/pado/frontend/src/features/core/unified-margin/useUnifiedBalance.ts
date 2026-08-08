@@ -20,12 +20,12 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useMultiBalance, useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
+import { useMultiBalance } from '@nasun/wallet';
 import { useAdaptiveInterval } from '../../../hooks/useAdaptiveInterval';
 import { useMarginAccount } from './useMarginAccount';
-import { usePendingProceedsQuery } from './usePendingProceeds';
+import { usePendingProceedsQuery, useOwnedBalanceManagerIds } from './usePendingProceeds';
 import { getBalanceManagerBalances } from '../../../lib/deepbook';
-import { getStoredBalanceManagerId, floatToRaw } from '../../../lib/unified-margin';
+import { floatToRaw } from '../../../lib/unified-margin';
 import { POOLS, TOKENS, getTokenBySymbol } from '../../../config/network';
 import {
   type TokenSymbol,
@@ -114,12 +114,6 @@ export interface UnifiedBalanceState {
  */
 export function useUnifiedBalance(): UnifiedBalanceState {
   const adaptiveInterval = useAdaptiveInterval(10_000);
-  // Get active wallet address
-  const { account: walletAccount, status } = useWallet();
-  const { isConnected: isZkLoggedIn, state: zkState } = useZkLogin();
-  const isPasskeyUnlocked = usePasskeyStore((s) => s.isUnlocked);
-  const passkeyAddress = usePasskeyStore((s) => s.address);
-  const activeAddress = isZkLoggedIn ? zkState?.address : (status === 'unlocked' ? walletAccount?.address : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined));
 
   // Wallet balances
   const {
@@ -137,26 +131,40 @@ export function useUnifiedBalance(): UnifiedBalanceState {
     error: marginError,
   } = useMarginAccount();
 
-  // BalanceManager balances (DeepBook trading)
-  // IMPORTANT: Use address-keyed storage to support multi-wallet
-  const balanceManagerId = activeAddress ? getStoredBalanceManagerId(activeAddress) : null;
+  // BalanceManager balances (DeepBook trading), summed over every manager the
+  // user owns rather than the single stored one.
+  //
+  // This has to match the set `pendingUsd` reads below, or claiming breaks the
+  // total: settled proceeds land in whichever manager stranded them, so pulling
+  // 26,157 NUSDC into a non-stored manager would drop it out of `pendingUsd`
+  // without it ever appearing in the bag figure. The user would watch the total
+  // fall by that amount the instant they clicked Claim.
+  const balanceManagerIds = useOwnedBalanceManagerIds();
+  const bmIdKey = balanceManagerIds.join(',');
   const {
     data: bmBalance,
     isLoading: isBmLoading,
     refetch: refetchBm,
   } = useQuery({
-    queryKey: ['bm-balance-global', balanceManagerId],
+    queryKey: ['bm-balance-global', bmIdKey],
     queryFn: async () => {
-      if (!balanceManagerId) return { base: 0, quote: 0 };
-      try {
-        return await getBalanceManagerBalances(balanceManagerId, POOLS.NBTC_NUSDC);
-      } catch {
-        return { base: 0, quote: 0 };
-      }
+      const perManager = await Promise.all(
+        balanceManagerIds.map(async (id) => {
+          try {
+            return await getBalanceManagerBalances(id, POOLS.NBTC_NUSDC);
+          } catch {
+            return { base: 0, quote: 0 };
+          }
+        })
+      );
+      return perManager.reduce(
+        (acc, b) => ({ base: acc.base + b.base, quote: acc.quote + b.quote }),
+        { base: 0, quote: 0 }
+      );
     },
     refetchInterval: adaptiveInterval,
     staleTime: 5000,
-    enabled: !!balanceManagerId,
+    enabled: balanceManagerIds.length > 0,
   });
 
   // Pool-side balances. These left the BalanceManager bag on order placement
@@ -164,7 +172,7 @@ export function useUnifiedBalance(): UnifiedBalanceState {
   // them is the difference between a truthful total and money that looks gone.
   const { usd: pendingUsd, refetch: refetchPending } = usePendingProceedsQuery();
 
-  const hasBalanceManager = !!balanceManagerId;
+  const hasBalanceManager = balanceManagerIds.length > 0;
   const isLoading = isWalletLoading || isMarginLoading || isBmLoading;
 
   // Refetch all sources
@@ -172,7 +180,7 @@ export function useUnifiedBalance(): UnifiedBalanceState {
     refetchWallet();
     refetchMargin();
     refetchPending();
-    if (balanceManagerId) {
+    if (hasBalanceManager) {
       refetchBm();
     }
   };

@@ -60,7 +60,7 @@ function toHuman(raw: bigint, decimals: number): number {
  * flip. The locally known id is seeded first so the card still works on the
  * first paint, before discovery resolves.
  */
-function useOwnedBalanceManagerIds(): string[] {
+export function useOwnedBalanceManagerIds(): string[] {
   const activeAddress = useActiveAddress();
   const storeId = useBalanceManagerStore((s) => s.balanceManagerId);
   const knownId =
