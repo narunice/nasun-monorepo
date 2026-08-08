@@ -284,6 +284,11 @@ async function fetchTweets(): Promise<NewsItem[]> {
       console.error('[news] tweet search failed:', err instanceof Error ? err.message : err);
       return [] as NewsItem[];
     });
+    // Record here, not on the returned array: X bills per post it returns, and
+    // the audience caps below discard most of them. Counting after the caps
+    // billed us for up to 50 while charging the budget for at most 20.
+    // A search that returns nothing costs nothing, so 0 is not recorded.
+    if (tweets.length > 0) recordTwitterFetch(tweets.length);
     const mediaTweets: NewsItem[] = [];
     const kolTweets: NewsItem[] = [];
     for (const t of tweets) {
@@ -310,7 +315,16 @@ const TWITTER_TTL_MS = 12 * 60 * 60 * 1000;
 // upstream failure would burn the monthly X API budget under normal traffic.
 const RSS_EMPTY_TTL_MS = 60 * 1000;
 const TWITTER_EMPTY_TTL_MS = 5 * 60 * 1000;
-const TWEET_MONTHLY_LIMIT = 1500; // ~$30/mo ceiling at $0.10/read
+// X moved off fixed monthly tiers: legacy Basic was deprecated 2026-05-21 and
+// auto-migrated to pay-per-use after 2026-06-01, billed at $0.005 per post
+// returned. 6,000 posts holds the original ~$30/mo ceiling (the old comment
+// said $0.10/read, which is 20x the real rate).
+//
+// The cap must stay above expected usage or it silently disables the feed
+// mid-month: a 12h success TTL means 2 searches/day of up to 50 posts, so
+// ~3,000/month. Raising it was not optional once the counter below started
+// recording the real billable count instead of ~40% of it.
+const TWEET_MONTHLY_LIMIT = 6000;
 
 interface CacheEntry<T> { data: T; expiresAt: number; }
 let rssCache: CacheEntry<NewsItem[]> | null = null;
@@ -371,7 +385,6 @@ async function getTwitterItems(force: boolean): Promise<NewsItem[]> {
       }
       const items = await fetchTweets();
       twitterCache = { data: items, expiresAt: Date.now() + (items.length > 0 ? TWITTER_TTL_MS : TWITTER_EMPTY_TTL_MS) };
-      if (items.length > 0) recordTwitterFetch(items.length);
       return items;
     } finally {
       twitterInFlight = null;

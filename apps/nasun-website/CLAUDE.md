@@ -75,6 +75,12 @@
 
 X API Basic Plan ($200/month) 에서 100명 이상의 참여자를 처리하기 위한 최적화 아키텍처.
 
+> ⚠️ **가격 기술 stale (2026-08-08 확인)**: X는 2026-05-21 레거시 Basic을 폐기하고
+> 2026-06-01 이후 Pay-Per-Use로 자동 이관했다. 더 이상 월 $200 정액이 아니라
+> **반환 포스트 1건당 $0.005** 종량제다. 아래 rate-limit 최적화 논리 자체는
+> 유효하지만, 비용 계산의 전제는 "호출 횟수"가 아니라 **반환 건수**로 바뀌었다.
+> 뉴스 피드 쪽 실측/좌표는 [chat-server README](chat-server/README.md#news-feed--x-api-자격증명) 참조.
+
 **X API Rate Limit 제약:**
 
 | Endpoint | Rate Limit | 특성 |
