@@ -12,7 +12,7 @@ import {
   WHEEL_RTP_BPS,
 } from '../lib/gostop-config';
 import { useActiveAddress } from '../hooks/useActiveAddress';
-import { useOptimisticBalance } from '../store/useBalanceStore';
+import { useOptimisticBalance, useBalanceStore } from '../store/useBalanceStore';
 import { getExplorerTxUrl } from '../lib/explorer';
 import { formatNusdc } from '../lib/format';
 import { playGameSound, playWheelSpinStart } from '../lib/sounds';
@@ -45,6 +45,8 @@ export default function WheelPage() {
   const invalidateHistory = useInvalidateGameHistory();
   const { balance: availableBalance, isInitialized: balanceReady } =
     useOptimisticBalance();
+  const holdForReveal = useBalanceStore((s) => s.holdForReveal);
+  const releaseReveal = useBalanceStore((s) => s.releaseReveal);
 
   const [betDisplay, setBetDisplay] = useState<string>(String(MIN_NUSDC));
   const [result, setResult] = useState<WheelResult | null>(null);
@@ -87,30 +89,32 @@ export default function WheelPage() {
     playWheelSpinStart();
     startLoop();
     let r: WheelResult | null = null;
+    // Deferring the post-transaction refresh only silences one writer; the 15s
+    // background poll would still land mid-spin and move the Available figure
+    // before the wheel got there. Hold the balance for the whole spin and
+    // release it at the reveal, so every writer is covered.
+    holdForReveal();
     try {
-      r = await spin(betRaw);
-    } catch {
-      r = null;
-    }
-    if (r) {
-      // The balance refresh is deferred in useWheel so the Available figure
-      // cannot move while the wheel is still turning and reveal the segment
-      // early. Landing is the reveal, so refresh once it completes. `finally`
-      // covers an animation that throws: a stale balance after a settled bet
-      // is worse than a spoiled reveal.
       try {
-        await landOn(r.segmentIndex);
-      } finally {
-        refreshBalance();
+        r = await spin(betRaw);
+      } catch {
+        r = null;
       }
-      setResult(r);
-      invalidateHistory();
-      celebrate(r);
-    } else {
-      // No result: either the tx failed, or it succeeded but the client hit the
-      // 30s RPC wallclock cap and never saw it. Refresh so the second case does
-      // not leave a stale balance on screen.
-      await gracefulStop();
+      if (r) {
+        await landOn(r.segmentIndex);
+        setResult(r);
+        invalidateHistory();
+        celebrate(r);
+      } else {
+        // No result: either the tx failed, or it succeeded but the client hit
+        // the 30s RPC wallclock cap and never saw it. The refresh below covers
+        // the second case, which would otherwise leave a stale balance.
+        await gracefulStop();
+      }
+    } finally {
+      // `finally` so an animation that throws cannot strand the hold and freeze
+      // the balance for the rest of the session.
+      releaseReveal();
       refreshBalance();
     }
   };
