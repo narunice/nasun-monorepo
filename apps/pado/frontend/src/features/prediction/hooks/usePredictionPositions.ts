@@ -3,6 +3,7 @@
  * Fetches user's prediction market positions (Position NFTs)
  */
 
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useWallet, useZkLogin, usePasskeyStore } from '@nasun/wallet';
 import type { SuiObjectResponse } from '@mysten/sui/client';
@@ -95,8 +96,13 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       : (isPasskeyUnlocked ? passkeyAddress ?? undefined : undefined);
   const isConnected = (status === 'unlocked' && account) || isZkConnected || isPasskeyUnlocked;
 
+  // marketId is deliberately absent from the key: the fetch is identical for
+  // every market and only the filter below differs, so keying on it would run
+  // one full scan per distinct market a mounted component asks for. With the
+  // page cap raised to 10,000 objects, that duplication is the difference
+  // between one scan and several that can outlast the refetch interval.
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['prediction-positions', address, marketId],
+    queryKey: ['prediction-positions', address],
     queryFn: async (): Promise<Position[]> => {
       if (!address) return [];
 
@@ -158,15 +164,9 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
       // negligible — they pass the > 0 check but render as "0" in the UI with
       // a misleading avg price of 1.00 NUSDC.
       const DUST_THRESHOLD = BigInt(10 ** NUSDC_DECIMALS) / 200n; // 0.005 NUSDC
-      const positions: Position[] = all
+      return all
         .filter((p) => p.shares >= DUST_THRESHOLD)
         .map(({ _version: _v, ...p }) => p);
-
-      // Filter by market if specified
-      if (marketId) {
-        return positions.filter(p => p.marketId === marketId);
-      }
-      return positions;
     },
     enabled: isConnected && !!address,
     // EventService bridge invalidates on user's own OrderFilled / TokensMinted /
@@ -179,7 +179,12 @@ export function usePredictionPositions(marketId?: string): UsePredictionPosition
     refetchInterval: adaptiveInterval,
   });
 
-  const positions = data || [];
+  // Market filtering moved out of the query so every market shares one fetch.
+  const positions = useMemo(() => {
+    const all = data ?? [];
+    return marketId ? all.filter((p) => p.marketId === marketId) : all;
+  }, [data, marketId]);
+
   const positionsByBucket = new Map<PositionBucketKey, Position[]>();
   for (const p of positions) {
     const key = positionBucketKey(p.marketId, p.isYes);

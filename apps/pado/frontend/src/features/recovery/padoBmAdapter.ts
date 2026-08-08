@@ -49,12 +49,10 @@ export function createPadoBmAdapter(signAndExecute: SignAndExecute): RecoveryAda
     productName: 'Pado Spot / Prediction (BalanceManager)',
     async discover(address) {
       // Enumerate every owned manager, not just the ones the balance ranking
-      // classifies. `findUserBalanceManager` runs alongside it only to label
-      // which one the app trades through.
-      const [ownedIds, result] = await Promise.all([
-        findOwnedBalanceManagerIds(address),
-        findUserBalanceManager(address),
-      ]);
+      // classifies. The ranking then runs on that same list, purely to label
+      // which manager the app trades through.
+      const ownedIds = await findOwnedBalanceManagerIds(address);
+      const result = await findUserBalanceManager(address, ownedIds);
       const items: RecoverableItem[] = [];
 
       const buildItem = async (id: string, label: string): Promise<RecoverableItem> => {

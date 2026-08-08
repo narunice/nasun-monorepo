@@ -175,11 +175,17 @@ export async function findOwnedBalanceManagerIds(
  * asset should enumerate with `findOwnedBalanceManagerIds` instead.
  */
 export async function findUserBalanceManager(
-  userAddress: string
+  userAddress: string,
+  /**
+   * Pre-discovered managers, to skip the three-source scan. Callers that already
+   * enumerated (the recovery panel does, to list managers this ranking would
+   * omit) would otherwise pay for the whole discovery twice.
+   */
+  discoveredIds?: string[]
 ): Promise<FindResult> {
   const empty: FindResult = { primaryId: null, orphans: [] };
   try {
-    const ownedIds = await findOwnedBalanceManagerIds(userAddress);
+    const ownedIds = discoveredIds ?? (await findOwnedBalanceManagerIds(userAddress));
     if (ownedIds.length === 0) return empty;
 
     const checks = await Promise.all(
