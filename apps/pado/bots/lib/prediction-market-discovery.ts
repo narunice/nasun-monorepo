@@ -26,6 +26,53 @@
 import type { SuiClient } from '@mysten/sui/client';
 import { withRetry } from './retry.js';
 
+/**
+ * Indexer-backed market list (explorer-api). Preferred over the create_market
+ * tx scan below: the fullnode prunes transaction history, so that scan silently
+ * decays to 0 as markets age (2026-08-09: keeper/lp/arb all went blind for four
+ * days while 50 markets were live). The indexer reads the current object set,
+ * which pruning does not touch.
+ *
+ * The default is the public URL so a local run works out of the box. On the
+ * box itself, `EXPLORER_API_URL=http://127.0.0.1:3200/api/v1` in bots/.env
+ * keeps discovery on the loopback, off Cloudflare, and out of the public rate
+ * limit. `.env` is deliberately not synced by the deploy script, so that key
+ * has to be set on the host when a box is (re)provisioned.
+ */
+const EXPLORER_API_URL = process.env.EXPLORER_API_URL || 'https://explorer.nasun.io/api/v1';
+
+async function fetchMarketIdsFromIndexer(packageIds: string[]): Promise<string[]> {
+  const res = await fetch(`${EXPLORER_API_URL}/prediction/markets`, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`market list HTTP ${res.status}`);
+  const data = (await res.json()) as { markets?: Array<{ id?: unknown; type?: unknown }> };
+  if (!Array.isArray(data.markets)) throw new Error('market list: malformed response');
+
+  const valid = data.markets.filter(
+    (m): m is { id: string; type: string } =>
+      typeof m.id === 'string' && /^0x[0-9a-f]{64}$/i.test(m.id) && typeof m.type === 'string',
+  );
+
+  // Type tags carry the ORIGINAL package id while `packageIds` are the call
+  // targets (latest publish). They coincide on a fresh genesis but diverge
+  // after an upgrade, so a strict filter could drop every market and reproduce
+  // the very blindness this path exists to prevent. Filter when it matches
+  // something, otherwise fail open with the full list; callers dispatch per
+  // market type anyway.
+  const wanted = packageIds.map((p) => p.toLowerCase());
+  const matched = valid.filter((m) =>
+    wanted.some((p) => m.type.toLowerCase().startsWith(`${p}::`)),
+  );
+  if (wanted.length > 0 && matched.length === 0 && valid.length > 0) {
+    console.warn(
+      `discoverMarketIds: no market type matched ${wanted.join(', ')}; using all ${valid.length} indexed markets`,
+    );
+  }
+  const chosen = matched.length > 0 ? matched : valid;
+  return chosen.map((m) => m.id.toLowerCase());
+}
+
 // Safety cap: stop paginating after this many market IDs (combined across
 // all package ids).
 const MAX_MARKETS = 500;
@@ -47,6 +94,16 @@ export async function discoverMarketIds(
   const pkgs = (Array.isArray(packageIds) ? packageIds : [packageIds]).filter(
     (p): p is string => typeof p === 'string' && p.length > 0,
   );
+  try {
+    const fromIndexer = await fetchMarketIdsFromIndexer(pkgs);
+    if (fromIndexer.length > 0) return fromIndexer;
+    console.warn('discoverMarketIds: indexer returned no markets, falling back to tx scan');
+  } catch (error) {
+    console.warn(
+      `discoverMarketIds: indexer unavailable (${error instanceof Error ? error.message : String(error)}), falling back to tx scan`,
+    );
+  }
+
   const ids: string[] = [];
   const seen = new Set<string>();
 

@@ -13,6 +13,7 @@
 
 import type { EventId, SuiObjectResponse } from '@mysten/sui/client';
 import { getSuiClient } from '../../../lib/sui-client';
+import { NETWORK_CONFIG } from '../../../config/network';
 import {
   ORDER_FILLED_EVENTS,
   TEST_MARKETS,
@@ -331,7 +332,63 @@ export async function fetchMarketsWithOrderbooks(): Promise<
  * 2026-05-20 v5 cutover: queries each originalId's create_market so v1~v4 and v5
  * markets are both discoverable (deduped; on v8 the two ids coincide).
  */
+/**
+ * Durable market list from the indexer (explorer-api), which reads the current
+ * object set instead of transaction history. Preferred over the create_market
+ * scan below because the fullnode prunes that history: on 2026-08-09 every
+ * market aged out of the tx index at once and the page went blank while 50
+ * markets were still live on chain.
+ */
+async function fetchMarketIdsFromIndexer(): Promise<string[]> {
+  // Bounded: without it a hung origin holds the page on the loading state for
+  // as long as nginx's proxy_read_timeout allows, and the tx-scan fallback
+  // below never gets a turn.
+  const res = await fetch(`${NETWORK_CONFIG.explorerApiUrl}/prediction/markets`, {
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`market list HTTP ${res.status}`);
+  const data = (await res.json()) as { markets?: Array<{ id?: unknown; type?: unknown }> };
+  if (!Array.isArray(data.markets)) throw new Error('market list: malformed response');
+
+  const valid = data.markets.filter(
+    (m): m is { id: string; type: string } =>
+      typeof m.id === 'string' && /^0x[0-9a-f]{64}$/i.test(m.id) && typeof m.type === 'string',
+  );
+
+  // Keep the package filter the create_market scan enforced: getMarketPackage
+  // defaults unknown markets to v5, so a market from an unrelated publish would
+  // render and then build moveCalls against the wrong package. Fail open when
+  // nothing matches (an upgrade moves type tags) rather than blank the page.
+  const wanted: string[] = [
+    PREDICTION_PACKAGE_ID,
+    PREDICTION_ORIGINAL_PACKAGE_ID,
+    LEGACY_PREDICTION_PACKAGE_ID,
+    LEGACY_PREDICTION_ORIGINAL_PACKAGE_ID,
+  ]
+    .filter((p) => typeof p === 'string' && p.length > 0)
+    .map((p) => p.toLowerCase());
+  const matched = valid.filter((m) =>
+    wanted.some((p) => m.type.toLowerCase().startsWith(`${p}::`)),
+  );
+  if (wanted.length > 0 && matched.length === 0 && valid.length > 0) {
+    console.warn(
+      `Market list: no type matched the configured prediction packages; using all ${valid.length}`,
+    );
+  }
+  return (matched.length > 0 ? matched : valid).map((m) => m.id);
+}
+
 export async function fetchMarketsByEvents(): Promise<string[]> {
+  let indexerError: unknown = null;
+  try {
+    const fromIndexer = await fetchMarketIdsFromIndexer();
+    if (fromIndexer.length > 0) return fromIndexer;
+    console.warn('Indexer returned no markets; falling back to create_market scan');
+  } catch (error) {
+    indexerError = error;
+    console.warn('Indexer market list unavailable, falling back to create_market scan:', error);
+  }
+
   const client = getSuiClient();
   // queryTransactionBlocks' MoveFunction filter matches the package the call
   // TARGETED, i.e. the latest published id (not the upgrade-stable originalId
@@ -375,7 +432,19 @@ export async function fetchMarketsByEvents(): Promise<string[]> {
       cursor = res.nextCursor;
     }
   }
-  return ids.length > 0 ? ids : TEST_MARKETS;
+  if (ids.length > 0) return ids;
+  // Both sources came up empty. If the indexer was unreachable this is a
+  // failure, not an empty market set, and must surface as an error instead of
+  // an innocuous "no markets" page (2026-08-09 went unnoticed for four days
+  // precisely because a broken discovery looked like an empty one).
+  if (indexerError) {
+    throw new Error(
+      `Market list unavailable: indexer failed (${
+        indexerError instanceof Error ? indexerError.message : String(indexerError)
+      }) and the on-chain create_market scan returned nothing.`,
+    );
+  }
+  return TEST_MARKETS;
 }
 
 /**
