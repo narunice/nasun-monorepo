@@ -1,0 +1,14 @@
+199
+# Allowed `tsc -b --noEmit` error count. Enforced by typecheck_frontend in
+# scripts/_common.sh: the deploy fails above this number.
+#
+# Not a target to live with. Until 2026-08-08 the deploy gate ran bare `tsc
+# --noEmit` against a solution-style tsconfig, which follows no references and
+# so typechecked nothing at all. These 199 accumulated behind that. The number
+# exists only so turning the gate on does not block every deploy at once.
+#
+# Lower it in the same commit that fixes errors. The helper prints the real
+# count and tells you when this can come down; it deliberately never edits this
+# file itself, because a self-lowering baseline hides the progress it measures.
+#
+# Cleanup plan: .claude/handoffs/2026-08-08-nasun-website-tsc-gate.md
