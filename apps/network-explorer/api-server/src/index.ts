@@ -16,6 +16,7 @@ import ecosystemBanRoutes from './routes/ecosystem-ban.js';
 import standingRoutes from './routes/standing.js';
 import agentsRoutes from './routes/agents.js';
 import vaultsRoutes from './routes/vaults.js';
+import predictionRoutes from './routes/prediction.js';
 import { startPointsScanner, stopPointsScanner } from './scanner/points-scanner.js';
 
 const PORT = Number(process.env.PORT ?? 3200);
@@ -50,6 +51,7 @@ app.use('/api/v1/creators-appreciation/*', rateLimiter({ windowMs: 60_000, max: 
 app.use('/api/v1/standing/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 app.use('/api/v1/agents/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 app.use('/api/v1/vaults/*', rateLimiter({ windowMs: 60_000, max: 60 }));
+app.use('/api/v1/prediction/*', rateLimiter({ windowMs: 60_000, max: 60 }));
 
 // Routes
 app.route('/api/v1/health', healthRoutes);
@@ -61,6 +63,7 @@ app.route('/api/v1/creators-appreciation', creatorsAppreciationRoutes);
 app.route('/api/v1/standing', standingRoutes);
 app.route('/api/v1/agents', agentsRoutes);
 app.route('/api/v1/vaults', vaultsRoutes);
+app.route('/api/v1/prediction', predictionRoutes);
 
 // Internal routes carry sensitive data (e.g. the banned-users feed) and
 // trigger side effects. They sit behind a CloudFront-fronted public domain, so
