@@ -408,29 +408,11 @@ module.exports = {
       max_memory_restart: '200M',
     },
 
-    // ==============================
-    // Lottery Keeper Bot (weekly cycle automation)
-    // ==============================
-    {
-      name: 'lottery-keeper',
-      script: './node_modules/.bin/tsx',
-      args: 'lottery-keeper.ts',
-      cwd: __dirname,
-      interpreter: 'none',
-      env: {
-        NODE_ENV: 'production',
-        // LOTTERY_ADMIN_KEY loaded from .env via deploy script
-        NASUN_RPC_URL: 'http://127.0.0.1:9000',
-      },
-      max_restarts: 10,
-      min_uptime: '30s',
-      restart_delay: 10000,  // 10s between restarts (not latency-sensitive)
-      kill_timeout: 15000,   // 15s for in-progress settlement to complete
-      log_date_format: 'YYYY-MM-DD HH:mm:ss',
-      error_file: './logs/lottery-keeper-error.log',
-      out_file: './logs/lottery-keeper-out.log',
-      merge_logs: true,
-      max_memory_restart: '200M',
-    },
+    // The Pado lottery keeper used to live here. Pado's lottery is retired
+    // (`/lottery` redirects to `/`) and its keeper was deleted from pm2 on
+    // 2026-07-12 after failing ~95k times against pruned history. Keeping the
+    // entry here resurrected it on every deploy, so the entry is gone too.
+    // The live lottery is GoStop's, run by `gostop-lottery-keeper` in
+    // apps/gostop/bots. Do not re-add this one.
   ],
 };

@@ -78,7 +78,7 @@ cd apps/pado/frontend && pnpm test:coverage
 
 ## Operational Invariants (자주 까먹는 것)
 
-1. **Bot 단일 인스턴스 강제** (CRITICAL): `price-updater`, `tpsl-keeper`, `lottery-keeper`, `prediction-keeper`, `prediction-arb`는 **prod에서만 실행**. staging `.env`에 동일 ADMIN_KEY/TradeCap이 있어도 PM2 stopped 유지. 중복 실행 시 owned object LockConflict로 fullnode 크래시 (project_pado_bot_single_instance.md).
+1. **Bot 단일 인스턴스 강제** (CRITICAL): `price-updater`, `tpsl-keeper`, `prediction-keeper`, `prediction-lp`, `prediction-arb`는 **prod에서만 실행**. (pado `lottery-keeper`는 2026-08-13에 제거됨 — pado lottery는 은퇴 제품이고 라이브 로터리는 gostop의 `gostop-lottery-keeper`다.) staging `.env`에 동일 ADMIN_KEY/TradeCap이 있어도 PM2 stopped 유지. 중복 실행 시 owned object LockConflict로 fullnode 크래시 (project_pado_bot_single_instance.md).
 2. **TP/SL keeper 주소 invariant**: prod keeper=`0x74a7daf4...`. `VITE_TPSL_KEEPER_ADDRESS` ↔ `KEEPER_PRIVATE_KEY` pubkey 동기화 필수. 불일치 시 keeper가 사용자 주문을 보지 못함 (project_pado_tpsl_keeper_address.md).
 3. **envDir 패턴**: vite config에 `envDir: '../'` 적용. `.env.production`은 `apps/pado/`에 위치 (`apps/pado/frontend/.env` 아님). env 변경 시 빌드 후 [/env-verify](../../scripts/env-verify.sh)로 `VITE_*` embed 검증 필수.
 4. **Prediction-keeper 자동 정산 (stock markets)**: Twelve Data 1차 + Yahoo cross-check. `TWELVEDATA_API_KEY` 없으면 awaiting resolution이 deadline까지 stall (project_pado_prediction_keeper.md).
