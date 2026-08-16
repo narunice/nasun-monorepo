@@ -10,6 +10,16 @@
     "lib": ["ES2022"],
     "types": ["node"]
   },
-  "include": ["*.ts", "lib/**/*.ts"],
+  // The long-running set: bots at the root, their lib/, and the two scripts/
+  // entrypoints pm2 actually runs. The rest of scripts/ is one-shot admin
+  // tooling (create-*.ts market batches) carrying 65 pre-existing errors of two
+  // shapes; including it would put slack in the deploy gate, so that deleting a
+  // spent batch script would silently license a new error in a live bot.
+  "include": [
+    "*.ts",
+    "lib/**/*.ts",
+    "scripts/balance-watchdog.ts",
+    "scripts/keeper-gas-watchdog.ts"
+  ],
   "exclude": ["node_modules"]
 }

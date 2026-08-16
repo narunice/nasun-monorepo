@@ -305,12 +305,18 @@ async function main() {
   // forgets to update the wiring) silently mints the wrong coin type forever
   // and the LP bot's "trading inventory" never refills.
   const { verifyMarketFaucets } = await import('../lib/preflight.js');
-  const checkables = (['NBTC', 'NETH', 'NSOL'] as const).map((m) => ({
-    name: m,
-    baseType: MARKETS[m].baseType,
-    faucetType: MARKETS[m].faucetType,
-    faucetV2Object: 'faucetV2Object' in MARKETS[m] ? MARKETS[m].faucetV2Object : undefined,
-  }));
+  const checkables = (['NBTC', 'NETH', 'NSOL'] as const).map((m) => {
+    // Bind the config once: re-indexing MARKETS[m] per property re-widens the
+    // union, so the `in` check narrows nothing and faucetV2Object lands as
+    // unknown. v1 markets (NBTC) have no faucetV2Object at all.
+    const config = MARKETS[m];
+    return {
+      name: m,
+      baseType: config.baseType,
+      faucetType: config.faucetType,
+      faucetV2Object: 'faucetV2Object' in config ? config.faucetV2Object : undefined,
+    };
+  });
   try {
     await verifyMarketFaucets(checkables, { rpcUrl: RPC_URL });
     console.log('[preflight] all faucets ↔ baseTypes verified');

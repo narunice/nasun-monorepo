@@ -788,7 +788,8 @@ async function reconcileMarket(
 
   const state = getState(marketId);
   // Reset EMA when mid shifts by more than 1500 bps (market regime change).
-  if (state.yesMidEma !== 0 && Math.abs(rawMid - state.yesMidEma) > 1500) {
+  // The first observation is not a regime shift: seeding is applyEma's job.
+  if (state.yesMidEma !== null && Math.abs(rawMid - state.yesMidEma) > 1500) {
     console.log(
       `[${timestamp()}] ${marketId}: mid regime shift ${state.yesMidEma}->${rawMid}, resetting EMA`,
     );
