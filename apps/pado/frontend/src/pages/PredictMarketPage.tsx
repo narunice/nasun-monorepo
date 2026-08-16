@@ -54,7 +54,13 @@ export function PredictMarketPage() {
   const location = useLocation();
   const backToMarketsHref = `/predict${location.search}`;
   const { market, isLoading, error, refetch: refetchMarket } = useMarket(marketId);
-  const { yesOrderbook, noOrderbook, refetch: refetchOrderbook } = useMarketOrderbook(marketId);
+  const {
+    yesOrderbook,
+    noOrderbook,
+    isLoading: isOrderbookLoading,
+    status: orderbookStatus,
+    refetch: refetchOrderbook,
+  } = useMarketOrderbook(marketId);
   const { positions, isLoading: isPositionsLoading, refetch: refetchPositions } = usePredictionPositions(marketId);
   const { isResolver } = usePredictionAdmin();
   const lastTradePriceBps = useLastTradePrice(marketId);
@@ -206,7 +212,14 @@ export function PredictMarketPage() {
             <div data-tour="prediction-positions">
               <PositionList market={market} positions={positions} isLoading={isPositionsLoading} onSuccess={handleRefetch} />
             </div>
-            <MyOpenOrdersList market={market} />
+            <MyOpenOrdersList
+              market={market}
+              yesOrderbook={yesOrderbook}
+              noOrderbook={noOrderbook}
+              isBooksLoading={isOrderbookLoading}
+              hasBooksError={orderbookStatus === 'error'}
+              onRefresh={handleRefetch}
+            />
             <MyTradeHistory marketId={market.id} />
           </aside>
         </div>
@@ -217,6 +230,16 @@ export function PredictMarketPage() {
           <ResolutionMetaPanel market={market} />
           <WinningClaimBanner market={market} positions={positions} onSettled={handleRefetch} />
           <PositionList market={market} positions={positions} isLoading={isPositionsLoading} onSuccess={handleRefetch} />
+          {/* Resting orders survive settlement holding locked NUSDC (bids) or
+              shares (asks). Without this the only route back was a manual PTB. */}
+          <MyOpenOrdersList
+            market={market}
+            yesOrderbook={yesOrderbook}
+            noOrderbook={noOrderbook}
+            isBooksLoading={isOrderbookLoading}
+            hasBooksError={orderbookStatus === 'error'}
+            onRefresh={handleRefetch}
+          />
           <MarketInfoPanel market={market} />
         </div>
       )}

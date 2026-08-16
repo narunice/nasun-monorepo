@@ -26,13 +26,17 @@ export type MarketCategory =
   | 'Other';
 
 export type MarketSort = 'most-liquid' | 'newest' | 'closing-soon';
-export type StatusFilter = 'open' | 'resolved' | 'mine' | 'all';
+// `cancelled` is its own tab: those markets refund rather than pay out, and
+// without a tab they were reachable only through "mine" or "all" — which is how
+// 43 cancelled markets holding claimable collateral ended up effectively
+// invisible.
+export type StatusFilter = 'open' | 'resolved' | 'cancelled' | 'mine' | 'all';
 
 const DEFAULT_STATUS: StatusFilter = 'open';
 const DEFAULT_CATEGORY: MarketCategory = 'All';
 const DEFAULT_SORT: MarketSort = 'closing-soon';
 
-const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'mine', 'all']);
+const VALID_STATUSES = new Set<StatusFilter>(['open', 'resolved', 'cancelled', 'mine', 'all']);
 const VALID_CATEGORIES = new Set<MarketCategory>(['All', 'Crypto', 'Space', 'Music', 'Sports', 'Weather', 'Finance', 'Other']);
 const VALID_SORTS = new Set<MarketSort>(['most-liquid', 'newest', 'closing-soon']);
 
@@ -114,6 +118,8 @@ export function usePredictionFilters(
     if (status === 'mine') {
       // "Mine" surfaces every market the user holds a Position in regardless
       // of lifecycle stage — so resolved-but-unclaimed wins are easy to find.
+      // Resting orders are not indexed by owner anywhere, so a bid-only user
+      // reaches theirs through the Cancelled / Resolved tabs instead.
       const ids = myMarketIds ?? new Set<string>();
       result = result.filter((m) => ids.has(m.id));
     } else if (status !== 'all') {

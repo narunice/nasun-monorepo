@@ -14,6 +14,7 @@ import type {
 const STATUS_OPTIONS: ReadonlyArray<{ value: StatusFilter; label: string }> = [
   { value: "open", label: "Open" },
   { value: "resolved", label: "Resolved" },
+  { value: "cancelled", label: "Cancelled" },
   { value: "mine", label: "Mine" },
   { value: "all", label: "All" },
 ];

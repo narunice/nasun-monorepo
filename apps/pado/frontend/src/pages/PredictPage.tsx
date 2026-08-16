@@ -23,6 +23,11 @@ export function PredictPage() {
   const { positions: myPositions } = usePredictionPositions();
 
   const marketRecords = useMemo(() => markets.map((m) => m.market), [markets]);
+  // Positions only. A resting-order scan cannot live here: the listing fetches
+  // markets WITHOUT orderbooks on purpose (fetchMarketsWithOrderbooks returns
+  // nulls so /predict stays fast), so there is nothing to match owners against.
+  // Users whose only exposure is a resting order find it through the Cancelled
+  // / Resolved tabs and the market page, which does load the books.
   const myMarketIds = useMemo(
     () => new Set(myPositions.map((p) => p.marketId)),
     [myPositions],
