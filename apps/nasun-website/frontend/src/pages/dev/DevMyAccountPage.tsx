@@ -36,12 +36,10 @@ import { ProfileHeroCard } from "../../sections/myAccount/ProfileHeroCard";
 import { GovernanceCard } from "../../sections/myAccount/GovernanceCard";
 import { BugReportsCard } from "../../sections/myAccount/BugReportsCard";
 import { CreatorPostsCard } from "../../sections/myAccount/CreatorPostsCard";
-import { CompactNftStatus } from "../../sections/myAccount/CompactNftStatus";
 import { AssetsCard } from "../../sections/myAccount/AssetsCard";
 import { DangerZoneCard } from "../../sections/myAccount/DangerZoneCard";
 import { RankHistoryCard } from "../../sections/myAccount/RankHistoryCard";
 import { EcosystemPointsCard } from "../../sections/myAccount/EcosystemPointsCard";
-import { ReferralCard } from "../../sections/myAccount/ReferralCard";
 
 import { ConnectedAccountsCard } from "../../sections/myAccount/ConnectedAccountsCard";
 import { AdditionalWalletsCard } from "../../sections/myAccount/AdditionalWalletsCard";

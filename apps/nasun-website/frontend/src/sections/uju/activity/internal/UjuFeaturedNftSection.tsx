@@ -436,7 +436,7 @@ export const UjuFeaturedNftSection: FC<FeaturedNftSectionProps> = ({
   const featuredCollections = collections.filter((c) => c.featured);
   const [searchParams, setSearchParams] = useSearchParams();
   const justMinted = searchParams.get("justMinted") === "genesis-pass";
-  const [isPolling, setIsPolling] = useState(false);
+  const [, setIsPolling] = useState(false);
   const cleanedUp = useRef(false);
 
   useEffect(() => {

@@ -66,8 +66,6 @@ function BattalionNftHeroSection({ onVideoReady }: BattalionNftHeroSectionProps)
     if (!video) return;
 
     const currentTime = video.currentTime;
-    // Use video.duration directly instead of state (handles cached video case)
-    const duration = video.duration;
 
     // "POWER YOUR DESTINY" animation
     if (currentTime >= TITLE_START_TIME && currentTime < TITLE_END_TIME) {

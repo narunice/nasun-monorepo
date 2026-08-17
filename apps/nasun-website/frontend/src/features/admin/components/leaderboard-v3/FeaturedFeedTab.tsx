@@ -15,7 +15,6 @@ import {
   setCuratedFeed,
   getAccount,
   type CuratedFeedEntry,
-  type EnrichedFeedItem,
 } from "../../services/leaderboardV3Api";
 
 const BADGE_OPTIONS = [

@@ -12,7 +12,6 @@ const AGENT_MIN_GAS_RESERVE = 50_000_000n;
 
 const NUSDC_DECIMALS = 6;
 const NASUN_DECIMALS = 9;
-const NBTC_DECIMALS = 8;
 
 describe('parseRawAmount', () => {
   it('parses whole numbers', () => {

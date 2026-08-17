@@ -14,7 +14,7 @@ import { useRankHistory, useActiveSeason, useSeasons } from '@/features/leaderbo
 import { RankHistoryChartV3 } from '@/features/leaderboard-v3/components/RankHistoryChartV3';
 import { Spinner } from '@/components/ui';
 import { DATE_RANGE_LABELS, type DateRangeOptionV3 } from '@/features/leaderboard-v3/types';
-import { UjuCard, UjuSectionHeader, UjuStat, UjuButton } from "../../shared";
+import { UjuCard, UjuSectionHeader, UjuButton } from "../../shared";
 
 interface UjuRankHistoryCardProps {
   className?: string;

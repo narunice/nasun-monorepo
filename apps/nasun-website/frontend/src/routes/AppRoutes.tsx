@@ -2,7 +2,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ecosystemAiPath } from "@/config/featureFlags";
 import { Suspense, lazy } from "react";
-import React from "react";
 import PrivateRoute from "./PrivateRoute";
 import { Pages, routesV2, pageTitleMaps } from "../config/routesConfig";
 import useScrollToTop from "../hooks/useScrollToTop";

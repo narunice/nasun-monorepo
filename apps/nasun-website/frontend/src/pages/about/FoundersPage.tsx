@@ -2,7 +2,6 @@ import { Suspense, lazy } from "react";
 import { PageLayout } from "../../components/layout/PageLayout";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import ErrorBoundary from "../../components/layout/ErrorBoundary";
-import JoinSection from "@/sections/about/JoinSection";
 import { SectionLoading } from "@/components/ui/SectionLoading";
 
 const FoundersSection = lazy(() => import("../../sections/about/FoundersSection"));

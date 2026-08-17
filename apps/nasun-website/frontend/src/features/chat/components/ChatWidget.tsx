@@ -1,8 +1,7 @@
-import { useRef, useCallback, useEffect, useMemo, useState } from "react";
+import { useRef, useCallback, useEffect, useMemo } from "react";
 import { useChat } from "../hooks/useChat";
 import { useChatStore, MIN_SIZE, MAX_SIZE } from "../../../store/chatStore";
 import { useUserStore } from "../../../store/userStore";
-import type { RoomInfo } from "../../../lib/chat-service";
 import MessageList from "./MessageList";
 import MessageInput, { type MessageInputHandle } from "./MessageInput";
 

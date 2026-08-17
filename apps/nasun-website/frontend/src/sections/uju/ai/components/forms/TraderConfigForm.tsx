@@ -11,13 +11,6 @@ import type { TraderConfig, TraderPair, StrategyPresetId } from '../../types/tra
 import { useExecutors } from '../../hooks/useExecutors';
 import { isValidEndpointUrl } from '../../utils/executor';
 
-const PAIRS: { value: TraderPair; label: string }[] = [
-  { value: 'NBTC_NUSDC', label: 'NBTC / NUSDC' },
-  { value: 'NETH_NUSDC', label: 'NETH / NUSDC' },
-  { value: 'NSOL_NUSDC', label: 'NSOL / NUSDC' },
-  { value: 'NSN_NUSDC',  label: 'NSN / NUSDC'  },
-];
-
 const MODELS = [
   'llama-3.3-70b-versatile',
   'llama-3.1-8b-instant',

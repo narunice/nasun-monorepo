@@ -1,4 +1,3 @@
-import React from "react";
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { DividerBox } from "@/components/ui/DividerBox";

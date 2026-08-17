@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { WalletConnect } from "@nasun/wallet-ui";
-import { useWallet, useZkLogin, getPendingBackupMnemonic } from "@nasun/wallet";
+import { useZkLogin, getPendingBackupMnemonic } from "@nasun/wallet";
 import { useNasunWalletAuth } from "@/features/wallet/hooks/useNasunWalletAuth";
 
 export function NotLoggedInCard() {

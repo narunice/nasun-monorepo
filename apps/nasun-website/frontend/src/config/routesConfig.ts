@@ -2,7 +2,6 @@
 import { EnhancedRouteConfigBuilder } from "../types/routes.d";
 import { TFunction } from "i18next";
 import { lazyWithRetry } from "../utils/lazyWithRetry";
-import { NASUN_AI_ENABLED } from "./featureFlags";
 import LegacyHome2026MayPageEager from "../pages/legacy/Home2026MayPage";
 
 // 페이지 컴포넌트 lazy loading

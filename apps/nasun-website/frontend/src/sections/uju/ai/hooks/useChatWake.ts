@@ -33,7 +33,6 @@ import { mapReason } from '../services/chatWakeReasons';
 import { useChatTokenLease } from './useChatTokenLease';
 import { usePollWakeJob } from './usePollWakeJob';
 import type { InflightWakeJob, Message, WakeProposal } from '../types/chat';
-import { generateId } from '../types/chat';
 
 const INFLIGHT_TTL_MS = 10 * 60 * 1000;
 

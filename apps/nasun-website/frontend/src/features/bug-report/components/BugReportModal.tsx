@@ -326,7 +326,7 @@ export default function BugReportModal({ open, onOpenChange }: BugReportModalPro
               <div className="space-y-2">
                 {screenshots.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
-                    {screenshots.map((file, i) => (
+                    {screenshots.map((_file, i) => (
                       <div key={i} className="relative group">
                         <img
                           src={previewUrls[i]}

@@ -33,9 +33,6 @@ const WhoBuildsHereSection = lazy(
 const NetworkActivitySection = lazy(
   () => import("../../sections/network/network/NetworkActivity")
 );
-const TokenDistributionSection = lazy(
-  () => import("../../sections/network/network/TokenDistributionSection")
-);
 const TechnicalFoundationSection = lazy(
   () => import("../../sections/network/network/TechnicalFoundationSection")
 );
@@ -102,7 +99,9 @@ const VisionNetworkPage = () => {
             <BuiltForCoordinationSection />
             <WhoBuildsHereSection />
             <NasunTokenSection />
-            {/* <TokenDistributionSection /> */}
+            {/* Token distribution chart is intentionally not rendered here.
+                The component still lives at
+                sections/network/network/TokenDistributionSection.tsx. */}
             <TechnicalFoundationSection />
             <MoveTogetherSection />
             <ForBuildersSection />

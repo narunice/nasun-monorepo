@@ -39,7 +39,6 @@ import {
   getMyGenesisPassStatus,
   GenesisPassApiError,
 } from "@/services/genesisPassApi";
-import { refreshAndSaveUserProfile } from "@/features/auth/services/userProfileService";
 import logger from "@/lib/logger";
 import { cn } from "@/utils/utils";
 

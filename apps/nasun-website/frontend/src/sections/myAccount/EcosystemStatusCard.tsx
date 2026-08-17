@@ -17,7 +17,7 @@ interface EcosystemStatusCardProps {
 
 export function EcosystemStatusCard({ className = "" }: EcosystemStatusCardProps) {
   const { user, cognitoToken } = useAuth();
-  const { activations, getActivation } = useEcosystemStatus(cognitoToken ?? undefined);
+  const { getActivation } = useEcosystemStatus(cognitoToken ?? undefined);
   const { score, isLoading: loading, isError } = useEcosystemScore(user?.identityId);
 
   const multiplier = score?.multiplier ?? 1.0;

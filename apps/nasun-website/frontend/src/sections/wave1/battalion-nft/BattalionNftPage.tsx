@@ -10,7 +10,6 @@
  */
 
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStore } from "../../../stores/useBattalionNftStore";
 import { StepperProgress } from "./StepperProgress";
@@ -53,7 +52,6 @@ const ERROR_MESSAGES: Record<string, string> = {
 };
 
 export const BattalionNftPage: React.FC = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const {
     currentStep,

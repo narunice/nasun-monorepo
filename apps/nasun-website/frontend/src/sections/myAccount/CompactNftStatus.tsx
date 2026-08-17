@@ -14,7 +14,7 @@ import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "../../hooks/useBattalionNftStatus";
 import { useGenesisPassStatus, invalidateGenesisPassStatus } from "../../hooks/useGenesisPassStatus";
-import { registerGenesisPass, GenesisPassApiError } from "../../services/genesisPassApi";
+import { registerGenesisPass } from "../../services/genesisPassApi";
 import { OuterBox, Spinner } from "@/components/ui";
 import { Button } from "@/components/ui/button";
 import { FcfsBadge, FreeMintBadge, GuaranteedBadge, MintedBadge } from "./components/StatusBadges";

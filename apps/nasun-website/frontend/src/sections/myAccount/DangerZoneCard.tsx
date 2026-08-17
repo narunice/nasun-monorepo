@@ -51,11 +51,10 @@ export const DangerZoneCard: FC<DangerZoneCardProps> = ({ className = "" }) => {
   const evmWalletAddress =
     user?.linkedAccounts?.metamask?.walletAddress
     || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
-  const {
-    isRegistered: isGenesisPassRegistered,
-    isApplied: isGenesisPassApplied,
-    isConfigured: isGenesisPassConfigured,
-  } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
+  const { isApplied: isGenesisPassApplied } = useGenesisPassStatus(
+    evmWalletAddress,
+    cognitoToken,
+  );
 
   const handleWithdraw = async () => {
     const registeredWallet = battalionStatus?.walletAddress;

@@ -1,5 +1,4 @@
 import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticTranslationProvider";
-import { ButtonV3 } from "@/components/ui/button-v3";
 import { SectionLayout } from "@/components/layout/SectionLayout";
 import { SectionTitle } from "@/components/ui/SectionTitle";
 import { DividerBox } from "@/components/ui/DividerBox";

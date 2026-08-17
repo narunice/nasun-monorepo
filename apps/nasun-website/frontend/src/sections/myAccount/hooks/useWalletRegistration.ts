@@ -26,8 +26,8 @@ export interface UseWalletRegistrationResult {
 
 export function useWalletRegistration(): UseWalletRegistrationResult {
   const { user } = useAuth();
-  const { status, account } = useWallet();
-  const { isConnected: isZkConnected, state: zkState } = useZkLogin();
+  const { account } = useWallet();
+  const { state: zkState } = useZkLogin();
   const { signer: activeSigner } = useSigner();
 
   const [registeredWallets, setRegisteredWallets] = useState<RegisteredWallet[]>([]);

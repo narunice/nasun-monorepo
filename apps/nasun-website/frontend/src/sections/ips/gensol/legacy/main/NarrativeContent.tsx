@@ -7,7 +7,6 @@ import { DividerBox } from "@/components/ui/DividerBox";
 // 배경 이미지
 import bgImageDesktop from "@/assets/images/spectra-plant-raid.webp";
 import bgImageMobile from "@/assets/images/spectra-plant-raid-mobile.webp";
-import { ButtonV3 } from "@/components/ui/button-v3";
 import { FadeInUp } from "@/components/ui/FadeInUp";
 
 /**

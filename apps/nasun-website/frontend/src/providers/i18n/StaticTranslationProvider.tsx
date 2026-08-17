@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useMemo } from 'react';
+import { createContext, useContext, ReactNode, useMemo } from 'react';
 import { getStaticT, LocaleNamespace, locales } from '../../lib/i18n-static/staticT';
 
 interface StaticTranslationContextValue {
