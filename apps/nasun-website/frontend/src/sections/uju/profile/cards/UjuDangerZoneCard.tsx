@@ -10,9 +10,7 @@ import { useStaticTranslation as useTranslation } from "@/providers/i18n/StaticT
 import { toast } from "react-toastify";
 import { useAuth } from "@/features/auth";
 import { useBattalionNftStatus } from "@/hooks/useBattalionNftStatus";
-import { useGenesisPassStatus, invalidateGenesisPassStatus } from "@/hooks/useGenesisPassStatus";
 import { withdrawUserApi } from "@/services/battalionNftApi";
-import { withdrawGenesisPass } from "@/services/genesisPassApi";
 import { useBattalionNftStore } from "@/stores/useBattalionNftStore";
 import { UjuCard, UjuSectionHeader, UjuButton } from "../../shared";
 import {
@@ -34,8 +32,6 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
   const { reset: resetBattalionStore, cognitoToken: battalionCognitoToken } = useBattalionNftStore();
   const [isWithdrawing, setIsWithdrawing] = useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = useState(false);
-  const [isGenesisWithdrawing, setIsGenesisWithdrawing] = useState(false);
-  const [showGenesisWithdrawDialog, setShowGenesisWithdrawDialog] = useState(false);
 
   const twitterId = user?.twitterId ?? user?.linkedAccounts?.twitter?.twitterId;
   const effectiveXUserId = twitterId;
@@ -43,15 +39,6 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
     status: battalionStatus,
     isRegistered: isBattalionRegistered,
   } = useBattalionNftStatus(undefined, effectiveXUserId);
-
-  const cognitoToken = user?.cognitoToken ?? battalionCognitoToken;
-  const evmWalletAddress =
-    user?.linkedAccounts?.metamask?.walletAddress
-    || (user?.provider === "MetaMask" ? user.walletAddress : undefined);
-  const {
-    isRegistered: isGenesisPassRegistered,
-    isApplied: isGenesisPassApplied,
-  } = useGenesisPassStatus(evmWalletAddress, cognitoToken);
 
   const handleWithdraw = async () => {
     const registeredWallet = battalionStatus?.walletAddress;
@@ -85,28 +72,6 @@ export const UjuDangerZoneCard: FC<UjuDangerZoneCardProps> = ({ className = "" }
       toast.error("Failed to withdraw. Please try again.");
     } finally {
       setIsWithdrawing(false);
-    }
-  };
-
-  const handleGenesisPassWithdraw = async () => {
-    if (isGenesisWithdrawing) return;
-
-    if (!cognitoToken) {
-      toast.error("Session expired. Please sign out and sign in again to withdraw.");
-      return;
-    }
-
-    try {
-      setIsGenesisWithdrawing(true);
-      await withdrawGenesisPass(cognitoToken);
-      setShowGenesisWithdrawDialog(false);
-      toast.success("Successfully withdrawn from Genesis Pass Allowlist.");
-      invalidateGenesisPassStatus();
-    } catch (err) {
-      console.error("[UjuDangerZoneCard] Genesis Pass withdraw error:", err);
-      toast.error("Failed to withdraw. Please try again.");
-    } finally {
-      setIsGenesisWithdrawing(false);
     }
   };
 
